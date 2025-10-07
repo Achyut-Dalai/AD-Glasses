@@ -11,6 +11,7 @@
 #import <QCSDK/QCSDKCmdCreator.h>
 #import "GlassesMediaDownloader.h"
 #import "MediaGalleryViewController.h"
+#import "GlassesWiFiHandler.h"
 
 #import "QCScanViewController.h"
 #import "QCCentralManager.h"
@@ -85,6 +86,7 @@ typedef NS_ENUM(NSInteger, QGDeviceActionType) {
 @property(nonatomic,strong)GlassesMediaDownloader *mediaDownloader;
 @property(nonatomic,copy)NSString *mediaDownloadStatus;
 @property(nonatomic,strong)UIImage *latestDownloadedMediaPreview;
+@property(nonatomic,copy)NSString *glassesDeviceIP;
 @end
 
 @implementation ViewController
@@ -515,10 +517,40 @@ typedef NS_ENUM(NSInteger, QGDeviceActionType) {
 }
 
 - (void)switchToTransferMode {
+    NSLog(@"Initiating transfer mode and WiFi connection...");
+
     [QCSDKCmdCreator openWifiWithMode:QCOperatorDeviceModeTransfer success:^(NSString *ssid, NSString *password) {
         NSLog(@"Successfully switched to transfer mode");
         NSLog(@"SSID: %@", ssid);
-        [self.tableView reloadData];
+
+        if (ssid && ssid.length > 0) {
+            // Use the WiFi handler to connect to the glasses hotspot
+            [[GlassesWiFiHandler sharedHandler] connectToGlassesWiFi:ssid
+                                                                      password:password ?: @"123456789"
+                                                                statusCallback:^(GlassesWiFiHandlerState state, NSString *status, UIImage *previewImage) {
+                dispatch_async(dispatch_get_main_queue(), ^{
+                    NSLog(@"WiFi Status: %@ - %@", @(state), status);
+                    // Update UI or show alerts based on status
+                    [self.tableView reloadData];
+                });
+            } completion:^(BOOL success, NSString *deviceIP, NSError *error) {
+                dispatch_async(dispatch_get_main_queue(), ^{
+                    if (success) {
+                        NSLog(@"✅ Successfully connected to glasses hotspot at %@", deviceIP);
+                        // Store device IP for media download
+                        self.glassesDeviceIP = deviceIP;
+                        NSLog(@"📱 Stored glasses device IP: %@", deviceIP);
+                    } else {
+                        NSLog(@"❌ Failed to connect to glasses hotspot: %@", error.localizedDescription);
+                        self.glassesDeviceIP = nil;
+                    }
+                    [self.tableView reloadData];
+                });
+            }];
+        } else {
+            NSLog(@"❌ No SSID received from glasses");
+            [self.tableView reloadData];
+        }
     } fail:^(NSInteger mode) {
         NSLog(@"Failed to switch to transfer mode, current mode: %zd", mode);
         [self.tableView reloadData];
