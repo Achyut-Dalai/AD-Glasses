@@ -105,7 +105,7 @@
 
         for (NSURL *fileURL in contents) {
             NSString *fileExtension = fileURL.pathExtension.lowercaseString;
-            if ([@[@"jpg", @"jpeg", @"png", @"heic", @"mov", @"mp4", @"m4v"] containsObject:fileExtension]) {
+            if ([@[@"jpg", @"jpeg", @"png", @"heic", @"mov", @"mp4", @"m4v", @"opus"] containsObject:fileExtension]) {
                 [mediaFiles addObject:fileURL];
             }
         }
@@ -152,10 +152,17 @@
             } else {
                 [self.thumbnails addObject:[UIImage new]];
             }
-        } else {
-            // For videos, create a placeholder thumbnail
+        } else if ([@[@"mov", @"mp4", @"m4v"] containsObject:fileExtension]) {
+            // For videos, create a thumbnail
             UIImage *videoThumbnail = [self generateVideoThumbnail:fileURL];
             [self.thumbnails addObject:videoThumbnail];
+        } else if ([@[@"opus"] containsObject:fileExtension]) {
+            // For audio files, create an audio placeholder thumbnail
+            UIImage *audioThumbnail = [self createAudioPlaceholderThumbnail];
+            [self.thumbnails addObject:audioThumbnail];
+        } else {
+            // Default placeholder for other media types
+            [self.thumbnails addObject:[self createDefaultPlaceholderThumbnail]];
         }
     }
 
@@ -195,6 +202,70 @@
     CGContextAddLineToPoint(context, 70, 50);
     CGContextClosePath(context);
     CGContextFillPath(context);
+
+    UIImage *image = UIGraphicsGetImageFromCurrentImageContext();
+    UIGraphicsEndImageContext();
+
+    return image;
+}
+
+- (UIImage *)createAudioPlaceholderThumbnail {
+    UIGraphicsBeginImageContextWithOptions(CGSizeMake(100, 100), NO, 0.0);
+    CGContextRef context = UIGraphicsGetCurrentContext();
+
+    // Orange background for audio
+    [[UIColor orangeColor] setFill];
+    CGContextFillRect(context, CGRectMake(0, 0, 100, 100));
+
+    // Audio icon (speaker)
+    [[UIColor whiteColor] setFill];
+
+    // Speaker body
+    CGContextFillRect(context, CGRectMake(30, 35, 25, 30));
+
+    // Speaker cone
+    CGContextMoveToPoint(context, 55, 35);
+    CGContextAddLineToPoint(context, 75, 25);
+    CGContextAddLineToPoint(context, 75, 75);
+    CGContextAddLineToPoint(context, 55, 65);
+    CGContextClosePath(context);
+    CGContextFillPath(context);
+
+    // Sound waves
+    CGContextSetLineWidth(context, 2.0);
+    [[UIColor whiteColor] setStroke];
+
+    // First wave
+    CGContextMoveToPoint(context, 80, 35);
+    CGContextAddLineToPoint(context, 85, 30);
+    CGContextMoveToPoint(context, 80, 50);
+    CGContextAddLineToPoint(context, 87, 50);
+    CGContextMoveToPoint(context, 80, 65);
+    CGContextAddLineToPoint(context, 85, 70);
+    CGContextStrokePath(context);
+
+    UIImage *image = UIGraphicsGetImageFromCurrentImageContext();
+    UIGraphicsEndImageContext();
+
+    return image;
+}
+
+- (UIImage *)createDefaultPlaceholderThumbnail {
+    UIGraphicsBeginImageContextWithOptions(CGSizeMake(100, 100), NO, 0.0);
+    CGContextRef context = UIGraphicsGetCurrentContext();
+
+    // Light gray background
+    [[UIColor lightGrayColor] setFill];
+    CGContextFillRect(context, CGRectMake(0, 0, 100, 100));
+
+    // Question mark icon
+    [[UIColor whiteColor] setFill];
+    UIFont *font = [UIFont boldSystemFontOfSize:40];
+    NSDictionary *attributes = @{NSFontAttributeName: font, NSForegroundColorAttributeName: [UIColor whiteColor]};
+    NSString *text = @"?";
+    CGSize textSize = [text sizeWithAttributes:attributes];
+    CGPoint textPoint = CGPointMake((100 - textSize.width) / 2, (100 - textSize.height) / 2);
+    [text drawAtPoint:textPoint withAttributes:attributes];
 
     UIImage *image = UIGraphicsGetImageFromCurrentImageContext();
     UIGraphicsEndImageContext();
@@ -268,6 +339,9 @@
     } else if ([@[@"mov", @"mp4", @"m4v"] containsObject:fileExtension]) {
         // Open video player
         [self playVideo:fileURL];
+    } else if ([@[@"opus"] containsObject:fileExtension]) {
+        // Open audio player
+        [self playAudio:fileURL];
     }
 }
 
@@ -298,6 +372,57 @@
 
     [self presentViewController:playerViewController animated:YES completion:^{
         [player play];
+    }];
+}
+
+- (void)playAudio:(NSURL *)audioURL {
+    AVPlayer *player = [AVPlayer playerWithURL:audioURL];
+
+    // Create a simple audio player view controller
+    UIViewController *audioPlayerVC = [[UIViewController alloc] init];
+    audioPlayerVC.title = @"Audio Player";
+    audioPlayerVC.view.backgroundColor = [UIColor systemBackgroundColor];
+
+    // Create a label showing the file name
+    UILabel *titleLabel = [[UILabel alloc] initWithFrame:CGRectMake(20, 100, audioPlayerVC.view.bounds.size.width - 40, 40)];
+    titleLabel.text = [audioURL.lastPathComponent stringByDeletingPathExtension];
+    titleLabel.textAlignment = NSTextAlignmentCenter;
+    titleLabel.font = [UIFont boldSystemFontOfSize:18];
+    titleLabel.autoresizingMask = UIViewAutoresizingFlexibleWidth;
+    [audioPlayerVC.view addSubview:titleLabel];
+
+    // Create play/pause button
+    UIButton *playPauseButton = [UIButton buttonWithType:UIButtonTypeSystem];
+    playPauseButton.frame = CGRectMake(0, 0, 100, 50);
+    playPauseButton.center = CGPointMake(audioPlayerVC.view.bounds.size.width / 2, audioPlayerVC.view.bounds.size.height / 2);
+    playPauseButton.autoresizingMask = UIViewAutoresizingFlexibleLeftMargin | UIViewAutoresizingFlexibleRightMargin | UIViewAutoresizingFlexibleTopMargin | UIViewAutoresizingFlexibleBottomMargin;
+    [playPauseButton setTitle:@"Play" forState:UIControlStateNormal];
+    playPauseButton.titleLabel.font = [UIFont systemFontOfSize:20];
+    [audioPlayerVC.view addSubview:playPauseButton];
+
+    // Add close button
+    UIBarButtonItem *closeButton = [[UIBarButtonItem alloc] initWithBarButtonSystemItem:UIBarButtonSystemItemDone
+                                                                                    target:audioPlayerVC
+                                                                                    action:@selector(dismissViewControllerAnimated:completion:)];
+    audioPlayerVC.navigationItem.rightBarButtonItem = closeButton;
+
+    // Setup play/pause functionality
+    __weak typeof(audioPlayerVC) weakVC = audioPlayerVC;
+    __weak typeof(player) weakPlayer = player;
+    [playPauseButton addTarget:^(id sender) {
+        if (weakPlayer.timeControlStatus == AVPlayerTimeControlStatusPlaying) {
+            [weakPlayer pause];
+            [playPauseButton setTitle:@"Play" forState:UIControlStateNormal];
+        } else {
+            [weakPlayer play];
+            [playPauseButton setTitle:@"Pause" forState:UIControlStateNormal];
+        }
+    } forControlEvents:UIControlEventTouchUpInside];
+
+    // Start playing immediately
+    [self presentViewController:audioPlayerVC animated:YES completion:^{
+        [player play];
+        [playPauseButton setTitle:@"Pause" forState:UIControlStateNormal];
     }];
 }
 
