@@ -8,6 +8,7 @@
 #import "MediaGalleryViewController.h"
 #import <AVFoundation/AVFoundation.h>
 #import <AVKit/AVKit.h>
+#import <objc/runtime.h>
 
 @interface MediaGalleryViewController () <UICollectionViewDataSource, UICollectionViewDelegate, UICollectionViewDelegateFlowLayout>
 
@@ -409,21 +410,32 @@
     // Setup play/pause functionality
     __weak typeof(audioPlayerVC) weakVC = audioPlayerVC;
     __weak typeof(player) weakPlayer = player;
-    [playPauseButton addTarget:^(id sender) {
-        if (weakPlayer.timeControlStatus == AVPlayerTimeControlStatusPlaying) {
-            [weakPlayer pause];
-            [playPauseButton setTitle:@"Play" forState:UIControlStateNormal];
-        } else {
-            [weakPlayer play];
-            [playPauseButton setTitle:@"Pause" forState:UIControlStateNormal];
-        }
-    } forControlEvents:UIControlEventTouchUpInside];
+    __weak typeof(playPauseButton) weakButton = playPauseButton;
+
+    [playPauseButton addTarget:self action:@selector(toggleAudioPlayback:) forControlEvents:UIControlEventTouchUpInside];
+
+    // Store references for the action method
+    objc_setAssociatedObject(playPauseButton, @"audioPlayer", player, OBJC_ASSOCIATION_RETAIN_NONATOMIC);
+    objc_setAssociatedObject(playPauseButton, @"playerVC", audioPlayerVC, OBJC_ASSOCIATION_RETAIN_NONATOMIC);
 
     // Start playing immediately
     [self presentViewController:audioPlayerVC animated:YES completion:^{
         [player play];
         [playPauseButton setTitle:@"Pause" forState:UIControlStateNormal];
     }];
+}
+
+- (void)toggleAudioPlayback:(UIButton *)sender {
+    AVPlayer *player = objc_getAssociatedObject(sender, @"audioPlayer");
+    UIButton *playPauseButton = sender;
+
+    if (player.timeControlStatus == AVPlayerTimeControlStatusPlaying) {
+        [player pause];
+        [playPauseButton setTitle:@"Play" forState:UIControlStateNormal];
+    } else {
+        [player play];
+        [playPauseButton setTitle:@"Pause" forState:UIControlStateNormal];
+    }
 }
 
 - (void)closeGallery {
