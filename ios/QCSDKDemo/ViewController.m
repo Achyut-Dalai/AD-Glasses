@@ -394,7 +394,7 @@ typedef NS_ENUM(NSInteger, QGDeviceActionType) {
             cell.textLabel.text = @"View Media Gallery";
             cell.detailTextLabel.text = @"Browse and view downloaded photos and videos.";
             break;
-        case QGDeviceActionTypeReserved:
+          case QGDeviceActionTypeReserved:
             break;
         default:
             break;
@@ -556,5 +556,6 @@ typedef NS_ENUM(NSInteger, QGDeviceActionType) {
         [self.tableView reloadData];
     }];
 }
+
 
 @end

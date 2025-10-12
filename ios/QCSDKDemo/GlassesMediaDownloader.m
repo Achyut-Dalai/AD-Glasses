@@ -56,62 +56,202 @@ typedef NS_ENUM(NSInteger, GlassesMediaDownloaderErrorCode) {
 
     self.isRequestingWifiCredentials = YES;
     __weak typeof(self) weakSelf = self;
-    NSLog(@"🔥 requestWifiCredentials called - trying to enable WiFi transfer mode");
+    NSLog(@"🔥 requestWifiCredentials called - enabling WiFi transfer mode via Bluetooth");
 
-    // First try to enable WiFi transfer mode on the device
+    [self updateStatus:@"Preparing glasses for WiFi transfer..." preview:nil];
+
+    // Step 1: Enable WiFi transfer mode via Bluetooth
     [QCSDKCmdCreator openWifiWithMode:QCOperatorDeviceModeTransfer success:^(NSString *ssid, NSString *password) {
         __strong typeof(weakSelf) strongSelf = weakSelf;
         if (!strongSelf) { return; }
+
         strongSelf.ssid = ssid ?: @"";
         strongSelf.password = password ?: @"";
         strongSelf.isRequestingWifiCredentials = NO;
-        NSLog(@"🔥 Got WiFi credentials from device - SSID: %@", ssid);
-        [strongSelf updateStatus:[NSString stringWithFormat:@"Got hotspot: %@", ssid ?: @"<unknown>"] preview:nil];
 
-        // First try to get device IP - if that works, we don't need to join hotspot
-        [strongSelf tryGetDeviceIPFirst];
+        NSLog(@"🔥 SUCCESS: Glasses enabled WiFi transfer mode");
+        NSLog(@"📶 Hotspot SSID: %@", ssid ?: @"(none)");
+        NSLog(@"🔐 Password: %@", password ?: @"(none)");
+
+        [strongSelf updateStatus:[NSString stringWithFormat:@"Glasses hotspot ready: %@", ssid ?: @"<unknown>"] preview:nil];
+
+        // Step 2: Wait for Bluetooth confirmation that hotspot is broadcasting
+        [strongSelf waitForHotspotReadiness];
+
     } fail:^(NSInteger code) {
         __strong typeof(weakSelf) strongSelf = weakSelf;
         if (!strongSelf) { return; }
         strongSelf.isRequestingWifiCredentials = NO;
-        NSLog(@"🔥 Failed to get WiFi credentials from device, code: %ld", (long)code);
+        NSLog(@"🔥 FAILED: Could not enable WiFi transfer mode, code: %ld", (long)code);
 
-        // Try to prompt for manual hotspot connection
-        [strongSelf promptForManualHotspot];
+        [strongSelf updateStatus:@"Failed to enable WiFi transfer mode" preview:nil];
+
+        NSError *error = [NSError errorWithDomain:GlassesMediaDownloaderErrorDomain
+                                             code:GlassesMediaDownloaderErrorCodeWifiCredentials
+                                         userInfo:@{NSLocalizedDescriptionKey: @"Glasses could not enable WiFi transfer mode"}];
+        [strongSelf finishWithError:error];
     }];
 }
 
-- (void)tryGetDeviceIPFirst {
-    __weak typeof(self) weakSelf = self;
-    NSLog(@"🔥 Got credentials, checking current connection");
-    [self updateStatus:[NSString stringWithFormat:@"WiFi: %@ (tap to join)", self.ssid] preview:nil];
+- (void)waitForHotspotReadiness {
+    NSLog(@"🔍 Waiting for glasses hotspot to be ready...");
+    [self updateStatus:@"Waiting for glasses hotspot to activate..." preview:nil];
 
-    // Try to connect immediately if possible, otherwise prompt user
-    dispatch_after(dispatch_time(DISPATCH_TIME_NOW, (int64_t)(2.0 * NSEC_PER_SEC)), dispatch_get_main_queue(), ^{
-        __strong typeof(self) strongSelf = weakSelf;
-        if (!strongSelf) { return; }
-        [strongSelf tryQuickConnection];
+    // Use Bluetooth to check if device is ready for WiFi connection
+    // This is the key insight: wait for Bluetooth confirmation before attempting WiFi
+    [self checkGlassesHotspotReadinessWithRetry:0];
+}
+
+- (void)checkGlassesHotspotReadinessWithRetry:(NSInteger)retry {
+    const NSInteger maxRetries = 10;
+
+    NSLog(@"🔍 Checking glasses hotspot readiness (attempt %ld/%ld)...", (long)(retry + 1), (long)(maxRetries));
+
+    // Check if the device can provide its WiFi IP - this indicates hotspot is ready
+    [QCSDKCmdCreator getDeviceWifiIPSuccess:^(NSString * _Nullable ipAddress) {
+        if (ipAddress.length > 0) {
+            NSLog(@"🎉 SUCCESS: Glasses hotspot is ready! Device IP: %@", ipAddress);
+            [self updateStatus:[NSString stringWithFormat:@"Glasses hotspot ready at %@", ipAddress] preview:nil];
+
+            // Store the IP and proceed with iOS-native WiFi joining
+            self.deviceIP = ipAddress;
+            [self triggerIOSNativeWiFiJoin];
+        } else {
+            NSLog(@"⏳ Glasses hotspot not ready yet, retrying...");
+            [self retryHotspotReadinessCheck:retry maxRetries:maxRetries];
+        }
+    } failed:^{
+        NSLog(@"⏳ Glasses not ready for WiFi yet, retrying...");
+        [self retryHotspotReadinessCheck:retry maxRetries:maxRetries];
+    }];
+}
+
+- (void)retryHotspotReadinessCheck:(NSInteger)retry maxRetries:(NSInteger)maxRetries {
+    if (retry >= maxRetries - 1) {
+        NSLog(@"❌ TIMEOUT: Glasses hotspot failed to become ready after %ld attempts", (long)maxRetries);
+        [self updateStatus:@"Glasses hotspot failed to activate" preview:nil];
+
+        NSError *error = [NSError errorWithDomain:GlassesMediaDownloaderErrorDomain
+                                             code:GlassesMediaDownloaderErrorCodeHotspotUnavailable
+                                         userInfo:@{NSLocalizedDescriptionKey: @"Glasses hotspot failed to activate within expected time"}];
+        [self finishWithError:error];
+        return;
+    }
+
+    // Exponential backoff: 1s, 2s, 4s, 8s...
+    NSTimeInterval delay = pow(2, retry);
+    NSLog(@"⏱️ Waiting %.0fs before next readiness check...", delay);
+
+    dispatch_after(dispatch_time(DISPATCH_TIME_NOW, (int64_t)(delay * NSEC_PER_SEC)), dispatch_get_main_queue(), ^{
+        [self checkGlassesHotspotReadinessWithRetry:retry + 1];
     });
 }
 
-- (void)tryQuickConnection {
-    NSLog(@"🔥 Attempting quick connection test");
-    [self updateStatus:@"Testing connection..." preview:nil];
+- (void)triggerIOSNativeWiFiJoin {
+    NSLog(@"📱 Triggering iOS-native WiFi joining for hotspot: %@", self.ssid);
+    [self updateStatus:[NSString stringWithFormat:@"Joining %@ via iOS...", self.ssid] preview:nil];
 
-    // Try to get device IP immediately - this will work if already on same network
-    [QCSDKCmdCreator getDeviceWifiIPSuccess:^(NSString * _Nullable ipAddress) {
-        if (ipAddress.length > 0) {
-            NSLog(@"🔥 Quick connection successful - IP: %@", ipAddress);
-            [self updateStatus:[NSString stringWithFormat:@"Found device at %@", ipAddress] preview:nil];
-            [self testConnectionToIP:ipAddress];
+    // Try the modern NEHotspotConfiguration approach first
+    // But with better timing - only apply once, then let iOS handle it
+    if (@available(iOS 11.0, *)) {
+        [self applyHotspotConfigurationOnce];
+    } else {
+        [self showManualConnectionInstructions];
+    }
+}
+
+- (void)applyHotspotConfigurationOnce {
+    if (@available(iOS 11.0, *)) {
+        NSLog(@"📱 Applying single hotspot configuration for: %@", self.ssid);
+
+        NEHotspotConfiguration *configuration = nil;
+
+        if (self.password.length > 0) {
+            configuration = [[NEHotspotConfiguration alloc] initWithSSID:self.ssid
+                                                               passphrase:self.password
+                                                                   isWEP:NO];
         } else {
-            NSLog(@"🔥 Quick connection failed - trying hotspot configuration");
-            [self tryHotspotConfiguration];
+            configuration = [[NEHotspotConfiguration alloc] initWithSSID:self.ssid];
         }
-    } failed:^{
-        NSLog(@"🔥 Quick connection failed - trying hotspot configuration");
-        [self tryHotspotConfiguration];
+
+        // Single-use configuration - let iOS handle the rest
+        configuration.joinOnce = YES;
+        if (@available(iOS 13.0, *)) {
+            configuration.lifeTimeInDays = @1;
+        }
+
+        __weak typeof(self) weakSelf = self;
+
+        [[NEHotspotConfigurationManager sharedManager] applyConfiguration:configuration
+                                                     completionHandler:^(NSError * _Nullable error) {
+            __strong typeof(weakSelf) strongSelf = weakSelf;
+            if (!strongSelf) { return; }
+
+            dispatch_async(dispatch_get_main_queue(), ^{
+                if (!error) {
+                    NSLog(@"✅ WiFi configuration applied successfully");
+                    [strongSelf updateStatus:@"WiFi configured! Testing connection..." preview:nil];
+
+                    // Give iOS time to establish connection, then test
+                    dispatch_after(dispatch_time(DISPATCH_TIME_NOW, (int64_t)(5.0 * NSEC_PER_SEC)), dispatch_get_main_queue(), ^{
+                        [strongSelf testConnectionWithKnownIP];
+                    });
+
+                } else if (error.code == NEHotspotConfigurationErrorAlreadyAssociated) {
+                    NSLog(@"✅ Already associated with hotspot");
+                    [strongSelf updateStatus:@"Already connected! Testing..." preview:nil];
+                    dispatch_after(dispatch_time(DISPATCH_TIME_NOW, (int64_t)(2.0 * NSEC_PER_SEC)), dispatch_get_main_queue(), ^{
+                        [strongSelf testConnectionWithKnownIP];
+                    });
+
+                } else {
+                    NSLog(@"❌ WiFi configuration failed: %@", error.localizedDescription);
+                    [strongSelf updateStatus:@"Auto WiFi failed. Please join manually." preview:nil];
+
+                    // Show manual connection instructions as fallback
+                    [strongSelf showManualConnectionInstructions];
+                }
+            });
+        }];
+    }
+}
+
+- (void)testConnectionWithKnownIP {
+    NSLog(@"🔗 Testing connection to known IP: %@", self.deviceIP);
+
+    if (!self.deviceIP) {
+        NSLog(@"❌ No device IP available for connection test");
+        [self testConnectionWithCommonIPs];
+        return;
+    }
+
+    [self updateStatus:[NSString stringWithFormat:@"Testing connection to %@...", self.deviceIP] preview:nil];
+
+    NSURL *testURL = [NSURL URLWithString:[NSString stringWithFormat:@"http://%@/files/media.config", self.deviceIP]];
+    NSURLRequest *request = [NSURLRequest requestWithURL:testURL
+                                            cachePolicy:NSURLRequestReloadIgnoringLocalCacheData
+                                        timeoutInterval:10.0];
+
+    NSURLSessionDataTask *task = [[NSURLSession sharedSession] dataTaskWithRequest:request
+                                                                 completionHandler:^(NSData * _Nullable data, NSURLResponse * _Nullable response, NSError * _Nullable error) {
+        dispatch_async(dispatch_get_main_queue(), ^{
+            if (!error && data && ((NSHTTPURLResponse *)response).statusCode == 200) {
+                NSLog(@"🎉 SUCCESS: Connected to glasses at %@", self.deviceIP);
+                [self updateStatus:[NSString stringWithFormat:@"✅ Connected! Starting download...", self.deviceIP] preview:nil];
+
+                // Start the download process
+                [self discoverAllEndpointsForIP:self.deviceIP];
+
+            } else {
+                NSLog(@"❌ Connection test failed: %@", error.localizedDescription);
+                [self updateStatus:@"Connection failed. Trying common IPs..." preview:nil];
+
+                // Fall back to trying common IP addresses
+                [self testConnectionWithCommonIPs];
+            }
+        });
     }];
+    [task resume];
 }
 
 - (void)tryHotspotConfiguration {
