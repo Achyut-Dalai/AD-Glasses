@@ -7,11 +7,11 @@
 
 #import "QCScanViewController.h"
 #import "QCCentralManager.h"
+#import "QCScanView.h"
 
 @interface QCScanViewController ()<UITableViewDataSource, UITableViewDelegate,QCCentralManagerDelegate>
 
-@property(nonatomic,strong)UIActivityIndicatorView *indicatorView;
-@property (nonatomic,strong) UITableView *tableView;
+@property(nonatomic,strong)QCScanView *scanView;
 @property(nonatomic,strong)NSArray *peripherals;
 @end
 
@@ -19,26 +19,18 @@
 
 - (void)viewDidLoad {
     [super viewDidLoad];
-    // Do any additional setup after loading the view.
-    self.view.backgroundColor = [UIColor whiteColor];
-    
+
     self.title = @"Search";
-    
-    self.indicatorView = [[UIActivityIndicatorView alloc] initWithFrame:CGRectMake(0, 64, self.view.frame.size.width, 20)];
-    self.indicatorView.activityIndicatorViewStyle = UIActivityIndicatorViewStyleGray;
-    [self.view addSubview:self.indicatorView];
-    
-    self.tableView = [[UITableView alloc] initWithFrame:CGRectMake(0,
-                                                                   CGRectGetMaxY(self.indicatorView.frame),
-                                                                   CGRectGetWidth(self.view.frame),
-                                                                   CGRectGetHeight(self.view.frame) - CGRectGetMaxY(self.indicatorView.frame)) style:(UITableViewStylePlain)];
-    self.tableView.delegate = self;
-    self.tableView.dataSource = self;
-    [self.view addSubview:self.tableView];
-    
+
+    // Create and add the scan view
+    self.scanView = [[QCScanView alloc] initWithFrame:self.view.bounds];
+    self.scanView.tableView.delegate = self;
+    self.scanView.tableView.dataSource = self;
+    [self.view addSubview:self.scanView];
+
     [QCCentralManager shared].delegate = self;
     [[QCCentralManager shared] scan];
-    [self.indicatorView startAnimating];
+    [self.scanView.indicatorView startAnimating];
 }
 
 - (void)viewDidDisappear:(BOOL)animated {
@@ -48,9 +40,9 @@
 
 #pragma mark - QCCentralManagerDelegate
 - (void)didScanPeripherals:(NSArray *)peripheralArr; {
-    
+
     self.peripherals = peripheralArr;
-    [self.tableView reloadData];
+    [self.scanView.tableView reloadData];
 }
 
 - (void)didState:(QCState)state {
@@ -94,13 +86,13 @@
 }
 
 - (void)tableView:(UITableView *)tableView didSelectRowAtIndexPath:(NSIndexPath *)indexPath {
-    
-    
-    [self.indicatorView stopAnimating];
+
+
+    [self.scanView.indicatorView stopAnimating];
     [[QCCentralManager shared] stopScan];
-    
+
     QCBlePeripheral *per= [self.peripherals objectAtIndex:indexPath.row];
-    
+
     NSLog(@"Connecting to %@,mac:%@",per.peripheral.name,per.mac);
 
     [[QCCentralManager shared] connect:per.peripheral];

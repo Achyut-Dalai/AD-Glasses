@@ -192,9 +192,11 @@ typedef NS_ENUM(NSInteger, GlassesMediaDownloaderErrorCode) {
                     NSLog(@"✅ WiFi configuration applied successfully");
                     [strongSelf updateStatus:@"WiFi configured! Testing connection..." preview:nil];
 
-                    // Give iOS time to establish connection, then test
-                    dispatch_after(dispatch_time(DISPATCH_TIME_NOW, (int64_t)(5.0 * NSEC_PER_SEC)), dispatch_get_main_queue(), ^{
-                        [strongSelf testConnectionWithKnownIP];
+                    // Give iOS time to establish connection, especially in WiFi-dense areas
+                    NSLog(@"⏳ Waiting for iOS to establish WiFi connection (15s for WiFi-dense environment)...");
+                    dispatch_after(dispatch_time(DISPATCH_TIME_NOW, (int64_t)(15.0 * NSEC_PER_SEC)), dispatch_get_main_queue(), ^{
+                        // Verify iOS actually connected to WiFi before testing
+                        [strongSelf checkIfiOSConnectedToWiFi:self.ssid deviceIP:self.deviceIP];
                     });
 
                 } else if (error.code == NEHotspotConfigurationErrorAlreadyAssociated) {
@@ -213,6 +215,49 @@ typedef NS_ENUM(NSInteger, GlassesMediaDownloaderErrorCode) {
                 }
             });
         }];
+    }
+}
+
+- (void)checkIfiOSConnectedToWiFi:(NSString *)expectedSSID deviceIP:(NSString *)deviceIP {
+    // Check if iOS actually connected to the expected WiFi network
+    CFArrayRef interfaces = CNCopySupportedInterfaces();
+    BOOL isConnectedToCorrectWiFi = NO;
+
+    if (interfaces) {
+        for (int i = 0; i < CFArrayGetCount(interfaces); i++) {
+            CFStringRef interface = CFArrayGetValueAtIndex(interfaces, i);
+            CFDictionaryRef networkInfo = CNCopyCurrentNetworkInfo(interface);
+
+            if (networkInfo) {
+                NSString *currentSSID = CFDictionaryGetValue(networkInfo, kCNNetworkInfoKeySSID);
+                NSLog(@"📱 Current WiFi SSID: %@", currentSSID ?: @"(none)");
+
+                if (currentSSID && [currentSSID isEqualToString:expectedSSID]) {
+                    NSLog(@"✅ iOS successfully connected to WiFi: %@", currentSSID);
+                    isConnectedToCorrectWiFi = YES;
+                }
+
+                CFRelease(networkInfo);
+            }
+        }
+        CFRelease(interfaces);
+    }
+
+    if (isConnectedToCorrectWiFi) {
+        NSLog(@"🔗 iOS is connected to correct WiFi, testing connectivity...");
+        [self updateStatus:@"Connected! Testing data connection..." preview:nil];
+        [self testConnectionWithKnownIP];
+    } else {
+        NSLog(@"❌ iOS did NOT connect to WiFi: %@", expectedSSID);
+        NSLog(@"❌ iOS may have stayed on cellular or failed to join the network");
+
+        [self updateStatus:@"iOS didn't join WiFi. Please check Settings and tap 'Use Without Internet' if prompted." preview:nil];
+
+        // Wait additional time and retry (extended for WiFi-dense environments)
+        dispatch_after(dispatch_time(DISPATCH_TIME_NOW, (int64_t)(12.0 * NSEC_PER_SEC)), dispatch_get_main_queue(), ^{
+            NSLog(@"🔄 Retrying connection check after additional wait...");
+            [self checkIfiOSConnectedToWiFi:expectedSSID deviceIP:deviceIP];
+        });
     }
 }
 
