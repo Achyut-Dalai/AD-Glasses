@@ -8,19 +8,23 @@ import android.content.pm.PackageManager
 import android.os.Build
 import android.os.Bundle
 import android.util.Log
+import android.widget.Toast
 import androidx.annotation.RequiresApi
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.app.ActivityCompat
 import com.hjq.permissions.OnPermissionCallback
 import com.hjq.permissions.XXPermissions
+import com.oudmon.ble.base.communication.utils.ByteUtil
 import com.oudmon.ble.base.bluetooth.BleOperateManager
 import com.oudmon.ble.base.bluetooth.DeviceManager
 import com.oudmon.ble.base.communication.LargeDataHandler
 import com.oudmon.ble.base.communication.bigData.resp.GlassesDeviceNotifyListener
 import com.oudmon.ble.base.communication.bigData.resp.GlassesDeviceNotifyRsp
 import com.sdk.glassessdksample.databinding.AcitivytMainBinding
-import com.sdk.glassessdksample.ui.BluetoothUtils
 import com.sdk.glassessdksample.ui.DeviceBindActivity
+import com.sdk.glassessdksample.ui.BluetoothUtils
+import com.sdk.glassessdksample.ui.BluetoothEvent
+import com.sdk.glassessdksample.ui.bleIpBridge
 import com.sdk.glassessdksample.ui.hasBluetooth
 import com.sdk.glassessdksample.ui.requestAllPermission
 import com.sdk.glassessdksample.ui.requestBluetoothPermission
@@ -28,14 +32,17 @@ import com.sdk.glassessdksample.ui.requestLocationPermission
 import com.sdk.glassessdksample.ui.requestNearbyWifiDevicesPermission
 import com.sdk.glassessdksample.ui.setOnClickListener
 import com.sdk.glassessdksample.ui.startKtxActivity
-import com.sdk.glassessdksample.ui.P2PController
 import com.sdk.glassessdksample.ui.wifi.p2p.WifiP2pManagerSingleton
 import android.net.wifi.p2p.WifiP2pDevice
 import android.net.wifi.p2p.WifiP2pInfo
 import org.greenrobot.eventbus.EventBus
+import org.greenrobot.eventbus.Subscribe
+import org.greenrobot.eventbus.ThreadMode
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.isActive
 import java.io.File
 import java.io.FileOutputStream
 import java.net.HttpURLConnection
@@ -44,21 +51,68 @@ import kotlinx.coroutines.withContext
 import kotlinx.coroutines.delay
 
 class MainActivity : AppCompatActivity() {
+    companion object {
+        const val ACTION_TASKER_COMMAND = "com.sdk.glassessdksample.ACTION_TASKER_COMMAND"
+        const val EXTRA_TASKER_COMMAND = "tasker_command"
+        private var loggedLargeDataHandlerMethods = false
+
+        // Edit this URL before using the pull-mode OTA test button.
+        // In the official app, the phone runs an HTTP server on its own
+        // Wi‑Fi Direct address and the glasses fetch the file from there.
+        // For experiments you can point this at a simple `python -m http.server`
+        // instance on the phone or on a reachable host.
+        private const val TEST_PULL_OTA_URL =
+            "http://192.168.49.1:8080/dummy.swu"
+    }
+
     private lateinit var binding: AcitivytMainBinding
     private val deviceNotifyListener by lazy { MyDeviceNotifyListener() }
+
+    // State used by the BLE+WiFi P2P data-download flow
+    private var downloadP2pConnected = false
+    private var downloadBleIp: String? = null
+    private var downloadWifiIp: String? = null
+    private var downloadInProgress = false
+    private var downloadWifiP2pManager: WifiP2pManagerSingleton? = null
+    private var downloadWifiP2pCallback: WifiP2pManagerSingleton.WifiP2pCallback? = null
+    private var batteryPollJob: Job? = null
+    private val batteryPollIntervalMs = 60_000L
+    private var pendingBatteryToast = false
+    private var batteryCallbackRegistered = false
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         binding = AcitivytMainBinding.inflate(layoutInflater)
         setContentView(binding.root)
         initView()
+        logLargeDataHandlerMethodsOnce()
+        // Ensure we always listen for glasses reports (battery, AI, volume, etc.)
+        LargeDataHandler.getInstance().addOutDeviceListener(100, deviceNotifyListener)
+        handleTaskerCommand(intent)
+    }
+
+    override fun onStart() {
+        super.onStart()
+        if (!EventBus.getDefault().isRegistered(this)) {
+            EventBus.getDefault().register(this)
+        }
+        updateConnectionStatus(BleOperateManager.getInstance().isConnected)
+        startBatteryPolling()
+    }
+
+    override fun onStop() {
+        super.onStop()
+        stopBatteryPolling()
+        if (EventBus.getDefault().isRegistered(this)) {
+            EventBus.getDefault().unregister(this)
+        }
     }
     inner class PermissionCallback : OnPermissionCallback {
         override fun onGranted(permissions: MutableList<String>, all: Boolean) {
             if (!all) {
-
-            }else{
-                startKtxActivity<DeviceBindActivity>()
+                // Permissions not fully granted; do nothing for now
+            } else {
+                this@MainActivity.startKtxActivity<DeviceBindActivity>()
             }
         }
 
@@ -97,6 +151,12 @@ class MainActivity : AppCompatActivity() {
         requestAllPermission(this, OnPermissionCallback { permissions, all ->  })
     }
 
+    override fun onNewIntent(intent: Intent?) {
+        super.onNewIntent(intent)
+        setIntent(intent)
+        handleTaskerCommand(intent)
+    }
+
     inner class BluetoothPermissionCallback : OnPermissionCallback {
         override fun onGranted(permissions: MutableList<String>, all: Boolean) {
             if (!all) {
@@ -129,7 +189,9 @@ class MainActivity : AppCompatActivity() {
             binding.btnBattery,
             binding.btnVolume,
             binding.btnMediaCount,
-            binding.btnDataDownload
+            binding.btnDataDownload,
+            binding.btnOtaInfo,
+            binding.btnPullOtaTest
         ) {
             when (this) {
                 binding.btnScan -> {
@@ -137,34 +199,45 @@ class MainActivity : AppCompatActivity() {
                 }
 
                 binding.btnConnect -> {
+                    Toast.makeText(this@MainActivity, "Reconnecting to glasses…", Toast.LENGTH_SHORT).show()
                     BleOperateManager.getInstance()
                         .connectDirectly(DeviceManager.getInstance().deviceAddress)
                 }
 
                 binding.btnDisconnect -> {
+                    Toast.makeText(this@MainActivity, "Disconnecting from glasses…", Toast.LENGTH_SHORT).show()
                     BleOperateManager.getInstance().unBindDevice()
                 }
 
                 binding.btnAddListener -> {
+                    Toast.makeText(this@MainActivity, "Registering device event listener…", Toast.LENGTH_SHORT).show()
                     LargeDataHandler.getInstance().addOutDeviceListener(100, deviceNotifyListener)
                 }
 
                 binding.btnSetTime -> {
-                    Log.i("setTime", "setTime"+BleOperateManager.getInstance().isConnected)
+                    Toast.makeText(this@MainActivity, "Syncing glasses time…", Toast.LENGTH_SHORT).show()
+                    Log.i("setTime", "setTime" + BleOperateManager.getInstance().isConnected)
                     LargeDataHandler.getInstance().syncTime { _, _ -> }
                 }
 
                 binding.btnVersion -> {
+                    Toast.makeText(this@MainActivity, "Reading device version…", Toast.LENGTH_SHORT).show()
                     LargeDataHandler.getInstance().syncDeviceInfo { _, response ->
                         if (response != null) {
-                            //wifi 固件版本
-                             response.wifiFirmwareVersion
-                            //wifi 产品版本
-                            response.wifiHardwareVersion
-                            //蓝牙产品版本
-                             response.hardwareVersion
-                            //蓝牙固件版本
-                             response.firmwareVersion
+                            val message =
+                                "WiFi FW: ${response.wifiFirmwareVersion}, BT FW: ${response.firmwareVersion}"
+                            Log.i("DeviceInfo", message)
+                            runOnUiThread {
+                                Toast.makeText(this@MainActivity, message, Toast.LENGTH_LONG).show()
+                            }
+                        } else {
+                            runOnUiThread {
+                                Toast.makeText(
+                                    this@MainActivity,
+                                    "Failed to get device version",
+                                    Toast.LENGTH_SHORT
+                                ).show()
+                            }
                         }
                     }
                 }
@@ -176,103 +249,42 @@ class MainActivity : AppCompatActivity() {
                         if (it.dataType == 1 && it.errorCode == 0) {
                             when (it.workTypeIng) {
                                 2 -> {
-                                    //眼镜正在录像
+                                    //Glasses are recording video
                                 }
                                 4 -> {
-                                    //眼镜正在传输模式
+                                    //Glasses are in transfer mode
                                 }
                                 5 -> {
-                                    //眼镜正在OTA模式
+                                    //Glasses are in OTA mode
                                 }
                                 1, 6 ->{
-                                    //眼镜正在拍照模式
+                                    //Glasses are in camera mode
                                 }
                                 7 -> {
-                                    //眼镜正在AI对话
+                                    //Glasses are in AI conversation
                                 }
                                 8 ->{
-                                    //眼镜正在录音模式
+                                    //Glasses are in recording mode
                                 }
                             }
                         } else {
-                            //执行开始和结束
+                            //Execute start and end
                         }
                     }
                 }
 
                 binding.btnVideo -> {
-                    //videoStart  true 开始录制   false 停止录制
-                    val videoStart=true
-                    val value = if (videoStart) 0x02 else 0x03
-                    LargeDataHandler.getInstance().glassesControl(
-                        byteArrayOf(0x02, 0x01, value.toByte())
-                    ) { _, it ->
-                        if (it.dataType == 1) {
-                            if (it.errorCode == 0) {
-                                when (it.workTypeIng) {
-                                    2 -> {
-                                        //眼镜正在录像
-                                    }
-                                    4 -> {
-                                        //眼镜正在传输模式
-                                    }
-                                    5 -> {
-                                        //眼镜正在OTA模式
-                                    }
-                                    1, 6 ->{
-                                        //眼镜正在拍照模式
-                                    }
-                                    7 -> {
-                                        //眼镜正在AI对话
-                                    }
-                                    8 ->{
-                                        //眼镜正在录音模式
-                                    }
-                                }
-                            } else {
-                                //执行开始和结束
-                            }
-                        }
-                    }
+                    // Default UI behavior: start video recording
+                    controlVideoRecording(true)
                 }
 
                 binding.btnRecord -> {
-                    //recordStart  true 开始录制   false 停止录制
-                    val recordStart=true
-                    val value = if (recordStart) 0x08 else 0x0c
-                    LargeDataHandler.getInstance().glassesControl(
-                        byteArrayOf(0x02, 0x01, value.toByte())
-                    ) { _, it ->
-                        if (it.dataType == 1) {
-                            if (it.errorCode == 0) {
-                                when (it.workTypeIng) {
-                                    2 -> {
-                                        //眼镜正在录像
-                                    }
-                                    4 -> {
-                                        //眼镜正在传输模式
-                                    }
-                                    5 -> {
-                                        //眼镜正在OTA模式
-                                    }
-                                    1, 6 ->{
-                                        //眼镜正在拍照模式
-                                    }
-                                    7 -> {
-                                        //眼镜正在AI对话
-                                    }
-                                    8 ->{
-                                        //眼镜正在录音模式
-                                    }
-                                }
-                            } else {
-                                //执行开始和结束
-                            }
-                        }
-                    }
+                    // Default UI behavior: start audio recording
+                    controlAudioRecording(true)
                 }
 
                 binding.btnThumbnail -> {
+                    Toast.makeText(this@MainActivity, "Requesting thumbnail…", Toast.LENGTH_SHORT).show()
                     //thumbnailSize  0..6
                     val thumbnailSize=0x02
                     LargeDataHandler.getInstance().glassesControl(
@@ -289,85 +301,92 @@ class MainActivity : AppCompatActivity() {
                             if (it.errorCode == 0) {
                                 when (it.workTypeIng) {
                                     2 -> {
-                                        //眼镜正在录像
+                                        //Glasses are recording video
                                     }
                                     4 -> {
-                                        //眼镜正在传输模式
+                                        //Glasses are in transfer mode
                                     }
                                     5 -> {
-                                        //眼镜正在OTA模式
+                                        //Glasses are in OTA mode
                                     }
                                     1, 6 ->{
-                                        //眼镜正在拍照模式
+                                        //Glasses are in camera mode
                                     }
                                     7 -> {
-                                        //眼镜正在AI对话
+                                        //Glasses are in AI conversation
                                     }
                                     8 ->{
-                                        //眼镜正在录音模式
+                                        //Glasses are in recording mode
                                     }
                                 }
                             } else {
-                                //触发AI拍照，上报缩略图会收到上报指令
+                                //Trigger AI photo, report thumbnail will receive report command
                             }
                         }
                     }
                 }
 
                 binding.btnBt -> {
-                    //BT扫描
+                    Toast.makeText(this@MainActivity, "Starting classic Bluetooth scan…", Toast.LENGTH_SHORT).show()
+                    //BT scan
                     BleOperateManager.getInstance().classicBluetoothStartScan()
 
                 }
                 binding.btnBattery -> {
-                    //添加电量监听
-                    LargeDataHandler.getInstance().addBatteryCallBack("init") { _, response ->
-
-                    }
-                    //电量
-                    LargeDataHandler.getInstance().syncBattery()
+                    requestBatteryStatus(showToast = true)
                 }
                 binding.btnVolume ->{
-                    //读取音量控制
+                    Toast.makeText(this@MainActivity, "Requesting volume info…", Toast.LENGTH_SHORT).show()
+                    //Read volume control and show values
                     LargeDataHandler.getInstance().getVolumeControl { _, response ->
                         if (response != null) {
-                            //眼镜音量 音乐最小值 最大值 当前值
-                            response.minVolumeMusic
-                            response.maxVolumeMusic
-                            response.currVolumeMusic
-                            //眼镜电话 电话最小值 最大值 当前值
-                            response.minVolumeCall
-                            response.maxVolumeCall
-                            response.currVolumeCall
-                            //眼镜系统 系统最小值 最大值 当前值
-                            response.minVolumeSystem
-                            response.maxVolumeSystem
-                            response.currVolumeSystem
-                            //眼镜当前的模式
-                            response.currVolumeType
+                            val msg = """
+                                Music: ${response.currVolumeMusic}/${response.maxVolumeMusic}
+                                Call: ${response.currVolumeCall}/${response.maxVolumeCall}
+                                System: ${response.currVolumeSystem}/${response.maxVolumeSystem}
+                                Mode: ${response.currVolumeType}
+                            """.trimIndent()
+                            Log.i("VolumeControl", msg.replace('\n', ' '))
+                            runOnUiThread {
+                                Toast.makeText(this@MainActivity, msg, Toast.LENGTH_LONG).show()
+                            }
+                        } else {
+                            runOnUiThread {
+                                Toast.makeText(
+                                    this@MainActivity,
+                                    "Failed to read volume info",
+                                    Toast.LENGTH_SHORT
+                                ).show()
+                            }
                         }
                     }
                 }
                 binding.btnMediaCount ->{
+                    Toast.makeText(this@MainActivity, "Requesting media count…", Toast.LENGTH_SHORT).show()
                     LargeDataHandler.getInstance().glassesControl(byteArrayOf(0x02, 0x04)) { _, it ->
                         if (it.dataType == 4) {
                             val mediaCount = it.imageCount + it.videoCount + it.recordCount
-                            if (mediaCount > 0) {
-                                //眼镜有多少个媒体没有上传
+                            val msg = if (mediaCount > 0) {
+                                "Media not uploaded - Photos: ${it.imageCount}, Videos: ${it.videoCount}, Records: ${it.recordCount}"
                             } else {
-                                //无
+                                "No pending media on glasses"
+                            }
+                            Log.i("MediaCount", msg)
+                            runOnUiThread {
+                                Toast.makeText(this@MainActivity, msg, Toast.LENGTH_LONG).show()
                             }
                         }
                     }
                 }
                 binding.btnDataDownload -> {
-                    // 检查并请求必要的权限
+                    Toast.makeText(this@MainActivity, "Starting data download…", Toast.LENGTH_SHORT).show()
+                    // Check and request necessary permissions
                     if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-                        // Android 13+ 需要 NEARBY_WIFI_DEVICES 权限
+                        // Android 13+ requires NEARBY_WIFI_DEVICES permission
                         requestNearbyWifiDevicesPermission(this@MainActivity, object : OnPermissionCallback {
                             override fun onGranted(permissions: MutableList<String>, all: Boolean) {
                                 if (all) {
-                                    // 启动BLE+WiFi P2P数据下载
+                                    // Start BLE+WiFi P2P data download
                                     startDataDownload()
                                 }
                             }
@@ -380,153 +399,574 @@ class MainActivity : AppCompatActivity() {
                             }
                         })
                     } else {
-                        // Android 12 及以下版本直接启动下载
+                        // Android 12 and below start download directly
                         startDataDownload()
                     }
+                }
+                binding.btnOtaInfo -> {
+                    Toast.makeText(this@MainActivity, "Dumping OTA server info…", Toast.LENGTH_SHORT).show()
+                    dumpOtaServerInfo()
+                }
+                binding.btnPullOtaTest -> {
+                    Toast.makeText(this@MainActivity, "Triggering pull‑mode OTA test…", Toast.LENGTH_SHORT).show()
+                    testPullModeOta()
                 }
             }
         }
     }
 
-    private fun startDataDownload() {
-        Log.i("DataDownload", "Starting BLE+WiFi P2P data download...")
-        
-        // 检查蓝牙连接状态
+    private fun dumpOtaServerInfo() {
         if (!BleOperateManager.getInstance().isConnected) {
-            Log.e("DataDownload", "Bluetooth not connected. Please connect to glasses first.")
+            Log.e("OTAProbe", "Bluetooth not connected. Please connect to glasses first.")
+            Toast.makeText(
+                this,
+                "Bluetooth not connected. Please connect to glasses first.",
+                Toast.LENGTH_LONG
+            ).show()
             return
         }
-        
-        // 检查必要的权限
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-            if (!XXPermissions.isGranted(this, "android.permission.NEARBY_WIFI_DEVICES")) {
-                Log.e("DataDownload", "NEARBY_WIFI_DEVICES permission not granted")
-                return
-            }
-        }
-        
-        // 启动P2P连接和数据下载
-        CoroutineScope(Dispatchers.IO).launch {
-            try {
-                // 1. 通过BLE获取眼镜的IP地址
-                val deviceIp = getDeviceIpFromBLE()
-                if (deviceIp.isNullOrEmpty()) {
-                    Log.e("DataDownload", "Failed to get device IP from BLE")
-                    return@launch
+
+        LargeDataHandler.getInstance().syncDeviceInfo { _, response ->
+            if (response == null) {
+                Log.e("OTAProbe", "syncDeviceInfo returned null response")
+                runOnUiThread {
+                    Toast.makeText(
+                        this,
+                        "Failed to read device info for OTA",
+                        Toast.LENGTH_SHORT
+                    ).show()
                 }
-                
-                Log.i("DataDownload", "Device IP from BLE: $deviceIp")
-                
-                // 2. 建立WiFi P2P连接 - 使用新的WifiP2pManagerSingleton
-                val wifiP2pManager = WifiP2pManagerSingleton.getInstance(this@MainActivity)
-                val receiver = wifiP2pManager.registerReceiver()
-                
+                return@syncDeviceInfo
+            }
+
+            val wifiHw = response.wifiHardwareVersion ?: ""
+            val wifiFw = response.wifiFirmwareVersion ?: ""
+            val btFw = response.firmwareVersion ?: ""
+            val hw = response.hardwareVersion ?: ""
+
+            // OTA binary URL used by the official app's debug/down path.
+            val otaBinaryUrl =
+                "https://qcwxfactory.oss-cn-beijing.aliyuncs.com/bin/glasses/${wifiHw}.swu"
+
+            // Try to download the OTA file directly into the app's files dir
+            // so you can pull it with `adb` for inspection.
+            val otaDir = File(getExternalFilesDir(null), "ota")
+            if (!otaDir.exists()) {
+                otaDir.mkdirs()
+            }
+            val outFile = File(otaDir, "${wifiHw}.swu")
+
+            CoroutineScope(Dispatchers.IO).launch {
                 try {
-                    // 添加回调监听器
-                    wifiP2pManager.addCallback(object : WifiP2pManagerSingleton.WifiP2pCallback {
-                        override fun onWifiP2pEnabled() {
-                            Log.i("DataDownload", "WiFi P2P enabled, creating P2P group...")
-                            // 创建P2P组（手机作为GO）
-                            wifiP2pManager.createGroup { success ->
-                                if (success) {
-                                    Log.i("DataDownload", "P2P group created successfully")
-                                    // 等待P2P连接完全建立
-                                    CoroutineScope(Dispatchers.IO).launch {
-                                        delay(2000) // 等待2秒让连接稳定
-                                        
-                                        // 测试连接是否可用
-                                        if (testConnection(deviceIp)) {
-                                            Log.i("DataDownload", "Connection test successful, starting downloads...")
-                                            
-                                            // 3. 下载媒体文件列表
-                                            downloadMediaList(deviceIp)
-                                        } else {
-                                            Log.e("DataDownload", "Connection test failed, cannot reach device")
-                                            withContext(Dispatchers.Main) {
-                                                showDownloadError("Cannot connect to glasses device. Please check P2P connection.")
-                                            }
-                                        }
-                                    }
-                                } else {
-                                    Log.e("DataDownload", "Failed to create P2P group")
-                                    withContext(Dispatchers.Main) {
-                                        showDownloadError("Failed to create P2P group")
-                                    }
+                    Log.i(
+                        "OTAProbe",
+                        "Attempting OTA binary download to: ${outFile.absolutePath}"
+                    )
+                    val url = URL(otaBinaryUrl)
+                    val conn = url.openConnection() as HttpURLConnection
+                    conn.requestMethod = "GET"
+                    conn.connectTimeout = 15000
+                    conn.readTimeout = 60000
+
+                    if (conn.responseCode == HttpURLConnection.HTTP_OK) {
+                        conn.inputStream.use { input ->
+                            FileOutputStream(outFile).use { output ->
+                                val buffer = ByteArray(8 * 1024)
+                                while (true) {
+                                    val read = input.read(buffer)
+                                    if (read <= 0) break
+                                    output.write(buffer, 0, read)
                                 }
+                                output.flush()
                             }
                         }
-                        
-                        override fun onWifiP2pDisabled() {
-                            Log.e("DataDownload", "WiFi P2P disabled")
-                        }
-                        
-                        override fun onPeersChanged(peers: Collection<WifiP2pDevice>) {
-                            Log.i("DataDownload", "Found ${peers.size} P2P devices")
-                        }
-                        
-                        override fun onThisDeviceChanged(device: WifiP2pDevice) {
-                            Log.i("DataDownload", "This device changed: ${device.deviceName} - ${device.status}")
-                        }
-                        
-                        override fun onConnected(info: WifiP2pInfo) {
-                            Log.i("DataDownload", "P2P connected: groupFormed=${info.groupFormed}, isGroupOwner=${info.isGroupOwner}")
-                        }
-                        
-                        override fun onDisconnected() {
-                            Log.i("DataDownload", "P2P disconnected")
-                        }
-                        
-                        override fun onPeerDiscoveryStarted() {
-                            Log.i("DataDownload", "Peer discovery started")
-                        }
-                        
-                        override fun onPeerDiscoveryFailed(reason: Int) {
-                            Log.e("DataDownload", "Peer discovery failed: $reason")
-                        }
-                        
-                        override fun onConnectRequestSent() {
-                            Log.i("DataDownload", "Connect request sent")
-                        }
-                        
-                        override fun onConnectRequestFailed(reason: Int) {
-                            Log.e("DataDownload", "Connect request failed: $reason")
-                        }
-                        
-                        override fun connecting() {
-                            Log.i("DataDownload", "Connecting to P2P device...")
-                        }
-                        
-                        override fun cancelConnect() {
-                            Log.i("DataDownload", "P2P connection cancelled")
-                        }
-                        
-                        override fun cancelConnectFail(reason: Int) {
-                            Log.e("DataDownload", "Cancel connect failed: $reason")
-                        }
-                        
-                        override fun retryAlsoFailed() {
-                            Log.e("DataDownload", "P2P connection retry failed")
-                        }
-                    })
-                    
-                } finally {
-                    // 清理P2P连接
-                    wifiP2pManager.removeGroup { success ->
-                        Log.i("DataDownload", "P2P group removed: $success")
+                        Log.i(
+                            "OTAProbe",
+                            "OTA binary download completed: ${outFile.absolutePath} (size=${outFile.length()} bytes)"
+                        )
+                    } else {
+                        Log.e(
+                            "OTAProbe",
+                            "OTA binary download failed, HTTP ${conn.responseCode}"
+                        )
                     }
-                    wifiP2pManager.unregisterReceiver(receiver)
+                    conn.disconnect()
+                } catch (e: Exception) {
+                    Log.e(
+                        "OTAProbe",
+                        "Exception while downloading OTA binary: ${e.message}",
+                        e
+                    )
                 }
-                
-            } catch (e: Exception) {
-                Log.e("DataDownload", "Error during data download: ${e.message}", e)
+            }
+
+            Log.i("OTAProbe", "==== OTA SERVER INFO START ====")
+            Log.i("OTAProbe", "Device hardware version     : $hw")
+            Log.i("OTAProbe", "WiFi hardware version       : $wifiHw")
+            Log.i("OTAProbe", "WiFi firmware version       : $wifiFw")
+            Log.i("OTAProbe", "Bluetooth firmware version  : $btFw")
+            Log.i(
+                "OTAProbe",
+                "OTA metadata API (global)   : https://www.qlifesnap.com/glasses/app-update/last-ota"
+            )
+            Log.i(
+                "OTAProbe",
+                "OTA metadata API (China)    : https://www.qlifesnap.com/glasses/app-update/last-ota/china"
+            )
+            Log.i("OTAProbe", "OTA binary URL candidate    : $otaBinaryUrl")
+
+            val lastOtaJsonTemplate = """
+                {
+                  "appId": <APP_ID>,
+                  "uid": <USER_ID>,
+                  "hardwareVersion": "$wifiHw",
+                  "romVersion": "$wifiFw",
+                  "os": 1,
+                  "mac": "<PHONE_OR_BT_MAC>",
+                  "country": "<COUNTRY_CODE>",
+                  "dev": 2
+                }
+            """.trimIndent()
+
+            Log.i("OTAProbe", "Sample LastOtaRequest JSON (fill in placeholders):")
+            Log.i("OTAProbe", lastOtaJsonTemplate)
+            Log.i(
+                "OTAProbe",
+                "Sample curl (metadata): curl -X POST 'https://www.qlifesnap.com/glasses/app-update/last-ota' -H 'Content-Type: application/json' -d '<JSON_ABOVE>'"
+            )
+            Log.i(
+                "OTAProbe",
+                "Sample curl (binary)  : curl -o '${wifiHw}.swu' '$otaBinaryUrl'"
+            )
+            Log.i("OTAProbe", "==== OTA SERVER INFO END ====")
+
+            runOnUiThread {
+                Toast.makeText(
+                    this,
+                    "OTA server info dumped to logcat (tag: OTAProbe)",
+                    Toast.LENGTH_LONG
+                ).show()
+            }
+        }
+    }
+
+    /**
+     * Minimal wrapper around LargeDataHandler.writeIpToSoc so we can observe
+     * how the glasses behave when asked to fetch an OTA image from an HTTP
+     * server under our control.
+     *
+     * This does not start any HTTP server on the phone; you must run one
+     * yourself and point TEST_PULL_OTA_URL at it.
+     */
+    private fun testPullModeOta() {
+        if (!BleOperateManager.getInstance().isConnected) {
+            Log.e("PullOtaTest", "Bluetooth not connected. Please connect to glasses first.")
+            Toast.makeText(
+                this,
+                "Bluetooth not connected. Please connect to glasses first.",
+                Toast.LENGTH_LONG
+            ).show()
+            return
+        }
+
+        val url = TEST_PULL_OTA_URL
+        if (url.isBlank()) {
+            Log.e("PullOtaTest", "TEST_PULL_OTA_URL is blank; edit MainActivity to set it.")
+            Toast.makeText(
+                this,
+                "TEST_PULL_OTA_URL is blank. Edit MainActivity first.",
+                Toast.LENGTH_LONG
+            ).show()
+            return
+        }
+
+        Log.i("PullOtaTest", "Calling writeIpToSoc with URL: $url")
+        LargeDataHandler.getInstance().writeIpToSoc(url) { cmdType, response ->
+            Log.i(
+                "PullOtaTest",
+                "writeIpToSoc callback: cmdType=$cmdType, response=$response"
+            )
+        }
+    }
+    
+    private fun controlVideoRecording(start: Boolean) {
+        val value = if (start) 0x02 else 0x03
+        LargeDataHandler.getInstance().glassesControl(
+            byteArrayOf(0x02, 0x01, value.toByte())
+        ) { _, it ->
+            if (it.dataType == 1) {
+                if (it.errorCode == 0) {
+                    when (it.workTypeIng) {
+                        2 -> {
+                            //Glasses are recording video
+                        }
+                        4 -> {
+                            //Glasses are in transfer mode
+                        }
+                        5 -> {
+                            //Glasses are in OTA mode
+                        }
+                        1, 6 ->{
+                            //Glasses are in camera mode
+                        }
+                        7 -> {
+                            //Glasses are in AI conversation
+                        }
+                        8 ->{
+                            //Glasses are in recording mode
+                        }
+                    }
+                } else {
+                    //Execute start and end
+                }
             }
         }
     }
     
+    private fun controlAudioRecording(start: Boolean) {
+        val value = if (start) 0x08 else 0x0c
+        LargeDataHandler.getInstance().glassesControl(
+            byteArrayOf(0x02, 0x01, value.toByte())
+        ) { _, it ->
+            if (it.dataType == 1) {
+                if (it.errorCode == 0) {
+                    when (it.workTypeIng) {
+                        2 -> {
+                            //Glasses are recording video
+                        }
+                        4 -> {
+                            //Glasses are in transfer mode
+                        }
+                        5 -> {
+                            //Glasses are in OTA mode
+                        }
+                        1, 6 ->{
+                            //Glasses are in camera mode
+                        }
+                        7 -> {
+                            //Glasses are in AI conversation
+                        }
+                        8 ->{
+                            //Glasses are in recording mode
+                        }
+                    }
+                } else {
+                    //Execute start and end
+                }
+            }
+        }
+    }
+
+    @Subscribe(threadMode = ThreadMode.MAIN)
+    fun onBluetoothEvent(event: BluetoothEvent) {
+        updateConnectionStatus(event.connect)
+        if (event.connect) {
+            requestBatteryStatus(showToast = false)
+        } else {
+            updateBatteryText(null)
+        }
+    }
+
+    private fun startBatteryPolling() {
+        if (batteryPollJob?.isActive == true) {
+            return
+        }
+        batteryPollJob = CoroutineScope(Dispatchers.Main).launch {
+            while (isActive) {
+                if (BleOperateManager.getInstance().isConnected) {
+                    requestBatteryStatus(showToast = false)
+                } else {
+                    updateBatteryText(null)
+                }
+                delay(batteryPollIntervalMs)
+            }
+        }
+    }
+
+    private fun stopBatteryPolling() {
+        batteryPollJob?.cancel()
+        batteryPollJob = null
+    }
+
+    private fun updateConnectionStatus(connected: Boolean) {
+        val deviceName = DeviceManager.getInstance().deviceName
+        val status = if (connected) {
+            if (!deviceName.isNullOrBlank()) {
+                "Connected - $deviceName"
+            } else {
+                "Connected"
+            }
+        } else {
+            "Disconnected"
+        }
+        binding.statusText.text = status
+        if (!connected) {
+            updateBatteryText(null)
+        }
+    }
+
+    private fun updateBatteryText(battery: Int?) {
+        binding.batteryText.text = battery?.let { "$it%" } ?: "--%"
+    }
+
+    private fun requestBatteryStatus(showToast: Boolean) {
+        if (showToast) {
+            pendingBatteryToast = true
+            Toast.makeText(this@MainActivity, "Requesting battery level…", Toast.LENGTH_SHORT).show()
+        }
+        ensureBatteryCallback()
+        // Trigger battery sync
+        LargeDataHandler.getInstance().syncBattery()
+    }
+
+    private fun ensureBatteryCallback() {
+        if (batteryCallbackRegistered) {
+            return
+        }
+        batteryCallbackRegistered = true
+        // Add battery listener. According to the SDK docs this
+        // callback is invoked when syncBattery completes.
+        LargeDataHandler.getInstance().addBatteryCallBack("init") { _, response ->
+            val result = parseBatteryResponse(response)
+            Log.i("BatteryCallback", result.message)
+            runOnUiThread {
+                updateBatteryText(result.battery)
+                if (pendingBatteryToast) {
+                    Toast.makeText(
+                        this@MainActivity,
+                        result.message,
+                        Toast.LENGTH_LONG
+                    ).show()
+                    pendingBatteryToast = false
+                }
+            }
+        }
+    }
+
+    private data class BatteryResult(
+        val battery: Int?,
+        val charging: Boolean?,
+        val message: String
+    )
+
+    private fun parseBatteryResponse(response: Any?): BatteryResult {
+        if (response == null) {
+            return BatteryResult(null, null, "Battery callback: null response")
+        }
+        return try {
+            val clazz = response.javaClass
+            val batteryField = clazz.getDeclaredField("battery").apply {
+                isAccessible = true
+            }
+            val chargingField = clazz.getDeclaredField("charging").apply {
+                isAccessible = true
+            }
+
+            val battery = batteryField.getInt(response)
+            val charging = chargingField.getBoolean(response)
+            val message =
+                "Battery: $battery% (${if (charging) "charging" else "not charging"})"
+            BatteryResult(battery, charging, message)
+        } catch (e: Exception) {
+            Log.e("BatteryCallback", "Failed to parse BatteryResponse", e)
+            BatteryResult(null, null, "Battery: $response")
+        }
+    }
+
+    private fun handleBatteryReport(battery: Int, charging: Boolean) {
+        val message = "Battery: $battery% (${if (charging) "charging" else "not charging"})"
+        Log.i("BatteryCallback", message)
+        runOnUiThread {
+            updateBatteryText(battery)
+            if (pendingBatteryToast) {
+                Toast.makeText(this@MainActivity, message, Toast.LENGTH_LONG).show()
+                pendingBatteryToast = false
+            }
+        }
+    }
+
+    private fun handleTaskerCommand(startIntent: Intent?) {
+        if (startIntent == null) return
+
+        val isFromTaskerAction = startIntent.action == ACTION_TASKER_COMMAND
+        val command = startIntent.getStringExtra(EXTRA_TASKER_COMMAND)
+
+        if (!isFromTaskerAction && command.isNullOrBlank()) {
+            return
+        }
+
+        val normalizedCommand = command?.lowercase() ?: return
+
+        when (normalizedCommand) {
+            "scan" -> binding.btnScan.performClick()
+            "connect" -> binding.btnConnect.performClick()
+            "disconnect" -> binding.btnDisconnect.performClick()
+            "add_listener" -> binding.btnAddListener.performClick()
+            "set_time" -> binding.btnSetTime.performClick()
+            "version" -> binding.btnVersion.performClick()
+            "camera" -> binding.btnCamera.performClick()
+
+            // Video recording controls
+            "video" -> binding.btnVideo.performClick()
+            "video_start" -> controlVideoRecording(true)
+            "video_stop" -> controlVideoRecording(false)
+
+            // Audio recording controls
+            "record" -> binding.btnRecord.performClick()
+            "record_start" -> controlAudioRecording(true)
+            "record_stop" -> controlAudioRecording(false)
+
+            "thumbnail" -> binding.btnThumbnail.performClick()
+            "bt_scan" -> binding.btnBt.performClick()
+            "battery" -> binding.btnBattery.performClick()
+            "volume" -> binding.btnVolume.performClick()
+            "media_count" -> binding.btnMediaCount.performClick()
+            "data_download" -> binding.btnDataDownload.performClick()
+        }
+    }
+
+    private fun startDataDownload() {
+        Log.i("DataDownload", "Starting BLE+WiFi P2P data download...")
+
+        // Check Bluetooth connection status
+        if (!BleOperateManager.getInstance().isConnected) {
+            Log.e("DataDownload", "Bluetooth not connected. Please connect to glasses first.")
+            Toast.makeText(
+                this,
+                "Bluetooth not connected. Please connect to glasses first.",
+                Toast.LENGTH_LONG
+            ).show()
+            return
+        }
+
+        // Check NEARBY_WIFI_DEVICES on Android 13+
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU &&
+            !XXPermissions.isGranted(this, "android.permission.NEARBY_WIFI_DEVICES")
+        ) {
+            Log.e("DataDownload", "NEARBY_WIFI_DEVICES permission not granted")
+            Toast.makeText(
+                this,
+                "NEARBY_WIFI_DEVICES permission not granted.",
+                Toast.LENGTH_LONG
+            ).show()
+            return
+        }
+
+        // Reset state for a fresh run
+        downloadP2pConnected = false
+        downloadBleIp = null
+        downloadWifiIp = null
+        downloadInProgress = false
+
+        val wifiP2pManager = WifiP2pManagerSingleton.getInstance(this)
+        downloadWifiP2pManager = wifiP2pManager
+
+        // Register receiver and listen for P2P state/peer changes
+        wifiP2pManager.registerReceiver()
+
+        val callback = object : WifiP2pManagerSingleton.WifiP2pCallback {
+            override fun onWifiP2pEnabled() {
+                Log.i("DataDownload", "WiFi P2P enabled")
+            }
+
+            override fun onWifiP2pDisabled() {
+                Log.e("DataDownload", "WiFi P2P disabled")
+            }
+
+            override fun onPeersChanged(peers: Collection<WifiP2pDevice>) {
+                Log.i("DataDownload", "Found ${peers.size} P2P devices")
+                // Connect to the first available peer (the official app
+                // filters by name/MAC; here we keep it simple).
+                val target = peers.firstOrNull()
+                if (target != null) {
+                    Log.i(
+                        "DataDownload",
+                        "Connecting to peer: ${target.deviceName} / ${target.deviceAddress}"
+                    )
+                    wifiP2pManager.connectToDevice(target)
+                }
+            }
+
+            override fun onThisDeviceChanged(device: WifiP2pDevice) {
+                Log.i(
+                    "DataDownload",
+                    "This device changed: ${device.deviceName} - ${device.status}"
+                )
+            }
+
+            override fun onConnected(info: WifiP2pInfo) {
+                Log.i(
+                    "DataDownload",
+                    "P2P connected: groupFormed=${info.groupFormed}, isGroupOwner=${info.isGroupOwner}"
+                )
+                onDownloadP2pConnected(info)
+            }
+
+            override fun onDisconnected() {
+                Log.i("DataDownload", "P2P disconnected")
+                downloadP2pConnected = false
+            }
+
+            override fun onPeerDiscoveryStarted() {
+                Log.i("DataDownload", "Peer discovery started")
+            }
+
+            override fun onPeerDiscoveryFailed(reason: Int) {
+                Log.e("DataDownload", "Peer discovery failed: $reason")
+            }
+
+            override fun onConnectRequestSent() {
+                Log.i("DataDownload", "Connect request sent")
+            }
+
+            override fun onConnectRequestFailed(reason: Int) {
+                Log.e("DataDownload", "Connect request failed: $reason")
+            }
+
+            override fun connecting() {
+                Log.i("DataDownload", "Connecting to P2P device...")
+            }
+
+            override fun cancelConnect() {
+                Log.i("DataDownload", "P2P connection cancelled")
+            }
+
+            override fun cancelConnectFail(reason: Int) {
+                Log.e("DataDownload", "Cancel connect failed: $reason")
+            }
+
+            override fun retryAlsoFailed() {
+                Log.e("DataDownload", "P2P connection retry failed")
+            }
+        }
+
+        downloadWifiP2pCallback = callback
+        wifiP2pManager.addCallback(callback)
+
+        // Start scanning for the glasses over WiFi Direct
+        wifiP2pManager.startPeerDiscovery()
+
+        // Ask the glasses (over BLE) to bring up WiFi/P2P and report their IP,
+        // mirroring the official app's importAlbum() flow.
+        LargeDataHandler.getInstance().glassesControl(
+            byteArrayOf(0x02, 0x01, 0x04)
+        ) { _, resp ->
+            Log.i(
+                "DataDownload",
+                "glassesControl[0x02,0x01,0x04] -> dataType=${resp.dataType}, error=${resp.errorCode}"
+            )
+        }
+    }
+    
     private fun getDeviceIpFromBLE(): String? {
-        // 这里应该通过BLE特征值读取获取眼镜的IP地址
-        // 根据你的日志，眼镜会通过BLE上报IP地址
-        // 暂时返回一个示例IP，实际应该从BLE数据中解析
+        // Prefer IP detected from BLE notifications, fall back to the
+        // known sample IP if we have not seen one yet.
+        val ipFromBle = bleIpBridge.ip.value
+        if (!ipFromBle.isNullOrEmpty()) {
+            Log.i("DataDownload", "Device IP from BleIpBridge: $ipFromBle")
+            return ipFromBle
+        }
+        // Fallback: last-known IP used by the official app logs
         return "192.168.49.79"
     }
     
@@ -545,12 +985,12 @@ class MainActivity : AppCompatActivity() {
                     val inputStream = connection.inputStream
                     val content = inputStream.bufferedReader().use { it.readText() }
                     
-                    // 显示下载的内容
+                    // Show downloaded content
                     Log.i("DataDownload", "=== MEDIA CONFIG CONTENT ===")
                     Log.i("DataDownload", content)
                     Log.i("DataDownload", "=== END MEDIA CONFIG ===")
                     
-                    // 解析媒体文件列表
+                    // Parse media file list
                     parseMediaList(content)
                     
                     withContext(Dispatchers.Main) {
@@ -565,67 +1005,68 @@ class MainActivity : AppCompatActivity() {
                 
                 connection.disconnect()
             } catch (e: Exception) {
-                Log.e("DataDownload", "Error downloading media list: ${e.message}", e)
-                withContext(Dispatchers.Main) {
-                    when (e) {
-                        is java.io.IOException -> {
-                            if (e.message?.contains("Cleartext HTTP traffic") == true) {
-                                showDownloadError("Network security blocked HTTP connection. Please check app settings.")
-                            } else if (e.message?.contains("Failed to connect") == true) {
-                                showDownloadError("Cannot connect to glasses device. Please ensure P2P connection is established.")
-                            } else {
-                                showDownloadError("Network error: ${e.message}")
+                    Log.e("DataDownload", "Error downloading media list: ${e.message}", e)
+                    CoroutineScope(Dispatchers.Main).launch {
+                        when (e) {
+                            is java.io.IOException -> {
+                                if (e.message?.contains("Cleartext HTTP traffic") == true) {
+                                    showDownloadError("Network security blocked HTTP connection. Please check app settings.")
+                                } else if (e.message?.contains("Failed to connect") == true) {
+                                    showDownloadError("Cannot connect to glasses device. Please ensure P2P connection is established.")
+                                } else {
+                                    showDownloadError("Network error: ${e.message}")
+                                }
                             }
+                            else -> showDownloadError("Download failed: ${e.message}")
                         }
-                        else -> showDownloadError("Download failed: ${e.message}")
                     }
                 }
             }
         }
-    }
     
-    private fun parseMediaList(content: String) {
-        // 解析媒体配置文件内容 - 这是一个包含JPG文件名的文本文件
-        Log.i("DataDownload", "Parsing media list content...")
-        
-        try {
-            // 按行分割，每行应该是一个文件名
-            val lines = content.trim().split("\n")
-            val jpgFiles = mutableListOf<String>()
+        private fun parseMediaList(content: String) {
+            // Parse the media configuration file content - this is a text file containing JPG file names
+            Log.i("DataDownload", "Parsing media list content...")
             
-            lines.forEach { line ->
-                val trimmedLine = line.trim()
-                if (trimmedLine.isNotEmpty()) {
-                    // 检查是否是JPG文件
-                    if (trimmedLine.endsWith(".jpg", ignoreCase = true) || 
-                        trimmedLine.endsWith(".jpeg", ignoreCase = true)) {
-                        jpgFiles.add(trimmedLine)
-                        Log.i("DataDownload", "Found JPG file: $trimmedLine")
-                    } else {
-                        Log.i("DataDownload", "Found non-JPG file: $trimmedLine")
+            try {
+                // Split by line, each line should be a file name
+                val lines = content.trim().lines()
+                val jpgFiles = mutableListOf<String>()
+                
+                lines.forEach { line ->
+                    val trimmedLine = line.trim()
+                    if (trimmedLine.isNotEmpty()) {
+                        // Check if it is a JPG file
+                        if (trimmedLine.endsWith(".jpg", ignoreCase = true) ||
+                            trimmedLine.endsWith(".jpeg", ignoreCase = true)
+                        ) {
+                            jpgFiles.add(trimmedLine)
+                            Log.i("DataDownload", "Found JPG file: $trimmedLine")
+                        } else {
+                            Log.i("DataDownload", "Found non-JPG file: $trimmedLine")
+                        }
                     }
                 }
-            }
-            
-            Log.i("DataDownload", "Total JPG files found: ${jpgFiles.size}")
-            
-            if (jpgFiles.isNotEmpty()) {
-                // 开始下载所有JPG文件
-                downloadAllJpgFiles(jpgFiles)
-            } else {
-                Log.w("DataDownload", "No JPG files found in media.config")
-                withContext(Dispatchers.Main) {
-                    showDownloadError("No JPG files found in media.config")
+                
+                Log.i("DataDownload", "Total JPG files found: ${jpgFiles.size}")
+                
+                if (jpgFiles.isNotEmpty()) {
+                    // Start downloading all JPG files
+                    downloadAllJpgFiles(jpgFiles)
+                } else {
+                    Log.w("DataDownload", "No JPG files found in media.config")
+                    CoroutineScope(Dispatchers.Main).launch {
+                        showDownloadError("No JPG files found in media.config")
+                    }
+                }
+                
+            } catch (e: Exception) {
+                Log.e("DataDownload", "Error parsing media list: ${e.message}", e)
+                CoroutineScope(Dispatchers.Main).launch {
+                    showDownloadError("Failed to parse media list: ${e.message}")
                 }
             }
-            
-        } catch (e: Exception) {
-            Log.e("DataDownload", "Error parsing media list: ${e.message}", e)
-            withContext(Dispatchers.Main) {
-                showDownloadError("Failed to parse media list: ${e.message}")
-            }
         }
-    }
     
     private fun downloadAllJpgFiles(jpgFiles: List<String>) {
         CoroutineScope(Dispatchers.IO).launch {
@@ -647,7 +1088,7 @@ class MainActivity : AppCompatActivity() {
                         Log.e("DataDownload", "✗ Failed to download: $fileName")
                     }
                     
-                    // 添加小延迟避免过快请求
+                    // Add a small delay to avoid excessively fast requests
                     delay(500)
                     
                 } catch (e: Exception) {
@@ -656,7 +1097,7 @@ class MainActivity : AppCompatActivity() {
                 }
             }
             
-            // 显示最终结果
+            // Show final result
             val message = "Download completed: $successCount successful, $failCount failed"
             Log.i("DataDownload", message)
             
@@ -698,9 +1139,9 @@ class MainActivity : AppCompatActivity() {
                 outputStream.close()
                 inputStream.close()
                 
-                Log.i("DataDownload", "File downloaded: $fileName (${totalBytes} bytes)")
+                Log.i("DataDownload", "File downloaded: $fileName ($totalBytes bytes)")
                 
-                // 保存到相册
+                // Save to album
                 saveToAlbum(file, fileName)
                 
                 true
@@ -717,7 +1158,7 @@ class MainActivity : AppCompatActivity() {
     
     private fun saveToAlbum(file: File, fileName: String) {
         try {
-            // 保存文件信息到相册数据库
+            // Save file information to album database
             val albumInfo = mapOf(
                 "fileName" to fileName,
                 "filePath" to file.absolutePath,
@@ -728,42 +1169,77 @@ class MainActivity : AppCompatActivity() {
             )
             
             Log.i("DataDownload", "Album info: $albumInfo")
-            // TODO: 实现保存到相册数据库的逻辑
+            // TODO: Implement the logic of saving to the album database
             
         } catch (e: Exception) {
-            Log.e("DataDownload", "Error saving to album: ${e.message}", e)
+            Log.e("DataDownload", "Error saving to album: ${'$'}{e.message}", e)
         }
     }
     
+    private fun cleanupP2pAfterDownload() {
+        val manager = downloadWifiP2pManager
+        val callback = downloadWifiP2pCallback
+        if (manager != null && callback != null) {
+            manager.removeCallback(callback)
+        }
+        manager?.removeGroup { success ->
+            Log.i("DataDownload", "P2P group removed: $success")
+        }
+        manager?.unregisterReceiver()
+        downloadWifiP2pManager = null
+        downloadWifiP2pCallback = null
+        downloadP2pConnected = false
+        downloadInProgress = false
+    }
+
     private fun showDownloadSuccess(message: String) {
-        // Show success message to user
+        cleanupP2pAfterDownload()
         Log.i("DataDownload", "SUCCESS: $message")
-        // You can implement a Toast or Snackbar here
-        // Toast.makeText(this, message, Toast.LENGTH_LONG).show()
+        Toast.makeText(this, message, Toast.LENGTH_LONG).show()
     }
     
     private fun showDownloadError(message: String) {
-        // Show error message to user
+        cleanupP2pAfterDownload()
         Log.e("DataDownload", "ERROR: $message")
-        // You can implement a Toast or Snackbar here
-        // Toast.makeText(this, message, Toast.LENGTH_LONG).show()
+        Toast.makeText(this, message, Toast.LENGTH_LONG).show()
+    }
+
+    /**
+     * Debug helper: log all methods on LargeDataHandler so we can
+     * discover additional SDK capabilities (such as WiFi transfer APIs)
+     * without needing decompiled sources.
+     */
+    private fun logLargeDataHandlerMethodsOnce() {
+        if (loggedLargeDataHandlerMethods) return
+        loggedLargeDataHandlerMethods = true
+        try {
+            val clazz = LargeDataHandler.getInstance()::class.java
+            val methods = clazz.declaredMethods
+            for (m in methods) {
+                val params = m.parameterTypes.joinToString(",") { it.simpleName ?: it.name }
+                val ret = m.returnType.simpleName ?: m.returnType.name
+                Log.i("LDHMethods", "method=${m.name}, params=($params), return=$ret")
+            }
+        } catch (e: Exception) {
+            Log.e("LDHMethods", "Failed to introspect LargeDataHandler methods", e)
+        }
     }
 
     private fun testConnection(deviceIp: String): Boolean {
         Log.i("DataDownload", "Testing connection to $deviceIp...")
         try {
-            // 尝试连接到实际的媒体配置文件
+            // Try to connect to the actual media configuration file
             val url = URL("http://$deviceIp/files/media.config")
             val connection = url.openConnection() as HttpURLConnection
             connection.requestMethod = "GET"
-            connection.connectTimeout = 5000 // 连接超时
-            connection.readTimeout = 5000 // 读取超时
+            connection.connectTimeout = 5000 // Connection timeout
+            connection.readTimeout = 5000 // Read timeout
             
             val responseCode = connection.responseCode
             Log.i("DataDownload", "Connection test response code: $responseCode")
             
             if (responseCode == HttpURLConnection.HTTP_OK) {
-                // 尝试读取一小部分内容来确认连接可用
+                // Try to read a small amount of content to confirm that the connection is available
                 val inputStream = connection.inputStream
                 val buffer = ByteArray(1024)
                 val bytesRead = inputStream.read(buffer)
@@ -780,96 +1256,186 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
+    private fun onDownloadBleIp(ip: String) {
+        Log.i("DataDownload", "BLE reported device WiFi IP: $ip")
+        downloadBleIp = ip
+        maybeStartHttpDownload("BLE")
+    }
+
+    private fun onDownloadP2pConnected(info: WifiP2pInfo) {
+        downloadP2pConnected = info.groupFormed
+        downloadWifiIp = info.groupOwnerAddress?.hostAddress
+        Log.i("DataDownload", "onDownloadP2pConnected: p2pConnected=$downloadP2pConnected, wifiIp=$downloadWifiIp")
+        maybeStartHttpDownload("P2P")
+    }
+
+    private fun maybeStartHttpDownload(source: String) {
+        if (downloadInProgress) {
+            Log.i("DataDownload", "Download already in progress, ignoring trigger from $source")
+            return
+        }
+        // Prefer an IP we explicitly saw from the device:
+        // 1) IP reported in 0x08 notify (downloadBleIp)
+        // 2) IP parsed by BleIpBridge from BLE payloads
+        // 3) As a last resort, the WiFi P2P group owner address
+        val bridgeIp = bleIpBridge.ip.value
+        val ip = downloadBleIp ?: bridgeIp ?: downloadWifiIp
+        if (!downloadP2pConnected || ip.isNullOrEmpty()) {
+            Log.i(
+                "DataDownload",
+                "Not ready yet from $source. p2p=$downloadP2pConnected, bleIp=$downloadBleIp, wifiIp=$downloadWifiIp, bleBridgeIp=$bridgeIp"
+            )
+            return
+        }
+
+        downloadInProgress = true
+        Log.i("DataDownload", "Conditions satisfied from $source, starting HTTP download from $ip")
+        downloadMediaList(ip)
+    }
+
     inner class MyDeviceNotifyListener : GlassesDeviceNotifyListener() {
 
         @RequiresApi(Build.VERSION_CODES.O)
         override fun parseData(cmdType: Int, response: GlassesDeviceNotifyRsp) {
+            Log.i(
+                "DeviceNotify",
+                "cmdType=$cmdType, loadData=${response.loadData.joinToString(separator = ",") { it.toInt().toString() }}"
+            )
             when (response.loadData[6].toInt()) {
-                //眼镜电量上报
+                //Glasses battery report
                 0x05 -> {
-                    //当前电量
+                    //Current battery
                     val battery = response.loadData[7].toInt()
-                    //是否在充电
+                    //Is it charging
                     val changing = response.loadData[8].toInt()
+                    handleBatteryReport(battery, changing == 1)
                 }
-                //眼镜通过快捷识别
+                //Glasses pass quick recognition
                 0x02 -> {
                     if (response.loadData.size > 9 && response.loadData[9].toInt() == 0x02) {
-                        //要设置识别意图：eg 请帮我看看眼前是什么，图片中的内容
+                        //To set the recognition intention: eg please help me see what is in front of me, the content in the picture
                     }
-                    //获取图片缩略图
+                    //Get picture thumbnail
                     LargeDataHandler.getInstance().getPictureThumbnails { cmdType, success, data ->
-                        //请将data存入路径,jpg的图片
+                        //Please save the data to the path, the picture in jpg format
+                        Log.i(
+                            "DeviceNotify",
+                            "Thumbnail callback: cmdType=$cmdType, success=$success, size=${data?.size ?: 0}"
+                        )
                     }
                 }
 
                 0x03 -> {
                     if (response.loadData[7].toInt() == 1) {
-                        //眼镜启动麦克风开始说话
+                        //The glasses activate the microphone to start speaking
+                        runOnUiThread {
+                            Toast.makeText(
+                                this@MainActivity,
+                                "Glasses microphone activated",
+                                Toast.LENGTH_SHORT
+                            ).show()
+                        }
                     }
                 }
-                //ota 升级
+                //ota upgrade
                 0x04 -> {
                     try {
                         val download = response.loadData[7].toInt()
                         val soc = response.loadData[8].toInt()
                         val nor = response.loadData[9].toInt()
-                        //download 固件下载进度 soc 下载进度 nor 升级进度
+                        //download firmware download progress soc download progress nor upgrade progress
                     } catch (e: Exception) {
                         e.printStackTrace()
                     }
                 }
 
                 0x0c -> {
-                    //眼镜触发暂停事件，语音播报
+                    //The glasses trigger a pause event, voice broadcast
                     if (response.loadData[7].toInt() == 1) {
                         //to do
                     }
                 }
 
                 0x0d -> {
-                    //解除APP绑定事件
+                    //Unbind APP event
                     if (response.loadData[7].toInt() == 1) {
                         //to do
                     }
                 }
-                //眼镜内存不足事件
+                //Glasses memory low event
                 0x0e -> {
 
                 }
-                //翻译暂停事件
+                //Translation pause event
                 0x10 -> {
 
                 }
-                //眼镜音量变化事件
+                //Glasses volume change event
                 0x12 -> {
-                    //音乐音量
-                    //最小音量
+                    //Music volume
+                    //Minimum volume
                     response.loadData[8].toInt()
-                    //最大音量
+                    //Maximum volume
                     response.loadData[9].toInt()
-                    //当前音量
+                    //Current volume
                     response.loadData[10].toInt()
 
-                    //来电音量
-                    //最小音量
+                    //Incoming call volume
+                    //Minimum volume
                     response.loadData[12].toInt()
-                    //最大音量
+                    //Maximum volume
                     response.loadData[13].toInt()
-                    //当前音量
+                    //Current volume
                     response.loadData[14].toInt()
 
-                    //眼镜系统音量
-                    //最小音量
+                    //Glasses system volume
+                    //Minimum volume
                     response.loadData[16].toInt()
-                    //最大音量
+                    //Maximum volume
                     response.loadData[17].toInt()
-                    //当前音量
+                    //Current volume
                     response.loadData[18].toInt()
 
-                    //当前的音量模式
-                    response.loadData[19].toInt()
+                    //Current volume mode
+                    val mode = response.loadData[19].toInt()
 
+                    runOnUiThread {
+                        Toast.makeText(
+                            this@MainActivity,
+                            "Volume changed (mode=$mode)",
+                            Toast.LENGTH_SHORT
+                        ).show()
+                    }
+
+                }
+                // Glasses report WiFi IP for data download
+                0x08 -> {
+                    if (response.loadData.size >= 11) {
+                        val ip = "${ByteUtil.byteToInt(response.loadData[7])}." +
+                                "${ByteUtil.byteToInt(response.loadData[8])}." +
+                                "${ByteUtil.byteToInt(response.loadData[9])}." +
+                                "${ByteUtil.byteToInt(response.loadData[10])}"
+                        Log.i("DeviceNotify", "BLE reported WiFi IP: $ip")
+                        onDownloadBleIp(ip)
+                    } else {
+                        Log.w(
+                            "DeviceNotify",
+                            "0x08 notify with too-short payload, size=${response.loadData.size}"
+                        )
+                    }
+                }
+                // Glasses report P2P / WiFi error during data download
+                0x09 -> {
+                    val raw = response.loadData.getOrNull(7) ?: 0
+                    val errorCode = ByteUtil.byteToInt(raw)
+                    Log.e("DeviceNotify", "P2P/WiFi error from device: $errorCode (raw=$raw)")
+                    if (errorCode == 255) {
+                        // Mirror the official app: ask the glasses/phone P2P
+                        // layer to reset, but do NOT treat this as a fatal
+                        // error for the whole download flow. The official app
+                        // still proceeds to receive an IP and download.
+                        WifiP2pManagerSingleton.getInstance(this@MainActivity).resetDeviceP2p()
+                    }
                 }
             }
         }

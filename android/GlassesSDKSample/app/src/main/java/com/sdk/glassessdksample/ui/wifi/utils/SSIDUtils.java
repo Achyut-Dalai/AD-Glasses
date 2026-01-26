@@ -1,4 +1,4 @@
-package com.glasssutdio.wear.wifi.utils;
+package com.sdk.glassessdksample.ui.wifi.utils;
 
 import android.text.TextUtils;
 
@@ -9,6 +9,6 @@ public class SSIDUtils {
             return "";
         }
         int length = ssid.length() - 1;
-        return length >= 0 ? (ssid.charAt(0) == '\"' && ssid.charAt(length) == '\"') ? ssid : "\"" + ssid + "\"" : ssid;
+        return length >= 0 ? (ssid.charAt(0) == '"' && ssid.charAt(length) == '"') ? ssid : "\"" + ssid + "\"" : ssid;
     }
 }

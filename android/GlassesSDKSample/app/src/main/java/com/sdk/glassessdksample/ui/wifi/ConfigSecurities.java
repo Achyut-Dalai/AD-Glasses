@@ -1,10 +1,11 @@
-package com.glasssutdio.wear.wifi;
+package com.sdk.glassessdksample.ui.wifi;
 
 import android.net.wifi.ScanResult;
 import android.net.wifi.WifiConfiguration;
 import android.net.wifi.WifiManager;
 import android.net.wifi.WifiNetworkSpecifier;
-import com.glasssutdio.wear.wifi.utils.SSIDUtils;
+import com.sdk.glassessdksample.ui.wifi.utils.SSIDUtils;
+import com.sdk.glassessdksample.ui.wifi.WifiUtils;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
@@ -137,7 +138,7 @@ final class ConfigSecurities {
     }
 
     static WifiConfiguration getWifiConfiguration(final WifiManager wifiManager, final String ssid) {
-        String str = "\"" + ssid + '\"';
+        String str = SSIDUtils.convertToQuotedString(ssid);
         for (WifiConfiguration wifiConfiguration : wifiManager.getConfiguredNetworks()) {
             if (wifiConfiguration.SSID != null && wifiConfiguration.SSID.equals(str)) {
                 return wifiConfiguration;

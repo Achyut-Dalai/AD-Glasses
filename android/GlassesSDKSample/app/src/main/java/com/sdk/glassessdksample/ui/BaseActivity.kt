@@ -14,21 +14,21 @@ import java.lang.ref.WeakReference
 open class BaseActivity : AppCompatActivity() {
 
     /**
-     * 判断当前Activity是否在前台。
+     * Whether the current Activity is in the foreground.
      */
     private var isActive: Boolean = false
 
     /**
-     * 当前Activity的实例。
+     * The instance of the current Activity.
      */
     protected var activity: Activity? = null
 
-    /** 当前Activity的弱引用，防止内存泄露  */
+    /** Weak reference to the current Activity to prevent memory leaks */
     private var activityWR: WeakReference<Activity>? = null
 
 
     /**
-     * 日志输出标志
+     * Log output tag
      */
     protected val TAG: String = this.javaClass.simpleName
 

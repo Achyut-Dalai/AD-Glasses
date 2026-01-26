@@ -18,8 +18,8 @@ import kotlin.properties.Delegates
  * @Author: Hzy
  * @CreateDate: 2021/6/25 11:50
  *
- * "程序应该是写给其他人读的,
- * 让机器来运行它只是一个附带功能"
+ * "Programs should be written for other people to read,
+ * and only incidentally for machines to execute"
  */
 class MyApplication : Application(){
 
@@ -28,6 +28,8 @@ class MyApplication : Application(){
 
     override fun onCreate() {
         super.onCreate()
+        application = this
+        instance = this
         CONTEXT = applicationContext
         initBle()
     }
@@ -79,21 +81,16 @@ class MyApplication : Application(){
     companion object {
         private var application: Application? = null
         var CONTEXT: Context by Delegates.notNull()
+            private set
         private lateinit var instance: MyApplication
 
-        fun getApplication(): Application? {
-            if (application == null) {
-                throw RuntimeException("Not support calling this, before create app or after terminate app.")
-            }
+        fun getApplication(): Application {
             return application
+                ?: throw RuntimeException("Application not initialized. onCreate not yet called.")
         }
 
         fun getInstance(): MyApplication {
             return instance
-        }
-
-        val getInstance: MyApplication by lazy(mode = LazyThreadSafetyMode.SYNCHRONIZED) {
-            MyApplication()
         }
     }
 }

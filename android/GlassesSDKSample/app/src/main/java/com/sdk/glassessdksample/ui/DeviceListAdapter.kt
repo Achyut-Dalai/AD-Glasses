@@ -8,8 +8,8 @@ import com.sdk.glassessdksample.R
  * @author hzy ,
  * @date  2021/1/3
  * <p>
- * "程序应该是写给其他人读的,
- * 让机器来运行它只是一个附带功能"
+ * "Programs should be written for other people to read,
+ * and only incidentally for machines to execute"
  **/
 class DeviceListAdapter(context: Context,data: MutableList<SmartWatch>):
     BaseQuickAdapter<SmartWatch, BaseViewHolder>(R.layout.recycleview_item_device,data) {

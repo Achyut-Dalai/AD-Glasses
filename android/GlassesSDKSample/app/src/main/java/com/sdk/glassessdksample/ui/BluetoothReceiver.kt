@@ -16,8 +16,8 @@ import org.greenrobot.eventbus.EventBus
  * @date 2020/8/3,
  *
  *
- * "程序应该是写给其他人读的,
- * 让机器来运行它只是一个附带功能"
+ * "Programs should be written for other people to read,
+ * and only incidentally for machines to execute"
  */
 class BluetoothReceiver : BroadcastReceiver() {
     override fun onReceive(context: Context, intent: Intent) {
@@ -25,12 +25,12 @@ class BluetoothReceiver : BroadcastReceiver() {
             BluetoothAdapter.ACTION_STATE_CHANGED -> {
                 val connectState = intent.getIntExtra(BluetoothAdapter.EXTRA_STATE, -1)
                 if (connectState == BluetoothAdapter.STATE_OFF) {
-                    Log.i("qc" ,"蓝牙关闭了 --> ")
+                    Log.i("qc" ,"Bluetooth is off --> ")
                     BleOperateManager.getInstance().setBluetoothTurnOff(false)
                     BleOperateManager.getInstance().disconnect()
                     EventBus.getDefault().post(BluetoothEvent(false))
                 } else if (connectState == BluetoothAdapter.STATE_ON) {
-                    Log.i("qc" ,"蓝牙开启了 --> ")
+                    Log.i("qc" ,"Bluetooth is on --> ")
                     BleOperateManager.getInstance().setBluetoothTurnOff(true)
                     BleOperateManager.getInstance().reConnectMac=DeviceManager.getInstance().deviceAddress
                     BleOperateManager.getInstance().connectDirectly(DeviceManager.getInstance().deviceAddress)
@@ -51,7 +51,7 @@ class BluetoothReceiver : BroadcastReceiver() {
                 val device =
                     intent.getParcelableExtra<BluetoothDevice>(BluetoothDevice.EXTRA_DEVICE)
                 if (device != null) {
-                  //发现设备，当蓝牙地址和当前 BLE地址相等调用配对
+                  //When the device is found and the Bluetooth address is the same as the current BLE address, call pairing
                     BleOperateManager.getInstance().createBondBluetoothJieLi(device)
                 }
             }

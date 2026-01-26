@@ -1,9 +1,9 @@
-package com.glasssutdio.wear.wifi.wifiConnect;
+package com.sdk.glassessdksample.ui.wifi.wifiConnect;
 
 import android.net.ConnectivityManager;
 import android.net.Network;
 import android.net.NetworkRequest;
-import com.glasssutdio.wear.wifi.WifiUtils;
+import com.sdk.glassessdksample.ui.wifi.WifiUtils;
 
 /* loaded from: classes.dex */
 public class DisconnectCallbackHolder {
