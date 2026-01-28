@@ -459,9 +459,14 @@ class MainActivity : AppCompatActivity() {
             Toast.makeText(this, "Hijack ${if (isChecked) "Enabled" else "Disabled"}", Toast.LENGTH_SHORT).show()
         }
 
+        binding.cbImageAsAssistant.isChecked = isImageAssistantMode
+        binding.cbImageAsAssistant.text = if (isImageAssistantMode) "Direct Assistant" else "App Sharing"
+        
         binding.cbImageAsAssistant.setOnCheckedChangeListener { _, isChecked ->
             isImageAssistantMode = isChecked
-            Toast.makeText(this, "Image Hijack: ${if (isChecked) "Direct Assistant" else "Share Intent"}", Toast.LENGTH_SHORT).show()
+            val modeName = if (isChecked) "Direct Assistant" else "App Sharing"
+            binding.cbImageAsAssistant.text = modeName
+            Toast.makeText(this, "Image Hijack: $modeName", Toast.LENGTH_SHORT).show()
         }
     }
 

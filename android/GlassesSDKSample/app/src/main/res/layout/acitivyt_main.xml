@@ -136,14 +136,31 @@
                 android:layout_marginTop="16dp"
                 android:layout_marginBottom="8dp"/>
 
-            <CheckBox
-                android:id="@+id/cb_hijack_enabled"
+            <LinearLayout
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:text="Enable Assistant Hijack"
-                android:textColor="@color/text_primary"
-                android:checked="true"
-                android:buttonTint="@color/cyan_accent"/>
+                android:orientation="horizontal">
+
+                <CheckBox
+                    android:id="@+id/cb_hijack_enabled"
+                    android:layout_width="0dp"
+                    android:layout_weight="1"
+                    android:layout_height="wrap_content"
+                    android:text="Enable Hijack"
+                    android:textColor="@color/text_primary"
+                    android:checked="true"
+                    android:buttonTint="@color/cyan_accent"/>
+
+                <CheckBox
+                    android:id="@+id/cb_image_as_assistant"
+                    android:layout_width="0dp"
+                    android:layout_weight="1"
+                    android:layout_height="wrap_content"
+                    android:text="Direct Assistant"
+                    android:textColor="@color/text_primary"
+                    android:checked="true"
+                    android:buttonTint="@color/cyan_accent"/>
+            </LinearLayout>
 
             <LinearLayout
                 android:layout_width="match_parent"
@@ -170,16 +187,6 @@
                     android:backgroundTint="@color/card_bg"
                     android:textColor="@color/text_secondary"/>
             </LinearLayout>
-
-            <CheckBox
-                android:id="@+id/cb_image_as_assistant"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:text="Image Hijack: Use Direct Assistant"
-                android:textColor="@color/text_primary"
-                android:checked="true"
-                android:buttonTint="@color/cyan_accent"
-                android:layout_marginTop="4dp"/>
 
             <!-- SECTION: DEVICE INFO -->
             <TextView
