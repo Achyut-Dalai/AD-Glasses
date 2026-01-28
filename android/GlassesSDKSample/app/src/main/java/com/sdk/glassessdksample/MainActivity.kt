@@ -52,6 +52,10 @@ import androidx.core.content.FileProvider
 import kotlinx.coroutines.withContext
 import kotlinx.coroutines.delay
 
+import android.provider.Settings
+import android.net.Uri
+import android.app.KeyguardManager
+
 class MainActivity : AppCompatActivity() {
     companion object {
         const val ACTION_TASKER_COMMAND = "com.sdk.glassessdksample.ACTION_TASKER_COMMAND"
@@ -156,6 +160,16 @@ class MainActivity : AppCompatActivity() {
         }
 
         requestAllPermission(this, OnPermissionCallback { permissions, all ->  })
+
+        // Check for Overlay permission needed for background launch
+        if (isAiHijackEnabled && !Settings.canDrawOverlays(this)) {
+            val intent = Intent(
+                Settings.ACTION_MANAGE_OVERLAY_PERMISSION,
+                Uri.parse("package:$packageName")
+            )
+            startActivityForResult(intent, 1234)
+            Toast.makeText(this, "Please enable Overlay permission for background AI", Toast.LENGTH_LONG).show()
+        }
     }
 
     override fun onNewIntent(intent: Intent?) {
@@ -746,7 +760,15 @@ class MainActivity : AppCompatActivity() {
     private fun triggerAssistantVoiceQuery() {
         Log.i("AIHijack", "Triggering Voice Query for $aiAssistantMode")
         
-        // Tell glasses to stop proprietary AI audio stream so phone can take over via SCO
+        // Wake up screen if locked
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O_MR1) {
+            setShowWhenLocked(true)
+            setTurnScreenOn(true)
+            val keyguardManager = getSystemService(KEYGUARD_SERVICE) as KeyguardManager
+            keyguardManager.requestDismissKeyguard(this, null)
+        }
+
+        // Tell glasses to stop proprietary AI audio stream
         LargeDataHandler.getInstance().glassesControl(byteArrayOf(0x02, 0x01, 0x0b)) { _, _ -> }
 
         try {
