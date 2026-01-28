@@ -58,6 +58,11 @@ import android.app.KeyguardManager
 
 import android.speech.tts.TextToSpeech
 import java.util.Locale
+import android.content.ClipboardManager
+import android.content.ClipData
+import android.content.Context
+import android.media.MediaScannerConnection
+import android.os.Environment
 
 class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
     private var tts: TextToSpeech? = null
@@ -796,9 +801,6 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
         batteryPollJob = null
     }
 
-import android.content.ClipboardManager
-import android.content.ClipData
-
     private fun sendAiBroadcast(type: String, path: String? = null) {
         val intent = Intent("com.sdk.glassessdksample.AI_EVENT").apply {
             putExtra("type", type)
@@ -848,9 +850,6 @@ import android.content.ClipData
         }
     }
 
-import android.media.MediaScannerConnection
-import android.os.Environment
-
     private fun triggerAssistantImageQuery(imagePath: String) {
         Log.i("AIHijack", "Redirecting Image Query to Tasker logic with $imagePath")
         
@@ -897,91 +896,6 @@ import android.os.Environment
         }
     }
 
-
-        if (isImageAssistantMode) {
-            speak("Unlock your phone for google lens")
-        }
-
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O_MR1) {
-            setShowWhenLocked(true)
-            setTurnScreenOn(true)
-            val keyguardManager = getSystemService(KEYGUARD_SERVICE) as KeyguardManager
-            keyguardManager.requestDismissKeyguard(this, null)
-        }
-
-        // Stop glasses AI mode
-        LargeDataHandler.getInstance().glassesControl(byteArrayOf(0x02, 0x01, 0x0b)) { _, _ -> }
-
-        try {
-            val file = File(imagePath)
-            if (!file.exists()) {
-                Log.e("AIHijack", "Image file does not exist: $imagePath")
-                return
-            }
-
-            val uri = FileProvider.getUriForFile(
-                this,
-                "$packageName.fileprovider",
-                file
-            )
-
-            if (isImageAssistantMode) {
-                Log.i("AIHijack", "Using Direct Assistant (Google Lens / Gemini Visual) mode")
-                
-                // For Google/Gemini, the best "Direct" experience is Google Lens.
-                // It specifically handles visual analysis and has a Gemini toggle.
-                val lensIntent = Intent(Intent.ACTION_SEND).apply {
-                    setPackage("com.google.android.googlequicksearchbox")
-                    type = "image/jpeg"
-                    putExtra(Intent.EXTRA_STREAM, uri)
-                    flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_GRANT_READ_URI_PERMISSION
-                }
-
-                // Try to find the Lens activity to avoid the "Google vs Tasker" chooser
-                val activities = packageManager.queryIntentActivities(lensIntent, 0)
-                var lensComponentFound = false
-                for (info in activities) {
-                    if (info.activityInfo.name.contains("lens", ignoreCase = true)) {
-                        lensIntent.setClassName(info.activityInfo.packageName, info.activityInfo.name)
-                        lensComponentFound = true
-                        break
-                    }
-                }
-
-                if (lensComponentFound) {
-                    startActivity(lensIntent)
-                } else {
-                    // Fallback to deep link for Google Lens
-                    val deepLinkIntent = Intent(Intent.ACTION_VIEW).apply {
-                        data = android.net.Uri.parse("googlelens://v1/open?url=" + android.net.Uri.encode(uri.toString()))
-                        setPackage("com.google.android.googlequicksearchbox")
-                        flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_GRANT_READ_URI_PERMISSION
-                    }
-                    try {
-                        startActivity(deepLinkIntent)
-                    } catch (e: Exception) {
-                        // If everything fails, use the generic chooser but target Google app
-                        startActivity(Intent.createChooser(lensIntent, "Visual Search"))
-                    }
-                }
-            } else {
-                Log.i("AIHijack", "Using Share Intent mode")
-                // Reverting to the version that shows the app selection chooser
-                val intent = Intent(Intent.ACTION_SEND).apply {
-                    type = "image/jpeg"
-                    putExtra(Intent.EXTRA_STREAM, uri)
-                    // Request spoken answer for Gemini
-                    val prompt = if (aiAssistantMode == "Gemini") "Tell me what you see out loud" else "Tell me about this"
-                    putExtra(Intent.EXTRA_TEXT, prompt)
-                    flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_GRANT_READ_URI_PERMISSION
-                }
-                
-                startActivity(Intent.createChooser(intent, "Ask Assistant"))
-            }
-        } catch (e: Exception) {
-            Log.e("AIHijack", "Failed to trigger image query: ${e.message}")
-        }
-    }
 
     private fun updateConnectionStatus(connected: Boolean) {
         val deviceName = DeviceManager.getInstance().deviceName
