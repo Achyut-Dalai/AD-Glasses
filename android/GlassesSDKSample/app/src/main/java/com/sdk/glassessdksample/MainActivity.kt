@@ -811,15 +811,12 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
         Log.i("AIHijack", "Triggering Voice Query for $aiAssistantMode")
         
         if (aiAssistantMode == "Tasker") {
-            speak("Sending voice command to Tasker")
             sendAiBroadcast("voice")
             return
         }
 
-        speak("Opening voice assistant")
-
-        
         // Wake up screen if locked
+
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O_MR1) {
             setShowWhenLocked(true)
             setTurnScreenOn(true)
@@ -852,12 +849,14 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
         Log.i("AIHijack", "Triggering Image Query for $aiAssistantMode with $imagePath")
         
         if (aiAssistantMode == "Tasker") {
-            speak("Sending image to Tasker")
             sendAiBroadcast("image", imagePath)
             return
         }
 
-        speak("Analyzing what you see")
+        if (isImageAssistantMode) {
+            speak("Unlock your phone for google lens")
+        }
+
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O_MR1) {
             setShowWhenLocked(true)
             setTurnScreenOn(true)
