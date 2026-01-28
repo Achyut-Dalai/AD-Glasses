@@ -800,13 +800,6 @@ import android.content.ClipboardManager
 import android.content.ClipData
 
     private fun sendAiBroadcast(type: String, path: String? = null) {
-        // Copy to clipboard to help Tasker automations
-        path?.let {
-            val clipboard = getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
-            val clip = ClipData.newPlainText("image_path", it)
-            clipboard.setPrimaryClip(clip)
-        }
-
         val intent = Intent("com.sdk.glassessdksample.AI_EVENT").apply {
             putExtra("type", type)
             path?.let { putExtra("path", it) }
@@ -855,13 +848,55 @@ import android.content.ClipData
         }
     }
 
+import android.media.MediaScannerConnection
+import android.os.Environment
+
     private fun triggerAssistantImageQuery(imagePath: String) {
-        Log.i("AIHijack", "Triggering Image Query for $aiAssistantMode with $imagePath")
+        Log.i("AIHijack", "Redirecting Image Query to Tasker logic with $imagePath")
         
-        if (aiAssistantMode == "Tasker") {
-            sendAiBroadcast("image", imagePath)
-            return
+        // Wake up screen if locked
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O_MR1) {
+            setShowWhenLocked(true)
+            setTurnScreenOn(true)
+            val keyguardManager = getSystemService(KEYGUARD_SERVICE) as KeyguardManager
+            keyguardManager.requestDismissKeyguard(this, null)
         }
+
+        if (isImageAssistantMode) {
+            speak("Unlock your phone for google lens")
+        }
+
+        // Stop glasses AI mode
+        LargeDataHandler.getInstance().glassesControl(byteArrayOf(0x02, 0x01, 0x0b)) { _, _ -> }
+
+        try {
+            val file = File(imagePath)
+            if (!file.exists()) {
+                Log.e("AIHijack", "Image file does not exist: $imagePath")
+                return
+            }
+
+            // Copy file to public DCIM folder so it shows up in Gallery/Recents
+            val publicDir = Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DCIM)
+            val cameraDir = File(publicDir, "Camera")
+            if (!cameraDir.exists()) cameraDir.mkdirs()
+            
+            val publicFile = File(cameraDir, "Glasses_AI_${System.currentTimeMillis()}.jpg")
+            file.copyTo(publicFile, overwrite = true)
+            
+            // Scan the file so MediaStore/Gallery sees it immediately
+            MediaScannerConnection.scanFile(this, arrayOf(publicFile.absolutePath), arrayOf("image/jpeg")) { path, uri ->
+                Log.i("AIHijack", "Scanned to Gallery: $path")
+                // Once scanned, trigger the Tasker broadcast
+                runOnUiThread {
+                    sendAiBroadcast("image", path)
+                }
+            }
+        } catch (e: Exception) {
+            Log.e("AIHijack", "Failed to process image for Tasker: ${e.message}")
+        }
+    }
+
 
         if (isImageAssistantMode) {
             speak("Unlock your phone for google lens")
