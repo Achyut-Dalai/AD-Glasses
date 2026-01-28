@@ -238,6 +238,7 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
             binding.btnPullOtaTest,
             binding.btnModeGemini,
             binding.btnModeChatgpt,
+            binding.btnModeTasker,
             binding.btnTestHijackVoice,
             binding.btnTestHijackImage
         ) {
@@ -261,6 +262,7 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
                     aiAssistantMode = "Gemini"
                     binding.btnModeGemini.setTextColor(ContextCompat.getColor(this@MainActivity, R.color.cyan_accent))
                     binding.btnModeChatgpt.setTextColor(ContextCompat.getColor(this@MainActivity, R.color.text_secondary))
+                    binding.btnModeTasker.setTextColor(ContextCompat.getColor(this@MainActivity, R.color.text_secondary))
                     Toast.makeText(this@MainActivity, "AI Mode: Google Gemini", Toast.LENGTH_SHORT).show()
                 }
 
@@ -268,230 +270,26 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
                     aiAssistantMode = "ChatGPT"
                     binding.btnModeGemini.setTextColor(ContextCompat.getColor(this@MainActivity, R.color.text_secondary))
                     binding.btnModeChatgpt.setTextColor(ContextCompat.getColor(this@MainActivity, R.color.cyan_accent))
+                    binding.btnModeTasker.setTextColor(ContextCompat.getColor(this@MainActivity, R.color.text_secondary))
                     Toast.makeText(this@MainActivity, "AI Mode: ChatGPT", Toast.LENGTH_SHORT).show()
                 }
 
-                binding.btnScan -> {
-                    requestLocationPermission(this@MainActivity, PermissionCallback())
-                }
-
-                binding.btnConnect -> {
-                    Toast.makeText(this@MainActivity, "Reconnecting to glasses…", Toast.LENGTH_SHORT).show()
-                    BleOperateManager.getInstance()
-                        .connectDirectly(DeviceManager.getInstance().deviceAddress)
-                }
-
-                binding.btnDisconnect -> {
-                    Toast.makeText(this@MainActivity, "Disconnecting from glasses…", Toast.LENGTH_SHORT).show()
-                    BleOperateManager.getInstance().unBindDevice()
-                }
-
-                binding.btnAddListener -> {
-                    Toast.makeText(this@MainActivity, "Registering device event listener…", Toast.LENGTH_SHORT).show()
-                    LargeDataHandler.getInstance().addOutDeviceListener(100, deviceNotifyListener)
-                }
-
-                binding.btnSetTime -> {
-                    Toast.makeText(this@MainActivity, "Syncing glasses time…", Toast.LENGTH_SHORT).show()
-                    Log.i("setTime", "setTime" + BleOperateManager.getInstance().isConnected)
-                    LargeDataHandler.getInstance().syncTime { _, _ -> }
-                }
-
-                binding.btnVersion -> {
-                    Toast.makeText(this@MainActivity, "Reading device version…", Toast.LENGTH_SHORT).show()
-                    LargeDataHandler.getInstance().syncDeviceInfo { _, response ->
-                        if (response != null) {
-                            val message =
-                                "WiFi FW: ${response.wifiFirmwareVersion}, BT FW: ${response.firmwareVersion}"
-                            Log.i("DeviceInfo", message)
-                            runOnUiThread {
-                                Toast.makeText(this@MainActivity, message, Toast.LENGTH_LONG).show()
-                            }
-                        } else {
-                            runOnUiThread {
-                                Toast.makeText(
-                                    this@MainActivity,
-                                    "Failed to get device version",
-                                    Toast.LENGTH_SHORT
-                                ).show()
-                            }
-                        }
-                    }
-                }
-
-                binding.btnCamera -> {
-                    LargeDataHandler.getInstance().glassesControl(
-                        byteArrayOf(0x02, 0x01, 0x01)
-                    ) { _, it ->
-                        if (it.dataType == 1 && it.errorCode == 0) {
-                            when (it.workTypeIng) {
-                                2 -> {
-                                    //Glasses are recording video
-                                }
-                                4 -> {
-                                    //Glasses are in transfer mode
-                                }
-                                5 -> {
-                                    //Glasses are in OTA mode
-                                }
-                                1, 6 ->{
-                                    //Glasses are in camera mode
-                                }
-                                7 -> {
-                                    //Glasses are in AI conversation
-                                }
-                                8 ->{
-                                    //Glasses are in recording mode
-                                }
-                            }
-                        } else {
-                            //Execute start and end
-                        }
-                    }
-                }
-
-                binding.btnVideo -> {
-                    // Default UI behavior: start video recording
-                    controlVideoRecording(true)
-                }
-
-                binding.btnRecord -> {
-                    // Default UI behavior: start audio recording
-                    controlAudioRecording(true)
-                }
-
-                binding.btnThumbnail -> {
-                    Toast.makeText(this@MainActivity, "Requesting thumbnail…", Toast.LENGTH_SHORT).show()
-                    //thumbnailSize  0..6
-                    val thumbnailSize=0x02
-                    LargeDataHandler.getInstance().glassesControl(
-                        byteArrayOf(
-                            0x02,
-                            0x01,
-                            0x06,
-                            thumbnailSize.toByte(),
-                            thumbnailSize.toByte(),
-                            0x02
-                        )
-                    ) { _, it ->
-                        if (it.dataType == 1) {
-                            if (it.errorCode == 0) {
-                                when (it.workTypeIng) {
-                                    2 -> {
-                                        //Glasses are recording video
-                                    }
-                                    4 -> {
-                                        //Glasses are in transfer mode
-                                    }
-                                    5 -> {
-                                        //Glasses are in OTA mode
-                                    }
-                                    1, 6 ->{
-                                        //Glasses are in camera mode
-                                    }
-                                    7 -> {
-                                        //Glasses are in AI conversation
-                                    }
-                                    8 ->{
-                                        //Glasses are in recording mode
-                                    }
-                                }
-                            } else {
-                                //Trigger AI photo, report thumbnail will receive report command
-                            }
-                        }
-                    }
-                }
-
-                binding.btnBt -> {
-                    Toast.makeText(this@MainActivity, "Starting classic Bluetooth scan…", Toast.LENGTH_SHORT).show()
-                    //BT scan
-                    BleOperateManager.getInstance().classicBluetoothStartScan()
-
-                }
-                binding.btnBattery -> {
-                    requestBatteryStatus(showToast = true)
-                }
-                binding.btnVolume ->{
-                    Toast.makeText(this@MainActivity, "Requesting volume info…", Toast.LENGTH_SHORT).show()
-                    //Read volume control and show values
-                    LargeDataHandler.getInstance().getVolumeControl { _, response ->
-                        if (response != null) {
-                            val msg = """
-                                Music: ${response.currVolumeMusic}/${response.maxVolumeMusic}
-                                Call: ${response.currVolumeCall}/${response.maxVolumeCall}
-                                System: ${response.currVolumeSystem}/${response.maxVolumeSystem}
-                                Mode: ${response.currVolumeType}
-                            """.trimIndent()
-                            Log.i("VolumeControl", msg.replace('\n', ' '))
-                            runOnUiThread {
-                                Toast.makeText(this@MainActivity, msg, Toast.LENGTH_LONG).show()
-                            }
-                        } else {
-                            runOnUiThread {
-                                Toast.makeText(
-                                    this@MainActivity,
-                                    "Failed to read volume info",
-                                    Toast.LENGTH_SHORT
-                                ).show()
-                            }
-                        }
-                    }
-                }
-                binding.btnMediaCount ->{
-                    Toast.makeText(this@MainActivity, "Requesting media count…", Toast.LENGTH_SHORT).show()
-                    LargeDataHandler.getInstance().glassesControl(byteArrayOf(0x02, 0x04)) { _, it ->
-                        if (it.dataType == 4) {
-                            val mediaCount = it.imageCount + it.videoCount + it.recordCount
-                            val msg = if (mediaCount > 0) {
-                                "Media not uploaded - Photos: ${it.imageCount}, Videos: ${it.videoCount}, Records: ${it.recordCount}"
-                            } else {
-                                "No pending media on glasses"
-                            }
-                            Log.i("MediaCount", msg)
-                            runOnUiThread {
-                                Toast.makeText(this@MainActivity, msg, Toast.LENGTH_LONG).show()
-                            }
-                        }
-                    }
-                }
-                binding.btnDataDownload -> {
-                    Toast.makeText(this@MainActivity, "Starting data download…", Toast.LENGTH_SHORT).show()
-                    // Check and request necessary permissions
-                    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-                        // Android 13+ requires NEARBY_WIFI_DEVICES permission
-                        requestNearbyWifiDevicesPermission(this@MainActivity, object : OnPermissionCallback {
-                            override fun onGranted(permissions: MutableList<String>, all: Boolean) {
-                                if (all) {
-                                    // Start BLE+WiFi P2P data download
-                                    startDataDownload()
-                                }
-                            }
-
-                            override fun onDenied(permissions: MutableList<String>, never: Boolean) {
-                                super.onDenied(permissions, never)
-                                if (never) {
-                                    XXPermissions.startPermissionActivity(this@MainActivity, permissions)
-                                }
-                            }
-                        })
-                    } else {
-                        // Android 12 and below start download directly
-                        startDataDownload()
-                    }
-                }
-                binding.btnOtaInfo -> {
-                    Toast.makeText(this@MainActivity, "Dumping OTA server info…", Toast.LENGTH_SHORT).show()
-                    dumpOtaServerInfo()
-                }
-                binding.btnPullOtaTest -> {
-                    Toast.makeText(this@MainActivity, "Triggering pull‑mode OTA test…", Toast.LENGTH_SHORT).show()
-                    testPullModeOta()
+                binding.btnModeTasker -> {
+                    aiAssistantMode = "Tasker"
+                    binding.btnModeGemini.setTextColor(ContextCompat.getColor(this@MainActivity, R.color.text_secondary))
+                    binding.btnModeChatgpt.setTextColor(ContextCompat.getColor(this@MainActivity, R.color.text_secondary))
+                    binding.btnModeTasker.setTextColor(ContextCompat.getColor(this@MainActivity, R.color.cyan_accent))
+                    Toast.makeText(this@MainActivity, "AI Mode: Tasker Broadcast", Toast.LENGTH_SHORT).show()
                 }
             }
         }
 
+        binding.btnModeGemini.setTextColor(if (aiAssistantMode == "Gemini") ContextCompat.getColor(this, R.color.cyan_accent) else ContextCompat.getColor(this, R.color.text_secondary))
+        binding.btnModeChatgpt.setTextColor(if (aiAssistantMode == "ChatGPT") ContextCompat.getColor(this, R.color.cyan_accent) else ContextCompat.getColor(this, R.color.text_secondary))
+        binding.btnModeTasker.setTextColor(if (aiAssistantMode == "Tasker") ContextCompat.getColor(this, R.color.cyan_accent) else ContextCompat.getColor(this, R.color.text_secondary))
+
         binding.cbHijackEnabled.setOnCheckedChangeListener { _, isChecked ->
+
             isAiHijackEnabled = isChecked
             Toast.makeText(this, "Hijack ${if (isChecked) "Enabled" else "Disabled"}", Toast.LENGTH_SHORT).show()
         }
@@ -780,9 +578,28 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
         batteryPollJob = null
     }
 
+    private fun sendAiBroadcast(type: String, path: String? = null) {
+        val intent = Intent("com.sdk.glassessdksample.AI_EVENT").apply {
+            putExtra("type", type)
+            path?.let { putExtra("path", it) }
+            putExtra("assistant", aiAssistantMode)
+            addFlags(Intent.FLAG_INCLUDE_STOPPED_PACKAGES)
+        }
+        sendBroadcast(intent)
+        Log.i("AIHijack", "Sent Broadcast to Tasker: $type")
+    }
+
     private fun triggerAssistantVoiceQuery() {
         Log.i("AIHijack", "Triggering Voice Query for $aiAssistantMode")
+        
+        if (aiAssistantMode == "Tasker") {
+            speak("Sending voice command to Tasker")
+            sendAiBroadcast("voice")
+            return
+        }
+
         speak("Opening voice assistant")
+
         
         // Wake up screen if locked
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O_MR1) {
@@ -815,9 +632,14 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
 
     private fun triggerAssistantImageQuery(imagePath: String) {
         Log.i("AIHijack", "Triggering Image Query for $aiAssistantMode with $imagePath")
-        speak("Analyzing what you see")
         
-        // Wake up screen if locked
+        if (aiAssistantMode == "Tasker") {
+            speak("Sending image to Tasker")
+            sendAiBroadcast("image", imagePath)
+            return
+        }
+
+        speak("Analyzing what you see")
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O_MR1) {
             setShowWhenLocked(true)
             setTurnScreenOn(true)
