@@ -56,7 +56,21 @@ import android.provider.Settings
 import android.net.Uri
 import android.app.KeyguardManager
 
-class MainActivity : AppCompatActivity() {
+import android.speech.tts.TextToSpeech
+import java.util.Locale
+
+class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
+    private var tts: TextToSpeech? = null
+
+    override fun onInit(status: Int) {
+        if (status == TextToSpeech.SUCCESS) {
+            tts?.language = Locale.US
+        }
+    }
+
+    private fun speak(text: String) {
+        tts?.speak(text, TextToSpeech.QUEUE_FLUSH, null, null)
+    }
     companion object {
         const val ACTION_TASKER_COMMAND = "com.sdk.glassessdksample.ACTION_TASKER_COMMAND"
         const val EXTRA_TASKER_COMMAND = "tasker_command"
@@ -97,6 +111,9 @@ class MainActivity : AppCompatActivity() {
         setContentView(binding.root)
         initView()
         logLargeDataHandlerMethodsOnce()
+        // Initialize TTS
+        tts = TextToSpeech(this, this)
+        
         // Ensure we always listen for glasses reports (battery, AI, volume, etc.)
         LargeDataHandler.getInstance().addOutDeviceListener(100, deviceNotifyListener)
         handleTaskerCommand(intent)
@@ -117,6 +134,12 @@ class MainActivity : AppCompatActivity() {
         if (EventBus.getDefault().isRegistered(this)) {
             EventBus.getDefault().unregister(this)
         }
+    }
+
+    override fun onDestroy() {
+        super.onDestroy()
+        tts?.stop()
+        tts?.shutdown()
     }
     inner class PermissionCallback : OnPermissionCallback {
         override fun onGranted(permissions: MutableList<String>, all: Boolean) {
@@ -759,6 +782,7 @@ class MainActivity : AppCompatActivity() {
 
     private fun triggerAssistantVoiceQuery() {
         Log.i("AIHijack", "Triggering Voice Query for $aiAssistantMode")
+        speak("Opening voice assistant")
         
         // Wake up screen if locked
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O_MR1) {
@@ -791,7 +815,16 @@ class MainActivity : AppCompatActivity() {
 
     private fun triggerAssistantImageQuery(imagePath: String) {
         Log.i("AIHijack", "Triggering Image Query for $aiAssistantMode with $imagePath")
+        speak("Analyzing what you see")
         
+        // Wake up screen if locked
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O_MR1) {
+            setShowWhenLocked(true)
+            setTurnScreenOn(true)
+            val keyguardManager = getSystemService(KEYGUARD_SERVICE) as KeyguardManager
+            keyguardManager.requestDismissKeyguard(this, null)
+        }
+
         // Stop glasses AI mode
         LargeDataHandler.getInstance().glassesControl(byteArrayOf(0x02, 0x01, 0x0b)) { _, _ -> }
 
@@ -853,7 +886,9 @@ class MainActivity : AppCompatActivity() {
                 val intent = Intent(Intent.ACTION_SEND).apply {
                     type = "image/jpeg"
                     putExtra(Intent.EXTRA_STREAM, uri)
-                    putExtra(Intent.EXTRA_TEXT, "Tell me about this")
+                    // Request spoken answer for Gemini
+                    val prompt = if (aiAssistantMode == "Gemini") "Tell me what you see out loud" else "Tell me about this"
+                    putExtra(Intent.EXTRA_TEXT, prompt)
                     flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_GRANT_READ_URI_PERMISSION
                 }
                 
