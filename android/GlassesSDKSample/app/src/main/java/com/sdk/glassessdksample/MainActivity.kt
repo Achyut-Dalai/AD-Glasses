@@ -796,7 +796,17 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
         batteryPollJob = null
     }
 
+import android.content.ClipboardManager
+import android.content.ClipData
+
     private fun sendAiBroadcast(type: String, path: String? = null) {
+        // Copy to clipboard to help Tasker automations
+        path?.let {
+            val clipboard = getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
+            val clip = ClipData.newPlainText("image_path", it)
+            clipboard.setPrimaryClip(clip)
+        }
+
         val intent = Intent("com.sdk.glassessdksample.AI_EVENT").apply {
             putExtra("type", type)
             path?.let { putExtra("path", it) }
