@@ -46,7 +46,9 @@ import kotlinx.coroutines.isActive
 import java.io.File
 import java.io.FileOutputStream
 import java.net.HttpURLConnection
+import androidx.core.content.ContextCompat
 import java.net.URL
+import androidx.core.content.FileProvider
 import kotlinx.coroutines.withContext
 import kotlinx.coroutines.delay
 
@@ -67,6 +69,11 @@ class MainActivity : AppCompatActivity() {
 
     private lateinit var binding: AcitivytMainBinding
     private val deviceNotifyListener by lazy { MyDeviceNotifyListener() }
+
+    // AI Hijack settings
+    private var isAiHijackEnabled = true // Default to enabled
+    private var isImageAssistantMode = true // Use assistant vs share intent
+    private var aiAssistantMode = "Gemini" // "Gemini" or "ChatGPT"
 
     // State used by the BLE+WiFi P2P data-download flow
     private var downloadP2pConnected = false
@@ -191,9 +198,42 @@ class MainActivity : AppCompatActivity() {
             binding.btnMediaCount,
             binding.btnDataDownload,
             binding.btnOtaInfo,
-            binding.btnPullOtaTest
+            binding.btnPullOtaTest,
+            binding.btnModeGemini,
+            binding.btnModeChatgpt,
+            binding.btnTestHijackVoice,
+            binding.btnTestHijackImage
         ) {
             when (this) {
+                binding.btnTestHijackVoice -> {
+                    triggerAssistantVoiceQuery()
+                }
+
+                binding.btnTestHijackImage -> {
+                    // Create a dummy image for testing if none exists
+                    val testFile = File(getExternalFilesDir("DCIM"), "test_ai.jpg")
+                    if (!testFile.exists()) {
+                        try {
+                            testFile.writeText("dummy image data")
+                        } catch (e: Exception) {}
+                    }
+                    triggerAssistantImageQuery(testFile.absolutePath)
+                }
+
+                binding.btnModeGemini -> {
+                    aiAssistantMode = "Gemini"
+                    binding.btnModeGemini.setTextColor(ContextCompat.getColor(this@MainActivity, R.color.cyan_accent))
+                    binding.btnModeChatgpt.setTextColor(ContextCompat.getColor(this@MainActivity, R.color.text_secondary))
+                    Toast.makeText(this@MainActivity, "AI Mode: Google Gemini", Toast.LENGTH_SHORT).show()
+                }
+
+                binding.btnModeChatgpt -> {
+                    aiAssistantMode = "ChatGPT"
+                    binding.btnModeGemini.setTextColor(ContextCompat.getColor(this@MainActivity, R.color.text_secondary))
+                    binding.btnModeChatgpt.setTextColor(ContextCompat.getColor(this@MainActivity, R.color.cyan_accent))
+                    Toast.makeText(this@MainActivity, "AI Mode: ChatGPT", Toast.LENGTH_SHORT).show()
+                }
+
                 binding.btnScan -> {
                     requestLocationPermission(this@MainActivity, PermissionCallback())
                 }
@@ -412,6 +452,16 @@ class MainActivity : AppCompatActivity() {
                     testPullModeOta()
                 }
             }
+        }
+
+        binding.cbHijackEnabled.setOnCheckedChangeListener { _, isChecked ->
+            isAiHijackEnabled = isChecked
+            Toast.makeText(this, "Hijack ${if (isChecked) "Enabled" else "Disabled"}", Toast.LENGTH_SHORT).show()
+        }
+
+        binding.cbImageAsAssistant.setOnCheckedChangeListener { _, isChecked ->
+            isImageAssistantMode = isChecked
+            Toast.makeText(this, "Image Hijack: ${if (isChecked) "Direct Assistant" else "Share Intent"}", Toast.LENGTH_SHORT).show()
         }
     }
 
@@ -686,6 +736,105 @@ class MainActivity : AppCompatActivity() {
     private fun stopBatteryPolling() {
         batteryPollJob?.cancel()
         batteryPollJob = null
+    }
+
+    private fun triggerAssistantVoiceQuery() {
+        Log.i("AIHijack", "Triggering Voice Query for $aiAssistantMode")
+        
+        // Tell glasses to stop proprietary AI audio stream so phone can take over via SCO
+        LargeDataHandler.getInstance().glassesControl(byteArrayOf(0x02, 0x01, 0x0b)) { _, _ -> }
+
+        try {
+            val intent = Intent(Intent.ACTION_VOICE_COMMAND).apply {
+                flags = Intent.FLAG_ACTIVITY_NEW_TASK
+                if (aiAssistantMode == "ChatGPT") {
+                    // Try to target ChatGPT specifically if possible, 
+                    // otherwise default assistant will handle it if user set it to ChatGPT
+                    setPackage("com.openai.chatgpt")
+                }
+            }
+            startActivity(intent)
+        } catch (e: Exception) {
+            Log.e("AIHijack", "Failed to trigger assistant: ${e.message}")
+            runOnUiThread {
+                Toast.makeText(this, "Assistant not found or failed", Toast.LENGTH_SHORT).show()
+            }
+        }
+    }
+
+    private fun triggerAssistantImageQuery(imagePath: String) {
+        Log.i("AIHijack", "Triggering Image Query for $aiAssistantMode with $imagePath")
+        
+        // Stop glasses AI mode
+        LargeDataHandler.getInstance().glassesControl(byteArrayOf(0x02, 0x01, 0x0b)) { _, _ -> }
+
+        try {
+            val file = File(imagePath)
+            if (!file.exists()) {
+                Log.e("AIHijack", "Image file does not exist: $imagePath")
+                return
+            }
+
+            val uri = FileProvider.getUriForFile(
+                this,
+                "$packageName.fileprovider",
+                file
+            )
+
+            if (isImageAssistantMode) {
+                Log.i("AIHijack", "Using Direct Assistant (Google Lens / Gemini Visual) mode")
+                
+                // For Google/Gemini, the best "Direct" experience is Google Lens.
+                // It specifically handles visual analysis and has a Gemini toggle.
+                val lensIntent = Intent(Intent.ACTION_SEND).apply {
+                    setPackage("com.google.android.googlequicksearchbox")
+                    type = "image/jpeg"
+                    putExtra(Intent.EXTRA_STREAM, uri)
+                    flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_GRANT_READ_URI_PERMISSION
+                }
+
+                // Try to find the Lens activity to avoid the "Google vs Tasker" chooser
+                val activities = packageManager.queryIntentActivities(lensIntent, 0)
+                var lensComponentFound = false
+                for (info in activities) {
+                    if (info.activityInfo.name.contains("lens", ignoreCase = true)) {
+                        lensIntent.setClassName(info.activityInfo.packageName, info.activityInfo.name)
+                        lensComponentFound = true
+                        break
+                    }
+                }
+
+                if (lensComponentFound) {
+                    startActivity(lensIntent)
+                } else {
+                    // Fallback to deep link for Google Lens
+                    val deepLinkIntent = Intent(Intent.ACTION_VIEW).apply {
+                        data = android.net.Uri.parse("googlelens://v1/open?url=" + android.net.Uri.encode(uri.toString()))
+                        setPackage("com.google.android.googlequicksearchbox")
+                        flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_GRANT_READ_URI_PERMISSION
+                    }
+                    try {
+                        startActivity(deepLinkIntent)
+                    } catch (e: Exception) {
+                        // If everything fails, use the generic chooser but target Google app
+                        startActivity(Intent.createChooser(lensIntent, "Visual Search"))
+                    }
+                }
+            } else {
+                Log.i("AIHijack", "Using Share Intent mode")
+                // Reverting to the version that shows the app selection chooser
+                val intent = Intent(Intent.ACTION_SEND).apply {
+                    type = "image/jpeg"
+                    putExtra(Intent.EXTRA_STREAM, uri)
+                    putExtra(Intent.EXTRA_TEXT, "Tell me about this")
+                    flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_GRANT_READ_URI_PERMISSION
+                }
+                
+                startActivity(Intent.createChooser(intent, "Ask Assistant"))
+            }
+        } catch (e: Exception) {
+            Log.e("AIHijack", "Failed to trigger image query: ${e.message}")
+        }
     }
 
     private fun updateConnectionStatus(connected: Boolean) {
@@ -1310,30 +1459,46 @@ class MainActivity : AppCompatActivity() {
                     val changing = response.loadData[8].toInt()
                     handleBatteryReport(battery, changing == 1)
                 }
-                //Glasses pass quick recognition
+                //Glasses pass quick recognition / AI Photo
                 0x02 -> {
-                    if (response.loadData.size > 9 && response.loadData[9].toInt() == 0x02) {
-                        //To set the recognition intention: eg please help me see what is in front of me, the content in the picture
-                    }
-                    //Get picture thumbnail
-                    LargeDataHandler.getInstance().getPictureThumbnails { cmdType, success, data ->
-                        //Please save the data to the path, the picture in jpg format
-                        Log.i(
-                            "DeviceNotify",
-                            "Thumbnail callback: cmdType=$cmdType, success=$success, size=${data?.size ?: 0}"
-                        )
+                    Log.i("DeviceNotify", "AI Photo Button Pressed - Starting Chunked Download")
+                    val fileName = "AI_Thumb_${System.currentTimeMillis()}.jpg"
+                    val file = File(getExternalFilesDir("DCIM"), fileName)
+                    
+                    // The SDK sends the image in multiple chunks. 
+                    // We must append them to the file and wait for isComplete (success parameter).
+                    LargeDataHandler.getInstance().getPictureThumbnails { _, isComplete, data ->
+                        if (data != null) {
+                            try {
+                                FileOutputStream(file, true).use { it.write(data) }
+                                if (isComplete) {
+                                    Log.i("DeviceNotify", "Thumbnail transfer complete: ${file.absolutePath} (${file.length()} bytes)")
+                                    if (isAiHijackEnabled) {
+                                        triggerAssistantImageQuery(file.absolutePath)
+                                    }
+                                }
+                            } catch (e: Exception) {
+                                Log.e("DeviceNotify", "Failed to write thumbnail chunk: ${e.message}")
+                            }
+                        }
                     }
                 }
 
+                //Glasses activate microphone / AI button
                 0x03 -> {
                     if (response.loadData[7].toInt() == 1) {
-                        //The glasses activate the microphone to start speaking
-                        runOnUiThread {
-                            Toast.makeText(
-                                this@MainActivity,
-                                "Glasses microphone activated",
-                                Toast.LENGTH_SHORT
-                            ).show()
+                        Log.i("DeviceNotify", "AI Button Pressed - Hijacking to Phone Assistant")
+                        if (isAiHijackEnabled) {
+                            triggerAssistantVoiceQuery()
+                        } else {
+                            //The glasses activate the microphone to start speaking
+                            runOnUiThread {
+                                Toast.makeText(
+                                    this@MainActivity,
+                                    "Glasses microphone activated (Original Path)",
+                                    Toast.LENGTH_SHORT
+                                ).show()
+                            }
                         }
                     }
                 }

@@ -125,6 +125,62 @@
                 android:backgroundTint="@color/card_bg"
                 android:textColor="@color/purple_200"/>
 
+            <!-- SECTION: AI ASSISTANT HIJACK -->
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="AI ASSISTANT HIJACK"
+                android:textColor="@color/cyan_accent"
+                android:textStyle="bold"
+                android:textSize="12sp"
+                android:layout_marginTop="16dp"
+                android:layout_marginBottom="8dp"/>
+
+            <CheckBox
+                android:id="@+id/cb_hijack_enabled"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="Enable Assistant Hijack"
+                android:textColor="@color/text_primary"
+                android:checked="true"
+                android:buttonTint="@color/cyan_accent"/>
+
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="horizontal">
+
+                <Button
+                    android:id="@+id/btn_mode_gemini"
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:text="Gemini"
+                    android:backgroundTint="@color/card_bg"
+                    android:textColor="@color/cyan_accent"/>
+
+                <Space android:layout_width="8dp" android:layout_height="wrap_content"/>
+
+                <Button
+                    android:id="@+id/btn_mode_chatgpt"
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:text="ChatGPT"
+                    android:backgroundTint="@color/card_bg"
+                    android:textColor="@color/text_secondary"/>
+            </LinearLayout>
+
+            <CheckBox
+                android:id="@+id/cb_image_as_assistant"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="Image Hijack: Use Direct Assistant"
+                android:textColor="@color/text_primary"
+                android:checked="true"
+                android:buttonTint="@color/cyan_accent"
+                android:layout_marginTop="4dp"/>
+
             <!-- SECTION: DEVICE INFO -->
             <TextView
                 android:layout_width="wrap_content"
@@ -207,18 +263,48 @@
 
                 <Space android:layout_width="8dp" android:layout_height="wrap_content"/>
 
-                <Button
-                    android:id="@+id/btn_media_count"
-                    android:layout_width="0dp"
-                    android:layout_weight="1"
-                    android:layout_height="wrap_content"
-                    android:text="Count"
-                    android:backgroundTint="@color/card_bg"
-                    android:textColor="@color/purple_200"/>
-            </LinearLayout>
+            <Button
+                android:id="@+id/btn_media_count"
+                android:layout_width="0dp"
+                android:layout_weight="1"
+                android:layout_height="wrap_content"
+                android:text="Count"
+                android:backgroundTint="@color/card_bg"
+                android:textColor="@color/purple_200"/>
+        </LinearLayout>
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal"
+            android:layout_marginTop="8dp">
 
             <Button
-                android:id="@+id/btn_thumbnail"
+                android:id="@+id/btn_test_hijack_voice"
+                android:layout_width="0dp"
+                android:layout_weight="1"
+                android:layout_height="wrap_content"
+                android:text="Test Voice Hijack"
+                android:backgroundTint="@color/card_bg"
+                android:textColor="@color/cyan_accent"
+                style="@style/Widget.MaterialComponents.Button.OutlinedButton"/>
+
+            <Space android:layout_width="8dp" android:layout_height="wrap_content"/>
+
+            <Button
+                android:id="@+id/btn_test_hijack_image"
+                android:layout_width="0dp"
+                android:layout_weight="1"
+                android:layout_height="wrap_content"
+                android:text="Test Image Hijack"
+                android:backgroundTint="@color/card_bg"
+                android:textColor="@color/cyan_accent"
+                style="@style/Widget.MaterialComponents.Button.OutlinedButton"/>
+        </LinearLayout>
+
+        <Button
+            android:id="@+id/btn_thumbnail"
+
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:layout_marginTop="8dp"
