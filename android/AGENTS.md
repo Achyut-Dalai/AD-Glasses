@@ -4,7 +4,7 @@ This file describes how future Codex agents should work in this repository, with
 
 ## Repository layout
 
-- `GlassesSDKSample/` – official sample app that uses the vendor SDK (`glasses_sdk_*.aar`). This is the main project we modify and build.
+- `CyanBridge/` – Android sample app project (published app name: **CyanBridge**, `applicationId`: `com.fersaiyan.cyanbridge`) that uses the vendor SDK (`glasses_sdk_*.aar`). This is the main project we modify and build.
 - `HeyCyanOfficialApp/` – decompiled sources/resources from the Play‑store HeyCyan app. Use this only as a reference when we need to understand how the vendor app drives the SDK.
 - `glasses_sdk_*.aar` – closed‑source SDK used by both apps.
 
@@ -27,7 +27,7 @@ This file describes how future Codex agents should work in this repository, with
     - `0x09` – P2P/WiFi error; `loadData[7] == -1` (`0xFF` → 255) indicates a retryable P2P failure.
 
 - **P2P / Wi‑Fi Direct**:
-  - The sample’s P2P logic lives in `GlassesSDKSample/app/src/main/java/com/sdk/glassessdksample/ui/wifi/p2p/WifiP2pManagerSingleton.kt`.
+  - The sample’s P2P logic lives in `CyanBridge/app/src/main/java/com/fersaiyan/cyanbridge/ui/wifi/p2p/WifiP2pManagerSingleton.kt`.
   - We temporarily edited this file, but it is now **back to the original vendor implementation** to avoid subtle behavior differences.
   - The singleton:
     - Initializes a `WifiP2pManager.Channel`.

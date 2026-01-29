@@ -6,10 +6,37 @@ Comprehensive SDKs for controlling HeyCyan smart glasses via Bluetooth Low Energ
 
 - **iOS**: Full SDK available with demo application (see `ios/` directory)
 - **Android**: Full SDK available with demo application (see `android/` directory)
+- **Gemini/ChatGPT assistants**: Supported on **Android only** (via the Android sample app + Tasker automation)
 
 ## Overview
 
 This repository provides SDKs for developers to integrate HeyCyan smart glasses functionality into their applications. The glasses support photo capture, video recording, audio recording, and AI-powered image generation.
+
+## AI Assistants (Android Only)
+
+The Android sample app includes an optional integration to route assistant requests (e.g. Gemini or ChatGPT workflows) through Android automation.
+
+- **Android-only**: Gemini/ChatGPT assistant workflows are only supported on Android.
+- **Image queries require Tasker**: For image queries specifically, the app forwards the request to **Tasker** (paid automation app). You must have Tasker installed and the provided Tasker profile enabled.
+- **AutoInput required**: The Tasker automation relies on **Tasker AutoInput** (paid Tasker plugin) to drive the assistant UI.
+
+### Install The Tasker Profile (.xml)
+
+The Tasker profile will be provided in two places: this repo and TaskerNet.
+
+Option A: Import from TaskerNet (recommended)
+
+1. Install Tasker from Google Play.
+2. Open this TaskerNet link on your phone and import the profile:
+   - `https://taskernet.com/shares/?id=PLACEHOLDER_TASKERNET_LINK`
+3. In Tasker, ensure the imported profile is **enabled**.
+
+Option B: Import the .xml from this repository
+
+1. Download the profile XML to your phone:
+   - `tasker/HeyCyan_ImageQuery_Assistant.xml` (placeholder path)
+2. In Tasker, use the import feature (commonly: Menu > Data > Import) and select the downloaded `.xml`.
+3. Ensure the imported profile is **enabled**.
 
 ## Features
 
@@ -32,16 +59,31 @@ This repository provides SDKs for developers to integrate HeyCyan smart glasses 
 
 ## Requirements
 
+### iOS
+
 - iOS 11.0+
 - Xcode 12.0+
 - Swift 5.0+ or Objective-C
 - Physical iOS device (Bluetooth not supported in simulator)
 
+### Android
+
+- Android Studio (latest stable recommended)
+- Android device with BLE
+
 ## Installation
+
+### iOS
 
 1. Clone or download this repository
 2. Open `QCSDKDemo.xcodeproj` in Xcode
 3. Build and run on a physical iOS device
+
+### Android
+
+1. Clone or download this repository
+2. Open `android/` in Android Studio
+3. Build and run the sample app (see `android/CyanBridge/`)
 
 ## Usage
 
