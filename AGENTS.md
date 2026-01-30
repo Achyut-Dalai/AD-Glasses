@@ -10,6 +10,10 @@ Software Development Kit (SDK) for HeyCyan Smart Glasses. Contains core librarie
 - `firmware_dump/`: Hardware firmware reference or dumps.
 - `QCSDK.framework/`: Pre-compiled framework for iOS development.
 
+## Android Data Transfer Notes
+
+- Media transfer (BLE + Wi-Fi Direct HTTP) reverse-engineering notes live in `android/AGENTS.md`.
+
 ## Development Environment
 - **Conda Environment:** `LocalGPT_llama2`
 - **STRICT RULE:** Never use `pip install` or download libraries into the `base` conda environment.

@@ -1,48 +1,145 @@
-# Codex Agent Guide for HeyCyan Smart Glasses (Android)
+# HeyCyan Smart Glasses (Android) - Data Transfer Notes
 
-This file describes how future Codex agents should work in this repository, with a focus on reverse‑engineering and improving the Android demo app for the HeyCyan (AIMB‑G3) smart glasses.
+This file is the living reference for how CyanBridge transfers media from the glasses to the phone.
+It replaces older/incorrect assumptions from the initial reverse-engineering phase.
 
 ## Repository layout
 
-- `CyanBridge/` – Android sample app project (published app name: **CyanBridge**, `applicationId`: `com.fersaiyan.cyanbridge`) that uses the vendor SDK (`glasses_sdk_*.aar`). This is the main project we modify and build.
-- `HeyCyanOfficialApp/` – decompiled sources/resources from the Play‑store HeyCyan app. Use this only as a reference when we need to understand how the vendor app drives the SDK.
-- `glasses_sdk_*.aar` – closed‑source SDK used by both apps.
+- `android/CyanBridge/` - Android app (CyanBridge) we modify and ship.
+- `android/HeyCyanOfficialApp/` - Decompiled sources from the official app, used as a protocol reference.
+- `android/CyanBridge/app/libs/glasses_sdk_*.aar` - Vendor SDK used by both apps.
 
-## Current goal
+## Working media transfer (BLE + Wi-Fi Direct HTTP)
 
-- Make the **BLE+WiFi P2P Data Download** button in the sample app behave like the corresponding feature in the official HeyCyan app:
-  - Glasses should enter the same “data transfer” mode they use with HeyCyan.
-  - The phone should fetch `media.config` and then download photos/videos to local storage.
-- Secondary, longer‑term goal: understand and, if possible, record/dump **future OTA updates**:
-  - Identify OTA endpoints (servers, URLs, request formats) used by the official app.
-  - Understand how OTA binaries are transferred to the glasses over BLE/WiFi.
+The glasses expose an HTTP server during transfer mode. The phone uses BLE to trigger transfer mode + obtain the glasses' Wi-Fi IP, then downloads media over Wi-Fi Direct.
 
-## Status and key findings
+### Endpoints (confirmed)
 
-- **BLE control & reporting**:
-  - Battery, volume, and media‑count APIs in `MainActivity` are working and produce correct values.
-  - The device sends various notify frames where `loadData[6]` is a “type” byte:
-    - `0x05` – battery, `0x02` – AI/thumbnail path, `0x12` – volume changes, etc.
-    - `0x08` – sometimes carries the device Wi‑Fi IP; we decode this into IPv4.
-    - `0x09` – P2P/WiFi error; `loadData[7] == -1` (`0xFF` → 255) indicates a retryable P2P failure.
+- `http://<glasses-ip>/files/media.config` - plaintext file listing filenames (one per line).
+- `http://<glasses-ip>/files/<filename>` - binary media payload.
 
-- **P2P / Wi‑Fi Direct**:
-  - The sample’s P2P logic lives in `CyanBridge/app/src/main/java/com/fersaiyan/cyanbridge/ui/wifi/p2p/WifiP2pManagerSingleton.kt`.
-  - We temporarily edited this file, but it is now **back to the original vendor implementation** to avoid subtle behavior differences.
-  - The singleton:
-    - Initializes a `WifiP2pManager.Channel`.
-    - Handles `discoverPeers`, `connect`, and `requestConnectionInfo`.
-    - Calls `resetDeviceP2p()` on internal discovery timeout.
-  - `resetDeviceP2p()` in the original code *only logs*; the real “reset P2P” command `[2,1,15]` is issued from the decompiled HeyCyan code (e.g., `PictureFragment` / OTA flows).
+### Trigger sequence (CyanBridge)
 
-- **What currently works / doesn’t work**:
-  - The demo app **does** send commands that trigger the glasses’ “data transfer” LED patterns and P2P activity.
-  - At least once in the past, the demo app likely put the glasses into transfer mode and the official HeyCyan app (also installed) silently picked up the session and downloaded media. This explains why:
-    - The demo UI said “images not downloaded”, but HeyCyan immediately showed new photos.
-  - With the current code:
-    - We see P2P retries and `0x09` error `255`, plus `resetDeviceP2p` callbacks.
-    - We often see **non‑IP** `0x08` frames (e.g., `...,8,0,99,-57,1,2,0,...`) but not always the IP‑bearing `0x08` with bytes like `-64,-88,49,40` (192.168.49.40).
-    - Our HTTP downloader (`downloadMediaList` / `downloadAllJpgFiles`) currently does **not** run because we never reach the “have valid IP + stable P2P” condition.
+Code lives in `android/CyanBridge/app/src/main/java/com/fersaiyan/cyanbridge/MainActivity.kt`.
+
+1. Ensure BLE is connected.
+2. Start Wi-Fi P2P discovery/connection.
+3. Over BLE, ask the glasses to enter transfer mode and report their IP:
+   - `LargeDataHandler.getInstance().glassesControl(byteArrayOf(0x02, 0x01, 0x04))`
+4. Listen for notify frames:
+   - `loadData[6] == 0x08`: glasses Wi-Fi IP present in bytes `[7..10]` as IPv4.
+   - `loadData[6] == 0x09`: P2P/Wi-Fi error; `loadData[7] == 0xFF` (255) is common/noisy.
+5. Bind the app process to the P2P network when connected (important on Samsung/multi-network devices).
+6. Fetch `media.config`, parse filenames, then download each file.
+
+### Critical gotcha: groupOwnerAddress is usually the phone
+
+On many devices, `WifiP2pInfo.groupOwnerAddress` is `192.168.49.1` and refers to the phone (group owner), not the glasses.
+Do not use it as the HTTP target.
+
+Prefer:
+
+- BLE-reported IP from notify `0x08`.
+- Any other device-reported IP channel (e.g., `BleIpBridge` if present).
+
+## File types and how we save them
+
+The `media.config` list can include images, video, and audio.
+
+### JPG/JPEG
+
+- Downloaded over HTTP and inserted into `MediaStore.Images`.
+- Saved under `DCIM/CyanBridge` via `RELATIVE_PATH` (Android 10+) so they always appear in Gallery.
+
+### MP4
+
+- Downloaded over HTTP and inserted into `MediaStore.Video`.
+- Saved under `DCIM/CyanBridge`.
+- Uses longer HTTP read timeouts.
+
+### OPUS recordings
+
+The glasses' `.opus` files are not guaranteed to be standard Ogg/Opus.
+In practice, many are raw Opus packets (often fixed-size 40-byte blocks) without an Ogg container.
+
+What we do:
+
+- Download the `.opus` bytes.
+- If it already starts with `OggS`, keep as-is.
+- Otherwise try to wrap into an Ogg/Opus container using heuristics:
+  - Length-prefixed packets (u16 LE/BE or u8).
+  - Fixed packet size (includes 40 bytes; the official app uses `packetSize=40`).
+- Write the resulting bytes into `MediaStore.Audio` with `MIME_TYPE=audio/ogg`.
+- Save under `DCIM/CyanBridge` (same folder preference as images/videos).
+
+This makes the recordings playable in common players (e.g., VLC) when wrapping succeeds.
+
+## Android platform requirements / pitfalls
+
+### Cleartext HTTP must be allowed
+
+The transfer server is HTTP (not HTTPS), so Android may block it unless configured.
+
+- `android/CyanBridge/app/src/main/res/xml/network_security_config.xml` permits cleartext so `http://192.168.49.x/...` works.
+
+### Bind network for correct routing
+
+On some devices (notably Samsung), sockets may route over the wrong default network unless the process is bound.
+We locate the P2P network via `ConnectivityManager` and bind with `bindProcessToNetwork()`.
+
+### Broadcast receiver compatibility
+
+Do not call the API 33+ `registerReceiver(..., flags)` overload directly on pre-33 devices.
+Use `ContextCompat.registerReceiver()`.
+
+### Permissions
+
+- Android 13+: `NEARBY_WIFI_DEVICES` is required for Wi-Fi Direct discovery.
+- Location permission is also commonly required for peer discovery on many builds.
+
+## Error handling notes
+
+- `loadData[6] == 0x09` with error 255 is common and not necessarily fatal.
+- Resetting P2P while an HTTP transfer is active can drop the connection; CyanBridge suppresses aggressive resets during active transfer.
+- Disconnect/retry logic is split between:
+  - Wi-Fi P2P state machine (`WifiP2pManagerSingleton`).
+  - Higher-level resolver in `MainActivity` that waits for a real glasses IP and a reachable `media.config`.
+
+## Code references (CyanBridge)
+
+- Main flow: `android/CyanBridge/app/src/main/java/com/fersaiyan/cyanbridge/MainActivity.kt`
+  - `startDataDownload()`: orchestrates BLE + P2P.
+  - HTTP + parsing: downloads `media.config`, then downloads JPG/MP4/OPUS.
+  - MediaStore saves: images/videos/audio saved to `DCIM/CyanBridge`.
+
+- P2P controller: `android/CyanBridge/app/src/main/java/com/fersaiyan/cyanbridge/ui/wifi/p2p/WifiP2pManagerSingleton.kt`
+  - Includes discovery/connect timeouts and uses WPS PBC.
+  - `resetDeviceP2p()` sends `glassesControl([0x02,0x01,0x0F])`.
+
+- Network policy: `android/CyanBridge/app/src/main/res/xml/network_security_config.xml`
+
+## How the official app differs (relevant parts)
+
+Use this only as a protocol reference in `android/HeyCyanOfficialApp/`.
+
+- Album import registers a notify listener with `cmdType=2`.
+- It downloads `media.config` from `/files/media.config` and then files from `/files/<name>`.
+- For recordings, it uses a native Opus pipeline (`OpusManager`, `hasHead=false`, `packetSize=40`) and often converts to PCM/WAV for playback.
+
+## Logcat
+
+Preferred tags:
+
+- `DataDownload`
+- `DeviceNotify`
+- `WifiP2pManagerSingleton`
+- `WifiP2pBroadcastReceiver`
+
+Example:
+
+```bash
+adb logcat -s DataDownload DeviceNotify WifiP2pManagerSingleton WifiP2pBroadcastReceiver
+```
 
 ## Development Environment
 
@@ -166,12 +263,12 @@ adb logcat -d -s DataDownload DeviceNotify WifiP2pManagerSingleton WifiP2pBroadc
 
 ### Example curl for `last-ota`
 
-> NOTE: Tokens are short‑lived account secrets. The example below uses a token captured on 2026‑01‑23 and is likely expired; future agents should capture their **own** token via MITM (see next section) and substitute it.
+> NOTE: Tokens are short-lived account secrets; never commit real tokens.
 
 ```bash
 curl -v \
   -H 'Content-Type: application/json; charset=UTF-8' \
-  -H 'token: 15ef6eb5403406c1da0dc4a4defa2ea1' \
+  -H 'token: <token>' \
   --data '{"appId":1,"country":"US","dev":2,"hardwareVersion":"WIFIAM01G1_V9.2","mac":"C4:E3:BF:C3:A4:02","os":1,"romVersion":"WIFIAM01G1_1.00.23_2510111600"}' \
   'https://www.qlifesnap.com/glasses/app-update/last-ota'
 ```
@@ -306,4 +403,4 @@ If the cloud OTA API continues to return “No upgraded version” for a long ti
 - When something works in the official app but not in the sample:
   - First compare **method sequences and payloads** (what SDK calls, in what order).
   - Then compare **state machines** (when they retry, when they reset, when they treat an error as fatal).
-- Always capture and reason from **logcat** before changing code; use the tag set above and keep logs alongside any code changes you make for traceability.***
+- Always capture and reason from **logcat** before changing code; use the tag set above and keep logs alongside any code changes you make for traceability.
