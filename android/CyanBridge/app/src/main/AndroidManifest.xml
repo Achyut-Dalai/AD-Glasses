@@ -63,6 +63,10 @@
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
         </activity>
+        <activity
+            android:name=".ui.BatteryOptimizationGuideActivity"
+            android:exported="false"
+            android:label="@string/battery_opt_title" />
         <activity android:name=".ui.DeviceBindActivity" />
 
         <provider

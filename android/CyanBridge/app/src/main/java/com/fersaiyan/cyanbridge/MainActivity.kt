@@ -35,9 +35,16 @@ import com.fersaiyan.cyanbridge.ui.startKtxActivity
 import com.fersaiyan.cyanbridge.ui.wifi.p2p.WifiP2pManagerSingleton
 import android.net.wifi.p2p.WifiP2pDevice
 import android.net.wifi.p2p.WifiP2pInfo
+import android.net.ConnectivityManager
+import android.net.Network
+import android.provider.MediaStore
+import android.content.ContentValues
+import android.media.MediaScannerConnection
+import android.os.Environment
 import org.greenrobot.eventbus.EventBus
 import org.greenrobot.eventbus.Subscribe
 import org.greenrobot.eventbus.ThreadMode
+import com.fersaiyan.cyanbridge.ui.BatteryOptimizationGuideActivity
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
@@ -45,24 +52,38 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.isActive
 import java.io.File
 import java.io.FileOutputStream
+import java.io.InputStream
+import java.io.ByteArrayOutputStream
 import java.net.HttpURLConnection
 import androidx.core.content.ContextCompat
 import java.net.URL
+import java.net.InetSocketAddress
+import java.net.Socket
+import java.util.concurrent.atomic.AtomicReference
+import javax.net.SocketFactory
+import java.text.SimpleDateFormat
+import java.util.Locale
+import java.security.SecureRandom
 import androidx.core.content.FileProvider
 import kotlinx.coroutines.withContext
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.CompletableDeferred
+import kotlinx.coroutines.supervisorScope
+import kotlinx.coroutines.withTimeoutOrNull
+import kotlinx.coroutines.cancelChildren
+import kotlinx.coroutines.sync.Semaphore
+import kotlinx.coroutines.sync.withPermit
+import kotlin.coroutines.coroutineContext
 
 import android.provider.Settings
 import android.net.Uri
 import android.app.KeyguardManager
 
 import android.speech.tts.TextToSpeech
-import java.util.Locale
 import android.content.ClipboardManager
 import android.content.ClipData
 import android.content.Context
-import android.media.MediaScannerConnection
-import android.os.Environment
+
 
 class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
     private var tts: TextToSpeech? = null
@@ -108,8 +129,19 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
     private var downloadBleIp: String? = null
     private var downloadWifiIp: String? = null
     private var downloadInProgress = false
+    private var downloadAttemptJob: Job? = null
+    private var downloadResolvedHttpIp: String? = null
+    private var downloadP2pNetwork: Network? = null
+    private var boundNetwork: Network? = null
+    private var lastP2pResetAtMs: Long = 0L
     private var downloadWifiP2pManager: WifiP2pManagerSingleton? = null
     private var downloadWifiP2pCallback: WifiP2pManagerSingleton.WifiP2pCallback? = null
+
+    // Official app registers the notify listener with cmdType=2 for album import.
+    // Keep our main listener (cmdType=100) for general events, and add a narrow
+    // one for the download flow so we don't duplicate thumbnail/audio handling.
+    private val downloadNotifyListener by lazy { DownloadNotifyListener() }
+    private var downloadNotifyListenerRegistered = false
     private var batteryPollJob: Job? = null
     private val batteryPollIntervalMs = 60_000L
     private var pendingBatteryToast = false
@@ -126,7 +158,11 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
         
         // Ensure we always listen for glasses reports (battery, AI, volume, etc.)
         LargeDataHandler.getInstance().addOutDeviceListener(100, deviceNotifyListener)
+
+        // Lazily register the import/download notify listener the first time we need it.
         handleTaskerCommand(intent)
+
+        BatteryOptimizationGuideActivity.launchIfNeeded(this)
     }
 
     override fun onStart() {
@@ -238,7 +274,6 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
             binding.btnCamera,
             binding.btnVideo,
             binding.btnRecord,
-            binding.btnThumbnail,
             binding.btnBt,
             binding.btnBattery,
             binding.btnVolume,
@@ -379,49 +414,6 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
                 binding.btnRecord -> {
                     // Default UI behavior: start audio recording
                     controlAudioRecording(true)
-                }
-
-                binding.btnThumbnail -> {
-                    Toast.makeText(this@MainActivity, "Requesting thumbnail…", Toast.LENGTH_SHORT).show()
-                    //thumbnailSize  0..6
-                    val thumbnailSize=0x02
-                    LargeDataHandler.getInstance().glassesControl(
-                        byteArrayOf(
-                            0x02,
-                            0x01,
-                            0x06,
-                            thumbnailSize.toByte(),
-                            thumbnailSize.toByte(),
-                            0x02
-                        )
-                    ) { _, it ->
-                        if (it.dataType == 1) {
-                            if (it.errorCode == 0) {
-                                when (it.workTypeIng) {
-                                    2 -> {
-                                        //Glasses are recording video
-                                    }
-                                    4 -> {
-                                        //Glasses are in transfer mode
-                                    }
-                                    5 -> {
-                                        //Glasses are in OTA mode
-                                    }
-                                    1, 6 ->{
-                                        //Glasses are in camera mode
-                                    }
-                                    7 -> {
-                                        //Glasses are in AI conversation
-                                    }
-                                    8 ->{
-                                        //Glasses are in recording mode
-                                    }
-                                }
-                            } else {
-                                //Trigger AI photo, report thumbnail will receive report command
-                            }
-                        }
-                    }
                 }
 
                 binding.btnBt -> {
@@ -1036,7 +1028,6 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
             "record_start" -> controlAudioRecording(true)
             "record_stop" -> controlAudioRecording(false)
 
-            "thumbnail" -> binding.btnThumbnail.performClick()
             "bt_scan" -> binding.btnBt.performClick()
             "battery" -> binding.btnBattery.performClick()
             "volume" -> binding.btnVolume.performClick()
@@ -1077,9 +1068,27 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
         downloadBleIp = null
         downloadWifiIp = null
         downloadInProgress = false
+        downloadAttemptJob?.cancel()
+        downloadAttemptJob = null
+        downloadResolvedHttpIp = null
+        downloadP2pNetwork = null
+        unbindProcessFromNetwork()
+
+        if (!downloadNotifyListenerRegistered) {
+            try {
+                LargeDataHandler.getInstance().addOutDeviceListener(2, downloadNotifyListener)
+                downloadNotifyListenerRegistered = true
+                Log.i("DataDownload", "Registered download notify listener (cmdType=2)")
+            } catch (e: Exception) {
+                Log.e("DataDownload", "Failed to register download notify listener", e)
+            }
+        }
 
         val wifiP2pManager = WifiP2pManagerSingleton.getInstance(this)
         downloadWifiP2pManager = wifiP2pManager
+
+        // Mirror vendor flow: clear internal retry state.
+        wifiP2pManager.resetFailCount()
 
         // Register receiver and listen for P2P state/peer changes
         wifiP2pManager.registerReceiver()
@@ -1125,6 +1134,8 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
             override fun onDisconnected() {
                 Log.i("DataDownload", "P2P disconnected")
                 downloadP2pConnected = false
+                downloadP2pNetwork = null
+                unbindProcessFromNetwork()
             }
 
             override fun onPeerDiscoveryStarted() {
@@ -1186,17 +1197,19 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
             Log.i("DataDownload", "Device IP from BleIpBridge: $ipFromBle")
             return ipFromBle
         }
-        // Fallback: last-known IP used by the official app logs
-        return "192.168.49.79"
+        // No safe fallback: the glasses IP varies per session.
+        return null
     }
     
     private fun downloadMediaList(deviceIp: String) {
         CoroutineScope(Dispatchers.IO).launch {
             try {
+                // Lock the device IP for the whole transfer session.
+                downloadResolvedHttpIp = deviceIp
                 val url = "http://$deviceIp/files/media.config"
                 Log.i("DataDownload", "Downloading media list from: $url")
                 
-                val connection = URL(url).openConnection() as HttpURLConnection
+                val connection = openHttpConnection(URL(url))
                 connection.requestMethod = "GET"
                 connection.connectTimeout = 10000
                 connection.readTimeout = 30000
@@ -1210,12 +1223,9 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
                     Log.i("DataDownload", content)
                     Log.i("DataDownload", "=== END MEDIA CONFIG ===")
                     
-                    // Parse media file list
-                    parseMediaList(content)
-                    
-                    withContext(Dispatchers.Main) {
-                        showDownloadSuccess("Media list downloaded successfully")
-                    }
+                    // Parse media file list and start downloads. Do NOT clean up P2P here;
+                    // we must keep the network bound until all files are downloaded.
+                    parseMediaList(content, deviceIp)
                 } else {
                     Log.e("DataDownload", "Failed to download media list. Response code: ${connection.responseCode}")
                     withContext(Dispatchers.Main) {
@@ -1244,41 +1254,61 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
             }
         }
     
-        private fun parseMediaList(content: String) {
-            // Parse the media configuration file content - this is a text file containing JPG file names
+        private fun parseMediaList(content: String, deviceIp: String) {
+            // Parse the media configuration file content - this is a text file containing media file names.
             Log.i("DataDownload", "Parsing media list content...")
             
             try {
                 // Split by line, each line should be a file name
                 val lines = content.trim().lines()
                 val jpgFiles = mutableListOf<String>()
+                val mp4Files = mutableListOf<String>()
+                val opusFiles = mutableListOf<String>()
+                var otherFiles = 0
                 
                 lines.forEach { line ->
                     val trimmedLine = line.trim()
                     if (trimmedLine.isNotEmpty()) {
-                        // Check if it is a JPG file
-                        if (trimmedLine.endsWith(".jpg", ignoreCase = true) ||
-                            trimmedLine.endsWith(".jpeg", ignoreCase = true)
-                        ) {
-                            jpgFiles.add(trimmedLine)
-                            Log.i("DataDownload", "Found JPG file: $trimmedLine")
-                        } else {
-                            Log.i("DataDownload", "Found non-JPG file: $trimmedLine")
+                        when {
+                            trimmedLine.endsWith(".jpg", ignoreCase = true) ||
+                                trimmedLine.endsWith(".jpeg", ignoreCase = true) -> {
+                                jpgFiles.add(trimmedLine)
+                                Log.i("DataDownload", "Found JPG file: $trimmedLine")
+                            }
+
+                            trimmedLine.endsWith(".mp4", ignoreCase = true) -> {
+                                mp4Files.add(trimmedLine)
+                                Log.i("DataDownload", "Found MP4 file: $trimmedLine")
+                            }
+
+                            trimmedLine.endsWith(".opus", ignoreCase = true) -> {
+                                opusFiles.add(trimmedLine)
+                                Log.i("DataDownload", "Found OPUS file: $trimmedLine")
+                            }
+
+                            else -> {
+                                otherFiles++
+                                Log.i("DataDownload", "Found other file: $trimmedLine")
+                            }
                         }
                     }
                 }
-                
-                Log.i("DataDownload", "Total JPG files found: ${jpgFiles.size}")
-                
-                if (jpgFiles.isNotEmpty()) {
-                    // Start downloading all JPG files
-                    downloadAllJpgFiles(jpgFiles)
-                } else {
-                    Log.w("DataDownload", "No JPG files found in media.config")
+
+                Log.i(
+                    "DataDownload",
+                    "Media list parsed: jpg=${jpgFiles.size}, mp4=${mp4Files.size}, opus=${opusFiles.size}, other=$otherFiles"
+                )
+
+                if (jpgFiles.isEmpty() && mp4Files.isEmpty() && opusFiles.isEmpty()) {
+                    Log.w("DataDownload", "No JPG/MP4/OPUS files found in media.config")
                     CoroutineScope(Dispatchers.Main).launch {
-                        showDownloadError("No JPG files found in media.config")
+                        showDownloadError("No JPG/MP4/OPUS files found in media.config")
                     }
+                    return
                 }
+
+                // Download everything we understand. Keep P2P bound until all downloads finish.
+                downloadAllMediaFiles(jpgFiles, mp4Files, opusFiles, deviceIp)
                 
             } catch (e: Exception) {
                 Log.e("DataDownload", "Error parsing media list: ${e.message}", e)
@@ -1287,24 +1317,36 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
                 }
             }
         }
-    
-    private fun downloadAllJpgFiles(jpgFiles: List<String>) {
+
+    private fun downloadAllMediaFiles(
+        jpgFiles: List<String>,
+        mp4Files: List<String>,
+        opusFiles: List<String>,
+        deviceIp: String,
+    ) {
         CoroutineScope(Dispatchers.IO).launch {
-            Log.i("DataDownload", "Starting download of ${jpgFiles.size} JPG files...")
+            Log.i(
+                "DataDownload",
+                "Starting download: jpg=${jpgFiles.size}, mp4=${mp4Files.size}, opus=${opusFiles.size}"
+            )
             
-            var successCount = 0
-            var failCount = 0
+            var jpgSuccess = 0
+            var jpgFail = 0
+            var mp4Success = 0
+            var mp4Fail = 0
+            var opusSuccess = 0
+            var opusFail = 0
             
             for ((index, fileName) in jpgFiles.withIndex()) {
                 try {
                     Log.i("DataDownload", "Downloading file ${index + 1}/${jpgFiles.size}: $fileName")
-                    
-                    val success = downloadSingleJpgFile(fileName)
+
+                    val success = downloadSingleJpgFile(fileName, deviceIp)
                     if (success) {
-                        successCount++
+                        jpgSuccess++
                         Log.i("DataDownload", "✓ Successfully downloaded: $fileName")
                     } else {
-                        failCount++
+                        jpgFail++
                         Log.e("DataDownload", "✗ Failed to download: $fileName")
                     }
                     
@@ -1312,59 +1354,95 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
                     delay(500)
                     
                 } catch (e: Exception) {
-                    failCount++
+                    jpgFail++
+                    Log.e("DataDownload", "Error downloading $fileName: ${e.message}", e)
+                }
+            }
+
+            for ((index, fileName) in mp4Files.withIndex()) {
+                try {
+                    Log.i("DataDownload", "Downloading video ${index + 1}/${mp4Files.size}: $fileName")
+
+                    val success = downloadSingleMp4File(fileName, deviceIp)
+                    if (success) {
+                        mp4Success++
+                        Log.i("DataDownload", "✓ Successfully downloaded: $fileName")
+                    } else {
+                        mp4Fail++
+                        Log.e("DataDownload", "✗ Failed to download: $fileName")
+                    }
+
+                    // Videos are larger; be gentler.
+                    delay(800)
+                } catch (e: Exception) {
+                    mp4Fail++
+                    Log.e("DataDownload", "Error downloading $fileName: ${e.message}", e)
+                }
+            }
+
+            for ((index, fileName) in opusFiles.withIndex()) {
+                try {
+                    Log.i("DataDownload", "Downloading audio ${index + 1}/${opusFiles.size}: $fileName")
+
+                    val success = downloadSingleOpusFile(fileName, deviceIp)
+                    if (success) {
+                        opusSuccess++
+                        Log.i("DataDownload", "✓ Successfully downloaded: $fileName")
+                    } else {
+                        opusFail++
+                        Log.e("DataDownload", "✗ Failed to download: $fileName")
+                    }
+
+                    delay(500)
+                } catch (e: Exception) {
+                    opusFail++
                     Log.e("DataDownload", "Error downloading $fileName: ${e.message}", e)
                 }
             }
             
             // Show final result
-            val message = "Download completed: $successCount successful, $failCount failed"
-            Log.i("DataDownload", message)
+            val totalSuccess = jpgSuccess + mp4Success + opusSuccess
+            val totalFail = jpgFail + mp4Fail + opusFail
+            Log.i(
+                "DataDownload",
+                "Download completed: jpg=$jpgSuccess/${jpgFiles.size} ok, mp4=$mp4Success/${mp4Files.size} ok, opus=$opusSuccess/${opusFiles.size} ok, failed=$totalFail"
+            )
             
             withContext(Dispatchers.Main) {
-                if (failCount == 0) {
-                    showDownloadSuccess("All $successCount files downloaded successfully!")
+                if (totalFail == 0) {
+                    showDownloadSuccess("All $totalSuccess files downloaded successfully!")
                 } else {
-                    showDownloadError("Download completed with errors: $successCount successful, $failCount failed")
+                    showDownloadError("Download completed with errors: $totalSuccess successful, $totalFail failed")
                 }
             }
         }
     }
     
-    private suspend fun downloadSingleJpgFile(fileName: String): Boolean {
+    private suspend fun downloadSingleJpgFile(fileName: String, deviceIp: String): Boolean {
         return try {
-            val deviceIp = getDeviceIpFromBLE() ?: return false
             val url = "http://$deviceIp/files/$fileName"
             Log.i("DataDownload", "Downloading: $url")
-            
-            val connection = URL(url).openConnection() as HttpURLConnection
+
+            val connection = openHttpConnection(URL(url))
             connection.requestMethod = "GET"
             connection.connectTimeout = 10000
             connection.readTimeout = 30000
-            
+
             if (connection.responseCode == HttpURLConnection.HTTP_OK) {
-                val inputStream = connection.inputStream
-                val file = File(getExternalFilesDir("DCIM"), fileName)
-                val outputStream = FileOutputStream(file)
-                
-                val buffer = ByteArray(8192)
-                var bytesRead: Int
-                var totalBytes = 0L
-                
-                while (inputStream.read(buffer).also { bytesRead = it } != -1) {
-                    outputStream.write(buffer, 0, bytesRead)
-                    totalBytes += bytesRead
+                val takenMs = parseTakenTimeMillisFromFilename(fileName) ?: System.currentTimeMillis()
+                val saved = connection.inputStream.use { input ->
+                    saveJpegToGallery(input, fileName, takenMs)
                 }
-                
-                outputStream.close()
-                inputStream.close()
-                
-                Log.i("DataDownload", "File downloaded: $fileName ($totalBytes bytes)")
-                
-                // Save to album
-                saveToAlbum(file, fileName)
-                
-                true
+                if (saved.bytes > 0) {
+                    Log.i("DataDownload", "File downloaded: $fileName (${saved.bytes} bytes)")
+                }
+                if (saved.success) {
+                    Log.i("DataDownload", "Saved to gallery: name=$fileName uri=${saved.uri}")
+                    true
+                } else {
+                    Log.e("DataDownload", "Failed to save to gallery: $fileName")
+                    false
+                }
             } else {
                 Log.e("DataDownload", "Failed to download $fileName. Response code: ${connection.responseCode}")
                 false
@@ -1375,28 +1453,560 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
             false
         }
     }
-    
-    private fun saveToAlbum(file: File, fileName: String) {
-        try {
-            // Save file information to album database
-            val albumInfo = mapOf(
-                "fileName" to fileName,
-                "filePath" to file.absolutePath,
-                "fileDate" to "2025-08-18",
-                "fileType" to 1,
-                "timestamp" to System.currentTimeMillis(),
-                "mac" to "71:33:1D:2C:CF:A0"
-            )
-            
-            Log.i("DataDownload", "Album info: $albumInfo")
-            // TODO: Implement the logic of saving to the album database
-            
+
+    private suspend fun downloadSingleMp4File(fileName: String, deviceIp: String): Boolean {
+        return try {
+            val url = "http://$deviceIp/files/$fileName"
+            Log.i("DataDownload", "Downloading: $url")
+
+            val connection = openHttpConnection(URL(url))
+            connection.requestMethod = "GET"
+            connection.connectTimeout = 15000
+            connection.readTimeout = 180000
+
+            if (connection.responseCode == HttpURLConnection.HTTP_OK) {
+                val takenMs = parseTakenTimeMillisFromFilename(fileName) ?: System.currentTimeMillis()
+                val saved = connection.inputStream.use { input ->
+                    saveMp4ToGallery(input, fileName, takenMs)
+                }
+                if (saved.bytes > 0) {
+                    Log.i("DataDownload", "File downloaded: $fileName (${saved.bytes} bytes)")
+                }
+                if (saved.success) {
+                    Log.i("DataDownload", "Saved to gallery: name=$fileName uri=${saved.uri}")
+                    true
+                } else {
+                    Log.e("DataDownload", "Failed to save to gallery: $fileName")
+                    false
+                }
+            } else {
+                Log.e("DataDownload", "Failed to download $fileName. Response code: ${connection.responseCode}")
+                false
+            }
         } catch (e: Exception) {
-            Log.e("DataDownload", "Error saving to album: ${'$'}{e.message}", e)
+            Log.e("DataDownload", "Error downloading $fileName: ${e.message}", e)
+            false
+        }
+    }
+
+    private suspend fun downloadSingleOpusFile(fileName: String, deviceIp: String): Boolean {
+        return try {
+            val url = "http://$deviceIp/files/$fileName"
+            Log.i("DataDownload", "Downloading: $url")
+
+            val connection = openHttpConnection(URL(url))
+            connection.requestMethod = "GET"
+            connection.connectTimeout = 15000
+            connection.readTimeout = 120000
+
+            if (connection.responseCode == HttpURLConnection.HTTP_OK) {
+                val takenMs = parseTakenTimeMillisFromFilename(fileName) ?: System.currentTimeMillis()
+                val saved = connection.inputStream.use { input ->
+                    saveOpusToLibrary(input, fileName, takenMs)
+                }
+                if (saved.bytes > 0) {
+                    Log.i("DataDownload", "File downloaded: $fileName (${saved.bytes} bytes)")
+                }
+                if (saved.success) {
+                    Log.i("DataDownload", "Saved to library: name=$fileName uri=${saved.uri}")
+                    true
+                } else {
+                    Log.e("DataDownload", "Failed to save to library: $fileName")
+                    false
+                }
+            } else {
+                Log.e("DataDownload", "Failed to download $fileName. Response code: ${connection.responseCode}")
+                false
+            }
+        } catch (e: Exception) {
+            Log.e("DataDownload", "Error downloading $fileName: ${e.message}", e)
+            false
         }
     }
     
+    private data class GallerySaveResult(
+        val success: Boolean,
+        val uri: String?,
+        val bytes: Long,
+    )
+
+    private fun parseTakenTimeMillisFromFilename(fileName: String): Long? {
+        // The glasses filenames look like: yyyyMMddHHmmssSSS?.jpg
+        // Example: 20260127095159018.jpg
+        val digits = fileName.takeWhile { it.isDigit() }
+        if (digits.length < 14) return null
+
+        return try {
+            val base = digits.substring(0, 14)
+            val sdf = SimpleDateFormat("yyyyMMddHHmmss", Locale.US)
+            val baseDate = sdf.parse(base) ?: return null
+            val msPart = digits.substring(14).take(3)
+            val extraMs = msPart.toIntOrNull() ?: 0
+            baseDate.time + extraMs
+        } catch (_: Exception) {
+            null
+        }
+    }
+
+    private fun saveJpegToGallery(input: InputStream, displayName: String, takenTimeMs: Long): GallerySaveResult {
+        return try {
+            val resolver = contentResolver
+
+            val values = ContentValues().apply {
+                put(MediaStore.Images.Media.DISPLAY_NAME, displayName)
+                put(MediaStore.Images.Media.MIME_TYPE, "image/jpeg")
+                put(MediaStore.Images.Media.DATE_TAKEN, takenTimeMs)
+                put(MediaStore.Images.Media.DATE_ADDED, takenTimeMs / 1000)
+                put(MediaStore.Images.Media.DATE_MODIFIED, takenTimeMs / 1000)
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+                    put(MediaStore.Images.Media.RELATIVE_PATH, Environment.DIRECTORY_DCIM + "/CyanBridge")
+                    put(MediaStore.Images.Media.IS_PENDING, 1)
+                }
+            }
+
+            val uri = resolver.insert(MediaStore.Images.Media.EXTERNAL_CONTENT_URI, values)
+                ?: return GallerySaveResult(false, null, 0)
+
+            var bytes = 0L
+            try {
+                resolver.openOutputStream(uri, "w")?.use { out ->
+                    val buffer = ByteArray(8 * 1024)
+                    while (true) {
+                        val read = input.read(buffer)
+                        if (read <= 0) break
+                        out.write(buffer, 0, read)
+                        bytes += read
+                    }
+                    out.flush()
+                } ?: run {
+                    resolver.delete(uri, null, null)
+                    return GallerySaveResult(false, null, bytes)
+                }
+
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+                    val done = ContentValues().apply { put(MediaStore.Images.Media.IS_PENDING, 0) }
+                    resolver.update(uri, done, null, null)
+                } else {
+                    // Pre-Android 10: some galleries need an explicit media scan.
+                    MediaScannerConnection.scanFile(
+                        this,
+                        arrayOf(uri.toString()),
+                        arrayOf("image/jpeg"),
+                        null
+                    )
+                }
+
+                GallerySaveResult(true, uri.toString(), bytes)
+            } catch (e: Exception) {
+                resolver.delete(uri, null, null)
+                Log.e("DataDownload", "Gallery write failed for $displayName: ${e.message}", e)
+                GallerySaveResult(false, uri.toString(), bytes)
+            }
+        } catch (e: Exception) {
+            Log.e("DataDownload", "saveJpegToGallery failed for $displayName: ${e.message}", e)
+            GallerySaveResult(false, null, 0)
+        }
+    }
+
+    private fun saveMp4ToGallery(input: InputStream, displayName: String, takenTimeMs: Long): GallerySaveResult {
+        return try {
+            val resolver = contentResolver
+
+            val values = ContentValues().apply {
+                put(MediaStore.Video.Media.DISPLAY_NAME, displayName)
+                put(MediaStore.Video.Media.MIME_TYPE, "video/mp4")
+                put(MediaStore.Video.Media.DATE_TAKEN, takenTimeMs)
+                put(MediaStore.Video.Media.DATE_ADDED, takenTimeMs / 1000)
+                put(MediaStore.Video.Media.DATE_MODIFIED, takenTimeMs / 1000)
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+                    // Keep videos in the same DCIM/CyanBridge folder as photos.
+                    put(MediaStore.Video.Media.RELATIVE_PATH, Environment.DIRECTORY_DCIM + "/CyanBridge")
+                    put(MediaStore.Video.Media.IS_PENDING, 1)
+                }
+            }
+
+            val uri = resolver.insert(MediaStore.Video.Media.EXTERNAL_CONTENT_URI, values)
+                ?: return GallerySaveResult(false, null, 0)
+
+            var bytes = 0L
+            try {
+                resolver.openOutputStream(uri, "w")?.use { out ->
+                    val buffer = ByteArray(128 * 1024)
+                    while (true) {
+                        val read = input.read(buffer)
+                        if (read <= 0) break
+                        out.write(buffer, 0, read)
+                        bytes += read
+                    }
+                    out.flush()
+                } ?: run {
+                    resolver.delete(uri, null, null)
+                    return GallerySaveResult(false, null, bytes)
+                }
+
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+                    val done = ContentValues().apply { put(MediaStore.Video.Media.IS_PENDING, 0) }
+                    resolver.update(uri, done, null, null)
+                }
+
+                GallerySaveResult(true, uri.toString(), bytes)
+            } catch (e: Exception) {
+                resolver.delete(uri, null, null)
+                Log.e("DataDownload", "Gallery video write failed for $displayName: ${e.message}", e)
+                GallerySaveResult(false, uri.toString(), bytes)
+            }
+        } catch (e: Exception) {
+            Log.e("DataDownload", "saveMp4ToGallery failed for $displayName: ${e.message}", e)
+            GallerySaveResult(false, null, 0)
+        }
+    }
+
+    private fun saveOpusToLibrary(input: InputStream, displayName: String, takenTimeMs: Long): GallerySaveResult {
+        return try {
+            val resolver = contentResolver
+
+            val rawBytes = readAllBytes(input)
+            val (payloadBytes, payloadNote) = wrapOpusIfNeeded(rawBytes)
+            val headHex = bytesToHex(payloadBytes, 24)
+            Log.i(
+                "DataDownload",
+                "OPUS save: name=$displayName, raw=${rawBytes.size} bytes, out=${payloadBytes.size} bytes, mode=$payloadNote, head=$headHex"
+            )
+
+            val title = displayName.substringBeforeLast('.', displayName)
+            val values = ContentValues().apply {
+                put(MediaStore.Audio.Media.DISPLAY_NAME, displayName)
+                // Use Ogg/Opus container when possible.
+                put(MediaStore.Audio.Media.MIME_TYPE, "audio/ogg")
+                put(MediaStore.Audio.Media.TITLE, title)
+                put(MediaStore.Audio.Media.IS_MUSIC, 0)
+                put(MediaStore.MediaColumns.DATE_ADDED, takenTimeMs / 1000)
+                put(MediaStore.MediaColumns.DATE_MODIFIED, takenTimeMs / 1000)
+
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+                    // Keep alongside photos/videos per your preference (DCIM/CyanBridge).
+                    put(MediaStore.MediaColumns.RELATIVE_PATH, Environment.DIRECTORY_DCIM + "/CyanBridge")
+                    put(MediaStore.MediaColumns.IS_PENDING, 1)
+                }
+            }
+
+            val uri = resolver.insert(MediaStore.Audio.Media.EXTERNAL_CONTENT_URI, values)
+                ?: return GallerySaveResult(false, null, 0)
+
+            var bytes = 0L
+            try {
+                resolver.openOutputStream(uri, "w")?.use { out ->
+                    out.write(payloadBytes)
+                    bytes = payloadBytes.size.toLong()
+                    out.flush()
+                } ?: run {
+                    resolver.delete(uri, null, null)
+                    return GallerySaveResult(false, null, bytes)
+                }
+
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+                    val done = ContentValues().apply { put(MediaStore.MediaColumns.IS_PENDING, 0) }
+                    resolver.update(uri, done, null, null)
+                }
+
+                GallerySaveResult(true, uri.toString(), bytes)
+            } catch (e: Exception) {
+                resolver.delete(uri, null, null)
+                Log.e("DataDownload", "Gallery audio write failed for $displayName: ${e.message}", e)
+                GallerySaveResult(false, uri.toString(), bytes)
+            }
+        } catch (e: Exception) {
+            Log.e("DataDownload", "saveOpusToLibrary failed for $displayName: ${e.message}", e)
+            GallerySaveResult(false, null, 0)
+        }
+    }
+
+    private fun readAllBytes(input: InputStream): ByteArray {
+        val bos = ByteArrayOutputStream()
+        val buffer = ByteArray(32 * 1024)
+        while (true) {
+            val read = input.read(buffer)
+            if (read <= 0) break
+            bos.write(buffer, 0, read)
+        }
+        return bos.toByteArray()
+    }
+
+    private fun bytesToHex(bytes: ByteArray, max: Int): String {
+        val n = minOf(bytes.size, max)
+        val sb = StringBuilder(n * 2)
+        for (i in 0 until n) {
+            sb.append(String.format("%02x", bytes[i]))
+        }
+        if (bytes.size > max) sb.append("...")
+        return sb.toString()
+    }
+
+    private fun wrapOpusIfNeeded(raw: ByteArray): Pair<ByteArray, String> {
+        if (raw.size >= 4 && raw[0].toInt() == 'O'.code && raw[1].toInt() == 'g'.code && raw[2].toInt() == 'g'.code && raw[3].toInt() == 'S'.code) {
+            return raw to "ogg-already"
+        }
+
+        // Try to interpret the file as a sequence of length-prefixed Opus packets and wrap
+        // them into a proper Ogg/Opus container so standard players (VLC) can open it.
+        val packets = parseLengthPrefixedPackets(raw, littleEndian = true)
+            ?: parseLengthPrefixedPackets(raw, littleEndian = false)
+            ?: parseLengthPrefixedPackets1B(raw)
+            ?: guessFixedSizePackets(raw)
+
+        if (packets == null || packets.isEmpty()) {
+            // Unknown/proprietary layout (the official app decodes these with jl_opus).
+            return raw to "raw-unwrapped"
+        }
+
+        return try {
+            val ogg = buildOggOpusFromPackets(packets, packetDurationMs = 40)
+            ogg to "wrapped packets=${packets.size}"
+        } catch (e: Exception) {
+            Log.w("DataDownload", "Failed to wrap opus into ogg: ${e.message}")
+            raw to "raw-unwrapped"
+        }
+    }
+
+    private fun parseLengthPrefixedPackets(raw: ByteArray, littleEndian: Boolean): List<ByteArray>? {
+        // Heuristic: repeated [u16 len][len bytes]...
+        var i = 0
+        val out = ArrayList<ByteArray>()
+        while (i + 2 <= raw.size) {
+            val b0 = raw[i].toInt() and 0xFF
+            val b1 = raw[i + 1].toInt() and 0xFF
+            val len = if (littleEndian) (b0 or (b1 shl 8)) else ((b0 shl 8) or b1)
+            i += 2
+            if (len <= 0 || len > 2000) return null
+            if (i + len > raw.size) return null
+            out.add(raw.copyOfRange(i, i + len))
+            i += len
+        }
+        if (i != raw.size) return null
+        // Require a few packets so we don't mis-detect.
+        return if (out.size >= 3) out else null
+    }
+
+    private fun parseLengthPrefixedPackets1B(raw: ByteArray): List<ByteArray>? {
+        // Heuristic: repeated [u8 len][len bytes]...
+        var i = 0
+        val out = ArrayList<ByteArray>()
+        while (i + 1 <= raw.size) {
+            val len = raw[i].toInt() and 0xFF
+            i += 1
+            if (len <= 0 || len > 255) return null
+            if (i + len > raw.size) return null
+            out.add(raw.copyOfRange(i, i + len))
+            i += len
+        }
+        if (i != raw.size) return null
+        return if (out.size >= 3) out else null
+    }
+
+    private fun guessFixedSizePackets(raw: ByteArray): List<ByteArray>? {
+        // Last-resort heuristic: some devices store raw Opus packets back-to-back with a
+        // fixed packet byte size. Try a few common sizes.
+        if (raw.isEmpty()) return null
+        // 40 bytes is especially common for these glasses (official app uses packetSize=40).
+        val candidates = intArrayOf(40, 60, 80, 100, 120, 160, 200, 240, 320)
+        for (size in candidates) {
+            if (size <= 0) continue
+            if (raw.size % size != 0) continue
+            val count = raw.size / size
+            if (count < 5) continue
+            val out = ArrayList<ByteArray>(count)
+            var i = 0
+            while (i < raw.size) {
+                out.add(raw.copyOfRange(i, i + size))
+                i += size
+            }
+            return out
+        }
+        return null
+    }
+
+    private fun buildOggOpusFromPackets(packets: List<ByteArray>, packetDurationMs: Int): ByteArray {
+        // Ogg/Opus expects OpusHead + OpusTags packets before audio packets.
+        val serial = SecureRandom().nextInt()
+        var seq = 0
+        var granulePos: Long = 0
+
+        val out = ByteArrayOutputStream()
+
+        val opusHead = buildOpusHead(channels = 1, preSkip = 0)
+        val opusTags = buildOpusTags(vendor = "CyanBridge")
+
+        // Header pages
+        writeOggPage(out, serial, seq++, granulePosition = 0, headerType = 0x02, packets = listOf(opusHead))
+        writeOggPage(out, serial, seq++, granulePosition = 0, headerType = 0x00, packets = listOf(opusTags))
+
+        // Audio pages
+        val samplesPerPacket48k = (packetDurationMs * 48_000L) / 1000L
+        val maxSegments = 255
+        var idx = 0
+        while (idx < packets.size) {
+            val pagePackets = ArrayList<ByteArray>()
+            var segCount = 0
+            var localGranule = granulePos
+
+            while (idx < packets.size) {
+                val p = packets[idx]
+                var neededSeg = (p.size + 254) / 255
+                if (p.size % 255 == 0) neededSeg += 1
+                if (segCount + neededSeg > maxSegments) break
+                pagePackets.add(p)
+                segCount += neededSeg
+                localGranule += samplesPerPacket48k
+                idx++
+            }
+
+            granulePos = localGranule
+            val isLast = idx >= packets.size
+            val headerType = if (isLast) 0x04 else 0x00
+            writeOggPage(out, serial, seq++, granulePosition = granulePos, headerType = headerType, packets = pagePackets)
+        }
+
+        return out.toByteArray()
+    }
+
+    private fun buildOpusHead(channels: Int, preSkip: Int): ByteArray {
+        // OpusHead (19 bytes)
+        val b = ByteArrayOutputStream()
+        b.write("OpusHead".toByteArray(Charsets.US_ASCII))
+        b.write(1) // version
+        b.write(channels and 0xFF)
+        // pre-skip LE16
+        b.write(preSkip and 0xFF)
+        b.write((preSkip shr 8) and 0xFF)
+        // input sample rate LE32 (Opus is coded at 48k internally)
+        val sr = 48_000
+        b.write(sr and 0xFF)
+        b.write((sr shr 8) and 0xFF)
+        b.write((sr shr 16) and 0xFF)
+        b.write((sr shr 24) and 0xFF)
+        // output gain LE16
+        b.write(0)
+        b.write(0)
+        // channel mapping family (0 = mono/stereo)
+        b.write(0)
+        return b.toByteArray()
+    }
+
+    private fun buildOpusTags(vendor: String): ByteArray {
+        val vendorBytes = vendor.toByteArray(Charsets.UTF_8)
+        val b = ByteArrayOutputStream()
+        b.write("OpusTags".toByteArray(Charsets.US_ASCII))
+        writeLe32(b, vendorBytes.size)
+        b.write(vendorBytes)
+        // user comment list length = 0
+        writeLe32(b, 0)
+        return b.toByteArray()
+    }
+
+    private fun writeLe32(out: ByteArrayOutputStream, v: Int) {
+        out.write(v and 0xFF)
+        out.write((v shr 8) and 0xFF)
+        out.write((v shr 16) and 0xFF)
+        out.write((v shr 24) and 0xFF)
+    }
+
+    private fun writeOggPage(
+        out: ByteArrayOutputStream,
+        serial: Int,
+        seq: Int,
+        granulePosition: Long,
+        headerType: Int,
+        packets: List<ByteArray>,
+    ) {
+        val segmentTable = ByteArrayOutputStream()
+        val payload = ByteArrayOutputStream()
+
+        for (p in packets) {
+            var remaining = p.size
+            var offset = 0
+            while (remaining > 0) {
+                val seg = minOf(255, remaining)
+                segmentTable.write(seg)
+                payload.write(p, offset, seg)
+                offset += seg
+                remaining -= seg
+            }
+            if (p.size % 255 == 0) {
+                // Lacing: 255 indicates continuation; add 0 to terminate packet exactly on boundary.
+                segmentTable.write(0)
+            }
+        }
+
+        val segBytes = segmentTable.toByteArray()
+        if (segBytes.size > 255) {
+            throw IllegalStateException("Ogg page has too many segments: ${segBytes.size}")
+        }
+        val payloadBytes = payload.toByteArray()
+
+        val header = ByteArrayOutputStream()
+        header.write("OggS".toByteArray(Charsets.US_ASCII))
+        header.write(0) // version
+        header.write(headerType and 0xFF)
+        writeLe64(header, granulePosition)
+        writeLe32(header, serial)
+        writeLe32(header, seq)
+        // checksum placeholder
+        writeLe32(header, 0)
+        header.write(segBytes.size)
+        header.write(segBytes)
+
+        val pageBytes = header.toByteArray() + payloadBytes
+        val crc = oggCrc(pageBytes)
+
+        // Patch checksum at byte offset 22 (from start of OggS)
+        pageBytes[22] = (crc and 0xFF).toByte()
+        pageBytes[23] = ((crc shr 8) and 0xFF).toByte()
+        pageBytes[24] = ((crc shr 16) and 0xFF).toByte()
+        pageBytes[25] = ((crc shr 24) and 0xFF).toByte()
+
+        out.write(pageBytes)
+    }
+
+    private fun writeLe64(out: ByteArrayOutputStream, v: Long) {
+        out.write((v and 0xFF).toInt())
+        out.write(((v shr 8) and 0xFF).toInt())
+        out.write(((v shr 16) and 0xFF).toInt())
+        out.write(((v shr 24) and 0xFF).toInt())
+        out.write(((v shr 32) and 0xFF).toInt())
+        out.write(((v shr 40) and 0xFF).toInt())
+        out.write(((v shr 48) and 0xFF).toInt())
+        out.write(((v shr 56) and 0xFF).toInt())
+    }
+
+    private val oggCrcTable: IntArray = run {
+        val table = IntArray(256)
+        for (i in 0 until 256) {
+            var r = i shl 24
+            for (j in 0 until 8) {
+                r = if ((r and 0x80000000.toInt()) != 0) {
+                    (r shl 1) xor 0x04C11DB7
+                } else {
+                    r shl 1
+                }
+            }
+            table[i] = r
+        }
+        table
+    }
+
+    private fun oggCrc(data: ByteArray): Int {
+        var crc = 0
+        for (b in data) {
+            val idx = ((crc ushr 24) xor (b.toInt() and 0xFF)) and 0xFF
+            crc = (crc shl 8) xor oggCrcTable[idx]
+        }
+        return crc
+    }
+    
     private fun cleanupP2pAfterDownload() {
+        downloadAttemptJob?.cancel()
+        downloadAttemptJob = null
+        unbindProcessFromNetwork()
         val manager = downloadWifiP2pManager
         val callback = downloadWifiP2pCallback
         if (manager != null && callback != null) {
@@ -1410,6 +2020,8 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
         downloadWifiP2pCallback = null
         downloadP2pConnected = false
         downloadInProgress = false
+        downloadP2pNetwork = null
+        downloadResolvedHttpIp = null
     }
 
     private fun showDownloadSuccess(message: String) {
@@ -1418,10 +2030,100 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
         Toast.makeText(this, message, Toast.LENGTH_LONG).show()
     }
     
-    private fun showDownloadError(message: String) {
-        cleanupP2pAfterDownload()
+    private fun showDownloadError(message: String, cleanup: Boolean = true) {
+        if (cleanup) {
+            cleanupP2pAfterDownload()
+        }
         Log.e("DataDownload", "ERROR: $message")
         Toast.makeText(this, message, Toast.LENGTH_LONG).show()
+    }
+
+    private fun isProbablyGroupOwnerIp(ip: String?): Boolean {
+        if (ip.isNullOrBlank()) return false
+        // Typical Wi-Fi Direct GO address when phone is GO.
+        return ip == "192.168.49.1"
+    }
+
+    private fun buildCandidateIps(): List<String> {
+        // Ordered best-effort list. We intentionally include a common glasses IP
+        // fallback (192.168.49.79) because in practice BLE IP sometimes never arrives.
+        val set = LinkedHashSet<String>()
+
+        downloadBleIp?.let { set.add(it) }
+        bleIpBridge.ip.value?.let { set.add(it) }
+
+        // If the P2P group owner is the phone (often 192.168.49.1), this is NOT the glasses.
+        // Keep it as a very low-priority hint only.
+        downloadWifiIp?.let { set.add(it) }
+
+        set.add("192.168.49.79")
+        set.add("192.168.49.2")
+        set.add("192.168.49.3")
+
+        return set.toList()
+    }
+
+    private fun isPortOpen(ip: String, port: Int, timeoutMs: Int): Boolean {
+        return try {
+            val factory: SocketFactory? = downloadP2pNetwork?.socketFactory
+            val sock = factory?.createSocket() ?: Socket()
+            sock.use { s ->
+                s.connect(InetSocketAddress(ip, port), timeoutMs)
+                true
+            }
+        } catch (_: Exception) {
+            false
+        }
+    }
+
+    private fun mediaConfigOk(ip: String, timeoutMs: Int, logFailures: Boolean = false): Boolean {
+        return try {
+            val conn = openHttpConnection(URL("http://$ip/files/media.config"))
+            conn.requestMethod = "GET"
+            conn.connectTimeout = timeoutMs
+            conn.readTimeout = timeoutMs
+            val code = conn.responseCode
+            conn.disconnect()
+            code == HttpURLConnection.HTTP_OK
+        } catch (e: Exception) {
+            if (logFailures) {
+                Log.w("DataDownload", "media.config probe failed for $ip: ${e.message}")
+            }
+            false
+        }
+    }
+
+    private suspend fun discoverGlassesIpByScan(prefix: String = "192.168.49."): String? {
+        // Fast scan for an HTTP server on port 80 in the P2P subnet.
+        // Concurrency is limited to avoid overwhelming the device/network stack.
+        return supervisorScope {
+            val sem = Semaphore(32)
+            val connectTimeoutMs = 300
+            val verifyTimeoutMs = 1200
+            val found = CompletableDeferred<String?>()
+            val firstOpenPortIp = AtomicReference<String?>(null)
+
+            for (host in 2..254) {
+                val ip = "$prefix$host"
+                if (ip == "192.168.49.1") continue
+                launch(Dispatchers.IO) {
+                    sem.withPermit {
+                        if (found.isCompleted) return@withPermit
+                        if (isPortOpen(ip, 80, connectTimeoutMs)) {
+                            firstOpenPortIp.compareAndSet(null, ip)
+                            // Prefer an IP that actually serves media.config.
+                            if (mediaConfigOk(ip, verifyTimeoutMs)) {
+                                found.complete(ip)
+                            }
+                        }
+                    }
+                }
+            }
+
+            val res = withTimeoutOrNull(20_000L) { found.await() } ?: firstOpenPortIp.get()
+            coroutineContext.cancelChildren()
+            res
+        }
     }
 
     /**
@@ -1450,7 +2152,7 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
         try {
             // Try to connect to the actual media configuration file
             val url = URL("http://$deviceIp/files/media.config")
-            val connection = url.openConnection() as HttpURLConnection
+            val connection = openHttpConnection(url)
             connection.requestMethod = "GET"
             connection.connectTimeout = 5000 // Connection timeout
             connection.readTimeout = 5000 // Read timeout
@@ -1479,38 +2181,225 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
     private fun onDownloadBleIp(ip: String) {
         Log.i("DataDownload", "BLE reported device WiFi IP: $ip")
         downloadBleIp = ip
+
+        // If we're stuck scanning/probing without a good route, restart the resolver now that
+        // we have the authoritative device IP from BLE.
+        if (downloadAttemptJob?.isActive == true && !downloadInProgress) {
+            Log.i("DataDownload", "New BLE IP arrived; restarting HTTP resolver")
+            downloadAttemptJob?.cancel()
+            downloadAttemptJob = null
+        }
         maybeStartHttpDownload("BLE")
     }
 
     private fun onDownloadP2pConnected(info: WifiP2pInfo) {
         downloadP2pConnected = info.groupFormed
         downloadWifiIp = info.groupOwnerAddress?.hostAddress
-        Log.i("DataDownload", "onDownloadP2pConnected: p2pConnected=$downloadP2pConnected, wifiIp=$downloadWifiIp")
+        downloadP2pNetwork = findLikelyP2pNetwork()
+        bindProcessToNetwork(downloadP2pNetwork)
+        Log.i(
+            "DataDownload",
+            "onDownloadP2pConnected: p2pConnected=$downloadP2pConnected, isGroupOwner=${info.isGroupOwner}, groupOwnerIp=$downloadWifiIp"
+        )
         maybeStartHttpDownload("P2P")
     }
 
     private fun maybeStartHttpDownload(source: String) {
-        if (downloadInProgress) {
+        if (downloadInProgress || downloadAttemptJob?.isActive == true) {
             Log.i("DataDownload", "Download already in progress, ignoring trigger from $source")
             return
         }
-        // Prefer an IP we explicitly saw from the device:
-        // 1) IP reported in 0x08 notify (downloadBleIp)
-        // 2) IP parsed by BleIpBridge from BLE payloads
-        // 3) As a last resort, the WiFi P2P group owner address
         val bridgeIp = bleIpBridge.ip.value
-        val ip = downloadBleIp ?: bridgeIp ?: downloadWifiIp
-        if (!downloadP2pConnected || ip.isNullOrEmpty()) {
-            Log.i(
-                "DataDownload",
-                "Not ready yet from $source. p2p=$downloadP2pConnected, bleIp=$downloadBleIp, wifiIp=$downloadWifiIp, bleBridgeIp=$bridgeIp"
-            )
+        Log.i(
+            "DataDownload",
+            "HTTP start trigger from $source. p2p=$downloadP2pConnected, bleIp=$downloadBleIp, groupOwnerIp=$downloadWifiIp, bleBridgeIp=$bridgeIp"
+        )
+
+        downloadAttemptJob = CoroutineScope(Dispatchers.IO).launch {
+            val startMs = System.currentTimeMillis()
+            val overallTimeoutMs = 90_000L
+            var lastStatusLogMs = 0L
+            var didSubnetScan = false
+
+            while (isActive && System.currentTimeMillis() - startMs < overallTimeoutMs) {
+                val now = System.currentTimeMillis()
+                if (now - lastStatusLogMs > 5000) {
+                    lastStatusLogMs = now
+                    Log.i(
+                        "DataDownload",
+                        "Resolving glasses HTTP IP... p2p=$downloadP2pConnected, bleIp=$downloadBleIp, groupOwnerIp=$downloadWifiIp"
+                    )
+                }
+
+                // 1) Try known candidates first.
+                for (candidate in buildCandidateIps()) {
+                    if (!isActive) return@launch
+                    if (candidate.isBlank()) continue
+                    if (isProbablyGroupOwnerIp(candidate)) {
+                        // The phone typically has nothing on port 80.
+                        continue
+                    }
+                    val shouldLog = candidate == downloadBleIp
+                    if (mediaConfigOk(candidate, 2000, logFailures = shouldLog)) {
+                        downloadResolvedHttpIp = candidate
+                        downloadInProgress = true
+                        Log.i("DataDownload", "Resolved glasses HTTP IP via candidate list: $candidate")
+                        downloadMediaList(candidate)
+                        return@launch
+                    }
+                }
+
+                // 2) If we have a group owner IP in 192.168.49.x, scan that /24.
+                if (!didSubnetScan &&
+                    downloadP2pConnected &&
+                    downloadResolvedHttpIp == null &&
+                    downloadBleIp == null &&
+                    bleIpBridge.ip.value == null &&
+                    (downloadWifiIp?.startsWith("192.168.49.") == true)
+                ) {
+                    didSubnetScan = true
+                    Log.i("DataDownload", "Candidate IPs failed; scanning 192.168.49.0/24 for HTTP server...")
+                    val found = discoverGlassesIpByScan("192.168.49.")
+                    if (!found.isNullOrBlank()) {
+                        downloadResolvedHttpIp = found
+                        downloadInProgress = true
+                        Log.i("DataDownload", "Resolved glasses HTTP IP via scan: $found")
+                        downloadMediaList(found)
+                        return@launch
+                    }
+                }
+
+                delay(1500)
+            }
+
+            withContext(Dispatchers.Main) {
+                // Do not immediately tear down P2P; the glasses sometimes report IP late.
+                showDownloadError(
+                    "Could not resolve glasses HTTP IP (bleIp=$downloadBleIp, groupOwnerIp=$downloadWifiIp, p2p=$downloadP2pConnected)",
+                    cleanup = false
+                )
+            }
+
+            // Avoid leaving the P2P group around forever.
+            delay(15_000)
+            withContext(Dispatchers.Main) {
+                if (!downloadInProgress) {
+                    Log.i("DataDownload", "Cleaning up P2P after unresolved download")
+                    cleanupP2pAfterDownload()
+                }
+            }
+        }
+    }
+
+    private inner class DownloadNotifyListener : GlassesDeviceNotifyListener() {
+        @RequiresApi(Build.VERSION_CODES.O)
+        override fun parseData(cmdType: Int, response: GlassesDeviceNotifyRsp) {
+            // Only handle download-relevant notifications here to avoid duplicating
+            // other flows already handled by MyDeviceNotifyListener.
+            val load = response.loadData
+            if (load.size < 7) return
+            when (load[6].toInt()) {
+                0x08 -> {
+                    if (load.size >= 11) {
+                        val ip = "${ByteUtil.byteToInt(load[7])}." +
+                                "${ByteUtil.byteToInt(load[8])}." +
+                                "${ByteUtil.byteToInt(load[9])}." +
+                                "${ByteUtil.byteToInt(load[10])}"
+                        Log.i("DeviceNotify", "(download) BLE reported WiFi IP: $ip")
+                        onDownloadBleIp(ip)
+                    }
+                }
+
+                0x09 -> {
+                    val raw = load.getOrNull(7) ?: 0
+                    val errorCode = ByteUtil.byteToInt(raw)
+                    Log.e("DeviceNotify", "(download) P2P/WiFi error from device: $errorCode (raw=$raw)")
+                    if (errorCode == 255) {
+                        maybeResetP2pAfterError255("download")
+                    }
+                }
+            }
+        }
+    }
+
+    private fun openHttpConnection(url: URL): HttpURLConnection {
+        val network = downloadP2pNetwork ?: findLikelyP2pNetwork()?.also { downloadP2pNetwork = it }
+        val conn = if (network != null) {
+            network.openConnection(url) as HttpURLConnection
+        } else {
+            url.openConnection() as HttpURLConnection
+        }
+        conn.instanceFollowRedirects = true
+        return conn
+    }
+
+    private fun findLikelyP2pNetwork(): Network? {
+        return try {
+            val cm = getSystemService(Context.CONNECTIVITY_SERVICE) as ConnectivityManager
+            for (n in cm.allNetworks) {
+                val lp = cm.getLinkProperties(n) ?: continue
+                val ifName = lp.interfaceName ?: ""
+                val has49 = lp.linkAddresses.any { la ->
+                    la.address.hostAddress?.startsWith("192.168.49.") == true
+                }
+                if (ifName.contains("p2p", ignoreCase = true) || has49) {
+                    val addrs = lp.linkAddresses.joinToString { it.address.hostAddress ?: "?" }
+                    Log.i("DataDownload", "Selected P2P network: if=$ifName addrs=[$addrs]")
+                    return n
+                }
+            }
+            null
+        } catch (e: Exception) {
+            Log.w("DataDownload", "Failed to locate P2P network: ${e.message}")
+            null
+        }
+    }
+
+    private fun bindProcessToNetwork(network: Network?) {
+        if (network == null) return
+        if (boundNetwork == network) return
+        try {
+            val cm = getSystemService(Context.CONNECTIVITY_SERVICE) as ConnectivityManager
+            val ok = cm.bindProcessToNetwork(network)
+            if (ok) {
+                boundNetwork = network
+                Log.i("DataDownload", "Bound process to P2P network")
+            } else {
+                Log.w("DataDownload", "bindProcessToNetwork returned false")
+            }
+        } catch (e: Exception) {
+            Log.w("DataDownload", "bindProcessToNetwork failed: ${e.message}")
+        }
+    }
+
+    private fun unbindProcessFromNetwork() {
+        if (boundNetwork == null) return
+        try {
+            val cm = getSystemService(Context.CONNECTIVITY_SERVICE) as ConnectivityManager
+            cm.bindProcessToNetwork(null)
+        } catch (_: Exception) {
+            // ignore
+        } finally {
+            boundNetwork = null
+        }
+    }
+
+    private fun maybeResetP2pAfterError255(source: String) {
+        val now = System.currentTimeMillis()
+        val haveDeviceIp = !downloadBleIp.isNullOrBlank() || !bleIpBridge.ip.value.isNullOrBlank()
+
+        // On some devices (notably Samsung), sending the reset command while we are actively
+        // trying to talk to the glasses can drop the P2P link and kill the HTTP session.
+        if (downloadInProgress || (downloadAttemptJob?.isActive == true && haveDeviceIp)) {
+            Log.i("DataDownload", "Suppressing resetDeviceP2p on error=255 (source=$source) during active download/resolve")
             return
         }
 
-        downloadInProgress = true
-        Log.i("DataDownload", "Conditions satisfied from $source, starting HTTP download from $ip")
-        downloadMediaList(ip)
+        if (now - lastP2pResetAtMs < 10_000) {
+            return
+        }
+        lastP2pResetAtMs = now
+        WifiP2pManagerSingleton.getInstance(this).resetDeviceP2p()
     }
 
     inner class MyDeviceNotifyListener : GlassesDeviceNotifyListener() {
@@ -1670,7 +2559,7 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
                         // layer to reset, but do NOT treat this as a fatal
                         // error for the whole download flow. The official app
                         // still proceeds to receive an IP and download.
-                        WifiP2pManagerSingleton.getInstance(this@MainActivity).resetDeviceP2p()
+                        maybeResetP2pAfterError255("main")
                     }
                 }
             }

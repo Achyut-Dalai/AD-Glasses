@@ -320,16 +320,6 @@
                 style="@style/Widget.MaterialComponents.Button.OutlinedButton"/>
         </LinearLayout>
 
-        <Button
-            android:id="@+id/btn_thumbnail"
-
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:layout_marginTop="8dp"
-                android:text="Smart Recognition"
-                android:backgroundTint="@color/card_bg"
-                android:textColor="@color/purple_200"/>
-
             <Button
                 android:id="@+id/btn_data_download"
                 android:layout_width="match_parent"

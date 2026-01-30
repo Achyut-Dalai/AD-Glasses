@@ -11,6 +11,7 @@ import android.net.wifi.p2p.WifiP2pManager
 import android.os.Handler
 import android.os.Looper
 import android.util.Log
+import androidx.core.content.ContextCompat
 import com.oudmon.ble.base.communication.LargeDataHandler
 import java.util.concurrent.CopyOnWriteArrayList
 
@@ -33,6 +34,9 @@ class WifiP2pManagerSingleton private constructor(private val context: Context) 
     private var wifiP2pDevice: WifiP2pDevice? = null
     private val handler = Handler(Looper.getMainLooper())
     private val callbacks = CopyOnWriteArrayList<WifiP2pCallback>()
+
+    private val discoveryTimeoutMs = 16_000L
+    private val connectTimeoutMs = 15_000L
 
     private var connected = false
     private var connecting = false
@@ -76,7 +80,13 @@ class WifiP2pManagerSingleton private constructor(private val context: Context) 
 
     fun registerReceiver() {
         receiver = WifiP2pBroadcastReceiver(this)
-        context.registerReceiver(receiver, intentFilter, Context.RECEIVER_EXPORTED)
+        // Use compat API to avoid calling the API 33+ registerReceiver overload on older devices.
+        ContextCompat.registerReceiver(
+            context,
+            receiver,
+            intentFilter,
+            ContextCompat.RECEIVER_NOT_EXPORTED
+        )
     }
 
     fun unregisterReceiver() {
@@ -88,7 +98,7 @@ class WifiP2pManagerSingleton private constructor(private val context: Context) 
     }
 
     fun startPeerDiscovery() {
-        handler.postDelayed(discoveryTimeOut, 16000L)
+        handler.postDelayed(discoveryTimeOut, discoveryTimeoutMs)
         wifiP2pManager.discoverPeers(wifiP2pChannel, object : WifiP2pManager.ActionListener {
             override fun onSuccess() {
                 Log.d(TAG, "Peer discovery started successfully")
@@ -97,12 +107,32 @@ class WifiP2pManagerSingleton private constructor(private val context: Context) 
 
             override fun onFailure(reason: Int) {
                 Log.e(TAG, "Peer discovery failed: $reason")
+                // Mirror vendor behavior: reschedule the internal timeout and stop discovery
+                // so we can retry in a stable way.
+                handler.removeCallbacks(discoveryTimeOut)
+                handler.postDelayed(discoveryTimeOut, 2000L)
                 callbacks.forEach { it.onPeerDiscoveryFailed(reason) }
+                discoverPeersStable()
+            }
+        })
+    }
+
+    fun discoverPeersStable() {
+        wifiP2pManager.stopPeerDiscovery(wifiP2pChannel, object : WifiP2pManager.ActionListener {
+            override fun onSuccess() {
+                Log.d(TAG, "discoverPeersStable success")
+            }
+
+            override fun onFailure(reason: Int) {
+                Log.d(TAG, "discoverPeersStable onFailure $reason")
             }
         })
     }
 
     fun connectToDevice(device: WifiP2pDevice) {
+        // Once we decide to connect, stop peer discovery timeout tracking.
+        resetPeerDiscovery()
+
         if (connecting) {
             Log.d(TAG, "P2P is connecting, no connection call back")
             callbacks.forEach { it.connecting() }
@@ -114,14 +144,18 @@ class WifiP2pManagerSingleton private constructor(private val context: Context) 
             return
         }
 
+        // Arm internal connect timeout (vendor app uses ~15s).
+        handler.postDelayed(connectTimeOut, connectTimeoutMs)
+
         wifiP2pDevice = device
         val config = WifiP2pConfig().apply {
             deviceAddress = device.deviceAddress
-            groupOwnerIntent = 0
+            // Match decompiled vendor app: WPS PBC.
+            wps.setup = 0
         }
 
         connecting = true
-        Log.d(TAG, "Already connecting device: ${device.deviceName}")
+        Log.d(TAG, "Already connecting device: ${device.deviceName}---${device.deviceAddress}")
 
         wifiP2pManager.connect(wifiP2pChannel, config, object : WifiP2pManager.ActionListener {
             override fun onSuccess() {
@@ -143,11 +177,13 @@ class WifiP2pManagerSingleton private constructor(private val context: Context) 
             wifiP2pManager.cancelConnect(wifiP2pChannel, object : WifiP2pManager.ActionListener {
                 override fun onSuccess() {
                     Log.d(TAG, "Cancel connect successful")
+                    handler.removeCallbacks(connectTimeOut)
                     callbacks.forEach { it.cancelConnect() }
                 }
 
                 override fun onFailure(reason: Int) {
                     Log.e(TAG, "Cancel connect failed: $reason")
+                    handler.removeCallbacks(connectTimeOut)
                     callbacks.forEach { it.cancelConnectFail(reason) }
                 }
             })
@@ -175,10 +211,14 @@ class WifiP2pManagerSingleton private constructor(private val context: Context) 
     fun resetFailCount() {
         connectRetry = 0
         discoveryRetry = 0
+        connecting = false
+        setConnect(false)
+        handler.removeCallbacks(discoveryTimeOut)
+        handler.removeCallbacks(connectTimeOut)
     }
 
     fun resetPeerDiscovery() {
-        discoveryRetry = 0
+        handler.removeCallbacks(discoveryTimeOut)
     }
 
     fun setConnect(connected: Boolean) {
@@ -268,12 +308,14 @@ class WifiP2pManagerSingleton private constructor(private val context: Context) 
     internal fun onConnectionInfoAvailable(info: WifiP2pInfo) {
         connecting = false
         connected = info.groupFormed
+        handler.removeCallbacks(connectTimeOut)
         callbacks.forEach { it.onConnected(info) }
     }
 
     internal fun onDisconnected() {
         connecting = false
         connected = false
+        handler.removeCallbacks(connectTimeOut)
         callbacks.forEach { it.onDisconnected() }
     }
 

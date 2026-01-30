@@ -19,4 +19,19 @@
     <string name="text_16">Dump OTA server info</string>
     <string name="text_17">Test pull-mode OTA (writeIpToSoc)</string>
     <string name="scan_device">Scan Device</string>
+
+    <string name="battery_opt_title">Keep CyanBridge Running</string>
+    <string name="battery_opt_status_on">Status: Battery optimization is ON for CyanBridge</string>
+    <string name="battery_opt_status_off">Status: Battery optimization is OFF for CyanBridge</string>
+    <string name="battery_opt_body">Some midrange/low-end phones may disconnect Bluetooth devices when CyanBridge is in the background or when you close the app. To keep your glasses connected, disable battery optimization for CyanBridge.</string>
+    <string name="battery_opt_disable_button">Disable Battery Optimization</string>
+    <string name="battery_opt_open_list_button">Open Battery Optimization Settings</string>
+    <string name="battery_opt_open_app_info_button">Open App Info</string>
+    <string name="battery_opt_lock_app_title">Also lock CyanBridge in Recents</string>
+    <string name="battery_opt_lock_app_body">Open Recents, find CyanBridge, then use the app menu (often a long-press or tap the app icon) and choose Lock/Pin/Keep open. This prevents the system from clearing the app.</string>
+    <string name="battery_opt_done_button">I Disabled It</string>
+    <string name="battery_opt_skip_button">Don\'t show again</string>
+    <string name="battery_opt_still_on_toast">Battery optimization still appears to be ON. Please disable it, then tap \"I Disabled It\" again.</string>
+    <string name="battery_opt_not_supported">Battery optimization settings are not available on this Android version.</string>
+    <string name="battery_opt_cant_open_settings">Could not open settings on this device.</string>
 </resources>

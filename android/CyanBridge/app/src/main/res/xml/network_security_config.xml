@@ -1,18 +1,15 @@
 <?xml version="1.0" encoding="utf-8"?>
 <network-security-config>
-    <domain-config cleartextTrafficPermitted="true">
-        <!-- Allow cleartext traffic for local network connections -->
-        <domain includeSubdomains="false">192.168.49.79</domain>
-        <domain includeSubdomains="false">192.168.49.1</domain>
-        <domain includeSubdomains="false">192.168.49.0</domain>
-        <domain includeSubdomains="false">192.168.0.0</domain>
-        <domain includeSubdomains="false">10.0.0.0</domain>
-        <domain includeSubdomains="false">172.16.0.0</domain>
-        <domain includeSubdomains="false">localhost</domain>
-    </domain-config>
-    
-    <!-- Default configuration - require HTTPS for all other connections -->
-    <base-config cleartextTrafficPermitted="false">
+    <!--
+      The glasses expose an HTTP server (e.g. http://192.168.49.x/files/media.config)
+      for media transfer over Wi-Fi Direct. Android's network security policy can
+      block cleartext unless explicitly allowed.
+
+      We permit cleartext globally because the app's external endpoints are HTTPS
+      anyway, and the local-device transfer IP can vary (so per-host allowlists are
+      fragile).
+    -->
+    <base-config cleartextTrafficPermitted="true">
         <trust-anchors>
             <certificates src="system"/>
         </trust-anchors>
