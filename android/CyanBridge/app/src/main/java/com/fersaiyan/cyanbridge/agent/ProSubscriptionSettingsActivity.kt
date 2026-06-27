@@ -17,7 +17,9 @@ import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.app.AppCompatActivity
 import androidx.lifecycle.Lifecycle
 import com.google.android.material.button.MaterialButton
+import com.google.android.material.progressindicator.LinearProgressIndicator
 import com.fersaiyan.cyanbridge.R
+import kotlin.math.roundToInt
 import kotlin.concurrent.thread
 
 class ProSubscriptionSettingsActivity : AppCompatActivity() {
@@ -66,6 +68,8 @@ class ProSubscriptionSettingsActivity : AppCompatActivity() {
         val tvAccountToken: TextView = findViewById(R.id.tv_account_token)
         val tvAccountSubscription: TextView = findViewById(R.id.tv_account_subscription)
         val tvQuotaStatus: TextView = findViewById(R.id.tv_quota_status)
+        val tvQuotaBreakdown: TextView = findViewById(R.id.tv_quota_breakdown)
+        val progressQuota: LinearProgressIndicator = findViewById(R.id.progress_quota)
         val tvBetaCloudStatus: TextView = findViewById(R.id.tv_beta_cloud_status)
         val btnRefreshPlanStatus: MaterialButton = findViewById(R.id.btn_refresh_plan_status)
         val btnRefreshAccount: MaterialButton = findViewById(R.id.btn_refresh_account)
@@ -285,9 +289,71 @@ class ProSubscriptionSettingsActivity : AppCompatActivity() {
                 .format(java.util.Date(resetAtMs))
         }
 
+        fun compactCount(value: Int): String {
+            val absValue = kotlin.math.abs(value.toLong())
+            return when {
+                absValue >= 1_000_000_000L -> String.format(java.util.Locale.US, "%.1fB", value / 1_000_000_000.0)
+                absValue >= 1_000_000L -> String.format(java.util.Locale.US, "%.1fM", value / 1_000_000.0)
+                absValue >= 1_000L -> String.format(java.util.Locale.US, "%.1fk", value / 1_000.0)
+                else -> value.toString()
+            }.replace(".0", "")
+        }
+
+        fun showQuotaLoading(model: String) {
+            tvQuotaStatus.text = "Quota: loading for model '$model'..."
+            tvQuotaBreakdown.visibility = View.GONE
+            progressQuota.visibility = View.VISIBLE
+            progressQuota.isIndeterminate = true
+        }
+
+        fun showQuotaError(message: String) {
+            tvQuotaStatus.text = message
+            tvQuotaBreakdown.visibility = View.GONE
+            progressQuota.visibility = View.GONE
+            progressQuota.isIndeterminate = false
+        }
+
+        fun showQuotaInfo(quota: ProSubscriptionRelayClient.QuotaInfo) {
+            val displayModel = quota.model.removeSuffix("/free").ifBlank { quota.model }
+            val resetText = if (quota.resetAtMs > 0L) {
+                "Resets ${formatResetTime(quota.resetAtMs)}"
+            } else {
+                ""
+            }
+
+            if (quota.limit > 0) {
+                val usedPercent = ((quota.used.toDouble() / quota.limit.toDouble()) * 100.0)
+                    .coerceIn(0.0, 100.0)
+                    .roundToInt()
+                tvQuotaStatus.text = "Quota ($displayModel): $usedPercent% used"
+                tvQuotaBreakdown.text = buildString {
+                    append("${compactCount(quota.remaining)} left")
+                    append(" · ${compactCount(quota.used)}/${compactCount(quota.limit)} used")
+                    if (resetText.isNotBlank()) {
+                        append(" · $resetText")
+                    }
+                }
+                tvQuotaBreakdown.visibility = View.VISIBLE
+                progressQuota.visibility = View.VISIBLE
+                progressQuota.isIndeterminate = false
+                progressQuota.progress = usedPercent
+            } else {
+                tvQuotaStatus.text = "Quota ($displayModel): ${compactCount(quota.remaining)} left"
+                tvQuotaBreakdown.text = buildString {
+                    append("${compactCount(quota.used)} used")
+                    if (resetText.isNotBlank()) {
+                        append(" · $resetText")
+                    }
+                }
+                tvQuotaBreakdown.visibility = View.VISIBLE
+                progressQuota.visibility = View.GONE
+                progressQuota.isIndeterminate = false
+            }
+        }
+
         fun refreshQuota() {
             val model = selectedModel(spinnerModelRequests)
-            tvQuotaStatus.text = "Quota: loading for model '$model'..."
+            showQuotaLoading(model)
             setButtonBusy(btnRefreshQuota, true, "Refreshing...", "Refresh quota")
             thread {
                 val result = ProSubscriptionRelayClient.fetchQuota(this, model)
@@ -295,20 +361,14 @@ class ProSubscriptionSettingsActivity : AppCompatActivity() {
                 runSafeOnUiThread {
                     setButtonBusy(btnRefreshQuota, false, "Refreshing...", "Refresh quota")
                     result.onSuccess { quota ->
-                        val limitText = if (quota.limit > 0) quota.limit.toString() else "unknown"
-                        val displayModel = quota.model.removeSuffix("/free").ifBlank { quota.model }
-                        val resetText = if (quota.resetAtMs > 0L) {
-                            " · resets ${formatResetTime(quota.resetAtMs)}"
-                        } else ""
-                        tvQuotaStatus.text =
-                            "Quota ($displayModel): ${quota.remaining} left · used ${quota.used}/$limitText$resetText"
+                        showQuotaInfo(quota)
                     }.onFailure {
                         val hint = ProSubscriptionRelayClient.relayUnavailableHint(it)
-                        tvQuotaStatus.text = if (hint != null) {
+                        showQuotaError(if (hint != null) {
                             "Quota unavailable: $hint"
                         } else {
                             "Quota unavailable: ${it.message ?: "unknown error"}"
-                        }
+                        })
                     }
                 }
             }
@@ -505,7 +565,11 @@ class ProSubscriptionSettingsActivity : AppCompatActivity() {
         }
 
         val plans = arrayOf("cheap", "standard", "max")
-        val labels = arrayOf("Cheap — \$1/month", "Standard — \$5/month", "Max — \$20/month")
+        val labels = arrayOf(
+            "Cheap — \$1.55/month (\$1 base + Paddle 5% + \$0.50)",
+            "Standard — \$5.75/month (\$5 base + Paddle 5% + \$0.50)",
+            "Max — \$21.50/month (\$20 base + Paddle 5% + \$0.50)",
+        )
         var selected = 0
 
         AlertDialog.Builder(this)
@@ -603,39 +667,53 @@ class ProSubscriptionSettingsActivity : AppCompatActivity() {
             openPlaySubscriptionManagement(button)
             return
         }
+        val plan = ProSubscriptionPrefs.getPlan(this)
+        val message = if (plan == "free_trial") {
+            "Are you sure you want to end your free trial now?"
+        } else {
+            "Are you sure you want to cancel your subscription? You'll keep access until the end of your current billing period."
+        }
+        AlertDialog.Builder(this)
+            .setTitle(if (plan == "free_trial") "End Free Trial?" else "Cancel Subscription?")
+            .setMessage(message)
+            .setPositiveButton(if (plan == "free_trial") "End Trial" else "Yes, Cancel") { _, _ ->
+                cancelSubscriptionInApp(button)
+            }
+            .setNegativeButton("Keep It", null)
+            .show()
+    }
+
+    private fun cancelSubscriptionInApp(button: MaterialButton) {
         val normalLabel = button.text.toString()
         button.isEnabled = false
         button.alpha = 0.6f
-        button.text = "Opening..."
+        button.text = "Cancelling..."
         thread {
-            val apiToken = runCatching {
-                ProSubscriptionServerPrefs.getApiToken(this).trim().ifBlank {
-                    ProSubscriptionRelayClient.fetchAccountInfo(this).getOrThrow().apiToken.trim()
-                }
-            }.getOrDefault("")
-
-            val relayBase = com.fersaiyan.cyanbridge.ai.router.AiProviderPrefs.getRelayBaseUrl(this)
-                .trim()
-                .trimEnd('/')
-            val manageUrl = Uri.parse("$relayBase/web-subscribe/cancel").buildUpon().apply {
-                if (apiToken.isNotBlank()) {
-                    appendQueryParameter("api_token", apiToken)
-                }
-            }.build().toString()
+            val result = ProSubscriptionRelayClient.cancelSubscription(this)
 
             runSafeOnUiThread {
                 button.isEnabled = true
                 button.alpha = 1f
                 button.text = normalLabel
-                runCatching {
-                    val intent = Intent(Intent.ACTION_VIEW, Uri.parse(manageUrl))
-                    if (intent.resolveActivityInfo(packageManager, 0) == null) {
-                        Toast.makeText(this, "No browser found to manage the subscription.", Toast.LENGTH_SHORT).show()
-                        return@runCatching
+                result.onSuccess { cancel ->
+                    ProSubscriptionPrefs.setSubscribed(this, cancel.active)
+                    ProSubscriptionPrefs.setPlan(this, cancel.plan)
+                    ProSubscriptionPrefs.setExpiresAt(this, cancel.expiresAtMs)
+                    ProSubscriptionPrefs.setProvider(this, "server_verified")
+                    ProSubscriptionPrefs.setLastVerifiedAt(this, System.currentTimeMillis())
+                    if (!cancel.active) {
+                        ProSubscriptionPrefs.setPurchaseToken(this, "")
                     }
-                    startActivity(intent)
+
+                    Toast.makeText(this, cancel.message, Toast.LENGTH_LONG).show()
+
+                    if (!cancel.active) {
+                        finish()
+                    } else {
+                        recreate()
+                    }
                 }.onFailure {
-                    Toast.makeText(this, "Unable to open subscription management: ${it.message}", Toast.LENGTH_LONG).show()
+                    Toast.makeText(this, "Unable to cancel subscription: ${it.message}", Toast.LENGTH_LONG).show()
                 }
             }
         }

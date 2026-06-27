@@ -102,21 +102,21 @@
                             android:id="@+id/rb_cheap"
                             android:layout_width="match_parent"
                             android:layout_height="wrap_content"
-                            android:text="Cheap — $1/month"
+                            android:text="Cheap — $1.55/month ($1 base + Paddle 5% + $0.50)"
                             android:textColor="@color/text_primary" />
 
                         <com.google.android.material.radiobutton.MaterialRadioButton
                             android:id="@+id/rb_standard"
                             android:layout_width="match_parent"
                             android:layout_height="wrap_content"
-                            android:text="Standard — $5/month"
+                            android:text="Standard — $5.75/month ($5 base + Paddle 5% + $0.50)"
                             android:textColor="@color/text_primary" />
 
                         <com.google.android.material.radiobutton.MaterialRadioButton
                             android:id="@+id/rb_max"
                             android:layout_width="match_parent"
                             android:layout_height="wrap_content"
-                            android:text="Max — $20/month"
+                            android:text="Max — $21.50/month ($20 base + Paddle 5% + $0.50)"
                             android:textColor="@color/text_primary" />
 
                     </RadioGroup>

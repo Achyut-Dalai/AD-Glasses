@@ -54,7 +54,8 @@ object ProSubscriptionVerifier {
 
         val url = resolveVerifyUrl(context)
         val token = ProSubscriptionPrefs.getPurchaseToken(context).trim()
-        if (url.isBlank() || token.isBlank()) {
+        val serverToken = ProSubscriptionServerPrefs.getApiToken(context).trim()
+        if (url.isBlank() || (token.isBlank() && serverToken.isBlank())) {
             if (strictForTesting && base.active) {
                 return strictFailure(
                     context = context,
@@ -81,8 +82,6 @@ object ProSubscriptionVerifier {
                 return base.copy(message = "Using local status (server does not support subscription verification)")
             }
         }
-
-        val serverToken = ProSubscriptionServerPrefs.getApiToken(context)
 
         return runCatching {
             val payload = JSONObject()

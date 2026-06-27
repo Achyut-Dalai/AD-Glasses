@@ -123,7 +123,12 @@ class ProSubscriptionActivity : AppCompatActivity() {
         maybePromptPendingLegacyCheckout()
         maybePromptPendingDonation()
 
-        if (ProSubscriptionPrefs.isSubscribed(this)) {
+        val shouldVerifyServerState = ProSubscriptionPrefs.isSubscribed(this) || (
+            ProSubscriptionPrefs.getProvider(this) != "play_billing" &&
+                ProSubscriptionServerPrefs.getApiToken(this).isNotBlank()
+            )
+
+        if (shouldVerifyServerState) {
             thread {
                 ProSubscriptionVerifier.verifyNow(this, strictForTesting = shouldForceStrictVerification())
                 runOnUiThread {
@@ -271,9 +276,9 @@ class ProSubscriptionActivity : AppCompatActivity() {
                         val routeNote = ProSubscriptionRoutingPolicy.actionNote(routeAction)
                         val displayPlan = when (plan) {
                             "free_trial" -> "Free Trial (30 days)"
-                            "cheap" -> "Cheap ($1/mo)"
-                            "standard" -> "Standard ($5/mo)"
-                            "max" -> "Max ($20/mo)"
+                            "cheap" -> "Cheap ($1.55/mo)"
+                            "standard" -> "Standard ($5.75/mo)"
+                            "max" -> "Max ($21.50/mo)"
                             else -> plan
                         }
                         val finalMessage = if (routeNote.isBlank()) {
@@ -470,8 +475,6 @@ class ProSubscriptionActivity : AppCompatActivity() {
             .appendQueryParameter("package_name", packageName)
             .appendQueryParameter("return_url", callback.toString())
             .appendQueryParameter("change_plan", if (changePlan) "1" else "0")
-            .appendQueryParameter("legacy_checkout", "1")
-            .appendQueryParameter("native_legacy", "1")
             .apply {
                 val accountEmail = ProSubscriptionServerPrefs.getAccountEmail(this@ProSubscriptionActivity)
                 val finalEmail = emailHint.ifBlank { accountEmail }
@@ -481,7 +484,7 @@ class ProSubscriptionActivity : AppCompatActivity() {
             }
             .build()
 
-        Toast.makeText(this, "Preparing secure checkout...", Toast.LENGTH_SHORT).show()
+        Toast.makeText(this, "Opening secure checkout...", Toast.LENGTH_SHORT).show()
         thread {
             val apiToken = runCatching {
                 ProSubscriptionServerPrefs.getApiToken(this).trim().ifBlank {
@@ -501,43 +504,8 @@ class ProSubscriptionActivity : AppCompatActivity() {
                 }
             }.build().toString()
 
-            val browserFallbackTarget = setupTarget
-
-            try {
-                val conn = URL(setupTarget).openConnection() as HttpURLConnection
-                conn.requestMethod = "GET"
-                conn.connectTimeout = 15000
-                conn.readTimeout = 20000
-                conn.setRequestProperty("Accept", "text/html,application/xhtml+xml")
-                val responseCode = conn.responseCode
-                val stream = if (responseCode in 200..299) conn.inputStream else conn.errorStream
-                val body = stream?.bufferedReader()?.use { it.readText() }.orEmpty()
-                if (responseCode !in 200..299) {
-                    throw IllegalStateException(body.ifBlank { "Legacy checkout setup failed." })
-                }
-
-                val session = parseLegacyCheckoutSession(
-                    body = body,
-                    baseUrl = baseUrl,
-                    fallbackPlan = plan,
-                    fallbackApiToken = apiToken,
-                    fallbackEmail = finalEmail,
-                ) ?: throw IllegalStateException("Could not find the Asaas card form link in the checkout page.")
-
-                if (session.invoiceUrl.isBlank() || session.statusUrl.isBlank() || session.apiToken.isBlank()) {
-                    throw IllegalStateException("Legacy checkout did not return the expected Asaas links.")
-                }
-
-                PendingLegacyCheckoutPrefs.save(this, session)
-                PendingLegacyCheckoutPrefs.setAwaitingReturn(this, false)
-                runOnUiThread {
-                    showLegacyCheckoutIntroDialog(session)
-                }
-            } catch (error: Throwable) {
-                runOnUiThread {
-                    Toast.makeText(this, "Falling back to browser checkout: ${error.message}", Toast.LENGTH_LONG).show()
-                    openExternalUrl(browserFallbackTarget)
-                }
+            runOnUiThread {
+                openExternalUrl(setupTarget)
             }
         }
     }
@@ -724,12 +692,7 @@ class ProSubscriptionActivity : AppCompatActivity() {
 
     private fun openExternalUrl(url: String) {
         runCatching {
-            val intent = Intent(Intent.ACTION_VIEW, Uri.parse(url))
-            if (intent.resolveActivityInfo(packageManager, 0) == null) {
-                Toast.makeText(this, "No browser found to open checkout.", Toast.LENGTH_SHORT).show()
-                return
-            }
-            startActivity(intent)
+            InAppBrowser.open(this, url)
         }.onFailure {
             Toast.makeText(this, "Unable to open website checkout: ${it.message}", Toast.LENGTH_LONG).show()
         }
@@ -1070,31 +1033,23 @@ class ProSubscriptionActivity : AppCompatActivity() {
     }
 
     private fun performUnsubscribe() {
-        Toast.makeText(this, "Opening subscription management...", Toast.LENGTH_SHORT).show()
+        Toast.makeText(this, "Cancelling subscription...", Toast.LENGTH_SHORT).show()
         thread {
-            val apiToken = runCatching {
-                ProSubscriptionServerPrefs.getApiToken(this).trim().ifBlank {
-                    ProSubscriptionRelayClient.fetchAccountInfo(this).getOrThrow().apiToken.trim()
-                }
-            }.getOrDefault("")
-
-            val relayBase = AiProviderPrefs.getRelayBaseUrl(this).trim().trimEnd('/')
-            val manageUrl = Uri.parse("$relayBase/web-subscribe/cancel").buildUpon().apply {
-                if (apiToken.isNotBlank()) {
-                    appendQueryParameter("api_token", apiToken)
-                }
-            }.build().toString()
-
+            val result = ProSubscriptionRelayClient.cancelSubscription(this)
             runOnUiThread {
-                runCatching {
-                    val intent = Intent(Intent.ACTION_VIEW, Uri.parse(manageUrl))
-                    if (intent.resolveActivityInfo(packageManager, 0) == null) {
-                        Toast.makeText(this, "No browser found to manage the subscription.", Toast.LENGTH_SHORT).show()
-                        return@runCatching
+                result.onSuccess { cancel ->
+                    ProSubscriptionPrefs.setSubscribed(this, cancel.active)
+                    ProSubscriptionPrefs.setPlan(this, cancel.plan)
+                    ProSubscriptionPrefs.setExpiresAt(this, cancel.expiresAtMs)
+                    ProSubscriptionPrefs.setProvider(this, "server_verified")
+                    ProSubscriptionPrefs.setLastVerifiedAt(this, System.currentTimeMillis())
+                    if (!cancel.active) {
+                        ProSubscriptionPrefs.setPurchaseToken(this, "")
                     }
-                    startActivity(intent)
+                    updateStatusDisplay()
+                    Toast.makeText(this, cancel.message, Toast.LENGTH_LONG).show()
                 }.onFailure {
-                    Toast.makeText(this, "Unable to open subscription management: ${it.message}", Toast.LENGTH_LONG).show()
+                    Toast.makeText(this, "Unable to cancel subscription: ${it.message}", Toast.LENGTH_LONG).show()
                 }
             }
         }

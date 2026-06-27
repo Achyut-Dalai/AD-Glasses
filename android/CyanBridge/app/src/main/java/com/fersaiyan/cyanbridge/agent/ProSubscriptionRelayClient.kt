@@ -45,6 +45,13 @@ object ProSubscriptionRelayClient {
         val expiresAtMs: Long,
     )
 
+    data class CancelResult(
+        val active: Boolean,
+        val plan: String,
+        val expiresAtMs: Long,
+        val message: String,
+    )
+
     private const val CONNECT_TIMEOUT_MS = 7000
     private const val READ_TIMEOUT_MS = 15000
     private const val RELAY_DOWN_HINT =
@@ -182,6 +189,25 @@ object ProSubscriptionRelayClient {
                 ProSubscriptionServerPrefs.setAccountEmail(context, account.email)
             }
         }
+    }
+
+    fun cancelSubscription(context: Context): Result<CancelResult> = runCatching {
+        val serverToken = ProSubscriptionServerPrefs.getApiToken(context).trim().ifBlank {
+            fetchAccountInfo(context).getOrThrow().apiToken.trim()
+        }
+
+        val payload = JSONObject()
+            .put("api_token", serverToken)
+
+        val json = requestPostJson(context, endpoint(context, "/web-subscribe/cancel"), payload)
+        CancelResult(
+            active = json.optBoolean("active", false),
+            plan = json.optString("plan").trim().ifBlank { "none" },
+            expiresAtMs = json.optLong("expires_at_ms", 0L),
+            message = json.optString("message").trim().ifBlank {
+                if (json.optBoolean("ok", false)) "Subscription updated" else "Subscription cancel failed"
+            },
+        )
     }
 
     private fun parseModels(payload: JSONObject): List<ModelOption> {
