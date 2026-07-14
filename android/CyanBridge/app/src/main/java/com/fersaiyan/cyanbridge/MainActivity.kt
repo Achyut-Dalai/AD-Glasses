@@ -21,6 +21,7 @@ import com.fersaiyan.cyanbridge.audio.MeetingCapturePrefs
 import com.fersaiyan.cyanbridge.audio.MeetingCaptureService
 import com.fersaiyan.cyanbridge.media.GlassesMediaPrefs
 import com.fersaiyan.cyanbridge.media.SyncedMediaFolder
+import com.fersaiyan.cyanbridge.media.VendorAlbumDownloader
 import com.fersaiyan.cyanbridge.media.autocapture.AutoAudioCapturePrefs
 import com.fersaiyan.cyanbridge.media.autocapture.GlassesSyncedAudioIngestor
 import android.os.Build
@@ -93,8 +94,11 @@ import org.greenrobot.eventbus.ThreadMode
 import com.fersaiyan.cyanbridge.ui.BatteryOptimizationGuideActivity
 // import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
+import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.ensureActive
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.isActive
 import java.io.File
@@ -153,6 +157,11 @@ import android.content.ClipData
 
 
 class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
+    private enum class DownloadFlowMode(val label: String) {
+        CUSTOM("Custom flow"),
+        OFFICIAL_HEYCYAN("HeyCyan app flow"),
+    }
+
     private var tts: TextToSpeech? = null
     private val ttsDoneCallbacks = ConcurrentHashMap<String, () -> Unit>()
 
@@ -244,11 +253,16 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
 
     // State used by the BLE+WiFi P2P data-download flow
     private var downloadP2pConnected = false
+    private var downloadFlowMode = DownloadFlowMode.CUSTOM
     private var downloadBleIp: String? = null
     private var downloadWifiIp: String? = null
     private var downloadPhoneIsGroupOwner: Boolean = true
     private var downloadInProgress = false
     private var downloadAttemptJob: Job? = null
+    private var downloadSessionJob: Job? = null
+    private var downloadSessionScope: CoroutineScope? = null
+    private var downloadSessionId: Long = 0L
+    private var vendorAlbumDownloader: VendorAlbumDownloader? = null
     private var downloadResolvedHttpIp: String? = null
     private var downloadP2pNetwork: Network? = null
     private var boundNetwork: Network? = null
@@ -266,6 +280,12 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
     private val maxP2pRestarts = 3
     private val seenP2pPeers = mutableSetOf<String>()
     private var lastPeerSetHash: Int = 0
+    private var officialSystemSuccess = false
+    private var officialBleCallbackSuccess = false
+    private var officialFlowRetryCount = 0
+    private val officialFlowRetryLimit = 1
+    private var officialDisconnectRecoveryJob: Job? = null
+    private var officialMediaErrorCount = 0
 
     // Guard against concurrent/duplicate image queries
     private val imageQueryInProgress = java.util.concurrent.atomic.AtomicBoolean(false)
@@ -284,6 +304,7 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
     private var transferDoneJpg = 0
     private var transferDoneMp4 = 0
     private var transferDoneOpus = 0
+    private var lastFileProgressUiAtMs: Long = 0L
     private var batteryPollJob: Job? = null
     private val batteryPollIntervalMs = 60_000L
     private val downloadInitialPhaseTimeoutMs = 45_000L
@@ -783,15 +804,13 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
                     }
                 }
                 binding.btnDataDownload -> {
-                    Toast.makeText(this@MainActivity, "Starting data download…", Toast.LENGTH_SHORT).show()
                     // Check and request necessary permissions
                     if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
                         // Android 13+ requires NEARBY_WIFI_DEVICES permission
                         requestNearbyWifiDevicesPermission(this@MainActivity, object : OnPermissionCallback {
                             override fun onGranted(permissions: MutableList<String>, all: Boolean) {
                                 if (all) {
-                                    // Start BLE+WiFi P2P data download
-                                    startDataDownload()
+                                    showDownloadFlowPicker()
                                 }
                             }
 
@@ -803,8 +822,7 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
                             }
                         })
                     } else {
-                        // Android 12 and below start download directly
-                        startDataDownload()
+                        showDownloadFlowPicker()
                     }
                 }
                 binding.btnTransferStop -> {
@@ -2614,8 +2632,56 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
             ?: bestPeers.firstOrNull()
     }
 
-    private fun startDataDownload() {
-        Log.i("DataDownload", "Starting BLE+WiFi P2P data download...")
+    private fun selectOfficialLikelyGlassesPeer(peers: Collection<WifiP2pDevice>): WifiP2pDevice? {
+        if (peers.isEmpty()) return null
+
+        val expectedName = try {
+            DeviceManager.getInstance().deviceName?.uppercase(Locale.US)?.takeIf { it.isNotBlank() }
+        } catch (_: Exception) {
+            null
+        }
+        val bleMacNoColon = currentBleMacNoColonUpper()
+
+        fun matches(peer: WifiP2pDevice): Boolean {
+            val name = peer.deviceName?.uppercase(Locale.US) ?: return false
+            if (!expectedName.isNullOrBlank() && name == expectedName) return true
+            if (!bleMacNoColon.isNullOrBlank() && name.endsWith(bleMacNoColon)) return true
+            return false
+        }
+
+        return peers.firstOrNull { matches(it) && it.status == WifiP2pDevice.AVAILABLE }
+            ?: peers.firstOrNull(::matches)
+    }
+
+    private fun showDownloadFlowPicker() {
+        val options = arrayOf(
+            "HeyCyan app flow\nVendor-like strict BLE + P2P sync",
+            "Custom flow\nCyanBridge resolver with fallback scanning",
+        )
+
+        AlertDialog.Builder(this)
+            .setTitle("Choose sync flow")
+            .setItems(options) { _, which ->
+                val mode = when (which) {
+                    0 -> DownloadFlowMode.OFFICIAL_HEYCYAN
+                    else -> DownloadFlowMode.CUSTOM
+                }
+                Log.i("DataDownload", "User selected sync flow: ${mode.label}")
+                startDataDownload(mode)
+            }
+            .setNegativeButton("Cancel", null)
+            .show()
+    }
+
+    private fun startDataDownload(
+        mode: DownloadFlowMode = DownloadFlowMode.CUSTOM,
+        retryCount: Int = 0,
+    ) {
+        downloadFlowMode = mode
+        officialFlowRetryCount = retryCount
+        Log.i("DataDownload", "Starting BLE+WiFi P2P data download using ${mode.label}...")
+        Log.i("DataDownload", "Sync session flow=${mode.label}")
+        Toast.makeText(this, "Starting sync using ${mode.label}…", Toast.LENGTH_SHORT).show()
 
         // Check Bluetooth connection status
         if (!BleOperateManager.getInstance().isConnected) {
@@ -2664,11 +2730,17 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
         downloadInProgress = false
         downloadResolvedHttpIp = null
         lastDownloadBleIpAtMs = 0L
+        officialDisconnectRecoveryJob?.cancel()
+        officialDisconnectRecoveryJob = null
+        officialMediaErrorCount = 0
         resetDownloadSupportState()
+        resetOfficialFlowState()
+        createDownloadSession()
 
         resetTransferUiState()
         setTransferUiVisible(true)
-        setTransferDetail("Starting sync...")
+        setTransferFlowLabel(mode)
+        setTransferDetail("Starting sync (${mode.label})...")
         startDownloadInitialPhaseWatchdog()
 
         if (!downloadNotifyListenerRegistered) {
@@ -2712,6 +2784,28 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
                 // Guard against redundant connection attempts (official app uses isP2PConnecting).
                 if (downloadWifiP2pManager?.isConnecting() == true || downloadWifiP2pManager?.isConnected() == true) {
                     Log.i("DataDownload", "Already connecting/connected, skipping peer re-evaluation")
+                    return
+                }
+
+                if (downloadFlowMode == DownloadFlowMode.OFFICIAL_HEYCYAN) {
+                    val target = selectOfficialLikelyGlassesPeer(peers)
+                    if (target == null) {
+                        val pairedName = try { DeviceManager.getInstance().deviceName } catch (_: Exception) { "?" }
+                        val pairedMac = try { DeviceManager.getInstance().deviceAddress } catch (_: Exception) { "?" }
+                        peers.forEach { seenP2pPeers.add("${it.deviceName}/${it.deviceAddress}") }
+                        Log.i(
+                            "DataDownload",
+                            "Official flow: no exact glasses peer yet; paired=$pairedName/$pairedMac; discovered=${peers.map { "${it.deviceName}/${it.deviceAddress}" }}"
+                        )
+                        setTransferDetail("Waiting for exact glasses P2P peer...")
+                        return
+                    }
+
+                    Log.i(
+                        "DataDownload",
+                        "Official flow connecting to peer: ${target.deviceName} / ${target.deviceAddress}"
+                    )
+                    wifiP2pManager.connectToDevice(target)
                     return
                 }
 
@@ -2780,13 +2874,35 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
                 downloadP2pNetwork = null
                 unbindProcessFromNetwork()
 
-                val shouldRecover = !downloadCancelledByUser &&
-                    (downloadAttemptJob?.isActive == true || downloadInProgress)
+                val shouldRecover = when (downloadFlowMode) {
+                    DownloadFlowMode.OFFICIAL_HEYCYAN -> {
+                        !downloadCancelledByUser &&
+                            (!downloadInitialPhaseCompleted || downloadAttemptJob?.isActive == true || downloadInProgress)
+                    }
+
+                    DownloadFlowMode.CUSTOM -> {
+                        !downloadCancelledByUser &&
+                            (downloadAttemptJob?.isActive == true || downloadInProgress)
+                    }
+                }
                 if (shouldRecover) {
-                    Log.i("DataDownload", "P2P disconnected during sync; restarting peer discovery")
-                    setTransferDetail("P2P disconnected; retrying discovery...")
-                    downloadWifiP2pManager?.discoverPeersStable()
-                    downloadWifiP2pManager?.startPeerDiscovery()
+                    if (downloadFlowMode == DownloadFlowMode.OFFICIAL_HEYCYAN) {
+                        Log.i("DataDownload", "Official flow: P2P disconnected during sync; restarting discovery in 2000ms")
+                        setTransferDetail("P2P disconnected; retrying official flow...")
+                        downloadWifiP2pManager?.discoverPeersStable()
+                        officialDisconnectRecoveryJob?.cancel()
+                        officialDisconnectRecoveryJob = CoroutineScope(Dispatchers.Main).launch {
+                            delay(2000)
+                            if (downloadCancelledByUser) return@launch
+                            if (downloadP2pConnected) return@launch
+                            downloadWifiP2pManager?.startPeerDiscovery()
+                        }
+                    } else {
+                        Log.i("DataDownload", "P2P disconnected during sync; restarting peer discovery")
+                        setTransferDetail("P2P disconnected; retrying discovery...")
+                        downloadWifiP2pManager?.discoverPeersStable()
+                        downloadWifiP2pManager?.startPeerDiscovery()
+                    }
                 }
             }
 
@@ -2819,6 +2935,10 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
             }
 
             override fun retryAlsoFailed() {
+                if (downloadFlowMode == DownloadFlowMode.OFFICIAL_HEYCYAN && officialFlowRetryCount < officialFlowRetryLimit) {
+                    restartOfficialWholeFlow("P2P connection retry failed")
+                    return
+                }
                 Log.e("DataDownload", "P2P connection retry failed")
             }
         }
@@ -2829,7 +2949,12 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
         // Start scanning for the glasses over WiFi Direct
         wifiP2pManager.startPeerDiscovery()
 
-        setTransferDetail("Waiting for glasses IP and HTTP server...")
+        setTransferDetail(
+            when (mode) {
+                DownloadFlowMode.OFFICIAL_HEYCYAN -> "Waiting for P2P + BLE IP (HeyCyan flow)..."
+                DownloadFlowMode.CUSTOM -> "Waiting for glasses IP and HTTP server..."
+            }
+        )
 
         // Ask the glasses (over BLE) to bring up WiFi/P2P and report their IP,
         // mirroring the official app's importAlbum() flow.
@@ -2881,7 +3006,9 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
         transferDoneJpg = 0
         transferDoneMp4 = 0
         transferDoneOpus = 0
+        lastFileProgressUiAtMs = 0L
 
+        binding.tvTransferFlow.text = "Flow: --"
         binding.tvTransferCounts.text = "Photos: --  Videos: --  Audio: --"
         binding.progressTransfer.isIndeterminate = true
         binding.progressTransfer.max = 100
@@ -2909,6 +3036,12 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
         renderTransferProgress()
     }
 
+    private fun transferItemSummary(): String {
+        val done = transferDoneJpg + transferDoneMp4 + transferDoneOpus
+        val total = transferTotalJpg + transferTotalMp4 + transferTotalOpus
+        return "$done/$total"
+    }
+
     private fun renderTransferProgress() {
         val total = transferTotalJpg + transferTotalMp4 + transferTotalOpus
         val done = transferDoneJpg + transferDoneMp4 + transferDoneOpus
@@ -2922,13 +3055,131 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
             binding.progressTransfer.progress = 0
         } else {
             binding.progressTransfer.isIndeterminate = false
-            binding.progressTransfer.max = total
-            binding.progressTransfer.progress = done.coerceAtMost(total)
+            binding.progressTransfer.max = total * 1000
+            binding.progressTransfer.progress = (done * 1000).coerceAtMost(binding.progressTransfer.max)
         }
     }
 
     private fun setTransferDetail(text: String) {
         binding.tvTransferDetail.text = text
+    }
+
+    private fun setTransferFlowLabel(mode: DownloadFlowMode) {
+        binding.tvTransferFlow.text = "Flow: ${mode.label}"
+    }
+
+    private fun createDownloadSession() {
+        downloadSessionJob?.cancel()
+        val job = SupervisorJob()
+        downloadSessionJob = job
+        downloadSessionScope = CoroutineScope(job + Dispatchers.IO)
+        downloadSessionId++
+        vendorAlbumDownloader = if (downloadFlowMode == DownloadFlowMode.OFFICIAL_HEYCYAN) {
+            VendorAlbumDownloader(
+                destinationDir = File(cacheDir, "heycyan_album/$downloadSessionId"),
+                requestTag = "cyanbridge_heycyan_album_$downloadSessionId",
+            )
+        } else {
+            null
+        }
+    }
+
+    private fun cancelDownloadSession() {
+        vendorAlbumDownloader?.cancel()
+        vendorAlbumDownloader?.clear()
+        vendorAlbumDownloader = null
+        downloadSessionJob?.cancel()
+        downloadSessionJob = null
+        downloadSessionScope = null
+    }
+
+    private fun isDownloadSessionActive(sessionId: Long): Boolean {
+        return sessionId == downloadSessionId &&
+            downloadSessionJob?.isActive == true &&
+            !downloadCancelledByUser
+    }
+
+    private fun launchDownloadSession(block: suspend CoroutineScope.(Long) -> Unit): Job? {
+        val scope = downloadSessionScope ?: return null
+        val sessionId = downloadSessionId
+        return scope.launch {
+            block(sessionId)
+        }
+    }
+
+    private fun setTransferDetailForSession(sessionId: Long, text: String) {
+        if (!isDownloadSessionActive(sessionId)) return
+        runOnUiThread {
+            if (isDownloadSessionActive(sessionId)) {
+                setTransferDetail(text)
+            }
+        }
+    }
+
+    private fun formatTransferBytes(bytes: Long): String {
+        if (bytes <= 0L) return "0 B"
+        val units = arrayOf("B", "KB", "MB", "GB")
+        var value = bytes.toDouble()
+        var unitIndex = 0
+        while (value >= 1024.0 && unitIndex < units.lastIndex) {
+            value /= 1024.0
+            unitIndex++
+        }
+        val pattern = if (value >= 100 || unitIndex == 0) "%.0f" else "%.1f"
+        return pattern.format(Locale.US, value) + " " + units[unitIndex]
+    }
+
+    private fun maybeReportFileProgress(
+        sessionId: Long,
+        mediaType: String,
+        fileName: String,
+        bytesCopied: Long,
+        totalBytes: Long,
+        startedAtMs: Long,
+    ) {
+        val now = System.currentTimeMillis()
+        if (now - lastFileProgressUiAtMs < 750L && bytesCopied < totalBytes) return
+        lastFileProgressUiAtMs = now
+
+        val speedBps = if (startedAtMs > 0L) {
+            val elapsedMs = (now - startedAtMs).coerceAtLeast(1L)
+            (bytesCopied * 1000L) / elapsedMs
+        } else {
+            0L
+        }
+        val percent = if (totalBytes > 0L) ((bytesCopied * 100L) / totalBytes).coerceIn(0L, 100L) else -1L
+        val (typeDone, typeTotal) = when (mediaType) {
+            "photo" -> transferDoneJpg to transferTotalJpg
+            "video" -> transferDoneMp4 to transferTotalMp4
+            else -> transferDoneOpus to transferTotalOpus
+        }
+        val detail = if (percent >= 0L) {
+            "Downloading $mediaType ${typeDone + 1}/$typeTotal: ${percent}% (${formatTransferBytes(bytesCopied)}/${formatTransferBytes(totalBytes)} at ${formatTransferBytes(speedBps)}/s)"
+        } else {
+            "Downloading $mediaType ${typeDone + 1}/$typeTotal: ${formatTransferBytes(bytesCopied)} at ${formatTransferBytes(speedBps)}/s"
+        }
+        if (!isDownloadSessionActive(sessionId)) return
+        runOnUiThread {
+            if (!isDownloadSessionActive(sessionId)) return@runOnUiThread
+            setTransferDetail(detail)
+            val totalItems = transferTotalJpg + transferTotalMp4 + transferTotalOpus
+            val completedItems = transferDoneJpg + transferDoneMp4 + transferDoneOpus
+            if (totalItems > 0) {
+                val fraction = if (totalBytes > 0L) {
+                    (bytesCopied.toDouble() / totalBytes.toDouble()).coerceIn(0.0, 1.0)
+                } else {
+                    0.0
+                }
+                binding.progressTransfer.isIndeterminate = false
+                binding.progressTransfer.max = totalItems * 1000
+                binding.progressTransfer.progress = (completedItems * 1000 + fraction * 1000).toInt()
+                    .coerceAtMost(binding.progressTransfer.max)
+            }
+        }
+        Log.i(
+            "DataDownload",
+            "Media progress: type=$mediaType, file=$fileName, bytes=$bytesCopied/$totalBytes, speed=${speedBps}B/s, flow=${downloadFlowMode.label}"
+        )
     }
 
     private fun startDownloadInitialPhaseWatchdog() {
@@ -2943,7 +3194,13 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
             if (!sessionStillStuck) return@launch
 
             val waitedSeconds = ((System.currentTimeMillis() - downloadStartedAtMs) / 1000L).coerceAtLeast(1L)
-            Log.w("DataDownload", "Initial P2P sync phase timed out after ${waitedSeconds}s")
+            Log.w("DataDownload", "Initial P2P sync phase timed out after ${waitedSeconds}s (flow=${downloadFlowMode.label})")
+
+            if (downloadFlowMode == DownloadFlowMode.OFFICIAL_HEYCYAN && officialFlowRetryCount < officialFlowRetryLimit) {
+                restartOfficialWholeFlow("initial sync timeout after ${waitedSeconds}s")
+                return@launch
+            }
+
             setTransferDetail("Sync is taking longer than expected")
             maybeShowP2pSyncLogHelp(
                 reason = "CyanBridge got stuck before media transfer started. The sync button was pressed ${waitedSeconds}s ago and the transfer counters never advanced.",
@@ -2956,7 +3213,7 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
         downloadInitialPhaseCompleted = true
         downloadInitialPhaseTimeoutJob?.cancel()
         downloadInitialPhaseTimeoutJob = null
-        Log.i("DataDownload", "Initial sync phase completed: $reason")
+        Log.i("DataDownload", "Initial sync phase completed: $reason (flow=${downloadFlowMode.label})")
     }
 
     private fun resetDownloadSupportState() {
@@ -2971,6 +3228,28 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
         lastPeerSetHash = 0
     }
 
+    private fun resetOfficialFlowState() {
+        officialSystemSuccess = false
+        officialBleCallbackSuccess = false
+        officialMediaErrorCount = 0
+    }
+
+    private fun isOfficialSyncActive(): Boolean {
+        return downloadFlowMode == DownloadFlowMode.OFFICIAL_HEYCYAN &&
+            !downloadCancelledByUser &&
+            binding.cardTransferProgress.visibility == View.VISIBLE
+    }
+
+    private fun restartOfficialWholeFlow(reason: String) {
+        val nextRetry = officialFlowRetryCount + 1
+        Log.w(
+            "DataDownload",
+            "Official flow retrying whole import sequence ($nextRetry/$officialFlowRetryLimit) because $reason"
+        )
+        setTransferDetail("Official flow retrying sync...")
+        startDataDownload(DownloadFlowMode.OFFICIAL_HEYCYAN, retryCount = nextRetry)
+    }
+
     private fun maybeShowP2pSyncLogHelp(
         reason: String,
         title: String = "P2P sync is stuck",
@@ -2980,12 +3259,13 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
         downloadSupportDialogShown = true
         DebugLogSupport.showSupportOptionsDialog(
             activity = this,
-            title = title,
+            title = "$title (${downloadFlowMode.label})",
             issueType = "P2P/WiFi sync issue",
-            description = reason,
+            description = "Flow: ${downloadFlowMode.label}\n\n$reason",
             extraInfo = linkedMapOf(
                 "transfer_detail" to binding.tvTransferDetail.text.toString(),
                 "transfer_counts" to binding.tvTransferCounts.text.toString(),
+                "download_flow_mode" to downloadFlowMode.label,
                 "download_ble_ip" to (downloadBleIp ?: ""),
                 "download_wifi_ip" to (downloadWifiIp ?: ""),
                 "download_http_ip" to (downloadResolvedHttpIp ?: ""),
@@ -3025,12 +3305,13 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
             .setNeutralButton("Send to server") { _, _ ->
                 DebugLogSupport.showSupportOptionsDialog(
                     activity = this,
-                    title = "P2P sync failed",
+                    title = "P2P sync failed (${downloadFlowMode.label})",
                     issueType = "P2P/WiFi sync issue",
-                    description = "P2P sync could not find glasses after $maxP2pRestarts attempts. Bluetooth is connected but glasses did not appear as a Wi‑Fi Direct peer. Seen P2P peers: ${seenPeers.joinToString(", ")}",
+                    description = "Flow: ${downloadFlowMode.label}\n\nP2P sync could not find glasses after $maxP2pRestarts attempts. Bluetooth is connected but glasses did not appear as a Wi‑Fi Direct peer. Seen P2P peers: ${seenPeers.joinToString(", ")}",
                     extraInfo = linkedMapOf(
                         "transfer_detail" to binding.tvTransferDetail.text.toString(),
                         "transfer_counts" to binding.tvTransferCounts.text.toString(),
+                        "download_flow_mode" to downloadFlowMode.label,
                         "download_ble_ip" to (downloadBleIp ?: ""),
                         "download_wifi_ip" to (downloadWifiIp ?: ""),
                         "download_http_ip" to (downloadResolvedHttpIp ?: ""),
@@ -3059,66 +3340,147 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
         // No safe fallback: the glasses IP varies per session.
         return null
     }
+
+    private enum class VendorMediaType(val progressLabel: String) {
+        PHOTO("photo"),
+        VIDEO("video"),
+        AUDIO("audio"),
+    }
+
+    private data class VendorMediaItem(
+        val fileName: String,
+        val type: VendorMediaType,
+    )
     
-    private fun downloadMediaList(deviceIp: String) {
-        CoroutineScope(Dispatchers.IO).launch {
-            try {
-                // Lock the device IP for the whole transfer session.
-                downloadResolvedHttpIp = deviceIp
-                val url = "http://$deviceIp/files/media.config"
-                Log.i("DataDownload", "Downloading media list from: $url")
+    private suspend fun downloadMediaList(deviceIp: String, sessionId: Long) {
+        if (!isDownloadSessionActive(sessionId)) return
+        if (downloadFlowMode == DownloadFlowMode.OFFICIAL_HEYCYAN) {
+            downloadVendorMediaList(deviceIp, sessionId)
+            return
+        }
+        try {
+            coroutineContext.ensureActive()
+            // Lock the device IP for the whole transfer session.
+            downloadResolvedHttpIp = deviceIp
+            val url = "http://$deviceIp/files/media.config"
+            Log.i("DataDownload", "Downloading media list from: $url")
 
+            withContext(Dispatchers.Main) {
+                if (!isDownloadSessionActive(sessionId)) return@withContext
+                binding.progressTransfer.isIndeterminate = true
+                setTransferDetail("Fetching media list...")
+            }
+
+            var content: String? = null
+            httpGet(URL(url), 10000, 30000) { stream, _ ->
+                content = stream.bufferedReader().use { it.readText() }
+            }
+
+            coroutineContext.ensureActive()
+            if (!isDownloadSessionActive(sessionId)) return
+
+            if (content != null) {
+                Log.i("DataDownload", "=== MEDIA CONFIG CONTENT ===")
+                Log.i("DataDownload", content!!)
+                Log.i("DataDownload", "=== END MEDIA CONFIG ===")
+                parseMediaList(content!!, deviceIp, sessionId)
+            } else {
+                Log.e("DataDownload", "Failed to download media list.")
                 withContext(Dispatchers.Main) {
-                    binding.progressTransfer.isIndeterminate = true
-                    setTransferDetail("Fetching media list...")
-                }
-
-                var content: String? = null
-                httpGet(URL(url), 10000, 30000) { stream, _ ->
-                    content = stream.bufferedReader().use { it.readText() }
-                }
-
-                if (content != null) {
-                    Log.i("DataDownload", "=== MEDIA CONFIG CONTENT ===")
-                    Log.i("DataDownload", content!!)
-                    Log.i("DataDownload", "=== END MEDIA CONFIG ===")
-                    parseMediaList(content!!, deviceIp)
-                } else {
-                    Log.e("DataDownload", "Failed to download media list.")
-                    withContext(Dispatchers.Main) {
+                    if (isDownloadSessionActive(sessionId)) {
                         showDownloadError("Failed to download media list.")
                     }
                 }
-            } catch (e: Exception) {
-                    Log.e("DataDownload", "Error downloading media list: ${e.message}", e)
-                    CoroutineScope(Dispatchers.Main).launch {
-                        when (e) {
-                            is java.io.IOException -> {
-                                if (e.message?.contains("Cleartext HTTP traffic") == true) {
-                                    showDownloadError("Network security blocked HTTP connection. Please check app settings.")
-                                } else if (e.message?.contains("Failed to connect") == true) {
-                                    showDownloadError("Cannot connect to glasses device. Please ensure P2P connection is established.")
-                                } else {
-                                    showDownloadError("Network error: ${e.message}")
-                                }
-                            }
-                            else -> showDownloadError("Download failed: ${e.message}")
+            }
+        } catch (e: CancellationException) {
+            Log.i("DataDownload", "Media list download cancelled for session=$sessionId")
+            throw e
+        } catch (e: Exception) {
+            if (!isDownloadSessionActive(sessionId)) return
+            Log.e("DataDownload", "Error downloading media list: ${e.message}", e)
+            withContext(Dispatchers.Main) {
+                if (!isDownloadSessionActive(sessionId)) return@withContext
+                when (e) {
+                    is java.io.IOException -> {
+                        if (e.message?.contains("Cleartext HTTP traffic") == true) {
+                            showDownloadError("Network security blocked HTTP connection. Please check app settings.")
+                        } else if (e.message?.contains("Failed to connect") == true) {
+                            showDownloadError("Cannot connect to glasses device. Please ensure P2P connection is established.")
+                        } else {
+                            showDownloadError("Network error: ${e.message}")
                         }
                     }
+                    else -> showDownloadError("Download failed: ${e.message}")
                 }
             }
         }
+    }
+
+    private suspend fun downloadVendorMediaList(deviceIp: String, sessionId: Long) {
+        val downloader = vendorAlbumDownloader
+        if (downloader == null) {
+            withContext(Dispatchers.Main) {
+                if (isDownloadSessionActive(sessionId)) {
+                    showDownloadError("HeyCyan downloader was not initialized.")
+                }
+            }
+            return
+        }
+
+        val url = "http://$deviceIp/files/media.config"
+        Log.i("DataDownload", "HeyCyan vendor downloader fetching media list: $url")
+        withContext(Dispatchers.Main) {
+            if (isDownloadSessionActive(sessionId)) {
+                binding.progressTransfer.isIndeterminate = true
+                setTransferDetail("Fetching media list with HeyCyan downloader...")
+            }
+        }
+
+        var lastError = "unknown error"
+        repeat(2) { attemptIndex ->
+            coroutineContext.ensureActive()
+            if (!isDownloadSessionActive(sessionId)) return
+            val attempt = attemptIndex + 1
+            val result = downloader.download(url, "media.config")
+            if (result.isSuccess) {
+                val configFile = result.file ?: return
+                val content = runCatching { configFile.readText() }.getOrNull()
+                configFile.delete()
+                if (content != null) {
+                    Log.i("DataDownload", "HeyCyan vendor downloader fetched media.config on attempt $attempt/2")
+                    parseMediaList(content, deviceIp, sessionId)
+                    return
+                }
+                lastError = "downloaded media.config could not be read"
+            } else {
+                lastError = "code=${result.errorCode}, detail=${result.errorDetail}"
+                Log.w(
+                    "DataDownload",
+                    "HeyCyan media.config download failed (attempt $attempt/2): $lastError"
+                )
+            }
+        }
+
+        withContext(Dispatchers.Main) {
+            if (isDownloadSessionActive(sessionId)) {
+                showDownloadError("Failed to download media list with HeyCyan downloader: $lastError")
+            }
+        }
+    }
     
-        private fun parseMediaList(content: String, deviceIp: String) {
+        private suspend fun parseMediaList(content: String, deviceIp: String, sessionId: Long) {
             // Parse the media configuration file content - this is a text file containing media file names.
             Log.i("DataDownload", "Parsing media list content...")
             
             try {
+                coroutineContext.ensureActive()
+                if (!isDownloadSessionActive(sessionId)) return
                 // Split by line, each line should be a file name
                 val lines = content.trim().lines()
                 val jpgFiles = mutableListOf<String>()
                 val mp4Files = mutableListOf<String>()
                 val opusFiles = mutableListOf<String>()
+                val vendorQueue = mutableListOf<VendorMediaItem>()
                 var otherFiles = 0
                 
                 lines.forEach { line ->
@@ -3128,16 +3490,19 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
                             trimmedLine.endsWith(".jpg", ignoreCase = true) ||
                                 trimmedLine.endsWith(".jpeg", ignoreCase = true) -> {
                                 jpgFiles.add(trimmedLine)
+                                vendorQueue.add(VendorMediaItem(trimmedLine, VendorMediaType.PHOTO))
                                 Log.i("DataDownload", "Found JPG file: $trimmedLine")
                             }
 
                             trimmedLine.endsWith(".mp4", ignoreCase = true) -> {
                                 mp4Files.add(trimmedLine)
+                                vendorQueue.add(VendorMediaItem(trimmedLine, VendorMediaType.VIDEO))
                                 Log.i("DataDownload", "Found MP4 file: $trimmedLine")
                             }
 
                             trimmedLine.endsWith(".opus", ignoreCase = true) -> {
                                 opusFiles.add(trimmedLine)
+                                vendorQueue.add(VendorMediaItem(trimmedLine, VendorMediaType.AUDIO))
                                 Log.i("DataDownload", "Found OPUS file: $trimmedLine")
                             }
 
@@ -3154,7 +3519,8 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
                     "Media list parsed: jpg=${jpgFiles.size}, mp4=${mp4Files.size}, opus=${opusFiles.size}, other=$otherFiles"
                 )
 
-                CoroutineScope(Dispatchers.Main).launch {
+                withContext(Dispatchers.Main) {
+                    if (!isDownloadSessionActive(sessionId)) return@withContext
                     setTransferPlan(jpgFiles.size, mp4Files.size, opusFiles.size)
                     val total = jpgFiles.size + mp4Files.size + opusFiles.size
                     setTransferDetail("Preparing downloads (0/$total)...")
@@ -3162,30 +3528,197 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
 
                 if (jpgFiles.isEmpty() && mp4Files.isEmpty() && opusFiles.isEmpty()) {
                     Log.w("DataDownload", "No JPG/MP4/OPUS files found in media.config")
-                    CoroutineScope(Dispatchers.Main).launch {
-                        showDownloadError("No JPG/MP4/OPUS files found in media.config")
+                    withContext(Dispatchers.Main) {
+                        if (isDownloadSessionActive(sessionId)) {
+                            showDownloadError("No JPG/MP4/OPUS files found in media.config")
+                        }
                     }
                     return
                 }
 
                 // Download everything we understand. Keep P2P bound until all downloads finish.
-                downloadAllMediaFiles(jpgFiles, mp4Files, opusFiles, deviceIp)
+                if (downloadFlowMode == DownloadFlowMode.OFFICIAL_HEYCYAN) {
+                    downloadAllMediaFilesVendor(vendorQueue, deviceIp, sessionId)
+                } else {
+                    downloadAllMediaFiles(jpgFiles, mp4Files, opusFiles, deviceIp, sessionId)
+                }
                 
+            } catch (e: CancellationException) {
+                throw e
             } catch (e: Exception) {
+                if (!isDownloadSessionActive(sessionId)) return
                 Log.e("DataDownload", "Error parsing media list: ${e.message}", e)
-                CoroutineScope(Dispatchers.Main).launch {
-                    showDownloadError("Failed to parse media list: ${e.message}")
+                withContext(Dispatchers.Main) {
+                    if (isDownloadSessionActive(sessionId)) {
+                        showDownloadError("Failed to parse media list: ${e.message}")
+                    }
                 }
             }
         }
 
-    private fun downloadAllMediaFiles(
+    private suspend fun downloadAllMediaFilesVendor(
+        files: List<VendorMediaItem>,
+        deviceIp: String,
+        sessionId: Long,
+    ) {
+        val downloader = vendorAlbumDownloader ?: return
+        Log.i("DataDownload", "Starting HeyCyan vendor media queue: files=${files.size}")
+        officialMediaErrorCount = 0
+
+        for (item in files) {
+            coroutineContext.ensureActive()
+            if (!isDownloadSessionActive(sessionId)) return
+
+            var imported = false
+            for (attempt in 1..2) {
+                if (imported || !isDownloadSessionActive(sessionId) || officialMediaErrorCount > 1) break
+                coroutineContext.ensureActive()
+
+                val url = "http://$deviceIp/files/${item.fileName}"
+                val startedAtMs = System.currentTimeMillis()
+                withContext(Dispatchers.Main) {
+                    if (isDownloadSessionActive(sessionId)) {
+                        val (done, total) = vendorTypeProgress(item.type)
+                        setTransferDetail(
+                            "Downloading ${item.type.progressLabel} ${done + 1}/$total with HeyCyan downloader..."
+                        )
+                    }
+                }
+                Log.i(
+                    "DataDownload",
+                    "HeyCyan queue downloading ${item.fileName} (attempt $attempt/2): $url"
+                )
+
+                val result = downloader.download(url, item.fileName) { downloaded, total ->
+                    maybeReportFileProgress(
+                        sessionId = sessionId,
+                        mediaType = item.type.progressLabel,
+                        fileName = item.fileName,
+                        bytesCopied = downloaded,
+                        totalBytes = total,
+                        startedAtMs = startedAtMs,
+                    )
+                }
+
+                if (result.isSuccess) {
+                    val file = result.file
+                    imported = file != null && importVendorMediaFile(file, item)
+                    file?.delete()
+                    if (imported) {
+                        Log.i("DataDownload", "HeyCyan queue imported: ${item.fileName}")
+                    } else {
+                        officialMediaErrorCount++
+                        Log.e(
+                            "DataDownload",
+                            "HeyCyan queue could not import ${item.fileName}; errors=$officialMediaErrorCount"
+                        )
+                    }
+                } else {
+                    officialMediaErrorCount++
+                    Log.w(
+                        "DataDownload",
+                        "HeyCyan queue download failed for ${item.fileName} (attempt $attempt/2, errors=$officialMediaErrorCount): code=${result.errorCode}, detail=${result.errorDetail}"
+                    )
+                }
+
+                if (!imported && officialMediaErrorCount <= 1) {
+                    withContext(Dispatchers.Main) {
+                        if (isDownloadSessionActive(sessionId)) {
+                            setTransferDetail("Download failed; retrying ${item.fileName}...")
+                        }
+                    }
+                }
+            }
+
+            if (!imported) {
+                withContext(Dispatchers.Main) {
+                    if (isDownloadSessionActive(sessionId)) {
+                        showDownloadError(
+                            "HeyCyan flow stopped after repeated media download failures. Please retry sync."
+                        )
+                    }
+                }
+                return
+            }
+
+            withContext(Dispatchers.Main) {
+                if (!isDownloadSessionActive(sessionId)) return@withContext
+                onTransferItemDone(
+                    when (item.type) {
+                        VendorMediaType.PHOTO -> "jpg"
+                        VendorMediaType.VIDEO -> "mp4"
+                        VendorMediaType.AUDIO -> "opus"
+                    }
+                )
+                setTransferDetail("Downloaded ${transferItemSummary()}")
+            }
+        }
+
+        withContext(Dispatchers.Main) {
+            if (isDownloadSessionActive(sessionId)) {
+                showDownloadSuccess("All ${files.size} files downloaded successfully!")
+            }
+        }
+    }
+
+    private fun vendorTypeProgress(type: VendorMediaType): Pair<Int, Int> {
+        return when (type) {
+            VendorMediaType.PHOTO -> transferDoneJpg to transferTotalJpg
+            VendorMediaType.VIDEO -> transferDoneMp4 to transferTotalMp4
+            VendorMediaType.AUDIO -> transferDoneOpus to transferTotalOpus
+        }
+    }
+
+    private suspend fun importVendorMediaFile(file: File, item: VendorMediaItem): Boolean {
+        val takenMs = parseTakenTimeMillisFromFilename(item.fileName) ?: System.currentTimeMillis()
+        return when (item.type) {
+            VendorMediaType.PHOTO -> file.inputStream().use { input ->
+                saveJpegToGallery(input, item.fileName, takenMs).success
+            }
+
+            VendorMediaType.VIDEO -> file.inputStream().use { input ->
+                saveMp4ToGallery(
+                    input = input,
+                    displayName = item.fileName,
+                    takenTimeMs = takenMs,
+                    contentLength = file.length(),
+                ).success
+            }
+
+            VendorMediaType.AUDIO -> {
+                val rawBytes = runCatching { file.readBytes() }.getOrNull() ?: return false
+                val wrapped = wrapOpusIfNeeded(rawBytes)
+                val saved = saveOpusToLibrary(
+                    payloadBytes = wrapped.first,
+                    rawBytesSize = rawBytes.size,
+                    payloadNote = wrapped.second,
+                    displayName = item.fileName,
+                    takenTimeMs = takenMs,
+                )
+                if (saved.success) {
+                    runCatching {
+                        GlassesSyncedAudioIngestor.persistDownloadedAudio(
+                            context = applicationContext,
+                            displayName = item.fileName,
+                            payloadBytes = wrapped.first,
+                            takenTimeMs = takenMs,
+                        )
+                    }.onFailure {
+                        Log.e("DataDownload", "Failed to persist synced audio session for ${item.fileName}", it)
+                    }
+                }
+                saved.success
+            }
+        }
+    }
+
+    private suspend fun downloadAllMediaFiles(
         jpgFiles: List<String>,
         mp4Files: List<String>,
         opusFiles: List<String>,
         deviceIp: String,
+        sessionId: Long,
     ) {
-        CoroutineScope(Dispatchers.IO).launch {
             Log.i(
                 "DataDownload",
                 "Starting download: jpg=${jpgFiles.size}, mp4=${mp4Files.size}, opus=${opusFiles.size}"
@@ -3193,6 +3726,7 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
 
             val totalAll = jpgFiles.size + mp4Files.size + opusFiles.size
             withContext(Dispatchers.Main) {
+                if (!isDownloadSessionActive(sessionId)) return@withContext
                 if (totalAll > 0) {
                     binding.progressTransfer.isIndeterminate = false
                 }
@@ -3208,7 +3742,10 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
             
             for ((index, fileName) in jpgFiles.withIndex()) {
                 try {
+                    coroutineContext.ensureActive()
+                    if (!isDownloadSessionActive(sessionId)) return
                     withContext(Dispatchers.Main) {
+                        if (!isDownloadSessionActive(sessionId)) return@withContext
                         setTransferDetail("Downloading photo ${index + 1}/${jpgFiles.size}...")
                     }
                     Log.i("DataDownload", "Downloading file ${index + 1}/${jpgFiles.size}: $fileName")
@@ -3223,61 +3760,93 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
                     }
 
                     withContext(Dispatchers.Main) {
+                        if (!isDownloadSessionActive(sessionId)) return@withContext
                         onTransferItemDone("jpg")
-                        setTransferDetail("Downloaded ${binding.progressTransfer.progress}/${binding.progressTransfer.max}")
+                        setTransferDetail("Downloaded ${transferItemSummary()}")
                     }
                     
                     // Add a small delay to avoid excessively fast requests
                     delay(500)
                     
+                } catch (e: CancellationException) {
+                    throw e
                 } catch (e: Exception) {
+                    if (!isDownloadSessionActive(sessionId)) return
                     jpgFail++
                     Log.e("DataDownload", "Error downloading $fileName: ${e.message}", e)
 
                     withContext(Dispatchers.Main) {
+                        if (!isDownloadSessionActive(sessionId)) return@withContext
                         onTransferItemDone("jpg")
-                        setTransferDetail("Downloaded ${binding.progressTransfer.progress}/${binding.progressTransfer.max} (with errors)")
+                        setTransferDetail("Downloaded ${transferItemSummary()} (with errors)")
                     }
                 }
             }
 
             for ((index, fileName) in mp4Files.withIndex()) {
                 try {
+                    coroutineContext.ensureActive()
+                    if (!isDownloadSessionActive(sessionId)) return
                     withContext(Dispatchers.Main) {
+                        if (!isDownloadSessionActive(sessionId)) return@withContext
                         setTransferDetail("Downloading video ${index + 1}/${mp4Files.size}...")
                     }
                     Log.i("DataDownload", "Downloading video ${index + 1}/${mp4Files.size}: $fileName")
 
-                    val success = downloadSingleMp4File(fileName, deviceIp)
+                    val success = downloadSingleMp4File(fileName, deviceIp, sessionId)
                     if (success) {
                         mp4Success++
                         Log.i("DataDownload", "✓ Successfully downloaded: $fileName")
                     } else {
                         mp4Fail++
                         Log.e("DataDownload", "✗ Failed to download: $fileName")
+                        if (shouldAbortOfficialMediaTransfer(fileName)) {
+                            withContext(Dispatchers.Main) {
+                                if (isDownloadSessionActive(sessionId)) {
+                                    showDownloadError("Official flow stopped after repeated media download failures. Please retry sync.")
+                                }
+                            }
+                            return
+                        }
                     }
 
                     withContext(Dispatchers.Main) {
+                        if (!isDownloadSessionActive(sessionId)) return@withContext
                         onTransferItemDone("mp4")
-                        setTransferDetail("Downloaded ${binding.progressTransfer.progress}/${binding.progressTransfer.max}")
+                        setTransferDetail("Downloaded ${transferItemSummary()}")
                     }
 
                     // Videos are larger; be gentler.
                     delay(800)
+                } catch (e: CancellationException) {
+                    throw e
                 } catch (e: Exception) {
+                    if (!isDownloadSessionActive(sessionId)) return
                     mp4Fail++
                     Log.e("DataDownload", "Error downloading $fileName: ${e.message}", e)
+                    if (shouldAbortOfficialMediaTransfer(fileName)) {
+                        withContext(Dispatchers.Main) {
+                            if (isDownloadSessionActive(sessionId)) {
+                                showDownloadError("Official flow stopped after repeated media download failures. Please retry sync.")
+                            }
+                        }
+                        return
+                    }
 
                     withContext(Dispatchers.Main) {
+                        if (!isDownloadSessionActive(sessionId)) return@withContext
                         onTransferItemDone("mp4")
-                        setTransferDetail("Downloaded ${binding.progressTransfer.progress}/${binding.progressTransfer.max} (with errors)")
+                        setTransferDetail("Downloaded ${transferItemSummary()} (with errors)")
                     }
                 }
             }
 
             for ((index, fileName) in opusFiles.withIndex()) {
                 try {
+                    coroutineContext.ensureActive()
+                    if (!isDownloadSessionActive(sessionId)) return
                     withContext(Dispatchers.Main) {
+                        if (!isDownloadSessionActive(sessionId)) return@withContext
                         setTransferDetail("Downloading audio ${index + 1}/${opusFiles.size}...")
                     }
                     Log.i("DataDownload", "Downloading audio ${index + 1}/${opusFiles.size}: $fileName")
@@ -3292,18 +3861,23 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
                     }
 
                     withContext(Dispatchers.Main) {
+                        if (!isDownloadSessionActive(sessionId)) return@withContext
                         onTransferItemDone("opus")
-                        setTransferDetail("Downloaded ${binding.progressTransfer.progress}/${binding.progressTransfer.max}")
+                        setTransferDetail("Downloaded ${transferItemSummary()}")
                     }
 
                     delay(500)
+                } catch (e: CancellationException) {
+                    throw e
                 } catch (e: Exception) {
+                    if (!isDownloadSessionActive(sessionId)) return
                     opusFail++
                     Log.e("DataDownload", "Error downloading $fileName: ${e.message}", e)
 
                     withContext(Dispatchers.Main) {
+                        if (!isDownloadSessionActive(sessionId)) return@withContext
                         onTransferItemDone("opus")
-                        setTransferDetail("Downloaded ${binding.progressTransfer.progress}/${binding.progressTransfer.max} (with errors)")
+                        setTransferDetail("Downloaded ${transferItemSummary()} (with errors)")
                     }
                 }
             }
@@ -3317,13 +3891,23 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
             )
             
             withContext(Dispatchers.Main) {
+                if (!isDownloadSessionActive(sessionId)) return@withContext
                 if (totalFail == 0) {
                     showDownloadSuccess("All $totalSuccess files downloaded successfully!")
                 } else {
                     showDownloadError("Download completed with errors: $totalSuccess successful, $totalFail failed")
                 }
             }
-        }
+    }
+
+    private fun shouldAbortOfficialMediaTransfer(fileName: String): Boolean {
+        if (downloadFlowMode != DownloadFlowMode.OFFICIAL_HEYCYAN) return false
+        officialMediaErrorCount++
+        Log.w(
+            "DataDownload",
+            "Official flow media error $officialMediaErrorCount/2 for $fileName; aborting=${officialMediaErrorCount > 1}"
+        )
+        return officialMediaErrorCount > 1
     }
     
     private suspend fun downloadSingleJpgFile(fileName: String, deviceIp: String): Boolean {
@@ -3348,20 +3932,31 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
                 false
             }
         } catch (e: Exception) {
+            if (e is CancellationException) throw e
             Log.e("DataDownload", "Error downloading $fileName: ${e.message}", e)
             false
         }
     }
 
-    private suspend fun downloadSingleMp4File(fileName: String, deviceIp: String): Boolean {
+    private suspend fun downloadSingleMp4File(fileName: String, deviceIp: String, sessionId: Long): Boolean {
         return try {
             val url = "http://$deviceIp/files/$fileName"
             Log.i("DataDownload", "Downloading: $url")
 
             var saved: GallerySaveResult? = null
-            httpGet(URL(url), 15000, 180000) { stream, _ ->
+            val startedAtMs = System.currentTimeMillis()
+            httpGet(URL(url), 15000, 180000) { stream, contentLength ->
                 val takenMs = parseTakenTimeMillisFromFilename(fileName) ?: System.currentTimeMillis()
-                saved = saveMp4ToGallery(stream, fileName, takenMs)
+                saved = saveMp4ToGallery(stream, fileName, takenMs, contentLength) { bytesCopied, totalBytes ->
+                    maybeReportFileProgress(
+                        sessionId = sessionId,
+                        mediaType = "video",
+                        fileName = fileName,
+                        bytesCopied = bytesCopied,
+                        totalBytes = totalBytes,
+                        startedAtMs = startedAtMs,
+                    )
+                }
             }
 
             if (saved != null && saved!!.bytes > 0) {
@@ -3375,6 +3970,7 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
                 false
             }
         } catch (e: Exception) {
+            if (e is CancellationException) throw e
             Log.e("DataDownload", "Error downloading $fileName: ${e.message}", e)
             false
         }
@@ -3434,6 +4030,7 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
                 false
             }
         } catch (e: Exception) {
+            if (e is CancellationException) throw e
             Log.e("DataDownload", "Error downloading $fileName: ${e.message}", e)
             false
         }
@@ -3523,7 +4120,13 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
         }
     }
 
-    private fun saveMp4ToGallery(input: InputStream, displayName: String, takenTimeMs: Long): GallerySaveResult {
+    private fun saveMp4ToGallery(
+        input: InputStream,
+        displayName: String,
+        takenTimeMs: Long,
+        contentLength: Long,
+        onBytesCopied: ((Long, Long) -> Unit)? = null,
+    ): GallerySaveResult {
         return try {
             val resolver = contentResolver
 
@@ -3552,6 +4155,7 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
                         if (read <= 0) break
                         out.write(buffer, 0, read)
                         bytes += read
+                        onBytesCopied?.invoke(bytes, contentLength)
                     }
                     out.flush()
                 } ?: run {
@@ -3925,6 +4529,7 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
     private fun teardownDownloadP2pSession(sendExitTransfer: Boolean, hideTransferUi: Boolean) {
         downloadAttemptJob?.cancel()
         downloadAttemptJob = null
+        cancelDownloadSession()
         downloadInitialPhaseTimeoutJob?.cancel()
         downloadInitialPhaseTimeoutJob = null
         unbindProcessFromNetwork()
@@ -3992,7 +4597,7 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
     }
 
     private fun cancelDataDownloadAttempt(reason: String, showToast: Boolean) {
-        Log.i("DataDownload", reason)
+        Log.i("DataDownload", "$reason (flow=${downloadFlowMode.label})")
         maybeShowP2pSyncLogHelp(
             reason = "The user stopped the P2P sync before media transfer completed. Sharing logs can help diagnose why the sync needed to be cancelled.",
             title = "Sync stopped",
@@ -4013,7 +4618,7 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
     private fun showDownloadSuccess(message: String) {
         finishDownloadInitialPhase("download completed")
         cleanupP2pAfterDownload()
-        Log.i("DataDownload", "SUCCESS: $message")
+        Log.i("DataDownload", "SUCCESS: $message (flow=${downloadFlowMode.label})")
         Toast.makeText(this, message, Toast.LENGTH_LONG).show()
     }
     
@@ -4027,7 +4632,7 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
         if (cleanup) {
             cleanupP2pAfterDownload()
         }
-        Log.e("DataDownload", "ERROR: $message")
+        Log.e("DataDownload", "ERROR: $message (flow=${downloadFlowMode.label})")
         Toast.makeText(this, message, Toast.LENGTH_LONG).show()
     }
 
@@ -4233,6 +4838,10 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
         lastDownloadBleIpAtMs = now
         Log.i("DataDownload", "BLE reported device WiFi IP: $ip")
         downloadBleIp = ip
+        if (downloadFlowMode == DownloadFlowMode.OFFICIAL_HEYCYAN) {
+            officialBleCallbackSuccess = true
+            Log.i("DataDownload", "Official flow BLE readiness satisfied")
+        }
 
         // If we're stuck scanning/probing without a good route, restart the resolver now that
         // we have the authoritative device IP from BLE.
@@ -4248,11 +4857,24 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
         downloadP2pConnected = info.groupFormed
         downloadWifiIp = info.groupOwnerAddress?.hostAddress
         downloadPhoneIsGroupOwner = info.isGroupOwner
-        downloadP2pNetwork = findLikelyP2pNetwork()
-        bindProcessToNetwork(downloadP2pNetwork)
+        if (downloadFlowMode == DownloadFlowMode.OFFICIAL_HEYCYAN) {
+            officialSystemSuccess = info.groupFormed
+            officialDisconnectRecoveryJob?.cancel()
+            officialDisconnectRecoveryJob = null
+            downloadWifiP2pManager?.resetPeerDiscovery()
+            Log.i(
+                "DataDownload",
+                "Official flow P2P readiness satisfied: systemSuccess=$officialSystemSuccess, phoneIsGroupOwner=${info.isGroupOwner}"
+            )
+            downloadP2pNetwork = null
+            Log.i("DataDownload", "Official flow: skipping explicit P2P network binding to mirror vendor app")
+        } else {
+            downloadP2pNetwork = findLikelyP2pNetwork()
+            bindProcessToNetwork(downloadP2pNetwork)
+        }
         Log.i(
             "DataDownload",
-            "onDownloadP2pConnected: p2pConnected=$downloadP2pConnected, isGroupOwner=${info.isGroupOwner}, groupOwnerIp=$downloadWifiIp"
+            "onDownloadP2pConnected: flow=${downloadFlowMode.label}, p2pConnected=$downloadP2pConnected, isGroupOwner=${info.isGroupOwner}, groupOwnerIp=$downloadWifiIp"
         )
         maybeStartHttpDownload("P2P")
     }
@@ -4272,6 +4894,59 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
             return
         }
 
+        when (downloadFlowMode) {
+            DownloadFlowMode.OFFICIAL_HEYCYAN -> maybeStartOfficialHttpDownload(source)
+            DownloadFlowMode.CUSTOM -> maybeStartCustomHttpDownload(source)
+        }
+    }
+
+    private fun maybeStartOfficialHttpDownload(source: String) {
+        if (!officialSystemSuccess) {
+            Log.i(
+                "DataDownload",
+                "Ignoring HTTP start trigger from $source; HeyCyan flow is waiting for P2P system success"
+            )
+            return
+        }
+
+        val bleIp = downloadBleIp
+        if (!officialBleCallbackSuccess || bleIp.isNullOrBlank()) {
+            setTransferDetail("Waiting for BLE-reported glasses IP...")
+            Log.i(
+                "DataDownload",
+                "Ignoring HTTP start trigger from $source; HeyCyan flow is waiting for BLE 0x08 IP notify"
+            )
+            return
+        }
+
+        val targetIp = if (!downloadPhoneIsGroupOwner && !downloadWifiIp.isNullOrBlank()) {
+            downloadWifiIp!!
+        } else {
+            bleIp
+        }
+
+        Log.i(
+            "DataDownload",
+            "Official flow HTTP start trigger from $source. flow=${downloadFlowMode.label}, phoneIsGroupOwner=$downloadPhoneIsGroupOwner, bleIp=$downloadBleIp, groupOwnerIp=$downloadWifiIp, targetIp=$targetIp"
+        )
+
+        downloadAttemptJob = launchDownloadSession { sessionId ->
+            // PictureFragment waits before handing media.config to AlbumDepository.
+            delay(1000)
+            if (!isActive || !downloadP2pConnected || downloadCancelledByUser || !isDownloadSessionActive(sessionId)) return@launchDownloadSession
+            officialDisconnectRecoveryJob?.cancel()
+            officialDisconnectRecoveryJob = null
+            downloadWifiP2pManager?.resetPeerDiscovery()
+            resetOfficialFlowState()
+            downloadResolvedHttpIp = targetIp
+            downloadInProgress = true
+            Log.i("DataDownload", "Official flow resolved glasses HTTP IP: $targetIp")
+            downloadMediaList(targetIp, sessionId)
+        }
+    }
+
+    private fun maybeStartCustomHttpDownload(source: String) {
+
         val hasDeviceIp = !downloadBleIp.isNullOrBlank() || !bleIpBridge.ip.value.isNullOrBlank()
         if (!hasDeviceIp) {
             setTransferDetail("Waiting for BLE-reported glasses IP...")
@@ -4282,10 +4957,10 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
         val bridgeIp = bleIpBridge.ip.value
         Log.i(
             "DataDownload",
-            "HTTP start trigger from $source. p2p=$downloadP2pConnected, bleIp=$downloadBleIp, groupOwnerIp=$downloadWifiIp, bleBridgeIp=$bridgeIp"
+            "HTTP start trigger from $source. flow=${downloadFlowMode.label}, p2p=$downloadP2pConnected, bleIp=$downloadBleIp, groupOwnerIp=$downloadWifiIp, bleBridgeIp=$bridgeIp"
         )
 
-        downloadAttemptJob = CoroutineScope(Dispatchers.IO).launch {
+        downloadAttemptJob = launchDownloadSession { sessionId ->
             // Official app waits briefly after both P2P+BLE-IP signals before fetching media.config.
             delay(1000)
 
@@ -4295,6 +4970,7 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
             var didSubnetScan = false
 
             while (isActive && System.currentTimeMillis() - startMs < overallTimeoutMs) {
+                if (!isDownloadSessionActive(sessionId)) return@launchDownloadSession
                 val now = System.currentTimeMillis()
                 if (now - lastStatusLogMs > 5000) {
                     lastStatusLogMs = now
@@ -4306,7 +4982,7 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
 
                 // 1) Try known candidates first.
                 for (candidate in buildCandidateIps()) {
-                    if (!isActive) return@launch
+                    if (!isActive || !isDownloadSessionActive(sessionId)) return@launchDownloadSession
                     if (candidate.isBlank()) continue
                     if (isProbablyGroupOwnerIp(candidate)) {
                         // The phone typically has nothing on port 80.
@@ -4324,8 +5000,8 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
                         downloadResolvedHttpIp = candidate
                         downloadInProgress = true
                         Log.i("DataDownload", "Resolved glasses HTTP IP via candidate list: $candidate")
-                        downloadMediaList(candidate)
-                        return@launch
+                        downloadMediaList(candidate, sessionId)
+                        return@launchDownloadSession
                     }
                 }
 
@@ -4346,8 +5022,8 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
                             downloadResolvedHttpIp = found
                             downloadInProgress = true
                             Log.i("DataDownload", "Resolved glasses HTTP IP via scan: $found")
-                            downloadMediaList(found)
-                            return@launch
+                            downloadMediaList(found, sessionId)
+                            return@launchDownloadSession
                         }
                     }
                 }
@@ -4363,6 +5039,12 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
                 )
             }
         }
+    }
+
+    private fun isDownloadInitialPhaseActive(): Boolean {
+        return !downloadInitialPhaseCompleted &&
+            !downloadCancelledByUser &&
+            binding.cardTransferProgress.visibility == View.VISIBLE
     }
 
     private inner class DownloadNotifyListener : GlassesDeviceNotifyListener() {
@@ -4412,6 +5094,14 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
         } catch (_: Exception) { null }
     }
 
+    private fun openPlainHttpConnection(url: URL): HttpURLConnection? {
+        return try {
+            val conn = url.openConnection() as HttpURLConnection
+            conn.instanceFollowRedirects = true
+            conn
+        } catch (_: Exception) { null }
+    }
+
     /** Build an OkHttp client whose sockets bind to the P2P local address (VPN-proof). */
     private fun vpnSafeHttpClient(connectTimeoutMs: Int, readTimeoutMs: Int): okhttp3.OkHttpClient? {
         val p2pAddr = p2pLocalAddress() ?: return null
@@ -4447,6 +5137,26 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
         readTimeoutMs: Int,
         onStream: ((InputStream, Long) -> Unit)? = null
     ): Boolean {
+        if (downloadFlowMode == DownloadFlowMode.OFFICIAL_HEYCYAN) {
+            return try {
+                val conn = openPlainHttpConnection(url) ?: return false
+                conn.requestMethod = "GET"
+                conn.connectTimeout = connectTimeoutMs
+                conn.readTimeout = readTimeoutMs
+                if (conn.responseCode == HttpURLConnection.HTTP_OK) {
+                    onStream?.invoke(conn.inputStream, conn.contentLengthLong)
+                    conn.disconnect()
+                    true
+                } else {
+                    conn.disconnect()
+                    false
+                }
+            } catch (e: Exception) {
+                Log.w("DataDownload", "Official flow plain httpGet failed for $url: ${e.message}")
+                false
+            }
+        }
+
         try {
             val conn = openHttpConnection(url) ?: return false
             conn.requestMethod = "GET"
@@ -4592,9 +5302,29 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
     private fun maybeResetP2pAfterError255(source: String) {
         val now = System.currentTimeMillis()
 
+        if (downloadFlowMode == DownloadFlowMode.OFFICIAL_HEYCYAN) {
+            val sessionActive = isOfficialSyncActive() || downloadP2pConnected || downloadInProgress || downloadAttemptJob?.isActive == true
+            if (!sessionActive) {
+                Log.i("DataDownload", "Ignoring error=255 reset (source=$source) outside download session")
+                return
+            }
+            lastP2pResetAtMs = now
+            Log.i("DataDownload", "HeyCyan flow resetting device P2P after error=255 (source=$source)")
+            WifiP2pManagerSingleton.getInstance(this).resetDeviceP2p()
+            return
+        }
+
         // Only attempt P2P resets when we're actually in (or attempting) a download session.
         // Otherwise these resets can interfere with normal camera/recording usage.
-        val sessionActive = downloadInProgress || downloadAttemptJob?.isActive == true || downloadP2pConnected
+        val sessionActive = when (downloadFlowMode) {
+            DownloadFlowMode.OFFICIAL_HEYCYAN -> {
+                downloadInProgress || downloadAttemptJob?.isActive == true || downloadP2pConnected || isDownloadInitialPhaseActive()
+            }
+
+            DownloadFlowMode.CUSTOM -> {
+                downloadInProgress || downloadAttemptJob?.isActive == true || downloadP2pConnected
+            }
+        }
         if (!sessionActive) {
             Log.i("DataDownload", "Ignoring error=255 reset (source=$source) outside download session")
             return
@@ -4745,6 +5475,10 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
                 }
                 // Glasses report WiFi IP for data download
                 0x08 -> {
+                    if (isOfficialSyncActive()) {
+                        Log.i("DeviceNotify", "Skipping main 0x08 handling during official sync flow")
+                        return
+                    }
                     if (response.loadData.size >= 11) {
                         val ip = "${ByteUtil.byteToInt(response.loadData[7])}." +
                                 "${ByteUtil.byteToInt(response.loadData[8])}." +
@@ -4761,6 +5495,10 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
                 }
                 // Glasses report P2P / WiFi error during data download
                 0x09 -> {
+                    if (isOfficialSyncActive()) {
+                        Log.i("DeviceNotify", "Skipping main 0x09 handling during official sync flow")
+                        return
+                    }
                     val raw = response.loadData.getOrNull(7) ?: 0
                     val errorCode = ByteUtil.byteToInt(raw)
                     Log.e("DeviceNotify", "P2P/WiFi error from device: $errorCode (raw=$raw)")

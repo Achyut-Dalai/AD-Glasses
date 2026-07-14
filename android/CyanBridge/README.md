@@ -15,6 +15,13 @@ This app lives under:
 - Pluggable transcription service and chunking pipeline (`ai/transcription/`).
 - Structured meeting summarization and notes storage (`ai/summarization/`, `notes/`).
 - Privacy toggles for transcript storage, redaction, and export behavior (`privacy/`, `ui/SettingsActivity.kt`).
+- Local-agent groundwork for accessibility-driven phone control, including a foreground agent service, approval settings, and screen-capture memory plumbing (`localagent/`, `ui/SettingsActivity.kt`).
+
+## Local Agent Inspiration
+
+The local-agent phone-control direction in CyanBridge takes architectural inspiration from `orailnoor/private-agent`, especially its Accessibility-based observe -> choose one action -> execute -> observe loop.
+
+Our implementation remains CyanBridge-native and Kotlin-first, built on top of the app's own local-agent, privacy, and approval systems.
 
 ## Module map
 

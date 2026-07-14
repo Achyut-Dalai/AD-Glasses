@@ -46,6 +46,16 @@ Android_SDK_Development_Guide_CN.pdf
 # Node.js
 node_modules/
 
+# Keep sibling website repos out of the SDK worktree if copied here by mistake
+Cyanbridge_website/
+Carelens_website/
+
+# Local side projects and analysis notes
+android/EvenRealitiesApp/
+android/XGIMIGlassesApp/
+BINARY_ANALYSIS*.md
+android/P2P_SYNC_ANALYSIS*.md
+
 # OS
 .DS_Store
 Thumbs.db

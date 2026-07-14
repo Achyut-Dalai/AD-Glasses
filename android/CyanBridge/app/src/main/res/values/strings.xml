@@ -1,7 +1,6 @@
 <resources>
     <string name="app_name">CyanBridge</string>
-    <string name="nav_transcriptions_recordings">Transcriptions
-&amp; recordings</string>
+    <string name="nav_transcriptions_recordings">Media</string>
     <string name="text_1">Scan</string>
     <string name="text_2">Reconnect</string>
     <string name="text_3">Disconnect</string>
@@ -87,6 +86,7 @@
     <string name="delete_chat_message">Delete \"%s\"? This cannot be undone.</string>
     <string name="chat_deleted">Chat deleted</string>
     <string name="open_synced_media">View synced photos and videos</string>
+    <string name="recent_synced_photos">Recent synced photos</string>
     <string name="synced_media_title">Synced photos and videos</string>
     <string name="synced_media_folder_hint">Showing files from: %1$s</string>
     <string name="synced_media_empty">No synced photos or videos found yet.</string>

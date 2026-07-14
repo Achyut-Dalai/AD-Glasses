@@ -37,6 +37,7 @@ data class SyncedMediaItem(
 class SyncedMediaAdapter(
     private val context: Context,
     private val onItemClick: (SyncedMediaItem) -> Unit,
+    private val compact: Boolean = false,
 ) : ListAdapter<SyncedMediaItem, SyncedMediaAdapter.MediaViewHolder>(DIFF) {
 
     private val thumbScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
@@ -71,6 +72,8 @@ class SyncedMediaAdapter(
         fun bind(item: SyncedMediaItem) {
             boundItemId = item.id
 
+            binding.tvName.visibility = if (compact) View.GONE else View.VISIBLE
+            binding.tvMeta.visibility = if (compact) View.GONE else View.VISIBLE
             binding.tvName.text = item.displayName
             binding.tvMeta.text = formatTakenTime(item.takenAtMs)
             binding.tvVideoBadge.visibility = if (item.isVideo) View.VISIBLE else View.GONE

@@ -5,11 +5,13 @@ import android.content.SharedPreferences
 import android.media.MediaPlayer
 import android.os.Bundle
 import android.util.Log
+import android.view.View
 import android.widget.LinearLayout
 import android.widget.TextView
 import android.widget.Toast
 import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.app.AppCompatActivity
+import androidx.recyclerview.widget.GridLayoutManager
 import androidx.recyclerview.widget.LinearLayoutManager
 import com.google.android.material.progressindicator.LinearProgressIndicator
 import com.fersaiyan.cyanbridge.MainActivity
@@ -59,11 +61,13 @@ class RecordingsListActivity : AppCompatActivity() {
 
     private lateinit var binding: ActivityRecordingsListBinding
     private lateinit var adapter: RecordingListAdapter
+    private lateinit var recentMediaAdapter: SyncedMediaAdapter
 
     private var meetingBannerController: MeetingRecordingBannerController? = null
 
     private val uiScope = MainScope()
     private var sessionsJob: Job? = null
+    private var recentMediaJob: Job? = null
 
     private var mediaPlayer: MediaPlayer? = null
     private var currentlyPlayingId: Long? = null
@@ -115,6 +119,14 @@ class RecordingsListActivity : AppCompatActivity() {
         binding.recyclerRecordings.layoutManager = LinearLayoutManager(this)
         binding.recyclerRecordings.adapter = adapter
 
+        recentMediaAdapter = SyncedMediaAdapter(
+            context = this,
+            onItemClick = ::openSyncedMediaItem,
+            compact = true,
+        )
+        binding.recyclerRecentSyncedMedia.layoutManager = GridLayoutManager(this, 4)
+        binding.recyclerRecentSyncedMedia.adapter = recentMediaAdapter
+
         binding.btnOpenSyncedMedia.setOnClickListener {
             startActivity(Intent(this, SyncedMediaGalleryActivity::class.java))
         }
@@ -142,6 +154,7 @@ class RecordingsListActivity : AppCompatActivity() {
                 binding.recyclerRecordings.visibility = if (sessions.isEmpty()) android.view.View.GONE else android.view.View.VISIBLE
             }
         }
+        loadRecentSyncedPhotos()
     }
 
     override fun onStop() {
@@ -150,13 +163,44 @@ class RecordingsListActivity : AppCompatActivity() {
 
         sessionsJob?.cancel()
         sessionsJob = null
+        recentMediaJob?.cancel()
+        recentMediaJob = null
         stopPlayback()
     }
 
     override fun onDestroy() {
         super.onDestroy()
         uiScope.cancel()
+        recentMediaAdapter.release()
         stopPlayback()
+    }
+
+    private fun loadRecentSyncedPhotos() {
+        recentMediaJob?.cancel()
+        recentMediaJob = uiScope.launch {
+            val recentPhotos = withContext(Dispatchers.IO) {
+                SyncedMediaQuery.query(
+                    context = this@RecordingsListActivity,
+                    imagesOnly = true,
+                    limit = 4,
+                )
+            }
+            recentMediaAdapter.submitList(recentPhotos)
+            val visibility = if (recentPhotos.isEmpty()) View.GONE else View.VISIBLE
+            binding.tvRecentSyncedMedia.visibility = visibility
+            binding.recyclerRecentSyncedMedia.visibility = visibility
+        }
+    }
+
+    private fun openSyncedMediaItem(item: SyncedMediaItem) {
+        val intent = Intent(Intent.ACTION_VIEW).apply {
+            setDataAndType(item.contentUri, "image/*")
+            addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+        }
+        runCatching { startActivity(intent) }
+            .onFailure {
+                Toast.makeText(this, getString(R.string.synced_media_open_failed), Toast.LENGTH_SHORT).show()
+            }
     }
 
     override fun onSupportNavigateUp(): Boolean {
