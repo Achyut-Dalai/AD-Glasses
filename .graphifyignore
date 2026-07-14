@@ -1,0 +1,59 @@
+# Build artifacts and dependency dirs
+build/
+release/
+node_modules/
+.gradle/
+__pycache__/
+*.egg-info
+dist/
+out/
+target/
+
+# Binary/media files
+*.aar
+*.apk
+*.swu
+*.png
+*.jpg
+*.jpeg
+*.gif
+*.svg
+*.ico
+*.webp
+*.mp4
+*.mp3
+*.wav
+*.ogg
+*.pdf
+*.bin
+
+# Runtime app data
+*/com.glasssutdio.wear/*
+
+# Firmware dump - skip results, legacy, pure dumps
+firmware_dump/RESULTS/
+firmware_dump/LEGACY/
+firmware_dump/Pure_Firmware_Dumps/
+
+# Third-party and examples (user said to skip)
+third_party/
+examples/
+
+# HeyCyanOfficialApp - app/src/main/java/ and app/src/main/com/ contain
+# merged AAR dependency sources, not project code. Exclude everything.
+android/HeyCyanOfficialApp/app/src/main/java/*
+android/HeyCyanOfficialApp/app/src/main/kotlin/*
+android/HeyCyanOfficialApp/app/src/main/com/*
+android/HeyCyanOfficialApp/app/src/main/META-INF/*
+android/HeyCyanOfficialApp/app/src/main/res/*
+android/HeyCyanOfficialApp/app/src/main/assets/*
+android/HeyCyanOfficialApp/app/src/main/*.properties
+android/HeyCyanOfficialApp/app/src/main/*.tflite
+android/HeyCyanOfficialApp/app/src/main/*.version
+android/HeyCyanOfficialApp/app/src/main/*.bin
+android/HeyCyanOfficialApp/app/src/main/*.kotlin_builtins
+android/HeyCyanOfficialApp/app/src/main/*.glsl
+android/HeyCyanOfficialApp/app/src/main/*.module
+android/HeyCyanOfficialApp/app/src/main/*.factory
+android/HeyCyanOfficialApp/app/src/main/*.textproto
+android/HeyCyanOfficialApp/app/src/main/*.json

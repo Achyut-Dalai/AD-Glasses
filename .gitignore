@@ -62,3 +62,13 @@ Thumbs.db
 
 # Local tooling (very large / machine-specific)
 tools/
+
+# Generated analysis and language caches
+**/.kotlin/
+**/__pycache__/
+graphify-out/
+**/graphify-out/
+
+# Local recovery/export snapshots
+backups/
+android/CyanBridge/_local_termux_server_phone_current/
