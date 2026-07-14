@@ -4,9 +4,11 @@ import android.app.Application
 import android.bluetooth.BluetoothAdapter
 import android.bluetooth.BluetoothDevice
 import android.content.Context
+import android.content.Intent
 import android.content.IntentFilter
 import android.os.Build
 import androidx.localbroadcastmanager.content.LocalBroadcastManager
+import androidx.core.content.ContextCompat
 import com.oudmon.ble.base.bluetooth.BleAction
 import com.oudmon.ble.base.bluetooth.BleBaseControl
 import com.oudmon.ble.base.bluetooth.BleOperateManager
@@ -19,6 +21,10 @@ import com.fersaiyan.cyanbridge.localagent.daily.DailyFactsReminderScheduler
 import com.fersaiyan.cyanbridge.memoryvault.MemoryVaultBootstrap
 import com.fersaiyan.cyanbridge.media.autocapture.AutoAudioCapturePrefs
 import com.fersaiyan.cyanbridge.media.autocapture.AutoAudioCaptureService
+import com.fersaiyan.cyanbridge.localmodels.remote.RemoteOpenAiPrefs
+import com.fersaiyan.cyanbridge.studiobridge.StudioApprovalHandler
+import com.fersaiyan.cyanbridge.studiobridge.StudioBridgeClient
+import com.fersaiyan.cyanbridge.studiobridge.StudioBridgeForegroundService
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
@@ -36,6 +42,7 @@ import kotlin.properties.Delegates
 class MyApplication : Application(){
 
     private val appScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
+    private var studioApprovalHandler: StudioApprovalHandler? = null
 
     var hardwareVersion: String = ""
     var firmwareVersion:String =""
@@ -64,6 +71,44 @@ class MyApplication : Application(){
 
         runCatching { MemoryVaultBootstrap.ensureInitialized(this) }
         maybePreloadLocalModel()
+
+    }
+
+    /**
+     * Start the Studio Bridge WebSocket connection for approval notifications.
+     */
+    fun startStudioBridge(): Boolean {
+        if (!RemoteOpenAiPrefs.isBridgeConfigured(this)) return false
+        if (!StudioApprovalHandler.canCaptureVoice(this)) return false
+
+        // A settings refresh replaces both the socket and its TTS resources.
+        stopStudioBridge()
+        val handler = StudioApprovalHandler(applicationContext)
+        handler.initialize()
+        studioApprovalHandler = handler
+        val foregroundStarted = runCatching {
+            ContextCompat.startForegroundService(
+                this,
+                Intent(this, StudioBridgeForegroundService::class.java),
+            )
+        }.isSuccess
+        if (!foregroundStarted) {
+            handler.shutdown()
+            studioApprovalHandler = null
+            return false
+        }
+        StudioBridgeClient.start(applicationContext, handler)
+        return true
+    }
+
+    /**
+     * Stop the Studio Bridge WebSocket connection.
+     */
+    fun stopStudioBridge() {
+        StudioBridgeClient.stop()
+        stopService(Intent(this, StudioBridgeForegroundService::class.java))
+        studioApprovalHandler?.shutdown()
+        studioApprovalHandler = null
     }
 
     private fun maybePreloadLocalModel() {

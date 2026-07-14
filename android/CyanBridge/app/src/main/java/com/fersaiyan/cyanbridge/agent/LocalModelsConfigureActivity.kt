@@ -1,5 +1,6 @@
 package com.fersaiyan.cyanbridge.agent
 
+import android.Manifest
 import android.net.Uri
 import android.os.Bundle
 import android.provider.OpenableColumns
@@ -37,6 +38,7 @@ import com.fersaiyan.cyanbridge.localmodels.storage.LocalModelFileUtils
 import com.fersaiyan.cyanbridge.localmodels.storage.LocalModelStorageRepository
 import com.fersaiyan.cyanbridge.localmodels.remote.RemoteOpenAiClient
 import com.fersaiyan.cyanbridge.localmodels.remote.RemoteOpenAiPrefs
+import com.fersaiyan.cyanbridge.studiobridge.StudioApprovalHandler
 import com.fersaiyan.cyanbridge.ui.debug.DebugLogSupport
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
@@ -106,6 +108,17 @@ class LocalModelsConfigureActivity : AppCompatActivity() {
     private lateinit var btnRemoteSave: MaterialButton
     private lateinit var tvRemoteStatus: TextView
 
+    // Studio Bridge views
+    private lateinit var cardStudioBridge: com.google.android.material.card.MaterialCardView
+    private lateinit var headerStudioBridge: View
+    private lateinit var contentStudioBridge: View
+    private lateinit var iconExpandStudioBridge: ImageView
+    private lateinit var switchStudioBridgeEnabled: com.google.android.material.switchmaterial.SwitchMaterial
+    private lateinit var editStudioBridgeApiKey: com.google.android.material.textfield.TextInputEditText
+    private lateinit var btnApiKeyHelp: TextView
+    private lateinit var btnStudioBridgeSave: com.google.android.material.button.MaterialButton
+    private lateinit var tvStudioBridgeStatus: TextView
+
     private var installedModels: List<InstalledLocalModel> = emptyList()
     private var suppressProfileSelection = false
     private var isDownloadInFlight = false
@@ -119,6 +132,17 @@ class LocalModelsConfigureActivity : AppCompatActivity() {
     ) { uri ->
         if (uri != null) {
             importModel(uri)
+        }
+    }
+
+    private val recordAudioPermissionLauncher = registerForActivityResult(
+        ActivityResultContracts.RequestPermission(),
+    ) { granted ->
+        if (granted) {
+            saveStudioBridgeConfig()
+        } else {
+            switchStudioBridgeEnabled.isChecked = false
+            Toast.makeText(this, "Microphone permission is required for voice approvals", Toast.LENGTH_LONG).show()
         }
     }
 
@@ -199,6 +223,17 @@ class LocalModelsConfigureActivity : AppCompatActivity() {
         btnRemoteTest = findViewById(R.id.btn_remote_test)
         btnRemoteSave = findViewById(R.id.btn_remote_save)
         tvRemoteStatus = findViewById(R.id.tv_remote_status)
+
+        // Studio Bridge
+        cardStudioBridge = findViewById(R.id.card_studio_bridge)
+        headerStudioBridge = findViewById(R.id.header_studio_bridge)
+        contentStudioBridge = findViewById(R.id.content_studio_bridge)
+        iconExpandStudioBridge = findViewById(R.id.icon_expand_studio_bridge)
+        switchStudioBridgeEnabled = findViewById(R.id.switch_studio_bridge_enabled)
+        editStudioBridgeApiKey = findViewById(R.id.edit_studio_bridge_api_key)
+        btnApiKeyHelp = findViewById(R.id.btn_api_key_help)
+        btnStudioBridgeSave = findViewById(R.id.btn_studio_bridge_save)
+        tvStudioBridgeStatus = findViewById(R.id.tv_studio_bridge_status)
     }
 
     private fun bindActions() {
@@ -335,6 +370,10 @@ class LocalModelsConfigureActivity : AppCompatActivity() {
         btnRemoteSave.setOnClickListener { saveRemoteServerConfig() }
 
         btnRemoteTest.setOnClickListener { testRemoteServerConnection() }
+
+        btnStudioBridgeSave.setOnClickListener { saveStudioBridgeConfig() }
+
+        btnApiKeyHelp.setOnClickListener { showApiKeyHelpDialog() }
     }
 
     private fun setupCollapsibleSections() {
@@ -352,6 +391,14 @@ class LocalModelsConfigureActivity : AppCompatActivity() {
             content = contentRemoteServer,
             icon = iconExpandRemoteServer,
             sectionName = "REMOTE SERVER",
+            defaultExpanded = false,
+        )
+        setupCollapsibleSection(
+            card = cardStudioBridge,
+            header = headerStudioBridge,
+            content = contentStudioBridge,
+            icon = iconExpandStudioBridge,
+            sectionName = "STUDIO BRIDGE",
             defaultExpanded = false,
         )
         setupCollapsibleSection(
@@ -436,6 +483,7 @@ class LocalModelsConfigureActivity : AppCompatActivity() {
         syncDownloadButtonsState()
 
         loadRemoteServerConfig()
+        loadStudioBridgeConfig()
     }
 
     private fun refreshInstalledModelsSpinner() {
@@ -1078,6 +1126,14 @@ class LocalModelsConfigureActivity : AppCompatActivity() {
             Toast.makeText(this, "Model name is required when remote server is enabled", Toast.LENGTH_SHORT).show()
             return
         }
+        if (apiKey.isNotBlank() && !RemoteOpenAiPrefs.isCredentialTransportAllowed(url)) {
+            Toast.makeText(
+                this,
+                "API keys require HTTPS, a private LAN address, or a Tailscale IP",
+                Toast.LENGTH_LONG,
+            ).show()
+            return
+        }
 
         RemoteOpenAiPrefs.setBaseUrl(this, url)
         RemoteOpenAiPrefs.setModel(this, model)
@@ -1091,6 +1147,15 @@ class LocalModelsConfigureActivity : AppCompatActivity() {
         }
         Toast.makeText(this, msg, Toast.LENGTH_SHORT).show()
         tvRemoteStatus.text = if (enabled) "Active: $model @ $url" else ""
+        if (RemoteOpenAiPrefs.isBridgeEnabled(this)) {
+            val restarted = (application as? com.fersaiyan.cyanbridge.ui.MyApplication)
+                ?.startStudioBridge() == true
+            tvStudioBridgeStatus.text = if (restarted) {
+                "Bridge reconnecting with the updated server settings."
+            } else {
+                "Bridge needs a model and microphone access before it can reconnect."
+            }
+        }
         setResult(RESULT_OK)
     }
 
@@ -1123,5 +1188,105 @@ class LocalModelsConfigureActivity : AppCompatActivity() {
                 },
             )
         }
+    }
+
+    // --- Studio Bridge (approval notifications over Tailscale) ---
+
+    private fun loadStudioBridgeConfig() {
+        switchStudioBridgeEnabled.isChecked = RemoteOpenAiPrefs.isBridgeEnabled(this)
+        // Pre-fill API key from the remote server config if bridge key is empty.
+        val bridgeKey = RemoteOpenAiPrefs.getApiKey(this)
+        editStudioBridgeApiKey.setText(bridgeKey)
+
+        val statusText = if (RemoteOpenAiPrefs.isBridgeConfigured(this)) {
+            "Bridge configured for voice approvals."
+        } else if (RemoteOpenAiPrefs.isBridgeEnabled(this)) {
+            "Bridge enabled but server URL, model, or API key is missing."
+        } else {
+            ""
+        }
+        tvStudioBridgeStatus.text = statusText
+    }
+
+    private fun saveStudioBridgeConfig() {
+        val enabled = switchStudioBridgeEnabled.isChecked
+        val apiKey = editStudioBridgeApiKey.text?.toString().orEmpty().trim()
+
+        if (enabled) {
+            val baseUrl = RemoteOpenAiPrefs.getBaseUrl(this)
+            if (baseUrl.isBlank()) {
+                Toast.makeText(this, "Configure the Remote Server base URL first", Toast.LENGTH_LONG).show()
+                switchStudioBridgeEnabled.isChecked = false
+                return
+            }
+            if (apiKey.isBlank()) {
+                Toast.makeText(this, "API key is required for the bridge", Toast.LENGTH_SHORT).show()
+                return
+            }
+            if (RemoteOpenAiPrefs.getModel(this).isBlank()) {
+                Toast.makeText(this, "Configure a Remote Server model for response classification", Toast.LENGTH_LONG).show()
+                return
+            }
+            if (!RemoteOpenAiPrefs.isCredentialTransportAllowed(baseUrl)) {
+                Toast.makeText(
+                    this,
+                    "API keys require HTTPS, a private LAN address, or a Tailscale IP",
+                    Toast.LENGTH_LONG,
+                ).show()
+                return
+            }
+            if (!android.speech.SpeechRecognizer.isRecognitionAvailable(this)) {
+                Toast.makeText(this, "No speech recognizer is available on this device", Toast.LENGTH_LONG).show()
+                switchStudioBridgeEnabled.isChecked = false
+                return
+            }
+            if (!StudioApprovalHandler.canCaptureVoice(this)) {
+                recordAudioPermissionLauncher.launch(Manifest.permission.RECORD_AUDIO)
+                return
+            }
+            // The API key is shared with RemoteOpenAiPrefs, so we save it there.
+            RemoteOpenAiPrefs.setApiKey(this, apiKey)
+        }
+
+        RemoteOpenAiPrefs.setBridgeEnabled(this, enabled)
+
+        // Start or stop the bridge client.
+        val app = application as? com.fersaiyan.cyanbridge.ui.MyApplication
+        if (enabled) {
+            if (app?.startStudioBridge() != true) {
+                tvStudioBridgeStatus.text = "Bridge could not start. Check model and microphone access."
+                return
+            }
+            tvStudioBridgeStatus.text = "Bridge connecting..."
+            Toast.makeText(this, "Studio Bridge enabled. Connecting...", Toast.LENGTH_SHORT).show()
+        } else {
+            app?.stopStudioBridge()
+            tvStudioBridgeStatus.text = ""
+            Toast.makeText(this, "Studio Bridge disabled", Toast.LENGTH_SHORT).show()
+        }
+    }
+
+    private fun showApiKeyHelpDialog() {
+        androidx.appcompat.app.AlertDialog.Builder(this)
+            .setTitle("API Key for Studio Bridge")
+            .setMessage(
+                buildString {
+                    appendLine("The Studio Bridge uses the same API key as your Remote Server configuration.")
+                    appendLine()
+                    appendLine("To get an API key from CyanBridge Model Studio (desktop):")
+                    appendLine()
+                    appendLine("1. Open CyanBridge Model Studio on your desktop")
+                    appendLine("2. Go to Settings -> API Keys")
+                    appendLine("3. Click 'Create API Key'")
+                    appendLine("4. Copy the key and paste it here")
+                    appendLine()
+                    appendLine("If you're running Studio on your Tailnet, the base URL should be something like:")
+                    appendLine("http://100.x.x.x:8000/v1")
+                    appendLine()
+                    appendLine("The bridge will connect to ws://<your-studio-ip>:8000/api/mobile/ws using this key.")
+                }
+            )
+            .setPositiveButton("Got it", null)
+            .show()
     }
 }

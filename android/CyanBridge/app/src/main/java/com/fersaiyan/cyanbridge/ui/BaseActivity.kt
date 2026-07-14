@@ -53,7 +53,7 @@ open class BaseActivity : AppCompatActivity() {
         super.onRestoreInstanceState(savedInstanceState)
     }
 
-    override fun onNewIntent(intent: Intent?) {
+    override fun onNewIntent(intent: Intent) {
         super.onNewIntent(intent)
     }
 
@@ -89,7 +89,7 @@ open class BaseActivity : AppCompatActivity() {
         setupViews()
     }
 
-    override fun setContentView(layoutView: View) {
+    override fun setContentView(layoutView: View?) {
         super.setContentView(layoutView)
         setupViews()
     }

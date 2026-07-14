@@ -5,6 +5,7 @@ package com.fersaiyan.cyanbridge.devices
  *
  * The MVP rule is intentionally simple:
  * - HEY_CYAN: show the expanded "extras" panel and status placeholders (battery/storage).
+ * - META_RAYBAN: show Meta-specific controls (stream, photo, display, registration).
  * - Other classes: show meeting capture only (plus basic connection/pairing UI).
  */
 object GlassesManagerGating {
@@ -14,6 +15,8 @@ object GlassesManagerGating {
         STATUS_BATTERY,
         STATUS_STORAGE,
         HEY_CYAN_EXTRAS,
+        META_RAYBAN_CONTROLS,
+        META_RAYBAN_REGISTRATION,
     }
 
     data class UiModel(
@@ -31,10 +34,19 @@ object GlassesManagerGating {
 
     fun visibleActions(deviceClass: DeviceClass): Set<Action> {
         val base = linkedSetOf(Action.MEETING_CAPTURE)
-        if (deviceClass == DeviceClass.HEY_CYAN) {
-            base.add(Action.HEY_CYAN_EXTRAS)
-            base.add(Action.STATUS_BATTERY)
-            base.add(Action.STATUS_STORAGE)
+        when (deviceClass) {
+            DeviceClass.HEY_CYAN -> {
+                base.add(Action.HEY_CYAN_EXTRAS)
+                base.add(Action.STATUS_BATTERY)
+                base.add(Action.STATUS_STORAGE)
+            }
+            DeviceClass.META_RAYBAN -> {
+                base.add(Action.META_RAYBAN_CONTROLS)
+                base.add(Action.META_RAYBAN_REGISTRATION)
+            }
+            else -> {
+                // Generic audio and unknown: only meeting capture
+            }
         }
         return base
     }

@@ -319,20 +319,19 @@ class ChatThreadActivity : AppCompatActivity() {
         super.onDestroy()
     }
 
-    override fun onNewIntent(intent: android.content.Intent?) {
+    override fun onNewIntent(intent: android.content.Intent) {
         super.onNewIntent(intent)
         setIntent(intent)
-        isDailyFactsReview = intent?.getBooleanExtra(EXTRA_DAILY_FACTS_REVIEW, false) ?: false
-        dailyFactsDate = intent?.getStringExtra(EXTRA_DAILY_FACTS_DATE)
+        isDailyFactsReview = intent.getBooleanExtra(EXTRA_DAILY_FACTS_REVIEW, false)
+        dailyFactsDate = intent.getStringExtra(EXTRA_DAILY_FACTS_DATE)
         val configuredRetention = MemoryModeManager.getScreenOcrRetentionDays(this)
         dailyFactsLookbackDays = intent
-            ?.getIntExtra(EXTRA_DAILY_FACTS_LOOKBACK_DAYS, configuredRetention)
-            ?.coerceIn(1, configuredRetention.coerceAtLeast(1))
-            ?: configuredRetention.coerceAtLeast(1)
-        chatId = intent?.getStringExtra(EXTRA_CHAT_ID)
+            .getIntExtra(EXTRA_DAILY_FACTS_LOOKBACK_DAYS, configuredRetention)
+            .coerceIn(1, configuredRetention.coerceAtLeast(1))
+        chatId = intent.getStringExtra(EXTRA_CHAT_ID)
 
         if (chatId == null) {
-            val title = intent?.getStringExtra(EXTRA_CREATE_THREAD_TITLE)
+            val title = intent.getStringExtra(EXTRA_CREATE_THREAD_TITLE)
             if (!title.isNullOrBlank()) {
                 chatId = ChatStore.createThread(title = title).id
             }
@@ -348,7 +347,7 @@ class ChatThreadActivity : AppCompatActivity() {
                 binding.tvToolbarTitle.text = thread.title
             }
 
-            intent?.getStringExtra(EXTRA_PREFILL_MESSAGE)
+            intent.getStringExtra(EXTRA_PREFILL_MESSAGE)
                 ?.takeIf { it.isNotBlank() }
                 ?.let { binding.inputMessage.setText(it) }
 

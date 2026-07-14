@@ -227,6 +227,7 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
     }
     companion object {
         const val EXTRA_TASKER_COMMAND = "tasker_command"
+        private const val TAG = "MainActivity"
         private var loggedLargeDataHandlerMethods = false
         private const val AI_MODE_GEMINI = "Gemini"
         private const val AI_MODE_CHATGPT = "ChatGPT"
@@ -334,6 +335,9 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
     )
     private var meetingCaptureStateReceiver: BroadcastReceiver? = null
 
+    // Meta Ray-Ban integration
+    private var metaRaybanManager: com.fersaiyan.cyanbridge.devices.metarayban.MetaRaybanManager? = null
+
     // Transcription UI moved to the "Transcriptions & recordings" section
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -344,6 +348,7 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
         initView()
         setupMeetingCaptureUi()
         setupAgentControlsUi()
+        setupMetaRaybanUi()
         // Transcription UI moved to the "Transcriptions & recordings" section
         logLargeDataHandlerMethodsOnce()
         // Check for app updates
@@ -372,6 +377,7 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
         LargeDataHandler.getInstance().addOutDeviceListener(100, deviceNotifyListener)
 
         // Lazily register the import/download notify listener the first time we need it.
+        handleMetaRegistrationIntent(intent)
         handleTaskerCommand(intent)
 
         BatteryOptimizationGuideActivity.launchIfNeeded(this)
@@ -436,6 +442,13 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
 
     override fun onResume() {
         super.onResume()
+        if (
+            com.fersaiyan.cyanbridge.localmodels.remote.RemoteOpenAiPrefs.isBridgeConfigured(this) &&
+            !com.fersaiyan.cyanbridge.studiobridge.StudioBridgeClient.isRunning() &&
+            com.fersaiyan.cyanbridge.studiobridge.StudioApprovalHandler.canCaptureVoice(this)
+        ) {
+            (application as? com.fersaiyan.cyanbridge.ui.MyApplication)?.startStudioBridge()
+        }
         try {
             if (!BluetoothUtils.isEnabledBluetooth(this)) {
                 val intent = Intent(BluetoothAdapter.ACTION_REQUEST_ENABLE)
@@ -475,10 +488,25 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
         refreshAiQueryButtonsState()
     }
 
-    override fun onNewIntent(intent: Intent?) {
+    override fun onNewIntent(intent: Intent) {
         super.onNewIntent(intent)
         setIntent(intent)
+        if (handleMetaRegistrationIntent(intent)) {
+            updateMetaRaybanUiState()
+        }
         handleTaskerCommand(intent)
+    }
+
+    private fun handleMetaRegistrationIntent(callbackIntent: Intent): Boolean {
+        if (!callbackIntent.data?.scheme.equals("cyanbridge", ignoreCase = true)) return false
+        val manager = metaRaybanManager
+            ?: com.fersaiyan.cyanbridge.devices.metarayban.MetaRaybanManager
+                .getInstance(this)
+                .also {
+                    metaRaybanManager = it
+                    it.initialize()
+                }
+        return manager.handleRegistrationCallback(callbackIntent)
     }
 
     inner class BluetoothPermissionCallback : OnPermissionCallback {
@@ -2317,6 +2345,7 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
      * Chapter 4: Capability gating for the Glasses Manager screen.
      *
      * - HEY_CYAN: show extra controls + battery/storage placeholders.
+     * - META_RAYBAN: show Meta-specific controls (stream, photo, display, registration).
      * - Other classes: show meeting capture only (plus basic connection UI).
      */
     private fun applyGlassesManagerGating(profile: com.fersaiyan.cyanbridge.devices.DeviceProfile?) {
@@ -2325,6 +2354,10 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
         // Expanded controls panel (HeyCyan-only in MVP baseline)
         binding.layoutHeycyanExtras.visibility =
             if (model.isVisible(GlassesManagerGating.Action.HEY_CYAN_EXTRAS)) android.view.View.VISIBLE else android.view.View.GONE
+
+        // Meta Ray-Ban controls panel
+        binding.layoutMetaRayban.visibility =
+            if (model.isVisible(GlassesManagerGating.Action.META_RAYBAN_CONTROLS)) android.view.View.VISIBLE else android.view.View.GONE
 
         // Status placeholders
         val showBattery = model.isVisible(GlassesManagerGating.Action.STATUS_BATTERY)
@@ -2345,6 +2378,15 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
 
         if (!showStorage) {
             binding.storageText.text = "--"
+        }
+
+        // Initialize Meta Ray-Ban manager if needed
+        if (model.isVisible(GlassesManagerGating.Action.META_RAYBAN_CONTROLS)) {
+            if (metaRaybanManager == null) {
+                metaRaybanManager = com.fersaiyan.cyanbridge.devices.metarayban.MetaRaybanManager.getInstance(this)
+                metaRaybanManager?.initialize()
+            }
+            updateMetaRaybanUiState()
         }
     }
 
@@ -2414,6 +2456,151 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
     private fun refreshAgentStatusUi() {
         binding.tvAgentStatus.text = "Status: ${LocalAgentPrefs.getStatus(this)}"
         binding.tvAgentLastError.text = "Last error: ${LocalAgentPrefs.getLastError(this)}"
+    }
+
+    // --- Meta Ray-Ban UI setup ---
+
+    private fun setupMetaRaybanUi() {
+        // Registration buttons
+        binding.btnMetaRegister.setOnClickListener {
+            metaRaybanManager?.startRegistration(this)
+        }
+
+        binding.btnMetaUnregister.setOnClickListener {
+            metaRaybanManager?.startUnregistration(this)
+        }
+
+        // Session buttons
+        binding.btnMetaSessionStart.setOnClickListener {
+            metaRaybanManager?.startSession(
+                onSuccess = {
+                    runOnUiThread {
+                        Toast.makeText(this, "Meta session started", Toast.LENGTH_SHORT).show()
+                        updateMetaRaybanUiState()
+                    }
+                },
+                onError = { error ->
+                    runOnUiThread {
+                        Toast.makeText(this, "Session error: $error", Toast.LENGTH_SHORT).show()
+                    }
+                }
+            )
+        }
+
+        binding.btnMetaSessionStop.setOnClickListener {
+            metaRaybanManager?.stopSession()
+            updateMetaRaybanUiState()
+        }
+
+        // Streaming buttons
+        binding.btnMetaStreamStart.setOnClickListener {
+            metaRaybanManager?.startStreaming(
+                onFrame = { bitmap ->
+                    // TODO: Handle video frame (e.g., display in preview, send to AI)
+                    Log.d(TAG, "Received video frame: ${bitmap.width}x${bitmap.height}")
+                },
+                onSuccess = {
+                    runOnUiThread {
+                        Toast.makeText(this, "Streaming started", Toast.LENGTH_SHORT).show()
+                        updateMetaRaybanUiState()
+                    }
+                },
+                onError = { error ->
+                    runOnUiThread {
+                        Toast.makeText(this, "Stream error: $error", Toast.LENGTH_SHORT).show()
+                    }
+                }
+            )
+        }
+
+        binding.btnMetaStreamStop.setOnClickListener {
+            metaRaybanManager?.stopStreaming()
+            updateMetaRaybanUiState()
+        }
+
+        // Photo capture button
+        binding.btnMetaCapturePhoto.setOnClickListener {
+            metaRaybanManager?.capturePhoto(
+                onSuccess = { photoData ->
+                    runOnUiThread {
+                        Toast.makeText(this, "Photo captured!", Toast.LENGTH_SHORT).show()
+                        binding.btnMetaViewPhoto.isEnabled = true
+                    }
+                },
+                onError = { error ->
+                    runOnUiThread {
+                        Toast.makeText(this, "Capture error: $error", Toast.LENGTH_SHORT).show()
+                    }
+                }
+            )
+        }
+
+        // View last photo button
+        binding.btnMetaViewPhoto.setOnClickListener {
+            val photo = metaRaybanManager?.lastCapturedPhoto?.value
+            if (photo != null) {
+                // TODO: Show photo in a dialog or new activity
+                Toast.makeText(this, "Photo viewing not yet implemented", Toast.LENGTH_SHORT).show()
+            }
+        }
+
+        // Display buttons
+        binding.btnMetaDisplayStart.setOnClickListener {
+            metaRaybanManager?.startDisplay(
+                onSuccess = {
+                    runOnUiThread {
+                        Toast.makeText(this, "Display started", Toast.LENGTH_SHORT).show()
+                        updateMetaRaybanUiState()
+                    }
+                },
+                onError = { error ->
+                    runOnUiThread {
+                        Toast.makeText(this, "Display error: $error", Toast.LENGTH_SHORT).show()
+                    }
+                }
+            )
+        }
+
+        binding.btnMetaDisplayStop.setOnClickListener {
+            metaRaybanManager?.stopDisplay()
+            updateMetaRaybanUiState()
+        }
+    }
+
+    private fun updateMetaRaybanUiState() {
+        val manager = metaRaybanManager ?: return
+        manager.refreshRegistrationState()
+
+        // Update registration status
+        val regState = manager.registrationState.value
+        binding.tvMetaRegistrationStatus.text = "Registration: ${regState.name}"
+
+        // Update session state
+        val sessionState = manager.deviceSessionState.value
+        binding.tvMetaSessionState.text = "Session: ${sessionState.name}"
+
+        // Update stream state
+        val streamState = manager.streamState.value
+        binding.tvMetaStreamState.text = "Stream: ${streamState.name}"
+
+        // Update display state
+        val isDisplayActive = manager.isDisplayActive.value
+        binding.tvMetaDisplayState.text = "Display: ${if (isDisplayActive) "Active" else "Inactive"}"
+
+        // Enable/disable buttons based on state
+        binding.btnMetaRegister.isEnabled = regState != com.fersaiyan.cyanbridge.devices.metarayban.MetaRaybanManager.RegistrationState.REGISTERED
+        binding.btnMetaUnregister.isEnabled = regState == com.fersaiyan.cyanbridge.devices.metarayban.MetaRaybanManager.RegistrationState.REGISTERED
+
+        binding.btnMetaSessionStart.isEnabled = sessionState == com.fersaiyan.cyanbridge.devices.metarayban.MetaRaybanManager.DeviceSessionState.IDLE
+        binding.btnMetaSessionStop.isEnabled = sessionState != com.fersaiyan.cyanbridge.devices.metarayban.MetaRaybanManager.DeviceSessionState.IDLE
+
+        binding.btnMetaStreamStart.isEnabled = streamState == com.fersaiyan.cyanbridge.devices.metarayban.MetaRaybanManager.StreamState.STOPPED
+        binding.btnMetaStreamStop.isEnabled = streamState == com.fersaiyan.cyanbridge.devices.metarayban.MetaRaybanManager.StreamState.STREAMING
+
+        binding.btnMetaCapturePhoto.isEnabled = streamState == com.fersaiyan.cyanbridge.devices.metarayban.MetaRaybanManager.StreamState.STREAMING
+
+        binding.btnMetaDisplayStart.isEnabled = !isDisplayActive
+        binding.btnMetaDisplayStop.isEnabled = isDisplayActive
     }
 
     private fun selectedMeetingTimerDurationSec(): Long? { 

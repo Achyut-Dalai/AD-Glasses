@@ -38,6 +38,9 @@ object RemoteOpenAiClient {
 
         require(baseUrl.isNotBlank()) { "Remote server base URL is not configured" }
         require(model.isNotBlank()) { "Remote server model name is not configured" }
+        require(apiKey.isBlank() || RemoteOpenAiPrefs.isCredentialTransportAllowed(baseUrl)) {
+            "Refusing to send an API key over a public cleartext URL"
+        }
 
         val messagesArray = JSONArray()
         for (m in messages) {
@@ -82,6 +85,9 @@ object RemoteOpenAiClient {
 
         require(baseUrl.isNotBlank()) { "Remote server base URL is not configured" }
         require(model.isNotBlank()) { "Remote server model name is not configured" }
+        require(apiKey.isBlank() || RemoteOpenAiPrefs.isCredentialTransportAllowed(baseUrl)) {
+            "Refusing to send an API key over a public cleartext URL"
+        }
 
         val messagesArray = JSONArray()
         for (m in messages) {
@@ -118,6 +124,9 @@ object RemoteOpenAiClient {
             conn.readTimeout = 10_000
             conn.setRequestProperty("Accept", "application/json")
             val apiKey = RemoteOpenAiPrefs.getApiKey(context)
+            if (apiKey.isNotBlank() && !RemoteOpenAiPrefs.isCredentialTransportAllowed(baseUrl)) {
+                return "Refusing public cleartext transport for API key"
+            }
             if (apiKey.isNotBlank()) {
                 conn.setRequestProperty("Authorization", "Bearer $apiKey")
             }
