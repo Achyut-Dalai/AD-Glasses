@@ -337,12 +337,25 @@ Rules:
         bindLocalAgentMemorySettings()
 
         binding.btnOpenAccessibilitySettings.setOnClickListener {
-            runCatching {
-                startActivity(Intent(Settings.ACTION_ACCESSIBILITY_SETTINGS))
-            }.onFailure {
-                Toast.makeText(this, "Unable to open accessibility settings", Toast.LENGTH_SHORT)
-                    .show()
-            }
+            AlertDialog.Builder(this)
+                .setTitle(R.string.onboarding_accessibility_disclosure_title)
+                .setMessage(R.string.onboarding_accessibility_disclosure_body)
+                .setNegativeButton("Not now", null)
+                .setPositiveButton("Continue") { _, _ ->
+                    runCatching {
+                        startActivity(Intent(Settings.ACTION_ACCESSIBILITY_SETTINGS))
+                    }.onFailure {
+                        Toast.makeText(this, "Unable to open accessibility settings", Toast.LENGTH_SHORT)
+                            .show()
+                    }
+                }
+                .show()
+        }
+
+        binding.switchLocalAgentAutomationEnabled.isChecked =
+            AutomationPrefs.isLocalAgentAutomationEnabled(this)
+        binding.switchLocalAgentAutomationEnabled.setOnCheckedChangeListener { _, isChecked ->
+            AutomationPrefs.setLocalAgentAutomationEnabled(this, isChecked)
         }
 
         binding.switchLocalAgentRequireConfirmation.isChecked = AutomationPrefs.isRequireConfirmationEnabled(this)

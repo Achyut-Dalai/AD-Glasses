@@ -1,5 +1,7 @@
 package com.fersaiyan.cyanbridge.ui.localagent
 
+import android.content.Intent
+import android.os.Build
 import android.os.Bundle
 import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
@@ -8,6 +10,8 @@ import com.fersaiyan.cyanbridge.data.local.entity.PendingAction
 import com.fersaiyan.cyanbridge.databinding.ActivityPendingActionsBinding
 import com.fersaiyan.cyanbridge.localagent.LocalAgentAccessibilityBridge
 import com.fersaiyan.cyanbridge.localagent.LocalAgentActionParser
+import com.fersaiyan.cyanbridge.localagent.LocalAgentIntents
+import com.fersaiyan.cyanbridge.localagent.LocalAgentService
 import com.fersaiyan.cyanbridge.localagent.actions.LocalAgentActionManager
 import com.fersaiyan.cyanbridge.ui.MyApplication
 import kotlinx.coroutines.Dispatchers
@@ -139,7 +143,25 @@ class PendingActionsActivity : AppCompatActivity() {
             }
 
             Toast.makeText(this@PendingActionsActivity, "Executed action #${p.id}", Toast.LENGTH_SHORT).show()
+
+            // Resume the agent loop after successful approval.
+            notifyServiceResumeAfterApproval()
+
             loadPending()
+        }
+    }
+
+    /**
+     * Tell the [LocalAgentService] to resume its loop after the user approved a pending action.
+     */
+    private fun notifyServiceResumeAfterApproval() {
+        val intent = Intent(this, LocalAgentService::class.java).apply {
+            action = LocalAgentIntents.ACTION_RESUME_AFTER_APPROVAL
+        }
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            startForegroundService(intent)
+        } else {
+            startService(intent)
         }
     }
 }

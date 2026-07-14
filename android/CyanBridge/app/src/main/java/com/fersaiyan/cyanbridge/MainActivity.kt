@@ -139,9 +139,15 @@ import android.speech.SpeechRecognizer
 import android.speech.tts.TextToSpeech
 import android.speech.tts.UtteranceProgressListener
 import com.fersaiyan.cyanbridge.agent.ProSubscriptionAiPrefs
+import com.fersaiyan.cyanbridge.ai.router.AssistantIntent
+import com.fersaiyan.cyanbridge.ai.router.AssistantRequest
+import com.fersaiyan.cyanbridge.ai.router.AssistantRequestRouter
+import com.fersaiyan.cyanbridge.ai.router.AssistantRequestSource
+import com.fersaiyan.cyanbridge.ai.router.AssistantSpeechPolicy
 import com.fersaiyan.cyanbridge.ai.router.AiProviderPrefs
 import com.fersaiyan.cyanbridge.ai.router.AiProviderType as RelayProviderType
 import com.fersaiyan.cyanbridge.ai.router.CliRelayClient
+import com.fersaiyan.cyanbridge.localagent.LocalAgentAccessibilityBridge
 import com.fersaiyan.cyanbridge.localagent.context.LocalAgentContextBuilder
 import com.fersaiyan.cyanbridge.localagent.dailyfacts.DailyFactsStorage
 import com.fersaiyan.cyanbridge.localagent.memory.LocalAgentMemorySearch
@@ -164,6 +170,8 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
 
     private var tts: TextToSpeech? = null
     private val ttsDoneCallbacks = ConcurrentHashMap<String, () -> Unit>()
+    private val assistantRequestRouter = AssistantRequestRouter()
+    private var pendingVoiceImageQuestion: String? = null
 
     // Optional Local Agent UI status
     private var agentReceiverRegistered = false
@@ -173,12 +181,18 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
 
             val status = intent.getStringExtra(LocalAgentIntents.EXTRA_STATUS)
             val lastError = intent.getStringExtra(LocalAgentIntents.EXTRA_LAST_ERROR)
+            val isTerminal = intent.getBooleanExtra(LocalAgentIntents.EXTRA_IS_TERMINAL, false)
+            val userMessage = intent.getStringExtra(LocalAgentIntents.EXTRA_USER_MESSAGE)
 
             if (!status.isNullOrBlank()) {
                 LocalAgentPrefs.setStatus(this@MainActivity, status)
             }
             if (!lastError.isNullOrBlank()) {
                 LocalAgentPrefs.setLastError(this@MainActivity, lastError)
+            }
+
+            if (isTerminal && !userMessage.isNullOrBlank()) {
+                Toast.makeText(this@MainActivity, userMessage, Toast.LENGTH_SHORT).show()
             }
 
             refreshAgentStatusUi()
@@ -1547,6 +1561,7 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
 
     private fun handleGlassesImageButtonPressed(triggerCapture: Boolean, sourceTag: String) {
         if (!BleOperateManager.getInstance().isConnected) {
+            clearPendingVoiceImageQuestion(sourceTag)
             runOnUiThread {
                 Toast.makeText(
                     this@MainActivity,
@@ -1629,6 +1644,7 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
             val fallbackFile = File(fallbackImage)
             val ageMs = System.currentTimeMillis() - fallbackFile.lastModified()
             if (ageMs > IMAGE_FALLBACK_MAX_AGE_MS || ageMs < 0) {
+                clearPendingVoiceImageQuestion(sourceTag)
                 Log.w("AIHijack", "[$sourceTag] Image too old: age=${ageMs / 1000}s")
                 runOnUiThread {
                     Toast.makeText(
@@ -1642,6 +1658,7 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
                 onImageThumbnailReadyForQuestion(fallbackImage)
             }
         } else {
+            clearPendingVoiceImageQuestion(sourceTag)
             runOnUiThread {
                 Toast.makeText(
                     this@MainActivity,
@@ -1655,6 +1672,7 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
     private fun onImageThumbnailReadyForQuestion(imagePath: String) {
         val imageFile = File(imagePath)
         if (!imageFile.exists() || imageFile.length() < 1000) {
+            pendingVoiceImageQuestion = null
             Log.e("AIHijack", "Image file missing or too small: $imagePath (${imageFile.length()} bytes)")
             runOnUiThread {
                 Toast.makeText(this, "Image transfer incomplete. Please try again.", Toast.LENGTH_LONG).show()
@@ -1664,6 +1682,7 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
 
         val ageMs = System.currentTimeMillis() - imageFile.lastModified()
         if (ageMs > IMAGE_FALLBACK_MAX_AGE_MS || ageMs < 0) {
+            pendingVoiceImageQuestion = null
             Log.w("AIHijack", "Thumbnail too old: age=${ageMs / 1000}s, path=$imagePath")
             runOnUiThread {
                 Toast.makeText(
@@ -1683,7 +1702,9 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
             // Process the image query first (model inference + TTS reply).
             // triggerAssistantImageQuery launches a background coroutine and returns immediately,
             // so we must wait for TTS to finish before opening the follow-up voice window.
-            triggerAssistantImageQuery(imagePath, userQuestion = null)
+            val initialQuestion = pendingVoiceImageQuestion
+            pendingVoiceImageQuestion = null
+            triggerAssistantImageQuery(imagePath, userQuestion = initialQuestion)
 
             // Wait for the model's TTS reply to finish (polls tts?.isSpeaking every 500ms).
             waitForTtsToFinish(timeoutMs = 90_000L)
@@ -1720,6 +1741,21 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
 
     private fun isTtsSpeaking(): Boolean {
         return tts?.isSpeaking == true
+    }
+
+    private fun isDeviceLockedForAutomation(): Boolean {
+        val keyguardManager = getSystemService(KEYGUARD_SERVICE) as? KeyguardManager ?: return false
+        return if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+            keyguardManager.isDeviceLocked
+        } else {
+            keyguardManager.isKeyguardLocked
+        }
+    }
+
+    private fun clearPendingVoiceImageQuestion(sourceTag: String) {
+        if (sourceTag == "voice_request") {
+            pendingVoiceImageQuestion = null
+        }
     }
 
     /**
@@ -1964,30 +2000,95 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
                 Toast.makeText(this@MainActivity, "Asking: $prompt", Toast.LENGTH_SHORT).show()
 
                 CoroutineScope(Dispatchers.IO).launch {
-                    val reply = if (memoryAwareChosenProvider) {
-                        runMemoryAwareChosenProviderQuery(
-                            userPrompt = prompt,
-                            providerType = chosenProviderType ?: AgentProviderType.PRO_SUBSCRIPTION,
-                        )
+                    val selectedProvider = chosenProviderType
+                        ?: AutomationPrefs.getProviderType(this@MainActivity)
+                    val routingProvider = if (memoryAwareChosenProvider) {
+                        selectedProvider
                     } else {
-                        val selectedProvider = AutomationPrefs.getProviderType(this@MainActivity)
-                        val modelOverride = if (selectedProvider == AgentProviderType.PRO_SUBSCRIPTION) {
-                            ProSubscriptionAiPrefs.getQuestionsModel(this@MainActivity)
-                        } else {
-                            null
+                        // Follow AiProviderPrefs, matching the existing generic relay/local answer path.
+                        AgentProviderType.TASKER
+                    }
+                    val routing = assistantRequestRouter.route(
+                        context = this@MainActivity,
+                        request = AssistantRequest(
+                            text = prompt,
+                            source = AssistantRequestSource.GLASSES_VOICE,
+                        ),
+                        providerType = routingProvider,
+                    )
+
+                    when (routing.intent) {
+                        AssistantIntent.ANSWER_QUESTION -> {
+                            val reply = if (memoryAwareChosenProvider) {
+                                runMemoryAwareChosenProviderQuery(
+                                    userPrompt = prompt,
+                                    providerType = selectedProvider,
+                                )
+                            } else {
+                                val modelOverride = if (selectedProvider == AgentProviderType.PRO_SUBSCRIPTION) {
+                                    ProSubscriptionAiPrefs.getQuestionsModel(this@MainActivity)
+                                } else {
+                                    null
+                                }
+
+                                CliRelayClient.voiceQuery(
+                                    context = this@MainActivity,
+                                    prompt = prompt,
+                                    modelOverride = modelOverride,
+                                ).getOrElse { "Relay unavailable: ${it.message ?: "unknown error"}" }
+                            }
+
+                            runOnUiThread {
+                                speak(reply, utteranceId = "AI_REPLY") {
+                                    stopSco()
+                                }
+                            }
                         }
 
-                        CliRelayClient.voiceQuery(
-                            context = this@MainActivity,
-                            prompt = prompt,
-                            modelOverride = modelOverride,
-                        )
-                            .getOrElse { "Relay unavailable: ${it.message ?: "unknown error"}" }
-                    }
-
-                    runOnUiThread {
-                        speak(reply, utteranceId = "AI_REPLY") {
+                        AssistantIntent.ANALYZE_IMAGE -> runOnUiThread {
                             stopSco()
+                            val unsupportedReason = imageQueryUnsupportedReasonForCurrentSelection()
+                            if (unsupportedReason != null) {
+                                speak(unsupportedReason)
+                                return@runOnUiThread
+                            }
+                            pendingVoiceImageQuestion = routing.normalizedGoal ?: prompt
+                            speak("Okay. I'll check what you see.")
+                            handleGlassesImageButtonPressed(
+                                triggerCapture = true,
+                                sourceTag = "voice_request",
+                            )
+                        }
+
+                        AssistantIntent.EXECUTE_UI_TASK -> runOnUiThread {
+                            stopSco()
+                            if (!AutomationPrefs.isLocalAgentAutomationEnabled(this@MainActivity)) {
+                                speak("Enable Local Agent phone control in CyanBridge settings first.")
+                                return@runOnUiThread
+                            }
+                            if (isDeviceLockedForAutomation()) {
+                                speak("Unlock your phone before I control it.")
+                                return@runOnUiThread
+                            }
+                            if (!LocalAgentAccessibilityBridge.isConnected()) {
+                                speak("Please enable CyanBridge accessibility control first.")
+                                return@runOnUiThread
+                            }
+
+                            val goal = routing.normalizedGoal ?: prompt
+                            val result = LocalAgentController.start(this@MainActivity, goal)
+                            if (result.ok) {
+                                speak("Okay. I'll do that.")
+                            } else {
+                                speak("I couldn't start phone control.")
+                            }
+                        }
+
+                        AssistantIntent.CLARIFY -> runOnUiThread {
+                            stopSco()
+                            speak(
+                                AssistantSpeechPolicy.clarification(routing.clarification)
+                            )
                         }
                     }
                 }

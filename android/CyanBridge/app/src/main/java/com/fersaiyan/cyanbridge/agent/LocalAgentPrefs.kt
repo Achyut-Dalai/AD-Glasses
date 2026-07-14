@@ -13,6 +13,7 @@ object LocalAgentPrefs {
     private const val KEY_PROVIDER_TYPE = "provider_type"
     private const val KEY_REQUIRE_CONFIRMATION = "require_confirmation"
     private const val KEY_MAX_STEPS = "max_steps"
+    private const val KEY_AUTOMATION_ENABLED = "automation_enabled"
 
     // Screen content capture / memory
     private const val KEY_AUTO_CAPTURE_ENABLED = "auto_capture_enabled"
@@ -41,6 +42,18 @@ object LocalAgentPrefs {
         context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
             .edit()
             .putString(KEY_PROVIDER_TYPE, type.name)
+            .apply()
+    }
+
+    fun isLocalAgentAutomationEnabled(context: Context): Boolean {
+        return context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
+            .getBoolean(KEY_AUTOMATION_ENABLED, false)
+    }
+
+    fun setLocalAgentAutomationEnabled(context: Context, enabled: Boolean) {
+        context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
+            .edit()
+            .putBoolean(KEY_AUTOMATION_ENABLED, enabled)
             .apply()
     }
 

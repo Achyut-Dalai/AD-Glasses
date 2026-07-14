@@ -9,15 +9,27 @@ class LocalAgentStepEngine(
     private val context: Context,
     private val executor: LocalAgentActionExecutor,
 ) {
+    data class ExecutionSummary(
+        val actionResults: List<String>,
+        val haltedForApproval: Boolean,
+        val finished: Boolean,
+    )
+
     /**
      * Executes a list of actions sequentially.
      * Some actions may be enqueued for approval instead of being executed immediately.
      */
-    suspend fun execute(actions: List<LocalAgentAction>) {
+    suspend fun execute(actions: List<LocalAgentAction>): ExecutionSummary {
+        val results = mutableListOf<String>()
         for (a in actions) {
             executor.ensureNotCancelled()
 
-            if (a is LocalAgentAction.Sleep) {
+            if (a is LocalAgentAction.Finish) {
+                results += a.message?.takeIf { it.isNotBlank() } ?: "Task marked complete"
+                return ExecutionSummary(results, haltedForApproval = false, finished = true)
+            }
+
+            if (a is LocalAgentAction.Wait) {
                 delay(a.ms)
                 continue
             }
@@ -33,10 +45,12 @@ class LocalAgentStepEngine(
                 val intentOk = LocalAgentActionManager.executeNow(context, a)
                 if (intentOk) {
                     Log.i(TAG, "action=${a.javaClass.simpleName} executed as system intent")
+                    results += "${a.javaClass.simpleName}: ok(system)"
                 } else {
                     // Fallback to accessibility
                     val ok = executor.execute(a)
                     Log.i(TAG, "action=${a.javaClass.simpleName} executed via a11y ok=$ok")
+                    results += "${a.javaClass.simpleName}: ${if (ok) "ok" else "failed"}"
                 }
             } else {
                 // Enqueue for manual approval.
@@ -44,9 +58,12 @@ class LocalAgentStepEngine(
                 LocalAgentActionManager.processPlannedAction(context, a)
                 // When an action is pending, we typically want to stop the current plan
                 // until the user approves it.
-                break 
+                results += "${a.javaClass.simpleName}: queued_for_approval"
+                return ExecutionSummary(results, haltedForApproval = true, finished = false)
             }
         }
+
+        return ExecutionSummary(results, haltedForApproval = false, finished = false)
     }
 
     interface LocalAgentActionExecutor {

@@ -1,8 +1,10 @@
 package com.fersaiyan.cyanbridge.ui
 
+import android.content.ComponentName
 import android.content.Context
 import android.content.Intent
 import android.os.Bundle
+import android.provider.Settings
 import android.view.View
 import android.widget.ImageView
 import android.widget.TextView
@@ -10,6 +12,7 @@ import androidx.appcompat.app.AppCompatActivity
 import com.fersaiyan.cyanbridge.MainActivity
 import com.fersaiyan.cyanbridge.R
 import com.fersaiyan.cyanbridge.agent.LocalAgentPrefs as AgentPrefs
+import com.fersaiyan.cyanbridge.localagent.accessibility.LocalAgentAccessibilityService
 import com.fersaiyan.cyanbridge.localagent.daily.DailyFactsReminderScheduler
 import com.fersaiyan.cyanbridge.localagent.memory.LocalAgentMemoryStore
 import com.fersaiyan.cyanbridge.memoryvault.MemoryModeManager
@@ -38,6 +41,11 @@ class OnboardingFeatureActivity : AppCompatActivity() {
         setupFeatureScreen()
     }
 
+    override fun onResume() {
+        super.onResume()
+        refreshAccessibilityStatus()
+    }
+
     private fun setupFeatureScreen() {
         val feature = FEATURES.getOrNull(featureIndex) ?: run {
             finishOnboarding()
@@ -60,6 +68,27 @@ class OnboardingFeatureActivity : AppCompatActivity() {
         } else {
             switchEnable.visibility = View.GONE
         }
+
+        val isAccessibilityFeature = featureIndex == SCREEN_MEMORY_FEATURE_INDEX
+        findViewById<View>(R.id.card_accessibility_disclosure).visibility =
+            if (isAccessibilityFeature) View.VISIBLE else View.GONE
+
+        findViewById<SwitchMaterial>(R.id.switch_local_agent_automation).apply {
+            visibility = if (isAccessibilityFeature) View.VISIBLE else View.GONE
+            isChecked = AgentPrefs.isLocalAgentAutomationEnabled(this@OnboardingFeatureActivity)
+            setOnCheckedChangeListener { _, isChecked ->
+                AgentPrefs.setLocalAgentAutomationEnabled(this@OnboardingFeatureActivity, isChecked)
+                if (isChecked) LocalAgentMemoryStore.ensureSeedFiles(this@OnboardingFeatureActivity)
+            }
+        }
+
+        findViewById<MaterialButton>(R.id.btn_onboarding_accessibility_settings).apply {
+            visibility = if (isAccessibilityFeature) View.VISIBLE else View.GONE
+            setOnClickListener {
+                startActivity(Intent(Settings.ACTION_ACCESSIBILITY_SETTINGS))
+            }
+        }
+        refreshAccessibilityStatus()
 
         findViewById<MaterialButton>(R.id.btn_back).apply {
             text = if (featureIndex == 0) "Skip All" else "Back"
@@ -119,6 +148,33 @@ class OnboardingFeatureActivity : AppCompatActivity() {
         }
     }
 
+    private fun refreshAccessibilityStatus() {
+        val status = findViewById<TextView>(R.id.tv_onboarding_accessibility_status) ?: return
+        val enabled = isLocalAgentAccessibilityServiceEnabled()
+        status.text = if (enabled) {
+            "Accessibility is currently enabled"
+        } else {
+            "Accessibility is currently disabled"
+        }
+        status.setTextColor(getColor(if (enabled) R.color.cyan_accent else R.color.text_secondary))
+    }
+
+    private fun isLocalAgentAccessibilityServiceEnabled(): Boolean {
+        val accessibilityEnabled = Settings.Secure.getInt(
+            contentResolver,
+            Settings.Secure.ACCESSIBILITY_ENABLED,
+            0,
+        ) == 1
+        if (!accessibilityEnabled) return false
+
+        val expected = ComponentName(this, LocalAgentAccessibilityService::class.java).flattenToString()
+        val enabledServices = Settings.Secure.getString(
+            contentResolver,
+            Settings.Secure.ENABLED_ACCESSIBILITY_SERVICES,
+        ).orEmpty()
+        return enabledServices.split(':').any { it.equals(expected, ignoreCase = true) }
+    }
+
     private fun goToFeature(index: Int) {
         startActivity(Intent(this, OnboardingFeatureActivity::class.java).apply {
             putExtra(EXTRA_FEATURE_INDEX, index)
@@ -154,6 +210,7 @@ class OnboardingFeatureActivity : AppCompatActivity() {
     companion object {
         private const val EXTRA_FEATURE_INDEX = "feature_index"
         private const val PREFS = "cyanbridge_prefs"
+        private const val SCREEN_MEMORY_FEATURE_INDEX = 1
 
         private val FEATURES = listOf(
             OnboardingFeature(
@@ -170,7 +227,7 @@ class OnboardingFeatureActivity : AppCompatActivity() {
                 descriptionRes = R.string.onboarding_screen_capture_desc,
                 detailsRes = R.string.onboarding_screen_capture_details,
                 togglePrefKey = "screen_capture",
-                toggleLabel = "Enable screen capture"
+                toggleLabel = "Enable automatic screen text capture"
             ),
             OnboardingFeature(
                 iconRes = R.drawable.ic_device_generic_audio,

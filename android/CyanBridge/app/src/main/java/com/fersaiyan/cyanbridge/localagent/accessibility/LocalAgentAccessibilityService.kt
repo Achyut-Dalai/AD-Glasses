@@ -7,6 +7,7 @@ import android.accessibilityservice.GestureDescription
 import android.graphics.Path
 import android.graphics.Rect
 import android.os.Bundle
+import android.os.Build
 import android.os.Handler
 import android.os.Looper
 import android.os.PowerManager
@@ -17,6 +18,8 @@ import com.fersaiyan.cyanbridge.agent.LocalAgentPrefs
 import com.fersaiyan.cyanbridge.memoryvault.MemoryModeManager
 import com.fersaiyan.cyanbridge.memoryvault.MemoryVaultBootstrap
 import com.fersaiyan.cyanbridge.memoryvault.VaultLockStateManager
+import com.fersaiyan.cyanbridge.localagent.LocalAgentNodeBounds
+import com.fersaiyan.cyanbridge.localagent.LocalAgentScreenNode
 import com.fersaiyan.cyanbridge.localagent.memory.LocalAgentMemoryRoomIndex
 import com.fersaiyan.cyanbridge.localagent.memory.LocalAgentMemoryStore
 
@@ -56,7 +59,7 @@ class LocalAgentAccessibilityService : AccessibilityService() {
 
     override fun onAccessibilityEvent(event: AccessibilityEvent?) {
         // Keep the callback lightweight; we only use it for optional periodic screen capture.
-        maybeAutoCapture(event)
+        maybeAutoCapture()
     }
 
     override fun onInterrupt() {
@@ -69,7 +72,7 @@ class LocalAgentAccessibilityService : AccessibilityService() {
         if (instance === this) instance = null
     }
 
-    private fun maybeAutoCapture(event: AccessibilityEvent?) {
+    private fun maybeAutoCapture() {
         // MVP: periodic capture of accessibility text into local JSONL memory.
         if (!LocalAgentPrefs.isAutoCaptureEnabled(applicationContext)) return
         if (!MemoryModeManager.isScreenOcrCaptureEnabled(applicationContext)) return
@@ -85,7 +88,11 @@ class LocalAgentAccessibilityService : AccessibilityService() {
         val last = lastAutoCaptureAtMs
         if (last > 0L && now - last < intervalMs) return
 
-        val pkg = resolveCapturePackageName(event)
+        // Package attribution and captured text must come from the exact same root.
+        // Never fall back to a previous/event/launcher package because that can mislabel
+        // content from a blacklisted app during window transitions.
+        val root = rootInActiveWindow ?: return
+        val pkg = normalizePackageName(root.packageName)
         if (pkg.isBlank()) return
 
         val blacklist = LocalAgentPrefs.getCaptureBlacklistPackages(applicationContext)
@@ -99,7 +106,13 @@ class LocalAgentAccessibilityService : AccessibilityService() {
             return
         }
 
-        val text = dumpActiveWindowText() ?: return
+        lastForegroundNonOverlayPackage = pkg
+        val text = collectTextFromRoot(
+            root = root,
+            includeContentDescriptions = true,
+            includeViewIds = false,
+            maxNodes = 10_000,
+        ).take(400).joinToString("\n").takeIf { it.isNotBlank() } ?: return
         if (text.isBlank()) return
 
         LocalAgentMemoryStore.appendScreenCapture(
@@ -119,29 +132,6 @@ class LocalAgentAccessibilityService : AccessibilityService() {
 
         lastAutoCaptureAtMs = now
         Log.i(TAG, "Auto-captured screen text: pkg=$pkg chars=${text.length} intervalMin=$intervalMin")
-    }
-
-    private fun resolveCapturePackageName(event: AccessibilityEvent?): String {
-        val candidates = LinkedHashSet<String>()
-
-        fun addCandidate(raw: CharSequence?) {
-            val pkg = normalizePackageName(raw)
-            if (pkg.isNotBlank()) candidates.add(pkg)
-        }
-
-        addCandidate(event?.packageName)
-        addCandidate(event?.source?.packageName)
-        addCandidate(rootInActiveWindow?.packageName)
-        addCandidate(extractPackageFromActiveWindow())
-        addCandidate(lastForegroundNonOverlayPackage)
-
-        val chosen = candidates.firstOrNull { !isOverlayPackage(it) }
-            ?: candidates.firstOrNull().orEmpty()
-
-        if (chosen.isNotBlank() && !isOverlayPackage(chosen)) {
-            lastForegroundNonOverlayPackage = chosen
-        }
-        return chosen
     }
 
     private fun extractPackageFromActiveWindow(): String {
@@ -203,6 +193,15 @@ class LocalAgentAccessibilityService : AccessibilityService() {
         maxNodes: Int = 10_000,
     ): List<String> {
         val root = rootInActiveWindow ?: return emptyList()
+        return collectTextFromRoot(root, includeContentDescriptions, includeViewIds, maxNodes)
+    }
+
+    private fun collectTextFromRoot(
+        root: AccessibilityNodeInfo,
+        includeContentDescriptions: Boolean,
+        includeViewIds: Boolean,
+        maxNodes: Int,
+    ): List<String> {
         val out = ArrayList<String>(256)
         val seen = LinkedHashSet<String>()
 
@@ -216,8 +215,12 @@ class LocalAgentAccessibilityService : AccessibilityService() {
             if (visited[0] >= maxNodes) return
             visited[0]++
 
-            add(node.text)
-            if (includeContentDescriptions) add(node.contentDescription)
+            if (node.isPassword) {
+                add("[password field redacted]")
+            } else {
+                add(node.text)
+                if (includeContentDescriptions) add(node.contentDescription)
+            }
 
             if (includeViewIds) {
                 val id = node.viewIdResourceName
@@ -232,6 +235,72 @@ class LocalAgentAccessibilityService : AccessibilityService() {
 
         walk(root, visited = intArrayOf(0))
         return out
+    }
+
+    fun dumpScreenNodes(maxNodes: Int = 250): List<LocalAgentScreenNode> {
+        val root = rootInActiveWindow ?: return emptyList()
+        val out = ArrayList<LocalAgentScreenNode>(maxNodes.coerceAtMost(250))
+        val visited = intArrayOf(0)
+
+        fun walk(node: AccessibilityNodeInfo?, depth: Int = 0) {
+            if (node == null) return
+            if (visited[0] >= maxNodes) return
+            visited[0]++
+
+            val rect = Rect()
+            runCatching { node.getBoundsInScreen(rect) }
+
+            val text = if (node.isPassword) "" else node.text?.toString()?.trim().orEmpty()
+            val desc = if (node.isPassword) "" else node.contentDescription?.toString()?.trim().orEmpty()
+            val viewId = node.viewIdResourceName?.trim().orEmpty()
+            val className = node.className?.toString()?.substringAfterLast('.')?.trim().orEmpty()
+            val includeNode = text.isNotBlank() ||
+                desc.isNotBlank() ||
+                viewId.isNotBlank() ||
+                node.isClickable ||
+                node.isEditable ||
+                node.isScrollable
+
+            if (includeNode) {
+                out.add(
+                    LocalAgentScreenNode(
+                        index = out.size,
+                        depth = depth,
+                        text = text,
+                        contentDescription = desc,
+                        className = className,
+                        viewId = viewId,
+                        isClickable = node.isClickable,
+                        isEditable = node.isEditable,
+                        isScrollable = node.isScrollable,
+                        isPassword = node.isPassword,
+                        bounds = LocalAgentNodeBounds(
+                            left = rect.left,
+                            top = rect.top,
+                            right = rect.right,
+                            bottom = rect.bottom,
+                        ),
+                    )
+                )
+            }
+
+            for (i in 0 until node.childCount) {
+                walk(node.getChild(i), depth + 1)
+                if (visited[0] >= maxNodes) return
+            }
+        }
+
+        walk(root)
+        return out
+    }
+
+    fun getCurrentForegroundPackageName(): String? {
+        val candidates = listOf(
+            normalizePackageName(rootInActiveWindow?.packageName),
+            extractPackageFromActiveWindow(),
+            normalizePackageName(lastForegroundNonOverlayPackage),
+        )
+        return candidates.firstOrNull { it.isNotBlank() }
     }
 
     /** Tap an absolute coordinate using gesture injection (API 24+; minSdk=24 in this app). */
@@ -334,6 +403,39 @@ class LocalAgentAccessibilityService : AccessibilityService() {
 
     fun pressHome(): Boolean = performGlobalAction(GLOBAL_ACTION_HOME)
 
+    fun openNotifications(): Boolean = performGlobalAction(GLOBAL_ACTION_NOTIFICATIONS)
+
+    fun openRecents(): Boolean = performGlobalAction(GLOBAL_ACTION_RECENTS)
+
+    /** Arbitrary swipe from (startX,startY) to (endX,endY). */
+    fun swipe(
+        startX: Int,
+        startY: Int,
+        endX: Int,
+        endY: Int,
+        durationMs: Long = 300L,
+    ): Boolean {
+        val path = Path().apply {
+            moveTo(startX.toFloat(), startY.toFloat())
+            lineTo(endX.toFloat(), endY.toFloat())
+        }
+        val stroke = GestureDescription.StrokeDescription(path, 0L, durationMs)
+        val gesture = GestureDescription.Builder().addStroke(stroke).build()
+        return dispatchGesture(gesture, null, null)
+    }
+
+    /** Long press at (x,y) with a longer duration. */
+    fun longPress(
+        x: Int,
+        y: Int,
+        durationMs: Long = 1000L,
+    ): Boolean {
+        val path = Path().apply { moveTo(x.toFloat(), y.toFloat()) }
+        val stroke = GestureDescription.StrokeDescription(path, 0L, durationMs)
+        val gesture = GestureDescription.Builder().addStroke(stroke).build()
+        return dispatchGesture(gesture, null, null)
+    }
+
     // --- internals ---
 
     private fun findFirstNodeMatching(
@@ -413,14 +515,43 @@ class LocalAgentAccessibilityService : AccessibilityService() {
     }
 
     /** Best-effort typing: focused field first; otherwise first editable node. */
-    fun typeTextBestEffort(text: CharSequence): Boolean {
+    fun typeTextBestEffort(text: CharSequence, fieldHint: String? = null): Boolean {
         val root = rootInActiveWindow ?: return false
 
         val focused = root.findFocus(AccessibilityNodeInfo.FOCUS_INPUT)
-        val target = focused ?: findFirstEditable(root)
+        val target = focused
+            ?: findEditableByHint(root, fieldHint)
+            ?: findFirstEditable(root)
         target ?: return false
 
         return performSetText(target, text)
+    }
+
+    private fun findEditableByHint(node: AccessibilityNodeInfo?, fieldHint: String?): AccessibilityNodeInfo? {
+        val hint = fieldHint?.trim()?.takeIf { it.isNotBlank() } ?: return null
+        if (node == null) return null
+
+        if (node.isEditable && matchesHint(node, hint)) return node
+        for (i in 0 until node.childCount) {
+            val found = findEditableByHint(node.getChild(i), hint)
+            if (found != null) return found
+        }
+        return null
+    }
+
+    private fun matchesHint(node: AccessibilityNodeInfo, hint: String): Boolean {
+        val hintText = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            node.hintText?.toString().orEmpty()
+        } else {
+            ""
+        }
+        val candidates = listOf(
+            node.text?.toString().orEmpty(),
+            node.contentDescription?.toString().orEmpty(),
+            hintText,
+            node.viewIdResourceName.orEmpty(),
+        )
+        return candidates.any { it.contains(hint, ignoreCase = true) }
     }
 
     private fun findFirstEditable(node: AccessibilityNodeInfo?): AccessibilityNodeInfo? {
@@ -441,7 +572,7 @@ class LocalAgentAccessibilityService : AccessibilityService() {
         val r = object : Runnable {
             override fun run() {
                 // Use the same capture logic as events, but don't rely on events firing.
-                runCatching { maybeAutoCapture(null) }
+                runCatching { maybeAutoCapture() }
                 handler.postDelayed(this, PERIODIC_TICK_MS)
             }
         }

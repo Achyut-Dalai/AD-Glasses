@@ -2,10 +2,12 @@ package com.fersaiyan.cyanbridge.localagent
 
 object LocalAgentObserver {
     fun observe(): LocalAgentObservation {
-        val text = LocalAgentAccessibilityBridge.snapshotScreenText()
+        val snapshot = LocalAgentAccessibilityBridge.snapshotScreen()
         return LocalAgentObservation(
             createdAtMs = System.currentTimeMillis(),
-            screenText = text,
+            packageName = snapshot?.packageName,
+            screenText = snapshot?.textSummary,
+            screenSnapshot = snapshot,
         )
     }
 }

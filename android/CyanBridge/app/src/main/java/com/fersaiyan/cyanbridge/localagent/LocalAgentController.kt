@@ -24,7 +24,16 @@ object LocalAgentController {
     // If/when LocalAgentService is added, we expect it to live here.
     private const val DEFAULT_SERVICE_CLASS = "com.fersaiyan.cyanbridge.localagent.LocalAgentService"
 
-    fun start(context: Context): CommandResult = sendServiceCommand(context, LocalAgentIntents.ACTION_START)
+    fun start(context: Context): CommandResult = start(context, goal = null)
+
+    fun start(context: Context, goal: String?): CommandResult =
+        sendServiceCommand(
+            context,
+            LocalAgentIntents.ACTION_START,
+            extras = goal?.trim()?.takeIf { it.isNotBlank() }?.let {
+                mapOf(LocalAgentIntents.EXTRA_GOAL to it)
+            }.orEmpty()
+        )
 
     fun stop(context: Context): CommandResult = sendServiceCommand(context, LocalAgentIntents.ACTION_STOP)
 
@@ -33,7 +42,11 @@ object LocalAgentController {
     fun requestStatus(context: Context): CommandResult =
         sendServiceCommand(context, LocalAgentIntents.ACTION_GET_STATUS)
 
-    private fun sendServiceCommand(context: Context, action: String): CommandResult {
+    private fun sendServiceCommand(
+        context: Context,
+        action: String,
+        extras: Map<String, String> = emptyMap(),
+    ): CommandResult {
         val pm = context.packageManager
 
         // 1) Prefer resolving by action (requires LocalAgentService to declare an intent-filter).
@@ -50,6 +63,8 @@ object LocalAgentController {
             // 2) Fallback to explicit class name (requires LocalAgentService to exist + be declared).
             else -> Intent(action).setClassName(context.packageName, DEFAULT_SERVICE_CLASS)
         }
+
+        extras.forEach { (key, value) -> explicitIntent.putExtra(key, value) }
 
         val canResolve = pm.resolveService(explicitIntent, 0) != null
         if (!canResolve) {

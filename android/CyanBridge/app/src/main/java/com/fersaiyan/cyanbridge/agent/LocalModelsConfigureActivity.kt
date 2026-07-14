@@ -35,6 +35,8 @@ import com.fersaiyan.cyanbridge.localmodels.settings.LocalModelSettingsRepositor
 import com.fersaiyan.cyanbridge.localmodels.storage.InstalledLocalModel
 import com.fersaiyan.cyanbridge.localmodels.storage.LocalModelFileUtils
 import com.fersaiyan.cyanbridge.localmodels.storage.LocalModelStorageRepository
+import com.fersaiyan.cyanbridge.localmodels.remote.RemoteOpenAiClient
+import com.fersaiyan.cyanbridge.localmodels.remote.RemoteOpenAiPrefs
 import com.fersaiyan.cyanbridge.ui.debug.DebugLogSupport
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
@@ -90,6 +92,19 @@ class LocalModelsConfigureActivity : AppCompatActivity() {
     private lateinit var switchExperimentalJson: SwitchMaterial
     private lateinit var btnDownloadStarter: MaterialButton
     private lateinit var btnCancelDownload: MaterialButton
+
+    // Remote server views
+    private lateinit var cardRemoteServer: MaterialCardView
+    private lateinit var headerRemoteServer: View
+    private lateinit var contentRemoteServer: View
+    private lateinit var iconExpandRemoteServer: ImageView
+    private lateinit var switchRemoteEnabled: SwitchMaterial
+    private lateinit var editRemoteBaseUrl: TextInputEditText
+    private lateinit var editRemoteModel: TextInputEditText
+    private lateinit var editRemoteApiKey: TextInputEditText
+    private lateinit var btnRemoteTest: MaterialButton
+    private lateinit var btnRemoteSave: MaterialButton
+    private lateinit var tvRemoteStatus: TextView
 
     private var installedModels: List<InstalledLocalModel> = emptyList()
     private var suppressProfileSelection = false
@@ -171,6 +186,19 @@ class LocalModelsConfigureActivity : AppCompatActivity() {
         switchExperimentalJson = findViewById(R.id.switch_experimental_json)
         btnDownloadStarter = findViewById(R.id.btn_download_starter)
         btnCancelDownload = findViewById(R.id.btn_cancel_download)
+
+        // Remote server
+        cardRemoteServer = findViewById(R.id.card_remote_server)
+        headerRemoteServer = findViewById(R.id.header_remote_server)
+        contentRemoteServer = findViewById(R.id.content_remote_server)
+        iconExpandRemoteServer = findViewById(R.id.icon_expand_remote_server)
+        switchRemoteEnabled = findViewById(R.id.switch_remote_enabled)
+        editRemoteBaseUrl = findViewById(R.id.edit_remote_base_url)
+        editRemoteModel = findViewById(R.id.edit_remote_model)
+        editRemoteApiKey = findViewById(R.id.edit_remote_api_key)
+        btnRemoteTest = findViewById(R.id.btn_remote_test)
+        btnRemoteSave = findViewById(R.id.btn_remote_save)
+        tvRemoteStatus = findViewById(R.id.tv_remote_status)
     }
 
     private fun bindActions() {
@@ -303,6 +331,10 @@ class LocalModelsConfigureActivity : AppCompatActivity() {
 
             override fun onNothingSelected(parent: android.widget.AdapterView<*>?) = Unit
         }
+
+        btnRemoteSave.setOnClickListener { saveRemoteServerConfig() }
+
+        btnRemoteTest.setOnClickListener { testRemoteServerConnection() }
     }
 
     private fun setupCollapsibleSections() {
@@ -312,6 +344,14 @@ class LocalModelsConfigureActivity : AppCompatActivity() {
             content = contentCuratedCatalog,
             icon = iconExpandCuratedCatalog,
             sectionName = "CURATED CATALOG",
+            defaultExpanded = false,
+        )
+        setupCollapsibleSection(
+            card = cardRemoteServer,
+            header = headerRemoteServer,
+            content = contentRemoteServer,
+            icon = iconExpandRemoteServer,
+            sectionName = "REMOTE SERVER",
             defaultExpanded = false,
         )
         setupCollapsibleSection(
@@ -394,6 +434,8 @@ class LocalModelsConfigureActivity : AppCompatActivity() {
         tvEmptyState.visibility = if (installedModels.isEmpty()) View.VISIBLE else View.GONE
         btnDownloadStarter.visibility = if (installedModels.isEmpty()) View.VISIBLE else View.GONE
         syncDownloadButtonsState()
+
+        loadRemoteServerConfig()
     }
 
     private fun refreshInstalledModelsSpinner() {
@@ -929,6 +971,7 @@ class LocalModelsConfigureActivity : AppCompatActivity() {
         tvModelRuntimeNote.text = when (runtime) {
             LocalModelRuntime.LLAMA_CPP -> "Use llama.cpp for GGUF models."
             LocalModelRuntime.LITERT -> "Use LiteRT for Google LiteRT-LM packages (.litertlm/.task)."
+            LocalModelRuntime.REMOTE_OPENAI -> "Use a remote server on your LAN or Tailnet. Configure it in the Remote Server section above."
         }
         tvEngineStatus.text = "Selected runtime: ${runtime.label}"
         updateComputeBackendUi()
@@ -1004,6 +1047,81 @@ class LocalModelsConfigureActivity : AppCompatActivity() {
             b >= mb -> String.format("%.1f MB", b / mb)
             b >= kb -> String.format("%.1f KB", b / kb)
             else -> "$bytes B"
+        }
+    }
+
+    // --- Remote OpenAI-compatible server ---
+
+    private fun loadRemoteServerConfig() {
+        switchRemoteEnabled.isChecked = RemoteOpenAiPrefs.isEnabled(this)
+        editRemoteBaseUrl.setText(RemoteOpenAiPrefs.getBaseUrl(this))
+        editRemoteModel.setText(RemoteOpenAiPrefs.getModel(this))
+        editRemoteApiKey.setText(RemoteOpenAiPrefs.getApiKey(this))
+        tvRemoteStatus.text = if (RemoteOpenAiPrefs.isEnabled(this) && RemoteOpenAiPrefs.isConfigured(this)) {
+            "Active: ${RemoteOpenAiPrefs.getModel(this)} @ ${RemoteOpenAiPrefs.getBaseUrl(this)}"
+        } else {
+            ""
+        }
+    }
+
+    private fun saveRemoteServerConfig() {
+        val url = editRemoteBaseUrl.text?.toString().orEmpty().trim()
+        val model = editRemoteModel.text?.toString().orEmpty().trim()
+        val apiKey = editRemoteApiKey.text?.toString().orEmpty().trim()
+        val enabled = switchRemoteEnabled.isChecked
+
+        if (enabled && url.isBlank()) {
+            Toast.makeText(this, "Base URL is required when remote server is enabled", Toast.LENGTH_SHORT).show()
+            return
+        }
+        if (enabled && model.isBlank()) {
+            Toast.makeText(this, "Model name is required when remote server is enabled", Toast.LENGTH_SHORT).show()
+            return
+        }
+
+        RemoteOpenAiPrefs.setBaseUrl(this, url)
+        RemoteOpenAiPrefs.setModel(this, model)
+        RemoteOpenAiPrefs.setApiKey(this, apiKey)
+        RemoteOpenAiPrefs.setEnabled(this, enabled)
+
+        val msg = if (enabled) {
+            "Remote server saved: $model @ $url"
+        } else {
+            "Remote server config saved (disabled)"
+        }
+        Toast.makeText(this, msg, Toast.LENGTH_SHORT).show()
+        tvRemoteStatus.text = if (enabled) "Active: $model @ $url" else ""
+        setResult(RESULT_OK)
+    }
+
+    private fun testRemoteServerConnection() {
+        // Save current inputs first so the client reads fresh values.
+        saveRemoteServerConfig()
+
+        val url = editRemoteBaseUrl.text?.toString().orEmpty().trim()
+        if (url.isBlank()) {
+            tvRemoteStatus.text = "Enter a base URL first"
+            return
+        }
+
+        tvRemoteStatus.text = "Testing connection..."
+        btnRemoteTest.isEnabled = false
+
+        lifecycleScope.launch {
+            val result = withContext(Dispatchers.IO) {
+                runCatching { RemoteOpenAiClient.healthCheck(this@LocalModelsConfigureActivity) }
+            }
+            btnRemoteTest.isEnabled = true
+            result.fold(
+                onSuccess = { status ->
+                    tvRemoteStatus.text = "Connection: $status"
+                    Toast.makeText(this@LocalModelsConfigureActivity, "Server reachable", Toast.LENGTH_SHORT).show()
+                },
+                onFailure = { err ->
+                    tvRemoteStatus.text = "Connection failed: ${err.message}"
+                    Toast.makeText(this@LocalModelsConfigureActivity, "Connection failed: ${err.message}", Toast.LENGTH_LONG).show()
+                },
+            )
         }
     }
 }

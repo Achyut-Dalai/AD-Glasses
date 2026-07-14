@@ -16,6 +16,7 @@ enum class LocalComputeBackend(val label: String) {
 enum class LocalModelRuntime(val label: String) {
     LLAMA_CPP("llama.cpp"),
     LITERT("LiteRT"),
+    REMOTE_OPENAI("Remote (OpenAI-compatible)"),
 }
 
 data class LocalGenerationSettings(

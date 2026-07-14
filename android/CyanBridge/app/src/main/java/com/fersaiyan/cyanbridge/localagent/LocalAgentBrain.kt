@@ -1,5 +1,9 @@
 package com.fersaiyan.cyanbridge.localagent
 
+import android.content.Context
+import com.fersaiyan.cyanbridge.ai.router.AgentInferencePurpose
+import com.fersaiyan.cyanbridge.ai.router.AgentInferenceRouter
+
 /**
  * "Brain" interface: takes an observation and returns a JSON plan.
  *
@@ -7,20 +11,112 @@ package com.fersaiyan.cyanbridge.localagent
  * or a scripted policy.
  */
 interface LocalAgentBrain {
-    suspend fun next(observation: LocalAgentObservation): LocalAgentBrainOutput
+    suspend fun next(
+        context: Context,
+        taskState: LocalAgentTaskState,
+        observation: LocalAgentObservation,
+    ): LocalAgentBrainOutput
 }
 
 data class LocalAgentBrainOutput(
-    /**
-     * JSON array of action objects, e.g.
-     *   [{"type":"sleep","ms":250},{"type":"click_text","text":"OK"}]
-     */
-    val actionsJson: String? = null,
+    val actions: List<LocalAgentAction> = emptyList(),
     val note: String? = null,
+    val isComplete: Boolean = false,
 )
 
 class NoOpLocalAgentBrain : LocalAgentBrain {
-    override suspend fun next(observation: LocalAgentObservation): LocalAgentBrainOutput {
-        return LocalAgentBrainOutput(actionsJson = "[]", note = "noop")
+    override suspend fun next(
+        context: Context,
+        taskState: LocalAgentTaskState,
+        observation: LocalAgentObservation,
+    ): LocalAgentBrainOutput {
+        return LocalAgentBrainOutput(actions = emptyList(), note = "noop", isComplete = false)
+    }
+}
+
+class RemoteUiControlLocalAgentBrain : LocalAgentBrain {
+
+    override suspend fun next(
+        context: Context,
+        taskState: LocalAgentTaskState,
+        observation: LocalAgentObservation,
+    ): LocalAgentBrainOutput {
+        LocalAgentSafetyPolicy.blockedReason(context, observation.packageName)?.let { reason ->
+            return LocalAgentBrainOutput(
+                actions = listOf(LocalAgentAction.Finish(reason)),
+                note = reason,
+                isComplete = true,
+            )
+        }
+
+        if (taskState.consecutiveFailures >= MAX_CONSECUTIVE_FAILURES) {
+            return LocalAgentBrainOutput(
+                actions = listOf(LocalAgentAction.Finish("Stopped after repeated failures.")),
+                note = "Too many consecutive failures.",
+                isComplete = true,
+            )
+        }
+
+        val prompt = LocalAgentUiControlProtocol.buildPrompt(
+            LocalAgentUiControlProtocol.StepContext(
+                goal = taskState.goal,
+                observation = observation,
+                stepIndex = taskState.stepIndex,
+                maxSteps = taskState.maxSteps,
+                previousActionResult = taskState.previousActionResult,
+            )
+        )
+
+        val raw = AgentInferenceRouter.complete(
+            context = context,
+            purpose = AgentInferencePurpose.UI_PLANNING,
+            sessionId = "local-agent-ui-${taskState.startedAtMs}",
+            systemPrompt = prompt.system,
+            userPrompt = prompt.user,
+        )
+
+        val decision = LocalAgentUiControlProtocol.parseDecision(raw)
+        return LocalAgentBrainOutput(
+            actions = listOf(decision.action.toLocalAgentAction()),
+            note = decision.reasoning,
+            isComplete = decision.isComplete,
+        )
+    }
+
+    private fun LocalAgentUiControlProtocol.Action.toLocalAgentAction(): LocalAgentAction {
+        return when (this) {
+            LocalAgentUiControlProtocol.NoOp -> LocalAgentAction.Wait(250L)
+            is LocalAgentUiControlProtocol.Wait -> LocalAgentAction.Wait(ms)
+            is LocalAgentUiControlProtocol.ClickText -> LocalAgentAction.ClickText(text)
+            is LocalAgentUiControlProtocol.ClickCoord -> LocalAgentAction.ClickCoord(x, y)
+            is LocalAgentUiControlProtocol.TypeText -> LocalAgentAction.TypeText(text, hint)
+            is LocalAgentUiControlProtocol.Scroll -> LocalAgentAction.Scroll(
+                when (direction) {
+                    LocalAgentUiControlProtocol.Direction.up -> LocalAgentAction.Direction.UP
+                    LocalAgentUiControlProtocol.Direction.down -> LocalAgentAction.Direction.DOWN
+                }
+            )
+            is LocalAgentUiControlProtocol.Swipe -> LocalAgentAction.Swipe(
+                startX, startY, endX, endY, durationMs
+            )
+            is LocalAgentUiControlProtocol.LongPress -> LocalAgentAction.LongPress(x, y, durationMs)
+            LocalAgentUiControlProtocol.PressBack -> LocalAgentAction.GlobalBack
+            LocalAgentUiControlProtocol.PressHome -> LocalAgentAction.GlobalHome
+            LocalAgentUiControlProtocol.OpenNotifications -> LocalAgentAction.OpenNotifications
+            LocalAgentUiControlProtocol.OpenRecents -> LocalAgentAction.OpenRecents
+            is LocalAgentUiControlProtocol.OpenApp -> LocalAgentAction.OpenApp(appName)
+            is LocalAgentUiControlProtocol.MakeCall -> LocalAgentAction.MakeCall(number)
+            is LocalAgentUiControlProtocol.SendSms -> LocalAgentAction.SendSms(number, message)
+            is LocalAgentUiControlProtocol.SetAlarm -> LocalAgentAction.SetAlarm(hour, minute, label)
+            LocalAgentUiControlProtocol.OpenContacts -> LocalAgentAction.OpenContacts
+            LocalAgentUiControlProtocol.ToggleWifi -> LocalAgentAction.ToggleWifi
+            LocalAgentUiControlProtocol.ToggleBluetooth -> LocalAgentAction.ToggleBluetooth
+            LocalAgentUiControlProtocol.ToggleFlashlight -> LocalAgentAction.ToggleFlashlight
+            is LocalAgentUiControlProtocol.Finish -> LocalAgentAction.Finish(message)
+        }
+    }
+
+    private companion object {
+        private const val MAX_CONSECUTIVE_FAILURES = 3
     }
 }

@@ -506,6 +506,7 @@ object LocalChatSessionManager {
         return when (runtime) {
             LocalModelRuntime.LLAMA_CPP -> currentEngine is LlamaCppLocalInferenceEngine
             LocalModelRuntime.LITERT -> currentEngine is LiteRtLocalInferenceEngine
+            LocalModelRuntime.REMOTE_OPENAI -> false
         }
     }
 
@@ -513,6 +514,9 @@ object LocalChatSessionManager {
         return when (runtime) {
             LocalModelRuntime.LLAMA_CPP -> LlamaCppLocalInferenceEngine()
             LocalModelRuntime.LITERT -> LiteRtLocalInferenceEngine(context)
+            LocalModelRuntime.REMOTE_OPENAI -> throw IllegalStateException(
+                "REMOTE_OPENAI does not use a local engine. Requests go through RemoteOpenAiClient."
+            )
         }
     }
 

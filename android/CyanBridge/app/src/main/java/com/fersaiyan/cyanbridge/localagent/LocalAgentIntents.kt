@@ -11,6 +11,7 @@ object LocalAgentIntents {
     const val ACTION_STOP = "com.fersaiyan.cyanbridge.localagent.action.STOP"
     const val ACTION_DEMO = "com.fersaiyan.cyanbridge.localagent.action.DEMO"
     const val ACTION_GET_STATUS = "com.fersaiyan.cyanbridge.localagent.action.GET_STATUS"
+    const val ACTION_RESUME_AFTER_APPROVAL = "com.fersaiyan.cyanbridge.localagent.action.RESUME_AFTER_APPROVAL"
 
     // Events (Service -> UI)
     const val ACTION_STATUS_CHANGED = "com.fersaiyan.cyanbridge.localagent.action.STATUS_CHANGED"
@@ -18,4 +19,8 @@ object LocalAgentIntents {
     // Extras
     const val EXTRA_STATUS = "status"
     const val EXTRA_LAST_ERROR = "last_error"
+    const val EXTRA_GOAL = "goal"
+    const val EXTRA_TASK_ID = "task_id"
+    const val EXTRA_IS_TERMINAL = "is_terminal"
+    const val EXTRA_USER_MESSAGE = "user_message"
 }
