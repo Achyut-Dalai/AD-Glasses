@@ -32,6 +32,11 @@ firmware_dump/
 # iOS
 *.xcworkspace
 *.xcodeproj
+# Keep the shared KMP host scheme available to Xcode and hosted CI.
+!ios/QCSDKDemo.xcodeproj/
+!ios/QCSDKDemo.xcodeproj/xcshareddata/
+!ios/QCSDKDemo.xcodeproj/xcshareddata/xcschemes/
+!ios/QCSDKDemo.xcodeproj/xcshareddata/xcschemes/CyanBridgeKMPHost.xcscheme
 DerivedData/
 Pods/
 QCSDK.framework/

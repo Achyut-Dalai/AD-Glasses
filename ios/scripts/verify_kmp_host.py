@@ -9,6 +9,7 @@ ROOT = Path(__file__).resolve().parents[2]
 PROJECT = ROOT / "ios" / "QCSDKDemo.xcodeproj" / "project.pbxproj"
 HOST = ROOT / "ios" / "CyanBridgeKMPHost" / "CyanBridgeKMPHostApp.swift"
 DEMO_APP_DELEGATE = ROOT / "ios" / "QCSDKDemo" / "AppDelegate.m"
+SCHEME = ROOT / "ios" / "QCSDKDemo.xcodeproj" / "xcshareddata" / "xcschemes" / "CyanBridgeKMPHost.xcscheme"
 
 
 def require(condition: bool, message: str) -> None:
@@ -28,11 +29,16 @@ def main() -> int:
     project = PROJECT.read_text(encoding="utf-8")
     host = HOST.read_text(encoding="utf-8")
     demo_app_delegate = DEMO_APP_DELEGATE.read_text(encoding="utf-8")
+    scheme = SCHEME.read_text(encoding="utf-8")
 
     require("import CyanBridgeShared" in host, "The KMP host must import CyanBridgeShared.")
     require(
         "meetingSummaryPreviewMarkdown()" in host,
         "The KMP host must render the shared meeting-summary preview.",
+    )
+    require(
+        'BlueprintIdentifier = "CB2000092F00000100CB0001"' in scheme,
+        "The shared Xcode scheme must build CyanBridgeKMPHost.",
     )
     for forbidden in ("QCSDK", "CoreBluetooth", "NetworkExtension"):
         require(forbidden not in host, f"The KMP host must not import vendor transport: {forbidden}")

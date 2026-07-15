@@ -57,7 +57,7 @@ jobs:
         run: >-
           xcodebuild
           -project ios/QCSDKDemo.xcodeproj
-          -target CyanBridgeKMPHost
+          -scheme CyanBridgeKMPHost
           -configuration Debug
           -sdk iphonesimulator
           -arch arm64
