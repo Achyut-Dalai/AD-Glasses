@@ -37,8 +37,10 @@
     <uses-permission android:name="android.permission.NEARBY_WIFI_DEVICES" android:usesPermissionFlags="neverForLocation" tools:targetApi="33" />
 
 
-    <!-- Allow listing all installed packages (sideload/dev builds). Not Play-friendly. -->
-    <uses-permission android:name="android.permission.QUERY_ALL_PACKAGES" />
+    <!-- The local-agent capture blacklist must enumerate installed packages so users can exclude any app. -->
+    <uses-permission
+        android:name="android.permission.QUERY_ALL_PACKAGES"
+        tools:ignore="QueryAllPackagesPermission" />
 
     <uses-permission android:name="android.permission.WAKE_LOCK" />
     <uses-permission android:name="android.permission.RECEIVE_USER_PRESENT" />
@@ -126,12 +128,18 @@
         <activity
             android:name=".ui.ChatThreadActivity"
             android:exported="false"
-            android:label="Chat" />
+            android:label="Chat"
+            android:windowSoftInputMode="adjustResize" />
 
         <activity
             android:name=".ui.SettingsActivity"
             android:exported="false"
             android:label="Settings" />
+
+        <activity
+            android:name=".ui.appearance.AppearanceActivity"
+            android:exported="false"
+            android:label="Appearance" />
 
         <activity
             android:name=".ui.CommunityPluginsActivity"
