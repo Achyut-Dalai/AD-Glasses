@@ -3,10 +3,14 @@ package com.fersaiyan.cyanbridge.ui
 import android.content.Context
 import android.content.Intent
 import android.os.Bundle
-import android.widget.Button
+import androidx.activity.compose.setContent
 import androidx.appcompat.app.AppCompatActivity
+import androidx.compose.runtime.getValue
 import com.fersaiyan.cyanbridge.MainActivity
-import com.fersaiyan.cyanbridge.R
+import com.fersaiyan.cyanbridge.ui.appearance.AppearancePreferences
+import com.fersaiyan.cyanbridge.ui.appearance.rememberAppearanceSettings
+import com.fersaiyan.cyanbridge.ui.onboarding.WelcomeScreen
+import com.fersaiyan.cyanbridge.ui.theme.CyanBridgeTheme
 
 class WelcomeActivity : AppCompatActivity() {
 
@@ -19,11 +23,15 @@ class WelcomeActivity : AppCompatActivity() {
             return
         }
 
-        setContentView(R.layout.activity_welcome)
-
-        findViewById<Button>(R.id.btn_start).setOnClickListener {
-            startActivity(Intent(this, BatteryOptimizationGuideActivity::class.java))
-            finish()
+        val appearancePreferences = AppearancePreferences(this)
+        setContent {
+            val appearance by rememberAppearanceSettings(appearancePreferences)
+            CyanBridgeTheme(appearance) {
+                WelcomeScreen {
+                    startActivity(Intent(this, BatteryOptimizationGuideActivity::class.java))
+                    finish()
+                }
+            }
         }
     }
 

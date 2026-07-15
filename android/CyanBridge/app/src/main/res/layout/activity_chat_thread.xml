@@ -39,7 +39,7 @@
             android:contentDescription="Chat appearance"
             android:padding="8dp"
             android:src="@android:drawable/ic_menu_more"
-            android:tint="@color/text_primary" />
+            app:tint="@color/text_primary" />
 
     </com.google.android.material.appbar.MaterialToolbar>
 
@@ -260,14 +260,14 @@
                 android:textColor="@color/text_secondary"
                 android:textSize="11sp" />
 
-            <ImageButton
-                android:id="@+id/btn_clear_attachments"
+        <ImageButton
+            android:id="@+id/btn_clear_attachments"
                 android:layout_width="32dp"
                 android:layout_height="32dp"
                 android:background="?attr/selectableItemBackgroundBorderless"
                 android:contentDescription="Clear attachments"
                 android:src="@android:drawable/ic_menu_close_clear_cancel"
-                android:tint="@color/text_secondary" />
+                app:tint="@color/text_secondary" />
 
         </LinearLayout>
 
@@ -302,7 +302,7 @@
             android:background="@drawable/bg_circle_send"
             android:contentDescription="Attach image"
             android:src="@android:drawable/ic_menu_gallery"
-            android:tint="@color/bg_dark"
+            app:tint="@color/bg_dark"
             app:layout_constraintEnd_toStartOf="@id/btn_record_audio"
             app:layout_constraintTop_toTopOf="@id/btn_send"
             app:layout_constraintBottom_toBottomOf="@id/btn_send" />
@@ -315,7 +315,7 @@
             android:background="@drawable/bg_circle_send"
             android:contentDescription="Record audio"
             android:src="@android:drawable/ic_btn_speak_now"
-            android:tint="@color/bg_dark"
+            app:tint="@color/bg_dark"
             app:layout_constraintEnd_toStartOf="@id/btn_send"
             app:layout_constraintTop_toTopOf="@id/btn_send"
             app:layout_constraintBottom_toBottomOf="@id/btn_send" />
@@ -328,7 +328,7 @@
             android:background="@drawable/bg_circle_send"
             android:contentDescription="Send"
             android:src="@android:drawable/ic_menu_send"
-            android:tint="@color/bg_dark"
+            app:tint="@color/bg_dark"
             app:layout_constraintEnd_toEndOf="parent"
             app:layout_constraintTop_toTopOf="parent"
             app:layout_constraintBottom_toBottomOf="parent" />

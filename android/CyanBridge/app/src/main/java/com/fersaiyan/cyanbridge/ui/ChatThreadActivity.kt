@@ -8,20 +8,25 @@ import android.media.AudioRecord
 import android.media.MediaRecorder
 import android.net.Uri
 import android.os.Bundle
+import android.os.Handler
+import android.os.Looper
 import android.util.Log
-import android.view.View
 import android.webkit.MimeTypeMap
+import androidx.activity.compose.setContent
 import androidx.core.content.ContextCompat
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AlertDialog
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.setValue
+import androidx.compose.ui.graphics.ImageBitmap
+import androidx.compose.ui.graphics.asImageBitmap
 import androidx.appcompat.app.AppCompatActivity
 import androidx.lifecycle.lifecycleScope
-import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.work.ExistingWorkPolicy
 import androidx.work.WorkInfo
 import androidx.work.WorkManager
 import com.fersaiyan.cyanbridge.MainActivity
-import com.fersaiyan.cyanbridge.R
 import com.fersaiyan.cyanbridge.agent.LocalAgentPrefs as AutomationPrefs
 import com.fersaiyan.cyanbridge.agent.LocalModelsConfigureActivity
 import com.fersaiyan.cyanbridge.agent.ProSubscriptionAiPrefs
@@ -31,7 +36,7 @@ import com.fersaiyan.cyanbridge.ai.router.AiProviderType
 import com.fersaiyan.cyanbridge.ai.router.AiAssistantRouter as RelayAiAssistantRouter
 import com.fersaiyan.cyanbridge.chat.ChatRole
 import com.fersaiyan.cyanbridge.chat.ChatStore
-import com.fersaiyan.cyanbridge.databinding.ActivityChatThreadBinding
+import com.fersaiyan.cyanbridge.chat.ChatStoreRepository
 import com.fersaiyan.cyanbridge.localagent.LocalAgentPrefs
 import com.fersaiyan.cyanbridge.localagent.context.LocalAgentContextBuilder
 import com.fersaiyan.cyanbridge.localagent.dailyfacts.DailyFactsReviewProtocol
@@ -53,12 +58,26 @@ import com.fersaiyan.cyanbridge.localmodels.settings.LocalModelRuntime
 import com.fersaiyan.cyanbridge.localmodels.settings.LocalModelSettingsRepository
 import com.fersaiyan.cyanbridge.localmodels.storage.LocalModelStorageRepository
 import com.fersaiyan.cyanbridge.memoryvault.MemoryModeManager
+import com.fersaiyan.cyanbridge.shared.chat.ChatAppearanceMenuAction
+import com.fersaiyan.cyanbridge.shared.chat.ChatAttachmentsUiState
+import com.fersaiyan.cyanbridge.shared.chat.ChatComposerPrimaryAction
+import com.fersaiyan.cyanbridge.shared.chat.ChatComposerUiState
+import com.fersaiyan.cyanbridge.shared.chat.DailySummaryProgressUiState
+import com.fersaiyan.cyanbridge.shared.chat.ChatThreadEvent
 import com.fersaiyan.cyanbridge.ui.chat.ChatAppearancePrefs
-import com.fersaiyan.cyanbridge.ui.chat.ChatMessageAdapter
-import com.fersaiyan.cyanbridge.ui.chat.ThinkingIndicatorController
+import com.fersaiyan.cyanbridge.ui.chat.ChatAppearanceMenuDialog
+import com.fersaiyan.cyanbridge.ui.chat.ChatThreadScreen
+import com.fersaiyan.cyanbridge.shared.chat.ChatThreadStateReducer
+import com.fersaiyan.cyanbridge.shared.chat.ChatThreadUiState
+import com.fersaiyan.cyanbridge.shared.navigation.AppDestination
+import com.fersaiyan.cyanbridge.ui.appearance.AppearancePreferences
+import com.fersaiyan.cyanbridge.ui.appearance.rememberAppearanceSettings
 import com.fersaiyan.cyanbridge.ui.debug.DebugLogSupport
+import com.fersaiyan.cyanbridge.ui.theme.CyanBridgeTheme
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withContext
 import org.json.JSONArray
 import org.json.JSONObject
@@ -72,25 +91,38 @@ import java.util.LinkedHashSet
 
 class ChatThreadActivity : AppCompatActivity() {
 
-    private lateinit var binding: ActivityChatThreadBinding
-    private val adapter = ChatMessageAdapter()
-    private var chatId: String? = null
+    private val chatRepository = ChatStoreRepository()
+    private val chatThreadMutex = Mutex()
+    private val chatMessageWriteMutex = Mutex()
+    private val mainHandler = Handler(Looper.getMainLooper())
+    private var chatThreadUiState by mutableStateOf(ChatThreadUiState())
+    private var composerUiState by mutableStateOf(ChatComposerUiState())
+    private var attachmentsUiState by mutableStateOf(ChatAttachmentsUiState())
+    private var modelBadge by mutableStateOf<String?>(null)
+    private var dailySummaryProgress by mutableStateOf<DailySummaryProgressUiState?>(null)
+    private var dailyReviewQueueStatus by mutableStateOf<String?>(null)
+    private var chatWallpaper by mutableStateOf<ImageBitmap?>(null)
+    private var userBubbleColor by mutableStateOf<Int?>(null)
+    private var assistantBubbleColor by mutableStateOf<Int?>(null)
+    private var isThinking by mutableStateOf(false)
+    private var chatId by mutableStateOf<String?>(null)
+    private var chatAppearanceMenuVisible by mutableStateOf(false)
+    private var refreshRequestId = 0L
 
     private var isDailyFactsReview: Boolean = false
     private var dailyFactsDate: String? = null
     private var dailyFactsLookbackDays: Int = 1
     private var dailyFactsSeededFromOcr: Boolean = false
-    private var thinkingIndicator: ThinkingIndicatorController? = null
     private var pendingAssistantRequests: Int = 0
-    private var localGenerationRunning: Boolean = false
+    private var localGenerationRunning by mutableStateOf(false)
     private var localTitleGenerationInProgress: Boolean = false
-    private var streamingAssistantDraft: String? = null
     private val queuedLocalPrompts = java.util.ArrayDeque<QueuedLocalPrompt>()
     private val pendingImagePaths = mutableListOf<String>()
     private var pendingAudioPath: String? = null
     private var audioRecorder: AudioRecord? = null
     private var audioRecordingThread: Thread? = null
     private var mediaRecordingFilePath: String? = null
+    @Volatile
     private var isMediaRecording = false
     private var recordStopRunnable: Runnable? = null
 
@@ -148,140 +180,52 @@ class ChatThreadActivity : AppCompatActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        binding = ActivityChatThreadBinding.inflate(layoutInflater)
-        setContentView(binding.root)
+        configureThreadFromIntent(intent)
 
-        isDailyFactsReview = intent.getBooleanExtra(EXTRA_DAILY_FACTS_REVIEW, false)
-        dailyFactsDate = intent.getStringExtra(EXTRA_DAILY_FACTS_DATE)
-        val configuredRetention = MemoryModeManager.getScreenOcrRetentionDays(this)
-        dailyFactsLookbackDays = intent
-            .getIntExtra(EXTRA_DAILY_FACTS_LOOKBACK_DAYS, configuredRetention)
-            .coerceIn(1, configuredRetention.coerceAtLeast(1))
-
-        chatId = intent.getStringExtra(EXTRA_CHAT_ID)
-
-        // Allow creating a new thread when opening from notifications/intents.
-        if (chatId == null) {
-            val title = intent.getStringExtra(EXTRA_CREATE_THREAD_TITLE)
-            if (!title.isNullOrBlank()) {
-                chatId = ChatStore.createThread(title = title).id
-            }
-        }
-
-        restoreDailyReviewConfigForCurrentThread()
-        registerDailyReviewThreadIfNeeded()
-
-        var thread = chatId?.let { ChatStore.getThread(it) }
-        if (chatId != null && thread == null) {
-            chatId = null
-        }
-
-        // Important: setSupportActionBar() installs its own navigation click listener.
-        // If we want the hamburger to open the chat list, we must set our listener *after*.
-        setSupportActionBar(binding.toolbar)
-        supportActionBar?.setDisplayShowTitleEnabled(false)
-
-        binding.toolbar.title = "Chats list"
-        binding.tvToolbarTitle.text = thread?.title ?: "New chat"
-
-        binding.toolbar.setNavigationOnClickListener {
-            // "Chats list" button should keep the user inside the Chats section.
-            // Do NOT use NEW_TASK here; it can bounce the user back to the previous section/task.
-            val i = android.content.Intent(this, ChatListActivity::class.java)
-                .addFlags(
-                    android.content.Intent.FLAG_ACTIVITY_CLEAR_TOP or
-                        android.content.Intent.FLAG_ACTIVITY_SINGLE_TOP
+        val appearancePreferences = AppearancePreferences(this)
+        setContent {
+            val appearance by rememberAppearanceSettings(appearancePreferences)
+            CyanBridgeTheme(appearance) {
+                val visibleMessages = ChatThreadStateReducer.visibleMessages(
+                    messages = chatThreadUiState.messages,
+                    chatId = chatId.orEmpty(),
+                    streamingAssistantText = chatThreadUiState.streamingAssistantText,
+                    nowMs = System.currentTimeMillis(),
                 )
-            startActivity(i)
-            finish()
-        }
-        binding.btnChatAppearance.setOnClickListener {
-            showChatAppearanceMenu()
-        }
-
-        binding.recyclerMessages.layoutManager = LinearLayoutManager(this).apply {
-            stackFromEnd = true
-        }
-        binding.recyclerMessages.adapter = adapter
-        applyChatAppearance()
-
-        // Initialize thinking indicator
-        thinkingIndicator = ThinkingIndicatorController(
-            container = binding.thinkingIndicator,
-            tvThinkingText = binding.tvThinkingText,
-            dot1 = binding.dot1,
-            dot2 = binding.dot2,
-            dot3 = binding.dot3,
-        )
-
-        binding.btnSend.setOnClickListener {
-            if (localGenerationRunning) {
-                lifecycleScope.launch {
-                    RelayAiAssistantRouter.cancelCurrentGeneration(this@ChatThreadActivity)
+                ChatThreadScreen(
+                    state = chatThreadUiState,
+                    messages = visibleMessages,
+                    composer = composerUiState,
+                    attachments = attachmentsUiState,
+                    modelBadge = modelBadge,
+                    dailySummaryProgress = dailySummaryProgress,
+                    dailyReviewQueueStatus = dailyReviewQueueStatus,
+                    userBubbleColor = userBubbleColor,
+                    assistantBubbleColor = assistantBubbleColor,
+                    wallpaper = chatWallpaper,
+                    isThinking = isThinking,
+                    onOpenChatList = ::openChatList,
+                    onChatAppearance = ::showChatAppearanceMenu,
+                    onComposerTextChanged = ::updateComposerText,
+                    onPrimaryAction = ::handlePrimaryComposerAction,
+                    onAttachImage = ::attachImage,
+                    onRecordAudio = ::toggleAudioRecording,
+                    onClearAttachments = ::clearPendingAttachments,
+                    onDestinationSelected = ::navigateTo,
+                )
+                if (chatAppearanceMenuVisible) {
+                    ChatAppearanceMenuDialog(
+                        modelOptionLabel = chatAppearanceModelOptionLabel(),
+                        onDismissRequest = { chatAppearanceMenuVisible = false },
+                        onAction = ::handleChatAppearanceMenuAction,
+                    )
                 }
-                return@setOnClickListener
-            }
-
-            if (isLocalModelsProviderSelected() && !hasLocalModelAvailable()) {
-                promptLocalModelSetup()
-                return@setOnClickListener
-            }
-
-            val text = binding.inputMessage.text.toString().trim()
-            if (isMediaRecording) {
-                stopAudioRecording(saveAsAttachment = true)
-            }
-            val hasMedia = pendingImagePaths.isNotEmpty() || !pendingAudioPath.isNullOrBlank()
-            if (text.isNotEmpty() || hasMedia) {
-                if (isLocalModelsProviderSelected() && localTitleGenerationInProgress && !isDailyFactsReview) {
-                    enqueueLocalPrompt(text)
-                } else {
-                    sendMessage(text)
-                }
-                binding.inputMessage.text?.clear()
             }
         }
 
-        binding.btnAttachMedia.setOnClickListener {
-            if (!supportsCurrentLocalRuntimeMedia()) {
-                android.widget.Toast.makeText(
-                    this,
-                    "Image attachments require Local Models + LiteRT runtime.",
-                    android.widget.Toast.LENGTH_SHORT,
-                ).show()
-                return@setOnClickListener
-            }
-            pickChatImageLauncher.launch(arrayOf("image/*"))
-        }
-
-        binding.btnRecordAudio.setOnClickListener {
-            if (!supportsCurrentLocalRuntimeMedia()) {
-                android.widget.Toast.makeText(
-                    this,
-                    "Audio attachments require Local Models + LiteRT runtime.",
-                    android.widget.Toast.LENGTH_SHORT,
-                ).show()
-                return@setOnClickListener
-            }
-            if (isMediaRecording) {
-                stopAudioRecording(saveAsAttachment = true)
-            } else {
-                ensureAudioPermissionAndStartRecording()
-            }
-        }
-
-        binding.btnClearAttachments.setOnClickListener {
-            clearPendingAttachments()
-        }
-
-        // Optional intent-driven prefill.
-        intent.getStringExtra(EXTRA_PREFILL_MESSAGE)
-            ?.takeIf { it.isNotBlank() }
-            ?.let { binding.inputMessage.setText(it) }
-
-        setupBottomNavigation()
         refreshModelBadge("Ready")
         updateComposerForGenerationState()
+        applyChatAppearance()
         observeDailySummaryQueueProgress()
         refreshMessages()
         refreshDailyReviewQueueStatusAsync()
@@ -296,18 +240,15 @@ class ChatThreadActivity : AppCompatActivity() {
 
     override fun onResume() {
         super.onResume()
-        // Ensure correct nav highlight when returning via CLEAR_TOP/SINGLE_TOP.
-        binding.bottomNavigation.post {
-            binding.bottomNavigation.menu.findItem(R.id.nav_chats).isChecked = true
-        }
         applyChatAppearance()
         refreshModelBadge("Ready")
         updateComposerForGenerationState()
+        refreshMessages()
         refreshDailyReviewQueueStatusAsync()
     }
 
     override fun onDestroy() {
-        thinkingIndicator?.hide()
+        recordStopRunnable?.let(mainHandler::removeCallbacks)
         if (isMediaRecording) {
             stopAudioRecording(saveAsAttachment = true)
         }
@@ -322,43 +263,109 @@ class ChatThreadActivity : AppCompatActivity() {
     override fun onNewIntent(intent: android.content.Intent) {
         super.onNewIntent(intent)
         setIntent(intent)
-        isDailyFactsReview = intent.getBooleanExtra(EXTRA_DAILY_FACTS_REVIEW, false)
-        dailyFactsDate = intent.getStringExtra(EXTRA_DAILY_FACTS_DATE)
+        configureThreadFromIntent(intent)
+        refreshMessages()
+        refreshDailyReviewQueueStatusAsync()
+        applyChatAppearance()
+        refreshModelBadge("Ready")
+        updateComposerForGenerationState()
+    }
+
+    private fun configureThreadFromIntent(source: Intent) {
+        isDailyFactsReview = source.getBooleanExtra(EXTRA_DAILY_FACTS_REVIEW, false)
+        dailyFactsDate = source.getStringExtra(EXTRA_DAILY_FACTS_DATE)
         val configuredRetention = MemoryModeManager.getScreenOcrRetentionDays(this)
-        dailyFactsLookbackDays = intent
+        dailyFactsLookbackDays = source
             .getIntExtra(EXTRA_DAILY_FACTS_LOOKBACK_DAYS, configuredRetention)
             .coerceIn(1, configuredRetention.coerceAtLeast(1))
-        chatId = intent.getStringExtra(EXTRA_CHAT_ID)
 
+        chatId = source.getStringExtra(EXTRA_CHAT_ID)
         if (chatId == null) {
-            val title = intent.getStringExtra(EXTRA_CREATE_THREAD_TITLE)
-            if (!title.isNullOrBlank()) {
-                chatId = ChatStore.createThread(title = title).id
-            }
+            source.getStringExtra(EXTRA_CREATE_THREAD_TITLE)
+                ?.takeIf { it.isNotBlank() }
+                ?.let { title -> chatId = ChatStore.createThread(title = title).id }
         }
 
         restoreDailyReviewConfigForCurrentThread()
         registerDailyReviewThreadIfNeeded()
 
-        val cid = chatId
-        if (cid != null) {
-            val thread = ChatStore.getThread(cid)
-            if (thread != null) {
-                binding.tvToolbarTitle.text = thread.title
-            }
-
-            intent.getStringExtra(EXTRA_PREFILL_MESSAGE)
-                ?.takeIf { it.isNotBlank() }
-                ?.let { binding.inputMessage.setText(it) }
-
-            refreshMessages()
-            refreshDailyReviewQueueStatusAsync()
-        } else {
-            binding.tvToolbarTitle.text = "New chat"
-            adapter.submitList(emptyList())
-            binding.tvDailyReviewQueueStatus.visibility = android.view.View.GONE
+        if (chatId?.let(ChatStore::getThread) == null) {
+            chatId = null
         }
-        applyChatAppearance()
+        updateChatThreadState(ChatThreadEvent.Loaded(thread = null, messages = emptyList()))
+        dailyReviewQueueStatus = null
+        source.getStringExtra(EXTRA_PREFILL_MESSAGE)
+            ?.takeIf { it.isNotBlank() }
+            ?.let(::updateComposerText)
+    }
+
+    private fun openChatList() {
+        startActivity(
+            Intent(this, ChatListActivity::class.java).addFlags(
+                Intent.FLAG_ACTIVITY_CLEAR_TOP or Intent.FLAG_ACTIVITY_SINGLE_TOP,
+            ),
+        )
+        finish()
+    }
+
+    private fun updateComposerText(value: String) {
+        updateChatThreadState(ChatThreadEvent.ComposerTextChanged(value))
+    }
+
+    private fun handlePrimaryComposerAction() {
+        if (localGenerationRunning) {
+            lifecycleScope.launch {
+                RelayAiAssistantRouter.cancelCurrentGeneration(this@ChatThreadActivity)
+            }
+            return
+        }
+
+        if (isLocalModelsProviderSelected() && !hasLocalModelAvailable()) {
+            promptLocalModelSetup()
+            return
+        }
+
+        val text = chatThreadUiState.composerText.trim()
+        if (isMediaRecording) {
+            stopAudioRecording(saveAsAttachment = true)
+        }
+        val hasMedia = pendingImagePaths.isNotEmpty() || !pendingAudioPath.isNullOrBlank()
+        if (text.isNotEmpty() || hasMedia) {
+            if (isLocalModelsProviderSelected() && localTitleGenerationInProgress && !isDailyFactsReview) {
+                enqueueLocalPrompt(text)
+            } else {
+                sendMessage(text)
+            }
+            updateComposerText("")
+        }
+    }
+
+    private fun attachImage() {
+        if (!supportsCurrentLocalRuntimeMedia()) {
+            android.widget.Toast.makeText(
+                this,
+                "Image attachments require Local Models + LiteRT runtime.",
+                android.widget.Toast.LENGTH_SHORT,
+            ).show()
+            return
+        }
+        pickChatImageLauncher.launch(arrayOf("image/*"))
+    }
+
+    private fun toggleAudioRecording() {
+        if (!supportsCurrentLocalRuntimeMedia()) {
+            android.widget.Toast.makeText(
+                this,
+                "Audio attachments require Local Models + LiteRT runtime.",
+                android.widget.Toast.LENGTH_SHORT,
+            ).show()
+            return
+        }
+        if (isMediaRecording) {
+            stopAudioRecording(saveAsAttachment = true)
+        } else {
+            ensureAudioPermissionAndStartRecording()
+        }
     }
 
     private fun restoreDailyReviewConfigForCurrentThread() {
@@ -399,84 +406,70 @@ class ChatThreadActivity : AppCompatActivity() {
     private fun applyChatAppearance() {
         val userColor = ChatAppearancePrefs.getUserBubbleColor(this)
         val assistantColor = ChatAppearancePrefs.getAssistantBubbleColor(this)
-        adapter.applyAppearance(userColor, assistantColor)
+        userBubbleColor = userColor
+        assistantBubbleColor = assistantColor
 
         val wallpaper = ChatAppearancePrefs.getWallpaperUri(this)
         if (wallpaper.isBlank()) {
-            binding.ivChatWallpaper.setImageDrawable(null)
-            binding.ivChatWallpaper.visibility = android.view.View.GONE
+            chatWallpaper = null
             return
         }
 
         val uri = android.net.Uri.parse(wallpaper)
-        runCatching {
+        chatWallpaper = runCatching {
             contentResolver.openInputStream(uri)?.use { input ->
                 BitmapFactory.decodeStream(input)
             }
-        }.onSuccess { bmp ->
-            if (bmp != null) {
-                binding.ivChatWallpaper.setImageBitmap(bmp)
-                binding.ivChatWallpaper.visibility = android.view.View.VISIBLE
-            } else {
-                binding.ivChatWallpaper.visibility = android.view.View.GONE
-            }
-        }.onFailure {
-            binding.ivChatWallpaper.visibility = android.view.View.GONE
-        }
+        }.getOrNull()?.asImageBitmap()
     }
 
     private fun showChatAppearanceMenu() {
-        val providerModelOption = when {
-            isLocalModelsProviderSelected() -> "Change local model"
-            isRelayProviderSelected() -> "Change relay AI model"
-            else -> "Change AI model"
-        }
-        val items = arrayOf(
-            "Change user bubble color",
-            "Change assistant bubble color",
-            "Choose wallpaper from gallery",
-            "Remove wallpaper",
-            "Reset chat appearance",
-            providerModelOption,
-        )
+        chatAppearanceMenuVisible = true
+    }
 
-        AlertDialog.Builder(this)
-            .setTitle("Chat appearance")
-            .setItems(items) { _, which ->
-                when (which) {
-                    0 -> showColorPicker(
-                        title = "User bubble color",
-                        current = ChatAppearancePrefs.getUserBubbleColor(this),
-                    ) { selected ->
-                        ChatAppearancePrefs.setUserBubbleColor(this, selected)
-                        applyChatAppearance()
-                    }
+    private fun chatAppearanceModelOptionLabel(): String = when {
+        isLocalModelsProviderSelected() -> "Change local model"
+        isRelayProviderSelected() -> "Change relay AI model"
+        else -> "Change AI model"
+    }
 
-                    1 -> showColorPicker(
-                        title = "Assistant bubble color",
-                        current = ChatAppearancePrefs.getAssistantBubbleColor(this),
-                    ) { selected ->
-                        ChatAppearancePrefs.setAssistantBubbleColor(this, selected)
-                        applyChatAppearance()
-                    }
-
-                    2 -> pickWallpaperLauncher.launch(arrayOf("image/*"))
-                    3 -> {
-                        ChatAppearancePrefs.clearWallpaper(this)
-                        applyChatAppearance()
-                        android.widget.Toast.makeText(this, "Wallpaper removed", android.widget.Toast.LENGTH_SHORT).show()
-                    }
-
-                    4 -> {
-                        ChatAppearancePrefs.reset(this)
-                        applyChatAppearance()
-                        android.widget.Toast.makeText(this, "Chat appearance reset", android.widget.Toast.LENGTH_SHORT).show()
-                    }
-
-                    5 -> showModelPickerForProvider()
-                }
+    private fun handleChatAppearanceMenuAction(action: ChatAppearanceMenuAction) {
+        chatAppearanceMenuVisible = false
+        when (action) {
+            ChatAppearanceMenuAction.CHANGE_USER_BUBBLE_COLOR -> showColorPicker(
+                title = "User bubble color",
+                current = ChatAppearancePrefs.getUserBubbleColor(this),
+            ) { selected ->
+                ChatAppearancePrefs.setUserBubbleColor(this, selected)
+                applyChatAppearance()
             }
-            .show()
+
+            ChatAppearanceMenuAction.CHANGE_ASSISTANT_BUBBLE_COLOR -> showColorPicker(
+                title = "Assistant bubble color",
+                current = ChatAppearancePrefs.getAssistantBubbleColor(this),
+            ) { selected ->
+                ChatAppearancePrefs.setAssistantBubbleColor(this, selected)
+                applyChatAppearance()
+            }
+
+            ChatAppearanceMenuAction.CHOOSE_WALLPAPER -> {
+                pickWallpaperLauncher.launch(arrayOf("image/*"))
+            }
+
+            ChatAppearanceMenuAction.REMOVE_WALLPAPER -> {
+                ChatAppearancePrefs.clearWallpaper(this)
+                applyChatAppearance()
+                android.widget.Toast.makeText(this, "Wallpaper removed", android.widget.Toast.LENGTH_SHORT).show()
+            }
+
+            ChatAppearanceMenuAction.RESET_APPEARANCE -> {
+                ChatAppearancePrefs.reset(this)
+                applyChatAppearance()
+                android.widget.Toast.makeText(this, "Chat appearance reset", android.widget.Toast.LENGTH_SHORT).show()
+            }
+
+            ChatAppearanceMenuAction.CHANGE_MODEL -> showModelPickerForProvider()
+        }
     }
 
     private fun showModelPickerForProvider() {
@@ -604,27 +597,22 @@ class ChatThreadActivity : AppCompatActivity() {
     }
 
     private fun refreshModelBadge(status: String) {
-        when (AiProviderPrefs.getProvider(this)) {
+        modelBadge = when (AiProviderPrefs.getProvider(this)) {
             AiProviderType.LOCAL_MODELS -> {
                 val selected = LocalModelStorageRepository.resolveSelectedModel(this)
                 if (selected == null) {
-                    binding.tvLocalModelBadge.text = "Local model: none installed"
-                    binding.tvLocalModelBadge.visibility = android.view.View.VISIBLE
-                    return
+                    "Local model: none installed"
+                } else {
+                    "Local model: ${selected.displayName} ($status)"
                 }
-                binding.tvLocalModelBadge.text = "Local model: ${selected.displayName} ($status)"
-                binding.tvLocalModelBadge.visibility = android.view.View.VISIBLE
             }
 
             AiProviderType.CLI_RELAY -> {
                 val selected = ProSubscriptionAiPrefs.getRequestsModel(this).ifBlank { "auto" }
-                binding.tvLocalModelBadge.text = "Relay model: $selected"
-                binding.tvLocalModelBadge.visibility = android.view.View.VISIBLE
+                "Relay model: $selected"
             }
 
-            else -> {
-                binding.tvLocalModelBadge.visibility = android.view.View.GONE
-            }
+            else -> null
         }
     }
 
@@ -641,13 +629,13 @@ class ChatThreadActivity : AppCompatActivity() {
 
     private fun renderDailySummaryQueueProgress(info: WorkInfo?) {
         if (info == null || (info.state != WorkInfo.State.ENQUEUED && info.state != WorkInfo.State.RUNNING)) {
-            binding.layoutDailySummaryProgress.visibility = android.view.View.GONE
+            dailySummaryProgress = null
             return
         }
 
         val bulletTotal = info.progress.getInt(DailySummaryRegenerateWorker.KEY_BULLET_TOTAL, 0)
         if (bulletTotal <= 0) {
-            binding.layoutDailySummaryProgress.visibility = android.view.View.GONE
+            dailySummaryProgress = null
             return
         }
 
@@ -672,10 +660,10 @@ class ChatThreadActivity : AppCompatActivity() {
             .toInt()
             .coerceIn(0, 100)
 
-        binding.layoutDailySummaryProgress.visibility = android.view.View.VISIBLE
-        binding.progressDailySummaryBullets.progress = percent
-        binding.tvDailySummaryProgress.text =
-            "Daily summary bullets $bulletDone/$bulletTotal · $stage · ETA $etaText"
+        dailySummaryProgress = DailySummaryProgressUiState(
+            label = "Daily summary bullets $bulletDone/$bulletTotal · $stage · ETA $etaText",
+            progress = percent / 100f,
+        )
     }
 
     private fun showRelayDownToastIfNeeded(message: String?) {
@@ -697,31 +685,28 @@ class ChatThreadActivity : AppCompatActivity() {
 
     private fun updateComposerForGenerationState() {
         if (localGenerationRunning) {
-            binding.btnSend.setImageResource(android.R.drawable.ic_media_pause)
-            binding.btnSend.contentDescription = "Stop generation"
-            binding.inputMessage.isEnabled = false
-            binding.btnAttachMedia.isEnabled = false
-            binding.btnRecordAudio.isEnabled = false
-            binding.btnSend.isEnabled = true
+            composerUiState = ChatComposerUiState(
+                isTextInputEnabled = false,
+                isMediaEnabled = false,
+                primaryAction = ChatComposerPrimaryAction.STOP_GENERATION,
+            )
         } else {
             val localModelMissing = isLocalModelsProviderSelected() && !hasLocalModelAvailable()
             if (localModelMissing) {
-                binding.btnSend.setImageResource(android.R.drawable.ic_menu_manage)
-                binding.btnSend.contentDescription = "Configure local model"
-                binding.inputMessage.isEnabled = true
-                binding.btnAttachMedia.isEnabled = false
-                binding.btnRecordAudio.isEnabled = false
-                binding.inputLayout.hint = "Install/select a local model to start chatting"
-                binding.btnSend.isEnabled = true
+                composerUiState = ChatComposerUiState(
+                    hint = "Install/select a local model to start chatting",
+                    isTextInputEnabled = true,
+                    isMediaEnabled = false,
+                    primaryAction = ChatComposerPrimaryAction.CONFIGURE_LOCAL_MODEL,
+                )
             } else {
-                binding.btnSend.setImageResource(android.R.drawable.ic_menu_send)
-                binding.btnSend.contentDescription = "Send"
-                binding.inputMessage.isEnabled = true
-                val mediaEnabled = supportsCurrentLocalRuntimeMedia()
-                binding.btnAttachMedia.isEnabled = mediaEnabled
-                binding.btnRecordAudio.isEnabled = mediaEnabled
-                binding.inputLayout.hint = "Message"
-                binding.btnSend.isEnabled = true
+                composerUiState = ChatComposerUiState(
+                    isTextInputEnabled = true,
+                    // Keep media controls actionable so unsupported providers can explain
+                    // their runtime requirement instead of showing inert controls.
+                    isMediaEnabled = true,
+                    primaryAction = ChatComposerPrimaryAction.SEND,
+                )
             }
         }
     }
@@ -762,24 +747,25 @@ class ChatThreadActivity : AppCompatActivity() {
     private fun updatePendingAttachmentsUi() {
         val imageCount = pendingImagePaths.size
         val hasAudio = !pendingAudioPath.isNullOrBlank()
-        if (imageCount == 0 && !hasAudio) {
-            binding.layoutPendingAttachments.visibility = View.GONE
-            binding.btnRecordAudio.setImageResource(android.R.drawable.ic_btn_speak_now)
-            return
-        }
-
-        val text = buildString {
-            if (imageCount > 0) append("$imageCount image(s)")
-            if (hasAudio) {
-                if (isNotBlank()) append(" · ")
-                append("voice note")
+        val label = if (imageCount == 0 && !hasAudio && !isMediaRecording) {
+            null
+        } else {
+            buildString {
+                if (imageCount > 0) append("$imageCount image(s)")
+                if (hasAudio) {
+                    if (isNotBlank()) append(" · ")
+                    append("voice note")
+                }
+                if (isMediaRecording) {
+                    if (isNotBlank()) append(" · ")
+                    append("recording voice note")
+                }
+                append(" attached")
             }
-            append(" attached")
         }
-        binding.layoutPendingAttachments.visibility = View.VISIBLE
-        binding.tvPendingAttachments.text = text
-        binding.btnRecordAudio.setImageResource(
-            if (isMediaRecording) android.R.drawable.ic_media_pause else android.R.drawable.ic_btn_speak_now,
+        attachmentsUiState = ChatAttachmentsUiState(
+            label = label,
+            isRecording = isMediaRecording,
         )
     }
 
@@ -795,6 +781,13 @@ class ChatThreadActivity : AppCompatActivity() {
 
     private fun startAudioRecording() {
         if (isMediaRecording) return
+        if (
+            ContextCompat.checkSelfPermission(this, Manifest.permission.RECORD_AUDIO) !=
+                android.content.pm.PackageManager.PERMISSION_GRANTED
+        ) {
+            ensureAudioPermissionAndStartRecording()
+            return
+        }
         stopAudioRecording(saveAsAttachment = false)
 
         val outFile = File(chatAttachmentDir(), "voice_${System.currentTimeMillis()}.wav")
@@ -871,10 +864,10 @@ class ChatThreadActivity : AppCompatActivity() {
             audioRecordingThread = worker
             worker.start()
 
-            recordStopRunnable?.let { binding.root.removeCallbacks(it) }
+            recordStopRunnable?.let(mainHandler::removeCallbacks)
             recordStopRunnable = Runnable {
                 stopAudioRecording(saveAsAttachment = true)
-            }.also { binding.root.postDelayed(it, 30_000L) }
+            }.also { mainHandler.postDelayed(it, 30_000L) }
         } catch (t: Throwable) {
             runCatching { audioRecorder?.release() }
             audioRecorder = null
@@ -887,7 +880,7 @@ class ChatThreadActivity : AppCompatActivity() {
     }
 
     private fun stopAudioRecording(saveAsAttachment: Boolean) {
-        recordStopRunnable?.let { binding.root.removeCallbacks(it) }
+        recordStopRunnable?.let(mainHandler::removeCallbacks)
         recordStopRunnable = null
 
         val recorder = audioRecorder
@@ -1010,7 +1003,6 @@ class ChatThreadActivity : AppCompatActivity() {
     }
 
     private fun sendMessage(text: String) {
-        val cid = ensureChatThread()
         val images = pendingImagePaths.toList()
         val audio = pendingAudioPath
         if ((images.isNotEmpty() || !audio.isNullOrBlank()) && !supportsCurrentLocalRuntimeMedia()) {
@@ -1030,69 +1022,89 @@ class ChatThreadActivity : AppCompatActivity() {
         }
         if (promptText.isBlank()) return
 
-        val shouldGenerateSmartTitle = ChatStore.listMessages(cid).isEmpty()
-        ChatStore.addMessage(cid, ChatRole.USER, formatUserMessageWithMedia(promptText, images, audio))
-        refreshMessages()
         clearPendingAttachments()
-
-        startAssistantGeneration(
-            chatId = cid,
-            userPrompt = promptText,
-            imagePaths = images,
-            audioPath = audio,
-            requestSmartTitleAfterReply = shouldGenerateSmartTitle,
-        )
-    }
-
-    private fun enqueueLocalPrompt(text: String) {
-        val cid = ensureChatThread()
-        val images = pendingImagePaths.toList()
-        val audio = pendingAudioPath
-        if ((images.isNotEmpty() || !audio.isNullOrBlank()) && !supportsCurrentLocalRuntimeMedia()) {
-            android.widget.Toast.makeText(
-                this,
-                "Media attachments require Local Models + LiteRT runtime.",
-                android.widget.Toast.LENGTH_SHORT,
-            ).show()
-            return
-        }
-        val promptText = text.ifBlank {
-            if (images.isNotEmpty() || !audio.isNullOrBlank()) {
-                "Please analyze the attached media."
-            } else {
-                ""
+        lifecycleScope.launch {
+            val (cid, shouldGenerateSmartTitle) = chatMessageWriteMutex.withLock {
+                val cid = ensureChatThread()
+                val shouldGenerateSmartTitle = chatRepository.listMessages(cid).isEmpty()
+                chatRepository.addMessage(
+                    chatId = cid,
+                    role = ChatRole.USER,
+                    content = formatUserMessageWithMedia(promptText, images, audio),
+                    nowMs = System.currentTimeMillis(),
+                )
+                cid to shouldGenerateSmartTitle
             }
-        }
-        if (promptText.isBlank()) return
+            refreshMessages()
 
-        ChatStore.addMessage(cid, ChatRole.USER, formatUserMessageWithMedia(promptText, images, audio))
-        refreshMessages()
-        queuedLocalPrompts.addLast(
-            QueuedLocalPrompt(
+            startAssistantGeneration(
                 chatId = cid,
                 userPrompt = promptText,
                 imagePaths = images,
                 audioPath = audio,
-            ),
-        )
-        clearPendingAttachments()
-        refreshModelBadge("Queued")
-        android.widget.Toast.makeText(
-            this,
-            "Queued. Sending right after title update...",
-            android.widget.Toast.LENGTH_SHORT,
-        ).show()
+                requestSmartTitleAfterReply = shouldGenerateSmartTitle,
+            )
+        }
     }
 
-    private fun ensureChatThread(): String {
-        val existing = chatId
-        if (existing != null) return existing
+    private fun enqueueLocalPrompt(text: String) {
+        val images = pendingImagePaths.toList()
+        val audio = pendingAudioPath
+        if ((images.isNotEmpty() || !audio.isNullOrBlank()) && !supportsCurrentLocalRuntimeMedia()) {
+            android.widget.Toast.makeText(
+                this,
+                "Media attachments require Local Models + LiteRT runtime.",
+                android.widget.Toast.LENGTH_SHORT,
+            ).show()
+            return
+        }
+        val promptText = text.ifBlank {
+            if (images.isNotEmpty() || !audio.isNullOrBlank()) {
+                "Please analyze the attached media."
+            } else {
+                ""
+            }
+        }
+        if (promptText.isBlank()) return
 
-        val created = ChatStore.createThread()
+        clearPendingAttachments()
+        lifecycleScope.launch {
+            val cid = chatMessageWriteMutex.withLock {
+                val cid = ensureChatThread()
+                chatRepository.addMessage(
+                    chatId = cid,
+                    role = ChatRole.USER,
+                    content = formatUserMessageWithMedia(promptText, images, audio),
+                    nowMs = System.currentTimeMillis(),
+                )
+                cid
+            }
+            refreshMessages()
+            queuedLocalPrompts.addLast(
+                QueuedLocalPrompt(
+                    chatId = cid,
+                    userPrompt = promptText,
+                    imagePaths = images,
+                    audioPath = audio,
+                ),
+            )
+            refreshModelBadge("Queued")
+            android.widget.Toast.makeText(
+                this@ChatThreadActivity,
+                "Queued. Sending right after title update...",
+                android.widget.Toast.LENGTH_SHORT,
+            ).show()
+        }
+    }
+
+    private suspend fun ensureChatThread(): String = chatThreadMutex.withLock {
+        chatId?.let { return@withLock it }
+
+        val created = chatRepository.createThread(title = null, nowMs = System.currentTimeMillis())
         chatId = created.id
         registerDailyReviewThreadIfNeeded()
-        binding.tvToolbarTitle.text = created.title
-        return created.id
+        updateChatThreadState(ChatThreadEvent.ThreadChanged(created))
+        created.id
     }
 
     private fun startAssistantGeneration(
@@ -1109,7 +1121,7 @@ class ChatThreadActivity : AppCompatActivity() {
             var maxTokensReached = false
             if (useLocalStreaming) {
                 localGenerationRunning = true
-                streamingAssistantDraft = ""
+                updateChatThreadState(ChatThreadEvent.GenerationStarted())
                 updateComposerForGenerationState()
                 refreshModelBadge("Loading")
                 refreshMessages()
@@ -1143,9 +1155,8 @@ class ChatThreadActivity : AppCompatActivity() {
 
                                 override fun onToken(token: String) {
                                     runOnUiThread {
-                                        val cur = streamingAssistantDraft.orEmpty()
-                                        streamingAssistantDraft = cur + token
-                                        refreshMessages()
+                                        val current = chatThreadUiState.streamingAssistantText.orEmpty()
+                                        updateChatThreadState(ChatThreadEvent.StreamUpdated(current + token))
                                     }
                                 }
                             }
@@ -1159,7 +1170,7 @@ class ChatThreadActivity : AppCompatActivity() {
                 if (isDailyFactsReview) {
                     handleDailyFactsAiReply(chatId, userPrompt, assistantReply)
                 } else {
-                    val streamed = streamingAssistantDraft.orEmpty().trim()
+                    val streamed = chatThreadUiState.streamingAssistantText.orEmpty().trim()
                     val finalReply = when {
                         useLocalStreaming && streamed.isNotBlank() -> streamed
                         assistantReply.isNotBlank() -> assistantReply
@@ -1172,8 +1183,13 @@ class ChatThreadActivity : AppCompatActivity() {
                     } else {
                         finalReply
                     }
-                    streamingAssistantDraft = null
-                    ChatStore.addMessage(chatId, ChatRole.ASSISTANT, finalReplyWithCapNotice)
+                    chatRepository.addMessage(
+                        chatId = chatId,
+                        role = ChatRole.ASSISTANT,
+                        content = finalReplyWithCapNotice,
+                        nowMs = System.currentTimeMillis(),
+                    )
+                    updateChatThreadState(ChatThreadEvent.GenerationFinished())
 
                     if (requestSmartTitleAfterReply) {
                         maybeGenerateSmartThreadTitle(chatId = chatId, firstUserPrompt = userPrompt)
@@ -1195,10 +1211,10 @@ class ChatThreadActivity : AppCompatActivity() {
 
                 refreshMessages()
             } catch (_: kotlinx.coroutines.CancellationException) {
-                val partial = streamingAssistantDraft.orEmpty().trim()
+                val partial = chatThreadUiState.streamingAssistantText.orEmpty().trim()
                 if (partial.isNotBlank()) {
-                    streamingAssistantDraft = null
                     ChatStore.addMessage(chatId, ChatRole.ASSISTANT, partial)
+                    updateChatThreadState(ChatThreadEvent.GenerationFinished())
                     refreshMessages()
                 }
                 android.widget.Toast.makeText(
@@ -1229,7 +1245,7 @@ class ChatThreadActivity : AppCompatActivity() {
                 ).show()
             } finally {
                 localGenerationRunning = false
-                streamingAssistantDraft = null
+                updateChatThreadState(ChatThreadEvent.GenerationFinished())
                 updateComposerForGenerationState()
                 refreshModelBadge("Ready")
                 refreshMessages()
@@ -1249,7 +1265,7 @@ class ChatThreadActivity : AppCompatActivity() {
             val useLocalStreaming = isLocalModelsProviderSelected()
             if (useLocalStreaming) {
                 localGenerationRunning = true
-                streamingAssistantDraft = ""
+                updateChatThreadState(ChatThreadEvent.GenerationStarted())
                 updateComposerForGenerationState()
                 refreshModelBadge("Loading")
                 refreshMessages()
@@ -1300,9 +1316,8 @@ class ChatThreadActivity : AppCompatActivity() {
 
                                 override fun onToken(token: String) {
                                     runOnUiThread {
-                                        val cur = streamingAssistantDraft.orEmpty()
-                                        streamingAssistantDraft = cur + token
-                                        refreshMessages()
+                                        val current = chatThreadUiState.streamingAssistantText.orEmpty()
+                                        updateChatThreadState(ChatThreadEvent.StreamUpdated(current + token))
                                     }
                                 }
                             }
@@ -1328,7 +1343,7 @@ class ChatThreadActivity : AppCompatActivity() {
                 ).show()
             } finally {
                 localGenerationRunning = false
-                streamingAssistantDraft = null
+                updateChatThreadState(ChatThreadEvent.GenerationFinished())
                 updateComposerForGenerationState()
                 refreshModelBadge("Ready")
                 refreshMessages()
@@ -1339,16 +1354,12 @@ class ChatThreadActivity : AppCompatActivity() {
 
     private fun onAssistantRequestStarted() {
         pendingAssistantRequests += 1
-        if (pendingAssistantRequests == 1) {
-            thinkingIndicator?.show()
-        }
+        isThinking = pendingAssistantRequests > 0
     }
 
     private fun onAssistantRequestFinished() {
         pendingAssistantRequests = (pendingAssistantRequests - 1).coerceAtLeast(0)
-        if (pendingAssistantRequests == 0) {
-            thinkingIndicator?.hide()
-        }
+        isThinking = pendingAssistantRequests > 0
     }
 
     private fun maybeGenerateSmartThreadTitle(chatId: String, firstUserPrompt: String) {
@@ -1387,10 +1398,7 @@ class ChatThreadActivity : AppCompatActivity() {
                     fallbackPrompt = firstUserPrompt,
                 )
 
-                if (ChatStore.updateThreadTitle(chatId, title)) {
-                    if (this@ChatThreadActivity.chatId == chatId) {
-                        binding.tvToolbarTitle.text = title
-                    }
+                if (chatRepository.updateThreadTitle(chatId, title, System.currentTimeMillis())) {
                     refreshMessages()
                 }
             } finally {
@@ -2354,164 +2362,97 @@ class ChatThreadActivity : AppCompatActivity() {
             .take(260)
     }
 
+    private fun updateChatThreadState(event: ChatThreadEvent) {
+        chatThreadUiState = ChatThreadStateReducer.reduce(chatThreadUiState, event)
+    }
+
     private fun refreshMessages() {
         val cid = chatId
+        val requestId = ++refreshRequestId
         if (cid == null) {
-            adapter.submitList(emptyList())
-            binding.tvDailyReviewQueueStatus.visibility = android.view.View.GONE
+            updateChatThreadState(ChatThreadEvent.Loaded(thread = null, messages = emptyList()))
+            dailyReviewQueueStatus = null
             return
         }
-        val storedRaw = ChatStore.listMessages(cid)
-        val stored = if (DAILY_REVIEW_DEBUG_VISIBLE) {
-            storedRaw
-        } else {
-            storedRaw.filterNot { message ->
-                message.role == ChatRole.ASSISTANT &&
-                    message.content.startsWith(DAILY_REVIEW_DEBUG_PREFIX)
-            }
-        }
-        val draft = streamingAssistantDraft
-        val layoutManager = binding.recyclerMessages.layoutManager as? LinearLayoutManager
-        val previousCount = adapter.itemCount
-        val wasNearBottom = if (previousCount <= 1) {
-            true
-        } else {
-            (layoutManager?.findLastVisibleItemPosition() ?: -1) >= (previousCount - 2)
-        }
-        val forceKeepBottom = draft != null
-        val msgs = if (draft != null) {
-            stored + com.fersaiyan.cyanbridge.chat.ChatMessage(
-                id = "streaming-${System.currentTimeMillis()}",
-                chatId = cid,
-                role = ChatRole.ASSISTANT,
-                content = draft.ifBlank { "..." },
-                createdAt = System.currentTimeMillis(),
-            )
-        } else {
-            stored
-        }
-        adapter.submitList(msgs)
-        if (msgs.isNotEmpty() && (forceKeepBottom || wasNearBottom)) {
-            binding.recyclerMessages.post {
-                binding.recyclerMessages.scrollToPosition(msgs.size - 1)
-            }
-        }
+        lifecycleScope.launch {
+            val thread = chatRepository.getThread(cid)
+            val storedRaw = chatRepository.listMessages(cid)
+            if (requestId != refreshRequestId || cid != chatId) return@launch
 
-        // Update title if changed
-        val thread = ChatStore.getThread(cid)
-        if (thread != null && thread.title != binding.tvToolbarTitle.text) {
-            binding.tvToolbarTitle.text = thread.title
+            val stored = if (DAILY_REVIEW_DEBUG_VISIBLE) {
+                storedRaw
+            } else {
+                storedRaw.filterNot { message ->
+                    message.role == ChatRole.ASSISTANT &&
+                        message.content.startsWith(DAILY_REVIEW_DEBUG_PREFIX)
+                }
+            }
+            updateChatThreadState(ChatThreadEvent.ThreadChanged(thread))
+            updateChatThreadState(ChatThreadEvent.MessagesChanged(stored))
         }
     }
 
     private fun refreshDailyReviewQueueStatusAsync() {
         if (!isDailyFactsReview) {
-            binding.tvDailyReviewQueueStatus.visibility = android.view.View.GONE
+            dailyReviewQueueStatus = null
             return
         }
 
         val date = dailyFactsDate?.trim().orEmpty()
         if (date.isBlank()) {
-            binding.tvDailyReviewQueueStatus.visibility = android.view.View.GONE
+            dailyReviewQueueStatus = null
             return
         }
 
-        lifecycleScope.launch(Dispatchers.IO) {
-            val state = runCatching { DailyFactsStorage.load(this@ChatThreadActivity, date) }
-                .getOrNull()
-            val candidateUserFactsRaw = runCatching { CandidateUserFactsStorage.load(this@ChatThreadActivity, date) }
-                .getOrElse { emptyList() }
-            val candidateUserFacts = pruneKnownUserFactCandidates(
-                date = date,
-                candidateUserFacts = candidateUserFactsRaw,
-                persistPrune = true,
-            )
+        val expectedChatId = chatId
+        lifecycleScope.launch {
+            val text = withContext(Dispatchers.IO) {
+                val state = runCatching { DailyFactsStorage.load(this@ChatThreadActivity, date) }
+                    .getOrNull()
+                val candidateUserFactsRaw = runCatching { CandidateUserFactsStorage.load(this@ChatThreadActivity, date) }
+                    .getOrElse { emptyList() }
+                val candidateUserFacts = pruneKnownUserFactCandidates(
+                    date = date,
+                    candidateUserFacts = candidateUserFactsRaw,
+                    persistPrune = true,
+                )
 
-            val draftCount = state?.draft?.size ?: 0
-            val confirmedCount = state?.confirmed?.size ?: 0
-            val candidateCount = candidateUserFacts.size
-
-            val queueOk = draftCount >= 0 && confirmedCount >= 0 && candidateCount >= 0
-            val text = if (queueOk) {
-                "Queue integrity: ok · pending $draftCount · confirmed $confirmedCount · user candidates $candidateCount"
-            } else {
-                "Queue integrity: check needed"
+                val draftCount = state?.draft?.size ?: 0
+                val confirmedCount = state?.confirmed?.size ?: 0
+                val candidateCount = candidateUserFacts.size
+                if (draftCount >= 0 && confirmedCount >= 0 && candidateCount >= 0) {
+                    "Queue integrity: ok · pending $draftCount · confirmed $confirmedCount · user candidates $candidateCount"
+                } else {
+                    "Queue integrity: check needed"
+                }
             }
-
-            withContext(Dispatchers.Main) {
-                binding.tvDailyReviewQueueStatus.visibility = android.view.View.VISIBLE
-                binding.tvDailyReviewQueueStatus.text = text
+            if (isDailyFactsReview && expectedChatId == chatId && date == dailyFactsDate?.trim()) {
+                dailyReviewQueueStatus = text
             }
         }
     }
 
-    private fun setupBottomNavigation() {
-        // This is a detail view, but keep bottom nav consistent.
-        binding.bottomNavigation.selectedItemId = R.id.nav_chats
-        binding.bottomNavigation.setOnItemSelectedListener { item ->
-            when (item.itemId) {
-                R.id.nav_chats -> {
-                    // If the user's last message is recent (<30 min), keep this chat open.
-                    // Otherwise create a new chat thread.
-                    val cid = chatId
-                    val now = System.currentTimeMillis()
-                    val lastUserAt = if (cid != null) {
-                        ChatStore.listMessages(cid)
-                            .lastOrNull { it.role == ChatRole.USER }
-                            ?.createdAt
-                    } else null
-
-                    if (lastUserAt != null && (now - lastUserAt) < 30 * 60 * 1000) {
-                        true
-                    } else {
-                        binding.bottomNavigation.post {
-                            startActivity(android.content.Intent(this, ChatThreadActivity::class.java).apply {
-                                addFlags(android.content.Intent.FLAG_ACTIVITY_CLEAR_TOP or android.content.Intent.FLAG_ACTIVITY_SINGLE_TOP)
-                            })
-                        }
-                        true
-                    }
+    private fun navigateTo(destination: AppDestination) {
+        val target = when (destination) {
+            AppDestination.CHATS -> {
+                val cid = chatId
+                val lastUserAt = cid
+                    ?.let(ChatStore::listMessages)
+                    ?.lastOrNull { it.role == ChatRole.USER }
+                    ?.createdAt
+                if (lastUserAt != null && System.currentTimeMillis() - lastUserAt < 30 * 60 * 1000) {
+                    return
                 }
-
-                R.id.nav_glasses -> {
-                    binding.bottomNavigation.post {
-                        startActivity(android.content.Intent(this, MainActivity::class.java).apply {
-                            addFlags(android.content.Intent.FLAG_ACTIVITY_CLEAR_TOP or android.content.Intent.FLAG_ACTIVITY_SINGLE_TOP)
-                        })
-                    }
-                    true
-                }
-
-                R.id.nav_transcriptions_recordings -> {
-                    binding.bottomNavigation.post {
-                        startActivity(android.content.Intent(this, com.fersaiyan.cyanbridge.ui.recordings.RecordingsListActivity::class.java).apply {
-                            addFlags(android.content.Intent.FLAG_ACTIVITY_CLEAR_TOP or android.content.Intent.FLAG_ACTIVITY_SINGLE_TOP)
-                        })
-                    }
-                    true
-                }
-
-                R.id.nav_settings -> {
-                    binding.bottomNavigation.post {
-                        startActivity(android.content.Intent(this, SettingsActivity::class.java).apply {
-                            addFlags(android.content.Intent.FLAG_ACTIVITY_CLEAR_TOP or android.content.Intent.FLAG_ACTIVITY_SINGLE_TOP)
-                        })
-                    }
-                    true
-                }
-
-                R.id.nav_community_plugins -> {
-                    binding.bottomNavigation.post {
-                        startActivity(android.content.Intent(this, CommunityPluginsActivity::class.java).apply {
-                            addFlags(android.content.Intent.FLAG_ACTIVITY_CLEAR_TOP or android.content.Intent.FLAG_ACTIVITY_SINGLE_TOP)
-                        })
-                    }
-                    true
-                }
-
-                else -> false
+                Intent(this, ChatThreadActivity::class.java)
             }
+
+            AppDestination.GLASSES -> Intent(this, MainActivity::class.java)
+            AppDestination.MEDIA -> Intent(this, com.fersaiyan.cyanbridge.ui.recordings.RecordingsListActivity::class.java)
+            AppDestination.PLUGINS -> Intent(this, CommunityPluginsActivity::class.java)
+            AppDestination.SETTINGS -> Intent(this, SettingsActivity::class.java)
         }
+        target.addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP or Intent.FLAG_ACTIVITY_SINGLE_TOP)
+        startActivity(target)
     }
 
     companion object {

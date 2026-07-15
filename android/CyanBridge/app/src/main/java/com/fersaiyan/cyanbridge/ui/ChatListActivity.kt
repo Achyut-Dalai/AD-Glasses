@@ -4,30 +4,40 @@ import android.content.Intent
 import android.os.Bundle
 import android.widget.Toast
 import android.app.DatePickerDialog
+import androidx.activity.compose.setContent
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.app.AppCompatActivity
-import androidx.recyclerview.widget.LinearLayoutManager
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.setValue
 import com.fersaiyan.cyanbridge.MainActivity
 import com.fersaiyan.cyanbridge.R
 import com.fersaiyan.cyanbridge.agent.LocalModelsConfigureActivity
 import com.fersaiyan.cyanbridge.ai.router.AiProviderPrefs
 import com.fersaiyan.cyanbridge.ai.router.AiProviderType
 import com.fersaiyan.cyanbridge.chat.ChatStore
-import com.fersaiyan.cyanbridge.databinding.ActivityChatListBinding
 import com.fersaiyan.cyanbridge.localagent.dailyfacts.DailyFactsReviewThreadStore
 import com.fersaiyan.cyanbridge.localmodels.storage.LocalModelStorageRepository
 import com.fersaiyan.cyanbridge.memoryvault.MemoryModeManager
+import com.fersaiyan.cyanbridge.shared.chat.ChatAppearanceMenuAction
 import com.fersaiyan.cyanbridge.ui.chat.ChatAppearancePrefs
-import com.fersaiyan.cyanbridge.ui.chat.ChatThreadAdapter
+import com.fersaiyan.cyanbridge.ui.chat.ChatAppearanceMenuDialog
+import com.fersaiyan.cyanbridge.ui.appearance.AppearancePreferences
+import com.fersaiyan.cyanbridge.ui.appearance.rememberAppearanceSettings
+import com.fersaiyan.cyanbridge.ui.chat.ChatListScreen
+import com.fersaiyan.cyanbridge.ui.theme.CyanBridgeTheme
+import com.fersaiyan.cyanbridge.shared.navigation.AppDestination
+import com.fersaiyan.cyanbridge.shared.chat.ChatThreadSummary
 import java.text.SimpleDateFormat
 import java.util.Calendar
 import java.util.Date
 import java.util.Locale
 
 class ChatListActivity : AppCompatActivity() {
-    private lateinit var binding: ActivityChatListBinding
-    private lateinit var adapter: ChatThreadAdapter
+    private var threads by mutableStateOf<List<ChatThreadSummary>>(emptyList())
+    private var pendingDelete by mutableStateOf<ChatThreadSummary?>(null)
+    private var chatAppearanceMenuVisible by mutableStateOf(false)
 
     private val pickWallpaperLauncher = registerForActivityResult(
         ActivityResultContracts.OpenDocument()
@@ -46,45 +56,47 @@ class ChatListActivity : AppCompatActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        binding = ActivityChatListBinding.inflate(layoutInflater)
-        setContentView(binding.root)
-
-        adapter = ChatThreadAdapter(
-            onClick = { thread ->
-                startActivity(buildOpenChatIntent(thread.id))
-            },
-            onDelete = { thread ->
-                deleteChat(thread)
-            }
-        )
-
-        binding.recyclerThreads.layoutManager = LinearLayoutManager(this)
-        binding.recyclerThreads.adapter = adapter
-
-        binding.fabNewChat.setOnClickListener {
-            if (isLocalModelsMissingSelection()) {
-                promptLocalModelSetup()
-            } else {
-                showNewChatTypePicker()
+        val appearancePreferences = AppearancePreferences(this)
+        setContent {
+            val appearance by rememberAppearanceSettings(appearancePreferences)
+            CyanBridgeTheme(appearance) {
+                ChatListScreen(
+                    threads = threads,
+                    pendingDelete = pendingDelete,
+                    onOpenThread = { startActivity(buildOpenChatIntent(it.id)) },
+                    onRequestDelete = { pendingDelete = it },
+                    onConfirmDelete = {
+                        pendingDelete?.let(::deleteChat)
+                        pendingDelete = null
+                    },
+                    onDismissDelete = { pendingDelete = null },
+                    onNewChat = {
+                        if (isLocalModelsMissingSelection()) {
+                            promptLocalModelSetup()
+                        } else {
+                            showNewChatTypePicker()
+                        }
+                    },
+                    onChatAppearance = ::showChatAppearanceMenu,
+                    onDestinationSelected = ::navigateTo,
+                )
+                if (chatAppearanceMenuVisible) {
+                    ChatAppearanceMenuDialog(
+                        modelOptionLabel = null,
+                        onDismissRequest = { chatAppearanceMenuVisible = false },
+                        onAction = ::handleChatAppearanceMenuAction,
+                    )
+                }
             }
         }
-        binding.btnChatAppearance.setOnClickListener {
-            showChatAppearanceMenu()
-        }
-
-        setupBottomNavigation()
     }
 
     override fun onResume() {
         super.onResume()
-        // Ensure correct nav highlight when returning via CLEAR_TOP/SINGLE_TOP.
-        binding.bottomNavigation.post {
-            binding.bottomNavigation.menu.findItem(R.id.nav_chats).isChecked = true
-        }
         refreshList()
     }
 
-    private fun deleteChat(thread: com.fersaiyan.cyanbridge.chat.ChatThread) {
+    private fun deleteChat(thread: ChatThreadSummary) {
         ChatStore.deleteThread(thread.id)
         DailyFactsReviewThreadStore.remove(this, thread.id)
         Toast.makeText(this, getString(R.string.chat_deleted), Toast.LENGTH_SHORT).show()
@@ -105,10 +117,13 @@ class ChatListActivity : AppCompatActivity() {
     }
 
     private fun refreshList() {
-        val threads = ChatStore.listNonEmptyThreads()
-        adapter.submitList(threads)
-        binding.emptyState.visibility = if (threads.isEmpty()) android.view.View.VISIBLE else android.view.View.GONE
-        binding.recyclerThreads.visibility = if (threads.isEmpty()) android.view.View.GONE else android.view.View.VISIBLE
+        threads = ChatStore.listNonEmptyThreads().map { thread ->
+            ChatThreadSummary(
+                id = thread.id,
+                title = thread.title,
+                updatedAtEpochMillis = thread.updatedAt,
+            )
+        }
     }
 
     private fun isLocalModelsMissingSelection(): Boolean {
@@ -127,73 +142,36 @@ class ChatListActivity : AppCompatActivity() {
             .show()
     }
 
-    private fun setupBottomNavigation() {
-        binding.bottomNavigation.selectedItemId = R.id.nav_chats
-        binding.bottomNavigation.setOnItemSelectedListener { item ->
-            when (item.itemId) {
-                R.id.nav_chats -> {
-                    binding.bottomNavigation.post {
-                        val last = ChatStore.listNonEmptyThreads().firstOrNull()
-                        val now = System.currentTimeMillis()
+    private fun navigateTo(destination: AppDestination) {
+        val target = when (destination) {
+            AppDestination.GLASSES -> Intent(this, MainActivity::class.java)
+            AppDestination.CHATS -> buildRecentChatIntent()
+            AppDestination.MEDIA -> Intent(this, com.fersaiyan.cyanbridge.ui.recordings.RecordingsListActivity::class.java)
+            AppDestination.PLUGINS -> Intent(this, CommunityPluginsActivity::class.java)
+            AppDestination.SETTINGS -> Intent(this, SettingsActivity::class.java)
+        }
+        target.addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP or Intent.FLAG_ACTIVITY_SINGLE_TOP)
+        startActivity(target)
+    }
 
-                        fun lastUserMessageAtMs(chatId: String): Long? {
-                            val msgs = ChatStore.listMessages(chatId)
-                            return msgs.lastOrNull { it.role == com.fersaiyan.cyanbridge.chat.ChatRole.USER }?.createdAt
-                        }
-
-                        val openChatId = if (last != null) {
-                            val lastUserAt = lastUserMessageAtMs(last.id) ?: 0L
-                            if (lastUserAt > 0L && (now - lastUserAt) < 30 * 60 * 1000) last.id else null
-                        } else null
-
-                        val intent = Intent(this, ChatThreadActivity::class.java)
-                        if (openChatId != null) {
-                            val cfg = DailyFactsReviewThreadStore.load(this@ChatListActivity, openChatId)
-                            intent.putExtra(ChatThreadActivity.EXTRA_CHAT_ID, openChatId)
-                            if (cfg != null) {
-                                intent.putExtra(ChatThreadActivity.EXTRA_DAILY_FACTS_REVIEW, true)
-                                intent.putExtra(ChatThreadActivity.EXTRA_DAILY_FACTS_DATE, cfg.date)
-                                intent.putExtra(ChatThreadActivity.EXTRA_DAILY_FACTS_LOOKBACK_DAYS, cfg.lookbackDays)
-                            }
-                        }
-                        intent.addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP or Intent.FLAG_ACTIVITY_SINGLE_TOP)
-                        startActivity(intent)
-                    }
-                    true
+    private fun buildRecentChatIntent(): Intent {
+        val last = ChatStore.listNonEmptyThreads().firstOrNull()
+        val lastUserAt = last?.let { thread ->
+            ChatStore.listMessages(thread.id)
+                .lastOrNull { it.role == com.fersaiyan.cyanbridge.chat.ChatRole.USER }
+                ?.createdAt
+        } ?: 0L
+        val openChatId = last?.id?.takeIf {
+            lastUserAt > 0L && System.currentTimeMillis() - lastUserAt < 30 * 60 * 1000
+        }
+        return Intent(this, ChatThreadActivity::class.java).apply {
+            if (openChatId != null) {
+                putExtra(ChatThreadActivity.EXTRA_CHAT_ID, openChatId)
+                DailyFactsReviewThreadStore.load(this@ChatListActivity, openChatId)?.let { config ->
+                    putExtra(ChatThreadActivity.EXTRA_DAILY_FACTS_REVIEW, true)
+                    putExtra(ChatThreadActivity.EXTRA_DAILY_FACTS_DATE, config.date)
+                    putExtra(ChatThreadActivity.EXTRA_DAILY_FACTS_LOOKBACK_DAYS, config.lookbackDays)
                 }
-                R.id.nav_glasses -> {
-                    binding.bottomNavigation.post {
-                        startActivity(Intent(this, MainActivity::class.java).apply {
-                            addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP or Intent.FLAG_ACTIVITY_SINGLE_TOP)
-                        })
-                    }
-                    true
-                }
-                R.id.nav_transcriptions_recordings -> {
-                    binding.bottomNavigation.post {
-                        startActivity(Intent(this, com.fersaiyan.cyanbridge.ui.recordings.RecordingsListActivity::class.java).apply {
-                            addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP or Intent.FLAG_ACTIVITY_SINGLE_TOP)
-                        })
-                    }
-                    true
-                }
-                R.id.nav_settings -> {
-                    binding.bottomNavigation.post {
-                        startActivity(Intent(this, SettingsActivity::class.java).apply {
-                            addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP or Intent.FLAG_ACTIVITY_SINGLE_TOP)
-                        })
-                    }
-                    true
-                }
-                R.id.nav_community_plugins -> {
-                    binding.bottomNavigation.post {
-                        startActivity(Intent(this, CommunityPluginsActivity::class.java).apply {
-                            addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP or Intent.FLAG_ACTIVITY_SINGLE_TOP)
-                        })
-                    }
-                    true
-                }
-                else -> false
             }
         }
     }
@@ -308,45 +286,42 @@ class ChatListActivity : AppCompatActivity() {
     }
 
     private fun showChatAppearanceMenu() {
-        val items = arrayOf(
-            "Change user bubble color",
-            "Change assistant bubble color",
-            "Choose wallpaper from gallery",
-            "Remove wallpaper",
-            "Reset chat appearance",
-        )
+        chatAppearanceMenuVisible = true
+    }
 
-        AlertDialog.Builder(this)
-            .setTitle("Chat appearance")
-            .setItems(items) { _, which ->
-                when (which) {
-                    0 -> showColorPicker(
-                        title = "User bubble color",
-                        current = ChatAppearancePrefs.getUserBubbleColor(this),
-                    ) { selected ->
-                        ChatAppearancePrefs.setUserBubbleColor(this, selected)
-                    }
-
-                    1 -> showColorPicker(
-                        title = "Assistant bubble color",
-                        current = ChatAppearancePrefs.getAssistantBubbleColor(this),
-                    ) { selected ->
-                        ChatAppearancePrefs.setAssistantBubbleColor(this, selected)
-                    }
-
-                    2 -> pickWallpaperLauncher.launch(arrayOf("image/*"))
-                    3 -> {
-                        ChatAppearancePrefs.clearWallpaper(this)
-                        Toast.makeText(this, "Wallpaper removed", Toast.LENGTH_SHORT).show()
-                    }
-
-                    4 -> {
-                        ChatAppearancePrefs.reset(this)
-                        Toast.makeText(this, "Chat appearance reset", Toast.LENGTH_SHORT).show()
-                    }
-                }
+    private fun handleChatAppearanceMenuAction(action: ChatAppearanceMenuAction) {
+        chatAppearanceMenuVisible = false
+        when (action) {
+            ChatAppearanceMenuAction.CHANGE_USER_BUBBLE_COLOR -> showColorPicker(
+                title = "User bubble color",
+                current = ChatAppearancePrefs.getUserBubbleColor(this),
+            ) { selected ->
+                ChatAppearancePrefs.setUserBubbleColor(this, selected)
             }
-            .show()
+
+            ChatAppearanceMenuAction.CHANGE_ASSISTANT_BUBBLE_COLOR -> showColorPicker(
+                title = "Assistant bubble color",
+                current = ChatAppearancePrefs.getAssistantBubbleColor(this),
+            ) { selected ->
+                ChatAppearancePrefs.setAssistantBubbleColor(this, selected)
+            }
+
+            ChatAppearanceMenuAction.CHOOSE_WALLPAPER -> {
+                pickWallpaperLauncher.launch(arrayOf("image/*"))
+            }
+
+            ChatAppearanceMenuAction.REMOVE_WALLPAPER -> {
+                ChatAppearancePrefs.clearWallpaper(this)
+                Toast.makeText(this, "Wallpaper removed", Toast.LENGTH_SHORT).show()
+            }
+
+            ChatAppearanceMenuAction.RESET_APPEARANCE -> {
+                ChatAppearancePrefs.reset(this)
+                Toast.makeText(this, "Chat appearance reset", Toast.LENGTH_SHORT).show()
+            }
+
+            ChatAppearanceMenuAction.CHANGE_MODEL -> Unit
+        }
     }
 
     private fun showColorPicker(title: String, current: Int, onPick: (Int) -> Unit) {

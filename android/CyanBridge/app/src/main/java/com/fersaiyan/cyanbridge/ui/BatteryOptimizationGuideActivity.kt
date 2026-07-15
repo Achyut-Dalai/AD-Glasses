@@ -8,52 +8,54 @@ import android.os.Build
 import android.os.Bundle
 import android.os.PowerManager
 import android.provider.Settings
-import android.widget.Button
-import android.widget.TextView
 import android.widget.Toast
+import androidx.activity.compose.setContent
 import androidx.appcompat.app.AppCompatActivity
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.setValue
 import com.fersaiyan.cyanbridge.MainActivity
 import com.fersaiyan.cyanbridge.R
+import com.fersaiyan.cyanbridge.ui.appearance.AppearancePreferences
+import com.fersaiyan.cyanbridge.ui.appearance.rememberAppearanceSettings
+import com.fersaiyan.cyanbridge.ui.onboarding.BatteryOptimizationGuideScreen
+import com.fersaiyan.cyanbridge.ui.theme.CyanBridgeTheme
 
 class BatteryOptimizationGuideActivity : AppCompatActivity() {
+    private var optimizationIgnored by mutableStateOf(false)
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        setContentView(R.layout.activity_battery_optimization_guide)
-
-        findViewById<TextView>(R.id.battery_opt_status).text =
-            if (isBatteryOptimizationIgnored(this)) {
-                getString(R.string.battery_opt_status_off)
-            } else {
-                getString(R.string.battery_opt_status_on)
-            }
-
-        findViewById<Button>(R.id.btn_disable_optimization).setOnClickListener {
-            openDisableBatteryOptimizationFlow()
-        }
-        findViewById<Button>(R.id.btn_open_app_info).setOnClickListener {
-            openAppInfo()
-        }
-        findViewById<Button>(R.id.btn_open_optimization_list).setOnClickListener {
-            openBatteryOptimizationList()
-        }
-        findViewById<Button>(R.id.btn_done).setOnClickListener {
-            val ok = isBatteryOptimizationIgnored(this)
-            if (ok) {
-                markCompleted(this)
-                navigateToNext()
-            } else {
-                Toast.makeText(
-                    this,
-                    getString(R.string.battery_opt_still_on_toast),
-                    Toast.LENGTH_LONG
-                ).show()
+        optimizationIgnored = isBatteryOptimizationIgnored(this)
+        val appearancePreferences = AppearancePreferences(this)
+        setContent {
+            val appearance by rememberAppearanceSettings(appearancePreferences)
+            CyanBridgeTheme(appearance) {
+                BatteryOptimizationGuideScreen(
+                    optimizationIgnored = optimizationIgnored,
+                    onDisableOptimization = ::openDisableBatteryOptimizationFlow,
+                    onOpenAppInfo = ::openAppInfo,
+                    onOpenOptimizationList = ::openBatteryOptimizationList,
+                    onDone = {
+                        if (isBatteryOptimizationIgnored(this)) {
+                            markCompleted(this)
+                            navigateToNext()
+                        } else {
+                            Toast.makeText(this, getString(R.string.battery_opt_still_on_toast), Toast.LENGTH_LONG).show()
+                        }
+                    },
+                    onSkip = {
+                        suppressPermanently(this)
+                        navigateToNext()
+                    },
+                )
             }
         }
-        findViewById<Button>(R.id.btn_skip).setOnClickListener {
-            suppressPermanently(this)
-            navigateToNext()
-        }
+    }
+
+    override fun onResume() {
+        super.onResume()
+        optimizationIgnored = isBatteryOptimizationIgnored(this)
     }
 
     private fun navigateToNext() {

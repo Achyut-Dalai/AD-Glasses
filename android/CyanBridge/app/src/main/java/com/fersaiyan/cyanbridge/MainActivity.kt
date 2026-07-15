@@ -8,6 +8,7 @@ import android.content.Context
 import android.content.Intent
 import android.content.IntentFilter
 import android.content.pm.PackageManager
+import android.graphics.BitmapFactory
 import android.widget.ArrayAdapter
 import androidx.localbroadcastmanager.content.LocalBroadcastManager
 import com.fersaiyan.cyanbridge.agent.AgentProviderType
@@ -138,6 +139,10 @@ import android.speech.RecognizerIntent
 import android.speech.SpeechRecognizer
 import android.speech.tts.TextToSpeech
 import android.speech.tts.UtteranceProgressListener
+import androidx.activity.compose.setContent
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.setValue
 import com.fersaiyan.cyanbridge.agent.ProSubscriptionAiPrefs
 import com.fersaiyan.cyanbridge.ai.router.AssistantIntent
 import com.fersaiyan.cyanbridge.ai.router.AssistantRequest
@@ -147,6 +152,13 @@ import com.fersaiyan.cyanbridge.ai.router.AssistantSpeechPolicy
 import com.fersaiyan.cyanbridge.ai.router.AiProviderPrefs
 import com.fersaiyan.cyanbridge.ai.router.AiProviderType as RelayProviderType
 import com.fersaiyan.cyanbridge.ai.router.CliRelayClient
+import com.fersaiyan.cyanbridge.shared.glasses.GlassesAssistantMode
+import com.fersaiyan.cyanbridge.shared.glasses.GlassesDashboardAction
+import com.fersaiyan.cyanbridge.shared.glasses.GlassesDashboardUiState
+import com.fersaiyan.cyanbridge.shared.glasses.GlassesSyncFlow
+import com.fersaiyan.cyanbridge.shared.glasses.GlassesTransferUiState
+import com.fersaiyan.cyanbridge.shared.glasses.MetaRaybanUiState
+import com.fersaiyan.cyanbridge.shared.navigation.AppDestination
 import com.fersaiyan.cyanbridge.localagent.LocalAgentAccessibilityBridge
 import com.fersaiyan.cyanbridge.localagent.context.LocalAgentContextBuilder
 import com.fersaiyan.cyanbridge.localagent.dailyfacts.DailyFactsStorage
@@ -158,16 +170,16 @@ import com.fersaiyan.cyanbridge.localmodels.settings.LocalModelRuntime
 import com.fersaiyan.cyanbridge.localmodels.settings.LocalModelSettingsRepository
 import com.fersaiyan.cyanbridge.localmodels.storage.LocalModelStorageRepository
 import com.fersaiyan.cyanbridge.memoryvault.MemoryPolicyService
+import com.fersaiyan.cyanbridge.ui.appearance.AppearancePreferences
+import com.fersaiyan.cyanbridge.ui.appearance.rememberAppearanceSettings
+import com.fersaiyan.cyanbridge.ui.glasses.GlassesDashboardScreen
+import com.fersaiyan.cyanbridge.ui.glasses.GlassesSyncFlowPickerDialog
+import com.fersaiyan.cyanbridge.ui.theme.CyanBridgeTheme
 import android.content.ClipboardManager
 import android.content.ClipData
 
 
 class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
-    private enum class DownloadFlowMode(val label: String) {
-        CUSTOM("Custom flow"),
-        OFFICIAL_HEYCYAN("HeyCyan app flow"),
-    }
-
     private var tts: TextToSpeech? = null
     private val ttsDoneCallbacks = ConcurrentHashMap<String, () -> Unit>()
     private val assistantRequestRouter = AssistantRequestRouter()
@@ -258,7 +270,10 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
             "http://192.168.49.1:8080/dummy.swu"
     }
 
+    // Keeps the existing Android control handlers alive while Compose owns the visible tree.
     private lateinit var binding: AcitivytMainBinding
+    private var dashboardState by mutableStateOf(GlassesDashboardUiState())
+    private var showDownloadFlowPicker by mutableStateOf(false)
     private val deviceNotifyListener by lazy { MyDeviceNotifyListener() }
 
     // AI Hijack settings
@@ -268,7 +283,7 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
 
     // State used by the BLE+WiFi P2P data-download flow
     private var downloadP2pConnected = false
-    private var downloadFlowMode = DownloadFlowMode.CUSTOM
+    private var downloadFlowMode = GlassesSyncFlow.CUSTOM
     private var downloadBleIp: String? = null
     private var downloadWifiIp: String? = null
     private var downloadPhoneIsGroupOwner: Boolean = true
@@ -304,6 +319,10 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
 
     // Guard against concurrent/duplicate image queries
     private val imageQueryInProgress = java.util.concurrent.atomic.AtomicBoolean(false)
+    private val imageThumbnailRequestInProgress = java.util.concurrent.atomic.AtomicBoolean(false)
+    private val imageCaptureAwaitingNotification = java.util.concurrent.atomic.AtomicBoolean(false)
+    @Volatile
+    private var pendingImageCaptureSourceTag: String? = null
     private var lastImageQueryAtMs: Long = 0L
 
     // Official app registers the notify listener with cmdType=2 for album import.
@@ -343,12 +362,30 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         binding = AcitivytMainBinding.inflate(layoutInflater)
-        setContentView(binding.root)
-        setupBottomNavigation()
         initView()
         setupMeetingCaptureUi()
         setupAgentControlsUi()
         setupMetaRaybanUi()
+        val appearancePreferences = AppearancePreferences(this)
+        setContent {
+            val appearance by rememberAppearanceSettings(appearancePreferences)
+            CyanBridgeTheme(appearance) {
+                GlassesDashboardScreen(
+                    state = dashboardState,
+                    onAction = ::handleDashboardAction,
+                )
+                if (showDownloadFlowPicker) {
+                    GlassesSyncFlowPickerDialog(
+                        onDismissRequest = { showDownloadFlowPicker = false },
+                        onFlowSelected = { flow ->
+                            showDownloadFlowPicker = false
+                            Log.i("DataDownload", "User selected sync flow: ${flow.label}")
+                            startDataDownload(flow)
+                        },
+                    )
+                }
+            }
+        }
         // Transcription UI moved to the "Transcriptions & recordings" section
         logLargeDataHandlerMethodsOnce()
         // Check for app updates
@@ -481,10 +518,6 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
             Toast.makeText(this, "Please enable Overlay permission for background AI", Toast.LENGTH_LONG).show()
         }
 
-        // Ensure correct nav highlight when returning via CLEAR_TOP/SINGLE_TOP.
-        binding.bottomNavigation.post {
-            binding.bottomNavigation.menu.findItem(R.id.nav_glasses).isChecked = true
-        }
         refreshAiQueryButtonsState()
     }
 
@@ -523,6 +556,101 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
             }
         }
 
+    }
+
+    private fun updateDashboardState(
+        transform: (GlassesDashboardUiState) -> GlassesDashboardUiState,
+    ) {
+        runOnUiThread {
+            dashboardState = transform(dashboardState)
+        }
+    }
+
+    private fun handleDashboardAction(action: GlassesDashboardAction) {
+        when (action) {
+            is GlassesDashboardAction.Navigate -> navigateToDestination(action.destination)
+            GlassesDashboardAction.Scan -> binding.btnScan.performClick()
+            GlassesDashboardAction.Reconnect -> binding.btnConnect.performClick()
+            GlassesDashboardAction.Disconnect -> binding.btnDisconnect.performClick()
+            is GlassesDashboardAction.SelectMeetingTimer -> {
+                val index = action.index.coerceIn(0, meetingTimerOptions.lastIndex)
+                binding.spinnerMeetingTimer.setSelection(index)
+                updateDashboardState { state ->
+                    state.copy(meeting = state.meeting.copy(timerIndex = index))
+                }
+            }
+            GlassesDashboardAction.StartMeetingCapture -> binding.btnMeetingStart.performClick()
+            GlassesDashboardAction.StopMeetingCapture -> binding.btnMeetingStop.performClick()
+            is GlassesDashboardAction.SelectAssistantMode -> when (action.mode) {
+                GlassesAssistantMode.GEMINI -> binding.btnModeGemini.performClick()
+                GlassesAssistantMode.CHAT_GPT -> binding.btnModeChatgpt.performClick()
+                GlassesAssistantMode.CHOSEN_PROVIDER -> binding.btnModeTasker.performClick()
+            }
+            GlassesDashboardAction.TestVoiceQuestion -> binding.btnTestHijackVoice.performClick()
+            GlassesDashboardAction.TestImageQuestion -> binding.btnTestHijackImage.performClick()
+            GlassesDashboardAction.CapturePhoto -> binding.btnCamera.performClick()
+            GlassesDashboardAction.ToggleVideo -> binding.btnVideo.performClick()
+            GlassesDashboardAction.StartAudioRecording -> binding.btnRecord.performClick()
+            GlassesDashboardAction.RequestMediaCount -> binding.btnMediaCount.performClick()
+            GlassesDashboardAction.StartSync -> binding.btnDataDownload.performClick()
+            GlassesDashboardAction.StopSync -> binding.btnTransferStop.performClick()
+            GlassesDashboardAction.ToggleAdvanced -> {
+                binding.btnToggleAdvanced.performClick()
+                updateDashboardState { state ->
+                    state.copy(advancedExpanded = !state.advancedExpanded)
+                }
+            }
+            GlassesDashboardAction.StartAgent -> binding.btnAgentStart.performClick()
+            GlassesDashboardAction.StopAgent -> binding.btnAgentStop.performClick()
+            GlassesDashboardAction.RunAgentDemo -> binding.btnAgentDemo.performClick()
+            GlassesDashboardAction.RequestBattery -> binding.btnBattery.performClick()
+            GlassesDashboardAction.RequestVersion -> binding.btnVersion.performClick()
+            GlassesDashboardAction.SyncTime -> binding.btnSetTime.performClick()
+            GlassesDashboardAction.RequestVolume -> binding.btnVolume.performClick()
+            GlassesDashboardAction.AddDeviceListener -> binding.btnAddListener.performClick()
+            GlassesDashboardAction.StartClassicBluetoothScan -> binding.btnBt.performClick()
+            GlassesDashboardAction.DumpOtaInfo -> binding.btnOtaInfo.performClick()
+            GlassesDashboardAction.TestPullOta -> binding.btnPullOtaTest.performClick()
+            GlassesDashboardAction.MetaRegister -> binding.btnMetaRegister.performClick()
+            GlassesDashboardAction.MetaUnregister -> binding.btnMetaUnregister.performClick()
+            GlassesDashboardAction.MetaStartSession -> binding.btnMetaSessionStart.performClick()
+            GlassesDashboardAction.MetaStopSession -> binding.btnMetaSessionStop.performClick()
+            GlassesDashboardAction.MetaStartStream -> binding.btnMetaStreamStart.performClick()
+            GlassesDashboardAction.MetaStopStream -> binding.btnMetaStreamStop.performClick()
+            GlassesDashboardAction.MetaCapturePhoto -> binding.btnMetaCapturePhoto.performClick()
+            GlassesDashboardAction.MetaViewPhoto -> binding.btnMetaViewPhoto.performClick()
+            GlassesDashboardAction.MetaStartDisplay -> binding.btnMetaDisplayStart.performClick()
+            GlassesDashboardAction.MetaStopDisplay -> binding.btnMetaDisplayStop.performClick()
+        }
+    }
+
+    private fun navigateToDestination(destination: AppDestination) {
+        when (destination) {
+            AppDestination.GLASSES -> Unit
+            AppDestination.CHATS -> {
+                val last = ChatStore.listNonEmptyThreads().firstOrNull()
+                val now = System.currentTimeMillis()
+                val lastUserAt = last?.let { thread ->
+                    ChatStore.listMessages(thread.id)
+                        .lastOrNull { it.role == com.fersaiyan.cyanbridge.chat.ChatRole.USER }
+                        ?.createdAt
+                } ?: 0L
+                val openChatId = last?.id?.takeIf { lastUserAt > 0L && now - lastUserAt < 30 * 60 * 1000L }
+                startActivity(Intent(this, ChatThreadActivity::class.java).apply {
+                    openChatId?.let { putExtra(ChatThreadActivity.EXTRA_CHAT_ID, it) }
+                    addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP or Intent.FLAG_ACTIVITY_SINGLE_TOP)
+                })
+            }
+            AppDestination.MEDIA -> startActivity(Intent(this, RecordingsListActivity::class.java).apply {
+                addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP or Intent.FLAG_ACTIVITY_SINGLE_TOP)
+            })
+            AppDestination.PLUGINS -> startActivity(Intent(this, CommunityPluginsActivity::class.java).apply {
+                addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP or Intent.FLAG_ACTIVITY_SINGLE_TOP)
+            })
+            AppDestination.SETTINGS -> startActivity(Intent(this, SettingsActivity::class.java).apply {
+                addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP or Intent.FLAG_ACTIVITY_SINGLE_TOP)
+            })
+        }
     }
 
     private fun setupBottomNavigation() {
@@ -1274,6 +1402,12 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
         } else {
             binding.btnTestHijackImage.text = "Test Image AI description"
         }
+        updateDashboardState { state ->
+            state.copy(
+                imageQueryEnabled = imageSupported,
+                imageQueryLabel = if (imageSupported) "Test image AI description" else "Image query unavailable",
+            )
+        }
     }
 
     private fun refreshAiModeButtons() {
@@ -1284,6 +1418,15 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
         binding.btnModeChatgpt.setTextColor(if (aiAssistantMode == AI_MODE_CHATGPT) activeColor else inactiveColor)
         val chosenProviderSelected = aiAssistantMode == AI_MODE_CHOSEN_PROVIDER
         binding.btnModeTasker.setTextColor(if (chosenProviderSelected) activeColor else inactiveColor)
+        updateDashboardState { state ->
+            state.copy(
+                assistantMode = when (aiAssistantMode) {
+                    AI_MODE_CHATGPT -> GlassesAssistantMode.CHAT_GPT
+                    AI_MODE_CHOSEN_PROVIDER -> GlassesAssistantMode.CHOSEN_PROVIDER
+                    else -> GlassesAssistantMode.GEMINI
+                },
+            )
+        }
         refreshAiQueryButtonsState()
     }
 
@@ -1601,64 +1744,128 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
         }
 
         if (triggerCapture) {
+            if (imageThumbnailRequestInProgress.get() ||
+                !imageCaptureAwaitingNotification.compareAndSet(false, true)
+            ) {
+                Log.i("AIHijack", "[$sourceTag] Image capture already in progress")
+                return
+            }
+
+            pendingImageCaptureSourceTag = sourceTag
             Toast.makeText(this, "Triggering glasses camera…", Toast.LENGTH_SHORT).show()
+            CoroutineScope(Dispatchers.IO).launch {
+                runCatching {
+                    LargeDataHandler.getInstance().glassesControl(
+                        byteArrayOf(0x02, 0x01, 0x06, 0x02, 0x02),
+                    ) { _, _ -> }
+                    delay(250)
+                    LargeDataHandler.getInstance().glassesControl(byteArrayOf(0x02, 0x01, 0x01)) { _, _ -> }
+                }.onFailure { error ->
+                    imageCaptureAwaitingNotification.set(false)
+                    pendingImageCaptureSourceTag = null
+                    Log.e("AIHijack", "[$sourceTag] Failed to trigger glasses camera: ${error.message}", error)
+                }
+
+                // The device's 0x02 notification is the authoritative signal that its
+                // thumbnail is ready. Preserve a bounded fallback for devices that omit it.
+                delay(4_000)
+                if (imageCaptureAwaitingNotification.compareAndSet(true, false)) {
+                    pendingImageCaptureSourceTag = null
+                    Log.w("AIHijack", "[$sourceTag] No AI photo-ready signal; requesting thumbnail directly")
+                    requestImageThumbnailForQuestion(sourceTag)
+                }
+            }
+        } else {
+            requestImageThumbnailForQuestion(sourceTag)
+        }
+    }
+
+    private fun requestImageThumbnailForQuestion(sourceTag: String) {
+        if (!imageThumbnailRequestInProgress.compareAndSet(false, true)) {
+            Log.i("AIHijack", "[$sourceTag] Thumbnail request already in progress")
+            return
         }
 
         val outDir = getExternalFilesDir("DCIM") ?: filesDir
-        val fileName = "AI_Thumb_${sourceTag}_${System.currentTimeMillis()}.jpg"
-        val file = File(outDir, fileName)
+        val file = File(outDir, "AI_Thumb_${sourceTag}_${System.currentTimeMillis()}.jpg")
         runCatching {
             file.parentFile?.mkdirs()
             if (file.exists()) file.delete()
         }
 
+        CoroutineScope(Dispatchers.IO).launch {
+            try {
+                repeat(2) { attempt ->
+                    runCatching {
+                        FileOutputStream(file, false).use { }
+                    }.onFailure { error ->
+                        Log.e("AIHijack", "[$sourceTag] Failed to prepare thumbnail file: ${error.message}", error)
+                    }
+
+                    if (receivePictureThumbnail(file, sourceTag, attempt + 1)) {
+                        Log.i(
+                            "AIHijack",
+                            "[$sourceTag] Thumbnail transfer complete: ${file.absolutePath} (${file.length()} bytes)",
+                        )
+                        onImageThumbnailReadyForQuestion(file.absolutePath)
+                        return@launch
+                    }
+
+                    if (attempt == 0) {
+                        Log.w("AIHijack", "[$sourceTag] Thumbnail was incomplete or invalid; retrying once")
+                        delay(1_500)
+                    }
+                }
+
+                Log.w("AIHijack", "[$sourceTag] BLE thumbnail failed; falling back to latest image")
+                useLatestImageFallback(sourceTag)
+            } finally {
+                imageThumbnailRequestInProgress.set(false)
+            }
+        }
+    }
+
+    private suspend fun receivePictureThumbnail(
+        file: File,
+        sourceTag: String,
+        attempt: Int,
+    ): Boolean {
         val gotChunk = java.util.concurrent.atomic.AtomicBoolean(false)
         val completed = java.util.concurrent.atomic.AtomicBoolean(false)
-        val imageProcessed = java.util.concurrent.atomic.AtomicBoolean(false)
+        val transferResult = CompletableDeferred<Boolean>()
+        val writeLock = Any()
 
         val thumbCallback: (Int, Boolean, ByteArray?) -> Unit = { _, isComplete, data ->
             if (data != null && data.isNotEmpty()) {
-                gotChunk.set(true)
                 runCatching {
-                    FileOutputStream(file, true).use { it.write(data) }
-                }.onFailure {
-                    Log.e("AIHijack", "Failed to write thumbnail chunk: ${it.message}")
+                    synchronized(writeLock) {
+                        FileOutputStream(file, true).use { it.write(data) }
+                    }
+                    gotChunk.set(true)
+                }.onFailure { error ->
+                    Log.e("AIHijack", "[$sourceTag] Failed to write thumbnail chunk: ${error.message}", error)
                 }
             }
 
             if (isComplete && completed.compareAndSet(false, true)) {
-                Log.i("AIHijack", "[$sourceTag] Thumbnail transfer complete: ${file.absolutePath} (${file.length()} bytes)")
-                if (imageProcessed.compareAndSet(false, true)) {
-                    onImageThumbnailReadyForQuestion(file.absolutePath)
-                }
+                transferResult.complete(gotChunk.get())
             }
         }
 
-        CoroutineScope(Dispatchers.IO).launch {
-            if (triggerCapture) {
-                runCatching {
-                    LargeDataHandler.getInstance().glassesControl(
-                        byteArrayOf(0x02, 0x01, 0x06, 0x02, 0x02)
-                    ) { _, _ -> }
-                }
-                delay(250)
-                LargeDataHandler.getInstance().glassesControl(byteArrayOf(0x02, 0x01, 0x01)) { _, _ -> }
-                delay(3000)
-            }
+        Log.i("AIHijack", "[$sourceTag] Requesting BLE thumbnail (attempt $attempt)")
+        LargeDataHandler.getInstance().getPictureThumbnails(thumbCallback)
+        val receivedAnyData = withTimeoutOrNull(10_000) { transferResult.await() } ?: false
+        if (!receivedAnyData) {
+            Log.w("AIHijack", "[$sourceTag] BLE thumbnail request timed out (attempt $attempt)")
+            return false
+        }
 
-            LargeDataHandler.getInstance().getPictureThumbnails(thumbCallback)
-
-            // Wait for BLE transfer to complete. Total: 5s + 8s = 13s.
-            delay(5000)
-            if (!gotChunk.get() && !completed.get()) {
-                Log.w("AIHijack", "[$sourceTag] No thumbnail chunks yet; retrying getPictureThumbnails()…")
-                LargeDataHandler.getInstance().getPictureThumbnails(thumbCallback)
-            }
-
-            delay(8000)
-            if (!completed.get() && imageProcessed.compareAndSet(false, true)) {
-                Log.w("AIHijack", "[$sourceTag] BLE thumbnail timed out, falling back to latest image")
-                useLatestImageFallback(sourceTag)
+        return isDecodableImageFile(file).also { valid ->
+            if (!valid) {
+                Log.w(
+                    "AIHijack",
+                    "[$sourceTag] Thumbnail is not a decodable image (${file.length()} bytes, attempt $attempt)",
+                )
             }
         }
     }
@@ -1699,11 +1906,11 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
 
     private fun onImageThumbnailReadyForQuestion(imagePath: String) {
         val imageFile = File(imagePath)
-        if (!imageFile.exists() || imageFile.length() < 1000) {
+        if (!isDecodableImageFile(imageFile)) {
             pendingVoiceImageQuestion = null
-            Log.e("AIHijack", "Image file missing or too small: $imagePath (${imageFile.length()} bytes)")
+            Log.e("AIHijack", "Image file is missing or invalid: $imagePath (${imageFile.length()} bytes)")
             runOnUiThread {
-                Toast.makeText(this, "Image transfer incomplete. Please try again.", Toast.LENGTH_LONG).show()
+                Toast.makeText(this, "Image transfer was incomplete. Please try again.", Toast.LENGTH_LONG).show()
             }
             return
         }
@@ -1723,7 +1930,7 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
         }
 
         CoroutineScope(Dispatchers.IO).launch {
-            val publicPath = copyImageToPublicCamera(imagePath)
+            copyImageToPublicCamera(imagePath)
 
             Log.i("AIHijack", "Image ready for AI query: $imagePath (size=${imageFile.length()} bytes, age=${ageMs / 1000}s)")
 
@@ -1748,6 +1955,15 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
                 }
             }
         }
+    }
+
+    private fun isDecodableImageFile(file: File): Boolean {
+        if (!file.exists() || file.length() == 0L) return false
+        return runCatching {
+            val options = BitmapFactory.Options().apply { inJustDecodeBounds = true }
+            BitmapFactory.decodeFile(file.absolutePath, options)
+            options.outWidth > 0 && options.outHeight > 0
+        }.getOrDefault(false)
     }
 
     private suspend fun waitForTtsToFinish(timeoutMs: Long) {
@@ -2327,6 +2543,7 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
             "Disconnected"
         }
         binding.statusText.text = status
+        updateDashboardState { state -> state.copy(connectionLabel = status) }
         updateDeviceClassText()
         if (!connected) {
             updateBatteryText(null)
@@ -2337,6 +2554,7 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
         val profile = DeviceProfileStore.loadLastSelected(this)
         val classLabel = profile?.selectedClass?.displayName() ?: "Unknown"
         binding.tvDeviceClass.text = "Class: $classLabel"
+        updateDashboardState { state -> state.copy(deviceClassLabel = classLabel) }
 
         applyGlassesManagerGating(profile)
     }
@@ -2367,6 +2585,15 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
         binding.layoutStorage.visibility = if (showStorage) android.view.View.VISIBLE else android.view.View.GONE
         binding.layoutStatusMetrics.visibility =
             if (showBattery || showStorage) android.view.View.VISIBLE else android.view.View.GONE
+        updateDashboardState { state ->
+            state.copy(
+                showHeyCyanControls = model.isVisible(GlassesManagerGating.Action.HEY_CYAN_EXTRAS),
+                showMetaRaybanControls = model.isVisible(GlassesManagerGating.Action.META_RAYBAN_CONTROLS),
+                showBattery = showBattery,
+                showStorage = showStorage,
+                storageLabel = if (showStorage) state.storageLabel else "--",
+            )
+        }
 
         // Only poll battery for profiles that claim to support it.
         if (showBattery) {
@@ -2398,6 +2625,7 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
             it.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item)
         }
         binding.spinnerMeetingTimer.adapter = adapter
+        binding.spinnerMeetingTimer.setSelection(dashboardState.meeting.timerIndex)
         syncMeetingCaptureUiFromPrefs()
     }
 
@@ -2456,6 +2684,12 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
     private fun refreshAgentStatusUi() {
         binding.tvAgentStatus.text = "Status: ${LocalAgentPrefs.getStatus(this)}"
         binding.tvAgentLastError.text = "Last error: ${LocalAgentPrefs.getLastError(this)}"
+        updateDashboardState { state ->
+            state.copy(
+                agentStatus = LocalAgentPrefs.getStatus(this),
+                agentLastError = LocalAgentPrefs.getLastError(this),
+            )
+        }
     }
 
     // --- Meta Ray-Ban UI setup ---
@@ -2525,6 +2759,9 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
                     runOnUiThread {
                         Toast.makeText(this, "Photo captured!", Toast.LENGTH_SHORT).show()
                         binding.btnMetaViewPhoto.isEnabled = true
+                        updateDashboardState { state ->
+                            state.copy(metaRayban = state.metaRayban.copy(hasCapturedPhoto = true))
+                        }
                     }
                 },
                 onError = { error ->
@@ -2601,10 +2838,28 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
 
         binding.btnMetaDisplayStart.isEnabled = !isDisplayActive
         binding.btnMetaDisplayStop.isEnabled = isDisplayActive
+        updateDashboardState { state ->
+            state.copy(
+                metaRayban = MetaRaybanUiState(
+                    registrationLabel = regState.name,
+                    sessionLabel = sessionState.name,
+                    streamLabel = streamState.name,
+                    displayActive = isDisplayActive,
+                    canRegister = regState != com.fersaiyan.cyanbridge.devices.metarayban.MetaRaybanManager.RegistrationState.REGISTERED,
+                    canUnregister = regState == com.fersaiyan.cyanbridge.devices.metarayban.MetaRaybanManager.RegistrationState.REGISTERED,
+                    canStartSession = sessionState == com.fersaiyan.cyanbridge.devices.metarayban.MetaRaybanManager.DeviceSessionState.IDLE,
+                    canStopSession = sessionState != com.fersaiyan.cyanbridge.devices.metarayban.MetaRaybanManager.DeviceSessionState.IDLE,
+                    canStartStream = streamState == com.fersaiyan.cyanbridge.devices.metarayban.MetaRaybanManager.StreamState.STOPPED,
+                    canStopStream = streamState == com.fersaiyan.cyanbridge.devices.metarayban.MetaRaybanManager.StreamState.STREAMING,
+                    canCapturePhoto = streamState == com.fersaiyan.cyanbridge.devices.metarayban.MetaRaybanManager.StreamState.STREAMING,
+                    hasCapturedPhoto = manager.lastCapturedPhoto.value != null,
+                ),
+            )
+        }
     }
 
     private fun selectedMeetingTimerDurationSec(): Long? { 
-        val idx = binding.spinnerMeetingTimer.selectedItemPosition
+        val idx = dashboardState.meeting.timerIndex
         return meetingTimerOptions.getOrNull(idx)?.first
     }
 
@@ -2641,6 +2896,9 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
             // Optimistic UI so user instantly sees a recording indicator.
             setRecordingUi(isRecording = true, source = null)
             binding.tvMeetingBanner.text = "Starting recording…"
+            updateDashboardState { state ->
+                state.copy(meeting = state.meeting.copy(bannerLabel = "Starting recording…"))
+            }
 
             MeetingCaptureService.start(this, timerDurationSec = durationSec, deviceClass = deviceClass)
         }
@@ -2648,6 +2906,9 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
 
     private fun stopMeetingCaptureFromUi() {
         binding.tvMeetingBanner.text = "Stopping…"
+        updateDashboardState { state ->
+            state.copy(meeting = state.meeting.copy(bannerLabel = "Stopping…"))
+        }
         MeetingCaptureService.stop(this)
     }
 
@@ -2707,9 +2968,27 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
             }
             binding.tvMeetingBanner.text = "Recording active · $src"
             binding.tvMeetingSource.text = "Source: $src"
+            updateDashboardState { state ->
+                state.copy(
+                    meeting = state.meeting.copy(
+                        isRecording = true,
+                        sourceLabel = src,
+                        bannerLabel = "Recording active · $src",
+                    ),
+                )
+            }
         } else {
             binding.meetingRecordingBanner.visibility = android.view.View.GONE
             binding.tvMeetingSource.text = "Source: (not recording)"
+            updateDashboardState { state ->
+                state.copy(
+                    meeting = state.meeting.copy(
+                        isRecording = false,
+                        sourceLabel = "(not recording)",
+                        bannerLabel = "",
+                    ),
+                )
+            }
         }
     }
 
@@ -2721,6 +3000,7 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
 
     private fun updateBatteryText(battery: Int?) {
         binding.batteryText.text = battery?.let { "$it%" } ?: "--%"
+        updateDashboardState { state -> state.copy(batteryPercent = battery) }
     }
 
     private fun requestBatteryStatus(showToast: Boolean) {
@@ -2942,27 +3222,11 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
     }
 
     private fun showDownloadFlowPicker() {
-        val options = arrayOf(
-            "HeyCyan app flow\nVendor-like strict BLE + P2P sync",
-            "Custom flow\nCyanBridge resolver with fallback scanning",
-        )
-
-        AlertDialog.Builder(this)
-            .setTitle("Choose sync flow")
-            .setItems(options) { _, which ->
-                val mode = when (which) {
-                    0 -> DownloadFlowMode.OFFICIAL_HEYCYAN
-                    else -> DownloadFlowMode.CUSTOM
-                }
-                Log.i("DataDownload", "User selected sync flow: ${mode.label}")
-                startDataDownload(mode)
-            }
-            .setNegativeButton("Cancel", null)
-            .show()
+        showDownloadFlowPicker = true
     }
 
     private fun startDataDownload(
-        mode: DownloadFlowMode = DownloadFlowMode.CUSTOM,
+        mode: GlassesSyncFlow = GlassesSyncFlow.CUSTOM,
         retryCount: Int = 0,
     ) {
         downloadFlowMode = mode
@@ -3075,7 +3339,7 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
                     return
                 }
 
-                if (downloadFlowMode == DownloadFlowMode.OFFICIAL_HEYCYAN) {
+                if (downloadFlowMode == GlassesSyncFlow.OFFICIAL_HEYCYAN) {
                     val target = selectOfficialLikelyGlassesPeer(peers)
                     if (target == null) {
                         val pairedName = try { DeviceManager.getInstance().deviceName } catch (_: Exception) { "?" }
@@ -3163,18 +3427,18 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
                 unbindProcessFromNetwork()
 
                 val shouldRecover = when (downloadFlowMode) {
-                    DownloadFlowMode.OFFICIAL_HEYCYAN -> {
+                    GlassesSyncFlow.OFFICIAL_HEYCYAN -> {
                         !downloadCancelledByUser &&
                             (!downloadInitialPhaseCompleted || downloadAttemptJob?.isActive == true || downloadInProgress)
                     }
 
-                    DownloadFlowMode.CUSTOM -> {
+                    GlassesSyncFlow.CUSTOM -> {
                         !downloadCancelledByUser &&
                             (downloadAttemptJob?.isActive == true || downloadInProgress)
                     }
                 }
                 if (shouldRecover) {
-                    if (downloadFlowMode == DownloadFlowMode.OFFICIAL_HEYCYAN) {
+                    if (downloadFlowMode == GlassesSyncFlow.OFFICIAL_HEYCYAN) {
                         Log.i("DataDownload", "Official flow: P2P disconnected during sync; restarting discovery in 2000ms")
                         setTransferDetail("P2P disconnected; retrying official flow...")
                         downloadWifiP2pManager?.discoverPeersStable()
@@ -3223,7 +3487,7 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
             }
 
             override fun retryAlsoFailed() {
-                if (downloadFlowMode == DownloadFlowMode.OFFICIAL_HEYCYAN && officialFlowRetryCount < officialFlowRetryLimit) {
+                if (downloadFlowMode == GlassesSyncFlow.OFFICIAL_HEYCYAN && officialFlowRetryCount < officialFlowRetryLimit) {
                     restartOfficialWholeFlow("P2P connection retry failed")
                     return
                 }
@@ -3239,8 +3503,8 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
 
         setTransferDetail(
             when (mode) {
-                DownloadFlowMode.OFFICIAL_HEYCYAN -> "Waiting for P2P + BLE IP (HeyCyan flow)..."
-                DownloadFlowMode.CUSTOM -> "Waiting for glasses IP and HTTP server..."
+                GlassesSyncFlow.OFFICIAL_HEYCYAN -> "Waiting for P2P + BLE IP (HeyCyan flow)..."
+                GlassesSyncFlow.CUSTOM -> "Waiting for glasses IP and HTTP server..."
             }
         )
 
@@ -3285,6 +3549,9 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
 
     private fun setTransferUiVisible(visible: Boolean) {
         binding.cardTransferProgress.visibility = if (visible) View.VISIBLE else View.GONE
+        updateDashboardState { state ->
+            state.copy(transfer = state.transfer.copy(isVisible = visible))
+        }
     }
 
     private fun resetTransferUiState() {
@@ -3302,6 +3569,13 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
         binding.progressTransfer.max = 100
         binding.progressTransfer.progress = 0
         binding.tvTransferDetail.text = "Idle"
+        updateDashboardState { state ->
+            state.copy(
+                transfer = GlassesTransferUiState(
+                    isVisible = state.transfer.isVisible,
+                ),
+            )
+        }
     }
 
     private fun setTransferPlan(jpg: Int, mp4: Int, opus: Int) {
@@ -3346,14 +3620,28 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
             binding.progressTransfer.max = total * 1000
             binding.progressTransfer.progress = (done * 1000).coerceAtMost(binding.progressTransfer.max)
         }
+        updateDashboardState { state ->
+            state.copy(
+                transfer = state.transfer.copy(
+                    countsLabel = "Photos: $transferDoneJpg/$transferTotalJpg  Videos: $transferDoneMp4/$transferTotalMp4  Audio: $transferDoneOpus/$transferTotalOpus",
+                    progress = if (total > 0) done.toFloat() / total.toFloat() else null,
+                ),
+            )
+        }
     }
 
     private fun setTransferDetail(text: String) {
         binding.tvTransferDetail.text = text
+        updateDashboardState { state ->
+            state.copy(transfer = state.transfer.copy(detail = text))
+        }
     }
 
-    private fun setTransferFlowLabel(mode: DownloadFlowMode) {
+    private fun setTransferFlowLabel(mode: GlassesSyncFlow) {
         binding.tvTransferFlow.text = "Flow: ${mode.label}"
+        updateDashboardState { state ->
+            state.copy(transfer = state.transfer.copy(flowLabel = mode.label))
+        }
     }
 
     private fun createDownloadSession() {
@@ -3362,7 +3650,7 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
         downloadSessionJob = job
         downloadSessionScope = CoroutineScope(job + Dispatchers.IO)
         downloadSessionId++
-        vendorAlbumDownloader = if (downloadFlowMode == DownloadFlowMode.OFFICIAL_HEYCYAN) {
+        vendorAlbumDownloader = if (downloadFlowMode == GlassesSyncFlow.OFFICIAL_HEYCYAN) {
             VendorAlbumDownloader(
                 destinationDir = File(cacheDir, "heycyan_album/$downloadSessionId"),
                 requestTag = "cyanbridge_heycyan_album_$downloadSessionId",
@@ -3462,6 +3750,13 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
                 binding.progressTransfer.max = totalItems * 1000
                 binding.progressTransfer.progress = (completedItems * 1000 + fraction * 1000).toInt()
                     .coerceAtMost(binding.progressTransfer.max)
+                updateDashboardState { state ->
+                    state.copy(
+                        transfer = state.transfer.copy(
+                            progress = ((completedItems + fraction) / totalItems).toFloat(),
+                        ),
+                    )
+                }
             }
         }
         Log.i(
@@ -3477,14 +3772,14 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
             val sessionStillStuck = !downloadInitialPhaseCompleted &&
                 !downloadCancelledByUser &&
                 !downloadInProgress &&
-                binding.cardTransferProgress.visibility == View.VISIBLE
+                dashboardState.transfer.isVisible
 
             if (!sessionStillStuck) return@launch
 
             val waitedSeconds = ((System.currentTimeMillis() - downloadStartedAtMs) / 1000L).coerceAtLeast(1L)
             Log.w("DataDownload", "Initial P2P sync phase timed out after ${waitedSeconds}s (flow=${downloadFlowMode.label})")
 
-            if (downloadFlowMode == DownloadFlowMode.OFFICIAL_HEYCYAN && officialFlowRetryCount < officialFlowRetryLimit) {
+            if (downloadFlowMode == GlassesSyncFlow.OFFICIAL_HEYCYAN && officialFlowRetryCount < officialFlowRetryLimit) {
                 restartOfficialWholeFlow("initial sync timeout after ${waitedSeconds}s")
                 return@launch
             }
@@ -3523,9 +3818,9 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
     }
 
     private fun isOfficialSyncActive(): Boolean {
-        return downloadFlowMode == DownloadFlowMode.OFFICIAL_HEYCYAN &&
+        return downloadFlowMode == GlassesSyncFlow.OFFICIAL_HEYCYAN &&
             !downloadCancelledByUser &&
-            binding.cardTransferProgress.visibility == View.VISIBLE
+            dashboardState.transfer.isVisible
     }
 
     private fun restartOfficialWholeFlow(reason: String) {
@@ -3535,7 +3830,7 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
             "Official flow retrying whole import sequence ($nextRetry/$officialFlowRetryLimit) because $reason"
         )
         setTransferDetail("Official flow retrying sync...")
-        startDataDownload(DownloadFlowMode.OFFICIAL_HEYCYAN, retryCount = nextRetry)
+        startDataDownload(GlassesSyncFlow.OFFICIAL_HEYCYAN, retryCount = nextRetry)
     }
 
     private fun maybeShowP2pSyncLogHelp(
@@ -3551,8 +3846,8 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
             issueType = "P2P/WiFi sync issue",
             description = "Flow: ${downloadFlowMode.label}\n\n$reason",
             extraInfo = linkedMapOf(
-                "transfer_detail" to binding.tvTransferDetail.text.toString(),
-                "transfer_counts" to binding.tvTransferCounts.text.toString(),
+                "transfer_detail" to dashboardState.transfer.detail,
+                "transfer_counts" to dashboardState.transfer.countsLabel,
                 "download_flow_mode" to downloadFlowMode.label,
                 "download_ble_ip" to (downloadBleIp ?: ""),
                 "download_wifi_ip" to (downloadWifiIp ?: ""),
@@ -3597,8 +3892,8 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
                     issueType = "P2P/WiFi sync issue",
                     description = "Flow: ${downloadFlowMode.label}\n\nP2P sync could not find glasses after $maxP2pRestarts attempts. Bluetooth is connected but glasses did not appear as a Wi‑Fi Direct peer. Seen P2P peers: ${seenPeers.joinToString(", ")}",
                     extraInfo = linkedMapOf(
-                        "transfer_detail" to binding.tvTransferDetail.text.toString(),
-                        "transfer_counts" to binding.tvTransferCounts.text.toString(),
+                        "transfer_detail" to dashboardState.transfer.detail,
+                        "transfer_counts" to dashboardState.transfer.countsLabel,
                         "download_flow_mode" to downloadFlowMode.label,
                         "download_ble_ip" to (downloadBleIp ?: ""),
                         "download_wifi_ip" to (downloadWifiIp ?: ""),
@@ -3642,7 +3937,7 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
     
     private suspend fun downloadMediaList(deviceIp: String, sessionId: Long) {
         if (!isDownloadSessionActive(sessionId)) return
-        if (downloadFlowMode == DownloadFlowMode.OFFICIAL_HEYCYAN) {
+        if (downloadFlowMode == GlassesSyncFlow.OFFICIAL_HEYCYAN) {
             downloadVendorMediaList(deviceIp, sessionId)
             return
         }
@@ -3656,6 +3951,9 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
             withContext(Dispatchers.Main) {
                 if (!isDownloadSessionActive(sessionId)) return@withContext
                 binding.progressTransfer.isIndeterminate = true
+                updateDashboardState { state ->
+                    state.copy(transfer = state.transfer.copy(progress = null))
+                }
                 setTransferDetail("Fetching media list...")
             }
 
@@ -3720,6 +4018,9 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
         withContext(Dispatchers.Main) {
             if (isDownloadSessionActive(sessionId)) {
                 binding.progressTransfer.isIndeterminate = true
+                updateDashboardState { state ->
+                    state.copy(transfer = state.transfer.copy(progress = null))
+                }
                 setTransferDetail("Fetching media list with HeyCyan downloader...")
             }
         }
@@ -3825,7 +4126,7 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
                 }
 
                 // Download everything we understand. Keep P2P bound until all downloads finish.
-                if (downloadFlowMode == DownloadFlowMode.OFFICIAL_HEYCYAN) {
+                if (downloadFlowMode == GlassesSyncFlow.OFFICIAL_HEYCYAN) {
                     downloadAllMediaFilesVendor(vendorQueue, deviceIp, sessionId)
                 } else {
                     downloadAllMediaFiles(jpgFiles, mp4Files, opusFiles, deviceIp, sessionId)
@@ -4017,6 +4318,9 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
                 if (!isDownloadSessionActive(sessionId)) return@withContext
                 if (totalAll > 0) {
                     binding.progressTransfer.isIndeterminate = false
+                    updateDashboardState { state ->
+                        state.copy(transfer = state.transfer.copy(progress = 0f))
+                    }
                 }
                 setTransferDetail("Downloading 0/$totalAll...")
             }
@@ -4189,7 +4493,7 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
     }
 
     private fun shouldAbortOfficialMediaTransfer(fileName: String): Boolean {
-        if (downloadFlowMode != DownloadFlowMode.OFFICIAL_HEYCYAN) return false
+        if (downloadFlowMode != GlassesSyncFlow.OFFICIAL_HEYCYAN) return false
         officialMediaErrorCount++
         Log.w(
             "DataDownload",
@@ -5126,7 +5430,7 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
         lastDownloadBleIpAtMs = now
         Log.i("DataDownload", "BLE reported device WiFi IP: $ip")
         downloadBleIp = ip
-        if (downloadFlowMode == DownloadFlowMode.OFFICIAL_HEYCYAN) {
+        if (downloadFlowMode == GlassesSyncFlow.OFFICIAL_HEYCYAN) {
             officialBleCallbackSuccess = true
             Log.i("DataDownload", "Official flow BLE readiness satisfied")
         }
@@ -5145,7 +5449,7 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
         downloadP2pConnected = info.groupFormed
         downloadWifiIp = info.groupOwnerAddress?.hostAddress
         downloadPhoneIsGroupOwner = info.isGroupOwner
-        if (downloadFlowMode == DownloadFlowMode.OFFICIAL_HEYCYAN) {
+        if (downloadFlowMode == GlassesSyncFlow.OFFICIAL_HEYCYAN) {
             officialSystemSuccess = info.groupFormed
             officialDisconnectRecoveryJob?.cancel()
             officialDisconnectRecoveryJob = null
@@ -5183,8 +5487,8 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
         }
 
         when (downloadFlowMode) {
-            DownloadFlowMode.OFFICIAL_HEYCYAN -> maybeStartOfficialHttpDownload(source)
-            DownloadFlowMode.CUSTOM -> maybeStartCustomHttpDownload(source)
+            GlassesSyncFlow.OFFICIAL_HEYCYAN -> maybeStartOfficialHttpDownload(source)
+            GlassesSyncFlow.CUSTOM -> maybeStartCustomHttpDownload(source)
         }
     }
 
@@ -5332,7 +5636,7 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
     private fun isDownloadInitialPhaseActive(): Boolean {
         return !downloadInitialPhaseCompleted &&
             !downloadCancelledByUser &&
-            binding.cardTransferProgress.visibility == View.VISIBLE
+            dashboardState.transfer.isVisible
     }
 
     private inner class DownloadNotifyListener : GlassesDeviceNotifyListener() {
@@ -5425,7 +5729,7 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
         readTimeoutMs: Int,
         onStream: ((InputStream, Long) -> Unit)? = null
     ): Boolean {
-        if (downloadFlowMode == DownloadFlowMode.OFFICIAL_HEYCYAN) {
+        if (downloadFlowMode == GlassesSyncFlow.OFFICIAL_HEYCYAN) {
             return try {
                 val conn = openPlainHttpConnection(url) ?: return false
                 conn.requestMethod = "GET"
@@ -5590,7 +5894,7 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
     private fun maybeResetP2pAfterError255(source: String) {
         val now = System.currentTimeMillis()
 
-        if (downloadFlowMode == DownloadFlowMode.OFFICIAL_HEYCYAN) {
+        if (downloadFlowMode == GlassesSyncFlow.OFFICIAL_HEYCYAN) {
             val sessionActive = isOfficialSyncActive() || downloadP2pConnected || downloadInProgress || downloadAttemptJob?.isActive == true
             if (!sessionActive) {
                 Log.i("DataDownload", "Ignoring error=255 reset (source=$source) outside download session")
@@ -5605,11 +5909,11 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
         // Only attempt P2P resets when we're actually in (or attempting) a download session.
         // Otherwise these resets can interfere with normal camera/recording usage.
         val sessionActive = when (downloadFlowMode) {
-            DownloadFlowMode.OFFICIAL_HEYCYAN -> {
+            GlassesSyncFlow.OFFICIAL_HEYCYAN -> {
                 downloadInProgress || downloadAttemptJob?.isActive == true || downloadP2pConnected || isDownloadInitialPhaseActive()
             }
 
-            DownloadFlowMode.CUSTOM -> {
+            GlassesSyncFlow.CUSTOM -> {
                 downloadInProgress || downloadAttemptJob?.isActive == true || downloadP2pConnected
             }
         }
@@ -5657,17 +5961,21 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
                         runOnUiThread {
                             val unsupportedReason = imageQueryUnsupportedReasonForCurrentSelection()
                             if (unsupportedReason != null) {
+                                imageCaptureAwaitingNotification.set(false)
+                                pendingImageCaptureSourceTag = null
                                 Toast.makeText(this@MainActivity, unsupportedReason, Toast.LENGTH_SHORT).show()
                                 speak(unsupportedReason)
                                 return@runOnUiThread
                             }
                             if (maybeShowGeminiChatGptImageRequirementsWarning()) {
+                                imageCaptureAwaitingNotification.set(false)
+                                pendingImageCaptureSourceTag = null
                                 return@runOnUiThread
                             }
-                            handleGlassesImageButtonPressed(
-                                triggerCapture = false,
-                                sourceTag = "glasses_signal",
-                            )
+                            val sourceTag = pendingImageCaptureSourceTag ?: "glasses_signal"
+                            imageCaptureAwaitingNotification.set(false)
+                            pendingImageCaptureSourceTag = null
+                            requestImageThumbnailForQuestion(sourceTag)
                         }
                     }
                 }

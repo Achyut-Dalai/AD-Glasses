@@ -5,10 +5,11 @@ import android.content.Context
 import android.content.Intent
 import android.os.Bundle
 import android.provider.Settings
-import android.view.View
-import android.widget.ImageView
-import android.widget.TextView
+import androidx.activity.compose.setContent
 import androidx.appcompat.app.AppCompatActivity
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.setValue
 import com.fersaiyan.cyanbridge.MainActivity
 import com.fersaiyan.cyanbridge.R
 import com.fersaiyan.cyanbridge.agent.LocalAgentPrefs as AgentPrefs
@@ -18,12 +19,17 @@ import com.fersaiyan.cyanbridge.localagent.memory.LocalAgentMemoryStore
 import com.fersaiyan.cyanbridge.memoryvault.MemoryModeManager
 import com.fersaiyan.cyanbridge.media.autocapture.AutoAudioCapturePrefs
 import com.fersaiyan.cyanbridge.media.autocapture.AutoAudioCaptureService
-import com.google.android.material.button.MaterialButton
-import com.google.android.material.switchmaterial.SwitchMaterial
+import com.fersaiyan.cyanbridge.ui.appearance.AppearancePreferences
+import com.fersaiyan.cyanbridge.ui.appearance.rememberAppearanceSettings
+import com.fersaiyan.cyanbridge.ui.onboarding.FeatureOnboardingScreen
+import com.fersaiyan.cyanbridge.ui.theme.CyanBridgeTheme
 
 class OnboardingFeatureActivity : AppCompatActivity() {
 
     private var featureIndex = 0
+    private var featureEnabled by mutableStateOf(false)
+    private var localAgentAutomationEnabled by mutableStateOf(false)
+    private var accessibilityEnabled by mutableStateOf(false)
 
     data class OnboardingFeature(
         val iconRes: Int,
@@ -36,7 +42,6 @@ class OnboardingFeatureActivity : AppCompatActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        setContentView(R.layout.activity_onboarding)
         featureIndex = intent.getIntExtra(EXTRA_FEATURE_INDEX, 0)
         setupFeatureScreen()
     }
@@ -52,63 +57,44 @@ class OnboardingFeatureActivity : AppCompatActivity() {
             return
         }
 
-        findViewById<ImageView>(R.id.iv_icon).setImageResource(feature.iconRes)
-        findViewById<TextView>(R.id.tv_title).text = getString(feature.titleRes)
-        findViewById<TextView>(R.id.tv_description).text = getString(feature.descriptionRes)
-        findViewById<TextView>(R.id.tv_feature_details).text = getString(feature.detailsRes)
-
-        val switchEnable = findViewById<SwitchMaterial>(R.id.switch_enable)
-        if (feature.togglePrefKey != null) {
-            switchEnable.visibility = View.VISIBLE
-            switchEnable.text = feature.toggleLabel
-            switchEnable.isChecked = getFeatureDefaultState(featureIndex)
-            switchEnable.setOnCheckedChangeListener { _, isChecked ->
-                setFeatureState(featureIndex, isChecked)
-            }
-        } else {
-            switchEnable.visibility = View.GONE
-        }
-
         val isAccessibilityFeature = featureIndex == SCREEN_MEMORY_FEATURE_INDEX
-        findViewById<View>(R.id.card_accessibility_disclosure).visibility =
-            if (isAccessibilityFeature) View.VISIBLE else View.GONE
-
-        findViewById<SwitchMaterial>(R.id.switch_local_agent_automation).apply {
-            visibility = if (isAccessibilityFeature) View.VISIBLE else View.GONE
-            isChecked = AgentPrefs.isLocalAgentAutomationEnabled(this@OnboardingFeatureActivity)
-            setOnCheckedChangeListener { _, isChecked ->
-                AgentPrefs.setLocalAgentAutomationEnabled(this@OnboardingFeatureActivity, isChecked)
-                if (isChecked) LocalAgentMemoryStore.ensureSeedFiles(this@OnboardingFeatureActivity)
-            }
-        }
-
-        findViewById<MaterialButton>(R.id.btn_onboarding_accessibility_settings).apply {
-            visibility = if (isAccessibilityFeature) View.VISIBLE else View.GONE
-            setOnClickListener {
-                startActivity(Intent(Settings.ACTION_ACCESSIBILITY_SETTINGS))
-            }
-        }
-        refreshAccessibilityStatus()
-
-        findViewById<MaterialButton>(R.id.btn_back).apply {
-            text = if (featureIndex == 0) "Skip All" else "Back"
-            setOnClickListener {
-                if (featureIndex == 0) {
-                    skipAllOnboarding()
-                } else {
-                    goToFeature(featureIndex - 1)
-                }
-            }
-        }
-
-        findViewById<MaterialButton>(R.id.btn_next).apply {
-            text = if (featureIndex == FEATURES.lastIndex) "Get Started" else "Next"
-            setOnClickListener {
-                if (featureIndex == FEATURES.lastIndex) {
-                    finishOnboarding()
-                } else {
-                    goToFeature(featureIndex + 1)
-                }
+        featureEnabled = getFeatureDefaultState(featureIndex)
+        localAgentAutomationEnabled = AgentPrefs.isLocalAgentAutomationEnabled(this)
+        accessibilityEnabled = isLocalAgentAccessibilityServiceEnabled()
+        val appearancePreferences = AppearancePreferences(this)
+        setContent {
+            val appearance by rememberAppearanceSettings(appearancePreferences)
+            CyanBridgeTheme(appearance) {
+                FeatureOnboardingScreen(
+                    title = getString(feature.titleRes),
+                    description = getString(feature.descriptionRes),
+                    details = getString(feature.detailsRes),
+                    featureToggleLabel = feature.toggleLabel,
+                    featureEnabled = featureEnabled,
+                    showAccessibilityDisclosure = isAccessibilityFeature,
+                    accessibilityEnabled = accessibilityEnabled,
+                    localAgentAutomationEnabled = localAgentAutomationEnabled,
+                    backLabel = if (featureIndex == 0) "Skip all" else "Back",
+                    nextLabel = if (featureIndex == FEATURES.lastIndex) "Get started" else "Next",
+                    onFeatureEnabledChange = {
+                        featureEnabled = it
+                        setFeatureState(featureIndex, it)
+                    },
+                    onLocalAgentAutomationChange = {
+                        localAgentAutomationEnabled = it
+                        AgentPrefs.setLocalAgentAutomationEnabled(this, it)
+                        if (it) LocalAgentMemoryStore.ensureSeedFiles(this)
+                    },
+                    onOpenAccessibilitySettings = {
+                        startActivity(Intent(Settings.ACTION_ACCESSIBILITY_SETTINGS))
+                    },
+                    onBack = {
+                        if (featureIndex == 0) skipAllOnboarding() else goToFeature(featureIndex - 1)
+                    },
+                    onNext = {
+                        if (featureIndex == FEATURES.lastIndex) finishOnboarding() else goToFeature(featureIndex + 1)
+                    },
+                )
             }
         }
     }
@@ -149,14 +135,7 @@ class OnboardingFeatureActivity : AppCompatActivity() {
     }
 
     private fun refreshAccessibilityStatus() {
-        val status = findViewById<TextView>(R.id.tv_onboarding_accessibility_status) ?: return
-        val enabled = isLocalAgentAccessibilityServiceEnabled()
-        status.text = if (enabled) {
-            "Accessibility is currently enabled"
-        } else {
-            "Accessibility is currently disabled"
-        }
-        status.setTextColor(getColor(if (enabled) R.color.cyan_accent else R.color.text_secondary))
+        accessibilityEnabled = isLocalAgentAccessibilityServiceEnabled()
     }
 
     private fun isLocalAgentAccessibilityServiceEnabled(): Boolean {
