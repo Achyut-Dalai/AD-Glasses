@@ -1,16 +1,16 @@
-# Material 3 and Kotlin Multiplatform MVP Plan
+# Android Material 3 Migration Plan
 
-Last audited: 2026-07-14
+Last audited: 2026-07-15
 
-This is the authoritative plan for restarting CyanBridge's Material 3 migration and creating a credible path to iOS. The old Compose branch remains useful as a UI prototype, but it is no longer a safe integration base.
+This is the authoritative plan for migrating CyanBridge's current Android app to Material 3 without regressing its glasses, media, AI, billing, and local-agent behavior. The old Compose branch remains useful as a UI prototype, but it is no longer a safe integration base. A narrow Kotlin Multiplatform module now owns proven portable models and bridge contracts; an initial iOS framework host exists, but further iOS work is paused while Android migration and physical validation take priority.
 
 ## Executive Decision
 
 Do not merge or rebase `compose_material3_migration` or `memomind-adapter` wholesale into current `main`.
 
-Create a new migration branch from current `main`, preserve the old branch tips as archive references, and selectively port screen structure and visual ideas. Current business logic must remain authoritative.
+Preserve the old branch tips as archive references and selectively port screen structure and visual ideas into current Android code. Current business logic must remain authoritative.
 
-Recommended branch workflow:
+Recommended branch workflow for future isolated migration work:
 
 ```bash
 git branch archive/compose-material3-2026-07 compose_material3_migration
@@ -21,16 +21,74 @@ git switch -c compose-material3-kmp-v2
 
 Do not delete the old branches. They contain useful screen implementations and the only full history of the earlier UI experiments.
 
+Keep `:shared` narrow. It may contain proven platform-neutral models, route identifiers, contracts, and tests, but not Android framework wrappers or speculative iOS abstractions. Compose Multiplatform UI remains deferred; native iOS targets are opt-in for the framework host and remain gated on Mac/Xcode and transport validation below.
+
+## Implementation Status
+
+Implemented on 2026-07-14 in the current working migration:
+
+- Compose enabled in the Android `:app` module without changing Kotlin, AGP, KAPT, Room, vendor AAR, or launcher routing.
+- Material 3 dependencies and Compose UI test dependencies added.
+- `AppearanceSettings`, stable accent IDs, Android preference persistence, and live preference observation added.
+- Six curated neutral-surface light/dark accent schemes added with optional Android dynamic color and high-contrast mode.
+- Automated contrast checks cover normal text, container text, actions, and meaningful control outlines.
+- A semantic `AppIcon` registry replaces inline placeholder icon selection for migrated screens.
+- A Material 3 Appearance screen is reachable from the existing Settings Activity.
+- Welcome is migrated to Compose while preserving onboarding completion and next-step routing.
+- Chat history is migrated to Compose while preserving open, delete, new-chat, daily-review, local-model gating, chat appearance, and legacy Activity navigation behavior.
+- Migrated scaffolds use `WindowInsets.safeDrawing`, apply scaffold padding once, and consume delegated insets.
+- A `:shared` KMP module now builds Android and host-JVM portability targets.
+- `AppearanceSettings`, accent metadata, semantic `AppIcon` identifiers, typed `AppDestination` identifiers, immutable `ChatThreadSummary`, `ChatThread`, `ChatMessage`, and `ChatRole` now live in `commonMain` and are consumed by Android.
+- `GlassesSyncFlow`, Community Plugin card metrics, publish-form state, and the shared plugin-category catalog now live in `commonMain`; Android retains all transfer, networking, and persistence effects.
+- The chat vertical slice now has a portable suspend `ChatRepository` contract, immutable thread reducer, composer/attachment/progress state, and semantic appearance-menu actions. `ChatStoreRepository` adapts the current Room-backed Android store; the production chat thread and composer are now Material 3 Compose with Android-only inference, media, and daily-review callbacks retained in the Activity.
+- Existing glasses display, connection-state, capability, input-event, device-info, error, and adapter contracts now compile from `commonMain` under their established `bridge.core` package. Android vendor adapters still own all hardware calls.
+- Opt-in `iosX64`, `iosArm64`, and `iosSimulatorArm64` framework targets are configured to produce `CyanBridgeShared.framework` on a Mac. `kotlin.native.distribution.downloadFromMaven=true` avoids Kotlin 1.9.24's project-level Ivy repository and preserves settings-owned dependency resolution.
+- The tracked Xcode project now contains `CyanBridgeKMPHost`, a simulator-targeted SwiftUI KMP shell that does not link the vendor archive. `QCSDKDemo` is isolated as a device-reference target; `ios/scripts/verify_kmp_host.py` statically checks that separation on Linux. An Xcode framework link and simulator launch remain unverified until macOS is available.
+- Meeting-summary request/response contracts, deterministic Markdown formatting, and the offline rule-based summarizer now compile from `commonMain`. Android retains Room persistence and its test-only fake summarizer.
+- Common tests lock down appearance defaults, stable accent IDs, fallback behavior, and destination identifiers.
+- The P2P sync-flow picker and chat appearance overflow menu now render as Compose dialogs. The Android Activities still own their BLE/P2P, preference, picker, and external-app callbacks.
+- Community Plugin cards, including the Gemini/ChatGPT Image Questions Automation banner, now fill their available width. The recordings screen renders its four recent synced photos as one full-width weighted row, and the publish-plugin action uses a semantic add icon.
+- Automated migration verification currently passes `:shared:portabilityTest`, debug/release unit tests, debug/release lint, release assembly, and 19/19 Android instrumentation tests on an SM-F956B.
+
+Still pending:
+
+- Manual SM-F956B hardware acceptance on 2026-07-15 passed connection, scan, photo/video/audio capture, battery readout, and Wi-Fi Direct P2P media sync. Compose chat thread/composer validation remains useful for IME, gesture and three-button navigation, landscape, split screen, 200 percent font scale, and TalkBack. The old XML layout remains in resources as a rollback reference only and is no longer the production view tree.
+- AI image-question capture needs a focused physical retest. Device logs showed a newly requested capture racing the glasses `0x02` photo-ready event, then falling back to an old `Glasses_AI_*` file. The Android flow now serializes one fresh thumbnail request after `0x02`, retries an incomplete/non-decodable response once, and only then considers the age-limited fallback; verify this with a real image question before claiming the feature accepted.
+- The Glasses dashboard, device binding, onboarding, battery guidance, notes, Local Agent tools, transcription diagnostics, EvenHub host, Pro subscription, Settings, media, and plugins now render through Compose. The Glasses dashboard deliberately keeps the existing Android control handlers behind a non-visible compatibility adapter so BLE, Wi-Fi Direct, capture, and transfer behavior is unchanged.
+- Local-model configuration and Pro subscription settings now render as Material 3 Compose screens. Their existing Android Activity handlers remain non-visible compatibility adapters for downloads, local runtimes, billing, encrypted credentials, permissions, and Studio Bridge lifecycle work.
+- The compatibility adapters for Local Models and Pro now mount as explicit hidden siblings behind the visible `ComposeView`; Compose no longer replaces a briefly visible XML root during Activity startup.
+- Curated local-model catalog metadata and lookup now compile from `:shared`; Android-only download, storage, runtime, preference, and device-capability adapters remain in `:app`.
+- Physical screenshot, TalkBack, font-scale, keyboard, gesture-navigation, and three-button-navigation acceptance runs remain release-quality validation, not blockers for this UI-only migration.
+- Compose Multiplatform UI, iOS feature UI, an iOS persistence adapter, and any production iOS vendor SDK integration remain deferred. The native SwiftUI host currently renders shared defaults and a String-only meeting-summary preview only.
+- A Mac/Xcode build and physical-device acceptance run are required before treating the iOS framework host as working.
+
+### Toolchain Compatibility Record
+
+The initial Android slice deliberately uses the versions already accepted by the current vendor-sensitive build:
+
+| Component | Version |
+|---|---|
+| AGP | 8.12.1 |
+| Kotlin | 1.9.24 |
+| Compose compiler extension | 1.5.14 |
+| Compose BOM | 2024.04.01 |
+| Activity Compose | 1.10.1 |
+| Java | 17+; repository build uses Android Studio JBR 21 |
+
+This is a compatibility baseline, not a claim that every pin is the newest available. Upgrade this set separately from screen migration, with the forked vendor integration, Room/KAPT, local inference runtimes, unit tests, and debug APK verified after each version step.
+
+Kotlin 1.9.24 reports that AGP 8.12.1 is newer than the KMP plugin's maximum tested AGP 8.2. The current Android and portability builds pass, but this warning is not suppressed. Kotlin/Native's default Ivy download repository conflicts with this repository's settings-only dependency policy; `kotlin.native.distribution.downloadFromMaven=true` makes the compiler distribution resolve through the existing Maven Central repository instead. Apple targets are opt-in through `-PenableAppleTargets=true` because Linux cannot link them; a Mac/Xcode link remains required.
+
 ## Audit Snapshot
 
 Audit baseline:
 
-- `main`: `45073d1` after preserving the current app, bridge, and research changes.
+- `main`: `ecfb1ae` before the current working migration implementation.
 - `compose_material3_migration`: `15f810c`.
 - `memomind-adapter`: `f3387b9`.
 - Common ancestor: `3de11e8`.
-- Compose branch divergence: 49 commits exist only on current main and 26 commits exist only on the Compose branch.
-- MemoMind branch divergence: 49 commits exist only on current main and 28 commits exist only on the MemoMind branch.
+- Compose branch divergence at the implementation baseline: 50 commits exist only on current main and 26 commits exist only on the Compose branch.
+- MemoMind branch divergence at the implementation baseline: 50 commits exist only on current main and 28 commits exist only on the MemoMind branch.
 
 This is not a small update. Current main added or substantially changed:
 
@@ -51,10 +109,10 @@ The old branch is a substantial prototype, not a failed empty branch. It include
 
 | Area | Implemented prototype | Reuse guidance |
 |---|---|---|
-| Foundation | Kotlin 2.0, Compose compiler plugin, Material 3, Navigation Compose | Recreate with a currently compatible KMP toolchain; do not copy old version pins blindly |
+| Foundation | Kotlin 2.0, Compose compiler plugin, Material 3, Navigation Compose | Recreate only compatible pieces in the Android app; do not copy old version pins blindly |
 | App shell | `ComposeMainActivity`, `MainNavScreen`, bottom navigation | Reuse route concepts only; replace inset and icon handling |
 | Chat | Messages, model picker, history shortcut, input composer, loading and errors | Reuse visual decomposition; reconnect to current chat and inference logic |
-| History | Thread list, search, delete, open thread | Good candidate for an early shared screen |
+| History | Thread list, search, delete, open thread | Reimplemented from current main behavior in the first Android slice |
 | Settings | Large Compose settings screen and settings ViewModel | Use as a feature checklist, not as source of truth |
 | Theme | Dark/light choice and six accent presets | Replace the color generation and persistence architecture |
 | Pro | Subscription and account screens | UI reference only; current billing and Asaas behavior is newer |
@@ -63,7 +121,7 @@ The old branch is a substantial prototype, not a failed empty branch. It include
 | Recordings | Recording and synced-media screens | Port after current media contracts are isolated |
 | Local models | A full Compose configuration screen | Current model engines and settings have changed heavily |
 | Plugins | Plugin browsing and management screen | Recheck current publish and patcher behavior |
-| Notes | List and detail screens | Suitable for shared UI after repository cleanup |
+| Notes | List and detail screens | Suitable for Compose after repository cleanup |
 | Local agent | Daily facts, summary, blacklist, captures, pending actions, synced media | Android-only capabilities must remain behind platform interfaces |
 
 The branch has Compose test dependencies but no meaningful Compose UI test suite. The only relevant test found under the branch UI area is the existing `ChatStoreTest`. Runtime layout and accessibility regressions were therefore found manually.
@@ -79,11 +137,11 @@ It adds two commits after `15f810c`:
 
 Current main now contains most of the bridge core, protocol, runtime, audio, and notification groundwork. The old branch still contains `MemoMindDeviceAdapter.kt`, which current main does not. If that adapter is revived, port that file selectively only after validating it against the current protocol notes and current `GlassesDeviceAdapter` contract. Do not merge the MemoMind branch to obtain it.
 
-## Existing iOS Baseline
+## iOS Foundation And Decision Gate
 
 The repository already has a native Objective-C iOS demo under `ios/QCSDKDemo/`.
 
-Verified existing capabilities:
+Code present in the demo suggests these intended capabilities:
 
 - `QCSDK.framework` integration.
 - CoreBluetooth scan, connect, reconnect, and device state handling.
@@ -91,7 +149,19 @@ Verified existing capabilities:
 - iOS hotspot joining through `NEHotspotConfiguration`.
 - HTTP media discovery and download from `/files/media.config` and `/files/<name>`.
 
-This means the iOS path should wrap the existing native SDK and media-transfer code behind shared interfaces. Reimplementing the vendor protocol in common Kotlin is not an MVP requirement.
+These files are protocol evidence, not proof that a production iOS SDK path works. `QCSDKDemo` remains isolated from the KMP framework so vendor-reference changes cannot silently become production shared-state dependencies. No production transport choice has been made until the framework links and device flows work on a current physical iPhone.
+
+Static inspection found arm64 Mach-O objects throughout the bundled `QCSDK.framework` archive. That rules out Intel simulator support and does not prove Apple Silicon simulator compatibility, so `CyanBridgeKMPHost` deliberately does not link the vendor archive.
+
+The future decision must compare three options:
+
+| Option | Evidence required before selection |
+|---|---|
+| Vendor framework wrapper | Current Xcode link succeeds; required architectures exist; scan/connect/command/media flows work on hardware; redistribution terms are acceptable |
+| Kotlin protocol implementation | Android packet behavior is documented and covered by transport-independent tests; CoreBluetooth and hotspot behavior can be supplied as thin native adapters |
+| Hybrid workaround | Exact vendor functions that must remain native are identified; protocol and application state can otherwise remain Kotlin-owned without duplicated state machines |
+
+Until that evidence exists, portable state and contracts may move into `:shared`, while Android Compose screens remain in `:app`. The initial direct Xcode hosts deliberately contain no CocoaPods configuration, cinterop binding, or iOS vendor adapter; they only consume `CyanBridgeShared.framework` and are documented in `ios/CYANBRIDGE_KMP_IOS.md`.
 
 Before iOS release work, verify:
 
@@ -100,8 +170,8 @@ Before iOS release work, verify:
 - Its module map and Objective-C headers can be consumed from Swift and, if desired, Kotlin/Native cinterop.
 - Apple Bluetooth, local-network, hotspot, microphone, photo-library, and background-mode declarations are complete.
 - App Store billing uses StoreKit and does not assume that Play Billing or the Android web checkout is valid on iOS.
-- Root ignore rules currently match `*.xcodeproj` and `QCSDK.framework`; explicitly allow the new iOS project's source files and define how the vendor binary is supplied without accidentally omitting required project metadata.
-- The existing media downloader logs the hotspot password and contains aggressive retry paths. Redact all credentials and replace retries with a bounded, testable state machine before production reuse.
+- Root ignore rules currently match `*.xcodeproj` and `QCSDK.framework`; the existing tracked demo project is used for the initial host. Explicitly allow any future app-project metadata and define how the vendor binary is supplied without accidentally omitting required files.
+- The legacy transfer code still contains aggressive retry paths. Keep credentials redacted and replace retries with a bounded, testable state machine before production reuse.
 
 ## Why The Earlier UI Fixes Did Not Stabilize
 
@@ -121,7 +191,7 @@ The history shows repeated changes between `navigationBarsPadding()`, `imePaddin
 
 The prototype initially used unrelated Material icons such as Home, List, Star, and Settings for camera, audio, battery, model, and device actions. Commit `a70b438` removed many of those random icons instead of defining a semantic icon system.
 
-The final bottom bar mixes Material icons with Android-only `ImageVector.vectorResource(R.drawable...)`. That is workable on Android but unsuitable for shared Compose UI on iOS.
+The final bottom bar mixes Material icons with Android-only `ImageVector.vectorResource(R.drawable...)`. Migrated screens instead resolve controls through semantic `AppIcon` names.
 
 ### Themes And Accent Profiles
 
@@ -129,83 +199,57 @@ The branch eventually added six accent presets, but the light scheme generates s
 
 Theme state is also read directly from Android `SharedPreferences` in both `ComposeMainActivity` and `SettingsViewModel`. Dynamic color exists as a parameter but is not a complete user-facing policy. This architecture is Android-specific and duplicates ownership of theme state.
 
-## MVP Product Scope
-
-The first modernized release should not promise full Android and iOS parity.
-
-Android MVP:
+## Android MVP Product Scope
 
 - Preserve every current production behavior.
-- Replace the main shell, Chat, History, Appearance settings, and one low-risk screen with Material 3.
+- Replace the main shell, Chat, History, Appearance settings, and selected low-risk screens with Material 3.
 - Keep unported Activities reachable through explicit platform navigation.
 - Add reliable adaptive layout, keyboard, icon, and accessibility tests.
+- Keep Android framework and vendor operations outside composables.
+- Make presentation state immutable where practical and expose UI actions as callbacks/events.
+- Defer all iOS parity commitments until the decision gate above is resolved.
 
-iOS MVP:
+## Android-First Target Architecture
 
-- Launch a real CyanBridge app shell using shared Compose UI.
-- Apply the same theme and accent profile settings.
-- Connect to supported HeyCyan glasses through a native iOS adapter.
-- Show connection state and basic device information.
-- Send basic device commands supported by `QCSDK.framework`.
-- Download and display media using the existing native iOS transfer implementation.
-- Support relay-backed Chat and History after shared chat contracts exist.
-
-Deferred on iOS:
-
-- Android Accessibility local-agent control.
-- Tasker integration.
-- Android foreground services and notification-listener behavior.
-- Meta DAT integration.
-- Android local model runtimes until an iOS inference engine is selected.
-- Play Billing; iOS requires a separate StoreKit implementation.
-- MemoMind support until an iOS transport adapter is proven.
-
-## Target Architecture
-
-Use an incremental Kotlin Multiplatform library while retaining the current Android app module.
-
-Suggested initial layout:
+Keep the current Android app module and organize migrated UI so a later extraction remains possible:
 
 ```text
 android/CyanBridge/
-  app/                         existing Android host and Android integrations
-  shared/                      new Kotlin Multiplatform module
-    src/commonMain/
-      kotlin/.../domain/       pure models, contracts, use cases
-      kotlin/.../presentation/ state holders and event reducers
-      kotlin/.../ui/           Material 3 theme, icons, and selected screens
-      composeResources/        shared strings, SVGs, and images
-    src/commonTest/
-    src/androidMain/           Android implementations and host adapters
-    src/iosMain/               iOS implementations or native bridge hooks
-
-ios/
-  CyanBridgeApp/               new Swift/Xcode host for the shared framework
-  QCSDKDemo/                   retained protocol/reference demo
+    shared/src/commonMain/kotlin/
+    appearance/                portable settings and accent metadata
+    chat/                      immutable presentation models
+    icons/                     semantic icon identifiers
+    navigation/                typed destination identifiers
+    notes/                     transcript summary contracts and formatting
+  app/src/main/java/com/fersaiyan/cyanbridge/
+    ui/appearance/             appearance state, persistence adapter, and screen
+    ui/theme/                  Material 3 schemes and tokens
+    ui/icons/                  semantic icon registry
+    ui/<feature>/              state-driven migrated screens
+    <feature>/                 current repositories, services, and Android adapters
 ```
 
-Start with one `:shared` module. Split it only when source-set boundaries become painful. Prematurely creating many KMP modules will slow the migration.
+Do not split `:shared` into more modules merely to simulate future architecture. Move only proven platform-neutral files after establishing clean Android state/event seams and tests.
 
-### Common Code Rules
+### Portability Rules
 
-Allowed in `commonMain`:
+Preferred in portable models, reducers, and composables:
 
 - Immutable UI state and events.
 - Chat, thread, theme, device-capability, and display-command models.
 - Repository and platform-service interfaces.
 - Coroutines and Flow.
-- Serialization and HTTP client code when the selected libraries support all targets.
-- Compose Material 3 UI that has no Android imports.
+- Serialization and HTTP contracts that do not expose Android types.
+- Compose Material 3 UI without `Context`, Activities, Services, Intents, or direct preference access.
 
-Not allowed in `commonMain`:
+Keep out of portable presentation code:
 
 - `android.*`, Android `Context`, Activities, Services, Intents, or `R` references.
-- `java.io`, `java.net`, or JVM-only utility assumptions.
 - Direct `SharedPreferences` access.
 - Android BLE, Wi-Fi P2P, MediaStore, Accessibility, Tasker, Play Billing, or Meta DAT calls.
-- Direct Objective-C vendor SDK calls.
+- Global service creation, internally owned application coroutine scopes, and direct singleton mutation from composables.
 
-Prefer injected interfaces over broad `expect`/`actual` declarations. Use `expect`/`actual` only for small platform primitives such as a clock, UUID factory, filesystem path, or platform information.
+Use constructor/callback interfaces for platform actions. Decide whether any small primitives justify `expect`/`actual` only when a second native platform requires them.
 
 ### Existing Code That Is Close To Shareable
 
@@ -219,9 +263,9 @@ Prefer injected interfaces over broad `expect`/`actual` declarations. Use `expec
 
 `GlassesBridge.kt` is not yet common-ready because it imports `android.util.Log`, owns a global singleton, and creates an IO scope internally. Replace it with an injected instance, a logger interface, and an owned lifecycle before moving it.
 
-`ChatStore.kt` is not common-ready because it uses Android application state, Room entities, blocking calls, and `java.util.UUID`. Define a suspend `ChatRepository` contract and adapt the current store behind it before sharing Chat UI.
+`ChatStore.kt` remains Android-specific because it uses application state, Room entities, blocking calls, and `java.util.UUID`. A suspend `ChatRepository` contract and `ChatStoreRepository` adapter now isolate that implementation for the next chat-thread migration step.
 
-### Platform Adapters
+### Android Platform Adapters
 
 Android adapters remain responsible for:
 
@@ -233,39 +277,29 @@ Android adapters remain responsible for:
 - Play Billing, web checkout, and deep links.
 - Meta DAT and Android MemoMind transports.
 
-iOS adapters remain responsible for:
-
-- `QCSDK.framework` and CoreBluetooth.
-- `NEHotspotConfiguration` and iOS network behavior.
-- Photos and file persistence.
-- AVFoundation speech/audio behavior.
-- StoreKit.
-- Apple deep links and lifecycle integration.
-
 ## Toolchain Gate
 
 Current main uses Kotlin 1.9.24. The old branch moved to Kotlin 2.0.0 and old Compose/Navigation pins. Do not reuse those pins.
 
-Before screen work:
+Before a future toolchain upgrade:
 
-1. Select one mutually compatible stable set of Kotlin, Compose Multiplatform, Compose compiler, AGP, KSP, coroutines, serialization, navigation, and database versions.
+1. Select one mutually compatible stable set of Kotlin, Compose compiler/plugin, AGP, KAPT or KSP, coroutines, navigation, and database versions.
 2. Record the versions in `libs.versions.toml` and add a short compatibility note to this document.
 3. Upgrade current main without changing the launcher Activity or production UI.
 4. Run Android unit tests and `assembleDebug` after each toolchain step.
-5. Build `commonMain` metadata on Linux.
-6. Build and link the iOS framework on macOS with a supported Xcode version.
-
-Linux cannot complete an iOS application build. A Mac development machine or macOS CI runner is a hard requirement for iOS linking, simulator/device tests, signing, and App Store delivery.
+5. Verify the forked vendor integration and all local inference runtime variants used by development builds.
 
 ## Migration Phases
 
 ### Phase 0: Preserve And Inventory
 
+Status: in progress. Manifest and UI inventory is recorded below; physical baseline captures remain pending.
+
 Tasks:
 
-- Archive old branch tips and start the new branch from current main.
+- Preserve old branch tips and make migration changes only from current main behavior.
 - Generate a current feature-parity checklist from Activities, manifest entries, layouts, services, receivers, and deep links.
-- Mark every feature as shared UI, Android-only UI, shared domain candidate, or platform adapter.
+- Mark every feature as Compose, hybrid, legacy, Android platform, or deferred.
 - Capture Android baseline screenshots and manual flows before changing UI.
 - Keep `/backups/compose_material3_port/` as reference only; compare every restored file against current main before use.
 
@@ -274,24 +308,30 @@ Exit criteria:
 - No current main feature is missing from the parity checklist.
 - Baseline `testDebugUnitTest` and `assembleDebug` pass.
 
-### Phase 1: Toolchain And Empty KMP Shell
+### Phase 1: Android Compose And KMP Foundation
+
+Status: complete for the initial Android production slice and narrow common model layer. Native iOS targets are outside this phase.
 
 Tasks:
 
-- Add the `:shared` KMP module with `commonMain`, `commonTest`, `androidMain`, and iOS targets.
-- Add a minimal shared `AppTheme` and a static `Hello` screen.
-- Render that screen inside a non-launcher Android test Activity.
-- Render it from a new iOS Swift host through a Compose view controller.
-- Ensure the new Xcode project and shared-framework integration files are actually tracked despite the repository's existing iOS ignore patterns.
-- Add common tests and Android/iOS smoke builds.
+- Enable Compose in the existing Android `:app` module.
+- Add Material 3, tooling, and Compose test dependencies without changing production routing.
+- Add a minimal Android `CyanBridgeTheme` and render a low-risk production screen.
+- Add one `:shared` KMP module with Android and host-JVM portability targets.
+- Move appearance, semantic icon, typed destination, and chat-history presentation identifiers into `commonMain`.
+- Keep shared Compose UI deferred. Native iOS targets are opt-in under Phase 6 and require a Mac/Xcode link before they are treated as usable.
 
 Exit criteria:
 
-- Existing Android launcher behavior is unchanged.
-- Android can render shared Compose UI.
-- iOS simulator or device can launch the shared test screen on a Mac.
+- Existing Android launcher and onboarding routing behavior is unchanged.
+- Android renders Compose Material 3 UI in production Activities.
+- Common models compile for Android and the host-JVM portability target.
+- Common tests pass independently of Android framework state.
+- Baseline unit tests and debug assembly pass.
 
-### Phase 2: Shared Design System
+### Phase 2: Material 3 Design System
+
+Status: implemented for initial tokens, curated themes, persistence, dynamic color, high contrast, and semantic icons. Physical accessibility review remains pending.
 
 Tasks:
 
@@ -300,40 +340,43 @@ Tasks:
 - Add stable accent IDs such as Cyan, Rose, Mint, Lavender, Peach, and Sky.
 - Use complete reviewed light and dark color schemes for each profile.
 - Add Android dynamic color as an optional Android-only profile, not the global default.
-- Persist theme settings through a shared repository, backed by a KMP-capable store or small platform implementations.
-- Build a shared icon registry and shared resources.
+- Persist theme settings through `AppearancePreferences`; composables receive state and events rather than reading preferences directly.
+- Build a semantic icon registry. Add custom Compose vectors only where no semantically correct Material icon exists.
 
 Exit criteria:
 
-- Theme changes update immediately on Android and iOS.
+- Theme changes update immediately on migrated Android screens.
 - Selection survives process restart.
 - Every text/background pair meets the agreed contrast threshold.
-- No common UI imports Android `R` or `vectorResource`.
+- Migrated Compose UI does not import Android `R` or `vectorResource` for controls.
 
 ### Phase 3: Navigation Shell And Chat Vertical Slice
 
+Status: chat history, chat thread, and composer now use Material 3 Compose. The chat Activity retains current Android-only inference, attachment, permissions, and daily-review behavior behind callbacks. Automated Compose smoke coverage exists; physical keyboard/inset acceptance remains pending.
+
 Tasks:
 
-- Introduce typed routes and a shared shell for the routes available on both platforms.
-- Keep platform-only routes behind capability checks.
-- Port Chat and History against new presentation contracts connected to current main logic.
+- Introduce typed destinations for the Material 3 shell while legacy Activities remain the actual route hosts.
+- Port History first against current main logic.
+- Drive the existing chat thread through the new `ChatRepository` boundary, then port the thread and composer as one layout owner. Completed with `ChatStoreRepository` reads/writes at the presentation boundary.
 - Keep legacy Android Activities available for unported destinations.
 - Implement the composer using one explicit inset owner and no fixed bottom offset.
-- Add Android and iOS keyboard tests before adding more screens.
+- Add Android keyboard/inset tests before treating the Compose chat thread as fully accepted on physical devices.
 
 Exit criteria:
 
 - Chat send, response, history, new thread, model choice, errors, and daily-review entrypoints retain current behavior on Android.
 - Composer remains visible with gesture navigation, three-button navigation, keyboard open/closed, landscape, split screen, and 200 percent font scaling.
-- iOS composer remains above the keyboard and home indicator.
 
 ### Phase 4: Appearance And Settings
+
+Status: Appearance and the full Settings surface are implemented in Material 3 Compose. Android-owned intents, services, encrypted preferences, and dialogs remain Activity-owned effects.
 
 Tasks:
 
 - Port Appearance first, then settings sections one at a time.
 - Drive all settings from state and events; do not access Android preferences directly from composables.
-- Keep Android-only settings visible only on Android and explain unavailable features on iOS where useful.
+- Keep Android-only settings clearly labeled and backed by Android platform actions.
 - Add reset-to-default, live preview, selected-state labels, and high-contrast-safe choices.
 - Preserve current remote model, Studio Bridge, local-agent, privacy, transcription, media, and subscription settings.
 
@@ -345,7 +388,9 @@ Exit criteria:
 
 ### Phase 5: Port Remaining Screens Incrementally
 
-Recommended order:
+Status: complete for Android Activity root surfaces. XML layouts remain only as hidden compatibility adapters or rollback references where mature Android handlers still reference views; they are not the production view tree.
+
+Completed migration order:
 
 1. Notes.
 2. Recordings and synced-media list.
@@ -363,21 +408,25 @@ Rules:
 - Do not delete an Activity until its Compose replacement has parity tests and deep-link coverage.
 - Android-only operations stay in injected platform services.
 
-### Phase 6: iOS HeyCyan Adapter
+### Phase 6: iOS Foundation And Decision
 
-Tasks:
+Status: deferred while Android Material 3 migration and physical-device validation are the active priority. The KMP framework targets and an Xcode smoke host are configured, but no native binary, vendor API, or device flow has been validated.
 
-- Wrap `QCCentralManager`, `QCSDKManager`, and `QCSDKCmdCreator` behind the shared device contracts.
-- Convert delegate callbacks into `StateFlow` and `Flow` through a lifecycle-owned adapter.
-- Wrap `GlassesMediaDownloader` behind a shared media-sync contract.
-- Add iOS permission and error mapping.
-- Verify real-device scanning, connection, command, reconnect, and media transfer.
+Completed foundation:
 
-Exit criteria:
+- Add opt-in `iosX64`, `iosArm64`, and `iosSimulatorArm64` targets that package `CyanBridgeShared.framework`.
+- Route Kotlin/Native compiler distribution through Maven Central without weakening settings-owned repositories.
+- Configure the tracked Xcode project to build and link the shared framework before Swift compilation.
+- Add a simulator-capable SwiftUI host that invokes the framework without wrapping or invoking the vendor SDK.
+- Add explicit Bluetooth, local-network, microphone, and photo-library usage strings; redact hotspot passwords from demo logs.
 
-- A physical iPhone can connect to the glasses and perform the agreed iOS MVP commands.
-- Media transfer uses the BLE-reported device IP and existing iOS hotspot flow.
-- Disconnects and denied permissions produce recoverable UI states.
+Remaining tasks:
+
+- Prove or disprove that the vendor framework links with current Xcode and works on a physical device.
+- Compare vendor-wrapper, Kotlin-protocol, and hybrid options using recorded packets and repeatable hardware tests.
+- Record licensing, architecture-slice, hotspot, background Bluetooth, media, and StoreKit constraints.
+- Select an approach explicitly before adding a production iOS transport adapter or feature UI.
+- Build the host on a Mac for arm64 device and simulator architectures, then run the full permission, hotspot, HTTP media, safe-area, keyboard, and Bluetooth acceptance matrix.
 
 ### Phase 7: Cutover And Cleanup
 
@@ -385,14 +434,13 @@ Tasks:
 
 - Make the Material 3 host the Android launcher only after parity acceptance.
 - Remove XML layouts and legacy Activities only when no manifest, deep link, service, or test references them.
-- Replace temporary adapters with shared contracts.
+- Replace temporary adapters with stable presentation/platform contracts.
 - Add release builds, obfuscation checks, crash reporting policy, and migration notes.
-- Keep Android and iOS feature matrices in the repository.
+- Keep the Android feature matrix current; add and maintain a separate iOS matrix once a production transport path begins.
 
 Exit criteria:
 
 - Android production build passes and physical-device core flows pass.
-- iOS archive builds on macOS and physical-device MVP flows pass.
 - No known navigation, keyboard, icon, contrast, or secret-storage blocker remains.
 
 ## Required Fix Designs
@@ -407,7 +455,7 @@ Use these rules instead of another padding tweak:
 - Apply scaffold padding once and call `consumeWindowInsets` when passing it to nested content.
 - Prefer hiding app bottom navigation while the IME is visible if keeping it produces two stacked controls.
 - Put the composer in the chat scaffold's `bottomBar`, not at the end of an arbitrarily padded Column.
-- Use platform safe-area insets on iOS and WindowInsets APIs on Android.
+- Use Android `WindowInsets` APIs; add platform safe-area rules only if iOS work resumes.
 
 Required test matrix:
 
@@ -418,8 +466,8 @@ Required test matrix:
 | Android three-button navigation | No overlap or double bottom gap |
 | Android landscape and split screen | Composer and send action remain reachable |
 | Android 200 percent font scale | Input can grow without hiding send action |
-| iPhone with home indicator | Composer clears safe area |
-| iPhone keyboard open | Composer follows keyboard without fixed offsets |
+
+iOS safe-area and keyboard cases will be added if iOS implementation resumes.
 
 ### Icons
 
@@ -444,8 +492,8 @@ enum class AppIcon {
 
 Implementation rules:
 
-- Store custom icons in Compose Multiplatform resources and load them with the shared resource API.
-- Use a Material icon only when its meaning is exact and available on all targets.
+- Store custom icons as Compose-compatible vectors when Material has no exact semantic match.
+- Use a Material icon only when its meaning is exact.
 - Do not use Home for Chat, List for audio, Star for arbitrary AI actions, or emoji as control icons.
 - Decorative icons have null descriptions; actionable icons have localized descriptions.
 - Icon-only controls must have at least a 48 dp touch target.
@@ -478,35 +526,43 @@ Rules:
 
 Every route must be recorded in a maintained table during implementation.
 
-Use these statuses:
+Use these Android migration statuses:
 
-- `shared`: common presentation and UI.
-- `shared-ui/platform-action`: shared UI with injected platform operation.
-- `android-only`: no iOS equivalent in current scope.
-- `ios-native`: native iOS implementation behind a shared contract.
-- `deferred`: intentionally absent from MVP.
+- `compose`: production Material 3 screen.
+- `hybrid`: Compose entry/shell with a legacy Android action or destination.
+- `legacy`: current XML/View Activity retained.
+- `android-platform`: Android service, receiver, deep link, or hardware adapter.
+- `deferred`: intentionally outside the Android MVP.
 
-Initial classification:
+Current route and capability inventory:
 
-| Feature | Initial status |
-|---|---|
-| Theme and appearance | shared |
-| Chat and history | shared after repository extraction |
-| Notes | shared after repository extraction |
-| Glasses capability/status UI | shared-ui/platform-action |
-| HeyCyan BLE | Android adapter plus ios-native adapter |
-| Media list UI | shared-ui/platform-action |
-| Android Wi-Fi Direct transfer | android-only |
-| iOS hotspot transfer | ios-native |
-| Local agent Accessibility control | android-only |
-| Tasker | android-only |
-| Notifications | shared policy with platform adapters |
-| Subscription/account UI | shared-ui/platform-action |
-| Play Billing | android-only |
-| StoreKit | ios-native |
-| Meta DAT | android-only for MVP |
-| MemoMind | Android experimental; iOS deferred |
-| Local model engines | platform-specific and deferred on iOS |
+| Feature or entry point | Status | Migration note |
+|---|---|---|
+| `WelcomeActivity` | compose | Preserves onboarding-complete bypass and setup route |
+| Battery optimization guide | compose | Material 3 guide; Android settings intents remain Activity-owned |
+| Feature onboarding | compose | Material 3 disclosure and preference controls; Android accessibility intent remains Activity-owned |
+| `MainActivity` glasses dashboard | compose | Material 3 dashboard; existing BLE, Wi-Fi Direct, capture, and media handlers remain Activity-owned through a compatibility adapter |
+| Device binding | compose | Material 3 scan/pairing screen; Android Bluetooth scanner remains Activity-owned |
+| Chat history | compose | Shared immutable summary state; current `ChatStore`, daily review, local-model gating, and appearance retained |
+| Chat thread and composer | compose | One Material 3 scaffold owns content, composer, IME, and conditional app navigation; Android inference/media callbacks remain Activity-owned |
+| Appearance | compose | Persisted modes, curated accents, dynamic color, high contrast, reset, preview |
+| Settings | compose | Compose sections preserve automation, privacy, vault, data, support, agent, and Android permission/service operations |
+| Recordings and synced media | compose | Compose list and gallery preserve playback, transcription, active-recording visibility, MediaStore queries, and external viewer actions |
+| Community and publish plugins | compose | Compose browser and publishing form preserve server refresh, Tasker setup, form validation, and submission behavior |
+| Notes list and detail | compose | Material 3 list, transcript note creation, copy, and share; Room repository remains Activity-owned |
+| Pro subscription and callback | hybrid | Material 3 subscription and settings screens with existing billing/checkout handlers retained behind adapters; callback remains android-platform |
+| Local models configuration | compose | Material 3 configuration screen; runtime, download, storage, encrypted credentials, and Studio Bridge behavior remain Activity-owned through typed presentation actions |
+| Local-agent screens | compose | Material 3 facts, summaries, capture history, pending-action approval, and blacklist tools; accessibility and storage behavior remain Activity-owned |
+| Transcription debug | compose | Material 3 developer surface; transcription pipeline remains Activity-owned |
+| EvenHub runtime | hybrid | Material 3 host with an AndroidView WebView interoperability boundary |
+| `cyanbridge://` callback | android-platform | Handled by `MainActivity` |
+| `fersaiyan://pro-sub/callback` | android-platform | Handled by subscription callback Activity |
+| Meeting, local-agent, auto-audio, Studio Bridge services | android-platform | Do not move into composables |
+| Notification listener and daily reminder receiver | android-platform | Preserve manifest and permission behavior |
+| HeyCyan BLE and Wi-Fi Direct transfer | android-platform | Forked/current Android implementation remains authoritative |
+| Meta DAT and MemoMind transports | android-platform | Capability-gated Android integrations |
+| iOS KMP framework host | deferred | Swift smoke host is wired; defer Mac/Xcode link and launch until Android MVP validation |
+| iOS application transport | deferred | Await vendor-wrapper, Kotlin-protocol, or hybrid decision after device tests |
 
 ## Verification Gates
 
@@ -514,17 +570,18 @@ Run on every migration phase:
 
 ```bash
 JAVA_HOME=/opt/android-studio/jbr ./gradlew testDebugUnitTest assembleDebug
+JAVA_HOME=/opt/android-studio/jbr ./gradlew :shared:portabilityTest
+JAVA_HOME=/opt/android-studio/jbr ./gradlew :app:lintDebug
+JAVA_HOME=/opt/android-studio/jbr ./gradlew :app:connectedDebugAndroidTest
 ```
 
-Add as the KMP module appears:
+Add as screens migrate:
 
-- Common unit tests for reducers, repositories, theme selection, and capability gating.
+- Unit tests for reducers, repositories, theme selection, contrast, persistence, and capability gating.
 - Compose UI tests for navigation, Chat composer placement, settings state, and content descriptions.
 - Screenshot/golden tests for each theme and accent on representative phone sizes.
 - Android instrumented tests for IME and system insets.
-- iOS simulator UI tests for shared screens.
-- Physical Android and iPhone tests for BLE and media transfer.
-- macOS CI for iOS framework linking and Xcode archive smoke checks.
+- Physical Android tests for BLE and media transfer after any host-screen migration.
 
 ## Future Agent Start Checklist
 
@@ -536,15 +593,15 @@ Before writing migration code:
 4. Read the current main Activity, layout, ViewModel/service, manifest entries, and tests for that feature.
 5. Update the parity matrix before deleting or replacing anything.
 6. Keep old branches and `/backups/compose_material3_port/` read-only unless a file is deliberately restored and reconciled.
-7. Make the smallest vertical slice build on Android before adding iOS code.
+7. Make the smallest vertical slice build on Android; iOS work may add only framework-host and platform-contract groundwork until its vendor transport decision gate is resolved.
 8. Do not mark a phase complete from compilation alone; run the manual and UI acceptance cases.
 
 ## Explicit Non-Goals
 
 - No big-bang deletion of XML and Activities.
 - No wholesale cherry-pick of the old Compose commits.
-- No attempt to share Android framework APIs through KMP.
-- No promise of identical feature availability on Android and iOS.
+- No production iOS vendor transport, billing, or parity claim before the iOS decision gate and physical-device validation.
+- No attempt to hide Android framework APIs behind premature portability abstractions.
 - No fixed pixel/dp workaround for system insets.
 - No arbitrary accent generation without contrast validation.
 - No icon placeholders chosen only because they compile.
@@ -556,9 +613,6 @@ The migration MVP is complete when:
 - Current Android production behavior remains available.
 - The Android launcher uses the modern shell for the selected MVP screens.
 - Chat input is reachable across the required keyboard and navigation test matrix.
-- Semantic icons are consistent and shared-resource compatible.
+- Semantic icons are consistent and Compose-resource compatible.
 - Theme mode and accent profiles are persistent, accessible, and contrast-tested.
-- A new iOS host launches shared UI on a Mac-built artifact.
-- A physical iPhone connects to HeyCyan glasses through the native iOS adapter.
-- The iOS app can perform the agreed basic commands and media transfer.
 - Platform-only features are clearly gated rather than crashing or silently disappearing.

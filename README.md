@@ -1,253 +1,121 @@
-# HeyCyan Glasses SDK
+# Alternative HeyCyan App and SDK
 
-Comprehensive SDKs for controlling HeyCyan smart glasses via Bluetooth Low Energy (BLE).
+This repository is the source workspace for CyanBridge's Android companion,
+HeyCyan vendor integration, and smart-glasses interoperability research.
 
-## Platform Support
+It is not a finished, drop-in SDK for every pair of glasses. The active product
+path is the Android app in [`android/CyanBridge`](android/CyanBridge). The rest
+of the repository includes vendor references, reusable modules, prototypes, and
+research needed to support more devices without hiding their limitations.
 
-- **iOS**: Full SDK available with demo application (see `ios/` directory)
-- **Android**: Full SDK available with demo application (see `android/` directory)
-- **Gemini/ChatGPT assistants**: Supported on **Android only** (via the Android sample app + Tasker automation)
+## Start here
 
-## Overview
+| If you want to... | Start with... |
+| --- | --- |
+| Build or use the Android companion | [`android/CyanBridge/README.md`](android/CyanBridge/README.md) |
+| Connect and sync media from HeyCyan glasses | [`android/AGENTS.md`](android/AGENTS.md) |
+| Work on shared Android modules | [`heycyan-core/README.md`](heycyan-core/README.md) |
+| Build the iOS shell or inspect the vendor demo | [`ios/README.md`](ios/README.md) |
+| Investigate MemoMind/XGIMI protocol support | [`BRIDGE_RESEARCH_NOTES.md`](BRIDGE_RESEARCH_NOTES.md) |
 
-This repository provides SDKs for developers to integrate HeyCyan smart glasses functionality into their applications. The glasses support photo capture, video recording, audio recording, and AI-powered image generation.
+## What CyanBridge does today
 
-## AI Assistants (Android Only)
+### Android companion
 
-The Android sample app includes an optional integration to route assistant requests (e.g. Gemini or ChatGPT workflows) through Android automation.
+The Android app is the most complete part of this repository. It currently
+includes:
 
-- **Android-only**: Gemini/ChatGPT assistant workflows are only supported on Android.
-- **Image queries require Tasker**: For image queries specifically, the app forwards the request to **Tasker** (paid automation app). You must have Tasker installed and the provided Tasker profile enabled.
-- **AutoInput required**: The Tasker automation relies on **Tasker AutoInput** (paid Tasker plugin) to drive the assistant UI.
+- HeyCyan device scanning, pairing, connection management, and device state.
+- Media sync from compatible HeyCyan glasses: BLE starts transfer mode, Wi-Fi
+  Direct carries the files, and photos, videos, and supported recordings are
+  saved to Android media storage.
+- Local chat history, configurable local-model runtimes, and optional
+  OpenAI-compatible remote inference.
+- Meeting capture, transcription and summarization plumbing, notes, privacy
+  settings, data backup/export, and local-data cleanup controls.
+- A CyanBridge Model Studio bridge that can announce Studio session events and
+  handle its internal approval requests through TTS, speech recognition, and a
+  fail-closed allow/deny response.
 
-### Install The Tasker Profile (.xml)
+The app must be tested with real glasses before a device-specific feature is
+considered reliable.
 
-The Tasker profile will be provided in two places: this repo and TaskerNet.
+### Device and platform status
 
-Option A: Import from TaskerNet (recommended)
+| Area | Current status | Notes |
+| --- | --- | --- |
+| HeyCyan Android path | Active | BLE connection and the BLE plus Wi-Fi Direct media-transfer flow are the primary supported path. |
+| HeyCyan vendor controls | Device-dependent | The bundled vendor AAR exposes camera, recording, device-info, and media commands. Validate each command on physical hardware. |
+| CyanBridge local and remote chat | Included | The app contains local runtime support and an OpenAI-compatible remote-server option. Model availability depends on the phone and configuration. |
+| CyanBridge Model Studio bridge | Experimental | Relays Studio events and approval requests over an authenticated WebSocket. It is not a substitute for reviewing desktop work. |
+| MemoMind/XGIMI | Experimental research | RFCOMM framing, device info, battery, cards, notifications, and selected settings are mapped. The adapter still needs sustained physical-device validation. |
+| Meta Ray-Ban | Partial setup only | Optional registration plumbing exists when the Meta DAT SDK is available. Sessions, camera streaming, photo capture, and display rendering are explicitly not implemented. |
+| Even/Mentra runtimes | Prototype | Adapter and runtime experiments are present, not a supported consumer device path. |
+| iOS | Foundation and vendor reference | A simulator-targeted KMP host is scaffolded but unverified without macOS/Xcode; the vendor QCSDK path requires a physical device and still needs hardware validation. |
 
-1. Install Tasker from Google Play.
-2. Open this TaskerNet link on your phone and import the profile:
-   - `https://taskernet.com/shares/?user=AS35m8m%2BZfcOI%2FAn4TYXwIRGXRuXzE9zXexYgafojsO%2FQSXgVbu8nOiYo%2BLhLj1izKWhtzdxI6eOvMI%3D&id=Profile%3ATasker+AI`
-3. In Tasker, ensure the imported profile is **enabled**.
+## Build the Android app
 
-Option B: Import the .xml from this repository
+Use Android Studio's bundled JDK or another Java 17+ JDK:
 
-1. Download the profile XML to your phone:
-   - `android/CyanBridge/tasker/Tasker_AI.xml`
-2. In Tasker, use the import feature (commonly: Menu > Data > Import) and select the downloaded `.xml`.
-3. Ensure the imported profile is **enabled**.
-
-## Features
-
-### Device Management
-- **Bluetooth LE Scanning**: Discover nearby HeyCyan glasses
-- **Connection Management**: Connect/disconnect and manage device state
-- **Device Information**: Retrieve hardware/firmware versions and MAC address
-
-### Media Controls
-- **Photo Capture**: Remote shutter control for taking photos
-- **Video Recording**: Start/stop video recording with status tracking
-- **Audio Recording**: Start/stop audio recording with status tracking
-- **AI Image Generation**: Trigger AI-powered image creation and receive generated images
-
-### Device Monitoring
-- **Battery Status**: Real-time battery level and charging state
-- **Media Counts**: Track number of photos, videos, and audio files on device
-- **Time Synchronization**: Set device time to match iOS device
-
-
-## Requirements
-
-### iOS
-
-- iOS 11.0+
-- Xcode 12.0+
-- Swift 5.0+ or Objective-C
-- Physical iOS device (Bluetooth not supported in simulator)
-
-### Android
-
-- Android Studio (latest stable recommended)
-- Android device with BLE
-
-## Installation
-
-### iOS
-
-1. Clone or download this repository
-2. Open `QCSDKDemo.xcodeproj` in Xcode
-3. Build and run on a physical iOS device
-
-### Android
-
-1. Clone or download this repository
-2. Open `android/` in Android Studio
-3. Build and run the sample app (see `android/CyanBridge/`)
-
-## Usage
-
-### Basic Implementation
-
-1. **Import the SDK**
-```objc
-#import <QCSDK/QCSDK.h>
+```bash
+cd android/CyanBridge
+JAVA_HOME=/opt/android-studio/jbr ./gradlew assembleDebug
 ```
 
-2. **Initialize SDK Manager**
-```objc
-[QCSDKManager shareInstance].delegate = self;
+Run unit tests with:
+
+```bash
+JAVA_HOME=/opt/android-studio/jbr ./gradlew testDebugUnitTest
 ```
 
-3. **Scan for Devices**
-```objc
-[[QCCentralManager shared] scan];
-```
+For device integration, use a physical Android phone with Bluetooth and the
+required nearby-device, microphone, notification, and Wi-Fi permissions. The
+Android emulator cannot validate glasses pairing or media transfer.
 
-4. **Connect to Device**
-```objc
-[[QCCentralManager shared] connect:peripheral];
-```
+## How HeyCyan media sync works
 
-5. **Control Device**
-```objc
-// Take a photo
-[QCSDKCmdCreator setDeviceMode:QCOperatorDeviceModePhoto 
-                       success:^{ NSLog(@"Photo taken"); } 
-                          fail:^(NSInteger mode) { NSLog(@"Failed"); }];
+The supported transfer path is intentionally simple:
 
-// Get battery status
-[QCSDKCmdCreator getDeviceBattery:^(NSInteger battery, BOOL charging) {
-    NSLog(@"Battery: %ld%%, Charging: %@", battery, charging ? @"YES" : @"NO");
-} fail:^{ NSLog(@"Failed to get battery"); }];
-```
+1. Connect to the glasses over BLE.
+2. Ask the glasses to enter transfer mode and report their Wi-Fi address.
+3. Join the Wi-Fi Direct network.
+4. Read `http://<glasses-ip>/files/media.config`.
+5. Download each listed file from `http://<glasses-ip>/files/<filename>`.
+6. Store photos, videos, and compatible audio in Android media storage.
 
-## API Reference
+See [`android/AGENTS.md`](android/AGENTS.md) for the confirmed command sequence,
+network-routing requirements, and audio-format caveats. Do not substitute the
+phone's Wi-Fi Direct group-owner address for the glasses address.
 
-### QCSDKManager
-- Singleton instance for SDK management
-- Handles device data updates via delegate callbacks
+## Repository map
 
-### QCSDKCmdCreator
-Key methods:
-- `getDeviceVersionInfo` - Get hardware/firmware versions
-- `getDeviceMacAddress` - Get device MAC address
-- `setupDeviceDateTime` - Sync device time
-- `getDeviceBattery` - Get battery level and charging status
-- `getDeviceMedia` - Get media file counts
-- `setDeviceMode` - Control device operations (photo/video/audio)
+| Path | Purpose |
+| --- | --- |
+| `android/CyanBridge/` | CyanBridge Android app and the primary development target. |
+| `android/glasses_sdk_20250723_v01.aar` | Vendor Android SDK artifact used by the HeyCyan path. |
+| `android/HeyCyanOfficialApp/` | Decompiled vendor app used as protocol reference. |
+| `heycyan-core/` | Shared Android modules for BLE, connectivity, data, audio, and API boundaries. |
+| `ios/CyanBridgeKMPHost/` | Simulator-capable SwiftUI host for the shared KMP framework. |
+| `ios/QCSDKDemo/` | Vendor iOS demo and device-only protocol reference. |
+| `BRIDGE_RESEARCH_NOTES.md` | Detailed MemoMind/XGIMI transport and protocol findings. |
+| `WIFI_TRANSFER_ARCHITECTURE.md` | Historical technical background for the HeyCyan transfer design. |
 
-### Device Modes
-- `QCOperatorDeviceModePhoto` - Take photo
-- `QCOperatorDeviceModeVideo` - Start video recording
-- `QCOperatorDeviceModeVideoStop` - Stop video recording
-- `QCOperatorDeviceModeAudio` - Start audio recording
-- `QCOperatorDeviceModeAudioStop` - Stop audio recording
-- `QCOperatorDeviceModeAIPhoto` - Generate AI image
+## Privacy and safety
 
-## Demo App
+- Keep pairing, recording, transfer, and notification permissions explicit.
+- Review the app's privacy settings before enabling capture, transcription, or
+  desktop approval bridging.
+- The HeyCyan transfer server uses local HTTP over the direct device network;
+  do not expose it to an untrusted network.
+- Do not send unknown protocol commands or OTA payloads to personal hardware.
+- Treat experimental device adapters as research until they have repeatable,
+  documented hardware tests.
 
-The included demo application demonstrates all SDK features:
+## Vendor material and licensing
 
-1. **Search Screen**: Scan and list available devices
-2. **Feature Screen**: Control connected device with options for:
-   - Version information retrieval
-   - Time synchronization
-   - Battery status monitoring
-   - Media count tracking
-   - Photo/video/audio capture
-   - AI image generation
-
-## Permissions
-
-Add to your app's `Info.plist`:
-```xml
-<key>NSBluetoothAlwaysUsageDescription</key>
-<string>This app needs Bluetooth to connect to HeyCyan glasses</string>
-<key>NSBluetoothPeripheralUsageDescription</key>
-<string>This app needs Bluetooth to communicate with HeyCyan glasses</string>
-```
-
-## Proprietary Protocol Information
-
-This SDK encapsulates the proprietary BLE communication protocol for HeyCyan glasses. Without this SDK, developers would need to reverse-engineer the following:
-
-### BLE Service & Characteristic UUIDs (Found in Binary)
-- **Primary Service UUID**: `7905FFF0-B5CE-4E99-A40F-4B1E122D00D0`
-- **Secondary Service UUID**: `6e40fff0-b5a3-f393-e0a9-e50e24dcca9e`
-- **QCSDKSERVERUUID1**: Internal service identifier
-- **QCSDKSERVERUUID2**: Internal service identifier
-- **Command Characteristic**: Write characteristic for device commands
-- **Notification Characteristic**: For receiving device responses and status updates
-- **Data Transfer Characteristic**: For large data transfers (AI images)
-
-### Command Protocol Structure
-Each command follows a specific byte format:
-- **Header**: Command identifier bytes
-- **Payload**: Command-specific data
-- **Checksum**: Validation bytes
-- **Acknowledgment**: Required response format
-
-### Key Command Sequences (Examples)
-- **Take Photo**: `QCOperatorDeviceModePhoto` command with specific byte encoding
-- **Battery Status**: Request/response with battery level (0-100) and charging flag
-- **AI Image Transfer**: `QCOperatorDeviceModeAIPhoto` triggers multi-packet protocol
-- **Version Info**: Returns hardware version, firmware version, WiFi hardware/firmware versions
-- **Media Counts**: Returns photo count, video count, audio count as integers
-- **Video Control**: `QCOperatorDeviceModeVideo` / `QCOperatorDeviceModeVideoStop`
-- **Audio Control**: `QCOperatorDeviceModeAudio` / `QCOperatorDeviceModeAudioStop`
-
-### Authentication & Handshake
-- Initial pairing sequence
-- Session establishment protocol
-- Keep-alive requirements
-- Disconnection handling
-
-### Data Encoding Formats
-- **Battery Level**: NSInteger (0-100) with BOOL charging flag
-- **Media Counts**: NSInteger values for photo, video, audio counts
-- **Timestamp Format**: Uses iOS device time via `setupDeviceDateTime`
-- **Image Data**: NSData chunks received via `didReceiveAIChatImageData` delegate
-- **MAC Address**: String format returned by `getDeviceMacAddress`
-- **Version Strings**: Multiple version fields (hardware, firmware, WiFi versions)
-
-### State Management
-- **Connection States**: `QCStateUnbind`, `QCStateConnecting`, `QCStateConnected`, `QCStateDisconnecting`, `QCStateDisconnected`
-- **Bluetooth States**: Via `QCBluetoothState` enum
-- **Recording States**: Tracked via `recordingVideo` and `recordingAudio` flags
-- **Mode Restrictions**: Cannot record video and audio simultaneously
-- **Delegate Callbacks**: `QCSDKManagerDelegate` for battery, media updates, AI image data
-- **Error Handling**: Fail blocks return current device mode on mode switch failures
-
-Without this SDK, implementing device communication would require:
-1. BLE packet sniffing during device operations
-2. Reverse-engineering command structures through trial and error
-3. Implementing proper error handling for undocumented states
-4. Managing complex multi-packet data transfers
-5. Handling device-specific quirks and timing requirements
-
-## Troubleshooting
-
-- **Cannot find devices**: Ensure Bluetooth is enabled and glasses are in pairing mode
-- **Connection fails**: Check if glasses are already connected to another device
-- **Commands fail**: Ensure device is connected and not in use by another operation
-
-## License
-
-This SDK is proprietary software. Contact HeyCyan for licensing information.
-
-## Branches
-
-- **`main`** - Current development branch with improvements and modifications
-- **`manufacturer-original`** - Preserved original SDK from manufacturer (unmodified baseline)
-
-## Additional Documentation
-
-For more detailed technical information, see our GitHub issues:
-
-- **[Issue #1: Convert Objective-C SDK to Swift Library](https://github.com/ebowwa/HeyCyanGlassesSDK/issues/1)** - Comprehensive guide for creating a modern Swift wrapper with async/await, Combine, and SwiftUI support
-- **[Issue #2: Complete Device I/O Documentation](https://github.com/ebowwa/HeyCyanGlassesSDK/issues/2)** - Exhaustive documentation of every input/output operation with exact code examples and expected responses
-
-## Support
-
-For technical support or questions about the SDK, please contact the HeyCyan development team.
+The bundled `.aar`, `QCSDK.framework`, decompiled vendor apps, firmware files,
+and protocol notes are not a promise that their underlying vendor components are
+open source or redistributable. Review the relevant vendor terms and applicable
+law before distributing, modifying, or using them outside personal research and
+development. This repository does not currently provide a single project-wide
+license for all included material.

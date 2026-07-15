@@ -35,3 +35,81 @@ The `CyanBridge` directory contains a complete Android application demonstrating
 ## Support
 
 For technical support or questions about the Android SDK, please see our GitHub issues or contact the HeyCyan development team.
+
+## OTA Firmware Acquisition
+
+### How the app gets firmware updates
+
+The HeyCyan app queries the `last-ota` API to check for firmware updates:
+
+```
+POST https://www.qlifesnap.com/glasses/app-update/last-ota
+Content-Type: application/json
+token: <auth-token>
+```
+
+Request body includes `appId`, `uid`, `hardwareVersion`, `romVersion`, `os`, `mac`, `country`, `dev`.
+
+### Capturing OTA URLs with Frida
+
+The Frida scripts in `HeyCyanOfficialApp/frida/` can intercept the app's OTA flow:
+
+1. **`heycyan_ota_intercept.js`** — full intercept: captures token, API parameters, download URLs, blocks DFU
+2. **`heycyan_ota_api_trace.js`** — lightweight: logs API parameters only
+3. **`heycyan_official_ota_trace.js`** — BLE/DFU protocol tracer
+
+See `HeyCyanOfficialApp/FRIDA_OTA_INTERCEPT_GUIDE.md` for the full guide.
+
+### Known Working Token (Guest Account)
+
+```
+token: 15ef6eb5403406c1da0dc4a4defa2ea1
+```
+
+This is a guest/anonymous account. It may expire. Re-run the Frida script to capture a fresh one.
+
+### Querying for firmware
+
+```bash
+# BT firmware (.bin) — returns encrypted container for JieLi processor
+python3 scripts/probe_last_ota.py \
+  --token '15ef6eb5403406c1da0dc4a4defa2ea1' \
+  --hardware-version AM01G1_V9.2 \
+  --rom-version AM01G1_9.20.00_2510111600
+
+# Wi-Fi firmware (.swu) — returns cpio archive for V821 processor
+python3 scripts/probe_last_ota.py \
+  --token '15ef6eb5403406c1da0dc4a4defa2ea1' \
+  --hardware-version WIFIAM01G1_V9.2 \
+  --rom-version WIFIAM01G1_9.2_1.00.00_2501010000
+```
+
+### API Response Codes
+
+| retCode | Meaning |
+|---------|---------|
+| 0 | Update available (response includes `data.downloadUrl`) |
+| 401 | Token expired or not logged in |
+| 60001 | No upgraded version (already on latest) |
+
+### OTA Delivery Lanes
+
+| Lane | URL pattern | Auth | Format | Target SoC |
+|------|------------|------|--------|------------|
+| `.bin` CDN | `api2.qcwxkjvip.com/download/ota/...` | **None** | Encrypted container | JieLi (BT) |
+| `.swu` (factory) | `qcwxfactory.oss-cn-beijing.aliyuncs.com/bin/glasses/...` | **None** (mostly 403) | cpio archive | V821 (Wi-Fi) |
+| `.swu` (watchface) | `qcwxwatchface.oss-cn-hangzhou.aliyuncs.com/ota/...` | **None** (URL from API) | cpio archive | V821 (Wi-Fi) |
+
+The Wi-Fi hardware version naming pattern is `WIFI<BT_HW_VERSION>` (e.g. `AM01G1_V9.2` -> `WIFIAM01G1_V9.2`).
+Query the `last-ota` API with `WIFI*` hardwareVersion to get `.swu` download URLs.
+
+### Known Firmware Families
+
+**BT families (`.bin`)**: A01, A02, A02E02, A03, A06, A08, AM01, AM01C, AM01G1, AM01G2, AM01W, AM02, E02, G01
+
+**Wi-Fi families (`.swu`)**: WIFIA01, WIFIA02, WIFIA03, WIFIA03BV, WIFIA03PRO, WIFIA02E02, WIFIAM01, WIFIAM01C, WIFIAM01G1, WIFIAM01G2, WIFIAM01W
+
+### Reference Files
+
+- `HeyCyanOfficialApp/last_ota_capture_reference.json` — captured API request/response examples with all known firmware URLs
+- `last_ota_wifi_cn.json`, `last_ota_wifi_us.json` — saved API responses
