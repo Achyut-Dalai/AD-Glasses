@@ -3,9 +3,15 @@ package com.fersaiyan.cyanbridge.ui.localagent
 import android.content.Intent
 import android.os.Bundle
 import android.widget.Toast
+import androidx.activity.compose.setContent
 import androidx.appcompat.app.AppCompatActivity
-import com.fersaiyan.cyanbridge.databinding.ActivityScreenCapturesBinding
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.setValue
 import com.fersaiyan.cyanbridge.localagent.memory.LocalAgentMemoryStore
+import com.fersaiyan.cyanbridge.ui.appearance.AppearancePreferences
+import com.fersaiyan.cyanbridge.ui.appearance.rememberAppearanceSettings
+import com.fersaiyan.cyanbridge.ui.theme.CyanBridgeTheme
 import org.json.JSONObject
 import java.io.File
 import java.text.SimpleDateFormat
@@ -14,20 +20,33 @@ import java.util.Locale
 
 class ScreenCapturesActivity : AppCompatActivity() {
 
-    private lateinit var binding: ActivityScreenCapturesBinding
+    private var title by mutableStateOf("Screen captures")
+    private var path by mutableStateOf("")
+    private var renderedText by mutableStateOf("")
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        binding = ActivityScreenCapturesBinding.inflate(layoutInflater)
-        setContentView(binding.root)
-
         LocalAgentMemoryStore.ensureSeedFiles(this)
-
-        binding.btnClose.setOnClickListener { finish() }
-        binding.btnRefresh.setOnClickListener { loadAndRender() }
-        binding.btnShare.setOnClickListener { shareRenderedText() }
-
         loadAndRender()
+        val appearancePreferences = AppearancePreferences(this)
+        setContent {
+            val appearance by rememberAppearanceSettings(appearancePreferences)
+            CyanBridgeTheme(appearance) {
+                LocalAgentDocumentScreen(
+                    title = title,
+                    path = path,
+                    text = renderedText,
+                    hint = "Latest captures (tail)",
+                    editable = false,
+                    primaryLabel = "Refresh",
+                    onTextChange = {},
+                    onPrimary = ::loadAndRender,
+                    secondaryLabel = "Share",
+                    onSecondary = ::shareRenderedText,
+                    onBack = ::finish,
+                )
+            }
+        }
     }
 
     private fun loadAndRender() {
@@ -35,11 +54,11 @@ class ScreenCapturesActivity : AppCompatActivity() {
         val file = LocalAgentMemoryStore.screenCaptureFileForDate(this, date)
         val lines = LocalAgentMemoryStore.readScreenCaptureLines(this, date, maxLines = 25)
 
-        binding.tvTitle.text = "Screen captures ($date)"
-        binding.tvPath.text = file.absolutePath
+        title = "Screen captures ($date)"
+        path = file.absolutePath
 
         val rendered = renderTailPretty(lines)
-        binding.editCaptures.setText(rendered)
+        renderedText = rendered
 
         if (rendered.startsWith("(no captures")) {
             Toast.makeText(this, "No screen captures yet for today", Toast.LENGTH_SHORT).show()
@@ -47,7 +66,7 @@ class ScreenCapturesActivity : AppCompatActivity() {
     }
 
     private fun shareRenderedText() {
-        val text = binding.editCaptures.text?.toString().orEmpty().trim()
+        val text = renderedText.trim()
         if (text.isBlank()) {
             Toast.makeText(this, "Nothing to share", Toast.LENGTH_SHORT).show()
             return

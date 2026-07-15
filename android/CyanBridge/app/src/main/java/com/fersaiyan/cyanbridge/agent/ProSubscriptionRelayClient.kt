@@ -1,6 +1,7 @@
 package com.fersaiyan.cyanbridge.agent
 
 import android.content.Context
+import com.fersaiyan.cyanbridge.BuildConfig
 import com.fersaiyan.cyanbridge.ai.router.AiProviderPrefs
 import org.json.JSONArray
 import org.json.JSONObject
@@ -50,6 +51,11 @@ object ProSubscriptionRelayClient {
         val plan: String,
         val expiresAtMs: Long,
         val message: String,
+    )
+
+    data class CheckoutSession(
+        val checkoutUrl: String,
+        val expiresAtMs: Long,
     )
 
     private const val CONNECT_TIMEOUT_MS = 7000
@@ -189,6 +195,46 @@ object ProSubscriptionRelayClient {
                 ProSubscriptionServerPrefs.setAccountEmail(context, account.email)
             }
         }
+    }
+
+    fun createCheckoutSession(
+        context: Context,
+        plan: String,
+        provider: String,
+        email: String,
+        returnUrl: String,
+        changePlan: Boolean,
+    ): Result<CheckoutSession> = runCatching {
+        val apiToken = ProSubscriptionServerPrefs.getApiToken(context).trim().ifBlank {
+            fetchAccountInfo(context).getOrThrow().apiToken.trim()
+        }
+        check(apiToken.isNotBlank()) { "Server account token unavailable" }
+
+        requestPostJson(
+            context = context,
+            url = endpoint(context, "/auth/register"),
+            body = JSONObject()
+                .put("api_token", apiToken)
+                .put("email", email),
+        )
+
+        val payload = requestPostJson(
+            context = context,
+            url = endpoint(context, "/billing/checkout-sessions"),
+            body = JSONObject()
+                .put("plan", plan)
+                .put("provider", provider)
+                .put("return_url", returnUrl)
+                .put("change_plan", changePlan),
+        )
+        val checkoutUrl = payload.optString("checkout_url").trim()
+        check(checkoutUrl.startsWith("https://") || (BuildConfig.DEBUG && checkoutUrl.startsWith("http://"))) {
+            "Server returned an invalid checkout URL"
+        }
+        CheckoutSession(
+            checkoutUrl = checkoutUrl,
+            expiresAtMs = payload.optLong("expires_at_ms", 0L),
+        )
     }
 
     fun cancelSubscription(context: Context): Result<CancelResult> = runCatching {

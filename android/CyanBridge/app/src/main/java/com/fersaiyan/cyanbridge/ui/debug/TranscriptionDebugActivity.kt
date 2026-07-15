@@ -1,9 +1,12 @@
 package com.fersaiyan.cyanbridge.ui.debug
 
 import android.os.Bundle
-import android.view.View
 import android.widget.Toast
+import androidx.activity.compose.setContent
 import androidx.appcompat.app.AppCompatActivity
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.setValue
 import com.fersaiyan.cyanbridge.ai.transcription.ChunkingTranscriptionService
 import com.fersaiyan.cyanbridge.ai.transcription.TranscriptionEndpointPrefs
 import com.fersaiyan.cyanbridge.ai.transcription.TranscriptionEvent
@@ -13,9 +16,11 @@ import com.fersaiyan.cyanbridge.ai.transcription.backend.HttpTranscriptionBacken
 import com.fersaiyan.cyanbridge.ai.transcription.backend.TranscriptionBackend
 import com.fersaiyan.cyanbridge.ai.transcription.storage.RoomTranscriptStore
 import com.fersaiyan.cyanbridge.data.local.entity.CaptureSession
-import com.fersaiyan.cyanbridge.databinding.ActivityTranscriptionDebugBinding
 import com.fersaiyan.cyanbridge.privacy.PrivacyPrefs
 import com.fersaiyan.cyanbridge.ui.MyApplication
+import com.fersaiyan.cyanbridge.ui.appearance.AppearancePreferences
+import com.fersaiyan.cyanbridge.ui.appearance.rememberAppearanceSettings
+import com.fersaiyan.cyanbridge.ui.theme.CyanBridgeTheme
 import kotlinx.coroutines.MainScope
 import kotlinx.coroutines.cancel
 import kotlinx.coroutines.flow.first
@@ -31,32 +36,53 @@ import java.io.File
  */
 class TranscriptionDebugActivity : AppCompatActivity() {
 
-    private lateinit var binding: ActivityTranscriptionDebugBinding
     private val scope = MainScope()
 
     private var latestSession: CaptureSession? = null
+    private var endpointUrl by mutableStateOf("")
+    private var apiKey by mutableStateOf("")
+    private var useHttp by mutableStateOf(false)
+    private var transcriptStorageEnabled by mutableStateOf(false)
+    private var latestSessionInfo by mutableStateOf("(no session loaded)")
+    private var isTranscribing by mutableStateOf(false)
+    private var transcriptionProgressPercent by mutableStateOf(0)
+    private var progressText by mutableStateOf("")
+    private var persistedText by mutableStateOf("")
+    private var output by mutableStateOf("")
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        binding = ActivityTranscriptionDebugBinding.inflate(layoutInflater)
-        setContentView(binding.root)
-
-        binding.endpointUrl.setText(TranscriptionEndpointPrefs.getEndpointUrl(this).orEmpty())
-        binding.apiKey.setText(TranscriptionEndpointPrefs.getApiKey(this).orEmpty())
-
-        binding.transcriptStorageEnabled.isChecked = PrivacyPrefs.isTranscriptStorageEnabled(this)
-        binding.transcriptStorageEnabled.setOnCheckedChangeListener { _, isChecked ->
-            PrivacyPrefs.setTranscriptStorageEnabled(this, isChecked)
+        endpointUrl = TranscriptionEndpointPrefs.getEndpointUrl(this).orEmpty()
+        apiKey = TranscriptionEndpointPrefs.getApiKey(this).orEmpty()
+        transcriptStorageEnabled = PrivacyPrefs.isTranscriptStorageEnabled(this)
+        val appearancePreferences = AppearancePreferences(this)
+        setContent {
+            val appearance by rememberAppearanceSettings(appearancePreferences)
+            CyanBridgeTheme(appearance) {
+                TranscriptionDebugScreen(
+                    endpointUrl = endpointUrl,
+                    apiKey = apiKey,
+                    useHttp = useHttp,
+                    transcriptStorageEnabled = transcriptStorageEnabled,
+                    latestSessionInfo = latestSessionInfo,
+                    isTranscribing = isTranscribing,
+                    progress = transcriptionProgressPercent,
+                    progressText = progressText,
+                    persistedText = persistedText,
+                    output = output,
+                    onEndpointUrlChange = { endpointUrl = it },
+                    onApiKeyChange = { apiKey = it },
+                    onUseHttpChange = { useHttp = it },
+                    onStorageEnabledChange = {
+                        transcriptStorageEnabled = it
+                        PrivacyPrefs.setTranscriptStorageEnabled(this, it)
+                    },
+                    onSaveEndpoint = ::saveEndpointConfig,
+                    onLoadLatest = ::loadLatestSession,
+                    onTranscribe = ::startTranscription,
+                )
+            }
         }
-
-        binding.saveEndpoint.setOnClickListener {
-            TranscriptionEndpointPrefs.setEndpointUrl(this, binding.endpointUrl.text?.toString())
-            TranscriptionEndpointPrefs.setApiKey(this, binding.apiKey.text?.toString())
-            Toast.makeText(this, "Saved endpoint config", Toast.LENGTH_SHORT).show()
-        }
-
-        binding.loadLatest.setOnClickListener { loadLatestSession() }
-        binding.transcribe.setOnClickListener { startTranscription() }
 
         loadLatestSession()
     }
@@ -72,7 +98,7 @@ class TranscriptionDebugActivity : AppCompatActivity() {
             latestSession = sessions.firstOrNull()
 
             val s = latestSession
-            binding.latestSessionInfo.text = if (s == null) {
+            latestSessionInfo = if (s == null) {
                 "No capture sessions found yet. Record a meeting first."
             } else {
                 "Latest session id=${s.id}\nstartedAt=${s.startedAt}\ndurationSec=${s.durationSec}\naudioPath=${s.audioPath}"
@@ -93,10 +119,8 @@ class TranscriptionDebugActivity : AppCompatActivity() {
             return
         }
 
-        val backend: TranscriptionBackend = if (binding.providerHttp.isChecked) {
-            val endpoint = binding.endpointUrl.text?.toString().orEmpty().trim()
-            val apiKey = binding.apiKey.text?.toString()?.trim().takeUnless { it.isNullOrBlank() }
-            HttpTranscriptionBackend(endpointUrl = endpoint, apiKey = apiKey)
+        val backend: TranscriptionBackend = if (useHttp) {
+            HttpTranscriptionBackend(endpointUrl = endpointUrl.trim(), apiKey = apiKey.trim().takeUnless { it.isNullOrBlank() })
         } else {
             FakeTranscriptionBackend(fixedText = null)
         }
@@ -111,11 +135,11 @@ class TranscriptionDebugActivity : AppCompatActivity() {
             transcriptStore = store,
         )
 
-        binding.progressBar.progress = 0
-        binding.progressText.text = "Starting…"
-        binding.output.text = ""
-        binding.persisted.text = ""
-        binding.progressBar.visibility = View.VISIBLE
+        transcriptionProgressPercent = 0
+        progressText = "Starting…"
+        output = ""
+        persistedText = ""
+        isTranscribing = true
 
         scope.launch {
             service.transcribe(
@@ -127,19 +151,19 @@ class TranscriptionDebugActivity : AppCompatActivity() {
             ).collect { event ->
                 when (event) {
                     is TranscriptionEvent.Started -> {
-                        binding.progressText.text = "Started (${event.totalChunks} chunks) provider=${event.provider}"
+                        progressText = "Started (${event.totalChunks} chunks) provider=${event.provider}"
                     }
 
                     is TranscriptionEvent.Progress -> {
-                        binding.progressBar.progress = event.percent
-                        binding.progressText.text = "${event.percent}% — ${event.message}"
+                        transcriptionProgressPercent = event.percent
+                        progressText = "${event.percent}% — ${event.message}"
                     }
 
                     is TranscriptionEvent.Completed -> {
-                        binding.progressBar.progress = 100
-                        binding.progressText.text = "Done (provider=${event.provider})"
-                        binding.output.text = event.transcript
-                        binding.persisted.text = if (event.persisted) {
+                        transcriptionProgressPercent = 100
+                        progressText = "Done (provider=${event.provider})"
+                        output = event.transcript
+                        persistedText = if (event.persisted) {
                             "Transcript persisted to DB (capture_transcripts)."
                         } else {
                             "Transcript NOT persisted (storage disabled or missing session id)."
@@ -147,11 +171,18 @@ class TranscriptionDebugActivity : AppCompatActivity() {
                     }
 
                     is TranscriptionEvent.Failed -> {
-                        binding.progressText.text = "Failed: ${event.error.debugMessage}"
-                        binding.persisted.text = if (event.canRetry) "Retryable" else "Not retryable"
+                        progressText = "Failed: ${event.error.debugMessage}"
+                        persistedText = if (event.canRetry) "Retryable" else "Not retryable"
                     }
                 }
+                isTranscribing = false
             }
         }
+    }
+
+    private fun saveEndpointConfig() {
+        TranscriptionEndpointPrefs.setEndpointUrl(this, endpointUrl)
+        TranscriptionEndpointPrefs.setApiKey(this, apiKey)
+        Toast.makeText(this, "Saved endpoint config", Toast.LENGTH_SHORT).show()
     }
 }

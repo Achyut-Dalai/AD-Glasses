@@ -4,16 +4,22 @@ import android.content.Intent
 import android.os.Build
 import android.os.Bundle
 import android.widget.Toast
+import androidx.activity.compose.setContent
 import androidx.appcompat.app.AppCompatActivity
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.setValue
 import androidx.lifecycle.lifecycleScope
 import com.fersaiyan.cyanbridge.data.local.entity.PendingAction
-import com.fersaiyan.cyanbridge.databinding.ActivityPendingActionsBinding
 import com.fersaiyan.cyanbridge.localagent.LocalAgentAccessibilityBridge
 import com.fersaiyan.cyanbridge.localagent.LocalAgentActionParser
 import com.fersaiyan.cyanbridge.localagent.LocalAgentIntents
 import com.fersaiyan.cyanbridge.localagent.LocalAgentService
 import com.fersaiyan.cyanbridge.localagent.actions.LocalAgentActionManager
 import com.fersaiyan.cyanbridge.ui.MyApplication
+import com.fersaiyan.cyanbridge.ui.appearance.AppearancePreferences
+import com.fersaiyan.cyanbridge.ui.appearance.rememberAppearanceSettings
+import com.fersaiyan.cyanbridge.ui.theme.CyanBridgeTheme
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -24,18 +30,27 @@ import java.util.Locale
 
 class PendingActionsActivity : AppCompatActivity() {
 
-    private lateinit var binding: ActivityPendingActionsBinding
     private var current: PendingAction? = null
+    private var pendingCount by mutableStateOf(0)
+    private var renderedAction by mutableStateOf("(no pending actions)")
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        binding = ActivityPendingActionsBinding.inflate(layoutInflater)
-        setContentView(binding.root)
-
-        binding.btnClose.setOnClickListener { finish() }
-        binding.btnRefresh.setOnClickListener { loadPending() }
-        binding.btnApprove.setOnClickListener { approveCurrent() }
-        binding.btnReject.setOnClickListener { rejectCurrent() }
+        val appearancePreferences = AppearancePreferences(this)
+        setContent {
+            val appearance by rememberAppearanceSettings(appearancePreferences)
+            CyanBridgeTheme(appearance) {
+                PendingActionsScreen(
+                    pendingCount = pendingCount,
+                    renderedAction = renderedAction,
+                    hasPendingAction = current != null,
+                    onRefresh = ::loadPending,
+                    onApprove = ::approveCurrent,
+                    onReject = ::rejectCurrent,
+                    onBack = ::finish,
+                )
+            }
+        }
 
         loadPending()
     }
@@ -47,19 +62,14 @@ class PendingActionsActivity : AppCompatActivity() {
                 dao.getActionsByStatus("pending")
             }
 
-            binding.tvCount.text = "Pending: ${pending.size}"
+            pendingCount = pending.size
             current = pending.firstOrNull()
 
-            val rendered = if (current == null) {
+            renderedAction = if (current == null) {
                 "(no pending actions)"
             } else {
                 renderPendingAction(current!!)
             }
-            binding.editAction.setText(rendered)
-
-            val has = current != null
-            binding.btnApprove.isEnabled = has
-            binding.btnReject.isEnabled = has
         }
     }
 

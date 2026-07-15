@@ -13,6 +13,10 @@ import android.widget.TextView
 import android.widget.Toast
 import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.app.AppCompatActivity
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.setValue
+import androidx.compose.ui.platform.ComposeView
 import com.android.billingclient.api.BillingClient
 import com.android.billingclient.api.ProductDetails
 import com.android.billingclient.api.Purchase
@@ -20,10 +24,18 @@ import com.google.android.material.button.MaterialButton
 import com.fersaiyan.cyanbridge.BuildConfig
 import com.fersaiyan.cyanbridge.R
 import com.fersaiyan.cyanbridge.ai.router.AiProviderPrefs
+import com.fersaiyan.cyanbridge.shared.billing.BillingCatalog
+import com.fersaiyan.cyanbridge.shared.billing.ProSubscriptionUiState
+import com.fersaiyan.cyanbridge.ui.appearance.AppearancePreferences
+import com.fersaiyan.cyanbridge.ui.appearance.rememberAppearanceSettings
+import com.fersaiyan.cyanbridge.ui.pro.ProSubscriptionScreen
+import com.fersaiyan.cyanbridge.ui.theme.CyanBridgeTheme
+import com.fersaiyan.cyanbridge.ui.installComposeHostWithLegacyAdapter
 import kotlin.concurrent.thread
 import org.json.JSONObject
 import java.net.HttpURLConnection
 import java.net.URL
+import java.util.Locale
 
 /**
  * Pro Subscription Activity
@@ -46,10 +58,12 @@ class ProSubscriptionActivity : AppCompatActivity() {
     private var playProducts: Map<String, ProductDetails> = emptyMap()
     private var lastBillingError: String = ""
     private var legacyReturnDialogVisible = false
+    private var composeState by mutableStateOf(ProSubscriptionUiState())
+    private lateinit var composeView: ComposeView
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        setContentView(R.layout.activity_pro_subscription)
+        composeView = installComposeHostWithLegacyAdapter(R.layout.activity_pro_subscription)
 
         tvStatus = findViewById(R.id.tv_status)
         rgPlan = findViewById(R.id.rg_plan)
@@ -110,6 +124,23 @@ class ProSubscriptionActivity : AppCompatActivity() {
         }
 
         setupBilling()
+
+        val appearancePreferences = AppearancePreferences(this)
+        composeView.setContent {
+            val appearance by rememberAppearanceSettings(appearancePreferences)
+            CyanBridgeTheme(appearance) {
+                ProSubscriptionScreen(
+                    state = composeState,
+                    onPlanSelected = ::selectPlanFromCompose,
+                    onSubscribeInApp = { btnSubscribe.performClick() },
+                    onSubscribeOnWebsite = { btnSubscribeWeb.performClick() },
+                    onDonate = { btnDonate.performClick() },
+                    onCancelSubscription = { btnUnsubscribe.performClick() },
+                    onBack = ::finish,
+                )
+            }
+        }
+        refreshComposeState()
 
         window.decorView.post {
             maybeAutoStartWebCheckoutFromIntent()
@@ -192,6 +223,27 @@ class ProSubscriptionActivity : AppCompatActivity() {
     private fun applyWebCheckoutVisibility() {
         val enabled = SubscriptionCheckoutPolicy.isWebCheckoutEnabled(this)
         cardWebCheckout.visibility = if (enabled) View.VISIBLE else View.GONE
+        composeState = composeState.copy(webCheckoutAvailable = enabled)
+    }
+
+    private fun selectPlanFromCompose(plan: String) {
+        when (plan) {
+            "cheap" -> rbCheap.isChecked = true
+            "standard" -> rbStandard.isChecked = true
+            "max" -> rbMax.isChecked = true
+            else -> rbTrial.isChecked = true
+        }
+        refreshComposeState()
+    }
+
+    private fun refreshComposeState() {
+        val status = ProSubscriptionVerifier.localStatus(this)
+        composeState = composeState.copy(
+            status = tvStatus.text?.toString().orEmpty().ifBlank { status.message },
+            selectedPlan = selectedPlan(),
+            webCheckoutAvailable = SubscriptionCheckoutPolicy.isWebCheckoutEnabled(this),
+            isSubscribed = status.active,
+        )
     }
 
     private fun activateFreeTrial(emailHint: String = "") {
@@ -450,16 +502,14 @@ class ProSubscriptionActivity : AppCompatActivity() {
         }
     }
 
-    private fun launchWebCheckoutWithEmail(plan: String, emailHint: String, changePlan: Boolean = false) {
-        val baseUrl = SubscriptionCheckoutPolicy.resolveWebCheckoutUrl(this)
-        if (baseUrl.isBlank()) {
-            Toast.makeText(this, "Web checkout is not configured yet.", Toast.LENGTH_SHORT).show()
-            return
-        }
-
-        val parsedBase = runCatching { Uri.parse(baseUrl) }.getOrNull()
-        if (parsedBase == null || !parsedBase.isAbsolute || parsedBase.scheme.isNullOrBlank()) {
-            Toast.makeText(this, "Invalid checkout URL: $baseUrl", Toast.LENGTH_LONG).show()
+    private fun launchWebCheckoutWithEmail(
+        plan: String,
+        emailHint: String,
+        changePlan: Boolean = false,
+        provider: String? = null,
+    ) {
+        if (provider == null) {
+            showCheckoutProviderDialog(plan, emailHint, changePlan)
             return
         }
 
@@ -469,45 +519,55 @@ class ProSubscriptionActivity : AppCompatActivity() {
             .appendPath("callback")
             .build()
 
-        val target = Uri.parse(baseUrl).buildUpon()
-            .appendQueryParameter("plan", plan)
-            .appendQueryParameter("platform", "android")
-            .appendQueryParameter("package_name", packageName)
-            .appendQueryParameter("return_url", callback.toString())
-            .appendQueryParameter("change_plan", if (changePlan) "1" else "0")
-            .apply {
-                val accountEmail = ProSubscriptionServerPrefs.getAccountEmail(this@ProSubscriptionActivity)
-                val finalEmail = emailHint.ifBlank { accountEmail }
-                if (finalEmail.isNotBlank()) {
-                    appendQueryParameter("email", finalEmail)
-                }
-            }
-            .build()
-
-        Toast.makeText(this, "Opening secure checkout...", Toast.LENGTH_SHORT).show()
+        val finalEmail = emailHint.ifBlank { ProSubscriptionServerPrefs.getAccountEmail(this) }
+        Toast.makeText(this, "Preparing secure checkout...", Toast.LENGTH_SHORT).show()
         thread {
-            val apiToken = runCatching {
-                ProSubscriptionServerPrefs.getApiToken(this).trim().ifBlank {
-                    ProSubscriptionRelayClient.fetchAccountInfo(this).getOrThrow().apiToken.trim()
-                }
-            }.getOrDefault("")
-
-            val accountEmail = ProSubscriptionServerPrefs.getAccountEmail(this)
-            val finalEmail = emailHint.ifBlank { accountEmail }
-
-            val setupTarget = target.buildUpon().apply {
-                if (apiToken.isNotBlank()) {
-                    appendQueryParameter("api_token", apiToken)
-                }
-                if (finalEmail.isNotBlank()) {
-                    appendQueryParameter("email", finalEmail)
-                }
-            }.build().toString()
-
+            val result = ProSubscriptionRelayClient.createCheckoutSession(
+                context = this,
+                plan = plan,
+                provider = provider,
+                email = finalEmail,
+                returnUrl = callback.toString(),
+                changePlan = changePlan,
+            )
             runOnUiThread {
-                openExternalUrl(setupTarget)
+                result.onSuccess { session ->
+                    openExternalUrl(session.checkoutUrl)
+                }.onFailure { error ->
+                    Toast.makeText(
+                        this,
+                        "Unable to prepare checkout: ${error.message}",
+                        Toast.LENGTH_LONG,
+                    ).show()
+                }
             }
         }
+    }
+
+    private fun showCheckoutProviderDialog(plan: String, email: String, changePlan: Boolean) {
+        val billingPlan = BillingCatalog.plan(plan)
+        val base = billingPlan.asaasOffer.referencePriceUsd
+        val paddle = billingPlan.paddleOffer.referencePriceUsd
+        val adjustment = billingPlan.paddleOffer.adjustmentUsd
+        fun usd(value: Double) = String.format(Locale.US, "%.2f", value)
+        val labels = arrayOf(
+            "Asaas — $${usd(base)}/month equivalent in BRL",
+            "Paddle — $${usd(paddle)}/month (+$${usd(adjustment)} checkout adjustment)",
+        )
+
+        AlertDialog.Builder(this)
+            .setTitle("Choose secure checkout")
+            .setMessage("Asaas is the lower-cost option and charges the displayed BRL amount. Paddle provides global tax and Merchant of Record service; applicable tax is shown before payment.")
+            .setItems(labels) { _, which ->
+                launchWebCheckoutWithEmail(
+                    plan = plan,
+                    emailHint = email,
+                    changePlan = changePlan,
+                    provider = if (which == 0) "asaas" else "paddle",
+                )
+            }
+            .setNegativeButton("Cancel", null)
+            .show()
     }
 
     private fun buildLegacyStatusUrl(baseUrl: String, apiToken: String, plan: String): String {
@@ -823,6 +883,12 @@ class ProSubscriptionActivity : AppCompatActivity() {
         }
 
         cardUnsubscribe.visibility = if (status.active) View.VISIBLE else View.GONE
+        composeState = composeState.copy(
+            status = tvStatus.text?.toString().orEmpty(),
+            selectedPlan = selectedPlan(),
+            webCheckoutAvailable = SubscriptionCheckoutPolicy.isWebCheckoutEnabled(this),
+            isSubscribed = status.active,
+        )
     }
 
     private fun showAsaasDonationDialog() {

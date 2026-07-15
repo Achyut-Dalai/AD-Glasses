@@ -15,6 +15,10 @@ import android.widget.Toast
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.app.AppCompatActivity
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.setValue
+import androidx.compose.ui.platform.ComposeView
 import com.google.android.material.card.MaterialCardView
 import androidx.lifecycle.lifecycleScope
 import com.google.android.material.button.MaterialButton
@@ -38,8 +42,25 @@ import com.fersaiyan.cyanbridge.localmodels.storage.LocalModelFileUtils
 import com.fersaiyan.cyanbridge.localmodels.storage.LocalModelStorageRepository
 import com.fersaiyan.cyanbridge.localmodels.remote.RemoteOpenAiClient
 import com.fersaiyan.cyanbridge.localmodels.remote.RemoteOpenAiPrefs
+import com.fersaiyan.cyanbridge.shared.localmodels.InstalledModelUiItem
+import com.fersaiyan.cyanbridge.shared.localmodels.LocalModelCatalogUiItem
+import com.fersaiyan.cyanbridge.shared.localmodels.LocalModelDownloadUiState
+import com.fersaiyan.cyanbridge.shared.localmodels.LocalModelGenerationUiState
+import com.fersaiyan.cyanbridge.shared.localmodels.LocalModelOptionField
+import com.fersaiyan.cyanbridge.shared.localmodels.LocalModelTextField
+import com.fersaiyan.cyanbridge.shared.localmodels.LocalModelToggleField
+import com.fersaiyan.cyanbridge.shared.localmodels.LocalModelsAction
+import com.fersaiyan.cyanbridge.shared.localmodels.LocalModelsConfigureUiState
+import com.fersaiyan.cyanbridge.shared.localmodels.LocalModelsSection
+import com.fersaiyan.cyanbridge.shared.localmodels.RemoteInferenceUiState
+import com.fersaiyan.cyanbridge.shared.localmodels.StudioBridgeUiState
 import com.fersaiyan.cyanbridge.studiobridge.StudioApprovalHandler
+import com.fersaiyan.cyanbridge.ui.appearance.AppearancePreferences
+import com.fersaiyan.cyanbridge.ui.appearance.rememberAppearanceSettings
 import com.fersaiyan.cyanbridge.ui.debug.DebugLogSupport
+import com.fersaiyan.cyanbridge.ui.localmodels.LocalModelsConfigureScreen
+import com.fersaiyan.cyanbridge.ui.theme.CyanBridgeTheme
+import com.fersaiyan.cyanbridge.ui.installComposeHostWithLegacyAdapter
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.CancellationException
@@ -53,6 +74,9 @@ class LocalModelsConfigureActivity : AppCompatActivity() {
     private val downloadCancelled = AtomicBoolean(false)
     private var downloadJob: Job? = null
     private var warmupJob: Job? = null
+    private var composeState by mutableStateOf(LocalModelsConfigureUiState())
+    private var syncComposeState: (() -> Unit)? = null
+    private lateinit var composeView: ComposeView
 
     private lateinit var tvEngineStatus: TextView
     private lateinit var tvDeviceSummary: TextView
@@ -143,12 +167,13 @@ class LocalModelsConfigureActivity : AppCompatActivity() {
         } else {
             switchStudioBridgeEnabled.isChecked = false
             Toast.makeText(this, "Microphone permission is required for voice approvals", Toast.LENGTH_LONG).show()
+            syncComposeState?.invoke()
         }
     }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        setContentView(R.layout.activity_local_models_configure)
+        composeView = installComposeHostWithLegacyAdapter(R.layout.activity_local_models_configure)
 
         supportActionBar?.setDisplayHomeAsUpEnabled(false)
         findViewById<androidx.appcompat.widget.Toolbar>(R.id.toolbar)?.setNavigationOnClickListener {
@@ -160,6 +185,7 @@ class LocalModelsConfigureActivity : AppCompatActivity() {
         setupCollapsibleSections()
         initSpinners()
         refreshAllUi()
+        setupComposeContent()
     }
 
     override fun onDestroy() {
@@ -167,6 +193,222 @@ class LocalModelsConfigureActivity : AppCompatActivity() {
         downloadCancelled.set(true)
         downloadJob?.cancel()
         warmupJob?.cancel()
+    }
+
+    private fun setupComposeContent() {
+        syncComposeState = ::refreshComposeState
+        refreshComposeState()
+
+        val appearancePreferences = AppearancePreferences(this)
+        composeView.setContent {
+            val appearance by rememberAppearanceSettings(appearancePreferences)
+            CyanBridgeTheme(appearance) {
+                LocalModelsConfigureScreen(
+                    state = composeState,
+                    onAction = ::handleComposeAction,
+                )
+            }
+        }
+    }
+
+    private fun handleComposeAction(action: LocalModelsAction) {
+        when (action) {
+            LocalModelsAction.Back -> {
+                finish()
+                return
+            }
+
+            LocalModelsAction.Refresh -> refreshAllUi()
+            LocalModelsAction.ImportModel -> {
+                importModelLauncher.launch(arrayOf("application/octet-stream", "*/*"))
+            }
+
+            is LocalModelsAction.SelectInstalledModel -> {
+                installedModels.indexOfFirst { it.id == action.id }
+                    .takeIf { it >= 0 }
+                    ?.let { spinnerInstalled.setSelection(it) }
+            }
+
+            LocalModelsAction.ShowSelectedModelInfo -> showSelectedModelInfo()
+            LocalModelsAction.UnloadSelectedModel -> unloadSelectedModel()
+            LocalModelsAction.RemoveSelectedModel -> confirmRemoveSelectedModel()
+            is LocalModelsAction.DownloadCatalogModel -> {
+                LocalModelCatalogRepository.findById(action.id)?.let(::requestDownload)
+            }
+
+            is LocalModelsAction.ShowCatalogModelInfo -> {
+                val entry = LocalModelCatalogRepository.findById(action.id) ?: return
+                showCatalogInfo(entry, installedModels.any { it.catalogId == entry.id })
+            }
+
+            LocalModelsAction.CancelDownload -> cancelDownload()
+            LocalModelsAction.RunWarmup -> runWarmupProbe()
+            LocalModelsAction.SaveGenerationSettings -> saveCurrentSettings()
+            is LocalModelsAction.ToggleSection -> toggleSection(action.section)
+            is LocalModelsAction.UpdateText -> updateComposeTextField(action.field, action.value)
+            is LocalModelsAction.SelectOption -> updateComposeOption(action.field, action.index)
+            is LocalModelsAction.SetToggle -> updateComposeToggle(action.field, action.enabled)
+            LocalModelsAction.TestRemoteServer -> testRemoteServerConnection()
+            LocalModelsAction.SaveRemoteServer -> saveRemoteServerConfig()
+            LocalModelsAction.ShowStudioBridgeApiKeyHelp -> showApiKeyHelpDialog()
+            LocalModelsAction.SaveStudioBridge -> saveStudioBridgeConfig()
+        }
+        syncComposeState?.invoke()
+    }
+
+    private fun toggleSection(section: LocalModelsSection) {
+        val (cardId, defaultExpanded) = when (section) {
+            LocalModelsSection.CATALOG -> R.id.card_curated_catalog to false
+            LocalModelsSection.REMOTE_SERVER -> R.id.card_remote_server to false
+            LocalModelsSection.STUDIO_BRIDGE -> R.id.card_studio_bridge to false
+            LocalModelsSection.GENERATION_SETTINGS -> R.id.card_generation_settings to false
+        }
+        val prefKey = "section_expanded_${resources.getResourceEntryName(cardId)}"
+        val expanded = sectionPrefs.getBoolean(prefKey, defaultExpanded)
+        sectionPrefs.edit().putBoolean(prefKey, !expanded).apply()
+    }
+
+    private fun updateComposeTextField(field: LocalModelTextField, value: String) {
+        when (field) {
+            LocalModelTextField.CPU_THREADS -> editCpuThreads.setText(value)
+            LocalModelTextField.GPU_LAYERS -> editGpuLayers.setText(value)
+            LocalModelTextField.TEMPERATURE -> editTemperature.setText(value)
+            LocalModelTextField.TOP_P -> editTopP.setText(value)
+            LocalModelTextField.TOP_K -> editTopK.setText(value)
+            LocalModelTextField.MAX_TOKENS -> editMaxTokens.setText(value)
+            LocalModelTextField.REPETITION_PENALTY -> editRepPenalty.setText(value)
+            LocalModelTextField.CONTEXT_SIZE -> editContextSize.setText(value)
+            LocalModelTextField.SEED -> editSeed.setText(value)
+            LocalModelTextField.SYSTEM_PROMPT -> editSystemPrompt.setText(value)
+            LocalModelTextField.HUGGING_FACE_TOKEN -> editHfToken.setText(value)
+            LocalModelTextField.REMOTE_BASE_URL -> editRemoteBaseUrl.setText(value)
+            LocalModelTextField.REMOTE_MODEL_NAME -> editRemoteModel.setText(value)
+            LocalModelTextField.REMOTE_API_KEY -> editRemoteApiKey.setText(value)
+            LocalModelTextField.STUDIO_BRIDGE_API_KEY -> editStudioBridgeApiKey.setText(value)
+        }
+    }
+
+    private fun updateComposeOption(field: LocalModelOptionField, index: Int) {
+        when (field) {
+            LocalModelOptionField.PROFILE -> setSpinnerSelection(spinnerProfile, index)
+            LocalModelOptionField.RUNTIME -> setSpinnerSelection(spinnerModelRuntime, index)
+            LocalModelOptionField.COMPUTE_BACKEND -> setSpinnerSelection(spinnerComputeBackend, index)
+            LocalModelOptionField.TEMPLATE -> setSpinnerSelection(spinnerTemplateOverride, index)
+        }
+    }
+
+    private fun updateComposeToggle(field: LocalModelToggleField, enabled: Boolean) {
+        when (field) {
+            LocalModelToggleField.EXPERIMENTAL_STRUCTURED_JSON -> switchExperimentalJson.isChecked = enabled
+            LocalModelToggleField.REMOTE_SERVER_ENABLED -> switchRemoteEnabled.isChecked = enabled
+            LocalModelToggleField.STUDIO_BRIDGE_ENABLED -> switchStudioBridgeEnabled.isChecked = enabled
+        }
+    }
+
+    private fun setSpinnerSelection(spinner: Spinner, requestedIndex: Int) {
+        val lastIndex = (spinner.adapter?.count ?: 1) - 1
+        spinner.setSelection(requestedIndex.coerceIn(0, lastIndex.coerceAtLeast(0)))
+    }
+
+    private fun refreshComposeState() {
+        val installedByCatalogId = installedModels.associateBy { it.catalogId }
+        val templateOptions = buildList {
+            add("Auto (catalog default)")
+            addAll(
+                com.fersaiyan.cyanbridge.localmodels.templates.PromptTemplateRegistry.templates.map {
+                    "${it.label} (${it.id})"
+                },
+            )
+        }
+        val progressPercent = if (
+            progressDownload.visibility == View.VISIBLE && !progressDownload.isIndeterminate
+        ) {
+            progressDownload.progress
+        } else {
+            null
+        }
+
+        composeState = LocalModelsConfigureUiState(
+            engineStatus = tvEngineStatus.text.toString(),
+            deviceSummary = tvDeviceSummary.text.toString(),
+            selectedModelStatus = tvSelectedModelStatus.text.toString(),
+            emptyStateMessage = if (installedModels.isEmpty()) tvEmptyState.text.toString() else "",
+            installedModels = installedModels.map {
+                InstalledModelUiItem(
+                    id = it.id,
+                    label = "${it.displayName} (${humanSize(it.sizeBytes)})",
+                )
+            },
+            selectedInstalledModelId = selectedInstalledModel()?.id,
+            catalog = LocalModelCatalogRepository.curatedModels.map { entry ->
+                val installed = installedByCatalogId[entry.id]
+                LocalModelCatalogUiItem(
+                    id = entry.id,
+                    title = entry.displayName,
+                    details = "${entry.quantization} · ${humanSize(entry.sizeBytes)} · tags: ${entry.tags.joinToString(", ")}",
+                    status = statusText(entry, installed),
+                    downloadLabel = when {
+                        installed != null -> "Installed"
+                        entry.sourceUrl.isNullOrBlank() -> "Manual import"
+                        entry.gatedDownload -> "Download (token)"
+                        else -> "Download"
+                    },
+                    canDownload = !isDownloadInFlight && installed == null && !entry.sourceUrl.isNullOrBlank(),
+                )
+            },
+            catalogExpanded = isSectionExpanded(R.id.card_curated_catalog, defaultExpanded = false),
+            remoteServerExpanded = isSectionExpanded(R.id.card_remote_server, defaultExpanded = false),
+            studioBridgeExpanded = isSectionExpanded(R.id.card_studio_bridge, defaultExpanded = false),
+            generationSettingsExpanded = isSectionExpanded(R.id.card_generation_settings, defaultExpanded = false),
+            download = LocalModelDownloadUiState(
+                isInFlight = isDownloadInFlight,
+                message = tvDownloadProgress.text.toString(),
+                progressPercent = progressPercent,
+            ),
+            warmupResult = tvWarmupResult.text.toString(),
+            generation = LocalModelGenerationUiState(
+                profileOptions = LocalModelPerformanceProfile.entries.map { it.label },
+                profileIndex = spinnerProfile.selectedItemPosition.coerceAtLeast(0),
+                runtimeOptions = LocalModelRuntime.entries.map { it.label },
+                runtimeIndex = spinnerModelRuntime.selectedItemPosition.coerceAtLeast(0),
+                runtimeNote = tvModelRuntimeNote.text.toString(),
+                computeBackendOptions = LocalComputeBackend.entries.map { it.label },
+                computeBackendIndex = spinnerComputeBackend.selectedItemPosition.coerceAtLeast(0),
+                computeBackendNote = tvComputeBackendNote.text.toString(),
+                cpuThreads = editCpuThreads.text?.toString().orEmpty(),
+                gpuLayers = editGpuLayers.text?.toString().orEmpty(),
+                gpuLayersEnabled = editGpuLayers.isEnabled,
+                temperature = editTemperature.text?.toString().orEmpty(),
+                topP = editTopP.text?.toString().orEmpty(),
+                topK = editTopK.text?.toString().orEmpty(),
+                maxTokens = editMaxTokens.text?.toString().orEmpty(),
+                repetitionPenalty = editRepPenalty.text?.toString().orEmpty(),
+                contextSize = editContextSize.text?.toString().orEmpty(),
+                seed = editSeed.text?.toString().orEmpty(),
+                templateOptions = templateOptions,
+                templateIndex = spinnerTemplateOverride.selectedItemPosition.coerceAtLeast(0),
+                experimentalStructuredJson = switchExperimentalJson.isChecked,
+                systemPrompt = editSystemPrompt.text?.toString().orEmpty(),
+                huggingFaceToken = editHfToken.text?.toString().orEmpty(),
+            ),
+            remoteServer = RemoteInferenceUiState(
+                enabled = switchRemoteEnabled.isChecked,
+                baseUrl = editRemoteBaseUrl.text?.toString().orEmpty(),
+                modelName = editRemoteModel.text?.toString().orEmpty(),
+                apiKey = editRemoteApiKey.text?.toString().orEmpty(),
+                status = tvRemoteStatus.text.toString(),
+            ),
+            studioBridge = StudioBridgeUiState(
+                enabled = switchStudioBridgeEnabled.isChecked,
+                apiKey = editStudioBridgeApiKey.text?.toString().orEmpty(),
+                status = tvStudioBridgeStatus.text.toString(),
+            ),
+        )
+    }
+
+    private fun isSectionExpanded(cardId: Int, defaultExpanded: Boolean): Boolean {
+        val prefKey = "section_expanded_${resources.getResourceEntryName(cardId)}"
+        return sectionPrefs.getBoolean(prefKey, defaultExpanded)
     }
 
     private fun bindViews() {
@@ -259,30 +501,11 @@ class LocalModelsConfigureActivity : AppCompatActivity() {
         }
 
         findViewById<MaterialButton>(R.id.btn_unload_model).setOnClickListener {
-            lifecycleScope.launch {
-                runCatching { LocalChatSessionManager.unload() }
-                Toast.makeText(this@LocalModelsConfigureActivity, "Local model unloaded", Toast.LENGTH_SHORT).show()
-                refreshAllUi()
-            }
+            unloadSelectedModel()
         }
 
         findViewById<MaterialButton>(R.id.btn_remove_model).setOnClickListener {
-            val selected = selectedInstalledModel()
-            if (selected == null) {
-                Toast.makeText(this, "No model selected", Toast.LENGTH_SHORT).show()
-                return@setOnClickListener
-            }
-            AlertDialog.Builder(this)
-                .setTitle("Remove model?")
-                .setMessage("Delete ${selected.displayName} from local storage?")
-                .setNegativeButton("Cancel", null)
-                .setPositiveButton("Remove") { _, _ ->
-                    LocalModelStorageRepository.removeInstalled(this, selected.id)
-                    LocalModelSettingsRepository.clearForModel(this, selected.id)
-                    lifecycleScope.launch { runCatching { LocalChatSessionManager.unload() } }
-                    refreshAllUi()
-                }
-                .show()
+            confirmRemoveSelectedModel()
         }
 
         findViewById<MaterialButton>(R.id.btn_save).setOnClickListener {
@@ -294,10 +517,7 @@ class LocalModelsConfigureActivity : AppCompatActivity() {
         }
 
         btnCancelDownload.setOnClickListener {
-            downloadCancelled.set(true)
-            btnCancelDownload.isEnabled = false
-            downloadJob?.cancel()
-            tvDownloadProgress.text = "Cancelling download..."
+            cancelDownload()
         }
 
         spinnerInstalled.onItemSelectedListener = object : android.widget.AdapterView.OnItemSelectedListener {
@@ -311,6 +531,7 @@ class LocalModelsConfigureActivity : AppCompatActivity() {
                 LocalModelsPrefs.setSelectedModelId(this@LocalModelsConfigureActivity, selected?.id)
                 loadSettingsForSelectedModel()
                 refreshSelectedModelStatus()
+                syncComposeState?.invoke()
             }
 
             override fun onNothingSelected(parent: android.widget.AdapterView<*>?) = Unit
@@ -336,6 +557,7 @@ class LocalModelsConfigureActivity : AppCompatActivity() {
                         modelRuntime = defaults.modelRuntime,
                     ),
                 )
+                syncComposeState?.invoke()
             }
 
             override fun onNothingSelected(parent: android.widget.AdapterView<*>?) = Unit
@@ -349,6 +571,7 @@ class LocalModelsConfigureActivity : AppCompatActivity() {
                 id: Long,
             ) {
                 updateComputeBackendUi()
+                syncComposeState?.invoke()
             }
 
             override fun onNothingSelected(parent: android.widget.AdapterView<*>?) = Unit
@@ -362,6 +585,7 @@ class LocalModelsConfigureActivity : AppCompatActivity() {
                 id: Long,
             ) {
                 updateRuntimeUi()
+                syncComposeState?.invoke()
             }
 
             override fun onNothingSelected(parent: android.widget.AdapterView<*>?) = Unit
@@ -374,6 +598,41 @@ class LocalModelsConfigureActivity : AppCompatActivity() {
         btnStudioBridgeSave.setOnClickListener { saveStudioBridgeConfig() }
 
         btnApiKeyHelp.setOnClickListener { showApiKeyHelpDialog() }
+    }
+
+    private fun unloadSelectedModel() {
+        lifecycleScope.launch {
+            runCatching { LocalChatSessionManager.unload() }
+            Toast.makeText(this@LocalModelsConfigureActivity, "Local model unloaded", Toast.LENGTH_SHORT).show()
+            refreshAllUi()
+        }
+    }
+
+    private fun confirmRemoveSelectedModel() {
+        val selected = selectedInstalledModel()
+        if (selected == null) {
+            Toast.makeText(this, "No model selected", Toast.LENGTH_SHORT).show()
+            return
+        }
+        AlertDialog.Builder(this)
+            .setTitle("Remove model?")
+            .setMessage("Delete ${selected.displayName} from local storage?")
+            .setNegativeButton("Cancel", null)
+            .setPositiveButton("Remove") { _, _ ->
+                LocalModelStorageRepository.removeInstalled(this, selected.id)
+                LocalModelSettingsRepository.clearForModel(this, selected.id)
+                lifecycleScope.launch { runCatching { LocalChatSessionManager.unload() } }
+                refreshAllUi()
+            }
+            .show()
+    }
+
+    private fun cancelDownload() {
+        downloadCancelled.set(true)
+        btnCancelDownload.isEnabled = false
+        downloadJob?.cancel()
+        tvDownloadProgress.text = "Cancelling download..."
+        syncComposeState?.invoke()
     }
 
     private fun setupCollapsibleSections() {
@@ -484,6 +743,7 @@ class LocalModelsConfigureActivity : AppCompatActivity() {
 
         loadRemoteServerConfig()
         loadStudioBridgeConfig()
+        syncComposeState?.invoke()
     }
 
     private fun refreshInstalledModelsSpinner() {
@@ -662,6 +922,7 @@ class LocalModelsConfigureActivity : AppCompatActivity() {
         tvDownloadProgress.text = "Starting download: ${entry.displayName}"
         btnCancelDownload.isEnabled = true
         syncDownloadButtonsState()
+        syncComposeState?.invoke()
     }
 
     private fun showDownloadFinished(message: String, success: Boolean) {
@@ -676,6 +937,7 @@ class LocalModelsConfigureActivity : AppCompatActivity() {
         }
         tvDownloadProgress.text = message
         syncDownloadButtonsState()
+        syncComposeState?.invoke()
     }
 
     private fun syncDownloadButtonsState() {
@@ -701,12 +963,14 @@ class LocalModelsConfigureActivity : AppCompatActivity() {
                 progressDownload.setProgressCompat(progress.percent, true)
             }
             tvDownloadProgress.text = "Downloading ${progress.modelId}: ${progress.percent}% ($done / $total)"
+            syncComposeState?.invoke()
         }
     }
 
     private fun importModel(uri: Uri) {
         lifecycleScope.launch {
             tvDownloadProgress.text = "Importing model..."
+            syncComposeState?.invoke()
             val result = withContext(Dispatchers.IO) {
                 runCatching {
                     val name = guessDisplayName(uri)
@@ -734,6 +998,7 @@ class LocalModelsConfigureActivity : AppCompatActivity() {
             }.onFailure { err ->
                 tvDownloadProgress.text = "Import failed: ${err.message}"
                 Toast.makeText(this@LocalModelsConfigureActivity, err.message ?: "Import failed", Toast.LENGTH_LONG).show()
+                syncComposeState?.invoke()
             }
         }
     }
@@ -860,6 +1125,7 @@ class LocalModelsConfigureActivity : AppCompatActivity() {
             Toast.LENGTH_SHORT,
         ).show()
         setResult(RESULT_OK)
+        syncComposeState?.invoke()
     }
 
     private fun selectedTemplateOverrideId(): String? {
@@ -881,6 +1147,7 @@ class LocalModelsConfigureActivity : AppCompatActivity() {
         val entry = LocalModelCatalogRepository.findById(model.catalogId)
 
         tvWarmupResult.text = "Running warm-up..."
+        syncComposeState?.invoke()
         warmupJob?.cancel()
         warmupJob = lifecycleScope.launch {
             val outcome = runCatching {
@@ -927,8 +1194,10 @@ class LocalModelsConfigureActivity : AppCompatActivity() {
                             if (!loadDetails.fallbackReason.isNullOrBlank() && result.backend != LocalComputeBackend.GPU_EXPERIMENTAL) {
                                 Toast.makeText(this@LocalModelsConfigureActivity, loadDetails.fallbackReason, Toast.LENGTH_LONG).show()
                             }
+                            syncComposeState?.invoke()
                         }.onFailure { uiErr ->
                             tvWarmupResult.text = "Warm-up failed: ${uiErr.message ?: "unexpected UI error"}"
+                            syncComposeState?.invoke()
                         }
                     },
                     onFailure = { err ->
@@ -954,6 +1223,7 @@ class LocalModelsConfigureActivity : AppCompatActivity() {
                                     ),
                                 )
                             }
+                            syncComposeState?.invoke()
                         }
                     },
                 )
@@ -1157,6 +1427,7 @@ class LocalModelsConfigureActivity : AppCompatActivity() {
             }
         }
         setResult(RESULT_OK)
+        syncComposeState?.invoke()
     }
 
     private fun testRemoteServerConnection() {
@@ -1171,6 +1442,7 @@ class LocalModelsConfigureActivity : AppCompatActivity() {
 
         tvRemoteStatus.text = "Testing connection..."
         btnRemoteTest.isEnabled = false
+        syncComposeState?.invoke()
 
         lifecycleScope.launch {
             val result = withContext(Dispatchers.IO) {
@@ -1187,6 +1459,7 @@ class LocalModelsConfigureActivity : AppCompatActivity() {
                     Toast.makeText(this@LocalModelsConfigureActivity, "Connection failed: ${err.message}", Toast.LENGTH_LONG).show()
                 },
             )
+            syncComposeState?.invoke()
         }
     }
 
@@ -1255,6 +1528,7 @@ class LocalModelsConfigureActivity : AppCompatActivity() {
         if (enabled) {
             if (app?.startStudioBridge() != true) {
                 tvStudioBridgeStatus.text = "Bridge could not start. Check model and microphone access."
+                syncComposeState?.invoke()
                 return
             }
             tvStudioBridgeStatus.text = "Bridge connecting..."
@@ -1264,6 +1538,7 @@ class LocalModelsConfigureActivity : AppCompatActivity() {
             tvStudioBridgeStatus.text = ""
             Toast.makeText(this, "Studio Bridge disabled", Toast.LENGTH_SHORT).show()
         }
+        syncComposeState?.invoke()
     }
 
     private fun showApiKeyHelpDialog() {

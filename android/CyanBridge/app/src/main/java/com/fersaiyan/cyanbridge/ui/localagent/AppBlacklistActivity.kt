@@ -3,11 +3,15 @@ package com.fersaiyan.cyanbridge.ui.localagent
 import android.content.Intent
 import android.os.Bundle
 import android.widget.Toast
+import androidx.activity.compose.setContent
 import androidx.appcompat.app.AppCompatActivity
-import androidx.core.widget.doAfterTextChanged
-import androidx.recyclerview.widget.LinearLayoutManager
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.setValue
 import com.fersaiyan.cyanbridge.agent.LocalAgentPrefs
-import com.fersaiyan.cyanbridge.databinding.ActivityAppBlacklistBinding
+import com.fersaiyan.cyanbridge.ui.appearance.AppearancePreferences
+import com.fersaiyan.cyanbridge.ui.appearance.rememberAppearanceSettings
+import com.fersaiyan.cyanbridge.ui.theme.CyanBridgeTheme
 import kotlin.concurrent.thread
 
 /**
@@ -18,49 +22,49 @@ import kotlin.concurrent.thread
  */
 class AppBlacklistActivity : AppCompatActivity() {
 
-    private lateinit var binding: ActivityAppBlacklistBinding
-
-    private lateinit var adapter: BlacklistAppAdapter
-
     private var allApps: List<BlacklistAppItem> = emptyList()
+    private var filteredApps by mutableStateOf<List<BlacklistAppItem>>(emptyList())
+    private var query by mutableStateOf("")
+    private var hideSystemApps by mutableStateOf(false)
+    private var selectedPackages by mutableStateOf<Set<String>>(emptySet())
+    private var isLoading by mutableStateOf(true)
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        binding = ActivityAppBlacklistBinding.inflate(layoutInflater)
-        setContentView(binding.root)
-
-        adapter = BlacklistAppAdapter(
-            initiallySelected = LocalAgentPrefs.getCaptureBlacklistPackages(this)
-        )
-
-        binding.recyclerApps.layoutManager = LinearLayoutManager(this)
-        binding.recyclerApps.adapter = adapter
-
-        binding.switchHideSystemApps.isChecked = LocalAgentPrefs.isHideSystemAppsEnabled(this)
-        binding.switchHideSystemApps.setOnCheckedChangeListener { _, isChecked ->
-            LocalAgentPrefs.setHideSystemAppsEnabled(this, isChecked)
-            refreshFilteredList()
-        }
-
-        binding.btnCancel.setOnClickListener { finish() }
-
-        binding.btnSave.setOnClickListener {
-            val selected = adapter.getSelectedPackages()
-            LocalAgentPrefs.setCaptureBlacklistPackages(this, selected)
-            Toast.makeText(this, "Saved blacklist (${selected.size} apps)", Toast.LENGTH_SHORT).show()
-            setResult(RESULT_OK, Intent())
-            finish()
-        }
-
-        binding.editSearch.doAfterTextChanged {
-            refreshFilteredList()
+        hideSystemApps = LocalAgentPrefs.isHideSystemAppsEnabled(this)
+        selectedPackages = LocalAgentPrefs.getCaptureBlacklistPackages(this)
+        val appearancePreferences = AppearancePreferences(this)
+        setContent {
+            val appearance by rememberAppearanceSettings(appearancePreferences)
+            CyanBridgeTheme(appearance) {
+                AppBlacklistScreen(
+                    apps = filteredApps,
+                    totalCount = allApps.size,
+                    query = query,
+                    hideSystemApps = hideSystemApps,
+                    selectedPackages = selectedPackages,
+                    isLoading = isLoading,
+                    onQueryChange = {
+                        query = it
+                        refreshFilteredList()
+                    },
+                    onHideSystemAppsChange = {
+                        hideSystemApps = it
+                        LocalAgentPrefs.setHideSystemAppsEnabled(this, it)
+                        refreshFilteredList()
+                    },
+                    onTogglePackage = ::togglePackage,
+                    onSave = ::saveSelection,
+                    onBack = ::finish,
+                )
+            }
         }
 
         loadAppsAsync()
     }
 
     private fun loadAppsAsync() {
-        binding.tvCount.text = "Loading…"
+        isLoading = true
 
         thread {
             val pm = packageManager
@@ -94,22 +98,34 @@ class AppBlacklistActivity : AppCompatActivity() {
 
             runOnUiThread {
                 allApps = items
+                isLoading = false
                 refreshFilteredList()
             }
         }
     }
 
     private fun refreshFilteredList() {
-        val q = binding.editSearch.text?.toString()?.trim()?.lowercase().orEmpty()
-        val hideSystem = binding.switchHideSystemApps.isChecked
+        val q = query.trim().lowercase()
 
-        val filtered = allApps.filter {
-            val okSystem = !(hideSystem && it.isSystemApp)
+        filteredApps = allApps.filter {
+            val okSystem = !(hideSystemApps && it.isSystemApp)
             val okQuery = q.isBlank() || it.label.lowercase().contains(q) || it.packageName.lowercase().contains(q)
             okSystem && okQuery
         }
+    }
 
-        adapter.submitList(filtered)
-        binding.tvCount.text = "${filtered.size} / ${allApps.size} apps"
+    private fun togglePackage(packageName: String) {
+        selectedPackages = if (packageName in selectedPackages) {
+            selectedPackages - packageName
+        } else {
+            selectedPackages + packageName
+        }
+    }
+
+    private fun saveSelection() {
+        LocalAgentPrefs.setCaptureBlacklistPackages(this, selectedPackages)
+        Toast.makeText(this, "Saved blacklist (${selectedPackages.size} apps)", Toast.LENGTH_SHORT).show()
+        setResult(RESULT_OK, Intent())
+        finish()
     }
 }

@@ -15,14 +15,27 @@ import android.widget.TextView
 import android.widget.Toast
 import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.app.AppCompatActivity
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.setValue
+import androidx.compose.ui.platform.ComposeView
 import androidx.lifecycle.Lifecycle
 import com.google.android.material.button.MaterialButton
 import com.google.android.material.progressindicator.LinearProgressIndicator
 import com.fersaiyan.cyanbridge.R
+import com.fersaiyan.cyanbridge.shared.billing.ProSubscriptionSettingsUiState
+import com.fersaiyan.cyanbridge.ui.appearance.AppearancePreferences
+import com.fersaiyan.cyanbridge.ui.appearance.rememberAppearanceSettings
+import com.fersaiyan.cyanbridge.ui.pro.ProSubscriptionSettingsScreen
+import com.fersaiyan.cyanbridge.ui.theme.CyanBridgeTheme
+import com.fersaiyan.cyanbridge.ui.installComposeHostWithLegacyAdapter
 import kotlin.math.roundToInt
 import kotlin.concurrent.thread
 
 class ProSubscriptionSettingsActivity : AppCompatActivity() {
+    private var composeState by mutableStateOf(ProSubscriptionSettingsUiState())
+    private var syncComposeState: (() -> Unit)? = null
+    private lateinit var composeView: ComposeView
 
     private val prefs by lazy {
         getSharedPreferences("pro_subscription_settings", MODE_PRIVATE)
@@ -35,6 +48,7 @@ class ProSubscriptionSettingsActivity : AppCompatActivity() {
         runOnUiThread {
             try {
                 block()
+                syncComposeState?.invoke()
             } catch (_: Throwable) {
                 // Activity may have been destroyed while handler executed
             }
@@ -43,7 +57,7 @@ class ProSubscriptionSettingsActivity : AppCompatActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        setContentView(R.layout.activity_pro_subscription_settings)
+        composeView = installComposeHostWithLegacyAdapter(R.layout.activity_pro_subscription_settings)
 
         if (!ProSubscriptionPrefs.isActiveLocally(this)) {
             Toast.makeText(this, "No active Pro plan found.", Toast.LENGTH_SHORT).show()
@@ -556,6 +570,105 @@ class ProSubscriptionSettingsActivity : AppCompatActivity() {
         }
 
         backButton.setOnClickListener { finish() }
+
+        fun selectComposeModel(spinner: Spinner, label: String) {
+            val index = modelLabels.indexOfFirst { it == label }
+            if (index >= 0) spinner.setSelection(index)
+            syncComposeState?.invoke()
+        }
+
+        syncComposeState = {
+            composeState = ProSubscriptionSettingsUiState(
+                planStatus = tvPlanStatus.text.toString(),
+                plan = tvPlanPlan.text.toString(),
+                expires = tvPlanExpires.text.toString(),
+                verified = tvPlanVerified.text.toString(),
+                accountEmail = tvAccountEmail.text.toString(),
+                accountToken = tvAccountToken.text.toString(),
+                accountSubscription = tvAccountSubscription.text.toString(),
+                quotaStatus = tvQuotaStatus.text.toString(),
+                quotaBreakdown = tvQuotaBreakdown.text.toString(),
+                quotaProgress = if (
+                    progressQuota.visibility == View.VISIBLE && !progressQuota.isIndeterminate
+                ) progressQuota.progress else null,
+                betaStatus = tvBetaCloudStatus.text.toString(),
+                cloudSync = switchCloudSync.isChecked,
+                prioritySupport = switchPrioritySupport.isChecked,
+                pluginRewards = switchPluginRewards.isChecked,
+                earlyAccessDevices = switchEarlyAccessDevices.isChecked,
+                backupFrequencyIndex = spinnerBackupFrequency.selectedItemPosition,
+                supportChannelIndex = spinnerSupportChannel.selectedItemPosition,
+                modelOptions = modelLabels.toList(),
+                requestsModel = spinnerModelRequests.selectedItem?.toString().orEmpty(),
+                questionsModel = spinnerModelQuestions.selectedItem?.toString().orEmpty(),
+                tasksModel = spinnerModelTasks.selectedItem?.toString().orEmpty(),
+            )
+        }
+        syncComposeState?.invoke()
+
+        val appearancePreferences = AppearancePreferences(this)
+        composeView.setContent {
+            val appearance by rememberAppearanceSettings(appearancePreferences)
+            CyanBridgeTheme(appearance) {
+                ProSubscriptionSettingsScreen(
+                    state = composeState,
+                    onRefreshPlan = {
+                        btnRefreshPlanStatus.performClick()
+                        syncComposeState?.invoke()
+                    },
+                    onChangePlan = { btnChangePlan.performClick() },
+                    onManageSubscription = { btnManageSubscription.performClick() },
+                    onRefreshAccount = {
+                        btnRefreshAccount.performClick()
+                        syncComposeState?.invoke()
+                    },
+                    onRefreshQuota = {
+                        btnRefreshQuota.performClick()
+                        syncComposeState?.invoke()
+                    },
+                    onRefreshModels = {
+                        btnRefreshModels.performClick()
+                        syncComposeState?.invoke()
+                    },
+                    onJoinBeta = {
+                        btnJoinBetaCloud.performClick()
+                        syncComposeState?.invoke()
+                    },
+                    onCloudSyncChange = {
+                        switchCloudSync.isChecked = it
+                        syncComposeState?.invoke()
+                    },
+                    onPrioritySupportChange = {
+                        switchPrioritySupport.isChecked = it
+                        syncComposeState?.invoke()
+                    },
+                    onPluginRewardsChange = {
+                        switchPluginRewards.isChecked = it
+                        syncComposeState?.invoke()
+                    },
+                    onEarlyAccessDevicesChange = {
+                        switchEarlyAccessDevices.isChecked = it
+                        syncComposeState?.invoke()
+                    },
+                    onBackupFrequencyChange = {
+                        spinnerBackupFrequency.setSelection(it.coerceIn(0, frequencyItems.lastIndex))
+                        syncComposeState?.invoke()
+                    },
+                    onSupportChannelChange = {
+                        spinnerSupportChannel.setSelection(it.coerceIn(0, supportItems.lastIndex))
+                        syncComposeState?.invoke()
+                    },
+                    onRequestsModelChange = { selectComposeModel(spinnerModelRequests, it) },
+                    onQuestionsModelChange = { selectComposeModel(spinnerModelQuestions, it) },
+                    onTasksModelChange = { selectComposeModel(spinnerModelTasks, it) },
+                    onSave = {
+                        saveButton.performClick()
+                        syncComposeState?.invoke()
+                    },
+                    onBack = ::finish,
+                )
+            }
+        }
     }
 
     private fun showChangePlanDialog() {
@@ -566,9 +679,9 @@ class ProSubscriptionSettingsActivity : AppCompatActivity() {
 
         val plans = arrayOf("cheap", "standard", "max")
         val labels = arrayOf(
-            "Cheap — \$1.55/month (\$1 base + Paddle 5% + \$0.50)",
-            "Standard — \$5.75/month (\$5 base + Paddle 5% + \$0.50)",
-            "Max — \$21.50/month (\$20 base + Paddle 5% + \$0.50)",
+            "Cheap — \$1 base; Paddle checkout \$1.55/month",
+            "Standard — \$5 base; Paddle checkout \$5.75/month",
+            "Max — \$20 base; Paddle checkout \$21.50/month",
         )
         var selected = 0
 

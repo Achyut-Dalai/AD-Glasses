@@ -6,25 +6,40 @@ import android.content.Context
 import android.content.Intent
 import android.os.Bundle
 import android.widget.Toast
+import androidx.activity.compose.setContent
 import androidx.appcompat.app.AppCompatActivity
-import com.fersaiyan.cyanbridge.databinding.ActivityNoteDetailBinding
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.setValue
 import com.fersaiyan.cyanbridge.ui.MyApplication
+import com.fersaiyan.cyanbridge.ui.appearance.AppearancePreferences
+import com.fersaiyan.cyanbridge.ui.appearance.rememberAppearanceSettings
+import com.fersaiyan.cyanbridge.ui.theme.CyanBridgeTheme
 import kotlinx.coroutines.MainScope
 import kotlinx.coroutines.cancel
 import kotlinx.coroutines.launch
 
 class NoteDetailActivity : AppCompatActivity() {
 
-    private lateinit var binding: ActivityNoteDetailBinding
     private val uiScope = MainScope()
+    private var title by mutableStateOf("Note")
+    private var summary by mutableStateOf("")
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        binding = ActivityNoteDetailBinding.inflate(layoutInflater)
-        setContentView(binding.root)
-
-        setSupportActionBar(binding.toolbar)
-        supportActionBar?.setDisplayHomeAsUpEnabled(true)
+        val appearancePreferences = AppearancePreferences(this)
+        setContent {
+            val appearance by rememberAppearanceSettings(appearancePreferences)
+            CyanBridgeTheme(appearance) {
+                NoteDetailScreen(
+                    title = title,
+                    summary = summary,
+                    onCopy = { copyToClipboard(summary) },
+                    onShare = { shareText(summary) },
+                    onBack = ::finish,
+                )
+            }
+        }
 
         val noteId = intent.getLongExtra(EXTRA_NOTE_ID, -1L)
         if (noteId <= 0L) {
@@ -40,26 +55,14 @@ class NoteDetailActivity : AppCompatActivity() {
                 return@launch
             }
 
-            binding.toolbar.title = note.title
-            binding.tvNoteBody.text = note.summary
-
-            binding.btnCopy.setOnClickListener {
-                copyToClipboard(note.summary)
-            }
-            binding.btnShare.setOnClickListener {
-                shareText(note.summary)
-            }
+            title = note.title
+            summary = note.summary
         }
     }
 
     override fun onDestroy() {
         super.onDestroy()
         uiScope.cancel()
-    }
-
-    override fun onSupportNavigateUp(): Boolean {
-        finish()
-        return true
     }
 
     private fun copyToClipboard(text: String) {

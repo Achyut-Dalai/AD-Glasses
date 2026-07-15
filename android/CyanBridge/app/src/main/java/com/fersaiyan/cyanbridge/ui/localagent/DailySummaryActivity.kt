@@ -2,26 +2,36 @@ package com.fersaiyan.cyanbridge.ui.localagent
 
 import android.content.Intent
 import android.os.Bundle
-import android.view.View
 import android.widget.Toast
+import androidx.activity.compose.setContent
 import androidx.appcompat.app.AppCompatActivity
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.setValue
 import androidx.work.ExistingWorkPolicy
 import androidx.work.WorkInfo
 import androidx.work.WorkManager
-import com.fersaiyan.cyanbridge.databinding.ActivityDailySummaryBinding
 import com.fersaiyan.cyanbridge.localagent.dailysummary.DailySummaryGenerator
 import com.fersaiyan.cyanbridge.localagent.dailysummary.DailySummaryPrefs
 import com.fersaiyan.cyanbridge.localagent.dailysummary.DailySummaryRegenerateWorker
 import com.fersaiyan.cyanbridge.localagent.dailysummary.DailySummaryRunHistory
 import com.fersaiyan.cyanbridge.localagent.memory.LocalAgentMemoryStore
+import com.fersaiyan.cyanbridge.ui.appearance.AppearancePreferences
+import com.fersaiyan.cyanbridge.ui.appearance.rememberAppearanceSettings
+import com.fersaiyan.cyanbridge.ui.theme.CyanBridgeTheme
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
 
 class DailySummaryActivity : AppCompatActivity() {
 
-    private lateinit var binding: ActivityDailySummaryBinding
     private val workManager by lazy { WorkManager.getInstance(this) }
+    private var summaryText by mutableStateOf("")
+    private var statusText by mutableStateOf("")
+    private var isRegenerating by mutableStateOf(false)
+    private var progressValue by mutableStateOf(0)
+    private var progressTitle by mutableStateOf("Regenerating daily summary")
+    private var progressDetail by mutableStateOf("Estimating remaining time...")
 
     private val date: String by lazy {
         intent.getStringExtra(EXTRA_DATE)?.trim().orEmpty().ifBlank {
@@ -33,18 +43,27 @@ class DailySummaryActivity : AppCompatActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        binding = ActivityDailySummaryBinding.inflate(layoutInflater)
-        setContentView(binding.root)
-
         LocalAgentMemoryStore.ensureSeedFiles(this)
-
-        binding.tvTitle.text = "Daily summary ($date)"
-        binding.tvPath.text = file.absolutePath
-
-        binding.btnClose.setOnClickListener { finish() }
-        binding.btnRefresh.setOnClickListener { refreshFromDisk() }
-        binding.btnShare.setOnClickListener { shareCurrent() }
-        binding.btnRegenerate.setOnClickListener { regenerate() }
+        val appearancePreferences = AppearancePreferences(this)
+        setContent {
+            val appearance by rememberAppearanceSettings(appearancePreferences)
+            CyanBridgeTheme(appearance) {
+                DailySummaryScreen(
+                    title = "Daily summary ($date)",
+                    path = file.absolutePath,
+                    status = statusText,
+                    summary = summaryText,
+                    isBusy = isRegenerating,
+                    progress = progressValue,
+                    progressTitle = progressTitle,
+                    progressDetail = progressDetail,
+                    onRefresh = ::refreshFromDisk,
+                    onRegenerate = ::regenerate,
+                    onShare = ::shareCurrent,
+                    onBack = ::finish,
+                )
+            }
+        }
 
         refreshFromDisk()
         observeRegenerationWork()
@@ -53,10 +72,10 @@ class DailySummaryActivity : AppCompatActivity() {
     private fun refreshFromDisk() {
         val loaded = LocalAgentMemoryStore.readText(file).trimEnd()
         val text = if (loaded.isNotBlank()) loaded else "(No daily summary generated yet. Tap Regenerate.)"
-        binding.tvSummary.text = text
+        summaryText = text
 
         val last = DailySummaryPrefs.getLastGeneratedAtMs(this, date)
-        binding.tvStatus.text = if (last > 0L) {
+        statusText = if (last > 0L) {
             val t = SimpleDateFormat("HH:mm", Locale.US).format(Date(last))
             "Last generated: $t"
         } else {
@@ -65,10 +84,7 @@ class DailySummaryActivity : AppCompatActivity() {
     }
 
     private fun setBusy(busy: Boolean) {
-        binding.btnRefresh.isEnabled = !busy
-        binding.btnRegenerate.isEnabled = !busy
-        binding.btnShare.isEnabled = !busy
-        binding.layoutProgress.visibility = if (busy) View.VISIBLE else View.GONE
+        isRegenerating = busy
     }
 
     private fun regenerate() {
@@ -87,14 +103,14 @@ class DailySummaryActivity : AppCompatActivity() {
             inputTokens = inputTokens,
         )
 
-        binding.progressSummary.progress = 1
-        binding.tvProgressTitle.text = "Regenerating daily summary (${estimate.provider})"
-        binding.tvProgressEta.text = formatEtaText(
+        progressValue = 1
+        progressTitle = "Regenerating daily summary (${estimate.provider})"
+        progressDetail = formatEtaText(
             etaMs = estimate.expectedTotalMs,
             sampleCount = estimate.sampleCount,
             stage = "Queued",
         )
-        binding.tvStatus.text = "Generating…"
+        statusText = "Generating…"
 
         val request = DailySummaryRegenerateWorker.buildRequest(date)
         workManager.enqueueUniqueWork(
@@ -139,16 +155,16 @@ class DailySummaryActivity : AppCompatActivity() {
                 val bulletDone = info.progress.getInt(DailySummaryRegenerateWorker.KEY_BULLET_DONE, 0)
                 val bulletTotal = info.progress.getInt(DailySummaryRegenerateWorker.KEY_BULLET_TOTAL, 0)
 
-                binding.progressSummary.progress = percent
-                binding.tvProgressTitle.text = "Regenerating daily summary (${provider})"
-                binding.tvProgressEta.text = formatEtaText(
+                progressValue = percent
+                progressTitle = "Regenerating daily summary (${provider})"
+                progressDetail = formatEtaText(
                     etaMs = etaMs,
                     sampleCount = sampleCount,
                     stage = stage,
                     bulletDone = bulletDone,
                     bulletTotal = bulletTotal,
                 )
-                binding.tvStatus.text = if (percent > 0) {
+                statusText = if (percent > 0) {
                     "Generating… $percent%"
                 } else {
                     "Generating…"
@@ -157,8 +173,8 @@ class DailySummaryActivity : AppCompatActivity() {
 
             WorkInfo.State.SUCCEEDED -> {
                 setBusy(false)
-                binding.progressSummary.progress = 100
-                binding.tvStatus.text = "Generation complete"
+                progressValue = 100
+                statusText = "Generation complete"
                 refreshFromDisk()
                 Toast.makeText(this, "Daily summary saved", Toast.LENGTH_SHORT).show()
             }
@@ -166,7 +182,7 @@ class DailySummaryActivity : AppCompatActivity() {
             WorkInfo.State.FAILED,
             WorkInfo.State.CANCELLED -> {
                 setBusy(false)
-                binding.tvStatus.text = "Generation failed"
+                statusText = "Generation failed"
                 val error = info.outputData.getString(DailySummaryRegenerateWorker.KEY_ERROR)
                     ?.trim()
                     .orEmpty()
@@ -206,7 +222,7 @@ class DailySummaryActivity : AppCompatActivity() {
     }
 
     private fun shareCurrent() {
-        val content = binding.tvSummary.text?.toString().orEmpty().trim()
+        val content = summaryText.trim()
         if (content.isBlank()) {
             Toast.makeText(this, "Nothing to share", Toast.LENGTH_SHORT).show()
             return

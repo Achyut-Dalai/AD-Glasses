@@ -1,75 +1,41 @@
 package com.fersaiyan.cyanbridge.ui
 
-import android.content.Context
 import android.content.Intent
 import android.net.Uri
 import android.os.Bundle
-import android.view.Menu
-import android.view.MenuItem
 import android.widget.Toast
-import androidx.appcompat.app.AlertDialog
+import androidx.activity.compose.setContent
 import androidx.appcompat.app.AppCompatActivity
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.setValue
+import androidx.lifecycle.lifecycleScope
 import com.fersaiyan.cyanbridge.MainActivity
-import com.fersaiyan.cyanbridge.R
 import com.fersaiyan.cyanbridge.ai.router.AiProviderPrefs
 import com.fersaiyan.cyanbridge.chat.ChatRole
 import com.fersaiyan.cyanbridge.chat.ChatStore
-import com.fersaiyan.cyanbridge.databinding.ActivityCommunityPluginsBinding
-import com.fersaiyan.cyanbridge.databinding.ItemCommunityPluginCardBinding
+import com.fersaiyan.cyanbridge.shared.navigation.AppDestination
+import com.fersaiyan.cyanbridge.shared.plugins.CommunityPluginCardData
+import com.fersaiyan.cyanbridge.shared.plugins.PluginTimeWindow
+import com.fersaiyan.cyanbridge.ui.appearance.AppearancePreferences
+import com.fersaiyan.cyanbridge.ui.appearance.rememberAppearanceSettings
+import com.fersaiyan.cyanbridge.ui.plugins.CommunityPluginsScreen
 import com.fersaiyan.cyanbridge.ui.recordings.RecordingsListActivity
-import kotlinx.coroutines.CoroutineScope
+import com.fersaiyan.cyanbridge.ui.theme.CyanBridgeTheme
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
-import java.util.Locale
 
 class CommunityPluginsActivity : AppCompatActivity() {
 
-    private lateinit var binding: ActivityCommunityPluginsBinding
+    private var selectedWindow by mutableStateOf(PluginTimeWindow.ALL_TIME)
+    private var imageAutomationEnabled by mutableStateOf(false)
+    private var showImageAutomationBanner by mutableStateOf(true)
+    private var isRefreshing by mutableStateOf(false)
     private var serverPluginsLoaded = false
 
-    private enum class TimeWindow {
-        ALL_TIME,
-        WEEKLY,
-        MONTHLY,
-    }
-
-    private data class PluginCardData(
-        val title: String,
-        val author: String,
-        val description: String,
-        val badge: String,
-        val downloadsAll: Int,
-        val downloadsMonthly: Int,
-        val downloadsWeekly: Int,
-        val votesAll: Int,
-        val votesMonthly: Int,
-        val votesWeekly: Int,
-        val trendAll: Int,
-        val trendMonthly: Int,
-        val trendWeekly: Int,
-    ) {
-        fun downloads(window: TimeWindow): Int = when (window) {
-            TimeWindow.ALL_TIME -> downloadsAll
-            TimeWindow.MONTHLY -> downloadsMonthly
-            TimeWindow.WEEKLY -> downloadsWeekly
-        }
-
-        fun votes(window: TimeWindow): Int = when (window) {
-            TimeWindow.ALL_TIME -> votesAll
-            TimeWindow.MONTHLY -> votesMonthly
-            TimeWindow.WEEKLY -> votesWeekly
-        }
-
-        fun trend(window: TimeWindow): Int = when (window) {
-            TimeWindow.ALL_TIME -> trendAll
-            TimeWindow.MONTHLY -> trendMonthly
-            TimeWindow.WEEKLY -> trendWeekly
-        }
-    }
-
     private val pluginPool = listOf(
-        PluginCardData(
+        CommunityPluginCardData(
             title = "Meeting Spark Notes",
             author = "cyanlabs",
             description = "Builds concise action summaries from captures and chats.",
@@ -84,7 +50,7 @@ class CommunityPluginsActivity : AppCompatActivity() {
             trendMonthly = 96,
             trendWeekly = 97,
         ),
-        PluginCardData(
+        CommunityPluginCardData(
             title = "Live Caption Relay",
             author = "captionsmith",
             description = "Streams glasses audio to phone and pushes bilingual captions.",
@@ -99,7 +65,7 @@ class CommunityPluginsActivity : AppCompatActivity() {
             trendMonthly = 94,
             trendWeekly = 98,
         ),
-        PluginCardData(
+        CommunityPluginCardData(
             title = "Errand Brain",
             author = "urbanaut",
             description = "Turns quick voice notes into checklist tasks and reminders.",
@@ -114,7 +80,7 @@ class CommunityPluginsActivity : AppCompatActivity() {
             trendMonthly = 85,
             trendWeekly = 89,
         ),
-        PluginCardData(
+        CommunityPluginCardData(
             title = "Commute Copilot",
             author = "routepilot",
             description = "Summarizes route changes and sends trip status prompts.",
@@ -129,7 +95,7 @@ class CommunityPluginsActivity : AppCompatActivity() {
             trendMonthly = 80,
             trendWeekly = 84,
         ),
-        PluginCardData(
+        CommunityPluginCardData(
             title = "Retail Field Scout",
             author = "shelfops",
             description = "Captures shelf notes and auto-tags price/checklist anomalies.",
@@ -144,7 +110,7 @@ class CommunityPluginsActivity : AppCompatActivity() {
             trendMonthly = 78,
             trendWeekly = 82,
         ),
-        PluginCardData(
+        CommunityPluginCardData(
             title = "Hands-Free Translator",
             author = "polyglot.dev",
             description = "Voice command translation presets for frequent phrases.",
@@ -163,271 +129,146 @@ class CommunityPluginsActivity : AppCompatActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        binding = ActivityCommunityPluginsBinding.inflate(layoutInflater)
-        setContentView(binding.root)
+        refreshPluginUi()
 
-        setupToolbar()
-        setupFilterControls()
-        setupPublishFab()
-        setupImageAutomationPluginCard()
-        setupBottomNavigation()
-        renderSections(TimeWindow.ALL_TIME)
-    }
-
-    private fun setupToolbar() {
-        binding.toolbar.setOnMenuItemClickListener { menuItem ->
-            when (menuItem.itemId) {
-                R.id.action_refresh -> {
-                    fetchPluginsFromServer()
-                    true
-                }
-                else -> false
-            }
-        }
-    }
-
-    private fun fetchPluginsFromServer() {
-        if (!serverPluginsLoaded) {
-            Toast.makeText(this, "Fetching plugins from server...", Toast.LENGTH_SHORT).show()
-        }
-
-        CoroutineScope(Dispatchers.IO).launch {
-            try {
-                val relayUrl = AiProviderPrefs.getRelayBaseUrl(this@CommunityPluginsActivity)
-                val url = "$relayUrl/plugins"
-
-                val client = java.net.URL(url)
-                val connection = client.openConnection() as java.net.HttpURLConnection
-                connection.requestMethod = "GET"
-                connection.connectTimeout = 5000
-                connection.readTimeout = 5000
-
-                val responseCode = connection.responseCode
-                if (responseCode == 200) {
-                    val response = connection.inputStream.bufferedReader().readText()
-                    withContext(Dispatchers.Main) {
-                        Toast.makeText(this@CommunityPluginsActivity, "Plugins refreshed from server!", Toast.LENGTH_SHORT).show()
-                        serverPluginsLoaded = true
-                    }
-                } else {
-                    withContext(Dispatchers.Main) {
-                        Toast.makeText(this@CommunityPluginsActivity, "Server unreachable. Using cached plugins.", Toast.LENGTH_SHORT).show()
-                    }
-                }
-                connection.disconnect()
-            } catch (e: Exception) {
-                withContext(Dispatchers.Main) {
-                    Toast.makeText(this@CommunityPluginsActivity, "Server unavailable. Using cached plugins.", Toast.LENGTH_LONG).show()
-                }
+        val appearancePreferences = AppearancePreferences(this)
+        setContent {
+            val appearance by rememberAppearanceSettings(appearancePreferences)
+            CyanBridgeTheme(appearance) {
+                CommunityPluginsScreen(
+                    plugins = pluginPool,
+                    selectedWindow = selectedWindow,
+                    imageAutomationEnabled = imageAutomationEnabled,
+                    showImageAutomationBanner = showImageAutomationBanner,
+                    isRefreshing = isRefreshing,
+                    onWindowSelected = { selectedWindow = it },
+                    onRefresh = ::fetchPluginsFromServer,
+                    onDismissImageAutomationBanner = ::dismissImageAutomationBanner,
+                    onOpenTaskerStore = ::openTaskerStore,
+                    onOpenTaskerNet = ::openTaskerNet,
+                    onPublishPlugin = {
+                        startActivity(Intent(this, PublishPluginActivity::class.java))
+                    },
+                    onDestinationSelected = ::navigateTo,
+                )
             }
         }
     }
 
     override fun onResume() {
         super.onResume()
-        binding.bottomNavigation.post {
-            binding.bottomNavigation.menu.findItem(R.id.nav_community_plugins).isChecked = true
-        }
-        refreshImageAutomationPluginStatus()
-
-        if (CommunityPluginPrefs.isImageAutomationBannerDismissed(this)) {
-            binding.cardPluginImageAutomation.visibility = android.view.View.GONE
-        }
+        refreshPluginUi()
     }
 
-    private fun setupImageAutomationPluginCard() {
-        binding.btnPluginImageAutomation.setOnClickListener {
-            showTaskerPluginPopup()
-        }
-
-        binding.btnPluginImageAutomationDismiss.setOnClickListener {
-            showDismissConfirmation()
-        }
-
-        refreshImageAutomationPluginStatus()
+    private fun refreshPluginUi() {
+        imageAutomationEnabled = CommunityPluginPrefs.isGeminiChatGptImageAutomationEnabled(this)
+        showImageAutomationBanner = !CommunityPluginPrefs.isImageAutomationBannerDismissed(this)
     }
 
-    private fun showDismissConfirmation() {
-        AlertDialog.Builder(this)
-            .setTitle("Hide this banner?")
-            .setMessage("This will hide the Gemini/ChatGPT Image Questions Automation banner. You can re-enable it from Settings if needed.")
-            .setPositiveButton("Hide") { _, _ ->
-                CommunityPluginPrefs.setImageAutomationBannerDismissed(this, true)
-                binding.cardPluginImageAutomation.visibility = android.view.View.GONE
-                Toast.makeText(this, "Banner hidden", Toast.LENGTH_SHORT).show()
-            }
-            .setNegativeButton("Cancel", null)
-            .show()
-    }
-
-    private fun showTaskerPluginPopup() {
-        val dialogView = layoutInflater.inflate(R.layout.dialog_tasker_plugin, null)
-        
-        val dialog = AlertDialog.Builder(this)
-            .setView(dialogView)
-            .setCancelable(true)
-            .create()
-
-        dialogView.findViewById<android.widget.Button>(R.id.btn_download_tasker).setOnClickListener {
-            try {
-                startActivity(Intent(Intent.ACTION_VIEW, Uri.parse("market://details?id=net.dinglisch.android.taskerm")))
-            } catch (e: Exception) {
-                startActivity(Intent(Intent.ACTION_VIEW, Uri.parse("https://play.google.com/store/apps/details?id=net.dinglisch.android.taskerm")))
-            }
+    private fun fetchPluginsFromServer() {
+        if (isRefreshing) return
+        if (!serverPluginsLoaded) {
+            Toast.makeText(this, "Fetching plugins from server...", Toast.LENGTH_SHORT).show()
         }
+        isRefreshing = true
 
-        dialogView.findViewById<android.widget.Button>(R.id.btn_open_taskernet).setOnClickListener {
-            try {
-                startActivity(Intent(Intent.ACTION_VIEW, Uri.parse("https://taskernet.com/shares/?user=AS35m8m%2BZfcOI%2FAn4TYXwIRGXRuXzE9zXexYgafojsO%2FQSXgVbu8nOiYo%2BLhLj1izKWhtzdxI6eOvMI%3D&id=Profile%3ATasker+AI")))
-            } catch (e: Exception) {
-                Toast.makeText(this, "Could not open TaskerNet", Toast.LENGTH_SHORT).show()
-            }
-        }
-
-        dialogView.findViewById<android.widget.Button>(R.id.btn_close).setOnClickListener {
-            dialog.dismiss()
-        }
-
-        dialog.show()
-    }
-
-    private fun refreshImageAutomationPluginStatus() {
-        val enabled = CommunityPluginPrefs.isGeminiChatGptImageAutomationEnabled(this)
-        binding.tvPluginImageAutomationStatus.text = if (enabled) {
-            "Status: Downloaded and enabled"
-        } else {
-            "Status: Not downloaded"
-        }
-        binding.btnPluginImageAutomation.text = if (enabled) {
-            "Disable plugin"
-        } else {
-            "Download plugin"
-        }
-    }
-
-    private fun setupFilterControls() {
-        binding.chipGroupPeriod.setOnCheckedStateChangeListener { _, _ ->
-            renderSections(currentWindow())
-        }
-    }
-
-    private fun setupPublishFab() {
-        binding.fabPublishHelp.setOnClickListener {
-            startActivity(Intent(this, PublishPluginActivity::class.java))
-        }
-    }
-
-    private fun renderSections(window: TimeWindow) {
-        val trending = pluginPool
-            .sortedByDescending { it.trend(window) }
-            .take(4)
-
-        val topVoted = pluginPool
-            .sortedByDescending { it.votes(window) }
-            .take(4)
-
-        val topDownloaded = pluginPool
-            .sortedByDescending { it.downloads(window) }
-            .take(4)
-
-        renderSection(binding.containerTrending, trending, window)
-        renderSection(binding.containerTopVoted, topVoted, window)
-        renderSection(binding.containerTopDownloaded, topDownloaded, window)
-    }
-
-    private fun renderSection(
-        container: android.widget.LinearLayout,
-        items: List<PluginCardData>,
-        window: TimeWindow,
-    ) {
-        container.removeAllViews()
-        items.forEachIndexed { index, plugin ->
-            val cardBinding = ItemCommunityPluginCardBinding.inflate(layoutInflater, container, false)
-            cardBinding.tvPluginTitle.text = "${index + 1}. ${plugin.title}"
-            cardBinding.tvPluginAuthor.text = "by ${plugin.author}"
-            cardBinding.tvPluginBadge.text = plugin.badge
-            cardBinding.tvPluginDescription.text = plugin.description
-            cardBinding.tvPluginDownloads.text = "${formatCount(plugin.downloads(window))} downloads"
-            cardBinding.tvPluginVotes.text = "${formatCount(plugin.votes(window))} votes"
-            cardBinding.tvPluginTrend.text = "${windowLabel(window)} trend ${plugin.trend(window)}"
-            container.addView(cardBinding.root)
-        }
-    }
-
-    private fun currentWindow(): TimeWindow = when {
-        binding.chipWeekly.isChecked -> TimeWindow.WEEKLY
-        binding.chipMonthly.isChecked -> TimeWindow.MONTHLY
-        else -> TimeWindow.ALL_TIME
-    }
-
-    private fun windowLabel(window: TimeWindow): String = when (window) {
-        TimeWindow.ALL_TIME -> "all-time"
-        TimeWindow.WEEKLY -> "weekly"
-        TimeWindow.MONTHLY -> "monthly"
-    }
-
-    private fun formatCount(value: Int): String {
-        return when {
-            value >= 1_000_000 -> String.format(Locale.US, "%.1fM", value / 1_000_000f)
-            value >= 1_000 -> String.format(Locale.US, "%.1fk", value / 1_000f)
-            else -> value.toString()
-        }
-    }
-
-    private fun setupBottomNavigation() {
-        binding.bottomNavigation.selectedItemId = R.id.nav_community_plugins
-        binding.bottomNavigation.setOnItemSelectedListener { item ->
-            when (item.itemId) {
-                R.id.nav_community_plugins -> true
-                R.id.nav_glasses -> {
-                    binding.bottomNavigation.post {
-                        startActivity(Intent(this, MainActivity::class.java).apply {
-                            addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP or Intent.FLAG_ACTIVITY_SINGLE_TOP)
-                        })
-                    }
-                    true
-                }
-                R.id.nav_chats -> {
-                    binding.bottomNavigation.post {
-                        val last = ChatStore.listNonEmptyThreads().firstOrNull()
-                        val now = System.currentTimeMillis()
-
-                        fun lastUserMessageAtMs(chatId: String): Long? {
-                            val msgs = ChatStore.listMessages(chatId)
-                            return msgs.lastOrNull { it.role == ChatRole.USER }?.createdAt
+        lifecycleScope.launch {
+            val refreshed = withContext(Dispatchers.IO) {
+                runCatching {
+                    val relayUrl = AiProviderPrefs.getRelayBaseUrl(this@CommunityPluginsActivity)
+                    val connection = java.net.URL("$relayUrl/plugins").openConnection()
+                        as java.net.HttpURLConnection
+                    try {
+                        connection.requestMethod = "GET"
+                        connection.connectTimeout = 5_000
+                        connection.readTimeout = 5_000
+                        if (connection.responseCode == java.net.HttpURLConnection.HTTP_OK) {
+                            connection.inputStream.bufferedReader().use { it.readText() }
+                            true
+                        } else {
+                            false
                         }
+                    } finally {
+                        connection.disconnect()
+                    }
+                }.getOrDefault(false)
+            }
 
-                        val openChatId = if (last != null) {
-                            val lastUserAt = lastUserMessageAtMs(last.id) ?: 0L
-                            if (lastUserAt > 0L && (now - lastUserAt) < 30 * 60 * 1000) last.id else null
-                        } else null
+            isRefreshing = false
+            if (refreshed) {
+                serverPluginsLoaded = true
+                Toast.makeText(this@CommunityPluginsActivity, "Plugins refreshed from server!", Toast.LENGTH_SHORT).show()
+            } else {
+                Toast.makeText(
+                    this@CommunityPluginsActivity,
+                    "Server unavailable. Using cached plugins.",
+                    Toast.LENGTH_LONG,
+                ).show()
+            }
+        }
+    }
 
-                        val intent = Intent(this, ChatThreadActivity::class.java)
-                        if (openChatId != null) {
-                            intent.putExtra(ChatThreadActivity.EXTRA_CHAT_ID, openChatId)
-                        }
-                        intent.addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP or Intent.FLAG_ACTIVITY_SINGLE_TOP)
-                        startActivity(intent)
-                    }
-                    true
-                }
-                R.id.nav_transcriptions_recordings -> {
-                    binding.bottomNavigation.post {
-                        startActivity(Intent(this, RecordingsListActivity::class.java).apply {
-                            addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP or Intent.FLAG_ACTIVITY_SINGLE_TOP)
-                        })
-                    }
-                    true
-                }
-                R.id.nav_settings -> {
-                    binding.bottomNavigation.post {
-                        startActivity(Intent(this, SettingsActivity::class.java).apply {
-                            addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP or Intent.FLAG_ACTIVITY_SINGLE_TOP)
-                        })
-                    }
-                    true
-                }
-                else -> false
+    private fun dismissImageAutomationBanner() {
+        CommunityPluginPrefs.setImageAutomationBannerDismissed(this, true)
+        showImageAutomationBanner = false
+        Toast.makeText(this, "Banner hidden", Toast.LENGTH_SHORT).show()
+    }
+
+    private fun openTaskerStore() {
+        val marketIntent = Intent(
+            Intent.ACTION_VIEW,
+            Uri.parse("market://details?id=net.dinglisch.android.taskerm"),
+        )
+        runCatching { startActivity(marketIntent) }.getOrElse {
+            startActivity(
+                Intent(
+                    Intent.ACTION_VIEW,
+                    Uri.parse("https://play.google.com/store/apps/details?id=net.dinglisch.android.taskerm"),
+                ),
+            )
+        }
+    }
+
+    private fun openTaskerNet() {
+        runCatching {
+            startActivity(
+                Intent(
+                    Intent.ACTION_VIEW,
+                    Uri.parse(
+                        "https://taskernet.com/shares/?user=AS35m8m%2BZfcOI%2FAn4TYXwIRGXRuXzE9zXexYgafojsO%2FQSXgVbu8nOiYo%2BLhLj1izKWhtzdxI6eOvMI%3D&id=Profile%3ATasker+AI",
+                    ),
+                ),
+            )
+        }.onFailure {
+            Toast.makeText(this, "Could not open TaskerNet", Toast.LENGTH_SHORT).show()
+        }
+    }
+
+    private fun navigateTo(destination: AppDestination) {
+        val target = when (destination) {
+            AppDestination.GLASSES -> Intent(this, MainActivity::class.java)
+            AppDestination.CHATS -> buildRecentChatIntent()
+            AppDestination.MEDIA -> Intent(this, RecordingsListActivity::class.java)
+            AppDestination.PLUGINS -> return
+            AppDestination.SETTINGS -> Intent(this, SettingsActivity::class.java)
+        }
+        target.addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP or Intent.FLAG_ACTIVITY_SINGLE_TOP)
+        startActivity(target)
+    }
+
+    private fun buildRecentChatIntent(): Intent {
+        val last = ChatStore.listNonEmptyThreads().firstOrNull()
+        val lastUserAt = last?.let { thread ->
+            ChatStore.listMessages(thread.id)
+                .lastOrNull { it.role == ChatRole.USER }
+                ?.createdAt
+        } ?: 0L
+        val openChatId = last?.id?.takeIf {
+            lastUserAt > 0L && System.currentTimeMillis() - lastUserAt < 30 * 60 * 1_000
+        }
+        return Intent(this, ChatThreadActivity::class.java).apply {
+            if (openChatId != null) {
+                putExtra(ChatThreadActivity.EXTRA_CHAT_ID, openChatId)
             }
         }
     }

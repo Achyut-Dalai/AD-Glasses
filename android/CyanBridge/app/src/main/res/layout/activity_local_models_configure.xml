@@ -231,7 +231,7 @@
                             android:layout_height="24dp"
                             android:contentDescription="Expand/collapse"
                             android:src="@drawable/ic_expand_more"
-                            android:tint="@color/text_secondary" />
+                            app:tint="@color/text_secondary" />
                     </LinearLayout>
 
                     <LinearLayout
@@ -297,7 +297,7 @@
                             android:layout_height="24dp"
                             android:contentDescription="Expand/collapse"
                             android:src="@drawable/ic_expand_more"
-                            android:tint="@color/text_secondary" />
+                            app:tint="@color/text_secondary" />
                     </LinearLayout>
 
                     <LinearLayout
@@ -439,7 +439,7 @@
                             android:layout_height="24dp"
                             android:contentDescription="Expand/collapse"
                             android:src="@drawable/ic_expand_more"
-                            android:tint="@color/text_secondary" />
+                            app:tint="@color/text_secondary" />
                     </LinearLayout>
 
                     <LinearLayout
@@ -561,7 +561,7 @@
                             android:layout_height="24dp"
                             android:contentDescription="Expand/collapse"
                             android:src="@drawable/ic_expand_more"
-                            android:tint="@color/text_secondary" />
+                            app:tint="@color/text_secondary" />
                     </LinearLayout>
 
                     <LinearLayout
