@@ -1,0 +1,45 @@
+package com.fersaiyan.cyanbridge.shared.icons
+
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.outlined.Send
+import androidx.compose.material.icons.outlined.Add
+import androidx.compose.material.icons.outlined.AttachFile
+import androidx.compose.material.icons.outlined.BatteryStd
+import androidx.compose.material.icons.outlined.Bluetooth
+import androidx.compose.material.icons.outlined.CameraAlt
+import androidx.compose.material.icons.outlined.Close
+import androidx.compose.material.icons.outlined.Delete
+import androidx.compose.material.icons.outlined.Headphones
+import androidx.compose.material.icons.outlined.Mic
+import androidx.compose.material.icons.outlined.MoreVert
+import androidx.compose.material.icons.outlined.Palette
+import androidx.compose.material.icons.outlined.PlayCircle
+import androidx.compose.material.icons.outlined.Settings
+import androidx.compose.material.icons.outlined.Stop
+import androidx.compose.material.icons.outlined.SwapHoriz
+import androidx.compose.material.icons.outlined.SmartToy
+import androidx.compose.material.icons.outlined.Videocam
+import androidx.compose.ui.graphics.vector.ImageVector
+
+fun AppIcon.imageVector(): ImageVector = when (this) {
+    AppIcon.Glasses -> Icons.Outlined.Bluetooth
+    AppIcon.Chat -> Icons.AutoMirrored.Outlined.Send
+    AppIcon.Recordings -> Icons.Outlined.Headphones
+    AppIcon.Settings -> Icons.Outlined.Settings
+    AppIcon.Plugins -> Icons.Outlined.PlayCircle
+    AppIcon.Camera -> Icons.Outlined.CameraAlt
+    AppIcon.Video -> Icons.Outlined.Videocam
+    AppIcon.Microphone -> Icons.Outlined.Mic
+    AppIcon.Battery -> Icons.Outlined.BatteryStd
+    AppIcon.Sync -> Icons.Outlined.SwapHoriz
+    AppIcon.Model -> Icons.Outlined.SmartToy
+    AppIcon.Send -> Icons.AutoMirrored.Outlined.Send
+    AppIcon.Appearance -> Icons.Outlined.Palette
+    AppIcon.Add -> Icons.Outlined.Add
+    AppIcon.Delete -> Icons.Outlined.Delete
+    AppIcon.Back -> Icons.AutoMirrored.Outlined.Send
+    AppIcon.More -> Icons.Outlined.MoreVert
+    AppIcon.Attachment -> Icons.Outlined.AttachFile
+    AppIcon.Stop -> Icons.Outlined.Stop
+    AppIcon.Close -> Icons.Outlined.Close
+}
