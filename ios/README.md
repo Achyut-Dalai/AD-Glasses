@@ -14,6 +14,12 @@ The existing Xcode project contains `CyanBridgeKMPHost`, a simulator-targeted Sw
 
 Without macOS, run `python3 scripts/verify_kmp_host.py` from this directory to check the project wiring structurally. It does not replace an Xcode build or simulator/device validation.
 
+## GitHub Actions CI
+
+An automated iOS workflow (`.github/workflows/ios-kmp-host.yml`) runs on the `compose-material3-kmp-v2` branch and can be dispatched manually. It builds `CyanBridgeShared.framework` for `iosSimulatorArm64`, compiles the unsigned `CyanBridgeKMPHost` app, launches it in a simulator, and captures a screenshot as a build artifact. See [`CYANBRIDGE_KMP_IOS.md`](CYANBRIDGE_KMP_IOS.md) for complete details.
+
+No Apple Developer Program membership or physical Mac is required to trigger or inspect CI results — only the GitHub Actions macOS runner provided by GitHub.
+
 ## Documentation
 
 See the main [README](../README.md) for complete documentation, API reference, and usage examples.

@@ -51,7 +51,7 @@ considered reliable.
 | MemoMind/XGIMI | Experimental research | RFCOMM framing, device info, battery, cards, notifications, and selected settings are mapped. The adapter still needs sustained physical-device validation. |
 | Meta Ray-Ban | Partial setup only | Optional registration plumbing exists when the Meta DAT SDK is available. Sessions, camera streaming, photo capture, and display rendering are explicitly not implemented. |
 | Even/Mentra runtimes | Prototype | Adapter and runtime experiments are present, not a supported consumer device path. |
-| iOS | Foundation and vendor reference | A simulator-targeted KMP host is scaffolded but unverified without macOS/Xcode; the vendor QCSDK path requires a physical device and still needs hardware validation. |
+| iOS | CI-validated host | A simulator-targeted KMP host is built and tested via a GitHub Actions macOS workflow (framework link, Xcode compilation, simulator launch, screenshot); the vendor QCSDK path still requires a physical device and needs hardware validation. |
 
 ## Build the Android app
 

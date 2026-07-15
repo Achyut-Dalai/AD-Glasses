@@ -43,7 +43,7 @@ Implemented on 2026-07-14 in the current working migration:
 - The chat vertical slice now has a portable suspend `ChatRepository` contract, immutable thread reducer, composer/attachment/progress state, and semantic appearance-menu actions. `ChatStoreRepository` adapts the current Room-backed Android store; the production chat thread and composer are now Material 3 Compose with Android-only inference, media, and daily-review callbacks retained in the Activity.
 - Existing glasses display, connection-state, capability, input-event, device-info, error, and adapter contracts now compile from `commonMain` under their established `bridge.core` package. Android vendor adapters still own all hardware calls.
 - Opt-in `iosX64`, `iosArm64`, and `iosSimulatorArm64` framework targets are configured to produce `CyanBridgeShared.framework` on a Mac. `kotlin.native.distribution.downloadFromMaven=true` avoids Kotlin 1.9.24's project-level Ivy repository and preserves settings-owned dependency resolution.
-- The tracked Xcode project now contains `CyanBridgeKMPHost`, a simulator-targeted SwiftUI KMP shell that does not link the vendor archive. `QCSDKDemo` is isolated as a device-reference target; `ios/scripts/verify_kmp_host.py` statically checks that separation on Linux. An Xcode framework link and simulator launch remain unverified until macOS is available.
+- The tracked Xcode project now contains `CyanBridgeKMPHost`, a simulator-targeted SwiftUI KMP shell that does not link the vendor archive. `QCSDKDemo` is isolated as a device-reference target; `ios/scripts/verify_kmp_host.py` statically checks that separation on Linux. A GitHub Actions macOS workflow validates framework linking, Xcode compilation, simulator install/launch, and captures a screenshot on every push.
 - Meeting-summary request/response contracts, deterministic Markdown formatting, and the offline rule-based summarizer now compile from `commonMain`. Android retains Room persistence and its test-only fake summarizer.
 - Common tests lock down appearance defaults, stable accent IDs, fallback behavior, and destination identifiers.
 - The P2P sync-flow picker and chat appearance overflow menu now render as Compose dialogs. The Android Activities still own their BLE/P2P, preference, picker, and external-app callbacks.
@@ -60,7 +60,7 @@ Still pending:
 - Curated local-model catalog metadata and lookup now compile from `:shared`; Android-only download, storage, runtime, preference, and device-capability adapters remain in `:app`.
 - Physical screenshot, TalkBack, font-scale, keyboard, gesture-navigation, and three-button-navigation acceptance runs remain release-quality validation, not blockers for this UI-only migration.
 - Compose Multiplatform UI, iOS feature UI, an iOS persistence adapter, and any production iOS vendor SDK integration remain deferred. The native SwiftUI host currently renders shared defaults and a String-only meeting-summary preview only.
-- A Mac/Xcode build and physical-device acceptance run are required before treating the iOS framework host as working.
+- A GitHub Actions macOS workflow now validates all non-device iOS gates (framework link, Xcode compilation, simulator launch). A physical-device acceptance run is still required before treating the iOS framework host as working for device-specific features (Bluetooth, hotspot, QCSDK).
 
 ### Toolchain Compatibility Record
 
@@ -77,7 +77,7 @@ The initial Android slice deliberately uses the versions already accepted by the
 
 This is a compatibility baseline, not a claim that every pin is the newest available. Upgrade this set separately from screen migration, with the forked vendor integration, Room/KAPT, local inference runtimes, unit tests, and debug APK verified after each version step.
 
-Kotlin 1.9.24 reports that AGP 8.12.1 is newer than the KMP plugin's maximum tested AGP 8.2. The current Android and portability builds pass, but this warning is not suppressed. Kotlin/Native's default Ivy download repository conflicts with this repository's settings-only dependency policy; `kotlin.native.distribution.downloadFromMaven=true` makes the compiler distribution resolve through the existing Maven Central repository instead. Apple targets are opt-in through `-PenableAppleTargets=true` because Linux cannot link them; a Mac/Xcode link remains required.
+Kotlin 1.9.24 reports that AGP 8.12.1 is newer than the KMP plugin's maximum tested AGP 8.2. The current Android and portability builds pass, but this warning is not suppressed. Kotlin/Native's default Ivy download repository conflicts with this repository's settings-only dependency policy; `kotlin.native.distribution.downloadFromMaven=true` makes the compiler distribution resolve through the existing Maven Central repository instead. Apple targets are opt-in through `-PenableAppleTargets=true` because Linux cannot link them; macOS framework linking is handled by GitHub Actions.
 
 ## Audit Snapshot
 
@@ -149,7 +149,11 @@ Code present in the demo suggests these intended capabilities:
 - iOS hotspot joining through `NEHotspotConfiguration`.
 - HTTP media discovery and download from `/files/media.config` and `/files/<name>`.
 
-These files are protocol evidence, not proof that a production iOS SDK path works. `QCSDKDemo` remains isolated from the KMP framework so vendor-reference changes cannot silently become production shared-state dependencies. No production transport choice has been made until the framework links and device flows work on a current physical iPhone.
+These files are protocol evidence, not proof that a production iOS SDK path works. `QCSDKDemo` remains isolated from the KMP framework so vendor-reference changes cannot silently become production shared-state dependencies.
+
+The KMP iOS host (`CyanBridgeKMPHost`) is now validated by a hosted GitHub Actions macOS workflow (`.github/workflows/ios-kmp-host.yml`). The workflow confirms that `CyanBridgeShared.framework` links for `iosSimulatorArm64`, the Xcode project compiles the unsigned SwiftUI host, and the app launches in an iPhone 16 simulator. This does not require an Apple Developer Program membership or a local Mac.
+
+No production transport choice has been made until device flows work on a current physical iPhone.
 
 Static inspection found arm64 Mach-O objects throughout the bundled `QCSDK.framework` archive. That rules out Intel simulator support and does not prove Apple Silicon simulator compatibility, so `CyanBridgeKMPHost` deliberately does not link the vendor archive.
 
