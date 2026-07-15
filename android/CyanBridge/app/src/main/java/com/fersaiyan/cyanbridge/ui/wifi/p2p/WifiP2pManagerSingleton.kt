@@ -1,13 +1,17 @@
 package com.fersaiyan.cyanbridge.ui.wifi.p2p
 
+import android.Manifest
+import android.annotation.SuppressLint
 import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.IntentFilter
+import android.content.pm.PackageManager
 import android.net.wifi.p2p.WifiP2pConfig
 import android.net.wifi.p2p.WifiP2pDevice
 import android.net.wifi.p2p.WifiP2pDeviceList
 import android.net.wifi.p2p.WifiP2pInfo
 import android.net.wifi.p2p.WifiP2pManager
+import android.os.Build
 import android.os.Handler
 import android.os.Looper
 import android.util.Log
@@ -26,7 +30,7 @@ class WifiP2pManagerSingleton private constructor(private val context: Context) 
 
         fun getInstance(context: Context): WifiP2pManagerSingleton {
             return instance ?: synchronized(this) {
-                instance ?: WifiP2pManagerSingleton(context).also { instance = it }
+                instance ?: WifiP2pManagerSingleton(context.applicationContext).also { instance = it }
             }
         }
     }
@@ -51,6 +55,15 @@ class WifiP2pManagerSingleton private constructor(private val context: Context) 
     }
 
     private var receiver: BroadcastReceiver? = null
+
+    private fun hasWifiP2pPermission(): Boolean {
+        val permission = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            Manifest.permission.NEARBY_WIFI_DEVICES
+        } else {
+            Manifest.permission.ACCESS_FINE_LOCATION
+        }
+        return ContextCompat.checkSelfPermission(context, permission) == PackageManager.PERMISSION_GRANTED
+    }
 
     init {
         Log.d(TAG, "WifiP2pManagerSingleton initialized")
@@ -97,7 +110,13 @@ class WifiP2pManagerSingleton private constructor(private val context: Context) 
         }
     }
 
+    @SuppressLint("MissingPermission")
     fun startPeerDiscovery() {
+        if (!hasWifiP2pPermission()) {
+            Log.w(TAG, "Cannot start P2P discovery: required permission is not granted")
+            callbacks.forEach { it.onPeerDiscoveryFailed(WifiP2pManager.ERROR) }
+            return
+        }
         handler.postDelayed(discoveryTimeOut, discoveryTimeoutMs)
         wifiP2pManager.discoverPeers(wifiP2pChannel, object : WifiP2pManager.ActionListener {
             override fun onSuccess() {
@@ -117,7 +136,12 @@ class WifiP2pManagerSingleton private constructor(private val context: Context) 
         })
     }
 
+    @SuppressLint("MissingPermission")
     fun discoverPeersStable() {
+        if (!hasWifiP2pPermission()) {
+            Log.w(TAG, "Cannot stop P2P discovery: required permission is not granted")
+            return
+        }
         wifiP2pManager.stopPeerDiscovery(wifiP2pChannel, object : WifiP2pManager.ActionListener {
             override fun onSuccess() {
                 Log.d(TAG, "discoverPeersStable success")
@@ -129,7 +153,13 @@ class WifiP2pManagerSingleton private constructor(private val context: Context) 
         })
     }
 
+    @SuppressLint("MissingPermission")
     fun connectToDevice(device: WifiP2pDevice) {
+        if (!hasWifiP2pPermission()) {
+            Log.w(TAG, "Cannot connect P2P: required permission is not granted")
+            callbacks.forEach { it.onConnectRequestFailed(WifiP2pManager.ERROR) }
+            return
+        }
         // Once we decide to connect, stop peer discovery timeout tracking.
         resetPeerDiscovery()
 
@@ -171,7 +201,12 @@ class WifiP2pManagerSingleton private constructor(private val context: Context) 
         })
     }
 
+    @SuppressLint("MissingPermission")
     fun cancelP2pConnection() {
+        if (!hasWifiP2pPermission()) {
+            Log.w(TAG, "Cannot cancel P2P connection: required permission is not granted")
+            return
+        }
         try {
             initP2P()
             wifiP2pManager.cancelConnect(wifiP2pChannel, object : WifiP2pManager.ActionListener {
@@ -237,7 +272,12 @@ class WifiP2pManagerSingleton private constructor(private val context: Context) 
         connectionState.setConnected(connected)
     }
 
+    @SuppressLint("MissingPermission")
     fun requestPeers() {
+        if (!hasWifiP2pPermission()) {
+            Log.w(TAG, "Cannot request P2P peers: required permission is not granted")
+            return
+        }
         wifiP2pChannel?.let { channel ->
             wifiP2pManager.requestPeers(channel, object : WifiP2pManager.PeerListListener {
                 override fun onPeersAvailable(peers: WifiP2pDeviceList) {
@@ -249,7 +289,12 @@ class WifiP2pManagerSingleton private constructor(private val context: Context) 
         }
     }
 
+    @SuppressLint("MissingPermission")
     fun requestConnectionInfo() {
+        if (!hasWifiP2pPermission()) {
+            Log.w(TAG, "Cannot request P2P connection info: required permission is not granted")
+            return
+        }
         wifiP2pChannel?.let { channel ->
             wifiP2pManager.requestConnectionInfo(channel, object : WifiP2pManager.ConnectionInfoListener {
                 override fun onConnectionInfoAvailable(info: WifiP2pInfo) {
@@ -262,7 +307,13 @@ class WifiP2pManagerSingleton private constructor(private val context: Context) 
         }
     }
 
+    @SuppressLint("MissingPermission")
     fun createGroup(onResult: (Boolean) -> Unit) {
+        if (!hasWifiP2pPermission()) {
+            Log.w(TAG, "Cannot create P2P group: required permission is not granted")
+            onResult(false)
+            return
+        }
         wifiP2pChannel?.let { channel ->
             wifiP2pManager.createGroup(channel, object : WifiP2pManager.ActionListener {
                 override fun onSuccess() {
@@ -281,7 +332,13 @@ class WifiP2pManagerSingleton private constructor(private val context: Context) 
         }
     }
 
+    @SuppressLint("MissingPermission")
     fun removeGroup(onResult: (Boolean) -> Unit) {
+        if (!hasWifiP2pPermission()) {
+            Log.w(TAG, "Cannot remove P2P group: required permission is not granted")
+            onResult(false)
+            return
+        }
         wifiP2pChannel?.let { channel ->
             wifiP2pManager.removeGroup(channel, object : WifiP2pManager.ActionListener {
                 override fun onSuccess() {

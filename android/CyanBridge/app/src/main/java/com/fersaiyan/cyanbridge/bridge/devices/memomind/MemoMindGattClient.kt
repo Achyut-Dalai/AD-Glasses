@@ -503,6 +503,8 @@ class MemoMindGattClient(
     private fun cleanup() {
         try {
             gatt?.close()
+        } catch (_: SecurityException) {
+            // BLUETOOTH_CONNECT may be revoked while lifecycle cleanup is running.
         } catch (_: Exception) {
         }
         gatt = null

@@ -1,6 +1,8 @@
 package com.fersaiyan.cyanbridge.media.autocapture
 
+import android.Manifest
 import android.content.Context
+import android.content.pm.PackageManager
 import android.media.AudioDeviceInfo
 import android.media.AudioFormat
 import android.media.AudioManager
@@ -8,6 +10,8 @@ import android.media.AudioRecord
 import android.media.MediaRecorder
 import android.os.Build
 import android.util.Log
+import androidx.core.content.ContextCompat
+import java.util.Locale
 import kotlin.math.sqrt
 
 /**
@@ -41,6 +45,13 @@ object AmbientSpeechDetector {
         rmsThreshold: Double = 200.0,
         minVoicedFraction: Double = 0.10,
     ): Boolean {
+        if (
+            ContextCompat.checkSelfPermission(context, Manifest.permission.RECORD_AUDIO) !=
+                PackageManager.PERMISSION_GRANTED
+        ) {
+            Log.w(TAG, "Skipping speech detection: RECORD_AUDIO is not granted")
+            return false
+        }
         val audioManager = context.getSystemService(Context.AUDIO_SERVICE) as AudioManager
         val btRoute = startBluetoothInputRoutingBestEffort(audioManager)
         val usedBt = btRoute.isActive
@@ -52,19 +63,26 @@ object AmbientSpeechDetector {
         }
 
         return try {
-            detectWithAudioRecord(btRoute, durationMs, sampleRate, rmsThreshold, minVoicedFraction)
+            detectWithAudioRecord(context, btRoute, durationMs, sampleRate, rmsThreshold, minVoicedFraction)
         } finally {
             stopBluetoothInputRoutingBestEffort(audioManager, btRoute)
         }
     }
 
     private fun detectWithAudioRecord(
+        context: Context,
         btRoute: BtInputRoute,
         durationMs: Long,
         sampleRate: Int,
         rmsThreshold: Double,
         minVoicedFraction: Double,
     ): Boolean {
+        if (
+            ContextCompat.checkSelfPermission(context, Manifest.permission.RECORD_AUDIO) !=
+                PackageManager.PERMISSION_GRANTED
+        ) {
+            return false
+        }
         val bufferSize = AudioRecord.getMinBufferSize(
             sampleRate,
             AudioFormat.CHANNEL_IN_MONO,
@@ -95,7 +113,7 @@ object AmbientSpeechDetector {
         }
 
         // Prefer the BT input device explicitly when available.
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P && btRoute.preferredInput != null) {
+        if (btRoute.preferredInput != null) {
             runCatching { record.setPreferredDevice(btRoute.preferredInput) }
         }
 
@@ -146,7 +164,7 @@ object AmbientSpeechDetector {
                 TAG,
                 "Speech check (${if (btRoute.isActive) "BT" else "phone"} mic): " +
                     "frames=$totalFrames voiced=$voicedFrames " +
-                    "(${String.format("%.0f", fraction * 100)}%) maxRms=${String.format("%.0f", maxRms)} " +
+                    "(${String.format(Locale.US, "%.0f", fraction * 100)}%) maxRms=${String.format(Locale.US, "%.0f", maxRms)} " +
                     "result=$result"
             )
             result
@@ -172,18 +190,16 @@ object AmbientSpeechDetector {
 
     private fun isBluetoothHeadsetLikelyConnected(audioManager: AudioManager): Boolean {
         return try {
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
-                val inputs = audioManager.getDevices(AudioManager.GET_DEVICES_INPUTS)
-                if (inputs.any { it.type == AudioDeviceInfo.TYPE_BLUETOOTH_SCO }) return true
-                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
-                    if (inputs.any { it.type == AudioDeviceInfo.TYPE_BLE_HEADSET }) return true
-                }
-                val outputs = audioManager.getDevices(AudioManager.GET_DEVICES_OUTPUTS)
-                if (outputs.any { it.type == AudioDeviceInfo.TYPE_BLUETOOTH_A2DP }) return true
-                if (outputs.any { it.type == AudioDeviceInfo.TYPE_BLUETOOTH_SCO }) return true
-                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
-                    if (outputs.any { it.type == AudioDeviceInfo.TYPE_BLE_HEADSET }) return true
-                }
+            val inputs = audioManager.getDevices(AudioManager.GET_DEVICES_INPUTS)
+            if (inputs.any { it.type == AudioDeviceInfo.TYPE_BLUETOOTH_SCO }) return true
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+                if (inputs.any { it.type == AudioDeviceInfo.TYPE_BLE_HEADSET }) return true
+            }
+            val outputs = audioManager.getDevices(AudioManager.GET_DEVICES_OUTPUTS)
+            if (outputs.any { it.type == AudioDeviceInfo.TYPE_BLUETOOTH_A2DP }) return true
+            if (outputs.any { it.type == AudioDeviceInfo.TYPE_BLUETOOTH_SCO }) return true
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+                if (outputs.any { it.type == AudioDeviceInfo.TYPE_BLE_HEADSET }) return true
             }
             audioManager.isBluetoothScoAvailableOffCall
         } catch (_: Throwable) {
@@ -192,7 +208,6 @@ object AmbientSpeechDetector {
     }
 
     private fun findBluetoothInputDevice(audioManager: AudioManager): AudioDeviceInfo? {
-        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.M) return null
         val inputs = audioManager.getDevices(AudioManager.GET_DEVICES_INPUTS)
         return inputs.firstOrNull { it.type == AudioDeviceInfo.TYPE_BLUETOOTH_SCO }
             ?: if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {

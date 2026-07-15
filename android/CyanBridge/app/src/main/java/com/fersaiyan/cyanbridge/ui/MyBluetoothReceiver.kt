@@ -21,8 +21,13 @@ class MyBluetoothReceiver : QCBluetoothCallbackCloneReceiver() {
     override fun connectStatue(device: BluetoothDevice?, connected: Boolean) {
         Log.e("connectStatue","---connectStatue")
         if(device !=null && connected){
-            if(device.name!=null){
-                DeviceManager.getInstance().deviceName=device.name
+            val deviceName = try {
+                device.name
+            } catch (_: SecurityException) {
+                null
+            }
+            if (deviceName != null) {
+                DeviceManager.getInstance().deviceName = deviceName
             }
         }else{
             EventBus.getDefault().post(BluetoothEvent(false))

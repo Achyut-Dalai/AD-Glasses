@@ -1,12 +1,16 @@
 package com.fersaiyan.cyanbridge.ui
+import android.Manifest
 import android.bluetooth.BluetoothAdapter
 import android.bluetooth.BluetoothDevice
 import android.content.BroadcastReceiver
 import android.content.Context
+import android.content.pm.PackageManager
+import android.os.Build
 import android.content.Intent
 import android.os.Handler
 import android.os.Looper
 import android.util.Log
+import androidx.core.content.ContextCompat
 import com.oudmon.ble.base.bluetooth.BleOperateManager
 import com.oudmon.ble.base.bluetooth.DeviceManager
 import org.greenrobot.eventbus.EventBus
@@ -41,6 +45,14 @@ class BluetoothReceiver : BroadcastReceiver() {
 
             }
             BluetoothDevice.ACTION_ACL_CONNECTED -> {
+                if (
+                    Build.VERSION.SDK_INT >= Build.VERSION_CODES.S &&
+                        ContextCompat.checkSelfPermission(context, Manifest.permission.BLUETOOTH_CONNECT) !=
+                        PackageManager.PERMISSION_GRANTED
+                ) {
+                    Log.w("BluetoothReceiver", "Ignoring ACL connection without BLUETOOTH_CONNECT")
+                    return
+                }
                 // If the phone connects to the glasses over classic BT (audio),
                 // opportunistically (re)connect the BLE control channel too.
                 val device = intent.getParcelableExtra<BluetoothDevice>(BluetoothDevice.EXTRA_DEVICE)
@@ -65,6 +77,14 @@ class BluetoothReceiver : BroadcastReceiver() {
             }
 
             BluetoothDevice.ACTION_FOUND -> {
+                if (
+                    Build.VERSION.SDK_INT >= Build.VERSION_CODES.S &&
+                        ContextCompat.checkSelfPermission(context, Manifest.permission.BLUETOOTH_CONNECT) !=
+                        PackageManager.PERMISSION_GRANTED
+                ) {
+                    Log.w("BluetoothReceiver", "Ignoring discovered device without BLUETOOTH_CONNECT")
+                    return
+                }
                 val device =
                     intent.getParcelableExtra<BluetoothDevice>(BluetoothDevice.EXTRA_DEVICE)
                 if (device != null) {

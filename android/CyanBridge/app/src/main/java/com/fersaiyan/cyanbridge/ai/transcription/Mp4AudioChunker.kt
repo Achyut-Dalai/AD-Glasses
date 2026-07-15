@@ -83,7 +83,11 @@ class Mp4AudioChunker(
                             if (info.size < 0) break
 
                             info.presentationTimeUs = (timeUs - baseUs).coerceAtLeast(0L)
-                            info.flags = extractor.sampleFlags
+                            val sampleFlags = extractor.sampleFlags
+                            if (sampleFlags and MediaExtractor.SAMPLE_FLAG_ENCRYPTED != 0) {
+                                throw IllegalStateException("Encrypted audio samples cannot be remuxed")
+                            }
+                            info.flags = mediaCodecFlagsFor(sampleFlags)
 
                             muxer.writeSampleData(outTrack, buffer, info)
                             extractor.advance()
@@ -109,5 +113,16 @@ class Mp4AudioChunker(
 
     companion object {
         private const val TAG = "Mp4AudioChunker"
+
+        private fun mediaCodecFlagsFor(extractorFlags: Int): Int {
+            var codecFlags = 0
+            if (extractorFlags and MediaExtractor.SAMPLE_FLAG_SYNC != 0) {
+                codecFlags = codecFlags or MediaCodec.BUFFER_FLAG_KEY_FRAME
+            }
+            if (extractorFlags and MediaExtractor.SAMPLE_FLAG_PARTIAL_FRAME != 0) {
+                codecFlags = codecFlags or MediaCodec.BUFFER_FLAG_PARTIAL_FRAME
+            }
+            return codecFlags
+        }
     }
 }

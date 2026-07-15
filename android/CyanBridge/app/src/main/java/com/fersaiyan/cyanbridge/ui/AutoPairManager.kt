@@ -1,10 +1,13 @@
 package com.fersaiyan.cyanbridge.ui
 
+import android.Manifest
 import android.bluetooth.BluetoothAdapter
 import android.bluetooth.BluetoothDevice
+import android.content.Context
+import android.content.pm.PackageManager
 import android.os.Build
 import android.util.Log
-import android.content.Context
+import androidx.core.content.ContextCompat
 import com.hjq.permissions.Permission
 import com.hjq.permissions.XXPermissions
 import com.oudmon.ble.base.bluetooth.BleOperateManager
@@ -110,7 +113,8 @@ object AutoPairManager {
 
     private fun canReadBluetoothState(context: Context): Boolean {
         return Build.VERSION.SDK_INT < Build.VERSION_CODES.S ||
-            XXPermissions.isGranted(context, Permission.BLUETOOTH_CONNECT)
+            ContextCompat.checkSelfPermission(context, Manifest.permission.BLUETOOTH_CONNECT) ==
+                PackageManager.PERMISSION_GRANTED
     }
 
     private fun isBluetoothEnabled(): Boolean {
@@ -121,7 +125,14 @@ object AutoPairManager {
         }
     }
 
-    private fun looksLikeGlasses(device: BluetoothDevice): Boolean {
+    private fun looksLikeGlasses(context: Context, device: BluetoothDevice): Boolean {
+        if (
+            Build.VERSION.SDK_INT >= Build.VERSION_CODES.S &&
+                ContextCompat.checkSelfPermission(context, Manifest.permission.BLUETOOTH_CONNECT) !=
+                PackageManager.PERMISSION_GRANTED
+        ) {
+            return false
+        }
         val name = device.name ?: return false
         return name.contains("HeyCyan", ignoreCase = true) ||
             name.contains("Cyan", ignoreCase = true) ||
@@ -141,7 +152,7 @@ object AutoPairManager {
             null
         } ?: return null
 
-        val candidate = bonded.firstOrNull { looksLikeGlasses(it) } ?: return null
+        val candidate = bonded.firstOrNull { looksLikeGlasses(context, it) } ?: return null
         val mac = candidate.address
 
         // Best-effort: let the vendor SDK know what device to reconnect to.
