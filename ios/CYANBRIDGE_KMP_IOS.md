@@ -5,8 +5,9 @@
 ## Current Scope
 
 - Builds and links `CyanBridgeShared.framework` directly from Gradle through an Xcode run-script phase (or via GitHub Actions CI).
-- Provides a simulator-targeted SwiftUI shell that calls the shared `CyanBridgeSharedBootstrap` entry point and renders portable appearance, navigation, and meeting-summary formatting defaults.
-- Shares appearance models, semantic icons, navigation destinations, chat models, immutable chat-thread presentation state, meeting-summary contracts, deterministic Markdown formatting, and the offline rule-based summarizer.
+- Embeds a Compose Multiplatform `ComposeUIViewController` via `UIViewControllerRepresentable` in SwiftUI. Both Android and iOS render from the same shared `@Composable` screens in `shared/commonMain`.
+- Shares appearance models, semantic icons, navigation destinations, chat models, immutable chat-thread presentation state, meeting-summary contracts, deterministic Markdown formatting, the offline rule-based summarizer, and shared Compose Multiplatform UI screens.
+- iOS simulator targets use a dynamic framework (`isStatic = false`) for Skiko compatibility; the device target (`iosArm64`) uses a static framework.
 - Leaves CoreBluetooth, NetworkExtension, Photos, audio, StoreKit, local inference, and QCSDK.framework calls in native adapters.
 - A shared `CyanBridgeKMPHost.xcscheme` is tracked in the Xcode project for reproducible CI builds.
 
@@ -29,7 +30,7 @@ JAVA_HOME="/Applications/Android Studio.app/Contents/jbr/Contents/Home" \
 ./gradlew -PenableAppleTargets=true :shared:embedAndSignAppleFrameworkForXcode
 ```
 
-5. Confirm the simulator renders the CyanBridge KMP foundation screen with the shared `cyan` accent profile and `CHATS` initial destination.
+5. Confirm the simulator renders the shared CMP `CyanBridgeApp` composable (Material 3 theme, shared navigation shell, shared screens).
 6. Confirm the shared meeting-summary preview has stable Markdown headings and does not require a native transport or persistence adapter.
 
 Use `linkDebugFrameworkIosX64` on Intel simulators and `linkDebugFrameworkIosArm64` for a physical device.
@@ -56,6 +57,35 @@ No Apple Developer Program membership is required for simulator-only validation.
 - Replace the demo's retry-heavy media flow only after recording successful device behavior. Never log hotspot credentials.
 - Do not reuse Android Play Billing or web checkout assumptions. iOS billing requires a separate StoreKit decision.
 
+## Compose Multiplatform Integration
+
+The iOS host renders shared `@Composable` screens from `shared/commonMain` via a `ComposeUIViewController`. The SwiftUI host wraps this view controller using `UIViewControllerRepresentable`:
+
+```swift
+struct ComposeView: UIViewControllerRepresentable {
+    func makeUIViewController(context: Context) -> UIViewController {
+        MainViewControllerKt.MainViewController()
+    }
+    func updateUIViewController(_ uiViewController: UIViewController, context: Context) {}
+}
+```
+
+The `MainViewController()` function is exported from the Kotlin/Native framework and creates a `ComposeUIViewController` that renders the shared `CyanBridgeApp` composable.
+
+### Dynamic vs Static Framework
+
+CMP on iOS uses Skiko (Skia) for rendering. Skiko ships as a static library (`.a`) for device targets but as a dynamic library (`.dylib`) for simulator targets. The `:shared` module is configured accordingly:
+
+- `iosArm64` (device): `isStatic = true` — static framework, no `.dylib` embedding needed.
+- `iosSimulatorArm64` (simulator): `isStatic = false` — dynamic framework, Skiko `.dylib` is embedded in the `.app` bundle.
+- `iosX64` (Intel simulator): `isStatic = false` — same as above.
+
+The `embedAndSignAppleFrameworkForXcode` Gradle task handles both cases transparently. No Xcode project changes are needed when switching between static and dynamic frameworks.
+
+### Theme Discipline
+
+Both Android and iOS share the same CMP `MaterialTheme` from `org.jetbrains.compose.material3`. The `:app` module also uses CMP Material 3 (not Jetpack Material 3) to ensure the theme provider is the same type across both platforms. This guarantees identical rendering of colors, typography, shapes, and components.
+
 ## Known Limits
 
 - Linux can configure the Apple targets and compile shared common code, but cannot link or run iOS binaries. A Mac with Xcode is required for those checks.
@@ -63,4 +93,5 @@ No Apple Developer Program membership is required for simulator-only validation.
 - `QCSDK.framework` is presently an opaque static archive from the vendor demo. Its inspected objects are arm64 only; simulator platform compatibility, current Xcode compatibility, license, and device behavior remain unverified. `CyanBridgeKMPHost` intentionally does not link it.
 - `GlassesWiFiHandler` contains a legacy hard-coded hotspot-password workaround. It is reference-only until physical-device testing proves a safe replacement.
 - The GitHub Actions CI uses GitHub's hosted Apple Silicon runners. Private repositories consume billed Actions minutes (macOS is charged at $0.062/minute after the free quota). Public repositories run macOS jobs free of charge.
-- Simulator validation can verify framework linking, Swift compilation, SwiftUI rendering, and app launch, but it cannot validate Bluetooth pairing, Wi-Fi hotspot joining, QCSDK behavior, or media transfer from physical glasses. Those require a real iPhone near the glasses and are deferred.
+- Simulator validation can verify CMP rendering, framework linking, Swift compilation, SwiftUI rendering, and app launch, but it cannot validate Bluetooth pairing, Wi-Fi hotspot joining, QCSDK behavior, or media transfer from physical glasses. Those require a real iPhone near the glasses and are deferred.
+- CMP Material 3 (`org.jetbrains.compose.material3`) and Jetpack Material 3 (`androidx.compose.material3`) have 99% identical APIs but different import paths. The migration changes imports from `androidx.compose.*` to `org.jetbrains.compose.*` for shared screens. Stable components (Scaffold, NavigationBar, Card, Button, TextField, AlertDialog) are fully compatible; experimental or very new Jetpack APIs may lag in CMP.

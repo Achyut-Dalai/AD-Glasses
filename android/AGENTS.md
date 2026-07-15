@@ -151,6 +151,45 @@ adb logcat -s DataDownload DeviceNotify WifiP2pManagerSingleton WifiP2pBroadcast
   JAVA_HOME=/opt/android-studio/jbr ./gradlew assembleDebug
   ```
 
+## Compose Multiplatform (CMP)
+
+The `:shared` module uses JetBrains Compose Multiplatform so both Android and iOS render from the same `@Composable` screens in `commonMain`.
+
+### Key Facts
+
+- **CMP Version**: 1.6.11 (Kotlin 1.9.24) → upgrading to 1.8.0 (Kotlin 2.3.0).
+- **Material 3**: Uses `org.jetbrains.compose.material3` (not `androidx.compose.material3`). Import paths differ but APIs are 99% identical.
+- **iOS Framework**: Simulator targets use dynamic framework (`isStatic = false`) for Skiko; device uses static (`isStatic = true`).
+- **Skiko**: CMP's rendering layer (Skia). Ships as `.dylib` for simulators, `.a` for device. The `maven.packagist.org` Maven repo hosts Skiko native binaries.
+
+### Build Commands
+
+```bash
+# Build shared framework for iOS simulator (dynamic)
+JAVA_HOME=/opt/android-studio/jbr ./gradlew -PenableAppleTargets=true :shared:linkDebugFrameworkIosSimulatorArm64
+
+# Build shared framework for iOS device (static)
+JAVA_HOME=/opt/android-studio/jbr ./gradlew -PenableAppleTargets=true :shared:linkDebugFrameworkIosArm64
+
+# Run shared portability tests
+JAVA_HOME=/opt/android-studio/jbr ./gradlew :shared:portabilityTest
+
+# Build Android app (uses shared CMP composables)
+JAVA_HOME=/opt/android-studio/jbr ./gradlew :app:assembleDebug
+```
+
+### iOS Host Architecture
+
+The iOS host (`CyanBridgeKMPHost`) embeds a `ComposeUIViewController` via `UIViewControllerRepresentable`. The `MainViewController()` function is exported from the Kotlin/Native framework. Both platforms call the same shared composables from `shared/commonMain`.
+
+### Kotlin Upgrade (Planned)
+
+Kotlin 1.9.24 → 2.3.0 is required for CMP 1.8.0+. This upgrade:
+- Keeps AGP 8.12.1 unchanged.
+- Requires KAPT → KSP migration for Room (KAPT is removed in Kotlin 2.3.0).
+- Keeps `-Xskip-metadata-version-check` for vendor AAR compatibility.
+- Updates Compose BOM from 2024.04.01 to 2025.06.01.
+
 ## Logcat conventions
 
 When investigating or reproducing behavior, prefer the following tags:

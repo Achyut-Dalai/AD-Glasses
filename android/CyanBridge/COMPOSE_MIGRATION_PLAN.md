@@ -2,7 +2,7 @@
 
 Last audited: 2026-07-15
 
-This is the authoritative plan for migrating CyanBridge's current Android app to Material 3 without regressing its glasses, media, AI, billing, and local-agent behavior. The old Compose branch remains useful as a UI prototype, but it is no longer a safe integration base. A narrow Kotlin Multiplatform module now owns proven portable models and bridge contracts; an initial iOS framework host exists, but further iOS work is paused while Android migration and physical validation take priority.
+This is the authoritative plan for migrating CyanBridge's current Android app to Material 3 without regressing its glasses, media, AI, billing, and local-agent behavior. The old Compose branch remains useful as a UI prototype, but it is no longer a safe integration base. A narrow Kotlin Multiplatform module now owns proven portable models and bridge contracts; Compose Multiplatform is being added so both Android and iOS render from the same shared `@Composable` screens, achieving full UI convergence across platforms.
 
 ## Executive Decision
 
@@ -59,23 +59,30 @@ Still pending:
 - The compatibility adapters for Local Models and Pro now mount as explicit hidden siblings behind the visible `ComposeView`; Compose no longer replaces a briefly visible XML root during Activity startup.
 - Curated local-model catalog metadata and lookup now compile from `:shared`; Android-only download, storage, runtime, preference, and device-capability adapters remain in `:app`.
 - Physical screenshot, TalkBack, font-scale, keyboard, gesture-navigation, and three-button-navigation acceptance runs remain release-quality validation, not blockers for this UI-only migration.
-- Compose Multiplatform UI, iOS feature UI, an iOS persistence adapter, and any production iOS vendor SDK integration remain deferred. The native SwiftUI host currently renders shared defaults and a String-only meeting-summary preview only.
+- Compose Multiplatform (CMP) is being integrated so both Android and iOS render from shared `@Composable` screens. The `:shared` module gains CMP Material 3 dependencies; existing Android Compose screens will be migrated to `commonMain` with `org.jetbrains.compose.material3` imports. The iOS host will embed a `ComposeUIViewController` rendered from the same shared composables. A GitHub Actions macOS workflow validates the full CMP stack (framework link, Xcode build, simulator launch).
+- A Kotlin upgrade from 1.9.24 to 2.3.0 is planned as part of CMP integration. This unlocks CMP 1.8.0+, requires KAPT-to-KSP migration for Room, and keeps AGP 8.12.1 unchanged. The vendor AAR `-Xskip-metadata-version-check` flag still exists in Kotlin 2.3.0.
 - A GitHub Actions macOS workflow now validates all non-device iOS gates (framework link, Xcode compilation, simulator launch). A physical-device acceptance run is still required before treating the iOS framework host as working for device-specific features (Bluetooth, hotspot, QCSDK).
 
 ### Toolchain Compatibility Record
 
 The initial Android slice deliberately uses the versions already accepted by the current vendor-sensitive build:
 
-| Component | Version |
-|---|---|
-| AGP | 8.12.1 |
-| Kotlin | 1.9.24 |
-| Compose compiler extension | 1.5.14 |
-| Compose BOM | 2024.04.01 |
-| Activity Compose | 1.10.1 |
-| Java | 17+; repository build uses Android Studio JBR 21 |
+| Component | Current Version | Planned Version |
+|---|---|---|
+| AGP | 8.12.1 | 8.12.1 (unchanged) |
+| Kotlin | 1.9.24 | 2.3.0 |
+| Compose compiler extension | 1.5.14 | Built into Kotlin 2.3.0 (via `kotlin.plugin.compose`) |
+| Compose BOM (Android) | 2024.04.01 | 2025.06.01 |
+| Compose Multiplatform | — | 1.8.0 |
+| Activity Compose | 1.10.1 | 1.10.1 (unchanged) |
+| Room | 2.6.1 (TOML) / 2.7.0 (hardcoded) | 2.7.0 (unified) |
+| Annotation processing | KAPT | KSP |
+| Coroutines | 1.7.3 | 1.10.1 |
+| Java | 17+ | 17+ |
 
-This is a compatibility baseline, not a claim that every pin is the newest available. Upgrade this set separately from screen migration, with the forked vendor integration, Room/KAPT, local inference runtimes, unit tests, and debug APK verified after each version step.
+This is a compatibility baseline, not a claim that every pin is the newest available. Upgrade this set separately from screen migration, with the forked vendor integration, Room/KSP, local inference runtimes, unit tests, and debug APK verified after each version step.
+
+AGP 8.12.1 requires Kotlin 2.3.0+ (not 2.0, 2.1, or 2.2). Kotlin 2.3.0 requires KSP for Room annotation processing (KAPT is removed). The vendor AAR `-Xskip-metadata-version-check` flag still exists in Kotlin 2.3.0. CMP 1.8.0 requires Kotlin 2.0+ and uses Compose compiler 1.5.14 (matching the current extension version).
 
 Kotlin 1.9.24 reports that AGP 8.12.1 is newer than the KMP plugin's maximum tested AGP 8.2. The current Android and portability builds pass, but this warning is not suppressed. Kotlin/Native's default Ivy download repository conflicts with this repository's settings-only dependency policy; `kotlin.native.distribution.downloadFromMaven=true` makes the compiler distribution resolve through the existing Maven Central repository instead. Apple targets are opt-in through `-PenableAppleTargets=true` because Linux cannot link them; macOS framework linking is handled by GitHub Actions.
 
@@ -165,7 +172,9 @@ The future decision must compare three options:
 | Kotlin protocol implementation | Android packet behavior is documented and covered by transport-independent tests; CoreBluetooth and hotspot behavior can be supplied as thin native adapters |
 | Hybrid workaround | Exact vendor functions that must remain native are identified; protocol and application state can otherwise remain Kotlin-owned without duplicated state machines |
 
-Until that evidence exists, portable state and contracts may move into `:shared`, while Android Compose screens remain in `:app`. The initial direct Xcode hosts deliberately contain no CocoaPods configuration, cinterop binding, or iOS vendor adapter; they only consume `CyanBridgeShared.framework` and are documented in `ios/CYANBRIDGE_KMP_IOS.md`.
+Until that evidence exists, portable state and contracts may move into `:shared`, while shared Compose Multiplatform screens move into `shared/commonMain`. The `:app` module and the iOS host both consume these shared composables. The initial direct Xcode hosts deliberately contain no CocoaPods configuration, cinterop binding, or iOS vendor adapter; they only consume `CyanBridgeShared.framework` and are documented in `ios/CYANBRIDGE_KMP_IOS.md`.
+
+With CMP integration, the iOS host transitions from a SwiftUI smoke test to a `ComposeUIViewController` that renders the same shared composables as Android. The `UIViewControllerRepresentable` wrapper embeds the CMP view controller in SwiftUI. iOS-specific features (BLE, hotspot, QCSDK) remain behind platform adapters injected at the host level.
 
 Before iOS release work, verify:
 
@@ -412,25 +421,123 @@ Rules:
 - Do not delete an Activity until its Compose replacement has parity tests and deep-link coverage.
 - Android-only operations stay in injected platform services.
 
-### Phase 6: iOS Foundation And Decision
+### Phase 6: Compose Multiplatform UI Convergence
 
-Status: deferred while Android Material 3 migration and physical-device validation are the active priority. The KMP framework targets and an Xcode smoke host are configured, but no native binary, vendor API, or device flow has been validated.
+Status: in progress. CMP 1.6.11 toolchain validated; Kotlin 2.3.0 upgrade planned.
 
-Completed foundation:
+Goal: Both Android and iOS render from the same shared `@Composable` screens in `shared/commonMain`. Same screens, same look, same behavior — debug once, fix once.
 
-- Add opt-in `iosX64`, `iosArm64`, and `iosSimulatorArm64` targets that package `CyanBridgeShared.framework`.
-- Route Kotlin/Native compiler distribution through Maven Central without weakening settings-owned repositories.
-- Configure the tracked Xcode project to build and link the shared framework before Swift compilation.
-- Add a simulator-capable SwiftUI host that invokes the framework without wrapping or invoking the vendor SDK.
-- Add explicit Bluetooth, local-network, microphone, and photo-library usage strings; redact hotspot passwords from demo logs.
+#### Phase 6a: CMP Toolchain Setup
 
-Remaining tasks:
+Status: in progress.
 
-- Prove or disprove that the vendor framework links with current Xcode and works on a physical device.
-- Compare vendor-wrapper, Kotlin-protocol, and hybrid options using recorded packets and repeatable hardware tests.
-- Record licensing, architecture-slice, hotspot, background Bluetooth, media, and StoreKit constraints.
-- Select an approach explicitly before adding a production iOS transport adapter or feature UI.
-- Build the host on a Mac for arm64 device and simulator architectures, then run the full permission, hotspot, HTTP media, safe-area, keyboard, and Bluetooth acceptance matrix.
+Tasks:
+
+- Add JetBrains Compose Multiplatform plugin (`org.jetbrains.compose` 1.6.11) to `:shared`.
+- Add `compose.runtime`, `compose.foundation`, `compose.material3`, `compose.ui` dependencies to `commonMain`.
+- Change iOS simulator targets to dynamic framework (`isStatic = false`) for Skiko compatibility; keep `iosArm64` static for device.
+- Add Skiko Maven repository (`maven.packagist.org`) to `settings.gradle.kts` if needed.
+- Create a trivial shared composable (`CyanBridgeApp`) in `commonMain` to validate the toolchain.
+- Create `iosMain` source set with `ComposeUIViewController` entry point (`MainViewController`).
+- Update `CyanBridgeKMPHostApp.swift` to embed the CMP `UIViewController` via `UIViewControllerRepresentable`.
+- Update `verify_kmp_host.py` and CI workflow for CMP.
+
+Exit criteria:
+
+- `:shared:portabilityTest` passes.
+- `:app:assembleDebug` passes (existing Android Compose unaffected).
+- `:shared:linkDebugFrameworkIosSimulatorArm64` produces a dynamic framework.
+- Xcode build + simulator launch shows CMP-rendered content.
+- CI screenshot captures CMP UI (not SwiftUI strings).
+
+#### Phase 6b: Kotlin Upgrade to 2.3.0
+
+Status: planned. Depends on Phase 6a validation.
+
+Tasks:
+
+- Upgrade Kotlin from 1.9.24 to 2.3.0 in `libs.versions.toml`.
+- Add `kotlin("plugin.compose")` plugin (Compose compiler is now built into Kotlin 2.0+).
+- Remove `composeOptions { kotlinCompilerExtensionVersion = "1.5.14" }` from `app/build.gradle`.
+- Migrate Room annotation processing from KAPT to KSP (`com.google.devtools.ksp`).
+- Update Room from 2.6.1 to 2.7.0 in `libs.versions.toml` (already hardcoded in `app/build.gradle`).
+- Update Compose BOM from `2024.04.01` to `2025.06.01`.
+- Update coroutines from 1.7.3 to 1.10.1.
+- Keep `-Xskip-metadata-version-check` for vendor AAR compatibility.
+- Update CMP from 1.6.11 to 1.8.0.
+- Migrate `kotlinOptions` DSL to `compilerOptions` where needed.
+
+Exit criteria:
+
+- `:shared:portabilityTest` passes.
+- `:app:testDebugUnitTest` passes.
+- `:app:lintDebug` passes.
+- `:app:assembleRelease` passes.
+- Vendor AAR compiles without metadata errors.
+
+#### Phase 6c: Extract Remaining Contracts + First Shared Screens
+
+Status: planned. Depends on Phase 6b validation.
+
+Tasks:
+
+- Extract `FutureBackendContracts.kt` (92 lines) to `shared/commonMain/.../shared/memoryvault/VaultContracts.kt`.
+- Extract `FakeSummarizationService.kt` (32 lines) to `shared/commonMain/.../shared/notes/FakeSummarizationService.kt`.
+- Extract `DeviceProfile.kt` (12 lines) to `shared/commonMain/.../shared/devices/DeviceProfile.kt`.
+- Extract `GlassesManagerGating.kt` (53 lines) to `shared/commonMain/.../shared/devices/GlassesManagerGating.kt`.
+- Migrate `AppearanceScreen.kt` from `app/ui/appearance/` to `shared/commonMain/.../shared/ui/appearance/`. Change imports from `androidx.compose.*` to `org.jetbrains.compose.*`. The `:app` module imports the shared composable.
+- Migrate `ChatListScreen.kt` to shared. Same import changes.
+- Wire Android app to call shared composables inside `setContent {}`.
+- Wire iOS `MainViewController` to call the same shared composables.
+
+Exit criteria:
+
+- Android renders shared Appearance screen identically to before.
+- iOS simulator renders the same shared Appearance screen.
+- `:shared:portabilityTest` passes with tests for extracted contracts.
+
+#### Phase 6d: Shared Navigation Shell + Remaining Screens
+
+Status: planned. Depends on Phase 6c.
+
+Tasks:
+
+- Build a shared bottom-navigation shell (`CyanBridgeNavShell`) in `commonMain` using `AppDestination` and `AppIcon`.
+- Migrate screens incrementally to shared `commonMain`:
+  1. Appearance (done in 6c).
+  2. Chat History.
+  3. Chat Thread + Composer.
+  4. Settings.
+  5. Recordings / Synced Media.
+  6. Community Plugins / Publish Plugin.
+  7. Glasses Dashboard.
+  8. Local Models Configuration.
+  9. Notes.
+  10. Local Agent screens.
+  11. Pro Subscription.
+  12. Onboarding / Welcome.
+  13. Transcription Debug.
+  14. EvenHub.
+- Each screen migration: copy composable to `shared/commonMain`, change imports, remove `android.*`/`Context`/`R.*` references, `:app` imports from shared.
+- iOS gets each screen for free as it's added to shared.
+
+Exit criteria:
+
+- Both platforms render from the same shared composables.
+- Android physical-device acceptance passes.
+- iOS simulator renders all shared screens.
+- CI screenshot captures the shared nav shell.
+
+#### Phase 6e: CI Expansion + Documentation
+
+Status: planned. Depends on Phase 6d.
+
+Tasks:
+
+- Update CI workflow for CMP (Skiko repos, dynamic framework, screenshot validation).
+- Update `verify_kmp_host.py` for CMP entry points.
+- Add optional perceptual screenshot diff step.
+- Update `COMPOSE_MIGRATION_PLAN.md`, `ios/CYANBRIDGE_KMP_IOS.md`, `AGENTS.md`, `README.md`.
 
 ### Phase 7: Cutover And Cleanup
 
@@ -565,7 +672,7 @@ Current route and capability inventory:
 | Notification listener and daily reminder receiver | android-platform | Preserve manifest and permission behavior |
 | HeyCyan BLE and Wi-Fi Direct transfer | android-platform | Forked/current Android implementation remains authoritative |
 | Meta DAT and MemoMind transports | android-platform | Capability-gated Android integrations |
-| iOS KMP framework host | deferred | Swift smoke host is wired; defer Mac/Xcode link and launch until Android MVP validation |
+| iOS KMP framework host | hybrid | CMP `ComposeUIViewController` embedded in SwiftUI via `UIViewControllerRepresentable`; CI validates framework link, Xcode build, simulator launch |
 | iOS application transport | deferred | Await vendor-wrapper, Kotlin-protocol, or hybrid decision after device tests |
 
 ## Verification Gates
