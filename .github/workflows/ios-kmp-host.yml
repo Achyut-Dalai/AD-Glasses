@@ -66,11 +66,24 @@ jobs:
           ENABLE_USER_SCRIPT_SANDBOXING=NO
           build
 
+      - name: Launch the simulator host smoke test
+        run: |
+          DEVICE_UDID="$(xcrun simctl create CyanBridgeCI com.apple.CoreSimulator.SimDeviceType.iPhone-16 com.apple.CoreSimulator.SimRuntime.iOS-18-2)"
+          trap 'xcrun simctl delete "$DEVICE_UDID"' EXIT
+          xcrun simctl boot "$DEVICE_UDID"
+          xcrun simctl bootstatus "$DEVICE_UDID" -b
+          xcrun simctl install "$DEVICE_UDID" "$RUNNER_TEMP/CyanBridgeDerivedData/Build/Products/Debug-iphonesimulator/CyanBridgeKMPHost.app"
+          xcrun simctl launch "$DEVICE_UDID" com.fersaiyan.CyanBridgeKMPHost
+          sleep 3
+          xcrun simctl io "$DEVICE_UDID" screenshot "$RUNNER_TEMP/CyanBridgeKMPHost.png"
+
       - name: Upload Xcode build logs
         if: ${{ always() }}
         uses: actions/upload-artifact@v4
         with:
           name: ios-kmp-host-build-logs
-          path: ${{ runner.temp }}/CyanBridgeDerivedData/Logs
+          path: |
+            ${{ runner.temp }}/CyanBridgeDerivedData/Logs
+            ${{ runner.temp }}/CyanBridgeKMPHost.png
           if-no-files-found: warn
           retention-days: 7
