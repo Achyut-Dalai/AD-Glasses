@@ -10,6 +10,7 @@ PROJECT = ROOT / "ios" / "QCSDKDemo.xcodeproj" / "project.pbxproj"
 HOST = ROOT / "ios" / "CyanBridgeKMPHost" / "CyanBridgeKMPHostApp.swift"
 DEMO_APP_DELEGATE = ROOT / "ios" / "QCSDKDemo" / "AppDelegate.m"
 SCHEME = ROOT / "ios" / "QCSDKDemo.xcodeproj" / "xcshareddata" / "xcschemes" / "CyanBridgeKMPHost.xcscheme"
+MAIN_VIEW_CONTROLLER = ROOT / "android" / "CyanBridge" / "shared" / "src" / "iosMain" / "kotlin" / "com" / "fersaiyan" / "cyanbridge" / "shared" / "platform" / "MainViewController.kt"
 
 
 def require(condition: bool, message: str) -> None:
@@ -31,10 +32,15 @@ def main() -> int:
     demo_app_delegate = DEMO_APP_DELEGATE.read_text(encoding="utf-8")
     scheme = SCHEME.read_text(encoding="utf-8")
 
+    # CMP entry point checks
     require("import CyanBridgeShared" in host, "The KMP host must import CyanBridgeShared.")
     require(
-        "meetingSummaryPreviewMarkdown()" in host,
-        "The KMP host must render the shared meeting-summary preview.",
+        "MainViewControllerKt" in host,
+        "The KMP host must call MainViewControllerKt.MainViewController() for CMP rendering.",
+    )
+    require(
+        "UIViewControllerRepresentable" in host,
+        "The KMP host must embed the CMP UIViewController via UIViewControllerRepresentable.",
     )
     require(
         'BlueprintIdentifier = "CB2000092F00000100CB0001"' in scheme,
@@ -42,6 +48,21 @@ def main() -> int:
     )
     for forbidden in ("QCSDK", "CoreBluetooth", "NetworkExtension"):
         require(forbidden not in host, f"The KMP host must not import vendor transport: {forbidden}")
+
+    # Verify the iosMain entry point exists
+    require(
+        MAIN_VIEW_CONTROLLER.exists(),
+        f"MainViewController.kt must exist at {MAIN_VIEW_CONTROLLER}",
+    )
+    main_vc = MAIN_VIEW_CONTROLLER.read_text(encoding="utf-8")
+    require(
+        "ComposeUIViewController" in main_vc,
+        "MainViewController must use ComposeUIViewController for CMP rendering.",
+    )
+    require(
+        "CyanBridgeApp" in main_vc,
+        "MainViewController must render the shared CyanBridgeApp composable.",
+    )
 
     host_target = block(project, 'CB2000092F00000100CB0001 /* CyanBridgeKMPHost */ = {')
     require("Build CyanBridgeShared" in host_target, "The KMP host must build the shared framework.")
@@ -61,7 +82,7 @@ def main() -> int:
         "The legacy QCSDKDemo KMP smoke wrapper must not remain in the project.",
     )
 
-    print("KMP iOS host wiring is structurally valid.")
+    print("KMP iOS host wiring is structurally valid (CMP integration verified).")
     return 0
 
 

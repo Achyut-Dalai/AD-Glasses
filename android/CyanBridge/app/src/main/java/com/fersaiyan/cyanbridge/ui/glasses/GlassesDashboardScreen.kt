@@ -475,7 +475,7 @@ private fun AdvancedControls(
         HorizontalDivider()
         SectionTitle("OTA firmware update")
         Text(
-            text = "Flash debug SWU to enable ADB over Wi-Fi",
+            text = "Download and flash patched debug firmware (requires Pro Standard/Max subscription)",
             style = MaterialTheme.typography.bodySmall,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
         )

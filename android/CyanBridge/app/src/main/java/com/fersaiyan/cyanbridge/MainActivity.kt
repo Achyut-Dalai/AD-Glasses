@@ -1215,11 +1215,12 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
 
     /**
      * Start the debug SWU OTA flow.
-     * First tries to download the gated firmware from the CyanBridge server
-     * (requires Standard/Max subscription). Falls back to bundled asset if
-     * the server is unreachable.
+     * Downloads the gated firmware from the CyanBridge server (requires Standard/Max subscription).
+     * The firmware is NOT bundled with the app — it's only available via the gated server endpoint.
      */
     private fun startDebugOta() {
+        Log.i("DebugOta", "=== START DEBUG OTA ===")
+
         // Observe OTA state and update dashboard
         lifecycleScope.launch {
             otaManager.uiState.collect { ota ->
@@ -1251,10 +1252,15 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
             }
 
             // Get glasses info via BLE
+            Log.i("DebugOta", "Reading glasses device info via BLE syncDeviceInfo...")
+            val bleConnected = BleOperateManager.getInstance().isConnected
+            Log.i("DebugOta", "BLE connected: $bleConnected")
+
             val wifiHw = getGlassesWifiHardwareVersion()
             val wifiFw = getGlassesWifiFirmwareVersion()
 
             if (wifiHw.isBlank()) {
+                Log.e("DebugOta", "FAIL: Could not read wifiHardwareVersion (BLE connected=$bleConnected)")
                 kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.Main) {
                     Toast.makeText(
                         this@MainActivity,
@@ -1271,13 +1277,18 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
             Log.i("DebugOta", "Glasses info: wifiHw=$wifiHw, wifiFw=$wifiFw")
 
             // Try to fetch from server
+            Log.i("DebugOta", "Calling FirmwareClient.fetchAndDownload()...")
             val firmwareClient = FirmwareClient(this@MainActivity)
             val otaDir = java.io.File(getExternalFilesDir(null), "ota")
             val result = firmwareClient.fetchAndDownload(wifiHw, wifiFw, otaDir)
 
+            Log.i("DebugOta", "FirmwareClient result: ${result.javaClass.simpleName}")
+
             when (result) {
                 is FirmwareResult.Ready -> {
-                    Log.i("DebugOta", "Firmware downloaded: ${result.filename} at ${result.file.absolutePath}")
+                    Log.i("DebugOta", "SUCCESS: Firmware downloaded: ${result.filename} (${result.file.length()} bytes)")
+                    Log.i("DebugOta", "  File path: ${result.file.absolutePath}")
+                    Log.i("DebugOta", "  Starting OTA manager...")
                     kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.Main) {
                         otaManager.startOta(result.file)
                     }
@@ -1323,30 +1334,11 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
 
                 is FirmwareResult.Error -> {
                     Log.e("DebugOta", "Firmware error: ${result.message}")
-                    // Fall back to bundled asset if available
-                    val swuFileName = "WIFIAM01G1_1.00.28_2603031800_debug.swu"
-                    val bundledFile = java.io.File(otaDir, swuFileName)
-                    if (!bundledFile.exists()) {
-                        try {
-                            assets.open("debug/$swuFileName").use { input ->
-                                bundledFile.outputStream().use { output -> input.copyTo(output) }
-                            }
-                        } catch (_: Exception) {
-                        }
-                    }
-                    if (bundledFile.exists() && bundledFile.length() > 1000) {
-                        Log.i("DebugOta", "Falling back to bundled SWU: ${bundledFile.absolutePath}")
-                        kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.Main) {
-                            Toast.makeText(this@MainActivity, "Using bundled firmware (server unavailable)", Toast.LENGTH_SHORT).show()
-                            otaManager.startOta(bundledFile)
-                        }
-                    } else {
-                        kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.Main) {
-                            Toast.makeText(this@MainActivity, "Firmware download failed: ${result.message}", Toast.LENGTH_LONG).show()
-                            dashboardState = dashboardState.copy(
-                                ota = com.fersaiyan.cyanbridge.shared.glasses.OtaSectionUiState(),
-                            )
-                        }
+                    kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.Main) {
+                        Toast.makeText(this@MainActivity, "Firmware download failed: ${result.message}", Toast.LENGTH_LONG).show()
+                        dashboardState = dashboardState.copy(
+                            ota = com.fersaiyan.cyanbridge.shared.glasses.OtaSectionUiState(),
+                        )
                     }
                 }
             }

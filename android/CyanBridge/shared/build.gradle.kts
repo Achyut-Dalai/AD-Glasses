@@ -1,22 +1,24 @@
 plugins {
     alias(libs.plugins.kotlin.multiplatform)
     alias(libs.plugins.android.library)
+    alias(libs.plugins.compose.multiplatform)
+    alias(libs.plugins.kotlin.compose.compiler)
 }
 
 val enableAppleTargets = providers.gradleProperty("enableAppleTargets").orNull == "true"
 
 kotlin {
     androidTarget {
-        compilations.all {
-            kotlinOptions.jvmTarget = "17"
+        compilerOptions {
+            jvmTarget.set(org.jetbrains.kotlin.gradle.dsl.JvmTarget.JVM_17)
         }
     }
 
     // A second host target keeps common code genuinely multiplatform-testable while
     // Apple framework linking and vendor integration remain behind the iOS gate.
     jvm("portability") {
-        compilations.all {
-            kotlinOptions.jvmTarget = "17"
+        compilerOptions {
+            jvmTarget.set(org.jetbrains.kotlin.gradle.dsl.JvmTarget.JVM_17)
         }
     }
 
@@ -26,7 +28,7 @@ kotlin {
         iosX64 {
             binaries.framework {
                 baseName = "CyanBridgeShared"
-                isStatic = true
+                isStatic = false
             }
         }
         iosArm64 {
@@ -38,7 +40,7 @@ kotlin {
         iosSimulatorArm64 {
             binaries.framework {
                 baseName = "CyanBridgeShared"
-                isStatic = true
+                isStatic = false
             }
         }
 
@@ -47,6 +49,10 @@ kotlin {
     sourceSets {
         commonMain.dependencies {
             implementation(libs.kotlinx.coroutines.core)
+            implementation(compose.runtime)
+            implementation(compose.foundation)
+            implementation(compose.material3)
+            implementation(compose.ui)
         }
         commonTest.dependencies {
             implementation(kotlin("test"))

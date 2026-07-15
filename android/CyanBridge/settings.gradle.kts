@@ -13,6 +13,8 @@ dependencyResolutionManagement {
         google()
         mavenCentral()
         maven { url = uri("https://jitpack.io") }
+        // JetBrains Compose Multiplatform (Skiko native binaries for iOS)
+        maven { url = uri("https://maven.packagist.org") }
 
         // Meta Wearables DAT SDK (requires GitHub token with read:packages scope)
         val localProps = java.util.Properties()

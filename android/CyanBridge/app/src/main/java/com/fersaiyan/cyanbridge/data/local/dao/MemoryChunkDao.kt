@@ -68,7 +68,7 @@ interface MemoryChunkDao {
             LIMIT ?
         """.trimIndent()
 
-        return searchChunksRaw(SimpleSQLiteQuery(sql, arrayOf(query, limit)))
+        return searchChunksRaw(SimpleSQLiteQuery(sql, arrayOf<Any>(query, limit)))
     }
 
     suspend fun searchWithSnippet(query: String, limit: Int = 20): List<SearchHit> {
@@ -84,6 +84,6 @@ interface MemoryChunkDao {
             LIMIT ?
         """.trimIndent()
 
-        return searchHitsRaw(SimpleSQLiteQuery(sql, arrayOf(query, limit)))
+        return searchHitsRaw(SimpleSQLiteQuery(sql, arrayOf<Any>(query, limit)))
     }
 }
