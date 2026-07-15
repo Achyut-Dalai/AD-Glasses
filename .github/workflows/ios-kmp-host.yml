@@ -2,6 +2,19 @@ name: iOS KMP host
 
 on:
   workflow_dispatch:
+  push:
+    branches:
+      - compose-material3-kmp-v2
+    paths:
+      - .github/workflows/ios-kmp-host.yml
+      - android/CyanBridge/shared/**
+      - android/CyanBridge/settings.gradle.kts
+      - android/CyanBridge/build.gradle.kts
+      - android/CyanBridge/gradle/**
+      - android/CyanBridge/gradle.properties
+      - ios/CyanBridgeKMPHost/**
+      - ios/QCSDKDemo.xcodeproj/**
+      - ios/scripts/verify_kmp_host.py
 
 permissions:
   contents: read
