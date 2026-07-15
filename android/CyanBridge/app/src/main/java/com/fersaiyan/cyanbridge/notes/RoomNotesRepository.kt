@@ -1,10 +1,10 @@
 package com.fersaiyan.cyanbridge.notes
 
-import com.fersaiyan.cyanbridge.ai.summarization.SummarizationRequest
-import com.fersaiyan.cyanbridge.ai.summarization.SummarizationService
-import com.fersaiyan.cyanbridge.ai.summarization.SummaryMarkdownFormatter
 import com.fersaiyan.cyanbridge.data.local.dao.NoteDao
 import com.fersaiyan.cyanbridge.data.local.entity.Note
+import com.fersaiyan.cyanbridge.shared.notes.SummarizationRequest
+import com.fersaiyan.cyanbridge.shared.notes.SummarizationService
+import com.fersaiyan.cyanbridge.shared.notes.SummaryMarkdownFormatter
 import kotlinx.coroutines.flow.Flow
 
 /**

@@ -1,5 +1,9 @@
 package com.fersaiyan.cyanbridge.ai.summarization
 
+import com.fersaiyan.cyanbridge.shared.notes.StructuredSummary
+import com.fersaiyan.cyanbridge.shared.notes.SummarizationRequest
+import com.fersaiyan.cyanbridge.shared.notes.SummarizationService
+
 /**
  * Deterministic summarizer for tests.
  */

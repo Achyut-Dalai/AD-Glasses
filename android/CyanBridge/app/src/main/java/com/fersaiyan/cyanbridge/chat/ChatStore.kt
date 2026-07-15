@@ -166,7 +166,9 @@ object ChatStore {
         require(content.isNotBlank()) { "message content cannot be blank" }
         ensureMessagesLoaded(chatId)
 
-        val thread = getThread(chatId) ?: error("Unknown chatId=$chatId")
+        val threadIndex = threads.indexOfFirst { it.id == chatId }
+        if (threadIndex < 0) error("Unknown chatId=$chatId")
+        val thread = threads[threadIndex]
 
         val msg = ChatMessage(
             id = UUID.randomUUID().toString(),
@@ -179,11 +181,15 @@ object ChatStore {
         val list = messagesByChatId.getOrPut(chatId) { mutableListOf() }
         list.add(msg)
 
-        thread.updatedAt = nowMs
-        if (thread.title == "New chat" && role == ChatRole.USER) {
-            // Lightweight title heuristic for the MVP
-            thread.title = content.trim().take(32).ifBlank { "New chat" }
-        }
+        val updatedThread = thread.copy(
+            title = if (thread.title == "New chat" && role == ChatRole.USER) {
+                content.trim().take(32).ifBlank { "New chat" }
+            } else {
+                thread.title
+            },
+            updatedAt = nowMs,
+        )
+        threads[threadIndex] = updatedThread
 
         val repository = repositoryOrNull()
         if (repository != null) {
@@ -202,10 +208,10 @@ object ChatStore {
                 // Update chat title + updatedAt
                 repository.insertChat(
                     ChatEntity(
-                        id = thread.id,
-                        title = thread.title,
-                        createdAt = thread.createdAt,
-                        updatedAt = thread.updatedAt,
+                        id = updatedThread.id,
+                        title = updatedThread.title,
+                        createdAt = updatedThread.createdAt,
+                        updatedAt = updatedThread.updatedAt,
                     )
                 )
             }
@@ -220,21 +226,26 @@ object ChatStore {
         if (normalized.isBlank()) return false
         ensureLoaded()
 
-        val thread = threads.firstOrNull { it.id == chatId } ?: return false
+        val threadIndex = threads.indexOfFirst { it.id == chatId }
+        if (threadIndex < 0) return false
+        val thread = threads[threadIndex]
         if (thread.title == normalized) return false
 
-        thread.title = normalized
-        thread.updatedAt = maxOf(thread.updatedAt, nowMs)
+        val updatedThread = thread.copy(
+            title = normalized,
+            updatedAt = maxOf(thread.updatedAt, nowMs),
+        )
+        threads[threadIndex] = updatedThread
 
         val repository = repositoryOrNull()
         if (repository != null) {
             runBlocking(Dispatchers.IO) {
                 repository.insertChat(
                     ChatEntity(
-                        id = thread.id,
-                        title = thread.title,
-                        createdAt = thread.createdAt,
-                        updatedAt = thread.updatedAt,
+                        id = updatedThread.id,
+                        title = updatedThread.title,
+                        createdAt = updatedThread.createdAt,
+                        updatedAt = updatedThread.updatedAt,
                     )
                 )
             }

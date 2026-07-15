@@ -208,8 +208,8 @@ class MyApplication : Application(){
         }
 
         // Chapter 7: summarization + notes workflow
-        val summarizationService: com.fersaiyan.cyanbridge.ai.summarization.SummarizationService by lazy {
-            com.fersaiyan.cyanbridge.ai.summarization.RuleBasedSummarizationService()
+        val summarizationService: com.fersaiyan.cyanbridge.shared.notes.SummarizationService by lazy {
+            com.fersaiyan.cyanbridge.shared.notes.RuleBasedSummarizationService()
         }
 
         val notesRepository: com.fersaiyan.cyanbridge.notes.NotesRepository by lazy {
