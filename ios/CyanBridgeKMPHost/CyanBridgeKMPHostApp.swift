@@ -15,42 +15,47 @@ private struct CyanBridgeKMPHomeView: View {
 
     var body: some View {
         NavigationView {
-            VStack(alignment: .leading, spacing: 18) {
-                Text(shared.applicationName())
-                    .font(.largeTitle.bold())
-                    .foregroundStyle(.cyan)
+            ScrollView {
+                VStack(alignment: .leading, spacing: 18) {
+                    Text(shared.applicationName())
+                        .font(.largeTitle.bold())
+                        .foregroundStyle(.cyan)
 
-                Text("Kotlin Multiplatform iOS foundation")
-                    .font(.title3.weight(.semibold))
+                    Text("Kotlin Multiplatform iOS foundation")
+                        .font(.title3.weight(.semibold))
+                        .fixedSize(horizontal: false, vertical: true)
 
-                Text("This host reads app defaults from the shared Kotlin framework without depending on the limited vendor transport.")
-                    .foregroundStyle(.secondary)
+                    Text("This host reads app defaults from the shared Kotlin framework without depending on the limited vendor transport.")
+                        .foregroundStyle(.secondary)
+                        .fixedSize(horizontal: false, vertical: true)
 
-                Divider()
+                    Divider()
 
-                SharedValueRow(label: "Accent profile", value: shared.defaultAccentProfileId())
-                SharedValueRow(label: "Initial destination", value: shared.defaultDestinationId())
+                    SharedValueRow(label: "Accent profile", value: shared.defaultAccentProfileId())
+                    SharedValueRow(label: "Initial destination", value: shared.defaultDestinationId())
 
-                Text("Shared meeting-summary formatting")
-                    .font(.headline)
+                    Text("Shared meeting-summary formatting")
+                        .font(.headline)
+                        .fixedSize(horizontal: false, vertical: true)
 
-                Text(shared.meetingSummaryPreviewMarkdown())
-                    .font(.caption.monospaced())
-                    .foregroundStyle(.secondary)
-                    .lineLimit(12)
-                    .textSelection(.enabled)
+                    Text(shared.meetingSummaryPreviewMarkdown())
+                        .font(.caption.monospaced())
+                        .foregroundStyle(.secondary)
+                        .lineLimit(12)
+                        .textSelection(.enabled)
 
-                Spacer()
+                    Label("Glasses transport is not enabled yet", systemImage: "exclamationmark.triangle")
+                        .font(.footnote.weight(.semibold))
+                        .foregroundStyle(.orange)
 
-                Label("Glasses transport is not enabled yet", systemImage: "exclamationmark.triangle")
-                    .font(.footnote.weight(.semibold))
-                    .foregroundStyle(.orange)
-
-                Text("Device connection and media transfer will be added behind the shared bridge contract after the vendor SDK is validated on physical hardware.")
-                    .font(.footnote)
-                    .foregroundStyle(.secondary)
+                    Text("Device connection and media transfer will be added behind the shared bridge contract after the vendor SDK is validated on physical hardware.")
+                        .font(.footnote)
+                        .foregroundStyle(.secondary)
+                        .fixedSize(horizontal: false, vertical: true)
+                }
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .padding(24)
             }
-            .padding(24)
             .navigationTitle("CyanBridge")
         }
     }
