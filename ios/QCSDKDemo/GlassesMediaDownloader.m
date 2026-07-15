@@ -71,7 +71,7 @@ typedef NS_ENUM(NSInteger, GlassesMediaDownloaderErrorCode) {
 
         NSLog(@"🔥 SUCCESS: Glasses enabled WiFi transfer mode");
         NSLog(@"📶 Hotspot SSID: %@", ssid ?: @"(none)");
-        NSLog(@"🔐 Password: %@", password ?: @"(none)");
+        NSLog(@"Hotspot credentials received for SSID: %@", ssid ?: @"(none)");
 
         [strongSelf updateStatus:[NSString stringWithFormat:@"Glasses hotspot ready: %@", ssid ?: @"<unknown>"] preview:nil];
 
@@ -1053,7 +1053,7 @@ typedef NS_ENUM(NSInteger, GlassesMediaDownloaderErrorCode) {
 
 
 - (void)joinHotspotWithModernConfig {
-    NSLog(@"🔥 joinHotspotWithModernConfig called with SSID: %@, password: %@", self.ssid, self.password);
+    NSLog(@"joinHotspotWithModernConfig called with SSID: %@, password present: %@", self.ssid, self.password.length > 0 ? @"YES" : @"NO");
     [self updateStatus:@"Configuring WiFi connection..." preview:nil];
 
     if (@available(iOS 11.0, *)) {

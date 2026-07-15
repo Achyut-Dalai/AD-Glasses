@@ -223,7 +223,7 @@
 
         NSLog(@"🔥 SUCCESS: Glasses enabled WiFi transfer mode");
         NSLog(@"📶 Hotspot SSID: %@", ssid ?: @"(none)");
-        NSLog(@"🔐 Password: %@", password ?: @"(none)");
+        NSLog(@"Hotspot credentials received for SSID: %@", ssid ?: @"(none)");
 
         strongSelf.glassesSSID = ssid;
         strongSelf.glassesPassword = password;
