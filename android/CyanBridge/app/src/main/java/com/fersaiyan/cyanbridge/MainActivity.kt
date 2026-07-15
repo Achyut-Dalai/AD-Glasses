@@ -23,6 +23,10 @@ import com.fersaiyan.cyanbridge.audio.MeetingCaptureService
 import com.fersaiyan.cyanbridge.media.GlassesMediaPrefs
 import com.fersaiyan.cyanbridge.media.SyncedMediaFolder
 import com.fersaiyan.cyanbridge.media.VendorAlbumDownloader
+import com.fersaiyan.cyanbridge.ota.FirmwareClient
+import com.fersaiyan.cyanbridge.ota.FirmwareResult
+import com.fersaiyan.cyanbridge.ota.OtaManager
+import com.fersaiyan.cyanbridge.ota.OtaState
 import com.fersaiyan.cyanbridge.media.autocapture.AutoAudioCapturePrefs
 import com.fersaiyan.cyanbridge.media.autocapture.GlassesSyncedAudioIngestor
 import android.os.Build
@@ -35,6 +39,7 @@ import androidx.appcompat.app.AppCompatActivity
 import androidx.appcompat.app.AlertDialog
 import androidx.core.app.ActivityCompat
 import androidx.core.content.ContextCompat
+import androidx.lifecycle.lifecycleScope
 import com.hjq.permissions.OnPermissionCallback
 import com.hjq.permissions.XXPermissions
 import com.oudmon.ble.base.communication.utils.ByteUtil
@@ -275,6 +280,7 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
     private var dashboardState by mutableStateOf(GlassesDashboardUiState())
     private var showDownloadFlowPicker by mutableStateOf(false)
     private val deviceNotifyListener by lazy { MyDeviceNotifyListener() }
+    private val otaManager by lazy { OtaManager(this) }
 
     // AI Hijack settings
     private var isAiHijackEnabled = true // Default to enabled
@@ -611,6 +617,8 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
             GlassesDashboardAction.StartClassicBluetoothScan -> binding.btnBt.performClick()
             GlassesDashboardAction.DumpOtaInfo -> binding.btnOtaInfo.performClick()
             GlassesDashboardAction.TestPullOta -> binding.btnPullOtaTest.performClick()
+            GlassesDashboardAction.StartOta -> startDebugOta()
+            GlassesDashboardAction.CancelOta -> otaManager.cancel()
             GlassesDashboardAction.MetaRegister -> binding.btnMetaRegister.performClick()
             GlassesDashboardAction.MetaUnregister -> binding.btnMetaUnregister.performClick()
             GlassesDashboardAction.MetaStartSession -> binding.btnMetaSessionStart.performClick()
@@ -1202,6 +1210,184 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
                 "PullOtaTest",
                 "writeIpToSoc callback: cmdType=$cmdType, response=$response"
             )
+        }
+    }
+
+    /**
+     * Start the debug SWU OTA flow.
+     * First tries to download the gated firmware from the CyanBridge server
+     * (requires Standard/Max subscription). Falls back to bundled asset if
+     * the server is unreachable.
+     */
+    private fun startDebugOta() {
+        // Observe OTA state and update dashboard
+        lifecycleScope.launch {
+            otaManager.uiState.collect { ota ->
+                dashboardState = dashboardState.copy(
+                    ota = com.fersaiyan.cyanbridge.shared.glasses.OtaSectionUiState(
+                        stateLabel = ota.state.name.replace("_", " ").lowercase()
+                            .replaceFirstChar { it.uppercase() },
+                        detail = ota.detail,
+                        progress = ota.progress,
+                        canStart = ota.state == OtaState.IDLE || ota.state == OtaState.COMPLETE || ota.state == OtaState.FAILED,
+                        canCancel = ota.state != OtaState.IDLE && ota.state != OtaState.COMPLETE && ota.state != OtaState.FAILED,
+                    ),
+                )
+            }
+        }
+
+        // Run firmware fetch in background
+        lifecycleScope.launch(kotlinx.coroutines.Dispatchers.IO) {
+            // Update UI: fetching firmware info
+            kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.Main) {
+                dashboardState = dashboardState.copy(
+                    ota = com.fersaiyan.cyanbridge.shared.glasses.OtaSectionUiState(
+                        stateLabel = "Fetching firmware",
+                        detail = "Contacting CyanBridge server...",
+                        canStart = false,
+                        canCancel = false,
+                    ),
+                )
+            }
+
+            // Get glasses info via BLE
+            val wifiHw = getGlassesWifiHardwareVersion()
+            val wifiFw = getGlassesWifiFirmwareVersion()
+
+            if (wifiHw.isBlank()) {
+                kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.Main) {
+                    Toast.makeText(
+                        this@MainActivity,
+                        "Could not read glasses info. Is Bluetooth connected?",
+                        Toast.LENGTH_LONG,
+                    ).show()
+                    dashboardState = dashboardState.copy(
+                        ota = com.fersaiyan.cyanbridge.shared.glasses.OtaSectionUiState(),
+                    )
+                }
+                return@launch
+            }
+
+            Log.i("DebugOta", "Glasses info: wifiHw=$wifiHw, wifiFw=$wifiFw")
+
+            // Try to fetch from server
+            val firmwareClient = FirmwareClient(this@MainActivity)
+            val otaDir = java.io.File(getExternalFilesDir(null), "ota")
+            val result = firmwareClient.fetchAndDownload(wifiHw, wifiFw, otaDir)
+
+            when (result) {
+                is FirmwareResult.Ready -> {
+                    Log.i("DebugOta", "Firmware downloaded: ${result.filename} at ${result.file.absolutePath}")
+                    kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.Main) {
+                        otaManager.startOta(result.file)
+                    }
+                }
+
+                is FirmwareResult.NotAvailable -> {
+                    Log.w("DebugOta", "No firmware for ${result.wifiHwVersion}: ${result.message}")
+                    kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.Main) {
+                        androidx.appcompat.app.AlertDialog.Builder(this@MainActivity)
+                            .setTitle("Firmware Not Available")
+                            .setMessage("${result.message}\n\nCurrently only WIFIAM01G1 debug firmware is available.")
+                            .setPositiveButton("OK", null)
+                            .show()
+                        dashboardState = dashboardState.copy(
+                            ota = com.fersaiyan.cyanbridge.shared.glasses.OtaSectionUiState(),
+                        )
+                    }
+                }
+
+                is FirmwareResult.SubscriptionRequired -> {
+                    Log.w("DebugOta", "Subscription required: current=${result.currentPlan}, needed=${result.requiredPlans}")
+                    kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.Main) {
+                        androidx.appcompat.app.AlertDialog.Builder(this@MainActivity)
+                            .setTitle("Pro Subscription Required")
+                            .setMessage(
+                                "${result.message}\n\n" +
+                                    "Your plan: ${result.currentPlan}\n" +
+                                    "Required: ${result.requiredPlans.joinToString(" or ")}\n\n" +
+                                    "Upgrade in Settings > Pro Subscription to access debug firmware downloads."
+                            )
+                            .setPositiveButton("OK", null)
+                            .setNeutralButton("Upgrade") { _, _ ->
+                                startActivity(
+                                    android.content.Intent(this@MainActivity, com.fersaiyan.cyanbridge.agent.ProSubscriptionActivity::class.java)
+                                )
+                            }
+                            .show()
+                        dashboardState = dashboardState.copy(
+                            ota = com.fersaiyan.cyanbridge.shared.glasses.OtaSectionUiState(),
+                        )
+                    }
+                }
+
+                is FirmwareResult.Error -> {
+                    Log.e("DebugOta", "Firmware error: ${result.message}")
+                    // Fall back to bundled asset if available
+                    val swuFileName = "WIFIAM01G1_1.00.28_2603031800_debug.swu"
+                    val bundledFile = java.io.File(otaDir, swuFileName)
+                    if (!bundledFile.exists()) {
+                        try {
+                            assets.open("debug/$swuFileName").use { input ->
+                                bundledFile.outputStream().use { output -> input.copyTo(output) }
+                            }
+                        } catch (_: Exception) {
+                        }
+                    }
+                    if (bundledFile.exists() && bundledFile.length() > 1000) {
+                        Log.i("DebugOta", "Falling back to bundled SWU: ${bundledFile.absolutePath}")
+                        kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.Main) {
+                            Toast.makeText(this@MainActivity, "Using bundled firmware (server unavailable)", Toast.LENGTH_SHORT).show()
+                            otaManager.startOta(bundledFile)
+                        }
+                    } else {
+                        kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.Main) {
+                            Toast.makeText(this@MainActivity, "Firmware download failed: ${result.message}", Toast.LENGTH_LONG).show()
+                            dashboardState = dashboardState.copy(
+                                ota = com.fersaiyan.cyanbridge.shared.glasses.OtaSectionUiState(),
+                            )
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    /**
+     * Get the glasses' Wi-Fi hardware version via BLE syncDeviceInfo.
+     * Returns empty string if BLE is not connected.
+     */
+    private suspend fun getGlassesWifiHardwareVersion(): String {
+        if (!BleOperateManager.getInstance().isConnected) return ""
+        return kotlinx.coroutines.suspendCancellableCoroutine { cont ->
+            LargeDataHandler.getInstance().syncDeviceInfo { _, response ->
+                if (cont.isActive) {
+                    cont.resume(response?.wifiHardwareVersion ?: "") {}
+                }
+            }
+            // Timeout after 5 seconds
+            kotlinx.coroutines.CoroutineScope(kotlinx.coroutines.Dispatchers.Main).launch {
+                kotlinx.coroutines.delay(5000)
+                if (cont.isActive) cont.resume("") {}
+            }
+        }
+    }
+
+    /**
+     * Get the glasses' Wi-Fi firmware version via BLE syncDeviceInfo.
+     */
+    private suspend fun getGlassesWifiFirmwareVersion(): String {
+        if (!BleOperateManager.getInstance().isConnected) return ""
+        return kotlinx.coroutines.suspendCancellableCoroutine { cont ->
+            LargeDataHandler.getInstance().syncDeviceInfo { _, response ->
+                if (cont.isActive) {
+                    cont.resume(response?.wifiFirmwareVersion ?: "") {}
+                }
+            }
+            kotlinx.coroutines.CoroutineScope(kotlinx.coroutines.Dispatchers.Main).launch {
+                kotlinx.coroutines.delay(5000)
+                if (cont.isActive) cont.resume("") {}
+            }
         }
     }
     

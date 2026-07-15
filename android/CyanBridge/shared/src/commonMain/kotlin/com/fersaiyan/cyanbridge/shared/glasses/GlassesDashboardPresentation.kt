@@ -24,6 +24,7 @@ data class GlassesDashboardUiState(
     val agentStatus: String = "Unknown",
     val agentLastError: String = "(none)",
     val metaRayban: MetaRaybanUiState = MetaRaybanUiState(),
+    val ota: OtaSectionUiState = OtaSectionUiState(),
 )
 
 data class GlassesTransferUiState(
@@ -81,6 +82,14 @@ data class MetaRaybanUiState(
     val hasCapturedPhoto: Boolean = false,
 )
 
+data class OtaSectionUiState(
+    val stateLabel: String = "Idle",
+    val detail: String = "",
+    val progress: Int? = null,
+    val canStart: Boolean = true,
+    val canCancel: Boolean = false,
+)
+
 /** User intents emitted by the portable dashboard presentation. */
 sealed interface GlassesDashboardAction {
     data class Navigate(val destination: AppDestination) : GlassesDashboardAction
@@ -111,6 +120,8 @@ sealed interface GlassesDashboardAction {
     data object StartClassicBluetoothScan : GlassesDashboardAction
     data object DumpOtaInfo : GlassesDashboardAction
     data object TestPullOta : GlassesDashboardAction
+    data object StartOta : GlassesDashboardAction
+    data object CancelOta : GlassesDashboardAction
     data object MetaRegister : GlassesDashboardAction
     data object MetaUnregister : GlassesDashboardAction
     data object MetaStartSession : GlassesDashboardAction

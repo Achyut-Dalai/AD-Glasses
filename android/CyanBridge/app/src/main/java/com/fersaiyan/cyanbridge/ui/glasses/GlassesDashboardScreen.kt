@@ -41,6 +41,7 @@ import com.fersaiyan.cyanbridge.shared.glasses.GlassesAssistantMode
 import com.fersaiyan.cyanbridge.shared.glasses.GlassesDashboardAction
 import com.fersaiyan.cyanbridge.shared.glasses.GlassesDashboardUiState
 import com.fersaiyan.cyanbridge.shared.glasses.MetaRaybanUiState
+import com.fersaiyan.cyanbridge.shared.glasses.OtaSectionUiState
 import com.fersaiyan.cyanbridge.shared.navigation.AppDestination
 import com.fersaiyan.cyanbridge.ui.navigation.CyanBridgeNavigationBar
 
@@ -471,6 +472,22 @@ private fun AdvancedControls(
             onClick = { onAction(GlassesDashboardAction.TestPullOta) },
             modifier = Modifier.fillMaxWidth(),
         ) { Text("Test pull-mode OTA") }
+        HorizontalDivider()
+        SectionTitle("OTA firmware update")
+        Text(
+            text = "Flash debug SWU to enable ADB over Wi-Fi",
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
+        OtaProgressSection(state.ota)
+        ActionRow(
+            primaryLabel = "Flash debug SWU",
+            onPrimary = { onAction(GlassesDashboardAction.StartOta) },
+            secondaryLabel = "Cancel",
+            onSecondary = { onAction(GlassesDashboardAction.CancelOta) },
+            primaryEnabled = state.ota.canStart,
+            secondaryEnabled = state.ota.canCancel,
+        )
     }
 }
 
@@ -521,4 +538,40 @@ private fun SectionTitle(text: String, accented: Boolean = false) {
         fontWeight = FontWeight.Bold,
         color = if (accented) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant,
     )
+}
+
+@Composable
+private fun OtaProgressSection(ota: OtaSectionUiState) {
+    if (ota.stateLabel == "Idle") return
+    Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Text(
+                text = "Status: ${ota.stateLabel}",
+                style = MaterialTheme.typography.bodyMedium,
+                modifier = Modifier.weight(1f),
+            )
+            if (ota.stateLabel == "Complete") {
+                Text(
+                    text = "Done",
+                    style = MaterialTheme.typography.labelMedium,
+                    color = MaterialTheme.colorScheme.primary,
+                )
+            }
+        }
+        ota.progress?.let { progress ->
+            LinearProgressIndicator(
+                progress = { progress.coerceIn(0, 100) / 100f },
+                modifier = Modifier.fillMaxWidth(),
+            )
+        } ?: LinearProgressIndicator(modifier = Modifier.fillMaxWidth())
+        if (ota.detail.isNotBlank()) {
+            Text(
+                text = ota.detail,
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                maxLines = 2,
+                overflow = TextOverflow.Ellipsis,
+            )
+        }
+    }
 }
