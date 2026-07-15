@@ -1,64 +1,82 @@
 package com.fersaiyan.cyanbridge
 
-import android.content.Context
-import androidx.test.core.app.ActivityScenario
-import androidx.test.core.app.ApplicationProvider
-import androidx.test.ext.junit.runners.AndroidJUnit4
-import androidx.test.espresso.Espresso.onView
-import androidx.test.espresso.assertion.ViewAssertions.matches
-import androidx.test.espresso.matcher.ViewMatchers.withEffectiveVisibility
-import androidx.test.espresso.matcher.ViewMatchers.Visibility
-import androidx.test.espresso.matcher.ViewMatchers.withId
+import androidx.compose.ui.test.assertCountEquals
+import androidx.compose.ui.test.assertIsDisplayed
+import androidx.compose.ui.test.junit4.createComposeRule
+import androidx.compose.ui.test.onAllNodesWithText
+import androidx.compose.ui.test.onNodeWithText
 import com.fersaiyan.cyanbridge.devices.DeviceClass
 import com.fersaiyan.cyanbridge.devices.DeviceProfile
-import com.fersaiyan.cyanbridge.devices.DeviceProfileStore
+import com.fersaiyan.cyanbridge.devices.GlassesManagerGating
+import com.fersaiyan.cyanbridge.shared.glasses.GlassesDashboardUiState
+import com.fersaiyan.cyanbridge.ui.glasses.GlassesDashboardScreen
+import com.fersaiyan.cyanbridge.ui.theme.CyanBridgeTheme
+import org.junit.Rule
 import org.junit.Test
-import org.junit.runner.RunWith
 
-@RunWith(AndroidJUnit4::class)
 class GlassesManagerUiGatingTest {
+
+    @get:Rule
+    val composeRule = createComposeRule()
 
     @Test
     fun heyCyanProfile_showsExtrasPanel() {
-        val context = ApplicationProvider.getApplicationContext<Context>()
-        DeviceProfileStore.saveLastSelected(
-            context,
+        val model = GlassesManagerGating.uiModel(
             DeviceProfile(
                 macAddress = "AA:BB:CC:DD:EE:FF",
                 advertisedName = "HeyCyan_123",
                 detectedClass = DeviceClass.HEY_CYAN,
                 selectedClass = DeviceClass.HEY_CYAN,
                 userOverridden = false,
-            )
+            ),
         )
 
-        ActivityScenario.launch(MainActivity::class.java).use {
-            onView(withId(R.id.layout_heycyan_extras))
-                .check(matches(withEffectiveVisibility(Visibility.VISIBLE)))
-            onView(withId(R.id.layout_status_metrics))
-                .check(matches(withEffectiveVisibility(Visibility.VISIBLE)))
+        composeRule.setContent {
+            CyanBridgeTheme {
+                GlassesDashboardScreen(
+                    state = GlassesDashboardUiState(
+                        showHeyCyanControls = model.isVisible(GlassesManagerGating.Action.HEY_CYAN_EXTRAS),
+                        showBattery = model.isVisible(GlassesManagerGating.Action.STATUS_BATTERY),
+                        showStorage = model.isVisible(GlassesManagerGating.Action.STATUS_STORAGE),
+                    ),
+                    onAction = {},
+                )
+            }
         }
+
+        composeRule.onNodeWithText("AI assistant").assertIsDisplayed()
+        composeRule.onNodeWithText("Battery: --%").assertIsDisplayed()
+        composeRule.onNodeWithText("Storage: --").assertIsDisplayed()
     }
 
     @Test
     fun genericAudioProfile_hidesExtrasPanel() {
-        val context = ApplicationProvider.getApplicationContext<Context>()
-        DeviceProfileStore.saveLastSelected(
-            context,
+        val model = GlassesManagerGating.uiModel(
             DeviceProfile(
                 macAddress = "10:20:30:40:50:60",
                 advertisedName = "BT Headset",
                 detectedClass = DeviceClass.GENERIC_AUDIO,
                 selectedClass = DeviceClass.GENERIC_AUDIO,
                 userOverridden = true,
-            )
+            ),
         )
 
-        ActivityScenario.launch(MainActivity::class.java).use {
-            onView(withId(R.id.layout_heycyan_extras))
-                .check(matches(withEffectiveVisibility(Visibility.GONE)))
-            onView(withId(R.id.layout_status_metrics))
-                .check(matches(withEffectiveVisibility(Visibility.GONE)))
+        composeRule.setContent {
+            CyanBridgeTheme {
+                GlassesDashboardScreen(
+                    state = GlassesDashboardUiState(
+                        showHeyCyanControls = model.isVisible(GlassesManagerGating.Action.HEY_CYAN_EXTRAS),
+                        showBattery = model.isVisible(GlassesManagerGating.Action.STATUS_BATTERY),
+                        showStorage = model.isVisible(GlassesManagerGating.Action.STATUS_STORAGE),
+                    ),
+                    onAction = {},
+                )
+            }
         }
+
+        composeRule.onNodeWithText("Meeting capture").assertIsDisplayed()
+        composeRule.onAllNodesWithText("AI assistant").assertCountEquals(0)
+        composeRule.onAllNodesWithText("Battery: --%").assertCountEquals(0)
+        composeRule.onAllNodesWithText("Storage: --").assertCountEquals(0)
     }
 }
