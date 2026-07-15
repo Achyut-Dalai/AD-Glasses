@@ -60,7 +60,6 @@ jobs:
           -scheme CyanBridgeKMPHost
           -configuration Debug
           -sdk iphonesimulator
-          -arch arm64
           -destination 'platform=iOS Simulator,name=iPhone 16,OS=18.2'
           -derivedDataPath "$RUNNER_TEMP/CyanBridgeDerivedData"
           CODE_SIGNING_ALLOWED=NO
