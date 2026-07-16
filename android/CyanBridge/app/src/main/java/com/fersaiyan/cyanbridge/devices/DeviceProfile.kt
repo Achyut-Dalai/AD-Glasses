@@ -1,8 +1,5 @@
 package com.fersaiyan.cyanbridge.devices
 
-/**
- * Stored selection for the last connected/selected device.
- */
 data class DeviceProfile(
     val macAddress: String,
     val advertisedName: String?,

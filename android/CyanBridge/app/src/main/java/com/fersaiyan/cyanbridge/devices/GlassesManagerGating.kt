@@ -1,13 +1,5 @@
 package com.fersaiyan.cyanbridge.devices
 
-/**
- * Chapter 4: Glasses Manager baseline capability gating.
- *
- * The MVP rule is intentionally simple:
- * - HEY_CYAN: show the expanded "extras" panel and status placeholders (battery/storage).
- * - META_RAYBAN: show Meta-specific controls (stream, photo, display, registration).
- * - Other classes: show meeting capture only (plus basic connection/pairing UI).
- */
 object GlassesManagerGating {
 
     enum class Action {
@@ -44,9 +36,7 @@ object GlassesManagerGating {
                 base.add(Action.META_RAYBAN_CONTROLS)
                 base.add(Action.META_RAYBAN_REGISTRATION)
             }
-            else -> {
-                // Generic audio and unknown: only meeting capture
-            }
+            else -> {}
         }
         return base
     }

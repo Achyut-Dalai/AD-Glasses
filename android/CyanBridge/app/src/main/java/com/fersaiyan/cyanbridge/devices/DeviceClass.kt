@@ -3,9 +3,6 @@ package com.fersaiyan.cyanbridge.devices
 import androidx.annotation.DrawableRes
 import com.fersaiyan.cyanbridge.R
 
-/**
- * Chapter 3: Device scanning + pairing.
- */
 enum class DeviceClass {
     HEY_CYAN,
     META_RAYBAN,
@@ -13,7 +10,6 @@ enum class DeviceClass {
     UNKNOWN;
 
     fun displayName(): String = when (this) {
-        // Keep internal enum as HEY_CYAN, but avoid showing vendor name in the UI.
         HEY_CYAN -> "Camera+Audio glasses"
         META_RAYBAN -> "Meta Rayban"
         GENERIC_AUDIO -> "Audio-only glasses"

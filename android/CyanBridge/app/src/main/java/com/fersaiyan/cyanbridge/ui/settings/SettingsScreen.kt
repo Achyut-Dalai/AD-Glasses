@@ -841,7 +841,7 @@ private fun ActionButton(
             color = if (destructive) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.primary,
         )
     }
-}
+    }
 
 private val AgentProviderType.label: String
     get() = when (this) {
