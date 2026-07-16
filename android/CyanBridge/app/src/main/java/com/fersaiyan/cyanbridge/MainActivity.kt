@@ -177,8 +177,7 @@ import com.fersaiyan.cyanbridge.localmodels.storage.LocalModelStorageRepository
 import com.fersaiyan.cyanbridge.memoryvault.MemoryPolicyService
 import com.fersaiyan.cyanbridge.ui.appearance.AppearancePreferences
 import com.fersaiyan.cyanbridge.ui.appearance.rememberAppearanceSettings
-import com.fersaiyan.cyanbridge.ui.glasses.GlassesDashboardScreen
-import com.fersaiyan.cyanbridge.ui.glasses.GlassesSyncFlowPickerDialog
+import com.fersaiyan.cyanbridge.shared.ui.CyanBridgeApp
 import com.fersaiyan.cyanbridge.ui.theme.CyanBridgeTheme
 import android.content.ClipboardManager
 import android.content.ClipData
@@ -373,23 +372,24 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
         setupAgentControlsUi()
         setupMetaRaybanUi()
         val appearancePreferences = AppearancePreferences(this)
+        // Hide the view-based bottom navigation; the shared CMP nav shell owns it now.
+        binding.bottomNavigation.visibility = View.GONE
         setContent {
             val appearance by rememberAppearanceSettings(appearancePreferences)
             CyanBridgeTheme(appearance) {
-                GlassesDashboardScreen(
-                    state = dashboardState,
-                    onAction = ::handleDashboardAction,
+                CyanBridgeApp(
+                    dashboardState = dashboardState,
+                    onDashboardAction = ::handleDashboardAction,
+                    showSyncFlowPicker = showDownloadFlowPicker,
+                    onSyncFlowPickerDismiss = { showDownloadFlowPicker = false },
+                    onSyncFlowSelected = { flow ->
+                        showDownloadFlowPicker = false
+                        Log.i("DataDownload", "User selected sync flow: ${flow.label}")
+                        startDataDownload(flow)
+                    },
+                    appearanceSettings = appearance,
+                    onNavigateToActivity = ::navigateToDestination,
                 )
-                if (showDownloadFlowPicker) {
-                    GlassesSyncFlowPickerDialog(
-                        onDismissRequest = { showDownloadFlowPicker = false },
-                        onFlowSelected = { flow ->
-                            showDownloadFlowPicker = false
-                            Log.i("DataDownload", "User selected sync flow: ${flow.label}")
-                            startDataDownload(flow)
-                        },
-                    )
-                }
             }
         }
         // Transcription UI moved to the "Transcriptions & recordings" section
@@ -660,65 +660,6 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
             })
         }
     }
-
-    private fun setupBottomNavigation() {
-        binding.bottomNavigation.selectedItemId = R.id.nav_glasses
-        binding.bottomNavigation.setOnItemSelectedListener { item ->
-            when (item.itemId) {
-                R.id.nav_glasses -> true
-                R.id.nav_chats -> {
-                    binding.bottomNavigation.post {
-                        val last = ChatStore.listNonEmptyThreads().firstOrNull()
-                        val now = System.currentTimeMillis()
-
-                        fun lastUserMessageAtMs(chatId: String): Long? {
-                            val msgs = ChatStore.listMessages(chatId)
-                            return msgs.lastOrNull { it.role == com.fersaiyan.cyanbridge.chat.ChatRole.USER }?.createdAt
-                        }
-
-                        val openChatId = if (last != null) {
-                            val lastUserAt = lastUserMessageAtMs(last.id) ?: 0L
-                            if (lastUserAt > 0L && (now - lastUserAt) < 30 * 60 * 1000) last.id else null
-                        } else null
-
-                        val intent = Intent(this, ChatThreadActivity::class.java)
-                        if (openChatId != null) {
-                            intent.putExtra(ChatThreadActivity.EXTRA_CHAT_ID, openChatId)
-                        }
-                        intent.addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP or Intent.FLAG_ACTIVITY_SINGLE_TOP)
-                        startActivity(intent)
-                    }
-                    true
-                }
-                R.id.nav_transcriptions_recordings -> {
-                    binding.bottomNavigation.post {
-                        startActivity(Intent(this, RecordingsListActivity::class.java).apply {
-                            addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP or Intent.FLAG_ACTIVITY_SINGLE_TOP)
-                        })
-                    }
-                    true
-                }
-                R.id.nav_settings -> {
-                    binding.bottomNavigation.post {
-                        startActivity(Intent(this, SettingsActivity::class.java).apply {
-                            addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP or Intent.FLAG_ACTIVITY_SINGLE_TOP)
-                        })
-                    }
-                    true
-                }
-                R.id.nav_community_plugins -> {
-                    binding.bottomNavigation.post {
-                        startActivity(Intent(this, CommunityPluginsActivity::class.java).apply {
-                            addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP or Intent.FLAG_ACTIVITY_SINGLE_TOP)
-                        })
-                    }
-                    true
-                }
-                else -> false
-            }
-        }
-    }
-
 
     private fun initView() {
         setOnClickListener(

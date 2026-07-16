@@ -55,9 +55,11 @@ kotlin {
             implementation(compose.ui)
             implementation(compose.materialIconsExtended)
         }
-        commonTest.dependencies {
-            implementation(kotlin("test"))
-        }
+@OptIn(org.jetbrains.compose.ExperimentalComposeLibrary::class)
+commonTest.dependencies {
+    implementation(kotlin("test"))
+    implementation(compose.uiTest)
+}
     }
 }
 

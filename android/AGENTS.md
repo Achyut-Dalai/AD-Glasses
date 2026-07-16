@@ -157,10 +157,11 @@ The `:shared` module uses JetBrains Compose Multiplatform so both Android and iO
 
 ### Key Facts
 
-- **CMP Version**: 1.6.11 (Kotlin 1.9.24) → upgrading to 1.8.0 (Kotlin 2.3.0).
-- **Material 3**: Uses `org.jetbrains.compose.material3` (not `androidx.compose.material3`). Import paths differ but APIs are 99% identical.
+- **CMP Version**: 1.8.2 (Kotlin 2.3.10).
+- **Material 3**: Uses `org.jetbrains.compose.material3` as Maven coordinate but `import androidx.compose.*` in Kotlin sources (same API surface as Jetpack Compose). All migrated screen files keep `import androidx.compose.*` — do NOT use `import org.jetbrains.compose.*`.
 - **iOS Framework**: Simulator targets use dynamic framework (`isStatic = false`) for Skiko; device uses static (`isStatic = true`).
 - **Skiko**: CMP's rendering layer (Skia). Ships as `.dylib` for simulators, `.a` for device. The `maven.packagist.org` Maven repo hosts Skiko native binaries.
+- **Test dependency**: `compose.uiTest` requires `@OptIn(org.jetbrains.compose.ExperimentalComposeLibrary::class)` on the `commonTest.dependencies` block. CMP UI tests (`runComposeUiTest`) need a rendering backend — they cannot run on the JVM "portability" target. Write pure state/logic tests for `commonTest` and use Android instrumentation tests for full Compose UI testing.
 
 ### Build Commands
 
@@ -182,13 +183,16 @@ JAVA_HOME=/opt/android-studio/jbr ./gradlew :app:assembleDebug
 
 The iOS host (`CyanBridgeKMPHost`) embeds a `ComposeUIViewController` via `UIViewControllerRepresentable`. The `MainViewController()` function is exported from the Kotlin/Native framework. Both platforms call the same shared composables from `shared/commonMain`.
 
-### Kotlin Upgrade (Planned)
+### Kotlin Upgrade (Completed)
 
-Kotlin 1.9.24 → 2.3.0 is required for CMP 1.8.0+. This upgrade:
-- Keeps AGP 8.12.1 unchanged.
-- Requires KAPT → KSP migration for Room (KAPT is removed in Kotlin 2.3.0).
-- Keeps `-Xskip-metadata-version-check` for vendor AAR compatibility.
-- Updates Compose BOM from 2024.04.01 to 2025.06.01.
+Kotlin 1.9.24 → 2.3.10 is complete. Changes made:
+- AGP 8.12.1 unchanged.
+- KAPT → KSP migration for Room (`room.schemaLocation` annotation processor arg removed; Room 2.7.0 with KSP).
+- `-Xskip-metadata-version-check` kept for vendor AAR compatibility.
+- Compose BOM 2024.04.01 → 2025.06.01.
+- `kotlin.plugin.compose` replaces `composeOptions { kotlinCompilerExtensionVersion }`.
+- Room 2.6.1 → 2.7.0; coroutines 1.7.3 → 1.10.1.
+- K2 compiler fix: explicit `Array<Any>` needed in `MemoryChunkDao` queries.
 
 ## Logcat conventions
 
