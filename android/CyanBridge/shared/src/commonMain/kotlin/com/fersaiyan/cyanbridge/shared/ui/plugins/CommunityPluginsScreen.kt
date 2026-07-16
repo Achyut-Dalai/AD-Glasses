@@ -36,6 +36,8 @@ import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
+import androidx.compose.material3.NavigationBar
+import androidx.compose.material3.NavigationBarItem
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -48,6 +50,9 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.fersaiyan.cyanbridge.shared.navigation.AppDestination
+import com.fersaiyan.cyanbridge.shared.navigation.icon
+import com.fersaiyan.cyanbridge.shared.navigation.label
+import com.fersaiyan.cyanbridge.shared.icons.imageVector
 import com.fersaiyan.cyanbridge.shared.plugins.CommunityPluginCardData
 import com.fersaiyan.cyanbridge.shared.plugins.PluginTimeWindow
 import kotlin.math.floor
@@ -95,6 +100,23 @@ fun CommunityPluginsScreen(
                     }
                 },
             )
+        },
+        bottomBar = {
+            NavigationBar {
+                AppDestination.entries.forEach { destination ->
+                    NavigationBarItem(
+                        selected = destination == AppDestination.PLUGINS,
+                        onClick = { onDestinationSelected(destination) },
+                        icon = {
+                            Icon(
+                                imageVector = destination.icon.imageVector(),
+                                contentDescription = null,
+                            )
+                        },
+                        label = { Text(destination.label) },
+                    )
+                }
+            }
         },
         floatingActionButton = {
             FloatingActionButton(onClick = onPublishPlugin) {

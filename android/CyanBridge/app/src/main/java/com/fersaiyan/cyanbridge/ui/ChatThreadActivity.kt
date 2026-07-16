@@ -65,8 +65,8 @@ import com.fersaiyan.cyanbridge.shared.chat.ChatComposerUiState
 import com.fersaiyan.cyanbridge.shared.chat.DailySummaryProgressUiState
 import com.fersaiyan.cyanbridge.shared.chat.ChatThreadEvent
 import com.fersaiyan.cyanbridge.ui.chat.ChatAppearancePrefs
-import com.fersaiyan.cyanbridge.ui.chat.ChatAppearanceMenuDialog
-import com.fersaiyan.cyanbridge.ui.chat.ChatThreadScreen
+import com.fersaiyan.cyanbridge.shared.ui.chat.ChatAppearanceMenuDialog
+import com.fersaiyan.cyanbridge.shared.ui.chat.ChatThreadScreen
 import com.fersaiyan.cyanbridge.shared.chat.ChatThreadStateReducer
 import com.fersaiyan.cyanbridge.shared.chat.ChatThreadUiState
 import com.fersaiyan.cyanbridge.shared.navigation.AppDestination

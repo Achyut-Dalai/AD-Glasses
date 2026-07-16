@@ -33,6 +33,8 @@ import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
+import androidx.compose.material3.NavigationBar
+import androidx.compose.material3.NavigationBarItem
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -47,6 +49,9 @@ import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import androidx.compose.foundation.text.KeyboardOptions
 import com.fersaiyan.cyanbridge.shared.navigation.AppDestination
+import com.fersaiyan.cyanbridge.shared.navigation.icon
+import com.fersaiyan.cyanbridge.shared.navigation.label
+import com.fersaiyan.cyanbridge.shared.icons.imageVector
 import com.fersaiyan.cyanbridge.shared.settings.AgentProviderType
 import com.fersaiyan.cyanbridge.shared.settings.CaptureSource
 import com.fersaiyan.cyanbridge.shared.settings.MemoryPrivacyMode
@@ -164,6 +169,23 @@ fun SettingsScreen(
         contentWindowInsets = WindowInsets.safeDrawing,
         topBar = {
             TopAppBar(title = { Text("Settings") })
+        },
+        bottomBar = {
+            NavigationBar {
+                AppDestination.entries.forEach { destination ->
+                    NavigationBarItem(
+                        selected = destination == AppDestination.SETTINGS,
+                        onClick = { actions.onDestinationSelected(destination) },
+                        icon = {
+                            Icon(
+                                imageVector = destination.icon.imageVector(),
+                                contentDescription = null,
+                            )
+                        },
+                        label = { Text(destination.label) },
+                    )
+                }
+            }
         },
     ) { innerPadding ->
         LazyColumn(

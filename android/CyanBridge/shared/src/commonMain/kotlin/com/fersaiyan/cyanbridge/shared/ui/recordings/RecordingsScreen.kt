@@ -40,6 +40,8 @@ import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
+import androidx.compose.material3.NavigationBar
+import androidx.compose.material3.NavigationBarItem
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -60,6 +62,10 @@ import com.fersaiyan.cyanbridge.shared.recordings.SyncedMediaItem
 import com.fersaiyan.cyanbridge.shared.recordings.TranscriptDialogUiState
 import com.fersaiyan.cyanbridge.shared.recordings.TranscriptionEngine
 import com.fersaiyan.cyanbridge.shared.recordings.TranscriptionProgressUiState
+import com.fersaiyan.cyanbridge.shared.navigation.AppDestination
+import com.fersaiyan.cyanbridge.shared.navigation.icon
+import com.fersaiyan.cyanbridge.shared.navigation.label
+import com.fersaiyan.cyanbridge.shared.icons.imageVector
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -86,6 +92,7 @@ fun RecordingsScreen(
     onConfirmEngine: () -> Unit,
     onDismissEngineChooser: () -> Unit,
     onDismissTranscript: () -> Unit,
+    onDestinationSelected: (AppDestination) -> Unit = {},
 ) {
     Scaffold(
         contentWindowInsets = WindowInsets.safeDrawing,
@@ -101,6 +108,23 @@ fun RecordingsScreen(
                     }
                 },
             )
+        },
+        bottomBar = {
+            NavigationBar {
+                AppDestination.entries.forEach { destination ->
+                    NavigationBarItem(
+                        selected = destination == AppDestination.MEDIA,
+                        onClick = { onDestinationSelected(destination) },
+                        icon = {
+                            Icon(
+                                imageVector = destination.icon.imageVector(),
+                                contentDescription = null,
+                            )
+                        },
+                        label = { Text(destination.label) },
+                    )
+                }
+            }
         },
     ) { innerPadding ->
         LazyColumn(

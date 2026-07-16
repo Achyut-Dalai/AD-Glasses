@@ -22,10 +22,10 @@ import com.fersaiyan.cyanbridge.localmodels.storage.LocalModelStorageRepository
 import com.fersaiyan.cyanbridge.memoryvault.MemoryModeManager
 import com.fersaiyan.cyanbridge.shared.chat.ChatAppearanceMenuAction
 import com.fersaiyan.cyanbridge.ui.chat.ChatAppearancePrefs
-import com.fersaiyan.cyanbridge.ui.chat.ChatAppearanceMenuDialog
+import com.fersaiyan.cyanbridge.shared.ui.chat.ChatAppearanceMenuDialog
 import com.fersaiyan.cyanbridge.ui.appearance.AppearancePreferences
 import com.fersaiyan.cyanbridge.ui.appearance.rememberAppearanceSettings
-import com.fersaiyan.cyanbridge.ui.chat.ChatListScreen
+import com.fersaiyan.cyanbridge.shared.ui.chat.ChatListScreen
 import com.fersaiyan.cyanbridge.ui.theme.CyanBridgeTheme
 import com.fersaiyan.cyanbridge.shared.navigation.AppDestination
 import com.fersaiyan.cyanbridge.shared.chat.ChatThreadSummary
@@ -63,6 +63,9 @@ class ChatListActivity : AppCompatActivity() {
                 ChatListScreen(
                     threads = threads,
                     pendingDelete = pendingDelete,
+                    formatTimestamp = { millis ->
+                        SimpleDateFormat("MMM d, h:mm a", Locale.getDefault()).format(Date(millis))
+                    },
                     onOpenThread = { startActivity(buildOpenChatIntent(it.id)) },
                     onRequestDelete = { pendingDelete = it },
                     onConfirmDelete = {
