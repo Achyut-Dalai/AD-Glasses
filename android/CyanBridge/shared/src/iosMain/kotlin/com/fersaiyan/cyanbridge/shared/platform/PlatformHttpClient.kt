@@ -1,8 +1,6 @@
 package com.fersaiyan.cyanbridge.shared.platform
 
-import kotlinx.cinterop.ExperimentalForeignApi
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.withContext
+import kotlinx.coroutines.suspendCancellableCoroutine
 import platform.Foundation.NSData
 import platform.Foundation.NSHTTPURLResponse
 import platform.Foundation.NSMutableURLRequest
@@ -16,9 +14,6 @@ import platform.Foundation.allHTTPHeaderFields
 import platform.Foundation.dataTaskWithRequest
 import platform.Foundation.dataUsingEncoding
 import platform.Foundation.setValue
-import platform.Foundation.NSURLSessionConfiguration
-import platform.Foundation.timeoutIntervalForRequest
-import platform.Foundation.timeoutIntervalForResource
 
 actual class PlatformHttpClient actual constructor() {
 
@@ -46,7 +41,7 @@ actual class PlatformHttpClient actual constructor() {
         files: Map<String, ByteArray>,
         headers: Map<String, String>,
     ): HttpResponse {
-        val boundary = "----CyanBridgeBoundary${platform.Foundation.NSDate.date().timeIntervalSince1970.toLong()}"
+        val boundary = "----CyanBridgeBoundary${platform.Foundation.NSDate().timeIntervalSince1970.toLong()}"
         val request = NSMutableURLRequest(NSURL(string = url))
         request.HTTPMethod = "POST"
         request.setValue("multipart/form-data; boundary=$boundary", forHTTPHeaderField = "Content-Type")
@@ -72,53 +67,46 @@ actual class PlatformHttpClient actual constructor() {
         val request = NSMutableURLRequest(NSURL(string = url))
         request.HTTPMethod = "GET"
         headers.forEach { (k, v) -> request.setValue(v, forHTTPHeaderField = k) }
-        request.timeoutIntervalForRequest = 300.0
         return executeRequest(request)
     }
 
     actual fun close() {}
 
-    private suspend fun executeRequest(request: NSMutableURLRequest): HttpResponse {
-        val config = NSURLSessionConfiguration.defaultSessionConfiguration()
-        config.timeoutIntervalForRequest = 30.0
-        config.timeoutIntervalForResource = 60.0
-        val session = NSURLSession.sessionWithConfiguration(config)
-
-        return kotlinx.coroutines.suspendCancellableCoroutine { cont ->
-            val task = session.dataTaskWithRequest(request) { data, response, error ->
-                if (error != null) {
-                    cont.resumeWith(Result.failure(Exception(error.localizedDescription)))
-                    return@dataTaskWithRequest
-                }
-                val httpResponse = response as? NSHTTPURLResponse
-                val statusCode = httpResponse?.statusCode?.toInt() ?: -1
-                val headerMap = httpResponse?.allHeaderFields?.mapKeys { it.key.toString() }
-                    ?.mapValues { listOf(it.value.toString()) } ?: emptyMap()
-                val body = data?.let { nsData ->
-                    val bytes = nsData.toByteArray()
-                    bytes?.decodeToString() ?: ""
-                } ?: ""
-
-                cont.resumeWith(Result.success(
-                    HttpResponse(
-                        statusCode = statusCode,
-                        headers = headerMap,
-                        body = body,
-                        bodyBytes = data?.toByteArray(),
-                    )
-                ))
+    private suspend fun executeRequest(request: NSMutableURLRequest): HttpResponse = suspendCancellableCoroutine { cont ->
+        val session = NSURLSession.sessionWithConfiguration(NSURLSessionConfiguration.defaultSessionConfiguration())
+        val task = session.dataTaskWithRequest(request) { data, response, error ->
+            if (error != null) {
+                cont.resumeWith(Result.failure(Exception(error.localizedDescription)))
+                return@dataTaskWithRequest
             }
-            task.resume()
+            val httpResponse = response as? NSHTTPURLResponse
+            val statusCode = httpResponse?.statusCode?.toInt() ?: -1
+            val headerMap = httpResponse?.allHeaderFields?.mapKeys { it.key.toString() }
+                ?.mapValues { listOf(it.value.toString()) } ?: emptyMap()
+            val body = data?.let { nsData ->
+                val bytes = nsData.toByteArray()
+                bytes?.decodeToString() ?: ""
+            } ?: ""
+
+            cont.resumeWith(Result.success(
+                HttpResponse(
+                    statusCode = statusCode,
+                    headers = headerMap,
+                    body = body,
+                    bodyBytes = data?.toByteArray(),
+                )
+            ))
         }
+        task.resume()
     }
 }
 
-@OptIn(ExperimentalForeignApi::class)
 private fun NSData.toByteArray(): ByteArray? {
     if (length == 0uL) return ByteArray(0)
     val bytes = ByteArray(length.toInt())
-    bytes.usePinned { pinned ->
-        platform.posix.memcpy(pinned.addressOf(0), this.bytes, this.length)
+    // Copy bytes from NSData to ByteArray
+    for (i in 0 until length.toInt()) {
+        bytes[i] = (this[i].toInt() and 0xFF).toByte()
     }
     return bytes
 }
