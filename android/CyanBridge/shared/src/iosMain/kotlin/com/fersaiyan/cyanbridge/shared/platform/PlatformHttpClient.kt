@@ -106,10 +106,11 @@ actual class PlatformHttpClient actual constructor() {
 @OptIn(ExperimentalForeignApi::class)
 private fun NSData.toByteArray(): ByteArray? {
     if (length == 0uL) return ByteArray(0)
-    val bytes = ByteArray(length.toInt())
+    val size = length.toInt()
+    val bytes = ByteArray(size)
     val ptr = this.bytes ?: return null
-    for (i in 0 until length.toInt()) {
-        bytes[i] = (ptr[i].toInt() and 0xFF).toByte()
+    for (i in 0 until size) {
+        bytes[i] = ptr[i]
     }
     return bytes
 }
