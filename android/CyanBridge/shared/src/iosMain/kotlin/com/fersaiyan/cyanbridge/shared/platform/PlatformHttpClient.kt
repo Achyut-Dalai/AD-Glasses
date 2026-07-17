@@ -1,10 +1,6 @@
 package com.fersaiyan.cyanbridge.shared.platform
 
-import kotlinx.cinterop.BetaInteropApi
 import kotlinx.cinterop.ExperimentalForeignApi
-import kotlinx.cinterop.allocArrayOf
-import kotlinx.cinterop.memScoped
-import kotlinx.cinterop.readBytes
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import platform.Foundation.NSData
@@ -19,16 +15,13 @@ import platform.Foundation.HTTPMethod
 import platform.Foundation.allHTTPHeaderFields
 import platform.Foundation.dataTaskWithRequest
 import platform.Foundation.dataUsingEncoding
-import platform.Foundation.readData
 import platform.Foundation.setValue
-import platform.Foundation.writeToFile
 import platform.Foundation.NSURLSessionConfiguration
 import platform.Foundation.timeoutIntervalForRequest
 import platform.Foundation.timeoutIntervalForResource
 
 actual class PlatformHttpClient actual constructor() {
 
-    @OptIn(ExperimentalForeignApi::class, BetaInteropApi::class)
     actual suspend fun get(url: String, headers: Map<String, String>): HttpResponse {
         val request = NSMutableURLRequest(NSURL(string = url))
         request.HTTPMethod = "GET"
@@ -36,19 +29,17 @@ actual class PlatformHttpClient actual constructor() {
         return executeRequest(request)
     }
 
-    @OptIn(ExperimentalForeignApi::class, BetaInteropApi::class)
     actual suspend fun post(url: String, body: String, headers: Map<String, String>): HttpResponse {
         val request = NSMutableURLRequest(NSURL(string = url))
         request.HTTPMethod = "POST"
         request.HTTPBody = (body as NSString).dataUsingEncoding(NSUTF8StringEncoding)
         headers.forEach { (k, v) -> request.setValue(v, forHTTPHeaderField = k) }
-        if (headers.containsKey("Content-Type").not()) {
+        if (!headers.containsKey("Content-Type")) {
             request.setValue("application/json; charset=UTF-8", forHTTPHeaderField = "Content-Type")
         }
         return executeRequest(request)
     }
 
-    @OptIn(ExperimentalForeignApi::class, BetaInteropApi::class)
     actual suspend fun postMultipart(
         url: String,
         parts: Map<String, String>,
@@ -67,7 +58,6 @@ actual class PlatformHttpClient actual constructor() {
             bodyBuilder.append("Content-Disposition: form-data; name=\"$name\"\r\n\r\n")
             bodyBuilder.append("$value\r\n")
         }
-        // Note: file data would need NSData handling for binary; simplified for string-only parts
         bodyBuilder.append("--$boundary--\r\n")
         request.HTTPBody = (bodyBuilder.toString() as NSString).dataUsingEncoding(NSUTF8StringEncoding)
         return executeRequest(request)
@@ -88,14 +78,13 @@ actual class PlatformHttpClient actual constructor() {
 
     actual fun close() {}
 
-    @OptIn(ExperimentalForeignApi::class)
-    private suspend fun executeRequest(request: NSMutableURLRequest): HttpResponse = withContext(Dispatchers.Main) {
+    private suspend fun executeRequest(request: NSMutableURLRequest): HttpResponse {
         val config = NSURLSessionConfiguration.defaultSessionConfiguration()
         config.timeoutIntervalForRequest = 30.0
         config.timeoutIntervalForResource = 60.0
         val session = NSURLSession.sessionWithConfiguration(config)
 
-        suspendCancellableCoroutine { cont ->
+        return kotlinx.coroutines.suspendCancellableCoroutine { cont ->
             val task = session.dataTaskWithRequest(request) { data, response, error ->
                 if (error != null) {
                     cont.resumeWith(Result.failure(Exception(error.localizedDescription)))
@@ -106,8 +95,8 @@ actual class PlatformHttpClient actual constructor() {
                 val headerMap = httpResponse?.allHeaderFields?.mapKeys { it.key.toString() }
                     ?.mapValues { listOf(it.value.toString()) } ?: emptyMap()
                 val body = data?.let { nsData ->
-                    val bytes = nsData.readBytes()
-                    String(bytes, Charsets.UTF_8)
+                    val bytes = nsData.toByteArray()
+                    bytes?.decodeToString() ?: ""
                 } ?: ""
 
                 cont.resumeWith(Result.success(
@@ -115,7 +104,7 @@ actual class PlatformHttpClient actual constructor() {
                         statusCode = statusCode,
                         headers = headerMap,
                         body = body,
-                        bodyBytes = data?.readBytes(),
+                        bodyBytes = data?.toByteArray(),
                     )
                 ))
             }
@@ -124,8 +113,12 @@ actual class PlatformHttpClient actual constructor() {
     }
 }
 
-// Helper for suspendCancellableCoroutine
-import kotlinx.coroutines.suspendCancellableCoroutine
-
-private suspend fun <T> suspendCancellableCoroutine(block: (kotlinx.coroutines.CancellableContinuation<T>) -> Unit): T =
-    kotlinx.coroutines.suspendCancellableCoroutine(block)
+@OptIn(ExperimentalForeignApi::class)
+private fun NSData.toByteArray(): ByteArray? {
+    if (length == 0uL) return ByteArray(0)
+    val bytes = ByteArray(length.toInt())
+    bytes.usePinned { pinned ->
+        platform.posix.memcpy(pinned.addressOf(0), this.bytes, this.length)
+    }
+    return bytes
+}

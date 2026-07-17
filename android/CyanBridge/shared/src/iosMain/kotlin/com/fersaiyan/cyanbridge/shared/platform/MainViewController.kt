@@ -21,6 +21,8 @@ import com.fersaiyan.cyanbridge.shared.persistence.IosMemoryVaultRepository
 import com.fersaiyan.cyanbridge.shared.persistence.IosNotesRepository
 import com.fersaiyan.cyanbridge.shared.ui.CyanBridgeApp
 import kotlinx.cinterop.ExperimentalForeignApi
+import kotlinx.cinterop.addressOf
+import kotlinx.cinterop.usePinned
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -348,6 +350,9 @@ private fun String.unescapeJson(): String =
 
 @OptIn(ExperimentalForeignApi::class)
 private fun ByteArray.encodeBase64(): String {
-    val data = NSData.create(bytes = this.refTo(0), length = this.size.toULong())
+    if (isEmpty()) return ""
+    val data = this.usePinned { pinned ->
+        NSData.create(bytes = pinned.addressOf(0), length = size.toULong())
+    }
     return data.base64EncodedStringWithOptions(0u)
 }

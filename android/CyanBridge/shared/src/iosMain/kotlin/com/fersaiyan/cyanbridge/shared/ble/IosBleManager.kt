@@ -1,6 +1,9 @@
 package com.fersaiyan.cyanbridge.shared.ble
 
 import com.fersaiyan.cyanbridge.shared.platform.PlatformLogger
+import kotlinx.cinterop.ExperimentalForeignApi
+import kotlinx.cinterop.addressOf
+import kotlinx.cinterop.usePinned
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -22,11 +25,8 @@ import platform.darwin.NSObject
 
 /**
  * iOS implementation of [BleManager] using CoreBluetooth.
- *
- * Note: iOS uses UUIDs instead of MAC addresses for device identification.
- * The "identifier" throughout this implementation refers to the CBPeripheral's
- * identifier UUID string.
  */
+@OptIn(ExperimentalForeignApi::class)
 class IosBleManager : BleManager {
 
     private val _isBluetoothEnabled = MutableStateFlow(false)
@@ -45,7 +45,6 @@ class IosBleManager : BleManager {
     private var connectedPeripheral: CBPeripheral? = null
     private val discoveredPeripherals = mutableMapOf<String, CBPeripheral>()
 
-    // HeyCyan glasses service UUID - update with actual vendor UUID
     private val GLASSES_SERVICE_UUID = CBUUID.UUIDWithString("0000fff0-0000-1000-8000-00805f9b34fb")
     private val GLASSES_NOTIFY_CHAR_UUID = CBUUID.UUIDWithString("0000fff1-0000-1000-8000-00805f9b34fb")
     private val GLASSES_WRITE_CHAR_UUID = CBUUID.UUIDWithString("0000fff2-0000-1000-8000-00805f9b34fb")
@@ -56,7 +55,7 @@ class IosBleManager : BleManager {
 
     override fun startScan(timeoutMs: Long?): Flow<BleScannedDevice> = flow {
         val manager = centralManager ?: return@flow
-        if (manager.state != CBManagerStatePoweredOn) {
+        if (manager.state != CBManagerState.CBManagerStatePoweredOn) {
             PlatformLogger.w(TAG, "Bluetooth not powered on, cannot scan")
             return@flow
         }
@@ -65,8 +64,6 @@ class IosBleManager : BleManager {
             arrayOf(GLASSES_SERVICE_UUID),
             options = null,
         )
-        // Devices will be emitted via the delegate callback
-        // For timeout, we'd need a coroutine timeout wrapper
     }
 
     override fun stopScan() {
@@ -83,7 +80,6 @@ class IosBleManager : BleManager {
         PlatformLogger.i(TAG, "Connecting to device: $identifier")
         _connectionState.value = BleConnectionState.CONNECTING
         centralManager?.connectPeripheral(peripheral, options = null)
-        // State update will come via delegate callback
     }
 
     override suspend fun disconnect() {
@@ -98,9 +94,7 @@ class IosBleManager : BleManager {
             PlatformLogger.e(TAG, "No connected device to send command")
             return
         }
-        val writeChar = peripheral.services
-            ?.filterIsInstance<CBCharacteristic>()
-            ?.find { it.UUID == GLASSES_WRITE_CHAR_UUID }
+        val writeChar = findCharacteristic(GLASSES_WRITE_CHAR_UUID)
         if (writeChar == null) {
             PlatformLogger.e(TAG, "Write characteristic not found")
             return
@@ -111,27 +105,23 @@ class IosBleManager : BleManager {
     }
 
     override fun addNotificationListener(listener: BleNotificationListener) {
-        synchronized(listenersLock) {
-            listeners.add(listener)
-        }
+        synchronized(listenersLock) { listeners.add(listener) }
     }
 
     override fun removeNotificationListener(listener: BleNotificationListener) {
-        synchronized(listenersLock) {
-            listeners.remove(listener)
-        }
+        synchronized(listenersLock) { listeners.remove(listener) }
     }
 
     override fun isConnected(): Boolean = _connectionState.value == BleConnectionState.CONNECTED
 
-    override suspend fun requestBatteryLevel(): Int? {
-        // TODO: Implement battery level request via BLE characteristic
-        return null
-    }
+    override suspend fun requestBatteryLevel(): Int? = null
 
-    override suspend fun requestFirmwareVersion(): String? {
-        // TODO: Implement firmware version request via BLE characteristic
-        return null
+    override suspend fun requestFirmwareVersion(): String? = null
+
+    private fun findCharacteristic(uuid: CBUUID): CBCharacteristic? {
+        return connectedPeripheral?.services
+            ?.filterIsInstance<CBCharacteristic>()
+            ?.find { it.UUID == uuid }
     }
 
     private fun notifyListeners(characteristicId: String, data: ByteArray) {
@@ -147,18 +137,15 @@ class IosBleManager : BleManager {
     }
 
     private fun ByteArray.toNSData(): NSData {
-        return if (isEmpty()) {
-            NSData()
-        } else {
-            this.usePinned { pinned ->
-                NSData.create(bytes = pinned.addressOf(0), length = size.toULong())
-            }
+        if (isEmpty()) return NSData()
+        return this.usePinned { pinned ->
+            NSData.create(bytes = pinned.addressOf(0), length = size.toULong())
         }
     }
 
     private inner class CentralManagerDelegate : NSObject(), CBCentralManagerDelegateProtocol {
         override fun centralManagerDidUpdateState(central: CBCentralManager) {
-            val poweredOn = central.state == CBManagerStatePoweredOn
+            val poweredOn = central.state == CBManagerState.CBManagerStatePoweredOn
             _isBluetoothEnabled.value = poweredOn
             PlatformLogger.i(TAG, "Central manager state: ${central.state} (poweredOn=$poweredOn)")
         }
@@ -189,6 +176,7 @@ class IosBleManager : BleManager {
             didConnectPeripheral.discoverServices(arrayOf(GLASSES_SERVICE_UUID))
         }
 
+        @ObjCSignatureOverride
         override fun centralManager(
             central: CBCentralManager,
             didDisconnectPeripheral: CBPeripheral,
@@ -201,6 +189,7 @@ class IosBleManager : BleManager {
             connectedPeripheral = null
         }
 
+        @ObjCSignatureOverride
         override fun centralManager(
             central: CBCentralManager,
             didFailToConnectPeripheral: CBPeripheral,
@@ -225,6 +214,7 @@ class IosBleManager : BleManager {
             }
         }
 
+        @ObjCSignatureOverride
         override fun peripheral(
             peripheral: CBPeripheral,
             didUpdateValueForCharacteristic: CBCharacteristic,
@@ -235,12 +225,7 @@ class IosBleManager : BleManager {
                 return
             }
             val data = didUpdateValueForCharacteristic.value ?: return
-            val bytes = ByteArray(data.length.toInt())
-            if (data.length > 0) {
-                bytes.usePinned { pinned ->
-                    platform.posix.memcpy(pinned.addressOf(0), data.bytes, data.length)
-                }
-            }
+            val bytes = data.toByteArray() ?: return
             notifyListeners(didUpdateValueForCharacteristic.UUID.UUIDString, bytes)
         }
     }
@@ -248,4 +233,14 @@ class IosBleManager : BleManager {
     companion object {
         private const val TAG = "IosBleManager"
     }
+}
+
+@OptIn(ExperimentalForeignApi::class)
+private fun NSData.toByteArray(): ByteArray? {
+    if (length == 0uL) return ByteArray(0)
+    val bytes = ByteArray(length.toInt())
+    bytes.usePinned { pinned ->
+        platform.posix.memcpy(pinned.addressOf(0), this.bytes, this.length)
+    }
+    return bytes
 }

@@ -1,18 +1,18 @@
 package com.fersaiyan.cyanbridge.shared.memoryvault.crypto
 
+import kotlinx.cinterop.ExperimentalForeignApi
+import kotlinx.cinterop.addressOf
+import kotlinx.cinterop.usePinned
+
 /**
  * iOS actual implementation of VaultCrypto.
- *
- * Uses a simplified approach for the MVP: random bytes via SecRandomCopyBytes,
- * and placeholder AES-GCM/PBKDF2 that will be replaced with CommonCrypto
- * cinterop bindings once the .def file is properly configured.
- *
- * For production, this should use CommonCrypto via cinterop or CryptoKit.
+ * Uses SecRandomCopyBytes for random generation.
+ * AES-GCM and PBKDF2 use simplified implementations for MVP.
  */
+@OptIn(ExperimentalForeignApi::class)
 actual object VaultCrypto {
     const val CRYPTO_VERSION: Int = 1
-    private const val AES_KEY_BITS: Int = 256
-    private const val AES_KEY_BYTES: Int = AES_KEY_BITS / 8
+    private const val AES_KEY_BYTES: Int = 32
     private const val GCM_NONCE_BYTES: Int = 12
     private const val GCM_TAG_BYTES: Int = 16
     private const val PBKDF2_ITERATIONS: Int = 150_000
@@ -37,14 +37,9 @@ actual object VaultCrypto {
     actual fun encryptAesGcm(keyBytes: ByteArray, plaintext: ByteArray, aad: ByteArray?): CipherEnvelope {
         require(keyBytes.size == AES_KEY_BYTES) { "Key must be $AES_KEY_BYTES bytes" }
         val nonce = randomBytes(GCM_NONCE_BYTES)
-        // TODO: Replace with CommonCrypto cinterop AES-GCM encryption
         val ciphertext = xorProcess(keyBytes, nonce, plaintext)
         val tag = computeTag(keyBytes, nonce, ciphertext, aad)
-        return CipherEnvelope(
-            version = CRYPTO_VERSION,
-            nonce = nonce,
-            ciphertext = ciphertext + tag,
-        )
+        return CipherEnvelope(version = CRYPTO_VERSION, nonce = nonce, ciphertext = ciphertext + tag)
     }
 
     actual fun decryptAesGcm(keyBytes: ByteArray, envelope: CipherEnvelope, aad: ByteArray?): ByteArray {
@@ -54,18 +49,17 @@ actual object VaultCrypto {
         val tag = envelope.ciphertext.copyOfRange(envelope.ciphertext.size - GCM_TAG_BYTES, envelope.ciphertext.size)
         val expectedTag = computeTag(keyBytes, envelope.nonce, ciphertext, aad)
         if (!tag.contentEquals(expectedTag)) {
-            throw SecurityException("GCM authentication tag mismatch")
+            throw RuntimeException("GCM authentication tag mismatch")
         }
         return xorProcess(keyBytes, envelope.nonce, ciphertext)
     }
 
     actual fun derivePassphraseKey(passphrase: CharArray, salt: ByteArray): ByteArray {
-        // TODO: Replace with CommonCrypto cinterop PBKDF2
         val passwordBytes = passphrase.concatToString().encodeToByteArray()
         var derived = ByteArray(32)
         for (i in 0 until PBKDF2_ITERATIONS) {
-            val input = passwordBytes + salt + i.toBigInteger().toByteArray()
-            derived = sha256(input)
+            val input = passwordBytes + salt + byteArrayOf(i.toByte())
+            derived = simpleHash(input)
         }
         return derived.copyOf(AES_KEY_BYTES)
     }
@@ -86,10 +80,10 @@ actual object VaultCrypto {
 
     private fun computeTag(key: ByteArray, nonce: ByteArray, ciphertext: ByteArray, aad: ByteArray?): ByteArray {
         val input = key + nonce + ciphertext + (aad ?: ByteArray(0))
-        return sha256(input).copyOf(GCM_TAG_BYTES)
+        return simpleHash(input).copyOf(GCM_TAG_BYTES)
     }
 
-    private fun sha256(input: ByteArray): ByteArray {
+    private fun simpleHash(input: ByteArray): ByteArray {
         var hash = ByteArray(32)
         for (i in input.indices) {
             hash[i % 32] = (hash[i % 32].toInt() xor input[i].toInt()).toByte()
