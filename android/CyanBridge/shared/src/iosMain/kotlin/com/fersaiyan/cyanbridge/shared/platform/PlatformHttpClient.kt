@@ -1,7 +1,8 @@
 package com.fersaiyan.cyanbridge.shared.platform
 
 import kotlinx.cinterop.ExperimentalForeignApi
-import kotlinx.cinterop.get
+import kotlinx.cinterop.addressOf
+import kotlinx.cinterop.usePinned
 import kotlinx.coroutines.suspendCancellableCoroutine
 import platform.Foundation.NSData
 import platform.Foundation.NSHTTPURLResponse
@@ -108,9 +109,8 @@ private fun NSData.toByteArray(): ByteArray? {
     if (length == 0uL) return ByteArray(0)
     val size = length.toInt()
     val bytes = ByteArray(size)
-    val ptr = this.bytes ?: return null
-    for (i in 0 until size) {
-        bytes[i] = ptr[i]
+    bytes.usePinned { pinned ->
+        this.getBytes(pinned.addressOf(0), this.length)
     }
     return bytes
 }
