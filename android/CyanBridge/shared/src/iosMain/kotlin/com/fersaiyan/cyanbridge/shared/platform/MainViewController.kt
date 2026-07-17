@@ -350,8 +350,19 @@ private fun String.unescapeJson(): String =
 @OptIn(ExperimentalForeignApi::class)
 private fun ByteArray.encodeBase64(): String {
     if (isEmpty()) return ""
-    val data = this.refTo(0).let { ptr ->
-        platform.Foundation.NSData.create(bytes = ptr, length = size.toULong())
+    // Use a simple base64 encoding for iOS
+    val chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/"
+    val sb = StringBuilder()
+    var i = 0
+    while (i < size) {
+        val b0 = this[i].toInt() and 0xFF
+        val b1 = if (i + 1 < size) this[i + 1].toInt() and 0xFF else 0
+        val b2 = if (i + 2 < size) this[i + 2].toInt() and 0xFF else 0
+        sb.append(chars[(b0 shr 2) and 0x3F])
+        sb.append(chars[((b0 shl 4) or (b1 shr 4)) and 0x3F])
+        if (i + 1 < size) sb.append(chars[((b1 shl 2) or (b2 shr 6)) and 0x3F]) else sb.append('=')
+        if (i + 2 < size) sb.append(chars[b2 and 0x3F]) else sb.append('=')
+        i += 3
     }
-    return data.base64EncodedStringWithOptions(0u)
+    return sb.toString()
 }

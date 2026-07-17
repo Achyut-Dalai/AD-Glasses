@@ -41,7 +41,7 @@ actual class PlatformHttpClient actual constructor() {
         files: Map<String, ByteArray>,
         headers: Map<String, String>,
     ): HttpResponse {
-        val boundary = "----CyanBridgeBoundary${platform.Foundation.NSDate().timeIntervalSince1970.toLong()}"
+        val boundary = "----CyanBridgeBoundary${platform.Foundation.NSDate().timeIntervalSinceReferenceDate.toLong()}"
         val request = NSMutableURLRequest(NSURL(string = url))
         request.HTTPMethod = "POST"
         request.setValue("multipart/form-data; boundary=$boundary", forHTTPHeaderField = "Content-Type")
@@ -104,8 +104,9 @@ actual class PlatformHttpClient actual constructor() {
 private fun NSData.toByteArray(): ByteArray? {
     if (length == 0uL) return ByteArray(0)
     val bytes = ByteArray(length.toInt())
+    val ptr = this.bytes ?: return null
     for (i in 0 until length.toInt()) {
-        bytes[i] = (this[i].toInt() and 0xFF).toByte()
+        bytes[i] = (ptr[i].toInt() and 0xFF).toByte()
     }
     return bytes
 }
