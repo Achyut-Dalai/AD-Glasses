@@ -1,8 +1,7 @@
 package com.fersaiyan.cyanbridge.shared.platform
 
 import kotlinx.cinterop.ExperimentalForeignApi
-import kotlinx.cinterop.addressOf
-import kotlinx.cinterop.usePinned
+import kotlinx.cinterop.readBytes
 import kotlinx.coroutines.suspendCancellableCoroutine
 import platform.Foundation.NSData
 import platform.Foundation.NSHTTPURLResponse
@@ -107,10 +106,6 @@ actual class PlatformHttpClient actual constructor() {
 @OptIn(ExperimentalForeignApi::class)
 private fun NSData.toByteArray(): ByteArray? {
     if (length == 0uL) return ByteArray(0)
-    val size = length.toInt()
-    val bytes = ByteArray(size)
-    bytes.usePinned { pinned ->
-        this.getBytes(pinned.addressOf(0), this.length)
-    }
-    return bytes
+    val ptr = this.bytes ?: return null
+    return ptr.readBytes(length.toInt())
 }
