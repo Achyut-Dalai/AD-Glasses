@@ -20,6 +20,7 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.Add
 import androidx.compose.material.icons.outlined.Refresh
+import androidx.compose.material.icons.outlined.Settings
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
@@ -33,6 +34,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
+import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
@@ -49,15 +51,19 @@ import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import com.fersaiyan.cyanbridge.shared.generated.resources.*
 import com.fersaiyan.cyanbridge.shared.navigation.AppDestination
 import com.fersaiyan.cyanbridge.shared.navigation.icon
 import com.fersaiyan.cyanbridge.shared.navigation.label
 import com.fersaiyan.cyanbridge.shared.icons.imageVector
 import com.fersaiyan.cyanbridge.shared.plugins.CommunityPluginCardData
+import com.fersaiyan.cyanbridge.shared.plugins.NativePluginCardData
 import com.fersaiyan.cyanbridge.shared.plugins.PluginTimeWindow
 import kotlin.math.floor
+import org.jetbrains.compose.resources.ExperimentalResourceApi
+import org.jetbrains.compose.resources.stringResource
 
-@OptIn(ExperimentalMaterial3Api::class)
+@OptIn(ExperimentalMaterial3Api::class, ExperimentalResourceApi::class)
 @Composable
 fun CommunityPluginsScreen(
     plugins: List<CommunityPluginCardData>,
@@ -72,9 +78,14 @@ fun CommunityPluginsScreen(
     onOpenTaskerNet: () -> Unit,
     onPublishPlugin: () -> Unit,
     onDestinationSelected: (AppDestination) -> Unit,
+    nativePlugins: List<NativePluginCardData> = emptyList(),
+    onOpenNativePluginSettings: (String) -> Unit = {},
+    onToggleNativePlugin: (String, Boolean) -> Unit = { _, _ -> },
 ) {
     var showTaskerSetupDialog by rememberSaveable { mutableStateOf(false) }
     var showHideBannerDialog by rememberSaveable { mutableStateOf(false) }
+    var selectedPluginTitle by rememberSaveable { mutableStateOf<String?>(null) }
+    var detailsPluginTitle by rememberSaveable { mutableStateOf<String?>(null) }
     val trending = plugins.sortedByDescending { it.trend(selectedWindow) }.take(4)
     val topVoted = plugins.sortedByDescending { it.votes(selectedWindow) }.take(4)
     val topDownloaded = plugins.sortedByDescending { it.downloads(selectedWindow) }.take(4)
@@ -149,6 +160,16 @@ fun CommunityPluginsScreen(
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
             }
+            if (nativePlugins.isNotEmpty()) {
+                item { PluginSectionLabel(stringResource(Res.string.native_plugins_section)) }
+                itemsIndexed(nativePlugins, key = { _, p -> "native-${p.id}" }) { _, plugin ->
+                    NativePluginCard(
+                        plugin = plugin,
+                        onOpenSettings = { onOpenNativePluginSettings(plugin.id) },
+                        onToggle = { enabled -> onToggleNativePlugin(plugin.id, enabled) },
+                    )
+                }
+            }
             if (showImageAutomationBanner) {
                 item {
                     ImageAutomationCard(
@@ -168,15 +189,42 @@ fun CommunityPluginsScreen(
             }
             item { PluginSectionLabel("Trending plugins") }
             itemsIndexed(trending, key = { _, plugin -> "trending-${plugin.title}" }) { index, plugin ->
-                PluginCard(plugin = plugin, rank = index + 1, window = selectedWindow)
+                PluginCard(
+                    plugin = plugin,
+                    rank = index + 1,
+                    window = selectedWindow,
+                    selected = selectedPluginTitle == plugin.title,
+                    onSelect = {
+                        selectedPluginTitle = plugin.title
+                        detailsPluginTitle = plugin.title
+                    },
+                )
             }
             item { PluginSectionLabel("Top voted") }
             itemsIndexed(topVoted, key = { _, plugin -> "voted-${plugin.title}" }) { index, plugin ->
-                PluginCard(plugin = plugin, rank = index + 1, window = selectedWindow)
+                PluginCard(
+                    plugin = plugin,
+                    rank = index + 1,
+                    window = selectedWindow,
+                    selected = selectedPluginTitle == plugin.title,
+                    onSelect = {
+                        selectedPluginTitle = plugin.title
+                        detailsPluginTitle = plugin.title
+                    },
+                )
             }
             item { PluginSectionLabel("Top downloaded") }
             itemsIndexed(topDownloaded, key = { _, plugin -> "downloaded-${plugin.title}" }) { index, plugin ->
-                PluginCard(plugin = plugin, rank = index + 1, window = selectedWindow)
+                PluginCard(
+                    plugin = plugin,
+                    rank = index + 1,
+                    window = selectedWindow,
+                    selected = selectedPluginTitle == plugin.title,
+                    onSelect = {
+                        selectedPluginTitle = plugin.title
+                        detailsPluginTitle = plugin.title
+                    },
+                )
             }
         }
     }
@@ -235,6 +283,28 @@ fun CommunityPluginsScreen(
             dismissButton = {
                 TextButton(onClick = { showHideBannerDialog = false }) {
                     Text("Cancel")
+                }
+            },
+        )
+    }
+
+    plugins.firstOrNull { it.title == detailsPluginTitle }?.let { plugin ->
+        AlertDialog(
+            onDismissRequest = { detailsPluginTitle = null },
+            title = { Text(plugin.title) },
+            text = {
+                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Text(plugin.description)
+                    Text(
+                        text = stringResource(Res.string.plugin_selected),
+                        style = MaterialTheme.typography.labelLarge,
+                        color = MaterialTheme.colorScheme.primary,
+                    )
+                }
+            },
+            confirmButton = {
+                TextButton(onClick = { detailsPluginTitle = null }) {
+                    Text(stringResource(Res.string.action_close))
                 }
             },
         )
@@ -309,6 +379,69 @@ private fun ImageAutomationCard(
 }
 
 @Composable
+private fun NativePluginCard(
+    plugin: NativePluginCardData,
+    onOpenSettings: () -> Unit,
+    onToggle: (Boolean) -> Unit,
+) {
+    Card(
+        modifier = Modifier
+            .fillMaxWidth()
+            .testTag("native_plugin_card_${plugin.id}"),
+    ) {
+        Column(
+            modifier = Modifier.padding(16.dp),
+            verticalArrangement = Arrangement.spacedBy(6.dp),
+        ) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Text(
+                    text = plugin.title,
+                    modifier = Modifier.weight(1f),
+                    style = MaterialTheme.typography.titleMedium,
+                    maxLines = 2,
+                    overflow = TextOverflow.Ellipsis,
+                )
+                Spacer(Modifier.width(8.dp))
+                Surface(
+                    color = MaterialTheme.colorScheme.secondaryContainer,
+                    contentColor = MaterialTheme.colorScheme.onSecondaryContainer,
+                    shape = MaterialTheme.shapes.small,
+                ) {
+                    Text(
+                        text = plugin.badge,
+                        modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
+                        style = MaterialTheme.typography.labelSmall,
+                    )
+                }
+            }
+            Text(
+                text = plugin.description,
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.SpaceBetween,
+            ) {
+                Switch(
+                    checked = plugin.enabled,
+                    onCheckedChange = onToggle,
+                )
+                if (plugin.hasSettings) {
+                    IconButton(onClick = onOpenSettings) {
+                        Icon(
+                            imageVector = Icons.Outlined.Settings,
+                            contentDescription = "Settings",
+                        )
+                    }
+                }
+            }
+        }
+    }
+}
+
+@Composable
 private fun PeriodFilter(
     selectedWindow: PluginTimeWindow,
     onWindowSelected: (PluginTimeWindow) -> Unit,
@@ -344,11 +477,14 @@ private fun PluginSectionLabel(text: String) {
     )
 }
 
+@OptIn(ExperimentalResourceApi::class)
 @Composable
 private fun PluginCard(
     plugin: CommunityPluginCardData,
     rank: Int,
     window: PluginTimeWindow,
+    selected: Boolean,
+    onSelect: () -> Unit,
 ) {
     Card(modifier = Modifier.fillMaxWidth()) {
         Column(
@@ -402,6 +538,18 @@ private fun PluginCard(
                     text = "${window.label.lowercase()} trend ${plugin.trend(window)}",
                     style = MaterialTheme.typography.labelSmall,
                     color = MaterialTheme.colorScheme.primary,
+                )
+            }
+            OutlinedButton(
+                onClick = onSelect,
+                modifier = Modifier.fillMaxWidth(),
+            ) {
+                Text(
+                    if (selected) {
+                        stringResource(Res.string.plugin_selected)
+                    } else {
+                        stringResource(Res.string.plugin_select, plugin.title)
+                    },
                 )
             }
         }

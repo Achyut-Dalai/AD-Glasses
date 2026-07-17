@@ -58,7 +58,7 @@ import com.fersaiyan.cyanbridge.studiobridge.StudioApprovalHandler
 import com.fersaiyan.cyanbridge.ui.appearance.AppearancePreferences
 import com.fersaiyan.cyanbridge.ui.appearance.rememberAppearanceSettings
 import com.fersaiyan.cyanbridge.ui.debug.DebugLogSupport
-import com.fersaiyan.cyanbridge.ui.localmodels.LocalModelsConfigureScreen
+import com.fersaiyan.cyanbridge.shared.ui.localmodels.LocalModelsConfigureScreen
 import com.fersaiyan.cyanbridge.ui.theme.CyanBridgeTheme
 import com.fersaiyan.cyanbridge.ui.installComposeHostWithLegacyAdapter
 import kotlinx.coroutines.Dispatchers

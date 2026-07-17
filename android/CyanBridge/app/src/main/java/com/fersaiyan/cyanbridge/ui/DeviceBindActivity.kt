@@ -1,5 +1,8 @@
 package com.fersaiyan.cyanbridge.ui
 
+import com.fersaiyan.cyanbridge.shared.devices.DeviceProfile
+import com.fersaiyan.cyanbridge.shared.devices.ScannedDevice as SharedScannedDevice
+
 import android.Manifest
 import android.bluetooth.BluetoothAdapter
 import android.bluetooth.BluetoothDevice
@@ -17,13 +20,13 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.core.content.ContextCompat
-import com.fersaiyan.cyanbridge.devices.DeviceClass
+import com.fersaiyan.cyanbridge.shared.devices.DeviceClass
 import com.fersaiyan.cyanbridge.devices.DeviceClassifier
-import com.fersaiyan.cyanbridge.devices.DeviceProfile
 import com.fersaiyan.cyanbridge.devices.DeviceProfileStore
 import com.fersaiyan.cyanbridge.devices.ScannedDevice
 import com.fersaiyan.cyanbridge.ui.appearance.AppearancePreferences
 import com.fersaiyan.cyanbridge.ui.appearance.rememberAppearanceSettings
+import com.fersaiyan.cyanbridge.shared.ui.DeviceBindScreen
 import com.fersaiyan.cyanbridge.ui.theme.CyanBridgeTheme
 import com.hjq.permissions.OnPermissionCallback
 import com.hjq.permissions.XXPermissions
@@ -46,6 +49,8 @@ class DeviceBindActivity : BaseActivity() {
     private var isScanning by mutableStateOf(false)
     private var connectingDevice by mutableStateOf<ScannedDevice?>(null)
     private var selectedDeviceClass by mutableStateOf(DeviceClass.HEY_CYAN)
+    private var initialScanStarted = false
+    private var lastDeviceListPublishAtMs = 0L
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -55,16 +60,21 @@ class DeviceBindActivity : BaseActivity() {
             val appearance by rememberAppearanceSettings(appearancePreferences)
             CyanBridgeTheme(appearance) {
                 DeviceBindScreen(
-                    devices = scannedDevices,
+                    devices = scannedDevices.map { it.toShared() },
                     isScanning = isScanning,
-                    connectingDevice = connectingDevice,
+                    connectingDevice = connectingDevice?.toShared(),
                     selectedClass = selectedDeviceClass,
                     onScan = ::startScan,
-                    onSelectDevice = { device ->
-                        connectingDevice = device
-                        selectedDeviceClass = device.effectiveSelectedClass().takeUnless {
-                            it == DeviceClass.UNKNOWN
-                        } ?: DeviceClass.HEY_CYAN
+                    onSelectDevice = { sharedDevice ->
+                        val device = deviceList.firstOrNull {
+                            it.macAddress.equals(sharedDevice.macAddress, ignoreCase = true)
+                        }
+                        if (device != null) {
+                            connectingDevice = device
+                            selectedDeviceClass = device.effectiveSelectedClass().takeUnless {
+                                it == DeviceClass.UNKNOWN
+                            } ?: DeviceClass.HEY_CYAN
+                        }
                     },
                     onSelectedClassChange = { selectedDeviceClass = it },
                     onConfirmConnection = ::confirmConnection,
@@ -77,7 +87,10 @@ class DeviceBindActivity : BaseActivity() {
 
     override fun onResume() {
         super.onResume()
-        startScan()
+        if (!initialScanStarted) {
+            initialScanStarted = true
+            startScan()
+        }
     }
 
     // BaseActivity invokes this after Compose installs its host view; no ViewBinding remains.
@@ -93,6 +106,7 @@ class DeviceBindActivity : BaseActivity() {
         handler.removeCallbacks(scanTimeout)
         deviceList.clear()
         scannedDevices = emptyList()
+        lastDeviceListPublishAtMs = 0L
         if (
             Build.VERSION.SDK_INT >= Build.VERSION_CODES.S &&
                 (
@@ -108,7 +122,7 @@ class DeviceBindActivity : BaseActivity() {
         }
         BleScannerHelper.getInstance().reSetCallback()
         if (!BluetoothUtils.isEnabledBluetooth(this)) {
-            startActivityForResult(Intent(BluetoothAdapter.ACTION_REQUEST_ENABLE), 300)
+            startActivityForResult(Intent(BluetoothAdapter.ACTION_REQUEST_ENABLE), REQUEST_ENABLE_BLUETOOTH)
             return
         }
         scanSize = 0
@@ -158,13 +172,17 @@ class DeviceBindActivity : BaseActivity() {
         val existingIndex = deviceList.indexOfFirst { it.macAddress.equals(mac, ignoreCase = true) }
         if (existingIndex >= 0) {
             val existing = deviceList[existingIndex]
+            val previousName = existing.advertisedName
+            val previousClass = existing.detectedClass
             existing.rssi = rssi
             if (existing.advertisedName.isNullOrBlank() && sanitizedName != null) {
                 existing.advertisedName = sanitizedName
             }
             scanRecord?.serviceUuids?.takeIf { it.isNotEmpty() }?.let { existing.serviceUuids = it }
             existing.setDetectedClass(DeviceClassifier.guessDeviceClass(existing.advertisedName, existing.serviceUuids))
-            scannedDevices = deviceList.toList()
+            publishDevices(
+                force = previousName != existing.advertisedName || previousClass != existing.detectedClass,
+            )
             return
         }
         if (sanitizedName == null) return
@@ -180,14 +198,30 @@ class DeviceBindActivity : BaseActivity() {
         }
         scanSize++
         deviceList += newDevice
-        scannedDevices = deviceList.toList()
+        publishDevices(force = true)
         if (scanSize > 30) BleScannerHelper.getInstance().stopScan(this)
+    }
+
+    /** Avoid repeatedly recreating scan rows while TalkBack is navigating them. */
+    private fun publishDevices(force: Boolean = false) {
+        val now = System.currentTimeMillis()
+        if (!force && now - lastDeviceListPublishAtMs < DEVICE_LIST_PUBLISH_INTERVAL_MS) return
+        lastDeviceListPublishAtMs = now
+        scannedDevices = deviceList.toList()
     }
 
     override fun onDestroy() {
         handler.removeCallbacks(scanTimeout)
         if (EventBus.getDefault().isRegistered(this)) EventBus.getDefault().unregister(this)
         super.onDestroy()
+    }
+
+    @Deprecated("Deprecated in AndroidX Activity; retained for the vendor scanner flow.")
+    override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
+        super.onActivityResult(requestCode, resultCode, data)
+        if (requestCode == REQUEST_ENABLE_BLUETOOTH && BluetoothUtils.isEnabledBluetooth(this)) {
+            startScan()
+        }
     }
 
     private inner class ScanTimeout : Runnable {
@@ -256,5 +290,19 @@ class DeviceBindActivity : BaseActivity() {
         }
 
         override fun onBatchScanResults(results: MutableList<ScanResult>?) = Unit
+    }
+
+    private fun ScannedDevice.toShared(): SharedScannedDevice = SharedScannedDevice(
+        macAddress = macAddress,
+        advertisedName = advertisedName,
+        rssi = rssi,
+        detectedClass = detectedClass,
+        selectedClass = userSelectedClass,
+        userOverridden = userOverridden(),
+    )
+
+    private companion object {
+        const val REQUEST_ENABLE_BLUETOOTH = 300
+        const val DEVICE_LIST_PUBLISH_INTERVAL_MS = 1_000L
     }
 }

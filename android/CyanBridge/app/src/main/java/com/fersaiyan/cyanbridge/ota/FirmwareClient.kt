@@ -1,6 +1,7 @@
 package com.fersaiyan.cyanbridge.ota
 
 import android.content.Context
+import android.net.Uri
 import android.util.Log
 import com.fersaiyan.cyanbridge.agent.ProSubscriptionServerPrefs
 import org.json.JSONObject
@@ -9,12 +10,21 @@ import java.io.FileOutputStream
 import java.net.HttpURLConnection
 import java.net.URL
 
+/** The server artifact must match the transport selected by the user. */
+internal fun OtaTarget.expectedFirmwareExtension(): String = when (this) {
+    OtaTarget.V821_WIFI -> ".swu"
+    OtaTarget.JIELI_BLE -> ".bin"
+}
+
+internal fun OtaTarget.isExpectedFirmwareFilename(filename: String): Boolean =
+    filename.endsWith(expectedFirmwareExtension(), ignoreCase = true)
+
 /**
  * Result of a firmware catalog lookup + download.
  */
 sealed class FirmwareResult {
     data class Ready(val file: File, val filename: String) : FirmwareResult()
-    data class NotAvailable(val message: String, val wifiHwVersion: String) : FirmwareResult()
+    data class NotAvailable(val message: String, val hardwareVersion: String) : FirmwareResult()
     data class SubscriptionRequired(
         val message: String,
         val currentPlan: String,
@@ -28,33 +38,44 @@ sealed class FirmwareResult {
  * Client for the CyanBridge server's firmware download API.
  *
  * Calls GET /api/firmware/download with the paired glasses info,
- * checks subscription tier, and downloads the gated SWU file.
+ * checks subscription tier, and downloads the gated target-specific artifact.
  */
 class FirmwareClient(
     private val context: Context,
 ) {
     /**
-     * Fetch firmware info from the server and download the SWU file.
+     * Fetch firmware info from the server and download the firmware file.
      *
-     * @param wifiHardwareVersion The glasses' Wi-Fi hardware version (e.g. "WIFIAM01G1_V9.2")
-     * @param wifiFirmwareVersion The glasses' current Wi-Fi firmware version
+     * For V821_WIFI target, pass Wi-Fi hardware/firmware versions from [DeviceInfoResponse].
+     * For JIELI_BLE target, pass BLE hardware/firmware versions from [DeviceInfoResponse].
+     * The `target` query parameter tells the server how to interpret these identifiers.
+     *
+     * @param hardwareVersion The glasses' hardware version for the chosen target
+     * @param firmwareVersion The glasses' current firmware version for the chosen target
      * @param outputDir Directory to save the downloaded file
+     * @param target OTA target: V821_WIFI (.swu) or JIELI_BLE (.bin)
      * @return FirmwareResult indicating success, failure, or subscription gate
      */
     fun fetchAndDownload(
-        wifiHardwareVersion: String,
-        wifiFirmwareVersion: String,
+        hardwareVersion: String,
+        firmwareVersion: String,
         outputDir: File,
+        target: OtaTarget = OtaTarget.V821_WIFI,
     ): FirmwareResult {
         val startTime = System.currentTimeMillis()
         Log.i(TAG, "=== FIRMWARE FETCH START ===")
-        Log.i(TAG, "  wifiHardwareVersion: $wifiHardwareVersion")
-        Log.i(TAG, "  wifiFirmwareVersion: $wifiFirmwareVersion")
+        Log.i(TAG, "  hardwareVersion: $hardwareVersion")
+        Log.i(TAG, "  firmwareVersion: $firmwareVersion")
+        Log.i(TAG, "  target: $target")
         Log.i(TAG, "  outputDir: ${outputDir.absolutePath}")
 
         // Step 1: Resolve relay base URL
         val relayBase = getRelayBaseUrl()
         Log.i(TAG, "[1/5] Relay base URL: $relayBase")
+        if (!isHttpsRelayUrl(relayBase)) {
+            Log.e(TAG, "[1/5] Refusing non-HTTPS firmware relay URL")
+            return FirmwareResult.Error("Firmware relay must use HTTPS")
+        }
 
         // Step 2: Get API token
         val apiToken = ProSubscriptionServerPrefs.getApiToken(context)
@@ -63,12 +84,15 @@ class FirmwareClient(
             Log.e(TAG, "[2/5] FAIL: No API token available. User not signed in.")
             return FirmwareResult.Error("No API token available. Please sign in to your CyanBridge account.")
         }
-        Log.i(TAG, "[2/5] API token present: ${apiToken.take(12)}... (email: ${accountEmail.ifBlank { "(none)" }})")
+        Log.i(TAG, "[2/5] API token present (email: ${accountEmail.ifBlank { "(none)" }})")
 
         // Step 3: Call the firmware download endpoint
-        val apiUrl = "$relayBase/api/firmware/download" +
-            "?wifiHardwareVersion=$wifiHardwareVersion" +
-            "&wifiFirmwareVersion=$wifiFirmwareVersion"
+        val apiUrl = buildFirmwareApiUrl(
+            relayBase = relayBase,
+            hardwareVersion = hardwareVersion,
+            firmwareVersion = firmwareVersion,
+            target = target,
+        )
 
         Log.i(TAG, "[3/5] Calling firmware API: $apiUrl")
 
@@ -96,9 +120,23 @@ class FirmwareClient(
             200 -> {
                 val json = JSONObject(body)
                 val downloadUrl = json.getString("download_url")
-                val filename = json.getString("filename")
+                val filename = json.getString("filename").trim()
                 val objectKey = json.optString("object_key", "")
                 val expiresIn = json.optInt("expires_in_seconds", 0)
+
+                if (!isSafeFirmwareFilename(filename)) {
+                    Log.e(TAG, "[4/5] Refusing unsafe firmware filename from server: $filename")
+                    return FirmwareResult.Error("Server returned an unsafe firmware filename")
+                }
+                if (!target.isExpectedFirmwareFilename(filename)) {
+                    Log.e(
+                        TAG,
+                        "[4/5] Refusing $filename for $target; expected ${target.expectedFirmwareExtension()} artifact",
+                    )
+                    return FirmwareResult.Error(
+                        "Server returned $filename, but ${target.expectedFirmwareExtension()} firmware is required for $target",
+                    )
+                }
 
                 Log.i(TAG, "[4/5] Firmware available!")
                 Log.i(TAG, "  filename: $filename")
@@ -106,9 +144,9 @@ class FirmwareClient(
                 Log.i(TAG, "  signed_url_expires_in: ${expiresIn}s")
                 Log.i(TAG, "  download_url: ${downloadUrl.take(80)}...")
 
-                // Step 5: Download the SWU file
-                Log.i(TAG, "[5/5] Starting SWU download...")
-                val file = downloadSwu(downloadUrl, filename, outputDir)
+                // Step 5: Download the firmware file
+                Log.i(TAG, "[5/5] Starting firmware download...")
+                val file = downloadFirmware(downloadUrl, filename, outputDir)
 
                 if (file != null) {
                     val elapsed = System.currentTimeMillis() - startTime
@@ -117,7 +155,7 @@ class FirmwareClient(
                     Log.i(TAG, "  size: ${file.length()} bytes (${file.length() / 1024 / 1024} MB)")
                     FirmwareResult.Ready(file, filename)
                 } else {
-                    Log.e(TAG, "=== FIRMWARE FETCH FAIL === SWU download returned null")
+                    Log.e(TAG, "=== FIRMWARE FETCH FAIL === Firmware download returned null")
                     FirmwareResult.Error("Failed to download firmware file from storage")
                 }
             }
@@ -169,7 +207,7 @@ class FirmwareClient(
                 val message = json.optString("message", "Firmware not available for this glasses model")
                 Log.w(TAG, "[4/5] No firmware for this model: $message")
                 Log.i(TAG, "=== FIRMWARE FETCH NOT AVAILABLE ===")
-                FirmwareResult.NotAvailable(message, wifiHardwareVersion)
+                FirmwareResult.NotAvailable(message, hardwareVersion)
             }
 
             401 -> {
@@ -196,24 +234,43 @@ class FirmwareClient(
         }
     }
 
-    private fun downloadSwu(downloadUrl: String, filename: String, outputDir: File): File? {
+    private fun downloadFirmware(downloadUrl: String, filename: String, outputDir: File): File? {
         val downloadStart = System.currentTimeMillis()
+        var connection: HttpURLConnection? = null
+        var partialFile: File? = null
         return try {
-            if (!outputDir.exists()) {
-                outputDir.mkdirs()
-                Log.d(TAG, "Created output directory: ${outputDir.absolutePath}")
+            if (!outputDir.exists() && !outputDir.mkdirs()) {
+                Log.e(TAG, "Could not create firmware directory: ${outputDir.absolutePath}")
+                return null
             }
-            val outFile = File(outputDir, filename)
+            if (!outputDir.isDirectory) {
+                Log.e(TAG, "Firmware output path is not a directory: ${outputDir.absolutePath}")
+                return null
+            }
+            if (!isSafeFirmwareFilename(filename)) {
+                Log.e(TAG, "Refusing unsafe firmware filename: $filename")
+                return null
+            }
 
-            // Delete any existing partial file
-            if (outFile.exists()) {
-                Log.d(TAG, "Deleting existing file: ${outFile.absolutePath} (${outFile.length()} bytes)")
-                outFile.delete()
+            val outFile = File(outputDir, filename)
+            val stagedFile = File(outputDir, "$filename.download")
+            partialFile = stagedFile
+            if (stagedFile.exists() && !stagedFile.delete()) {
+                Log.e(TAG, "Could not remove stale partial firmware file: ${stagedFile.absolutePath}")
+                return null
             }
 
             val url = URL(downloadUrl)
-            Log.d(TAG, "Opening HTTP connection to Supabase Storage...")
-            val conn = url.openConnection() as HttpURLConnection
+            if (!url.protocol.equals("https", ignoreCase = true)) {
+                Log.e(TAG, "Refusing non-HTTPS firmware URL")
+                return null
+            }
+            Log.d(TAG, "Opening HTTPS connection to firmware storage...")
+            val conn = (url.openConnection() as? HttpURLConnection) ?: run {
+                Log.e(TAG, "Firmware URL is not an HTTP(S) URL")
+                return null
+            }
+            connection = conn
             conn.requestMethod = "GET"
             conn.connectTimeout = 30_000
             conn.readTimeout = 300_000 // 5 min for large files
@@ -224,10 +281,13 @@ class FirmwareClient(
             Log.d(TAG, "Response code: $responseCode")
 
             if (responseCode != HttpURLConnection.HTTP_OK) {
-                Log.e(TAG, "SWU download failed: HTTP $responseCode")
+                Log.e(TAG, "Firmware download failed: HTTP $responseCode")
                 val errorBody = conn.errorStream?.bufferedReader()?.use { it.readText() } ?: "(no body)"
                 Log.e(TAG, "Error body: ${errorBody.take(300)}")
-                conn.disconnect()
+                return null
+            }
+            if (!conn.url.protocol.equals("https", ignoreCase = true)) {
+                Log.e(TAG, "Refusing firmware redirect to non-HTTPS URL")
                 return null
             }
 
@@ -240,10 +300,11 @@ class FirmwareClient(
             var lastLogAt = 0L
 
             conn.inputStream.use { input ->
-                FileOutputStream(outFile).use { output ->
+                FileOutputStream(stagedFile).use { output ->
                     while (true) {
                         val read = input.read(buf)
-                        if (read <= 0) break
+                        if (read == -1) break
+                        if (read == 0) continue
                         output.write(buf, 0, read)
                         totalRead += read
 
@@ -260,23 +321,69 @@ class FirmwareClient(
                     output.flush()
                 }
             }
-            conn.disconnect()
 
             val elapsed = System.currentTimeMillis() - downloadStart
             val avgSpeed = if (elapsed > 0) (totalRead / 1024.0 / (elapsed / 1000.0)) else 0.0
-            Log.i(TAG, "SWU download complete: $totalRead bytes in ${elapsed}ms (${avgSpeed.toInt()} KB/s avg)")
+            Log.i(TAG, "Firmware download complete: $totalRead bytes in ${elapsed}ms (${avgSpeed.toInt()} KB/s avg)")
+
+            if (totalRead <= 0L) {
+                Log.e(TAG, "Firmware download was empty")
+                return null
+            }
+            if (contentLength >= 0L && totalRead != contentLength) {
+                Log.e(TAG, "Firmware size mismatch: expected $contentLength, got $totalRead")
+                return null
+            }
+            if (outFile.exists() && !outFile.delete()) {
+                Log.e(TAG, "Could not replace existing firmware file: ${outFile.absolutePath}")
+                return null
+            }
+            if (!stagedFile.renameTo(outFile)) {
+                Log.e(TAG, "Could not finalize firmware file: ${outFile.absolutePath}")
+                return null
+            }
             Log.i(TAG, "Saved to: ${outFile.absolutePath}")
 
-            // Verify file size matches Content-Length
-            if (contentLength > 0 && outFile.length() != contentLength.toLong()) {
-                Log.w(TAG, "File size mismatch! Expected $contentLength, got ${outFile.length()}")
-            }
-
             outFile
-        } catch (e: Exception) {
-            Log.e(TAG, "SWU download exception: ${e.javaClass.simpleName}: ${e.message}", e)
+        } catch (error: Exception) {
+            Log.e(TAG, "Firmware download exception: ${error.javaClass.simpleName}: ${error.message}", error)
             null
+        } finally {
+            connection?.disconnect()
+            partialFile?.takeIf { it.exists() }?.delete()
         }
+    }
+
+    private fun buildFirmwareApiUrl(
+        relayBase: String,
+        hardwareVersion: String,
+        firmwareVersion: String,
+        target: OtaTarget,
+    ): String {
+        val targetParam = when (target) {
+            OtaTarget.V821_WIFI -> "v821"
+            OtaTarget.JIELI_BLE -> "jieli"
+        }
+        // The deployed relay currently names these legacy query keys after Wi-Fi. Their values
+        // are nevertheless target-specific; target=jieli carries the BLE identifiers.
+        return Uri.parse(relayBase.trimEnd('/') + "/api/firmware/download")
+            .buildUpon()
+            .appendQueryParameter("wifiHardwareVersion", hardwareVersion)
+            .appendQueryParameter("wifiFirmwareVersion", firmwareVersion)
+            .appendQueryParameter("target", targetParam)
+            .build()
+            .toString()
+    }
+
+    private fun isSafeFirmwareFilename(filename: String): Boolean =
+        filename.isNotBlank() &&
+            !filename.contains('/') &&
+            !filename.contains('\\') &&
+            File(filename).name == filename
+
+    private fun isHttpsRelayUrl(url: String): Boolean {
+        val uri = Uri.parse(url)
+        return uri.scheme.equals("https", ignoreCase = true) && !uri.host.isNullOrBlank()
     }
 
     private fun getRelayBaseUrl(): String {
@@ -293,10 +400,13 @@ class FirmwareClient(
         val conn = URL(url).openConnection() as HttpURLConnection
         return try {
             conn.requestMethod = "GET"
-            conn.setRequestProperty("Authorization", "Bearer ${apiToken.take(12)}...")
+            // The request needs the complete token; never log it.
+            conn.setRequestProperty("Authorization", "Bearer $apiToken")
             conn.setRequestProperty("Accept", "application/json")
             conn.connectTimeout = 15_000
             conn.readTimeout = 30_000
+            // Do not follow a redirect with the bearer credential to an unverified destination.
+            conn.instanceFollowRedirects = false
 
             val statusCode = conn.responseCode
             Log.d(TAG, "HTTP response: $statusCode")

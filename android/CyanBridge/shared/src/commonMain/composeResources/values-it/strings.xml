@@ -1,0 +1,27 @@
+<resources>
+    <string name="settings_title">Impostazioni</string>
+    <string name="settings_language">Lingua</string>
+    <string name="settings_language_description">Lingua dell'app: %1$s</string>
+    <string name="action_change">Cambia</string>
+    <string name="action_configure">Configura</string>
+    <string name="action_edit">Modifica</string>
+    <string name="action_close">Chiudi</string>
+    <string name="action_back">Indietro</string>
+    <string name="action_cancel">Annulla</string>
+    <string name="action_connect">Connetti</string>
+    <string name="device_bind_title">Connetti gli occhiali</string>
+    <string name="device_bind_scan">Cerca dispositivi</string>
+    <string name="device_bind_scanning">Ricerca in corso...</string>
+    <string name="device_bind_looking">Ricerca di dispositivi Bluetooth con nome...</string>
+    <string name="device_bind_empty">Nessun dispositivo trovato. Avvia una ricerca per associare gli occhiali.</string>
+    <string name="device_bind_details">%1$s - Segnale %2$d</string>
+    <string name="device_bind_detected">Rilevato: %1$s</string>
+    <string name="device_bind_select_type">Seleziona il tipo di occhiali</string>
+    <string name="vision_profile_title">Profilo visivo</string>
+    <string name="vision_profile_description">Le descrizioni delle immagini usano: %1$s</string>
+    <string name="vision_instructions_title">Istruzioni visive aggiuntive</string>
+    <string name="plugin_select">Seleziona %1$s</string>
+    <string name="plugin_selected">Selezionato</string>
+    <string name="native_plugins_section">Plugin Nativi</string>
+    <string name="native_plugin_settings">Impostazioni</string>
+</resources>

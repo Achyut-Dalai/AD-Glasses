@@ -18,6 +18,7 @@ import androidx.core.app.ServiceCompat
 import androidx.core.content.ContextCompat
 import com.fersaiyan.cyanbridge.MainActivity
 import com.fersaiyan.cyanbridge.R
+import com.fersaiyan.cyanbridge.glasses.GlassesSessionCoordinator
 import com.oudmon.ble.base.bluetooth.BleOperateManager
 import com.oudmon.ble.base.communication.LargeDataHandler
 import com.hjq.permissions.XXPermissions
@@ -148,6 +149,7 @@ class AutoAudioCaptureService : Service() {
                 }
 
                 if (!BleOperateManager.getInstance().isConnected) {
+                    GlassesSessionCoordinator.clearForDisconnectedDevice()
                     Log.w(TAG, "Waiting for glasses connection…")
                     delay(10_000)
                     continue
@@ -289,33 +291,54 @@ class AutoAudioCaptureService : Service() {
     )
 
     private suspend fun sendAudioCommandAwait(start: Boolean): AudioCmdAck {
+        val permit = GlassesSessionCoordinator.tryAcquireBackgroundCommand()
+        if (permit == null) {
+            val activeSession = GlassesSessionCoordinator.currentSession()
+            val owner = activeSession?.label ?: "another glasses command"
+            Log.i(TAG, "Skipping audio command while $owner owns the SDK BLE/P2P slots")
+            return AudioCmdAck(responded = false, ok = false)
+        }
         val value = if (start) 0x08 else 0x0c
         val done = CompletableDeferred<AudioCmdAck>()
+        var commandSubmitted = false
+        try {
+            LargeDataHandler.getInstance().glassesControl(
+                byteArrayOf(0x02, 0x01, value.toByte())
+            ) { _, rsp ->
+                val ok = (rsp != null && rsp.dataType == 1 && rsp.errorCode == 0)
+                val ack = AudioCmdAck(
+                    responded = (rsp != null),
+                    ok = ok,
+                    dataType = rsp?.dataType,
+                    errorCode = rsp?.errorCode,
+                    workTypeIng = rsp?.workTypeIng,
+                )
 
-        LargeDataHandler.getInstance().glassesControl(
-            byteArrayOf(0x02, 0x01, value.toByte())
-        ) { _, rsp ->
-            val ok = (rsp != null && rsp.dataType == 1 && rsp.errorCode == 0)
-            val ack = AudioCmdAck(
-                responded = (rsp != null),
-                ok = ok,
-                dataType = rsp?.dataType,
-                errorCode = rsp?.errorCode,
-                workTypeIng = rsp?.workTypeIng,
-            )
+                Log.i(
+                    TAG,
+                    "Audio cmd start=$start responded=${ack.responded} dataType=${ack.dataType} err=${ack.errorCode} workTypeIng=${ack.workTypeIng} ok=${ack.ok}"
+                )
 
-            Log.i(
-                TAG,
-                "Audio cmd start=$start responded=${ack.responded} dataType=${ack.dataType} err=${ack.errorCode} workTypeIng=${ack.workTypeIng} ok=${ack.ok}"
-            )
+                if (!done.isCompleted) done.complete(ack)
+                GlassesSessionCoordinator.releaseBackgroundCommand(permit)
+            }
+            commandSubmitted = true
 
-            if (!done.isCompleted) done.complete(ack)
+            // Some firmware builds start recording but never ACK (or ACK late). Treat timeout as
+            // "unknown", not as hard failure. Keep the permit until a late ACK or reconnect so
+            // the SDK's single response slot cannot be overwritten by another workflow.
+            val result = withTimeoutOrNull(6_000) { done.await() }
+            if (result == null) {
+                Log.w(TAG, "Audio command timed out; keeping the glasses SDK isolated until ACK or reconnect")
+                return AudioCmdAck(responded = false, ok = false)
+            }
+            return result
+        } catch (e: Exception) {
+            if (!commandSubmitted) {
+                GlassesSessionCoordinator.releaseBackgroundCommand(permit)
+            }
+            throw e
         }
-
-        // Some firmware builds start recording but never ACK (or ACK late). Treat timeout as "unknown",
-        // not as hard failure, to avoid restart loops.
-        return withTimeoutOrNull(6_000) { done.await() }
-            ?: AudioCmdAck(responded = false, ok = false)
     }
 
     private suspend fun delayWhileEnabledOrPaused(totalMs: Long, stepMs: Long = 2_000): Boolean {
@@ -345,6 +368,10 @@ class AutoAudioCaptureService : Service() {
      * Returns a short string reason if auto audio should pause now; otherwise null.
      */
     private fun computePauseReason(): String? {
+        GlassesSessionCoordinator.currentSession()?.let { session ->
+            return "glasses_${session.name.lowercase()}_active"
+        }
+
         val meetingActive = MeetingCapturePrefs.getState(this@AutoAudioCaptureService).isRecording
         if (meetingActive) return "meeting_capture_active"
 
@@ -362,6 +389,11 @@ class AutoAudioCaptureService : Service() {
     }
 
     private fun triggerP2pSyncViaMainActivity() {
+        GlassesSessionCoordinator.currentSession()?.let { session ->
+            Log.i(TAG, "Skipping P2P sync while ${session.label} owns the SDK BLE/P2P slots")
+            return
+        }
+
         // Requirements: Bluetooth connected + permission already granted (Android 13+).
         if (!BleOperateManager.getInstance().isConnected) {
             Log.w(TAG, "Skipping P2P sync: glasses not connected")

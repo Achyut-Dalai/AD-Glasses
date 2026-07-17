@@ -5,6 +5,7 @@ import android.content.Context
 import android.os.Build
 import android.provider.MediaStore
 import com.fersaiyan.cyanbridge.media.SyncedMediaFolder
+import com.fersaiyan.cyanbridge.shared.recordings.SyncedMediaItem
 
 object SyncedMediaQuery {
     fun query(
@@ -16,9 +17,6 @@ object SyncedMediaQuery {
         val projection = mutableListOf(
             MediaStore.MediaColumns._ID,
             MediaStore.MediaColumns.DISPLAY_NAME,
-            MediaStore.MediaColumns.MIME_TYPE,
-            MediaStore.MediaColumns.DATE_TAKEN,
-            MediaStore.MediaColumns.DATE_ADDED,
             MediaStore.Files.FileColumns.MEDIA_TYPE,
         )
 
@@ -74,9 +72,6 @@ object SyncedMediaQuery {
             ?.use { cursor ->
                 val idIdx = cursor.getColumnIndex(MediaStore.MediaColumns._ID)
                 val nameIdx = cursor.getColumnIndex(MediaStore.MediaColumns.DISPLAY_NAME)
-                val mimeIdx = cursor.getColumnIndex(MediaStore.MediaColumns.MIME_TYPE)
-                val dateTakenIdx = cursor.getColumnIndex(MediaStore.MediaColumns.DATE_TAKEN)
-                val dateAddedIdx = cursor.getColumnIndex(MediaStore.MediaColumns.DATE_ADDED)
                 val typeIdx = cursor.getColumnIndex(MediaStore.Files.FileColumns.MEDIA_TYPE)
 
                 while (cursor.moveToNext() && (limit == null || items.size < limit)) {
@@ -97,31 +92,11 @@ object SyncedMediaQuery {
                     } else {
                         "media_$id"
                     }
-                    val mime = if (mimeIdx >= 0 && !cursor.isNull(mimeIdx)) {
-                        cursor.getString(mimeIdx)
-                    } else if (isVideo) {
-                        "video/mp4"
-                    } else {
-                        "image/jpeg"
-                    }
-                    val dateTakenMs = if (dateTakenIdx >= 0 && !cursor.isNull(dateTakenIdx)) {
-                        cursor.getLong(dateTakenIdx)
-                    } else {
-                        0L
-                    }
-                    val dateAddedMs = if (dateAddedIdx >= 0 && !cursor.isNull(dateAddedIdx)) {
-                        cursor.getLong(dateAddedIdx) * 1000L
-                    } else {
-                        0L
-                    }
-
                     items += SyncedMediaItem(
                         id = id,
-                        contentUri = contentUri,
                         displayName = name,
-                        mimeType = mime,
+                        contentUriString = contentUri.toString(),
                         isVideo = isVideo,
-                        takenAtMs = if (dateTakenMs > 0L) dateTakenMs else dateAddedMs,
                     )
                 }
             }

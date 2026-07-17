@@ -1,0 +1,27 @@
+<resources>
+    <string name="settings_title">Настройки</string>
+    <string name="settings_language">Язык</string>
+    <string name="settings_language_description">Язык приложения: %1$s</string>
+    <string name="action_change">Изменить</string>
+    <string name="action_configure">Настроить</string>
+    <string name="action_edit">Изменить</string>
+    <string name="action_close">Закрыть</string>
+    <string name="action_back">Назад</string>
+    <string name="action_cancel">Отмена</string>
+    <string name="action_connect">Подключить</string>
+    <string name="device_bind_title">Подключить очки</string>
+    <string name="device_bind_scan">Найти устройства</string>
+    <string name="device_bind_scanning">Поиск...</string>
+    <string name="device_bind_looking">Поиск Bluetooth-устройств с именем...</string>
+    <string name="device_bind_empty">Устройства не найдены. Запустите поиск, чтобы подключить очки.</string>
+    <string name="device_bind_details">%1$s - Сигнал %2$d</string>
+    <string name="device_bind_detected">Обнаружено: %1$s</string>
+    <string name="device_bind_select_type">Выберите тип очков</string>
+    <string name="vision_profile_title">Режим описания</string>
+    <string name="vision_profile_description">Для описания изображений используется: %1$s</string>
+    <string name="vision_instructions_title">Дополнительные инструкции для описания</string>
+    <string name="plugin_select">Выбрать %1$s</string>
+    <string name="plugin_selected">Выбрано</string>
+    <string name="native_plugins_section">Нативные плагины</string>
+    <string name="native_plugin_settings">Настройки</string>
+</resources>

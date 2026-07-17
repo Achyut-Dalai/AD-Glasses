@@ -42,6 +42,8 @@ import com.fersaiyan.cyanbridge.shared.glasses.GlassesDashboardAction
 import com.fersaiyan.cyanbridge.shared.glasses.GlassesDashboardUiState
 import com.fersaiyan.cyanbridge.shared.glasses.MetaRaybanUiState
 import com.fersaiyan.cyanbridge.shared.glasses.OtaSectionUiState
+import com.fersaiyan.cyanbridge.shared.glasses.OtaTargetSelection
+import com.fersaiyan.cyanbridge.shared.glasses.LivePreviewUiState
 import com.fersaiyan.cyanbridge.shared.navigation.AppDestination
 
 private val meetingTimerLabels = listOf("No timer", "15 min", "1 hour", "3 hours")
@@ -318,6 +320,36 @@ private fun HeyCyanControls(
             onClick = { onAction(GlassesDashboardAction.StartSync) },
             modifier = Modifier.fillMaxWidth(),
         ) { Text("Sync data (P2P)") }
+        Spacer(Modifier.height(8.dp))
+        SectionTitle("Live preview (RTSP)")
+        Text(
+            text = "Connect P2P + stream camera live via RTSP",
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
+        if (state.livePreview.stateLabel != "Idle") {
+            Text(
+                text = "Status: ${state.livePreview.stateLabel}",
+                style = MaterialTheme.typography.bodyMedium,
+            )
+            if (state.livePreview.detail.isNotBlank()) {
+                Text(
+                    text = state.livePreview.detail,
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    maxLines = 2,
+                    overflow = TextOverflow.Ellipsis,
+                )
+            }
+        }
+        ActionRow(
+            primaryLabel = if (state.livePreview.isScanning) "Scanning..." else "Start preview",
+            onPrimary = { onAction(GlassesDashboardAction.StartLivePreview) },
+            primaryEnabled = state.livePreview.canStart && !state.livePreview.isScanning,
+            secondaryLabel = "Stop",
+            onSecondary = { onAction(GlassesDashboardAction.StopLivePreview) },
+            secondaryEnabled = state.livePreview.canStop,
+        )
     }
 }
 
@@ -468,13 +500,21 @@ private fun AdvancedControls(
         HorizontalDivider()
         SectionTitle("OTA firmware update")
         Text(
-            text = "Download and flash patched debug firmware (requires Pro Standard/Max subscription)",
+            text = "Download and flash firmware to glasses (requires Pro Standard/Max subscription)",
             style = MaterialTheme.typography.bodySmall,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
         )
+        OtaTargetSelector(
+            selected = state.ota.selectedTarget,
+            onSelect = { onAction(GlassesDashboardAction.SelectOtaTarget(it)) },
+            enabled = state.ota.canStart,
+        )
         OtaProgressSection(state.ota)
         ActionRow(
-            primaryLabel = "Flash debug SWU",
+            primaryLabel = when (state.ota.selectedTarget) {
+                OtaTargetSelection.V821_WIFI -> "Flash Wi-Fi SWU"
+                OtaTargetSelection.JIELI_BLE -> "Flash BLE .bin"
+            },
             onPrimary = { onAction(GlassesDashboardAction.StartOta) },
             secondaryLabel = "Cancel",
             onSecondary = { onAction(GlassesDashboardAction.CancelOta) },
@@ -530,6 +570,40 @@ private fun SectionTitle(text: String, accented: Boolean = false) {
         style = MaterialTheme.typography.labelLarge,
         fontWeight = FontWeight.Bold,
         color = if (accented) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant,
+    )
+}
+
+@Composable
+private fun OtaTargetSelector(
+    selected: OtaTargetSelection,
+    onSelect: (OtaTargetSelection) -> Unit,
+    enabled: Boolean,
+) {
+    Row(
+        horizontalArrangement = Arrangement.spacedBy(8.dp),
+        modifier = Modifier.fillMaxWidth(),
+    ) {
+        OtaTargetSelection.entries.forEach { target ->
+            FilterChip(
+                selected = selected == target,
+                onClick = { onSelect(target) },
+                label = {
+                    Text(
+                        text = target.label,
+                        style = MaterialTheme.typography.labelMedium,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
+                    )
+                },
+                enabled = enabled,
+                modifier = Modifier.weight(1f),
+            )
+        }
+    }
+    Text(
+        text = selected.description,
+        style = MaterialTheme.typography.bodySmall,
+        color = MaterialTheme.colorScheme.onSurfaceVariant,
     )
 }
 

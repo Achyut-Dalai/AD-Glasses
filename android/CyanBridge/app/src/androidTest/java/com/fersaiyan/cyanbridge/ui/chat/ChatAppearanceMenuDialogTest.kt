@@ -5,6 +5,7 @@ import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import com.fersaiyan.cyanbridge.shared.chat.ChatAppearanceMenuAction
+import com.fersaiyan.cyanbridge.shared.ui.chat.ChatAppearanceMenuDialog
 import com.fersaiyan.cyanbridge.ui.theme.CyanBridgeTheme
 import org.junit.Assert.assertEquals
 import org.junit.Rule

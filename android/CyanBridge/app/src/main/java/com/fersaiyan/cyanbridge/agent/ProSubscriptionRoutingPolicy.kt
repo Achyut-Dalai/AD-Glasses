@@ -3,6 +3,7 @@ package com.fersaiyan.cyanbridge.agent
 import android.content.Context
 import com.fersaiyan.cyanbridge.ai.router.AiProviderPrefs
 import com.fersaiyan.cyanbridge.ai.router.AiProviderType
+import com.fersaiyan.cyanbridge.shared.settings.AgentProviderType
 
 object ProSubscriptionRoutingPolicy {
     enum class Action {

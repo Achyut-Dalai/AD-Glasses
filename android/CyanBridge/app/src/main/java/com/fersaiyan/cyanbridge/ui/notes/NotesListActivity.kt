@@ -9,10 +9,14 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import com.fersaiyan.cyanbridge.data.local.entity.Note
+import com.fersaiyan.cyanbridge.shared.notes.NoteSummary
+import com.fersaiyan.cyanbridge.shared.ui.notes.NotesListScreen
 import com.fersaiyan.cyanbridge.ui.MyApplication
 import com.fersaiyan.cyanbridge.ui.appearance.AppearancePreferences
 import com.fersaiyan.cyanbridge.ui.appearance.rememberAppearanceSettings
 import com.fersaiyan.cyanbridge.ui.theme.CyanBridgeTheme
+import java.text.DateFormat
+import java.util.Date
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.MainScope
 import kotlinx.coroutines.cancel
@@ -34,8 +38,12 @@ class NotesListActivity : AppCompatActivity() {
             val appearance by rememberAppearanceSettings(appearancePreferences)
             CyanBridgeTheme(appearance) {
                 NotesListScreen(
-                    notes = notes,
+                    notes = notes.map { NoteSummary(it.id, it.title, it.summary, it.createdAt) },
                     showCreateDialog = showCreateDialog,
+                    formatTimestamp = { ts ->
+                        DateFormat.getDateTimeInstance(DateFormat.MEDIUM, DateFormat.SHORT)
+                            .format(Date(ts))
+                    },
                     onOpenNote = { note ->
                         startActivity(Intent(this, NoteDetailActivity::class.java).apply {
                             putExtra(NoteDetailActivity.EXTRA_NOTE_ID, note.id)

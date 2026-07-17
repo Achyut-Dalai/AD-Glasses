@@ -1,6 +1,8 @@
 package com.fersaiyan.cyanbridge.memoryvault
 
 import androidx.test.core.app.ApplicationProvider
+import com.fersaiyan.cyanbridge.shared.settings.MemoryPrivacyMode
+import com.fersaiyan.cyanbridge.shared.settings.MemorySourceType
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue

@@ -25,6 +25,7 @@ data class GlassesDashboardUiState(
     val agentLastError: String = "(none)",
     val metaRayban: MetaRaybanUiState = MetaRaybanUiState(),
     val ota: OtaSectionUiState = OtaSectionUiState(),
+    val livePreview: LivePreviewUiState = LivePreviewUiState(),
 )
 
 data class GlassesTransferUiState(
@@ -88,6 +89,22 @@ data class OtaSectionUiState(
     val progress: Int? = null,
     val canStart: Boolean = true,
     val canCancel: Boolean = false,
+    val selectedTarget: OtaTargetSelection = OtaTargetSelection.V821_WIFI,
+)
+
+enum class OtaTargetSelection(val label: String, val description: String) {
+    V821_WIFI("Wi-Fi chip (.swu)", "V821 Linux — patches rootfs/init scripts"),
+    JIELI_BLE("BLE chip (.bin)", "JieLi SoC — patches LED/shutter/event firmware"),
+}
+
+data class LivePreviewUiState(
+    val stateLabel: String = "Idle",
+    val detail: String = "",
+    val isScanning: Boolean = false,
+    val isPlaying: Boolean = false,
+    val streamUrl: String? = null,
+    val canStart: Boolean = true,
+    val canStop: Boolean = false,
 )
 
 /** User intents emitted by the portable dashboard presentation. */
@@ -122,6 +139,9 @@ sealed interface GlassesDashboardAction {
     data object TestPullOta : GlassesDashboardAction
     data object StartOta : GlassesDashboardAction
     data object CancelOta : GlassesDashboardAction
+    data class SelectOtaTarget(val target: OtaTargetSelection) : GlassesDashboardAction
+    data object StartLivePreview : GlassesDashboardAction
+    data object StopLivePreview : GlassesDashboardAction
     data object MetaRegister : GlassesDashboardAction
     data object MetaUnregister : GlassesDashboardAction
     data object MetaStartSession : GlassesDashboardAction

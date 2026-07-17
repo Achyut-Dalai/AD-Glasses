@@ -12,14 +12,17 @@ import androidx.compose.runtime.setValue
 import androidx.lifecycle.lifecycleScope
 import com.fersaiyan.cyanbridge.MainActivity
 import com.fersaiyan.cyanbridge.ai.router.AiProviderPrefs
-import com.fersaiyan.cyanbridge.chat.ChatRole
+import com.fersaiyan.cyanbridge.shared.chat.ChatRole
 import com.fersaiyan.cyanbridge.chat.ChatStore
 import com.fersaiyan.cyanbridge.shared.navigation.AppDestination
 import com.fersaiyan.cyanbridge.shared.plugins.CommunityPluginCardData
+import com.fersaiyan.cyanbridge.shared.plugins.NativePluginCardData
 import com.fersaiyan.cyanbridge.shared.plugins.PluginTimeWindow
 import com.fersaiyan.cyanbridge.ui.appearance.AppearancePreferences
 import com.fersaiyan.cyanbridge.ui.appearance.rememberAppearanceSettings
 import com.fersaiyan.cyanbridge.shared.ui.plugins.CommunityPluginsScreen
+import com.fersaiyan.cyanbridge.plugins.walkingaid.WalkingAidService
+import com.fersaiyan.cyanbridge.plugins.walkingaid.WalkingAidSettingsActivity
 import com.fersaiyan.cyanbridge.ui.recordings.RecordingsListActivity
 import com.fersaiyan.cyanbridge.ui.theme.CyanBridgeTheme
 import kotlinx.coroutines.Dispatchers
@@ -33,6 +36,18 @@ class CommunityPluginsActivity : AppCompatActivity() {
     private var showImageAutomationBanner by mutableStateOf(true)
     private var isRefreshing by mutableStateOf(false)
     private var serverPluginsLoaded = false
+
+    private val nativePluginPool = listOf(
+        NativePluginCardData(
+            id = "walking_aid",
+            title = "Walking Aid",
+            description = "Real-time scene description and obstacle warnings for blind navigation. Captures images from glasses at regular intervals and describes the environment.",
+            badge = "Accessibility",
+            enabled = CommunityPluginPrefs.isNativePluginEnabled(this, "walking_aid"),
+            hasSettings = true,
+        ),
+    )
+    private var nativePluginsState by mutableStateOf(nativePluginPool)
 
     private val pluginPool = listOf(
         CommunityPluginCardData(
@@ -141,6 +156,21 @@ class CommunityPluginsActivity : AppCompatActivity() {
                     imageAutomationEnabled = imageAutomationEnabled,
                     showImageAutomationBanner = showImageAutomationBanner,
                     isRefreshing = isRefreshing,
+                    nativePlugins = nativePluginsState,
+                    onOpenNativePluginSettings = { pluginId ->
+                        when (pluginId) {
+                            "walking_aid" -> startActivity(Intent(this, WalkingAidSettingsActivity::class.java))
+                        }
+                    },
+                    onToggleNativePlugin = { pluginId, enabled ->
+                        CommunityPluginPrefs.setNativePluginEnabled(this, pluginId, enabled)
+                        nativePluginsState = nativePluginsState.map {
+                            if (it.id == pluginId) it.copy(enabled = enabled) else it
+                        }
+                        if (pluginId == "walking_aid") {
+                            if (enabled) WalkingAidService.start(this) else WalkingAidService.stop(this)
+                        }
+                    },
                     onWindowSelected = { selectedWindow = it },
                     onRefresh = ::fetchPluginsFromServer,
                     onDismissImageAutomationBanner = ::dismissImageAutomationBanner,

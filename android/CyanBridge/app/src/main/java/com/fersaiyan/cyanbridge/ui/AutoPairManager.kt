@@ -8,6 +8,7 @@ import android.content.pm.PackageManager
 import android.os.Build
 import android.util.Log
 import androidx.core.content.ContextCompat
+import com.fersaiyan.cyanbridge.devices.DeviceProfileStore
 import com.hjq.permissions.Permission
 import com.hjq.permissions.XXPermissions
 import com.oudmon.ble.base.bluetooth.BleOperateManager
@@ -141,6 +142,17 @@ object AutoPairManager {
     }
 
     private fun getTargetMac(context: Context): String? {
+        // Pairing persists the user's explicit selection independently of the vendor SDK.
+        // Prefer it so devices with names outside our fallback heuristics still reconnect.
+        val profileMac = DeviceProfileStore.loadLastSelected(context)
+            ?.macAddress
+            ?.trim()
+            ?.takeIf { it.isNotBlank() }
+        if (profileMac != null) {
+            updateSdkReconnectMac(profileMac)
+            return profileMac
+        }
+
         val saved = DeviceManager.getInstance().deviceAddress
         if (!saved.isNullOrBlank()) return saved
 
@@ -155,18 +167,24 @@ object AutoPairManager {
         val candidate = bonded.firstOrNull { looksLikeGlasses(context, it) } ?: return null
         val mac = candidate.address
 
-        // Best-effort: let the vendor SDK know what device to reconnect to.
-        // Use reflection so we compile even if the SDK exposes this as read-only.
-        try {
-            val dm = DeviceManager.getInstance()
-            val m = dm.javaClass.methods.firstOrNull {
-                it.name == "setDeviceAddress" && it.parameterTypes.size == 1 && it.parameterTypes[0] == String::class.java
-            }
-            m?.invoke(dm, mac)
-        } catch (_: Throwable) {
-        }
+        updateSdkReconnectMac(mac)
 
         return mac
+    }
+
+    /** Best-effort bridge for SDK builds where the saved address is writable. */
+    private fun updateSdkReconnectMac(mac: String) {
+        try {
+            val dm = DeviceManager.getInstance()
+            val method = dm.javaClass.methods.firstOrNull {
+                it.name == "setDeviceAddress" &&
+                    it.parameterTypes.size == 1 &&
+                    it.parameterTypes[0] == String::class.java
+            }
+            method?.invoke(dm, mac)
+        } catch (_: Throwable) {
+            // Some vendor SDK builds expose the address as read-only.
+        }
     }
 
     /**

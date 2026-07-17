@@ -18,7 +18,7 @@ import com.fersaiyan.cyanbridge.MainActivity
 import com.fersaiyan.cyanbridge.R
 import com.fersaiyan.cyanbridge.ui.appearance.AppearancePreferences
 import com.fersaiyan.cyanbridge.ui.appearance.rememberAppearanceSettings
-import com.fersaiyan.cyanbridge.ui.onboarding.BatteryOptimizationGuideScreen
+import com.fersaiyan.cyanbridge.shared.ui.onboarding.BatteryOptimizationGuideScreen
 import com.fersaiyan.cyanbridge.ui.theme.CyanBridgeTheme
 
 class BatteryOptimizationGuideActivity : AppCompatActivity() {

@@ -1,0 +1,27 @@
+<resources>
+    <string name="app_name">CyanBridge</string>
+    <string name="language_system_default">Системный язык</string>
+    <string name="language_selection_title">Выберите язык приложения</string>
+    <string name="action_cancel">Отмена</string>
+    <string name="action_save">Сохранить</string>
+    <string name="vision_profile_selection_title">Выберите режим описания</string>
+    <string name="vision_profile_walking">Прогулка</string>
+    <string name="vision_profile_detailed">Подробный</string>
+    <string name="vision_custom_instructions_title">Дополнительные инструкции для описания</string>
+    <string name="vision_custom_instructions_hint">Необязательные инструкции для каждого описания изображения</string>
+    <string name="walking_aid_title">Помощник при ходьбе</string>
+    <string name="walking_aid_settings">Настройки помощника при ходьбе</string>
+    <string name="walking_aid_general">Основные</string>
+    <string name="walking_aid_capture_interval">Интервал захвата</string>
+    <string name="walking_aid_image_recognition">Распознавание изображений</string>
+    <string name="walking_aid_depth_estimation">Оценка глубины</string>
+    <string name="walking_aid_output">Вывод</string>
+    <string name="walking_aid_tts_enabled">Озвучивать описания</string>
+    <string name="walking_aid_safety_disclaimer">Предупреждение безопасности при первом предупреждении</string>
+    <string name="walking_aid_history">История изображений</string>
+    <string name="walking_aid_clear_history">Очистить историю</string>
+    <string name="walking_aid_source_local">Локально (на устройстве)</string>
+    <string name="walking_aid_source_cloud">Облако (Pro)</string>
+    <string name="walking_aid_not_connected">Walking Aid: Очки не подключены. Сначала подключите очки.</string>
+    <string name="walking_aid_meeting_active">Walking Aid: Идет запись встречи. Остановите запись перед включением Walking Aid.</string>
+</resources>

@@ -13,7 +13,7 @@ import com.fersaiyan.cyanbridge.shared.plugins.CommunityPluginCatalog
 import com.fersaiyan.cyanbridge.shared.plugins.PublishPluginUiState
 import com.fersaiyan.cyanbridge.ui.appearance.AppearancePreferences
 import com.fersaiyan.cyanbridge.ui.appearance.rememberAppearanceSettings
-import com.fersaiyan.cyanbridge.ui.plugins.PublishPluginScreen
+import com.fersaiyan.cyanbridge.shared.ui.plugins.PublishPluginScreen
 import com.fersaiyan.cyanbridge.ui.theme.CyanBridgeTheme
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch

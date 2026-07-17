@@ -9,8 +9,8 @@ import androidx.core.content.ContextCompat
 import androidx.core.graphics.ColorUtils
 import androidx.recyclerview.widget.RecyclerView
 import com.fersaiyan.cyanbridge.R
-import com.fersaiyan.cyanbridge.chat.ChatMessage
-import com.fersaiyan.cyanbridge.chat.ChatRole
+import com.fersaiyan.cyanbridge.shared.chat.ChatMessage
+import com.fersaiyan.cyanbridge.shared.chat.ChatRole
 import com.fersaiyan.cyanbridge.databinding.ItemMessageReceivedBinding
 import com.fersaiyan.cyanbridge.databinding.ItemMessageSentBinding
 

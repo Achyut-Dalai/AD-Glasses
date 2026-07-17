@@ -26,7 +26,7 @@ import com.fersaiyan.cyanbridge.R
 import com.fersaiyan.cyanbridge.shared.billing.ProSubscriptionSettingsUiState
 import com.fersaiyan.cyanbridge.ui.appearance.AppearancePreferences
 import com.fersaiyan.cyanbridge.ui.appearance.rememberAppearanceSettings
-import com.fersaiyan.cyanbridge.ui.pro.ProSubscriptionSettingsScreen
+import com.fersaiyan.cyanbridge.shared.ui.pro.ProSubscriptionSettingsScreen
 import com.fersaiyan.cyanbridge.ui.theme.CyanBridgeTheme
 import com.fersaiyan.cyanbridge.ui.installComposeHostWithLegacyAdapter
 import kotlin.math.roundToInt

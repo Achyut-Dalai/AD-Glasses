@@ -10,6 +10,7 @@ PROJECT = ROOT / "ios" / "QCSDKDemo.xcodeproj" / "project.pbxproj"
 HOST = ROOT / "ios" / "CyanBridgeKMPHost" / "CyanBridgeKMPHostApp.swift"
 DEMO_APP_DELEGATE = ROOT / "ios" / "QCSDKDemo" / "AppDelegate.m"
 SCHEME = ROOT / "ios" / "QCSDKDemo.xcodeproj" / "xcshareddata" / "xcschemes" / "CyanBridgeKMPHost.xcscheme"
+DEMO_SCHEME = ROOT / "ios" / "QCSDKDemo.xcodeproj" / "xcshareddata" / "xcschemes" / "QCSDKDemo.xcscheme"
 MAIN_VIEW_CONTROLLER = ROOT / "android" / "CyanBridge" / "shared" / "src" / "iosMain" / "kotlin" / "com" / "fersaiyan" / "cyanbridge" / "shared" / "platform" / "MainViewController.kt"
 
 
@@ -31,6 +32,7 @@ def main() -> int:
     host = HOST.read_text(encoding="utf-8")
     demo_app_delegate = DEMO_APP_DELEGATE.read_text(encoding="utf-8")
     scheme = SCHEME.read_text(encoding="utf-8")
+    demo_scheme = DEMO_SCHEME.read_text(encoding="utf-8")
 
     # CMP entry point checks
     require("import CyanBridgeShared" in host, "The KMP host must import CyanBridgeShared.")
@@ -63,6 +65,14 @@ def main() -> int:
         "CyanBridgeApp" in main_vc,
         "MainViewController must render the shared CyanBridgeApp composable.",
     )
+    require(
+        "MainViewControllerForDestination" in main_vc,
+        "The screenshot harness must expose a destination-specific CMP entry point.",
+    )
+    require(
+        "CYANBRIDGE_SCREENSHOT_DESTINATION" in host,
+        "The Swift host must honor the screenshot-harness destination environment variable.",
+    )
 
     host_target = block(project, 'CB2000092F00000100CB0001 /* CyanBridgeKMPHost */ = {')
     require("Build CyanBridgeShared" in host_target, "The KMP host must build the shared framework.")
@@ -78,11 +88,32 @@ def main() -> int:
     for section in (demo_target, demo_debug, demo_release, demo_app_delegate):
         require("CyanBridgeShared" not in section, "QCSDKDemo must not reference CyanBridgeShared.")
     require(
+        "Embed Frameworks" not in demo_target,
+        "QCSDKDemo must link, not embed, the static QCSDK.framework archive.",
+    )
+    require(
         "CyanBridgeSharedIntegration" not in project,
         "The legacy QCSDKDemo KMP smoke wrapper must not remain in the project.",
     )
+    require(
+        'BlueprintIdentifier="AA1313562E2F903500B03938"' in demo_scheme,
+        "The shared QCSDKDemo scheme must build the QCSDKDemo target.",
+    )
+    for configuration in (demo_debug, demo_release):
+        require(
+            "SUPPORTED_PLATFORMS = iphoneos;" in configuration,
+            "QCSDKDemo must be device-only because the vendor framework has no simulator slice.",
+        )
+        require(
+            "NetworkExtension" in configuration,
+            "QCSDKDemo must link its NetworkExtension dependency explicitly.",
+        )
+        require(
+            '"-ObjC"' in configuration,
+            "QCSDKDemo must load Objective-C categories from the static vendor archive.",
+        )
 
-    print("KMP iOS host wiring is structurally valid (CMP integration verified).")
+    print("KMP iOS host and device-only QCSDKDemo wiring are structurally valid.")
     return 0
 
 

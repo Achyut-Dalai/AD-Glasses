@@ -24,4 +24,14 @@ object CommunityPluginPrefs {
     fun setImageAutomationBannerDismissed(context: Context, dismissed: Boolean) {
         prefs(context).edit().putBoolean(KEY_IMAGE_AUTOMATION_BANNER_DISMISSED, dismissed).apply()
     }
+
+    private fun nativePluginKey(pluginId: String) = "native_plugin_enabled_$pluginId"
+
+    fun isNativePluginEnabled(context: Context, pluginId: String): Boolean {
+        return prefs(context).getBoolean(nativePluginKey(pluginId), false)
+    }
+
+    fun setNativePluginEnabled(context: Context, pluginId: String, enabled: Boolean) {
+        prefs(context).edit().putBoolean(nativePluginKey(pluginId), enabled).apply()
+    }
 }

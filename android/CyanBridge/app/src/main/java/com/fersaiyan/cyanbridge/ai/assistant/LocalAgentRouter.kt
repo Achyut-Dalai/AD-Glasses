@@ -1,7 +1,7 @@
 package com.fersaiyan.cyanbridge.ai.assistant
 
 import android.content.Context
-import com.fersaiyan.cyanbridge.chat.ChatMessage
+import com.fersaiyan.cyanbridge.shared.chat.ChatMessage
 
 /**
  * Skeleton router for the on-device assistant.

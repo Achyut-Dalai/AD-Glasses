@@ -1,0 +1,27 @@
+<resources>
+    <string name="settings_title">Configurações</string>
+    <string name="settings_language">Idioma</string>
+    <string name="settings_language_description">Idioma do aplicativo: %1$s</string>
+    <string name="action_change">Alterar</string>
+    <string name="action_configure">Configurar</string>
+    <string name="action_edit">Editar</string>
+    <string name="action_close">Fechar</string>
+    <string name="action_back">Voltar</string>
+    <string name="action_cancel">Cancelar</string>
+    <string name="action_connect">Conectar</string>
+    <string name="device_bind_title">Conectar óculos</string>
+    <string name="device_bind_scan">Procurar dispositivos</string>
+    <string name="device_bind_scanning">Procurando...</string>
+    <string name="device_bind_looking">Procurando dispositivos Bluetooth com nome...</string>
+    <string name="device_bind_empty">Nenhum dispositivo encontrado. Inicie uma busca para emparelhar seus óculos.</string>
+    <string name="device_bind_details">%1$s - Sinal %2$d</string>
+    <string name="device_bind_detected">Detectado: %1$s</string>
+    <string name="device_bind_select_type">Selecione o tipo de óculos</string>
+    <string name="vision_profile_title">Perfil de visão</string>
+    <string name="vision_profile_description">As descrições de imagem usam: %1$s</string>
+    <string name="vision_instructions_title">Instruções adicionais de visão</string>
+    <string name="plugin_select">Selecionar %1$s</string>
+    <string name="plugin_selected">Selecionado</string>
+    <string name="native_plugins_section">Plugins Nativos</string>
+    <string name="native_plugin_settings">Configurações</string>
+</resources>

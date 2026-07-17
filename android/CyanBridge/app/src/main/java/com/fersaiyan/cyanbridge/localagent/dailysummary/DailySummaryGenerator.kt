@@ -1,7 +1,7 @@
 package com.fersaiyan.cyanbridge.localagent.dailysummary
 
 import android.content.Context
-import com.fersaiyan.cyanbridge.agent.AgentProviderType
+import com.fersaiyan.cyanbridge.shared.settings.AgentProviderType
 import com.fersaiyan.cyanbridge.agent.LocalAgentPrefs as AutomationPrefs
 import com.fersaiyan.cyanbridge.agent.ProSubscriptionAiPrefs
 import com.fersaiyan.cyanbridge.agent.ProSubscriptionPrefs

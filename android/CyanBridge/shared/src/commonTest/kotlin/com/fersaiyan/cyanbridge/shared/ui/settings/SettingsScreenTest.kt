@@ -40,9 +40,8 @@ class SettingsScreenTest {
     fun agentProviderTypesCoverAllOptions() {
         val types = AgentProviderType.entries
         assertTrue(types.contains(AgentProviderType.PRO_SUBSCRIPTION))
-        assertTrue(types.contains(AgentProviderType.LOCAL_MODEL))
-        assertTrue(types.contains(AgentProviderType.REMOTE_SERVER))
-        assertTrue(types.contains(AgentProviderType.STUDIO_BRIDGE))
+        assertTrue(types.contains(AgentProviderType.LOCAL_AGENT))
+        assertTrue(types.contains(AgentProviderType.TASKER))
     }
 
     @Test
@@ -56,16 +55,20 @@ class SettingsScreenTest {
     fun memoryPrivacyModeCoversSpectrum() {
         val modes = MemoryPrivacyMode.entries
         assertTrue(modes.contains(MemoryPrivacyMode.PRIVATE_LOCAL))
-        assertTrue(modes.contains(MemoryPrivacyMode.CLOUD_SYNC))
+        assertTrue(modes.contains(MemoryPrivacyMode.ENCRYPTED_SYNC))
+        assertTrue(modes.contains(MemoryPrivacyMode.FAST_CLOUD_MEMORY))
+        assertTrue(modes.contains(MemoryPrivacyMode.CONFIDENTIAL_CLOUD_BETA))
     }
 
     @Test
     fun memorySourceTypeCoversAllInputs() {
         val types = MemorySourceType.entries
-        assertTrue(types.contains(MemorySourceType.EXPLICIT))
-        assertTrue(types.contains(MemorySourceType.DAILY))
-        assertTrue(types.contains(MemorySourceType.OCR))
-        assertTrue(types.contains(MemorySourceType.DERIVED))
+        assertTrue(types.contains(MemorySourceType.EXPLICIT_USER_FACT))
+        assertTrue(types.contains(MemorySourceType.AUTO_DAILY_FACT))
+        assertTrue(types.contains(MemorySourceType.SCREEN_OCR))
+        assertTrue(types.contains(MemorySourceType.DERIVED_SUMMARY))
+        assertTrue(types.contains(MemorySourceType.IMPORTED_TEXT))
+        assertTrue(types.contains(MemorySourceType.SYSTEM_NOTE))
     }
 
     @Test
@@ -75,10 +78,10 @@ class SettingsScreenTest {
             proPlan = "Max",
             localAgentMaxSteps = 12,
         )
-        val updated = original.copy(memoryMode = MemoryPrivacyMode.CLOUD_SYNC)
+        val updated = original.copy(memoryMode = MemoryPrivacyMode.ENCRYPTED_SYNC)
         assertEquals(true, updated.isProSubscribed)
         assertEquals("Max", updated.proPlan)
         assertEquals(12, updated.localAgentMaxSteps)
-        assertEquals(MemoryPrivacyMode.CLOUD_SYNC, updated.memoryMode)
+        assertEquals(MemoryPrivacyMode.ENCRYPTED_SYNC, updated.memoryMode)
     }
 }

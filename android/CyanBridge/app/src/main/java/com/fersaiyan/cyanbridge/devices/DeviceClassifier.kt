@@ -1,6 +1,7 @@
 package com.fersaiyan.cyanbridge.devices
 
 import android.os.ParcelUuid
+import com.fersaiyan.cyanbridge.shared.devices.DeviceClass
 
 /**
  * Chapter 3 heuristics:

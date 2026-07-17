@@ -2,7 +2,7 @@ package com.fersaiyan.cyanbridge.privacy
 
 import android.content.Context
 import android.net.Uri
-import com.fersaiyan.cyanbridge.chat.ChatRole
+import com.fersaiyan.cyanbridge.shared.chat.ChatRole
 import com.fersaiyan.cyanbridge.chat.ChatStore
 import com.fersaiyan.cyanbridge.memoryvault.MemoryVaultService
 import org.json.JSONArray

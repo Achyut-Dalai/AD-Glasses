@@ -18,6 +18,7 @@ import com.fersaiyan.cyanbridge.shared.chat.ChatThread
 import com.fersaiyan.cyanbridge.shared.chat.ChatThreadEvent
 import com.fersaiyan.cyanbridge.shared.chat.ChatThreadStateReducer
 import com.fersaiyan.cyanbridge.shared.chat.ChatThreadUiState
+import com.fersaiyan.cyanbridge.shared.ui.chat.ChatThreadScreen
 import com.fersaiyan.cyanbridge.ui.theme.CyanBridgeTheme
 import org.junit.Assert.assertEquals
 import org.junit.Rule

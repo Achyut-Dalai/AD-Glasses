@@ -5,7 +5,7 @@ import android.util.Log
 import com.fersaiyan.cyanbridge.memoryvault.MemoryModeManager
 import com.fersaiyan.cyanbridge.memoryvault.MemoryPolicyService
 import com.fersaiyan.cyanbridge.memoryvault.MemoryRefMapper
-import com.fersaiyan.cyanbridge.memoryvault.MemorySourceType
+import com.fersaiyan.cyanbridge.shared.settings.MemorySourceType
 import com.fersaiyan.cyanbridge.memoryvault.MemoryVaultBootstrap
 import com.fersaiyan.cyanbridge.memoryvault.MemoryVaultService
 import com.fersaiyan.cyanbridge.memoryvault.VaultLockStateManager

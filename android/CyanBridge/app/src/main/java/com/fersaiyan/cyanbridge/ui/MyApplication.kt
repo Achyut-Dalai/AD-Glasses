@@ -25,6 +25,9 @@ import com.fersaiyan.cyanbridge.localmodels.remote.RemoteOpenAiPrefs
 import com.fersaiyan.cyanbridge.studiobridge.StudioApprovalHandler
 import com.fersaiyan.cyanbridge.studiobridge.StudioBridgeClient
 import com.fersaiyan.cyanbridge.studiobridge.StudioBridgeForegroundService
+import com.fersaiyan.cyanbridge.ui.localization.AppLanguagePreferences
+import com.fersaiyan.cyanbridge.shared.platform.CyanBridgeServices
+import com.fersaiyan.cyanbridge.shared.platform.initPlatformPreferences
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
@@ -52,6 +55,7 @@ class MyApplication : Application(){
         application = this
         instance = this
         CONTEXT = applicationContext
+        AppLanguagePreferences.applyStoredLocale(this)
         initBle()
 
         // Keep the BLE control channel connected while the app process is alive.
@@ -71,6 +75,10 @@ class MyApplication : Application(){
 
         runCatching { MemoryVaultBootstrap.ensureInitialized(this) }
         maybePreloadLocalModel()
+
+        // Initialize KMP shared services
+        initPlatformPreferences(this)
+        initSharedServices()
 
     }
 
@@ -119,6 +127,51 @@ class MyApplication : Application(){
                 LocalModelStorageRepository.cleanupMissingModels(this@MyApplication)
             }
         }
+    }
+
+    /**
+     * Initialize KMP shared services with Android implementations.
+     * This bridges the shared module's abstractions to the Android-specific implementations.
+     */
+    private fun initSharedServices() {
+        if (CyanBridgeServices.isInitialized()) return
+
+        // Create Android BLE manager wrapper
+        val androidBleManager = com.fersaiyan.cyanbridge.shared.ble.AndroidBleManager(
+            bleOperateManager = BleOperateManager.getInstance(),
+            largeDataHandler = LargeDataHandler.getInstance(),
+            deviceManager = com.oudmon.ble.base.bluetooth.DeviceManager.getInstance(),
+        )
+
+        // Create Android Wi-Fi P2P manager wrapper
+        val androidWifiP2pManager = AndroidWifiP2pManagerWrapper()
+
+        // Create Android repositories wrapping Room
+        val chatRepo = AndroidChatRepositoryWrapper()
+        val notesRepo = AndroidNotesRepositoryWrapper()
+        val deviceRepo = AndroidDeviceProfileRepositoryWrapper()
+        val vaultRepo = AndroidMemoryVaultRepositoryWrapper()
+        val mediaRepo = AndroidMediaRecordRepositoryWrapper()
+
+        // Create AI services
+        val chatAi = AndroidChatAiService()
+        val voiceAi = AndroidVoiceAiService()
+        val imageAi = AndroidImageAiService()
+        val modelRegistry = AndroidAiModelRegistry()
+
+        CyanBridgeServices.initialize(
+            bleManager = androidBleManager,
+            wifiP2pManager = androidWifiP2pManager,
+            chatRepository = chatRepo,
+            notesRepository = notesRepo,
+            deviceProfileRepository = deviceRepo,
+            memoryVaultRepository = vaultRepo,
+            mediaRecordRepository = mediaRepo,
+            chatAiService = chatAi,
+            voiceAiService = voiceAi,
+            imageAiService = imageAi,
+            aiModelRegistry = modelRegistry,
+        )
     }
 
     private fun initBle() {

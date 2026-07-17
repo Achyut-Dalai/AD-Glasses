@@ -48,6 +48,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import androidx.compose.foundation.text.KeyboardOptions
+import com.fersaiyan.cyanbridge.shared.generated.resources.*
 import com.fersaiyan.cyanbridge.shared.navigation.AppDestination
 import com.fersaiyan.cyanbridge.shared.navigation.icon
 import com.fersaiyan.cyanbridge.shared.navigation.label
@@ -57,10 +58,14 @@ import com.fersaiyan.cyanbridge.shared.settings.CaptureSource
 import com.fersaiyan.cyanbridge.shared.settings.MemoryPrivacyMode
 import com.fersaiyan.cyanbridge.shared.settings.MemorySourceType
 import com.fersaiyan.cyanbridge.shared.settings.SettingsSection
+import org.jetbrains.compose.resources.ExperimentalResourceApi
+import org.jetbrains.compose.resources.stringResource
 
 data class SettingsUiState(
     val isProSubscribed: Boolean = false,
     val proPlan: String = "Pro",
+    val appLanguageLabel: String = "System default",
+    val visionProfileLabel: String = "Walking",
     val providerType: AgentProviderType = AgentProviderType.PRO_SUBSCRIPTION,
     val localAgentAutomationEnabled: Boolean = false,
     val localAgentRequireConfirmation: Boolean = true,
@@ -104,6 +109,9 @@ data class SettingsUiState(
 interface SettingsScreenActions {
     fun onDestinationSelected(destination: AppDestination)
     fun openAppearance()
+    fun openAppLanguageSelection()
+    fun openVisionProfileSelection()
+    fun editVisionInstructions()
     fun openSubscription()
     fun setProviderType(type: AgentProviderType)
     fun openLocalModels()
@@ -157,7 +165,7 @@ interface SettingsScreenActions {
     fun stopMeetingCapture()
 }
 
-@OptIn(ExperimentalMaterial3Api::class)
+@OptIn(ExperimentalMaterial3Api::class, ExperimentalResourceApi::class)
 @Composable
 fun SettingsScreen(
     state: SettingsUiState,
@@ -168,7 +176,7 @@ fun SettingsScreen(
     Scaffold(
         contentWindowInsets = WindowInsets.safeDrawing,
         topBar = {
-            TopAppBar(title = { Text("Settings") })
+            TopAppBar(title = { Text(stringResource(Res.string.settings_title)) })
         },
         bottomBar = {
             NavigationBar {
@@ -223,6 +231,18 @@ fun SettingsScreen(
                     actionLabel = "Open",
                     onClick = actions::openAppearance,
                     testTag = "settings_appearance",
+                )
+            }
+            item {
+                QuickActionCard(
+                    title = stringResource(Res.string.settings_language),
+                    subtitle = stringResource(
+                        Res.string.settings_language_description,
+                        state.appLanguageLabel,
+                    ),
+                    actionLabel = stringResource(Res.string.action_change),
+                    onClick = actions::openAppLanguageSelection,
+                    testTag = "settings_language",
                 )
             }
             item {
@@ -420,6 +440,7 @@ private fun SettingsSectionCard(
     }
 }
 
+@OptIn(ExperimentalResourceApi::class)
 @Composable
 private fun AiAutomationContent(state: SettingsUiState, actions: SettingsScreenActions) {
     Text("Provider type", style = MaterialTheme.typography.labelLarge)
@@ -440,6 +461,19 @@ private fun AiAutomationContent(state: SettingsUiState, actions: SettingsScreenA
     ActionButton("Configure Local Models", actions::openLocalModels)
     if (state.providerType == AgentProviderType.PRO_SUBSCRIPTION) {
         ActionButton("Configure Pro Subscription", actions::openSubscription)
+    }
+    SettingRow(
+        label = stringResource(Res.string.vision_profile_title),
+        subtitle = stringResource(Res.string.vision_profile_description, state.visionProfileLabel),
+    ) {
+        TextButton(onClick = actions::openVisionProfileSelection) {
+            Text(stringResource(Res.string.action_configure))
+        }
+    }
+    SettingRow(label = stringResource(Res.string.vision_instructions_title)) {
+        TextButton(onClick = actions::editVisionInstructions) {
+            Text(stringResource(Res.string.action_edit))
+        }
     }
     HorizontalDivider()
     SwitchRow(
@@ -593,16 +627,16 @@ private fun MemoryPrivacyContent(state: SettingsUiState, actions: SettingsScreen
     HorizontalDivider()
     Text("Sync eligibility", style = MaterialTheme.typography.labelLarge)
     SwitchRow("Explicit facts", state.syncExplicit) {
-        actions.setMemorySync(MemorySourceType.EXPLICIT, it)
+        actions.setMemorySync(MemorySourceType.EXPLICIT_USER_FACT, it)
     }
     SwitchRow("Daily facts", state.syncDaily) {
-        actions.setMemorySync(MemorySourceType.DAILY, it)
+        actions.setMemorySync(MemorySourceType.AUTO_DAILY_FACT, it)
     }
     SwitchRow("Screen OCR", state.syncOcr) {
-        actions.setMemorySync(MemorySourceType.OCR, it)
+        actions.setMemorySync(MemorySourceType.SCREEN_OCR, it)
     }
     SwitchRow("Derived summaries", state.syncDerived) {
-        actions.setMemorySync(MemorySourceType.DERIVED, it)
+        actions.setMemorySync(MemorySourceType.DERIVED_SUMMARY, it)
     }
     NumberSettingRow(
         label = "Screen OCR retention (days)",
@@ -848,15 +882,3 @@ private fun ActionButton(
         )
     }
 }
-
-private val MemoryPrivacyMode.title: String
-    get() = when (this) {
-        MemoryPrivacyMode.PRIVATE_LOCAL -> "Private (local only)"
-        MemoryPrivacyMode.CLOUD_SYNC -> "Cloud sync"
-    }
-
-private val MemoryPrivacyMode.description: String
-    get() = when (this) {
-        MemoryPrivacyMode.PRIVATE_LOCAL -> "All memory data stays on this device."
-        MemoryPrivacyMode.CLOUD_SYNC -> "Memory data is synced to the cloud for backup and multi-device access."
-    }

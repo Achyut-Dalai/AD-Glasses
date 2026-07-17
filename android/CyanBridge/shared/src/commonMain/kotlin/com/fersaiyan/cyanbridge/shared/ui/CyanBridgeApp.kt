@@ -38,6 +38,7 @@ import com.fersaiyan.cyanbridge.shared.ui.glasses.GlassesSyncFlowPickerDialog
  */
 @Composable
 fun CyanBridgeApp(
+    initialDestination: AppDestination = AppDestination.GLASSES,
     dashboardState: GlassesDashboardUiState = GlassesDashboardUiState(),
     onDashboardAction: (GlassesDashboardAction) -> Unit = {},
     showSyncFlowPicker: Boolean = false,
@@ -48,7 +49,7 @@ fun CyanBridgeApp(
     onAppearanceReset: () -> Unit = {},
     onNavigateToActivity: (AppDestination) -> Unit = {},
 ) {
-    var currentDestination by remember { mutableStateOf(AppDestination.GLASSES) }
+    var currentDestination by remember(initialDestination) { mutableStateOf(initialDestination) }
     var showAppearance by remember { mutableStateOf(false) }
     var localAppearance by remember { mutableStateOf(appearanceSettings) }
 

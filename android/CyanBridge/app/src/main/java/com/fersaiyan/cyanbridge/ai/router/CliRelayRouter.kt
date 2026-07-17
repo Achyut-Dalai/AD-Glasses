@@ -2,7 +2,7 @@ package com.fersaiyan.cyanbridge.ai.router
 
 import android.content.Context
 import android.util.Base64
-import com.fersaiyan.cyanbridge.agent.AgentProviderType
+import com.fersaiyan.cyanbridge.shared.settings.AgentProviderType
 import com.fersaiyan.cyanbridge.agent.LocalAgentPrefs as AutomationPrefs
 import com.fersaiyan.cyanbridge.agent.ProSubscriptionAiPrefs
 import com.fersaiyan.cyanbridge.agent.ProSubscriptionServerPrefs
@@ -219,6 +219,7 @@ object CliRelayClient {
     suspend fun imageQuery(
         context: Context,
         imagePath: String,
+        prompt: String? = null,
         backendOverride: CliRelayBackend? = null,
         modelOverride: String? = null,
     ): Result<String> = runCatching {
@@ -242,6 +243,8 @@ object CliRelayClient {
                 .put("filename", file.name)
                 .put("imageBase64", imageBase64)
                 .apply {
+                    val requestPrompt = prompt?.trim().orEmpty()
+                    if (requestPrompt.isNotBlank()) put("prompt", requestPrompt)
                     val model = modelOverride?.trim().orEmpty()
                     if (model.isNotBlank()) put("model", model)
                 }

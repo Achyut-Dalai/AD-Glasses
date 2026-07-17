@@ -8,6 +8,10 @@ import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
+import com.fersaiyan.cyanbridge.shared.settings.SettingsSection
+import com.fersaiyan.cyanbridge.shared.ui.settings.SettingsScreen
+import com.fersaiyan.cyanbridge.shared.ui.settings.SettingsScreenActions
+import com.fersaiyan.cyanbridge.shared.ui.settings.SettingsUiState
 import com.fersaiyan.cyanbridge.ui.theme.CyanBridgeTheme
 import org.junit.Assert.assertEquals
 import org.junit.Rule

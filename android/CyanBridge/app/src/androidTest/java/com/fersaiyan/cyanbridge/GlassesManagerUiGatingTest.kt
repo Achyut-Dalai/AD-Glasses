@@ -5,11 +5,11 @@ import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.onNodeWithText
-import com.fersaiyan.cyanbridge.devices.DeviceClass
-import com.fersaiyan.cyanbridge.devices.DeviceProfile
-import com.fersaiyan.cyanbridge.devices.GlassesManagerGating
+import com.fersaiyan.cyanbridge.shared.devices.DeviceClass
+import com.fersaiyan.cyanbridge.shared.devices.DeviceProfile
+import com.fersaiyan.cyanbridge.shared.devices.GlassesManagerGating
 import com.fersaiyan.cyanbridge.shared.glasses.GlassesDashboardUiState
-import com.fersaiyan.cyanbridge.ui.glasses.GlassesDashboardScreen
+import com.fersaiyan.cyanbridge.shared.ui.glasses.GlassesDashboardScreen
 import com.fersaiyan.cyanbridge.ui.theme.CyanBridgeTheme
 import org.junit.Rule
 import org.junit.Test

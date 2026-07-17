@@ -28,7 +28,7 @@ import com.fersaiyan.cyanbridge.shared.billing.BillingCatalog
 import com.fersaiyan.cyanbridge.shared.billing.ProSubscriptionUiState
 import com.fersaiyan.cyanbridge.ui.appearance.AppearancePreferences
 import com.fersaiyan.cyanbridge.ui.appearance.rememberAppearanceSettings
-import com.fersaiyan.cyanbridge.ui.pro.ProSubscriptionScreen
+import com.fersaiyan.cyanbridge.shared.ui.pro.ProSubscriptionScreen
 import com.fersaiyan.cyanbridge.ui.theme.CyanBridgeTheme
 import com.fersaiyan.cyanbridge.ui.installComposeHostWithLegacyAdapter
 import kotlin.concurrent.thread

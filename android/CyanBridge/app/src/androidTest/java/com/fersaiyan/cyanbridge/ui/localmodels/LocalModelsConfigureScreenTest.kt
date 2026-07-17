@@ -1,6 +1,7 @@
 package com.fersaiyan.cyanbridge.ui.localmodels
 
 import androidx.compose.ui.test.assertIsDisplayed
+import com.fersaiyan.cyanbridge.shared.ui.localmodels.LocalModelsConfigureScreen
 import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText

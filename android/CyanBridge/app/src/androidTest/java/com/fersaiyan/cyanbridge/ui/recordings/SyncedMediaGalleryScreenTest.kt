@@ -5,6 +5,7 @@ import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
+import com.fersaiyan.cyanbridge.shared.ui.recordings.SyncedMediaGalleryScreen
 import com.fersaiyan.cyanbridge.ui.theme.CyanBridgeTheme
 import org.junit.Assert.assertEquals
 import org.junit.Rule
@@ -24,6 +25,7 @@ class SyncedMediaGalleryScreenTest {
                     mediaItems = emptyList(),
                     isLoading = false,
                     folderHint = "Saved in DCIM/CyanBridge",
+                    loadThumbnail = { null },
                     onNavigateBack = {},
                     onRefresh = { refreshCount += 1 },
                     onOpenMedia = {},

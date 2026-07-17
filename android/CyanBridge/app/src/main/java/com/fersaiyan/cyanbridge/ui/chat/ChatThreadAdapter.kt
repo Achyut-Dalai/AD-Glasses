@@ -5,7 +5,7 @@ import android.view.ViewGroup
 import androidx.appcompat.app.AlertDialog
 import androidx.recyclerview.widget.RecyclerView
 import com.fersaiyan.cyanbridge.R
-import com.fersaiyan.cyanbridge.chat.ChatThread
+import com.fersaiyan.cyanbridge.shared.chat.ChatThread
 import com.fersaiyan.cyanbridge.databinding.ItemChatThreadBinding
 
 class ChatThreadAdapter(

@@ -12,7 +12,11 @@ struct CyanBridgeKMPHostApp: App {
 
 struct ComposeView: UIViewControllerRepresentable {
     func makeUIViewController(context: Context) -> UIViewController {
-        MainViewControllerKt.MainViewController()
+        if let destination = ProcessInfo.processInfo.environment["CYANBRIDGE_SCREENSHOT_DESTINATION"],
+           !destination.isEmpty {
+            return MainViewControllerKt.MainViewControllerForDestination(destination: destination)
+        }
+        return MainViewControllerKt.MainViewController()
     }
 
     func updateUIViewController(_ uiViewController: UIViewController, context: Context) {}

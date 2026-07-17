@@ -1,5 +1,8 @@
 package com.fersaiyan.cyanbridge.chat
 
+import com.fersaiyan.cyanbridge.shared.chat.ChatMessage
+import com.fersaiyan.cyanbridge.shared.chat.ChatRole
+import com.fersaiyan.cyanbridge.shared.chat.ChatThread
 import com.fersaiyan.cyanbridge.data.local.entity.Chat as ChatEntity
 import com.fersaiyan.cyanbridge.data.local.entity.Message as MessageEntity
 import com.fersaiyan.cyanbridge.data.repository.CyanBridgeRepository

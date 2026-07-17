@@ -11,7 +11,9 @@ import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performScrollToNode
 import com.fersaiyan.cyanbridge.shared.plugins.CommunityPluginCardData
+import com.fersaiyan.cyanbridge.shared.plugins.NativePluginCardData
 import com.fersaiyan.cyanbridge.shared.plugins.PluginTimeWindow
+import com.fersaiyan.cyanbridge.shared.ui.plugins.CommunityPluginsScreen
 import com.fersaiyan.cyanbridge.ui.theme.CyanBridgeTheme
 import org.junit.Assert.assertEquals
 import org.junit.Rule
@@ -75,6 +77,46 @@ class CommunityPluginsScreenTest {
             assertEquals(PluginTimeWindow.WEEKLY, selectedWindow)
             assertEquals(1, taskerStoreActions)
             assertEquals(1, publishActions)
+        }
+    }
+
+    @Test
+    fun nativePluginCardsRenderWithSettingsButton() {
+        var settingsOpened = false
+        var toggledValue: Boolean? = null
+        val nativePlugin = NativePluginCardData(
+            id = "walking_aid",
+            title = "Walking Aid",
+            description = "Scene description for navigation.",
+            badge = "Accessibility",
+            enabled = false,
+            hasSettings = true,
+        )
+        composeRule.setContent {
+            CyanBridgeTheme {
+                CommunityPluginsScreen(
+                    plugins = emptyList(),
+                    selectedWindow = PluginTimeWindow.ALL_TIME,
+                    imageAutomationEnabled = false,
+                    showImageAutomationBanner = false,
+                    isRefreshing = false,
+                    nativePlugins = listOf(nativePlugin),
+                    onOpenNativePluginSettings = { settingsOpened = true },
+                    onToggleNativePlugin = { _, enabled -> toggledValue = enabled },
+                    onWindowSelected = {},
+                    onRefresh = {},
+                    onDismissImageAutomationBanner = {},
+                    onOpenTaskerStore = {},
+                    onOpenTaskerNet = {},
+                    onPublishPlugin = {},
+                    onDestinationSelected = {},
+                )
+            }
+        }
+        composeRule.onNodeWithTag("native_plugin_card_walking_aid").assertExists()
+        composeRule.onNodeWithText("Walking Aid").assertExists()
+        composeRule.runOnIdle {
+            assertEquals(false, settingsOpened)
         }
     }
 }

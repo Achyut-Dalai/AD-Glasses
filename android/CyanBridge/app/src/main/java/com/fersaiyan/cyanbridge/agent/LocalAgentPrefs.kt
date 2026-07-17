@@ -1,12 +1,7 @@
 package com.fersaiyan.cyanbridge.agent
 
 import android.content.Context
-
-enum class AgentProviderType {
-    TASKER,
-    LOCAL_AGENT,
-    PRO_SUBSCRIPTION,
-}
+import com.fersaiyan.cyanbridge.shared.settings.AgentProviderType
 
 object LocalAgentPrefs {
     private const val PREFS = "local_agent_prefs"

@@ -1,4 +1,5 @@
 package com.fersaiyan.cyanbridge
+import com.fersaiyan.cyanbridge.shared.devices.DeviceProfile
 
 import android.Manifest
 import android.app.Activity
@@ -11,13 +12,13 @@ import android.content.pm.PackageManager
 import android.graphics.BitmapFactory
 import android.widget.ArrayAdapter
 import androidx.localbroadcastmanager.content.LocalBroadcastManager
-import com.fersaiyan.cyanbridge.agent.AgentProviderType
+import com.fersaiyan.cyanbridge.shared.settings.AgentProviderType
 import com.fersaiyan.cyanbridge.agent.LocalAgentPrefs as AutomationPrefs
 import com.fersaiyan.cyanbridge.ui.VersionUpdateChecker
 import com.fersaiyan.cyanbridge.localagent.LocalAgentController
 import com.fersaiyan.cyanbridge.localagent.LocalAgentIntents
 import com.fersaiyan.cyanbridge.localagent.LocalAgentPrefs
-import com.fersaiyan.cyanbridge.audio.CaptureSource
+import com.fersaiyan.cyanbridge.shared.settings.CaptureSource
 import com.fersaiyan.cyanbridge.audio.MeetingCapturePrefs
 import com.fersaiyan.cyanbridge.audio.MeetingCaptureService
 import com.fersaiyan.cyanbridge.media.GlassesMediaPrefs
@@ -27,7 +28,13 @@ import com.fersaiyan.cyanbridge.ota.FirmwareClient
 import com.fersaiyan.cyanbridge.ota.FirmwareResult
 import com.fersaiyan.cyanbridge.ota.OtaManager
 import com.fersaiyan.cyanbridge.ota.OtaState
+import com.fersaiyan.cyanbridge.ota.OtaTarget
+import com.fersaiyan.cyanbridge.glasses.GlassesSession
+import com.fersaiyan.cyanbridge.glasses.GlassesSessionLease
+import com.fersaiyan.cyanbridge.glasses.GlassesSessionCoordinator
+import com.fersaiyan.cyanbridge.glasses.BackgroundGlassesCommandPermit
 import com.fersaiyan.cyanbridge.media.autocapture.AutoAudioCapturePrefs
+import com.fersaiyan.cyanbridge.media.autocapture.AutoAudioCaptureService
 import com.fersaiyan.cyanbridge.media.autocapture.GlassesSyncedAudioIngestor
 import android.os.Build
 import android.os.Bundle
@@ -62,7 +69,7 @@ import com.fersaiyan.cyanbridge.ui.BluetoothEvent
 import com.fersaiyan.cyanbridge.ui.AutoPairManager
 import com.fersaiyan.cyanbridge.chat.ChatStore
 import com.fersaiyan.cyanbridge.devices.DeviceProfileStore
-import com.fersaiyan.cyanbridge.devices.GlassesManagerGating
+import com.fersaiyan.cyanbridge.shared.devices.GlassesManagerGating
 import com.fersaiyan.cyanbridge.ai.transcription.DefaultTranscriptionService
 import com.fersaiyan.cyanbridge.ai.transcription.Mp4AudioChunker
 import com.fersaiyan.cyanbridge.ai.transcription.NoOpAudioChunker
@@ -157,6 +164,8 @@ import com.fersaiyan.cyanbridge.ai.router.AssistantSpeechPolicy
 import com.fersaiyan.cyanbridge.ai.router.AiProviderPrefs
 import com.fersaiyan.cyanbridge.ai.router.AiProviderType as RelayProviderType
 import com.fersaiyan.cyanbridge.ai.router.CliRelayClient
+import com.fersaiyan.cyanbridge.ai.vision.VisionProfilePreferences
+import com.fersaiyan.cyanbridge.ai.vision.VisionPromptBuilder
 import com.fersaiyan.cyanbridge.shared.glasses.GlassesAssistantMode
 import com.fersaiyan.cyanbridge.shared.glasses.GlassesDashboardAction
 import com.fersaiyan.cyanbridge.shared.glasses.GlassesDashboardUiState
@@ -217,19 +226,35 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
 
     override fun onInit(status: Int) {
         if (status == TextToSpeech.SUCCESS) {
-            tts?.language = Locale.US
+            tts?.language = Locale.getDefault()
         }
     }
 
     private fun speak(text: String) {
-        speak(text, utteranceId = null, onDone = null)
+        speak(text, languageTag = null, utteranceId = null, onDone = null)
+    }
+
+    private fun speakVision(text: String) {
+        speak(
+            text = text,
+            languageTag = VisionProfilePreferences.get(this).responseLanguageTag,
+            utteranceId = null,
+            onDone = null,
+        )
     }
 
     private fun speak(
         text: String,
+        languageTag: String? = null,
         utteranceId: String?,
         onDone: (() -> Unit)?,
     ) {
+        languageTag?.takeIf { it.isNotBlank() }?.let { tag ->
+            val result = tts?.setLanguage(Locale.forLanguageTag(tag))
+            if (result == TextToSpeech.LANG_MISSING_DATA || result == TextToSpeech.LANG_NOT_SUPPORTED) {
+                Log.w(TAG, "Text-to-speech voice unavailable for $tag")
+            }
+        }
         val id = utteranceId ?: "utt_${System.currentTimeMillis()}"
         if (onDone != null) {
             ttsDoneCallbacks[id] = onDone
@@ -258,6 +283,12 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
 
         // Max age for a fallback image to be considered "recent enough" for AI analysis.
         private const val IMAGE_FALLBACK_MAX_AGE_MS = 3L * 60L * 1000L
+        private const val P2P_GROUP_REMOVAL_RETRY_MS = 1_000L
+        private const val P2P_GROUP_REMOVE_ACTION_TIMEOUT_MS = 5_000L
+        private const val P2P_GROUP_DISCONNECT_TIMEOUT_MS = 5_000L
+        private const val P2P_GROUP_REMOVAL_MAX_ATTEMPTS = 3
+        private const val PULL_OTA_TEST_LEASE_MS = 10_000L
+        private const val ONE_SHOT_BLE_COMMAND_TIMEOUT_MS = 6_000L
 
         fun actionTaskerCommand(appPackageName: String): String =
             "$appPackageName.ACTION_TASKER_COMMAND"
@@ -279,7 +310,13 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
     private var dashboardState by mutableStateOf(GlassesDashboardUiState())
     private var showDownloadFlowPicker by mutableStateOf(false)
     private val deviceNotifyListener by lazy { MyDeviceNotifyListener() }
+    private var otaSessionLease: GlassesSessionLease? = null
+    private var livePreviewSessionLease: GlassesSessionLease? = null
+    private var mediaSessionLease: GlassesSessionLease? = null
     private val otaManager by lazy { OtaManager(this) }
+    private var otaPreparationJob: Job? = null
+    private val livePreviewManager by lazy { com.fersaiyan.cyanbridge.ota.LivePreviewManager(this) }
+    private var livePreviewDialog: AlertDialog? = null
 
     // AI Hijack settings
     private var isAiHijackEnabled = true // Default to enabled
@@ -296,6 +333,8 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
     private var downloadAttemptJob: Job? = null
     private var downloadSessionJob: Job? = null
     private var downloadSessionScope: CoroutineScope? = null
+    // Must outlive Activity destruction long enough to confirm P2P teardown.
+    private val glassesTeardownScope = CoroutineScope(SupervisorJob() + Dispatchers.Main)
     private var downloadSessionId: Long = 0L
     private var vendorAlbumDownloader: VendorAlbumDownloader? = null
     private var downloadResolvedHttpIp: String? = null
@@ -304,6 +343,8 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
     private var lastP2pResetAtMs: Long = 0L
     private var downloadWifiP2pManager: WifiP2pManagerSingleton? = null
     private var downloadWifiP2pCallback: WifiP2pManagerSingleton.WifiP2pCallback? = null
+    private var downloadP2pTeardownInProgress = false
+    private var downloadExitTransferRequested = false
     private var downloadCancelledByUser = false
     private var lastDownloadBleIpAtMs: Long = 0L
     private var downloadInitialPhaseTimeoutJob: Job? = null
@@ -326,6 +367,7 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
     private val imageQueryInProgress = java.util.concurrent.atomic.AtomicBoolean(false)
     private val imageThumbnailRequestInProgress = java.util.concurrent.atomic.AtomicBoolean(false)
     private val imageCaptureAwaitingNotification = java.util.concurrent.atomic.AtomicBoolean(false)
+    private val pendingImageCapturePermit = AtomicReference<BackgroundGlassesCommandPermit?>(null)
     @Volatile
     private var pendingImageCaptureSourceTag: String? = null
     private var lastImageQueryAtMs: Long = 0L
@@ -392,6 +434,7 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
                 )
             }
         }
+        observeLivePreviewState()
         // Transcription UI moved to the "Transcriptions & recordings" section
         logLargeDataHandlerMethodsOnce()
         // Check for app updates
@@ -460,6 +503,26 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
     }
 
     override fun onDestroy() {
+        livePreviewDialog?.dismiss()
+        livePreviewDialog = null
+        livePreviewManager.release()
+        otaPreparationJob?.cancel()
+        otaPreparationJob = null
+        otaManager.cancel()
+        if (GlassesSessionCoordinator.currentSession() == GlassesSession.MEDIA_SYNC) {
+            downloadCancelledByUser = true
+            teardownDownloadP2pSession(
+                sendExitTransfer = true,
+                hideTransferUi = false,
+            )
+        }
+        try {
+            LargeDataHandler.getInstance().removeOutDeviceListener(100)
+            LargeDataHandler.getInstance().removeBatteryCallBack("init")
+            batteryCallbackRegistered = false
+        } catch (e: Exception) {
+            Log.w("DeviceNotify", "Failed to unregister SDK callbacks", e)
+        }
         super.onDestroy()
         tts?.stop()
         tts?.shutdown()
@@ -572,7 +635,99 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
         }
     }
 
+    private fun acquireExclusiveGlassesSession(session: GlassesSession): GlassesSessionLease? {
+        val lease = GlassesSessionCoordinator.tryAcquireLease(session)
+        if (lease != null) {
+            Log.i("GlassesSession", "Acquired ${session.label} session")
+            return lease
+        }
+
+        val activeSession = GlassesSessionCoordinator.currentSession()
+        if (activeSession == null) {
+            Log.w("GlassesSession", "Could not acquire ${session.label} session; a one-shot glasses command is still active")
+            Toast.makeText(
+                this,
+                "Waiting for the current glasses command to finish.",
+                Toast.LENGTH_SHORT,
+            ).show()
+            return null
+        }
+
+        Log.w(
+            "GlassesSession",
+            "Cannot start ${session.label}; ${activeSession.label} still owns BLE/P2P",
+        )
+        Toast.makeText(
+            this,
+            "Stop ${activeSession.label} before starting ${session.label}.",
+            Toast.LENGTH_LONG,
+        ).show()
+        return null
+    }
+
+    private fun releaseExclusiveGlassesSession(lease: GlassesSessionLease?) {
+        if (lease != null && GlassesSessionCoordinator.release(lease)) {
+            if (mediaSessionLease === lease) mediaSessionLease = null
+            if (otaSessionLease === lease) otaSessionLease = null
+            if (livePreviewSessionLease === lease) livePreviewSessionLease = null
+            Log.i("GlassesSession", "Released ${lease.session.label} session")
+        }
+    }
+
+    private fun isGlassesCommandBlocked(source: String): Boolean {
+        val activeSession = GlassesSessionCoordinator.currentSession() ?: return false
+        Log.w(
+            "GlassesSession",
+            "Skipping $source; ${activeSession.label} owns the SDK BLE/P2P slots",
+        )
+        return true
+    }
+
+    private fun acquireBackgroundGlassesCommand(source: String): BackgroundGlassesCommandPermit? {
+        val permit = GlassesSessionCoordinator.tryAcquireBackgroundCommand()
+        if (permit == null) {
+            val owner = GlassesSessionCoordinator.currentSession()?.label ?: "another glasses command"
+            Log.w("GlassesSession", "Skipping $source; $owner owns the SDK BLE/P2P slots")
+        }
+        return permit
+    }
+
+    private fun warnIfBackgroundGlassesCommandTimesOut(
+        permit: BackgroundGlassesCommandPermit,
+        timeoutMs: Long = ONE_SHOT_BLE_COMMAND_TIMEOUT_MS,
+    ) {
+        glassesTeardownScope.launch {
+            delay(timeoutMs)
+            if (GlassesSessionCoordinator.isBackgroundCommandActive(permit)) {
+                Log.w(
+                    "GlassesSession",
+                    "Glasses command timed out; keeping the SDK response slot isolated until its response or Bluetooth reconnect",
+                )
+            }
+        }
+    }
+
+    private fun isDashboardActionBlockedByExclusiveSession(action: GlassesDashboardAction): Boolean {
+        val activeSession = GlassesSessionCoordinator.currentSession() ?: return false
+        val isAllowed = when (action) {
+            is GlassesDashboardAction.Navigate -> true
+            GlassesDashboardAction.StopSync -> activeSession == GlassesSession.MEDIA_SYNC
+            GlassesDashboardAction.StopLivePreview -> activeSession == GlassesSession.LIVE_PREVIEW
+            GlassesDashboardAction.CancelOta -> activeSession == GlassesSession.OTA
+            else -> false
+        }
+        if (isAllowed) return false
+
+        Toast.makeText(
+            this,
+            "${activeSession.label.replaceFirstChar { it.uppercase() }} is using the glasses connection.",
+            Toast.LENGTH_SHORT,
+        ).show()
+        return true
+    }
+
     private fun handleDashboardAction(action: GlassesDashboardAction) {
+        if (isDashboardActionBlockedByExclusiveSession(action)) return
         when (action) {
             is GlassesDashboardAction.Navigate -> navigateToDestination(action.destination)
             GlassesDashboardAction.Scan -> binding.btnScan.performClick()
@@ -618,7 +773,21 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
             GlassesDashboardAction.DumpOtaInfo -> binding.btnOtaInfo.performClick()
             GlassesDashboardAction.TestPullOta -> binding.btnPullOtaTest.performClick()
             GlassesDashboardAction.StartOta -> startDebugOta()
-            GlassesDashboardAction.CancelOta -> otaManager.cancel()
+            GlassesDashboardAction.CancelOta -> {
+                otaPreparationJob?.cancel()
+                otaPreparationJob = null
+                otaManager.cancel()
+            }
+            is com.fersaiyan.cyanbridge.shared.glasses.GlassesDashboardAction.SelectOtaTarget -> {
+                dashboardState = dashboardState.copy(
+                    ota = dashboardState.ota.copy(selectedTarget = action.target),
+                )
+            }
+            GlassesDashboardAction.StartLivePreview -> startLivePreview()
+            GlassesDashboardAction.StopLivePreview -> {
+                Log.i("LivePreview", "BUTTON TAP: Stop Live Preview")
+                stopLivePreview()
+            }
             GlassesDashboardAction.MetaRegister -> binding.btnMetaRegister.performClick()
             GlassesDashboardAction.MetaUnregister -> binding.btnMetaUnregister.performClick()
             GlassesDashboardAction.MetaStartSession -> binding.btnMetaSessionStart.performClick()
@@ -640,7 +809,7 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
                 val now = System.currentTimeMillis()
                 val lastUserAt = last?.let { thread ->
                     ChatStore.listMessages(thread.id)
-                        .lastOrNull { it.role == com.fersaiyan.cyanbridge.chat.ChatRole.USER }
+                        .lastOrNull { it.role == com.fersaiyan.cyanbridge.shared.chat.ChatRole.USER }
                         ?.createdAt
                 } ?: 0L
                 val openChatId = last?.id?.takeIf { lastUserAt > 0L && now - lastUserAt < 30 * 60 * 1000L }
@@ -691,9 +860,32 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
             binding.btnMeetingBannerStop,
             binding.btnTransferStop,
         ) {
-            // Safety: stop glasses audio recording before most actions.
-            // Users often press camera/video/etc while audio is running.
-            val shouldStopGlassesAudio = this != binding.btnScan && this != binding.btnConnect && this != binding.btnTransferStop
+            val activeSession = GlassesSessionCoordinator.currentSession()
+            val isAllowedStop = this == binding.btnTransferStop &&
+                activeSession == GlassesSession.MEDIA_SYNC
+            if (activeSession != null && !isAllowedStop) {
+                Toast.makeText(
+                    this@MainActivity,
+                    "${activeSession.label.replaceFirstChar { it.uppercase() }} is using the glasses connection.",
+                    Toast.LENGTH_SHORT,
+                ).show()
+                return@setOnClickListener
+            }
+
+            // Do not queue an unawaited audio-stop command immediately before another command
+            // that needs the vendor SDK's single glassesControl response slot.
+            val actionSendsGlassesControl = this == binding.btnCamera ||
+                this == binding.btnVideo ||
+                this == binding.btnRecord ||
+                this == binding.btnMediaCount ||
+                this == binding.btnDataDownload ||
+                this == binding.btnTestHijackVoice ||
+                this == binding.btnTestHijackImage ||
+                this == binding.btnPullOtaTest
+            val shouldStopGlassesAudio = this != binding.btnScan &&
+                this != binding.btnConnect &&
+                this != binding.btnTransferStop &&
+                !actionSendsGlassesControl
             if (shouldStopGlassesAudio) {
                 controlAudioRecording(false)
                 // If auto audio capture is enabled, give the user a short window to operate other controls.
@@ -823,33 +1015,43 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
                 }
 
                 binding.btnCamera -> {
-                    LargeDataHandler.getInstance().glassesControl(
-                        byteArrayOf(0x02, 0x01, 0x01)
-                    ) { _, it ->
-                        if (it.dataType == 1 && it.errorCode == 0) {
-                            when (it.workTypeIng) {
-                                2 -> {
-                                    //Glasses are recording video
+                    val permit = acquireBackgroundGlassesCommand("camera command")
+                        ?: return@setOnClickListener
+                    try {
+                        LargeDataHandler.getInstance().glassesControl(
+                            byteArrayOf(0x02, 0x01, 0x01)
+                        ) { _, it ->
+                            try {
+                                if (it.dataType == 1 && it.errorCode == 0) {
+                                    when (it.workTypeIng) {
+                                        2 -> {
+                                            //Glasses are recording video
+                                        }
+                                        4 -> {
+                                            //Glasses are in transfer mode
+                                        }
+                                        5 -> {
+                                            //Glasses are in OTA mode
+                                        }
+                                        1, 6 ->{
+                                            //Glasses are in camera mode
+                                        }
+                                        7 -> {
+                                            //Glasses are in AI conversation
+                                        }
+                                        8 ->{
+                                            //Glasses are in recording mode
+                                        }
+                                    }
                                 }
-                                4 -> {
-                                    //Glasses are in transfer mode
-                                }
-                                5 -> {
-                                    //Glasses are in OTA mode
-                                }
-                                1, 6 ->{
-                                    //Glasses are in camera mode
-                                }
-                                7 -> {
-                                    //Glasses are in AI conversation
-                                }
-                                8 ->{
-                                    //Glasses are in recording mode
-                                }
+                            } finally {
+                                GlassesSessionCoordinator.releaseBackgroundCommand(permit)
                             }
-                        } else {
-                            //Execute start and end
                         }
+                        warnIfBackgroundGlassesCommandTimesOut(permit)
+                    } catch (e: Exception) {
+                        GlassesSessionCoordinator.releaseBackgroundCommand(permit)
+                        Log.e("Camera", "Failed to send camera command", e)
                     }
                 }
 
@@ -907,19 +1109,31 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
                 }
                 binding.btnMediaCount ->{
                     Toast.makeText(this@MainActivity, "Requesting media count…", Toast.LENGTH_SHORT).show()
-                    LargeDataHandler.getInstance().glassesControl(byteArrayOf(0x02, 0x04)) { _, it ->
-                        if (it.dataType == 4) {
-                            val mediaCount = it.imageCount + it.videoCount + it.recordCount
-                            val msg = if (mediaCount > 0) {
-                                "Media not uploaded - Photos: ${it.imageCount}, Videos: ${it.videoCount}, Records: ${it.recordCount}"
-                            } else {
-                                "No pending media on glasses"
-                            }
-                            Log.i("MediaCount", msg)
-                            runOnUiThread {
-                                Toast.makeText(this@MainActivity, msg, Toast.LENGTH_LONG).show()
+                    val permit = acquireBackgroundGlassesCommand("media-count command")
+                        ?: return@setOnClickListener
+                    try {
+                        LargeDataHandler.getInstance().glassesControl(byteArrayOf(0x02, 0x04)) { _, it ->
+                            try {
+                                if (it.dataType == 4) {
+                                    val mediaCount = it.imageCount + it.videoCount + it.recordCount
+                                    val msg = if (mediaCount > 0) {
+                                        "Media not uploaded - Photos: ${it.imageCount}, Videos: ${it.videoCount}, Records: ${it.recordCount}"
+                                    } else {
+                                        "No pending media on glasses"
+                                    }
+                                    Log.i("MediaCount", msg)
+                                    runOnUiThread {
+                                        Toast.makeText(this@MainActivity, msg, Toast.LENGTH_LONG).show()
+                                    }
+                                }
+                            } finally {
+                                GlassesSessionCoordinator.releaseBackgroundCommand(permit)
                             }
                         }
+                        warnIfBackgroundGlassesCommandTimesOut(permit)
+                    } catch (e: Exception) {
+                        GlassesSessionCoordinator.releaseBackgroundCommand(permit)
+                        Log.e("MediaCount", "Failed to request media count", e)
                     }
                 }
                 binding.btnDataDownload -> {
@@ -1124,6 +1338,12 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
      * yourself and point TEST_PULL_OTA_URL at it.
      */
     private fun testPullModeOta() {
+        if (!BuildConfig.DEBUG) {
+            Log.w("PullOtaTest", "Pull-mode OTA testing is disabled outside debug builds")
+            Toast.makeText(this, "Pull-mode OTA testing is available only in debug builds.", Toast.LENGTH_LONG).show()
+            return
+        }
+        if (isGlassesCommandBlocked("pull-mode OTA test")) return
         if (!BleOperateManager.getInstance().isConnected) {
             Log.e("PullOtaTest", "Bluetooth not connected. Please connect to glasses first.")
             Toast.makeText(
@@ -1145,22 +1365,50 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
             return
         }
 
+        val pullOtaLease = acquireExclusiveGlassesSession(GlassesSession.OTA) ?: return
         Log.i("PullOtaTest", "Calling writeIpToSoc with URL: $url")
-        LargeDataHandler.getInstance().writeIpToSoc(url) { cmdType, response ->
-            Log.i(
-                "PullOtaTest",
-                "writeIpToSoc callback: cmdType=$cmdType, response=$response"
-            )
+        try {
+            LargeDataHandler.getInstance().writeIpToSoc(url) { cmdType, response ->
+                Log.i(
+                    "PullOtaTest",
+                    "writeIpToSoc callback: cmdType=$cmdType, response=$response"
+                )
+            }
+            // Keep the exclusive BLE slot for the response window. The callback is diagnostic
+            // only, so a late vendor response cannot release a later OTA session.
+            glassesTeardownScope.launch {
+                delay(PULL_OTA_TEST_LEASE_MS)
+                releaseExclusiveGlassesSession(pullOtaLease)
+            }
+        } catch (e: Exception) {
+            releaseExclusiveGlassesSession(pullOtaLease)
+            Log.e("PullOtaTest", "writeIpToSoc failed", e)
         }
     }
 
     /**
-     * Start the debug SWU OTA flow.
+     * Start the debug firmware OTA flow.
      * Downloads the gated firmware from the CyanBridge server (requires Standard/Max subscription).
-     * The firmware is NOT bundled with the app — it's only available via the gated server endpoint.
+     * Supports both Wi-Fi (.swu for V821) and BLE (.bin for JieLi) targets.
      */
     private fun startDebugOta() {
-        Log.i("DebugOta", "=== START DEBUG OTA ===")
+        if (otaManager.isActive || otaPreparationJob?.isActive == true) {
+            Log.w("DebugOta", "OTA is already preparing or running")
+            return
+        }
+        if (AutoAudioCaptureService.isRunning()) {
+            Toast.makeText(this, "Stop auto audio capture before starting a firmware update.", Toast.LENGTH_LONG).show()
+            return
+        }
+        val otaLease = acquireExclusiveGlassesSession(GlassesSession.OTA) ?: return
+        otaSessionLease = otaLease
+        val selectedTarget = dashboardState.ota.selectedTarget
+        Log.i("DebugOta", "=== START DEBUG OTA (target=$selectedTarget) ===")
+
+        val otaTarget = when (selectedTarget) {
+            com.fersaiyan.cyanbridge.shared.glasses.OtaTargetSelection.V821_WIFI -> OtaTarget.V821_WIFI
+            com.fersaiyan.cyanbridge.shared.glasses.OtaTargetSelection.JIELI_BLE -> OtaTarget.JIELI_BLE
+        }
 
         // Observe OTA state and update dashboard
         lifecycleScope.launch {
@@ -1173,13 +1421,15 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
                         progress = ota.progress,
                         canStart = ota.state == OtaState.IDLE || ota.state == OtaState.COMPLETE || ota.state == OtaState.FAILED,
                         canCancel = ota.state != OtaState.IDLE && ota.state != OtaState.COMPLETE && ota.state != OtaState.FAILED,
+                        selectedTarget = selectedTarget,
                     ),
                 )
             }
         }
 
         // Run firmware fetch in background
-        lifecycleScope.launch(kotlinx.coroutines.Dispatchers.IO) {
+        otaPreparationJob = lifecycleScope.launch(kotlinx.coroutines.Dispatchers.IO) {
+            try {
             // Update UI: fetching firmware info
             kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.Main) {
                 dashboardState = dashboardState.copy(
@@ -1197,11 +1447,10 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
             val bleConnected = BleOperateManager.getInstance().isConnected
             Log.i("DebugOta", "BLE connected: $bleConnected")
 
-            val wifiHw = getGlassesWifiHardwareVersion()
-            val wifiFw = getGlassesWifiFirmwareVersion()
+            val deviceInfo = readGlassesDeviceInfo()
 
-            if (wifiHw.isBlank()) {
-                Log.e("DebugOta", "FAIL: Could not read wifiHardwareVersion (BLE connected=$bleConnected)")
+            if (deviceInfo == null) {
+                Log.e("DebugOta", "FAIL: Could not read deviceInfo (BLE connected=$bleConnected)")
                 kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.Main) {
                     Toast.makeText(
                         this@MainActivity,
@@ -1209,19 +1458,48 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
                         Toast.LENGTH_LONG,
                     ).show()
                     dashboardState = dashboardState.copy(
-                        ota = com.fersaiyan.cyanbridge.shared.glasses.OtaSectionUiState(),
+                        ota = com.fersaiyan.cyanbridge.shared.glasses.OtaSectionUiState(selectedTarget = selectedTarget),
                     )
                 }
                 return@launch
             }
 
-            Log.i("DebugOta", "Glasses info: wifiHw=$wifiHw, wifiFw=$wifiFw")
+            // Select the correct identifiers based on OTA target.
+            // BLE OTA uses BLE hardware/firmware versions (matches official app's getHwVersion/getFmVersion).
+            // Wi-Fi OTA uses Wi-Fi hardware/firmware versions.
+            val (hwVersion, fwVersion) = when (otaTarget) {
+                OtaTarget.V821_WIFI ->
+                    (deviceInfo.wifiHardwareVersion ?: "") to (deviceInfo.wifiFirmwareVersion ?: "")
+                OtaTarget.JIELI_BLE ->
+                    (deviceInfo.hardwareVersion ?: "") to (deviceInfo.firmwareVersion ?: "")
+            }
+
+            Log.i("DebugOta", "Glasses info (target=$otaTarget): hw=$hwVersion, fw=$fwVersion")
+            Log.i("DebugOta", "  BLE: hw=${deviceInfo.hardwareVersion}, fw=${deviceInfo.firmwareVersion}")
+            Log.i("DebugOta", "  WiFi: hw=${deviceInfo.wifiHardwareVersion}, fw=${deviceInfo.wifiFirmwareVersion}")
+
+            if (hwVersion.isBlank() || fwVersion.isBlank()) {
+                Log.e("DebugOta", "FAIL: Could not read complete firmware identifiers for target=$otaTarget (BLE connected=$bleConnected)")
+                kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.Main) {
+                    Toast.makeText(
+                        this@MainActivity,
+                        "Could not read glasses ${if (otaTarget == OtaTarget.JIELI_BLE) "BLE" else "Wi-Fi"} info. Is Bluetooth connected?",
+                        Toast.LENGTH_LONG,
+                    ).show()
+                    dashboardState = dashboardState.copy(
+                        ota = com.fersaiyan.cyanbridge.shared.glasses.OtaSectionUiState(selectedTarget = selectedTarget),
+                    )
+                }
+                return@launch
+            }
+
+            Log.i("DebugOta", "Glasses info: hw=$hwVersion, fw=$fwVersion")
 
             // Try to fetch from server
-            Log.i("DebugOta", "Calling FirmwareClient.fetchAndDownload()...")
+            Log.i("DebugOta", "Calling FirmwareClient.fetchAndDownload(target=$otaTarget)...")
             val firmwareClient = FirmwareClient(this@MainActivity)
             val otaDir = java.io.File(getExternalFilesDir(null), "ota")
-            val result = firmwareClient.fetchAndDownload(wifiHw, wifiFw, otaDir)
+            val result = firmwareClient.fetchAndDownload(hwVersion, fwVersion, otaDir, otaTarget)
 
             Log.i("DebugOta", "FirmwareClient result: ${result.javaClass.simpleName}")
 
@@ -1229,22 +1507,24 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
                 is FirmwareResult.Ready -> {
                     Log.i("DebugOta", "SUCCESS: Firmware downloaded: ${result.filename} (${result.file.length()} bytes)")
                     Log.i("DebugOta", "  File path: ${result.file.absolutePath}")
-                    Log.i("DebugOta", "  Starting OTA manager...")
+                    Log.i("DebugOta", "  Starting OTA manager (target=$otaTarget)...")
                     kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.Main) {
-                        otaManager.startOta(result.file)
+                        otaManager.startOta(result.file, otaTarget) {
+                            releaseExclusiveGlassesSession(otaLease)
+                        }
                     }
                 }
 
                 is FirmwareResult.NotAvailable -> {
-                    Log.w("DebugOta", "No firmware for ${result.wifiHwVersion}: ${result.message}")
+                    Log.w("DebugOta", "No firmware for ${result.hardwareVersion}: ${result.message}")
                     kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.Main) {
                         androidx.appcompat.app.AlertDialog.Builder(this@MainActivity)
                             .setTitle("Firmware Not Available")
-                            .setMessage("${result.message}\n\nCurrently only WIFIAM01G1 debug firmware is available.")
+                            .setMessage("${result.message}\n\nNo firmware is currently available for this ${if (otaTarget == OtaTarget.JIELI_BLE) "BLE chip" else "Wi-Fi chip"} configuration.")
                             .setPositiveButton("OK", null)
                             .show()
                         dashboardState = dashboardState.copy(
-                            ota = com.fersaiyan.cyanbridge.shared.glasses.OtaSectionUiState(),
+                            ota = com.fersaiyan.cyanbridge.shared.glasses.OtaSectionUiState(selectedTarget = selectedTarget),
                         )
                     }
                 }
@@ -1268,7 +1548,7 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
                             }
                             .show()
                         dashboardState = dashboardState.copy(
-                            ota = com.fersaiyan.cyanbridge.shared.glasses.OtaSectionUiState(),
+                            ota = com.fersaiyan.cyanbridge.shared.glasses.OtaSectionUiState(selectedTarget = selectedTarget),
                         )
                     }
                 }
@@ -1278,8 +1558,25 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
                     kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.Main) {
                         Toast.makeText(this@MainActivity, "Firmware download failed: ${result.message}", Toast.LENGTH_LONG).show()
                         dashboardState = dashboardState.copy(
-                            ota = com.fersaiyan.cyanbridge.shared.glasses.OtaSectionUiState(),
+                            ota = com.fersaiyan.cyanbridge.shared.glasses.OtaSectionUiState(selectedTarget = selectedTarget),
                         )
+                    }
+                }
+            }
+            } catch (e: CancellationException) {
+                throw e
+            } catch (e: Exception) {
+                Log.e("DebugOta", "OTA preparation failed", e)
+                kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.Main) {
+                    Toast.makeText(this@MainActivity, "Firmware preparation failed: ${e.message}", Toast.LENGTH_LONG).show()
+                    dashboardState = dashboardState.copy(
+                        ota = com.fersaiyan.cyanbridge.shared.glasses.OtaSectionUiState(selectedTarget = selectedTarget),
+                    )
+                }
+            } finally {
+                if (!otaManager.isActive) {
+                    kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.Main) {
+                        releaseExclusiveGlassesSession(otaLease)
                     }
                 }
             }
@@ -1323,8 +1620,157 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
             }
         }
     }
+
+    /**
+     * Read the full [DeviceInfoResponse] from the glasses via BLE syncDeviceInfo.
+     * Returns null if BLE is not connected or the request times out.
+     *
+     * The response contains both BLE identifiers (hardwareVersion, firmwareVersion)
+     * and Wi-Fi identifiers (wifiHardwareVersion, wifiFirmwareVersion).
+     */
+    private suspend fun readGlassesDeviceInfo(): com.oudmon.ble.base.communication.bigData.resp.DeviceInfoResponse? {
+        if (!BleOperateManager.getInstance().isConnected) return null
+        return withTimeoutOrNull(5_000) {
+            suspendCancellableCoroutine { cont ->
+                try {
+                    LargeDataHandler.getInstance().syncDeviceInfo { _, response ->
+                        if (cont.isActive) {
+                            cont.resume(response) {}
+                        }
+                    }
+                } catch (error: Exception) {
+                    Log.w("DebugOta", "syncDeviceInfo failed while preparing OTA", error)
+                    if (cont.isActive) cont.resume(null) {}
+                }
+            }
+        }
+    }
+
+    private fun startLivePreview() {
+        Log.i("LivePreview", "========================================")
+        Log.i("LivePreview", "  BUTTON TAP: Start Live Preview")
+        Log.i("LivePreview", "  BLE connected: ${BleOperateManager.getInstance().isConnected}")
+        Log.i("LivePreview", "  Manager active: ${livePreviewManager.isActive}")
+        Log.i("LivePreview", "========================================")
+
+        if (livePreviewManager.isActive) {
+            Log.w("LivePreview", "Manager already active, ignoring tap")
+            return
+        }
+
+        if (downloadInProgress || downloadAttemptJob?.isActive == true || downloadP2pConnected) {
+            Log.w("LivePreview", "Refusing to start while a media-sync P2P session owns the connection")
+            Toast.makeText(
+                this,
+                "Stop the current P2P sync before starting live preview.",
+                Toast.LENGTH_LONG,
+            ).show()
+            return
+        }
+        if (AutoAudioCaptureService.isRunning()) {
+            Toast.makeText(this, "Stop auto audio capture before starting live preview.", Toast.LENGTH_LONG).show()
+            return
+        }
+
+        val livePreviewLease = acquireExclusiveGlassesSession(GlassesSession.LIVE_PREVIEW) ?: return
+        livePreviewSessionLease = livePreviewLease
+
+        livePreviewManager.start {
+            releaseExclusiveGlassesSession(livePreviewLease)
+        }
+    }
+
+    private fun observeLivePreviewState() {
+        lifecycleScope.launch {
+            var lastLabel = ""
+            livePreviewManager.uiState.collect { lp ->
+                if (lp.stateLabel != lastLabel) {
+                    Log.i("LivePreview", "Dashboard state: '${lp.stateLabel}' | scanning=${lp.isScanning} | playing=${lp.isPlaying} | url=${lp.streamUrl}")
+                    lastLabel = lp.stateLabel
+                }
+                dashboardState = dashboardState.copy(
+                    livePreview = com.fersaiyan.cyanbridge.shared.glasses.LivePreviewUiState(
+                        stateLabel = lp.stateLabel,
+                        detail = lp.detail,
+                        isScanning = lp.isScanning,
+                        isPlaying = lp.isPlaying,
+                        streamUrl = lp.streamUrl,
+                        canStart = lp.canStart,
+                        canStop = lp.canStop,
+                    ),
+                )
+
+                if (lp.isPlaying && lp.streamUrl != null) {
+                    Log.i("LivePreview", "Stream playing, showing ExoPlayer dialog: ${lp.streamUrl}")
+                    showRtspPlayerDialog(lp.streamUrl)
+                } else {
+                    livePreviewDialog?.let { dialog ->
+                        livePreviewDialog = null
+                        dialog.dismiss()
+                    }
+                }
+            }
+        }
+    }
+
+    private fun stopLivePreview() {
+        livePreviewManager.stop()
+        livePreviewDialog?.let { dialog ->
+            livePreviewDialog = null
+            dialog.dismiss()
+        }
+    }
+
+    private fun showRtspPlayerDialog(streamUrl: String) {
+        Log.i("LivePreview", "showRtspPlayerDialog: $streamUrl")
+        if (livePreviewDialog?.isShowing == true) {
+            Log.d("LivePreview", "showRtspPlayerDialog: dialog is already visible")
+            return
+        }
+        val player = livePreviewManager.getPlayer()
+        if (player == null) {
+            Log.e("LivePreview", "showRtspPlayerDialog: player is null!")
+            return
+        }
+
+        val dialogView = android.widget.FrameLayout(this).apply {
+            layoutParams = android.widget.FrameLayout.LayoutParams(
+                android.widget.FrameLayout.LayoutParams.MATCH_PARENT,
+                android.widget.FrameLayout.LayoutParams.WRAP_CONTENT,
+            )
+        }
+
+        val playerView = androidx.media3.ui.PlayerView(this).apply {
+            this.player = player
+            useController = true
+            layoutParams = android.widget.FrameLayout.LayoutParams(
+                android.widget.FrameLayout.LayoutParams.MATCH_PARENT,
+                600,
+            )
+        }
+        dialogView.addView(playerView)
+
+        val dialog = androidx.appcompat.app.AlertDialog.Builder(this)
+            .setTitle("Live Preview")
+            .setMessage(streamUrl)
+            .setView(dialogView)
+            .setPositiveButton("Close", null)
+            .create()
+        dialog.setOnDismissListener {
+            if (livePreviewDialog === dialog) {
+                Log.i("LivePreview", "Dialog: dismissed")
+                livePreviewDialog = null
+                livePreviewManager.stop()
+            }
+        }
+        livePreviewDialog = dialog
+        dialog.show()
+        Log.i("LivePreview", "Dialog: shown")
+    }
     
     private fun controlVideoRecording(start: Boolean) {
+        if (isGlassesCommandBlocked("video recording command")) return
+        val permit = acquireBackgroundGlassesCommand("video recording command") ?: return
         val value = if (start) 0x02 else 0x03
 
         // While video is recording, pause the auto audio loop.
@@ -1333,65 +1779,101 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
             GlassesMediaPrefs.setVideoRecording(this, true) // optimistic
         }
 
-        LargeDataHandler.getInstance().glassesControl(
-            byteArrayOf(0x02, 0x01, value.toByte())
-        ) { _, rsp ->
-            if (rsp.dataType == 1) {
-                if (rsp.errorCode == 0) {
-                    when (rsp.workTypeIng) {
-                        2 -> {
-                            // Glasses are recording video
-                            GlassesMediaPrefs.setVideoRecording(this, true)
-                            AutoAudioCapturePrefs.setPausedForVideo(this, true)
-                        }
-                        else -> {
-                            // Anything other than 2 means not actively recording video.
-                            GlassesMediaPrefs.setVideoRecording(this, false)
-                            AutoAudioCapturePrefs.setPausedForVideo(this, false)
+        try {
+            LargeDataHandler.getInstance().glassesControl(
+                byteArrayOf(0x02, 0x01, value.toByte())
+            ) { _, rsp ->
+                try {
+                    if (rsp.dataType == 1) {
+                        if (rsp.errorCode == 0) {
+                            when (rsp.workTypeIng) {
+                                2 -> {
+                                    // Glasses are recording video
+                                    GlassesMediaPrefs.setVideoRecording(this, true)
+                                    AutoAudioCapturePrefs.setPausedForVideo(this, true)
+                                }
+                                else -> {
+                                    // Anything other than 2 means not actively recording video.
+                                    GlassesMediaPrefs.setVideoRecording(this, false)
+                                    AutoAudioCapturePrefs.setPausedForVideo(this, false)
+                                }
+                            }
+                        } else {
+                            // Command failed; revert optimistic state.
+                            if (start) {
+                                GlassesMediaPrefs.setVideoRecording(this, false)
+                                AutoAudioCapturePrefs.setPausedForVideo(this, false)
+                            }
                         }
                     }
-                } else {
-                    // Command failed; revert optimistic state.
-                    if (start) {
-                        GlassesMediaPrefs.setVideoRecording(this, false)
-                        AutoAudioCapturePrefs.setPausedForVideo(this, false)
-                    }
+                } finally {
+                    GlassesSessionCoordinator.releaseBackgroundCommand(permit)
                 }
             }
+            warnIfBackgroundGlassesCommandTimesOut(permit)
+        } catch (e: Exception) {
+            GlassesSessionCoordinator.releaseBackgroundCommand(permit)
+            Log.e("VideoRecording", "Failed to send video recording command", e)
         }
     }
     
     private fun controlAudioRecording(start: Boolean) {
+        if (isGlassesCommandBlocked("audio recording command")) return
+        val permit = acquireBackgroundGlassesCommand("audio recording command") ?: return
         val value = if (start) 0x08 else 0x0c
-        LargeDataHandler.getInstance().glassesControl(
-            byteArrayOf(0x02, 0x01, value.toByte())
-        ) { _, it ->
-            if (it.dataType == 1) {
-                if (it.errorCode == 0) {
-                    when (it.workTypeIng) {
-                        2 -> {
-                            //Glasses are recording video
+        try {
+            LargeDataHandler.getInstance().glassesControl(
+                byteArrayOf(0x02, 0x01, value.toByte())
+            ) { _, it ->
+                try {
+                    if (it.dataType == 1) {
+                        if (it.errorCode == 0) {
+                            when (it.workTypeIng) {
+                                2 -> {
+                                    //Glasses are recording video
+                                }
+                                4 -> {
+                                    //Glasses are in transfer mode
+                                }
+                                5 -> {
+                                    //Glasses are in OTA mode
+                                }
+                                1, 6 ->{
+                                    //Glasses are in camera mode
+                                }
+                                7 -> {
+                                    //Glasses are in AI conversation
+                                }
+                                8 ->{
+                                    //Glasses are in recording mode
+                                }
+                            }
                         }
-                        4 -> {
-                            //Glasses are in transfer mode
-                        }
-                        5 -> {
-                            //Glasses are in OTA mode
-                        }
-                        1, 6 ->{
-                            //Glasses are in camera mode
-                        }
-                        7 -> {
-                            //Glasses are in AI conversation
-                        }
-                        8 ->{
-                            //Glasses are in recording mode
-                        }
+                    } else {
+                        //Execute start and end
                     }
-                } else {
-                    //Execute start and end
+                } finally {
+                    GlassesSessionCoordinator.releaseBackgroundCommand(permit)
                 }
             }
+            warnIfBackgroundGlassesCommandTimesOut(permit)
+        } catch (e: Exception) {
+            GlassesSessionCoordinator.releaseBackgroundCommand(permit)
+            Log.e("AudioRecording", "Failed to send audio recording command", e)
+        }
+    }
+
+    private fun stopGlassesAiAudio(source: String) {
+        if (isGlassesCommandBlocked(source)) return
+        val permit = acquireBackgroundGlassesCommand(source) ?: return
+        try {
+            LargeDataHandler.getInstance().glassesControl(byteArrayOf(0x02, 0x01, 0x0b)) { _, _ ->
+                GlassesSessionCoordinator.releaseBackgroundCommand(permit)
+            }
+            warnIfBackgroundGlassesCommandTimesOut(permit)
+        } catch (e: Exception) {
+            GlassesSessionCoordinator.releaseBackgroundCommand(permit)
+            Log.e("AIHijack", "Failed to stop glasses AI audio for $source", e)
         }
     }
 
@@ -1401,6 +1883,15 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
         if (event.connect) {
             requestBatteryStatus(showToast = false)
         } else {
+            otaPreparationJob?.cancel()
+            otaPreparationJob = null
+            abandonDownloadP2pForBluetoothDisconnect()
+            livePreviewManager.onBluetoothDisconnected()
+            otaManager.onBluetoothDisconnected()
+            GlassesSessionCoordinator.clearForDisconnectedDevice()
+            mediaSessionLease = null
+            livePreviewSessionLease = null
+            otaSessionLease = null
             updateBatteryText(null)
         }
     }
@@ -1751,6 +2242,13 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
         return null
     }
 
+    private fun buildVisionPrompt(userQuestion: String?): String {
+        return VisionPromptBuilder.build(
+            settings = VisionProfilePreferences.get(this),
+            userQuestion = userQuestion,
+        )
+    }
+
     private fun triggerMemoryAwareImageQuery(
         imagePath: String,
         providerType: AgentProviderType,
@@ -1765,6 +2263,7 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
                         val visionResult = CliRelayClient.imageQuery(
                             context = this@MainActivity,
                             imagePath = imagePath,
+                            prompt = buildVisionPrompt(userQuestion),
                             modelOverride = ProSubscriptionAiPrefs.getQuestionsModel(this@MainActivity),
                         )
 
@@ -1786,36 +2285,25 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
                                 }
                                 "I couldn't analyze the image. Please try again."
                             } else {
-                                val leadPrompt = userQuestion?.trim().takeUnless { it.isNullOrBlank() }
-                                    ?: "Describe and translate to English the following picture if it isn't in English."
-                                val followUpPrompt = buildString {
-                                    appendLine(leadPrompt)
-                                    appendLine("Use this vision observation:")
-                                    appendLine(visionReply.take(1400))
-                                    appendLine()
-                                    appendLine("Keep the final answer concise (1-3 short sentences).")
-                                }
-                                runMemoryAwareChosenProviderQuery(
-                                    userPrompt = followUpPrompt,
-                                    providerType = AgentProviderType.PRO_SUBSCRIPTION,
-                                )
-                                null // Don't speak here - follow-up query will handle it
+                                visionReply
                             }
                         }
                     }
 
                     AgentProviderType.LOCAL_AGENT -> {
-                        val multimodalPrompt = userQuestion?.trim().takeUnless { it.isNullOrBlank() }
-                            ?: "Describe this image clearly, and translate any visible non-English text to English. Keep it concise."
                         runMemoryAwareChosenProviderQuery(
-                            userPrompt = multimodalPrompt,
+                            userPrompt = buildVisionPrompt(userQuestion),
                             providerType = AgentProviderType.LOCAL_AGENT,
                             imagePaths = listOf(imagePath),
                         )
                     }
 
                     AgentProviderType.TASKER -> {
-                        val visionResult = CliRelayClient.imageQuery(this@MainActivity, imagePath)
+                        val visionResult = CliRelayClient.imageQuery(
+                            context = this@MainActivity,
+                            imagePath = imagePath,
+                            prompt = buildVisionPrompt(userQuestion),
+                        )
                         if (visionResult.isFailure) {
                             val errorMsg = visionResult.exceptionOrNull()?.message ?: "unknown error"
                             Log.e("AIHijack", "Image query failed: $errorMsg")
@@ -1834,10 +2322,8 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
                     }
                 }
 
-                if (finalReply != null) {
-                    runOnUiThread {
-                        speak(finalReply)
-                    }
+                runOnUiThread {
+                    speakVision(finalReply)
                 }
             } finally {
                 imageQueryInProgress.set(false)
@@ -1850,6 +2336,10 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
     }
 
     private fun handleGlassesImageButtonPressed(triggerCapture: Boolean, sourceTag: String) {
+        if (isGlassesCommandBlocked("AI image capture")) {
+            clearPendingVoiceImageQuestion(sourceTag)
+            return
+        }
         if (!BleOperateManager.getInstance().isConnected) {
             clearPendingVoiceImageQuestion(sourceTag)
             runOnUiThread {
@@ -1863,35 +2353,42 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
         }
 
         if (triggerCapture) {
+            val permit = acquireBackgroundGlassesCommand("AI image capture") ?: return
             if (imageThumbnailRequestInProgress.get() ||
                 !imageCaptureAwaitingNotification.compareAndSet(false, true)
             ) {
+                GlassesSessionCoordinator.releaseBackgroundCommand(permit)
                 Log.i("AIHijack", "[$sourceTag] Image capture already in progress")
                 return
             }
 
             pendingImageCaptureSourceTag = sourceTag
+            pendingImageCapturePermit.set(permit)
             Toast.makeText(this, "Triggering glasses camera…", Toast.LENGTH_SHORT).show()
             CoroutineScope(Dispatchers.IO).launch {
-                runCatching {
+                try {
                     LargeDataHandler.getInstance().glassesControl(
                         byteArrayOf(0x02, 0x01, 0x06, 0x02, 0x02),
                     ) { _, _ -> }
                     delay(250)
                     LargeDataHandler.getInstance().glassesControl(byteArrayOf(0x02, 0x01, 0x01)) { _, _ -> }
-                }.onFailure { error ->
+
+                    // The device's 0x02 notification is the authoritative signal that its
+                    // thumbnail is ready. Preserve a bounded fallback for devices that omit it.
+                    delay(4_000)
+                    if (imageCaptureAwaitingNotification.compareAndSet(true, false)) {
+                        pendingImageCaptureSourceTag = null
+                        Log.w("AIHijack", "[$sourceTag] No AI photo-ready signal; requesting thumbnail directly")
+                        requestImageThumbnailForQuestion(sourceTag)
+                    }
+                } catch (error: Exception) {
                     imageCaptureAwaitingNotification.set(false)
                     pendingImageCaptureSourceTag = null
                     Log.e("AIHijack", "[$sourceTag] Failed to trigger glasses camera: ${error.message}", error)
-                }
-
-                // The device's 0x02 notification is the authoritative signal that its
-                // thumbnail is ready. Preserve a bounded fallback for devices that omit it.
-                delay(4_000)
-                if (imageCaptureAwaitingNotification.compareAndSet(true, false)) {
-                    pendingImageCaptureSourceTag = null
-                    Log.w("AIHijack", "[$sourceTag] No AI photo-ready signal; requesting thumbnail directly")
-                    requestImageThumbnailForQuestion(sourceTag)
+                } finally {
+                    if (pendingImageCapturePermit.compareAndSet(permit, null)) {
+                        GlassesSessionCoordinator.releaseBackgroundCommand(permit)
+                    }
                 }
             }
         } else {
@@ -1900,7 +2397,12 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
     }
 
     private fun requestImageThumbnailForQuestion(sourceTag: String) {
+        if (isGlassesCommandBlocked("AI thumbnail request")) return
+        val permit = pendingImageCapturePermit.getAndSet(null)
+            ?: acquireBackgroundGlassesCommand("AI thumbnail request")
+            ?: return
         if (!imageThumbnailRequestInProgress.compareAndSet(false, true)) {
+            GlassesSessionCoordinator.releaseBackgroundCommand(permit)
             Log.i("AIHijack", "[$sourceTag] Thumbnail request already in progress")
             return
         }
@@ -1913,33 +2415,31 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
         }
 
         CoroutineScope(Dispatchers.IO).launch {
+            var thumbnailTransferStarted = false
             try {
-                repeat(2) { attempt ->
-                    runCatching {
-                        FileOutputStream(file, false).use { }
-                    }.onFailure { error ->
-                        Log.e("AIHijack", "[$sourceTag] Failed to prepare thumbnail file: ${error.message}", error)
-                    }
-
-                    if (receivePictureThumbnail(file, sourceTag, attempt + 1)) {
-                        Log.i(
-                            "AIHijack",
-                            "[$sourceTag] Thumbnail transfer complete: ${file.absolutePath} (${file.length()} bytes)",
-                        )
-                        onImageThumbnailReadyForQuestion(file.absolutePath)
-                        return@launch
-                    }
-
-                    if (attempt == 0) {
-                        Log.w("AIHijack", "[$sourceTag] Thumbnail was incomplete or invalid; retrying once")
-                        delay(1_500)
-                    }
+                runCatching {
+                    FileOutputStream(file, false).use { }
+                }.onFailure { error ->
+                    Log.e("AIHijack", "[$sourceTag] Failed to prepare thumbnail file: ${error.message}", error)
                 }
 
-                Log.w("AIHijack", "[$sourceTag] BLE thumbnail failed; falling back to latest image")
+                thumbnailTransferStarted = true
+                if (receivePictureThumbnail(file, sourceTag, permit)) {
+                    Log.i(
+                        "AIHijack",
+                        "[$sourceTag] Thumbnail transfer complete: ${file.absolutePath} (${file.length()} bytes)",
+                    )
+                    onImageThumbnailReadyForQuestion(file.absolutePath)
+                    return@launch
+                }
+
+                Log.w("AIHijack", "[$sourceTag] BLE thumbnail did not complete; using fallback while the SDK stays isolated")
                 useLatestImageFallback(sourceTag)
             } finally {
                 imageThumbnailRequestInProgress.set(false)
+                if (!thumbnailTransferStarted) {
+                    GlassesSessionCoordinator.releaseBackgroundCommand(permit)
+                }
             }
         }
     }
@@ -1947,7 +2447,7 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
     private suspend fun receivePictureThumbnail(
         file: File,
         sourceTag: String,
-        attempt: Int,
+        permit: BackgroundGlassesCommandPermit,
     ): Boolean {
         val gotChunk = java.util.concurrent.atomic.AtomicBoolean(false)
         val completed = java.util.concurrent.atomic.AtomicBoolean(false)
@@ -1968,14 +2468,21 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
 
             if (isComplete && completed.compareAndSet(false, true)) {
                 transferResult.complete(gotChunk.get())
+                GlassesSessionCoordinator.releaseBackgroundCommand(permit)
             }
         }
 
-        Log.i("AIHijack", "[$sourceTag] Requesting BLE thumbnail (attempt $attempt)")
-        LargeDataHandler.getInstance().getPictureThumbnails(thumbCallback)
+        Log.i("AIHijack", "[$sourceTag] Requesting BLE thumbnail")
+        if (isGlassesCommandBlocked("AI thumbnail request")) return false
+        try {
+            LargeDataHandler.getInstance().getPictureThumbnails(thumbCallback)
+        } catch (e: Exception) {
+            GlassesSessionCoordinator.releaseBackgroundCommand(permit)
+            throw e
+        }
         val receivedAnyData = withTimeoutOrNull(10_000) { transferResult.await() } ?: false
         if (!receivedAnyData) {
-            Log.w("AIHijack", "[$sourceTag] BLE thumbnail request timed out (attempt $attempt)")
+            Log.w("AIHijack", "[$sourceTag] BLE thumbnail request timed out")
             return false
         }
 
@@ -1983,7 +2490,7 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
             if (!valid) {
                 Log.w(
                     "AIHijack",
-                    "[$sourceTag] Thumbnail is not a decodable image (${file.length()} bytes, attempt $attempt)",
+                    "[$sourceTag] Thumbnail is not a decodable image (${file.length()} bytes)",
                 )
             }
         }
@@ -2299,6 +2806,7 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
         memoryAwareChosenProvider: Boolean = false,
         chosenProviderType: AgentProviderType? = null,
     ) {
+        if (isGlassesCommandBlocked("voice-query command")) return
         // Wake up screen if locked
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O_MR1) {
             setShowWhenLocked(true)
@@ -2308,7 +2816,7 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
         }
 
         // Tell glasses to stop proprietary AI audio stream
-        LargeDataHandler.getInstance().glassesControl(byteArrayOf(0x02, 0x01, 0x0b)) { _, _ -> }
+        stopGlassesAiAudio("voice-query command")
 
         val audioManager = getSystemService(Context.AUDIO_SERVICE) as android.media.AudioManager
 
@@ -2467,6 +2975,7 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
     }
 
     private fun triggerAssistantVoiceQuery() {
+        if (isGlassesCommandBlocked("voice-query command")) return
         val effectiveMode = resolveEffectiveAiAssistantMode()
         Log.i("AIHijack", "Triggering Voice Query for $effectiveMode")
 
@@ -2508,7 +3017,7 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
         }
 
         // Tell glasses to stop proprietary AI audio stream
-        LargeDataHandler.getInstance().glassesControl(byteArrayOf(0x02, 0x01, 0x0b)) { _, _ -> }
+        stopGlassesAiAudio("voice-query command")
 
         try {
             val intent = Intent(Intent.ACTION_VOICE_COMMAND).apply {
@@ -2558,6 +3067,7 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
         val relayProvider = AiProviderPrefs.getProvider(this)
         if (relayProvider == RelayProviderType.CLI_RELAY) {
             Log.i("AIHijack", "Sending image query to CLI relay: $imagePath")
+            val visionPrompt = buildVisionPrompt(userQuestion)
 
             CoroutineScope(Dispatchers.IO).launch {
                 try {
@@ -2570,6 +3080,7 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
                     val result = CliRelayClient.imageQuery(
                         context = this@MainActivity,
                         imagePath = imagePath,
+                        prompt = visionPrompt,
                         modelOverride = modelOverride,
                     )
 
@@ -2585,7 +3096,7 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
                                 Toast.makeText(this@MainActivity, "Vision model couldn't process image", Toast.LENGTH_LONG).show()
                                 speak("I couldn't analyze the image. Please try again.")
                             } else {
-                                speak(reply)
+                                speakVision(reply)
                             }
                         }
                     }
@@ -2618,7 +3129,7 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
             }
 
             // Stop glasses AI mode
-            LargeDataHandler.getInstance().glassesControl(byteArrayOf(0x02, 0x01, 0x0b)) { _, _ -> }
+            stopGlassesAiAudio("image-query command")
 
             val file = File(imagePath)
             if (!file.exists()) {
@@ -2685,7 +3196,7 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
      * - META_RAYBAN: show Meta-specific controls (stream, photo, display, registration).
      * - Other classes: show meeting capture only (plus basic connection UI).
      */
-    private fun applyGlassesManagerGating(profile: com.fersaiyan.cyanbridge.devices.DeviceProfile?) {
+    private fun applyGlassesManagerGating(profile: DeviceProfile?) {
         val model = GlassesManagerGating.uiModel(profile)
 
         // Expanded controls panel (HeyCyan-only in MVP baseline)
@@ -3123,6 +3634,7 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
     }
 
     private fun requestBatteryStatus(showToast: Boolean) {
+        if (isGlassesCommandBlocked("battery status request")) return
         if (showToast) {
             pendingBatteryToast = true
             Toast.makeText(this@MainActivity, "Requesting battery level…", Toast.LENGTH_SHORT).show()
@@ -3209,6 +3721,19 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
         }
 
         val normalizedCommand = command?.lowercase() ?: return
+        val activeSession = GlassesSessionCoordinator.currentSession()
+        if (activeSession != null) {
+            Log.w(
+                "GlassesSession",
+                "Ignoring Tasker command '$normalizedCommand'; ${activeSession.label} owns the SDK BLE/P2P slots",
+            )
+            Toast.makeText(
+                this,
+                "${activeSession.label.replaceFirstChar { it.uppercase() }} is using the glasses connection.",
+                Toast.LENGTH_SHORT,
+            ).show()
+            return
+        }
 
         when (normalizedCommand) {
             "scan" -> binding.btnScan.performClick()
@@ -3347,9 +3872,13 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
     private fun startDataDownload(
         mode: GlassesSyncFlow = GlassesSyncFlow.CUSTOM,
         retryCount: Int = 0,
+        isRetry: Boolean = false,
+        afterP2pTeardown: Boolean = false,
     ) {
         downloadFlowMode = mode
         officialFlowRetryCount = retryCount
+
+        if (!afterP2pTeardown) {
         Log.i("DataDownload", "Starting BLE+WiFi P2P data download using ${mode.label}...")
         Log.i("DataDownload", "Sync session flow=${mode.label}")
         Toast.makeText(this, "Starting sync using ${mode.label}…", Toast.LENGTH_SHORT).show()
@@ -3390,8 +3919,41 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
             return
         }
 
-        // Tear down any stale session first so retries do not stack callbacks/jobs.
-        teardownDownloadP2pSession(sendExitTransfer = false, hideTransferUi = false)
+            if (GlassesSessionCoordinator.isOwnedBy(GlassesSession.MEDIA_SYNC)) {
+                if (!isRetry || mediaSessionLease?.let(GlassesSessionCoordinator::isActive) != true) {
+                    Log.w("DataDownload", "Media sync is already active or still tearing down")
+                    Toast.makeText(this, "Media sync is already using the glasses connection.", Toast.LENGTH_SHORT).show()
+                    return
+                }
+            } else {
+                mediaSessionLease = acquireExclusiveGlassesSession(GlassesSession.MEDIA_SYNC) ?: return
+            }
+
+            downloadCancelledByUser = false
+            val teardownLease = mediaSessionLease
+            // P2P removal is asynchronous. Start a retry only after the prior group is gone,
+            // otherwise its delayed removal can tear down the newly formed group.
+            teardownDownloadP2pSession(
+                sendExitTransfer = false,
+                hideTransferUi = false,
+                releaseExclusiveSession = false,
+                onTeardownComplete = {
+                    if (downloadCancelledByUser) {
+                        Log.i("DataDownload", "Sync was cancelled while waiting for P2P teardown")
+                        releaseExclusiveGlassesSession(teardownLease)
+                    } else {
+                        startDataDownload(
+                            mode = mode,
+                            retryCount = retryCount,
+                            isRetry = true,
+                            afterP2pTeardown = true,
+                        )
+                    }
+                },
+            )
+            return
+        }
+
         downloadCancelledByUser = false
 
         // Reset state for a fresh run
@@ -3511,7 +4073,12 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
                         }
 
                         downloadWifiP2pManager?.restartPeerDiscovery()
-                        sendTransferModeCommandWithRetry(attempt = 1, maxAttempts = 2, delayMs = 1500L)
+                        sendTransferModeCommandWithRetry(
+                            sessionId = downloadSessionId,
+                            attempt = 1,
+                            maxAttempts = 2,
+                            delayMs = 1500L,
+                        )
                     }
                     return
                 }
@@ -3629,7 +4196,7 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
 
         // Ask the glasses (over BLE) to bring up WiFi/P2P and report their IP,
         // mirroring the official app's importAlbum() flow.
-        sendTransferModeCommandWithRetry()
+        sendTransferModeCommandWithRetry(sessionId = downloadSessionId)
     }
 
     /**
@@ -3638,10 +4205,15 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
      * [0x02,0x01,0x0F] is sent before each retry to clear stale state.
      */
     private fun sendTransferModeCommandWithRetry(
+        sessionId: Long,
         attempt: Int = 1,
         maxAttempts: Int = 3,
         delayMs: Long = 2000L,
     ) {
+        if (!isDownloadControlActive(sessionId)) {
+            Log.i("DataDownload", "Skipping transfer-mode command for inactive session=$sessionId")
+            return
+        }
         LargeDataHandler.getInstance().glassesControl(
             byteArrayOf(0x02, 0x01, 0x04)
         ) { _, resp ->
@@ -3649,21 +4221,64 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
                 "DataDownload",
                 "glassesControl[0x02,0x01,0x04] (attempt $attempt/$maxAttempts) -> dataType=${resp.dataType}, error=${resp.errorCode}"
             )
-            if (resp.errorCode == -1 && attempt < maxAttempts) {
+            if (!isDownloadControlActive(sessionId)) {
+                Log.i("DataDownload", "Ignoring transfer-mode response for inactive session=$sessionId")
+            } else if (resp.errorCode == -1 && attempt < maxAttempts) {
                 Log.w("DataDownload", "Transfer mode command refused (error=-1); retrying after ${delayMs}ms")
-                CoroutineScope(Dispatchers.IO).launch {
+                launchDownloadSession { retrySessionId ->
+                    if (retrySessionId != sessionId || !isDownloadControlActive(sessionId)) {
+                        return@launchDownloadSession
+                    }
                     delay(delayMs)
+                    if (!isDownloadControlActive(sessionId)) {
+                        return@launchDownloadSession
+                    }
                     // Reset glasses P2P state before retrying
-                    LargeDataHandler.getInstance().glassesControl(
-                        byteArrayOf(0x02, 0x01, 0x0F)
-                    ) { _, resetResp ->
-                        Log.d("DataDownload", "Pre-retry reset [0x02,0x01,0x0F] -> error=${resetResp.errorCode}")
+                    if (!resetTransferP2pForRetry(sessionId)) {
+                        Log.w("DataDownload", "Pre-retry P2P reset did not complete; not sending another transfer command")
+                        return@launchDownloadSession
                     }
                     delay(500)
-                    sendTransferModeCommandWithRetry(attempt + 1, maxAttempts, delayMs)
+                    if (isDownloadControlActive(sessionId)) {
+                        sendTransferModeCommandWithRetry(
+                            sessionId = sessionId,
+                            attempt = attempt + 1,
+                            maxAttempts = maxAttempts,
+                            delayMs = delayMs,
+                        )
+                    }
                 }
             }
         }
+    }
+
+    private suspend fun resetTransferP2pForRetry(sessionId: Long): Boolean {
+        if (!isDownloadControlActive(sessionId)) return false
+        val resetAccepted = withTimeoutOrNull(5_000) {
+            suspendCancellableCoroutine<Boolean> { continuation ->
+                try {
+                    LargeDataHandler.getInstance().glassesControl(
+                        byteArrayOf(0x02, 0x01, 0x0F),
+                    ) { _, response ->
+                        Log.d(
+                            "DataDownload",
+                            "Pre-retry reset [0x02,0x01,0x0F] -> error=${response.errorCode}",
+                        )
+                        if (continuation.isActive) {
+                            continuation.resume(response.errorCode == 0) {}
+                        }
+                    }
+                } catch (e: Exception) {
+                    Log.w("DataDownload", "Failed to send pre-retry P2P reset", e)
+                    if (continuation.isActive) continuation.resume(false) {}
+                }
+            }
+        }
+        if (resetAccepted == null) {
+            Log.w("DataDownload", "Pre-retry P2P reset timed out; retaining the current media session")
+            return false
+        }
+        return resetAccepted && isDownloadControlActive(sessionId)
     }
 
     private fun setTransferUiVisible(visible: Boolean) {
@@ -3792,6 +4407,12 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
         return sessionId == downloadSessionId &&
             downloadSessionJob?.isActive == true &&
             !downloadCancelledByUser
+    }
+
+    private fun isDownloadControlActive(sessionId: Long): Boolean {
+        return isDownloadSessionActive(sessionId) &&
+            !downloadP2pTeardownInProgress &&
+            GlassesSessionCoordinator.currentSession() == GlassesSession.MEDIA_SYNC
     }
 
     private fun launchDownloadSession(block: suspend CoroutineScope.(Long) -> Unit): Job? {
@@ -3949,7 +4570,11 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
             "Official flow retrying whole import sequence ($nextRetry/$officialFlowRetryLimit) because $reason"
         )
         setTransferDetail("Official flow retrying sync...")
-        startDataDownload(GlassesSyncFlow.OFFICIAL_HEYCYAN, retryCount = nextRetry)
+        startDataDownload(
+            mode = GlassesSyncFlow.OFFICIAL_HEYCYAN,
+            retryCount = nextRetry,
+            isRetry = true,
+        )
     }
 
     private fun maybeShowP2pSyncLogHelp(
@@ -5236,8 +5861,85 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
         }
         return crc
     }
+
+    private fun sendExitTransferModeIfRequested() {
+        if (!downloadExitTransferRequested) return
+        downloadExitTransferRequested = false
+        // Tell the glasses to exit transfer mode (official app does this after downloads finish).
+        try {
+            LargeDataHandler.getInstance().glassesControl(
+                byteArrayOf(0x02, 0x01, 0x09)
+            ) { _, resp ->
+                Log.i(
+                    "DataDownload",
+                    "glassesControl[0x02,0x01,0x09] -> dataType=${resp.dataType}, error=${resp.errorCode}",
+                )
+            }
+        } catch (e: Exception) {
+            Log.w("DataDownload", "Failed to send exit-transfer command [0x02,0x01,0x09]", e)
+        }
+    }
+
+    private fun abandonDownloadP2pForBluetoothDisconnect() {
+        val lease = mediaSessionLease
+        if (
+            lease == null &&
+            downloadWifiP2pManager == null &&
+            !downloadNotifyListenerRegistered &&
+            !downloadP2pTeardownInProgress
+        ) {
+            return
+        }
+
+        Log.i("DataDownload", "Bluetooth disconnected; abandoning media-sync P2P resources")
+        downloadCancelledByUser = true
+        downloadAttemptJob?.cancel()
+        downloadAttemptJob = null
+        cancelDownloadSession()
+        downloadInitialPhaseTimeoutJob?.cancel()
+        downloadInitialPhaseTimeoutJob = null
+        officialDisconnectRecoveryJob?.cancel()
+        officialDisconnectRecoveryJob = null
+        unbindProcessFromNetwork()
+
+        if (downloadNotifyListenerRegistered) {
+            runCatching { LargeDataHandler.getInstance().removeOutDeviceListener(2) }
+            downloadNotifyListenerRegistered = false
+        }
+
+        val manager = downloadWifiP2pManager
+        downloadWifiP2pCallback?.let { callback -> manager?.removeCallback(callback) }
+        manager?.stopP2pOperations()
+        manager?.cancelP2pConnection()
+        manager?.unregisterReceiver()
+        downloadWifiP2pManager = null
+        downloadWifiP2pCallback = null
+        downloadP2pConnected = false
+        downloadInProgress = false
+        downloadP2pNetwork = null
+        downloadResolvedHttpIp = null
+        downloadP2pTeardownInProgress = false
+        downloadExitTransferRequested = false
+        releaseExclusiveGlassesSession(lease)
+        setTransferUiVisible(false)
+        resetTransferUiState()
+    }
     
-    private fun teardownDownloadP2pSession(sendExitTransfer: Boolean, hideTransferUi: Boolean) {
+    private fun teardownDownloadP2pSession(
+        sendExitTransfer: Boolean,
+        hideTransferUi: Boolean,
+        releaseExclusiveSession: Boolean = true,
+        onTeardownComplete: (() -> Unit)? = null,
+    ) {
+        val teardownLease = mediaSessionLease
+        if (sendExitTransfer) {
+            downloadExitTransferRequested = true
+        }
+        if (downloadP2pTeardownInProgress) {
+            sendExitTransferModeIfRequested()
+            Log.w("DataDownload", "P2P teardown is already in progress; waiting for its result")
+            return
+        }
         downloadAttemptJob?.cancel()
         downloadAttemptJob = null
         cancelDownloadSession()
@@ -5263,21 +5965,7 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
             }
         }
 
-        if (sendExitTransfer) {
-            // Tell the glasses to exit transfer mode (official app does this after downloads finish).
-            try {
-                LargeDataHandler.getInstance().glassesControl(
-                    byteArrayOf(0x02, 0x01, 0x09)
-                ) { _, resp ->
-                    Log.i(
-                        "DataDownload",
-                        "glassesControl[0x02,0x01,0x09] -> dataType=${resp.dataType}, error=${resp.errorCode}"
-                    )
-                }
-            } catch (e: Exception) {
-                Log.w("DataDownload", "Failed to send exit-transfer command [0x02,0x01,0x09]", e)
-            }
-        }
+        sendExitTransferModeIfRequested()
 
         val manager = downloadWifiP2pManager
         val callback = downloadWifiP2pCallback
@@ -5286,18 +5974,120 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
         }
 
         // Mirror official app: cancel the P2P connection as part of cleanup.
+        manager?.stopP2pOperations()
         manager?.cancelP2pConnection()
 
-        manager?.removeGroup { success ->
-            Log.i("DataDownload", "P2P group removed: $success")
+        val finishTeardown = {
+            manager?.unregisterReceiver()
+            downloadWifiP2pManager = null
+            downloadWifiP2pCallback = null
+            downloadP2pConnected = false
+            downloadInProgress = false
+            downloadP2pNetwork = null
+            downloadResolvedHttpIp = null
+            downloadP2pTeardownInProgress = false
+            if (releaseExclusiveSession) {
+                releaseExclusiveGlassesSession(teardownLease)
+            }
+            onTeardownComplete?.invoke()
+            Unit
         }
-        manager?.unregisterReceiver()
-        downloadWifiP2pManager = null
-        downloadWifiP2pCallback = null
-        downloadP2pConnected = false
-        downloadInProgress = false
-        downloadP2pNetwork = null
-        downloadResolvedHttpIp = null
+
+        if (manager == null) {
+            finishTeardown()
+            return
+        }
+
+        downloadP2pTeardownInProgress = true
+        removeDownloadP2pGroup(
+            manager = manager,
+            attempt = 1,
+            onRemoved = finishTeardown,
+        )
+    }
+
+    private fun removeDownloadP2pGroup(
+        manager: WifiP2pManagerSingleton,
+        attempt: Int,
+        onRemoved: () -> Unit,
+    ) {
+        val resultHandled = java.util.concurrent.atomic.AtomicBoolean(false)
+        val handleResult: (Boolean) -> Unit = { success ->
+            if (success) {
+                Log.i("DataDownload", "P2P group removal accepted on teardown attempt $attempt; waiting for disconnect")
+            } else {
+                Log.w(
+                    "DataDownload",
+                    "P2P group removal failed on attempt $attempt; checking whether the group is already gone",
+                )
+            }
+            awaitDownloadP2pDisconnect(manager, attempt, onRemoved)
+        }
+        glassesTeardownScope.launch {
+            delay(P2P_GROUP_REMOVE_ACTION_TIMEOUT_MS)
+            if (downloadP2pTeardownInProgress && resultHandled.compareAndSet(false, true)) {
+                Log.w("DataDownload", "P2P group removal gave no callback on attempt $attempt; checking group state")
+                awaitDownloadP2pDisconnect(manager, attempt, onRemoved)
+            }
+        }
+        try {
+            manager.removeGroup { success ->
+                if (resultHandled.compareAndSet(false, true)) {
+                    handleResult(success)
+                } else {
+                    Log.d("DataDownload", "Ignoring late P2P group removal callback for attempt $attempt")
+                }
+            }
+        } catch (e: Exception) {
+            if (resultHandled.compareAndSet(false, true)) {
+                Log.w("DataDownload", "P2P group removal threw on attempt $attempt; checking group state", e)
+                awaitDownloadP2pDisconnect(manager, attempt, onRemoved)
+            }
+        }
+    }
+
+    private fun awaitDownloadP2pDisconnect(
+        manager: WifiP2pManagerSingleton,
+        attempt: Int,
+        onDisconnected: () -> Unit,
+    ) {
+        glassesTeardownScope.launch {
+            val deadline = System.currentTimeMillis() + P2P_GROUP_DISCONNECT_TIMEOUT_MS
+            while (downloadP2pTeardownInProgress && System.currentTimeMillis() < deadline) {
+                manager.requestConnectionInfo()
+                delay(250)
+                if (!manager.isConnecting() && !manager.isConnected()) {
+                    Log.i("DataDownload", "Confirmed P2P group is gone after teardown attempt $attempt")
+                    onDisconnected()
+                    return@launch
+                }
+            }
+
+            if (downloadP2pTeardownInProgress) {
+                if (!manager.canUseP2p() || attempt >= P2P_GROUP_REMOVAL_MAX_ATTEMPTS) {
+                    Log.e(
+                        "DataDownload",
+                        "P2P teardown could not be confirmed; keeping the media-sync lease quarantined until Bluetooth reconnect",
+                    )
+                } else {
+                    Log.w("DataDownload", "P2P group still present after teardown attempt $attempt; retaining the media-sync lease and retrying")
+                    scheduleDownloadP2pRemovalRetry(manager, attempt + 1, onDisconnected)
+                }
+            }
+        }
+    }
+
+    private fun scheduleDownloadP2pRemovalRetry(
+        manager: WifiP2pManagerSingleton,
+        attempt: Int,
+        onRemoved: () -> Unit,
+    ) {
+        glassesTeardownScope.launch {
+            delay(P2P_GROUP_REMOVAL_RETRY_MS)
+            if (downloadP2pTeardownInProgress) {
+                removeDownloadP2pGroup(manager, attempt, onRemoved)
+            }
+        }
     }
 
     private fun cleanupP2pAfterDownload() {
@@ -5317,6 +6107,12 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
         downloadCancelledByUser = true
         finishDownloadInitialPhase("cancelled by user")
         setTransferDetail("Stopping sync...")
+        if (downloadP2pTeardownInProgress) {
+            // A pre-start retry owns the teardown callback. Keep its confirmed-disconnect
+            // barrier, but make the cancellation visible immediately.
+            setTransferUiVisible(false)
+            resetTransferUiState()
+        }
         teardownDownloadP2pSession(
             sendExitTransfer = true,
             hideTransferUi = true,

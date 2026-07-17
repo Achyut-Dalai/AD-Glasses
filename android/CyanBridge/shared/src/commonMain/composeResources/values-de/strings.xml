@@ -1,0 +1,27 @@
+<resources>
+    <string name="settings_title">Einstellungen</string>
+    <string name="settings_language">Sprache</string>
+    <string name="settings_language_description">App-Sprache: %1$s</string>
+    <string name="action_change">Ändern</string>
+    <string name="action_configure">Konfigurieren</string>
+    <string name="action_edit">Bearbeiten</string>
+    <string name="action_close">Schließen</string>
+    <string name="action_back">Zurück</string>
+    <string name="action_cancel">Abbrechen</string>
+    <string name="action_connect">Verbinden</string>
+    <string name="device_bind_title">Brille verbinden</string>
+    <string name="device_bind_scan">Nach Geräten suchen</string>
+    <string name="device_bind_scanning">Suche läuft...</string>
+    <string name="device_bind_looking">Suche nach benannten Bluetooth-Geräten...</string>
+    <string name="device_bind_empty">Keine Geräte gefunden. Starten Sie eine Suche, um Ihre Brille zu koppeln.</string>
+    <string name="device_bind_details">%1$s - Signal %2$d</string>
+    <string name="device_bind_detected">Erkannt: %1$s</string>
+    <string name="device_bind_select_type">Brillentyp auswählen</string>
+    <string name="vision_profile_title">Sehprofil</string>
+    <string name="vision_profile_description">Bildbeschreibungen verwenden: %1$s</string>
+    <string name="vision_instructions_title">Zusätzliche Sehanweisungen</string>
+    <string name="plugin_select">%1$s auswählen</string>
+    <string name="plugin_selected">Ausgewählt</string>
+    <string name="native_plugins_section">Native Plugins</string>
+    <string name="native_plugin_settings">Einstellungen</string>
+</resources>

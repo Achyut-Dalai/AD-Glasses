@@ -5,6 +5,7 @@ import android.content.Intent
 import android.content.IntentFilter
 import android.content.SharedPreferences
 import android.media.MediaPlayer
+import android.os.Build
 import android.os.Bundle
 import android.util.Log
 import android.widget.Toast
@@ -29,10 +30,16 @@ import com.fersaiyan.cyanbridge.ai.transcription.TranscriptionResult
 import com.fersaiyan.cyanbridge.ai.transcription.TranscriptionService
 import com.fersaiyan.cyanbridge.ai.transcription.moonshine.MoonshineModelManager
 import com.fersaiyan.cyanbridge.ai.transcription.moonshine.MoonshineTranscriptionProvider
-import com.fersaiyan.cyanbridge.audio.CaptureSource
+import com.fersaiyan.cyanbridge.shared.recordings.MeetingRecordingUiState as SharedMeetingRecordingUiState
+import com.fersaiyan.cyanbridge.shared.recordings.RecordingItem
+import com.fersaiyan.cyanbridge.shared.recordings.SyncedMediaItem
+import com.fersaiyan.cyanbridge.shared.recordings.TranscriptDialogUiState as SharedTranscriptDialogUiState
+import com.fersaiyan.cyanbridge.shared.recordings.TranscriptionEngine
+import com.fersaiyan.cyanbridge.shared.recordings.TranscriptionProgressUiState as SharedTranscriptionProgressUiState
+import com.fersaiyan.cyanbridge.shared.settings.CaptureSource
 import com.fersaiyan.cyanbridge.audio.MeetingCapturePrefs
 import com.fersaiyan.cyanbridge.audio.MeetingCaptureService
-import com.fersaiyan.cyanbridge.chat.ChatRole
+import com.fersaiyan.cyanbridge.shared.chat.ChatRole
 import com.fersaiyan.cyanbridge.chat.ChatStore
 import com.fersaiyan.cyanbridge.data.local.entity.CaptureSession
 import com.fersaiyan.cyanbridge.localagent.userfacts.TranscriptCandidateFactsAppender
@@ -41,6 +48,7 @@ import com.fersaiyan.cyanbridge.localmodels.settings.LocalModelSettingsRepositor
 import com.fersaiyan.cyanbridge.localmodels.storage.LocalModelStorageRepository
 import com.fersaiyan.cyanbridge.privacy.PrivacyPrefs
 import com.fersaiyan.cyanbridge.shared.navigation.AppDestination
+import com.fersaiyan.cyanbridge.shared.ui.recordings.RecordingsScreen
 import com.fersaiyan.cyanbridge.ui.ChatThreadActivity
 import com.fersaiyan.cyanbridge.ui.CommunityPluginsActivity
 import com.fersaiyan.cyanbridge.ui.MyApplication
@@ -57,6 +65,7 @@ import kotlinx.coroutines.cancel
 import kotlinx.coroutines.flow.collect
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import androidx.compose.ui.graphics.asImageBitmap
 import java.io.File
 
 class RecordingsListActivity : AppCompatActivity() {
@@ -73,13 +82,13 @@ class RecordingsListActivity : AppCompatActivity() {
     private var sessions by mutableStateOf<List<CaptureSession>>(emptyList())
     private var isLoadingSessions by mutableStateOf(true)
     private var recentSyncedMedia by mutableStateOf<List<SyncedMediaItem>>(emptyList())
-    private var meetingRecording by mutableStateOf(MeetingRecordingUiState())
+    private var meetingRecording by mutableStateOf(SharedMeetingRecordingUiState())
     private var currentlyPlayingId by mutableStateOf<Long?>(null)
     private var transcribingId by mutableStateOf<Long?>(null)
     private var pendingTranscriptionSession by mutableStateOf<CaptureSession?>(null)
     private var selectedEngine by mutableStateOf(TranscriptionEngine.GEMMA)
-    private var transcriptionProgress by mutableStateOf<TranscriptionProgressUiState?>(null)
-    private var transcriptDialog by mutableStateOf<TranscriptDialogUiState?>(null)
+    private var transcriptionProgress by mutableStateOf<SharedTranscriptionProgressUiState?>(null)
+    private var transcriptDialog by mutableStateOf<SharedTranscriptDialogUiState?>(null)
 
     private var mediaPlayer: MediaPlayer? = null
     private val ephemeralTranscripts = mutableMapOf<Long, String>()
@@ -94,9 +103,14 @@ class RecordingsListActivity : AppCompatActivity() {
             if (intent?.action != MeetingCaptureService.ACTION_STATE) return
             val source = intent.getStringExtra(MeetingCaptureService.EXTRA_SOURCE)
                 ?.let { runCatching { CaptureSource.valueOf(it) }.getOrNull() }
-            meetingRecording = MeetingRecordingUiState(
+            meetingRecording = SharedMeetingRecordingUiState(
                 isRecording = intent.getBooleanExtra(MeetingCaptureService.EXTRA_IS_RECORDING, false),
-                source = source,
+                sourceLabel = source?.let { src ->
+                    when (src) {
+                        CaptureSource.BLUETOOTH_MIC -> "Bluetooth mic"
+                        CaptureSource.PHONE_MIC -> "Phone mic"
+                    }
+                },
             )
         }
     }
@@ -109,8 +123,9 @@ class RecordingsListActivity : AppCompatActivity() {
         setContent {
             val appearance by rememberAppearanceSettings(appearancePreferences)
             CyanBridgeTheme(appearance) {
+                val recordingItems = sessions.map { it.toRecordingItem() }
                 RecordingsScreen(
-                    sessions = sessions,
+                    sessions = recordingItems,
                     isLoading = isLoadingSessions,
                     recentSyncedMedia = recentSyncedMedia,
                     playingSessionId = currentlyPlayingId,
@@ -120,13 +135,15 @@ class RecordingsListActivity : AppCompatActivity() {
                     selectedEngine = selectedEngine,
                     transcriptionProgress = transcriptionProgress,
                     transcriptDialog = transcriptDialog,
+                    formatTimestamp = { ms -> java.text.DateFormat.getDateTimeInstance().format(java.util.Date(ms)) },
+                    loadThumbnail = { uriString -> loadThumbnailForShared(uriString) },
                     onOpenSyncedMedia = {
                         startActivity(Intent(this, SyncedMediaGalleryActivity::class.java))
                     },
                     onOpenSyncedMediaItem = ::openSyncedMediaItem,
-                    onPlay = ::onPlayClicked,
-                    onTranscribe = ::onTranscribeClicked,
-                    onViewTranscript = ::onViewTranscriptionClicked,
+                    onPlay = { item -> sessions.firstOrNull { it.id == item.id }?.let(::onPlayClicked) },
+                    onTranscribe = { item -> sessions.firstOrNull { it.id == item.id }?.let(::onTranscribeClicked) },
+                    onViewTranscript = { item -> sessions.firstOrNull { it.id == item.id }?.let(::onViewTranscriptionClicked) },
                     onStopMeetingCapture = { MeetingCaptureService.stop(this) },
                     onEngineSelected = { selectedEngine = it },
                     onConfirmEngine = ::confirmTranscription,
@@ -187,9 +204,14 @@ class RecordingsListActivity : AppCompatActivity() {
 
     private fun syncMeetingRecordingState() {
         val state = MeetingCapturePrefs.getState(this)
-        meetingRecording = MeetingRecordingUiState(
+        meetingRecording = SharedMeetingRecordingUiState(
             isRecording = state.isRecording,
-            source = state.source,
+            sourceLabel = state.source?.let { src ->
+                when (src) {
+                    CaptureSource.BLUETOOTH_MIC -> "Bluetooth mic"
+                    CaptureSource.PHONE_MIC -> "Phone mic"
+                }
+            },
         )
     }
 
@@ -207,8 +229,9 @@ class RecordingsListActivity : AppCompatActivity() {
     }
 
     private fun openSyncedMediaItem(item: SyncedMediaItem) {
+        val uri = android.net.Uri.parse(item.contentUriString)
         val intent = Intent(Intent.ACTION_VIEW).apply {
-            setDataAndType(item.contentUri, "image/*")
+            setDataAndType(uri, "image/*")
             addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
         }
         runCatching { startActivity(intent) }
@@ -312,7 +335,7 @@ class RecordingsListActivity : AppCompatActivity() {
         }
 
         transcribingId = session.id
-        transcriptionProgress = TranscriptionProgressUiState(
+        transcriptionProgress = SharedTranscriptionProgressUiState(
             title = "Transcribing (${engine.title})",
             message = "Preparing...",
             progress = 0,
@@ -358,7 +381,7 @@ class RecordingsListActivity : AppCompatActivity() {
                                 }
                                 MoonshineModelManager.installIfNeeded(applicationContext, kind) { update ->
                                     runOnUiThread {
-                                        transcriptionProgress = TranscriptionProgressUiState(
+                                        transcriptionProgress = SharedTranscriptionProgressUiState(
                                             title = "Transcribing (${engine.title})",
                                             message = update.message,
                                             progress = update.percent.coerceIn(0, 100),
@@ -486,7 +509,7 @@ class RecordingsListActivity : AppCompatActivity() {
 
             val stored = !storedText.isNullOrBlank()
             val storageEnabled = PrivacyPrefs.isTranscriptStorageEnabled(applicationContext)
-            transcriptDialog = TranscriptDialogUiState(
+            transcriptDialog = SharedTranscriptDialogUiState(
                 title = if (stored) "Transcription (stored)" else "Transcription",
                 text = if (!stored && !storageEnabled) {
                     "(Transcript storage is OFF in Settings; this text may not be persisted.)\n\n$text"
@@ -552,7 +575,7 @@ class RecordingsListActivity : AppCompatActivity() {
     private fun TranscriptionProgress.toUiState(
         engine: TranscriptionEngine,
         showIndeterminate: Boolean,
-    ): TranscriptionProgressUiState {
+    ): SharedTranscriptionProgressUiState {
         val detail = detail?.let { " · $it" }.orEmpty()
         val message = when {
             showIndeterminate && engine == TranscriptionEngine.GEMMA -> "Transcribing with Gemma...$detail"
@@ -566,10 +589,47 @@ class RecordingsListActivity : AppCompatActivity() {
                 TranscriptionProgress.Stage.DONE -> "Done"
             }
         }
-        return TranscriptionProgressUiState(
+        return SharedTranscriptionProgressUiState(
             title = "Transcribing (${engine.title})",
             message = message,
             progress = if (showIndeterminate) null else percent.coerceIn(0, 100),
         )
     }
+
+    private suspend fun loadThumbnailForShared(uriString: String): androidx.compose.ui.graphics.ImageBitmap? {
+        return withContext(Dispatchers.IO) {
+            runCatching {
+                val uri = android.net.Uri.parse(uriString)
+                val bitmap = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+                    contentResolver.loadThumbnail(uri, android.util.Size(256, 256), null)
+                } else {
+                    val inputStream = contentResolver.openInputStream(uri)
+                    inputStream?.use { android.graphics.BitmapFactory.decodeStream(it) }
+                }
+                bitmap?.asImageBitmap()
+            }.getOrNull()
+        }
+    }
 }
+
+internal fun CaptureSession.toRecordingItem(): RecordingItem {
+    val timestamp = java.text.DateFormat.getDateTimeInstance().format(java.util.Date(startedAt))
+    val titlePrefix = if (captureSource == GLASSES_SYNC_CAPTURE_SOURCE) "Glasses audio" else "Meeting"
+    val metadata = buildString {
+        append("${durationSec}s")
+        if (captureSource.isNotBlank()) append(" · $captureSource")
+        if (deviceClass.isNotBlank()) append(" · $deviceClass")
+    }
+    return RecordingItem(
+        id = id,
+        title = "$titlePrefix · $timestamp",
+        metadata = metadata,
+        stopReason = stopReason,
+        durationSec = durationSec,
+        captureSource = captureSource,
+        deviceClass = deviceClass,
+        startedAt = startedAt,
+    )
+}
+
+private const val GLASSES_SYNC_CAPTURE_SOURCE = "GLASSES_SYNC_P2P"

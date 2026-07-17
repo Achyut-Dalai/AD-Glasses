@@ -1,5 +1,6 @@
 package com.fersaiyan.cyanbridge.chat
 
+import com.fersaiyan.cyanbridge.shared.chat.ChatRole
 import org.junit.After
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNotNull

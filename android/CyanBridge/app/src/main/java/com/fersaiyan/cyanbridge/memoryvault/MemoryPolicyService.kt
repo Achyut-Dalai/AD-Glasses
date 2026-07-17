@@ -1,6 +1,8 @@
 package com.fersaiyan.cyanbridge.memoryvault
 
 import android.content.Context
+import com.fersaiyan.cyanbridge.shared.settings.MemoryPrivacyMode
+import com.fersaiyan.cyanbridge.shared.settings.MemorySourceType
 import com.fersaiyan.cyanbridge.data.local.entity.MemoryPolicyMetadataEntity
 import com.fersaiyan.cyanbridge.ui.MyApplication
 import kotlinx.coroutines.Dispatchers

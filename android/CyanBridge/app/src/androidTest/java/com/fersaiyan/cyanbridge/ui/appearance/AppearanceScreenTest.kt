@@ -1,6 +1,7 @@
 package com.fersaiyan.cyanbridge.ui.appearance
 
 import androidx.compose.runtime.getValue
+import com.fersaiyan.cyanbridge.shared.ui.appearance.AppearanceScreen
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.test.assertIsSelected

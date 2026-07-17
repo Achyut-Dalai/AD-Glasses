@@ -1,13 +1,17 @@
 package com.fersaiyan.cyanbridge.ui.recordings
 
-import android.net.Uri
+import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.test.assertTextContains
 import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
-import com.fersaiyan.cyanbridge.data.local.entity.CaptureSession
+import com.fersaiyan.cyanbridge.shared.recordings.MeetingRecordingUiState
+import com.fersaiyan.cyanbridge.shared.recordings.RecordingItem
+import com.fersaiyan.cyanbridge.shared.recordings.SyncedMediaItem
+import com.fersaiyan.cyanbridge.shared.recordings.TranscriptionEngine
+import com.fersaiyan.cyanbridge.shared.ui.recordings.RecordingsScreen
 import com.fersaiyan.cyanbridge.ui.theme.CyanBridgeTheme
 import org.junit.Assert.assertEquals
 import org.junit.Rule
@@ -17,19 +21,20 @@ class RecordingsScreenTest {
     @get:Rule
     val composeRule = createComposeRule()
 
+    private val noopTimestamp: (Long) -> String = { it.toString() }
+    private val noopThumbnail: suspend (String) -> ImageBitmap? = { null }
+
     @Test
     fun rendersCaptureActionsAndRoutesCallbacks() {
-        val session = CaptureSession(
+        val session = RecordingItem(
             id = 7L,
-            startedAt = 1_700_000_000_000L,
-            endedAt = 1_700_000_060_000L,
-            durationSec = 60L,
-            deviceClass = "HEY_CYAN",
-            captureSource = "PHONE_MIC",
-            audioPath = "/tmp/recording.m4a",
-            timerDurationSec = null,
+            title = "Meeting capture",
+            metadata = "60s · PHONE_MIC · HEY_CYAN",
             stopReason = null,
-            error = null,
+            durationSec = 60L,
+            captureSource = "PHONE_MIC",
+            deviceClass = "HEY_CYAN",
+            startedAt = 1_700_000_000_000L,
         )
         var playedSessionId: Long? = null
         var transcribedSessionId: Long? = null
@@ -48,6 +53,8 @@ class RecordingsScreenTest {
                     selectedEngine = TranscriptionEngine.GEMMA,
                     transcriptionProgress = null,
                     transcriptDialog = null,
+                    formatTimestamp = noopTimestamp,
+                    loadThumbnail = noopThumbnail,
                     onOpenSyncedMedia = { openedMedia += 1 },
                     onOpenSyncedMediaItem = {},
                     onPlay = { playedSessionId = it.id },
@@ -80,11 +87,9 @@ class RecordingsScreenTest {
         val recentMedia = List(4) { index ->
             SyncedMediaItem(
                 id = index.toLong(),
-                contentUri = Uri.parse("content://cyanbridge/media/$index"),
                 displayName = "photo_$index.jpg",
-                mimeType = "image/jpeg",
+                contentUriString = "content://cyanbridge/media/$index",
                 isVideo = false,
-                takenAtMs = index.toLong(),
             )
         }
         var openedId: Long? = null
@@ -102,6 +107,8 @@ class RecordingsScreenTest {
                     selectedEngine = TranscriptionEngine.GEMMA,
                     transcriptionProgress = null,
                     transcriptDialog = null,
+                    formatTimestamp = noopTimestamp,
+                    loadThumbnail = noopThumbnail,
                     onOpenSyncedMedia = {},
                     onOpenSyncedMediaItem = { openedId = it.id },
                     onPlay = {},

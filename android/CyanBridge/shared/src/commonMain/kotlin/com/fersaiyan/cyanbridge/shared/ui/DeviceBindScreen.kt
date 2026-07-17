@@ -35,10 +35,13 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import com.fersaiyan.cyanbridge.shared.generated.resources.*
 import com.fersaiyan.cyanbridge.shared.devices.DeviceClass
 import com.fersaiyan.cyanbridge.shared.devices.ScannedDevice
+import org.jetbrains.compose.resources.ExperimentalResourceApi
+import org.jetbrains.compose.resources.stringResource
 
-@OptIn(ExperimentalMaterial3Api::class)
+@OptIn(ExperimentalMaterial3Api::class, ExperimentalResourceApi::class)
 @Composable
 fun DeviceBindScreen(
     devices: List<ScannedDevice>,
@@ -56,15 +59,21 @@ fun DeviceBindScreen(
         contentWindowInsets = WindowInsets.safeDrawing,
         topBar = {
             TopAppBar(
-                title = { Text("Connect glasses") },
+                title = { Text(stringResource(Res.string.device_bind_title)) },
                 navigationIcon = {
                     IconButton(onClick = onBack) {
-                        Icon(Icons.AutoMirrored.Outlined.ArrowBack, contentDescription = "Back")
+                        Icon(
+                            Icons.AutoMirrored.Outlined.ArrowBack,
+                            contentDescription = stringResource(Res.string.action_back),
+                        )
                     }
                 },
                 actions = {
                     IconButton(onClick = onScan) {
-                        Icon(Icons.Outlined.Refresh, contentDescription = "Scan for devices")
+                        Icon(
+                            Icons.Outlined.Refresh,
+                            contentDescription = stringResource(Res.string.device_bind_scan),
+                        )
                     }
                 },
             )
@@ -80,13 +89,23 @@ fun DeviceBindScreen(
         ) {
             item {
                 FilledTonalButton(onClick = onScan, modifier = Modifier.fillMaxWidth()) {
-                    Text(if (isScanning) "Scanning..." else "Scan for devices")
+                    Text(
+                        if (isScanning) {
+                            stringResource(Res.string.device_bind_scanning)
+                        } else {
+                            stringResource(Res.string.device_bind_scan)
+                        },
+                    )
                 }
             }
             if (devices.isEmpty()) {
                 item {
                     Text(
-                        text = if (isScanning) "Looking for named Bluetooth devices..." else "No devices found. Start a scan to pair your glasses.",
+                        text = if (isScanning) {
+                            stringResource(Res.string.device_bind_looking)
+                        } else {
+                            stringResource(Res.string.device_bind_empty)
+                        },
                         style = MaterialTheme.typography.bodyMedium,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                         modifier = Modifier.padding(vertical = 24.dp),
@@ -94,7 +113,7 @@ fun DeviceBindScreen(
                 }
             } else {
                 items(devices, key = { it.macAddress }) { device ->
-                    Card(onClick = { onSelectDevice(device) }, modifier = Modifier.fillMaxWidth()) {
+                    Card(modifier = Modifier.fillMaxWidth()) {
                         Row(
                             modifier = Modifier.padding(16.dp),
                             verticalAlignment = Alignment.CenterVertically,
@@ -106,17 +125,26 @@ fun DeviceBindScreen(
                                     fontWeight = FontWeight.SemiBold,
                                 )
                                 Text(
-                                    text = "${device.macAddress} · RSSI ${device.rssi}",
+                                    text = stringResource(
+                                        Res.string.device_bind_details,
+                                        device.macAddress,
+                                        device.rssi,
+                                    ),
                                     style = MaterialTheme.typography.bodySmall,
                                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                                 )
                                 Text(
-                                    text = "Detected: ${device.effectiveSelectedClass().displayName()}",
+                                    text = stringResource(
+                                        Res.string.device_bind_detected,
+                                        device.effectiveSelectedClass().displayName(),
+                                    ),
                                     style = MaterialTheme.typography.bodySmall,
                                     color = MaterialTheme.colorScheme.primary,
                                 )
                             }
-                            Text("Connect", color = MaterialTheme.colorScheme.primary)
+                            OutlinedButton(onClick = { onSelectDevice(device) }) {
+                                Text(stringResource(Res.string.action_connect))
+                            }
                         }
                     }
                 }
@@ -127,7 +155,7 @@ fun DeviceBindScreen(
     connectingDevice?.let { device ->
         AlertDialog(
             onDismissRequest = onDismissConnection,
-            title = { Text("Select glasses type") },
+            title = { Text(stringResource(Res.string.device_bind_select_type)) },
             text = {
                 Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                     Text(
@@ -145,10 +173,14 @@ fun DeviceBindScreen(
                 }
             },
             confirmButton = {
-                TextButton(onClick = onConfirmConnection) { Text("Connect") }
+                TextButton(onClick = onConfirmConnection) {
+                    Text(stringResource(Res.string.action_connect))
+                }
             },
             dismissButton = {
-                TextButton(onClick = onDismissConnection) { Text("Cancel") }
+                TextButton(onClick = onDismissConnection) {
+                    Text(stringResource(Res.string.action_cancel))
+                }
             },
         )
     }

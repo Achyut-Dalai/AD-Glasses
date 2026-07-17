@@ -1,0 +1,27 @@
+<resources>
+    <string name="settings_title">Paramètres</string>
+    <string name="settings_language">Langue</string>
+    <string name="settings_language_description">Langue de l'application : %1$s</string>
+    <string name="action_change">Modifier</string>
+    <string name="action_configure">Configurer</string>
+    <string name="action_edit">Modifier</string>
+    <string name="action_close">Fermer</string>
+    <string name="action_back">Retour</string>
+    <string name="action_cancel">Annuler</string>
+    <string name="action_connect">Connecter</string>
+    <string name="device_bind_title">Connecter les lunettes</string>
+    <string name="device_bind_scan">Rechercher des appareils</string>
+    <string name="device_bind_scanning">Recherche en cours...</string>
+    <string name="device_bind_looking">Recherche d'appareils Bluetooth nommés...</string>
+    <string name="device_bind_empty">Aucun appareil trouvé. Lancez une recherche pour associer vos lunettes.</string>
+    <string name="device_bind_details">%1$s - Signal %2$d</string>
+    <string name="device_bind_detected">Détecté : %1$s</string>
+    <string name="device_bind_select_type">Sélectionnez le type de lunettes</string>
+    <string name="vision_profile_title">Profil de vision</string>
+    <string name="vision_profile_description">Les descriptions d'images utilisent : %1$s</string>
+    <string name="vision_instructions_title">Instructions visuelles supplémentaires</string>
+    <string name="plugin_select">Sélectionner %1$s</string>
+    <string name="plugin_selected">Sélectionné</string>
+    <string name="native_plugins_section">Plugins Natifs</string>
+    <string name="native_plugin_settings">Paramètres</string>
+</resources>

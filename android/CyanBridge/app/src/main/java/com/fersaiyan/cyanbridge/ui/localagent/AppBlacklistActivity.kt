@@ -9,6 +9,8 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import com.fersaiyan.cyanbridge.agent.LocalAgentPrefs
+import com.fersaiyan.cyanbridge.shared.ui.localagent.AppBlacklistScreen
+import com.fersaiyan.cyanbridge.shared.ui.localagent.BlacklistAppItem as SharedBlacklistAppItem
 import com.fersaiyan.cyanbridge.ui.appearance.AppearancePreferences
 import com.fersaiyan.cyanbridge.ui.appearance.rememberAppearanceSettings
 import com.fersaiyan.cyanbridge.ui.theme.CyanBridgeTheme
@@ -22,8 +24,8 @@ import kotlin.concurrent.thread
  */
 class AppBlacklistActivity : AppCompatActivity() {
 
-    private var allApps: List<BlacklistAppItem> = emptyList()
-    private var filteredApps by mutableStateOf<List<BlacklistAppItem>>(emptyList())
+    private var allApps: List<SharedBlacklistAppItem> = emptyList()
+    private var filteredApps by mutableStateOf<List<SharedBlacklistAppItem>>(emptyList())
     private var query by mutableStateOf("")
     private var hideSystemApps by mutableStateOf(false)
     private var selectedPackages by mutableStateOf<Set<String>>(emptySet())
@@ -81,19 +83,16 @@ class AppBlacklistActivity : AppCompatActivity() {
                         .orEmpty()
                         .ifBlank { pkg }
 
-                    val icon = runCatching { pm.getApplicationIcon(ai) }.getOrNull()
-
                     val isSystem = (ai.flags and android.content.pm.ApplicationInfo.FLAG_SYSTEM) != 0
 
-                    BlacklistAppItem(
+                    SharedBlacklistAppItem(
                         packageName = pkg,
                         label = label,
-                        icon = icon,
                         isSystemApp = isSystem,
                     )
                 }
                 .distinctBy { it.packageName }
-                .sortedWith(compareBy<BlacklistAppItem> { it.label.lowercase() }.thenBy { it.packageName })
+                .sortedWith(compareBy<SharedBlacklistAppItem> { it.label.lowercase() }.thenBy { it.packageName })
                 .toList()
 
             runOnUiThread {

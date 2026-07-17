@@ -1,6 +1,8 @@
 package com.fersaiyan.cyanbridge.devices
+import com.fersaiyan.cyanbridge.shared.devices.DeviceProfile
 
 import android.content.Context
+import com.fersaiyan.cyanbridge.shared.devices.DeviceClass
 
 /**
  * SharedPreferences-backed storage for device class selection.

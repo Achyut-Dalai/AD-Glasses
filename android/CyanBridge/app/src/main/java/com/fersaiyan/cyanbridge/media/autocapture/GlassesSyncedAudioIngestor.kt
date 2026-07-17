@@ -3,7 +3,7 @@ package com.fersaiyan.cyanbridge.media.autocapture
 import android.content.Context
 import android.media.MediaMetadataRetriever
 import android.util.Log
-import com.fersaiyan.cyanbridge.agent.AgentProviderType
+import com.fersaiyan.cyanbridge.shared.settings.AgentProviderType
 import com.fersaiyan.cyanbridge.agent.LocalAgentPrefs as AutomationPrefs
 import com.fersaiyan.cyanbridge.ai.transcription.AudioChunker
 import com.fersaiyan.cyanbridge.ai.transcription.DefaultTranscriptionService

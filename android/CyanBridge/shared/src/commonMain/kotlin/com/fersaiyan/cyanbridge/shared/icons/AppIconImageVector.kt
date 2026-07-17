@@ -1,6 +1,7 @@
 package com.fersaiyan.cyanbridge.shared.icons
 
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.outlined.ArrowBack
 import androidx.compose.material.icons.automirrored.outlined.Send
 import androidx.compose.material.icons.outlined.Add
 import androidx.compose.material.icons.outlined.AttachFile
@@ -37,7 +38,7 @@ fun AppIcon.imageVector(): ImageVector = when (this) {
     AppIcon.Appearance -> Icons.Outlined.Palette
     AppIcon.Add -> Icons.Outlined.Add
     AppIcon.Delete -> Icons.Outlined.Delete
-    AppIcon.Back -> Icons.AutoMirrored.Outlined.Send
+    AppIcon.Back -> Icons.AutoMirrored.Outlined.ArrowBack
     AppIcon.More -> Icons.Outlined.MoreVert
     AppIcon.Attachment -> Icons.Outlined.AttachFile
     AppIcon.Stop -> Icons.Outlined.Stop

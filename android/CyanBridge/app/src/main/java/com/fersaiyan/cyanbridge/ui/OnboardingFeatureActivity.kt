@@ -21,7 +21,7 @@ import com.fersaiyan.cyanbridge.media.autocapture.AutoAudioCapturePrefs
 import com.fersaiyan.cyanbridge.media.autocapture.AutoAudioCaptureService
 import com.fersaiyan.cyanbridge.ui.appearance.AppearancePreferences
 import com.fersaiyan.cyanbridge.ui.appearance.rememberAppearanceSettings
-import com.fersaiyan.cyanbridge.ui.onboarding.FeatureOnboardingScreen
+import com.fersaiyan.cyanbridge.shared.ui.onboarding.FeatureOnboardingScreen
 import com.fersaiyan.cyanbridge.ui.theme.CyanBridgeTheme
 
 class OnboardingFeatureActivity : AppCompatActivity() {

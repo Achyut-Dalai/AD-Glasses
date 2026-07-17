@@ -5,6 +5,7 @@ import android.os.Handler
 import android.os.Looper
 import android.util.Log
 import android.widget.Toast
+import com.fersaiyan.cyanbridge.glasses.GlassesSessionCoordinator
 import com.fersaiyan.cyanbridge.localagent.userfacts.CandidateUserFactsStorage
 import com.fersaiyan.cyanbridge.localmodels.provider.LocalModelRequestPriority
 import com.fersaiyan.cyanbridge.localmodels.provider.LocalModelsProvider
@@ -38,6 +39,10 @@ object AutoLoopVisualNoteGenerator {
     fun enqueue(context: Context, loopIndex: Int) {
         val appContext = context.applicationContext
         if (!AutoAudioCapturePrefs.isVisualNotesEnabled(appContext)) return
+        GlassesSessionCoordinator.currentSession()?.let { session ->
+            Log.i(TAG, "Skipping visual note while ${session.label} owns the SDK BLE/P2P slots")
+            return
+        }
         if (!inFlight.compareAndSet(false, true)) {
             Log.i(TAG, "Visual note already in progress; skipping loop=$loopIndex")
             return
@@ -138,51 +143,63 @@ object AutoLoopVisualNoteGenerator {
     }
 
     private suspend fun captureThumbnail(context: Context, loopIndex: Int): File? {
-        val outDir = context.getExternalFilesDir("DCIM") ?: context.filesDir
-        val file = File(outDir, "AUTO_LOOP_THUMB_${loopIndex}_${System.currentTimeMillis()}.jpg")
-        runCatching {
-            file.parentFile?.mkdirs()
-            if (file.exists()) file.delete()
+        val permit = GlassesSessionCoordinator.tryAcquireBackgroundCommand()
+        if (permit == null) {
+            Log.i(TAG, "Skipping thumbnail capture because the glasses SDK is busy")
+            return null
         }
+        var thumbnailTransferStarted = false
+        try {
+            val outDir = context.getExternalFilesDir("DCIM") ?: context.filesDir
+            val file = File(outDir, "AUTO_LOOP_THUMB_${loopIndex}_${System.currentTimeMillis()}.jpg")
+            runCatching {
+                file.parentFile?.mkdirs()
+                if (file.exists()) file.delete()
+            }
 
-        val gotChunk = AtomicBoolean(false)
-        val completed = AtomicBoolean(false)
-        val done = CompletableDeferred<File?>()
+            val completed = AtomicBoolean(false)
+            val done = CompletableDeferred<File?>()
 
-        val thumbCallback: (Int, Boolean, ByteArray?) -> Unit = { _, isComplete, data ->
-            if (data != null && data.isNotEmpty()) {
-                gotChunk.set(true)
-                runCatching {
-                    FileOutputStream(file, true).use { out -> out.write(data) }
-                }.onFailure {
-                    Log.e(TAG, "Failed writing thumbnail chunk: ${it.message}", it)
+            val thumbCallback: (Int, Boolean, ByteArray?) -> Unit = { _, isComplete, data ->
+                if (data != null && data.isNotEmpty()) {
+                    runCatching {
+                        FileOutputStream(file, true).use { out -> out.write(data) }
+                    }.onFailure {
+                        Log.e(TAG, "Failed writing thumbnail chunk: ${it.message}", it)
+                    }
+                }
+
+                if (isComplete && completed.compareAndSet(false, true)) {
+                    if (!done.isCompleted) {
+                        done.complete(if (file.exists() && file.length() >= 1024L) file else null)
+                    }
+                    GlassesSessionCoordinator.releaseBackgroundCommand(permit)
                 }
             }
 
-            if (isComplete && completed.compareAndSet(false, true)) {
-                if (!done.isCompleted) {
-                    done.complete(if (file.exists() && file.length() >= 1024L) file else null)
-                }
+            runCatching {
+                LargeDataHandler.getInstance().glassesControl(byteArrayOf(0x02, 0x01, 0x06, 0x02, 0x02)) { _, _ -> }
             }
-        }
+            delay(250)
+            runCatching {
+                LargeDataHandler.getInstance().glassesControl(byteArrayOf(0x02, 0x01, 0x01)) { _, _ -> }
+            }
+            delay(2500)
 
-        runCatching {
-            LargeDataHandler.getInstance().glassesControl(byteArrayOf(0x02, 0x01, 0x06, 0x02, 0x02)) { _, _ -> }
-        }
-        delay(250)
-        runCatching {
-            LargeDataHandler.getInstance().glassesControl(byteArrayOf(0x02, 0x01, 0x01)) { _, _ -> }
-        }
-        delay(2500)
-
-        LargeDataHandler.getInstance().getPictureThumbnails(thumbCallback)
-
-        delay(4500)
-        if (!gotChunk.get() && !completed.get()) {
             LargeDataHandler.getInstance().getPictureThumbnails(thumbCallback)
-        }
+            thumbnailTransferStarted = true
 
-        return withTimeoutOrNull(14_000) { done.await() }
+            val result = withTimeoutOrNull(14_000) { done.await() }
+            if (result == null) {
+                Log.w(TAG, "Thumbnail transfer timed out; keeping the glasses SDK isolated until completion or reconnect")
+            }
+            return result
+        } catch (e: Exception) {
+            if (!thumbnailTransferStarted) {
+                GlassesSessionCoordinator.releaseBackgroundCommand(permit)
+            }
+            throw e
+        }
     }
 
     private fun isImageFresh(file: File, maxAgeMs: Long): Boolean {

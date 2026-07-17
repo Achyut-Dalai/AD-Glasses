@@ -28,6 +28,10 @@ class WifiP2pManagerSingleton private constructor(private val context: Context) 
         @Volatile
         private var instance: WifiP2pManagerSingleton? = null
 
+        /** Last known P2P group owner IP, cached for live preview and other features. */
+        var lastGroupOwnerIp: String? = null
+            internal set
+
         fun getInstance(context: Context): WifiP2pManagerSingleton {
             return instance ?: synchronized(this) {
                 instance ?: WifiP2pManagerSingleton(context.applicationContext).also { instance = it }
@@ -43,9 +47,11 @@ class WifiP2pManagerSingleton private constructor(private val context: Context) 
 
     private val discoveryTimeoutMs = 16_000L
     private val connectTimeoutMs = 5_000L
+    private val delayedPeerDiscoveryRestart = Runnable { startPeerDiscovery() }
 
     private val connectionState = WifiP2pConnectionState()
     private val retryState = WifiP2pRetryState(1, 1)
+    @Volatile private var p2pOperationsEnabled = true
 
     private val intentFilter = IntentFilter().apply {
         addAction(WifiP2pManager.WIFI_P2P_STATE_CHANGED_ACTION)
@@ -64,6 +70,8 @@ class WifiP2pManagerSingleton private constructor(private val context: Context) 
         }
         return ContextCompat.checkSelfPermission(context, permission) == PackageManager.PERMISSION_GRANTED
     }
+
+    fun canUseP2p(): Boolean = hasWifiP2pPermission()
 
     init {
         Log.d(TAG, "WifiP2pManagerSingleton initialized")
@@ -112,6 +120,10 @@ class WifiP2pManagerSingleton private constructor(private val context: Context) 
 
     @SuppressLint("MissingPermission")
     fun startPeerDiscovery() {
+        if (!p2pOperationsEnabled) {
+            Log.d(TAG, "Ignoring peer discovery while P2P operations are stopped")
+            return
+        }
         if (!hasWifiP2pPermission()) {
             Log.w(TAG, "Cannot start P2P discovery: required permission is not granted")
             callbacks.forEach { it.onPeerDiscoveryFailed(WifiP2pManager.ERROR) }
@@ -126,6 +138,10 @@ class WifiP2pManagerSingleton private constructor(private val context: Context) 
 
             override fun onFailure(reason: Int) {
                 Log.e(TAG, "Peer discovery failed: $reason")
+                if (!p2pOperationsEnabled) {
+                    Log.d(TAG, "Ignoring discovery failure after P2P operations stopped")
+                    return
+                }
                 // Mirror vendor behavior: reschedule the internal timeout and stop discovery
                 // so we can retry in a stable way.
                 handler.removeCallbacks(discoveryTimeOut)
@@ -155,6 +171,10 @@ class WifiP2pManagerSingleton private constructor(private val context: Context) 
 
     @SuppressLint("MissingPermission")
     fun connectToDevice(device: WifiP2pDevice) {
+        if (!p2pOperationsEnabled) {
+            Log.d(TAG, "Ignoring P2P connect while operations are stopped")
+            return
+        }
         if (!hasWifiP2pPermission()) {
             Log.w(TAG, "Cannot connect P2P: required permission is not granted")
             callbacks.forEach { it.onConnectRequestFailed(WifiP2pManager.ERROR) }
@@ -244,10 +264,24 @@ class WifiP2pManagerSingleton private constructor(private val context: Context) 
     }
 
     fun resetFailCount() {
+        p2pOperationsEnabled = true
         retryState.reset()
         connectionState.reset()
+        cancelPendingRetries()
+    }
+
+    /** Stop delayed discovery/connect work without discarding the current group state. */
+    fun cancelPendingRetries() {
         handler.removeCallbacks(discoveryTimeOut)
         handler.removeCallbacks(connectTimeOut)
+        handler.removeCallbacks(delayedPeerDiscoveryRestart)
+    }
+
+    /** Stop a completed flow from rearming discovery through late framework callbacks. */
+    fun stopP2pOperations() {
+        p2pOperationsEnabled = false
+        cancelPendingRetries()
+        discoverPeersStable()
     }
 
     fun isConnecting(): Boolean = connectionState.isConnecting()
@@ -258,14 +292,17 @@ class WifiP2pManagerSingleton private constructor(private val context: Context) 
     }
 
     fun restartPeerDiscovery() {
+        if (!p2pOperationsEnabled) {
+            Log.d(TAG, "Ignoring peer-discovery restart while operations are stopped")
+            return
+        }
         Log.d(TAG, "restartPeerDiscovery: stopping current discovery and reinitializing")
-        handler.removeCallbacks(discoveryTimeOut)
-        handler.removeCallbacks(connectTimeOut)
+        cancelPendingRetries()
         initP2P()
         // Stabilization delay: give the P2P stack time to settle after reset
         // before starting discovery. Prevents "Connect request failed: 2" when
         // the glasses peer appears immediately after restart.
-        handler.postDelayed({ startPeerDiscovery() }, 1500L)
+        handler.postDelayed(delayedPeerDiscoveryRestart, 1500L)
     }
 
     fun setConnect(connected: Boolean) {
@@ -377,18 +414,21 @@ class WifiP2pManagerSingleton private constructor(private val context: Context) 
     internal fun onConnectionInfoAvailable(info: WifiP2pInfo) {
         connectionState.markConnectionInfoAvailable(info.groupFormed)
         handler.removeCallbacks(connectTimeOut)
+        lastGroupOwnerIp = info.groupOwnerAddress?.hostAddress
         callbacks.forEach { it.onConnected(info) }
     }
 
     internal fun onDisconnected() {
         connectionState.markDisconnected()
         handler.removeCallbacks(connectTimeOut)
+        lastGroupOwnerIp = null
         callbacks.forEach { it.onDisconnected() }
     }
 
     // Timeout handlers
     private val discoveryTimeOut = object : Runnable {
         override fun run() {
+            if (!p2pOperationsEnabled) return
             Log.d(TAG, "Internal scan retry connection: ${retryState.discoveryRetryCount()}")
             if (retryState.shouldRetryDiscovery()) {
                 Log.d(TAG, "Internal scan retry connection once")
@@ -402,6 +442,7 @@ class WifiP2pManagerSingleton private constructor(private val context: Context) 
     private val connectTimeOut = object : Runnable {
         override fun run() {
             connectionState.setConnecting(false)
+            if (!p2pOperationsEnabled) return
             if (retryState.shouldRetryConnect()) {
                 wifiP2pDevice?.let { device ->
                     Log.d(TAG, "Internal connection retry connection once")

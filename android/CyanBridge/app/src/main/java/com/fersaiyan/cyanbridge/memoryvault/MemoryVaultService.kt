@@ -1,6 +1,8 @@
 package com.fersaiyan.cyanbridge.memoryvault
 
 import android.content.Context
+import com.fersaiyan.cyanbridge.shared.settings.MemoryPrivacyMode
+import com.fersaiyan.cyanbridge.shared.settings.MemorySourceType
 import android.util.Base64
 import com.fersaiyan.cyanbridge.data.local.entity.LocalEmbeddingStoreEntity
 import com.fersaiyan.cyanbridge.data.local.entity.LocalSearchIndexStateEntity

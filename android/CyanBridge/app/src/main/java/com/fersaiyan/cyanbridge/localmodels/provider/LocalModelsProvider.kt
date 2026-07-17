@@ -19,6 +19,34 @@ enum class LocalModelRequestPriority {
     LOW,
 }
 
+/** LiteRT accepts one prompt alongside media, so preserve all system instructions in that prompt. */
+internal fun buildMultimodalPrompt(
+    configuredSystemPrompt: String,
+    messages: List<PromptMessage>,
+): String {
+    val systemInstructions = buildList {
+        configuredSystemPrompt.trim().takeIf { it.isNotBlank() }?.let(::add)
+        messages
+            .filter { it.role.equals("system", ignoreCase = true) }
+            .map { it.content.trim() }
+            .filter { it.isNotBlank() }
+            .forEach(::add)
+    }.distinct()
+    val userRequest = messages.lastOrNull { it.role.equals("user", ignoreCase = true) }
+        ?.content
+        ?: messages.lastOrNull()?.content.orEmpty()
+
+    return buildString {
+        if (systemInstructions.isNotEmpty()) {
+            appendLine("System instructions:")
+            appendLine(systemInstructions.joinToString("\n\n"))
+            appendLine()
+        }
+        append("User request: ")
+        append(userRequest)
+    }
+}
+
 class LocalModelsProvider {
     companion object {
         const val STATUS_MAX_TOKENS_REACHED = "__MAX_TOKENS_REACHED__"
@@ -71,11 +99,10 @@ val chatMessages = messages
                 if (role.isBlank() || content.isBlank()) null else PromptMessage(role = role, content = content)
             }
 
-        // For multimodal (image/audio) prompts, LiteRT's Conversation API handles turn formatting.
-        // We should send the raw user message content, not the template-wrapped prompt.
+        // LiteRT accepts one prompt alongside image/audio attachments. Preserve system instructions
+        // instead of dropping them when moving from the chat template to the media API.
         val effectivePrompt = if (hasMediaAttachments) {
-            // Extract just the user's message content (last user message)
-            chatMessages.lastOrNull { it.role.equals("user", ignoreCase = true) }?.content ?: chatMessages.lastOrNull()?.content ?: ""
+            buildMultimodalPrompt(systemPrompt, chatMessages)
         } else {
             // For text-only, use the full template-rendered prompt
             PromptTemplateRegistry.renderPrompt(

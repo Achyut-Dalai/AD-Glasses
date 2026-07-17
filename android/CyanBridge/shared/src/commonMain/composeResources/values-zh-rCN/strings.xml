@@ -1,0 +1,27 @@
+<resources>
+    <string name="settings_title">设置</string>
+    <string name="settings_language">语言</string>
+    <string name="settings_language_description">应用语言：%1$s</string>
+    <string name="action_change">更改</string>
+    <string name="action_configure">配置</string>
+    <string name="action_edit">编辑</string>
+    <string name="action_close">关闭</string>
+    <string name="action_back">返回</string>
+    <string name="action_cancel">取消</string>
+    <string name="action_connect">连接</string>
+    <string name="device_bind_title">连接眼镜</string>
+    <string name="device_bind_scan">扫描设备</string>
+    <string name="device_bind_scanning">正在扫描...</string>
+    <string name="device_bind_looking">正在查找已命名的蓝牙设备...</string>
+    <string name="device_bind_empty">未找到设备。请开始扫描以配对眼镜。</string>
+    <string name="device_bind_details">%1$s - 信号 %2$d</string>
+    <string name="device_bind_detected">已检测到：%1$s</string>
+    <string name="device_bind_select_type">选择眼镜类型</string>
+    <string name="vision_profile_title">视觉描述模式</string>
+    <string name="vision_profile_description">图像描述使用：%1$s</string>
+    <string name="vision_instructions_title">额外视觉说明</string>
+    <string name="plugin_select">选择 %1$s</string>
+    <string name="plugin_selected">已选择</string>
+    <string name="native_plugins_section">原生插件</string>
+    <string name="native_plugin_settings">设置</string>
+</resources>

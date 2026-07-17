@@ -3,6 +3,7 @@ plugins {
     alias(libs.plugins.android.library)
     alias(libs.plugins.compose.multiplatform)
     alias(libs.plugins.kotlin.compose.compiler)
+    alias(libs.plugins.kotlin.serialization)
 }
 
 val enableAppleTargets = providers.gradleProperty("enableAppleTargets").orNull == "true"
@@ -49,11 +50,13 @@ kotlin {
     sourceSets {
         commonMain.dependencies {
             implementation(libs.kotlinx.coroutines.core)
+            implementation(libs.kotlinx.serialization.json)
             implementation(compose.runtime)
             implementation(compose.foundation)
             implementation(compose.material3)
             implementation(compose.ui)
             implementation(compose.materialIconsExtended)
+            implementation(compose.components.resources)
         }
 @OptIn(org.jetbrains.compose.ExperimentalComposeLibrary::class)
 commonTest.dependencies {
@@ -61,6 +64,11 @@ commonTest.dependencies {
     implementation(compose.uiTest)
 }
     }
+}
+
+compose.resources {
+    packageOfResClass = "com.fersaiyan.cyanbridge.shared.generated.resources"
+    publicResClass = true
 }
 
 android {

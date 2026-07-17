@@ -161,7 +161,7 @@ class ChatListActivity : AppCompatActivity() {
         val last = ChatStore.listNonEmptyThreads().firstOrNull()
         val lastUserAt = last?.let { thread ->
             ChatStore.listMessages(thread.id)
-                .lastOrNull { it.role == com.fersaiyan.cyanbridge.chat.ChatRole.USER }
+                .lastOrNull { it.role == com.fersaiyan.cyanbridge.shared.chat.ChatRole.USER }
                 ?.createdAt
         } ?: 0L
         val openChatId = last?.id?.takeIf {

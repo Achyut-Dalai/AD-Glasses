@@ -1,6 +1,7 @@
 package com.fersaiyan.cyanbridge.ui.appearance
 
 import android.os.Build
+import com.fersaiyan.cyanbridge.shared.ui.appearance.AppearanceScreen
 import android.os.Bundle
 import androidx.activity.compose.setContent
 import androidx.appcompat.app.AppCompatActivity

@@ -1,0 +1,27 @@
+<resources>
+    <string name="app_name">CyanBridge</string>
+    <string name="language_system_default">Systemstandard</string>
+    <string name="language_selection_title">App-Sprache auswählen</string>
+    <string name="action_cancel">Abbrechen</string>
+    <string name="action_save">Speichern</string>
+    <string name="vision_profile_selection_title">Sehprofil auswählen</string>
+    <string name="vision_profile_walking">Gehen</string>
+    <string name="vision_profile_detailed">Detailliert</string>
+    <string name="vision_custom_instructions_title">Zusätzliche Sehanweisungen</string>
+    <string name="vision_custom_instructions_hint">Optionale Anweisungen für jede Bildbeschreibung</string>
+    <string name="walking_aid_title">Gehhilfe</string>
+    <string name="walking_aid_settings">Gehhilfe-Einstellungen</string>
+    <string name="walking_aid_general">Allgemein</string>
+    <string name="walking_aid_capture_interval">Aufnahmeintervall</string>
+    <string name="walking_aid_image_recognition">Bilderkennung</string>
+    <string name="walking_aid_depth_estimation">Tiefenschätzung</string>
+    <string name="walking_aid_output">Ausgabe</string>
+    <string name="walking_aid_tts_enabled">Beschreibungen vorlesen</string>
+    <string name="walking_aid_safety_disclaimer">Sicherheitshinweis bei erster Warnung</string>
+    <string name="walking_aid_history">Bildverlauf</string>
+    <string name="walking_aid_clear_history">Verlauf löschen</string>
+    <string name="walking_aid_source_local">Lokal (auf dem Gerät)</string>
+    <string name="walking_aid_source_cloud">Cloud (Pro)</string>
+    <string name="walking_aid_not_connected">Walking Aid: Brille nicht verbunden. Bitte verbinden Sie zuerst Ihre Brille.</string>
+    <string name="walking_aid_meeting_active">Walking Aid: Meeting-Aufnahme ist aktiv. Stoppen Sie die Aufnahme, bevor Sie Walking Aid aktivieren.</string>
+</resources>

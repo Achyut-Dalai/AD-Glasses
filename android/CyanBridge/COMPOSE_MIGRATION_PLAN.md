@@ -554,6 +554,36 @@ Exit criteria:
 - Android production build passes and physical-device core flows pass.
 - No known navigation, keyboard, icon, contrast, or secret-storage blocker remains.
 
+### Phase 8: Accessible Assistive Vision And Multilingual UX
+
+Status: in progress. This phase is driven by feedback from blind and low-vision glasses users, including real-world Android 16 and M02 Ultra testing.
+
+Goal: Make CyanBridge dependable for hands-free scene awareness while ensuring that every primary control is usable with TalkBack and that the shared CMP UI is available in the user's language.
+
+Tasks:
+
+- Add first-class AI vision profiles shared by local and Pro providers. The initial profiles are Walking (short, hazard- and landmark-focused responses) and Detailed (richer scene descriptions), with user-editable instructions.
+- Pass the active vision profile prompt to the first multimodal request for both local and cloud inference. Do not create an English-only image description and attempt to translate it in a second request.
+- Preserve local-model system instructions for multimodal requests; LiteRT image requests must not discard the configured system prompt.
+- Select TTS voice/language from the active vision profile and report unavailable voice data clearly.
+- Add Walking Mode: an explicitly user-started foreground service that captures, analyzes, and speaks on a 5, 10, or 30 second cadence. Schedule from completion, never queue captures, and provide a persistent Stop action.
+- Treat Walking Mode as situational awareness, not a path-safety guarantee. It must not describe a path as safe based on a single delayed image.
+- Keep Walking Mode isolated from media sync, OTA, live preview, video, and meeting/audio capture using the existing glasses session coordinator.
+- Persist the selected glasses MAC as the primary reconnect target. Reconnection must not depend on advertising-name heuristics that exclude devices such as M02 Ultra.
+- Stabilize the scan screen for TalkBack: do not clear/reorder results on resume, throttle RSSI-only updates, preserve focus, and expose an explicit Connect button for each device.
+- Replace informational plugin cards with real, accessible actions only when an install/select flow exists. Each action must be a standard semantic button with installed/enabled state and TalkBack feedback.
+- Introduce shared Compose resources for English, Portuguese (Brazil), Spanish, German, French, Italian, Simplified Chinese, and Russian. Move active shared-screen literals into those resources rather than creating Android-only translations.
+- Add an app-language setting using Android per-app locales and make accessibility labels, notifications, dialogs, and errors localizable alongside visible text.
+
+Acceptance criteria:
+
+- A Russian Walking profile produces Russian text and Russian TTS from both local LiteRT and Pro image requests.
+- The initial cloud image request contains the active profile instruction and does not contain a hard-coded English translation directive.
+- A saved M02 Ultra reconnects when the app opens without requiring the scan screen, provided Bluetooth and required permissions are available.
+- TalkBack can reach and activate Scan, Connect, profile selection, and every shipped plugin action without focus jumping.
+- The primary glasses, pairing, settings, and plugin surfaces render localized copy for all eight supported languages.
+- Walking Mode has physical-device tests covering disconnect, cancellation, TTS delay, active media sync, OTA, and live preview.
+
 ## Required Fix Designs
 
 ### Chat Insets And Keyboard

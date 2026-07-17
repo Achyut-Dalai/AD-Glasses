@@ -9,7 +9,7 @@ import androidx.compose.runtime.getValue
 import com.fersaiyan.cyanbridge.MainActivity
 import com.fersaiyan.cyanbridge.ui.appearance.AppearancePreferences
 import com.fersaiyan.cyanbridge.ui.appearance.rememberAppearanceSettings
-import com.fersaiyan.cyanbridge.ui.onboarding.WelcomeScreen
+import com.fersaiyan.cyanbridge.shared.ui.onboarding.WelcomeScreen
 import com.fersaiyan.cyanbridge.ui.theme.CyanBridgeTheme
 
 class WelcomeActivity : AppCompatActivity() {

@@ -10,6 +10,7 @@ import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performTextInput
 import com.fersaiyan.cyanbridge.shared.plugins.PublishPluginUiState
+import com.fersaiyan.cyanbridge.shared.ui.plugins.PublishPluginScreen
 import com.fersaiyan.cyanbridge.ui.theme.CyanBridgeTheme
 import org.junit.Assert.assertEquals
 import org.junit.Rule

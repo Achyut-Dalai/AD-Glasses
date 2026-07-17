@@ -21,8 +21,9 @@ import androidx.compose.runtime.setValue
 import androidx.core.app.NotificationManagerCompat
 import androidx.lifecycle.lifecycleScope
 import androidx.localbroadcastmanager.content.LocalBroadcastManager
+import com.fersaiyan.cyanbridge.R
 import com.fersaiyan.cyanbridge.MainActivity
-import com.fersaiyan.cyanbridge.agent.AgentProviderType
+import com.fersaiyan.cyanbridge.shared.settings.AgentProviderType
 import com.fersaiyan.cyanbridge.agent.LocalAgentPrefs as AutomationPrefs
 import com.fersaiyan.cyanbridge.agent.LocalModelsConfigureActivity
 import com.fersaiyan.cyanbridge.agent.ProSubscriptionActivity
@@ -31,7 +32,9 @@ import com.fersaiyan.cyanbridge.agent.ProSubscriptionSettingsActivity
 import com.fersaiyan.cyanbridge.agent.ProSubscriptionVerifier
 import com.fersaiyan.cyanbridge.ai.router.AiProviderPrefs
 import com.fersaiyan.cyanbridge.ai.router.AiProviderType
-import com.fersaiyan.cyanbridge.chat.ChatRole
+import com.fersaiyan.cyanbridge.ai.vision.VisionProfile
+import com.fersaiyan.cyanbridge.ai.vision.VisionProfilePreferences
+import com.fersaiyan.cyanbridge.shared.chat.ChatRole
 import com.fersaiyan.cyanbridge.chat.ChatStore
 import com.fersaiyan.cyanbridge.localagent.LocalAgentController
 import com.fersaiyan.cyanbridge.localagent.LocalAgentIntents
@@ -45,8 +48,8 @@ import com.fersaiyan.cyanbridge.localmodels.session.LocalChatSessionManager
 import com.fersaiyan.cyanbridge.media.autocapture.AutoAudioCapturePrefs
 import com.fersaiyan.cyanbridge.media.autocapture.AutoAudioCaptureService
 import com.fersaiyan.cyanbridge.memoryvault.MemoryModeManager
-import com.fersaiyan.cyanbridge.memoryvault.MemoryPrivacyMode
-import com.fersaiyan.cyanbridge.memoryvault.MemorySourceType
+import com.fersaiyan.cyanbridge.shared.settings.MemoryPrivacyMode
+import com.fersaiyan.cyanbridge.shared.settings.MemorySourceType
 import com.fersaiyan.cyanbridge.memoryvault.MemorySyncPreparationService
 import com.fersaiyan.cyanbridge.memoryvault.MemoryVaultBootstrap
 import com.fersaiyan.cyanbridge.memoryvault.MemoryVaultService
@@ -55,7 +58,7 @@ import com.fersaiyan.cyanbridge.privacy.LocalDataBackupManager
 import com.fersaiyan.cyanbridge.privacy.LocalDataClearer
 import com.fersaiyan.cyanbridge.privacy.PrivacyPrefs
 import com.fersaiyan.cyanbridge.shared.navigation.AppDestination
-import com.fersaiyan.cyanbridge.audio.CaptureSource
+import com.fersaiyan.cyanbridge.shared.settings.CaptureSource
 import com.fersaiyan.cyanbridge.audio.MeetingCapturePrefs
 import com.fersaiyan.cyanbridge.audio.MeetingCaptureService
 import com.fersaiyan.cyanbridge.ui.appearance.AppearanceActivity
@@ -68,10 +71,12 @@ import com.fersaiyan.cyanbridge.ui.localagent.DailySummaryActivity
 import com.fersaiyan.cyanbridge.ui.localagent.PendingActionsActivity
 import com.fersaiyan.cyanbridge.ui.localagent.ScreenCapturesActivity
 import com.fersaiyan.cyanbridge.ui.recordings.RecordingsListActivity
-import com.fersaiyan.cyanbridge.ui.settings.SettingsScreen
-import com.fersaiyan.cyanbridge.ui.settings.SettingsScreenActions
-import com.fersaiyan.cyanbridge.ui.settings.SettingsSection
-import com.fersaiyan.cyanbridge.ui.settings.SettingsUiState
+import com.fersaiyan.cyanbridge.shared.settings.SettingsSection
+import com.fersaiyan.cyanbridge.shared.ui.settings.SettingsScreen
+import com.fersaiyan.cyanbridge.shared.ui.settings.SettingsScreenActions
+import com.fersaiyan.cyanbridge.shared.ui.settings.SettingsUiState
+import com.fersaiyan.cyanbridge.ui.localization.AppLanguage
+import com.fersaiyan.cyanbridge.ui.localization.AppLanguagePreferences
 import com.fersaiyan.cyanbridge.ui.theme.CyanBridgeTheme
 import com.hjq.permissions.Permission
 import com.hjq.permissions.XXPermissions
@@ -221,6 +226,8 @@ class SettingsActivity : AppCompatActivity(), SettingsScreenActions {
         settingsUiState = SettingsUiState(
             isProSubscribed = ProSubscriptionPrefs.isActiveLocally(this),
             proPlan = formatPlan(ProSubscriptionPrefs.getPlan(this)),
+            appLanguageLabel = AppLanguagePreferences.selected(this).displayName(this),
+            visionProfileLabel = localizedVisionProfileName(VisionProfilePreferences.get(this).profile),
             providerType = providerType,
             localAgentAutomationEnabled = AutomationPrefs.isLocalAgentAutomationEnabled(this),
             localAgentRequireConfirmation = AutomationPrefs.isRequireConfirmationEnabled(this),
@@ -277,6 +284,50 @@ class SettingsActivity : AppCompatActivity(), SettingsScreenActions {
 
     override fun openAppearance() {
         startActivity(Intent(this, AppearanceActivity::class.java))
+    }
+
+    override fun openAppLanguageSelection() {
+        val languages = AppLanguage.entries
+        val selected = AppLanguagePreferences.selected(this)
+        AlertDialog.Builder(this)
+            .setTitle(R.string.language_selection_title)
+            .setSingleChoiceItems(
+                languages.map { it.displayName(this) }.toTypedArray(),
+                languages.indexOf(selected),
+            ) { dialog, which ->
+                AppLanguagePreferences.select(this, languages[which])
+                dialog.dismiss()
+                refreshSettingsUi()
+            }
+            .show()
+    }
+
+    override fun openVisionProfileSelection() {
+        val profiles = VisionProfile.entries
+        val selected = VisionProfilePreferences.get(this).profile
+        AlertDialog.Builder(this)
+            .setTitle(R.string.vision_profile_selection_title)
+            .setSingleChoiceItems(
+                profiles.map(::localizedVisionProfileName).toTypedArray(),
+                profiles.indexOf(selected),
+            ) { dialog, which ->
+                VisionProfilePreferences.setProfile(this, profiles[which])
+                dialog.dismiss()
+                refreshSettingsUi()
+            }
+            .setNegativeButton(R.string.action_cancel, null)
+            .show()
+    }
+
+    override fun editVisionInstructions() {
+        showTextEditorDialog(
+            title = getString(R.string.vision_custom_instructions_title),
+            initial = VisionProfilePreferences.get(this).customInstructions,
+            hint = getString(R.string.vision_custom_instructions_hint),
+        ) { instructions ->
+            VisionProfilePreferences.setCustomInstructions(this, instructions)
+            refreshSettingsUi()
+        }
     }
 
     override fun openSubscription() {
@@ -853,8 +904,8 @@ class SettingsActivity : AppCompatActivity(), SettingsScreenActions {
         AlertDialog.Builder(this)
             .setTitle(title)
             .setView(input)
-            .setNegativeButton("Cancel", null)
-            .setPositiveButton("Save") { _, _ -> onSave(input.text?.toString().orEmpty()) }
+            .setNegativeButton(R.string.action_cancel, null)
+            .setPositiveButton(R.string.action_save) { _, _ -> onSave(input.text?.toString().orEmpty()) }
             .show()
     }
 
@@ -968,6 +1019,11 @@ class SettingsActivity : AppCompatActivity(), SettingsScreenActions {
         "monthly" -> "Monthly"
         "yearly" -> "Yearly"
         else -> "Pro"
+    }
+
+    private fun localizedVisionProfileName(profile: VisionProfile): String = when (profile) {
+        VisionProfile.WALKING -> getString(R.string.vision_profile_walking)
+        VisionProfile.DETAILED -> getString(R.string.vision_profile_detailed)
     }
 
     private fun sectionPreferenceKey(section: SettingsSection): String {

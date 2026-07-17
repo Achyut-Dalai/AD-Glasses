@@ -1,0 +1,142 @@
+package com.fersaiyan.cyanbridge.plugins.walkingaid
+
+import android.content.Context
+
+object WalkingAidPreferences {
+    private const val PREFS = "walking_aid_prefs"
+
+    private const val KEY_ENABLED = "enabled"
+    private const val KEY_CAPTURE_INTERVAL_SECONDS = "capture_interval_seconds"
+    private const val KEY_IMAGE_DESCRIPTION_SOURCE = "image_description_source"
+    private const val KEY_IMAGE_DESCRIPTION_CLOUD_MODEL_ID = "image_description_cloud_model_id"
+    private const val KEY_DEPTH_ENABLED = "depth_enabled"
+    private const val KEY_DEPTH_SOURCE = "depth_source"
+    private const val KEY_DEPTH_CLOUD_MODEL_ID = "depth_cloud_model_id"
+    private const val KEY_STATE_MODEL_SOURCE = "state_model_source"
+    private const val KEY_TTS_ENABLED = "tts_enabled"
+    private const val KEY_SAFETY_DISCLAIMER_ENABLED = "safety_disclaimer_enabled"
+    private const val KEY_IMAGE_HISTORY_MAX_COUNT = "image_history_max_count"
+    private const val KEY_CUSTOM_PROMPT = "custom_prompt"
+    private const val MAX_CUSTOM_PROMPT_CHARS = 1_500
+
+    private const val DEFAULT_ENABLED = false
+    private const val DEFAULT_CAPTURE_INTERVAL_SECONDS = 5
+    private const val DEFAULT_IMAGE_DESCRIPTION_SOURCE = "local"
+    private const val DEFAULT_IMAGE_DESCRIPTION_CLOUD_MODEL_ID = "deepseek/deepseek-v4-flash"
+    private const val DEFAULT_DEPTH_ENABLED = true
+    private const val DEFAULT_DEPTH_SOURCE = "cloud"
+    private const val DEFAULT_DEPTH_CLOUD_MODEL_ID = "deepseek/deepseek-v4-flash"
+    private const val DEFAULT_STATE_MODEL_SOURCE = "local"
+    private const val DEFAULT_TTS_ENABLED = true
+    private const val DEFAULT_SAFETY_DISCLAIMER_ENABLED = true
+    private const val DEFAULT_IMAGE_HISTORY_MAX_COUNT = 50
+
+    private fun prefs(context: Context) =
+        context.applicationContext.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
+
+    fun isEnabled(context: Context): Boolean =
+        prefs(context).getBoolean(KEY_ENABLED, DEFAULT_ENABLED)
+
+    fun setEnabled(context: Context, enabled: Boolean) {
+        prefs(context).edit().putBoolean(KEY_ENABLED, enabled).apply()
+    }
+
+    fun getCaptureIntervalSeconds(context: Context): Int =
+        prefs(context).getInt(KEY_CAPTURE_INTERVAL_SECONDS, DEFAULT_CAPTURE_INTERVAL_SECONDS)
+            .coerceIn(2, 60)
+
+    fun setCaptureIntervalSeconds(context: Context, seconds: Int) {
+        prefs(context).edit().putInt(KEY_CAPTURE_INTERVAL_SECONDS, seconds.coerceIn(2, 60)).apply()
+    }
+
+    fun getImageDescriptionSource(context: Context): String =
+        prefs(context).getString(KEY_IMAGE_DESCRIPTION_SOURCE, DEFAULT_IMAGE_DESCRIPTION_SOURCE).orEmpty()
+
+    fun setImageDescriptionSource(context: Context, source: String) {
+        prefs(context).edit().putString(KEY_IMAGE_DESCRIPTION_SOURCE, source).apply()
+    }
+
+    fun getImageDescriptionCloudModelId(context: Context): String =
+        prefs(context).getString(KEY_IMAGE_DESCRIPTION_CLOUD_MODEL_ID, DEFAULT_IMAGE_DESCRIPTION_CLOUD_MODEL_ID).orEmpty()
+
+    fun setImageDescriptionCloudModelId(context: Context, modelId: String) {
+        prefs(context).edit().putString(KEY_IMAGE_DESCRIPTION_CLOUD_MODEL_ID, modelId).apply()
+    }
+
+    fun isDepthEnabled(context: Context): Boolean =
+        prefs(context).getBoolean(KEY_DEPTH_ENABLED, DEFAULT_DEPTH_ENABLED)
+
+    fun setDepthEnabled(context: Context, enabled: Boolean) {
+        prefs(context).edit().putBoolean(KEY_DEPTH_ENABLED, enabled).apply()
+    }
+
+    fun getDepthSource(context: Context): String =
+        prefs(context).getString(KEY_DEPTH_SOURCE, DEFAULT_DEPTH_SOURCE).orEmpty()
+
+    fun setDepthSource(context: Context, source: String) {
+        prefs(context).edit().putString(KEY_DEPTH_SOURCE, source).apply()
+    }
+
+    fun getDepthCloudModelId(context: Context): String =
+        prefs(context).getString(KEY_DEPTH_CLOUD_MODEL_ID, DEFAULT_DEPTH_CLOUD_MODEL_ID).orEmpty()
+
+    fun setDepthCloudModelId(context: Context, modelId: String) {
+        prefs(context).edit().putString(KEY_DEPTH_CLOUD_MODEL_ID, modelId).apply()
+    }
+
+    fun getStateModelSource(context: Context): String =
+        prefs(context).getString(KEY_STATE_MODEL_SOURCE, DEFAULT_STATE_MODEL_SOURCE).orEmpty()
+
+    fun setStateModelSource(context: Context, source: String) {
+        prefs(context).edit().putString(KEY_STATE_MODEL_SOURCE, source).apply()
+    }
+
+    fun isTtsEnabled(context: Context): Boolean =
+        prefs(context).getBoolean(KEY_TTS_ENABLED, DEFAULT_TTS_ENABLED)
+
+    fun setTtsEnabled(context: Context, enabled: Boolean) {
+        prefs(context).edit().putBoolean(KEY_TTS_ENABLED, enabled).apply()
+    }
+
+    fun isSafetyDisclaimerEnabled(context: Context): Boolean =
+        prefs(context).getBoolean(KEY_SAFETY_DISCLAIMER_ENABLED, DEFAULT_SAFETY_DISCLAIMER_ENABLED)
+
+    fun setSafetyDisclaimerEnabled(context: Context, enabled: Boolean) {
+        prefs(context).edit().putBoolean(KEY_SAFETY_DISCLAIMER_ENABLED, enabled).apply()
+    }
+
+    fun getImageHistoryMaxCount(context: Context): Int =
+        prefs(context).getInt(KEY_IMAGE_HISTORY_MAX_COUNT, DEFAULT_IMAGE_HISTORY_MAX_COUNT)
+            .coerceIn(10, 200)
+
+    fun setImageHistoryMaxCount(context: Context, count: Int) {
+        prefs(context).edit().putInt(KEY_IMAGE_HISTORY_MAX_COUNT, count.coerceIn(10, 200)).apply()
+    }
+
+    fun getCustomPrompt(context: Context): String =
+        prefs(context).getString(KEY_CUSTOM_PROMPT, "").orEmpty()
+            .take(MAX_CUSTOM_PROMPT_CHARS)
+
+    fun setCustomPrompt(context: Context, prompt: String) {
+        prefs(context).edit().putString(KEY_CUSTOM_PROMPT, prompt.trim().take(MAX_CUSTOM_PROMPT_CHARS)).apply()
+    }
+
+    /** Returns the cloud model ID for image description, or null if using local source. */
+    fun getImageDescriptionModelOverride(context: Context): String? {
+        val source = getImageDescriptionSource(context)
+        if (source != "cloud") return null
+        return getImageDescriptionCloudModelId(context).ifBlank { null }
+    }
+
+    /** Returns the cloud model ID for depth estimation, or null if using local source. */
+    fun getDepthModelOverride(context: Context): String? {
+        val source = getDepthSource(context)
+        if (source != "cloud") return null
+        return getDepthCloudModelId(context).ifBlank { null }
+    }
+
+    /** Returns true if either image description or depth use cloud source. */
+    fun shouldUseCloud(context: Context): Boolean {
+        return getImageDescriptionSource(context) == "cloud" || getDepthSource(context) == "cloud"
+    }
+}

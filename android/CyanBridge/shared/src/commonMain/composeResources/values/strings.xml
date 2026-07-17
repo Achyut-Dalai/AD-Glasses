@@ -1,0 +1,27 @@
+<resources>
+    <string name="settings_title">Settings</string>
+    <string name="settings_language">Language</string>
+    <string name="settings_language_description">App language: %1$s</string>
+    <string name="action_change">Change</string>
+    <string name="action_configure">Configure</string>
+    <string name="action_edit">Edit</string>
+    <string name="action_close">Close</string>
+    <string name="action_back">Back</string>
+    <string name="action_cancel">Cancel</string>
+    <string name="action_connect">Connect</string>
+    <string name="device_bind_title">Connect glasses</string>
+    <string name="device_bind_scan">Scan for devices</string>
+    <string name="device_bind_scanning">Scanning...</string>
+    <string name="device_bind_looking">Looking for named Bluetooth devices...</string>
+    <string name="device_bind_empty">No devices found. Start a scan to pair your glasses.</string>
+    <string name="device_bind_details">%1$s - Signal %2$d</string>
+    <string name="device_bind_detected">Detected: %1$s</string>
+    <string name="device_bind_select_type">Select glasses type</string>
+    <string name="vision_profile_title">Vision profile</string>
+    <string name="vision_profile_description">Image descriptions use: %1$s</string>
+    <string name="vision_instructions_title">Additional vision instructions</string>
+    <string name="plugin_select">Select %1$s</string>
+    <string name="plugin_selected">Selected</string>
+    <string name="native_plugins_section">Native Plugins</string>
+    <string name="native_plugin_settings">Settings</string>
+</resources>

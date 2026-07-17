@@ -1,0 +1,27 @@
+<resources>
+    <string name="app_name">CyanBridge</string>
+    <string name="language_system_default">Predefinito di sistema</string>
+    <string name="language_selection_title">Scegli la lingua dell\'app</string>
+    <string name="action_cancel">Annulla</string>
+    <string name="action_save">Salva</string>
+    <string name="vision_profile_selection_title">Scegli il profilo visivo</string>
+    <string name="vision_profile_walking">Camminata</string>
+    <string name="vision_profile_detailed">Dettagliato</string>
+    <string name="vision_custom_instructions_title">Istruzioni visive aggiuntive</string>
+    <string name="vision_custom_instructions_hint">Istruzioni facoltative usate per ogni descrizione di immagine</string>
+    <string name="walking_aid_title">Ausilio per la Camminata</string>
+    <string name="walking_aid_settings">Impostazioni Ausilio per la Camminata</string>
+    <string name="walking_aid_general">Generale</string>
+    <string name="walking_aid_capture_interval">Intervallo di acquisizione</string>
+    <string name="walking_aid_image_recognition">Riconoscimento Immagine</string>
+    <string name="walking_aid_depth_estimation">Stima Profondità</string>
+    <string name="walking_aid_output">Uscita</string>
+    <string name="walking_aid_tts_enabled">Leggi descrizioni ad alta voce</string>
+    <string name="walking_aid_safety_disclaimer">Avviso di sicurezza al primo avvertimento</string>
+    <string name="walking_aid_history">Cronologia Immagini</string>
+    <string name="walking_aid_clear_history">Cancella Cronologia</string>
+    <string name="walking_aid_source_local">Locale (sul dispositivo)</string>
+    <string name="walking_aid_source_cloud">Cloud (Pro)</string>
+    <string name="walking_aid_not_connected">Walking Aid: Occhiali non connessi. Collega prima i tuoi occhiali.</string>
+    <string name="walking_aid_meeting_active">Walking Aid: Registrazione riunione attiva. Ferma la riunione prima di attivare Walking Aid.</string>
+</resources>

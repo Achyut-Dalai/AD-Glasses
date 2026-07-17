@@ -1,13 +1,6 @@
 package com.fersaiyan.cyanbridge.memoryvault
 
-enum class MemorySourceType {
-    EXPLICIT_USER_FACT,
-    AUTO_DAILY_FACT,
-    SCREEN_OCR,
-    DERIVED_SUMMARY,
-    IMPORTED_TEXT,
-    SYSTEM_NOTE,
-}
+import com.fersaiyan.cyanbridge.shared.settings.MemorySourceType
 
 enum class MemorySensitivityLevel {
     LOW,

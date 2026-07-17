@@ -227,7 +227,7 @@ typedef NS_ENUM(NSInteger, QGDeviceActionType) {
 }
 
 - (void)recordAudio {
-    if (self.recordingVideo) {
+    if (self.recordingAudio) {
         [QCSDKCmdCreator setDeviceMode:(QCOperatorDeviceModeAudioStop) success:^{
             self.recordingAudio = NO;
             [self.tableView reloadData];
@@ -382,6 +382,14 @@ typedef NS_ENUM(NSInteger, QGDeviceActionType) {
             if (self.aiImageData) {
                 cell.imageView.image = [UIImage imageWithData:self.aiImageData];
             }
+            break;
+        case QGDeviceActionTypeSwitchToCaptureMode:
+            cell.textLabel.text = @"Switch to Capture Mode";
+            cell.detailTextLabel.text = @"Return the glasses to photo capture mode.";
+            break;
+        case QGDeviceActionTypeSwitchToTransferMode:
+            cell.textLabel.text = @"Switch to Transfer Mode";
+            cell.detailTextLabel.text = @"Connect to the glasses Wi-Fi network for media transfer.";
             break;
         case QGDeviceActionTypeDownloadMedia:
             cell.textLabel.text = @"Download Media Over Wi-Fi";
@@ -544,6 +552,8 @@ typedef NS_ENUM(NSInteger, QGDeviceActionType) {
                         NSLog(@"❌ Failed to connect to glasses hotspot: %@", error.localizedDescription);
                         self.glassesDeviceIP = nil;
                     }
+                    // The singleton must return to Idle so the user can retry a transfer.
+                    [[GlassesWiFiHandler sharedHandler] reset];
                     [self.tableView reloadData];
                 });
             }];
