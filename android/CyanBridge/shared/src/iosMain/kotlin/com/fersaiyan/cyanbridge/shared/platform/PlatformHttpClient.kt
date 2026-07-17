@@ -73,7 +73,7 @@ actual class PlatformHttpClient actual constructor() {
     actual fun close() {}
 
     private suspend fun executeRequest(request: NSMutableURLRequest): HttpResponse = suspendCancellableCoroutine { cont ->
-        val session = NSURLSession.sessionWithConfiguration(NSURLSessionConfiguration.defaultSessionConfiguration())
+        val session = NSURLSession.sharedSession()
         val task = session.dataTaskWithRequest(request) { data, response, error ->
             if (error != null) {
                 cont.resumeWith(Result.failure(Exception(error.localizedDescription)))
@@ -104,7 +104,6 @@ actual class PlatformHttpClient actual constructor() {
 private fun NSData.toByteArray(): ByteArray? {
     if (length == 0uL) return ByteArray(0)
     val bytes = ByteArray(length.toInt())
-    // Copy bytes from NSData to ByteArray
     for (i in 0 until length.toInt()) {
         bytes[i] = (this[i].toInt() and 0xFF).toByte()
     }

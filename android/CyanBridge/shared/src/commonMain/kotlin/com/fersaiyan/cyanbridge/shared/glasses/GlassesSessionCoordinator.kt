@@ -1,5 +1,8 @@
 package com.fersaiyan.cyanbridge.shared.glasses
 
+import kotlinx.atomicfu.locks.SynchronizedObject
+import kotlinx.atomicfu.locks.synchronized
+
 /**
  * The vendor SDK exposes singleton BLE response/listener slots and a singleton P2P controller.
  * Only one workflow may control those resources at a time.
@@ -17,78 +20,67 @@ class GlassesSessionLease internal constructor(
 
 class BackgroundGlassesCommandPermit internal constructor(internal val id: Long)
 
-object GlassesSessionCoordinator {
+object GlassesSessionCoordinator : SynchronizedObject() {
     private var activeLease: GlassesSessionLease? = null
     private var nextSessionId = 0L
     private var nextBackgroundCommandId = 0L
     private val activeBackgroundCommandIds = mutableSetOf<Long>()
 
-    @Synchronized
-    fun tryAcquire(session: GlassesSession): Boolean {
+    fun tryAcquire(session: GlassesSession): Boolean = synchronized(this) {
         return tryAcquireLease(session) != null
     }
 
-    @Synchronized
-    fun tryAcquireLease(session: GlassesSession): GlassesSessionLease? {
+    fun tryAcquireLease(session: GlassesSession): GlassesSessionLease? = synchronized(this) {
         if (activeLease != null || activeBackgroundCommandIds.isNotEmpty()) return null
         return GlassesSessionLease(session, ++nextSessionId).also { activeLease = it }
     }
 
-    @Synchronized
-    fun release(session: GlassesSession): Boolean {
+    fun release(session: GlassesSession): Boolean = synchronized(this) {
         val lease = activeLease ?: return false
         if (lease.session != session) return false
         activeLease = null
         return true
     }
 
-    @Synchronized
-    fun release(lease: GlassesSessionLease): Boolean {
+    fun release(lease: GlassesSessionLease): Boolean = synchronized(this) {
         if (activeLease !== lease) return false
         activeLease = null
         return true
     }
 
-    @Synchronized
-    fun currentSession(): GlassesSession? = activeLease?.session
+    fun currentSession(): GlassesSession? = synchronized(this) { activeLease?.session }
 
-    @Synchronized
-    fun isOwnedBy(session: GlassesSession): Boolean = activeLease?.session == session
+    fun isOwnedBy(session: GlassesSession): Boolean = synchronized(this) { activeLease?.session == session }
 
-    @Synchronized
-    fun isActive(lease: GlassesSessionLease): Boolean = activeLease === lease
+    fun isActive(lease: GlassesSessionLease): Boolean = synchronized(this) { activeLease === lease }
 
-    @Synchronized
-    fun canRunBackgroundCommand(): Boolean =
+    fun canRunBackgroundCommand(): Boolean = synchronized(this) {
         activeLease == null && activeBackgroundCommandIds.isEmpty()
+    }
 
     /** Atomically reserves the shared SDK response slot for a short one-shot command. */
-    @Synchronized
-    fun tryAcquireBackgroundCommand(): BackgroundGlassesCommandPermit? {
+    fun tryAcquireBackgroundCommand(): BackgroundGlassesCommandPermit? = synchronized(this) {
         if (activeLease != null || activeBackgroundCommandIds.isNotEmpty()) return null
         val permit = BackgroundGlassesCommandPermit(++nextBackgroundCommandId)
         activeBackgroundCommandIds += permit.id
         return permit
     }
 
-    @Synchronized
-    fun releaseBackgroundCommand(permit: BackgroundGlassesCommandPermit) {
+    fun releaseBackgroundCommand(permit: BackgroundGlassesCommandPermit) = synchronized(this) {
         activeBackgroundCommandIds -= permit.id
     }
 
-    @Synchronized
-    fun isBackgroundCommandActive(permit: BackgroundGlassesCommandPermit): Boolean =
+    fun isBackgroundCommandActive(permit: BackgroundGlassesCommandPermit): Boolean = synchronized(this) {
         permit.id in activeBackgroundCommandIds
+    }
 
     /** A BLE reconnect discards any vendor callback slot that may have been left pending. */
-    @Synchronized
-    fun clearBackgroundCommands() {
+    fun clearBackgroundCommands() = synchronized(this) {
         activeBackgroundCommandIds.clear()
     }
 
     /** A real BLE disconnect invalidates every pending vendor response and P2P workflow. */
-    @Synchronized
-    fun clearForDisconnectedDevice() {
+    fun clearForDisconnectedDevice() = synchronized(this) {
         activeLease = null
         activeBackgroundCommandIds.clear()
     }

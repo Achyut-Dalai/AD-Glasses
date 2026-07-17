@@ -350,9 +350,8 @@ private fun String.unescapeJson(): String =
 @OptIn(ExperimentalForeignApi::class)
 private fun ByteArray.encodeBase64(): String {
     if (isEmpty()) return ""
-    val data = platform.Foundation.NSData.create(
-        bytes = this.refTo(0),
-        length = size.toULong(),
-    )
+    val data = this.refTo(0).let { ptr ->
+        platform.Foundation.NSData.create(bytes = ptr, length = size.toULong())
+    }
     return data.base64EncodedStringWithOptions(0u)
 }

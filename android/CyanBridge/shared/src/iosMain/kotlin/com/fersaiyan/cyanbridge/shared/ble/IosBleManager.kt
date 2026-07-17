@@ -22,10 +22,10 @@ class IosBleManager : BleManager {
     private val _connectionState = MutableStateFlow(BleConnectionState.DISCONNECTED)
     override val connectionState: Flow<BleConnectionState> = _connectionState.asStateFlow()
 
+    private val listeners = mutableListOf<BleNotificationListener>()
+
     override fun startScan(timeoutMs: Long?): Flow<BleScannedDevice> = flow {
         PlatformLogger.i(TAG, "Starting BLE scan (iOS CoreBluetooth)")
-        // CoreBluetooth scanning will be triggered via the iOS host app
-        // and results fed back through onDeviceDiscovered()
     }
 
     override fun stopScan() {
@@ -35,7 +35,6 @@ class IosBleManager : BleManager {
     override suspend fun connect(identifier: String) {
         PlatformLogger.i(TAG, "Connecting to device: $identifier")
         _connectionState.value = BleConnectionState.CONNECTING
-        // Connection handled by iOS host app via CoreBluetooth
         _connectedDeviceMac.value = identifier
         _connectionState.value = BleConnectionState.CONNECTED
     }
@@ -49,15 +48,14 @@ class IosBleManager : BleManager {
 
     override suspend fun sendCommand(command: ByteArray) {
         PlatformLogger.d(TAG, "Sending command: ${command.size} bytes")
-        // Commands sent via iOS host app CoreBluetooth write
     }
 
     override fun addNotificationListener(listener: BleNotificationListener) {
-        synchronized(lock) { listeners.add(listener) }
+        listeners.add(listener)
     }
 
     override fun removeNotificationListener(listener: BleNotificationListener) {
-        synchronized(lock) { listeners.remove(listener) }
+        listeners.remove(listener)
     }
 
     override fun isConnected(): Boolean = _connectionState.value == BleConnectionState.CONNECTED
@@ -66,31 +64,20 @@ class IosBleManager : BleManager {
 
     override suspend fun requestFirmwareVersion(): String? = null
 
-    /**
-     * Called by iOS host when a BLE device is discovered.
-     */
     fun onDeviceDiscovered(identifier: String, name: String?, rssi: Int) {
         PlatformLogger.d(TAG, "Device discovered: $name ($identifier) RSSI=$rssi")
     }
 
-    /**
-     * Called by iOS host when a notification is received.
-     */
     fun onNotificationReceived(characteristicId: String, data: ByteArray) {
-        synchronized(lock) {
-            listeners.forEach { listener ->
-                try {
-                    listener.onNotification(characteristicId, data)
-                } catch (e: Exception) {
-                    PlatformLogger.e(TAG, "Error in notification listener", e)
-                }
+        listeners.forEach { listener ->
+            try {
+                listener.onNotification(characteristicId, data)
+            } catch (e: Exception) {
+                PlatformLogger.e(TAG, "Error in notification listener", e)
             }
         }
     }
 
-    /**
-     * Called by iOS host when Bluetooth state changes.
-     */
     fun onBluetoothStateChanged(enabled: Boolean) {
         _isBluetoothEnabled.value = enabled
         if (!enabled) {
@@ -101,7 +88,5 @@ class IosBleManager : BleManager {
 
     companion object {
         private const val TAG = "IosBleManager"
-        private val lock = Any()
-        private val listeners = mutableListOf<BleNotificationListener>()
     }
 }

@@ -4,6 +4,7 @@ plugins {
     alias(libs.plugins.compose.multiplatform)
     alias(libs.plugins.kotlin.compose.compiler)
     alias(libs.plugins.kotlin.serialization)
+    alias(libs.plugins.atomicfu)
 }
 
 val enableAppleTargets = providers.gradleProperty("enableAppleTargets").orNull == "true"
@@ -51,6 +52,7 @@ kotlin {
         commonMain.dependencies {
             implementation(libs.kotlinx.coroutines.core)
             implementation(libs.kotlinx.serialization.json)
+            implementation(libs.kotlinx.atomicfu)
             implementation(compose.runtime)
             implementation(compose.foundation)
             implementation(compose.material3)
