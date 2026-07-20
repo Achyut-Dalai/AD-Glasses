@@ -43,6 +43,7 @@ object DebugLogSupport {
         "Ota",
         "OtaManager",
         "BleDfuManager",
+        "DebugLogSupport",
         "CliRelayRouter",
         "LocalAgent",
         "MainActivity",
