@@ -4,20 +4,36 @@ import android.content.Context
 import android.net.Uri
 import android.util.Log
 import com.fersaiyan.cyanbridge.agent.ProSubscriptionServerPrefs
+import com.fersaiyan.cyanbridge.shared.glasses.OtaFirmwareSource
 import org.json.JSONObject
 import java.io.File
+import java.io.FileInputStream
 import java.io.FileOutputStream
 import java.net.HttpURLConnection
 import java.net.URL
+import java.security.MessageDigest
 
 /** The server artifact must match the transport selected by the user. */
-internal fun OtaTarget.expectedFirmwareExtension(): String = when (this) {
+fun OtaTarget.expectedFirmwareExtension(): String = when (this) {
     OtaTarget.V821_WIFI -> ".swu"
     OtaTarget.JIELI_BLE -> ".bin"
 }
 
-internal fun OtaTarget.isExpectedFirmwareFilename(filename: String): Boolean =
+fun OtaTarget.isExpectedFirmwareFilename(filename: String): Boolean =
     filename.endsWith(expectedFirmwareExtension(), ignoreCase = true)
+
+internal fun OtaFirmwareSource.serverChannel(): String? = when (this) {
+    OtaFirmwareSource.PERSONAL_FILE -> null
+    OtaFirmwareSource.STEALTH_CATALOG -> "stealth"
+    OtaFirmwareSource.DEBUG_CATALOG -> "debug"
+}
+
+/** A server artifact is valid only when it was built from the exact reported base. */
+internal fun isExactFirmwareBaseMatch(baseFirmwareVersion: String, currentFirmwareVersion: String): Boolean =
+    baseFirmwareVersion.trim().isNotEmpty() &&
+        baseFirmwareVersion.trim().equals(currentFirmwareVersion.trim(), ignoreCase = true)
+
+internal fun isSha256Hex(value: String): Boolean = value.matches(Regex("[a-fA-F0-9]{64}"))
 
 /**
  * Result of a firmware catalog lookup + download.
@@ -31,14 +47,16 @@ sealed class FirmwareResult {
         val requiredPlans: List<String>,
     ) : FirmwareResult()
 
+    data class DebugAccessRequired(val message: String) : FirmwareResult()
+
     data class Error(val message: String) : FirmwareResult()
 }
 
 /**
  * Client for the CyanBridge server's firmware download API.
  *
- * Calls GET /api/firmware/download with the paired glasses info,
- * checks subscription tier, and downloads the gated target-specific artifact.
+ * Calls GET /api/firmware/download with the selected chip's exact current version.
+ * The relay only returns an approved artifact built from that same base version.
  */
 class FirmwareClient(
     private val context: Context,
@@ -54,20 +72,26 @@ class FirmwareClient(
      * @param firmwareVersion The glasses' current firmware version for the chosen target
      * @param outputDir Directory to save the downloaded file
      * @param target OTA target: V821_WIFI (.swu) or JIELI_BLE (.bin)
-     * @return FirmwareResult indicating success, failure, or subscription gate
+     * @param source server catalog channel. Personal files are staged locally and never reach this client.
+     * @return FirmwareResult indicating success, failure, or access gate
      */
     fun fetchAndDownload(
         hardwareVersion: String,
         firmwareVersion: String,
         outputDir: File,
         target: OtaTarget = OtaTarget.V821_WIFI,
+        source: OtaFirmwareSource = OtaFirmwareSource.DEBUG_CATALOG,
     ): FirmwareResult {
         val startTime = System.currentTimeMillis()
         Log.i(TAG, "=== FIRMWARE FETCH START ===")
         Log.i(TAG, "  hardwareVersion: $hardwareVersion")
         Log.i(TAG, "  firmwareVersion: $firmwareVersion")
         Log.i(TAG, "  target: $target")
+        Log.i(TAG, "  source: $source")
         Log.i(TAG, "  outputDir: ${outputDir.absolutePath}")
+
+        val serverChannel = source.serverChannel()
+            ?: return FirmwareResult.Error("Personal firmware files must be imported from the file picker")
 
         // Step 1: Resolve relay base URL
         val relayBase = getRelayBaseUrl()
@@ -92,6 +116,7 @@ class FirmwareClient(
             hardwareVersion = hardwareVersion,
             firmwareVersion = firmwareVersion,
             target = target,
+            serverChannel = serverChannel,
         )
 
         Log.i(TAG, "[3/5] Calling firmware API: $apiUrl")
@@ -123,6 +148,11 @@ class FirmwareClient(
                 val filename = json.getString("filename").trim()
                 val objectKey = json.optString("object_key", "")
                 val expiresIn = json.optInt("expires_in_seconds", 0)
+                val responseHardwareVersion = json.optString("hardwareVersion", "").trim()
+                val responseTarget = json.optString("target", "").trim()
+                val baseFirmwareVersion = json.optString("base_firmware_version", "").trim()
+                val expectedSha256 = json.optString("sha256", "").trim()
+                val expectedSizeBytes = json.optLong("size_bytes", -1L)
 
                 if (!isSafeFirmwareFilename(filename)) {
                     Log.e(TAG, "[4/5] Refusing unsafe firmware filename from server: $filename")
@@ -137,16 +167,51 @@ class FirmwareClient(
                         "Server returned $filename, but ${target.expectedFirmwareExtension()} firmware is required for $target",
                     )
                 }
+                if (!isExactFirmwareBaseMatch(responseHardwareVersion, hardwareVersion)) {
+                    Log.e(
+                        TAG,
+                        "[4/5] Refusing $filename: server hardware=$responseHardwareVersion, current=$hardwareVersion",
+                    )
+                    return FirmwareResult.Error("Server returned firmware for a different hardware target")
+                }
+                if (responseTarget != target.serverTargetParameter()) {
+                    Log.e(TAG, "[4/5] Refusing $filename: server target=$responseTarget, expected=$target")
+                    return FirmwareResult.Error("Server returned firmware for a different OTA target")
+                }
+                if (!isExactFirmwareBaseMatch(baseFirmwareVersion, firmwareVersion)) {
+                    Log.e(
+                        TAG,
+                        "[4/5] Refusing $filename: server base=$baseFirmwareVersion, current=$firmwareVersion",
+                    )
+                    return FirmwareResult.Error(
+                        "Server firmware was not built from this chip's current version",
+                    )
+                }
+                if (!isSha256Hex(expectedSha256)) {
+                    Log.e(TAG, "[4/5] Server returned an invalid firmware SHA-256")
+                    return FirmwareResult.Error("Server returned invalid firmware integrity metadata")
+                }
+                if (expectedSizeBytes !in 1L..MAX_SERVER_FIRMWARE_SIZE_BYTES) {
+                    Log.e(TAG, "[4/5] Server returned invalid firmware size: $expectedSizeBytes")
+                    return FirmwareResult.Error("Server returned invalid firmware size metadata")
+                }
 
                 Log.i(TAG, "[4/5] Firmware available!")
                 Log.i(TAG, "  filename: $filename")
                 Log.i(TAG, "  object_key: $objectKey")
+                Log.i(TAG, "  base_firmware_version: $baseFirmwareVersion")
+                Log.i(TAG, "  expected_size: $expectedSizeBytes bytes")
                 Log.i(TAG, "  signed_url_expires_in: ${expiresIn}s")
-                Log.i(TAG, "  download_url: ${downloadUrl.take(80)}...")
 
                 // Step 5: Download the firmware file
                 Log.i(TAG, "[5/5] Starting firmware download...")
-                val file = downloadFirmware(downloadUrl, filename, outputDir)
+                val file = downloadFirmware(
+                    downloadUrl = downloadUrl,
+                    filename = filename,
+                    outputDir = outputDir,
+                    expectedSha256 = expectedSha256,
+                    expectedSizeBytes = expectedSizeBytes,
+                )
 
                 if (file != null) {
                     val elapsed = System.currentTimeMillis() - startTime
@@ -186,6 +251,11 @@ class FirmwareClient(
                         Log.w(TAG, "  Subscription expired")
                         Log.i(TAG, "=== FIRMWARE FETCH BLOCKED (expired) ===")
                         FirmwareResult.SubscriptionRequired(message, "expired", listOf("standard", "max"))
+                    }
+
+                    "debug_firmware_access_required" -> {
+                        Log.w(TAG, "  Debug firmware entitlement is missing")
+                        FirmwareResult.DebugAccessRequired(message)
                     }
 
                     "rate_limited" -> {
@@ -234,7 +304,13 @@ class FirmwareClient(
         }
     }
 
-    private fun downloadFirmware(downloadUrl: String, filename: String, outputDir: File): File? {
+    private fun downloadFirmware(
+        downloadUrl: String,
+        filename: String,
+        outputDir: File,
+        expectedSha256: String,
+        expectedSizeBytes: Long,
+    ): File? {
         val downloadStart = System.currentTimeMillis()
         var connection: HttpURLConnection? = null
         var partialFile: File? = null
@@ -294,6 +370,10 @@ class FirmwareClient(
             val contentLength = conn.contentLengthLong
             val contentType = conn.contentType
             Log.i(TAG, "Content-Length: $contentLength bytes, Content-Type: $contentType")
+            if (contentLength >= 0L && contentLength != expectedSizeBytes) {
+                Log.e(TAG, "Firmware size mismatch before download: expected $expectedSizeBytes, got $contentLength")
+                return null
+            }
 
             val buf = ByteArray(8192)
             var totalRead = 0L
@@ -330,8 +410,13 @@ class FirmwareClient(
                 Log.e(TAG, "Firmware download was empty")
                 return null
             }
-            if (contentLength >= 0L && totalRead != contentLength) {
-                Log.e(TAG, "Firmware size mismatch: expected $contentLength, got $totalRead")
+            if (totalRead != expectedSizeBytes) {
+                Log.e(TAG, "Firmware size mismatch: expected $expectedSizeBytes, got $totalRead")
+                return null
+            }
+            val actualSha256 = sha256Hex(stagedFile)
+            if (!actualSha256.equals(expectedSha256, ignoreCase = true)) {
+                Log.e(TAG, "Firmware SHA-256 mismatch; discarding staged download")
                 return null
             }
             if (outFile.exists() && !outFile.delete()) {
@@ -359,18 +444,17 @@ class FirmwareClient(
         hardwareVersion: String,
         firmwareVersion: String,
         target: OtaTarget,
+        serverChannel: String,
     ): String {
-        val targetParam = when (target) {
-            OtaTarget.V821_WIFI -> "v821"
-            OtaTarget.JIELI_BLE -> "jieli"
-        }
-        // The deployed relay currently names these legacy query keys after Wi-Fi. Their values
-        // are nevertheless target-specific; target=jieli carries the BLE identifiers.
+        val targetParam = target.serverTargetParameter()
+        // The endpoint uses generic target-specific identifiers. It only serves an artifact
+        // whose declared base version exactly matches firmwareVersion.
         return Uri.parse(relayBase.trimEnd('/') + "/api/firmware/download")
             .buildUpon()
-            .appendQueryParameter("wifiHardwareVersion", hardwareVersion)
-            .appendQueryParameter("wifiFirmwareVersion", firmwareVersion)
+            .appendQueryParameter("hardwareVersion", hardwareVersion)
+            .appendQueryParameter("firmwareVersion", firmwareVersion)
             .appendQueryParameter("target", targetParam)
+            .appendQueryParameter("channel", serverChannel)
             .build()
             .toString()
     }
@@ -384,6 +468,24 @@ class FirmwareClient(
     private fun isHttpsRelayUrl(url: String): Boolean {
         val uri = Uri.parse(url)
         return uri.scheme.equals("https", ignoreCase = true) && !uri.host.isNullOrBlank()
+    }
+
+    private fun OtaTarget.serverTargetParameter(): String = when (this) {
+        OtaTarget.V821_WIFI -> "v821"
+        OtaTarget.JIELI_BLE -> "jieli"
+    }
+
+    private fun sha256Hex(file: File): String {
+        val digest = MessageDigest.getInstance("SHA-256")
+        FileInputStream(file).use { input ->
+            val buffer = ByteArray(DEFAULT_BUFFER_SIZE)
+            while (true) {
+                val read = input.read(buffer)
+                if (read <= 0) break
+                digest.update(buffer, 0, read)
+            }
+        }
+        return digest.digest().joinToString(separator = "") { byte -> "%02x".format(byte.toInt() and 0xff) }
     }
 
     private fun getRelayBaseUrl(): String {
@@ -423,5 +525,6 @@ class FirmwareClient(
 
     companion object {
         private const val TAG = "FirmwareClient"
+        private const val MAX_SERVER_FIRMWARE_SIZE_BYTES = 50L * 1024L * 1024L
     }
 }

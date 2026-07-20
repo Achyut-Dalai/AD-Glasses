@@ -47,11 +47,14 @@ class WifiP2pManagerSingleton private constructor(private val context: Context) 
 
     private val discoveryTimeoutMs = 16_000L
     private val connectTimeoutMs = 5_000L
-    private val delayedPeerDiscoveryRestart = Runnable { startPeerDiscovery() }
+    private val delayedPeerDiscoveryRestart = Runnable {
+        startPeerDiscovery(allowDeviceResetOnTimeout = allowDeviceResetOnDiscoveryTimeout)
+    }
 
     private val connectionState = WifiP2pConnectionState()
     private val retryState = WifiP2pRetryState(1, 1)
     @Volatile private var p2pOperationsEnabled = true
+    @Volatile private var allowDeviceResetOnDiscoveryTimeout = true
 
     private val intentFilter = IntentFilter().apply {
         addAction(WifiP2pManager.WIFI_P2P_STATE_CHANGED_ACTION)
@@ -119,7 +122,8 @@ class WifiP2pManagerSingleton private constructor(private val context: Context) 
     }
 
     @SuppressLint("MissingPermission")
-    fun startPeerDiscovery() {
+    fun startPeerDiscovery(allowDeviceResetOnTimeout: Boolean = true) {
+        allowDeviceResetOnDiscoveryTimeout = allowDeviceResetOnTimeout
         if (!p2pOperationsEnabled) {
             Log.d(TAG, "Ignoring peer discovery while P2P operations are stopped")
             return
@@ -430,11 +434,15 @@ class WifiP2pManagerSingleton private constructor(private val context: Context) 
         override fun run() {
             if (!p2pOperationsEnabled) return
             Log.d(TAG, "Internal scan retry connection: ${retryState.discoveryRetryCount()}")
+            if (!allowDeviceResetOnDiscoveryTimeout) {
+                Log.d(TAG, "Discovery timeout reached with device reset disabled")
+                return
+            }
             if (retryState.shouldRetryDiscovery()) {
                 Log.d(TAG, "Internal scan retry connection once")
                 resetDeviceP2p()
                 initP2P()
-                startPeerDiscovery()
+                startPeerDiscovery(allowDeviceResetOnTimeout = true)
             }
         }
     }

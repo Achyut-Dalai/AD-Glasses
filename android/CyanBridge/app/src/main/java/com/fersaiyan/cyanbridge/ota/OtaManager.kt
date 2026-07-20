@@ -1,10 +1,15 @@
 package com.fersaiyan.cyanbridge.ota
 
+import android.Manifest
 import android.content.Context
+import android.content.pm.PackageManager
+import android.net.wifi.WifiManager
 import android.net.wifi.p2p.WifiP2pDevice
 import android.net.wifi.p2p.WifiP2pInfo
 import android.os.Build
+import android.os.PowerManager
 import android.util.Log
+import androidx.core.content.ContextCompat
 import com.fersaiyan.cyanbridge.ui.wifi.p2p.WifiP2pManagerSingleton
 import com.oudmon.ble.base.bluetooth.BleOperateManager
 import com.oudmon.ble.base.bluetooth.DeviceManager
@@ -37,6 +42,32 @@ enum class OtaState {
     COMPLETE,
     FAILED,
 }
+
+internal fun isWifiOtaModeReady(
+    dataType: Int,
+    glassWorkType: Int,
+    otaStatus: Int,
+): Boolean = dataType == 1 && glassWorkType == 5 && otaStatus == 1
+
+internal fun isWifiOtaCompleteNotification(notifyType: Int, result: Int?): Boolean =
+    notifyType == 0x07 && result == 1
+
+internal fun selectLocalP2pIpv4(
+    glassesIp: String,
+    candidates: List<Pair<String, String>>,
+): String? {
+    val octets = glassesIp.split('.')
+    if (octets.size != 4 || octets.any { it.toIntOrNull() !in 0..255 }) return null
+    val subnetPrefix = octets.take(3).joinToString(".") + "."
+    val onGlassesSubnet = candidates.filter { (_, ip) ->
+        ip != glassesIp && ip.startsWith(subnetPrefix)
+    }
+    return onGlassesSubnet.firstOrNull { (name, _) -> isP2pInterface(name) }?.second
+        ?: onGlassesSubnet.firstOrNull()?.second
+}
+
+private fun isP2pInterface(name: String): Boolean =
+    name.contains("p2p", ignoreCase = true) || name.contains("wfd", ignoreCase = true)
 
 data class OtaUiState(
     val state: OtaState = OtaState.IDLE,
@@ -76,6 +107,7 @@ class OtaManager(
     private var p2pReceiverRegistered = false
     private var otaNotifyListener: GlassesDeviceNotifyListener? = null
     private var otaNotifyRegistered = false
+    private var otaWakeLock: PowerManager.WakeLock? = null
     private var cleanupInProgress = false
     @Volatile private var sessionFinishNotified = true
     private var onSessionFinished: () -> Unit = {}
@@ -121,6 +153,7 @@ class OtaManager(
             cleanup()
             return
         }
+        acquireOtaWakeLock()
         otaJob = scope.launch {
             when (target) {
                 OtaTarget.V821_WIFI -> runWifiOta(firmwareFile)
@@ -264,7 +297,37 @@ class OtaManager(
         p2pConnected = false
         p2pInfo = null
         cleanupInProgress = false
+        releaseOtaWakeLock()
         notifySessionFinished()
+    }
+
+    /** Match the official activity's wake protection while either OTA transport owns the device. */
+    private fun acquireOtaWakeLock() {
+        if (otaWakeLock?.isHeld == true) return
+        val powerManager = context.applicationContext.getSystemService(Context.POWER_SERVICE) as? PowerManager
+            ?: return
+        try {
+            otaWakeLock = powerManager.newWakeLock(
+                PowerManager.PARTIAL_WAKE_LOCK,
+                "CyanBridge:Ota",
+            ).apply {
+                setReferenceCounted(false)
+                acquire(OTA_WAKE_LOCK_TIMEOUT_MS)
+            }
+        } catch (error: SecurityException) {
+            Log.w(TAG, "Could not acquire OTA wake lock", error)
+            otaWakeLock = null
+        }
+    }
+
+    private fun releaseOtaWakeLock() {
+        val wakeLock = otaWakeLock ?: return
+        otaWakeLock = null
+        try {
+            if (wakeLock.isHeld) wakeLock.release()
+        } catch (error: RuntimeException) {
+            Log.w(TAG, "Could not release OTA wake lock", error)
+        }
     }
 
     private fun notifySessionFinished() {
@@ -308,6 +371,18 @@ class OtaManager(
             }
             Log.i(TAG, "[Step 1/7] OK: Connected to $deviceName ($deviceMac)")
 
+            if (!hasWifiP2pPermission()) {
+                Log.e(TAG, "[Step 1/7] FAIL: Required Wi-Fi Direct permission is missing")
+                updateState(OtaState.FAILED, error = "Grant Nearby devices or Location permission before Wi-Fi OTA")
+                return
+            }
+            val wifiManager = context.applicationContext.getSystemService(Context.WIFI_SERVICE) as? WifiManager
+            if (wifiManager?.isWifiEnabled != true) {
+                Log.e(TAG, "[Step 1/7] FAIL: Wi-Fi is disabled")
+                updateState(OtaState.FAILED, error = "Enable Wi-Fi before Wi-Fi OTA")
+                return
+            }
+
             // Register before the OTA-mode command so an immediate 0x08 IP notify is not lost.
             if (!registerOtaNotifyListener()) {
                 Log.e(TAG, "[Step 1/7] FAIL: Could not register the OTA BLE notify listener")
@@ -322,8 +397,8 @@ class OtaManager(
             val otaModeOk = enterOtaMode()
             val otaModeElapsed = System.currentTimeMillis() - otaModeStart
             if (!otaModeOk) {
-                Log.e(TAG, "[Step 2/7] FAIL: Glasses rejected OTA mode (${otaModeElapsed}ms)")
-                updateState(OtaState.FAILED, error = "Glasses rejected OTA mode command")
+                Log.e(TAG, "[Step 2/7] FAIL: Glasses did not report OTA readiness (${otaModeElapsed}ms)")
+                updateState(OtaState.FAILED, error = "Glasses did not report OTA mode ready")
                 return
             }
             Log.i(TAG, "[Step 2/7] OK: OTA mode accepted (${otaModeElapsed}ms)")
@@ -351,12 +426,26 @@ class OtaManager(
             }
             Log.i(TAG, "[Step 4/7] OK: Glasses IP=$glassesIp (${bleIpElapsed}ms)")
 
+            Log.i(TAG, "[Step 4/7] Waiting for the Android P2P group before selecting the phone address...")
+            if (!waitForP2pConnection(P2P_CONNECT_TIMEOUT_MS)) {
+                Log.e(TAG, "[Step 4/7] FAIL: BLE reported $glassesIp but the P2P group did not connect")
+                updateState(OtaState.FAILED, error = "Glasses reported an IP, but Wi-Fi Direct did not connect")
+                return
+            }
+
             // Step 5: Start HTTP server
-            val localIp = getLocalP2pIp() ?: P2P_DEFAULT_IP
+            val localIp = waitForLocalP2pIp(glassesIp, LOCAL_P2P_IP_TIMEOUT_MS)
+            if (localIp == null) {
+                Log.e(TAG, "[Step 5/7] FAIL: Could not identify the phone's local P2P address for glasses IP $glassesIp")
+                updateState(OtaState.FAILED, error = "Could not identify the phone's Wi-Fi Direct address")
+                return
+            }
             Log.i(TAG, "[Step 5/7] Starting HTTP server on $localIp:$HTTP_PORT...")
             updateState(OtaState.STARTING_HTTP_SERVER, "Starting HTTP server on $localIp:$HTTP_PORT...")
             httpServer = OtaHttpServer(HTTP_PORT)
-            httpServer!!.start(swuFile)
+            withContext(Dispatchers.IO) {
+                httpServer!!.start(swuFile, localIp)
+            }
             Log.i(TAG, "[Step 5/7] OK: HTTP server started, serving ${swuFile.name}")
 
             // Step 6: Send OTA URL to glasses
@@ -476,7 +565,7 @@ class OtaManager(
 
     /**
      * Send glassesControl({2,1,5}) to enter OTA mode.
-     * Returns true if glasses respond with workTypeIng==5 (OTA mode).
+     * The vendor parser reports OTA readiness as otaStatus==1 for glassWorkType 5.
      */
     private suspend fun enterOtaMode(): Boolean = withContext(Dispatchers.IO) {
         suspendCancellableCoroutine { cont ->
@@ -484,14 +573,18 @@ class OtaManager(
                 byteArrayOf(0x02, 0x01, 0x05)
             ) { _, response ->
                 if (cont.isActive) {
-                    if (response.dataType == 1 && response.errorCode == 0) {
-                        Log.i(TAG, "glassesControl OTA response: workTypeIng=${response.workTypeIng}")
-                        // workTypeIng==5 means OTA mode accepted
-                        cont.resume(response.workTypeIng == 5) {}
-                    } else {
-                        Log.e(TAG, "glassesControl OTA failed: dataType=${response.dataType}, errorCode=${response.errorCode}")
-                        cont.resume(false) {}
-                    }
+                    val ready = isWifiOtaModeReady(
+                        dataType = response.dataType,
+                        glassWorkType = response.glassWorkType,
+                        otaStatus = response.otaStatus,
+                    )
+                    Log.i(
+                        TAG,
+                        "glassesControl OTA response: dataType=${response.dataType}, " +
+                            "glassWorkType=${response.glassWorkType}, errorCode=${response.errorCode}, " +
+                            "otaStatus=${response.otaStatus}, workTypeIng=${response.workTypeIng}, ready=$ready",
+                    )
+                    cont.resume(ready) {}
                 }
             }
             // Timeout fallback
@@ -624,6 +717,15 @@ class OtaManager(
         return true
     }
 
+    private fun hasWifiP2pPermission(): Boolean {
+        val permission = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            Manifest.permission.NEARBY_WIFI_DEVICES
+        } else {
+            Manifest.permission.ACCESS_FINE_LOCATION
+        }
+        return ContextCompat.checkSelfPermission(context, permission) == PackageManager.PERMISSION_GRANTED
+    }
+
     /** Register for OTA notifications before the mode command can emit a P2P IP. */
     private fun registerOtaNotifyListener(): Boolean {
         if (otaNotifyRegistered) return true
@@ -659,9 +761,14 @@ class OtaManager(
                         }
                     }
                     0x07 -> {
-                        // OTA complete
-                        Log.i(TAG, "[BLE] OTA COMPLETE notification received!")
-                        otaComplete = true
+                        val result = load.getOrNull(7)?.let(ByteUtil::byteToInt)
+                        if (isWifiOtaCompleteNotification(notifyType = 0x07, result = result)) {
+                            Log.i(TAG, "[BLE] OTA COMPLETE notification received!")
+                            otaComplete = true
+                        } else {
+                            // The official app accepts type 0x07 only when loadData[7] == 1.
+                            Log.w(TAG, "[BLE] OTA completion notification was not successful: result=$result")
+                        }
                     }
                     else -> {
                         Log.d(TAG, "[BLE] Unknown notify type: 0x${load[6].toString(16)} (${load.size} bytes)")
@@ -689,6 +796,24 @@ class OtaManager(
             if (ip != null) return ip
             delay(500)
         }
+        return null
+    }
+
+    private suspend fun waitForP2pConnection(timeoutMs: Long): Boolean {
+        val deadline = System.currentTimeMillis() + timeoutMs
+        while (System.currentTimeMillis() < deadline) {
+            if (p2pConnected) return true
+            delay(250)
+        }
+        return false
+    }
+
+    private suspend fun waitForLocalP2pIp(glassesIp: String, timeoutMs: Long): String? {
+        val deadline = System.currentTimeMillis() + timeoutMs
+        do {
+            getLocalP2pIp(glassesIp)?.let { return it }
+            delay(250)
+        } while (System.currentTimeMillis() < deadline)
         return null
     }
 
@@ -720,24 +845,26 @@ class OtaManager(
      * Get the phone's local IP on the P2P network.
      * Typically 192.168.49.1 when the phone is the P2P group owner.
      */
-    private fun getLocalP2pIp(): String? {
+    private fun getLocalP2pIp(glassesIp: String): String? {
         try {
             val interfaces = NetworkInterface.getNetworkInterfaces() ?: return null
+            val candidates = mutableListOf<Pair<String, String>>()
             for (intf in interfaces) {
                 if (!intf.isUp || intf.isLoopback) continue
                 for (addr in intf.inetAddresses) {
                     if (addr is Inet4Address && !addr.isLoopbackAddress) {
-                        val ip = addr.hostAddress
-                        if (ip?.startsWith("192.168.") == true) {
-                            return ip
-                        }
+                        val ip = addr.hostAddress ?: continue
+                        candidates += intf.name to ip
                     }
                 }
             }
+            val selected = selectLocalP2pIpv4(glassesIp, candidates)
+            Log.i(TAG, "P2P local IP candidates=$candidates, glassesIp=$glassesIp, selected=$selected")
+            return selected
         } catch (e: Exception) {
             Log.e(TAG, "Failed to get local P2P IP: ${e.message}")
         }
-        return P2P_DEFAULT_IP
+        return null
     }
 
     private fun updateState(state: OtaState, detail: String = "", error: String? = null) {
@@ -758,10 +885,12 @@ class OtaManager(
     companion object {
         private const val TAG = "OtaManager"
         private const val HTTP_PORT = 8080
-        private const val P2P_DEFAULT_IP = "192.168.49.1"
+        private const val P2P_CONNECT_TIMEOUT_MS = 40_000L
+        private const val LOCAL_P2P_IP_TIMEOUT_MS = 5_000L
         private const val P2P_GROUP_REMOVAL_RETRY_MS = 1_000L
         private const val P2P_GROUP_REMOVE_ACTION_TIMEOUT_MS = 5_000L
         private const val P2P_GROUP_DISCONNECT_TIMEOUT_MS = 5_000L
         private const val P2P_GROUP_REMOVAL_MAX_ATTEMPTS = 3
+        private const val OTA_WAKE_LOCK_TIMEOUT_MS = 10 * 60_000L
     }
 }

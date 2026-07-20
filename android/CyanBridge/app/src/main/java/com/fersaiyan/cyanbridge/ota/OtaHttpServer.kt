@@ -2,6 +2,8 @@ package com.fersaiyan.cyanbridge.ota
 
 import android.util.Log
 import java.io.File
+import java.net.InetAddress
+import java.net.InetSocketAddress
 import java.net.ServerSocket
 import java.net.Socket
 
@@ -15,6 +17,8 @@ class OtaHttpServer(
     private val port: Int = 8080,
 ) {
     private var serverSocket: ServerSocket? = null
+    @Volatile
+    private var activeClient: Socket? = null
     private var serveFile: File? = null
 
     @Volatile
@@ -22,41 +26,81 @@ class OtaHttpServer(
 
     val isRunning: Boolean get() = running
 
-    fun start(file: File) {
+    @Synchronized
+    fun start(file: File, bindAddress: String) {
         if (running) {
             Log.w(TAG, "Server already running, stopping previous instance")
             stop()
         }
+        val socket = ServerSocket().apply {
+            reuseAddress = true
+            bind(InetSocketAddress(InetAddress.getByName(bindAddress), port))
+        }
         serveFile = file
+        serverSocket = socket
         running = true
+        Log.i(TAG, "Listening on $bindAddress:$port, serving ${file.name} (${file.length()} bytes)")
         Thread(
             {
                 try {
-                    serverSocket = ServerSocket(port)
-                    Log.i(TAG, "Listening on port $port, serving ${file.name} (${file.length()} bytes)")
-                    while (running) {
+                    while (running && serverSocket === socket) {
                         try {
-                            val client = serverSocket!!.accept()
-                            handleClient(client, file)
+                            val client = socket.accept()
+                            client.soTimeout = CLIENT_READ_TIMEOUT_MS
+                            val shouldHandle = synchronized(this@OtaHttpServer) {
+                                if (running && serverSocket === socket) {
+                                    activeClient = client
+                                    true
+                                } else {
+                                    false
+                                }
+                            }
+                            if (!shouldHandle) {
+                                client.close()
+                                continue
+                            }
+                            try {
+                                handleClient(client, file)
+                            } finally {
+                                if (activeClient === client) activeClient = null
+                            }
                         } catch (e: Exception) {
-                            if (running) Log.e(TAG, "Accept error: ${e.message}")
+                            if (running && serverSocket === socket) {
+                                Log.e(TAG, "Accept error: ${e.message}")
+                            }
                         }
                     }
                 } catch (e: Exception) {
-                    if (running) Log.e(TAG, "Server error: ${e.message}", e)
+                    if (running && serverSocket === socket) Log.e(TAG, "Server error: ${e.message}", e)
+                } finally {
+                    synchronized(this@OtaHttpServer) {
+                        if (serverSocket === socket) {
+                            serverSocket = null
+                            serveFile = null
+                            running = false
+                        }
+                    }
                 }
             },
             "OtaHttpServer",
         ).start()
     }
 
+    @Synchronized
     fun stop() {
         running = false
+        val client = activeClient
+        activeClient = null
         try {
             serverSocket?.close()
         } catch (_: Exception) {
         }
         serverSocket = null
+        try {
+            client?.close()
+        } catch (_: Exception) {
+        }
+        serveFile = null
         Log.i(TAG, "Stopped")
     }
 
@@ -95,7 +139,7 @@ class OtaHttpServer(
                 socket.getOutputStream().write(resp.toByteArray())
             }
         } catch (e: Exception) {
-            Log.e(TAG, "Client error: ${e.message}")
+            if (running && activeClient === socket) Log.e(TAG, "Client error: ${e.message}")
         } finally {
             try {
                 socket.close()
@@ -106,5 +150,6 @@ class OtaHttpServer(
 
     companion object {
         private const val TAG = "OtaHttpServer"
+        private const val CLIENT_READ_TIMEOUT_MS = 10_000
     }
 }

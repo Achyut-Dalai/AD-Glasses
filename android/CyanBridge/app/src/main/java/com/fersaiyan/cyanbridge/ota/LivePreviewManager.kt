@@ -49,13 +49,12 @@ data class LivePreviewState(
 /**
  * Orchestrates live video preview from the glasses via RTSP.
  *
- * Flow (mirrors OTA pattern):
+ * Passive lab flow:
  * 1. Verify BLE connection
- * 2. Send glassesControl({2,1,0x09}) to trigger livestream mode
+ * 2. Register the BLE IP listener without sending a mode-control command
  * 3. Start P2P peer discovery + connection (same as OTA)
- * 4. Wait for glasses to report their P2P IP via BLE notify (type 0x08)
- * 5. Probe RTSP server on glasses IP
- * 6. Connect ExoPlayer
+ * 4. Wait for externally activated glasses to report their P2P IP via BLE notify (type 0x08)
+ * 5. Probe the RTSP server and connect ExoPlayer
  *
  * All logcat tags: "LivePreview". Filter: `adb logcat -s LivePreview`
  */
@@ -105,20 +104,11 @@ class LivePreviewManager(
         )
         private const val PROBE_TIMEOUT_MS = 3000L
         private const val BLE_IP_TIMEOUT_MS = 45_000L
-        private const val BLE_CMD_TIMEOUT_MS = 5000L
         private const val P2P_CONNECT_TIMEOUT_MS = 20_000L
         private const val P2P_GROUP_REMOVAL_RETRY_MS = 1_000L
         private const val P2P_GROUP_REMOVE_ACTION_TIMEOUT_MS = 5_000L
         private const val P2P_GROUP_DISCONNECT_TIMEOUT_MS = 5_000L
         private const val P2P_GROUP_REMOVAL_MAX_ATTEMPTS = 3
-
-        // Known command bytes for reference
-        private val KNOWN_COMMANDS = mapOf(
-            0x01 to "photo", 0x02 to "video_start", 0x03 to "video_stop",
-            0x04 to "transfer", 0x05 to "ota", 0x06 to "ai_photo",
-            0x08 to "audio_start", 0x09 to "exit_transfer", 0x0b to "stop_ai_audio",
-            0x0c to "audio_stop", 0x0f to "p2p_reset",
-        )
     }
 
     private fun elapsed(): Long = System.currentTimeMillis() - flowStartTimeMs
@@ -344,30 +334,18 @@ class LivePreviewManager(
                 return
             }
 
-            // Register before sending the experimental trigger so an immediate 0x08 is not lost.
-            Log.i(TAG, "[${elapsed()}ms] [Step 2/5] Registering BLE IP listener before livestream command...")
+            // Arm the passive probe before the hardware team activates mode 8.
+            Log.i(TAG, "[${elapsed()}ms] [Step 2/5] Arming passive BLE IP listener...")
             if (!registerNotifyListener()) {
                 updateState("Listener unavailable", "Could not receive the glasses P2P IP notification.")
                 return
             }
-
-            // ── Step 2: Send livestream BLE command ──────────────────
-            Log.i(TAG, "[${elapsed()}ms] [Step 2/5] Sending livestream BLE command...")
-            updateState("Triggering", "Sending livestream command to glasses...", scanning = true)
-            val cmdStartTime = System.currentTimeMillis()
-            val cmdResult = sendLivestreamCommand()
-            val cmdElapsed = System.currentTimeMillis() - cmdStartTime
-            Log.i(TAG, "[${elapsed()}ms] [Step 2/5] Command result: accepted=${cmdResult.accepted}, " +
-                "cmd=0x${cmdResult.winningCmd.toString(16).padStart(2, '0')}, " +
-                "workTypeIng=${cmdResult.workTypeIng}, elapsed=${cmdElapsed}ms")
-            if (!cmdResult.accepted) {
-                val reason = if (cmdResult.timedOut) {
-                    "Command timed out; remaining candidates were not sent to avoid response cross-talk"
-                } else {
-                    "All commands were explicitly rejected"
-                }
-                Log.w(TAG, "[${elapsed()}ms] [Step 2/5] $reason — will probe RTSP anyway")
-            }
+            Log.w(TAG, "[${elapsed()}ms] [Step 2/5] PASSIVE MODE: no BLE mode-control command will be sent")
+            updateState(
+                "Awaiting mode 8",
+                "Passive lab probe armed. Activate livestream mode through the approved hardware procedure.",
+                scanning = true,
+            )
 
             // ── Step 3: Start P2P ────────────────────────────────────
             Log.i(TAG, "[${elapsed()}ms] [Step 3/5] Starting P2P connection...")
@@ -450,89 +428,6 @@ class LivePreviewManager(
             Log.i(TAG, "[${elapsed()}ms] runLivestream() exiting, running cleanup")
             cleanup()
         }
-    }
-
-    private data class CommandResult(
-        val accepted: Boolean,
-        val winningCmd: Byte,
-        val workTypeIng: Int,
-        val timedOut: Boolean = false,
-    )
-
-    /**
-     * Try BLE commands to trigger livestream mode.
-     * Logs every attempt with full response details.
-     */
-    private suspend fun sendLivestreamCommand(): CommandResult {
-        // Candidate bytes — 0x09 is best guess (mode 8 = cmd 0x09 based on known mappings)
-        // 0x07 skipped (known: used for something else in HeyCyan app)
-        val candidates = byteArrayOf(0x09, 0x0a, 0x0d, 0x0e)
-
-        for (cmd in candidates) {
-            if (mainJob?.isActive != true) return CommandResult(false, cmd, -1)
-
-            val hexCmd = "0x${cmd.toString(16).padStart(2, '0')}"
-            val knownAs = KNOWN_COMMANDS[cmd.toInt()] ?: "unknown"
-            Log.i(TAG, "[${elapsed()}ms] [BLE] Sending glassesControl([$hexCmd]) — known as: $knownAs")
-
-            val result = try {
-                withTimeoutOrNull(BLE_CMD_TIMEOUT_MS) {
-                    withContext(Dispatchers.IO) {
-                        suspendCancellableCoroutine<CommandResult> { cont ->
-                            val sendTime = System.currentTimeMillis()
-                            LargeDataHandler.getInstance().glassesControl(
-                                byteArrayOf(0x02, 0x01, cmd)
-                            ) { _, resp ->
-                                val respElapsed = System.currentTimeMillis() - sendTime
-                                Log.i(TAG, "[${elapsed()}ms] [BLE] Response for $hexCmd after ${respElapsed}ms:")
-                                Log.i(TAG, "[${elapsed()}ms]   dataType=${resp.dataType}")
-                                Log.i(TAG, "[${elapsed()}ms]   errorCode=${resp.errorCode}")
-                                Log.i(TAG, "[${elapsed()}ms]   workTypeIng=${resp.workTypeIng}")
-                                Log.i(TAG, "[${elapsed()}ms]   accepted=${resp.errorCode == 0}")
-
-                                if (resp.errorCode == 0 && resp.workTypeIng > 0) {
-                                    Log.i(TAG, "[${elapsed()}ms]   Glasses entered workTypeIng=${resp.workTypeIng}")
-                                }
-
-                                if (cont.isActive) {
-                                    cont.resume(CommandResult(
-                                        accepted = resp.errorCode == 0,
-                                        winningCmd = cmd,
-                                        workTypeIng = resp.workTypeIng,
-                                    )) {}
-                                }
-                            }
-                        }
-                    }
-                } ?: run {
-                    Log.w(TAG, "[${elapsed()}ms] [BLE] Timeout for $hexCmd after ${BLE_CMD_TIMEOUT_MS}ms")
-                    CommandResult(false, cmd, -1, timedOut = true)
-                }
-            } catch (e: CancellationException) {
-                throw e
-            } catch (e: Exception) {
-                Log.w(TAG, "[${elapsed()}ms] [BLE] Failed to send $hexCmd: ${e.message}", e)
-                CommandResult(false, cmd, -1)
-            }
-
-            if (result.accepted) {
-                Log.i(TAG, "[${elapsed()}ms] [BLE] Command $hexCmd ACCEPTED (workTypeIng=${result.workTypeIng})")
-                return result
-            } else if (result.timedOut) {
-                // The SDK keeps one global response callback for glassesControl. Advancing to a
-                // new candidate here could attach a delayed response to the wrong command.
-                Log.w(
-                    TAG,
-                    "[${elapsed()}ms] [BLE] Keeping remaining livestream candidates diagnostic-only after timeout; probing RTSP without another command",
-                )
-                return result
-            } else {
-                Log.w(TAG, "[${elapsed()}ms] [BLE] Command $hexCmd rejected (errorCode != 0 or timeout), trying next...")
-            }
-        }
-
-        Log.w(TAG, "[${elapsed()}ms] [BLE] All ${candidates.size} livestream command candidates rejected")
-        return CommandResult(false, candidates.last(), -1)
     }
 
     /**
@@ -667,7 +562,8 @@ class LivePreviewManager(
         }
         manager.resetFailCount()
         Log.i(TAG, "[${elapsed()}ms] [P2P] Registered receiver, reset fail count, starting discovery...")
-        manager.startPeerDiscovery()
+        // The vendor-style timeout normally sends the 0x0F BLE reset. Passive preview must not.
+        manager.startPeerDiscovery(allowDeviceResetOnTimeout = false)
         return true
     }
 
