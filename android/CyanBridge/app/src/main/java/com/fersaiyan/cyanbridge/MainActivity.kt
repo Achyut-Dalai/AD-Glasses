@@ -1004,11 +1004,19 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
             is GlassesDashboardAction.RequestOtaFirmware -> requestOtaFirmware(action.source)
             is GlassesDashboardAction.SubmitFirmwarePatchRequest -> {
                 val request = dashboardState.firmwarePatchRequest ?: return
-                dashboardState = dashboardState.copy(firmwarePatchRequest = null)
+                if (request.isSubmitting) return
+                dashboardState = dashboardState.copy(
+                    firmwarePatchRequest = request.copy(
+                        isSubmitting = true,
+                        submissionError = null,
+                    ),
+                )
                 submitFirmwarePatchRequest(request, action.contactEmail)
             }
             GlassesDashboardAction.DismissFirmwarePatchRequest -> {
-                dashboardState = dashboardState.copy(firmwarePatchRequest = null)
+                if (dashboardState.firmwarePatchRequest?.isSubmitting != true) {
+                    dashboardState = dashboardState.copy(firmwarePatchRequest = null)
+                }
             }
             GlassesDashboardAction.CancelOta -> {
                 otaPreparationJob?.cancel()
@@ -2243,6 +2251,7 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
             )
             withContext(Dispatchers.Main) {
                 result.onSuccess { logId ->
+                    dashboardState = dashboardState.copy(firmwarePatchRequest = null)
                     Toast.makeText(
                         this@MainActivity,
                         "Patch request sent. Reference: $logId",
@@ -2250,6 +2259,14 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
                     ).show()
                 }.onFailure { error ->
                     Log.e("Ota", "Could not send firmware patch request", error)
+                    dashboardState.firmwarePatchRequest?.let { activeRequest ->
+                        dashboardState = dashboardState.copy(
+                            firmwarePatchRequest = activeRequest.copy(
+                                isSubmitting = false,
+                                submissionError = "Could not send the request. Check your connection and try again.",
+                            ),
+                        )
+                    }
                     Toast.makeText(
                         this@MainActivity,
                         "Could not send patch request: ${error.message}",

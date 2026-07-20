@@ -134,6 +134,8 @@ data class FirmwarePatchRequestUiState(
     val bleFirmwareVersion: String,
     val relayMessage: String,
     val suggestedContactEmail: String = "",
+    val isSubmitting: Boolean = false,
+    val submissionError: String? = null,
 )
 
 data class LivePreviewUiState(

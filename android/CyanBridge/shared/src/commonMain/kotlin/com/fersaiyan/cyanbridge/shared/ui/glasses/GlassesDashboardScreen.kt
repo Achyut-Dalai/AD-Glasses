@@ -139,7 +139,11 @@ fun GlassesDashboardScreen(
     state.firmwarePatchRequest?.let { request ->
         FirmwarePatchRequestDialog(
             request = request,
-            onDismissRequest = { onAction(GlassesDashboardAction.DismissFirmwarePatchRequest) },
+            onDismissRequest = {
+                if (!request.isSubmitting) {
+                    onAction(GlassesDashboardAction.DismissFirmwarePatchRequest)
+                }
+            },
             onSubmit = { contactEmail ->
                 onAction(GlassesDashboardAction.SubmitFirmwarePatchRequest(contactEmail))
             },
@@ -857,7 +861,13 @@ private fun FirmwarePatchRequestDialog(
     onDismissRequest: () -> Unit,
     onSubmit: (String) -> Unit,
 ) {
-    var contactEmail by remember(request) { mutableStateOf(request.suggestedContactEmail) }
+    var contactEmail by remember(
+        request.source,
+        request.target,
+        request.targetHardwareVersion,
+        request.targetFirmwareVersion,
+        request.suggestedContactEmail,
+    ) { mutableStateOf(request.suggestedContactEmail) }
     val validEmail = isValidContactEmail(contactEmail)
 
     AlertDialog(
@@ -892,6 +902,7 @@ private fun FirmwarePatchRequestDialog(
                         .testTag("firmware_patch_request_email"),
                     label = { Text("Contact email") },
                     singleLine = true,
+                    enabled = !request.isSubmitting,
                     isError = contactEmail.isNotBlank() && !validEmail,
                     supportingText = {
                         Text(
@@ -904,17 +915,25 @@ private fun FirmwarePatchRequestDialog(
                     },
                     keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Email),
                 )
+                request.submissionError?.let { error ->
+                    Text(
+                        error,
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.error,
+                    )
+                }
             }
         },
         confirmButton = {
             TextButton(
-                enabled = validEmail,
+                enabled = validEmail && !request.isSubmitting,
                 onClick = { onSubmit(contactEmail.trim()) },
                 modifier = Modifier.testTag("firmware_patch_request_send"),
-            ) { Text("Send request") }
+            ) { Text(if (request.isSubmitting) "Sending..." else "Send request") }
         },
         dismissButton = {
             TextButton(
+                enabled = !request.isSubmitting,
                 onClick = onDismissRequest,
                 modifier = Modifier.testTag("firmware_patch_request_cancel"),
             ) { Text("Cancel") }
