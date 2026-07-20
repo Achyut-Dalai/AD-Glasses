@@ -11,6 +11,7 @@ import android.os.Handler
 import android.os.Looper
 import android.util.Log
 import androidx.core.content.ContextCompat
+import com.fersaiyan.cyanbridge.devices.DeviceProfileStore
 import com.oudmon.ble.base.bluetooth.BleOperateManager
 import com.oudmon.ble.base.bluetooth.DeviceManager
 import org.greenrobot.eventbus.EventBus
@@ -30,12 +31,16 @@ class BluetoothReceiver : BroadcastReceiver() {
                 val connectState = intent.getIntExtra(BluetoothAdapter.EXTRA_STATE, -1)
                 if (connectState == BluetoothAdapter.STATE_OFF) {
                     Log.i("qc" ,"Bluetooth is off --> ")
-                    BleOperateManager.getInstance().setBluetoothTurnOff(false)
-                    BleOperateManager.getInstance().disconnect()
+                    if (!DeviceProfileStore.isMetaSelected(context)) {
+                        BleOperateManager.getInstance().setBluetoothTurnOff(false)
+                        BleOperateManager.getInstance().disconnect()
+                    }
                     EventBus.getDefault().post(BluetoothEvent(false))
                 } else if (connectState == BluetoothAdapter.STATE_ON) {
                     Log.i("qc" ,"Bluetooth is on --> ")
-                    BleOperateManager.getInstance().setBluetoothTurnOff(true)
+                    if (!DeviceProfileStore.isMetaSelected(context)) {
+                        BleOperateManager.getInstance().setBluetoothTurnOff(true)
+                    }
 
                     // Route through AutoPairManager so user-initiated disconnect suppression is respected.
                     AutoPairManager.requestConnect(context, reason = "bt_state_on")
@@ -57,7 +62,11 @@ class BluetoothReceiver : BroadcastReceiver() {
                 // opportunistically (re)connect the BLE control channel too.
                 val device = intent.getParcelableExtra<BluetoothDevice>(BluetoothDevice.EXTRA_DEVICE)
                 if (device != null) {
-                    val saved = DeviceManager.getInstance().deviceAddress
+                    val saved = if (DeviceProfileStore.isMetaSelected(context)) {
+                        null
+                    } else {
+                        DeviceManager.getInstance().deviceAddress
+                    }
                     val name = try { device.name } catch (_: SecurityException) { null }
                     val looksLikeGlasses = name?.contains("HeyCyan", ignoreCase = true) == true ||
                         name?.contains("Cyan", ignoreCase = true) == true ||
@@ -89,7 +98,11 @@ class BluetoothReceiver : BroadcastReceiver() {
                     intent.getParcelableExtra<BluetoothDevice>(BluetoothDevice.EXTRA_DEVICE)
                 if (device != null) {
                     // Only attempt pairing for the known glasses device.
-                    val saved = DeviceManager.getInstance().deviceAddress
+                    val saved = if (DeviceProfileStore.isMetaSelected(context)) {
+                        null
+                    } else {
+                        DeviceManager.getInstance().deviceAddress
+                    }
                     if (!saved.isNullOrBlank() && saved.equals(device.address, ignoreCase = true)) {
                         if (device.bondState != BluetoothDevice.BOND_BONDED) {
                             BleOperateManager.getInstance().createBondBluetoothJieLi(device)

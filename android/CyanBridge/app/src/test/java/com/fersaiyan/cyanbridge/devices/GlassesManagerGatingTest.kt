@@ -38,6 +38,8 @@ class GlassesManagerGatingTest {
 
         val model = GlassesManagerGating.uiModel(profile)
         assertTrue(model.isVisible(GlassesManagerGating.Action.MEETING_CAPTURE))
+        assertTrue(model.isVisible(GlassesManagerGating.Action.META_RAYBAN_CONTROLS))
+        assertTrue(model.isVisible(GlassesManagerGating.Action.META_RAYBAN_REGISTRATION))
         assertFalse(model.isVisible(GlassesManagerGating.Action.HEY_CYAN_EXTRAS))
         assertFalse(model.isVisible(GlassesManagerGating.Action.STATUS_BATTERY))
         assertFalse(model.isVisible(GlassesManagerGating.Action.STATUS_STORAGE))

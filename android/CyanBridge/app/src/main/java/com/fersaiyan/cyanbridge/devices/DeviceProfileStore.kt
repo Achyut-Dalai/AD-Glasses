@@ -50,6 +50,12 @@ object DeviceProfileStore {
         return DeviceProfile(mac, name, detected, selected, overridden)
     }
 
+    fun selectedClass(context: Context): DeviceClass =
+        loadLastSelected(context)?.selectedClass ?: DeviceClass.UNKNOWN
+
+    fun isMetaSelected(context: Context): Boolean =
+        selectedClass(context) == DeviceClass.META_RAYBAN
+
     fun getUserOverrideForMac(context: Context, mac: String): DeviceClass? {
         val key = overrideKey(mac)
         val raw = prefs(context).getString(key, null) ?: return null

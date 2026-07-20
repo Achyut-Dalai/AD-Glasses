@@ -9,6 +9,7 @@ import android.os.Build
 import android.util.Log
 import androidx.core.content.ContextCompat
 import com.fersaiyan.cyanbridge.devices.DeviceProfileStore
+import com.fersaiyan.cyanbridge.shared.devices.DeviceClass
 import com.hjq.permissions.Permission
 import com.hjq.permissions.XXPermissions
 import com.oudmon.ble.base.bluetooth.BleOperateManager
@@ -102,6 +103,10 @@ object AutoPairManager {
     }
 
     fun requestConnectToMac(context: Context, mac: String, reason: String) {
+        if (DeviceProfileStore.isMetaSelected(context)) {
+            Log.d(TAG, "Skipping vendor reconnect for selected Meta Ray-Ban ($reason)")
+            return
+        }
         if (suppressAutoReconnect) {
             Log.d(TAG, "Skipping auto-pair ($reason): suppressed")
             return
@@ -144,7 +149,14 @@ object AutoPairManager {
     private fun getTargetMac(context: Context): String? {
         // Pairing persists the user's explicit selection independently of the vendor SDK.
         // Prefer it so devices with names outside our fallback heuristics still reconnect.
-        val profileMac = DeviceProfileStore.loadLastSelected(context)
+        val profile = DeviceProfileStore.loadLastSelected(context)
+        if (profile?.selectedClass == DeviceClass.META_RAYBAN) {
+            // Meta owns its transport through DAT. Never hand its Bluetooth identity to
+            // the Oudmon connector, even when the device is also visible to Android BLE.
+            Log.d(TAG, "Skipping vendor reconnect for selected Meta Ray-Ban")
+            return null
+        }
+        val profileMac = profile
             ?.macAddress
             ?.trim()
             ?.takeIf { it.isNotBlank() }

@@ -1,12 +1,23 @@
 package com.fersaiyan.cyanbridge.ui.glasses
 
+import androidx.compose.ui.test.assertIsEnabled
 import androidx.compose.ui.test.assertIsDisplayed
+import androidx.compose.ui.test.assertIsNotEnabled
+import androidx.compose.ui.test.assertCountEquals
 import androidx.compose.ui.test.junit4.createComposeRule
+import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import com.fersaiyan.cyanbridge.shared.glasses.GlassesDashboardAction
 import com.fersaiyan.cyanbridge.shared.glasses.GlassesDashboardUiState
+import com.fersaiyan.cyanbridge.shared.glasses.OtaFirmwareSource
+import com.fersaiyan.cyanbridge.shared.glasses.MetaRaybanUiState
+import com.fersaiyan.cyanbridge.shared.glasses.WifiAdbDebugUiState
+import com.fersaiyan.cyanbridge.shared.plugins.NativePluginIds
+import com.fersaiyan.cyanbridge.shared.plugins.NativePluginShortcutAction
+import com.fersaiyan.cyanbridge.shared.plugins.NativePluginShortcutButton
+import com.fersaiyan.cyanbridge.shared.plugins.NativePluginShortcutUiState
 import com.fersaiyan.cyanbridge.shared.ui.glasses.GlassesDashboardScreen
 import com.fersaiyan.cyanbridge.ui.theme.CyanBridgeTheme
 import org.junit.Assert.assertEquals
@@ -39,6 +50,147 @@ class GlassesDashboardScreenTest {
 
         composeRule.runOnIdle {
             assertEquals(GlassesDashboardAction.TestVoiceQuestion, action)
+        }
+
+        composeRule.onNodeWithText("Test image AI description").performClick()
+        composeRule.runOnIdle {
+            assertEquals(GlassesDashboardAction.TestImageQuestion, action)
+        }
+    }
+
+    @Test
+    fun keepsCoreGlassesActionsVisibleOutsideAdvancedControls() {
+        composeRule.setContent {
+            CyanBridgeTheme {
+                GlassesDashboardScreen(
+                    state = GlassesDashboardUiState(showHeyCyanControls = true),
+                    onAction = {},
+                )
+            }
+        }
+
+        composeRule.onNodeWithText("Photo").assertIsDisplayed()
+        composeRule.onNodeWithText("Video").assertIsDisplayed()
+        composeRule.onNodeWithText("Audio").assertIsDisplayed()
+        composeRule.onNodeWithText("Count").assertIsDisplayed()
+        composeRule.onNodeWithText("Sync data (P2P)").assertIsDisplayed()
+        composeRule.onNodeWithText("Test voice").assertIsDisplayed()
+        composeRule.onNodeWithText("Test image AI description").assertIsDisplayed()
+        composeRule.onNodeWithText("Show advanced controls").assertIsDisplayed()
+        composeRule.onAllNodesWithText("Meeting capture").assertCountEquals(0)
+    }
+
+    @Test
+    fun metaKeepsAssistantActionsButHidesHeyCyanMediaControls() {
+        composeRule.setContent {
+            CyanBridgeTheme {
+                GlassesDashboardScreen(
+                    state = GlassesDashboardUiState(
+                        connectionLabel = "Meta Ray-Ban ready",
+                        deviceClassLabel = "Meta Rayban",
+                        showMetaRaybanControls = true,
+                        metaRayban = MetaRaybanUiState(canCapturePhoto = true),
+                    ),
+                    onAction = {},
+                )
+            }
+        }
+
+        composeRule.onNodeWithTag("glasses_assistant_controls").assertIsDisplayed()
+        composeRule.onNodeWithText("Test voice").assertIsDisplayed()
+        composeRule.onAllNodesWithText("Video").assertCountEquals(0)
+        composeRule.onAllNodesWithText("Sync data (P2P)").assertCountEquals(0)
+    }
+
+    @Test
+    fun rendersSelectedNativePluginShortcutsAndDispatchesAction() {
+        var action: GlassesDashboardAction? = null
+        composeRule.setContent {
+            CyanBridgeTheme {
+                GlassesDashboardScreen(
+                    state = GlassesDashboardUiState(
+                        nativePluginShortcut = NativePluginShortcutUiState(
+                            id = NativePluginIds.MEETING_SPARK_NOTES,
+                            title = "Meeting Spark Notes",
+                            description = "Capture meeting speech.",
+                            isEnabled = false,
+                            buttons = listOf(
+                                NativePluginShortcutButton(NativePluginShortcutAction.START, "Start capture"),
+                                NativePluginShortcutButton(NativePluginShortcutAction.STOP, "Stop capture"),
+                                NativePluginShortcutButton(NativePluginShortcutAction.SUMMARIZE, "Summarize"),
+                            ),
+                        ),
+                    ),
+                    onAction = { action = it },
+                )
+            }
+        }
+
+        composeRule.onNodeWithText("Meeting Spark Notes shortcuts").assertIsDisplayed()
+        composeRule.onNodeWithText("Start capture").performClick()
+        composeRule.runOnIdle {
+            assertEquals(
+                GlassesDashboardAction.RunNativePluginShortcut(NativePluginShortcutAction.START),
+                action,
+            )
+        }
+    }
+
+    @Test
+    fun privilegedWifiAdbRequiresExplicitRiskAcknowledgement() {
+        var action: GlassesDashboardAction? = null
+        composeRule.setContent {
+            CyanBridgeTheme {
+                GlassesDashboardScreen(
+                    state = GlassesDashboardUiState(
+                        wifiAdbDebug = WifiAdbDebugUiState(isAvailable = true),
+                    ),
+                    onAction = { action = it },
+                )
+            }
+        }
+
+        composeRule.onNodeWithText("Start ADB relay").performClick()
+        composeRule.onNodeWithText("Privileged ADB risk").assertIsDisplayed()
+        composeRule.onNodeWithTag("wifi_adb_confirm_start").assertIsNotEnabled()
+        composeRule.runOnIdle { assertEquals(null, action) }
+
+        composeRule.onNodeWithTag("wifi_adb_risk_acknowledgement").performClick()
+        composeRule.onNodeWithTag("wifi_adb_confirm_start").assertIsEnabled().performClick()
+
+        composeRule.onAllNodesWithText("Privileged ADB risk").assertCountEquals(0)
+        composeRule.runOnIdle {
+            assertEquals(GlassesDashboardAction.RequestStartWifiAdbDebug, action)
+        }
+    }
+
+    @Test
+    fun otaSourcePickerRequiresCompatibilityAcknowledgement() {
+        var action: GlassesDashboardAction? = null
+        composeRule.setContent {
+            CyanBridgeTheme {
+                GlassesDashboardScreen(
+                    state = GlassesDashboardUiState(
+                        showHeyCyanControls = true,
+                        advancedExpanded = true,
+                    ),
+                    onAction = { action = it },
+                )
+            }
+        }
+
+        composeRule.onNodeWithText("Choose Wi-Fi SWU").performClick()
+        composeRule.onNodeWithTag("ota_firmware_source_picker").assertIsDisplayed()
+        composeRule.onNodeWithTag("ota_firmware_source_personal_file").assertIsNotEnabled()
+
+        composeRule.onNodeWithTag("ota_firmware_risk_acknowledgement").performClick()
+        composeRule.onNodeWithTag("ota_firmware_source_personal_file").assertIsEnabled().performClick()
+
+        composeRule.runOnIdle {
+            assertEquals(
+                GlassesDashboardAction.RequestOtaFirmware(OtaFirmwareSource.PERSONAL_FILE),
+                action,
+            )
         }
     }
 }

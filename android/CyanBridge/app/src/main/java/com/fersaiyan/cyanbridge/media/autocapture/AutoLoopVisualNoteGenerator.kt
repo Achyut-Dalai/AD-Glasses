@@ -6,6 +6,7 @@ import android.os.Looper
 import android.util.Log
 import android.widget.Toast
 import com.fersaiyan.cyanbridge.glasses.GlassesSessionCoordinator
+import com.fersaiyan.cyanbridge.devices.DeviceProfileStore
 import com.fersaiyan.cyanbridge.localagent.userfacts.CandidateUserFactsStorage
 import com.fersaiyan.cyanbridge.localmodels.provider.LocalModelRequestPriority
 import com.fersaiyan.cyanbridge.localmodels.provider.LocalModelsProvider
@@ -39,6 +40,53 @@ object AutoLoopVisualNoteGenerator {
     fun enqueue(context: Context, loopIndex: Int) {
         val appContext = context.applicationContext
         if (!AutoAudioCapturePrefs.isVisualNotesEnabled(appContext)) return
+        if (DeviceProfileStore.isMetaSelected(appContext)) {
+            Log.i(TAG, "Skipping HeyCyan thumbnail visual note for Meta; use DAT photo capture")
+            return
+        }
+        enqueueInternal(appContext, loopIndex, promptOverride = null)
+    }
+
+    /** Runs the same thumbnail-to-scene-note pipeline without enabling auto-audio capture. */
+    fun enqueueStandalone(context: Context, loopIndex: Int, promptOverride: String = "") {
+        enqueueInternal(
+            context = context.applicationContext,
+            loopIndex = loopIndex,
+            promptOverride = promptOverride.takeIf { it.isNotBlank() },
+        )
+    }
+
+    /** Processes a photo supplied by a platform camera adapter, such as Meta DAT. */
+    fun enqueueCapturedPhoto(
+        context: Context,
+        loopIndex: Int,
+        image: File,
+        promptOverride: String = "",
+    ) {
+        val appContext = context.applicationContext
+        if (!image.exists() || image.length() < 1024L) return
+        if (!inFlight.compareAndSet(false, true)) {
+            Log.i(TAG, "Visual note already in progress; skipping supplied photo loop=$loopIndex")
+            return
+        }
+        scope.launch {
+            try {
+                describeAndAppend(
+                    context = appContext,
+                    loopIndex = loopIndex,
+                    image = image,
+                    promptOverride = promptOverride.takeIf { it.isNotBlank() },
+                )
+            } catch (t: Throwable) {
+                Log.e(TAG, "Supplied visual note pipeline failed: ${t.message}", t)
+            } finally {
+                inFlight.set(false)
+            }
+        }
+    }
+
+    private fun enqueueInternal(context: Context, loopIndex: Int, promptOverride: String?) {
+        val appContext = context.applicationContext
         GlassesSessionCoordinator.currentSession()?.let { session ->
             Log.i(TAG, "Skipping visual note while ${session.label} owns the SDK BLE/P2P slots")
             return
@@ -50,7 +98,7 @@ object AutoLoopVisualNoteGenerator {
 
         scope.launch {
             try {
-                captureDescribeAndAppend(appContext, loopIndex)
+                captureDescribeAndAppend(appContext, loopIndex, promptOverride)
             } catch (t: Throwable) {
                 Log.e(TAG, "Visual note pipeline failed: ${t.message}", t)
             } finally {
@@ -59,7 +107,11 @@ object AutoLoopVisualNoteGenerator {
         }
     }
 
-    private suspend fun captureDescribeAndAppend(context: Context, loopIndex: Int) {
+    private suspend fun captureDescribeAndAppend(
+        context: Context,
+        loopIndex: Int,
+        promptOverride: String?,
+    ) {
         if (!BleOperateManager.getInstance().isConnected) {
             Log.w(TAG, "Skipping visual note: glasses not connected")
             return
@@ -71,13 +123,23 @@ object AutoLoopVisualNoteGenerator {
             return
         }
 
+        describeAndAppend(context, loopIndex, image, promptOverride)
+    }
+
+    private suspend fun describeAndAppend(
+        context: Context,
+        loopIndex: Int,
+        image: File,
+        promptOverride: String?,
+    ) {
+
         if (!isImageFresh(image, MAX_IMAGE_AGE_MS)) {
             Log.w(TAG, "Skipping visual note: image is stale (lastModified=${image.lastModified()})")
             showToast(context, "Thumbnail too old, skipping scene analysis")
             return
         }
 
-        val description = describeWithGemma(context, image) ?: return
+        val description = describeWithGemma(context, image, promptOverride) ?: return
         val fact = buildFact(description)
         val date = SimpleDateFormat("yyyy-MM-dd", Locale.US).format(Date(System.currentTimeMillis()))
         CandidateUserFactsStorage.append(context, date, listOf(fact))
@@ -96,7 +158,11 @@ object AutoLoopVisualNoteGenerator {
         return "Glasses scene $time: $clipped"
     }
 
-    private suspend fun describeWithGemma(context: Context, image: File): String? {
+    private suspend fun describeWithGemma(
+        context: Context,
+        image: File,
+        promptOverride: String?,
+    ): String? {
         val selected = LocalModelStorageRepository.resolveSelectedModel(context)
         if (selected == null) {
             Log.w(TAG, "Skipping visual note: no local model selected")
@@ -120,7 +186,8 @@ object AutoLoopVisualNoteGenerator {
             messages = listOf(
                 mapOf(
                     "role" to "User",
-                    "content" to "Describe this scene in one concise sentence focusing on meaningful context (people, activity, location, tools, text on screen).",
+                    "content" to (promptOverride?.takeIf { it.isNotBlank() }
+                        ?: "Describe this scene in one concise sentence focusing on meaningful context (people, activity, location, tools, text on screen)."),
                 ),
             ),
             imagePaths = listOf(image.absolutePath),

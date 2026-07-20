@@ -18,6 +18,7 @@ import androidx.core.app.ServiceCompat
 import androidx.core.content.ContextCompat
 import com.fersaiyan.cyanbridge.MainActivity
 import com.fersaiyan.cyanbridge.R
+import com.fersaiyan.cyanbridge.devices.DeviceProfileStore
 import com.fersaiyan.cyanbridge.glasses.GlassesSessionCoordinator
 import com.oudmon.ble.base.bluetooth.BleOperateManager
 import com.oudmon.ble.base.communication.LargeDataHandler
@@ -114,6 +115,15 @@ class AutoAudioCaptureService : Service() {
             return
         }
 
+        if (DeviceProfileStore.isMetaSelected(this)) {
+            Log.w(TAG, "Meta Ray-Ban does not support HeyCyan onboard audio-file recording")
+            AutoAudioCapturePrefs.setLastPauseReason(this, "meta_dat_no_onboard_audio_file_api")
+            AutoAudioCapturePrefs.setEnabled(this, false)
+            RUNNING.set(false)
+            stopSelf()
+            return
+        }
+
         if (!startForegroundSafely("Auto audio capture: starting")) {
             RUNNING.set(false)
             stopSelf()
@@ -128,6 +138,15 @@ class AutoAudioCaptureService : Service() {
             while (isActive) {
                 if (!AutoAudioCapturePrefs.isEnabled(this@AutoAudioCaptureService)) {
                     Log.i(TAG, "Pref disabled, stopping")
+                    break
+                }
+                if (DeviceProfileStore.isMetaSelected(this@AutoAudioCaptureService)) {
+                    Log.w(TAG, "Meta Ray-Ban selected; stopping HeyCyan audio-file capture")
+                    AutoAudioCapturePrefs.setLastPauseReason(
+                        this@AutoAudioCaptureService,
+                        "meta_dat_no_onboard_audio_file_api",
+                    )
+                    AutoAudioCapturePrefs.setEnabled(this@AutoAudioCaptureService, false)
                     break
                 }
 
@@ -490,6 +509,11 @@ class AutoAudioCaptureService : Service() {
         const val ACTION_STOP = "com.fersaiyan.cyanbridge.action.AUTO_AUDIO_CAPTURE_STOP"
 
         fun start(context: Context) {
+            if (DeviceProfileStore.isMetaSelected(context)) {
+                AutoAudioCapturePrefs.setLastPauseReason(context, "meta_dat_no_onboard_audio_file_api")
+                AutoAudioCapturePrefs.setEnabled(context, false)
+                return
+            }
             // If notifications are blocked (Android 13+), running as a foreground service is unreliable
             // and can cause fast restart loops. Require permission before starting.
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU &&

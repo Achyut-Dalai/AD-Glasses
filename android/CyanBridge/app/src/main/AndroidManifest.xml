@@ -5,6 +5,7 @@
     <uses-permission android:name="android.permission.BLUETOOTH_CONNECT" />
     <uses-permission android:name="android.permission.BLUETOOTH_SCAN" android:usesPermissionFlags="neverForLocation" />
     <uses-permission android:name="android.permission.BLUETOOTH_ADVERTISE" android:usesPermissionFlags="neverForLocation" />
+    <uses-permission android:name="android.permission.CAMERA" />
     <uses-permission android:name="android.permission.CHANGE_NETWORK_STATE" android:usesPermissionFlags="neverForLocation" />
     <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" android:usesPermissionFlags="neverForLocation" />
     <uses-permission android:name="android.permission.CHANGE_WIFI_STATE" android:usesPermissionFlags="neverForLocation" />
@@ -35,6 +36,9 @@
 
     <!-- Wi-Fi Direct / Nearby Devices -->
     <uses-permission android:name="android.permission.NEARBY_WIFI_DEVICES" android:usesPermissionFlags="neverForLocation" tools:targetApi="33" />
+
+    <!-- DAT uses the wearable camera; a phone camera is not required for install. -->
+    <uses-feature android:name="android.hardware.camera" android:required="false" />
 
 
     <!-- The local-agent capture blacklist must enumerate installed packages so users can exclude any app. -->
@@ -159,6 +163,26 @@
             android:label="Walking Aid Settings" />
 
         <activity
+            android:name=".plugins.meetingsparknotes.MeetingSparkNotesSettingsActivity"
+            android:exported="false"
+            android:label="Meeting Spark Notes Settings" />
+
+        <activity
+            android:name=".plugins.livecaptionrelay.LiveCaptionRelaySettingsActivity"
+            android:exported="false"
+            android:label="Live Caption Relay Settings" />
+
+        <activity
+            android:name=".plugins.handsfreetranslator.HandsFreeTranslatorSettingsActivity"
+            android:exported="false"
+            android:label="Hands-Free Translator Settings" />
+
+        <activity
+            android:name=".plugins.errandbrain.ErrandBrainSettingsActivity"
+            android:exported="false"
+            android:label="Errand Brain Settings" />
+
+        <activity
             android:name=".plugins.walkingaid.WalkingAidChatActivity"
             android:exported="false"
             android:label="Walking Aid Chat"
@@ -236,6 +260,17 @@
                     android:host="pro-sub"
                     android:path="/callback" />
             </intent-filter>
+            <intent-filter>
+                <action android:name="android.intent.action.VIEW" />
+
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.BROWSABLE" />
+
+                <data
+                    android:scheme="fersaiyan"
+                    android:host="pro-sub"
+                    android:path="/restore" />
+            </intent-filter>
         </activity>
 
         <activity
@@ -246,6 +281,19 @@
             android:name=".agent.LocalModelsConfigureActivity"
             android:exported="false"
             android:label="Configure Local Models" />
+
+        <activity
+            android:name=".plugins.autodiary.AutoDiarySettingsActivity"
+            android:exported="false"
+            android:label="AutoDiary Settings" />
+        <activity
+            android:name=".plugins.autoaudio.AutoAudioSettingsActivity"
+            android:exported="false"
+            android:label="Auto Audio Settings" />
+        <activity
+            android:name=".plugins.visualdiary.VisualDiarySettingsActivity"
+            android:exported="false"
+            android:label="Visual Diary Settings" />
 
         <activity
             android:name=".bridge.runtimes.evenhub.EvenHubRuntimeActivity"
@@ -270,6 +318,40 @@
             android:name=".plugins.walkingaid.WalkingAidService"
             android:exported="false"
             android:foregroundServiceType="dataSync" />
+
+        <service
+            android:name=".plugins.meetingsparknotes.MeetingSparkNotesService"
+            android:exported="false"
+            android:foregroundServiceType="microphone" />
+
+        <service
+            android:name=".plugins.livecaptionrelay.LiveCaptionRelayService"
+            android:exported="false"
+            android:foregroundServiceType="microphone" />
+
+        <service
+            android:name=".plugins.handsfreetranslator.HandsFreeTranslatorService"
+            android:exported="false"
+            android:foregroundServiceType="microphone" />
+
+        <service
+            android:name=".plugins.errandbrain.ErrandBrainService"
+            android:exported="false"
+            android:foregroundServiceType="microphone" />
+
+        <service
+            android:name=".plugins.autodiary.AutoDiaryService"
+            android:exported="false"
+            android:foregroundServiceType="dataSync" />
+
+        <service
+            android:name=".plugins.visualdiary.VisualDiaryService"
+            android:exported="false"
+            android:foregroundServiceType="dataSync" />
+
+        <receiver
+            android:name=".plugins.errandbrain.ErrandBrainReminderReceiver"
+            android:exported="false" />
 
         <service
             android:name=".audio.MeetingCaptureService"

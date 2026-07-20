@@ -23,6 +23,7 @@ import androidx.core.content.ContextCompat
 import com.fersaiyan.cyanbridge.shared.devices.DeviceClass
 import com.fersaiyan.cyanbridge.devices.DeviceClassifier
 import com.fersaiyan.cyanbridge.devices.DeviceProfileStore
+import com.fersaiyan.cyanbridge.devices.metarayban.MetaRaybanManager
 import com.fersaiyan.cyanbridge.devices.ScannedDevice
 import com.fersaiyan.cyanbridge.ui.appearance.AppearancePreferences
 import com.fersaiyan.cyanbridge.ui.appearance.rememberAppearanceSettings
@@ -159,6 +160,20 @@ class DeviceBindActivity : BaseActivity() {
                 userOverridden = true,
             ),
         )
+
+        if (selectedDeviceClass == DeviceClass.META_RAYBAN) {
+            // Meta devices are owned by DAT. Saving the profile is enough here; calling
+            // the Oudmon connector would make the rest of the app treat Meta as HeyCyan.
+            MetaRaybanManager.getInstance(this).initialize()
+            Toast.makeText(
+                this,
+                "Meta Ray-Ban selected. Register it from the glasses dashboard.",
+                Toast.LENGTH_LONG,
+            ).show()
+            finish()
+            return
+        }
+
         BleOperateManager.getInstance().connectDirectly(device.macAddress)
     }
 

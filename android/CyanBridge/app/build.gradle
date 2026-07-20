@@ -26,6 +26,12 @@ if (localPropertiesFile.exists()) {
 }
 def metaGithubToken = System.getenv("GITHUB_TOKEN") ?: localProperties.getProperty("github_token")
 def metaDatEnabled = metaGithubToken != null && !metaGithubToken.trim().isEmpty()
+if (!metaDatEnabled) {
+    throw new GradleException(
+            "Meta Wearables DAT 0.8.0 is required for the direct Meta adapter. " +
+                    "Set GITHUB_TOKEN or github_token in local.properties."
+    )
+}
 
 android {
     namespace = "com.fersaiyan.cyanbridge"
@@ -33,9 +39,8 @@ android {
 
     defaultConfig {
         applicationId = "com.fersaiyan.cyanbridge"
-        // Meta DAT declares minSdk 29. Keep the regular build on API 24, but
-        // never bypass the vendor requirement when its SDK is included.
-        minSdk = metaDatEnabled ? 29 : 24
+        // Meta DAT declares minSdk 29 and is now a required app dependency.
+        minSdk = 29
         targetSdk = 35
         versionCode = 9
         versionName = "2.0.5.1"
@@ -187,18 +192,13 @@ dependencies {
     testImplementation 'androidx.test:core:1.6.1'
     testImplementation "androidx.room:room-testing:$room_version"
 
-    // Meta Wearables DAT SDK for Meta Ray-Ban glasses integration
-    // Requires GitHub token with read:packages scope in GITHUB_TOKEN env var
-    // The SDK is optional - if not available, Meta Ray-Ban features will be disabled
+    // Meta Wearables DAT SDK for Meta Ray-Ban glasses integration.
+    // Requires GitHub token with read:packages scope in GITHUB_TOKEN env var.
     def metaDatVersion = "0.8.0"
-    if (metaDatEnabled) {
-        implementation("com.meta.wearable:mwdat-core:${metaDatVersion}")
-        implementation("com.meta.wearable:mwdat-camera:${metaDatVersion}")
-        implementation("com.meta.wearable:mwdat-display:${metaDatVersion}")
-        implementation("com.meta.wearable:mwdat-mockdevice:${metaDatVersion}")
-    } else {
-        logger.warn("No GitHub package token configured - Meta Wearables DAT SDK dependencies will be skipped.")
-    }
+    implementation("com.meta.wearable:mwdat-core:${metaDatVersion}")
+    implementation("com.meta.wearable:mwdat-camera:${metaDatVersion}")
+    implementation("com.meta.wearable:mwdat-display:${metaDatVersion}")
+    implementation("com.meta.wearable:mwdat-mockdevice:${metaDatVersion}")
 
     // Chapter 4 UI gating test (androidTest)
     androidTestImplementation 'androidx.test:core-ktx:1.6.1'

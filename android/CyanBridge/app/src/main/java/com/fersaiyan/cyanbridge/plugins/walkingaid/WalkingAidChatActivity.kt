@@ -54,6 +54,7 @@ import com.fersaiyan.cyanbridge.ai.router.CliRelayClient
 import com.fersaiyan.cyanbridge.localmodels.provider.LocalModelRequestPriority
 import com.fersaiyan.cyanbridge.localmodels.provider.LocalModelsProvider
 import com.fersaiyan.cyanbridge.ui.installComposeHostWithLegacyAdapter
+import com.fersaiyan.cyanbridge.ui.setThemedComposeContent
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
@@ -76,7 +77,7 @@ class WalkingAidChatActivity : AppCompatActivity() {
 
         WalkingAidImageStore.load(this)
 
-        composeView.setContent {
+        setThemedComposeContent(composeView) {
             WalkingAidChatScreen(
                 onBack = ::finish,
                 onSpeak = { speakTts(it) },

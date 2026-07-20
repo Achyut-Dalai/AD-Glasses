@@ -24,6 +24,26 @@ class GlassesSessionCoordinatorTest {
     }
 
     @Test
+    fun wifiAdbDebugExcludesEveryOtherWorkflowAndOneShotCommand() {
+        assertTrue(GlassesSessionCoordinator.tryAcquire(GlassesSession.WIFI_ADB_DEBUG))
+
+        assertFalse(GlassesSessionCoordinator.tryAcquire(GlassesSession.MEDIA_SYNC))
+        assertFalse(GlassesSessionCoordinator.tryAcquire(GlassesSession.OTA))
+        assertFalse(GlassesSessionCoordinator.tryAcquire(GlassesSession.LIVE_PREVIEW))
+        assertNull(GlassesSessionCoordinator.tryAcquireBackgroundCommand())
+
+        assertTrue(GlassesSessionCoordinator.release(GlassesSession.WIFI_ADB_DEBUG))
+    }
+
+    @Test
+    fun metaCameraLeaseExcludesHeyCyanTransfers() {
+        assertTrue(GlassesSessionCoordinator.tryAcquire(GlassesSession.META_CAMERA))
+        assertFalse(GlassesSessionCoordinator.tryAcquire(GlassesSession.MEDIA_SYNC))
+        assertNull(GlassesSessionCoordinator.tryAcquireBackgroundCommand())
+        assertTrue(GlassesSessionCoordinator.release(GlassesSession.META_CAMERA))
+    }
+
+    @Test
     fun onlyTheOwningSessionCanReleaseTheLease() {
         assertTrue(GlassesSessionCoordinator.tryAcquire(GlassesSession.OTA))
         assertFalse(GlassesSessionCoordinator.release(GlassesSession.LIVE_PREVIEW))

@@ -3,10 +3,12 @@ package com.fersaiyan.cyanbridge.ui.plugins
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.test.assertCountEquals
 import androidx.compose.ui.test.hasText
 import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.junit4.createComposeRule
+import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performScrollToNode
@@ -24,9 +26,9 @@ class CommunityPluginsScreenTest {
     val composeRule = createComposeRule()
 
     @Test
-    fun filtersPluginsAndRoutesTaskerSetupActions() {
+    fun rendersServerTaskerPluginAndRoutesItsInstallAction() {
         var selectedWindow by mutableStateOf(PluginTimeWindow.ALL_TIME)
-        var taskerStoreActions = 0
+        var taskerActions = 0
         var publishActions = 0
         val plugin = CommunityPluginCardData(
             title = "Meeting Spark Notes",
@@ -42,6 +44,7 @@ class CommunityPluginsScreenTest {
             trendAll = 70,
             trendMonthly = 80,
             trendWeekly = 90,
+            taskerNetLink = "https://taskernet.com/example",
         )
 
         composeRule.setContent {
@@ -49,14 +52,10 @@ class CommunityPluginsScreenTest {
                 CommunityPluginsScreen(
                     plugins = listOf(plugin),
                     selectedWindow = selectedWindow,
-                    imageAutomationEnabled = false,
-                    showImageAutomationBanner = true,
                     isRefreshing = false,
                     onWindowSelected = { selectedWindow = it },
                     onRefresh = {},
-                    onDismissImageAutomationBanner = {},
-                    onOpenTaskerStore = { taskerStoreActions += 1 },
-                    onOpenTaskerNet = {},
+                    onOpenCommunityPlugin = { taskerActions += 1 },
                     onPublishPlugin = { publishActions += 1 },
                     onDestinationSelected = {},
                 )
@@ -64,18 +63,17 @@ class CommunityPluginsScreenTest {
         }
 
         composeRule.onNodeWithText("Community Plugins").assertExists()
-        composeRule.onNodeWithTag("image_automation_banner").assertExists()
+        composeRule.onAllNodesWithText("Image Questions Automation").assertCountEquals(0)
         composeRule.onNodeWithContentDescription("Publish plugin").performClick()
         composeRule.onNodeWithText("Weekly").performClick()
-        composeRule.onNodeWithText("Download plugin").performClick()
-        composeRule.onNodeWithText("Get Tasker").performClick()
+        composeRule.onAllNodesWithText("Open in Tasker")[0].performClick()
         composeRule.onNodeWithTag("community_plugins_list")
             .performScrollToNode(hasText("1. Meeting Spark Notes"))
-        composeRule.onNodeWithText("1. Meeting Spark Notes").assertExists()
+        composeRule.onAllNodesWithText("1. Meeting Spark Notes")[0].assertExists()
 
         composeRule.runOnIdle {
             assertEquals(PluginTimeWindow.WEEKLY, selectedWindow)
-            assertEquals(1, taskerStoreActions)
+            assertEquals(1, taskerActions)
             assertEquals(1, publishActions)
         }
     }
@@ -97,17 +95,12 @@ class CommunityPluginsScreenTest {
                 CommunityPluginsScreen(
                     plugins = emptyList(),
                     selectedWindow = PluginTimeWindow.ALL_TIME,
-                    imageAutomationEnabled = false,
-                    showImageAutomationBanner = false,
                     isRefreshing = false,
                     nativePlugins = listOf(nativePlugin),
                     onOpenNativePluginSettings = { settingsOpened = true },
                     onToggleNativePlugin = { _, enabled -> toggledValue = enabled },
                     onWindowSelected = {},
                     onRefresh = {},
-                    onDismissImageAutomationBanner = {},
-                    onOpenTaskerStore = {},
-                    onOpenTaskerNet = {},
                     onPublishPlugin = {},
                     onDestinationSelected = {},
                 )
@@ -115,8 +108,9 @@ class CommunityPluginsScreenTest {
         }
         composeRule.onNodeWithTag("native_plugin_card_walking_aid").assertExists()
         composeRule.onNodeWithText("Walking Aid").assertExists()
+        composeRule.onNodeWithContentDescription("Walking Aid settings").performClick()
         composeRule.runOnIdle {
-            assertEquals(false, settingsOpened)
+            assertEquals(true, settingsOpened)
         }
     }
 }

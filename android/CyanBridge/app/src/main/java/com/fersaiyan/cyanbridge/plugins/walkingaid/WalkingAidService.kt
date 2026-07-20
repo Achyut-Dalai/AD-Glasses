@@ -23,6 +23,8 @@ import com.fersaiyan.cyanbridge.audio.MeetingCapturePrefs
 import com.fersaiyan.cyanbridge.localmodels.provider.LocalModelRequestPriority
 import com.fersaiyan.cyanbridge.localmodels.provider.LocalModelsProvider
 import com.fersaiyan.cyanbridge.ai.router.CliRelayClient
+import com.fersaiyan.cyanbridge.devices.DeviceProfileStore
+import com.fersaiyan.cyanbridge.devices.metarayban.MetaRaybanManager
 import com.oudmon.ble.base.bluetooth.BleOperateManager
 import com.oudmon.ble.base.communication.LargeDataHandler
 import com.hjq.permissions.XXPermissions
@@ -123,6 +125,7 @@ class WalkingAidService : Service() {
             Log.i(TAG, "Already running")
             return
         }
+        val isMetaRayban = isMetaRaybanSelected()
 
         // Check POST_NOTIFICATIONS permission
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU &&
@@ -140,14 +143,18 @@ class WalkingAidService : Service() {
             return
         }
 
-        // Check BLE connection
-        if (!BleOperateManager.getInstance().isConnected) {
+        // HeyCyan uses the vendor BLE transport; Meta uses DAT instead.
+        if (!isMetaRayban && !BleOperateManager.getInstance().isConnected) {
             Log.w(TAG, "Glasses not connected")
             showToast(this, getString(com.fersaiyan.cyanbridge.R.string.walking_aid_not_connected))
             RUNNING.set(false)
             stopForeground(STOP_FOREGROUND_REMOVE)
             stopSelf()
             return
+        }
+        if (isMetaRayban) {
+            val metaManager = MetaRaybanManager.getInstance(this)
+            if (!metaManager.isInitialized.value) metaManager.initialize()
         }
 
         // Check meeting capture
@@ -173,10 +180,19 @@ class WalkingAidService : Service() {
 
         loopJob = scope.launch {
             var captureIndex = 0
+            if (isMetaRayban) {
+                val metaManager = MetaRaybanManager.getInstance(this@WalkingAidService)
+                if (!metaManager.awaitCameraReady()) {
+                    Log.w(TAG, "Meta Walking Aid requires a registered, available DAT camera")
+                    WalkingAidPreferences.setEnabled(this@WalkingAidService, false)
+                    stopLoop(reason = "meta_camera_unavailable")
+                    return@launch
+                }
+            }
             while (isActive && WalkingAidPreferences.isEnabled(this@WalkingAidService)) {
                 val intervalMs = WalkingAidPreferences.getCaptureIntervalSeconds(this@WalkingAidService) * 1000L
 
-                if (!BleOperateManager.getInstance().isConnected) {
+                if (!isMetaRayban && !BleOperateManager.getInstance().isConnected) {
                     Log.w(TAG, "Glasses disconnected during loop; waiting...")
                     WalkingAidNotificationHelper.updateNotification(
                         this@WalkingAidService,
@@ -272,6 +288,17 @@ class WalkingAidService : Service() {
     }
 
     private suspend fun captureThumbnail(index: Int): File? {
+        if (isMetaRaybanSelected()) {
+            val manager = MetaRaybanManager.getInstance(this)
+            if (!manager.isInitialized.value) manager.initialize()
+            return runCatching {
+                val photo = manager.capturePhotoOnce()
+                manager.savePhotoForProcessing(photo, "META_WALKING_AID_$index")
+            }.onFailure {
+                Log.e(TAG, "Meta DAT photo capture failed: ${it.message}", it)
+            }.getOrNull()
+        }
+
         val permit = GlassesSessionCoordinator.tryAcquireBackgroundCommand()
         if (permit == null) {
             Log.i(TAG, "Skipping thumbnail capture: glasses SDK busy")
@@ -371,6 +398,8 @@ class WalkingAidService : Service() {
             }
         }
     }
+
+    private fun isMetaRaybanSelected(): Boolean = DeviceProfileStore.isMetaSelected(this)
 
     private suspend fun estimateDepth(image: File): String? {
         val customPrompt = WalkingAidPreferences.getCustomPrompt(this)

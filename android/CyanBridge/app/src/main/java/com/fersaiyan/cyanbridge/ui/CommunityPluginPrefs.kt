@@ -1,28 +1,26 @@
 package com.fersaiyan.cyanbridge.ui
 
 import android.content.Context
+import com.fersaiyan.cyanbridge.shared.plugins.NativePluginIds
 
 object CommunityPluginPrefs {
     private const val PREFS = "community_plugins"
-    private const val KEY_GEMINI_CHATGPT_IMAGE_AUTOMATION = "gemini_chatgpt_image_automation"
-    private const val KEY_IMAGE_AUTOMATION_BANNER_DISMISSED = "image_automation_banner_dismissed"
+    private const val KEY_TASKER_ASSISTANT_ENABLED = "tasker_assistant_enabled"
+    private const val LEGACY_KEY_GEMINI_CHATGPT_IMAGE_AUTOMATION = "gemini_chatgpt_image_automation"
+    private const val KEY_GLASS_TAB_SHORTCUT_PLUGIN = "glasses_tab_shortcut_plugin"
+    private const val DEFAULT_GLASS_TAB_SHORTCUT_PLUGIN = NativePluginIds.MEETING_SPARK_NOTES
 
     private fun prefs(context: Context) = context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
 
-    fun isGeminiChatGptImageAutomationEnabled(context: Context): Boolean {
-        return prefs(context).getBoolean(KEY_GEMINI_CHATGPT_IMAGE_AUTOMATION, false)
+    fun isTaskerAssistantEnabled(context: Context): Boolean {
+        return prefs(context).getBoolean(
+            KEY_TASKER_ASSISTANT_ENABLED,
+            prefs(context).getBoolean(LEGACY_KEY_GEMINI_CHATGPT_IMAGE_AUTOMATION, false),
+        )
     }
 
-    fun setGeminiChatGptImageAutomationEnabled(context: Context, enabled: Boolean) {
-        prefs(context).edit().putBoolean(KEY_GEMINI_CHATGPT_IMAGE_AUTOMATION, enabled).apply()
-    }
-
-    fun isImageAutomationBannerDismissed(context: Context): Boolean {
-        return prefs(context).getBoolean(KEY_IMAGE_AUTOMATION_BANNER_DISMISSED, false)
-    }
-
-    fun setImageAutomationBannerDismissed(context: Context, dismissed: Boolean) {
-        prefs(context).edit().putBoolean(KEY_IMAGE_AUTOMATION_BANNER_DISMISSED, dismissed).apply()
+    fun setTaskerAssistantEnabled(context: Context, enabled: Boolean) {
+        prefs(context).edit().putBoolean(KEY_TASKER_ASSISTANT_ENABLED, enabled).apply()
     }
 
     private fun nativePluginKey(pluginId: String) = "native_plugin_enabled_$pluginId"
@@ -33,5 +31,25 @@ object CommunityPluginPrefs {
 
     fun setNativePluginEnabled(context: Context, pluginId: String, enabled: Boolean) {
         prefs(context).edit().putBoolean(nativePluginKey(pluginId), enabled).apply()
+    }
+
+    fun getGlassesTabShortcutPluginId(context: Context): String? {
+        return prefs(context)
+            .getString(KEY_GLASS_TAB_SHORTCUT_PLUGIN, DEFAULT_GLASS_TAB_SHORTCUT_PLUGIN)
+            ?.takeIf { it.isNotBlank() }
+    }
+
+    fun isGlassesTabShortcutEnabled(context: Context, pluginId: String): Boolean {
+        return getGlassesTabShortcutPluginId(context) == pluginId
+    }
+
+    fun setGlassesTabShortcutEnabled(context: Context, pluginId: String, enabled: Boolean) {
+        val editor = prefs(context).edit()
+        if (enabled) {
+            editor.putString(KEY_GLASS_TAB_SHORTCUT_PLUGIN, pluginId)
+        } else if (getGlassesTabShortcutPluginId(context) == pluginId) {
+            editor.putString(KEY_GLASS_TAB_SHORTCUT_PLUGIN, "")
+        }
+        editor.apply()
     }
 }

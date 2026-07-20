@@ -54,7 +54,11 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.fersaiyan.cyanbridge.R
 import com.fersaiyan.cyanbridge.agent.ProSubscriptionRelayClient
+import com.fersaiyan.cyanbridge.shared.plugins.NativePluginIds
+import com.fersaiyan.cyanbridge.ui.CommunityPluginPrefs
 import com.fersaiyan.cyanbridge.ui.installComposeHostWithLegacyAdapter
+import com.fersaiyan.cyanbridge.ui.NativePluginShortcutPreference
+import com.fersaiyan.cyanbridge.ui.setThemedComposeContent
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
@@ -67,7 +71,7 @@ class WalkingAidSettingsActivity : AppCompatActivity() {
         super.onCreate(savedInstanceState)
         composeView = installComposeHostWithLegacyAdapter(R.layout.activity_walking_aid_settings)
 
-        composeView.setContent {
+        setThemedComposeContent(composeView) {
             WalkingAidSettingsScreen(
                 onBack = ::finish,
                 onStartService = { WalkingAidService.start(this) },
@@ -150,6 +154,11 @@ fun WalkingAidSettingsScreen(
                             onCheckedChange = { newValue ->
                                 enabled = newValue
                                 WalkingAidPreferences.setEnabled(context, newValue)
+                                CommunityPluginPrefs.setNativePluginEnabled(
+                                    context,
+                                    NativePluginIds.WALKING_AID,
+                                    newValue,
+                                )
                                 if (newValue) {
                                     onStartService()
                                 } else {
@@ -188,6 +197,12 @@ fun WalkingAidSettingsScreen(
                     }
                 }
             }
+
+            SectionTitle("Glasses tab")
+            NativePluginShortcutPreference(
+                pluginId = NativePluginIds.WALKING_AID,
+                pluginTitle = "Walking Aid",
+            )
 
             // Section: Image Recognition
             SectionTitle("Image Recognition")

@@ -18,6 +18,9 @@ import com.fersaiyan.cyanbridge.ai.router.AiProviderPrefs
 import com.fersaiyan.cyanbridge.ai.router.AiProviderType
 import com.fersaiyan.cyanbridge.localmodels.storage.LocalModelStorageRepository
 import com.fersaiyan.cyanbridge.localagent.daily.DailyFactsReminderScheduler
+import com.fersaiyan.cyanbridge.plugins.autodiary.AutoDiaryService
+import com.fersaiyan.cyanbridge.plugins.visualdiary.VisualDiaryPreferences
+import com.fersaiyan.cyanbridge.plugins.visualdiary.VisualDiaryService
 import com.fersaiyan.cyanbridge.memoryvault.MemoryVaultBootstrap
 import com.fersaiyan.cyanbridge.media.autocapture.AutoAudioCapturePrefs
 import com.fersaiyan.cyanbridge.media.autocapture.AutoAudioCaptureService
@@ -74,6 +77,15 @@ class MyApplication : Application(){
         }
 
         runCatching { MemoryVaultBootstrap.ensureInitialized(this) }
+
+        if (LocalAgentPrefs.isAutoCaptureEnabled(this) && !AutoDiaryService.isRunning()) {
+            AutoDiaryService.start(this)
+        }
+
+        if (VisualDiaryPreferences.isEnabled(this) && !VisualDiaryService.isRunning()) {
+            VisualDiaryService.start(this)
+        }
+
         maybePreloadLocalModel()
 
         // Initialize KMP shared services

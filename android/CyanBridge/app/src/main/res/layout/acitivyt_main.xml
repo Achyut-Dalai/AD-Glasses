@@ -577,15 +577,21 @@
                         android:enabled="false"/>
                 </LinearLayout>
 
-                <!-- Display Controls (for Meta Ray-Ban Display) -->
-                <TextView
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:text="DISPLAY"
-                    android:textColor="@color/text_secondary"
-                    android:textSize="12sp"
-                    android:layout_marginTop="16dp"
-                    android:layout_marginBottom="8dp"/>
+                 <!-- Display Controls (for Meta Ray-Ban Display) -->
+                 <LinearLayout
+                     android:id="@+id/layout_meta_display"
+                     android:layout_width="match_parent"
+                     android:layout_height="wrap_content"
+                     android:orientation="vertical">
+
+                     <TextView
+                         android:layout_width="wrap_content"
+                         android:layout_height="wrap_content"
+                         android:text="DISPLAY"
+                         android:textColor="@color/text_secondary"
+                         android:textSize="12sp"
+                         android:layout_marginTop="16dp"
+                         android:layout_marginBottom="8dp"/>
 
                 <TextView
                     android:id="@+id/tv_meta_display_state"
@@ -620,7 +626,8 @@
                         android:text="Stop Display"
                         android:backgroundTint="@color/card_bg"
                         android:textColor="@color/danger"/>
-                </LinearLayout>
+                     </LinearLayout>
+                 </LinearLayout>
 
             </LinearLayout>
 
