@@ -13,6 +13,7 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.safeDrawing
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.ExpandLess
@@ -28,6 +29,7 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
+import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
@@ -43,10 +45,12 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import com.fersaiyan.cyanbridge.shared.glasses.GlassesAssistantMode
 import com.fersaiyan.cyanbridge.shared.glasses.GlassesDashboardAction
 import com.fersaiyan.cyanbridge.shared.glasses.GlassesDashboardUiState
+import com.fersaiyan.cyanbridge.shared.glasses.FirmwarePatchRequestUiState
 import com.fersaiyan.cyanbridge.shared.plugins.NativePluginShortcutAction
 import com.fersaiyan.cyanbridge.shared.plugins.NativePluginShortcutUiState
 import com.fersaiyan.cyanbridge.shared.glasses.MetaRaybanUiState
@@ -128,6 +132,16 @@ fun GlassesDashboardScreen(
                 showOtaFirmwareSourcePicker = false
                 otaFirmwareRiskAcknowledged = false
                 onAction(GlassesDashboardAction.RequestOtaFirmware(source))
+            },
+        )
+    }
+
+    state.firmwarePatchRequest?.let { request ->
+        FirmwarePatchRequestDialog(
+            request = request,
+            onDismissRequest = { onAction(GlassesDashboardAction.DismissFirmwarePatchRequest) },
+            onSubmit = { contactEmail ->
+                onAction(GlassesDashboardAction.SubmitFirmwarePatchRequest(contactEmail))
             },
         )
     }
@@ -836,6 +850,80 @@ private fun OtaFirmwareSourcePickerDialog(
         },
     )
 }
+
+@Composable
+private fun FirmwarePatchRequestDialog(
+    request: FirmwarePatchRequestUiState,
+    onDismissRequest: () -> Unit,
+    onSubmit: (String) -> Unit,
+) {
+    var contactEmail by remember(request) { mutableStateOf(request.suggestedContactEmail) }
+    val validEmail = isValidContactEmail(contactEmail)
+
+    AlertDialog(
+        onDismissRequest = onDismissRequest,
+        modifier = Modifier.testTag("firmware_patch_request_dialog"),
+        title = { Text("Request firmware patch") },
+        text = {
+            Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                Text(
+                    "CyanBridge only downloads patched firmware built from the exact version " +
+                        "reported by each target chip. The developer cannot verify which Wi-Fi " +
+                        "and Bluetooth chip versions are compatible, so mixed or unverified " +
+                        "versions are never offered."
+                )
+                Text(
+                    "Some old or very recent versions may not be available yet. Send a request " +
+                        "for this exact version and the developer will contact you at the email " +
+                        "below to assist, probably within 48 hours."
+                )
+                Text(
+                    "Requested: ${request.target.label}\n" +
+                        "Hardware: ${request.targetHardwareVersion}\n" +
+                        "Firmware: ${request.targetFirmwareVersion}",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+                OutlinedTextField(
+                    value = contactEmail,
+                    onValueChange = { contactEmail = it },
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .testTag("firmware_patch_request_email"),
+                    label = { Text("Contact email") },
+                    singleLine = true,
+                    isError = contactEmail.isNotBlank() && !validEmail,
+                    supportingText = {
+                        Text(
+                            if (contactEmail.isNotBlank() && !validEmail) {
+                                "Enter a valid email address"
+                            } else {
+                                "Version details and OTA diagnostics will be sent to CyanBridge."
+                            },
+                        )
+                    },
+                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Email),
+                )
+            }
+        },
+        confirmButton = {
+            TextButton(
+                enabled = validEmail,
+                onClick = { onSubmit(contactEmail.trim()) },
+                modifier = Modifier.testTag("firmware_patch_request_send"),
+            ) { Text("Send request") }
+        },
+        dismissButton = {
+            TextButton(
+                onClick = onDismissRequest,
+                modifier = Modifier.testTag("firmware_patch_request_cancel"),
+            ) { Text("Cancel") }
+        },
+    )
+}
+
+private fun isValidContactEmail(value: String): Boolean =
+    value.trim().matches(Regex("[^\\s@]+@[^\\s@]+\\.[^\\s@]+"))
 
 @Composable
 private fun ActionRow(

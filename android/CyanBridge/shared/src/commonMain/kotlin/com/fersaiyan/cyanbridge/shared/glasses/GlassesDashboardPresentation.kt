@@ -28,6 +28,7 @@ data class GlassesDashboardUiState(
     val agentLastError: String = "(none)",
     val metaRayban: MetaRaybanUiState = MetaRaybanUiState(),
     val ota: OtaSectionUiState = OtaSectionUiState(),
+    val firmwarePatchRequest: FirmwarePatchRequestUiState? = null,
     val livePreview: LivePreviewUiState = LivePreviewUiState(),
     val wifiAdbDebug: WifiAdbDebugUiState = WifiAdbDebugUiState(),
 )
@@ -121,6 +122,20 @@ enum class OtaFirmwareSource(
     ),
 }
 
+/** Exact target-chip details collected when the relay has no approved patch. */
+data class FirmwarePatchRequestUiState(
+    val source: OtaFirmwareSource,
+    val target: OtaTargetSelection,
+    val targetHardwareVersion: String,
+    val targetFirmwareVersion: String,
+    val wifiHardwareVersion: String,
+    val wifiFirmwareVersion: String,
+    val bleHardwareVersion: String,
+    val bleFirmwareVersion: String,
+    val relayMessage: String,
+    val suggestedContactEmail: String = "",
+)
+
 data class LivePreviewUiState(
     val isAvailable: Boolean = false,
     val stateLabel: String = "Idle",
@@ -175,6 +190,8 @@ sealed interface GlassesDashboardAction {
     data object DumpOtaInfo : GlassesDashboardAction
     data object TestPullOta : GlassesDashboardAction
     data class RequestOtaFirmware(val source: OtaFirmwareSource) : GlassesDashboardAction
+    data class SubmitFirmwarePatchRequest(val contactEmail: String) : GlassesDashboardAction
+    data object DismissFirmwarePatchRequest : GlassesDashboardAction
     data object CancelOta : GlassesDashboardAction
     data class SelectOtaTarget(val target: OtaTargetSelection) : GlassesDashboardAction
     data object StartLivePreview : GlassesDashboardAction

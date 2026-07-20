@@ -39,6 +39,10 @@ object DebugLogSupport {
         "WifiP2pManagerSingleton",
         "WifiP2pBroadcastReceiver",
         "BleIpBridge",
+        "FirmwareClient",
+        "Ota",
+        "OtaManager",
+        "BleDfuManager",
         "CliRelayRouter",
         "LocalAgent",
         "MainActivity",
@@ -57,6 +61,18 @@ object DebugLogSupport {
         val logs: String,
         val deviceInfo: String,
         val file: File,
+    )
+
+    data class FirmwarePatchRequest(
+        val source: String,
+        val target: String,
+        val targetHardwareVersion: String,
+        val targetFirmwareVersion: String,
+        val wifiHardwareVersion: String,
+        val wifiFirmwareVersion: String,
+        val bleHardwareVersion: String,
+        val bleFirmwareVersion: String,
+        val relayMessage: String,
     )
 
     fun showSupportOptionsDialog(
@@ -187,8 +203,12 @@ object DebugLogSupport {
         description: String,
         logs: String,
         deviceInfo: String,
+        contactEmail: String? = null,
+        requestMetadata: String? = null,
+        relayBaseUrl: String? = null,
     ): Result<String> = runCatching {
-        val baseUrl = AiProviderPrefs.getRelayBaseUrl(context).trimEnd('/')
+        val baseUrl = relayBaseUrl?.trim()?.trimEnd('/')?.takeIf { it.isNotBlank() }
+            ?: AiProviderPrefs.getRelayBaseUrl(context).trimEnd('/')
         val url = URL("$baseUrl/logs/submit")
         val token = ProSubscriptionServerPrefs.getApiToken(context)
 
@@ -198,6 +218,10 @@ object DebugLogSupport {
             .put("logs", logs)
             .put("device_info", deviceInfo)
             .put("app_version", context.packageManager.getPackageInfo(context.packageName, 0).versionName)
+            .apply {
+                contactEmail?.trim()?.takeIf { it.isNotEmpty() }?.let { put("contact_email", it) }
+                requestMetadata?.trim()?.takeIf { it.isNotEmpty() }?.let { put("request_metadata", it) }
+            }
 
         val conn = (url.openConnection() as HttpURLConnection).apply {
             requestMethod = "POST"
@@ -224,6 +248,62 @@ object DebugLogSupport {
         }
 
         org.json.JSONObject(body).optString("log_id", "submitted")
+    }
+
+    /** Sends the unavailable exact-base firmware details and focused OTA diagnostics to support. */
+    suspend fun sendFirmwarePatchRequest(
+        context: Context,
+        contactEmail: String,
+        request: FirmwarePatchRequest,
+        relayBaseUrl: String? = null,
+    ): Result<String> {
+        val normalizedEmail = contactEmail.trim()
+        if (!isValidContactEmail(normalizedEmail)) {
+            return Result.failure(IllegalArgumentException("Enter a valid contact email"))
+        }
+
+        Log.i(
+            TAG,
+            "Submitting firmware patch request: target=${request.target}, " +
+                "hardware=${request.targetHardwareVersion}, firmware=${request.targetFirmwareVersion}",
+        )
+        val requestMetadata = buildString {
+            appendLine("Request type: exact-base firmware patch availability")
+            appendLine("Requested server source: ${request.source}")
+            appendLine("Requested target: ${request.target}")
+            appendLine("Target hardware version: ${request.targetHardwareVersion}")
+            appendLine("Target firmware version: ${request.targetFirmwareVersion}")
+            appendLine("Wi-Fi hardware version: ${request.wifiHardwareVersion}")
+            appendLine("Wi-Fi firmware version: ${request.wifiFirmwareVersion}")
+            appendLine("BLE hardware version: ${request.bleHardwareVersion}")
+            appendLine("BLE firmware version: ${request.bleFirmwareVersion}")
+            appendLine("Relay response: ${request.relayMessage}")
+        }.trim()
+        val deviceInfo = buildDeviceInfo(
+            context = context,
+            extraInfo = linkedMapOf(
+                "Firmware request source" to request.source,
+                "Firmware request target" to request.target,
+                "Target hardware version" to request.targetHardwareVersion,
+                "Target firmware version" to request.targetFirmwareVersion,
+                "Wi-Fi hardware version" to request.wifiHardwareVersion,
+                "Wi-Fi firmware version" to request.wifiFirmwareVersion,
+                "BLE hardware version" to request.bleHardwareVersion,
+                "BLE firmware version" to request.bleFirmwareVersion,
+                "Firmware relay response" to request.relayMessage,
+            ),
+        )
+        return sendLogsToServer(
+            context = context,
+            issueType = "Firmware patch request",
+            description = "No approved exact-base firmware patch is available for the reported glasses version. " +
+                "The requester asked the developer to review this specific version.",
+            logs = collectLogcat(),
+            deviceInfo = deviceInfo,
+            contactEmail = normalizedEmail,
+            requestMetadata = requestMetadata,
+            relayBaseUrl = relayBaseUrl,
+        )
     }
 
     suspend fun buildDebugReport(
@@ -401,4 +481,7 @@ object DebugLogSupport {
         )
         return file
     }
+
+    private fun isValidContactEmail(value: String): Boolean =
+        value.matches(Regex("[^\\s@]+@[^\\s@]+\\.[^\\s@]+"))
 }

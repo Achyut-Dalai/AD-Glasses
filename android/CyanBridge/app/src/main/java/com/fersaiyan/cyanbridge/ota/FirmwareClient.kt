@@ -35,6 +35,14 @@ internal fun isExactFirmwareBaseMatch(baseFirmwareVersion: String, currentFirmwa
 
 internal fun isSha256Hex(value: String): Boolean = value.matches(Regex("[a-fA-F0-9]{64}"))
 
+/** Keep patch requests on the same relay that resolved the firmware catalog. */
+internal fun firmwareRelayBaseUrl(context: Context): String =
+    context.getSharedPreferences("relay_server", Context.MODE_PRIVATE)
+        .getString("base_url", null)
+        ?.trim()
+        .takeUnless { it.isNullOrBlank() }
+        ?: "https://cyanbridge.vercel.app"
+
 /**
  * Result of a firmware catalog lookup + download.
  */
@@ -94,7 +102,7 @@ class FirmwareClient(
             ?: return FirmwareResult.Error("Personal firmware files must be imported from the file picker")
 
         // Step 1: Resolve relay base URL
-        val relayBase = getRelayBaseUrl()
+        val relayBase = firmwareRelayBaseUrl(context)
         Log.i(TAG, "[1/5] Relay base URL: $relayBase")
         if (!isHttpsRelayUrl(relayBase)) {
             Log.e(TAG, "[1/5] Refusing non-HTTPS firmware relay URL")
@@ -486,13 +494,6 @@ class FirmwareClient(
             }
         }
         return digest.digest().joinToString(separator = "") { byte -> "%02x".format(byte.toInt() and 0xff) }
-    }
-
-    private fun getRelayBaseUrl(): String {
-        val prefs = context.getSharedPreferences("relay_server", Context.MODE_PRIVATE)
-        val url = prefs.getString("base_url", null) ?: "https://cyanbridge.vercel.app"
-        Log.d(TAG, "Relay base URL resolved: $url")
-        return url
     }
 
     private data class HttpResponse(val statusCode: Int, val body: String)

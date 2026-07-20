@@ -30,6 +30,7 @@ import com.fersaiyan.cyanbridge.ota.OtaManager
 import com.fersaiyan.cyanbridge.ota.OtaState
 import com.fersaiyan.cyanbridge.ota.OtaTarget
 import com.fersaiyan.cyanbridge.ota.expectedFirmwareExtension
+import com.fersaiyan.cyanbridge.ota.firmwareRelayBaseUrl
 import com.fersaiyan.cyanbridge.ota.isExpectedFirmwareFilename
 import com.fersaiyan.cyanbridge.glasses.GlassesSession
 import com.fersaiyan.cyanbridge.glasses.GlassesSessionLease
@@ -174,6 +175,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import com.fersaiyan.cyanbridge.agent.ProSubscriptionAiPrefs
+import com.fersaiyan.cyanbridge.agent.ProSubscriptionServerPrefs
 import com.fersaiyan.cyanbridge.ai.router.AssistantIntent
 import com.fersaiyan.cyanbridge.ai.router.AssistantRequest
 import com.fersaiyan.cyanbridge.ai.router.AssistantRequestRouter
@@ -187,6 +189,7 @@ import com.fersaiyan.cyanbridge.ai.vision.VisionPromptBuilder
 import com.fersaiyan.cyanbridge.shared.glasses.GlassesAssistantMode
 import com.fersaiyan.cyanbridge.shared.glasses.GlassesDashboardAction
 import com.fersaiyan.cyanbridge.shared.glasses.GlassesDashboardUiState
+import com.fersaiyan.cyanbridge.shared.glasses.FirmwarePatchRequestUiState
 import com.fersaiyan.cyanbridge.shared.glasses.GlassesSyncFlow
 import com.fersaiyan.cyanbridge.shared.glasses.GlassesTransferUiState
 import com.fersaiyan.cyanbridge.shared.glasses.MetaRaybanUiState
@@ -880,6 +883,12 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
     }
 
     private fun isDashboardActionBlockedByExclusiveSession(action: GlassesDashboardAction): Boolean {
+        if (
+            action is GlassesDashboardAction.SubmitFirmwarePatchRequest ||
+            action == GlassesDashboardAction.DismissFirmwarePatchRequest
+        ) {
+            return false
+        }
         val activeSession = GlassesSessionCoordinator.currentSession() ?: return false
         val isAllowed = if (activeSession == GlassesSession.WIFI_ADB_DEBUG) {
             action == GlassesDashboardAction.StopWifiAdbDebug
@@ -993,6 +1002,14 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
             GlassesDashboardAction.DumpOtaInfo -> binding.btnOtaInfo.performClick()
             GlassesDashboardAction.TestPullOta -> binding.btnPullOtaTest.performClick()
             is GlassesDashboardAction.RequestOtaFirmware -> requestOtaFirmware(action.source)
+            is GlassesDashboardAction.SubmitFirmwarePatchRequest -> {
+                val request = dashboardState.firmwarePatchRequest ?: return
+                dashboardState = dashboardState.copy(firmwarePatchRequest = null)
+                submitFirmwarePatchRequest(request, action.contactEmail)
+            }
+            GlassesDashboardAction.DismissFirmwarePatchRequest -> {
+                dashboardState = dashboardState.copy(firmwarePatchRequest = null)
+            }
             GlassesDashboardAction.CancelOta -> {
                 otaPreparationJob?.cancel()
                 otaPreparationJob = null
@@ -2131,14 +2148,20 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
                     }
 
                     is FirmwareResult.NotAvailable -> withContext(Dispatchers.Main) {
-                        AlertDialog.Builder(this@MainActivity)
-                            .setTitle("Firmware Not Available")
-                            .setMessage(
-                                "${result.message}\n\nNo ${source.label.lowercase()} is available for this " +
-                                    "${if (otaTarget == OtaTarget.JIELI_BLE) "BLE chip" else "Wi-Fi chip"} configuration.",
-                            )
-                            .setPositiveButton("OK", null)
-                            .show()
+                        dashboardState = dashboardState.copy(
+                            firmwarePatchRequest = FirmwarePatchRequestUiState(
+                                source = source,
+                                target = selectedTarget,
+                                targetHardwareVersion = hardwareVersion,
+                                targetFirmwareVersion = firmwareVersion,
+                                wifiHardwareVersion = deviceInfo.wifiHardwareVersion.orEmpty().ifBlank { "unknown" },
+                                wifiFirmwareVersion = deviceInfo.wifiFirmwareVersion.orEmpty().ifBlank { "unknown" },
+                                bleHardwareVersion = deviceInfo.hardwareVersion.orEmpty().ifBlank { "unknown" },
+                                bleFirmwareVersion = deviceInfo.firmwareVersion.orEmpty().ifBlank { "unknown" },
+                                relayMessage = result.message,
+                                suggestedContactEmail = ProSubscriptionServerPrefs.getAccountEmail(this@MainActivity),
+                            ),
+                        )
                     }
 
                     is FirmwareResult.DebugAccessRequired -> withContext(Dispatchers.Main) {
@@ -2191,6 +2214,47 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
                             ),
                         )
                     }
+                }
+            }
+        }
+    }
+
+    private fun submitFirmwarePatchRequest(
+        request: FirmwarePatchRequestUiState,
+        contactEmail: String,
+    ) {
+        Toast.makeText(this, "Collecting firmware diagnostics...", Toast.LENGTH_SHORT).show()
+        lifecycleScope.launch(Dispatchers.IO) {
+            val result = DebugLogSupport.sendFirmwarePatchRequest(
+                context = this@MainActivity,
+                contactEmail = contactEmail,
+                request = DebugLogSupport.FirmwarePatchRequest(
+                    source = request.source.label,
+                    target = request.target.label,
+                    targetHardwareVersion = request.targetHardwareVersion,
+                    targetFirmwareVersion = request.targetFirmwareVersion,
+                    wifiHardwareVersion = request.wifiHardwareVersion,
+                    wifiFirmwareVersion = request.wifiFirmwareVersion,
+                    bleHardwareVersion = request.bleHardwareVersion,
+                    bleFirmwareVersion = request.bleFirmwareVersion,
+                    relayMessage = request.relayMessage,
+                ),
+                relayBaseUrl = firmwareRelayBaseUrl(this@MainActivity),
+            )
+            withContext(Dispatchers.Main) {
+                result.onSuccess { logId ->
+                    Toast.makeText(
+                        this@MainActivity,
+                        "Patch request sent. Reference: $logId",
+                        Toast.LENGTH_LONG,
+                    ).show()
+                }.onFailure { error ->
+                    Log.e("Ota", "Could not send firmware patch request", error)
+                    Toast.makeText(
+                        this@MainActivity,
+                        "Could not send patch request: ${error.message}",
+                        Toast.LENGTH_LONG,
+                    ).show()
                 }
             }
         }

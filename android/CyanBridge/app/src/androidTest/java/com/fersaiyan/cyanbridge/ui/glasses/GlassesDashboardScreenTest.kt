@@ -9,6 +9,8 @@ import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
+import androidx.compose.ui.test.performTextInput
+import com.fersaiyan.cyanbridge.shared.glasses.FirmwarePatchRequestUiState
 import com.fersaiyan.cyanbridge.shared.glasses.GlassesDashboardAction
 import com.fersaiyan.cyanbridge.shared.glasses.GlassesDashboardUiState
 import com.fersaiyan.cyanbridge.shared.glasses.OtaFirmwareSource
@@ -191,6 +193,74 @@ class GlassesDashboardScreenTest {
                 GlassesDashboardAction.RequestOtaFirmware(OtaFirmwareSource.PERSONAL_FILE),
                 action,
             )
+        }
+    }
+
+    @Test
+    fun unavailableFirmwareCanSendAnExactVersionPatchRequest() {
+        var action: GlassesDashboardAction? = null
+        composeRule.setContent {
+            CyanBridgeTheme {
+                GlassesDashboardScreen(
+                    state = GlassesDashboardUiState(
+                        firmwarePatchRequest = FirmwarePatchRequestUiState(
+                            source = OtaFirmwareSource.STEALTH_CATALOG,
+                            target = com.fersaiyan.cyanbridge.shared.glasses.OtaTargetSelection.V821_WIFI,
+                            targetHardwareVersion = "WIFIAM01G1_V9.2",
+                            targetFirmwareVersion = "WIFIAM01G1_1.00.23_2510111600",
+                            wifiHardwareVersion = "WIFIAM01G1_V9.2",
+                            wifiFirmwareVersion = "WIFIAM01G1_1.00.23_2510111600",
+                            bleHardwareVersion = "AM01G1_V9.2",
+                            bleFirmwareVersion = "AM01G1_9.20.03_260112",
+                            relayMessage = "No approved exact-base patch is available.",
+                        ),
+                    ),
+                    onAction = { action = it },
+                )
+            }
+        }
+
+        composeRule.onNodeWithTag("firmware_patch_request_dialog").assertIsDisplayed()
+        composeRule.onNodeWithTag("firmware_patch_request_send").assertIsNotEnabled()
+        composeRule.onNodeWithTag("firmware_patch_request_email")
+            .performTextInput("owner@example.com")
+        composeRule.onNodeWithTag("firmware_patch_request_send").assertIsEnabled().performClick()
+
+        composeRule.runOnIdle {
+            assertEquals(
+                GlassesDashboardAction.SubmitFirmwarePatchRequest("owner@example.com"),
+                action,
+            )
+        }
+    }
+
+    @Test
+    fun unavailableFirmwarePatchRequestCanBeCancelled() {
+        var action: GlassesDashboardAction? = null
+        composeRule.setContent {
+            CyanBridgeTheme {
+                GlassesDashboardScreen(
+                    state = GlassesDashboardUiState(
+                        firmwarePatchRequest = FirmwarePatchRequestUiState(
+                            source = OtaFirmwareSource.DEBUG_CATALOG,
+                            target = com.fersaiyan.cyanbridge.shared.glasses.OtaTargetSelection.JIELI_BLE,
+                            targetHardwareVersion = "AM01G1_V9.2",
+                            targetFirmwareVersion = "AM01G1_9.20.03_260112",
+                            wifiHardwareVersion = "WIFIAM01G1_V9.2",
+                            wifiFirmwareVersion = "WIFIAM01G1_1.00.23_2510111600",
+                            bleHardwareVersion = "AM01G1_V9.2",
+                            bleFirmwareVersion = "AM01G1_9.20.03_260112",
+                            relayMessage = "No approved exact-base patch is available.",
+                        ),
+                    ),
+                    onAction = { action = it },
+                )
+            }
+        }
+
+        composeRule.onNodeWithTag("firmware_patch_request_cancel").performClick()
+        composeRule.runOnIdle {
+            assertEquals(GlassesDashboardAction.DismissFirmwarePatchRequest, action)
         }
     }
 }
