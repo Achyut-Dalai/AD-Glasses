@@ -10,6 +10,8 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.safeDrawing
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Card
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FilledTonalButton
@@ -31,16 +33,21 @@ fun FeatureOnboardingScreen(
     title: String,
     description: String,
     details: String,
-    featureToggleLabel: String?,
-    featureEnabled: Boolean,
+    showGlassesConnectionPermission: Boolean,
+    glassesConnectionPermissionGranted: Boolean,
+    showStoragePermission: Boolean,
+    storagePermissionGranted: Boolean,
     showAccessibilityDisclosure: Boolean,
+    showOpenSourceContribution: Boolean,
     accessibilityEnabled: Boolean,
     localAgentAutomationEnabled: Boolean,
     backLabel: String,
     nextLabel: String,
-    onFeatureEnabledChange: (Boolean) -> Unit,
+    onRequestGlassesConnectionPermission: () -> Unit,
+    onRequestStoragePermission: () -> Unit,
     onLocalAgentAutomationChange: (Boolean) -> Unit,
     onOpenAccessibilitySettings: () -> Unit,
+    onOpenSourceRepository: () -> Unit,
     onBack: () -> Unit,
     onNext: () -> Unit,
 ) {
@@ -52,7 +59,8 @@ fun FeatureOnboardingScreen(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(innerPadding)
-                .padding(24.dp),
+                .padding(24.dp)
+                .verticalScroll(rememberScrollState()),
             verticalArrangement = Arrangement.spacedBy(16.dp),
         ) {
             Text(title, style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Bold)
@@ -64,8 +72,51 @@ fun FeatureOnboardingScreen(
                     style = MaterialTheme.typography.bodyMedium,
                 )
             }
-            featureToggleLabel?.let { label ->
-                ToggleRow(label, featureEnabled, onFeatureEnabledChange)
+            if (showGlassesConnectionPermission) {
+                Card(modifier = Modifier.fillMaxWidth()) {
+                    Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                        Text("Connect your glasses", style = MaterialTheme.typography.titleSmall)
+                        Text(
+                            "CyanBridge needs nearby-device access to discover and connect to your glasses. Android may also request location on older phones because it requires it for Bluetooth scanning. Wi-Fi Direct permission is requested later, only when you transfer media.",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
+                        Text(
+                            if (glassesConnectionPermissionGranted) "Bluetooth access is allowed" else "Bluetooth access has not been granted",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = if (glassesConnectionPermissionGranted) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
+                        OutlinedButton(
+                            onClick = onRequestGlassesConnectionPermission,
+                            enabled = !glassesConnectionPermissionGranted,
+                        ) {
+                            Text(if (glassesConnectionPermissionGranted) "Permission granted" else "Allow glasses connection")
+                        }
+                    }
+                }
+            }
+            if (showStoragePermission) {
+                Card(modifier = Modifier.fillMaxWidth()) {
+                    Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                        Text("Media and AI files", style = MaterialTheme.typography.titleSmall)
+                        Text(
+                            "CyanBridge uses file access to save media transferred from your glasses and to manage AI models and related local files. You can continue without allowing it now, but media sync and some AI features will need it later.",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
+                        Text(
+                            if (storagePermissionGranted) "File access is allowed" else "File access has not been granted",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = if (storagePermissionGranted) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
+                        OutlinedButton(
+                            onClick = onRequestStoragePermission,
+                            enabled = !storagePermissionGranted,
+                        ) {
+                            Text(if (storagePermissionGranted) "Permission granted" else "Allow media and AI file access")
+                        }
+                    }
+                }
             }
             if (showAccessibilityDisclosure) {
                 Card(modifier = Modifier.fillMaxWidth()) {
@@ -88,6 +139,21 @@ fun FeatureOnboardingScreen(
                         )
                         OutlinedButton(onClick = onOpenAccessibilitySettings) {
                             Text("Open accessibility settings")
+                        }
+                    }
+                }
+            }
+            if (showOpenSourceContribution) {
+                Card(modifier = Modifier.fillMaxWidth()) {
+                    Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                        Text("Open source by design", style = MaterialTheme.typography.titleSmall)
+                        Text(
+                            "Inspect how CyanBridge works, report security concerns, suggest improvements, or contribute code. Community review helps make the app safer and better for everyone.",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
+                        OutlinedButton(onClick = onOpenSourceRepository) {
+                            Text("Open CyanBridge on GitHub")
                         }
                     }
                 }

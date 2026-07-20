@@ -4,7 +4,7 @@ iOS SDK for controlling HeyCyan smart glasses via Bluetooth Low Energy (BLE).
 
 ## CyanBridge KMP Host
 
-The existing Xcode project contains `CyanBridgeKMPHost`, a simulator-targeted SwiftUI host for CyanBridge's shared Kotlin Multiplatform framework. It currently exercises portable defaults and meeting-summary formatting only. `QCSDKDemo` remains an isolated vendor/device reference target. Read [CYANBRIDGE_KMP_IOS.md](CYANBRIDGE_KMP_IOS.md) before building either target.
+The existing Xcode project contains `CyanBridgeKMPHost`, a simulator-targeted SwiftUI host for CyanBridge's shared Kotlin Multiplatform framework. It renders the shared dashboard, Chats, Media, Plugins, and Settings destinations. `QCSDKDemo` remains an isolated vendor/device reference target. Read [CYANBRIDGE_KMP_IOS.md](CYANBRIDGE_KMP_IOS.md) before building either target.
 
 ## Quick Start
 

@@ -27,7 +27,6 @@ class SettingsScreenTest {
     fun allSettingsSectionsExist() {
         val sections = SettingsSection.entries
         assertTrue(sections.contains(SettingsSection.AI_AUTOMATION))
-        assertTrue(sections.contains(SettingsSection.LOCAL_AGENT))
         assertTrue(sections.contains(SettingsSection.MEMORY_PRIVACY))
         assertTrue(sections.contains(SettingsSection.TRANSCRIPTS))
         assertTrue(sections.contains(SettingsSection.DATA))

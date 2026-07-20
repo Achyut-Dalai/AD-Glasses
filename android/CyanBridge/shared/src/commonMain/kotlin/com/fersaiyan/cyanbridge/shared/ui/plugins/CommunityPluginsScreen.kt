@@ -68,22 +68,16 @@ import org.jetbrains.compose.resources.stringResource
 fun CommunityPluginsScreen(
     plugins: List<CommunityPluginCardData>,
     selectedWindow: PluginTimeWindow,
-    imageAutomationEnabled: Boolean,
-    showImageAutomationBanner: Boolean,
     isRefreshing: Boolean,
     onWindowSelected: (PluginTimeWindow) -> Unit,
     onRefresh: () -> Unit,
-    onDismissImageAutomationBanner: () -> Unit,
-    onOpenTaskerStore: () -> Unit,
-    onOpenTaskerNet: () -> Unit,
+    onOpenCommunityPlugin: (CommunityPluginCardData) -> Unit = {},
     onPublishPlugin: () -> Unit,
     onDestinationSelected: (AppDestination) -> Unit,
     nativePlugins: List<NativePluginCardData> = emptyList(),
     onOpenNativePluginSettings: (String) -> Unit = {},
     onToggleNativePlugin: (String, Boolean) -> Unit = { _, _ -> },
 ) {
-    var showTaskerSetupDialog by rememberSaveable { mutableStateOf(false) }
-    var showHideBannerDialog by rememberSaveable { mutableStateOf(false) }
     var selectedPluginTitle by rememberSaveable { mutableStateOf<String?>(null) }
     var detailsPluginTitle by rememberSaveable { mutableStateOf<String?>(null) }
     val trending = plugins.sortedByDescending { it.trend(selectedWindow) }.take(4)
@@ -170,17 +164,6 @@ fun CommunityPluginsScreen(
                     )
                 }
             }
-            if (showImageAutomationBanner) {
-                item {
-                    ImageAutomationCard(
-                        enabled = imageAutomationEnabled,
-                        onOpenSetup = {
-                            showTaskerSetupDialog = true
-                        },
-                        onDismiss = { showHideBannerDialog = true },
-                    )
-                }
-            }
             item {
                 PeriodFilter(
                     selectedWindow = selectedWindow,
@@ -198,6 +181,7 @@ fun CommunityPluginsScreen(
                         selectedPluginTitle = plugin.title
                         detailsPluginTitle = plugin.title
                     },
+                    onOpenPlugin = { onOpenCommunityPlugin(plugin) },
                 )
             }
             item { PluginSectionLabel("Top voted") }
@@ -211,6 +195,7 @@ fun CommunityPluginsScreen(
                         selectedPluginTitle = plugin.title
                         detailsPluginTitle = plugin.title
                     },
+                    onOpenPlugin = { onOpenCommunityPlugin(plugin) },
                 )
             }
             item { PluginSectionLabel("Top downloaded") }
@@ -224,68 +209,10 @@ fun CommunityPluginsScreen(
                         selectedPluginTitle = plugin.title
                         detailsPluginTitle = plugin.title
                     },
+                    onOpenPlugin = { onOpenCommunityPlugin(plugin) },
                 )
             }
         }
-    }
-
-    if (showTaskerSetupDialog) {
-        AlertDialog(
-            onDismissRequest = { showTaskerSetupDialog = false },
-            title = { Text("Image Questions Automation") },
-            text = {
-                Text(
-                    "Gemini and ChatGPT image questions need the Tasker automation profile. Install Tasker if needed, then open the TaskerNet profile.",
-                )
-            },
-            confirmButton = {
-                TextButton(
-                    onClick = {
-                        showTaskerSetupDialog = false
-                        onOpenTaskerNet()
-                    },
-                ) {
-                    Text("Open TaskerNet")
-                }
-            },
-            dismissButton = {
-                TextButton(
-                    onClick = {
-                        showTaskerSetupDialog = false
-                        onOpenTaskerStore()
-                    },
-                ) {
-                    Text("Get Tasker")
-                }
-            },
-        )
-    }
-
-    if (showHideBannerDialog) {
-        AlertDialog(
-            onDismissRequest = { showHideBannerDialog = false },
-            title = { Text("Hide this banner?") },
-            text = {
-                Text(
-                    "This hides the Image Questions Automation setup card. You can re-enable it from Settings if needed.",
-                )
-            },
-            confirmButton = {
-                TextButton(
-                    onClick = {
-                        showHideBannerDialog = false
-                        onDismissImageAutomationBanner()
-                    },
-                ) {
-                    Text("Hide")
-                }
-            },
-            dismissButton = {
-                TextButton(onClick = { showHideBannerDialog = false }) {
-                    Text("Cancel")
-                }
-            },
-        )
     }
 
     plugins.firstOrNull { it.title == detailsPluginTitle }?.let { plugin ->
@@ -331,49 +258,6 @@ private fun PluginHero() {
                 style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.onPrimaryContainer,
             )
-        }
-    }
-}
-
-@Composable
-private fun ImageAutomationCard(
-    enabled: Boolean,
-    onOpenSetup: () -> Unit,
-    onDismiss: () -> Unit,
-) {
-    Card(
-        modifier = Modifier
-            .fillMaxWidth()
-            .testTag("image_automation_banner"),
-        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.secondaryContainer),
-    ) {
-        Column(
-            modifier = Modifier.padding(16.dp),
-            verticalArrangement = Arrangement.spacedBy(8.dp),
-        ) {
-            Text(
-                text = "Gemini/ChatGPT Image Questions Automation",
-                style = MaterialTheme.typography.titleMedium,
-                color = MaterialTheme.colorScheme.onSecondaryContainer,
-            )
-            Text(
-                text = "Required when using Gemini or ChatGPT image questions with Tasker automation.",
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSecondaryContainer,
-            )
-            Text(
-                text = if (enabled) "Status: Downloaded and enabled" else "Status: Not downloaded",
-                style = MaterialTheme.typography.labelLarge,
-                color = MaterialTheme.colorScheme.onSecondaryContainer,
-            )
-            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                OutlinedButton(onClick = onOpenSetup) {
-                    Text(if (enabled) "Open setup" else "Download plugin")
-                }
-                TextButton(onClick = onDismiss) {
-                    Text("Already have it")
-                }
-            }
         }
     }
 }
@@ -427,12 +311,13 @@ private fun NativePluginCard(
                 Switch(
                     checked = plugin.enabled,
                     onCheckedChange = onToggle,
+                    enabled = plugin.isAvailable,
                 )
                 if (plugin.hasSettings) {
                     IconButton(onClick = onOpenSettings) {
                         Icon(
                             imageVector = Icons.Outlined.Settings,
-                            contentDescription = "Settings",
+                            contentDescription = "${plugin.title} settings",
                         )
                     }
                 }
@@ -485,6 +370,7 @@ private fun PluginCard(
     window: PluginTimeWindow,
     selected: Boolean,
     onSelect: () -> Unit,
+    onOpenPlugin: () -> Unit,
 ) {
     Card(modifier = Modifier.fillMaxWidth()) {
         Column(
@@ -551,6 +437,14 @@ private fun PluginCard(
                         stringResource(Res.string.plugin_select, plugin.title)
                     },
                 )
+            }
+            if (!plugin.taskerNetLink.isNullOrBlank()) {
+                TextButton(
+                    onClick = onOpenPlugin,
+                    modifier = Modifier.fillMaxWidth(),
+                ) {
+                    Text("Open in Tasker")
+                }
             }
         }
     }

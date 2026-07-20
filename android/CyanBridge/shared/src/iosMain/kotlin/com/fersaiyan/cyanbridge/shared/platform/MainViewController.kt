@@ -1,6 +1,9 @@
 package com.fersaiyan.cyanbridge.shared.platform
 
 import androidx.compose.ui.window.ComposeUIViewController
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
 import com.fersaiyan.cyanbridge.shared.ai.AiModel
 import com.fersaiyan.cyanbridge.shared.ai.AiModelRegistry
 import com.fersaiyan.cyanbridge.shared.ai.ChatAiService
@@ -10,6 +13,13 @@ import com.fersaiyan.cyanbridge.shared.ai.ImageAiService
 import com.fersaiyan.cyanbridge.shared.ai.TokenUsage
 import com.fersaiyan.cyanbridge.shared.ai.VoiceAiService
 import com.fersaiyan.cyanbridge.shared.ble.IosBleManager
+import com.fersaiyan.cyanbridge.shared.ble.BleConnectionState
+import com.fersaiyan.cyanbridge.shared.ble.BleNotificationListener
+import com.fersaiyan.cyanbridge.shared.glasses.GlassesDashboardAction
+import com.fersaiyan.cyanbridge.shared.glasses.GlassesDashboardUiState
+import com.fersaiyan.cyanbridge.shared.glasses.GlassesTransferUiState
+import com.fersaiyan.cyanbridge.shared.devices.DeviceClass
+import com.fersaiyan.cyanbridge.shared.media.IosMediaTransfer
 import com.fersaiyan.cyanbridge.shared.navigation.AppDestination
 import com.fersaiyan.cyanbridge.shared.network.P2pConnectionState
 import com.fersaiyan.cyanbridge.shared.network.P2pPeer
@@ -26,7 +36,19 @@ import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.collect
 import kotlinx.coroutines.flow.flow
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.cancel
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.suspendCancellableCoroutine
+import kotlin.coroutines.resume
+import platform.NetworkExtension.NEHotspotConfiguration
+import platform.NetworkExtension.NEHotspotConfigurationManager
 import platform.Foundation.NSString
 import platform.Foundation.NSUTF8StringEncoding
 import platform.Foundation.dataUsingEncoding
@@ -39,41 +61,25 @@ private const val DEFAULT_RELAY_URL = "https://cyanbridge.vercel.app"
  * Initialize CyanBridgeServices with iOS implementations and return the ComposeUIViewController.
  */
 fun MainViewController() = ComposeUIViewController {
+    val controller = remember { IosAppController() }
     if (!CyanBridgeServices.isInitialized()) {
-        CyanBridgeServices.initialize(
-            bleManager = IosBleManager(),
-            wifiP2pManager = IosWifiP2pManager(),
-            chatRepository = IosChatRepository(),
-            notesRepository = IosNotesRepository(),
-            deviceProfileRepository = IosDeviceProfileRepository(),
-            memoryVaultRepository = IosMemoryVaultRepository(),
-            mediaRecordRepository = IosMediaRecordRepository(),
-            chatAiService = IosRelayChatAiService(),
-            voiceAiService = IosRelayVoiceAiService(),
-            imageAiService = IosRelayImageAiService(),
-            aiModelRegistry = IosRelayAiModelRegistry(),
-        )
+        controller.initializeServices()
     }
-    CyanBridgeApp()
+    val dashboardState by controller.dashboardState.collectAsState()
+    CyanBridgeApp(
+        dashboardState = dashboardState,
+        onDashboardAction = controller::handle,
+        useSharedDestinations = true,
+    )
 }
 
 /** Used only by the simulator screenshot harness to exercise each root route. */
 fun MainViewControllerForDestination(destination: String) = ComposeUIViewController {
+    val controller = remember { IosAppController() }
     if (!CyanBridgeServices.isInitialized()) {
-        CyanBridgeServices.initialize(
-            bleManager = IosBleManager(),
-            wifiP2pManager = IosWifiP2pManager(),
-            chatRepository = IosChatRepository(),
-            notesRepository = IosNotesRepository(),
-            deviceProfileRepository = IosDeviceProfileRepository(),
-            memoryVaultRepository = IosMemoryVaultRepository(),
-            mediaRecordRepository = IosMediaRecordRepository(),
-            chatAiService = IosRelayChatAiService(),
-            voiceAiService = IosRelayVoiceAiService(),
-            imageAiService = IosRelayImageAiService(),
-            aiModelRegistry = IosRelayAiModelRegistry(),
-        )
+        controller.initializeServices()
     }
+    val dashboardState by controller.dashboardState.collectAsState()
     CyanBridgeApp(
         initialDestination = when (destination) {
             "chats" -> AppDestination.CHATS
@@ -82,6 +88,9 @@ fun MainViewControllerForDestination(destination: String) = ComposeUIViewControl
             "settings" -> AppDestination.SETTINGS
             else -> AppDestination.GLASSES
         },
+        dashboardState = dashboardState,
+        onDashboardAction = controller::handle,
+        useSharedDestinations = true,
     )
 }
 
@@ -101,6 +110,7 @@ private class IosWifiP2pManager : WifiP2pManager {
 
     private val _glassesIpAddress = MutableStateFlow<String?>(null)
     override val glassesIpAddress: StateFlow<String?> = _glassesIpAddress.asStateFlow()
+    private var connectedSsid: String? = null
 
     override fun discoverPeers(): Flow<P2pPeer> = flow {
         PlatformLogger.i(TAG, "Wi-Fi discovery on iOS uses NEHotspotConfiguration")
@@ -114,21 +124,47 @@ private class IosWifiP2pManager : WifiP2pManager {
     }
 
     override suspend fun connect(peerAddress: String) {
-        PlatformLogger.i(TAG, "Connecting to Wi-Fi hotspot: $peerAddress")
+        val ssid = peerAddress.substringBefore('|').trim()
+        require(ssid.isNotEmpty()) { "An iOS hotspot SSID is required" }
+        PlatformLogger.i(TAG, "Connecting to Wi-Fi hotspot: $ssid")
         _connectionState.value = P2pConnectionState.CONNECTING
-        // On iOS, we use NEHotspotConfigurationManager to join the glasses' Wi-Fi hotspot.
-        // The SSID is typically the glasses' MAC address or a known prefix.
-        // NEHotspotConfigurationManager.applyConfiguration() is an async API.
-        // For now, mark as connected - the actual NEHotspotConfiguration integration
-        // requires SwiftUI/UIKit coordination for the system dialog.
-        _connectionState.value = P2pConnectionState.CONNECTED
-        PlatformLogger.i(TAG, "Wi-Fi hotspot connected (NEHotspotConfiguration)")
+        val passphrase = peerAddress.substringAfter('|', "").takeIf { it.isNotBlank() }
+        try {
+            suspendCancellableCoroutine<Unit> { continuation ->
+                val configuration = if (passphrase == null) {
+                    NEHotspotConfiguration(sSID = ssid)
+                } else {
+                    NEHotspotConfiguration(sSID = ssid, passphrase = passphrase, isWEP = false)
+                }
+                NEHotspotConfigurationManager.sharedManager.applyConfiguration(configuration) { error ->
+                    if (error != null) {
+                        _connectionState.value = P2pConnectionState.IDLE
+                        continuation.resumeWith(Result.failure(Exception(error.localizedDescription)))
+                    } else {
+                        connectedSsid = ssid
+                        _connectionState.value = P2pConnectionState.CONNECTED
+                        continuation.resume(Unit)
+                    }
+                }
+                continuation.invokeOnCancellation {
+                    NEHotspotConfigurationManager.sharedManager.removeConfigurationForSSID(ssid)
+                }
+            }
+            PlatformLogger.i(TAG, "Wi-Fi hotspot connected: $ssid")
+        } catch (error: Exception) {
+            _connectionState.value = P2pConnectionState.IDLE
+            PlatformLogger.e(TAG, "Wi-Fi hotspot connection failed", error)
+            throw error
+        }
     }
 
     override suspend fun disconnect() {
         PlatformLogger.i(TAG, "Disconnecting from Wi-Fi hotspot")
         _connectionState.value = P2pConnectionState.DISCONNECTING
-        // NEHotspotConfigurationManager.removeConfiguration(forSSID:) to forget the network
+        connectedSsid?.let { ssid ->
+            NEHotspotConfigurationManager.sharedManager.removeConfigurationForSSID(ssid)
+        }
+        connectedSsid = null
         _connectionState.value = P2pConnectionState.IDLE
     }
 
@@ -154,6 +190,246 @@ private class IosWifiP2pManager : WifiP2pManager {
     }
 }
 
+/**
+ * Small iOS host controller for the shared dashboard. It owns platform jobs so
+ * the composable remains a pure renderer, matching the Android callback shape.
+ */
+private class IosAppController {
+    val bleManager = IosBleManager()
+    val wifiP2pManager = IosWifiP2pManager()
+    val chatRepository = IosChatRepository()
+    val notesRepository = IosNotesRepository()
+    val deviceProfileRepository = IosDeviceProfileRepository()
+    val memoryVaultRepository = IosMemoryVaultRepository()
+    val mediaRecordRepository = IosMediaRecordRepository()
+    private val mediaTransfer = IosMediaTransfer(mediaRecordRepository)
+
+    private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Main)
+    private val _dashboardState = MutableStateFlow(
+        GlassesDashboardUiState(
+            connectionLabel = "Bluetooth unavailable",
+            agentStatus = "iOS shared host",
+        ),
+    )
+    val dashboardState: StateFlow<GlassesDashboardUiState> = _dashboardState.asStateFlow()
+
+    private var scanJob: Job? = null
+    private var syncJob: Job? = null
+    private var lastDiscoveredIdentifier: String? = null
+    private var selectedDeviceClass: DeviceClass = DeviceClass.UNKNOWN
+    private var isBleConnected = false
+
+    init {
+        bleManager.addNotificationListener(object : BleNotificationListener {
+            override fun onNotification(characteristicId: String, data: ByteArray) {
+                extractGlassesIp(data)?.let { ip ->
+                    wifiP2pManager.setGlassesIpAddress(ip)
+                    updateState { state ->
+                        state.copy(
+                            transfer = state.transfer.copy(detail = "Glasses IP: $ip"),
+                        )
+                    }
+                }
+            }
+        })
+        scope.launch {
+            val selectedProfile = deviceProfileRepository.getAll()
+                .maxByOrNull { it.lastConnectedAt }
+            selectedDeviceClass = selectedProfile?.selectedClass
+                ?.let { value -> DeviceClass.entries.firstOrNull { it.name == value } }
+                ?: DeviceClass.UNKNOWN
+            updateConnectionCapabilities()
+        }
+        scope.launch {
+            bleManager.connectionState.collect { connectionState ->
+                isBleConnected = connectionState == BleConnectionState.CONNECTED
+                updateState { state ->
+                    state.copy(
+                        connectionLabel = when (connectionState) {
+                            BleConnectionState.DISCONNECTED -> "Disconnected"
+                            BleConnectionState.CONNECTING -> "Connecting"
+                            BleConnectionState.CONNECTED -> "Connected"
+                            BleConnectionState.DISCONNECTING -> "Disconnecting"
+                        },
+                        showHeyCyanControls = connectionState == BleConnectionState.CONNECTED &&
+                            selectedDeviceClass != DeviceClass.META_RAYBAN,
+                        showMetaRaybanControls = connectionState == BleConnectionState.CONNECTED &&
+                            selectedDeviceClass == DeviceClass.META_RAYBAN,
+                    )
+                }
+            }
+        }
+    }
+
+    fun initializeServices() {
+        if (CyanBridgeServices.isInitialized()) return
+        CyanBridgeServices.initialize(
+            bleManager = bleManager,
+            wifiP2pManager = wifiP2pManager,
+            chatRepository = chatRepository,
+            notesRepository = notesRepository,
+            deviceProfileRepository = deviceProfileRepository,
+            memoryVaultRepository = memoryVaultRepository,
+            mediaRecordRepository = mediaRecordRepository,
+            chatAiService = IosRelayChatAiService(),
+            voiceAiService = IosRelayVoiceAiService(),
+            imageAiService = IosRelayImageAiService(),
+            aiModelRegistry = IosRelayAiModelRegistry(),
+        )
+    }
+
+    fun handle(action: GlassesDashboardAction) {
+        when (action) {
+            GlassesDashboardAction.Scan -> startScan()
+            GlassesDashboardAction.Reconnect -> reconnect()
+            GlassesDashboardAction.Disconnect -> scope.launch { bleManager.disconnect() }
+            GlassesDashboardAction.RequestBattery -> requestBattery()
+            GlassesDashboardAction.RequestVersion -> requestVersion()
+            GlassesDashboardAction.StartSync -> startSync()
+            GlassesDashboardAction.StopSync -> stopSync()
+            GlassesDashboardAction.CapturePhoto -> sendGlassesCommand("camera", byteArrayOf(0x02, 0x01, 0x01))
+            GlassesDashboardAction.StartAudioRecording -> sendGlassesCommand("audio recording", byteArrayOf(0x02, 0x01, 0x08))
+            GlassesDashboardAction.RequestMediaCount -> sendGlassesCommand("media count", byteArrayOf(0x02, 0x04))
+            GlassesDashboardAction.ToggleAdvanced -> updateState { it.copy(advancedExpanded = !it.advancedExpanded) }
+            is GlassesDashboardAction.Navigate -> Unit
+            else -> updateState { it.copy(agentLastError = "This control is not implemented in the iOS host yet") }
+        }
+    }
+
+    private fun startScan() {
+        scanJob?.cancel()
+        updateState { it.copy(connectionLabel = "Scanning for glasses", agentLastError = "") }
+        scanJob = scope.launch {
+            var found = false
+            bleManager.startScan(timeoutMs = 15_000L).collect { device ->
+                found = true
+                lastDiscoveredIdentifier = device.identifier
+                updateState {
+                    it.copy(connectionLabel = "Found ${device.name ?: device.identifier}")
+                }
+            }
+            if (!found) {
+                updateState { it.copy(connectionLabel = "No glasses found") }
+            }
+        }
+    }
+
+    private fun reconnect() {
+        val identifier = lastDiscoveredIdentifier
+        if (identifier == null) {
+            updateState { it.copy(agentLastError = "Scan first so iOS can identify the glasses") }
+            return
+        }
+        scope.launch {
+            runCatching { bleManager.connect(identifier) }
+                .onFailure { error -> updateState { it.copy(agentLastError = error.message ?: "Connection failed") } }
+        }
+    }
+
+    private fun requestBattery() {
+        scope.launch {
+            val battery = runCatching { bleManager.requestBatteryLevel() }.getOrNull()
+            updateState { it.copy(batteryPercent = battery, showBattery = battery != null) }
+        }
+    }
+
+    private fun requestVersion() {
+        scope.launch {
+            val version = runCatching { bleManager.requestFirmwareVersion() }.getOrNull()
+            updateState { it.copy(agentLastError = version?.let { value -> "Firmware: $value" } ?: "Firmware version unavailable") }
+        }
+    }
+
+    private fun startSync() {
+        if (selectedDeviceClass == DeviceClass.META_RAYBAN) {
+            updateState { it.copy(agentLastError = "Meta media sync requires the native MWDAT adapter") }
+            return
+        }
+        syncJob?.cancel()
+        updateState {
+            it.copy(
+                transfer = GlassesTransferUiState(
+                    isVisible = true,
+                    detail = "Downloading media.config",
+                ),
+            )
+        }
+        syncJob = scope.launch {
+            runCatching { bleManager.sendCommand(byteArrayOf(0x02, 0x01, 0x04)) }
+                .onFailure { error ->
+                    updateState { it.copy(transfer = it.transfer.copy(detail = error.message ?: "Unable to enter transfer mode")) }
+                    return@launch
+                }
+            delay(1_500L)
+            val ip = wifiP2pManager.glassesIpAddress.value
+            if (ip == null) {
+                updateState {
+                    it.copy(transfer = it.transfer.copy(detail = "Waiting for the glasses BLE IP notification"))
+                }
+                return@launch
+            }
+            runCatching {
+                mediaTransfer.sync(ip) { completed, total ->
+                    updateState {
+                        it.copy(
+                            transfer = it.transfer.copy(
+                                isVisible = true,
+                                detail = "Downloaded $completed of $total files",
+                                progress = if (total == 0) 1f else completed.toFloat() / total,
+                            ),
+                        )
+                    }
+                }
+            }.onSuccess {
+                updateState { it.copy(transfer = it.transfer.copy(detail = "Sync complete", progress = 1f)) }
+            }.onFailure { error ->
+                updateState { it.copy(transfer = it.transfer.copy(detail = error.message ?: "Sync failed")) }
+            }
+        }
+    }
+
+    private fun stopSync() {
+        syncJob?.cancel()
+        syncJob = null
+        updateState { it.copy(transfer = GlassesTransferUiState(detail = "Sync stopped")) }
+    }
+
+    private fun sendGlassesCommand(label: String, command: ByteArray) {
+        if (selectedDeviceClass == DeviceClass.META_RAYBAN) {
+            updateState { it.copy(agentLastError = "Meta devices cannot receive HeyCyan BLE command bytes") }
+            return
+        }
+        scope.launch {
+            runCatching { bleManager.sendCommand(command) }
+                .onFailure { error ->
+                    updateState { it.copy(agentLastError = "$label failed: ${error.message ?: "BLE command error"}") }
+                }
+        }
+    }
+
+    private fun updateState(transform: (GlassesDashboardUiState) -> GlassesDashboardUiState) {
+        _dashboardState.value = transform(_dashboardState.value)
+    }
+
+    private fun updateConnectionCapabilities() {
+        updateState { state ->
+            state.copy(
+                showHeyCyanControls = isBleConnected && selectedDeviceClass != DeviceClass.META_RAYBAN,
+                showMetaRaybanControls = isBleConnected && selectedDeviceClass == DeviceClass.META_RAYBAN,
+            )
+        }
+    }
+
+    private fun extractGlassesIp(data: ByteArray): String? {
+        if (data.size >= 11 && data[6].toInt() and 0xFF == 0x08) {
+            return data.slice(7..10).joinToString(".") { (it.toInt() and 0xFF).toString() }
+        }
+        return Regex("\\b(?:\\d{1,3}\\.){3}\\d{1,3}\\b")
+            .find(data.decodeToString())
+            ?.value
+    }
+}
+
 // ── iOS AI services via CyanBridge relay server ──
 
 /**
@@ -170,7 +446,21 @@ private class IosRelayChatAiService(
             val messagesJson = messages.joinToString(",") { msg ->
                 """{"role":"${msg.role}","content":"${msg.content.escapeJson()}"}"""
             }
-            val body = """{"messages":[$messagesJson]}"""
+            val prompt = messages.lastOrNull { it.role.equals("user", ignoreCase = true) }?.content.orEmpty()
+            val modelField = model?.trim().orEmpty()
+            val body = buildString {
+                append("{\"messages\":[")
+                append(messagesJson)
+                append("],\"prompt\":\"")
+                append(prompt.escapeJson())
+                append('"')
+                if (modelField.isNotBlank()) {
+                    append(",\"model\":\"")
+                    append(modelField.escapeJson())
+                    append('"')
+                }
+                append('}')
+            }
             val headers = mapOf("Content-Type" to "application/json; charset=UTF-8")
 
             val response = httpClient.post("$baseUrl/chat", body, headers)
@@ -192,10 +482,7 @@ private class IosRelayChatAiService(
     }
 
     private fun parseChatResponse(body: String): ChatResponse {
-        // Simple JSON parsing for the response
-        // Expected format: {"response":"...","model":"..."}
-        val responseMatch = Regex(""""response"\s*:\s*"([^"]*?)"""").find(body)
-        val responseText = responseMatch?.groupValues?.get(1)?.unescapeJson() ?: body
+        val responseText = body.extractJsonText("reply", "response", "message")
 
         return ChatResponse(
             message = ChatMessage("assistant", responseText),
@@ -209,7 +496,7 @@ private class IosRelayChatAiService(
 
 /**
  * iOS voice AI service that calls the CyanBridge relay server.
- * Endpoint: POST /voice-query
+ * Endpoint: POST /transcribe
  */
 private class IosRelayVoiceAiService(
     private val baseUrl: String = DEFAULT_RELAY_URL,
@@ -223,11 +510,10 @@ private class IosRelayVoiceAiService(
             val body = """{"audio":"$base64Audio","mime_type":"$mimeType"}"""
             val headers = mapOf("Content-Type" to "application/json; charset=UTF-8")
 
-            val response = httpClient.post("$baseUrl/voice-query", body, headers)
+            val response = httpClient.post("$baseUrl/transcribe", body, headers)
 
             if (response.isSuccessful) {
-                val textMatch = Regex(""""text"\s*:\s*"([^"]*?)"""").find(response.body)
-                textMatch?.groupValues?.get(1)?.unescapeJson() ?: response.body
+                response.body.extractJsonText("text", "transcript", "reply")
             } else {
                 PlatformLogger.e(TAG, "Voice transcription failed: ${response.statusCode}")
                 ""
@@ -255,14 +541,14 @@ private class IosRelayImageAiService(
     override suspend fun analyzeImage(imageData: ByteArray, prompt: String, mimeType: String): String {
         return try {
             val base64Image = imageData.encodeBase64()
-            val body = """{"image":"$base64Image","prompt":"${prompt.escapeJson()}","mime_type":"$mimeType"}"""
+            val filename = if (mimeType.equals("image/png", ignoreCase = true)) "image.png" else "image.jpg"
+            val body = """{"imageBase64":"$base64Image","filename":"$filename","prompt":"${prompt.escapeJson()}"}"""
             val headers = mapOf("Content-Type" to "application/json; charset=UTF-8")
 
             val response = httpClient.post("$baseUrl/image-query", body, headers)
 
             if (response.isSuccessful) {
-                val responseMatch = Regex(""""response"\s*:\s*"([^"]*?)"""").find(response.body)
-                responseMatch?.groupValues?.get(1)?.unescapeJson() ?: response.body
+                response.body.extractJsonText("reply", "response", "text")
             } else {
                 PlatformLogger.e(TAG, "Image analysis failed: ${response.statusCode}")
                 "Error: Server returned ${response.statusCode}"
@@ -346,6 +632,14 @@ private fun String.unescapeJson(): String =
         .replace("\\t", "\t")
         .replace("\\\"", "\"")
         .replace("\\\\", "\\")
+
+private fun String.extractJsonText(vararg keys: String): String {
+    for (key in keys) {
+        val match = Regex(""""$key"\s*:\s*"([^"]*?)"""").find(this)
+        if (match != null) return match.groupValues[1].unescapeJson()
+    }
+    return this
+}
 
 @OptIn(ExperimentalForeignApi::class)
 private fun ByteArray.encodeBase64(): String {

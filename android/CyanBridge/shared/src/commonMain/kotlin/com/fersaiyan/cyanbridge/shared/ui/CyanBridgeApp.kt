@@ -31,10 +31,9 @@ import com.fersaiyan.cyanbridge.shared.ui.glasses.GlassesSyncFlowPickerDialog
  * Renders the shared bottom navigation shell and routes to the appropriate
  * screen for each [AppDestination].
  *
- * Non-glasses tabs currently delegate to [onNavigateToActivity] so the
- * platform layer can launch the legacy Activity-based screens.  As more
- * screens are migrated to shared CMP composables, the placeholder branch
- * will be replaced with the real composable.
+ * Android can keep the legacy Activity presenters by leaving
+ * [useSharedDestinations] disabled. The iOS KMP host enables it to render the
+ * migrated shared destinations directly.
  */
 @Composable
 fun CyanBridgeApp(
@@ -48,6 +47,7 @@ fun CyanBridgeApp(
     onAppearanceSettingsChange: (AppearanceSettings) -> Unit = {},
     onAppearanceReset: () -> Unit = {},
     onNavigateToActivity: (AppDestination) -> Unit = {},
+    useSharedDestinations: Boolean = false,
 ) {
     var currentDestination by remember(initialDestination) { mutableStateOf(initialDestination) }
     var showAppearance by remember { mutableStateOf(false) }
@@ -68,7 +68,9 @@ fun CyanBridgeApp(
         CyanBridgeNavShell(
             currentDestination = currentDestination,
             onNavigate = { destination ->
-                if (destination == AppDestination.GLASSES) {
+                if (useSharedDestinations) {
+                    currentDestination = destination
+                } else if (destination == AppDestination.GLASSES) {
                     currentDestination = destination
                 } else {
                     onNavigateToActivity(destination)
@@ -79,7 +81,13 @@ fun CyanBridgeApp(
                 AppDestination.GLASSES -> {
                     GlassesDashboardScreen(
                         state = dashboardState,
-                        onAction = onDashboardAction,
+                        onAction = { action ->
+                            if (useSharedDestinations && action is GlassesDashboardAction.Navigate) {
+                                currentDestination = action.destination
+                            } else {
+                                onDashboardAction(action)
+                            }
+                        },
                     )
                     if (showSyncFlowPicker) {
                         GlassesSyncFlowPickerDialog(
@@ -89,32 +97,41 @@ fun CyanBridgeApp(
                     }
                 }
 
-                AppDestination.CHATS -> ActivityLaunchPlaceholder(
-                    title = "Chats",
-                    subtitle = "Start a conversation or select an existing chat.",
-                    onOpen = { onNavigateToActivity(AppDestination.CHATS) },
-                )
-
-                AppDestination.MEDIA -> ActivityLaunchPlaceholder(
-                    title = "Media",
-                    subtitle = "Synced photos, videos, and recordings will appear here.",
-                    onOpen = { onNavigateToActivity(AppDestination.MEDIA) },
-                )
-
-                AppDestination.PLUGINS -> ActivityLaunchPlaceholder(
-                    title = "Plugins",
-                    subtitle = "Browse and install community plugins.",
-                    onOpen = { onNavigateToActivity(AppDestination.PLUGINS) },
-                )
-
-                AppDestination.SETTINGS -> ActivityLaunchPlaceholder(
-                    title = "Settings",
-                    subtitle = "Configure your CyanBridge experience.",
-                    onOpen = { onNavigateToActivity(AppDestination.SETTINGS) },
-                )
+                AppDestination.CHATS,
+                AppDestination.MEDIA,
+                AppDestination.PLUGINS,
+                AppDestination.SETTINGS,
+                -> if (useSharedDestinations) {
+                    SharedDestinationScreen(
+                        destination = destination,
+                        onDestinationSelected = { currentDestination = it },
+                    )
+                } else {
+                    ActivityLaunchPlaceholder(
+                        title = destination.title(),
+                        subtitle = destination.subtitle(),
+                        onOpen = { onNavigateToActivity(destination) },
+                    )
+                }
             }
         }
     }
+}
+
+private fun AppDestination.title(): String = when (this) {
+    AppDestination.GLASSES -> "Glasses"
+    AppDestination.CHATS -> "Chats"
+    AppDestination.MEDIA -> "Media"
+    AppDestination.PLUGINS -> "Plugins"
+    AppDestination.SETTINGS -> "Settings"
+}
+
+private fun AppDestination.subtitle(): String = when (this) {
+    AppDestination.GLASSES -> "Connect and control your glasses."
+    AppDestination.CHATS -> "Start a conversation or select an existing chat."
+    AppDestination.MEDIA -> "Synced photos, videos, and recordings will appear here."
+    AppDestination.PLUGINS -> "Browse and configure CyanBridge plugins."
+    AppDestination.SETTINGS -> "Configure your CyanBridge experience."
 }
 
 @Composable

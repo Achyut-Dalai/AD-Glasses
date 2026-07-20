@@ -1,5 +1,6 @@
 package com.fersaiyan.cyanbridge.shared.ui.pro
 
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ColumnScope
@@ -22,6 +23,7 @@ import androidx.compose.material3.FilledTonalButton
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
+import androidx.compose.material3.RadioButton
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
@@ -36,15 +38,18 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import com.fersaiyan.cyanbridge.shared.billing.BillingCatalog
+import com.fersaiyan.cyanbridge.shared.billing.BillingPlan
 import com.fersaiyan.cyanbridge.shared.billing.ProSubscriptionSettingsUiState
+import kotlin.math.round
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun ProSubscriptionSettingsScreen(
     state: ProSubscriptionSettingsUiState,
     onRefreshPlan: () -> Unit,
-    onChangePlan: () -> Unit,
-    onManageSubscription: () -> Unit,
+    onChangePlan: (String) -> Unit,
+    onCancelSubscription: () -> Unit,
     onRefreshAccount: () -> Unit,
     onRefreshQuota: () -> Unit,
     onRefreshModels: () -> Unit,
@@ -61,6 +66,16 @@ fun ProSubscriptionSettingsScreen(
     onSave: () -> Unit,
     onBack: () -> Unit,
 ) {
+    var showChangePlanDialog by remember { mutableStateOf(false) }
+    var showCancelDialog by remember { mutableStateOf(false) }
+    var selectedPlanId by remember(state.plan) {
+        mutableStateOf(
+            BillingCatalog.plans.firstOrNull { it.id == state.plan.removePrefix("Plan: ").trim() }?.id
+                ?: BillingCatalog.plans.getOrNull(1)?.id
+                ?: BillingCatalog.plans.firstOrNull()?.id.orEmpty(),
+        )
+    }
+
     Scaffold(
         contentWindowInsets = WindowInsets.safeDrawing,
         topBar = { TopAppBar(title = { Text("Pro settings") }) },
@@ -83,10 +98,13 @@ fun ProSubscriptionSettingsScreen(
                         primaryLabel = "Refresh",
                         onPrimary = onRefreshPlan,
                         secondaryLabel = "Change plan",
-                        onSecondary = onChangePlan,
+                        onSecondary = { showChangePlanDialog = true },
                     )
-                    OutlinedButton(onClick = onManageSubscription, modifier = Modifier.fillMaxWidth()) {
-                        Text("Manage subscription")
+                    OutlinedButton(
+                        onClick = { showCancelDialog = true },
+                        modifier = Modifier.fillMaxWidth(),
+                    ) {
+                        Text("Cancel subscription")
                     }
                 }
             }
@@ -158,6 +176,102 @@ fun ProSubscriptionSettingsScreen(
                 }
             }
         }
+    }
+
+    if (showChangePlanDialog) {
+        AlertDialog(
+            onDismissRequest = { showChangePlanDialog = false },
+            title = { Text("Change plan") },
+            text = {
+                Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                    BillingCatalog.plans.forEach { plan ->
+                        PlanChoice(
+                            plan = plan,
+                            selected = selectedPlanId == plan.id,
+                            onClick = { selectedPlanId = plan.id },
+                        )
+                    }
+                }
+            },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        showChangePlanDialog = false
+                        onChangePlan(selectedPlanId)
+                    },
+                ) { Text("Continue") }
+            },
+            dismissButton = {
+                TextButton(onClick = { showChangePlanDialog = false }) { Text("Cancel") }
+            },
+        )
+    }
+
+    if (showCancelDialog) {
+        val isFreeTrial = state.plan.removePrefix("Plan: ").trim() == "free_trial"
+        AlertDialog(
+            onDismissRequest = { showCancelDialog = false },
+            title = { Text("Cancel subscription?") },
+            text = {
+                Text(
+                    if (isFreeTrial) {
+                        "Are you sure you want to end your free trial now?"
+                    } else {
+                        "You will keep access until the end of your current billing period."
+                    },
+                )
+            },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        showCancelDialog = false
+                        onCancelSubscription()
+                    },
+                ) { Text("Yes, cancel") }
+            },
+            dismissButton = {
+                TextButton(onClick = { showCancelDialog = false }) { Text("Keep subscription") }
+            },
+        )
+    }
+}
+
+@Composable
+private fun PlanChoice(
+    plan: BillingPlan,
+    selected: Boolean,
+    onClick: () -> Unit,
+) {
+    val basePrice = plan.asaasOffer.referencePriceUsd - plan.asaasOffer.adjustmentUsd
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clickable(onClick = onClick)
+            .padding(vertical = 6.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        RadioButton(selected = selected, onClick = onClick)
+        Column(modifier = Modifier.padding(start = 8.dp)) {
+            Text(plan.name, style = MaterialTheme.typography.titleSmall)
+            Text(
+                "Base price: \$${formatUsd(basePrice)}/month",
+                style = MaterialTheme.typography.bodySmall,
+            )
+            Text(
+                "Checkout price: \$${formatUsd(plan.asaasOffer.referencePriceUsd)}/month",
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+        }
+    }
+}
+
+private fun formatUsd(value: Double): String {
+    val rounded = round(value * 100.0) / 100.0
+    return if (rounded == rounded.toLong().toDouble()) {
+        rounded.toLong().toString()
+    } else {
+        rounded.toString()
     }
 }
 

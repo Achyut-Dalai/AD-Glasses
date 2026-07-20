@@ -10,6 +10,8 @@ data class ProviderOffer(
     val referencePriceUsd: Double,
     val currency: String,
     val adjustmentUsd: Double = 0.0,
+    /** Currency required by the provider's checkout API. */
+    val chargeCurrency: String = currency,
 )
 
 data class BillingPlan(
@@ -50,14 +52,17 @@ object BillingCatalog {
         name = name,
         asaasOffer = ProviderOffer(
             provider = BillingProvider.ASAAS,
-            referencePriceUsd = basePriceUsd,
-            currency = "BRL",
+            referencePriceUsd = basePriceUsd + (basePriceUsd * 0.03) + 0.10,
+            currency = "USD",
+            adjustmentUsd = (basePriceUsd * 0.03) + 0.10,
+            chargeCurrency = "BRL",
         ),
         paddleOffer = ProviderOffer(
             provider = BillingProvider.PADDLE,
             referencePriceUsd = paddlePriceUsd,
             currency = "USD",
             adjustmentUsd = paddlePriceUsd - basePriceUsd,
+            chargeCurrency = "USD",
         ),
     )
 }

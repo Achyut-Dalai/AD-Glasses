@@ -110,6 +110,7 @@ actual class PlatformHttpClient actual constructor() {
                 statusCode = conn.responseCode,
                 headers = conn.headerFields,
                 body = "",
+                downloadedFileSize = bytesReceived,
             )
         } finally {
             conn.disconnect()

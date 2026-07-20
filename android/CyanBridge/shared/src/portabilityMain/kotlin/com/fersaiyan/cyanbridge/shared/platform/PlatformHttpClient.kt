@@ -106,7 +106,12 @@ actual class PlatformHttpClient actual constructor() {
                     }
                 }
             }
-            HttpResponse(statusCode = conn.responseCode, headers = conn.headerFields, body = "")
+            HttpResponse(
+                statusCode = conn.responseCode,
+                headers = conn.headerFields,
+                body = "",
+                downloadedFileSize = bytesReceived,
+            )
         } finally {
             conn.disconnect()
         }

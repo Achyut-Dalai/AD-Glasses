@@ -103,6 +103,9 @@ data class SettingsUiState(
     val agentLastError: String = "",
     val meetingRecording: Boolean = false,
     val meetingCaptureSource: CaptureSource? = null,
+    val autoCaptureAvailable: Boolean = true,
+    val autoAudioAvailable: Boolean = true,
+    val platformAvailabilityNote: String? = null,
 )
 
 /** Platform-owned effects stay in the platform layer; this composable only renders state and dispatches intent. */
@@ -269,15 +272,6 @@ fun SettingsScreen(
             }
             item {
                 SettingsSectionCard(
-                    title = "Local Agent",
-                    expanded = SettingsSection.LOCAL_AGENT in expandedSections,
-                    onToggle = { onToggleSection(SettingsSection.LOCAL_AGENT) },
-                ) {
-                    LocalAgentContent(state, actions)
-                }
-            }
-            item {
-                SettingsSectionCard(
                     title = "Memory Privacy",
                     expanded = SettingsSection.MEMORY_PRIVACY in expandedSections,
                     onToggle = { onToggleSection(SettingsSection.MEMORY_PRIVACY) },
@@ -287,7 +281,7 @@ fun SettingsScreen(
             }
             item {
                 SettingsSectionCard(
-                    title = "Transcripts & Auto Audio",
+                    title = "Transcripts",
                     expanded = SettingsSection.TRANSCRIPTS in expandedSections,
                     onToggle = { onToggleSection(SettingsSection.TRANSCRIPTS) },
                 ) {
@@ -501,80 +495,6 @@ private fun AiAutomationContent(state: SettingsUiState, actions: SettingsScreenA
 }
 
 @Composable
-private fun LocalAgentContent(state: SettingsUiState, actions: SettingsScreenActions) {
-    SwitchRow(
-        label = "Auto-capture screen context",
-        checked = state.autoCaptureEnabled,
-        onCheckedChange = actions::setAutoCaptureEnabled,
-    )
-    NumberSettingRow(
-        label = "Capture interval (minutes)",
-        value = state.captureIntervalMinutes,
-        onValueChanged = actions::setCaptureIntervalMinutes,
-        validRange = 1..100_000,
-    )
-    SettingRow("Blacklist apps", "Prevent capture in selected apps") {
-        TextButton(onClick = actions::openBlacklistApps) { Text("Open") }
-    }
-    SettingRow("Screen captures") {
-        TextButton(onClick = actions::openScreenCaptures) { Text("Open") }
-    }
-    HorizontalDivider()
-    SwitchRow(
-        label = "Daily facts reminder",
-        checked = state.dailyFactsReminderEnabled,
-        onCheckedChange = actions::setDailyFactsReminderEnabled,
-    )
-    SettingRow("Daily facts draft") {
-        TextButton(onClick = actions::openDailyFactsDraft) { Text("Open") }
-    }
-    SettingRow("Confirmed daily facts") {
-        TextButton(onClick = actions::openConfirmedDailyFacts) { Text("Open") }
-    }
-    SettingRow("Daily summary") {
-        TextButton(onClick = actions::openDailySummary) { Text("Open") }
-    }
-    NumberSettingRow(
-        label = "Daily summary refresh (hours)",
-        value = state.dailySummaryRefreshHours,
-        onValueChanged = actions::setDailySummaryRefreshHours,
-        validRange = 1..24,
-    )
-    SwitchRow(
-        label = "Auto-save daily facts",
-        checked = state.autoSaveDailyFactsEnabled,
-        onCheckedChange = actions::setAutoSaveDailyFactsEnabled,
-    )
-    SwitchRow(
-        label = "Extract user fact candidates",
-        checked = state.extractUserFactCandidatesEnabled,
-        onCheckedChange = actions::setExtractUserFactCandidatesEnabled,
-    )
-    HorizontalDivider()
-    SettingRow("Bullet generation prompt") {
-        Row {
-            TextButton(onClick = actions::editBulletPrompt) { Text("Edit") }
-            TextButton(onClick = actions::resetBulletPrompt) { Text("Reset") }
-        }
-    }
-    NumberSettingRow(
-        label = "Max tokens per bullet",
-        value = state.maxTokensPerBullet,
-        onValueChanged = actions::setMaxTokensPerBullet,
-        validRange = 0..100_000,
-    )
-    SettingRow("Agent personality") {
-        TextButton(onClick = actions::editAgentPersona) { Text("Edit") }
-    }
-    SettingRow("User facts") {
-        TextButton(onClick = actions::editUserFacts) { Text("Edit") }
-    }
-    SettingRow("Context injection debug") {
-        TextButton(onClick = actions::viewContextDebug) { Text("View") }
-    }
-}
-
-@Composable
 private fun MemoryPrivacyContent(state: SettingsUiState, actions: SettingsScreenActions) {
     Text(
         text = "Current mode: ${state.memoryMode.title}",
@@ -682,33 +602,6 @@ private fun TranscriptsContent(state: SettingsUiState, actions: SettingsScreenAc
         "Include full transcription in exports",
         state.includeFullTranscriptionInExports,
         onCheckedChange = actions::setIncludeFullTranscriptionEnabled,
-    )
-    HorizontalDivider()
-    SwitchRow(
-        label = "Auto audio capture",
-        checked = state.autoAudioCaptureEnabled,
-        onCheckedChange = actions::setAutoAudioCaptureEnabled,
-    )
-    SwitchRow(
-        label = "Create visual notes",
-        checked = state.autoAudioVisualNotesEnabled,
-        onCheckedChange = actions::setAutoAudioVisualNotesEnabled,
-    )
-    SwitchRow(
-        label = "Extend capture when speech continues",
-        checked = state.autoAudioSpeechExtendEnabled,
-        onCheckedChange = actions::setAutoAudioSpeechExtendEnabled,
-    )
-    NumberSettingRow(
-        label = "Loops before sync",
-        value = state.autoAudioLoopsPerSync,
-        onValueChanged = actions::setAutoAudioLoopsPerSync,
-        validRange = 1..96,
-    )
-    Text(
-        text = state.autoAudioDebugText,
-        style = MaterialTheme.typography.bodySmall,
-        color = MaterialTheme.colorScheme.onSurfaceVariant,
     )
 }
 
@@ -837,6 +730,7 @@ private fun NumberSettingRow(
     value: Int,
     onValueChanged: (Int) -> Unit,
     validRange: IntRange,
+    enabled: Boolean = true,
 ) {
     var text by remember(value) { mutableStateOf(value.toString()) }
     val parsed = text.toIntOrNull()
@@ -850,6 +744,7 @@ private fun NumberSettingRow(
                 next.toIntOrNull()?.takeIf { it in validRange }?.let(onValueChanged)
             },
             modifier = Modifier.width(132.dp),
+            enabled = enabled,
             singleLine = true,
             isError = text.isNotBlank() && !valid,
             keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),

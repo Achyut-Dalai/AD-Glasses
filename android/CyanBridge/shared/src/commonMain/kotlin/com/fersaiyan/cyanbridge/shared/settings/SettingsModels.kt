@@ -58,7 +58,6 @@ enum class MemorySourceType {
 
 enum class SettingsSection {
     AI_AUTOMATION,
-    LOCAL_AGENT,
     MEMORY_PRIVACY,
     TRANSCRIPTS,
     DATA,

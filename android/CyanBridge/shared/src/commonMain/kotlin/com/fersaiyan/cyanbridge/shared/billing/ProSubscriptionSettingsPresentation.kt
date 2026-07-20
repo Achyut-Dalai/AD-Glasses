@@ -6,6 +6,7 @@ data class ProSubscriptionUiState(
     val selectedPlan: String = "free_trial",
     val webCheckoutAvailable: Boolean = false,
     val isSubscribed: Boolean = false,
+    val checkoutPlan: String? = null,
 )
 
 /** Platform-neutral presentation state for the subscription settings screen. */

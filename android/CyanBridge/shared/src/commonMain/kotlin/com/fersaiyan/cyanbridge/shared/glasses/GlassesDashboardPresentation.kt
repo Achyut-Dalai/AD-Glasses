@@ -1,6 +1,8 @@
 package com.fersaiyan.cyanbridge.shared.glasses
 
 import com.fersaiyan.cyanbridge.shared.navigation.AppDestination
+import com.fersaiyan.cyanbridge.shared.plugins.NativePluginShortcutAction
+import com.fersaiyan.cyanbridge.shared.plugins.NativePluginShortcutUiState
 
 /**
  * Platform-neutral presentation state for the glasses dashboard. Android BLE,
@@ -15,6 +17,7 @@ data class GlassesDashboardUiState(
     val showStorage: Boolean = false,
     val transfer: GlassesTransferUiState = GlassesTransferUiState(),
     val meeting: GlassesMeetingUiState = GlassesMeetingUiState(),
+    val nativePluginShortcut: NativePluginShortcutUiState? = null,
     val assistantMode: GlassesAssistantMode = GlassesAssistantMode.GEMINI,
     val imageQueryEnabled: Boolean = true,
     val imageQueryLabel: String = "Test image AI description",
@@ -26,6 +29,7 @@ data class GlassesDashboardUiState(
     val metaRayban: MetaRaybanUiState = MetaRaybanUiState(),
     val ota: OtaSectionUiState = OtaSectionUiState(),
     val livePreview: LivePreviewUiState = LivePreviewUiState(),
+    val wifiAdbDebug: WifiAdbDebugUiState = WifiAdbDebugUiState(),
 )
 
 data class GlassesTransferUiState(
@@ -72,6 +76,7 @@ data class MetaRaybanUiState(
     val registrationLabel: String = "Not registered",
     val sessionLabel: String = "Idle",
     val streamLabel: String = "Stopped",
+    val displayCapable: Boolean = false,
     val displayActive: Boolean = false,
     val canRegister: Boolean = true,
     val canUnregister: Boolean = false,
@@ -97,12 +102,43 @@ enum class OtaTargetSelection(val label: String, val description: String) {
     JIELI_BLE("BLE chip (.bin)", "JieLi SoC — patches LED/shutter/event firmware"),
 }
 
+/** Where the selected target's firmware image comes from. */
+enum class OtaFirmwareSource(
+    val label: String,
+    val description: String,
+) {
+    PERSONAL_FILE(
+        label = "Personal firmware file",
+        description = "Choose a local .swu or .bin file",
+    ),
+    STEALTH_CATALOG(
+        label = "Stealth server copy",
+        description = "Only an approved patch for this chip's exact current version",
+    ),
+    DEBUG_CATALOG(
+        label = "Debug server copy",
+        description = "Exact-version lab patch; requires server-side debug access",
+    ),
+}
+
 data class LivePreviewUiState(
+    val isAvailable: Boolean = false,
     val stateLabel: String = "Idle",
     val detail: String = "",
     val isScanning: Boolean = false,
     val isPlaying: Boolean = false,
     val streamUrl: String? = null,
+    val canStart: Boolean = true,
+    val canStop: Boolean = false,
+)
+
+data class WifiAdbDebugUiState(
+    val isAvailable: Boolean = false,
+    val stateLabel: String = "Idle",
+    val detail: String = "",
+    val glassesIp: String? = null,
+    val relayEndpoints: List<String> = emptyList(),
+    val preferredCommand: String = "",
     val canStart: Boolean = true,
     val canStop: Boolean = false,
 )
@@ -116,6 +152,7 @@ sealed interface GlassesDashboardAction {
     data class SelectMeetingTimer(val index: Int) : GlassesDashboardAction
     data object StartMeetingCapture : GlassesDashboardAction
     data object StopMeetingCapture : GlassesDashboardAction
+    data class RunNativePluginShortcut(val action: NativePluginShortcutAction) : GlassesDashboardAction
     data class SelectAssistantMode(val mode: GlassesAssistantMode) : GlassesDashboardAction
     data object TestVoiceQuestion : GlassesDashboardAction
     data object TestImageQuestion : GlassesDashboardAction
@@ -137,11 +174,13 @@ sealed interface GlassesDashboardAction {
     data object StartClassicBluetoothScan : GlassesDashboardAction
     data object DumpOtaInfo : GlassesDashboardAction
     data object TestPullOta : GlassesDashboardAction
-    data object StartOta : GlassesDashboardAction
+    data class RequestOtaFirmware(val source: OtaFirmwareSource) : GlassesDashboardAction
     data object CancelOta : GlassesDashboardAction
     data class SelectOtaTarget(val target: OtaTargetSelection) : GlassesDashboardAction
     data object StartLivePreview : GlassesDashboardAction
     data object StopLivePreview : GlassesDashboardAction
+    data object RequestStartWifiAdbDebug : GlassesDashboardAction
+    data object StopWifiAdbDebug : GlassesDashboardAction
     data object MetaRegister : GlassesDashboardAction
     data object MetaUnregister : GlassesDashboardAction
     data object MetaStartSession : GlassesDashboardAction

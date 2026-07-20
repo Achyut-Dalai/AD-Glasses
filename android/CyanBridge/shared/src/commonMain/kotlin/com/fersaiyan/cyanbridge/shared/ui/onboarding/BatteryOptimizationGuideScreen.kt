@@ -8,6 +8,8 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.safeDrawing
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Card
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FilledTonalButton
@@ -28,8 +30,9 @@ fun BatteryOptimizationGuideScreen(
     onDisableOptimization: () -> Unit,
     onOpenAppInfo: () -> Unit,
     onOpenOptimizationList: () -> Unit,
-    onDone: () -> Unit,
-    onSkip: () -> Unit,
+    onContinue: () -> Unit,
+    onRemindLater: () -> Unit,
+    onDontShowAgain: () -> Unit,
 ) {
     Scaffold(
         contentWindowInsets = WindowInsets.safeDrawing,
@@ -39,7 +42,8 @@ fun BatteryOptimizationGuideScreen(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(innerPadding)
-                .padding(24.dp),
+                .padding(24.dp)
+                .verticalScroll(rememberScrollState()),
             verticalArrangement = Arrangement.spacedBy(14.dp),
         ) {
             Text("Keep CyanBridge running", style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Bold)
@@ -57,15 +61,31 @@ fun BatteryOptimizationGuideScreen(
             FilledTonalButton(onClick = onDisableOptimization, modifier = Modifier.fillMaxWidth()) {
                 Text("Disable battery optimization")
             }
-            OutlinedButton(onClick = onOpenAppInfo, modifier = Modifier.fillMaxWidth()) {
-                Text("Open app info")
-            }
             OutlinedButton(onClick = onOpenOptimizationList, modifier = Modifier.fillMaxWidth()) {
                 Text("Open battery optimization list")
             }
+            Card(modifier = Modifier.fillMaxWidth()) {
+                Column(
+                    modifier = Modifier.padding(16.dp),
+                    verticalArrangement = Arrangement.spacedBy(8.dp),
+                ) {
+                    Text("Lock CyanBridge in Recents", style = MaterialTheme.typography.titleSmall)
+                    Text(
+                        "Some phones also stop background work when an app is swiped away. Open Recents, find CyanBridge, then use your phone's Lock, Keep open, Pin, or Don't optimize option. The name varies by manufacturer.",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                    OutlinedButton(onClick = onOpenAppInfo, modifier = Modifier.fillMaxWidth()) {
+                        Text("Open app info for app-lock controls")
+                    }
+                }
+            }
             Spacer(Modifier.weight(1f))
-            FilledTonalButton(onClick = onDone, modifier = Modifier.fillMaxWidth()) { Text("Done") }
-            OutlinedButton(onClick = onSkip, modifier = Modifier.fillMaxWidth()) { Text("Skip for now") }
+            FilledTonalButton(onClick = onContinue, modifier = Modifier.fillMaxWidth()) { Text("Continue") }
+            OutlinedButton(onClick = onRemindLater, modifier = Modifier.fillMaxWidth()) { Text("Not now") }
+            OutlinedButton(onClick = onDontShowAgain, modifier = Modifier.fillMaxWidth()) {
+                Text("Don't show this again")
+            }
         }
     }
 }

@@ -5,6 +5,7 @@ import kotlinx.cinterop.readBytes
 import kotlinx.coroutines.suspendCancellableCoroutine
 import platform.Foundation.NSData
 import platform.Foundation.NSHTTPURLResponse
+import platform.Foundation.NSFileManager
 import platform.Foundation.NSMutableURLRequest
 import platform.Foundation.NSString
 import platform.Foundation.NSURL
@@ -17,6 +18,7 @@ import platform.Foundation.dataTaskWithRequest
 import platform.Foundation.dataUsingEncoding
 import platform.Foundation.setValue
 
+@OptIn(ExperimentalForeignApi::class)
 actual class PlatformHttpClient actual constructor() {
 
     actual suspend fun get(url: String, headers: Map<String, String>): HttpResponse {
@@ -49,14 +51,31 @@ actual class PlatformHttpClient actual constructor() {
         request.setValue("multipart/form-data; boundary=$boundary", forHTTPHeaderField = "Content-Type")
         headers.forEach { (k, v) -> request.setValue(v, forHTTPHeaderField = k) }
 
-        val bodyBuilder = StringBuilder()
-        parts.forEach { (name, value) ->
-            bodyBuilder.append("--$boundary\r\n")
-            bodyBuilder.append("Content-Disposition: form-data; name=\"$name\"\r\n\r\n")
-            bodyBuilder.append("$value\r\n")
+        val chunks = mutableListOf<ByteArray>()
+        fun appendText(value: String) {
+            chunks += value.encodeToByteArray()
         }
-        bodyBuilder.append("--$boundary--\r\n")
-        request.HTTPBody = (bodyBuilder.toString() as NSString).dataUsingEncoding(NSUTF8StringEncoding)
+
+        parts.forEach { (name, value) ->
+            appendText("--$boundary\r\n")
+            appendText("Content-Disposition: form-data; name=\"$name\"\r\n\r\n")
+            appendText("$value\r\n")
+        }
+        files.forEach { (name, data) ->
+            appendText("--$boundary\r\n")
+            appendText("Content-Disposition: form-data; name=\"$name\"; filename=\"$name\"\r\n")
+            appendText("Content-Type: application/octet-stream\r\n\r\n")
+            chunks += data.copyOf()
+            appendText("\r\n")
+        }
+        appendText("--$boundary--\r\n")
+        val body = ByteArray(chunks.sumOf { it.size })
+        var offset = 0
+        chunks.forEach { chunk ->
+            chunk.copyInto(body, destinationOffset = offset)
+            offset += chunk.size
+        }
+        request.HTTPBody = body.toIosNSData()
         return executeRequest(request)
     }
 
@@ -69,7 +88,24 @@ actual class PlatformHttpClient actual constructor() {
         val request = NSMutableURLRequest(NSURL(string = url))
         request.HTTPMethod = "GET"
         headers.forEach { (k, v) -> request.setValue(v, forHTTPHeaderField = k) }
-        return executeRequest(request)
+        val response = executeRequest(request)
+        val downloadedFileSize = if (response.isSuccessful) response.bodyBytes?.let { bytes ->
+            val fileManager = NSFileManager.defaultManager
+            if (fileManager.fileExistsAtPath(destinationPath)) {
+                fileManager.removeItemAtPath(destinationPath, error = null)
+            }
+            val stored = fileManager.createFileAtPath(
+                path = destinationPath,
+                contents = bytes.toIosNSData(),
+                attributes = null,
+            )
+            check(stored) { "Unable to store downloaded file at $destinationPath" }
+            onProgress?.invoke(bytes.size.toLong(), bytes.size.toLong())
+            bytes.size.toLong()
+        } else {
+            null
+        }
+        return response.copy(downloadedFileSize = downloadedFileSize)
     }
 
     actual fun close() {}
@@ -99,6 +135,7 @@ actual class PlatformHttpClient actual constructor() {
                 )
             ))
         }
+        cont.invokeOnCancellation { task.cancel() }
         task.resume()
     }
 }

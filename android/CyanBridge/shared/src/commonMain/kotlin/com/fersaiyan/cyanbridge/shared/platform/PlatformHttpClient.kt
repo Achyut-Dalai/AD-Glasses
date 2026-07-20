@@ -61,6 +61,7 @@ data class HttpResponse(
     val headers: Map<String, List<String>>,
     val body: String,
     val bodyBytes: ByteArray? = null,
+    val downloadedFileSize: Long? = null,
 ) {
     val isSuccessful: Boolean get() = statusCode in 200..299
 }

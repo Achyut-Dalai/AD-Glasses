@@ -47,7 +47,7 @@ Implemented on 2026-07-14 in the current working migration:
 - Meeting-summary request/response contracts, deterministic Markdown formatting, and the offline rule-based summarizer now compile from `commonMain`. Android retains Room persistence and its test-only fake summarizer.
 - Common tests lock down appearance defaults, stable accent IDs, fallback behavior, and destination identifiers.
 - The P2P sync-flow picker and chat appearance overflow menu now render as Compose dialogs. The Android Activities still own their BLE/P2P, preference, picker, and external-app callbacks.
-- Community Plugin cards, including the Gemini/ChatGPT Image Questions Automation banner, now fill their available width. The recordings screen renders its four recent synced photos as one full-width weighted row, and the publish-plugin action uses a semantic add icon.
+- Community Plugin cards now render server-provided community metadata, including the ChatGPT/Gemini Tasker assistant as a normal plugin card rather than a special banner. The recordings screen renders its four recent synced photos as one full-width weighted row, and the publish-plugin action uses a semantic add icon.
 - Automated migration verification currently passes `:shared:portabilityTest`, debug/release unit tests, debug/release lint, release assembly, and 19/19 Android instrumentation tests on an SM-F956B.
 
 Still pending:

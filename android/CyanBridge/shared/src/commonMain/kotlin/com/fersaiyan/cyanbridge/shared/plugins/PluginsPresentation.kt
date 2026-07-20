@@ -15,6 +15,9 @@ data class CommunityPluginCardData(
     val trendAll: Int,
     val trendMonthly: Int,
     val trendWeekly: Int,
+    val id: String = "",
+    val taskerNetLink: String? = null,
+    val downloadUrl: String? = null,
 ) {
     fun downloads(window: PluginTimeWindow): Int = when (window) {
         PluginTimeWindow.ALL_TIME -> downloadsAll
