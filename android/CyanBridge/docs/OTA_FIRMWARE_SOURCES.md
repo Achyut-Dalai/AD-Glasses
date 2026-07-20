@@ -38,6 +38,14 @@ image was not built from the installed target-chip version. Server artifacts avo
 that generic-version risk by requiring an exact base match; personal files remain
 recovery/lab-only unless their supplier documents compatibility.
 
+When the relay has no exact-base artifact, CyanBridge offers a Material 3 patch
+request dialog instead of substituting another version. The user may cancel or enter
+a contact email. Sending the request uses the authenticated `/logs/submit` relay
+endpoint and includes the requested target, both chip version pairs, the relay
+response, and OTA/BLE/P2P logcat diagnostics. The dialog explains that compatibility
+between unknown Wi-Fi and BLE versions cannot be assumed and that review normally
+requires up to roughly 48 hours.
+
 ## Lifecycle Safeguards
 
 - OTA owns the exclusive glasses session, preventing concurrent media sync, preview,
