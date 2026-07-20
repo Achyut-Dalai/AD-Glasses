@@ -23,6 +23,7 @@ on:
 
 permissions:
   contents: read
+  packages: read
 
 concurrency:
   group: ios-kmp-host-${{ github.ref }}
@@ -35,6 +36,7 @@ jobs:
     timeout-minutes: 45
     env:
       DEVELOPER_DIR: /Applications/Xcode_16.2.app/Contents/Developer
+      GITHUB_TOKEN: ${{ github.token }}
     steps:
       - name: Check out source
         uses: actions/checkout@v4
