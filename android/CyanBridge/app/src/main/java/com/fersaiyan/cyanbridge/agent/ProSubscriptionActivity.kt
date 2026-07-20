@@ -24,7 +24,6 @@ import com.google.android.material.button.MaterialButton
 import com.fersaiyan.cyanbridge.BuildConfig
 import com.fersaiyan.cyanbridge.R
 import com.fersaiyan.cyanbridge.ai.router.AiProviderPrefs
-import com.fersaiyan.cyanbridge.shared.billing.BillingCatalog
 import com.fersaiyan.cyanbridge.shared.billing.ProSubscriptionUiState
 import com.fersaiyan.cyanbridge.ui.appearance.AppearancePreferences
 import com.fersaiyan.cyanbridge.ui.appearance.rememberAppearanceSettings
@@ -35,7 +34,6 @@ import kotlin.concurrent.thread
 import org.json.JSONObject
 import java.net.HttpURLConnection
 import java.net.URL
-import java.util.Locale
 
 /**
  * Pro Subscription Activity
@@ -60,6 +58,8 @@ class ProSubscriptionActivity : AppCompatActivity() {
     private var legacyReturnDialogVisible = false
     private var composeState by mutableStateOf(ProSubscriptionUiState())
     private lateinit var composeView: ComposeView
+    private var pendingCheckoutEmail: String = ""
+    private var pendingCheckoutChangePlan: Boolean = false
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -116,7 +116,11 @@ class ProSubscriptionActivity : AppCompatActivity() {
         }
 
         btnSubscribeWeb.setOnClickListener {
-            launchWebCheckout(selectedPlan())
+            if (selectedPlan() == "free_trial") {
+                btnSubscribe.performClick()
+            } else {
+                launchWebCheckout(selectedPlan())
+            }
         }
 
         btnCancel.setOnClickListener {
@@ -134,6 +138,8 @@ class ProSubscriptionActivity : AppCompatActivity() {
                     onPlanSelected = ::selectPlanFromCompose,
                     onSubscribeInApp = { btnSubscribe.performClick() },
                     onSubscribeOnWebsite = { btnSubscribeWeb.performClick() },
+                    onSecureCheckoutSelected = ::selectSecureCheckout,
+                    onDismissSecureCheckout = ::dismissSecureCheckout,
                     onDonate = { btnDonate.performClick() },
                     onCancelSubscription = { btnUnsubscribe.performClick() },
                     onBack = ::finish,
@@ -374,7 +380,9 @@ class ProSubscriptionActivity : AppCompatActivity() {
         intent?.removeExtra(EXTRA_AUTO_WEB_CHECKOUT_EMAIL)
         intent?.removeExtra(EXTRA_AUTO_WEB_CHECKOUT_CHANGE_PLAN)
 
-        if (requestedEmail.isNotBlank()) {
+        if (requestedPlan == "free_trial") {
+            startSubscriptionFlow(requestedPlan, requestedEmail)
+        } else if (requestedEmail.isNotBlank()) {
             launchWebCheckoutWithEmail(requestedPlan, requestedEmail, changePlan)
         } else {
             launchWebCheckout(requestedPlan, changePlan)
@@ -382,6 +390,10 @@ class ProSubscriptionActivity : AppCompatActivity() {
     }
 
     private fun launchWebCheckout(plan: String, changePlan: Boolean = false) {
+        if (plan == "free_trial") {
+            startSubscriptionFlow(plan)
+            return
+        }
         promptForCheckoutEmail(plan, changePlan)
     }
 
@@ -433,11 +445,42 @@ class ProSubscriptionActivity : AppCompatActivity() {
                 }
                 ProSubscriptionServerPrefs.setAccountEmail(this, email)
                 dialog.dismiss()
-                onConfirmed(email)
+                if (ProSubscriptionServerPrefs.isAccountEmailVerified(this, email)) {
+                    onConfirmed(email)
+                } else {
+                    requestAccountEmailVerification(email) { onConfirmed(email) }
+                }
             }
         }
 
         dialog.show()
+    }
+
+    private fun requestAccountEmailVerification(email: String, onEmailMatchConfirmed: () -> Unit) {
+        Toast.makeText(this, "Sending verification email...", Toast.LENGTH_SHORT).show()
+        thread {
+            val result = ProSubscriptionRelayClient.requestAccountEmailVerification(this, email)
+            runOnUiThread {
+                result.onSuccess { verification ->
+                    if (verification.isEmailMatchFallback) {
+                        ProSubscriptionServerPrefs.setVerifiedAccountEmail(this, email)
+                        Toast.makeText(this, verification.message, Toast.LENGTH_LONG).show()
+                        onEmailMatchConfirmed()
+                    } else if (verification.hasDirectVerificationLink) {
+                        Toast.makeText(this, "Opening account confirmation...", Toast.LENGTH_SHORT).show()
+                        startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(verification.verificationUrl)))
+                    } else {
+                        Toast.makeText(
+                            this,
+                            "${verification.message} Open the link on this device, then choose your plan again.",
+                            Toast.LENGTH_LONG,
+                        ).show()
+                    }
+                }.onFailure { error ->
+                    Toast.makeText(this, "Unable to verify email: ${error.message}", Toast.LENGTH_LONG).show()
+                }
+            }
+        }
     }
 
     private fun startSubscriptionFlow(plan: String, emailHint: String = "") {
@@ -502,6 +545,25 @@ class ProSubscriptionActivity : AppCompatActivity() {
         }
     }
 
+    private fun selectSecureCheckout(provider: String) {
+        val plan = composeState.checkoutPlan ?: return
+        val email = pendingCheckoutEmail
+        val changePlan = pendingCheckoutChangePlan
+        dismissSecureCheckout()
+        launchWebCheckoutWithEmail(
+            plan = plan,
+            emailHint = email,
+            changePlan = changePlan,
+            provider = provider,
+        )
+    }
+
+    private fun dismissSecureCheckout() {
+        pendingCheckoutEmail = ""
+        pendingCheckoutChangePlan = false
+        composeState = composeState.copy(checkoutPlan = null)
+    }
+
     private fun launchWebCheckoutWithEmail(
         plan: String,
         emailHint: String,
@@ -509,7 +571,9 @@ class ProSubscriptionActivity : AppCompatActivity() {
         provider: String? = null,
     ) {
         if (provider == null) {
-            showCheckoutProviderDialog(plan, emailHint, changePlan)
+            pendingCheckoutEmail = emailHint
+            pendingCheckoutChangePlan = changePlan
+            composeState = composeState.copy(checkoutPlan = plan)
             return
         }
 
@@ -542,32 +606,6 @@ class ProSubscriptionActivity : AppCompatActivity() {
                 }
             }
         }
-    }
-
-    private fun showCheckoutProviderDialog(plan: String, email: String, changePlan: Boolean) {
-        val billingPlan = BillingCatalog.plan(plan)
-        val base = billingPlan.asaasOffer.referencePriceUsd
-        val paddle = billingPlan.paddleOffer.referencePriceUsd
-        val adjustment = billingPlan.paddleOffer.adjustmentUsd
-        fun usd(value: Double) = String.format(Locale.US, "%.2f", value)
-        val labels = arrayOf(
-            "Asaas — $${usd(base)}/month equivalent in BRL",
-            "Paddle — $${usd(paddle)}/month (+$${usd(adjustment)} checkout adjustment)",
-        )
-
-        AlertDialog.Builder(this)
-            .setTitle("Choose secure checkout")
-            .setMessage("Asaas is the lower-cost option and charges the displayed BRL amount. Paddle provides global tax and Merchant of Record service; applicable tax is shown before payment.")
-            .setItems(labels) { _, which ->
-                launchWebCheckoutWithEmail(
-                    plan = plan,
-                    emailHint = email,
-                    changePlan = changePlan,
-                    provider = if (which == 0) "asaas" else "paddle",
-                )
-            }
-            .setNegativeButton("Cancel", null)
-            .show()
     }
 
     private fun buildLegacyStatusUrl(baseUrl: String, apiToken: String, plan: String): String {

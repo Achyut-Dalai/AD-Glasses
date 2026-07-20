@@ -9,6 +9,7 @@ object ProSubscriptionServerPrefs {
     private const val KEY_VERIFY_URL = "verify_url"
     private const val KEY_API_TOKEN = "api_token"
     private const val KEY_ACCOUNT_EMAIL = "account_email"
+    private const val KEY_VERIFIED_ACCOUNT_EMAIL = "verified_account_email"
 
     private fun prefs(context: Context) = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
 
@@ -38,6 +39,21 @@ object ProSubscriptionServerPrefs {
     fun setAccountEmail(context: Context, email: String?) {
         val value = sanitizeAccountEmail(email)
         prefs(context).edit().apply {
+            if (value.isBlank()) remove(KEY_ACCOUNT_EMAIL) else putString(KEY_ACCOUNT_EMAIL, value)
+            if (value != getVerifiedAccountEmail(context)) remove(KEY_VERIFIED_ACCOUNT_EMAIL)
+        }.apply()
+    }
+
+    fun getVerifiedAccountEmail(context: Context): String =
+        sanitizeAccountEmail(prefs(context).getString(KEY_VERIFIED_ACCOUNT_EMAIL, ""))
+
+    fun isAccountEmailVerified(context: Context, email: String?): Boolean =
+        normalizeAccountEmail(email) == getVerifiedAccountEmail(context)
+
+    fun setVerifiedAccountEmail(context: Context, email: String?) {
+        val value = sanitizeAccountEmail(email)
+        prefs(context).edit().apply {
+            if (value.isBlank()) remove(KEY_VERIFIED_ACCOUNT_EMAIL) else putString(KEY_VERIFIED_ACCOUNT_EMAIL, value)
             if (value.isBlank()) remove(KEY_ACCOUNT_EMAIL) else putString(KEY_ACCOUNT_EMAIL, value)
         }.apply()
     }

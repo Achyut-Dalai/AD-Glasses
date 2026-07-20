@@ -102,21 +102,21 @@
                             android:id="@+id/rb_cheap"
                             android:layout_width="match_parent"
                             android:layout_height="wrap_content"
-                            android:text="Cheap — $1 base; Paddle checkout $1.55/month"
+                            android:text="Cheap — $1 base; checkout $1.13/month"
                             android:textColor="@color/text_primary" />
 
                         <com.google.android.material.radiobutton.MaterialRadioButton
                             android:id="@+id/rb_standard"
                             android:layout_width="match_parent"
                             android:layout_height="wrap_content"
-                            android:text="Standard — $5 base; Paddle checkout $5.75/month"
+                            android:text="Standard — $5 base; checkout $5.25/month"
                             android:textColor="@color/text_primary" />
 
                         <com.google.android.material.radiobutton.MaterialRadioButton
                             android:id="@+id/rb_max"
                             android:layout_width="match_parent"
                             android:layout_height="wrap_content"
-                            android:text="Max — $20 base; Paddle checkout $21.50/month"
+                            android:text="Max — $20 base; checkout $20.70/month"
                             android:textColor="@color/text_primary" />
 
                     </RadioGroup>
@@ -439,7 +439,7 @@
                     <TextView
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
-                        android:text="Manage Subscription"
+                        android:text="Cancel Subscription"
                         android:textColor="@color/danger"
                         android:textStyle="bold"
                         android:textSize="16sp" />

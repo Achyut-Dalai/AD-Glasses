@@ -25,6 +25,10 @@ class WebSubscriptionCallbackActivity : AppCompatActivity() {
         super.onCreate(savedInstanceState)
 
         val data = intent?.data
+        if (data?.path == "/restore") {
+            restoreVerifiedAccount(data.getQueryParameter("api_token"), data.getQueryParameter("email"))
+            return
+        }
         val status = data?.getQueryParameter("status")?.trim()?.lowercase().orEmpty()
         val message = data?.getQueryParameter("message")?.trim().orEmpty()
         if (status == "success") {
@@ -44,6 +48,27 @@ class WebSubscriptionCallbackActivity : AppCompatActivity() {
         }
 
         finishCallback(applyNonSuccessCallback(status, message))
+    }
+
+    private fun restoreVerifiedAccount(apiToken: String?, email: String?) {
+        val token = apiToken?.trim().orEmpty()
+        val verifiedEmail = ProSubscriptionServerPrefs.normalizeAccountEmail(email)
+        if (token.isBlank() || !ProSubscriptionServerPrefs.isUsableAccountEmail(verifiedEmail)) {
+            finishCallback(CallbackResult(false, "Email verification could not restore this account."))
+            return
+        }
+
+        ProSubscriptionServerPrefs.setApiToken(this, token)
+        ProSubscriptionServerPrefs.setVerifiedAccountEmail(this, verifiedEmail)
+        thread {
+            val verified = ProSubscriptionVerifier.verifyNow(this, strictForTesting = false)
+            val message = if (verified.active) {
+                "Email verified and subscription restored"
+            } else {
+                "Email verified. Choose a plan to continue."
+            }
+            runOnUiThread { finishCallback(CallbackResult(verified.active, message)) }
+        }
     }
 
     private fun finishCallback(result: CallbackResult) {

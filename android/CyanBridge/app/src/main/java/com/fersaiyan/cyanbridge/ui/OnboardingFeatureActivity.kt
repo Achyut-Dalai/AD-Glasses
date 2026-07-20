@@ -14,30 +14,28 @@ import com.fersaiyan.cyanbridge.MainActivity
 import com.fersaiyan.cyanbridge.R
 import com.fersaiyan.cyanbridge.agent.LocalAgentPrefs as AgentPrefs
 import com.fersaiyan.cyanbridge.localagent.accessibility.LocalAgentAccessibilityService
-import com.fersaiyan.cyanbridge.localagent.daily.DailyFactsReminderScheduler
 import com.fersaiyan.cyanbridge.localagent.memory.LocalAgentMemoryStore
-import com.fersaiyan.cyanbridge.memoryvault.MemoryModeManager
-import com.fersaiyan.cyanbridge.media.autocapture.AutoAudioCapturePrefs
-import com.fersaiyan.cyanbridge.media.autocapture.AutoAudioCaptureService
 import com.fersaiyan.cyanbridge.ui.appearance.AppearancePreferences
 import com.fersaiyan.cyanbridge.ui.appearance.rememberAppearanceSettings
 import com.fersaiyan.cyanbridge.shared.ui.onboarding.FeatureOnboardingScreen
 import com.fersaiyan.cyanbridge.ui.theme.CyanBridgeTheme
+import com.hjq.permissions.OnPermissionCallback
+import com.hjq.permissions.Permission
+import com.hjq.permissions.XXPermissions
 
 class OnboardingFeatureActivity : AppCompatActivity() {
 
     private var featureIndex = 0
-    private var featureEnabled by mutableStateOf(false)
     private var localAgentAutomationEnabled by mutableStateOf(false)
     private var accessibilityEnabled by mutableStateOf(false)
+    private var glassesConnectionPermissionGranted by mutableStateOf(false)
+    private var storagePermissionGranted by mutableStateOf(false)
 
     data class OnboardingFeature(
         val iconRes: Int,
         val titleRes: Int,
         val descriptionRes: Int,
         val detailsRes: Int,
-        val togglePrefKey: String? = null,
-        val toggleLabel: String? = null
     )
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -49,6 +47,8 @@ class OnboardingFeatureActivity : AppCompatActivity() {
     override fun onResume() {
         super.onResume()
         refreshAccessibilityStatus()
+        glassesConnectionPermissionGranted = hasBluetooth(this)
+        storagePermissionGranted = XXPermissions.isGranted(this, Permission.MANAGE_EXTERNAL_STORAGE)
     }
 
     private fun setupFeatureScreen() {
@@ -58,9 +58,10 @@ class OnboardingFeatureActivity : AppCompatActivity() {
         }
 
         val isAccessibilityFeature = featureIndex == SCREEN_MEMORY_FEATURE_INDEX
-        featureEnabled = getFeatureDefaultState(featureIndex)
         localAgentAutomationEnabled = AgentPrefs.isLocalAgentAutomationEnabled(this)
         accessibilityEnabled = isLocalAgentAccessibilityServiceEnabled()
+        glassesConnectionPermissionGranted = hasBluetooth(this)
+        storagePermissionGranted = XXPermissions.isGranted(this, Permission.MANAGE_EXTERNAL_STORAGE)
         val appearancePreferences = AppearancePreferences(this)
         setContent {
             val appearance by rememberAppearanceSettings(appearancePreferences)
@@ -69,16 +70,28 @@ class OnboardingFeatureActivity : AppCompatActivity() {
                     title = getString(feature.titleRes),
                     description = getString(feature.descriptionRes),
                     details = getString(feature.detailsRes),
-                    featureToggleLabel = feature.toggleLabel,
-                    featureEnabled = featureEnabled,
+                    showGlassesConnectionPermission = featureIndex == GLASSES_CONNECTION_FEATURE_INDEX,
+                    glassesConnectionPermissionGranted = glassesConnectionPermissionGranted,
+                    showStoragePermission = featureIndex == GLASSES_CONNECTION_FEATURE_INDEX,
+                    storagePermissionGranted = storagePermissionGranted,
                     showAccessibilityDisclosure = isAccessibilityFeature,
+                    showOpenSourceContribution = featureIndex == OPEN_SOURCE_FEATURE_INDEX,
                     accessibilityEnabled = accessibilityEnabled,
                     localAgentAutomationEnabled = localAgentAutomationEnabled,
                     backLabel = if (featureIndex == 0) "Skip all" else "Back",
                     nextLabel = if (featureIndex == FEATURES.lastIndex) "Get started" else "Next",
-                    onFeatureEnabledChange = {
-                        featureEnabled = it
-                        setFeatureState(featureIndex, it)
+                    onRequestGlassesConnectionPermission = {
+                        requestBluetoothPermission(this, OnPermissionCallback { _, allGranted ->
+                            glassesConnectionPermissionGranted = allGranted && hasBluetooth(this)
+                        })
+                    },
+                    onRequestStoragePermission = {
+                        requestAllPermission(this, OnPermissionCallback { _, allGranted ->
+                            storagePermissionGranted = allGranted && XXPermissions.isGranted(
+                                this,
+                                Permission.MANAGE_EXTERNAL_STORAGE,
+                            )
+                        })
                     },
                     onLocalAgentAutomationChange = {
                         localAgentAutomationEnabled = it
@@ -88,6 +101,11 @@ class OnboardingFeatureActivity : AppCompatActivity() {
                     onOpenAccessibilitySettings = {
                         startActivity(Intent(Settings.ACTION_ACCESSIBILITY_SETTINGS))
                     },
+                    onOpenSourceRepository = {
+                        runCatching {
+                            startActivity(Intent(Intent.ACTION_VIEW, android.net.Uri.parse(GITHUB_REPOSITORY_URL)))
+                        }
+                    },
                     onBack = {
                         if (featureIndex == 0) skipAllOnboarding() else goToFeature(featureIndex - 1)
                     },
@@ -95,41 +113,6 @@ class OnboardingFeatureActivity : AppCompatActivity() {
                         if (featureIndex == FEATURES.lastIndex) finishOnboarding() else goToFeature(featureIndex + 1)
                     },
                 )
-            }
-        }
-    }
-
-    private fun getFeatureDefaultState(index: Int): Boolean {
-        return when (index) {
-            0 -> AgentPrefs.isDailyFactsReminderEnabled(this)
-            1 -> AgentPrefs.isAutoCaptureEnabled(this) && MemoryModeManager.isScreenOcrCaptureEnabled(this)
-            2 -> AutoAudioCapturePrefs.isEnabled(this)
-            else -> false
-        }
-    }
-
-    private fun setFeatureState(index: Int, enabled: Boolean) {
-        when (index) {
-            0 -> {
-                AgentPrefs.setDailyFactsReminderEnabled(this, enabled)
-                DailyFactsReminderScheduler.scheduleIfEnabled(this, enabled)
-            }
-            1 -> {
-                AgentPrefs.setAutoCaptureEnabled(this, enabled)
-                MemoryModeManager.setScreenOcrCaptureEnabled(this, enabled)
-            }
-            2 -> {
-                AutoAudioCapturePrefs.setEnabled(this, enabled)
-                if (enabled) {
-                    AutoAudioCaptureService.start(this)
-                } else {
-                    AutoAudioCaptureService.stop(this)
-                }
-            }
-            3 -> {
-                if (enabled) {
-                    LocalAgentMemoryStore.ensureSeedFiles(this)
-                }
             }
         }
     }
@@ -189,51 +172,30 @@ class OnboardingFeatureActivity : AppCompatActivity() {
     companion object {
         private const val EXTRA_FEATURE_INDEX = "feature_index"
         private const val PREFS = "cyanbridge_prefs"
+        private const val GLASSES_CONNECTION_FEATURE_INDEX = 0
         private const val SCREEN_MEMORY_FEATURE_INDEX = 1
+        private const val OPEN_SOURCE_FEATURE_INDEX = 2
+        private const val GITHUB_REPOSITORY_URL = "https://github.com/FerSaiyan/Alternative-HeyCyan-App-and-SDK"
 
         private val FEATURES = listOf(
             OnboardingFeature(
                 iconRes = R.drawable.ic_device_heycyan,
-                titleRes = R.string.onboarding_daily_facts_title,
-                descriptionRes = R.string.onboarding_daily_facts_desc,
-                detailsRes = R.string.onboarding_daily_facts_details,
-                togglePrefKey = "daily_facts",
-                toggleLabel = "Enable daily fact verification"
+                titleRes = R.string.onboarding_glasses_connection_title,
+                descriptionRes = R.string.onboarding_glasses_connection_desc,
+                detailsRes = R.string.onboarding_glasses_connection_details,
             ),
             OnboardingFeature(
                 iconRes = R.drawable.ic_device_heycyan,
-                titleRes = R.string.onboarding_screen_capture_title,
-                descriptionRes = R.string.onboarding_screen_capture_desc,
-                detailsRes = R.string.onboarding_screen_capture_details,
-                togglePrefKey = "screen_capture",
-                toggleLabel = "Enable automatic screen text capture"
-            ),
-            OnboardingFeature(
-                iconRes = R.drawable.ic_device_generic_audio,
-                titleRes = R.string.onboarding_audio_capture_title,
-                descriptionRes = R.string.onboarding_audio_capture_desc,
-                detailsRes = R.string.onboarding_audio_capture_details,
-                togglePrefKey = "audio_capture",
-                toggleLabel = "Enable continuous audio recording"
+                titleRes = R.string.onboarding_optional_features_title,
+                descriptionRes = R.string.onboarding_optional_features_desc,
+                detailsRes = R.string.onboarding_optional_features_details,
             ),
             OnboardingFeature(
                 iconRes = R.drawable.ic_device_heycyan,
-                titleRes = R.string.onboarding_agent_personality_title,
-                descriptionRes = R.string.onboarding_agent_personality_desc,
-                detailsRes = R.string.onboarding_agent_personality_details
+                titleRes = R.string.onboarding_open_source_title,
+                descriptionRes = R.string.onboarding_open_source_desc,
+                detailsRes = R.string.onboarding_open_source_details,
             ),
-            OnboardingFeature(
-                iconRes = R.drawable.ic_device_heycyan,
-                titleRes = R.string.onboarding_local_storage_title,
-                descriptionRes = R.string.onboarding_local_storage_desc,
-                detailsRes = R.string.onboarding_local_storage_details
-            ),
-            OnboardingFeature(
-                iconRes = R.drawable.ic_device_heycyan,
-                titleRes = R.string.onboarding_pro_sub_title,
-                descriptionRes = R.string.onboarding_pro_sub_desc,
-                detailsRes = R.string.onboarding_pro_sub_details
-            )
         )
 
         fun launchIfNeeded(activity: AppCompatActivity) {

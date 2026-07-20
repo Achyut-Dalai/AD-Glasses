@@ -58,6 +58,18 @@ object ProSubscriptionRelayClient {
         val expiresAtMs: Long,
     )
 
+    data class EmailVerificationResult(
+        val method: String,
+        val message: String,
+        val verificationUrl: String? = null,
+    ) {
+        val isEmailMatchFallback: Boolean
+            get() = method == "email_match"
+
+        val hasDirectVerificationLink: Boolean
+            get() = verificationUrl != null
+    }
+
     private const val CONNECT_TIMEOUT_MS = 7000
     private const val READ_TIMEOUT_MS = 15000
     private const val RELAY_DOWN_HINT =
@@ -210,14 +222,6 @@ object ProSubscriptionRelayClient {
         }
         check(apiToken.isNotBlank()) { "Server account token unavailable" }
 
-        requestPostJson(
-            context = context,
-            url = endpoint(context, "/auth/register"),
-            body = JSONObject()
-                .put("api_token", apiToken)
-                .put("email", email),
-        )
-
         val payload = requestPostJson(
             context = context,
             url = endpoint(context, "/billing/checkout-sessions"),
@@ -234,6 +238,39 @@ object ProSubscriptionRelayClient {
         CheckoutSession(
             checkoutUrl = checkoutUrl,
             expiresAtMs = payload.optLong("expires_at_ms", 0L),
+        )
+    }
+
+    fun requestAccountEmailVerification(context: Context, email: String): Result<EmailVerificationResult> = runCatching {
+        val apiToken = ProSubscriptionServerPrefs.getApiToken(context).trim().ifBlank {
+            fetchAccountInfo(context).getOrThrow().apiToken.trim()
+        }
+        check(apiToken.isNotBlank()) { "Server account token unavailable" }
+        val payload = requestPostJson(
+            context = context,
+            url = endpoint(context, "/api/auth/relay/access-link"),
+            body = JSONObject().put("email", email),
+        )
+        check(payload.optBoolean("ok", false)) { payload.optString("message", "Unable to send verification email.") }
+        val verificationUrl = payload.optString("verification_url").trim().ifBlank { null }
+        check(verificationUrl == null || verificationUrl.startsWith("https://")) {
+            "The server returned an invalid verification link."
+        }
+        val method = payload.optString("verification_method").trim().ifBlank {
+            if (verificationUrl != null) "direct_link" else "magic_link"
+        }
+        check(method == "magic_link" || method == "email_match" || method == "direct_link") {
+            "Unsupported email verification response."
+        }
+        if (method == "email_match") {
+            check(payload.optString("email").trim().equals(email.trim(), ignoreCase = true)) {
+                "The server confirmed a different email address."
+            }
+        }
+        EmailVerificationResult(
+            method = method,
+            message = payload.optString("message", "Check your email to verify this CyanBridge account."),
+            verificationUrl = verificationUrl,
         )
     }
 

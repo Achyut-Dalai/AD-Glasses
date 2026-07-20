@@ -36,15 +36,14 @@ class BatteryOptimizationGuideActivity : AppCompatActivity() {
                     onDisableOptimization = ::openDisableBatteryOptimizationFlow,
                     onOpenAppInfo = ::openAppInfo,
                     onOpenOptimizationList = ::openBatteryOptimizationList,
-                    onDone = {
+                    onContinue = {
                         if (isBatteryOptimizationIgnored(this)) {
                             markCompleted(this)
-                            navigateToNext()
-                        } else {
-                            Toast.makeText(this, getString(R.string.battery_opt_still_on_toast), Toast.LENGTH_LONG).show()
                         }
+                        navigateToNext()
                     },
-                    onSkip = {
+                    onRemindLater = ::navigateToNext,
+                    onDontShowAgain = {
                         suppressPermanently(this)
                         navigateToNext()
                     },

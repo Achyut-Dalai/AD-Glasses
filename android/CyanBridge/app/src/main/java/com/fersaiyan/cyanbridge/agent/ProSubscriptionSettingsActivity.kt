@@ -87,7 +87,6 @@ class ProSubscriptionSettingsActivity : AppCompatActivity() {
         val tvBetaCloudStatus: TextView = findViewById(R.id.tv_beta_cloud_status)
         val btnRefreshPlanStatus: MaterialButton = findViewById(R.id.btn_refresh_plan_status)
         val btnRefreshAccount: MaterialButton = findViewById(R.id.btn_refresh_account)
-        val btnChangePlan: MaterialButton = findViewById(R.id.btn_change_plan)
         val btnManageSubscription: MaterialButton = findViewById(R.id.btn_manage_subscription)
         val btnRefreshQuota: MaterialButton = findViewById(R.id.btn_refresh_quota)
         val btnRefreshModels: MaterialButton = findViewById(R.id.btn_refresh_models)
@@ -264,7 +263,6 @@ class ProSubscriptionSettingsActivity : AppCompatActivity() {
         fun refreshPlanDetails() {
             val local = ProSubscriptionVerifier.localStatus(this)
             val planName = local.plan.ifBlank { "none" }
-            val provider = ProSubscriptionPrefs.getProvider(this)
             val expiresAt = local.expiresAtMs
             val expiresText = if (expiresAt > 0L) {
                 java.text.SimpleDateFormat("yyyy-MM-dd", java.util.Locale.US).format(java.util.Date(expiresAt))
@@ -283,12 +281,7 @@ class ProSubscriptionSettingsActivity : AppCompatActivity() {
             tvPlanPlan.text = "Plan: $planName"
             tvPlanExpires.text = "Expires: $expiresText"
             tvPlanVerified.text = "Last verified: $verifiedText"
-            btnChangePlan.text = if (provider == "play_billing") "Change in Google Play" else "Change Plan"
-            btnManageSubscription.text = when {
-                provider == "play_billing" -> "Manage in Google Play"
-                planName == "free_trial" -> "End free trial"
-                else -> "Cancel subscription"
-            }
+            btnManageSubscription.text = "Cancel subscription"
         }
 
         fun setButtonBusy(button: MaterialButton, busy: Boolean, busyLabel: String, normalLabel: String) {
@@ -514,12 +507,8 @@ class ProSubscriptionSettingsActivity : AppCompatActivity() {
             refreshAccount()
         }
 
-        btnChangePlan.setOnClickListener {
-            showChangePlanDialog()
-        }
-
         btnManageSubscription.setOnClickListener {
-            openSubscriptionManagement(btnManageSubscription)
+            handleCancellation(btnManageSubscription)
         }
 
         btnRefreshModels.setOnClickListener {
@@ -616,8 +605,8 @@ class ProSubscriptionSettingsActivity : AppCompatActivity() {
                         btnRefreshPlanStatus.performClick()
                         syncComposeState?.invoke()
                     },
-                    onChangePlan = { btnChangePlan.performClick() },
-                    onManageSubscription = { btnManageSubscription.performClick() },
+                    onChangePlan = ::startPlanChange,
+                    onCancelSubscription = { handleCancellation(btnManageSubscription) },
                     onRefreshAccount = {
                         btnRefreshAccount.performClick()
                         syncComposeState?.invoke()
@@ -671,35 +660,12 @@ class ProSubscriptionSettingsActivity : AppCompatActivity() {
         }
     }
 
-    private fun showChangePlanDialog() {
+    private fun startPlanChange(plan: String) {
         if (ProSubscriptionPrefs.getProvider(this) == "play_billing") {
             openPlaySubscriptionManagement(null)
-            return
+        } else {
+            promptForCheckoutEmail(plan)
         }
-
-        val plans = arrayOf("cheap", "standard", "max")
-        val labels = arrayOf(
-            "Cheap — \$1 base; Paddle checkout \$1.55/month",
-            "Standard — \$5 base; Paddle checkout \$5.75/month",
-            "Max — \$20 base; Paddle checkout \$21.50/month",
-        )
-        var selected = 0
-
-        AlertDialog.Builder(this)
-            .setTitle("Change Plan")
-            .setSingleChoiceItems(labels, selected) { _, which ->
-                selected = which
-            }
-            .setPositiveButton("Subscribe") { _, _ ->
-                val plan = plans[selected]
-                launchWebCheckoutForPlan(plan)
-            }
-            .setNegativeButton("Cancel", null)
-            .show()
-    }
-
-    private fun launchWebCheckoutForPlan(plan: String) {
-        promptForCheckoutEmail(plan)
     }
 
     private fun promptForCheckoutEmail(plan: String) {
@@ -775,25 +741,12 @@ class ProSubscriptionSettingsActivity : AppCompatActivity() {
         }
     }
 
-    private fun openSubscriptionManagement(button: MaterialButton) {
+    private fun handleCancellation(button: MaterialButton) {
         if (ProSubscriptionPrefs.getProvider(this) == "play_billing") {
             openPlaySubscriptionManagement(button)
             return
         }
-        val plan = ProSubscriptionPrefs.getPlan(this)
-        val message = if (plan == "free_trial") {
-            "Are you sure you want to end your free trial now?"
-        } else {
-            "Are you sure you want to cancel your subscription? You'll keep access until the end of your current billing period."
-        }
-        AlertDialog.Builder(this)
-            .setTitle(if (plan == "free_trial") "End Free Trial?" else "Cancel Subscription?")
-            .setMessage(message)
-            .setPositiveButton(if (plan == "free_trial") "End Trial" else "Yes, Cancel") { _, _ ->
-                cancelSubscriptionInApp(button)
-            }
-            .setNegativeButton("Keep It", null)
-            .show()
+        cancelSubscriptionInApp(button)
     }
 
     private fun cancelSubscriptionInApp(button: MaterialButton) {

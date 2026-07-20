@@ -24,6 +24,7 @@ import androidx.localbroadcastmanager.content.LocalBroadcastManager
 import com.fersaiyan.cyanbridge.R
 import com.fersaiyan.cyanbridge.MainActivity
 import com.fersaiyan.cyanbridge.shared.settings.AgentProviderType
+import com.fersaiyan.cyanbridge.shared.plugins.NativePluginIds
 import com.fersaiyan.cyanbridge.agent.LocalAgentPrefs as AutomationPrefs
 import com.fersaiyan.cyanbridge.agent.LocalModelsConfigureActivity
 import com.fersaiyan.cyanbridge.agent.ProSubscriptionActivity
@@ -71,6 +72,7 @@ import com.fersaiyan.cyanbridge.ui.localagent.DailySummaryActivity
 import com.fersaiyan.cyanbridge.ui.localagent.PendingActionsActivity
 import com.fersaiyan.cyanbridge.ui.localagent.ScreenCapturesActivity
 import com.fersaiyan.cyanbridge.ui.recordings.RecordingsListActivity
+import com.fersaiyan.cyanbridge.devices.DeviceProfileStore
 import com.fersaiyan.cyanbridge.shared.settings.SettingsSection
 import com.fersaiyan.cyanbridge.shared.ui.settings.SettingsScreen
 import com.fersaiyan.cyanbridge.shared.ui.settings.SettingsScreenActions
@@ -172,7 +174,6 @@ class SettingsActivity : AppCompatActivity(), SettingsScreenActions {
         super.onStart()
         registerLocalReceivers()
         LocalAgentController.requestStatus(this)
-        ensureExistingAutoAudioNotificationPermission()
         refreshSettingsUi()
     }
 
@@ -386,6 +387,7 @@ class SettingsActivity : AppCompatActivity(), SettingsScreenActions {
     override fun setAutoCaptureEnabled(enabled: Boolean) {
         AutomationPrefs.setAutoCaptureEnabled(this, enabled)
         MemoryModeManager.setScreenOcrCaptureEnabled(this, enabled)
+        CommunityPluginPrefs.setNativePluginEnabled(this, NativePluginIds.AUTO_DIARY, enabled)
         Toast.makeText(this, if (enabled) "Auto-capture enabled" else "Auto-capture disabled", Toast.LENGTH_SHORT).show()
         refreshSettingsUi()
     }
@@ -641,6 +643,15 @@ class SettingsActivity : AppCompatActivity(), SettingsScreenActions {
     }
 
     override fun setAutoAudioCaptureEnabled(enabled: Boolean) {
+        if (enabled && DeviceProfileStore.isMetaSelected(this)) {
+            Toast.makeText(
+                this,
+                "Auto Audio records HeyCyan onboard files and is unavailable for Meta Ray-Ban.",
+                Toast.LENGTH_LONG,
+            ).show()
+            refreshSettingsUi()
+            return
+        }
         if (enabled && !hasPostNotificationsPermission()) {
             XXPermissions.with(this)
                 .permission(Permission.POST_NOTIFICATIONS)
@@ -948,6 +959,7 @@ class SettingsActivity : AppCompatActivity(), SettingsScreenActions {
 
     private fun enableAutoAudioCapture() {
         AutoAudioCapturePrefs.setEnabled(this, true)
+        CommunityPluginPrefs.setNativePluginEnabled(this, NativePluginIds.AUTO_AUDIO, true)
         val loops = AutoAudioCapturePrefs.getLoopsPerSync(this)
         Toast.makeText(this, "Auto audio capture enabled (sync every $loops loops)", Toast.LENGTH_SHORT).show()
         AutoAudioCaptureService.start(this)
@@ -955,6 +967,7 @@ class SettingsActivity : AppCompatActivity(), SettingsScreenActions {
 
     private fun disableAutoAudioCapture() {
         AutoAudioCapturePrefs.setEnabled(this, false)
+        CommunityPluginPrefs.setNativePluginEnabled(this, NativePluginIds.AUTO_AUDIO, false)
         Toast.makeText(this, "Auto audio capture disabled", Toast.LENGTH_SHORT).show()
         AutoAudioCaptureService.stop(this)
     }
@@ -1029,7 +1042,6 @@ class SettingsActivity : AppCompatActivity(), SettingsScreenActions {
     private fun sectionPreferenceKey(section: SettingsSection): String {
         val legacyCardName = when (section) {
             SettingsSection.AI_AUTOMATION -> "card_agent_provider"
-            SettingsSection.LOCAL_AGENT -> "card_local_agent_settings"
             SettingsSection.MEMORY_PRIVACY -> "card_memory_privacy"
             SettingsSection.TRANSCRIPTS -> "card_transcripts"
             SettingsSection.DATA -> "card_data"
