@@ -41,6 +41,23 @@ class DeviceCapabilityServiceTest {
     }
 
     @Test
+    fun insufficient_ram_is_blocked_before_download() {
+        val entry = LocalModelCatalogRepository.findById("qwen2.5-1.5b-instruct-q4")!!
+        val snapshot = DeviceSnapshot(
+            primaryAbi = "arm64-v8a",
+            supportedAbis = listOf("arm64-v8a"),
+            totalRamBytes = 6L * 1024L * 1024L * 1024L,
+            freeStorageBytes = 8L * 1024L * 1024L * 1024L,
+            cpuCoreCount = 8,
+        )
+
+        val result = DeviceCapabilityService.assess(snapshot, entry, requireDownloadHeadroom = true)
+        assertFalse(result.supported)
+        assertFalse(result.ramSuitable)
+        assertTrue(result.blockers.any { it.contains("RAM unsuitable") })
+    }
+
+    @Test
     fun profile_recommendation_prefers_fast_on_small_ram() {
         val entry = LocalModelCatalogRepository.findById("qwen2.5-1.5b-instruct-q4")!!
         val snapshot = DeviceSnapshot(

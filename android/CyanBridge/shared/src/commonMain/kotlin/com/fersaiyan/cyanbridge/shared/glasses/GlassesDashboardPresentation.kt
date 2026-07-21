@@ -23,10 +23,12 @@ data class GlassesDashboardUiState(
     val imageQueryLabel: String = "Test image AI description",
     val showHeyCyanControls: Boolean = false,
     val showMetaRaybanControls: Boolean = false,
+    val showMeizuMyvuControls: Boolean = false,
     val advancedExpanded: Boolean = false,
     val agentStatus: String = "Unknown",
     val agentLastError: String = "(none)",
     val metaRayban: MetaRaybanUiState = MetaRaybanUiState(),
+    val meizuMyvu: MeizuMyvuUiState = MeizuMyvuUiState(),
     val ota: OtaSectionUiState = OtaSectionUiState(),
     val firmwarePatchRequest: FirmwarePatchRequestUiState? = null,
     val livePreview: LivePreviewUiState = LivePreviewUiState(),
@@ -77,6 +79,9 @@ data class MetaRaybanUiState(
     val registrationLabel: String = "Not registered",
     val sessionLabel: String = "Idle",
     val streamLabel: String = "Stopped",
+    val selectedDeviceName: String? = null,
+    val availableDeviceCount: Int = 0,
+    val lastError: String? = null,
     val displayCapable: Boolean = false,
     val displayActive: Boolean = false,
     val canRegister: Boolean = true,
@@ -89,13 +94,23 @@ data class MetaRaybanUiState(
     val hasCapturedPhoto: Boolean = false,
 )
 
+data class MeizuMyvuUiState(
+    val connectionLabel: String = "Disconnected",
+    val protocolState: String = "IDLE",
+    val deviceName: String? = null,
+    val batteryPercent: Int? = null,
+    val lastError: String? = null,
+    val canConnect: Boolean = true,
+    val canDisconnect: Boolean = false,
+    val canSend: Boolean = false,
+)
+
 data class OtaSectionUiState(
     val stateLabel: String = "Idle",
     val detail: String = "",
     val progress: Int? = null,
     val canStart: Boolean = true,
     val canCancel: Boolean = false,
-    val selectedTarget: OtaTargetSelection = OtaTargetSelection.V821_WIFI,
 )
 
 enum class OtaTargetSelection(val label: String, val description: String) {
@@ -109,16 +124,16 @@ enum class OtaFirmwareSource(
     val description: String,
 ) {
     PERSONAL_FILE(
-        label = "Personal firmware file",
-        description = "Choose a local .swu or .bin file",
+        label = "Personal firmware files",
+        description = "Choose both local files: Wi-Fi .swu, then BLE .bin",
     ),
     STEALTH_CATALOG(
         label = "Stealth server copy",
-        description = "Only an approved patch for this chip's exact current version",
+        description = "Resolve approved exact-base patches for both chips",
     ),
     DEBUG_CATALOG(
         label = "Debug server copy",
-        description = "Exact-version lab patch; requires server-side debug access",
+        description = "Resolve exact-version lab patches for both chips",
     ),
 }
 
@@ -195,7 +210,6 @@ sealed interface GlassesDashboardAction {
     data class SubmitFirmwarePatchRequest(val contactEmail: String) : GlassesDashboardAction
     data object DismissFirmwarePatchRequest : GlassesDashboardAction
     data object CancelOta : GlassesDashboardAction
-    data class SelectOtaTarget(val target: OtaTargetSelection) : GlassesDashboardAction
     data object StartLivePreview : GlassesDashboardAction
     data object StopLivePreview : GlassesDashboardAction
     data object RequestStartWifiAdbDebug : GlassesDashboardAction
@@ -210,4 +224,11 @@ sealed interface GlassesDashboardAction {
     data object MetaViewPhoto : GlassesDashboardAction
     data object MetaStartDisplay : GlassesDashboardAction
     data object MetaStopDisplay : GlassesDashboardAction
+    data object MetaSendDiagnostics : GlassesDashboardAction
+    data object MeizuConnect : GlassesDashboardAction
+    data object MeizuDisconnect : GlassesDashboardAction
+    data object MeizuSendTestNotification : GlassesDashboardAction
+    data object MeizuShowTestTeleprompter : GlassesDashboardAction
+    data object MeizuSyncClock : GlassesDashboardAction
+    data object MeizuSetComfortBrightness : GlassesDashboardAction
 }

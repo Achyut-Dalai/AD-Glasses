@@ -13,11 +13,18 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.safeDrawing
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.outlined.AutoAwesome
 import androidx.compose.material.icons.outlined.ExpandLess
 import androidx.compose.material.icons.outlined.ExpandMore
+import androidx.compose.material.icons.outlined.Settings
+import androidx.compose.material3.AssistChip
+import androidx.compose.material3.AssistChipDefaults
+import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -212,6 +219,13 @@ fun SettingsScreen(
             ),
             verticalArrangement = Arrangement.spacedBy(12.dp),
         ) {
+            item {
+                ProSubscriptionCard(
+                    isSubscribed = state.isProSubscribed,
+                    proPlan = state.proPlan,
+                    onClick = actions::openSubscription,
+                )
+            }
             if (state.meetingRecording) {
                 item {
                     MeetingRecordingBanner(
@@ -246,19 +260,6 @@ fun SettingsScreen(
                     actionLabel = stringResource(Res.string.action_change),
                     onClick = actions::openAppLanguageSelection,
                     testTag = "settings_language",
-                )
-            }
-            item {
-                QuickActionCard(
-                    title = if (state.isProSubscribed) "Pro Subscription Settings" else "Pro Subscription",
-                    subtitle = if (state.isProSubscribed) {
-                        "Current plan: ${state.proPlan}. Manage premium features and perks."
-                    } else {
-                        "Unlock premium features and help fund new smartglasses support."
-                    },
-                    actionLabel = if (state.isProSubscribed) "Manage" else "Open",
-                    onClick = actions::openSubscription,
-                    testTag = "settings_subscription",
                 )
             }
             item {
@@ -361,6 +362,96 @@ private fun MeetingRecordingBanner(
 }
 
 @Composable
+private fun ProSubscriptionCard(
+    isSubscribed: Boolean,
+    proPlan: String,
+    onClick: () -> Unit,
+) {
+    Card(
+        modifier = Modifier
+            .fillMaxWidth()
+            .testTag("settings_subscription")
+            .clickable(onClick = onClick),
+        colors = CardDefaults.cardColors(
+            containerColor = MaterialTheme.colorScheme.tertiaryContainer,
+            contentColor = MaterialTheme.colorScheme.onTertiaryContainer,
+        ),
+    ) {
+        Column(
+            modifier = Modifier.padding(16.dp),
+            verticalArrangement = Arrangement.spacedBy(12.dp),
+        ) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Surface(
+                    modifier = Modifier.size(40.dp),
+                    color = MaterialTheme.colorScheme.tertiary,
+                    contentColor = MaterialTheme.colorScheme.onTertiary,
+                    shape = MaterialTheme.shapes.small,
+                ) {
+                    Icon(
+                        imageVector = Icons.Outlined.AutoAwesome,
+                        contentDescription = null,
+                        modifier = Modifier.padding(8.dp),
+                    )
+                }
+                Spacer(Modifier.width(12.dp))
+                Column(
+                    modifier = Modifier.weight(1f),
+                    verticalArrangement = Arrangement.spacedBy(4.dp),
+                ) {
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    ) {
+                        Text(
+                            text = if (isSubscribed) "Pro Subscription Settings" else "Pro Subscription",
+                            modifier = Modifier.weight(1f),
+                            style = MaterialTheme.typography.titleMedium,
+                            fontWeight = FontWeight.Bold,
+                        )
+                        Surface(
+                            color = MaterialTheme.colorScheme.tertiary,
+                            contentColor = MaterialTheme.colorScheme.onTertiary,
+                            shape = MaterialTheme.shapes.small,
+                        ) {
+                            Text(
+                                text = if (isSubscribed) "PRO ACTIVE" else "PRO",
+                                modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
+                                style = MaterialTheme.typography.labelSmall,
+                                fontWeight = FontWeight.Bold,
+                            )
+                        }
+                    }
+                    Text(
+                        text = if (isSubscribed) {
+                            "Current plan: $proPlan. Manage premium features and perks."
+                        } else {
+                            "Unlock premium features and help fund new smartglasses support."
+                        },
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onTertiaryContainer,
+                    )
+                }
+            }
+            Button(
+                onClick = onClick,
+                modifier = Modifier.fillMaxWidth(),
+                colors = ButtonDefaults.buttonColors(
+                    containerColor = MaterialTheme.colorScheme.tertiary,
+                    contentColor = MaterialTheme.colorScheme.onTertiary,
+                ),
+            ) {
+                Text(if (isSubscribed) "Manage subscription" else "View plans")
+            }
+        }
+    }
+}
+
+@Composable
 private fun QuickActionCard(
     title: String,
     subtitle: String,
@@ -454,7 +545,21 @@ private fun AiAutomationContent(state: SettingsUiState, actions: SettingsScreenA
     }
     ActionButton("Configure Local Models", actions::openLocalModels)
     if (state.providerType == AgentProviderType.PRO_SUBSCRIPTION) {
-        ActionButton("Configure Pro Subscription", actions::openSubscription)
+        AssistChip(
+            onClick = actions::openSubscription,
+            leadingIcon = {
+                Icon(
+                    imageVector = Icons.Outlined.Settings,
+                    contentDescription = null,
+                )
+            },
+            label = { Text("Configure Pro Subscription") },
+            colors = AssistChipDefaults.assistChipColors(
+                containerColor = MaterialTheme.colorScheme.tertiaryContainer,
+                labelColor = MaterialTheme.colorScheme.onTertiaryContainer,
+                leadingIconContentColor = MaterialTheme.colorScheme.onTertiaryContainer,
+            ),
+        )
     }
     SettingRow(
         label = stringResource(Res.string.vision_profile_title),

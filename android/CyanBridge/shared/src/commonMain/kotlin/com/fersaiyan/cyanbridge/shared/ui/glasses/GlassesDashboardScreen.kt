@@ -1,5 +1,6 @@
 package com.fersaiyan.cyanbridge.shared.ui.glasses
 
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
@@ -20,6 +21,7 @@ import androidx.compose.material.icons.outlined.ExpandLess
 import androidx.compose.material.icons.outlined.ExpandMore
 import androidx.compose.material3.Card
 import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Checkbox
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FilterChip
@@ -54,14 +56,17 @@ import com.fersaiyan.cyanbridge.shared.glasses.FirmwarePatchRequestUiState
 import com.fersaiyan.cyanbridge.shared.plugins.NativePluginShortcutAction
 import com.fersaiyan.cyanbridge.shared.plugins.NativePluginShortcutUiState
 import com.fersaiyan.cyanbridge.shared.glasses.MetaRaybanUiState
+import com.fersaiyan.cyanbridge.shared.glasses.MeizuMyvuUiState
 import com.fersaiyan.cyanbridge.shared.glasses.OtaFirmwareSource
 import com.fersaiyan.cyanbridge.shared.glasses.OtaSectionUiState
-import com.fersaiyan.cyanbridge.shared.glasses.OtaTargetSelection
 import com.fersaiyan.cyanbridge.shared.glasses.LivePreviewUiState
 import com.fersaiyan.cyanbridge.shared.glasses.WifiAdbDebugUiState
 import com.fersaiyan.cyanbridge.shared.navigation.AppDestination
+import com.fersaiyan.cyanbridge.shared.generated.resources.*
+import org.jetbrains.compose.resources.ExperimentalResourceApi
+import org.jetbrains.compose.resources.stringResource
 
-@OptIn(ExperimentalMaterial3Api::class)
+@OptIn(ExperimentalMaterial3Api::class, ExperimentalResourceApi::class)
 @Composable
 fun GlassesDashboardScreen(
     state: GlassesDashboardUiState,
@@ -121,7 +126,6 @@ fun GlassesDashboardScreen(
 
     if (showOtaFirmwareSourcePicker) {
         OtaFirmwareSourcePickerDialog(
-            target = state.ota.selectedTarget,
             riskAcknowledged = otaFirmwareRiskAcknowledged,
             onRiskAcknowledgedChange = { otaFirmwareRiskAcknowledged = it },
             onDismissRequest = {
@@ -189,12 +193,12 @@ fun GlassesDashboardScreen(
                     onSecondary = { onAction(GlassesDashboardAction.Reconnect) },
                 )
                 Spacer(Modifier.height(8.dp))
-                OutlinedButton(
+                ActionButton(
+                    label = "Disconnect",
                     onClick = { onAction(GlassesDashboardAction.Disconnect) },
+                    style = ActionButtonStyle.Destructive,
                     modifier = Modifier.fillMaxWidth(),
-                ) {
-                    Text("Disconnect", color = MaterialTheme.colorScheme.error)
-                }
+                )
             }
             item {
                 NativePluginShortcutSection(
@@ -207,6 +211,10 @@ fun GlassesDashboardScreen(
             }
             if (state.showMetaRaybanControls) {
                 item { MetaRaybanControls(state.metaRayban, onAction) }
+                item { GlassesAssistantControls(state, onAction) }
+            }
+            if (state.showMeizuMyvuControls) {
+                item { MeizuMyvuControls(state.meizuMyvu, onAction) }
                 item { GlassesAssistantControls(state, onAction) }
             }
             if (state.wifiAdbDebug.isAvailable) {
@@ -290,9 +298,11 @@ private fun WifiAdbDebugSection(
                 primaryLabel = "Start ADB relay",
                 onPrimary = onRequestStart,
                 primaryEnabled = state.canStart,
+                primaryStyle = ActionButtonStyle.Primary,
                 secondaryLabel = "Stop",
                 onSecondary = onStop,
                 secondaryEnabled = state.canStop,
+                secondaryStyle = ActionButtonStyle.Destructive,
             )
         }
     }
@@ -385,25 +395,18 @@ private fun NativePluginShortcutSection(
                 ) {
                     rowButtons.forEach { button ->
                         val buttonModifier = Modifier.weight(1f)
-                        if (button.action == NativePluginShortcutAction.START) {
-                            FilledTonalButton(
-                                onClick = {
-                                    onAction(GlassesDashboardAction.RunNativePluginShortcut(button.action))
-                                },
-                                modifier = buttonModifier,
-                            ) {
-                                Text(button.label, maxLines = 1, overflow = TextOverflow.Ellipsis)
-                            }
-                        } else {
-                            OutlinedButton(
-                                onClick = {
-                                    onAction(GlassesDashboardAction.RunNativePluginShortcut(button.action))
-                                },
-                                modifier = buttonModifier,
-                            ) {
-                                Text(button.label, maxLines = 1, overflow = TextOverflow.Ellipsis)
-                            }
-                        }
+                        ActionButton(
+                            label = button.label,
+                            onClick = {
+                                onAction(GlassesDashboardAction.RunNativePluginShortcut(button.action))
+                            },
+                            style = when (button.action) {
+                                NativePluginShortcutAction.START -> ActionButtonStyle.Primary
+                                NativePluginShortcutAction.STOP -> ActionButtonStyle.Destructive
+                                else -> ActionButtonStyle.Neutral
+                            },
+                            modifier = buttonModifier,
+                        )
                     }
                     if (rowButtons.size == 1) {
                         Spacer(modifier = Modifier.weight(1f))
@@ -429,7 +432,7 @@ private fun MeetingBanner(label: String, onStop: () -> Unit) {
                 style = MaterialTheme.typography.titleSmall,
                 color = MaterialTheme.colorScheme.error,
             )
-            TextButton(onClick = onStop) { Text("Stop") }
+            TextButton(onClick = onStop) { Text("Stop", color = MaterialTheme.colorScheme.error) }
         }
     }
 }
@@ -510,7 +513,7 @@ private fun TransferCard(
                     maxLines = 3,
                     overflow = TextOverflow.Ellipsis,
                 )
-                TextButton(onClick = onStop) { Text("Stop sync") }
+                TextButton(onClick = onStop) { Text("Stop sync", color = MaterialTheme.colorScheme.error) }
             }
         }
     }
@@ -540,10 +543,12 @@ private fun CoreGlassesControls(
             secondaryLabel = "Count",
             onSecondary = { onAction(GlassesDashboardAction.RequestMediaCount) },
         )
-        FilledTonalButton(
+        ActionButton(
+            label = "Sync data over Wi-Fi",
             onClick = { onAction(GlassesDashboardAction.StartSync) },
+            style = ActionButtonStyle.Primary,
             modifier = Modifier.fillMaxWidth(),
-        ) { Text("Sync data (P2P)") }
+        )
         if (state.livePreview.isAvailable) {
             Spacer(Modifier.height(8.dp))
             SectionTitle("Passive RTSP lab probe")
@@ -571,9 +576,11 @@ private fun CoreGlassesControls(
                 primaryLabel = if (state.livePreview.isScanning) "Scanning..." else "Arm passive probe",
                 onPrimary = { onAction(GlassesDashboardAction.StartLivePreview) },
                 primaryEnabled = state.livePreview.canStart && !state.livePreview.isScanning,
+                primaryStyle = ActionButtonStyle.Primary,
                 secondaryLabel = "Stop",
                 onSecondary = { onAction(GlassesDashboardAction.StopLivePreview) },
                 secondaryEnabled = state.livePreview.canStop,
+                secondaryStyle = ActionButtonStyle.Destructive,
             )
         }
     }
@@ -644,53 +651,170 @@ private fun MetaRaybanControls(
     onAction: (GlassesDashboardAction) -> Unit,
 ) {
     Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-        SectionTitle("Meta Ray-Ban", accented = true)
+        SectionTitle(stringResource(Res.string.meta_rayban_title), accented = true)
+        Text(
+            text = stringResource(
+                Res.string.meta_rayban_device_summary,
+                state.selectedDeviceName ?: stringResource(Res.string.meta_rayban_no_device),
+                state.availableDeviceCount,
+            ),
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
+        state.lastError?.takeIf { it.isNotBlank() }?.let { error ->
+            Card(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .testTag("meta_rayban_last_error"),
+            ) {
+                Column(modifier = Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Text(
+                        text = stringResource(Res.string.meta_rayban_last_error),
+                        style = MaterialTheme.typography.labelLarge,
+                        color = MaterialTheme.colorScheme.error,
+                    )
+                    Text(
+                        text = error,
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                    OutlinedButton(
+                        onClick = { onAction(GlassesDashboardAction.MetaSendDiagnostics) },
+                        modifier = Modifier.fillMaxWidth(),
+                    ) {
+                        Text(stringResource(Res.string.meta_rayban_send_diagnostics))
+                    }
+                }
+            }
+        }
+        if (state.lastError.isNullOrBlank()) {
+            OutlinedButton(
+                onClick = { onAction(GlassesDashboardAction.MetaSendDiagnostics) },
+                modifier = Modifier.fillMaxWidth(),
+            ) {
+                Text(stringResource(Res.string.meta_rayban_send_diagnostics))
+            }
+        }
         MetaControlRow(
-            status = "Registration: ${state.registrationLabel}",
-            startLabel = "Register",
+            status = stringResource(Res.string.meta_rayban_registration_status, state.registrationLabel),
+            startLabel = stringResource(Res.string.meta_rayban_register),
             onStart = { onAction(GlassesDashboardAction.MetaRegister) },
             startEnabled = state.canRegister,
-            stopLabel = "Unregister",
+            stopLabel = stringResource(Res.string.meta_rayban_unregister),
             onStop = { onAction(GlassesDashboardAction.MetaUnregister) },
             stopEnabled = state.canUnregister,
         )
         MetaControlRow(
-            status = "Session: ${state.sessionLabel}",
-            startLabel = "Start session",
+            status = stringResource(Res.string.meta_rayban_session_status, state.sessionLabel),
+            startLabel = stringResource(Res.string.meta_rayban_start_session),
             onStart = { onAction(GlassesDashboardAction.MetaStartSession) },
             startEnabled = state.canStartSession,
-            stopLabel = "Stop session",
+            stopLabel = stringResource(Res.string.meta_rayban_stop_session),
             onStop = { onAction(GlassesDashboardAction.MetaStopSession) },
             stopEnabled = state.canStopSession,
         )
         MetaControlRow(
-            status = "Stream: ${state.streamLabel}",
-            startLabel = "Start stream",
+            status = stringResource(Res.string.meta_rayban_stream_status, state.streamLabel),
+            startLabel = stringResource(Res.string.meta_rayban_start_stream),
             onStart = { onAction(GlassesDashboardAction.MetaStartStream) },
             startEnabled = state.canStartStream,
-            stopLabel = "Stop stream",
+            stopLabel = stringResource(Res.string.meta_rayban_stop_stream),
             onStop = { onAction(GlassesDashboardAction.MetaStopStream) },
             stopEnabled = state.canStopStream,
         )
         ActionRow(
-            primaryLabel = "Capture photo",
+            primaryLabel = stringResource(Res.string.meta_rayban_capture_photo),
             onPrimary = { onAction(GlassesDashboardAction.MetaCapturePhoto) },
             primaryEnabled = state.canCapturePhoto,
-            secondaryLabel = "View last photo",
+            primaryStyle = ActionButtonStyle.Primary,
+            secondaryLabel = stringResource(Res.string.meta_rayban_view_last_photo),
             onSecondary = { onAction(GlassesDashboardAction.MetaViewPhoto) },
             secondaryEnabled = state.hasCapturedPhoto,
         )
         if (state.displayCapable) {
             MetaControlRow(
-                status = "Display: ${if (state.displayActive) "Active" else "Inactive"}",
-                startLabel = "Start display",
+                status = stringResource(
+                    Res.string.meta_rayban_display_status,
+                    stringResource(
+                        if (state.displayActive) {
+                            Res.string.meta_rayban_active
+                        } else {
+                            Res.string.meta_rayban_inactive
+                        },
+                    ),
+                ),
+                startLabel = stringResource(Res.string.meta_rayban_start_display),
                 onStart = { onAction(GlassesDashboardAction.MetaStartDisplay) },
                 startEnabled = !state.displayActive,
-                stopLabel = "Stop display",
+                stopLabel = stringResource(Res.string.meta_rayban_stop_display),
                 onStop = { onAction(GlassesDashboardAction.MetaStopDisplay) },
                 stopEnabled = state.displayActive,
             )
         }
+    }
+}
+
+@Composable
+private fun MeizuMyvuControls(
+    state: MeizuMyvuUiState,
+    onAction: (GlassesDashboardAction) -> Unit,
+) {
+    Column(
+        modifier = Modifier.testTag("meizu_myvu_controls"),
+        verticalArrangement = Arrangement.spacedBy(8.dp),
+    ) {
+        SectionTitle("Meizu MYVU / Star Air", accented = true)
+        Text(
+            text = state.connectionLabel,
+            style = MaterialTheme.typography.titleMedium,
+        )
+        Text(
+            text = "Protocol: ${state.protocolState}" + state.deviceName?.let { "  Device: $it" }.orEmpty(),
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
+        state.batteryPercent?.let { battery ->
+            Text("Battery: $battery%", style = MaterialTheme.typography.bodySmall)
+        }
+        state.lastError?.takeIf { it.isNotBlank() }?.let { error ->
+            Text(error, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.error)
+        }
+        Text(
+            "MYVU uses its own BLE key exchange and RFCOMM relay. Keep the official MYVU app disconnected while connecting.",
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
+        ActionRow(
+            primaryLabel = "Connect",
+            onPrimary = { onAction(GlassesDashboardAction.MeizuConnect) },
+            primaryEnabled = state.canConnect,
+            primaryStyle = ActionButtonStyle.Primary,
+            secondaryLabel = "Disconnect",
+            onSecondary = { onAction(GlassesDashboardAction.MeizuDisconnect) },
+            secondaryEnabled = state.canDisconnect,
+            secondaryStyle = ActionButtonStyle.Destructive,
+        )
+        ActionRow(
+            primaryLabel = "Test notification",
+            onPrimary = { onAction(GlassesDashboardAction.MeizuSendTestNotification) },
+            primaryEnabled = state.canSend,
+            secondaryLabel = "Show text",
+            onSecondary = { onAction(GlassesDashboardAction.MeizuShowTestTeleprompter) },
+            secondaryEnabled = state.canSend,
+        )
+        ActionRow(
+            primaryLabel = "Sync clock",
+            onPrimary = { onAction(GlassesDashboardAction.MeizuSyncClock) },
+            primaryEnabled = state.canSend,
+            secondaryLabel = "Comfort brightness",
+            onSecondary = { onAction(GlassesDashboardAction.MeizuSetComfortBrightness) },
+            secondaryEnabled = state.canSend,
+        )
+        Text(
+            "Voice plugins use the MYVU HFP microphone route after connection. Camera capture, onboard-media sync, Visual Diary, and Walking Aid are not supported because MYVU has no camera or media store.",
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
     }
 }
 
@@ -709,9 +833,11 @@ private fun MetaControlRow(
         primaryLabel = startLabel,
         onPrimary = onStart,
         primaryEnabled = startEnabled,
+        primaryStyle = ActionButtonStyle.Primary,
         secondaryLabel = stopLabel,
         onSecondary = onStop,
         secondaryEnabled = stopEnabled,
+        secondaryStyle = ActionButtonStyle.Destructive,
     )
 }
 
@@ -732,8 +858,10 @@ private fun AdvancedControls(
         ThreeActionRow(
             firstLabel = "Start",
             onFirst = { onAction(GlassesDashboardAction.StartAgent) },
+            firstStyle = ActionButtonStyle.Primary,
             secondLabel = "Stop",
             onSecond = { onAction(GlassesDashboardAction.StopAgent) },
+            secondStyle = ActionButtonStyle.Destructive,
             thirdLabel = "Demo",
             onThird = { onAction(GlassesDashboardAction.RunAgentDemo) },
         )
@@ -772,24 +900,18 @@ private fun AdvancedControls(
         HorizontalDivider()
         SectionTitle("OTA firmware update")
         Text(
-            text = "Choose a personal file or an approved server artifact for one chip at a time.",
+            text = "Run one controlled update for both chips: Wi-Fi .swu first, then BLE .bin after a fresh readiness check.",
             style = MaterialTheme.typography.bodySmall,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
         )
-        OtaTargetSelector(
-            selected = state.ota.selectedTarget,
-            onSelect = { onAction(GlassesDashboardAction.SelectOtaTarget(it)) },
-            enabled = state.ota.canStart,
-        )
         OtaProgressSection(state.ota)
         ActionRow(
-            primaryLabel = when (state.ota.selectedTarget) {
-                OtaTargetSelection.V821_WIFI -> "Choose Wi-Fi SWU"
-                OtaTargetSelection.JIELI_BLE -> "Choose BLE .bin"
-            },
+            primaryLabel = "Choose combined OTA files",
             onPrimary = onRequestOtaFirmware,
+            primaryStyle = ActionButtonStyle.Primary,
             secondaryLabel = "Cancel",
             onSecondary = { onAction(GlassesDashboardAction.CancelOta) },
+            secondaryStyle = ActionButtonStyle.Destructive,
             primaryEnabled = state.ota.canStart,
             secondaryEnabled = state.ota.canCancel,
         )
@@ -798,7 +920,6 @@ private fun AdvancedControls(
 
 @Composable
 private fun OtaFirmwareSourcePickerDialog(
-    target: OtaTargetSelection,
     riskAcknowledged: Boolean,
     onRiskAcknowledgedChange: (Boolean) -> Unit,
     onDismissRequest: () -> Unit,
@@ -807,18 +928,17 @@ private fun OtaFirmwareSourcePickerDialog(
     AlertDialog(
         onDismissRequest = onDismissRequest,
         modifier = Modifier.testTag("ota_firmware_source_picker"),
-        title = { Text("Choose ${target.label}") },
+        title = { Text("Choose source for both firmware components") },
         text = {
             Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
                 Text(
-                    "Firmware is model- and chip-specific. The official update normally applies " +
-                        "a Wi-Fi SWU before its matching BLE BIN. CyanBridge deliberately flashes " +
-                        "one selected image at a time and never guesses a companion image. A successful " +
-                        "Wi-Fi update does not automatically start BLE DFU in CyanBridge."
+                    "Firmware is model- and chip-specific. CyanBridge stages both components before " +
+                        "flashing anything, then follows the official order: Wi-Fi SWU first and BLE " +
+                        "BIN second. A Wi-Fi failure never starts BLE DFU."
                 )
                 Text(
-                    "Server copies are available only when the relay has a hash-verified patch built " +
-                        "from this chip's exact installed firmware version."
+                    "Server copies require hash-verified exact-base patches for both installed chip " +
+                        "versions. Personal files require two selections: a .swu followed by a .bin."
                 )
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Checkbox(
@@ -944,6 +1064,55 @@ private fun FirmwarePatchRequestDialog(
 private fun isValidContactEmail(value: String): Boolean =
     value.trim().matches(Regex("[^\\s@]+@[^\\s@]+\\.[^\\s@]+"))
 
+private enum class ActionButtonStyle {
+    Neutral,
+    Primary,
+    Destructive,
+}
+
+@Composable
+private fun ActionButton(
+    label: String,
+    onClick: () -> Unit,
+    style: ActionButtonStyle = ActionButtonStyle.Neutral,
+    modifier: Modifier = Modifier,
+    enabled: Boolean = true,
+) {
+    when (style) {
+        ActionButtonStyle.Primary -> FilledTonalButton(
+            onClick = onClick,
+            enabled = enabled,
+            modifier = modifier,
+        ) {
+            Text(label, maxLines = 1, overflow = TextOverflow.Ellipsis)
+        }
+
+        ActionButtonStyle.Neutral -> OutlinedButton(
+            onClick = onClick,
+            enabled = enabled,
+            modifier = modifier,
+        ) {
+            Text(label, maxLines = 1, overflow = TextOverflow.Ellipsis)
+        }
+
+        ActionButtonStyle.Destructive -> OutlinedButton(
+            onClick = onClick,
+            enabled = enabled,
+            modifier = modifier,
+            colors = ButtonDefaults.outlinedButtonColors(
+                contentColor = MaterialTheme.colorScheme.error,
+                disabledContentColor = MaterialTheme.colorScheme.error.copy(alpha = 0.38f),
+            ),
+            border = BorderStroke(
+                1.dp,
+                MaterialTheme.colorScheme.error.copy(alpha = if (enabled) 1f else 0.38f),
+            ),
+        ) {
+            Text(label, maxLines = 1, overflow = TextOverflow.Ellipsis)
+        }
+    }
+}
+
 @Composable
 private fun ActionRow(
     primaryLabel: String,
@@ -952,18 +1121,27 @@ private fun ActionRow(
     onSecondary: () -> Unit,
     primaryEnabled: Boolean = true,
     secondaryEnabled: Boolean = true,
+    primaryStyle: ActionButtonStyle = ActionButtonStyle.Neutral,
+    secondaryStyle: ActionButtonStyle = ActionButtonStyle.Neutral,
 ) {
-    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-        FilledTonalButton(
+    Row(
+        modifier = Modifier.fillMaxWidth(),
+        horizontalArrangement = Arrangement.spacedBy(8.dp),
+    ) {
+        ActionButton(
+            label = primaryLabel,
             onClick = onPrimary,
             enabled = primaryEnabled,
             modifier = Modifier.weight(1f),
-        ) { Text(primaryLabel, maxLines = 1, overflow = TextOverflow.Ellipsis) }
-        OutlinedButton(
+            style = primaryStyle,
+        )
+        ActionButton(
+            label = secondaryLabel,
             onClick = onSecondary,
             enabled = secondaryEnabled,
             modifier = Modifier.weight(1f),
-        ) { Text(secondaryLabel, maxLines = 1, overflow = TextOverflow.Ellipsis) }
+            style = secondaryStyle,
+        )
     }
 }
 
@@ -975,11 +1153,32 @@ private fun ThreeActionRow(
     onSecond: () -> Unit,
     thirdLabel: String,
     onThird: () -> Unit,
+    firstStyle: ActionButtonStyle = ActionButtonStyle.Neutral,
+    secondStyle: ActionButtonStyle = ActionButtonStyle.Neutral,
+    thirdStyle: ActionButtonStyle = ActionButtonStyle.Neutral,
 ) {
-    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-        FilledTonalButton(onClick = onFirst, modifier = Modifier.weight(1f)) { Text(firstLabel) }
-        OutlinedButton(onClick = onSecond, modifier = Modifier.weight(1f)) { Text(secondLabel) }
-        OutlinedButton(onClick = onThird, modifier = Modifier.weight(1f)) { Text(thirdLabel) }
+    Row(
+        modifier = Modifier.fillMaxWidth(),
+        horizontalArrangement = Arrangement.spacedBy(8.dp),
+    ) {
+        ActionButton(
+            label = firstLabel,
+            onClick = onFirst,
+            modifier = Modifier.weight(1f),
+            style = firstStyle,
+        )
+        ActionButton(
+            label = secondLabel,
+            onClick = onSecond,
+            modifier = Modifier.weight(1f),
+            style = secondStyle,
+        )
+        ActionButton(
+            label = thirdLabel,
+            onClick = onThird,
+            modifier = Modifier.weight(1f),
+            style = thirdStyle,
+        )
     }
 }
 
@@ -990,40 +1189,6 @@ private fun SectionTitle(text: String, accented: Boolean = false) {
         style = MaterialTheme.typography.labelLarge,
         fontWeight = FontWeight.Bold,
         color = if (accented) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant,
-    )
-}
-
-@Composable
-private fun OtaTargetSelector(
-    selected: OtaTargetSelection,
-    onSelect: (OtaTargetSelection) -> Unit,
-    enabled: Boolean,
-) {
-    Row(
-        horizontalArrangement = Arrangement.spacedBy(8.dp),
-        modifier = Modifier.fillMaxWidth(),
-    ) {
-        OtaTargetSelection.entries.forEach { target ->
-            FilterChip(
-                selected = selected == target,
-                onClick = { onSelect(target) },
-                label = {
-                    Text(
-                        text = target.label,
-                        style = MaterialTheme.typography.labelMedium,
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis,
-                    )
-                },
-                enabled = enabled,
-                modifier = Modifier.weight(1f),
-            )
-        }
-    }
-    Text(
-        text = selected.description,
-        style = MaterialTheme.typography.bodySmall,
-        color = MaterialTheme.colorScheme.onSurfaceVariant,
     )
 }
 

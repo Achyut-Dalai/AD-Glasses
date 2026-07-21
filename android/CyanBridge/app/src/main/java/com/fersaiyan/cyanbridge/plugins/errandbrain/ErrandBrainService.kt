@@ -6,6 +6,8 @@ import android.content.Intent
 import android.os.IBinder
 import android.util.Log
 import com.fersaiyan.cyanbridge.ai.router.CliRelayClient
+import com.fersaiyan.cyanbridge.bridge.core.DisplayCommand
+import com.fersaiyan.cyanbridge.bridge.core.GlassesBridge
 import com.fersaiyan.cyanbridge.plugins.PluginVoiceRecognizer
 import com.fersaiyan.cyanbridge.plugins.startPluginVoiceForeground
 import com.fersaiyan.cyanbridge.plugins.startPluginVoiceService
@@ -131,6 +133,7 @@ class ErrandBrainService : Service() {
                         this@ErrandBrainService,
                         "Task added: ${task.title.take(NOTIFICATION_TEXT_LIMIT)}",
                     )
+                    GlassesBridge.showCard(DisplayCommand.Card("Task added", task.title))
                 }
             } catch (error: Throwable) {
                 Log.e(TAG, "Failed to create task from voice", error)
@@ -160,6 +163,9 @@ class ErrandBrainService : Service() {
             this,
             "Reminder set: ${title.take(NOTIFICATION_TEXT_LIMIT)}",
         )
+        scope.launch {
+            GlassesBridge.showCard(DisplayCommand.Card("Reminder set", title))
+        }
     }
 
     private suspend fun parseTaskFromVoice(voiceNote: String): TaskEntry? {

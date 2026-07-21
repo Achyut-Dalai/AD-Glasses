@@ -1,9 +1,12 @@
 package com.fersaiyan.cyanbridge.shared.platform
 
 import androidx.compose.ui.window.ComposeUIViewController
+import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import com.fersaiyan.cyanbridge.shared.ai.AiModel
 import com.fersaiyan.cyanbridge.shared.ai.AiModelRegistry
 import com.fersaiyan.cyanbridge.shared.ai.ChatAiService
@@ -12,6 +15,10 @@ import com.fersaiyan.cyanbridge.shared.ai.ChatResponse
 import com.fersaiyan.cyanbridge.shared.ai.ImageAiService
 import com.fersaiyan.cyanbridge.shared.ai.TokenUsage
 import com.fersaiyan.cyanbridge.shared.ai.VoiceAiService
+import com.fersaiyan.cyanbridge.shared.appearance.APPEARANCE_PREFERENCES_NAME
+import com.fersaiyan.cyanbridge.shared.appearance.AppearanceSettingsStore
+import com.fersaiyan.cyanbridge.shared.billing.ProSubscriptionAction
+import com.fersaiyan.cyanbridge.shared.billing.ProSubscriptionUiState
 import com.fersaiyan.cyanbridge.shared.ble.IosBleManager
 import com.fersaiyan.cyanbridge.shared.ble.BleConnectionState
 import com.fersaiyan.cyanbridge.shared.ble.BleNotificationListener
@@ -30,6 +37,7 @@ import com.fersaiyan.cyanbridge.shared.persistence.IosMediaRecordRepository
 import com.fersaiyan.cyanbridge.shared.persistence.IosMemoryVaultRepository
 import com.fersaiyan.cyanbridge.shared.persistence.IosNotesRepository
 import com.fersaiyan.cyanbridge.shared.ui.CyanBridgeApp
+import com.fersaiyan.cyanbridge.shared.ui.theme.CyanBridgeMaterialTheme
 import kotlinx.cinterop.ExperimentalForeignApi
 import kotlinx.cinterop.refTo
 import kotlinx.coroutines.flow.Flow
@@ -37,6 +45,8 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.collect
+import kotlinx.coroutines.flow.filterNotNull
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -46,9 +56,11 @@ import kotlinx.coroutines.cancel
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.suspendCancellableCoroutine
+import kotlinx.coroutines.withTimeoutOrNull
 import kotlin.coroutines.resume
 import platform.NetworkExtension.NEHotspotConfiguration
 import platform.NetworkExtension.NEHotspotConfigurationManager
+import platform.NetworkExtension.NEHotspotNetwork
 import platform.Foundation.NSString
 import platform.Foundation.NSUTF8StringEncoding
 import platform.Foundation.dataUsingEncoding
@@ -56,6 +68,15 @@ import platform.Foundation.NSData
 import platform.Foundation.base64EncodedStringWithOptions
 
 private const val DEFAULT_RELAY_URL = "https://cyanbridge.vercel.app"
+private const val IOS_TRANSFER_IP_TIMEOUT_MS = 15_000L
+private const val IOS_HOST_CREDENTIAL_TIMEOUT_MS = 10_000L
+private val IOS_TRANSFER_MODE_COMMAND = byteArrayOf(0x02, 0x01, 0x04)
+private val IOS_PRO_SUBSCRIPTION_STATE = ProSubscriptionUiState(
+    status = "iOS checkout is unavailable until account sign-in and verified billing are implemented. Pro is not active.",
+    selectedPlan = "free_trial",
+    webCheckoutAvailable = false,
+    isSubscribed = false,
+)
 
 /**
  * Initialize CyanBridgeServices with iOS implementations and return the ComposeUIViewController.
@@ -66,10 +87,9 @@ fun MainViewController() = ComposeUIViewController {
         controller.initializeServices()
     }
     val dashboardState by controller.dashboardState.collectAsState()
-    CyanBridgeApp(
+    IosCyanBridgeApp(
+        controller = controller,
         dashboardState = dashboardState,
-        onDashboardAction = controller::handle,
-        useSharedDestinations = true,
     )
 }
 
@@ -80,7 +100,8 @@ fun MainViewControllerForDestination(destination: String) = ComposeUIViewControl
         controller.initializeServices()
     }
     val dashboardState by controller.dashboardState.collectAsState()
-    CyanBridgeApp(
+    IosCyanBridgeApp(
+        controller = controller,
         initialDestination = when (destination) {
             "chats" -> AppDestination.CHATS
             "media" -> AppDestination.MEDIA
@@ -89,21 +110,62 @@ fun MainViewControllerForDestination(destination: String) = ComposeUIViewControl
             else -> AppDestination.GLASSES
         },
         dashboardState = dashboardState,
-        onDashboardAction = controller::handle,
-        useSharedDestinations = true,
     )
 }
 
-// ── iOS Wi-Fi P2P manager using NEHotspotConfiguration ──
+@Composable
+private fun IosCyanBridgeApp(
+    controller: IosAppController,
+    dashboardState: GlassesDashboardUiState,
+    initialDestination: AppDestination = AppDestination.GLASSES,
+) {
+    val appearanceStore = remember {
+        AppearanceSettingsStore(
+            preferences = createPlatformPreferences(APPEARANCE_PREFERENCES_NAME),
+            dynamicColorAvailable = false,
+        )
+    }
+    var appearanceSettings by remember { mutableStateOf(appearanceStore.load()) }
+
+    CyanBridgeMaterialTheme(settings = appearanceSettings) {
+        CyanBridgeApp(
+            initialDestination = initialDestination,
+            dashboardState = dashboardState,
+            onDashboardAction = controller::handle,
+            appearanceSettings = appearanceSettings,
+            onAppearanceSettingsChange = { nextSettings ->
+                appearanceStore.save(nextSettings)
+                appearanceSettings = appearanceStore.load()
+            },
+            onAppearanceReset = {
+                appearanceStore.reset()
+                appearanceSettings = appearanceStore.load()
+            },
+            useSharedDestinations = true,
+            proSubscriptionState = IOS_PRO_SUBSCRIPTION_STATE,
+            onProSubscriptionAction = ::iosProSubscriptionActionStatus,
+        )
+    }
+}
+
+private fun iosProSubscriptionActionStatus(action: ProSubscriptionAction): String = when (action) {
+    ProSubscriptionAction.SUBSCRIBE ->
+        "iOS billing is not available yet. No payment was started and no Pro entitlement was granted."
+    ProSubscriptionAction.DONATE ->
+        "iOS donations are not available yet. No payment was started."
+}
+
+// ── iOS local Wi-Fi manager using NEHotspotConfiguration ──
 
 /**
- * iOS Wi-Fi P2P manager using NEHotspotConfiguration.
- * iOS doesn't support true Wi-Fi Direct like Android.
- * This uses NEHotspotConfiguration to join the glasses' Wi-Fi hotspot.
+ * iOS local Wi-Fi manager using NEHotspotConfiguration.
+ * iOS does not support Android-style Wi-Fi Direct peer discovery. This adapter
+ * joins a glasses-owned hotspot and relies on the BLE-reported device IP.
  */
 private class IosWifiP2pManager : WifiP2pManager {
     private val _isAvailable = MutableStateFlow(true)
     override val isAvailable: StateFlow<Boolean> = _isAvailable.asStateFlow()
+    override val supportsTrueWifiDirect: Boolean = false
 
     private val _connectionState = MutableStateFlow(P2pConnectionState.IDLE)
     override val connectionState: Flow<P2pConnectionState> = _connectionState.asStateFlow()
@@ -124,35 +186,50 @@ private class IosWifiP2pManager : WifiP2pManager {
     }
 
     override suspend fun connect(peerAddress: String) {
-        val ssid = peerAddress.substringBefore('|').trim()
+        val separator = peerAddress.indexOf('|')
+        val ssid = if (separator >= 0) peerAddress.substring(0, separator) else peerAddress
+        val passphrase = if (separator >= 0) peerAddress.substring(separator + 1) else ""
+        connectToHotspot(ssid, passphrase)
+    }
+
+    suspend fun connectToHotspot(ssidValue: String, passphrase: String) {
+        val ssid = ssidValue.trim()
         require(ssid.isNotEmpty()) { "An iOS hotspot SSID is required" }
-        PlatformLogger.i(TAG, "Connecting to Wi-Fi hotspot: $ssid")
+        PlatformLogger.i(TAG, "Preparing to join Wi-Fi hotspot: $ssid")
         _connectionState.value = P2pConnectionState.CONNECTING
-        val passphrase = peerAddress.substringAfter('|', "").takeIf { it.isNotBlank() }
         try {
-            suspendCancellableCoroutine<Unit> { continuation ->
-                val configuration = if (passphrase == null) {
-                    NEHotspotConfiguration(sSID = ssid)
+            if (currentNetworkSsid() == ssid) {
+                connectedSsid = ssid
+                _connectionState.value = P2pConnectionState.CONNECTED
+                PlatformLogger.i(TAG, "Already connected to Wi-Fi hotspot: $ssid")
+                return
+            }
+
+            val configuration = if (passphrase.isBlank()) {
+                NEHotspotConfiguration(sSID = ssid)
+            } else {
+                NEHotspotConfiguration(sSID = ssid, passphrase = passphrase, isWEP = false)
+            }
+            configuration.joinOnce = true
+            val applyError = applyConfiguration(configuration)
+            if (applyError != null) {
+                PlatformLogger.w(TAG, "iOS hotspot configuration was not accepted: $applyError")
+            }
+
+            check(waitForCurrentNetwork(ssid)) {
+                if (applyError == null) {
+                    "iOS accepted the hotspot request, but is not connected to $ssid. " +
+                        "Open Settings > Wi-Fi and join the glasses hotspot, then retry."
                 } else {
-                    NEHotspotConfiguration(sSID = ssid, passphrase = passphrase, isWEP = false)
-                }
-                NEHotspotConfigurationManager.sharedManager.applyConfiguration(configuration) { error ->
-                    if (error != null) {
-                        _connectionState.value = P2pConnectionState.IDLE
-                        continuation.resumeWith(Result.failure(Exception(error.localizedDescription)))
-                    } else {
-                        connectedSsid = ssid
-                        _connectionState.value = P2pConnectionState.CONNECTED
-                        continuation.resume(Unit)
-                    }
-                }
-                continuation.invokeOnCancellation {
-                    NEHotspotConfigurationManager.sharedManager.removeConfigurationForSSID(ssid)
+                    "iOS could not join $ssid ($applyError). " +
+                        "Open Settings > Wi-Fi and join the glasses hotspot, then retry."
                 }
             }
+            connectedSsid = ssid
+            _connectionState.value = P2pConnectionState.CONNECTED
             PlatformLogger.i(TAG, "Wi-Fi hotspot connected: $ssid")
         } catch (error: Exception) {
-            _connectionState.value = P2pConnectionState.IDLE
+            _connectionState.value = P2pConnectionState.ERROR
             PlatformLogger.e(TAG, "Wi-Fi hotspot connection failed", error)
             throw error
         }
@@ -176,14 +253,48 @@ private class IosWifiP2pManager : WifiP2pManager {
     }
 
     override suspend fun bindToP2pNetwork(): Boolean {
-        // iOS doesn't need explicit network binding like Android
-        // The system routes traffic to the connected Wi-Fi network automatically
+        // iOS has no process-level equivalent of Android's bindProcessToNetwork().
+        // If the SSID is known, verify it; otherwise the media.config request is
+        // the end-to-end readiness probe for an already-connected network.
+        val expectedSsid = connectedSsid ?: return true
+        if (currentNetworkSsid() != expectedSsid) {
+            _connectionState.value = P2pConnectionState.IDLE
+            return false
+        }
         return true
     }
 
     override fun cancelConnection() {
         _connectionState.value = P2pConnectionState.IDLE
     }
+
+    suspend fun hasCurrentWifiConnection(): Boolean = currentNetworkSsid() != null
+
+    private suspend fun applyConfiguration(configuration: NEHotspotConfiguration): String? =
+        suspendCancellableCoroutine { continuation ->
+            NEHotspotConfigurationManager.sharedManager.applyConfiguration(configuration) { error ->
+                if (continuation.isActive) {
+                    continuation.resume(error?.localizedDescription)
+                }
+            }
+        }
+
+    private suspend fun waitForCurrentNetwork(expectedSsid: String): Boolean {
+        repeat(20) { attempt ->
+            if (currentNetworkSsid() == expectedSsid) return true
+            if (attempt < 19) delay(1_000L)
+        }
+        return false
+    }
+
+    private suspend fun currentNetworkSsid(): String? =
+        suspendCancellableCoroutine { continuation ->
+            NEHotspotNetwork.fetchCurrentWithCompletionHandler { network ->
+                if (continuation.isActive) {
+                    continuation.resume(network?.SSID)
+                }
+            }
+        }
 
     companion object {
         private const val TAG = "IosWifiP2p"
@@ -242,7 +353,11 @@ private class IosAppController {
         }
         scope.launch {
             bleManager.connectionState.collect { connectionState ->
+                val wasBleConnected = isBleConnected
                 isBleConnected = connectionState == BleConnectionState.CONNECTED
+                if (wasBleConnected && connectionState == BleConnectionState.DISCONNECTED) {
+                    IosTransferModeConfiguration.clearHotspot()
+                }
                 updateState { state ->
                     state.copy(
                         connectionLabel = when (connectionState) {
@@ -350,24 +465,128 @@ private class IosAppController {
             it.copy(
                 transfer = GlassesTransferUiState(
                     isVisible = true,
-                    detail = "Downloading media.config",
+                    detail = "Preparing glasses for Wi-Fi transfer",
                 ),
+                agentLastError = "",
             )
         }
         syncJob = scope.launch {
-            runCatching { bleManager.sendCommand(byteArrayOf(0x02, 0x01, 0x04)) }
+            if (!isBleConnected) {
+                updateState {
+                    it.copy(transfer = it.transfer.copy(detail = "Connect to the glasses over Bluetooth first"))
+                }
+                return@launch
+            }
+
+            if (!bleManager.awaitCommandReady()) {
+                updateState {
+                    it.copy(
+                        transfer = it.transfer.copy(
+                            detail = "Bluetooth is connected, but the glasses command channel is not ready",
+                        ),
+                    )
+                }
+                return@launch
+            }
+
+            var hotspotCredentials = IosTransferModeConfiguration.current()
+            if (hotspotCredentials?.transferModePrepared == true) {
+                updateState {
+                    it.copy(transfer = it.transfer.copy(detail = "Using host-prepared glasses transfer mode"))
+                }
+            } else {
+                updateState {
+                    it.copy(transfer = it.transfer.copy(detail = "Requesting glasses transfer mode over Bluetooth"))
+                }
+                runCatching { bleManager.sendCommand(IOS_TRANSFER_MODE_COMMAND) }
                 .onFailure { error ->
                     updateState { it.copy(transfer = it.transfer.copy(detail = error.message ?: "Unable to enter transfer mode")) }
                     return@launch
                 }
-            delay(1_500L)
-            val ip = wifiP2pManager.glassesIpAddress.value
+            }
+
+            var ip = wifiP2pManager.glassesIpAddress.value
+            val hasCurrentWifi = hotspotCredentials == null && wifiP2pManager.hasCurrentWifiConnection()
+            if (hotspotCredentials == null &&
+                !wifiP2pManager.isConnected() &&
+                ip == null &&
+                !hasCurrentWifi
+            ) {
+                updateState {
+                    it.copy(
+                        transfer = it.transfer.copy(
+                            detail = "Waiting for iOS hotspot credentials from the host",
+                        ),
+                    )
+                }
+                hotspotCredentials = IosTransferModeConfiguration.awaitCredentials(IOS_HOST_CREDENTIAL_TIMEOUT_MS)
+            }
+
+            hotspotCredentials?.deviceIp?.let(wifiP2pManager::setGlassesIpAddress)
+            ip = wifiP2pManager.glassesIpAddress.value ?: ip
+            val credentials = hotspotCredentials
+            if (credentials != null) {
+                updateState {
+                    it.copy(transfer = it.transfer.copy(detail = "Waiting for the glasses Wi-Fi readiness signal"))
+                }
+                ip = awaitGlassesIp(ip)
+                if (ip == null) {
+                    updateState {
+                        it.copy(
+                            transfer = it.transfer.copy(
+                                detail = "The glasses did not report a Wi-Fi IP. Retry transfer mode or wire the host QCSDK readiness callback.",
+                            ),
+                        )
+                    }
+                    return@launch
+                }
+
+                updateState {
+                    it.copy(transfer = it.transfer.copy(detail = "Joining glasses hotspot ${credentials.ssid}"))
+                }
+                runCatching {
+                    wifiP2pManager.connectToHotspot(credentials.ssid, credentials.passphrase)
+                }.onFailure { error ->
+                    updateState {
+                        it.copy(
+                            transfer = it.transfer.copy(
+                                detail = error.message ?: "Unable to join the glasses hotspot",
+                            ),
+                        )
+                    }
+                    return@launch
+                }
+            } else if (!wifiP2pManager.isConnected() && ip == null && !hasCurrentWifi) {
+                updateState {
+                    it.copy(
+                        transfer = it.transfer.copy(
+                            detail = "iOS hotspot credentials are unavailable. The host must call IosTransferModeConfiguration.configurePreparedHotspot after QCSDK openWifiWithMode, or join the hotspot first.",
+                        ),
+                    )
+                }
+                return@launch
+            } else {
+                updateState {
+                    it.copy(transfer = it.transfer.copy(detail = "Using the current iOS Wi-Fi connection; verifying media.config"))
+                }
+            }
+
+            if (!wifiP2pManager.bindToP2pNetwork()) {
+                updateState {
+                    it.copy(transfer = it.transfer.copy(detail = "The iOS Wi-Fi connection changed before transfer started"))
+                }
+                return@launch
+            }
+
+            ip = awaitGlassesIp(ip)
             if (ip == null) {
                 updateState {
                     it.copy(transfer = it.transfer.copy(detail = "Waiting for the glasses BLE IP notification"))
                 }
                 return@launch
             }
+
+            updateState { it.copy(transfer = it.transfer.copy(detail = "Downloading media.config")) }
             runCatching {
                 mediaTransfer.sync(ip) { completed, total ->
                     updateState {
@@ -385,6 +604,13 @@ private class IosAppController {
             }.onFailure { error ->
                 updateState { it.copy(transfer = it.transfer.copy(detail = error.message ?: "Sync failed")) }
             }
+        }
+    }
+
+    private suspend fun awaitGlassesIp(existingIp: String?): String? {
+        existingIp?.takeIf { it.isNotBlank() }?.let { return it }
+        return withTimeoutOrNull(IOS_TRANSFER_IP_TIMEOUT_MS) {
+            wifiP2pManager.glassesIpAddress.filterNotNull().first()
         }
     }
 

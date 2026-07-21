@@ -132,6 +132,8 @@ class DfuStateMachineTest {
             "OtaState should include BLE_DFU_TRANSFERRING",
             states.contains(OtaState.BLE_DFU_TRANSFERRING),
         )
+        assertTrue("OtaState should include P2P teardown between chips", states.contains(OtaState.TEARING_DOWN_P2P))
+        assertTrue("OtaState should include fresh BLE verification", states.contains(OtaState.VERIFYING_FIRMWARE))
     }
 
     @Test

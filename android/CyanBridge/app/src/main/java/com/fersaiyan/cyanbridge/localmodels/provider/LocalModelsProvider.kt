@@ -65,7 +65,15 @@ class LocalModelsProvider {
         return withContext(Dispatchers.IO) {
             // Check if remote OpenAI server is enabled.
             if (RemoteOpenAiPrefs.isEnabled(context) && RemoteOpenAiPrefs.isConfigured(context)) {
-                return@withContext streamChatRemote(context, messages, onStatus, onToken, maxTokens)
+                return@withContext streamChatRemote(
+                    context = context,
+                    messages = messages,
+                    onStatus = onStatus,
+                    onToken = onToken,
+                    imagePaths = imagePaths,
+                    audioPath = audioPath,
+                    maxTokens = maxTokens,
+                )
             }
 
             LocalModelStorageRepository.cleanupMissingModels(context)
@@ -197,6 +205,8 @@ val retryReply = LocalChatSessionManager.streamGenerate(
         messages: List<Map<String, String>>,
         onStatus: ((String) -> Unit)?,
         onToken: ((String) -> Unit)?,
+        imagePaths: List<String>,
+        audioPath: String?,
         maxTokens: Int?,
     ): String {
         val model = RemoteOpenAiPrefs.getModel(context)
@@ -209,6 +219,8 @@ val retryReply = LocalChatSessionManager.streamGenerate(
                 messages = messages,
                 maxTokens = maxTokens ?: 2048,
                 onToken = onToken,
+                imagePaths = imagePaths,
+                audioPath = audioPath,
             )
         } catch (e: Exception) {
             onStatus?.invoke("Remote error: ${e.message}")

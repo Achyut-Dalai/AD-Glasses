@@ -10,6 +10,8 @@ import androidx.core.content.FileProvider
 import com.fersaiyan.cyanbridge.agent.LocalAgentPrefs as AutomationPrefs
 import com.fersaiyan.cyanbridge.agent.ProSubscriptionServerPrefs
 import com.fersaiyan.cyanbridge.ai.router.AiProviderPrefs
+import com.fersaiyan.cyanbridge.devices.DeviceProfileStore
+import com.fersaiyan.cyanbridge.devices.metarayban.MetaRaybanManager
 import com.fersaiyan.cyanbridge.localmodels.settings.LocalModelSettingsRepository
 import com.fersaiyan.cyanbridge.localmodels.storage.LocalModelStorageRepository
 import kotlinx.coroutines.CoroutineScope
@@ -47,6 +49,10 @@ object DebugLogSupport {
         "CliRelayRouter",
         "LocalAgent",
         "MainActivity",
+        "MetaRaybanManager",
+        "VisualDiaryService",
+        "WalkingAidService",
+        "CommunityPluginsActivity",
         "ChatThreadActivity",
         "SettingsActivity",
         "LocalModelsConfigureActivity",
@@ -169,6 +175,13 @@ object DebugLogSupport {
             append("App: ${context.packageManager.getPackageInfo(context.packageName, 0).versionName}\n")
             append("Provider: ${AutomationPrefs.getProviderType(context)}\n")
             append("Relay: ${AiProviderPrefs.getRelayBaseUrl(context)}\n")
+
+            if (DeviceProfileStore.isMetaSelected(context)) {
+                append("Meta Ray-Ban profile: selected\n")
+                append("Meta DAT diagnostics:\n")
+                append(MetaRaybanManager.getInstance(context).diagnosticsSnapshot())
+                append("\n")
+            }
 
             val selectedModel = runCatching {
                 LocalModelStorageRepository.resolveSelectedModel(context)

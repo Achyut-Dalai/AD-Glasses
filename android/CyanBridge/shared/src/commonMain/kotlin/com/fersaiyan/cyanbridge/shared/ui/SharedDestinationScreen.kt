@@ -15,7 +15,13 @@ import com.fersaiyan.cyanbridge.shared.chat.ChatThreadSummary
 import com.fersaiyan.cyanbridge.shared.chat.ChatThreadUiState
 import com.fersaiyan.cyanbridge.shared.chat.ChatAttachmentsUiState
 import com.fersaiyan.cyanbridge.shared.chat.ChatComposerUiState
+import com.fersaiyan.cyanbridge.shared.billing.ProSubscriptionAction
+import com.fersaiyan.cyanbridge.shared.billing.ProSubscriptionUiState
+import com.fersaiyan.cyanbridge.shared.billing.unavailableProSubscriptionStatus
 import com.fersaiyan.cyanbridge.shared.navigation.AppDestination
+import com.fersaiyan.cyanbridge.shared.navigation.SharedSubscriptionRoute
+import com.fersaiyan.cyanbridge.shared.navigation.closeSubscription
+import com.fersaiyan.cyanbridge.shared.navigation.openSubscription
 import com.fersaiyan.cyanbridge.shared.persistence.ChatEntity
 import com.fersaiyan.cyanbridge.shared.persistence.ChatMessageEntity
 import com.fersaiyan.cyanbridge.shared.plugins.NativePluginCardData
@@ -36,6 +42,7 @@ import com.fersaiyan.cyanbridge.shared.platform.platformCurrentTimeMillis
 import com.fersaiyan.cyanbridge.shared.ui.chat.ChatListScreen
 import com.fersaiyan.cyanbridge.shared.ui.chat.ChatThreadScreen
 import com.fersaiyan.cyanbridge.shared.ui.plugins.CommunityPluginsScreen
+import com.fersaiyan.cyanbridge.shared.ui.pro.ProSubscriptionScreen
 import com.fersaiyan.cyanbridge.shared.ui.recordings.RecordingsScreen
 import com.fersaiyan.cyanbridge.shared.ui.recordings.SyncedMediaGalleryScreen
 import com.fersaiyan.cyanbridge.shared.ui.settings.SettingsScreenActions
@@ -54,12 +61,32 @@ import kotlinx.coroutines.launch
 fun SharedDestinationScreen(
     destination: AppDestination,
     onDestinationSelected: (AppDestination) -> Unit,
+    onOpenAppearance: () -> Unit = {},
+    proSubscriptionState: ProSubscriptionUiState = ProSubscriptionUiState(),
+    onProSubscriptionAction: (ProSubscriptionAction) -> String = ::unavailableProSubscriptionStatus,
 ) {
+    var subscriptionRoute by remember(destination) {
+        mutableStateOf(SharedSubscriptionRoute.SETTINGS)
+    }
+
     when (destination) {
         AppDestination.CHATS -> SharedChatsDestination(onDestinationSelected)
         AppDestination.MEDIA -> SharedMediaDestination(onDestinationSelected)
         AppDestination.PLUGINS -> SharedPluginsDestination(onDestinationSelected)
-        AppDestination.SETTINGS -> SharedSettingsDestination(onDestinationSelected)
+        AppDestination.SETTINGS -> when (subscriptionRoute) {
+            SharedSubscriptionRoute.SETTINGS -> SharedSettingsDestination(
+                onDestinationSelected = onDestinationSelected,
+                onOpenAppearance = onOpenAppearance,
+                onOpenSubscription = {
+                    subscriptionRoute = subscriptionRoute.openSubscription()
+                },
+            )
+            SharedSubscriptionRoute.PRO_SUBSCRIPTION -> SharedProSubscriptionDestination(
+                initialState = proSubscriptionState,
+                onSubscriptionAction = onProSubscriptionAction,
+                onBack = { subscriptionRoute = subscriptionRoute.closeSubscription() },
+            )
+        }
         AppDestination.GLASSES -> Unit
     }
 }
@@ -345,7 +372,11 @@ private fun SharedPluginsDestination(onDestinationSelected: (AppDestination) -> 
 }
 
 @Composable
-private fun SharedSettingsDestination(onDestinationSelected: (AppDestination) -> Unit) {
+private fun SharedSettingsDestination(
+    onDestinationSelected: (AppDestination) -> Unit,
+    onOpenAppearance: () -> Unit,
+    onOpenSubscription: () -> Unit,
+) {
     var expandedSections by remember { mutableStateOf<Set<SettingsSection>>(emptySet()) }
     val preferences = remember { createPlatformPreferences(SHARED_SETTINGS_PREFS) }
     var settingsState by remember {
@@ -357,9 +388,11 @@ private fun SharedSettingsDestination(onDestinationSelected: (AppDestination) ->
             ),
         )
     }
-    val actions = remember(onDestinationSelected) {
+    val actions = remember(onDestinationSelected, onOpenAppearance, onOpenSubscription) {
         SharedSettingsScreenActions(
             onDestinationSelected = onDestinationSelected,
+            onOpenAppearance = onOpenAppearance,
+            onOpenSubscription = onOpenSubscription,
             currentState = { settingsState },
             updateState = { next ->
                 settingsState = next
@@ -382,8 +415,48 @@ private fun SharedSettingsDestination(onDestinationSelected: (AppDestination) ->
     )
 }
 
+@Composable
+private fun SharedProSubscriptionDestination(
+    initialState: ProSubscriptionUiState,
+    onSubscriptionAction: (ProSubscriptionAction) -> String,
+    onBack: () -> Unit,
+) {
+    var state by remember(initialState) { mutableStateOf(initialState) }
+
+    fun reportUnavailableAction(action: ProSubscriptionAction) {
+        state = state.copy(
+            status = onSubscriptionAction(action),
+            checkoutPlan = null,
+        )
+    }
+
+    ProSubscriptionScreen(
+        state = state,
+        onPlanSelected = { plan -> state = state.copy(selectedPlan = plan) },
+        onSubscribeInApp = { reportUnavailableAction(ProSubscriptionAction.SUBSCRIBE) },
+        onSubscribeOnWebsite = {
+            if (state.webCheckoutAvailable) {
+                state = state.copy(checkoutPlan = state.selectedPlan)
+            } else {
+                reportUnavailableAction(ProSubscriptionAction.SUBSCRIBE)
+            }
+        },
+        onSecureCheckoutSelected = { reportUnavailableAction(ProSubscriptionAction.SUBSCRIBE) },
+        onDismissSecureCheckout = { state = state.copy(checkoutPlan = null) },
+        onDonate = { reportUnavailableAction(ProSubscriptionAction.DONATE) },
+        onCancelSubscription = {
+            state = state.copy(
+                status = "Subscription management is unavailable on this host. No entitlement was changed.",
+            )
+        },
+        onBack = onBack,
+    )
+}
+
 private class SharedSettingsScreenActions(
     private val onDestinationSelected: (AppDestination) -> Unit,
+    private val onOpenAppearance: () -> Unit,
+    private val onOpenSubscription: () -> Unit,
     private val currentState: () -> SettingsUiState,
     private val updateState: (SettingsUiState) -> Unit,
 ) : SettingsScreenActions {
@@ -392,11 +465,11 @@ private class SharedSettingsScreenActions(
     }
 
     override fun onDestinationSelected(destination: AppDestination) = onDestinationSelected.invoke(destination)
-    override fun openAppearance() = Unit
+    override fun openAppearance() = onOpenAppearance.invoke()
     override fun openAppLanguageSelection() = Unit
     override fun openVisionProfileSelection() = Unit
     override fun editVisionInstructions() = Unit
-    override fun openSubscription() = Unit
+    override fun openSubscription() = onOpenSubscription.invoke()
     override fun setProviderType(type: AgentProviderType) = update { it.copy(providerType = type) }
     override fun openLocalModels() = Unit
     override fun setLocalAgentAutomationEnabled(enabled: Boolean) = update { it.copy(localAgentAutomationEnabled = enabled) }

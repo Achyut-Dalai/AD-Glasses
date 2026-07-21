@@ -49,6 +49,7 @@
     <uses-permission android:name="android.permission.WAKE_LOCK" />
     <uses-permission android:name="android.permission.RECEIVE_USER_PRESENT" />
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_CONNECTED_DEVICE" />
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE_DATA_SYNC" />
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE_SPECIAL_USE" />
     <uses-permission android:name="android.permission.DOWNLOAD_WITHOUT_NOTIFICATION" />
@@ -126,6 +127,10 @@
 
         <activity
             android:name=".ui.DeviceBindActivity" />
+        <service
+            android:name=".devices.meizumyvu.MeizuMyvuConnectionService"
+            android:exported="false"
+            android:foregroundServiceType="connectedDevice" />
         <activity
             android:name=".ui.ChatListActivity"
             android:exported="false"

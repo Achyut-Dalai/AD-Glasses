@@ -1,7 +1,6 @@
 package com.fersaiyan.cyanbridge.shared.ui.appearance
 
 import androidx.compose.foundation.background
-import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -292,21 +291,33 @@ private fun PreviewCard() {
                 "Theme changes apply immediately to migrated Material 3 screens.",
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
-            Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+            ) {
                 Surface(
+                    modifier = Modifier.weight(1f),
                     color = MaterialTheme.colorScheme.primary,
                     contentColor = MaterialTheme.colorScheme.onPrimary,
                     shape = MaterialTheme.shapes.small,
                 ) {
-                    Text("Primary", modifier = Modifier.padding(horizontal = 16.dp, vertical = 10.dp))
+                    Text("Primary", modifier = Modifier.padding(horizontal = 8.dp, vertical = 10.dp))
                 }
                 Surface(
-                    color = MaterialTheme.colorScheme.surface,
-                    contentColor = MaterialTheme.colorScheme.primary,
+                    modifier = Modifier.weight(1f),
+                    color = MaterialTheme.colorScheme.secondaryContainer,
+                    contentColor = MaterialTheme.colorScheme.onSecondaryContainer,
                     shape = MaterialTheme.shapes.small,
-                    border = BorderStroke(1.dp, MaterialTheme.colorScheme.primary),
                 ) {
-                    Text("Secondary", modifier = Modifier.padding(horizontal = 16.dp, vertical = 10.dp))
+                    Text("Secondary", modifier = Modifier.padding(horizontal = 8.dp, vertical = 10.dp))
+                }
+                Surface(
+                    modifier = Modifier.weight(1f),
+                    color = MaterialTheme.colorScheme.tertiaryContainer,
+                    contentColor = MaterialTheme.colorScheme.onTertiaryContainer,
+                    shape = MaterialTheme.shapes.small,
+                ) {
+                    Text("Tertiary", modifier = Modifier.padding(horizontal = 8.dp, vertical = 10.dp))
                 }
             }
         }

@@ -41,6 +41,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -49,6 +50,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import com.fersaiyan.cyanbridge.shared.localmodels.LocalModelDownloadUiState
 import com.fersaiyan.cyanbridge.shared.localmodels.LocalModelOptionField
 import com.fersaiyan.cyanbridge.shared.localmodels.LocalModelTextField
 import com.fersaiyan.cyanbridge.shared.localmodels.LocalModelToggleField
@@ -62,13 +64,22 @@ fun LocalModelsConfigureScreen(
     state: LocalModelsConfigureUiState,
     onAction: (LocalModelsAction) -> Unit,
 ) {
+    var showUnsavedChangesDialog by rememberSaveable { mutableStateOf(false) }
+    val requestBack = {
+        if (state.hasUnsavedChanges) {
+            showUnsavedChangesDialog = true
+        } else {
+            onAction(LocalModelsAction.Back)
+        }
+    }
+
     Scaffold(
         contentWindowInsets = WindowInsets.safeDrawing,
         topBar = {
             TopAppBar(
                 title = { Text("Local models") },
                 navigationIcon = {
-                    IconButton(onClick = { onAction(LocalModelsAction.Back) }) {
+                    IconButton(onClick = requestBack) {
                         Icon(Icons.AutoMirrored.Outlined.ArrowBack, contentDescription = "Back")
                     }
                 },
@@ -121,6 +132,17 @@ fun LocalModelsConfigureScreen(
                             }
                         }
                     }
+                }
+            }
+            if (state.download.isInFlight ||
+                state.download.message.isNotBlank() ||
+                state.download.progressPercent != null
+            ) {
+                item {
+                    DownloadProgressCard(
+                        state = state.download,
+                        onAction = onAction,
+                    )
                 }
             }
             item {
@@ -204,7 +226,7 @@ fun LocalModelsConfigureScreen(
                     onToggle = { onAction(LocalModelsAction.ToggleSection(LocalModelsSection.REMOTE_SERVER)) },
                 ) {
                     Text(
-                        "Connect to an OpenAI-compatible server on your LAN or Tailnet. It must expose /v1/chat/completions.",
+                        "Connect to an OpenAI-compatible server on your LAN or Tailnet. It must expose /v1/chat/completions; images use image_url data URLs and audio uses input_audio base64 (WAV/MP3).",
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                     )
@@ -439,30 +461,7 @@ fun LocalModelsConfigureScreen(
                 }
             }
             item {
-                ScreenCard("Download and diagnostics") {
-                    if (state.download.message.isNotBlank()) {
-                        Text(
-                            state.download.message,
-                            style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        )
-                    }
-                    if (state.download.isInFlight || state.download.progressPercent != null) {
-                        state.download.progressPercent?.let { percent ->
-                            LinearProgressIndicator(
-                                progress = { percent.coerceIn(0, 100) / 100f },
-                                modifier = Modifier.fillMaxWidth(),
-                            )
-                        } ?: LinearProgressIndicator(modifier = Modifier.fillMaxWidth())
-                    }
-                    if (state.download.isInFlight) {
-                        OutlinedButton(
-                            onClick = { onAction(LocalModelsAction.CancelDownload) },
-                            modifier = Modifier.fillMaxWidth(),
-                        ) {
-                            Text("Cancel download")
-                        }
-                    }
+                ScreenCard("Diagnostics") {
                     OutlinedButton(
                         onClick = { onAction(LocalModelsAction.RunWarmup) },
                         enabled = state.selectedInstalledModelId != null && !state.download.isInFlight,
@@ -481,12 +480,74 @@ fun LocalModelsConfigureScreen(
             }
             item {
                 Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End) {
-                    OutlinedButton(onClick = { onAction(LocalModelsAction.Back) }) { Text("Close") }
+                    OutlinedButton(onClick = requestBack) { Text("Close") }
                     Spacer(Modifier.width(8.dp))
                     FilledTonalButton(onClick = { onAction(LocalModelsAction.SaveGenerationSettings) }) {
                         Text("Save")
                     }
                 }
+            }
+        }
+    }
+
+    if (showUnsavedChangesDialog) {
+        AlertDialog(
+            onDismissRequest = { showUnsavedChangesDialog = false },
+            title = { Text("Unsaved changes") },
+            text = { Text("Your local-model settings have changed. Leave without saving?") },
+            dismissButton = {
+                TextButton(onClick = { showUnsavedChangesDialog = false }) {
+                    Text("Keep editing")
+                }
+            },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        showUnsavedChangesDialog = false
+                        onAction(LocalModelsAction.DiscardChangesAndBack)
+                    },
+                ) {
+                    Text("Discard")
+                }
+            },
+        )
+    }
+}
+
+@Composable
+private fun DownloadProgressCard(
+    state: LocalModelDownloadUiState,
+    onAction: (LocalModelsAction) -> Unit,
+) {
+    ScreenCard("Download progress") {
+        if (state.message.isNotBlank()) {
+            Text(
+                state.message,
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier.testTag("local_model_download_message"),
+            )
+        }
+        if (state.isInFlight || state.progressPercent != null) {
+            state.progressPercent?.let { percent ->
+                LinearProgressIndicator(
+                    progress = { percent.coerceIn(0, 100) / 100f },
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .testTag("local_model_download_progress"),
+                )
+            } ?: LinearProgressIndicator(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .testTag("local_model_download_progress"),
+            )
+        }
+        if (state.isInFlight) {
+            OutlinedButton(
+                onClick = { onAction(LocalModelsAction.CancelDownload) },
+                modifier = Modifier.fillMaxWidth(),
+            ) {
+                Text("Cancel download")
             }
         }
     }

@@ -8,12 +8,34 @@
 - Embeds a Compose Multiplatform `ComposeUIViewController` via `UIViewControllerRepresentable` in SwiftUI. Both Android and iOS render from the same shared `@Composable` screens in `shared/commonMain`.
 - Shares appearance models, semantic icons, navigation destinations, chat models, immutable chat-thread presentation state, meeting-summary contracts, deterministic Markdown formatting, the offline rule-based summarizer, and shared Compose Multiplatform UI screens.
 - The KMP host now renders the shared Chats, Media, Plugins, and Settings destinations directly. Android keeps its existing Activity presenters unless it opts into the same shared route.
-- The iOS adapter now has a CoreBluetooth scan/connect/discovery path, standard battery/firmware characteristic reads, NEHotspotConfiguration-based hotspot joining, durable JSON-backed repositories, and the glasses `media.config`/file download flow.
+- The iOS adapter now has a CoreBluetooth scan/connect/discovery path, standard battery/firmware characteristic reads, readiness-gated NEHotspotConfiguration hotspot joining, durable JSON-backed repositories, and the glasses `media.config`/file download flow.
 - iOS simulator targets use a dynamic framework (`isStatic = false`) for Skiko compatibility; the device target (`iosArm64`) uses a static framework.
 - Leaves CoreBluetooth, NetworkExtension, Photos, audio, StoreKit, local inference, and QCSDK.framework calls in native adapters.
 - A shared `CyanBridgeKMPHost.xcscheme` is tracked in the Xcode project for reproducible CI builds.
 
 The Objective-C QCSDK demo remains protocol evidence. It is not the new app architecture and must not become a second copy of Android's state machines.
+
+## iOS Transfer Readiness
+
+The shared iOS sync path follows the device-reported transfer sequence:
+
+1. Wait for CoreBluetooth service discovery to expose a writable characteristic.
+2. Request transfer mode with the already documented `[0x02, 0x01, 0x04]` command when the host has not prepared it through QCSDK.
+3. Wait for the glasses BLE notification containing their Wi-Fi IP.
+4. Join the glasses hotspot with `NEHotspotConfiguration` when credentials are available.
+5. Re-check the active iOS SSID before requesting `/files/media.config`.
+
+`CyanBridgeKMPHost` intentionally does not link the opaque `QCSDK.framework`, so it cannot call `QCSDKCmdCreator.openWifiWithMode:success:fail:` itself. A physical host that does link QCSDK should pass the successful callback's credentials to the exported Kotlin seam:
+
+```text
+IosTransferModeConfiguration.configurePreparedHotspot(ssid, passphrase)
+```
+
+When the host also receives the IP from QCSDK's `getDeviceWifiIPSuccess` callback, it may pass it as the third argument. Otherwise the shared BLE notification listener still waits for the normal device-reported IP.
+
+The seam can also be configured with `configureHotspot` when the host has credentials but still wants the shared flow to send the documented transfer command. It never supplies the legacy hard-coded password. If neither credentials nor an already-connected iOS transfer network is available, the UI reports the missing host setup instead of claiming that Wi-Fi Direct is connected. The BLE-reported IP and `/files/media.config` handling remain the source of truth for the HTTP transfer.
+
+The KMP host target includes the Hotspot Configuration and Wi-Fi information entitlements, plus the CoreBluetooth and NetworkExtension link flags required by the iOS adapters. These capabilities do not turn iOS into an Android-style Wi-Fi Direct peer; `supportsTrueWifiDirect` remains false on the iOS adapter.
 
 ## Mac Setup
 
@@ -93,10 +115,10 @@ Both Android and iOS share the same CMP `MaterialTheme` from `org.jetbrains.comp
 - Linux can configure the Apple targets and compile shared common code, but cannot link or run iOS binaries. A Mac with Xcode is required for those checks.
 - On Linux, run `python3 ios/scripts/verify_kmp_host.py` from the repository root to statically confirm project wiring. The full build pipeline requires the GitHub Actions macOS runner or a local Mac.
 - `QCSDK.framework` is presently an opaque static archive from the vendor demo. Its inspected objects are arm64 only; simulator platform compatibility, current Xcode compatibility, license, and device behavior remain unverified. `CyanBridgeKMPHost` intentionally does not link it.
-- `GlassesWiFiHandler` contains a legacy hard-coded hotspot-password workaround. It is reference-only until physical-device testing proves a safe replacement.
+- `GlassesWiFiHandler` contains a legacy hard-coded hotspot-password workaround. It is reference-only; the KMP host requires credentials from its QCSDK integration or an already-connected hotspot.
 - The GitHub Actions CI uses GitHub's hosted Apple Silicon runners. Private repositories consume billed Actions minutes (macOS is charged at $0.062/minute after the free quota). Public repositories run macOS jobs free of charge.
 - Simulator validation can verify CMP rendering, framework linking, Swift compilation, SwiftUI rendering, and app launch, but it cannot validate Bluetooth pairing, Wi-Fi hotspot joining, QCSDK behavior, or media transfer from physical glasses. Those require a real iPhone near the glasses and are deferred.
-- CoreBluetooth intentionally discovers writable/notifying characteristics by properties because the vendor's proprietary UUIDs are not exposed in the public iOS headers. The generic adapter must be validated against a real glasses firmware before it can be considered protocol-complete.
+- CoreBluetooth intentionally discovers writable/notifying characteristics by properties because the vendor's proprietary UUIDs are not exposed in the public iOS headers. The generic adapter must be validated against a real glasses firmware before it can be considered protocol-complete. A host integrating QCSDK should use `configurePreparedHotspot` rather than relying on the generic command fallback.
 - iOS cannot provide an Android-style screen `AccessibilityService`; AutoDiary therefore remains unavailable on iOS. Auto Audio and Visual Diary still need iOS background scheduling, vendor media semantics, and foreground/background privacy validation before being enabled in the iOS plugin catalog.
 - iOS repository durability currently uses namespaced `NSUserDefaults` JSON stores. It is safe for the current host shell but is not yet a migration to SQLite/SQLDelight for large memory or media catalogs.
 - The shared iOS host uses the relay AI adapters for chat, voice, and image requests. Offline Moonshine/Vosk/LiteRT/llama.cpp inference remains Android-specific.

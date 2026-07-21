@@ -4,6 +4,7 @@ import kotlinx.cinterop.ExperimentalForeignApi
 import kotlinx.cinterop.ObjCSignatureOverride
 import kotlinx.cinterop.readBytes
 import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.delay
@@ -16,6 +17,7 @@ import kotlinx.coroutines.channels.ProducerScope
 import kotlinx.coroutines.channels.awaitClose
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.suspendCancellableCoroutine
+import kotlinx.coroutines.withTimeoutOrNull
 import platform.CoreBluetooth.CBCentralManager
 import platform.CoreBluetooth.CBCentralManagerDelegateProtocol
 import platform.CoreBluetooth.CBAdvertisementDataLocalNameKey
@@ -61,6 +63,7 @@ class IosBleManager : BleManager {
     private var pendingConnect: kotlin.coroutines.Continuation<Unit>? = null
     private var pendingBattery: kotlin.coroutines.Continuation<Int?>? = null
     private var pendingFirmware: kotlin.coroutines.Continuation<String?>? = null
+    private var characteristicsReady = CompletableDeferred<Unit>()
 
     private val _isBluetoothEnabled = MutableStateFlow(false)
     override val isBluetoothEnabled: StateFlow<Boolean> = _isBluetoothEnabled.asStateFlow()
@@ -143,13 +146,22 @@ class IosBleManager : BleManager {
         if (command.isEmpty()) return
         val peripheral = connectedPeripheral
             ?: throw IllegalStateException("No iOS BLE peripheral is connected")
-        val characteristic = writeCharacteristic
-        if (characteristic == null) {
-            pendingCommands += command.copyOf()
-            PlatformLogger.i(TAG, "Queued ${command.size}-byte command until BLE characteristics are ready")
-            return
+        val characteristic = writeCharacteristic ?: run {
+            check(awaitCommandReady()) { "BLE command channel is not ready" }
+            writeCharacteristic ?: throw IllegalStateException("BLE write characteristic is unavailable")
         }
         writeCommand(peripheral, characteristic, command)
+    }
+
+    override suspend fun awaitCommandReady(timeoutMs: Long): Boolean {
+        if (!isConnected()) return false
+        if (writeCharacteristic != null) return true
+        return runCatching {
+            withTimeoutOrNull(timeoutMs.coerceAtLeast(1L)) {
+                characteristicsReady.await()
+                true
+            } ?: false
+        }.getOrDefault(false)
     }
 
     private fun writeCommand(
@@ -226,6 +238,7 @@ class IosBleManager : BleManager {
             pendingFirmware = null
             connectedPeripheral = null
             writeCharacteristic = null
+            characteristicsReady.cancel()
             notifyCharacteristics.clear()
             batteryCharacteristic = null
             firmwareCharacteristic = null
@@ -274,6 +287,8 @@ class IosBleManager : BleManager {
 
         override fun centralManager(central: CBCentralManager, didConnectPeripheral: CBPeripheral) {
             connectedPeripheral = didConnectPeripheral
+            writeCharacteristic = null
+            characteristicsReady = CompletableDeferred()
             didConnectPeripheral.delegate = this
             _connectedDeviceMac.value = didConnectPeripheral.identifier.UUIDString
             _connectionState.value = BleConnectionState.CONNECTED
@@ -289,6 +304,7 @@ class IosBleManager : BleManager {
             didFailToConnectPeripheral: CBPeripheral,
             error: NSError?,
         ) {
+            characteristicsReady.cancel()
             _connectionState.value = BleConnectionState.DISCONNECTED
             pendingConnect?.resumeWithException(
                 IllegalStateException(error?.localizedDescription ?: "iOS BLE connection failed"),
@@ -305,6 +321,7 @@ class IosBleManager : BleManager {
             if (connectedPeripheral?.identifier?.UUIDString == didDisconnectPeripheral.identifier.UUIDString) {
                 connectedPeripheral = null
                 writeCharacteristic = null
+                characteristicsReady.cancel()
                 pendingCommands.clear()
                 notifyCharacteristics.clear()
                 batteryCharacteristic = null
@@ -322,6 +339,7 @@ class IosBleManager : BleManager {
         override fun peripheral(peripheral: CBPeripheral, didDiscoverServices: NSError?) {
             didDiscoverServices?.let {
                 PlatformLogger.e(TAG, "Service discovery failed: ${it.localizedDescription}")
+                characteristicsReady.cancel()
                 return
             }
             peripheral.services.orEmpty().filterIsInstance<CBService>().forEach { service ->
@@ -337,6 +355,7 @@ class IosBleManager : BleManager {
         ) {
             error?.let {
                 PlatformLogger.e(TAG, "Characteristic discovery failed: ${it.localizedDescription}")
+                characteristicsReady.cancel()
                 return
             }
             didDiscoverCharacteristicsForService.characteristics.orEmpty()
@@ -368,6 +387,7 @@ class IosBleManager : BleManager {
             pendingCommands.clear()
             val writable = writeCharacteristic
             if (writable != null) {
+                characteristicsReady.complete(Unit)
                 queued.forEach { command -> writeCommand(peripheral, writable, command) }
             }
         }

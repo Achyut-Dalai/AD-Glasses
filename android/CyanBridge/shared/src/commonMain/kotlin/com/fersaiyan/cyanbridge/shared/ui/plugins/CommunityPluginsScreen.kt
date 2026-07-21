@@ -438,12 +438,22 @@ private fun PluginCard(
                     },
                 )
             }
-            if (!plugin.taskerNetLink.isNullOrBlank()) {
-                TextButton(
-                    onClick = onOpenPlugin,
-                    modifier = Modifier.fillMaxWidth(),
-                ) {
-                    Text("Open in Tasker")
+            when {
+                !plugin.taskerNetLink.isNullOrBlank() -> {
+                    TextButton(
+                        onClick = onOpenPlugin,
+                        modifier = Modifier.fillMaxWidth(),
+                    ) {
+                        Text("Open in Tasker")
+                    }
+                }
+                !plugin.downloadUrl.isNullOrBlank() -> {
+                    TextButton(
+                        onClick = onOpenPlugin,
+                        modifier = Modifier.fillMaxWidth(),
+                    ) {
+                        Text("Download plugin")
+                    }
                 }
             }
         }

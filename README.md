@@ -100,6 +100,25 @@ phone's Wi-Fi Direct group-owner address for the glasses address.
 | `BRIDGE_RESEARCH_NOTES.md` | Detailed MemoMind/XGIMI transport and protocol findings. |
 | `WIFI_TRANSFER_ARCHITECTURE.md` | Historical technical background for the HeyCyan transfer design. |
 
+## Upstream projects and acknowledgements
+
+CyanBridge is made possible by the work of other open-source developers. Please
+visit these projects, star the repositories, follow their maintainers, and
+consider donating or sponsoring them through any support links in their
+repositories or profiles:
+
+| Project | How it contributed |
+| --- | --- |
+| [Meizu MYVU Client](https://github.com/Panny777/Meizu-Myvu-Client) by [Panny777](https://github.com/Panny777) | Hardware-verified MYVU / Star Air protocol client. Its BLE, ECDH, RFCOMM relay, heartbeat, and display transport are used by the native MYVU integration. |
+| [OpenVision](https://github.com/rayl15/OpenVision) by [rayl15](https://github.com/rayl15) | Important reference for the Meta Ray-Ban integration direction, wearable connection architecture, and glasses-based AI workflows. |
+| [private-agent](https://github.com/orailnoor/private-agent) by [orailnoor](https://github.com/orailnoor) | Inspiration for CyanBridge's local-agent architecture, especially the Accessibility-based observe, decide, execute, and observe loop. |
+
+These projects remain independent works with their own licenses and
+maintainers. See each repository for its licensing, contribution, and support
+information. If you use or benefit from them, a star, a follow, a useful issue
+or pull request, and financial support where available are meaningful ways to
+give back.
+
 ## Privacy and safety
 
 - Keep pairing, recording, transfer, and notification permissions explicit.

@@ -24,4 +24,19 @@
     <string name="walking_aid_source_cloud">Cloud (Pro)</string>
     <string name="walking_aid_not_connected">Walking Aid: Occhiali non connessi. Collega prima i tuoi occhiali.</string>
     <string name="walking_aid_meeting_active">Walking Aid: Registrazione riunione attiva. Ferma la riunione prima di attivare Walking Aid.</string>
+    <string name="onboarding_glasses_connection_title">Collega i tuoi occhiali</string>
+    <string name="onboarding_glasses_connection_desc">Consenti a CyanBridge di trovare e collegare gli occhiali vicini.</string>
+    <string name="onboarding_glasses_connection_details">Il permesso Bluetooth viene usato solo per trovare, associare e comunicare con gli occhiali. Puoi continuare senza concederlo ora e farlo in seguito quando colleghi un dispositivo.</string>
+    <string name="onboarding_optional_features_title">Funzioni opzionali, scegli tu</string>
+    <string name="onboarding_optional_features_desc">AutoDiary, Auto Audio, Local Agent e le funzioni Pro sono opzionali e si configurano da Plugin.</string>
+    <string name="onboarding_optional_features_details">Inizia collegando gli occhiali, poi esplora i plugin quando vuoi. Ogni plugin spiega cosa fa e richiede solo i permessi necessari quando lo attivi. Puoi rivedere o disattivare le funzioni in qualsiasi momento.</string>
+    <string name="onboarding_open_source_title">Sviluppato apertamente</string>
+    <string name="onboarding_open_source_desc">Esamina il codice, segnala i problemi e aiuta a migliorare CyanBridge per tutti.</string>
+    <string name="onboarding_open_source_details">CyanBridge è open source. Esamina il codice per capire il comportamento, segnala bug o problemi di sicurezza, suggerisci miglioramenti o contribuisci tramite GitHub.</string>
+    <string name="onboarding_skip_all">Salta tutto</string>
+    <string name="onboarding_back">Indietro</string>
+    <string name="onboarding_next">Avanti</string>
+    <string name="onboarding_get_started">Inizia</string>
+    <string name="meta_diagnostics_title">Diagnostica Meta Ray-Ban</string>
+    <string name="meta_diagnostics_description">CyanBridge raccoglierà lo stato recente di Meta DAT, gli errori, i dettagli del dispositivo e le righe logcat filtrate per analizzare il problema.</string>
 </resources>

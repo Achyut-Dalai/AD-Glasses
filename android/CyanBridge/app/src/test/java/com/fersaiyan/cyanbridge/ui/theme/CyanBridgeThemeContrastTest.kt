@@ -20,6 +20,10 @@ class CyanBridgeThemeContrastTest {
                     assertContrast(name, "variant text", scheme.onSurfaceVariant, scheme.surfaceVariant, 4.5)
                     assertContrast(name, "primary action", scheme.onPrimary, scheme.primary, 4.5)
                     assertContrast(name, "primary container", scheme.onPrimaryContainer, scheme.primaryContainer, 4.5)
+                    assertContrast(name, "secondary action", scheme.onSecondary, scheme.secondary, 4.5)
+                    assertContrast(name, "secondary container", scheme.onSecondaryContainer, scheme.secondaryContainer, 4.5)
+                    assertContrast(name, "tertiary action", scheme.onTertiary, scheme.tertiary, 4.5)
+                    assertContrast(name, "tertiary container", scheme.onTertiaryContainer, scheme.tertiaryContainer, 4.5)
                     assertContrast(name, "control outline", scheme.outline, scheme.background, 3.0)
                 }
             }

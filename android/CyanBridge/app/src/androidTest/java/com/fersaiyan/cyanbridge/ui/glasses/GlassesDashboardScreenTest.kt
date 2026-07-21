@@ -105,6 +105,26 @@ class GlassesDashboardScreenTest {
     }
 
     @Test
+    fun metaErrorKeepsDiagnosticsActionVisible() {
+        var action: GlassesDashboardAction? = null
+        composeRule.setContent {
+            CyanBridgeTheme {
+                GlassesDashboardScreen(
+                    state = GlassesDashboardUiState(
+                        showMetaRaybanControls = true,
+                        metaRayban = MetaRaybanUiState(lastError = "startSession: registration required"),
+                    ),
+                    onAction = { action = it },
+                )
+            }
+        }
+
+        composeRule.onNodeWithTag("meta_rayban_last_error").assertIsDisplayed()
+        composeRule.onNodeWithText("Send Meta diagnostics").performClick()
+        composeRule.runOnIdle { assertEquals(GlassesDashboardAction.MetaSendDiagnostics, action) }
+    }
+
+    @Test
     fun rendersSelectedNativePluginShortcutsAndDispatchesAction() {
         var action: GlassesDashboardAction? = null
         composeRule.setContent {
@@ -181,7 +201,7 @@ class GlassesDashboardScreenTest {
             }
         }
 
-        composeRule.onNodeWithText("Choose Wi-Fi SWU").performClick()
+        composeRule.onNodeWithText("Choose combined OTA files").performClick()
         composeRule.onNodeWithTag("ota_firmware_source_picker").assertIsDisplayed()
         composeRule.onNodeWithTag("ota_firmware_source_personal_file").assertIsNotEnabled()
 

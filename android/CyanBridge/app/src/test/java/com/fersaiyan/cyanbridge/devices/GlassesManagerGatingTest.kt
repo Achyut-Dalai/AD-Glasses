@@ -46,6 +46,23 @@ class GlassesManagerGatingTest {
     }
 
     @Test
+    fun meizuMyvu_showsDisplayControlsAndBatteryOnly() {
+        val profile = DeviceProfile(
+            macAddress = "00:11:22:33:44:55",
+            advertisedName = "MYVU Star Air",
+            detectedClass = DeviceClass.MEIZU_MYVU,
+            selectedClass = DeviceClass.MEIZU_MYVU,
+            userOverridden = false,
+        )
+
+        val model = GlassesManagerGating.uiModel(profile)
+        assertTrue(model.isVisible(GlassesManagerGating.Action.MEIZU_MYVU_CONTROLS))
+        assertTrue(model.isVisible(GlassesManagerGating.Action.STATUS_BATTERY))
+        assertFalse(model.isVisible(GlassesManagerGating.Action.STATUS_STORAGE))
+        assertFalse(model.isVisible(GlassesManagerGating.Action.HEY_CYAN_EXTRAS))
+    }
+
+    @Test
     fun genericAudio_hidesHeyCyanExtras() {
         val profile = DeviceProfile(
             macAddress = "10:20:30:40:50:60",

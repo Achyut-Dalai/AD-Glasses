@@ -8,6 +8,7 @@ import sys
 ROOT = Path(__file__).resolve().parents[2]
 PROJECT = ROOT / "ios" / "QCSDKDemo.xcodeproj" / "project.pbxproj"
 HOST = ROOT / "ios" / "CyanBridgeKMPHost" / "CyanBridgeKMPHostApp.swift"
+HOST_ENTITLEMENTS = ROOT / "ios" / "CyanBridgeKMPHost" / "CyanBridgeKMPHost.entitlements"
 DEMO_APP_DELEGATE = ROOT / "ios" / "QCSDKDemo" / "AppDelegate.m"
 SCHEME = ROOT / "ios" / "QCSDKDemo.xcodeproj" / "xcshareddata" / "xcschemes" / "CyanBridgeKMPHost.xcscheme"
 DEMO_SCHEME = ROOT / "ios" / "QCSDKDemo.xcodeproj" / "xcshareddata" / "xcschemes" / "QCSDKDemo.xcscheme"
@@ -30,6 +31,7 @@ def block(contents: str, marker: str) -> str:
 def main() -> int:
     project = PROJECT.read_text(encoding="utf-8")
     host = HOST.read_text(encoding="utf-8")
+    host_entitlements = HOST_ENTITLEMENTS.read_text(encoding="utf-8")
     demo_app_delegate = DEMO_APP_DELEGATE.read_text(encoding="utf-8")
     scheme = SCHEME.read_text(encoding="utf-8")
     demo_scheme = DEMO_SCHEME.read_text(encoding="utf-8")
@@ -81,6 +83,20 @@ def main() -> int:
     for configuration in (host_debug, host_release):
         require("CyanBridgeShared" in configuration, "The KMP host must link the shared framework.")
         require("xcode-frameworks" in configuration, "The KMP host must search Gradle framework output.")
+        require(
+            "CODE_SIGN_ENTITLEMENTS = CyanBridgeKMPHost/CyanBridgeKMPHost.entitlements" in configuration,
+            "The KMP host must enable hotspot configuration and Wi-Fi information entitlements.",
+        )
+        require("CoreBluetooth" in configuration, "The KMP host must link CoreBluetooth for the iOS BLE adapter.")
+        require("NetworkExtension" in configuration, "The KMP host must link NetworkExtension for hotspot joining.")
+    require(
+        "com.apple.developer.networking.HotspotConfiguration" in host_entitlements,
+        "The KMP host must enable the Hotspot Configuration entitlement.",
+    )
+    require(
+        "com.apple.developer.networking.wifi-info" in host_entitlements,
+        "The KMP host must enable the Wi-Fi information entitlement for readiness checks.",
+    )
 
     demo_target = block(project, 'AA1313562E2F903500B03938 /* QCSDKDemo */ = {')
     demo_debug = block(project, 'AA1313702E2F903600B03938 /* Debug */ = {')

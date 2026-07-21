@@ -20,6 +20,8 @@ data class DeviceCapabilityAssessment(
     val blockers: List<String>,
     val warnings: List<String>,
     val recommendedProfile: LocalModelPerformanceProfile,
+    val ramGb: Double = 0.0,
+    val ramSuitable: Boolean = true,
 )
 
 object DeviceCapabilityService {
@@ -55,10 +57,9 @@ object DeviceCapabilityService {
         }
 
         val ramGb = snapshot.totalRamBytes / GIB
-        if (ramGb < entry.minRamGb * 0.85) {
-            warnings += "This model is likely too heavy for available RAM (${String.format("%.1f", ramGb)} GB)."
-        } else if (ramGb < entry.minRamGb) {
-            warnings += "This model may be slow on this RAM tier (${String.format("%.1f", ramGb)} GB)."
+        val ramSuitable = ramGb >= entry.minRamGb
+        if (!ramSuitable) {
+            blockers += "RAM unsuitable: this model needs at least ${String.format("%.1f", entry.minRamGb)} GB, but this device has ${String.format("%.1f", ramGb)} GB."
         }
 
         val freeGb = snapshot.freeStorageBytes / GIB
@@ -82,6 +83,8 @@ object DeviceCapabilityService {
             blockers = blockers,
             warnings = warnings,
             recommendedProfile = recommendProfile(snapshot, entry),
+            ramGb = ramGb,
+            ramSuitable = ramSuitable,
         )
     }
 

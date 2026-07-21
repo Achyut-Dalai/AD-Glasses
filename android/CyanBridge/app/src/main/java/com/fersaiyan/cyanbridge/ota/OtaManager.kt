@@ -3,6 +3,7 @@ package com.fersaiyan.cyanbridge.ota
 import android.Manifest
 import android.content.Context
 import android.content.pm.PackageManager
+import android.net.ConnectivityManager
 import android.net.wifi.WifiManager
 import android.net.wifi.p2p.WifiP2pDevice
 import android.net.wifi.p2p.WifiP2pInfo
@@ -38,9 +39,20 @@ enum class OtaState {
     STARTING_HTTP_SERVER,
     SENDING_URL,
     DOWNLOADING,
+    TEARING_DOWN_P2P,
+    WAITING_FOR_FRESH_BLE,
+    PREPARING_BLE_DFU,
     BLE_DFU_TRANSFERRING,
+    VERIFYING_FIRMWARE,
+    CANCELLING,
     COMPLETE,
     FAILED,
+}
+
+/** Readiness checkpoints required before the next OTA stage may use BLE. */
+enum class OtaReadinessStage {
+    AFTER_WIFI,
+    AFTER_BLE,
 }
 
 internal fun isWifiOtaModeReady(
@@ -51,6 +63,10 @@ internal fun isWifiOtaModeReady(
 
 internal fun isWifiOtaCompleteNotification(notifyType: Int, result: Int?): Boolean =
     notifyType == 0x07 && result == 1
+
+internal fun isCombinedOtaFilenamePair(wifiFilename: String, bleFilename: String): Boolean =
+    OtaTarget.V821_WIFI.isExpectedFirmwareFilename(wifiFilename) &&
+        OtaTarget.JIELI_BLE.isExpectedFirmwareFilename(bleFilename)
 
 internal fun selectLocalP2pIpv4(
     glassesIp: String,
@@ -79,17 +95,12 @@ data class OtaUiState(
 /**
  * Orchestrates OTA firmware updates to the glasses.
  *
- * V821 Wi-Fi flow (mirrors the official HeyCyan app):
+ * Combined flow (mirrors the official HeyCyan app):
  * 1. Verify BLE connection
- * 2. Send glassesControl({2,1,5}) to enter OTA mode
- * 3. Start P2P peer discovery + connection
- * 4. Wait for glasses to report their P2P IP via BLE notify (type 0x08)
- * 5. Start HTTP server on the phone's P2P IP
- * 6. Send the OTA URL to glasses via writeIpToSoc (BLE 0xFC)
- * 7. Wait for glasses to download the SWU and flash it
- *
- * JieLi BLE flow uses the vendor DFU callback sequence in [BleDfuManager] and does
- * not start P2P or HTTP.
+ * 2. Flash the Wi-Fi SWU over P2P/HTTP and require notify 0x07/result 1
+ * 3. Tear down P2P and restore the phone's default route while retaining the lease
+ * 4. Re-read BLE/device info, then run the verified JieLi DFU sequence
+ * 5. Clear stale BLE firmware state, reconnect, and require a fresh final read
  */
 class OtaManager(
     private val context: Context,
@@ -109,6 +120,11 @@ class OtaManager(
     private var otaNotifyRegistered = false
     private var otaWakeLock: PowerManager.WakeLock? = null
     private var cleanupInProgress = false
+    private var cleanupCompletion: CompletableDeferred<Unit>? = null
+    private var retainSessionAfterCleanup = false
+    private var resetUiAfterCleanup = false
+    private var cleanupRetryPending = false
+    private var cleanupRetryJob: Job? = null
     @Volatile private var sessionFinishNotified = true
     private var onSessionFinished: () -> Unit = {}
 
@@ -127,51 +143,129 @@ class OtaManager(
     @Volatile
     private var otaFailed = false
 
-    val isActive: Boolean get() = otaJob?.isActive == true
+    @Volatile
+    private var awaitingFreshBleReadiness = false
 
-    fun startOta(
-        firmwareFile: File,
-        target: OtaTarget = OtaTarget.V821_WIFI,
+    /** Includes the cleanup/recovery window after the coroutine's transport work ends. */
+    val isActive: Boolean get() = otaJob?.isActive == true || !sessionFinishNotified
+
+    val isAwaitingFreshBleReadiness: Boolean get() = awaitingFreshBleReadiness
+
+    /** Start the official combined order: Wi-Fi SWU, then BLE/JieLi BIN. */
+    fun startCombinedOta(
+        wifiFirmwareFile: File,
+        bleFirmwareFile: File,
+        awaitFreshBleReadiness: suspend (OtaReadinessStage) -> Boolean,
         onSessionFinished: () -> Unit,
     ) {
-        if (otaJob?.isActive == true) {
+        if (isActive) {
             Log.w(TAG, "OTA already in progress")
             return
         }
         sessionFinishNotified = false
         cleanupInProgress = false
+        cleanupCompletion = null
+        retainSessionAfterCleanup = false
+        resetUiAfterCleanup = false
+        cleanupRetryPending = false
+        cleanupRetryJob?.cancel()
+        cleanupRetryJob = null
         this.onSessionFinished = onSessionFinished
-        if (
-            !firmwareFile.isFile ||
-            !firmwareFile.canRead() ||
-            firmwareFile.length() <= 0L ||
-            !target.isExpectedFirmwareFilename(firmwareFile.name)
-        ) {
-            val message = "Expected a non-empty ${target.expectedFirmwareExtension()} firmware file for $target"
-            Log.e(TAG, "$message; got ${firmwareFile.name} (${firmwareFile.length()} bytes)")
-            updateState(OtaState.FAILED, error = message)
+        val invalidPairMessage = validateFirmwarePair(wifiFirmwareFile, bleFirmwareFile)
+        if (invalidPairMessage != null) {
+            Log.e(TAG, invalidPairMessage)
+            updateState(OtaState.FAILED, error = invalidPairMessage)
             cleanup()
             return
         }
         acquireOtaWakeLock()
         otaJob = scope.launch {
-            when (target) {
-                OtaTarget.V821_WIFI -> runWifiOta(firmwareFile)
-                OtaTarget.JIELI_BLE -> runBleDfu(firmwareFile)
+            try {
+                val wifiSucceeded = runWifiOta(wifiFirmwareFile)
+                if (!wifiSucceeded) return@launch
+
+                // Do not let a BLE reconnect or another command race the P2P teardown.
+                updateState(
+                    OtaState.TEARING_DOWN_P2P,
+                    "Stage 1/2 complete. Tearing down Wi-Fi Direct before BLE DFU...",
+                    progress = 50,
+                )
+                awaitingFreshBleReadiness = true
+                cleanupWifiTransportForNextStage()
+                ensureActive()
+
+                updateState(
+                    OtaState.WAITING_FOR_FRESH_BLE,
+                    "Stage 1/2 complete. Waiting for a fresh BLE/device-info read...",
+                    progress = 50,
+                )
+                if (!awaitFreshBleReadiness(OtaReadinessStage.AFTER_WIFI)) {
+                    updateState(
+                        OtaState.FAILED,
+                        error = "Could not establish a fresh BLE/device-info session after Wi-Fi OTA",
+                    )
+                    return@launch
+                }
+                awaitingFreshBleReadiness = false
+
+                updateState(
+                    OtaState.PREPARING_BLE_DFU,
+                    "Stage 2/2: preparing the BLE/JieLi firmware transfer...",
+                    progress = 50,
+                )
+                val bleSucceeded = runBleDfu(bleFirmwareFile)
+                if (!bleSucceeded) return@launch
+
+                // The official app clears its BLE firmware cache, disconnects, and only then
+                // considers the update ready. Do not report a pair success before that read.
+                awaitingFreshBleReadiness = true
+                updateState(
+                    OtaState.VERIFYING_FIRMWARE,
+                    "Stage 2/2 complete. Reconnecting and verifying both firmware components...",
+                    progress = 100,
+                )
+                if (!awaitFreshBleReadiness(OtaReadinessStage.AFTER_BLE)) {
+                    updateState(
+                        OtaState.FAILED,
+                        error = "BLE DFU completed, but fresh post-update device info was unavailable",
+                    )
+                    return@launch
+                }
+                awaitingFreshBleReadiness = false
+                updateState(OtaState.COMPLETE, "Combined OTA complete. Both firmware components are ready.")
+            } catch (error: CancellationException) {
+                Log.i(TAG, "========== COMBINED OTA FLOW CANCELLED ==========")
+                throw error
+            } catch (error: Exception) {
+                Log.e(TAG, "========== COMBINED OTA FLOW EXCEPTION ==========", error)
+                updateState(OtaState.FAILED, error = "OTA failed: ${error.message ?: error.javaClass.simpleName}")
+            } finally {
+                awaitingFreshBleReadiness = false
+                cleanup()
             }
         }
     }
 
     fun cancel() {
         Log.i(TAG, "OTA cancelled by user")
+        awaitingFreshBleReadiness = false
+        resetUiAfterCleanup = true
+        updateState(OtaState.CANCELLING, "Cancelling the combined OTA session...")
         otaJob?.cancel()
         bleDfuManager?.cancel()
         bleDfuManager = null
         cleanup()
-        _uiState.value = OtaUiState()
     }
 
     fun onBluetoothDisconnected() {
+        if (awaitingFreshBleReadiness) {
+            Log.i(TAG, "Bluetooth disconnected during the expected OTA readiness reconnect")
+            return
+        }
+        val wasActive = isActive
+        if (wasActive && _uiState.value.state != OtaState.CANCELLING) {
+            updateState(OtaState.FAILED, error = "Bluetooth disconnected during OTA")
+        }
         Log.i(TAG, "Bluetooth disconnected; abandoning OTA resources")
         otaJob?.cancel()
         httpServer?.stop()
@@ -179,16 +273,29 @@ class OtaManager(
         bleDfuManager?.cancel()
         bleDfuManager = null
         if (!sessionFinishNotified) {
-            cleanupInProgress = true
-            p2pManager?.stopP2pOperations()
-            p2pManager?.cancelP2pConnection()
-            finishCleanup()
+            // Keep the lease until the normal retrying P2P teardown confirms that the
+            // shared Wi-Fi Direct controller is no longer owned by this OTA session.
+            cleanup()
         }
     }
 
-    private fun cleanup() {
-        if (cleanupInProgress) return
+    /** Retry a quarantined P2P teardown after the BLE link becomes usable again. */
+    fun onBluetoothConnected() {
+        retryP2pCleanupIfNeeded()
+    }
+
+    private fun cleanup(retainSession: Boolean = false) {
+        if (cleanupInProgress) {
+            // A final cleanup (cancellation, failure, or completion) supersedes an
+            // intermediate Wi-Fi teardown so the lease cannot be stranded.
+            if (!retainSession) {
+                retainSessionAfterCleanup = false
+                retryP2pCleanupIfNeeded()
+            }
+            return
+        }
         cleanupInProgress = true
+        retainSessionAfterCleanup = retainSession
         httpServer?.stop()
         httpServer = null
         bleDfuManager?.cancel()
@@ -204,6 +311,31 @@ class OtaManager(
         manager.cancelP2pConnection()
         if (!cleanupInProgress) return
         removeP2pGroup(manager, attempt = 1)
+    }
+
+    /** Tear down only the Wi-Fi transport while retaining the exclusive OTA lease. */
+    private suspend fun cleanupWifiTransportForNextStage() {
+        if (p2pManager == null && httpServer == null && !otaNotifyRegistered) {
+            restoreDefaultNetwork()
+            return
+        }
+
+        val completion = CompletableDeferred<Unit>()
+        cleanupCompletion = completion
+        cleanup(retainSession = true)
+        try {
+            val confirmed = withTimeoutOrNull(P2P_TEARDOWN_TIMEOUT_MS) {
+                completion.await()
+                true
+            } ?: false
+            if (!confirmed) {
+                throw IllegalStateException("Could not confirm Wi-Fi Direct teardown before BLE DFU")
+            }
+        } finally {
+            if (!completion.isCompleted) {
+                cleanup(retainSession = false)
+            }
+        }
     }
 
     private fun removeP2pGroup(manager: WifiP2pManagerSingleton, attempt: Int) {
@@ -254,7 +386,15 @@ class OtaManager(
 
             if (cleanupInProgress) {
                 if (!manager.canUseP2p() || attempt >= P2P_GROUP_REMOVAL_MAX_ATTEMPTS) {
-                    Log.e(TAG, "OTA P2P teardown could not be confirmed; keeping the OTA lease quarantined until Bluetooth reconnect")
+                    cleanupRetryPending = true
+                    Log.e(TAG, "OTA P2P teardown could not be confirmed; keeping the OTA lease quarantined until a cleanup retry")
+                    // Keep retrying from the manager scope so an Activity recreation cannot
+                    // strand the exclusive lease or leave the P2P group owned indefinitely.
+                    scheduleP2pRemovalRetry(
+                        manager = manager,
+                        attempt = 1,
+                        delayMs = P2P_QUARANTINE_RETRY_MS,
+                    )
                 } else {
                     Log.w(TAG, "OTA P2P group still present after cleanup attempt $attempt; retaining the OTA lease and retrying")
                     scheduleP2pRemovalRetry(manager, attempt + 1)
@@ -263,10 +403,27 @@ class OtaManager(
         }
     }
 
-    private fun scheduleP2pRemovalRetry(manager: WifiP2pManagerSingleton, attempt: Int) {
-        scope.launch {
-            delay(P2P_GROUP_REMOVAL_RETRY_MS)
+    private fun retryP2pCleanupIfNeeded() {
+        if (!cleanupInProgress || !cleanupRetryPending) return
+        val manager = p2pManager ?: return
+        cleanupRetryJob?.cancel()
+        cleanupRetryJob = null
+        cleanupRetryPending = false
+        Log.i(TAG, "Retrying quarantined OTA P2P teardown")
+        removeP2pGroup(manager, attempt = 1)
+    }
+
+    private fun scheduleP2pRemovalRetry(
+        manager: WifiP2pManagerSingleton,
+        attempt: Int,
+        delayMs: Long = P2P_GROUP_REMOVAL_RETRY_MS,
+    ) {
+        cleanupRetryJob?.cancel()
+        cleanupRetryJob = scope.launch {
+            delay(delayMs)
+            cleanupRetryJob = null
             if (cleanupInProgress && !sessionFinishNotified) {
+                cleanupRetryPending = false
                 removeP2pGroup(manager, attempt)
             }
         }
@@ -275,6 +432,8 @@ class OtaManager(
     private fun finishCleanup() {
         if (!cleanupInProgress) return
         val manager = p2pManager
+        val retainSession = retainSessionAfterCleanup
+        retainSessionAfterCleanup = false
         p2pCallback?.let { callback -> manager?.removeCallback(callback) }
         if (p2pReceiverRegistered) {
             try {
@@ -286,7 +445,7 @@ class OtaManager(
         }
         if (otaNotifyRegistered) {
             try {
-                LargeDataHandler.getInstance().removeOutDeviceListener(2)
+                LargeDataHandler.getInstance().removeOutDeviceListener(OTA_NOTIFY_CMD_TYPE)
             } catch (_: Exception) {
             }
             otaNotifyRegistered = false
@@ -296,9 +455,39 @@ class OtaManager(
         otaNotifyListener = null
         p2pConnected = false
         p2pInfo = null
+        WifiP2pManagerSingleton.lastGroupOwnerIp = null
         cleanupInProgress = false
+        cleanupRetryPending = false
+        cleanupRetryJob?.cancel()
+        cleanupRetryJob = null
+        restoreDefaultNetwork()
+
+        val completion = cleanupCompletion
+        cleanupCompletion = null
+        if (retainSession) {
+            completion?.complete(Unit)
+            return
+        }
+
         releaseOtaWakeLock()
         notifySessionFinished()
+        if (resetUiAfterCleanup) {
+            resetUiAfterCleanup = false
+            _uiState.value = OtaUiState()
+        }
+        completion?.complete(Unit)
+    }
+
+    private fun restoreDefaultNetwork() {
+        val connectivityManager =
+            context.applicationContext.getSystemService(Context.CONNECTIVITY_SERVICE) as? ConnectivityManager
+            ?: return
+        try {
+            connectivityManager.bindProcessToNetwork(null)
+            Log.i(TAG, "Restored the default process network after OTA P2P teardown")
+        } catch (error: RuntimeException) {
+            Log.w(TAG, "Could not restore the default process network after OTA P2P teardown", error)
+        }
     }
 
     /** Match the official activity's wake protection while either OTA transport owns the device. */
@@ -336,7 +525,7 @@ class OtaManager(
         onSessionFinished()
     }
 
-    private suspend fun runWifiOta(swuFile: File) {
+    private suspend fun runWifiOta(swuFile: File): Boolean {
         val otaStartTime = System.currentTimeMillis()
         Log.i(TAG, "========== WIFI OTA FLOW START ==========")
         Log.i(TAG, "  SWU file: ${swuFile.absolutePath}")
@@ -356,7 +545,7 @@ class OtaManager(
             if (!BleOperateManager.getInstance().isConnected) {
                 Log.e(TAG, "[Step 1/7] FAIL: BLE not connected")
                 updateState(OtaState.FAILED, error = "Bluetooth not connected to glasses")
-                return
+                return false
             }
 
             val deviceName = try {
@@ -374,20 +563,20 @@ class OtaManager(
             if (!hasWifiP2pPermission()) {
                 Log.e(TAG, "[Step 1/7] FAIL: Required Wi-Fi Direct permission is missing")
                 updateState(OtaState.FAILED, error = "Grant Nearby devices or Location permission before Wi-Fi OTA")
-                return
+                return false
             }
             val wifiManager = context.applicationContext.getSystemService(Context.WIFI_SERVICE) as? WifiManager
             if (wifiManager?.isWifiEnabled != true) {
                 Log.e(TAG, "[Step 1/7] FAIL: Wi-Fi is disabled")
                 updateState(OtaState.FAILED, error = "Enable Wi-Fi before Wi-Fi OTA")
-                return
+                return false
             }
 
             // Register before the OTA-mode command so an immediate 0x08 IP notify is not lost.
             if (!registerOtaNotifyListener()) {
                 Log.e(TAG, "[Step 1/7] FAIL: Could not register the OTA BLE notify listener")
                 updateState(OtaState.FAILED, error = "Could not receive OTA P2P notifications")
-                return
+                return false
             }
 
             // Step 2: Enter OTA mode
@@ -399,7 +588,7 @@ class OtaManager(
             if (!otaModeOk) {
                 Log.e(TAG, "[Step 2/7] FAIL: Glasses did not report OTA readiness (${otaModeElapsed}ms)")
                 updateState(OtaState.FAILED, error = "Glasses did not report OTA mode ready")
-                return
+                return false
             }
             Log.i(TAG, "[Step 2/7] OK: OTA mode accepted (${otaModeElapsed}ms)")
 
@@ -408,7 +597,7 @@ class OtaManager(
             updateState(OtaState.STARTING_P2P, "Starting P2P connection...")
             if (!startP2p()) {
                 updateState(OtaState.FAILED, error = "Could not start Wi-Fi Direct discovery")
-                return
+                return false
             }
             Log.i(TAG, "[Step 3/7] P2P discovery initiated")
 
@@ -422,7 +611,7 @@ class OtaManager(
                 Log.e(TAG, "[Step 4/7] FAIL: Timed out waiting for BLE IP (${bleIpElapsed}ms)")
                 Log.e(TAG, "  bleIpReceived=$bleIpReceived, p2pConnected=$p2pConnected")
                 updateState(OtaState.FAILED, error = "Timed out waiting for glasses IP (BLE 0x08)")
-                return
+                return false
             }
             Log.i(TAG, "[Step 4/7] OK: Glasses IP=$glassesIp (${bleIpElapsed}ms)")
 
@@ -430,7 +619,7 @@ class OtaManager(
             if (!waitForP2pConnection(P2P_CONNECT_TIMEOUT_MS)) {
                 Log.e(TAG, "[Step 4/7] FAIL: BLE reported $glassesIp but the P2P group did not connect")
                 updateState(OtaState.FAILED, error = "Glasses reported an IP, but Wi-Fi Direct did not connect")
-                return
+                return false
             }
 
             // Step 5: Start HTTP server
@@ -438,7 +627,7 @@ class OtaManager(
             if (localIp == null) {
                 Log.e(TAG, "[Step 5/7] FAIL: Could not identify the phone's local P2P address for glasses IP $glassesIp")
                 updateState(OtaState.FAILED, error = "Could not identify the phone's Wi-Fi Direct address")
-                return
+                return false
             }
             Log.i(TAG, "[Step 5/7] Starting HTTP server on $localIp:$HTTP_PORT...")
             updateState(OtaState.STARTING_HTTP_SERVER, "Starting HTTP server on $localIp:$HTTP_PORT...")
@@ -468,12 +657,13 @@ class OtaManager(
             if (success) {
                 Log.i(TAG, "[Step 7/7] OK: Wi-Fi OTA complete! (${downloadElapsed}ms download, ${totalElapsed}ms total)")
                 Log.i(TAG, "========== WIFI OTA FLOW SUCCESS ==========")
-                updateState(OtaState.COMPLETE, "Wi-Fi OTA complete! Glasses will reboot.")
+                return true
             } else {
                 Log.e(TAG, "[Step 7/7] FAIL: OTA failed or timed out (${downloadElapsed}ms)")
                 Log.e(TAG, "  otaComplete=$otaComplete, otaFailed=$otaFailed")
                 Log.e(TAG, "========== OTA FLOW FAILED ==========")
                 updateState(OtaState.FAILED, error = "Wi-Fi OTA failed or timed out during download/flash")
+                return false
             }
         } catch (e: CancellationException) {
             Log.i(TAG, "========== OTA FLOW CANCELLED ==========")
@@ -482,8 +672,7 @@ class OtaManager(
             Log.e(TAG, "========== OTA FLOW EXCEPTION ==========", e)
             Log.e(TAG, "  ${e.javaClass.simpleName}: ${e.message}")
             updateState(OtaState.FAILED, error = "OTA failed: ${e.message}")
-        } finally {
-            cleanup()
+            return false
         }
     }
 
@@ -491,7 +680,7 @@ class OtaManager(
      * BLE DFU OTA flow for the JieLi chip (.bin firmware).
      * Uses DfuHandle from the glasses SDK — no P2P, no HTTP, pure BLE.
      */
-    private suspend fun runBleDfu(binFile: File) {
+    private suspend fun runBleDfu(binFile: File): Boolean {
         val startTime = System.currentTimeMillis()
         Log.i(TAG, "========== BLE DFU FLOW START ==========")
         Log.i(TAG, "  BIN file: ${binFile.absolutePath}")
@@ -504,7 +693,7 @@ class OtaManager(
             if (!BleOperateManager.getInstance().isConnected) {
                 Log.e(TAG, "[Step 1/2] FAIL: BLE not connected")
                 updateState(OtaState.FAILED, error = "Bluetooth not connected to glasses")
-                return
+                return false
             }
 
             val deviceName = try {
@@ -526,10 +715,10 @@ class OtaManager(
                 dfuManager.startDfu(
                     binFile = binFile,
                     onProgress = { percent ->
-                        _uiState.value = OtaUiState(
-                            state = OtaState.BLE_DFU_TRANSFERRING,
-                            detail = "BLE transfer: $percent%",
-                            progress = percent,
+                        updateState(
+                            OtaState.BLE_DFU_TRANSFERRING,
+                            "Stage 2/2: BLE transfer: $percent%",
+                            progress = 50 + (percent.coerceIn(0, 100) / 2),
                         )
                     },
                     onComplete = {
@@ -546,11 +735,12 @@ class OtaManager(
             if (result.first) {
                 Log.i(TAG, "[Step 2/2] OK: BLE DFU complete! (${elapsed}ms)")
                 Log.i(TAG, "========== BLE DFU FLOW SUCCESS ==========")
-                updateState(OtaState.COMPLETE, "BLE DFU complete! JieLi chip will reboot.")
+                return true
             } else {
                 Log.e(TAG, "[Step 2/2] FAIL: BLE DFU failed (${elapsed}ms)")
                 Log.e(TAG, "========== BLE DFU FLOW FAILED ==========")
                 updateState(OtaState.FAILED, error = result.second ?: "BLE DFU transfer failed")
+                return false
             }
         } catch (e: CancellationException) {
             Log.i(TAG, "========== BLE DFU FLOW CANCELLED ==========")
@@ -558,8 +748,7 @@ class OtaManager(
         } catch (e: Exception) {
             Log.e(TAG, "========== BLE DFU FLOW EXCEPTION ==========", e)
             updateState(OtaState.FAILED, error = "BLE DFU failed: ${e.message}")
-        } finally {
-            cleanup()
+            return false
         }
     }
 
@@ -751,6 +940,8 @@ class OtaManager(
                         // P2P/WiFi error
                         val errorCode = ByteUtil.byteToInt(load.getOrNull(7) ?: 0)
                         Log.e(TAG, "[BLE] P2P/WiFi error from glasses: errorCode=$errorCode (raw=${load.getOrNull(7)})")
+                        // 255 is a noisy vendor notification; other error codes are fatal.
+                        if (errorCode != 255) otaFailed = true
                     }
                     0x04 -> {
                         // OTA progress
@@ -768,6 +959,7 @@ class OtaManager(
                         } else {
                             // The official app accepts type 0x07 only when loadData[7] == 1.
                             Log.w(TAG, "[BLE] OTA completion notification was not successful: result=$result")
+                            otaFailed = true
                         }
                     }
                     else -> {
@@ -779,7 +971,7 @@ class OtaManager(
 
         val listener = otaNotifyListener ?: return false
         return try {
-            LargeDataHandler.getInstance().addOutDeviceListener(2, listener)
+            LargeDataHandler.getInstance().addOutDeviceListener(OTA_NOTIFY_CMD_TYPE, listener)
             otaNotifyRegistered = true
             true
         } catch (e: Exception) {
@@ -792,6 +984,7 @@ class OtaManager(
     private suspend fun waitForBleIp(timeoutMs: Long): String? {
         val deadline = System.currentTimeMillis() + timeoutMs
         while (System.currentTimeMillis() < deadline) {
+            if (otaFailed) return null
             val ip = bleIpReceived
             if (ip != null) return ip
             delay(500)
@@ -802,6 +995,7 @@ class OtaManager(
     private suspend fun waitForP2pConnection(timeoutMs: Long): Boolean {
         val deadline = System.currentTimeMillis() + timeoutMs
         while (System.currentTimeMillis() < deadline) {
+            if (otaFailed) return false
             if (p2pConnected) return true
             delay(250)
         }
@@ -811,6 +1005,7 @@ class OtaManager(
     private suspend fun waitForLocalP2pIp(glassesIp: String, timeoutMs: Long): String? {
         val deadline = System.currentTimeMillis() + timeoutMs
         do {
+            if (otaFailed) return null
             getLocalP2pIp(glassesIp)?.let { return it }
             delay(250)
         } while (System.currentTimeMillis() < deadline)
@@ -867,16 +1062,33 @@ class OtaManager(
         return null
     }
 
-    private fun updateState(state: OtaState, detail: String = "", error: String? = null) {
+    private fun validateFirmwarePair(wifiFile: File, bleFile: File): String? {
+        if (!wifiFile.isFile || !wifiFile.canRead() || wifiFile.length() <= 0L) {
+            return "Wi-Fi OTA requires a readable, non-empty .swu file"
+        }
+        if (!bleFile.isFile || !bleFile.canRead() || bleFile.length() <= 0L) {
+            return "BLE OTA requires a readable, non-empty .bin file"
+        }
+        if (!isCombinedOtaFilenamePair(wifiFile.name, bleFile.name)) {
+            return "Combined OTA requires one .swu Wi-Fi image and one .bin BLE image"
+        }
+        return null
+    }
+
+    private fun updateState(
+        state: OtaState,
+        detail: String = "",
+        error: String? = null,
+        progress: Int? = null,
+    ) {
         _uiState.value = OtaUiState(
             state = state,
             detail = detail,
             error = error,
-            progress = when (state) {
+            progress = progress ?: when (state) {
                 OtaState.COMPLETE -> 100
-                OtaState.FAILED -> null
-                OtaState.BLE_DFU_TRANSFERRING -> _uiState.value.progress // preserve BLE DFU progress
-                else -> null // indeterminate
+                OtaState.FAILED, OtaState.CANCELLING -> null
+                else -> _uiState.value.progress.takeIf { state == OtaState.BLE_DFU_TRANSFERRING }
             },
         )
         Log.i(TAG, "State: $state — $detail")
@@ -888,9 +1100,13 @@ class OtaManager(
         private const val P2P_CONNECT_TIMEOUT_MS = 40_000L
         private const val LOCAL_P2P_IP_TIMEOUT_MS = 5_000L
         private const val P2P_GROUP_REMOVAL_RETRY_MS = 1_000L
+        private const val P2P_QUARANTINE_RETRY_MS = 5_000L
         private const val P2P_GROUP_REMOVE_ACTION_TIMEOUT_MS = 5_000L
         private const val P2P_GROUP_DISCONNECT_TIMEOUT_MS = 5_000L
         private const val P2P_GROUP_REMOVAL_MAX_ATTEMPTS = 3
+        private const val P2P_TEARDOWN_TIMEOUT_MS = 25_000L
+        // The official OTAActivity uses listener slot 1; slot 2 is used by media/P2P flows.
+        private const val OTA_NOTIFY_CMD_TYPE = 1
         private const val OTA_WAKE_LOCK_TIMEOUT_MS = 10 * 60_000L
     }
 }

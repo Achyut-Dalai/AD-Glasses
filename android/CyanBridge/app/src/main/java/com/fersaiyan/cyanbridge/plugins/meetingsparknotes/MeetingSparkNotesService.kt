@@ -6,6 +6,8 @@ import android.content.Intent
 import android.os.IBinder
 import android.util.Log
 import com.fersaiyan.cyanbridge.ai.router.CliRelayClient
+import com.fersaiyan.cyanbridge.bridge.core.DisplayCommand
+import com.fersaiyan.cyanbridge.bridge.core.GlassesBridge
 import com.fersaiyan.cyanbridge.plugins.PluginVoiceRecognizer
 import com.fersaiyan.cyanbridge.plugins.startPluginVoiceForeground
 import com.fersaiyan.cyanbridge.plugins.startPluginVoiceService
@@ -139,6 +141,7 @@ class MeetingSparkNotesService : Service() {
                     this@MeetingSparkNotesService,
                     "Summary ready: ${summary.title.take(NOTIFICATION_TEXT_LIMIT)}",
                 )
+                GlassesBridge.showCard(DisplayCommand.Card(summary.title, summary.summary))
             } else {
                 MeetingSparkNotesNotificationHelper.updateNotification(
                     this@MeetingSparkNotesService,

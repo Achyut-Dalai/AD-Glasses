@@ -15,6 +15,8 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Button
+import androidx.compose.material3.Card
+import androidx.compose.material3.RadioButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
@@ -26,9 +28,29 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import com.fersaiyan.cyanbridge.shared.icons.AppIcon
 import com.fersaiyan.cyanbridge.shared.icons.imageVector
+import com.fersaiyan.cyanbridge.shared.generated.resources.Res
+import com.fersaiyan.cyanbridge.shared.generated.resources.onboarding_language_description
+import com.fersaiyan.cyanbridge.shared.generated.resources.onboarding_language_title
+import com.fersaiyan.cyanbridge.shared.generated.resources.onboarding_start_setup
+import com.fersaiyan.cyanbridge.shared.generated.resources.onboarding_welcome_body
+import com.fersaiyan.cyanbridge.shared.generated.resources.onboarding_welcome_title
+import org.jetbrains.compose.resources.ExperimentalResourceApi
+import org.jetbrains.compose.resources.stringResource
 
+data class OnboardingLanguageOption(
+    val id: String,
+    val label: String,
+)
+
+@OptIn(ExperimentalResourceApi::class)
 @Composable
-fun WelcomeScreen(onStartSetup: () -> Unit) {
+fun WelcomeScreen(
+    languageOptions: List<OnboardingLanguageOption>,
+    selectedLanguageId: String,
+    languageSelectionComplete: Boolean,
+    onLanguageSelected: (OnboardingLanguageOption) -> Unit,
+    onStartSetup: () -> Unit,
+) {
     Scaffold(contentWindowInsets = WindowInsets.safeDrawing) { innerPadding ->
         Box(
             modifier = Modifier
@@ -52,15 +74,44 @@ fun WelcomeScreen(onStartSetup: () -> Unit) {
                     tint = MaterialTheme.colorScheme.primary,
                 )
                 Spacer(Modifier.height(28.dp))
+                Card(modifier = Modifier.fillMaxWidth()) {
+                    Column(
+                        modifier = Modifier.padding(16.dp),
+                        verticalArrangement = Arrangement.spacedBy(8.dp),
+                    ) {
+                        Text(
+                            text = stringResource(Res.string.onboarding_language_title),
+                            style = MaterialTheme.typography.titleMedium,
+                        )
+                        Text(
+                            text = stringResource(Res.string.onboarding_language_description),
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
+                        languageOptions.forEach { option ->
+                            androidx.compose.foundation.layout.Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                verticalAlignment = Alignment.CenterVertically,
+                            ) {
+                                RadioButton(
+                                    selected = option.id == selectedLanguageId,
+                                    onClick = { onLanguageSelected(option) },
+                                )
+                                Text(option.label, modifier = Modifier.padding(start = 4.dp))
+                            }
+                        }
+                    }
+                }
+                Spacer(Modifier.height(24.dp))
                 Text(
-                    text = "Welcome to CyanBridge",
+                    text = stringResource(Res.string.onboarding_welcome_title),
                     style = MaterialTheme.typography.headlineMedium,
                     color = MaterialTheme.colorScheme.primary,
                     textAlign = TextAlign.Center,
                 )
                 Spacer(Modifier.height(16.dp))
                 Text(
-                    text = "Connect your smart glasses and configure Android for a stable background connection.",
+                    text = stringResource(Res.string.onboarding_welcome_body),
                     style = MaterialTheme.typography.bodyLarge,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                     textAlign = TextAlign.Center,
@@ -68,11 +119,12 @@ fun WelcomeScreen(onStartSetup: () -> Unit) {
                 Spacer(Modifier.height(36.dp))
                 Button(
                     onClick = onStartSetup,
+                    enabled = languageSelectionComplete,
                     modifier = Modifier
                         .fillMaxWidth()
                         .height(52.dp),
                 ) {
-                    Text("Start setup")
+                    Text(stringResource(Res.string.onboarding_start_setup))
                 }
             }
         }

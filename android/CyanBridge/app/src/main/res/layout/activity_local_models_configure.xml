@@ -128,6 +128,60 @@
             </com.google.android.material.card.MaterialCardView>
 
             <com.google.android.material.card.MaterialCardView
+                android:id="@+id/card_download_progress"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="16dp"
+                android:visibility="gone"
+                app:cardBackgroundColor="@color/card_bg"
+                app:cardCornerRadius="12dp"
+                app:cardElevation="4dp">
+
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="vertical"
+                    android:padding="16dp">
+
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="DOWNLOAD STATUS"
+                        android:textColor="@color/cyan_accent"
+                        android:textStyle="bold"
+                        android:textSize="12sp"
+                        android:letterSpacing="0.1" />
+
+                    <com.google.android.material.progressindicator.LinearProgressIndicator
+                        android:id="@+id/progress_download"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="8dp"
+                        android:max="100"
+                        android:visibility="gone"
+                        app:indicatorColor="@color/cyan_accent" />
+
+                    <TextView
+                        android:id="@+id/tv_download_progress"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="8dp"
+                        android:text=""
+                        android:textColor="@color/text_secondary"
+                        android:textSize="12sp" />
+
+                    <com.google.android.material.button.MaterialButton
+                        android:id="@+id/btn_cancel_download"
+                        style="@style/Widget.MaterialComponents.Button.OutlinedButton"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="8dp"
+                        android:text="Cancel Download"
+                        android:visibility="gone" />
+                </LinearLayout>
+            </com.google.android.material.card.MaterialCardView>
+
+            <com.google.android.material.card.MaterialCardView
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:layout_marginTop="16dp"
@@ -310,7 +364,7 @@
                         <TextView
                             android:layout_width="match_parent"
                             android:layout_height="wrap_content"
-                            android:text="Connect to a remote inference server on your LAN or Tailnet (Ollama, llama.cpp, vLLM, TGI, etc.). The server must expose the OpenAI /v1/chat/completions endpoint."
+                            android:text="Connect to a remote inference server on your LAN or Tailnet (Ollama, llama.cpp, vLLM, TGI, etc.). The server must expose /v1/chat/completions; images use image_url data URLs and audio uses input_audio base64 (WAV/MP3)."
                             android:textColor="@color/text_secondary"
                             android:textSize="12sp" />
 
@@ -838,31 +892,14 @@
                     android:orientation="vertical"
                     android:padding="16dp">
 
-                    <com.google.android.material.progressindicator.LinearProgressIndicator
-                        android:id="@+id/progress_download"
-                        android:layout_width="match_parent"
-                        android:layout_height="wrap_content"
-                        android:max="100"
-                        android:visibility="gone"
-                        app:indicatorColor="@color/cyan_accent" />
-
                     <TextView
-                        android:id="@+id/tv_download_progress"
-                        android:layout_width="match_parent"
+                        android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
-                        android:layout_marginTop="8dp"
-                        android:text=""
-                        android:textColor="@color/text_secondary"
-                        android:textSize="12sp" />
-
-                    <com.google.android.material.button.MaterialButton
-                        android:id="@+id/btn_cancel_download"
-                        style="@style/Widget.MaterialComponents.Button.OutlinedButton"
-                        android:layout_width="match_parent"
-                        android:layout_height="wrap_content"
-                        android:layout_marginTop="8dp"
-                        android:text="Cancel Download"
-                        android:visibility="gone" />
+                        android:text="DIAGNOSTICS"
+                        android:textColor="@color/cyan_accent"
+                        android:textStyle="bold"
+                        android:textSize="12sp"
+                        android:letterSpacing="0.1" />
 
                     <com.google.android.material.button.MaterialButton
                         android:id="@+id/btn_run_warmup"

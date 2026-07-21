@@ -35,6 +35,26 @@ internal fun isExactFirmwareBaseMatch(baseFirmwareVersion: String, currentFirmwa
 
 internal fun isSha256Hex(value: String): Boolean = value.matches(Regex("[a-fA-F0-9]{64}"))
 
+/** Only this explicit relay contract may open the user-facing patch request flow. */
+internal const val FIRMWARE_PATCH_UNAVAILABLE_STATUS = 409
+internal const val FIRMWARE_PATCH_UNAVAILABLE_ERROR = "firmware_patch_unavailable"
+private const val DEFAULT_PATCH_UNAVAILABLE_MESSAGE =
+    "No approved firmware patch exists for this installed version."
+
+internal fun isFirmwarePatchUnavailableResponse(statusCode: Int, error: String): Boolean =
+    statusCode == FIRMWARE_PATCH_UNAVAILABLE_STATUS && error == FIRMWARE_PATCH_UNAVAILABLE_ERROR
+
+internal fun firmwarePatchUnavailableMessage(
+    statusCode: Int,
+    error: String,
+    message: String,
+): String? {
+    if (!isFirmwarePatchUnavailableResponse(statusCode, error)) return null
+    return message
+        .trim()
+        .ifBlank { DEFAULT_PATCH_UNAVAILABLE_MESSAGE }
+}
+
 /** Keep patch requests on the same relay that resolved the firmware catalog. */
 internal fun firmwareRelayBaseUrl(context: Context): String =
     context.getSharedPreferences("relay_server", Context.MODE_PRIVATE)
@@ -280,12 +300,23 @@ class FirmwareClient(
                 }
             }
 
-            404 -> {
-                val json = JSONObject(body)
-                val message = json.optString("message", "Firmware not available for this glasses model")
-                Log.w(TAG, "[4/5] No firmware for this model: $message")
-                Log.i(TAG, "=== FIRMWARE FETCH NOT AVAILABLE ===")
-                FirmwareResult.NotAvailable(message, hardwareVersion)
+            FIRMWARE_PATCH_UNAVAILABLE_STATUS -> {
+                val json = try { JSONObject(body) } catch (_: Exception) { JSONObject() }
+                val error = json.optString("error", "")
+                val patchUnavailableMessage = firmwarePatchUnavailableMessage(
+                    statusCode = statusCode,
+                    error = error,
+                    message = json.optString("message", ""),
+                )
+                if (patchUnavailableMessage != null) {
+                    Log.w(TAG, "[4/5] No exact-base firmware patch: $patchUnavailableMessage")
+                    Log.i(TAG, "=== FIRMWARE FETCH NOT AVAILABLE ===")
+                    FirmwareResult.NotAvailable(patchUnavailableMessage, hardwareVersion)
+                } else {
+                    val message = json.optString("message", "Firmware catalog conflict")
+                    Log.e(TAG, "[4/5] Unexpected conflict response: error=$error, message=$message")
+                    FirmwareResult.Error(message)
+                }
             }
 
             401 -> {

@@ -37,6 +37,8 @@ import com.meta.wearable.dat.display.addDisplay
 import com.meta.wearable.dat.display.types.DisplayState
 import java.io.ByteArrayOutputStream
 import java.io.File
+import java.util.ArrayDeque
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
@@ -66,6 +68,7 @@ class MetaRaybanManager private constructor(context: Context) {
 
     companion object {
         private const val TAG = "MetaRaybanManager"
+        private const val MAX_DIAGNOSTIC_EVENTS = 80
 
         @Volatile
         private var instance: MetaRaybanManager? = null
@@ -97,6 +100,8 @@ class MetaRaybanManager private constructor(context: Context) {
     private var display: Display? = null
     private var displayStateJob: Job? = null
     private val captureMutex = Mutex()
+    private val diagnosticsLock = Any()
+    private val diagnosticEvents = ArrayDeque<String>()
 
     private var selectedDeviceId: String? = null
     private var streamFrameHandler: ((Bitmap) -> Unit)? = null
@@ -139,17 +144,18 @@ class MetaRaybanManager private constructor(context: Context) {
     fun initialize() {
         if (_isInitialized.value) return
         if (Build.VERSION.SDK_INT < Build.VERSION_CODES.Q) {
-            fail("Meta Wearables DAT requires Android 10 or newer")
+            reportFailure("initialize", "Meta Wearables DAT requires Android 10 or newer")
             return
         }
 
+        recordInfo("initialize", "Starting Meta Wearables DAT initialization")
         Wearables.initialize(context).fold(
             onSuccess = {
                 _isInitialized.value = true
                 observeWearables()
-                Log.i(TAG, "Meta Wearables DAT SDK initialized")
+                recordInfo("initialize", "Meta Wearables DAT SDK initialized")
             },
-            onFailure = { error, _ -> fail(error.description) },
+            onFailure = { error, _ -> reportFailure("initialize", error.description) },
         )
     }
 
@@ -158,12 +164,17 @@ class MetaRaybanManager private constructor(context: Context) {
 
         registrationJob = scope.launch {
             Wearables.registrationState.collect { state ->
-                _registrationState.value = state.toManagerState()
+                val nextState = state.toManagerState()
+                val previousState = _registrationState.value
+                _registrationState.value = nextState
+                if (previousState != nextState) {
+                    recordInfo("registrationState", "$previousState -> $nextState")
+                }
             }
         }
         registrationErrorJob = scope.launch {
             Wearables.registrationErrorStream.collect { error ->
-                fail(error.getLocalizedDescription(context))
+                reportFailure("registration", error.getLocalizedDescription(context))
             }
         }
         devicesJob = scope.launch {
@@ -174,12 +185,15 @@ class MetaRaybanManager private constructor(context: Context) {
     }
 
     private fun updateDevices(identifiers: Set<String>) {
+        val previousCount = _availableDeviceCount.value
         _availableDeviceCount.value = identifiers.size
 
         val removed = deviceMetadataJobs.keys - identifiers
         removed.forEach { id ->
             deviceMetadataJobs.remove(id)?.cancel()
-            devicesMetadata.remove(id)
+            synchronized(diagnosticsLock) {
+                devicesMetadata.remove(id)
+            }
         }
 
         val previousSelection = selectedDeviceId
@@ -188,6 +202,12 @@ class MetaRaybanManager private constructor(context: Context) {
             else -> identifiers.firstOrNull()
         }
         updateSelectedDeviceState()
+        if (previousCount != identifiers.size) {
+            recordInfo(
+                "devices",
+                "Available DAT devices: ${identifiers.size}; identifiers=${identifiers.joinToString()}",
+            )
+        }
 
         val newIdentifiers = identifiers - deviceMetadataJobs.keys
         newIdentifiers.forEach { id ->
@@ -195,11 +215,16 @@ class MetaRaybanManager private constructor(context: Context) {
             val metadataFlow = Wearables.devicesMetadata.entries
                 .firstOrNull { it.key.toString() == deviceId }
                 ?.value
-            if (metadataFlow == null) return@forEach
+            if (metadataFlow == null) {
+                recordWarning("devices", "No metadata flow was exposed for DAT device $deviceId")
+                return@forEach
+            }
 
             deviceMetadataJobs[deviceId] = scope.launch {
                 metadataFlow.collect { metadata ->
-                    devicesMetadata[deviceId] = metadata
+                    synchronized(diagnosticsLock) {
+                        devicesMetadata[deviceId] = metadata
+                    }
                     updateSelectedDeviceState()
                 }
             }
@@ -207,20 +232,33 @@ class MetaRaybanManager private constructor(context: Context) {
     }
 
     private fun updateSelectedDeviceState() {
-        val selected = selectedDeviceId?.let { id -> devicesMetadata[id] }
+        val previousName = _selectedDeviceName.value
+        val previousDisplayCapability = _selectedDeviceIsDisplayCapable.value
+        val selected = synchronized(diagnosticsLock) {
+            selectedDeviceId?.let { id -> devicesMetadata[id] }
+        }
         _selectedDeviceName.value = selected?.name?.takeIf { it.isNotBlank() }
         _selectedDeviceIsDisplayCapable.value = selected?.isDisplayCapable() == true
+        if (previousName != _selectedDeviceName.value || previousDisplayCapability != _selectedDeviceIsDisplayCapable.value) {
+            recordInfo(
+                "deviceSelection",
+                "selectedId=${selectedDeviceId ?: "(none)"}, name=${_selectedDeviceName.value ?: "(unknown)"}, " +
+                    "displayCapable=${_selectedDeviceIsDisplayCapable.value}",
+            )
+        }
     }
 
     fun startRegistration(activity: Activity) {
         if (!requireInitialized()) return
         if (_registrationState.value == RegistrationState.REGISTERED) return
+        recordInfo("registration", "Launching Meta registration UI")
         Wearables.startRegistration(activity)
     }
 
     fun startUnregistration(activity: Activity) {
         if (!requireInitialized()) return
         if (_registrationState.value != RegistrationState.REGISTERED) return
+        recordInfo("registration", "Launching Meta unregistration UI")
         Wearables.startUnregistration(activity)
     }
 
@@ -233,11 +271,20 @@ class MetaRaybanManager private constructor(context: Context) {
 
     suspend fun awaitCameraReady(timeoutMs: Long = 10_000L): Boolean {
         if (isCameraReady()) return true
-        return withTimeoutOrNull(timeoutMs) {
+        val ready = withTimeoutOrNull(timeoutMs) {
             combine(registrationState, availableDeviceCount) { registration, devices ->
                 registration == RegistrationState.REGISTERED && devices > 0
             }.first { it }
         } == true
+        if (!ready) {
+            reportFailure(
+                "awaitCameraReady",
+                "Timed out after ${timeoutMs}ms; initialized=${_isInitialized.value}, " +
+                    "registration=${_registrationState.value}, availableDevices=${_availableDeviceCount.value}, " +
+                    "selectedDevice=${_selectedDeviceName.value ?: "(none)"}",
+            )
+        }
+        return ready
     }
 
     fun refreshRegistrationState() {
@@ -249,7 +296,10 @@ class MetaRaybanManager private constructor(context: Context) {
     /** DAT consumes the callback itself; this only tells the Activity to refresh its UI. */
     fun handleRegistrationCallback(intent: android.content.Intent): Boolean {
         if (!intent.data?.scheme.equals("cyanbridge", ignoreCase = true)) return false
-        intent.data?.getQueryParameter("error")?.takeIf { it.isNotBlank() }?.let(::fail)
+        intent.data?.getQueryParameter("error")?.takeIf { it.isNotBlank() }?.let {
+            reportFailure("registrationCallback", it)
+        }
+        recordInfo("registrationCallback", "Received DAT registration callback: ${intent.data}")
         refreshRegistrationState()
         return true
     }
@@ -263,9 +313,12 @@ class MetaRaybanManager private constructor(context: Context) {
         scope.launch {
             Wearables.checkPermissionStatus(Permission.CAMERA).fold(
                 onSuccess = { status ->
+                    recordInfo("cameraPermission", "DAT camera permission status=$status")
                     if (status == PermissionStatus.Granted) onGranted() else onRequestNeeded()
                 },
-                onFailure = { error, _ -> onError(error.description) },
+                onFailure = { error, _ ->
+                    onError(reportFailure("cameraPermission", error.description))
+                },
             )
         }
     }
@@ -273,20 +326,20 @@ class MetaRaybanManager private constructor(context: Context) {
     fun startSession(onSuccess: () -> Unit, onError: (String) -> Unit) {
         if (!requireInitialized(onError)) return
         if (_registrationState.value != RegistrationState.REGISTERED) {
-            onError("Meta AI registration is required")
+            onError(reportFailure("startSession", "Meta AI registration is required"))
             return
         }
         if (_availableDeviceCount.value == 0) {
-            onError("No compatible Meta wearable is available")
+            onError(reportFailure("startSession", "No compatible Meta wearable is available"))
             return
         }
         when (selectedDeviceId?.let { devicesMetadata[it]?.compatibility }) {
             DeviceCompatibility.DEVICE_UPDATE_REQUIRED -> {
-                onError("The Meta wearable requires a firmware update")
+                onError(reportFailure("startSession", "The Meta wearable requires a firmware update"))
                 return
             }
             DeviceCompatibility.SDK_UPDATE_REQUIRED -> {
-                onError("The Meta wearable requires a newer DAT SDK")
+                onError(reportFailure("startSession", "The Meta wearable requires a newer DAT SDK"))
                 return
             }
             else -> Unit
@@ -298,12 +351,17 @@ class MetaRaybanManager private constructor(context: Context) {
 
         val lease = GlassesSessionCoordinator.tryAcquireLease(GlassesSession.META_CAMERA)
         if (lease == null) {
-            onError("Another glasses transport is currently active")
+            onError(reportFailure("startSession", "Another glasses transport is currently active"))
             return
         }
         metaCameraLease = lease
 
         clearError()
+        recordInfo(
+            "startSession",
+            "Creating DAT session for selectedDevice=${selectedDeviceId ?: "(automatic)"}, " +
+                "name=${_selectedDeviceName.value ?: "(unknown)"}",
+        )
         _deviceSessionState.value = DeviceSessionState.STARTING
         val selector = selectedDeviceId
             ?.let(::DeviceIdentifier)
@@ -319,7 +377,7 @@ class MetaRaybanManager private constructor(context: Context) {
             onFailure = { error, _ ->
                 releaseMetaCameraLease()
                 _deviceSessionState.value = DeviceSessionState.IDLE
-                onError(error.description)
+                onError(reportFailure("createSession", error.description))
             },
         )
     }
@@ -334,7 +392,12 @@ class MetaRaybanManager private constructor(context: Context) {
         var started = false
         sessionStateJob = scope.launch {
             currentSession.state.collect { state ->
-                _deviceSessionState.value = state.toManagerState()
+                val nextState = state.toManagerState()
+                val previousState = _deviceSessionState.value
+                _deviceSessionState.value = nextState
+                if (previousState != nextState) {
+                    recordInfo("sessionState", "$previousState -> $nextState")
+                }
                 when (state) {
                     DatDeviceSessionState.STARTED -> {
                         if (!started) {
@@ -356,8 +419,7 @@ class MetaRaybanManager private constructor(context: Context) {
         sessionErrorJob = scope.launch {
             currentSession.errors.collect { error ->
                 val message = error.description
-                fail(message)
-                onError(message)
+                onError(reportFailure("session", message))
                 currentSession.stop()
             }
         }
@@ -384,7 +446,7 @@ class MetaRaybanManager private constructor(context: Context) {
         if (!requireInitialized(onError)) return
         val currentSession = session
         if (currentSession == null || _deviceSessionState.value != DeviceSessionState.STARTED) {
-            onError("Start a Meta device session first")
+            onError(reportFailure("startStreaming", "Start a Meta device session first"))
             return
         }
         if (stream != null) {
@@ -393,6 +455,7 @@ class MetaRaybanManager private constructor(context: Context) {
         }
 
         clearError()
+        recordInfo("startStreaming", "Adding DAT stream quality=MEDIUM frameRate=24")
         streamFrameHandler = onFrame
         streamStartedHandler = onSuccess
         _streamState.value = StreamState.STARTING
@@ -409,7 +472,7 @@ class MetaRaybanManager private constructor(context: Context) {
             },
             onFailure = { error, _ ->
                 _streamState.value = StreamState.STOPPED
-                onError(error.description)
+                onError(reportFailure("addStream", error.description))
             },
         )
     }
@@ -421,8 +484,13 @@ class MetaRaybanManager private constructor(context: Context) {
 
         streamStateJob = scope.launch {
             currentStream.state.collect { state ->
-                _streamState.value = state.toManagerState()
+                val nextState = state.toManagerState()
+                val previousState = _streamState.value
+                _streamState.value = nextState
                 _isStreaming.value = state == DatStreamState.STREAMING
+                if (previousState != nextState) {
+                    recordInfo("streamState", "$previousState -> $nextState")
+                }
                 if (state == DatStreamState.STREAMING) {
                     streamStartedHandler?.invoke()
                     streamStartedHandler = null
@@ -436,7 +504,7 @@ class MetaRaybanManager private constructor(context: Context) {
             currentStream.errorStream.collect { error ->
                 val message = error.getLocalizedDescription(context)
                 if (error == StreamError.STREAM_ERROR) {
-                    Log.w(TAG, "Non-terminal DAT stream error: $message")
+                    recordWarning("stream", "Non-terminal DAT stream error: $message")
                 } else {
                     handleStreamFailure(message, onError)
                 }
@@ -456,8 +524,7 @@ class MetaRaybanManager private constructor(context: Context) {
     }
 
     private fun handleStreamFailure(message: String, onError: (String) -> Unit) {
-        fail(message)
-        onError(message)
+        onError(reportFailure("stream", message))
         stopStreamInternal()
     }
 
@@ -484,7 +551,7 @@ class MetaRaybanManager private constructor(context: Context) {
         if (!requireInitialized(onError)) return
         val currentStream = stream
         if (currentStream == null || _streamState.value != StreamState.STREAMING) {
-            onError("Camera stream is not active")
+            onError(reportFailure("capturePhoto", "Camera stream is not active"))
             return
         }
 
@@ -494,15 +561,24 @@ class MetaRaybanManager private constructor(context: Context) {
                     runCatching { persistPhoto(data) }
                         .onSuccess { photo ->
                             _lastCapturedPhoto.value = photo
+                            recordInfo(
+                                "capturePhoto",
+                                "Captured photo mime=${photo.mimeType}, bytes=${photo.bytes.size}, uri=${photo.uri}",
+                            )
                             onSuccess(photo)
                         }
                         .onFailure { error ->
-                            fail(error.message ?: "Unable to save captured photo")
-                            onError(error.message ?: "Unable to save captured photo")
+                            onError(
+                                reportFailure(
+                                    "persistPhoto",
+                                    error.message ?: "Unable to save captured photo",
+                                    error,
+                                ),
+                            )
                         }
                 },
                 onFailure = { error, _ ->
-                    onError(error.description)
+                    onError(reportFailure("capturePhoto", error.description))
                 },
             )
         }
@@ -522,6 +598,14 @@ class MetaRaybanManager private constructor(context: Context) {
                 if (!hadStream) awaitStream()
                 awaitPhoto()
             }
+        } catch (error: Throwable) {
+            reportFailure(
+                "capturePhotoOnce",
+                "${if (error is CancellationException) "Cancelled or timed out" else "Failed"}: " +
+                    (error.message?.takeIf { it.isNotBlank() } ?: "No error message was provided"),
+                error,
+            )
+            throw error
         } finally {
             withContext(Dispatchers.Main.immediate) {
                 if (!hadStream) stopStreaming()
@@ -647,40 +731,50 @@ class MetaRaybanManager private constructor(context: Context) {
     }
 
     /** Writes a DAT photo in a format accepted by the local and cloud vision pipelines. */
-    suspend fun savePhotoForProcessing(photo: CapturedPhoto, namePrefix: String): File =
-        withContext(Dispatchers.IO) {
-            val outputDirectory = context.getExternalFilesDir(Environment.DIRECTORY_DCIM) ?: context.filesDir
-            outputDirectory.mkdirs()
-            val safePrefix = namePrefix.replace(Regex("[^A-Za-z0-9_-]"), "_")
-            val file = File(outputDirectory, "${safePrefix}_${System.currentTimeMillis()}.jpg")
+    suspend fun savePhotoForProcessing(photo: CapturedPhoto, namePrefix: String): File {
+        return try {
+            withContext(Dispatchers.IO) {
+                val outputDirectory = context.getExternalFilesDir(Environment.DIRECTORY_DCIM) ?: context.filesDir
+                outputDirectory.mkdirs()
+                val safePrefix = namePrefix.replace(Regex("[^A-Za-z0-9_-]"), "_")
+                val file = File(outputDirectory, "${safePrefix}_${System.currentTimeMillis()}.jpg")
 
-            if (photo.mimeType.equals("image/heic", ignoreCase = true)) {
-                val bitmap = BitmapFactory.decodeByteArray(photo.bytes, 0, photo.bytes.size)
-                    ?: error("Unable to decode Meta HEIC photo")
-                try {
-                    file.outputStream().use { output ->
-                        check(bitmap.compress(Bitmap.CompressFormat.JPEG, 95, output)) {
-                            "Unable to encode Meta photo"
+                if (photo.mimeType.equals("image/heic", ignoreCase = true)) {
+                    val bitmap = BitmapFactory.decodeByteArray(photo.bytes, 0, photo.bytes.size)
+                        ?: error("Unable to decode Meta HEIC photo")
+                    try {
+                        file.outputStream().use { output ->
+                            check(bitmap.compress(Bitmap.CompressFormat.JPEG, 95, output)) {
+                                "Unable to encode Meta photo"
+                            }
                         }
+                    } finally {
+                        bitmap.recycle()
                     }
-                } finally {
-                    bitmap.recycle()
+                } else {
+                    file.writeBytes(photo.bytes)
                 }
-            } else {
-                file.writeBytes(photo.bytes)
+                file
             }
-            file
+        } catch (error: Throwable) {
+            reportFailure(
+                "savePhotoForProcessing",
+                error.message ?: "Unable to save Meta photo for processing",
+                error,
+            )
+            throw error
         }
+    }
 
     fun startDisplay(onSuccess: () -> Unit, onError: (String) -> Unit) {
         if (!requireInitialized(onError)) return
         if (!_selectedDeviceIsDisplayCapable.value) {
-            onError("Selected Meta wearable does not expose a display")
+            onError(reportFailure("startDisplay", "Selected Meta wearable does not expose a display"))
             return
         }
         val currentSession = session
         if (currentSession == null || _deviceSessionState.value != DeviceSessionState.STARTED) {
-            onError("Start a Meta device session first")
+            onError(reportFailure("startDisplay", "Start a Meta device session first"))
             return
         }
         if (display != null) {
@@ -689,6 +783,7 @@ class MetaRaybanManager private constructor(context: Context) {
         }
 
         displayStartedHandler = onSuccess
+        recordInfo("startDisplay", "Adding DAT display")
         currentSession.addDisplay().fold(
             onSuccess = { newDisplay ->
                 display = newDisplay
@@ -708,7 +803,7 @@ class MetaRaybanManager private constructor(context: Context) {
             },
             onFailure = { error, _ ->
                 displayStartedHandler = null
-                onError(error.description)
+                onError(reportFailure("addDisplay", error.description))
             },
         )
     }
@@ -729,8 +824,8 @@ class MetaRaybanManager private constructor(context: Context) {
     private fun requireInitialized(onError: ((String) -> Unit)? = null): Boolean {
         if (_isInitialized.value) return true
         val message = "Meta Wearables DAT is not initialized"
-        fail(message)
-        onError?.invoke(message)
+        val detail = reportFailure("requireInitialized", message)
+        onError?.invoke(detail)
         return false
     }
 
@@ -743,9 +838,57 @@ class MetaRaybanManager private constructor(context: Context) {
         metaCameraLease = null
     }
 
-    private fun fail(message: String) {
-        _lastError.value = message
-        Log.e(TAG, message)
+    fun reportExternalError(operation: String, message: String): String =
+        reportFailure(operation, message)
+
+    fun diagnosticsSnapshot(): String {
+        val events = synchronized(diagnosticsLock) {
+            diagnosticEvents.joinToString(separator = "\n")
+        }
+        return buildString {
+            appendLine("initialized=${_isInitialized.value}")
+            appendLine("registration=${_registrationState.value}")
+            appendLine("availableDeviceCount=${_availableDeviceCount.value}")
+            appendLine("selectedDeviceId=${selectedDeviceId ?: "(none)"}")
+            appendLine("selectedDeviceName=${_selectedDeviceName.value ?: "(unknown)"}")
+            val compatibility = synchronized(diagnosticsLock) {
+                selectedDeviceId?.let { devicesMetadata[it]?.compatibility } ?: "(unknown)"
+            }
+            appendLine("selectedDeviceCompatibility=$compatibility")
+            appendLine("selectedDeviceDisplayCapable=${_selectedDeviceIsDisplayCapable.value}")
+            appendLine("session=${_deviceSessionState.value}")
+            appendLine("stream=${_streamState.value}")
+            appendLine("displayActive=${_isDisplayActive.value}")
+            appendLine("lastError=${_lastError.value ?: "(none)"}")
+            appendLine("recentEvents:")
+            append(events.ifBlank { "(none)" })
+        }
+    }
+
+    private fun reportFailure(operation: String, message: String, throwable: Throwable? = null): String {
+        val detail = "$operation: ${message.ifBlank { "Unknown DAT error" }}"
+        _lastError.value = detail
+        recordDiagnostic("ERROR", operation, detail)
+        Log.e(TAG, detail, throwable)
+        return detail
+    }
+
+    private fun recordInfo(operation: String, message: String) {
+        recordDiagnostic("INFO", operation, message)
+        Log.i(TAG, "$operation: $message")
+    }
+
+    private fun recordWarning(operation: String, message: String) {
+        recordDiagnostic("WARN", operation, message)
+        Log.w(TAG, "$operation: $message")
+    }
+
+    private fun recordDiagnostic(level: String, operation: String, message: String) {
+        val line = "${System.currentTimeMillis()} [$level] $operation: $message"
+        synchronized(diagnosticsLock) {
+            diagnosticEvents.addLast(line)
+            while (diagnosticEvents.size > MAX_DIAGNOSTIC_EVENTS) diagnosticEvents.removeFirst()
+        }
     }
 
     fun destroy() {

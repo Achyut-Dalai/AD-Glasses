@@ -78,8 +78,12 @@ class OnboardingFeatureActivity : AppCompatActivity() {
                     showOpenSourceContribution = featureIndex == OPEN_SOURCE_FEATURE_INDEX,
                     accessibilityEnabled = accessibilityEnabled,
                     localAgentAutomationEnabled = localAgentAutomationEnabled,
-                    backLabel = if (featureIndex == 0) "Skip all" else "Back",
-                    nextLabel = if (featureIndex == FEATURES.lastIndex) "Get started" else "Next",
+                     backLabel = getString(
+                         if (featureIndex == 0) R.string.onboarding_skip_all else R.string.onboarding_back,
+                     ),
+                     nextLabel = getString(
+                         if (featureIndex == FEATURES.lastIndex) R.string.onboarding_get_started else R.string.onboarding_next,
+                     ),
                     onRequestGlassesConnectionPermission = {
                         requestBluetoothPermission(this, OnPermissionCallback { _, allGranted ->
                             glassesConnectionPermissionGranted = allGranted && hasBluetooth(this)

@@ -9,6 +9,7 @@ import android.os.Build
 import android.util.Log
 import androidx.core.content.ContextCompat
 import com.fersaiyan.cyanbridge.devices.DeviceProfileStore
+import com.fersaiyan.cyanbridge.devices.meizumyvu.MeizuMyvuManager
 import com.fersaiyan.cyanbridge.shared.devices.DeviceClass
 import com.hjq.permissions.Permission
 import com.hjq.permissions.XXPermissions
@@ -103,8 +104,8 @@ object AutoPairManager {
     }
 
     fun requestConnectToMac(context: Context, mac: String, reason: String) {
-        if (DeviceProfileStore.isMetaSelected(context)) {
-            Log.d(TAG, "Skipping vendor reconnect for selected Meta Ray-Ban ($reason)")
+        if (DeviceProfileStore.isMetaSelected(context) || DeviceProfileStore.isMeizuMyvuSelected(context)) {
+            Log.d(TAG, "Skipping vendor reconnect for selected non-HeyCyan glasses ($reason)")
             return
         }
         if (suppressAutoReconnect) {
@@ -154,6 +155,12 @@ object AutoPairManager {
             // Meta owns its transport through DAT. Never hand its Bluetooth identity to
             // the Oudmon connector, even when the device is also visible to Android BLE.
             Log.d(TAG, "Skipping vendor reconnect for selected Meta Ray-Ban")
+            return null
+        }
+        if (profile?.selectedClass == DeviceClass.MEIZU_MYVU) {
+            profile.macAddress.takeIf { it.isNotBlank() }?.let {
+                MeizuMyvuManager.getInstance(context).connect(it)
+            }
             return null
         }
         val profileMac = profile

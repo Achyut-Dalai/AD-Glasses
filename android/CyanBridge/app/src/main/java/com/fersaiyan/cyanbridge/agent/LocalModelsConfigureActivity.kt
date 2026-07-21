@@ -13,6 +13,7 @@ import android.widget.Spinner
 import android.widget.TextView
 import android.widget.Toast
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.activity.OnBackPressedCallback
 import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.app.AppCompatActivity
 import androidx.compose.runtime.getValue
@@ -29,6 +30,7 @@ import com.fersaiyan.cyanbridge.R
 import com.fersaiyan.cyanbridge.localmodels.catalog.LocalModelCatalogEntry
 import com.fersaiyan.cyanbridge.localmodels.catalog.LocalModelCatalogRepository
 import com.fersaiyan.cyanbridge.localmodels.device.DeviceCapabilityService
+import com.fersaiyan.cyanbridge.localmodels.device.DeviceSnapshot
 import com.fersaiyan.cyanbridge.localmodels.download.LocalModelDownloadManager
 import com.fersaiyan.cyanbridge.localmodels.download.LocalModelDownloadProgress
 import com.fersaiyan.cyanbridge.localmodels.session.LocalChatSessionManager
@@ -77,6 +79,8 @@ class LocalModelsConfigureActivity : AppCompatActivity() {
     private var composeState by mutableStateOf(LocalModelsConfigureUiState())
     private var syncComposeState: (() -> Unit)? = null
     private lateinit var composeView: ComposeView
+    private var deviceSnapshot: DeviceSnapshot? = null
+    private var savedSettingsSnapshot: SettingsSnapshot? = null
 
     private lateinit var tvEngineStatus: TextView
     private lateinit var tvDeviceSummary: TextView
@@ -85,6 +89,7 @@ class LocalModelsConfigureActivity : AppCompatActivity() {
     private lateinit var tvDownloadProgress: TextView
     private lateinit var tvWarmupResult: TextView
     private lateinit var progressDownload: LinearProgressIndicator
+    private lateinit var cardDownloadProgress: MaterialCardView
     private lateinit var layoutCatalogContainer: LinearLayout
     private lateinit var cardCuratedCatalog: MaterialCardView
     private lateinit var headerCuratedCatalog: View
@@ -151,6 +156,44 @@ class LocalModelsConfigureActivity : AppCompatActivity() {
         getSharedPreferences("local_models_sections", MODE_PRIVATE)
     }
 
+    private data class GenerationInputSnapshot(
+        val profile: Int,
+        val runtime: Int,
+        val computeBackend: Int,
+        val cpuThreads: String,
+        val gpuLayers: String,
+        val temperature: String,
+        val topP: String,
+        val topK: String,
+        val maxTokens: String,
+        val repetitionPenalty: String,
+        val contextSize: String,
+        val seed: String,
+        val template: Int,
+        val structuredJson: Boolean,
+        val systemPrompt: String,
+    )
+
+    private data class RemoteInputSnapshot(
+        val enabled: Boolean,
+        val baseUrl: String,
+        val model: String,
+        val apiKey: String,
+    )
+
+    private data class StudioInputSnapshot(
+        val enabled: Boolean,
+        val apiKey: String,
+    )
+
+    private data class SettingsSnapshot(
+        val selectedModelId: String?,
+        val generation: GenerationInputSnapshot,
+        val huggingFaceToken: String,
+        val remote: RemoteInputSnapshot,
+        val studio: StudioInputSnapshot,
+    )
+
     private val importModelLauncher = registerForActivityResult(
         ActivityResultContracts.OpenDocument(),
     ) { uri ->
@@ -177,8 +220,17 @@ class LocalModelsConfigureActivity : AppCompatActivity() {
 
         supportActionBar?.setDisplayHomeAsUpEnabled(false)
         findViewById<androidx.appcompat.widget.Toolbar>(R.id.toolbar)?.setNavigationOnClickListener {
-            finish()
+            requestClose()
         }
+
+        onBackPressedDispatcher.addCallback(
+            this,
+            object : OnBackPressedCallback(true) {
+                override fun handleOnBackPressed() {
+                    requestClose()
+                }
+            },
+        )
 
         bindViews()
         bindActions()
@@ -214,6 +266,11 @@ class LocalModelsConfigureActivity : AppCompatActivity() {
     private fun handleComposeAction(action: LocalModelsAction) {
         when (action) {
             LocalModelsAction.Back -> {
+                requestClose()
+                return
+            }
+
+            LocalModelsAction.DiscardChangesAndBack -> {
                 finish()
                 return
             }
@@ -350,10 +407,11 @@ class LocalModelsConfigureActivity : AppCompatActivity() {
                     downloadLabel = when {
                         installed != null -> "Installed"
                         entry.sourceUrl.isNullOrBlank() -> "Manual import"
+                        !assessCatalogEntry(entry).supported -> "Unavailable on device"
                         entry.gatedDownload -> "Download (token)"
                         else -> "Download"
                     },
-                    canDownload = !isDownloadInFlight && installed == null && !entry.sourceUrl.isNullOrBlank(),
+                    canDownload = canDownloadCatalogEntry(entry, installed),
                 )
             },
             catalogExpanded = isSectionExpanded(R.id.card_curated_catalog, defaultExpanded = false),
@@ -365,6 +423,7 @@ class LocalModelsConfigureActivity : AppCompatActivity() {
                 message = tvDownloadProgress.text.toString(),
                 progressPercent = progressPercent,
             ),
+            hasUnsavedChanges = hasUnsavedSettings(),
             warmupResult = tvWarmupResult.text.toString(),
             generation = LocalModelGenerationUiState(
                 profileOptions = LocalModelPerformanceProfile.entries.map { it.label },
@@ -419,6 +478,7 @@ class LocalModelsConfigureActivity : AppCompatActivity() {
         tvDownloadProgress = findViewById(R.id.tv_download_progress)
         tvWarmupResult = findViewById(R.id.tv_warmup_result)
         progressDownload = findViewById(R.id.progress_download)
+        cardDownloadProgress = findViewById(R.id.card_download_progress)
         layoutCatalogContainer = findViewById(R.id.layout_catalog_container)
         cardCuratedCatalog = findViewById(R.id.card_curated_catalog)
         headerCuratedCatalog = findViewById(R.id.header_curated_catalog)
@@ -479,7 +539,7 @@ class LocalModelsConfigureActivity : AppCompatActivity() {
     }
 
     private fun bindActions() {
-        findViewById<MaterialButton>(R.id.btn_close).setOnClickListener { finish() }
+        findViewById<MaterialButton>(R.id.btn_close).setOnClickListener { requestClose() }
         findViewById<MaterialButton>(R.id.btn_refresh_state).setOnClickListener { refreshAllUi() }
 
         findViewById<MaterialButton>(R.id.btn_import_model).setOnClickListener {
@@ -531,6 +591,7 @@ class LocalModelsConfigureActivity : AppCompatActivity() {
                 LocalModelsPrefs.setSelectedModelId(this@LocalModelsConfigureActivity, selected?.id)
                 loadSettingsForSelectedModel()
                 refreshSelectedModelStatus()
+                markGenerationSettingsLoaded()
                 syncComposeState?.invoke()
             }
 
@@ -632,6 +693,7 @@ class LocalModelsConfigureActivity : AppCompatActivity() {
         btnCancelDownload.isEnabled = false
         downloadJob?.cancel()
         tvDownloadProgress.text = "Cancelling download..."
+        syncDownloadCardVisibility()
         syncComposeState?.invoke()
     }
 
@@ -725,6 +787,7 @@ class LocalModelsConfigureActivity : AppCompatActivity() {
         LocalModelStorageRepository.cleanupMissingModels(this)
 
         val snapshot = DeviceCapabilityService.snapshot(this)
+        deviceSnapshot = snapshot
         val ramGb = snapshot.totalRamBytes / (1024.0 * 1024.0 * 1024.0)
         val freeGb = snapshot.freeStorageBytes / (1024.0 * 1024.0 * 1024.0)
         tvEngineStatus.text = "Runtimes available: llama.cpp + LiteRT"
@@ -743,6 +806,8 @@ class LocalModelsConfigureActivity : AppCompatActivity() {
 
         loadRemoteServerConfig()
         loadStudioBridgeConfig()
+        markSettingsSaved()
+        syncDownloadCardVisibility()
         syncComposeState?.invoke()
     }
 
@@ -807,11 +872,13 @@ class LocalModelsConfigureActivity : AppCompatActivity() {
             val buttonRow = LinearLayout(this).apply {
                 orientation = LinearLayout.HORIZONTAL
             }
-            val canDownload = !entry.sourceUrl.isNullOrBlank() && !installedByCatalogId.containsKey(entry.id)
+            val installed = installedByCatalogId[entry.id]
+            val canDownload = canDownloadCatalogEntry(entry, installed)
             val btnDownload = MaterialButton(this).apply {
                 text = when {
-                    installedByCatalogId.containsKey(entry.id) -> "Installed"
+                    installed != null -> "Installed"
                     entry.sourceUrl.isNullOrBlank() -> "Manual Import"
+                    !assessCatalogEntry(entry).supported -> "Unavailable on Device"
                     entry.gatedDownload -> "Download (Token)"
                     else -> "Download"
                 }
@@ -837,9 +904,48 @@ class LocalModelsConfigureActivity : AppCompatActivity() {
 
     private fun statusText(entry: LocalModelCatalogEntry, installed: InstalledLocalModel?): String {
         if (installed != null) return "Status: ready"
-        if (entry.sourceUrl.isNullOrBlank()) return "Status: manual import recommended"
-        if (entry.gatedDownload) return "Status: downloadable (requires token + accepted terms)"
-        return "Status: not downloaded"
+        val assessment = assessCatalogEntry(entry)
+        val ramStatus = if (assessment.ramSuitable) {
+            "RAM suitable: ${String.format("%.1f", assessment.ramGb)} GB " +
+                "(model minimum ${String.format("%.1f", entry.minRamGb)} GB)"
+        } else {
+            "RAM unsuitable: device has ${String.format("%.1f", assessment.ramGb)} GB, " +
+                "model needs at least ${String.format("%.1f", entry.minRamGb)} GB"
+        }
+        val deviceStatus = if (assessment.supported) {
+            "Device suitable: $ramStatus"
+        } else {
+            val otherBlockers = assessment.blockers.filterNot { it.startsWith("RAM unsuitable:") }
+            val blockerText = otherBlockers.takeIf { it.isNotEmpty() }?.joinToString(" ").orEmpty()
+            "Device not suitable: $ramStatus${if (blockerText.isNotBlank()) ". $blockerText" else "."}"
+        }
+        val warningStatus = assessment.warnings
+            .takeIf { it.isNotEmpty() }
+            ?.joinToString(" ")
+            ?.let { " Warning: $it" }
+            .orEmpty()
+        val availability = when {
+            entry.sourceUrl.isNullOrBlank() -> "Status: manual import recommended"
+            entry.gatedDownload -> "Status: downloadable (requires token + accepted terms)"
+            else -> "Status: not downloaded"
+        }
+        return "$deviceStatus.$warningStatus\n$availability"
+    }
+
+    private fun assessCatalogEntry(entry: LocalModelCatalogEntry) = DeviceCapabilityService.assess(
+        snapshot = deviceSnapshot ?: DeviceCapabilityService.snapshot(this).also { deviceSnapshot = it },
+        entry = entry,
+        requireDownloadHeadroom = !entry.sourceUrl.isNullOrBlank(),
+    )
+
+    private fun canDownloadCatalogEntry(entry: LocalModelCatalogEntry, installed: InstalledLocalModel?): Boolean {
+        if (isDownloadInFlight || installed != null || !entry.enabled || entry.sourceUrl.isNullOrBlank()) {
+            return false
+        }
+        if (entry.gatedDownload && LocalModelsPrefs.getHuggingFaceToken(this).trim().isBlank()) {
+            return false
+        }
+        return assessCatalogEntry(entry).supported
     }
 
     private fun requestDownload(entry: LocalModelCatalogEntry) {
@@ -922,6 +1028,7 @@ class LocalModelsConfigureActivity : AppCompatActivity() {
         tvDownloadProgress.text = "Starting download: ${entry.displayName}"
         btnCancelDownload.isEnabled = true
         syncDownloadButtonsState()
+        syncDownloadCardVisibility()
         syncComposeState?.invoke()
     }
 
@@ -937,13 +1044,15 @@ class LocalModelsConfigureActivity : AppCompatActivity() {
         }
         tvDownloadProgress.text = message
         syncDownloadButtonsState()
+        syncDownloadCardVisibility()
         syncComposeState?.invoke()
     }
 
     private fun syncDownloadButtonsState() {
         val shouldShowStarter = installedModels.isEmpty()
         btnDownloadStarter.visibility = if (shouldShowStarter) View.VISIBLE else View.GONE
-        btnDownloadStarter.isEnabled = !isDownloadInFlight && shouldShowStarter
+        val starter = LocalModelCatalogRepository.findById("qwen2.5-0.5b-instruct-q4")
+        btnDownloadStarter.isEnabled = shouldShowStarter && starter?.let { canDownloadCatalogEntry(it, null) } == true
 
         catalogDownloadButtons.forEach { button ->
             val canDownloadWhenIdle = button.tag as? Boolean ?: false
@@ -951,6 +1060,16 @@ class LocalModelsConfigureActivity : AppCompatActivity() {
         }
 
         btnCancelDownload.visibility = if (isDownloadInFlight) View.VISIBLE else View.GONE
+    }
+
+    private fun syncDownloadCardVisibility() {
+        cardDownloadProgress.visibility = if (
+            isDownloadInFlight || tvDownloadProgress.text?.isNotBlank() == true
+        ) {
+            View.VISIBLE
+        } else {
+            View.GONE
+        }
     }
 
     private fun onDownloadProgress(progress: LocalModelDownloadProgress) {
@@ -963,6 +1082,7 @@ class LocalModelsConfigureActivity : AppCompatActivity() {
                 progressDownload.setProgressCompat(progress.percent, true)
             }
             tvDownloadProgress.text = "Downloading ${progress.modelId}: ${progress.percent}% ($done / $total)"
+            syncDownloadCardVisibility()
             syncComposeState?.invoke()
         }
     }
@@ -970,6 +1090,7 @@ class LocalModelsConfigureActivity : AppCompatActivity() {
     private fun importModel(uri: Uri) {
         lifecycleScope.launch {
             tvDownloadProgress.text = "Importing model..."
+            syncDownloadCardVisibility()
             syncComposeState?.invoke()
             val result = withContext(Dispatchers.IO) {
                 runCatching {
@@ -993,10 +1114,12 @@ class LocalModelsConfigureActivity : AppCompatActivity() {
 
             result.onSuccess {
                 tvDownloadProgress.text = "Import complete: ${it.displayName}"
+                syncDownloadCardVisibility()
                 Toast.makeText(this@LocalModelsConfigureActivity, "Imported ${it.displayName}", Toast.LENGTH_SHORT).show()
                 refreshAllUi()
             }.onFailure { err ->
                 tvDownloadProgress.text = "Import failed: ${err.message}"
+                syncDownloadCardVisibility()
                 Toast.makeText(this@LocalModelsConfigureActivity, err.message ?: "Import failed", Toast.LENGTH_LONG).show()
                 syncComposeState?.invoke()
             }
@@ -1078,6 +1201,7 @@ class LocalModelsConfigureActivity : AppCompatActivity() {
         val model = selectedInstalledModel()
         if (model == null) {
             LocalModelsPrefs.setHuggingFaceToken(this, editHfToken.text?.toString().orEmpty())
+            markHuggingFaceTokenSaved()
             Toast.makeText(this, "Saved token. Install a model to save generation settings.", Toast.LENGTH_SHORT).show()
             return
         }
@@ -1125,6 +1249,7 @@ class LocalModelsConfigureActivity : AppCompatActivity() {
             Toast.LENGTH_SHORT,
         ).show()
         setResult(RESULT_OK)
+        markGenerationSettingsSaved()
         syncComposeState?.invoke()
     }
 
@@ -1368,6 +1493,118 @@ class LocalModelsConfigureActivity : AppCompatActivity() {
         }
     }
 
+    private fun requestClose() {
+        if (!hasUnsavedSettings()) {
+            finish()
+            return
+        }
+
+        AlertDialog.Builder(this)
+            .setTitle("Unsaved changes")
+            .setMessage("Your local-model settings have changed. Leave without saving?")
+            .setNegativeButton("Keep editing", null)
+            .setPositiveButton("Discard") { _, _ -> finish() }
+            .show()
+    }
+
+    private fun hasUnsavedSettings(): Boolean {
+        return savedSettingsSnapshot?.let { it != currentSettingsSnapshot() } == true
+    }
+
+    private fun currentSettingsSnapshot(): SettingsSnapshot {
+        fun text(view: TextInputEditText): String = view.text?.toString().orEmpty()
+
+        return SettingsSnapshot(
+            selectedModelId = selectedInstalledModel()?.id,
+            generation = GenerationInputSnapshot(
+                profile = spinnerProfile.selectedItemPosition,
+                runtime = spinnerModelRuntime.selectedItemPosition,
+                computeBackend = spinnerComputeBackend.selectedItemPosition,
+                cpuThreads = text(editCpuThreads),
+                gpuLayers = text(editGpuLayers),
+                temperature = text(editTemperature),
+                topP = text(editTopP),
+                topK = text(editTopK),
+                maxTokens = text(editMaxTokens),
+                repetitionPenalty = text(editRepPenalty),
+                contextSize = text(editContextSize),
+                seed = text(editSeed),
+                template = spinnerTemplateOverride.selectedItemPosition,
+                structuredJson = switchExperimentalJson.isChecked,
+                systemPrompt = text(editSystemPrompt),
+            ),
+            huggingFaceToken = text(editHfToken),
+            remote = RemoteInputSnapshot(
+                enabled = switchRemoteEnabled.isChecked,
+                baseUrl = text(editRemoteBaseUrl),
+                model = text(editRemoteModel),
+                apiKey = text(editRemoteApiKey),
+            ),
+            studio = StudioInputSnapshot(
+                enabled = switchStudioBridgeEnabled.isChecked,
+                apiKey = text(editStudioBridgeApiKey),
+            ),
+        )
+    }
+
+    private fun markSettingsSaved() {
+        savedSettingsSnapshot = currentSettingsSnapshot()
+    }
+
+    private fun markGenerationSettingsSaved() {
+        val current = currentSettingsSnapshot()
+        val saved = savedSettingsSnapshot ?: current
+        savedSettingsSnapshot = saved.copy(
+            selectedModelId = current.selectedModelId,
+            generation = current.generation,
+            huggingFaceToken = current.huggingFaceToken,
+        )
+    }
+
+    private fun markGenerationSettingsLoaded() {
+        val current = currentSettingsSnapshot()
+        val saved = savedSettingsSnapshot ?: current
+        savedSettingsSnapshot = saved.copy(
+            selectedModelId = current.selectedModelId,
+            generation = current.generation,
+        )
+    }
+
+    private fun markHuggingFaceTokenSaved() {
+        val current = currentSettingsSnapshot()
+        val saved = savedSettingsSnapshot ?: current
+        savedSettingsSnapshot = saved.copy(huggingFaceToken = current.huggingFaceToken)
+    }
+
+    private fun markRemoteSettingsSaved() {
+        val current = currentSettingsSnapshot()
+        val saved = savedSettingsSnapshot ?: current
+        savedSettingsSnapshot = saved.copy(remote = current.remote)
+    }
+
+    private fun markStudioApiKeySaved() {
+        val current = currentSettingsSnapshot()
+        val saved = savedSettingsSnapshot ?: current
+        savedSettingsSnapshot = saved.copy(
+            studio = saved.studio.copy(apiKey = current.studio.apiKey),
+        )
+    }
+
+    private fun markStudioSettingsSaved(saveApiKey: Boolean) {
+        val current = currentSettingsSnapshot()
+        val saved = savedSettingsSnapshot ?: current
+        savedSettingsSnapshot = saved.copy(
+            studio = current.studio.copy(
+                apiKey = if (saveApiKey) current.studio.apiKey else saved.studio.apiKey,
+            ),
+            remote = if (saveApiKey) {
+                saved.remote.copy(apiKey = current.remote.apiKey)
+            } else {
+                saved.remote
+            },
+        )
+    }
+
     // --- Remote OpenAI-compatible server ---
 
     private fun loadRemoteServerConfig() {
@@ -1409,6 +1646,7 @@ class LocalModelsConfigureActivity : AppCompatActivity() {
         RemoteOpenAiPrefs.setModel(this, model)
         RemoteOpenAiPrefs.setApiKey(this, apiKey)
         RemoteOpenAiPrefs.setEnabled(this, enabled)
+        editStudioBridgeApiKey.setText(apiKey)
 
         val msg = if (enabled) {
             "Remote server saved: $model @ $url"
@@ -1427,6 +1665,8 @@ class LocalModelsConfigureActivity : AppCompatActivity() {
             }
         }
         setResult(RESULT_OK)
+        markRemoteSettingsSaved()
+        markStudioApiKeySaved()
         syncComposeState?.invoke()
     }
 
@@ -1519,6 +1759,7 @@ class LocalModelsConfigureActivity : AppCompatActivity() {
             }
             // The API key is shared with RemoteOpenAiPrefs, so we save it there.
             RemoteOpenAiPrefs.setApiKey(this, apiKey)
+            editRemoteApiKey.setText(apiKey)
         }
 
         RemoteOpenAiPrefs.setBridgeEnabled(this, enabled)
@@ -1538,6 +1779,7 @@ class LocalModelsConfigureActivity : AppCompatActivity() {
             tvStudioBridgeStatus.text = ""
             Toast.makeText(this, "Studio Bridge disabled", Toast.LENGTH_SHORT).show()
         }
+        markStudioSettingsSaved(saveApiKey = enabled)
         syncComposeState?.invoke()
     }
 

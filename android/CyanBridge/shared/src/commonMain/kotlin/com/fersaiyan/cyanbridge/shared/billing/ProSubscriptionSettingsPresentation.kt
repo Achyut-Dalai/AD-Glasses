@@ -1,5 +1,18 @@
 package com.fersaiyan.cyanbridge.shared.billing
 
+enum class ProSubscriptionAction {
+    SUBSCRIBE,
+    DONATE,
+}
+
+/** Safe fallback used when a host has no verified checkout implementation. */
+fun unavailableProSubscriptionStatus(action: ProSubscriptionAction): String = when (action) {
+    ProSubscriptionAction.SUBSCRIBE ->
+        "Subscription checkout is unavailable on this host. No payment was started and no Pro access was granted."
+    ProSubscriptionAction.DONATE ->
+        "Donations are unavailable on this host. No payment was started."
+}
+
 /** Platform-neutral summary state for the subscription checkout screen. */
 data class ProSubscriptionUiState(
     val status: String = "Not subscribed",

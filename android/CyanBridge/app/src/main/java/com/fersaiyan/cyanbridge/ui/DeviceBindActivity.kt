@@ -24,6 +24,7 @@ import com.fersaiyan.cyanbridge.shared.devices.DeviceClass
 import com.fersaiyan.cyanbridge.devices.DeviceClassifier
 import com.fersaiyan.cyanbridge.devices.DeviceProfileStore
 import com.fersaiyan.cyanbridge.devices.metarayban.MetaRaybanManager
+import com.fersaiyan.cyanbridge.devices.meizumyvu.MeizuMyvuManager
 import com.fersaiyan.cyanbridge.devices.ScannedDevice
 import com.fersaiyan.cyanbridge.ui.appearance.AppearancePreferences
 import com.fersaiyan.cyanbridge.ui.appearance.rememberAppearanceSettings
@@ -168,6 +169,19 @@ class DeviceBindActivity : BaseActivity() {
             Toast.makeText(
                 this,
                 "Meta Ray-Ban selected. Register it from the glasses dashboard.",
+                Toast.LENGTH_LONG,
+            ).show()
+            finish()
+            return
+        }
+
+        if (selectedDeviceClass == DeviceClass.MEIZU_MYVU) {
+            // MYVU owns a BLE ECDH session and an RFCOMM relay. The HeyCyan SDK
+            // connector cannot establish either transport.
+            MeizuMyvuManager.getInstance(this).connect(device.macAddress)
+            Toast.makeText(
+                this,
+                "Connecting to Meizu MYVU. Keep the official MYVU app disconnected.",
                 Toast.LENGTH_LONG,
             ).show()
             finish()

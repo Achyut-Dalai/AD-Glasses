@@ -79,7 +79,13 @@ class VisualDiaryService : Service() {
                 val manager = MetaRaybanManager.getInstance(this@VisualDiaryService)
                 if (!manager.isInitialized.value) manager.initialize()
                 if (!manager.awaitCameraReady()) {
-                    Log.w(TAG, "Meta Visual Diary requires a registered, available DAT camera")
+                    val detail = manager.lastError.value
+                        ?: "Register and connect a Meta camera before using Visual Diary"
+                    Log.e(
+                        TAG,
+                        "Meta Visual Diary cannot start: $detail\n${manager.diagnosticsSnapshot()}",
+                    )
+                    updateNotification("Meta camera unavailable: ${detail.take(120)}")
                     VisualDiaryPreferences.setEnabled(this@VisualDiaryService, false)
                     stopLoop()
                     return@launch
@@ -118,10 +124,16 @@ class VisualDiaryService : Service() {
             val file = runCatching {
                 val photo = manager.capturePhotoOnce()
                 manager.savePhotoForProcessing(photo, "META_VISUAL_NOTE_$index")
-            }.onFailure { Log.e(TAG, "Meta DAT photo capture failed: ${it.message}", it) }
+            }.onFailure {
+                val detail = manager.lastError.value ?: it.message ?: "camera unavailable"
+                Log.e(TAG, "Meta DAT photo capture failed: $detail\n${manager.diagnosticsSnapshot()}", it)
+                updateNotification("Meta capture failed: ${detail.take(120)}")
+            }
                 .getOrNull()
             if (file == null) {
-                updateNotification("Meta camera unavailable")
+                if (manager.lastError.value.isNullOrBlank()) {
+                    updateNotification("Meta camera unavailable")
+                }
                 return
             }
 

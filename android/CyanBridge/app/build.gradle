@@ -113,6 +113,18 @@ android {
         compose = true
     }
 
+    // MYVU's protocol is maintained as a pinned upstream submodule. The source
+    // contains the hardware-verified StarryNet BLE/ECDH/RFCOMM implementation.
+    sourceSets {
+        main {
+            java.srcDir("src/main/myvu-upstream/android/app/src/main/java")
+            assets.srcDir("src/main/myvu-upstream/android/app/src/main/assets")
+            java.exclude("com/myvu/client/ui/**")
+            java.exclude("com/myvu/client/service/MyvuService.java")
+            java.exclude("com/myvu/client/service/MirrorNotificationListener.java")
+        }
+    }
+
     testOptions {
         unitTests {
             includeAndroidResources = true
@@ -161,6 +173,7 @@ dependencies {
     implementation "androidx.lifecycle:lifecycle-viewmodel-ktx:2.8.0"
     implementation "androidx.work:work-runtime-ktx:2.9.1"
     implementation "org.jetbrains.kotlinx:kotlinx-coroutines-android:1.7.3"
+    implementation "com.google.android.gms:play-services-location:21.3.0"
     if (localLlamaRuntimeAarPath.isEmpty()) {
         implementation "io.github.ljcamargo:llamacpp-kotlin:0.2.0"
     } else {

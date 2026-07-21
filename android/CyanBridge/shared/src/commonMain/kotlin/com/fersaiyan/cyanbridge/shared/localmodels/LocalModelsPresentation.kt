@@ -18,6 +18,7 @@ data class LocalModelsConfigureUiState(
     val studioBridgeExpanded: Boolean = false,
     val generationSettingsExpanded: Boolean = false,
     val download: LocalModelDownloadUiState = LocalModelDownloadUiState(),
+    val hasUnsavedChanges: Boolean = false,
     val warmupResult: String = "",
     val generation: LocalModelGenerationUiState = LocalModelGenerationUiState(),
     val remoteServer: RemoteInferenceUiState = RemoteInferenceUiState(),
@@ -126,6 +127,7 @@ enum class LocalModelToggleField {
 /** User intents emitted by the portable Local Models presentation. */
 sealed interface LocalModelsAction {
     data object Back : LocalModelsAction
+    data object DiscardChangesAndBack : LocalModelsAction
     data object Refresh : LocalModelsAction
     data object ImportModel : LocalModelsAction
     data class SelectInstalledModel(val id: String) : LocalModelsAction

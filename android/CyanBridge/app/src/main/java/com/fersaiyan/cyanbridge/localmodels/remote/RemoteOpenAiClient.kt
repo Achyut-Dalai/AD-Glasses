@@ -5,10 +5,13 @@ import android.util.Log
 import org.json.JSONArray
 import org.json.JSONObject
 import java.io.BufferedReader
+import java.io.File
 import java.io.InputStreamReader
 import java.io.OutputStreamWriter
 import java.net.HttpURLConnection
 import java.net.URL
+import java.util.Base64
+import java.util.Locale
 
 /**
  * Lightweight client for OpenAI-compatible chat/completions endpoints.
@@ -31,6 +34,8 @@ object RemoteOpenAiClient {
         messages: List<Map<String, String>>,
         maxTokens: Int = 2048,
         temperature: Double = 0.7,
+        imagePaths: List<String> = emptyList(),
+        audioPath: String? = null,
     ): String {
         val baseUrl = RemoteOpenAiPrefs.getBaseUrl(context)
         val apiKey = RemoteOpenAiPrefs.getApiKey(context)
@@ -42,17 +47,14 @@ object RemoteOpenAiClient {
             "Refusing to send an API key over a public cleartext URL"
         }
 
-        val messagesArray = JSONArray()
-        for (m in messages) {
-            val role = m["role"]?.lowercase() ?: "user"
-            messagesArray.put(JSONObject().put("role", role).put("content", m["content"]))
-        }
-
-        val payload = JSONObject()
-            .put("model", model)
-            .put("messages", messagesArray)
-            .put("max_tokens", maxTokens)
-            .put("temperature", temperature)
+        val payload = buildChatCompletionPayload(
+            model = model,
+            messages = messages,
+            maxTokens = maxTokens,
+            temperature = temperature,
+            imagePaths = imagePaths,
+            audioPath = audioPath,
+        )
 
         val url = buildUrl(baseUrl)
         Log.i(TAG, "chatCompletion -> $url model=$model")
@@ -78,6 +80,8 @@ object RemoteOpenAiClient {
         maxTokens: Int = 2048,
         temperature: Double = 0.7,
         onToken: ((String) -> Unit)? = null,
+        imagePaths: List<String> = emptyList(),
+        audioPath: String? = null,
     ): String {
         val baseUrl = RemoteOpenAiPrefs.getBaseUrl(context)
         val apiKey = RemoteOpenAiPrefs.getApiKey(context)
@@ -89,18 +93,15 @@ object RemoteOpenAiClient {
             "Refusing to send an API key over a public cleartext URL"
         }
 
-        val messagesArray = JSONArray()
-        for (m in messages) {
-            val role = m["role"]?.lowercase() ?: "user"
-            messagesArray.put(JSONObject().put("role", role).put("content", m["content"]))
-        }
-
-        val payload = JSONObject()
-            .put("model", model)
-            .put("messages", messagesArray)
-            .put("max_tokens", maxTokens)
-            .put("temperature", temperature)
-            .put("stream", true)
+        val payload = buildChatCompletionPayload(
+            model = model,
+            messages = messages,
+            maxTokens = maxTokens,
+            temperature = temperature,
+            stream = true,
+            imagePaths = imagePaths,
+            audioPath = audioPath,
+        )
 
         val url = buildUrl(baseUrl)
         Log.i(TAG, "chatCompletionStreaming -> $url model=$model")
@@ -163,6 +164,130 @@ object RemoteOpenAiClient {
         } else {
             "$clean/chat/completions"
         }
+    }
+
+    /**
+     * Builds the OpenAI chat-completions payload. Media is encoded as the
+     * protocol's multimodal content parts on the final user message instead
+     * of being silently discarded by remote routing.
+     */
+    internal fun buildChatCompletionPayload(
+        model: String,
+        messages: List<Map<String, String>>,
+        maxTokens: Int,
+        temperature: Double,
+        stream: Boolean = false,
+        imagePaths: List<String> = emptyList(),
+        audioPath: String? = null,
+    ): JSONObject {
+        require(model.isNotBlank()) { "Remote server model name is not configured" }
+        require(maxTokens > 0) { "maxTokens must be greater than zero" }
+
+        val hasAudio = !audioPath.isNullOrBlank()
+        val hasMedia = imagePaths.isNotEmpty() || hasAudio
+        val userMessageIndex = messages.indexOfLast {
+            it["role"]?.trim()?.lowercase(Locale.US).let { role ->
+                role.isNullOrBlank() || role == "user"
+            }
+        }
+        if (hasMedia && userMessageIndex < 0) {
+            throw IllegalArgumentException("Media attachments require at least one user message")
+        }
+
+        val messagesArray = JSONArray()
+        messages.forEachIndexed { index, message ->
+            val role = message["role"]?.trim()?.lowercase(Locale.US).orEmpty().ifBlank { "user" }
+            val text = message["content"].orEmpty()
+            val jsonMessage = JSONObject().put("role", role)
+            if (index != userMessageIndex || !hasMedia) {
+                jsonMessage.put("content", text)
+            } else {
+                val contentParts = JSONArray()
+                if (text.isNotBlank()) {
+                    contentParts.put(JSONObject().put("type", "text").put("text", text))
+                }
+                imagePaths.forEach { path ->
+                    val image = readAttachment(File(requireAttachmentPath(path, "image")), "image")
+                    contentParts.put(
+                        JSONObject()
+                            .put("type", "image_url")
+                            .put("image_url", JSONObject().put("url", "data:${image.mimeType};base64,${image.base64}")),
+                    )
+                }
+                if (hasAudio) {
+                    val audioFile = File(requireAttachmentPath(audioPath.orEmpty(), "audio"))
+                    val audio = readAttachment(audioFile, "audio")
+                    contentParts.put(
+                        JSONObject()
+                            .put("type", "input_audio")
+                            .put(
+                                "input_audio",
+                                JSONObject()
+                                    .put("data", audio.base64)
+                                    .put("format", audio.mimeType),
+                            ),
+                    )
+                }
+                jsonMessage.put("content", contentParts)
+            }
+            messagesArray.put(jsonMessage)
+        }
+
+        return JSONObject()
+            .put("model", model.trim())
+            .put("messages", messagesArray)
+            .put("max_tokens", maxTokens)
+            .put("temperature", temperature)
+            .apply {
+                if (stream) put("stream", true)
+            }
+    }
+
+    private data class EncodedAttachment(
+        val base64: String,
+        val mimeType: String,
+    )
+
+    private fun requireAttachmentPath(path: String, kind: String): String {
+        return path.trim().takeIf { it.isNotBlank() }
+            ?: throw IllegalArgumentException("$kind attachment path is blank")
+    }
+
+    private fun readAttachment(file: File, kind: String): EncodedAttachment {
+        require(file.isFile && file.canRead()) {
+            "Cannot read $kind attachment: ${file.path}"
+        }
+        require(file.length() > 0L) {
+            "$kind attachment is empty: ${file.path}"
+        }
+
+        val extension = file.extension.lowercase(Locale.US)
+        val mimeType = when (kind) {
+            "image" -> when (extension) {
+                "jpg", "jpeg" -> "image/jpeg"
+                "png" -> "image/png"
+                "webp" -> "image/webp"
+                "gif" -> "image/gif"
+                "bmp" -> "image/bmp"
+                "heic" -> "image/heic"
+                else -> throw IllegalArgumentException(
+                    "Unsupported image format '.$extension'. Use JPEG, PNG, WebP, GIF, BMP, or HEIC.",
+                )
+            }
+            "audio" -> when (extension) {
+                "wav", "wave" -> "wav"
+                "mp3", "mpeg" -> "mp3"
+                else -> throw IllegalArgumentException(
+                    "Unsupported remote audio format '.$extension'. OpenAI-compatible chat audio requires WAV or MP3.",
+                )
+            }
+            else -> error("Unknown attachment kind: $kind")
+        }
+
+        return EncodedAttachment(
+            base64 = Base64.getEncoder().encodeToString(file.readBytes()),
+            mimeType = mimeType,
+        )
     }
 
     private fun postJson(url: String, apiKey: String, payload: JSONObject): JSONObject {

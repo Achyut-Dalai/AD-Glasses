@@ -19,6 +19,13 @@ class OtaFirmwareTargetTest {
     }
 
     @Test
+    fun combinedWorkflowRequiresBothTransportArtifacts() {
+        assertTrue(isCombinedOtaFilenamePair("WIFIAM01G1.swu", "JIELI.bin"))
+        assertFalse(isCombinedOtaFilenamePair("WIFIAM01G1.swu", "JIELI.swu"))
+        assertFalse(isCombinedOtaFilenamePair("JIELI.bin", "WIFIAM01G1.swu"))
+    }
+
+    @Test
     fun `only approved server sources map to catalog channels`() {
         assertNull(OtaFirmwareSource.PERSONAL_FILE.serverChannel())
         assertEquals("stealth", OtaFirmwareSource.STEALTH_CATALOG.serverChannel())
@@ -46,5 +53,51 @@ class OtaFirmwareTargetTest {
         assertTrue(isSha256Hex("a".repeat(64)))
         assertFalse(isSha256Hex("a".repeat(63)))
         assertFalse(isSha256Hex("z".repeat(64)))
+    }
+
+    @Test
+    fun `only the explicit patch-unavailable response opens a patch request`() {
+        assertTrue(
+            isFirmwarePatchUnavailableResponse(
+                FIRMWARE_PATCH_UNAVAILABLE_STATUS,
+                FIRMWARE_PATCH_UNAVAILABLE_ERROR,
+            ),
+        )
+        assertFalse(isFirmwarePatchUnavailableResponse(404, FIRMWARE_PATCH_UNAVAILABLE_ERROR))
+        assertFalse(isFirmwarePatchUnavailableResponse(FIRMWARE_PATCH_UNAVAILABLE_STATUS, "server_error"))
+    }
+
+    @Test
+    fun `patch requests require the complete relay response contract`() {
+        assertEquals(
+            "No exact patch is approved.",
+            firmwarePatchUnavailableMessage(
+                FIRMWARE_PATCH_UNAVAILABLE_STATUS,
+                FIRMWARE_PATCH_UNAVAILABLE_ERROR,
+                "No exact patch is approved.",
+            ),
+        )
+        assertNull(
+            firmwarePatchUnavailableMessage(
+                404,
+                FIRMWARE_PATCH_UNAVAILABLE_ERROR,
+                "No exact patch is approved.",
+            ),
+        )
+        assertNull(
+            firmwarePatchUnavailableMessage(
+                FIRMWARE_PATCH_UNAVAILABLE_STATUS,
+                "firmware_not_available",
+                "No exact patch is approved.",
+            ),
+        )
+        assertEquals(
+            "No approved firmware patch exists for this installed version.",
+            firmwarePatchUnavailableMessage(
+                FIRMWARE_PATCH_UNAVAILABLE_STATUS,
+                FIRMWARE_PATCH_UNAVAILABLE_ERROR,
+                "",
+            ),
+        )
     }
 }

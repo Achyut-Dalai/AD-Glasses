@@ -43,6 +43,9 @@ object AppLanguagePreferences {
         return AppLanguage.fromStored(preferences(context).getString(KEY_LANGUAGE, null))
     }
 
+    fun hasUserSelectedLanguage(context: Context): Boolean =
+        preferences(context).contains(KEY_LANGUAGE)
+
     fun applyStoredLocale(context: Context) {
         applyLocale(selected(context))
     }

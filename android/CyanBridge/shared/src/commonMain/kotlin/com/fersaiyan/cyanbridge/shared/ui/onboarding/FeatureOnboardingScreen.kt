@@ -26,8 +26,32 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import com.fersaiyan.cyanbridge.shared.generated.resources.Res
+import com.fersaiyan.cyanbridge.shared.generated.resources.onboarding_accessibility_body
+import com.fersaiyan.cyanbridge.shared.generated.resources.onboarding_accessibility_disabled
+import com.fersaiyan.cyanbridge.shared.generated.resources.onboarding_accessibility_enabled
+import com.fersaiyan.cyanbridge.shared.generated.resources.onboarding_accessibility_title
+import com.fersaiyan.cyanbridge.shared.generated.resources.onboarding_allow_glasses_connection
+import com.fersaiyan.cyanbridge.shared.generated.resources.onboarding_allow_media_access
+import com.fersaiyan.cyanbridge.shared.generated.resources.onboarding_bluetooth_allowed
+import com.fersaiyan.cyanbridge.shared.generated.resources.onboarding_bluetooth_denied
+import com.fersaiyan.cyanbridge.shared.generated.resources.onboarding_connect_glasses_body
+import com.fersaiyan.cyanbridge.shared.generated.resources.onboarding_connect_glasses_title
+import com.fersaiyan.cyanbridge.shared.generated.resources.onboarding_file_access_allowed
+import com.fersaiyan.cyanbridge.shared.generated.resources.onboarding_file_access_denied
+import com.fersaiyan.cyanbridge.shared.generated.resources.onboarding_local_agent_toggle
+import com.fersaiyan.cyanbridge.shared.generated.resources.onboarding_media_files_body
+import com.fersaiyan.cyanbridge.shared.generated.resources.onboarding_media_files_title
+import com.fersaiyan.cyanbridge.shared.generated.resources.onboarding_open_accessibility
+import com.fersaiyan.cyanbridge.shared.generated.resources.onboarding_open_github
+import com.fersaiyan.cyanbridge.shared.generated.resources.onboarding_open_source_body
+import com.fersaiyan.cyanbridge.shared.generated.resources.onboarding_open_source_title
+import com.fersaiyan.cyanbridge.shared.generated.resources.onboarding_permission_granted
+import com.fersaiyan.cyanbridge.shared.generated.resources.onboarding_setup
+import org.jetbrains.compose.resources.ExperimentalResourceApi
+import org.jetbrains.compose.resources.stringResource
 
-@OptIn(ExperimentalMaterial3Api::class)
+@OptIn(ExperimentalMaterial3Api::class, ExperimentalResourceApi::class)
 @Composable
 fun FeatureOnboardingScreen(
     title: String,
@@ -53,7 +77,7 @@ fun FeatureOnboardingScreen(
 ) {
     Scaffold(
         contentWindowInsets = WindowInsets.safeDrawing,
-        topBar = { TopAppBar(title = { Text("Setup") }) },
+        topBar = { TopAppBar(title = { Text(stringResource(Res.string.onboarding_setup)) }) },
     ) { innerPadding ->
         Column(
             modifier = Modifier
@@ -75,14 +99,18 @@ fun FeatureOnboardingScreen(
             if (showGlassesConnectionPermission) {
                 Card(modifier = Modifier.fillMaxWidth()) {
                     Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
-                        Text("Connect your glasses", style = MaterialTheme.typography.titleSmall)
+                        Text(stringResource(Res.string.onboarding_connect_glasses_title), style = MaterialTheme.typography.titleSmall)
                         Text(
-                            "CyanBridge needs nearby-device access to discover and connect to your glasses. Android may also request location on older phones because it requires it for Bluetooth scanning. Wi-Fi Direct permission is requested later, only when you transfer media.",
+                            stringResource(Res.string.onboarding_connect_glasses_body),
                             style = MaterialTheme.typography.bodySmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
                         )
                         Text(
-                            if (glassesConnectionPermissionGranted) "Bluetooth access is allowed" else "Bluetooth access has not been granted",
+                            if (glassesConnectionPermissionGranted) {
+                                stringResource(Res.string.onboarding_bluetooth_allowed)
+                            } else {
+                                stringResource(Res.string.onboarding_bluetooth_denied)
+                            },
                             style = MaterialTheme.typography.bodySmall,
                             color = if (glassesConnectionPermissionGranted) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant,
                         )
@@ -90,7 +118,13 @@ fun FeatureOnboardingScreen(
                             onClick = onRequestGlassesConnectionPermission,
                             enabled = !glassesConnectionPermissionGranted,
                         ) {
-                            Text(if (glassesConnectionPermissionGranted) "Permission granted" else "Allow glasses connection")
+                            Text(
+                                if (glassesConnectionPermissionGranted) {
+                                    stringResource(Res.string.onboarding_permission_granted)
+                                } else {
+                                    stringResource(Res.string.onboarding_allow_glasses_connection)
+                                },
+                            )
                         }
                     }
                 }
@@ -98,14 +132,18 @@ fun FeatureOnboardingScreen(
             if (showStoragePermission) {
                 Card(modifier = Modifier.fillMaxWidth()) {
                     Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
-                        Text("Media and AI files", style = MaterialTheme.typography.titleSmall)
+                        Text(stringResource(Res.string.onboarding_media_files_title), style = MaterialTheme.typography.titleSmall)
                         Text(
-                            "CyanBridge uses file access to save media transferred from your glasses and to manage AI models and related local files. You can continue without allowing it now, but media sync and some AI features will need it later.",
+                            stringResource(Res.string.onboarding_media_files_body),
                             style = MaterialTheme.typography.bodySmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
                         )
                         Text(
-                            if (storagePermissionGranted) "File access is allowed" else "File access has not been granted",
+                            if (storagePermissionGranted) {
+                                stringResource(Res.string.onboarding_file_access_allowed)
+                            } else {
+                                stringResource(Res.string.onboarding_file_access_denied)
+                            },
                             style = MaterialTheme.typography.bodySmall,
                             color = if (storagePermissionGranted) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant,
                         )
@@ -113,7 +151,13 @@ fun FeatureOnboardingScreen(
                             onClick = onRequestStoragePermission,
                             enabled = !storagePermissionGranted,
                         ) {
-                            Text(if (storagePermissionGranted) "Permission granted" else "Allow media and AI file access")
+                            Text(
+                                if (storagePermissionGranted) {
+                                    stringResource(Res.string.onboarding_permission_granted)
+                                } else {
+                                    stringResource(Res.string.onboarding_allow_media_access)
+                                },
+                            )
                         }
                     }
                 }
@@ -121,24 +165,28 @@ fun FeatureOnboardingScreen(
             if (showAccessibilityDisclosure) {
                 Card(modifier = Modifier.fillMaxWidth()) {
                     Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
-                        Text("Accessibility disclosure", style = MaterialTheme.typography.titleSmall)
+                        Text(stringResource(Res.string.onboarding_accessibility_title), style = MaterialTheme.typography.titleSmall)
                         Text(
-                            "Local Agent can read on-screen text to perform the actions you explicitly request. It does not run until you enable accessibility access in Android settings.",
+                            stringResource(Res.string.onboarding_accessibility_body),
                             style = MaterialTheme.typography.bodySmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
                         )
                         ToggleRow(
-                            label = "Enable Local Agent automation",
+                            label = stringResource(Res.string.onboarding_local_agent_toggle),
                             checked = localAgentAutomationEnabled,
                             onCheckedChange = onLocalAgentAutomationChange,
                         )
                         Text(
-                            text = if (accessibilityEnabled) "Accessibility is currently enabled" else "Accessibility is currently disabled",
+                            text = if (accessibilityEnabled) {
+                                stringResource(Res.string.onboarding_accessibility_enabled)
+                            } else {
+                                stringResource(Res.string.onboarding_accessibility_disabled)
+                            },
                             style = MaterialTheme.typography.bodySmall,
                             color = if (accessibilityEnabled) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant,
                         )
                         OutlinedButton(onClick = onOpenAccessibilitySettings) {
-                            Text("Open accessibility settings")
+                            Text(stringResource(Res.string.onboarding_open_accessibility))
                         }
                     }
                 }
@@ -146,14 +194,14 @@ fun FeatureOnboardingScreen(
             if (showOpenSourceContribution) {
                 Card(modifier = Modifier.fillMaxWidth()) {
                     Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
-                        Text("Open source by design", style = MaterialTheme.typography.titleSmall)
+                        Text(stringResource(Res.string.onboarding_open_source_title), style = MaterialTheme.typography.titleSmall)
                         Text(
-                            "Inspect how CyanBridge works, report security concerns, suggest improvements, or contribute code. Community review helps make the app safer and better for everyone.",
+                            stringResource(Res.string.onboarding_open_source_body),
                             style = MaterialTheme.typography.bodySmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
                         )
                         OutlinedButton(onClick = onOpenSourceRepository) {
-                            Text("Open CyanBridge on GitHub")
+                            Text(stringResource(Res.string.onboarding_open_github))
                         }
                     }
                 }

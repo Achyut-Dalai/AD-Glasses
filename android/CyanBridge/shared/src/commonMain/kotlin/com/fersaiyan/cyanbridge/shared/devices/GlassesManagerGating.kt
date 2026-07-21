@@ -9,6 +9,7 @@ object GlassesManagerGating {
         HEY_CYAN_EXTRAS,
         META_RAYBAN_CONTROLS,
         META_RAYBAN_REGISTRATION,
+        MEIZU_MYVU_CONTROLS,
     }
 
     data class UiModel(
@@ -35,6 +36,10 @@ object GlassesManagerGating {
             DeviceClass.META_RAYBAN -> {
                 base.add(Action.META_RAYBAN_CONTROLS)
                 base.add(Action.META_RAYBAN_REGISTRATION)
+            }
+            DeviceClass.MEIZU_MYVU -> {
+                base.add(Action.MEIZU_MYVU_CONTROLS)
+                base.add(Action.STATUS_BATTERY)
             }
             else -> {}
         }

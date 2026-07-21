@@ -78,7 +78,9 @@ class CommunityPluginsActivity : AppCompatActivity() {
             if (result.getOrDefault(PermissionStatus.Denied) == PermissionStatus.Granted) {
                 applyNativePluginToggle(pluginId, enabled = true)
             } else {
-                Toast.makeText(this, "Meta camera permission was denied", Toast.LENGTH_LONG).show()
+                val manager = MetaRaybanManager.getInstance(this)
+                val detail = manager.reportExternalError("pluginCameraPermission", "Meta camera permission was denied")
+                Toast.makeText(this, detail, Toast.LENGTH_LONG).show()
             }
         }
 
@@ -217,9 +219,15 @@ class CommunityPluginsActivity : AppCompatActivity() {
             if (!manager.isInitialized.value) manager.initialize()
             lifecycleScope.launch {
                 if (!manager.awaitCameraReady()) {
+                    val detail = manager.lastError.value
+                        ?: "Register and connect a Meta camera before enabling $pluginId"
+                    android.util.Log.e(
+                        "CommunityPluginsActivity",
+                        "Unable to enable Meta plugin=$pluginId: $detail\n${manager.diagnosticsSnapshot()}",
+                    )
                     Toast.makeText(
                         this@CommunityPluginsActivity,
-                        "Register and connect a Meta camera before enabling $pluginId",
+                        "Meta camera unavailable: $detail",
                         Toast.LENGTH_LONG,
                     ).show()
                     return@launch
@@ -231,6 +239,10 @@ class CommunityPluginsActivity : AppCompatActivity() {
                         metaWearablePermissionLauncher.launch(Permission.CAMERA)
                     },
                     onError = { error ->
+                        android.util.Log.e(
+                            "CommunityPluginsActivity",
+                            "Meta camera permission error for plugin=$pluginId: $error\n${manager.diagnosticsSnapshot()}",
+                        )
                         Toast.makeText(
                             this@CommunityPluginsActivity,
                             "Meta camera permission error: $error",
@@ -326,7 +338,7 @@ class CommunityPluginsActivity : AppCompatActivity() {
     }
 
     private fun openCommunityPlugin(plugin: CommunityPluginCardData) {
-        val link = plugin.downloadUrl ?: plugin.taskerNetLink ?: return
+        val link = plugin.taskerNetLink ?: plugin.downloadUrl ?: return
         runCatching {
             startActivity(
                 Intent(
@@ -334,7 +346,9 @@ class CommunityPluginsActivity : AppCompatActivity() {
                     Uri.parse(link),
                 ),
             )
-            CommunityPluginPrefs.setTaskerAssistantEnabled(this, true)
+            if (!plugin.taskerNetLink.isNullOrBlank()) {
+                CommunityPluginPrefs.setTaskerAssistantEnabled(this, true)
+            }
         }.onFailure {
             Toast.makeText(this, "Could not open ${plugin.title}", Toast.LENGTH_SHORT).show()
         }

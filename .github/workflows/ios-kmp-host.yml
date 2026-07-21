@@ -60,6 +60,12 @@ jobs:
         working-directory: android/CyanBridge
         run: ./gradlew --no-daemon :shared:compileDebugKotlinAndroid
 
+      - name: Run OTA client unit tests
+        working-directory: android/CyanBridge
+        run: >-
+          ./gradlew --no-daemon :app:testDebugUnitTest
+          --tests com.fersaiyan.cyanbridge.ota.OtaFirmwareTargetTest
+
       - name: Link the Apple-Silicon simulator framework
         working-directory: android/CyanBridge
         run: ./gradlew --no-daemon -PenableAppleTargets=true :shared:linkDebugFrameworkIosSimulatorArm64

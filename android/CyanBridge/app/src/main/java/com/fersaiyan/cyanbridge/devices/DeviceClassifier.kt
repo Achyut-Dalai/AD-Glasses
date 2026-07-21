@@ -40,6 +40,11 @@ object DeviceClassifier {
             return DeviceClass.META_RAYBAN
         }
 
+        // Meizu MYVU / Star Air (XGA010C) advertises as MYVU on the BLE link.
+        if (lower.contains("myvu") || lower.contains("star air") || lower.contains("starair")) {
+            return DeviceClass.MEIZU_MYVU
+        }
+
         // Generic audio heuristics (best-effort).
         if (
             lower.contains("airpods") ||

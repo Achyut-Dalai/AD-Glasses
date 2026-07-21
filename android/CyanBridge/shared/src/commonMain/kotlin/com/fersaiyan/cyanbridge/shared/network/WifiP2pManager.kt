@@ -4,21 +4,29 @@ import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.StateFlow
 
 /**
- * Cross-platform Wi-Fi P2P abstraction for glasses media transfer.
- * Android uses WifiP2pManager; iOS uses NEHotspotConfiguration.
+ * Cross-platform local Wi-Fi transport abstraction for glasses media transfer.
+ * Android uses WifiP2pManager; iOS joins the glasses hotspot with
+ * NEHotspotConfiguration. The name is retained for Android API compatibility.
  */
 interface WifiP2pManager {
-    /** Whether Wi-Fi P2P is available on this device. */
+    /** Whether a local Wi-Fi transport is available on this device. */
     val isAvailable: StateFlow<Boolean>
 
-    /** Current P2P connection state. */
+    /**
+     * Whether this implementation provides Android-style Wi-Fi Direct peer
+     * discovery. iOS hotspot joining deliberately returns false.
+     */
+    val supportsTrueWifiDirect: Boolean
+        get() = false
+
+    /** Current local Wi-Fi connection state. */
     val connectionState: Flow<P2pConnectionState>
 
     /** The IP address of the connected glasses device, if known. */
     val glassesIpAddress: StateFlow<String?>
 
     /**
-     * Start discovering P2P peers.
+     * Start discovering local Wi-Fi peers where the platform supports it.
      * @return Flow of discovered peers
      */
     fun discoverPeers(): Flow<P2pPeer>
@@ -27,15 +35,15 @@ interface WifiP2pManager {
     fun stopDiscovery()
 
     /**
-     * Connect to a specific peer.
-     * @param peerAddress The peer's address (MAC on Android, SSID on iOS)
+     * Connect to a specific transfer target.
+     * @param peerAddress The platform-specific peer or hotspot address
      */
     suspend fun connect(peerAddress: String)
 
     /** Disconnect from the current P2P connection. */
     suspend fun disconnect()
 
-    /** Check if currently connected to a P2P group. */
+    /** Check if currently connected to the transfer network. */
     fun isConnected(): Boolean
 
     /**
@@ -57,9 +65,7 @@ interface WifiP2pManager {
     fun cancelConnection()
 }
 
-/**
- * P2P connection states.
- */
+/** Local Wi-Fi connection states. */
 enum class P2pConnectionState {
     IDLE,
     DISCOVERING,

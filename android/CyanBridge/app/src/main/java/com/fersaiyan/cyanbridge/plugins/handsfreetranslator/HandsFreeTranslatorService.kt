@@ -7,6 +7,8 @@ import android.os.IBinder
 import android.speech.tts.TextToSpeech
 import android.util.Log
 import com.fersaiyan.cyanbridge.ai.router.CliRelayClient
+import com.fersaiyan.cyanbridge.bridge.core.DisplayCommand
+import com.fersaiyan.cyanbridge.bridge.core.GlassesBridge
 import com.fersaiyan.cyanbridge.plugins.PluginVoiceRecognizer
 import com.fersaiyan.cyanbridge.plugins.startPluginVoiceForeground
 import com.fersaiyan.cyanbridge.plugins.startPluginVoiceService
@@ -126,6 +128,12 @@ class HandsFreeTranslatorService : Service() {
                     HandsFreeTranslatorNotificationHelper.updateNotification(
                         this@HandsFreeTranslatorService,
                         "Translation: ${translation.translatedText.take(NOTIFICATION_TEXT_LIMIT)}",
+                    )
+                    GlassesBridge.showCard(
+                        DisplayCommand.Card(
+                            title = "Translation",
+                            body = translation.translatedText,
+                        ),
                     )
                 }
             } catch (error: Throwable) {

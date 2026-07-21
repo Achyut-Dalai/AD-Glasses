@@ -27,6 +27,7 @@ import com.fersaiyan.cyanbridge.media.VendorAlbumDownloader
 import com.fersaiyan.cyanbridge.ota.FirmwareClient
 import com.fersaiyan.cyanbridge.ota.FirmwareResult
 import com.fersaiyan.cyanbridge.ota.OtaManager
+import com.fersaiyan.cyanbridge.ota.OtaReadinessStage
 import com.fersaiyan.cyanbridge.ota.OtaState
 import com.fersaiyan.cyanbridge.ota.OtaTarget
 import com.fersaiyan.cyanbridge.ota.expectedFirmwareExtension
@@ -87,6 +88,7 @@ import com.fersaiyan.cyanbridge.ui.BluetoothEvent
 import com.fersaiyan.cyanbridge.ui.AutoPairManager
 import com.fersaiyan.cyanbridge.chat.ChatStore
 import com.fersaiyan.cyanbridge.devices.DeviceProfileStore
+import com.fersaiyan.cyanbridge.devices.meizumyvu.MeizuMyvuManager
 import com.fersaiyan.cyanbridge.shared.devices.GlassesManagerGating
 import com.fersaiyan.cyanbridge.ai.transcription.DefaultTranscriptionService
 import com.fersaiyan.cyanbridge.ai.transcription.Mp4AudioChunker
@@ -193,6 +195,7 @@ import com.fersaiyan.cyanbridge.shared.glasses.FirmwarePatchRequestUiState
 import com.fersaiyan.cyanbridge.shared.glasses.GlassesSyncFlow
 import com.fersaiyan.cyanbridge.shared.glasses.GlassesTransferUiState
 import com.fersaiyan.cyanbridge.shared.glasses.MetaRaybanUiState
+import com.fersaiyan.cyanbridge.shared.glasses.MeizuMyvuUiState
 import com.fersaiyan.cyanbridge.shared.glasses.OtaFirmwareSource
 import com.fersaiyan.cyanbridge.shared.glasses.WifiAdbDebugUiState
 import com.fersaiyan.cyanbridge.shared.navigation.AppDestination
@@ -221,6 +224,8 @@ import com.meta.wearable.dat.core.Wearables
 import com.meta.wearable.dat.core.types.Permission
 import com.meta.wearable.dat.core.types.PermissionStatus
 import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.flow.merge
 
 
 class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
@@ -352,12 +357,17 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
     private val otaManager by lazy { OtaManager(this) }
     private var otaPreparationJob: Job? = null
     private var pendingPersonalFirmwareTarget: OtaTarget? = null
+    private var stagedPersonalWifiFirmware: File? = null
+    private var otaExpectedDeviceAddress: String? = null
     private val personalFirmwarePicker =
         registerForActivityResult(ActivityResultContracts.OpenDocument()) { uri ->
             val target = pendingPersonalFirmwareTarget
             pendingPersonalFirmwareTarget = null
-            if (uri != null && target != null) {
-                importPersonalFirmware(uri, target)
+            if (target == null) return@registerForActivityResult
+            if (uri == null) {
+                abortPersonalFirmwareSelection("Both Wi-Fi and BLE firmware files are required.")
+            } else {
+                stagePersonalFirmware(uri, target)
             }
         }
     private val livePreviewManager by lazy { com.fersaiyan.cyanbridge.ota.LivePreviewManager(this) }
@@ -453,6 +463,8 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
     private var metaRaybanUiJob: Job? = null
     private var pendingMetaDatAction: (() -> Unit)? = null
     private var pendingMetaCameraAction: (() -> Unit)? = null
+    private var meizuMyvuManager: MeizuMyvuManager? = null
+    private var meizuMyvuUiJob: Job? = null
 
     private val metaAndroidPermissionLauncher =
         registerForActivityResult(ActivityResultContracts.RequestMultiplePermissions()) { result ->
@@ -464,14 +476,17 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
                 if (manager.isInitialized.value) {
                     action?.invoke()
                 } else {
-                    Toast.makeText(
-                        this,
+                    showMetaError(
+                        "Android/DAT initialization",
                         manager.lastError.value ?: "Unable to initialize Meta Wearables DAT",
-                        Toast.LENGTH_LONG,
-                    ).show()
+                    )
                 }
             } else {
-                Toast.makeText(this, "Meta needs Bluetooth and camera permissions", Toast.LENGTH_LONG).show()
+                val denied = result.filterValues { !it }.keys.joinToString().ifBlank { "unknown" }
+                showMetaError(
+                    "Android permissions",
+                    "Meta needs Bluetooth and camera permissions; denied=$denied",
+                )
             }
         }
 
@@ -482,7 +497,7 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
             if (result.getOrDefault(PermissionStatus.Denied) == PermissionStatus.Granted) {
                 action?.invoke()
             } else {
-                Toast.makeText(this, "Meta camera permission was denied", Toast.LENGTH_SHORT).show()
+                showMetaError("DAT camera permission", "Meta camera permission was denied")
             }
         }
 
@@ -606,6 +621,12 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
         otaPreparationJob?.cancel()
         otaPreparationJob = null
         otaManager.cancel()
+        pendingPersonalFirmwareTarget = null
+        stagedPersonalWifiFirmware?.takeIf { it.exists() }?.delete()
+        stagedPersonalWifiFirmware = null
+        if (!otaManager.isActive) {
+            releaseExclusiveGlassesSession(otaSessionLease)
+        }
         if (GlassesSessionCoordinator.currentSession() == GlassesSession.MEDIA_SYNC) {
             downloadCancelledByUser = true
             teardownDownloadP2pSession(
@@ -716,18 +737,34 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
     ) {
         if (metaRaybanUiJob != null) return
         metaRaybanUiJob = lifecycleScope.launch {
-            combine(
-                manager.registrationState,
-                manager.deviceSessionState,
-                manager.streamState,
-                manager.isDisplayActive,
-                manager.selectedDeviceIsDisplayCapable,
-            ) { _, _, _, _, _ -> Unit }.collect {
+            merge(
+                manager.registrationState.map { Unit },
+                manager.deviceSessionState.map { Unit },
+                manager.streamState.map { Unit },
+                manager.isDisplayActive.map { Unit },
+                manager.selectedDeviceIsDisplayCapable.map { Unit },
+                manager.availableDeviceCount.map { Unit },
+                manager.selectedDeviceName.map { Unit },
+                manager.lastError.map { Unit },
+            ).collect {
                 updateMetaRaybanUiState()
                 if (isMetaRaybanSelected()) updateConnectionStatus(false)
             }
         }
     }
+
+    private fun getOrCreateMeizuMyvuManager(): MeizuMyvuManager =
+        meizuMyvuManager ?: MeizuMyvuManager.getInstance(this).also { manager ->
+            meizuMyvuManager = manager
+            if (meizuMyvuUiJob == null) {
+                meizuMyvuUiJob = lifecycleScope.launch {
+                    manager.state.collect {
+                        updateMeizuMyvuUiState()
+                        if (isMeizuMyvuSelected()) updateConnectionStatus(false)
+                    }
+                }
+            }
+        }
 
     private fun metaAndroidPermissionsMissing(): Array<String> {
         val permissions = mutableListOf(Manifest.permission.CAMERA)
@@ -753,11 +790,10 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
         if (manager.isInitialized.value) {
             action()
         } else {
-            Toast.makeText(
-                this,
+            showMetaError(
+                "Android/DAT initialization",
                 manager.lastError.value ?: "Unable to initialize Meta Wearables DAT",
-                Toast.LENGTH_LONG,
-            ).show()
+            )
         }
     }
 
@@ -771,7 +807,7 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
                     metaWearablePermissionLauncher.launch(Permission.CAMERA)
                 },
                 onError = { error ->
-                    Toast.makeText(this, "Meta camera permission error: $error", Toast.LENGTH_SHORT).show()
+                    showMetaError("DAT camera permission", error)
                 },
             )
         }
@@ -885,7 +921,8 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
     private fun isDashboardActionBlockedByExclusiveSession(action: GlassesDashboardAction): Boolean {
         if (
             action is GlassesDashboardAction.SubmitFirmwarePatchRequest ||
-            action == GlassesDashboardAction.DismissFirmwarePatchRequest
+            action == GlassesDashboardAction.DismissFirmwarePatchRequest ||
+            action == GlassesDashboardAction.MetaSendDiagnostics
         ) {
             return false
         }
@@ -911,7 +948,8 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
                 GlassesDashboardAction.MetaViewPhoto,
                 GlassesDashboardAction.MetaStartSession,
                 GlassesDashboardAction.MetaStartStream,
-                GlassesDashboardAction.MetaStartDisplay -> true
+                GlassesDashboardAction.MetaStartDisplay,
+                GlassesDashboardAction.MetaSendDiagnostics -> true
                 else -> false
             }
         } else {
@@ -938,21 +976,29 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
         when (action) {
             is GlassesDashboardAction.Navigate -> navigateToDestination(action.destination)
             GlassesDashboardAction.Scan -> {
-                if (isMetaRaybanSelected()) {
+                if (isMeizuMyvuSelected()) {
+                    startKtxActivity<DeviceBindActivity>()
+                } else if (isMetaRaybanSelected()) {
                     ensureMetaDatReady { updateConnectionStatus(false) }
                 } else {
                     binding.btnScan.performClick()
                 }
             }
             GlassesDashboardAction.Reconnect -> {
-                if (isMetaRaybanSelected()) {
+                if (isMeizuMyvuSelected()) {
+                    DeviceProfileStore.loadLastSelected(this)?.macAddress?.let {
+                        getOrCreateMeizuMyvuManager().connect(it)
+                    } ?: startKtxActivity<DeviceBindActivity>()
+                } else if (isMetaRaybanSelected()) {
                     ensureMetaDatReady { updateConnectionStatus(false) }
                 } else {
                     binding.btnConnect.performClick()
                 }
             }
             GlassesDashboardAction.Disconnect -> {
-                if (isMetaRaybanSelected()) {
+                if (isMeizuMyvuSelected()) {
+                    getOrCreateMeizuMyvuManager().disconnect()
+                } else if (isMetaRaybanSelected()) {
                     metaRaybanManager?.stopSession()
                     updateConnectionStatus(false)
                 } else {
@@ -1019,14 +1065,17 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
                 }
             }
             GlassesDashboardAction.CancelOta -> {
+                val managerWasActive = otaManager.isActive
                 otaPreparationJob?.cancel()
                 otaPreparationJob = null
+                pendingPersonalFirmwareTarget = null
+                stagedPersonalWifiFirmware?.takeIf { it.exists() }?.delete()
+                stagedPersonalWifiFirmware = null
                 otaManager.cancel()
-            }
-            is com.fersaiyan.cyanbridge.shared.glasses.GlassesDashboardAction.SelectOtaTarget -> {
-                dashboardState = dashboardState.copy(
-                    ota = dashboardState.ota.copy(selectedTarget = action.target),
-                )
+                if (!managerWasActive) {
+                    releaseExclusiveGlassesSession(otaSessionLease)
+                    resetOtaDashboardToIdle()
+                }
             }
             GlassesDashboardAction.StartLivePreview -> startLivePreview()
             GlassesDashboardAction.StopLivePreview -> {
@@ -1049,6 +1098,20 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
             GlassesDashboardAction.MetaViewPhoto -> binding.btnMetaViewPhoto.performClick()
             GlassesDashboardAction.MetaStartDisplay -> binding.btnMetaDisplayStart.performClick()
             GlassesDashboardAction.MetaStopDisplay -> binding.btnMetaDisplayStop.performClick()
+            GlassesDashboardAction.MetaSendDiagnostics -> showMetaDiagnostics()
+            GlassesDashboardAction.MeizuConnect -> {
+                DeviceProfileStore.loadLastSelected(this)?.macAddress?.let {
+                    getOrCreateMeizuMyvuManager().connect(it)
+                } ?: Toast.makeText(this, "Select MYVU glasses from Scan first", Toast.LENGTH_LONG).show()
+            }
+            GlassesDashboardAction.MeizuDisconnect -> getOrCreateMeizuMyvuManager().disconnect()
+            GlassesDashboardAction.MeizuSendTestNotification -> getOrCreateMeizuMyvuManager().sendTestNotification()
+            GlassesDashboardAction.MeizuShowTestTeleprompter -> getOrCreateMeizuMyvuManager().showTeleprompter(
+                "CyanBridge",
+                "MYVU display connected\n\nNative voice plugins can now use the MYVU headset microphone and display bridge.",
+            )
+            GlassesDashboardAction.MeizuSyncClock -> getOrCreateMeizuMyvuManager().syncClock()
+            GlassesDashboardAction.MeizuSetComfortBrightness -> getOrCreateMeizuMyvuManager().setBrightness(70)
         }
     }
 
@@ -1191,6 +1254,19 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
     }
 
     private fun startNativePlugin(pluginId: String) {
+        if (isMeizuMyvuSelected() && pluginId in setOf(
+                NativePluginIds.AUTO_AUDIO,
+                NativePluginIds.VISUAL_DIARY,
+                NativePluginIds.WALKING_AID,
+            )
+        ) {
+            Toast.makeText(
+                this,
+                "This plugin requires a camera or HeyCyan onboard media. MYVU supports display and microphone plugins only.",
+                Toast.LENGTH_LONG,
+            ).show()
+            return
+        }
         if (isMetaRaybanSelected() && pluginId == NativePluginIds.AUTO_AUDIO) {
             Toast.makeText(
                 this,
@@ -1902,16 +1978,20 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
     private fun observeOtaState() {
         lifecycleScope.launch {
             otaManager.uiState.collect { ota ->
-                val selectedTarget = dashboardState.ota.selectedTarget
+                val preparationActive = otaPreparationJob?.isActive == true
+                val sessionActive = otaManager.isActive || otaSessionLease != null
+                val terminal = ota.state == OtaState.IDLE ||
+                    ota.state == OtaState.COMPLETE ||
+                    ota.state == OtaState.FAILED
                 dashboardState = dashboardState.copy(
                     ota = com.fersaiyan.cyanbridge.shared.glasses.OtaSectionUiState(
                         stateLabel = ota.state.name.replace("_", " ").lowercase()
                             .replaceFirstChar { it.uppercase() },
-                        detail = ota.detail,
+                        detail = ota.detail.ifBlank { ota.error.orEmpty() },
                         progress = ota.progress,
-                        canStart = ota.state == OtaState.IDLE || ota.state == OtaState.COMPLETE || ota.state == OtaState.FAILED,
-                        canCancel = ota.state != OtaState.IDLE && ota.state != OtaState.COMPLETE && ota.state != OtaState.FAILED,
-                        selectedTarget = selectedTarget,
+                        canStart = terminal && !preparationActive && !sessionActive,
+                        canCancel = (preparationActive || sessionActive) &&
+                            ota.state !in setOf(OtaState.COMPLETE, OtaState.CANCELLING),
                     ),
                 )
             }
@@ -1920,7 +2000,7 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
 
     private fun requestOtaFirmware(source: OtaFirmwareSource) {
         if (rejectHeyCyanOnlyFeature("HeyCyan OTA")) return
-        if (otaManager.isActive || otaPreparationJob?.isActive == true) {
+        if (otaManager.isActive || otaPreparationJob?.isActive == true || otaSessionLease != null) {
             Log.w("Ota", "OTA is already preparing or running")
             return
         }
@@ -1929,21 +2009,35 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
             return
         }
 
-        val selectedTarget = dashboardState.ota.selectedTarget
-        val otaTarget = selectedTarget.toOtaTarget()
         when (source) {
             OtaFirmwareSource.PERSONAL_FILE -> {
-                pendingPersonalFirmwareTarget = otaTarget
-                personalFirmwarePicker.launch(arrayOf("*/*"))
+                val otaLease = acquireExclusiveGlassesSession(GlassesSession.OTA) ?: return
+                otaSessionLease = otaLease
+                stagedPersonalWifiFirmware = null
+                pendingPersonalFirmwareTarget = OtaTarget.V821_WIFI
+                dashboardState = dashboardState.copy(
+                    ota = dashboardState.ota.copy(
+                        stateLabel = "Selecting firmware",
+                        detail = "Select the Wi-Fi .swu file first; the BLE .bin picker follows.",
+                        progress = null,
+                        canStart = false,
+                        canCancel = true,
+                    ),
+                )
+                try {
+                    personalFirmwarePicker.launch(arrayOf("*/*"))
+                } catch (error: Exception) {
+                    finishPersonalFirmwareSelection("Could not open the Wi-Fi firmware picker: ${error.message}")
+                }
             }
             OtaFirmwareSource.STEALTH_CATALOG,
             OtaFirmwareSource.DEBUG_CATALOG,
-            -> startCatalogOta(source, otaTarget, selectedTarget)
+            -> startCatalogOta(source)
         }
     }
 
-    private fun importPersonalFirmware(uri: Uri, target: OtaTarget) {
-        if (otaManager.isActive || otaPreparationJob?.isActive == true) return
+    private fun stagePersonalFirmware(uri: Uri, target: OtaTarget) {
+        if (otaManager.isActive || otaSessionLease == null) return
         runCatching {
             contentResolver.takePersistableUriPermission(uri, Intent.FLAG_GRANT_READ_URI_PERMISSION)
         }
@@ -1952,38 +2046,71 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
                 withContext(Dispatchers.Main) {
                     dashboardState = dashboardState.copy(
                         ota = dashboardState.ota.copy(
-                            stateLabel = "Importing firmware",
-                            detail = "Copying personal firmware into app storage...",
+                            stateLabel = "Staging firmware",
+                            detail = "Copying the selected ${target.expectedFirmwareExtension()} into private app storage...",
                             canStart = false,
+                            canCancel = true,
                         ),
                     )
                 }
                 val firmwareFile = copyPersonalFirmware(uri, target)
                 withContext(Dispatchers.Main) {
-                    startOtaWithNewLease(firmwareFile, target, OtaFirmwareSource.PERSONAL_FILE)
+                    if (target == OtaTarget.V821_WIFI) {
+                        stagedPersonalWifiFirmware = firmwareFile
+                        pendingPersonalFirmwareTarget = OtaTarget.JIELI_BLE
+                        dashboardState = dashboardState.copy(
+                            ota = dashboardState.ota.copy(
+                                stateLabel = "Selecting firmware",
+                                detail = "Wi-Fi SWU staged. Select the companion Bluetooth/JieLi .bin file.",
+                                canStart = false,
+                                canCancel = true,
+                            ),
+                        )
+                        try {
+                            personalFirmwarePicker.launch(arrayOf("*/*"))
+                        } catch (error: Exception) {
+                            finishPersonalFirmwareSelection("Could not open the BLE firmware picker: ${error.message}")
+                        }
+                    } else {
+                        val wifiFile = stagedPersonalWifiFirmware
+                            ?: throw IllegalStateException("The Wi-Fi firmware file was not staged")
+                        stagedPersonalWifiFirmware = null
+                        startCombinedOtaWithLease(
+                            wifiFile = wifiFile,
+                            bleFile = firmwareFile,
+                            source = OtaFirmwareSource.PERSONAL_FILE,
+                            otaLease = requireNotNull(otaSessionLease),
+                        )
+                    }
                 }
             } catch (e: CancellationException) {
                 throw e
             } catch (e: Exception) {
                 Log.e("Ota", "Could not import personal firmware", e)
                 withContext(Dispatchers.Main) {
-                    Toast.makeText(
-                        this@MainActivity,
-                        "Could not import selected firmware: ${e.message ?: "unknown error"}",
-                        Toast.LENGTH_LONG,
-                    ).show()
-                    dashboardState = dashboardState.copy(
-                        ota = dashboardState.ota.copy(
-                            stateLabel = "Idle",
-                            detail = "",
-                            progress = null,
-                            canStart = true,
-                            canCancel = false,
-                        ),
+                    finishPersonalFirmwareSelection(
+                        "Could not stage the selected firmware: ${e.message ?: "unknown error"}",
                     )
                 }
             }
         }
+    }
+
+    private fun finishPersonalFirmwareSelection(message: String? = null) {
+        pendingPersonalFirmwareTarget = null
+        stagedPersonalWifiFirmware?.takeIf { it.exists() }?.delete()
+        stagedPersonalWifiFirmware = null
+        if (!otaManager.isActive) {
+            releaseExclusiveGlassesSession(otaSessionLease)
+        }
+        resetOtaDashboardToIdle()
+        message?.let {
+            Toast.makeText(this, it, Toast.LENGTH_LONG).show()
+        }
+    }
+
+    private fun abortPersonalFirmwareSelection(message: String) {
+        finishPersonalFirmwareSelection(message)
     }
 
     private fun copyPersonalFirmware(uri: Uri, target: OtaTarget): File {
@@ -2037,24 +2164,6 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
             ?: uri.lastPathSegment?.substringAfterLast('/')?.trim()?.takeIf { it.isNotEmpty() }
     }
 
-    private fun startOtaWithNewLease(
-        firmwareFile: File,
-        target: OtaTarget,
-        source: OtaFirmwareSource,
-    ) {
-        if (AutoAudioCaptureService.isRunning()) {
-            Toast.makeText(this, "Stop auto audio capture before starting a firmware update.", Toast.LENGTH_LONG).show()
-            resetOtaDashboardToIdle()
-            return
-        }
-        val otaLease = acquireExclusiveGlassesSession(GlassesSession.OTA) ?: run {
-            resetOtaDashboardToIdle()
-            return
-        }
-        otaSessionLease = otaLease
-        startOtaWithLease(firmwareFile, target, source, otaLease)
-    }
-
     private fun resetOtaDashboardToIdle() {
         dashboardState = dashboardState.copy(
             ota = dashboardState.ota.copy(
@@ -2067,27 +2176,47 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
         )
     }
 
-    private fun startOtaWithLease(
-        firmwareFile: File,
-        target: OtaTarget,
+    private fun startCombinedOtaWithLease(
+        wifiFile: File,
+        bleFile: File,
         source: OtaFirmwareSource,
         otaLease: GlassesSessionLease,
     ) {
+        if (AutoAudioCaptureService.isRunning()) {
+            Toast.makeText(this, "Stop auto audio capture before starting a firmware update.", Toast.LENGTH_LONG).show()
+            releaseExclusiveGlassesSession(otaLease)
+            resetOtaDashboardToIdle()
+            return
+        }
         Log.i(
             "Ota",
-            "Starting ${source.name} OTA: target=$target file=${firmwareFile.name} size=${firmwareFile.length()}",
+            "Starting combined ${source.name} OTA: wifi=${wifiFile.name} (${wifiFile.length()} bytes), " +
+                "ble=${bleFile.name} (${bleFile.length()} bytes)",
         )
-        otaManager.startOta(firmwareFile, target) {
+        otaExpectedDeviceAddress = runCatching { DeviceManager.getInstance().deviceAddress }
+            .getOrNull()
+            ?.trim()
+            ?.takeIf { it.isNotEmpty() }
+        otaManager.startCombinedOta(
+            wifiFirmwareFile = wifiFile,
+            bleFirmwareFile = bleFile,
+            awaitFreshBleReadiness = ::awaitFreshBleReadiness,
+        ) {
             releaseExclusiveGlassesSession(otaLease)
+            otaExpectedDeviceAddress = null
+            runOnUiThread {
+                dashboardState = dashboardState.copy(
+                    ota = dashboardState.ota.copy(
+                        canStart = true,
+                        canCancel = false,
+                    ),
+                )
+            }
         }
     }
 
     /** Downloads a catalog artifact only after the shared OTA session lease is held. */
-    private fun startCatalogOta(
-        source: OtaFirmwareSource,
-        otaTarget: OtaTarget,
-        selectedTarget: com.fersaiyan.cyanbridge.shared.glasses.OtaTargetSelection,
-    ) {
+    private fun startCatalogOta(source: OtaFirmwareSource) {
         val otaLease = acquireExclusiveGlassesSession(GlassesSession.OTA) ?: return
         otaSessionLease = otaLease
         otaPreparationJob = lifecycleScope.launch(Dispatchers.IO) {
@@ -2095,106 +2224,105 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
                 withContext(Dispatchers.Main) {
                     dashboardState = dashboardState.copy(
                         ota = dashboardState.ota.copy(
-                            stateLabel = "Checking firmware version",
-                            detail = "Reading the installed chip version before requesting ${source.label.lowercase()}...",
+                            stateLabel = "Checking firmware versions",
+                            detail = "Reading Wi-Fi and Bluetooth identifiers once before resolving both artifacts...",
                             canStart = false,
                             canCancel = true,
-                            selectedTarget = selectedTarget,
                         ),
                     )
                 }
 
                 val deviceInfo = readGlassesDeviceInfo()
                 if (deviceInfo == null) {
-                    withContext(Dispatchers.Main) {
-                        Toast.makeText(
-                            this@MainActivity,
-                            "Could not read glasses info. Is Bluetooth connected?",
-                            Toast.LENGTH_LONG,
-                        ).show()
-                    }
-                    return@launch
+                    throw IllegalStateException("Could not read glasses info. Is Bluetooth connected?")
                 }
 
-                val (hardwareVersion, firmwareVersion) = when (otaTarget) {
-                    OtaTarget.V821_WIFI ->
-                        (deviceInfo.wifiHardwareVersion ?: "") to (deviceInfo.wifiFirmwareVersion ?: "")
-                    OtaTarget.JIELI_BLE ->
-                        (deviceInfo.hardwareVersion ?: "") to (deviceInfo.firmwareVersion ?: "")
+                val wifiHardwareVersion = deviceInfo.wifiHardwareVersion.orEmpty().trim()
+                val wifiFirmwareVersion = deviceInfo.wifiFirmwareVersion.orEmpty().trim()
+                val bleHardwareVersion = deviceInfo.hardwareVersion.orEmpty().trim()
+                val bleFirmwareVersion = deviceInfo.firmwareVersion.orEmpty().trim()
+                if (listOf(
+                        wifiHardwareVersion,
+                        wifiFirmwareVersion,
+                        bleHardwareVersion,
+                        bleFirmwareVersion,
+                    ).any { it.isBlank() }
+                ) {
+                    throw IllegalStateException("Could not read all Wi-Fi and Bluetooth firmware identifiers")
                 }
-                if (hardwareVersion.isBlank() || firmwareVersion.isBlank()) {
-                    withContext(Dispatchers.Main) {
-                        Toast.makeText(
-                            this@MainActivity,
-                            "Could not read glasses ${if (otaTarget == OtaTarget.JIELI_BLE) "BLE" else "Wi-Fi"} firmware information.",
-                            Toast.LENGTH_LONG,
-                        ).show()
-                    }
-                    return@launch
+
+                val client = FirmwareClient(this@MainActivity)
+                withContext(Dispatchers.Main) {
+                    dashboardState = dashboardState.copy(
+                        ota = dashboardState.ota.copy(
+                            stateLabel = "Resolving Wi-Fi artifact",
+                            detail = "Requesting the exact-base Wi-Fi .swu artifact (1/2)...",
+                        ),
+                    )
+                }
+                val otaDir = File(filesDir, "ota/catalog")
+                val wifiResult = try {
+                    client.fetchAndDownload(
+                        hardwareVersion = wifiHardwareVersion,
+                        firmwareVersion = wifiFirmwareVersion,
+                        outputDir = otaDir,
+                        target = OtaTarget.V821_WIFI,
+                        source = source,
+                    )
+                } catch (error: CancellationException) {
+                    throw error
+                } catch (error: Exception) {
+                    FirmwareResult.Error("Wi-Fi artifact request failed: ${error.message}")
                 }
 
                 withContext(Dispatchers.Main) {
                     dashboardState = dashboardState.copy(
                         ota = dashboardState.ota.copy(
-                            stateLabel = "Fetching matching firmware",
-                            detail = "Requesting an exact-base patch for $firmwareVersion...",
+                            stateLabel = "Resolving BLE artifact",
+                            detail = "Requesting the exact-base Bluetooth/JieLi .bin artifact (2/2)...",
                         ),
                     )
                 }
+                val bleResult = try {
+                    client.fetchAndDownload(
+                        hardwareVersion = bleHardwareVersion,
+                        firmwareVersion = bleFirmwareVersion,
+                        outputDir = otaDir,
+                        target = OtaTarget.JIELI_BLE,
+                        source = source,
+                    )
+                } catch (error: CancellationException) {
+                    throw error
+                } catch (error: Exception) {
+                    FirmwareResult.Error("BLE artifact request failed: ${error.message}")
+                }
 
-                val otaDir = File(getExternalFilesDir(null), "ota")
-                val result = FirmwareClient(this@MainActivity).fetchAndDownload(
-                    hardwareVersion = hardwareVersion,
-                    firmwareVersion = firmwareVersion,
-                    outputDir = otaDir,
-                    target = otaTarget,
-                    source = source,
-                )
-                when (result) {
-                    is FirmwareResult.Ready -> withContext(Dispatchers.Main) {
-                        startOtaWithLease(result.file, otaTarget, source, otaLease)
-                    }
+                if (wifiResult !is FirmwareResult.Ready) {
+                    showCatalogResolutionFailure(
+                        result = wifiResult,
+                        source = source,
+                        target = OtaTarget.V821_WIFI,
+                        deviceInfo = deviceInfo,
+                    )
+                    return@launch
+                }
+                if (bleResult !is FirmwareResult.Ready) {
+                    showCatalogResolutionFailure(
+                        result = bleResult,
+                        source = source,
+                        target = OtaTarget.JIELI_BLE,
+                        deviceInfo = deviceInfo,
+                    )
+                    return@launch
+                }
 
-                    is FirmwareResult.NotAvailable -> withContext(Dispatchers.Main) {
-                        dashboardState = dashboardState.copy(
-                            firmwarePatchRequest = FirmwarePatchRequestUiState(
-                                source = source,
-                                target = selectedTarget,
-                                targetHardwareVersion = hardwareVersion,
-                                targetFirmwareVersion = firmwareVersion,
-                                wifiHardwareVersion = deviceInfo.wifiHardwareVersion.orEmpty().ifBlank { "unknown" },
-                                wifiFirmwareVersion = deviceInfo.wifiFirmwareVersion.orEmpty().ifBlank { "unknown" },
-                                bleHardwareVersion = deviceInfo.hardwareVersion.orEmpty().ifBlank { "unknown" },
-                                bleFirmwareVersion = deviceInfo.firmwareVersion.orEmpty().ifBlank { "unknown" },
-                                relayMessage = result.message,
-                                suggestedContactEmail = ProSubscriptionServerPrefs.getAccountEmail(this@MainActivity),
-                            ),
-                        )
-                    }
-
-                    is FirmwareResult.DebugAccessRequired -> withContext(Dispatchers.Main) {
-                        AlertDialog.Builder(this@MainActivity)
-                            .setTitle("Debug Firmware Access Required")
-                            .setMessage(result.message)
-                            .setPositiveButton("OK", null)
-                            .show()
-                    }
-
-                    is FirmwareResult.SubscriptionRequired -> withContext(Dispatchers.Main) {
-                        AlertDialog.Builder(this@MainActivity)
-                            .setTitle("Firmware Access Required")
-                            .setMessage(result.message)
-                            .setPositiveButton("OK", null)
-                            .show()
-                    }
-
-                    is FirmwareResult.Error -> withContext(Dispatchers.Main) {
-                        Toast.makeText(
-                            this@MainActivity,
-                            "Firmware download failed: ${result.message}",
-                            Toast.LENGTH_LONG,
-                        ).show()
-                    }
+                withContext(Dispatchers.Main) {
+                    startCombinedOtaWithLease(
+                        wifiFile = wifiResult.file,
+                        bleFile = bleResult.file,
+                        source = source,
+                        otaLease = otaLease,
+                    )
                 }
             } catch (e: CancellationException) {
                 throw e
@@ -2218,11 +2346,76 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
                                 progress = null,
                                 canStart = true,
                                 canCancel = false,
-                                selectedTarget = selectedTarget,
                             ),
                         )
                     }
                 }
+            }
+        }
+    }
+
+    private suspend fun showCatalogResolutionFailure(
+        result: FirmwareResult,
+        source: OtaFirmwareSource,
+        target: OtaTarget,
+        deviceInfo: com.oudmon.ble.base.communication.bigData.resp.DeviceInfoResponse,
+    ) {
+        withContext(Dispatchers.Main) {
+            when (result) {
+                is FirmwareResult.NotAvailable -> {
+                    val targetHardwareVersion = when (target) {
+                        OtaTarget.V821_WIFI -> deviceInfo.wifiHardwareVersion.orEmpty()
+                        OtaTarget.JIELI_BLE -> deviceInfo.hardwareVersion.orEmpty()
+                    }
+                    val targetFirmwareVersion = when (target) {
+                        OtaTarget.V821_WIFI -> deviceInfo.wifiFirmwareVersion.orEmpty()
+                        OtaTarget.JIELI_BLE -> deviceInfo.firmwareVersion.orEmpty()
+                    }
+                    dashboardState = dashboardState.copy(
+                        ota = dashboardState.ota.copy(
+                            stateLabel = "Pair unavailable",
+                            detail = "The ${target.expectedFirmwareExtension()} artifact was not resolved; no component will be flashed.",
+                        ),
+                        firmwarePatchRequest = FirmwarePatchRequestUiState(
+                            source = source,
+                            target = target.toOtaTargetSelection(),
+                            targetHardwareVersion = targetHardwareVersion.ifBlank { "unknown" },
+                            targetFirmwareVersion = targetFirmwareVersion.ifBlank { "unknown" },
+                            wifiHardwareVersion = deviceInfo.wifiHardwareVersion.orEmpty().ifBlank { "unknown" },
+                            wifiFirmwareVersion = deviceInfo.wifiFirmwareVersion.orEmpty().ifBlank { "unknown" },
+                            bleHardwareVersion = deviceInfo.hardwareVersion.orEmpty().ifBlank { "unknown" },
+                            bleFirmwareVersion = deviceInfo.firmwareVersion.orEmpty().ifBlank { "unknown" },
+                            relayMessage = result.message,
+                            suggestedContactEmail = ProSubscriptionServerPrefs.getAccountEmail(this@MainActivity),
+                        ),
+                    )
+                }
+
+                is FirmwareResult.DebugAccessRequired -> {
+                    AlertDialog.Builder(this@MainActivity)
+                        .setTitle("Debug Firmware Access Required")
+                        .setMessage(result.message)
+                        .setPositiveButton("OK", null)
+                        .show()
+                }
+
+                is FirmwareResult.SubscriptionRequired -> {
+                    AlertDialog.Builder(this@MainActivity)
+                        .setTitle("Firmware Access Required")
+                        .setMessage(result.message)
+                        .setPositiveButton("OK", null)
+                        .show()
+                }
+
+                is FirmwareResult.Error -> {
+                    Toast.makeText(
+                        this@MainActivity,
+                        "Firmware pair resolution failed: ${result.message}",
+                        Toast.LENGTH_LONG,
+                    ).show()
+                }
+
+                is FirmwareResult.Ready -> Unit
             }
         }
     }
@@ -2277,9 +2470,9 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
         }
     }
 
-    private fun com.fersaiyan.cyanbridge.shared.glasses.OtaTargetSelection.toOtaTarget(): OtaTarget = when (this) {
-        com.fersaiyan.cyanbridge.shared.glasses.OtaTargetSelection.V821_WIFI -> OtaTarget.V821_WIFI
-        com.fersaiyan.cyanbridge.shared.glasses.OtaTargetSelection.JIELI_BLE -> OtaTarget.JIELI_BLE
+    private fun OtaTarget.toOtaTargetSelection(): com.fersaiyan.cyanbridge.shared.glasses.OtaTargetSelection = when (this) {
+        OtaTarget.V821_WIFI -> com.fersaiyan.cyanbridge.shared.glasses.OtaTargetSelection.V821_WIFI
+        OtaTarget.JIELI_BLE -> com.fersaiyan.cyanbridge.shared.glasses.OtaTargetSelection.JIELI_BLE
     }
 
     /**
@@ -2343,6 +2536,117 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
                 }
             }
         }
+    }
+
+    /** Require a live BLE link and a new four-field device-info response between OTA stages. */
+    private suspend fun awaitFreshBleReadiness(stage: OtaReadinessStage): Boolean {
+        val bleManager = BleOperateManager.getInstance()
+        val reportedDeviceAddress = runCatching { DeviceManager.getInstance().deviceAddress }
+            .getOrNull()
+            ?.trim()
+            ?.takeIf { it.isNotEmpty() }
+        val deviceAddress = reportedDeviceAddress ?: otaExpectedDeviceAddress
+            ?: run {
+                Log.e("Ota", "Cannot perform $stage readiness check without the glasses address")
+                return false
+            }
+        otaExpectedDeviceAddress = otaExpectedDeviceAddress ?: deviceAddress
+        if (reportedDeviceAddress != null &&
+            !reportedDeviceAddress.equals(otaExpectedDeviceAddress, ignoreCase = true)
+        ) {
+            Log.e(
+                "Ota",
+                "Refusing $stage readiness for a different BLE device: " +
+                    "expected=$otaExpectedDeviceAddress, reported=$reportedDeviceAddress",
+            )
+            return false
+        }
+
+        if (stage == OtaReadinessStage.AFTER_BLE) {
+            // Match OTAActivity$dfuOpResult$1: invalidate the cached BLE version before
+            // disconnecting, then repopulate it only from the fresh post-update read.
+            val application = MyApplication.getInstance()
+            application.firmwareVersion = ""
+            application.hardwareVersion = ""
+            delay(1_000)
+            if (bleManager.isConnected) {
+                try {
+                    bleManager.disconnect()
+                } catch (error: Exception) {
+                    Log.e("Ota", "Could not disconnect for post-DFU readiness", error)
+                    return false
+                }
+                val disconnected = withTimeoutOrNull(10_000) {
+                    while (bleManager.isConnected) delay(100)
+                    true
+                } ?: false
+                if (!disconnected) {
+                    Log.e("Ota", "BLE did not disconnect for post-DFU readiness")
+                    return false
+                }
+            }
+        }
+
+        if (!bleManager.isConnected) {
+            try {
+                bleManager.reConnectMac = deviceAddress
+            } catch (_: Throwable) {
+                // Optional SDK property; connectDirectly still uses the explicit address.
+            }
+            try {
+                bleManager.connectDirectly(deviceAddress)
+            } catch (error: Exception) {
+                Log.e("Ota", "Could not reconnect for $stage readiness", error)
+                return false
+            }
+        }
+
+        val connected = withTimeoutOrNull(30_000) {
+            while (!bleManager.isConnected) delay(250)
+            true
+        } ?: false
+        if (!connected) {
+            Log.e("Ota", "BLE did not reconnect for $stage readiness")
+            return false
+        }
+
+        val reconnectedDeviceAddress = runCatching { DeviceManager.getInstance().deviceAddress }
+            .getOrNull()
+            ?.trim()
+            ?.takeIf { it.isNotEmpty() }
+        if (reconnectedDeviceAddress != null &&
+            !reconnectedDeviceAddress.equals(otaExpectedDeviceAddress, ignoreCase = true)
+        ) {
+            Log.e(
+                "Ota",
+                "Refusing $stage readiness after reconnect for a different BLE device: " +
+                    "expected=$otaExpectedDeviceAddress, reported=$reconnectedDeviceAddress",
+            )
+            return false
+        }
+
+        val deviceInfo = readGlassesDeviceInfo() ?: run {
+            Log.e("Ota", "Fresh syncDeviceInfo failed for $stage")
+            return false
+        }
+        val ready = listOf(
+            deviceInfo.hardwareVersion,
+            deviceInfo.firmwareVersion,
+            deviceInfo.wifiHardwareVersion,
+            deviceInfo.wifiFirmwareVersion,
+        ).all { !it.isNullOrBlank() }
+        if (!ready) {
+            Log.e("Ota", "Fresh syncDeviceInfo was incomplete for $stage")
+            return false
+        }
+        MyApplication.getInstance().hardwareVersion = deviceInfo.hardwareVersion.orEmpty()
+        MyApplication.getInstance().firmwareVersion = deviceInfo.firmwareVersion.orEmpty()
+        Log.i(
+            "Ota",
+            "Fresh $stage readiness passed: ble=${deviceInfo.hardwareVersion}/${deviceInfo.firmwareVersion}, " +
+                "wifi=${deviceInfo.wifiHardwareVersion}/${deviceInfo.wifiFirmwareVersion}",
+        )
+        return true
     }
 
     private fun startLivePreview() {
@@ -2637,19 +2941,34 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
     fun onBluetoothEvent(event: BluetoothEvent) {
         updateConnectionStatus(event.connect)
         if (event.connect) {
+            otaManager.onBluetoothConnected()
             requestBatteryStatus(showToast = false)
         } else {
-            otaPreparationJob?.cancel()
-            otaPreparationJob = null
-            abandonDownloadP2pForBluetoothDisconnect()
-            livePreviewManager.onBluetoothDisconnected()
-            if (BuildConfig.DEBUG) wifiAdbDebugController.onBluetoothDisconnected()
+            val expectedOtaReconnect = otaManager.isAwaitingFreshBleReadiness
+            val otaWasActive = otaManager.isActive
+            val otaPreparationWasActive = otaPreparationJob?.isActive == true
             otaManager.onBluetoothDisconnected()
-            GlassesSessionCoordinator.clearForDisconnectedDevice()
-            mediaSessionLease = null
-            livePreviewSessionLease = null
-            wifiAdbDebugSessionLease = null
-            otaSessionLease = null
+            if (!expectedOtaReconnect) {
+                otaPreparationJob?.cancel()
+                otaPreparationJob = null
+                if (!otaWasActive && otaPreparationWasActive) {
+                    resetOtaDashboardToIdle()
+                }
+                abandonDownloadP2pForBluetoothDisconnect()
+                livePreviewManager.onBluetoothDisconnected()
+                if (BuildConfig.DEBUG) wifiAdbDebugController.onBluetoothDisconnected()
+                if (otaWasActive) {
+                    Log.i("Ota", "Keeping the OTA lease until transport cleanup finishes after Bluetooth loss")
+                } else {
+                    releaseExclusiveGlassesSession(otaSessionLease)
+                    GlassesSessionCoordinator.clearForDisconnectedDevice()
+                }
+                mediaSessionLease = null
+                livePreviewSessionLease = null
+                wifiAdbDebugSessionLease = null
+            } else {
+                Log.i("Ota", "Preserving the OTA lease during its intentional BLE readiness reconnect")
+            }
             updateBatteryText(null)
         }
     }
@@ -3178,11 +3497,10 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
                 }.onFailure { error ->
                     clearPendingVoiceImageQuestion(sourceTag)
                     withContext(Dispatchers.Main) {
-                        Toast.makeText(
-                            this@MainActivity,
-                            "Meta camera unavailable: ${error.message ?: "capture failed"}",
-                            Toast.LENGTH_LONG,
-                        ).show()
+                        showMetaError(
+                            "AI photo capture ($sourceTag)",
+                            error.message ?: "capture failed",
+                        )
                     }
                 }
                 metaPhotoCaptureInProgress.set(false)
@@ -4009,6 +4327,18 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
 
 
     private fun updateConnectionStatus(connected: Boolean) {
+        if (isMeizuMyvuSelected()) {
+            val myvu = getOrCreateMeizuMyvuManager().state.value
+            binding.statusText.text = myvu.connectionLabel
+            updateDashboardState { state ->
+                state.copy(
+                    connectionLabel = myvu.connectionLabel,
+                    batteryPercent = myvu.batteryPercent,
+                )
+            }
+            updateDeviceClassText()
+            return
+        }
         if (isMetaRaybanSelected()) {
             val manager = getOrCreateMetaRaybanManager()
             val status = when {
@@ -4043,6 +4373,8 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
     }
 
     private fun isMetaRaybanSelected(): Boolean = DeviceProfileStore.isMetaSelected(this)
+
+    private fun isMeizuMyvuSelected(): Boolean = DeviceProfileStore.isMeizuMyvuSelected(this)
 
     private fun rejectHeyCyanOnlyFeature(feature: String): Boolean {
         if (!isMetaRaybanSelected()) return false
@@ -4093,6 +4425,7 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
             state.copy(
                 showHeyCyanControls = model.isVisible(GlassesManagerGating.Action.HEY_CYAN_EXTRAS),
                 showMetaRaybanControls = model.isVisible(GlassesManagerGating.Action.META_RAYBAN_CONTROLS),
+                showMeizuMyvuControls = model.isVisible(GlassesManagerGating.Action.MEIZU_MYVU_CONTROLS),
                 showBattery = showBattery,
                 showStorage = showStorage,
                 storageLabel = if (showStorage) state.storageLabel else "--",
@@ -4121,6 +4454,11 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
                 manager.initialize()
             }
             updateMetaRaybanUiState()
+        }
+
+        if (model.isVisible(GlassesManagerGating.Action.MEIZU_MYVU_CONTROLS)) {
+            getOrCreateMeizuMyvuManager()
+            updateMeizuMyvuUiState()
         }
     }
 
@@ -4227,7 +4565,7 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
                     },
                     onError = { error ->
                         runOnUiThread {
-                            Toast.makeText(this, "Session error: $error", Toast.LENGTH_SHORT).show()
+                            showMetaError("DAT session", error)
                         }
                     },
                 )
@@ -4254,7 +4592,7 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
                     },
                     onError = { error ->
                         runOnUiThread {
-                            Toast.makeText(this, "Stream error: $error", Toast.LENGTH_SHORT).show()
+                            showMetaError("DAT stream", error)
                         }
                     },
                 )
@@ -4280,7 +4618,7 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
                 },
                 onError = { error ->
                     runOnUiThread {
-                        Toast.makeText(this, "Capture error: $error", Toast.LENGTH_SHORT).show()
+                        showMetaError("DAT photo capture", error)
                     }
                 }
             )
@@ -4318,7 +4656,7 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
                     },
                     onError = { error ->
                         runOnUiThread {
-                            Toast.makeText(this, "Display error: $error", Toast.LENGTH_SHORT).show()
+                            showMetaError("DAT display", error)
                         }
                     }
                 )
@@ -4344,15 +4682,39 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
                     }
                     .onFailure { error ->
                         withContext(Dispatchers.Main) {
-                            Toast.makeText(
-                                this@MainActivity,
-                                "Meta photo failed: ${error.message ?: "camera unavailable"}",
-                                Toast.LENGTH_LONG,
-                            ).show()
+                            showMetaError(
+                                "DAT background photo",
+                                error.message ?: "camera unavailable",
+                            )
                         }
                     }
             }
         }
+    }
+
+    private fun showMetaDiagnostics() {
+        val manager = getOrCreateMetaRaybanManager()
+        DebugLogSupport.showSupportOptionsDialog(
+            activity = this,
+            title = getString(R.string.meta_diagnostics_title),
+            issueType = "Meta Ray-Ban / DAT",
+            description = getString(R.string.meta_diagnostics_description),
+            extraInfo = linkedMapOf(
+                "Meta DAT snapshot" to manager.diagnosticsSnapshot(),
+            ),
+            dismissButtonLabel = getString(R.string.action_cancel),
+        )
+    }
+
+    private fun showMetaError(operation: String, message: String) {
+        val manager = getOrCreateMetaRaybanManager()
+        val detail = manager.lastError.value?.takeIf { it.isNotBlank() } ?: message
+        Log.e(
+            "MainActivity",
+            "$operation failed: $detail\n${manager.diagnosticsSnapshot()}",
+        )
+        updateMetaRaybanUiState()
+        Toast.makeText(this, "$operation: $detail", Toast.LENGTH_LONG).show()
     }
 
     private fun updateMetaRaybanUiState() {
@@ -4402,6 +4764,9 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
                     registrationLabel = regState.name,
                     sessionLabel = sessionState.name,
                     streamLabel = streamState.name,
+                    selectedDeviceName = manager.selectedDeviceName.value,
+                    availableDeviceCount = manager.availableDeviceCount.value,
+                    lastError = manager.lastError.value,
                     displayCapable = displayCapable,
                     displayActive = isDisplayActive,
                     canRegister = regState != com.fersaiyan.cyanbridge.devices.metarayban.MetaRaybanManager.RegistrationState.REGISTERED &&
@@ -4416,6 +4781,28 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
                     canStopStream = streamState == com.fersaiyan.cyanbridge.devices.metarayban.MetaRaybanManager.StreamState.STREAMING,
                     canCapturePhoto = streamState == com.fersaiyan.cyanbridge.devices.metarayban.MetaRaybanManager.StreamState.STREAMING,
                     hasCapturedPhoto = manager.lastCapturedPhoto.value != null,
+                ),
+            )
+        }
+    }
+
+    private fun updateMeizuMyvuUiState() {
+        val manager = meizuMyvuManager ?: return
+        val myvu = manager.state.value
+        val connected = myvu.protocolState == com.myvu.client.service.ConnectionState.READY.name
+        updateDashboardState { state ->
+            state.copy(
+                connectionLabel = myvu.connectionLabel,
+                batteryPercent = myvu.batteryPercent,
+                meizuMyvu = MeizuMyvuUiState(
+                    connectionLabel = myvu.connectionLabel,
+                    protocolState = myvu.protocolState,
+                    deviceName = myvu.deviceName,
+                    batteryPercent = myvu.batteryPercent,
+                    lastError = myvu.lastError,
+                    canConnect = !connected && myvu.selectedAddress != null,
+                    canDisconnect = myvu.protocolState != com.myvu.client.service.ConnectionState.IDLE.name,
+                    canSend = connected,
                 ),
             )
         }
@@ -7795,6 +8182,10 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
                 "DeviceNotify",
                 "cmdType=$cmdType, loadData=${response.loadData.joinToString(separator = ",") { it.toInt().toString() }}"
             )
+            if (otaManager.isActive) {
+                Log.d("DeviceNotify", "Skipping general device-notify handling during OTA")
+                return
+            }
             when (response.loadData[6].toInt()) {
                 //Glasses battery report
                 0x05 -> {

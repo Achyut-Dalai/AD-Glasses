@@ -19,6 +19,7 @@ internal interface DfuTransport {
     fun sendPacket()
     fun check()
     fun endAndRelease()
+    fun clearCallback()
 }
 
 private class VendorDfuTransport(
@@ -47,6 +48,8 @@ private class VendorDfuTransport(
     override fun check() = handle.check()
 
     override fun endAndRelease() = handle.endAndRelease()
+
+    override fun clearCallback() = BleOperateManager.getInstance().setCallback(null)
 }
 
 /**
@@ -198,17 +201,17 @@ class BleDfuManager private constructor(
      * Do not send that command for an incomplete image.
      */
     fun cancel() {
-        val cancelled = synchronized(lock) {
+        val transportToClear = synchronized(lock) {
             if (terminal) {
-                false
+                null
             } else {
                 terminal = true
                 phase = Phase.CANCELLED
-                transport = null
-                true
+                transport.also { transport = null }
             }
         }
-        if (cancelled) {
+        if (transportToClear != null) {
+            clearCallback(transportToClear)
             info("BLE DFU cancelled; no unverified finalization command was sent")
         }
     }
@@ -292,19 +295,27 @@ class BleDfuManager private constructor(
     }
 
     private fun fail(message: String, onError: (String) -> Unit) {
-        val shouldNotify = synchronized(lock) {
+        val transportToClear = synchronized(lock) {
             if (terminal) {
-                false
+                null
             } else {
                 terminal = true
                 phase = Phase.FAILED
-                transport = null
-                true
+                transport.also { transport = null }
             }
         }
-        if (shouldNotify) {
+        if (transportToClear != null) {
+            clearCallback(transportToClear)
             error(message)
             onError(message)
+        }
+    }
+
+    private fun clearCallback(dfuTransport: DfuTransport) {
+        try {
+            dfuTransport.clearCallback()
+        } catch (throwable: Throwable) {
+            error("Could not clear BLE DFU callback", throwable)
         }
     }
 

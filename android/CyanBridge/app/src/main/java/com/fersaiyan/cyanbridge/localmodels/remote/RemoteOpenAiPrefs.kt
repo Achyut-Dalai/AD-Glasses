@@ -11,7 +11,8 @@ import java.net.URI
  * (Ollama, llama.cpp server, vLLM, text-generation-inference, etc.).
  *
  * Users can point this at any server on their LAN or Tailnet that exposes
- * the POST /v1/chat/completions endpoint.
+ * the POST /v1/chat/completions endpoint. Multimodal requests use OpenAI
+ * image_url data URLs and input_audio base64 parts (WAV or MP3 audio).
  */
 object RemoteOpenAiPrefs {
     private const val PREFS = "remote_openai_prefs"

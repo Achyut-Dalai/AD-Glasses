@@ -2,6 +2,7 @@ package com.fersaiyan.cyanbridge.shared.billing
 
 import kotlin.test.Test
 import kotlin.test.assertEquals
+import kotlin.test.assertFalse
 
 class BillingModelsTest {
     @Test
@@ -20,5 +21,17 @@ class BillingModelsTest {
     @Test
     fun unknownPlanFallsBackToStandard() {
         assertEquals("standard", BillingCatalog.plan("unknown").id)
+    }
+
+    @Test
+    fun unavailableCheckoutDoesNotClaimPaymentOrAccess() {
+        val state = ProSubscriptionUiState()
+
+        assertFalse(state.isSubscribed)
+        assertFalse(state.webCheckoutAvailable)
+        assertEquals(
+            "Subscription checkout is unavailable on this host. No payment was started and no Pro access was granted.",
+            unavailableProSubscriptionStatus(ProSubscriptionAction.SUBSCRIBE),
+        )
     }
 }

@@ -113,4 +113,45 @@ class CommunityPluginsScreenTest {
             assertEquals(true, settingsOpened)
         }
     }
+
+    @Test
+    fun downloadUrlOnlyPluginHasAnAction() {
+        var opened = false
+        val plugin = CommunityPluginCardData(
+            title = "Downloaded Workflow",
+            author = "cyanlabs",
+            description = "A plugin distributed as a direct download.",
+            badge = "Other",
+            downloadsAll = 1,
+            downloadsMonthly = 1,
+            downloadsWeekly = 1,
+            votesAll = 1,
+            votesMonthly = 1,
+            votesWeekly = 1,
+            trendAll = 1,
+            trendMonthly = 1,
+            trendWeekly = 1,
+            downloadUrl = "https://example.com/plugin.apk",
+        )
+
+        composeRule.setContent {
+            CyanBridgeTheme {
+                CommunityPluginsScreen(
+                    plugins = listOf(plugin),
+                    selectedWindow = PluginTimeWindow.ALL_TIME,
+                    isRefreshing = false,
+                    onWindowSelected = {},
+                    onRefresh = {},
+                    onOpenCommunityPlugin = { opened = true },
+                    onPublishPlugin = {},
+                    onDestinationSelected = {},
+                )
+            }
+        }
+
+        composeRule.onAllNodesWithText("Download plugin")[0].performClick()
+        composeRule.runOnIdle {
+            assertEquals(true, opened)
+        }
+    }
 }

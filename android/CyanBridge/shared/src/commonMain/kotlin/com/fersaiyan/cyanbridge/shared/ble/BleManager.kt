@@ -45,6 +45,14 @@ interface BleManager {
     suspend fun sendCommand(command: ByteArray)
 
     /**
+     * Wait until the platform can accept a BLE command on the connected device.
+     *
+     * Android's vendor adapter can answer immediately once connected. CoreBluetooth
+     * may report a connection before service/characteristic discovery has finished.
+     */
+    suspend fun awaitCommandReady(timeoutMs: Long = 10_000L): Boolean = isConnected()
+
+    /**
      * Register a listener for device notifications.
      * Notifications are BLE characteristic changes from the glasses.
      * @param listener The listener to register

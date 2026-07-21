@@ -60,12 +60,14 @@ class BleDfuManagerTest {
 
         try {
             manager.startDfu(file, {}, {}, errors::add)
-            transport.callback!!.onActionResult(1, 6)
-            transport.callback!!.onActionResult(1, 0)
+            val callback = requireNotNull(transport.callback)
+            callback.onActionResult(1, 6)
+            callback.onActionResult(1, 0)
 
             assertEquals(listOf("DFU error at type=1: status=6"), errors)
             assertFalse("init must not run after a terminal error", "init" in transport.operations)
             assertFalse("finalization is only for successful type 4", "endAndRelease" in transport.operations)
+            assertTrue("vendor callback must be detached after failure", "clearCallback" in transport.operations)
         } finally {
             file.delete()
         }
@@ -79,11 +81,13 @@ class BleDfuManagerTest {
 
         try {
             manager.startDfu(file, {}, {}, {})
+            val callback = requireNotNull(transport.callback)
             manager.cancel()
-            transport.callback!!.onActionResult(1, 0)
+            callback.onActionResult(1, 0)
 
             assertFalse("endAndRelease is reserved for verified type 4", "endAndRelease" in transport.operations)
             assertFalse("init must not run after cancellation", "init" in transport.operations)
+            assertTrue("vendor callback must be detached after cancellation", "clearCallback" in transport.operations)
         } finally {
             file.delete()
         }
@@ -106,6 +110,7 @@ class BleDfuManagerTest {
 
             assertEquals(0, completeCount)
             assertEquals(listOf("DFU finalization failed: end failed"), errors)
+            assertTrue("vendor callback must be detached after finalization failure", "clearCallback" in transport.operations)
         } finally {
             file.delete()
         }
@@ -168,6 +173,11 @@ class BleDfuManagerTest {
         override fun endAndRelease() {
             operations += "endAndRelease"
             if (throwOnEndAndRelease) error("end failed")
+        }
+
+        override fun clearCallback() {
+            operations += "clearCallback"
+            callback = null
         }
     }
 }

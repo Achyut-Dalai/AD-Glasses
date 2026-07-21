@@ -183,7 +183,17 @@ class WalkingAidService : Service() {
             if (isMetaRayban) {
                 val metaManager = MetaRaybanManager.getInstance(this@WalkingAidService)
                 if (!metaManager.awaitCameraReady()) {
-                    Log.w(TAG, "Meta Walking Aid requires a registered, available DAT camera")
+                    val detail = metaManager.lastError.value
+                        ?: "Register and connect a Meta camera before using Walking Aid"
+                    Log.e(
+                        TAG,
+                        "Meta Walking Aid cannot start: $detail\n${metaManager.diagnosticsSnapshot()}",
+                    )
+                    WalkingAidNotificationHelper.updateNotification(
+                        this@WalkingAidService,
+                        "Meta camera unavailable: ${detail.take(120)}",
+                        0,
+                    )
                     WalkingAidPreferences.setEnabled(this@WalkingAidService, false)
                     stopLoop(reason = "meta_camera_unavailable")
                     return@launch
@@ -295,7 +305,13 @@ class WalkingAidService : Service() {
                 val photo = manager.capturePhotoOnce()
                 manager.savePhotoForProcessing(photo, "META_WALKING_AID_$index")
             }.onFailure {
-                Log.e(TAG, "Meta DAT photo capture failed: ${it.message}", it)
+                val detail = manager.lastError.value ?: it.message ?: "camera unavailable"
+                Log.e(TAG, "Meta DAT photo capture failed: $detail\n${manager.diagnosticsSnapshot()}", it)
+                WalkingAidNotificationHelper.updateNotification(
+                    this,
+                    "Meta capture failed: ${detail.take(120)}",
+                    0,
+                )
             }.getOrNull()
         }
 

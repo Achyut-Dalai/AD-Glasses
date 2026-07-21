@@ -21,6 +21,12 @@ class DeviceClassifierTest {
     }
 
     @Test
+    fun meizuMyvu_detectedByName() {
+        assertEquals(DeviceClass.MEIZU_MYVU, DeviceClassifier.guessDeviceClass("MYVU Star Air"))
+        assertEquals(DeviceClass.MEIZU_MYVU, DeviceClassifier.guessDeviceClass("myvu_xga010c"))
+    }
+
+    @Test
     fun genericAudio_detectedByName() {
         assertEquals(DeviceClass.GENERIC_AUDIO, DeviceClassifier.guessDeviceClass("AirPods Pro"))
         assertEquals(DeviceClass.GENERIC_AUDIO, DeviceClassifier.guessDeviceClass("BT Headset"))

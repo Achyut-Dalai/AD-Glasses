@@ -64,6 +64,7 @@
 		BBEA4D0FAD /* MediaGalleryViewController.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = MediaGalleryViewController.h; sourceTree = "<group>"; };
 		CB2000022F00000100CB0001 /* CyanBridgeKMPHostApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CyanBridgeKMPHostApp.swift; sourceTree = "<group>"; };
 		CB2000032F00000100CB0001 /* CyanBridgeKMPHost.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = CyanBridgeKMPHost.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		CB20000D2F00000100CB0001 /* CyanBridgeKMPHost.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = CyanBridgeKMPHost.entitlements; sourceTree = "<group>"; };
 		CT3000022F00000100CT0001 /* CyanBridgeKMPHostTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CyanBridgeKMPHostTests.swift; sourceTree = "<group>"; };
 		CT3000032F00000100CT0001 /* CyanBridgeKMPHostTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.unit-test; includeInIndex = 0; path = CyanBridgeKMPHostTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 /* End PBXFileReference section */
@@ -184,6 +185,7 @@
 			isa = PBXGroup;
 			children = (
 				CB2000022F00000100CB0001 /* CyanBridgeKMPHostApp.swift */,
+				CB20000D2F00000100CB0001 /* CyanBridgeKMPHost.entitlements */,
 			);
 			path = CyanBridgeKMPHost;
 			sourceTree = "<group>";
@@ -560,6 +562,7 @@
 		CB20000A2F00000100CB0001 /* Debug */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
+				CODE_SIGN_ENTITLEMENTS = CyanBridgeKMPHost/CyanBridgeKMPHost.entitlements;
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
 				DEFINES_MODULE = YES;
@@ -568,6 +571,9 @@
 					"$(SRCROOT)/../android/CyanBridge/shared/build/xcode-frameworks/$(CONFIGURATION)/$(SDK_NAME)",
 				);
 				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_KEY_NSBluetoothAlwaysUsageDescription = "CyanBridge uses Bluetooth to find and communicate with your glasses.";
+				INFOPLIST_KEY_NSLocalNetworkUsageDescription = "CyanBridge connects to your glasses over their local Wi-Fi transfer network.";
+				INFOPLIST_KEY_NSLocationWhenInUseUsageDescription = "Location access lets CyanBridge verify the glasses Wi-Fi connection.";
 				IPHONEOS_DEPLOYMENT_TARGET = 15.0;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
@@ -579,6 +585,10 @@
 					"-ObjC",
 					"-framework",
 					CyanBridgeShared,
+					"-framework",
+					CoreBluetooth,
+					"-framework",
+					NetworkExtension,
 				);
 				PRODUCT_BUNDLE_IDENTIFIER = com.fersaiyan.CyanBridgeKMPHost;
 				PRODUCT_NAME = "$(TARGET_NAME)";
@@ -590,6 +600,7 @@
 		CB20000B2F00000100CB0001 /* Release */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
+				CODE_SIGN_ENTITLEMENTS = CyanBridgeKMPHost/CyanBridgeKMPHost.entitlements;
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
 				DEFINES_MODULE = YES;
@@ -598,6 +609,9 @@
 					"$(SRCROOT)/../android/CyanBridge/shared/build/xcode-frameworks/$(CONFIGURATION)/$(SDK_NAME)",
 				);
 				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_KEY_NSBluetoothAlwaysUsageDescription = "CyanBridge uses Bluetooth to find and communicate with your glasses.";
+				INFOPLIST_KEY_NSLocalNetworkUsageDescription = "CyanBridge connects to your glasses over their local Wi-Fi transfer network.";
+				INFOPLIST_KEY_NSLocationWhenInUseUsageDescription = "Location access lets CyanBridge verify the glasses Wi-Fi connection.";
 				IPHONEOS_DEPLOYMENT_TARGET = 15.0;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
@@ -609,6 +623,10 @@
 					"-ObjC",
 					"-framework",
 					CyanBridgeShared,
+					"-framework",
+					CoreBluetooth,
+					"-framework",
+					NetworkExtension,
 				);
 				PRODUCT_BUNDLE_IDENTIFIER = com.fersaiyan.CyanBridgeKMPHost;
 				PRODUCT_NAME = "$(TARGET_NAME)";
