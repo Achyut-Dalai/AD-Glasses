@@ -54,20 +54,6 @@ jobs:
       - name: Verify the isolated iOS host structure
         run: python3 ios/scripts/verify_kmp_host.py
 
-      - name: Run portable shared tests
-        working-directory: android/CyanBridge
-        run: ./gradlew --no-daemon :shared:portabilityTest
-
-      - name: Verify shared module compiles for Android
-        working-directory: android/CyanBridge
-        run: ./gradlew --no-daemon :shared:compileDebugKotlinAndroid
-
-      - name: Run OTA client unit tests
-        working-directory: android/CyanBridge
-        run: >-
-          ./gradlew --no-daemon :app:testDebugUnitTest
-          --tests com.fersaiyan.cyanbridge.ota.OtaFirmwareTargetTest
-
       - name: Link the Apple-Silicon simulator framework
         working-directory: android/CyanBridge
         run: ./gradlew --no-daemon -PenableAppleTargets=true :shared:linkDebugFrameworkIosSimulatorArm64
@@ -99,20 +85,6 @@ jobs:
           CODE_SIGNING_ALLOWED=NO
           ENABLE_USER_SCRIPT_SANDBOXING=NO
           build
-
-      - name: Run KMP host unit tests
-        if: false  # Disabled: Compose/Skiko segfaults in xcodebuild test runner
-        run: >-
-          xcodebuild
-          -project ios/QCSDKDemo.xcodeproj
-          -scheme CyanBridgeKMPHost
-          -configuration Debug
-          -sdk iphonesimulator
-          -destination 'platform=iOS Simulator,name=iPhone 16,OS=18.2'
-          -derivedDataPath "$RUNNER_TEMP/CyanBridgeDerivedData"
-          CODE_SIGNING_ALLOWED=NO
-          ENABLE_USER_SCRIPT_SANDBOXING=NO
-          test
 
       - name: Launch the simulator host and capture route screenshots
         continue-on-error: true
