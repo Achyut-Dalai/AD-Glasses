@@ -81,6 +81,7 @@ class LocalAgentUiControlProtocolTest {
                 stepIndex = 1,
                 maxSteps = 8,
                 previousActionResult = "Opened Settings",
+                consecutiveFailures = 1,
             )
         )
 
@@ -89,6 +90,7 @@ class LocalAgentUiControlProtocolTest {
         assertTrue(prompt.user.contains("Current app: com.android.settings"))
         assertTrue(prompt.user.contains("Bluetooth"))
         assertTrue(prompt.user.contains("center:(60,45)"))
+        assertTrue(prompt.user.contains("Recovery guidance:"))
     }
 
     @Test(expected = LocalAgentUiControlProtocol.SchemaViolationException::class)
@@ -158,6 +160,24 @@ class LocalAgentUiControlProtocolTest {
         val action = parsed.action as LocalAgentUiControlProtocol.SendSms
         assertEquals("+15551234567", action.number)
         assertEquals("On my way", action.message)
+    }
+
+    @Test
+    fun `parses keyboard submit email and read aloud decisions`() {
+        val enter = LocalAgentUiControlProtocol.parseDecision(
+            """{"version":1,"action":{"type":"press_enter"},"is_complete":false}""",
+        )
+        val email = LocalAgentUiControlProtocol.parseDecision(
+            """{"version":1,"action":{"type":"send_email","to":"person@example.com","subject":"Hi","body":"Hello"},"is_complete":false}""",
+        )
+        val read = LocalAgentUiControlProtocol.parseDecision(
+            """{"version":1,"action":{"type":"read_screen_aloud"},"is_complete":true}""",
+        )
+
+        assertTrue(enter.action is LocalAgentUiControlProtocol.PressEnter)
+        assertEquals("person@example.com", (email.action as LocalAgentUiControlProtocol.SendEmail).to)
+        assertTrue(read.action is LocalAgentUiControlProtocol.ReadScreenAloud)
+        assertTrue(read.isComplete)
     }
 
     @Test

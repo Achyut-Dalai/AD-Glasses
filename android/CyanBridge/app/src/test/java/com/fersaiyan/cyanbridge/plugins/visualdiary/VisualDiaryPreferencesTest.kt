@@ -30,6 +30,7 @@ class VisualDiaryPreferencesTest {
         assertFalse(VisualDiaryPreferences.isEnabled(context))
         assertEquals(15, VisualDiaryPreferences.getIntervalMinutes(context))
         assertEquals("", VisualDiaryPreferences.getCustomPrompt(context))
+        assertEquals("", VisualDiaryPreferences.getLastError(context))
     }
 
     @Test
@@ -37,10 +38,12 @@ class VisualDiaryPreferencesTest {
         VisualDiaryPreferences.setEnabled(context, true)
         VisualDiaryPreferences.setIntervalMinutes(context, 999)
         VisualDiaryPreferences.setCustomPrompt(context, "Describe only concrete objects.")
+        VisualDiaryPreferences.setLastError(context, "Camera unavailable")
 
         assertTrue(VisualDiaryPreferences.isEnabled(context))
         assertEquals(240, VisualDiaryPreferences.getIntervalMinutes(context))
         assertEquals("Describe only concrete objects.", VisualDiaryPreferences.getCustomPrompt(context))
+        assertEquals("Camera unavailable", VisualDiaryPreferences.getLastError(context))
     }
 
     @Test

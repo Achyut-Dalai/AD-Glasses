@@ -49,6 +49,22 @@ class OtaFirmwareTargetTest {
     }
 
     @Test
+    fun `one device info response supplies exact versions for both OTA targets`() {
+        val versions = InstalledFirmwareVersions(
+            wifiHardwareVersion = "WIFIAM01G1_V9.2",
+            wifiFirmwareVersion = "WIFIAM01G1_1.00.28_2603031800",
+            bleHardwareVersion = "JL7018F_V1",
+            bleFirmwareVersion = "JL7018F_1.02.03",
+        )
+
+        assertTrue(versions.isComplete())
+        assertEquals("WIFIAM01G1_V9.2", versions.hardwareVersionFor(OtaTarget.V821_WIFI))
+        assertEquals("WIFIAM01G1_1.00.28_2603031800", versions.firmwareVersionFor(OtaTarget.V821_WIFI))
+        assertEquals("JL7018F_V1", versions.hardwareVersionFor(OtaTarget.JIELI_BLE))
+        assertEquals("JL7018F_1.02.03", versions.firmwareVersionFor(OtaTarget.JIELI_BLE))
+    }
+
+    @Test
     fun `server SHA-256 metadata must be a complete hex digest`() {
         assertTrue(isSha256Hex("a".repeat(64)))
         assertFalse(isSha256Hex("a".repeat(63)))

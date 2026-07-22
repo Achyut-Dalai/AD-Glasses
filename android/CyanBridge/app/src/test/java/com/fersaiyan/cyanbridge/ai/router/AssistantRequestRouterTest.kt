@@ -32,6 +32,15 @@ class AssistantRequestRouterTest {
     }
 
     @Test
+    fun `read current app request routes to UI task`() {
+        val decision = router.classifyHeuristically(
+            AssistantRequest("Read my WhatsApp messages", AssistantRequestSource.GLASSES_VOICE)
+        )
+
+        assertEquals(AssistantIntent.EXECUTE_UI_TASK, decision?.intent)
+    }
+
+    @Test
     fun `informational how question stays a normal question`() {
         val decision = router.classifyHeuristically(
             AssistantRequest("How do I open Bluetooth settings?", AssistantRequestSource.GLASSES_VOICE)

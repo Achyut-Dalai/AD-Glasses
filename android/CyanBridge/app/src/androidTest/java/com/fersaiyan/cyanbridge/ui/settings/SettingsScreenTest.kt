@@ -23,7 +23,7 @@ class SettingsScreenTest {
     val composeRule = createComposeRule()
 
     @Test
-    fun opensAppearanceAndExpandsAiAutomationControls() {
+    fun opensAppearanceAndExpandsAiControls() {
         var appearanceOpens = 0
         var expanded by mutableStateOf(emptySet<SettingsSection>())
         val actions = Proxy.newProxyInstance(
@@ -56,8 +56,9 @@ class SettingsScreenTest {
         }
 
         composeRule.onNodeWithTag("settings_appearance").performClick()
-        composeRule.onNodeWithTag("settings_section_AI / Automation").performClick()
-        composeRule.onNodeWithText("Provider type").assertTextContains("Provider type")
+        composeRule.onNodeWithTag("settings_section_AI").performClick()
+        composeRule.onNodeWithText("Configure Local Agent planning, phone-control safety, and local models from its Native Plugins card.")
+            .assertTextContains("Native Plugins")
 
         composeRule.runOnIdle {
             assertEquals(1, appearanceOpens)

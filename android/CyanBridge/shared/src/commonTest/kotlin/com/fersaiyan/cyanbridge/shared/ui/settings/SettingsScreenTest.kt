@@ -15,9 +15,6 @@ class SettingsScreenTest {
     fun defaultUiStateUsesPrivacyFirstDefaults() {
         val state = SettingsUiState()
         assertEquals(false, state.isProSubscribed)
-        assertEquals(AgentProviderType.PRO_SUBSCRIPTION, state.providerType)
-        assertEquals(false, state.localAgentAutomationEnabled)
-        assertEquals(true, state.localAgentRequireConfirmation)
         assertEquals(MemoryPrivacyMode.PRIVATE_LOCAL, state.memoryMode)
         assertEquals(true, state.redactNamesEnabled)
         assertEquals(false, state.transcriptStorageEnabled)
@@ -30,7 +27,6 @@ class SettingsScreenTest {
         assertTrue(sections.contains(SettingsSection.MEMORY_PRIVACY))
         assertTrue(sections.contains(SettingsSection.TRANSCRIPTS))
         assertTrue(sections.contains(SettingsSection.DATA))
-        assertTrue(sections.contains(SettingsSection.AGENT))
         assertTrue(sections.contains(SettingsSection.SUPPORT))
         assertTrue(sections.contains(SettingsSection.FAQ))
     }
@@ -75,12 +71,12 @@ class SettingsScreenTest {
         val original = SettingsUiState(
             isProSubscribed = true,
             proPlan = "Max",
-            localAgentMaxSteps = 12,
+            ocrRetentionDays = 12,
         )
         val updated = original.copy(memoryMode = MemoryPrivacyMode.ENCRYPTED_SYNC)
         assertEquals(true, updated.isProSubscribed)
         assertEquals("Max", updated.proPlan)
-        assertEquals(12, updated.localAgentMaxSteps)
+        assertEquals(12, updated.ocrRetentionDays)
         assertEquals(MemoryPrivacyMode.ENCRYPTED_SYNC, updated.memoryMode)
     }
 }

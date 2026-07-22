@@ -19,6 +19,7 @@ class LocalAgentActionParserTest {
               {"type":"wait","ms":400},
               {"type":"click_coord","x":120,"y":640},
               {"type":"type_text","text":"hello","hint":"search"},
+              {"type":"press_enter"},
               {"type":"scroll","direction":"down"},
               {"type":"open_app","app_name":"Settings"},
               {"type":"finish","message":"done"}
@@ -27,15 +28,16 @@ class LocalAgentActionParserTest {
 
         val parsed = LocalAgentActionParser.parseList(json)
 
-        assertEquals(6, parsed.size)
+        assertEquals(7, parsed.size)
         assertTrue(parsed[0] is LocalAgentAction.Wait)
         assertTrue(parsed[1] is LocalAgentAction.ClickCoord)
         assertTrue(parsed[2] is LocalAgentAction.TypeText)
-        assertTrue(parsed[3] is LocalAgentAction.Scroll)
-        assertTrue(parsed[4] is LocalAgentAction.OpenApp)
-        assertTrue(parsed[5] is LocalAgentAction.Finish)
+        assertTrue(parsed[3] is LocalAgentAction.PressEnter)
+        assertTrue(parsed[4] is LocalAgentAction.Scroll)
+        assertTrue(parsed[5] is LocalAgentAction.OpenApp)
+        assertTrue(parsed[6] is LocalAgentAction.Finish)
         assertEquals("search", (parsed[2] as LocalAgentAction.TypeText).hint)
-        assertEquals(LocalAgentAction.Direction.DOWN, (parsed[3] as LocalAgentAction.Scroll).direction)
+        assertEquals(LocalAgentAction.Direction.DOWN, (parsed[4] as LocalAgentAction.Scroll).direction)
     }
 
     @Test
@@ -148,5 +150,16 @@ class LocalAgentActionParserTest {
         val json = """{"type":"send_sms","number":"","message":"Hello"}"""
         val parsed = LocalAgentActionParser.parseList(json)
         assertTrue(parsed.isEmpty())
+    }
+
+    @Test
+    fun `parses email and read screen actions`() {
+        val parsed = LocalAgentActionParser.parseList(
+            """[{"type":"send_email","to":"person@example.com","subject":"Hi","body":"Hello"},{"type":"read_screen_aloud"}]""",
+        )
+
+        assertEquals(2, parsed.size)
+        assertEquals("person@example.com", (parsed[0] as LocalAgentAction.SendEmail).to)
+        assertTrue(parsed[1] is LocalAgentAction.ReadScreenAloud)
     }
 }
