@@ -309,33 +309,10 @@ object DailySummaryGenerator {
             "unknown"
         }
 
-        val customPrompt = DailyBulletsSettings.getCustomBulletPrompt(context)
-        if (!customPrompt.isNullOrBlank()) {
-            return customPrompt
-                .replace("\${event.packageName}", event.packageName)
-                .replace("\${event.time}", time)
-                .replace("\${event.text}", event.text)
-        }
-
-        return """
-You summarize one mobile screen OCR event into exactly one bullet.
-
-The app package is provided below, and the app name may also appear inside the OCR text.
-
-APP_PACKAGE: ${event.packageName}
-EVENT_TIME: $time
-OCR_TEXT:
-${event.text}
-
-Return JSON only:
-{"skip": false, "bullet": "...", "confidence": 0.0}
-
-Rules:
-- Keep bullet factual and concise (max 26 words)
-- Preserve concrete details like person names, contact names, topics, or action context when visible
-- If OCR is too noisy or meaningless, set skip=true
-- Do not invent details outside OCR
-""".trim()
+        return DailyBulletsSettings.getBulletPrompt(context)
+            .replace("\${event.packageName}", event.packageName)
+            .replace("\${event.time}", time)
+            .replace("\${event.text}", event.text)
     }
 
     private fun parseSingleEventBullet(raw: String): String? {

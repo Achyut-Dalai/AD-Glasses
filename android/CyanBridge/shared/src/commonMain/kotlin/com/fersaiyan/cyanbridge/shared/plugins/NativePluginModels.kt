@@ -32,6 +32,7 @@ data class NativePluginShortcutUiState(
 )
 
 object NativePluginIds {
+    const val LOCAL_AGENT = "local_agent"
     const val WALKING_AID = "walking_aid"
     const val MEETING_SPARK_NOTES = "meeting_spark_notes"
     const val LIVE_CAPTION_RELAY = "live_caption_relay"

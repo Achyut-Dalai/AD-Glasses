@@ -20,9 +20,6 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.AutoAwesome
 import androidx.compose.material.icons.outlined.ExpandLess
 import androidx.compose.material.icons.outlined.ExpandMore
-import androidx.compose.material.icons.outlined.Settings
-import androidx.compose.material3.AssistChip
-import androidx.compose.material3.AssistChipDefaults
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
@@ -60,7 +57,6 @@ import com.fersaiyan.cyanbridge.shared.navigation.AppDestination
 import com.fersaiyan.cyanbridge.shared.navigation.icon
 import com.fersaiyan.cyanbridge.shared.navigation.label
 import com.fersaiyan.cyanbridge.shared.icons.imageVector
-import com.fersaiyan.cyanbridge.shared.settings.AgentProviderType
 import com.fersaiyan.cyanbridge.shared.settings.CaptureSource
 import com.fersaiyan.cyanbridge.shared.settings.MemoryPrivacyMode
 import com.fersaiyan.cyanbridge.shared.settings.MemorySourceType
@@ -73,18 +69,6 @@ data class SettingsUiState(
     val proPlan: String = "Pro",
     val appLanguageLabel: String = "System default",
     val visionProfileLabel: String = "Walking",
-    val providerType: AgentProviderType = AgentProviderType.PRO_SUBSCRIPTION,
-    val localAgentAutomationEnabled: Boolean = false,
-    val localAgentRequireConfirmation: Boolean = true,
-    val localAgentMaxSteps: Int = 8,
-    val accessibilityEnabled: Boolean = false,
-    val autoCaptureEnabled: Boolean = false,
-    val captureIntervalMinutes: Int = 10,
-    val dailyFactsReminderEnabled: Boolean = false,
-    val dailySummaryRefreshHours: Int = 6,
-    val autoSaveDailyFactsEnabled: Boolean = true,
-    val extractUserFactCandidatesEnabled: Boolean = true,
-    val maxTokensPerBullet: Int = 0,
     val memoryMode: MemoryPrivacyMode = MemoryPrivacyMode.PRIVATE_LOCAL,
     val memoryModeAvailability: String = "",
     val memorySyncStatus: String = "",
@@ -99,20 +83,8 @@ data class SettingsUiState(
     val transcriptStorageEnabled: Boolean = false,
     val redactNamesEnabled: Boolean = true,
     val includeFullTranscriptionInExports: Boolean = false,
-    val autoAudioCaptureEnabled: Boolean = false,
-    val autoAudioVisualNotesEnabled: Boolean = false,
-    val autoAudioSpeechExtendEnabled: Boolean = false,
-    val autoAudioLoopsPerSync: Int = 1,
-    val autoAudioDebugText: String = "",
-    val requireActionConfirmation: Boolean = true,
-    val autoExecuteLowRisk: Boolean = false,
-    val agentStatus: String = "Unknown",
-    val agentLastError: String = "",
     val meetingRecording: Boolean = false,
     val meetingCaptureSource: CaptureSource? = null,
-    val autoCaptureAvailable: Boolean = true,
-    val autoAudioAvailable: Boolean = true,
-    val platformAvailabilityNote: String? = null,
 )
 
 /** Platform-owned effects stay in the platform layer; this composable only renders state and dispatches intent. */
@@ -123,29 +95,6 @@ interface SettingsScreenActions {
     fun openVisionProfileSelection()
     fun editVisionInstructions()
     fun openSubscription()
-    fun setProviderType(type: AgentProviderType)
-    fun openLocalModels()
-    fun setLocalAgentAutomationEnabled(enabled: Boolean)
-    fun setLocalAgentRequireConfirmation(enabled: Boolean)
-    fun setLocalAgentMaxSteps(value: Int)
-    fun openAccessibilitySettings()
-    fun setAutoCaptureEnabled(enabled: Boolean)
-    fun setCaptureIntervalMinutes(value: Int)
-    fun openBlacklistApps()
-    fun openScreenCaptures()
-    fun setDailyFactsReminderEnabled(enabled: Boolean)
-    fun openDailyFactsDraft()
-    fun openConfirmedDailyFacts()
-    fun openDailySummary()
-    fun setDailySummaryRefreshHours(value: Int)
-    fun setAutoSaveDailyFactsEnabled(enabled: Boolean)
-    fun setExtractUserFactCandidatesEnabled(enabled: Boolean)
-    fun editBulletPrompt()
-    fun resetBulletPrompt()
-    fun setMaxTokensPerBullet(value: Int)
-    fun editAgentPersona()
-    fun editUserFacts()
-    fun viewContextDebug()
     fun setMemoryMode(mode: MemoryPrivacyMode)
     fun setMemorySync(source: MemorySourceType, enabled: Boolean)
     fun setOcrRetentionDays(value: Int)
@@ -158,19 +107,9 @@ interface SettingsScreenActions {
     fun setTranscriptStorageEnabled(enabled: Boolean)
     fun setRedactNamesEnabled(enabled: Boolean)
     fun setIncludeFullTranscriptionEnabled(enabled: Boolean)
-    fun setAutoAudioCaptureEnabled(enabled: Boolean)
-    fun setAutoAudioVisualNotesEnabled(enabled: Boolean)
-    fun setAutoAudioSpeechExtendEnabled(enabled: Boolean)
-    fun setAutoAudioLoopsPerSync(value: Int)
     fun exportLocalData()
     fun importLocalData()
     fun clearLocalData()
-    fun setRequireActionConfirmation(enabled: Boolean)
-    fun setAutoExecuteLowRisk(enabled: Boolean)
-    fun openPendingActions()
-    fun startAgent()
-    fun stopAgent()
-    fun runAgentDemo()
     fun sendDebugLogs()
     fun stopMeetingCapture()
 }
@@ -264,7 +203,7 @@ fun SettingsScreen(
             }
             item {
                 SettingsSectionCard(
-                    title = "AI / Automation",
+                    title = "AI",
                     expanded = SettingsSection.AI_AUTOMATION in expandedSections,
                     onToggle = { onToggleSection(SettingsSection.AI_AUTOMATION) },
                 ) {
@@ -296,15 +235,6 @@ fun SettingsScreen(
                     onToggle = { onToggleSection(SettingsSection.DATA) },
                 ) {
                     DataContent(actions)
-                }
-            }
-            item {
-                SettingsSectionCard(
-                    title = "Agent Actions",
-                    expanded = SettingsSection.AGENT in expandedSections,
-                    onToggle = { onToggleSection(SettingsSection.AGENT) },
-                ) {
-                    AgentActionsContent(state, actions)
                 }
             }
             item {
@@ -528,39 +458,11 @@ private fun SettingsSectionCard(
 @OptIn(ExperimentalResourceApi::class)
 @Composable
 private fun AiAutomationContent(state: SettingsUiState, actions: SettingsScreenActions) {
-    Text("Provider type", style = MaterialTheme.typography.labelLarge)
-    AgentProviderType.entries.forEach { type ->
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .clickable { actions.setProviderType(type) },
-            verticalAlignment = Alignment.CenterVertically,
-        ) {
-            RadioButton(
-                selected = state.providerType == type,
-                onClick = { actions.setProviderType(type) },
-            )
-            Text(type.label, style = MaterialTheme.typography.bodyMedium)
-        }
-    }
-    ActionButton("Configure Local Models", actions::openLocalModels)
-    if (state.providerType == AgentProviderType.PRO_SUBSCRIPTION) {
-        AssistChip(
-            onClick = actions::openSubscription,
-            leadingIcon = {
-                Icon(
-                    imageVector = Icons.Outlined.Settings,
-                    contentDescription = null,
-                )
-            },
-            label = { Text("Configure Pro Subscription") },
-            colors = AssistChipDefaults.assistChipColors(
-                containerColor = MaterialTheme.colorScheme.tertiaryContainer,
-                labelColor = MaterialTheme.colorScheme.onTertiaryContainer,
-                leadingIconContentColor = MaterialTheme.colorScheme.onTertiaryContainer,
-            ),
-        )
-    }
+    Text(
+        "Configure Local Agent planning, phone-control safety, and local models from its Native Plugins card.",
+        style = MaterialTheme.typography.bodySmall,
+        color = MaterialTheme.colorScheme.onSurfaceVariant,
+    )
     SettingRow(
         label = stringResource(Res.string.vision_profile_title),
         subtitle = stringResource(Res.string.vision_profile_description, state.visionProfileLabel),
@@ -573,29 +475,6 @@ private fun AiAutomationContent(state: SettingsUiState, actions: SettingsScreenA
         TextButton(onClick = actions::editVisionInstructions) {
             Text(stringResource(Res.string.action_edit))
         }
-    }
-    HorizontalDivider()
-    SwitchRow(
-        label = "Enable Local Agent automation",
-        checked = state.localAgentAutomationEnabled,
-        onCheckedChange = actions::setLocalAgentAutomationEnabled,
-    )
-    SwitchRow(
-        label = "Require confirmation for Local Agent",
-        checked = state.localAgentRequireConfirmation,
-        onCheckedChange = actions::setLocalAgentRequireConfirmation,
-    )
-    NumberSettingRow(
-        label = "Local Agent max steps",
-        value = state.localAgentMaxSteps,
-        onValueChanged = actions::setLocalAgentMaxSteps,
-        validRange = 1..100_000,
-    )
-    SettingRow(
-        label = "Accessibility service",
-        subtitle = if (state.accessibilityEnabled) "Enabled" else "Disabled",
-    ) {
-        TextButton(onClick = actions::openAccessibilitySettings) { Text("Open settings") }
     }
 }
 
@@ -723,34 +602,6 @@ private fun DataContent(actions: SettingsScreenActions) {
 }
 
 @Composable
-private fun AgentActionsContent(state: SettingsUiState, actions: SettingsScreenActions) {
-    SwitchRow(
-        label = "Require approval for actions",
-        checked = state.requireActionConfirmation,
-        onCheckedChange = actions::setRequireActionConfirmation,
-    )
-    SwitchRow(
-        label = "Auto-execute low-risk actions",
-        checked = state.autoExecuteLowRisk,
-        enabled = state.requireActionConfirmation,
-        onCheckedChange = actions::setAutoExecuteLowRisk,
-    )
-    ActionButton("View pending actions", actions::openPendingActions, enabled = state.requireActionConfirmation)
-    HorizontalDivider()
-    Text("Status: ${state.agentStatus}", style = MaterialTheme.typography.bodyMedium)
-    if (state.agentLastError.isNotBlank()) {
-        Text(
-            text = "Last error: ${state.agentLastError}",
-            style = MaterialTheme.typography.bodySmall,
-            color = MaterialTheme.colorScheme.error,
-        )
-    }
-    ActionButton("Start agent", actions::startAgent)
-    ActionButton("Stop agent", actions::stopAgent)
-    ActionButton("Run agent demo", actions::runAgentDemo)
-}
-
-@Composable
 private fun SupportContent(actions: SettingsScreenActions) {
     Text(
         text = "Send an issue description with diagnostic logs to help investigate Bluetooth, sync, voice, or app failures.",
@@ -763,7 +614,7 @@ private fun SupportContent(actions: SettingsScreenActions) {
 @Composable
 private fun FaqContent() {
     val items = listOf(
-        "How do I set up Local Models?" to "Select Local Models in AI / Automation, then configure a model on this device.",
+        "How do I set up Local Models?" to "Open Local Agent from Native Plugins, then configure a model on this device.",
         "Do I need a subscription?" to "No. Tasker and Local Models can be used without a subscription. Pro is optional.",
         "How is data handled?" to "Data stays on this phone by default. You can export, import, or clear it from Data.",
         "Can I review the source?" to "Yes. CyanBridge is open source and its behavior can be reviewed in the project repository.",

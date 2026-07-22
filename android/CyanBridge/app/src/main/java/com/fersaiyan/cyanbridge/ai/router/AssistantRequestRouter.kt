@@ -192,7 +192,7 @@ class AssistantRequestRouter {
         private const val AUTO_ACTION_CONFIDENCE = 0.85
 
         private val ACTION_VERBS =
-            "open|launch|start|close|go to|tap|click|press|scroll|type|write|search for|turn on|turn off|enable|disable|switch to|send|call"
+            "open|launch|start|close|go to|tap|click|press|scroll|type|write|read|search for|turn on|turn off|enable|disable|switch to|send|call"
 
         private val DIRECT_ACTION_REGEX = Regex(
             "^(?:please\\s+)?(?:$ACTION_VERBS)\\b",

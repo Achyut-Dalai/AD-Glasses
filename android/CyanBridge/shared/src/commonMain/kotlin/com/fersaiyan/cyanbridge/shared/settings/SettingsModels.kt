@@ -61,7 +61,6 @@ enum class SettingsSection {
     MEMORY_PRIVACY,
     TRANSCRIPTS,
     DATA,
-    AGENT,
     SUPPORT,
     FAQ,
 }

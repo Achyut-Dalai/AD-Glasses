@@ -32,7 +32,6 @@ import com.fersaiyan.cyanbridge.shared.recordings.RecordingItem
 import com.fersaiyan.cyanbridge.shared.recordings.SyncedMediaItem
 import com.fersaiyan.cyanbridge.shared.recordings.TranscriptionEngine
 import com.fersaiyan.cyanbridge.shared.settings.SettingsSection
-import com.fersaiyan.cyanbridge.shared.settings.AgentProviderType
 import com.fersaiyan.cyanbridge.shared.settings.MemoryPrivacyMode
 import com.fersaiyan.cyanbridge.shared.settings.MemorySourceType
 import com.fersaiyan.cyanbridge.shared.platform.CyanBridgeServices
@@ -330,6 +329,15 @@ private fun SharedMediaDestination(onDestinationSelected: (AppDestination) -> Un
 private fun SharedPluginsDestination(onDestinationSelected: (AppDestination) -> Unit) {
     val nativePlugins = listOf(
         NativePluginCardData(
+            id = NativePluginIds.LOCAL_AGENT,
+            title = "Local Agent",
+            description = "Phone accessibility automation requires the Android Local Agent runtime.",
+            badge = "Android only",
+            enabled = false,
+            hasSettings = false,
+            isAvailable = false,
+        ),
+        NativePluginCardData(
             id = NativePluginIds.AUTO_DIARY,
             title = "AutoDiary",
             description = "Screen capture and daily-memory automation is not available on iOS yet.",
@@ -380,13 +388,7 @@ private fun SharedSettingsDestination(
     var expandedSections by remember { mutableStateOf<Set<SettingsSection>>(emptySet()) }
     val preferences = remember { createPlatformPreferences(SHARED_SETTINGS_PREFS) }
     var settingsState by remember {
-        mutableStateOf(
-            loadSharedSettings(preferences).copy(
-                autoCaptureAvailable = false,
-                autoAudioAvailable = false,
-                platformAvailabilityNote = "Screen accessibility capture is Android-only; iOS cannot inspect other apps in the background.",
-            ),
-        )
+        mutableStateOf(loadSharedSettings(preferences))
     }
     val actions = remember(onDestinationSelected, onOpenAppearance, onOpenSubscription) {
         SharedSettingsScreenActions(
@@ -470,29 +472,6 @@ private class SharedSettingsScreenActions(
     override fun openVisionProfileSelection() = Unit
     override fun editVisionInstructions() = Unit
     override fun openSubscription() = onOpenSubscription.invoke()
-    override fun setProviderType(type: AgentProviderType) = update { it.copy(providerType = type) }
-    override fun openLocalModels() = Unit
-    override fun setLocalAgentAutomationEnabled(enabled: Boolean) = update { it.copy(localAgentAutomationEnabled = enabled) }
-    override fun setLocalAgentRequireConfirmation(enabled: Boolean) = update { it.copy(localAgentRequireConfirmation = enabled) }
-    override fun setLocalAgentMaxSteps(value: Int) = update { it.copy(localAgentMaxSteps = value.coerceIn(1, 32)) }
-    override fun openAccessibilitySettings() = Unit
-    override fun setAutoCaptureEnabled(enabled: Boolean) = update { it.copy(autoCaptureEnabled = enabled) }
-    override fun setCaptureIntervalMinutes(value: Int) = update { it.copy(captureIntervalMinutes = value.coerceIn(1, 120)) }
-    override fun openBlacklistApps() = Unit
-    override fun openScreenCaptures() = Unit
-    override fun setDailyFactsReminderEnabled(enabled: Boolean) = update { it.copy(dailyFactsReminderEnabled = enabled) }
-    override fun openDailyFactsDraft() = Unit
-    override fun openConfirmedDailyFacts() = Unit
-    override fun openDailySummary() = Unit
-    override fun setDailySummaryRefreshHours(value: Int) = update { it.copy(dailySummaryRefreshHours = value.coerceIn(1, 24)) }
-    override fun setAutoSaveDailyFactsEnabled(enabled: Boolean) = update { it.copy(autoSaveDailyFactsEnabled = enabled) }
-    override fun setExtractUserFactCandidatesEnabled(enabled: Boolean) = update { it.copy(extractUserFactCandidatesEnabled = enabled) }
-    override fun editBulletPrompt() = Unit
-    override fun resetBulletPrompt() = Unit
-    override fun setMaxTokensPerBullet(value: Int) = update { it.copy(maxTokensPerBullet = value.coerceAtLeast(0)) }
-    override fun editAgentPersona() = Unit
-    override fun editUserFacts() = Unit
-    override fun viewContextDebug() = Unit
     override fun setMemoryMode(mode: MemoryPrivacyMode) = update { it.copy(memoryMode = mode) }
     override fun setMemorySync(source: MemorySourceType, enabled: Boolean) = update { state ->
         when (source) {
@@ -513,19 +492,9 @@ private class SharedSettingsScreenActions(
     override fun setTranscriptStorageEnabled(enabled: Boolean) = update { it.copy(transcriptStorageEnabled = enabled) }
     override fun setRedactNamesEnabled(enabled: Boolean) = update { it.copy(redactNamesEnabled = enabled) }
     override fun setIncludeFullTranscriptionEnabled(enabled: Boolean) = update { it.copy(includeFullTranscriptionInExports = enabled) }
-    override fun setAutoAudioCaptureEnabled(enabled: Boolean) = update { it.copy(autoAudioCaptureEnabled = enabled) }
-    override fun setAutoAudioVisualNotesEnabled(enabled: Boolean) = update { it.copy(autoAudioVisualNotesEnabled = enabled) }
-    override fun setAutoAudioSpeechExtendEnabled(enabled: Boolean) = update { it.copy(autoAudioSpeechExtendEnabled = enabled) }
-    override fun setAutoAudioLoopsPerSync(value: Int) = update { it.copy(autoAudioLoopsPerSync = value.coerceIn(1, 12)) }
     override fun exportLocalData() = Unit
     override fun importLocalData() = Unit
     override fun clearLocalData() = Unit
-    override fun setRequireActionConfirmation(enabled: Boolean) = update { it.copy(requireActionConfirmation = enabled) }
-    override fun setAutoExecuteLowRisk(enabled: Boolean) = update { it.copy(autoExecuteLowRisk = enabled) }
-    override fun openPendingActions() = Unit
-    override fun startAgent() = Unit
-    override fun stopAgent() = Unit
-    override fun runAgentDemo() = Unit
     override fun sendDebugLogs() = Unit
     override fun stopMeetingCapture() = Unit
 }
@@ -533,19 +502,6 @@ private class SharedSettingsScreenActions(
 private const val SHARED_SETTINGS_PREFS = "cyanbridge_shared_settings"
 
 private fun loadSharedSettings(preferences: PlatformPreferences): SettingsUiState = SettingsUiState(
-    providerType = AgentProviderType.entries.firstOrNull {
-        it.name == preferences.getString("provider_type", AgentProviderType.PRO_SUBSCRIPTION.name)
-    } ?: AgentProviderType.PRO_SUBSCRIPTION,
-    localAgentAutomationEnabled = preferences.getBoolean("local_agent_automation", false),
-    localAgentRequireConfirmation = preferences.getBoolean("local_agent_confirmation", true),
-    localAgentMaxSteps = preferences.getInt("local_agent_steps", 8),
-    autoCaptureEnabled = preferences.getBoolean("auto_capture", false),
-    captureIntervalMinutes = preferences.getInt("capture_interval", 10),
-    dailyFactsReminderEnabled = preferences.getBoolean("daily_facts_reminder", false),
-    dailySummaryRefreshHours = preferences.getInt("summary_refresh_hours", 6),
-    autoSaveDailyFactsEnabled = preferences.getBoolean("auto_save_daily_facts", true),
-    extractUserFactCandidatesEnabled = preferences.getBoolean("extract_facts", true),
-    maxTokensPerBullet = preferences.getInt("max_tokens_per_bullet", 0),
     memoryMode = MemoryPrivacyMode.fromRaw(preferences.getString("memory_mode", MemoryPrivacyMode.PRIVATE_LOCAL.name)),
     syncExplicit = preferences.getBoolean("sync_explicit", true),
     syncDaily = preferences.getBoolean("sync_daily", true),
@@ -556,26 +512,9 @@ private fun loadSharedSettings(preferences: PlatformPreferences): SettingsUiStat
     transcriptStorageEnabled = preferences.getBoolean("transcript_storage", false),
     redactNamesEnabled = preferences.getBoolean("redact_names", true),
     includeFullTranscriptionInExports = preferences.getBoolean("full_transcript_exports", false),
-    autoAudioCaptureEnabled = preferences.getBoolean("auto_audio", false),
-    autoAudioVisualNotesEnabled = preferences.getBoolean("auto_audio_visual_notes", false),
-    autoAudioSpeechExtendEnabled = preferences.getBoolean("auto_audio_speech_extend", false),
-    autoAudioLoopsPerSync = preferences.getInt("auto_audio_loops", 1),
-    requireActionConfirmation = preferences.getBoolean("action_confirmation", true),
-    autoExecuteLowRisk = preferences.getBoolean("auto_execute_low_risk", false),
 )
 
 private fun saveSharedSettings(preferences: PlatformPreferences, state: SettingsUiState) {
-    preferences.putString("provider_type", state.providerType.name)
-    preferences.putBoolean("local_agent_automation", state.localAgentAutomationEnabled)
-    preferences.putBoolean("local_agent_confirmation", state.localAgentRequireConfirmation)
-    preferences.putInt("local_agent_steps", state.localAgentMaxSteps)
-    preferences.putBoolean("auto_capture", state.autoCaptureEnabled)
-    preferences.putInt("capture_interval", state.captureIntervalMinutes)
-    preferences.putBoolean("daily_facts_reminder", state.dailyFactsReminderEnabled)
-    preferences.putInt("summary_refresh_hours", state.dailySummaryRefreshHours)
-    preferences.putBoolean("auto_save_daily_facts", state.autoSaveDailyFactsEnabled)
-    preferences.putBoolean("extract_facts", state.extractUserFactCandidatesEnabled)
-    preferences.putInt("max_tokens_per_bullet", state.maxTokensPerBullet)
     preferences.putString("memory_mode", state.memoryMode.name)
     preferences.putBoolean("sync_explicit", state.syncExplicit)
     preferences.putBoolean("sync_daily", state.syncDaily)
@@ -586,12 +525,6 @@ private fun saveSharedSettings(preferences: PlatformPreferences, state: Settings
     preferences.putBoolean("transcript_storage", state.transcriptStorageEnabled)
     preferences.putBoolean("redact_names", state.redactNamesEnabled)
     preferences.putBoolean("full_transcript_exports", state.includeFullTranscriptionInExports)
-    preferences.putBoolean("auto_audio", state.autoAudioCaptureEnabled)
-    preferences.putBoolean("auto_audio_visual_notes", state.autoAudioVisualNotesEnabled)
-    preferences.putBoolean("auto_audio_speech_extend", state.autoAudioSpeechExtendEnabled)
-    preferences.putInt("auto_audio_loops", state.autoAudioLoopsPerSync)
-    preferences.putBoolean("action_confirmation", state.requireActionConfirmation)
-    preferences.putBoolean("auto_execute_low_risk", state.autoExecuteLowRisk)
 }
 
 private fun ChatMessageEntity.toSharedMessage(): ChatMessage = ChatMessage(

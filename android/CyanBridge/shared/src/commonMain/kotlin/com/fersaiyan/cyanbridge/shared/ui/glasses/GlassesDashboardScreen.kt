@@ -937,8 +937,8 @@ private fun OtaFirmwareSourcePickerDialog(
                         "BIN second. A Wi-Fi failure never starts BLE DFU."
                 )
                 Text(
-                    "Server copies require hash-verified exact-base patches for both installed chip " +
-                        "versions. Personal files require two selections: a .swu followed by a .bin."
+                    "Server copies are selected only when both files exactly match the Wi-Fi and Bluetooth " +
+                        "versions currently reported by these glasses. Personal files require two selections: a .swu followed by a .bin."
                 )
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Checkbox(
