@@ -52,8 +52,8 @@ class MeizuMyvuManager private constructor(context: Context) : ConnectionManager
         GlassesBridge.registerAdapter(adapter)
     }
 
-    fun connect(macAddress: String) {
-        MeizuMyvuConnectionService.start(appContext, macAddress)
+    fun connect(macAddress: String, requestContext: Context = appContext) {
+        MeizuMyvuConnectionService.start(requestContext, macAddress)
     }
 
     internal fun connectTransport(macAddress: String) {

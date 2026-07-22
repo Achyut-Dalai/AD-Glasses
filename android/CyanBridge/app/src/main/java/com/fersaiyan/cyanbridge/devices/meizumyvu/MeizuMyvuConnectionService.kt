@@ -12,11 +12,19 @@ import android.os.Build
 import android.os.IBinder
 import android.util.Log
 import androidx.core.content.ContextCompat
+import androidx.fragment.app.FragmentActivity
 import com.fersaiyan.cyanbridge.MainActivity
+import com.fersaiyan.cyanbridge.ui.ensureNotificationPermission
+import com.fersaiyan.cyanbridge.ui.hasNotificationPermission
 
 /** Keeps MYVU's BLE heartbeat and per-session RFCOMM relay alive off-screen. */
 class MeizuMyvuConnectionService : Service() {
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
+        if (!hasNotificationPermission(this)) {
+            Log.w(TAG, "Cannot start MYVU connection: notification permission is missing")
+            stopSelf(startId)
+            return START_NOT_STICKY
+        }
         startConnectedDeviceForeground()
         intent?.getStringExtra(EXTRA_MAC)?.let { address ->
             MeizuMyvuManager.getInstance(this).connectTransport(address)
@@ -64,6 +72,7 @@ class MeizuMyvuConnectionService : Service() {
     }
 
     companion object {
+        private const val TAG = "MeizuMyvuService"
         private const val ACTION_CONNECT = "com.fersaiyan.cyanbridge.meizu.CONNECT"
         private const val EXTRA_MAC = "mac"
         private const val CHANNEL_ID = "myvu_connection"
@@ -72,6 +81,16 @@ class MeizuMyvuConnectionService : Service() {
         fun intent(context: Context): Intent = Intent(context, MeizuMyvuConnectionService::class.java)
 
         fun start(context: Context, macAddress: String) {
+            if (!hasNotificationPermission(context)) {
+                if (context is FragmentActivity) {
+                    ensureNotificationPermission(context, "MYVU connection") {
+                        start(context, macAddress)
+                    }
+                } else {
+                    Log.w(TAG, "Cannot request MYVU notification permission without an Activity context")
+                }
+                return
+            }
             val serviceIntent = intent(context).setAction(ACTION_CONNECT).putExtra(EXTRA_MAC, macAddress)
             runCatching {
                 ContextCompat.startForegroundService(context, serviceIntent)
