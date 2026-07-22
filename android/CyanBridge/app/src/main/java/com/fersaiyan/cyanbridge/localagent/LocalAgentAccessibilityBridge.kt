@@ -2,6 +2,7 @@ package com.fersaiyan.cyanbridge.localagent
 
 import android.util.Log
 import com.fersaiyan.cyanbridge.localagent.accessibility.LocalAgentAccessibilityService
+import kotlinx.coroutines.CancellationException
 
 /**
  * Simple in-process bridge between our foreground [LocalAgentService] and the
@@ -24,7 +25,7 @@ object LocalAgentAccessibilityBridge {
     }
 
     fun snapshotScreen(
-        maxNodes: Int = 120,
+        maxNodes: Int = 180,
         maxChars: Int = 12_000,
     ): LocalAgentScreenSnapshot? {
         val svc = LocalAgentAccessibilityService.instance ?: return null
@@ -48,6 +49,33 @@ object LocalAgentAccessibilityBridge {
         }
     }
 
+    fun currentForegroundPackageName(): String? {
+        val svc = LocalAgentAccessibilityService.instance ?: return null
+        return runCatching { svc.getCurrentForegroundPackageName() }
+            .onFailure { Log.w(TAG, "currentForegroundPackageName failed: ${it.message}") }
+            .getOrNull()
+    }
+
+    fun activeWindowPackageName(): String? {
+        val svc = LocalAgentAccessibilityService.instance ?: return null
+        return runCatching { svc.getActiveWindowPackageName() }
+            .onFailure { Log.w(TAG, "activeWindowPackageName failed: ${it.message}") }
+            .getOrNull()
+    }
+
+    suspend fun captureScreenshot(): LocalAgentScreenshotResult {
+        val svc = LocalAgentAccessibilityService.instance
+            ?: return LocalAgentScreenshotResult(error = "accessibility_not_connected")
+        return try {
+            svc.takeScreenshotForPlanning()
+        } catch (e: CancellationException) {
+            throw e
+        } catch (e: Exception) {
+            Log.w(TAG, "captureScreenshot failed: ${e.message}")
+            LocalAgentScreenshotResult(error = "screenshot_capture_failed")
+        }
+    }
+
     suspend fun perform(action: LocalAgentAction): Boolean {
         val svc = LocalAgentAccessibilityService.instance ?: return false
         return try {
@@ -58,6 +86,7 @@ object LocalAgentAccessibilityBridge {
                 is LocalAgentAction.ClickText -> svc.clickByTextOrDesc(action.text)
                 is LocalAgentAction.ClickCoord -> svc.simulateClick(action.x, action.y)
                 is LocalAgentAction.TypeText -> svc.typeTextBestEffort(action.text, action.hint)
+                LocalAgentAction.PressEnter -> svc.pressEnter()
                 is LocalAgentAction.Scroll -> svc.scrollGesture(
                     when (action.direction) {
                         LocalAgentAction.Direction.UP -> LocalAgentAccessibilityService.ScrollDirection.UP
@@ -73,6 +102,7 @@ object LocalAgentAccessibilityBridge {
                 is LocalAgentAction.OpenApp -> false
                 is LocalAgentAction.Finish -> true
                 is LocalAgentAction.SendEmail -> false
+                LocalAgentAction.ReadScreenAloud -> false
                 is LocalAgentAction.MakeCall -> false
                 is LocalAgentAction.SendSms -> false
                 is LocalAgentAction.SetAlarm -> false
@@ -85,5 +115,15 @@ object LocalAgentAccessibilityBridge {
             Log.w(TAG, "perform failed: ${e.message}")
             false
         }
+    }
+
+    /**
+     * Uses Shizuku only after the regular Accessibility primitive failed. Callers must have
+     * already applied the normal action-risk/approval policy before invoking this helper.
+     */
+    suspend fun performWithOptionalShizukuFallback(context: android.content.Context, action: LocalAgentAction): Boolean {
+        if (!LocalAgentDeviceState.isReady(context)) return false
+        if (perform(action)) return true
+        return LocalAgentShizukuFallback.performAfterAccessibilityFailure(context, action)
     }
 }

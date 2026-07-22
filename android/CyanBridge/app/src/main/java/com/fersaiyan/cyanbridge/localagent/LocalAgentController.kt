@@ -4,6 +4,11 @@ import android.content.ComponentName
 import android.content.Context
 import android.content.Intent
 import android.content.pm.PackageManager
+import androidx.fragment.app.FragmentActivity
+import com.fersaiyan.cyanbridge.ui.ensureNotificationPermission
+import com.fersaiyan.cyanbridge.ui.hasAccessibilityServicePermission
+import com.fersaiyan.cyanbridge.ui.hasNotificationPermission
+import com.fersaiyan.cyanbridge.ui.requestAccessibilityServicePermission
 
 /**
  * Best-effort launcher for LocalAgentService via intent actions.
@@ -26,18 +31,91 @@ object LocalAgentController {
 
     fun start(context: Context): CommandResult = start(context, goal = null)
 
-    fun start(context: Context, goal: String?): CommandResult =
-        sendServiceCommand(
+    fun start(context: Context, goal: String?): CommandResult {
+        LocalAgentDeviceState.availability(context).takeIf { it != LocalAgentDeviceState.Availability.READY }?.let {
+            return CommandResult(
+                ok = false,
+                userMessage = "Unlock and wake the phone before starting the Local Agent.",
+                error = it.errorCode,
+            )
+        }
+        if (!hasNotificationPermission(context)) {
+            if (context is FragmentActivity) {
+                ensureNotificationPermission(context, "Local Agent") {
+                    start(context, goal)
+                }
+                return CommandResult(
+                    ok = true,
+                    userMessage = "Notification permission is required before the Local Agent can start.",
+                )
+            }
+            return CommandResult(
+                ok = false,
+                userMessage = "Notification permission is required to start the Local Agent.",
+                error = "missing_post_notifications",
+            )
+        }
+
+        if (!hasAccessibilityServicePermission(context)) {
+            if (context is FragmentActivity) {
+                requestAccessibilityServicePermission(context, "Local Agent")
+            }
+            return CommandResult(
+                ok = false,
+                userMessage = "Enable Accessibility access before starting the Local Agent.",
+                error = "missing_accessibility_service",
+            )
+        }
+
+        return sendServiceCommand(
             context,
             LocalAgentIntents.ACTION_START,
             extras = goal?.trim()?.takeIf { it.isNotBlank() }?.let {
                 mapOf(LocalAgentIntents.EXTRA_GOAL to it)
             }.orEmpty()
         )
+    }
 
     fun stop(context: Context): CommandResult = sendServiceCommand(context, LocalAgentIntents.ACTION_STOP)
 
-    fun demo(context: Context): CommandResult = sendServiceCommand(context, LocalAgentIntents.ACTION_DEMO)
+    fun demo(context: Context): CommandResult {
+        LocalAgentDeviceState.availability(context).takeIf { it != LocalAgentDeviceState.Availability.READY }?.let {
+            return CommandResult(
+                ok = false,
+                userMessage = "Unlock and wake the phone before running the Local Agent demo.",
+                error = it.errorCode,
+            )
+        }
+        return sendServiceCommand(context, LocalAgentIntents.ACTION_DEMO)
+    }
+
+    fun readCurrentScreen(context: Context): CommandResult {
+        LocalAgentDeviceState.availability(context).takeIf { it != LocalAgentDeviceState.Availability.READY }?.let {
+            return CommandResult(
+                ok = false,
+                userMessage = "Unlock and wake the phone before reading the screen aloud.",
+                error = it.errorCode,
+            )
+        }
+        if (!hasNotificationPermission(context)) {
+            return CommandResult(
+                ok = false,
+                userMessage = "Notification permission is required to read the screen aloud.",
+                error = "missing_post_notifications",
+            )
+        }
+        if (!hasAccessibilityServicePermission(context)) {
+            if (context is FragmentActivity) {
+                requestAccessibilityServicePermission(context, "Local Agent")
+            }
+            return CommandResult(
+                ok = false,
+                userMessage = "Enable Accessibility access before reading the screen aloud.",
+                error = "missing_accessibility_service",
+            )
+        }
+        return sendServiceCommand(context, LocalAgentIntents.ACTION_READ_SCREEN_ALOUD)
+    }
 
     fun requestStatus(context: Context): CommandResult =
         sendServiceCommand(context, LocalAgentIntents.ACTION_GET_STATUS)
@@ -76,7 +154,8 @@ object LocalAgentController {
         }
 
         return try {
-            val needsForeground = action == LocalAgentIntents.ACTION_START
+            val needsForeground = action == LocalAgentIntents.ACTION_START ||
+                action == LocalAgentIntents.ACTION_READ_SCREEN_ALOUD
             if (needsForeground && android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.O) {
                 context.startForegroundService(explicitIntent)
             } else {

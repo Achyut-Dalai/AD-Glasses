@@ -25,6 +25,9 @@ sealed interface LocalAgentAction {
         val hint: String? = null,
     ) : LocalAgentAction
 
+    /** Submits the focused editor through the IME when the app exposes one. */
+    data object PressEnter : LocalAgentAction
+
     data class Scroll(val direction: Direction) : LocalAgentAction
 
     /** Launches an app using the package manager. */
@@ -55,7 +58,7 @@ sealed interface LocalAgentAction {
     /** Open the recent apps screen. */
     data object OpenRecents : LocalAgentAction
 
-    /** Make a phone call via ACTION_CALL (requires CALL_PHONE permission). */
+    /** Open the dialer with a phone number; no CALL_PHONE permission is required. */
     data class MakeCall(val number: String) : LocalAgentAction
 
     /** Send an SMS via ACTION_SENDTO (smsto:). */
@@ -89,6 +92,9 @@ sealed interface LocalAgentAction {
         val subject: String,
         val body: String
     ) : LocalAgentAction
+
+    /** Reads bounded visible screen text using the phone's current TTS output route. */
+    data object ReadScreenAloud : LocalAgentAction
 
     enum class Direction {
         UP,

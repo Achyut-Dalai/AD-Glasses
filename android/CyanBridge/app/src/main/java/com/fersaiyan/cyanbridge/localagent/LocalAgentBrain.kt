@@ -1,7 +1,6 @@
 package com.fersaiyan.cyanbridge.localagent
 
 import android.content.Context
-import com.fersaiyan.cyanbridge.ai.router.AgentInferencePurpose
 import com.fersaiyan.cyanbridge.ai.router.AgentInferenceRouter
 
 /**
@@ -64,16 +63,45 @@ class RemoteUiControlLocalAgentBrain : LocalAgentBrain {
                 stepIndex = taskState.stepIndex,
                 maxSteps = taskState.maxSteps,
                 previousActionResult = taskState.previousActionResult,
+                consecutiveFailures = taskState.consecutiveFailures,
             )
         )
 
-        val raw = AgentInferenceRouter.complete(
-            context = context,
-            purpose = AgentInferencePurpose.UI_PLANNING,
-            sessionId = "local-agent-ui-${taskState.startedAtMs}",
-            systemPrompt = prompt.system,
-            userPrompt = prompt.user,
-        )
+        val screenshot = when {
+            LocalAgentPrefs.isScreenshotPlanningEnabled(context) &&
+                AgentInferenceRouter.isRemotePlanner(context) &&
+                !LocalAgentPrefs.isRemoteScreenshotUploadEnabled(context) -> {
+                LocalAgentPrefs.setScreenshotStatus(
+                    context,
+                    "Remote screenshot upload is off; used text-only planning.",
+                )
+                null
+            }
+
+            else -> when (val capture = LocalAgentScreenshotCapture.captureForPlanning(context, observation)) {
+                is LocalAgentScreenshotCapture.Capture.Available -> capture
+                is LocalAgentScreenshotCapture.Capture.Unavailable -> {
+                    LocalAgentPrefs.setScreenshotStatus(context, capture.reason)
+                    null
+                }
+            }
+        }
+
+        val raw = try {
+            val inference = AgentInferenceRouter.completeUiPlanning(
+                context = context,
+                sessionId = "local-agent-ui-${taskState.startedAtMs}",
+                systemPrompt = prompt.system,
+                userPrompt = prompt.user,
+                imagePath = screenshot?.file?.absolutePath,
+                allowRemoteImageUpload = LocalAgentPrefs.isRemoteScreenshotUploadEnabled(context),
+            )
+            LocalAgentPrefs.setScreenshotStatus(context, inference.mediaStatus)
+            inference.content
+        } finally {
+            // Screenshots are transient planner attachments, never history or memory artifacts.
+            LocalAgentScreenshotCapture.delete(screenshot)
+        }
 
         val decision = LocalAgentUiControlProtocol.parseDecision(raw)
         return LocalAgentBrainOutput(
@@ -90,6 +118,7 @@ class RemoteUiControlLocalAgentBrain : LocalAgentBrain {
             is LocalAgentUiControlProtocol.ClickText -> LocalAgentAction.ClickText(text)
             is LocalAgentUiControlProtocol.ClickCoord -> LocalAgentAction.ClickCoord(x, y)
             is LocalAgentUiControlProtocol.TypeText -> LocalAgentAction.TypeText(text, hint)
+            LocalAgentUiControlProtocol.PressEnter -> LocalAgentAction.PressEnter
             is LocalAgentUiControlProtocol.Scroll -> LocalAgentAction.Scroll(
                 when (direction) {
                     LocalAgentUiControlProtocol.Direction.up -> LocalAgentAction.Direction.UP
@@ -107,16 +136,18 @@ class RemoteUiControlLocalAgentBrain : LocalAgentBrain {
             is LocalAgentUiControlProtocol.OpenApp -> LocalAgentAction.OpenApp(appName)
             is LocalAgentUiControlProtocol.MakeCall -> LocalAgentAction.MakeCall(number)
             is LocalAgentUiControlProtocol.SendSms -> LocalAgentAction.SendSms(number, message)
+            is LocalAgentUiControlProtocol.SendEmail -> LocalAgentAction.SendEmail(to, subject, body)
             is LocalAgentUiControlProtocol.SetAlarm -> LocalAgentAction.SetAlarm(hour, minute, label)
             LocalAgentUiControlProtocol.OpenContacts -> LocalAgentAction.OpenContacts
             LocalAgentUiControlProtocol.ToggleWifi -> LocalAgentAction.ToggleWifi
             LocalAgentUiControlProtocol.ToggleBluetooth -> LocalAgentAction.ToggleBluetooth
             LocalAgentUiControlProtocol.ToggleFlashlight -> LocalAgentAction.ToggleFlashlight
+            LocalAgentUiControlProtocol.ReadScreenAloud -> LocalAgentAction.ReadScreenAloud
             is LocalAgentUiControlProtocol.Finish -> LocalAgentAction.Finish(message)
         }
     }
 
     private companion object {
-        private const val MAX_CONSECUTIVE_FAILURES = 3
+        private const val MAX_CONSECUTIVE_FAILURES = 5
     }
 }

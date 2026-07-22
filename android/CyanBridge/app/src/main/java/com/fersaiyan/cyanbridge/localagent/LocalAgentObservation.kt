@@ -13,7 +13,7 @@ data class LocalAgentScreenSnapshot(
     val nodes: List<LocalAgentScreenNode>,
 ) {
     fun toPromptText(
-        maxNodes: Int = 80,
+        maxNodes: Int = 120,
         maxChars: Int = 12_000,
     ): String {
         val body = buildString {
@@ -45,6 +45,7 @@ data class LocalAgentScreenNode(
     val depth: Int,
     val text: String,
     val contentDescription: String,
+    val hintText: String = "",
     val className: String,
     val viewId: String,
     val isClickable: Boolean,
@@ -52,18 +53,24 @@ data class LocalAgentScreenNode(
     val isScrollable: Boolean,
     val bounds: LocalAgentNodeBounds,
     val isPassword: Boolean = false,
+    val isCheckable: Boolean = false,
+    val isChecked: Boolean = false,
+    val isFocused: Boolean = false,
 ) {
     fun toPromptLine(): String {
         val label = when {
             isPassword -> "(password field redacted)"
             text.isNotBlank() -> text
             contentDescription.isNotBlank() -> contentDescription
+            hintText.isNotBlank() -> hintText
             else -> "(no text)"
         }
         val attrs = buildList {
             if (isClickable) add("clickable")
             if (isEditable) add("editable")
             if (isScrollable) add("scrollable")
+            if (isCheckable) add(if (isChecked) "checked" else "unchecked")
+            if (isFocused) add("focused")
             if (viewId.isNotBlank()) add("viewId=$viewId")
         }.joinToString(",")
 

@@ -28,6 +28,7 @@ object LocalAgentUiControlProtocol {
                     "click_text",
                     "click_coord",
                     "type_text",
+                    "press_enter",
                     "scroll",
                     "swipe",
                     "long_press",
@@ -38,11 +39,13 @@ object LocalAgentUiControlProtocol {
                     "open_app",
                     "make_call",
                     "send_sms",
+                    "send_email",
                     "set_alarm",
                     "open_contacts",
                     "toggle_wifi",
                     "toggle_bluetooth",
                     "toggle_flashlight",
+                    "read_screen_aloud",
                     "finish"
                   ]
                 },
@@ -60,6 +63,9 @@ object LocalAgentUiControlProtocol {
                 "end_y": {"type": "number"},
                 "duration_ms": {"type": "integer", "minimum": 0},
                 "number": {"type": "string"},
+                "to": {"type": "string"},
+                "subject": {"type": "string"},
+                "body": {"type": "string"},
                 "hour": {"type": "integer", "minimum": 0, "maximum": 23},
                 "minute": {"type": "integer", "minimum": 0, "maximum": 59},
                 "label": {"type": "string"}
@@ -80,6 +86,7 @@ object LocalAgentUiControlProtocol {
         val stepIndex: Int,
         val maxSteps: Int,
         val previousActionResult: String? = null,
+        val consecutiveFailures: Int = 0,
     )
 
     sealed interface Action {
@@ -114,6 +121,10 @@ object LocalAgentUiControlProtocol {
         val hint: String? = null,
     ) : Action {
         override val type: String = "type_text"
+    }
+
+    data object PressEnter : Action {
+        override val type: String = "press_enter"
     }
 
     data class Scroll(
@@ -175,6 +186,14 @@ object LocalAgentUiControlProtocol {
         override val type: String = "send_sms"
     }
 
+    data class SendEmail(
+        val to: String,
+        val subject: String,
+        val body: String,
+    ) : Action {
+        override val type: String = "send_email"
+    }
+
     data class SetAlarm(
         val hour: Int,
         val minute: Int,
@@ -197,6 +216,10 @@ object LocalAgentUiControlProtocol {
 
     data object ToggleFlashlight : Action {
         override val type: String = "toggle_flashlight"
+    }
+
+    data object ReadScreenAloud : Action {
+        override val type: String = "read_screen_aloud"
     }
 
     data class Finish(
@@ -237,15 +260,18 @@ object LocalAgentUiControlProtocol {
             appendLine("- Prefer click_text when a visible label exists.")
             appendLine("- Use click_coord only when text-based targeting is unreliable.")
             appendLine("- Use type_text only after the target field is already focused or obvious.")
+            appendLine("- Use press_enter only to submit the currently focused editor; it requires approval because it can send a form or message.")
             appendLine("- Use swipe for drag gestures, dismissing cards, or horizontal page swipes.")
             appendLine("- Use long_press for context menus or drag-to-select.")
             appendLine("- Use open_notifications to pull down the notification shade.")
             appendLine("- Use open_recents to switch between recent apps.")
             appendLine("- Use open_contacts to open the contacts list.")
-            appendLine("- Use make_call to dial a phone number directly.")
-            appendLine("- Use send_sms to send a text message.")
+            appendLine("- Use make_call to open the dialer with a phone number. It does not place the call automatically.")
+            appendLine("- Use send_sms to open a prefilled SMS composer. It does not send automatically.")
+            appendLine("- Use send_email to open a prefilled email composer. It does not send automatically.")
             appendLine("- Use set_alarm to create an alarm.")
             appendLine("- Use toggle_wifi, toggle_bluetooth, toggle_flashlight for system controls.")
+            appendLine("- Use read_screen_aloud only when the user explicitly asks to hear the current visible screen. It is privacy-sensitive and requires approval.")
             appendLine("- Use finish when the user goal is complete or clearly blocked.")
             appendLine("- Keep reasoning to one short sentence.")
             appendLine("- Never invent UI elements that are not present in the observation.")
@@ -259,6 +285,11 @@ object LocalAgentUiControlProtocol {
             context.previousActionResult?.trim()?.takeIf { it.isNotEmpty() }?.let {
                 appendLine("Previous action result:")
                 appendLine(it)
+                appendLine()
+            }
+            if (context.consecutiveFailures > 0) {
+                appendLine("Recovery guidance:")
+                appendLine("The previous approach has failed ${context.consecutiveFailures} time(s). Use a different visible control or navigation path; do not repeat the same action.")
                 appendLine()
             }
             appendLine("Observation:")
@@ -334,6 +365,7 @@ object LocalAgentUiControlProtocol {
                 if (text.isBlank()) throw SchemaViolationException("action.text is required for type_text")
                 TypeText(text = text, hint = obj.optNullableString("hint")?.trim()?.takeIf { it.isNotBlank() })
             }
+            "press_enter" -> PressEnter
             "scroll" -> {
                 val direction = obj.optString("direction", "").trim()
                 val parsed = runCatching { Direction.valueOf(direction) }.getOrNull()
@@ -392,6 +424,15 @@ object LocalAgentUiControlProtocol {
                 if (message.isBlank()) throw SchemaViolationException("message is required for send_sms")
                 SendSms(number, message)
             }
+            "send_email" -> {
+                val to = obj.optString("to", "").trim()
+                if (to.isBlank()) throw SchemaViolationException("to is required for send_email")
+                SendEmail(
+                    to = to,
+                    subject = obj.optNullableString("subject").orEmpty(),
+                    body = obj.optNullableString("body").orEmpty(),
+                )
+            }
             "set_alarm" -> {
                 val hour = obj.optInt("hour", -1)
                 val minute = obj.optInt("minute", -1)
@@ -408,6 +449,7 @@ object LocalAgentUiControlProtocol {
             "toggle_wifi" -> ToggleWifi
             "toggle_bluetooth" -> ToggleBluetooth
             "toggle_flashlight" -> ToggleFlashlight
+            "read_screen_aloud" -> ReadScreenAloud
             "finish" -> Finish(message = obj.optNullableString("message")?.trim()?.takeIf { it.isNotBlank() })
             else -> throw SchemaViolationException("Unsupported action type: $type")
         }

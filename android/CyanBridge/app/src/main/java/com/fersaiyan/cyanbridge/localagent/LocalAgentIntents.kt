@@ -10,11 +10,15 @@ object LocalAgentIntents {
     const val ACTION_START = "com.fersaiyan.cyanbridge.localagent.action.START"
     const val ACTION_STOP = "com.fersaiyan.cyanbridge.localagent.action.STOP"
     const val ACTION_DEMO = "com.fersaiyan.cyanbridge.localagent.action.DEMO"
+    const val ACTION_READ_SCREEN_ALOUD = "com.fersaiyan.cyanbridge.localagent.action.READ_SCREEN_ALOUD"
     const val ACTION_GET_STATUS = "com.fersaiyan.cyanbridge.localagent.action.GET_STATUS"
     const val ACTION_RESUME_AFTER_APPROVAL = "com.fersaiyan.cyanbridge.localagent.action.RESUME_AFTER_APPROVAL"
+    const val ACTION_TELEGRAM_REMOTE_START = "com.fersaiyan.cyanbridge.localagent.action.TELEGRAM_REMOTE_START"
+    const val ACTION_TELEGRAM_REMOTE_STOP = "com.fersaiyan.cyanbridge.localagent.action.TELEGRAM_REMOTE_STOP"
 
     // Events (Service -> UI)
     const val ACTION_STATUS_CHANGED = "com.fersaiyan.cyanbridge.localagent.action.STATUS_CHANGED"
+    const val ACTION_TELEGRAM_STATUS_CHANGED = "com.fersaiyan.cyanbridge.localagent.action.TELEGRAM_STATUS_CHANGED"
 
     // Extras
     const val EXTRA_STATUS = "status"
@@ -23,4 +27,5 @@ object LocalAgentIntents {
     const val EXTRA_TASK_ID = "task_id"
     const val EXTRA_IS_TERMINAL = "is_terminal"
     const val EXTRA_USER_MESSAGE = "user_message"
+    const val EXTRA_DISABLE_REMOTE = "disable_remote"
 }

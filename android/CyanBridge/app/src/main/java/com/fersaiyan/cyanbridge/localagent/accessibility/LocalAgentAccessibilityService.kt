@@ -2,26 +2,32 @@ package com.fersaiyan.cyanbridge.localagent.accessibility
 
 import android.accessibilityservice.AccessibilityService
 import android.accessibilityservice.AccessibilityServiceInfo
-import android.app.KeyguardManager
 import android.accessibilityservice.GestureDescription
+import android.graphics.Bitmap
 import android.graphics.Path
 import android.graphics.Rect
 import android.os.Bundle
 import android.os.Build
 import android.os.Handler
 import android.os.Looper
-import android.os.PowerManager
 import android.util.Log
+import android.view.Display
 import android.view.accessibility.AccessibilityEvent
 import android.view.accessibility.AccessibilityNodeInfo
+import android.view.accessibility.AccessibilityWindowInfo
 import com.fersaiyan.cyanbridge.agent.LocalAgentPrefs
 import com.fersaiyan.cyanbridge.memoryvault.MemoryModeManager
 import com.fersaiyan.cyanbridge.memoryvault.MemoryVaultBootstrap
 import com.fersaiyan.cyanbridge.memoryvault.VaultLockStateManager
 import com.fersaiyan.cyanbridge.localagent.LocalAgentNodeBounds
 import com.fersaiyan.cyanbridge.localagent.LocalAgentScreenNode
+import com.fersaiyan.cyanbridge.localagent.LocalAgentScreenshotResult
+import com.fersaiyan.cyanbridge.localagent.LocalAgentDeviceState
 import com.fersaiyan.cyanbridge.localagent.memory.LocalAgentMemoryRoomIndex
 import com.fersaiyan.cyanbridge.localagent.memory.LocalAgentMemoryStore
+import kotlinx.coroutines.CompletableDeferred
+import kotlinx.coroutines.withTimeoutOrNull
+import java.util.concurrent.Executors
 
 /*
  * MIT Attribution (PhoneClaw)
@@ -34,6 +40,8 @@ import com.fersaiyan.cyanbridge.localagent.memory.LocalAgentMemoryStore
  * License: MIT (as stated by the upstream project)
  */
 class LocalAgentAccessibilityService : AccessibilityService() {
+
+    private val screenshotExecutor = Executors.newSingleThreadExecutor()
 
     override fun onServiceConnected() {
         super.onServiceConnected()
@@ -68,6 +76,7 @@ class LocalAgentAccessibilityService : AccessibilityService() {
 
     override fun onDestroy() {
         stopPeriodicAutoCapture()
+        screenshotExecutor.shutdownNow()
         super.onDestroy()
         if (instance === this) instance = null
     }
@@ -76,7 +85,7 @@ class LocalAgentAccessibilityService : AccessibilityService() {
         // MVP: periodic capture of accessibility text into local JSONL memory.
         if (!LocalAgentPrefs.isAutoCaptureEnabled(applicationContext)) return
         if (!MemoryModeManager.isScreenOcrCaptureEnabled(applicationContext)) return
-        if (!isDeviceInteractiveAndUnlocked()) return
+        if (!LocalAgentDeviceState.isReady(applicationContext)) return
         if (VaultLockStateManager.isLocked(applicationContext)) return
 
         MemoryVaultBootstrap.ensureInitialized(applicationContext)
@@ -171,16 +180,6 @@ class LocalAgentAccessibilityService : AccessibilityService() {
         return OVERLAY_PACKAGE_NAMES.contains(pkg)
     }
 
-    private fun isDeviceInteractiveAndUnlocked(): Boolean {
-        val power = getSystemService(POWER_SERVICE) as? PowerManager
-        if (power != null && !power.isInteractive) return false
-
-        val keyguard = getSystemService(KEYGUARD_SERVICE) as? KeyguardManager
-        if (keyguard?.isKeyguardLocked == true) return false
-
-        return true
-    }
-
     // --- Core automation primitives ---
 
     /**
@@ -220,6 +219,7 @@ class LocalAgentAccessibilityService : AccessibilityService() {
             } else {
                 add(node.text)
                 if (includeContentDescriptions) add(node.contentDescription)
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) add(node.hintText)
             }
 
             if (includeViewIds) {
@@ -238,7 +238,6 @@ class LocalAgentAccessibilityService : AccessibilityService() {
     }
 
     fun dumpScreenNodes(maxNodes: Int = 250): List<LocalAgentScreenNode> {
-        val root = rootInActiveWindow ?: return emptyList()
         val out = ArrayList<LocalAgentScreenNode>(maxNodes.coerceAtMost(250))
         val visited = intArrayOf(0)
 
@@ -252,14 +251,22 @@ class LocalAgentAccessibilityService : AccessibilityService() {
 
             val text = if (node.isPassword) "" else node.text?.toString()?.trim().orEmpty()
             val desc = if (node.isPassword) "" else node.contentDescription?.toString()?.trim().orEmpty()
+            val hintText = if (node.isPassword || Build.VERSION.SDK_INT < Build.VERSION_CODES.O) {
+                ""
+            } else {
+                node.hintText?.toString()?.trim().orEmpty()
+            }
             val viewId = node.viewIdResourceName?.trim().orEmpty()
             val className = node.className?.toString()?.substringAfterLast('.')?.trim().orEmpty()
-            val includeNode = text.isNotBlank() ||
+            val visible = runCatching { node.isVisibleToUser }.getOrDefault(true)
+            val includeNode = visible && (text.isNotBlank() ||
                 desc.isNotBlank() ||
+                hintText.isNotBlank() ||
                 viewId.isNotBlank() ||
                 node.isClickable ||
                 node.isEditable ||
-                node.isScrollable
+                node.isScrollable ||
+                node.isCheckable)
 
             if (includeNode) {
                 out.add(
@@ -268,12 +275,16 @@ class LocalAgentAccessibilityService : AccessibilityService() {
                         depth = depth,
                         text = text,
                         contentDescription = desc,
+                        hintText = hintText,
                         className = className,
                         viewId = viewId,
                         isClickable = node.isClickable,
                         isEditable = node.isEditable,
                         isScrollable = node.isScrollable,
                         isPassword = node.isPassword,
+                        isCheckable = node.isCheckable,
+                        isChecked = node.isChecked,
+                        isFocused = node.isFocused,
                         bounds = LocalAgentNodeBounds(
                             left = rect.left,
                             top = rect.top,
@@ -290,7 +301,15 @@ class LocalAgentAccessibilityService : AccessibilityService() {
             }
         }
 
-        walk(root)
+        rootInActiveWindow?.let { walk(it) }
+
+        // The active app tree commonly excludes the IME. Include it separately so the
+        // planner can see labeled Send/Search/Done buttons before choosing press_enter.
+        for (window in windows.orEmpty()) {
+            if (visited[0] >= maxNodes) break
+            if (window.type != AccessibilityWindowInfo.TYPE_INPUT_METHOD) continue
+            runCatching { window.root }.getOrNull()?.let { walk(it) }
+        }
         return out
     }
 
@@ -301,6 +320,62 @@ class LocalAgentAccessibilityService : AccessibilityService() {
             normalizePackageName(lastForegroundNonOverlayPackage),
         )
         return candidates.firstOrNull { it.isNotBlank() }
+    }
+
+    /** Exact package from the current root only; screenshot capture must not use stale fallback state. */
+    fun getActiveWindowPackageName(): String? =
+        normalizePackageName(rootInActiveWindow?.packageName).takeIf { it.isNotBlank() }
+
+    /**
+     * Captures a software bitmap only when Android granted this accessibility capability. The
+     * caller owns the returned bitmap and must recycle it after writing its ephemeral file.
+     */
+    suspend fun takeScreenshotForPlanning(): LocalAgentScreenshotResult {
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.R) {
+            return LocalAgentScreenshotResult(error = "android_version_unsupported")
+        }
+
+        val deferred = CompletableDeferred<LocalAgentScreenshotResult>()
+        try {
+            takeScreenshot(
+                Display.DEFAULT_DISPLAY,
+                screenshotExecutor,
+                object : AccessibilityService.TakeScreenshotCallback {
+                    override fun onSuccess(screenshot: AccessibilityService.ScreenshotResult) {
+                        val result = runCatching {
+                            val buffer = screenshot.hardwareBuffer
+                            try {
+                                val hardwareBitmap = Bitmap.wrapHardwareBuffer(buffer, screenshot.colorSpace)
+                                    ?: error("Unable to wrap screenshot buffer")
+                                val softwareBitmap = hardwareBitmap.copy(Bitmap.Config.ARGB_8888, false)
+                                    ?: error("Unable to copy screenshot bitmap")
+                                LocalAgentScreenshotResult(bitmap = softwareBitmap)
+                            } finally {
+                                buffer.close()
+                            }
+                        }.getOrElse {
+                            LocalAgentScreenshotResult(error = "screenshot_copy_failed")
+                        }
+                        if (!deferred.complete(result)) {
+                            result.bitmap?.recycle()
+                        }
+                    }
+
+                    override fun onFailure(errorCode: Int) {
+                        deferred.complete(LocalAgentScreenshotResult(error = "screenshot_error_$errorCode"))
+                    }
+                },
+            )
+        } catch (_: Exception) {
+            return LocalAgentScreenshotResult(error = "screenshot_request_failed")
+        }
+
+        return try {
+            withTimeoutOrNull(SCREENSHOT_CALLBACK_TIMEOUT_MS) { deferred.await() }
+                ?: LocalAgentScreenshotResult(error = "screenshot_timeout")
+        } finally {
+            if (!deferred.isCompleted) deferred.cancel()
+        }
     }
 
     /** Tap an absolute coordinate using gesture injection (API 24+; minSdk=24 in this app). */
@@ -402,6 +477,28 @@ class LocalAgentAccessibilityService : AccessibilityService() {
     fun pressBack(): Boolean = performGlobalAction(GLOBAL_ACTION_BACK)
 
     fun pressHome(): Boolean = performGlobalAction(GLOBAL_ACTION_HOME)
+
+    /** Submit the focused input field, with an IME-button fallback for custom keyboards. */
+    fun pressEnter(): Boolean {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+            for (window in windows.orEmpty()) {
+                val root = runCatching { window.root }.getOrNull() ?: continue
+                val focused = root.findFocus(AccessibilityNodeInfo.FOCUS_INPUT)
+                val submitted = focused?.performAction(
+                    AccessibilityNodeInfo.AccessibilityAction.ACTION_IME_ENTER.id,
+                ) == true
+                if (submitted) return true
+            }
+        }
+
+        for (window in windows.orEmpty()) {
+            val root = runCatching { window.root }.getOrNull() ?: continue
+            val actionNode = findKeyboardActionNode(root)
+            if (actionNode != null && performClickBestEffort(actionNode)) return true
+        }
+
+        return false
+    }
 
     fun openNotifications(): Boolean = performGlobalAction(GLOBAL_ACTION_NOTIFICATIONS)
 
@@ -564,6 +661,23 @@ class LocalAgentAccessibilityService : AccessibilityService() {
         return null
     }
 
+    private fun findKeyboardActionNode(node: AccessibilityNodeInfo?): AccessibilityNodeInfo? {
+        if (node == null) return null
+        val label = node.text?.toString().orEmpty()
+            .ifBlank { node.contentDescription?.toString().orEmpty() }
+            .trim()
+            .lowercase()
+        if (node.isClickable && (label in KEYBOARD_ACTION_LABELS || label.endsWith(" search"))) {
+            return node
+        }
+
+        for (i in 0 until node.childCount) {
+            val found = findKeyboardActionNode(node.getChild(i))
+            if (found != null) return found
+        }
+        return null
+    }
+
     private val handler = Handler(Looper.getMainLooper())
     private var periodicRunnable: Runnable? = null
 
@@ -588,6 +702,7 @@ class LocalAgentAccessibilityService : AccessibilityService() {
     companion object {
         private const val TAG = "LocalAgentAccSvc"
         private const val PERIODIC_TICK_MS = 30_000L
+        private const val SCREENSHOT_CALLBACK_TIMEOUT_MS = 5_000L
         private val OVERLAY_PACKAGE_NAMES = setOf(
             "com.android.systemui",
         )
@@ -596,6 +711,7 @@ class LocalAgentAccessibilityService : AccessibilityService() {
             "com.google.android.launcher",
             "com.samsung.android.launcher",
         )
+        private val KEYBOARD_ACTION_LABELS = setOf("search", "enter", "go", "done", "send", "next")
 
         @Volatile
         var instance: LocalAgentAccessibilityService? = null

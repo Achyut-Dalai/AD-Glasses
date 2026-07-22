@@ -63,6 +63,7 @@ object LocalAgentActionParser {
                 val hint = obj.optString("hint", "").trim().ifBlank { null }
                 if (text.isBlank()) null else LocalAgentAction.TypeText(text, hint)
             }
+            "press_enter", "enter", "submit" -> LocalAgentAction.PressEnter
             "scroll" -> {
                 when (obj.optString("direction", "").trim().lowercase()) {
                     "up" -> LocalAgentAction.Scroll(LocalAgentAction.Direction.UP)
@@ -131,12 +132,14 @@ object LocalAgentActionParser {
             "toggle_bluetooth" -> LocalAgentAction.ToggleBluetooth
             "toggle_flashlight" -> LocalAgentAction.ToggleFlashlight
             "send_email", "email" -> {
-                LocalAgentAction.SendEmail(
-                    to = obj.optString("to", ""),
+                val to = obj.optString("to", "").trim()
+                if (to.isBlank()) null else LocalAgentAction.SendEmail(
+                    to = to,
                     subject = obj.optString("subject", ""),
-                    body = obj.optString("body", "")
+                    body = obj.optString("body", ""),
                 )
             }
+            "read_screen_aloud", "read_screen", "speak_screen" -> LocalAgentAction.ReadScreenAloud
             else -> null
         }
     }

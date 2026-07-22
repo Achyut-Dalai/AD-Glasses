@@ -13,6 +13,8 @@ class LocalAgentStepEngine(
         val actionResults: List<String>,
         val haltedForApproval: Boolean,
         val finished: Boolean,
+        val haltedForDeviceState: Boolean = false,
+        val deviceAvailability: LocalAgentDeviceState.Availability? = null,
     )
 
     /**
@@ -21,8 +23,22 @@ class LocalAgentStepEngine(
      */
     suspend fun execute(actions: List<LocalAgentAction>): ExecutionSummary {
         val results = mutableListOf<String>()
-        for (a in actions) {
+        for ((index, a) in actions.withIndex()) {
             executor.ensureNotCancelled()
+
+            LocalAgentDeviceState.availability(context)
+                .takeIf { it != LocalAgentDeviceState.Availability.READY }
+                ?.let { availability ->
+                    Log.i(TAG, "Stopping action execution: ${availability.errorCode}")
+                    results += "${a.javaClass.simpleName}: blocked_device_state"
+                    return ExecutionSummary(
+                        actionResults = results,
+                        haltedForApproval = false,
+                        finished = false,
+                        haltedForDeviceState = true,
+                        deviceAvailability = availability,
+                    )
+                }
 
             if (a is LocalAgentAction.Finish) {
                 results += a.message?.takeIf { it.isNotBlank() } ?: "Task marked complete"
@@ -41,8 +57,13 @@ class LocalAgentStepEngine(
             val shouldAutoExecute = !requireConfirm || (risk == LocalAgentActionManager.Risk.LOW && autoLowRisk)
 
             if (shouldAutoExecute) {
-                // Try executing as a system intent first (e.g. Email)
-                val intentOk = LocalAgentActionManager.executeNow(context, a)
+                // Read-aloud must run in the active agent service so it can report whether
+                // visible text was actually available before the plan advances.
+                val intentOk = if (a == LocalAgentAction.ReadScreenAloud) {
+                    false
+                } else {
+                    LocalAgentActionManager.executeNow(context, a)
+                }
                 if (intentOk) {
                     Log.i(TAG, "action=${a.javaClass.simpleName} executed as system intent")
                     results += "${a.javaClass.simpleName}: ok(system)"
@@ -51,6 +72,12 @@ class LocalAgentStepEngine(
                     val ok = executor.execute(a)
                     Log.i(TAG, "action=${a.javaClass.simpleName} executed via a11y ok=$ok")
                     results += "${a.javaClass.simpleName}: ${if (ok) "ok" else "failed"}"
+                }
+
+                // Saved navigation skills may contain several actions. Give the target app
+                // the same rendering time that the normal observe-act loop would provide.
+                if (index < actions.lastIndex) {
+                    delay(LocalAgentRuntimePolicy.settleDelayMs(a))
                 }
             } else {
                 // Enqueue for manual approval.

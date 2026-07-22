@@ -9,7 +9,9 @@ import android.provider.ContactsContract
 import android.provider.Settings
 import com.fersaiyan.cyanbridge.data.local.entity.PendingAction
 import com.fersaiyan.cyanbridge.localagent.LocalAgentAction
+import com.fersaiyan.cyanbridge.localagent.LocalAgentDeviceState
 import com.fersaiyan.cyanbridge.localagent.LocalAgentPrefs
+import com.fersaiyan.cyanbridge.localagent.LocalAgentService
 import com.fersaiyan.cyanbridge.ui.MyApplication
 import org.json.JSONObject
 
@@ -19,6 +21,8 @@ import org.json.JSONObject
 object LocalAgentActionManager {
 
     enum class Risk { LOW, MEDIUM, HIGH }
+
+    fun serializeAction(action: LocalAgentAction): String = actionToJson(action).toString()
 
     fun classifyRisk(action: LocalAgentAction): Risk {
         return when (action) {
@@ -41,6 +45,8 @@ object LocalAgentActionManager {
             is LocalAgentAction.ToggleWifi,
             is LocalAgentAction.ToggleBluetooth -> Risk.MEDIUM
 
+            LocalAgentAction.PressEnter,
+            LocalAgentAction.ReadScreenAloud,
             is LocalAgentAction.MakeCall,
             is LocalAgentAction.SendSms,
             is LocalAgentAction.SetAlarm,
@@ -68,7 +74,7 @@ object LocalAgentActionManager {
             PendingAction(
                 ts = System.currentTimeMillis(),
                 source = source,
-                actionJson = actionToJson(action).toString(),
+                actionJson = serializeAction(action),
                 status = "pending"
             )
         )
@@ -81,6 +87,7 @@ object LocalAgentActionManager {
      * System-intent actions are handled here and return true on success.
      */
     suspend fun executeNow(context: Context, action: LocalAgentAction): Boolean {
+        if (!LocalAgentDeviceState.isReady(context)) return false
         return when (action) {
             is LocalAgentAction.OpenApp -> openAppIntent(context, action)
             is LocalAgentAction.Finish -> true
@@ -116,6 +123,10 @@ object LocalAgentActionManager {
                 toggleFlashlightIntent(context)
                 true
             }
+            LocalAgentAction.ReadScreenAloud -> {
+                LocalAgentService.readScreenAloud(context)
+                true
+            }
             else -> {
                 // For a11y-only actions (click, type, swipe, scroll, etc.),
                 // the service loop delegates to LocalAgentAccessibilityBridge.
@@ -139,7 +150,9 @@ object LocalAgentActionManager {
     private fun makeCallIntent(context: Context, action: LocalAgentAction.MakeCall) {
         val number = action.number.trim()
         if (number.isBlank()) return
-        val intent = Intent(Intent.ACTION_CALL).apply {
+        // Opening the dialer keeps this action safe when the service has no Activity
+        // available to request CALL_PHONE at runtime.
+        val intent = Intent(Intent.ACTION_DIAL).apply {
             data = Uri.parse("tel:$number")
             addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
         }
@@ -261,6 +274,7 @@ object LocalAgentActionManager {
                 obj.put("text", action.text)
                 action.hint?.let { obj.put("hint", it) }
             }
+            LocalAgentAction.PressEnter -> obj.put("type", "press_enter")
             is LocalAgentAction.Scroll -> {
                 obj.put("type", "scroll")
                 obj.put("direction", action.direction.name.lowercase())
@@ -314,6 +328,7 @@ object LocalAgentActionManager {
                 obj.put("subject", action.subject)
                 obj.put("body", action.body)
             }
+            LocalAgentAction.ReadScreenAloud -> obj.put("type", "read_screen_aloud")
         }
         return obj
     }
