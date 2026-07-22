@@ -20,6 +20,7 @@ import android.widget.Toast
 import androidx.core.app.ServiceCompat
 import androidx.core.content.ContextCompat
 import androidx.fragment.app.FragmentActivity
+import com.hjq.permissions.OnPermissionCallback
 import com.hjq.permissions.Permission
 import com.hjq.permissions.XXPermissions
 import java.util.concurrent.atomic.AtomicReference
@@ -48,10 +49,26 @@ object PluginVoicePermissions {
         }
         XXPermissions.with(activity)
             .permission(permissions)
-            .request { _, allGranted -> onResult(allGranted) }
+            .request(object : OnPermissionCallback {
+                override fun onGranted(permissions: MutableList<String>, all: Boolean) {
+                    onResult(all)
+                }
+
+                override fun onDenied(permissions: MutableList<String>, never: Boolean) {
+                    super.onDenied(permissions, never)
+                    onResult(false)
+                    if (never) {
+                        XXPermissions.startPermissionActivity(activity, permissions)
+                    }
+                }
+            })
     }
 
-    fun ensure(activity: FragmentActivity, onGranted: () -> Unit) {
+    fun ensure(
+        activity: FragmentActivity,
+        onDenied: () -> Unit = {},
+        onGranted: () -> Unit,
+    ) {
         if (hasRequiredPermissions(activity)) {
             onGranted()
             return
@@ -65,6 +82,7 @@ object PluginVoicePermissions {
                     "Microphone and notification permissions are required for this plugin",
                     Toast.LENGTH_LONG,
                 ).show()
+                onDenied()
             }
         }
     }

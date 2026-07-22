@@ -16,13 +16,18 @@ import android.util.Log
 import androidx.core.app.NotificationCompat
 import androidx.core.app.ServiceCompat
 import androidx.core.content.ContextCompat
+import androidx.fragment.app.FragmentActivity
 import com.fersaiyan.cyanbridge.MainActivity
 import com.fersaiyan.cyanbridge.R
 import com.fersaiyan.cyanbridge.devices.DeviceProfileStore
 import com.fersaiyan.cyanbridge.glasses.GlassesSessionCoordinator
+import com.fersaiyan.cyanbridge.plugins.PluginVoicePermissions
+import com.fersaiyan.cyanbridge.ui.ensureBluetoothRuntimePermission
+import com.fersaiyan.cyanbridge.ui.hasBluetooth
+import com.fersaiyan.cyanbridge.ui.hasNotificationPermission
+import com.fersaiyan.cyanbridge.ui.hasWifiP2pPermission
 import com.oudmon.ble.base.bluetooth.BleOperateManager
 import com.oudmon.ble.base.communication.LargeDataHandler
-import com.hjq.permissions.XXPermissions
 import com.fersaiyan.cyanbridge.audio.MeetingCapturePrefs
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.CoroutineScope
@@ -78,15 +83,13 @@ class AutoAudioCaptureService : Service() {
     }
 
     private fun canPostNotifications(): Boolean {
-        return Build.VERSION.SDK_INT < Build.VERSION_CODES.TIRAMISU ||
-            XXPermissions.isGranted(this, Manifest.permission.POST_NOTIFICATIONS)
+        return hasNotificationPermission(this)
     }
 
     private fun startForegroundSafely(content: String): Boolean {
         if (!canPostNotifications()) {
-            Log.w(TAG, "Missing POST_NOTIFICATIONS; disabling auto-audio to avoid restart loops")
+            Log.w(TAG, "Missing POST_NOTIFICATIONS; waiting for the next foreground permission request")
             AutoAudioCapturePrefs.setLastPauseReason(this, "missing_post_notifications")
-            AutoAudioCapturePrefs.setEnabled(this, false)
             return false
         }
 
@@ -112,6 +115,14 @@ class AutoAudioCaptureService : Service() {
     private fun startLoop() {
         if (RUNNING.getAndSet(true)) {
             Log.i(TAG, "Already running")
+            return
+        }
+
+        if (!PluginVoicePermissions.hasRequiredPermissions(this) || !hasBluetooth(this)) {
+            Log.w(TAG, "Cannot start auto-audio: required microphone, notification, or Bluetooth permission is missing")
+            AutoAudioCapturePrefs.setLastPauseReason(this, "missing_runtime_permission")
+            RUNNING.set(false)
+            stopSelf()
             return
         }
 
@@ -419,11 +430,10 @@ class AutoAudioCaptureService : Service() {
             return
         }
 
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU &&
-            !XXPermissions.isGranted(this, "android.permission.NEARBY_WIFI_DEVICES")
-        ) {
-            Log.w(TAG, "Skipping P2P sync: missing NEARBY_WIFI_DEVICES")
-            return
+        if (!hasWifiP2pPermission(this)) {
+            // MainActivity owns the user-facing permission request. Continue so it can
+            // bring the UI forward and request the platform-appropriate permission.
+            Log.i(TAG, "Starting MainActivity to request the missing Wi-Fi Direct permission")
         }
 
         // Use the same pathway as the UI button: MainActivity handles the tasker command
@@ -514,13 +524,25 @@ class AutoAudioCaptureService : Service() {
                 AutoAudioCapturePrefs.setEnabled(context, false)
                 return
             }
-            // If notifications are blocked (Android 13+), running as a foreground service is unreliable
-            // and can cause fast restart loops. Require permission before starting.
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU &&
-                !XXPermissions.isGranted(context, Manifest.permission.POST_NOTIFICATIONS)
-            ) {
-                AutoAudioCapturePrefs.setLastPauseReason(context, "missing_post_notifications")
-                AutoAudioCapturePrefs.setEnabled(context, false)
+            if (!hasBluetooth(context)) {
+                if (context is FragmentActivity) {
+                    ensureBluetoothRuntimePermission(context, "Auto Audio") {
+                        start(context)
+                    }
+                } else {
+                    Log.w(TAG, "Cannot request Auto Audio Bluetooth permission without an Activity context")
+                }
+                return
+            }
+            if (!PluginVoicePermissions.hasRequiredPermissions(context)) {
+                AutoAudioCapturePrefs.setLastPauseReason(context, "missing_voice_permissions")
+                if (context is FragmentActivity) {
+                    PluginVoicePermissions.ensure(context) {
+                        start(context)
+                    }
+                } else {
+                    Log.w(TAG, "Cannot request auto-audio permissions without an Activity context")
+                }
                 return
             }
 

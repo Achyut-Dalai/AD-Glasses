@@ -5,7 +5,10 @@ import android.bluetooth.BluetoothAdapter
 import android.bluetooth.BluetoothManager
 import android.bluetooth.BluetoothSocket
 import android.content.Context
+import android.content.pm.PackageManager
+import android.os.Build
 import android.util.Log
+import androidx.core.content.ContextCompat
 import com.fersaiyan.cyanbridge.bridge.core.GlassesBridgeState
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -71,6 +74,9 @@ class MemoMindRfcommClient(
 
     @SuppressLint("MissingPermission")
     suspend fun connect(address: String): Result<Unit> {
+        if (!hasConnectPermission()) {
+            return Result.failure(SecurityException("BLUETOOTH_CONNECT permission is required"))
+        }
         return try {
             operationMutex.withLock {
                 if (isConnected()) return@withLock
@@ -153,6 +159,14 @@ class MemoMindRfcommClient(
     private fun bluetoothAdapter(): BluetoothAdapter? {
         val manager = context.getSystemService(Context.BLUETOOTH_SERVICE) as? BluetoothManager
         return manager?.adapter
+    }
+
+    private fun hasConnectPermission(): Boolean {
+        return Build.VERSION.SDK_INT < Build.VERSION_CODES.S ||
+            ContextCompat.checkSelfPermission(
+                context,
+                android.Manifest.permission.BLUETOOTH_CONNECT,
+            ) == PackageManager.PERMISSION_GRANTED
     }
 
     @SuppressLint("MissingPermission")

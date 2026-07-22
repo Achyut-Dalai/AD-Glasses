@@ -7,8 +7,10 @@ import android.bluetooth.le.ScanCallback
 import android.bluetooth.le.ScanResult
 import android.bluetooth.le.ScanSettings
 import android.content.Context
+import android.content.pm.PackageManager
 import android.os.Build
 import android.util.Log
+import androidx.core.content.ContextCompat
 import com.fersaiyan.cyanbridge.bridge.core.DeviceInfo
 import kotlinx.coroutines.channels.awaitClose
 import kotlinx.coroutines.flow.Flow
@@ -49,6 +51,13 @@ class MemoMindBleScanner(
      */
     @SuppressLint("MissingPermission")
     fun scan(): Flow<DeviceInfo> = callbackFlow {
+        if (!hasScanPermissions()) {
+            val error = SecurityException("Bluetooth scan and connect permissions are required")
+            Log.w(TAG, error.message.orEmpty())
+            close(error)
+            return@callbackFlow
+        }
+
         val adapter = bluetoothAdapter
         if (adapter == null) {
             Log.w(TAG, "BluetoothAdapter is null – cannot scan")
@@ -136,6 +145,23 @@ class MemoMindBleScanner(
     // ------------------------------------------------------------------
     // Internal helpers
     // ------------------------------------------------------------------
+
+    private fun hasScanPermissions(): Boolean {
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.S) {
+            return ContextCompat.checkSelfPermission(
+                context,
+                android.Manifest.permission.ACCESS_FINE_LOCATION,
+            ) == PackageManager.PERMISSION_GRANTED
+        }
+        return ContextCompat.checkSelfPermission(
+            context,
+            android.Manifest.permission.BLUETOOTH_SCAN,
+        ) == PackageManager.PERMISSION_GRANTED &&
+            ContextCompat.checkSelfPermission(
+                context,
+                android.Manifest.permission.BLUETOOTH_CONNECT,
+            ) == PackageManager.PERMISSION_GRANTED
+    }
 
     /**
      * Returns true if [name] contains one of the known MemoMind name patterns (case-insensitive).

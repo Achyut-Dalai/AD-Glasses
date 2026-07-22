@@ -1,5 +1,6 @@
 package com.fersaiyan.cyanbridge.bridge.notifications
 
+import android.app.KeyguardManager
 import android.content.ComponentName
 import android.content.Context
 import android.service.notification.NotificationListenerService
@@ -7,6 +8,8 @@ import android.service.notification.StatusBarNotification
 import android.util.Log
 import com.fersaiyan.cyanbridge.bridge.core.DisplayCommand
 import com.fersaiyan.cyanbridge.bridge.core.GlassesBridge
+import com.fersaiyan.cyanbridge.localagent.LocalAgentNotificationSpeaker
+import com.fersaiyan.cyanbridge.localagent.LocalAgentPrefs
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
@@ -25,6 +28,9 @@ import kotlinx.coroutines.launch
  */
 class NotificationForwarderService : NotificationListenerService() {
 
+    private var lastReadAloudFingerprint: String? = null
+    private var lastReadAloudAtMs: Long = 0L
+
     companion object {
         private const val TAG = "NotificationForwarder"
         private const val CYANBRIDGE_PACKAGE = "com.fersaiyan.cyanbridge"
@@ -40,6 +46,11 @@ class NotificationForwarderService : NotificationListenerService() {
             "android",
             "com.android.systemui",
         )
+        private val WHATSAPP_PACKAGES = setOf(
+            "com.whatsapp",
+            "com.whatsapp.w4b",
+        )
+        private const val DUPLICATE_WINDOW_MS = 10_000L
 
         private val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
 
@@ -60,7 +71,6 @@ class NotificationForwarderService : NotificationListenerService() {
     }
 
     override fun onNotificationPosted(sbn: StatusBarNotification?) {
-        if (!enabled) return
         val notification = sbn ?: return
 
         val packageName = notification.packageName ?: return
@@ -69,6 +79,10 @@ class NotificationForwarderService : NotificationListenerService() {
         val extras = notification.notification?.extras ?: return
         val title = extras.getCharSequence("android.title")?.toString() ?: return
         val text = extras.getCharSequence("android.text")?.toString() ?: ""
+
+        maybeReadWhatsAppNotificationAloud(notification, title, text)
+
+        if (!enabled) return
 
         // Resolve a human-readable app name
         val appName = resolveAppName(packageName)
@@ -93,6 +107,29 @@ class NotificationForwarderService : NotificationListenerService() {
 
     override fun onNotificationRemoved(sbn: StatusBarNotification?) {
         // No-op — we don't track removal
+    }
+
+    private fun maybeReadWhatsAppNotificationAloud(
+        notification: StatusBarNotification,
+        title: String,
+        text: String,
+    ) {
+        if (!LocalAgentPrefs.isWhatsAppNotificationReadAloudEnabled(applicationContext)) return
+        if (notification.packageName !in WHATSAPP_PACKAGES) return
+        if (notification.isOngoing || text.isBlank()) return
+        val keyguard = getSystemService(Context.KEYGUARD_SERVICE) as? KeyguardManager
+        if (keyguard?.isKeyguardLocked == true) return
+
+        val now = System.currentTimeMillis()
+        val fingerprint = "${notification.key}|$title|$text"
+        if (fingerprint == lastReadAloudFingerprint && now - lastReadAloudAtMs < DUPLICATE_WINDOW_MS) return
+        lastReadAloudFingerprint = fingerprint
+        lastReadAloudAtMs = now
+
+        LocalAgentNotificationSpeaker.speak(
+            applicationContext,
+            "WhatsApp message from $title. $text",
+        )
     }
 
     private fun resolveAppName(packageName: String): String {

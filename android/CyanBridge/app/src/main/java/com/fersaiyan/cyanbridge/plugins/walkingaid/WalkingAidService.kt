@@ -1,6 +1,5 @@
 package com.fersaiyan.cyanbridge.plugins.walkingaid
 
-import android.Manifest
 import android.app.Service
 import android.content.Context
 import android.content.Intent
@@ -13,6 +12,7 @@ import android.speech.tts.UtteranceProgressListener
 import android.util.Log
 import android.widget.Toast
 import androidx.core.app.ServiceCompat
+import androidx.fragment.app.FragmentActivity
 import com.fersaiyan.cyanbridge.ai.vision.VisionProfile
 import com.fersaiyan.cyanbridge.ai.vision.VisionProfilePreferences
 import com.fersaiyan.cyanbridge.ai.vision.VisionPromptBuilder
@@ -25,9 +25,10 @@ import com.fersaiyan.cyanbridge.localmodels.provider.LocalModelsProvider
 import com.fersaiyan.cyanbridge.ai.router.CliRelayClient
 import com.fersaiyan.cyanbridge.devices.DeviceProfileStore
 import com.fersaiyan.cyanbridge.devices.metarayban.MetaRaybanManager
+import com.fersaiyan.cyanbridge.ui.ensureNotificationPermission
+import com.fersaiyan.cyanbridge.ui.hasNotificationPermission
 import com.oudmon.ble.base.bluetooth.BleOperateManager
 import com.oudmon.ble.base.communication.LargeDataHandler
-import com.hjq.permissions.XXPermissions
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -92,8 +93,7 @@ class WalkingAidService : Service() {
     }
 
     private fun canPostNotifications(): Boolean {
-        return Build.VERSION.SDK_INT < Build.VERSION_CODES.TIRAMISU ||
-            XXPermissions.isGranted(this, Manifest.permission.POST_NOTIFICATIONS)
+        return hasNotificationPermission(this)
     }
 
     private fun startForegroundSafely(content: String): Boolean {
@@ -128,9 +128,7 @@ class WalkingAidService : Service() {
         val isMetaRayban = isMetaRaybanSelected()
 
         // Check POST_NOTIFICATIONS permission
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU &&
-            !XXPermissions.isGranted(this, Manifest.permission.POST_NOTIFICATIONS)
-        ) {
+        if (!canPostNotifications()) {
             Log.w(TAG, "Missing POST_NOTIFICATIONS permission")
             RUNNING.set(false)
             stopSelf()
@@ -194,7 +192,6 @@ class WalkingAidService : Service() {
                         "Meta camera unavailable: ${detail.take(120)}",
                         0,
                     )
-                    WalkingAidPreferences.setEnabled(this@WalkingAidService, false)
                     stopLoop(reason = "meta_camera_unavailable")
                     return@launch
                 }
@@ -667,6 +664,16 @@ class WalkingAidService : Service() {
         private val RUNNING = AtomicBoolean(false)
 
         fun start(context: Context) {
+            if (!hasNotificationPermission(context)) {
+                if (context is FragmentActivity) {
+                    ensureNotificationPermission(context, "Walking Aid") {
+                        start(context)
+                    }
+                } else {
+                    Log.w(TAG, "Cannot request Walking Aid notification permission without an Activity context")
+                }
+                return
+            }
             WalkingAidPreferences.setEnabled(context, true)
             val intent = Intent(context, WalkingAidService::class.java).setAction(ACTION_START)
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {

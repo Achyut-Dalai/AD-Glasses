@@ -267,6 +267,10 @@ class ProSubscriptionActivity : AppCompatActivity() {
         }
 
         ProSubscriptionServerPrefs.setAccountEmail(this, finalEmail)
+        if (!ProSubscriptionServerPrefs.isAccountEmailVerified(this, finalEmail)) {
+            requestAccountEmailVerification(finalEmail) { activateFreeTrial(finalEmail) }
+            return
+        }
         val baseUrl = AiProviderPrefs.getRelayBaseUrl(this).trimEnd('/')
         if (baseUrl.isBlank()) {
             Toast.makeText(this, "Server not configured.", Toast.LENGTH_SHORT).show()

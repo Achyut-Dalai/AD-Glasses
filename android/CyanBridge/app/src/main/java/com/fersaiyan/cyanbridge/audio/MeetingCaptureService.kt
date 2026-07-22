@@ -17,11 +17,13 @@ import android.os.Build
 import android.os.IBinder
 import android.util.Log
 import androidx.core.app.NotificationCompat
+import androidx.fragment.app.FragmentActivity
 import androidx.localbroadcastmanager.content.LocalBroadcastManager
 import com.fersaiyan.cyanbridge.MainActivity
 import com.fersaiyan.cyanbridge.R
 import com.fersaiyan.cyanbridge.data.local.entity.CaptureSession
 import com.fersaiyan.cyanbridge.media.autocapture.AutoAudioCapturePrefs
+import com.fersaiyan.cyanbridge.plugins.PluginVoicePermissions
 import com.fersaiyan.cyanbridge.ui.MyApplication
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.CoroutineScope
@@ -100,6 +102,12 @@ class MeetingCaptureService : Service() {
     private fun startCapture(timerSec: Long?, deviceClass: String) {
         if (recorder != null) {
             Log.w(TAG, "startCapture called while already recording")
+            return
+        }
+        if (!PluginVoicePermissions.hasRequiredPermissions(this)) {
+            Log.w(TAG, "Cannot start meeting capture: microphone or notification permission is missing")
+            broadcastState(isRecording = false, error = "Microphone and notification permissions are required")
+            stopSelf()
             return
         }
 
@@ -492,6 +500,16 @@ class MeetingCaptureService : Service() {
         private const val NOTIFICATION_ID = 936
 
         fun start(context: Context, timerDurationSec: Long?, deviceClass: String) {
+            if (!PluginVoicePermissions.hasRequiredPermissions(context)) {
+                if (context is FragmentActivity) {
+                    PluginVoicePermissions.ensure(context) {
+                        start(context, timerDurationSec, deviceClass)
+                    }
+                } else {
+                    Log.w(TAG, "Cannot request meeting capture permissions without an Activity context")
+                }
+                return
+            }
             val intent = Intent(context, MeetingCaptureService::class.java).apply {
                 action = ACTION_START
                 if (timerDurationSec != null && timerDurationSec > 0) {

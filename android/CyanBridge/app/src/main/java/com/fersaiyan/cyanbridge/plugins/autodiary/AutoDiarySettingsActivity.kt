@@ -3,8 +3,6 @@ package com.fersaiyan.cyanbridge.plugins.autodiary
 import android.content.Intent
 import android.os.Bundle
 import android.provider.Settings
-import android.widget.Toast
-import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.app.AppCompatActivity
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -45,27 +43,27 @@ import com.fersaiyan.cyanbridge.R
 import com.fersaiyan.cyanbridge.agent.LocalAgentPrefs
 import com.fersaiyan.cyanbridge.localagent.daily.DailyFactsReminderScheduler
 import com.fersaiyan.cyanbridge.localagent.dailyfacts.DailyBulletsSettings
-import com.fersaiyan.cyanbridge.localagent.memory.LocalAgentMemoryStore
-import com.fersaiyan.cyanbridge.memoryvault.MemoryModeManager
-import com.fersaiyan.cyanbridge.shared.settings.MemorySourceType
-import com.fersaiyan.cyanbridge.ui.CommunityPluginPrefs
 import com.fersaiyan.cyanbridge.ui.NativePluginShortcutPreference
+import com.fersaiyan.cyanbridge.ui.hasAccessibilityServicePermission
 import com.fersaiyan.cyanbridge.ui.localagent.AppBlacklistActivity
+import com.fersaiyan.cyanbridge.ui.localagent.DailyFactsActivity
 import com.fersaiyan.cyanbridge.ui.localagent.ScreenCapturesActivity
 import com.fersaiyan.cyanbridge.ui.localagent.DailySummaryActivity
 import com.fersaiyan.cyanbridge.ui.installComposeHostWithLegacyAdapter
 import com.fersaiyan.cyanbridge.ui.setThemedComposeContent
-import androidx.lifecycle.lifecycleScope
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.launch
-import kotlinx.coroutines.withContext
 
 class AutoDiarySettingsActivity : AppCompatActivity() {
+    private var autoDiaryEnabled by mutableStateOf(false)
+    private var accessibilityEnabled by mutableStateOf(false)
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        refreshUi()
         val composeView = installComposeHostWithLegacyAdapter(R.layout.activity_auto_diary_settings)
         setThemedComposeContent(composeView) {
             AutoDiarySettingsScreen(
+                enabled = autoDiaryEnabled,
+                accessibilityEnabled = accessibilityEnabled,
                 onBack = ::finish,
                 onEnabledChanged = ::setEnabled,
                 onOpenAccessibility = {
@@ -80,59 +78,64 @@ class AutoDiarySettingsActivity : AppCompatActivity() {
                 onOpenSummary = {
                     startActivity(Intent(this, DailySummaryActivity::class.java))
                 },
-                onDeleteCaptures = ::deleteCaptures,
+                onOpenDailyFactsDraft = {
+                    startActivity(
+                        Intent(this, DailyFactsActivity::class.java)
+                            .putExtra(DailyFactsActivity.EXTRA_MODE, DailyFactsActivity.MODE_DRAFT),
+                    )
+                },
+                onOpenConfirmedDailyFacts = {
+                    startActivity(
+                        Intent(this, DailyFactsActivity::class.java)
+                            .putExtra(DailyFactsActivity.EXTRA_MODE, DailyFactsActivity.MODE_CONFIRMED),
+                    )
+                },
             )
         }
     }
 
-    private fun setEnabled(enabled: Boolean) {
-        CommunityPluginPrefs.setNativePluginEnabled(this, com.fersaiyan.cyanbridge.shared.plugins.NativePluginIds.AUTO_DIARY, enabled)
-        if (enabled) AutoDiaryService.start(this) else AutoDiaryService.stop(this)
+    override fun onResume() {
+        super.onResume()
+        refreshUi()
     }
 
-    private fun deleteCaptures() {
-        AlertDialog.Builder(this)
-            .setTitle("Delete passive OCR capture?")
-            .setMessage("This deletes local OCR snapshots and their search index artifacts. This cannot be undone.")
-            .setNegativeButton("Cancel", null)
-            .setPositiveButton("Delete") { _, _ ->
-                lifecycleScope.launch(Dispatchers.IO) {
-                    LocalAgentMemoryStore.deleteAllPassiveCapture(this@AutoDiarySettingsActivity)
-                    withContext(Dispatchers.Main) {
-                        Toast.makeText(
-                            this@AutoDiarySettingsActivity,
-                            "Passive OCR capture deleted",
-                            Toast.LENGTH_SHORT,
-                        ).show()
-                    }
-                }
-            }
-            .show()
+    private fun setEnabled(enabled: Boolean) {
+        if (enabled) AutoDiaryService.enable(this) else AutoDiaryService.disable(this)
+        refreshUi()
     }
+
+    private fun refreshUi() {
+        accessibilityEnabled = hasAccessibilityServicePermission(this)
+        autoDiaryEnabled = AutoDiaryService.isEnabled(this)
+        if (autoDiaryEnabled && accessibilityEnabled) {
+            AutoDiaryService.startIfEnabled(this)
+        }
+    }
+
 }
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun AutoDiarySettingsScreen(
+    enabled: Boolean,
+    accessibilityEnabled: Boolean,
     onBack: () -> Unit,
     onEnabledChanged: (Boolean) -> Unit,
     onOpenAccessibility: () -> Unit,
     onOpenBlacklist: () -> Unit,
     onOpenCaptures: () -> Unit,
     onOpenSummary: () -> Unit,
-    onDeleteCaptures: () -> Unit,
+    onOpenDailyFactsDraft: () -> Unit,
+    onOpenConfirmedDailyFacts: () -> Unit,
 ) {
     val context = LocalContext.current
     val scrollState = rememberScrollState()
-    var enabled by remember { mutableStateOf(LocalAgentPrefs.isAutoCaptureEnabled(context)) }
     var interval by remember { mutableIntStateOf(LocalAgentPrefs.getCaptureIntervalMin(context)) }
     var reminder by remember { mutableStateOf(LocalAgentPrefs.isDailyFactsReminderEnabled(context)) }
     var autoSaveFacts by remember { mutableStateOf(com.fersaiyan.cyanbridge.localagent.userfacts.ChatMemoryPrefs.isAutoSaveDailyFactsEnabled(context)) }
     var extractFacts by remember { mutableStateOf(com.fersaiyan.cyanbridge.localagent.userfacts.ChatMemoryPrefs.isExtractUserFactCandidatesEnabled(context)) }
-    var syncOcr by remember { mutableStateOf(MemoryModeManager.isSourceSyncEnabled(context, MemorySourceType.SCREEN_OCR)) }
-    var retention by remember { mutableIntStateOf(MemoryModeManager.getScreenOcrRetentionDays(context)) }
     var maxTokens by remember { mutableIntStateOf(DailyBulletsSettings.getMaxTokensPerBullet(context)) }
-    var prompt by remember { mutableStateOf(DailyBulletsSettings.getCustomBulletPrompt(context)) }
+    var prompt by remember { mutableStateOf(DailyBulletsSettings.getBulletPrompt(context)) }
 
     Scaffold(
         topBar = {
@@ -155,22 +158,34 @@ fun AutoDiarySettingsScreen(
             verticalArrangement = Arrangement.spacedBy(12.dp),
         ) {
             Text(
-                "Build a private daily memory from screen context and conversations. Existing OCR, blacklist, memory, and summary data are reused.",
+                "Build a private daily memory from screen context and conversations. Screen capture requires the CyanBridge accessibility service; Local Agent phone control can remain off.",
                 style = MaterialTheme.typography.bodyMedium,
             )
             SwitchSetting(
                 label = "AutoDiary enabled",
                 checked = enabled,
-                onCheckedChange = {
-                    enabled = it
-                    onEnabledChanged(it)
-                },
+                onCheckedChange = onEnabledChanged,
             )
             NativePluginShortcutPreference(
                 pluginId = com.fersaiyan.cyanbridge.shared.plugins.NativePluginIds.AUTO_DIARY,
                 pluginTitle = "AutoDiary",
             )
             Text("Screen capture", style = MaterialTheme.typography.titleMedium)
+            Text(
+                if (accessibilityEnabled) {
+                    "Accessibility service enabled. AutoDiary can collect screen context."
+                } else if (enabled) {
+                    "AutoDiary is paused. Enable the accessibility service to resume screen capture."
+                } else {
+                    "Accessibility service required. AutoDiary cannot collect screen context until it is enabled."
+                },
+                style = MaterialTheme.typography.bodySmall,
+                color = if (accessibilityEnabled) {
+                    MaterialTheme.colorScheme.onSurfaceVariant
+                } else {
+                    MaterialTheme.colorScheme.error
+                },
+            )
             NumberSetting(
                 label = "Capture interval (minutes)",
                 value = interval,
@@ -190,9 +205,6 @@ fun AutoDiarySettingsScreen(
             }
             OutlinedButton(onClick = onOpenCaptures, modifier = Modifier.fillMaxWidth()) {
                 Text("View screen captures")
-            }
-            OutlinedButton(onClick = onDeleteCaptures, modifier = Modifier.fillMaxWidth()) {
-                Text("Delete passive OCR capture")
             }
             Text("Daily processing", style = MaterialTheme.typography.titleMedium)
             SwitchSetting("Daily facts reminder", reminder) {
@@ -217,6 +229,14 @@ fun AutoDiarySettingsScreen(
             OutlinedButton(onClick = onOpenSummary, modifier = Modifier.fillMaxWidth()) {
                 Text("Open daily summary")
             }
+            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                OutlinedButton(onClick = onOpenDailyFactsDraft, modifier = Modifier.weight(1f)) {
+                    Text("Edit daily facts")
+                }
+                OutlinedButton(onClick = onOpenConfirmedDailyFacts, modifier = Modifier.weight(1f)) {
+                    Text("View confirmed facts")
+                }
+            }
             Text("Bulletization", style = MaterialTheme.typography.titleMedium)
             OutlinedTextField(
                 value = prompt,
@@ -225,15 +245,15 @@ fun AutoDiarySettingsScreen(
                     DailyBulletsSettings.setCustomBulletPrompt(context, it)
                 },
                 modifier = Modifier.fillMaxWidth(),
-                label = { Text("Custom bullet prompt") },
+                label = { Text("Bullet prompt") },
                 minLines = 3,
                 maxLines = 7,
             )
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 TextButton(onClick = {
-                    prompt = ""
-                    DailyBulletsSettings.setCustomBulletPrompt(context, "")
-                }) { Text("Reset prompt") }
+                    DailyBulletsSettings.restoreDefaultBulletPrompt(context)
+                    prompt = DailyBulletsSettings.DEFAULT_BULLET_PROMPT
+                }) { Text("Restore default prompt") }
                 NumberSetting(
                     label = "Max tokens per bullet",
                     value = maxTokens,
@@ -245,19 +265,11 @@ fun AutoDiarySettingsScreen(
                     modifier = Modifier.weight(1f),
                 )
             }
-            Text("Memory privacy", style = MaterialTheme.typography.titleMedium)
-            SwitchSetting("Sync screen OCR", syncOcr) {
-                syncOcr = it
-                MemoryModeManager.setSourceSyncEnabled(context, MemorySourceType.SCREEN_OCR, it)
-            }
-            NumberSetting(
-                label = "OCR retention (days)",
-                value = retention,
-                range = 1..365,
-                onValueChanged = {
-                    retention = it
-                    MemoryModeManager.setScreenOcrRetentionDays(context, it)
-                },
+            Text("Shared memory privacy", style = MaterialTheme.typography.titleMedium)
+            Text(
+                "OCR sync, retention, deletion, and vault controls are shared across AutoDiary, Visual Diary, and Local Agent. Manage them in Settings > Memory Privacy.",
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
             Spacer(Modifier.height(8.dp))
         }

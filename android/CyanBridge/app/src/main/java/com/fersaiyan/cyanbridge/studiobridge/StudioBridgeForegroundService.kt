@@ -12,6 +12,7 @@ import androidx.core.app.NotificationCompat
 import androidx.core.app.ServiceCompat
 import com.fersaiyan.cyanbridge.MainActivity
 import com.fersaiyan.cyanbridge.R
+import com.fersaiyan.cyanbridge.ui.hasNotificationPermission
 
 /** Keeps voice approvals eligible for microphone access while the app is backgrounded. */
 class StudioBridgeForegroundService : Service() {
@@ -30,6 +31,10 @@ class StudioBridgeForegroundService : Service() {
     }
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
+        if (!hasNotificationPermission(this)) {
+            stopSelf(startId)
+            return START_NOT_STICKY
+        }
         val openApp = PendingIntent.getActivity(
             this,
             0,

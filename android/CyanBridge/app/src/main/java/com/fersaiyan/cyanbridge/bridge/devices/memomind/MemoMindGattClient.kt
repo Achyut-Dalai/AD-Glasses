@@ -7,9 +7,12 @@ import android.bluetooth.BluetoothGattCallback
 import android.bluetooth.BluetoothGattCharacteristic
 import android.bluetooth.BluetoothGattDescriptor
 import android.bluetooth.BluetoothProfile
+import android.Manifest
 import android.content.Context
+import android.content.pm.PackageManager
 import android.os.Build
 import android.util.Log
+import androidx.core.content.ContextCompat
 import com.fersaiyan.cyanbridge.bridge.core.GlassesBridgeState
 import kotlinx.coroutines.CancellableContinuation
 import kotlinx.coroutines.CompletableDeferred
@@ -232,6 +235,9 @@ class MemoMindGattClient(
      */
     @SuppressLint("MissingPermission")
     suspend fun connect(address: String): Result<Unit> {
+        if (!hasConnectPermission()) {
+            return Result.failure(SecurityException("BLUETOOTH_CONNECT permission is required"))
+        }
         return try {
             operationMutex.withLock {
                 if (_state.value is GlassesBridgeState.Connected) {
@@ -410,6 +416,9 @@ class MemoMindGattClient(
      */
     @SuppressLint("MissingPermission")
     suspend fun writeCommand(data: ByteArray): Result<Unit> {
+        if (!hasConnectPermission()) {
+            return Result.failure(SecurityException("BLUETOOTH_CONNECT permission is required"))
+        }
         val char = commandWriteCharacteristic
         if (char == null || gatt == null) {
             return Result.failure(IOException("Not connected – cannot write"))
@@ -451,6 +460,14 @@ class MemoMindGattClient(
                 Result.failure(e)
             }
         }
+    }
+
+    private fun hasConnectPermission(): Boolean {
+        return Build.VERSION.SDK_INT < Build.VERSION_CODES.S ||
+            ContextCompat.checkSelfPermission(
+                context,
+                Manifest.permission.BLUETOOTH_CONNECT,
+            ) == PackageManager.PERMISSION_GRANTED
     }
 
     /**

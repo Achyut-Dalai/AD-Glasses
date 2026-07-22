@@ -300,6 +300,17 @@ class MemoMindAudioBridge(
      */
     @SuppressLint("MissingPermission")
     fun startPhoneMicRecording(): Flow<ByteArray> = callbackFlow {
+        if (androidx.core.content.ContextCompat.checkSelfPermission(
+                context,
+                android.Manifest.permission.RECORD_AUDIO,
+            ) != android.content.pm.PackageManager.PERMISSION_GRANTED
+        ) {
+            val error = SecurityException("RECORD_AUDIO permission is required")
+            Log.w(TAG, error.message.orEmpty())
+            close(error)
+            return@callbackFlow
+        }
+
         val bufferSize = AudioRecord.getMinBufferSize(
             SAMPLE_RATE,
             AudioFormat.CHANNEL_IN_MONO,

@@ -23,8 +23,15 @@ fun OtaTarget.isExpectedFirmwareFilename(filename: String): Boolean =
     filename.endsWith(expectedFirmwareExtension(), ignoreCase = true)
 
 internal fun OtaFirmwareSource.serverChannel(): String? = when (this) {
+  OtaFirmwareSource.PERSONAL_FILE -> null
+  OtaFirmwareSource.STEALTH_CATALOG -> "stealth"
+  OtaFirmwareSource.DEBUG_CATALOG -> "debug"
+}
+
+/** The legacy stealth catalog is authorized as the server's LED channel. */
+private fun OtaFirmwareSource.serverRiskChannel(): String? = when (this) {
     OtaFirmwareSource.PERSONAL_FILE -> null
-    OtaFirmwareSource.STEALTH_CATALOG -> "stealth"
+    OtaFirmwareSource.STEALTH_CATALOG -> "led"
     OtaFirmwareSource.DEBUG_CATALOG -> "debug"
 }
 
@@ -32,6 +39,31 @@ internal fun OtaFirmwareSource.serverChannel(): String? = when (this) {
 internal fun isExactFirmwareBaseMatch(baseFirmwareVersion: String, currentFirmwareVersion: String): Boolean =
     baseFirmwareVersion.trim().isNotEmpty() &&
         baseFirmwareVersion.trim().equals(currentFirmwareVersion.trim(), ignoreCase = true)
+
+/** All values come from one fresh syncDeviceInfo response before either OTA file is resolved. */
+data class InstalledFirmwareVersions(
+    val wifiHardwareVersion: String,
+    val wifiFirmwareVersion: String,
+    val bleHardwareVersion: String,
+    val bleFirmwareVersion: String,
+) {
+    fun isComplete(): Boolean = listOf(
+        wifiHardwareVersion,
+        wifiFirmwareVersion,
+        bleHardwareVersion,
+        bleFirmwareVersion,
+    ).all { it.isNotBlank() }
+
+    fun hardwareVersionFor(target: OtaTarget): String = when (target) {
+        OtaTarget.V821_WIFI -> wifiHardwareVersion
+        OtaTarget.JIELI_BLE -> bleHardwareVersion
+    }
+
+    fun firmwareVersionFor(target: OtaTarget): String = when (target) {
+        OtaTarget.V821_WIFI -> wifiFirmwareVersion
+        OtaTarget.JIELI_BLE -> bleFirmwareVersion
+    }
+}
 
 internal fun isSha256Hex(value: String): Boolean = value.matches(Regex("[a-fA-F0-9]{64}"))
 
@@ -83,8 +115,8 @@ sealed class FirmwareResult {
 /**
  * Client for the CyanBridge server's firmware download API.
  *
- * Calls GET /api/firmware/download with the selected chip's exact current version.
- * The relay only returns an approved artifact built from that same base version.
+ * Calls GET /api/firmware/download with one freshly reported Wi-Fi/BLE version
+ * baseline. The relay returns each component only when both exact base records exist.
  */
 class FirmwareClient(
     private val context: Context,
@@ -92,24 +124,27 @@ class FirmwareClient(
     /**
      * Fetch firmware info from the server and download the firmware file.
      *
-     * For V821_WIFI target, pass Wi-Fi hardware/firmware versions from [DeviceInfoResponse].
-     * For JIELI_BLE target, pass BLE hardware/firmware versions from [DeviceInfoResponse].
-     * The `target` query parameter tells the server how to interpret these identifiers.
+     * Both target-chip tuples come from the same fresh device-info response. The server
+     * resolves each target only from its own exact installed version, and refuses both
+     * downloads when either component lacks an exact catalog match.
      *
-     * @param hardwareVersion The glasses' hardware version for the chosen target
-     * @param firmwareVersion The glasses' current firmware version for the chosen target
+     * @param deviceVersions Current Wi-Fi and BLE identifiers from one device-info read
      * @param outputDir Directory to save the downloaded file
      * @param target OTA target: V821_WIFI (.swu) or JIELI_BLE (.bin)
      * @param source server catalog channel. Personal files are staged locally and never reach this client.
      * @return FirmwareResult indicating success, failure, or access gate
      */
     fun fetchAndDownload(
-        hardwareVersion: String,
-        firmwareVersion: String,
+        deviceVersions: InstalledFirmwareVersions,
         outputDir: File,
         target: OtaTarget = OtaTarget.V821_WIFI,
         source: OtaFirmwareSource = OtaFirmwareSource.DEBUG_CATALOG,
     ): FirmwareResult {
+        if (!deviceVersions.isComplete()) {
+            return FirmwareResult.Error("Could not read all Wi-Fi and Bluetooth firmware identifiers")
+        }
+        val hardwareVersion = deviceVersions.hardwareVersionFor(target)
+        val firmwareVersion = deviceVersions.firmwareVersionFor(target)
         val startTime = System.currentTimeMillis()
         Log.i(TAG, "=== FIRMWARE FETCH START ===")
         Log.i(TAG, "  hardwareVersion: $hardwareVersion")
@@ -120,6 +155,8 @@ class FirmwareClient(
 
         val serverChannel = source.serverChannel()
             ?: return FirmwareResult.Error("Personal firmware files must be imported from the file picker")
+        val riskChannel = source.serverRiskChannel()
+            ?: return FirmwareResult.Error("Personal firmware files do not use the server catalog")
 
         // Step 1: Resolve relay base URL
         val relayBase = firmwareRelayBaseUrl(context)
@@ -138,34 +175,49 @@ class FirmwareClient(
         }
         Log.i(TAG, "[2/5] API token present (email: ${accountEmail.ifBlank { "(none)" }})")
 
-        // Step 3: Call the firmware download endpoint
+        // The source picker requires a local acknowledgement before this method is
+        // reached. Record the corresponding versioned server acknowledgement before
+        // requesting any signed firmware URL.
+        val acknowledgement = try {
+            acknowledgeFirmwareRisk(relayBase, apiToken, riskChannel)
+        } catch (e: Exception) {
+            Log.e(TAG, "[3/5] Risk acknowledgement request failed", e)
+            return FirmwareResult.Error("Could not record firmware risk acknowledgement: ${e.message}")
+        }
+        if (acknowledgement.statusCode !in 200..299) {
+            val message = runCatching {
+                JSONObject(acknowledgement.body).optString("message")
+            }.getOrDefault("").ifBlank { "Firmware risk acknowledgement was not accepted" }
+            return FirmwareResult.Error(message)
+        }
+
+        // Step 4: Call the firmware download endpoint
         val apiUrl = buildFirmwareApiUrl(
             relayBase = relayBase,
-            hardwareVersion = hardwareVersion,
-            firmwareVersion = firmwareVersion,
+            deviceVersions = deviceVersions,
             target = target,
             serverChannel = serverChannel,
         )
 
-        Log.i(TAG, "[3/5] Calling firmware API: $apiUrl")
+        Log.i(TAG, "[4/5] Calling firmware API: $apiUrl")
 
         val response = try {
             httpGet(apiUrl, apiToken)
         } catch (e: Exception) {
-            Log.e(TAG, "[3/5] FAIL: Firmware API request threw exception: ${e.javaClass.simpleName}: ${e.message}", e)
+            Log.e(TAG, "[4/5] FAIL: Firmware API request threw exception: ${e.javaClass.simpleName}: ${e.message}", e)
             return FirmwareResult.Error("Server request failed: ${e.message}")
         }
 
         if (response == null) {
-            Log.e(TAG, "[3/5] FAIL: Firmware API returned null response")
+            Log.e(TAG, "[4/5] FAIL: Firmware API returned null response")
             return FirmwareResult.Error("Empty response from server")
         }
 
         val statusCode = response.statusCode
         val body = response.body
-        Log.i(TAG, "[3/5] Firmware API response: HTTP $statusCode (${body.length} bytes)")
+        Log.i(TAG, "[4/5] Firmware API response: HTTP $statusCode (${body.length} bytes)")
         if (statusCode != 200) {
-            Log.w(TAG, "[3/5] Non-200 response body: ${body.take(500)}")
+            Log.w(TAG, "[4/5] Non-200 response body: ${body.take(500)}")
         }
 
         // Step 4: Parse response based on status code
@@ -215,6 +267,10 @@ class FirmwareClient(
                         "Server firmware was not built from this chip's current version",
                     )
                 }
+                if (!responseMatchesInstalledFirmwareVersions(json, deviceVersions)) {
+                    Log.e(TAG, "[4/5] Server did not echo the installed Wi-Fi/Bluetooth version baseline")
+                    return FirmwareResult.Error("Server returned firmware for a different glasses version baseline")
+                }
                 if (!isSha256Hex(expectedSha256)) {
                     Log.e(TAG, "[4/5] Server returned an invalid firmware SHA-256")
                     return FirmwareResult.Error("Server returned invalid firmware integrity metadata")
@@ -223,7 +279,6 @@ class FirmwareClient(
                     Log.e(TAG, "[4/5] Server returned invalid firmware size: $expectedSizeBytes")
                     return FirmwareResult.Error("Server returned invalid firmware size metadata")
                 }
-
                 Log.i(TAG, "[4/5] Firmware available!")
                 Log.i(TAG, "  filename: $filename")
                 Log.i(TAG, "  object_key: $objectKey")
@@ -480,22 +535,22 @@ class FirmwareClient(
 
     private fun buildFirmwareApiUrl(
         relayBase: String,
-        hardwareVersion: String,
-        firmwareVersion: String,
+        deviceVersions: InstalledFirmwareVersions,
         target: OtaTarget,
         serverChannel: String,
     ): String {
         val targetParam = target.serverTargetParameter()
-        // The endpoint uses generic target-specific identifiers. It only serves an artifact
-        // whose declared base version exactly matches firmwareVersion.
-        return Uri.parse(relayBase.trimEnd('/') + "/api/firmware/download")
+        // Both requests send one immutable baseline read from the glasses. The server
+        // rejects either download unless both component records exactly match it.
+        val builder = Uri.parse(relayBase.trimEnd('/') + "/api/firmware/download")
             .buildUpon()
-            .appendQueryParameter("hardwareVersion", hardwareVersion)
-            .appendQueryParameter("firmwareVersion", firmwareVersion)
+            .appendQueryParameter("wifiHardwareVersion", deviceVersions.wifiHardwareVersion)
+            .appendQueryParameter("wifiFirmwareVersion", deviceVersions.wifiFirmwareVersion)
+            .appendQueryParameter("bleHardwareVersion", deviceVersions.bleHardwareVersion)
+            .appendQueryParameter("bleFirmwareVersion", deviceVersions.bleFirmwareVersion)
             .appendQueryParameter("target", targetParam)
             .appendQueryParameter("channel", serverChannel)
-            .build()
-            .toString()
+        return builder.build().toString()
     }
 
     private fun isSafeFirmwareFilename(filename: String): Boolean =
@@ -514,6 +569,24 @@ class FirmwareClient(
         OtaTarget.JIELI_BLE -> "jieli"
     }
 
+    private fun responseMatchesInstalledFirmwareVersions(
+        response: JSONObject,
+        deviceVersions: InstalledFirmwareVersions,
+    ): Boolean =
+        isExactFirmwareBaseMatch(
+            response.optString("wifi_hardware_version", ""),
+            deviceVersions.wifiHardwareVersion,
+        ) && isExactFirmwareBaseMatch(
+            response.optString("wifi_firmware_version", ""),
+            deviceVersions.wifiFirmwareVersion,
+        ) && isExactFirmwareBaseMatch(
+            response.optString("ble_hardware_version", ""),
+            deviceVersions.bleHardwareVersion,
+        ) && isExactFirmwareBaseMatch(
+            response.optString("ble_firmware_version", ""),
+            deviceVersions.bleFirmwareVersion,
+        )
+
     private fun sha256Hex(file: File): String {
         val digest = MessageDigest.getInstance("SHA-256")
         FileInputStream(file).use { input ->
@@ -528,6 +601,40 @@ class FirmwareClient(
     }
 
     private data class HttpResponse(val statusCode: Int, val body: String)
+
+    private fun acknowledgeFirmwareRisk(
+        relayBase: String,
+        apiToken: String,
+        channel: String,
+    ): HttpResponse {
+        val url = relayBase.trimEnd('/') + "/api/firmware/risk-acknowledgement"
+        val conn = URL(url).openConnection() as HttpURLConnection
+        return try {
+            conn.requestMethod = "POST"
+            conn.setRequestProperty("Authorization", "Bearer $apiToken")
+            conn.setRequestProperty("Accept", "application/json")
+            conn.setRequestProperty("Content-Type", "application/json")
+            conn.connectTimeout = 15_000
+            conn.readTimeout = 30_000
+            conn.instanceFollowRedirects = false
+            conn.doOutput = true
+            conn.outputStream.use { output ->
+                output.write(
+                    JSONObject()
+                        .put("channel", channel)
+                        .put("accepted", true)
+                        .toString()
+                        .toByteArray(),
+                )
+            }
+
+            val statusCode = conn.responseCode
+            val stream = if (statusCode in 200..299) conn.inputStream else conn.errorStream
+            HttpResponse(statusCode, stream?.bufferedReader()?.use { it.readText() } ?: "")
+        } finally {
+            conn.disconnect()
+        }
+    }
 
     private fun httpGet(url: String, apiToken: String): HttpResponse? {
         Log.d(TAG, "HTTP GET: $url")

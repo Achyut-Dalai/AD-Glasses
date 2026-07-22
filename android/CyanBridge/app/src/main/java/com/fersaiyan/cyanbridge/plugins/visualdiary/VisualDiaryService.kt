@@ -14,11 +14,16 @@ import android.util.Log
 import androidx.core.app.NotificationCompat
 import androidx.core.app.ServiceCompat
 import androidx.core.content.ContextCompat
+import androidx.fragment.app.FragmentActivity
 import com.fersaiyan.cyanbridge.MainActivity
 import com.fersaiyan.cyanbridge.R
 import com.fersaiyan.cyanbridge.devices.DeviceProfileStore
 import com.fersaiyan.cyanbridge.devices.metarayban.MetaRaybanManager
 import com.fersaiyan.cyanbridge.media.autocapture.AutoLoopVisualNoteGenerator
+import com.fersaiyan.cyanbridge.shared.plugins.NativePluginIds
+import com.fersaiyan.cyanbridge.ui.CommunityPluginPrefs
+import com.fersaiyan.cyanbridge.ui.ensureNotificationPermission
+import com.fersaiyan.cyanbridge.ui.hasNotificationPermission
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
@@ -49,7 +54,7 @@ class VisualDiaryService : Service() {
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
         when (intent?.action) {
-            ACTION_START -> startLoop()
+            ACTION_START -> if (VisualDiaryPreferences.isEnabled(this)) startLoop() else stopSelf()
             ACTION_STOP -> stopLoop()
             ACTION_CAPTURE_NOW -> captureNowAndKeepAlive()
             null -> if (VisualDiaryPreferences.isEnabled(this)) startLoop() else stopSelf()
@@ -64,13 +69,11 @@ class VisualDiaryService : Service() {
     }
 
     private fun startLoop() {
-        VisualDiaryPreferences.setEnabled(this, true)
         if (RUNNING.getAndSet(true)) return
 
         if (!startForegroundSafely("Visual Diary is ready")) {
             RUNNING.set(false)
-            VisualDiaryPreferences.setEnabled(this, false)
-            stopSelf()
+            disable(this, "Notification permission is required for Visual Diary")
             return
         }
 
@@ -85,12 +88,15 @@ class VisualDiaryService : Service() {
                         TAG,
                         "Meta Visual Diary cannot start: $detail\n${manager.diagnosticsSnapshot()}",
                     )
-                    updateNotification("Meta camera unavailable: ${detail.take(120)}")
-                    VisualDiaryPreferences.setEnabled(this@VisualDiaryService, false)
+                    VisualDiaryPreferences.setLastError(
+                        this@VisualDiaryService,
+                        "Meta camera unavailable: $detail",
+                    )
                     stopLoop()
                     return@launch
                 }
             }
+            VisualDiaryPreferences.clearLastError(this@VisualDiaryService)
             while (isActive && VisualDiaryPreferences.isEnabled(this@VisualDiaryService)) {
                 captureNow()
                 val delayMs = VisualDiaryPreferences.getIntervalMinutes(this@VisualDiaryService)
@@ -127,11 +133,13 @@ class VisualDiaryService : Service() {
             }.onFailure {
                 val detail = manager.lastError.value ?: it.message ?: "camera unavailable"
                 Log.e(TAG, "Meta DAT photo capture failed: $detail\n${manager.diagnosticsSnapshot()}", it)
+                VisualDiaryPreferences.setLastError(this, "Meta capture failed: $detail")
                 updateNotification("Meta capture failed: ${detail.take(120)}")
             }
                 .getOrNull()
             if (file == null) {
                 if (manager.lastError.value.isNullOrBlank()) {
+                    VisualDiaryPreferences.setLastError(this, "Meta camera unavailable")
                     updateNotification("Meta camera unavailable")
                 }
                 return
@@ -143,6 +151,7 @@ class VisualDiaryService : Service() {
                 image = file,
                 promptOverride = VisualDiaryPreferences.getCustomPrompt(this),
             )
+            VisualDiaryPreferences.clearLastError(this)
             return
         }
 
@@ -151,10 +160,11 @@ class VisualDiaryService : Service() {
             loopIndex = index,
             promptOverride = VisualDiaryPreferences.getCustomPrompt(this),
         )
+        VisualDiaryPreferences.clearLastError(this)
     }
 
     private fun stopLoop(clearPreference: Boolean = true) {
-        if (clearPreference) VisualDiaryPreferences.setEnabled(this, false)
+        if (clearPreference) clearEnabledState(this)
         RUNNING.set(false)
         loopJob?.cancel()
         loopJob = null
@@ -163,6 +173,9 @@ class VisualDiaryService : Service() {
     }
 
     private fun startForegroundSafely(content: String): Boolean {
+        if (!hasNotificationPermission(this)) {
+            return false
+        }
         return runCatching {
             val notification = notification(content)
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
@@ -229,22 +242,53 @@ class VisualDiaryService : Service() {
         const val ACTION_STOP = "com.fersaiyan.cyanbridge.action.VISUAL_DIARY_STOP"
         const val ACTION_CAPTURE_NOW = "com.fersaiyan.cyanbridge.action.VISUAL_DIARY_CAPTURE_NOW"
 
-        fun start(context: Context) {
-            VisualDiaryPreferences.setEnabled(context, true)
+        /** Enables Visual Diary only after it can run as a foreground service. */
+        fun enable(context: Context): Boolean {
+            if (!hasNotificationPermission(context)) {
+                if (context is FragmentActivity) {
+                    ensureNotificationPermission(
+                        activity = context,
+                        feature = "Visual Diary",
+                        onDenied = { disable(context) },
+                        onGranted = { enable(context) },
+                    )
+                }
+                return false
+            }
+            setEnabledState(context, true)
+            startIfEnabled(context)
+            return true
+        }
+
+        /** Restores an already-enabled Visual Diary without prompting from a background context. */
+        fun startIfEnabled(context: Context): Boolean {
+            if (!VisualDiaryPreferences.isEnabled(context) || !hasNotificationPermission(context)) {
+                return false
+            }
             val intent = Intent(context, VisualDiaryService::class.java).setAction(ACTION_START)
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
                 ContextCompat.startForegroundService(context, intent)
             } else {
                 context.startService(intent)
             }
+            return true
         }
 
-        fun stop(context: Context) {
-            VisualDiaryPreferences.setEnabled(context, false)
-            context.startService(Intent(context, VisualDiaryService::class.java).setAction(ACTION_STOP))
+        fun disable(context: Context, error: String? = null) {
+            clearEnabledState(context)
+            if (error != null) VisualDiaryPreferences.setLastError(context, error)
+            context.stopService(Intent(context, VisualDiaryService::class.java))
         }
 
         fun captureNow(context: Context) {
+            if (!hasNotificationPermission(context)) {
+                if (context is FragmentActivity) {
+                    ensureNotificationPermission(context, "Visual Diary") {
+                        captureNow(context)
+                    }
+                }
+                return
+            }
             val intent = Intent(context, VisualDiaryService::class.java).setAction(ACTION_CAPTURE_NOW)
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
                 ContextCompat.startForegroundService(context, intent)
@@ -254,5 +298,14 @@ class VisualDiaryService : Service() {
         }
 
         fun isRunning(): Boolean = RUNNING.get()
+
+        private fun setEnabledState(context: Context, enabled: Boolean) {
+            VisualDiaryPreferences.setEnabled(context, enabled)
+            CommunityPluginPrefs.setNativePluginEnabled(context, NativePluginIds.VISUAL_DIARY, enabled)
+        }
+
+        private fun clearEnabledState(context: Context) {
+            setEnabledState(context, false)
+        }
     }
 }

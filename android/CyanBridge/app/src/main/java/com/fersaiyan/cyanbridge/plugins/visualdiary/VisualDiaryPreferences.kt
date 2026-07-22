@@ -7,6 +7,7 @@ object VisualDiaryPreferences {
     private const val KEY_ENABLED = "enabled"
     private const val KEY_INTERVAL_MINUTES = "interval_minutes"
     private const val KEY_CUSTOM_PROMPT = "custom_prompt"
+    private const val KEY_LAST_ERROR = "last_error"
     private const val MAX_PROMPT_CHARS = 1_500
 
     private fun prefs(context: Context) =
@@ -34,5 +35,16 @@ object VisualDiaryPreferences {
         prefs(context).edit()
             .putString(KEY_CUSTOM_PROMPT, prompt.trim().take(MAX_PROMPT_CHARS))
             .apply()
+    }
+
+    fun getLastError(context: Context): String =
+        prefs(context).getString(KEY_LAST_ERROR, "").orEmpty()
+
+    fun setLastError(context: Context, error: String) {
+        prefs(context).edit().putString(KEY_LAST_ERROR, error.trim().take(500)).apply()
+    }
+
+    fun clearLastError(context: Context) {
+        prefs(context).edit().remove(KEY_LAST_ERROR).apply()
     }
 }

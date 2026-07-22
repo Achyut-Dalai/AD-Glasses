@@ -13,6 +13,7 @@ import android.os.IBinder
 import androidx.core.app.NotificationCompat
 import androidx.core.app.ServiceCompat
 import androidx.core.content.ContextCompat
+import androidx.fragment.app.FragmentActivity
 import androidx.work.ExistingWorkPolicy
 import androidx.work.OneTimeWorkRequestBuilder
 import androidx.work.WorkManager
@@ -22,6 +23,12 @@ import com.fersaiyan.cyanbridge.R
 import com.fersaiyan.cyanbridge.agent.LocalAgentPrefs
 import com.fersaiyan.cyanbridge.localagent.dailysummary.DailySummaryRegenerateWorker
 import com.fersaiyan.cyanbridge.memoryvault.MemoryModeManager
+import com.fersaiyan.cyanbridge.shared.plugins.NativePluginIds
+import com.fersaiyan.cyanbridge.ui.CommunityPluginPrefs
+import com.fersaiyan.cyanbridge.ui.hasAccessibilityServicePermission
+import com.fersaiyan.cyanbridge.ui.ensureNotificationPermission
+import com.fersaiyan.cyanbridge.ui.hasNotificationPermission
+import com.fersaiyan.cyanbridge.ui.requestAccessibilityServicePermission
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
@@ -43,7 +50,7 @@ class AutoDiaryService : Service() {
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
         when (intent?.action) {
-            ACTION_START -> startDiary()
+            ACTION_START -> if (isEnabled(this)) startDiary() else stopSelf()
             ACTION_STOP -> stopDiary()
             ACTION_SUMMARIZE -> {
                 startForegroundSafely("Preparing today's diary summary")
@@ -51,38 +58,41 @@ class AutoDiaryService : Service() {
                 stopForeground(STOP_FOREGROUND_REMOVE)
                 stopSelf()
             }
-            null -> if (LocalAgentPrefs.isAutoCaptureEnabled(this)) startDiary() else stopSelf()
+            null -> if (isEnabled(this)) startDiary() else stopSelf()
         }
         return START_STICKY
     }
 
     override fun onDestroy() {
         RUNNING.set(false)
+        runCatching { stopForeground(STOP_FOREGROUND_REMOVE) }
         super.onDestroy()
     }
 
     private fun startDiary() {
-        LocalAgentPrefs.setAutoCaptureEnabled(this, true)
-        MemoryModeManager.setScreenOcrCaptureEnabled(this, true)
+        if (!hasAccessibilityServicePermission(this)) {
+            disable(this)
+            return
+        }
 
         if (RUNNING.getAndSet(true)) return
         if (!startForegroundSafely("AutoDiary is collecting screen context")) {
             RUNNING.set(false)
-            LocalAgentPrefs.setAutoCaptureEnabled(this, false)
-            MemoryModeManager.setScreenOcrCaptureEnabled(this, false)
-            stopSelf()
+            disable(this)
         }
     }
 
     private fun stopDiary() {
-        LocalAgentPrefs.setAutoCaptureEnabled(this, false)
-        MemoryModeManager.setScreenOcrCaptureEnabled(this, false)
+        clearEnabledState(this)
         RUNNING.set(false)
         runCatching { stopForeground(STOP_FOREGROUND_REMOVE) }
         stopSelf()
     }
 
     private fun startForegroundSafely(content: String): Boolean {
+        if (!hasNotificationPermission(this)) {
+            return false
+        }
         return runCatching {
             val notification = notification(content)
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
@@ -143,22 +153,61 @@ class AutoDiaryService : Service() {
         const val ACTION_STOP = "com.fersaiyan.cyanbridge.action.AUTO_DIARY_STOP"
         const val ACTION_SUMMARIZE = "com.fersaiyan.cyanbridge.action.AUTO_DIARY_SUMMARIZE"
 
-        fun start(context: Context) {
+        /** Enables AutoDiary only after its shared capture prerequisites are available. */
+        fun enable(context: Context): Boolean {
+            if (!hasAccessibilityServicePermission(context)) {
+                if (context is FragmentActivity) {
+                    requestAccessibilityServicePermission(context, "AutoDiary screen capture")
+                }
+                return false
+            }
+            if (!hasNotificationPermission(context)) {
+                if (context is FragmentActivity) {
+                    ensureNotificationPermission(
+                        activity = context,
+                        feature = "AutoDiary",
+                        onDenied = { disable(context) },
+                        onGranted = { enable(context) },
+                    )
+                }
+                return false
+            }
+            setEnabledState(context, true)
+            startIfEnabled(context)
+            return true
+        }
+
+        /** Restores an already-enabled diary without trying to request permissions from a background context. */
+        fun startIfEnabled(context: Context): Boolean {
+            if (!isEnabled(context) ||
+                !hasAccessibilityServicePermission(context) ||
+                !hasNotificationPermission(context)
+            ) {
+                return false
+            }
             val intent = Intent(context, AutoDiaryService::class.java).setAction(ACTION_START)
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
                 ContextCompat.startForegroundService(context, intent)
             } else {
                 context.startService(intent)
             }
+            return true
         }
 
-        fun stop(context: Context) {
-            LocalAgentPrefs.setAutoCaptureEnabled(context, false)
-            MemoryModeManager.setScreenOcrCaptureEnabled(context, false)
-            context.startService(Intent(context, AutoDiaryService::class.java).setAction(ACTION_STOP))
+        fun disable(context: Context) {
+            clearEnabledState(context)
+            context.stopService(Intent(context, AutoDiaryService::class.java))
         }
 
         fun summarize(context: Context) {
+            if (!hasNotificationPermission(context)) {
+                if (context is FragmentActivity) {
+                    ensureNotificationPermission(context, "AutoDiary") {
+                        summarize(context)
+                    }
+                }
+                return
+            }
             val intent = Intent(context, AutoDiaryService::class.java).setAction(ACTION_SUMMARIZE)
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
                 ContextCompat.startForegroundService(context, intent)
@@ -168,6 +217,20 @@ class AutoDiaryService : Service() {
         }
 
         fun isRunning(): Boolean = RUNNING.get()
+
+        fun isEnabled(context: Context): Boolean =
+            LocalAgentPrefs.isAutoCaptureEnabled(context) &&
+                MemoryModeManager.isScreenOcrCaptureEnabled(context)
+
+        private fun setEnabledState(context: Context, enabled: Boolean) {
+            LocalAgentPrefs.setAutoCaptureEnabled(context, enabled)
+            MemoryModeManager.setScreenOcrCaptureEnabled(context, enabled)
+            CommunityPluginPrefs.setNativePluginEnabled(context, NativePluginIds.AUTO_DIARY, enabled)
+        }
+
+        private fun clearEnabledState(context: Context) {
+            setEnabledState(context, false)
+        }
 
         private fun queueSummary(context: Context) {
             val date = SimpleDateFormat("yyyy-MM-dd", Locale.US).format(Date(System.currentTimeMillis()))

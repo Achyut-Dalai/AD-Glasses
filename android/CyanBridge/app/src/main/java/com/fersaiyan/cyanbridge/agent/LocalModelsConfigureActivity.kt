@@ -1,6 +1,5 @@
 package com.fersaiyan.cyanbridge.agent
 
-import android.Manifest
 import android.net.Uri
 import android.os.Bundle
 import android.provider.OpenableColumns
@@ -44,6 +43,7 @@ import com.fersaiyan.cyanbridge.localmodels.storage.LocalModelFileUtils
 import com.fersaiyan.cyanbridge.localmodels.storage.LocalModelStorageRepository
 import com.fersaiyan.cyanbridge.localmodels.remote.RemoteOpenAiClient
 import com.fersaiyan.cyanbridge.localmodels.remote.RemoteOpenAiPrefs
+import com.fersaiyan.cyanbridge.plugins.PluginVoicePermissions
 import com.fersaiyan.cyanbridge.shared.localmodels.InstalledModelUiItem
 import com.fersaiyan.cyanbridge.shared.localmodels.LocalModelCatalogUiItem
 import com.fersaiyan.cyanbridge.shared.localmodels.LocalModelDownloadUiState
@@ -56,7 +56,6 @@ import com.fersaiyan.cyanbridge.shared.localmodels.LocalModelsConfigureUiState
 import com.fersaiyan.cyanbridge.shared.localmodels.LocalModelsSection
 import com.fersaiyan.cyanbridge.shared.localmodels.RemoteInferenceUiState
 import com.fersaiyan.cyanbridge.shared.localmodels.StudioBridgeUiState
-import com.fersaiyan.cyanbridge.studiobridge.StudioApprovalHandler
 import com.fersaiyan.cyanbridge.ui.appearance.AppearancePreferences
 import com.fersaiyan.cyanbridge.ui.appearance.rememberAppearanceSettings
 import com.fersaiyan.cyanbridge.ui.debug.DebugLogSupport
@@ -199,18 +198,6 @@ class LocalModelsConfigureActivity : AppCompatActivity() {
     ) { uri ->
         if (uri != null) {
             importModel(uri)
-        }
-    }
-
-    private val recordAudioPermissionLauncher = registerForActivityResult(
-        ActivityResultContracts.RequestPermission(),
-    ) { granted ->
-        if (granted) {
-            saveStudioBridgeConfig()
-        } else {
-            switchStudioBridgeEnabled.isChecked = false
-            Toast.makeText(this, "Microphone permission is required for voice approvals", Toast.LENGTH_LONG).show()
-            syncComposeState?.invoke()
         }
     }
 
@@ -1753,8 +1740,10 @@ class LocalModelsConfigureActivity : AppCompatActivity() {
                 switchStudioBridgeEnabled.isChecked = false
                 return
             }
-            if (!StudioApprovalHandler.canCaptureVoice(this)) {
-                recordAudioPermissionLauncher.launch(Manifest.permission.RECORD_AUDIO)
+            if (!PluginVoicePermissions.hasRequiredPermissions(this)) {
+                PluginVoicePermissions.ensure(this) {
+                    saveStudioBridgeConfig()
+                }
                 return
             }
             // The API key is shared with RemoteOpenAiPrefs, so we save it there.

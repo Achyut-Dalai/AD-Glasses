@@ -51,10 +51,14 @@ class WebSubscriptionCallbackActivity : AppCompatActivity() {
     }
 
     private fun restoreVerifiedAccount(apiToken: String?, email: String?) {
-        val token = apiToken?.trim().orEmpty()
+        // The verification redirect intentionally carries no bearer credential.
+        // Keep using the account token already stored on the initiating device.
+        val token = apiToken?.trim().orEmpty().ifBlank {
+            ProSubscriptionServerPrefs.getApiToken(this).trim()
+        }
         val verifiedEmail = ProSubscriptionServerPrefs.normalizeAccountEmail(email)
         if (token.isBlank() || !ProSubscriptionServerPrefs.isUsableAccountEmail(verifiedEmail)) {
-            finishCallback(CallbackResult(false, "Email verification could not restore this account."))
+            finishCallback(CallbackResult(false, "Email verification must be opened on the device that requested it."))
             return
         }
 

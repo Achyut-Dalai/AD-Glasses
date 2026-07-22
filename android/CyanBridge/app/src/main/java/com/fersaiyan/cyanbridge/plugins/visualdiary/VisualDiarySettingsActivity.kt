@@ -34,38 +34,54 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import com.fersaiyan.cyanbridge.R
 import com.fersaiyan.cyanbridge.shared.plugins.NativePluginIds
-import com.fersaiyan.cyanbridge.ui.CommunityPluginPrefs
 import com.fersaiyan.cyanbridge.ui.NativePluginShortcutPreference
 import com.fersaiyan.cyanbridge.ui.installComposeHostWithLegacyAdapter
 import com.fersaiyan.cyanbridge.ui.setThemedComposeContent
 
 class VisualDiarySettingsActivity : AppCompatActivity() {
+    private var visualDiaryEnabled by mutableStateOf(false)
+    private var lastError by mutableStateOf("")
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        refreshUi()
         val composeView = installComposeHostWithLegacyAdapter(R.layout.activity_visual_diary_settings)
         setThemedComposeContent(composeView) {
             VisualDiarySettingsScreen(
+                enabled = visualDiaryEnabled,
+                lastError = lastError,
                 onBack = ::finish,
                 onEnabledChanged = ::setEnabled,
             )
         }
     }
 
+    override fun onResume() {
+        super.onResume()
+        refreshUi()
+    }
+
     private fun setEnabled(enabled: Boolean) {
-        CommunityPluginPrefs.setNativePluginEnabled(this, NativePluginIds.VISUAL_DIARY, enabled)
-        if (enabled) VisualDiaryService.start(this) else VisualDiaryService.stop(this)
+        if (enabled) VisualDiaryService.enable(this) else VisualDiaryService.disable(this)
+        refreshUi()
+    }
+
+    private fun refreshUi() {
+        visualDiaryEnabled = VisualDiaryPreferences.isEnabled(this)
+        lastError = VisualDiaryPreferences.getLastError(this)
     }
 }
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun VisualDiarySettingsScreen(
+    enabled: Boolean,
+    lastError: String,
     onBack: () -> Unit,
     onEnabledChanged: (Boolean) -> Unit,
 ) {
     val context = LocalContext.current
     val scrollState = rememberScrollState()
-    var enabled by remember { mutableStateOf(VisualDiaryPreferences.isEnabled(context)) }
     var interval by remember { mutableIntStateOf(VisualDiaryPreferences.getIntervalMinutes(context)) }
     var prompt by remember { mutableStateOf(VisualDiaryPreferences.getCustomPrompt(context)) }
 
@@ -93,14 +109,19 @@ fun VisualDiarySettingsScreen(
                 "Capture glasses thumbnails on a schedule, describe scenes with the selected Gemma vision model, and append concise notes to daily memory.",
                 style = MaterialTheme.typography.bodyMedium,
             )
-            SwitchSetting("Visual Diary enabled", enabled) {
-                enabled = it
-                onEnabledChanged(it)
-            }
+            SwitchSetting("Visual Diary enabled", enabled, onEnabledChanged)
             NativePluginShortcutPreference(
                 pluginId = NativePluginIds.VISUAL_DIARY,
                 pluginTitle = "Visual Diary",
             )
+            if (lastError.isNotBlank()) {
+                Text(
+                    "Last stop reason: $lastError",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.error,
+                )
+            }
+            SectionTitle("Capture")
             NumberSetting(
                 label = "Capture interval (minutes)",
                 value = interval,
@@ -110,6 +131,11 @@ fun VisualDiarySettingsScreen(
                     VisualDiaryPreferences.setIntervalMinutes(context, it)
                 },
             )
+            OutlinedButton(
+                onClick = { VisualDiaryService.captureNow(context) },
+                modifier = Modifier.fillMaxWidth(),
+            ) { Text("Capture scene now") }
+            SectionTitle("Scene descriptions")
             OutlinedTextField(
                 value = prompt,
                 onValueChange = {
@@ -122,16 +148,17 @@ fun VisualDiarySettingsScreen(
                 maxLines = 7,
             )
             OutlinedButton(
-                onClick = { VisualDiaryService.captureNow(context) },
-                modifier = Modifier.fillMaxWidth(),
-            ) { Text("Capture scene now") }
-            OutlinedButton(
                 onClick = {
-                    enabled = false
                     onEnabledChanged(false)
                 },
                 modifier = Modifier.fillMaxWidth(),
             ) { Text("Stop visual diary") }
+            SectionTitle("Shared memory")
+            Text(
+                "Visual Diary appends notes to shared daily memory. Privacy, retention, and vault controls are managed in Settings > Memory Privacy.",
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
         }
     }
 }
@@ -142,6 +169,11 @@ private fun SwitchSetting(label: String, checked: Boolean, onCheckedChange: (Boo
         Text(label, modifier = Modifier.weight(1f))
         Switch(checked = checked, onCheckedChange = onCheckedChange)
     }
+}
+
+@Composable
+private fun SectionTitle(text: String) {
+    Text(text, style = MaterialTheme.typography.titleMedium)
 }
 
 @Composable
