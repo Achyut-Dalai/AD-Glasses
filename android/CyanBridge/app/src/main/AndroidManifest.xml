@@ -292,6 +292,10 @@
             android:exported="false"
             android:label="AutoDiary Settings" />
         <activity
+            android:name=".plugins.localagent.LocalAgentSettingsActivity"
+            android:exported="false"
+            android:label="Local Agent Settings" />
+        <activity
             android:name=".plugins.autoaudio.AutoAudioSettingsActivity"
             android:exported="false"
             android:label="Auto Audio Settings" />
@@ -367,6 +371,21 @@
             android:name=".localagent.LocalAgentService"
             android:exported="false"
             android:foregroundServiceType="dataSync" />
+
+        <service
+            android:name=".localagent.LocalAgentTelegramService"
+            android:exported="false"
+            android:foregroundServiceType="dataSync" />
+
+        <!-- Receives the Shizuku binder only from the shell/root service. The optional Local
+             Agent fallback remains disabled until the user enables it and grants Shizuku access. -->
+        <provider
+            android:name="rikka.shizuku.ShizukuProvider"
+            android:authorities="${applicationId}.shizuku"
+            android:enabled="true"
+            android:exported="true"
+            android:multiprocess="false"
+            android:permission="android.permission.INTERACT_ACROSS_USERS_FULL" />
 
         <service
             android:name=".media.autocapture.AutoAudioCaptureService"

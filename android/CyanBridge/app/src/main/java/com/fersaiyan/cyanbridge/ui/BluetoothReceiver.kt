@@ -29,16 +29,21 @@ class BluetoothReceiver : BroadcastReceiver() {
         when (intent.action) {
             BluetoothAdapter.ACTION_STATE_CHANGED -> {
                 val connectState = intent.getIntExtra(BluetoothAdapter.EXTRA_STATE, -1)
+                val canConnect = Build.VERSION.SDK_INT < Build.VERSION_CODES.S ||
+                    ContextCompat.checkSelfPermission(
+                        context,
+                        Manifest.permission.BLUETOOTH_CONNECT,
+                    ) == PackageManager.PERMISSION_GRANTED
                 if (connectState == BluetoothAdapter.STATE_OFF) {
                     Log.i("qc" ,"Bluetooth is off --> ")
-                    if (!DeviceProfileStore.isMetaSelected(context)) {
+                    if (canConnect && !DeviceProfileStore.isMetaSelected(context)) {
                         BleOperateManager.getInstance().setBluetoothTurnOff(false)
                         BleOperateManager.getInstance().disconnect()
                     }
                     EventBus.getDefault().post(BluetoothEvent(false))
                 } else if (connectState == BluetoothAdapter.STATE_ON) {
                     Log.i("qc" ,"Bluetooth is on --> ")
-                    if (!DeviceProfileStore.isMetaSelected(context)) {
+                    if (canConnect && !DeviceProfileStore.isMetaSelected(context)) {
                         BleOperateManager.getInstance().setBluetoothTurnOff(true)
                     }
 

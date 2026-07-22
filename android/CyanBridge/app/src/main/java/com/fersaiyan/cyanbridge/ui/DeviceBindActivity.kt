@@ -3,13 +3,10 @@ package com.fersaiyan.cyanbridge.ui
 import com.fersaiyan.cyanbridge.shared.devices.DeviceProfile
 import com.fersaiyan.cyanbridge.shared.devices.ScannedDevice as SharedScannedDevice
 
-import android.Manifest
 import android.bluetooth.BluetoothAdapter
 import android.bluetooth.BluetoothDevice
 import android.bluetooth.le.ScanResult
 import android.content.Intent
-import android.content.pm.PackageManager
-import android.os.Build
 import android.os.Bundle
 import android.os.Handler
 import android.os.Looper
@@ -19,7 +16,6 @@ import androidx.activity.compose.setContent
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
-import androidx.core.content.ContextCompat
 import com.fersaiyan.cyanbridge.shared.devices.DeviceClass
 import com.fersaiyan.cyanbridge.devices.DeviceClassifier
 import com.fersaiyan.cyanbridge.devices.DeviceProfileStore
@@ -109,15 +105,7 @@ class DeviceBindActivity : BaseActivity() {
         deviceList.clear()
         scannedDevices = emptyList()
         lastDeviceListPublishAtMs = 0L
-        if (
-            Build.VERSION.SDK_INT >= Build.VERSION_CODES.S &&
-                (
-                    ContextCompat.checkSelfPermission(this, Manifest.permission.BLUETOOTH_SCAN) !=
-                        PackageManager.PERMISSION_GRANTED ||
-                        ContextCompat.checkSelfPermission(this, Manifest.permission.BLUETOOTH_CONNECT) !=
-                        PackageManager.PERMISSION_GRANTED
-                    )
-        ) {
+        if (!hasBluetooth(this)) {
             isScanning = false
             requestBluetoothPermission(this, PermissionCallback())
             return
@@ -135,11 +123,7 @@ class DeviceBindActivity : BaseActivity() {
 
     private fun confirmConnection() {
         val device = connectingDevice ?: return
-        if (
-            Build.VERSION.SDK_INT >= Build.VERSION_CODES.S &&
-                ContextCompat.checkSelfPermission(this, Manifest.permission.BLUETOOTH_CONNECT) !=
-                PackageManager.PERMISSION_GRANTED
-        ) {
+        if (!hasBluetooth(this)) {
             Toast.makeText(this, "Bluetooth permission is required to connect", Toast.LENGTH_SHORT).show()
             requestBluetoothPermission(this, PermissionCallback())
             return
@@ -178,7 +162,7 @@ class DeviceBindActivity : BaseActivity() {
         if (selectedDeviceClass == DeviceClass.MEIZU_MYVU) {
             // MYVU owns a BLE ECDH session and an RFCOMM relay. The HeyCyan SDK
             // connector cannot establish either transport.
-            MeizuMyvuManager.getInstance(this).connect(device.macAddress)
+            MeizuMyvuManager.getInstance(this).connect(device.macAddress, this)
             Toast.makeText(
                 this,
                 "Connecting to Meizu MYVU. Keep the official MYVU app disconnected.",
@@ -267,6 +251,11 @@ class DeviceBindActivity : BaseActivity() {
 
         override fun onDenied(permissions: MutableList<String>, never: Boolean) {
             super.onDenied(permissions, never)
+            Toast.makeText(
+                this@DeviceBindActivity,
+                "Bluetooth permission is required to find and connect to glasses",
+                Toast.LENGTH_LONG,
+            ).show()
             if (never) XXPermissions.startPermissionActivity(this@DeviceBindActivity, permissions)
         }
     }
@@ -281,13 +270,7 @@ class DeviceBindActivity : BaseActivity() {
         }
 
         override fun onLeScan(device: BluetoothDevice?, rssi: Int, scanRecord: ByteArray?) {
-            if (
-                Build.VERSION.SDK_INT >= Build.VERSION_CODES.S &&
-                    ContextCompat.checkSelfPermission(
-                        this@DeviceBindActivity,
-                        Manifest.permission.BLUETOOTH_CONNECT,
-                    ) != PackageManager.PERMISSION_GRANTED
-            ) {
+            if (!hasBluetooth(this@DeviceBindActivity)) {
                 return
             }
             val bluetoothDevice = device ?: return
@@ -302,13 +285,7 @@ class DeviceBindActivity : BaseActivity() {
         }
 
         override fun onParsedData(device: BluetoothDevice?, scanRecord: ScanRecord?) {
-            if (
-                Build.VERSION.SDK_INT >= Build.VERSION_CODES.S &&
-                    ContextCompat.checkSelfPermission(
-                        this@DeviceBindActivity,
-                        Manifest.permission.BLUETOOTH_CONNECT,
-                    ) != PackageManager.PERMISSION_GRANTED
-            ) {
+            if (!hasBluetooth(this@DeviceBindActivity)) {
                 return
             }
             val bluetoothDevice = device ?: return

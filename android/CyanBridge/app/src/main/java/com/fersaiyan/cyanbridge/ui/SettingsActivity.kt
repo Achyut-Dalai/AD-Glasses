@@ -1,14 +1,10 @@
 package com.fersaiyan.cyanbridge.ui
 
-import android.Manifest
 import android.content.BroadcastReceiver
-import android.content.ComponentName
 import android.content.Intent
 import android.content.IntentFilter
 import android.net.Uri
-import android.os.Build
 import android.os.Bundle
-import android.provider.Settings
 import android.widget.EditText
 import android.widget.Toast
 import androidx.activity.compose.setContent
@@ -18,36 +14,19 @@ import androidx.appcompat.app.AppCompatActivity
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
-import androidx.core.app.NotificationManagerCompat
 import androidx.lifecycle.lifecycleScope
 import androidx.localbroadcastmanager.content.LocalBroadcastManager
 import com.fersaiyan.cyanbridge.R
 import com.fersaiyan.cyanbridge.MainActivity
-import com.fersaiyan.cyanbridge.shared.settings.AgentProviderType
-import com.fersaiyan.cyanbridge.shared.plugins.NativePluginIds
-import com.fersaiyan.cyanbridge.agent.LocalAgentPrefs as AutomationPrefs
-import com.fersaiyan.cyanbridge.agent.LocalModelsConfigureActivity
 import com.fersaiyan.cyanbridge.agent.ProSubscriptionActivity
 import com.fersaiyan.cyanbridge.agent.ProSubscriptionPrefs
 import com.fersaiyan.cyanbridge.agent.ProSubscriptionSettingsActivity
 import com.fersaiyan.cyanbridge.agent.ProSubscriptionVerifier
-import com.fersaiyan.cyanbridge.ai.router.AiProviderPrefs
-import com.fersaiyan.cyanbridge.ai.router.AiProviderType
 import com.fersaiyan.cyanbridge.ai.vision.VisionProfile
 import com.fersaiyan.cyanbridge.ai.vision.VisionProfilePreferences
 import com.fersaiyan.cyanbridge.shared.chat.ChatRole
 import com.fersaiyan.cyanbridge.chat.ChatStore
-import com.fersaiyan.cyanbridge.localagent.LocalAgentController
-import com.fersaiyan.cyanbridge.localagent.LocalAgentIntents
-import com.fersaiyan.cyanbridge.localagent.LocalAgentPrefs as AgentRuntimePrefs
-import com.fersaiyan.cyanbridge.localagent.accessibility.LocalAgentAccessibilityService
-import com.fersaiyan.cyanbridge.localagent.daily.DailyFactsReminderScheduler
-import com.fersaiyan.cyanbridge.localagent.dailyfacts.DailyBulletsSettings
 import com.fersaiyan.cyanbridge.localagent.memory.LocalAgentMemoryStore
-import com.fersaiyan.cyanbridge.localagent.userfacts.ChatMemoryPrefs
-import com.fersaiyan.cyanbridge.localmodels.session.LocalChatSessionManager
-import com.fersaiyan.cyanbridge.media.autocapture.AutoAudioCapturePrefs
-import com.fersaiyan.cyanbridge.media.autocapture.AutoAudioCaptureService
 import com.fersaiyan.cyanbridge.memoryvault.MemoryModeManager
 import com.fersaiyan.cyanbridge.shared.settings.MemoryPrivacyMode
 import com.fersaiyan.cyanbridge.shared.settings.MemorySourceType
@@ -66,13 +45,7 @@ import com.fersaiyan.cyanbridge.ui.appearance.AppearanceActivity
 import com.fersaiyan.cyanbridge.ui.appearance.AppearancePreferences
 import com.fersaiyan.cyanbridge.ui.appearance.rememberAppearanceSettings
 import com.fersaiyan.cyanbridge.ui.debug.DebugLogSupport
-import com.fersaiyan.cyanbridge.ui.localagent.AppBlacklistActivity
-import com.fersaiyan.cyanbridge.ui.localagent.DailyFactsActivity
-import com.fersaiyan.cyanbridge.ui.localagent.DailySummaryActivity
-import com.fersaiyan.cyanbridge.ui.localagent.PendingActionsActivity
-import com.fersaiyan.cyanbridge.ui.localagent.ScreenCapturesActivity
 import com.fersaiyan.cyanbridge.ui.recordings.RecordingsListActivity
-import com.fersaiyan.cyanbridge.devices.DeviceProfileStore
 import com.fersaiyan.cyanbridge.shared.settings.SettingsSection
 import com.fersaiyan.cyanbridge.shared.ui.settings.SettingsScreen
 import com.fersaiyan.cyanbridge.shared.ui.settings.SettingsScreenActions
@@ -80,8 +53,6 @@ import com.fersaiyan.cyanbridge.shared.ui.settings.SettingsUiState
 import com.fersaiyan.cyanbridge.ui.localization.AppLanguage
 import com.fersaiyan.cyanbridge.ui.localization.AppLanguagePreferences
 import com.fersaiyan.cyanbridge.ui.theme.CyanBridgeTheme
-import com.hjq.permissions.Permission
-import com.hjq.permissions.XXPermissions
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -93,9 +64,7 @@ class SettingsActivity : AppCompatActivity(), SettingsScreenActions {
 
     private var settingsUiState by mutableStateOf(SettingsUiState())
     private var expandedSections by mutableStateOf<Set<SettingsSection>>(emptySet())
-    private var agentReceiverRegistered = false
     private var meetingReceiverRegistered = false
-    private var checkedExistingAutoAudioPermission = false
 
     private val sectionPrefs by lazy {
         getSharedPreferences("settings_sections", MODE_PRIVATE)
@@ -111,19 +80,6 @@ class SettingsActivity : AppCompatActivity(), SettingsScreenActions {
         ActivityResultContracts.OpenDocument(),
     ) { uri ->
         uri?.let(::importLocalDataFromUri)
-    }
-
-    private val agentStatusReceiver = object : BroadcastReceiver() {
-        override fun onReceive(context: android.content.Context?, intent: Intent?) {
-            if (intent?.action != LocalAgentIntents.ACTION_STATUS_CHANGED) return
-            intent.getStringExtra(LocalAgentIntents.EXTRA_STATUS)?.let {
-                AgentRuntimePrefs.setStatus(this@SettingsActivity, it)
-            }
-            intent.getStringExtra(LocalAgentIntents.EXTRA_LAST_ERROR)?.let {
-                AgentRuntimePrefs.setLastError(this@SettingsActivity, it)
-            }
-            refreshSettingsUi()
-        }
     }
 
     private val meetingStateReceiver = object : BroadcastReceiver() {
@@ -172,34 +128,25 @@ class SettingsActivity : AppCompatActivity(), SettingsScreenActions {
 
     override fun onStart() {
         super.onStart()
-        registerLocalReceivers()
-        LocalAgentController.requestStatus(this)
+        registerMeetingReceiver()
         refreshSettingsUi()
     }
 
     override fun onStop() {
-        unregisterLocalReceivers()
+        unregisterMeetingReceiver()
         super.onStop()
     }
 
-    private fun registerLocalReceivers() {
+    private fun registerMeetingReceiver() {
         val broadcasts = LocalBroadcastManager.getInstance(this)
-        if (!agentReceiverRegistered) {
-            broadcasts.registerReceiver(agentStatusReceiver, IntentFilter(LocalAgentIntents.ACTION_STATUS_CHANGED))
-            agentReceiverRegistered = true
-        }
         if (!meetingReceiverRegistered) {
             broadcasts.registerReceiver(meetingStateReceiver, IntentFilter(MeetingCaptureService.ACTION_STATE))
             meetingReceiverRegistered = true
         }
     }
 
-    private fun unregisterLocalReceivers() {
+    private fun unregisterMeetingReceiver() {
         val broadcasts = LocalBroadcastManager.getInstance(this)
-        if (agentReceiverRegistered) {
-            broadcasts.unregisterReceiver(agentStatusReceiver)
-            agentReceiverRegistered = false
-        }
         if (meetingReceiverRegistered) {
             broadcasts.unregisterReceiver(meetingStateReceiver)
             meetingReceiverRegistered = false
@@ -220,28 +167,12 @@ class SettingsActivity : AppCompatActivity(), SettingsScreenActions {
     private fun refreshSettingsUi() {
         MemoryVaultBootstrap.ensureInitialized(this)
         val meeting = MeetingCapturePrefs.getState(this)
-        val autoAudioEnabled = AutoAudioCapturePrefs.isEnabled(this)
-        val providerType = AutomationPrefs.getProviderType(this)
         val memoryMode = MemoryModeManager.getSelectedMode(this)
-        syncAgentProviderToAiProvider(providerType)
         settingsUiState = SettingsUiState(
             isProSubscribed = ProSubscriptionPrefs.isActiveLocally(this),
             proPlan = formatPlan(ProSubscriptionPrefs.getPlan(this)),
             appLanguageLabel = AppLanguagePreferences.selected(this).displayName(this),
             visionProfileLabel = localizedVisionProfileName(VisionProfilePreferences.get(this).profile),
-            providerType = providerType,
-            localAgentAutomationEnabled = AutomationPrefs.isLocalAgentAutomationEnabled(this),
-            localAgentRequireConfirmation = AutomationPrefs.isRequireConfirmationEnabled(this),
-            localAgentMaxSteps = AutomationPrefs.getMaxSteps(this),
-            accessibilityEnabled = isLocalAgentAccessibilityServiceEnabled(),
-            autoCaptureEnabled = AutomationPrefs.isAutoCaptureEnabled(this) &&
-                MemoryModeManager.isScreenOcrCaptureEnabled(this),
-            captureIntervalMinutes = AutomationPrefs.getCaptureIntervalMin(this),
-            dailyFactsReminderEnabled = AutomationPrefs.isDailyFactsReminderEnabled(this),
-            dailySummaryRefreshHours = AutomationPrefs.getDailySummaryAutoRefreshHours(this),
-            autoSaveDailyFactsEnabled = ChatMemoryPrefs.isAutoSaveDailyFactsEnabled(this),
-            extractUserFactCandidatesEnabled = ChatMemoryPrefs.isExtractUserFactCandidatesEnabled(this),
-            maxTokensPerBullet = DailyBulletsSettings.getMaxTokensPerBullet(this),
             memoryMode = memoryMode,
             memoryModeAvailability = MemoryModeManager.modeAvailabilityText(memoryMode),
             memorySyncStatus = "Encrypted Sync: ${MemoryModeManager.modeAvailabilityText(MemoryPrivacyMode.ENCRYPTED_SYNC)}",
@@ -257,15 +188,6 @@ class SettingsActivity : AppCompatActivity(), SettingsScreenActions {
             transcriptStorageEnabled = PrivacyPrefs.isTranscriptStorageEnabled(this),
             redactNamesEnabled = PrivacyPrefs.isRedactNamesEnabled(this),
             includeFullTranscriptionInExports = PrivacyPrefs.isIncludeFullTranscriptionInExportsEnabled(this),
-            autoAudioCaptureEnabled = autoAudioEnabled,
-            autoAudioVisualNotesEnabled = AutoAudioCapturePrefs.isVisualNotesEnabled(this),
-            autoAudioSpeechExtendEnabled = AutoAudioCapturePrefs.isSpeechExtendEnabled(this),
-            autoAudioLoopsPerSync = AutoAudioCapturePrefs.getLoopsPerSync(this),
-            autoAudioDebugText = buildAutoAudioDebugText(autoAudioEnabled),
-            requireActionConfirmation = AgentRuntimePrefs.isRequireActionConfirmationEnabled(this),
-            autoExecuteLowRisk = AgentRuntimePrefs.isAutoExecuteLowRiskEnabled(this),
-            agentStatus = AgentRuntimePrefs.getStatus(this),
-            agentLastError = AgentRuntimePrefs.getLastError(this),
             meetingRecording = meeting.isRecording,
             meetingCaptureSource = meeting.source,
         )
@@ -338,188 +260,6 @@ class SettingsActivity : AppCompatActivity(), SettingsScreenActions {
             ProSubscriptionActivity::class.java
         }
         startActivity(Intent(this, target))
-    }
-
-    override fun setProviderType(type: AgentProviderType) {
-        AutomationPrefs.setProviderType(this, type)
-        syncAgentProviderToAiProvider(type)
-        if (type != AgentProviderType.LOCAL_AGENT) {
-            lifecycleScope.launch(Dispatchers.IO) {
-                runCatching { LocalChatSessionManager.unload() }
-            }
-        }
-        refreshSettingsUi()
-    }
-
-    override fun openLocalModels() {
-        startActivity(Intent(this, LocalModelsConfigureActivity::class.java))
-    }
-
-    override fun setLocalAgentAutomationEnabled(enabled: Boolean) {
-        AutomationPrefs.setLocalAgentAutomationEnabled(this, enabled)
-        refreshSettingsUi()
-    }
-
-    override fun setLocalAgentRequireConfirmation(enabled: Boolean) {
-        AutomationPrefs.setRequireConfirmationEnabled(this, enabled)
-        refreshSettingsUi()
-    }
-
-    override fun setLocalAgentMaxSteps(value: Int) {
-        AutomationPrefs.setMaxSteps(this, value)
-        refreshSettingsUi()
-    }
-
-    override fun openAccessibilitySettings() {
-        AlertDialog.Builder(this)
-            .setTitle(com.fersaiyan.cyanbridge.R.string.onboarding_accessibility_disclosure_title)
-            .setMessage(com.fersaiyan.cyanbridge.R.string.onboarding_accessibility_disclosure_body)
-            .setNegativeButton("Not now", null)
-            .setPositiveButton("Continue") { _, _ ->
-                runCatching { startActivity(Intent(Settings.ACTION_ACCESSIBILITY_SETTINGS)) }
-                    .onFailure {
-                        Toast.makeText(this, "Unable to open accessibility settings", Toast.LENGTH_SHORT).show()
-                    }
-            }
-            .show()
-    }
-
-    override fun setAutoCaptureEnabled(enabled: Boolean) {
-        AutomationPrefs.setAutoCaptureEnabled(this, enabled)
-        MemoryModeManager.setScreenOcrCaptureEnabled(this, enabled)
-        CommunityPluginPrefs.setNativePluginEnabled(this, NativePluginIds.AUTO_DIARY, enabled)
-        Toast.makeText(this, if (enabled) "Auto-capture enabled" else "Auto-capture disabled", Toast.LENGTH_SHORT).show()
-        refreshSettingsUi()
-    }
-
-    override fun setCaptureIntervalMinutes(value: Int) {
-        AutomationPrefs.setCaptureIntervalMin(this, value)
-        refreshSettingsUi()
-    }
-
-    override fun openBlacklistApps() {
-        startActivity(Intent(this, AppBlacklistActivity::class.java))
-    }
-
-    override fun openScreenCaptures() {
-        startActivity(Intent(this, ScreenCapturesActivity::class.java))
-    }
-
-    override fun setDailyFactsReminderEnabled(enabled: Boolean) {
-        if (enabled && !hasPostNotificationsPermission()) {
-            XXPermissions.with(this)
-                .permission(Permission.POST_NOTIFICATIONS)
-                .request { _, allGranted ->
-                    updateDailyFactsReminder(allGranted)
-                }
-            return
-        }
-        updateDailyFactsReminder(enabled)
-    }
-
-    private fun updateDailyFactsReminder(enabled: Boolean) {
-        AutomationPrefs.setDailyFactsReminderEnabled(this, enabled)
-        DailyFactsReminderScheduler.scheduleIfEnabled(this, enabled = enabled)
-        Toast.makeText(
-            this,
-            if (enabled) "Daily facts reminder enabled" else "Daily facts reminder disabled",
-            Toast.LENGTH_SHORT,
-        ).show()
-        refreshSettingsUi()
-    }
-
-    override fun openDailyFactsDraft() {
-        startActivity(
-            Intent(this, DailyFactsActivity::class.java)
-                .putExtra(DailyFactsActivity.EXTRA_MODE, DailyFactsActivity.MODE_DRAFT),
-        )
-    }
-
-    override fun openConfirmedDailyFacts() {
-        startActivity(
-            Intent(this, DailyFactsActivity::class.java)
-                .putExtra(DailyFactsActivity.EXTRA_MODE, DailyFactsActivity.MODE_CONFIRMED),
-        )
-    }
-
-    override fun openDailySummary() {
-        startActivity(Intent(this, DailySummaryActivity::class.java))
-    }
-
-    override fun setDailySummaryRefreshHours(value: Int) {
-        AutomationPrefs.setDailySummaryAutoRefreshHours(this, value)
-        refreshSettingsUi()
-    }
-
-    override fun setAutoSaveDailyFactsEnabled(enabled: Boolean) {
-        ChatMemoryPrefs.setAutoSaveDailyFactsEnabled(this, enabled)
-        refreshSettingsUi()
-    }
-
-    override fun setExtractUserFactCandidatesEnabled(enabled: Boolean) {
-        ChatMemoryPrefs.setExtractUserFactCandidatesEnabled(this, enabled)
-        refreshSettingsUi()
-    }
-
-    override fun editBulletPrompt() {
-        val current = DailyBulletsSettings.getCustomBulletPrompt(this).ifBlank { DEFAULT_BULLET_PROMPT }
-        showTextEditorDialog(
-            title = "Bullet Generation Prompt",
-            initial = current,
-            hint = "Leave empty to use default prompt",
-        ) { updated ->
-            DailyBulletsSettings.setCustomBulletPrompt(this, updated)
-            Toast.makeText(this, "Custom bullet prompt saved", Toast.LENGTH_SHORT).show()
-        }
-    }
-
-    override fun resetBulletPrompt() {
-        DailyBulletsSettings.setCustomBulletPrompt(this, "")
-        Toast.makeText(this, "Bullet prompt reset to default", Toast.LENGTH_SHORT).show()
-    }
-
-    override fun setMaxTokensPerBullet(value: Int) {
-        DailyBulletsSettings.setMaxTokensPerBullet(this, value)
-        refreshSettingsUi()
-    }
-
-    override fun editAgentPersona() {
-        LocalAgentMemoryStore.ensureSeedFiles(this)
-        val file = LocalAgentMemoryStore.agentPersonaFile(this)
-        showTextEditorDialog(
-            title = "Agent personality",
-            initial = LocalAgentMemoryStore.readText(file),
-        ) { updated ->
-            LocalAgentMemoryStore.writeText(file, updated)
-            Toast.makeText(this, "Saved agent personality", Toast.LENGTH_SHORT).show()
-        }
-    }
-
-    override fun editUserFacts() {
-        LocalAgentMemoryStore.ensureSeedFiles(this)
-        val file = LocalAgentMemoryStore.userFactsFile(this)
-        showTextEditorDialog(
-            title = "User facts",
-            initial = LocalAgentMemoryStore.readText(file),
-        ) { updated ->
-            LocalAgentMemoryStore.writeText(file, updated)
-            Toast.makeText(this, "Saved user facts", Toast.LENGTH_SHORT).show()
-        }
-    }
-
-    override fun viewContextDebug() {
-        val debug = AgentRuntimePrefs.getLastContextInjectionDebug(this)
-        val atMs = AgentRuntimePrefs.getLastContextInjectionAtMs(this)
-        val message = if (debug.isBlank()) {
-            "No context injection recorded yet."
-        } else {
-            "Last injected: ${SimpleDateFormat("yyyy-MM-dd HH:mm:ss", Locale.US).format(Date(atMs))}\n\n$debug"
-        }
-        AlertDialog.Builder(this)
-            .setTitle("Context Injection Debug")
-            .setMessage(message)
-            .setPositiveButton("Close", null)
-            .show()
     }
 
     override fun setMemoryMode(mode: MemoryPrivacyMode) {
@@ -642,53 +382,6 @@ class SettingsActivity : AppCompatActivity(), SettingsScreenActions {
         refreshSettingsUi()
     }
 
-    override fun setAutoAudioCaptureEnabled(enabled: Boolean) {
-        if (enabled && DeviceProfileStore.isMetaSelected(this)) {
-            Toast.makeText(
-                this,
-                "Auto Audio records HeyCyan onboard files and is unavailable for Meta Ray-Ban.",
-                Toast.LENGTH_LONG,
-            ).show()
-            refreshSettingsUi()
-            return
-        }
-        if (enabled && !hasPostNotificationsPermission()) {
-            XXPermissions.with(this)
-                .permission(Permission.POST_NOTIFICATIONS)
-                .request { _, allGranted ->
-                    if (allGranted) {
-                        enableAutoAudioCapture()
-                    } else {
-                        Toast.makeText(
-                            this,
-                            "Notifications permission denied. Auto audio capture needs a foreground notification.",
-                            Toast.LENGTH_LONG,
-                        ).show()
-                    }
-                    refreshSettingsUi()
-                }
-            return
-        }
-        if (enabled) enableAutoAudioCapture() else disableAutoAudioCapture()
-        refreshSettingsUi()
-    }
-
-    override fun setAutoAudioVisualNotesEnabled(enabled: Boolean) {
-        AutoAudioCapturePrefs.setVisualNotesEnabled(this, enabled)
-        refreshSettingsUi()
-    }
-
-    override fun setAutoAudioSpeechExtendEnabled(enabled: Boolean) {
-        AutoAudioCapturePrefs.setSpeechExtendEnabled(this, enabled)
-        refreshSettingsUi()
-    }
-
-    override fun setAutoAudioLoopsPerSync(value: Int) {
-        if (value !in 1..96) return
-        AutoAudioCapturePrefs.setLoopsPerSync(this, value)
-        refreshSettingsUi()
-    }
-
     override fun exportLocalData() {
         val fileName = "cyanbridge_backup_${SimpleDateFormat("yyyyMMdd_HHmm", Locale.US).format(Date())}.zip"
         exportDataLauncher.launch(fileName)
@@ -728,60 +421,12 @@ class SettingsActivity : AppCompatActivity(), SettingsScreenActions {
             .show()
     }
 
-    override fun setRequireActionConfirmation(enabled: Boolean) {
-        AgentRuntimePrefs.setRequireActionConfirmationEnabled(this, enabled)
-        refreshSettingsUi()
-    }
-
-    override fun setAutoExecuteLowRisk(enabled: Boolean) {
-        AgentRuntimePrefs.setAutoExecuteLowRiskEnabled(this, enabled)
-        refreshSettingsUi()
-    }
-
-    override fun openPendingActions() {
-        startActivity(Intent(this, PendingActionsActivity::class.java))
-    }
-
-    override fun startAgent() {
-        runAgentCommand("Starting...") { LocalAgentController.start(this) }
-    }
-
-    override fun stopAgent() {
-        runAgentCommand("Stopping...") { LocalAgentController.stop(this) }
-    }
-
-    override fun runAgentDemo() {
-        Toast.makeText(
-            this,
-            "Demo: I will read the screen content through your glasses in 5 seconds...",
-            Toast.LENGTH_LONG,
-        ).show()
-        runAgentCommand("Running demo...") { LocalAgentController.demo(this) }
-    }
-
     override fun sendDebugLogs() {
         showLogSubmissionDialog()
     }
 
     override fun stopMeetingCapture() {
         MeetingCaptureService.stop(this)
-    }
-
-    private fun runAgentCommand(
-        optimisticStatus: String,
-        command: () -> LocalAgentController.CommandResult,
-    ) {
-        val result = command()
-        if (result.ok) {
-            AgentRuntimePrefs.setStatus(this, optimisticStatus)
-            AgentRuntimePrefs.clearLastError(this)
-        } else {
-            AgentRuntimePrefs.setStatus(this, "Error")
-            AgentRuntimePrefs.setLastError(this, result.error ?: result.userMessage)
-        }
-        Toast.makeText(this, result.userMessage, Toast.LENGTH_SHORT).show()
-        LocalAgentController.requestStatus(this)
-        refreshSettingsUi()
     }
 
     private fun exportLocalDataToUri(uri: Uri) {
@@ -920,88 +565,6 @@ class SettingsActivity : AppCompatActivity(), SettingsScreenActions {
             .show()
     }
 
-    private fun isLocalAgentAccessibilityServiceEnabled(): Boolean {
-        val enabled = Settings.Secure.getInt(contentResolver, Settings.Secure.ACCESSIBILITY_ENABLED, 0) == 1
-        if (!enabled) return false
-        val expected = ComponentName(this, LocalAgentAccessibilityService::class.java).flattenToString()
-        val services = Settings.Secure.getString(contentResolver, Settings.Secure.ENABLED_ACCESSIBILITY_SERVICES)
-            ?: return false
-        return services.split(':').any { it.equals(expected, ignoreCase = true) }
-    }
-
-    private fun hasPostNotificationsPermission(): Boolean {
-        return Build.VERSION.SDK_INT < Build.VERSION_CODES.TIRAMISU ||
-            XXPermissions.isGranted(this, Manifest.permission.POST_NOTIFICATIONS)
-    }
-
-    private fun ensureExistingAutoAudioNotificationPermission() {
-        if (checkedExistingAutoAudioPermission ||
-            !AutoAudioCapturePrefs.isEnabled(this) ||
-            hasPostNotificationsPermission()
-        ) {
-            return
-        }
-        checkedExistingAutoAudioPermission = true
-        XXPermissions.with(this)
-            .permission(Permission.POST_NOTIFICATIONS)
-            .request { _, allGranted ->
-                if (!allGranted) {
-                    Toast.makeText(
-                        this,
-                        "Enable notifications to keep auto audio capture running in the background.",
-                        Toast.LENGTH_LONG,
-                    ).show()
-                    disableAutoAudioCapture()
-                }
-                refreshSettingsUi()
-            }
-    }
-
-    private fun enableAutoAudioCapture() {
-        AutoAudioCapturePrefs.setEnabled(this, true)
-        CommunityPluginPrefs.setNativePluginEnabled(this, NativePluginIds.AUTO_AUDIO, true)
-        val loops = AutoAudioCapturePrefs.getLoopsPerSync(this)
-        Toast.makeText(this, "Auto audio capture enabled (sync every $loops loops)", Toast.LENGTH_SHORT).show()
-        AutoAudioCaptureService.start(this)
-    }
-
-    private fun disableAutoAudioCapture() {
-        AutoAudioCapturePrefs.setEnabled(this, false)
-        CommunityPluginPrefs.setNativePluginEnabled(this, NativePluginIds.AUTO_AUDIO, false)
-        Toast.makeText(this, "Auto audio capture disabled", Toast.LENGTH_SHORT).show()
-        AutoAudioCaptureService.stop(this)
-    }
-
-    private fun buildAutoAudioDebugText(enabled: Boolean): String {
-        val permissionGranted = hasPostNotificationsPermission()
-        val notificationsEnabled = NotificationManagerCompat.from(this).areNotificationsEnabled()
-        val channelText = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-            val manager = getSystemService(NOTIFICATION_SERVICE) as android.app.NotificationManager
-            val importance = manager.getNotificationChannel("auto_audio_capture")?.importance
-            "channel=${when (importance) {
-                null -> "missing"
-                android.app.NotificationManager.IMPORTANCE_NONE -> "blocked"
-                android.app.NotificationManager.IMPORTANCE_MIN -> "min"
-                android.app.NotificationManager.IMPORTANCE_LOW -> "low"
-                android.app.NotificationManager.IMPORTANCE_DEFAULT -> "default"
-                android.app.NotificationManager.IMPORTANCE_HIGH -> "high"
-                else -> importance.toString()
-            }}"
-        } else {
-            ""
-        }
-        return listOf(
-            if (enabled) "auto-audio: ON" else "auto-audio: OFF",
-            "syncEvery=${AutoAudioCapturePrefs.getLoopsPerSync(this)}x15m",
-            "visualNotes=${if (AutoAudioCapturePrefs.isVisualNotesEnabled(this)) "on" else "off"}",
-            "speechExtend=${if (AutoAudioCapturePrefs.isSpeechExtendEnabled(this)) "on" else "off"}",
-            if (permissionGranted) "perm=ok" else "perm=blocked",
-            if (notificationsEnabled) "appNotifs=on" else "appNotifs=off",
-            channelText,
-            "last=${AutoAudioCapturePrefs.getLastPauseReason(this).ifBlank { "(none)" }}",
-        ).filter(String::isNotBlank).joinToString(" · ")
-    }
-
     private fun buildRecentChatIntent(): Intent {
         val last = ChatStore.listNonEmptyThreads().firstOrNull()
         val lastUserAt = last?.let { thread ->
@@ -1015,17 +578,6 @@ class SettingsActivity : AppCompatActivity(), SettingsScreenActions {
         return Intent(this, ChatThreadActivity::class.java).apply {
             if (openChatId != null) putExtra(ChatThreadActivity.EXTRA_CHAT_ID, openChatId)
         }
-    }
-
-    private fun syncAgentProviderToAiProvider(type: AgentProviderType) {
-        AiProviderPrefs.setProvider(
-            this,
-            when (type) {
-                AgentProviderType.PRO_SUBSCRIPTION -> AiProviderType.CLI_RELAY
-                AgentProviderType.LOCAL_AGENT -> AiProviderType.LOCAL_MODELS
-                AgentProviderType.TASKER -> AiProviderType.MOCK
-            },
-        )
     }
 
     private fun formatPlan(raw: String): String = when (raw.lowercase(Locale.US)) {
@@ -1045,29 +597,10 @@ class SettingsActivity : AppCompatActivity(), SettingsScreenActions {
             SettingsSection.MEMORY_PRIVACY -> "card_memory_privacy"
             SettingsSection.TRANSCRIPTS -> "card_transcripts"
             SettingsSection.DATA -> "card_data"
-            SettingsSection.AGENT -> "card_agent"
             SettingsSection.FAQ -> "card_faq"
             SettingsSection.SUPPORT -> "support"
         }
         return "section_expanded_$legacyCardName"
     }
 
-    companion object {
-        private val DEFAULT_BULLET_PROMPT = """You summarize one mobile screen OCR event into exactly one bullet.
-
-The app package is provided below, and the app name may also appear inside the OCR text.
-
-APP_PACKAGE: ${'$'}{event.packageName}
-EVENT_TIME: ${'$'}{event.time}
-OCR_TEXT: ${'$'}{event.text}
-
-Return JSON only: {"skip": false, "bullet": "...", "confidence": 0.0}
-
-Rules:
-- Keep bullet factual and concise (max 26 words)
-- Preserve concrete details like person names, contact names, topics, or action context when visible
-- If OCR is too noisy or meaningless, set skip=true
-- Do not invent details outside OCR
-""".trimIndent()
-    }
 }

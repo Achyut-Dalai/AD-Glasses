@@ -1,9 +1,18 @@
 package com.fersaiyan.cyanbridge.ui
+import android.content.ComponentName
 import android.content.Context
+import android.content.Intent
+import android.content.pm.PackageManager
+import android.net.Uri
+import android.os.Build
+import android.provider.Settings
+import android.widget.Toast
+import androidx.core.content.ContextCompat
 import androidx.fragment.app.FragmentActivity
 import com.hjq.permissions.OnPermissionCallback
 import com.hjq.permissions.Permission
 import com.hjq.permissions.XXPermissions
+import com.fersaiyan.cyanbridge.localagent.accessibility.LocalAgentAccessibilityService
 
 /**
  * @author hzy ,
@@ -75,12 +84,19 @@ fun hasCallPermission(activity: FragmentActivity): Boolean {
     return XXPermissions.isGranted(activity, permissions)
 }
 
-fun hasBluetooth(activity: FragmentActivity): Boolean {
-    val permissions = mutableListOf<String>()
-    permissions.add(Permission.BLUETOOTH_SCAN)
-    permissions.add(Permission.BLUETOOTH_CONNECT)
-    permissions.add(Permission.BLUETOOTH_ADVERTISE)
-    return XXPermissions.isGranted(activity, permissions)
+private fun requiredBluetoothPermissions(): List<String> {
+    return if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+        listOf(Permission.BLUETOOTH_SCAN, Permission.BLUETOOTH_CONNECT)
+    } else {
+        // BLE discovery uses location on Android 11 and earlier.
+        listOf(Permission.ACCESS_FINE_LOCATION)
+    }
+}
+
+fun hasBluetooth(context: Context): Boolean {
+    return requiredBluetoothPermissions().all { permission ->
+        ContextCompat.checkSelfPermission(context, permission) == PackageManager.PERMISSION_GRANTED
+    }
 }
 
 
@@ -109,11 +125,45 @@ fun requestBluetoothPermission(
     requestCallback: OnPermissionCallback
 ) {
     XXPermissions.with(activity)
-        .permission(Permission.BLUETOOTH_SCAN)
-        .permission(Permission.BLUETOOTH_CONNECT)
-        .permission(Permission.BLUETOOTH_ADVERTISE)
-        .permission(Permission.ACCESS_FINE_LOCATION)
+        .permission(requiredBluetoothPermissions())
         .request(requestCallback)
+}
+
+fun ensureBluetoothRuntimePermission(
+    activity: FragmentActivity,
+    feature: String,
+    onGranted: () -> Unit,
+) {
+    if (hasBluetooth(activity)) {
+        onGranted()
+        return
+    }
+
+    requestBluetoothPermission(activity, object : OnPermissionCallback {
+        override fun onGranted(permissions: MutableList<String>, all: Boolean) {
+            if (all) {
+                onGranted()
+            } else {
+                Toast.makeText(
+                    activity,
+                    "Bluetooth permission is required for $feature",
+                    Toast.LENGTH_LONG,
+                ).show()
+            }
+        }
+
+        override fun onDenied(permissions: MutableList<String>, never: Boolean) {
+            super.onDenied(permissions, never)
+            Toast.makeText(
+                activity,
+                "Bluetooth permission is required for $feature",
+                Toast.LENGTH_LONG,
+            ).show()
+            if (never) {
+                XXPermissions.startPermissionActivity(activity, permissions)
+            }
+        }
+    })
 }
 
 fun requestCallPermission(
@@ -146,22 +196,140 @@ fun requestBgLocation(activity: FragmentActivity, requestCallback: OnPermissionC
 }
 
 fun requestAlertWindowPermission(activity: FragmentActivity) {
-    XXPermissions.with(activity).permission(Permission.SYSTEM_ALERT_WINDOW)
+    activity.startActivity(
+        Intent(
+            Settings.ACTION_MANAGE_OVERLAY_PERMISSION,
+            Uri.parse("package:${activity.packageName}"),
+        )
+    )
 }
 
 fun requestNearbyWifiDevicesPermission(
     activity: FragmentActivity,
     requestCallback: OnPermissionCallback
 ) {
+    requestWifiP2pPermission(activity, requestCallback)
+}
+
+private fun requiredWifiP2pPermissions(): List<String> {
+    return if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+        listOf(Permission.NEARBY_WIFI_DEVICES)
+    } else {
+        // Wifi Direct discovery is location-gated before Android 13.
+        listOf(Permission.ACCESS_FINE_LOCATION)
+    }
+}
+
+fun requestWifiP2pPermission(
+    activity: FragmentActivity,
+    requestCallback: OnPermissionCallback,
+) {
     XXPermissions.with(activity)
-        .permission(Permission.NEARBY_WIFI_DEVICES)
+        .permission(requiredWifiP2pPermissions())
         .request(requestCallback)
 }
 
 fun hasNearbyWifiDevicesPermission(
-    activity: FragmentActivity
+    context: Context,
 ): Boolean {
-    return XXPermissions.isGranted(activity, Permission.NEARBY_WIFI_DEVICES)
+    return hasWifiP2pPermission(context)
+}
+
+fun hasWifiP2pPermission(context: Context): Boolean {
+    return requiredWifiP2pPermissions().all { permission ->
+        ContextCompat.checkSelfPermission(context, permission) == PackageManager.PERMISSION_GRANTED
+    }
+}
+
+fun hasNotificationPermission(context: Context): Boolean {
+    return Build.VERSION.SDK_INT < Build.VERSION_CODES.TIRAMISU ||
+        ContextCompat.checkSelfPermission(
+            context,
+            Permission.POST_NOTIFICATIONS,
+        ) == PackageManager.PERMISSION_GRANTED
+}
+
+fun requestNotificationPermission(
+    activity: FragmentActivity,
+    requestCallback: OnPermissionCallback,
+) {
+    if (hasNotificationPermission(activity)) {
+        requestCallback.onGranted(mutableListOf(Permission.POST_NOTIFICATIONS), true)
+        return
+    }
+    XXPermissions.with(activity)
+        .permission(Permission.POST_NOTIFICATIONS)
+        .request(requestCallback)
+}
+
+fun hasAccessibilityServicePermission(context: Context): Boolean {
+    val enabled = Settings.Secure.getInt(
+        context.contentResolver,
+        Settings.Secure.ACCESSIBILITY_ENABLED,
+        0,
+    ) == 1
+    if (!enabled) return false
+
+    val expected = ComponentName(context, LocalAgentAccessibilityService::class.java).flattenToString()
+    val services = Settings.Secure.getString(
+        context.contentResolver,
+        Settings.Secure.ENABLED_ACCESSIBILITY_SERVICES,
+    ) ?: return false
+    return services.split(':').any { it.equals(expected, ignoreCase = true) }
+}
+
+fun requestAccessibilityServicePermission(
+    activity: FragmentActivity,
+    feature: String,
+): Boolean {
+    if (hasAccessibilityServicePermission(activity)) return true
+    Toast.makeText(
+        activity,
+        "Enable Accessibility access for $feature to continue",
+        Toast.LENGTH_LONG,
+    ).show()
+    activity.startActivity(Intent(Settings.ACTION_ACCESSIBILITY_SETTINGS))
+    return false
+}
+
+fun ensureNotificationPermission(
+    activity: FragmentActivity,
+    feature: String,
+    onDenied: () -> Unit = {},
+    onGranted: () -> Unit,
+) {
+    if (hasNotificationPermission(activity)) {
+        onGranted()
+        return
+    }
+
+    requestNotificationPermission(activity, object : OnPermissionCallback {
+        override fun onGranted(permissions: MutableList<String>, all: Boolean) {
+            if (all) {
+                onGranted()
+            } else {
+                Toast.makeText(
+                    activity,
+                    "Notification permission is required for $feature",
+                    Toast.LENGTH_LONG,
+                ).show()
+                onDenied()
+            }
+        }
+
+        override fun onDenied(permissions: MutableList<String>, never: Boolean) {
+            super.onDenied(permissions, never)
+            Toast.makeText(
+                activity,
+                "Notification permission is required for $feature",
+                Toast.LENGTH_LONG,
+            ).show()
+            onDenied()
+            if (never) {
+                XXPermissions.startPermissionActivity(activity, permissions)
+            }
+        }
+    })
 }
 
 

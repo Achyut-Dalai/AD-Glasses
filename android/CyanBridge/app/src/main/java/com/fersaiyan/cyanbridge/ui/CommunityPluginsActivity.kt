@@ -43,14 +43,17 @@ import com.fersaiyan.cyanbridge.plugins.errandbrain.ErrandBrainSettingsActivity
 import com.fersaiyan.cyanbridge.plugins.errandbrain.ErrandBrainPreferences
 import com.fersaiyan.cyanbridge.plugins.autodiary.AutoDiaryService
 import com.fersaiyan.cyanbridge.plugins.autodiary.AutoDiarySettingsActivity
+import com.fersaiyan.cyanbridge.plugins.localagent.LocalAgentPlugin
+import com.fersaiyan.cyanbridge.plugins.localagent.LocalAgentSettingsActivity
 import com.fersaiyan.cyanbridge.plugins.autoaudio.AutoAudioSettingsActivity
 import com.fersaiyan.cyanbridge.plugins.visualdiary.VisualDiaryPreferences
 import com.fersaiyan.cyanbridge.plugins.visualdiary.VisualDiarySettingsActivity
 import com.fersaiyan.cyanbridge.plugins.visualdiary.VisualDiaryService
-import com.fersaiyan.cyanbridge.agent.LocalAgentPrefs
 import com.fersaiyan.cyanbridge.media.autocapture.AutoAudioCapturePrefs
 import com.fersaiyan.cyanbridge.media.autocapture.AutoAudioCaptureService
 import com.fersaiyan.cyanbridge.plugins.PluginVoicePermissions
+import com.fersaiyan.cyanbridge.ui.ensureNotificationPermission
+import com.fersaiyan.cyanbridge.ui.hasNotificationPermission
 import com.fersaiyan.cyanbridge.shared.plugins.NativePluginIds
 import com.fersaiyan.cyanbridge.ui.recordings.RecordingsListActivity
 import com.fersaiyan.cyanbridge.ui.theme.CyanBridgeTheme
@@ -87,6 +90,14 @@ class CommunityPluginsActivity : AppCompatActivity() {
     private fun nativePluginPool(): List<NativePluginCardData> {
         val isMetaRayban = DeviceProfileStore.isMetaSelected(this)
         return listOf(
+        NativePluginCardData(
+            id = NativePluginIds.LOCAL_AGENT,
+            title = "Local Agent",
+            description = "Private phone automation with accessibility controls, action approval, local planning, and shared diary memory.",
+            badge = "Automation",
+            enabled = LocalAgentPlugin.isEnabled(this),
+            hasSettings = true,
+        ),
         NativePluginCardData(
             id = NativePluginIds.WALKING_AID,
             title = "Walking Aid",
@@ -132,7 +143,7 @@ class CommunityPluginsActivity : AppCompatActivity() {
             title = "AutoDiary",
             description = "Collect screen context and turn it into private daily facts, bullets, and summaries.",
             badge = "Productivity",
-            enabled = LocalAgentPrefs.isAutoCaptureEnabled(this),
+            enabled = AutoDiaryService.isEnabled(this),
             hasSettings = true,
         ),
         NativePluginCardData(
@@ -153,7 +164,7 @@ class CommunityPluginsActivity : AppCompatActivity() {
             title = "Visual Diary",
             description = "Capture glasses scenes, describe them with Gemma, and append concise notes to daily memory.",
             badge = "Productivity",
-            enabled = CommunityPluginPrefs.isNativePluginEnabled(this, NativePluginIds.VISUAL_DIARY),
+            enabled = VisualDiaryPreferences.isEnabled(this),
             hasSettings = true,
         ),
         )
@@ -173,6 +184,7 @@ class CommunityPluginsActivity : AppCompatActivity() {
                     nativePlugins = nativePluginsState,
                     onOpenNativePluginSettings = { pluginId ->
                         when (pluginId) {
+                            NativePluginIds.LOCAL_AGENT -> startActivity(Intent(this, LocalAgentSettingsActivity::class.java))
                             NativePluginIds.WALKING_AID -> startActivity(Intent(this, WalkingAidSettingsActivity::class.java))
                             NativePluginIds.MEETING_SPARK_NOTES -> startActivity(Intent(this, MeetingSparkNotesSettingsActivity::class.java))
                             NativePluginIds.LIVE_CAPTION_RELAY -> startActivity(Intent(this, LiveCaptionRelaySettingsActivity::class.java))
@@ -209,6 +221,10 @@ class CommunityPluginsActivity : AppCompatActivity() {
     private fun toggleNativePlugin(pluginId: String, enabled: Boolean) {
         if (enabled && pluginId == NativePluginIds.AUTO_AUDIO && DeviceProfileStore.isMetaSelected(this)) {
             Toast.makeText(this, "Auto Audio is unavailable for Meta Ray-Ban devices", Toast.LENGTH_LONG).show()
+            return
+        }
+        if (pluginId == NativePluginIds.AUTO_DIARY) {
+            applyNativePluginToggle(pluginId, enabled)
             return
         }
         if (enabled &&
@@ -267,15 +283,36 @@ class CommunityPluginsActivity : AppCompatActivity() {
             }
             return
         }
+        if (enabled && pluginId in NOTIFICATION_PLUGIN_IDS && !hasNotificationPermission(this)) {
+            ensureNotificationPermission(this, pluginId) {
+                applyNativePluginToggle(pluginId, enabled = true)
+            }
+            return
+        }
         applyNativePluginToggle(pluginId, enabled)
     }
 
     private fun applyNativePluginToggle(pluginId: String, enabled: Boolean) {
+        when (pluginId) {
+            NativePluginIds.AUTO_DIARY -> {
+                if (enabled) AutoDiaryService.enable(this) else AutoDiaryService.disable(this)
+                refreshNativePluginUi()
+                return
+            }
+            NativePluginIds.VISUAL_DIARY -> {
+                if (enabled) VisualDiaryService.enable(this) else VisualDiaryService.disable(this)
+                refreshNativePluginUi()
+                return
+            }
+        }
         CommunityPluginPrefs.setNativePluginEnabled(this, pluginId, enabled)
         nativePluginsState = nativePluginsState.map {
             if (it.id == pluginId) it.copy(enabled = enabled) else it
         }
         when (pluginId) {
+            NativePluginIds.LOCAL_AGENT -> {
+                LocalAgentPlugin.setEnabled(this, enabled)
+            }
             "walking_aid" -> {
                 WalkingAidPreferences.setEnabled(this, enabled)
                 if (enabled) WalkingAidService.start(this) else WalkingAidService.stop(this)
@@ -296,16 +333,9 @@ class CommunityPluginsActivity : AppCompatActivity() {
                 ErrandBrainPreferences.setEnabled(this, enabled)
                 if (enabled) ErrandBrainService.start(this) else ErrandBrainService.stop(this)
             }
-            NativePluginIds.AUTO_DIARY -> {
-                if (enabled) AutoDiaryService.start(this) else AutoDiaryService.stop(this)
-            }
             NativePluginIds.AUTO_AUDIO -> {
                 AutoAudioCapturePrefs.setEnabled(this, enabled)
                 if (enabled) AutoAudioCaptureService.start(this) else AutoAudioCaptureService.stop(this)
-            }
-            NativePluginIds.VISUAL_DIARY -> {
-                VisualDiaryPreferences.setEnabled(this, enabled)
-                if (enabled) VisualDiaryService.start(this) else VisualDiaryService.stop(this)
             }
         }
     }
@@ -466,6 +496,12 @@ class CommunityPluginsActivity : AppCompatActivity() {
             "hands_free_translator",
             "errand_brain",
             NativePluginIds.AUTO_AUDIO,
+        )
+
+        private val NOTIFICATION_PLUGIN_IDS = setOf(
+            NativePluginIds.WALKING_AID,
+            NativePluginIds.AUTO_DIARY,
+            NativePluginIds.VISUAL_DIARY,
         )
     }
 }

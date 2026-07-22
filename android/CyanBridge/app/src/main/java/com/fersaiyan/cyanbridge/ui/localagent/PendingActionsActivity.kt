@@ -13,7 +13,9 @@ import androidx.lifecycle.lifecycleScope
 import com.fersaiyan.cyanbridge.data.local.entity.PendingAction
 import com.fersaiyan.cyanbridge.localagent.LocalAgentAccessibilityBridge
 import com.fersaiyan.cyanbridge.localagent.LocalAgentActionParser
+import com.fersaiyan.cyanbridge.localagent.LocalAgentDeviceState
 import com.fersaiyan.cyanbridge.localagent.LocalAgentIntents
+import com.fersaiyan.cyanbridge.localagent.LocalAgentPrefs
 import com.fersaiyan.cyanbridge.localagent.LocalAgentService
 import com.fersaiyan.cyanbridge.localagent.actions.LocalAgentActionManager
 import com.fersaiyan.cyanbridge.shared.ui.localagent.PendingActionsScreen
@@ -139,9 +141,22 @@ class PendingActionsActivity : AppCompatActivity() {
 
             val results = mutableListOf<String>()
             for (a in actions) {
+                val availability = LocalAgentDeviceState.availability(this@PendingActionsActivity)
+                if (availability != LocalAgentDeviceState.Availability.READY) {
+                    LocalAgentPrefs.setStatus(
+                        this@PendingActionsActivity,
+                        "Action blocked: ${availability.statusText}",
+                    )
+                    LocalAgentPrefs.setLastError(this@PendingActionsActivity, availability.errorCode)
+                    results += "${a.javaClass.simpleName}: blocked_device_state"
+                    break
+                }
                 val ok = runCatching {
                     val intentOk = LocalAgentActionManager.executeNow(this@PendingActionsActivity, a)
-                    if (intentOk) true else LocalAgentAccessibilityBridge.perform(a)
+                    if (intentOk) true else LocalAgentAccessibilityBridge.performWithOptionalShizukuFallback(
+                        this@PendingActionsActivity,
+                        a,
+                    )
                 }.getOrDefault(false)
 
                 results += "${a.javaClass.simpleName}: ${if (ok) "ok" else "failed"}"

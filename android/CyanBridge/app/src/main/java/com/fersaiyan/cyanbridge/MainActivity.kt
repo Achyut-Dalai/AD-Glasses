@@ -25,6 +25,7 @@ import com.fersaiyan.cyanbridge.media.GlassesMediaPrefs
 import com.fersaiyan.cyanbridge.media.SyncedMediaFolder
 import com.fersaiyan.cyanbridge.media.VendorAlbumDownloader
 import com.fersaiyan.cyanbridge.ota.FirmwareClient
+import com.fersaiyan.cyanbridge.ota.InstalledFirmwareVersions
 import com.fersaiyan.cyanbridge.ota.FirmwareResult
 import com.fersaiyan.cyanbridge.ota.OtaManager
 import com.fersaiyan.cyanbridge.ota.OtaReadinessStage
@@ -69,6 +70,7 @@ import com.fersaiyan.cyanbridge.ui.CommunityPluginsActivity
 import com.fersaiyan.cyanbridge.ui.SettingsActivity
 import com.fersaiyan.cyanbridge.plugins.PluginVoicePermissions
 import com.fersaiyan.cyanbridge.plugins.autodiary.AutoDiaryService
+import com.fersaiyan.cyanbridge.plugins.localagent.LocalAgentPlugin
 import com.fersaiyan.cyanbridge.plugins.visualdiary.VisualDiaryPreferences
 import com.fersaiyan.cyanbridge.plugins.visualdiary.VisualDiaryService
 import com.fersaiyan.cyanbridge.plugins.errandbrain.ErrandBrainPreferences
@@ -105,9 +107,13 @@ import com.fersaiyan.cyanbridge.privacy.PrivacyPrefs
 import com.fersaiyan.cyanbridge.ui.MyApplication
 import com.fersaiyan.cyanbridge.ui.bleIpBridge
 import com.fersaiyan.cyanbridge.ui.hasBluetooth
+import com.fersaiyan.cyanbridge.ui.hasAccessibilityServicePermission
+import com.fersaiyan.cyanbridge.ui.hasNotificationPermission
+import com.fersaiyan.cyanbridge.ui.hasWifiP2pPermission
 import com.fersaiyan.cyanbridge.ui.requestBluetoothPermission
-import com.fersaiyan.cyanbridge.ui.requestLocationPermission
-import com.fersaiyan.cyanbridge.ui.requestNearbyWifiDevicesPermission
+import com.fersaiyan.cyanbridge.ui.requestAccessibilityServicePermission
+import com.fersaiyan.cyanbridge.ui.ensureNotificationPermission
+import com.fersaiyan.cyanbridge.ui.requestWifiP2pPermission
 import com.fersaiyan.cyanbridge.ui.setOnClickListener
 import com.fersaiyan.cyanbridge.ui.startKtxActivity
 import com.fersaiyan.cyanbridge.ui.debug.DebugLogSupport
@@ -448,6 +454,9 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
     private val downloadInitialPhaseTimeoutMs = 45_000L
     private var pendingBatteryToast = false
     private var batteryCallbackRegistered = false
+    private var enabledFeaturePermissionRequestActive = false
+    private var enabledMetaCameraCheckActive = false
+    private var enabledAccessibilityPromptShown = false
 
     // Chapter 5: meeting capture UI + state
     private val meetingTimerOptions: List<Pair<Long?, String>> = listOf(
@@ -470,6 +479,7 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
         registerForActivityResult(ActivityResultContracts.RequestMultiplePermissions()) { result ->
             val action = pendingMetaDatAction
             pendingMetaDatAction = null
+            enabledMetaCameraCheckActive = false
             if (result.values.all { it }) {
                 val manager = getOrCreateMetaRaybanManager()
                 manager.initialize()
@@ -494,6 +504,7 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
         registerForActivityResult(Wearables.RequestPermissionContract()) { result ->
             val action = pendingMetaCameraAction
             pendingMetaCameraAction = null
+            enabledMetaCameraCheckActive = false
             if (result.getOrDefault(PermissionStatus.Denied) == PermissionStatus.Granted) {
                 action?.invoke()
             } else {
@@ -656,8 +667,13 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
 
         override fun onDenied(permissions: MutableList<String>, never: Boolean) {
             super.onDenied(permissions, never)
-            if(never){
-                XXPermissions.startPermissionActivity(this@MainActivity, permissions);
+            Toast.makeText(
+                this@MainActivity,
+                "Bluetooth permission is required to find glasses",
+                Toast.LENGTH_LONG,
+            ).show()
+            if (never) {
+                XXPermissions.startPermissionActivity(this@MainActivity, permissions)
             }
         }
 
@@ -674,19 +690,20 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
             (application as? com.fersaiyan.cyanbridge.ui.MyApplication)?.startStudioBridge()
         }
         try {
-            if (!BluetoothUtils.isEnabledBluetooth(this)) {
-                val intent = Intent(BluetoothAdapter.ACTION_REQUEST_ENABLE)
-                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
-                    if (ActivityCompat.checkSelfPermission(
-                            this,
-                            Manifest.permission.BLUETOOTH_CONNECT
-                        ) != PackageManager.PERMISSION_GRANTED
-                    ) {
-                        return
+                if (!BluetoothUtils.isEnabledBluetooth(this)) {
+                    val intent = Intent(BluetoothAdapter.ACTION_REQUEST_ENABLE)
+                    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+                        if (ActivityCompat.checkSelfPermission(
+                                this,
+                                Manifest.permission.BLUETOOTH_CONNECT
+                            ) == PackageManager.PERMISSION_GRANTED
+                        ) {
+                            startActivityForResult(intent, 300)
+                        }
+                    } else {
+                        startActivityForResult(intent, 300)
                     }
                 }
-                startActivityForResult(intent, 300)
-            }
         } catch (e: Exception) {
         }
         if (!hasBluetooth(this)) {
@@ -705,6 +722,114 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
 
         refreshAiQueryButtonsState()
         refreshNativePluginShortcutState()
+        ensureEnabledBackgroundFeaturePermissions()
+        ensureEnabledMetaCameraFeature()
+    }
+
+    private fun ensureEnabledBackgroundFeaturePermissions() {
+        if (enabledFeaturePermissionRequestActive) return
+
+        val voicePluginEnabled =
+            com.fersaiyan.cyanbridge.localmodels.remote.RemoteOpenAiPrefs.isBridgeConfigured(this) ||
+                AutoAudioCapturePrefs.isEnabled(this) ||
+                setOf(
+                    NativePluginIds.MEETING_SPARK_NOTES,
+                    NativePluginIds.LIVE_CAPTION_RELAY,
+                    NativePluginIds.HANDS_FREE_TRANSLATOR,
+                    NativePluginIds.ERRAND_BRAIN,
+                    NativePluginIds.AUTO_AUDIO,
+                ).any { CommunityPluginPrefs.isNativePluginEnabled(this, it) }
+
+        if (voicePluginEnabled && !PluginVoicePermissions.hasRequiredPermissions(this)) {
+            enabledFeaturePermissionRequestActive = true
+            PluginVoicePermissions.ensure(
+                this,
+                onGranted = {
+                    enabledFeaturePermissionRequestActive = false
+                    restartEnabledBackgroundFeatures()
+                },
+                onDenied = {
+                    enabledFeaturePermissionRequestActive = false
+                },
+            )
+            return
+        }
+
+        val notificationFeatureEnabled =
+            WalkingAidPreferences.isEnabled(this) ||
+                AutoDiaryService.isEnabled(this) ||
+                VisualDiaryPreferences.isEnabled(this) ||
+                LocalAgentPlugin.isEnabled(this) ||
+                isMeizuMyvuSelected()
+        if (notificationFeatureEnabled && !hasNotificationPermission(this)) {
+            enabledFeaturePermissionRequestActive = true
+            ensureNotificationPermission(this, "enabled background features") {
+                enabledFeaturePermissionRequestActive = false
+                restartEnabledBackgroundFeatures()
+            }
+            return
+        }
+
+        val needsAccessibility = AutoDiaryService.isEnabled(this) || LocalAgentPlugin.isEnabled(this)
+        if (!needsAccessibility || hasAccessibilityServicePermission(this)) {
+            enabledAccessibilityPromptShown = false
+        } else if (!enabledAccessibilityPromptShown) {
+            enabledAccessibilityPromptShown = true
+            requestAccessibilityServicePermission(this, "screen-memory features")
+            return
+        }
+    }
+
+    private fun restartEnabledBackgroundFeatures() {
+        if (AutoAudioCapturePrefs.isEnabled(this)) AutoAudioCaptureService.start(this)
+        if (AutoDiaryService.isEnabled(this)) AutoDiaryService.startIfEnabled(this)
+        startEnabledCameraFeatures()
+        if (LocalAgentPlugin.isEnabled(this)) LocalAgentPlugin.start(this)
+        if (isMeizuMyvuSelected()) {
+            DeviceProfileStore.loadLastSelected(this)?.macAddress?.let { address ->
+                getOrCreateMeizuMyvuManager().connect(address, this)
+            }
+        }
+
+        if (CommunityPluginPrefs.isNativePluginEnabled(this, NativePluginIds.MEETING_SPARK_NOTES)) {
+            MeetingSparkNotesService.start(this)
+        }
+        if (CommunityPluginPrefs.isNativePluginEnabled(this, NativePluginIds.LIVE_CAPTION_RELAY)) {
+            LiveCaptionRelayService.start(this)
+        }
+        if (CommunityPluginPrefs.isNativePluginEnabled(this, NativePluginIds.HANDS_FREE_TRANSLATOR)) {
+            HandsFreeTranslatorService.start(this)
+        }
+        if (CommunityPluginPrefs.isNativePluginEnabled(this, NativePluginIds.ERRAND_BRAIN)) {
+            ErrandBrainService.start(this)
+        }
+        if (com.fersaiyan.cyanbridge.localmodels.remote.RemoteOpenAiPrefs.isBridgeConfigured(this)) {
+            (application as? MyApplication)?.startStudioBridge()
+        }
+    }
+
+    private fun ensureEnabledMetaCameraFeature() {
+        if (!isMetaRaybanSelected() || !hasNotificationPermission(this)) return
+        if (!WalkingAidPreferences.isEnabled(this) && !VisualDiaryPreferences.isEnabled(this)) return
+        if (enabledMetaCameraCheckActive) return
+
+        enabledMetaCameraCheckActive = true
+        ensureMetaCameraReady {
+            enabledMetaCameraCheckActive = false
+            if (WalkingAidPreferences.isEnabled(this)) WalkingAidService.start(this)
+            if (VisualDiaryPreferences.isEnabled(this)) VisualDiaryService.startIfEnabled(this)
+        }
+    }
+
+    private fun startEnabledCameraFeatures() {
+        if (isMetaRaybanSelected()) {
+            if (WalkingAidPreferences.isEnabled(this) || VisualDiaryPreferences.isEnabled(this)) {
+                ensureEnabledMetaCameraFeature()
+            }
+            return
+        }
+        if (WalkingAidPreferences.isEnabled(this)) WalkingAidService.start(this)
+        if (VisualDiaryPreferences.isEnabled(this)) VisualDiaryService.startIfEnabled(this)
     }
 
     override fun onNewIntent(intent: Intent) {
@@ -815,18 +940,91 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
 
     inner class BluetoothPermissionCallback : OnPermissionCallback {
         override fun onGranted(permissions: MutableList<String>, all: Boolean) {
-            if (!all) {
-
+            if (all) {
+                AutoPairManager.requestConnect(this@MainActivity, reason = "bluetooth_permission_granted")
             }
         }
 
         override fun onDenied(permissions: MutableList<String>, never: Boolean) {
             super.onDenied(permissions, never)
+            Toast.makeText(
+                this@MainActivity,
+                "Bluetooth permission is required to reconnect to glasses",
+                Toast.LENGTH_LONG,
+            ).show()
             if (never) {
                 XXPermissions.startPermissionActivity(this@MainActivity, permissions)
             }
         }
 
+    }
+
+    private fun ensureBluetoothPermission(feature: String, onGranted: () -> Unit) {
+        if (hasBluetooth(this)) {
+            onGranted()
+            return
+        }
+
+        requestBluetoothPermission(this, object : OnPermissionCallback {
+            override fun onGranted(permissions: MutableList<String>, all: Boolean) {
+                if (all) {
+                    onGranted()
+                } else {
+                    Toast.makeText(
+                        this@MainActivity,
+                        "Bluetooth permission is required for $feature",
+                        Toast.LENGTH_LONG,
+                    ).show()
+                }
+            }
+
+            override fun onDenied(permissions: MutableList<String>, never: Boolean) {
+                super.onDenied(permissions, never)
+                Toast.makeText(
+                    this@MainActivity,
+                    "Bluetooth permission is required for $feature",
+                    Toast.LENGTH_LONG,
+                ).show()
+                if (never) {
+                    XXPermissions.startPermissionActivity(this@MainActivity, permissions)
+                }
+            }
+        })
+    }
+
+    private fun ensureGlassesTransportPermissions(feature: String, onGranted: () -> Unit) {
+        ensureBluetoothPermission(feature) {
+            if (hasWifiP2pPermission(this)) {
+                onGranted()
+                return@ensureBluetoothPermission
+            }
+
+            requestWifiP2pPermission(this, object : OnPermissionCallback {
+                override fun onGranted(permissions: MutableList<String>, all: Boolean) {
+                    if (all) {
+                        onGranted()
+                    } else {
+                        Toast.makeText(
+                            this@MainActivity,
+                            "Nearby devices or Location permission is required for $feature",
+                            Toast.LENGTH_LONG,
+                        ).show()
+                    }
+                }
+
+                override fun onDenied(permissions: MutableList<String>, never: Boolean) {
+                    super.onDenied(permissions, never)
+                    Toast.makeText(
+                        this@MainActivity,
+                        "Nearby devices or Location permission is required for $feature",
+                        Toast.LENGTH_LONG,
+                    ).show()
+                    if (never) {
+                        XXPermissions.startPermissionActivity(this@MainActivity, permissions)
+                    }
+                }
+            })
+        }
     }
 
     private fun updateDashboardState(
@@ -987,7 +1185,7 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
             GlassesDashboardAction.Reconnect -> {
                 if (isMeizuMyvuSelected()) {
                     DeviceProfileStore.loadLastSelected(this)?.macAddress?.let {
-                        getOrCreateMeizuMyvuManager().connect(it)
+                        getOrCreateMeizuMyvuManager().connect(it, this)
                     } ?: startKtxActivity<DeviceBindActivity>()
                 } else if (isMetaRaybanSelected()) {
                     ensureMetaDatReady { updateConnectionStatus(false) }
@@ -1101,7 +1299,7 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
             GlassesDashboardAction.MetaSendDiagnostics -> showMetaDiagnostics()
             GlassesDashboardAction.MeizuConnect -> {
                 DeviceProfileStore.loadLastSelected(this)?.macAddress?.let {
-                    getOrCreateMeizuMyvuManager().connect(it)
+                    getOrCreateMeizuMyvuManager().connect(it, this)
                 } ?: Toast.makeText(this, "Select MYVU glasses from Scan first", Toast.LENGTH_LONG).show()
             }
             GlassesDashboardAction.MeizuDisconnect -> getOrCreateMeizuMyvuManager().disconnect()
@@ -1125,10 +1323,11 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
     }
 
     private fun syncLegacyNativePluginState() {
+        LocalAgentPlugin.syncNativePluginState(this)
         CommunityPluginPrefs.setNativePluginEnabled(
             this,
             NativePluginIds.AUTO_DIARY,
-            AutomationPrefs.isAutoCaptureEnabled(this),
+            AutoDiaryService.isEnabled(this),
         )
         CommunityPluginPrefs.setNativePluginEnabled(
             this,
@@ -1145,6 +1344,16 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
     private fun buildNativePluginShortcutState(pluginId: String?): NativePluginShortcutUiState? {
         val id = pluginId ?: return null
         val definition = when (id) {
+            NativePluginIds.LOCAL_AGENT -> NativePluginShortcutUiState(
+                id = id,
+                title = "Local Agent",
+                description = "Run private phone automation with approval controls for risky actions.",
+                isEnabled = LocalAgentPlugin.isEnabled(this),
+                buttons = listOf(
+                    NativePluginShortcutButton(NativePluginShortcutAction.START, "Start agent"),
+                    NativePluginShortcutButton(NativePluginShortcutAction.STOP, "Stop agent"),
+                ),
+            )
             NativePluginIds.MEETING_SPARK_NOTES -> NativePluginShortcutUiState(
                 id = id,
                 title = "Meeting Spark Notes",
@@ -1276,31 +1485,36 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
             return
         }
         val start = {
-            CommunityPluginPrefs.setNativePluginEnabled(this, pluginId, true)
             when (pluginId) {
-                NativePluginIds.MEETING_SPARK_NOTES -> {
-                    MeetingSparkNotesPreferences.setEnabled(this, true)
-                    MeetingSparkNotesService.start(this)
+                NativePluginIds.AUTO_DIARY -> AutoDiaryService.enable(this)
+                NativePluginIds.VISUAL_DIARY -> VisualDiaryService.enable(this)
+                else -> {
+                    CommunityPluginPrefs.setNativePluginEnabled(this, pluginId, true)
+                    when (pluginId) {
+                        NativePluginIds.LOCAL_AGENT -> LocalAgentPlugin.start(this)
+                        NativePluginIds.MEETING_SPARK_NOTES -> {
+                            MeetingSparkNotesPreferences.setEnabled(this, true)
+                            MeetingSparkNotesService.start(this)
+                        }
+                        NativePluginIds.LIVE_CAPTION_RELAY -> {
+                            LiveCaptionRelayPreferences.setEnabled(this, true)
+                            LiveCaptionRelayService.start(this)
+                        }
+                        NativePluginIds.HANDS_FREE_TRANSLATOR -> {
+                            HandsFreeTranslatorPreferences.setEnabled(this, true)
+                            HandsFreeTranslatorService.start(this)
+                        }
+                        NativePluginIds.ERRAND_BRAIN -> {
+                            ErrandBrainPreferences.setEnabled(this, true)
+                            ErrandBrainService.start(this)
+                        }
+                        NativePluginIds.WALKING_AID -> {
+                            WalkingAidPreferences.setEnabled(this, true)
+                            WalkingAidService.start(this)
+                        }
+                        NativePluginIds.AUTO_AUDIO -> AutoAudioCaptureService.start(this)
+                    }
                 }
-                NativePluginIds.LIVE_CAPTION_RELAY -> {
-                    LiveCaptionRelayPreferences.setEnabled(this, true)
-                    LiveCaptionRelayService.start(this)
-                }
-                NativePluginIds.HANDS_FREE_TRANSLATOR -> {
-                    HandsFreeTranslatorPreferences.setEnabled(this, true)
-                    HandsFreeTranslatorService.start(this)
-                }
-                NativePluginIds.ERRAND_BRAIN -> {
-                    ErrandBrainPreferences.setEnabled(this, true)
-                    ErrandBrainService.start(this)
-                }
-                NativePluginIds.WALKING_AID -> {
-                    WalkingAidPreferences.setEnabled(this, true)
-                    WalkingAidService.start(this)
-                }
-                NativePluginIds.AUTO_DIARY -> AutoDiaryService.start(this)
-                NativePluginIds.AUTO_AUDIO -> AutoAudioCaptureService.start(this)
-                NativePluginIds.VISUAL_DIARY -> VisualDiaryService.start(this)
             }
             refreshNativePluginShortcutState()
         }
@@ -1325,41 +1539,47 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
         }
 
         if (pluginId == NativePluginIds.WALKING_AID ||
+            pluginId == NativePluginIds.LOCAL_AGENT ||
             pluginId == NativePluginIds.AUTO_DIARY ||
             pluginId == NativePluginIds.VISUAL_DIARY
         ) {
             start()
         } else {
-            PluginVoicePermissions.ensure(this, start)
+            PluginVoicePermissions.ensure(this, onGranted = start)
         }
     }
 
     private fun stopNativePlugin(pluginId: String) {
-        CommunityPluginPrefs.setNativePluginEnabled(this, pluginId, false)
         when (pluginId) {
-            NativePluginIds.MEETING_SPARK_NOTES -> {
-                MeetingSparkNotesPreferences.setEnabled(this, false)
-                MeetingSparkNotesService.stop(this)
+            NativePluginIds.AUTO_DIARY -> AutoDiaryService.disable(this)
+            NativePluginIds.VISUAL_DIARY -> VisualDiaryService.disable(this)
+            else -> {
+                CommunityPluginPrefs.setNativePluginEnabled(this, pluginId, false)
+                when (pluginId) {
+                    NativePluginIds.LOCAL_AGENT -> LocalAgentPlugin.stop(this)
+                    NativePluginIds.MEETING_SPARK_NOTES -> {
+                        MeetingSparkNotesPreferences.setEnabled(this, false)
+                        MeetingSparkNotesService.stop(this)
+                    }
+                    NativePluginIds.LIVE_CAPTION_RELAY -> {
+                        LiveCaptionRelayPreferences.setEnabled(this, false)
+                        LiveCaptionRelayService.stop(this)
+                    }
+                    NativePluginIds.HANDS_FREE_TRANSLATOR -> {
+                        HandsFreeTranslatorPreferences.setEnabled(this, false)
+                        HandsFreeTranslatorService.stop(this)
+                    }
+                    NativePluginIds.ERRAND_BRAIN -> {
+                        ErrandBrainPreferences.setEnabled(this, false)
+                        ErrandBrainService.stop(this)
+                    }
+                    NativePluginIds.WALKING_AID -> {
+                        WalkingAidPreferences.setEnabled(this, false)
+                        WalkingAidService.stop(this)
+                    }
+                    NativePluginIds.AUTO_AUDIO -> AutoAudioCaptureService.stop(this)
+                }
             }
-            NativePluginIds.LIVE_CAPTION_RELAY -> {
-                LiveCaptionRelayPreferences.setEnabled(this, false)
-                LiveCaptionRelayService.stop(this)
-            }
-            NativePluginIds.HANDS_FREE_TRANSLATOR -> {
-                HandsFreeTranslatorPreferences.setEnabled(this, false)
-                HandsFreeTranslatorService.stop(this)
-            }
-            NativePluginIds.ERRAND_BRAIN -> {
-                ErrandBrainPreferences.setEnabled(this, false)
-                ErrandBrainService.stop(this)
-            }
-            NativePluginIds.WALKING_AID -> {
-                WalkingAidPreferences.setEnabled(this, false)
-                WalkingAidService.stop(this)
-            }
-            NativePluginIds.AUTO_DIARY -> AutoDiaryService.stop(this)
-            NativePluginIds.AUTO_AUDIO -> AutoAudioCaptureService.stop(this)
-            NativePluginIds.VISUAL_DIARY -> VisualDiaryService.stop(this)
         }
     }
 
@@ -1455,6 +1675,29 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
                 return@setOnClickListener
             }
 
+            val needsBluetoothPermission = this == binding.btnConnect ||
+                this == binding.btnDisconnect ||
+                this == binding.btnAddListener ||
+                this == binding.btnSetTime ||
+                this == binding.btnVersion ||
+                this == binding.btnCamera ||
+                this == binding.btnVideo ||
+                this == binding.btnRecord ||
+                this == binding.btnBt ||
+                this == binding.btnBattery ||
+                this == binding.btnVolume ||
+                this == binding.btnMediaCount ||
+                this == binding.btnDataDownload ||
+                this == binding.btnTestHijackImage ||
+                this == binding.btnOtaInfo ||
+                this == binding.btnPullOtaTest
+            if (needsBluetoothPermission && !hasBluetooth(this@MainActivity)) {
+                ensureBluetoothPermission("this glasses feature") {
+                    performClick()
+                }
+                return@setOnClickListener
+            }
+
             // Do not queue an unawaited audio-stop command immediately before another command
             // that needs the vendor SDK's single glassesControl response slot.
             val actionSendsGlassesControl = this == binding.btnCamera ||
@@ -1546,7 +1789,7 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
                 }
 
                 binding.btnScan -> {
-                    requestLocationPermission(this@MainActivity, PermissionCallback())
+                    requestBluetoothPermission(this@MainActivity, PermissionCallback())
                 }
 
                 binding.btnConnect -> {
@@ -1724,24 +1967,7 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
                     }
                 }
                 binding.btnDataDownload -> {
-                    // Check and request necessary permissions
-                    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-                        // Android 13+ requires NEARBY_WIFI_DEVICES permission
-                        requestNearbyWifiDevicesPermission(this@MainActivity, object : OnPermissionCallback {
-                            override fun onGranted(permissions: MutableList<String>, all: Boolean) {
-                                if (all) {
-                                    showDownloadFlowPicker()
-                                }
-                            }
-
-                            override fun onDenied(permissions: MutableList<String>, never: Boolean) {
-                                super.onDenied(permissions, never)
-                                if (never) {
-                                    XXPermissions.startPermissionActivity(this@MainActivity, permissions)
-                                }
-                            }
-                        })
-                    } else {
+                    ensureGlassesTransportPermissions("Wi-Fi media sync") {
                         showDownloadFlowPicker()
                     }
                 }
@@ -2000,6 +2226,12 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
 
     private fun requestOtaFirmware(source: OtaFirmwareSource) {
         if (rejectHeyCyanOnlyFeature("HeyCyan OTA")) return
+        if (!hasBluetooth(this) || !hasWifiP2pPermission(this)) {
+            ensureGlassesTransportPermissions("Wi-Fi OTA") {
+                requestOtaFirmware(source)
+            }
+            return
+        }
         if (otaManager.isActive || otaPreparationJob?.isActive == true || otaSessionLease != null) {
             Log.w("Ota", "OTA is already preparing or running")
             return
@@ -2241,13 +2473,13 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
                 val wifiFirmwareVersion = deviceInfo.wifiFirmwareVersion.orEmpty().trim()
                 val bleHardwareVersion = deviceInfo.hardwareVersion.orEmpty().trim()
                 val bleFirmwareVersion = deviceInfo.firmwareVersion.orEmpty().trim()
-                if (listOf(
-                        wifiHardwareVersion,
-                        wifiFirmwareVersion,
-                        bleHardwareVersion,
-                        bleFirmwareVersion,
-                    ).any { it.isBlank() }
-                ) {
+                val installedFirmwareVersions = InstalledFirmwareVersions(
+                    wifiHardwareVersion = wifiHardwareVersion,
+                    wifiFirmwareVersion = wifiFirmwareVersion,
+                    bleHardwareVersion = bleHardwareVersion,
+                    bleFirmwareVersion = bleFirmwareVersion,
+                )
+                if (!installedFirmwareVersions.isComplete()) {
                     throw IllegalStateException("Could not read all Wi-Fi and Bluetooth firmware identifiers")
                 }
 
@@ -2263,8 +2495,7 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
                 val otaDir = File(filesDir, "ota/catalog")
                 val wifiResult = try {
                     client.fetchAndDownload(
-                        hardwareVersion = wifiHardwareVersion,
-                        firmwareVersion = wifiFirmwareVersion,
+                        deviceVersions = installedFirmwareVersions,
                         outputDir = otaDir,
                         target = OtaTarget.V821_WIFI,
                         source = source,
@@ -2273,6 +2504,16 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
                     throw error
                 } catch (error: Exception) {
                     FirmwareResult.Error("Wi-Fi artifact request failed: ${error.message}")
+                }
+
+                if (wifiResult !is FirmwareResult.Ready) {
+                    showCatalogResolutionFailure(
+                        result = wifiResult,
+                        source = source,
+                        target = OtaTarget.V821_WIFI,
+                        deviceInfo = deviceInfo,
+                    )
+                    return@launch
                 }
 
                 withContext(Dispatchers.Main) {
@@ -2285,8 +2526,7 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
                 }
                 val bleResult = try {
                     client.fetchAndDownload(
-                        hardwareVersion = bleHardwareVersion,
-                        firmwareVersion = bleFirmwareVersion,
+                        deviceVersions = installedFirmwareVersions,
                         outputDir = otaDir,
                         target = OtaTarget.JIELI_BLE,
                         source = source,
@@ -2297,15 +2537,6 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
                     FirmwareResult.Error("BLE artifact request failed: ${error.message}")
                 }
 
-                if (wifiResult !is FirmwareResult.Ready) {
-                    showCatalogResolutionFailure(
-                        result = wifiResult,
-                        source = source,
-                        target = OtaTarget.V821_WIFI,
-                        deviceInfo = deviceInfo,
-                    )
-                    return@launch
-                }
                 if (bleResult !is FirmwareResult.Ready) {
                     showCatalogResolutionFailure(
                         result = bleResult,
@@ -2373,7 +2604,7 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
                     }
                     dashboardState = dashboardState.copy(
                         ota = dashboardState.ota.copy(
-                            stateLabel = "Pair unavailable",
+                            stateLabel = "Firmware set unavailable",
                             detail = "The ${target.expectedFirmwareExtension()} artifact was not resolved; no component will be flashed.",
                         ),
                         firmwarePatchRequest = FirmwarePatchRequestUiState(
@@ -2410,7 +2641,7 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
                 is FirmwareResult.Error -> {
                     Toast.makeText(
                         this@MainActivity,
-                        "Firmware pair resolution failed: ${result.message}",
+                        "Firmware resolution failed: ${result.message}",
                         Toast.LENGTH_LONG,
                     ).show()
                 }
@@ -2658,6 +2889,12 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
             Log.w("LivePreview", "Passive live preview is unavailable outside debug builds")
             return
         }
+        if (!hasBluetooth(this) || !hasWifiP2pPermission(this)) {
+            ensureGlassesTransportPermissions("live preview") {
+                startLivePreview()
+            }
+            return
+        }
         Log.i("LivePreview", "  BUTTON TAP: Start Live Preview")
         Log.i("LivePreview", "  BLE connected: ${BleOperateManager.getInstance().isConnected}")
         Log.i("LivePreview", "  Manager active: ${livePreviewManager.isActive}")
@@ -2735,6 +2972,12 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
     private fun startWifiAdbDebug() {
         if (rejectHeyCyanOnlyFeature("Wi-Fi ADB debug")) return
         if (!BuildConfig.DEBUG || wifiAdbDebugController.isActive) return
+        if (!hasBluetooth(this) || !hasWifiP2pPermission(this)) {
+            ensureGlassesTransportPermissions("Wi-Fi ADB debug") {
+                startWifiAdbDebug()
+            }
+            return
+        }
         if (!BleOperateManager.getInstance().isConnected) {
             Toast.makeText(this, "Connect the glasses over Bluetooth first.", Toast.LENGTH_LONG).show()
             return
@@ -4476,17 +4719,24 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
 
     private fun setupAgentControlsUi() {
         binding.btnAgentStart.setOnClickListener {
-            val res = LocalAgentController.start(this)
-            if (res.ok) {
-                LocalAgentPrefs.setStatus(this, "Starting…")
-                LocalAgentPrefs.clearLastError(this)
-            } else {
-                LocalAgentPrefs.setStatus(this, "Error")
-                LocalAgentPrefs.setLastError(this, res.error ?: res.userMessage)
+            val startAgent = {
+                val res = LocalAgentController.start(this)
+                if (res.ok) {
+                    LocalAgentPrefs.setStatus(this, "Starting…")
+                    LocalAgentPrefs.clearLastError(this)
+                } else {
+                    LocalAgentPrefs.setStatus(this, "Error")
+                    LocalAgentPrefs.setLastError(this, res.error ?: res.userMessage)
+                }
+                refreshAgentStatusUi()
+                Toast.makeText(this, res.userMessage, Toast.LENGTH_SHORT).show()
+                LocalAgentController.requestStatus(this)
             }
-            refreshAgentStatusUi()
-            Toast.makeText(this, res.userMessage, Toast.LENGTH_SHORT).show()
-            LocalAgentController.requestStatus(this)
+            if (!hasNotificationPermission(this)) {
+                ensureNotificationPermission(this, "Local Agent") { startAgent() }
+            } else {
+                startAgent()
+            }
         }
 
         binding.btnAgentStop.setOnClickListener {
@@ -5197,6 +5447,19 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
         afterP2pTeardown: Boolean = false,
     ) {
         if (rejectHeyCyanOnlyFeature("Wi-Fi media sync")) return
+
+        if (!hasBluetooth(this) || !hasWifiP2pPermission(this)) {
+            ensureGlassesTransportPermissions("Wi-Fi media sync") {
+                startDataDownload(
+                    mode = mode,
+                    retryCount = retryCount,
+                    isRetry = isRetry,
+                    afterP2pTeardown = afterP2pTeardown,
+                )
+            }
+            return
+        }
+
         downloadFlowMode = mode
         officialFlowRetryCount = retryCount
 
@@ -5223,19 +5486,6 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
             Toast.makeText(
                 this,
                 "Please enable WiFi to sync with glasses.",
-                Toast.LENGTH_LONG
-            ).show()
-            return
-        }
-
-        // Check NEARBY_WIFI_DEVICES on Android 13+
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU &&
-            !XXPermissions.isGranted(this, "android.permission.NEARBY_WIFI_DEVICES")
-        ) {
-            Log.e("DataDownload", "NEARBY_WIFI_DEVICES permission not granted")
-            Toast.makeText(
-                this,
-                "NEARBY_WIFI_DEVICES permission not granted.",
                 Toast.LENGTH_LONG
             ).show()
             return

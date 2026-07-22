@@ -19,6 +19,8 @@ import com.fersaiyan.cyanbridge.ai.router.AiProviderType
 import com.fersaiyan.cyanbridge.localmodels.storage.LocalModelStorageRepository
 import com.fersaiyan.cyanbridge.localagent.daily.DailyFactsReminderScheduler
 import com.fersaiyan.cyanbridge.plugins.autodiary.AutoDiaryService
+import com.fersaiyan.cyanbridge.plugins.localagent.LocalAgentPlugin
+import com.fersaiyan.cyanbridge.plugins.PluginVoicePermissions
 import com.fersaiyan.cyanbridge.plugins.visualdiary.VisualDiaryPreferences
 import com.fersaiyan.cyanbridge.plugins.visualdiary.VisualDiaryService
 import com.fersaiyan.cyanbridge.memoryvault.MemoryVaultBootstrap
@@ -70,6 +72,7 @@ class MyApplication : Application(){
             context = this,
             enabled = LocalAgentPrefs.isDailyFactsReminderEnabled(this),
         )
+        LocalAgentPlugin.syncNativePluginState(this)
 
         // Auto audio capture (glasses recording loop)
         if (AutoAudioCapturePrefs.isEnabled(this) && !AutoAudioCaptureService.isRunning()) {
@@ -78,12 +81,12 @@ class MyApplication : Application(){
 
         runCatching { MemoryVaultBootstrap.ensureInitialized(this) }
 
-        if (LocalAgentPrefs.isAutoCaptureEnabled(this) && !AutoDiaryService.isRunning()) {
-            AutoDiaryService.start(this)
+        if (AutoDiaryService.isEnabled(this) && !AutoDiaryService.isRunning()) {
+            AutoDiaryService.startIfEnabled(this)
         }
 
         if (VisualDiaryPreferences.isEnabled(this) && !VisualDiaryService.isRunning()) {
-            VisualDiaryService.start(this)
+            VisualDiaryService.startIfEnabled(this)
         }
 
         maybePreloadLocalModel()
@@ -99,7 +102,7 @@ class MyApplication : Application(){
      */
     fun startStudioBridge(): Boolean {
         if (!RemoteOpenAiPrefs.isBridgeConfigured(this)) return false
-        if (!StudioApprovalHandler.canCaptureVoice(this)) return false
+        if (!PluginVoicePermissions.hasRequiredPermissions(this)) return false
 
         // A settings refresh replaces both the socket and its TTS resources.
         stopStudioBridge()
