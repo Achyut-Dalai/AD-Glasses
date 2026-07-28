@@ -29,6 +29,8 @@ class SyncedMediaGalleryScreenTest {
                     onNavigateBack = {},
                     onRefresh = { refreshCount += 1 },
                     onOpenMedia = {},
+                    onShareItems = {},
+                    onDeleteItems = {},
                 )
             }
         }

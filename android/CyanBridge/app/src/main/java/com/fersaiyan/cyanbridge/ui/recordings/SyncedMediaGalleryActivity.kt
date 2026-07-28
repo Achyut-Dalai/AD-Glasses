@@ -3,6 +3,7 @@ package com.fersaiyan.cyanbridge.ui.recordings
 import android.content.Intent
 import android.os.Build
 import android.os.Bundle
+import android.provider.MediaStore
 import android.util.Size
 import android.widget.Toast
 import androidx.activity.compose.setContent
@@ -48,6 +49,8 @@ class SyncedMediaGalleryActivity : AppCompatActivity() {
                     onNavigateBack = ::finish,
                     onRefresh = ::loadSyncedMedia,
                     onOpenMedia = ::openMediaItem,
+                    onShareItems = ::shareMediaItems,
+                    onDeleteItems = ::deleteMediaItems,
                 )
             }
         }
@@ -103,5 +106,52 @@ class SyncedMediaGalleryActivity : AppCompatActivity() {
             .onFailure {
                 Toast.makeText(this, getString(R.string.synced_media_open_failed), Toast.LENGTH_SHORT).show()
             }
+    }
+
+    private fun shareMediaItems(items: List<SyncedMediaItem>) {
+        if (items.isEmpty()) return
+        val uris = items.map { android.net.Uri.parse(it.contentUriString) }
+        val sendIntent = if (uris.size == 1) {
+            Intent(Intent.ACTION_VIEW).apply {
+                setDataAndType(uris[0], if (uris[0].lastPathSegment?.endsWith(".mp4") == true) "video/*" else "image/*")
+                addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+            }
+        } else {
+            Intent(Intent.ACTION_SEND_MULTIPLE).apply {
+                putParcelableArrayListExtra(Intent.EXTRA_STREAM, ArrayList(uris))
+                setType("image/* video/*")
+                addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+            }
+        }
+        val shareIntent = Intent.createChooser(sendIntent, null)
+        runCatching { startActivity(shareIntent) }
+            .onFailure {
+                Toast.makeText(this, "Failed to share items", Toast.LENGTH_SHORT).show()
+            }
+    }
+
+    private fun deleteMediaItems(items: List<SyncedMediaItem>) {
+        if (items.isEmpty()) return
+        uiScope.launch {
+            val deleted = withContext(Dispatchers.IO) {
+                items.mapNotNull { item ->
+                    runCatching {
+                        val uri = android.net.Uri.parse(item.contentUriString)
+                        val deletedCount = contentResolver.delete(uri, null, null)
+                        if (deletedCount > 0) {
+                            item
+                        } else {
+                            null
+                        }
+                    }.getOrNull()
+                }
+            }
+            if (deleted.isNotEmpty()) {
+                Toast.makeText(this@SyncedMediaGalleryActivity, "Deleted ${deleted.size} item${if (deleted.size > 1) "s" else ""}", Toast.LENGTH_SHORT).show()
+                loadSyncedMedia()
+            } else {
+                Toast.makeText(this@SyncedMediaGalleryActivity, "Failed to delete items", Toast.LENGTH_SHORT).show()
+            }
+        }
     }
 }
