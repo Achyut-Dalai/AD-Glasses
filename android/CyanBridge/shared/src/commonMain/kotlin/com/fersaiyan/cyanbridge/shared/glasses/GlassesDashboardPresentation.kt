@@ -21,6 +21,8 @@ data class GlassesDashboardUiState(
     val assistantMode: GlassesAssistantMode = GlassesAssistantMode.GEMINI,
     val imageQueryEnabled: Boolean = true,
     val imageQueryLabel: String = "Test image AI description",
+    val imageThumbnailQualitySdkValue: Int = 5,
+    val imageThumbnailQualityLabel: String = "Detailed",
     val showHeyCyanControls: Boolean = false,
     val showMetaRaybanControls: Boolean = false,
     val showMeizuMyvuControls: Boolean = false,
@@ -72,6 +74,7 @@ data class GlassesMeetingUiState(
 enum class GlassesAssistantMode {
     GEMINI,
     CHAT_GPT,
+    PHONE_DEFAULT,
     CHOSEN_PROVIDER,
 }
 
@@ -186,8 +189,10 @@ sealed interface GlassesDashboardAction {
     data object StopMeetingCapture : GlassesDashboardAction
     data class RunNativePluginShortcut(val action: NativePluginShortcutAction) : GlassesDashboardAction
     data class SelectAssistantMode(val mode: GlassesAssistantMode) : GlassesDashboardAction
+    data class SelectImageThumbnailQuality(val sdkValue: Int) : GlassesDashboardAction
     data object TestVoiceQuestion : GlassesDashboardAction
     data object TestImageQuestion : GlassesDashboardAction
+    data object OpenExternalImageAutomationDiagnostics : GlassesDashboardAction
     data object CapturePhoto : GlassesDashboardAction
     data object ToggleVideo : GlassesDashboardAction
     data object StartAudioRecording : GlassesDashboardAction

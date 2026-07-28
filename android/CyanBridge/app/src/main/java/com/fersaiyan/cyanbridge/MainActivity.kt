@@ -5,6 +5,7 @@ import android.Manifest
 import android.app.Activity
 import android.bluetooth.BluetoothAdapter
 import android.content.BroadcastReceiver
+import android.content.ClipData
 import android.content.Context
 import android.content.Intent
 import android.content.IntentFilter
@@ -192,8 +193,21 @@ import com.fersaiyan.cyanbridge.ai.router.AssistantSpeechPolicy
 import com.fersaiyan.cyanbridge.ai.router.AiProviderPrefs
 import com.fersaiyan.cyanbridge.ai.router.AiProviderType as RelayProviderType
 import com.fersaiyan.cyanbridge.ai.router.CliRelayClient
-import com.fersaiyan.cyanbridge.ai.vision.VisionProfilePreferences
-import com.fersaiyan.cyanbridge.ai.vision.VisionPromptBuilder
+import com.fersaiyan.cyanbridge.ai.vision.ImageQuestionPreferences
+import com.fersaiyan.cyanbridge.ai.vision.ImageQuestionPromptResolver
+import com.fersaiyan.cyanbridge.ai.vision.ImageQuestionRoute
+import com.fersaiyan.cyanbridge.ai.vision.ResolvedImageQuestionPrompt
+import com.fersaiyan.cyanbridge.ai.image.DefaultAssistantResolver
+import com.fersaiyan.cyanbridge.ai.image.ExternalGeminiAutomationDiagnosticsActivity
+import com.fersaiyan.cyanbridge.ai.image.ExternalImageAutomationIntents
+import com.fersaiyan.cyanbridge.ai.image.ExternalImageAutomationStage
+import com.fersaiyan.cyanbridge.ai.image.ExternalImageAutomationStore
+import com.fersaiyan.cyanbridge.ai.image.ImageAutomationTarget
+import com.fersaiyan.cyanbridge.ai.image.ImageQuestionBroadcast
+import com.fersaiyan.cyanbridge.ai.image.ImageQuestionSource
+import com.fersaiyan.cyanbridge.ai.image.ImageQuestionSourcePolicy
+import com.fersaiyan.cyanbridge.ai.image.ImageThumbnailQuality
+import com.fersaiyan.cyanbridge.ai.image.HighQualityFailureChoice
 import com.fersaiyan.cyanbridge.shared.glasses.GlassesAssistantMode
 import com.fersaiyan.cyanbridge.shared.glasses.GlassesDashboardAction
 import com.fersaiyan.cyanbridge.shared.glasses.GlassesDashboardUiState
@@ -225,7 +239,6 @@ import com.fersaiyan.cyanbridge.ui.appearance.rememberAppearanceSettings
 import com.fersaiyan.cyanbridge.shared.ui.CyanBridgeApp
 import com.fersaiyan.cyanbridge.ui.theme.CyanBridgeTheme
 import android.content.ClipboardManager
-import android.content.ClipData
 import com.meta.wearable.dat.core.Wearables
 import com.meta.wearable.dat.core.types.Permission
 import com.meta.wearable.dat.core.types.PermissionStatus
@@ -242,6 +255,14 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
 
     // Optional Local Agent UI status
     private var agentReceiverRegistered = false
+    private var imageAutomationStatusReceiverRegistered = false
+    private val imageAutomationStatusReceiver = object : BroadcastReceiver() {
+        override fun onReceive(context: Context?, intent: Intent?) {
+            if (intent?.action == ExternalImageAutomationIntents.internalStatusAction(packageName)) {
+                handleExternalImageAutomationStatus()
+            }
+        }
+    }
     private val agentStatusReceiver = object : BroadcastReceiver() {
         override fun onReceive(context: Context?, intent: Intent?) {
             if (intent == null) return
@@ -265,7 +286,6 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
             refreshAgentStatusUi()
         }
     }
-
     override fun onInit(status: Int) {
         if (status == TextToSpeech.SUCCESS) {
             tts?.language = Locale.getDefault()
@@ -279,7 +299,7 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
     private fun speakVision(text: String) {
         speak(
             text = text,
-            languageTag = VisionProfilePreferences.get(this).responseLanguageTag,
+            languageTag = ImageQuestionPreferences.get(this).appLanguageTag,
             utteranceId = null,
             onDone = null,
         )
@@ -314,9 +334,9 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
         private var loggedLargeDataHandlerMethods = false
         private const val AI_MODE_GEMINI = "Gemini"
         private const val AI_MODE_CHATGPT = "ChatGPT"
+        private const val AI_MODE_PHONE_DEFAULT = "PhoneDefault"
         private const val AI_MODE_TASKER = "Tasker"
         private const val AI_MODE_CHOSEN_PROVIDER = "ChosenProvider"
-        private const val TASKER_PACKAGE_NAME = "net.dinglisch.android.taskerm"
         private const val QUERY_MAX_AGENT_PERSONA_CHARS = 1200
         private const val QUERY_MAX_USER_FACTS_CHARS = 1400
         private const val QUERY_MAX_CONFIRMED_FACTS_CHARS = 1800
@@ -433,6 +453,11 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
     private val pendingImageCapturePermit = AtomicReference<BackgroundGlassesCommandPermit?>(null)
     @Volatile
     private var pendingImageCaptureSourceTag: String? = null
+    private var pendingImageQuestionSource = ImageQuestionSourcePolicy.defaultSource()
+    private var pendingImageThumbnailQuality = ImageQuestionSourcePolicy.defaultThumbnailQuality()
+    private var pendingImageCaptureStartedAtMs: Long = 0L
+    private var mediaDownloadPurpose = MediaDownloadPurpose.FULL_SYNC
+    private var highQualityImageRequest: HighQualityImageRequest? = null
     private var lastImageQueryAtMs: Long = 0L
 
     // Official app registers the notify listener with cmdType=2 for album import.
@@ -518,6 +543,7 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
         super.onCreate(savedInstanceState)
         binding = AcitivytMainBinding.inflate(layoutInflater)
         initView()
+        refreshImageThumbnailQuality()
         setupMeetingCaptureUi()
         setupAgentControlsUi()
         setupMetaRaybanUi()
@@ -604,6 +630,13 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
                 .registerReceiver(agentStatusReceiver, IntentFilter(LocalAgentIntents.ACTION_STATUS_CHANGED))
             agentReceiverRegistered = true
         }
+        if (!imageAutomationStatusReceiverRegistered) {
+            LocalBroadcastManager.getInstance(this).registerReceiver(
+                imageAutomationStatusReceiver,
+                IntentFilter(ExternalImageAutomationIntents.internalStatusAction(packageName)),
+            )
+            imageAutomationStatusReceiverRegistered = true
+        }
         LocalAgentController.requestStatus(this)
         refreshAgentStatusUi()
     }
@@ -617,6 +650,10 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
         if (agentReceiverRegistered) {
             LocalBroadcastManager.getInstance(this).unregisterReceiver(agentStatusReceiver)
             agentReceiverRegistered = false
+        }
+        if (imageAutomationStatusReceiverRegistered) {
+            LocalBroadcastManager.getInstance(this).unregisterReceiver(imageAutomationStatusReceiver)
+            imageAutomationStatusReceiverRegistered = false
         }
 
         if (EventBus.getDefault().isRegistered(this)) {
@@ -682,6 +719,7 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
 
     override fun onResume() {
         super.onResume()
+        handleExternalImageAutomationStatus()
         if (
             com.fersaiyan.cyanbridge.localmodels.remote.RemoteOpenAiPrefs.isBridgeConfigured(this) &&
             !com.fersaiyan.cyanbridge.studiobridge.StudioBridgeClient.isRunning() &&
@@ -1119,6 +1157,7 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
     private fun isDashboardActionBlockedByExclusiveSession(action: GlassesDashboardAction): Boolean {
         if (
             action is GlassesDashboardAction.SubmitFirmwarePatchRequest ||
+            action is GlassesDashboardAction.SelectImageThumbnailQuality ||
             action == GlassesDashboardAction.DismissFirmwarePatchRequest ||
             action == GlassesDashboardAction.MetaSendDiagnostics
         ) {
@@ -1136,6 +1175,7 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
                 is GlassesDashboardAction.SelectAssistantMode,
                 GlassesDashboardAction.TestVoiceQuestion,
                 GlassesDashboardAction.TestImageQuestion,
+                GlassesDashboardAction.OpenExternalImageAutomationDiagnostics,
                 GlassesDashboardAction.StartAgent,
                 GlassesDashboardAction.StopAgent,
                 GlassesDashboardAction.RunAgentDemo,
@@ -1218,10 +1258,27 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
             is GlassesDashboardAction.SelectAssistantMode -> when (action.mode) {
                 GlassesAssistantMode.GEMINI -> binding.btnModeGemini.performClick()
                 GlassesAssistantMode.CHAT_GPT -> binding.btnModeChatgpt.performClick()
+                GlassesAssistantMode.PHONE_DEFAULT -> selectPhoneDefaultAssistant()
                 GlassesAssistantMode.CHOSEN_PROVIDER -> binding.btnModeTasker.performClick()
+            }
+            is GlassesDashboardAction.SelectImageThumbnailQuality -> {
+                val quality = ImageQuestionPreferences.setThumbnailQuality(this, action.sdkValue)
+                pendingImageThumbnailQuality = quality
+                updateDashboardState { state ->
+                    state.copy(
+                        imageThumbnailQualitySdkValue = quality.sdkValue,
+                        imageThumbnailQualityLabel = quality.label,
+                    )
+                }
             }
             GlassesDashboardAction.TestVoiceQuestion -> binding.btnTestHijackVoice.performClick()
             GlassesDashboardAction.TestImageQuestion -> binding.btnTestHijackImage.performClick()
+            GlassesDashboardAction.OpenExternalImageAutomationDiagnostics -> {
+                startActivity(
+                    Intent(this, ExternalGeminiAutomationDiagnosticsActivity::class.java)
+                        .putExtra("assistant", resolveEffectiveAiAssistantMode()),
+                )
+            }
             GlassesDashboardAction.CapturePhoto -> binding.btnCamera.performClick()
             GlassesDashboardAction.ToggleVideo -> binding.btnVideo.performClick()
             GlassesDashboardAction.StartAudioRecording -> binding.btnRecord.performClick()
@@ -1744,6 +1801,12 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
                             unsupportedReason,
                             Toast.LENGTH_SHORT,
                         ).show()
+                        return@setOnClickListener
+                    }
+
+                    val externalReason = externalImageAutomationUnsupportedReason()
+                    if (externalReason != null) {
+                        Toast.makeText(this@MainActivity, externalReason, Toast.LENGTH_LONG).show()
                         return@setOnClickListener
                     }
 
@@ -3278,36 +3341,50 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
     }
 
     private fun isGeminiOrChatGptModeSelected(): Boolean {
-        return aiAssistantMode == AI_MODE_GEMINI || aiAssistantMode == AI_MODE_CHATGPT
+        return aiAssistantMode == AI_MODE_GEMINI ||
+            aiAssistantMode == AI_MODE_CHATGPT ||
+            aiAssistantMode == AI_MODE_PHONE_DEFAULT
+    }
+
+    private fun selectedImageAutomationTarget(): ImageAutomationTarget {
+        return ImageAutomationTarget.forAssistantMode(
+            assistantMode = resolveEffectiveAiAssistantMode(),
+            defaultAssistantPackage = DefaultAssistantResolver.packageName(this),
+        )
+    }
+
+    private fun externalImageAutomationUnsupportedReason(): String? {
+        if (!isGeminiOrChatGptModeSelected() || AiProviderPrefs.getProvider(this) == RelayProviderType.CLI_RELAY) {
+            return null
+        }
+
+        return when (selectedImageAutomationTarget()) {
+            ImageAutomationTarget.GEMINI -> null
+            ImageAutomationTarget.CHATGPT ->
+                "ChatGPT image questions are unavailable until its separate Tasker profile passes end-to-end testing."
+            ImageAutomationTarget.NONE ->
+                "Your phone default assistant supports voice launch only; image questions require the Gemini image profile."
+        }
     }
 
     private fun requiresTaskerAutomationForImageQuestions(): Boolean {
         if (!isGeminiOrChatGptModeSelected()) return false
-        return AiProviderPrefs.getProvider(this) != RelayProviderType.CLI_RELAY
-    }
-
-    private fun isTaskerInstalled(): Boolean {
-        return runCatching {
-            packageManager.getPackageInfo(TASKER_PACKAGE_NAME, 0)
-            true
-        }.getOrDefault(false)
+        return AiProviderPrefs.getProvider(this) != RelayProviderType.CLI_RELAY &&
+            selectedImageAutomationTarget().imageAutomationSupported
     }
 
     private fun maybeShowGeminiChatGptImageRequirementsWarning(): Boolean {
         if (!requiresTaskerAutomationForImageQuestions()) return false
 
-        val taskerInstalled = isTaskerInstalled()
-        val pluginEnabled = CommunityPluginPrefs.isTaskerAssistantEnabled(this)
-        if (taskerInstalled && pluginEnabled) return false
-
-        val msg = when {
-            !taskerInstalled && !pluginEnabled ->
-                "AI image questions won't work until Tasker and the ChatGPT/Gemini assistant plugin are enabled."
-            !taskerInstalled ->
-                "AI image questions won't work until Tasker is installed and enabled."
-            else ->
-                "AI image questions won't work until the ChatGPT/Gemini assistant Tasker plugin is downloaded from Community Plugins and enabled."
+        val directShareAvailable = selectedImageAutomationTarget().packageNames.any { targetPackage ->
+            Intent(Intent.ACTION_SEND).apply {
+                type = "image/jpeg"
+                setPackage(targetPackage)
+            }.resolveActivity(packageManager) != null
         }
+        if (directShareAvailable) return false
+
+        val msg = "Gemini cannot receive image shares on this phone. Install or update Gemini; a generic default assistant cannot be used for image questions."
 
         AlertDialog.Builder(this)
             .setTitle("AI image setup required")
@@ -3323,6 +3400,7 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
 
     private fun refreshAiQueryButtonsState() {
         val unsupportedReason = imageQueryUnsupportedReasonForCurrentSelection()
+            ?: externalImageAutomationUnsupportedReason()
         val imageSupported = unsupportedReason == null
         binding.btnTestHijackImage.isEnabled = imageSupported
         binding.btnTestHijackImage.alpha = if (imageSupported) 1f else 0.45f
@@ -3340,6 +3418,17 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
         }
     }
 
+    private fun refreshImageThumbnailQuality() {
+        val quality = ImageQuestionPreferences.thumbnailQuality(this)
+        pendingImageThumbnailQuality = quality
+        updateDashboardState { state ->
+            state.copy(
+                imageThumbnailQualitySdkValue = quality.sdkValue,
+                imageThumbnailQualityLabel = quality.label,
+            )
+        }
+    }
+
     private fun refreshAiModeButtons() {
         val activeColor = ContextCompat.getColor(this, R.color.cyan_accent)
         val inactiveColor = ContextCompat.getColor(this, R.color.text_secondary)
@@ -3352,6 +3441,7 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
             state.copy(
                 assistantMode = when (aiAssistantMode) {
                     AI_MODE_CHATGPT -> GlassesAssistantMode.CHAT_GPT
+                    AI_MODE_PHONE_DEFAULT -> GlassesAssistantMode.PHONE_DEFAULT
                     AI_MODE_CHOSEN_PROVIDER -> GlassesAssistantMode.CHOSEN_PROVIDER
                     else -> GlassesAssistantMode.GEMINI
                 },
@@ -3360,15 +3450,56 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
         refreshAiQueryButtonsState()
     }
 
-    private fun sendAiBroadcast(type: String, path: String? = null, assistantMode: String = resolveEffectiveAiAssistantMode()) {
+    private fun selectPhoneDefaultAssistant() {
+        aiAssistantMode = AI_MODE_PHONE_DEFAULT
+        refreshAiModeButtons()
+        val assistantPackage = DefaultAssistantResolver.packageName(this)
+        val result = when (selectedImageAutomationTarget()) {
+            ImageAutomationTarget.GEMINI -> "Gemini image profile"
+            ImageAutomationTarget.CHATGPT -> "ChatGPT voice only; image profile is not validated"
+            ImageAutomationTarget.NONE -> "voice launch only; image questions unavailable"
+        }
+        Toast.makeText(
+            this,
+            "Phone default: ${assistantPackage ?: "not detected"}. $result",
+            Toast.LENGTH_LONG,
+        ).show()
+    }
+
+    private fun sendAiBroadcast(
+        type: String,
+        path: String? = null,
+        prompt: String? = null,
+        imageUri: Uri? = null,
+        imageSource: ImageQuestionSource? = null,
+        handoffMode: String? = null,
+        callbackSession: String? = null,
+        callbackToken: String? = null,
+        assistantMode: String = resolveEffectiveAiAssistantMode(),
+    ) {
+        val payload = ImageQuestionBroadcast.Payload(
+            type = type,
+            imagePath = path,
+            imageUri = imageUri?.toString(),
+            question = prompt,
+            assistant = assistantMode,
+            source = imageSource,
+            handoffMode = handoffMode,
+            callbackAction = ExternalImageAutomationIntents.statusAction(packageName),
+            callbackSession = callbackSession,
+            callbackToken = callbackToken,
+        )
         val intent = Intent(aiEventAction(packageName)).apply {
-            putExtra("type", type)
-            path?.let { putExtra("path", it) }
-            putExtra("assistant", assistantMode)
+            payload.extras().forEach { (key, value) -> putExtra(key, value) }
+            // Kept for profiles created before the explicit question extra existed.
+            prompt?.let { putExtra("prompt", it) }
             addFlags(Intent.FLAG_INCLUDE_STOPPED_PACKAGES)
         }
         sendBroadcast(intent)
-        Log.i("AIHijack", "Sent Broadcast to Tasker: $type")
+        Log.i(
+            "AIHijack",
+            "Sent Broadcast to Tasker: type=$type source=${imageSource?.wireName.orEmpty()} handoff=${handoffMode.orEmpty()}",
+        )
     }
 
     private fun todayDateString(tsMs: Long = System.currentTimeMillis()): String {
@@ -3562,9 +3693,9 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
         return null
     }
 
-    private fun buildVisionPrompt(userQuestion: String?): String {
-        return VisionPromptBuilder.build(
-            settings = VisionProfilePreferences.get(this),
+    private fun resolveImageQuestionPrompt(userQuestion: String?): ResolvedImageQuestionPrompt {
+        return ImageQuestionPromptResolver.resolve(
+            settings = ImageQuestionPreferences.get(this),
             userQuestion = userQuestion,
         )
     }
@@ -3572,7 +3703,7 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
     private fun triggerMemoryAwareImageQuery(
         imagePath: String,
         providerType: AgentProviderType,
-        userQuestion: String?,
+        resolvedPrompt: ResolvedImageQuestionPrompt,
     ) {
         Log.i("AIHijack", "Running memory-aware image query for chosen provider $providerType: $imagePath")
 
@@ -3583,7 +3714,7 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
                         val visionResult = CliRelayClient.imageQuery(
                             context = this@MainActivity,
                             imagePath = imagePath,
-                            prompt = buildVisionPrompt(userQuestion),
+                            prompt = resolvedPrompt.forRoute(ImageQuestionRoute.PRO_RELAY),
                             modelOverride = ProSubscriptionAiPrefs.getQuestionsModel(this@MainActivity),
                         )
 
@@ -3612,7 +3743,7 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
 
                     AgentProviderType.LOCAL_AGENT -> {
                         runMemoryAwareChosenProviderQuery(
-                            userPrompt = buildVisionPrompt(userQuestion),
+                            userPrompt = resolvedPrompt.forRoute(ImageQuestionRoute.LOCAL_GEMMA),
                             providerType = AgentProviderType.LOCAL_AGENT,
                             imagePaths = listOf(imagePath),
                         )
@@ -3622,7 +3753,7 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
                         val visionResult = CliRelayClient.imageQuery(
                             context = this@MainActivity,
                             imagePath = imagePath,
-                            prompt = buildVisionPrompt(userQuestion),
+                            prompt = resolvedPrompt.forRoute(ImageQuestionRoute.TASKER_GEMINI),
                         )
                         if (visionResult.isFailure) {
                             val errorMsg = visionResult.exceptionOrNull()?.message ?: "unknown error"
@@ -3652,10 +3783,22 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
     }
 
     private fun triggerCliRelayImageCaptureAndQuery() {
-        handleGlassesImageButtonPressed(triggerCapture = true, sourceTag = "test_button")
+        handleGlassesImageButtonPressed(
+            triggerCapture = true,
+            sourceTag = "test_button",
+            thumbnailQuality = pendingImageThumbnailQuality,
+        )
     }
 
-    private fun handleGlassesImageButtonPressed(triggerCapture: Boolean, sourceTag: String) {
+    private fun handleGlassesImageButtonPressed(
+        triggerCapture: Boolean,
+        sourceTag: String,
+        source: ImageQuestionSource = ImageQuestionSourcePolicy.defaultSource(),
+        thumbnailQuality: ImageThumbnailQuality = ImageQuestionSourcePolicy.defaultThumbnailQuality(),
+    ) {
+        pendingImageQuestionSource = source
+        pendingImageThumbnailQuality = thumbnailQuality
+        pendingImageCaptureStartedAtMs = System.currentTimeMillis()
         if (isMetaRaybanSelected()) {
             captureMetaImageForQuestion(sourceTag)
             return
@@ -3692,19 +3835,26 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
             Toast.makeText(this, "Triggering glasses camera…", Toast.LENGTH_SHORT).show()
             CoroutineScope(Dispatchers.IO).launch {
                 try {
+                    val thumbnailSize = pendingImageThumbnailQuality.sdkValue.toByte()
+                    Log.i(
+                        "AIHijack",
+                        "[$sourceTag] Requesting BLE AI capture at ${pendingImageThumbnailQuality.label} " +
+                            "(${pendingImageThumbnailQuality.sdkValue})",
+                    )
+                    // The vendor AI command both starts the capture and chooses the thumbnail
+                    // fidelity. Do not follow it with the normal-photo command: the official
+                    // app uses this command alone for its low-latency vision path.
                     LargeDataHandler.getInstance().glassesControl(
-                        byteArrayOf(0x02, 0x01, 0x06, 0x02, 0x02),
+                        byteArrayOf(0x02, 0x01, 0x06, thumbnailSize, thumbnailSize),
                     ) { _, _ -> }
-                    delay(250)
-                    LargeDataHandler.getInstance().glassesControl(byteArrayOf(0x02, 0x01, 0x01)) { _, _ -> }
 
                     // The device's 0x02 notification is the authoritative signal that its
-                    // thumbnail is ready. Preserve a bounded fallback for devices that omit it.
+                    // image is ready. Preserve a bounded fallback for devices that omit it.
                     delay(4_000)
                     if (imageCaptureAwaitingNotification.compareAndSet(true, false)) {
                         pendingImageCaptureSourceTag = null
-                        Log.w("AIHijack", "[$sourceTag] No AI photo-ready signal; requesting thumbnail directly")
-                        requestImageThumbnailForQuestion(sourceTag)
+                        Log.w("AIHijack", "[$sourceTag] No AI photo-ready signal; requesting selected image source")
+                        requestSelectedImageSourceForQuestion(sourceTag)
                     }
                 } catch (error: Exception) {
                     imageCaptureAwaitingNotification.set(false)
@@ -3717,7 +3867,14 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
                 }
             }
         } else {
-            requestImageThumbnailForQuestion(sourceTag)
+            requestSelectedImageSourceForQuestion(sourceTag)
+        }
+    }
+
+    private fun requestSelectedImageSourceForQuestion(sourceTag: String) {
+        when (pendingImageQuestionSource) {
+            ImageQuestionSource.HIGH_QUALITY -> requestHighQualityImageForQuestion(sourceTag)
+            ImageQuestionSource.FAST_PREVIEW -> requestImageThumbnailForQuestion(sourceTag)
         }
     }
 
@@ -3735,7 +3892,11 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
                     manager.savePhotoForProcessing(photo, "META_AI_$sourceTag")
                 }.onSuccess { file ->
                     withContext(Dispatchers.Main) {
-                        onImageThumbnailReadyForQuestion(file.absolutePath)
+                        onImageReadyForQuestion(
+                            imagePath = file.absolutePath,
+                            source = ImageQuestionSource.HIGH_QUALITY,
+                            transferDurationMs = System.currentTimeMillis() - pendingImageCaptureStartedAtMs,
+                        )
                     }
                 }.onFailure { error ->
                     clearPendingVoiceImageQuestion(sourceTag)
@@ -3769,6 +3930,7 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
             if (file.exists()) file.delete()
         }
 
+        val startedAtMs = System.currentTimeMillis()
         CoroutineScope(Dispatchers.IO).launch {
             var thumbnailTransferStarted = false
             try {
@@ -3784,12 +3946,25 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
                         "AIHijack",
                         "[$sourceTag] Thumbnail transfer complete: ${file.absolutePath} (${file.length()} bytes)",
                     )
-                    onImageThumbnailReadyForQuestion(file.absolutePath)
+                    withContext(Dispatchers.Main) {
+                        onImageReadyForQuestion(
+                            imagePath = file.absolutePath,
+                            source = ImageQuestionSource.FAST_PREVIEW,
+                            transferDurationMs = System.currentTimeMillis() - startedAtMs,
+                        )
+                    }
                     return@launch
                 }
 
-                Log.w("AIHijack", "[$sourceTag] BLE thumbnail did not complete; using fallback while the SDK stays isolated")
-                useLatestImageFallback(sourceTag)
+                clearPendingVoiceImageQuestion(sourceTag)
+                Log.w("AIHijack", "[$sourceTag] BLE preview did not complete")
+                runOnUiThread {
+                    Toast.makeText(
+                        this@MainActivity,
+                        "Fast preview transfer failed. Please try again.",
+                        Toast.LENGTH_LONG,
+                    ).show()
+                }
             } finally {
                 imageThumbnailRequestInProgress.set(false)
                 if (!thumbnailTransferStarted) {
@@ -3851,43 +4026,20 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
         }
     }
 
-    /**
-     * Use the most recent Glasses_AI_*.jpg already on the phone.
-     */
-    private suspend fun useLatestImageFallback(sourceTag: String) {
-        val fallbackImage = findLatestGlassesAiImage()
-        if (fallbackImage != null) {
-            val fallbackFile = File(fallbackImage)
-            val ageMs = System.currentTimeMillis() - fallbackFile.lastModified()
-            if (ageMs > IMAGE_FALLBACK_MAX_AGE_MS || ageMs < 0) {
-                clearPendingVoiceImageQuestion(sourceTag)
-                Log.w("AIHijack", "[$sourceTag] Image too old: age=${ageMs / 1000}s")
-                runOnUiThread {
-                    Toast.makeText(
-                        this@MainActivity,
-                        "Last image is ${ageMs / 60000} min old — too old to use.",
-                        Toast.LENGTH_LONG,
-                    ).show()
-                }
-            } else {
-                Log.i("AIHijack", "[$sourceTag] Using latest captured image (age=${ageMs / 1000}s)")
-                onImageThumbnailReadyForQuestion(fallbackImage)
-            }
-        } else {
-            clearPendingVoiceImageQuestion(sourceTag)
-            runOnUiThread {
-                Toast.makeText(
-                    this@MainActivity,
-                    "No image found. Take a photo with the glasses first.",
-                    Toast.LENGTH_LONG,
-                ).show()
-            }
-        }
-    }
+    private data class ImageQuestionImageMetrics(
+        val width: Int,
+        val height: Int,
+        val bytes: Long,
+    )
 
-    private fun onImageThumbnailReadyForQuestion(imagePath: String) {
+    private fun onImageReadyForQuestion(
+        imagePath: String,
+        source: ImageQuestionSource,
+        transferDurationMs: Long,
+    ) {
         val imageFile = File(imagePath)
-        if (!isDecodableImageFile(imageFile)) {
+        val metrics = readImageQuestionMetrics(imageFile)
+        if (metrics == null) {
             pendingVoiceImageQuestion = null
             Log.e("AIHijack", "Image file is missing or invalid: $imagePath (${imageFile.length()} bytes)")
             runOnUiThread {
@@ -3899,52 +4051,74 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
         val ageMs = System.currentTimeMillis() - imageFile.lastModified()
         if (ageMs > IMAGE_FALLBACK_MAX_AGE_MS || ageMs < 0) {
             pendingVoiceImageQuestion = null
-            Log.w("AIHijack", "Thumbnail too old: age=${ageMs / 1000}s, path=$imagePath")
+            Log.w("AIHijack", "Image too old: age=${ageMs / 1000}s, path=$imagePath")
             runOnUiThread {
                 Toast.makeText(
                     this,
-                    "Thumbnail is ${ageMs / 60000} min old — too old to use.",
+                    "Image is ${ageMs / 60000} min old — too old to use.",
                     Toast.LENGTH_LONG,
                 ).show()
             }
             return
         }
 
+        val sourceLabel = if (source == ImageQuestionSource.FAST_PREVIEW) {
+            "${pendingImageThumbnailQuality.label} BLE preview"
+        } else {
+            source.label
+        }
+        val transferSummary = "$sourceLabel: ${metrics.width}x${metrics.height}, " +
+            "${formatTransferBytes(metrics.bytes)}, ${transferDurationMs.coerceAtLeast(0L)} ms"
+        Log.i(
+            "ImageQuestion",
+            "Ready for AI provider: source=${source.wireName}, dimensions=${metrics.width}x${metrics.height}, " +
+                "thumbnailQuality=${pendingImageThumbnailQuality.label}, bytes=${metrics.bytes}, " +
+                "transferDurationMs=${transferDurationMs.coerceAtLeast(0L)}, path=$imagePath",
+        )
+        runOnUiThread {
+            Toast.makeText(this, transferSummary, Toast.LENGTH_LONG).show()
+        }
+
         CoroutineScope(Dispatchers.IO).launch {
-            copyImageToPublicCamera(imagePath)
-
-            Log.i("AIHijack", "Image ready for AI query: $imagePath (size=${imageFile.length()} bytes, age=${ageMs / 1000}s)")
-
-            // Process the image query first (model inference + TTS reply).
-            // triggerAssistantImageQuery launches a background coroutine and returns immediately,
-            // so we must wait for TTS to finish before opening the follow-up voice window.
             val initialQuestion = pendingVoiceImageQuestion
             pendingVoiceImageQuestion = null
-            triggerAssistantImageQuery(imagePath, userQuestion = initialQuestion)
+            val externalAutomation = usesExternalImageAutomation()
+            triggerAssistantImageQuery(
+                imagePath = imagePath,
+                userQuestion = initialQuestion,
+                source = source,
+            )
 
-            // Wait for the model's TTS reply to finish (polls tts?.isSpeaking every 500ms).
+            // Gemini/Tasker owns external playback. A Tasker answer_ready callback offers an
+            // explicit follow-up instead of treating CyanBridge TTS as if it were speaking.
+            if (externalAutomation) return@launch
+
             waitForTtsToFinish(timeoutMs = 90_000L)
-
-            // Brief pause after TTS so the user knows it's their turn.
             delay(500)
-
-            // Now open the voice window for a follow-up question.
             withContext(Dispatchers.Main) {
                 val spokenQuestion = captureOptionalImageQuestionFromBluetoothMic(timeoutMs = 3_000L)
                 if (!spokenQuestion.isNullOrBlank()) {
-                    triggerAssistantImageQuery(imagePath, spokenQuestion)
+                    triggerAssistantImageQuery(imagePath, spokenQuestion, source)
                 }
             }
         }
     }
 
-    private fun isDecodableImageFile(file: File): Boolean {
-        if (!file.exists() || file.length() == 0L) return false
+    private fun readImageQuestionMetrics(file: File): ImageQuestionImageMetrics? {
+        if (!file.exists() || file.length() <= 0L) return null
         return runCatching {
             val options = BitmapFactory.Options().apply { inJustDecodeBounds = true }
             BitmapFactory.decodeFile(file.absolutePath, options)
-            options.outWidth > 0 && options.outHeight > 0
-        }.getOrDefault(false)
+            if (options.outWidth <= 0 || options.outHeight <= 0) {
+                null
+            } else {
+                ImageQuestionImageMetrics(options.outWidth, options.outHeight, file.length())
+            }
+        }.getOrNull()
+    }
+
+    private fun isDecodableImageFile(file: File): Boolean {
+        return readImageQuestionMetrics(file) != null
     }
 
     private suspend fun waitForTtsToFinish(timeoutMs: Long) {
@@ -4443,7 +4617,204 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
         }
     }
 
-    private fun triggerAssistantImageQuery(imagePath: String, userQuestion: String? = null) {
+    private fun usesExternalImageAutomation(): Boolean {
+        if (AiProviderPrefs.getProvider(this) == RelayProviderType.CLI_RELAY) return false
+        if (aiAssistantMode == AI_MODE_CHOSEN_PROVIDER &&
+            AutomationPrefs.getProviderType(this) != AgentProviderType.TASKER
+        ) {
+            return false
+        }
+        return selectedImageAutomationTarget().imageAutomationSupported
+    }
+
+    private fun externalImageQuestion(userQuestion: String?): String {
+        return resolveImageQuestionPrompt(userQuestion)
+            .forRoute(ImageQuestionRoute.TASKER_GEMINI)
+    }
+
+    private fun stageImageForExternalShare(source: File): File? {
+        if (!source.isFile || source.length() <= 0L) return null
+        val authority = "$packageName.fileprovider"
+        if (runCatching { FileProvider.getUriForFile(this, authority, source) }.isSuccess) {
+            return source
+        }
+
+        return runCatching {
+            val dir = (getExternalFilesDir("image-questions") ?: File(filesDir, "image-questions"))
+                .apply { mkdirs() }
+            val extension = source.extension.ifBlank { "jpg" }
+            File(dir, "AI_Share_${System.currentTimeMillis()}.$extension").also { target ->
+                source.copyTo(target, overwrite = true)
+            }
+        }.onFailure { error ->
+            Log.e("ImageQuestion", "Could not stage image for FileProvider sharing", error)
+        }.getOrNull()
+    }
+
+    private fun externalAssistantPackage(): String? {
+        val candidates = selectedImageAutomationTarget().packageNames
+        return candidates.firstOrNull { candidate ->
+            runCatching {
+                @Suppress("DEPRECATION")
+                packageManager.getPackageInfo(candidate, 0)
+                true
+            }.getOrDefault(false)
+        }
+    }
+
+    private fun canStartExternalImageShare(packageName: String): Boolean {
+        val intent = Intent(Intent.ACTION_SEND).apply {
+            type = "image/jpeg"
+            setPackage(packageName)
+        }
+        return intent.resolveActivity(packageManager) != null
+    }
+
+    private fun startExternalImageShare(
+        targetPackage: String,
+        imageUri: Uri,
+        question: String,
+    ): Boolean {
+        val shareIntent = Intent(Intent.ACTION_SEND).apply {
+            type = "image/jpeg"
+            setPackage(targetPackage)
+            putExtra(Intent.EXTRA_STREAM, imageUri)
+            putExtra(Intent.EXTRA_TEXT, question)
+            clipData = ClipData.newRawUri("CyanBridge image", imageUri)
+            addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+        }
+        return runCatching {
+            grantUriPermission(targetPackage, imageUri, Intent.FLAG_GRANT_READ_URI_PERMISSION)
+            startActivity(shareIntent)
+            true
+        }.onFailure { error ->
+            Log.w("ImageQuestion", "Direct image share failed for $targetPackage", error)
+        }.getOrDefault(false)
+    }
+
+    private fun handOffImageToExternalAssistant(
+        imagePath: String,
+        userQuestion: String?,
+        source: ImageQuestionSource,
+    ) {
+        val stagedFile = stageImageForExternalShare(File(imagePath))
+        if (stagedFile == null) {
+            Log.e("ImageQuestion", "External handoff image is unavailable: $imagePath")
+            Toast.makeText(this, "Image file is unavailable for Gemini.", Toast.LENGTH_LONG).show()
+            return
+        }
+        val imageUri = runCatching {
+            FileProvider.getUriForFile(this, "$packageName.fileprovider", stagedFile)
+        }.getOrElse { error ->
+            Log.e("ImageQuestion", "Could not create image content URI", error)
+            Toast.makeText(this, "Could not share the image with Gemini.", Toast.LENGTH_LONG).show()
+            return
+        }
+        val question = externalImageQuestion(userQuestion)
+        val session = ExternalImageAutomationStore.begin(
+            context = this,
+            imagePath = stagedFile.absolutePath,
+            imageUri = imageUri.toString(),
+            question = question,
+            source = source,
+        )
+        val targetPackage = externalAssistantPackage()
+        val directShareAvailable = targetPackage != null &&
+            !isDeviceLockedForAutomation() &&
+            canStartExternalImageShare(targetPackage)
+        val handoffMode = if (directShareAvailable) {
+            ImageQuestionBroadcast.HANDOFF_DIRECT_SHARE
+        } else {
+            ImageQuestionBroadcast.HANDOFF_AUTOINPUT_FALLBACK
+        }
+
+        if (directShareAvailable && targetPackage != null) {
+            if (startExternalImageShare(targetPackage, imageUri, question)) {
+                ExternalImageAutomationStore.recordLocalStage(this, ExternalImageAutomationStage.IMAGE_ATTACHED)
+                // The selectors run only after the image has reached this explicit package.
+                sendAiBroadcast(
+                    type = ImageQuestionBroadcast.TYPE_IMAGE,
+                    path = stagedFile.absolutePath,
+                    prompt = question,
+                    imageUri = imageUri,
+                    imageSource = source,
+                    handoffMode = handoffMode,
+                    callbackSession = session.sessionId,
+                    callbackToken = session.callbackToken,
+                    assistantMode = selectedImageAutomationTarget().label,
+                )
+                ExternalImageAutomationStore.recordLocalStage(this, ExternalImageAutomationStage.PROMPT_SENT)
+                Log.i("ImageQuestion", "Started direct image share to $targetPackage")
+                return
+            }
+        }
+
+        sendAiBroadcast(
+            type = ImageQuestionBroadcast.TYPE_IMAGE,
+            path = stagedFile.absolutePath,
+            prompt = question,
+            imageUri = imageUri,
+            imageSource = source,
+            handoffMode = ImageQuestionBroadcast.HANDOFF_AUTOINPUT_FALLBACK,
+            callbackSession = session.sessionId,
+            callbackToken = session.callbackToken,
+            assistantMode = selectedImageAutomationTarget().label,
+        )
+
+        if (isDeviceLockedForAutomation()) {
+            ExternalImageAutomationStore.recordLocalStage(
+                this,
+                ExternalImageAutomationStage.FAILED,
+                "Unlock the phone before Gemini/AutoInput can create an image chat.",
+            )
+            Toast.makeText(this, "Unlock your phone to answer the image query.", Toast.LENGTH_LONG).show()
+        } else {
+            Toast.makeText(this, "Using Tasker AutoInput fallback for Gemini.", Toast.LENGTH_LONG).show()
+        }
+    }
+
+    private fun handleExternalImageAutomationStatus() {
+        val session = ExternalImageAutomationStore.current(this) ?: return
+        when (session.state.stage) {
+            ExternalImageAutomationStage.ANSWER_READY -> {
+                if (session.followUpPromptShown || isFinishing || isDestroyed) return
+                ExternalImageAutomationStore.markFollowUpPromptShown(this)
+                AlertDialog.Builder(this)
+                    .setTitle("Gemini answer ready")
+                    .setMessage(
+                        "Gemini owns response playback. After it finishes, choose Ask follow-up to use the glasses microphone.",
+                    )
+                    .setNegativeButton("Later", null)
+                    .setPositiveButton("Ask follow-up") { _, _ ->
+                        lifecycleScope.launch {
+                            val followUp = captureOptionalImageQuestionFromBluetoothMic(timeoutMs = 3_000L)
+                            if (!followUp.isNullOrBlank()) {
+                                triggerAssistantImageQuery(
+                                    imagePath = session.imagePath,
+                                    userQuestion = followUp,
+                                    source = session.source,
+                                )
+                            }
+                        }
+                    }
+                    .show()
+            }
+
+            ExternalImageAutomationStage.FAILED -> {
+                session.state.error?.takeIf { it.isNotBlank() }?.let { error ->
+                    Toast.makeText(this, "Gemini automation failed: $error", Toast.LENGTH_LONG).show()
+                }
+            }
+
+            else -> Unit
+        }
+    }
+
+    private fun triggerAssistantImageQuery(
+        imagePath: String,
+        userQuestion: String? = null,
+        source: ImageQuestionSource = ImageQuestionSourcePolicy.defaultSource(),
+    ) {
         // Debounce: prevent duplicate requests within 5 seconds
         val now = System.currentTimeMillis()
         if (now - lastImageQueryAtMs < 5000) {
@@ -4458,6 +4829,14 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
         }
         
         lastImageQueryAtMs = now
+        val resolvedPrompt = resolveImageQuestionPrompt(userQuestion)
+
+        val externalReason = externalImageAutomationUnsupportedReason()
+        if (externalReason != null) {
+            Toast.makeText(this, externalReason, Toast.LENGTH_LONG).show()
+            imageQueryInProgress.set(false)
+            return
+        }
         
         val selectedProvider = AutomationPrefs.getProviderType(this)
         val isChosenProviderMode = aiAssistantMode == AI_MODE_CHOSEN_PROVIDER
@@ -4468,14 +4847,14 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
                 (selectedProvider == AgentProviderType.PRO_SUBSCRIPTION ||
                     selectedProvider == AgentProviderType.LOCAL_AGENT)
         if (useChosenProviderMemoryAware) {
-            triggerMemoryAwareImageQuery(imagePath, selectedProvider, userQuestion)
+            triggerMemoryAwareImageQuery(imagePath, selectedProvider, resolvedPrompt)
             return
         }
 
         val relayProvider = AiProviderPrefs.getProvider(this)
         if (relayProvider == RelayProviderType.CLI_RELAY) {
             Log.i("AIHijack", "Sending image query to CLI relay: $imagePath")
-            val visionPrompt = buildVisionPrompt(userQuestion)
+            val visionPrompt = resolvedPrompt.forRoute(ImageQuestionRoute.PRO_RELAY)
 
             CoroutineScope(Dispatchers.IO).launch {
                 try {
@@ -4515,59 +4894,21 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
             return
         }
 
-        Log.i("AIHijack", "Redirecting Image Query to Tasker logic with $imagePath")
-
+        Log.i("AIHijack", "Handing image query to external assistant: $imagePath")
         try {
-            val keyguardManager = getSystemService(KEYGUARD_SERVICE) as KeyguardManager
-            val isLocked = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
-                keyguardManager.isDeviceLocked
-            } else {
-                keyguardManager.isKeyguardLocked
-            }
-
-            // Wake and dismiss keyguard only when needed
-            if (isLocked && Build.VERSION.SDK_INT >= Build.VERSION_CODES.O_MR1) {
-                setShowWhenLocked(true)
-                setTurnScreenOn(true)
-                keyguardManager.requestDismissKeyguard(this, null)
-            }
-
-            if (isLocked) {
-                speak("Unlock your phone to answer the image query")
-            }
-
-            // Stop glasses AI mode
             stopGlassesAiAudio("image-query command")
-
-            val file = File(imagePath)
-            if (!file.exists()) {
-                Log.e("AIHijack", "Image file does not exist: $imagePath")
-                return
-            }
-
-            // Copy file to public DCIM folder so it shows up in Gallery/Recents
-            val publicDir = Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DCIM)
-            val cameraDir = File(publicDir, "Camera")
-            if (!cameraDir.exists()) cameraDir.mkdirs()
-            
-            val publicFile = File(cameraDir, "Glasses_AI_${System.currentTimeMillis()}.jpg")
-            file.copyTo(publicFile, overwrite = true)
-            
-            // Scan the file so MediaStore/Gallery sees it immediately
-            MediaScannerConnection.scanFile(this, arrayOf(publicFile.absolutePath), arrayOf("image/jpeg")) { path, uri ->
-                Log.i("AIHijack", "Scanned to Gallery: $path")
-                // Once scanned, trigger the Tasker broadcast
-                runOnUiThread {
-                    sendAiBroadcast("image", path)
-                }
-            }
-        } catch (e: Exception) {
-            Log.e("AIHijack", "Failed to process image for Tasker: ${e.message}")
+            handOffImageToExternalAssistant(
+                imagePath = imagePath,
+                userQuestion = userQuestion,
+                source = source,
+            )
+        } catch (error: Exception) {
+            Log.e("AIHijack", "Failed to hand image to external assistant: ${error.message}", error)
+            Toast.makeText(this, "Could not start Gemini image question.", Toast.LENGTH_LONG).show()
         } finally {
             imageQueryInProgress.set(false)
         }
     }
-
 
     private fun updateConnectionStatus(connected: Boolean) {
         if (isMeizuMyvuSelected()) {
@@ -5440,11 +5781,45 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
         showDownloadFlowPicker = true
     }
 
+    private enum class MediaDownloadPurpose {
+        FULL_SYNC,
+        IMAGE_QUESTION,
+    }
+
+    private data class HighQualityImageRequest(
+        val sourceTag: String,
+        val captureStartedAtMs: Long,
+    )
+
+    private fun isHighQualityImageTransfer(): Boolean =
+        mediaDownloadPurpose == MediaDownloadPurpose.IMAGE_QUESTION && highQualityImageRequest != null
+
+    private fun requestHighQualityImageForQuestion(sourceTag: String) {
+        if (highQualityImageRequest == null) {
+            highQualityImageRequest = HighQualityImageRequest(
+                sourceTag = sourceTag,
+                captureStartedAtMs = pendingImageCaptureStartedAtMs.takeIf { it > 0L }
+                    ?: System.currentTimeMillis(),
+            )
+        }
+        mediaDownloadPurpose = MediaDownloadPurpose.IMAGE_QUESTION
+        lifecycleScope.launch {
+            // The camera command owns the vendor SDK response slot until its callback returns.
+            delay(300)
+            if (!isHighQualityImageTransfer()) return@launch
+            startDataDownload(
+                mode = GlassesSyncFlow.CUSTOM,
+                purpose = MediaDownloadPurpose.IMAGE_QUESTION,
+            )
+        }
+    }
+
     private fun startDataDownload(
         mode: GlassesSyncFlow = GlassesSyncFlow.CUSTOM,
         retryCount: Int = 0,
         isRetry: Boolean = false,
         afterP2pTeardown: Boolean = false,
+        purpose: MediaDownloadPurpose = MediaDownloadPurpose.FULL_SYNC,
     ) {
         if (rejectHeyCyanOnlyFeature("Wi-Fi media sync")) return
 
@@ -5455,22 +5830,28 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
                     retryCount = retryCount,
                     isRetry = isRetry,
                     afterP2pTeardown = afterP2pTeardown,
+                    purpose = purpose,
                 )
             }
             return
         }
 
         downloadFlowMode = mode
+        mediaDownloadPurpose = purpose
         officialFlowRetryCount = retryCount
 
         if (!afterP2pTeardown) {
         Log.i("DataDownload", "Starting BLE+WiFi P2P data download using ${mode.label}...")
         Log.i("DataDownload", "Sync session flow=${mode.label}")
-        Toast.makeText(this, "Starting sync using ${mode.label}…", Toast.LENGTH_SHORT).show()
+        Toast.makeText(this, "Starting sync using ${mode.label}… Please do not exit the app during transfer.", Toast.LENGTH_LONG).show()
 
         // Check Bluetooth connection status
         if (!BleOperateManager.getInstance().isConnected) {
             Log.e("DataDownload", "Bluetooth not connected. Please connect to glasses first.")
+            if (isHighQualityImageTransfer()) {
+                finishHighQualityImageFailure("Bluetooth disconnected before full-resolution image transfer could start.")
+                return
+            }
             Toast.makeText(
                 this,
                 "Bluetooth not connected. Please connect to glasses first.",
@@ -5483,6 +5864,10 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
         val wifiManager = getSystemService(Context.WIFI_SERVICE) as android.net.wifi.WifiManager
         if (!wifiManager.isWifiEnabled) {
             Log.e("DataDownload", "WiFi is disabled. WiFi must be on for P2P sync.")
+            if (isHighQualityImageTransfer()) {
+                finishHighQualityImageFailure("Wi-Fi must be enabled to retrieve the full-resolution image.")
+                return
+            }
             Toast.makeText(
                 this,
                 "Please enable WiFi to sync with glasses.",
@@ -5519,6 +5904,7 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
                             retryCount = retryCount,
                             isRetry = true,
                             afterP2pTeardown = true,
+                            purpose = purpose,
                         )
                     }
                 },
@@ -5745,6 +6131,12 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
             }
 
             override fun retryAlsoFailed() {
+                if (isHighQualityImageTransfer()) {
+                    finishHighQualityImageFailure(
+                        "Wi-Fi Direct could not connect to the glasses for the full-resolution image.",
+                    )
+                    return
+                }
                 if (downloadFlowMode == GlassesSyncFlow.OFFICIAL_HEYCYAN && officialFlowRetryCount < officialFlowRetryLimit) {
                     restartOfficialWholeFlow("P2P connection retry failed")
                     return
@@ -6091,6 +6483,13 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
             val waitedSeconds = ((System.currentTimeMillis() - downloadStartedAtMs) / 1000L).coerceAtLeast(1L)
             Log.w("DataDownload", "Initial P2P sync phase timed out after ${waitedSeconds}s (flow=${downloadFlowMode.label})")
 
+            if (isHighQualityImageTransfer()) {
+                finishHighQualityImageFailure(
+                    "Timed out waiting for the glasses Wi-Fi connection for the full-resolution image.",
+                )
+                return@launch
+            }
+
             if (downloadFlowMode == GlassesSyncFlow.OFFICIAL_HEYCYAN && officialFlowRetryCount < officialFlowRetryLimit) {
                 restartOfficialWholeFlow("initial sync timeout after ${waitedSeconds}s")
                 return@launch
@@ -6180,6 +6579,12 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
         seenPeers: List<String>,
         pairedDevice: String,
     ) {
+        if (isHighQualityImageTransfer()) {
+            finishHighQualityImageFailure(
+                "Could not find the glasses Wi-Fi Direct peer for the full-resolution image.",
+            )
+            return
+        }
         if (downloadSupportDialogShown || isFinishing || isDestroyed) return
         downloadSupportDialogShown = true
 
@@ -6424,6 +6829,17 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
                     "Media list parsed: jpg=${jpgFiles.size}, mp4=${mp4Files.size}, opus=${opusFiles.size}, other=$otherFiles"
                 )
 
+                if (isHighQualityImageTransfer()) {
+                    if (jpgFiles.isEmpty()) {
+                        finishHighQualityImageFailure(
+                            "The glasses did not report a full-resolution JPG in media.config.",
+                        )
+                    } else {
+                        downloadLatestHighQualityImage(jpgFiles, deviceIp, sessionId)
+                    }
+                    return
+                }
+
                 withContext(Dispatchers.Main) {
                     if (!isDownloadSessionActive(sessionId)) return@withContext
                     setTransferPlan(jpgFiles.size, mp4Files.size, opusFiles.size)
@@ -6439,6 +6855,16 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
                         }
                     }
                     return
+                }
+
+                withContext(Dispatchers.Main) {
+                    if (isDownloadSessionActive(sessionId)) {
+                        Toast.makeText(
+                            this@MainActivity,
+                            "Transferring media files. Please do not close or exit the app during transfer.",
+                            Toast.LENGTH_LONG
+                        ).show()
+                    }
                 }
 
                 // Download everything we understand. Keep P2P bound until all downloads finish.
@@ -6460,6 +6886,151 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
                 }
             }
         }
+
+    private suspend fun downloadLatestHighQualityImage(
+        jpgFiles: List<String>,
+        deviceIp: String,
+        sessionId: Long,
+    ) {
+        val request = highQualityImageRequest ?: return
+        val latestFileName = jpgFiles.maxWithOrNull(
+            compareBy<String> { parseTakenTimeMillisFromFilename(it) ?: Long.MIN_VALUE }
+                .thenBy { it },
+        ) ?: run {
+            finishHighQualityImageFailure("No full-resolution JPG was available for this image question.")
+            return
+        }
+
+        val outputDir = (getExternalFilesDir("image-questions") ?: File(filesDir, "image-questions"))
+            .apply { mkdirs() }
+        val safeName = File(latestFileName).name
+        val output = File(outputDir, "AI_Full_${System.currentTimeMillis()}_$safeName")
+        val partial = File(output.parentFile, "${output.name}.part")
+        val url = URL("http://$deviceIp/files/$latestFileName")
+        val downloadStartedAtMs = System.currentTimeMillis()
+
+        withContext(Dispatchers.Main) {
+            if (isDownloadSessionActive(sessionId)) {
+                setTransferDetail("Downloading latest full-resolution photo...")
+            }
+        }
+        Log.i("ImageQuestion", "Requesting full-resolution HeyCyan photo: $url")
+
+        val downloaded = runCatching {
+            partial.delete()
+            httpGet(url, connectTimeoutMs = 15_000, readTimeoutMs = 60_000) { input, _ ->
+                partial.outputStream().buffered(128 * 1024).use { outputStream ->
+                    input.copyTo(outputStream, bufferSize = 128 * 1024)
+                }
+            }
+        }.getOrElse { error ->
+            Log.e("ImageQuestion", "Full-resolution image download failed", error)
+            false
+        }
+
+        if (!downloaded || !partial.exists() || partial.length() <= 0L) {
+            partial.delete()
+            finishHighQualityImageFailure("Could not download the latest full-resolution photo from the glasses.")
+            return
+        }
+        if (!partial.renameTo(output)) {
+            partial.delete()
+            finishHighQualityImageFailure("Could not prepare the full-resolution photo for the AI provider.")
+            return
+        }
+        if (!isDownloadSessionActive(sessionId) || !isDecodableImageFile(output)) {
+            output.delete()
+            finishHighQualityImageFailure("The full-resolution photo transfer was incomplete or invalid.")
+            return
+        }
+
+        val transferDurationMs = System.currentTimeMillis() - request.captureStartedAtMs
+        completeHighQualityImageTransfer(output, transferDurationMs)
+    }
+
+    private fun completeHighQualityImageTransfer(file: File, transferDurationMs: Long) {
+        if (!isHighQualityImageTransfer()) {
+            file.delete()
+            return
+        }
+        highQualityImageRequest = null
+        finishDownloadInitialPhase("full-resolution image downloaded")
+        teardownDownloadP2pSession(
+            sendExitTransfer = true,
+            hideTransferUi = true,
+            onTeardownComplete = {
+                mediaDownloadPurpose = MediaDownloadPurpose.FULL_SYNC
+                runOnUiThread {
+                    onImageReadyForQuestion(
+                        imagePath = file.absolutePath,
+                        source = ImageQuestionSource.HIGH_QUALITY,
+                        transferDurationMs = transferDurationMs,
+                    )
+                }
+            },
+        )
+    }
+
+    private fun finishHighQualityImageFailure(reason: String) {
+        val request = highQualityImageRequest ?: return
+        runOnUiThread {
+            if (!isHighQualityImageTransfer()) return@runOnUiThread
+            Log.e("ImageQuestion", "Full-resolution retrieval failed: $reason")
+            finishDownloadInitialPhase("full-resolution image failed")
+            teardownDownloadP2pSession(
+                sendExitTransfer = true,
+                hideTransferUi = true,
+                onTeardownComplete = {
+                    mediaDownloadPurpose = MediaDownloadPurpose.FULL_SYNC
+                    runOnUiThread { showHighQualityImageFailureDialog(request, reason) }
+                },
+            )
+        }
+    }
+
+    private fun showHighQualityImageFailureDialog(
+        request: HighQualityImageRequest,
+        reason: String,
+    ) {
+        if (isFinishing || isDestroyed) return
+        check(
+            ImageQuestionSourcePolicy.onHighQualityFailure() ==
+                com.fersaiyan.cyanbridge.ai.image.ImageSourceResolution.AWAITING_EXPLICIT_FALLBACK_CHOICE,
+        )
+        AlertDialog.Builder(this)
+            .setTitle("High-quality image unavailable")
+            .setMessage("$reason\n\nCyanBridge has not sent a preview automatically.")
+            .setPositiveButton("Retry high quality") { _, _ ->
+                when (ImageQuestionSourcePolicy.resolveHighQualityFailure(HighQualityFailureChoice.RETRY_HIGH_QUALITY)) {
+                    com.fersaiyan.cyanbridge.ai.image.ImageSourceResolution.HIGH_QUALITY -> {
+                        highQualityImageRequest = request
+                        pendingImageQuestionSource = ImageQuestionSource.HIGH_QUALITY
+                        requestHighQualityImageForQuestion(request.sourceTag)
+                    }
+                    else -> Unit
+                }
+            }
+            .setNegativeButton("Use fast preview") { _, _ ->
+                if (
+                    ImageQuestionSourcePolicy.resolveHighQualityFailure(HighQualityFailureChoice.USE_FAST_PREVIEW) ==
+                    com.fersaiyan.cyanbridge.ai.image.ImageSourceResolution.FAST_PREVIEW
+                ) {
+                    highQualityImageRequest = null
+                    pendingImageQuestionSource = ImageQuestionSource.FAST_PREVIEW
+                    requestImageThumbnailForQuestion(request.sourceTag)
+                }
+            }
+            .setNeutralButton("Cancel") { _, _ ->
+                if (
+                    ImageQuestionSourcePolicy.resolveHighQualityFailure(HighQualityFailureChoice.CANCEL) ==
+                    com.fersaiyan.cyanbridge.ai.image.ImageSourceResolution.CANCELLED
+                ) {
+                    highQualityImageRequest = null
+                    clearPendingVoiceImageQuestion(request.sourceTag)
+                }
+            }
+            .show()
+    }
 
     private suspend fun downloadAllMediaFilesVendor(
         files: List<VendorMediaItem>,
@@ -7702,6 +8273,10 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
     }
     
     private fun showDownloadError(message: String, cleanup: Boolean = true) {
+        if (isHighQualityImageTransfer()) {
+            finishHighQualityImageFailure(message)
+            return
+        }
         if (!downloadInitialPhaseCompleted) {
             maybeShowP2pSyncLogHelp(
                 reason = "CyanBridge failed during the initial P2P sync steps before any media transfer progress was shown. Error: $message",
@@ -8466,7 +9041,7 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
                             val sourceTag = pendingImageCaptureSourceTag ?: "glasses_signal"
                             imageCaptureAwaitingNotification.set(false)
                             pendingImageCaptureSourceTag = null
-                            requestImageThumbnailForQuestion(sourceTag)
+                            requestSelectedImageSourceForQuestion(sourceTag)
                         }
                     }
                 }

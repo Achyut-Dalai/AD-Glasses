@@ -5,11 +5,11 @@
 		<flags>8</flags>
 		<id>6</id>
 		<mid0>15</mid0>
-		<nme>Tasker AI</nme>
+		<nme>CyanBridge Gemini Image v2</nme>
 		<Share sr="Share">
 			<b>false</b>
-			<d>This tasker profile and task is for using Gemini with HeyCyan glasses with the CyanBridge companion app (An alternative to the official HeyCyan companion app). The CyanBridge repo and Alternative HeyCyan SDK is available on GitHub.</d>
-			<g>Artificial Intelligence,Assistant,ChatGPT</g>
+			<d>Gemini-only image automation profile v2 for CyanBridge. CyanBridge explicitly shares image_uri and question with Gemini first; this profile runs only when handoff_mode=direct_share, fills %question, and sends through a Gemini resource ID. Do not use it for ChatGPT. To enable answer-ready follow-ups, add a Tasker Send Intent action after Gemini finishes with action com.fersaiyan.cyanbridge.AI_IMAGE_STATUS and extras callback_session, callback_token, and status=answer_ready from the incoming event.</d>
+			<g>Artificial Intelligence,Assistant,Gemini,CyanBridge</g>
 			<p>true</p>
 			<t></t>
 		</Share>
@@ -57,47 +57,38 @@
 				</Condition>
 			</ConditionList>
 		</Action>
-		<Action sr="act2" ve="7">
-			<code>365</code>
-			<Bundle sr="arg0">
-				<Vals sr="val">
-					<net.dinglisch.android.tasker.RELEVANT_VARIABLES>&lt;StringArray sr=""/&gt;</net.dinglisch.android.tasker.RELEVANT_VARIABLES>
-					<net.dinglisch.android.tasker.RELEVANT_VARIABLES-type>[Ljava.lang.String;</net.dinglisch.android.tasker.RELEVANT_VARIABLES-type>
-				</Vals>
-			</Bundle>
-			<Str sr="arg1" ve="3">LaunchAssistant()</Str>
-		</Action>
 		<Action sr="act3" ve="7">
+			<code>37</code>
+			<ConditionList sr="if">
+				<Condition sr="c0" ve="3">
+					<lhs>%handoff_mode</lhs>
+					<op>2</op>
+					<rhs>direct_share</rhs>
+				</Condition>
+			</ConditionList>
+		</Action>
+		<Action sr="act4" ve="7">
 			<code>107361459</code>
+			<ConditionList sr="if">
+				<Condition sr="c0" ve="3">
+					<lhs>%assistant</lhs>
+					<op>2</op>
+					<rhs>Gemini</rhs>
+				</Condition>
+			</ConditionList>
 			<Bundle sr="arg0">
 				<Vals sr="val">
 					<EnableDisableAccessibilityService>&lt;null&gt;</EnableDisableAccessibilityService>
 					<EnableDisableAccessibilityService-type>java.lang.String</EnableDisableAccessibilityService-type>
 					<Password>&lt;null&gt;</Password>
 					<Password-type>java.lang.String</Password-type>
-					<com.twofortyfouram.locale.intent.extra.BLURB>Actions To Perform: waitForElement(id,com.google.android.googlequicksearchbox:id/assistant_robin_floaty_single_line_add_attachment_button)
+					<com.twofortyfouram.locale.intent.extra.BLURB>Actions To Perform: waitForElement(id,com.google.android.googlequicksearchbox:id/assistant_robin_floaty_single_line_query)
 
-click(id,com.google.android.googlequicksearchbox:id/assistant_robin_floaty_single_line_add_attachment_button)
+setText(id,com.google.android.googlequicksearchbox:id/assistant_robin_floaty_single_line_query,%question)
 
-waitForElement(id,com.google.android.googlequicksearchbox:id/assistant_robin_add_file_attachment_button)
+waitForElement(id,com.google.android.googlequicksearchbox:id/assistant_robin_floaty_single_line_send_button)
 
-click(id,com.google.android.googlequicksearchbox:id/assistant_robin_add_file_attachment_button)
-
-waitForElement(id,com.google.android.documentsui:id/item_root)
-
-click(id,com.google.android.documentsui:id/item_root)
-
-waitForElement(id,com.google.android.googlequicksearchbox:id/assistant_robin_floaty_single_line_query)
-
-setText(id,com.google.android.googlequicksearchbox:id/assistant_robin_floaty_single_line_query,Tell me about this image)
-
-wait(1000)
-
-click(text,Send)
-
-waitForElement(id,com.google.android.googlequicksearchbox:id/assistant_robin_playback_icon)
-
-click(id,com.google.android.googlequicksearchbox:id/assistant_robin_playback_icon)
+click(id,com.google.android.googlequicksearchbox:id/assistant_robin_floaty_single_line_send_button)
 Not In AutoInput: true
 Separator: ,
 Pre-Action Delay: 200
@@ -119,7 +110,7 @@ Only available if you select &amp;lt;b&amp;gt;Continue Task After Error&amp;lt;/
 					<net.dinglisch.android.tasker.extras.VARIABLE_REPLACE_KEYS-type>java.lang.String</net.dinglisch.android.tasker.extras.VARIABLE_REPLACE_KEYS-type>
 					<net.dinglisch.android.tasker.subbundled>true</net.dinglisch.android.tasker.subbundled>
 					<net.dinglisch.android.tasker.subbundled-type>java.lang.Boolean</net.dinglisch.android.tasker.subbundled-type>
-					<parameters>{"_action":"waitForElement(id,com.google.android.googlequicksearchbox:id/assistant_robin_floaty_single_line_add_attachment_button)\n\nclick(id,com.google.android.googlequicksearchbox:id/assistant_robin_floaty_single_line_add_attachment_button)\n\nwaitForElement(id,com.google.android.googlequicksearchbox:id/assistant_robin_add_file_attachment_button)\n\nclick(id,com.google.android.googlequicksearchbox:id/assistant_robin_add_file_attachment_button)\n\nwaitForElement(id,com.google.android.documentsui:id/item_root)\n\nclick(id,com.google.android.documentsui:id/item_root)\n\nwaitForElement(id,com.google.android.googlequicksearchbox:id/assistant_robin_floaty_single_line_query)\n\nsetText(id,com.google.android.googlequicksearchbox:id/assistant_robin_floaty_single_line_query,Tell me about this image)\n\nwait(1000)\n\nclick(text,Send)\n\nwaitForElement(id,com.google.android.googlequicksearchbox:id/assistant_robin_playback_icon)\n\nclick(id,com.google.android.googlequicksearchbox:id/assistant_robin_playback_icon)\n","_additionalOptions":{"checkMs":"1000","preActionDelay":"200","separator":",","withCoordinates":false},"_whenToPerformAction":{"notInAutoInput":true,"notInTasker":false},"generatedValues":{}}</parameters>
+					<parameters>{"_action":"waitForElement(id,com.google.android.googlequicksearchbox:id/assistant_robin_floaty_single_line_query)\n\nsetText(id,com.google.android.googlequicksearchbox:id/assistant_robin_floaty_single_line_query,%question)\n\nwaitForElement(id,com.google.android.googlequicksearchbox:id/assistant_robin_floaty_single_line_send_button)\n\nclick(id,com.google.android.googlequicksearchbox:id/assistant_robin_floaty_single_line_send_button)\n","_additionalOptions":{"checkMs":"1000","preActionDelay":"200","separator":",","withCoordinates":false},"_whenToPerformAction":{"notInAutoInput":true,"notInTasker":false},"generatedValues":{}}</parameters>
 					<parameters-type>java.lang.String</parameters-type>
 					<plugininstanceid>532dfe5d-c490-4b6c-8223-ee3819813902</plugininstanceid>
 					<plugininstanceid-type>java.lang.String</plugininstanceid-type>
@@ -132,18 +123,8 @@ Only available if you select &amp;lt;b&amp;gt;Continue Task After Error&amp;lt;/
 			<Int sr="arg3" val="60"/>
 			<Int sr="arg4" val="1"/>
 		</Action>
-		<Action sr="act4" ve="7">
-			<code>43</code>
-		</Action>
 		<Action sr="act5" ve="7">
-			<code>365</code>
-			<Bundle sr="arg0">
-				<Vals sr="val">
-					<net.dinglisch.android.tasker.RELEVANT_VARIABLES>&lt;StringArray sr=""/&gt;</net.dinglisch.android.tasker.RELEVANT_VARIABLES>
-					<net.dinglisch.android.tasker.RELEVANT_VARIABLES-type>[Ljava.lang.String;</net.dinglisch.android.tasker.RELEVANT_VARIABLES-type>
-				</Vals>
-			</Bundle>
-			<Str sr="arg1" ve="3">LaunchAssistant()</Str>
+			<code>38</code>
 		</Action>
 		<Action sr="act6" ve="7">
 			<code>38</code>

@@ -21,6 +21,8 @@ class GlassesDashboardPresentationTest {
         assertEquals("Idle", state.wifiAdbDebug.stateLabel)
         assertEquals(emptyList(), state.wifiAdbDebug.relayEndpoints)
         assertFalse(state.wifiAdbDebug.canStop)
+        assertEquals(5, state.imageThumbnailQualitySdkValue)
+        assertEquals("Detailed", state.imageThumbnailQualityLabel)
     }
 
     @Test
@@ -28,6 +30,13 @@ class GlassesDashboardPresentationTest {
         val action = GlassesDashboardAction.Navigate(AppDestination.MEDIA)
 
         assertEquals(AppDestination.MEDIA, action.destination)
+    }
+
+    @Test
+    fun imageThumbnailQualityActionKeepsTheVendorValue() {
+        val action = GlassesDashboardAction.SelectImageThumbnailQuality(4)
+
+        assertEquals(4, action.sdkValue)
     }
 
     @Test

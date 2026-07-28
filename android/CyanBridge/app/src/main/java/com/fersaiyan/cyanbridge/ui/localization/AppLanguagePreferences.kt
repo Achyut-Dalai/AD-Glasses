@@ -17,6 +17,7 @@ enum class AppLanguage(
     FRENCH("fr", "Français"),
     ITALIAN("it", "Italiano"),
     CHINESE_SIMPLIFIED("zh-CN", "中文（简体）"),
+    KOREAN("ko", "한국어"),
     RUSSIAN("ru", "Русский"),
     ;
 

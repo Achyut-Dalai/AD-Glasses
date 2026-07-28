@@ -612,11 +612,20 @@ private fun GlassesAssistantControls(
                 modifier = Modifier.weight(1f),
             )
             AssistantModeChip(
+                label = "Phone default",
+                mode = GlassesAssistantMode.PHONE_DEFAULT,
+                selectedMode = state.assistantMode,
+                onAction = onAction,
+                modifier = Modifier.weight(1f),
+            )
+        }
+        Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+            AssistantModeChip(
                 label = "Custom Provider",
                 mode = GlassesAssistantMode.CHOSEN_PROVIDER,
                 selectedMode = state.assistantMode,
                 onAction = onAction,
-                modifier = Modifier.weight(1f),
+                modifier = Modifier.fillMaxWidth(),
             )
         }
         ActionRow(
@@ -626,6 +635,12 @@ private fun GlassesAssistantControls(
             onSecondary = { onAction(GlassesDashboardAction.TestImageQuestion) },
             secondaryEnabled = state.imageQueryEnabled,
         )
+        OutlinedButton(
+            onClick = { onAction(GlassesDashboardAction.OpenExternalImageAutomationDiagnostics) },
+            modifier = Modifier.fillMaxWidth(),
+        ) {
+            Text("Gemini automation setup")
+        }
     }
 }
 
@@ -879,6 +894,35 @@ private fun AdvancedControls(
             secondaryLabel = "Volume",
             onSecondary = { onAction(GlassesDashboardAction.RequestVolume) },
         )
+        HorizontalDivider()
+        SectionTitle("AI image quality")
+        Text(
+            text = "BLE thumbnail for AI image questions: ${state.imageThumbnailQualityLabel}",
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
+        listOf("Instant", "Quick", "Smooth", "Fine", "Clearer", "Detailed")
+            .chunked(3)
+            .forEachIndexed { rowIndex, labels ->
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                ) {
+                    labels.forEachIndexed { columnIndex, label ->
+                        val sdkValue = rowIndex * 3 + columnIndex
+                        FilterChip(
+                            selected = state.imageThumbnailQualitySdkValue == sdkValue,
+                            onClick = {
+                                onAction(GlassesDashboardAction.SelectImageThumbnailQuality(sdkValue))
+                            },
+                            label = { Text(label) },
+                            modifier = Modifier
+                                .weight(1f)
+                                .testTag("ai_image_thumbnail_quality_$sdkValue"),
+                        )
+                    }
+                }
+            }
         HorizontalDivider()
         SectionTitle("Developer tools")
         TextButton(
