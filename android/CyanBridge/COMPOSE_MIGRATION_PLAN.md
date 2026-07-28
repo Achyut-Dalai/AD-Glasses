@@ -697,7 +697,7 @@ Current route and capability inventory:
 | Transcription debug | compose | Material 3 developer surface; transcription pipeline remains Activity-owned |
 | EvenHub runtime | hybrid | Material 3 host with an AndroidView WebView interoperability boundary |
 | `cyanbridge://` callback | android-platform | Handled by `MainActivity` |
-| `fersaiyan://pro-sub/callback` | android-platform | Handled by subscription callback Activity |
+| `https://cyanbridge.vercel.app/web-subscribe/callback` | android-platform | Auto-verified app link handled by subscription callback Activity |
 | Meeting, local-agent, auto-audio, Studio Bridge services | android-platform | Do not move into composables |
 | Notification listener and daily reminder receiver | android-platform | Preserve manifest and permission behavior |
 | HeyCyan BLE and Wi-Fi Direct transfer | android-platform | Forked/current Android implementation remains authoritative |
