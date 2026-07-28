@@ -20,6 +20,9 @@
     <string name="vision_profile_title">Vision profile</string>
     <string name="vision_profile_description">Image descriptions use: %1$s</string>
     <string name="vision_instructions_title">Additional vision instructions</string>
+    <string name="image_questions_title">AI Image Questions</string>
+    <string name="default_image_question">Default image question</string>
+    <string name="reset_default_image_question">Reset to default</string>
     <string name="plugin_select">Select %1$s</string>
     <string name="plugin_selected">Selected</string>
     <string name="native_plugins_section">Native Plugins</string>

@@ -20,6 +20,9 @@
     <string name="vision_profile_title">Profilo visivo</string>
     <string name="vision_profile_description">Le descrizioni delle immagini usano: %1$s</string>
     <string name="vision_instructions_title">Istruzioni visive aggiuntive</string>
+    <string name="image_questions_title">Domande sulle immagini con IA</string>
+    <string name="default_image_question">Domanda predefinita sull'immagine</string>
+    <string name="reset_default_image_question">Ripristina predefinito</string>
     <string name="plugin_select">Seleziona %1$s</string>
     <string name="plugin_selected">Selezionato</string>
     <string name="native_plugins_section">Plugin Nativi</string>

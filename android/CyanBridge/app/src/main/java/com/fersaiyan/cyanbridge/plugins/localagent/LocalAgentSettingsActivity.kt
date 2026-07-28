@@ -434,25 +434,17 @@ class LocalAgentSettingsActivity : AppCompatActivity() {
 
                 SectionTitle("Planning")
                 Text(
-                    "Choose the provider used for Local Agent planning and memory-aware requests. " +
-                        "The selected planner receives the visible UI observation needed to choose each action.",
+                    "AI provider and local model configuration are managed in Settings.",
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
-                AgentProviderType.entries.forEach { type ->
-                    ProviderOption(
-                        type = type,
-                        selected = state.providerType == type,
-                        onSelected = { setPlanningProvider(type) },
-                    )
-                }
                 OutlinedButton(
                     onClick = {
-                        startActivity(Intent(this@LocalAgentSettingsActivity, LocalModelsConfigureActivity::class.java))
+                        startActivity(Intent(this@LocalAgentSettingsActivity, com.fersaiyan.cyanbridge.ui.SettingsActivity::class.java))
                     },
                     modifier = Modifier.fillMaxWidth(),
                 ) {
-                    Text("Configure local models")
+                    Text("Open Settings")
                 }
 
                 SectionTitle("Screenshot Planning")

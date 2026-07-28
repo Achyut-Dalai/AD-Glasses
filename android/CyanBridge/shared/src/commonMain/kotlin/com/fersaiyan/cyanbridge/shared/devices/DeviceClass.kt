@@ -8,10 +8,10 @@ enum class DeviceClass {
     UNKNOWN;
 
     fun displayName(): String = when (this) {
-        HEY_CYAN -> "Camera+Audio glasses"
+        HEY_CYAN -> "HeyCyan"
         META_RAYBAN -> "Meta Rayban"
         MEIZU_MYVU -> "Meizu MYVU / Star Air"
-        GENERIC_AUDIO -> "Audio-only glasses"
+        GENERIC_AUDIO -> "Earbuds / Audio-only glasses"
         UNKNOWN -> "Unknown"
     }
 }

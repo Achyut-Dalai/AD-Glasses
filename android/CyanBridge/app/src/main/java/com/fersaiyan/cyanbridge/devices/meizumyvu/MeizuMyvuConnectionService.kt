@@ -21,9 +21,7 @@ import com.fersaiyan.cyanbridge.ui.hasNotificationPermission
 class MeizuMyvuConnectionService : Service() {
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
         if (!hasNotificationPermission(this)) {
-            Log.w(TAG, "Cannot start MYVU connection: notification permission is missing")
-            stopSelf(startId)
-            return START_NOT_STICKY
+            Log.w(TAG, "Starting MYVU connection service without notification permission")
         }
         startConnectedDeviceForeground()
         intent?.getStringExtra(EXTRA_MAC)?.let { address ->
@@ -81,15 +79,8 @@ class MeizuMyvuConnectionService : Service() {
         fun intent(context: Context): Intent = Intent(context, MeizuMyvuConnectionService::class.java)
 
         fun start(context: Context, macAddress: String) {
-            if (!hasNotificationPermission(context)) {
-                if (context is FragmentActivity) {
-                    ensureNotificationPermission(context, "MYVU connection") {
-                        start(context, macAddress)
-                    }
-                } else {
-                    Log.w(TAG, "Cannot request MYVU notification permission without an Activity context")
-                }
-                return
+            if (!hasNotificationPermission(context) && context is FragmentActivity) {
+                ensureNotificationPermission(context, "MYVU connection") { }
             }
             val serviceIntent = intent(context).setAction(ACTION_CONNECT).putExtra(EXTRA_MAC, macAddress)
             runCatching {
@@ -97,7 +88,7 @@ class MeizuMyvuConnectionService : Service() {
             }.onFailure { error ->
                 // Android can reject a foreground-service start from a background
                 // receiver. The active app process can still establish the link.
-                Log.w("MeizuMyvuService", "Foreground connection service was blocked", error)
+                Log.w(TAG, "Foreground connection service was blocked", error)
                 MeizuMyvuManager.getInstance(context).connectTransport(macAddress)
             }
         }

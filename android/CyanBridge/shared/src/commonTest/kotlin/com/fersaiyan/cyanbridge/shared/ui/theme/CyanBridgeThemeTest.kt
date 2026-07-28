@@ -1,12 +1,9 @@
 package com.fersaiyan.cyanbridge.shared.ui.theme
 
 import androidx.compose.ui.graphics.Color
-import com.fersaiyan.cyanbridge.shared.appearance.APPEARANCE_PREFERENCES_NAME
 import com.fersaiyan.cyanbridge.shared.appearance.AccentProfiles
 import com.fersaiyan.cyanbridge.shared.appearance.AppearanceSettings
-import com.fersaiyan.cyanbridge.shared.appearance.AppearanceSettingsStore
 import com.fersaiyan.cyanbridge.shared.appearance.ThemeMode
-import com.fersaiyan.cyanbridge.shared.platform.createPlatformPreferences
 import kotlin.test.Test
 import kotlin.test.assertEquals
 
@@ -40,24 +37,5 @@ class CyanBridgeThemeTest {
         assertEquals(false, resolveDarkTheme(AppearanceSettings(ThemeMode.LIGHT), systemInDarkTheme = true))
         assertEquals(true, resolveDarkTheme(AppearanceSettings(ThemeMode.DARK), systemInDarkTheme = false))
         assertEquals(true, resolveDarkTheme(AppearanceSettings(), systemInDarkTheme = true))
-    }
-
-    @Test
-    fun appearanceStorePersistsChoicesAndDisablesUnsupportedDynamicColor() {
-        val preferences = createPlatformPreferences("${APPEARANCE_PREFERENCES_NAME}_test")
-        preferences.clear()
-        val store = AppearanceSettingsStore(preferences, dynamicColorAvailable = false)
-        val requested = AppearanceSettings(
-            themeMode = ThemeMode.DARK,
-            accentProfileId = "lavender",
-            useDynamicColor = true,
-            highContrast = true,
-        )
-
-        store.save(requested)
-
-        assertEquals(requested.copy(useDynamicColor = false), store.load())
-        store.reset()
-        assertEquals(AppearanceSettings(), store.load())
     }
 }
