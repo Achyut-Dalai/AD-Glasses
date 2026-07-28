@@ -10,7 +10,8 @@ enum class LocalModelPerformanceProfile(val label: String) {
 
 enum class LocalComputeBackend(val label: String) {
     CPU("CPU"),
-    GPU_EXPERIMENTAL("GPU (Experimental)"),
+    GPU("GPU"),
+    NPU_EXPERIMENTAL("NPU (Experimental)"),
 }
 
 enum class LocalModelRuntime(val label: String) {

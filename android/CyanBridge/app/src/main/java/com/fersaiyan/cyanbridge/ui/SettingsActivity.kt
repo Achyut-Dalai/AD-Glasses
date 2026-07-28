@@ -18,12 +18,16 @@ import androidx.lifecycle.lifecycleScope
 import androidx.localbroadcastmanager.content.LocalBroadcastManager
 import com.fersaiyan.cyanbridge.R
 import com.fersaiyan.cyanbridge.MainActivity
+import com.fersaiyan.cyanbridge.agent.LocalAgentPrefs as AutomationPrefs
+import com.fersaiyan.cyanbridge.agent.LocalModelsConfigureActivity
 import com.fersaiyan.cyanbridge.agent.ProSubscriptionActivity
 import com.fersaiyan.cyanbridge.agent.ProSubscriptionPrefs
 import com.fersaiyan.cyanbridge.agent.ProSubscriptionSettingsActivity
 import com.fersaiyan.cyanbridge.agent.ProSubscriptionVerifier
-import com.fersaiyan.cyanbridge.ai.vision.VisionProfile
-import com.fersaiyan.cyanbridge.ai.vision.VisionProfilePreferences
+import com.fersaiyan.cyanbridge.ai.router.AiProviderPrefs
+import com.fersaiyan.cyanbridge.ai.router.AiProviderType
+import com.fersaiyan.cyanbridge.ai.vision.ImageQuestionPreferences
+import com.fersaiyan.cyanbridge.localmodels.session.LocalChatSessionManager
 import com.fersaiyan.cyanbridge.shared.chat.ChatRole
 import com.fersaiyan.cyanbridge.chat.ChatStore
 import com.fersaiyan.cyanbridge.localagent.memory.LocalAgentMemoryStore
@@ -46,6 +50,7 @@ import com.fersaiyan.cyanbridge.ui.appearance.AppearancePreferences
 import com.fersaiyan.cyanbridge.ui.appearance.rememberAppearanceSettings
 import com.fersaiyan.cyanbridge.ui.debug.DebugLogSupport
 import com.fersaiyan.cyanbridge.ui.recordings.RecordingsListActivity
+import com.fersaiyan.cyanbridge.shared.settings.AgentProviderType
 import com.fersaiyan.cyanbridge.shared.settings.SettingsSection
 import com.fersaiyan.cyanbridge.shared.ui.settings.SettingsScreen
 import com.fersaiyan.cyanbridge.shared.ui.settings.SettingsScreenActions
@@ -153,6 +158,17 @@ class SettingsActivity : AppCompatActivity(), SettingsScreenActions {
         }
     }
 
+    private fun syncAgentProviderToAiProvider(type: AgentProviderType) {
+        AiProviderPrefs.setProvider(
+            this,
+            when (type) {
+                AgentProviderType.PRO_SUBSCRIPTION -> AiProviderType.CLI_RELAY
+                AgentProviderType.LOCAL_AGENT -> AiProviderType.LOCAL_MODELS
+                AgentProviderType.TASKER -> AiProviderType.MOCK
+            },
+        )
+    }
+
     private fun toggleSection(section: SettingsSection) {
         expandedSections = if (section in expandedSections) {
             expandedSections - section
@@ -168,11 +184,14 @@ class SettingsActivity : AppCompatActivity(), SettingsScreenActions {
         MemoryVaultBootstrap.ensureInitialized(this)
         val meeting = MeetingCapturePrefs.getState(this)
         val memoryMode = MemoryModeManager.getSelectedMode(this)
+        val providerType = AutomationPrefs.getProviderType(this)
+        val imageQuestionSettings = ImageQuestionPreferences.get(this)
         settingsUiState = SettingsUiState(
             isProSubscribed = ProSubscriptionPrefs.isActiveLocally(this),
             proPlan = formatPlan(ProSubscriptionPrefs.getPlan(this)),
             appLanguageLabel = AppLanguagePreferences.selected(this).displayName(this),
-            visionProfileLabel = localizedVisionProfileName(VisionProfilePreferences.get(this).profile),
+            providerType = providerType,
+            defaultImageQuestion = imageQuestionSettings.defaultQuestion,
             memoryMode = memoryMode,
             memoryModeAvailability = MemoryModeManager.modeAvailabilityText(memoryMode),
             memorySyncStatus = "Encrypted Sync: ${MemoryModeManager.modeAvailabilityText(MemoryPrivacyMode.ENCRYPTED_SYNC)}",
@@ -225,34 +244,6 @@ class SettingsActivity : AppCompatActivity(), SettingsScreenActions {
             .show()
     }
 
-    override fun openVisionProfileSelection() {
-        val profiles = VisionProfile.entries
-        val selected = VisionProfilePreferences.get(this).profile
-        AlertDialog.Builder(this)
-            .setTitle(R.string.vision_profile_selection_title)
-            .setSingleChoiceItems(
-                profiles.map(::localizedVisionProfileName).toTypedArray(),
-                profiles.indexOf(selected),
-            ) { dialog, which ->
-                VisionProfilePreferences.setProfile(this, profiles[which])
-                dialog.dismiss()
-                refreshSettingsUi()
-            }
-            .setNegativeButton(R.string.action_cancel, null)
-            .show()
-    }
-
-    override fun editVisionInstructions() {
-        showTextEditorDialog(
-            title = getString(R.string.vision_custom_instructions_title),
-            initial = VisionProfilePreferences.get(this).customInstructions,
-            hint = getString(R.string.vision_custom_instructions_hint),
-        ) { instructions ->
-            VisionProfilePreferences.setCustomInstructions(this, instructions)
-            refreshSettingsUi()
-        }
-    }
-
     override fun openSubscription() {
         val target = if (ProSubscriptionPrefs.isActiveLocally(this)) {
             ProSubscriptionSettingsActivity::class.java
@@ -283,6 +274,31 @@ class SettingsActivity : AppCompatActivity(), SettingsScreenActions {
                 MemorySyncPreparationService.cancelAllQueued("Sync eligibility tightened for ${source.name.lowercase()}")
             }
         }
+        refreshSettingsUi()
+    }
+
+    override fun setProviderType(type: AgentProviderType) {
+        AutomationPrefs.setProviderType(this, type)
+        syncAgentProviderToAiProvider(type)
+        if (type != AgentProviderType.LOCAL_AGENT) {
+            lifecycleScope.launch(Dispatchers.IO) {
+                runCatching { LocalChatSessionManager.unload() }
+            }
+        }
+        refreshSettingsUi()
+    }
+
+    override fun openLocalModels() {
+        startActivity(Intent(this, LocalModelsConfigureActivity::class.java))
+    }
+
+    override fun setDefaultImageQuestion(question: String) {
+        ImageQuestionPreferences.setDefaultQuestion(this, question)
+        refreshSettingsUi()
+    }
+
+    override fun resetDefaultImageQuestion() {
+        ImageQuestionPreferences.resetDefaultQuestion(this)
         refreshSettingsUi()
     }
 
@@ -545,26 +561,6 @@ class SettingsActivity : AppCompatActivity(), SettingsScreenActions {
             .show()
     }
 
-    private fun showTextEditorDialog(
-        title: String,
-        initial: String,
-        hint: String? = null,
-        onSave: (String) -> Unit,
-    ) {
-        val input = EditText(this).apply {
-            setText(initial)
-            setSelection(text?.length ?: 0)
-            setHint(hint)
-            minLines = 8
-        }
-        AlertDialog.Builder(this)
-            .setTitle(title)
-            .setView(input)
-            .setNegativeButton(R.string.action_cancel, null)
-            .setPositiveButton(R.string.action_save) { _, _ -> onSave(input.text?.toString().orEmpty()) }
-            .show()
-    }
-
     private fun buildRecentChatIntent(): Intent {
         val last = ChatStore.listNonEmptyThreads().firstOrNull()
         val lastUserAt = last?.let { thread ->
@@ -584,11 +580,6 @@ class SettingsActivity : AppCompatActivity(), SettingsScreenActions {
         "monthly" -> "Monthly"
         "yearly" -> "Yearly"
         else -> "Pro"
-    }
-
-    private fun localizedVisionProfileName(profile: VisionProfile): String = when (profile) {
-        VisionProfile.WALKING -> getString(R.string.vision_profile_walking)
-        VisionProfile.DETAILED -> getString(R.string.vision_profile_detailed)
     }
 
     private fun sectionPreferenceKey(section: SettingsSection): String {

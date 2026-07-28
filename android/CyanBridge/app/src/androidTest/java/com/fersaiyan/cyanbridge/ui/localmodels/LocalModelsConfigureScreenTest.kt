@@ -6,7 +6,9 @@ import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.onNodeWithContentDescription
+import androidx.compose.ui.test.hasText
 import androidx.compose.ui.test.performClick
+import androidx.compose.ui.test.performScrollToNode
 import com.fersaiyan.cyanbridge.shared.localmodels.LocalModelsAction
 import com.fersaiyan.cyanbridge.shared.localmodels.LocalModelsConfigureUiState
 import com.fersaiyan.cyanbridge.shared.localmodels.LocalModelDownloadUiState
@@ -43,7 +45,7 @@ class LocalModelsConfigureScreenTest {
     }
 
     @Test
-    fun activeDownloadIsVisibleNearTopAndCanBeCancelled() {
+    fun activeDownloadIsVisibleAndCanBeCancelled() {
         var action: LocalModelsAction? = null
         composeRule.setContent {
             CyanBridgeTheme {
@@ -63,6 +65,49 @@ class LocalModelsConfigureScreenTest {
         composeRule.onNodeWithTag("local_model_download_progress").assertIsDisplayed()
         composeRule.onNodeWithText("Downloading qwen: 42%").assertIsDisplayed()
         composeRule.onNodeWithText("Cancel download").performClick()
+
+        composeRule.runOnIdle {
+            assertEquals(LocalModelsAction.CancelDownload, action)
+        }
+    }
+
+    @Test
+    fun activeDownloadRemainsVisibleWhenScrolledToBottomAndCanBeCancelled() {
+        var action: LocalModelsAction? = null
+        val catalogEntries = List(10) { index ->
+            com.fersaiyan.cyanbridge.shared.localmodels.LocalModelCatalogItemUiState(
+                id = "model_$index",
+                displayName = "Catalog Model $index",
+                description = "Test description $index",
+                sizeText = "1.5 GB",
+                isInstalled = false,
+                canDownload = true,
+            )
+        }
+        composeRule.setContent {
+            CyanBridgeTheme {
+                LocalModelsConfigureScreen(
+                    state = LocalModelsConfigureUiState(
+                        catalog = catalogEntries,
+                        download = LocalModelDownloadUiState(
+                            isInFlight = true,
+                            message = "Downloading qwen: 75%",
+                            progressPercent = 75,
+                        ),
+                    ),
+                    onAction = { action = it },
+                )
+            }
+        }
+
+        // Scroll the list down to the bottom
+        composeRule.onNodeWithTag("local_models_configure")
+            .performScrollToNode(androidx.compose.ui.test.hasText("Catalog Model 9"))
+
+        // Assert progress bar and cancel button are still persistently visible on screen
+        composeRule.onNodeWithTag("local_model_download_progress").assertIsDisplayed()
+        composeRule.onNodeWithText("Downloading qwen: 75%").assertIsDisplayed()
+        composeRule.onNodeWithText("Cancel download").assertIsDisplayed().performClick()
 
         composeRule.runOnIdle {
             assertEquals(LocalModelsAction.CancelDownload, action)

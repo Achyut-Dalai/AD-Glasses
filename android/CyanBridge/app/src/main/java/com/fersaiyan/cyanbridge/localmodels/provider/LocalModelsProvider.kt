@@ -233,10 +233,10 @@ val retryReply = LocalChatSessionManager.streamGenerate(
     }
 
     private fun generationStatus(backend: LocalComputeBackend): String {
-        return if (backend == LocalComputeBackend.GPU_EXPERIMENTAL) {
-            "Generating (GPU)..."
-        } else {
-            "Generating (CPU)..."
+        return when (backend) {
+            LocalComputeBackend.NPU_EXPERIMENTAL -> "Generating (NPU)..."
+            LocalComputeBackend.GPU -> "Generating (GPU)..."
+            LocalComputeBackend.CPU -> "Generating (CPU)..."
         }
     }
 }

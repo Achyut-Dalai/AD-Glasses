@@ -56,9 +56,15 @@ object LocalModelSettingsRepository {
                 defaults.experimentalStructuredJson,
             ),
             computeBackend = runCatching {
-                LocalComputeBackend.valueOf(existing.optString("compute_backend", defaults.computeBackend.name))
+                val raw = existing.optString("compute_backend", defaults.computeBackend.name)
+                when (raw) {
+                    "GPU_EXPERIMENTAL", "GPU" -> LocalComputeBackend.GPU
+                    "NPU_EXPERIMENTAL" -> LocalComputeBackend.NPU_EXPERIMENTAL
+                    "CPU" -> LocalComputeBackend.CPU
+                    else -> LocalComputeBackend.valueOf(raw)
+                }
             }.getOrElse {
-                if (legacyUseGpu(context)) LocalComputeBackend.GPU_EXPERIMENTAL else defaults.computeBackend
+                if (legacyUseGpu(context)) LocalComputeBackend.GPU else defaults.computeBackend
             },
             cpuThreads = existing.optInt("cpu_threads", defaults.cpuThreads)
                 .coerceIn(1, 16),

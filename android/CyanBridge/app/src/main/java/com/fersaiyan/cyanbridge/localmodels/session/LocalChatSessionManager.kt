@@ -158,7 +158,7 @@ object LocalChatSessionManager {
                 state = LocalSessionState.Ready(model.id)
                 return@withLock LocalModelLoadDetails(
                     activeBackend = activeBackend ?: settings.computeBackend,
-                    activeGpuLayers = if (activeBackend == LocalComputeBackend.GPU_EXPERIMENTAL) {
+                    activeGpuLayers = if (activeBackend == LocalComputeBackend.GPU || activeBackend == LocalComputeBackend.NPU_EXPERIMENTAL) {
                         activeGpuLayers
                     } else {
                         0
@@ -201,7 +201,7 @@ object LocalChatSessionManager {
 
             return@withLock LocalModelLoadDetails(
                 activeBackend = activeBackend ?: settings.computeBackend,
-                activeGpuLayers = if (activeBackend == LocalComputeBackend.GPU_EXPERIMENTAL) {
+                activeGpuLayers = if (activeBackend == LocalComputeBackend.GPU || activeBackend == LocalComputeBackend.NPU_EXPERIMENTAL) {
                     activeGpuLayers
                 } else {
                     0
@@ -452,12 +452,13 @@ object LocalChatSessionManager {
             )
         }
 
-        val benchmarkPrompt = if (backend == LocalComputeBackend.GPU_EXPERIMENTAL) {
+        val isAccel = backend == LocalComputeBackend.GPU || backend == LocalComputeBackend.NPU_EXPERIMENTAL
+        val benchmarkPrompt = if (isAccel) {
             "Reply with only: OK"
         } else {
             "Count numbers from 1 to 20 separated by spaces on one line."
         }
-        val warmupTokens = if (backend == LocalComputeBackend.GPU_EXPERIMENTAL) {
+        val warmupTokens = if (isAccel) {
             settings.maxTokens.coerceIn(4, 12)
         } else {
             settings.maxTokens.coerceIn(16, 48)

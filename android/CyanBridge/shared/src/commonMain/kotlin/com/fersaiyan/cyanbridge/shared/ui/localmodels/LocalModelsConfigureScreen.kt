@@ -2,6 +2,7 @@ package com.fersaiyan.cyanbridge.shared.ui.localmodels
 
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.PaddingValues
@@ -33,6 +34,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -85,6 +87,29 @@ fun LocalModelsConfigureScreen(
                 },
             )
         },
+        bottomBar = {
+            if (state.download.isInFlight ||
+                state.download.message.isNotBlank() ||
+                state.download.progressPercent != null
+            ) {
+                Surface(
+                    tonalElevation = 6.dp,
+                    shadowElevation = 8.dp,
+                    modifier = Modifier.fillMaxWidth(),
+                ) {
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(16.dp)
+                    ) {
+                        DownloadProgressCard(
+                            state = state.download,
+                            onAction = onAction,
+                        )
+                    }
+                }
+            }
+        },
     ) { innerPadding ->
         LazyColumn(
             modifier = Modifier
@@ -122,7 +147,7 @@ fun LocalModelsConfigureScreen(
                             style = MaterialTheme.typography.bodySmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
                         )
-                        state.catalog.firstOrNull { it.id == "qwen2.5-0.5b-instruct-q4" }?.let { starter ->
+                        state.catalog.firstOrNull { it.id == "gemma4-e2b-it-litert" }?.let { starter ->
                             FilledTonalButton(
                                 onClick = { onAction(LocalModelsAction.DownloadCatalogModel(starter.id)) },
                                 enabled = starter.canDownload,
@@ -132,17 +157,6 @@ fun LocalModelsConfigureScreen(
                             }
                         }
                     }
-                }
-            }
-            if (state.download.isInFlight ||
-                state.download.message.isNotBlank() ||
-                state.download.progressPercent != null
-            ) {
-                item {
-                    DownloadProgressCard(
-                        state = state.download,
-                        onAction = onAction,
-                    )
                 }
             }
             item {

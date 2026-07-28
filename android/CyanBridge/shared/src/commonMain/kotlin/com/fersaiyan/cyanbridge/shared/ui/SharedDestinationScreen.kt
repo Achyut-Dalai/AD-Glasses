@@ -31,6 +31,7 @@ import com.fersaiyan.cyanbridge.shared.recordings.MeetingRecordingUiState
 import com.fersaiyan.cyanbridge.shared.recordings.RecordingItem
 import com.fersaiyan.cyanbridge.shared.recordings.SyncedMediaItem
 import com.fersaiyan.cyanbridge.shared.recordings.TranscriptionEngine
+import com.fersaiyan.cyanbridge.shared.settings.AgentProviderType
 import com.fersaiyan.cyanbridge.shared.settings.SettingsSection
 import com.fersaiyan.cyanbridge.shared.settings.MemoryPrivacyMode
 import com.fersaiyan.cyanbridge.shared.settings.MemorySourceType
@@ -295,6 +296,8 @@ private fun SharedMediaDestination(onDestinationSelected: (AppDestination) -> Un
             onNavigateBack = { showGallery = false },
             onRefresh = ::refresh,
             onOpenMedia = {},
+            onShareItems = {},
+            onDeleteItems = {},
         )
     } else {
         RecordingsScreen(
@@ -428,7 +431,6 @@ private fun SharedProSubscriptionDestination(
     fun reportUnavailableAction(action: ProSubscriptionAction) {
         state = state.copy(
             status = onSubscriptionAction(action),
-            checkoutPlan = null,
         )
     }
 
@@ -436,15 +438,7 @@ private fun SharedProSubscriptionDestination(
         state = state,
         onPlanSelected = { plan -> state = state.copy(selectedPlan = plan) },
         onSubscribeInApp = { reportUnavailableAction(ProSubscriptionAction.SUBSCRIBE) },
-        onSubscribeOnWebsite = {
-            if (state.webCheckoutAvailable) {
-                state = state.copy(checkoutPlan = state.selectedPlan)
-            } else {
-                reportUnavailableAction(ProSubscriptionAction.SUBSCRIBE)
-            }
-        },
-        onSecureCheckoutSelected = { reportUnavailableAction(ProSubscriptionAction.SUBSCRIBE) },
-        onDismissSecureCheckout = { state = state.copy(checkoutPlan = null) },
+        onSubscribeOnWebsite = { reportUnavailableAction(ProSubscriptionAction.SUBSCRIBE) },
         onDonate = { reportUnavailableAction(ProSubscriptionAction.DONATE) },
         onCancelSubscription = {
             state = state.copy(
@@ -469,9 +463,11 @@ private class SharedSettingsScreenActions(
     override fun onDestinationSelected(destination: AppDestination) = onDestinationSelected.invoke(destination)
     override fun openAppearance() = onOpenAppearance.invoke()
     override fun openAppLanguageSelection() = Unit
-    override fun openVisionProfileSelection() = Unit
-    override fun editVisionInstructions() = Unit
     override fun openSubscription() = onOpenSubscription.invoke()
+    override fun setDefaultImageQuestion(question: String) = update { it.copy(defaultImageQuestion = question) }
+    override fun resetDefaultImageQuestion() = update {
+        it.copy(defaultImageQuestion = SettingsUiState().defaultImageQuestion)
+    }
     override fun setMemoryMode(mode: MemoryPrivacyMode) = update { it.copy(memoryMode = mode) }
     override fun setMemorySync(source: MemorySourceType, enabled: Boolean) = update { state ->
         when (source) {
@@ -497,11 +493,14 @@ private class SharedSettingsScreenActions(
     override fun clearLocalData() = Unit
     override fun sendDebugLogs() = Unit
     override fun stopMeetingCapture() = Unit
+    override fun setProviderType(type: AgentProviderType) = update { it.copy(providerType = type) }
+    override fun openLocalModels() = Unit
 }
 
 private const val SHARED_SETTINGS_PREFS = "cyanbridge_shared_settings"
 
 private fun loadSharedSettings(preferences: PlatformPreferences): SettingsUiState = SettingsUiState(
+    providerType = AgentProviderType.valueOf(preferences.getString("provider_type", AgentProviderType.PRO_SUBSCRIPTION.name)),
     memoryMode = MemoryPrivacyMode.fromRaw(preferences.getString("memory_mode", MemoryPrivacyMode.PRIVATE_LOCAL.name)),
     syncExplicit = preferences.getBoolean("sync_explicit", true),
     syncDaily = preferences.getBoolean("sync_daily", true),
@@ -515,6 +514,7 @@ private fun loadSharedSettings(preferences: PlatformPreferences): SettingsUiStat
 )
 
 private fun saveSharedSettings(preferences: PlatformPreferences, state: SettingsUiState) {
+    preferences.putString("provider_type", state.providerType.name)
     preferences.putString("memory_mode", state.memoryMode.name)
     preferences.putBoolean("sync_explicit", state.syncExplicit)
     preferences.putBoolean("sync_daily", state.syncDaily)

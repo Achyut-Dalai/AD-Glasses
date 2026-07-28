@@ -1,6 +1,11 @@
 package com.fersaiyan.cyanbridge.agent
 
+import android.content.BroadcastReceiver
+import android.content.Context
+import android.content.Intent
+import android.content.IntentFilter
 import android.net.Uri
+import android.os.Build
 import android.os.Bundle
 import android.provider.OpenableColumns
 import android.util.Log
@@ -30,8 +35,7 @@ import com.fersaiyan.cyanbridge.localmodels.catalog.LocalModelCatalogEntry
 import com.fersaiyan.cyanbridge.localmodels.catalog.LocalModelCatalogRepository
 import com.fersaiyan.cyanbridge.localmodels.device.DeviceCapabilityService
 import com.fersaiyan.cyanbridge.localmodels.device.DeviceSnapshot
-import com.fersaiyan.cyanbridge.localmodels.download.LocalModelDownloadManager
-import com.fersaiyan.cyanbridge.localmodels.download.LocalModelDownloadProgress
+import com.fersaiyan.cyanbridge.localmodels.download.ModelDownloadForegroundService
 import com.fersaiyan.cyanbridge.localmodels.session.LocalChatSessionManager
 import com.fersaiyan.cyanbridge.localmodels.settings.LocalComputeBackend
 import com.fersaiyan.cyanbridge.localmodels.settings.LocalGenerationSettings
@@ -68,13 +72,10 @@ import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import java.io.File
-import java.util.concurrent.atomic.AtomicBoolean
 
 class LocalModelsConfigureActivity : AppCompatActivity() {
-    private val downloadManager = LocalModelDownloadManager()
-    private val downloadCancelled = AtomicBoolean(false)
-    private var downloadJob: Job? = null
     private var warmupJob: Job? = null
+    private var downloadReceiver: BroadcastReceiver? = null
     private var composeState by mutableStateOf(LocalModelsConfigureUiState())
     private var syncComposeState: (() -> Unit)? = null
     private lateinit var composeView: ComposeView
@@ -150,6 +151,7 @@ class LocalModelsConfigureActivity : AppCompatActivity() {
     private var installedModels: List<InstalledLocalModel> = emptyList()
     private var suppressProfileSelection = false
     private var isDownloadInFlight = false
+    private var downloadingModelId: String? = null
     private val catalogDownloadButtons = mutableListOf<MaterialButton>()
     private val sectionPrefs by lazy {
         getSharedPreferences("local_models_sections", MODE_PRIVATE)
@@ -225,12 +227,13 @@ class LocalModelsConfigureActivity : AppCompatActivity() {
         initSpinners()
         refreshAllUi()
         setupComposeContent()
+        registerDownloadReceiver()
     }
 
     override fun onDestroy() {
         super.onDestroy()
-        downloadCancelled.set(true)
-        downloadJob?.cancel()
+        unregisterDownloadReceiver()
+        downloadReceiver = null
         warmupJob?.cancel()
     }
 
@@ -392,6 +395,7 @@ class LocalModelsConfigureActivity : AppCompatActivity() {
                     details = "${entry.quantization} · ${humanSize(entry.sizeBytes)} · tags: ${entry.tags.joinToString(", ")}",
                     status = statusText(entry, installed),
                     downloadLabel = when {
+                        isDownloadInFlight && downloadingModelId == entry.id -> "Downloading..."
                         installed != null -> "Installed"
                         entry.sourceUrl.isNullOrBlank() -> "Manual import"
                         !assessCatalogEntry(entry).supported -> "Unavailable on device"
@@ -535,7 +539,7 @@ class LocalModelsConfigureActivity : AppCompatActivity() {
 
         btnDownloadStarter.setOnClickListener {
             val starter = LocalModelCatalogRepository.curatedModels
-                .firstOrNull { it.id == "qwen2.5-0.5b-instruct-q4" }
+                .firstOrNull { it.id == "gemma4-e2b-it-litert" }
             if (starter == null) {
                 Toast.makeText(this, "Starter model missing from catalog", Toast.LENGTH_SHORT).show()
             } else {
@@ -676,12 +680,8 @@ class LocalModelsConfigureActivity : AppCompatActivity() {
     }
 
     private fun cancelDownload() {
-        downloadCancelled.set(true)
-        btnCancelDownload.isEnabled = false
-        downloadJob?.cancel()
-        tvDownloadProgress.text = "Cancelling download..."
-        syncDownloadCardVisibility()
-        syncComposeState?.invoke()
+        ModelDownloadForegroundService.cancelDownload(this)
+        showDownloadFinished("Download cancelled", success = false)
     }
 
     private fun setupCollapsibleSections() {
@@ -791,6 +791,43 @@ class LocalModelsConfigureActivity : AppCompatActivity() {
         btnDownloadStarter.visibility = if (installedModels.isEmpty()) View.VISIBLE else View.GONE
         syncDownloadButtonsState()
 
+        if (ModelDownloadForegroundService.isDownloading && !isDownloadInFlight) {
+            val modelId = ModelDownloadForegroundService.downloadingModelId
+            val entry = modelId?.let { LocalModelCatalogRepository.findById(it) }
+            val lastPct = ModelDownloadForegroundService.lastPercent
+            val lastDownloaded = ModelDownloadForegroundService.lastDownloadedBytes ?: 0L
+            val lastTotal = ModelDownloadForegroundService.lastTotalBytes ?: 0L
+            val lastMsg = ModelDownloadForegroundService.lastStatusMessage
+
+            if (entry != null) {
+                showDownloadStarted(entry)
+                if (lastPct != null && lastPct > 0) {
+                    progressDownload.isIndeterminate = false
+                    progressDownload.setProgressCompat(lastPct, false)
+                    val done = humanSize(lastDownloaded)
+                    val totalStr = if (lastTotal > 0) humanSize(lastTotal) else "?"
+                    tvDownloadProgress.text = lastMsg ?: "Downloading ${entry.displayName}: $lastPct% ($done / $totalStr)"
+                }
+            } else {
+                isDownloadInFlight = true
+                downloadingModelId = modelId
+                progressDownload.visibility = View.VISIBLE
+                if (lastPct != null && lastPct > 0) {
+                    progressDownload.isIndeterminate = false
+                    progressDownload.setProgressCompat(lastPct, false)
+                    val done = humanSize(lastDownloaded)
+                    val totalStr = if (lastTotal > 0) humanSize(lastTotal) else "?"
+                    tvDownloadProgress.text = lastMsg ?: "Downloading: $lastPct% ($done / $totalStr)"
+                } else {
+                    progressDownload.isIndeterminate = true
+                    tvDownloadProgress.text = lastMsg ?: "Downloading..."
+                }
+                btnCancelDownload.isEnabled = true
+                syncDownloadButtonsState()
+                syncDownloadCardVisibility()
+            }
+        }
+
         loadRemoteServerConfig()
         loadStudioBridgeConfig()
         markSettingsSaved()
@@ -863,6 +900,7 @@ class LocalModelsConfigureActivity : AppCompatActivity() {
             val canDownload = canDownloadCatalogEntry(entry, installed)
             val btnDownload = MaterialButton(this).apply {
                 text = when {
+                    isDownloadInFlight && downloadingModelId == entry.id -> "Downloading..."
                     installed != null -> "Installed"
                     entry.sourceUrl.isNullOrBlank() -> "Manual Import"
                     !assessCatalogEntry(entry).supported -> "Unavailable on Device"
@@ -912,6 +950,7 @@ class LocalModelsConfigureActivity : AppCompatActivity() {
             ?.let { " Warning: $it" }
             .orEmpty()
         val availability = when {
+            entry.comingSoon -> "Status: coming soon (Snapdragon NPU AOT build in progress)"
             entry.sourceUrl.isNullOrBlank() -> "Status: manual import recommended"
             entry.gatedDownload -> "Status: downloadable (requires token + accepted terms)"
             else -> "Status: not downloaded"
@@ -926,7 +965,7 @@ class LocalModelsConfigureActivity : AppCompatActivity() {
     )
 
     private fun canDownloadCatalogEntry(entry: LocalModelCatalogEntry, installed: InstalledLocalModel?): Boolean {
-        if (isDownloadInFlight || installed != null || !entry.enabled || entry.sourceUrl.isNullOrBlank()) {
+        if (isDownloadInFlight || installed != null || !entry.enabled || entry.comingSoon || entry.sourceUrl.isNullOrBlank()) {
             return false
         }
         if (entry.gatedDownload && LocalModelsPrefs.getHuggingFaceToken(this).trim().isBlank()) {
@@ -968,30 +1007,7 @@ class LocalModelsConfigureActivity : AppCompatActivity() {
 
         val continueDownload = {
             showDownloadStarted(entry)
-            downloadJob?.cancel()
-            downloadJob = lifecycleScope.launch {
-                runCatching {
-                    downloadManager.downloadCatalogModel(
-                        context = this@LocalModelsConfigureActivity,
-                        entry = entry,
-                        authToken = hfToken,
-                        cancelled = downloadCancelled,
-                        onProgress = { p -> onDownloadProgress(p) },
-                    )
-                }.onSuccess {
-                    showDownloadFinished("Download complete: ${it.displayName}", success = true)
-                    Toast.makeText(this@LocalModelsConfigureActivity, "Model ready", Toast.LENGTH_SHORT).show()
-                    refreshAllUi()
-                }.onFailure { err ->
-                    val cancelled = err is CancellationException || downloadCancelled.get()
-                    if (cancelled) {
-                        showDownloadFinished("Download cancelled", success = false)
-                    } else {
-                        showDownloadFinished("Download failed: ${err.message}", success = false)
-                        Toast.makeText(this@LocalModelsConfigureActivity, err.message ?: "Download failed", Toast.LENGTH_LONG).show()
-                    }
-                }
-            }
+            ModelDownloadForegroundService.startDownload(this, entry.id, hfToken)
         }
 
         if (assessment.warnings.isNotEmpty()) {
@@ -1007,8 +1023,8 @@ class LocalModelsConfigureActivity : AppCompatActivity() {
     }
 
     private fun showDownloadStarted(entry: LocalModelCatalogEntry) {
-        downloadCancelled.set(false)
         isDownloadInFlight = true
+        downloadingModelId = entry.id
         progressDownload.visibility = View.VISIBLE
         progressDownload.isIndeterminate = true
         progressDownload.progress = 0
@@ -1021,6 +1037,7 @@ class LocalModelsConfigureActivity : AppCompatActivity() {
 
     private fun showDownloadFinished(message: String, success: Boolean) {
         isDownloadInFlight = false
+        downloadingModelId = null
         if (success) {
             progressDownload.visibility = View.VISIBLE
             progressDownload.isIndeterminate = false
@@ -1035,10 +1052,68 @@ class LocalModelsConfigureActivity : AppCompatActivity() {
         syncComposeState?.invoke()
     }
 
+    private fun registerDownloadReceiver() {
+        val receiver = object : BroadcastReceiver() {
+            override fun onReceive(context: Context, intent: Intent) {
+                when (intent.action) {
+                    ModelDownloadForegroundService.BROADCAST_PROGRESS -> {
+                        val pct = intent.getIntExtra(ModelDownloadForegroundService.EXTRA_PERCENT, 0)
+                        val downloaded = intent.getLongExtra(ModelDownloadForegroundService.EXTRA_DOWNLOADED_BYTES, 0)
+                        val total = intent.getLongExtra(ModelDownloadForegroundService.EXTRA_TOTAL_BYTES, 0)
+                        if (pct > 0) {
+                            progressDownload.visibility = View.VISIBLE
+                            progressDownload.isIndeterminate = false
+                            progressDownload.setProgressCompat(pct, true)
+                            val done = humanSize(downloaded)
+                            val totalStr = if (total > 0) humanSize(total) else "?"
+                            tvDownloadProgress.text = "Downloading: $pct% ($done / $totalStr)"
+                            syncDownloadCardVisibility()
+                            syncComposeState?.invoke()
+                        }
+                    }
+                    ModelDownloadForegroundService.BROADCAST_DOWNLOAD_FINISHED -> {
+                        val success = intent.getBooleanExtra(ModelDownloadForegroundService.EXTRA_SUCCESS, false)
+                        val modelId = intent.getStringExtra(ModelDownloadForegroundService.EXTRA_MODEL_ID)
+                        val error = intent.getStringExtra(ModelDownloadForegroundService.EXTRA_ERROR)
+                        if (success) {
+                            showDownloadFinished("Download complete", success = true)
+                            refreshAllUi()
+                        } else if (error != "cancelled") {
+                            showDownloadFinished("Download failed: $error", success = false)
+                            Toast.makeText(
+                                this@LocalModelsConfigureActivity,
+                                error ?: "Download failed",
+                                Toast.LENGTH_LONG,
+                            ).show()
+                        } else {
+                            showDownloadFinished("Download cancelled", success = false)
+                        }
+                    }
+                }
+            }
+        }
+        downloadReceiver = receiver
+        val filter = IntentFilter().apply {
+            addAction(ModelDownloadForegroundService.BROADCAST_DOWNLOAD_FINISHED)
+            addAction(ModelDownloadForegroundService.BROADCAST_PROGRESS)
+        }
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            registerReceiver(receiver, filter, Context.RECEIVER_NOT_EXPORTED)
+        } else {
+            registerReceiver(receiver, filter)
+        }
+    }
+
+    private fun unregisterDownloadReceiver() {
+        downloadReceiver?.let { receiver ->
+            runCatching { unregisterReceiver(receiver) }
+        }
+    }
+
     private fun syncDownloadButtonsState() {
         val shouldShowStarter = installedModels.isEmpty()
         btnDownloadStarter.visibility = if (shouldShowStarter) View.VISIBLE else View.GONE
-        val starter = LocalModelCatalogRepository.findById("qwen2.5-0.5b-instruct-q4")
+        val starter = LocalModelCatalogRepository.findById("gemma4-e2b-it-litert")
         btnDownloadStarter.isEnabled = shouldShowStarter && starter?.let { canDownloadCatalogEntry(it, null) } == true
 
         catalogDownloadButtons.forEach { button ->
@@ -1056,21 +1131,6 @@ class LocalModelsConfigureActivity : AppCompatActivity() {
             View.VISIBLE
         } else {
             View.GONE
-        }
-    }
-
-    private fun onDownloadProgress(progress: LocalModelDownloadProgress) {
-        runOnUiThread {
-            val done = humanSize(progress.downloadedBytes)
-            val total = if (progress.totalBytes > 0) humanSize(progress.totalBytes) else "?"
-            progressDownload.visibility = View.VISIBLE
-            progressDownload.isIndeterminate = progress.totalBytes <= 0L
-            if (progress.totalBytes > 0) {
-                progressDownload.setProgressCompat(progress.percent, true)
-            }
-            tvDownloadProgress.text = "Downloading ${progress.modelId}: ${progress.percent}% ($done / $total)"
-            syncDownloadCardVisibility()
-            syncComposeState?.invoke()
         }
     }
 
@@ -1284,18 +1344,19 @@ class LocalModelsConfigureActivity : AppCompatActivity() {
                         runCatching {
                             val genTps = (result.generatedTokens * 1000.0 / result.elapsedMs).coerceAtLeast(0.1)
                             val totalTps = (result.totalTokens * 1000.0 / result.elapsedMs).coerceAtLeast(0.1)
-                            val backend = if (result.backend == LocalComputeBackend.GPU_EXPERIMENTAL) {
-                                "GPU"
-                            } else {
-                                "CPU"
+                            val isAccel = result.backend == LocalComputeBackend.GPU || result.backend == LocalComputeBackend.NPU_EXPERIMENTAL
+                            val backend = when (result.backend) {
+                                LocalComputeBackend.NPU_EXPERIMENTAL -> "NPU"
+                                LocalComputeBackend.GPU -> "GPU"
+                                LocalComputeBackend.CPU -> "CPU"
                             }
-                            val gpuLayersSuffix = if (result.backend == LocalComputeBackend.GPU_EXPERIMENTAL) {
+                            val gpuLayersSuffix = if (isAccel) {
                                 val layers = if (loadDetails.activeGpuLayers == -1) "auto(-1)" else loadDetails.activeGpuLayers.toString()
                                 ", n_gpu_layers=$layers"
                             } else {
                                 ""
                             }
-                            val fallbackSuffix = if (loadDetails.fallbackReason.isNullOrBlank() || result.backend == LocalComputeBackend.GPU_EXPERIMENTAL) {
+                            val fallbackSuffix = if (loadDetails.fallbackReason.isNullOrBlank() || isAccel) {
                                 ""
                             } else {
                                 " | fallback: CPU"
@@ -1303,7 +1364,7 @@ class LocalModelsConfigureActivity : AppCompatActivity() {
                             val msg = "Warm-up complete: ${String.format("%.2f", genTps)} gen tok/s, ${String.format("%.2f", totalTps)} total tok/s, ${result.elapsedMs}ms, backend=$backend$gpuLayersSuffix$fallbackSuffix"
                             tvWarmupResult.text = msg
                             LocalModelsPrefs.setLastBenchmark(this@LocalModelsConfigureActivity, msg)
-                            if (!loadDetails.fallbackReason.isNullOrBlank() && result.backend != LocalComputeBackend.GPU_EXPERIMENTAL) {
+                            if (!loadDetails.fallbackReason.isNullOrBlank() && !isAccel) {
                                 Toast.makeText(this@LocalModelsConfigureActivity, loadDetails.fallbackReason, Toast.LENGTH_LONG).show()
                             }
                             syncComposeState?.invoke()
@@ -1320,7 +1381,7 @@ class LocalModelsConfigureActivity : AppCompatActivity() {
                             tvWarmupResult.text = "Warm-up failed: ${err.message ?: "unknown error"}"
                             val shouldOfferLogs =
                                 selectedModelRuntimeFromUi() == LocalModelRuntime.LITERT ||
-                                    selectedComputeBackendFromUi() == LocalComputeBackend.GPU_EXPERIMENTAL ||
+                                    selectedComputeBackendFromUi() != LocalComputeBackend.CPU ||
                                     DebugLogSupport.isLocalRuntimeIssue(err.message, err)
                             if (shouldOfferLogs) {
                                 DebugLogSupport.showSupportOptionsDialog(
@@ -1379,21 +1440,33 @@ class LocalModelsConfigureActivity : AppCompatActivity() {
     private fun updateComputeBackendUi() {
         val runtime = selectedModelRuntimeFromUi()
         val backend = selectedComputeBackendFromUi()
-        val gpuSelected = backend == LocalComputeBackend.GPU_EXPERIMENTAL
-        editGpuLayers.isEnabled = gpuSelected
-        tvComputeBackendNote.text = if (gpuSelected) {
-            if (runtime == LocalModelRuntime.LITERT) {
-                "LiteRT GPU backend is device-dependent. If GPU init fails, CyanBridge falls back to CPU."
-            } else {
-                "GPU is experimental. Use -1 for auto layer offload. If GPU init fails, the app retries lower layer counts and then falls back to CPU."
-            }
-        } else {
-            if (runtime == LocalModelRuntime.LITERT) {
-                "LiteRT CPU mode is safest for first runs. Move to GPU after a successful warm-up."
-            } else {
-                "CPU mode is the most compatible option. Increase CPU threads for speed if your device remains responsive."
-            }
+        val selectedModel = selectedInstalledModel()
+        val catalogEntry = selectedModel?.catalogId?.let { LocalModelCatalogRepository.findById(it) }
+        val isAccel = backend == LocalComputeBackend.GPU || backend == LocalComputeBackend.NPU_EXPERIMENTAL
+        editGpuLayers.isEnabled = isAccel
+
+        val baseNote = when (backend) {
+            LocalComputeBackend.NPU_EXPERIMENTAL ->
+                "NPU (Experimental) delegate uses Snapdragon NPU or NNAPI hardware acceleration where available."
+            LocalComputeBackend.GPU ->
+                if (runtime == LocalModelRuntime.LITERT) {
+                    "LiteRT GPU backend uses Adreno GPU hardware acceleration. If GPU init fails, CyanBridge falls back to CPU."
+                } else {
+                    "GPU backend offloads model layers to GPU. Use -1 for auto layer offload. If GPU init fails, the app falls back to CPU."
+                }
+            LocalComputeBackend.CPU ->
+                if (runtime == LocalModelRuntime.LITERT) {
+                    "LiteRT CPU mode is safest for first runs. Move to GPU or NPU after a successful warm-up."
+                } else {
+                    "CPU mode is the most compatible option. Increase CPU threads for speed if your device remains responsive."
+                }
         }
+
+        val npuWarning = if (backend == LocalComputeBackend.NPU_EXPERIMENTAL && catalogEntry?.npuSupported != true) {
+            "\n⚠️ Note: Standard GGUF / LiteRT packages are not NPU-compiled. Selecting CPU or GPU is recommended unless using an NPU-compiled package."
+        } else ""
+
+        tvComputeBackendNote.text = "$baseNote$npuWarning"
     }
 
     private fun updateRuntimeUi() {

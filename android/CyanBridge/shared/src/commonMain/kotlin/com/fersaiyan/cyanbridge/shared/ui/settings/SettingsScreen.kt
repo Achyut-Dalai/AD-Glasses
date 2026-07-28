@@ -57,6 +57,7 @@ import com.fersaiyan.cyanbridge.shared.navigation.AppDestination
 import com.fersaiyan.cyanbridge.shared.navigation.icon
 import com.fersaiyan.cyanbridge.shared.navigation.label
 import com.fersaiyan.cyanbridge.shared.icons.imageVector
+import com.fersaiyan.cyanbridge.shared.settings.AgentProviderType
 import com.fersaiyan.cyanbridge.shared.settings.CaptureSource
 import com.fersaiyan.cyanbridge.shared.settings.MemoryPrivacyMode
 import com.fersaiyan.cyanbridge.shared.settings.MemorySourceType
@@ -68,7 +69,8 @@ data class SettingsUiState(
     val isProSubscribed: Boolean = false,
     val proPlan: String = "Pro",
     val appLanguageLabel: String = "System default",
-    val visionProfileLabel: String = "Walking",
+    val providerType: AgentProviderType = AgentProviderType.PRO_SUBSCRIPTION,
+    val defaultImageQuestion: String = "Describe what is in front of me. Mention important text, objects, hazards, and details that may be useful.",
     val memoryMode: MemoryPrivacyMode = MemoryPrivacyMode.PRIVATE_LOCAL,
     val memoryModeAvailability: String = "",
     val memorySyncStatus: String = "",
@@ -92,9 +94,11 @@ interface SettingsScreenActions {
     fun onDestinationSelected(destination: AppDestination)
     fun openAppearance()
     fun openAppLanguageSelection()
-    fun openVisionProfileSelection()
-    fun editVisionInstructions()
     fun openSubscription()
+    fun setProviderType(type: AgentProviderType)
+    fun openLocalModels()
+    fun setDefaultImageQuestion(question: String)
+    fun resetDefaultImageQuestion()
     fun setMemoryMode(mode: MemoryPrivacyMode)
     fun setMemorySync(source: MemorySourceType, enabled: Boolean)
     fun setOcrRetentionDays(value: Int)
@@ -459,21 +463,51 @@ private fun SettingsSectionCard(
 @Composable
 private fun AiAutomationContent(state: SettingsUiState, actions: SettingsScreenActions) {
     Text(
-        "Configure Local Agent planning, phone-control safety, and local models from its Native Plugins card.",
+        "Choose the provider used for AI and memory-aware requests.",
         style = MaterialTheme.typography.bodySmall,
         color = MaterialTheme.colorScheme.onSurfaceVariant,
     )
-    SettingRow(
-        label = stringResource(Res.string.vision_profile_title),
-        subtitle = stringResource(Res.string.vision_profile_description, state.visionProfileLabel),
-    ) {
-        TextButton(onClick = actions::openVisionProfileSelection) {
-            Text(stringResource(Res.string.action_configure))
+    AgentProviderType.entries.forEach { type ->
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .clickable { actions.setProviderType(type) },
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            RadioButton(
+                selected = state.providerType == type,
+                onClick = { actions.setProviderType(type) },
+            )
+            Text(type.label, style = MaterialTheme.typography.bodyMedium)
         }
     }
-    SettingRow(label = stringResource(Res.string.vision_instructions_title)) {
-        TextButton(onClick = actions::editVisionInstructions) {
-            Text(stringResource(Res.string.action_edit))
+    OutlinedButton(
+        onClick = actions::openLocalModels,
+        modifier = Modifier.fillMaxWidth(),
+    ) {
+        Text("Configure local models")
+    }
+    Text(
+        text = stringResource(Res.string.image_questions_title),
+        style = MaterialTheme.typography.titleSmall,
+        fontWeight = FontWeight.SemiBold,
+    )
+    OutlinedTextField(
+        value = state.defaultImageQuestion,
+        onValueChange = actions::setDefaultImageQuestion,
+        label = { Text(stringResource(Res.string.default_image_question)) },
+        modifier = Modifier
+            .fillMaxWidth()
+            .testTag("default_image_question"),
+        minLines = 3,
+        maxLines = 6,
+    )
+    Row(
+        modifier = Modifier.fillMaxWidth(),
+        horizontalArrangement = Arrangement.End,
+    ) {
+        TextButton(onClick = actions::resetDefaultImageQuestion) {
+            Text(stringResource(Res.string.reset_default_image_question))
         }
     }
 }

@@ -54,7 +54,8 @@ class LiteRtLocalInferenceEngine(private val context: Context = MyApplication.CO
         if (current != null) return current
 
         val loadOutcome = withContext(Dispatchers.IO) {
-            if (config.computeBackend == LocalComputeBackend.GPU_EXPERIMENTAL) {
+            if (config.computeBackend == LocalComputeBackend.GPU || config.computeBackend == LocalComputeBackend.NPU_EXPERIMENTAL) {
+                val targetBackend = config.computeBackend
                 runCatching {
                     createInitializedEngine(
                         modelPath = modelPath,
@@ -63,11 +64,11 @@ class LiteRtLocalInferenceEngine(private val context: Context = MyApplication.CO
                         audioBackend = Backend.CPU(config.cpuThreads),
                         maxNumTokens = config.contextSize,
                     ) to EngineLoadResult(
-                        activeBackend = LocalComputeBackend.GPU_EXPERIMENTAL,
+                        activeBackend = targetBackend,
                         activeGpuLayers = config.gpuLayers.coerceAtLeast(0),
                     )
                 }.recoverCatching { gpuMediaErr ->
-                    Log.w(TAG, "LiteRT GPU media backend failed: ${compactError(gpuMediaErr)}", gpuMediaErr)
+                    Log.w(TAG, "LiteRT media acceleration backend failed: ${compactError(gpuMediaErr)}", gpuMediaErr)
                     createInitializedEngine(
                         modelPath = modelPath,
                         backend = Backend.GPU(),
@@ -75,12 +76,12 @@ class LiteRtLocalInferenceEngine(private val context: Context = MyApplication.CO
                         audioBackend = null,
                         maxNumTokens = config.contextSize,
                     ) to EngineLoadResult(
-                        activeBackend = LocalComputeBackend.GPU_EXPERIMENTAL,
+                        activeBackend = targetBackend,
                         activeGpuLayers = config.gpuLayers.coerceAtLeast(0),
-                        fallbackReason = "LiteRT GPU audio/vision backend mismatch (${compactError(gpuMediaErr)}). Continuing on GPU text backend.",
+                        fallbackReason = "LiteRT acceleration audio/vision backend mismatch (${compactError(gpuMediaErr)}). Continuing on text acceleration backend.",
                     )
                 }.recoverCatching { gpuErr ->
-                    Log.w(TAG, "LiteRT GPU backend unavailable, falling back to CPU: ${compactError(gpuErr)}", gpuErr)
+                    Log.w(TAG, "LiteRT hardware backend unavailable, falling back to CPU: ${compactError(gpuErr)}", gpuErr)
                     createInitializedEngine(
                         modelPath = modelPath,
                         backend = Backend.CPU(config.cpuThreads),
@@ -90,7 +91,7 @@ class LiteRtLocalInferenceEngine(private val context: Context = MyApplication.CO
                     ) to EngineLoadResult(
                         activeBackend = LocalComputeBackend.CPU,
                         activeGpuLayers = 0,
-                        fallbackReason = "LiteRT GPU backend unavailable (${compactError(gpuErr)}). Fell back to CPU.",
+                        fallbackReason = "LiteRT hardware backend unavailable (${compactError(gpuErr)}). Fell back to CPU.",
                     )
                 }.getOrThrow()
             } else {

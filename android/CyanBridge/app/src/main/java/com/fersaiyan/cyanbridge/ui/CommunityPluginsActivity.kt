@@ -13,6 +13,7 @@ import androidx.lifecycle.lifecycleScope
 import com.fersaiyan.cyanbridge.MainActivity
 import com.fersaiyan.cyanbridge.ai.router.AiProviderPrefs
 import com.fersaiyan.cyanbridge.devices.DeviceProfileStore
+import com.fersaiyan.cyanbridge.shared.devices.DeviceClass
 import com.fersaiyan.cyanbridge.devices.metarayban.MetaRaybanManager
 import com.meta.wearable.dat.core.Wearables
 import com.meta.wearable.dat.core.types.Permission
@@ -88,85 +89,107 @@ class CommunityPluginsActivity : AppCompatActivity() {
         }
 
     private fun nativePluginPool(): List<NativePluginCardData> {
-        val isMetaRayban = DeviceProfileStore.isMetaSelected(this)
+        val selectedClass = DeviceProfileStore.selectedClass(this)
+        val hasCamera = selectedClass in setOf(DeviceClass.HEY_CYAN, DeviceClass.META_RAYBAN, DeviceClass.UNKNOWN)
+        val hasOnboardStorage = selectedClass == DeviceClass.HEY_CYAN || selectedClass == DeviceClass.UNKNOWN
+
+        val autoAudioDescription = when (selectedClass) {
+            DeviceClass.META_RAYBAN -> "Unavailable for Meta Ray-Ban: DAT does not expose HeyCyan onboard audio-file recording."
+            DeviceClass.MEIZU_MYVU -> "Unavailable for Meizu MYVU: device has no onboard audio file storage."
+            DeviceClass.GENERIC_AUDIO -> "Unavailable for Earbuds / Audio-only glasses: device has no onboard audio file storage."
+            else -> "Record glasses audio in resilient 15-minute loops with optional speech extension and sync."
+        }
+
+        val cameraUnavailableReason = when (selectedClass) {
+            DeviceClass.MEIZU_MYVU -> "Unavailable for Meizu MYVU: device has no camera."
+            DeviceClass.GENERIC_AUDIO -> "Unavailable for Earbuds / Audio-only glasses: device has no camera."
+            else -> null
+        }
+
         return listOf(
-        NativePluginCardData(
-            id = NativePluginIds.LOCAL_AGENT,
-            title = "Local Agent",
-            description = "Private phone automation with accessibility controls, action approval, local planning, and shared diary memory.",
-            badge = "Automation",
-            enabled = LocalAgentPlugin.isEnabled(this),
-            hasSettings = true,
-        ),
-        NativePluginCardData(
-            id = NativePluginIds.WALKING_AID,
-            title = "Walking Aid",
-            description = "Real-time scene description and obstacle warnings for blind navigation. Captures images from glasses at regular intervals and describes the environment.",
-            badge = "Accessibility",
-            enabled = CommunityPluginPrefs.isNativePluginEnabled(this, NativePluginIds.WALKING_AID),
-            hasSettings = true,
-        ),
-        NativePluginCardData(
-            id = NativePluginIds.MEETING_SPARK_NOTES,
-            title = "Meeting Spark Notes",
-            description = "Turns live voice capture and chats into concise meeting summaries with action items.",
-            badge = "Productivity",
-            enabled = CommunityPluginPrefs.isNativePluginEnabled(this, NativePluginIds.MEETING_SPARK_NOTES),
-            hasSettings = true,
-        ),
-        NativePluginCardData(
-            id = NativePluginIds.LIVE_CAPTION_RELAY,
-            title = "Live Caption Relay",
-            description = "Captions live speech from your phone or Bluetooth glasses mic, with optional translation.",
-            badge = "Accessibility",
-            enabled = CommunityPluginPrefs.isNativePluginEnabled(this, NativePluginIds.LIVE_CAPTION_RELAY),
-            hasSettings = true,
-        ),
-        NativePluginCardData(
-            id = NativePluginIds.HANDS_FREE_TRANSLATOR,
-            title = "Hands-Free Translator",
-            description = "Continuously translates live speech from your phone or Bluetooth glasses mic while enabled.",
-            badge = "Language",
-            enabled = CommunityPluginPrefs.isNativePluginEnabled(this, NativePluginIds.HANDS_FREE_TRANSLATOR),
-            hasSettings = true,
-        ),
-        NativePluginCardData(
-            id = NativePluginIds.ERRAND_BRAIN,
-            title = "Errand Brain",
-            description = "Turns live voice notes into checklist tasks. Say “remind me in…” to schedule a phone reminder.",
-            badge = "Planner",
-            enabled = CommunityPluginPrefs.isNativePluginEnabled(this, NativePluginIds.ERRAND_BRAIN),
-            hasSettings = true,
-        ),
-        NativePluginCardData(
-            id = NativePluginIds.AUTO_DIARY,
-            title = "AutoDiary",
-            description = "Collect screen context and turn it into private daily facts, bullets, and summaries.",
-            badge = "Productivity",
-            enabled = AutoDiaryService.isEnabled(this),
-            hasSettings = true,
-        ),
-        NativePluginCardData(
-            id = NativePluginIds.AUTO_AUDIO,
-            title = "Auto Audio",
-            description = if (isMetaRayban) {
-                "Unavailable for Meta Ray-Ban: DAT does not expose HeyCyan onboard audio-file recording."
-            } else {
-                "Record glasses audio in resilient 15-minute loops with optional speech extension and sync."
-            },
-            badge = "Media",
-            enabled = !isMetaRayban && AutoAudioCapturePrefs.isEnabled(this),
-            hasSettings = true,
-            isAvailable = !isMetaRayban,
-        ),
-        NativePluginCardData(
-            id = NativePluginIds.VISUAL_DIARY,
-            title = "Visual Diary",
-            description = "Capture glasses scenes, describe them with Gemma, and append concise notes to daily memory.",
-            badge = "Productivity",
-            enabled = VisualDiaryPreferences.isEnabled(this),
-            hasSettings = true,
-        ),
+            NativePluginCardData(
+                id = NativePluginIds.LOCAL_AGENT,
+                title = "Local Agent",
+                description = "Private phone automation with accessibility controls, action approval, local planning, and shared diary memory.",
+                badge = "Automation",
+                enabled = LocalAgentPlugin.isEnabled(this),
+                hasSettings = true,
+            ),
+            NativePluginCardData(
+                id = NativePluginIds.WALKING_AID,
+                title = "Walking Aid",
+                description = cameraUnavailableReason ?: "Real-time scene description and obstacle warnings for blind navigation. Captures images from glasses at regular intervals and describes the environment.",
+                badge = "Accessibility",
+                enabled = hasCamera && CommunityPluginPrefs.isNativePluginEnabled(this, NativePluginIds.WALKING_AID),
+                hasSettings = true,
+                isAvailable = hasCamera,
+            ),
+            NativePluginCardData(
+                id = NativePluginIds.MEETING_SPARK_NOTES,
+                title = "Meeting Spark Notes",
+                description = "Turns live voice capture and chats into concise meeting summaries with action items.",
+                badge = "Productivity",
+                enabled = CommunityPluginPrefs.isNativePluginEnabled(this, NativePluginIds.MEETING_SPARK_NOTES),
+                hasSettings = true,
+            ),
+            NativePluginCardData(
+                id = NativePluginIds.LIVE_CAPTION_RELAY,
+                title = "Live Caption Relay",
+                description = if (selectedClass == DeviceClass.MEIZU_MYVU) {
+                    "Captions live speech and streams text directly to your Meizu MYVU heads-up display."
+                } else {
+                    "Captions live speech from your phone or Bluetooth glasses mic, with optional translation."
+                },
+                badge = "Accessibility",
+                enabled = CommunityPluginPrefs.isNativePluginEnabled(this, NativePluginIds.LIVE_CAPTION_RELAY),
+                hasSettings = true,
+            ),
+            NativePluginCardData(
+                id = NativePluginIds.HANDS_FREE_TRANSLATOR,
+                title = "Hands-Free Translator",
+                description = if (selectedClass == DeviceClass.MEIZU_MYVU) {
+                    "Continuously translates live speech and displays translated subtitles on your Meizu MYVU HUD."
+                } else {
+                    "Continuously translates live speech from your phone or Bluetooth glasses mic while enabled."
+                },
+                badge = "Language",
+                enabled = CommunityPluginPrefs.isNativePluginEnabled(this, NativePluginIds.HANDS_FREE_TRANSLATOR),
+                hasSettings = true,
+            ),
+            NativePluginCardData(
+                id = NativePluginIds.ERRAND_BRAIN,
+                title = "Errand Brain",
+                description = "Turns live voice notes into checklist tasks. Say “remind me in…” to schedule a phone reminder.",
+                badge = "Planner",
+                enabled = CommunityPluginPrefs.isNativePluginEnabled(this, NativePluginIds.ERRAND_BRAIN),
+                hasSettings = true,
+            ),
+            NativePluginCardData(
+                id = NativePluginIds.AUTO_DIARY,
+                title = "AutoDiary",
+                description = "Collect screen context and turn it into private daily facts, bullets, and summaries.",
+                badge = "Productivity",
+                enabled = AutoDiaryService.isEnabled(this),
+                hasSettings = true,
+            ),
+            NativePluginCardData(
+                id = NativePluginIds.AUTO_AUDIO,
+                title = "Auto Audio",
+                description = autoAudioDescription,
+                badge = "Media",
+                enabled = hasOnboardStorage && AutoAudioCapturePrefs.isEnabled(this),
+                hasSettings = true,
+                isAvailable = hasOnboardStorage,
+            ),
+            NativePluginCardData(
+                id = NativePluginIds.VISUAL_DIARY,
+                title = "Visual Diary",
+                description = cameraUnavailableReason ?: "Capture glasses scenes, describe them with Gemma, and append concise notes to daily memory.",
+                badge = "Productivity",
+                enabled = hasCamera && VisualDiaryPreferences.isEnabled(this),
+                hasSettings = true,
+                isAvailable = hasCamera,
+            ),
         )
     }
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -376,9 +399,6 @@ class CommunityPluginsActivity : AppCompatActivity() {
                     Uri.parse(link),
                 ),
             )
-            if (!plugin.taskerNetLink.isNullOrBlank()) {
-                CommunityPluginPrefs.setTaskerAssistantEnabled(this, true)
-            }
         }.onFailure {
             Toast.makeText(this, "Could not open ${plugin.title}", Toast.LENGTH_SHORT).show()
         }

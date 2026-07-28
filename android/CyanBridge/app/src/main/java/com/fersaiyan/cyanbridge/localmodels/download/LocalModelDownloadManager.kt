@@ -1,18 +1,23 @@
 package com.fersaiyan.cyanbridge.localmodels.download
 
 import android.content.Context
+import android.util.Log
 import com.fersaiyan.cyanbridge.localmodels.catalog.LocalModelCatalogEntry
 import com.fersaiyan.cyanbridge.localmodels.device.DeviceCapabilityService
 import com.fersaiyan.cyanbridge.localmodels.storage.InstalledLocalModel
 import com.fersaiyan.cyanbridge.localmodels.storage.LocalModelFileUtils
 import com.fersaiyan.cyanbridge.localmodels.storage.LocalModelStorageRepository
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.ensureActive
 import kotlinx.coroutines.withContext
 import okhttp3.OkHttpClient
 import okhttp3.Request
 import java.io.File
 import java.io.FileOutputStream
+import java.net.SocketException
+import java.net.UnknownHostException
+import java.util.concurrent.TimeUnit
 import java.util.concurrent.atomic.AtomicBoolean
 import kotlin.coroutines.coroutineContext
 
@@ -26,8 +31,17 @@ data class LocalModelDownloadProgress(
 }
 
 class LocalModelDownloadManager(
-    private val client: OkHttpClient = OkHttpClient(),
+    private val client: OkHttpClient = OkHttpClient.Builder()
+        .connectTimeout(30, TimeUnit.SECONDS)
+        .readTimeout(5, TimeUnit.MINUTES)
+        .writeTimeout(30, TimeUnit.SECONDS)
+        .build(),
 ) {
+    companion object {
+        private const val TAG = "LocalModelDownload"
+        private const val MAX_RETRIES = 3
+    }
+
     suspend fun downloadCatalogModel(
         context: Context,
         entry: LocalModelCatalogEntry,
@@ -61,6 +75,43 @@ class LocalModelDownloadManager(
         )
         if (tmpFile.exists()) tmpFile.delete()
 
+        var lastError: Throwable? = null
+        for (attempt in 1..MAX_RETRIES) {
+            if (cancelled.get()) throw IllegalStateException("Download cancelled")
+
+            try {
+                return@withContext downloadOnce(context, entry, authToken, cancelled, onProgress, tmpFile, source)
+            } catch (e: SocketException) {
+                lastError = e
+                Log.w(TAG, "Download attempt $attempt/$MAX_RETRIES failed: ${e.message}", e)
+                if (attempt < MAX_RETRIES) {
+                    val delayMs = (1000L shl attempt).coerceAtMost(8000L)
+                    Log.i(TAG, "Retrying in ${delayMs}ms...")
+                    delay(delayMs)
+                }
+            } catch (e: UnknownHostException) {
+                lastError = e
+                Log.w(TAG, "Download attempt $attempt/$MAX_RETRIES DNS failed: ${e.message}", e)
+                if (attempt < MAX_RETRIES) {
+                    val delayMs = (1000L shl attempt).coerceAtMost(8000L)
+                    Log.i(TAG, "Retrying DNS in ${delayMs}ms...")
+                    delay(delayMs)
+                }
+            }
+        }
+
+        throw lastError ?: IllegalStateException("Download failed after $MAX_RETRIES attempts")
+    }
+
+    private suspend fun downloadOnce(
+        context: Context,
+        entry: LocalModelCatalogEntry,
+        authToken: String?,
+        cancelled: AtomicBoolean,
+        onProgress: (LocalModelDownloadProgress) -> Unit,
+        tmpFile: File,
+        source: String,
+    ): InstalledLocalModel {
         val requestBuilder = Request.Builder().url(source).get()
         if (!authToken.isNullOrBlank() && source.contains("huggingface.co", ignoreCase = true)) {
             requestBuilder.addHeader("Authorization", "Bearer ${authToken.trim()}")
@@ -157,6 +208,6 @@ class LocalModelDownloadManager(
             tmpFile.delete()
         }
 
-        LocalModelStorageRepository.registerCatalogModel(context, entry, finalFile)
+        return LocalModelStorageRepository.registerCatalogModel(context, entry, finalFile)
     }
 }

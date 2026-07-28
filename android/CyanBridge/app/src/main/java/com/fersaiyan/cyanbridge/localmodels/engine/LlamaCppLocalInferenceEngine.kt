@@ -45,7 +45,7 @@ class LlamaCppLocalInferenceEngine : LocalInferenceEngine {
                 Log.i(TAG, "Reusing existing llama.cpp context for $modelPath")
                 return@withContext activeLoadResult ?: EngineLoadResult(
                     activeBackend = config.computeBackend,
-                    activeGpuLayers = if (config.computeBackend == LocalComputeBackend.GPU_EXPERIMENTAL) {
+                    activeGpuLayers = if (config.computeBackend == LocalComputeBackend.GPU || config.computeBackend == LocalComputeBackend.NPU_EXPERIMENTAL) {
                         normalizeGpuLayerSetting(config.gpuLayers)
                     } else {
                         0
@@ -79,7 +79,8 @@ class LlamaCppLocalInferenceEngine : LocalInferenceEngine {
                 params
             }
 
-            val (result, loadResult) = if (config.computeBackend == LocalComputeBackend.GPU_EXPERIMENTAL) {
+            val isAccel = config.computeBackend == LocalComputeBackend.GPU || config.computeBackend == LocalComputeBackend.NPU_EXPERIMENTAL
+            val (result, loadResult) = if (isAccel) {
                 val requestedGpuLayers = normalizeGpuLayerSetting(config.gpuLayers)
                 val attempts = gpuLayerAttempts(requestedGpuLayers)
                 var selectedGpuLayers: Int? = null
@@ -87,7 +88,7 @@ class LlamaCppLocalInferenceEngine : LocalInferenceEngine {
                 val failures = mutableListOf<String>()
 
                 for (candidateLayers in attempts) {
-                    Log.i(TAG, "Trying llama GPU init with n_gpu_layers=$candidateLayers")
+                    Log.i(TAG, "Trying llama GPU/accelerator init with n_gpu_layers=$candidateLayers")
                     runCatching {
                         initializeContext(engine, runtimeApi, createInitParams(candidateLayers))
                     }.onSuccess { init ->
@@ -104,7 +105,7 @@ class LlamaCppLocalInferenceEngine : LocalInferenceEngine {
                 val gpuLayers = selectedGpuLayers
                 if (gpuResult != null && gpuLayers != null) {
                     gpuResult to EngineLoadResult(
-                        activeBackend = LocalComputeBackend.GPU_EXPERIMENTAL,
+                        activeBackend = config.computeBackend,
                         activeGpuLayers = gpuLayers,
                     )
                 } else {

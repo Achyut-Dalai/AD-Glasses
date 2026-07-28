@@ -92,8 +92,8 @@ class MyApplication : Application(){
         maybePreloadLocalModel()
 
         // Initialize KMP shared services
-        initPlatformPreferences(this)
-        initSharedServices()
+        runCatching { initPlatformPreferences(this) }
+        runCatching { initSharedServices() }
 
     }
 
@@ -236,8 +236,21 @@ class MyApplication : Application(){
 
     companion object {
         private var application: Application? = null
-        var CONTEXT: Context by Delegates.notNull()
-            private set
+        private var _context: Context? = null
+        var CONTEXT: Context
+            get() {
+                val ctx = _context
+                if (ctx != null) return ctx
+                val testCtx = runCatching {
+                    val clazz = Class.forName("androidx.test.core.app.ApplicationProvider")
+                    val method = clazz.getMethod("getApplicationContext")
+                    method.invoke(null) as? Context
+                }.getOrNull()
+                return testCtx ?: throw IllegalStateException("Property CONTEXT should be initialized before being accessed.")
+            }
+            set(value) {
+                _context = value
+            }
         private lateinit var instance: MyApplication
 
         val database: com.fersaiyan.cyanbridge.data.local.AppDatabase by lazy {
@@ -277,7 +290,7 @@ class MyApplication : Application(){
 
         // Chapter 7: summarization + notes workflow
         val summarizationService: com.fersaiyan.cyanbridge.shared.notes.SummarizationService by lazy {
-            com.fersaiyan.cyanbridge.shared.notes.RuleBasedSummarizationService()
+            com.fersaiyan.cyanbridge.ai.summarization.AiSummarizationService(CONTEXT)
         }
 
         val notesRepository: com.fersaiyan.cyanbridge.notes.NotesRepository by lazy {
