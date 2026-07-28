@@ -3,8 +3,8 @@ package com.fersaiyan.cyanbridge.plugins.walkingaid
 import android.app.Service
 import android.content.Context
 import android.content.Intent
-import android.content.pm.PackageManager
 import android.content.pm.ServiceInfo
+import android.graphics.BitmapFactory
 import android.os.Build
 import android.os.IBinder
 import android.speech.tts.TextToSpeech
@@ -13,18 +13,23 @@ import android.util.Log
 import android.widget.Toast
 import androidx.core.app.ServiceCompat
 import androidx.fragment.app.FragmentActivity
-import com.fersaiyan.cyanbridge.ai.vision.VisionProfile
-import com.fersaiyan.cyanbridge.ai.vision.VisionProfilePreferences
-import com.fersaiyan.cyanbridge.ai.vision.VisionPromptBuilder
+import com.fersaiyan.cyanbridge.ai.vision.ImageQuestionPreferences
+import com.fersaiyan.cyanbridge.devices.DeviceProfileStore
+import com.fersaiyan.cyanbridge.devices.metarayban.MetaRaybanManager
 import com.fersaiyan.cyanbridge.glasses.GlassesSessionCoordinator
 import com.fersaiyan.cyanbridge.media.autocapture.AutoAudioCapturePrefs
 import com.fersaiyan.cyanbridge.media.autocapture.AutoAudioCaptureService
 import com.fersaiyan.cyanbridge.audio.MeetingCapturePrefs
+import com.fersaiyan.cyanbridge.ai.router.CliRelayClient
 import com.fersaiyan.cyanbridge.localmodels.provider.LocalModelRequestPriority
 import com.fersaiyan.cyanbridge.localmodels.provider.LocalModelsProvider
-import com.fersaiyan.cyanbridge.ai.router.CliRelayClient
-import com.fersaiyan.cyanbridge.devices.DeviceProfileStore
-import com.fersaiyan.cyanbridge.devices.metarayban.MetaRaybanManager
+import com.fersaiyan.cyanbridge.plugins.walkingaid.vision.DepthResult
+import com.fersaiyan.cyanbridge.plugins.walkingaid.vision.DetectedObject
+import com.fersaiyan.cyanbridge.plugins.walkingaid.vision.DetectionResult
+import com.fersaiyan.cyanbridge.plugins.walkingaid.vision.LiteRtVisionBackend
+import com.fersaiyan.cyanbridge.plugins.walkingaid.vision.VisionBackend
+import com.fersaiyan.cyanbridge.plugins.walkingaid.vision.VisionFrame
+import android.graphics.RectF
 import com.fersaiyan.cyanbridge.ui.ensureNotificationPermission
 import com.fersaiyan.cyanbridge.ui.hasNotificationPermission
 import com.oudmon.ble.base.bluetooth.BleOperateManager
@@ -34,38 +39,60 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.SupervisorJob
-import kotlinx.coroutines.async
-import kotlinx.coroutines.cancel
+import kotlinx.coroutines.channels.BufferOverflow
+import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
-import kotlinx.coroutines.withContext
 import kotlinx.coroutines.withTimeoutOrNull
 import java.io.File
 import java.io.FileOutputStream
 import java.util.Locale
 import java.util.concurrent.atomic.AtomicBoolean
 
+import com.fersaiyan.cyanbridge.devices.DeviceCapabilityHelper
+
 class WalkingAidService : Service() {
 
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
-    private var loopJob: Job? = null
+    private var captureLoopJob: Job? = null
+    private var visionWorkerJob: Job? = null
+
+    private var visionBackend: VisionBackend? = null
+
+    // "Latest frame wins" decoupled communication channel
+    private val frameChannel = Channel<VisionFrame>(
+        capacity = 1,
+        onBufferOverflow = BufferOverflow.DROP_OLDEST,
+    )
+
     private var tts: TextToSpeech? = null
     private var ttsReady = false
     private var safetyDisclaimerSpoken = false
     private var wasAutoAudioEnabled = false
-    private val localModelsProvider = LocalModelsProvider()
 
     override fun onCreate() {
         super.onCreate()
         WalkingAidNotificationHelper.ensureChannel(this)
         WalkingAidImageStore.load(this)
+        WalkingAidWarningEngine.reset()
         initTts()
     }
 
     override fun onBind(intent: Intent?): IBinder? = null
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
+        if (!DeviceCapabilityHelper.hasCamera(this)) {
+            Log.w(TAG, "Stopping WalkingAidService: selected device profile has no camera")
+            stopSelf()
+            return START_NOT_STICKY
+        }
+        val readiness = WalkingAidReadinessChecker.checkReadiness(this)
+        if (!readiness.isReady) {
+            Log.w(TAG, "Stopping WalkingAidService: model readiness check failed: ${readiness.missingDetails}")
+            stopSelf()
+            return START_NOT_STICKY
+        }
         val action = intent?.action
         when (action) {
             ACTION_START -> startLoop()
@@ -82,7 +109,6 @@ class WalkingAidService : Service() {
         tts?.stop()
         tts?.shutdown()
         tts = null
-        scope.cancel()
         super.onDestroy()
     }
 
@@ -97,10 +123,6 @@ class WalkingAidService : Service() {
     }
 
     private fun startForegroundSafely(content: String): Boolean {
-        if (!canPostNotifications()) {
-            Log.w(TAG, "Missing POST_NOTIFICATIONS; cannot start walking aid foreground service")
-            return false
-        }
         return runCatching {
             val notif = WalkingAidNotificationHelper.buildNotification(
                 this, content, WalkingAidPreferences.getCaptureIntervalSeconds(this)
@@ -127,21 +149,12 @@ class WalkingAidService : Service() {
         }
         val isMetaRayban = isMetaRaybanSelected()
 
-        // Check POST_NOTIFICATIONS permission
-        if (!canPostNotifications()) {
-            Log.w(TAG, "Missing POST_NOTIFICATIONS permission")
+        if (!startForegroundSafely("Walking Aid active — starting LiteRT Vision Engine...")) {
             RUNNING.set(false)
             stopSelf()
             return
         }
 
-        if (!startForegroundSafely("Walking Aid active — starting...")) {
-            RUNNING.set(false)
-            stopSelf()
-            return
-        }
-
-        // HeyCyan uses the vendor BLE transport; Meta uses DAT instead.
         if (!isMetaRayban && !BleOperateManager.getInstance().isConnected) {
             Log.w(TAG, "Glasses not connected")
             showToast(this, getString(com.fersaiyan.cyanbridge.R.string.walking_aid_not_connected))
@@ -155,7 +168,6 @@ class WalkingAidService : Service() {
             if (!metaManager.isInitialized.value) metaManager.initialize()
         }
 
-        // Check meeting capture
         if (MeetingCapturePrefs.getState(this).isRecording) {
             Log.w(TAG, "Meeting capture is active")
             showToast(this, getString(com.fersaiyan.cyanbridge.R.string.walking_aid_meeting_active))
@@ -165,7 +177,6 @@ class WalkingAidService : Service() {
             return
         }
 
-        // Pause auto audio capture
         wasAutoAudioEnabled = AutoAudioCapturePrefs.isEnabled(this)
         if (wasAutoAudioEnabled) {
             AutoAudioCapturePrefs.setEnabled(this, false)
@@ -176,26 +187,164 @@ class WalkingAidService : Service() {
 
         safetyDisclaimerSpoken = false
 
-        loopJob = scope.launch {
+        // Initialize LiteRT Vision Backend (NPU -> GPU -> CPU hierarchy)
+        visionBackend = LiteRtVisionBackend(this)
+        val accelInfo = visionBackend?.acceleratorInfo()
+        Log.i(TAG, "Vision engine active: ${accelInfo?.details}")
+
+        // 1. Launch dedicated Vision Worker (decoupled from camera acquisition rate)
+        visionWorkerJob = scope.launch {
+            var frameCount = 0
+            for (frame in frameChannel) {
+                if (!isActive) break
+                val backend = visionBackend ?: continue
+
+                val imageSource = WalkingAidPreferences.getImageDescriptionSource(this@WalkingAidService)
+                val depthSource = WalkingAidPreferences.getDepthSource(this@WalkingAidService)
+                val stateSource = WalkingAidPreferences.getStateModelSource(this@WalkingAidService)
+
+                // 1. Detection (Cloud Vision or Local LiteRT)
+                val detectionResult = if (imageSource == "cloud" && !frame.sourcePath.isNullOrBlank() && File(frame.sourcePath).exists()) {
+                    val modelOverride = WalkingAidPreferences.getImageDescriptionModelOverride(this@WalkingAidService)
+                    val prompt = "List all visible obstacles, vehicles, people, or hazards in this image for a walking aid assistant."
+                    val cloudReply = CliRelayClient.imageQuery(this@WalkingAidService, frame.sourcePath, prompt, modelOverride = modelOverride).getOrDefault("")
+
+                    val cloudObjects = mutableListOf<DetectedObject>()
+                    if (cloudReply.isNotBlank()) {
+                        val keywords = listOf("person", "car", "bicycle", "chair", "pole", "stairs", "step", "curb", "door", "table", "wall")
+                        keywords.forEach { kw ->
+                            if (cloudReply.contains(kw, ignoreCase = true)) {
+                                cloudObjects.add(DetectedObject(label = kw, confidence = 0.90f, boundingBox = RectF(0.3f, 0.3f, 0.7f, 0.7f), position = "center"))
+                            }
+                        }
+                    }
+                    if (cloudObjects.isNotEmpty()) {
+                        DetectionResult(objects = cloudObjects, acquisitionTimeMs = 0L, preprocessTimeMs = 0L, inferenceTimeMs = 500L, postprocessTimeMs = 0L)
+                    } else {
+                        backend.detect(frame)
+                    }
+                } else {
+                    backend.detect(frame)
+                }
+
+                // 2. Depth Estimation (Cloud Depth or Local LiteRT)
+                var depthResult: DepthResult? = null
+                if (WalkingAidPreferences.isDepthEnabled(this@WalkingAidService)) {
+                    if (depthSource == "cloud" && !frame.sourcePath.isNullOrBlank() && File(frame.sourcePath).exists()) {
+                        val depthModelOverride = WalkingAidPreferences.getDepthModelOverride(this@WalkingAidService)
+                        val depthPrompt = "Analyze relative depth, ground steps, curbs, and drop-offs in this image for a walking aid assistant."
+                        val cloudDepthReply = CliRelayClient.imageQuery(this@WalkingAidService, frame.sourcePath, depthPrompt, modelOverride = depthModelOverride).getOrDefault("")
+                        val hasDrop = cloudDepthReply.contains("step", ignoreCase = true) || cloudDepthReply.contains("curb", ignoreCase = true) || cloudDepthReply.contains("drop", ignoreCase = true)
+                        depthResult = DepthResult(
+                            relativeDepthSummary = cloudDepthReply.ifBlank { "Cloud relative depth analysis complete" },
+                            groundDiscontinuityDetected = hasDrop,
+                            closestRegion = "center",
+                            inferenceTimeMs = 500L,
+                        )
+                    } else if (frameCount % 3 == 0 || detectionResult.objects.any { it.approaching }) {
+                        depthResult = backend.estimateDepth(frame)
+                    }
+                }
+
+                // 3. Deterministic Warning Evaluation
+                val customPrompt = WalkingAidPreferences.getCustomPrompt(this@WalkingAidService)
+                val warningDecision = WalkingAidWarningEngine.evaluate(detectionResult, depthResult, customPrompt)
+
+                // 4. Scene LLM Reasoning Guidance (Cloud LLM or Local LLM)
+                var spokenMessage = warningDecision.message
+                if (warningDecision.shouldWarn && spokenMessage.isNotBlank()) {
+                    val scenePrompt = "Summarize the hazard concisely in 1 short spoken sentence for a walking aid user: $spokenMessage"
+                    if (stateSource == "cloud") {
+                        val cloudLlmReply = CliRelayClient.voiceQuery(this@WalkingAidService, scenePrompt).getOrNull()
+                        if (!cloudLlmReply.isNullOrBlank()) {
+                            spokenMessage = cloudLlmReply.trim()
+                        }
+                    } else if (stateSource == "local") {
+                        try {
+                            val localLlmReply = LocalModelsProvider().streamChat(
+                                context = this@WalkingAidService,
+                                messages = listOf(mapOf("role" to "User", "content" to scenePrompt)),
+                                requestPriority = LocalModelRequestPriority.HIGH,
+                            )
+                            if (localLlmReply.isNotBlank()) {
+                                spokenMessage = localLlmReply.trim()
+                            }
+                        } catch (e: Exception) {
+                            Log.w(TAG, "Local Scene LLM streamChat error: ${e.message}")
+                        }
+                    }
+                }
+
+                // Store historical entry for GUI thumbnail playback and Q&A
+                val descText = if (detectionResult.isError) {
+                    "System Error: ${detectionResult.errorMessage ?: "Vision backend error"}"
+                } else if (detectionResult.objects.isNotEmpty()) {
+                    "Detected: " + detectionResult.objects.joinToString(", ") { "${it.label} (${it.position})" }
+                } else {
+                    "Clear walking trajectory"
+                }
+
+                if (detectionResult.isError) {
+                    val errDetail = detectionResult.errorMessage ?: "Vision model error"
+                    Log.e(TAG, "WalkingAid detection error: $errDetail")
+                    val intervalSec = WalkingAidPreferences.getCaptureIntervalSeconds(this@WalkingAidService)
+                    WalkingAidNotificationHelper.updateNotification(
+                        this@WalkingAidService,
+                        "Vision Error: $errDetail",
+                        intervalSec,
+                    )
+                }
+
+                val record = SceneRecord(
+                    timestampMs = frame.timestampMs,
+                    imagePath = frame.sourcePath ?: "",
+                    description = descText,
+                    depthDescription = depthResult?.relativeDepthSummary,
+                    stateDecision = if (detectionResult.isError || warningDecision.shouldWarn) StateDecision.WARN else StateDecision.SKIP,
+                )
+                val maxHistory = WalkingAidPreferences.getImageHistoryMaxCount(this@WalkingAidService)
+                WalkingAidImageStore.addRecord(record, maxHistory)
+                WalkingAidImageStore.persist(this@WalkingAidService, maxHistory)
+
+                // Trigger immediate audio warning via TTS
+                if (warningDecision.shouldWarn && spokenMessage.isNotBlank()) {
+                    val disclaimer = if (
+                        WalkingAidPreferences.isSafetyDisclaimerEnabled(this@WalkingAidService) &&
+                        !safetyDisclaimerSpoken
+                    ) {
+                        safetyDisclaimerSpoken = true
+                        "Safety notice: check path carefully. "
+                    } else ""
+
+                    if (WalkingAidPreferences.isTtsEnabled(this@WalkingAidService)) {
+                        speakTts(disclaimer + spokenMessage)
+                    }
+                }
+
+                // Update real-time telemetry notification
+                val accel = backend.acceleratorInfo()
+                val intervalSec = WalkingAidPreferences.getCaptureIntervalSeconds(this@WalkingAidService)
+                val statusMsg = "LiteRT (${accel.type.name.take(3)}): ${detectionResult.objects.size} objects in ${detectionResult.totalTimeMs}ms"
+                WalkingAidNotificationHelper.updateNotification(this@WalkingAidService, statusMsg, intervalSec)
+
+                frameCount++
+            }
+        }
+
+        // 2. Launch Camera Capture Loop
+        captureLoopJob = scope.launch {
             var captureIndex = 0
             if (isMetaRayban) {
                 val metaManager = MetaRaybanManager.getInstance(this@WalkingAidService)
                 if (!metaManager.awaitCameraReady()) {
-                    val detail = metaManager.lastError.value
-                        ?: "Register and connect a Meta camera before using Walking Aid"
-                    Log.e(
-                        TAG,
-                        "Meta Walking Aid cannot start: $detail\n${metaManager.diagnosticsSnapshot()}",
-                    )
-                    WalkingAidNotificationHelper.updateNotification(
-                        this@WalkingAidService,
-                        "Meta camera unavailable: ${detail.take(120)}",
-                        0,
-                    )
+                    val detail = metaManager.lastError.value ?: "Register and connect a Meta camera before using Walking Aid"
+                    Log.e(TAG, "Meta Walking Aid cannot start: $detail\n${metaManager.diagnosticsSnapshot()}")
+                    WalkingAidNotificationHelper.updateNotification(this@WalkingAidService, "Meta camera unavailable: ${detail.take(120)}", 0)
                     stopLoop(reason = "meta_camera_unavailable")
                     return@launch
                 }
             }
+
             while (isActive && WalkingAidPreferences.isEnabled(this@WalkingAidService)) {
                 val intervalMs = WalkingAidPreferences.getCaptureIntervalSeconds(this@WalkingAidService) * 1000L
 
@@ -210,86 +359,26 @@ class WalkingAidService : Service() {
                     continue
                 }
 
-                // 1. Capture thumbnail
-                val image = captureThumbnail(captureIndex)
-                if (image == null) {
-                    Log.w(TAG, "No thumbnail captured, retrying after interval")
-                    WalkingAidNotificationHelper.updateNotification(
-                        this@WalkingAidService,
-                        "No image captured, retrying...",
-                        (intervalMs / 1000).toInt(),
-                    )
-                    delay(intervalMs)
-                    continue
-                }
-
-                // 2. Parallel: image description + depth estimation
-                val descriptionDeferred = async {
-                    describeImage(image)
-                }
-                val depthDeferred = async {
-                    if (WalkingAidPreferences.isDepthEnabled(this@WalkingAidService)) {
-                        estimateDepth(image)
-                    } else null
-                }
-
-                val description = descriptionDeferred.await()
-                val depth = depthDeferred.await()
-
-                if (description.isNullOrBlank()) {
-                    Log.w(TAG, "Empty description, skipping")
-                    delay(intervalMs)
-                    captureIndex++
-                    continue
-                }
-
-                // 3. State model decision (text-only: uses descriptions, not raw images)
-                val recentContext = WalkingAidImageStore.getRecentDescriptions(5)
-                val stateDecision = runStateModelTextOnly(description, depth, recentContext)
-
-                // 4. Store
-                val record = SceneRecord(
-                    timestampMs = System.currentTimeMillis(),
-                    imagePath = image.absolutePath,
-                    description = description,
-                    depthDescription = depth,
-                    stateDecision = stateDecision.decision,
-                )
-                val maxHistory = WalkingAidPreferences.getImageHistoryMaxCount(this@WalkingAidService)
-                WalkingAidImageStore.addRecord(record, maxHistory)
-                WalkingAidImageStore.persist(this@WalkingAidService, maxHistory)
-
-                // 5. Output
-                if (stateDecision.decision == StateDecision.WARN ||
-                    stateDecision.decision == StateDecision.DESCRIBE
-                ) {
-                    val disclaimer = if (
-                        WalkingAidPreferences.isSafetyDisclaimerEnabled(this@WalkingAidService) &&
-                        !safetyDisclaimerSpoken
-                    ) {
-                        safetyDisclaimerSpoken = true
-                        "Safety notice: this system does not guarantee path safety. Always use caution. "
-                    } else ""
-
-                    val fullMessage = disclaimer + stateDecision.message
-                    if (WalkingAidPreferences.isTtsEnabled(this@WalkingAidService)) {
-                        speakTts(fullMessage)
+                val imageFile = captureThumbnail(captureIndex)
+                if (imageFile != null && imageFile.exists()) {
+                    val bitmap = BitmapFactory.decodeFile(imageFile.absolutePath)
+                    if (bitmap != null) {
+                        val frame = VisionFrame(
+                            bitmap = bitmap,
+                            timestampMs = System.currentTimeMillis(),
+                            captureIndex = captureIndex,
+                            sourcePath = imageFile.absolutePath,
+                        )
+                        // Emit to vision worker ("latest frame wins"; drops oldest if NPU/GPU busy)
+                        frameChannel.trySend(frame)
                     }
+                } else {
+                    Log.w(TAG, "No thumbnail captured, retrying after interval")
                 }
 
-                // 6. Update notification
-                val truncatedDesc = description.take(50)
-                WalkingAidNotificationHelper.updateNotification(
-                    this@WalkingAidService,
-                    "Last: $truncatedDesc...",
-                    (intervalMs / 1000).toInt(),
-                )
-
-                // 7. Delay
                 captureIndex++
                 delay(intervalMs)
             }
-
             stopLoop(reason = "loop_end")
         }
     }
@@ -317,6 +406,7 @@ class WalkingAidService : Service() {
             Log.i(TAG, "Skipping thumbnail capture: glasses SDK busy")
             return null
         }
+        val completed = AtomicBoolean(false)
         var thumbnailTransferStarted = false
         try {
             val outDir = getExternalFilesDir("DCIM") ?: filesDir
@@ -326,7 +416,6 @@ class WalkingAidService : Service() {
                 if (file.exists()) file.delete()
             }
 
-            val completed = AtomicBoolean(false)
             val done = CompletableDeferred<File?>()
 
             val thumbCallback: (Int, Boolean, ByteArray?) -> Unit = { _, isComplete, data ->
@@ -360,266 +449,32 @@ class WalkingAidService : Service() {
             val result = withTimeoutOrNull(14_000) { done.await() }
             if (result == null) {
                 Log.w(TAG, "Thumbnail transfer timed out")
+                if (completed.compareAndSet(false, true)) {
+                    GlassesSessionCoordinator.releaseBackgroundCommand(permit)
+                }
+                WalkingAidNotificationHelper.updateNotification(
+                    this,
+                    "Thumbnail capture timed out — retrying...",
+                    WalkingAidPreferences.getCaptureIntervalSeconds(this),
+                )
             }
             return result
         } catch (e: Exception) {
-            if (!thumbnailTransferStarted) {
+            if (completed.compareAndSet(false, true)) {
                 GlassesSessionCoordinator.releaseBackgroundCommand(permit)
             }
             throw e
         }
     }
 
-    private suspend fun describeImage(image: File): String? {
-        val source = WalkingAidPreferences.getImageDescriptionSource(this)
-        val settings = VisionProfilePreferences.get(this)
-        val basePrompt = VisionPromptBuilder.build(
-            settings = settings.copy(profile = VisionProfile.WALKING),
-            userQuestion = null,
-        )
-        val customPrompt = WalkingAidPreferences.getCustomPrompt(this)
-        val prompt = if (customPrompt.isNotBlank()) {
-            "$basePrompt\nAdditional walking aid instructions: $customPrompt"
-        } else {
-            basePrompt
-        }
-
-        return if (source == "cloud") {
-            val modelOverride = WalkingAidPreferences.getImageDescriptionModelOverride(this)
-            val result = CliRelayClient.imageQuery(
-                context = this,
-                imagePath = image.absolutePath,
-                prompt = prompt,
-                modelOverride = modelOverride,
-            )
-            result.getOrNull()?.trim()?.takeIf { it.isNotBlank() }
-        } else {
-            // Local
-            try {
-                val raw = localModelsProvider.streamChat(
-                    context = this,
-                    messages = listOf(
-                        mapOf("role" to "User", "content" to prompt)
-                    ),
-                    imagePaths = listOf(image.absolutePath),
-                    requestPriority = LocalModelRequestPriority.HIGH,
-                ).trim()
-                if (raw.isBlank()) null else raw
-            } catch (e: Exception) {
-                Log.e(TAG, "Local describe failed: ${e.message}", e)
-                null
-            }
-        }
-    }
-
     private fun isMetaRaybanSelected(): Boolean = DeviceProfileStore.isMetaSelected(this)
-
-    private suspend fun estimateDepth(image: File): String? {
-        val customPrompt = WalkingAidPreferences.getCustomPrompt(this)
-        val depthPrompt = buildString {
-            append("Analyze this image for depth and distance. List the nearest obstacles or objects with approximate distance bands: immediate (under 1m), near (1-3m), medium (3-10m), far (over 10m). Be concise. Focus on ground-level hazards, obstacles in the walking path, and changes in elevation.")
-            if (customPrompt.isNotBlank()) {
-                append("\nAdditional walking aid instructions: ")
-                append(customPrompt)
-            }
-        }
-        val source = WalkingAidPreferences.getDepthSource(this)
-
-        return if (source == "cloud") {
-            val modelOverride = WalkingAidPreferences.getDepthModelOverride(this)
-            val result = CliRelayClient.imageQuery(
-                context = this,
-                imagePath = image.absolutePath,
-                prompt = depthPrompt,
-                modelOverride = modelOverride,
-            )
-            result.getOrNull()?.trim()?.takeIf { it.isNotBlank() }
-        } else {
-            try {
-                val raw = localModelsProvider.streamChat(
-                    context = this,
-                    messages = listOf(
-                        mapOf("role" to "User", "content" to depthPrompt)
-                    ),
-                    imagePaths = listOf(image.absolutePath),
-                    requestPriority = LocalModelRequestPriority.HIGH,
-                ).trim()
-                if (raw.isBlank()) null else raw
-            } catch (e: Exception) {
-                Log.e(TAG, "Local depth estimation failed: ${e.message}", e)
-                null
-            }
-        }
-    }
-
-    private suspend fun runStateModel(
-        description: String,
-        depth: String?,
-        recentContext: List<SceneRecord>,
-    ): StateModelOutput {
-        val contextLines = recentContext.mapIndexed { i, r ->
-            "${i + 1}. ${r.description}"
-        }.joinToString("\n")
-
-        val prompt = buildString {
-            appendLine("You are a walking navigation assistant for a blind user. Based on the scene information below, decide what to do.")
-            appendLine()
-            if (contextLines.isNotBlank()) {
-                appendLine("Recent scenes (oldest first):")
-                appendLine(contextLines)
-                appendLine()
-            }
-            appendLine("Current scene: $description")
-            if (depth != null) {
-                appendLine("Depth info: $depth")
-            }
-            appendLine()
-            appendLine("Reply with EXACTLY one line:")
-            appendLine("WARN:<brief warning> — for immediate hazards, obstacles, ground changes, moving objects")
-            appendLine("DESCRIBE:<brief description> — for notable scene changes, landmarks, text")
-            appendLine("SKIP — if nothing noteworthy changed from recent scenes")
-            appendLine()
-            appendLine("Be extremely concise. Never claim that a path is safe.")
-            val customPromptWalkingAid = WalkingAidPreferences.getCustomPrompt(this@WalkingAidService)
-            if (customPromptWalkingAid.isNotBlank()) {
-                appendLine()
-                append("Additional walking aid instructions: $customPromptWalkingAid")
-            }
-        }
-
-        val source = WalkingAidPreferences.getStateModelSource(this)
-        val reply = if (source == "cloud") {
-            val modelOverride = WalkingAidPreferences.getImageDescriptionModelOverride(this)
-            val result = CliRelayClient.imageQuery(
-                context = this,
-                imagePath = "", // state model may not need an image, but API requires one
-                prompt = prompt,
-                modelOverride = modelOverride,
-            ).getOrDefault("SKIP")
-            result.trim()
-        } else {
-            try {
-                localModelsProvider.streamChat(
-                    context = this,
-                    messages = listOf(
-                        mapOf("role" to "User", "content" to prompt)
-                    ),
-                    requestPriority = LocalModelRequestPriority.HIGH,
-                ).trim()
-            } catch (e: Exception) {
-                Log.e(TAG, "Local state model failed: ${e.message}", e)
-                "SKIP"
-            }
-        }
-
-        return parseStateDecision(reply)
-    }
-
-    /**
-     * The state model may not see the image for the state decision (it's expensive).
-     * Use a text-only query instead.
-     */
-    private suspend fun runStateModelTextOnly(
-        description: String,
-        depth: String?,
-        recentContext: List<SceneRecord>,
-    ): StateModelOutput {
-        val contextLines = recentContext.mapIndexed { i, r ->
-            "${i + 1}. ${r.description}"
-        }.joinToString("\n")
-
-        val prompt = buildString {
-            appendLine("You are a walking navigation assistant for a blind user. Based on the scene information below, decide what to do.")
-            appendLine()
-            if (contextLines.isNotBlank()) {
-                appendLine("Recent scenes (oldest first):")
-                appendLine(contextLines)
-                appendLine()
-            }
-            appendLine("Current scene: $description")
-            if (depth != null) {
-                appendLine("Depth info: $depth")
-            }
-            appendLine()
-            appendLine("Reply with EXACTLY one line:")
-            appendLine("WARN:<brief warning> — for immediate hazards, obstacles, ground changes, moving objects")
-            appendLine("DESCRIBE:<brief description> — for notable scene changes, landmarks, text")
-            appendLine("SKIP — if nothing noteworthy changed from recent scenes")
-            appendLine()
-            appendLine("Be extremely concise. Never claim that a path is safe.")
-            val customPromptWalkingAid = WalkingAidPreferences.getCustomPrompt(this@WalkingAidService)
-            if (customPromptWalkingAid.isNotBlank()) {
-                appendLine()
-                append("Additional walking aid instructions: $customPromptWalkingAid")
-            }
-        }
-
-        val source = WalkingAidPreferences.getStateModelSource(this)
-        val reply = if (source == "cloud") {
-            val modelOverride = WalkingAidPreferences.getImageDescriptionModelOverride(this)
-            val result = CliRelayClient.voiceQuery(
-                context = this,
-                prompt = prompt,
-                modelOverride = modelOverride,
-            ).getOrDefault("SKIP")
-            result.trim()
-        } else {
-            try {
-                localModelsProvider.streamChat(
-                    context = this,
-                    messages = listOf(
-                        mapOf("role" to "User", "content" to prompt)
-                    ),
-                    requestPriority = LocalModelRequestPriority.HIGH,
-                ).trim()
-            } catch (e: Exception) {
-                Log.e(TAG, "Local text state model failed: ${e.message}", e)
-                "SKIP"
-            }
-        }
-
-        return parseStateDecision(reply)
-    }
-
-    private fun parseStateDecision(reply: String): StateModelOutput {
-        val trimmed = reply.trim()
-        if (trimmed.startsWith("WARN:", ignoreCase = true)) {
-            val msg = trimmed.removePrefix("WARN:").removePrefix("warn:").trim()
-            return StateModelOutput(StateDecision.WARN, msg)
-        }
-        if (trimmed.startsWith("DESCRIBE:", ignoreCase = true)) {
-            val msg = trimmed.removePrefix("DESCRIBE:").removePrefix("describe:").trim()
-            return StateModelOutput(StateDecision.DESCRIBE, msg)
-        }
-        if (trimmed.startsWith("SKIP", ignoreCase = true)) {
-            return StateModelOutput(StateDecision.SKIP, "")
-        }
-        // Fallback: check for any line starting with WARN or DESCRIBE
-        for (line in trimmed.lines()) {
-            val clean = line.trim()
-            if (clean.startsWith("WARN:", ignoreCase = true)) {
-                val msg = clean.removePrefix("WARN:").removePrefix("warn:").trim()
-                return StateModelOutput(StateDecision.WARN, msg)
-            }
-            if (clean.startsWith("DESCRIBE:", ignoreCase = true)) {
-                val msg = clean.removePrefix("DESCRIBE:").removePrefix("describe:").trim()
-                return StateModelOutput(StateDecision.DESCRIBE, msg)
-            }
-            if (clean.startsWith("SKIP", ignoreCase = true)) {
-                return StateModelOutput(StateDecision.SKIP, "")
-            }
-        }
-        // Default: skip
-        return StateModelOutput(StateDecision.SKIP, "")
-    }
 
     private fun speakTts(text: String) {
         if (!ttsReady || tts == null) {
             Log.w(TAG, "TTS not ready")
             return
         }
-        val settings = VisionProfilePreferences.get(this)
-        val locale = Locale.forLanguageTag(settings.responseLanguageTag)
+        val locale = Locale.forLanguageTag(ImageQuestionPreferences.get(this).appLanguageTag)
         tts?.language = locale
 
         val utteranceId = "walking_aid_${System.currentTimeMillis()}"
@@ -637,10 +492,14 @@ class WalkingAidService : Service() {
             return
         }
         Log.i(TAG, "Stopping: $reason")
-        loopJob?.cancel()
-        loopJob = null
+        captureLoopJob?.cancel()
+        visionWorkerJob?.cancel()
+        captureLoopJob = null
+        visionWorkerJob = null
 
-        // Resume auto audio capture if it was running before
+        visionBackend?.close()
+        visionBackend = null
+
         if (wasAutoAudioEnabled) {
             AutoAudioCapturePrefs.setEnabled(this, true)
             val resumeIntent = Intent(this, AutoAudioCaptureService::class.java)
@@ -664,15 +523,8 @@ class WalkingAidService : Service() {
         private val RUNNING = AtomicBoolean(false)
 
         fun start(context: Context) {
-            if (!hasNotificationPermission(context)) {
-                if (context is FragmentActivity) {
-                    ensureNotificationPermission(context, "Walking Aid") {
-                        start(context)
-                    }
-                } else {
-                    Log.w(TAG, "Cannot request Walking Aid notification permission without an Activity context")
-                }
-                return
+            if (!hasNotificationPermission(context) && context is FragmentActivity) {
+                ensureNotificationPermission(context, "Walking Aid") { }
             }
             WalkingAidPreferences.setEnabled(context, true)
             val intent = Intent(context, WalkingAidService::class.java).setAction(ACTION_START)

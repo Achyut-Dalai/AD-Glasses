@@ -17,6 +17,8 @@ object WalkingAidPreferences {
     private const val KEY_SAFETY_DISCLAIMER_ENABLED = "safety_disclaimer_enabled"
     private const val KEY_IMAGE_HISTORY_MAX_COUNT = "image_history_max_count"
     private const val KEY_CUSTOM_PROMPT = "custom_prompt"
+    private const val KEY_YOLO_MODEL_TYPE = "yolo_model_type"
+    private const val KEY_WATCHLIST_TERMS = "watchlist_terms"
     private const val MAX_CUSTOM_PROMPT_CHARS = 1_500
 
     private const val DEFAULT_ENABLED = false
@@ -30,6 +32,9 @@ object WalkingAidPreferences {
     private const val DEFAULT_TTS_ENABLED = true
     private const val DEFAULT_SAFETY_DISCLAIMER_ENABLED = true
     private const val DEFAULT_IMAGE_HISTORY_MAX_COUNT = 50
+    const val MODEL_TYPE_YOLO11 = "yolo11"
+    const val MODEL_TYPE_YOLO_WORLD = "yolo_world"
+    private const val DEFAULT_YOLO_MODEL_TYPE = MODEL_TYPE_YOLO11
 
     private fun prefs(context: Context) =
         context.applicationContext.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
@@ -136,7 +141,27 @@ object WalkingAidPreferences {
     }
 
     /** Returns true if either image description or depth use cloud source. */
-    fun shouldUseCloud(context: Context): Boolean {
-        return getImageDescriptionSource(context) == "cloud" || getDepthSource(context) == "cloud"
+    fun usesCloudSource(context: Context): Boolean =
+        getImageDescriptionSource(context) == "cloud" || getDepthSource(context) == "cloud"
+
+    fun shouldUseCloud(context: Context): Boolean = usesCloudSource(context)
+
+    fun getYoloModelType(context: Context): String =
+        prefs(context).getString(KEY_YOLO_MODEL_TYPE, DEFAULT_YOLO_MODEL_TYPE) ?: DEFAULT_YOLO_MODEL_TYPE
+
+    fun setYoloModelType(context: Context, type: String) {
+        prefs(context).edit().putString(KEY_YOLO_MODEL_TYPE, type).apply()
+    }
+
+    fun getWatchlistTerms(context: Context): List<String> =
+        prefs(context).getString(KEY_WATCHLIST_TERMS, "")
+            .orEmpty()
+            .split(",")
+            .map { it.trim() }
+            .filter { it.isNotBlank() }
+
+    fun setWatchlistTerms(context: Context, terms: List<String>) {
+        val csv = terms.map { it.trim() }.filter { it.isNotBlank() }.joinToString(",")
+        prefs(context).edit().putString(KEY_WATCHLIST_TERMS, csv).apply()
     }
 }

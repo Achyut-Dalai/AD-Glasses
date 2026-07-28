@@ -47,9 +47,8 @@ import androidx.compose.ui.platform.ComposeView
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import com.fersaiyan.cyanbridge.R
-import com.fersaiyan.cyanbridge.ai.vision.VisionProfile
-import com.fersaiyan.cyanbridge.ai.vision.VisionProfilePreferences
-import com.fersaiyan.cyanbridge.ai.vision.VisionPromptBuilder
+import com.fersaiyan.cyanbridge.ai.vision.ImageQuestionPreferences
+import com.fersaiyan.cyanbridge.ai.vision.ImageQuestionPromptResolver
 import com.fersaiyan.cyanbridge.ai.router.CliRelayClient
 import com.fersaiyan.cyanbridge.localmodels.provider.LocalModelRequestPriority
 import com.fersaiyan.cyanbridge.localmodels.provider.LocalModelsProvider
@@ -94,8 +93,7 @@ class WalkingAidChatActivity : AppCompatActivity() {
 
     private fun speakTts(text: String) {
         if (!ttsReady || tts == null) return
-        val settings = VisionProfilePreferences.get(this)
-        val locale = Locale.forLanguageTag(settings.responseLanguageTag)
+        val locale = Locale.forLanguageTag(ImageQuestionPreferences.get(this).appLanguageTag)
         tts?.language = locale
         val utteranceId = "walking_chat_${System.currentTimeMillis()}"
         tts?.setOnUtteranceProgressListener(object : UtteranceProgressListener() {
@@ -252,13 +250,19 @@ fun WalkingAidChatScreen(
 
                         // Get the latest image
                         val latestImage = history.lastOrNull()?.imagePath
-                        val settings = VisionProfilePreferences.get(context)
+                        val settings = ImageQuestionPreferences.get(context)
 
                         CoroutineScope(Dispatchers.IO).launch {
-                            val prompt = VisionPromptBuilder.build(
-                                settings = settings.copy(profile = VisionProfile.DETAILED),
+                            val basePrompt = ImageQuestionPromptResolver.resolve(
+                                settings = settings,
                                 userQuestion = userQuestion,
-                            )
+                            ).text
+                            val telemetryJson = WalkingAidWarningEngine.getRecentSceneTelemetryJson()
+                            val prompt = if (telemetryJson != "[]") {
+                                "$basePrompt\n\nReal-time Vision Sensor Tracking Telemetry Log:\n$telemetryJson"
+                            } else {
+                                basePrompt
+                            }
 
                             val source = WalkingAidPreferences.getImageDescriptionSource(context)
                             val reply = if (source == "cloud") {

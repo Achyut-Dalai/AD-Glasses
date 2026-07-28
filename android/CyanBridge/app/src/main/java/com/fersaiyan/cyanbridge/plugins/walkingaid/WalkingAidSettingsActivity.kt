@@ -1,8 +1,20 @@
 package com.fersaiyan.cyanbridge.plugins.walkingaid
 
+import android.content.Intent
+import android.graphics.Bitmap
 import android.os.Bundle
+import android.os.SystemClock
 import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
+import androidx.compose.material3.CircularProgressIndicator
+import com.fersaiyan.cyanbridge.agent.LocalModelsConfigureActivity
+import com.fersaiyan.cyanbridge.agent.ProSubscriptionActivity
+import com.fersaiyan.cyanbridge.plugins.walkingaid.vision.LiteRtVisionBackend
+import com.fersaiyan.cyanbridge.plugins.walkingaid.vision.VisionFrame
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -59,9 +71,10 @@ import com.fersaiyan.cyanbridge.ui.CommunityPluginPrefs
 import com.fersaiyan.cyanbridge.ui.installComposeHostWithLegacyAdapter
 import com.fersaiyan.cyanbridge.ui.NativePluginShortcutPreference
 import com.fersaiyan.cyanbridge.ui.setThemedComposeContent
-import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.launch
+
+
+import com.fersaiyan.cyanbridge.devices.DeviceCapabilityHelper
+import androidx.compose.material.icons.filled.Warning
 
 class WalkingAidSettingsActivity : AppCompatActivity() {
 
@@ -91,6 +104,9 @@ fun WalkingAidSettingsScreen(
     val context = LocalContext.current
     val scrollState = rememberScrollState()
 
+    val hasCamera = remember { DeviceCapabilityHelper.hasCamera(context) }
+    val cameraUnavailableReason = remember { DeviceCapabilityHelper.unavailableCameraReason(context) }
+
     // State
     var enabled by remember { mutableStateOf(WalkingAidPreferences.isEnabled(context)) }
     var captureInterval by remember { mutableIntStateOf(WalkingAidPreferences.getCaptureIntervalSeconds(context)) }
@@ -104,11 +120,17 @@ fun WalkingAidSettingsScreen(
     var historyMaxCount by remember { mutableIntStateOf(WalkingAidPreferences.getImageHistoryMaxCount(context)) }
     var customPrompt by remember { mutableStateOf(WalkingAidPreferences.getCustomPrompt(context)) }
 
-    // Model picker dialogs
+    // Model picker, latency test & readiness dialogs
+    var yoloModelType by remember { mutableStateOf(WalkingAidPreferences.getYoloModelType(context)) }
+    var watchlistTermsText by remember { mutableStateOf(WalkingAidPreferences.getWatchlistTerms(context).joinToString(", ")) }
+    var isTestingLatency by remember { mutableStateOf(false) }
+    var showLatencyReportDialog by remember { mutableStateOf(false) }
+    var latencyReportText by remember { mutableStateOf("") }
     var showImageModelPicker by remember { mutableStateOf(false) }
     var showDepthModelPicker by remember { mutableStateOf(false) }
     var availableModels by remember { mutableStateOf<List<ProSubscriptionRelayClient.ModelOption>>(emptyList()) }
     var modelsLoading by remember { mutableStateOf(false) }
+    var showReadinessResult by remember { mutableStateOf<WalkingAidReadinessResult?>(null) }
 
     val intervalOptions = listOf(2, 3, 5, 10, 15, 30)
 
@@ -135,6 +157,40 @@ fun WalkingAidSettingsScreen(
                 .verticalScroll(scrollState),
             verticalArrangement = Arrangement.spacedBy(12.dp),
         ) {
+            if (!hasCamera && cameraUnavailableReason != null) {
+                Card(
+                    modifier = Modifier.fillMaxWidth(),
+                    colors = CardDefaults.cardColors(
+                        containerColor = MaterialTheme.colorScheme.errorContainer.copy(alpha = 0.85f),
+                    ),
+                ) {
+                    Row(
+                        modifier = Modifier.padding(16.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(12.dp),
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.Warning,
+                            contentDescription = "Warning",
+                            tint = MaterialTheme.colorScheme.onErrorContainer,
+                        )
+                        Column {
+                            Text(
+                                text = "Camera Hardware Required",
+                                style = MaterialTheme.typography.titleMedium,
+                                fontWeight = FontWeight.Bold,
+                                color = MaterialTheme.colorScheme.onErrorContainer,
+                            )
+                            Text(
+                                text = "Walking Aid requires glasses with a point-of-view camera (such as HeyCyan or Meta Ray-Ban). $cameraUnavailableReason",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onErrorContainer,
+                            )
+                        }
+                    }
+                }
+            }
+
             // Section: General
             SectionTitle("General")
             Card(
@@ -150,8 +206,16 @@ fun WalkingAidSettingsScreen(
                     ) {
                         Text("Walking Aid enabled", modifier = Modifier.weight(1f))
                         Switch(
-                            checked = enabled,
+                            enabled = hasCamera,
+                            checked = enabled && hasCamera,
                             onCheckedChange = { newValue ->
+                                if (newValue) {
+                                    val readiness = WalkingAidReadinessChecker.checkReadiness(context)
+                                    if (!readiness.isReady) {
+                                        showReadinessResult = readiness
+                                        return@Switch
+                                    }
+                                }
                                 enabled = newValue
                                 WalkingAidPreferences.setEnabled(context, newValue)
                                 CommunityPluginPrefs.setNativePluginEnabled(
@@ -193,6 +257,79 @@ fun WalkingAidSettingsScreen(
                                     selectedContainerColor = MaterialTheme.colorScheme.primary,
                                 ),
                             )
+                        }
+                    }
+
+                    Spacer(modifier = Modifier.height(16.dp))
+
+                    // Latency Test Button
+                    Button(
+                        onClick = {
+                            isTestingLatency = true
+                            CoroutineScope(Dispatchers.IO).launch {
+                                try {
+                                    val backend = LiteRtVisionBackend(context)
+                                    val testBitmap = Bitmap.createBitmap(640, 640, Bitmap.Config.ARGB_8888)
+                                    val frame = VisionFrame(testBitmap, System.currentTimeMillis())
+
+                                    val t0 = SystemClock.elapsedRealtime()
+                                    val detResult = backend.detect(frame)
+                                    val t1 = SystemClock.elapsedRealtime()
+                                    val depthResult = backend.estimateDepth(frame)
+                                    val t2 = SystemClock.elapsedRealtime()
+
+                                    val engine = WalkingAidWarningEngine
+                                    engine.reset()
+                                    engine.evaluate(detResult, depthResult, watchlistTermsText)
+                                    val t3 = SystemClock.elapsedRealtime()
+
+                                    val accelInfo = backend.acceleratorInfo()
+                                    backend.close()
+
+                                    val totalMs = t3 - t0
+                                    val fpsEquiv = if (totalMs > 0) String.format("%.1f", 1000f / totalMs) else "0"
+
+                                    val report = """
+                                        ⏱️ Pipeline Latency Benchmark Breakdown:
+
+                                        📸 Preprocessing: ${detResult.preprocessTimeMs} ms
+                                        🎯 YOLO Detection: ${detResult.inferenceTimeMs} ms (${detResult.objects.size} objects)
+                                        ⚙️ Postprocessing (NMS): ${detResult.postprocessTimeMs} ms
+                                        🌊 Depth Estimation: ${depthResult?.inferenceTimeMs ?: 0} ms
+                                        ⚡ Rule Evaluation: ${t3 - t2} ms
+
+                                        🚀 Total End-to-End Latency: $totalMs ms ($fpsEquiv FPS equiv)
+                                        💻 Hardware Accelerator: ${accelInfo.type}
+                                        📊 Delegated Operators: ${accelInfo.delegatedOperators}/${accelInfo.totalOperators}
+                                        ℹ️ Details: ${accelInfo.details}
+                                    """.trimIndent()
+
+                                    withContext(Dispatchers.Main) {
+                                        latencyReportText = report
+                                        showLatencyReportDialog = true
+                                        isTestingLatency = false
+                                    }
+                                } catch (e: Exception) {
+                                    withContext(Dispatchers.Main) {
+                                        Toast.makeText(context, "Latency test error: ${e.message}", Toast.LENGTH_LONG).show()
+                                        isTestingLatency = false
+                                    }
+                                }
+                            }
+                        },
+                        enabled = !isTestingLatency,
+                        modifier = Modifier.fillMaxWidth(),
+                    ) {
+                        if (isTestingLatency) {
+                            CircularProgressIndicator(
+                                modifier = Modifier.height(20.dp).width(20.dp),
+                                strokeWidth = 2.dp,
+                                color = MaterialTheme.colorScheme.onPrimary,
+                            )
+                            Spacer(modifier = Modifier.width(8.dp))
+                            Text("Running Benchmark...")
+                        } else {
+                            Text("⚡ Test End-to-End Latency")
                         }
                     }
                 }
@@ -247,6 +384,51 @@ fun WalkingAidSettingsScreen(
                                     "Select model...",
                             )
                         }
+                    } else {
+                        Spacer(modifier = Modifier.height(12.dp))
+                        Text(
+                            "Local YOLO Model Architecture",
+                            style = MaterialTheme.typography.bodyMedium,
+                            fontWeight = FontWeight.Medium,
+                        )
+                        Spacer(modifier = Modifier.height(8.dp))
+                        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                            FilterChip(
+                                selected = yoloModelType == WalkingAidPreferences.MODEL_TYPE_YOLO11,
+                                onClick = {
+                                    yoloModelType = WalkingAidPreferences.MODEL_TYPE_YOLO11
+                                    WalkingAidPreferences.setYoloModelType(context, WalkingAidPreferences.MODEL_TYPE_YOLO11)
+                                },
+                                label = { Text("YOLOv11 (COCO 80)") },
+                            )
+                            FilterChip(
+                                selected = yoloModelType == WalkingAidPreferences.MODEL_TYPE_YOLO_WORLD,
+                                onClick = {
+                                    yoloModelType = WalkingAidPreferences.MODEL_TYPE_YOLO_WORLD
+                                    WalkingAidPreferences.setYoloModelType(context, WalkingAidPreferences.MODEL_TYPE_YOLO_WORLD)
+                                },
+                                label = { Text("YOLO-World (Open Vocab)") },
+                            )
+                        }
+
+                        Spacer(modifier = Modifier.height(12.dp))
+                        Text(
+                            "Target Watchlist Classes",
+                            style = MaterialTheme.typography.bodyMedium,
+                            fontWeight = FontWeight.Medium,
+                        )
+                        Spacer(modifier = Modifier.height(4.dp))
+                        TextField(
+                            value = watchlistTermsText,
+                            onValueChange = { newValue ->
+                                watchlistTermsText = newValue
+                                val terms = newValue.split(",").map { it.trim() }
+                                WalkingAidPreferences.setWatchlistTerms(context, terms)
+                            },
+                            placeholder = { Text("e.g. person, bicycle, stairs, pothole, curb") },
+                            modifier = Modifier.fillMaxWidth(),
+                            singleLine = true,
+                        )
                     }
                 }
             }
@@ -482,6 +664,74 @@ fun WalkingAidSettingsScreen(
                     modelsLoading = false
                 }
             },
+        )
+    }
+
+    if (showLatencyReportDialog) {
+        AlertDialog(
+            onDismissRequest = { showLatencyReportDialog = false },
+            title = { Text("Walking Aid Latency Benchmark") },
+            text = {
+                Text(
+                    text = latencyReportText,
+                    style = MaterialTheme.typography.bodySmall,
+                )
+            },
+            confirmButton = {
+                TextButton(onClick = { showLatencyReportDialog = false }) {
+                    Text("Close")
+                }
+            }
+        )
+    }
+
+    showReadinessResult?.let { readiness ->
+        AlertDialog(
+            onDismissRequest = { showReadinessResult = null },
+            title = { Text("Walking Aid Setup Required") },
+            text = {
+                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Text(
+                        text = "Before starting Walking Aid, please complete the following setup items:",
+                        style = MaterialTheme.typography.bodyMedium,
+                    )
+                    readiness.missingDetails.forEach { detail ->
+                        Text(
+                            text = detail,
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.error,
+                        )
+                    }
+                }
+            },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        showReadinessResult = null
+                        val intent = Intent(context, LocalModelsConfigureActivity::class.java)
+                        context.startActivity(intent)
+                    }
+                ) {
+                    Text("Open Local Models Settings")
+                }
+            },
+            dismissButton = {
+                if (readiness.requiresProForCloud) {
+                    TextButton(
+                        onClick = {
+                            showReadinessResult = null
+                            val intent = Intent(context, ProSubscriptionActivity::class.java)
+                            context.startActivity(intent)
+                        }
+                    ) {
+                        Text("Upgrade to Pro")
+                    }
+                } else {
+                    TextButton(onClick = { showReadinessResult = null }) {
+                        Text("Cancel")
+                    }
+                }
+            }
         )
     }
 }
