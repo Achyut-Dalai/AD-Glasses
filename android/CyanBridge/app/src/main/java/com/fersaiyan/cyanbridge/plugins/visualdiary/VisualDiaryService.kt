@@ -35,6 +35,8 @@ import kotlinx.coroutines.launch
 import java.util.concurrent.atomic.AtomicBoolean
 import java.util.concurrent.atomic.AtomicInteger
 
+import com.fersaiyan.cyanbridge.devices.DeviceCapabilityHelper
+
 /**
  * Periodic visual-diary host. HeyCyan uses its existing thumbnail path; Meta
  * uses the shared DAT one-shot camera path before entering the same Gemma pipeline.
@@ -53,6 +55,11 @@ class VisualDiaryService : Service() {
     override fun onBind(intent: Intent?): IBinder? = null
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
+        if (!DeviceCapabilityHelper.hasCamera(this)) {
+            Log.w(TAG, "Stopping VisualDiaryService: selected device profile has no camera")
+            stopSelf()
+            return START_NOT_STICKY
+        }
         when (intent?.action) {
             ACTION_START -> if (VisualDiaryPreferences.isEnabled(this)) startLoop() else stopSelf()
             ACTION_STOP -> stopLoop()

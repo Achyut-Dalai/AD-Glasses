@@ -10,8 +10,12 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.foundation.layout.Arrangement.spacedBy
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.filled.Warning
+import androidx.compose.material3.Card
+import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -31,8 +35,10 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.fersaiyan.cyanbridge.R
+import com.fersaiyan.cyanbridge.devices.DeviceCapabilityHelper
 import com.fersaiyan.cyanbridge.shared.plugins.NativePluginIds
 import com.fersaiyan.cyanbridge.ui.NativePluginShortcutPreference
 import com.fersaiyan.cyanbridge.ui.installComposeHostWithLegacyAdapter
@@ -85,6 +91,9 @@ fun VisualDiarySettingsScreen(
     var interval by remember { mutableIntStateOf(VisualDiaryPreferences.getIntervalMinutes(context)) }
     var prompt by remember { mutableStateOf(VisualDiaryPreferences.getCustomPrompt(context)) }
 
+    val hasCamera = remember { DeviceCapabilityHelper.hasCamera(context) }
+    val cameraUnavailableReason = remember { DeviceCapabilityHelper.unavailableCameraReason(context) }
+
     Scaffold(
         topBar = {
             TopAppBar(
@@ -105,11 +114,45 @@ fun VisualDiarySettingsScreen(
                 .verticalScroll(scrollState),
             verticalArrangement = Arrangement.spacedBy(12.dp),
         ) {
+            if (!hasCamera && cameraUnavailableReason != null) {
+                Card(
+                    modifier = Modifier.fillMaxWidth(),
+                    colors = CardDefaults.cardColors(
+                        containerColor = MaterialTheme.colorScheme.errorContainer.copy(alpha = 0.85f),
+                    ),
+                ) {
+                    Row(
+                        modifier = Modifier.padding(16.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(12.dp),
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.Warning,
+                            contentDescription = "Warning",
+                            tint = MaterialTheme.colorScheme.onErrorContainer,
+                        )
+                        Column {
+                            Text(
+                                text = "Camera Hardware Required",
+                                style = MaterialTheme.typography.titleMedium,
+                                fontWeight = FontWeight.Bold,
+                                color = MaterialTheme.colorScheme.onErrorContainer,
+                            )
+                            Text(
+                                text = "Visual Diary captures periodic photos to build daily memory notes. $cameraUnavailableReason",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onErrorContainer,
+                            )
+                        }
+                    }
+                }
+            }
+
             Text(
-                "Capture glasses thumbnails on a schedule, describe scenes with the selected Gemma vision model, and append concise notes to daily memory.",
+                "Capture glasses scenes on a schedule, describe scenes with the selected Gemma vision model, and append concise notes to daily memory.",
                 style = MaterialTheme.typography.bodyMedium,
             )
-            SwitchSetting("Visual Diary enabled", enabled, onEnabledChanged)
+            SwitchSetting("Visual Diary enabled", enabled && hasCamera, if (hasCamera) onEnabledChanged else { _ -> })
             NativePluginShortcutPreference(
                 pluginId = NativePluginIds.VISUAL_DIARY,
                 pluginTitle = "Visual Diary",
