@@ -73,6 +73,7 @@ class GeminiLiveClient(
     private var recorderJob: Job? = null
     private var playback: AudioTrack? = null
     private var reconnectJob: Job? = null
+    private var sessionResumptionJob: Job? = null
     private var sessionResumptionHandle: String? = null
     private var reconnectAttempt = 0
     private var audioFocusRequest: AudioFocusRequest? = null
@@ -136,6 +137,8 @@ class GeminiLiveClient(
         active.set(false)
         reconnectJob?.cancel()
         reconnectJob = null
+        sessionResumptionJob?.cancel()
+        sessionResumptionJob = null
         socket?.close(1000, "user_stopped")
         socket = null
         stopCapture()
@@ -272,6 +275,7 @@ class GeminiLiveClient(
                 socket = webSocket
                 reconnectAttempt = 0
                 sendSetup(webSocket, config)
+                scheduleSessionResumption(webSocket)
                 startPlayback()
                 startCapture()
                 setState(GeminiLiveState.LISTENING, "Gemini Live is listening")
@@ -472,6 +476,24 @@ class GeminiLiveClient(
         }
     }
 
+    /**
+     * Ephemeral tokens are single-use for new sessions. Google permits reconnecting with
+     * the same token only when the server-issued resumption handle is used before 10 minutes.
+     */
+    private fun scheduleSessionResumption(webSocket: WebSocket) {
+        sessionResumptionJob?.cancel()
+        sessionResumptionJob = scope.launch {
+            delay(SESSION_RESUMPTION_RECONNECT_MS)
+            if (!active.get() || socket !== webSocket) return@launch
+            if (sessionResumptionHandle.isNullOrBlank()) {
+                stop()
+                setState(GeminiLiveState.ERROR, "Live session renewal was unavailable. Start a new session.")
+                return@launch
+            }
+            webSocket.close(1000, "session_resumption")
+        }
+    }
+
     private fun hasInternet(): Boolean {
         return connectivity.activeNetwork?.let { network ->
             connectivity.getNetworkCapabilities(network)?.hasCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET) == true
@@ -495,6 +517,7 @@ class GeminiLiveClient(
         const val INPUT_SAMPLE_RATE_HZ = 16_000
         const val OUTPUT_SAMPLE_RATE_HZ = 24_000
         const val INPUT_CHUNK_BYTES = 640 // 20 ms of mono PCM16 at 16 kHz.
+        const val SESSION_RESUMPTION_RECONNECT_MS = 9 * 60 * 1000L
         const val MAX_IMAGES_PER_SESSION = 10
     }
 }
