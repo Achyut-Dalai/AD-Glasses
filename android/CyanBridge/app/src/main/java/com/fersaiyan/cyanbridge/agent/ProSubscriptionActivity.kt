@@ -55,11 +55,8 @@ class ProSubscriptionActivity : AppCompatActivity() {
     private var billing: PlayBillingManager? = null
     private var playProducts: Map<String, ProductDetails> = emptyMap()
     private var lastBillingError: String = ""
-    private var legacyReturnDialogVisible = false
     private var composeState by mutableStateOf(ProSubscriptionUiState())
     private lateinit var composeView: ComposeView
-    private var pendingCheckoutEmail: String = ""
-    private var pendingCheckoutChangePlan: Boolean = false
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -138,8 +135,6 @@ class ProSubscriptionActivity : AppCompatActivity() {
                     onPlanSelected = ::selectPlanFromCompose,
                     onSubscribeInApp = { btnSubscribe.performClick() },
                     onSubscribeOnWebsite = { btnSubscribeWeb.performClick() },
-                    onSecureCheckoutSelected = ::selectSecureCheckout,
-                    onDismissSecureCheckout = ::dismissSecureCheckout,
                     onDonate = { btnDonate.performClick() },
                     onCancelSubscription = { btnUnsubscribe.performClick() },
                     onBack = ::finish,
@@ -157,7 +152,6 @@ class ProSubscriptionActivity : AppCompatActivity() {
         super.onResume()
         updateStatusDisplay()
         refreshPurchaseStatusFromStore()
-        maybePromptPendingLegacyCheckout()
         maybePromptPendingDonation()
 
         val shouldVerifyServerState = ProSubscriptionPrefs.isSubscribed(this) || (
@@ -208,11 +202,16 @@ class ProSubscriptionActivity : AppCompatActivity() {
 
     private fun refreshPlayProducts() {
         val productIds = PlaySubscriptionCatalog.allProductIds()
-        if (productIds.isEmpty()) return
+        if (productIds.isEmpty()) {
+            playProducts = emptyMap()
+            applyProductPricingToUi()
+            return
+        }
 
         billing?.querySubscriptionProducts(productIds) { details ->
             runOnUiThread {
                 playProducts = details
+                applyProductPricingToUi()
             }
         }
     }
@@ -338,9 +337,9 @@ class ProSubscriptionActivity : AppCompatActivity() {
                         val routeNote = ProSubscriptionRoutingPolicy.actionNote(routeAction)
                         val displayPlan = when (plan) {
                             "free_trial" -> "Free Trial (30 days)"
-                            "cheap" -> "Cheap ($1.55/mo)"
-                            "standard" -> "Standard ($5.75/mo)"
-                            "max" -> "Max ($21.50/mo)"
+                            "cheap" -> "Cheap"
+                            "standard" -> "Standard"
+                            "max" -> "Max"
                             else -> plan
                         }
                         val finalMessage = if (routeNote.isBlank()) {
@@ -378,27 +377,25 @@ class ProSubscriptionActivity : AppCompatActivity() {
 
         val requestedPlan = intent?.getStringExtra(EXTRA_INITIAL_PLAN)?.trim().orEmpty().ifBlank { selectedPlan() }
         val requestedEmail = intent?.getStringExtra(EXTRA_AUTO_WEB_CHECKOUT_EMAIL)?.trim().orEmpty()
-        val changePlan = intent?.getBooleanExtra(EXTRA_AUTO_WEB_CHECKOUT_CHANGE_PLAN, false) == true
 
         intent?.removeExtra(EXTRA_AUTO_START_WEB_CHECKOUT)
         intent?.removeExtra(EXTRA_AUTO_WEB_CHECKOUT_EMAIL)
-        intent?.removeExtra(EXTRA_AUTO_WEB_CHECKOUT_CHANGE_PLAN)
 
         if (requestedPlan == "free_trial") {
             startSubscriptionFlow(requestedPlan, requestedEmail)
         } else if (requestedEmail.isNotBlank()) {
-            launchWebCheckoutWithEmail(requestedPlan, requestedEmail, changePlan)
+            launchWebCheckoutWithEmail(requestedPlan)
         } else {
-            launchWebCheckout(requestedPlan, changePlan)
+            launchWebCheckout(requestedPlan)
         }
     }
 
-    private fun launchWebCheckout(plan: String, changePlan: Boolean = false) {
+    private fun launchWebCheckout(plan: String) {
         if (plan == "free_trial") {
             startSubscriptionFlow(plan)
             return
         }
-        promptForCheckoutEmail(plan, changePlan)
+        promptForCheckoutEmail(plan)
     }
 
     private fun promptForSubscriptionEmail(plan: String, onConfirmed: (String) -> Unit) {
@@ -414,9 +411,9 @@ class ProSubscriptionActivity : AppCompatActivity() {
         )
     }
 
-    private fun promptForCheckoutEmail(plan: String, changePlan: Boolean = false) {
-        promptForSubscriptionEmail(plan) { email ->
-            launchWebCheckoutWithEmail(plan, email, changePlan)
+    private fun promptForCheckoutEmail(plan: String) {
+        promptForSubscriptionEmail(plan) {
+            launchWebCheckoutWithEmail(plan)
         }
     }
 
@@ -471,7 +468,11 @@ class ProSubscriptionActivity : AppCompatActivity() {
                         Toast.makeText(this, verification.message, Toast.LENGTH_LONG).show()
                         onEmailMatchConfirmed()
                     } else if (verification.hasDirectVerificationLink) {
-                        Toast.makeText(this, "Opening account confirmation...", Toast.LENGTH_SHORT).show()
+                        Toast.makeText(
+                            this,
+                            "Opening account confirmation. Return here and choose your plan again after verifying.",
+                            Toast.LENGTH_LONG,
+                        ).show()
                         startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(verification.verificationUrl)))
                     } else {
                         Toast.makeText(
@@ -493,9 +494,10 @@ class ProSubscriptionActivity : AppCompatActivity() {
             return
         }
 
-        val playProduct = playProductForPlan(plan)
-        if (playProduct != null) {
-            billing?.launchSubscriptionPurchase(this, playProduct)
+        val playOffer = PlaySubscriptionCatalog.offerForPlan(plan)
+        val playProduct = playOffer?.let { playProducts[it.productId] }
+        if (playProduct != null && playOffer != null) {
+            billing?.launchSubscriptionPurchase(this, playProduct, playOffer)
             return
         }
 
@@ -506,7 +508,7 @@ class ProSubscriptionActivity : AppCompatActivity() {
                 "Google Play checkout is unavailable for this plan. Opening website checkout..."
             }
             Toast.makeText(this, fallbackMessage, Toast.LENGTH_SHORT).show()
-            launchWebCheckoutWithEmail(plan, emailHint)
+            launchWebCheckoutWithEmail(plan)
             return
         }
 
@@ -519,12 +521,6 @@ class ProSubscriptionActivity : AppCompatActivity() {
             }
         }
         Toast.makeText(this, detail, Toast.LENGTH_LONG).show()
-    }
-
-    private fun playProductForPlan(plan: String): ProductDetails? {
-        val productId = PlaySubscriptionCatalog.productIdForPlan(plan)
-        if (productId.isBlank()) return null
-        return playProducts[productId]
     }
 
     private fun openPlaySubscriptionManagement() {
@@ -549,58 +545,24 @@ class ProSubscriptionActivity : AppCompatActivity() {
         }
     }
 
-    private fun selectSecureCheckout(provider: String) {
-        val plan = composeState.checkoutPlan ?: return
-        val email = pendingCheckoutEmail
-        val changePlan = pendingCheckoutChangePlan
-        dismissSecureCheckout()
-        launchWebCheckoutWithEmail(
-            plan = plan,
-            emailHint = email,
-            changePlan = changePlan,
-            provider = provider,
-        )
-    }
-
-    private fun dismissSecureCheckout() {
-        pendingCheckoutEmail = ""
-        pendingCheckoutChangePlan = false
-        composeState = composeState.copy(checkoutPlan = null)
-    }
-
-    private fun launchWebCheckoutWithEmail(
-        plan: String,
-        emailHint: String,
-        changePlan: Boolean = false,
-        provider: String? = null,
-    ) {
-        if (provider == null) {
-            pendingCheckoutEmail = emailHint
-            pendingCheckoutChangePlan = changePlan
-            composeState = composeState.copy(checkoutPlan = plan)
-            return
-        }
-
-        val callback = Uri.Builder()
-            .scheme("fersaiyan")
-            .authority("pro-sub")
-            .appendPath("callback")
-            .build()
-
-        val finalEmail = emailHint.ifBlank { ProSubscriptionServerPrefs.getAccountEmail(this) }
+    private fun launchWebCheckoutWithEmail(plan: String) {
         Toast.makeText(this, "Preparing secure checkout...", Toast.LENGTH_SHORT).show()
         thread {
-            val result = ProSubscriptionRelayClient.createCheckoutSession(
-                context = this,
-                plan = plan,
-                provider = provider,
-                email = finalEmail,
-                returnUrl = callback.toString(),
-                changePlan = changePlan,
-            )
+            val result = runCatching {
+                val callbackResult = ProSubscriptionServerPrefs.createWebCallbackResult(
+                    context = this,
+                    purpose = ProSubscriptionServerPrefs.WebCallbackPurpose.SUBSCRIPTION,
+                )
+                val callbackUrl = SubscriptionCheckoutPolicy.createVerifiedCallbackUrl(callbackResult)
+                ProSubscriptionRelayClient.buildWebCheckoutUrl(
+                    context = this,
+                    plan = plan,
+                    returnUrl = callbackUrl,
+                ).getOrThrow()
+            }
             runOnUiThread {
-                result.onSuccess { session ->
-                    openExternalUrl(session.checkoutUrl)
+                result.onSuccess { checkoutUrl ->
+                    openExternalUrl(checkoutUrl)
                 }.onFailure { error ->
                     Toast.makeText(
                         this,
@@ -610,64 +572,6 @@ class ProSubscriptionActivity : AppCompatActivity() {
                 }
             }
         }
-    }
-
-    private fun buildLegacyStatusUrl(baseUrl: String, apiToken: String, plan: String): String {
-        return Uri.parse(baseUrl).buildUpon()
-            .appendPath("status")
-            .appendQueryParameter("api_token", apiToken)
-            .appendQueryParameter("plan", plan)
-            .build()
-            .toString()
-    }
-
-    private fun parseLegacyCheckoutSession(
-        body: String,
-        baseUrl: String,
-        fallbackPlan: String,
-        fallbackApiToken: String,
-        fallbackEmail: String,
-    ): PendingLegacyCheckoutPrefs.PendingCheckout? {
-        val trimmedBody = body.trim()
-        if (trimmedBody.startsWith("{")) {
-            val json = JSONObject(trimmedBody)
-            val invoiceUrl = json.optString("invoice_url").trim()
-            if (invoiceUrl.isNotBlank()) {
-                return PendingLegacyCheckoutPrefs.PendingCheckout(
-                    invoiceUrl = invoiceUrl,
-                    statusUrl = json.optString("status_url").trim().ifBlank {
-                        buildLegacyStatusUrl(baseUrl, fallbackApiToken, fallbackPlan)
-                    },
-                    subscriptionId = json.optString("subscription_id").trim().ifBlank {
-                        "legacy_checkout_pending"
-                    },
-                    plan = json.optString("plan").trim().ifBlank { fallbackPlan },
-                    apiToken = json.optString("api_token").trim().ifBlank { fallbackApiToken },
-                    email = json.optString("email").trim().ifBlank { fallbackEmail },
-                )
-            }
-        }
-
-        val invoiceUrl = extractLegacyInvoiceUrl(body) ?: return null
-        return PendingLegacyCheckoutPrefs.PendingCheckout(
-            invoiceUrl = invoiceUrl,
-            statusUrl = buildLegacyStatusUrl(baseUrl, fallbackApiToken, fallbackPlan),
-            subscriptionId = "legacy_checkout_pending",
-            plan = fallbackPlan,
-            apiToken = fallbackApiToken,
-            email = fallbackEmail,
-        )
-    }
-
-    private fun extractLegacyInvoiceUrl(html: String): String? {
-        val anchorTag = Regex("""<a\b[^>]*\bid=["']open-checkout["'][^>]*>""", RegexOption.IGNORE_CASE)
-            .find(html)
-            ?.value
-            ?: return null
-        return Regex("""\bhref=["']([^"']+)["']""", RegexOption.IGNORE_CASE)
-            .find(anchorTag)
-            ?.groupValues
-            ?.getOrNull(1)
     }
 
     private fun showDonationIntroDialog(pending: PendingDonationPrefs.PendingDonation) {
@@ -682,114 +586,6 @@ class ProSubscriptionActivity : AppCompatActivity() {
                 PendingDonationPrefs.clear(this)
             }
             .show()
-    }
-
-    private fun showLegacyCheckoutIntroDialog(session: PendingLegacyCheckoutPrefs.PendingCheckout) {
-        AlertDialog.Builder(this)
-            .setTitle(R.string.legacy_checkout_dialog_title)
-            .setMessage(getString(R.string.legacy_checkout_dialog_message))
-            .setPositiveButton(R.string.legacy_checkout_open_button) { _, _ ->
-                PendingLegacyCheckoutPrefs.setAwaitingReturn(this, true)
-                openExternalUrl(session.invoiceUrl)
-            }
-            .setNegativeButton("Cancel") { _, _ ->
-                PendingLegacyCheckoutPrefs.clear(this)
-            }
-            .show()
-    }
-
-    private fun maybePromptPendingLegacyCheckout() {
-        if (legacyReturnDialogVisible) return
-        if (!PendingLegacyCheckoutPrefs.isAwaitingReturn(this)) return
-        val session = PendingLegacyCheckoutPrefs.get(this) ?: run {
-            PendingLegacyCheckoutPrefs.clear(this)
-            return
-        }
-
-        legacyReturnDialogVisible = true
-        PendingLegacyCheckoutPrefs.setAwaitingReturn(this, false)
-        AlertDialog.Builder(this)
-            .setTitle(R.string.legacy_checkout_return_title)
-            .setMessage(R.string.legacy_checkout_return_message)
-            .setPositiveButton(R.string.legacy_checkout_confirm_button) { _, _ ->
-                legacyReturnDialogVisible = false
-                verifyPendingLegacyCheckout(session)
-            }
-            .setNeutralButton(R.string.legacy_checkout_reopen_button) { _, _ ->
-                legacyReturnDialogVisible = false
-                PendingLegacyCheckoutPrefs.setAwaitingReturn(this, true)
-                openExternalUrl(session.invoiceUrl)
-            }
-            .setNegativeButton("Cancel") { _, _ ->
-                legacyReturnDialogVisible = false
-                PendingLegacyCheckoutPrefs.clear(this)
-            }
-            .setOnDismissListener {
-                legacyReturnDialogVisible = false
-            }
-            .show()
-    }
-
-    private fun verifyPendingLegacyCheckout(session: PendingLegacyCheckoutPrefs.PendingCheckout) {
-        Toast.makeText(this, "Checking payment confirmation...", Toast.LENGTH_SHORT).show()
-        thread {
-            try {
-                val conn = URL(session.statusUrl).openConnection() as HttpURLConnection
-                conn.requestMethod = "GET"
-                conn.connectTimeout = 15000
-                conn.readTimeout = 20000
-                conn.setRequestProperty("Accept", "application/json")
-                val responseCode = conn.responseCode
-                val stream = if (responseCode in 200..299) conn.inputStream else conn.errorStream
-                val body = stream?.bufferedReader()?.use { it.readText() }.orEmpty().ifBlank { "{}" }
-                val json = JSONObject(body)
-                if (responseCode !in 200..299) {
-                    throw IllegalStateException(json.optString("message", "Unable to verify the subscription yet."))
-                }
-
-                val active = json.optBoolean("active", false)
-                val state = json.optString("state", if (active) "active" else "pending")
-                val message = json.optString("message", if (active) "Subscription confirmed." else "Payment pending.")
-                val expiresAtMs = json.optLong("expires_at_ms", 0L)
-
-                if (active) {
-                    PendingLegacyCheckoutPrefs.clear(this)
-                    val callbackUri = Uri.Builder()
-                        .scheme("fersaiyan")
-                        .authority("pro-sub")
-                        .appendPath("callback")
-                        .appendQueryParameter("status", "success")
-                        .appendQueryParameter("plan", session.plan)
-                        .appendQueryParameter("token", session.subscriptionId)
-                        .appendQueryParameter("expires_at_ms", expiresAtMs.toString())
-                        .appendQueryParameter("api_token", session.apiToken)
-                        .appendQueryParameter("email", session.email)
-                        .appendQueryParameter("message", message)
-                        .build()
-                    runOnUiThread {
-                        startActivity(Intent(this, WebSubscriptionCallbackActivity::class.java).apply {
-                            data = callbackUri
-                        })
-                    }
-                    return@thread
-                }
-
-                if (state == "pending") {
-                    PendingLegacyCheckoutPrefs.setAwaitingReturn(this, true)
-                } else {
-                    PendingLegacyCheckoutPrefs.clear(this)
-                }
-
-                runOnUiThread {
-                    Toast.makeText(this, message, Toast.LENGTH_LONG).show()
-                }
-            } catch (error: Throwable) {
-                PendingLegacyCheckoutPrefs.setAwaitingReturn(this, true)
-                runOnUiThread {
-                    Toast.makeText(this, "Unable to verify the subscription yet: ${error.message}", Toast.LENGTH_LONG).show()
-                }
-            }
-        }
     }
 
     private fun openExternalUrl(url: String) {
@@ -810,8 +606,25 @@ class ProSubscriptionActivity : AppCompatActivity() {
     }
 
     private fun applyProductPricingToUi() {
-        // Plan labels are set in XML; web checkout will override with real pricing
-        // when Stripe is fully configured. For now, show the base labels.
+        fun priceFor(plan: String): String? {
+            val offer = PlaySubscriptionCatalog.offerForPlan(plan) ?: return null
+            val product = playProducts[offer.productId] ?: return null
+            return PlayBillingManager.localizedOfferDescription(product, offer)
+        }
+
+        val prices = listOf("cheap", "standard", "max")
+            .mapNotNull { plan -> priceFor(plan)?.let { plan to it } }
+            .toMap()
+
+        fun updateLabel(button: RadioButton, plan: String, name: String) {
+            val price = prices[plan] ?: "Google Play price unavailable"
+            button.text = "$name - $price"
+        }
+
+        updateLabel(rbCheap, "cheap", "Cheap")
+        updateLabel(rbStandard, "standard", "Standard")
+        updateLabel(rbMax, "max", "Max")
+        composeState = composeState.copy(playPriceLabels = prices)
     }
 
     private fun refreshPurchaseStatusFromStore() {
@@ -850,8 +663,9 @@ class ProSubscriptionActivity : AppCompatActivity() {
 
     private fun maybeClearStalePlayEntitlement() {
         val provider = ProSubscriptionPrefs.getProvider(this)
-        val shouldClear = provider == "play_billing" || provider == "debug_mock" || provider == "server_verified" || provider == "verification_required"
-        if (!shouldClear) return
+        // Restrict clearing logic strictly to play_billing.
+        // Web / server_verified / Asaas / Paddle subscribers must NOT be cleared when Google Play returns no purchases.
+        if (provider != "play_billing") return
         if (!ProSubscriptionPrefs.isSubscribed(this)) return
 
         ProSubscriptionPrefs.clearEntitlement(
@@ -866,33 +680,43 @@ class ProSubscriptionActivity : AppCompatActivity() {
     private fun shouldForceStrictVerification(): Boolean {
         if (!BuildConfig.DEBUG) return false
         return when (ProSubscriptionPrefs.getProvider(this)) {
-            "play_billing", "debug_mock", "server_verified", "verification_required" -> true
+            "play_billing", "verification_required" -> true
             else -> false
         }
     }
 
     private fun applyLocalSubscription(plan: String, purchaseToken: String, source: String) {
         val now = System.currentTimeMillis()
-        val expiresAt = when (plan) {
-            "max" -> now + 365L * 24L * 60L * 60L * 1000L
-            "free_trial" -> now + 30L * 24L * 60L * 60L * 1000L
-            else -> now + 31L * 24L * 60L * 60L * 1000L
-        }
-
         ProSubscriptionPrefs.setPlan(this, plan)
         ProSubscriptionPrefs.setSubscribed(this, true)
-        ProSubscriptionPrefs.setExpiresAt(this, expiresAt)
         ProSubscriptionPrefs.setPurchaseToken(this, purchaseToken)
         ProSubscriptionPrefs.setProvider(this, source)
-        ProSubscriptionPrefs.setLastVerifiedAt(this, now)
+
+        // For play_billing, immediately request backend verification if a verifier URL is configured.
+        val verifyUrl = ProSubscriptionServerPrefs.getVerifyUrl(this).ifBlank { BuildConfig.PRO_SUB_VERIFY_URL }
+        if (source == "play_billing" && verifyUrl.isNotBlank()) {
+            thread {
+                val result = ProSubscriptionVerifier.verifyNow(this, strictForTesting = false)
+                runOnUiThread { updateStatusDisplay() }
+            }
+        } else {
+            val expiresAt = when (plan) {
+                "max" -> now + 365L * 24L * 60L * 60L * 1000L
+                "free_trial" -> now + 30L * 24L * 60L * 60L * 1000L
+                else -> now + 31L * 24L * 60L * 60L * 1000L
+            }
+            ProSubscriptionPrefs.setExpiresAt(this, expiresAt)
+            ProSubscriptionPrefs.setLastVerifiedAt(this, now)
+        }
+
         val routeAction = ProSubscriptionRoutingPolicy.applyAfterActivation(this)
         val routeNote = ProSubscriptionRoutingPolicy.actionNote(routeAction)
 
         val planName = when (plan) {
             "free_trial" -> "Free Trial (30 days)"
-            "cheap" -> "Cheap ($1/mo)"
-            "standard" -> "Standard ($5/mo)"
-            "max" -> "Max ($20/mo)"
+            "cheap" -> "Cheap${composeState.playPriceLabels[plan]?.let { " ($it)" }.orEmpty()}"
+            "standard" -> "Standard${composeState.playPriceLabels[plan]?.let { " ($it)" }.orEmpty()}"
+            "max" -> "Max${composeState.playPriceLabels[plan]?.let { " ($it)" }.orEmpty()}"
             else -> plan
         }
 
@@ -984,12 +808,6 @@ class ProSubscriptionActivity : AppCompatActivity() {
             return
         }
 
-        val callback = Uri.Builder()
-            .scheme("fersaiyan")
-            .authority("pro-sub")
-            .appendPath("callback")
-            .build()
-
         Toast.makeText(this, "Preparing donation checkout...", Toast.LENGTH_SHORT).show()
         thread {
             try {
@@ -1001,6 +819,12 @@ class ProSubscriptionActivity : AppCompatActivity() {
                         .trim()
                 }
 
+                val callbackResult = ProSubscriptionServerPrefs.createWebCallbackResult(
+                    context = this,
+                    purpose = ProSubscriptionServerPrefs.WebCallbackPurpose.DONATION,
+                )
+                val callbackUrl = SubscriptionCheckoutPolicy.createVerifiedCallbackUrl(callbackResult)
+
                 val conn = URL("$baseUrl/api/donate").openConnection() as HttpURLConnection
                 conn.requestMethod = "POST"
                 conn.connectTimeout = 15000
@@ -1011,7 +835,7 @@ class ProSubscriptionActivity : AppCompatActivity() {
                 val requestBody = JSONObject()
                     .put("email", email)
                     .put("amount", amount.toIntOrNull() ?: 5)
-                    .put("return_url", callback.toString())
+                    .put("return_url", callbackUrl)
                     .put("api_token", apiToken)
                     .toString()
                 conn.outputStream.write(requestBody.toByteArray())
@@ -1029,7 +853,6 @@ class ProSubscriptionActivity : AppCompatActivity() {
                 val json = JSONObject(body)
                 val invoiceUrl = json.optString("invoice_url").trim()
                 val statusUrl = json.optString("status_url").trim()
-                val subscriptionId = json.optString("subscription_id").trim()
 
                 if (invoiceUrl.isBlank() || statusUrl.isBlank()) {
                     throw IllegalStateException("Donation setup did not return checkout links.")
@@ -1038,10 +861,7 @@ class ProSubscriptionActivity : AppCompatActivity() {
                 val pending = PendingDonationPrefs.PendingDonation(
                     invoiceUrl = invoiceUrl,
                     statusUrl = statusUrl,
-                    subscriptionId = subscriptionId,
                     amount = amount,
-                    apiToken = apiToken,
-                    email = email,
                 )
                 PendingDonationPrefs.save(this, pending)
                 runOnUiThread {
@@ -1168,7 +988,6 @@ class ProSubscriptionActivity : AppCompatActivity() {
         const val EXTRA_FROM_WEB_CALLBACK = "extra_from_web_callback"
         const val EXTRA_INITIAL_PLAN = "extra_initial_plan"
         const val EXTRA_AUTO_START_WEB_CHECKOUT = "extra_auto_start_web_checkout"
-        const val EXTRA_AUTO_WEB_CHECKOUT_CHANGE_PLAN = "extra_auto_web_checkout_change_plan"
         const val EXTRA_AUTO_WEB_CHECKOUT_EMAIL = "extra_auto_web_checkout_email"
     }
 }

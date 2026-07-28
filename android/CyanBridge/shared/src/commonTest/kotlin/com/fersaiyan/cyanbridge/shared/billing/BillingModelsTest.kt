@@ -6,7 +6,7 @@ import kotlin.test.assertFalse
 
 class BillingModelsTest {
     @Test
-    fun providerOffersKeepSeparateFeeAdjustedPricesAndChargeCurrencies() {
+    fun webProviderOffersKeepSeparateFeeAdjustedPricesAndChargeCurrencies() {
         val standard = BillingCatalog.plan("standard")
 
         assertEquals(5.25, standard.asaasOffer.referencePriceUsd)

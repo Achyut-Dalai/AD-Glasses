@@ -6,13 +6,8 @@ import androidx.appcompat.app.AppCompatActivity
 import kotlin.concurrent.thread
 
 /**
- * Handles browser return for web checkout and maps callback params to local entitlement state.
- * Expected query params (all optional, backend-defined):
- * - status: success|cancel|error
- * - plan: free_trial|cheap|standard|max
- * - token: entitlement/session token
- * - expires_at_ms: epoch millis
- * - message: short user-facing message
+ * Handles the verified HTTPS browser return. URL parameters never carry account credentials or
+ * entitlement data; a short-lived opaque result only wakes the app to verify server state.
  */
 class WebSubscriptionCallbackActivity : AppCompatActivity() {
 
@@ -24,55 +19,33 @@ class WebSubscriptionCallbackActivity : AppCompatActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
-        val data = intent?.data
-        if (data?.path == "/restore") {
-            restoreVerifiedAccount(data.getQueryParameter("api_token"), data.getQueryParameter("email"))
-            return
+        val result = SubscriptionCheckoutPolicy.callbackResultFrom(intent?.data)
+        when (ProSubscriptionServerPrefs.consumeWebCallbackResult(this, result)) {
+            ProSubscriptionServerPrefs.WebCallbackPurpose.SUBSCRIPTION -> verifySubscription()
+            ProSubscriptionServerPrefs.WebCallbackPurpose.DONATION -> resumeDonation()
+            null -> finish()
         }
-        val status = data?.getQueryParameter("status")?.trim()?.lowercase().orEmpty()
-        val message = data?.getQueryParameter("message")?.trim().orEmpty()
-        if (status == "success") {
-            thread {
-                val verified = ProSubscriptionVerifier.verifyNow(this, strictForTesting = false)
-                val result = CallbackResult(
-                    success = verified.active,
-                    message = when {
-                        verified.active && message.isNotBlank() -> message
-                        verified.active -> "Subscription verified"
-                        else -> "Payment returned successfully, but the subscription is still awaiting server confirmation."
-                    },
-                )
-                runOnUiThread { finishCallback(result) }
-            }
-            return
-        }
-
-        finishCallback(applyNonSuccessCallback(status, message))
     }
 
-    private fun restoreVerifiedAccount(apiToken: String?, email: String?) {
-        // The verification redirect intentionally carries no bearer credential.
-        // Keep using the account token already stored on the initiating device.
-        val token = apiToken?.trim().orEmpty().ifBlank {
-            ProSubscriptionServerPrefs.getApiToken(this).trim()
-        }
-        val verifiedEmail = ProSubscriptionServerPrefs.normalizeAccountEmail(email)
-        if (token.isBlank() || !ProSubscriptionServerPrefs.isUsableAccountEmail(verifiedEmail)) {
-            finishCallback(CallbackResult(false, "Email verification must be opened on the device that requested it."))
-            return
-        }
-
-        ProSubscriptionServerPrefs.setApiToken(this, token)
-        ProSubscriptionServerPrefs.setVerifiedAccountEmail(this, verifiedEmail)
+    private fun verifySubscription() {
         thread {
-            val verified = ProSubscriptionVerifier.verifyNow(this, strictForTesting = false)
-            val message = if (verified.active) {
-                "Email verified and subscription restored"
-            } else {
-                "Email verified. Choose a plan to continue."
-            }
-            runOnUiThread { finishCallback(CallbackResult(verified.active, message)) }
+            // A browser redirect is never proof of payment. Require a fresh server response.
+            val verified = ProSubscriptionVerifier.verifyNow(this, strictForTesting = true)
+            val result = CallbackResult(
+                success = verified.active,
+                message = if (verified.active) {
+                    "Subscription verified"
+                } else {
+                    "Payment returned, but no active subscription was confirmed."
+                },
+            )
+            runOnUiThread { finishCallback(result) }
         }
+    }
+
+    private fun resumeDonation() {
+        PendingDonationPrefs.setAwaitingReturn(this, true)
+        finishCallback(CallbackResult(false, "Return received. Check the donation status to confirm payment."))
     }
 
     private fun finishCallback(result: CallbackResult) {
@@ -88,19 +61,5 @@ class WebSubscriptionCallbackActivity : AppCompatActivity() {
             addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP or Intent.FLAG_ACTIVITY_SINGLE_TOP)
         })
         finish()
-    }
-
-    private fun applyNonSuccessCallback(status: String, message: String): CallbackResult {
-        val failureMessage = if (message.isNotBlank()) {
-            message
-        } else {
-            when (status) {
-                "cancel" -> "Subscription canceled"
-                "error" -> "Subscription failed"
-                else -> "Subscription not completed"
-            }
-        }
-
-        return CallbackResult(success = false, message = failureMessage)
     }
 }

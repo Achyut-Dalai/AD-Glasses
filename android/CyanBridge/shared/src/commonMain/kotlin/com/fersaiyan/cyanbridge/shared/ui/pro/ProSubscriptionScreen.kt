@@ -13,7 +13,6 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.safeDrawing
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Card
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FilterChip
@@ -29,17 +28,16 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.fersaiyan.cyanbridge.shared.billing.BillingCatalog
-import com.fersaiyan.cyanbridge.shared.billing.BillingPlan
-import com.fersaiyan.cyanbridge.shared.billing.ProviderOffer
 import com.fersaiyan.cyanbridge.shared.billing.ProSubscriptionUiState
-import kotlin.math.round
 
-private val planLabels = buildList {
+private fun planLabels(state: ProSubscriptionUiState) = buildList {
     add("free_trial" to "Free trial · 30 days")
     addAll(
         BillingCatalog.plans.map { plan ->
-            val basePrice = plan.asaasOffer.referencePriceUsd - plan.asaasOffer.adjustmentUsd
-            plan.id to "${plan.name} · Base \$${formatUsd(basePrice)}/month · Checkout \$${formatUsd(plan.asaasOffer.referencePriceUsd)}/month"
+            val price = state.playPriceLabels[plan.id]
+            val label = price?.let { "Google Play: $it" }
+                ?: "Google Play price shown at checkout"
+            plan.id to "${plan.name} · $label"
         },
     )
 }
@@ -51,8 +49,6 @@ fun ProSubscriptionScreen(
     onPlanSelected: (String) -> Unit,
     onSubscribeInApp: () -> Unit,
     onSubscribeOnWebsite: () -> Unit,
-    onSecureCheckoutSelected: (String) -> Unit,
-    onDismissSecureCheckout: () -> Unit,
     onDonate: () -> Unit,
     onCancelSubscription: () -> Unit,
     onBack: () -> Unit,
@@ -79,7 +75,7 @@ fun ProSubscriptionScreen(
                 Card(modifier = Modifier.fillMaxWidth()) {
                     Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                         Text("Choose a plan", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
-                        planLabels.forEach { (id, label) ->
+                        planLabels(state).forEach { (id, label) ->
                             FilterChip(
                                 selected = state.selectedPlan == id,
                                 onClick = { onPlanSelected(id) },
@@ -147,76 +143,6 @@ fun ProSubscriptionScreen(
             }
         }
     }
-
-    state.checkoutPlan?.let { planId ->
-        SecureCheckoutDialog(
-            plan = BillingCatalog.plan(planId),
-            onProviderSelected = onSecureCheckoutSelected,
-            onDismiss = onDismissSecureCheckout,
-        )
-    }
-}
-
-@Composable
-private fun SecureCheckoutDialog(
-    plan: BillingPlan,
-    onProviderSelected: (String) -> Unit,
-    onDismiss: () -> Unit,
-) {
-    val basePrice = plan.asaasOffer.referencePriceUsd - plan.asaasOffer.adjustmentUsd
-    AlertDialog(
-        onDismissRequest = onDismiss,
-        title = { Text("Choose secure checkout") },
-        text = {
-            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                Text("Base plan price: \$${formatUsd(basePrice)}/month")
-                Text(
-                    "Choose the payment option that fits you. Checkout prices include each provider's fees; the final total and available payment methods are shown before payment.",
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                )
-                CheckoutProviderOption(
-                    title = "Asaas",
-                    offer = plan.asaasOffer,
-                    details = "Lower checkout price · charged in the BRL equivalent",
-                    onClick = { onProviderSelected(plan.asaasOffer.provider.wireName) },
-                )
-                CheckoutProviderOption(
-                    title = "Paddle",
-                    offer = plan.paddleOffer,
-                    details = "More payment methods · higher price includes provider fees",
-                    onClick = { onProviderSelected(plan.paddleOffer.provider.wireName) },
-                )
-            }
-        },
-        confirmButton = {},
-        dismissButton = {
-            TextButton(onClick = onDismiss) { Text("Cancel") }
-        },
-    )
-}
-
-@Composable
-private fun CheckoutProviderOption(
-    title: String,
-    offer: ProviderOffer,
-    details: String,
-    onClick: () -> Unit,
-) {
-    OutlinedButton(onClick = onClick, modifier = Modifier.fillMaxWidth()) {
-        Column(modifier = Modifier.fillMaxWidth()) {
-            Text(title, style = MaterialTheme.typography.titleSmall)
-            Text(
-                "Checkout price: \$${formatUsd(offer.referencePriceUsd)}/month",
-                style = MaterialTheme.typography.bodySmall,
-            )
-            Text(
-                "Includes \$${formatUsd(offer.adjustmentUsd)} provider fee · $details",
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-            )
-        }
-    }
 }
 
 @Composable
@@ -230,14 +156,5 @@ private fun BenefitCard(title: String, description: String) {
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
         }
-    }
-}
-
-private fun formatUsd(value: Double): String {
-    val rounded = round(value * 100.0) / 100.0
-    return if (rounded == rounded.toLong().toDouble()) {
-        rounded.toLong().toString()
-    } else {
-        rounded.toString()
     }
 }

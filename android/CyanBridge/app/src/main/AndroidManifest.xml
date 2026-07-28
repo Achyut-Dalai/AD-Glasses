@@ -51,7 +51,6 @@
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE_CONNECTED_DEVICE" />
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE_DATA_SYNC" />
-    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_SPECIAL_USE" />
     <uses-permission android:name="android.permission.DOWNLOAD_WITHOUT_NOTIFICATION" />
     <uses-permission android:name="android.permission.REQUEST_IGNORE_BATTERY_OPTIMIZATIONS" />
     <uses-permission android:name="android.permission.KILL_BACKGROUND_PROCESSES" />
@@ -146,6 +145,11 @@
             android:name=".ui.SettingsActivity"
             android:exported="false"
             android:label="Settings" />
+
+        <activity
+            android:name=".ai.image.ExternalGeminiAutomationDiagnosticsActivity"
+            android:exported="false"
+            android:label="Assistant image automation setup" />
 
         <activity
             android:name=".ui.appearance.AppearanceActivity"
@@ -254,27 +258,17 @@
             android:exported="true"
             android:label="Subscription Callback"
             android:theme="@style/Theme.AppCompat.DayNight.NoActionBar">
-            <intent-filter>
+            <!-- The relay must publish assetlinks.json for this HTTPS App Link. -->
+            <intent-filter android:autoVerify="true">
                 <action android:name="android.intent.action.VIEW" />
 
                 <category android:name="android.intent.category.DEFAULT" />
                 <category android:name="android.intent.category.BROWSABLE" />
 
                 <data
-                    android:scheme="fersaiyan"
-                    android:host="pro-sub"
-                    android:path="/callback" />
-            </intent-filter>
-            <intent-filter>
-                <action android:name="android.intent.action.VIEW" />
-
-                <category android:name="android.intent.category.DEFAULT" />
-                <category android:name="android.intent.category.BROWSABLE" />
-
-                <data
-                    android:scheme="fersaiyan"
-                    android:host="pro-sub"
-                    android:path="/restore" />
+                    android:scheme="https"
+                    android:host="cyanbridge.vercel.app"
+                    android:path="/web-subscribe/callback" />
             </intent-filter>
         </activity>
 
@@ -283,9 +277,14 @@
             android:exported="false"
             android:label="Pro Subscription Settings" />
         <activity
+            android:name=".ai.live.GeminiLiveActivity"
+            android:exported="false"
+            android:label="Gemini Live Preview" />
+        <activity
             android:name=".agent.LocalModelsConfigureActivity"
             android:exported="false"
-            android:label="Configure Local Models" />
+            android:label="Configure Local Models"
+            android:configChanges="orientation|screenSize|screenLayout|keyboardHidden" />
 
         <activity
             android:name=".plugins.autodiary.AutoDiarySettingsActivity"
@@ -309,6 +308,11 @@
             android:exported="false" />
 
         <!-- Duplicate activity declarations removed -->
+
+        <service
+            android:name=".localmodels.download.ModelDownloadForegroundService"
+            android:exported="false"
+            android:foregroundServiceType="dataSync" />
 
         <service
             android:name=".localagent.accessibility.LocalAgentAccessibilityService"
@@ -361,6 +365,15 @@
         <receiver
             android:name=".plugins.errandbrain.ErrandBrainReminderReceiver"
             android:exported="false" />
+
+        <receiver
+            android:name=".ai.image.ImageAutomationStatusReceiver"
+            android:exported="true">
+            <intent-filter>
+                <action android:name="com.fersaiyan.cyanbridge.AI_IMAGE_STATUS" />
+                <action android:name="com.fersaiyan.cyanbridge.AI_IMAGE_PROFILE" />
+            </intent-filter>
+        </receiver>
 
         <service
             android:name=".audio.MeetingCaptureService"

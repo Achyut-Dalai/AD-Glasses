@@ -26,12 +26,6 @@ if (localPropertiesFile.exists()) {
 }
 def metaGithubToken = System.getenv("GITHUB_TOKEN") ?: localProperties.getProperty("github_token")
 def metaDatEnabled = metaGithubToken != null && !metaGithubToken.trim().isEmpty()
-if (!metaDatEnabled) {
-    throw new GradleException(
-            "Meta Wearables DAT 0.8.0 is required for the direct Meta adapter. " +
-                    "Set GITHUB_TOKEN or github_token in local.properties."
-    )
-}
 
 android {
     namespace = "com.fersaiyan.cyanbridge"
@@ -39,11 +33,11 @@ android {
 
     defaultConfig {
         applicationId = "com.fersaiyan.cyanbridge"
-        // Meta DAT declares minSdk 29 and is now a required app dependency.
-        minSdk = 29
+        // Meta DAT declares minSdk 29. Keep the regular build on API 24 if Meta SDK is skipped.
+        minSdk = metaDatEnabled ? 29 : 24
         targetSdk = 35
-        versionCode = 9
-        versionName = "2.0.5.1"
+        versionCode = 12
+        versionName = "2.1.0"
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
 
         // Chapter 6: optional transcription API key (do not commit secrets).
@@ -53,6 +47,14 @@ android {
         def proCheapSku = project.findProperty("PRO_CHEAP_SKU") ?: "pro_cheap"
         def proStandardSku = project.findProperty("PRO_STANDARD_SKU") ?: "pro_standard"
         def proMaxSku = project.findProperty("PRO_MAX_SKU") ?: "pro_max"
+        // Never fall back to the first Play offer. Configure a base plan for each product,
+        // and an offer ID only when that specific promotional offer should be purchased.
+        def proCheapBasePlanId = project.findProperty("PRO_CHEAP_BASE_PLAN_ID") ?: "pro-cheap"
+        def proStandardBasePlanId = project.findProperty("PRO_STANDARD_BASE_PLAN_ID") ?: "pro-standard"
+        def proMaxBasePlanId = project.findProperty("PRO_MAX_BASE_PLAN_ID") ?: "pro-max"
+        def proCheapOfferId = project.findProperty("PRO_CHEAP_OFFER_ID") ?: ""
+        def proStandardOfferId = project.findProperty("PRO_STANDARD_OFFER_ID") ?: ""
+        def proMaxOfferId = project.findProperty("PRO_MAX_OFFER_ID") ?: ""
         def proMonthlySku = project.findProperty("PRO_MONTHLY_SKU") ?: "pro_monthly"
         def proYearlySku = project.findProperty("PRO_YEARLY_SKU") ?: "pro_yearly"
         def proVerifyUrl = project.findProperty("PRO_SUB_VERIFY_URL") ?: ""
@@ -62,6 +64,12 @@ android {
         buildConfigField "String", "PRO_CHEAP_SKU", "\"${proCheapSku}\""
         buildConfigField "String", "PRO_STANDARD_SKU", "\"${proStandardSku}\""
         buildConfigField "String", "PRO_MAX_SKU", "\"${proMaxSku}\""
+        buildConfigField "String", "PRO_CHEAP_BASE_PLAN_ID", "\"${proCheapBasePlanId}\""
+        buildConfigField "String", "PRO_STANDARD_BASE_PLAN_ID", "\"${proStandardBasePlanId}\""
+        buildConfigField "String", "PRO_MAX_BASE_PLAN_ID", "\"${proMaxBasePlanId}\""
+        buildConfigField "String", "PRO_CHEAP_OFFER_ID", "\"${proCheapOfferId}\""
+        buildConfigField "String", "PRO_STANDARD_OFFER_ID", "\"${proStandardOfferId}\""
+        buildConfigField "String", "PRO_MAX_OFFER_ID", "\"${proMaxOfferId}\""
         buildConfigField "String", "PRO_MONTHLY_SKU", "\"${proMonthlySku}\""
         buildConfigField "String", "PRO_YEARLY_SKU", "\"${proYearlySku}\""
         buildConfigField "String", "PRO_SUB_VERIFY_URL", "\"${proVerifyUrl}\""
@@ -170,7 +178,7 @@ dependencies {
     implementation 'androidx.media3:media3-exoplayer-rtsp:1.5.1'
     implementation 'androidx.media3:media3-ui:1.5.1'
     implementation "androidx.security:security-crypto:1.1.0-alpha06"
-    implementation 'com.android.billingclient:billing-ktx:7.1.1'
+    implementation 'com.android.billingclient:billing-ktx:8.1.0'
     implementation "androidx.lifecycle:lifecycle-viewmodel-ktx:2.8.0"
     implementation "androidx.work:work-runtime-ktx:2.9.1"
     implementation "org.jetbrains.kotlinx:kotlinx-coroutines-android:1.7.3"
@@ -190,6 +198,11 @@ dependencies {
 
     // LiteRT runtime for local models (Google's inference engine)
     implementation("com.google.ai.edge.litertlm:litertlm-android:0.10.0")
+
+    // Generic LiteRT / TensorFlow Lite runtime for .tflite vision models (YOLO, Depth)
+    implementation("org.tensorflow:tensorflow-lite:2.16.1")
+    implementation("org.tensorflow:tensorflow-lite-gpu:2.16.1")
+    implementation("org.tensorflow:tensorflow-lite-support:0.4.4")
 
     // Offline transcription fallback (Moonshine; vendored module)
     implementation project(":moonshine-voice")
@@ -211,10 +224,14 @@ dependencies {
     // Meta Wearables DAT SDK for Meta Ray-Ban glasses integration.
     // Requires GitHub token with read:packages scope in GITHUB_TOKEN env var.
     def metaDatVersion = "0.8.0"
-    implementation("com.meta.wearable:mwdat-core:${metaDatVersion}")
-    implementation("com.meta.wearable:mwdat-camera:${metaDatVersion}")
-    implementation("com.meta.wearable:mwdat-display:${metaDatVersion}")
-    implementation("com.meta.wearable:mwdat-mockdevice:${metaDatVersion}")
+    if (metaDatEnabled) {
+        implementation("com.meta.wearable:mwdat-core:${metaDatVersion}")
+        implementation("com.meta.wearable:mwdat-camera:${metaDatVersion}")
+        implementation("com.meta.wearable:mwdat-display:${metaDatVersion}")
+        implementation("com.meta.wearable:mwdat-mockdevice:${metaDatVersion}")
+    } else {
+        logger.warn("No GitHub package token configured - Meta Wearables DAT SDK dependencies will be skipped.")
+    }
 
     // Chapter 4 UI gating test (androidTest)
     androidTestImplementation 'androidx.test:core-ktx:1.6.1'

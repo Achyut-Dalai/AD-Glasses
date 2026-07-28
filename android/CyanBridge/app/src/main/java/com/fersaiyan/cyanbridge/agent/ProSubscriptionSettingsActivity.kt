@@ -23,6 +23,7 @@ import androidx.lifecycle.Lifecycle
 import com.google.android.material.button.MaterialButton
 import com.google.android.material.progressindicator.LinearProgressIndicator
 import com.fersaiyan.cyanbridge.R
+import com.fersaiyan.cyanbridge.ai.live.GeminiLiveActivity
 import com.fersaiyan.cyanbridge.shared.billing.ProSubscriptionSettingsUiState
 import com.fersaiyan.cyanbridge.ui.appearance.AppearancePreferences
 import com.fersaiyan.cyanbridge.ui.appearance.rememberAppearanceSettings
@@ -623,6 +624,9 @@ class ProSubscriptionSettingsActivity : AppCompatActivity() {
                         btnJoinBetaCloud.performClick()
                         syncComposeState?.invoke()
                     },
+                    onStartGeminiLive = {
+                        startActivity(Intent(this@ProSubscriptionSettingsActivity, GeminiLiveActivity::class.java))
+                    },
                     onCloudSyncChange = {
                         switchCloudSync.isChecked = it
                         syncComposeState?.invoke()
@@ -696,7 +700,6 @@ class ProSubscriptionSettingsActivity : AppCompatActivity() {
                 startActivity(Intent(this, ProSubscriptionActivity::class.java).apply {
                     putExtra(ProSubscriptionActivity.EXTRA_INITIAL_PLAN, plan)
                     putExtra(ProSubscriptionActivity.EXTRA_AUTO_START_WEB_CHECKOUT, true)
-                    putExtra(ProSubscriptionActivity.EXTRA_AUTO_WEB_CHECKOUT_CHANGE_PLAN, true)
                     putExtra(ProSubscriptionActivity.EXTRA_AUTO_WEB_CHECKOUT_EMAIL, email)
                 })
                 finish()

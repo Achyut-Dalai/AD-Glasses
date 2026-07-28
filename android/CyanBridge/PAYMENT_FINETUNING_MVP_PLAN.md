@@ -24,7 +24,7 @@ HTTPS is mandatory, but Asaas explicitly says server-side tokenization remains S
 - Pricing is duplicated and inconsistent: `lib/relay-auth.ts` contains `$1/$5/$20`, while `lib/relay-kv.ts` contains `$1.55/$5.75/$21.50`.
 - Paddle is automatically selected whenever configured at `app/api/web-subscribe/route.ts:636`; users do not get a clean provider choice.
 - The Paddle production page contains “beta,” environment details, price IDs, and test-card instructions at `PaddleCheckoutClient.tsx:159-205`.
-- The app and website put `api_token` in URLs, hidden fields, browser history, status URLs, and deep-link callbacks.
+- The deployed `/web-subscribe` compatibility contract still requires `api_token` in its initial browser URL. Android no longer accepts a bearer token in a callback URL; replacing the initial URL token requires the server-side checkout-session API below.
 - `ensureRelayUser()` can restore an existing account solely by matching an unverified email at `lib/relay-kv.ts:174-205`. This is an account-takeover risk and must be fixed before improving checkout.
 - The Android callback trusts URL parameters to create local entitlement at `WebSubscriptionCallbackActivity.kt:62-91`. A callback must only wake the app; the app should verify entitlement with the server.
 - The Asaas webhook acknowledges events even when durable event persistence fails at `app/api/webhooks/asaas/route.ts:334-389`. That conflicts with Asaas’s webhook guidance.
@@ -46,7 +46,15 @@ Validate these operations with a dedicated test customer:
 
 2. **Fix authentication before payment UX**
 
-Replace the URL-based bearer-token flow with an authenticated checkout-session API:
+Until the checkout-session endpoint is deployed, Android must use the deployed relay contract:
+
+```text
+GET /web-subscribe?plan=<plan>&return_url=<verified HTTPS app link with opaque result>&api_token=<account token>
+```
+
+The callback must contain only the one-time opaque result and Android must call `/pro/verify`; it must never install a bearer credential from a URL. Do not switch the client to the following API until the backend is deployed and confirmed in production.
+
+Then replace the initial URL-based bearer-token flow with an authenticated checkout-session API:
 
 ```text
 Android POST /billing/checkout-sessions

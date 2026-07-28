@@ -3,6 +3,7 @@ package com.fersaiyan.cyanbridge.shared.billing
 enum class BillingProvider(val wireName: String) {
     ASAAS("asaas"),
     PADDLE("paddle"),
+    GOOGLE_PLAY("google_play"),
 }
 
 data class ProviderOffer(
@@ -47,6 +48,8 @@ object BillingCatalog {
 
     fun plan(id: String): BillingPlan = plans.firstOrNull { it.id == id } ?: plans[1]
 
+    // Google Play prices are intentionally omitted here. They come from ProductDetails at
+    // runtime so the app can show the selected offer's localized price and recurrence.
     private fun paidPlan(id: String, name: String, basePriceUsd: Double, paddlePriceUsd: Double) = BillingPlan(
         id = id,
         name = name,

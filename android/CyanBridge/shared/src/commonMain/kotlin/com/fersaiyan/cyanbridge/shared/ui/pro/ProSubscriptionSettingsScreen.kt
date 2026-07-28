@@ -41,7 +41,6 @@ import androidx.compose.ui.unit.dp
 import com.fersaiyan.cyanbridge.shared.billing.BillingCatalog
 import com.fersaiyan.cyanbridge.shared.billing.BillingPlan
 import com.fersaiyan.cyanbridge.shared.billing.ProSubscriptionSettingsUiState
-import kotlin.math.round
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -54,6 +53,7 @@ fun ProSubscriptionSettingsScreen(
     onRefreshQuota: () -> Unit,
     onRefreshModels: () -> Unit,
     onJoinBeta: () -> Unit,
+    onStartGeminiLive: () -> Unit,
     onCloudSyncChange: (Boolean) -> Unit,
     onPrioritySupportChange: (Boolean) -> Unit,
     onPluginRewardsChange: (Boolean) -> Unit,
@@ -169,6 +169,17 @@ fun ProSubscriptionSettingsScreen(
                 }
             }
             item {
+                ProSettingsCard("Gemini Live (voice and vision, preview)") {
+                    Text(
+                        "Direct Google Gemini Live connection. Requires an active paid Pro plan and network access. Live audio and deliberate still images are sent to Google.",
+                        style = MaterialTheme.typography.bodySmall,
+                    )
+                    OutlinedButton(onClick = onStartGeminiLive, modifier = Modifier.fillMaxWidth()) {
+                        Text("Open Gemini Live preview")
+                    }
+                }
+            }
+            item {
                 Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End) {
                     OutlinedButton(onClick = onBack) { Text("Back") }
                     Spacer(Modifier.width(8.dp))
@@ -242,7 +253,6 @@ private fun PlanChoice(
     selected: Boolean,
     onClick: () -> Unit,
 ) {
-    val basePrice = plan.asaasOffer.referencePriceUsd - plan.asaasOffer.adjustmentUsd
     Row(
         modifier = Modifier
             .fillMaxWidth()
@@ -254,24 +264,11 @@ private fun PlanChoice(
         Column(modifier = Modifier.padding(start = 8.dp)) {
             Text(plan.name, style = MaterialTheme.typography.titleSmall)
             Text(
-                "Base price: \$${formatUsd(basePrice)}/month",
-                style = MaterialTheme.typography.bodySmall,
-            )
-            Text(
-                "Checkout price: \$${formatUsd(plan.asaasOffer.referencePriceUsd)}/month",
+                "Localized price and renewal terms are shown in checkout.",
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
         }
-    }
-}
-
-private fun formatUsd(value: Double): String {
-    val rounded = round(value * 100.0) / 100.0
-    return if (rounded == rounded.toLong().toDouble()) {
-        rounded.toLong().toString()
-    } else {
-        rounded.toString()
     }
 }
 

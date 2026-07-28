@@ -102,21 +102,21 @@
                             android:id="@+id/rb_cheap"
                             android:layout_width="match_parent"
                             android:layout_height="wrap_content"
-                            android:text="Cheap — $1 base; checkout $1.13/month"
+                            android:text="Cheap - Google Play price loads when available"
                             android:textColor="@color/text_primary" />
 
                         <com.google.android.material.radiobutton.MaterialRadioButton
                             android:id="@+id/rb_standard"
                             android:layout_width="match_parent"
                             android:layout_height="wrap_content"
-                            android:text="Standard — $5 base; checkout $5.25/month"
+                            android:text="Standard - Google Play price loads when available"
                             android:textColor="@color/text_primary" />
 
                         <com.google.android.material.radiobutton.MaterialRadioButton
                             android:id="@+id/rb_max"
                             android:layout_width="match_parent"
                             android:layout_height="wrap_content"
-                            android:text="Max — $20 base; checkout $20.70/month"
+                            android:text="Max - Google Play price loads when available"
                             android:textColor="@color/text_primary" />
 
                     </RadioGroup>

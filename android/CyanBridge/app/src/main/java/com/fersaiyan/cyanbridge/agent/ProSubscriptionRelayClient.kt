@@ -1,6 +1,7 @@
 package com.fersaiyan.cyanbridge.agent
 
 import android.content.Context
+import android.net.Uri
 import com.fersaiyan.cyanbridge.BuildConfig
 import com.fersaiyan.cyanbridge.ai.router.AiProviderPrefs
 import org.json.JSONArray
@@ -51,11 +52,6 @@ object ProSubscriptionRelayClient {
         val plan: String,
         val expiresAtMs: Long,
         val message: String,
-    )
-
-    data class CheckoutSession(
-        val checkoutUrl: String,
-        val expiresAtMs: Long,
     )
 
     data class EmailVerificationResult(
@@ -209,36 +205,36 @@ object ProSubscriptionRelayClient {
         }
     }
 
-    fun createCheckoutSession(
+    fun buildWebCheckoutUrl(
         context: Context,
         plan: String,
-        provider: String,
-        email: String,
         returnUrl: String,
-        changePlan: Boolean,
-    ): Result<CheckoutSession> = runCatching {
+    ): Result<String> = runCatching {
         val apiToken = ProSubscriptionServerPrefs.getApiToken(context).trim().ifBlank {
             fetchAccountInfo(context).getOrThrow().apiToken.trim()
         }
         check(apiToken.isNotBlank()) { "Server account token unavailable" }
 
-        val payload = requestPostJson(
-            context = context,
-            url = endpoint(context, "/billing/checkout-sessions"),
-            body = JSONObject()
-                .put("plan", plan)
-                .put("provider", provider)
-                .put("return_url", returnUrl)
-                .put("change_plan", changePlan),
-        )
-        val checkoutUrl = payload.optString("checkout_url").trim()
-        check(checkoutUrl.startsWith("https://") || (BuildConfig.DEBUG && checkoutUrl.startsWith("http://"))) {
-            "Server returned an invalid checkout URL"
+        check(SubscriptionCheckoutPolicy.callbackResultFrom(Uri.parse(returnUrl)) != null) {
+            "Checkout must return through the verified app link"
         }
-        CheckoutSession(
-            checkoutUrl = checkoutUrl,
-            expiresAtMs = payload.optLong("expires_at_ms", 0L),
-        )
+        val checkoutEndpoint = SubscriptionCheckoutPolicy.resolveWebCheckoutUrl(context).trim()
+        val checkoutUri = Uri.parse(checkoutEndpoint)
+        check(
+            checkoutUri.scheme?.equals("https", ignoreCase = true) == true ||
+                (BuildConfig.DEBUG && checkoutUri.scheme?.equals("http", ignoreCase = true) == true),
+        ) {
+            "Website checkout must use HTTPS"
+        }
+
+        // This is the deployed relay contract. The browser opens it with GET; it is not a
+        // checkout-session API and must not be replaced with an undeployed POST endpoint.
+        checkoutUri.buildUpon()
+            .appendQueryParameter("plan", plan)
+            .appendQueryParameter("return_url", returnUrl)
+            .appendQueryParameter("api_token", apiToken)
+            .build()
+            .toString()
     }
 
     fun requestAccountEmailVerification(context: Context, email: String): Result<EmailVerificationResult> = runCatching {
