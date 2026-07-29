@@ -8,8 +8,8 @@ enum class AgentProviderType {
     val label: String
         get() = when (this) {
             TASKER -> "Tasker"
-            LOCAL_AGENT -> "Local agent"
-            PRO_SUBSCRIPTION -> "Pro subscription (cloud)"
+            LOCAL_AGENT -> "Local"
+            PRO_SUBSCRIPTION -> "Pro"
         }
 }
 

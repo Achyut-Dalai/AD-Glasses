@@ -147,9 +147,9 @@
             android:label="Settings" />
 
         <activity
-            android:name=".ai.image.ExternalGeminiAutomationDiagnosticsActivity"
+            android:name=".ai.image.ExternalAssistantAutomationSetupActivity"
             android:exported="false"
-            android:label="Assistant image automation setup" />
+            android:label="Gemini / ChatGPT automation setup" />
 
         <activity
             android:name=".ui.appearance.AppearanceActivity"

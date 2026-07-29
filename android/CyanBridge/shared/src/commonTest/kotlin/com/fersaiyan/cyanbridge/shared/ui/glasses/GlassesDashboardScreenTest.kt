@@ -12,7 +12,6 @@ import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse
 import kotlin.test.assertNull
-import kotlin.test.assertTrue
 
 class GlassesDashboardScreenTest {
 
@@ -63,10 +62,11 @@ class GlassesDashboardScreenTest {
     }
 
     @Test
-    fun assistantModesCoverAllProviders() {
+    fun assistantModesExposeOnlyPhoneAndCustomAi() {
         val modes = GlassesAssistantMode.entries
-        assertTrue(modes.contains(GlassesAssistantMode.GEMINI))
-        assertTrue(modes.contains(GlassesAssistantMode.CHAT_GPT))
-        assertTrue(modes.contains(GlassesAssistantMode.CHOSEN_PROVIDER))
+        assertEquals(
+            listOf(GlassesAssistantMode.PHONE_ASSISTANT, GlassesAssistantMode.CUSTOM_AI_PROVIDER),
+            modes,
+        )
     }
 }

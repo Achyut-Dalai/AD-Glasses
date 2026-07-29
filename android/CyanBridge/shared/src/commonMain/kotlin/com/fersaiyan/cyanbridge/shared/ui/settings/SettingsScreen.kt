@@ -207,7 +207,7 @@ fun SettingsScreen(
             }
             item {
                 SettingsSectionCard(
-                    title = "AI",
+                    title = "Custom AI provider",
                     expanded = SettingsSection.AI_AUTOMATION in expandedSections,
                     onToggle = { onToggleSection(SettingsSection.AI_AUTOMATION) },
                 ) {
@@ -463,7 +463,7 @@ private fun SettingsSectionCard(
 @Composable
 private fun AiAutomationContent(state: SettingsUiState, actions: SettingsScreenActions) {
     Text(
-        "Choose the provider used for AI and memory-aware requests.",
+        "Choose the provider used by the Local / Pro / Tasker mode on the Glasses screen.",
         style = MaterialTheme.typography.bodySmall,
         color = MaterialTheme.colorScheme.onSurfaceVariant,
     )

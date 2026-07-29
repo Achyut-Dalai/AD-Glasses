@@ -207,7 +207,7 @@ fun GlassesDashboardScreen(
                     onAction = onAction,
                 )
             }
-            if (state.showHeyCyanControls) {
+            if (state.showHeyCyanControls || state.showEyevueControls) {
                 item { CoreGlassesControls(state, onAction) }
             }
             if (state.showMetaRaybanControls) {
@@ -227,7 +227,7 @@ fun GlassesDashboardScreen(
                     )
                 }
             }
-            if (state.showHeyCyanControls) {
+            if (state.showHeyCyanControls || state.showEyevueControls) {
                 item {
                     TextButton(
                         onClick = { onAction(GlassesDashboardAction.ToggleAdvanced) },
@@ -551,12 +551,16 @@ private fun CoreGlassesControls(
             onClick = { onAction(GlassesDashboardAction.StartSync) },
             style = ActionButtonStyle.Primary,
             modifier = Modifier.fillMaxWidth(),
-        )
-        if (state.livePreview.isAvailable) {
-            Spacer(Modifier.height(8.dp))
-            SectionTitle("Passive RTSP lab probe")
+            )
+            if (state.livePreview.isAvailable) {
+                Spacer(Modifier.height(8.dp))
+            SectionTitle(if (state.showEyevueControls) "Eyevue live preview" else "Passive RTSP lab probe")
             Text(
-                text = "Sends no BLE mode command. Activate mode 8 separately using the approved hardware procedure.",
+                text = if (state.showEyevueControls) {
+                    "Starts the vendor live mode, joins the returned Eyevue Wi-Fi network, and plays the camera stream."
+                } else {
+                    "Sends no BLE mode command. Activate mode 8 separately using the approved hardware procedure."
+                },
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
@@ -576,7 +580,13 @@ private fun CoreGlassesControls(
                 }
             }
             ActionRow(
-                primaryLabel = if (state.livePreview.isScanning) "Scanning..." else "Arm passive probe",
+                primaryLabel = if (state.livePreview.isScanning) {
+                    "Connecting..."
+                } else if (state.showEyevueControls) {
+                    "Start live preview"
+                } else {
+                    "Arm passive probe"
+                },
                 onPrimary = { onAction(GlassesDashboardAction.StartLivePreview) },
                 primaryEnabled = state.livePreview.canStart && !state.livePreview.isScanning,
                 primaryStyle = ActionButtonStyle.Primary,
@@ -707,34 +717,18 @@ private fun GlassesAssistantControls(
         SectionTitle("AI assistant", accented = true)
         Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
             AssistantModeChip(
-                label = "Gemini",
-                mode = GlassesAssistantMode.GEMINI,
+                label = "Phone Assistant",
+                mode = GlassesAssistantMode.PHONE_ASSISTANT,
                 selectedMode = state.assistantMode,
                 onAction = onAction,
                 modifier = Modifier.weight(1f),
             )
             AssistantModeChip(
-                label = "ChatGPT",
-                mode = GlassesAssistantMode.CHAT_GPT,
+                label = "Local / Pro / Tasker",
+                mode = GlassesAssistantMode.CUSTOM_AI_PROVIDER,
                 selectedMode = state.assistantMode,
                 onAction = onAction,
                 modifier = Modifier.weight(1f),
-            )
-            AssistantModeChip(
-                label = "Phone default",
-                mode = GlassesAssistantMode.PHONE_DEFAULT,
-                selectedMode = state.assistantMode,
-                onAction = onAction,
-                modifier = Modifier.weight(1f),
-            )
-        }
-        Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-            AssistantModeChip(
-                label = "Custom Provider",
-                mode = GlassesAssistantMode.CHOSEN_PROVIDER,
-                selectedMode = state.assistantMode,
-                onAction = onAction,
-                modifier = Modifier.fillMaxWidth(),
             )
         }
         ActionRow(
@@ -748,7 +742,7 @@ private fun GlassesAssistantControls(
             onClick = { onAction(GlassesDashboardAction.OpenExternalImageAutomationDiagnostics) },
             modifier = Modifier.fillMaxWidth(),
         ) {
-            Text("Gemini automation setup")
+            Text("Gemini / ChatGPT automation setup")
         }
     }
 }

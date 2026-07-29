@@ -3,4 +3,5 @@
     <external-path name="my_images" path="Android/data/com.fersaiyan.cyanbridge/files/DCIM" />
     <external-files-path name="external_files" path="DCIM" />
     <external-files-path name="root" path="." />
+    <cache-path name="cache" path="." />
 </paths>

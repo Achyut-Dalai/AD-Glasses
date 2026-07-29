@@ -1,11 +1,13 @@
 package com.fersaiyan.cyanbridge.agent
 
 import android.content.Context
+import com.fersaiyan.cyanbridge.shared.glasses.GlassesAssistantMode
 import com.fersaiyan.cyanbridge.shared.settings.AgentProviderType
 
 object LocalAgentPrefs {
     private const val PREFS = "local_agent_prefs"
     private const val KEY_PROVIDER_TYPE = "provider_type"
+    private const val KEY_GLASSES_ASSISTANT_MODE = "glasses_assistant_mode"
     private const val KEY_REQUIRE_CONFIRMATION = "require_confirmation"
     private const val KEY_MAX_STEPS = "max_steps"
     private const val KEY_AUTOMATION_ENABLED = "automation_enabled"
@@ -37,6 +39,38 @@ object LocalAgentPrefs {
         context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
             .edit()
             .putString(KEY_PROVIDER_TYPE, type.name)
+            .apply()
+    }
+
+    fun getGlassesAssistantMode(context: Context): GlassesAssistantMode {
+        val preferences = context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
+        val stored = preferences
+            .getString(KEY_GLASSES_ASSISTANT_MODE, null)
+            ?.trim()
+            ?.uppercase()
+        val mode = when (stored) {
+            GlassesAssistantMode.CUSTOM_AI_PROVIDER.name,
+            "CHOSEN_PROVIDER" -> GlassesAssistantMode.CUSTOM_AI_PROVIDER
+
+            GlassesAssistantMode.PHONE_ASSISTANT.name,
+            "GEMINI",
+            "CHAT_GPT",
+            "PHONE_DEFAULT",
+            null,
+            "" -> GlassesAssistantMode.PHONE_ASSISTANT
+
+            else -> GlassesAssistantMode.PHONE_ASSISTANT
+        }
+        if (stored != mode.name) {
+            preferences.edit().putString(KEY_GLASSES_ASSISTANT_MODE, mode.name).apply()
+        }
+        return mode
+    }
+
+    fun setGlassesAssistantMode(context: Context, mode: GlassesAssistantMode) {
+        context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
+            .edit()
+            .putString(KEY_GLASSES_ASSISTANT_MODE, mode.name)
             .apply()
     }
 

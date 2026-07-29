@@ -7,7 +7,7 @@
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:layout_marginTop="12dp"
-        android:text="Provider Type"
+        android:text="Custom AI provider"
         android:textColor="@color/text_primary"
         android:textStyle="bold" />
 
@@ -28,14 +28,14 @@
             android:id="@+id/rb_provider_local_agent"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:text="Local Models (on-device llama.cpp)"
+            android:text="Local"
             android:textColor="@color/text_primary" />
 
         <com.google.android.material.radiobutton.MaterialRadioButton
             android:id="@+id/rb_provider_pro_subscription"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:text="Pro Subscription"
+            android:text="Pro"
             android:textColor="@color/text_primary" />
     </RadioGroup>
 

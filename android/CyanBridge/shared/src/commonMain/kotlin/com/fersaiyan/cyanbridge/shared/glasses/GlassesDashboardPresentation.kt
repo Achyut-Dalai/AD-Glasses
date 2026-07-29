@@ -18,7 +18,7 @@ data class GlassesDashboardUiState(
     val transfer: GlassesTransferUiState = GlassesTransferUiState(),
     val meeting: GlassesMeetingUiState = GlassesMeetingUiState(),
     val nativePluginShortcut: NativePluginShortcutUiState? = null,
-    val assistantMode: GlassesAssistantMode = GlassesAssistantMode.GEMINI,
+    val assistantMode: GlassesAssistantMode = GlassesAssistantMode.PHONE_ASSISTANT,
     val imageQueryEnabled: Boolean = true,
     val imageQueryLabel: String = "Test image AI description",
     val imageThumbnailQualitySdkValue: Int = 5,
@@ -29,6 +29,7 @@ data class GlassesDashboardUiState(
     val audioRecordingDurationSeconds: Int? = null,
     val audioRecordingDurationOptionsSeconds: List<Int> = emptyList(),
     val showHeyCyanControls: Boolean = false,
+    val showEyevueControls: Boolean = false,
     val showMetaRaybanControls: Boolean = false,
     val showMeizuMyvuControls: Boolean = false,
     val advancedExpanded: Boolean = false,
@@ -77,10 +78,8 @@ data class GlassesMeetingUiState(
 )
 
 enum class GlassesAssistantMode {
-    GEMINI,
-    CHAT_GPT,
-    PHONE_DEFAULT,
-    CHOSEN_PROVIDER,
+    PHONE_ASSISTANT,
+    CUSTOM_AI_PROVIDER,
 }
 
 data class MetaRaybanUiState(

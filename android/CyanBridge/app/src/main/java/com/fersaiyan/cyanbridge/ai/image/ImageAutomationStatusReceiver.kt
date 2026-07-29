@@ -10,11 +10,13 @@ import androidx.localbroadcastmanager.content.LocalBroadcastManager
 class ImageAutomationStatusReceiver : BroadcastReceiver() {
     override fun onReceive(context: Context, intent: Intent) {
         if (intent.action == ExternalImageAutomationIntents.profileAction(context.packageName)) {
-            TaskerImageProfileStore.record(
+            val accepted = TaskerImageProfileStore.verifyAndRecord(
                 context = context,
                 target = intent.getStringExtra(ExternalImageAutomationIntents.EXTRA_PROFILE_TARGET),
                 version = intent.getStringExtra(ExternalImageAutomationIntents.EXTRA_PROFILE_VERSION),
+                token = intent.getStringExtra(ExternalImageAutomationIntents.EXTRA_PROFILE_TOKEN),
             )
+            if (!accepted) Log.w(TAG, "Ignoring assistant profile callback with an invalid setup token")
             return
         }
         if (intent.action != ExternalImageAutomationIntents.statusAction(context.packageName)) return

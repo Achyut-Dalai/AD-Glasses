@@ -687,7 +687,7 @@
                         android:layout_width="0dp"
                         android:layout_height="wrap_content"
                         android:layout_weight="1"
-                        android:text="Gemini"
+                        android:text="Phone Assistant"
                         android:backgroundTint="@color/card_bg"
                         android:textColor="@color/cyan_accent"/>
 
@@ -698,7 +698,8 @@
                         android:layout_width="0dp"
                         android:layout_height="wrap_content"
                         android:layout_weight="1"
-                        android:text="ChatGPT"
+                        android:text="Phone Assistant"
+                        android:visibility="gone"
                         android:backgroundTint="@color/card_bg"
                         android:textColor="@color/text_secondary"/>
 

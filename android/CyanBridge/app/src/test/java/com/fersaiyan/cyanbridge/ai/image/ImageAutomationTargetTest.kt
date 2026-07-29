@@ -7,10 +7,10 @@ import org.junit.Test
 
 class ImageAutomationTargetTest {
     @Test
-    fun explicitGeminiUsesGeminiImageProfile() {
+    fun defaultGeminiUsesGeminiImageProfile() {
         assertEquals(
             ImageAutomationTarget.GEMINI,
-            ImageAutomationTarget.forAssistantMode("Gemini", defaultAssistantPackage = null),
+            ImageAutomationTarget.forDefaultAssistant(ExternalImageAutomationIntents.GEMINI_PACKAGE),
         )
     }
 
@@ -18,31 +18,22 @@ class ImageAutomationTargetTest {
     fun phoneDefaultGeminiUsesGeminiImageProfile() {
         assertEquals(
             ImageAutomationTarget.GEMINI,
-            ImageAutomationTarget.forAssistantMode(
-                assistantMode = "PhoneDefault",
-                defaultAssistantPackage = ExternalImageAutomationIntents.GEMINI_PACKAGE,
-            ),
+            ImageAutomationTarget.forDefaultAssistant(ExternalImageAutomationIntents.GEMINI_ALTERNATE_PACKAGE),
         )
     }
 
     @Test
-    fun chatGptHasItsOwnUnsupportedImageBranch() {
-        val target = ImageAutomationTarget.forAssistantMode(
-            assistantMode = "ChatGPT",
-            defaultAssistantPackage = ExternalImageAutomationIntents.GEMINI_PACKAGE,
-        )
+    fun defaultChatGptHasItsOwnSupportedProfile() {
+        val target = ImageAutomationTarget.forDefaultAssistant(ExternalImageAutomationIntents.CHATGPT_PACKAGE)
 
         assertEquals(ImageAutomationTarget.CHATGPT, target)
-        assertFalse(target.imageAutomationSupported)
-        assertFalse(TaskerImageProfileCompatibility.supports(target, "chatgpt", "chatgpt-v1"))
+        assertTrue(target.imageAutomationSupported)
+        assertTrue(TaskerImageProfileCompatibility.supports(target, "chatgpt", "chatgpt-v1"))
     }
 
     @Test
     fun otherPhoneDefaultIsVoiceOnlyForImages() {
-        val target = ImageAutomationTarget.forAssistantMode(
-            assistantMode = "PhoneDefault",
-            defaultAssistantPackage = "com.example.assistant",
-        )
+        val target = ImageAutomationTarget.forDefaultAssistant("com.example.assistant")
 
         assertEquals(ImageAutomationTarget.NONE, target)
         assertFalse(target.imageAutomationSupported)
