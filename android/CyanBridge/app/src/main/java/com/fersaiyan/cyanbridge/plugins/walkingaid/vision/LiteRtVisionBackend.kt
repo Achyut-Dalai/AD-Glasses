@@ -20,6 +20,7 @@ import java.io.FileInputStream
 import java.nio.ByteBuffer
 import java.nio.ByteOrder
 import java.nio.channels.FileChannel
+import kotlin.math.abs
 import kotlin.math.max
 import kotlin.math.min
 import kotlin.math.roundToInt
@@ -68,8 +69,6 @@ class LiteRtVisionBackend(
                 locateModel("yolo_world.tflite")
                     ?: locateModel("yolo_world_v2_s.tflite")
                     ?: locateModel("yoloworld.tflite")
-                    ?: locateModel("yolo11n_float16.tflite")
-                    ?: locateModel("yolov11n.tflite")
             } else {
                 locateModel("yolo11n_float16.tflite") ?: locateModel("yolov11n.tflite")
             }
@@ -89,8 +88,6 @@ class LiteRtVisionBackend(
             var accelType = AcceleratorType.XNNPACK_CPU
             var details = "Defaulting to XNNPACK CPU acceleration"
             var delegatedOps = 0
-            val estimatedTotalOps = 160 // Standard Approx for YOLOv11-Nano
-
             when (targetBackend) {
                 LocalComputeBackend.NPU_EXPERIMENTAL -> {
                     try {
@@ -105,12 +102,11 @@ class LiteRtVisionBackend(
                         nnApiDelegate = nnApi
                         accelType = AcceleratorType.NPU_ON_DEVICE
                         details = "Snapdragon NPU / NNAPI Delegate initialized successfully"
-                        delegatedOps = estimatedTotalOps - 4
                         Log.i(TAG, details)
                     } catch (e: Exception) {
                         Log.w(TAG, "NPU / NNAPI delegation failed, falling back to GPU: ${e.message}")
                         options.delegates.clear()
-                        tryGpuDelegate(modelBuffer, options, estimatedTotalOps)?.let { (acc, det, ops) ->
+                        tryGpuDelegate(modelBuffer, options)?.let { (acc, det, ops) ->
                             accelType = acc
                             details = det
                             delegatedOps = ops
@@ -118,7 +114,7 @@ class LiteRtVisionBackend(
                     }
                 }
                 LocalComputeBackend.GPU -> {
-                    tryGpuDelegate(modelBuffer, options, estimatedTotalOps)?.let { (acc, det, ops) ->
+                    tryGpuDelegate(modelBuffer, options)?.let { (acc, det, ops) ->
                         accelType = acc
                         details = det
                         delegatedOps = ops
@@ -135,16 +131,8 @@ class LiteRtVisionBackend(
                 detectorInterpreter = Interpreter(modelBuffer, options)
                 accelType = AcceleratorType.XNNPACK_CPU
                 details = "LiteRT XNNPACK CPU engine initialized (4 threads)"
-                delegatedOps = estimatedTotalOps
                 Log.i(TAG, details)
             }
-
-            activeAcceleratorInfo = AcceleratorInfo(
-                type = accelType,
-                delegatedOperators = delegatedOps,
-                totalOperators = estimatedTotalOps,
-                details = details,
-            )
 
             // Read model dimensions if available
             detectorInterpreter?.getInputTensor(0)?.shape()?.let { shape ->
@@ -159,6 +147,21 @@ class LiteRtVisionBackend(
                 detectorInputScale = tensor.quantizationParams().scale.takeIf { it > 0f } ?: 1f
                 detectorInputZeroPoint = tensor.quantizationParams().zeroPoint
             }
+            val tensorSummary = detectorInterpreter?.let { interpreter ->
+                val input = interpreter.getInputTensor(0)
+                val outputs = (0 until interpreter.outputTensorCount).joinToString { index ->
+                    val tensor = interpreter.getOutputTensor(index)
+                    "${tensor.name()}=${tensor.shape().contentToString()}"
+                }
+                "input=${input.shape().contentToString()}, outputs=[$outputs]"
+            }.orEmpty()
+            activeAcceleratorInfo = AcceleratorInfo(
+                type = accelType,
+                delegatedOperators = delegatedOps,
+                totalOperators = 0,
+                details = "$details; $tensorSummary",
+            )
+            Log.i(TAG, "YOLO tensor layout: $tensorSummary")
         } catch (e: Exception) {
             detectorInitError = "Failed initializing YOLO detector in LiteRT: ${e.message}"
             Log.e(TAG, "Failed initializing YOLO detector in LiteRT: ${e.message}", e)
@@ -168,7 +171,6 @@ class LiteRtVisionBackend(
     private fun tryGpuDelegate(
         modelBuffer: ByteBuffer,
         options: Interpreter.Options,
-        estimatedTotalOps: Int,
     ): Triple<AcceleratorType, String, Int>? {
         val compatList = CompatibilityList()
         if (compatList.isDelegateSupportedOnThisDevice) {
@@ -179,7 +181,7 @@ class LiteRtVisionBackend(
                 gpuDelegate = gpu
                 val details = "LiteRT GPU Delegate initialized successfully"
                 Log.i(TAG, details)
-                return Triple(AcceleratorType.GPU_DELEGATE, details, estimatedTotalOps - 2)
+                return Triple(AcceleratorType.GPU_DELEGATE, details, 0)
             } catch (gpuEx: Exception) {
                 Log.w(TAG, "LiteRT GPU delegate failed, falling back to CPU: ${gpuEx.message}")
                 options.delegates.clear()
@@ -247,7 +249,7 @@ class LiteRtVisionBackend(
         }
 
         val t0 = SystemClock.elapsedRealtime()
-        val acqTime = max(0L, t0 - frame.timestampMs)
+        val acqTime = max(0L, System.currentTimeMillis() - frame.timestampMs)
 
         // Preprocessing: Resize & normalize to float [0..1]
         val resized = Bitmap.createScaledBitmap(frame.bitmap, modelWidth, modelHeight, true)
@@ -294,36 +296,47 @@ class LiteRtVisionBackend(
         val numBoxes = output.boxCount
         val numChannels = output.channelCount
 
-        val watchlist = com.fersaiyan.cyanbridge.plugins.walkingaid.WalkingAidPreferences.getWatchlistTerms(context)
-
         for (i in 0 until numBoxes) {
-            var maxScore = 0f
-            var classIdx = -1
-            for (c in 4 until numChannels) {
-                val score = output.values[c * numBoxes + i]
-                if (score > maxScore) {
-                    maxScore = score
-                    classIdx = c - 4
+            val directClassIndices = output.classIndices
+            val directScores = output.confidenceScores
+            val classIdx: Int
+            val maxScore: Float
+            if (directClassIndices != null && directScores != null) {
+                classIdx = directClassIndices[i].roundToInt()
+                maxScore = directScores[i]
+            } else {
+                var bestScore = 0f
+                var bestClass = -1
+                for (c in 4 until numChannels) {
+                    val score = output.values[c * numBoxes + i]
+                    if (score > bestScore) {
+                        bestScore = score
+                        bestClass = c - 4
+                    }
                 }
+                classIdx = bestClass
+                maxScore = bestScore
             }
             if (maxScore >= CONFIDENCE_THRESHOLD) {
-                val labelName = if (watchlist.isNotEmpty() && classIdx in watchlist.indices) {
-                    watchlist[classIdx]
-                } else if (classIdx in COCO_CLASSES.indices) {
+                val labelName = if (classIdx in COCO_CLASSES.indices) {
                     COCO_CLASSES[classIdx]
                 } else {
                     "object"
                 }
 
-            val cx = output.values[i]
-            val cy = output.values[numBoxes + i]
-            val w = output.values[2 * numBoxes + i]
-            val h = output.values[3 * numBoxes + i]
-
-                val left = max(0f, min(1f, cx - w / 2f))
-                val top = max(0f, min(1f, cy - h / 2f))
-                val right = max(0f, min(1f, cx + w / 2f))
-                val bottom = max(0f, min(1f, cy + h / 2f))
+                val first = output.values[i]
+                val second = output.values[numBoxes + i]
+                val third = output.values[2 * numBoxes + i]
+                val fourth = output.values[3 * numBoxes + i]
+                val rawLeft = if (output.boxesAreCorners) first else first - third / 2f
+                val rawTop = if (output.boxesAreCorners) second else second - fourth / 2f
+                val rawRight = if (output.boxesAreCorners) third else first + third / 2f
+                val rawBottom = if (output.boxesAreCorners) fourth else second + fourth / 2f
+                val left = normalizeCoordinate(rawLeft, modelWidth)
+                val top = normalizeCoordinate(rawTop, modelHeight)
+                val right = normalizeCoordinate(rawRight, modelWidth)
+                val bottom = normalizeCoordinate(rawBottom, modelHeight)
+                val cx = (left + right) / 2f
 
                 val box = RectF(left, top, right, bottom)
                 val pos = when {
@@ -365,7 +378,15 @@ class LiteRtVisionBackend(
         val channelCount: Int,
         val boxCount: Int,
         val values: FloatArray,
+        val boxesAreCorners: Boolean = false,
+        val classIndices: FloatArray? = null,
+        val confidenceScores: FloatArray? = null,
     )
+
+    private fun normalizeCoordinate(value: Float, dimension: Int): Float {
+        val normalized = if (abs(value) > 1.5f) value / dimension.toFloat() else value
+        return normalized.coerceIn(0f, 1f)
+    }
 
     private fun pixelChannel(pixel: Int, channel: Int): Float = when (channel) {
         0 -> ((pixel shr 16) and 0xFF) / 255f
@@ -399,22 +420,51 @@ class LiteRtVisionBackend(
         }.toMap()
         interpreter.runForMultipleInputsOutputs(arrayOf(input), outputBuffers)
 
-        val primary = readDetectorOutput(outputTensors.first(), outputBuffers.getValue(0))
+        val decodedOutputs = outputTensors.indices.map { index ->
+            outputTensors[index] to readDetectorOutput(outputTensors[index], outputBuffers.getValue(index))
+        }
+        val primaryEntry = decodedOutputs.firstOrNull { (tensor, output) ->
+            tensor.name().contains("box", ignoreCase = true) && output.channelCount == 4
+        } ?: decodedOutputs.first()
+        val primary = primaryEntry.second
         if (primary.channelCount >= 5) return primary
 
-        // YOLO-World exports bounding boxes and class scores as separate tensors, commonly
-        // [1, 8400, 4] plus [1, 8400, classCount]. Normalize them to the usual YOLO layout.
         require(primary.channelCount == 4) {
-            "Unsupported YOLO output shape: ${outputTensors.first().shape().contentToString()}"
+            "Unsupported YOLO boxes shape: ${primaryEntry.first.shape().contentToString()}"
         }
-        val scores = outputTensors.indices
-            .asSequence()
-            .drop(1)
-            .map { index -> readDetectorOutput(outputTensors[index], outputBuffers.getValue(index)) }
-            .firstOrNull { it.boxCount == primary.boxCount && it.channelCount > 0 }
+
+        // Qualcomm AI Hub YOLO exports expose decoded boxes, one class index, and one score
+        // per candidate instead of the usual [1, 84, 8400] tensor.
+        val classIds = decodedOutputs.firstOrNull { (tensor, output) ->
+            tensor !== primaryEntry.first &&
+                tensor.name().contains("class", ignoreCase = true) &&
+                output.boxCount == primary.boxCount
+        }?.second
+        val confidenceScores = decodedOutputs.firstOrNull { (tensor, output) ->
+            tensor !== primaryEntry.first &&
+                (tensor.name().contains("score", ignoreCase = true) ||
+                    tensor.name().contains("confidence", ignoreCase = true)) &&
+                output.boxCount == primary.boxCount
+        }?.second
+        if (classIds != null && confidenceScores != null) {
+            return DetectorOutput(
+                channelCount = 4,
+                boxCount = primary.boxCount,
+                values = primary.values,
+                boxesAreCorners = true,
+                classIndices = classIds.values,
+                confidenceScores = confidenceScores.values,
+            )
+        }
+
+        // Other split exports expose boxes plus a complete class-score tensor.
+        val scores = decodedOutputs.asSequence()
+            .filter { it.first !== primaryEntry.first }
+            .map { it.second }
+            .firstOrNull { it.boxCount == primary.boxCount && it.channelCount > 1 }
             ?: throw IllegalArgumentException(
-                "YOLO boxes have no matching class-score tensor; outputs=" +
-                    outputTensors.joinToString { it.shape().contentToString() },
+                "YOLO boxes have no matching scores/classes; outputs=" +
+                    outputTensors.joinToString { "${it.name()}=${it.shape().contentToString()}" },
             )
 
         val channels = primary.channelCount + scores.channelCount
@@ -424,11 +474,19 @@ class LiteRtVisionBackend(
             destination = values,
             destinationOffset = primary.channelCount * primary.boxCount,
         )
-        return DetectorOutput(channels, primary.boxCount, values)
+        return DetectorOutput(channels, primary.boxCount, values, boxesAreCorners = true)
     }
 
     private fun readDetectorOutput(tensor: Tensor, rawOutput: ByteBuffer): DetectorOutput {
         val shape = tensor.shape()
+        if (shape.size == 2 && shape[0] == 1 && shape[1] > 0) {
+            rawOutput.rewind()
+            return DetectorOutput(
+                channelCount = 1,
+                boxCount = shape[1],
+                values = readTensorValues(rawOutput, tensor),
+            )
+        }
         require(shape.size == 3 && shape[0] == 1) {
             "Unsupported YOLO output shape: ${shape.contentToString()}"
         }
@@ -460,6 +518,8 @@ class LiteRtVisionBackend(
                 DataType.FLOAT32 -> buffer.float
                 DataType.UINT8 -> ((buffer.get().toInt() and 0xFF) - zeroPoint) * scale
                 DataType.INT8 -> (buffer.get().toInt() - zeroPoint) * scale
+                DataType.INT32 -> buffer.int.toFloat()
+                DataType.INT64 -> buffer.long.toFloat()
                 else -> throw IllegalStateException("Unsupported YOLO output type: ${tensor.dataType()}")
             }
         }

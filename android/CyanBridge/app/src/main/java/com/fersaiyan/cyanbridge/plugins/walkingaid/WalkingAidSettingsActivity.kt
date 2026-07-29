@@ -1,13 +1,12 @@
 package com.fersaiyan.cyanbridge.plugins.walkingaid
 
 import android.content.Intent
-import android.graphics.Bitmap
+import android.graphics.BitmapFactory
 import android.os.Bundle
 import android.os.SystemClock
 import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
 import androidx.compose.material3.CircularProgressIndicator
-import com.fersaiyan.cyanbridge.agent.LocalModelsConfigureActivity
 import com.fersaiyan.cyanbridge.agent.ProSubscriptionActivity
 import com.fersaiyan.cyanbridge.plugins.walkingaid.vision.LiteRtVisionBackend
 import com.fersaiyan.cyanbridge.plugins.walkingaid.vision.VisionFrame
@@ -122,7 +121,7 @@ fun WalkingAidSettingsScreen(
 
     // Model picker, latency test & readiness dialogs
     var yoloModelType by remember { mutableStateOf(WalkingAidPreferences.getYoloModelType(context)) }
-    var watchlistTermsText by remember { mutableStateOf(WalkingAidPreferences.getWatchlistTerms(context).joinToString(", ")) }
+    var focusDescriptionText by remember { mutableStateOf(WalkingAidPreferences.getFocusDescription(context)) }
     var isTestingLatency by remember { mutableStateOf(false) }
     var showLatencyReportDialog by remember { mutableStateOf(false) }
     var latencyReportText by remember { mutableStateOf("") }
@@ -270,41 +269,88 @@ fun WalkingAidSettingsScreen(
                             isTestingLatency = true
                             CoroutineScope(Dispatchers.IO).launch {
                                 try {
-                                    val backend = LiteRtVisionBackend(context)
-                                    val testBitmap = Bitmap.createBitmap(640, 640, Bitmap.Config.ARGB_8888)
-                                    val frame = VisionFrame(testBitmap, System.currentTimeMillis())
+                                    val captureStartedAt = SystemClock.elapsedRealtime()
+                                    val capturedImage = WalkingAidImageCapture(context)
+                                        .captureFreshThumbnail("WALKING_AID_BENCHMARK")
+                                    val captureMs = SystemClock.elapsedRealtime() - captureStartedAt
+                                    val report = try {
+                                        val testBitmap = checkNotNull(BitmapFactory.decodeFile(capturedImage.absolutePath)) {
+                                            "Fresh glasses thumbnail could not be decoded"
+                                        }
+                                        val inputDescription =
+                                            "Fresh glasses thumbnail, quality 3 (${testBitmap.width}x${testBitmap.height})"
+                                        val frame = VisionFrame(testBitmap, System.currentTimeMillis())
+                                        val backend = LiteRtVisionBackend(context)
+                                        try {
+                                            val t0 = SystemClock.elapsedRealtime()
+                                            val detResult = backend.detect(frame)
+                                            val t1 = SystemClock.elapsedRealtime()
+                                            val depthResult = if (depthEnabled && depthSource == "local") {
+                                                backend.estimateDepth(frame)
+                                            } else {
+                                                null
+                                            }
+                                            val t2 = SystemClock.elapsedRealtime()
 
-                                    val t0 = SystemClock.elapsedRealtime()
-                                    val detResult = backend.detect(frame)
-                                    val t1 = SystemClock.elapsedRealtime()
-                                    val depthResult = backend.estimateDepth(frame)
-                                    val t2 = SystemClock.elapsedRealtime()
+                                            WalkingAidWarningEngine.reset()
+                                            WalkingAidWarningEngine.evaluate(detResult, depthResult, focusDescriptionText)
+                                            val t3 = SystemClock.elapsedRealtime()
 
-                                    val engine = WalkingAidWarningEngine
-                                    engine.reset()
-                                    engine.evaluate(detResult, depthResult, watchlistTermsText)
-                                    val t3 = SystemClock.elapsedRealtime()
+                                            val accelInfo = backend.acceleratorInfo()
+                                            val analysisMs = t3 - t0
+                                            val fpsEquiv = if (!detResult.isError && analysisMs > 0) {
+                                                String.format("%.1f FPS equiv", 1000f / analysisMs)
+                                            } else {
+                                                "unavailable because detection failed"
+                                            }
+                                            val inferenceValue = if (detResult.isError) {
+                                                "not completed"
+                                            } else {
+                                                "${detResult.inferenceTimeMs} ms"
+                                            }
+                                            val depthValue = when {
+                                                !depthEnabled -> "skipped (disabled)"
+                                                depthSource != "local" -> "skipped (cloud source selected)"
+                                                else -> "${depthResult?.inferenceTimeMs ?: 0} ms"
+                                            }
+                                            val detectorStatus = if (detResult.isError) {
+                                                "ERROR: ${detResult.errorMessage ?: "unknown detector error"}"
+                                            } else {
+                                                "OK"
+                                            }
+                                            val delegation = if (accelInfo.totalOperators > 0) {
+                                                "${accelInfo.delegatedOperators}/${accelInfo.totalOperators}"
+                                            } else {
+                                                "not reported by LiteRT"
+                                            }
 
-                                    val accelInfo = backend.acceleratorInfo()
-                                    backend.close()
+                                            """
+                                                Pipeline Latency Benchmark
 
-                                    val totalMs = t3 - t0
-                                    val fpsEquiv = if (totalMs > 0) String.format("%.1f", 1000f / totalMs) else "0"
+                                                Input: $inputDescription
+                                                Detector status: $detectorStatus
 
-                                    val report = """
-                                        ⏱️ Pipeline Latency Benchmark Breakdown:
+                                                Fresh capture and BLE transfer: $captureMs ms
+                                                Preprocessing: ${detResult.preprocessTimeMs} ms
+                                                YOLO inference: $inferenceValue
+                                                Postprocessing (NMS): ${detResult.postprocessTimeMs} ms
+                                                Detector call total: ${t1 - t0} ms (${detResult.objects.size} objects)
+                                                Depth estimation: $depthValue
+                                                Rule evaluation: ${t3 - t2} ms
 
-                                        📸 Preprocessing: ${detResult.preprocessTimeMs} ms
-                                        🎯 YOLO Detection: ${detResult.inferenceTimeMs} ms (${detResult.objects.size} objects)
-                                        ⚙️ Postprocessing (NMS): ${detResult.postprocessTimeMs} ms
-                                        🌊 Depth Estimation: ${depthResult?.inferenceTimeMs ?: 0} ms
-                                        ⚡ Rule Evaluation: ${t3 - t2} ms
-
-                                        🚀 Total End-to-End Latency: $totalMs ms ($fpsEquiv FPS equiv)
-                                        💻 Hardware Accelerator: ${accelInfo.type}
-                                        📊 Delegated Operators: ${accelInfo.delegatedOperators}/${accelInfo.totalOperators}
-                                        ℹ️ Details: ${accelInfo.details}
-                                    """.trimIndent()
+                                                Analysis pipeline: $analysisMs ms ($fpsEquiv)
+                                                Capture-to-decision total: ${captureMs + analysisMs} ms
+                                                Hardware accelerator: ${accelInfo.type}
+                                                Delegated operators: $delegation
+                                                Details: ${accelInfo.details}
+                                            """.trimIndent()
+                                        } finally {
+                                            backend.close()
+                                            testBitmap.recycle()
+                                        }
+                                    } finally {
+                                        capturedImage.delete()
+                                    }
 
                                     withContext(Dispatchers.Main) {
                                         latencyReportText = report
@@ -389,19 +435,19 @@ fun WalkingAidSettingsScreen(
                     } else {
                         Spacer(modifier = Modifier.height(12.dp))
                         Text(
-                            "Local YOLO Model Architecture",
+                            "Local detection model",
                             style = MaterialTheme.typography.bodyMedium,
                             fontWeight = FontWeight.Medium,
                         )
                         Spacer(modifier = Modifier.height(8.dp))
-                        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                             FilterChip(
                                 selected = yoloModelType == WalkingAidPreferences.MODEL_TYPE_YOLO11,
                                 onClick = {
                                     yoloModelType = WalkingAidPreferences.MODEL_TYPE_YOLO11
                                     WalkingAidPreferences.setYoloModelType(context, WalkingAidPreferences.MODEL_TYPE_YOLO11)
                                 },
-                                label = { Text("YOLOv11 (COCO 80)") },
+                                label = { Text("YOLO11 (faster)") },
                             )
                             FilterChip(
                                 selected = yoloModelType == WalkingAidPreferences.MODEL_TYPE_YOLO_WORLD,
@@ -409,7 +455,7 @@ fun WalkingAidSettingsScreen(
                                     yoloModelType = WalkingAidPreferences.MODEL_TYPE_YOLO_WORLD
                                     WalkingAidPreferences.setYoloModelType(context, WalkingAidPreferences.MODEL_TYPE_YOLO_WORLD)
                                 },
-                                label = { Text("YOLO-World (Open Vocab)") },
+                                label = { Text("YOLO-World (larger)") },
                             )
                         }
 
@@ -449,21 +495,31 @@ fun WalkingAidSettingsScreen(
 
                         Spacer(modifier = Modifier.height(12.dp))
                         Text(
-                            "Target Watchlist Classes",
+                            "What should Walking Aid pay extra attention to?",
                             style = MaterialTheme.typography.bodyMedium,
                             fontWeight = FontWeight.Medium,
                         )
                         Spacer(modifier = Modifier.height(4.dp))
                         TextField(
-                            value = watchlistTermsText,
+                            value = focusDescriptionText,
                             onValueChange = { newValue ->
-                                watchlistTermsText = newValue
-                                val terms = newValue.split(",").map { it.trim() }
-                                WalkingAidPreferences.setWatchlistTerms(context, terms)
+                                focusDescriptionText = newValue
+                                WalkingAidPreferences.setFocusDescription(context, newValue)
                             },
-                            placeholder = { Text("e.g. person, bicycle, stairs, pothole, curb") },
+                            placeholder = { Text("For example: Please warn me about pets, traffic, and things I could trip over") },
                             modifier = Modifier.fillMaxWidth(),
-                            singleLine = true,
+                            minLines = 2,
+                            maxLines = 4,
+                            supportingText = {
+                                val understood = WalkingAidFocusMapper.resolve(focusDescriptionText)
+                                Text(
+                                    if (understood.isEmpty()) {
+                                        "Write naturally or use keyboard dictation. Built-in safety alerts remain active."
+                                    } else {
+                                        "Walking Aid will pay extra attention to ${WalkingAidFocusMapper.friendlySummary(understood)}."
+                                    }
+                                )
+                            },
                         )
                     }
                 }
@@ -759,7 +815,7 @@ fun WalkingAidSettingsScreen(
             text = {
                 Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                     Text(
-                        text = "Before starting Walking Aid, please complete the following setup items:",
+                        text = "Before starting Walking Aid, complete the missing setup items. YOLO and depth models are downloaded and selected in this screen.",
                         style = MaterialTheme.typography.bodyMedium,
                     )
                     readiness.missingDetails.forEach { detail ->
@@ -775,11 +831,9 @@ fun WalkingAidSettingsScreen(
                 TextButton(
                     onClick = {
                         showReadinessResult = null
-                        val intent = Intent(context, LocalModelsConfigureActivity::class.java)
-                        context.startActivity(intent)
                     }
                 ) {
-                    Text("Open Local Models Settings")
+                    Text("Review Walking Aid Settings")
                 }
             },
             dismissButton = {

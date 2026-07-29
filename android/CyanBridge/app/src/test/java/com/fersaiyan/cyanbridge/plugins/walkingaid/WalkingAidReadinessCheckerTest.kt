@@ -9,6 +9,7 @@ import org.junit.Test
 import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
 import org.robolectric.annotation.Config
+import java.io.File
 
 @RunWith(RobolectricTestRunner::class)
 @Config(sdk = [33])
@@ -20,8 +21,11 @@ class WalkingAidReadinessCheckerTest {
     fun setUp() {
         ProSubscriptionPrefs.clearEntitlement(context)
         WalkingAidPreferences.setImageDescriptionSource(context, "local")
+        WalkingAidPreferences.setYoloModelType(context, WalkingAidPreferences.MODEL_TYPE_YOLO11)
+        WalkingAidPreferences.setDepthEnabled(context, true)
         WalkingAidPreferences.setDepthSource(context, "local")
         WalkingAidPreferences.setStateModelSource(context, "local")
+        File(context.filesDir, "yolo11n_float16.tflite").delete()
     }
 
     @Test
@@ -57,5 +61,24 @@ class WalkingAidReadinessCheckerTest {
         assertTrue(readiness.depthReady)
         assertTrue(readiness.llmReady)
         assertFalse(readiness.requiresProForCloud)
+    }
+
+    @Test
+    fun checkReadiness_doesNotRequireOptionalSceneLlm() {
+        WalkingAidPreferences.setDepthEnabled(context, false)
+        val detector = File(context.filesDir, "yolo11n_float16.tflite")
+        detector.writeBytes(ByteArray(1024))
+
+        try {
+            val readiness = WalkingAidReadinessChecker.checkReadiness(context)
+
+            assertTrue(readiness.isReady)
+            assertTrue(readiness.yoloReady)
+            assertTrue(readiness.depthReady)
+            assertFalse(readiness.llmReady)
+            assertTrue(readiness.missingDetails.isEmpty())
+        } finally {
+            detector.delete()
+        }
     }
 }

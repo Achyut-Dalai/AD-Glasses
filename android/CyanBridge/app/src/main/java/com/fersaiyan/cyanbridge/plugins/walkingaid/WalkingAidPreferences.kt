@@ -19,6 +19,7 @@ object WalkingAidPreferences {
     private const val KEY_CUSTOM_PROMPT = "custom_prompt"
     private const val KEY_YOLO_MODEL_TYPE = "yolo_model_type"
     private const val KEY_WATCHLIST_TERMS = "watchlist_terms"
+    private const val KEY_FOCUS_DESCRIPTION = "focus_description"
     private const val MAX_CUSTOM_PROMPT_CHARS = 1_500
 
     private const val DEFAULT_ENABLED = false
@@ -153,15 +154,22 @@ object WalkingAidPreferences {
         prefs(context).edit().putString(KEY_YOLO_MODEL_TYPE, type).apply()
     }
 
+    fun getFocusDescription(context: Context): String =
+        prefs(context).getString(KEY_FOCUS_DESCRIPTION, null)
+            ?: prefs(context).getString(KEY_WATCHLIST_TERMS, "").orEmpty()
+
+    fun setFocusDescription(context: Context, description: String) {
+        prefs(context).edit().putString(KEY_FOCUS_DESCRIPTION, description.trim().take(500)).apply()
+    }
+
     fun getWatchlistTerms(context: Context): List<String> =
-        prefs(context).getString(KEY_WATCHLIST_TERMS, "")
-            .orEmpty()
-            .split(",")
-            .map { it.trim() }
-            .filter { it.isNotBlank() }
+        WalkingAidFocusMapper.resolve(getFocusDescription(context))
 
     fun setWatchlistTerms(context: Context, terms: List<String>) {
         val csv = terms.map { it.trim() }.filter { it.isNotBlank() }.joinToString(",")
-        prefs(context).edit().putString(KEY_WATCHLIST_TERMS, csv).apply()
+        prefs(context).edit()
+            .putString(KEY_WATCHLIST_TERMS, csv)
+            .putString(KEY_FOCUS_DESCRIPTION, csv)
+            .apply()
     }
 }

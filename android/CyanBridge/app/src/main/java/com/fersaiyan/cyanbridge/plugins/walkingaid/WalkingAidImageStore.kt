@@ -47,6 +47,7 @@ object WalkingAidImageStore {
 
     fun getImageHistory(maxCount: Int): List<WalkingAidImageEntry> {
         synchronized(lock) {
+            if (imageHistory.isEmpty()) return emptyList()
             val takeCount = maxCount.coerceIn(1, imageHistory.size)
             return imageHistory.takeLast(takeCount).toList()
         }

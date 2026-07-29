@@ -210,4 +210,14 @@ class WalkingAidPreferencesTest {
         WalkingAidPreferences.setDepthSource(context, "cloud")
         assertTrue(WalkingAidPreferences.shouldUseCloud(context))
     }
+
+    @Test
+    fun naturalFocusDescriptionIsStoredAndMapped() {
+        val description = "Please pay attention to pets and traffic"
+
+        WalkingAidPreferences.setFocusDescription(context, description)
+
+        assertEquals(description, WalkingAidPreferences.getFocusDescription(context))
+        assertTrue(WalkingAidPreferences.getWatchlistTerms(context).containsAll(listOf("cat", "dog", "car")))
+    }
 }

@@ -27,12 +27,10 @@ object WalkingAidWarningEngine {
     fun evaluate(
         detection: DetectionResult,
         depth: DepthResult?,
-        customWatchlistText: String,
+        focusDescription: String,
     ): WarningDecision {
         val now = System.currentTimeMillis()
-        val userKeywords = customWatchlistText.lowercase().split(",")
-            .map { it.trim() }
-            .filter { it.isNotBlank() }
+        val userKeywords = WalkingAidFocusMapper.resolve(focusDescription)
 
         var candidateAlert: String? = null
         var isUrgent = false
@@ -40,7 +38,7 @@ object WalkingAidWarningEngine {
 
         // 1. Check approaching center hazards (Priority 1: Immediate collision risk)
         for (obj in detection.objects) {
-            val isCustomWatch = userKeywords.any { kw -> obj.label.equals(kw, ignoreCase = true) }
+            val isCustomWatch = userKeywords.any { keyword -> matchesClass(obj.label, keyword) }
             val isCritical = CRITICAL_NAVIGATION_CLASSES.contains(obj.label) || isCustomWatch
 
             if (isCritical && obj.position == "center" && obj.approaching) {
@@ -57,7 +55,7 @@ object WalkingAidWarningEngine {
         // 2. Check prominent immediate obstacles in direct path (Priority 2)
         if (candidateAlert == null) {
             for (obj in detection.objects) {
-                val isCustomWatch = userKeywords.any { kw -> obj.label.equals(kw, ignoreCase = true) }
+                val isCustomWatch = userKeywords.any { keyword -> matchesClass(obj.label, keyword) }
                 val isCritical = CRITICAL_NAVIGATION_CLASSES.contains(obj.label) || isCustomWatch
 
                 val boxHeight = obj.boundingBox.bottom - obj.boundingBox.top
@@ -124,6 +122,10 @@ object WalkingAidWarningEngine {
     private fun recordAlert(key: String, nowMs: Long) {
         lastAlertTimeMap[key] = nowMs
     }
+
+    private fun matchesClass(label: String, keyword: String): Boolean =
+        label.equals(keyword, ignoreCase = true) ||
+            "${label}s".equals(keyword, ignoreCase = true)
 
     private fun buildSceneLogJson(
         detection: DetectionResult,

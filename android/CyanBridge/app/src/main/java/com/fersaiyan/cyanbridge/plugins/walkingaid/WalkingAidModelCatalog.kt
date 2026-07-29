@@ -17,7 +17,7 @@ object WalkingAidModelCatalog {
         WalkingAidModelCatalogEntry(
             id = "yolo11n-tflite",
             displayName = "YOLO11n (LiteRT/TFLite)",
-            description = "Fast COCO object detection for local obstacle awareness.",
+            description = "Fast on-device recognition of common people, animals, vehicles, and objects.",
             sourceUrl = "https://huggingface.co/mehmetkeremturkcan/RubikPi.YOLO11x.Detection/resolve/main/yolo11n.tflite",
             sourcePageUrl = "https://huggingface.co/mehmetkeremturkcan/RubikPi.YOLO11x.Detection",
             expectedFilename = "yolo11n_float16.tflite",
@@ -37,7 +37,7 @@ object WalkingAidModelCatalog {
         WalkingAidModelCatalogEntry(
             id = "yolo-world-tflite",
             displayName = "YOLO-World (LiteRT/TFLite)",
-            description = "Open-vocabulary detector with a quantized TFLite export.",
+            description = "Larger on-device detector with a built-in vocabulary of common objects.",
             sourceUrl = "https://huggingface.co/wondervictor/YOLO-World/resolve/main/yolo_world_x_coco_zeroshot_rep_integer_quant.tflite",
             sourcePageUrl = "https://huggingface.co/wondervictor/YOLO-World",
             expectedFilename = "yolo_world.tflite",

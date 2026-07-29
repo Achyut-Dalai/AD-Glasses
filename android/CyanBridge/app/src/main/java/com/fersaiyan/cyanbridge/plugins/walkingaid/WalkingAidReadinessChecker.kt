@@ -44,8 +44,7 @@ object WalkingAidReadinessChecker {
                     File(context.filesDir, "yoloworld.tflite"),
                     File(context.getExternalFilesDir(null), "yolo_world.tflite"),
                     File(context.getExternalFilesDir(null), "yolo_world_v2_s.tflite"),
-                    File(context.getExternalFilesDir(null), "yoloworld.tflite"),
-                    File(context.filesDir, "yolo11n_float16.tflite")
+                    File(context.getExternalFilesDir(null), "yoloworld.tflite")
                 )
             } else {
                 listOf(
@@ -61,9 +60,9 @@ object WalkingAidReadinessChecker {
                 val expected = if (yoloType == WalkingAidPreferences.MODEL_TYPE_YOLO_WORLD) "yolo_world.tflite" else "yolo11n_float16.tflite"
                 val corrupted = candidates.any { it.exists() }
                 if (corrupted) {
-                    details.add("❌ Local YOLO model file is corrupted or incomplete ($expected)")
+                    details.add("❌ Walking Aid YOLO model is corrupted or incomplete ($expected). Download it in this screen.")
                 } else {
-                    details.add("❌ Local YOLO model file missing ($expected)")
+                    details.add("❌ Walking Aid YOLO model is missing ($expected). Download it in this screen.")
                 }
             }
             yoloReady
@@ -91,9 +90,9 @@ object WalkingAidReadinessChecker {
                 isValidModelFile(depthAnything3) || isValidModelFile(externalDepthAnything3)
             if (!hasDepth) {
                 if (file.exists() || extFile.exists() || depthAnything3.exists() || externalDepthAnything3.exists()) {
-                    details.add("❌ Local Depth Anything model file is corrupted or incomplete (depth_anything_3_small.tflite)")
+                    details.add("❌ Walking Aid depth model is corrupted or incomplete (depth_anything_3_small.tflite). Download it in this screen.")
                 } else {
-                    details.add("❌ Local Depth Anything model file missing (depth_anything_3_small.tflite)")
+                    details.add("❌ Walking Aid depth model is missing (depth_anything_3_small.tflite). Download it in this screen.")
                 }
             }
             hasDepth
@@ -112,13 +111,12 @@ object WalkingAidReadinessChecker {
         } else {
             val installedLocalModels = LocalModelStorageRepository.listInstalled(context)
             val hasLocalLlm = installedLocalModels.isNotEmpty()
-            if (!hasLocalLlm) {
-                details.add("❌ No local LLM downloaded or configured in Local Models Settings")
-            }
             hasLocalLlm
         }
 
-        val allReady = yoloReady && depthReady && llmReady
+        // Scene LLM rewriting is optional. Deterministic YOLO/depth warnings remain usable
+        // when no local LLM is installed or the configured cloud LLM is unavailable.
+        val allReady = yoloReady && depthReady
         return WalkingAidReadinessResult(
             isReady = allReady,
             yoloReady = yoloReady,

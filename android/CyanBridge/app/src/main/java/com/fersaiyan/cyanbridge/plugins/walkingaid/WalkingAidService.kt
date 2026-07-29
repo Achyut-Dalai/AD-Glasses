@@ -16,7 +16,6 @@ import androidx.fragment.app.FragmentActivity
 import com.fersaiyan.cyanbridge.ai.vision.ImageQuestionPreferences
 import com.fersaiyan.cyanbridge.devices.DeviceProfileStore
 import com.fersaiyan.cyanbridge.devices.metarayban.MetaRaybanManager
-import com.fersaiyan.cyanbridge.glasses.GlassesSessionCoordinator
 import com.fersaiyan.cyanbridge.media.autocapture.AutoAudioCapturePrefs
 import com.fersaiyan.cyanbridge.media.autocapture.AutoAudioCaptureService
 import com.fersaiyan.cyanbridge.audio.MeetingCapturePrefs
@@ -33,8 +32,6 @@ import android.graphics.RectF
 import com.fersaiyan.cyanbridge.ui.ensureNotificationPermission
 import com.fersaiyan.cyanbridge.ui.hasNotificationPermission
 import com.oudmon.ble.base.bluetooth.BleOperateManager
-import com.oudmon.ble.base.communication.LargeDataHandler
-import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
@@ -44,9 +41,7 @@ import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
-import kotlinx.coroutines.withTimeoutOrNull
 import java.io.File
-import java.io.FileOutputStream
 import java.util.Locale
 import java.util.concurrent.atomic.AtomicBoolean
 
@@ -59,6 +54,7 @@ class WalkingAidService : Service() {
     private var visionWorkerJob: Job? = null
 
     private var visionBackend: VisionBackend? = null
+    private val imageCapture by lazy { WalkingAidImageCapture(this) }
 
     // "Latest frame wins" decoupled communication channel
     private val frameChannel = Channel<VisionFrame>(
@@ -202,16 +198,27 @@ class WalkingAidService : Service() {
                 val imageSource = WalkingAidPreferences.getImageDescriptionSource(this@WalkingAidService)
                 val depthSource = WalkingAidPreferences.getDepthSource(this@WalkingAidService)
                 val stateSource = WalkingAidPreferences.getStateModelSource(this@WalkingAidService)
+                val customInstructions = WalkingAidPreferences.getCustomPrompt(this@WalkingAidService)
+                val focusDescription = WalkingAidPreferences.getFocusDescription(this@WalkingAidService)
+                val promptSuffix = customInstructions.takeIf { it.isNotBlank() }
+                    ?.let { "\nAdditional user instructions: $it" }
+                    .orEmpty()
+                val focusSuffix = focusDescription.takeIf { it.isNotBlank() }
+                    ?.let { "\nThe user especially wants help noticing: $it" }
+                    .orEmpty()
 
                 // 1. Detection (Cloud Vision or Local LiteRT)
                 val detectionResult = if (imageSource == "cloud" && !frame.sourcePath.isNullOrBlank() && File(frame.sourcePath).exists()) {
                     val modelOverride = WalkingAidPreferences.getImageDescriptionModelOverride(this@WalkingAidService)
-                    val prompt = "List all visible obstacles, vehicles, people, or hazards in this image for a walking aid assistant."
+                    val prompt = "List all visible obstacles, vehicles, people, or hazards in this image for a walking aid assistant.$focusSuffix$promptSuffix"
                     val cloudReply = CliRelayClient.imageQuery(this@WalkingAidService, frame.sourcePath, prompt, modelOverride = modelOverride).getOrDefault("")
 
                     val cloudObjects = mutableListOf<DetectedObject>()
                     if (cloudReply.isNotBlank()) {
-                        val keywords = listOf("person", "car", "bicycle", "chair", "pole", "stairs", "step", "curb", "door", "table", "wall")
+                        val keywords = (
+                            listOf("person", "car", "bicycle", "chair", "pole", "stairs", "step", "curb", "door", "table", "wall") +
+                                WalkingAidFocusMapper.resolve(focusDescription)
+                            ).distinct()
                         keywords.forEach { kw ->
                             if (cloudReply.contains(kw, ignoreCase = true)) {
                                 cloudObjects.add(DetectedObject(label = kw, confidence = 0.90f, boundingBox = RectF(0.3f, 0.3f, 0.7f, 0.7f), position = "center"))
@@ -232,7 +239,7 @@ class WalkingAidService : Service() {
                 if (WalkingAidPreferences.isDepthEnabled(this@WalkingAidService)) {
                     if (depthSource == "cloud" && !frame.sourcePath.isNullOrBlank() && File(frame.sourcePath).exists()) {
                         val depthModelOverride = WalkingAidPreferences.getDepthModelOverride(this@WalkingAidService)
-                        val depthPrompt = "Analyze relative depth, ground steps, curbs, and drop-offs in this image for a walking aid assistant."
+                        val depthPrompt = "Analyze relative depth, ground steps, curbs, and drop-offs in this image for a walking aid assistant.$focusSuffix$promptSuffix"
                         val cloudDepthReply = CliRelayClient.imageQuery(this@WalkingAidService, frame.sourcePath, depthPrompt, modelOverride = depthModelOverride).getOrDefault("")
                         val hasDrop = cloudDepthReply.contains("step", ignoreCase = true) || cloudDepthReply.contains("curb", ignoreCase = true) || cloudDepthReply.contains("drop", ignoreCase = true)
                         depthResult = DepthResult(
@@ -247,13 +254,12 @@ class WalkingAidService : Service() {
                 }
 
                 // 3. Deterministic Warning Evaluation
-                val customPrompt = WalkingAidPreferences.getCustomPrompt(this@WalkingAidService)
-                val warningDecision = WalkingAidWarningEngine.evaluate(detectionResult, depthResult, customPrompt)
+                val warningDecision = WalkingAidWarningEngine.evaluate(detectionResult, depthResult, focusDescription)
 
                 // 4. Scene LLM Reasoning Guidance (Cloud LLM or Local LLM)
                 var spokenMessage = warningDecision.message
                 if (warningDecision.shouldWarn && spokenMessage.isNotBlank()) {
-                    val scenePrompt = "Summarize the hazard concisely in 1 short spoken sentence for a walking aid user: $spokenMessage"
+                    val scenePrompt = "Summarize the hazard concisely in 1 short spoken sentence for a walking aid user: $spokenMessage$promptSuffix"
                     if (stateSource == "cloud") {
                         val cloudLlmReply = CliRelayClient.voiceQuery(this@WalkingAidService, scenePrompt).getOrNull()
                         if (!cloudLlmReply.isNullOrBlank()) {
@@ -384,87 +390,16 @@ class WalkingAidService : Service() {
     }
 
     private suspend fun captureThumbnail(index: Int): File? {
-        if (isMetaRaybanSelected()) {
-            val manager = MetaRaybanManager.getInstance(this)
-            if (!manager.isInitialized.value) manager.initialize()
-            return runCatching {
-                val photo = manager.capturePhotoOnce()
-                manager.savePhotoForProcessing(photo, "META_WALKING_AID_$index")
-            }.onFailure {
-                val detail = manager.lastError.value ?: it.message ?: "camera unavailable"
-                Log.e(TAG, "Meta DAT photo capture failed: $detail\n${manager.diagnosticsSnapshot()}", it)
-                WalkingAidNotificationHelper.updateNotification(
-                    this,
-                    "Meta capture failed: ${detail.take(120)}",
-                    0,
-                )
-            }.getOrNull()
-        }
-
-        val permit = GlassesSessionCoordinator.tryAcquireBackgroundCommand()
-        if (permit == null) {
-            Log.i(TAG, "Skipping thumbnail capture: glasses SDK busy")
-            return null
-        }
-        val completed = AtomicBoolean(false)
-        var thumbnailTransferStarted = false
-        try {
-            val outDir = getExternalFilesDir("DCIM") ?: filesDir
-            val file = File(outDir, "WALKING_AID_THUMB_${index}_${System.currentTimeMillis()}.jpg")
-            runCatching {
-                file.parentFile?.mkdirs()
-                if (file.exists()) file.delete()
-            }
-
-            val done = CompletableDeferred<File?>()
-
-            val thumbCallback: (Int, Boolean, ByteArray?) -> Unit = { _, isComplete, data ->
-                if (data != null && data.isNotEmpty()) {
-                    runCatching {
-                        FileOutputStream(file, true).use { out -> out.write(data) }
-                    }.onFailure {
-                        Log.e(TAG, "Failed writing thumbnail chunk: ${it.message}", it)
-                    }
-                }
-                if (isComplete && completed.compareAndSet(false, true)) {
-                    if (!done.isCompleted) {
-                        done.complete(if (file.exists() && file.length() >= 1024L) file else null)
-                    }
-                    GlassesSessionCoordinator.releaseBackgroundCommand(permit)
-                }
-            }
-
-            runCatching {
-                LargeDataHandler.getInstance().glassesControl(byteArrayOf(0x02, 0x01, 0x06, 0x02, 0x02)) { _, _ -> }
-            }
-            delay(250)
-            runCatching {
-                LargeDataHandler.getInstance().glassesControl(byteArrayOf(0x02, 0x01, 0x01)) { _, _ -> }
-            }
-            delay(2500)
-
-            LargeDataHandler.getInstance().getPictureThumbnails(thumbCallback)
-            thumbnailTransferStarted = true
-
-            val result = withTimeoutOrNull(14_000) { done.await() }
-            if (result == null) {
-                Log.w(TAG, "Thumbnail transfer timed out")
-                if (completed.compareAndSet(false, true)) {
-                    GlassesSessionCoordinator.releaseBackgroundCommand(permit)
-                }
-                WalkingAidNotificationHelper.updateNotification(
-                    this,
-                    "Thumbnail capture timed out — retrying...",
-                    WalkingAidPreferences.getCaptureIntervalSeconds(this),
-                )
-            }
-            return result
-        } catch (e: Exception) {
-            if (completed.compareAndSet(false, true)) {
-                GlassesSessionCoordinator.releaseBackgroundCommand(permit)
-            }
-            throw e
-        }
+        return runCatching {
+            imageCapture.captureFreshThumbnail("WALKING_AID_THUMB_$index")
+        }.onFailure { error ->
+            Log.e(TAG, "Fresh thumbnail capture failed: ${error.message}", error)
+            WalkingAidNotificationHelper.updateNotification(
+                this,
+                "Thumbnail capture failed — retrying...",
+                WalkingAidPreferences.getCaptureIntervalSeconds(this),
+            )
+        }.getOrNull()
     }
 
     private fun isMetaRaybanSelected(): Boolean = DeviceProfileStore.isMetaSelected(this)
