@@ -3,11 +3,11 @@ plugins {
 }
 
 android {
-    namespace 'ai.moonshine.voice'
-    compileSdk 35
+    namespace = 'ai.moonshine.voice'
+    compileSdk = 35
 
     defaultConfig {
-        minSdk 24
+        minSdk = 24
 
         // Keep release APK size reasonable (matches most modern phones).
         // If you need emulator/x86 later, add it.
@@ -35,8 +35,8 @@ android {
     externalNativeBuild {
         cmake {
             // Moonshine builds the JNI lib (moonshine-jni) from this root CMake.
-            path file('../../../third_party/moonshine/core/CMakeLists.txt')
-            version '3.22.1'
+            path = file('../../../third_party/moonshine/core/CMakeLists.txt')
+            version = '3.22.1'
         }
     }
 }

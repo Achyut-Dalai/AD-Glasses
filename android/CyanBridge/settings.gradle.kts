@@ -38,7 +38,6 @@ dependencyResolutionManagement {
 rootProject.name = "CyanBridgeManagerApp"
 include(":app")
 include(":shared")
-include(":LIB_GLASSES_SDK")
 
 // Moonshine Voice (local wrapper module that builds vendored native sources)
 include(":moonshine-voice")

@@ -38,7 +38,7 @@ android {
         targetSdk = 35
         versionCode = 12
         versionName = "2.1.0"
-        testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
+        testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
 
         // Chapter 6: optional transcription API key (do not commit secrets).
         def openAiKey = project.findProperty("OPENAI_API_KEY") ?: ""
@@ -86,10 +86,10 @@ android {
         release {
             // Only configure signing if keystore.properties exists.
             if (keystorePropertiesFile.exists()) {
-                storeFile file(keystoreProperties["storeFile"])
-                storePassword keystoreProperties["storePassword"]
-                keyAlias keystoreProperties["keyAlias"]
-                keyPassword keystoreProperties["keyPassword"]
+                storeFile = file(keystoreProperties["storeFile"])
+                storePassword = keystoreProperties["storePassword"]
+                keyAlias = keystoreProperties["keyAlias"]
+                keyPassword = keystoreProperties["keyPassword"]
             }
         }
     }
@@ -97,7 +97,7 @@ android {
     buildTypes {
         release {
             if (keystorePropertiesFile.exists()) {
-                signingConfig signingConfigs.release
+                signingConfig = signingConfigs.release
             }
             proguardFiles(
                 getDefaultProguardFile("proguard-android-optimize.txt"),
@@ -199,10 +199,9 @@ dependencies {
     // LiteRT runtime for local models (Google's inference engine)
     implementation("com.google.ai.edge.litertlm:litertlm-android:0.14.0")
 
-    // Generic LiteRT / TensorFlow Lite runtime for .tflite vision models (YOLO, Depth)
-    implementation("org.tensorflow:tensorflow-lite:2.16.1")
-    implementation("org.tensorflow:tensorflow-lite-gpu:2.16.1")
-    implementation("org.tensorflow:tensorflow-lite-support:0.4.4")
+    // LiteRT runtime for Walking Aid's .tflite YOLO and depth models.
+    implementation("com.google.ai.edge.litert:litert:1.4.2")
+    implementation("com.google.ai.edge.litert:litert-gpu:1.4.2")
 
     // Offline transcription fallback (Moonshine; vendored module)
     implementation project(":moonshine-voice")
