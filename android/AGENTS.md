@@ -588,3 +588,32 @@ When the Material 3 migration becomes the active priority again:
    ```
 2. Resolve the Compose / KAPT dependency setup intentionally on the migration branch.
 3. Do not re-introduce those files into `main` unless the full UI migration is being merged.
+
+## Current Session (July 29 2026)
+
+### Objective
+- Complete billing checkout‑session API and provider‑choice dialog (core work done).
+- Fix image‑sync breakage introduced by Eyevue commits; cherry‑pick working image‑question flow improvements from the reflog.
+
+### Key Facts
+- Billing commit `0044185` is pushed to `origin/compose-material3-kmp-v2`.
+- Eyevue commits (`1093f20`, `fcf4e3f`) added parallel audio recording, `onReplySpoken`, `offerSpokenQuestion` — all of which fixed image sync. They also added Eyevue‑protocol, Gemini‑Live‑routing, and TTS‑streaming classes which broke the data‑transfer flow.
+- Solving approach: branch from `fcf4e3f` (known‑working commit) and surgically strip Eyevue‑protocol, `GeminiLiveImageButtonRouter`, and `StreamingSpeechSessionManager` references. Keep the image‑question improvements untouched.
+- **temp-image-fix branch**: all Eyevue/TTS‑streaming removals done. `:app:compileDebugKotlin` passes.
+
+### Completed
+- Billing checkout‑session API & provider‑choice dialog: pushed.
+- `ImageQuestionPrompt.kt`: `questionCueForLanguage()` added.
+- MainActivity.kt: removed all Eyevue imports, `GeminiLiveImageButtonRouter`, `StreamingSpeechSessionManager.attachTtsEngine`, `downloadEyevueMediaList()`, Eyevue `startDataDownload` / `sendExitTransferModeIfRequested` intercepts, `0x02` notification‑handler Eyevue intercept, `onToken`/`onTokenDelta` streaming‑TTS path. `onReplySpoken` kept (pure image‑question flow). Dashboard‑action no‑ops added for 4 Eyevue‑sourced actions.
+- `DeviceClass.kt`: `EYEVUE` enum value removed (already staged).
+- `GlassesManagerGating.kt`: `DeviceClass.EYEVUE` reference removed.
+- `assetlinks.json` created at `android/Carelens/website/public/.well-known/assetlinks.json`. **Not deployed**.
+- `PRO_*` properties defined in `app/build.gradle`. **Not verified** for signed builds.
+
+### Next Move
+1. Sideload APK (`./gradlew assembleDebug`) to Samsung `RQCX700KSDF` and test image sync.
+2. If image sync works, fold changes back onto `compose-material3-kmp-v2` via `git rebase --onto` or cherry‑pick of the cleaned diff.
+3. Then add Eyevue protocol back → locate the break.
+4. Then add TTS streaming back.
+5. Deploy `/.well-known/assetlinks.json` to cyanbridge.vercel.app.
+6. Confirm PRO_* Gradle properties for signed release build.
