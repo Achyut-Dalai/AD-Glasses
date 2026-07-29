@@ -83,4 +83,50 @@ object EyevueProtocol {
         com.oudmon.ble.base.communication.LargeDataHandler.getInstance().glassesControl(packet) { _, _ -> }
         return true
     }
+
+    /** Returns the primary HTTP index URL for Eyevue glasses (SK series P2P XML index). */
+    fun eyevueMediaIndexUrl(deviceIp: String): String = "http://$deviceIp/?custom=1&cmd=3001&par=1"
+
+    /**
+     * Parses filenames (JPG, MP4, OPUS) from Eyevue XML responses or plain text fallback.
+     */
+    fun parseMediaListFromXml(content: String): List<String> {
+        val fileNames = mutableListOf<String>()
+        try {
+            val factory = org.xmlpull.v1.XmlPullParserFactory.newInstance()
+            factory.isNamespaceAware = false
+            val parser = factory.newPullParser()
+            parser.setInput(java.io.StringReader(content))
+            var eventType = parser.eventType
+            var currentTag = ""
+            while (eventType != org.xmlpull.v1.XmlPullParser.END_DOCUMENT) {
+                when (eventType) {
+                    org.xmlpull.v1.XmlPullParser.START_TAG -> currentTag = parser.name
+                    org.xmlpull.v1.XmlPullParser.TEXT -> {
+                        if (currentTag == "NAME" || currentTag == "FPATH") {
+                            val text = parser.text.trim()
+                            if (text.isNotBlank() && (
+                                    text.endsWith(".jpg", ignoreCase = true) ||
+                                        text.endsWith(".jpeg", ignoreCase = true) ||
+                                        text.endsWith(".mp4", ignoreCase = true) ||
+                                        text.endsWith(".opus", ignoreCase = true)
+                                )) {
+                                val fileName = text.substringAfterLast('\\').substringAfterLast('/')
+                                if (fileName !in fileNames) fileNames.add(fileName)
+                            }
+                        }
+                    }
+                }
+                eventType = parser.next()
+            }
+        } catch (e: Exception) {
+            Log.w(TAG, "Eyevue XML parsing failed, falling back to line scanning: ${e.message}")
+            // Fallback line parsing for filenames in plaintext/config format
+            content.lineSequence()
+                .map { it.trim() }
+                .filter { it.endsWith(".jpg", ignoreCase = true) || it.endsWith(".mp4", ignoreCase = true) || it.endsWith(".opus", ignoreCase = true) }
+                .forEach { if (it !in fileNames) fileNames.add(it) }
+        }
+        return fileNames
+    }
 }

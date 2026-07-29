@@ -1,5 +1,6 @@
 package com.fersaiyan.cyanbridge
 import com.fersaiyan.cyanbridge.shared.devices.DeviceProfile
+import com.fersaiyan.cyanbridge.devices.eyevue.EyevueProtocol
 
 import android.Manifest
 import android.app.Activity
@@ -1925,6 +1926,11 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
                         captureMetaPhotoForGallery()
                         return@setOnClickListener
                     }
+                    if (DeviceProfileStore.isEyevueSelected(this@MainActivity)) {
+                        Log.i("GlassesControl", "Sending Eyevue take photo BLE command")
+                        EyevueProtocol.sendPacket(EyevueProtocol.buildTakePhotoPacket())
+                        return@setOnClickListener
+                    }
                     val permit = acquireBackgroundGlassesCommand("camera command")
                         ?: return@setOnClickListener
                     try {
@@ -3288,6 +3294,13 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
 
     private fun controlVideoRecording(start: Boolean) {
         if (rejectHeyCyanOnlyFeature("Video recording")) return
+        if (DeviceProfileStore.isEyevueSelected(this)) {
+            val packet = if (start) EyevueProtocol.buildRecordVideoPacket() else EyevueProtocol.buildStopRecordPacket()
+            Log.i("VideoRecording", "Sending Eyevue video recording command (start=$start)")
+            EyevueProtocol.sendPacket(packet)
+            GlassesMediaPrefs.setVideoRecording(this, start)
+            return
+        }
         if (isGlassesCommandBlocked("video recording command")) return
         val permit = acquireBackgroundGlassesCommand("video recording command") ?: return
         val value = if (start) 0x02 else 0x03
@@ -3338,6 +3351,15 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
     
     private fun controlAudioRecording(start: Boolean) {
         if (rejectHeyCyanOnlyFeature("On-glasses audio recording")) return
+        if (DeviceProfileStore.isEyevueSelected(this)) {
+            val packet = EyevueProtocol.buildDatagram(
+                EyevueProtocol.CMD_RECORD_AUDIO,
+                byteArrayOf(if (start) 0x01.toByte() else 0x00.toByte())
+            )
+            Log.i("AudioRecording", "Sending Eyevue audio recording command (start=$start)")
+            EyevueProtocol.sendPacket(packet)
+            return
+        }
         if (isGlassesCommandBlocked("audio recording command")) return
         val permit = acquireBackgroundGlassesCommand("audio recording command") ?: return
         val value = if (start) 0x08 else 0x0c
@@ -6498,6 +6520,11 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
             Log.i("DataDownload", "Skipping transfer-mode command for inactive session=$sessionId")
             return
         }
+        if (DeviceProfileStore.isEyevueSelected(this)) {
+            Log.i("DataDownload", "Eyevue glasses selected: sending Eyevue P2P BLE trigger")
+            EyevueProtocol.sendPacket(EyevueProtocol.buildStartLiveP2pPacket())
+            return
+        }
         LargeDataHandler.getInstance().glassesControl(
             byteArrayOf(0x02, 0x01, 0x04)
         ) { _, resp ->
@@ -6978,6 +7005,10 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
     
     private suspend fun downloadMediaList(deviceIp: String, sessionId: Long) {
         if (!isDownloadSessionActive(sessionId)) return
+        if (DeviceProfileStore.isEyevueSelected(this)) {
+            downloadEyevueMediaList(deviceIp, sessionId)
+            return
+        }
         if (downloadFlowMode == GlassesSyncFlow.OFFICIAL_HEYCYAN) {
             downloadVendorMediaList(deviceIp, sessionId)
             return
@@ -7038,6 +7069,59 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
                         }
                     }
                     else -> showDownloadError("Download failed: ${e.message}")
+                }
+            }
+        }
+    }
+
+    private suspend fun downloadEyevueMediaList(deviceIp: String, sessionId: Long) {
+        if (!isDownloadSessionActive(sessionId)) return
+        try {
+            coroutineContext.ensureActive()
+            downloadResolvedHttpIp = deviceIp
+            val url = EyevueProtocol.eyevueMediaIndexUrl(deviceIp)
+            Log.i("DataDownload", "[Eyevue] Downloading media index from: $url")
+
+            withContext(Dispatchers.Main) {
+                if (!isDownloadSessionActive(sessionId)) return@withContext
+                binding.progressTransfer.isIndeterminate = true
+                updateDashboardState { state ->
+                    state.copy(transfer = state.transfer.copy(progress = null))
+                }
+                setTransferDetail("Fetching Eyevue media list...")
+            }
+
+            var content: String? = null
+            httpGet(URL(url), 10000, 30000) { stream, _ ->
+                content = stream.bufferedReader().use { it.readText() }
+            }
+
+            coroutineContext.ensureActive()
+            if (!isDownloadSessionActive(sessionId)) return
+
+            content?.let { xmlContent ->
+                Log.i("DataDownload", "=== EYEVUE MEDIA INDEX CONTENT ===")
+                Log.i("DataDownload", xmlContent)
+                Log.i("DataDownload", "=== END EYEVUE MEDIA INDEX ===")
+                val parsedFiles = EyevueProtocol.parseMediaListFromXml(xmlContent)
+                if (parsedFiles.isNotEmpty()) {
+                    val mediaConfigString = parsedFiles.joinToString("\n")
+                    parseMediaList(mediaConfigString, deviceIp, sessionId)
+                } else {
+                    Log.w("DataDownload", "Eyevue XML index returned 0 files; trying standard media.config")
+                    downloadMediaList(deviceIp, sessionId)
+                }
+            } ?: run {
+                Log.w("DataDownload", "Eyevue XML index request returned null; trying standard media.config")
+                downloadMediaList(deviceIp, sessionId)
+            }
+        } catch (e: CancellationException) {
+            throw e
+        } catch (e: Exception) {
+            Log.e("DataDownload", "Error fetching Eyevue media list: ${e.message}", e)
+            if (isDownloadSessionActive(sessionId)) {
+                withContext(Dispatchers.Main) {
+                    showDownloadError("Eyevue media fetch failed: ${e.message}")
                 }
             }
         }
@@ -8332,6 +8416,11 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
     private fun sendExitTransferModeIfRequested() {
         if (!downloadExitTransferRequested) return
         downloadExitTransferRequested = false
+        if (DeviceProfileStore.isEyevueSelected(this)) {
+            Log.i("DataDownload", "Sending Eyevue exit transfer packet over BLE")
+            EyevueProtocol.sendPacket(EyevueProtocol.buildExitLivePacket())
+            return
+        }
         // Tell the glasses to exit transfer mode (official app does this after downloads finish).
         try {
             LargeDataHandler.getInstance().glassesControl(

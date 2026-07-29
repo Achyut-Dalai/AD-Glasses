@@ -222,16 +222,27 @@ class MultilingualSpeechChunker(
 
     private fun isConfirmedBoundary(text: String, match: BoundaryMatch): Boolean {
         val idx = match.endIndex
-        if (idx >= text.length) return true // At current end of stream
-
         val char = match.char
+
         // CJK punctuation (! ? 。 ！） and newlines are definitive boundaries
         if (char == '。' || char == '！' || char == '？' || char == '\n' || char == '\r') {
             return true
         }
 
+        // Exclamation / Question marks followed by end of stream or space/closing mark are confirmed
+        if (char == '!' || char == '?') {
+            if (idx >= text.length) return true
+            val nextChar = text[idx]
+            return nextChar.isWhitespace() || nextChar.isUpperCase() || isClosingPunctuation(nextChar)
+        }
+
         // Period guards
         if (char == '.') {
+            if (idx >= text.length) {
+                // At current end of stream buffer, require candidate lookahead
+                return false
+            }
+
             // Decimal check: e.g. "3.14" or "3,14"
             if (idx > 1 && idx < text.length) {
                 val prev = text[idx - 2]
@@ -246,7 +257,8 @@ class MultilingualSpeechChunker(
             }
         }
 
-        // Check if followed by whitespace or uppercase/new sentence
+        if (idx >= text.length) return true
+
         val nextChar = text[idx]
         return nextChar.isWhitespace() || nextChar.isUpperCase() || !nextChar.isLetterOrDigit()
     }

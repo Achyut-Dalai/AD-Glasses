@@ -1,18 +1,14 @@
 package com.fersaiyan.cyanbridge.localmodels.tts
 
-import kotlinx.coroutines.ExperimentalCoroutinesApi
-import kotlinx.coroutines.test.TestScope
-import kotlinx.coroutines.test.UnconfinedTestDispatcher
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.runBlocking
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 import org.junit.Before
 import org.junit.Test
 
-@OptIn(ExperimentalCoroutinesApi::class)
 class MultilingualSpeechChunkerTest {
-
-    private val testDispatcher = UnconfinedTestDispatcher()
-    private val testScope = TestScope(testDispatcher)
 
     private val producedChunks = mutableListOf<String>()
     private lateinit var chunker: MultilingualSpeechChunker
@@ -26,19 +22,19 @@ class MultilingualSpeechChunkerTest {
             preferredChunkMaxCodePoints = 60,
             hardChunkMaxCodePoints = 100,
             candidateBoundaryDelayMs = 0L,
-            firstChunkIdleFlushMs = 100L,
-            normalChunkIdleFlushMs = 100L,
+            firstChunkIdleFlushMs = 50L,
+            normalChunkIdleFlushMs = 50L,
         )
         chunker = MultilingualSpeechChunker(
             config = config,
-            scope = testScope,
+            scope = CoroutineScope(Dispatchers.Default),
             onChunkReady = { producedChunks.add(it) },
         )
         chunker.startSession(1L)
     }
 
     @Test
-    fun testEnglishSentencesAndDecimals() {
+    fun testEnglishSentencesAndDecimals() = runBlocking {
         chunker.append("Dr. Smith is here. He is waiting.")
         chunker.finish()
 
@@ -48,7 +44,7 @@ class MultilingualSpeechChunkerTest {
     }
 
     @Test
-    fun testDecimalAndVersionSplits() {
+    fun testDecimalAndVersionSplits() = runBlocking {
         chunker.append("The value is 3.14 meters. Use version 2.1.0.")
         chunker.finish()
 
@@ -58,7 +54,7 @@ class MultilingualSpeechChunkerTest {
     }
 
     @Test
-    fun testShortValidAnswers() {
+    fun testShortValidAnswers() = runBlocking {
         chunker.append("Yes.")
         chunker.finish()
         assertEquals(1, producedChunks.size)
@@ -72,7 +68,7 @@ class MultilingualSpeechChunkerTest {
     }
 
     @Test
-    fun testPortugueseSentences() {
+    fun testPortugueseSentences() = runBlocking {
         chunker.append("O Dr. Silva chegou. Ele está esperando. Há uma porta à frente.")
         chunker.finish()
 
@@ -82,7 +78,7 @@ class MultilingualSpeechChunkerTest {
     }
 
     @Test
-    fun testGermanSentences() {
+    fun testGermanSentences() = runBlocking {
         chunker.append("Dr. Müller ist hier. Er wartet. Links befindet sich eine Tür.")
         chunker.finish()
 
@@ -92,7 +88,7 @@ class MultilingualSpeechChunkerTest {
     }
 
     @Test
-    fun testFrenchSentences() {
+    fun testFrenchSentences() = runBlocking {
         chunker.append("Le Dr Martin est arrivé. Il attend. Attention ! Une marche devant vous.")
         chunker.finish()
 
@@ -102,7 +98,7 @@ class MultilingualSpeechChunkerTest {
     }
 
     @Test
-    fun testItalianSentences() {
+    fun testItalianSentences() = runBlocking {
         chunker.append("Il dott. Rossi è arrivato. Sta aspettando. C'è una porta davanti.")
         chunker.finish()
 
@@ -112,7 +108,7 @@ class MultilingualSpeechChunkerTest {
     }
 
     @Test
-    fun testRussianSentences() {
+    fun testRussianSentences() = runBlocking {
         chunker.append("Доктор Иванов здесь. Он ждёт. Впереди дверь.")
         chunker.finish()
 
@@ -122,7 +118,7 @@ class MultilingualSpeechChunkerTest {
     }
 
     @Test
-    fun testChineseStreamingNoWhitespace() {
+    fun testChineseStreamingNoWhitespace() = runBlocking {
         chunker.append("前")
         chunker.append("方有")
         chunker.append("一扇门")
@@ -138,7 +134,7 @@ class MultilingualSpeechChunkerTest {
     }
 
     @Test
-    fun testAwkwardDecimalStreamFragments() {
+    fun testAwkwardDecimalStreamFragments() = runBlocking {
         chunker.append("3")
         chunker.append(".")
         chunker.append("14")
@@ -151,7 +147,7 @@ class MultilingualSpeechChunkerTest {
     }
 
     @Test
-    fun testClosingPunctuationQuotesAndParens() {
+    fun testClosingPunctuationQuotesAndParens() = runBlocking {
         chunker.append("He said, \"Look out!\" And then he left.")
         chunker.finish()
 
@@ -170,7 +166,7 @@ class MultilingualSpeechChunkerTest {
     }
 
     @Test
-    fun testSessionIdCancellationProtection() {
+    fun testSessionIdCancellationProtection() = runBlocking {
         chunker.startSession(10L)
         chunker.append("Session 10 text.", 10L)
 
