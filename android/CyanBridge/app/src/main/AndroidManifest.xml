@@ -327,6 +327,11 @@
             android:foregroundServiceType="dataSync" />
 
         <service
+            android:name=".ai.AiQuestionForegroundService"
+            android:exported="false"
+            android:foregroundServiceType="connectedDevice|dataSync|microphone" />
+
+        <service
             android:name=".localagent.accessibility.LocalAgentAccessibilityService"
             android:permission="android.permission.BIND_ACCESSIBILITY_SERVICE"
             android:exported="false"

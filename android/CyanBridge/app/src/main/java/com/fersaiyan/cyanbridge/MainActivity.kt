@@ -208,6 +208,7 @@ import com.fersaiyan.cyanbridge.ai.image.ImageQuestionBroadcast
 import com.fersaiyan.cyanbridge.ai.image.ImageQuestionSource
 import com.fersaiyan.cyanbridge.ai.image.ImageQuestionSourcePolicy
 import com.fersaiyan.cyanbridge.ai.image.ImageThumbnailQuality
+import com.fersaiyan.cyanbridge.ai.AiQuestionForegroundService
 import com.fersaiyan.cyanbridge.ai.image.HighQualityFailureChoice
 import com.fersaiyan.cyanbridge.shared.glasses.GlassesAssistantMode
 import com.fersaiyan.cyanbridge.shared.glasses.GlassesDashboardAction
@@ -370,6 +371,9 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
         private const val PULL_OTA_TEST_LEASE_MS = 10_000L
         private const val ONE_SHOT_BLE_COMMAND_TIMEOUT_MS = 6_000L
         private const val IMAGE_THUMBNAIL_TRANSFER_TIMEOUT_MS = 20_000L
+        private const val VOICE_CUE_ROUTE_SETTLE_MS = 500L
+        private const val VOICE_CUE_BLUETOOTH_TAIL_MS = 750L
+        private const val VOICE_CUE_CALLBACK_TIMEOUT_MS = 3_000L
 
         fun actionTaskerCommand(appPackageName: String): String =
             "$appPackageName.ACTION_TASKER_COMMAND"
@@ -675,7 +679,6 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
     }
 
     override fun onStop() {
-        cancelLocalStreamingSpeech("activity stopped")
         if (BuildConfig.DEBUG) wifiAdbDebugController.stop()
         super.onStop()
         stopBatteryPolling()
@@ -3749,10 +3752,15 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
     ) {
         Log.i("AIHijack", "Running memory-aware image query for chosen provider $providerType: $imagePath")
 
+        val onSpeechCompleted: () -> Unit = {
+            finishAiQuestionForegroundWork()
+            onReplySpoken?.invoke()
+            Unit
+        }
         val localSpeechSessionId = if (providerType == AgentProviderType.LOCAL_AGENT) {
             localSpeechSessionManager.startNewSession(
                 languageTag = ImageQuestionPreferences.get(this).appLanguageTag,
-                onSpeechCompleted = onReplySpoken,
+                onSpeechCompleted = onSpeechCompleted,
             )
         } else {
             null
@@ -3854,7 +3862,7 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
                     if (providerType == AgentProviderType.LOCAL_AGENT) {
                         localSpeechSessionId?.let(localSpeechSessionManager::onModelGenerationCompleted)
                     } else {
-                        speakVision(replyToSpeak, onDone = onReplySpoken)
+                        speakVision(replyToSpeak, onDone = onSpeechCompleted)
                     }
                 }
             } finally {
@@ -3872,6 +3880,18 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
         localSpeechSessionManager.cancelActiveStreamingResponse()
         CoroutineScope(Dispatchers.IO).launch {
             LocalModelsProvider().cancelGeneration()
+        }
+    }
+
+    private fun beginAiQuestionForegroundWork(status: String) {
+        AiQuestionForegroundService.start(this, status)
+    }
+
+    private fun finishAiQuestionForegroundWork() {
+        if (!isMetaRaybanSelected() && BleOperateManager.getInstance().isConnected) {
+            AiQuestionForegroundService.startConnected(this)
+        } else {
+            AiQuestionForegroundService.stop(this)
         }
     }
 
@@ -3955,6 +3975,8 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
             }
             return
         }
+        prepareAiQuestionForLockScreen()
+        beginAiQuestionForegroundWork("Capturing image from glasses")
 
         if (triggerCapture) {
             val permit = acquireBackgroundGlassesCommand("AI image capture") ?: return
@@ -3997,6 +4019,7 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
                     if (imageCaptureAwaitingNotification.compareAndSet(true, false)) {
                         pendingImageCaptureSourceTag = null
                         clearPendingVoiceImageQuestion(sourceTag)
+                        finishAiQuestionForegroundWork()
                         Log.w("AIHijack", "[$sourceTag] No AI photo-ready signal; refusing stale thumbnail fallback")
                         runOnUiThread {
                             Toast.makeText(
@@ -4009,6 +4032,7 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
                 } catch (error: Exception) {
                     imageCaptureAwaitingNotification.set(false)
                     pendingImageCaptureSourceTag = null
+                    finishAiQuestionForegroundWork()
                     Log.e("AIHijack", "[$sourceTag] Failed to trigger glasses camera: ${error.message}", error)
                 } finally {
                     if (pendingImageCapturePermit.compareAndSet(permit, null)) {
@@ -4120,6 +4144,7 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
                 }
 
                 clearPendingVoiceImageQuestion(sourceTag)
+                finishAiQuestionForegroundWork()
                 Log.w("AIHijack", "[$sourceTag] BLE preview did not complete")
                 runOnUiThread {
                     Toast.makeText(
@@ -4715,6 +4740,8 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
                 })
             return
         }
+        prepareAiQuestionForLockScreen()
+        beginAiQuestionForegroundWork("Listening for glasses voice question")
         // Wake up screen if locked
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O_MR1) {
             setShowWhenLocked(true)
@@ -4751,7 +4778,7 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
 
         recognizer.setRecognitionListener(object : RecognitionListener {
             override fun onReadyForSpeech(params: Bundle?) {
-                speak("I am listening")
+                Log.i("ImageQuestionAudio", "Voice-query recognizer ready after listening cue")
             }
 
             override fun onBeginningOfSpeech() {}
@@ -4769,6 +4796,7 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
                 Toast.makeText(this@MainActivity, message, Toast.LENGTH_SHORT).show()
                 recognizer.destroy()
                 stopSco()
+                finishAiQuestionForegroundWork()
             }
 
             override fun onResults(results: Bundle?) {
@@ -4778,6 +4806,7 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
                 if (prompt.isBlank()) {
                     recognizer.destroy()
                     stopSco()
+                    finishAiQuestionForegroundWork()
                     return
                 }
 
@@ -4825,6 +4854,7 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
                             runOnUiThread {
                                 speak(reply, utteranceId = "AI_REPLY") {
                                     stopSco()
+                                    finishAiQuestionForegroundWork()
                                 }
                             }
                         }
@@ -4884,7 +4914,31 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
             override fun onEvent(eventType: Int, params: Bundle?) {}
         })
 
-        recognizer.startListening(intent)
+        val listeningStarted = AtomicBoolean(false)
+        fun startListeningAfterCue(reason: String) {
+            if (!listeningStarted.compareAndSet(false, true)) return
+            lifecycleScope.launch {
+                // Some Bluetooth stacks report TTS onDone before their final audio buffer is
+                // audible. Keep the microphone closed until that buffer has drained.
+                delay(VOICE_CUE_BLUETOOTH_TAIL_MS)
+                Log.i("ImageQuestionAudio", "Starting voice recognizer after listening cue reason=$reason")
+                recognizer.startListening(intent)
+            }
+        }
+        val cueUtteranceId = "voice_listening_${System.nanoTime()}"
+        lifecycleScope.launch {
+            // The Bluetooth communication route was just selected; give it a brief moment before
+            // emitting the listening cue so the first syllable is not lost on the glasses.
+            delay(VOICE_CUE_ROUTE_SETTLE_MS)
+            speak(
+                text = "I am listening",
+                utteranceId = cueUtteranceId,
+                onDone = { startListeningAfterCue("tts callback") },
+            )
+            // Do not leave Test Voice unresponsive if a TTS engine never reports completion.
+            delay(VOICE_CUE_CALLBACK_TIMEOUT_MS)
+            startListeningAfterCue("tts callback timeout")
+        }
     }
 
     private fun triggerAssistantVoiceQuery() {
@@ -5161,6 +5215,7 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
             imageQueryInProgress.set(false)
             return
         }
+        beginAiQuestionForegroundWork("Analyzing glasses image")
         
         lastImageQueryAtMs = now
         val resolvedPrompt = resolveImageQuestionPrompt(userQuestion)
@@ -5169,6 +5224,7 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
         if (externalReason != null) {
             Toast.makeText(this, externalReason, Toast.LENGTH_LONG).show()
             imageQueryInProgress.set(false)
+            finishAiQuestionForegroundWork()
             return
         }
         
@@ -5215,14 +5271,21 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
                             val errorMsg = result.exceptionOrNull()?.message ?: "unknown error"
                             Log.e("AIHijack", "Image query failed: $errorMsg")
                             Toast.makeText(this@MainActivity, "Vision error: ${errorMsg.take(80)}", Toast.LENGTH_LONG).show()
-                            speak("I couldn't analyze the image. Please try again.")
+                            speak("I couldn't analyze the image. Please try again.", utteranceId = null) {
+                                finishAiQuestionForegroundWork()
+                            }
                         } else {
                             val reply = result.getOrNull() ?: ""
                             if (looksLikeVisionFailed(reply)) {
                                 Toast.makeText(this@MainActivity, "Vision model couldn't process image", Toast.LENGTH_LONG).show()
-                                speak("I couldn't analyze the image. Please try again.")
+                                speak("I couldn't analyze the image. Please try again.", utteranceId = null) {
+                                    finishAiQuestionForegroundWork()
+                                }
                             } else {
-                                speakVision(reply, onDone = onReplySpoken)
+                                speakVision(reply, onDone = {
+                                    finishAiQuestionForegroundWork()
+                                    onReplySpoken?.invoke()
+                                })
                             }
                         }
                     }
@@ -5246,6 +5309,7 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
             Toast.makeText(this, "Could not start Gemini image question.", Toast.LENGTH_LONG).show()
         } finally {
             imageQueryInProgress.set(false)
+            finishAiQuestionForegroundWork()
         }
     }
 
@@ -5290,8 +5354,20 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
         binding.statusText.text = status
         updateDashboardState { state -> state.copy(connectionLabel = status) }
         updateDeviceClassText()
+        if (connected) {
+            AiQuestionForegroundService.startConnected(this)
+        } else {
+            AiQuestionForegroundService.stop(this)
+        }
         if (!connected) {
             updateBatteryText(null)
+        }
+    }
+
+    private fun prepareAiQuestionForLockScreen() {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O_MR1) {
+            setShowWhenLocked(true)
+            setTurnScreenOn(true)
         }
     }
 

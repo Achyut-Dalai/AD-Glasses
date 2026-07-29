@@ -9,7 +9,6 @@ object ImageQuestionPreferences {
     private const val PREFS = "image_questions"
     private const val KEY_DEFAULT_QUESTION = "default_question"
     private const val KEY_THUMBNAIL_QUALITY = "thumbnail_quality"
-    private const val KEY_DETAILED_THUMBNAIL_DEFAULT_APPLIED = "detailed_thumbnail_default_applied"
     private const val KEY_LEGACY_MIGRATION_COMPLETE = "legacy_vision_profile_migrated"
     private const val LEGACY_PREFS = "vision_profile"
     private const val LEGACY_CUSTOM_INSTRUCTIONS = "custom_instructions"
@@ -48,12 +47,9 @@ object ImageQuestionPreferences {
 
     fun thumbnailQuality(context: Context): ImageThumbnailQuality {
         val prefs = preferences(context)
-        // Earlier versions used Smooth/2 as the implicit default. Upgrade existing installs once
-        // so an old persisted value cannot silently override the new Detailed/5 default.
-        if (!prefs.getBoolean(KEY_DETAILED_THUMBNAIL_DEFAULT_APPLIED, false)) {
+        if (!prefs.contains(KEY_THUMBNAIL_QUALITY)) {
             prefs.edit()
                 .putInt(KEY_THUMBNAIL_QUALITY, ImageThumbnailQuality.DETAILED.sdkValue)
-                .putBoolean(KEY_DETAILED_THUMBNAIL_DEFAULT_APPLIED, true)
                 .apply()
         }
         val storedValue = prefs.getInt(
@@ -69,7 +65,6 @@ object ImageQuestionPreferences {
             ?: ImageThumbnailQuality.DETAILED
         preferences(context).edit()
             .putInt(KEY_THUMBNAIL_QUALITY, quality.sdkValue)
-            .putBoolean(KEY_DETAILED_THUMBNAIL_DEFAULT_APPLIED, true)
             .apply()
         return quality
     }
