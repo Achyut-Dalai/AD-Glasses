@@ -9,6 +9,7 @@ import android.os.Build
 import android.util.Log
 import androidx.core.content.ContextCompat
 import com.fersaiyan.cyanbridge.devices.DeviceProfileStore
+import com.fersaiyan.cyanbridge.devices.eyevue.EyevueManager
 import com.fersaiyan.cyanbridge.devices.meizumyvu.MeizuMyvuManager
 import com.fersaiyan.cyanbridge.shared.devices.DeviceClass
 import com.hjq.permissions.Permission
@@ -73,6 +74,13 @@ object AutoPairManager {
                 }
 
                 val connected = BleOperateManager.getInstance().isConnected
+                if (DeviceProfileStore.selectedClass(appContext) == DeviceClass.EYEVUE) {
+                    if (EyevueManager.getInstance(appContext).isConnected()) {
+                        backoffMs = 5_000L
+                        delay(20_000L)
+                        continue
+                    }
+                }
                 if (connected) {
                     backoffMs = 5_000L
                     delay(20_000L)
@@ -104,6 +112,14 @@ object AutoPairManager {
     }
 
     fun requestConnectToMac(context: Context, mac: String, reason: String) {
+        if (DeviceProfileStore.selectedClass(context) == DeviceClass.EYEVUE) {
+            if (suppressAutoReconnect) {
+                Log.d(TAG, "Skipping Eyevue reconnect ($reason): suppressed")
+                return
+            }
+            EyevueManager.getInstance(context).connect(mac)
+            return
+        }
         if (DeviceProfileStore.isMetaSelected(context) || DeviceProfileStore.isMeizuMyvuSelected(context)) {
             Log.d(TAG, "Skipping vendor reconnect for selected non-HeyCyan glasses ($reason)")
             return
@@ -151,6 +167,12 @@ object AutoPairManager {
         // Pairing persists the user's explicit selection independently of the vendor SDK.
         // Prefer it so devices with names outside our fallback heuristics still reconnect.
         val profile = DeviceProfileStore.loadLastSelected(context)
+        if (profile?.selectedClass == DeviceClass.EYEVUE) {
+            profile.macAddress.takeIf { it.isNotBlank() }?.let {
+                EyevueManager.getInstance(context).connect(it, profile.advertisedName)
+            }
+            return null
+        }
         if (profile?.selectedClass == DeviceClass.META_RAYBAN) {
             // Meta owns its transport through DAT. Never hand its Bluetooth identity to
             // the Oudmon connector, even when the device is also visible to Android BLE.
@@ -252,6 +274,11 @@ object AutoPairManager {
         }
         if (mac.isBlank()) return false
         if (!isBluetoothEnabled()) return false
+
+        if (DeviceProfileStore.selectedClass(context) == DeviceClass.EYEVUE) {
+            EyevueManager.getInstance(context).connect(mac)
+            return true
+        }
 
         val mgr = BleOperateManager.getInstance()
         if (mgr.isConnected) return true

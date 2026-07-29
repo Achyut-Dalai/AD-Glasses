@@ -135,6 +135,15 @@ class AutoAudioCaptureService : Service() {
             return
         }
 
+        if (DeviceProfileStore.isEyevueSelected(this)) {
+            Log.w(TAG, "Eyevue uses its own media protocol; legacy auto-audio capture is disabled")
+            AutoAudioCapturePrefs.setLastPauseReason(this, "eyevue_uses_native_media_protocol")
+            AutoAudioCapturePrefs.setEnabled(this, false)
+            RUNNING.set(false)
+            stopSelf()
+            return
+        }
+
         if (!startForegroundSafely("Auto audio capture: starting")) {
             RUNNING.set(false)
             stopSelf()
@@ -156,6 +165,15 @@ class AutoAudioCaptureService : Service() {
                     AutoAudioCapturePrefs.setLastPauseReason(
                         this@AutoAudioCaptureService,
                         "meta_dat_no_onboard_audio_file_api",
+                    )
+                    AutoAudioCapturePrefs.setEnabled(this@AutoAudioCaptureService, false)
+                    break
+                }
+                if (DeviceProfileStore.isEyevueSelected(this@AutoAudioCaptureService)) {
+                    Log.w(TAG, "Eyevue selected; stopping legacy auto-audio capture")
+                    AutoAudioCapturePrefs.setLastPauseReason(
+                        this@AutoAudioCaptureService,
+                        "eyevue_uses_native_media_protocol",
                     )
                     AutoAudioCapturePrefs.setEnabled(this@AutoAudioCaptureService, false)
                     break

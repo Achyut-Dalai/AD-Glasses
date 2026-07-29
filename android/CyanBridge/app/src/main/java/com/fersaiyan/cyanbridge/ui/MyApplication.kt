@@ -24,6 +24,7 @@ import com.fersaiyan.cyanbridge.plugins.PluginVoicePermissions
 import com.fersaiyan.cyanbridge.plugins.visualdiary.VisualDiaryPreferences
 import com.fersaiyan.cyanbridge.plugins.visualdiary.VisualDiaryService
 import com.fersaiyan.cyanbridge.memoryvault.MemoryVaultBootstrap
+import com.fersaiyan.cyanbridge.devices.DeviceProfileStore
 import com.fersaiyan.cyanbridge.media.autocapture.AutoAudioCapturePrefs
 import com.fersaiyan.cyanbridge.media.autocapture.AutoAudioCaptureService
 import com.fersaiyan.cyanbridge.localmodels.remote.RemoteOpenAiPrefs
@@ -75,7 +76,10 @@ class MyApplication : Application(){
         LocalAgentPlugin.syncNativePluginState(this)
 
         // Auto audio capture (glasses recording loop)
-        if (AutoAudioCapturePrefs.isEnabled(this) && !AutoAudioCaptureService.isRunning()) {
+        if (AutoAudioCapturePrefs.isEnabled(this) &&
+            !DeviceProfileStore.isEyevueSelected(this) &&
+            !AutoAudioCaptureService.isRunning()
+        ) {
             AutoAudioCaptureService.start(this)
         }
 

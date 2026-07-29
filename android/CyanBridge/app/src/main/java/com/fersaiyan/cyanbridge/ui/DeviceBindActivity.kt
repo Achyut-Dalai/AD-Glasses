@@ -19,6 +19,7 @@ import androidx.compose.runtime.setValue
 import com.fersaiyan.cyanbridge.shared.devices.DeviceClass
 import com.fersaiyan.cyanbridge.devices.DeviceClassifier
 import com.fersaiyan.cyanbridge.devices.DeviceProfileStore
+import com.fersaiyan.cyanbridge.devices.eyevue.EyevueManager
 import com.fersaiyan.cyanbridge.devices.metarayban.MetaRaybanManager
 import com.fersaiyan.cyanbridge.devices.meizumyvu.MeizuMyvuManager
 import com.fersaiyan.cyanbridge.devices.ScannedDevice
@@ -172,6 +173,17 @@ class DeviceBindActivity : BaseActivity() {
             return
         }
 
+        if (selectedDeviceClass == DeviceClass.EYEVUE) {
+            EyevueManager.getInstance(this).connect(device.macAddress, device.advertisedName)
+            Toast.makeText(
+                this,
+                "Connecting to Eyevue over Bluetooth.",
+                Toast.LENGTH_LONG,
+            ).show()
+            finish()
+            return
+        }
+
         BleOperateManager.getInstance().connectDirectly(device.macAddress)
     }
 
@@ -198,11 +210,12 @@ class DeviceBindActivity : BaseActivity() {
             )
             return
         }
-        if (sanitizedName == null) return
+        val detectedClass = DeviceClassifier.guessDeviceClass(sanitizedName, scanRecord?.serviceUuids.orEmpty())
+        if (sanitizedName == null && detectedClass == DeviceClass.UNKNOWN) return
 
         val newDevice = ScannedDevice(
             macAddress = mac,
-            advertisedName = sanitizedName,
+            advertisedName = sanitizedName ?: detectedClass.displayName(),
             rssi = rssi,
             serviceUuids = scanRecord?.serviceUuids.orEmpty(),
         )

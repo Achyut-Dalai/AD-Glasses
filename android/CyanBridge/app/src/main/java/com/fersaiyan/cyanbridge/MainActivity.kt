@@ -82,6 +82,7 @@ import com.fersaiyan.cyanbridge.plugins.livecaptionrelay.LiveCaptionRelayService
 import com.fersaiyan.cyanbridge.plugins.meetingsparknotes.MeetingSparkNotesPreferences
 import com.fersaiyan.cyanbridge.plugins.meetingsparknotes.MeetingSparkNotesService
 import com.fersaiyan.cyanbridge.plugins.walkingaid.WalkingAidPreferences
+import com.fersaiyan.cyanbridge.plugins.walkingaid.WalkingAidImageCapture
 import com.fersaiyan.cyanbridge.plugins.walkingaid.WalkingAidService
 // import com.fersaiyan.cyanbridge.ui.notes.NotesListActivity
 import com.fersaiyan.cyanbridge.ui.recordings.RecordingsListActivity
@@ -90,6 +91,12 @@ import com.fersaiyan.cyanbridge.ui.BluetoothEvent
 import com.fersaiyan.cyanbridge.ui.AutoPairManager
 import com.fersaiyan.cyanbridge.chat.ChatStore
 import com.fersaiyan.cyanbridge.devices.DeviceProfileStore
+import com.fersaiyan.cyanbridge.devices.eyevue.EyevueManager
+import com.fersaiyan.cyanbridge.devices.eyevue.EyevueLivePreviewManager
+import com.fersaiyan.cyanbridge.devices.eyevue.EyevueMediaProfile
+import com.fersaiyan.cyanbridge.devices.eyevue.EyevueMediaSync
+import com.fersaiyan.cyanbridge.devices.eyevue.EyevueMediaType
+import com.fersaiyan.cyanbridge.devices.eyevue.EyevueWifiTransport
 import com.fersaiyan.cyanbridge.devices.meizumyvu.MeizuMyvuManager
 import com.fersaiyan.cyanbridge.shared.devices.GlassesManagerGating
 import com.fersaiyan.cyanbridge.ai.transcription.DefaultTranscriptionService
@@ -190,8 +197,8 @@ import com.fersaiyan.cyanbridge.ai.router.AssistantRequest
 import com.fersaiyan.cyanbridge.ai.router.AssistantRequestRouter
 import com.fersaiyan.cyanbridge.ai.router.AssistantRequestSource
 import com.fersaiyan.cyanbridge.ai.router.AssistantSpeechPolicy
-import com.fersaiyan.cyanbridge.ai.router.AiProviderPrefs
-import com.fersaiyan.cyanbridge.ai.router.AiProviderType as RelayProviderType
+import com.fersaiyan.cyanbridge.ai.router.GlassesAssistantRoute
+import com.fersaiyan.cyanbridge.ai.router.GlassesAssistantRoutingPolicy
 import com.fersaiyan.cyanbridge.ai.router.CliRelayClient
 import com.fersaiyan.cyanbridge.ai.vision.ImageQuestionPreferences
 import com.fersaiyan.cyanbridge.ai.vision.ImageQuestionDefaults
@@ -199,7 +206,9 @@ import com.fersaiyan.cyanbridge.ai.vision.ImageQuestionPromptResolver
 import com.fersaiyan.cyanbridge.ai.vision.ImageQuestionRoute
 import com.fersaiyan.cyanbridge.ai.vision.ResolvedImageQuestionPrompt
 import com.fersaiyan.cyanbridge.ai.image.DefaultAssistantResolver
-import com.fersaiyan.cyanbridge.ai.image.ExternalGeminiAutomationDiagnosticsActivity
+import com.fersaiyan.cyanbridge.ai.image.ExternalAssistantAutomationInspector
+import com.fersaiyan.cyanbridge.ai.image.ExternalAssistantAutomationPolicy
+import com.fersaiyan.cyanbridge.ai.image.ExternalAssistantAutomationSetupActivity
 import com.fersaiyan.cyanbridge.ai.image.ExternalImageAutomationIntents
 import com.fersaiyan.cyanbridge.ai.image.ExternalImageAutomationStage
 import com.fersaiyan.cyanbridge.ai.image.ExternalImageAutomationStore
@@ -352,11 +361,9 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
         const val EXTRA_TASKER_COMMAND = "tasker_command"
         private const val TAG = "MainActivity"
         private var loggedLargeDataHandlerMethods = false
-        private const val AI_MODE_GEMINI = "Gemini"
-        private const val AI_MODE_CHATGPT = "ChatGPT"
-        private const val AI_MODE_PHONE_DEFAULT = "PhoneDefault"
+        private const val AI_MODE_PHONE_ASSISTANT = "PhoneAssistant"
         private const val AI_MODE_TASKER = "Tasker"
-        private const val AI_MODE_CHOSEN_PROVIDER = "ChosenProvider"
+        private const val AI_MODE_CUSTOM_AI_PROVIDER = "CustomAiProvider"
         private const val QUERY_MAX_AGENT_PERSONA_CHARS = 1200
         private const val QUERY_MAX_USER_FACTS_CHARS = 1400
         private const val QUERY_MAX_CONFIRMED_FACTS_CHARS = 1800
@@ -401,7 +408,12 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
     private val deviceNotifyListener by lazy { MyDeviceNotifyListener() }
     private var otaSessionLease: GlassesSessionLease? = null
     private var livePreviewSessionLease: GlassesSessionLease? = null
+    private var eyevueLivePreviewManager: EyevueLivePreviewManager? = null
+    private var eyevueLivePreviewUiJob: Job? = null
     private var mediaSessionLease: GlassesSessionLease? = null
+    private var eyevueMediaJob: Job? = null
+    private var eyevueMediaTransport: EyevueWifiTransport? = null
+    private var eyevueMediaCancelled = false
     private var wifiAdbDebugSessionLease: GlassesSessionLease? = null
     private val otaManager by lazy { OtaManager(this) }
     private var otaPreparationJob: Job? = null
@@ -426,7 +438,7 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
     // AI Hijack settings
     private var isAiHijackEnabled = true // Default to enabled
     private var isImageAssistantMode = true // Use assistant vs share intent
-    private var aiAssistantMode = AI_MODE_GEMINI
+    private var aiAssistantMode = AI_MODE_PHONE_ASSISTANT
 
     // State used by the BLE+WiFi P2P data-download flow
     private var downloadP2pConnected = false
@@ -524,6 +536,8 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
     private var pendingMetaCameraAction: (() -> Unit)? = null
     private var meizuMyvuManager: MeizuMyvuManager? = null
     private var meizuMyvuUiJob: Job? = null
+    private var eyevueManager: EyevueManager? = null
+    private var eyevueUiJob: Job? = null
 
     private val metaAndroidPermissionLauncher =
         registerForActivityResult(ActivityResultContracts.RequestMultiplePermissions()) { result ->
@@ -567,6 +581,10 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         binding = AcitivytMainBinding.inflate(layoutInflater)
+        aiAssistantMode = when (AutomationPrefs.getGlassesAssistantMode(this)) {
+            GlassesAssistantMode.PHONE_ASSISTANT -> AI_MODE_PHONE_ASSISTANT
+            GlassesAssistantMode.CUSTOM_AI_PROVIDER -> AI_MODE_CUSTOM_AI_PROVIDER
+        }
         initView()
         refreshImageThumbnailQuality()
         setupMeetingCaptureUi()
@@ -635,7 +653,7 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
 
         // Ensure we always listen for HeyCyan reports. Meta notifications come from DAT,
         // so do not register the vendor listener for a selected Meta profile.
-        if (!isMetaRaybanSelected()) {
+        if (!isMetaRaybanSelected() && !isEyevueSelected()) {
             LargeDataHandler.getInstance().addOutDeviceListener(100, deviceNotifyListener)
         }
 
@@ -704,6 +722,12 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
         livePreviewDialog?.dismiss()
         livePreviewDialog = null
         livePreviewManager.release()
+        eyevueLivePreviewManager?.release()
+        if (eyevueMediaJob?.isActive == true) {
+            eyevueMediaCancelled = true
+            eyevueMediaTransport?.disconnect()
+            eyevueMediaJob?.cancel()
+        }
         otaPreparationJob?.cancel()
         otaPreparationJob = null
         otaManager.cancel()
@@ -713,7 +737,12 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
         if (!otaManager.isActive) {
             releaseExclusiveGlassesSession(otaSessionLease)
         }
-        if (GlassesSessionCoordinator.currentSession() == GlassesSession.MEDIA_SYNC) {
+        if (isEyevueSelected() && GlassesSessionCoordinator.currentSession() == GlassesSession.MEDIA_SYNC) {
+            getOrCreateEyevueManager().finishTransfer()
+            eyevueMediaTransport?.disconnect()
+            releaseExclusiveGlassesSession(mediaSessionLease)
+            mediaSessionLease = null
+        } else if (GlassesSessionCoordinator.currentSession() == GlassesSession.MEDIA_SYNC) {
             downloadCancelledByUser = true
             teardownDownloadP2pSession(
                 sendExitTransfer = true,
@@ -962,6 +991,67 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
                     manager.state.collect {
                         updateMeizuMyvuUiState()
                         if (isMeizuMyvuSelected()) updateConnectionStatus(false)
+                    }
+                }
+            }
+        }
+
+    private fun getOrCreateEyevueManager(): EyevueManager =
+        eyevueManager ?: EyevueManager.getInstance(this).also { manager ->
+            eyevueManager = manager
+            if (eyevueUiJob == null) {
+                eyevueUiJob = lifecycleScope.launch {
+                    manager.state.collect { eyevue ->
+                        if (!isEyevueSelected()) return@collect
+                        binding.statusText.text = eyevue.connectionLabel
+                        binding.storageText.text = eyevue.storageCount?.toString() ?: "--"
+                        updateBatteryText(eyevue.batteryPercent)
+                        updateDashboardState { state ->
+                            state.copy(
+                                connectionLabel = eyevue.connectionLabel,
+                                batteryPercent = eyevue.batteryPercent,
+                                storageLabel = eyevue.storageCount?.toString() ?: "--",
+                            )
+                        }
+                    }
+                }
+            }
+        }
+
+    private fun getOrCreateEyevueLivePreviewManager(): EyevueLivePreviewManager =
+        eyevueLivePreviewManager ?: EyevueLivePreviewManager(
+            context = this,
+            eyevueManager = getOrCreateEyevueManager(),
+        ).also { manager ->
+            eyevueLivePreviewManager = manager
+            if (eyevueLivePreviewUiJob == null) {
+                eyevueLivePreviewUiJob = lifecycleScope.launch {
+                    manager.uiState.collect { lp ->
+                        if (!isEyevueSelected()) return@collect
+                        dashboardState = dashboardState.copy(
+                            livePreview = com.fersaiyan.cyanbridge.shared.glasses.LivePreviewUiState(
+                                isAvailable = BuildConfig.DEBUG,
+                                stateLabel = lp.stateLabel,
+                                detail = lp.detail,
+                                isScanning = lp.isScanning,
+                                isPlaying = lp.isPlaying,
+                                streamUrl = lp.streamUrl,
+                                canStart = lp.canStart,
+                                canStop = lp.canStop,
+                            ),
+                        )
+                        if (lp.isPlaying && lp.streamUrl != null) {
+                            showRtspPlayerDialog(
+                                streamUrl = lp.streamUrl,
+                                player = manager.getPlayer(),
+                                onClose = manager::stop,
+                            )
+                        } else {
+                            livePreviewDialog?.let { dialog ->
+                                livePreviewDialog = null
+                                dialog.dismiss()
+                            }
+                        }
                     }
                 }
             }
@@ -1252,7 +1342,9 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
         when (action) {
             is GlassesDashboardAction.Navigate -> navigateToDestination(action.destination)
             GlassesDashboardAction.Scan -> {
-                if (isMeizuMyvuSelected()) {
+                if (isEyevueSelected()) {
+                    startKtxActivity<DeviceBindActivity>()
+                } else if (isMeizuMyvuSelected()) {
                     startKtxActivity<DeviceBindActivity>()
                 } else if (isMetaRaybanSelected()) {
                     ensureMetaDatReady { updateConnectionStatus(false) }
@@ -1261,7 +1353,11 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
                 }
             }
             GlassesDashboardAction.Reconnect -> {
-                if (isMeizuMyvuSelected()) {
+                if (isEyevueSelected()) {
+                    DeviceProfileStore.loadLastSelected(this)?.let { profile ->
+                        getOrCreateEyevueManager().connect(profile.macAddress, profile.advertisedName)
+                    } ?: startKtxActivity<DeviceBindActivity>()
+                } else if (isMeizuMyvuSelected()) {
                     DeviceProfileStore.loadLastSelected(this)?.macAddress?.let {
                         getOrCreateMeizuMyvuManager().connect(it, this)
                     } ?: startKtxActivity<DeviceBindActivity>()
@@ -1272,7 +1368,9 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
                 }
             }
             GlassesDashboardAction.Disconnect -> {
-                if (isMeizuMyvuSelected()) {
+                if (isEyevueSelected()) {
+                    getOrCreateEyevueManager().disconnect()
+                } else if (isMeizuMyvuSelected()) {
                     getOrCreateMeizuMyvuManager().disconnect()
                 } else if (isMetaRaybanSelected()) {
                     metaRaybanManager?.stopSession()
@@ -1294,10 +1392,8 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
                 runNativePluginShortcut(action.action)
             }
             is GlassesDashboardAction.SelectAssistantMode -> when (action.mode) {
-                GlassesAssistantMode.GEMINI -> binding.btnModeGemini.performClick()
-                GlassesAssistantMode.CHAT_GPT -> binding.btnModeChatgpt.performClick()
-                GlassesAssistantMode.PHONE_DEFAULT -> selectPhoneDefaultAssistant()
-                GlassesAssistantMode.CHOSEN_PROVIDER -> binding.btnModeTasker.performClick()
+                GlassesAssistantMode.PHONE_ASSISTANT -> selectPhoneAssistant()
+                GlassesAssistantMode.CUSTOM_AI_PROVIDER -> selectCustomAiProvider()
             }
             is GlassesDashboardAction.SelectImageThumbnailQuality -> {
                 val quality = ImageQuestionPreferences.setThumbnailQuality(this, action.sdkValue)
@@ -1312,17 +1408,38 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
             GlassesDashboardAction.TestVoiceQuestion -> binding.btnTestHijackVoice.performClick()
             GlassesDashboardAction.TestImageQuestion -> binding.btnTestHijackImage.performClick()
             GlassesDashboardAction.OpenExternalImageAutomationDiagnostics -> {
-                startActivity(
-                    Intent(this, ExternalGeminiAutomationDiagnosticsActivity::class.java)
-                        .putExtra("assistant", resolveEffectiveAiAssistantMode()),
-                )
+                startActivity(Intent(this, ExternalAssistantAutomationSetupActivity::class.java))
             }
-            GlassesDashboardAction.CapturePhoto -> binding.btnCamera.performClick()
-            GlassesDashboardAction.ToggleVideo -> binding.btnVideo.performClick()
-            GlassesDashboardAction.StartAudioRecording -> binding.btnRecord.performClick()
-            GlassesDashboardAction.RequestMediaCount -> binding.btnMediaCount.performClick()
-            GlassesDashboardAction.StartSync -> binding.btnDataDownload.performClick()
-            GlassesDashboardAction.StopSync -> binding.btnTransferStop.performClick()
+            GlassesDashboardAction.CapturePhoto -> if (isEyevueSelected()) {
+                getOrCreateEyevueManager().takePhoto()
+            } else {
+                binding.btnCamera.performClick()
+            }
+            GlassesDashboardAction.ToggleVideo -> if (isEyevueSelected()) {
+                getOrCreateEyevueManager().toggleVideo()
+            } else {
+                binding.btnVideo.performClick()
+            }
+            GlassesDashboardAction.StartAudioRecording -> if (isEyevueSelected()) {
+                getOrCreateEyevueManager().toggleAudio()
+            } else {
+                binding.btnRecord.performClick()
+            }
+            GlassesDashboardAction.RequestMediaCount -> if (isEyevueSelected()) {
+                getOrCreateEyevueManager().requestMediaCount()
+            } else {
+                binding.btnMediaCount.performClick()
+            }
+            GlassesDashboardAction.StartSync -> if (isEyevueSelected()) {
+                startEyevueMediaSync()
+            } else {
+                binding.btnDataDownload.performClick()
+            }
+            GlassesDashboardAction.StopSync -> if (isEyevueSelected()) {
+                stopEyevueMediaSync()
+            } else {
+                binding.btnTransferStop.performClick()
+            }
             GlassesDashboardAction.ToggleAdvanced -> {
                 binding.btnToggleAdvanced.performClick()
                 updateDashboardState { state ->
@@ -1332,11 +1449,31 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
             GlassesDashboardAction.StartAgent -> binding.btnAgentStart.performClick()
             GlassesDashboardAction.StopAgent -> binding.btnAgentStop.performClick()
             GlassesDashboardAction.RunAgentDemo -> binding.btnAgentDemo.performClick()
-            GlassesDashboardAction.RequestBattery -> binding.btnBattery.performClick()
-            GlassesDashboardAction.RequestVersion -> binding.btnVersion.performClick()
-            GlassesDashboardAction.SyncTime -> binding.btnSetTime.performClick()
-            GlassesDashboardAction.RequestVolume -> binding.btnVolume.performClick()
-            GlassesDashboardAction.AddDeviceListener -> binding.btnAddListener.performClick()
+            GlassesDashboardAction.RequestBattery -> if (isEyevueSelected()) {
+                getOrCreateEyevueManager().requestBattery()
+            } else {
+                binding.btnBattery.performClick()
+            }
+            GlassesDashboardAction.RequestVersion -> if (isEyevueSelected()) {
+                getOrCreateEyevueManager().requestDeviceInfo()
+            } else {
+                binding.btnVersion.performClick()
+            }
+            GlassesDashboardAction.SyncTime -> if (isEyevueSelected()) {
+                getOrCreateEyevueManager().syncTime()
+            } else {
+                binding.btnSetTime.performClick()
+            }
+            GlassesDashboardAction.RequestVolume -> if (isEyevueSelected()) {
+                getOrCreateEyevueManager().requestVolume()
+            } else {
+                binding.btnVolume.performClick()
+            }
+            GlassesDashboardAction.AddDeviceListener -> if (isEyevueSelected()) {
+                getOrCreateEyevueManager().requestSupportFunction()
+            } else {
+                binding.btnAddListener.performClick()
+            }
             GlassesDashboardAction.StartClassicBluetoothScan -> binding.btnBt.performClick()
             GlassesDashboardAction.DumpOtaInfo -> binding.btnOtaInfo.performClick()
             GlassesDashboardAction.TestPullOta -> binding.btnPullOtaTest.performClick()
@@ -1370,10 +1507,20 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
                     resetOtaDashboardToIdle()
                 }
             }
-            GlassesDashboardAction.StartLivePreview -> startLivePreview()
+            GlassesDashboardAction.StartLivePreview -> if (isEyevueSelected()) {
+                startEyevueLivePreview()
+            } else {
+                startLivePreview()
+            }
             GlassesDashboardAction.StopLivePreview -> {
                 Log.i("LivePreview", "BUTTON TAP: Stop Live Preview")
-                stopLivePreview()
+                if (isEyevueSelected()) {
+                    getOrCreateEyevueLivePreviewManager().stop()
+                    releaseExclusiveGlassesSession(livePreviewSessionLease)
+                    livePreviewSessionLease = null
+                } else {
+                    stopLivePreview()
+                }
             }
             GlassesDashboardAction.RequestStartWifiAdbDebug -> {
                 if (BuildConfig.DEBUG) startWifiAdbDebug()
@@ -1405,10 +1552,26 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
             )
             GlassesDashboardAction.MeizuSyncClock -> getOrCreateMeizuMyvuManager().syncClock()
             GlassesDashboardAction.MeizuSetComfortBrightness -> getOrCreateMeizuMyvuManager().setBrightness(70)
-            GlassesDashboardAction.RefreshRecordingSettings -> Log.i("Dashboard", "RefreshRecordingSettings (no-op in temp branch)")
-            is GlassesDashboardAction.SetVideoRecordingDuration -> Log.i("Dashboard", "SetVideoRecordingDuration (no-op in temp branch)")
-            is GlassesDashboardAction.SetAudioRecordingDuration -> Log.i("Dashboard", "SetAudioRecordingDuration (no-op in temp branch)")
-            is GlassesDashboardAction.SetWearingDetection -> Log.i("Dashboard", "SetWearingDetection (no-op in temp branch)")
+            GlassesDashboardAction.RefreshRecordingSettings -> if (isEyevueSelected()) {
+                getOrCreateEyevueManager().requestSupportFunction()
+            } else {
+                Log.i("Dashboard", "RefreshRecordingSettings (no-op in temp branch)")
+            }
+            is GlassesDashboardAction.SetVideoRecordingDuration -> if (isEyevueSelected()) {
+                getOrCreateEyevueManager().setRecordingDuration(action.seconds)
+            } else {
+                Log.i("Dashboard", "SetVideoRecordingDuration (no-op in temp branch)")
+            }
+            is GlassesDashboardAction.SetAudioRecordingDuration -> if (isEyevueSelected()) {
+                getOrCreateEyevueManager().setRecordingDuration(action.seconds)
+            } else {
+                Log.i("Dashboard", "SetAudioRecordingDuration (no-op in temp branch)")
+            }
+            is GlassesDashboardAction.SetWearingDetection -> if (isEyevueSelected()) {
+                getOrCreateEyevueManager().setWearingDetection(action.enabled)
+            } else {
+                Log.i("Dashboard", "SetWearingDetection (no-op in temp branch)")
+            }
         }
     }
 
@@ -1846,12 +2009,6 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
                         return@setOnClickListener
                     }
 
-                    val externalReason = externalImageAutomationUnsupportedReason()
-                    if (externalReason != null) {
-                        Toast.makeText(this@MainActivity, externalReason, Toast.LENGTH_LONG).show()
-                        return@setOnClickListener
-                    }
-
                     if (maybeShowGeminiChatGptImageRequirementsWarning()) {
                         return@setOnClickListener
                     }
@@ -1860,27 +2017,15 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
                 }
 
                 binding.btnModeGemini -> {
-                    aiAssistantMode = AI_MODE_GEMINI
-                    refreshAiModeButtons()
-                    Toast.makeText(this@MainActivity, "AI Mode: Google Gemini", Toast.LENGTH_SHORT).show()
+                    selectPhoneAssistant()
                 }
 
                 binding.btnModeChatgpt -> {
-                    aiAssistantMode = AI_MODE_CHATGPT
-                    refreshAiModeButtons()
-                    Toast.makeText(this@MainActivity, "AI Mode: ChatGPT", Toast.LENGTH_SHORT).show()
+                    selectPhoneAssistant()
                 }
 
                 binding.btnModeTasker -> {
-                    aiAssistantMode = AI_MODE_CHOSEN_PROVIDER
-                    refreshAiModeButtons()
-
-                    val msg = when (AutomationPrefs.getProviderType(this@MainActivity)) {
-                        AgentProviderType.TASKER -> "AI Mode: Chosen Provider (Tasker Broadcast)"
-                        AgentProviderType.PRO_SUBSCRIPTION -> "AI Mode: Chosen Provider (Pro Subscription)"
-                        AgentProviderType.LOCAL_AGENT -> "AI Mode: Chosen Provider (Local Agent)"
-                    }
-                    Toast.makeText(this@MainActivity, msg, Toast.LENGTH_SHORT).show()
+                    selectCustomAiProvider()
                 }
 
                 // Notes & Summaries entry removed (moved to Transcriptions & recordings section)
@@ -3032,6 +3177,44 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
         }
     }
 
+    private fun startEyevueLivePreview() {
+        if (!BuildConfig.DEBUG) {
+            Toast.makeText(this, "Eyevue live preview is available in debug builds only.", Toast.LENGTH_LONG).show()
+            return
+        }
+        if (!hasBluetooth(this) || !hasWifiP2pPermission(this)) {
+            ensureGlassesTransportPermissions("Eyevue live preview") {
+                startEyevueLivePreview()
+            }
+            return
+        }
+        val manager = getOrCreateEyevueManager()
+        if (!manager.isConnected()) {
+            Toast.makeText(this, "Connect to Eyevue over Bluetooth first.", Toast.LENGTH_LONG).show()
+            return
+        }
+        val liveManager = getOrCreateEyevueLivePreviewManager()
+        if (liveManager.isActive) return
+        if (eyevueMediaJob?.isActive == true) {
+            Toast.makeText(this, "Stop Eyevue media sync before starting live preview.", Toast.LENGTH_LONG).show()
+            return
+        }
+        if (AutoAudioCaptureService.isRunning()) {
+            Toast.makeText(this, "Stop auto audio capture before starting live preview.", Toast.LENGTH_LONG).show()
+            return
+        }
+
+        val lease = acquireExclusiveGlassesSession(GlassesSession.LIVE_PREVIEW) ?: return
+        livePreviewSessionLease = lease
+        liveManager.start(
+            profile = EyevueMediaProfile.fromProject(manager.state.value.project),
+            onSessionFinished = {
+                releaseExclusiveGlassesSession(lease)
+                if (livePreviewSessionLease === lease) livePreviewSessionLease = null
+            },
+        )
+    }
+
     private fun observeLivePreviewState() {
         lifecycleScope.launch {
             var lastLabel = ""
@@ -3042,7 +3225,7 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
                 }
                 dashboardState = dashboardState.copy(
                     livePreview = com.fersaiyan.cyanbridge.shared.glasses.LivePreviewUiState(
-                        isAvailable = BuildConfig.DEBUG,
+                        isAvailable = BuildConfig.DEBUG && !isEyevueSelected(),
                         stateLabel = lp.stateLabel,
                         detail = lp.detail,
                         isScanning = lp.isScanning,
@@ -3121,14 +3304,18 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
         }
     }
 
-    private fun showRtspPlayerDialog(streamUrl: String) {
+    private fun showRtspPlayerDialog(
+        streamUrl: String,
+        player: androidx.media3.exoplayer.ExoPlayer? = livePreviewManager.getPlayer(),
+        onClose: () -> Unit = livePreviewManager::stop,
+    ) {
         Log.i("LivePreview", "showRtspPlayerDialog: $streamUrl")
         if (livePreviewDialog?.isShowing == true) {
             Log.d("LivePreview", "showRtspPlayerDialog: dialog is already visible")
             return
         }
-        val player = livePreviewManager.getPlayer()
-        if (player == null) {
+        val activePlayer = player
+        if (activePlayer == null) {
             Log.e("LivePreview", "showRtspPlayerDialog: player is null!")
             return
         }
@@ -3141,7 +3328,7 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
         }
 
         val playerView = androidx.media3.ui.PlayerView(this).apply {
-            this.player = player
+            this.player = activePlayer
             useController = true
             layoutParams = android.widget.FrameLayout.LayoutParams(
                 android.widget.FrameLayout.LayoutParams.MATCH_PARENT,
@@ -3160,7 +3347,7 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
             if (livePreviewDialog === dialog) {
                 Log.i("LivePreview", "Dialog: dismissed")
                 livePreviewDialog = null
-                livePreviewManager.stop()
+                onClose()
             }
         }
         livePreviewDialog = dialog
@@ -3343,30 +3530,28 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
     }
 
     private fun resolveEffectiveAiAssistantMode(): String {
-        if (aiAssistantMode != AI_MODE_CHOSEN_PROVIDER) {
-            return aiAssistantMode
-        }
-        return when (AutomationPrefs.getProviderType(this)) {
-            AgentProviderType.TASKER -> AI_MODE_TASKER
-            AgentProviderType.PRO_SUBSCRIPTION -> AI_MODE_CHOSEN_PROVIDER
-            AgentProviderType.LOCAL_AGENT -> AI_MODE_CHOSEN_PROVIDER
+        return when (currentAssistantRoute()) {
+            GlassesAssistantRoute.PHONE_ASSISTANT -> AI_MODE_PHONE_ASSISTANT
+            GlassesAssistantRoute.TASKER_EXTERNAL_UI -> AI_MODE_TASKER
+            GlassesAssistantRoute.LOCAL,
+            GlassesAssistantRoute.PRO -> AI_MODE_CUSTOM_AI_PROVIDER
         }
     }
 
-    private fun isChosenProviderMode(): Boolean = aiAssistantMode == AI_MODE_CHOSEN_PROVIDER
+    private fun isCustomAiProviderMode(): Boolean = aiAssistantMode == AI_MODE_CUSTOM_AI_PROVIDER
 
-    private fun isChosenProviderCloudEndpoint(): Boolean {
-        if (!isChosenProviderMode()) return false
-        return when (AutomationPrefs.getProviderType(this)) {
-            AgentProviderType.PRO_SUBSCRIPTION -> true
-            AgentProviderType.LOCAL_AGENT,
-            AgentProviderType.TASKER -> false
-        }
-    }
+    private fun currentAssistantRoute(): GlassesAssistantRoute =
+        GlassesAssistantRoutingPolicy.resolve(
+            mode = if (isCustomAiProviderMode()) {
+                GlassesAssistantMode.CUSTOM_AI_PROVIDER
+            } else {
+                GlassesAssistantMode.PHONE_ASSISTANT
+            },
+            customProvider = AutomationPrefs.getProviderType(this),
+        )
 
     private fun imageQueryUnsupportedReasonForCurrentSelection(): String? {
-        if (!isChosenProviderMode()) return null
-        if (AutomationPrefs.getProviderType(this) != AgentProviderType.LOCAL_AGENT) return null
+        if (currentAssistantRoute() != GlassesAssistantRoute.LOCAL) return null
 
         val selected = LocalModelStorageRepository.resolveSelectedModel(this)
             ?: return "No local model selected. Install/select Gemma 4 LiteRT first."
@@ -3382,58 +3567,41 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
         return null
     }
 
-    private fun isGeminiOrChatGptModeSelected(): Boolean {
-        return aiAssistantMode == AI_MODE_GEMINI ||
-            aiAssistantMode == AI_MODE_CHATGPT ||
-            aiAssistantMode == AI_MODE_PHONE_DEFAULT
+    private fun usesExternalAssistantUi(): Boolean = when (currentAssistantRoute()) {
+        GlassesAssistantRoute.PHONE_ASSISTANT,
+        GlassesAssistantRoute.TASKER_EXTERNAL_UI -> true
+        GlassesAssistantRoute.LOCAL,
+        GlassesAssistantRoute.PRO -> false
     }
 
     private fun selectedImageAutomationTarget(): ImageAutomationTarget {
-        return ImageAutomationTarget.forAssistantMode(
-            assistantMode = resolveEffectiveAiAssistantMode(),
-            defaultAssistantPackage = DefaultAssistantResolver.packageName(this),
-        )
+        return ImageAutomationTarget.forDefaultAssistant(DefaultAssistantResolver.packageName(this))
     }
 
     private fun externalImageAutomationUnsupportedReason(): String? {
-        if (!isGeminiOrChatGptModeSelected() || AiProviderPrefs.getProvider(this) == RelayProviderType.CLI_RELAY) {
-            return null
-        }
-
-        return when (selectedImageAutomationTarget()) {
-            ImageAutomationTarget.GEMINI -> null
-            ImageAutomationTarget.CHATGPT ->
-                "ChatGPT image questions are unavailable until its separate Tasker profile passes end-to-end testing."
-            ImageAutomationTarget.NONE ->
-                "Your phone default assistant supports voice launch only; image questions require the Gemini image profile."
-        }
-    }
-
-    private fun requiresTaskerAutomationForImageQuestions(): Boolean {
-        if (!isGeminiOrChatGptModeSelected()) return false
-        return AiProviderPrefs.getProvider(this) != RelayProviderType.CLI_RELAY &&
-            selectedImageAutomationTarget().imageAutomationSupported
+        if (!usesExternalAssistantUi()) return null
+        return ExternalAssistantAutomationPolicy.imageBlockingReason(
+            ExternalAssistantAutomationInspector.inspect(this),
+        )
     }
 
     private fun maybeShowGeminiChatGptImageRequirementsWarning(): Boolean {
-        if (!requiresTaskerAutomationForImageQuestions()) return false
+        if (!usesExternalAssistantUi()) return false
 
-        val directShareAvailable = selectedImageAutomationTarget().packageNames.any { targetPackage ->
-            Intent(Intent.ACTION_SEND).apply {
-                type = "image/jpeg"
-                setPackage(targetPackage)
-            }.resolveActivity(packageManager) != null
+        val capability = ExternalAssistantAutomationInspector.inspect(this)
+        val msg = ExternalAssistantAutomationPolicy.imageBlockingReason(capability) ?: return false
+        if (capability.phoneLocked) {
+            Toast.makeText(this, msg, Toast.LENGTH_LONG).show()
+            speak(msg)
+            return true
         }
-        if (directShareAvailable) return false
-
-        val msg = "Gemini cannot receive image shares on this phone. Install or update Gemini; a generic default assistant cannot be used for image questions."
 
         AlertDialog.Builder(this)
             .setTitle("AI image setup required")
             .setMessage(msg)
             .setNegativeButton("Not now", null)
-            .setPositiveButton("Open Plugins") { _, _ ->
-                startActivity(Intent(this, CommunityPluginsActivity::class.java))
+            .setPositiveButton("Open setup") { _, _ ->
+                startActivity(Intent(this, ExternalAssistantAutomationSetupActivity::class.java))
             }
             .show()
 
@@ -3475,37 +3643,44 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
         val activeColor = ContextCompat.getColor(this, R.color.cyan_accent)
         val inactiveColor = ContextCompat.getColor(this, R.color.text_secondary)
 
-        binding.btnModeGemini.setTextColor(if (aiAssistantMode == AI_MODE_GEMINI) activeColor else inactiveColor)
-        binding.btnModeChatgpt.setTextColor(if (aiAssistantMode == AI_MODE_CHATGPT) activeColor else inactiveColor)
-        val chosenProviderSelected = aiAssistantMode == AI_MODE_CHOSEN_PROVIDER
-        binding.btnModeTasker.setTextColor(if (chosenProviderSelected) activeColor else inactiveColor)
+        val phoneAssistantSelected = aiAssistantMode == AI_MODE_PHONE_ASSISTANT
+        binding.btnModeGemini.setTextColor(if (phoneAssistantSelected) activeColor else inactiveColor)
+        binding.btnModeChatgpt.setTextColor(if (phoneAssistantSelected) activeColor else inactiveColor)
+        binding.btnModeTasker.setTextColor(if (!phoneAssistantSelected) activeColor else inactiveColor)
         updateDashboardState { state ->
             state.copy(
                 assistantMode = when (aiAssistantMode) {
-                    AI_MODE_CHATGPT -> GlassesAssistantMode.CHAT_GPT
-                    AI_MODE_PHONE_DEFAULT -> GlassesAssistantMode.PHONE_DEFAULT
-                    AI_MODE_CHOSEN_PROVIDER -> GlassesAssistantMode.CHOSEN_PROVIDER
-                    else -> GlassesAssistantMode.GEMINI
+                    AI_MODE_CUSTOM_AI_PROVIDER -> GlassesAssistantMode.CUSTOM_AI_PROVIDER
+                    else -> GlassesAssistantMode.PHONE_ASSISTANT
                 },
             )
         }
         refreshAiQueryButtonsState()
     }
 
-    private fun selectPhoneDefaultAssistant() {
-        aiAssistantMode = AI_MODE_PHONE_DEFAULT
+    private fun selectPhoneAssistant() {
+        aiAssistantMode = AI_MODE_PHONE_ASSISTANT
+        AutomationPrefs.setGlassesAssistantMode(this, GlassesAssistantMode.PHONE_ASSISTANT)
         refreshAiModeButtons()
         val assistantPackage = DefaultAssistantResolver.packageName(this)
         val result = when (selectedImageAutomationTarget()) {
-            ImageAutomationTarget.GEMINI -> "Gemini image profile"
-            ImageAutomationTarget.CHATGPT -> "ChatGPT voice only; image profile is not validated"
-            ImageAutomationTarget.NONE -> "voice launch only; image questions unavailable"
+            ImageAutomationTarget.GEMINI -> "Gemini external image automation"
+            ImageAutomationTarget.CHATGPT -> "ChatGPT external image automation"
+            ImageAutomationTarget.NONE -> "voice only; external image automation unavailable"
         }
         Toast.makeText(
             this,
-            "Phone default: ${assistantPackage ?: "not detected"}. $result",
+            "Phone Assistant: ${assistantPackage ?: "not detected"}. $result",
             Toast.LENGTH_LONG,
         ).show()
+    }
+
+    private fun selectCustomAiProvider() {
+        aiAssistantMode = AI_MODE_CUSTOM_AI_PROVIDER
+        AutomationPrefs.setGlassesAssistantMode(this, GlassesAssistantMode.CUSTOM_AI_PROVIDER)
+        refreshAiModeButtons()
+        val provider = AutomationPrefs.getProviderType(this).label
+        Toast.makeText(this, "Local / Pro / Tasker: $provider", Toast.LENGTH_SHORT).show()
     }
 
     private fun sendAiBroadcast(
@@ -3535,6 +3710,7 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
             payload.extras().forEach { (key, value) -> putExtra(key, value) }
             // Kept for profiles created before the explicit question extra existed.
             prompt?.let { putExtra("prompt", it) }
+            setPackage(ExternalImageAutomationIntents.TASKER_PACKAGE)
             addFlags(Intent.FLAG_INCLUDE_STOPPED_PACKAGES)
         }
         sendBroadcast(intent)
@@ -3999,11 +4175,10 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
                         "[$sourceTag] Requesting BLE AI capture at ${pendingImageThumbnailQuality.label} " +
                             "(${pendingImageThumbnailQuality.sdkValue})",
                     )
-                    // The vendor Home AI-photo action sends the trailing 0x02 mode selector.
-                    // Omitting it produces error=-1 on this firmware and a decodable but
-                    // visibly corrupted thumbnail.
+                    // Match the vendor AI-chat path so the selected clarity controls the
+                    // generated thumbnail instead of forcing the Home quick-preview mode.
                     LargeDataHandler.getInstance().glassesControl(
-                        byteArrayOf(0x02, 0x01, 0x06, thumbnailSize, thumbnailSize, 0x02),
+                        byteArrayOf(0x02, 0x01, 0x06, thumbnailSize, thumbnailSize),
                     ) { _, response ->
                         Log.i(
                             "ImageQuestionTransfer",
@@ -4341,8 +4516,8 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
                 onReplySpoken = if (externalAutomation) null else ::offerFollowUp,
             )
 
-            // Gemini/Tasker owns external playback. A Tasker answer_ready callback offers an
-            // explicit follow-up instead of treating CyanBridge TTS as if it were speaking.
+            // The default assistant owns external response playback; CyanBridge follow-ups are
+            // only offered for Local and Pro responses that CyanBridge itself speaks.
             if (externalAutomation) return@launch
         }
     }
@@ -4818,7 +4993,8 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
                     val routingProvider = if (memoryAwareChosenProvider) {
                         selectedProvider
                     } else {
-                        // Follow AiProviderPrefs, matching the existing generic relay/local answer path.
+                        // This legacy branch is retained only for direct callers outside the
+                        // two-mode Glasses dashboard.
                         AgentProviderType.TASKER
                     }
                     val routing = assistantRequestRouter.route(
@@ -4946,36 +5122,49 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
         val effectiveMode = resolveEffectiveAiAssistantMode()
         Log.i("AIHijack", "Triggering Voice Query for $effectiveMode")
 
-        val selectedProvider = AutomationPrefs.getProviderType(this)
-        val useChosenProviderMemoryAware =
-            aiAssistantMode == AI_MODE_CHOSEN_PROVIDER &&
-                (selectedProvider == AgentProviderType.PRO_SUBSCRIPTION ||
-                    selectedProvider == AgentProviderType.LOCAL_AGENT)
-        if (useChosenProviderMemoryAware) {
-            triggerCliRelayVoiceQuery(
-                memoryAwareChosenProvider = true,
-                chosenProviderType = selectedProvider,
-            )
-            return
-        }
-
-        // Spike branch feature: CLI Relay AI provider (hosted Gemini/Codex via HTTP).
-        // Only route through CLI relay when NOT in Gemini/ChatGPT mode (those use native apps).
-        if (effectiveMode != AI_MODE_GEMINI && effectiveMode != AI_MODE_CHATGPT) {
-            val relayProvider = AiProviderPrefs.getProvider(this)
-            if (relayProvider == RelayProviderType.CLI_RELAY) {
-                triggerCliRelayVoiceQuery()
-                return
+        when (currentAssistantRoute()) {
+            GlassesAssistantRoute.LOCAL -> {
+                triggerCliRelayVoiceQuery(
+                    memoryAwareChosenProvider = true,
+                    chosenProviderType = AgentProviderType.LOCAL_AGENT,
+                )
             }
+
+            GlassesAssistantRoute.PRO -> {
+                triggerCliRelayVoiceQuery(
+                    memoryAwareChosenProvider = true,
+                    chosenProviderType = AgentProviderType.PRO_SUBSCRIPTION,
+                )
+            }
+
+            GlassesAssistantRoute.TASKER_EXTERNAL_UI -> triggerTaskerVoiceAutomation()
+            GlassesAssistantRoute.PHONE_ASSISTANT -> launchPhoneAssistant()
         }
+    }
 
-        if (effectiveMode == AI_MODE_TASKER) {
-            sendAiBroadcast(type = "voice", assistantMode = AI_MODE_TASKER)
-            return
+    private fun triggerTaskerVoiceAutomation() {
+        prepareAiQuestionForLockScreen()
+        lifecycleScope.launch {
+            delay(350L)
+            val capability = ExternalAssistantAutomationInspector.inspect(this@MainActivity)
+            val blockingReason = ExternalAssistantAutomationPolicy.voiceBlockingReason(capability)
+            if (blockingReason != null) {
+                Toast.makeText(this@MainActivity, blockingReason, Toast.LENGTH_LONG).show()
+                speak(blockingReason)
+                return@launch
+            }
+
+            stopGlassesAiAudio("Tasker voice-query command")
+            sendAiBroadcast(
+                type = "voice",
+                assistantMode = capability.target.label,
+            )
         }
+    }
 
-        // Wake up screen if locked
-
+    private fun launchPhoneAssistant() {
+        // Wake up screen if locked. Android's selected assistant remains the authority for
+        // whether voice interaction itself is allowed over the keyguard.
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O_MR1) {
             setShowWhenLocked(true)
             setTurnScreenOn(true)
@@ -4983,33 +5172,22 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
             keyguardManager.requestDismissKeyguard(this, null)
         }
 
-        // Tell glasses to stop proprietary AI audio stream
-        stopGlassesAiAudio("voice-query command")
+        stopGlassesAiAudio("phone-assistant voice command")
 
         try {
-            val intent = Intent(Intent.ACTION_VOICE_COMMAND).apply {
+            startActivity(Intent(Intent.ACTION_VOICE_COMMAND).apply {
                 flags = Intent.FLAG_ACTIVITY_NEW_TASK
-                if (effectiveMode == AI_MODE_CHATGPT) {
-                    setPackage("com.openai.chatgpt")
-                }
-            }
-            startActivity(intent)
+            })
         } catch (e: Exception) {
-            Log.e("AIHijack", "Failed to trigger assistant: ${e.message}")
+            Log.e("AIHijack", "Failed to trigger phone assistant: ${e.message}")
             runOnUiThread {
-                Toast.makeText(this, "Assistant not found or failed", Toast.LENGTH_SHORT).show()
+                Toast.makeText(this, "No phone assistant is configured", Toast.LENGTH_SHORT).show()
             }
         }
     }
 
     private fun usesExternalImageAutomation(): Boolean {
-        if (AiProviderPrefs.getProvider(this) == RelayProviderType.CLI_RELAY) return false
-        if (aiAssistantMode == AI_MODE_CHOSEN_PROVIDER &&
-            AutomationPrefs.getProviderType(this) != AgentProviderType.TASKER
-        ) {
-            return false
-        }
-        return selectedImageAutomationTarget().imageAutomationSupported
+        return usesExternalAssistantUi()
     }
 
     private fun externalImageQuestion(userQuestion: String?): String {
@@ -5034,17 +5212,6 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
         }.onFailure { error ->
             Log.e("ImageQuestion", "Could not stage image for FileProvider sharing", error)
         }.getOrNull()
-    }
-
-    private fun externalAssistantPackage(): String? {
-        val candidates = selectedImageAutomationTarget().packageNames
-        return candidates.firstOrNull { candidate ->
-            runCatching {
-                @Suppress("DEPRECATION")
-                packageManager.getPackageInfo(candidate, 0)
-                true
-            }.getOrDefault(false)
-        }
     }
 
     private fun canStartExternalImageShare(packageName: String): Boolean {
@@ -5082,17 +5249,23 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
         userQuestion: String?,
         source: ImageQuestionSource,
     ) {
+        val capability = ExternalAssistantAutomationInspector.inspect(this)
+        ExternalAssistantAutomationPolicy.imageBlockingReason(capability)?.let { reason ->
+            Toast.makeText(this, reason, Toast.LENGTH_LONG).show()
+            speak(reason)
+            return
+        }
         val stagedFile = stageImageForExternalShare(File(imagePath))
         if (stagedFile == null) {
             Log.e("ImageQuestion", "External handoff image is unavailable: $imagePath")
-            Toast.makeText(this, "Image file is unavailable for Gemini.", Toast.LENGTH_LONG).show()
+            Toast.makeText(this, "The image file is unavailable for the phone assistant.", Toast.LENGTH_LONG).show()
             return
         }
         val imageUri = runCatching {
             FileProvider.getUriForFile(this, "$packageName.fileprovider", stagedFile)
         }.getOrElse { error ->
             Log.e("ImageQuestion", "Could not create image content URI", error)
-            Toast.makeText(this, "Could not share the image with Gemini.", Toast.LENGTH_LONG).show()
+            Toast.makeText(this, "Could not share the image with the phone assistant.", Toast.LENGTH_LONG).show()
             return
         }
         val question = externalImageQuestion(userQuestion)
@@ -5103,7 +5276,7 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
             question = question,
             source = source,
         )
-        val targetPackage = externalAssistantPackage()
+        val targetPackage = capability.targetPackage
         val directSharePackage = targetPackage?.takeIf {
             !isDeviceLockedForAutomation() && canStartExternalImageShare(it)
         }
@@ -5146,16 +5319,11 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
             assistantMode = selectedImageAutomationTarget().label,
         )
 
-        if (isDeviceLockedForAutomation()) {
-            ExternalImageAutomationStore.recordLocalStage(
-                this,
-                ExternalImageAutomationStage.FAILED,
-                "Unlock the phone before Gemini/AutoInput can create an image chat.",
-            )
-            Toast.makeText(this, "Unlock your phone to answer the image query.", Toast.LENGTH_LONG).show()
-        } else {
-            Toast.makeText(this, "Using Tasker AutoInput fallback for Gemini.", Toast.LENGTH_LONG).show()
-        }
+        Toast.makeText(
+            this,
+            "Using Tasker AutoInput fallback for ${capability.target.label}.",
+            Toast.LENGTH_LONG,
+        ).show()
     }
 
     private fun handleExternalImageAutomationStatus() {
@@ -5164,30 +5332,16 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
             ExternalImageAutomationStage.ANSWER_READY -> {
                 if (session.followUpPromptShown || isFinishing || isDestroyed) return
                 ExternalImageAutomationStore.markFollowUpPromptShown(this)
-                AlertDialog.Builder(this)
-                    .setTitle("Gemini answer ready")
-                    .setMessage(
-                        "Gemini owns response playback. After it finishes, choose Ask follow-up to use the glasses microphone.",
-                    )
-                    .setNegativeButton("Later", null)
-                    .setPositiveButton("Ask follow-up") { _, _ ->
-                        lifecycleScope.launch {
-                            val followUp = captureOptionalImageQuestionFromBluetoothMic(timeoutMs = 3_000L)
-                            if (!followUp.isNullOrBlank()) {
-                                triggerAssistantImageQuery(
-                                    imagePath = session.imagePath,
-                                    userQuestion = followUp,
-                                    source = session.source,
-                                )
-                            }
-                        }
-                    }
-                    .show()
+                Toast.makeText(
+                    this,
+                    "${selectedImageAutomationTarget().label} owns response playback.",
+                    Toast.LENGTH_SHORT,
+                ).show()
             }
 
             ExternalImageAutomationStage.FAILED -> {
                 session.state.error?.takeIf { it.isNotBlank() }?.let { error ->
-                    Toast.makeText(this, "Gemini automation failed: $error", Toast.LENGTH_LONG).show()
+                    Toast.makeText(this, "Assistant automation failed: $error", Toast.LENGTH_LONG).show()
                 }
             }
 
@@ -5223,76 +5377,27 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
         val externalReason = externalImageAutomationUnsupportedReason()
         if (externalReason != null) {
             Toast.makeText(this, externalReason, Toast.LENGTH_LONG).show()
+            if (usesExternalAssistantUi() && ExternalAssistantAutomationInspector.inspect(this).phoneLocked) {
+                speak(externalReason)
+            }
             imageQueryInProgress.set(false)
             finishAiQuestionForegroundWork()
             return
         }
         
-        val selectedProvider = AutomationPrefs.getProviderType(this)
-        val isChosenProviderMode = aiAssistantMode == AI_MODE_CHOSEN_PROVIDER
-
-        // Route ChosenProvider with memory-aware providers
-        val useChosenProviderMemoryAware =
-            isChosenProviderMode &&
-                (selectedProvider == AgentProviderType.PRO_SUBSCRIPTION ||
-                    selectedProvider == AgentProviderType.LOCAL_AGENT)
-        if (useChosenProviderMemoryAware) {
+        val internalProvider = when (currentAssistantRoute()) {
+            GlassesAssistantRoute.LOCAL -> AgentProviderType.LOCAL_AGENT
+            GlassesAssistantRoute.PRO -> AgentProviderType.PRO_SUBSCRIPTION
+            GlassesAssistantRoute.PHONE_ASSISTANT,
+            GlassesAssistantRoute.TASKER_EXTERNAL_UI -> null
+        }
+        if (internalProvider != null) {
             triggerMemoryAwareImageQuery(
                 imagePath = imagePath,
-                providerType = selectedProvider,
+                providerType = internalProvider,
                 resolvedPrompt = resolvedPrompt,
                 onReplySpoken = onReplySpoken,
             )
-            return
-        }
-
-        val relayProvider = AiProviderPrefs.getProvider(this)
-        if (relayProvider == RelayProviderType.CLI_RELAY) {
-            Log.i("AIHijack", "Sending image query to CLI relay: $imagePath")
-            val visionPrompt = resolvedPrompt.forRoute(ImageQuestionRoute.PRO_RELAY)
-
-            CoroutineScope(Dispatchers.IO).launch {
-                try {
-                    val modelOverride = if (AutomationPrefs.getProviderType(this@MainActivity) == AgentProviderType.PRO_SUBSCRIPTION) {
-                        ProSubscriptionAiPrefs.getQuestionsModel(this@MainActivity)
-                    } else {
-                        null
-                    }
-
-                    val result = CliRelayClient.imageQuery(
-                        context = this@MainActivity,
-                        imagePath = imagePath,
-                        prompt = visionPrompt,
-                        modelOverride = modelOverride,
-                    )
-
-                    runOnUiThread {
-                        if (result.isFailure) {
-                            val errorMsg = result.exceptionOrNull()?.message ?: "unknown error"
-                            Log.e("AIHijack", "Image query failed: $errorMsg")
-                            Toast.makeText(this@MainActivity, "Vision error: ${errorMsg.take(80)}", Toast.LENGTH_LONG).show()
-                            speak("I couldn't analyze the image. Please try again.", utteranceId = null) {
-                                finishAiQuestionForegroundWork()
-                            }
-                        } else {
-                            val reply = result.getOrNull() ?: ""
-                            if (looksLikeVisionFailed(reply)) {
-                                Toast.makeText(this@MainActivity, "Vision model couldn't process image", Toast.LENGTH_LONG).show()
-                                speak("I couldn't analyze the image. Please try again.", utteranceId = null) {
-                                    finishAiQuestionForegroundWork()
-                                }
-                            } else {
-                                speakVision(reply, onDone = {
-                                    finishAiQuestionForegroundWork()
-                                    onReplySpoken?.invoke()
-                                })
-                            }
-                        }
-                    }
-                } finally {
-                    imageQueryInProgress.set(false)
-                }
-            }
             return
         }
 
@@ -5306,7 +5411,7 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
             )
         } catch (error: Exception) {
             Log.e("AIHijack", "Failed to hand image to external assistant: ${error.message}", error)
-            Toast.makeText(this, "Could not start Gemini image question.", Toast.LENGTH_LONG).show()
+            Toast.makeText(this, "Could not start the phone-assistant image question.", Toast.LENGTH_LONG).show()
         } finally {
             imageQueryInProgress.set(false)
             finishAiQuestionForegroundWork()
@@ -5314,6 +5419,21 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
     }
 
     private fun updateConnectionStatus(connected: Boolean) {
+        if (isEyevueSelected()) {
+            val eyevue = getOrCreateEyevueManager().state.value
+            val status = eyevue.connectionLabel
+            binding.statusText.text = status
+            binding.storageText.text = eyevue.storageCount?.toString() ?: "--"
+            updateBatteryText(eyevue.batteryPercent)
+            updateDashboardState { state ->
+                state.copy(
+                    connectionLabel = status,
+                    storageLabel = eyevue.storageCount?.toString() ?: "--",
+                )
+            }
+            updateDeviceClassText()
+            return
+        }
         if (isMeizuMyvuSelected()) {
             val myvu = getOrCreateMeizuMyvuManager().state.value
             binding.statusText.text = myvu.connectionLabel
@@ -5375,6 +5495,9 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
 
     private fun isMeizuMyvuSelected(): Boolean = DeviceProfileStore.isMeizuMyvuSelected(this)
 
+    private fun isEyevueSelected(): Boolean =
+        DeviceProfileStore.selectedClass(this) == com.fersaiyan.cyanbridge.shared.devices.DeviceClass.EYEVUE
+
     private fun rejectHeyCyanOnlyFeature(feature: String): Boolean {
         if (!isMetaRaybanSelected()) return false
         Toast.makeText(
@@ -5423,6 +5546,7 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
         updateDashboardState { state ->
             state.copy(
                 showHeyCyanControls = model.isVisible(GlassesManagerGating.Action.HEY_CYAN_EXTRAS),
+                showEyevueControls = model.isVisible(GlassesManagerGating.Action.EYEVUE_CONTROLS),
                 showMetaRaybanControls = model.isVisible(GlassesManagerGating.Action.META_RAYBAN_CONTROLS),
                 showMeizuMyvuControls = model.isVisible(GlassesManagerGating.Action.MEIZU_MYVU_CONTROLS),
                 showBattery = showBattery,
@@ -5435,11 +5559,12 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
         }
 
         // Only poll battery for profiles that claim to support it.
-        if (showBattery) {
+        if (showBattery && !isEyevueSelected()) {
             startBatteryPolling()
         } else {
             stopBatteryPolling()
             updateBatteryText(null)
+            if (isEyevueSelected()) getOrCreateEyevueManager().requestBattery()
         }
 
         if (!showStorage) {
@@ -5458,6 +5583,10 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
         if (model.isVisible(GlassesManagerGating.Action.MEIZU_MYVU_CONTROLS)) {
             getOrCreateMeizuMyvuManager()
             updateMeizuMyvuUiState()
+        }
+
+        if (model.isVisible(GlassesManagerGating.Action.EYEVUE_CONTROLS)) {
+            getOrCreateEyevueLivePreviewManager()
         }
     }
 
@@ -6227,6 +6356,123 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
                 purpose = MediaDownloadPurpose.IMAGE_QUESTION,
             )
         }
+    }
+
+    private fun startEyevueMediaSync() {
+        if (eyevueMediaJob?.isActive == true) return
+        if (!hasBluetooth(this) || !hasWifiP2pPermission(this)) {
+            ensureGlassesTransportPermissions("Eyevue media sync") {
+                startEyevueMediaSync()
+            }
+            return
+        }
+
+        val manager = getOrCreateEyevueManager()
+        if (!manager.isConnected()) {
+            Toast.makeText(this, "Connect to Eyevue over Bluetooth first.", Toast.LENGTH_LONG).show()
+            return
+        }
+        if (GlassesSessionCoordinator.currentSession() != null) {
+            Toast.makeText(this, "Another glasses session is already active.", Toast.LENGTH_SHORT).show()
+            return
+        }
+
+        val lease = acquireExclusiveGlassesSession(GlassesSession.MEDIA_SYNC) ?: return
+        mediaSessionLease = lease
+        eyevueMediaCancelled = false
+        setTransferUiVisible(true)
+        setTransferFlowLabel(GlassesSyncFlow.CUSTOM)
+        setTransferDetail("Starting Eyevue media sync...")
+        resetTransferUiState()
+        setTransferUiVisible(true)
+
+        val transport = EyevueWifiTransport(this)
+        eyevueMediaTransport = transport
+        val temporaryDirectory = File(cacheDir, "eyevue_media_${System.currentTimeMillis()}")
+        eyevueMediaJob = lifecycleScope.launch(Dispatchers.IO) {
+            var result: Result<Int>? = null
+            try {
+                val project = manager.awaitProject()
+                val profile = EyevueMediaProfile.fromProject(project)
+                val sync = EyevueMediaSync(manager, transport, temporaryDirectory)
+                result = sync.sync(
+                    profile = profile,
+                    onState = { syncState ->
+                        withContext(Dispatchers.Main) {
+                            if (eyevueMediaCancelled) return@withContext
+                            if (syncState.total > 0) {
+                                transferTotalJpg = syncState.total
+                                transferTotalMp4 = 0
+                                transferTotalOpus = 0
+                                transferDoneJpg = syncState.completed
+                                transferDoneMp4 = 0
+                                transferDoneOpus = 0
+                            }
+                            renderTransferProgress()
+                            setTransferDetail("${syncState.detail} (${profile.mode.name})")
+                        }
+                    },
+                    onProgress = { item, downloaded, total ->
+                        if (total > 0L) {
+                            withContext(Dispatchers.Main) {
+                                if (!eyevueMediaCancelled) {
+                                    setTransferDetail(
+                                        "Downloading ${item.fileName}: " +
+                                            "${downloaded / 1024} / ${total / 1024} KB",
+                                    )
+                                }
+                            }
+                        }
+                    },
+                    onFile = { item, file ->
+                        val vendorItem = VendorMediaItem(
+                            fileName = item.fileName,
+                            type = when (item.type) {
+                                EyevueMediaType.PHOTO -> VendorMediaType.PHOTO
+                                EyevueMediaType.VIDEO -> VendorMediaType.VIDEO
+                                EyevueMediaType.AUDIO -> VendorMediaType.AUDIO
+                            },
+                        )
+                        importVendorMediaFile(file, vendorItem)
+                    },
+                )
+            } finally {
+                withContext(Dispatchers.Main) {
+                    val completed = result?.getOrNull()
+                    val cancelled = eyevueMediaCancelled
+                    eyevueMediaJob = null
+                    eyevueMediaTransport = null
+                    setTransferUiVisible(false)
+                    releaseExclusiveGlassesSession(lease)
+                    if (!cancelled) {
+                        if (completed != null) {
+                            Toast.makeText(
+                                this@MainActivity,
+                                "Eyevue sync complete: $completed files",
+                                Toast.LENGTH_LONG,
+                            ).show()
+                        } else {
+                            Toast.makeText(
+                                this@MainActivity,
+                                "Eyevue media sync failed. Check the transfer details and retry.",
+                                Toast.LENGTH_LONG,
+                            ).show()
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    private fun stopEyevueMediaSync() {
+        if (eyevueMediaJob?.isActive != true) return
+        eyevueMediaCancelled = true
+        eyevueMediaTransport?.disconnect()
+        getOrCreateEyevueManager().finishTransfer()
+        eyevueMediaJob?.cancel()
+        setTransferUiVisible(false)
+        releaseExclusiveGlassesSession(mediaSessionLease)
+        mediaSessionLease = null
     }
 
     private fun startDataDownload(
@@ -9441,6 +9687,10 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
                 }
                 //Glasses pass quick recognition / AI Photo
                 0x02 -> {
+                    if (WalkingAidImageCapture.isAwaitingPhotoReady()) {
+                        Log.i("DeviceNotify", "Walking Aid consumed its requested photo-ready notification")
+                        return
+                    }
                     val sourceTag = pendingImageCaptureSourceTag ?: "glasses_signal"
                     Log.i(
                         "ImageQuestionTransfer",
