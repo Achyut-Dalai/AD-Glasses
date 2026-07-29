@@ -3,17 +3,13 @@ package com.fersaiyan.cyanbridge.agent
 import android.content.Intent
 import android.net.Uri
 import android.os.Bundle
-import android.text.InputType
-import android.util.Patterns
 import android.view.View
 import android.widget.ArrayAdapter
-import android.widget.EditText
 import android.widget.LinearLayout
 import android.widget.Spinner
 import android.widget.Switch
 import android.widget.TextView
 import android.widget.Toast
-import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.app.AppCompatActivity
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -668,45 +664,12 @@ class ProSubscriptionSettingsActivity : AppCompatActivity() {
         if (ProSubscriptionPrefs.getProvider(this) == "play_billing") {
             openPlaySubscriptionManagement(null)
         } else {
-            promptForCheckoutEmail(plan)
+            startActivity(Intent(this, ProSubscriptionActivity::class.java).apply {
+                putExtra(ProSubscriptionActivity.EXTRA_INITIAL_PLAN, plan)
+                putExtra(ProSubscriptionActivity.EXTRA_CHANGE_PLAN, true)
+            })
+            finish()
         }
-    }
-
-    private fun promptForCheckoutEmail(plan: String) {
-        val input = EditText(this).apply {
-            hint = "you@example.com"
-            inputType = InputType.TYPE_CLASS_TEXT or InputType.TYPE_TEXT_VARIATION_EMAIL_ADDRESS
-            setText(ProSubscriptionServerPrefs.getAccountEmail(this@ProSubscriptionSettingsActivity))
-        }
-
-        val dialog = AlertDialog.Builder(this)
-            .setTitle("Account email")
-            .setMessage("Use the same email as your previous purchase so we can restore an active subscription instead of charging again.")
-            .setView(input)
-            .setPositiveButton("Continue", null)
-            .setNegativeButton("Cancel", null)
-            .create()
-
-        dialog.setOnShowListener {
-            dialog.getButton(AlertDialog.BUTTON_POSITIVE).setOnClickListener {
-                val rawEmail = input.text?.toString().orEmpty()
-                val email = ProSubscriptionServerPrefs.normalizeAccountEmail(rawEmail)
-                if (!ProSubscriptionServerPrefs.isUsableAccountEmail(email) || !Patterns.EMAIL_ADDRESS.matcher(email).matches()) {
-                    input.error = "Enter a valid email address"
-                    return@setOnClickListener
-                }
-                ProSubscriptionServerPrefs.setAccountEmail(this, email)
-                dialog.dismiss()
-                startActivity(Intent(this, ProSubscriptionActivity::class.java).apply {
-                    putExtra(ProSubscriptionActivity.EXTRA_INITIAL_PLAN, plan)
-                    putExtra(ProSubscriptionActivity.EXTRA_AUTO_START_WEB_CHECKOUT, true)
-                    putExtra(ProSubscriptionActivity.EXTRA_AUTO_WEB_CHECKOUT_EMAIL, email)
-                })
-                finish()
-            }
-        }
-
-        dialog.show()
     }
 
     private fun openPlaySubscriptionManagement(button: MaterialButton?) {

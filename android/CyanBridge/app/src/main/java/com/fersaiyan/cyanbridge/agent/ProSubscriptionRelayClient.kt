@@ -4,6 +4,7 @@ import android.content.Context
 import android.net.Uri
 import com.fersaiyan.cyanbridge.BuildConfig
 import com.fersaiyan.cyanbridge.ai.router.AiProviderPrefs
+import com.fersaiyan.cyanbridge.shared.billing.BillingProvider
 import org.json.JSONArray
 import org.json.JSONObject
 import java.io.BufferedReader
@@ -42,6 +43,7 @@ object ProSubscriptionRelayClient {
     data class AccountInfo(
         val apiToken: String,
         val email: String,
+        val emailVerified: Boolean,
         val plan: String,
         val subscriptionStatus: String,
         val expiresAtMs: Long,
@@ -201,15 +203,23 @@ object ProSubscriptionRelayClient {
             }
             if (account.email.isNotBlank()) {
                 ProSubscriptionServerPrefs.setAccountEmail(context, account.email)
+                if (account.emailVerified) {
+                    ProSubscriptionServerPrefs.setVerifiedAccountEmail(context, account.email)
+                }
             }
         }
     }
 
-    fun buildWebCheckoutUrl(
+    fun createWebCheckoutSession(
         context: Context,
         plan: String,
+        provider: BillingProvider,
         returnUrl: String,
+        changePlan: Boolean = false,
     ): Result<String> = runCatching {
+        check(provider == BillingProvider.ASAAS || provider == BillingProvider.PADDLE) {
+            "Website checkout requires Asaas or Paddle"
+        }
         val apiToken = ProSubscriptionServerPrefs.getApiToken(context).trim().ifBlank {
             fetchAccountInfo(context).getOrThrow().apiToken.trim()
         }
@@ -218,23 +228,32 @@ object ProSubscriptionRelayClient {
         check(SubscriptionCheckoutPolicy.callbackResultFrom(Uri.parse(returnUrl)) != null) {
             "Checkout must return through the verified app link"
         }
-        val checkoutEndpoint = SubscriptionCheckoutPolicy.resolveWebCheckoutUrl(context).trim()
-        val checkoutUri = Uri.parse(checkoutEndpoint)
+        val checkoutPageUrl = SubscriptionCheckoutPolicy.resolveWebCheckoutUrl(context).trim()
+        val checkoutPageUri = Uri.parse(checkoutPageUrl)
         check(
-            checkoutUri.scheme?.equals("https", ignoreCase = true) == true ||
-                (BuildConfig.DEBUG && checkoutUri.scheme?.equals("http", ignoreCase = true) == true),
+            checkoutPageUri.scheme?.equals("https", ignoreCase = true) == true ||
+                (BuildConfig.DEBUG && checkoutPageUri.scheme?.equals("http", ignoreCase = true) == true),
         ) {
             "Website checkout must use HTTPS"
         }
 
-        // This is the deployed relay contract. The browser opens it with GET; it is not a
-        // checkout-session API and must not be replaced with an undeployed POST endpoint.
-        checkoutUri.buildUpon()
-            .appendQueryParameter("plan", plan)
-            .appendQueryParameter("return_url", returnUrl)
-            .appendQueryParameter("api_token", apiToken)
-            .build()
-            .toString()
+        val checkoutSessionEndpoint = SubscriptionCheckoutPolicy.checkoutSessionEndpoint(checkoutPageUrl)
+        val response = requestPostJson(
+            context = context,
+            url = checkoutSessionEndpoint,
+            body = JSONObject()
+                .put("plan", plan)
+                .put("provider", provider.wireName)
+                .put("return_url", returnUrl)
+                .put("change_plan", changePlan),
+        )
+        val checkoutUrl = response.optString("checkout_url").trim()
+        check(checkoutUrl.isNotBlank()) { "Checkout session did not return a checkout URL" }
+
+        check(SubscriptionCheckoutPolicy.isExpectedCheckoutSessionUrl(checkoutPageUrl, checkoutUrl)) {
+            "Checkout session returned an unexpected checkout URL"
+        }
+        checkoutUrl
     }
 
     fun requestAccountEmailVerification(context: Context, email: String): Result<EmailVerificationResult> = runCatching {
@@ -356,6 +375,7 @@ object ProSubscriptionRelayClient {
         return AccountInfo(
             apiToken = payload.optString("api_token").trim(),
             email = payload.optString("email").trim(),
+            emailVerified = payload.optBoolean("email_verified", false),
             plan = payload.optString("plan").trim().ifBlank { "free" },
             subscriptionStatus = payload.optString("subscription_status").trim().ifBlank { "inactive" },
             expiresAtMs = payload.optLong("expires_at_ms", 0L),

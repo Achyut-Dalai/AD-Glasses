@@ -2,7 +2,9 @@ package com.fersaiyan.cyanbridge.agent
 
 import android.net.Uri
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNull
+import org.junit.Assert.assertTrue
 import org.junit.Test
 import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
@@ -32,6 +34,65 @@ class SubscriptionCheckoutPolicyTest {
         assertNull(
             SubscriptionCheckoutPolicy.callbackResultFrom(
                 Uri.parse("https://example.com/web-subscribe/callback?result=one-time-result"),
+            ),
+        )
+    }
+
+    @Test
+    fun `accepts only the expected email verification return`() {
+        assertTrue(
+            SubscriptionCheckoutPolicy.isEmailVerificationReturn(
+                Uri.parse("fersaiyan://pro-sub/restore"),
+            ),
+        )
+        assertFalse(
+            SubscriptionCheckoutPolicy.isEmailVerificationReturn(
+                Uri.parse("fersaiyan://pro-sub/other"),
+            ),
+        )
+        assertFalse(
+            SubscriptionCheckoutPolicy.isEmailVerificationReturn(
+                Uri.parse("https://cyanbridge.vercel.app/email-verified"),
+            ),
+        )
+    }
+
+    @Test
+    fun `builds and validates an opaque checkout session URL`() {
+        val checkoutPage = "https://cyanbridge.vercel.app/web-subscribe?legacy=true"
+
+        assertEquals(
+            "https://cyanbridge.vercel.app/api/billing/checkout-sessions",
+            SubscriptionCheckoutPolicy.checkoutSessionEndpoint(checkoutPage),
+        )
+        assertTrue(
+            SubscriptionCheckoutPolicy.isExpectedCheckoutSessionUrl(
+                checkoutPage,
+                "https://cyanbridge.vercel.app/web-subscribe?checkout_session=opaque-session",
+            ),
+        )
+    }
+
+    @Test
+    fun `rejects checkout sessions from a different origin or path`() {
+        val checkoutPage = "https://cyanbridge.vercel.app/web-subscribe"
+
+        assertFalse(
+            SubscriptionCheckoutPolicy.isExpectedCheckoutSessionUrl(
+                checkoutPage,
+                "https://example.com/web-subscribe?checkout_session=opaque-session",
+            ),
+        )
+        assertFalse(
+            SubscriptionCheckoutPolicy.isExpectedCheckoutSessionUrl(
+                checkoutPage,
+                "https://cyanbridge.vercel.app/other?checkout_session=opaque-session",
+            ),
+        )
+        assertFalse(
+            SubscriptionCheckoutPolicy.isExpectedCheckoutSessionUrl(
+                checkoutPage,
+                "https://cyanbridge.vercel.app/web-subscribe?checkout_session=opaque-session&api_token=secret",
             ),
         )
     }

@@ -21,6 +21,10 @@ data class ProSubscriptionUiState(
     val isSubscribed: Boolean = false,
     /** Localized Google Play labels queried for each configured subscription offer. */
     val playPriceLabels: Map<String, String> = emptyMap(),
+    /** Plans whose configured Google Play offer is currently available for purchase. */
+    val playCheckoutAvailablePlans: Set<String> = emptySet(),
+    /** Web subscriptions can only be changed through a web checkout session. */
+    val googlePlayCheckoutAllowed: Boolean = true,
 )
 
 /** Platform-neutral presentation state for the subscription settings screen. */

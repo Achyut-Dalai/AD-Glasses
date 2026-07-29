@@ -437,8 +437,10 @@ private fun SharedProSubscriptionDestination(
     ProSubscriptionScreen(
         state = state,
         onPlanSelected = { plan -> state = state.copy(selectedPlan = plan) },
-        onSubscribeInApp = { reportUnavailableAction(ProSubscriptionAction.SUBSCRIBE) },
+        onStartFreeTrial = { reportUnavailableAction(ProSubscriptionAction.SUBSCRIBE) },
+        onSubscribeWithGooglePlay = { reportUnavailableAction(ProSubscriptionAction.SUBSCRIBE) },
         onSubscribeOnWebsite = { reportUnavailableAction(ProSubscriptionAction.SUBSCRIBE) },
+        onCheckoutUnavailable = { reportUnavailableAction(ProSubscriptionAction.SUBSCRIBE) },
         onDonate = { reportUnavailableAction(ProSubscriptionAction.DONATE) },
         onCancelSubscription = {
             state = state.copy(

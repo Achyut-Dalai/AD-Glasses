@@ -24,6 +24,7 @@ import com.google.android.material.button.MaterialButton
 import com.fersaiyan.cyanbridge.BuildConfig
 import com.fersaiyan.cyanbridge.R
 import com.fersaiyan.cyanbridge.ai.router.AiProviderPrefs
+import com.fersaiyan.cyanbridge.shared.billing.BillingProvider
 import com.fersaiyan.cyanbridge.shared.billing.ProSubscriptionUiState
 import com.fersaiyan.cyanbridge.ui.appearance.AppearancePreferences
 import com.fersaiyan.cyanbridge.ui.appearance.rememberAppearanceSettings
@@ -55,6 +56,8 @@ class ProSubscriptionActivity : AppCompatActivity() {
     private var billing: PlayBillingManager? = null
     private var playProducts: Map<String, ProductDetails> = emptyMap()
     private var lastBillingError: String = ""
+    private var changePlanRequested = false
+    private var pendingEmailVerification = ""
     private var composeState by mutableStateOf(ProSubscriptionUiState())
     private lateinit var composeView: ComposeView
 
@@ -86,6 +89,8 @@ class ProSubscriptionActivity : AppCompatActivity() {
             rbTrial.isChecked = true
         }
         applyRequestedPlanFromIntent()
+        changePlanRequested = intent?.getBooleanExtra(EXTRA_CHANGE_PLAN, false) == true
+        composeState = composeState.copy(googlePlayCheckoutAllowed = !changePlanRequested)
 
         if (ProSubscriptionPrefs.getProvider(this) == "debug_mock") {
             ProSubscriptionPrefs.clearEntitlement(
@@ -108,7 +113,11 @@ class ProSubscriptionActivity : AppCompatActivity() {
         btnSubscribe.setOnClickListener {
             val plan = selectedPlan()
             promptForSubscriptionEmail(plan) { email ->
-                startSubscriptionFlow(plan, email)
+                if (plan == "free_trial") {
+                    activateFreeTrial(email)
+                } else {
+                    startGooglePlaySubscriptionFlow(plan)
+                }
             }
         }
 
@@ -116,7 +125,7 @@ class ProSubscriptionActivity : AppCompatActivity() {
             if (selectedPlan() == "free_trial") {
                 btnSubscribe.performClick()
             } else {
-                launchWebCheckout(selectedPlan())
+                launchWebCheckout(selectedPlan(), BillingProvider.ASAAS)
             }
         }
 
@@ -133,8 +142,19 @@ class ProSubscriptionActivity : AppCompatActivity() {
                 ProSubscriptionScreen(
                     state = composeState,
                     onPlanSelected = ::selectPlanFromCompose,
-                    onSubscribeInApp = { btnSubscribe.performClick() },
-                    onSubscribeOnWebsite = { btnSubscribeWeb.performClick() },
+                    onStartFreeTrial = { btnSubscribe.performClick() },
+                    onSubscribeWithGooglePlay = {
+                        val plan = selectedPlan()
+                        promptForSubscriptionEmail(plan) { startGooglePlaySubscriptionFlow(plan) }
+                    },
+                    onSubscribeOnWebsite = { provider ->
+                        launchWebCheckout(
+                            plan = selectedPlan(),
+                            provider = provider,
+                            changePlan = changePlanRequested,
+                        )
+                    },
+                    onCheckoutUnavailable = { showCheckoutUnavailableMessage() },
                     onDonate = { btnDonate.performClick() },
                     onCancelSubscription = { btnUnsubscribe.performClick() },
                     onBack = ::finish,
@@ -142,10 +162,7 @@ class ProSubscriptionActivity : AppCompatActivity() {
             }
         }
         refreshComposeState()
-
-        window.decorView.post {
-            maybeAutoStartWebCheckoutFromIntent()
-        }
+        prepareEmailVerificationReturn(intent)
     }
 
     override fun onResume() {
@@ -153,6 +170,7 @@ class ProSubscriptionActivity : AppCompatActivity() {
         updateStatusDisplay()
         refreshPurchaseStatusFromStore()
         maybePromptPendingDonation()
+        refreshPendingEmailVerification()
 
         val shouldVerifyServerState = ProSubscriptionPrefs.isSubscribed(this) || (
             ProSubscriptionPrefs.getProvider(this) != "play_billing" &&
@@ -173,6 +191,8 @@ class ProSubscriptionActivity : AppCompatActivity() {
         super.onNewIntent(intent)
         setIntent(intent)
         maybeShowCallbackToast(intent)
+        prepareEmailVerificationReturn(intent)
+        refreshPendingEmailVerification()
     }
 
     override fun onDestroy() {
@@ -267,7 +287,7 @@ class ProSubscriptionActivity : AppCompatActivity() {
 
         ProSubscriptionServerPrefs.setAccountEmail(this, finalEmail)
         if (!ProSubscriptionServerPrefs.isAccountEmailVerified(this, finalEmail)) {
-            requestAccountEmailVerification(finalEmail) { activateFreeTrial(finalEmail) }
+            confirmAccountEmail(finalEmail) { activateFreeTrial(finalEmail) }
             return
         }
         val baseUrl = AiProviderPrefs.getRelayBaseUrl(this).trimEnd('/')
@@ -372,30 +392,18 @@ class ProSubscriptionActivity : AppCompatActivity() {
         }
     }
 
-    private fun maybeAutoStartWebCheckoutFromIntent() {
-        if (intent?.getBooleanExtra(EXTRA_AUTO_START_WEB_CHECKOUT, false) != true) return
-
-        val requestedPlan = intent?.getStringExtra(EXTRA_INITIAL_PLAN)?.trim().orEmpty().ifBlank { selectedPlan() }
-        val requestedEmail = intent?.getStringExtra(EXTRA_AUTO_WEB_CHECKOUT_EMAIL)?.trim().orEmpty()
-
-        intent?.removeExtra(EXTRA_AUTO_START_WEB_CHECKOUT)
-        intent?.removeExtra(EXTRA_AUTO_WEB_CHECKOUT_EMAIL)
-
-        if (requestedPlan == "free_trial") {
-            startSubscriptionFlow(requestedPlan, requestedEmail)
-        } else if (requestedEmail.isNotBlank()) {
-            launchWebCheckoutWithEmail(requestedPlan)
-        } else {
-            launchWebCheckout(requestedPlan)
-        }
-    }
-
-    private fun launchWebCheckout(plan: String) {
+    private fun launchWebCheckout(
+        plan: String,
+        provider: BillingProvider,
+        changePlan: Boolean = false,
+    ) {
         if (plan == "free_trial") {
-            startSubscriptionFlow(plan)
+            btnSubscribe.performClick()
             return
         }
-        promptForCheckoutEmail(plan)
+        promptForSubscriptionEmail(plan) {
+            launchWebCheckoutWithEmail(plan, provider, changePlan)
+        }
     }
 
     private fun promptForSubscriptionEmail(plan: String, onConfirmed: (String) -> Unit) {
@@ -409,12 +417,6 @@ class ProSubscriptionActivity : AppCompatActivity() {
             message = message,
             onConfirmed = onConfirmed,
         )
-    }
-
-    private fun promptForCheckoutEmail(plan: String) {
-        promptForSubscriptionEmail(plan) {
-            launchWebCheckoutWithEmail(plan)
-        }
     }
 
     private fun promptForAccountEmail(
@@ -446,11 +448,7 @@ class ProSubscriptionActivity : AppCompatActivity() {
                 }
                 ProSubscriptionServerPrefs.setAccountEmail(this, email)
                 dialog.dismiss()
-                if (ProSubscriptionServerPrefs.isAccountEmailVerified(this, email)) {
-                    onConfirmed(email)
-                } else {
-                    requestAccountEmailVerification(email) { onConfirmed(email) }
-                }
+                confirmAccountEmail(email) { onConfirmed(email) }
             }
         }
 
@@ -464,22 +462,26 @@ class ProSubscriptionActivity : AppCompatActivity() {
             runOnUiThread {
                 result.onSuccess { verification ->
                     if (verification.isEmailMatchFallback) {
+                        pendingEmailVerification = ""
                         ProSubscriptionServerPrefs.setVerifiedAccountEmail(this, email)
                         Toast.makeText(this, verification.message, Toast.LENGTH_LONG).show()
                         onEmailMatchConfirmed()
-                    } else if (verification.hasDirectVerificationLink) {
-                        Toast.makeText(
-                            this,
-                            "Opening account confirmation. Return here and choose your plan again after verifying.",
-                            Toast.LENGTH_LONG,
-                        ).show()
-                        startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(verification.verificationUrl)))
                     } else {
-                        Toast.makeText(
-                            this,
-                            "${verification.message} Open the link on this device, then choose your plan again.",
-                            Toast.LENGTH_LONG,
-                        ).show()
+                        pendingEmailVerification = email
+                        if (verification.hasDirectVerificationLink) {
+                            Toast.makeText(
+                                this,
+                                "Opening account confirmation. Return here and choose your plan again after verifying.",
+                                Toast.LENGTH_LONG,
+                            ).show()
+                            startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(verification.verificationUrl)))
+                        } else {
+                            Toast.makeText(
+                                this,
+                                "${verification.message} Open the link on this device, then choose your plan again.",
+                                Toast.LENGTH_LONG,
+                            ).show()
+                        }
                     }
                 }.onFailure { error ->
                     Toast.makeText(this, "Unable to verify email: ${error.message}", Toast.LENGTH_LONG).show()
@@ -488,30 +490,78 @@ class ProSubscriptionActivity : AppCompatActivity() {
         }
     }
 
-    private fun startSubscriptionFlow(plan: String, emailHint: String = "") {
-        if (plan == "free_trial") {
-            activateFreeTrial(emailHint)
+    private fun confirmAccountEmail(email: String, onConfirmed: () -> Unit) {
+        if (ProSubscriptionServerPrefs.isAccountEmailVerified(this, email)) {
+            onConfirmed()
             return
         }
 
-        val playOffer = PlaySubscriptionCatalog.offerForPlan(plan)
-        val playProduct = playOffer?.let { playProducts[it.productId] }
-        if (playProduct != null && playOffer != null) {
-            billing?.launchSubscriptionPurchase(this, playProduct, playOffer)
-            return
-        }
-
-        if (SubscriptionCheckoutPolicy.isWebCheckoutEnabled(this)) {
-            val fallbackMessage = if (plan == "cheap") {
-                "Cheap plan is available on the website checkout only."
-            } else {
-                "Google Play checkout is unavailable for this plan. Opening website checkout..."
+        Toast.makeText(this, "Checking account verification...", Toast.LENGTH_SHORT).show()
+        thread {
+            ProSubscriptionRelayClient.fetchAccountInfo(this)
+            runOnUiThread {
+                if (isFinishing || isDestroyed) return@runOnUiThread
+                if (ProSubscriptionServerPrefs.isAccountEmailVerified(this, email)) {
+                    pendingEmailVerification = ""
+                    onConfirmed()
+                } else {
+                    requestAccountEmailVerification(email, onConfirmed)
+                }
             }
-            Toast.makeText(this, fallbackMessage, Toast.LENGTH_SHORT).show()
-            launchWebCheckoutWithEmail(plan)
+        }
+    }
+
+    private fun prepareEmailVerificationReturn(intent: Intent?) {
+        if (!SubscriptionCheckoutPolicy.isEmailVerificationReturn(intent?.data)) return
+        pendingEmailVerification = ProSubscriptionServerPrefs.getAccountEmail(this)
+    }
+
+    private fun refreshPendingEmailVerification() {
+        val email = pendingEmailVerification
+        if (email.isBlank() || ProSubscriptionServerPrefs.isAccountEmailVerified(this, email)) return
+
+        thread {
+            ProSubscriptionRelayClient.fetchAccountInfo(this)
+            runOnUiThread {
+                if (isFinishing || isDestroyed) return@runOnUiThread
+                if (ProSubscriptionServerPrefs.isAccountEmailVerified(this, email)) {
+                    pendingEmailVerification = ""
+                    Toast.makeText(this, "Email verified. Choose your plan to continue.", Toast.LENGTH_LONG).show()
+                }
+            }
+        }
+    }
+
+    private fun startGooglePlaySubscriptionFlow(plan: String) {
+        if (changePlanRequested) {
+            Toast.makeText(
+                this,
+                "Change this web subscription through website checkout to avoid overlapping subscriptions.",
+                Toast.LENGTH_LONG,
+            ).show()
             return
         }
+        val playOffer = PlaySubscriptionCatalog.offerForPlan(plan)
+        if (playOffer != null) {
+            val playProduct = playProducts[playOffer.productId]
+            if (playProduct != null) {
+                billing?.launchSubscriptionPurchase(this, playProduct, playOffer)
+                return
+            }
+        }
 
+        val detail = buildString {
+            append("Google Play checkout is unavailable for this plan. Choose website checkout instead.")
+            if (lastBillingError.isNotBlank()) {
+                append(" (billing: ")
+                append(lastBillingError)
+                append(")")
+            }
+        }
+        Toast.makeText(this, detail, Toast.LENGTH_LONG).show()
+    }
+
+    private fun showCheckoutUnavailableMessage() {
         val detail = buildString {
             append("No checkout is available for this plan right now.")
             if (lastBillingError.isNotBlank()) {
@@ -545,8 +595,20 @@ class ProSubscriptionActivity : AppCompatActivity() {
         }
     }
 
-    private fun launchWebCheckoutWithEmail(plan: String) {
-        Toast.makeText(this, "Preparing secure checkout...", Toast.LENGTH_SHORT).show()
+    private fun launchWebCheckoutWithEmail(
+        plan: String,
+        provider: BillingProvider,
+        changePlan: Boolean = false,
+    ) {
+        val providerName = when (provider) {
+            BillingProvider.ASAAS -> "Asaas"
+            BillingProvider.PADDLE -> "Paddle"
+            BillingProvider.GOOGLE_PLAY -> {
+                Toast.makeText(this, "Google Play is not a website checkout provider.", Toast.LENGTH_LONG).show()
+                return
+            }
+        }
+        Toast.makeText(this, "Preparing $providerName checkout...", Toast.LENGTH_SHORT).show()
         thread {
             val result = runCatching {
                 val callbackResult = ProSubscriptionServerPrefs.createWebCallbackResult(
@@ -554,10 +616,12 @@ class ProSubscriptionActivity : AppCompatActivity() {
                     purpose = ProSubscriptionServerPrefs.WebCallbackPurpose.SUBSCRIPTION,
                 )
                 val callbackUrl = SubscriptionCheckoutPolicy.createVerifiedCallbackUrl(callbackResult)
-                ProSubscriptionRelayClient.buildWebCheckoutUrl(
+                ProSubscriptionRelayClient.createWebCheckoutSession(
                     context = this,
                     plan = plan,
+                    provider = provider,
                     returnUrl = callbackUrl,
+                    changePlan = changePlan,
                 ).getOrThrow()
             }
             runOnUiThread {
@@ -612,9 +676,15 @@ class ProSubscriptionActivity : AppCompatActivity() {
             return PlayBillingManager.localizedOfferDescription(product, offer)
         }
 
-        val prices = listOf("cheap", "standard", "max")
+        val plans = listOf("cheap", "standard", "max")
+        val prices = plans
             .mapNotNull { plan -> priceFor(plan)?.let { plan to it } }
             .toMap()
+        val availablePlans = plans.filter { plan ->
+            val offer = PlaySubscriptionCatalog.offerForPlan(plan)
+            val product = offer?.let { playProducts[it.productId] }
+            offer != null && product != null && PlaySubscriptionCatalog.configuredOffer(product, offer) != null
+        }.toSet()
 
         fun updateLabel(button: RadioButton, plan: String, name: String) {
             val price = prices[plan] ?: "Google Play price unavailable"
@@ -624,7 +694,10 @@ class ProSubscriptionActivity : AppCompatActivity() {
         updateLabel(rbCheap, "cheap", "Cheap")
         updateLabel(rbStandard, "standard", "Standard")
         updateLabel(rbMax, "max", "Max")
-        composeState = composeState.copy(playPriceLabels = prices)
+        composeState = composeState.copy(
+            playPriceLabels = prices,
+            playCheckoutAvailablePlans = availablePlans,
+        )
     }
 
     private fun refreshPurchaseStatusFromStore() {
@@ -987,7 +1060,6 @@ class ProSubscriptionActivity : AppCompatActivity() {
         const val EXTRA_CALLBACK_MESSAGE = "extra_callback_message"
         const val EXTRA_FROM_WEB_CALLBACK = "extra_from_web_callback"
         const val EXTRA_INITIAL_PLAN = "extra_initial_plan"
-        const val EXTRA_AUTO_START_WEB_CHECKOUT = "extra_auto_start_web_checkout"
-        const val EXTRA_AUTO_WEB_CHECKOUT_EMAIL = "extra_auto_web_checkout_email"
+        const val EXTRA_CHANGE_PLAN = "extra_change_plan"
     }
 }

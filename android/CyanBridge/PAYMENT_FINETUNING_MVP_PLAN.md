@@ -20,13 +20,13 @@ HTTPS is mandatory, but Asaas explicitly says server-side tokenization remains S
 - The form correctly asks only for cardholder name, email, card number, expiry, and CVV.
 - Asaas customers are created with `foreignCustomer: true` at `app/api/web-subscribe/route.ts:303`.
 - The published tokenization schema still marks CPF/CNPJ, postal code, address number, and phone as required. This conflicts with what Asaas support told you about foreign customers and must be verified against live production before release.
-- All provider prices currently include the Paddle adjustment through `lib/relay-kv.ts:25`, so Asaas customers are also charged `$1.55`, `$5.75`, or `$21.50` converted to BRL. They should instead receive the lower Asaas-specific price if that is the intended benefit.
-- Pricing is duplicated and inconsistent: `lib/relay-auth.ts` contains `$1/$5/$20`, while `lib/relay-kv.ts` contains `$1.55/$5.75/$21.50`.
-- Paddle is automatically selected whenever configured at `app/api/web-subscribe/route.ts:636`; users do not get a clean provider choice.
+- `lib/billing-catalog.ts` now owns separate provider prices: Asaas references `$1.13`, `$5.25`, and `$20.70` per month before BRL conversion; Paddle prices are `$1.55`, `$5.75`, and `$21.50`.
+- The deployed `POST /api/billing/checkout-sessions` endpoint requires a bearer token and an explicit `asaas` or `paddle` provider. It returns a short-lived opaque `/web-subscribe?checkout_session=...` URL.
+- Android presents an explicit provider choice for website checkout instead of letting the server select Paddle implicitly.
 - The Paddle production page contains “beta,” environment details, price IDs, and test-card instructions at `PaddleCheckoutClient.tsx:159-205`.
-- The deployed `/web-subscribe` compatibility contract still requires `api_token` in its initial browser URL. Android no longer accepts a bearer token in a callback URL; replacing the initial URL token requires the server-side checkout-session API below.
+- The browser never receives an Android bearer token. Android creates an authenticated checkout session and opens only its opaque checkout URL.
 - `ensureRelayUser()` can restore an existing account solely by matching an unverified email at `lib/relay-kv.ts:174-205`. This is an account-takeover risk and must be fixed before improving checkout.
-- The Android callback trusts URL parameters to create local entitlement at `WebSubscriptionCallbackActivity.kt:62-91`. A callback must only wake the app; the app should verify entitlement with the server.
+- The Android callback only consumes its one-time opaque result and verifies entitlement with the server; it does not trust entitlement data from URL parameters.
 - The Asaas webhook acknowledges events even when durable event persistence fails at `app/api/webhooks/asaas/route.ts:334-389`. That conflicts with Asaas’s webhook guidance.
 - Payment webhooks do not directly activate or renew the corresponding RelayUser. The current flow therefore polls Asaas repeatedly.
 - Current checkout tests still target the old legacy HTML and do not cover foreign-customer tokenization, the direct form, Paddle pricing, duplicate submissions, or cross-provider plan changes.
@@ -44,29 +44,21 @@ Validate these operations with a dedicated test customer:
 - Capture the exact webhook sequence for authorization, confirmation, rejection, refund, and cancellation.
 - Obtain written confirmation from Asaas that the omitted holder fields are supported for foreign customers in production.
 
-2. **Fix authentication before payment UX**
+2. **Keep checkout authentication provider-specific**
 
-Until the checkout-session endpoint is deployed, Android must use the deployed relay contract:
-
-```text
-GET /web-subscribe?plan=<plan>&return_url=<verified HTTPS app link with opaque result>&api_token=<account token>
-```
-
-The callback must contain only the one-time opaque result and Android must call `/pro/verify`; it must never install a bearer credential from a URL. Do not switch the client to the following API until the backend is deployed and confirmed in production.
-
-Then replace the initial URL-based bearer-token flow with an authenticated checkout-session API:
+The deployed checkout-session API is the only Android checkout entry point:
 
 ```text
-Android POST /billing/checkout-sessions
+Android POST /api/billing/checkout-sessions
 Authorization: Bearer <account token>
-Body: { plan, provider }
+Body: { plan, provider, return_url, change_plan }
                 ↓
 Server returns an opaque, short-lived HTTPS checkout URL
                 ↓
 Browser sees only the random checkout-session ID
 ```
 
-The session should contain the user ID, plan, provider, expected amount, currency, expiry, and state. It must not expose the account API token.
+The session contains the user ID, plan, provider, return URL, expiry, and state. It must not expose the account API token. The callback contains only the one-time opaque result, and Android calls `/pro/verify` after returning.
 
 Also:
 

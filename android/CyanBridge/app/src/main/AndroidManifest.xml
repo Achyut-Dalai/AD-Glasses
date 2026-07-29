@@ -250,8 +250,20 @@
         <!-- Pro subscription configuration activities -->
         <activity
             android:name=".agent.ProSubscriptionActivity"
-            android:exported="false"
-            android:label="Pro Subscription" />
+            android:exported="true"
+            android:label="Pro Subscription">
+            <intent-filter>
+                <action android:name="android.intent.action.VIEW" />
+
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.BROWSABLE" />
+
+                <data
+                    android:scheme="fersaiyan"
+                    android:host="pro-sub"
+                    android:path="/restore" />
+            </intent-filter>
+        </activity>
 
         <activity
             android:name=".agent.WebSubscriptionCallbackActivity"

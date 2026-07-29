@@ -12,6 +12,9 @@ object SubscriptionCheckoutPolicy {
     private const val CALLBACK_SCHEME = "https"
     private const val CALLBACK_HOST = "cyanbridge.vercel.app"
     private const val CALLBACK_PATH = "/web-subscribe/callback"
+    private const val EMAIL_VERIFICATION_SCHEME = "fersaiyan"
+    private const val EMAIL_VERIFICATION_HOST = "pro-sub"
+    private const val EMAIL_VERIFICATION_PATH = "/restore"
 
     fun resolveWebCheckoutUrl(context: Context): String {
         val configured = BuildConfig.WEB_SUBSCRIBE_URL.trim()
@@ -49,6 +52,32 @@ object SubscriptionCheckoutPolicy {
         return country in allowed
     }
 
+    fun checkoutSessionEndpoint(checkoutPageUrl: String): String {
+        val checkoutPageUri = Uri.parse(checkoutPageUrl.trim())
+        require(checkoutPageUri.scheme != null && checkoutPageUri.host != null) {
+            "Website checkout URL is invalid"
+        }
+        return checkoutPageUri.buildUpon()
+            .path("/api/billing/checkout-sessions")
+            .clearQuery()
+            .fragment(null)
+            .build()
+            .toString()
+    }
+
+    fun isExpectedCheckoutSessionUrl(checkoutPageUrl: String, checkoutUrl: String): Boolean {
+        val checkoutPageUri = Uri.parse(checkoutPageUrl.trim())
+        val checkoutUri = Uri.parse(checkoutUrl.trim())
+        return checkoutUri.scheme?.equals(checkoutPageUri.scheme, ignoreCase = true) == true &&
+            checkoutUri.host?.equals(checkoutPageUri.host, ignoreCase = true) == true &&
+            checkoutUri.port == checkoutPageUri.port &&
+            checkoutUri.path == checkoutPageUri.path &&
+            checkoutUri.userInfo == null &&
+            checkoutUri.fragment == null &&
+            checkoutUri.getQueryParameter("api_token") == null &&
+            checkoutUri.getQueryParameter("checkout_session").isNullOrBlank().not()
+    }
+
     fun createVerifiedCallbackUrl(result: String): String {
         require(result.isNotBlank()) { "Checkout callback result is required" }
         return Uri.Builder()
@@ -61,15 +90,26 @@ object SubscriptionCheckoutPolicy {
     }
 
     fun callbackResultFrom(uri: Uri?): String? {
-        if (!isTrustedCallbackUri(uri)) return null
-        return uri?.getQueryParameter(CALLBACK_RESULT_PARAMETER)?.trim()?.ifBlank { null }
+        val callbackUri = uri ?: return null
+        if (!isTrustedCallbackUri(callbackUri)) return null
+        return callbackUri.getQueryParameter(CALLBACK_RESULT_PARAMETER)?.trim()?.ifBlank { null }
+    }
+
+    fun isEmailVerificationReturn(uri: Uri?): Boolean {
+        val returnUri = uri ?: return false
+        return returnUri.scheme.equals(EMAIL_VERIFICATION_SCHEME, ignoreCase = true) &&
+            returnUri.host.equals(EMAIL_VERIFICATION_HOST, ignoreCase = true) &&
+            returnUri.path == EMAIL_VERIFICATION_PATH &&
+            returnUri.port == -1 &&
+            returnUri.userInfo == null
     }
 
     private fun isTrustedCallbackUri(uri: Uri?): Boolean {
-        return uri?.scheme?.equals(CALLBACK_SCHEME, ignoreCase = true) == true &&
-            uri?.host?.equals(CALLBACK_HOST, ignoreCase = true) == true &&
-            uri?.path == CALLBACK_PATH &&
-            uri?.port == -1 &&
-            uri?.userInfo == null
+        val callbackUri = uri ?: return false
+        return callbackUri.scheme.equals(CALLBACK_SCHEME, ignoreCase = true) &&
+            callbackUri.host.equals(CALLBACK_HOST, ignoreCase = true) &&
+            callbackUri.path == CALLBACK_PATH &&
+            callbackUri.port == -1 &&
+            callbackUri.userInfo == null
     }
 }

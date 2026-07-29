@@ -463,8 +463,10 @@ The CyanBridge app uses a **Vercel-hosted Next.js server** instead of the Termux
 
 | Endpoint | Method | Purpose |
 |---|---|---|
-| `/web-subscribe` | GET | Checkout flow — renders a CyanBridge-hosted control page plus the Asaas card link |
-| `/web-subscribe/status` | GET | Polls Asaas subscription state before app callback |
+| `/api/billing/catalog` | GET | Public Asaas/Paddle provider offers used for price disclosure |
+| `/api/billing/checkout-sessions` | POST | Authenticated provider-specific checkout-session creation |
+| `/web-subscribe` | GET | Opaque checkout-session page; requires `checkout_session` |
+| `/web-subscribe/status` | GET | Checks the selected Asaas or Paddle subscription state |
 | `/web-subscribe/success` | GET | Callback after payment confirmation — updates user status |
 | `/web-subscribe/cancel` | GET/POST | Subscription cancellation page |
 | `/pro/verify` | POST | Subscription verification — checks Asaas API |
@@ -487,25 +489,21 @@ The CyanBridge app uses a **Vercel-hosted Next.js server** instead of the Termux
 | `standard` | $5 |
 | `max` | $20 |
 
-### Payment flow (Asaas recurring credit card)
+### Payment flow (Asaas or Paddle)
 
-1. App opens `GET /web-subscribe?plan=standard&return_url=...&api_token=...`
-2. Server fetches live USD→BRL exchange rate
-3. Creates Asaas customer with `foreignCustomer: true` (no CPF/CNPJ required)
-4. Creates Asaas subscription with `billingType: "CREDIT_CARD"`, `cycle: "MONTHLY"`
-5. Server resolves the subscription's hosted checkout `invoiceUrl` from the first Asaas charge.
-6. App loads a CyanBridge-controlled page that opens the Asaas card form in a separate secure page.
-7. That page polls `/web-subscribe/status` and only returns to the app after Asaas reports the recurring subscription as active.
-8. Asaas webhooks still sync renewals/cancellations into Vercel KV.
-9. App calls `POST /pro/verify` → checks subscription status
+1. App lets the user choose Asaas or Paddle and verifies the account email.
+2. App posts `{ plan, provider, return_url, change_plan }` to `/api/billing/checkout-sessions` with the account bearer token.
+3. Server returns a short-lived opaque `/web-subscribe?checkout_session=...` URL. The browser never receives the bearer token.
+4. The session page renders the Asaas BRL card form or redirects to the Paddle checkout experience for the chosen provider.
+5. Provider confirmation and webhooks update the RelayUser subscription state.
+6. The server returns through the verified app link with only the one-time opaque result.
+7. App calls `POST /pro/verify` to fetch the authoritative entitlement.
 
 ### Cancel flow
 
-1. App opens `GET /web-subscribe/cancel?api_token=...`
-2. Server shows confirmation page
-3. User clicks "Yes, Cancel" → POST to same endpoint
-4. Server calls Asaas `DELETE /subscriptions/{id}`
-5. Updates user status to inactive in Vercel KV
+1. App posts the stored account token to `/web-subscribe/cancel`.
+2. Server cancels the selected Asaas or Paddle subscription at the next billing period.
+3. Server updates the RelayUser status in Vercel KV.
 
 ### OpenRouter integration
 
@@ -516,8 +514,10 @@ The CyanBridge app uses a **Vercel-hosted Next.js server** instead of the Termux
 ### Key source files (`Carelens_website/` path)
 
 - `lib/relay-kv.ts` — RelayUser KV storage layer
+- `lib/billing-catalog.ts` — canonical provider-aware plan and price catalog
 - `lib/asaas.ts` — Asaas API client (foreigner customer support)
 - `lib/exchange-rate.ts` — USD→BRL rate fetching
+- `app/api/billing/checkout-sessions/route.ts` — authenticated checkout-session creation
 - `app/api/web-subscribe/route.ts` — Checkout flow
 - `app/api/web-subscribe/cancel/route.ts` — Cancel flow
 - `app/api/pro/verify/route.ts` — Subscription verification
