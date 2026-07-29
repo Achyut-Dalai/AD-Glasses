@@ -27,6 +27,13 @@ class DeviceClassifierTest {
     }
 
     @Test
+    fun eyevue_detectedByName() {
+        assertEquals(DeviceClass.EYEVUE, DeviceClassifier.guessDeviceClass("Eyevue Glasses"))
+        assertEquals(DeviceClass.EYEVUE, DeviceClassifier.guessDeviceClass("EV_001"))
+        assertEquals(DeviceClass.EYEVUE, DeviceClassifier.guessDeviceClass("Eye-Vue"))
+    }
+
+    @Test
     fun genericAudio_detectedByName() {
         assertEquals(DeviceClass.GENERIC_AUDIO, DeviceClassifier.guessDeviceClass("AirPods Pro"))
         assertEquals(DeviceClass.GENERIC_AUDIO, DeviceClassifier.guessDeviceClass("BT Headset"))

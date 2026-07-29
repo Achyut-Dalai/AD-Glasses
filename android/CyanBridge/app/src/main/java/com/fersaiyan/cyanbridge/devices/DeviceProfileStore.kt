@@ -59,6 +59,9 @@ object DeviceProfileStore {
     fun isMeizuMyvuSelected(context: Context): Boolean =
         selectedClass(context) == DeviceClass.MEIZU_MYVU
 
+    fun isEyevueSelected(context: Context): Boolean =
+        selectedClass(context) == DeviceClass.EYEVUE
+
     fun getUserOverrideForMac(context: Context, mac: String): DeviceClass? {
         val key = overrideKey(mac)
         val raw = prefs(context).getString(key, null) ?: return null

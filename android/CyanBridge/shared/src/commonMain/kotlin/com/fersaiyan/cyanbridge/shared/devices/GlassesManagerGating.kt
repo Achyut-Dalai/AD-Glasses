@@ -28,7 +28,7 @@ object GlassesManagerGating {
     fun visibleActions(deviceClass: DeviceClass): Set<Action> {
         val base = linkedSetOf(Action.MEETING_CAPTURE)
         when (deviceClass) {
-            DeviceClass.HEY_CYAN -> {
+            DeviceClass.HEY_CYAN, DeviceClass.EYEVUE -> {
                 base.add(Action.HEY_CYAN_EXTRAS)
                 base.add(Action.STATUS_BATTERY)
                 base.add(Action.STATUS_STORAGE)

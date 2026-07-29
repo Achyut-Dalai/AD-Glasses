@@ -34,6 +34,7 @@ import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
+import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
@@ -530,6 +531,8 @@ private fun CoreGlassesControls(
     ) {
         GlassesAssistantControls(state, onAction)
         Spacer(Modifier.height(8.dp))
+        RecordingSettingsControls(state, onAction)
+        Spacer(Modifier.height(8.dp))
         SectionTitle("Media controls")
         ActionRow(
             primaryLabel = "Photo",
@@ -584,6 +587,112 @@ private fun CoreGlassesControls(
             )
         }
     }
+}
+
+@Composable
+private fun RecordingSettingsControls(
+    state: GlassesDashboardUiState,
+    onAction: (GlassesDashboardAction) -> Unit,
+) {
+    Column(
+        modifier = Modifier.testTag("glasses_recording_settings"),
+        verticalArrangement = Arrangement.spacedBy(8.dp),
+    ) {
+        SectionTitle("Glasses capture settings")
+        Text(
+            text = "Read from the connected glasses before changing these device-stored settings.",
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Column(modifier = Modifier.weight(1f)) {
+                Text("Wearing detection", style = MaterialTheme.typography.titleSmall)
+                Text(
+                    text = when (state.wearingDetectionEnabled) {
+                        true -> "Enabled on the glasses"
+                        false -> "Disabled on the glasses"
+                        null -> "Load settings to read its current state"
+                    },
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+            }
+            Switch(
+                checked = state.wearingDetectionEnabled == true,
+                enabled = state.wearingDetectionEnabled != null,
+                onCheckedChange = { enabled ->
+                    onAction(GlassesDashboardAction.SetWearingDetection(enabled))
+                },
+                modifier = Modifier.testTag("wearing_detection_switch"),
+            )
+        }
+        RecordingDurationSelector(
+            title = "Maximum video length",
+            currentSeconds = state.videoRecordingDurationSeconds,
+            optionsSeconds = state.videoRecordingDurationOptionsSeconds,
+            onSelect = { onAction(GlassesDashboardAction.SetVideoRecordingDuration(it)) },
+            testTagPrefix = "video_recording_duration",
+        )
+        RecordingDurationSelector(
+            title = "Maximum audio length",
+            currentSeconds = state.audioRecordingDurationSeconds,
+            optionsSeconds = state.audioRecordingDurationOptionsSeconds,
+            onSelect = { onAction(GlassesDashboardAction.SetAudioRecordingDuration(it)) },
+            testTagPrefix = "audio_recording_duration",
+        )
+        OutlinedButton(
+            onClick = { onAction(GlassesDashboardAction.RefreshRecordingSettings) },
+            modifier = Modifier
+                .fillMaxWidth()
+                .testTag("refresh_recording_settings"),
+        ) {
+            Text("Load settings from glasses")
+        }
+    }
+}
+
+@Composable
+private fun RecordingDurationSelector(
+    title: String,
+    currentSeconds: Int?,
+    optionsSeconds: List<Int>,
+    onSelect: (Int) -> Unit,
+    testTagPrefix: String,
+) {
+    Text(title, style = MaterialTheme.typography.titleSmall)
+    if (optionsSeconds.isEmpty()) {
+        Text(
+            text = "Load settings to see the limits supported by these glasses.",
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
+        return
+    }
+    optionsSeconds.chunked(3).forEach { rowOptions ->
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
+        ) {
+            rowOptions.forEach { seconds ->
+                FilterChip(
+                    selected = currentSeconds == seconds,
+                    onClick = { onSelect(seconds) },
+                    label = { Text(formatRecordingDuration(seconds)) },
+                    modifier = Modifier
+                        .weight(1f)
+                        .testTag("${testTagPrefix}_$seconds"),
+                )
+            }
+            repeat(3 - rowOptions.size) { Spacer(Modifier.weight(1f)) }
+        }
+    }
+}
+
+private fun formatRecordingDuration(seconds: Int): String = when {
+    seconds < 60 -> "${seconds}s"
+    seconds % 3600 == 0 -> "${seconds / 3600}h"
+    seconds % 60 == 0 -> "${seconds / 60}m"
+    else -> "${seconds}s"
 }
 
 @Composable

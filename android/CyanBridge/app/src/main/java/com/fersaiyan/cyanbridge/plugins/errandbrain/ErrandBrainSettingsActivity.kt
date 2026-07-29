@@ -244,7 +244,7 @@ fun ErrandBrainSettingsScreen(
                                     defaultPriority = priority
                                     ErrandBrainPreferences.setDefaultPriority(context, priority)
                                 },
-                                label = { Text(priority.capitalize()) },
+                                label = { Text(priority.replaceFirstChar { it.titlecase() }) },
                                 colors = FilterChipDefaults.filterChipColors(
                                     selectedContainerColor = MaterialTheme.colorScheme.primary,
                                 ),
@@ -268,7 +268,7 @@ fun ErrandBrainSettingsScreen(
                                     defaultCategory = category
                                     ErrandBrainPreferences.setDefaultCategory(context, category)
                                 },
-                                label = { Text(category.capitalize()) },
+                                label = { Text(category.replaceFirstChar { it.titlecase() }) },
                                 colors = FilterChipDefaults.filterChipColors(
                                     selectedContainerColor = MaterialTheme.colorScheme.primary,
                                 ),

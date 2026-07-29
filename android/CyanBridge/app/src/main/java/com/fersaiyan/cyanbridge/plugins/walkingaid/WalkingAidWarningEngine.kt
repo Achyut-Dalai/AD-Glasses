@@ -72,7 +72,7 @@ object WalkingAidWarningEngine {
                             "right" -> "to your right"
                             else -> "directly ahead"
                         }
-                        candidateAlert = "${obj.label.capitalize()} $posText."
+                        candidateAlert = "${obj.label.replaceFirstChar { it.titlecase() }} $posText."
                         recordAlert(alertKey, now)
                         break
                     }

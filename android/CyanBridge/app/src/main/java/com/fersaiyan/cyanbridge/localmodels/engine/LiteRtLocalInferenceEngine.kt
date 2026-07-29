@@ -15,7 +15,6 @@ import com.google.ai.edge.litertlm.Message
 import com.google.ai.edge.litertlm.SamplerConfig
 import com.google.ai.edge.litertlm.ToolProvider
 import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.flow.collect
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withContext
@@ -265,37 +264,18 @@ class LiteRtLocalInferenceEngine(private val context: Context = MyApplication.CO
         userContents: Contents?,
         onToken: (String) -> Unit,
     ): String {
-        var lastText = ""
-        var finalText = ""
-
-        val stream = if (userContents != null) {
-            conversation.sendMessageAsync(userContents, emptyMap<String, Any>())
+        // LiteRT-LM 0.14's async callback targets a coroutine ABI removed in 1.10.
+        // Generation already runs on Dispatchers.IO, so use the synchronous SDK call safely.
+        val message = if (userContents != null) {
+            conversation.sendMessage(userContents, emptyMap<String, Any>())
         } else {
-            conversation.sendMessageAsync(prompt, emptyMap<String, Any>())
+            conversation.sendMessage(prompt, emptyMap<String, Any>())
         }
-
-        stream.collect { message ->
-            val current = extractText(message)
-            if (current.isBlank()) return@collect
-            val delta = incrementalDelta(previous = lastText, current = current)
-            if (delta.isNotEmpty()) {
-                onToken(delta)
-            }
-            lastText = current
-            finalText = current
+        val text = extractText(message)
+        if (text.isNotBlank()) {
+            onToken(text)
         }
-
-        if (finalText.isNotBlank()) return finalText
-
-        val fallback = if (userContents != null) {
-            extractText(conversation.sendMessage(userContents, emptyMap<String, Any>()))
-        } else {
-            extractText(conversation.sendMessage(prompt, emptyMap<String, Any>()))
-        }
-        if (fallback.isNotBlank()) {
-            onToken(fallback)
-        }
-        return fallback
+        return text
     }
 
     private fun buildUserContents(config: GenerationConfig): Contents? {

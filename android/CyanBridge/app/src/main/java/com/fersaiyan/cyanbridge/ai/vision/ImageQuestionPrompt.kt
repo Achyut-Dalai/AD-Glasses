@@ -27,6 +27,20 @@ data class ResolvedImageQuestionPrompt(
 }
 
 object ImageQuestionDefaults {
+    fun questionCueForLanguage(languageTag: String): String = when (
+        Locale.forLanguageTag(languageTag).language.lowercase(Locale.ROOT)
+    ) {
+        "pt" -> "Pergunte."
+        "es" -> "Pregunta."
+        "de" -> "Frag."
+        "fr" -> "Demandez."
+        "it" -> "Chiedi."
+        "zh" -> "请提问。"
+        "ko" -> "질문하세요."
+        "ru" -> "Спросите."
+        else -> "Ask."
+    }
+
     fun questionForLanguage(languageTag: String): String = when (
         Locale.forLanguageTag(languageTag).language.lowercase(Locale.ROOT)
     ) {

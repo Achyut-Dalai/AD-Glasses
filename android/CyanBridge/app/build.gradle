@@ -197,7 +197,7 @@ dependencies {
     }
 
     // LiteRT runtime for local models (Google's inference engine)
-    implementation("com.google.ai.edge.litertlm:litertlm-android:0.10.0")
+    implementation("com.google.ai.edge.litertlm:litertlm-android:0.14.0")
 
     // Generic LiteRT / TensorFlow Lite runtime for .tflite vision models (YOLO, Depth)
     implementation("org.tensorflow:tensorflow-lite:2.16.1")

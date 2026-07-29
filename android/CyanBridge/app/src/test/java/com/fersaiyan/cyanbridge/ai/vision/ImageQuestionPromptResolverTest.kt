@@ -63,6 +63,13 @@ class ImageQuestionPromptResolverTest {
     }
 
     @Test
+    fun questionCueUsesTheSelectedAppLanguage() {
+        assertEquals("Ask.", ImageQuestionDefaults.questionCueForLanguage("en"))
+        assertEquals("Pergunte.", ImageQuestionDefaults.questionCueForLanguage("pt-BR"))
+        assertEquals("질문하세요.", ImageQuestionDefaults.questionCueForLanguage("ko"))
+    }
+
+    @Test
     fun everyImageRouteReceivesTheSameResolvedPrompt() {
         val resolved = ImageQuestionPromptResolver.resolve(
             settings = builtInSettings("de"),

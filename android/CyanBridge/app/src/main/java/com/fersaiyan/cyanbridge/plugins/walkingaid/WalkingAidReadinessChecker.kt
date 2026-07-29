@@ -39,8 +39,10 @@ object WalkingAidReadinessChecker {
             val yoloType = WalkingAidPreferences.getYoloModelType(context)
             val candidates = if (yoloType == WalkingAidPreferences.MODEL_TYPE_YOLO_WORLD) {
                 listOf(
+                    File(context.filesDir, "yolo_world.tflite"),
                     File(context.filesDir, "yolo_world_v2_s.tflite"),
                     File(context.filesDir, "yoloworld.tflite"),
+                    File(context.getExternalFilesDir(null), "yolo_world.tflite"),
                     File(context.getExternalFilesDir(null), "yolo_world_v2_s.tflite"),
                     File(context.getExternalFilesDir(null), "yoloworld.tflite"),
                     File(context.filesDir, "yolo11n_float16.tflite")
@@ -56,7 +58,7 @@ object WalkingAidReadinessChecker {
             val validYoloFile = candidates.firstOrNull { isValidModelFile(it) }
             val yoloReady = validYoloFile != null
             if (!yoloReady) {
-                val expected = if (yoloType == WalkingAidPreferences.MODEL_TYPE_YOLO_WORLD) "yolo_world_v2_s.tflite" else "yolo11n_float16.tflite"
+                val expected = if (yoloType == WalkingAidPreferences.MODEL_TYPE_YOLO_WORLD) "yolo_world.tflite" else "yolo11n_float16.tflite"
                 val corrupted = candidates.any { it.exists() }
                 if (corrupted) {
                     details.add("❌ Local YOLO model file is corrupted or incomplete ($expected)")
@@ -83,12 +85,15 @@ object WalkingAidReadinessChecker {
         } else {
             val file = File(context.filesDir, "depth_anything_v2_small.tflite")
             val extFile = File(context.getExternalFilesDir(null), "depth_anything_v2_small.tflite")
-            val hasDepth = isValidModelFile(file) || isValidModelFile(extFile)
+            val depthAnything3 = File(context.filesDir, "depth_anything_3_small.tflite")
+            val externalDepthAnything3 = File(context.getExternalFilesDir(null), "depth_anything_3_small.tflite")
+            val hasDepth = isValidModelFile(file) || isValidModelFile(extFile) ||
+                isValidModelFile(depthAnything3) || isValidModelFile(externalDepthAnything3)
             if (!hasDepth) {
-                if (file.exists() || extFile.exists()) {
-                    details.add("❌ Local Depth Anything model file is corrupted or incomplete (depth_anything_v2_small.tflite)")
+                if (file.exists() || extFile.exists() || depthAnything3.exists() || externalDepthAnything3.exists()) {
+                    details.add("❌ Local Depth Anything model file is corrupted or incomplete (depth_anything_3_small.tflite)")
                 } else {
-                    details.add("❌ Local Depth Anything model file missing (depth_anything_v2_small.tflite)")
+                    details.add("❌ Local Depth Anything model file missing (depth_anything_3_small.tflite)")
                 }
             }
             hasDepth

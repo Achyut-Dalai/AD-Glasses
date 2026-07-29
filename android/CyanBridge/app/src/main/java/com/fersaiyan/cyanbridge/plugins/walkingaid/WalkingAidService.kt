@@ -481,6 +481,7 @@ class WalkingAidService : Service() {
         tts?.setOnUtteranceProgressListener(object : UtteranceProgressListener() {
             override fun onStart(uttId: String?) {}
             override fun onDone(uttId: String?) {}
+            @Deprecated("Deprecated in Java")
             override fun onError(uttId: String?) {}
         })
         tts?.speak(text, TextToSpeech.QUEUE_FLUSH, null, utteranceId)

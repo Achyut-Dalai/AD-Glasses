@@ -153,9 +153,7 @@ object LocalDataBackupManager {
 
         val chatsResult = restoreChats(chatsJson)
         val prefsFileCount = restorePrefs(appCtx, prefsJson)
-        if (vaultJson != null) {
-            MemoryVaultService.importSnapshotJsonBlocking(vaultJson!!)
-        }
+        vaultJson?.let(MemoryVaultService::importSnapshotJsonBlocking)
 
         return ImportResult(
             threadCount = chatsResult.first,

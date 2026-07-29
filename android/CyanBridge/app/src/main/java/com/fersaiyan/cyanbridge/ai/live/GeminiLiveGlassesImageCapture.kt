@@ -22,23 +22,38 @@ class GeminiLiveGlassesImageCapture {
                 byteArrayOf(0x02, 0x01, 0x06, quality.sdkValue.toByte(), quality.sdkValue.toByte()),
             ) { _, _ -> }
             delay(CAPTURE_SETTLE_MS)
-
-            val output = ByteArrayOutputStream()
-            val complete = CompletableDeferred<Boolean>()
-            LargeDataHandler.getInstance().getPictureThumbnails { _, isComplete, data ->
-                if (data != null && data.isNotEmpty()) output.write(data)
-                if (isComplete && !complete.isCompleted) complete.complete(output.size() > 0)
-            }
-            check(withTimeoutOrNull(TRANSFER_TIMEOUT_MS) { complete.await() } == true) {
-                "Glasses thumbnail transfer timed out"
-            }
-            return output.toByteArray().also { image ->
-                check(BitmapFactory.decodeByteArray(image, 0, image.size) != null) {
-                    "Glasses returned an invalid thumbnail"
-                }
-            }
+            return receiveThumbnail()
         } finally {
             GlassesSessionCoordinator.releaseBackgroundCommand(permit)
+        }
+    }
+
+    /** Reads the thumbnail already taken by the glasses' physical AI-photo button. */
+    suspend fun captureFromHardwareButton(): ByteArray {
+        check(BleOperateManager.getInstance().isConnected) { "Glasses are not connected" }
+        val permit = GlassesSessionCoordinator.tryAcquireBackgroundCommand()
+            ?: throw IllegalStateException("Glasses are busy with another operation")
+        try {
+            return receiveThumbnail()
+        } finally {
+            GlassesSessionCoordinator.releaseBackgroundCommand(permit)
+        }
+    }
+
+    private suspend fun receiveThumbnail(): ByteArray {
+        val output = ByteArrayOutputStream()
+        val complete = CompletableDeferred<Boolean>()
+        LargeDataHandler.getInstance().getPictureThumbnails { _, isComplete, data ->
+            if (data != null && data.isNotEmpty()) output.write(data)
+            if (isComplete && !complete.isCompleted) complete.complete(output.size() > 0)
+        }
+        check(withTimeoutOrNull(TRANSFER_TIMEOUT_MS) { complete.await() } == true) {
+            "Glasses thumbnail transfer timed out"
+        }
+        return output.toByteArray().also { image ->
+            check(BitmapFactory.decodeByteArray(image, 0, image.size) != null) {
+                "Glasses returned an invalid thumbnail"
+            }
         }
     }
 

@@ -23,6 +23,11 @@ data class GlassesDashboardUiState(
     val imageQueryLabel: String = "Test image AI description",
     val imageThumbnailQualitySdkValue: Int = 5,
     val imageThumbnailQualityLabel: String = "Detailed",
+    val wearingDetectionEnabled: Boolean? = null,
+    val videoRecordingDurationSeconds: Int? = null,
+    val videoRecordingDurationOptionsSeconds: List<Int> = emptyList(),
+    val audioRecordingDurationSeconds: Int? = null,
+    val audioRecordingDurationOptionsSeconds: List<Int> = emptyList(),
     val showHeyCyanControls: Boolean = false,
     val showMetaRaybanControls: Boolean = false,
     val showMeizuMyvuControls: Boolean = false,
@@ -190,6 +195,10 @@ sealed interface GlassesDashboardAction {
     data class RunNativePluginShortcut(val action: NativePluginShortcutAction) : GlassesDashboardAction
     data class SelectAssistantMode(val mode: GlassesAssistantMode) : GlassesDashboardAction
     data class SelectImageThumbnailQuality(val sdkValue: Int) : GlassesDashboardAction
+    data object RefreshRecordingSettings : GlassesDashboardAction
+    data class SetWearingDetection(val enabled: Boolean) : GlassesDashboardAction
+    data class SetVideoRecordingDuration(val seconds: Int) : GlassesDashboardAction
+    data class SetAudioRecordingDuration(val seconds: Int) : GlassesDashboardAction
     data object TestVoiceQuestion : GlassesDashboardAction
     data object TestImageQuestion : GlassesDashboardAction
     data object OpenExternalImageAutomationDiagnostics : GlassesDashboardAction

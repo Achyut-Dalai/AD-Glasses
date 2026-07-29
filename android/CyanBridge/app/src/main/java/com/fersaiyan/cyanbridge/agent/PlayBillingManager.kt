@@ -118,13 +118,7 @@ class PlayBillingManager(
         billingClient.queryProductDetailsAsync(params, object : ProductDetailsResponseListener {
             override fun onProductDetailsResponse(result: BillingResult, queryResult: QueryProductDetailsResult) {
                 if (result.responseCode == BillingClient.BillingResponseCode.OK) {
-                    val detailsList = queryResult.productDetailsList
-                    val resultMap = mutableMapOf<String, ProductDetails>()
-                    if (detailsList != null) {
-                        for (item in detailsList) {
-                            resultMap[item.productId] = item
-                        }
-                    }
+                    val resultMap = queryResult.productDetailsList.associateBy { it.productId }
                     onResult(resultMap)
                 } else {
                     onError("product_details_${result.responseCode}")

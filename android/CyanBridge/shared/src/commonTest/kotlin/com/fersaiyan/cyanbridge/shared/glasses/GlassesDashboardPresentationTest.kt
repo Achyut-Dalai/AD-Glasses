@@ -23,6 +23,9 @@ class GlassesDashboardPresentationTest {
         assertFalse(state.wifiAdbDebug.canStop)
         assertEquals(5, state.imageThumbnailQualitySdkValue)
         assertEquals("Detailed", state.imageThumbnailQualityLabel)
+        assertNull(state.wearingDetectionEnabled)
+        assertEquals(emptyList(), state.videoRecordingDurationOptionsSeconds)
+        assertEquals(emptyList(), state.audioRecordingDurationOptionsSeconds)
     }
 
     @Test
@@ -37,6 +40,22 @@ class GlassesDashboardPresentationTest {
         val action = GlassesDashboardAction.SelectImageThumbnailQuality(4)
 
         assertEquals(4, action.sdkValue)
+    }
+
+    @Test
+    fun captureSettingsActionsKeepTheirDeviceValues() {
+        assertEquals(
+            true,
+            GlassesDashboardAction.SetWearingDetection(true).enabled,
+        )
+        assertEquals(
+            180,
+            GlassesDashboardAction.SetVideoRecordingDuration(180).seconds,
+        )
+        assertEquals(
+            3600,
+            GlassesDashboardAction.SetAudioRecordingDuration(3600).seconds,
+        )
     }
 
     @Test

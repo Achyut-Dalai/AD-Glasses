@@ -22,6 +22,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import java.util.Locale
+import java.util.concurrent.atomic.AtomicBoolean
 
 /** Visible, activity-scoped Gemini Live preview. It never records after Stop or background pause. */
 class GeminiLiveActivity : AppCompatActivity(), GeminiLiveClient.Listener {
@@ -32,8 +33,11 @@ class GeminiLiveActivity : AppCompatActivity(), GeminiLiveClient.Listener {
     private lateinit var indicators: TextView
     private lateinit var startButton: MaterialButton
     private lateinit var stopButton: MaterialButton
-    private lateinit var lookButton: MaterialButton
     private var startedAtMs = 0L
+    private var liveListening = false
+    private var hardwareImageButtonRegistered = false
+    private val hardwareImageCaptureInProgress = AtomicBoolean(false)
+    private val hardwareImageButtonHandler: () -> Unit = { captureHardwareImageQuestion() }
 
     private val ticker = object : Runnable {
         override fun run() {
@@ -57,12 +61,10 @@ class GeminiLiveActivity : AppCompatActivity(), GeminiLiveClient.Listener {
         indicators = findViewById(R.id.gemini_live_indicators)
         startButton = findViewById(R.id.gemini_live_start)
         stopButton = findViewById(R.id.gemini_live_stop)
-        lookButton = findViewById(R.id.gemini_live_look)
         client = GeminiLiveClient(this, this)
 
         startButton.setOnClickListener { explainAndRequestMicrophone() }
         stopButton.setOnClickListener { client.stop() }
-        lookButton.setOnClickListener { captureLookAtThis() }
         setControls(false)
     }
 
@@ -71,13 +73,20 @@ class GeminiLiveActivity : AppCompatActivity(), GeminiLiveClient.Listener {
         client.resumeAfterForeground()
     }
 
+    override fun onPostResume() {
+        super.onPostResume()
+        updateHardwareImageButtonRouting()
+    }
+
     override fun onPause() {
+        unregisterHardwareImageButton()
         client.pauseForBackground()
         super.onPause()
     }
 
     override fun onDestroy() {
         elapsed.removeCallbacks(ticker)
+        unregisterHardwareImageButton()
         client.close()
         super.onDestroy()
     }
@@ -89,7 +98,7 @@ class GeminiLiveActivity : AppCompatActivity(), GeminiLiveClient.Listener {
         }
         AlertDialog.Builder(this)
             .setTitle("Gemini Live preview")
-            .setMessage("Gemini Live listens through your microphone and sends live audio to Google. Look at this deliberately sends a glasses thumbnail at your configured image-question quality. This preview requires network access.")
+            .setMessage("Gemini Live listens through your microphone and sends live audio to Google. While this screen is open, press the glasses AI photo button to deliberately send its thumbnail to Gemini. This preview requires network access.")
             .setPositiveButton("Continue") { _, _ ->
                 if (hasPermission(Manifest.permission.RECORD_AUDIO)) startLive()
                 else microphonePermission.launch(Manifest.permission.RECORD_AUDIO)
@@ -108,24 +117,23 @@ class GeminiLiveActivity : AppCompatActivity(), GeminiLiveClient.Listener {
         client.start(language, defaultImageQuestion)
     }
 
-    private fun captureLookAtThis() {
-        val quality = ImageQuestionPreferences.thumbnailQuality(this)
-        lookButton.isEnabled = false
-        status.text = "Capturing ${quality.label} glasses thumbnail"
+    private fun captureHardwareImageQuestion() {
+        if (!hardwareImageCaptureInProgress.compareAndSet(false, true)) return
+        status.text = "Receiving glasses AI photo"
         lifecycleScope.launch {
             val result = withContext(Dispatchers.IO) {
-                runCatching { GeminiLiveGlassesImageCapture().capture(quality) }
+                runCatching { GeminiLiveGlassesImageCapture().captureFromHardwareButton() }
             }
             result
                 .onSuccess { image ->
                     client.sendImage(image)
-                    indicators.text = "Microphone: on   Glasses camera: ${quality.label} thumbnail sent"
+                    indicators.text = "Microphone: on   Glasses AI photo: thumbnail sent"
                     status.text = "Image sent to Gemini Live"
                 }
                 .onFailure { error ->
                     Toast.makeText(this@GeminiLiveActivity, error.message ?: "Glasses image capture failed", Toast.LENGTH_LONG).show()
                 }
-            lookButton.isEnabled = true
+            hardwareImageCaptureInProgress.set(false)
         }
     }
 
@@ -141,6 +149,8 @@ class GeminiLiveActivity : AppCompatActivity(), GeminiLiveClient.Listener {
         runOnUiThread {
             status.text = detail.ifBlank { state.name.lowercase().replaceFirstChar(Char::uppercase) }
             val listening = state == GeminiLiveState.LISTENING
+            liveListening = listening
+            updateHardwareImageButtonRouting()
             if (listening && startedAtMs == 0L) {
                 startedAtMs = System.currentTimeMillis()
                 elapsed.post(ticker)
@@ -150,7 +160,7 @@ class GeminiLiveActivity : AppCompatActivity(), GeminiLiveClient.Listener {
                 elapsed.removeCallbacks(ticker)
                 elapsed.text = "Session not running"
             }
-            indicators.text = if (listening) "Gemini Live is listening   Microphone: on   Glasses camera: ready" else "Microphone: off   Glasses camera: off"
+            indicators.text = if (listening) "Gemini Live is listening   Microphone: on   Glasses AI photo: ready" else "Microphone: off   Glasses camera: off"
             setControls(listening || state == GeminiLiveState.CONNECTING || state == GeminiLiveState.RECONNECTING)
         }
     }
@@ -166,7 +176,21 @@ class GeminiLiveActivity : AppCompatActivity(), GeminiLiveClient.Listener {
     private fun setControls(active: Boolean) {
         startButton.visibility = if (active) View.GONE else View.VISIBLE
         stopButton.visibility = if (active) View.VISIBLE else View.GONE
-        lookButton.isEnabled = active
-        lookButton.alpha = if (active) 1f else 0.5f
+    }
+
+    private fun updateHardwareImageButtonRouting() {
+        val shouldRegister = liveListening && lifecycle.currentState.isAtLeast(androidx.lifecycle.Lifecycle.State.RESUMED)
+        if (shouldRegister && !hardwareImageButtonRegistered) {
+            GeminiLiveImageButtonRouter.register(hardwareImageButtonHandler)
+            hardwareImageButtonRegistered = true
+        } else if (!shouldRegister) {
+            unregisterHardwareImageButton()
+        }
+    }
+
+    private fun unregisterHardwareImageButton() {
+        if (!hardwareImageButtonRegistered) return
+        GeminiLiveImageButtonRouter.unregister(hardwareImageButtonHandler)
+        hardwareImageButtonRegistered = false
     }
 }

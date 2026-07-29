@@ -74,12 +74,6 @@ class MemoMindBleScanner(
             return@callbackFlow
         }
 
-        if (scanner == null) {
-            Log.w(TAG, "BluetoothLeScanner is null – cannot scan")
-            close()
-            return@callbackFlow
-        }
-
         val seenAddresses = mutableSetOf<String>()
 
         val scanCallback = object : ScanCallback() {

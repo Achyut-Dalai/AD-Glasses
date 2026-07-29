@@ -8,6 +8,8 @@ import android.util.Log
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import org.tensorflow.lite.Interpreter
+import org.tensorflow.lite.DataType
+import org.tensorflow.lite.Tensor
 import org.tensorflow.lite.gpu.CompatibilityList
 import org.tensorflow.lite.gpu.GpuDelegate
 import org.tensorflow.lite.nnapi.NnApiDelegate
@@ -20,6 +22,7 @@ import java.nio.ByteOrder
 import java.nio.channels.FileChannel
 import kotlin.math.max
 import kotlin.math.min
+import kotlin.math.roundToInt
 
 class LiteRtVisionBackend(
     private val context: Context,
@@ -47,6 +50,11 @@ class LiteRtVisionBackend(
     private var modelHeight = 640
     private var depthWidth = 518
     private var depthHeight = 518
+    private var detectorInputNchw = false
+    private var detectorInputType = DataType.FLOAT32
+    private var detectorInputScale = 1f
+    private var detectorInputZeroPoint = 0
+    private var depthInputNchw = false
 
     init {
         initDetector()
@@ -57,7 +65,8 @@ class LiteRtVisionBackend(
         try {
             val isYoloWorld = com.fersaiyan.cyanbridge.plugins.walkingaid.WalkingAidPreferences.getYoloModelType(context) == com.fersaiyan.cyanbridge.plugins.walkingaid.WalkingAidPreferences.MODEL_TYPE_YOLO_WORLD
             val modelFile = if (isYoloWorld) {
-                locateModel("yolo_world_v2_s.tflite")
+                locateModel("yolo_world.tflite")
+                    ?: locateModel("yolo_world_v2_s.tflite")
                     ?: locateModel("yoloworld.tflite")
                     ?: locateModel("yolo11n_float16.tflite")
                     ?: locateModel("yolov11n.tflite")
@@ -140,9 +149,15 @@ class LiteRtVisionBackend(
             // Read model dimensions if available
             detectorInterpreter?.getInputTensor(0)?.shape()?.let { shape ->
                 if (shape.size == 4) {
-                    modelHeight = shape[1]
-                    modelWidth = shape[2]
+                    detectorInputNchw = shape[1] == 3
+                    modelHeight = if (detectorInputNchw) shape[2] else shape[1]
+                    modelWidth = if (detectorInputNchw) shape[3] else shape[2]
                 }
+            }
+            detectorInterpreter?.getInputTensor(0)?.let { tensor ->
+                detectorInputType = tensor.dataType()
+                detectorInputScale = tensor.quantizationParams().scale.takeIf { it > 0f } ?: 1f
+                detectorInputZeroPoint = tensor.quantizationParams().zeroPoint
             }
         } catch (e: Exception) {
             detectorInitError = "Failed initializing YOLO detector in LiteRT: ${e.message}"
@@ -175,7 +190,9 @@ class LiteRtVisionBackend(
 
     private fun initDepthModel() {
         try {
-            val depthFile = locateModel("depth_anything_v2_small.tflite") ?: return
+            val depthFile = locateModel("depth_anything_3_small.tflite")
+                ?: locateModel("depth_anything_v2_small.tflite")
+                ?: return
             val buffer = loadModelFile(depthFile)
             val options = Interpreter.Options().apply {
                 setUseXNNPACK(true)
@@ -184,16 +201,17 @@ class LiteRtVisionBackend(
             depthInterpreter = Interpreter(buffer, options)
             depthInterpreter?.getInputTensor(0)?.shape()?.let { shape ->
                 if (shape.size == 4) {
-                    if (shape[1] > 10 && shape[2] > 10) {
+                    depthInputNchw = shape[1] == 3
+                    if (!depthInputNchw && shape[1] > 10 && shape[2] > 10) {
                         depthHeight = shape[1]
                         depthWidth = shape[2]
-                    } else if (shape[2] > 10 && shape[3] > 10) {
+                    } else if (depthInputNchw && shape[2] > 10 && shape[3] > 10) {
                         depthHeight = shape[2]
                         depthWidth = shape[3]
                     }
                 }
             }
-            Log.i(TAG, "Relative depth model (Depth Anything V2 Small, ${depthWidth}x${depthHeight}) initialized via LiteRT")
+            Log.i(TAG, "Relative depth model (${depthWidth}x${depthHeight}) initialized via LiteRT")
         } catch (e: Exception) {
             Log.e(TAG, "Failed initializing Depth model: ${e.message}", e)
         }
@@ -233,31 +251,48 @@ class LiteRtVisionBackend(
 
         // Preprocessing: Resize & normalize to float [0..1]
         val resized = Bitmap.createScaledBitmap(frame.bitmap, modelWidth, modelHeight, true)
-        val inputBuffer = ByteBuffer.allocateDirect(modelWidth * modelHeight * 3 * 4).apply {
+        val inputBuffer = ByteBuffer.allocateDirect(interp.getInputTensor(0).numBytes()).apply {
             order(ByteOrder.nativeOrder())
         }
         val pixels = IntArray(modelWidth * modelHeight)
         resized.getPixels(pixels, 0, modelWidth, 0, 0, modelWidth, modelHeight)
-        for (pixel in pixels) {
-            inputBuffer.putFloat(((pixel shr 16) and 0xFF) / 255f)
-            inputBuffer.putFloat(((pixel shr 8) and 0xFF) / 255f)
-            inputBuffer.putFloat((pixel and 0xFF) / 255f)
+        if (detectorInputNchw) {
+            for (channel in 0..2) {
+                for (pixel in pixels) {
+                    putDetectorInputValue(inputBuffer, pixelChannel(pixel, channel))
+                }
+            }
+        } else {
+            for (pixel in pixels) {
+                putDetectorInputValue(inputBuffer, pixelChannel(pixel, 0))
+                putDetectorInputValue(inputBuffer, pixelChannel(pixel, 1))
+                putDetectorInputValue(inputBuffer, pixelChannel(pixel, 2))
+            }
         }
         val t1 = SystemClock.elapsedRealtime()
         val prepTime = t1 - t0
 
-        // Inference: YOLOv11 outputs [1, 84, 8400] (4 box coordinates + 80 COCO classes)
-        val numBoxes = 8400
-        val numChannels = 84
-        val outputArray = Array(1) { Array(numChannels) { FloatArray(numBoxes) } }
-
-        interp.run(inputBuffer, outputArray)
+        inputBuffer.rewind()
+        val output = try {
+            runDetector(interp, inputBuffer)
+        } catch (error: Exception) {
+            val message = "YOLO detector output is unsupported: ${error.message ?: error.javaClass.simpleName}"
+            Log.e(TAG, message, error)
+            return@withContext DetectionResult(
+                objects = emptyList(),
+                acquisitionTimeMs = acqTime,
+                preprocessTimeMs = prepTime,
+                isError = true,
+                errorMessage = message,
+            )
+        }
         val t2 = SystemClock.elapsedRealtime()
         val infTime = t2 - t1
 
         // Postprocessing: Decode bounding boxes, filter by confidence (>0.35), run NMS
         val rawCandidates = mutableListOf<DetectedObject>()
-        val data = outputArray[0]
+        val numBoxes = output.boxCount
+        val numChannels = output.channelCount
 
         val watchlist = com.fersaiyan.cyanbridge.plugins.walkingaid.WalkingAidPreferences.getWatchlistTerms(context)
 
@@ -265,7 +300,7 @@ class LiteRtVisionBackend(
             var maxScore = 0f
             var classIdx = -1
             for (c in 4 until numChannels) {
-                val score = data[c][i]
+                val score = output.values[c * numBoxes + i]
                 if (score > maxScore) {
                     maxScore = score
                     classIdx = c - 4
@@ -280,10 +315,10 @@ class LiteRtVisionBackend(
                     "object"
                 }
 
-                val cx = data[0][i]
-                val cy = data[1][i]
-                val w = data[2][i]
-                val h = data[3][i]
+            val cx = output.values[i]
+            val cy = output.values[numBoxes + i]
+            val w = output.values[2 * numBoxes + i]
+            val h = output.values[3 * numBoxes + i]
 
                 val left = max(0f, min(1f, cx - w / 2f))
                 val top = max(0f, min(1f, cy - h / 2f))
@@ -324,6 +359,133 @@ class LiteRtVisionBackend(
             inferenceTimeMs = infTime,
             postprocessTimeMs = postTime,
         )
+    }
+
+    private data class DetectorOutput(
+        val channelCount: Int,
+        val boxCount: Int,
+        val values: FloatArray,
+    )
+
+    private fun pixelChannel(pixel: Int, channel: Int): Float = when (channel) {
+        0 -> ((pixel shr 16) and 0xFF) / 255f
+        1 -> ((pixel shr 8) and 0xFF) / 255f
+        else -> (pixel and 0xFF) / 255f
+    }
+
+    private fun putDetectorInputValue(buffer: ByteBuffer, value: Float) {
+        when (detectorInputType) {
+            DataType.FLOAT32 -> buffer.putFloat(value)
+            DataType.UINT8 -> buffer.put(
+                (value / detectorInputScale + detectorInputZeroPoint)
+                    .roundToInt()
+                    .coerceIn(0, 255)
+                    .toByte(),
+            )
+            DataType.INT8 -> buffer.put(
+                (value / detectorInputScale + detectorInputZeroPoint)
+                    .roundToInt()
+                    .coerceIn(-128, 127)
+                    .toByte(),
+            )
+            else -> throw IllegalStateException("Unsupported YOLO input type: $detectorInputType")
+        }
+    }
+
+    private fun runDetector(interpreter: Interpreter, input: ByteBuffer): DetectorOutput {
+        val outputTensors = (0 until interpreter.outputTensorCount).map(interpreter::getOutputTensor)
+        val outputBuffers = outputTensors.mapIndexed { index, tensor ->
+            index to ByteBuffer.allocateDirect(tensor.numBytes()).order(ByteOrder.nativeOrder())
+        }.toMap()
+        interpreter.runForMultipleInputsOutputs(arrayOf(input), outputBuffers)
+
+        val primary = readDetectorOutput(outputTensors.first(), outputBuffers.getValue(0))
+        if (primary.channelCount >= 5) return primary
+
+        // YOLO-World exports bounding boxes and class scores as separate tensors, commonly
+        // [1, 8400, 4] plus [1, 8400, classCount]. Normalize them to the usual YOLO layout.
+        require(primary.channelCount == 4) {
+            "Unsupported YOLO output shape: ${outputTensors.first().shape().contentToString()}"
+        }
+        val scores = outputTensors.indices
+            .asSequence()
+            .drop(1)
+            .map { index -> readDetectorOutput(outputTensors[index], outputBuffers.getValue(index)) }
+            .firstOrNull { it.boxCount == primary.boxCount && it.channelCount > 0 }
+            ?: throw IllegalArgumentException(
+                "YOLO boxes have no matching class-score tensor; outputs=" +
+                    outputTensors.joinToString { it.shape().contentToString() },
+            )
+
+        val channels = primary.channelCount + scores.channelCount
+        val values = FloatArray(channels * primary.boxCount)
+        primary.values.copyInto(values)
+        scores.values.copyInto(
+            destination = values,
+            destinationOffset = primary.channelCount * primary.boxCount,
+        )
+        return DetectorOutput(channels, primary.boxCount, values)
+    }
+
+    private fun readDetectorOutput(tensor: Tensor, rawOutput: ByteBuffer): DetectorOutput {
+        val shape = tensor.shape()
+        require(shape.size == 3 && shape[0] == 1) {
+            "Unsupported YOLO output shape: ${shape.contentToString()}"
+        }
+        val channelsFirst = shape[1] <= shape[2]
+        val channels = if (channelsFirst) shape[1] else shape[2]
+        val boxes = if (channelsFirst) shape[2] else shape[1]
+        require(channels >= 4 && boxes > 0) {
+            "Unsupported YOLO output shape: ${shape.contentToString()}"
+        }
+        rawOutput.rewind()
+        val flatValues = readTensorValues(rawOutput, tensor)
+        val values = FloatArray(channels * boxes)
+        for (channel in 0 until channels) {
+            for (box in 0 until boxes) {
+                val sourceIndex = if (channelsFirst) channel * boxes + box else box * channels + channel
+                values[channel * boxes + box] = flatValues[sourceIndex]
+            }
+        }
+        return DetectorOutput(channels, boxes, values)
+    }
+
+    private fun readTensorValues(buffer: ByteBuffer, tensor: Tensor): FloatArray {
+        buffer.rewind()
+        val values = FloatArray(tensor.numBytes() / tensor.dataType().byteSize())
+        val scale = tensor.quantizationParams().scale
+        val zeroPoint = tensor.quantizationParams().zeroPoint
+        for (index in values.indices) {
+            values[index] = when (tensor.dataType()) {
+                DataType.FLOAT32 -> buffer.float
+                DataType.UINT8 -> ((buffer.get().toInt() and 0xFF) - zeroPoint) * scale
+                DataType.INT8 -> (buffer.get().toInt() - zeroPoint) * scale
+                else -> throw IllegalStateException("Unsupported YOLO output type: ${tensor.dataType()}")
+            }
+        }
+        return values
+    }
+
+    private fun readDepthMap(buffer: ByteBuffer, tensor: Tensor): Array<FloatArray> {
+        val shape = tensor.shape()
+        val height: Int
+        val width: Int
+        when {
+            shape.contentEquals(intArrayOf(1, depthHeight, depthWidth)) -> {
+                height = shape[1]
+                width = shape[2]
+            }
+            shape.contentEquals(intArrayOf(1, 1, depthHeight, depthWidth)) -> {
+                height = shape[2]
+                width = shape[3]
+            }
+            else -> throw IllegalStateException("Unsupported depth output shape: ${shape.contentToString()}")
+        }
+        val values = readTensorValues(buffer, tensor)
+        require(values.size == height * width) {
+            "Unsupported depth output size: ${values.size}"
+        }
+        return Array(height) { y -> FloatArray(width) { x -> values[y * width + x] } }
     }
 
     private fun nonMaxSuppression(boxes: List<DetectedObject>, iouThreshold: Float): List<DetectedObject> {
@@ -420,29 +582,38 @@ class LiteRtVisionBackend(
             )
         }
 
-        // 1. Preprocess bitmap for Depth Anything V2 Small (depthWidth x depthHeight)
+        // 1. Preprocess bitmap for Depth Anything (depthWidth x depthHeight)
         val resized = Bitmap.createScaledBitmap(frame.bitmap, depthWidth, depthHeight, true)
-        val inputBuffer = ByteBuffer.allocateDirect(depthWidth * depthHeight * 3 * 4).apply {
+        val inputBuffer = ByteBuffer.allocateDirect(interp.getInputTensor(0).numBytes()).apply {
             order(ByteOrder.nativeOrder())
         }
         val pixels = IntArray(depthWidth * depthHeight)
         resized.getPixels(pixels, 0, depthWidth, 0, 0, depthWidth, depthHeight)
 
-        // Standard ImageNet normalization: (x/255 - mean) / std
-        for (pixel in pixels) {
-            val r = (((pixel shr 16) and 0xFF) / 255f - 0.485f) / 0.229f
-            val g = (((pixel shr 8) and 0xFF) / 255f - 0.456f) / 0.224f
-            val b = ((pixel and 0xFF) / 255f - 0.406f) / 0.225f
-            inputBuffer.putFloat(r)
-            inputBuffer.putFloat(g)
-            inputBuffer.putFloat(b)
+        // Standard ImageNet normalization; the DA3 LiteRT export uses NCHW.
+        val mean = floatArrayOf(0.485f, 0.456f, 0.406f)
+        val std = floatArrayOf(0.229f, 0.224f, 0.225f)
+        if (depthInputNchw) {
+            for (channel in 0..2) {
+                for (pixel in pixels) {
+                    inputBuffer.putFloat((pixelChannel(pixel, channel) - mean[channel]) / std[channel])
+                }
+            }
+        } else {
+            for (pixel in pixels) {
+                for (channel in 0..2) {
+                    inputBuffer.putFloat((pixelChannel(pixel, channel) - mean[channel]) / std[channel])
+                }
+            }
         }
 
-        val outputArray = Array(1) { Array(depthHeight) { FloatArray(depthWidth) } }
-        interp.run(inputBuffer, outputArray)
+        val outputTensor = interp.getOutputTensor(0)
+        val outputBuffer = ByteBuffer.allocateDirect(outputTensor.numBytes()).order(ByteOrder.nativeOrder())
+        inputBuffer.rewind()
+        interp.run(inputBuffer, outputBuffer)
 
         val t1 = SystemClock.elapsedRealtime()
-        val depthMap = outputArray[0]
+        val depthMap = readDepthMap(outputBuffer, outputTensor)
 
         // 2. Postprocess Depth Map: calculate relative depth per region
         val colWidth = depthWidth / 3
@@ -454,7 +625,7 @@ class LiteRtVisionBackend(
         var groundSum = 0f
         var groundCount = 0
         var groundMin = Float.MAX_VALUE
-        var groundMax = Float.MIN_VALUE
+        var groundMax = -Float.MAX_VALUE
 
         for (y in groundStartY until depthHeight) {
             for (x in 0 until depthWidth) {

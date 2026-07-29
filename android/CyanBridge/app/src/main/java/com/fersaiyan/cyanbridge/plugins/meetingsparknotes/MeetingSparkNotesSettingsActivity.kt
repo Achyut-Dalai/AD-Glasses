@@ -177,7 +177,7 @@ fun MeetingSparkNotesSettingsScreen(
                                     summaryStyle = style
                                     MeetingSparkNotesPreferences.setSummaryStyle(context, style)
                                 },
-                                label = { Text(style.replace("_", " ").capitalize()) },
+                                label = { Text(style.replace("_", " ").replaceFirstChar { it.titlecase() }) },
                                 colors = FilterChipDefaults.filterChipColors(
                                     selectedContainerColor = MaterialTheme.colorScheme.primary,
                                 ),

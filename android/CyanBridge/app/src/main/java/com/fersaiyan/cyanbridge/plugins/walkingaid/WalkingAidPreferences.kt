@@ -24,10 +24,10 @@ object WalkingAidPreferences {
     private const val DEFAULT_ENABLED = false
     private const val DEFAULT_CAPTURE_INTERVAL_SECONDS = 5
     private const val DEFAULT_IMAGE_DESCRIPTION_SOURCE = "local"
-    private const val DEFAULT_IMAGE_DESCRIPTION_CLOUD_MODEL_ID = "deepseek/deepseek-v4-flash"
+    private const val DEFAULT_IMAGE_DESCRIPTION_CLOUD_MODEL_ID = "cyanbridge/walking-aid-vision"
     private const val DEFAULT_DEPTH_ENABLED = true
     private const val DEFAULT_DEPTH_SOURCE = "cloud"
-    private const val DEFAULT_DEPTH_CLOUD_MODEL_ID = "deepseek/deepseek-v4-flash"
+    private const val DEFAULT_DEPTH_CLOUD_MODEL_ID = "cyanbridge/walking-aid-vision"
     private const val DEFAULT_STATE_MODEL_SOURCE = "local"
     private const val DEFAULT_TTS_ENABLED = true
     private const val DEFAULT_SAFETY_DISCLAIMER_ENABLED = true

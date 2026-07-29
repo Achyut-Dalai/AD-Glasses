@@ -28,7 +28,9 @@ object ImageQuestionPreferences {
     }
 
     fun setDefaultQuestion(context: Context, question: String) {
-        val normalized = question.trim().take(MAX_DEFAULT_QUESTION_CHARS)
+        // Settings persist on every keystroke. Preserve a trailing space while the user is
+        // typing; the prompt resolver trims the completed question before it reaches a model.
+        val normalized = question.take(MAX_DEFAULT_QUESTION_CHARS)
         preferences(context).edit()
             .putString(KEY_DEFAULT_QUESTION, normalized)
             .putBoolean(KEY_LEGACY_MIGRATION_COMPLETE, true)

@@ -27,6 +27,23 @@ class GlassesManagerGatingTest {
     }
 
     @Test
+    fun eyevue_showsExtrasAndStatusPlaceholders() {
+        val profile = DeviceProfile(
+            macAddress = "AA:BB:CC:DD:EE:11",
+            advertisedName = "Eyevue_001",
+            detectedClass = DeviceClass.EYEVUE,
+            selectedClass = DeviceClass.EYEVUE,
+            userOverridden = false,
+        )
+
+        val model = GlassesManagerGating.uiModel(profile)
+        assertTrue(model.isVisible(GlassesManagerGating.Action.MEETING_CAPTURE))
+        assertTrue(model.isVisible(GlassesManagerGating.Action.HEY_CYAN_EXTRAS))
+        assertTrue(model.isVisible(GlassesManagerGating.Action.STATUS_BATTERY))
+        assertTrue(model.isVisible(GlassesManagerGating.Action.STATUS_STORAGE))
+    }
+
+    @Test
     fun metaRayban_hidesHeyCyanExtras() {
         val profile = DeviceProfile(
             macAddress = "00:11:22:33:44:55",

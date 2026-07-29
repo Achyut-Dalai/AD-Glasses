@@ -14,12 +14,12 @@ object DeviceCapabilityHelper {
 
     fun hasCamera(context: Context): Boolean {
         val selected = selectedClass(context)
-        return selected in setOf(DeviceClass.HEY_CYAN, DeviceClass.META_RAYBAN, DeviceClass.UNKNOWN)
+        return selected in setOf(DeviceClass.HEY_CYAN, DeviceClass.META_RAYBAN, DeviceClass.EYEVUE, DeviceClass.UNKNOWN)
     }
 
     fun hasOnboardStorage(context: Context): Boolean {
         val selected = selectedClass(context)
-        return selected == DeviceClass.HEY_CYAN || selected == DeviceClass.UNKNOWN
+        return selected == DeviceClass.HEY_CYAN || selected == DeviceClass.EYEVUE || selected == DeviceClass.UNKNOWN
     }
 
     fun unavailableCameraReason(context: Context): String? {

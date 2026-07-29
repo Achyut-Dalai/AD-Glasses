@@ -303,7 +303,7 @@ private fun SyncedMediaPreview(
         Box(contentAlignment = Alignment.Center) {
             if (thumbnail != null) {
                 Image(
-                    bitmap = thumbnail!!,
+                    bitmap = thumbnail,
                     contentDescription = item.displayName,
                     modifier = Modifier.fillMaxSize(),
                     contentScale = ContentScale.Crop,

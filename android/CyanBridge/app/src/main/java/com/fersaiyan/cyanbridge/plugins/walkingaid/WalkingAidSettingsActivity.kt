@@ -131,6 +131,8 @@ fun WalkingAidSettingsScreen(
     var availableModels by remember { mutableStateOf<List<ProSubscriptionRelayClient.ModelOption>>(emptyList()) }
     var modelsLoading by remember { mutableStateOf(false) }
     var showReadinessResult by remember { mutableStateOf<WalkingAidReadinessResult?>(null) }
+    var downloadingModelId by remember { mutableStateOf<String?>(null) }
+    var modelDownloadStatus by remember { mutableStateOf("") }
 
     val intervalOptions = listOf(2, 3, 5, 10, 15, 30)
 
@@ -412,6 +414,40 @@ fun WalkingAidSettingsScreen(
                         }
 
                         Spacer(modifier = Modifier.height(12.dp))
+                        WalkingAidModelDownloadCard(
+                            entry = WalkingAidModelCatalog.detectorFor(yoloModelType),
+                            installed = WalkingAidModelInstaller.isInstalled(
+                                context,
+                                WalkingAidModelCatalog.detectorFor(yoloModelType),
+                            ),
+                            isDownloading = downloadingModelId == WalkingAidModelCatalog.detectorFor(yoloModelType).id,
+                            status = modelDownloadStatus,
+                            onDownload = { entry ->
+                                downloadingModelId = entry.id
+                                modelDownloadStatus = "Starting ${entry.displayName}..."
+                                CoroutineScope(Dispatchers.IO).launch {
+                                    runCatching {
+                                        WalkingAidModelInstaller.install(context, entry) { progress ->
+                                            CoroutineScope(Dispatchers.Main).launch {
+                                                modelDownloadStatus = "Downloading ${progress.percent}%"
+                                            }
+                                        }
+                                    }.onSuccess {
+                                        withContext(Dispatchers.Main) {
+                                            modelDownloadStatus = "${entry.displayName} is ready for local use."
+                                            downloadingModelId = null
+                                        }
+                                    }.onFailure { error ->
+                                        withContext(Dispatchers.Main) {
+                                            modelDownloadStatus = "Download failed: ${error.message ?: "unknown error"}"
+                                            downloadingModelId = null
+                                        }
+                                    }
+                                }
+                            },
+                        )
+
+                        Spacer(modifier = Modifier.height(12.dp))
                         Text(
                             "Target Watchlist Classes",
                             style = MaterialTheme.typography.bodyMedium,
@@ -493,6 +529,37 @@ fun WalkingAidSettingsScreen(
                                         "Select model...",
                                 )
                             }
+                        } else {
+                            Spacer(modifier = Modifier.height(12.dp))
+                            WalkingAidModelDownloadCard(
+                                entry = WalkingAidModelCatalog.depth,
+                                installed = WalkingAidModelInstaller.isInstalled(context, WalkingAidModelCatalog.depth),
+                                isDownloading = downloadingModelId == WalkingAidModelCatalog.depth.id,
+                                status = modelDownloadStatus,
+                                onDownload = { entry ->
+                                    downloadingModelId = entry.id
+                                    modelDownloadStatus = "Starting ${entry.displayName}..."
+                                    CoroutineScope(Dispatchers.IO).launch {
+                                        runCatching {
+                                            WalkingAidModelInstaller.install(context, entry) { progress ->
+                                                CoroutineScope(Dispatchers.Main).launch {
+                                                    modelDownloadStatus = "Downloading ${progress.percent}%"
+                                                }
+                                            }
+                                        }.onSuccess {
+                                            withContext(Dispatchers.Main) {
+                                                modelDownloadStatus = "${entry.displayName} is ready for local use."
+                                                downloadingModelId = null
+                                            }
+                                        }.onFailure { error ->
+                                            withContext(Dispatchers.Main) {
+                                                modelDownloadStatus = "Download failed: ${error.message ?: "unknown error"}"
+                                                downloadingModelId = null
+                                            }
+                                        }
+                                    }
+                                },
+                            )
                         }
                     }
                 }
@@ -733,6 +800,45 @@ fun WalkingAidSettingsScreen(
                 }
             }
         )
+    }
+}
+
+@Composable
+private fun WalkingAidModelDownloadCard(
+    entry: WalkingAidModelCatalogEntry,
+    installed: Boolean,
+    isDownloading: Boolean,
+    status: String,
+    onDownload: (WalkingAidModelCatalogEntry) -> Unit,
+) {
+    Card(modifier = Modifier.fillMaxWidth()) {
+        Column(
+            modifier = Modifier.padding(12.dp),
+            verticalArrangement = Arrangement.spacedBy(6.dp),
+        ) {
+            Text(entry.displayName, fontWeight = FontWeight.SemiBold)
+            Text(entry.description, style = MaterialTheme.typography.bodySmall)
+            Text(
+                "${entry.sizeBytes / (1024 * 1024)} MB · ${entry.licenseNote}",
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+            if (isDownloading) {
+                Text(status, style = MaterialTheme.typography.bodySmall)
+            }
+            Button(
+                onClick = { onDownload(entry) },
+                enabled = !installed && !isDownloading,
+            ) {
+                Text(
+                    when {
+                        installed -> "Installed"
+                        isDownloading -> "Downloading..."
+                        else -> "Download from Hugging Face"
+                    },
+                )
+            }
+        }
     }
 }
 

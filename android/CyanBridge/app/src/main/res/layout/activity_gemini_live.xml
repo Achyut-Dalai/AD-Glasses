@@ -60,14 +60,6 @@
         android:text="Start Gemini Live" />
 
     <com.google.android.material.button.MaterialButton
-        android:id="@+id/gemini_live_look"
-        style="@style/Widget.MaterialComponents.Button.OutlinedButton"
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:layout_marginTop="12dp"
-        android:text="Look at this" />
-
-    <com.google.android.material.button.MaterialButton
         android:id="@+id/gemini_live_stop"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
@@ -78,7 +70,7 @@
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:layout_marginTop="24dp"
-        android:text="Preview: live audio and a glasses thumbnail at your selected image-question quality are sent directly to Google. Keep this screen open while listening."
+        android:text="Preview: live audio and each glasses AI-photo thumbnail are sent directly to Google. Keep this screen open while listening."
         android:textColor="@color/text_secondary"
         android:textSize="13sp" />
 </LinearLayout>
