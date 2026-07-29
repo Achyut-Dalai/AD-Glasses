@@ -40,27 +40,35 @@ class StreamingSpeechSessionManager(
     @Volatile
     var activeGenerationJob: Job? = null
 
-    val speechQueueController = SpeechQueueController(context, config)
+    private var onActiveSpeechCompleted: (() -> Unit)? = null
+
+    val speechQueueController = SpeechQueueController(context, config) { sessionId ->
+        if (sessionId == activeSessionId) {
+            onActiveSpeechCompleted?.invoke()
+            onActiveSpeechCompleted = null
+        }
+    }
 
     val chunker = MultilingualSpeechChunker(
         config = config,
         scope = sessionScope,
-        onChunkReady = { phraseChunk ->
-            onPhraseChunkReady(phraseChunk)
+        onChunkReady = { sessionId, phraseChunk ->
+            onPhraseChunkReady(sessionId, phraseChunk)
         },
     )
 
     @Volatile
     private var currentLanguageTag: String? = null
 
-    fun attachTtsEngine(tts: TextToSpeech?) {
-        speechQueueController.attachTtsEngine(tts)
+    fun attachTtsEngine(tts: TextToSpeech?, ready: Boolean) {
+        speechQueueController.attachTtsEngine(tts, ready)
     }
 
     @Synchronized
     fun startNewSession(
         languageTag: String? = null,
         generationJob: Job? = null,
+        onSpeechCompleted: (() -> Unit)? = null,
     ): Long {
         cancelActiveStreamingResponse()
 
@@ -68,6 +76,7 @@ class StreamingSpeechSessionManager(
         this.activeSessionId = newSessionId
         this.activeGenerationJob = generationJob
         this.currentLanguageTag = languageTag
+        this.onActiveSpeechCompleted = onSpeechCompleted
 
         chunker.startSession(newSessionId)
         speechQueueController.startSession(newSessionId)
@@ -77,9 +86,20 @@ class StreamingSpeechSessionManager(
     }
 
     @Synchronized
+    fun attachGenerationJob(sessionId: Long, generationJob: Job) {
+        if (sessionId != activeSessionId) {
+            generationJob.cancel()
+            return
+        }
+        activeGenerationJob = generationJob
+    }
+
+    @Synchronized
     fun cancelActiveStreamingResponse() {
-        if (activeSessionId == 0L) return
-        Log.i(TAG, "Cancelling active streaming speech session id=$activeSessionId")
+        val cancelledSessionId = activeSessionId
+        if (cancelledSessionId != 0L) {
+            Log.i(TAG, "Cancelling active streaming speech session id=$cancelledSessionId")
+        }
         
         val job = activeGenerationJob
         activeGenerationJob = null
@@ -87,6 +107,9 @@ class StreamingSpeechSessionManager(
 
         chunker.reset()
         speechQueueController.cancelSession()
+        activeSessionId = 0L
+        currentLanguageTag = null
+        onActiveSpeechCompleted = null
     }
 
     fun onModelTokenDelta(deltaText: String, sessionId: Long) {
@@ -108,13 +131,22 @@ class StreamingSpeechSessionManager(
         Log.i(TAG, "Model generation completed for session id=$sessionId")
         speechQueueController.metrics.generationCompletedAtMs = System.currentTimeMillis()
         chunker.finish(sessionId)
+        Log.d(
+            TAG,
+            "Chunking session=$sessionId accepted=${chunker.metrics.acceptedCandidateBoundaries} " +
+                "rejected=${chunker.metrics.rejectedCandidateBoundaries} " +
+                "timeoutFlushes=${chunker.metrics.timeoutFlushes}",
+        )
+        speechQueueController.onGenerationCompleted(sessionId)
     }
 
-    private fun onPhraseChunkReady(phraseChunkText: String) {
-        val currentSession = activeSessionId
-        if (currentSession == 0L) return
+    private fun onPhraseChunkReady(sessionId: Long, phraseChunkText: String) {
+        if (sessionId == 0L || sessionId != activeSessionId) {
+            speechQueueController.metrics.staleCallbacksDiscarded++
+            return
+        }
         speechQueueController.enqueueChunk(
-            sessionId = currentSession,
+            sessionId = sessionId,
             rawChunkText = phraseChunkText,
             languageTag = currentLanguageTag,
         )

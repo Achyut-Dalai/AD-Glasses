@@ -5,63 +5,59 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
-import java.util.Locale
 
 /**
- * Multilingual, code-point-aware, streaming text segmenter for Text-To-Speech.
- * Segments incoming streaming model tokens into natural spoken phrases across languages
- * (English, Portuguese, German, French, Italian, Russian, Chinese, etc.) without losing
- * or duplicating text, splitting decimals, or truncating valid short answers.
+ * Incrementally turns model output into speech-sized phrases. It is deliberately locale-neutral:
+ * boundaries come from Unicode punctuation and surrounding text rather than an abbreviation list.
  */
 class MultilingualSpeechChunker(
     private val config: SpeechChunkingConfig = SpeechChunkingConfig(),
     private val scope: CoroutineScope = CoroutineScope(Dispatchers.Default),
-    private val onChunkReady: (String) -> Unit,
+    private val onChunkReady: (sessionId: Long, text: String) -> Unit,
 ) {
-    private val buffer = StringBuilder()
-    private val fullAccumulatedText = StringBuilder()
+    data class Metrics(
+        var acceptedCandidateBoundaries: Int = 0,
+        var rejectedCandidateBoundaries: Int = 0,
+        var timeoutFlushes: Int = 0,
+    )
 
-    private var isFirstChunk = true
+    private data class Boundary(
+        val punctuationIndex: Int,
+        val endIndex: Int,
+        val punctuation: Char,
+    )
+
+    private val buffer = StringBuilder()
+    private val accumulatedCallbackText = StringBuilder()
+    val metrics = Metrics()
+
+    private var firstChunk = true
+    private var activeSessionId = 0L
+    private var bufferVersion = 0L
     private var candidateJob: Job? = null
+    private var candidateEndIndex = -1
     private var idleJob: Job? = null
-    private var activeSessionId: Long = 0L
 
     @Synchronized
     fun startSession(sessionId: Long) {
         resetInternal()
-        this.activeSessionId = sessionId
+        activeSessionId = sessionId
     }
 
     /**
-     * Appends a newly generated text delta or full accumulated update.
-     * Automatically extracts the newly added suffix if the callback passes full text.
+     * Accepts either a delta or a cumulative callback. LiteRT currently emits the latter while
+     * remote backends emit deltas, so only a previously unseen suffix is appended when possible.
      */
     @Synchronized
     fun append(rawInput: String, sessionId: Long = activeSessionId) {
         if (sessionId != activeSessionId || rawInput.isEmpty()) return
-
         val delta = extractNewTextDelta(rawInput)
         if (delta.isEmpty()) return
 
         buffer.append(delta)
-        rescheduleIdleTimer()
-
+        bufferVersion++
+        ensureIdleTimer()
         evaluateBuffer(forceFlush = false)
-    }
-
-    /**
-     * Extracts newly added suffix if input is a cumulative text string.
-     */
-    private fun extractNewTextDelta(input: String): String {
-        val currentAcc = fullAccumulatedText.toString()
-        return if (input.startsWith(currentAcc) && input.length >= currentAcc.length) {
-            val delta = input.substring(currentAcc.length)
-            fullAccumulatedText.append(delta)
-            delta
-        } else {
-            fullAccumulatedText.append(input)
-            input
-        }
     }
 
     @Synchronized
@@ -74,13 +70,29 @@ class MultilingualSpeechChunker(
     @Synchronized
     fun reset() {
         resetInternal()
+        activeSessionId = 0L
+    }
+
+    private fun extractNewTextDelta(input: String): String {
+        val previous = accumulatedCallbackText.toString()
+        return when {
+            previous.isEmpty() -> input.also(accumulatedCallbackText::append)
+            input == previous || previous.startsWith(input) -> ""
+            input.startsWith(previous) -> input.substring(previous.length).also(accumulatedCallbackText::append)
+            else -> input.also(accumulatedCallbackText::append)
+        }
     }
 
     private fun resetInternal() {
         cancelTimers()
         buffer.clear()
-        fullAccumulatedText.clear()
-        isFirstChunk = true
+        accumulatedCallbackText.clear()
+        firstChunk = true
+        bufferVersion++
+        candidateEndIndex = -1
+        metrics.acceptedCandidateBoundaries = 0
+        metrics.rejectedCandidateBoundaries = 0
+        metrics.timeoutFlushes = 0
     }
 
     private fun cancelTimers() {
@@ -90,16 +102,24 @@ class MultilingualSpeechChunker(
         idleJob = null
     }
 
-    private fun rescheduleIdleTimer() {
-        idleJob?.cancel()
-        val currentSession = activeSessionId
-        val idleMs = if (isFirstChunk) config.firstChunkIdleFlushMs else config.normalChunkIdleFlushMs
-
+    /** One idle worker per active session, rather than one coroutine per model fragment. */
+    private fun ensureIdleTimer() {
+        if (idleJob?.isActive == true) return
+        val sessionId = activeSessionId
+        var observedVersion = bufferVersion
         idleJob = scope.launch {
-            delay(idleMs)
-            synchronized(this@MultilingualSpeechChunker) {
-                if (activeSessionId == currentSession && buffer.isNotEmpty()) {
-                    evaluateBuffer(forceFlush = true)
+            while (true) {
+                delay(if (firstChunk) config.firstChunkIdleFlushMs else config.normalChunkIdleFlushMs)
+                synchronized(this@MultilingualSpeechChunker) {
+                    if (sessionId != activeSessionId) return@launch
+                    if (observedVersion == bufferVersion) {
+                        if (buffer.isNotEmpty()) {
+                            metrics.timeoutFlushes++
+                            evaluateBuffer(forceFlush = true)
+                        }
+                        return@launch
+                    }
+                    observedVersion = bufferVersion
                 }
             }
         }
@@ -109,216 +129,173 @@ class MultilingualSpeechChunker(
         val text = buffer.toString()
         if (text.isBlank()) return
 
-        val codePoints = codePointCount(text)
-        val minCodePoints = if (isFirstChunk) config.firstChunkMinCodePoints else config.normalChunkMinCodePoints
-
-        // 1. Hard maximum length limit - force split
-        if (codePoints >= config.hardChunkMaxCodePoints) {
-            val splitIndex = findBestSplitIndex(text, config.preferredChunkMaxCodePoints)
-            emitChunk(text.substring(0, splitIndex))
-            buffer.delete(0, splitIndex)
-            rescheduleIdleTimer()
+        val minCodePoints = if (firstChunk) config.firstChunkMinCodePoints else config.normalChunkMinCodePoints
+        if (codePointCount(text) >= config.hardChunkMaxCodePoints) {
+            flushAt(findBestSplitIndex(text, config.preferredChunkMaxCodePoints))
             return
         }
 
-        // 2. Strong boundary check
-        val strongMatch = findStrongBoundary(text)
-        if (strongMatch != null) {
-            if (isConfirmedBoundary(text, strongMatch)) {
-                emitChunk(text.substring(0, strongMatch.endIndex))
-                buffer.delete(0, strongMatch.endIndex)
-                rescheduleIdleTimer()
-                return
-            } else if (!forceFlush) {
-                // Ambiguous boundary (e.g. potential decimal or abbreviation). Launch candidate delay timer.
-                scheduleCandidateBoundaryCheck(strongMatch.endIndex)
+        for (boundary in strongBoundaries(text)) {
+            when (boundaryDisposition(text, boundary, forceFlush)) {
+                BoundaryDisposition.CONFIRMED -> {
+                    metrics.acceptedCandidateBoundaries++
+                    flushAt(boundary.endIndex)
+                    return
+                }
+                BoundaryDisposition.WAIT -> {
+                    scheduleCandidateConfirmation(boundary)
+                    return
+                }
+                BoundaryDisposition.INTERNAL -> {
+                    metrics.rejectedCandidateBoundaries++
+                }
+            }
+        }
+
+        if (codePointCount(text) >= config.preferredChunkMaxCodePoints) {
+            findLastSoftBoundary(text)?.let {
+                flushAt(it.endIndex)
                 return
             }
         }
 
-        // 3. Soft boundary check (comma, semicolon, dash) if chunk is preferred length
-        if (codePoints >= config.preferredChunkMaxCodePoints) {
-            val softMatch = findSoftBoundary(text)
-            if (softMatch != null) {
-                emitChunk(text.substring(0, softMatch.endIndex))
-                buffer.delete(0, softMatch.endIndex)
-                rescheduleIdleTimer()
-                return
-            }
-        }
-
-        // 4. Force flush on idle timeout if minimum length or short complete phrase is present
-        if (forceFlush && codePoints >= minCodePoints) {
-            emitChunk(text)
-            buffer.clear()
+        if (forceFlush && codePointCount(text) >= minCodePoints) {
+            flushRemaining()
         }
     }
 
-    private fun scheduleCandidateBoundaryCheck(endIndex: Int) {
-        if (candidateJob?.isActive == true) return
-        val currentSession = activeSessionId
+    private enum class BoundaryDisposition { CONFIRMED, WAIT, INTERNAL }
 
+    private fun boundaryDisposition(text: String, boundary: Boundary, forceFlush: Boolean): BoundaryDisposition {
+        val punctuation = boundary.punctuation
+        if (punctuation == '。' || punctuation == '！' || punctuation == '？' || punctuation == '\n' || punctuation == '\r') {
+            return BoundaryDisposition.CONFIRMED
+        }
+        if (punctuation == '!' || punctuation == '?') {
+            return BoundaryDisposition.CONFIRMED
+        }
+        if (punctuation != '.') return BoundaryDisposition.INTERNAL
+
+        val next = text.getOrNull(boundary.endIndex)
+        if (next == null) return if (forceFlush) BoundaryDisposition.CONFIRMED else BoundaryDisposition.WAIT
+        if (next.isLetterOrDigit()) return BoundaryDisposition.INTERNAL // decimal, version, URL, filename, acronym
+        if (isAcronymOrDottedIdentifier(text, boundary.punctuationIndex)) return BoundaryDisposition.INTERNAL
+        if (isNumberedListMarker(text, boundary.punctuationIndex)) return BoundaryDisposition.INTERNAL
+
+        val nextContent = nextNonWhitespace(text, boundary.endIndex)
+            ?: return if (forceFlush) BoundaryDisposition.CONFIRMED else BoundaryDisposition.WAIT
+        val wordLength = wordLengthBefore(text, boundary.punctuationIndex)
+        // A short leading token before a capitalized name is more likely an initial/title than a
+        // sentence. This is script-neutral and only defers; the later real boundary still wins.
+        if (wordLength in 1..3 && nextContent.isUpperCase()) return BoundaryDisposition.INTERNAL
+        return BoundaryDisposition.CONFIRMED
+    }
+
+    private fun scheduleCandidateConfirmation(boundary: Boundary) {
+        if (candidateEndIndex == boundary.endIndex && candidateJob?.isActive == true) return
+        candidateJob?.cancel()
+        candidateEndIndex = boundary.endIndex
+        val sessionId = activeSessionId
         candidateJob = scope.launch {
             delay(config.candidateBoundaryDelayMs)
             synchronized(this@MultilingualSpeechChunker) {
-                if (activeSessionId == currentSession && buffer.length >= endIndex) {
-                    val currentText = buffer.toString()
-                    emitChunk(currentText.substring(0, endIndex))
-                    buffer.delete(0, endIndex)
-                    rescheduleIdleTimer()
+                if (sessionId != activeSessionId || buffer.length < boundary.endIndex) return@synchronized
+                candidateJob = null
+                candidateEndIndex = -1
+                // Re-evaluate with the later context. If no later fragment arrived, leave the
+                // candidate for the idle timer rather than guessing that an abbreviation ended.
+                if (buffer.length > boundary.endIndex) {
+                    evaluateBuffer(forceFlush = false)
                 }
             }
         }
     }
 
-    private fun emitChunk(chunkText: String) {
-        val trimmed = chunkText.trim()
-        if (trimmed.isNotEmpty()) {
-            isFirstChunk = false
-            onChunkReady(trimmed)
+    private fun strongBoundaries(text: String): List<Boundary> {
+        val boundaries = ArrayList<Boundary>()
+        for (index in text.indices) {
+            val c = text[index]
+            if (!isStrongPunctuation(c)) continue
+            var end = index + 1
+            while (end < text.length && isClosingPunctuation(text[end])) end++
+            boundaries += Boundary(index, end, c)
         }
+        return boundaries
+    }
+
+    private fun findLastSoftBoundary(text: String): Boundary? {
+        for (index in text.indices.reversed()) {
+            if (!isSoftPunctuation(text[index])) continue
+            var end = index + 1
+            while (end < text.length && isClosingPunctuation(text[end])) end++
+            return Boundary(index, end, text[index])
+        }
+        return null
+    }
+
+    private fun flushAt(index: Int) {
+        if (index <= 0) return
+        emitChunk(buffer.substring(0, index))
+        buffer.delete(0, index)
+        bufferVersion++
+        candidateJob?.cancel()
+        candidateJob = null
+        candidateEndIndex = -1
+        if (buffer.isNotEmpty()) evaluateBuffer(forceFlush = false)
     }
 
     private fun flushRemaining() {
-        val remaining = buffer.toString().trim()
-        if (remaining.isNotEmpty()) {
-            emitChunk(remaining)
-            buffer.clear()
-        }
+        emitChunk(buffer.toString())
+        buffer.clear()
+        bufferVersion++
     }
 
-    data class BoundaryMatch(val endIndex: Int, val char: Char)
-
-    private fun findStrongBoundary(text: String): BoundaryMatch? {
-        val len = text.length
-        for (i in 0 until len) {
-            val c = text[i]
-            if (isStrongPunctuation(c)) {
-                // Include trailing closing marks like quotes, brackets, parens: ." ?” !” 。》 !)
-                var end = i + 1
-                while (end < len && isClosingPunctuation(text[end])) {
-                    end++
-                }
-                return BoundaryMatch(endIndex = end, char = c)
-            }
-        }
-        return null
+    private fun emitChunk(rawChunk: String) {
+        val chunk = rawChunk.trim()
+        if (chunk.isEmpty()) return
+        firstChunk = false
+        onChunkReady(activeSessionId, chunk)
     }
 
-    private fun findSoftBoundary(text: String): BoundaryMatch? {
-        val len = text.length
-        for (i in len - 1 downTo 0) {
-            val c = text[i]
-            if (isSoftPunctuation(c)) {
-                var end = i + 1
-                while (end < len && isClosingPunctuation(text[end])) {
-                    end++
-                }
-                return BoundaryMatch(endIndex = end, char = c)
-            }
+    private fun findBestSplitIndex(text: String, preferredCodePoints: Int): Int {
+        val limit = text.offsetByCodePoints(0, preferredCodePoints.coerceAtMost(codePointCount(text)))
+        for (index in limit - 1 downTo 0) {
+            if (isStrongPunctuation(text[index]) || isSoftPunctuation(text[index])) return index + 1
         }
-        return null
-    }
-
-    private fun isConfirmedBoundary(text: String, match: BoundaryMatch): Boolean {
-        val idx = match.endIndex
-        val char = match.char
-
-        // CJK punctuation (! ? 。 ！） and newlines are definitive boundaries
-        if (char == '。' || char == '！' || char == '？' || char == '\n' || char == '\r') {
-            return true
+        for (index in limit - 1 downTo 0) {
+            if (text[index].isWhitespace()) return index + 1
         }
-
-        // Exclamation / Question marks followed by end of stream or space/closing mark are confirmed
-        if (char == '!' || char == '?') {
-            if (idx >= text.length) return true
-            val nextChar = text[idx]
-            return nextChar.isWhitespace() || nextChar.isUpperCase() || isClosingPunctuation(nextChar)
-        }
-
-        // Period guards
-        if (char == '.') {
-            if (idx >= text.length) {
-                // At current end of stream buffer, require candidate lookahead
-                return false
-            }
-
-            // Decimal check: e.g. "3.14" or "3,14"
-            if (idx > 1 && idx < text.length) {
-                val prev = text[idx - 2]
-                val next = text[idx]
-                if (prev.isDigit() && next.isDigit()) return false
-            }
-
-            // Version number or domain check: "2.1.0", "example.com"
-            val prefixWord = getWordBeforeIndex(text, idx - 1)
-            if (isAbbreviation(prefixWord) || isVersionOrDomain(text, idx)) {
-                return false
-            }
-        }
-
-        if (idx >= text.length) return true
-
-        val nextChar = text[idx]
-        return nextChar.isWhitespace() || nextChar.isUpperCase() || !nextChar.isLetterOrDigit()
-    }
-
-    private fun findBestSplitIndex(text: String, preferredMax: Int): Int {
-        val limit = preferredMax.coerceAtMost(text.length)
-        // 1. Look for soft boundary
-        for (i in limit downTo 1) {
-            if (isSoftPunctuation(text[i - 1]) || isStrongPunctuation(text[i - 1])) {
-                return i
-            }
-        }
-        // 2. Look for whitespace boundary
-        for (i in limit downTo 1) {
-            if (text[i - 1].isWhitespace()) {
-                return i
-            }
-        }
-        // 3. Fallback: code point boundary
         return limit
     }
 
-    private fun getWordBeforeIndex(text: String, periodIdx: Int): String {
-        var start = periodIdx - 1
-        while (start >= 0 && (text[start].isLetterOrDigit() || text[start] == '_')) {
-            start--
+    private fun isAcronymOrDottedIdentifier(text: String, periodIndex: Int): Boolean {
+        var start = periodIndex - 1
+        while (start >= 0 && !text[start].isWhitespace()) start--
+        val token = text.substring(start + 1, periodIndex + 1)
+        return token.count { it == '.' } >= 2 || token.contains('@') || token.contains('/')
+    }
+
+    private fun isNumberedListMarker(text: String, periodIndex: Int): Boolean {
+        var start = periodIndex - 1
+        while (start >= 0 && text[start].isDigit()) start--
+        return start + 1 < periodIndex && (start < 0 || text[start].isWhitespace())
+    }
+
+    private fun wordLengthBefore(text: String, periodIndex: Int): Int {
+        var start = periodIndex - 1
+        while (start >= 0 && text[start].isLetter()) start--
+        return periodIndex - start - 1
+    }
+
+    private fun nextNonWhitespace(text: String, start: Int): Char? {
+        for (index in start until text.length) {
+            if (!text[index].isWhitespace()) return text[index]
         }
-        return text.substring(start + 1, periodIdx).lowercase(Locale.ROOT)
+        return null
     }
 
-    private fun isStrongPunctuation(c: Char): Boolean = when (c) {
-        '.', '!', '?', '。', '！', '？', '\n', '\r' -> true
-        else -> false
-    }
-
-    private fun isSoftPunctuation(c: Char): Boolean = when (c) {
-        ',', ';', ':', '，', '；', '：', '—', '–' -> true
-        else -> false
-    }
-
-    private fun isClosingPunctuation(c: Char): Boolean = when (c) {
-        '"', '\'', ')', ']', '}', '》', '」', '』', '”', '’' -> true
-        else -> false
-    }
-
-    private fun isAbbreviation(word: String): Boolean = when (word) {
-        "dr", "mr", "mrs", "ms", "prof", "sr", "jr", "vs", "etc", "st", "approx",
-        "dott", "prof", "nº", "г", "ул", "str" -> true
-        else -> false
-    }
-
-    private fun isVersionOrDomain(text: String, idx: Int): Boolean {
-        if (idx >= text.length) return false
-        val snippet = text.substring(idx).take(10).lowercase(Locale.ROOT)
-        return snippet.startsWith("com") || snippet.startsWith("org") ||
-            snippet.startsWith("net") || snippet.startsWith("bin") ||
-            snippet.startsWith("io") || snippet.startsWith("ai")
-    }
-
-    private fun codePointCount(str: String): Int {
-        return str.codePointCount(0, str.length)
-    }
+    private fun isStrongPunctuation(c: Char) = c in charArrayOf('.', '!', '?', '。', '！', '？', '\n', '\r')
+    private fun isSoftPunctuation(c: Char) = c in charArrayOf(',', ';', ':', '，', '；', '：', '—', '–')
+    private fun isClosingPunctuation(c: Char) = c in charArrayOf('"', '\'', ')', ']', '}', '》', '」', '』', '”', '’')
+    private fun codePointCount(text: String) = text.codePointCount(0, text.length)
 }

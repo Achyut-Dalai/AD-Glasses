@@ -44,15 +44,15 @@ object ImageQuestionDefaults {
     fun questionForLanguage(languageTag: String): String = when (
         Locale.forLanguageTag(languageTag).language.lowercase(Locale.ROOT)
     ) {
-        "pt" -> "Descreva o que está à minha frente. Mencione textos importantes, objetos, perigos e detalhes que possam ser úteis."
-        "es" -> "Describe lo que hay frente a mí. Menciona texto importante, objetos, peligros y detalles que puedan ser útiles."
-        "de" -> "Beschreibe, was vor mir ist. Nenne wichtige Texte, Objekte, Gefahren und hilfreiche Details."
-        "fr" -> "Décrivez ce qui se trouve devant moi. Mentionnez les textes importants, les objets, les dangers et les détails utiles."
-        "it" -> "Descrivi ciò che ho davanti. Indica testi importanti, oggetti, pericoli e dettagli utili."
-        "zh" -> "描述我面前的内容。请提及重要文字、物体、危险和可能有用的细节。"
-        "ko" -> "내 앞에 있는 것을 설명해 주세요. 중요한 글자, 물체, 위험 요소와 도움이 될 만한 세부 사항을 알려 주세요."
-        "ru" -> "Опишите то, что находится передо мной. Упомяните важный текст, объекты, опасности и полезные детали."
-        else -> "Describe what is in front of me. Mention important text, objects, hazards, and details that may be useful."
+        "pt" -> "Dê-me uma descrição concisa da imagem"
+        "es" -> "Dame una descripción concisa de la imagen"
+        "de" -> "Gib mir eine kurze Beschreibung des Bildes"
+        "fr" -> "Donnez-moi une description concise de l'image"
+        "it" -> "Dammi una descrizione concisa dell'immagine"
+        "zh" -> "请简洁地描述这张图片"
+        "ko" -> "이미지를 간단히 설명해 주세요"
+        "ru" -> "Дайте мне краткое описание изображения"
+        else -> "Give me a concise description of the image"
     }
 }
 

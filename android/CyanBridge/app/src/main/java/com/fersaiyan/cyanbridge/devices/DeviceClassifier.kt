@@ -45,17 +45,6 @@ object DeviceClassifier {
             return DeviceClass.MEIZU_MYVU
         }
 
-        // Eyevue glasses heuristics.
-        if (
-            lower.contains("eyevue") ||
-            lower.contains("eye-vue") ||
-            lower.contains("eye vue") ||
-            name.startsWith("EV_") ||
-            name.startsWith("EYEVUE")
-        ) {
-            return DeviceClass.EYEVUE
-        }
-
         // Generic audio heuristics (best-effort).
         if (
             lower.contains("airpods") ||

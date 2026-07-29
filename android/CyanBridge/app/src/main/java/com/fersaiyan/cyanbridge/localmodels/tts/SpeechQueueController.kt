@@ -1,9 +1,12 @@
 package com.fersaiyan.cyanbridge.localmodels.tts
 
 import android.content.Context
+import android.media.AudioAttributes
+import android.media.AudioFocusRequest
+import android.media.AudioManager
+import android.os.Build
 import android.os.Bundle
 import android.speech.tts.TextToSpeech
-import android.speech.tts.UtteranceProgressListener
 import android.util.Log
 import java.util.Locale
 import java.util.concurrent.ConcurrentLinkedQueue
@@ -17,6 +20,7 @@ import java.util.concurrent.atomic.AtomicInteger
 class SpeechQueueController(
     private val context: Context,
     private val config: SpeechChunkingConfig = SpeechChunkingConfig(),
+    private val onPlaybackCompleted: (Long) -> Unit = {},
 ) {
     companion object {
         private const val TAG = "SpeechQueueController"
@@ -42,6 +46,10 @@ class SpeechQueueController(
         var totalSpokenChunks: Int = 0,
         var cancelledCount: Int = 0,
         var staleCallbacksDiscarded: Int = 0,
+        var totalSpokenCodePoints: Int = 0,
+        var smallestChunkCodePoints: Int = Int.MAX_VALUE,
+        var largestChunkCodePoints: Int = 0,
+        var lastTtsCompletedAtMs: Long = 0L,
     ) {
         val ttftMs: Long get() = (firstModelFragmentAtMs - requestStartedAtMs).coerceAtLeast(0L)
         val ttfaMs: Long get() = (firstTtsStartedAtMs - requestStartedAtMs).coerceAtLeast(0L)
@@ -49,6 +57,10 @@ class SpeechQueueController(
 
     private var tts: TextToSpeech? = null
     private var isTtsReady = false
+    private val audioManager = context.getSystemService(Context.AUDIO_SERVICE) as AudioManager
+    private var audioFocusRequest: AudioFocusRequest? = null
+    private var hasAudioFocus = false
+    private var completionNotifiedSessionId = 0L
 
     @Volatile
     private var activeSessionId: Long = 0L
@@ -59,10 +71,10 @@ class SpeechQueueController(
 
     val metrics = PerformanceMetrics()
 
-    fun attachTtsEngine(ttsEngine: TextToSpeech?) {
+    fun attachTtsEngine(ttsEngine: TextToSpeech?, ready: Boolean) {
         this.tts = ttsEngine
-        this.isTtsReady = ttsEngine != null
-        setupUtteranceListener()
+        this.isTtsReady = ttsEngine != null && ready
+        processNextInQueue()
     }
 
     @Synchronized
@@ -71,6 +83,8 @@ class SpeechQueueController(
         this.activeSessionId = sessionId
         this.sequenceCounter.set(0)
         this.currentlySpeakingItem.set(0)
+        this.completionNotifiedSessionId = 0L
+        resetMetrics()
         this.metrics.requestStartedAtMs = System.currentTimeMillis()
         Log.i(TAG, "Speech queue started session $sessionId")
     }
@@ -81,6 +95,7 @@ class SpeechQueueController(
         this.activeSessionId++
         clearQueue()
         runCatching { tts?.stop() }
+        abandonAudioFocus()
         Log.i(TAG, "Speech queue cancelled active session")
     }
 
@@ -112,6 +127,10 @@ class SpeechQueueController(
 
         pendingQueue.add(item)
         metrics.totalSpokenChunks++
+        val codePoints = normalized.codePointCount(0, normalized.length)
+        metrics.totalSpokenCodePoints += codePoints
+        metrics.smallestChunkCodePoints = minOf(metrics.smallestChunkCodePoints, codePoints)
+        metrics.largestChunkCodePoints = maxOf(metrics.largestChunkCodePoints, codePoints)
         processNextInQueue()
     }
 
@@ -128,6 +147,8 @@ class SpeechQueueController(
             }
 
             val utteranceId = "local_${item.sessionId}_${item.sequence}"
+
+            requestAudioFocus()
 
             item.languageTag?.takeIf { it.isNotBlank() }?.let { tag ->
                 runCatching {
@@ -158,37 +179,38 @@ class SpeechQueueController(
         }
     }
 
-    private fun setupUtteranceListener() {
-        tts?.setOnUtteranceProgressListener(object : UtteranceProgressListener() {
-            override fun onStart(utteranceId: String?) {
-                if (!isCurrentSessionUtterance(utteranceId)) return
-                if (metrics.firstTtsStartedAtMs == 0L) {
-                    metrics.firstTtsStartedAtMs = System.currentTimeMillis()
-                    Log.i(TAG, "Audible speech started! TTFA=${metrics.ttfaMs}ms")
-                }
-            }
+    fun onUtteranceStart(utteranceId: String?) {
+        if (!isCurrentSessionUtterance(utteranceId)) return
+        val now = System.currentTimeMillis()
+        if (metrics.firstTtsStartedAtMs == 0L) {
+            metrics.firstTtsStartedAtMs = now
+            Log.i(TAG, "Streaming TTS started session=$activeSessionId ttft=${metrics.ttftMs}ms ttfa=${metrics.ttfaMs}ms")
+        }
+        if (metrics.lastTtsCompletedAtMs > 0L) {
+            Log.d(TAG, "Streaming TTS interChunkGapMs=${now - metrics.lastTtsCompletedAtMs}")
+        }
+    }
 
-            override fun onDone(utteranceId: String?) {
-                if (!isCurrentSessionUtterance(utteranceId)) return
-                currentlySpeakingItem.decrementAndGet()
-                metrics.finalTtsCompletedAtMs = System.currentTimeMillis()
-                processNextInQueue()
-            }
+    fun onUtteranceDone(utteranceId: String?) {
+        if (!isCurrentSessionUtterance(utteranceId)) return
+        currentlySpeakingItem.updateAndGet { count -> (count - 1).coerceAtLeast(0) }
+        metrics.finalTtsCompletedAtMs = System.currentTimeMillis()
+        metrics.lastTtsCompletedAtMs = metrics.finalTtsCompletedAtMs
+        processNextInQueue()
+        releaseAudioFocusIfComplete()
+    }
 
-            @Deprecated("Deprecated in Java")
-            override fun onError(utteranceId: String?) {
-                if (!isCurrentSessionUtterance(utteranceId)) return
-                currentlySpeakingItem.decrementAndGet()
-                processNextInQueue()
-            }
+    fun onUtteranceError(utteranceId: String?, errorCode: Int? = null) {
+        if (!isCurrentSessionUtterance(utteranceId)) return
+        Log.w(TAG, "Streaming TTS failed id=$utteranceId errorCode=$errorCode")
+        currentlySpeakingItem.updateAndGet { count -> (count - 1).coerceAtLeast(0) }
+        processNextInQueue()
+        releaseAudioFocusIfComplete()
+    }
 
-            override fun onError(utteranceId: String?, errorCode: Int) {
-                if (!isCurrentSessionUtterance(utteranceId)) return
-                Log.e(TAG, "TTS utterance error code=$errorCode id=$utteranceId")
-                currentlySpeakingItem.decrementAndGet()
-                processNextInQueue()
-            }
-        })
+    fun onGenerationCompleted(sessionId: Long) {
+        if (sessionId != activeSessionId) return
+        releaseAudioFocusIfComplete()
     }
 
     private fun isCurrentSessionUtterance(utteranceId: String?): Boolean {
@@ -208,5 +230,66 @@ class SpeechQueueController(
     private fun clearQueue() {
         pendingQueue.clear()
         currentlySpeakingItem.set(0)
+    }
+
+    private fun resetMetrics() {
+        metrics.requestStartedAtMs = 0L
+        metrics.firstModelFragmentAtMs = 0L
+        metrics.firstChunkReadyAtMs = 0L
+        metrics.firstTtsSubmittedAtMs = 0L
+        metrics.firstTtsStartedAtMs = 0L
+        metrics.generationCompletedAtMs = 0L
+        metrics.finalTtsCompletedAtMs = 0L
+        metrics.totalModelFragments = 0
+        metrics.totalSpokenChunks = 0
+        metrics.totalSpokenCodePoints = 0
+        metrics.smallestChunkCodePoints = Int.MAX_VALUE
+        metrics.largestChunkCodePoints = 0
+        metrics.lastTtsCompletedAtMs = 0L
+    }
+
+    private fun releaseAudioFocusIfComplete() {
+        if (metrics.generationCompletedAtMs == 0L || currentlySpeakingItem.get() != 0 || pendingQueue.isNotEmpty()) return
+        val smallest = metrics.smallestChunkCodePoints.takeUnless { it == Int.MAX_VALUE } ?: 0
+        val average = if (metrics.totalSpokenChunks == 0) 0 else metrics.totalSpokenCodePoints / metrics.totalSpokenChunks
+        Log.i(TAG, "Streaming TTS complete session=$activeSessionId chunks=${metrics.totalSpokenChunks} avgCp=$average minCp=$smallest maxCp=${metrics.largestChunkCodePoints}")
+        abandonAudioFocus()
+        if (completionNotifiedSessionId != activeSessionId) {
+            completionNotifiedSessionId = activeSessionId
+            onPlaybackCompleted(activeSessionId)
+        }
+    }
+
+    private fun requestAudioFocus() {
+        if (hasAudioFocus) return
+        val result = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            val request = AudioFocusRequest.Builder(AudioManager.AUDIOFOCUS_GAIN_TRANSIENT)
+                .setAudioAttributes(
+                    AudioAttributes.Builder()
+                        .setUsage(AudioAttributes.USAGE_VOICE_COMMUNICATION)
+                        .setContentType(AudioAttributes.CONTENT_TYPE_SPEECH)
+                        .build(),
+                )
+                .build()
+            audioFocusRequest = request
+            audioManager.requestAudioFocus(request)
+        } else {
+            @Suppress("DEPRECATION")
+            audioManager.requestAudioFocus(null, AudioManager.STREAM_VOICE_CALL, AudioManager.AUDIOFOCUS_GAIN_TRANSIENT)
+        }
+        hasAudioFocus = result == AudioManager.AUDIOFOCUS_REQUEST_GRANTED
+        if (!hasAudioFocus) Log.w(TAG, "Audio focus was not granted; continuing with system TTS routing")
+    }
+
+    private fun abandonAudioFocus() {
+        if (!hasAudioFocus) return
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            audioFocusRequest?.let(audioManager::abandonAudioFocusRequest)
+        } else {
+            @Suppress("DEPRECATION")
+            audioManager.abandonAudioFocus(null)
+        }
+        audioFocusRequest = null
+        hasAudioFocus = false
     }
 }

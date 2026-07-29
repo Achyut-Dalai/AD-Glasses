@@ -9,6 +9,18 @@ import org.junit.Test
 class ImageQuestionPromptResolverTest {
 
     @Test
+    fun builtInDefaultIsTheConciseImageDescriptionPrompt() {
+        assertEquals(
+            "Give me a concise description of the image",
+            ImageQuestionDefaults.questionForLanguage("en"),
+        )
+        assertEquals(
+            "Dê-me uma descrição concisa da imagem",
+            ImageQuestionDefaults.questionForLanguage("pt-BR"),
+        )
+    }
+
+    @Test
     fun noUserQuestionUsesLocalizedBuiltInDefault() {
         val settings = builtInSettings(languageTag = "pt-BR")
 

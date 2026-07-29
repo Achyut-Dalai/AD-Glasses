@@ -43,7 +43,9 @@ object StreamingTextNormalizer {
         result = URL_REGEX.replace(result) {
             urlPlaceholder(languageTag)
         }
-        result = EMAIL_REGEX.replace(result, "")
+        result = EMAIL_REGEX.replace(result) {
+            emailPlaceholder(languageTag)
+        }
 
         // 4. Strip Markdown formatting
         result = MARKDOWN_HEADER_REGEX.replace(result, "")
@@ -83,6 +85,20 @@ object StreamingTextNormalizer {
             "zh" -> " [屏幕上显示的代码块] "
             "ru" -> " [блок кода на экране] "
             else -> " [code block shown on screen] "
+        }
+    }
+
+    private fun emailPlaceholder(languageTag: String?): String {
+        val lang = languageTag?.let { Locale.forLanguageTag(it).language.lowercase(Locale.ROOT) } ?: ""
+        return when (lang) {
+            "pt" -> " endereço de e-mail incluído "
+            "es" -> " dirección de correo incluida "
+            "de" -> " E-Mail-Adresse enthalten "
+            "fr" -> " adresse e-mail incluse "
+            "it" -> " indirizzo e-mail incluso "
+            "zh" -> " 包含电子邮件地址 "
+            "ru" -> " указан адрес электронной почты "
+            else -> " an email address is included "
         }
     }
 }

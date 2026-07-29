@@ -28,7 +28,7 @@ class MultilingualSpeechChunkerTest {
         chunker = MultilingualSpeechChunker(
             config = config,
             scope = CoroutineScope(Dispatchers.Default),
-            onChunkReady = { producedChunks.add(it) },
+            onChunkReady = { _, chunk -> producedChunks.add(chunk) },
         )
         chunker.startSession(1L)
     }
@@ -144,6 +144,48 @@ class MultilingualSpeechChunkerTest {
 
         val combined = producedChunks.joinToString(" ")
         assertTrue("Decimal fragmented chunks combined without wrong split", combined.contains("3.14 meters."))
+    }
+
+    @Test
+    fun testAccumulatedCallbacksDoNotDuplicateSpeech() {
+        chunker.append("There")
+        chunker.append("There is")
+        chunker.append("There is a door.")
+        chunker.finish()
+
+        assertEquals(listOf("There is a door."), producedChunks)
+    }
+
+    @Test
+    fun testUrlsAcronymsFilesAndNumberedListsRemainIntact() {
+        chunker.append("Visit example.com. Read U.S. policy. Open model.bin. 1. First item.")
+        chunker.finish()
+
+        val spoken = producedChunks.joinToString(" ")
+        assertTrue(spoken.contains("example.com"))
+        assertTrue(spoken.contains("U.S."))
+        assertTrue(spoken.contains("model.bin"))
+        assertTrue(spoken.contains("1. First item."))
+    }
+
+    @Test
+    fun testSurrogatePairsRemainWholeWhenForcedToSplit() {
+        val chunks = mutableListOf<String>()
+        val smallChunker = MultilingualSpeechChunker(
+            config = SpeechChunkingConfig(
+                firstChunkMinCodePoints = 1,
+                normalChunkMinCodePoints = 1,
+                preferredChunkMaxCodePoints = 4,
+                hardChunkMaxCodePoints = 5,
+            ),
+            onChunkReady = { _, chunk -> chunks.add(chunk) },
+        )
+        smallChunker.startSession(1L)
+        smallChunker.append("😀😀😀😀😀😀")
+        smallChunker.finish()
+
+        assertEquals("😀😀😀😀😀😀", chunks.joinToString(""))
+        assertTrue(chunks.none { it.last().isHighSurrogate() })
     }
 
     @Test
