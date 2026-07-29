@@ -63,6 +63,23 @@ class GlassesManagerGatingTest {
     }
 
     @Test
+    fun eyevue_showsEyevueControlsAndStatus() {
+        val profile = DeviceProfile(
+            macAddress = "00:11:22:33:44:55",
+            advertisedName = "Eyevue",
+            detectedClass = DeviceClass.EYEVUE,
+            selectedClass = DeviceClass.EYEVUE,
+            userOverridden = false,
+        )
+
+        val model = GlassesManagerGating.uiModel(profile)
+        assertTrue(model.isVisible(GlassesManagerGating.Action.EYEVUE_CONTROLS))
+        assertTrue(model.isVisible(GlassesManagerGating.Action.STATUS_BATTERY))
+        assertTrue(model.isVisible(GlassesManagerGating.Action.STATUS_STORAGE))
+        assertFalse(model.isVisible(GlassesManagerGating.Action.HEY_CYAN_EXTRAS))
+    }
+
+    @Test
     fun genericAudio_hidesHeyCyanExtras() {
         val profile = DeviceProfile(
             macAddress = "10:20:30:40:50:60",

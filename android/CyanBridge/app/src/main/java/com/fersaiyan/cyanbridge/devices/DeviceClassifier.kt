@@ -1,6 +1,7 @@
 package com.fersaiyan.cyanbridge.devices
 
 import android.os.ParcelUuid
+import com.fersaiyan.cyanbridge.devices.eyevue.EyevueProtocol
 import com.fersaiyan.cyanbridge.shared.devices.DeviceClass
 
 /**
@@ -15,9 +16,19 @@ object DeviceClassifier {
         serviceUuids: List<ParcelUuid> = emptyList()
     ): DeviceClass {
         val name = advertisedName?.trim().orEmpty()
+        val lower = name.lowercase()
+
+        // Eyevue devices may omit their local name while still advertising the
+        // vendor service. Check the UUID before name-based fallbacks.
+        if (serviceUuids.any { it.uuid == EyevueProtocol.SERVICE_UUID }) {
+            return DeviceClass.EYEVUE
+        }
+
         if (name.isEmpty()) return DeviceClass.UNKNOWN
 
-        val lower = name.lowercase()
+        if (lower.contains("eyevue")) {
+            return DeviceClass.EYEVUE
+        }
 
         // HeyCyan-class heuristics (already used elsewhere in the app).
         if (

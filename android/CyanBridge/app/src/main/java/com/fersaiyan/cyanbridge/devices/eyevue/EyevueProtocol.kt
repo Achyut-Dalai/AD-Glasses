@@ -1,43 +1,93 @@
 package com.fersaiyan.cyanbridge.devices.eyevue
 
-import android.util.Log
-import com.oudmon.ble.base.bluetooth.BleOperateManager
+import java.io.ByteArrayOutputStream
+import java.io.StringReader
+import java.nio.charset.StandardCharsets
+import java.util.Calendar
+import java.util.UUID
+
+data class EyevueFrame(
+    val commandId: Int,
+    val payload: ByteArray,
+)
+
+data class EyevueBattery(
+    val percent: Int,
+    val isCharging: Boolean,
+)
+
+data class EyevueCustomer(
+    val project: String,
+    val customer: String,
+)
 
 /**
  * Encapsulates the Eyevue smart glasses protocol based on reverse-engineered sources.
  *
- * Eyevue Datagram Format:
+ * Eyevue BLE datagram format:
  * [0xAB, 0x55, len_hi, len_lo, commandId, payload..., crc]
  * Where:
- * - len = 1 + payload.size (2 bytes big-endian)
+ * - len = payload.size + 2 (command plus CRC, 2 bytes big-endian)
  * - crc = (commandId + sum(payload)) & 0xFF
  */
 object EyevueProtocol {
-    private const val TAG = "EyevueProtocol"
-
     const val SOF_HI = 0xAB.toByte()
     const val SOF_LO = 0x55.toByte()
 
-    // Command IDs
+    val SERVICE_UUID: UUID = UUID.fromString("0000aa12-0000-1000-8000-00805f9b34fb")
+    val COMMAND_WRITE_UUID: UUID = UUID.fromString("0000aa13-0000-1000-8000-00805f9b34fb")
+    val COMMAND_NOTIFY_UUID: UUID = UUID.fromString("0000aa14-0000-1000-8000-00805f9b34fb")
+    val PHOTO_NOTIFY_UUID: UUID = UUID.fromString("0000aa15-0000-1000-8000-00805f9b34fb")
+    val CCCD_UUID: UUID = UUID.fromString("00002902-0000-1000-8000-00805f9b34fb")
+
+    const val CMD_BRIGHTNESS = 1
+    const val CMD_RECORD_TIME = 2
+    const val CMD_WEAR_DETECT = 4
+    const val CMD_GET_CAPACITY = 22
+    const val CMD_GET_BATTERY = 23
     const val CMD_TAKE_PHOTO = 34
     const val CMD_RECORD_VIDEO = 35
     const val CMD_STOP_RECORD = 36
+    const val CMD_CONTROL_MUSIC = 49
+    const val CMD_CONTROL_VOLUME = 50
     const val CMD_RECORD_AUDIO = 52
-    const val CMD_APP_LIVE = 103
-    const val CMD_FILE_DOWNLOAD_FINISH = 68
-    const val CMD_GET_BATTERY = 23
     const val CMD_GET_WIFI_INFO = 57
+    const val CMD_GET_CUSTOMER = 100
+    const val CMD_APP_LIVE = 103
+    const val CMD_GET_DEVICE_STATUS = 72
+    const val CMD_GET_DEVICE_INFO = 85
+    const val CMD_GET_VOLUME = 105
+    const val CMD_GET_MEDIA_COUNT = 64
+    const val CMD_SET_TIME = 89
+    const val CMD_FILE_DOWNLOAD_FINISH = 68
+    const val CMD_GET_SUPPORT_FUNCTION = 149
 
-    // Parameter Constants
+    const val CMD_RECEIVE_BATTERY = 83
+    const val CMD_RECEIVE_WIFI_INFO = 37
+    const val CMD_RECEIVE_THUMBNAIL_COUNT = 66
+    const val CMD_RECEIVE_CUSTOMER = 100
+
+    const val CMD_START_LIVE = CMD_APP_LIVE
+
     const val PARAM_LIVE_AP = 0x30.toByte()    // '0'
     const val PARAM_LIVE_P2P = 0x31.toByte()   // '1'
     const val PARAM_DOWNLOAD_FINISH = 0x30.toByte()
+    const val PARAM_PHOTO_THUMBNAIL = 0x30
+    const val PARAM_PHOTO_HIGH_QUALITY = 0x31
+    const val PARAM_RECORD_START = 0x01
+    const val PARAM_RECORD_STOP = 0x00
+    const val PARAM_AUDIO_START = 0x01
+    const val PARAM_AUDIO_STOP = 0x00
+    const val PARAM_WIFI_AP = 0x30
+    const val PARAM_WIFI_P2P = 0x31
 
     /**
      * Builds a full Eyevue BLE datagram packet.
      */
     fun buildDatagram(commandId: Int, payload: ByteArray = byteArrayOf()): ByteArray {
-        val len = 1 + payload.size
+        require(commandId in 0..0xFF) { "Eyevue command must fit in one byte" }
+        require(payload.size <= 0xFFFD) { "Eyevue payload is too large" }
+        val len = payload.size + 2
         val packet = ByteArray(5 + payload.size + 1)
         packet[0] = SOF_HI
         packet[1] = SOF_LO
@@ -54,6 +104,128 @@ object EyevueProtocol {
         return packet
     }
 
+    fun parseDatagram(packet: ByteArray): EyevueFrame {
+        require(packet.size >= 6) { "Eyevue packet is too short" }
+        require(packet[0] == SOF_HI && packet[1] == SOF_LO) { "Invalid Eyevue packet header" }
+        val declaredLength = u16(packet[2], packet[3])
+        require(declaredLength >= 2) { "Invalid Eyevue packet length: $declaredLength" }
+        require(packet.size == declaredLength + 4) {
+            "Eyevue packet length mismatch: declared=$declaredLength actual=${packet.size - 4}"
+        }
+        val commandId = packet[4].toInt() and 0xFF
+        val payload = packet.copyOfRange(5, packet.size - 1)
+        val expectedCrc = crc(commandId, payload)
+        val actualCrc = packet.last().toInt() and 0xFF
+        require(actualCrc == expectedCrc) {
+            "Eyevue CRC mismatch: expected=$expectedCrc actual=$actualCrc"
+        }
+        return EyevueFrame(commandId, payload)
+    }
+
+    fun crc(commandId: Int, payload: ByteArray): Int {
+        var result = commandId and 0xFF
+        payload.forEach { result += it.toInt() and 0xFF }
+        return result and 0xFF
+    }
+
+    fun valuePacket(commandId: Int, value: Int): ByteArray =
+        buildDatagram(commandId, byteArrayOf((value and 0xFF).toByte()))
+
+    fun twoValuePacket(commandId: Int, first: Int, second: Int): ByteArray =
+        buildDatagram(
+            commandId,
+            byteArrayOf((first and 0xFF).toByte(), (second and 0xFF).toByte()),
+        )
+
+    fun buildGetCustomerPacket(): ByteArray = buildDatagram(CMD_GET_CUSTOMER)
+
+    fun buildGetBatteryPacket(): ByteArray = valuePacket(CMD_GET_BATTERY, 0)
+
+    fun buildGetCapacityPacket(): ByteArray = valuePacket(CMD_GET_CAPACITY, 0)
+
+    fun buildGetDeviceStatusPacket(): ByteArray = valuePacket(CMD_GET_DEVICE_STATUS, 0)
+
+    fun buildGetDeviceInfoPacket(): ByteArray = valuePacket(CMD_GET_DEVICE_INFO, 0)
+
+    fun buildGetWifiInfoPacket(p2p: Boolean): ByteArray =
+        valuePacket(CMD_GET_WIFI_INFO, if (p2p) PARAM_WIFI_P2P else PARAM_WIFI_AP)
+
+    fun buildPhotoPacket(highQuality: Boolean): ByteArray =
+        valuePacket(CMD_TAKE_PHOTO, if (highQuality) PARAM_PHOTO_HIGH_QUALITY else PARAM_PHOTO_THUMBNAIL)
+
+    fun buildStartVideoPacket(): ByteArray = valuePacket(CMD_RECORD_VIDEO, PARAM_RECORD_START)
+
+    fun buildStopVideoPacket(): ByteArray = valuePacket(CMD_STOP_RECORD, PARAM_RECORD_STOP)
+
+    fun buildAudioPacket(start: Boolean): ByteArray =
+        valuePacket(CMD_RECORD_AUDIO, if (start) PARAM_AUDIO_START else PARAM_AUDIO_STOP)
+
+    fun buildFinishTransferPacket(): ByteArray =
+        buildDatagram(CMD_FILE_DOWNLOAD_FINISH, byteArrayOf(PARAM_DOWNLOAD_FINISH, 0x01))
+
+    fun buildWearDetectionPacket(enabled: Boolean): ByteArray =
+        valuePacket(CMD_WEAR_DETECT, if (enabled) 0x31 else 0x30)
+
+    fun buildRecordDurationPacket(seconds: Int): ByteArray =
+        twoValuePacket(CMD_RECORD_TIME, seconds shr 8, seconds)
+
+    fun buildSetTimePacket(epochMillis: Long = System.currentTimeMillis()): ByteArray {
+        val calendar = Calendar.getInstance().apply { timeInMillis = epochMillis }
+        return buildDatagram(
+            CMD_SET_TIME,
+            byteArrayOf(
+                (calendar.get(Calendar.YEAR) - 2000).toByte(),
+                (calendar.get(Calendar.MONTH) + 1).toByte(),
+                calendar.get(Calendar.DAY_OF_MONTH).toByte(),
+                calendar.get(Calendar.HOUR_OF_DAY).toByte(),
+                calendar.get(Calendar.MINUTE).toByte(),
+                calendar.get(Calendar.SECOND).toByte(),
+            ),
+        )
+    }
+
+    fun parseBattery(frame: EyevueFrame): EyevueBattery? {
+        return when (frame.commandId) {
+            CMD_GET_BATTERY -> {
+                if (frame.payload.size < 2) null else EyevueBattery(
+                    percent = ((frame.payload[0].toInt() and 0x0F) * 10) +
+                        (frame.payload[1].toInt() and 0x0F),
+                    isCharging = frame.payload.getOrNull(2)?.toInt() == 1,
+                )
+            }
+            CMD_RECEIVE_BATTERY -> {
+                if (frame.payload.size < 2) null else EyevueBattery(
+                    percent = frame.payload[1].toInt() and 0xFF,
+                    isCharging = frame.payload[0].toInt() == 1,
+                )
+            }
+            else -> null
+        }
+    }
+
+    fun parseWifiSsid(frame: EyevueFrame): String? {
+        if (frame.commandId != CMD_RECEIVE_WIFI_INFO || frame.payload.isEmpty()) return null
+        return frame.payload.toString(StandardCharsets.UTF_8)
+            .trim { it <= ' ' || it == '\u0000' }
+            .takeIf { it.isNotBlank() }
+    }
+
+    fun parseCustomer(frame: EyevueFrame): EyevueCustomer? {
+        if (frame.commandId != CMD_RECEIVE_CUSTOMER || frame.payload.size < 8) return null
+        fun readPart(offset: Int): String = frame.payload
+            .copyOfRange(offset, offset + 4)
+            .filter { it.toInt() != 0 }
+            .toByteArray()
+            .toString(StandardCharsets.UTF_8)
+        return EyevueCustomer(
+            project = readPart(0),
+            customer = readPart(4),
+        )
+    }
+
+    private fun u16(high: Byte, low: Byte): Int =
+        ((high.toInt() and 0xFF) shl 8) or (low.toInt() and 0xFF)
+
     /** Start Live streaming over AP mode. */
     fun buildStartLiveApPacket(): ByteArray = buildDatagram(CMD_APP_LIVE, byteArrayOf(PARAM_LIVE_AP))
 
@@ -61,28 +233,16 @@ object EyevueProtocol {
     fun buildStartLiveP2pPacket(): ByteArray = buildDatagram(CMD_APP_LIVE, byteArrayOf(PARAM_LIVE_P2P))
 
     /** Stop live stream / complete file transfer. */
-    fun buildExitLivePacket(): ByteArray = buildDatagram(CMD_FILE_DOWNLOAD_FINISH, byteArrayOf(PARAM_DOWNLOAD_FINISH, 0x01))
+    fun buildExitLivePacket(): ByteArray = buildFinishTransferPacket()
 
     /** Trigger photo snapshot. */
-    fun buildTakePhotoPacket(): ByteArray = buildDatagram(CMD_TAKE_PHOTO, byteArrayOf(0x31.toByte())) // High quality
+    fun buildTakePhotoPacket(): ByteArray = buildPhotoPacket(highQuality = true)
 
     /** Start video recording. */
-    fun buildRecordVideoPacket(): ByteArray = buildDatagram(CMD_RECORD_VIDEO, byteArrayOf(0x01.toByte()))
+    fun buildRecordVideoPacket(): ByteArray = buildStartVideoPacket()
 
     /** Stop video recording. */
-    fun buildStopRecordPacket(): ByteArray = buildDatagram(CMD_STOP_RECORD, byteArrayOf(0x00.toByte()))
-
-    /** Send a built packet over active BLE connection. */
-    fun sendPacket(packet: ByteArray): Boolean {
-        if (!BleOperateManager.getInstance().isConnected) {
-            Log.w(TAG, "Cannot send Eyevue packet: BLE not connected")
-            return false
-        }
-        val hex = packet.joinToString(" ") { "%02X".format(it) }
-        Log.i(TAG, "Sending Eyevue BLE Datagram: [$hex]")
-        com.oudmon.ble.base.communication.LargeDataHandler.getInstance().glassesControl(packet) { _, _ -> }
-        return true
-    }
+    fun buildStopRecordPacket(): ByteArray = buildStopVideoPacket()
 
     /** Returns the primary HTTP index URL for Eyevue glasses (SK series P2P XML index). */
     fun eyevueMediaIndexUrl(deviceIp: String): String = "http://$deviceIp/?custom=1&cmd=3001&par=1"
@@ -119,8 +279,7 @@ object EyevueProtocol {
                 }
                 eventType = parser.next()
             }
-        } catch (e: Exception) {
-            Log.w(TAG, "Eyevue XML parsing failed, falling back to line scanning: ${e.message}")
+        } catch (_: Exception) {
             // Fallback line parsing for filenames in plaintext/config format
             content.lineSequence()
                 .map { it.trim() }
@@ -129,4 +288,46 @@ object EyevueProtocol {
         }
         return fileNames
     }
+}
+
+/** Buffers BLE notifications so frames split across ATT packets are decoded safely. */
+class EyevueFrameDecoder {
+    private val buffer = ByteArrayOutputStream()
+
+    fun append(chunk: ByteArray): List<EyevueFrame> {
+        if (chunk.isEmpty()) return emptyList()
+        buffer.write(chunk)
+        val bytes = buffer.toByteArray()
+        val frames = mutableListOf<EyevueFrame>()
+        var cursor = 0
+
+        while (true) {
+            while (cursor + 1 < bytes.size &&
+                (bytes[cursor] != EyevueProtocol.SOF_HI || bytes[cursor + 1] != EyevueProtocol.SOF_LO)
+            ) {
+                cursor++
+            }
+            if (bytes.size - cursor < 4) break
+
+            val length = ((bytes[cursor + 2].toInt() and 0xFF) shl 8) or
+                (bytes[cursor + 3].toInt() and 0xFF)
+            if (length < 2) {
+                cursor++
+                continue
+            }
+            val frameSize = length + 4
+            if (bytes.size - cursor < frameSize) break
+
+            val candidate = bytes.copyOfRange(cursor, cursor + frameSize)
+            runCatching { EyevueProtocol.parseDatagram(candidate) }
+                .onSuccess(frames::add)
+            cursor += frameSize
+        }
+
+        buffer.reset()
+        if (cursor < bytes.size) buffer.write(bytes, cursor, bytes.size - cursor)
+        return frames
+    }
+
+    fun reset() = buffer.reset()
 }
