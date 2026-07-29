@@ -58,6 +58,7 @@ class ProSubscriptionActivity : AppCompatActivity() {
     private var lastBillingError: String = ""
     private var changePlanRequested = false
     private var pendingEmailVerification = ""
+    private var emailVerificationRefreshInFlight = false
     private var composeState by mutableStateOf(ProSubscriptionUiState())
     private lateinit var composeView: ComposeView
 
@@ -498,12 +499,24 @@ class ProSubscriptionActivity : AppCompatActivity() {
 
         Toast.makeText(this, "Checking account verification...", Toast.LENGTH_SHORT).show()
         thread {
-            ProSubscriptionRelayClient.fetchAccountInfo(this)
+            val accountResult = ProSubscriptionRelayClient.fetchAccountInfo(this)
             runOnUiThread {
                 if (isFinishing || isDestroyed) return@runOnUiThread
                 if (ProSubscriptionServerPrefs.isAccountEmailVerified(this, email)) {
                     pendingEmailVerification = ""
                     onConfirmed()
+                } else if (accountResult.isFailure) {
+                    Toast.makeText(
+                        this,
+                        "Unable to check verification. Check your connection and try again.",
+                        Toast.LENGTH_LONG,
+                    ).show()
+                } else if (pendingEmailVerification.equals(email, ignoreCase = true)) {
+                    Toast.makeText(
+                        this,
+                        "Verification is still being confirmed. Wait a moment, then try again.",
+                        Toast.LENGTH_LONG,
+                    ).show()
                 } else {
                     requestAccountEmailVerification(email, onConfirmed)
                 }
@@ -518,15 +531,38 @@ class ProSubscriptionActivity : AppCompatActivity() {
 
     private fun refreshPendingEmailVerification() {
         val email = pendingEmailVerification
-        if (email.isBlank() || ProSubscriptionServerPrefs.isAccountEmailVerified(this, email)) return
+        if (
+            email.isBlank() ||
+            emailVerificationRefreshInFlight ||
+            ProSubscriptionServerPrefs.isAccountEmailVerified(this, email)
+        ) return
 
+        emailVerificationRefreshInFlight = true
         thread {
-            ProSubscriptionRelayClient.fetchAccountInfo(this)
+            var lastResult: Result<ProSubscriptionRelayClient.AccountInfo>? = null
+            for (attempt in 0 until 3) {
+                lastResult = ProSubscriptionRelayClient.fetchAccountInfo(this)
+                if (ProSubscriptionServerPrefs.isAccountEmailVerified(this, email)) break
+                if (attempt < 2) Thread.sleep(750L)
+            }
             runOnUiThread {
+                emailVerificationRefreshInFlight = false
                 if (isFinishing || isDestroyed) return@runOnUiThread
                 if (ProSubscriptionServerPrefs.isAccountEmailVerified(this, email)) {
                     pendingEmailVerification = ""
                     Toast.makeText(this, "Email verified. Choose your plan to continue.", Toast.LENGTH_LONG).show()
+                } else if (lastResult?.isFailure == true) {
+                    Toast.makeText(
+                        this,
+                        "Unable to confirm verification. Check your connection and try again.",
+                        Toast.LENGTH_LONG,
+                    ).show()
+                } else {
+                    Toast.makeText(
+                        this,
+                        "Verification is not confirmed yet. Wait a moment, then try again.",
+                        Toast.LENGTH_LONG,
+                    ).show()
                 }
             }
         }
