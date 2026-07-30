@@ -18,12 +18,7 @@ object ProSubscriptionAiPrefs {
             .replace(Regex("\\s*\\(\\s*x\\s*\\d+\\s*\\)\\s*$", RegexOption.IGNORE_CASE), "")
             .trim()
         val withoutDecoratedId = withoutMultiplier.substringBefore(" · ").trim()
-        val withoutFree = if (withoutDecoratedId.endsWith(":free", ignoreCase = true)) {
-            withoutDecoratedId.dropLast(5)
-        } else {
-            withoutDecoratedId
-        }
-        return withoutFree.trim().ifBlank { DEFAULT_MODEL }
+        return withoutDecoratedId.ifBlank { DEFAULT_MODEL }
     }
 
     private fun prefs(context: Context) =

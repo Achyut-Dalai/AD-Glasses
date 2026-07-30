@@ -147,13 +147,9 @@ class ProSubscriptionSettingsActivity : AppCompatActivity() {
 
         val modelIdToLabel = linkedMapOf(
             "openrouter/free" to "Cheap models router (1x)",
+            "google/gemma-4-26b-a4b-it:free" to "Gemma 4 26B Vision (free first) (1x)",
+            "google/gemma-4-26b-a4b-it" to "Gemma 4 26B Vision (2x)",
             "deepseek/deepseek-v4-flash" to "DeepSeek V4 Flash (2x)",
-            "minimax/minimax-m3" to "MiniMax M3 (5x)",
-            "openai/gpt-5.4" to "GPT 5.4 (30x)",
-            "openai/gpt-5.4-nano" to "GPT 5.4 Nano (6x)",
-            "deepseek/deepseek-v4-pro" to "DeepSeek V4 Pro (5x)",
-            "xiaomi/mimo-v2.5-pro" to "MiMo V2.5 Pro (5x)",
-            "google/gemini-3-flash-preview" to "Gemini 3 Flash Preview (13x)",
         )
 
         val modelLabels = mutableListOf<String>()
