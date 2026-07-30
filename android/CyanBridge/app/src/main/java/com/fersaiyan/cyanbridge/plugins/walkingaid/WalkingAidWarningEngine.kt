@@ -9,6 +9,10 @@ data class WarningDecision(
     val shouldWarn: Boolean,
     val message: String,
     val sceneLogJson: String,
+    val frameTimestampMs: Long,
+    val frameAgeMs: Long,
+    val isStale: Boolean,
+    val trackId: Long? = null,
 )
 
 object WalkingAidWarningEngine {
@@ -28,25 +32,28 @@ object WalkingAidWarningEngine {
         detection: DetectionResult,
         depth: DepthResult?,
         focusDescription: String,
+        frameTimestampMs: Long = System.currentTimeMillis(),
+        nowMs: Long = System.currentTimeMillis(),
     ): WarningDecision {
-        val now = System.currentTimeMillis()
+        val frameAgeMs = (nowMs - frameTimestampMs).coerceAtLeast(0L)
+        val isStale = frameAgeMs > MAX_WARNING_FRAME_AGE_MS
         val userKeywords = WalkingAidFocusMapper.resolve(focusDescription)
 
         var candidateAlert: String? = null
-        var isUrgent = false
-        var alertKey = ""
+        var candidateKey = ""
+        var warningTrackId: Long? = null
 
         // 1. Check approaching center hazards (Priority 1: Immediate collision risk)
-        for (obj in detection.objects) {
+        for (obj in detection.objects.takeUnless { isStale }.orEmpty()) {
             val isCustomWatch = userKeywords.any { keyword -> matchesClass(obj.label, keyword) }
             val isCritical = CRITICAL_NAVIGATION_CLASSES.contains(obj.label) || isCustomWatch
 
             if (isCritical && obj.position == "center" && obj.approaching) {
-                alertKey = "approaching_${obj.label}"
-                if (canTrigger(alertKey, now, URGENT_COOLDOWN_MS)) {
+                candidateKey = alertKey("approaching", obj)
+                if (canTrigger(candidateKey, nowMs, URGENT_COOLDOWN_MS)) {
                     candidateAlert = "Warning: approaching ${obj.label} straight ahead!"
-                    isUrgent = true
-                    recordAlert(alertKey, now)
+                    warningTrackId = obj.trackId
+                    recordAlert(candidateKey, nowMs)
                     break
                 }
             }
@@ -54,7 +61,10 @@ object WalkingAidWarningEngine {
 
         // 2. Check prominent immediate obstacles in direct path (Priority 2)
         if (candidateAlert == null) {
-            for (obj in detection.objects) {
+            for (obj in detection.objects.takeUnless { isStale }.orEmpty()) {
+                // An approaching track uses the shorter urgent cooldown and must not fall through
+                // to a second obstacle alert while that urgent alert is cooling down.
+                if (obj.approaching) continue
                 val isCustomWatch = userKeywords.any { keyword -> matchesClass(obj.label, keyword) }
                 val isCritical = CRITICAL_NAVIGATION_CLASSES.contains(obj.label) || isCustomWatch
 
@@ -63,15 +73,16 @@ object WalkingAidWarningEngine {
                 val isLargeInPath = obj.position == "center" && (boxHeight > 0.35f || boxWidth > 0.35f)
 
                 if (isCritical && (isLargeInPath || isCustomWatch)) {
-                    alertKey = "obstacle_${obj.label}_${obj.position}"
-                    if (canTrigger(alertKey, now, DEFAULT_COOLDOWN_MS)) {
+                    candidateKey = alertKey("obstacle", obj)
+                    if (canTrigger(candidateKey, nowMs, DEFAULT_COOLDOWN_MS)) {
                         val posText = when (obj.position) {
                             "left" -> "to your left"
                             "right" -> "to your right"
                             else -> "directly ahead"
                         }
                         candidateAlert = "${obj.label.replaceFirstChar { it.titlecase() }} $posText."
-                        recordAlert(alertKey, now)
+                        warningTrackId = obj.trackId
+                        recordAlert(candidateKey, nowMs)
                         break
                     }
                 }
@@ -79,16 +90,23 @@ object WalkingAidWarningEngine {
         }
 
         // 3. Check Ground Discontinuities / Relative Depth (Priority 3)
-        if (candidateAlert == null && depth != null && depth.groundDiscontinuityDetected) {
-            alertKey = "ground_discontinuity"
-            if (canTrigger(alertKey, now, DEFAULT_COOLDOWN_MS)) {
+        if (!isStale && candidateAlert == null && depth != null && depth.groundDiscontinuityDetected) {
+            candidateKey = "ground_discontinuity"
+            if (canTrigger(candidateKey, nowMs, DEFAULT_COOLDOWN_MS)) {
                 candidateAlert = "Caution: ground level change or curb ahead."
-                recordAlert(alertKey, now)
+                recordAlert(candidateKey, nowMs)
             }
         }
 
         // Build Structured Temporal Scene JSON Log for LLM context
-        val logObj = buildSceneLogJson(detection, depth, candidateAlert)
+        val logObj = buildSceneLogJson(
+            detection = detection,
+            depth = depth,
+            warningIssued = candidateAlert,
+            frameTimestampMs = frameTimestampMs,
+            frameAgeMs = frameAgeMs,
+            isStale = isStale,
+        )
         if (temporalSceneBuffer.size >= 15) {
             temporalSceneBuffer.removeFirst()
         }
@@ -98,6 +116,10 @@ object WalkingAidWarningEngine {
             shouldWarn = candidateAlert != null,
             message = candidateAlert ?: "",
             sceneLogJson = logObj.toString(2),
+            frameTimestampMs = frameTimestampMs,
+            frameAgeMs = frameAgeMs,
+            isStale = isStale,
+            trackId = warningTrackId,
         )
     }
 
@@ -114,6 +136,13 @@ object WalkingAidWarningEngine {
         temporalSceneBuffer.clear()
     }
 
+    @Synchronized
+    fun clearTrackCooldowns(trackIds: Collection<Long>) {
+        if (trackIds.isEmpty()) return
+        val markers = trackIds.map { "_track_$it" }
+        lastAlertTimeMap.keys.removeAll { key -> markers.any(key::endsWith) }
+    }
+
     private fun canTrigger(key: String, nowMs: Long, cooldownMs: Long): Boolean {
         val last = lastAlertTimeMap[key] ?: 0L
         return (nowMs - last) >= cooldownMs
@@ -127,13 +156,23 @@ object WalkingAidWarningEngine {
         label.equals(keyword, ignoreCase = true) ||
             "${label}s".equals(keyword, ignoreCase = true)
 
+    private fun alertKey(prefix: String, detection: com.fersaiyan.cyanbridge.plugins.walkingaid.vision.DetectedObject): String =
+        detection.trackId?.let { "${prefix}_track_$it" }
+            ?: "${prefix}_${detection.label}_${detection.position}"
+
     private fun buildSceneLogJson(
         detection: DetectionResult,
         depth: DepthResult?,
-        warningIssued: String?
+        warningIssued: String?,
+        frameTimestampMs: Long,
+        frameAgeMs: Long,
+        isStale: Boolean,
     ): JSONObject {
         val obj = JSONObject()
         obj.put("timestampMs", System.currentTimeMillis())
+        obj.put("frameTimestampMs", frameTimestampMs)
+        obj.put("frameAgeMs", frameAgeMs)
+        obj.put("stale", isStale)
 
         val objArr = JSONArray()
         for (d in detection.objects) {
@@ -142,10 +181,20 @@ object WalkingAidWarningEngine {
                 .put("confidence", (d.confidence * 100).toInt() / 100.0)
                 .put("position", d.position)
                 .put("approaching", d.approaching)
+                .put("motionState", d.motionState.name.lowercase())
+            if (d.trackId != null) item.put("trackId", d.trackId)
+            if (d.timeToCollisionSeconds != null) {
+                item.put("timeToCollisionSeconds", (d.timeToCollisionSeconds * 10).toInt() / 10.0)
+            }
             if (d.relativeDepth != null) item.put("relativeDepth", d.relativeDepth)
             objArr.put(item)
         }
         obj.put("objects", objArr)
+        if (detection.clearedTrackIds.isNotEmpty()) {
+            val cleared = JSONArray()
+            detection.clearedTrackIds.forEach(cleared::put)
+            obj.put("clearedTrackIds", cleared)
+        }
 
         val hasCenterObstacle = detection.objects.any { it.position == "center" && (it.boundingBox.bottom - it.boundingBox.top > 0.25f) }
         val freePath = when {
@@ -165,4 +214,6 @@ object WalkingAidWarningEngine {
         }
         return obj
     }
+
+    const val MAX_WARNING_FRAME_AGE_MS = 6_000L
 }

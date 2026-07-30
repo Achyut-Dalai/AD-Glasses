@@ -46,7 +46,6 @@ class LiteRtVisionBackend(
     var detectorInitError: String? = null
         private set
 
-    private val previousDetections = mutableListOf<DetectedObject>()
     private var modelWidth = 640
     private var modelHeight = 640
     private var depthWidth = 518
@@ -359,14 +358,11 @@ class LiteRtVisionBackend(
         // Non-Maximum Suppression (NMS)
         val nmsResults = nonMaxSuppression(rawCandidates, IOU_THRESHOLD)
 
-        // Temporal Tracking: evaluate if objects in the trajectory are approaching (expanding bounding box)
-        val finalObjects = evaluateTemporalMotion(nmsResults)
-
         val t3 = SystemClock.elapsedRealtime()
         val postTime = t3 - t2
 
         DetectionResult(
-            objects = finalObjects,
+            objects = nmsResults,
             acquisitionTimeMs = acqTime,
             preprocessTimeMs = prepTime,
             inferenceTimeMs = infTime,
@@ -574,27 +570,6 @@ class LiteRtVisionBackend(
         val areaA = (a.right - a.left) * (a.bottom - a.top)
         val areaB = (b.right - b.left) * (b.bottom - b.top)
         return interArea / (areaA + areaB - interArea)
-    }
-
-    private fun evaluateTemporalMotion(current: List<DetectedObject>): List<DetectedObject> {
-        val results = current.map { curr ->
-            val prev = previousDetections.find { p ->
-                p.label == curr.label && p.position == curr.position &&
-                        computeIoU(p.boundingBox, curr.boundingBox) > 0.2f
-            }
-            if (prev != null) {
-                val areaCurr = (curr.boundingBox.right - curr.boundingBox.left) * (curr.boundingBox.bottom - curr.boundingBox.top)
-                val areaPrev = (prev.boundingBox.right - prev.boundingBox.left) * (prev.boundingBox.bottom - prev.boundingBox.top)
-                // If bounding box expanded by > 15% between frames, object is moving toward user
-                val isApproaching = (areaCurr > areaPrev * 1.15f) && curr.position == "center"
-                curr.copy(approaching = isApproaching)
-            } else {
-                curr
-            }
-        }
-        previousDetections.clear()
-        previousDetections.addAll(results)
-        return results
     }
 
     override suspend fun estimateDepth(frame: VisionFrame): DepthResult? = withContext(Dispatchers.Default) {
