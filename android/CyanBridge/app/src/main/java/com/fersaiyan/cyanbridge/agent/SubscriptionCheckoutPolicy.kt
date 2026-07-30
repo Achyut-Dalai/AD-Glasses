@@ -52,6 +52,12 @@ object SubscriptionCheckoutPolicy {
         return country in allowed
     }
 
+    fun isGooglePlayCheckoutAllowed(
+        changePlanRequested: Boolean,
+        currentPlan: String,
+        isSubscribed: Boolean,
+    ): Boolean = !changePlanRequested || !isSubscribed || currentPlan == "free_trial"
+
     fun checkoutSessionEndpoint(checkoutPageUrl: String): String {
         val checkoutPageUri = Uri.parse(checkoutPageUrl.trim())
         require(checkoutPageUri.scheme != null && checkoutPageUri.host != null) {

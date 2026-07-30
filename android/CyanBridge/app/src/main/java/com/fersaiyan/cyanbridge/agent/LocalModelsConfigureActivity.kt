@@ -1309,6 +1309,11 @@ class LocalModelsConfigureActivity : AppCompatActivity() {
     }
 
     private fun runWarmupProbe() {
+        if (warmupJob?.isActive == true) {
+            Log.i("LocalModelsConfigureActivity", "Ignoring duplicate warm-up request while a probe is active")
+            return
+        }
+
         val model = selectedInstalledModel()
         if (model == null) {
             Toast.makeText(this, "Install or select a model first", Toast.LENGTH_SHORT).show()
@@ -1320,7 +1325,6 @@ class LocalModelsConfigureActivity : AppCompatActivity() {
 
         tvWarmupResult.text = "Running warm-up..."
         syncComposeState?.invoke()
-        warmupJob?.cancel()
         warmupJob = lifecycleScope.launch {
             val outcome = runCatching {
                 withContext(Dispatchers.IO) {
@@ -1362,6 +1366,7 @@ class LocalModelsConfigureActivity : AppCompatActivity() {
                                 " | fallback: CPU"
                             }
                             val msg = "Warm-up complete: ${String.format("%.2f", genTps)} gen tok/s, ${String.format("%.2f", totalTps)} total tok/s, ${result.elapsedMs}ms, backend=$backend$gpuLayersSuffix$fallbackSuffix"
+                            Log.i("LocalModelsConfigureActivity", msg)
                             tvWarmupResult.text = msg
                             LocalModelsPrefs.setLastBenchmark(this@LocalModelsConfigureActivity, msg)
                             if (!loadDetails.fallbackReason.isNullOrBlank() && !isAccel) {

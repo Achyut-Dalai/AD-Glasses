@@ -14,6 +14,28 @@ import org.robolectric.annotation.Config
 @Config(sdk = [34])
 class SubscriptionCheckoutPolicyTest {
     @Test
+    fun `allows a free trial to upgrade through Google Play`() {
+        assertTrue(
+            SubscriptionCheckoutPolicy.isGooglePlayCheckoutAllowed(
+                changePlanRequested = true,
+                currentPlan = "free_trial",
+                isSubscribed = true,
+            ),
+        )
+    }
+
+    @Test
+    fun `blocks an active paid web subscription from overlapping Google Play`() {
+        assertFalse(
+            SubscriptionCheckoutPolicy.isGooglePlayCheckoutAllowed(
+                changePlanRequested = true,
+                currentPlan = "standard",
+                isSubscribed = true,
+            ),
+        )
+    }
+
+    @Test
     fun `creates callback on the verified app link`() {
         val url = SubscriptionCheckoutPolicy.createVerifiedCallbackUrl("one-time-result")
 

@@ -4,6 +4,7 @@ import android.app.Activity
 import android.content.Context
 import android.os.Handler
 import android.os.Looper
+import android.util.Log
 import com.android.billingclient.api.AcknowledgePurchaseParams
 import com.android.billingclient.api.BillingClient
 import com.android.billingclient.api.BillingClientStateListener
@@ -34,6 +35,7 @@ class PlayBillingManager(
     private val connectionListener = object : BillingClientStateListener {
         override fun onBillingSetupFinished(result: BillingResult) {
             connectionInProgress = false
+            Log.i(TAG, "setup response=${result.responseCode} message=${result.debugMessage}")
             if (result.responseCode == BillingClient.BillingResponseCode.OK) {
                 reconnectAttempt = 0
                 onReady?.invoke()
@@ -45,6 +47,7 @@ class PlayBillingManager(
 
         override fun onBillingServiceDisconnected() {
             connectionInProgress = false
+            Log.w(TAG, "billing service disconnected; scheduling reconnect")
             onError("billing_disconnected_retrying")
             scheduleReconnect()
         }
@@ -58,6 +61,11 @@ class PlayBillingManager(
                 .build()
         )
         .setListener { result, purchases ->
+            Log.i(
+                TAG,
+                "purchase update response=${result.responseCode} message=${result.debugMessage} " +
+                    "products=${purchases.orEmpty().flatMap { it.products }}",
+            )
             if (result.responseCode == BillingClient.BillingResponseCode.OK && !purchases.isNullOrEmpty()) {
                 onPurchasesUpdated(purchases)
             } else if (result.responseCode != BillingClient.BillingResponseCode.USER_CANCELED) {
@@ -103,6 +111,7 @@ class PlayBillingManager(
     }
 
     fun querySubscriptionProducts(productIds: List<String>, onResult: (Map<String, ProductDetails>) -> Unit) {
+        Log.i(TAG, "query products ids=$productIds")
         val products = productIds
             .map { id ->
                 QueryProductDetailsParams.Product.newBuilder()
@@ -117,6 +126,13 @@ class PlayBillingManager(
 
         billingClient.queryProductDetailsAsync(params, object : ProductDetailsResponseListener {
             override fun onProductDetailsResponse(result: BillingResult, queryResult: QueryProductDetailsResult) {
+                val fetchedIds = queryResult.productDetailsList.map { it.productId }
+                val unfetched = queryResult.unfetchedProductList.map { "${it.productId}:${it.statusCode}" }
+                Log.i(
+                    TAG,
+                    "product details response=${result.responseCode} message=${result.debugMessage} " +
+                        "fetched=$fetchedIds unfetched=$unfetched",
+                )
                 if (result.responseCode == BillingClient.BillingResponseCode.OK) {
                     val resultMap = queryResult.productDetailsList.associateBy { it.productId }
                     onResult(resultMap)
@@ -150,6 +166,11 @@ class PlayBillingManager(
             .build()
 
         val result = billingClient.launchBillingFlow(activity, flowParams)
+        Log.i(
+            TAG,
+            "launch product=${productDetails.productId} basePlan=${offer.basePlanId} " +
+                "offer=${offer.offerId} response=${result.responseCode} message=${result.debugMessage}",
+        )
         if (result.responseCode != BillingClient.BillingResponseCode.OK) {
             onError("launch_billing_${result.responseCode}")
         }
@@ -184,6 +205,7 @@ class PlayBillingManager(
     }
 
     companion object {
+        private const val TAG = "PlayBillingManager"
         private const val RECONNECT_INITIAL_DELAY_MS = 1_000L
         private const val RECONNECT_MAX_DELAY_MS = 30_000L
         private const val MAX_RECONNECT_EXPONENT = 5

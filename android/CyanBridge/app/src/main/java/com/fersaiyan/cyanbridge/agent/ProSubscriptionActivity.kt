@@ -91,7 +91,7 @@ class ProSubscriptionActivity : AppCompatActivity() {
         }
         applyRequestedPlanFromIntent()
         changePlanRequested = intent?.getBooleanExtra(EXTRA_CHANGE_PLAN, false) == true
-        composeState = composeState.copy(googlePlayCheckoutAllowed = !changePlanRequested)
+        composeState = composeState.copy(googlePlayCheckoutAllowed = isGooglePlayCheckoutAllowed())
 
         if (ProSubscriptionPrefs.getProvider(this) == "debug_mock") {
             ProSubscriptionPrefs.clearEntitlement(
@@ -269,8 +269,16 @@ class ProSubscriptionActivity : AppCompatActivity() {
             selectedPlan = selectedPlan(),
             webCheckoutAvailable = SubscriptionCheckoutPolicy.isWebCheckoutEnabled(this),
             isSubscribed = status.active,
+            googlePlayCheckoutAllowed = isGooglePlayCheckoutAllowed(),
         )
     }
+
+    private fun isGooglePlayCheckoutAllowed(): Boolean =
+        SubscriptionCheckoutPolicy.isGooglePlayCheckoutAllowed(
+            changePlanRequested = changePlanRequested,
+            currentPlan = ProSubscriptionPrefs.getPlan(this),
+            isSubscribed = ProSubscriptionPrefs.isSubscribed(this),
+        )
 
     private fun activateFreeTrial(emailHint: String = "") {
         val finalEmail = ProSubscriptionServerPrefs.normalizeAccountEmail(
@@ -569,7 +577,7 @@ class ProSubscriptionActivity : AppCompatActivity() {
     }
 
     private fun startGooglePlaySubscriptionFlow(plan: String) {
-        if (changePlanRequested) {
+        if (!isGooglePlayCheckoutAllowed()) {
             Toast.makeText(
                 this,
                 "Change this web subscription through website checkout to avoid overlapping subscriptions.",
