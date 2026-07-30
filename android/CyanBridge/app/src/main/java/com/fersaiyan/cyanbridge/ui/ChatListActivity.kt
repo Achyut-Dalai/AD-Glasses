@@ -14,6 +14,7 @@ import androidx.compose.runtime.setValue
 import com.fersaiyan.cyanbridge.MainActivity
 import com.fersaiyan.cyanbridge.R
 import com.fersaiyan.cyanbridge.agent.LocalModelsConfigureActivity
+import com.fersaiyan.cyanbridge.agent.LocalAgentPrefs as AutomationPrefs
 import com.fersaiyan.cyanbridge.ai.router.AiProviderPrefs
 import com.fersaiyan.cyanbridge.ai.router.AiProviderType
 import com.fersaiyan.cyanbridge.chat.ChatStore
@@ -28,6 +29,7 @@ import com.fersaiyan.cyanbridge.ui.appearance.rememberAppearanceSettings
 import com.fersaiyan.cyanbridge.shared.ui.chat.ChatListScreen
 import com.fersaiyan.cyanbridge.ui.theme.CyanBridgeTheme
 import com.fersaiyan.cyanbridge.shared.navigation.AppDestination
+import com.fersaiyan.cyanbridge.shared.settings.AgentProviderType
 import com.fersaiyan.cyanbridge.shared.chat.ChatThreadSummary
 import java.text.SimpleDateFormat
 import java.util.Calendar
@@ -130,7 +132,12 @@ class ChatListActivity : AppCompatActivity() {
     }
 
     private fun isLocalModelsMissingSelection(): Boolean {
-        if (AiProviderPrefs.getProvider(this) != AiProviderType.LOCAL_MODELS) return false
+        val localSelected = when (AutomationPrefs.getProviderType(this)) {
+            AgentProviderType.LOCAL_AGENT -> true
+            AgentProviderType.PRO_SUBSCRIPTION -> false
+            AgentProviderType.TASKER -> AiProviderPrefs.getProvider(this) == AiProviderType.LOCAL_MODELS
+        }
+        if (!localSelected) return false
         return LocalModelStorageRepository.resolveSelectedModel(this) == null
     }
 

@@ -254,6 +254,34 @@ object CliRelayClient {
         }
     }
 
+    suspend fun audioQuery(
+        context: Context,
+        audioPath: String,
+        prompt: String? = null,
+        modelOverride: String? = null,
+    ): Result<String> = runCatching {
+        val file = File(audioPath)
+        require(file.exists()) { "Audio file not found: $audioPath" }
+        require(file.length() > 44L) { "Audio file is empty or corrupted" }
+
+        val response = postJson(
+            context,
+            endpoint(context, "/audio-query"),
+            JSONObject()
+                .put("filename", file.name)
+                .put("audioBase64", Base64.encodeToString(file.readBytes(), Base64.NO_WRAP))
+                .apply {
+                    val requestPrompt = prompt?.trim().orEmpty()
+                    if (requestPrompt.isNotBlank()) put("prompt", requestPrompt)
+                    val model = modelOverride?.trim().orEmpty()
+                    if (model.isNotBlank()) put("model", model)
+                },
+        )
+        response.optString("reply").ifBlank {
+            throw IllegalStateException("Relay returned empty audio reply")
+        }
+    }
+
     private suspend fun <T> retry(
         times: Int = 3,
         delayMs: Long = 800,
@@ -627,7 +655,11 @@ object AiAssistantRouter {
         audioPath: String?,
         callbacks: ChatStreamCallbacks?,
     ): String {
-        val providerType = AiProviderPrefs.getProvider(context)
+        val providerType = when (AutomationPrefs.getProviderType(context)) {
+            AgentProviderType.PRO_SUBSCRIPTION -> AiProviderType.CLI_RELAY
+            AgentProviderType.LOCAL_AGENT -> AiProviderType.LOCAL_MODELS
+            AgentProviderType.TASKER -> AiProviderPrefs.getProvider(context)
+        }
 
         return when (providerType) {
             AiProviderType.MOCK -> {
@@ -642,13 +674,65 @@ object AiAssistantRouter {
                 } else {
                     null
                 }
-                val result = CliRelayClient.chat(
-                    context = context,
-                    chatId = chatId,
-                    prompt = userPrompt,
-                    messages = messages,
-                    modelOverride = modelOverride,
-                )
+                val mediaModelOverride = if (AutomationPrefs.getProviderType(context) == AgentProviderType.PRO_SUBSCRIPTION) {
+                    ProSubscriptionAiPrefs.getQuestionsModel(context)
+                } else {
+                    modelOverride
+                }
+                val mediaReplies = buildList {
+                    imagePaths.forEachIndexed { index, imagePath ->
+                        val imagePrompt = if (imagePaths.size > 1) {
+                            "Image ${index + 1} of ${imagePaths.size}. $userPrompt"
+                        } else {
+                            userPrompt
+                        }
+                        add(
+                            CliRelayClient.imageQuery(
+                                context = context,
+                                imagePath = imagePath,
+                                prompt = imagePrompt,
+                                modelOverride = mediaModelOverride,
+                            ).getOrThrow(),
+                        )
+                    }
+                    if (!audioPath.isNullOrBlank()) {
+                        add(
+                            CliRelayClient.audioQuery(
+                                context = context,
+                                audioPath = audioPath,
+                                prompt = userPrompt,
+                                modelOverride = mediaModelOverride,
+                            ).getOrThrow(),
+                        )
+                    }
+                }
+                val result = if (mediaReplies.size == 1) {
+                    Result.success(mediaReplies.single())
+                } else {
+                    val synthesisPrompt = if (mediaReplies.isEmpty()) {
+                        userPrompt
+                    } else {
+                        buildString {
+                            appendLine(userPrompt)
+                            appendLine()
+                            appendLine("Attached media analyses:")
+                            mediaReplies.forEachIndexed { index, reply ->
+                                appendLine("${index + 1}. $reply")
+                            }
+                            append("Give one coherent answer using all attached media.")
+                        }
+                    }
+                    CliRelayClient.chat(
+                        context = context,
+                        chatId = chatId,
+                        prompt = synthesisPrompt,
+                        messages = if (mediaReplies.isEmpty()) messages else messages + mapOf(
+                            "role" to "user",
+                            "content" to synthesisPrompt,
+                        ),
+                        modelOverride = if (mediaReplies.isEmpty()) modelOverride else mediaModelOverride,
+                    )
+                }
                 result.getOrElse { "Relay unavailable (${it.message})." }
             }
 

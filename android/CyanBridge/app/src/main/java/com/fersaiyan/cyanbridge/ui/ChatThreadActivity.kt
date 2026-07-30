@@ -70,6 +70,7 @@ import com.fersaiyan.cyanbridge.shared.ui.chat.ChatThreadScreen
 import com.fersaiyan.cyanbridge.shared.chat.ChatThreadStateReducer
 import com.fersaiyan.cyanbridge.shared.chat.ChatThreadUiState
 import com.fersaiyan.cyanbridge.shared.navigation.AppDestination
+import com.fersaiyan.cyanbridge.shared.settings.AgentProviderType
 import com.fersaiyan.cyanbridge.ui.appearance.AppearancePreferences
 import com.fersaiyan.cyanbridge.ui.appearance.rememberAppearanceSettings
 import com.fersaiyan.cyanbridge.ui.debug.DebugLogSupport
@@ -341,10 +342,11 @@ class ChatThreadActivity : AppCompatActivity() {
     }
 
     private fun attachImage() {
-        if (!supportsCurrentLocalRuntimeMedia()) {
+        val unsupportedReason = mediaAttachmentUnsupportedReason()
+        if (unsupportedReason != null) {
             android.widget.Toast.makeText(
                 this,
-                "Image attachments require Local Models + LiteRT runtime.",
+                unsupportedReason,
                 android.widget.Toast.LENGTH_SHORT,
             ).show()
             return
@@ -353,10 +355,11 @@ class ChatThreadActivity : AppCompatActivity() {
     }
 
     private fun toggleAudioRecording() {
-        if (!supportsCurrentLocalRuntimeMedia()) {
+        val unsupportedReason = mediaAttachmentUnsupportedReason()
+        if (unsupportedReason != null) {
             android.widget.Toast.makeText(
                 this,
-                "Audio attachments require Local Models + LiteRT runtime.",
+                unsupportedReason,
                 android.widget.Toast.LENGTH_SHORT,
             ).show()
             return
@@ -589,16 +592,24 @@ class ChatThreadActivity : AppCompatActivity() {
     }
 
     private fun isLocalModelsProviderSelected(): Boolean {
-        return AiProviderPrefs.getProvider(this) == AiProviderType.LOCAL_MODELS
+        return when (AutomationPrefs.getProviderType(this)) {
+            AgentProviderType.LOCAL_AGENT -> true
+            AgentProviderType.PRO_SUBSCRIPTION -> false
+            AgentProviderType.TASKER -> AiProviderPrefs.getProvider(this) == AiProviderType.LOCAL_MODELS
+        }
     }
 
     private fun isRelayProviderSelected(): Boolean {
-        return AiProviderPrefs.getProvider(this) == AiProviderType.CLI_RELAY
+        return when (AutomationPrefs.getProviderType(this)) {
+            AgentProviderType.PRO_SUBSCRIPTION -> true
+            AgentProviderType.LOCAL_AGENT -> false
+            AgentProviderType.TASKER -> AiProviderPrefs.getProvider(this) == AiProviderType.CLI_RELAY
+        }
     }
 
     private fun refreshModelBadge(status: String) {
-        modelBadge = when (AiProviderPrefs.getProvider(this)) {
-            AiProviderType.LOCAL_MODELS -> {
+        modelBadge = when {
+            isLocalModelsProviderSelected() -> {
                 val selected = LocalModelStorageRepository.resolveSelectedModel(this)
                 if (selected == null) {
                     "Local model: none installed"
@@ -607,7 +618,7 @@ class ChatThreadActivity : AppCompatActivity() {
                 }
             }
 
-            AiProviderType.CLI_RELAY -> {
+            isRelayProviderSelected() -> {
                 val selected = ProSubscriptionAiPrefs.getRequestsModel(this).ifBlank { "auto" }
                 "Relay model: $selected"
             }
@@ -681,6 +692,27 @@ class ChatThreadActivity : AppCompatActivity() {
         val selected = LocalModelStorageRepository.resolveSelectedModel(this) ?: return false
         val settings = LocalModelSettingsRepository.getForModel(this, selected.id)
         return settings.modelRuntime == LocalModelRuntime.LITERT
+    }
+
+    private fun mediaAttachmentUnsupportedReason(): String? {
+        return when (AutomationPrefs.getProviderType(this)) {
+            AgentProviderType.PRO_SUBSCRIPTION -> null
+            AgentProviderType.LOCAL_AGENT -> if (supportsCurrentLocalRuntimeMedia()) {
+                null
+            } else {
+                "Local media attachments require Local Models + LiteRT runtime."
+            }
+            AgentProviderType.TASKER -> when (AiProviderPrefs.getProvider(this)) {
+                AiProviderType.CLI_RELAY -> null
+                AiProviderType.LOCAL_MODELS -> if (supportsCurrentLocalRuntimeMedia()) {
+                    null
+                } else {
+                    "Local media attachments require Local Models + LiteRT runtime."
+                }
+                AiProviderType.MOCK,
+                AiProviderType.COMPANY_BACKEND -> "Media attachments require Pro Subscription or Local Models + LiteRT."
+            }
+        }
     }
 
     private fun updateComposerForGenerationState() {
@@ -1005,10 +1037,11 @@ class ChatThreadActivity : AppCompatActivity() {
     private fun sendMessage(text: String) {
         val images = pendingImagePaths.toList()
         val audio = pendingAudioPath
-        if ((images.isNotEmpty() || !audio.isNullOrBlank()) && !supportsCurrentLocalRuntimeMedia()) {
+        val unsupportedReason = mediaAttachmentUnsupportedReason()
+        if ((images.isNotEmpty() || !audio.isNullOrBlank()) && unsupportedReason != null) {
             android.widget.Toast.makeText(
                 this,
-                "Media attachments require Local Models + LiteRT runtime.",
+                unsupportedReason,
                 android.widget.Toast.LENGTH_SHORT,
             ).show()
             return
