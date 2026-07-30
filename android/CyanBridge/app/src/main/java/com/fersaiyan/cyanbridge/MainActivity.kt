@@ -15,6 +15,7 @@ import androidx.localbroadcastmanager.content.LocalBroadcastManager
 import com.fersaiyan.cyanbridge.shared.settings.AgentProviderType
 import com.fersaiyan.cyanbridge.agent.LocalAgentPrefs as AutomationPrefs
 import com.fersaiyan.cyanbridge.ui.VersionUpdateChecker
+import com.fersaiyan.cyanbridge.localagent.AudioSessionCoordinator
 import com.fersaiyan.cyanbridge.localagent.LocalAgentController
 import com.fersaiyan.cyanbridge.localagent.LocalAgentIntents
 import com.fersaiyan.cyanbridge.localagent.LocalAgentPrefs
@@ -342,20 +343,29 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
             Log.i("ImageQuestionAudio", "TTS language tag=$tag result=$result")
         }
         val id = utteranceId ?: "utt_${System.currentTimeMillis()}"
-        if (onDone != null) {
-            ttsDoneCallbacks[id] = onDone
+        val wrappedOnDone: () -> Unit = {
+            try {
+                onDone?.invoke()
+            } finally {
+                AudioSessionCoordinator.markIdle()
+            }
         }
+        ttsDoneCallbacks[id] = wrappedOnDone
 
         val bundle = Bundle().apply {
             putString(TextToSpeech.Engine.KEY_PARAM_UTTERANCE_ID, id)
             streamType?.let { putString(TextToSpeech.Engine.KEY_PARAM_STREAM, it.toString()) }
         }
 
+        AudioSessionCoordinator.markBusy()
         val result = engine?.speak(text, TextToSpeech.QUEUE_FLUSH, bundle, id)
         Log.i(
             "ImageQuestionAudio",
             "TTS enqueue id=$id ready=$ttsReady stream=$streamType textLength=${text.length} result=$result",
         )
+        if (result != TextToSpeech.SUCCESS) {
+            AudioSessionCoordinator.markIdle()
+        }
     }
     companion object {
         const val EXTRA_TASKER_COMMAND = "tasker_command"
@@ -889,7 +899,9 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
         if (AutoAudioCapturePrefs.isEnabled(this)) AutoAudioCaptureService.start(this)
         if (AutoDiaryService.isEnabled(this)) AutoDiaryService.startIfEnabled(this)
         startEnabledCameraFeatures()
-        if (LocalAgentPlugin.isEnabled(this)) LocalAgentPlugin.start(this)
+        if (LocalAgentPlugin.isEnabled(this)) {
+            LocalAgentController.requestStatus(this)
+        }
         if (isMeizuMyvuSelected()) {
             DeviceProfileStore.loadLastSelected(this)?.macAddress?.let { address ->
                 getOrCreateMeizuMyvuManager().connect(address, this)
@@ -1446,7 +1458,7 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
                     state.copy(advancedExpanded = !state.advancedExpanded)
                 }
             }
-            GlassesDashboardAction.StartAgent -> binding.btnAgentStart.performClick()
+            GlassesDashboardAction.StartAgent -> LocalAgentController.requestStatus(this)
             GlassesDashboardAction.StopAgent -> binding.btnAgentStop.performClick()
             GlassesDashboardAction.RunAgentDemo -> binding.btnAgentDemo.performClick()
             GlassesDashboardAction.RequestBattery -> if (isEyevueSelected()) {
@@ -5603,25 +5615,10 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
     }
 
     private fun setupAgentControlsUi() {
+        binding.btnAgentStart.text = "Agent status"
         binding.btnAgentStart.setOnClickListener {
-            val startAgent = {
-                val res = LocalAgentController.start(this)
-                if (res.ok) {
-                    LocalAgentPrefs.setStatus(this, "Starting…")
-                    LocalAgentPrefs.clearLastError(this)
-                } else {
-                    LocalAgentPrefs.setStatus(this, "Error")
-                    LocalAgentPrefs.setLastError(this, res.error ?: res.userMessage)
-                }
-                refreshAgentStatusUi()
-                Toast.makeText(this, res.userMessage, Toast.LENGTH_SHORT).show()
-                LocalAgentController.requestStatus(this)
-            }
-            if (!hasNotificationPermission(this)) {
-                ensureNotificationPermission(this, "Local Agent") { startAgent() }
-            } else {
-                startAgent()
-            }
+            Toast.makeText(this, "Enter a goal before starting the agent.", Toast.LENGTH_SHORT).show()
+            LocalAgentController.requestStatus(this)
         }
 
         binding.btnAgentStop.setOnClickListener {

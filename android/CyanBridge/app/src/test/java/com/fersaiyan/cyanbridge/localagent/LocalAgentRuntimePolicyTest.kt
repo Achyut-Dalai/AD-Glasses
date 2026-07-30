@@ -21,7 +21,7 @@ class LocalAgentRuntimePolicyTest {
 
     @Test
     fun `app launch receives a longer settle delay`() {
-        assertEquals(2_500L, LocalAgentRuntimePolicy.settleDelayMs(LocalAgentAction.OpenApp("WhatsApp")))
+        assertEquals(3_000L, LocalAgentRuntimePolicy.settleDelayMs(LocalAgentAction.OpenApp("WhatsApp")))
         assertTrue(
             LocalAgentRuntimePolicy.settleDelayMs(LocalAgentAction.OpenApp("WhatsApp")) >
                 LocalAgentRuntimePolicy.settleDelayMs(LocalAgentAction.Scroll(LocalAgentAction.Direction.DOWN)),

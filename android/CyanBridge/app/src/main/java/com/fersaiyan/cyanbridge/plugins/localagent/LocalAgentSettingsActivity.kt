@@ -668,14 +668,13 @@ class LocalAgentSettingsActivity : AppCompatActivity() {
                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                     OutlinedButton(
                         onClick = {
-                            runAgentCommand("Starting...") {
-                                LocalAgentController.start(this@LocalAgentSettingsActivity)
-                            }
+                            Toast.makeText(this@LocalAgentSettingsActivity, "Enter a goal before starting the agent.", Toast.LENGTH_SHORT).show()
+                            LocalAgentController.requestStatus(this@LocalAgentSettingsActivity)
                         },
                         enabled = state.enabled,
                         modifier = Modifier.weight(1f),
                     ) {
-                        Text("Start")
+                        Text("Status")
                     }
                     OutlinedButton(
                         onClick = {

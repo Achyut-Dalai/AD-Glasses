@@ -259,7 +259,8 @@ class LocalAgentAccessibilityService : AccessibilityService() {
             val viewId = node.viewIdResourceName?.trim().orEmpty()
             val className = node.className?.toString()?.substringAfterLast('.')?.trim().orEmpty()
             val visible = runCatching { node.isVisibleToUser }.getOrDefault(true)
-            val includeNode = visible && (text.isNotBlank() ||
+            val isZeroSize = rect.width() <= 0 || rect.height() <= 0
+            val includeNode = visible && !isZeroSize && (text.isNotBlank() ||
                 desc.isNotBlank() ||
                 hintText.isNotBlank() ||
                 viewId.isNotBlank() ||
@@ -480,6 +481,7 @@ class LocalAgentAccessibilityService : AccessibilityService() {
 
     /** Submit the focused input field, with an IME-button fallback for custom keyboards. */
     fun pressEnter(): Boolean {
+        // Tier 1: Use ACTION_IME_ENTER on the focused input field.
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
             for (window in windows.orEmpty()) {
                 val root = runCatching { window.root }.getOrNull() ?: continue
@@ -491,10 +493,24 @@ class LocalAgentAccessibilityService : AccessibilityService() {
             }
         }
 
+        // Tier 2: Find a labeled keyboard action button ("Search", "Go", "Done", etc.)
         for (window in windows.orEmpty()) {
             val root = runCatching { window.root }.getOrNull() ?: continue
             val actionNode = findKeyboardActionNode(root)
             if (actionNode != null && performClickBestEffort(actionNode)) return true
+        }
+
+        // Tier 3: Tap the IME window's submit area by coordinates.
+        // The submit button is typically in the bottom-right corner of the IME window.
+        for (window in windows.orEmpty()) {
+            if (window.type != AccessibilityWindowInfo.TYPE_INPUT_METHOD) continue
+            val bounds = Rect()
+            runCatching { window.getBoundsInScreen(bounds) }
+            if (!bounds.isEmpty) {
+                val x = bounds.right - (bounds.width() * 0.10f)
+                val y = bounds.bottom - (bounds.height() * 0.14f)
+                if (simulateClick(x.toInt(), y.toInt())) return true
+            }
         }
 
         return false
@@ -711,7 +727,9 @@ class LocalAgentAccessibilityService : AccessibilityService() {
             "com.google.android.launcher",
             "com.samsung.android.launcher",
         )
-        private val KEYBOARD_ACTION_LABELS = setOf("search", "enter", "go", "done", "send", "next")
+        private val KEYBOARD_ACTION_LABELS = setOf(
+            "search", "enter", "go", "done", "send", "next", "submit", "confirm", "ok",
+        )
 
         @Volatile
         var instance: LocalAgentAccessibilityService? = null

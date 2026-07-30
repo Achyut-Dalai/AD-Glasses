@@ -43,9 +43,9 @@ object LocalAgentActionManager {
             is LocalAgentAction.Swipe,
             is LocalAgentAction.LongPress,
             is LocalAgentAction.ToggleWifi,
-            is LocalAgentAction.ToggleBluetooth -> Risk.MEDIUM
+            is LocalAgentAction.ToggleBluetooth,
+            LocalAgentAction.PressEnter -> Risk.MEDIUM
 
-            LocalAgentAction.PressEnter,
             LocalAgentAction.ReadScreenAloud,
             is LocalAgentAction.MakeCall,
             is LocalAgentAction.SendSms,
@@ -60,9 +60,9 @@ object LocalAgentActionManager {
     suspend fun processPlannedAction(context: Context, action: LocalAgentAction, source: String = "agent"): Boolean {
         val risk = classifyRisk(action)
         val requireConfirm = LocalAgentPrefs.isRequireActionConfirmationEnabled(context)
-        val autoLowRisk = LocalAgentPrefs.isAutoExecuteLowRiskEnabled(context)
 
-        val shouldAutoExecute = !requireConfirm || (risk == Risk.LOW && autoLowRisk)
+        // Consequential-only approval: auto-execute LOW and MEDIUM, only queue HIGH for approval.
+        val shouldAutoExecute = !requireConfirm || risk != Risk.HIGH
 
         if (shouldAutoExecute) {
             return executeNow(context, action)

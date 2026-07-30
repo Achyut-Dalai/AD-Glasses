@@ -275,6 +275,7 @@ object LocalAgentUiControlProtocol {
             appendLine("- Use finish when the user goal is complete or clearly blocked.")
             appendLine("- Keep reasoning to one short sentence.")
             appendLine("- Never invent UI elements that are not present in the observation.")
+            appendLine("- Elements marked with * match the current task goal and are higher-priority targets.")
         }.trim()
 
         val user = buildString {
@@ -293,10 +294,13 @@ object LocalAgentUiControlProtocol {
                 appendLine()
             }
             appendLine("Observation:")
-            appendLine(
-                context.observation.screenSnapshot?.toPromptText()
-                    ?: context.observation.screenText.orEmpty().ifBlank { "(screen unreadable)" }
-            )
+            val snapshot = context.observation.screenSnapshot
+            val screenText = if (snapshot != null) {
+                snapshot.toCompressedPromptText(context.goal)
+            } else {
+                context.observation.screenText.orEmpty().ifBlank { "(screen unreadable)" }
+            }
+            appendLine(screenText)
         }.trim()
 
         return Prompt(system = system, user = user)

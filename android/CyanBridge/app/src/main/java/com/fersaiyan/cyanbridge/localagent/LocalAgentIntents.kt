@@ -28,4 +28,5 @@ object LocalAgentIntents {
     const val EXTRA_IS_TERMINAL = "is_terminal"
     const val EXTRA_USER_MESSAGE = "user_message"
     const val EXTRA_DISABLE_REMOTE = "disable_remote"
+    const val EXTRA_REJECTED = "rejected"
 }

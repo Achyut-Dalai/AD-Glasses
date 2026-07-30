@@ -52,9 +52,11 @@ class LocalAgentStepEngine(
 
             val risk = LocalAgentActionManager.classifyRisk(a)
             val requireConfirm = LocalAgentPrefs.isRequireActionConfirmationEnabled(context)
-            val autoLowRisk = LocalAgentPrefs.isAutoExecuteLowRiskEnabled(context)
 
-            val shouldAutoExecute = !requireConfirm || (risk == LocalAgentActionManager.Risk.LOW && autoLowRisk)
+            // Consequential-only approval: auto-execute LOW and MEDIUM (navigation, typing,
+            // clicking), only require approval for HIGH-risk actions (send email, call, SMS,
+            // set alarm, read screen aloud).
+            val shouldAutoExecute = !requireConfirm || risk != LocalAgentActionManager.Risk.HIGH
 
             if (shouldAutoExecute) {
                 // Read-aloud must run in the active agent service so it can report whether

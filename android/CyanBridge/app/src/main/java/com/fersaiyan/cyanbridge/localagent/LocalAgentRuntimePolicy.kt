@@ -19,18 +19,18 @@ object LocalAgentRuntimePolicy {
         return when (action) {
             null -> 750L
             is LocalAgentAction.Wait -> 0L
-            is LocalAgentAction.OpenApp -> 2_500L
-            is LocalAgentAction.TypeText,
-            LocalAgentAction.PressEnter -> 1_500L
+            is LocalAgentAction.OpenApp -> 3_000L
+            is LocalAgentAction.TypeText -> 2_000L
+            LocalAgentAction.PressEnter -> 2_000L
             is LocalAgentAction.ClickText,
             is LocalAgentAction.ClickCoord,
             is LocalAgentAction.LongPress,
             is LocalAgentAction.MakeCall,
             is LocalAgentAction.SendSms,
             is LocalAgentAction.SendEmail,
-            is LocalAgentAction.SetAlarm -> 1_200L
+            is LocalAgentAction.SetAlarm -> 1_500L
             is LocalAgentAction.Scroll,
-            is LocalAgentAction.Swipe -> 750L
+            is LocalAgentAction.Swipe -> 1_000L
             else -> 500L
         }
     }

@@ -37,10 +37,18 @@ object LocalAgentPlugin {
     }
 
     fun start(context: Context, goal: String? = null): LocalAgentController.CommandResult {
+        val trimmedGoal = goal?.trim().orEmpty()
+        if (trimmedGoal.isBlank()) {
+            return LocalAgentController.CommandResult(
+                ok = false,
+                userMessage = "No agent goal was provided.",
+                error = "missing_goal",
+            )
+        }
         if (!isEnabled(context)) {
             setEnabled(context, true)
         }
-        return LocalAgentController.start(context, goal)
+        return LocalAgentController.start(context, trimmedGoal)
     }
 
     fun stop(context: Context) {

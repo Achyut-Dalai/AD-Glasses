@@ -87,7 +87,7 @@ class LocalAgentUiControlProtocolTest {
 
         assertTrue(prompt.user.contains("Goal:"))
         assertTrue(prompt.user.contains("Turn on Bluetooth"))
-        assertTrue(prompt.user.contains("Current app: com.android.settings"))
+        assertTrue(prompt.user.contains("APP: com.android.settings"))
         assertTrue(prompt.user.contains("Bluetooth"))
         assertTrue(prompt.user.contains("center:(60,45)"))
         assertTrue(prompt.user.contains("Recovery guidance:"))

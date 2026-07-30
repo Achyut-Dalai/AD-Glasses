@@ -15,6 +15,8 @@ import android.speech.tts.TextToSpeech
 import android.speech.tts.UtteranceProgressListener
 import android.util.Log
 import androidx.core.app.NotificationCompat
+import com.fersaiyan.cyanbridge.localagent.AudioSessionCoordinator
+import com.fersaiyan.cyanbridge.localagent.LocalAgentLanguage
 import androidx.core.content.ContextCompat
 import androidx.localbroadcastmanager.content.LocalBroadcastManager
 import com.fersaiyan.cyanbridge.MainActivity
@@ -35,6 +37,8 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.withTimeoutOrNull
 import java.util.Locale
 import java.util.concurrent.atomic.AtomicBoolean
+import kotlinx.coroutines.currentCoroutineContext
+import kotlinx.coroutines.isActive
 import java.util.concurrent.atomic.AtomicReference
 
 /**
@@ -51,6 +55,7 @@ class LocalAgentService : Service() {
 
     private val serviceScope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
     private var loopJob: Job? = null
+    private val cancelRequested = AtomicBoolean(false)
 
     private var tts: TextToSpeech? = null
     private var ttsReady: CompletableDeferred<Boolean>? = null
@@ -97,10 +102,12 @@ class LocalAgentService : Service() {
             LocalAgentIntents.ACTION_DEMO -> runDemo()
             LocalAgentIntents.ACTION_READ_SCREEN_ALOUD -> readCurrentScreenAloud()
             LocalAgentIntents.ACTION_GET_STATUS -> emitStatus()
-            LocalAgentIntents.ACTION_RESUME_AFTER_APPROVAL -> resumeAfterApproval()
+            LocalAgentIntents.ACTION_RESUME_AFTER_APPROVAL -> resumeAfterApproval(
+                rejected = intent.getBooleanExtra(LocalAgentIntents.EXTRA_REJECTED, false)
+            )
 
             // Back-compat (older internal actions)
-            ACTION_START_LEGACY -> startLoop(null)
+            ACTION_START_LEGACY -> stopLoop(reason = "legacy_goalless_start")
             ACTION_STOP_LEGACY -> stopLoop(reason = "user")
         }
         return START_STICKY
@@ -154,7 +161,16 @@ class LocalAgentService : Service() {
             return
         }
 
-        val goal = goalOverride?.trim()?.takeIf { it.isNotBlank() } ?: DEFAULT_GOAL
+        cancelRequested.set(false)
+        val goal = goalOverride?.trim().orEmpty()
+        if (goal.isBlank()) {
+            Log.i(TAG, "startLoop: missing goal")
+            LocalAgentPrefs.setStatus(applicationContext, "Missing goal")
+            LocalAgentPrefs.setLastError(applicationContext, "missing_goal")
+            emitStatus()
+            if (runningState.getAndSet(false)) stopSelf()
+            return
+        }
         val maxSteps = AutomationPrefs.getMaxSteps(applicationContext)
 
         lastError.set(null)
@@ -200,7 +216,7 @@ class LocalAgentService : Service() {
             var usedSavedSkill = false
             val executedActions = mutableListOf<LocalAgentAction>()
 
-            while (isActive && taskState.stepIndex <= taskState.maxSteps) {
+            while (isActive && !cancelRequested.get() && taskState.stepIndex <= taskState.maxSteps) {
                 var settleAction: LocalAgentAction? = null
                 try {
                     LocalAgentDeviceState.availability(applicationContext)
@@ -245,7 +261,13 @@ class LocalAgentService : Service() {
                             actions = skill.actions,
                             note = "Replaying a saved low-risk navigation skill.",
                         )
-                    } ?: brain.next(applicationContext, taskState, obs)
+                    } ?: withTimeoutOrNull(BRAIN_CALL_TIMEOUT_MS) {
+                        brain.next(applicationContext, taskState, obs)
+                    } ?: LocalAgentBrainOutput(
+                        actions = listOf(LocalAgentAction.Finish("Brain call timed out.")),
+                        note = "Brain call timed out after ${BRAIN_CALL_TIMEOUT_MS / 1000}s.",
+                        isComplete = true,
+                    )
 
                     LocalAgentDeviceState.availability(applicationContext)
                         .takeIf { it != LocalAgentDeviceState.Availability.READY }
@@ -295,6 +317,29 @@ class LocalAgentService : Service() {
                     if (replayingSavedSkill && actionFailed) {
                         LocalAgentSkillStore.recordReplayFailure(applicationContext, taskState.goal)
                     }
+
+                    // Recovery: when an action fails, try a diagnostic recovery before
+                    // letting the brain plan the next step.
+                    if (actionFailed && !summary.haltedForApproval) {
+                        val recovery = LocalAgentRecoveryEngine.diagnose(
+                            lastFailedAction = plannedAction,
+                            screenText = obs.screenText,
+                            consecutiveFailures = taskState.consecutiveFailures + 1,
+                        )
+                        if (recovery != null) {
+                            Log.i(TAG, "Recovery: ${recovery.description}")
+                            LocalAgentPrefs.setStatus(
+                                applicationContext,
+                                "Recovering: ${recovery.description.take(48)}"
+                            )
+                            emitStatus()
+                            val recoveryOk = LocalAgentAccessibilityBridge.performWithOptionalShizukuFallback(
+                                applicationContext, recovery.action
+                            )
+                            Log.i(TAG, "Recovery action ok=$recoveryOk")
+                            delay(LocalAgentRuntimePolicy.settleDelayMs(recovery.action))
+                        }
+                    }
                     val previousResult = buildString {
                         out.note?.takeIf { it.isNotBlank() }?.let {
                             append(it)
@@ -306,47 +351,8 @@ class LocalAgentService : Service() {
                     }.ifBlank { out.note ?: "" }
 
                     if (summary.haltedForApproval) {
-                        // Pause the loop and wait for user approval instead of stopping.
-                        Log.i(TAG, "Action requires approval; pausing loop.")
-                        LocalAgentPrefs.setStatus(applicationContext, "Waiting for approval")
-                        emitStatus()
-                        runCatching {
-                            notificationManager.notify(
-                                NOTIFICATION_ID,
-                                buildNotification(content = "Waiting for your approval"),
-                            )
-                        }
-
-                        // Store task state so we can resume after approval.
-                        pausedTaskState = taskState
-                        val deferred = CompletableDeferred<Boolean>()
-                        approvalDeferred = deferred
-
-                        var approved: Boolean? = null
-                        var unavailableDevice: LocalAgentDeviceState.Availability? = null
-                        while (isActive && approved == null) {
-                            val availability = LocalAgentDeviceState.availability(applicationContext)
-                            if (availability != LocalAgentDeviceState.Availability.READY) {
-                                unavailableDevice = availability
-                                break
-                            }
-                            approved = withTimeoutOrNull(500L) { deferred.await() }
-                        }
-                        approvalDeferred = null
-
-                        unavailableDevice?.let { availability ->
-                            deferred.complete(false)
-                            stopTaskForUnavailableDevice(
-                                taskState = taskState,
-                                usedSavedSkill = usedSavedSkill,
-                                executedActions = executedActions,
-                                availability = availability,
-                            )
-                            return@launch
-                        }
-
-                        if (approved != true) {
-                            // User rejected or service was destroyed.
+                        val approved = awaitApprovalWithVoice(plannedAction)
+                        if (!approved) {
                             recordTaskOutcome(
                                 taskState = taskState,
                                 status = "Stopped",
@@ -362,12 +368,6 @@ class LocalAgentService : Service() {
                             )
                             return@launch
                         }
-
-                        // User approved: the action was already executed by PendingActionsActivity.
-                        // Record the result and advance to the next step.
-                        Log.i(TAG, "Approval received; resuming loop.")
-                        LocalAgentPrefs.setStatus(applicationContext, "Resuming after approval")
-                        emitStatus()
 
                         plannedAction?.takeUnless { it is LocalAgentAction.Finish }?.let(executedActions::add)
 
@@ -443,7 +443,7 @@ class LocalAgentService : Service() {
      * Called when the user approves a pending action from [PendingActionsActivity].
      * Signals the paused loop to resume.
      */
-    private fun resumeAfterApproval() {
+    private fun resumeAfterApproval(rejected: Boolean = false) {
         if (!LocalAgentDeviceState.isReady(applicationContext)) {
             approvalDeferred?.complete(false)
             stopForUnavailableDevice()
@@ -451,12 +451,11 @@ class LocalAgentService : Service() {
         }
         val deferred = approvalDeferred
         if (deferred != null && !deferred.isCompleted) {
-            Log.i(TAG, "resumeAfterApproval: signalling deferred")
-            deferred.complete(true)
+            Log.i(TAG, "resumeAfterApproval: signalling deferred rejected=$rejected")
+            deferred.complete(!rejected)
         } else {
-            // No loop waiting; might have been a stale approval. Try restarting.
-            Log.w(TAG, "resumeAfterApproval: no deferred waiting, restarting loop")
-            startLoop(null)
+            Log.w(TAG, "resumeAfterApproval: no deferred waiting")
+            emitStatus()
         }
     }
 
@@ -465,6 +464,7 @@ class LocalAgentService : Service() {
         status: String = "Stopped",
         error: String? = null,
     ) {
+        cancelRequested.set(true)
         if (!runningState.getAndSet(false)) {
             if (error != null) {
                 lastError.set(error)
@@ -547,6 +547,89 @@ class LocalAgentService : Service() {
         )
     }
 
+    private suspend fun awaitApprovalWithVoice(action: LocalAgentAction?): Boolean {
+        AudioSessionCoordinator.waitUntilIdle()
+        LocalAgentDeviceState.availability(applicationContext)
+            .takeIf { it != LocalAgentDeviceState.Availability.READY }
+            ?.let { return false }
+
+        val summary = describeActionForApproval(action)
+        val approvalCue = LocalAgentLanguage.approvalListeningCue(applicationContext)
+
+        pausedTaskState = taskStateFromCurrentGoal()
+        val deferred = CompletableDeferred<Boolean>()
+        approvalDeferred = deferred
+
+        runCatching {
+            notificationManager.notify(
+                NOTIFICATION_ID,
+                buildNotification(content = "Waiting for your approval"),
+            )
+        }
+
+        speakAndWaitBestEffort("$summary $approvalCue", maxLength = 240)
+
+        var approved: Boolean? = null
+        var unavailableDevice: LocalAgentDeviceState.Availability? = null
+        while (currentCoroutineContext().isActive && approved == null) {
+            val availability = LocalAgentDeviceState.availability(applicationContext)
+            if (availability != LocalAgentDeviceState.Availability.READY) {
+                unavailableDevice = availability
+                break
+            }
+            approved = withTimeoutOrNull(500L) { deferred.await() }
+        }
+        approvalDeferred = null
+
+        unavailableDevice?.let {
+            deferred.complete(false)
+            return false
+        }
+
+        return approved == true
+    }
+
+    private fun taskStateFromCurrentGoal(): LocalAgentTaskState? {
+        val existing = pausedTaskState
+        if (existing != null) return existing
+        return loopJob?.let {
+            LocalAgentTaskState(
+                goal = "Current agent task",
+                maxSteps = AutomationPrefs.getMaxSteps(applicationContext),
+                startedAtMs = System.currentTimeMillis(),
+            )
+        }
+    }
+
+    private fun describeActionForApproval(action: LocalAgentAction?): String {
+        return when (action) {
+            is LocalAgentAction.OpenApp -> "Open ${action.appName}."
+            is LocalAgentAction.ClickText -> "Click ${action.text}."
+            is LocalAgentAction.ClickCoord -> "Tap the highlighted control."
+            is LocalAgentAction.TypeText -> "Type ${action.text}."
+            is LocalAgentAction.PressEnter -> "Press enter."
+            is LocalAgentAction.Scroll -> "Scroll the screen."
+            is LocalAgentAction.Swipe -> "Swipe the screen."
+            is LocalAgentAction.LongPress -> "Long press the selected control."
+            is LocalAgentAction.GlobalBack -> "Press back."
+            is LocalAgentAction.GlobalHome -> "Go home."
+            is LocalAgentAction.OpenNotifications -> "Open notifications."
+            is LocalAgentAction.OpenRecents -> "Open recent apps."
+            is LocalAgentAction.OpenContacts -> "Open contacts."
+            is LocalAgentAction.MakeCall -> "Call ${action.number}."
+            is LocalAgentAction.SendSms -> "Send a message to ${action.number}."
+            is LocalAgentAction.SendEmail -> "Send an email to ${action.to}."
+            is LocalAgentAction.SetAlarm -> "Set an alarm."
+            is LocalAgentAction.ReadScreenAloud -> "Read the screen aloud."
+            is LocalAgentAction.ToggleWifi -> "Open Wi-Fi settings."
+            is LocalAgentAction.ToggleBluetooth -> "Open Bluetooth settings."
+            is LocalAgentAction.ToggleFlashlight -> "Open flashlight settings."
+            is LocalAgentAction.Wait -> "Wait briefly."
+            is LocalAgentAction.Finish -> "Finish the task."
+            null -> "Perform the next action."
+        }
+    }
+
     private fun stopForUnavailableDevice() {
         val availability = LocalAgentDeviceState.availability(applicationContext)
         if (availability == LocalAgentDeviceState.Availability.READY) return
@@ -606,7 +689,7 @@ class LocalAgentService : Service() {
             finishMessage.contains("cannot") ||
             finishMessage.contains("blocked") ||
             finishMessage.contains("stopped")
-        return if (failed) "I couldn't finish that task." else "Done."
+        return if (failed) "I couldn't finish that task." else LocalAgentLanguage.completionSpeech(applicationContext)
     }
 
     private fun ensureNotificationChannel() {
@@ -820,7 +903,7 @@ class LocalAgentService : Service() {
         tts = TextToSpeech(applicationContext) { status ->
             val ok = status == TextToSpeech.SUCCESS
             if (ok) {
-                runCatching { tts?.language = Locale.US }
+                runCatching { tts?.language = LocalAgentLanguage.currentLocale(applicationContext) }
             }
             if (!ready.isCompleted) ready.complete(ok)
         }
@@ -845,8 +928,8 @@ class LocalAgentService : Service() {
         }
     }
 
-    private suspend fun speakAndWaitBestEffort(text: String) {
-        val clean = text.trim().take(160)
+    private suspend fun speakAndWaitBestEffort(text: String, maxLength: Int = 160) {
+        val clean = text.trim().take(maxLength)
         if (clean.isBlank()) return
         if (!LocalAgentDeviceState.isReady(applicationContext)) return
 
@@ -857,6 +940,7 @@ class LocalAgentService : Service() {
             false
         }
         if (!ok) return
+        AudioSessionCoordinator.markBusy()
 
         val utteranceId = "local_agent_result_${System.currentTimeMillis()}"
         val completed = CompletableDeferred<Unit>()
@@ -880,19 +964,31 @@ class LocalAgentService : Service() {
         val queued = runCatching {
             tts?.speak(clean, TextToSpeech.QUEUE_FLUSH, null, utteranceId) == TextToSpeech.SUCCESS
         }.getOrDefault(false)
-        if (!queued) return
+        if (!queued) {
+            AudioSessionCoordinator.markIdle()
+            return
+        }
 
-        repeat(32) {
-            if (!LocalAgentDeviceState.isReady(applicationContext)) {
-                runCatching { tts?.stop() }
-                return
+        try {
+            repeat(32) {
+                if (!LocalAgentDeviceState.isReady(applicationContext)) {
+                    runCatching { tts?.stop() }
+                    return
+                }
+                if (withTimeoutOrNull(250L) { completed.await() } != null) return
             }
-            if (withTimeoutOrNull(250L) { completed.await() } != null) return
+        } finally {
+            AudioSessionCoordinator.markIdle()
         }
     }
 
     private fun buildNotification(content: String): Notification {
-        val openIntent = Intent(this, MainActivity::class.java)
+        val target = if (content == "Waiting for your approval") {
+            com.fersaiyan.cyanbridge.ui.localagent.PendingActionsActivity::class.java
+        } else {
+            MainActivity::class.java
+        }
+        val openIntent = Intent(this, target)
         val openPi = PendingIntent.getActivity(
             this,
             0,
@@ -934,7 +1030,7 @@ class LocalAgentService : Service() {
         private const val NOTIFICATION_CHANNEL_ID = "local_agent"
         private const val NOTIFICATION_ID = 937
         private const val MAX_SCREEN_READ_ALOUD_CHARS = 750
-        private const val DEFAULT_GOAL = "Inspect the current screen and avoid risky actions. If there is no explicit task, finish quickly rather than guessing."
+        private const val BRAIN_CALL_TIMEOUT_MS = 60_000L
 
         private val runningState = AtomicBoolean(false)
         private val lastError = AtomicReference<String?>(null)
@@ -950,14 +1046,21 @@ class LocalAgentService : Service() {
         fun isRunning(): Boolean = runningState.get()
 
         fun start(context: Context) {
-            start(context, goal = null)
+            context.startService(
+                Intent(context, LocalAgentService::class.java).apply { action = LocalAgentIntents.ACTION_GET_STATUS }
+            )
         }
 
         fun start(context: Context, goal: String?) {
-            val intent = Intent(context, LocalAgentService::class.java).apply { action = LocalAgentIntents.ACTION_START }
-            goal?.trim()?.takeIf { it.isNotBlank() }?.let {
-                intent.putExtra(LocalAgentIntents.EXTRA_GOAL, it)
+            val trimmedGoal = goal?.trim().orEmpty()
+            if (trimmedGoal.isBlank()) {
+                context.startService(
+                    Intent(context, LocalAgentService::class.java).apply { action = LocalAgentIntents.ACTION_GET_STATUS }
+                )
+                return
             }
+            val intent = Intent(context, LocalAgentService::class.java).apply { action = LocalAgentIntents.ACTION_START }
+            intent.putExtra(LocalAgentIntents.EXTRA_GOAL, trimmedGoal)
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
                 context.startForegroundService(intent)
             } else {

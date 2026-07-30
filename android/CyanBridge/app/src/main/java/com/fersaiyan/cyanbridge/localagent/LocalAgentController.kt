@@ -32,6 +32,14 @@ object LocalAgentController {
     fun start(context: Context): CommandResult = start(context, goal = null)
 
     fun start(context: Context, goal: String?): CommandResult {
+        val trimmedGoal = goal?.trim().orEmpty()
+        if (trimmedGoal.isBlank()) {
+            return CommandResult(
+                ok = false,
+                userMessage = "No agent goal was provided.",
+                error = "missing_goal",
+            )
+        }
         LocalAgentDeviceState.availability(context).takeIf { it != LocalAgentDeviceState.Availability.READY }?.let {
             return CommandResult(
                 ok = false,
@@ -70,9 +78,7 @@ object LocalAgentController {
         return sendServiceCommand(
             context,
             LocalAgentIntents.ACTION_START,
-            extras = goal?.trim()?.takeIf { it.isNotBlank() }?.let {
-                mapOf(LocalAgentIntents.EXTRA_GOAL to it)
-            }.orEmpty()
+            extras = mapOf(LocalAgentIntents.EXTRA_GOAL to trimmedGoal)
         )
     }
 

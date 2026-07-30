@@ -38,6 +38,51 @@ data class LocalAgentScreenSnapshot(
 
         return if (body.length <= maxChars) body else body.take(maxChars)
     }
+
+    /**
+     * Compact screen description that filters noise, highlights task-relevant
+     * elements, and uses abbreviated type names to save LLM tokens.
+     */
+    fun toCompressedPromptText(goal: String, maxNodes: Int = 120): String {
+        val keywords = extractGoalKeywords(goal)
+        val pkg = packageName?.trim().orEmpty()
+
+        return buildString {
+            if (pkg.isNotEmpty()) {
+                appendLine("APP: $pkg")
+            }
+            nodes.take(maxNodes).forEach { node ->
+                val line = node.toCompressedLine(keywords)
+                if (line != null) appendLine(line)
+            }
+        }.trim()
+    }
+
+    companion object {
+        private val STATUS_BAR_PATTERNS = listOf(
+            "battery", "percent", "do not disturb", "three bars",
+            "signal strength", "airplane mode", "vibrate",
+        )
+        private val TIME_REGEX = Regex("""^\d{1,2}:\d{2}$""")
+        private val STOP_WORDS = setOf(
+            "to", "and", "the", "a", "in", "of", "for", "on", "with", "at", "by",
+            "from", "go", "turn", "open", "is", "my", "me", "an", "it", "do",
+        )
+
+        fun extractGoalKeywords(goal: String): List<String> {
+            return goal.lowercase()
+                .replace(Regex("[^a-z0-9\\s]"), "")
+                .split(Regex("\\s+"))
+                .filter { it.length > 2 && it !in STOP_WORDS }
+        }
+
+        fun isStatusBarNoise(text: String): Boolean {
+            val lower = text.lowercase()
+            if (STATUS_BAR_PATTERNS.any { lower.contains(it) }) return true
+            if (TIME_REGEX.matches(lower)) return true
+            return false
+        }
+    }
 }
 
 data class LocalAgentScreenNode(
@@ -78,6 +123,56 @@ data class LocalAgentScreenNode(
         val attrSuffix = if (attrs.isNotBlank()) " {$attrs}" else ""
 
         return "[$index] [$type] \"${label.sanitizeForPrompt()}\"$attrSuffix bounds:[${bounds.left},${bounds.top},${bounds.right},${bounds.bottom}] center:(${bounds.centerX},${bounds.centerY})"
+    }
+
+    /**
+     * Compact line for compressed screen descriptions. Returns null if the node
+     * is status-bar noise or has no useful content.
+     */
+    fun toCompressedLine(keywords: List<String>): String? {
+        val displayText = when {
+            isPassword -> "(password)"
+            text.isNotBlank() -> text
+            contentDescription.isNotBlank() -> contentDescription
+            hintText.isNotBlank() -> hintText
+            else -> ""
+        }
+
+        if (LocalAgentScreenSnapshot.isStatusBarNoise(displayText)) return null
+        if (displayText.isEmpty() && !isClickable && !isEditable && !isScrollable) return null
+
+        val truncated = if (displayText.length > 50) displayText.take(50) + "…" else displayText
+
+        val tags = buildList {
+            if (isClickable) add("tap")
+            if (isEditable) add("edit")
+            if (isScrollable) add("scroll")
+        }
+
+        val type = simplifyClassName(className)
+        val label = if (truncated.isNotBlank()) "\"${truncated.sanitizeForPrompt()}\"" else ""
+        val tagStr = if (tags.isNotEmpty()) "[${tags.joinToString(",")}]" else ""
+
+        val isTarget = truncated.isNotBlank() && keywords.any { truncated.lowercase().contains(it) }
+        val targetMark = if (isTarget) "*" else ""
+
+        return "[$index]$targetMark $type $label $tagStr center:(${bounds.centerX},${bounds.centerY})".trim()
+    }
+
+    private fun simplifyClassName(className: String): String {
+        val simple = className.substringAfterLast('.')
+        return when (simple) {
+            "TextView" -> "text"
+            "Button" -> "btn"
+            "Switch", "ToggleButton" -> "toggle"
+            "ImageView" -> "img"
+            "EditText" -> "input"
+            "FrameLayout", "LinearLayout", "RelativeLayout", "ConstraintLayout" -> "view"
+            "RecyclerView" -> "list"
+            "ScrollView", "NestedScrollView" -> "scroll"
+            "CheckBox", "RadioButton" -> "check"
+            else -> simple.lowercase()
+        }
     }
 }
 
