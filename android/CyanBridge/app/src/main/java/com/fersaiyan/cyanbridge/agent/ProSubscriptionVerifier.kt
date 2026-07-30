@@ -105,11 +105,15 @@ object ProSubscriptionVerifier {
                 val active = json.optBoolean("active", false)
                 val plan = json.optString("plan", ProSubscriptionPrefs.getPlan(context))
                 val expires = json.optLong("expires_at_ms", ProSubscriptionPrefs.getExpiresAt(context))
+                val provider = json.optString("provider").trim()
 
                 ProSubscriptionPrefs.setSubscribed(context, active)
                 ProSubscriptionPrefs.setPlan(context, plan)
                 ProSubscriptionPrefs.setExpiresAt(context, expires)
-                ProSubscriptionPrefs.setProvider(context, "server_verified")
+                ProSubscriptionPrefs.setProvider(
+                    context,
+                    if (provider == "google_play") "play_billing" else "server_verified",
+                )
                 ProSubscriptionPrefs.setLastVerifiedAt(context, System.currentTimeMillis())
 
                 Result(

@@ -35,6 +35,7 @@ import kotlin.concurrent.thread
 import org.json.JSONObject
 import java.net.HttpURLConnection
 import java.net.URL
+import java.security.MessageDigest
 
 /**
  * Pro Subscription Activity
@@ -589,7 +590,12 @@ class ProSubscriptionActivity : AppCompatActivity() {
         if (playOffer != null) {
             val playProduct = playProducts[playOffer.productId]
             if (playProduct != null) {
-                billing?.launchSubscriptionPurchase(this, playProduct, playOffer)
+                billing?.launchSubscriptionPurchase(
+                    activity = this,
+                    productDetails = playProduct,
+                    offer = playOffer,
+                    obfuscatedAccountId = playBillingAccountId(),
+                )
                 return
             }
         }
@@ -603,6 +609,14 @@ class ProSubscriptionActivity : AppCompatActivity() {
             }
         }
         Toast.makeText(this, detail, Toast.LENGTH_LONG).show()
+    }
+
+    private fun playBillingAccountId(): String? {
+        val apiToken = ProSubscriptionServerPrefs.getApiToken(this).trim()
+        if (apiToken.isBlank()) return null
+        return MessageDigest.getInstance("SHA-256")
+            .digest(apiToken.toByteArray(Charsets.UTF_8))
+            .joinToString("") { byte -> "%02x".format(byte) }
     }
 
     private fun showCheckoutUnavailableMessage() {

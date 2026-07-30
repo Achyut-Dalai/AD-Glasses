@@ -148,6 +148,7 @@ class PlayBillingManager(
         activity: Activity,
         productDetails: ProductDetails,
         offer: PlaySubscriptionCatalog.SubscriptionOffer,
+        obfuscatedAccountId: String?,
     ) {
         val offerToken = PlaySubscriptionCatalog.configuredOffer(productDetails, offer)
             ?.offerToken
@@ -163,6 +164,9 @@ class PlayBillingManager(
 
         val flowParams = BillingFlowParams.newBuilder()
             .setProductDetailsParamsList(listOf(productParams))
+            .apply {
+                obfuscatedAccountId?.trim()?.takeIf { it.isNotBlank() }?.let(::setObfuscatedAccountId)
+            }
             .build()
 
         val result = billingClient.launchBillingFlow(activity, flowParams)
