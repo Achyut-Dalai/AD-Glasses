@@ -42,9 +42,9 @@ class WalkingAidPreferencesTest {
     }
 
     @Test
-    fun defaultImageDescriptionCloudModelIdIsFlash() {
+    fun defaultImageDescriptionCloudModelIdUsesWalkingAidRelayAlias() {
         assertEquals(
-            "deepseek/deepseek-v4-flash",
+            "cyanbridge/walking-aid-vision",
             WalkingAidPreferences.getImageDescriptionCloudModelId(context),
         )
     }

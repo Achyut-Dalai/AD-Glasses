@@ -53,6 +53,37 @@ object WalkingAidImageStore {
         }
     }
 
+    fun enrichRecord(
+        context: Context,
+        timestampMs: Long,
+        description: String? = null,
+        depthDescription: String? = null,
+        stateDecision: StateDecision? = null,
+        maxHistory: Int,
+    ) {
+        synchronized(lock) {
+            val records = recentDescriptions.map { record ->
+                if (record.timestampMs != timestampMs) {
+                    record
+                } else {
+                    record.copy(
+                        description = description ?: record.description,
+                        depthDescription = depthDescription ?: record.depthDescription,
+                        stateDecision = stateDecision ?: record.stateDecision,
+                    )
+                }
+            }
+            recentDescriptions.clear()
+            recentDescriptions.addAll(records)
+
+            val historyIndex = imageHistory.indexOfLast { it.timestampMs == timestampMs }
+            if (historyIndex >= 0 && description != null) {
+                imageHistory[historyIndex] = imageHistory[historyIndex].copy(description = description)
+            }
+            persistInternal(context, maxHistory)
+        }
+    }
+
     fun clear(context: Context) {
         synchronized(lock) {
             recentDescriptions.clear()

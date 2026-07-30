@@ -20,15 +20,11 @@ import com.fersaiyan.cyanbridge.media.autocapture.AutoAudioCapturePrefs
 import com.fersaiyan.cyanbridge.media.autocapture.AutoAudioCaptureService
 import com.fersaiyan.cyanbridge.audio.MeetingCapturePrefs
 import com.fersaiyan.cyanbridge.ai.router.CliRelayClient
-import com.fersaiyan.cyanbridge.localmodels.provider.LocalModelRequestPriority
-import com.fersaiyan.cyanbridge.localmodels.provider.LocalModelsProvider
 import com.fersaiyan.cyanbridge.plugins.walkingaid.vision.DepthResult
-import com.fersaiyan.cyanbridge.plugins.walkingaid.vision.DetectedObject
 import com.fersaiyan.cyanbridge.plugins.walkingaid.vision.DetectionResult
 import com.fersaiyan.cyanbridge.plugins.walkingaid.vision.LiteRtVisionBackend
 import com.fersaiyan.cyanbridge.plugins.walkingaid.vision.VisionBackend
 import com.fersaiyan.cyanbridge.plugins.walkingaid.vision.VisionFrame
-import android.graphics.RectF
 import com.fersaiyan.cyanbridge.ui.ensureNotificationPermission
 import com.fersaiyan.cyanbridge.ui.hasNotificationPermission
 import com.oudmon.ble.base.bluetooth.BleOperateManager
@@ -40,10 +36,14 @@ import kotlinx.coroutines.channels.BufferOverflow
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.isActive
+import kotlinx.coroutines.joinAll
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 import java.io.File
 import java.util.Locale
 import java.util.concurrent.atomic.AtomicBoolean
+import java.util.concurrent.atomic.AtomicLong
 
 import com.fersaiyan.cyanbridge.devices.DeviceCapabilityHelper
 
@@ -52,9 +52,18 @@ class WalkingAidService : Service() {
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
     private var captureLoopJob: Job? = null
     private var visionWorkerJob: Job? = null
+    private var enrichmentJob: Job? = null
+    private var cleanupJob: Job? = null
 
     private var visionBackend: VisionBackend? = null
     private val imageCapture by lazy { WalkingAidImageCapture(this) }
+    private val motionEstimator by lazy { WalkingAidCameraMotionEstimator(this) }
+    private val hazardTracker = WalkingAidHazardTracker()
+    private val depthMutex = Mutex()
+    private val latestFrameSequence = AtomicLong(0L)
+    private val lastCaptureStartAtMs = AtomicLong(0L)
+    private val lastMeasuredCaptureMs = AtomicLong(0L)
+    private val lastMeasuredAnalysisMs = AtomicLong(0L)
 
     // "Latest frame wins" decoupled communication channel
     private val frameChannel = Channel<VisionFrame>(
@@ -139,6 +148,10 @@ class WalkingAidService : Service() {
     }
 
     private fun startLoop() {
+        if (cleanupJob?.isActive == true) {
+            Log.w(TAG, "Walking Aid is still shutting down; ignoring start request")
+            return
+        }
         if (RUNNING.getAndSet(true)) {
             Log.i(TAG, "Already running")
             return
@@ -182,6 +195,18 @@ class WalkingAidService : Service() {
         }
 
         safetyDisclaimerSpoken = false
+        hazardTracker.reset()
+        latestFrameSequence.set(0L)
+        lastCaptureStartAtMs.set(0L)
+        lastMeasuredCaptureMs.set(0L)
+        lastMeasuredAnalysisMs.set(0L)
+        if (!motionEstimator.start()) {
+            Log.w(TAG, "Rotation-vector sensor unavailable; temporal tracking will run without camera-motion compensation")
+        }
+        if (WalkingAidPreferences.isSafetyDisclaimerEnabled(this)) {
+            speakTts("Safety notice: check path carefully. ")
+            safetyDisclaimerSpoken = true
+        }
 
         // Initialize LiteRT Vision Backend (NPU -> GPU -> CPU hierarchy)
         visionBackend = LiteRtVisionBackend(this)
@@ -194,10 +219,11 @@ class WalkingAidService : Service() {
             for (frame in frameChannel) {
                 if (!isActive) break
                 val backend = visionBackend ?: continue
+                val frameSequence = latestFrameSequence.incrementAndGet()
+                enrichmentJob?.cancel()
 
                 val imageSource = WalkingAidPreferences.getImageDescriptionSource(this@WalkingAidService)
                 val depthSource = WalkingAidPreferences.getDepthSource(this@WalkingAidService)
-                val stateSource = WalkingAidPreferences.getStateModelSource(this@WalkingAidService)
                 val customInstructions = WalkingAidPreferences.getCustomPrompt(this@WalkingAidService)
                 val focusDescription = WalkingAidPreferences.getFocusDescription(this@WalkingAidService)
                 val promptSuffix = customInstructions.takeIf { it.isNotBlank() }
@@ -207,78 +233,27 @@ class WalkingAidService : Service() {
                     ?.let { "\nThe user especially wants help noticing: $it" }
                     .orEmpty()
 
-                // 1. Detection (Cloud Vision or Local LiteRT)
-                val detectionResult = if (imageSource == "cloud" && !frame.sourcePath.isNullOrBlank() && File(frame.sourcePath).exists()) {
-                    val modelOverride = WalkingAidPreferences.getImageDescriptionModelOverride(this@WalkingAidService)
-                    val prompt = "List all visible obstacles, vehicles, people, or hazards in this image for a walking aid assistant.$focusSuffix$promptSuffix"
-                    val cloudReply = CliRelayClient.imageQuery(this@WalkingAidService, frame.sourcePath, prompt, modelOverride = modelOverride).getOrDefault("")
-
-                    val cloudObjects = mutableListOf<DetectedObject>()
-                    if (cloudReply.isNotBlank()) {
-                        val keywords = (
-                            listOf("person", "car", "bicycle", "chair", "pole", "stairs", "step", "curb", "door", "table", "wall") +
-                                WalkingAidFocusMapper.resolve(focusDescription)
-                            ).distinct()
-                        keywords.forEach { kw ->
-                            if (cloudReply.contains(kw, ignoreCase = true)) {
-                                cloudObjects.add(DetectedObject(label = kw, confidence = 0.90f, boundingBox = RectF(0.3f, 0.3f, 0.7f, 0.7f), position = "center"))
-                            }
-                        }
-                    }
-                    if (cloudObjects.isNotEmpty()) {
-                        DetectionResult(objects = cloudObjects, acquisitionTimeMs = 0L, preprocessTimeMs = 0L, inferenceTimeMs = 500L, postprocessTimeMs = 0L)
-                    } else {
-                        backend.detect(frame)
-                    }
+                // The critical path is always local: detect, track, evaluate, and speak immediately.
+                val rawDetection = backend.detect(frame)
+                val cameraMotion = motionEstimator.motionForFrame(frame.bitmap, frame.estimatedExposureAtMs)
+                val tracking = if (rawDetection.isError) {
+                    HazardTrackingResult(emptyList(), emptyList())
                 } else {
-                    backend.detect(frame)
+                    hazardTracker.update(rawDetection.objects, frame.estimatedExposureAtMs, cameraMotion)
                 }
-
-                // 2. Depth Estimation (Cloud Depth or Local LiteRT)
-                var depthResult: DepthResult? = null
-                if (WalkingAidPreferences.isDepthEnabled(this@WalkingAidService)) {
-                    if (depthSource == "cloud" && !frame.sourcePath.isNullOrBlank() && File(frame.sourcePath).exists()) {
-                        val depthModelOverride = WalkingAidPreferences.getDepthModelOverride(this@WalkingAidService)
-                        val depthPrompt = "Analyze relative depth, ground steps, curbs, and drop-offs in this image for a walking aid assistant.$focusSuffix$promptSuffix"
-                        val cloudDepthReply = CliRelayClient.imageQuery(this@WalkingAidService, frame.sourcePath, depthPrompt, modelOverride = depthModelOverride).getOrDefault("")
-                        val hasDrop = cloudDepthReply.contains("step", ignoreCase = true) || cloudDepthReply.contains("curb", ignoreCase = true) || cloudDepthReply.contains("drop", ignoreCase = true)
-                        depthResult = DepthResult(
-                            relativeDepthSummary = cloudDepthReply.ifBlank { "Cloud relative depth analysis complete" },
-                            groundDiscontinuityDetected = hasDrop,
-                            closestRegion = "center",
-                            inferenceTimeMs = 500L,
-                        )
-                    } else if (frameCount % 3 == 0 || detectionResult.objects.any { it.approaching }) {
-                        depthResult = backend.estimateDepth(frame)
-                    }
-                }
-
-                // 3. Deterministic Warning Evaluation
-                val warningDecision = WalkingAidWarningEngine.evaluate(detectionResult, depthResult, focusDescription)
-
-                // 4. Scene LLM Reasoning Guidance (Cloud LLM or Local LLM)
-                var spokenMessage = warningDecision.message
-                if (warningDecision.shouldWarn && spokenMessage.isNotBlank()) {
-                    val scenePrompt = "Summarize the hazard concisely in 1 short spoken sentence for a walking aid user: $spokenMessage$promptSuffix"
-                    if (stateSource == "cloud") {
-                        val cloudLlmReply = CliRelayClient.voiceQuery(this@WalkingAidService, scenePrompt).getOrNull()
-                        if (!cloudLlmReply.isNullOrBlank()) {
-                            spokenMessage = cloudLlmReply.trim()
-                        }
-                    } else if (stateSource == "local") {
-                        try {
-                            val localLlmReply = LocalModelsProvider().streamChat(
-                                context = this@WalkingAidService,
-                                messages = listOf(mapOf("role" to "User", "content" to scenePrompt)),
-                                requestPriority = LocalModelRequestPriority.HIGH,
-                            )
-                            if (localLlmReply.isNotBlank()) {
-                                spokenMessage = localLlmReply.trim()
-                            }
-                        } catch (e: Exception) {
-                            Log.w(TAG, "Local Scene LLM streamChat error: ${e.message}")
-                        }
-                    }
+                WalkingAidWarningEngine.clearTrackCooldowns(tracking.clearedTrackIds)
+                val detectionResult = rawDetection.copy(
+                    objects = tracking.objects,
+                    clearedTrackIds = tracking.clearedTrackIds,
+                )
+                val warningDecision = WalkingAidWarningEngine.evaluate(
+                    detection = detectionResult,
+                    depth = null,
+                    focusDescription = focusDescription,
+                    frameTimestampMs = frame.timestampMs,
+                )
+                if (warningDecision.shouldWarn && isFrameCurrent(frameSequence, frame)) {
+                    speakWarning(warningDecision.message)
                 }
 
                 // Store historical entry for GUI thumbnail playback and Q&A
@@ -287,7 +262,7 @@ class WalkingAidService : Service() {
                 } else if (detectionResult.objects.isNotEmpty()) {
                     "Detected: " + detectionResult.objects.joinToString(", ") { "${it.label} (${it.position})" }
                 } else {
-                    "Clear walking trajectory"
+                    "No supported hazards detected"
                 }
 
                 if (detectionResult.isError) {
@@ -305,33 +280,57 @@ class WalkingAidService : Service() {
                     timestampMs = frame.timestampMs,
                     imagePath = frame.sourcePath ?: "",
                     description = descText,
-                    depthDescription = depthResult?.relativeDepthSummary,
+                    depthDescription = null,
                     stateDecision = if (detectionResult.isError || warningDecision.shouldWarn) StateDecision.WARN else StateDecision.SKIP,
                 )
                 val maxHistory = WalkingAidPreferences.getImageHistoryMaxCount(this@WalkingAidService)
                 WalkingAidImageStore.addRecord(record, maxHistory)
                 WalkingAidImageStore.persist(this@WalkingAidService, maxHistory)
 
-                // Trigger immediate audio warning via TTS
-                if (warningDecision.shouldWarn && spokenMessage.isNotBlank()) {
-                    val disclaimer = if (
-                        WalkingAidPreferences.isSafetyDisclaimerEnabled(this@WalkingAidService) &&
-                        !safetyDisclaimerSpoken
-                    ) {
-                        safetyDisclaimerSpoken = true
-                        "Safety notice: check path carefully. "
-                    } else ""
-
-                    if (WalkingAidPreferences.isTtsEnabled(this@WalkingAidService)) {
-                        speakTts(disclaimer + spokenMessage)
-                    }
-                }
-
                 // Update real-time telemetry notification
                 val accel = backend.acceleratorInfo()
-                val intervalSec = WalkingAidPreferences.getCaptureIntervalSeconds(this@WalkingAidService)
-                val statusMsg = "LiteRT (${accel.type.name.take(3)}): ${detectionResult.objects.size} objects in ${detectionResult.totalTimeMs}ms"
-                WalkingAidNotificationHelper.updateNotification(this@WalkingAidService, statusMsg, intervalSec)
+                val analysisMs = detectionResult.totalTimeMs
+                lastMeasuredAnalysisMs.set(analysisMs)
+                val measuredCaptureMs = lastMeasuredCaptureMs.get()
+                val captureToDecisionMs = measuredCaptureMs + analysisMs
+                val measuredCadenceMs = lastCaptureStartAtMs.get().let { startMs ->
+                    if (startMs > 0) System.currentTimeMillis() - startMs else measuredCaptureMs
+                }
+                val measuredFps = if (measuredCadenceMs > 0) 1000f / measuredCadenceMs else 0f
+                val statusMsg = "LiteRT (${accel.type.name.take(3)}): ${detectionResult.objects.size} obj, " +
+                    "${analysisMs}ms analyze, ${captureToDecisionMs}ms total, " +
+                    String.format("%.2f fps cadence", measuredFps)
+                WalkingAidNotificationHelper.updateNotification(this@WalkingAidService, statusMsg, (measuredCadenceMs / 1000).toInt().coerceAtLeast(1))
+
+                // Depth and cloud context are cancellable enrichments and never delay local TTS.
+                val processedFrameCount = frameCount
+                enrichmentJob = scope.launch {
+                    if (WalkingAidPreferences.isDepthEnabled(this@WalkingAidService)) {
+                        launch {
+                            enrichDepth(
+                                frame = frame,
+                                frameSequence = frameSequence,
+                                frameCount = processedFrameCount,
+                                detectionResult = detectionResult,
+                                backend = backend,
+                                depthSource = depthSource,
+                                focusDescription = focusDescription,
+                                promptSuffix = promptSuffix,
+                                focusSuffix = focusSuffix,
+                            )
+                        }
+                    }
+                    if (imageSource == "cloud") {
+                        launch {
+                            enrichCloudDescription(
+                                frame = frame,
+                                frameSequence = frameSequence,
+                                promptSuffix = promptSuffix,
+                                focusSuffix = focusSuffix,
+                            )
+                        }
+                    }
+                }
 
                 frameCount++
             }
@@ -353,6 +352,7 @@ class WalkingAidService : Service() {
 
             while (isActive && WalkingAidPreferences.isEnabled(this@WalkingAidService)) {
                 val intervalMs = WalkingAidPreferences.getCaptureIntervalSeconds(this@WalkingAidService) * 1000L
+                val captureStartMs = System.currentTimeMillis()
 
                 if (!isMetaRayban && !BleOperateManager.getInstance().isConnected) {
                     Log.w(TAG, "Glasses disconnected during loop; waiting...")
@@ -365,17 +365,23 @@ class WalkingAidService : Service() {
                     continue
                 }
 
-                val imageFile = captureThumbnail(captureIndex)
-                if (imageFile != null && imageFile.exists()) {
+                lastCaptureStartAtMs.set(captureStartMs)
+                val capturedThumbnail = captureThumbnail(captureIndex)
+                val captureElapsedMs = System.currentTimeMillis() - captureStartMs
+                lastMeasuredCaptureMs.set(captureElapsedMs)
+                if (capturedThumbnail != null && capturedThumbnail.file.exists()) {
+                    val imageFile = capturedThumbnail.file
                     val bitmap = BitmapFactory.decodeFile(imageFile.absolutePath)
                     if (bitmap != null) {
                         val frame = VisionFrame(
                             bitmap = bitmap,
-                            timestampMs = System.currentTimeMillis(),
+                            timestampMs = capturedThumbnail.captureCommandAtMs,
+                            captureCommandAtMs = capturedThumbnail.captureCommandAtMs,
+                            estimatedExposureAtMs = capturedThumbnail.estimatedExposureAtMs,
+                            receivedAtMs = capturedThumbnail.receivedAtMs,
                             captureIndex = captureIndex,
                             sourcePath = imageFile.absolutePath,
                         )
-                        // Emit to vision worker ("latest frame wins"; drops oldest if NPU/GPU busy)
                         frameChannel.trySend(frame)
                     }
                 } else {
@@ -383,13 +389,108 @@ class WalkingAidService : Service() {
                 }
 
                 captureIndex++
-                delay(intervalMs)
+                // Start-to-start cadence: wait only the remainder of the configured interval
+                // after capture time. If capture exceeded the interval, start next immediately.
+                val remainingMs = intervalMs - captureElapsedMs
+                if (remainingMs > 0) delay(remainingMs)
             }
             stopLoop(reason = "loop_end")
         }
     }
 
-    private suspend fun captureThumbnail(index: Int): File? {
+    private suspend fun enrichDepth(
+        frame: VisionFrame,
+        frameSequence: Long,
+        frameCount: Int,
+        detectionResult: DetectionResult,
+        backend: VisionBackend,
+        depthSource: String,
+        focusDescription: String,
+        promptSuffix: String,
+        focusSuffix: String,
+    ) {
+        if (!isFrameCurrent(frameSequence, frame)) return
+        val depthResult = if (depthSource == "cloud") {
+            val imagePath = frame.sourcePath?.takeIf { it.isNotBlank() && File(it).exists() } ?: return
+            val modelOverride = WalkingAidPreferences.getDepthModelOverride(this)
+            val prompt = "Analyze relative depth, ground steps, curbs, and drop-offs in this image for a walking aid assistant.$focusSuffix$promptSuffix"
+            val reply = CliRelayClient.imageQuery(this, imagePath, prompt, modelOverride = modelOverride)
+                .getOrNull()
+                ?.takeIf { it.isNotBlank() }
+                ?: return
+            DepthResult(
+                relativeDepthSummary = reply,
+                groundDiscontinuityDetected = listOf("step", "curb", "drop", "hole", "stair")
+                    .any { reply.contains(it, ignoreCase = true) },
+                closestRegion = "center",
+            )
+        } else {
+            val shouldEstimate = frameCount % 3 == 0 || detectionResult.objects.any { it.approaching }
+            if (!shouldEstimate) return
+            depthMutex.withLock {
+                if (!isFrameCurrent(frameSequence, frame)) return
+                backend.estimateDepth(frame)
+            } ?: return
+        }
+
+        if (!isFrameCurrent(frameSequence, frame)) return
+        val depthDecision = WalkingAidWarningEngine.evaluate(
+            detection = DetectionResult(objects = emptyList()),
+            depth = depthResult,
+            focusDescription = focusDescription,
+            frameTimestampMs = frame.timestampMs,
+        )
+        val maxHistory = WalkingAidPreferences.getImageHistoryMaxCount(this)
+        WalkingAidImageStore.enrichRecord(
+            context = this,
+            timestampMs = frame.timestampMs,
+            depthDescription = depthResult.relativeDepthSummary,
+            stateDecision = if (depthDecision.shouldWarn) StateDecision.WARN else null,
+            maxHistory = maxHistory,
+        )
+        if (depthDecision.shouldWarn && isFrameCurrent(frameSequence, frame)) {
+            speakWarning(depthDecision.message)
+        }
+    }
+
+    private suspend fun enrichCloudDescription(
+        frame: VisionFrame,
+        frameSequence: Long,
+        promptSuffix: String,
+        focusSuffix: String,
+    ) {
+        val imagePath = frame.sourcePath?.takeIf { it.isNotBlank() && File(it).exists() } ?: return
+        if (!isFrameCurrent(frameSequence, frame)) return
+        val modelOverride = WalkingAidPreferences.getImageDescriptionModelOverride(this)
+        val prompt = "Describe visible obstacles, vehicles, people, and walking hazards concisely.$focusSuffix$promptSuffix"
+        val reply = CliRelayClient.imageQuery(this, imagePath, prompt, modelOverride = modelOverride)
+            .getOrNull()
+            ?.trim()
+            ?.takeIf { it.isNotBlank() }
+            ?: return
+        if (!isFrameCurrent(frameSequence, frame)) return
+        val maxHistory = WalkingAidPreferences.getImageHistoryMaxCount(this)
+        WalkingAidImageStore.enrichRecord(
+            context = this,
+            timestampMs = frame.timestampMs,
+            description = reply,
+            maxHistory = maxHistory,
+        )
+    }
+
+    private fun isFrameCurrent(frameSequence: Long, frame: VisionFrame): Boolean {
+        val ageMs = (System.currentTimeMillis() - frame.timestampMs).coerceAtLeast(0L)
+        return latestFrameSequence.get() == frameSequence &&
+            ageMs <= WalkingAidWarningEngine.MAX_WARNING_FRAME_AGE_MS
+    }
+
+    @Synchronized
+    private fun speakWarning(message: String) {
+        if (message.isBlank() || !WalkingAidPreferences.isTtsEnabled(this)) return
+        speakTts(message)
+    }
+
+    private suspend fun captureThumbnail(index: Int): WalkingAidImageCapture.CapturedThumbnail? {
         return runCatching {
             imageCapture.captureFreshThumbnail("WALKING_AID_THUMB_$index")
         }.onFailure { error ->
@@ -424,27 +525,36 @@ class WalkingAidService : Service() {
 
     private fun stopLoop(reason: String) {
         if (!RUNNING.getAndSet(false)) {
-            stopSelf()
+            if (cleanupJob?.isActive != true) stopSelf()
             return
         }
         Log.i(TAG, "Stopping: $reason")
-        captureLoopJob?.cancel()
-        visionWorkerJob?.cancel()
+        val jobs = listOfNotNull(captureLoopJob, visionWorkerJob, enrichmentJob)
+        jobs.forEach(Job::cancel)
         captureLoopJob = null
         visionWorkerJob = null
+        enrichmentJob = null
 
-        visionBackend?.close()
-        visionBackend = null
+        motionEstimator.stop()
+        hazardTracker.reset()
+        latestFrameSequence.set(0L)
 
-        if (wasAutoAudioEnabled) {
-            AutoAudioCapturePrefs.setEnabled(this, true)
-            val resumeIntent = Intent(this, AutoAudioCaptureService::class.java)
-                .setAction(AutoAudioCaptureService.ACTION_START)
-            startService(resumeIntent)
+        cleanupJob = scope.launch {
+            jobs.joinAll()
+            visionBackend?.close()
+            visionBackend = null
+
+            if (wasAutoAudioEnabled) {
+                AutoAudioCapturePrefs.setEnabled(this@WalkingAidService, true)
+                val resumeIntent = Intent(this@WalkingAidService, AutoAudioCaptureService::class.java)
+                    .setAction(AutoAudioCaptureService.ACTION_START)
+                startService(resumeIntent)
+            }
+
+            runCatching { stopForeground(STOP_FOREGROUND_REMOVE) }
+            cleanupJob = null
+            stopSelf()
         }
-
-        runCatching { stopForeground(STOP_FOREGROUND_REMOVE) }
-        stopSelf()
     }
 
     private fun showToast(context: Context, message: String) {

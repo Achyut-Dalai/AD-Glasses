@@ -20,6 +20,8 @@ object WalkingAidPreferences {
     private const val KEY_YOLO_MODEL_TYPE = "yolo_model_type"
     private const val KEY_WATCHLIST_TERMS = "watchlist_terms"
     private const val KEY_FOCUS_DESCRIPTION = "focus_description"
+    private const val KEY_THUMBNAIL_QUALITY_LEVEL = "thumbnail_quality_level"
+    private const val KEY_PHOTO_SETTLE_DELAY_MS = "photo_settle_delay_ms"
     private const val MAX_CUSTOM_PROMPT_CHARS = 1_500
 
     private const val DEFAULT_ENABLED = false
@@ -160,6 +162,22 @@ object WalkingAidPreferences {
 
     fun setFocusDescription(context: Context, description: String) {
         prefs(context).edit().putString(KEY_FOCUS_DESCRIPTION, description.trim().take(500)).apply()
+    }
+
+    fun getThumbnailQualityLevel(context: Context): Int =
+        prefs(context).getInt(KEY_THUMBNAIL_QUALITY_LEVEL, 3)
+            .coerceIn(0, 5)
+
+    fun setThumbnailQualityLevel(context: Context, level: Int) {
+        prefs(context).edit().putInt(KEY_THUMBNAIL_QUALITY_LEVEL, level.coerceIn(0, 5)).apply()
+    }
+
+    fun getPhotoSettleDelayMs(context: Context): Long =
+        prefs(context).getInt(KEY_PHOTO_SETTLE_DELAY_MS, 250)
+            .coerceIn(0, 500).toLong()
+
+    fun setPhotoSettleDelayMs(context: Context, delayMs: Int) {
+        prefs(context).edit().putInt(KEY_PHOTO_SETTLE_DELAY_MS, delayMs.coerceIn(0, 500)).apply()
     }
 
     fun getWatchlistTerms(context: Context): List<String> =

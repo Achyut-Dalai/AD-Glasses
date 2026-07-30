@@ -2,7 +2,6 @@ package com.fersaiyan.cyanbridge.plugins.walkingaid
 
 import android.content.Context
 import com.fersaiyan.cyanbridge.agent.ProSubscriptionPrefs
-import com.fersaiyan.cyanbridge.localmodels.storage.LocalModelStorageRepository
 import java.io.File
 
 data class WalkingAidReadinessResult(
@@ -25,48 +24,42 @@ object WalkingAidReadinessChecker {
         val isProActive = ProSubscriptionPrefs.isActiveLocally(context)
         var requiresPro = false
 
-        // 1. Object Detection Readiness Check
-        val yoloSource = WalkingAidPreferences.getImageDescriptionSource(context)
-        val yoloReady = if (yoloSource == "cloud") {
-            if (!isProActive) {
-                requiresPro = true
-                details.add("🔒 Cloud Object Detection requires active Pro Subscription")
-                false
-            } else {
-                true
-            }
+        // 1. Local object detection is always the non-blocking safety path. Cloud vision, when
+        // selected, only enriches scene history and therefore does not replace the local model.
+        val yoloType = WalkingAidPreferences.getYoloModelType(context)
+        val candidates = if (yoloType == WalkingAidPreferences.MODEL_TYPE_YOLO_WORLD) {
+            listOf(
+                File(context.filesDir, "yolo_world.tflite"),
+                File(context.filesDir, "yolo_world_v2_s.tflite"),
+                File(context.filesDir, "yoloworld.tflite"),
+                File(context.getExternalFilesDir(null), "yolo_world.tflite"),
+                File(context.getExternalFilesDir(null), "yolo_world_v2_s.tflite"),
+                File(context.getExternalFilesDir(null), "yoloworld.tflite")
+            )
         } else {
-            val yoloType = WalkingAidPreferences.getYoloModelType(context)
-            val candidates = if (yoloType == WalkingAidPreferences.MODEL_TYPE_YOLO_WORLD) {
-                listOf(
-                    File(context.filesDir, "yolo_world.tflite"),
-                    File(context.filesDir, "yolo_world_v2_s.tflite"),
-                    File(context.filesDir, "yoloworld.tflite"),
-                    File(context.getExternalFilesDir(null), "yolo_world.tflite"),
-                    File(context.getExternalFilesDir(null), "yolo_world_v2_s.tflite"),
-                    File(context.getExternalFilesDir(null), "yoloworld.tflite")
-                )
-            } else {
-                listOf(
-                    File(context.filesDir, "yolo11n_float16.tflite"),
-                    File(context.filesDir, "yolov11n.tflite"),
-                    File(context.getExternalFilesDir(null), "yolo11n_float16.tflite"),
-                    File(context.getExternalFilesDir(null), "yolov11n.tflite")
-                )
-            }
-            val validYoloFile = candidates.firstOrNull { isValidModelFile(it) }
-            val yoloReady = validYoloFile != null
-            if (!yoloReady) {
-                val expected = if (yoloType == WalkingAidPreferences.MODEL_TYPE_YOLO_WORLD) "yolo_world.tflite" else "yolo11n_float16.tflite"
-                val corrupted = candidates.any { it.exists() }
-                if (corrupted) {
-                    details.add("❌ Walking Aid YOLO model is corrupted or incomplete ($expected). Download it in this screen.")
-                } else {
-                    details.add("❌ Walking Aid YOLO model is missing ($expected). Download it in this screen.")
-                }
-            }
-            yoloReady
+            listOf(
+                File(context.filesDir, "yolo11n_float16.tflite"),
+                File(context.filesDir, "yolov11n.tflite"),
+                File(context.getExternalFilesDir(null), "yolo11n_float16.tflite"),
+                File(context.getExternalFilesDir(null), "yolov11n.tflite")
+            )
         }
+        val localYoloReady = candidates.any(::isValidModelFile)
+        if (!localYoloReady) {
+            val expected = if (yoloType == WalkingAidPreferences.MODEL_TYPE_YOLO_WORLD) "yolo_world.tflite" else "yolo11n_float16.tflite"
+            if (candidates.any { it.exists() }) {
+                details.add("❌ Walking Aid YOLO model is corrupted or incomplete ($expected). Download it in this screen.")
+            } else {
+                details.add("❌ Walking Aid YOLO model is missing ($expected). Download it in this screen.")
+            }
+        }
+        val cloudDescriptionSelected = WalkingAidPreferences.getImageDescriptionSource(context) == "cloud"
+        val cloudDescriptionReady = !cloudDescriptionSelected || isProActive
+        if (!cloudDescriptionReady) {
+            requiresPro = true
+            details.add("🔒 Optional cloud scene descriptions require active Pro Subscription")
+        }
+        val yoloReady = localYoloReady && cloudDescriptionReady
 
         // 2. Relative Depth Readiness Check
         val depthEnabled = WalkingAidPreferences.isDepthEnabled(context)
@@ -98,24 +91,9 @@ object WalkingAidReadinessChecker {
             hasDepth
         }
 
-        // 3. Scene Reasoning LLM Readiness Check
-        val stateModelSource = WalkingAidPreferences.getStateModelSource(context)
-        val llmReady = if (stateModelSource == "cloud") {
-            if (!isProActive) {
-                requiresPro = true
-                details.add("🔒 Cloud Scene LLM requires active Pro Subscription")
-                false
-            } else {
-                true
-            }
-        } else {
-            val installedLocalModels = LocalModelStorageRepository.listInstalled(context)
-            val hasLocalLlm = installedLocalModels.isNotEmpty()
-            hasLocalLlm
-        }
-
-        // Scene LLM rewriting is optional. Deterministic YOLO/depth warnings remain usable
-        // when no local LLM is installed or the configured cloud LLM is unavailable.
+        // Automatic warnings no longer depend on an LLM. Keep this compatibility field true so
+        // stale state-model preferences cannot block or misrepresent Walking Aid readiness.
+        val llmReady = true
         val allReady = yoloReady && depthReady
         return WalkingAidReadinessResult(
             isReady = allReady,

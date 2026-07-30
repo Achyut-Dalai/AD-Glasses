@@ -21,12 +21,29 @@ import kotlinx.coroutines.withTimeoutOrNull
 class WalkingAidImageCapture(context: Context) {
     private val context = context.applicationContext
 
-    suspend fun captureFreshThumbnail(namePrefix: String): File {
+    data class CapturedThumbnail(
+        val file: File,
+        val captureCommandAtMs: Long,
+        val estimatedExposureAtMs: Long,
+        val receivedAtMs: Long,
+    )
+
+    suspend fun captureFreshThumbnail(namePrefix: String): CapturedThumbnail =
+        captureFreshThumbnailWithQuality(namePrefix, WalkingAidPreferences.getThumbnailQualityLevel(context))
+
+    suspend fun captureFreshThumbnailWithQuality(namePrefix: String, qualityLevel: Int): CapturedThumbnail {
         if (DeviceProfileStore.isMetaSelected(context)) {
             val manager = MetaRaybanManager.getInstance(context)
             if (!manager.isInitialized.value) manager.initialize()
+            val captureCommandAtMs = System.currentTimeMillis()
             val photo = manager.capturePhotoOnce()
-            return manager.savePhotoForProcessing(photo, namePrefix)
+            val file = manager.savePhotoForProcessing(photo, namePrefix)
+            return CapturedThumbnail(
+                file = file,
+                captureCommandAtMs = captureCommandAtMs,
+                estimatedExposureAtMs = captureCommandAtMs,
+                receivedAtMs = System.currentTimeMillis(),
+            )
         }
 
         check(BleOperateManager.getInstance().isConnected) { "Glasses are not connected" }
@@ -39,11 +56,11 @@ class WalkingAidImageCapture(context: Context) {
         outputFile.parentFile?.mkdirs()
         outputFile.delete()
 
-        val photoReady = CompletableDeferred<Unit>()
+        val photoReady = CompletableDeferred<Long>()
         val listener = object : GlassesDeviceNotifyListener() {
             override fun parseData(cmdType: Int, response: GlassesDeviceNotifyRsp) {
                 if (response.loadData.size > 6 && response.loadData[6].toInt() == PHOTO_READY_EVENT) {
-                    if (!photoReady.isCompleted) photoReady.complete(Unit)
+                    if (!photoReady.isCompleted) photoReady.complete(System.currentTimeMillis())
                 }
             }
         }
@@ -51,7 +68,8 @@ class WalkingAidImageCapture(context: Context) {
         try {
             captureAwaitingPhotoReady.set(true)
             LargeDataHandler.getInstance().addOutDeviceListener(NOTIFY_LISTENER_ID, listener)
-            val captureCommand = buildChatAiCaptureCommand(THUMBNAIL_QUALITY_LEVEL)
+            val captureCommand = buildChatAiCaptureCommand(qualityLevel)
+            val captureCommandAtMs = System.currentTimeMillis()
             Log.i(
                 TAG,
                 "Sending Chat-AI thumbnail command=${captureCommand.joinToString(prefix = "[", postfix = "]") { "0x%02X".format(it) }} " +
@@ -62,17 +80,24 @@ class WalkingAidImageCapture(context: Context) {
             ) { _, response ->
                 Log.i(TAG, "Capture command response dataType=${response.dataType} error=${response.errorCode}")
             }
-            check(withTimeoutOrNull(PHOTO_READY_TIMEOUT_MS) { photoReady.await() } != null) {
+            val photoReadyAtMs = withTimeoutOrNull(PHOTO_READY_TIMEOUT_MS) { photoReady.await() }
+            check(photoReadyAtMs != null) {
                 "Glasses did not confirm a fresh photo"
             }
-            delay(PHOTO_READY_SETTLE_MS)
+            val settleMs = WalkingAidPreferences.getPhotoSettleDelayMs(context)
+            if (settleMs > 0) delay(settleMs)
             receiveThumbnail(outputFile)
             val decoded = BitmapFactory.decodeFile(outputFile.absolutePath)
             check(decoded != null) {
                 "Glasses returned an invalid thumbnail"
             }
             decoded.recycle()
-            return outputFile
+            return CapturedThumbnail(
+                file = outputFile,
+                captureCommandAtMs = captureCommandAtMs,
+                estimatedExposureAtMs = photoReadyAtMs,
+                receivedAtMs = System.currentTimeMillis(),
+            )
         } catch (error: Exception) {
             outputFile.delete()
             throw error
@@ -89,13 +114,13 @@ class WalkingAidImageCapture(context: Context) {
         val receivedBytes = java.util.concurrent.atomic.AtomicLong(0L)
         val transfer = CompletableDeferred<Boolean>()
         val writeLock = Any()
-        FileOutputStream(outputFile, false).use { }
+        val outputStream = FileOutputStream(outputFile, false)
 
         LargeDataHandler.getInstance().getPictureThumbnails { _, isComplete, data ->
             if (data != null && data.isNotEmpty()) {
                 synchronized(writeLock) {
                     if (acceptingData.get()) {
-                        FileOutputStream(outputFile, true).use { it.write(data) }
+                        outputStream.write(data)
                         receivedBytes.addAndGet(data.size.toLong())
                     }
                 }
@@ -105,7 +130,11 @@ class WalkingAidImageCapture(context: Context) {
             }
         }
         val succeeded = withTimeoutOrNull(TRANSFER_TIMEOUT_MS) { transfer.await() } == true
-        synchronized(writeLock) { acceptingData.set(false) }
+        synchronized(writeLock) {
+            acceptingData.set(false)
+            runCatching { outputStream.flush() }
+            runCatching { outputStream.close() }
+        }
         check(succeeded) {
             "Glasses thumbnail transfer timed out"
         }

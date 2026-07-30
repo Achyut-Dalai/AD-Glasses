@@ -125,6 +125,11 @@ fun WalkingAidSettingsScreen(
     var isTestingLatency by remember { mutableStateOf(false) }
     var showLatencyReportDialog by remember { mutableStateOf(false) }
     var latencyReportText by remember { mutableStateOf("") }
+    var isTestingAcquisition by remember { mutableStateOf(false) }
+    var showAcquisitionReportDialog by remember { mutableStateOf(false) }
+    var acquisitionReportText by remember { mutableStateOf("") }
+    var thumbnailQuality by remember { mutableIntStateOf(WalkingAidPreferences.getThumbnailQualityLevel(context)) }
+    var settleDelayMs by remember { mutableIntStateOf(WalkingAidPreferences.getPhotoSettleDelayMs(context).toInt()) }
     var showImageModelPicker by remember { mutableStateOf(false) }
     var showDepthModelPicker by remember { mutableStateOf(false) }
     var availableModels by remember { mutableStateOf<List<ProSubscriptionRelayClient.ModelOption>>(emptyList()) }
@@ -270,16 +275,22 @@ fun WalkingAidSettingsScreen(
                             CoroutineScope(Dispatchers.IO).launch {
                                 try {
                                     val captureStartedAt = SystemClock.elapsedRealtime()
-                                    val capturedImage = WalkingAidImageCapture(context)
+                                    val capturedThumbnail = WalkingAidImageCapture(context)
                                         .captureFreshThumbnail("WALKING_AID_BENCHMARK")
                                     val captureMs = SystemClock.elapsedRealtime() - captureStartedAt
                                     val report = try {
-                                        val testBitmap = checkNotNull(BitmapFactory.decodeFile(capturedImage.absolutePath)) {
+                                        val testBitmap = checkNotNull(BitmapFactory.decodeFile(capturedThumbnail.file.absolutePath)) {
                                             "Fresh glasses thumbnail could not be decoded"
                                         }
                                         val inputDescription =
-                                            "Fresh glasses thumbnail, quality 3 (${testBitmap.width}x${testBitmap.height})"
-                                        val frame = VisionFrame(testBitmap, System.currentTimeMillis())
+                                            "Fresh glasses thumbnail, quality ${WalkingAidPreferences.getThumbnailQualityLevel(context)} (${testBitmap.width}x${testBitmap.height})"
+                                        val frame = VisionFrame(
+                                            bitmap = testBitmap,
+                                            timestampMs = capturedThumbnail.captureCommandAtMs,
+                                            captureCommandAtMs = capturedThumbnail.captureCommandAtMs,
+                                            estimatedExposureAtMs = capturedThumbnail.estimatedExposureAtMs,
+                                            receivedAtMs = capturedThumbnail.receivedAtMs,
+                                        )
                                         val backend = LiteRtVisionBackend(context)
                                         try {
                                             val t0 = SystemClock.elapsedRealtime()
@@ -298,8 +309,8 @@ fun WalkingAidSettingsScreen(
 
                                             val accelInfo = backend.acceleratorInfo()
                                             val analysisMs = t3 - t0
-                                            val fpsEquiv = if (!detResult.isError && analysisMs > 0) {
-                                                String.format("%.1f FPS equiv", 1000f / analysisMs)
+                                            val detectorThroughput = if (!detResult.isError && analysisMs > 0) {
+                                                String.format("%.1f FPS local detector throughput", 1000f / analysisMs)
                                             } else {
                                                 "unavailable because detection failed"
                                             }
@@ -324,22 +335,38 @@ fun WalkingAidSettingsScreen(
                                                 "not reported by LiteRT"
                                             }
 
+                                            // Measured start-to-start cadence: run two captures back-to-back
+                                            val secondCaptureStart = SystemClock.elapsedRealtime()
+                                            val secondThumbnail = WalkingAidImageCapture(context)
+                                                .captureFreshThumbnail("WALKING_AID_BENCHMARK_2")
+                                            val secondCaptureMs = SystemClock.elapsedRealtime() - secondCaptureStart
+                                            secondThumbnail.file.delete()
+                                            val measuredCadenceMs = captureMs + secondCaptureMs
+                                            val measuredFps = if (measuredCadenceMs > 0) 1000f / measuredCadenceMs else 0f
+
                                             """
                                                 Pipeline Latency Benchmark
 
                                                 Input: $inputDescription
                                                 Detector status: $detectorStatus
 
-                                                Fresh capture and BLE transfer: $captureMs ms
-                                                Preprocessing: ${detResult.preprocessTimeMs} ms
-                                                YOLO inference: $inferenceValue
-                                                Postprocessing (NMS): ${detResult.postprocessTimeMs} ms
-                                                Detector call total: ${t1 - t0} ms (${detResult.objects.size} objects)
-                                                Depth estimation: $depthValue
-                                                Rule evaluation: ${t3 - t2} ms
+                                                Capture breakdown:
+                                                  BLE command → photo-ready: ${capturedThumbnail.estimatedExposureAtMs - capturedThumbnail.captureCommandAtMs} ms
+                                                  Settle delay: ${WalkingAidPreferences.getPhotoSettleDelayMs(context)} ms
+                                                  BLE transfer + decode: $captureMs ms total
+                                                  Measured start-to-start cadence (2 captures): ${measuredCadenceMs} ms (${String.format("%.2f fps", measuredFps)})
 
-                                                Analysis pipeline: $analysisMs ms ($fpsEquiv)
-                                                Capture-to-decision total: ${captureMs + analysisMs} ms
+                                                Analysis breakdown:
+                                                  Preprocessing: ${detResult.preprocessTimeMs} ms
+                                                  YOLO inference: $inferenceValue
+                                                  Postprocessing (NMS): ${detResult.postprocessTimeMs} ms
+                                                  Detector call total: ${t1 - t0} ms (${detResult.objects.size} objects)
+                                                  Depth estimation: $depthValue
+                                                  Rule evaluation: ${t3 - t2} ms
+
+                                                Detector throughput: $analysisMs ms ($detectorThroughput)
+                                                Capture-to-decision total: $captureMs + $analysisMs = ${captureMs + analysisMs} ms
+                                                Effective rate at configured ${WalkingAidPreferences.getCaptureIntervalSeconds(context)}s interval: ${String.format("%.2f fps", 1000f / (captureMs + WalkingAidPreferences.getCaptureIntervalSeconds(context) * 1000f).coerceAtLeast(1f))}
                                                 Hardware accelerator: ${accelInfo.type}
                                                 Delegated operators: $delegation
                                                 Details: ${accelInfo.details}
@@ -349,7 +376,7 @@ fun WalkingAidSettingsScreen(
                                             testBitmap.recycle()
                                         }
                                     } finally {
-                                        capturedImage.delete()
+                                        capturedThumbnail.file.delete()
                                     }
 
                                     withContext(Dispatchers.Main) {
@@ -380,6 +407,127 @@ fun WalkingAidSettingsScreen(
                             Text("⚡ Test End-to-End Latency")
                         }
                     }
+
+                    Spacer(modifier = Modifier.height(8.dp))
+
+                    // Acquisition Benchmark Button
+                    Button(
+                        onClick = {
+                            isTestingAcquisition = true
+                            CoroutineScope(Dispatchers.IO).launch {
+                                try {
+                                    val sb = StringBuilder()
+                                    sb.appendLine("Thumbnail Acquisition Benchmark (quality 0-5)")
+                                    sb.appendLine("Each level: 2 consecutive captures")
+                                    sb.appendLine("Settle delay: ${WalkingAidPreferences.getPhotoSettleDelayMs(context)} ms")
+                                    sb.appendLine()
+                                    for (quality in 0..5) {
+                                        val times = mutableListOf<Long>()
+                                        var sizeBytes = 0L
+                                        var width = 0
+                                        var height = 0
+                                        repeat(2) {
+                                            val start = SystemClock.elapsedRealtime()
+                                            val thumbnail = WalkingAidImageCapture(context)
+                                                .captureFreshThumbnailWithQuality("ACQ_BENCH_Q$quality", quality)
+                                            val elapsed = SystemClock.elapsedRealtime() - start
+                                            times += elapsed
+                                            sizeBytes = thumbnail.file.length()
+                                            val bmp = BitmapFactory.decodeFile(thumbnail.file.absolutePath)
+                                            if (bmp != null) {
+                                                width = bmp.width
+                                                height = bmp.height
+                                                bmp.recycle()
+                                            }
+                                            thumbnail.file.delete()
+                                        }
+                                        val avg = times.average().toLong()
+                                        sb.appendLine("Quality $quality: ${avg}ms avg, ${width}x${height}, ${sizeBytes / 1024}KB")
+                                    }
+                                    withContext(Dispatchers.Main) {
+                                        acquisitionReportText = sb.toString().trimEnd()
+                                        showAcquisitionReportDialog = true
+                                        isTestingAcquisition = false
+                                    }
+                                } catch (e: Exception) {
+                                    withContext(Dispatchers.Main) {
+                                        Toast.makeText(context, "Acquisition benchmark error: ${e.message}", Toast.LENGTH_LONG).show()
+                                        isTestingAcquisition = false
+                                    }
+                                }
+                            }
+                        },
+                        enabled = !isTestingAcquisition && hasCamera,
+                        modifier = Modifier.fillMaxWidth(),
+                    ) {
+                        if (isTestingAcquisition) {
+                            CircularProgressIndicator(
+                                modifier = Modifier.height(20.dp).width(20.dp),
+                                strokeWidth = 2.dp,
+                                color = MaterialTheme.colorScheme.onPrimary,
+                            )
+                            Spacer(modifier = Modifier.width(8.dp))
+                            Text("Running Acquisition Benchmark...")
+                        } else {
+                            Text("Benchmark All Quality Levels (0-5)")
+                        }
+                    }
+
+                    Spacer(modifier = Modifier.height(16.dp))
+
+                    Text(
+                        "Thumbnail quality level",
+                        style = MaterialTheme.typography.bodyMedium,
+                        fontWeight = FontWeight.Medium,
+                    )
+                    Text(
+                        "Lower = smaller images, faster transfer. Higher = better detection accuracy.",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                    Spacer(modifier = Modifier.height(4.dp))
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(6.dp),
+                    ) {
+                        (0..5).forEach { level ->
+                            FilterChip(
+                                selected = thumbnailQuality == level,
+                                onClick = {
+                                    thumbnailQuality = level
+                                    WalkingAidPreferences.setThumbnailQualityLevel(context, level)
+                                },
+                                label = { Text("$level") },
+                                colors = FilterChipDefaults.filterChipColors(
+                                    selectedContainerColor = MaterialTheme.colorScheme.primary,
+                                ),
+                            )
+                        }
+                    }
+
+                    Spacer(modifier = Modifier.height(16.dp))
+
+                    Text(
+                        "Photo settle delay: ${settleDelayMs} ms",
+                        style = MaterialTheme.typography.bodyMedium,
+                        fontWeight = FontWeight.Medium,
+                    )
+                    Text(
+                        "Time to wait after glasses confirm photo before reading data. Reduce for faster cadence, increase if transfers fail.",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                    Spacer(modifier = Modifier.height(4.dp))
+                    Slider(
+                        value = settleDelayMs.toFloat(),
+                        onValueChange = { newValue ->
+                            settleDelayMs = newValue.toInt()
+                            WalkingAidPreferences.setPhotoSettleDelayMs(context, newValue.toInt())
+                        },
+                        valueRange = 0f..500f,
+                        steps = 9,
+                        modifier = Modifier.fillMaxWidth(),
+                    )
                 }
             }
 
@@ -397,7 +545,7 @@ fun WalkingAidSettingsScreen(
             ) {
                 Column(modifier = Modifier.padding(16.dp)) {
                     Text(
-                        "Source",
+                        "Safety detection and scene context",
                         style = MaterialTheme.typography.bodyMedium,
                         fontWeight = FontWeight.Medium,
                     )
@@ -409,7 +557,7 @@ fun WalkingAidSettingsScreen(
                                 imageDescriptionSource = "local"
                                 WalkingAidPreferences.setImageDescriptionSource(context, "local")
                             },
-                            label = { Text("Local (on-device)") },
+                            label = { Text("Local safety only") },
                         )
                         FilterChip(
                             selected = imageDescriptionSource == "cloud",
@@ -418,9 +566,15 @@ fun WalkingAidSettingsScreen(
                                 WalkingAidPreferences.setImageDescriptionSource(context, "cloud")
                                 showImageModelPicker = true
                             },
-                            label = { Text("Cloud (Pro)") },
+                            label = { Text("Local + Cloud context (Pro)") },
                         )
                     }
+
+                    Text(
+                        "Local YOLO always makes immediate safety decisions. Cloud vision only enriches saved scene descriptions and never delays warnings.",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
 
                     if (imageDescriptionSource == "cloud") {
                         Spacer(modifier = Modifier.height(8.dp))
@@ -432,96 +586,95 @@ fun WalkingAidSettingsScreen(
                                     "Select model...",
                             )
                         }
-                    } else {
-                        Spacer(modifier = Modifier.height(12.dp))
-                        Text(
-                            "Local detection model",
-                            style = MaterialTheme.typography.bodyMedium,
-                            fontWeight = FontWeight.Medium,
-                        )
-                        Spacer(modifier = Modifier.height(8.dp))
-                        Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                            FilterChip(
-                                selected = yoloModelType == WalkingAidPreferences.MODEL_TYPE_YOLO11,
-                                onClick = {
-                                    yoloModelType = WalkingAidPreferences.MODEL_TYPE_YOLO11
-                                    WalkingAidPreferences.setYoloModelType(context, WalkingAidPreferences.MODEL_TYPE_YOLO11)
-                                },
-                                label = { Text("YOLO11 (faster)") },
-                            )
-                            FilterChip(
-                                selected = yoloModelType == WalkingAidPreferences.MODEL_TYPE_YOLO_WORLD,
-                                onClick = {
-                                    yoloModelType = WalkingAidPreferences.MODEL_TYPE_YOLO_WORLD
-                                    WalkingAidPreferences.setYoloModelType(context, WalkingAidPreferences.MODEL_TYPE_YOLO_WORLD)
-                                },
-                                label = { Text("YOLO-World (larger)") },
-                            )
-                        }
-
-                        Spacer(modifier = Modifier.height(12.dp))
-                        WalkingAidModelDownloadCard(
-                            entry = WalkingAidModelCatalog.detectorFor(yoloModelType),
-                            installed = WalkingAidModelInstaller.isInstalled(
-                                context,
-                                WalkingAidModelCatalog.detectorFor(yoloModelType),
-                            ),
-                            isDownloading = downloadingModelId == WalkingAidModelCatalog.detectorFor(yoloModelType).id,
-                            status = modelDownloadStatus,
-                            onDownload = { entry ->
-                                downloadingModelId = entry.id
-                                modelDownloadStatus = "Starting ${entry.displayName}..."
-                                CoroutineScope(Dispatchers.IO).launch {
-                                    runCatching {
-                                        WalkingAidModelInstaller.install(context, entry) { progress ->
-                                            CoroutineScope(Dispatchers.Main).launch {
-                                                modelDownloadStatus = "Downloading ${progress.percent}%"
-                                            }
-                                        }
-                                    }.onSuccess {
-                                        withContext(Dispatchers.Main) {
-                                            modelDownloadStatus = "${entry.displayName} is ready for local use."
-                                            downloadingModelId = null
-                                        }
-                                    }.onFailure { error ->
-                                        withContext(Dispatchers.Main) {
-                                            modelDownloadStatus = "Download failed: ${error.message ?: "unknown error"}"
-                                            downloadingModelId = null
-                                        }
-                                    }
-                                }
+                    }
+                    Spacer(modifier = Modifier.height(12.dp))
+                    Text(
+                        "Local detection model",
+                        style = MaterialTheme.typography.bodyMedium,
+                        fontWeight = FontWeight.Medium,
+                    )
+                    Spacer(modifier = Modifier.height(8.dp))
+                    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                        FilterChip(
+                            selected = yoloModelType == WalkingAidPreferences.MODEL_TYPE_YOLO11,
+                            onClick = {
+                                yoloModelType = WalkingAidPreferences.MODEL_TYPE_YOLO11
+                                WalkingAidPreferences.setYoloModelType(context, WalkingAidPreferences.MODEL_TYPE_YOLO11)
                             },
+                            label = { Text("YOLO11 (faster)") },
                         )
-
-                        Spacer(modifier = Modifier.height(12.dp))
-                        Text(
-                            "What should Walking Aid pay extra attention to?",
-                            style = MaterialTheme.typography.bodyMedium,
-                            fontWeight = FontWeight.Medium,
-                        )
-                        Spacer(modifier = Modifier.height(4.dp))
-                        TextField(
-                            value = focusDescriptionText,
-                            onValueChange = { newValue ->
-                                focusDescriptionText = newValue
-                                WalkingAidPreferences.setFocusDescription(context, newValue)
+                        FilterChip(
+                            selected = yoloModelType == WalkingAidPreferences.MODEL_TYPE_YOLO_WORLD,
+                            onClick = {
+                                yoloModelType = WalkingAidPreferences.MODEL_TYPE_YOLO_WORLD
+                                WalkingAidPreferences.setYoloModelType(context, WalkingAidPreferences.MODEL_TYPE_YOLO_WORLD)
                             },
-                            placeholder = { Text("For example: Please warn me about pets, traffic, and things I could trip over") },
-                            modifier = Modifier.fillMaxWidth(),
-                            minLines = 2,
-                            maxLines = 4,
-                            supportingText = {
-                                val understood = WalkingAidFocusMapper.resolve(focusDescriptionText)
-                                Text(
-                                    if (understood.isEmpty()) {
-                                        "Write naturally or use keyboard dictation. Built-in safety alerts remain active."
-                                    } else {
-                                        "Walking Aid will pay extra attention to ${WalkingAidFocusMapper.friendlySummary(understood)}."
-                                    }
-                                )
-                            },
+                            label = { Text("YOLO-World (larger)") },
                         )
                     }
+
+                    Spacer(modifier = Modifier.height(12.dp))
+                    WalkingAidModelDownloadCard(
+                        entry = WalkingAidModelCatalog.detectorFor(yoloModelType),
+                        installed = WalkingAidModelInstaller.isInstalled(
+                            context,
+                            WalkingAidModelCatalog.detectorFor(yoloModelType),
+                        ),
+                        isDownloading = downloadingModelId == WalkingAidModelCatalog.detectorFor(yoloModelType).id,
+                        status = modelDownloadStatus,
+                        onDownload = { entry ->
+                            downloadingModelId = entry.id
+                            modelDownloadStatus = "Starting ${entry.displayName}..."
+                            CoroutineScope(Dispatchers.IO).launch {
+                                runCatching {
+                                    WalkingAidModelInstaller.install(context, entry) { progress ->
+                                        CoroutineScope(Dispatchers.Main).launch {
+                                            modelDownloadStatus = "Downloading ${progress.percent}%"
+                                        }
+                                    }
+                                }.onSuccess {
+                                    withContext(Dispatchers.Main) {
+                                        modelDownloadStatus = "${entry.displayName} is ready for local use."
+                                        downloadingModelId = null
+                                    }
+                                }.onFailure { error ->
+                                    withContext(Dispatchers.Main) {
+                                        modelDownloadStatus = "Download failed: ${error.message ?: "unknown error"}"
+                                        downloadingModelId = null
+                                    }
+                                }
+                            }
+                        },
+                    )
+
+                    Spacer(modifier = Modifier.height(12.dp))
+                    Text(
+                        "What should Walking Aid pay extra attention to?",
+                        style = MaterialTheme.typography.bodyMedium,
+                        fontWeight = FontWeight.Medium,
+                    )
+                    Spacer(modifier = Modifier.height(4.dp))
+                    TextField(
+                        value = focusDescriptionText,
+                        onValueChange = { newValue ->
+                            focusDescriptionText = newValue
+                            WalkingAidPreferences.setFocusDescription(context, newValue)
+                        },
+                        placeholder = { Text("For example: Please warn me about pets, traffic, and things I could trip over") },
+                        modifier = Modifier.fillMaxWidth(),
+                        minLines = 2,
+                        maxLines = 4,
+                        supportingText = {
+                            val understood = WalkingAidFocusMapper.resolve(focusDescriptionText)
+                            Text(
+                                if (understood.isEmpty()) {
+                                    "Write naturally or use keyboard dictation. Built-in safety alerts remain active."
+                                } else {
+                                    "Walking Aid will pay extra attention to ${WalkingAidFocusMapper.friendlySummary(understood)}."
+                                }
+                            )
+                        },
+                    )
                 }
             }
 
@@ -802,6 +955,24 @@ fun WalkingAidSettingsScreen(
             },
             confirmButton = {
                 TextButton(onClick = { showLatencyReportDialog = false }) {
+                    Text("Close")
+                }
+            }
+        )
+    }
+
+    if (showAcquisitionReportDialog) {
+        AlertDialog(
+            onDismissRequest = { showAcquisitionReportDialog = false },
+            title = { Text("Acquisition Benchmark") },
+            text = {
+                Text(
+                    text = acquisitionReportText,
+                    style = MaterialTheme.typography.bodySmall,
+                )
+            },
+            confirmButton = {
+                TextButton(onClick = { showAcquisitionReportDialog = false }) {
                     Text("Close")
                 }
             }

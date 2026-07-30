@@ -34,7 +34,7 @@ class WalkingAidReadinessCheckerTest {
         assertFalse(readiness.isReady)
         assertFalse(readiness.yoloReady)
         assertFalse(readiness.depthReady)
-        assertFalse(readiness.llmReady)
+        assertTrue(readiness.llmReady)
         assertTrue(readiness.missingDetails.isNotEmpty())
     }
 
@@ -49,22 +49,42 @@ class WalkingAidReadinessCheckerTest {
 
     @Test
     fun checkReadiness_passesCloud_whenProSubscribed() {
+        val detector = File(context.filesDir, "yolo11n_float16.tflite")
+        detector.writeBytes(ByteArray(1024))
         ProSubscriptionPrefs.setSubscribed(context, true)
         ProSubscriptionPrefs.setExpiresAt(context, System.currentTimeMillis() + 86400000L)
         WalkingAidPreferences.setImageDescriptionSource(context, "cloud")
         WalkingAidPreferences.setDepthSource(context, "cloud")
         WalkingAidPreferences.setStateModelSource(context, "cloud")
 
+        try {
+            val readiness = WalkingAidReadinessChecker.checkReadiness(context)
+            assertTrue(readiness.isReady)
+            assertTrue(readiness.yoloReady)
+            assertTrue(readiness.depthReady)
+            assertTrue(readiness.llmReady)
+            assertFalse(readiness.requiresProForCloud)
+        } finally {
+            detector.delete()
+        }
+    }
+
+    @Test
+    fun checkReadiness_cloudEnrichmentStillRequiresLocalSafetyDetector() {
+        ProSubscriptionPrefs.setSubscribed(context, true)
+        ProSubscriptionPrefs.setExpiresAt(context, System.currentTimeMillis() + 86400000L)
+        WalkingAidPreferences.setImageDescriptionSource(context, "cloud")
+        WalkingAidPreferences.setDepthEnabled(context, false)
+
         val readiness = WalkingAidReadinessChecker.checkReadiness(context)
-        assertTrue(readiness.isReady)
-        assertTrue(readiness.yoloReady)
-        assertTrue(readiness.depthReady)
-        assertTrue(readiness.llmReady)
+
+        assertFalse(readiness.isReady)
+        assertFalse(readiness.yoloReady)
         assertFalse(readiness.requiresProForCloud)
     }
 
     @Test
-    fun checkReadiness_doesNotRequireOptionalSceneLlm() {
+    fun checkReadiness_doesNotRequireSceneLlm() {
         WalkingAidPreferences.setDepthEnabled(context, false)
         val detector = File(context.filesDir, "yolo11n_float16.tflite")
         detector.writeBytes(ByteArray(1024))
@@ -75,7 +95,7 @@ class WalkingAidReadinessCheckerTest {
             assertTrue(readiness.isReady)
             assertTrue(readiness.yoloReady)
             assertTrue(readiness.depthReady)
-            assertFalse(readiness.llmReady)
+            assertTrue(readiness.llmReady)
             assertTrue(readiness.missingDetails.isEmpty())
         } finally {
             detector.delete()
