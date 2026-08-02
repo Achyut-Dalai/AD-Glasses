@@ -45,6 +45,7 @@ import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.ComposeView
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import com.fersaiyan.cyanbridge.R
 import com.fersaiyan.cyanbridge.ai.vision.ImageQuestionPreferences
@@ -122,10 +123,10 @@ fun WalkingAidChatScreen(
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text("Walking Aid — Ask") },
+                title = { Text(stringResource(R.string.compose_walking_ask_title)) },
                 navigationIcon = {
                     IconButton(onClick = onBack) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
+                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = stringResource(R.string.compose_back))
                     }
                 },
                 colors = TopAppBarDefaults.topAppBarColors(
@@ -143,7 +144,7 @@ fun WalkingAidChatScreen(
             // Image thumbnails from history
             if (history.isNotEmpty()) {
                 Text(
-                    "Recent images",
+                    stringResource(R.string.compose_walking_recent_images),
                     style = MaterialTheme.typography.labelMedium,
                     modifier = Modifier.padding(bottom = 8.dp),
                 )
@@ -165,7 +166,7 @@ fun WalkingAidChatScreen(
                                 android.graphics.BitmapFactory.decodeFile(file.absolutePath)?.let { bitmap ->
                                     Image(
                                         bitmap = bitmap.asImageBitmap(),
-                                        contentDescription = "Thumbnail",
+                                        contentDescription = stringResource(R.string.compose_walking_thumbnail),
                                         modifier = Modifier.fillMaxSize(),
                                         contentScale = ContentScale.Crop,
                                     )
@@ -183,7 +184,7 @@ fun WalkingAidChatScreen(
                     contentAlignment = Alignment.Center,
                 ) {
                     Text(
-                        "No images captured yet. Start Walking Aid to begin.",
+                        stringResource(R.string.compose_walking_no_images),
                         style = MaterialTheme.typography.bodyMedium,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                     )
@@ -237,7 +238,7 @@ fun WalkingAidChatScreen(
                 OutlinedTextField(
                     value = question,
                     onValueChange = { question = it },
-                    placeholder = { Text("Ask about the current scene...") },
+                    placeholder = { Text(stringResource(R.string.compose_walking_ask_placeholder)) },
                     modifier = Modifier.weight(1f),
                     enabled = !isLoading,
                     singleLine = true,
@@ -311,7 +312,7 @@ fun WalkingAidChatScreen(
                 ) {
                     Icon(
                         Icons.AutoMirrored.Filled.Send,
-                        contentDescription = "Send",
+                        contentDescription = stringResource(R.string.compose_walking_send),
                         tint = if (question.isNotBlank() && !isLoading)
                             MaterialTheme.colorScheme.primary
                         else

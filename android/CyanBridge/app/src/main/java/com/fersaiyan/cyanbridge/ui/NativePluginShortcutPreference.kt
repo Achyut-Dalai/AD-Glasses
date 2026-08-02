@@ -20,7 +20,9 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
+import com.fersaiyan.cyanbridge.R
 
 @Composable
 fun NativePluginShortcutPreference(
@@ -43,7 +45,7 @@ fun NativePluginShortcutPreference(
                 verticalAlignment = Alignment.CenterVertically,
             ) {
                 Text(
-                    text = "Add plugin shortcuts to Glasses Tab",
+                    text = stringResource(R.string.compose_native_shortcut_add),
                     modifier = Modifier.weight(1f),
                     style = MaterialTheme.typography.bodyMedium,
                 )
@@ -58,9 +60,9 @@ fun NativePluginShortcutPreference(
             Spacer(modifier = Modifier.height(6.dp))
             Text(
                 text = if (enabled) {
-                    "$pluginTitle is shown in the Glasses tab. Selecting another plugin moves the shortcut slot."
+                    stringResource(R.string.compose_native_shortcut_enabled, pluginTitle)
                 } else {
-                    "Show $pluginTitle actions in the Glasses tab. Only one native plugin uses this shortcut slot at a time."
+                    stringResource(R.string.compose_native_shortcut_disabled, pluginTitle)
                 },
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,

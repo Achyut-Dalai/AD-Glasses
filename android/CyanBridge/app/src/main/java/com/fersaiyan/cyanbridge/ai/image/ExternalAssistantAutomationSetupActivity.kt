@@ -42,10 +42,12 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.core.content.FileProvider
 import androidx.lifecycle.lifecycleScope
+import com.fersaiyan.cyanbridge.R
 import com.fersaiyan.cyanbridge.MainActivity
 import com.fersaiyan.cyanbridge.ui.appearance.AppearancePreferences
 import com.fersaiyan.cyanbridge.ui.appearance.rememberAppearanceSettings
@@ -299,15 +301,15 @@ fun ExternalAssistantAutomationSetupScreen(
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text("Gemini / ChatGPT setup") },
+                title = { Text(stringResource(R.string.compose_external_setup_title)) },
                 navigationIcon = {
                     IconButton(onClick = onBack) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
+                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = stringResource(R.string.compose_external_back))
                     }
                 },
                 actions = {
                     IconButton(onClick = onRefresh) {
-                        Icon(Icons.Default.Refresh, contentDescription = "Refresh setup status")
+                        Icon(Icons.Default.Refresh, contentDescription = stringResource(R.string.compose_external_refresh_status))
                     }
                 },
             )
@@ -325,7 +327,7 @@ fun ExternalAssistantAutomationSetupScreen(
             }
             item {
                 Text(
-                    text = "CyanBridge follows Android's default assistant. Choose Gemini or ChatGPT, import its matching Tasker profile, and enable AutoInput for image questions.",
+                    text = stringResource(R.string.compose_external_description),
                     style = MaterialTheme.typography.bodyMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
@@ -336,40 +338,40 @@ fun ExternalAssistantAutomationSetupScreen(
                         onClick = onChooseDefaultAssistant,
                         modifier = Modifier.fillMaxWidth(),
                     ) {
-                        Text("Choose default phone assistant")
+                        Text(stringResource(R.string.compose_external_choose_assistant))
                     }
                     OutlinedButton(
                         onClick = onImportProfile,
                         enabled = state.canImportProfile,
                         modifier = Modifier.fillMaxWidth(),
                     ) {
-                        Text("Import matching Tasker profile")
+                        Text(stringResource(R.string.compose_external_import_profile))
                     }
                     OutlinedButton(
                         onClick = onVerifyProfile,
                         enabled = state.canVerifyProfile,
                         modifier = Modifier.fillMaxWidth(),
                     ) {
-                        Text("Verify imported profile")
+                        Text(stringResource(R.string.compose_external_verify_profile))
                     }
                     OutlinedButton(
                         onClick = onOpenAccessibility,
                         modifier = Modifier.fillMaxWidth(),
                     ) {
-                        Text("Open accessibility settings")
+                        Text(stringResource(R.string.compose_external_open_accessibility))
                     }
                     Button(
                         onClick = onTestVoice,
                         enabled = state.canTestVoice,
                         modifier = Modifier.fillMaxWidth(),
                     ) {
-                        Text("Test Tasker voice launch")
+                        Text(stringResource(R.string.compose_external_test_voice))
                     }
                 }
             }
             item {
                 Text(
-                    text = "Setup checks",
+                    text = stringResource(R.string.compose_external_setup_checks),
                     style = MaterialTheme.typography.titleMedium,
                     fontWeight = FontWeight.SemiBold,
                 )
@@ -382,7 +384,7 @@ fun ExternalAssistantAutomationSetupScreen(
                     HorizontalDivider()
                     Spacer(Modifier.height(4.dp))
                     Text(
-                        text = "Last image automation state: $lastState",
+                        text = stringResource(R.string.compose_external_last_state, lastState),
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                     )
@@ -393,7 +395,7 @@ fun ExternalAssistantAutomationSetupScreen(
                     onClick = onRefresh,
                     modifier = Modifier.fillMaxWidth(),
                 ) {
-                    Text("Refresh setup status")
+                    Text(stringResource(R.string.compose_external_refresh_status))
                 }
             }
         }

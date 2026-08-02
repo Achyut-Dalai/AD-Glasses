@@ -23,8 +23,10 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.viewinterop.AndroidView
+import com.fersaiyan.cyanbridge.R
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -38,7 +40,7 @@ fun EvenHubRuntimeScreen(
 ) {
     Scaffold(
         contentWindowInsets = WindowInsets.safeDrawing,
-        topBar = { TopAppBar(title = { Text("EvenHub runtime") }) },
+        topBar = { TopAppBar(title = { Text(stringResource(R.string.compose_evenhub_runtime_title)) }) },
     ) { innerPadding ->
         Column(
             modifier = Modifier
@@ -50,14 +52,14 @@ fun EvenHubRuntimeScreen(
             OutlinedTextField(
                 value = url,
                 onValueChange = onUrlChange,
-                label = { Text("EvenHub app URL") },
+                label = { Text(stringResource(R.string.compose_evenhub_app_url)) },
                 modifier = Modifier.fillMaxWidth(),
                 singleLine = true,
             )
             Row {
-                FilledTonalButton(onClick = onLoad, modifier = Modifier.weight(1f)) { Text("Load") }
+                FilledTonalButton(onClick = onLoad, modifier = Modifier.weight(1f)) { Text(stringResource(R.string.compose_action_load)) }
                 Spacer(Modifier.padding(horizontal = 4.dp))
-                OutlinedButton(onClick = onStop, modifier = Modifier.weight(1f)) { Text("Stop") }
+                OutlinedButton(onClick = onStop, modifier = Modifier.weight(1f)) { Text(stringResource(R.string.compose_action_stop)) }
             }
             AndroidView(
                 factory = { context -> WebView(context).also(onWebViewCreated) },
@@ -67,7 +69,7 @@ fun EvenHubRuntimeScreen(
             )
             Card(modifier = Modifier.fillMaxWidth()) {
                 Text(
-                    text = logs.ifBlank { "Runtime log will appear here." },
+                    text = logs.ifBlank { stringResource(R.string.compose_evenhub_log_empty) },
                     modifier = Modifier
                         .fillMaxWidth()
                         .height(120.dp)

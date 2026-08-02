@@ -35,6 +35,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.fersaiyan.cyanbridge.R
@@ -97,10 +98,10 @@ fun VisualDiarySettingsScreen(
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text("Visual Diary Settings") },
+                title = { Text(stringResource(R.string.compose_plugin_settings_title, stringResource(R.string.compose_plugin_name_visual_diary))) },
                 navigationIcon = {
                     IconButton(onClick = onBack) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
+                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = stringResource(R.string.compose_back))
                     }
                 },
             )
@@ -128,18 +129,18 @@ fun VisualDiarySettingsScreen(
                     ) {
                         Icon(
                             imageVector = Icons.Default.Warning,
-                            contentDescription = "Warning",
+                            contentDescription = stringResource(R.string.compose_camera_warning),
                             tint = MaterialTheme.colorScheme.onErrorContainer,
                         )
                         Column {
                             Text(
-                                text = "Camera Hardware Required",
+                                text = stringResource(R.string.compose_camera_hardware_required),
                                 style = MaterialTheme.typography.titleMedium,
                                 fontWeight = FontWeight.Bold,
                                 color = MaterialTheme.colorScheme.onErrorContainer,
                             )
                             Text(
-                                text = "Visual Diary captures periodic photos to build daily memory notes. $cameraUnavailableReason",
+                                text = stringResource(R.string.compose_visual_camera_description, cameraUnavailableReason),
                                 style = MaterialTheme.typography.bodySmall,
                                 color = MaterialTheme.colorScheme.onErrorContainer,
                             )
@@ -149,24 +150,24 @@ fun VisualDiarySettingsScreen(
             }
 
             Text(
-                "Capture glasses scenes on a schedule, describe scenes with the selected Gemma vision model, and append concise notes to daily memory.",
+                stringResource(R.string.compose_visual_description),
                 style = MaterialTheme.typography.bodyMedium,
             )
-            SwitchSetting("Visual Diary enabled", enabled && hasCamera, if (hasCamera) onEnabledChanged else { _ -> })
+            SwitchSetting(stringResource(R.string.compose_visual_enabled), enabled && hasCamera, if (hasCamera) onEnabledChanged else { _ -> })
             NativePluginShortcutPreference(
                 pluginId = NativePluginIds.VISUAL_DIARY,
-                pluginTitle = "Visual Diary",
+                pluginTitle = stringResource(R.string.compose_plugin_name_visual_diary),
             )
             if (lastError.isNotBlank()) {
                 Text(
-                    "Last stop reason: $lastError",
+                    stringResource(R.string.compose_last_stop_reason, lastError),
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.error,
                 )
             }
-            SectionTitle("Capture")
+            SectionTitle(stringResource(R.string.compose_capture))
             NumberSetting(
-                label = "Capture interval (minutes)",
+                label = stringResource(R.string.compose_capture_interval_minutes),
                 value = interval,
                 range = 1..240,
                 onValueChanged = {
@@ -177,8 +178,8 @@ fun VisualDiarySettingsScreen(
             OutlinedButton(
                 onClick = { VisualDiaryService.captureNow(context) },
                 modifier = Modifier.fillMaxWidth(),
-            ) { Text("Capture scene now") }
-            SectionTitle("Scene descriptions")
+            ) { Text(stringResource(R.string.compose_capture_scene_now)) }
+            SectionTitle(stringResource(R.string.compose_scene_descriptions))
             OutlinedTextField(
                 value = prompt,
                 onValueChange = {
@@ -186,7 +187,7 @@ fun VisualDiarySettingsScreen(
                     VisualDiaryPreferences.setCustomPrompt(context, it)
                 },
                 modifier = Modifier.fillMaxWidth(),
-                label = { Text("Scene description prompt") },
+                label = { Text(stringResource(R.string.compose_scene_description_prompt)) },
                 minLines = 3,
                 maxLines = 7,
             )
@@ -195,10 +196,10 @@ fun VisualDiarySettingsScreen(
                     onEnabledChanged(false)
                 },
                 modifier = Modifier.fillMaxWidth(),
-            ) { Text("Stop visual diary") }
-            SectionTitle("Shared memory")
+            ) { Text(stringResource(R.string.compose_stop_visual_diary)) }
+            SectionTitle(stringResource(R.string.compose_shared_memory))
             Text(
-                "Visual Diary appends notes to shared daily memory. Privacy, retention, and vault controls are managed in Settings > Memory Privacy.",
+                stringResource(R.string.compose_visual_shared_memory_description),
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )

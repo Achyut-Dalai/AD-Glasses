@@ -41,6 +41,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.ComposeView
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.fersaiyan.cyanbridge.R
@@ -93,10 +94,10 @@ fun LiveCaptionRelaySettingsScreen(
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text("Live Caption Relay Settings") },
+                title = { Text(stringResource(R.string.compose_plugin_settings_title, stringResource(R.string.compose_plugin_name_live_caption_relay))) },
                 navigationIcon = {
                     IconButton(onClick = onBack) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
+                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = stringResource(R.string.compose_back))
                     }
                 },
                 colors = TopAppBarDefaults.topAppBarColors(
@@ -114,7 +115,7 @@ fun LiveCaptionRelaySettingsScreen(
             verticalArrangement = Arrangement.spacedBy(12.dp),
         ) {
             // Section: General
-            SectionTitle("General")
+            SectionTitle(stringResource(R.string.compose_general))
             Card(
                 modifier = Modifier.fillMaxWidth(),
                 colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant),
@@ -125,7 +126,7 @@ fun LiveCaptionRelaySettingsScreen(
                         horizontalArrangement = Arrangement.SpaceBetween,
                         verticalAlignment = Alignment.CenterVertically,
                     ) {
-                        Text("Live Caption Relay enabled", modifier = Modifier.weight(1f))
+                        Text(stringResource(R.string.compose_live_caption_enabled), modifier = Modifier.weight(1f))
                         Switch(
                             checked = enabled,
                             onCheckedChange = { newValue ->
@@ -147,21 +148,21 @@ fun LiveCaptionRelaySettingsScreen(
                 }
             }
 
-            SectionTitle("Glasses tab")
+            SectionTitle(stringResource(R.string.compose_glasses_tab))
             NativePluginShortcutPreference(
                 pluginId = NativePluginIds.LIVE_CAPTION_RELAY,
-                pluginTitle = "Live Caption Relay",
+                pluginTitle = stringResource(R.string.compose_plugin_name_live_caption_relay),
             )
 
             // Section: Language
-            SectionTitle("Language")
+            SectionTitle(stringResource(R.string.compose_language))
             Card(
                 modifier = Modifier.fillMaxWidth(),
                 colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant),
             ) {
                 Column(modifier = Modifier.padding(16.dp)) {
                     Text(
-                        "Source language",
+                        stringResource(R.string.compose_source_language),
                         style = MaterialTheme.typography.bodyMedium,
                         fontWeight = FontWeight.Medium,
                     )
@@ -192,7 +193,7 @@ fun LiveCaptionRelaySettingsScreen(
                         horizontalArrangement = Arrangement.SpaceBetween,
                         verticalAlignment = Alignment.CenterVertically,
                     ) {
-                        Text("Enable translation", modifier = Modifier.weight(1f))
+                        Text(stringResource(R.string.compose_enable_translation), modifier = Modifier.weight(1f))
                         Switch(
                             checked = translationEnabled,
                             onCheckedChange = { newValue ->
@@ -205,7 +206,7 @@ fun LiveCaptionRelaySettingsScreen(
                     if (translationEnabled) {
                         Spacer(modifier = Modifier.height(8.dp))
                         Text(
-                            "Target language",
+                            stringResource(R.string.compose_target_language),
                             style = MaterialTheme.typography.bodyMedium,
                             fontWeight = FontWeight.Medium,
                         )
@@ -233,14 +234,14 @@ fun LiveCaptionRelaySettingsScreen(
             }
 
             // Section: Custom Instructions
-            SectionTitle("Custom Instructions")
+            SectionTitle(stringResource(R.string.compose_custom_instructions))
             Card(
                 modifier = Modifier.fillMaxWidth(),
                 colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant),
             ) {
                 Column(modifier = Modifier.padding(16.dp)) {
                     Text(
-                        "Additional instructions for caption generation.",
+                        stringResource(R.string.compose_caption_generation_description),
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                     )
@@ -254,8 +255,8 @@ fun LiveCaptionRelaySettingsScreen(
                             }
                         },
                         modifier = Modifier.fillMaxWidth(),
-                        label = { Text("Caption instructions") },
-                        placeholder = { Text("e.g. Preserve technical terms and product names.") },
+                         label = { Text(stringResource(R.string.compose_caption_instructions)) },
+                         placeholder = { Text(stringResource(R.string.compose_caption_hint)) },
                         minLines = 2,
                         maxLines = 4,
                         supportingText = { Text("${customPrompt.length}/1000") },
@@ -264,14 +265,14 @@ fun LiveCaptionRelaySettingsScreen(
             }
 
             // Section: History
-            SectionTitle("Caption History")
+            SectionTitle(stringResource(R.string.compose_caption_history))
             Card(
                 modifier = Modifier.fillMaxWidth(),
                 colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant),
             ) {
                 Column(modifier = Modifier.padding(16.dp)) {
                     Text(
-                        "Max stored captions: ${maxHistory}",
+                        stringResource(R.string.compose_max_stored_captions, maxHistory),
                         style = MaterialTheme.typography.bodyMedium,
                     )
                     Slider(
@@ -290,11 +291,11 @@ fun LiveCaptionRelaySettingsScreen(
                     Button(
                         onClick = {
                             LiveCaptionRelayStore().clear(context)
-                            Toast.makeText(context, "History cleared", Toast.LENGTH_SHORT).show()
+                            Toast.makeText(context, context.getString(R.string.compose_history_cleared), Toast.LENGTH_SHORT).show()
                         },
                         modifier = Modifier.fillMaxWidth(),
                     ) {
-                        Text("Clear History")
+                        Text(stringResource(R.string.compose_clear_history))
                     }
                 }
             }

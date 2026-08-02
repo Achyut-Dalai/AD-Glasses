@@ -61,6 +61,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.ComposeView
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.fersaiyan.cyanbridge.R
@@ -143,10 +144,10 @@ fun WalkingAidSettingsScreen(
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text("Walking Aid Settings") },
+                title = { Text(stringResource(R.string.walking_aid_settings)) },
                 navigationIcon = {
                     IconButton(onClick = onBack) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
+                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = stringResource(R.string.compose_back))
                     }
                 },
                 colors = TopAppBarDefaults.topAppBarColors(
@@ -177,18 +178,18 @@ fun WalkingAidSettingsScreen(
                     ) {
                         Icon(
                             imageVector = Icons.Default.Warning,
-                            contentDescription = "Warning",
+                            contentDescription = stringResource(R.string.compose_camera_warning),
                             tint = MaterialTheme.colorScheme.onErrorContainer,
                         )
                         Column {
                             Text(
-                                text = "Camera Hardware Required",
+                                text = stringResource(R.string.compose_camera_hardware_required),
                                 style = MaterialTheme.typography.titleMedium,
                                 fontWeight = FontWeight.Bold,
                                 color = MaterialTheme.colorScheme.onErrorContainer,
                             )
                             Text(
-                                text = "Walking Aid requires glasses with a point-of-view camera (such as HeyCyan or Meta Ray-Ban). $cameraUnavailableReason",
+                                text = stringResource(R.string.compose_walking_camera_description, cameraUnavailableReason),
                                 style = MaterialTheme.typography.bodySmall,
                                 color = MaterialTheme.colorScheme.onErrorContainer,
                             )
@@ -198,7 +199,7 @@ fun WalkingAidSettingsScreen(
             }
 
             // Section: General
-            SectionTitle("General")
+            SectionTitle(stringResource(R.string.walking_aid_general))
             Card(
                 modifier = Modifier.fillMaxWidth(),
                 colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant),
@@ -210,7 +211,7 @@ fun WalkingAidSettingsScreen(
                         horizontalArrangement = Arrangement.SpaceBetween,
                         verticalAlignment = Alignment.CenterVertically,
                     ) {
-                        Text("Walking Aid enabled", modifier = Modifier.weight(1f))
+                        Text(stringResource(R.string.compose_walking_enabled), modifier = Modifier.weight(1f))
                         Switch(
                             enabled = hasCamera,
                             checked = enabled && hasCamera,
@@ -242,7 +243,7 @@ fun WalkingAidSettingsScreen(
 
                     // Capture interval
                     Text(
-                        "Capture interval",
+                        stringResource(R.string.walking_aid_capture_interval),
                         style = MaterialTheme.typography.bodyMedium,
                         fontWeight = FontWeight.Medium,
                     )
@@ -258,7 +259,7 @@ fun WalkingAidSettingsScreen(
                                     captureInterval = option
                                     WalkingAidPreferences.setCaptureIntervalSeconds(context, option)
                                 },
-                                label = { Text("${option}s") },
+                                label = { Text(stringResource(R.string.compose_walking_seconds, option)) },
                                 colors = FilterChipDefaults.filterChipColors(
                                     selectedContainerColor = MaterialTheme.colorScheme.primary,
                                 ),
@@ -386,7 +387,14 @@ fun WalkingAidSettingsScreen(
                                     }
                                 } catch (e: Exception) {
                                     withContext(Dispatchers.Main) {
-                                        Toast.makeText(context, "Latency test error: ${e.message}", Toast.LENGTH_LONG).show()
+                                        Toast.makeText(
+                                            context,
+                                            context.getString(
+                                                R.string.compose_walking_latency_error,
+                                                e.message ?: context.getString(R.string.compose_unknown_error),
+                                            ),
+                                            Toast.LENGTH_LONG,
+                                        ).show()
                                         isTestingLatency = false
                                     }
                                 }
@@ -402,9 +410,9 @@ fun WalkingAidSettingsScreen(
                                 color = MaterialTheme.colorScheme.onPrimary,
                             )
                             Spacer(modifier = Modifier.width(8.dp))
-                            Text("Running Benchmark...")
+                            Text(stringResource(R.string.compose_walking_benchmark_running))
                         } else {
-                            Text("⚡ Test End-to-End Latency")
+                            Text(stringResource(R.string.compose_walking_latency_benchmark))
                         }
                     }
 
@@ -451,7 +459,14 @@ fun WalkingAidSettingsScreen(
                                     }
                                 } catch (e: Exception) {
                                     withContext(Dispatchers.Main) {
-                                        Toast.makeText(context, "Acquisition benchmark error: ${e.message}", Toast.LENGTH_LONG).show()
+                                        Toast.makeText(
+                                            context,
+                                            context.getString(
+                                                R.string.compose_walking_acquisition_error,
+                                                e.message ?: context.getString(R.string.compose_unknown_error),
+                                            ),
+                                            Toast.LENGTH_LONG,
+                                        ).show()
                                         isTestingAcquisition = false
                                     }
                                 }
@@ -467,21 +482,21 @@ fun WalkingAidSettingsScreen(
                                 color = MaterialTheme.colorScheme.onPrimary,
                             )
                             Spacer(modifier = Modifier.width(8.dp))
-                            Text("Running Acquisition Benchmark...")
+                            Text(stringResource(R.string.compose_walking_acquisition_running))
                         } else {
-                            Text("Benchmark All Quality Levels (0-5)")
+                            Text(stringResource(R.string.compose_walking_benchmark_quality))
                         }
                     }
 
                     Spacer(modifier = Modifier.height(16.dp))
 
                     Text(
-                        "Thumbnail quality level",
+                        stringResource(R.string.compose_walking_thumbnail_quality),
                         style = MaterialTheme.typography.bodyMedium,
                         fontWeight = FontWeight.Medium,
                     )
                     Text(
-                        "Lower = smaller images, faster transfer. Higher = better detection accuracy.",
+                        stringResource(R.string.compose_walking_quality_description),
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                     )
@@ -508,12 +523,12 @@ fun WalkingAidSettingsScreen(
                     Spacer(modifier = Modifier.height(16.dp))
 
                     Text(
-                        "Photo settle delay: ${settleDelayMs} ms",
+                        stringResource(R.string.compose_walking_photo_settle_delay, settleDelayMs),
                         style = MaterialTheme.typography.bodyMedium,
                         fontWeight = FontWeight.Medium,
                     )
                     Text(
-                        "Time to wait after glasses confirm photo before reading data. Reduce for faster cadence, increase if transfers fail.",
+                        stringResource(R.string.compose_walking_photo_settle_description),
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                     )
@@ -531,21 +546,21 @@ fun WalkingAidSettingsScreen(
                 }
             }
 
-            SectionTitle("Glasses tab")
+            SectionTitle(stringResource(R.string.compose_glasses_tab))
             NativePluginShortcutPreference(
                 pluginId = NativePluginIds.WALKING_AID,
-                pluginTitle = "Walking Aid",
+                pluginTitle = stringResource(R.string.walking_aid_title),
             )
 
             // Section: Image Recognition
-            SectionTitle("Image Recognition")
+            SectionTitle(stringResource(R.string.walking_aid_image_recognition))
             Card(
                 modifier = Modifier.fillMaxWidth(),
                 colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant),
             ) {
                 Column(modifier = Modifier.padding(16.dp)) {
                     Text(
-                        "Safety detection and scene context",
+                        stringResource(R.string.compose_walking_safety_context),
                         style = MaterialTheme.typography.bodyMedium,
                         fontWeight = FontWeight.Medium,
                     )
@@ -557,7 +572,7 @@ fun WalkingAidSettingsScreen(
                                 imageDescriptionSource = "local"
                                 WalkingAidPreferences.setImageDescriptionSource(context, "local")
                             },
-                            label = { Text("Local safety only") },
+                            label = { Text(stringResource(R.string.compose_walking_local_safety)) },
                         )
                         FilterChip(
                             selected = imageDescriptionSource == "cloud",
@@ -566,12 +581,12 @@ fun WalkingAidSettingsScreen(
                                 WalkingAidPreferences.setImageDescriptionSource(context, "cloud")
                                 showImageModelPicker = true
                             },
-                            label = { Text("Local + Cloud context (Pro)") },
+                            label = { Text(stringResource(R.string.compose_walking_cloud_context)) },
                         )
                     }
 
                     Text(
-                        "Local YOLO always makes immediate safety decisions. Cloud vision only enriches saved scene descriptions and never delays warnings.",
+                        stringResource(R.string.compose_walking_cloud_description),
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                     )
@@ -583,13 +598,13 @@ fun WalkingAidSettingsScreen(
                                 text = if (imageDescriptionCloudModelId.isNotBlank())
                                     "Model: $imageDescriptionCloudModelId"
                                 else
-                                    "Select model...",
+                                    stringResource(R.string.compose_walking_select_model),
                             )
                         }
                     }
                     Spacer(modifier = Modifier.height(12.dp))
                     Text(
-                        "Local detection model",
+                        stringResource(R.string.compose_walking_detection_model),
                         style = MaterialTheme.typography.bodyMedium,
                         fontWeight = FontWeight.Medium,
                     )
@@ -601,7 +616,7 @@ fun WalkingAidSettingsScreen(
                                 yoloModelType = WalkingAidPreferences.MODEL_TYPE_YOLO11
                                 WalkingAidPreferences.setYoloModelType(context, WalkingAidPreferences.MODEL_TYPE_YOLO11)
                             },
-                            label = { Text("YOLO11 (faster)") },
+                            label = { Text(stringResource(R.string.compose_walking_yolo_fast)) },
                         )
                         FilterChip(
                             selected = yoloModelType == WalkingAidPreferences.MODEL_TYPE_YOLO_WORLD,
@@ -609,7 +624,7 @@ fun WalkingAidSettingsScreen(
                                 yoloModelType = WalkingAidPreferences.MODEL_TYPE_YOLO_WORLD
                                 WalkingAidPreferences.setYoloModelType(context, WalkingAidPreferences.MODEL_TYPE_YOLO_WORLD)
                             },
-                            label = { Text("YOLO-World (larger)") },
+                            label = { Text(stringResource(R.string.compose_walking_yolo_larger)) },
                         )
                     }
 
@@ -624,22 +639,25 @@ fun WalkingAidSettingsScreen(
                         status = modelDownloadStatus,
                         onDownload = { entry ->
                             downloadingModelId = entry.id
-                            modelDownloadStatus = "Starting ${entry.displayName}..."
+                            modelDownloadStatus = context.getString(R.string.compose_walking_model_starting, entry.displayName)
                             CoroutineScope(Dispatchers.IO).launch {
                                 runCatching {
                                     WalkingAidModelInstaller.install(context, entry) { progress ->
                                         CoroutineScope(Dispatchers.Main).launch {
-                                            modelDownloadStatus = "Downloading ${progress.percent}%"
+                                            modelDownloadStatus = context.getString(R.string.compose_walking_model_downloading, progress.percent)
                                         }
                                     }
                                 }.onSuccess {
                                     withContext(Dispatchers.Main) {
-                                        modelDownloadStatus = "${entry.displayName} is ready for local use."
+                                        modelDownloadStatus = context.getString(R.string.compose_walking_model_ready, entry.displayName)
                                         downloadingModelId = null
                                     }
                                 }.onFailure { error ->
                                     withContext(Dispatchers.Main) {
-                                        modelDownloadStatus = "Download failed: ${error.message ?: "unknown error"}"
+                                        modelDownloadStatus = context.getString(
+                                            R.string.compose_walking_model_download_failed,
+                                            error.message ?: "unknown error",
+                                        )
                                         downloadingModelId = null
                                     }
                                 }
@@ -649,7 +667,7 @@ fun WalkingAidSettingsScreen(
 
                     Spacer(modifier = Modifier.height(12.dp))
                     Text(
-                        "What should Walking Aid pay extra attention to?",
+                        stringResource(R.string.compose_walking_attention),
                         style = MaterialTheme.typography.bodyMedium,
                         fontWeight = FontWeight.Medium,
                     )
@@ -660,7 +678,7 @@ fun WalkingAidSettingsScreen(
                             focusDescriptionText = newValue
                             WalkingAidPreferences.setFocusDescription(context, newValue)
                         },
-                        placeholder = { Text("For example: Please warn me about pets, traffic, and things I could trip over") },
+                        placeholder = { Text(stringResource(R.string.compose_walking_attention_hint)) },
                         modifier = Modifier.fillMaxWidth(),
                         minLines = 2,
                         maxLines = 4,
@@ -668,9 +686,12 @@ fun WalkingAidSettingsScreen(
                             val understood = WalkingAidFocusMapper.resolve(focusDescriptionText)
                             Text(
                                 if (understood.isEmpty()) {
-                                    "Write naturally or use keyboard dictation. Built-in safety alerts remain active."
+                                    stringResource(R.string.compose_walking_attention_support)
                                 } else {
-                                    "Walking Aid will pay extra attention to ${WalkingAidFocusMapper.friendlySummary(understood)}."
+                                    stringResource(
+                                        R.string.compose_walking_attention_summary,
+                                        WalkingAidFocusMapper.friendlySummary(understood),
+                                    )
                                 }
                             )
                         },
@@ -679,7 +700,7 @@ fun WalkingAidSettingsScreen(
             }
 
             // Section: Depth Estimation
-            SectionTitle("Depth Estimation")
+            SectionTitle(stringResource(R.string.walking_aid_depth_estimation))
             Card(
                 modifier = Modifier.fillMaxWidth(),
                 colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant),
@@ -690,7 +711,7 @@ fun WalkingAidSettingsScreen(
                         horizontalArrangement = Arrangement.SpaceBetween,
                         verticalAlignment = Alignment.CenterVertically,
                     ) {
-                        Text("Depth enabled", modifier = Modifier.weight(1f))
+                        Text(stringResource(R.string.compose_walking_depth_enabled), modifier = Modifier.weight(1f))
                         Switch(
                             checked = depthEnabled,
                             onCheckedChange = { newValue ->
@@ -703,7 +724,7 @@ fun WalkingAidSettingsScreen(
                     if (depthEnabled) {
                         Spacer(modifier = Modifier.height(12.dp))
                         Text(
-                            "Source",
+                            stringResource(R.string.compose_walking_source),
                             style = MaterialTheme.typography.bodyMedium,
                             fontWeight = FontWeight.Medium,
                         )
@@ -715,7 +736,7 @@ fun WalkingAidSettingsScreen(
                                     depthSource = "local"
                                     WalkingAidPreferences.setDepthSource(context, "local")
                                 },
-                                label = { Text("Local (on-device)") },
+                                label = { Text(stringResource(R.string.walking_aid_source_local)) },
                             )
                             FilterChip(
                                 selected = depthSource == "cloud",
@@ -724,7 +745,7 @@ fun WalkingAidSettingsScreen(
                                     WalkingAidPreferences.setDepthSource(context, "cloud")
                                     showDepthModelPicker = true
                                 },
-                                label = { Text("Cloud (Pro)") },
+                                label = { Text(stringResource(R.string.walking_aid_source_cloud)) },
                             )
                         }
 
@@ -735,7 +756,7 @@ fun WalkingAidSettingsScreen(
                                     text = if (depthCloudModelId.isNotBlank())
                                         "Model: $depthCloudModelId"
                                     else
-                                        "Select model...",
+                                        stringResource(R.string.compose_walking_select_model),
                                 )
                             }
                         } else {
@@ -747,22 +768,25 @@ fun WalkingAidSettingsScreen(
                                 status = modelDownloadStatus,
                                 onDownload = { entry ->
                                     downloadingModelId = entry.id
-                                    modelDownloadStatus = "Starting ${entry.displayName}..."
+                                    modelDownloadStatus = context.getString(R.string.compose_walking_model_starting, entry.displayName)
                                     CoroutineScope(Dispatchers.IO).launch {
                                         runCatching {
                                             WalkingAidModelInstaller.install(context, entry) { progress ->
                                                 CoroutineScope(Dispatchers.Main).launch {
-                                                    modelDownloadStatus = "Downloading ${progress.percent}%"
+                                                    modelDownloadStatus = context.getString(R.string.compose_walking_model_downloading, progress.percent)
                                                 }
                                             }
                                         }.onSuccess {
                                             withContext(Dispatchers.Main) {
-                                                modelDownloadStatus = "${entry.displayName} is ready for local use."
+                                        modelDownloadStatus = context.getString(R.string.compose_walking_model_ready, entry.displayName)
                                                 downloadingModelId = null
                                             }
                                         }.onFailure { error ->
                                             withContext(Dispatchers.Main) {
-                                                modelDownloadStatus = "Download failed: ${error.message ?: "unknown error"}"
+                                        modelDownloadStatus = context.getString(
+                                            R.string.compose_walking_model_download_failed,
+                                            error.message ?: "unknown error",
+                                        )
                                                 downloadingModelId = null
                                             }
                                         }
@@ -775,7 +799,7 @@ fun WalkingAidSettingsScreen(
             }
 
             // Section: Output
-            SectionTitle("Output")
+            SectionTitle(stringResource(R.string.walking_aid_output))
             Card(
                 modifier = Modifier.fillMaxWidth(),
                 colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant),
@@ -786,7 +810,7 @@ fun WalkingAidSettingsScreen(
                         horizontalArrangement = Arrangement.SpaceBetween,
                         verticalAlignment = Alignment.CenterVertically,
                     ) {
-                        Text("Speak descriptions aloud", modifier = Modifier.weight(1f))
+                        Text(stringResource(R.string.walking_aid_tts_enabled), modifier = Modifier.weight(1f))
                         Switch(
                             checked = ttsEnabled,
                             onCheckedChange = { newValue ->
@@ -803,7 +827,7 @@ fun WalkingAidSettingsScreen(
                         horizontalArrangement = Arrangement.SpaceBetween,
                         verticalAlignment = Alignment.CenterVertically,
                     ) {
-                        Text("Safety disclaimer on first warning", modifier = Modifier.weight(1f))
+                        Text(stringResource(R.string.walking_aid_safety_disclaimer), modifier = Modifier.weight(1f))
                         Switch(
                             checked = safetyDisclaimerEnabled,
                             onCheckedChange = { newValue ->
@@ -816,14 +840,14 @@ fun WalkingAidSettingsScreen(
             }
 
             // Section: Custom Instructions
-            SectionTitle("Custom Instructions")
+            SectionTitle(stringResource(R.string.compose_custom_instructions))
             Card(
                 modifier = Modifier.fillMaxWidth(),
                 colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant),
             ) {
                 Column(modifier = Modifier.padding(16.dp)) {
                     Text(
-                        "Additional instructions appended to all Walking Aid prompts (image description, depth, and state model). These are specific to this plugin and do not affect the global vision profile in Settings.",
+                        stringResource(R.string.compose_walking_additional_instructions_description),
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                     )
@@ -837,8 +861,8 @@ fun WalkingAidSettingsScreen(
                             }
                         },
                         modifier = Modifier.fillMaxWidth(),
-                        label = { Text("Walking Aid instructions") },
-                        placeholder = { Text("e.g. Always mention people and their positions. Focus on sidewalk edges.") },
+                         label = { Text(stringResource(R.string.compose_walking_instructions)) },
+                         placeholder = { Text(stringResource(R.string.compose_walking_instructions_hint)) },
                         minLines = 3,
                         maxLines = 6,
                         supportingText = { Text("${customPrompt.length}/1500") },
@@ -847,14 +871,14 @@ fun WalkingAidSettingsScreen(
             }
 
             // Section: History
-            SectionTitle("Image History")
+            SectionTitle(stringResource(R.string.walking_aid_history))
             Card(
                 modifier = Modifier.fillMaxWidth(),
                 colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant),
             ) {
                 Column(modifier = Modifier.padding(16.dp)) {
                     Text(
-                        "Max stored descriptions: ${historyMaxCount}",
+                        stringResource(R.string.compose_walking_max_descriptions, historyMaxCount),
                         style = MaterialTheme.typography.bodyMedium,
                     )
                     Slider(
@@ -873,11 +897,11 @@ fun WalkingAidSettingsScreen(
                     Button(
                         onClick = {
                             WalkingAidImageStore.clear(context)
-                            Toast.makeText(context, "History cleared", Toast.LENGTH_SHORT).show()
+                            Toast.makeText(context, R.string.walking_aid_clear_history, Toast.LENGTH_SHORT).show()
                         },
                         modifier = Modifier.fillMaxWidth(),
                     ) {
-                        Text("Clear History")
+                        Text(stringResource(R.string.walking_aid_clear_history))
                     }
                 }
             }
@@ -906,7 +930,14 @@ fun WalkingAidSettingsScreen(
                         availableModels = models
                     }.onFailure {
                         CoroutineScope(Dispatchers.Main).launch {
-                            Toast.makeText(context, "Failed to load models: ${it.message}", Toast.LENGTH_SHORT).show()
+                            Toast.makeText(
+                                context,
+                                context.getString(
+                                    R.string.compose_walking_models_load_failed,
+                                    it.message ?: context.getString(R.string.compose_unknown_error),
+                                ),
+                                Toast.LENGTH_SHORT,
+                            ).show()
                         }
                     }
                     modelsLoading = false
@@ -934,7 +965,14 @@ fun WalkingAidSettingsScreen(
                         availableModels = models
                     }.onFailure {
                         CoroutineScope(Dispatchers.Main).launch {
-                            Toast.makeText(context, "Failed to load models: ${it.message}", Toast.LENGTH_SHORT).show()
+                            Toast.makeText(
+                                context,
+                                context.getString(
+                                    R.string.compose_walking_models_load_failed,
+                                    it.message ?: context.getString(R.string.compose_unknown_error),
+                                ),
+                                Toast.LENGTH_SHORT,
+                            ).show()
                         }
                     }
                     modelsLoading = false
@@ -946,7 +984,7 @@ fun WalkingAidSettingsScreen(
     if (showLatencyReportDialog) {
         AlertDialog(
             onDismissRequest = { showLatencyReportDialog = false },
-            title = { Text("Walking Aid Latency Benchmark") },
+            title = { Text(stringResource(R.string.compose_walking_latency_title)) },
             text = {
                 Text(
                     text = latencyReportText,
@@ -955,7 +993,7 @@ fun WalkingAidSettingsScreen(
             },
             confirmButton = {
                 TextButton(onClick = { showLatencyReportDialog = false }) {
-                    Text("Close")
+                    Text(stringResource(R.string.compose_walking_cancel))
                 }
             }
         )
@@ -964,7 +1002,7 @@ fun WalkingAidSettingsScreen(
     if (showAcquisitionReportDialog) {
         AlertDialog(
             onDismissRequest = { showAcquisitionReportDialog = false },
-            title = { Text("Acquisition Benchmark") },
+            title = { Text(stringResource(R.string.compose_walking_acquisition_title)) },
             text = {
                 Text(
                     text = acquisitionReportText,
@@ -973,7 +1011,7 @@ fun WalkingAidSettingsScreen(
             },
             confirmButton = {
                 TextButton(onClick = { showAcquisitionReportDialog = false }) {
-                    Text("Close")
+                    Text(stringResource(R.string.compose_walking_cancel))
                 }
             }
         )
@@ -982,11 +1020,11 @@ fun WalkingAidSettingsScreen(
     showReadinessResult?.let { readiness ->
         AlertDialog(
             onDismissRequest = { showReadinessResult = null },
-            title = { Text("Walking Aid Setup Required") },
+            title = { Text(stringResource(R.string.compose_walking_setup_required)) },
             text = {
                 Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                     Text(
-                        text = "Before starting Walking Aid, complete the missing setup items. YOLO and depth models are downloaded and selected in this screen.",
+                        text = stringResource(R.string.compose_walking_setup_body),
                         style = MaterialTheme.typography.bodyMedium,
                     )
                     readiness.missingDetails.forEach { detail ->
@@ -1004,7 +1042,7 @@ fun WalkingAidSettingsScreen(
                         showReadinessResult = null
                     }
                 ) {
-                    Text("Review Walking Aid Settings")
+                    Text(stringResource(R.string.compose_walking_review_settings))
                 }
             },
             dismissButton = {
@@ -1016,11 +1054,11 @@ fun WalkingAidSettingsScreen(
                             context.startActivity(intent)
                         }
                     ) {
-                        Text("Upgrade to Pro")
+                        Text(stringResource(R.string.compose_walking_upgrade_pro))
                     }
                 } else {
                     TextButton(onClick = { showReadinessResult = null }) {
-                        Text("Cancel")
+                        Text(stringResource(R.string.compose_walking_cancel))
                     }
                 }
             }
@@ -1057,9 +1095,9 @@ private fun WalkingAidModelDownloadCard(
             ) {
                 Text(
                     when {
-                        installed -> "Installed"
-                        isDownloading -> "Downloading..."
-                        else -> "Download from Hugging Face"
+                        installed -> stringResource(R.string.compose_walking_model_installed)
+                        isDownloading -> stringResource(R.string.compose_walking_model_downloading_button)
+                        else -> stringResource(R.string.compose_walking_model_download_huggingface)
                     },
                 )
             }
@@ -1095,16 +1133,16 @@ private fun ModelPickerDialog(
 
     AlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text("Select Model") },
+        title = { Text(stringResource(R.string.compose_walking_select_model)) },
         text = {
             Column {
                 if (isLoading) {
-                    Text("Loading models...")
+                    Text(stringResource(R.string.compose_walking_loading_models))
                 } else if (availableModels.isEmpty()) {
-                    Text("No models available. Tap Refresh to load from server.")
+                    Text(stringResource(R.string.compose_walking_no_models))
                 } else {
                     Text(
-                        "Current: $selectedModelId",
+                        stringResource(R.string.compose_walking_current_model, selectedModelId),
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                     )
@@ -1143,13 +1181,13 @@ private fun ModelPickerDialog(
         },
         confirmButton = {
             TextButton(onClick = onDismiss) {
-                Text("Done")
+                Text(stringResource(R.string.compose_done))
             }
         },
         dismissButton = {
             if (!isLoading) {
                 TextButton(onClick = onRefresh) {
-                    Text("Refresh")
+                Text(stringResource(R.string.compose_refresh))
                 }
             }
         },

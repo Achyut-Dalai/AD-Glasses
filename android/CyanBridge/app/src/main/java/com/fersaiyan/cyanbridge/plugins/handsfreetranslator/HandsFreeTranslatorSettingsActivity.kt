@@ -41,6 +41,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.ComposeView
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.fersaiyan.cyanbridge.R
@@ -94,10 +95,10 @@ fun HandsFreeTranslatorSettingsScreen(
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text("Hands-Free Translator Settings") },
+                title = { Text(stringResource(R.string.compose_plugin_settings_title, stringResource(R.string.compose_plugin_name_handsfree_translator))) },
                 navigationIcon = {
                     IconButton(onClick = onBack) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
+                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = stringResource(R.string.compose_back))
                     }
                 },
                 colors = TopAppBarDefaults.topAppBarColors(
@@ -115,7 +116,7 @@ fun HandsFreeTranslatorSettingsScreen(
             verticalArrangement = Arrangement.spacedBy(12.dp),
         ) {
             // Section: General
-            SectionTitle("General")
+            SectionTitle(stringResource(R.string.compose_general))
             Card(
                 modifier = Modifier.fillMaxWidth(),
                 colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant),
@@ -126,7 +127,7 @@ fun HandsFreeTranslatorSettingsScreen(
                         horizontalArrangement = Arrangement.SpaceBetween,
                         verticalAlignment = Alignment.CenterVertically,
                     ) {
-                        Text("Hands-Free Translator enabled", modifier = Modifier.weight(1f))
+                        Text(stringResource(R.string.compose_handsfree_enabled), modifier = Modifier.weight(1f))
                         Switch(
                             checked = enabled,
                             onCheckedChange = { newValue ->
@@ -148,14 +149,14 @@ fun HandsFreeTranslatorSettingsScreen(
                 }
             }
 
-            SectionTitle("Glasses tab")
+            SectionTitle(stringResource(R.string.compose_glasses_tab))
             NativePluginShortcutPreference(
                 pluginId = NativePluginIds.HANDS_FREE_TRANSLATOR,
-                pluginTitle = "Hands-Free Translator",
+                pluginTitle = stringResource(R.string.compose_plugin_name_handsfree_translator),
             )
 
             // Section: Language
-            SectionTitle("Language")
+            SectionTitle(stringResource(R.string.compose_language))
             Card(
                 modifier = Modifier.fillMaxWidth(),
                 colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant),
@@ -166,7 +167,7 @@ fun HandsFreeTranslatorSettingsScreen(
                         horizontalArrangement = Arrangement.SpaceBetween,
                         verticalAlignment = Alignment.CenterVertically,
                     ) {
-                        Text("Auto-detect language", modifier = Modifier.weight(1f))
+                        Text(stringResource(R.string.compose_auto_detect_language), modifier = Modifier.weight(1f))
                         Switch(
                             checked = autoDetect,
                             onCheckedChange = { newValue ->
@@ -179,7 +180,7 @@ fun HandsFreeTranslatorSettingsScreen(
                     if (!autoDetect) {
                         Spacer(modifier = Modifier.height(12.dp))
                         Text(
-                            "Source language",
+                            stringResource(R.string.compose_source_language),
                             style = MaterialTheme.typography.bodyMedium,
                             fontWeight = FontWeight.Medium,
                         )
@@ -207,7 +208,7 @@ fun HandsFreeTranslatorSettingsScreen(
                     Spacer(modifier = Modifier.height(12.dp))
 
                     Text(
-                        "Target language",
+                        stringResource(R.string.compose_target_language),
                         style = MaterialTheme.typography.bodyMedium,
                         fontWeight = FontWeight.Medium,
                     )
@@ -234,7 +235,7 @@ fun HandsFreeTranslatorSettingsScreen(
             }
 
             // Section: Output
-            SectionTitle("Output")
+            SectionTitle(stringResource(R.string.compose_output))
             Card(
                 modifier = Modifier.fillMaxWidth(),
                 colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant),
@@ -245,7 +246,7 @@ fun HandsFreeTranslatorSettingsScreen(
                         horizontalArrangement = Arrangement.SpaceBetween,
                         verticalAlignment = Alignment.CenterVertically,
                     ) {
-                        Text("Speak translations aloud", modifier = Modifier.weight(1f))
+                        Text(stringResource(R.string.compose_speak_translations), modifier = Modifier.weight(1f))
                         Switch(
                             checked = speakTranslation,
                             onCheckedChange = { newValue ->
@@ -259,14 +260,14 @@ fun HandsFreeTranslatorSettingsScreen(
             }
 
             // Section: Custom Instructions
-            SectionTitle("Custom Instructions")
+            SectionTitle(stringResource(R.string.compose_custom_instructions))
             Card(
                 modifier = Modifier.fillMaxWidth(),
                 colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant),
             ) {
                 Column(modifier = Modifier.padding(16.dp)) {
                     Text(
-                        "Additional instructions for translation.",
+                        stringResource(R.string.compose_translation_instructions_description),
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                     )
@@ -280,8 +281,8 @@ fun HandsFreeTranslatorSettingsScreen(
                             }
                         },
                         modifier = Modifier.fillMaxWidth(),
-                        label = { Text("Translation instructions") },
-                        placeholder = { Text("e.g. Use formal language. Focus on medical terms.") },
+                         label = { Text(stringResource(R.string.compose_translation_instructions)) },
+                         placeholder = { Text(stringResource(R.string.compose_translation_hint)) },
                         minLines = 2,
                         maxLines = 4,
                         supportingText = { Text("${customPrompt.length}/1000") },
@@ -290,14 +291,14 @@ fun HandsFreeTranslatorSettingsScreen(
             }
 
             // Section: History
-            SectionTitle("Translation History")
+            SectionTitle(stringResource(R.string.compose_translation_history))
             Card(
                 modifier = Modifier.fillMaxWidth(),
                 colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant),
             ) {
                 Column(modifier = Modifier.padding(16.dp)) {
                     Text(
-                        "Max stored translations: ${maxHistory}",
+                        stringResource(R.string.compose_max_stored_translations, maxHistory),
                         style = MaterialTheme.typography.bodyMedium,
                     )
                     Slider(
@@ -316,11 +317,11 @@ fun HandsFreeTranslatorSettingsScreen(
                     Button(
                         onClick = {
                             HandsFreeTranslatorStore().clear(context)
-                            Toast.makeText(context, "History cleared", Toast.LENGTH_SHORT).show()
+                            Toast.makeText(context, context.getString(R.string.compose_history_cleared), Toast.LENGTH_SHORT).show()
                         },
                         modifier = Modifier.fillMaxWidth(),
                     ) {
-                        Text("Clear History")
+                        Text(stringResource(R.string.compose_clear_history))
                     }
                 }
             }

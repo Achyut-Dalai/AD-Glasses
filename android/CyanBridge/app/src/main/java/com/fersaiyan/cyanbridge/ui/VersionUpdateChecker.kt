@@ -23,8 +23,10 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.ComposeView
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import com.fersaiyan.cyanbridge.ai.router.AiProviderPrefs
+import com.fersaiyan.cyanbridge.R
 import com.fersaiyan.cyanbridge.ui.appearance.AppearancePreferences
 import com.fersaiyan.cyanbridge.ui.appearance.rememberAppearanceSettings
 import com.fersaiyan.cyanbridge.ui.theme.CyanBridgeTheme
@@ -120,12 +122,12 @@ object VersionUpdateChecker {
                                     }
                                     context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(url)))
                                 } catch (_: Exception) {
-                                    Toast.makeText(context, "Unable to open link", Toast.LENGTH_SHORT).show()
+                                    Toast.makeText(context, context.getString(R.string.compose_update_open_link_failed), Toast.LENGTH_SHORT).show()
                                 }
                                 dialog.dismiss()
                             },
                             onPlayStore = {
-                                Toast.makeText(context, "Play Store version coming soon!", Toast.LENGTH_SHORT).show()
+                                Toast.makeText(context, context.getString(R.string.compose_update_play_store_coming), Toast.LENGTH_SHORT).show()
                             },
                             onLater = {
                                 prefs.edit().putString(KEY_REMINDED_VERSION, latestVersion).apply()
@@ -155,19 +157,19 @@ object VersionUpdateChecker {
                 modifier = Modifier.padding(20.dp),
                 verticalArrangement = Arrangement.spacedBy(12.dp),
             ) {
-                Text("Update available", style = MaterialTheme.typography.titleLarge)
+                 Text(stringResource(R.string.compose_update_available), style = MaterialTheme.typography.titleLarge)
                 Text(
-                    "Current version: $currentVersion\nLatest version: $latestVersion",
+                    stringResource(R.string.compose_update_version_summary, currentVersion, latestVersion),
                     style = MaterialTheme.typography.bodyMedium,
                 )
                 FilledTonalButton(onClick = onDownload, modifier = Modifier.fillMaxWidth()) {
-                    Text("Download from GitHub")
+                    Text(stringResource(R.string.compose_update_download_github))
                 }
                 OutlinedButton(onClick = onPlayStore, modifier = Modifier.fillMaxWidth()) {
-                    Text("Get it on Play Store")
+                    Text(stringResource(R.string.compose_update_get_play_store))
                 }
                 Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End) {
-                    OutlinedButton(onClick = onLater) { Text("Later") }
+                    OutlinedButton(onClick = onLater) { Text(stringResource(R.string.compose_update_later)) }
                 }
             }
         }
@@ -193,18 +195,18 @@ object VersionUpdateChecker {
                         if (latestVersion.isNotBlank()) {
                             showUpdateDialog(context, latestVersion, downloadUrl)
                         } else {
-                            Toast.makeText(context, "Could not check for updates", Toast.LENGTH_SHORT).show()
+                             Toast.makeText(context, context.getString(R.string.compose_update_check_failed), Toast.LENGTH_SHORT).show()
                         }
                     }
                 } else {
                     withContext(Dispatchers.Main) {
-                        Toast.makeText(context, "Server unavailable for update check", Toast.LENGTH_SHORT).show()
+                         Toast.makeText(context, context.getString(R.string.compose_update_server_unavailable), Toast.LENGTH_SHORT).show()
                     }
                 }
                 connection.disconnect()
             } catch (e: Exception) {
                 withContext(Dispatchers.Main) {
-                    Toast.makeText(context, "Could not check for updates", Toast.LENGTH_SHORT).show()
+                    Toast.makeText(context, context.getString(R.string.compose_update_check_failed), Toast.LENGTH_SHORT).show()
                 }
             }
         }

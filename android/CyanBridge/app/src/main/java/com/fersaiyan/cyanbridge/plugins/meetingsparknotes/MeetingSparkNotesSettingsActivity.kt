@@ -41,6 +41,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.ComposeView
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.fersaiyan.cyanbridge.R
@@ -95,10 +96,10 @@ fun MeetingSparkNotesSettingsScreen(
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text("Meeting Spark Notes Settings") },
+                title = { Text(stringResource(R.string.compose_plugin_settings_title, stringResource(R.string.compose_plugin_name_meeting_spark_notes))) },
                 navigationIcon = {
                     IconButton(onClick = onBack) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
+                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = stringResource(R.string.compose_back))
                     }
                 },
                 colors = TopAppBarDefaults.topAppBarColors(
@@ -116,7 +117,7 @@ fun MeetingSparkNotesSettingsScreen(
             verticalArrangement = Arrangement.spacedBy(12.dp),
         ) {
             // Section: General
-            SectionTitle("General")
+            SectionTitle(stringResource(R.string.compose_general))
             Card(
                 modifier = Modifier.fillMaxWidth(),
                 colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant),
@@ -127,7 +128,7 @@ fun MeetingSparkNotesSettingsScreen(
                         horizontalArrangement = Arrangement.SpaceBetween,
                         verticalAlignment = Alignment.CenterVertically,
                     ) {
-                        Text("Meeting Spark Notes enabled", modifier = Modifier.weight(1f))
+                        Text(stringResource(R.string.compose_meeting_enabled), modifier = Modifier.weight(1f))
                         Switch(
                             checked = enabled,
                             onCheckedChange = { newValue ->
@@ -150,21 +151,21 @@ fun MeetingSparkNotesSettingsScreen(
                 }
             }
 
-            SectionTitle("Glasses tab")
+            SectionTitle(stringResource(R.string.compose_glasses_tab))
             NativePluginShortcutPreference(
                 pluginId = NativePluginIds.MEETING_SPARK_NOTES,
-                pluginTitle = "Meeting Spark Notes",
+                pluginTitle = stringResource(R.string.compose_plugin_name_meeting_spark_notes),
             )
 
             // Section: Summary Style
-            SectionTitle("Summary Style")
+            SectionTitle(stringResource(R.string.compose_summary_style))
             Card(
                 modifier = Modifier.fillMaxWidth(),
                 colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant),
             ) {
                 Column(modifier = Modifier.padding(16.dp)) {
                     Text(
-                        "Choose how meeting summaries are generated",
+                        stringResource(R.string.compose_summary_style_description),
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                     )
@@ -177,7 +178,17 @@ fun MeetingSparkNotesSettingsScreen(
                                     summaryStyle = style
                                     MeetingSparkNotesPreferences.setSummaryStyle(context, style)
                                 },
-                                label = { Text(style.replace("_", " ").replaceFirstChar { it.titlecase() }) },
+                                 label = {
+                                     Text(
+                                         stringResource(
+                                             when (style) {
+                                                 "concise" -> R.string.compose_summary_style_concise
+                                                 "detailed" -> R.string.compose_summary_style_detailed
+                                                 else -> R.string.compose_summary_style_action_focused
+                                             },
+                                         ),
+                                     )
+                                 },
                                 colors = FilterChipDefaults.filterChipColors(
                                     selectedContainerColor = MaterialTheme.colorScheme.primary,
                                 ),
@@ -188,7 +199,7 @@ fun MeetingSparkNotesSettingsScreen(
             }
 
             // Section: Content Options
-            SectionTitle("Content Options")
+            SectionTitle(stringResource(R.string.compose_content_options))
             Card(
                 modifier = Modifier.fillMaxWidth(),
                 colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant),
@@ -199,7 +210,7 @@ fun MeetingSparkNotesSettingsScreen(
                         horizontalArrangement = Arrangement.SpaceBetween,
                         verticalAlignment = Alignment.CenterVertically,
                     ) {
-                        Text("Include participants", modifier = Modifier.weight(1f))
+                        Text(stringResource(R.string.compose_include_participants), modifier = Modifier.weight(1f))
                         Switch(
                             checked = includeParticipants,
                             onCheckedChange = { newValue ->
@@ -216,7 +227,7 @@ fun MeetingSparkNotesSettingsScreen(
                         horizontalArrangement = Arrangement.SpaceBetween,
                         verticalAlignment = Alignment.CenterVertically,
                     ) {
-                        Text("Include action items", modifier = Modifier.weight(1f))
+                        Text(stringResource(R.string.compose_include_action_items), modifier = Modifier.weight(1f))
                         Switch(
                             checked = includeActionItems,
                             onCheckedChange = { newValue ->
@@ -230,14 +241,14 @@ fun MeetingSparkNotesSettingsScreen(
             }
 
             // Section: Custom Instructions
-            SectionTitle("Custom Instructions")
+            SectionTitle(stringResource(R.string.compose_custom_instructions))
             Card(
                 modifier = Modifier.fillMaxWidth(),
                 colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant),
             ) {
                 Column(modifier = Modifier.padding(16.dp)) {
                     Text(
-                        "Additional instructions for meeting summarization.",
+                        stringResource(R.string.compose_meeting_instructions_description),
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                     )
@@ -251,8 +262,8 @@ fun MeetingSparkNotesSettingsScreen(
                             }
                         },
                         modifier = Modifier.fillMaxWidth(),
-                        label = { Text("Meeting instructions") },
-                        placeholder = { Text("e.g. Focus on decisions made. Always include deadlines.") },
+                         label = { Text(stringResource(R.string.compose_meeting_instructions)) },
+                         placeholder = { Text(stringResource(R.string.compose_meeting_hint)) },
                         minLines = 3,
                         maxLines = 6,
                         supportingText = { Text("${customPrompt.length}/1500") },
@@ -261,14 +272,14 @@ fun MeetingSparkNotesSettingsScreen(
             }
 
             // Section: History
-            SectionTitle("Meeting History")
+            SectionTitle(stringResource(R.string.compose_meeting_history))
             Card(
                 modifier = Modifier.fillMaxWidth(),
                 colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant),
             ) {
                 Column(modifier = Modifier.padding(16.dp)) {
                     Text(
-                        "Max stored summaries: ${maxHistory}",
+                        stringResource(R.string.compose_max_stored_summaries, maxHistory),
                         style = MaterialTheme.typography.bodyMedium,
                     )
                     Slider(
@@ -287,17 +298,17 @@ fun MeetingSparkNotesSettingsScreen(
                     Button(
                         onClick = {
                             MeetingSparkNotesStore().clear(context)
-                            Toast.makeText(context, "History cleared", Toast.LENGTH_SHORT).show()
+                            Toast.makeText(context, context.getString(R.string.compose_history_cleared), Toast.LENGTH_SHORT).show()
                         },
                         modifier = Modifier.fillMaxWidth(),
                     ) {
-                        Text("Clear History")
+                        Text(stringResource(R.string.compose_clear_history))
                     }
                 }
             }
 
             // Section: Actions
-            SectionTitle("Actions")
+            SectionTitle(stringResource(R.string.compose_actions))
             Card(
                 modifier = Modifier.fillMaxWidth(),
                 colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant),
@@ -307,7 +318,7 @@ fun MeetingSparkNotesSettingsScreen(
                         onClick = onSummarize,
                         modifier = Modifier.fillMaxWidth(),
                     ) {
-                        Text("Summarize Current Meeting")
+                        Text(stringResource(R.string.compose_summarize_current_meeting))
                     }
                 }
             }

@@ -41,6 +41,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.ComposeView
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.fersaiyan.cyanbridge.R
@@ -96,10 +97,10 @@ fun ErrandBrainSettingsScreen(
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text("Errand Brain Settings") },
+                title = { Text(stringResource(R.string.compose_plugin_settings_title, stringResource(R.string.compose_plugin_name_errand_brain))) },
                 navigationIcon = {
                     IconButton(onClick = onBack) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
+                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = stringResource(R.string.compose_back))
                     }
                 },
                 colors = TopAppBarDefaults.topAppBarColors(
@@ -117,7 +118,7 @@ fun ErrandBrainSettingsScreen(
             verticalArrangement = Arrangement.spacedBy(12.dp),
         ) {
             // Section: General
-            SectionTitle("General")
+            SectionTitle(stringResource(R.string.compose_general))
             Card(
                 modifier = Modifier.fillMaxWidth(),
                 colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant),
@@ -128,7 +129,7 @@ fun ErrandBrainSettingsScreen(
                         horizontalArrangement = Arrangement.SpaceBetween,
                         verticalAlignment = Alignment.CenterVertically,
                     ) {
-                        Text("Errand Brain enabled", modifier = Modifier.weight(1f))
+                        Text(stringResource(R.string.compose_errand_enabled), modifier = Modifier.weight(1f))
                         Switch(
                             checked = enabled,
                             onCheckedChange = { newValue ->
@@ -155,7 +156,7 @@ fun ErrandBrainSettingsScreen(
                         horizontalArrangement = Arrangement.SpaceBetween,
                         verticalAlignment = Alignment.CenterVertically,
                     ) {
-                        Text("Auto-create tasks from voice", modifier = Modifier.weight(1f))
+                        Text(stringResource(R.string.compose_auto_create_tasks_voice), modifier = Modifier.weight(1f))
                         Switch(
                             checked = autoCreateTasks,
                             onCheckedChange = { newValue ->
@@ -172,7 +173,7 @@ fun ErrandBrainSettingsScreen(
                         horizontalArrangement = Arrangement.SpaceBetween,
                         verticalAlignment = Alignment.CenterVertically,
                     ) {
-                        Text("Voice commands", modifier = Modifier.weight(1f))
+                        Text(stringResource(R.string.compose_voice_commands), modifier = Modifier.weight(1f))
                         Switch(
                             checked = voiceCommands,
                             onCheckedChange = { newValue ->
@@ -184,14 +185,14 @@ fun ErrandBrainSettingsScreen(
                 }
             }
 
-            SectionTitle("Glasses tab")
+            SectionTitle(stringResource(R.string.compose_glasses_tab))
             NativePluginShortcutPreference(
                 pluginId = NativePluginIds.ERRAND_BRAIN,
-                pluginTitle = "Errand Brain",
+                pluginTitle = stringResource(R.string.compose_plugin_name_errand_brain),
             )
 
             // Section: Reminders
-            SectionTitle("Reminders")
+            SectionTitle(stringResource(R.string.compose_reminders))
             Card(
                 modifier = Modifier.fillMaxWidth(),
                 colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant),
@@ -202,7 +203,7 @@ fun ErrandBrainSettingsScreen(
                         horizontalArrangement = Arrangement.SpaceBetween,
                         verticalAlignment = Alignment.CenterVertically,
                     ) {
-                        Text("Reminders enabled", modifier = Modifier.weight(1f))
+                        Text(stringResource(R.string.compose_reminders_enabled), modifier = Modifier.weight(1f))
                         Switch(
                             checked = reminderEnabled,
                             onCheckedChange = { newValue ->
@@ -215,7 +216,7 @@ fun ErrandBrainSettingsScreen(
                     if (reminderEnabled) {
                         Spacer(modifier = Modifier.height(12.dp))
                         Text(
-                            "Say “remind me in 10 minutes to call Sam” while the plugin is enabled. The reminder is delivered as a phone notification.",
+                            stringResource(R.string.compose_reminder_example),
                             style = MaterialTheme.typography.bodySmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
                         )
@@ -224,14 +225,14 @@ fun ErrandBrainSettingsScreen(
             }
 
             // Section: Defaults
-            SectionTitle("Defaults")
+            SectionTitle(stringResource(R.string.compose_defaults))
             Card(
                 modifier = Modifier.fillMaxWidth(),
                 colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant),
             ) {
                 Column(modifier = Modifier.padding(16.dp)) {
                     Text(
-                        "Default priority",
+                        stringResource(R.string.compose_default_priority),
                         style = MaterialTheme.typography.bodyMedium,
                         fontWeight = FontWeight.Medium,
                     )
@@ -255,7 +256,7 @@ fun ErrandBrainSettingsScreen(
                     Spacer(modifier = Modifier.height(12.dp))
 
                     Text(
-                        "Default category",
+                        stringResource(R.string.compose_default_category),
                         style = MaterialTheme.typography.bodyMedium,
                         fontWeight = FontWeight.Medium,
                     )
@@ -279,14 +280,14 @@ fun ErrandBrainSettingsScreen(
             }
 
             // Section: Custom Instructions
-            SectionTitle("Custom Instructions")
+            SectionTitle(stringResource(R.string.compose_custom_instructions))
             Card(
                 modifier = Modifier.fillMaxWidth(),
                 colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant),
             ) {
                 Column(modifier = Modifier.padding(16.dp)) {
                     Text(
-                        "Additional instructions for task parsing.",
+                        stringResource(R.string.compose_additional_task_instructions),
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                     )
@@ -300,8 +301,8 @@ fun ErrandBrainSettingsScreen(
                             }
                         },
                         modifier = Modifier.fillMaxWidth(),
-                        label = { Text("Task parsing instructions") },
-                        placeholder = { Text("e.g. Always set due dates. Categorize by project.") },
+                         label = { Text(stringResource(R.string.compose_task_parsing_instructions)) },
+                         placeholder = { Text(stringResource(R.string.compose_task_parsing_hint)) },
                         minLines = 2,
                         maxLines = 4,
                         supportingText = { Text("${customPrompt.length}/1000") },
@@ -310,14 +311,14 @@ fun ErrandBrainSettingsScreen(
             }
 
             // Section: History
-            SectionTitle("Task History")
+            SectionTitle(stringResource(R.string.compose_task_history))
             Card(
                 modifier = Modifier.fillMaxWidth(),
                 colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant),
             ) {
                 Column(modifier = Modifier.padding(16.dp)) {
                     Text(
-                        "Max stored tasks: ${maxHistory}",
+                        stringResource(R.string.compose_max_stored_tasks, maxHistory),
                         style = MaterialTheme.typography.bodyMedium,
                     )
                     Slider(
@@ -336,11 +337,11 @@ fun ErrandBrainSettingsScreen(
                     Button(
                         onClick = {
                             ErrandBrainStore().clear(context)
-                            Toast.makeText(context, "History cleared", Toast.LENGTH_SHORT).show()
+                            Toast.makeText(context, context.getString(R.string.compose_history_cleared), Toast.LENGTH_SHORT).show()
                         },
                         modifier = Modifier.fillMaxWidth(),
                     ) {
-                        Text("Clear History")
+                        Text(stringResource(R.string.compose_clear_history))
                     }
                 }
             }

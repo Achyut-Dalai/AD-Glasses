@@ -30,6 +30,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import com.fersaiyan.cyanbridge.R
 import com.fersaiyan.cyanbridge.media.autocapture.AutoAudioCapturePrefs
@@ -83,10 +84,10 @@ fun AutoAudioSettingsScreen(
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text("Auto Audio Settings") },
+                title = { Text(stringResource(R.string.compose_plugin_settings_title, stringResource(R.string.compose_plugin_name_auto_audio))) },
                 navigationIcon = {
                     IconButton(onClick = onBack) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
+                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = stringResource(R.string.compose_back))
                     }
                 },
             )
@@ -101,27 +102,27 @@ fun AutoAudioSettingsScreen(
             verticalArrangement = Arrangement.spacedBy(12.dp),
         ) {
             Text(
-                "Record 15-minute glasses audio chunks, extend active speech, and periodically sync the media without replacing the existing loop.",
+                stringResource(R.string.compose_auto_audio_description),
                 style = MaterialTheme.typography.bodyMedium,
             )
-            SwitchSetting("Auto audio capture enabled", enabled) {
+            SwitchSetting(stringResource(R.string.compose_auto_audio_capture_enabled), enabled) {
                 enabled = it
                 onEnabledChanged(it)
             }
             NativePluginShortcutPreference(
                 pluginId = NativePluginIds.AUTO_AUDIO,
-                pluginTitle = "Auto Audio",
+                pluginTitle = stringResource(R.string.compose_plugin_name_auto_audio),
             )
-            SwitchSetting("Extend capture when speech continues", speechExtend) {
+            SwitchSetting(stringResource(R.string.compose_auto_audio_extend), speechExtend) {
                 speechExtend = it
                 AutoAudioCapturePrefs.setSpeechExtendEnabled(context, it)
             }
-            SwitchSetting("Create visual notes after loops", visualNotes) {
+            SwitchSetting(stringResource(R.string.compose_auto_audio_visual_notes), visualNotes) {
                 visualNotes = it
                 AutoAudioCapturePrefs.setVisualNotesEnabled(context, it)
             }
             NumberSetting(
-                label = "Loops before P2P sync",
+                label = stringResource(R.string.compose_auto_audio_loops),
                 value = loopsPerSync,
                 range = 1..96,
                 onValueChanged = {
@@ -130,7 +131,12 @@ fun AutoAudioSettingsScreen(
                 },
             )
             Text(
-                "Status: ${AutoAudioCapturePrefs.getLastPauseReason(context).ifBlank { "Ready" }}",
+                stringResource(
+                    R.string.compose_status,
+                    AutoAudioCapturePrefs.getLastPauseReason(context).ifBlank {
+                        stringResource(R.string.compose_ready)
+                    },
+                ),
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
@@ -140,7 +146,7 @@ fun AutoAudioSettingsScreen(
                     onEnabledChanged(false)
                 },
                 modifier = Modifier.fillMaxWidth(),
-            ) { Text("Stop loop") }
+            ) { Text(stringResource(R.string.compose_auto_audio_stop_loop)) }
         }
     }
 }

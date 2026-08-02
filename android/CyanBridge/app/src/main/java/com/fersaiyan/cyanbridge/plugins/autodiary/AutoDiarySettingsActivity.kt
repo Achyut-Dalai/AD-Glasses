@@ -36,6 +36,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.ui.unit.dp
@@ -140,10 +141,10 @@ fun AutoDiarySettingsScreen(
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text("AutoDiary Settings") },
+                title = { Text(stringResource(R.string.compose_plugin_settings_title, stringResource(R.string.compose_plugin_name_autodiary))) },
                 navigationIcon = {
                     IconButton(onClick = onBack) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
+                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = stringResource(R.string.compose_back))
                     }
                 },
             )
@@ -158,26 +159,26 @@ fun AutoDiarySettingsScreen(
             verticalArrangement = Arrangement.spacedBy(12.dp),
         ) {
             Text(
-                "Build a private daily memory from screen context and conversations. Screen capture requires the CyanBridge accessibility service; Local Agent phone control can remain off.",
+                stringResource(R.string.compose_autodiary_description),
                 style = MaterialTheme.typography.bodyMedium,
             )
             SwitchSetting(
-                label = "AutoDiary enabled",
+                label = stringResource(R.string.compose_plugin_enabled, stringResource(R.string.compose_plugin_name_autodiary)),
                 checked = enabled,
                 onCheckedChange = onEnabledChanged,
             )
             NativePluginShortcutPreference(
                 pluginId = com.fersaiyan.cyanbridge.shared.plugins.NativePluginIds.AUTO_DIARY,
-                pluginTitle = "AutoDiary",
+                    pluginTitle = stringResource(R.string.compose_plugin_name_autodiary),
             )
-            Text("Screen capture", style = MaterialTheme.typography.titleMedium)
+            Text(stringResource(R.string.compose_screen_capture), style = MaterialTheme.typography.titleMedium)
             Text(
                 if (accessibilityEnabled) {
-                    "Accessibility service enabled. AutoDiary can collect screen context."
+                    stringResource(R.string.compose_autodiary_accessibility_enabled)
                 } else if (enabled) {
-                    "AutoDiary is paused. Enable the accessibility service to resume screen capture."
+                    stringResource(R.string.compose_autodiary_paused)
                 } else {
-                    "Accessibility service required. AutoDiary cannot collect screen context until it is enabled."
+                    stringResource(R.string.compose_autodiary_accessibility_required)
                 },
                 style = MaterialTheme.typography.bodySmall,
                 color = if (accessibilityEnabled) {
@@ -187,7 +188,7 @@ fun AutoDiarySettingsScreen(
                 },
             )
             NumberSetting(
-                label = "Capture interval (minutes)",
+                label = stringResource(R.string.compose_capture_interval_minutes),
                 value = interval,
                 range = 1..1440,
                 onValueChanged = {
@@ -197,47 +198,47 @@ fun AutoDiarySettingsScreen(
             )
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 OutlinedButton(onClick = onOpenAccessibility, modifier = Modifier.weight(1f)) {
-                    Text("Accessibility settings")
+                    Text(stringResource(R.string.compose_accessibility_settings))
                 }
                 OutlinedButton(onClick = onOpenBlacklist, modifier = Modifier.weight(1f)) {
-                    Text("Blacklist apps")
+                    Text(stringResource(R.string.compose_blacklist_apps))
                 }
             }
             OutlinedButton(onClick = onOpenCaptures, modifier = Modifier.fillMaxWidth()) {
-                Text("View screen captures")
+                Text(stringResource(R.string.compose_view_screen_captures))
             }
-            Text("Daily processing", style = MaterialTheme.typography.titleMedium)
-            SwitchSetting("Daily facts reminder", reminder) {
+            Text(stringResource(R.string.compose_daily_processing), style = MaterialTheme.typography.titleMedium)
+            SwitchSetting(stringResource(R.string.compose_daily_facts_reminder), reminder) {
                 reminder = it
                 LocalAgentPrefs.setDailyFactsReminderEnabled(context, it)
                 DailyFactsReminderScheduler.scheduleIfEnabled(context, it)
             }
-            SwitchSetting("Auto-save daily facts", autoSaveFacts) {
+            SwitchSetting(stringResource(R.string.compose_auto_save_daily_facts), autoSaveFacts) {
                 autoSaveFacts = it
                 com.fersaiyan.cyanbridge.localagent.userfacts.ChatMemoryPrefs.setAutoSaveDailyFactsEnabled(context, it)
             }
-            SwitchSetting("Extract user fact candidates", extractFacts) {
+            SwitchSetting(stringResource(R.string.compose_extract_user_fact_candidates), extractFacts) {
                 extractFacts = it
                 com.fersaiyan.cyanbridge.localagent.userfacts.ChatMemoryPrefs.setExtractUserFactCandidatesEnabled(context, it)
             }
             NumberSetting(
-                label = "Daily summary refresh (hours)",
+                label = stringResource(R.string.compose_daily_summary_refresh_hours),
                 value = LocalAgentPrefs.getDailySummaryAutoRefreshHours(context),
                 range = 1..24,
                 onValueChanged = { LocalAgentPrefs.setDailySummaryAutoRefreshHours(context, it) },
             )
             OutlinedButton(onClick = onOpenSummary, modifier = Modifier.fillMaxWidth()) {
-                Text("Open daily summary")
+                Text(stringResource(R.string.compose_open_daily_summary))
             }
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 OutlinedButton(onClick = onOpenDailyFactsDraft, modifier = Modifier.weight(1f)) {
-                    Text("Edit daily facts")
+                    Text(stringResource(R.string.compose_edit_daily_facts))
                 }
                 OutlinedButton(onClick = onOpenConfirmedDailyFacts, modifier = Modifier.weight(1f)) {
-                    Text("View confirmed facts")
+                    Text(stringResource(R.string.compose_view_confirmed_facts))
                 }
             }
-            Text("Bulletization", style = MaterialTheme.typography.titleMedium)
+            Text(stringResource(R.string.compose_bulletization), style = MaterialTheme.typography.titleMedium)
             OutlinedTextField(
                 value = prompt,
                 onValueChange = {
@@ -245,7 +246,7 @@ fun AutoDiarySettingsScreen(
                     DailyBulletsSettings.setCustomBulletPrompt(context, it)
                 },
                 modifier = Modifier.fillMaxWidth(),
-                label = { Text("Bullet prompt") },
+                label = { Text(stringResource(R.string.compose_bullet_prompt)) },
                 minLines = 3,
                 maxLines = 7,
             )
@@ -253,9 +254,9 @@ fun AutoDiarySettingsScreen(
                 TextButton(onClick = {
                     DailyBulletsSettings.restoreDefaultBulletPrompt(context)
                     prompt = DailyBulletsSettings.DEFAULT_BULLET_PROMPT
-                }) { Text("Restore default prompt") }
+                }) { Text(stringResource(R.string.compose_restore_default_prompt)) }
                 NumberSetting(
-                    label = "Max tokens per bullet",
+                    label = stringResource(R.string.compose_max_tokens_per_bullet),
                     value = maxTokens,
                     range = 0..100_000,
                     onValueChanged = {
@@ -265,9 +266,9 @@ fun AutoDiarySettingsScreen(
                     modifier = Modifier.weight(1f),
                 )
             }
-            Text("Shared memory privacy", style = MaterialTheme.typography.titleMedium)
+            Text(stringResource(R.string.compose_shared_memory_privacy), style = MaterialTheme.typography.titleMedium)
             Text(
-                "OCR sync, retention, deletion, and vault controls are shared across AutoDiary, Visual Diary, and Local Agent. Manage them in Settings > Memory Privacy.",
+                stringResource(R.string.compose_shared_memory_description),
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
