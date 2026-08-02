@@ -15,16 +15,15 @@ class LocalAgentUiControlProtocolTest {
     fun `parses click text decision`() {
         val raw = """
             {
-              "version": 1,
+              "action": "click_text",
+              "params": {"text": "Search"},
               "reasoning": "Tap the search field first.",
-              "action": {"type": "click_text", "text": "Search"},
               "is_complete": false
             }
         """.trimIndent()
 
         val parsed = LocalAgentUiControlProtocol.parseDecision(raw)
 
-        assertEquals(1, parsed.version)
         assertEquals("Tap the search field first.", parsed.reasoning)
         assertTrue(parsed.action is LocalAgentUiControlProtocol.ClickText)
         assertEquals("Search", (parsed.action as LocalAgentUiControlProtocol.ClickText).text)
@@ -37,7 +36,7 @@ class LocalAgentUiControlProtocolTest {
             Here's the next action.
 
             ```json
-            {"version":1,"reasoning":"The icon has no label.","action":{"type":"click_coord","x":540,"y":960},"is_complete":false}
+            {"action":"click_at","params":{"x":540,"y":960},"reasoning":"The icon has no label.","is_complete":false}
             ```
         """.trimIndent()
 
@@ -85,31 +84,31 @@ class LocalAgentUiControlProtocolTest {
             )
         )
 
-        assertTrue(prompt.user.contains("Goal:"))
+        assertTrue(prompt.user.contains("TASK:"))
         assertTrue(prompt.user.contains("Turn on Bluetooth"))
         assertTrue(prompt.user.contains("APP: com.android.settings"))
         assertTrue(prompt.user.contains("Bluetooth"))
         assertTrue(prompt.user.contains("center:(60,45)"))
-        assertTrue(prompt.user.contains("Recovery guidance:"))
+        assertTrue(prompt.user.contains("WARNING:"))
     }
 
     @Test(expected = LocalAgentUiControlProtocol.SchemaViolationException::class)
     fun `rejects unsupported action type`() {
         LocalAgentUiControlProtocol.parseDecision(
-            """{"version":1,"action":{"type":"delete_everything"},"is_complete":false}"""
+            """{"action":"delete_everything","params":{},"is_complete":false}"""
         )
     }
 
     @Test(expected = LocalAgentUiControlProtocol.SchemaViolationException::class)
     fun `rejects non numeric click coord`() {
         LocalAgentUiControlProtocol.parseDecision(
-            """{"version":1,"action":{"type":"click_coord","x":"left","y":200},"is_complete":false}"""
+            """{"action":"click_at","params":{"x":"left","y":200},"is_complete":false}"""
         )
     }
 
     @Test
     fun `parses swipe decision`() {
-        val raw = """{"version":1,"reasoning":"Swipe up to scroll.","action":{"type":"swipe","start_x":540,"start_y":1500,"end_x":540,"end_y":500,"duration_ms":300},"is_complete":false}"""
+        val raw = """{"action":"swipe","params":{"start_x":540,"start_y":1500,"end_x":540,"end_y":500,"duration_ms":300},"reasoning":"Swipe up to scroll.","is_complete":false}"""
         val parsed = LocalAgentUiControlProtocol.parseDecision(raw)
         val action = parsed.action as LocalAgentUiControlProtocol.Swipe
 
@@ -122,7 +121,7 @@ class LocalAgentUiControlProtocolTest {
 
     @Test
     fun `parses long press decision`() {
-        val raw = """{"version":1,"reasoning":"Long press for context menu.","action":{"type":"long_press","x":300,"y":600,"duration_ms":1200},"is_complete":false}"""
+        val raw = """{"action":"long_press","params":{"x":300,"y":600,"duration_ms":1200},"reasoning":"Long press for context menu.","is_complete":false}"""
         val parsed = LocalAgentUiControlProtocol.parseDecision(raw)
         val action = parsed.action as LocalAgentUiControlProtocol.LongPress
 
@@ -133,21 +132,21 @@ class LocalAgentUiControlProtocolTest {
 
     @Test
     fun `parses open notifications decision`() {
-        val raw = """{"version":1,"reasoning":"Check notifications.","action":{"type":"open_notifications"},"is_complete":false}"""
+        val raw = """{"action":"open_notifications","params":{},"reasoning":"Check notifications.","is_complete":false}"""
         val parsed = LocalAgentUiControlProtocol.parseDecision(raw)
         assertTrue(parsed.action is LocalAgentUiControlProtocol.OpenNotifications)
     }
 
     @Test
     fun `parses open recents decision`() {
-        val raw = """{"version":1,"reasoning":"Switch apps.","action":{"type":"open_recents"},"is_complete":false}"""
+        val raw = """{"action":"open_recents","params":{},"reasoning":"Switch apps.","is_complete":false}"""
         val parsed = LocalAgentUiControlProtocol.parseDecision(raw)
         assertTrue(parsed.action is LocalAgentUiControlProtocol.OpenRecents)
     }
 
     @Test
     fun `parses make call decision`() {
-        val raw = """{"version":1,"reasoning":"Call the contact.","action":{"type":"make_call","number":"+15551234567"},"is_complete":false}"""
+        val raw = """{"action":"make_call","params":{"number":"+15551234567"},"reasoning":"Call the contact.","is_complete":false}"""
         val parsed = LocalAgentUiControlProtocol.parseDecision(raw)
         val action = parsed.action as LocalAgentUiControlProtocol.MakeCall
         assertEquals("+15551234567", action.number)
@@ -155,7 +154,7 @@ class LocalAgentUiControlProtocolTest {
 
     @Test
     fun `parses send sms decision`() {
-        val raw = """{"version":1,"reasoning":"Send text.","action":{"type":"send_sms","number":"+15551234567","message":"On my way"},"is_complete":false}"""
+        val raw = """{"action":"send_sms","params":{"number":"+15551234567","message":"On my way"},"reasoning":"Send text.","is_complete":false}"""
         val parsed = LocalAgentUiControlProtocol.parseDecision(raw)
         val action = parsed.action as LocalAgentUiControlProtocol.SendSms
         assertEquals("+15551234567", action.number)
@@ -165,13 +164,13 @@ class LocalAgentUiControlProtocolTest {
     @Test
     fun `parses keyboard submit email and read aloud decisions`() {
         val enter = LocalAgentUiControlProtocol.parseDecision(
-            """{"version":1,"action":{"type":"press_enter"},"is_complete":false}""",
+            """{"action":"press_enter","params":{},"is_complete":false}""",
         )
         val email = LocalAgentUiControlProtocol.parseDecision(
-            """{"version":1,"action":{"type":"send_email","to":"person@example.com","subject":"Hi","body":"Hello"},"is_complete":false}""",
+            """{"action":"send_email","params":{"to":"person@example.com","subject":"Hi","body":"Hello"},"is_complete":false}""",
         )
         val read = LocalAgentUiControlProtocol.parseDecision(
-            """{"version":1,"action":{"type":"read_screen_aloud"},"is_complete":true}""",
+            """{"action":"read_screen_aloud","params":{},"is_complete":true}""",
         )
 
         assertTrue(enter.action is LocalAgentUiControlProtocol.PressEnter)
@@ -182,7 +181,7 @@ class LocalAgentUiControlProtocolTest {
 
     @Test
     fun `parses set alarm decision`() {
-        val raw = """{"version":1,"reasoning":"Set morning alarm.","action":{"type":"set_alarm","hour":7,"minute":30,"label":"Wake up"},"is_complete":false}"""
+        val raw = """{"action":"set_alarm","params":{"hour":7,"minute":30,"label":"Wake up"},"reasoning":"Set morning alarm.","is_complete":false}"""
         val parsed = LocalAgentUiControlProtocol.parseDecision(raw)
         val action = parsed.action as LocalAgentUiControlProtocol.SetAlarm
         assertEquals(7, action.hour)
@@ -193,34 +192,34 @@ class LocalAgentUiControlProtocolTest {
     @Test(expected = LocalAgentUiControlProtocol.SchemaViolationException::class)
     fun `rejects set alarm with invalid hour`() {
         LocalAgentUiControlProtocol.parseDecision(
-            """{"version":1,"action":{"type":"set_alarm","hour":25,"minute":0},"is_complete":false}"""
+            """{"action":"set_alarm","params":{"hour":25,"minute":0},"is_complete":false}"""
         )
     }
 
     @Test
     fun `parses open contacts decision`() {
-        val raw = """{"version":1,"reasoning":"Open contacts.","action":{"type":"open_contacts"},"is_complete":false}"""
+        val raw = """{"action":"open_contacts","params":{},"reasoning":"Open contacts.","is_complete":false}"""
         val parsed = LocalAgentUiControlProtocol.parseDecision(raw)
         assertTrue(parsed.action is LocalAgentUiControlProtocol.OpenContacts)
     }
 
     @Test
     fun `parses toggle wifi decision`() {
-        val raw = """{"version":1,"reasoning":"Toggle wifi.","action":{"type":"toggle_wifi"},"is_complete":false}"""
+        val raw = """{"action":"toggle_wifi","params":{},"reasoning":"Toggle wifi.","is_complete":false}"""
         val parsed = LocalAgentUiControlProtocol.parseDecision(raw)
         assertTrue(parsed.action is LocalAgentUiControlProtocol.ToggleWifi)
     }
 
     @Test
     fun `parses toggle bluetooth decision`() {
-        val raw = """{"version":1,"reasoning":"Toggle bluetooth.","action":{"type":"toggle_bluetooth"},"is_complete":false}"""
+        val raw = """{"action":"toggle_bluetooth","params":{},"reasoning":"Toggle bluetooth.","is_complete":false}"""
         val parsed = LocalAgentUiControlProtocol.parseDecision(raw)
         assertTrue(parsed.action is LocalAgentUiControlProtocol.ToggleBluetooth)
     }
 
     @Test
     fun `parses toggle flashlight decision`() {
-        val raw = """{"version":1,"reasoning":"Toggle flashlight.","action":{"type":"toggle_flashlight"},"is_complete":false}"""
+        val raw = """{"action":"toggle_flashlight","params":{},"reasoning":"Toggle flashlight.","is_complete":false}"""
         val parsed = LocalAgentUiControlProtocol.parseDecision(raw)
         assertTrue(parsed.action is LocalAgentUiControlProtocol.ToggleFlashlight)
     }
@@ -228,14 +227,53 @@ class LocalAgentUiControlProtocolTest {
     @Test(expected = LocalAgentUiControlProtocol.SchemaViolationException::class)
     fun `rejects swipe with missing coordinates`() {
         LocalAgentUiControlProtocol.parseDecision(
-            """{"version":1,"action":{"type":"swipe","start_x":100,"start_y":500},"is_complete":false}"""
+            """{"action":"swipe","params":{"start_x":100,"start_y":500},"is_complete":false}"""
         )
     }
 
     @Test(expected = LocalAgentUiControlProtocol.SchemaViolationException::class)
     fun `rejects sms with blank number`() {
         LocalAgentUiControlProtocol.parseDecision(
-            """{"version":1,"action":{"type":"send_sms","number":"","message":"Hello"},"is_complete":false}"""
+            """{"action":"send_sms","params":{"number":"","message":"Hello"},"is_complete":false}"""
         )
+    }
+
+    @Test
+    fun `parses action aliases`() {
+        val click = LocalAgentUiControlProtocol.parseDecision(
+            """{"action":"click","params":{"text":"OK"},"is_complete":false}"""
+        )
+        assertTrue(click.action is LocalAgentUiControlProtocol.ClickText)
+
+        val back = LocalAgentUiControlProtocol.parseDecision(
+            """{"action":"back","params":{},"is_complete":false}"""
+        )
+        assertTrue(back.action is LocalAgentUiControlProtocol.PressBack)
+
+        val done = LocalAgentUiControlProtocol.parseDecision(
+            """{"action":"done","params":{},"is_complete":true}"""
+        )
+        assertTrue(done.action is LocalAgentUiControlProtocol.Finish)
+        assertTrue(done.isComplete)
+    }
+
+    @Test
+    fun `parses open app with various param names`() {
+        val p1 = LocalAgentUiControlProtocol.parseDecision(
+            """{"action":"open_app","params":{"app_name":"WhatsApp"},"is_complete":false}"""
+        )
+        assertEquals("WhatsApp", (p1.action as LocalAgentUiControlProtocol.OpenApp).appName)
+
+        val p2 = LocalAgentUiControlProtocol.parseDecision(
+            """{"action":"open_app","params":{"package_name":"com.whatsapp"},"is_complete":false}"""
+        )
+        assertEquals("com.whatsapp", (p2.action as LocalAgentUiControlProtocol.OpenApp).appName)
+    }
+
+    @Test
+    fun `handles truncated json by closing brace`() {
+        val raw = """{"action":"press_back","params":{},"reasoning":"Go back","is_complete":false"""
+        val parsed = LocalAgentUiControlProtocol.parseDecision(raw)
+        assertTrue(parsed.action is LocalAgentUiControlProtocol.PressBack)
     }
 }

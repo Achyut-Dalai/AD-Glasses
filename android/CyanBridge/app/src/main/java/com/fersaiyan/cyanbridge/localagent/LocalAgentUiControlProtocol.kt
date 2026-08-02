@@ -249,51 +249,12 @@ object LocalAgentUiControlProtocol {
     class SchemaViolationException(message: String) : ProtocolException(message)
 
     fun buildPrompt(context: StepContext): Prompt {
-        val system = buildString {
-            appendLine("You are the CyanBridge LocalAgent UI-control planner.")
-            appendLine("You MUST respond with exactly one JSON object and nothing else.")
-            appendLine("Your response MUST follow this schema:")
-            appendLine(RESPONSE_JSON_SCHEMA)
-            appendLine()
-            appendLine("Rules:")
-            appendLine("- Choose exactly one next action.")
-            appendLine("- Prefer click_text when a visible label exists.")
-            appendLine("- Use click_coord only when text-based targeting is unreliable.")
-            appendLine("- Use type_text only after the target field is already focused or obvious.")
-            appendLine("- Use press_enter only to submit the currently focused editor; it requires approval because it can send a form or message.")
-            appendLine("- Use swipe for drag gestures, dismissing cards, or horizontal page swipes.")
-            appendLine("- Use long_press for context menus or drag-to-select.")
-            appendLine("- Use open_notifications to pull down the notification shade.")
-            appendLine("- Use open_recents to switch between recent apps.")
-            appendLine("- Use open_contacts to open the contacts list.")
-            appendLine("- Use make_call to open the dialer with a phone number. It does not place the call automatically.")
-            appendLine("- Use send_sms to open a prefilled SMS composer. It does not send automatically.")
-            appendLine("- Use send_email to open a prefilled email composer. It does not send automatically.")
-            appendLine("- Use set_alarm to create an alarm.")
-            appendLine("- Use toggle_wifi, toggle_bluetooth, toggle_flashlight for system controls.")
-            appendLine("- Use read_screen_aloud only when the user explicitly asks to hear the current visible screen. It is privacy-sensitive and requires approval.")
-            appendLine("- Use finish when the user goal is complete or clearly blocked.")
-            appendLine("- Keep reasoning to one short sentence.")
-            appendLine("- Never invent UI elements that are not present in the observation.")
-            appendLine("- Elements marked with * match the current task goal and are higher-priority targets.")
-        }.trim()
+        val system = TASK_SYSTEM_PROMPT
 
         val user = buildString {
-            appendLine("Goal:")
-            appendLine(context.goal.trim())
+            appendLine("TASK: ${context.goal.trim()}")
             appendLine()
-            appendLine("Step: ${context.stepIndex}/${context.maxSteps}")
-            context.previousActionResult?.trim()?.takeIf { it.isNotEmpty() }?.let {
-                appendLine("Previous action result:")
-                appendLine(it)
-                appendLine()
-            }
-            if (context.consecutiveFailures > 0) {
-                appendLine("Recovery guidance:")
-                appendLine("The previous approach has failed ${context.consecutiveFailures} time(s). Use a different visible control or navigation path; do not repeat the same action.")
-                appendLine()
-            }
-            appendLine("Observation:")
+            appendLine("CURRENT SCREEN TEXT DUMP:")
             val snapshot = context.observation.screenSnapshot
             val screenText = if (snapshot != null) {
                 snapshot.toCompressedPromptText(context.goal)
@@ -301,6 +262,16 @@ object LocalAgentUiControlProtocol {
                 context.observation.screenText.orEmpty().ifBlank { "(screen unreadable)" }
             }
             appendLine(screenText)
+            context.previousActionResult?.trim()?.takeIf { it.isNotEmpty() }?.let {
+                appendLine()
+                appendLine("PREVIOUS ACTION RESULT: $it")
+            }
+            if (context.consecutiveFailures >= 3) {
+                appendLine()
+                appendLine("WARNING: You have failed ${context.consecutiveFailures} times in a row with the same approach. You MUST try a completely different action.")
+            }
+            appendLine()
+            appendLine("Step ${context.stepIndex}/${context.maxSteps}. Look at the text dump and coordinates. What is the next action?")
         }.trim()
 
         return Prompt(system = system, user = user)
@@ -317,63 +288,68 @@ object LocalAgentUiControlProtocol {
             )
         }
 
-        val version = obj.optInt("version", -1)
-        if (version != CURRENT_VERSION) {
-            throw SchemaViolationException("Version mismatch. Expected=$CURRENT_VERSION got=$version")
-        }
-
-        val actionObj = obj.optJSONObject("action")
-            ?: throw SchemaViolationException("Missing required object: action")
-        val action = parseAction(actionObj)
-
-        if (!obj.has("is_complete")) {
-            throw SchemaViolationException("Missing required field: is_complete")
-        }
+        val actionStr = obj.optNullableString("action")?.trim()?.lowercase()
+            ?: throw SchemaViolationException("Missing required field: action")
+        val resolvedAction = ACTION_ALIASES[actionStr] ?: actionStr
+        val params = obj.optJSONObject("params") ?: JSONObject()
+        val action = parseAction(resolvedAction, params)
 
         return Decision(
-            version = version,
+            version = CURRENT_VERSION,
             reasoning = obj.optNullableString("reasoning")?.trim()?.takeIf { it.isNotBlank() },
             action = action,
             isComplete = obj.optBoolean("is_complete", false),
         )
     }
 
-    private fun parseAction(obj: JSONObject): Action {
-        val type = obj.optNullableString("type")?.trim()?.lowercase()
-            ?: throw SchemaViolationException("action.type is required")
-
+    private fun parseAction(type: String, params: JSONObject): Action {
         return when (type) {
             "noop" -> NoOp
-            "wait" -> Wait(ms = obj.optLong("ms", 500L).coerceAtLeast(0L))
+            "wait" -> Wait(ms = params.optLong("ms", 500L).coerceAtLeast(0L))
             "click_text" -> {
-                val text = obj.optString("text", "").trim()
-                if (text.isBlank()) throw SchemaViolationException("action.text is required for click_text")
+                val text = params.optString("text", "").trim()
+                    .ifBlank { params.optString("label", "").trim() }
+                    .ifBlank { params.optString("element", "").trim() }
+                    .ifBlank { params.optString("target", "").trim() }
+                if (text.isBlank()) throw SchemaViolationException("params.text is required for click_text")
                 ClickText(text)
             }
-            "click_coord" -> {
-                if (!obj.has("x") || !obj.has("y")) {
-                    throw SchemaViolationException("action.x and action.y are required for click_coord")
-                }
-                val x = obj.optDouble("x", Double.NaN)
-                val y = obj.optDouble("y", Double.NaN)
+            "click_coord", "click_at" -> {
+                val x = params.optDouble("x", Double.NaN)
+                val y = params.optDouble("y", Double.NaN)
                 if (!x.isFinite() || !y.isFinite()) {
-                    throw SchemaViolationException("action.x and action.y must be finite numbers for click_coord")
+                    throw SchemaViolationException("params.x and params.y are required for click_coord")
                 }
-                ClickCoord(
-                    x = x.toInt(),
-                    y = y.toInt(),
-                )
+                ClickCoord(x = x.toInt(), y = y.toInt())
             }
             "type_text" -> {
-                val text = obj.optString("text", "").trim()
-                if (text.isBlank()) throw SchemaViolationException("action.text is required for type_text")
-                TypeText(text = text, hint = obj.optNullableString("hint")?.trim()?.takeIf { it.isNotBlank() })
+                val text = params.optString("text", "").trim()
+                    .ifBlank { params.optString("content", "").trim() }
+                    .ifBlank { params.optString("value", "").trim() }
+                    .ifBlank { params.optString("input", "").trim() }
+                    .ifBlank { params.optString("query", "").trim() }
+                if (text.isBlank()) {
+                    val fallback = params.keys().asSequence()
+                        .mapNotNull { key -> params.optNullableString(key)?.trim()?.takeIf { v -> v.isNotBlank() } }
+                        .firstOrNull()
+                    if (fallback != null) {
+                        TypeText(text = fallback, hint = params.optNullableString("hint")
+                            ?.trim()?.takeIf { it.isNotBlank() }
+                            ?: params.optNullableString("field_hint")?.trim()?.takeIf { it.isNotBlank() })
+                    } else {
+                        throw SchemaViolationException("params.text is required for type_text")
+                    }
+                } else {
+                    TypeText(text = text, hint = params.optNullableString("hint")
+                        ?.trim()?.takeIf { it.isNotBlank() }
+                        ?: params.optNullableString("field_hint")?.trim()?.takeIf { it.isNotBlank() })
+                }
             }
             "press_enter" -> PressEnter
             "scroll" -> {
-                val direction = obj.optString("direction", "").trim()
+                val direction = params.optString("direction", "").trim()
                 val parsed = runCatching { Direction.valueOf(direction) }.getOrNull()
-                    ?: throw SchemaViolationException("action.direction must be 'up' or 'down' for scroll")
+                    ?: throw SchemaViolationException("params.direction must be 'up' or 'down' for scroll")
                 Scroll(parsed)
             }
             "press_back" -> PressBack
@@ -381,80 +357,73 @@ object LocalAgentUiControlProtocol {
             "open_notifications" -> OpenNotifications
             "open_recents" -> OpenRecents
             "open_app" -> {
-                val appName = obj.optString("app_name", "").trim()
-                if (appName.isBlank()) throw SchemaViolationException("action.app_name is required for open_app")
+                val appName = params.optString("app_name", "").trim()
+                    .ifBlank { params.optString("package_name", "").trim() }
+                    .ifBlank { params.optString("app", "").trim() }
+                    .ifBlank { params.optString("application", "").trim() }
+                    .ifBlank { params.optString("name", "").trim() }
+                if (appName.isBlank()) throw SchemaViolationException("params.app_name is required for open_app")
                 OpenApp(appName)
             }
             "swipe" -> {
-                val sx = obj.optDouble("start_x", Double.NaN)
-                val sy = obj.optDouble("start_y", Double.NaN)
-                val ex = obj.optDouble("end_x", Double.NaN)
-                val ey = obj.optDouble("end_y", Double.NaN)
+                val sx = params.optDouble("start_x", params.optDouble("startX", Double.NaN))
+                val sy = params.optDouble("start_y", params.optDouble("startY", Double.NaN))
+                val ex = params.optDouble("end_x", params.optDouble("endX", Double.NaN))
+                val ey = params.optDouble("end_y", params.optDouble("endY", Double.NaN))
                 if (!sx.isFinite() || !sy.isFinite() || !ex.isFinite() || !ey.isFinite()) {
-                    throw SchemaViolationException("start_x, start_y, end_x, end_y must be finite numbers for swipe")
+                    throw SchemaViolationException("start_x, start_y, end_x, end_y are required for swipe")
                 }
                 Swipe(
-                    startX = sx.toInt(),
-                    startY = sy.toInt(),
-                    endX = ex.toInt(),
-                    endY = ey.toInt(),
-                    durationMs = obj.optLong("duration_ms", 300L).coerceIn(50L, 5000L),
+                    startX = sx.toInt(), startY = sy.toInt(),
+                    endX = ex.toInt(), endY = ey.toInt(),
+                    durationMs = params.optLong("duration_ms", 300L).coerceIn(50L, 5000L),
                 )
             }
             "long_press" -> {
-                if (!obj.has("x") || !obj.has("y")) {
-                    throw SchemaViolationException("x and y are required for long_press")
-                }
-                val x = obj.optDouble("x", Double.NaN)
-                val y = obj.optDouble("y", Double.NaN)
+                val x = params.optDouble("x", Double.NaN)
+                val y = params.optDouble("y", Double.NaN)
                 if (!x.isFinite() || !y.isFinite()) {
-                    throw SchemaViolationException("x and y must be finite numbers for long_press")
+                    throw SchemaViolationException("params.x and params.y are required for long_press")
                 }
-                LongPress(
-                    x = x.toInt(),
-                    y = y.toInt(),
-                    durationMs = obj.optLong("duration_ms", 1000L).coerceIn(300L, 5000L),
-                )
+                LongPress(x = x.toInt(), y = y.toInt(), durationMs = params.optLong("duration_ms", 1000L).coerceIn(300L, 5000L))
             }
             "make_call" -> {
-                val number = obj.optString("number", "").trim()
-                if (number.isBlank()) throw SchemaViolationException("number is required for make_call")
+                val number = params.optString("number", "").trim()
+                    .ifBlank { params.optString("phone_number", "").trim() }
+                    .ifBlank { params.optString("phone", "").trim() }
+                    .ifBlank { params.optString("contact_name", "").trim() }
+                if (number.isBlank()) throw SchemaViolationException("params.number is required for make_call")
                 MakeCall(number)
             }
             "send_sms" -> {
-                val number = obj.optString("number", "").trim()
-                val message = obj.optString("message", "").trim()
-                if (number.isBlank()) throw SchemaViolationException("number is required for send_sms")
-                if (message.isBlank()) throw SchemaViolationException("message is required for send_sms")
+                val number = params.optString("number", "").trim()
+                    .ifBlank { params.optString("phone_number", "").trim() }
+                    .ifBlank { params.optString("phone", "").trim() }
+                    .ifBlank { params.optString("contact_name", "").trim() }
+                val message = params.optString("message", "").trim()
+                if (number.isBlank()) throw SchemaViolationException("params.number is required for send_sms")
+                if (message.isBlank()) throw SchemaViolationException("params.message is required for send_sms")
                 SendSms(number, message)
             }
             "send_email" -> {
-                val to = obj.optString("to", "").trim()
-                if (to.isBlank()) throw SchemaViolationException("to is required for send_email")
-                SendEmail(
-                    to = to,
-                    subject = obj.optNullableString("subject").orEmpty(),
-                    body = obj.optNullableString("body").orEmpty(),
-                )
+                val to = params.optString("to", "").trim()
+                if (to.isBlank()) throw SchemaViolationException("params.to is required for send_email")
+                SendEmail(to = to, subject = params.optNullableString("subject").orEmpty(), body = params.optNullableString("body").orEmpty())
             }
             "set_alarm" -> {
-                val hour = obj.optInt("hour", -1)
-                val minute = obj.optInt("minute", -1)
+                val hour = params.optInt("hour", -1)
+                val minute = params.optInt("minute", -1)
                 if (hour !in 0..23 || minute !in 0..59) {
-                    throw SchemaViolationException("hour (0-23) and minute (0-59) are required for set_alarm")
+                    throw SchemaViolationException("params.hour (0-23) and params.minute (0-59) are required for set_alarm")
                 }
-                SetAlarm(
-                    hour = hour,
-                    minute = minute,
-                    label = obj.optNullableString("label")?.trim()?.takeIf { it.isNotBlank() },
-                )
+                SetAlarm(hour = hour, minute = minute, label = params.optNullableString("label")?.trim()?.takeIf { it.isNotBlank() })
             }
             "open_contacts" -> OpenContacts
             "toggle_wifi" -> ToggleWifi
             "toggle_bluetooth" -> ToggleBluetooth
             "toggle_flashlight" -> ToggleFlashlight
             "read_screen_aloud" -> ReadScreenAloud
-            "finish" -> Finish(message = obj.optNullableString("message")?.trim()?.takeIf { it.isNotBlank() })
+            "finish", "done" -> Finish(message = params.optNullableString("message")?.trim()?.takeIf { it.isNotBlank() })
             else -> throw SchemaViolationException("Unsupported action type: $type")
         }
     }
@@ -470,47 +439,24 @@ object LocalAgentUiControlProtocol {
         }
 
         val firstBrace = trimmed.indexOf('{')
-        if (firstBrace < 0) {
-            throw JsonExtractionException("UI-control response did not contain a JSON object. Raw=${trimmed.preview()}")
+        val lastBrace = trimmed.lastIndexOf('}')
+        if (firstBrace >= 0 && lastBrace > firstBrace) {
+            return trimmed.substring(firstBrace, lastBrace + 1)
         }
 
-        return extractBalancedBraces(trimmed.substring(firstBrace))
-            ?: throw JsonExtractionException(
-                "UI-control response contained '{' but matching braces were not balanced. Raw=${trimmed.preview()}"
-            )
-    }
-
-    private fun extractBalancedBraces(textStartingWithBrace: String): String? {
-        var depth = 0
-        var inString = false
-        var escape = false
-
-        for (i in textStartingWithBrace.indices) {
-            val c = textStartingWithBrace[i]
-
-            if (inString) {
-                if (escape) {
-                    escape = false
-                } else {
-                    when (c) {
-                        '\\' -> escape = true
-                        '"' -> inString = false
-                    }
-                }
-                continue
-            }
-
-            when (c) {
-                '"' -> inString = true
-                '{' -> depth++
-                '}' -> {
-                    depth--
-                    if (depth == 0) return textStartingWithBrace.substring(0, i + 1)
-                }
+        // Truncated JSON — try to close it
+        if (firstBrace >= 0) {
+            var attempt = trimmed.substring(firstBrace)
+            if (!attempt.endsWith("}")) attempt += "}"
+            try {
+                JSONObject(JSONTokener(attempt))
+                return attempt
+            } catch (_: JSONException) {
+                // fall through
             }
         }
 
-        return null
+        throw JsonExtractionException("UI-control response did not contain a valid JSON object. Raw=${trimmed.preview()}")
     }
 
     private fun JSONObject.optNullableString(key: String): String? {
@@ -526,6 +472,74 @@ object LocalAgentUiControlProtocol {
         val singleLine = replace("\n", "\\n")
         return if (singleLine.length <= maxChars) singleLine else singleLine.take(maxChars) + "…"
     }
+
+    private val ACTION_ALIASES = mapOf(
+        "click" to "click_text",
+        "click_element" to "click_text",
+        "tap" to "click_text",
+        "tap_text" to "click_text",
+        "type" to "type_text",
+        "type_on_screen" to "type_text",
+        "input" to "type_text",
+        "input_text" to "type_text",
+        "enter_text" to "type_text",
+        "scroll_screen" to "scroll",
+        "swipe_screen" to "swipe",
+        "long_click" to "long_press",
+        "back" to "press_back",
+        "go_back" to "press_back",
+        "home" to "press_home",
+        "go_home" to "press_home",
+        "notifications" to "open_notifications",
+        "notification" to "open_notifications",
+        "recents" to "open_recents",
+        "recent_apps" to "open_recents",
+        "launch_app" to "open_app",
+        "start_app" to "open_app",
+        "call" to "make_call",
+        "phone_call" to "make_call",
+        "sms" to "send_sms",
+        "text_message" to "send_sms",
+        "email" to "send_email",
+        "alarm" to "set_alarm",
+        "read_aloud" to "read_screen_aloud",
+        "read_screen" to "read_screen_aloud",
+        "complete" to "finish",
+        "stop" to "finish",
+    )
+
+    private val TASK_SYSTEM_PROMPT = """
+You are a phone automation agent. You are given a TASK and the current SCREEN content.
+You must decide what single action to take next to accomplish the task.
+
+Respond with ONLY a JSON object (no markdown, no code fences):
+{"action": "action_name", "params": {"key": "value"}, "reasoning": "why", "is_complete": false}
+
+Available actions:
+- click_text: {"text": "exact text to click"} - Click an element by its visible text
+- click_at: {"x": 540, "y": 960} - Click at screen coordinates (use bounds from screen dump)
+- type_text: {"text": "hello", "field_hint": "optional hint"} - Type into the focused/first edit field
+- press_enter: {} - Press the Enter/Search key on the keyboard to submit a search/form
+- scroll: {"direction": "down"} - Scroll down/up on the current view
+- swipe: {"startX": 540, "startY": 2000, "endX": 540, "endY": 500} - Swipe from start to end coordinates
+- press_back: {} - Press the back button
+- press_home: {} - Press the home button
+- open_app: {"app_name": "WhatsApp"} - Open an app
+- wait: {} - Wait a moment for content to load
+- finish: {} - Task is complete
+
+Rules:
+- You will receive a TEXT DUMP of the accessibility tree containing exact text strings and center coordinates.
+- ALWAYS use the text dump to decide your next action.
+- If you need to click something, prefer using click_text. If the element does not have text, use click_at with the coordinates provided in the text dump.
+- When typing in a search box, you MUST click it first, wait a step, and THEN type.
+- After typing a search query, use press_enter once. If the screen does not change, click the exact visible suggestion text.
+- Never scroll or swipe more than three times in a row.
+- Set is_complete=true ONLY when the task is fully done.
+- If stuck after 3 attempts, set is_complete=true and explain in reasoning.
+- Keep reasoning very brief (1 sentence).
+- Elements marked with * match the current task goal.
+""".trimIndent()
 
     private val FENCED_JSON_REGEX =
         Regex("""```(?:json)?\s*([\s\S]*?)\s*```""", RegexOption.IGNORE_CASE)
