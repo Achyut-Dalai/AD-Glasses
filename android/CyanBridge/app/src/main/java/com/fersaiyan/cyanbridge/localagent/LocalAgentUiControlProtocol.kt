@@ -439,24 +439,89 @@ object LocalAgentUiControlProtocol {
         }
 
         val firstBrace = trimmed.indexOf('{')
-        val lastBrace = trimmed.lastIndexOf('}')
-        if (firstBrace >= 0 && lastBrace > firstBrace) {
-            return trimmed.substring(firstBrace, lastBrace + 1)
-        }
-
-        // Truncated JSON — try to close it
         if (firstBrace >= 0) {
-            var attempt = trimmed.substring(firstBrace)
-            if (!attempt.endsWith("}")) attempt += "}"
+            val candidate = trimmed.substring(firstBrace)
+            extractBalancedBraces(candidate)?.let { return it }
+
+            // Truncated JSON — close the unfinished string/object when possible.
+            val attempt = closeTruncatedJson(candidate)
             try {
-                JSONObject(JSONTokener(attempt))
-                return attempt
+                if (attempt != null) {
+                    JSONObject(JSONTokener(attempt))
+                    return attempt
+                }
             } catch (_: JSONException) {
                 // fall through
             }
         }
 
         throw JsonExtractionException("UI-control response did not contain a valid JSON object. Raw=${trimmed.preview()}")
+    }
+
+    private fun extractBalancedBraces(textStartingWithBrace: String): String? {
+        var depth = 0
+        var inString = false
+        var escape = false
+
+        for (i in textStartingWithBrace.indices) {
+            val c = textStartingWithBrace[i]
+            if (inString) {
+                if (escape) {
+                    escape = false
+                } else if (c == '\\') {
+                    escape = true
+                } else if (c == '"') {
+                    inString = false
+                }
+                continue
+            }
+
+            when (c) {
+                '"' -> inString = true
+                '{' -> depth++
+                '}' -> {
+                    depth--
+                    if (depth == 0) return textStartingWithBrace.substring(0, i + 1)
+                    if (depth < 0) return null
+                }
+            }
+        }
+        return null
+    }
+
+    private fun closeTruncatedJson(textStartingWithBrace: String): String? {
+        var depth = 0
+        var inString = false
+        var escape = false
+
+        for (c in textStartingWithBrace) {
+            if (inString) {
+                if (escape) {
+                    escape = false
+                } else if (c == '\\') {
+                    escape = true
+                } else if (c == '"') {
+                    inString = false
+                }
+                continue
+            }
+
+            when (c) {
+                '"' -> inString = true
+                '{' -> depth++
+                '}' -> {
+                    depth--
+                    if (depth < 0) return null
+                }
+            }
+        }
+
+        if (depth <= 0) return null
+        return buildString(textStartingWithBrace.length + depth + 1) {
+            append(textStartingWithBrace)
+            if (inString) append('"')
+            repeat(depth) { append('}') }
+        }
     }
 
     private fun JSONObject.optNullableString(key: String): String? {

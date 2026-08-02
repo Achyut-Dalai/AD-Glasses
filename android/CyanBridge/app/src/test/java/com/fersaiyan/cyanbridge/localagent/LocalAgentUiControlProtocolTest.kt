@@ -80,7 +80,7 @@ class LocalAgentUiControlProtocolTest {
                 stepIndex = 1,
                 maxSteps = 8,
                 previousActionResult = "Opened Settings",
-                consecutiveFailures = 1,
+                consecutiveFailures = 3,
             )
         )
 
