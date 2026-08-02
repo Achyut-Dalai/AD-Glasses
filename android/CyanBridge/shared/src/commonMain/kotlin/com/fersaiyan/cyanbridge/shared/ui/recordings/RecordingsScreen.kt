@@ -64,10 +64,13 @@ import com.fersaiyan.cyanbridge.shared.recordings.TranscriptionEngine
 import com.fersaiyan.cyanbridge.shared.recordings.TranscriptionProgressUiState
 import com.fersaiyan.cyanbridge.shared.navigation.AppDestination
 import com.fersaiyan.cyanbridge.shared.navigation.icon
-import com.fersaiyan.cyanbridge.shared.navigation.label
 import com.fersaiyan.cyanbridge.shared.icons.imageVector
+import com.fersaiyan.cyanbridge.shared.generated.resources.*
+import com.fersaiyan.cyanbridge.shared.ui.localizedDestinationLabel
+import org.jetbrains.compose.resources.ExperimentalResourceApi
+import org.jetbrains.compose.resources.stringResource
 
-@OptIn(ExperimentalMaterial3Api::class)
+@OptIn(ExperimentalMaterial3Api::class, ExperimentalResourceApi::class)
 @Composable
 fun RecordingsScreen(
     sessions: List<RecordingItem>,
@@ -98,12 +101,12 @@ fun RecordingsScreen(
         contentWindowInsets = WindowInsets.safeDrawing,
         topBar = {
             TopAppBar(
-                title = { Text("Recordings") },
+                 title = { Text(stringResource(Res.string.recordings_title)) },
                 actions = {
                     IconButton(onClick = onOpenSyncedMedia) {
                         Icon(
                             imageVector = Icons.Outlined.ImageIcon,
-                            contentDescription = "Open synced media",
+                             contentDescription = stringResource(Res.string.recordings_open_synced_media),
                         )
                     }
                 },
@@ -121,7 +124,7 @@ fun RecordingsScreen(
                                 contentDescription = null,
                             )
                         },
-                        label = { Text(destination.label) },
+                         label = { Text(localizedDestinationLabel(destination)) },
                     )
                 }
             }
@@ -146,7 +149,7 @@ fun RecordingsScreen(
             if (recentSyncedMedia.isNotEmpty()) {
                 item {
                     Text(
-                        text = "Recent synced photos",
+                         text = stringResource(Res.string.recordings_recent_synced_photos),
                         style = MaterialTheme.typography.titleSmall,
                     )
                 }
@@ -185,7 +188,7 @@ fun RecordingsScreen(
                         modifier = Modifier.size(18.dp),
                     )
                     Spacer(Modifier.width(8.dp))
-                    Text("Open synced media")
+                     Text(stringResource(Res.string.recordings_open_synced_media))
                 }
             }
             if (isLoading) {
@@ -206,7 +209,7 @@ fun RecordingsScreen(
             } else {
                 item {
                     Text(
-                        text = "Meeting captures",
+                         text = stringResource(Res.string.recordings_meeting_captures),
                         style = MaterialTheme.typography.titleSmall,
                     )
                 }
@@ -244,7 +247,7 @@ fun RecordingsScreen(
             text = { Text(transcript.text) },
             confirmButton = {
                 TextButton(onClick = onDismissTranscript) {
-                    Text("Close")
+                     Text(stringResource(Res.string.recordings_close))
                 }
             },
         )
@@ -268,9 +271,9 @@ private fun MeetingRecordingBanner(
             verticalAlignment = Alignment.CenterVertically,
         ) {
             Column(modifier = Modifier.weight(1f)) {
-                Text("Recording active", style = MaterialTheme.typography.titleSmall)
+                 Text(stringResource(Res.string.settings_recording_active), style = MaterialTheme.typography.titleSmall)
                 Text(
-                    text = sourceLabel ?: "Detecting audio source",
+                     text = sourceLabel ?: stringResource(Res.string.settings_detecting_audio_source),
                     style = MaterialTheme.typography.bodySmall,
                 )
             }
@@ -281,7 +284,7 @@ private fun MeetingRecordingBanner(
                     modifier = Modifier.size(18.dp),
                 )
                 Spacer(Modifier.width(4.dp))
-                Text("Stop")
+                 Text(stringResource(Res.string.action_stop))
             }
         }
     }
@@ -327,9 +330,9 @@ private fun EmptyRecordingsState() {
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.spacedBy(8.dp),
         ) {
-            Text("No recordings yet", style = MaterialTheme.typography.titleMedium)
+             Text(stringResource(Res.string.recordings_no_recordings), style = MaterialTheme.typography.titleMedium)
             Text(
-                text = "Start a meeting capture from the Glasses tab to create one.",
+                 text = stringResource(Res.string.recordings_no_recordings_description),
                 style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
@@ -357,7 +360,9 @@ private fun RecordingCard(
                 IconButton(onClick = onPlay) {
                     Icon(
                         imageVector = if (isPlaying) Icons.Outlined.Pause else Icons.Outlined.PlayArrow,
-                        contentDescription = if (isPlaying) "Stop playback" else "Play recording",
+                         contentDescription = stringResource(
+                             if (isPlaying) Res.string.recordings_stop_playback else Res.string.recordings_play_recording,
+                         ),
                     )
                 }
                 Spacer(Modifier.width(4.dp))
@@ -375,7 +380,7 @@ private fun RecordingCard(
                     )
                     stopReason?.takeIf { it.isNotBlank() }?.let { reason ->
                         Text(
-                            text = "Stopped: $reason",
+                             text = stringResource(Res.string.recordings_stopped_reason, reason),
                             style = MaterialTheme.typography.bodySmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
                         )
@@ -390,16 +395,16 @@ private fun RecordingCard(
                     if (isTranscribing) {
                         CircularProgressIndicator(modifier = Modifier.size(16.dp), strokeWidth = 2.dp)
                         Spacer(Modifier.width(8.dp))
-                        Text("Transcribing")
+                         Text(stringResource(Res.string.recordings_transcribing))
                     } else {
-                        Text("Transcribe")
+                         Text(stringResource(Res.string.recordings_transcribe))
                     }
                 }
                 OutlinedButton(
                     onClick = onViewTranscript,
                     enabled = !isTranscribing,
                 ) {
-                    Text("View transcript")
+                     Text(stringResource(Res.string.recordings_view_transcript))
                 }
             }
         }
@@ -415,7 +420,7 @@ private fun TranscriptionEngineDialog(
 ) {
     AlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text("Transcription engine") },
+         title = { Text(stringResource(Res.string.recordings_transcription_engine)) },
         text = {
             Column {
                 TranscriptionEngine.entries.forEach { engine ->
@@ -432,12 +437,21 @@ private fun TranscriptionEngineDialog(
                         )
                         Spacer(Modifier.width(8.dp))
                         Column {
-                            Text(engine.title, style = MaterialTheme.typography.bodyLarge)
+                             Text(
+                                 stringResource(
+                                     if (engine == TranscriptionEngine.MOONSHINE) {
+                                         Res.string.recordings_moonshine_local
+                                     } else {
+                                         Res.string.recordings_gemma_local
+                                     },
+                                 ),
+                                 style = MaterialTheme.typography.bodyLarge,
+                             )
                             Text(
                                 text = if (engine == TranscriptionEngine.MOONSHINE) {
-                                    "Local Moonshine speech model"
+                                     stringResource(Res.string.recordings_local_moonshine)
                                 } else {
-                                    "Gemma with the LiteRT local runtime"
+                                     stringResource(Res.string.recordings_gemma_litert)
                                 },
                                 style = MaterialTheme.typography.bodySmall,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant,
@@ -448,10 +462,10 @@ private fun TranscriptionEngineDialog(
             }
         },
         confirmButton = {
-            TextButton(onClick = onConfirm) { Text("Start") }
+             TextButton(onClick = onConfirm) { Text(stringResource(Res.string.action_start)) }
         },
         dismissButton = {
-            TextButton(onClick = onDismiss) { Text("Cancel") }
+             TextButton(onClick = onDismiss) { Text(stringResource(Res.string.action_cancel)) }
         },
     )
 }
@@ -483,9 +497,3 @@ private fun TranscriptionProgressDialog(state: TranscriptionProgressUiState) {
         }
     }
 }
-
-private val TranscriptionEngine.title: String
-    get() = when (this) {
-        TranscriptionEngine.MOONSHINE -> "Moonshine (local)"
-        TranscriptionEngine.GEMMA -> "Gemma (LiteRT local)"
-    }

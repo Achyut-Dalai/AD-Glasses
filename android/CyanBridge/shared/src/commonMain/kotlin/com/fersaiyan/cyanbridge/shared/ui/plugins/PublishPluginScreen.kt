@@ -39,8 +39,12 @@ import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import com.fersaiyan.cyanbridge.shared.plugins.PublishPluginUiState
+import com.fersaiyan.cyanbridge.shared.generated.resources.*
+import com.fersaiyan.cyanbridge.shared.ui.localizedPluginCategory
+import org.jetbrains.compose.resources.ExperimentalResourceApi
+import org.jetbrains.compose.resources.stringResource
 
-@OptIn(ExperimentalMaterial3Api::class)
+@OptIn(ExperimentalMaterial3Api::class, ExperimentalResourceApi::class)
 @Composable
 fun PublishPluginScreen(
     state: PublishPluginUiState,
@@ -57,12 +61,12 @@ fun PublishPluginScreen(
         contentWindowInsets = WindowInsets.safeDrawing,
         topBar = {
             TopAppBar(
-                title = { Text("Publish Plugin") },
+                 title = { Text(stringResource(Res.string.publish_title)) },
                 navigationIcon = {
                     IconButton(onClick = onNavigateBack) {
                         Icon(
                             imageVector = Icons.AutoMirrored.Outlined.ArrowBack,
-                            contentDescription = "Back",
+                             contentDescription = stringResource(Res.string.action_back),
                         )
                     }
                 },
@@ -85,9 +89,9 @@ fun PublishPluginScreen(
                             color = MaterialTheme.colorScheme.onPrimary,
                         )
                         Spacer(Modifier.width(8.dp))
-                        Text("Submitting...")
+                         Text(stringResource(Res.string.publish_submitting))
                     } else {
-                        Text("Submit Plugin")
+                         Text(stringResource(Res.string.publish_submit))
                     }
                 }
             }
@@ -103,7 +107,7 @@ fun PublishPluginScreen(
             verticalArrangement = Arrangement.spacedBy(16.dp),
         ) {
             Text(
-                text = "Share your automation with the community.",
+                 text = stringResource(Res.string.publish_share_body),
                 style = MaterialTheme.typography.bodyLarge,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
@@ -113,38 +117,38 @@ fun PublishPluginScreen(
                     verticalArrangement = Arrangement.spacedBy(12.dp),
                 ) {
                     Text(
-                        text = "Plugin details",
+                         text = stringResource(Res.string.publish_details),
                         style = MaterialTheme.typography.titleMedium,
                         color = MaterialTheme.colorScheme.primary,
                     )
                     PluginTextField(
                         value = state.title,
                         onValueChange = onTitleChanged,
-                        label = "Plugin title *",
+                         label = stringResource(Res.string.publish_title_field),
                         error = state.titleError,
                         tag = "publish_plugin_title",
                     )
                     PluginTextField(
                         value = state.author,
                         onValueChange = onAuthorChanged,
-                        label = "Author name *",
+                         label = stringResource(Res.string.publish_author_field),
                         error = state.authorError,
                         tag = "publish_plugin_author",
                     )
                     PluginTextField(
                         value = state.description,
                         onValueChange = onDescriptionChanged,
-                        label = "Description *",
+                         label = stringResource(Res.string.publish_description_field),
                         error = state.descriptionError,
                         tag = "publish_plugin_description",
                         minLines = 3,
                     )
                     Text(
-                        text = "Describe what your plugin does, setup steps, and sample voice commands.",
+                         text = stringResource(Res.string.publish_description_hint),
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                     )
-                    Text("Category", style = MaterialTheme.typography.labelLarge)
+                     Text(stringResource(Res.string.publish_category), style = MaterialTheme.typography.labelLarge)
                     Row(
                         modifier = Modifier.horizontalScroll(rememberScrollState()),
                         horizontalArrangement = Arrangement.spacedBy(8.dp),
@@ -153,7 +157,7 @@ fun PublishPluginScreen(
                             FilterChip(
                                 selected = state.category == category,
                                 onClick = { onCategorySelected(category) },
-                                label = { Text(category) },
+                                 label = { Text(localizedPluginCategory(category)) },
                                 modifier = Modifier.testTag("publish_plugin_category_$category"),
                             )
                         }
@@ -166,20 +170,20 @@ fun PublishPluginScreen(
                     verticalArrangement = Arrangement.spacedBy(12.dp),
                 ) {
                     Text(
-                        text = "Download link",
+                         text = stringResource(Res.string.publish_download_link),
                         style = MaterialTheme.typography.titleMedium,
                         color = MaterialTheme.colorScheme.primary,
                     )
                     PluginTextField(
                         value = state.taskerNetLink,
                         onValueChange = onTaskerNetLinkChanged,
-                        label = "TaskerNet link *",
+                         label = stringResource(Res.string.publish_taskernet_link),
                         error = state.taskerNetLinkError,
                         tag = "publish_plugin_link",
                         keyboardType = KeyboardType.Uri,
                     )
                     Text(
-                        text = "Enter the TaskerNet URL for your profile.",
+                         text = stringResource(Res.string.publish_taskernet_hint),
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                     )
@@ -193,12 +197,12 @@ fun PublishPluginScreen(
                     verticalArrangement = Arrangement.spacedBy(8.dp),
                 ) {
                     Text(
-                        text = "How publishing works",
+                         text = stringResource(Res.string.publish_how_it_works),
                         style = MaterialTheme.typography.titleMedium,
                         color = MaterialTheme.colorScheme.primary,
                     )
                     Text(
-                        text = "1. Your submission is sent for review.\n\n2. Approved plugins appear in Community Plugins.\n\n3. Top plugins may earn prizes proportional to Pro users.",
+                         text = stringResource(Res.string.publish_steps),
                         style = MaterialTheme.typography.bodyMedium,
                     )
                 }

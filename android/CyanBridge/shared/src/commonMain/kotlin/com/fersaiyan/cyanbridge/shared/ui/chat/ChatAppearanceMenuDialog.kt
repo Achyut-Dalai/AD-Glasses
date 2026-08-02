@@ -10,8 +10,19 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.style.TextAlign
 import com.fersaiyan.cyanbridge.shared.chat.ChatAppearanceMenuAction
+import com.fersaiyan.cyanbridge.shared.generated.resources.Res
+import com.fersaiyan.cyanbridge.shared.generated.resources.action_cancel
+import com.fersaiyan.cyanbridge.shared.generated.resources.chat_appearance
+import com.fersaiyan.cyanbridge.shared.generated.resources.chat_change_assistant_bubble
+import com.fersaiyan.cyanbridge.shared.generated.resources.chat_change_user_bubble
+import com.fersaiyan.cyanbridge.shared.generated.resources.chat_choose_wallpaper
+import com.fersaiyan.cyanbridge.shared.generated.resources.chat_remove_wallpaper
+import com.fersaiyan.cyanbridge.shared.generated.resources.chat_reset_appearance
+import org.jetbrains.compose.resources.ExperimentalResourceApi
+import org.jetbrains.compose.resources.stringResource
 
 /** Compose-owned overflow menu; host callbacks retain preference and picker work. */
+@OptIn(ExperimentalResourceApi::class)
 @Composable
 fun ChatAppearanceMenuDialog(
     modelOptionLabel: String?,
@@ -20,31 +31,31 @@ fun ChatAppearanceMenuDialog(
 ) {
     AlertDialog(
         onDismissRequest = onDismissRequest,
-        title = { Text("Chat appearance") },
+        title = { Text(stringResource(Res.string.chat_appearance)) },
         text = {
             Column(modifier = Modifier.fillMaxWidth()) {
                 ChatAppearanceMenuItem(
-                    label = "Change user bubble color",
+                     label = stringResource(Res.string.chat_change_user_bubble),
                     action = ChatAppearanceMenuAction.CHANGE_USER_BUBBLE_COLOR,
                     onAction = onAction,
                 )
                 ChatAppearanceMenuItem(
-                    label = "Change assistant bubble color",
+                     label = stringResource(Res.string.chat_change_assistant_bubble),
                     action = ChatAppearanceMenuAction.CHANGE_ASSISTANT_BUBBLE_COLOR,
                     onAction = onAction,
                 )
                 ChatAppearanceMenuItem(
-                    label = "Choose wallpaper from gallery",
+                     label = stringResource(Res.string.chat_choose_wallpaper),
                     action = ChatAppearanceMenuAction.CHOOSE_WALLPAPER,
                     onAction = onAction,
                 )
                 ChatAppearanceMenuItem(
-                    label = "Remove wallpaper",
+                     label = stringResource(Res.string.chat_remove_wallpaper),
                     action = ChatAppearanceMenuAction.REMOVE_WALLPAPER,
                     onAction = onAction,
                 )
                 ChatAppearanceMenuItem(
-                    label = "Reset chat appearance",
+                     label = stringResource(Res.string.chat_reset_appearance),
                     action = ChatAppearanceMenuAction.RESET_APPEARANCE,
                     onAction = onAction,
                 )
@@ -60,7 +71,7 @@ fun ChatAppearanceMenuDialog(
         confirmButton = {},
         dismissButton = {
             TextButton(onClick = onDismissRequest) {
-                Text("Cancel")
+                Text(stringResource(Res.string.action_cancel))
             }
         },
     )

@@ -41,25 +41,30 @@ import com.fersaiyan.cyanbridge.shared.billing.BillingProvider
 import com.fersaiyan.cyanbridge.shared.billing.BillingCatalog
 import com.fersaiyan.cyanbridge.shared.billing.ProviderOffer
 import com.fersaiyan.cyanbridge.shared.billing.ProSubscriptionUiState
+import com.fersaiyan.cyanbridge.shared.generated.resources.*
 import kotlin.math.roundToInt
+import org.jetbrains.compose.resources.ExperimentalResourceApi
+import org.jetbrains.compose.resources.stringResource
 
+@OptIn(ExperimentalResourceApi::class)
+@Composable
 private fun planLabels(state: ProSubscriptionUiState) = buildList {
-    add("free_trial" to "Free trial · 30 days")
+    add("free_trial" to stringResource(Res.string.pro_free_trial))
     addAll(
         BillingCatalog.plans.map { plan ->
             val price = state.playPriceLabels[plan.id]
-            val label = price?.let { "Google Play: $it" }
+            val label = price?.let { stringResource(Res.string.pro_google_play_price, it) }
                 ?: if (plan.id in state.playCheckoutAvailablePlans) {
-                    "Google Play price shown at checkout"
+                    stringResource(Res.string.pro_google_play_checkout_price)
                 } else {
-                    "Choose checkout to compare options"
+                    stringResource(Res.string.pro_choose_checkout_compare)
                 }
             plan.id to "${plan.name} · $label"
         },
     )
 }
 
-@OptIn(ExperimentalMaterial3Api::class)
+@OptIn(ExperimentalMaterial3Api::class, ExperimentalResourceApi::class)
 @Composable
 fun ProSubscriptionScreen(
     state: ProSubscriptionUiState,
@@ -76,7 +81,7 @@ fun ProSubscriptionScreen(
 
     Scaffold(
         contentWindowInsets = WindowInsets.safeDrawing,
-        topBar = { TopAppBar(title = { Text("Pro subscription") }) },
+         topBar = { TopAppBar(title = { Text(stringResource(Res.string.pro_subscription_title)) }) },
     ) { innerPadding ->
         LazyColumn(
             modifier = Modifier
@@ -88,14 +93,14 @@ fun ProSubscriptionScreen(
         ) {
             item {
                 Text(
-                    "Use CyanBridge completely free with local models. Pro is optional for cloud AI and cloud sync.",
+                     stringResource(Res.string.pro_intro),
                     style = MaterialTheme.typography.bodyLarge,
                 )
             }
             item {
                 Card(modifier = Modifier.fillMaxWidth()) {
                     Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                        Text("Choose a plan", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
+                         Text(stringResource(Res.string.pro_choose_plan), style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
                         planLabels(state).forEach { (id, label) ->
                             FilterChip(
                                 selected = state.selectedPlan == id,
@@ -107,17 +112,17 @@ fun ProSubscriptionScreen(
                     }
                 }
             }
-            item { BenefitCard("Fund ongoing device support", "Subscriptions help fund bug fixes and compatibility for more glasses.") }
-            item { BenefitCard("Support plugin developers", "Help sustain community workflows and automation plugins.") }
-            item { BenefitCard("Encrypted cloud options", "Optional cross-device cloud sync remains separate from local-first workflows.") }
-            item { BenefitCard("Priority support", "Get priority access to support channels and early feature access.") }
+             item { BenefitCard(stringResource(Res.string.pro_benefit_support), stringResource(Res.string.pro_benefit_support_description)) }
+             item { BenefitCard(stringResource(Res.string.pro_benefit_plugins), stringResource(Res.string.pro_benefit_plugins_description)) }
+             item { BenefitCard(stringResource(Res.string.pro_benefit_cloud), stringResource(Res.string.pro_benefit_cloud_description)) }
+             item { BenefitCard(stringResource(Res.string.pro_benefit_priority), stringResource(Res.string.pro_benefit_priority_description)) }
             if (state.webCheckoutAvailable) {
                 item {
                     Card(modifier = Modifier.fillMaxWidth()) {
                         Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                            Text("Checkout choices", style = MaterialTheme.typography.titleSmall)
+                             Text(stringResource(Res.string.pro_checkout_choices), style = MaterialTheme.typography.titleSmall)
                             Text(
-                                "Use lower-cost web checkout with Asaas or Paddle, or use the easier in-app Google Play checkout.",
+                                 stringResource(Res.string.pro_checkout_choices_description),
                                 style = MaterialTheme.typography.bodySmall,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                             )
@@ -127,21 +132,21 @@ fun ProSubscriptionScreen(
             }
             item {
                 OutlinedButton(onClick = onDonate, modifier = Modifier.fillMaxWidth()) {
-                    Text("Donate via Asaas")
+                     Text(stringResource(Res.string.pro_donate_asaas))
                 }
             }
             if (state.isSubscribed) {
                 item {
                     Card(modifier = Modifier.fillMaxWidth()) {
                         Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                            Text("Cancel subscription", style = MaterialTheme.typography.titleSmall)
+                             Text(stringResource(Res.string.pro_cancel_subscription), style = MaterialTheme.typography.titleSmall)
                             Text(
-                                "You retain access through the current billing period after cancellation.",
+                                 stringResource(Res.string.pro_cancel_description),
                                 style = MaterialTheme.typography.bodySmall,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                             )
                             TextButton(onClick = onCancelSubscription) {
-                                Text("Cancel subscription", color = MaterialTheme.colorScheme.error)
+                                 Text(stringResource(Res.string.pro_cancel_subscription), color = MaterialTheme.colorScheme.error)
                             }
                         }
                     }
@@ -156,7 +161,7 @@ fun ProSubscriptionScreen(
             }
             item {
                 Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End) {
-                    OutlinedButton(onClick = onBack) { Text("Back") }
+                     OutlinedButton(onClick = onBack) { Text(stringResource(Res.string.pro_back)) }
                     Spacer(Modifier.width(8.dp))
                     FilledTonalButton(
                         onClick = {
@@ -175,7 +180,11 @@ fun ProSubscriptionScreen(
                             }
                         },
                     ) {
-                        Text(if (state.selectedPlan == "free_trial") "Start free trial" else "Choose checkout")
+                         Text(
+                             stringResource(
+                                 if (state.selectedPlan == "free_trial") Res.string.pro_start_free_trial else Res.string.pro_choose_checkout,
+                             ),
+                         )
                     }
                 }
             }
@@ -198,6 +207,7 @@ fun ProSubscriptionScreen(
     }
 }
 
+@OptIn(ExperimentalResourceApi::class)
 @Composable
 private fun CheckoutChoiceDialog(
     state: ProSubscriptionUiState,
@@ -219,18 +229,18 @@ private fun CheckoutChoiceDialog(
 
     AlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text("Choose checkout") },
+         title = { Text(stringResource(Res.string.pro_choose_checkout_title)) },
         text = {
             Column(
                 modifier = Modifier.verticalScroll(rememberScrollState()),
                 verticalArrangement = Arrangement.spacedBy(10.dp),
             ) {
                 Text(
-                    "${plan.name} renews monthly. Web prices are confirmed again before payment.",
+                     stringResource(Res.string.pro_monthly_renewal, plan.name),
                     style = MaterialTheme.typography.bodyMedium,
                 )
                 if (state.webCheckoutAvailable) {
-                    Text("Web checkout", style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.SemiBold)
+                     Text(stringResource(Res.string.pro_web_checkout), style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.SemiBold)
                     ProviderChoice(
                         provider = BillingProvider.ASAAS,
                         offer = plan.asaasOffer,
@@ -252,19 +262,19 @@ private fun CheckoutChoiceDialog(
                         onClick = { onWebProviderSelected(webProvider) },
                         modifier = Modifier.fillMaxWidth(),
                     ) {
-                        Text("Continue with ${providerName(webProvider)}")
+                         Text(stringResource(Res.string.pro_continue_provider, providerName(webProvider)))
                     }
                 }
                 if (playAvailable || state.webCheckoutAvailable) {
-                    Text("Google Play", style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.SemiBold)
+                     Text(stringResource(Res.string.pro_google_play), style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.SemiBold)
                 }
                 Text(
                     if (playPrice != null) {
-                        "Google Play price: $playPrice. Google Play manages payment and renewal in-app."
+                         stringResource(Res.string.pro_google_play_price_detail, playPrice)
                     } else if (!state.googlePlayCheckoutAllowed) {
-                        "Change this web subscription through website checkout to avoid overlapping subscriptions."
+                         stringResource(Res.string.pro_change_web_subscription)
                     } else {
-                        "Google Play availability and localized price load from the Play Store."
+                         stringResource(Res.string.pro_google_play_availability)
                     },
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
@@ -276,20 +286,21 @@ private fun CheckoutChoiceDialog(
                 ) {
                     Text(
                         when {
-                            playAvailable -> "Use Google Play"
-                            !state.googlePlayCheckoutAllowed -> "Use web checkout for this change"
-                            else -> "Google Play unavailable"
+                             playAvailable -> stringResource(Res.string.pro_use_google_play)
+                             !state.googlePlayCheckoutAllowed -> stringResource(Res.string.pro_use_web_checkout)
+                             else -> stringResource(Res.string.pro_google_play_unavailable)
                         },
                     )
                 }
             }
         },
         confirmButton = {
-            TextButton(onClick = onDismiss) { Text("Not now") }
+             TextButton(onClick = onDismiss) { Text(stringResource(Res.string.pro_not_now)) }
         },
     )
 }
 
+@OptIn(ExperimentalResourceApi::class)
 @Composable
 private fun ProviderChoice(
     provider: BillingProvider,
@@ -322,19 +333,31 @@ private fun providerName(provider: BillingProvider): String = when (provider) {
     BillingProvider.GOOGLE_PLAY -> "Google Play"
 }
 
+@OptIn(ExperimentalResourceApi::class)
+@Composable
 private fun providerPriceLabel(provider: BillingProvider, offer: ProviderOffer): String = when (provider) {
     BillingProvider.ASAAS ->
-        "About ${formatUsd(offer.referencePriceUsd)}/month (${formatUsd(offer.adjustmentUsd)} processing), charged in BRL"
+        stringResource(
+            Res.string.pro_asaas_price,
+            formatUsd(offer.referencePriceUsd),
+            formatUsd(offer.adjustmentUsd),
+        )
     BillingProvider.PADDLE ->
-        "${formatUsd(offer.referencePriceUsd)}/month (${formatUsd(offer.adjustmentUsd)} checkout adjustment) in USD"
-    BillingProvider.GOOGLE_PLAY -> "Price shown by Google Play"
+        stringResource(
+            Res.string.pro_paddle_price,
+            formatUsd(offer.referencePriceUsd),
+            formatUsd(offer.adjustmentUsd),
+        )
+    BillingProvider.GOOGLE_PLAY -> stringResource(Res.string.pro_google_price)
 }
 
+@OptIn(ExperimentalResourceApi::class)
+@Composable
 private fun webCheckoutDescription(provider: BillingProvider): String = when (provider) {
     BillingProvider.ASAAS ->
-        "Lower-cost direct card checkout. The exact BRL total and renewal amount are shown before payment."
+        stringResource(Res.string.pro_asaas_description)
     BillingProvider.PADDLE ->
-        "Global card checkout. Any applicable tax and the final renewal total are shown before payment."
+        stringResource(Res.string.pro_paddle_description)
     BillingProvider.GOOGLE_PLAY -> ""
 }
 

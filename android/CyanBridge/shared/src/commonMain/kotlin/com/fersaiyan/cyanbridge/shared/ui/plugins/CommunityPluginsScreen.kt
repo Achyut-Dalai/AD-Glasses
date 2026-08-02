@@ -54,11 +54,11 @@ import androidx.compose.ui.unit.dp
 import com.fersaiyan.cyanbridge.shared.generated.resources.*
 import com.fersaiyan.cyanbridge.shared.navigation.AppDestination
 import com.fersaiyan.cyanbridge.shared.navigation.icon
-import com.fersaiyan.cyanbridge.shared.navigation.label
 import com.fersaiyan.cyanbridge.shared.icons.imageVector
 import com.fersaiyan.cyanbridge.shared.plugins.CommunityPluginCardData
 import com.fersaiyan.cyanbridge.shared.plugins.NativePluginCardData
 import com.fersaiyan.cyanbridge.shared.plugins.PluginTimeWindow
+import com.fersaiyan.cyanbridge.shared.ui.localizedDestinationLabel
 import kotlin.math.floor
 import org.jetbrains.compose.resources.ExperimentalResourceApi
 import org.jetbrains.compose.resources.stringResource
@@ -88,7 +88,7 @@ fun CommunityPluginsScreen(
         contentWindowInsets = WindowInsets.safeDrawing,
         topBar = {
             TopAppBar(
-                title = { Text("Community Plugins") },
+                 title = { Text(stringResource(Res.string.plugins_title)) },
                 actions = {
                     IconButton(
                         onClick = onRefresh,
@@ -99,7 +99,7 @@ fun CommunityPluginsScreen(
                         } else {
                             Icon(
                                 imageVector = Icons.Outlined.Refresh,
-                                contentDescription = "Refresh plugins",
+                                 contentDescription = stringResource(Res.string.plugins_refresh),
                             )
                         }
                     }
@@ -118,7 +118,7 @@ fun CommunityPluginsScreen(
                                 contentDescription = null,
                             )
                         },
-                        label = { Text(destination.label) },
+                         label = { Text(localizedDestinationLabel(destination)) },
                     )
                 }
             }
@@ -127,7 +127,7 @@ fun CommunityPluginsScreen(
             FloatingActionButton(onClick = onPublishPlugin) {
                 Icon(
                     imageVector = Icons.Outlined.Add,
-                    contentDescription = "Publish plugin",
+                     contentDescription = stringResource(Res.string.plugins_publish),
                 )
             }
         },
@@ -149,7 +149,7 @@ fun CommunityPluginsScreen(
             item { PluginHero() }
             item {
                 Text(
-                    text = "Future notice: top plugins will have real cash prizes for developers, proportional to the number of Pro subscription users with the plugin enabled.",
+                     text = stringResource(Res.string.plugins_future_notice),
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
@@ -170,7 +170,7 @@ fun CommunityPluginsScreen(
                     onWindowSelected = onWindowSelected,
                 )
             }
-            item { PluginSectionLabel("Trending plugins") }
+             item { PluginSectionLabel(stringResource(Res.string.plugins_trending)) }
             itemsIndexed(trending, key = { _, plugin -> "trending-${plugin.title}" }) { index, plugin ->
                 PluginCard(
                     plugin = plugin,
@@ -184,7 +184,7 @@ fun CommunityPluginsScreen(
                     onOpenPlugin = { onOpenCommunityPlugin(plugin) },
                 )
             }
-            item { PluginSectionLabel("Top voted") }
+             item { PluginSectionLabel(stringResource(Res.string.plugins_top_voted)) }
             itemsIndexed(topVoted, key = { _, plugin -> "voted-${plugin.title}" }) { index, plugin ->
                 PluginCard(
                     plugin = plugin,
@@ -198,7 +198,7 @@ fun CommunityPluginsScreen(
                     onOpenPlugin = { onOpenCommunityPlugin(plugin) },
                 )
             }
-            item { PluginSectionLabel("Top downloaded") }
+             item { PluginSectionLabel(stringResource(Res.string.plugins_top_downloaded)) }
             itemsIndexed(topDownloaded, key = { _, plugin -> "downloaded-${plugin.title}" }) { index, plugin ->
                 PluginCard(
                     plugin = plugin,
@@ -249,12 +249,12 @@ private fun PluginHero() {
             verticalArrangement = Arrangement.spacedBy(6.dp),
         ) {
             Text(
-                text = "Discover community-built automations",
+                 text = stringResource(Res.string.plugins_hero_title),
                 style = MaterialTheme.typography.titleLarge,
                 color = MaterialTheme.colorScheme.onPrimaryContainer,
             )
             Text(
-                text = "Find trending plugins, compare what users love, and install new workflows in seconds.",
+                 text = stringResource(Res.string.plugins_hero_body),
                 style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.onPrimaryContainer,
             )
@@ -317,7 +317,7 @@ private fun NativePluginCard(
                     IconButton(onClick = onOpenSettings) {
                         Icon(
                             imageVector = Icons.Outlined.Settings,
-                            contentDescription = "${plugin.title} settings",
+                             contentDescription = stringResource(Res.string.plugins_settings_content_description, plugin.title),
                         )
                     }
                 }
@@ -333,7 +333,7 @@ private fun PeriodFilter(
 ) {
     Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
         Text(
-            text = "Filter / sort",
+             text = stringResource(Res.string.plugins_filter_sort),
             style = MaterialTheme.typography.labelLarge,
             color = MaterialTheme.colorScheme.primary,
         )
@@ -345,7 +345,7 @@ private fun PeriodFilter(
                 FilterChip(
                     selected = window == selectedWindow,
                     onClick = { onWindowSelected(window) },
-                    label = { Text(window.label) },
+                     label = { Text(localizedPluginTimeWindow(window)) },
                 )
             }
         }
@@ -399,7 +399,7 @@ private fun PluginCard(
                 }
             }
             Text(
-                text = "by ${plugin.author}",
+                 text = stringResource(Res.string.plugins_by_author, plugin.author),
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
@@ -413,15 +413,19 @@ private fun PluginCard(
                 horizontalArrangement = Arrangement.SpaceBetween,
             ) {
                 Text(
-                    text = "${formatCount(plugin.downloads(window))} downloads",
+                     text = stringResource(Res.string.plugins_downloads, formatCount(plugin.downloads(window))),
                     style = MaterialTheme.typography.labelSmall,
                 )
                 Text(
-                    text = "${formatCount(plugin.votes(window))} votes",
+                     text = stringResource(Res.string.plugins_votes, formatCount(plugin.votes(window))),
                     style = MaterialTheme.typography.labelSmall,
                 )
                 Text(
-                    text = "${window.label.lowercase()} trend ${plugin.trend(window)}",
+                     text = stringResource(
+                         Res.string.plugins_trend,
+                         localizedPluginTimeWindow(window),
+                         plugin.trend(window),
+                     ),
                     style = MaterialTheme.typography.labelSmall,
                     color = MaterialTheme.colorScheme.primary,
                 )
@@ -444,7 +448,7 @@ private fun PluginCard(
                         onClick = onOpenPlugin,
                         modifier = Modifier.fillMaxWidth(),
                     ) {
-                        Text("Open in Tasker")
+                         Text(stringResource(Res.string.plugins_open_tasker))
                     }
                 }
                 !plugin.downloadUrl.isNullOrBlank() -> {
@@ -452,7 +456,7 @@ private fun PluginCard(
                         onClick = onOpenPlugin,
                         modifier = Modifier.fillMaxWidth(),
                     ) {
-                        Text("Download plugin")
+                         Text(stringResource(Res.string.plugins_download))
                     }
                 }
             }
@@ -460,12 +464,12 @@ private fun PluginCard(
     }
 }
 
-private val PluginTimeWindow.label: String
-    get() = when (this) {
-        PluginTimeWindow.ALL_TIME -> "All time"
-        PluginTimeWindow.WEEKLY -> "Weekly"
-        PluginTimeWindow.MONTHLY -> "Monthly"
-    }
+@Composable
+private fun localizedPluginTimeWindow(window: PluginTimeWindow): String = when (window) {
+    PluginTimeWindow.ALL_TIME -> stringResource(Res.string.plugins_all_time)
+    PluginTimeWindow.WEEKLY -> stringResource(Res.string.plugins_weekly)
+    PluginTimeWindow.MONTHLY -> stringResource(Res.string.plugins_monthly)
+}
 
 private fun formatCount(value: Int): String = when {
     value >= 1_000_000 -> {

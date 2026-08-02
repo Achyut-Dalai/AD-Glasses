@@ -48,8 +48,30 @@ import com.fersaiyan.cyanbridge.shared.appearance.AccentProfile
 import com.fersaiyan.cyanbridge.shared.appearance.AccentProfiles
 import com.fersaiyan.cyanbridge.shared.appearance.AppearanceSettings
 import com.fersaiyan.cyanbridge.shared.appearance.ThemeMode
+import com.fersaiyan.cyanbridge.shared.generated.resources.Res
+import com.fersaiyan.cyanbridge.shared.generated.resources.action_back
+import com.fersaiyan.cyanbridge.shared.generated.resources.appearance_accessibility
+import com.fersaiyan.cyanbridge.shared.generated.resources.appearance_accent_profile
+import com.fersaiyan.cyanbridge.shared.generated.resources.appearance_dynamic_color
+import com.fersaiyan.cyanbridge.shared.generated.resources.appearance_dynamic_color_description
+import com.fersaiyan.cyanbridge.shared.generated.resources.appearance_dynamic_color_requires
+import com.fersaiyan.cyanbridge.shared.generated.resources.appearance_high_contrast
+import com.fersaiyan.cyanbridge.shared.generated.resources.appearance_high_contrast_description
+import com.fersaiyan.cyanbridge.shared.generated.resources.appearance_live_preview
+import com.fersaiyan.cyanbridge.shared.generated.resources.appearance_palette_description
+import com.fersaiyan.cyanbridge.shared.generated.resources.appearance_preview_description
+import com.fersaiyan.cyanbridge.shared.generated.resources.appearance_primary
+import com.fersaiyan.cyanbridge.shared.generated.resources.appearance_reset
+import com.fersaiyan.cyanbridge.shared.generated.resources.appearance_secondary
+import com.fersaiyan.cyanbridge.shared.generated.resources.appearance_tertiary
+import com.fersaiyan.cyanbridge.shared.generated.resources.appearance_theme
+import com.fersaiyan.cyanbridge.shared.generated.resources.appearance_title
+import com.fersaiyan.cyanbridge.shared.ui.localizedAccentProfile
+import com.fersaiyan.cyanbridge.shared.ui.localizedThemeMode
+import org.jetbrains.compose.resources.ExperimentalResourceApi
+import org.jetbrains.compose.resources.stringResource
 
-@OptIn(ExperimentalMaterial3Api::class)
+@OptIn(ExperimentalMaterial3Api::class, ExperimentalResourceApi::class)
 @Composable
 fun AppearanceScreen(
     settings: AppearanceSettings,
@@ -62,12 +84,12 @@ fun AppearanceScreen(
         contentWindowInsets = WindowInsets.safeDrawing,
         topBar = {
             TopAppBar(
-                title = { Text("Appearance") },
+                title = { Text(stringResource(Res.string.appearance_title)) },
                 navigationIcon = {
                     IconButton(onClick = onBack) {
                         Icon(
                             imageVector = AppIcon.Back.imageVector(),
-                            contentDescription = "Back",
+                            contentDescription = stringResource(Res.string.action_back),
                         )
                     }
                 },
@@ -83,10 +105,10 @@ fun AppearanceScreen(
             verticalArrangement = Arrangement.spacedBy(16.dp),
         ) {
             item {
-                SettingsSection(title = "Theme") {
+                SettingsSection(title = stringResource(Res.string.appearance_theme)) {
                     ThemeMode.entries.forEach { mode ->
                         SelectionRow(
-                            label = mode.displayName,
+                            label = localizedThemeMode(mode),
                             selected = settings.themeMode == mode,
                             onClick = { onSettingsChange(settings.copy(themeMode = mode)) },
                         )
@@ -95,9 +117,9 @@ fun AppearanceScreen(
             }
 
             item {
-                SettingsSection(title = "Accent profile") {
+                SettingsSection(title = stringResource(Res.string.appearance_accent_profile)) {
                     Text(
-                        text = "Curated palettes keep backgrounds neutral and maintain readable contrast.",
+                        text = stringResource(Res.string.appearance_palette_description),
                         style = MaterialTheme.typography.bodyMedium,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                     )
@@ -121,20 +143,20 @@ fun AppearanceScreen(
             }
 
             item {
-                SettingsSection(title = "Accessibility") {
+                SettingsSection(title = stringResource(Res.string.appearance_accessibility)) {
                     SwitchRow(
-                        title = "High contrast",
-                        description = "Uses stronger text, surface, and control boundaries.",
+                        title = stringResource(Res.string.appearance_high_contrast),
+                        description = stringResource(Res.string.appearance_high_contrast_description),
                         checked = settings.highContrast,
                         onCheckedChange = { onSettingsChange(settings.copy(highContrast = it)) },
                     )
                     HorizontalDivider(Modifier.padding(vertical = 8.dp))
                     SwitchRow(
-                        title = "Use dynamic color",
+                        title = stringResource(Res.string.appearance_dynamic_color),
                         description = if (dynamicColorAvailable) {
-                            "Use colors derived from your system theme."
+                            stringResource(Res.string.appearance_dynamic_color_description)
                         } else {
-                            "Requires Android 12 or newer."
+                            stringResource(Res.string.appearance_dynamic_color_requires)
                         },
                         checked = settings.useDynamicColor && dynamicColorAvailable,
                         enabled = dynamicColorAvailable,
@@ -152,7 +174,7 @@ fun AppearanceScreen(
                     onClick = onReset,
                     modifier = Modifier.fillMaxWidth(),
                 ) {
-                    Text("Reset appearance")
+                    Text(stringResource(Res.string.appearance_reset))
                 }
             }
         }
@@ -205,6 +227,7 @@ private fun SelectionRow(
     }
 }
 
+@OptIn(ExperimentalResourceApi::class)
 @Composable
 private fun AccentRow(
     profile: AccentProfile,
@@ -227,7 +250,7 @@ private fun AccentRow(
                 .background(Color(profile.lightPrimaryArgb)),
         )
         Text(
-            text = profile.label,
+            text = localizedAccentProfile(profile),
             modifier = Modifier
                 .weight(1f)
                 .padding(horizontal = 12.dp),
@@ -276,6 +299,7 @@ private fun SwitchRow(
     }
 }
 
+@OptIn(ExperimentalResourceApi::class)
 @Composable
 private fun PreviewCard() {
     Card(
@@ -286,9 +310,9 @@ private fun PreviewCard() {
             modifier = Modifier.padding(16.dp),
             verticalArrangement = Arrangement.spacedBy(12.dp),
         ) {
-            Text("Live preview", style = MaterialTheme.typography.titleMedium)
+            Text(stringResource(Res.string.appearance_live_preview), style = MaterialTheme.typography.titleMedium)
             Text(
-                "Theme changes apply immediately to migrated Material 3 screens.",
+                stringResource(Res.string.appearance_preview_description),
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
             Row(
@@ -301,7 +325,7 @@ private fun PreviewCard() {
                     contentColor = MaterialTheme.colorScheme.onPrimary,
                     shape = MaterialTheme.shapes.small,
                 ) {
-                    Text("Primary", modifier = Modifier.padding(horizontal = 8.dp, vertical = 10.dp))
+                    Text(stringResource(Res.string.appearance_primary), modifier = Modifier.padding(horizontal = 8.dp, vertical = 10.dp))
                 }
                 Surface(
                     modifier = Modifier.weight(1f),
@@ -309,7 +333,7 @@ private fun PreviewCard() {
                     contentColor = MaterialTheme.colorScheme.onSecondaryContainer,
                     shape = MaterialTheme.shapes.small,
                 ) {
-                    Text("Secondary", modifier = Modifier.padding(horizontal = 8.dp, vertical = 10.dp))
+                    Text(stringResource(Res.string.appearance_secondary), modifier = Modifier.padding(horizontal = 8.dp, vertical = 10.dp))
                 }
                 Surface(
                     modifier = Modifier.weight(1f),
@@ -317,16 +341,9 @@ private fun PreviewCard() {
                     contentColor = MaterialTheme.colorScheme.onTertiaryContainer,
                     shape = MaterialTheme.shapes.small,
                 ) {
-                    Text("Tertiary", modifier = Modifier.padding(horizontal = 8.dp, vertical = 10.dp))
+                    Text(stringResource(Res.string.appearance_tertiary), modifier = Modifier.padding(horizontal = 8.dp, vertical = 10.dp))
                 }
             }
         }
     }
 }
-
-private val ThemeMode.displayName: String
-    get() = when (this) {
-        ThemeMode.SYSTEM -> "Follow system"
-        ThemeMode.LIGHT -> "Light"
-        ThemeMode.DARK -> "Dark"
-    }

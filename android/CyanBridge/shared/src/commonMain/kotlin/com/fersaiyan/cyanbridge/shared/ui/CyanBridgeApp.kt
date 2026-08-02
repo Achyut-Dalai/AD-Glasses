@@ -23,6 +23,8 @@ import com.fersaiyan.cyanbridge.shared.billing.unavailableProSubscriptionStatus
 import com.fersaiyan.cyanbridge.shared.glasses.GlassesDashboardAction
 import com.fersaiyan.cyanbridge.shared.glasses.GlassesDashboardUiState
 import com.fersaiyan.cyanbridge.shared.glasses.GlassesSyncFlow
+import com.fersaiyan.cyanbridge.shared.generated.resources.Res
+import com.fersaiyan.cyanbridge.shared.generated.resources.action_open
 import com.fersaiyan.cyanbridge.shared.navigation.AppDestination
 import com.fersaiyan.cyanbridge.shared.ui.appearance.AppearanceScreen
 import com.fersaiyan.cyanbridge.shared.ui.glasses.GlassesDashboardScreen
@@ -118,31 +120,15 @@ fun CyanBridgeApp(
                         onProSubscriptionAction = onProSubscriptionAction,
                     )
                 } else {
-                    ActivityLaunchPlaceholder(
-                        title = destination.title(),
-                        subtitle = destination.subtitle(),
-                        onOpen = { onNavigateToActivity(destination) },
-                    )
+                        ActivityLaunchPlaceholder(
+                            title = localizedDestinationLabel(destination),
+                            subtitle = localizedDestinationSubtitle(destination),
+                            onOpen = { onNavigateToActivity(destination) },
+                        )
                 }
             }
         }
     }
-}
-
-private fun AppDestination.title(): String = when (this) {
-    AppDestination.GLASSES -> "Glasses"
-    AppDestination.CHATS -> "Chats"
-    AppDestination.MEDIA -> "Media"
-    AppDestination.PLUGINS -> "Plugins"
-    AppDestination.SETTINGS -> "Settings"
-}
-
-private fun AppDestination.subtitle(): String = when (this) {
-    AppDestination.GLASSES -> "Connect and control your glasses."
-    AppDestination.CHATS -> "Start a conversation or select an existing chat."
-    AppDestination.MEDIA -> "Synced photos, videos, and recordings will appear here."
-    AppDestination.PLUGINS -> "Browse and configure CyanBridge plugins."
-    AppDestination.SETTINGS -> "Configure your CyanBridge experience."
 }
 
 @Composable
@@ -170,7 +156,7 @@ private fun ActivityLaunchPlaceholder(
         )
         Spacer(modifier = Modifier.height(24.dp))
         Button(onClick = onOpen) {
-            Text("Open")
+            Text(org.jetbrains.compose.resources.stringResource(Res.string.action_open))
         }
     }
 }

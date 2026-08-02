@@ -18,7 +18,6 @@ import com.fersaiyan.cyanbridge.shared.icons.AppIcon
 import com.fersaiyan.cyanbridge.shared.icons.imageVector
 import com.fersaiyan.cyanbridge.shared.navigation.AppDestination
 import com.fersaiyan.cyanbridge.shared.navigation.icon
-import com.fersaiyan.cyanbridge.shared.navigation.label
 
 @Composable
 fun CyanBridgeNavShell(
@@ -40,7 +39,7 @@ fun CyanBridgeNavShell(
                                 contentDescription = null,
                             )
                         },
-                        label = { Text(destination.label) },
+                        label = { Text(localizedDestinationLabel(destination)) },
                     )
                 }
             }

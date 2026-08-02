@@ -41,8 +41,11 @@ import androidx.compose.ui.unit.dp
 import com.fersaiyan.cyanbridge.shared.billing.BillingCatalog
 import com.fersaiyan.cyanbridge.shared.billing.BillingPlan
 import com.fersaiyan.cyanbridge.shared.billing.ProSubscriptionSettingsUiState
+import com.fersaiyan.cyanbridge.shared.generated.resources.*
+import org.jetbrains.compose.resources.ExperimentalResourceApi
+import org.jetbrains.compose.resources.stringResource
 
-@OptIn(ExperimentalMaterial3Api::class)
+@OptIn(ExperimentalMaterial3Api::class, ExperimentalResourceApi::class)
 @Composable
 fun ProSubscriptionSettingsScreen(
     state: ProSubscriptionSettingsUiState,
@@ -78,7 +81,7 @@ fun ProSubscriptionSettingsScreen(
 
     Scaffold(
         contentWindowInsets = WindowInsets.safeDrawing,
-        topBar = { TopAppBar(title = { Text("Pro settings") }) },
+         topBar = { TopAppBar(title = { Text(stringResource(Res.string.pro_settings_title)) }) },
     ) { innerPadding ->
         LazyColumn(
             modifier = Modifier
@@ -89,42 +92,42 @@ fun ProSubscriptionSettingsScreen(
             verticalArrangement = Arrangement.spacedBy(12.dp),
         ) {
             item {
-                ProSettingsCard("Plan") {
+                 ProSettingsCard(stringResource(Res.string.pro_plan)) {
                     Text(state.planStatus)
                     Text(state.plan, style = MaterialTheme.typography.bodySmall)
                     Text(state.expires, style = MaterialTheme.typography.bodySmall)
                     Text(state.verified, style = MaterialTheme.typography.bodySmall)
                     ActionButtons(
-                        primaryLabel = "Refresh",
+                         primaryLabel = stringResource(Res.string.pro_refresh),
                         onPrimary = onRefreshPlan,
-                        secondaryLabel = "Change plan",
+                         secondaryLabel = stringResource(Res.string.pro_change_plan),
                         onSecondary = { showChangePlanDialog = true },
                     )
                     OutlinedButton(
                         onClick = { showCancelDialog = true },
                         modifier = Modifier.fillMaxWidth(),
                     ) {
-                        Text("Cancel subscription")
+                         Text(stringResource(Res.string.pro_cancel_subscription))
                     }
                 }
             }
             item {
-                ProSettingsCard("Account") {
+                 ProSettingsCard(stringResource(Res.string.pro_account)) {
                     Text(state.accountEmail, style = MaterialTheme.typography.bodySmall)
                     Text(state.accountToken, style = MaterialTheme.typography.bodySmall)
                     Text(state.accountSubscription, style = MaterialTheme.typography.bodySmall)
-                    OutlinedButton(onClick = onRefreshAccount, modifier = Modifier.fillMaxWidth()) { Text("Refresh account") }
+                     OutlinedButton(onClick = onRefreshAccount, modifier = Modifier.fillMaxWidth()) { Text(stringResource(Res.string.pro_refresh_account)) }
                 }
             }
             item {
-                ProSettingsCard("AI model routing") {
-                    ModelChoice("Requests", state.requestsModel, state.modelOptions, onRequestsModelChange)
-                    ModelChoice("Questions", state.questionsModel, state.modelOptions, onQuestionsModelChange)
-                    ModelChoice("Tasks", state.tasksModel, state.modelOptions, onTasksModelChange)
+                 ProSettingsCard(stringResource(Res.string.pro_model_routing)) {
+                     ModelChoice(stringResource(Res.string.pro_requests), state.requestsModel, state.modelOptions, onRequestsModelChange)
+                     ModelChoice(stringResource(Res.string.pro_questions), state.questionsModel, state.modelOptions, onQuestionsModelChange)
+                     ModelChoice(stringResource(Res.string.pro_tasks), state.tasksModel, state.modelOptions, onTasksModelChange)
                     ActionButtons(
-                        primaryLabel = "Refresh models",
+                         primaryLabel = stringResource(Res.string.pro_refresh_models),
                         onPrimary = onRefreshModels,
-                        secondaryLabel = "Refresh quota",
+                         secondaryLabel = stringResource(Res.string.pro_refresh_quota),
                         onSecondary = onRefreshQuota,
                     )
                     Text(state.quotaStatus, style = MaterialTheme.typography.bodySmall)
@@ -140,50 +143,58 @@ fun ProSubscriptionSettingsScreen(
                 }
             }
             item {
-                ProSettingsCard("Preferences") {
-                    ToggleSetting("Cloud sync", state.cloudSync, onCloudSyncChange)
-                    ToggleSetting("Priority support", state.prioritySupport, onPrioritySupportChange)
-                    ToggleSetting("Plugin rewards", state.pluginRewards, onPluginRewardsChange)
-                    ToggleSetting("Early device access", state.earlyAccessDevices, onEarlyAccessDevicesChange)
+                 ProSettingsCard(stringResource(Res.string.pro_preferences)) {
+                     ToggleSetting(stringResource(Res.string.pro_cloud_sync), state.cloudSync, onCloudSyncChange)
+                     ToggleSetting(stringResource(Res.string.pro_priority_support), state.prioritySupport, onPrioritySupportChange)
+                     ToggleSetting(stringResource(Res.string.pro_plugin_rewards), state.pluginRewards, onPluginRewardsChange)
+                     ToggleSetting(stringResource(Res.string.pro_early_device_access), state.earlyAccessDevices, onEarlyAccessDevicesChange)
                     ChoiceChips(
-                        title = "Backup frequency",
-                        labels = listOf("1 hour", "6 hours", "Daily"),
+                         title = stringResource(Res.string.pro_backup_frequency),
+                         labels = listOf(
+                             stringResource(Res.string.pro_one_hour),
+                             stringResource(Res.string.pro_six_hours),
+                             stringResource(Res.string.pro_daily),
+                         ),
                         selectedIndex = state.backupFrequencyIndex,
                         onSelected = onBackupFrequencyChange,
                     )
                     ChoiceChips(
-                        title = "Support channel",
-                        labels = listOf("In-app", "Email", "Discord"),
+                         title = stringResource(Res.string.pro_support_channel),
+                         labels = listOf(
+                             stringResource(Res.string.pro_in_app),
+                             stringResource(Res.string.pro_email),
+                             stringResource(Res.string.pro_discord),
+                         ),
                         selectedIndex = state.supportChannelIndex,
                         onSelected = onSupportChannelChange,
                     )
                 }
             }
             item {
-                ProSettingsCard("Beta cloud") {
+                 ProSettingsCard(stringResource(Res.string.pro_beta_cloud)) {
                     Text(
-                        state.betaStatus.ifBlank { "Register interest for beta cloud features." },
+                         state.betaStatus.ifBlank { stringResource(Res.string.pro_beta_interest) },
                         style = MaterialTheme.typography.bodySmall,
                     )
-                    OutlinedButton(onClick = onJoinBeta, modifier = Modifier.fillMaxWidth()) { Text("Sign up for beta cloud") }
+                     OutlinedButton(onClick = onJoinBeta, modifier = Modifier.fillMaxWidth()) { Text(stringResource(Res.string.pro_signup_beta)) }
                 }
             }
             item {
-                ProSettingsCard("Gemini Live (voice and vision, preview)") {
+                 ProSettingsCard(stringResource(Res.string.pro_gemini_live_title)) {
                     Text(
-                        "Direct Google Gemini Live connection. Requires an active paid Pro plan and network access. Live audio and deliberate still images are sent to Google.",
+                         stringResource(Res.string.pro_gemini_live_description),
                         style = MaterialTheme.typography.bodySmall,
                     )
                     OutlinedButton(onClick = onStartGeminiLive, modifier = Modifier.fillMaxWidth()) {
-                        Text("Open Gemini Live preview")
+                         Text(stringResource(Res.string.pro_open_gemini_live))
                     }
                 }
             }
             item {
                 Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End) {
-                    OutlinedButton(onClick = onBack) { Text("Back") }
+                     OutlinedButton(onClick = onBack) { Text(stringResource(Res.string.pro_back)) }
                     Spacer(Modifier.width(8.dp))
-                    FilledTonalButton(onClick = onSave) { Text("Save") }
+                     FilledTonalButton(onClick = onSave) { Text(stringResource(Res.string.pro_save)) }
                 }
             }
         }
@@ -192,7 +203,7 @@ fun ProSubscriptionSettingsScreen(
     if (showChangePlanDialog) {
         AlertDialog(
             onDismissRequest = { showChangePlanDialog = false },
-            title = { Text("Change plan") },
+             title = { Text(stringResource(Res.string.pro_change_plan)) },
             text = {
                 Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
                     BillingCatalog.plans.forEach { plan ->
@@ -210,10 +221,10 @@ fun ProSubscriptionSettingsScreen(
                         showChangePlanDialog = false
                         onChangePlan(selectedPlanId)
                     },
-                ) { Text("Continue") }
+                 ) { Text(stringResource(Res.string.onboarding_continue)) }
             },
             dismissButton = {
-                TextButton(onClick = { showChangePlanDialog = false }) { Text("Cancel") }
+                 TextButton(onClick = { showChangePlanDialog = false }) { Text(stringResource(Res.string.action_cancel)) }
             },
         )
     }
@@ -222,13 +233,13 @@ fun ProSubscriptionSettingsScreen(
         val isFreeTrial = state.plan.removePrefix("Plan: ").trim() == "free_trial"
         AlertDialog(
             onDismissRequest = { showCancelDialog = false },
-            title = { Text("Cancel subscription?") },
+             title = { Text(stringResource(Res.string.pro_cancel_question)) },
             text = {
                 Text(
                     if (isFreeTrial) {
-                        "Are you sure you want to end your free trial now?"
+                         stringResource(Res.string.pro_cancel_trial_question)
                     } else {
-                        "You will keep access until the end of your current billing period."
+                        stringResource(Res.string.pro_cancel_period)
                     },
                 )
             },
@@ -238,15 +249,16 @@ fun ProSubscriptionSettingsScreen(
                         showCancelDialog = false
                         onCancelSubscription()
                     },
-                ) { Text("Yes, cancel") }
+                 ) { Text(stringResource(Res.string.pro_yes_cancel)) }
             },
             dismissButton = {
-                TextButton(onClick = { showCancelDialog = false }) { Text("Keep subscription") }
+                 TextButton(onClick = { showCancelDialog = false }) { Text(stringResource(Res.string.pro_keep_subscription)) }
             },
         )
     }
 }
 
+@OptIn(ExperimentalResourceApi::class)
 @Composable
 private fun PlanChoice(
     plan: BillingPlan,
@@ -264,7 +276,7 @@ private fun PlanChoice(
         Column(modifier = Modifier.padding(start = 8.dp)) {
             Text(plan.name, style = MaterialTheme.typography.titleSmall)
             Text(
-                "Localized price and renewal terms are shown in checkout.",
+                stringResource(Res.string.pro_plan_localized_terms),
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
@@ -321,6 +333,7 @@ private fun ChoiceChips(
     }
 }
 
+@OptIn(ExperimentalResourceApi::class)
 @Composable
 private fun ModelChoice(
     label: String,
@@ -330,12 +343,12 @@ private fun ModelChoice(
 ) {
     var showChoices by remember { mutableStateOf(false) }
     TextButton(onClick = { showChoices = true }, modifier = Modifier.fillMaxWidth()) {
-        Text("$label: ${value.ifBlank { "Select model" }}")
+         Text(stringResource(Res.string.pro_model_title, label) + ": " + value.ifBlank { stringResource(Res.string.pro_select_model) })
     }
     if (showChoices) {
         AlertDialog(
             onDismissRequest = { showChoices = false },
-            title = { Text("$label model") },
+             title = { Text(stringResource(Res.string.pro_model_title, label)) },
             text = {
                 LazyColumn {
                     options.forEach { option ->
@@ -351,7 +364,7 @@ private fun ModelChoice(
                     }
                 }
             },
-            confirmButton = { TextButton(onClick = { showChoices = false }) { Text("Close") } },
+             confirmButton = { TextButton(onClick = { showChoices = false }) { Text(stringResource(Res.string.pro_close)) } },
         )
     }
 }

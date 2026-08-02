@@ -49,6 +49,9 @@ import com.fersaiyan.cyanbridge.shared.ui.settings.SettingsScreenActions
 import com.fersaiyan.cyanbridge.shared.ui.settings.SettingsUiState
 import com.fersaiyan.cyanbridge.shared.ui.settings.SettingsScreen
 import kotlinx.coroutines.launch
+import com.fersaiyan.cyanbridge.shared.generated.resources.*
+import org.jetbrains.compose.resources.ExperimentalResourceApi
+import org.jetbrains.compose.resources.stringResource
 
 /**
  * Shared top-level destinations used by the iOS KMP host.
@@ -91,9 +94,12 @@ fun SharedDestinationScreen(
     }
 }
 
+@OptIn(ExperimentalResourceApi::class)
 @Composable
 private fun SharedChatsDestination(onDestinationSelected: (AppDestination) -> Unit) {
     val scope = rememberCoroutineScope()
+    val newChatTitle = stringResource(Res.string.action_new_chat)
+    val formatTimestamp = sharedTimestampFormatter()
     var threads by remember { mutableStateOf<List<ChatThreadSummary>>(emptyList()) }
     var pendingDelete by remember { mutableStateOf<ChatThreadSummary?>(null) }
     var selectedThreadId by remember { mutableStateOf<String?>(null) }
@@ -123,7 +129,7 @@ private fun SharedChatsDestination(onDestinationSelected: (AppDestination) -> Un
     ChatListScreen(
         threads = threads,
         pendingDelete = pendingDelete,
-        formatTimestamp = ::formatSharedTimestamp,
+         formatTimestamp = formatTimestamp,
         onOpenThread = { selectedThreadId = it.id },
         onRequestDelete = { pendingDelete = it },
         onConfirmDelete = {
@@ -147,7 +153,7 @@ private fun SharedChatsDestination(onDestinationSelected: (AppDestination) -> Un
                     CyanBridgeServices.chatRepository.insertChat(
                         ChatEntity(
                             id = id,
-                            title = "New chat",
+                             title = newChatTitle,
                             createdAt = now,
                             updatedAt = now,
                         ),
@@ -162,6 +168,7 @@ private fun SharedChatsDestination(onDestinationSelected: (AppDestination) -> Un
     )
 }
 
+@OptIn(ExperimentalResourceApi::class)
 @Composable
 private fun SharedChatThreadDestination(
     threadSummary: ChatThreadSummary,
@@ -173,6 +180,7 @@ private fun SharedChatThreadDestination(
     var composerText by remember(threadSummary.id) { mutableStateOf("") }
     var isThinking by remember(threadSummary.id) { mutableStateOf(false) }
     var statusText by remember(threadSummary.id) { mutableStateOf<String?>(null) }
+    val chatRequestFailed = stringResource(Res.string.chat_request_failed)
 
     fun reloadMessages() {
         scope.launch {
@@ -248,7 +256,7 @@ private fun SharedChatThreadDestination(
                             ),
                         )
                     }.onFailure { error ->
-                        statusText = error.message ?: "Chat request failed"
+                         statusText = error.message ?: chatRequestFailed
                     }
                     reloadMessages()
                     isThinking = false
@@ -264,9 +272,11 @@ private fun SharedChatThreadDestination(
     )
 }
 
+@OptIn(ExperimentalResourceApi::class)
 @Composable
 private fun SharedMediaDestination(onDestinationSelected: (AppDestination) -> Unit) {
     val scope = rememberCoroutineScope()
+    val formatTimestamp = sharedTimestampFormatter()
     var mediaItems by remember { mutableStateOf<List<SyncedMediaItem>>(emptyList()) }
     var showGallery by remember { mutableStateOf(false) }
 
@@ -291,7 +301,7 @@ private fun SharedMediaDestination(onDestinationSelected: (AppDestination) -> Un
         SyncedMediaGalleryScreen(
             mediaItems = mediaItems,
             isLoading = false,
-            folderHint = "Files downloaded by CyanBridge",
+             folderHint = stringResource(Res.string.media_folder_hint),
             loadThumbnail = { _: String -> null },
             onNavigateBack = { showGallery = false },
             onRefresh = ::refresh,
@@ -311,7 +321,7 @@ private fun SharedMediaDestination(onDestinationSelected: (AppDestination) -> Un
             selectedEngine = TranscriptionEngine.MOONSHINE,
             transcriptionProgress = null,
             transcriptDialog = null,
-            formatTimestamp = ::formatSharedTimestamp,
+             formatTimestamp = formatTimestamp,
             loadThumbnail = { _: String -> null },
             onOpenSyncedMedia = { showGallery = true },
             onOpenSyncedMediaItem = { showGallery = true },
@@ -328,41 +338,42 @@ private fun SharedMediaDestination(onDestinationSelected: (AppDestination) -> Un
     }
 }
 
+@OptIn(ExperimentalResourceApi::class)
 @Composable
 private fun SharedPluginsDestination(onDestinationSelected: (AppDestination) -> Unit) {
     val nativePlugins = listOf(
         NativePluginCardData(
             id = NativePluginIds.LOCAL_AGENT,
-            title = "Local Agent",
-            description = "Phone accessibility automation requires the Android Local Agent runtime.",
-            badge = "Android only",
+             title = stringResource(Res.string.native_local_agent_title),
+             description = stringResource(Res.string.native_local_agent_description),
+             badge = stringResource(Res.string.native_android_only),
             enabled = false,
             hasSettings = false,
             isAvailable = false,
         ),
         NativePluginCardData(
             id = NativePluginIds.AUTO_DIARY,
-            title = "AutoDiary",
-            description = "Screen capture and daily-memory automation is not available on iOS yet.",
-            badge = "iOS pending",
+             title = stringResource(Res.string.native_auto_diary_title),
+             description = stringResource(Res.string.native_auto_diary_description),
+             badge = stringResource(Res.string.native_ios_pending),
             enabled = false,
             hasSettings = false,
             isAvailable = false,
         ),
         NativePluginCardData(
             id = NativePluginIds.AUTO_AUDIO,
-            title = "Auto Audio",
-            description = "Background glasses audio capture requires an iOS audio/BLE adapter.",
-            badge = "iOS pending",
+            title = stringResource(Res.string.native_auto_audio_title),
+            description = stringResource(Res.string.native_auto_audio_description),
+            badge = stringResource(Res.string.native_ios_pending),
             enabled = false,
             hasSettings = false,
             isAvailable = false,
         ),
         NativePluginCardData(
             id = NativePluginIds.VISUAL_DIARY,
-            title = "Visual Diary",
-            description = "Periodic visual notes require iOS media transfer and background scheduling.",
-            badge = "iOS pending",
+            title = stringResource(Res.string.native_visual_diary_title),
+            description = stringResource(Res.string.native_visual_diary_description),
+            badge = stringResource(Res.string.native_ios_pending),
             enabled = false,
             hasSettings = false,
             isAvailable = false,
@@ -420,6 +431,7 @@ private fun SharedSettingsDestination(
     )
 }
 
+@OptIn(ExperimentalResourceApi::class)
 @Composable
 private fun SharedProSubscriptionDestination(
     initialState: ProSubscriptionUiState,
@@ -427,6 +439,7 @@ private fun SharedProSubscriptionDestination(
     onBack: () -> Unit,
 ) {
     var state by remember(initialState) { mutableStateOf(initialState) }
+    val unavailableSubscriptionStatus = stringResource(Res.string.shared_chat_unavailable)
 
     fun reportUnavailableAction(action: ProSubscriptionAction) {
         state = state.copy(
@@ -444,7 +457,7 @@ private fun SharedProSubscriptionDestination(
         onDonate = { reportUnavailableAction(ProSubscriptionAction.DONATE) },
         onCancelSubscription = {
             state = state.copy(
-                status = "Subscription management is unavailable on this host. No entitlement was changed.",
+                 status = unavailableSubscriptionStatus,
             )
         },
         onBack = onBack,
@@ -537,14 +550,34 @@ private fun ChatMessageEntity.toSharedMessage(): ChatMessage = ChatMessage(
     createdAt = timestamp,
 )
 
-private fun formatSharedTimestamp(timestamp: Long): String {
-    if (timestamp <= 0L) return "Unknown time"
+@OptIn(ExperimentalResourceApi::class)
+@Composable
+private fun sharedTimestampFormatter(): (Long) -> String {
+    val unknown = stringResource(Res.string.time_unknown)
+    val justNow = stringResource(Res.string.time_just_now)
+    val minutesAgo = stringResource(Res.string.time_minutes_ago)
+    val hoursAgo = stringResource(Res.string.time_hours_ago)
+    val daysAgo = stringResource(Res.string.time_days_ago)
+    return { timestamp ->
+        formatSharedTimestamp(timestamp, unknown, justNow, minutesAgo, hoursAgo, daysAgo)
+    }
+}
+
+private fun formatSharedTimestamp(
+    timestamp: Long,
+    unknown: String,
+    justNow: String,
+    minutesAgo: String,
+    hoursAgo: String,
+    daysAgo: String,
+): String {
+    if (timestamp <= 0L) return unknown
     val ageSeconds = ((platformCurrentTimeMillis() - timestamp) / 1000L).coerceAtLeast(0L)
     return when {
-        ageSeconds < 60L -> "Just now"
-        ageSeconds < 60L * 60L -> "${ageSeconds / 60L}m ago"
-        ageSeconds < 24L * 60L * 60L -> "${ageSeconds / (60L * 60L)}h ago"
-        else -> "${ageSeconds / (24L * 60L * 60L)}d ago"
+        ageSeconds < 60L -> justNow
+        ageSeconds < 60L * 60L -> minutesAgo.replace("%1\$d", (ageSeconds / 60L).toString())
+        ageSeconds < 24L * 60L * 60L -> hoursAgo.replace("%1\$d", (ageSeconds / (60L * 60L)).toString())
+        else -> daysAgo.replace("%1\$d", (ageSeconds / (24L * 60L * 60L)).toString())
     }
 }
 

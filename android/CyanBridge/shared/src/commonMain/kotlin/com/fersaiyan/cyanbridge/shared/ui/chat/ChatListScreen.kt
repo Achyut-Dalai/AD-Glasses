@@ -38,9 +38,23 @@ import com.fersaiyan.cyanbridge.shared.icons.AppIcon
 import com.fersaiyan.cyanbridge.shared.icons.imageVector
 import com.fersaiyan.cyanbridge.shared.navigation.AppDestination
 import com.fersaiyan.cyanbridge.shared.navigation.icon
-import com.fersaiyan.cyanbridge.shared.navigation.label
+import com.fersaiyan.cyanbridge.shared.generated.resources.Res
+import com.fersaiyan.cyanbridge.shared.generated.resources.action_cancel
+import com.fersaiyan.cyanbridge.shared.generated.resources.action_delete
+import com.fersaiyan.cyanbridge.shared.generated.resources.action_new_chat
+import com.fersaiyan.cyanbridge.shared.generated.resources.chat_appearance
+import com.fersaiyan.cyanbridge.shared.generated.resources.chat_delete_content_description
+import com.fersaiyan.cyanbridge.shared.generated.resources.chat_delete_message
+import com.fersaiyan.cyanbridge.shared.generated.resources.chat_delete_title
+import com.fersaiyan.cyanbridge.shared.generated.resources.chat_no_chats
+import com.fersaiyan.cyanbridge.shared.generated.resources.chat_recent_conversations
+import com.fersaiyan.cyanbridge.shared.generated.resources.chat_start_with_add
+import com.fersaiyan.cyanbridge.shared.generated.resources.nav_chats
+import com.fersaiyan.cyanbridge.shared.ui.localizedDestinationLabel
+import org.jetbrains.compose.resources.ExperimentalResourceApi
+import org.jetbrains.compose.resources.stringResource
 
-@OptIn(ExperimentalMaterial3Api::class)
+@OptIn(ExperimentalMaterial3Api::class, ExperimentalResourceApi::class)
 @Composable
 fun ChatListScreen(
     threads: List<ChatThreadSummary>,
@@ -58,12 +72,12 @@ fun ChatListScreen(
         contentWindowInsets = WindowInsets.safeDrawing,
         topBar = {
             TopAppBar(
-                title = { Text("Chats") },
+                 title = { Text(stringResource(Res.string.nav_chats)) },
                 actions = {
                     IconButton(onClick = onChatAppearance) {
                         Icon(
                             imageVector = AppIcon.Appearance.imageVector(),
-                            contentDescription = "Chat appearance",
+                             contentDescription = stringResource(Res.string.chat_appearance),
                         )
                     }
                 },
@@ -81,7 +95,7 @@ fun ChatListScreen(
                                 contentDescription = null,
                             )
                         },
-                        label = { Text(destination.label) },
+                         label = { Text(localizedDestinationLabel(destination)) },
                     )
                 }
             }
@@ -90,7 +104,7 @@ fun ChatListScreen(
             FloatingActionButton(onClick = onNewChat) {
                 Icon(
                     imageVector = AppIcon.Add.imageVector(),
-                    contentDescription = "New chat",
+                     contentDescription = stringResource(Res.string.action_new_chat),
                 )
             }
         },
@@ -112,12 +126,12 @@ fun ChatListScreen(
                     tint = MaterialTheme.colorScheme.primary,
                 )
                 Text(
-                    text = "No chats yet",
+                     text = stringResource(Res.string.chat_no_chats),
                     modifier = Modifier.padding(top = 16.dp),
                     style = MaterialTheme.typography.titleLarge,
                 )
                 Text(
-                    text = "Start a conversation with the add button.",
+                     text = stringResource(Res.string.chat_start_with_add),
                     modifier = Modifier.padding(top = 8.dp),
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
@@ -133,7 +147,7 @@ fun ChatListScreen(
             ) {
                 item {
                     Text(
-                        text = "Recent conversations",
+                         text = stringResource(Res.string.chat_recent_conversations),
                         style = MaterialTheme.typography.labelLarge,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                     )
@@ -153,13 +167,13 @@ fun ChatListScreen(
     if (pendingDelete != null) {
         AlertDialog(
             onDismissRequest = onDismissDelete,
-            title = { Text("Delete chat?") },
-            text = { Text("Delete \"${pendingDelete.title}\"? This cannot be undone.") },
+             title = { Text(stringResource(Res.string.chat_delete_title)) },
+             text = { Text(stringResource(Res.string.chat_delete_message, pendingDelete.title)) },
             confirmButton = {
-                TextButton(onClick = onConfirmDelete) { Text("Delete") }
+                 TextButton(onClick = onConfirmDelete) { Text(stringResource(Res.string.action_delete)) }
             },
             dismissButton = {
-                TextButton(onClick = onDismissDelete) { Text("Cancel") }
+                 TextButton(onClick = onDismissDelete) { Text(stringResource(Res.string.action_cancel)) }
             },
         )
     }
@@ -200,7 +214,7 @@ private fun ThreadCard(
             IconButton(onClick = onDelete) {
                 Icon(
                     imageVector = AppIcon.Delete.imageVector(),
-                    contentDescription = "Delete ${thread.title}",
+                     contentDescription = stringResource(Res.string.chat_delete_content_description, thread.title),
                 )
             }
         }

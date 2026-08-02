@@ -14,8 +14,16 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.unit.dp
 import com.fersaiyan.cyanbridge.shared.glasses.GlassesSyncFlow
+import com.fersaiyan.cyanbridge.shared.ui.localizedSyncFlowDescription
+import com.fersaiyan.cyanbridge.shared.ui.localizedSyncFlowLabel
+import com.fersaiyan.cyanbridge.shared.generated.resources.Res
+import com.fersaiyan.cyanbridge.shared.generated.resources.action_cancel
+import com.fersaiyan.cyanbridge.shared.generated.resources.sync_flow_title
+import org.jetbrains.compose.resources.ExperimentalResourceApi
+import org.jetbrains.compose.resources.stringResource
 
 /** Compose-owned picker for the existing Android media-sync handlers. */
+@OptIn(ExperimentalResourceApi::class)
 @Composable
 fun GlassesSyncFlowPickerDialog(
     onDismissRequest: () -> Unit,
@@ -23,7 +31,7 @@ fun GlassesSyncFlowPickerDialog(
 ) {
     AlertDialog(
         onDismissRequest = onDismissRequest,
-        title = { Text("Choose sync flow") },
+        title = { Text(stringResource(Res.string.sync_flow_title)) },
         text = {
             Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                 GlassesSyncFlow.entries.forEach { flow ->
@@ -38,9 +46,9 @@ fun GlassesSyncFlowPickerDialog(
                                 .fillMaxWidth()
                                 .padding(vertical = 4.dp),
                         ) {
-                            Text(flow.label, style = MaterialTheme.typography.labelLarge)
+                            Text(localizedSyncFlowLabel(flow), style = MaterialTheme.typography.labelLarge)
                             Text(
-                                text = flow.description,
+                                text = localizedSyncFlowDescription(flow),
                                 style = MaterialTheme.typography.bodySmall,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                             )
@@ -52,7 +60,7 @@ fun GlassesSyncFlowPickerDialog(
         confirmButton = {},
         dismissButton = {
             TextButton(onClick = onDismissRequest) {
-                Text("Cancel")
+                Text(stringResource(Res.string.action_cancel))
             }
         },
     )

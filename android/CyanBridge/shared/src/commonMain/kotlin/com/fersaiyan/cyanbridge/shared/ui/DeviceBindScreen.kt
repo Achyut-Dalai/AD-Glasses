@@ -136,7 +136,7 @@ fun DeviceBindScreen(
                                 Text(
                                     text = stringResource(
                                         Res.string.device_bind_detected,
-                                        device.effectiveSelectedClass().displayName(),
+                                        localizedDeviceClass(device.effectiveSelectedClass()),
                                     ),
                                     style = MaterialTheme.typography.bodySmall,
                                     color = MaterialTheme.colorScheme.primary,
@@ -166,7 +166,7 @@ fun DeviceBindScreen(
                         FilterChip(
                             selected = selectedClass == type,
                             onClick = { onSelectedClassChange(type) },
-                            label = { Text(type.displayName()) },
+                            label = { Text(localizedDeviceClass(type)) },
                             modifier = Modifier.fillMaxWidth(),
                         )
                     }

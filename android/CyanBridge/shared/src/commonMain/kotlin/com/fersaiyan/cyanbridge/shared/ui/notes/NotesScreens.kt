@@ -40,8 +40,11 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.fersaiyan.cyanbridge.shared.notes.NoteSummary
+import com.fersaiyan.cyanbridge.shared.generated.resources.*
+import org.jetbrains.compose.resources.ExperimentalResourceApi
+import org.jetbrains.compose.resources.stringResource
 
-@OptIn(ExperimentalMaterial3Api::class)
+@OptIn(ExperimentalMaterial3Api::class, ExperimentalResourceApi::class)
 @Composable
 fun NotesListScreen(
     notes: List<NoteSummary>,
@@ -57,17 +60,17 @@ fun NotesListScreen(
         contentWindowInsets = WindowInsets.safeDrawing,
         topBar = {
             TopAppBar(
-                title = { Text("Notes") },
+                 title = { Text(stringResource(Res.string.local_agent_notes)) },
                 navigationIcon = {
                     IconButton(onClick = onBack) {
-                        Icon(Icons.AutoMirrored.Outlined.ArrowBack, contentDescription = "Back")
+                        Icon(Icons.AutoMirrored.Outlined.ArrowBack, contentDescription = stringResource(Res.string.action_back))
                     }
                 },
             )
         },
         floatingActionButton = {
             FloatingActionButton(onClick = onShowCreateDialog) {
-                Icon(Icons.Outlined.Add, contentDescription = "New note")
+                     Icon(Icons.Outlined.Add, contentDescription = stringResource(Res.string.local_agent_new_note))
             }
         },
     ) { innerPadding ->
@@ -81,9 +84,9 @@ fun NotesListScreen(
                 horizontalAlignment = Alignment.CenterHorizontally,
                 verticalArrangement = Arrangement.Center,
             ) {
-                Text("No notes yet", style = MaterialTheme.typography.titleMedium)
+                 Text(stringResource(Res.string.local_agent_no_notes), style = MaterialTheme.typography.titleMedium)
                 Text(
-                    text = "Create a note from a transcript to keep a concise summary.",
+                     text = stringResource(Res.string.local_agent_no_notes_description),
                     style = MaterialTheme.typography.bodyMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
@@ -145,7 +148,7 @@ fun NoteDetailScreen(
                 title = { Text(title) },
                 navigationIcon = {
                     IconButton(onClick = onBack) {
-                        Icon(Icons.AutoMirrored.Outlined.ArrowBack, contentDescription = "Back")
+                 Icon(Icons.AutoMirrored.Outlined.ArrowBack, contentDescription = stringResource(Res.string.action_back))
                     }
                 },
             )
@@ -165,9 +168,9 @@ fun NoteDetailScreen(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.End,
             ) {
-                TextButton(onClick = onCopy) { Text("Copy") }
+                 TextButton(onClick = onCopy) { Text(stringResource(Res.string.local_agent_copy)) }
                 Spacer(Modifier.width(8.dp))
-                TextButton(onClick = onShare) { Text("Share") }
+                 TextButton(onClick = onShare) { Text(stringResource(Res.string.action_share)) }
             }
         }
     }
@@ -182,30 +185,30 @@ private fun CreateNoteDialog(
     var transcript by remember { mutableStateOf("") }
     AlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text("New note from transcript") },
+         title = { Text(stringResource(Res.string.local_agent_new_note_from_transcript)) },
         text = {
             Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
                 OutlinedTextField(
                     value = title,
                     onValueChange = { title = it },
-                    label = { Text("Title (optional)") },
+                     label = { Text(stringResource(Res.string.local_agent_title_optional)) },
                     modifier = Modifier.fillMaxWidth(),
                     singleLine = true,
                 )
                 OutlinedTextField(
                     value = transcript,
                     onValueChange = { transcript = it },
-                    label = { Text("Paste transcript") },
+                     label = { Text(stringResource(Res.string.local_agent_paste_transcript)) },
                     modifier = Modifier.fillMaxWidth(),
                     minLines = 5,
                 )
             }
         },
         confirmButton = {
-            TextButton(onClick = { onCreate(title, transcript) }) { Text("Create") }
+             TextButton(onClick = { onCreate(title, transcript) }) { Text(stringResource(Res.string.local_agent_create)) }
         },
         dismissButton = {
-            TextButton(onClick = onDismiss) { Text("Cancel") }
+             TextButton(onClick = onDismiss) { Text(stringResource(Res.string.action_cancel)) }
         },
     )
 }

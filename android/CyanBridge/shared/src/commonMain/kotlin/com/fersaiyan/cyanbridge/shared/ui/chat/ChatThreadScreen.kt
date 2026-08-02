@@ -66,14 +66,32 @@ import com.fersaiyan.cyanbridge.shared.icons.AppIcon
 import com.fersaiyan.cyanbridge.shared.navigation.AppDestination
 import com.fersaiyan.cyanbridge.shared.icons.imageVector
 import com.fersaiyan.cyanbridge.shared.navigation.icon
-import com.fersaiyan.cyanbridge.shared.navigation.label
+import com.fersaiyan.cyanbridge.shared.generated.resources.Res
+import com.fersaiyan.cyanbridge.shared.generated.resources.action_new_chat
+import com.fersaiyan.cyanbridge.shared.generated.resources.chat_appearance
+import com.fersaiyan.cyanbridge.shared.generated.resources.chat_attach_image
+import com.fersaiyan.cyanbridge.shared.generated.resources.chat_clear_attachments
+import com.fersaiyan.cyanbridge.shared.generated.resources.chat_configure_local_model
+import com.fersaiyan.cyanbridge.shared.generated.resources.chat_empty_body
+import com.fersaiyan.cyanbridge.shared.generated.resources.chat_empty_title
+import com.fersaiyan.cyanbridge.shared.generated.resources.chat_local_model_required
+import com.fersaiyan.cyanbridge.shared.generated.resources.chat_list
+import com.fersaiyan.cyanbridge.shared.generated.resources.chat_message
+import com.fersaiyan.cyanbridge.shared.generated.resources.chat_record_audio
+import com.fersaiyan.cyanbridge.shared.generated.resources.chat_stop_audio_recording
+import com.fersaiyan.cyanbridge.shared.generated.resources.chat_stop_generation
+import com.fersaiyan.cyanbridge.shared.generated.resources.chat_thinking
+import com.fersaiyan.cyanbridge.shared.generated.resources.action_send
+import com.fersaiyan.cyanbridge.shared.ui.localizedDestinationLabel
+import org.jetbrains.compose.resources.ExperimentalResourceApi
+import org.jetbrains.compose.resources.stringResource
 import kotlinx.coroutines.flow.collect
 
 /**
  * Shared CMP chat surface. The host supplies platform callbacks
  * for inference, storage, permissions, and media so this layout owns only UI.
  */
-@OptIn(ExperimentalMaterial3Api::class)
+@OptIn(ExperimentalMaterial3Api::class, ExperimentalResourceApi::class)
 @Composable
 fun ChatThreadScreen(
     state: ChatThreadUiState,
@@ -104,7 +122,7 @@ fun ChatThreadScreen(
             TopAppBar(
                 title = {
                     Text(
-                        text = state.thread?.title ?: "New chat",
+                        text = state.thread?.title ?: stringResource(Res.string.action_new_chat),
                         maxLines = 1,
                         overflow = TextOverflow.Ellipsis,
                     )
@@ -113,7 +131,7 @@ fun ChatThreadScreen(
                     IconButton(onClick = onOpenChatList) {
                         Icon(
                             imageVector = AppIcon.Back.imageVector(),
-                            contentDescription = "Chats list",
+                             contentDescription = stringResource(Res.string.chat_list),
                         )
                     }
                 },
@@ -121,7 +139,7 @@ fun ChatThreadScreen(
                     IconButton(onClick = onChatAppearance) {
                         Icon(
                             imageVector = AppIcon.More.imageVector(),
-                            contentDescription = "Chat appearance",
+                             contentDescription = stringResource(Res.string.chat_appearance),
                         )
                     }
                 },
@@ -314,10 +332,10 @@ private fun EmptyConversation(modifier: Modifier = Modifier) {
             tint = MaterialTheme.colorScheme.primary,
         )
         Spacer(Modifier.height(16.dp))
-        Text("Start a conversation", style = MaterialTheme.typography.titleLarge)
+         Text(stringResource(Res.string.chat_empty_title), style = MaterialTheme.typography.titleLarge)
         Spacer(Modifier.height(8.dp))
         Text(
-            text = "Ask a question or attach media for a local model.",
+             text = stringResource(Res.string.chat_empty_body),
             color = MaterialTheme.colorScheme.onSurfaceVariant,
             style = MaterialTheme.typography.bodyMedium,
         )
@@ -382,7 +400,7 @@ private fun ThinkingIndicator() {
                 modifier = Modifier.size(18.dp),
                 strokeWidth = 2.dp,
             )
-            Text("Thinking", style = MaterialTheme.typography.bodyMedium)
+             Text(stringResource(Res.string.chat_thinking), style = MaterialTheme.typography.bodyMedium)
         }
     }
 }
@@ -400,9 +418,9 @@ private fun ChatComposer(
     modifier: Modifier = Modifier,
 ) {
     val inputLabel = if (composer.primaryAction == ChatComposerPrimaryAction.CONFIGURE_LOCAL_MODEL) {
-        "Local model required"
+         stringResource(Res.string.chat_local_model_required)
     } else {
-        "Message"
+         stringResource(Res.string.chat_message)
     }
     Surface(
         modifier = modifier.fillMaxWidth(),
@@ -429,7 +447,7 @@ private fun ChatComposer(
                     IconButton(onClick = onClearAttachments) {
                         Icon(
                             imageVector = AppIcon.Close.imageVector(),
-                            contentDescription = "Clear attachments",
+                             contentDescription = stringResource(Res.string.chat_clear_attachments),
                         )
                     }
                 }
@@ -467,7 +485,7 @@ private fun ChatComposer(
                 ) {
                     Icon(
                         imageVector = AppIcon.Attachment.imageVector(),
-                        contentDescription = "Attach image",
+                 contentDescription = stringResource(Res.string.chat_attach_image),
                     )
                 }
                 FilledIconButton(
@@ -482,9 +500,9 @@ private fun ChatComposer(
                             AppIcon.Microphone.imageVector()
                         },
                         contentDescription = if (attachments.isRecording) {
-                            "Stop audio recording"
+                             stringResource(Res.string.chat_stop_audio_recording)
                         } else {
-                            "Record audio"
+                            stringResource(Res.string.chat_record_audio)
                         },
                     )
                 }
@@ -499,9 +517,9 @@ private fun ChatComposer(
                             ChatComposerPrimaryAction.CONFIGURE_LOCAL_MODEL -> AppIcon.Model.imageVector()
                         },
                         contentDescription = when (composer.primaryAction) {
-                            ChatComposerPrimaryAction.SEND -> "Send"
-                            ChatComposerPrimaryAction.STOP_GENERATION -> "Stop generation"
-                            ChatComposerPrimaryAction.CONFIGURE_LOCAL_MODEL -> "Configure local model"
+                             ChatComposerPrimaryAction.SEND -> stringResource(Res.string.action_send)
+                             ChatComposerPrimaryAction.STOP_GENERATION -> stringResource(Res.string.chat_stop_generation)
+                             ChatComposerPrimaryAction.CONFIGURE_LOCAL_MODEL -> stringResource(Res.string.chat_configure_local_model)
                         },
                     )
                 }
@@ -523,7 +541,7 @@ private fun ChatNavigationBar(onDestinationSelected: (AppDestination) -> Unit) {
                         contentDescription = null,
                     )
                 },
-                label = { Text(destination.label) },
+                 label = { Text(localizedDestinationLabel(destination)) },
             )
         }
     }

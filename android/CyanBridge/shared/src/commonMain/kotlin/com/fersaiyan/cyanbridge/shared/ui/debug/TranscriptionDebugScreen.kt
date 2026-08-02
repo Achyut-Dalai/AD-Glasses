@@ -29,8 +29,11 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.unit.dp
 import androidx.compose.foundation.text.selection.SelectionContainer
+import com.fersaiyan.cyanbridge.shared.generated.resources.*
+import org.jetbrains.compose.resources.ExperimentalResourceApi
+import org.jetbrains.compose.resources.stringResource
 
-@OptIn(ExperimentalMaterial3Api::class)
+@OptIn(ExperimentalMaterial3Api::class, ExperimentalResourceApi::class)
 @Composable
 fun TranscriptionDebugScreen(
     endpointUrl: String,
@@ -53,7 +56,7 @@ fun TranscriptionDebugScreen(
 ) {
     Scaffold(
         contentWindowInsets = WindowInsets.safeDrawing,
-        topBar = { TopAppBar(title = { Text("Transcription debug") }) },
+         topBar = { TopAppBar(title = { Text(stringResource(Res.string.diagnostics_title)) }) },
     ) { innerPadding ->
         LazyColumn(
             modifier = Modifier
@@ -65,7 +68,7 @@ fun TranscriptionDebugScreen(
         ) {
             item {
                 Text(
-                    "Developer diagnostics for the Chapter 6 transcription pipeline.",
+                     stringResource(Res.string.diagnostics_description),
                     style = MaterialTheme.typography.bodyMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
@@ -73,17 +76,17 @@ fun TranscriptionDebugScreen(
             item {
                 Card(modifier = Modifier.fillMaxWidth()) {
                     Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
-                        Text("Provider", style = MaterialTheme.typography.titleSmall)
+                         Text(stringResource(Res.string.diagnostics_provider), style = MaterialTheme.typography.titleSmall)
                         Row(verticalAlignment = Alignment.CenterVertically) {
                             RadioButton(selected = !useHttp, onClick = { onUseHttpChange(false) })
-                            Text("Fake")
+                             Text(stringResource(Res.string.diagnostics_fake))
                             RadioButton(selected = useHttp, onClick = { onUseHttpChange(true) })
-                            Text("HTTP")
+                             Text(stringResource(Res.string.diagnostics_http))
                         }
                         OutlinedTextField(
                             value = endpointUrl,
                             onValueChange = onEndpointUrlChange,
-                            label = { Text("HTTP endpoint URL") },
+                             label = { Text(stringResource(Res.string.diagnostics_endpoint)) },
                             modifier = Modifier.fillMaxWidth(),
                             enabled = useHttp,
                             singleLine = true,
@@ -91,23 +94,23 @@ fun TranscriptionDebugScreen(
                         OutlinedTextField(
                             value = apiKey,
                             onValueChange = onApiKeyChange,
-                            label = { Text("API key (optional)") },
+                             label = { Text(stringResource(Res.string.diagnostics_api_key)) },
                             modifier = Modifier.fillMaxWidth(),
                             enabled = useHttp,
                             visualTransformation = PasswordVisualTransformation(),
                             singleLine = true,
                         )
                         Row(verticalAlignment = Alignment.CenterVertically) {
-                            Text("Persist transcript to DB", modifier = Modifier.weight(1f))
+                             Text(stringResource(Res.string.diagnostics_persist), modifier = Modifier.weight(1f))
                             Switch(checked = transcriptStorageEnabled, onCheckedChange = onStorageEnabledChange)
                         }
-                        TextButton(onClick = onSaveEndpoint) { Text("Save endpoint config") }
+                         TextButton(onClick = onSaveEndpoint) { Text(stringResource(Res.string.diagnostics_save_endpoint)) }
                     }
                 }
             }
             item {
                 FilledTonalButton(onClick = onLoadLatest, modifier = Modifier.fillMaxWidth()) {
-                    Text("Load latest capture session")
+                     Text(stringResource(Res.string.diagnostics_load_latest))
                 }
             }
             item {
@@ -118,7 +121,15 @@ fun TranscriptionDebugScreen(
                     onClick = onTranscribe,
                     enabled = !isTranscribing,
                     modifier = Modifier.fillMaxWidth(),
-                ) { Text(if (isTranscribing) "Transcribing..." else "Transcribe latest session") }
+                 ) {
+                     Text(
+                         if (isTranscribing) {
+                             stringResource(Res.string.diagnostics_transcribing)
+                         } else {
+                             stringResource(Res.string.diagnostics_transcribe_latest)
+                         },
+                     )
+                 }
             }
             if (isTranscribing || progressText.isNotBlank()) {
                 item {
@@ -131,7 +142,7 @@ fun TranscriptionDebugScreen(
             }
             if (output.isNotBlank()) {
                 item {
-                    Text("Transcript output", style = MaterialTheme.typography.titleSmall)
+                     Text(stringResource(Res.string.diagnostics_transcript_output), style = MaterialTheme.typography.titleSmall)
                     Card(modifier = Modifier.fillMaxWidth()) {
                         SelectionContainer(modifier = Modifier.padding(16.dp)) {
                             Text(output, style = MaterialTheme.typography.bodyMedium)

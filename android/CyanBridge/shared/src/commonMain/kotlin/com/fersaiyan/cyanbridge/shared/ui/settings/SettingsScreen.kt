@@ -55,7 +55,6 @@ import androidx.compose.foundation.text.KeyboardOptions
 import com.fersaiyan.cyanbridge.shared.generated.resources.*
 import com.fersaiyan.cyanbridge.shared.navigation.AppDestination
 import com.fersaiyan.cyanbridge.shared.navigation.icon
-import com.fersaiyan.cyanbridge.shared.navigation.label
 import com.fersaiyan.cyanbridge.shared.icons.imageVector
 import com.fersaiyan.cyanbridge.shared.settings.AgentProviderType
 import com.fersaiyan.cyanbridge.shared.settings.CaptureSource
@@ -64,6 +63,10 @@ import com.fersaiyan.cyanbridge.shared.settings.MemorySourceType
 import com.fersaiyan.cyanbridge.shared.settings.SettingsSection
 import org.jetbrains.compose.resources.ExperimentalResourceApi
 import org.jetbrains.compose.resources.stringResource
+import com.fersaiyan.cyanbridge.shared.ui.localizedDestinationLabel
+import com.fersaiyan.cyanbridge.shared.ui.localizedMemoryModeDescription
+import com.fersaiyan.cyanbridge.shared.ui.localizedMemoryModeTitle
+import com.fersaiyan.cyanbridge.shared.ui.localizedProviderLabel
 
 data class SettingsUiState(
     val isProSubscribed: Boolean = false,
@@ -143,7 +146,7 @@ fun SettingsScreen(
                                 contentDescription = null,
                             )
                         },
-                        label = { Text(destination.label) },
+                        label = { Text(localizedDestinationLabel(destination)) },
                     )
                 }
             }
@@ -179,16 +182,16 @@ fun SettingsScreen(
             }
             item {
                 Text(
-                    text = "Privacy-first defaults, local controls, and automation settings.",
+                    text = stringResource(Res.string.settings_intro),
                     style = MaterialTheme.typography.bodyMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
             }
             item {
                 QuickActionCard(
-                    title = "Appearance",
-                    subtitle = "Theme, accent profile, dynamic color, and contrast",
-                    actionLabel = "Open",
+                    title = stringResource(Res.string.settings_appearance),
+                    subtitle = stringResource(Res.string.settings_appearance_description),
+                    actionLabel = stringResource(Res.string.action_open),
                     onClick = actions::openAppearance,
                     testTag = "settings_appearance",
                 )
@@ -207,7 +210,7 @@ fun SettingsScreen(
             }
             item {
                 SettingsSectionCard(
-                    title = "Custom AI provider",
+                    title = stringResource(Res.string.settings_custom_ai_provider),
                     expanded = SettingsSection.AI_AUTOMATION in expandedSections,
                     onToggle = { onToggleSection(SettingsSection.AI_AUTOMATION) },
                 ) {
@@ -216,7 +219,7 @@ fun SettingsScreen(
             }
             item {
                 SettingsSectionCard(
-                    title = "Memory Privacy",
+                    title = stringResource(Res.string.settings_memory_privacy),
                     expanded = SettingsSection.MEMORY_PRIVACY in expandedSections,
                     onToggle = { onToggleSection(SettingsSection.MEMORY_PRIVACY) },
                 ) {
@@ -225,7 +228,7 @@ fun SettingsScreen(
             }
             item {
                 SettingsSectionCard(
-                    title = "Transcripts",
+                    title = stringResource(Res.string.settings_transcripts),
                     expanded = SettingsSection.TRANSCRIPTS in expandedSections,
                     onToggle = { onToggleSection(SettingsSection.TRANSCRIPTS) },
                 ) {
@@ -234,7 +237,7 @@ fun SettingsScreen(
             }
             item {
                 SettingsSectionCard(
-                    title = "Data",
+                    title = stringResource(Res.string.settings_data),
                     expanded = SettingsSection.DATA in expandedSections,
                     onToggle = { onToggleSection(SettingsSection.DATA) },
                 ) {
@@ -243,7 +246,7 @@ fun SettingsScreen(
             }
             item {
                 SettingsSectionCard(
-                    title = "Support",
+                    title = stringResource(Res.string.settings_support),
                     expanded = SettingsSection.SUPPORT in expandedSections,
                     onToggle = { onToggleSection(SettingsSection.SUPPORT) },
                 ) {
@@ -252,7 +255,7 @@ fun SettingsScreen(
             }
             item {
                 SettingsSectionCard(
-                    title = "FAQ",
+                    title = stringResource(Res.string.settings_faq),
                     expanded = SettingsSection.FAQ in expandedSections,
                     onToggle = { onToggleSection(SettingsSection.FAQ) },
                 ) {
@@ -280,17 +283,17 @@ private fun MeetingRecordingBanner(
             verticalAlignment = Alignment.CenterVertically,
         ) {
             Column(modifier = Modifier.weight(1f)) {
-                Text("Recording active", style = MaterialTheme.typography.titleSmall)
+                Text(stringResource(Res.string.settings_recording_active), style = MaterialTheme.typography.titleSmall)
                 Text(
                     text = when (source) {
-                        CaptureSource.BLUETOOTH_MIC -> "Bluetooth mic"
-                        CaptureSource.PHONE_MIC -> "Phone mic"
-                        null -> "Detecting audio source"
+                        CaptureSource.BLUETOOTH_MIC -> stringResource(Res.string.settings_bluetooth_mic)
+                        CaptureSource.PHONE_MIC -> stringResource(Res.string.settings_phone_mic)
+                        null -> stringResource(Res.string.settings_detecting_audio_source)
                     },
                     style = MaterialTheme.typography.bodySmall,
                 )
             }
-            TextButton(onClick = onStop) { Text("Stop") }
+            TextButton(onClick = onStop) { Text(stringResource(Res.string.action_stop)) }
         }
     }
 }
@@ -342,7 +345,13 @@ private fun ProSubscriptionCard(
                         horizontalArrangement = Arrangement.spacedBy(8.dp),
                     ) {
                         Text(
-                            text = if (isSubscribed) "Pro Subscription Settings" else "Pro Subscription",
+                            text = stringResource(
+                                if (isSubscribed) {
+                                    Res.string.settings_pro_subscription_settings
+                                } else {
+                                    Res.string.settings_pro_subscription
+                                },
+                            ),
                             modifier = Modifier.weight(1f),
                             style = MaterialTheme.typography.titleMedium,
                             fontWeight = FontWeight.Bold,
@@ -353,7 +362,9 @@ private fun ProSubscriptionCard(
                             shape = MaterialTheme.shapes.small,
                         ) {
                             Text(
-                                text = if (isSubscribed) "PRO ACTIVE" else "PRO",
+                                text = stringResource(
+                                    if (isSubscribed) Res.string.settings_pro_active else Res.string.settings_pro_badge,
+                                ),
                                 modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
                                 style = MaterialTheme.typography.labelSmall,
                                 fontWeight = FontWeight.Bold,
@@ -362,9 +373,9 @@ private fun ProSubscriptionCard(
                     }
                     Text(
                         text = if (isSubscribed) {
-                            "Current plan: $proPlan. Manage premium features and perks."
+                            stringResource(Res.string.settings_current_plan, proPlan)
                         } else {
-                            "Unlock premium features and help fund new smartglasses support."
+                            stringResource(Res.string.settings_unlock_premium)
                         },
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onTertiaryContainer,
@@ -379,7 +390,11 @@ private fun ProSubscriptionCard(
                     contentColor = MaterialTheme.colorScheme.onTertiary,
                 ),
             ) {
-                Text(if (isSubscribed) "Manage subscription" else "View plans")
+                Text(
+                    stringResource(
+                        if (isSubscribed) Res.string.settings_manage_subscription else Res.string.settings_view_plans,
+                    ),
+                )
             }
         }
     }
@@ -446,7 +461,11 @@ private fun SettingsSectionCard(
                 )
                 Icon(
                     imageVector = if (expanded) Icons.Outlined.ExpandLess else Icons.Outlined.ExpandMore,
-                    contentDescription = if (expanded) "Collapse $title" else "Expand $title",
+                    contentDescription = if (expanded) {
+                        stringResource(Res.string.local_models_collapse, title)
+                    } else {
+                        stringResource(Res.string.local_models_expand, title)
+                    },
                 )
             }
             if (expanded) {
@@ -463,7 +482,7 @@ private fun SettingsSectionCard(
 @Composable
 private fun AiAutomationContent(state: SettingsUiState, actions: SettingsScreenActions) {
     Text(
-        "Choose the provider used by the Local / Pro / Tasker mode on the Glasses screen.",
+        stringResource(Res.string.settings_provider_description),
         style = MaterialTheme.typography.bodySmall,
         color = MaterialTheme.colorScheme.onSurfaceVariant,
     )
@@ -478,14 +497,14 @@ private fun AiAutomationContent(state: SettingsUiState, actions: SettingsScreenA
                 selected = state.providerType == type,
                 onClick = { actions.setProviderType(type) },
             )
-            Text(type.label, style = MaterialTheme.typography.bodyMedium)
+            Text(localizedProviderLabel(type), style = MaterialTheme.typography.bodyMedium)
         }
     }
     OutlinedButton(
         onClick = actions::openLocalModels,
         modifier = Modifier.fillMaxWidth(),
     ) {
-        Text("Configure local models")
+        Text(stringResource(Res.string.settings_configure_local_models))
     }
     Text(
         text = stringResource(Res.string.image_questions_title),
@@ -515,11 +534,11 @@ private fun AiAutomationContent(state: SettingsUiState, actions: SettingsScreenA
 @Composable
 private fun MemoryPrivacyContent(state: SettingsUiState, actions: SettingsScreenActions) {
     Text(
-        text = "Current mode: ${state.memoryMode.title}",
+        text = stringResource(Res.string.settings_current_mode, localizedMemoryModeTitle(state.memoryMode)),
         style = MaterialTheme.typography.bodyMedium,
     )
     Text(
-        text = state.memoryModeAvailability.ifBlank { state.memoryMode.description },
+        text = state.memoryModeAvailability.ifBlank { localizedMemoryModeDescription(state.memoryMode) },
         style = MaterialTheme.typography.bodySmall,
         color = MaterialTheme.colorScheme.onSurfaceVariant,
     )
@@ -553,9 +572,13 @@ private fun MemoryPrivacyContent(state: SettingsUiState, actions: SettingsScreen
                 enabled = enabled,
             )
             Column {
-                Text(mode.title, style = MaterialTheme.typography.bodyMedium)
+                 Text(localizedMemoryModeTitle(mode), style = MaterialTheme.typography.bodyMedium)
                 Text(
-                    text = if (enabled) mode.description else "Requires a Pro subscription",
+                    text = if (enabled) {
+                        localizedMemoryModeDescription(mode)
+                    } else {
+                        stringResource(Res.string.settings_requires_pro)
+                    },
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
@@ -563,61 +586,69 @@ private fun MemoryPrivacyContent(state: SettingsUiState, actions: SettingsScreen
         }
     }
     HorizontalDivider()
-    Text("Sync eligibility", style = MaterialTheme.typography.labelLarge)
-    SwitchRow("Explicit facts", state.syncExplicit) {
+    Text(stringResource(Res.string.settings_sync_eligibility), style = MaterialTheme.typography.labelLarge)
+    SwitchRow(stringResource(Res.string.settings_explicit_facts), state.syncExplicit) {
         actions.setMemorySync(MemorySourceType.EXPLICIT_USER_FACT, it)
     }
-    SwitchRow("Daily facts", state.syncDaily) {
+    SwitchRow(stringResource(Res.string.settings_daily_facts), state.syncDaily) {
         actions.setMemorySync(MemorySourceType.AUTO_DAILY_FACT, it)
     }
-    SwitchRow("Screen OCR", state.syncOcr) {
+    SwitchRow(stringResource(Res.string.settings_screen_ocr), state.syncOcr) {
         actions.setMemorySync(MemorySourceType.SCREEN_OCR, it)
     }
-    SwitchRow("Derived summaries", state.syncDerived) {
+    SwitchRow(stringResource(Res.string.settings_derived_summaries), state.syncDerived) {
         actions.setMemorySync(MemorySourceType.DERIVED_SUMMARY, it)
     }
     NumberSettingRow(
-        label = "Screen OCR retention (days)",
+        label = stringResource(Res.string.settings_screen_ocr_retention),
         value = state.ocrRetentionDays,
         onValueChanged = actions::setOcrRetentionDays,
         validRange = 1..365,
     )
-    ActionButton("Delete passive OCR capture", actions::deletePassiveCapture, destructive = true)
+    ActionButton(stringResource(Res.string.settings_delete_passive_ocr), actions::deletePassiveCapture, destructive = true)
     HorizontalDivider()
     Text(
         text = buildString {
-            append("Vault is ")
-            append(if (state.vaultLocked) "locked" else "unlocked")
-            append('.')
-            if (state.vaultRequiresPassphrase) append(" Passphrase required for unlock.")
+            append(
+                stringResource(
+                    Res.string.settings_vault_status,
+                    stringResource(
+                        if (state.vaultLocked) Res.string.settings_vault_locked else Res.string.settings_vault_unlocked,
+                    ),
+                ),
+            )
+            if (state.vaultRequiresPassphrase) {
+                append(' ')
+                append(stringResource(Res.string.settings_passphrase_required))
+            }
         },
         style = MaterialTheme.typography.bodySmall,
         color = MaterialTheme.colorScheme.onSurfaceVariant,
     )
     if (state.vaultLocked) {
-        ActionButton("Unlock vault", actions::unlockVault)
+        ActionButton(stringResource(Res.string.settings_unlock_vault), actions::unlockVault)
     } else {
-        ActionButton("Lock vault", actions::lockVault)
+        ActionButton(stringResource(Res.string.settings_lock_vault), actions::lockVault)
     }
-    ActionButton("Set vault passphrase", actions::setVaultPassphrase)
-    ActionButton("Clear vault passphrase", actions::clearVaultPassphrase)
-    ActionButton("Reset memory vault", actions::resetVault, destructive = true)
+    ActionButton(stringResource(Res.string.settings_set_vault_passphrase), actions::setVaultPassphrase)
+    ActionButton(stringResource(Res.string.settings_clear_vault_passphrase), actions::clearVaultPassphrase)
+    ActionButton(stringResource(Res.string.settings_reset_memory_vault), actions::resetVault, destructive = true)
 }
 
 @Composable
 private fun TranscriptsContent(state: SettingsUiState, actions: SettingsScreenActions) {
     SwitchRow(
-        label = "Store transcripts",
+        label = stringResource(Res.string.settings_store_transcripts),
         checked = state.transcriptStorageEnabled,
         onCheckedChange = actions::setTranscriptStorageEnabled,
     )
     SwitchRow(
-        label = "Redact names",
+        label = stringResource(Res.string.settings_redact_names),
         checked = state.redactNamesEnabled,
         onCheckedChange = actions::setRedactNamesEnabled,
     )
     SwitchRow(
-        "Include full transcription in exports",
+        stringResource(Res.string.settings_full_transcription_exports),
         state.includeFullTranscriptionInExports,
         onCheckedChange = actions::setIncludeFullTranscriptionEnabled,
     )
@@ -626,32 +657,32 @@ private fun TranscriptsContent(state: SettingsUiState, actions: SettingsScreenAc
 @Composable
 private fun DataContent(actions: SettingsScreenActions) {
     Text(
-        text = "Back up or restore chats, memory files, recordings, and app settings.",
+        text = stringResource(Res.string.settings_data_description),
         style = MaterialTheme.typography.bodySmall,
         color = MaterialTheme.colorScheme.onSurfaceVariant,
     )
-    ActionButton("Export local data", actions::exportLocalData)
-    ActionButton("Import local data", actions::importLocalData)
-    ActionButton("Clear local data", actions::clearLocalData, destructive = true)
+    ActionButton(stringResource(Res.string.settings_export_local_data), actions::exportLocalData)
+    ActionButton(stringResource(Res.string.settings_import_local_data), actions::importLocalData)
+    ActionButton(stringResource(Res.string.settings_clear_local_data), actions::clearLocalData, destructive = true)
 }
 
 @Composable
 private fun SupportContent(actions: SettingsScreenActions) {
     Text(
-        text = "Send an issue description with diagnostic logs to help investigate Bluetooth, sync, voice, or app failures.",
+        text = stringResource(Res.string.settings_support_description),
         style = MaterialTheme.typography.bodySmall,
         color = MaterialTheme.colorScheme.onSurfaceVariant,
     )
-    ActionButton("Send debug logs", actions::sendDebugLogs)
+    ActionButton(stringResource(Res.string.settings_send_debug_logs), actions::sendDebugLogs)
 }
 
 @Composable
 private fun FaqContent() {
     val items = listOf(
-        "How do I set up Local Models?" to "Open Local Agent from Native Plugins, then configure a model on this device.",
-        "Do I need a subscription?" to "No. Tasker and Local Models can be used without a subscription. Pro is optional.",
-        "How is data handled?" to "Data stays on this phone by default. You can export, import, or clear it from Data.",
-        "Can I review the source?" to "Yes. CyanBridge is open source and its behavior can be reviewed in the project repository.",
+        stringResource(Res.string.settings_faq_local_models_question) to stringResource(Res.string.settings_faq_local_models_answer),
+        stringResource(Res.string.settings_faq_subscription_question) to stringResource(Res.string.settings_faq_subscription_answer),
+        stringResource(Res.string.settings_faq_data_question) to stringResource(Res.string.settings_faq_data_answer),
+        stringResource(Res.string.settings_faq_source_question) to stringResource(Res.string.settings_faq_source_answer),
     )
     items.forEach { (question, answer) ->
         Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
@@ -741,7 +772,7 @@ private fun NumberSettingRow(
         )
         if (text.isNotBlank() && !valid) {
             Text(
-                text = "Use ${validRange.first} to ${validRange.last}",
+                text = stringResource(Res.string.settings_range_error, validRange.first, validRange.last),
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.error,
             )

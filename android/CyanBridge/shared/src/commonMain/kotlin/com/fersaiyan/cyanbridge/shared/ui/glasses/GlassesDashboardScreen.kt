@@ -64,6 +64,9 @@ import com.fersaiyan.cyanbridge.shared.glasses.LivePreviewUiState
 import com.fersaiyan.cyanbridge.shared.glasses.WifiAdbDebugUiState
 import com.fersaiyan.cyanbridge.shared.navigation.AppDestination
 import com.fersaiyan.cyanbridge.shared.generated.resources.*
+import com.fersaiyan.cyanbridge.shared.ui.localizedOtaSourceDescription
+import com.fersaiyan.cyanbridge.shared.ui.localizedOtaSourceLabel
+import com.fersaiyan.cyanbridge.shared.ui.localizedOtaTargetLabel
 import org.jetbrains.compose.resources.ExperimentalResourceApi
 import org.jetbrains.compose.resources.stringResource
 
@@ -84,14 +87,11 @@ fun GlassesDashboardScreen(
                 showWifiAdbConfirmation = false
                 wifiAdbRiskAcknowledged = false
             },
-            title = { Text("Privileged ADB risk") },
+             title = { Text(stringResource(Res.string.dashboard_privileged_adb_title)) },
             text = {
                 Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
                     Text(
-                        "Privileged ADB can brick or erase the glasses. Use only an isolated, " +
-                            "recoverable lab device and network. Force-stop the official HeyCyan app first. " +
-                            "Stop media sync, OTA, live preview, recording, and automatic capture before continuing. " +
-                            "This session is not persistent and stops when this screen leaves the foreground."
+                        stringResource(Res.string.dashboard_privileged_adb_body)
                     )
                     Row(verticalAlignment = Alignment.CenterVertically) {
                         Checkbox(
@@ -99,7 +99,7 @@ fun GlassesDashboardScreen(
                             onCheckedChange = { wifiAdbRiskAcknowledged = it },
                             modifier = Modifier.testTag("wifi_adb_risk_acknowledgement"),
                         )
-                        Text("I explicitly accept the destructive risk and lab-only restrictions.")
+                         Text(stringResource(Res.string.dashboard_privileged_adb_acknowledge))
                     }
                 }
             },
@@ -112,7 +112,7 @@ fun GlassesDashboardScreen(
                         wifiAdbRiskAcknowledged = false
                         onAction(GlassesDashboardAction.RequestStartWifiAdbDebug)
                     },
-                ) { Text("Start privileged ADB") }
+                 ) { Text(stringResource(Res.string.dashboard_start_privileged_adb)) }
             },
             dismissButton = {
                 TextButton(
@@ -120,7 +120,7 @@ fun GlassesDashboardScreen(
                         showWifiAdbConfirmation = false
                         wifiAdbRiskAcknowledged = false
                     },
-                ) { Text("Cancel") }
+                 ) { Text(stringResource(Res.string.action_cancel)) }
             },
         )
     }
@@ -157,7 +157,7 @@ fun GlassesDashboardScreen(
 
     Scaffold(
         contentWindowInsets = WindowInsets.safeDrawing,
-        topBar = { TopAppBar(title = { Text("Glasses") }) },
+         topBar = { TopAppBar(title = { Text(stringResource(Res.string.dashboard_title)) }) },
     ) { innerPadding ->
         LazyColumn(
             modifier = Modifier
@@ -171,7 +171,7 @@ fun GlassesDashboardScreen(
             if (state.meeting.isRecording) {
                 item {
                     MeetingBanner(
-                        label = state.meeting.bannerLabel.ifBlank { "Recording active" },
+                         label = state.meeting.bannerLabel.ifBlank { stringResource(Res.string.dashboard_recording_active) },
                         onStop = { onAction(GlassesDashboardAction.StopMeetingCapture) },
                     )
                 }
@@ -186,16 +186,16 @@ fun GlassesDashboardScreen(
                 }
             }
             item {
-                SectionTitle("Connection")
+                 SectionTitle(stringResource(Res.string.dashboard_connection))
                 ActionRow(
-                    primaryLabel = "Scan",
+                     primaryLabel = stringResource(Res.string.dashboard_scan),
                     onPrimary = { onAction(GlassesDashboardAction.Scan) },
-                    secondaryLabel = "Reconnect",
+                     secondaryLabel = stringResource(Res.string.dashboard_reconnect),
                     onSecondary = { onAction(GlassesDashboardAction.Reconnect) },
                 )
                 Spacer(Modifier.height(8.dp))
                 ActionButton(
-                    label = "Disconnect",
+                     label = stringResource(Res.string.dashboard_disconnect),
                     onClick = { onAction(GlassesDashboardAction.Disconnect) },
                     style = ActionButtonStyle.Destructive,
                     modifier = Modifier.fillMaxWidth(),
@@ -233,7 +233,13 @@ fun GlassesDashboardScreen(
                         onClick = { onAction(GlassesDashboardAction.ToggleAdvanced) },
                         modifier = Modifier.fillMaxWidth(),
                     ) {
-                        Text(if (state.advancedExpanded) "Hide advanced controls" else "Show advanced controls")
+                         Text(
+                             if (state.advancedExpanded) {
+                                 stringResource(Res.string.dashboard_hide_advanced)
+                             } else {
+                                 stringResource(Res.string.dashboard_show_advanced)
+                             },
+                         )
                         Spacer(Modifier.width(4.dp))
                         Icon(
                             imageVector = if (state.advancedExpanded) Icons.Outlined.ExpandLess else Icons.Outlined.ExpandMore,
@@ -270,9 +276,9 @@ private fun WifiAdbDebugSection(
             modifier = Modifier.padding(16.dp),
             verticalArrangement = Arrangement.spacedBy(8.dp),
         ) {
-            SectionTitle("Developer tools", accented = true)
-            Text("ADB over glasses Wi-Fi Direct", style = MaterialTheme.typography.titleMedium)
-            Text("Status: ${state.stateLabel}", style = MaterialTheme.typography.bodyMedium)
+             SectionTitle(stringResource(Res.string.dashboard_developer_tools), accented = true)
+             Text(stringResource(Res.string.dashboard_adb_wifi), style = MaterialTheme.typography.titleMedium)
+             Text(stringResource(Res.string.dashboard_status, state.stateLabel), style = MaterialTheme.typography.bodyMedium)
             if (state.detail.isNotBlank()) {
                 Text(
                     state.detail,
@@ -280,10 +286,10 @@ private fun WifiAdbDebugSection(
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
             }
-            state.glassesIp?.let { Text("Glasses IP: $it", style = MaterialTheme.typography.bodySmall) }
+             state.glassesIp?.let { Text(stringResource(Res.string.dashboard_glasses_ip, it), style = MaterialTheme.typography.bodySmall) }
             if (state.relayEndpoints.isNotEmpty()) {
                 Text(
-                    "Relay endpoints: ${state.relayEndpoints.joinToString()}",
+                     stringResource(Res.string.dashboard_relay_endpoints, state.relayEndpoints.joinToString()),
                     style = MaterialTheme.typography.bodySmall,
                 )
             }
@@ -291,16 +297,16 @@ private fun WifiAdbDebugSection(
                 Text(state.preferredCommand, style = MaterialTheme.typography.bodySmall)
             }
             Text(
-                "USB tethering alone is unreliable. Prefer phone USB debugging with adb forward.",
+                 stringResource(Res.string.dashboard_usb_warning),
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.error,
             )
             ActionRow(
-                primaryLabel = "Start ADB relay",
+                 primaryLabel = stringResource(Res.string.dashboard_start_adb_relay),
                 onPrimary = onRequestStart,
                 primaryEnabled = state.canStart,
                 primaryStyle = ActionButtonStyle.Primary,
-                secondaryLabel = "Stop",
+                 secondaryLabel = stringResource(Res.string.dashboard_stop),
                 onSecondary = onStop,
                 secondaryEnabled = state.canStop,
                 secondaryStyle = ActionButtonStyle.Destructive,
@@ -325,12 +331,12 @@ private fun NativePluginShortcutSection(
                 verticalArrangement = Arrangement.spacedBy(8.dp),
             ) {
                 Text(
-                    text = "Glasses tab shortcut",
+                     text = stringResource(Res.string.dashboard_shortcut_title),
                     style = MaterialTheme.typography.titleMedium,
                     fontWeight = FontWeight.Bold,
                 )
                 Text(
-                    text = "Choose a native plugin in its settings to place its actions here.",
+                     text = stringResource(Res.string.dashboard_shortcut_description),
                     style = MaterialTheme.typography.bodyMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
@@ -338,7 +344,7 @@ private fun NativePluginShortcutSection(
                     onClick = { onAction(GlassesDashboardAction.Navigate(AppDestination.PLUGINS)) },
                     modifier = Modifier.fillMaxWidth(),
                 ) {
-                    Text("Choose a plugin")
+                     Text(stringResource(Res.string.dashboard_choose_plugin))
                 }
             }
         }
@@ -357,7 +363,7 @@ private fun NativePluginShortcutSection(
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Column(modifier = Modifier.weight(1f)) {
                     Text(
-                        text = "${shortcut.title} shortcuts",
+                         text = stringResource(Res.string.dashboard_shortcuts, shortcut.title),
                         style = MaterialTheme.typography.titleMedium,
                         fontWeight = FontWeight.Bold,
                     )
@@ -383,7 +389,9 @@ private fun NativePluginShortcutSection(
                     shape = MaterialTheme.shapes.small,
                 ) {
                     Text(
-                        text = if (shortcut.isEnabled) "Enabled" else "Stopped",
+                         text = stringResource(
+                             if (shortcut.isEnabled) Res.string.dashboard_enabled else Res.string.dashboard_stopped,
+                         ),
                         modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
                         style = MaterialTheme.typography.labelSmall,
                     )
@@ -433,7 +441,7 @@ private fun MeetingBanner(label: String, onStop: () -> Unit) {
                 style = MaterialTheme.typography.titleSmall,
                 color = MaterialTheme.colorScheme.error,
             )
-            TextButton(onClick = onStop) { Text("Stop", color = MaterialTheme.colorScheme.error) }
+             TextButton(onClick = onStop) { Text(stringResource(Res.string.dashboard_stop), color = MaterialTheme.colorScheme.error) }
         }
     }
 }
@@ -446,7 +454,7 @@ private fun StatusCard(state: GlassesDashboardUiState) {
             verticalArrangement = Arrangement.spacedBy(6.dp),
         ) {
             Text(
-                text = "Glasses status",
+                 text = stringResource(Res.string.dashboard_glasses_status),
                 style = MaterialTheme.typography.labelLarge,
                 color = MaterialTheme.colorScheme.primary,
                 fontWeight = FontWeight.Bold,
@@ -455,7 +463,7 @@ private fun StatusCard(state: GlassesDashboardUiState) {
                 Column(modifier = Modifier.weight(1f)) {
                     Text(state.connectionLabel, style = MaterialTheme.typography.titleLarge)
                     Text(
-                        text = "Class: ${state.deviceClassLabel}",
+                         text = stringResource(Res.string.dashboard_class, state.deviceClassLabel),
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                     )
@@ -464,13 +472,14 @@ private fun StatusCard(state: GlassesDashboardUiState) {
                     Column(horizontalAlignment = Alignment.End) {
                         if (state.showBattery) {
                             Text(
-                                text = state.batteryPercent?.let { "Battery: $it%" } ?: "Battery: --%",
+                                 text = state.batteryPercent?.let { stringResource(Res.string.dashboard_battery, it) }
+                                     ?: stringResource(Res.string.dashboard_battery_unknown),
                                 style = MaterialTheme.typography.titleSmall,
                             )
                         }
                         if (state.showStorage) {
                             Text(
-                                text = "Storage: ${state.storageLabel}",
+                                 text = stringResource(Res.string.dashboard_storage, state.storageLabel),
                                 style = MaterialTheme.typography.bodySmall,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                             )
@@ -492,9 +501,9 @@ private fun TransferCard(
             modifier = Modifier.padding(16.dp),
             verticalArrangement = Arrangement.spacedBy(8.dp),
         ) {
-            Text("Sync progress", style = MaterialTheme.typography.labelLarge, fontWeight = FontWeight.Bold)
+             Text(stringResource(Res.string.dashboard_sync_progress), style = MaterialTheme.typography.labelLarge, fontWeight = FontWeight.Bold)
             Text(
-                text = "Flow: ${state.transfer.flowLabel}",
+                 text = stringResource(Res.string.dashboard_flow, state.transfer.flowLabel),
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.primary,
             )
@@ -514,7 +523,7 @@ private fun TransferCard(
                     maxLines = 3,
                     overflow = TextOverflow.Ellipsis,
                 )
-                TextButton(onClick = onStop) { Text("Stop sync", color = MaterialTheme.colorScheme.error) }
+                 TextButton(onClick = onStop) { Text(stringResource(Res.string.dashboard_stop_sync), color = MaterialTheme.colorScheme.error) }
             }
         }
     }
@@ -533,40 +542,46 @@ private fun CoreGlassesControls(
         Spacer(Modifier.height(8.dp))
         RecordingSettingsControls(state, onAction)
         Spacer(Modifier.height(8.dp))
-        SectionTitle("Media controls")
+         SectionTitle(stringResource(Res.string.dashboard_media_controls))
         ActionRow(
-            primaryLabel = "Photo",
+             primaryLabel = stringResource(Res.string.dashboard_photo),
             onPrimary = { onAction(GlassesDashboardAction.CapturePhoto) },
-            secondaryLabel = "Video",
+             secondaryLabel = stringResource(Res.string.dashboard_video),
             onSecondary = { onAction(GlassesDashboardAction.ToggleVideo) },
         )
         ActionRow(
-            primaryLabel = "Audio",
+             primaryLabel = stringResource(Res.string.dashboard_audio),
             onPrimary = { onAction(GlassesDashboardAction.StartAudioRecording) },
-            secondaryLabel = "Count",
+             secondaryLabel = stringResource(Res.string.dashboard_count),
             onSecondary = { onAction(GlassesDashboardAction.RequestMediaCount) },
         )
         ActionButton(
-            label = "Sync data over Wi-Fi",
+             label = stringResource(Res.string.dashboard_sync_wifi),
             onClick = { onAction(GlassesDashboardAction.StartSync) },
             style = ActionButtonStyle.Primary,
             modifier = Modifier.fillMaxWidth(),
             )
             if (state.livePreview.isAvailable) {
                 Spacer(Modifier.height(8.dp))
-            SectionTitle(if (state.showEyevueControls) "Eyevue live preview" else "Passive RTSP lab probe")
+             SectionTitle(
+                 if (state.showEyevueControls) {
+                     stringResource(Res.string.dashboard_eye_vue_live_preview)
+                 } else {
+                     stringResource(Res.string.dashboard_passive_rtsp_probe)
+                 },
+             )
             Text(
                 text = if (state.showEyevueControls) {
-                    "Starts the vendor live mode, joins the returned Eyevue Wi-Fi network, and plays the camera stream."
+                     stringResource(Res.string.dashboard_eye_vue_description)
                 } else {
-                    "Sends no BLE mode command. Activate mode 8 separately using the approved hardware procedure."
+                    stringResource(Res.string.dashboard_passive_probe_description)
                 },
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
             if (state.livePreview.stateLabel != "Idle") {
                 Text(
-                    text = "Status: ${state.livePreview.stateLabel}",
+                     text = stringResource(Res.string.dashboard_status, state.livePreview.stateLabel),
                     style = MaterialTheme.typography.bodyMedium,
                 )
                 if (state.livePreview.detail.isNotBlank()) {
@@ -581,16 +596,16 @@ private fun CoreGlassesControls(
             }
             ActionRow(
                 primaryLabel = if (state.livePreview.isScanning) {
-                    "Connecting..."
+                     stringResource(Res.string.dashboard_connecting)
                 } else if (state.showEyevueControls) {
-                    "Start live preview"
+                     stringResource(Res.string.dashboard_start_live_preview)
                 } else {
-                    "Arm passive probe"
+                    stringResource(Res.string.dashboard_arm_passive_probe)
                 },
                 onPrimary = { onAction(GlassesDashboardAction.StartLivePreview) },
                 primaryEnabled = state.livePreview.canStart && !state.livePreview.isScanning,
                 primaryStyle = ActionButtonStyle.Primary,
-                secondaryLabel = "Stop",
+                 secondaryLabel = stringResource(Res.string.dashboard_stop),
                 onSecondary = { onAction(GlassesDashboardAction.StopLivePreview) },
                 secondaryEnabled = state.livePreview.canStop,
                 secondaryStyle = ActionButtonStyle.Destructive,
@@ -608,20 +623,20 @@ private fun RecordingSettingsControls(
         modifier = Modifier.testTag("glasses_recording_settings"),
         verticalArrangement = Arrangement.spacedBy(8.dp),
     ) {
-        SectionTitle("Glasses capture settings")
+         SectionTitle(stringResource(Res.string.dashboard_glasses_capture_settings))
         Text(
-            text = "Read from the connected glasses before changing these device-stored settings.",
+             text = stringResource(Res.string.dashboard_capture_settings_description),
             style = MaterialTheme.typography.bodySmall,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
         )
         Row(verticalAlignment = Alignment.CenterVertically) {
             Column(modifier = Modifier.weight(1f)) {
-                Text("Wearing detection", style = MaterialTheme.typography.titleSmall)
+                 Text(stringResource(Res.string.dashboard_wearing_detection), style = MaterialTheme.typography.titleSmall)
                 Text(
                     text = when (state.wearingDetectionEnabled) {
-                        true -> "Enabled on the glasses"
-                        false -> "Disabled on the glasses"
-                        null -> "Load settings to read its current state"
+                         true -> stringResource(Res.string.dashboard_enabled_on_glasses)
+                         false -> stringResource(Res.string.dashboard_disabled_on_glasses)
+                         null -> stringResource(Res.string.dashboard_load_settings_state)
                     },
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
@@ -637,14 +652,14 @@ private fun RecordingSettingsControls(
             )
         }
         RecordingDurationSelector(
-            title = "Maximum video length",
+             title = stringResource(Res.string.dashboard_max_video_length),
             currentSeconds = state.videoRecordingDurationSeconds,
             optionsSeconds = state.videoRecordingDurationOptionsSeconds,
             onSelect = { onAction(GlassesDashboardAction.SetVideoRecordingDuration(it)) },
             testTagPrefix = "video_recording_duration",
         )
         RecordingDurationSelector(
-            title = "Maximum audio length",
+             title = stringResource(Res.string.dashboard_max_audio_length),
             currentSeconds = state.audioRecordingDurationSeconds,
             optionsSeconds = state.audioRecordingDurationOptionsSeconds,
             onSelect = { onAction(GlassesDashboardAction.SetAudioRecordingDuration(it)) },
@@ -656,7 +671,7 @@ private fun RecordingSettingsControls(
                 .fillMaxWidth()
                 .testTag("refresh_recording_settings"),
         ) {
-            Text("Load settings from glasses")
+             Text(stringResource(Res.string.dashboard_load_settings))
         }
     }
 }
@@ -672,7 +687,7 @@ private fun RecordingDurationSelector(
     Text(title, style = MaterialTheme.typography.titleSmall)
     if (optionsSeconds.isEmpty()) {
         Text(
-            text = "Load settings to see the limits supported by these glasses.",
+             text = stringResource(Res.string.dashboard_limits_unavailable),
             style = MaterialTheme.typography.bodySmall,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
         )
@@ -714,17 +729,17 @@ private fun GlassesAssistantControls(
         modifier = Modifier.testTag("glasses_assistant_controls"),
         verticalArrangement = Arrangement.spacedBy(8.dp),
     ) {
-        SectionTitle("AI assistant", accented = true)
+         SectionTitle(stringResource(Res.string.dashboard_ai_assistant), accented = true)
         Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
             AssistantModeChip(
-                label = "Phone Assistant",
+                 label = stringResource(Res.string.dashboard_phone_assistant),
                 mode = GlassesAssistantMode.PHONE_ASSISTANT,
                 selectedMode = state.assistantMode,
                 onAction = onAction,
                 modifier = Modifier.weight(1f),
             )
             AssistantModeChip(
-                label = "Local / Pro / Tasker",
+                 label = stringResource(Res.string.dashboard_custom_provider),
                 mode = GlassesAssistantMode.CUSTOM_AI_PROVIDER,
                 selectedMode = state.assistantMode,
                 onAction = onAction,
@@ -732,9 +747,15 @@ private fun GlassesAssistantControls(
             )
         }
         ActionRow(
-            primaryLabel = "Test voice",
+             primaryLabel = stringResource(Res.string.dashboard_test_voice),
             onPrimary = { onAction(GlassesDashboardAction.TestVoiceQuestion) },
-            secondaryLabel = state.imageQueryLabel,
+            secondaryLabel = stringResource(
+                if (state.imageQueryEnabled) {
+                    Res.string.dashboard_test_image
+                } else {
+                    Res.string.dashboard_image_query_unavailable
+                },
+            ),
             onSecondary = { onAction(GlassesDashboardAction.TestImageQuestion) },
             secondaryEnabled = state.imageQueryEnabled,
         )
@@ -742,7 +763,7 @@ private fun GlassesAssistantControls(
             onClick = { onAction(GlassesDashboardAction.OpenExternalImageAutomationDiagnostics) },
             modifier = Modifier.fillMaxWidth(),
         ) {
-            Text("Gemini / ChatGPT automation setup")
+             Text(stringResource(Res.string.dashboard_gemini_chatgpt_setup))
         }
     }
 }
@@ -881,55 +902,56 @@ private fun MeizuMyvuControls(
         modifier = Modifier.testTag("meizu_myvu_controls"),
         verticalArrangement = Arrangement.spacedBy(8.dp),
     ) {
-        SectionTitle("Meizu MYVU / Star Air", accented = true)
+        SectionTitle(stringResource(Res.string.dashboard_meizu_title), accented = true)
         Text(
             text = state.connectionLabel,
             style = MaterialTheme.typography.titleMedium,
         )
         Text(
-            text = "Protocol: ${state.protocolState}" + state.deviceName?.let { "  Device: $it" }.orEmpty(),
+            text = stringResource(Res.string.dashboard_protocol, state.protocolState) +
+                state.deviceName?.let { "  ${stringResource(Res.string.dashboard_device, it)}" }.orEmpty(),
             style = MaterialTheme.typography.bodySmall,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
         )
         state.batteryPercent?.let { battery ->
-            Text("Battery: $battery%", style = MaterialTheme.typography.bodySmall)
+            Text(stringResource(Res.string.dashboard_battery, battery), style = MaterialTheme.typography.bodySmall)
         }
         state.lastError?.takeIf { it.isNotBlank() }?.let { error ->
             Text(error, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.error)
         }
         Text(
-            "MYVU uses its own BLE key exchange and RFCOMM relay. Keep the official MYVU app disconnected while connecting.",
+            stringResource(Res.string.dashboard_meizu_description),
             style = MaterialTheme.typography.bodySmall,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
         )
         ActionRow(
-            primaryLabel = "Connect",
+            primaryLabel = stringResource(Res.string.dashboard_connect),
             onPrimary = { onAction(GlassesDashboardAction.MeizuConnect) },
             primaryEnabled = state.canConnect,
             primaryStyle = ActionButtonStyle.Primary,
-            secondaryLabel = "Disconnect",
+            secondaryLabel = stringResource(Res.string.dashboard_disconnect),
             onSecondary = { onAction(GlassesDashboardAction.MeizuDisconnect) },
             secondaryEnabled = state.canDisconnect,
             secondaryStyle = ActionButtonStyle.Destructive,
         )
         ActionRow(
-            primaryLabel = "Test notification",
+            primaryLabel = stringResource(Res.string.dashboard_test_notification),
             onPrimary = { onAction(GlassesDashboardAction.MeizuSendTestNotification) },
             primaryEnabled = state.canSend,
-            secondaryLabel = "Show text",
+            secondaryLabel = stringResource(Res.string.dashboard_show_text),
             onSecondary = { onAction(GlassesDashboardAction.MeizuShowTestTeleprompter) },
             secondaryEnabled = state.canSend,
         )
         ActionRow(
-            primaryLabel = "Sync clock",
+            primaryLabel = stringResource(Res.string.dashboard_sync_clock),
             onPrimary = { onAction(GlassesDashboardAction.MeizuSyncClock) },
             primaryEnabled = state.canSend,
-            secondaryLabel = "Comfort brightness",
+            secondaryLabel = stringResource(Res.string.dashboard_comfort_brightness),
             onSecondary = { onAction(GlassesDashboardAction.MeizuSetComfortBrightness) },
             secondaryEnabled = state.canSend,
         )
         Text(
-            "Voice plugins use the MYVU HFP microphone route after connection. Camera capture, onboard-media sync, Visual Diary, and Walking Aid are not supported because MYVU has no camera or media store.",
+            stringResource(Res.string.dashboard_meizu_unsupported),
             style = MaterialTheme.typography.bodySmall,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
         )
@@ -966,45 +988,62 @@ private fun AdvancedControls(
     onRequestOtaFirmware: () -> Unit,
 ) {
     Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-        SectionTitle("Local agent")
-        Text("Status: ${state.agentStatus}", style = MaterialTheme.typography.bodyMedium)
+        SectionTitle(stringResource(Res.string.dashboard_local_agent))
+        Text(stringResource(Res.string.dashboard_status, state.agentStatus), style = MaterialTheme.typography.bodyMedium)
         Text(
-            text = "Last error: ${state.agentLastError}",
+            text = stringResource(Res.string.dashboard_last_error, state.agentLastError),
             style = MaterialTheme.typography.bodySmall,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
         )
         ThreeActionRow(
-            firstLabel = "Start",
+            firstLabel = stringResource(Res.string.action_start),
             onFirst = { onAction(GlassesDashboardAction.StartAgent) },
             firstStyle = ActionButtonStyle.Primary,
-            secondLabel = "Stop",
+            secondLabel = stringResource(Res.string.action_stop),
             onSecond = { onAction(GlassesDashboardAction.StopAgent) },
             secondStyle = ActionButtonStyle.Destructive,
-            thirdLabel = "Demo",
+            thirdLabel = stringResource(Res.string.dashboard_demo),
             onThird = { onAction(GlassesDashboardAction.RunAgentDemo) },
         )
         HorizontalDivider()
-        SectionTitle("Device info")
+        SectionTitle(stringResource(Res.string.dashboard_device_info))
         ActionRow(
-            primaryLabel = "Battery",
+            primaryLabel = stringResource(Res.string.dashboard_battery_action),
             onPrimary = { onAction(GlassesDashboardAction.RequestBattery) },
-            secondaryLabel = "Version",
+            secondaryLabel = stringResource(Res.string.dashboard_version),
             onSecondary = { onAction(GlassesDashboardAction.RequestVersion) },
         )
         ActionRow(
-            primaryLabel = "Sync time",
+            primaryLabel = stringResource(Res.string.dashboard_sync_time),
             onPrimary = { onAction(GlassesDashboardAction.SyncTime) },
-            secondaryLabel = "Volume",
+            secondaryLabel = stringResource(Res.string.dashboard_volume),
             onSecondary = { onAction(GlassesDashboardAction.RequestVolume) },
         )
         HorizontalDivider()
-        SectionTitle("AI image quality")
+        SectionTitle(stringResource(Res.string.dashboard_image_quality))
+        val thumbnailQualityLabel = stringResource(
+            when (state.imageThumbnailQualitySdkValue) {
+                0 -> Res.string.dashboard_quality_instant
+                1 -> Res.string.dashboard_quality_quick
+                2 -> Res.string.dashboard_quality_smooth
+                3 -> Res.string.dashboard_quality_fine
+                4 -> Res.string.dashboard_quality_clearer
+                else -> Res.string.dashboard_quality_detailed
+            },
+        )
         Text(
-            text = "BLE thumbnail for AI image questions: ${state.imageThumbnailQualityLabel}",
+            text = stringResource(Res.string.dashboard_thumbnail_quality, thumbnailQualityLabel),
             style = MaterialTheme.typography.bodySmall,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
         )
-        listOf("Instant", "Quick", "Smooth", "Fine", "Clearer", "Detailed")
+        listOf(
+            stringResource(Res.string.dashboard_quality_instant),
+            stringResource(Res.string.dashboard_quality_quick),
+            stringResource(Res.string.dashboard_quality_smooth),
+            stringResource(Res.string.dashboard_quality_fine),
+            stringResource(Res.string.dashboard_quality_clearer),
+            stringResource(Res.string.dashboard_quality_detailed),
+        )
             .chunked(3)
             .forEachIndexed { rowIndex, labels ->
                 Row(
@@ -1027,36 +1066,36 @@ private fun AdvancedControls(
                 }
             }
         HorizontalDivider()
-        SectionTitle("Developer tools")
+        SectionTitle(stringResource(Res.string.dashboard_developer_tools))
         TextButton(
             onClick = { onAction(GlassesDashboardAction.AddDeviceListener) },
             modifier = Modifier.fillMaxWidth(),
-        ) { Text("Register device listener") }
+        ) { Text(stringResource(Res.string.dashboard_register_listener)) }
         TextButton(
             onClick = { onAction(GlassesDashboardAction.StartClassicBluetoothScan) },
             modifier = Modifier.fillMaxWidth(),
-        ) { Text("Classic Bluetooth scan") }
+        ) { Text(stringResource(Res.string.dashboard_classic_scan)) }
         TextButton(
             onClick = { onAction(GlassesDashboardAction.DumpOtaInfo) },
             modifier = Modifier.fillMaxWidth(),
-        ) { Text("Dump OTA information") }
+        ) { Text(stringResource(Res.string.dashboard_dump_ota)) }
         TextButton(
             onClick = { onAction(GlassesDashboardAction.TestPullOta) },
             modifier = Modifier.fillMaxWidth(),
-        ) { Text("Test pull-mode OTA") }
+        ) { Text(stringResource(Res.string.dashboard_test_pull_ota)) }
         HorizontalDivider()
-        SectionTitle("OTA firmware update")
+        SectionTitle(stringResource(Res.string.dashboard_ota_update))
         Text(
-            text = "Run one controlled update for both chips: Wi-Fi .swu first, then BLE .bin after a fresh readiness check.",
+            text = stringResource(Res.string.dashboard_ota_description),
             style = MaterialTheme.typography.bodySmall,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
         )
         OtaProgressSection(state.ota)
         ActionRow(
-            primaryLabel = "Choose combined OTA files",
+            primaryLabel = stringResource(Res.string.dashboard_choose_ota_files),
             onPrimary = onRequestOtaFirmware,
             primaryStyle = ActionButtonStyle.Primary,
-            secondaryLabel = "Cancel",
+            secondaryLabel = stringResource(Res.string.action_cancel),
             onSecondary = { onAction(GlassesDashboardAction.CancelOta) },
             secondaryStyle = ActionButtonStyle.Destructive,
             primaryEnabled = state.ota.canStart,
@@ -1075,17 +1114,14 @@ private fun OtaFirmwareSourcePickerDialog(
     AlertDialog(
         onDismissRequest = onDismissRequest,
         modifier = Modifier.testTag("ota_firmware_source_picker"),
-        title = { Text("Choose source for both firmware components") },
+        title = { Text(stringResource(Res.string.dashboard_ota_choose_source)) },
         text = {
             Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
                 Text(
-                    "Firmware is model- and chip-specific. CyanBridge stages both components before " +
-                        "flashing anything, then follows the official order: Wi-Fi SWU first and BLE " +
-                        "BIN second. A Wi-Fi failure never starts BLE DFU."
+                    stringResource(Res.string.dashboard_ota_source_body_one)
                 )
                 Text(
-                    "Server copies are selected only when both files exactly match the Wi-Fi and Bluetooth " +
-                        "versions currently reported by these glasses. Personal files require two selections: a .swu followed by a .bin."
+                    stringResource(Res.string.dashboard_ota_source_body_two)
                 )
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Checkbox(
@@ -1093,7 +1129,7 @@ private fun OtaFirmwareSourcePickerDialog(
                         onCheckedChange = onRiskAcknowledgedChange,
                         modifier = Modifier.testTag("ota_firmware_risk_acknowledgement"),
                     )
-                    Text("I verified this image matches this glasses model and chip target.")
+                    Text(stringResource(Res.string.dashboard_ota_acknowledge))
                 }
                 OtaFirmwareSource.entries.forEach { source ->
                     OutlinedButton(
@@ -1104,9 +1140,9 @@ private fun OtaFirmwareSourcePickerDialog(
                             .testTag("ota_firmware_source_${source.name.lowercase()}"),
                     ) {
                         Column(modifier = Modifier.fillMaxWidth()) {
-                            Text(source.label, style = MaterialTheme.typography.labelLarge)
+                             Text(localizedOtaSourceLabel(source), style = MaterialTheme.typography.labelLarge)
                             Text(
-                                source.description,
+                                 localizedOtaSourceDescription(source),
                                 style = MaterialTheme.typography.bodySmall,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                             )
@@ -1117,7 +1153,7 @@ private fun OtaFirmwareSourcePickerDialog(
         },
         confirmButton = {},
         dismissButton = {
-            TextButton(onClick = onDismissRequest) { Text("Cancel") }
+            TextButton(onClick = onDismissRequest) { Text(stringResource(Res.string.action_cancel)) }
         },
     )
 }
@@ -1140,24 +1176,22 @@ private fun FirmwarePatchRequestDialog(
     AlertDialog(
         onDismissRequest = onDismissRequest,
         modifier = Modifier.testTag("firmware_patch_request_dialog"),
-        title = { Text("Request firmware patch") },
+        title = { Text(stringResource(Res.string.dashboard_request_patch)) },
         text = {
             Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
                 Text(
-                    "CyanBridge only downloads patched firmware built from the exact version " +
-                        "reported by each target chip. The developer cannot verify which Wi-Fi " +
-                        "and Bluetooth chip versions are compatible, so mixed or unverified " +
-                        "versions are never offered."
+                    stringResource(Res.string.dashboard_patch_body_one)
                 )
                 Text(
-                    "Some old or very recent versions may not be available yet. Send a request " +
-                        "for this exact version and the developer will contact you at the email " +
-                        "below to assist, probably within 48 hours."
+                    stringResource(Res.string.dashboard_patch_body_two)
                 )
                 Text(
-                    "Requested: ${request.target.label}\n" +
-                        "Hardware: ${request.targetHardwareVersion}\n" +
-                        "Firmware: ${request.targetFirmwareVersion}",
+                    stringResource(
+                        Res.string.dashboard_requested,
+                        localizedOtaTargetLabel(request.target),
+                        request.targetHardwareVersion,
+                        request.targetFirmwareVersion,
+                    ),
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
@@ -1167,16 +1201,16 @@ private fun FirmwarePatchRequestDialog(
                     modifier = Modifier
                         .fillMaxWidth()
                         .testTag("firmware_patch_request_email"),
-                    label = { Text("Contact email") },
+                    label = { Text(stringResource(Res.string.dashboard_contact_email)) },
                     singleLine = true,
                     enabled = !request.isSubmitting,
                     isError = contactEmail.isNotBlank() && !validEmail,
                     supportingText = {
                         Text(
                             if (contactEmail.isNotBlank() && !validEmail) {
-                                "Enter a valid email address"
+                                stringResource(Res.string.dashboard_valid_email)
                             } else {
-                                "Version details and OTA diagnostics will be sent to CyanBridge."
+                                stringResource(Res.string.dashboard_email_supporting)
                             },
                         )
                     },
@@ -1196,14 +1230,22 @@ private fun FirmwarePatchRequestDialog(
                 enabled = validEmail && !request.isSubmitting,
                 onClick = { onSubmit(contactEmail.trim()) },
                 modifier = Modifier.testTag("firmware_patch_request_send"),
-            ) { Text(if (request.isSubmitting) "Sending..." else "Send request") }
+            ) {
+                Text(
+                    if (request.isSubmitting) {
+                        stringResource(Res.string.dashboard_sending)
+                    } else {
+                        stringResource(Res.string.dashboard_send_request)
+                    },
+                )
+            }
         },
         dismissButton = {
             TextButton(
                 enabled = !request.isSubmitting,
                 onClick = onDismissRequest,
                 modifier = Modifier.testTag("firmware_patch_request_cancel"),
-            ) { Text("Cancel") }
+            ) { Text(stringResource(Res.string.action_cancel)) }
         },
     )
 }
@@ -1339,19 +1381,20 @@ private fun SectionTitle(text: String, accented: Boolean = false) {
     )
 }
 
+@OptIn(ExperimentalResourceApi::class)
 @Composable
 private fun OtaProgressSection(ota: OtaSectionUiState) {
     if (ota.stateLabel == "Idle") return
     Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
         Row(verticalAlignment = Alignment.CenterVertically) {
             Text(
-                text = "Status: ${ota.stateLabel}",
+                text = stringResource(Res.string.dashboard_status, ota.stateLabel),
                 style = MaterialTheme.typography.bodyMedium,
                 modifier = Modifier.weight(1f),
             )
             if (ota.stateLabel == "Complete") {
                 Text(
-                    text = "Done",
+                    text = stringResource(Res.string.dashboard_ota_done),
                     style = MaterialTheme.typography.labelMedium,
                     color = MaterialTheme.colorScheme.primary,
                 )

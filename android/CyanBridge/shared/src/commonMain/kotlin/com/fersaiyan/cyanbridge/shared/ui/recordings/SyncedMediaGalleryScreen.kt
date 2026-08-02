@@ -54,8 +54,11 @@ import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import com.fersaiyan.cyanbridge.shared.recordings.SyncedMediaItem
+import com.fersaiyan.cyanbridge.shared.generated.resources.*
+import org.jetbrains.compose.resources.ExperimentalResourceApi
+import org.jetbrains.compose.resources.stringResource
 
-@OptIn(ExperimentalMaterial3Api::class)
+@OptIn(ExperimentalMaterial3Api::class, ExperimentalResourceApi::class)
 @Composable
 fun SyncedMediaGalleryScreen(
     mediaItems: List<SyncedMediaItem>,
@@ -77,7 +80,7 @@ fun SyncedMediaGalleryScreen(
         ) {
             Column {
                 Text(
-                    text = "${selectedItems.size} selected",
+                     text = stringResource(Res.string.media_selected, selectedItems.size),
                     modifier = Modifier
                         .fillMaxWidth()
                         .padding(16.dp),
@@ -92,7 +95,7 @@ fun SyncedMediaGalleryScreen(
                         modifier = Modifier.padding(8.dp),
                     ) {
                         DropdownMenuItem(
-                            text = { Text("Share", style = MaterialTheme.typography.bodyLarge) },
+                             text = { Text(stringResource(Res.string.media_share), style = MaterialTheme.typography.bodyLarge) },
                             onClick = {
                                 onShareItems(selectedItems.toList())
                                 selectedItems = emptySet()
@@ -106,7 +109,7 @@ fun SyncedMediaGalleryScreen(
                             },
                         )
                         DropdownMenuItem(
-                            text = { Text("Delete", style = MaterialTheme.typography.bodyLarge) },
+                             text = { Text(stringResource(Res.string.media_delete), style = MaterialTheme.typography.bodyLarge) },
                             onClick = {
                                 onDeleteItems(selectedItems.toList())
                                 selectedItems = emptySet()
@@ -121,7 +124,7 @@ fun SyncedMediaGalleryScreen(
                             },
                             trailingIcon = {
                                 Text(
-                                    "Delete",
+                                     stringResource(Res.string.media_delete),
                                     style = MaterialTheme.typography.bodyLarge,
                                     color = MaterialTheme.colorScheme.error,
                                 )
@@ -139,9 +142,9 @@ fun SyncedMediaGalleryScreen(
             TopAppBar(
                 title = {
                     if (selectedItems.isEmpty()) {
-                        Text("Synced photos and videos")
+                         Text(stringResource(Res.string.media_title))
                     } else {
-                        Text("${selectedItems.size} selected")
+                         Text(stringResource(Res.string.media_selected, selectedItems.size))
                     }
                 },
                 navigationIcon = {
@@ -154,7 +157,7 @@ fun SyncedMediaGalleryScreen(
                     }) {
                         Icon(
                             imageVector = Icons.AutoMirrored.Outlined.ArrowBack,
-                            contentDescription = "Back",
+                             contentDescription = stringResource(Res.string.media_back),
                         )
                     }
                 },
@@ -163,14 +166,14 @@ fun SyncedMediaGalleryScreen(
                         IconButton(onClick = onRefresh) {
                             Icon(
                                 imageVector = Icons.Outlined.Refresh,
-                                contentDescription = "Refresh synced media",
+                                 contentDescription = stringResource(Res.string.media_refresh),
                             )
                         }
                     } else {
                         IconButton(onClick = { selectedItems = emptySet() }) {
                             Icon(
                                 imageVector = Icons.AutoMirrored.Outlined.ArrowBack,
-                                contentDescription = "Deselect all",
+                                 contentDescription = stringResource(Res.string.media_deselect_all),
                             )
                         }
                     }
@@ -212,7 +215,7 @@ fun SyncedMediaGalleryScreen(
                         contentAlignment = Companion.Center,
                     ) {
                         Text(
-                            text = "No synced photos or videos yet.",
+                             text = stringResource(Res.string.media_empty),
                             textAlign = TextAlign.Center,
                             style = MaterialTheme.typography.bodyLarge,
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
@@ -307,7 +310,7 @@ private fun SyncedMediaTile(
                 ) {
                     Icon(
                         imageVector = Icons.Outlined.PlayArrow,
-                        contentDescription = "Video",
+                         contentDescription = stringResource(Res.string.media_video),
                         modifier = Modifier.padding(8.dp),
                     )
                 }
@@ -336,7 +339,7 @@ private fun SyncedMediaTile(
                         ) {
                             Icon(
                                 imageVector = Icons.Outlined.Check,
-                                contentDescription = "Selected",
+                                 contentDescription = stringResource(Res.string.media_selected_content_description),
                                 modifier = Modifier.fillMaxSize(),
                                 tint = MaterialTheme.colorScheme.onPrimary,
                             )
