@@ -391,6 +391,8 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
         private const val VOICE_CUE_ROUTE_SETTLE_MS = 500L
         private const val VOICE_CUE_BLUETOOTH_TAIL_MS = 750L
         private const val VOICE_CUE_CALLBACK_TIMEOUT_MS = 3_000L
+        private val DEFAULT_VIDEO_DURATION_OPTIONS_SECONDS = listOf(15, 30, 60, 180, 540, 720)
+        private val AUDIO_DURATION_OPTIONS_SECONDS = listOf(1_800, 3_600, 7_200)
 
         fun actionTaskerCommand(appPackageName: String): String =
             "$appPackageName.ACTION_TASKER_COMMAND"
@@ -449,6 +451,7 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
     private var isAiHijackEnabled = true // Default to enabled
     private var isImageAssistantMode = true // Use assistant vs share intent
     private var aiAssistantMode = AI_MODE_PHONE_ASSISTANT
+    private var wakeWordConfiguredForConnection = false
 
     // State used by the BLE+WiFi P2P data-download flow
     private var downloadP2pConnected = false
@@ -1567,17 +1570,17 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
             GlassesDashboardAction.RefreshRecordingSettings -> if (isEyevueSelected()) {
                 getOrCreateEyevueManager().requestSupportFunction()
             } else {
-                Log.i("Dashboard", "RefreshRecordingSettings (no-op in temp branch)")
+                refreshHeyCyanRecordingSettings()
             }
             is GlassesDashboardAction.SetVideoRecordingDuration -> if (isEyevueSelected()) {
                 getOrCreateEyevueManager().setRecordingDuration(action.seconds)
             } else {
-                Log.i("Dashboard", "SetVideoRecordingDuration (no-op in temp branch)")
+                setHeyCyanRecordingDuration(isAudio = false, seconds = action.seconds)
             }
             is GlassesDashboardAction.SetAudioRecordingDuration -> if (isEyevueSelected()) {
                 getOrCreateEyevueManager().setRecordingDuration(action.seconds)
             } else {
-                Log.i("Dashboard", "SetAudioRecordingDuration (no-op in temp branch)")
+                setHeyCyanRecordingDuration(isAudio = true, seconds = action.seconds)
             }
             is GlassesDashboardAction.SetWearingDetection -> if (isEyevueSelected()) {
                 getOrCreateEyevueManager().setWearingDetection(action.enabled)
@@ -2255,6 +2258,7 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
         binding.cbHijackEnabled.setOnCheckedChangeListener { _, isChecked ->
 
             isAiHijackEnabled = isChecked
+            if (isChecked) configureHeyCyanWakeWordIfNeeded()
             Toast.makeText(this, "Hijack ${if (isChecked) "Enabled" else "Disabled"}", Toast.LENGTH_SHORT).show()
         }
 
@@ -4076,12 +4080,14 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
     }
 
     private fun finishAiQuestionForegroundWork() {
-        if (!isMetaRaybanSelected() && BleOperateManager.getInstance().isConnected) {
-            AiQuestionForegroundService.startConnected(this)
-        } else {
-            AiQuestionForegroundService.stop(this)
-        }
+        AiQuestionForegroundService.stop(this)
     }
+
+    private fun recognitionLanguageTag(): String =
+        ImageQuestionPreferences.get(this).appLanguageTag.ifBlank {
+            resources.configuration.locales[0]?.toLanguageTag().orEmpty()
+                .ifBlank { Locale.getDefault().toLanguageTag() }
+        }
 
     private fun triggerCliRelayImageCaptureAndQuery() {
         handleGlassesImageButtonPressed(
@@ -4731,6 +4737,8 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
                     val intent = Intent(RecognizerIntent.ACTION_RECOGNIZE_SPEECH).apply {
                         putExtra(RecognizerIntent.EXTRA_LANGUAGE_MODEL, RecognizerIntent.LANGUAGE_MODEL_FREE_FORM)
                         putExtra(RecognizerIntent.EXTRA_MAX_RESULTS, 1)
+                        putExtra(RecognizerIntent.EXTRA_LANGUAGE, recognitionLanguageTag())
+                        putExtra(RecognizerIntent.EXTRA_LANGUAGE_PREFERENCE, recognitionLanguageTag())
                         // Once speech begins, wait for Android's end-of-speech signal rather
                         // than imposing a fixed recording deadline.
                         putExtra(RecognizerIntent.EXTRA_SPEECH_INPUT_COMPLETE_SILENCE_LENGTH_MILLIS, 2_000L)
@@ -4961,6 +4969,8 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
         val intent = Intent(RecognizerIntent.ACTION_RECOGNIZE_SPEECH).apply {
             putExtra(RecognizerIntent.EXTRA_LANGUAGE_MODEL, RecognizerIntent.LANGUAGE_MODEL_FREE_FORM)
             putExtra(RecognizerIntent.EXTRA_MAX_RESULTS, 1)
+            putExtra(RecognizerIntent.EXTRA_LANGUAGE, recognitionLanguageTag())
+            putExtra(RecognizerIntent.EXTRA_LANGUAGE_PREFERENCE, recognitionLanguageTag())
         }
 
         recognizer.setRecognitionListener(object : RecognitionListener {
@@ -5487,12 +5497,116 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
         updateDashboardState { state -> state.copy(connectionLabel = status) }
         updateDeviceClassText()
         if (connected) {
-            AiQuestionForegroundService.startConnected(this)
+            configureHeyCyanWakeWordIfNeeded()
+            refreshHeyCyanRecordingSettings(showDisconnectedMessage = false)
         } else {
             AiQuestionForegroundService.stop(this)
+            wakeWordConfiguredForConnection = false
         }
         if (!connected) {
             updateBatteryText(null)
+        }
+    }
+
+    private fun configureHeyCyanWakeWordIfNeeded() {
+        if (wakeWordConfiguredForConnection ||
+            !BleOperateManager.getInstance().isConnected ||
+            DeviceProfileStore.selectedClass(this) != com.fersaiyan.cyanbridge.shared.devices.DeviceClass.HEY_CYAN
+        ) {
+            return
+        }
+        wakeWordConfiguredForConnection = true
+        runCatching {
+            // The official app enables the onboard "Hey Cyan" detector with this SDK call.
+            LargeDataHandler.getInstance().aiVoiceWake(true, true) { _, response ->
+                val enabled = response.isOpen
+                wakeWordConfiguredForConnection = enabled
+                Log.i("DeviceNotify", "Hey Cyan wake word enabled=$enabled")
+            }
+        }.onFailure { error ->
+            wakeWordConfiguredForConnection = false
+            Log.w("DeviceNotify", "Failed to enable Hey Cyan wake word", error)
+        }
+    }
+
+    private fun refreshHeyCyanRecordingSettings(showDisconnectedMessage: Boolean = true) {
+        if (!BleOperateManager.getInstance().isConnected ||
+            DeviceProfileStore.selectedClass(this) != com.fersaiyan.cyanbridge.shared.devices.DeviceClass.HEY_CYAN
+        ) {
+            if (showDisconnectedMessage) {
+                Toast.makeText(this, "Connect HeyCyan glasses to load recording limits", Toast.LENGTH_SHORT).show()
+            }
+            return
+        }
+
+        val handler = LargeDataHandler.getInstance()
+        handler.glassesControl(byteArrayOf(0x01, 0x02)) { _, response ->
+            updateHeyCyanRecordingSettings(response)
+        }
+        handler.glassesControl(byteArrayOf(0x01, 0x06)) { _, response ->
+            updateHeyCyanRecordingSettings(response)
+        }
+    }
+
+    private fun updateHeyCyanRecordingSettings(
+        response: com.oudmon.ble.base.communication.bigData.resp.GlassModelControlResponse,
+    ) {
+        when (response.dataType) {
+            2 -> runOnUiThread {
+                updateDashboardState { state ->
+                    state.copy(
+                        videoRecordingDurationSeconds = response.videoDuration,
+                        videoRecordingDurationOptionsSeconds = DEFAULT_VIDEO_DURATION_OPTIONS_SECONDS,
+                    )
+                }
+            }
+            6 -> runOnUiThread {
+                updateDashboardState { state ->
+                    state.copy(
+                        audioRecordingDurationSeconds = response.recordAudioDuration,
+                        audioRecordingDurationOptionsSeconds = AUDIO_DURATION_OPTIONS_SECONDS,
+                    )
+                }
+            }
+        }
+    }
+
+    private fun setHeyCyanRecordingDuration(isAudio: Boolean, seconds: Int) {
+        val allowed = if (isAudio) {
+            AUDIO_DURATION_OPTIONS_SECONDS
+        } else {
+            dashboardState.videoRecordingDurationOptionsSeconds.ifEmpty {
+                DEFAULT_VIDEO_DURATION_OPTIONS_SECONDS
+            }
+        }
+        if (seconds !in allowed) return
+        if (!BleOperateManager.getInstance().isConnected ||
+            DeviceProfileStore.selectedClass(this) != com.fersaiyan.cyanbridge.shared.devices.DeviceClass.HEY_CYAN
+        ) {
+            Toast.makeText(this, "Connect HeyCyan glasses first", Toast.LENGTH_SHORT).show()
+            return
+        }
+
+        val dataType = if (isAudio) 0x06 else 0x02
+        val command = byteArrayOf(
+            0x02,
+            dataType.toByte(),
+            0x00,
+            ByteUtil.loword(seconds).toByte(),
+            ByteUtil.hiword(seconds).toByte(),
+        )
+        LargeDataHandler.getInstance().glassesControl(command) { _, response ->
+            Log.i(
+                "Dashboard",
+                "Set ${if (isAudio) "audio" else "video"} duration=$seconds responseType=${response.dataType}",
+            )
+        }
+        updateDashboardState { state ->
+            if (isAudio) {
+                state.copy(audioRecordingDurationSeconds = seconds)
+            } else {
+                state.copy(videoRecordingDurationSeconds = seconds)
+            }
         }
     }
 
@@ -9688,7 +9802,8 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
                         Log.i("DeviceNotify", "Walking Aid consumed its requested photo-ready notification")
                         return
                     }
-                    val sourceTag = pendingImageCaptureSourceTag ?: "glasses_signal"
+                    val appRequestedCapture = imageCaptureAwaitingNotification.get()
+                    val sourceTag = pendingImageCaptureSourceTag ?: "hardware_image_button"
                     Log.i(
                         "ImageQuestionTransfer",
                         "AI photo-ready notify source=$sourceTag awaiting=${imageCaptureAwaitingNotification.get()} " +
@@ -9713,14 +9828,26 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
                             }
                             imageCaptureAwaitingNotification.set(false)
                             pendingImageCaptureSourceTag = null
-                            requestSelectedImageSourceForQuestion(sourceTag)
+                            if (appRequestedCapture) {
+                                requestSelectedImageSourceForQuestion(sourceTag)
+                            } else {
+                                // A hardware AI-photo press starts a complete image-question
+                                // turn. It must not fall through to the 0x03 voice route.
+                                handleGlassesImageButtonPressed(
+                                    triggerCapture = false,
+                                    sourceTag = sourceTag,
+                                    source = ImageQuestionSourcePolicy.defaultSource(),
+                                    thumbnailQuality = ImageQuestionSourcePolicy.defaultThumbnailQuality(),
+                                    offerSpokenQuestion = true,
+                                )
+                            }
                         }
                     }
                 }
 
                 //Glasses activate microphone / AI button
                 0x03 -> {
-                    if (response.loadData[7].toInt() == 1) {
+                    if (response.loadData.size > 7 && response.loadData[7].toInt() == 1) {
                         Log.i("DeviceNotify", "AI Button Pressed - Hijacking to Phone Assistant")
                         if (isAiHijackEnabled) {
                             triggerAssistantVoiceQuery()

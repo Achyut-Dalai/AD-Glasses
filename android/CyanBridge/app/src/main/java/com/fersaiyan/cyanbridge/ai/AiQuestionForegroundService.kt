@@ -32,7 +32,6 @@ class AiQuestionForegroundService : Service() {
     private val serviceScope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
     private var idleStopJob: Job? = null
     private lateinit var wakeLock: PowerManager.WakeLock
-    private var connectedKeepAlive = false
 
     override fun onCreate() {
         super.onCreate()
@@ -52,11 +51,9 @@ class AiQuestionForegroundService : Service() {
             return START_NOT_STICKY
         }
 
-        if (intent?.action == ACTION_CONNECTED || intent == null) {
-            connectedKeepAlive = true
-            idleStopJob?.cancel()
-            startForegroundSafely("Ready for glasses voice and image questions", isQueryActive = false)
-            return START_STICKY
+        if (intent == null) {
+            stopQuestionWork()
+            return START_NOT_STICKY
         }
 
         val status = intent.getStringExtra(EXTRA_STATUS).orEmpty().ifBlank { "Processing glasses question" }
@@ -68,11 +65,7 @@ class AiQuestionForegroundService : Service() {
             delay(MAX_WORK_DURATION_MS)
             Log.w(TAG, "AI question wake lock expired")
             if (wakeLock.isHeld) wakeLock.release()
-            if (connectedKeepAlive) {
-                startForegroundSafely("Ready for glasses voice and image questions", isQueryActive = false)
-            } else {
-                stopQuestionWork()
-            }
+            stopQuestionWork()
         }
         return START_NOT_STICKY
     }
@@ -118,7 +111,6 @@ class AiQuestionForegroundService : Service() {
     }
 
     private fun stopQuestionWork() {
-        connectedKeepAlive = false
         idleStopJob?.cancel()
         if (wakeLock.isHeld) wakeLock.release()
         stopForeground(STOP_FOREGROUND_REMOVE)
@@ -131,7 +123,6 @@ class AiQuestionForegroundService : Service() {
         private const val NOTIFICATION_ID = 7043
         private const val MAX_WORK_DURATION_MS = 2L * 60L * 1000L
         private const val ACTION_START = "com.fersaiyan.cyanbridge.action.AI_QUESTION_START"
-        private const val ACTION_CONNECTED = "com.fersaiyan.cyanbridge.action.AI_QUESTION_CONNECTED"
         private const val ACTION_STOP = "com.fersaiyan.cyanbridge.action.AI_QUESTION_STOP"
         private const val EXTRA_STATUS = "status"
 
@@ -141,13 +132,6 @@ class AiQuestionForegroundService : Service() {
                 .putExtra(EXTRA_STATUS, status)
             runCatching { ContextCompat.startForegroundService(context, intent) }
                 .onFailure { Log.w(TAG, "Unable to request AI question foreground service", it) }
-        }
-
-        fun startConnected(context: Context) {
-            val intent = Intent(context, AiQuestionForegroundService::class.java)
-                .setAction(ACTION_CONNECTED)
-            runCatching { ContextCompat.startForegroundService(context, intent) }
-                .onFailure { Log.w(TAG, "Unable to request glasses question keep-alive service", it) }
         }
 
         fun stop(context: Context) {
