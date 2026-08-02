@@ -60,6 +60,8 @@ class LocalAgentService : Service() {
     private var tts: TextToSpeech? = null
     private var ttsReady: CompletableDeferred<Boolean>? = null
     private val screenReadInProgress = AtomicBoolean(false)
+    private var runtimeInitialized = false
+    private var deviceStateReceiverRegistered = false
 
     /** Signalled when the user approves a pending action; the loop awaits this. */
     private var approvalDeferred: CompletableDeferred<Boolean>? = null
@@ -84,24 +86,28 @@ class LocalAgentService : Service() {
     override fun onCreate() {
         super.onCreate()
         ensureNotificationChannel()
-        initTts()
-        LocalAgentMemoryStore.ensureSeedFiles(applicationContext)
-        ContextCompat.registerReceiver(
-            this,
-            deviceStateReceiver,
-            IntentFilter(Intent.ACTION_SCREEN_OFF),
-            ContextCompat.RECEIVER_NOT_EXPORTED,
-        )
     }
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
         when (intent?.action) {
             // New contract (UI -> Service)
-            LocalAgentIntents.ACTION_START -> startLoop(intent.getStringExtra(LocalAgentIntents.EXTRA_GOAL))
+            LocalAgentIntents.ACTION_START -> {
+                ensureRuntimeInitialized()
+                startLoop(intent.getStringExtra(LocalAgentIntents.EXTRA_GOAL))
+            }
             LocalAgentIntents.ACTION_STOP -> stopLoop(reason = "user")
-            LocalAgentIntents.ACTION_DEMO -> runDemo()
-            LocalAgentIntents.ACTION_READ_SCREEN_ALOUD -> readCurrentScreenAloud()
-            LocalAgentIntents.ACTION_GET_STATUS -> emitStatus()
+            LocalAgentIntents.ACTION_DEMO -> {
+                ensureRuntimeInitialized()
+                runDemo()
+            }
+            LocalAgentIntents.ACTION_READ_SCREEN_ALOUD -> {
+                ensureRuntimeInitialized()
+                readCurrentScreenAloud()
+            }
+            LocalAgentIntents.ACTION_GET_STATUS -> {
+                emitStatus()
+                if (!runningState.get() && !screenReadInProgress.get()) stopSelfResult(startId)
+            }
             LocalAgentIntents.ACTION_RESUME_AFTER_APPROVAL -> resumeAfterApproval(
                 rejected = intent.getBooleanExtra(LocalAgentIntents.EXTRA_REJECTED, false)
             )
@@ -110,12 +116,15 @@ class LocalAgentService : Service() {
             ACTION_START_LEGACY -> stopLoop(reason = "legacy_goalless_start")
             ACTION_STOP_LEGACY -> stopLoop(reason = "user")
         }
-        return START_STICKY
+        return START_NOT_STICKY
     }
 
     override fun onDestroy() {
         stopLoop(reason = "service_destroy")
-        runCatching { unregisterReceiver(deviceStateReceiver) }
+        if (deviceStateReceiverRegistered) {
+            runCatching { unregisterReceiver(deviceStateReceiver) }
+            deviceStateReceiverRegistered = false
+        }
         approvalDeferred?.complete(false)
         approvalDeferred = null
         serviceScope.cancel()
@@ -126,6 +135,20 @@ class LocalAgentService : Service() {
         tts = null
         ttsReady = null
         super.onDestroy()
+    }
+
+    private fun ensureRuntimeInitialized() {
+        if (runtimeInitialized) return
+        runtimeInitialized = true
+        initTts()
+        LocalAgentMemoryStore.ensureSeedFiles(applicationContext)
+        ContextCompat.registerReceiver(
+            this,
+            deviceStateReceiver,
+            IntentFilter(Intent.ACTION_SCREEN_OFF),
+            ContextCompat.RECEIVER_NOT_EXPORTED,
+        )
+        deviceStateReceiverRegistered = true
     }
 
     private fun startLoop(goalOverride: String?) {
@@ -737,6 +760,7 @@ class LocalAgentService : Service() {
                 LocalAgentPrefs.setStatus(applicationContext, "Demo: unavailable")
                 LocalAgentPrefs.setLastError(applicationContext, availability.errorCode)
                 emitStatus()
+                stopSelf()
                 return
             }
 
@@ -745,6 +769,7 @@ class LocalAgentService : Service() {
             LocalAgentPrefs.setStatus(applicationContext, "Demo: failed")
             LocalAgentPrefs.setLastError(applicationContext, err)
             emitStatus()
+            stopSelf()
             return
         }
 
@@ -761,6 +786,7 @@ class LocalAgentService : Service() {
                     LocalAgentPrefs.setStatus(applicationContext, "Demo: stopped")
                     LocalAgentPrefs.setLastError(applicationContext, availability.errorCode)
                     emitStatus()
+                    stopSelf()
                     return@launch
                 }
 
@@ -769,7 +795,8 @@ class LocalAgentService : Service() {
                 LocalAgentPrefs.setStatus(applicationContext, "Demo: no text found")
                 LocalAgentPrefs.setLastError(applicationContext, "empty_screen_text")
                 emitStatus()
-                speakBestEffort("I couldn't read any text on the screen.")
+                speakAndWaitBestEffort("I couldn't read any text on the screen.")
+                stopSelf()
                 return@launch
             }
 
@@ -787,11 +814,12 @@ class LocalAgentService : Service() {
                 .joinToString(". ")
                 .take(550)
 
-            speakBestEffort("Reading your screen. $toSpeak")
+            speakAndWaitBestEffort("Reading your screen. $toSpeak", maxLength = 600)
 
             LocalAgentPrefs.setStatus(applicationContext, "Demo: spoke (${toSpeak.length} chars)")
             LocalAgentPrefs.clearLastError(applicationContext)
             emitStatus()
+            stopSelf()
         }
     }
 
@@ -800,6 +828,7 @@ class LocalAgentService : Service() {
      * approval-gated action rather than a background notification or message reader.
      */
     private fun readCurrentScreenAloud(): Boolean {
+        val standaloneRequest = !runningState.get()
         LocalAgentDeviceState.availability(applicationContext)
             .takeIf { it != LocalAgentDeviceState.Availability.READY }
             ?.let { availability ->
@@ -812,11 +841,13 @@ class LocalAgentService : Service() {
         if (!hasNotificationPermission(this)) {
             LocalAgentPrefs.setLastError(applicationContext, "missing_post_notifications")
             emitStatus()
+            if (standaloneRequest) stopSelf()
             return false
         }
         if (!LocalAgentAccessibilityBridge.isConnected()) {
             LocalAgentPrefs.setLastError(applicationContext, "accessibility_not_connected")
             emitStatus()
+            if (standaloneRequest) stopSelf()
             return false
         }
         val activePackage = LocalAgentAccessibilityBridge.activeWindowPackageName()
@@ -824,16 +855,17 @@ class LocalAgentService : Service() {
             LocalAgentPrefs.setStatus(applicationContext, "Unable to verify current app")
             LocalAgentPrefs.setLastError(applicationContext, "screen_package_unknown")
             emitStatus()
+            if (standaloneRequest) stopSelf()
             return false
         }
         LocalAgentSafetyPolicy.blockedReason(applicationContext, activePackage)?.let {
             LocalAgentPrefs.setStatus(applicationContext, "Screen reading blocked by privacy settings")
             LocalAgentPrefs.setLastError(applicationContext, "privacy_blacklisted_app")
             emitStatus()
+            if (standaloneRequest) stopSelf()
             return false
         }
 
-        val standaloneRequest = !runningState.get()
         if (standaloneRequest) {
             LocalAgentPrefs.setStatus(applicationContext, "Reading current screen")
             LocalAgentPrefs.clearLastError(applicationContext)

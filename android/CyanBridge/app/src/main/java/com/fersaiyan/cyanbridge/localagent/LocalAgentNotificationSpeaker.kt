@@ -49,6 +49,16 @@ object LocalAgentNotificationSpeaker {
         }
     }
 
+    fun stop() {
+        val engine = synchronized(lock) {
+            pendingText = null
+            ready = false
+            tts.also { tts = null }
+        }
+        engine?.stop()
+        engine?.shutdown()
+    }
+
     private data class InitializationResult(
         val ready: Boolean,
         val pendingText: String?,

@@ -5,6 +5,7 @@ import com.fersaiyan.cyanbridge.agent.LocalAgentPrefs as AutomationPrefs
 import com.fersaiyan.cyanbridge.ai.router.AiProviderPrefs
 import com.fersaiyan.cyanbridge.ai.router.AiProviderType
 import com.fersaiyan.cyanbridge.localagent.LocalAgentController
+import com.fersaiyan.cyanbridge.localagent.LocalAgentNotificationSpeaker
 import com.fersaiyan.cyanbridge.localagent.LocalAgentPrefs as RuntimePrefs
 import com.fersaiyan.cyanbridge.localagent.LocalAgentTelegramService
 import com.fersaiyan.cyanbridge.shared.plugins.NativePluginIds
@@ -29,6 +30,7 @@ object LocalAgentPlugin {
         if (!enabled) {
             LocalAgentController.stop(context)
             LocalAgentTelegramService.stop(context)
+            LocalAgentNotificationSpeaker.stop()
         } else if (RuntimePrefs.isTelegramRemoteControlEnabled(context)) {
             // Remote control was explicitly configured earlier; restoring phone control can
             // resume only that already allowlisted Telegram listener.

@@ -8,6 +8,7 @@ import android.service.notification.StatusBarNotification
 import android.util.Log
 import com.fersaiyan.cyanbridge.bridge.core.DisplayCommand
 import com.fersaiyan.cyanbridge.bridge.core.GlassesBridge
+import com.fersaiyan.cyanbridge.agent.LocalAgentPrefs as AutomationPrefs
 import com.fersaiyan.cyanbridge.localagent.LocalAgentNotificationSpeaker
 import com.fersaiyan.cyanbridge.localagent.LocalAgentPrefs
 import kotlinx.coroutines.CoroutineScope
@@ -114,6 +115,7 @@ class NotificationForwarderService : NotificationListenerService() {
         title: String,
         text: String,
     ) {
+        if (!AutomationPrefs.isLocalAgentAutomationEnabled(applicationContext)) return
         if (!LocalAgentPrefs.isWhatsAppNotificationReadAloudEnabled(applicationContext)) return
         if (notification.packageName !in WHATSAPP_PACKAGES) return
         if (notification.isOngoing || text.isBlank()) return
