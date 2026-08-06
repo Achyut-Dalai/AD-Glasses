@@ -20,6 +20,6 @@ class GeminiLiveLanguageTest {
         ).forRoute(ImageQuestionRoute.PRO_RELAY)
 
         assertTrue(prompt.contains("(ko)"))
-        assertTrue(prompt.contains("내 앞에"))
+        assertTrue(prompt.contains("이미지를 간단히 설명해 주세요"))
     }
 }
