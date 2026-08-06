@@ -75,12 +75,12 @@ class LocalModelsConfigureScreenTest {
     fun activeDownloadRemainsVisibleWhenScrolledToBottomAndCanBeCancelled() {
         var action: LocalModelsAction? = null
         val catalogEntries = List(10) { index ->
-            com.fersaiyan.cyanbridge.shared.localmodels.LocalModelCatalogItemUiState(
+            com.fersaiyan.cyanbridge.shared.localmodels.LocalModelCatalogUiItem(
                 id = "model_$index",
-                displayName = "Catalog Model $index",
-                description = "Test description $index",
-                sizeText = "1.5 GB",
-                isInstalled = false,
+                title = "Catalog Model $index",
+                details = "Test description $index · 1.5 GB",
+                status = "Available",
+                downloadLabel = "Download",
                 canDownload = true,
             )
         }

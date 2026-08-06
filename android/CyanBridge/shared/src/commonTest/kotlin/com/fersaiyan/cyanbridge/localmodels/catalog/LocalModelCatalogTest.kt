@@ -7,14 +7,19 @@ import kotlin.test.assertTrue
 
 class LocalModelCatalogTest {
     @Test
-    fun curatedCatalogUsesStableUniqueAndDownloadableEntries() {
+    fun curatedCatalogUsesStableUniqueAndValidEntries() {
         val models = LocalModelCatalogRepository.curatedModels
 
         assertEquals(models.size, models.map(LocalModelCatalogEntry::id).toSet().size)
+        assertEquals("gemma4-e2b-npu-coming-soon", models.last().id)
         assertTrue(models.all { entry ->
+            val hasDownloadSource = entry.sourceUrl?.startsWith("https://") == true
+            val isDisabledComingSoonPlaceholder =
+                entry.comingSoon && !entry.enabled && entry.sourceUrl == null
+
             entry.id.isNotBlank() &&
                 entry.expectedFilename.isNotBlank() &&
-                entry.sourceUrl?.startsWith("https://") == true &&
+                (hasDownloadSource || isDisabledComingSoonPlaceholder) &&
                 entry.sizeBytes > 0 &&
                 entry.contextSizeDefault > 0 &&
                 entry.minRamGb > 0.0 &&
