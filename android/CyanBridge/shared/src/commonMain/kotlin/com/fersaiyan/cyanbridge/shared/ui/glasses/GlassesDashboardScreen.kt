@@ -51,6 +51,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import com.fersaiyan.cyanbridge.shared.glasses.GlassesAssistantMode
+import com.fersaiyan.cyanbridge.shared.glasses.AiWakeWordRoute
 import com.fersaiyan.cyanbridge.shared.glasses.GlassesDashboardAction
 import com.fersaiyan.cyanbridge.shared.glasses.GlassesDashboardUiState
 import com.fersaiyan.cyanbridge.shared.glasses.FirmwarePatchRequestUiState
@@ -759,11 +760,112 @@ private fun GlassesAssistantControls(
             onSecondary = { onAction(GlassesDashboardAction.TestImageQuestion) },
             secondaryEnabled = state.imageQueryEnabled,
         )
+        if (state.showHeyCyanControls || state.showEyevueControls) {
+            AiWakeWordRouteControls(state, onAction)
+        }
         OutlinedButton(
             onClick = { onAction(GlassesDashboardAction.OpenExternalImageAutomationDiagnostics) },
             modifier = Modifier.fillMaxWidth(),
         ) {
              Text(stringResource(Res.string.dashboard_gemini_chatgpt_setup))
+        }
+    }
+}
+
+@Composable
+private fun AiWakeWordRouteControls(
+    state: GlassesDashboardUiState,
+    onAction: (GlassesDashboardAction) -> Unit,
+) {
+    var showHeyCyanImageWarning by remember { mutableStateOf(false) }
+
+    if (showHeyCyanImageWarning) {
+        AlertDialog(
+            onDismissRequest = { showHeyCyanImageWarning = false },
+            modifier = Modifier.testTag("ai_wake_word_image_warning"),
+            title = {
+                Text(stringResource(Res.string.dashboard_ai_wake_word_image_warning_title))
+            },
+            text = {
+                Text(stringResource(Res.string.dashboard_ai_wake_word_image_warning_body))
+            },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        showHeyCyanImageWarning = false
+                        onAction(
+                            GlassesDashboardAction.SetAiWakeWordRoute(
+                                AiWakeWordRoute.IMAGE_QUESTION,
+                            )
+                        )
+                    },
+                    modifier = Modifier.testTag("ai_wake_word_image_warning_confirm"),
+                ) {
+                    Text(stringResource(Res.string.dashboard_ai_wake_word_image_warning_confirm))
+                }
+            },
+            dismissButton = {
+                TextButton(
+                    onClick = { showHeyCyanImageWarning = false },
+                    modifier = Modifier.testTag("ai_wake_word_image_warning_cancel"),
+                ) {
+                    Text(stringResource(Res.string.action_cancel))
+                }
+            },
+        )
+    }
+
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .testTag("ai_wake_word_route_controls"),
+        verticalArrangement = Arrangement.spacedBy(6.dp),
+    ) {
+        Text(
+            text = stringResource(Res.string.dashboard_ai_wake_word_route),
+            style = MaterialTheme.typography.titleSmall,
+            fontWeight = FontWeight.SemiBold,
+        )
+        Text(
+            text = stringResource(Res.string.dashboard_ai_wake_word_route_description),
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
+        ) {
+            FilterChip(
+                selected = state.aiWakeWordRoute == AiWakeWordRoute.VOICE_QUESTION,
+                onClick = {
+                    onAction(GlassesDashboardAction.SetAiWakeWordRoute(AiWakeWordRoute.VOICE_QUESTION))
+                },
+                label = { Text(stringResource(Res.string.dashboard_ai_wake_word_voice)) },
+                modifier = Modifier
+                    .weight(1f)
+                    .testTag("ai_wake_word_route_voice_question"),
+            )
+            FilterChip(
+                selected = state.aiWakeWordRoute == AiWakeWordRoute.IMAGE_QUESTION,
+                onClick = {
+                    if (
+                        state.showHeyCyanControls &&
+                        state.aiWakeWordRoute != AiWakeWordRoute.IMAGE_QUESTION
+                    ) {
+                        showHeyCyanImageWarning = true
+                    } else {
+                        onAction(
+                            GlassesDashboardAction.SetAiWakeWordRoute(
+                                AiWakeWordRoute.IMAGE_QUESTION,
+                            )
+                        )
+                    }
+                },
+                label = { Text(stringResource(Res.string.dashboard_ai_wake_word_image)) },
+                modifier = Modifier
+                    .weight(1f)
+                    .testTag("ai_wake_word_route_image_question"),
+            )
         }
     }
 }

@@ -13,6 +13,7 @@ import android.graphics.BitmapFactory
 import android.widget.ArrayAdapter
 import androidx.localbroadcastmanager.content.LocalBroadcastManager
 import com.fersaiyan.cyanbridge.shared.settings.AgentProviderType
+import com.fersaiyan.cyanbridge.ai.AiWakeWordPreferences
 import com.fersaiyan.cyanbridge.agent.LocalAgentPrefs as AutomationPrefs
 import com.fersaiyan.cyanbridge.ui.VersionUpdateChecker
 import com.fersaiyan.cyanbridge.localagent.AudioSessionCoordinator
@@ -152,6 +153,7 @@ import java.io.File
 import java.io.FileOutputStream
 import java.io.InputStream
 import java.io.ByteArrayOutputStream
+import java.io.IOException
 import java.net.HttpURLConnection
 import java.net.InetAddress
 import java.net.URL
@@ -221,6 +223,7 @@ import com.fersaiyan.cyanbridge.ai.image.ImageThumbnailQuality
 import com.fersaiyan.cyanbridge.ai.AiQuestionForegroundService
 import com.fersaiyan.cyanbridge.ai.image.HighQualityFailureChoice
 import com.fersaiyan.cyanbridge.shared.glasses.GlassesAssistantMode
+import com.fersaiyan.cyanbridge.shared.glasses.AiWakeWordRoute
 import com.fersaiyan.cyanbridge.shared.glasses.GlassesDashboardAction
 import com.fersaiyan.cyanbridge.shared.glasses.GlassesDashboardUiState
 import com.fersaiyan.cyanbridge.shared.glasses.FirmwarePatchRequestUiState
@@ -389,8 +392,10 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
         private const val ONE_SHOT_BLE_COMMAND_TIMEOUT_MS = 6_000L
         private const val IMAGE_THUMBNAIL_TRANSFER_TIMEOUT_MS = 20_000L
         private const val VOICE_CUE_ROUTE_SETTLE_MS = 500L
-        private const val VOICE_CUE_BLUETOOTH_TAIL_MS = 750L
+        private const val VOICE_CUE_BLUETOOTH_TAIL_MS = 50L
         private const val VOICE_CUE_CALLBACK_TIMEOUT_MS = 3_000L
+        private const val IMAGE_QUESTION_CUE_BLUETOOTH_TAIL_MS = 50L
+        private const val IMAGE_QUESTION_INITIAL_LISTENING_TIMEOUT_MS = 3_300L
         private val DEFAULT_VIDEO_DURATION_OPTIONS_SECONDS = listOf(15, 30, 60, 180, 540, 720)
         private val AUDIO_DURATION_OPTIONS_SECONDS = listOf(1_800, 3_600, 7_200)
 
@@ -551,6 +556,8 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
     private var meizuMyvuUiJob: Job? = null
     private var eyevueManager: EyevueManager? = null
     private var eyevueUiJob: Job? = null
+    private var eyevueWakeWordJob: Job? = null
+    private val eyevueAiPhotoInProgress = AtomicBoolean(false)
 
     private val metaAndroidPermissionLauncher =
         registerForActivityResult(ActivityResultContracts.RequestMultiplePermissions()) { result ->
@@ -1031,6 +1038,15 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
                     }
                 }
             }
+            if (eyevueWakeWordJob == null) {
+                eyevueWakeWordJob = lifecycleScope.launch {
+                    manager.wakeWordEvents.collect {
+                        if (isEyevueSelected() && isAiHijackEnabled) {
+                            handleAiWakeWordActivation("eyevue")
+                        }
+                    }
+                }
+            }
         }
 
     private fun getOrCreateEyevueLivePreviewManager(): EyevueLivePreviewManager =
@@ -1301,6 +1317,7 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
         if (
             action is GlassesDashboardAction.SubmitFirmwarePatchRequest ||
             action is GlassesDashboardAction.SelectImageThumbnailQuality ||
+            action is GlassesDashboardAction.SetAiWakeWordRoute ||
             action == GlassesDashboardAction.DismissFirmwarePatchRequest ||
             action == GlassesDashboardAction.MetaSendDiagnostics
         ) {
@@ -1409,6 +1426,12 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
             is GlassesDashboardAction.SelectAssistantMode -> when (action.mode) {
                 GlassesAssistantMode.PHONE_ASSISTANT -> selectPhoneAssistant()
                 GlassesAssistantMode.CUSTOM_AI_PROVIDER -> selectCustomAiProvider()
+            }
+            is GlassesDashboardAction.SetAiWakeWordRoute -> {
+                if (isHeyCyanOrEyevueSelected()) {
+                    AiWakeWordPreferences.setRoute(this, action.route)
+                    updateDashboardState { state -> state.copy(aiWakeWordRoute = action.route) }
+                }
             }
             is GlassesDashboardAction.SelectImageThumbnailQuality -> {
                 val quality = ImageQuestionPreferences.setThumbnailQuality(this, action.sdkValue)
@@ -3862,7 +3885,12 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
         onToken: ((String) -> Unit)? = null,
     ): String {
         val date = todayDateString()
-        val systemPrompt = buildCompactMemoryAwareSystemPrompt(queryText = userPrompt, date = date)
+        val languageTag = recognitionLanguageTag()
+        val systemPrompt = buildString {
+            append(buildCompactMemoryAwareSystemPrompt(queryText = userPrompt, date = date))
+            append("\n\n")
+            append(ImageQuestionDefaults.responseLanguageInstruction(languageTag))
+        }
 
         val messages = listOf(
             mapOf("role" to "System", "content" to systemPrompt),
@@ -4153,6 +4181,10 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
             captureMetaImageForQuestion(sourceTag)
             return
         }
+        if (isEyevueSelected()) {
+            captureEyevueImageForQuestion(sourceTag, offerSpokenQuestion)
+            return
+        }
 
         if (isGlassesCommandBlocked("AI image capture")) {
             clearPendingVoiceImageQuestion(sourceTag)
@@ -4283,6 +4315,53 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
                     }
                 }
                 metaPhotoCaptureInProgress.set(false)
+            }
+        }
+    }
+
+    private fun captureEyevueImageForQuestion(sourceTag: String, offerSpokenQuestion: Boolean) {
+        val manager = getOrCreateEyevueManager()
+        if (!manager.isConnected()) {
+            clearPendingVoiceImageQuestion(sourceTag)
+            Toast.makeText(this, "Connect Eyevue glasses first.", Toast.LENGTH_SHORT).show()
+            return
+        }
+        if (!eyevueAiPhotoInProgress.compareAndSet(false, true)) {
+            Log.i("AIHijack", "[$sourceTag] Eyevue AI photo capture already in progress")
+            return
+        }
+
+        prepareAiQuestionForLockScreen()
+        beginAiQuestionForegroundWork("Capturing image from Eyevue glasses")
+        pendingImageQuestionOfferSpokenQuestion = false
+        startParallelAudioQuestionIfEligible(offerSpokenQuestion)
+        val startedAt = System.currentTimeMillis()
+        lifecycleScope.launch(Dispatchers.IO) {
+            try {
+                val imageBytes = manager.capturePhotoForAi()
+                    ?: throw IOException("Eyevue photo transfer timed out")
+                val imageFile = File(cacheDir, "Eyevue_AI_${System.currentTimeMillis()}.jpg")
+                imageFile.writeBytes(imageBytes)
+                withContext(Dispatchers.Main) {
+                    onImageReadyForQuestion(
+                        imagePath = imageFile.absolutePath,
+                        source = ImageQuestionSource.HIGH_QUALITY,
+                        transferDurationMs = System.currentTimeMillis() - startedAt,
+                    )
+                }
+            } catch (error: Exception) {
+                Log.e("AIHijack", "[$sourceTag] Eyevue AI photo failed", error)
+                withContext(Dispatchers.Main) {
+                    clearPendingVoiceImageQuestion(sourceTag)
+                    finishAiQuestionForegroundWork()
+                    Toast.makeText(
+                        this@MainActivity,
+                        "Eyevue did not return a photo. Please try again.",
+                        Toast.LENGTH_LONG,
+                    ).show()
+                }
+            } finally {
+                eyevueAiPhotoInProgress.set(false)
             }
         }
     }
@@ -4507,7 +4586,9 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
                             Toast.LENGTH_SHORT,
                         ).show()
                     }
-                    initialQuestion = captureOptionalImageQuestionFromBluetoothMic(timeoutMs = 3_000L)
+                    initialQuestion = captureOptionalImageQuestionFromBluetoothMic(
+                        timeoutMs = IMAGE_QUESTION_INITIAL_LISTENING_TIMEOUT_MS,
+                    )
                 }
             } else {
                 cancelParallelAudioQuestion()
@@ -4516,7 +4597,9 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
             fun offerFollowUp() {
                 lifecycleScope.launch {
                     delay(500L)
-                    val spokenQuestion = captureOptionalImageQuestionFromBluetoothMic(timeoutMs = 3_000L)
+                    val spokenQuestion = captureOptionalImageQuestionFromBluetoothMic(
+                        timeoutMs = IMAGE_QUESTION_INITIAL_LISTENING_TIMEOUT_MS,
+                    )
                     if (!spokenQuestion.isNullOrBlank()) {
                         triggerAssistantImageQuery(
                             imagePath = imagePath,
@@ -4616,7 +4699,9 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
                         "Ask about the image now, or wait for the default description.",
                         Toast.LENGTH_SHORT,
                     ).show()
-                    val spokenQuestion = captureOptionalImageQuestionFromBluetoothMic(timeoutMs = 3_000L)
+                    val spokenQuestion = captureOptionalImageQuestionFromBluetoothMic(
+                        timeoutMs = IMAGE_QUESTION_INITIAL_LISTENING_TIMEOUT_MS,
+                    )
                     deferred.complete(spokenQuestion)
                 }
             }
@@ -4814,10 +4899,10 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
             fun complete(reason: String) {
                 if (completed.compareAndSet(false, true)) {
                     Log.i("ImageQuestionAudio", "Image-question cue complete reason=$reason id=$utteranceId")
-                    // Some devices report TTS completion while the final audio buffer is still
-                    // audible over Bluetooth. Leave a brief gap before opening the microphone.
+                    // Keep only enough separation to avoid clipping the route transition. The
+                    // reclaimed tail time is added to the initial listening window.
                     lifecycleScope.launch {
-                        delay(350L)
+                        delay(IMAGE_QUESTION_CUE_BLUETOOTH_TAIL_MS)
                         if (cont.isActive) {
                             cont.resume(Unit)
                         }
@@ -5050,7 +5135,7 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
                             }
 
                             runOnUiThread {
-                                speak(reply, utteranceId = "AI_REPLY") {
+                                speakVision(reply) {
                                     stopSco()
                                     finishAiQuestionForegroundWork()
                                 }
@@ -5116,8 +5201,8 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
         fun startListeningAfterCue(reason: String) {
             if (!listeningStarted.compareAndSet(false, true)) return
             lifecycleScope.launch {
-                // Some Bluetooth stacks report TTS onDone before their final audio buffer is
-                // audible. Keep the microphone closed until that buffer has drained.
+                // Keep only a minimal route-transition gap so speech immediately after the cue
+                // is not clipped.
                 delay(VOICE_CUE_BLUETOOTH_TAIL_MS)
                 Log.i("ImageQuestionAudio", "Starting voice recognizer after listening cue reason=$reason")
                 recognizer.startListening(intent)
@@ -5128,8 +5213,10 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
             // The Bluetooth communication route was just selected; give it a brief moment before
             // emitting the listening cue so the first syllable is not lost on the glasses.
             delay(VOICE_CUE_ROUTE_SETTLE_MS)
+            val languageTag = recognitionLanguageTag()
             speak(
-                text = "I am listening",
+                text = ImageQuestionDefaults.listeningCueForLanguage(languageTag),
+                languageTag = languageTag,
                 utteranceId = cueUtteranceId,
                 onDone = { startListeningAfterCue("tts callback") },
             )
@@ -5161,6 +5248,29 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
 
             GlassesAssistantRoute.TASKER_EXTERNAL_UI -> triggerTaskerVoiceAutomation()
             GlassesAssistantRoute.PHONE_ASSISTANT -> launchPhoneAssistant()
+        }
+    }
+
+    private fun handleAiWakeWordActivation(source: String) {
+        if (!isAiHijackEnabled) return
+        val route = AiWakeWordPreferences.route(this)
+        Log.i("AIHijack", "AI wake activation source=$source route=$route")
+        runOnUiThread {
+            if (source == "eyevue") {
+                getOrCreateEyevueManager().stopVoiceRecognition()
+            } else {
+                stopGlassesAiAudio("$source wake-word route")
+            }
+            when (route) {
+                AiWakeWordRoute.VOICE_QUESTION -> triggerAssistantVoiceQuery()
+                AiWakeWordRoute.IMAGE_QUESTION -> handleGlassesImageButtonPressed(
+                    triggerCapture = true,
+                    sourceTag = "${source}_wake_word",
+                    source = ImageQuestionSourcePolicy.defaultSource(),
+                    thumbnailQuality = ImageQuestionSourcePolicy.defaultThumbnailQuality(),
+                    offerSpokenQuestion = true,
+                )
+            }
         }
     }
 
@@ -5624,6 +5734,12 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
     private fun isEyevueSelected(): Boolean =
         DeviceProfileStore.selectedClass(this) == com.fersaiyan.cyanbridge.shared.devices.DeviceClass.EYEVUE
 
+    private fun isHeyCyanOrEyevueSelected(): Boolean =
+        DeviceProfileStore.selectedClass(this) in setOf(
+            com.fersaiyan.cyanbridge.shared.devices.DeviceClass.HEY_CYAN,
+            com.fersaiyan.cyanbridge.shared.devices.DeviceClass.EYEVUE,
+        )
+
     private fun rejectHeyCyanOnlyFeature(feature: String): Boolean {
         if (!isMetaRaybanSelected()) return false
         Toast.makeText(
@@ -5673,6 +5789,7 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
             state.copy(
                 showHeyCyanControls = model.isVisible(GlassesManagerGating.Action.HEY_CYAN_EXTRAS),
                 showEyevueControls = model.isVisible(GlassesManagerGating.Action.EYEVUE_CONTROLS),
+                aiWakeWordRoute = AiWakeWordPreferences.route(this),
                 showMetaRaybanControls = model.isVisible(GlassesManagerGating.Action.META_RAYBAN_CONTROLS),
                 showMeizuMyvuControls = model.isVisible(GlassesManagerGating.Action.MEIZU_MYVU_CONTROLS),
                 showBattery = showBattery,
@@ -9850,7 +9967,7 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
                     if (response.loadData.size > 7 && response.loadData[7].toInt() == 1) {
                         Log.i("DeviceNotify", "AI Button Pressed - Hijacking to Phone Assistant")
                         if (isAiHijackEnabled) {
-                            triggerAssistantVoiceQuery()
+                            handleAiWakeWordActivation("heycyan")
                         } else {
                             //The glasses activate the microphone to start speaking
                             runOnUiThread {

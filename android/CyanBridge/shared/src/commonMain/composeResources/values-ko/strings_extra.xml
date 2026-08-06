@@ -472,6 +472,13 @@
     <string name="dashboard_quality_clearer">더 선명하게</string>
     <string name="dashboard_quality_detailed">상세하게</string>
     <string name="dashboard_test_image">AI 이미지 설명 테스트</string>
+    <string name="dashboard_ai_wake_word_route">호출어 동작</string>
+    <string name="dashboard_ai_wake_word_route_description">HeyCyan 및 Eyevue 안경에서 AI 호출어가 감지되면 시작할 기능:</string>
+    <string name="dashboard_ai_wake_word_voice">음성 질문</string>
+    <string name="dashboard_ai_wake_word_image">이미지 질문</string>
+    <string name="dashboard_ai_wake_word_image_warning_title">HeyCyan에서 이미지 질문을 사용하시겠습니까?</string>
+    <string name="dashboard_ai_wake_word_image_warning_body">HeyCyan SDK는 AI 음성 호출어와 하드웨어 AI 오디오 질문 버튼을 서로 다른 이벤트로 제공하지 않습니다. 이미지 질문을 선택하면 하드웨어 버튼으로 AI 음성 질문을 시작해도 이미지 질문이 시작됩니다. 이미지에 대해 묻지 않는 간단한 질문은 캡처된 이미지를 무시할 수 있지만, 특히 로컬 모델에서는 응답이 더 오래 걸립니다.</string>
+    <string name="dashboard_ai_wake_word_image_warning_confirm">이미지 질문 사용</string>
     <string name="dashboard_image_query_unavailable">이미지 쿼리를 사용할 수 없음</string>
     <string name="dashboard_register_listener">기기 리스너 등록</string>
     <string name="dashboard_classic_scan">기존 Bluetooth 검색</string>

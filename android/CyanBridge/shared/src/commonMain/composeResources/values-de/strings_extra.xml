@@ -486,6 +486,13 @@
     <string name="dashboard_quality_clearer">Klarer</string>
     <string name="dashboard_quality_detailed">Detailliert</string>
     <string name="dashboard_test_image">KI-Bildbeschreibung testen</string>
+    <string name="dashboard_ai_wake_word_route">Aktion des Aktivierungsworts</string>
+    <string name="dashboard_ai_wake_word_route_description">Bei HeyCyan- und Eyevue-Brillen startet die KI-Aktivierung durch das Aktivierungswort:</string>
+    <string name="dashboard_ai_wake_word_voice">Sprachfrage</string>
+    <string name="dashboard_ai_wake_word_image">Bildfrage</string>
+    <string name="dashboard_ai_wake_word_image_warning_title">Bildfragen für HeyCyan verwenden?</string>
+    <string name="dashboard_ai_wake_word_image_warning_body">Das HeyCyan-SDK stellt keine unterschiedlichen Ereignisse für das KI-Sprachaktivierungswort und die Hardwaretaste für KI-Audiofragen bereit. Wenn Sie KI-Bildfragen auswählen, startet auch ein Druck auf die Hardwaretaste für eine KI-Sprachfrage eine Bildfrage. Einfache Fragen können das aufgenommene Bild ignorieren, wenn sie sich nicht darauf beziehen. Die Antworten brauchen jedoch länger, besonders bei lokalen Modellen.</string>
+    <string name="dashboard_ai_wake_word_image_warning_confirm">Bildfragen verwenden</string>
     <string name="dashboard_image_query_unavailable">Bildanfrage nicht verfügbar</string>
     <string name="dashboard_register_listener">Geräteereignislistener registrieren</string>
     <string name="dashboard_classic_scan">Klassischer Bluetooth-Scan</string>

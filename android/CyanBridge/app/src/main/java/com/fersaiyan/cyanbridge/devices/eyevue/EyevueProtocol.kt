@@ -21,6 +21,11 @@ data class EyevueCustomer(
     val customer: String,
 )
 
+data class EyevueVoiceAssistantStatus(
+    val localOfflineSpeechEnabled: Boolean,
+    val aiWakeWordEnabled: Boolean,
+)
+
 /**
  * Encapsulates the Eyevue smart glasses protocol based on reverse-engineered sources.
  *
@@ -61,11 +66,20 @@ object EyevueProtocol {
     const val CMD_SET_TIME = 89
     const val CMD_FILE_DOWNLOAD_FINISH = 68
     const val CMD_GET_SUPPORT_FUNCTION = 149
+    const val CMD_STOP_VOICE_RECOGNITION = 86
+    const val CMD_GET_VOICE_ASSISTANT_STATUS = 113
+    const val CMD_SET_VOICE_ASSISTANT_STATUS = 114
 
     const val CMD_RECEIVE_BATTERY = 83
     const val CMD_RECEIVE_WIFI_INFO = 37
     const val CMD_RECEIVE_THUMBNAIL_COUNT = 66
     const val CMD_RECEIVE_CUSTOMER = 100
+    const val CMD_RECEIVE_VOICE_DATA = 70
+    const val CMD_RECEIVE_VOICE_DATA_START = 151
+    const val CMD_RECEIVE_VOICE_DATA_END = 153
+    const val CMD_RECEIVE_PHOTO_DATA_START = 151
+    const val CMD_RECEIVE_PHOTO_DATA = 152
+    const val CMD_RECEIVE_PHOTO_DATA_END = 153
 
     const val CMD_START_LIVE = CMD_APP_LIVE
 
@@ -166,6 +180,21 @@ object EyevueProtocol {
     fun buildWearDetectionPacket(enabled: Boolean): ByteArray =
         valuePacket(CMD_WEAR_DETECT, if (enabled) 0x31 else 0x30)
 
+    fun buildStopVoiceRecognitionPacket(): ByteArray =
+        valuePacket(CMD_STOP_VOICE_RECOGNITION, 0)
+
+    fun buildGetVoiceAssistantStatusPacket(): ByteArray =
+        valuePacket(CMD_GET_VOICE_ASSISTANT_STATUS, 0)
+
+    fun buildSetVoiceAssistantStatusPacket(
+        localOfflineSpeechEnabled: Boolean,
+        aiWakeWordEnabled: Boolean,
+    ): ByteArray {
+        var value = if (localOfflineSpeechEnabled) 0 else 1
+        if (!aiWakeWordEnabled) value = value or 2
+        return valuePacket(CMD_SET_VOICE_ASSISTANT_STATUS, value)
+    }
+
     fun buildRecordDurationPacket(seconds: Int): ByteArray =
         twoValuePacket(CMD_RECORD_TIME, seconds shr 8, seconds)
 
@@ -220,6 +249,15 @@ object EyevueProtocol {
         return EyevueCustomer(
             project = readPart(0),
             customer = readPart(4),
+        )
+    }
+
+    fun parseVoiceAssistantStatus(frame: EyevueFrame): EyevueVoiceAssistantStatus? {
+        if (frame.commandId != CMD_GET_VOICE_ASSISTANT_STATUS || frame.payload.isEmpty()) return null
+        val value = frame.payload[0].toInt() and 0xFF
+        return EyevueVoiceAssistantStatus(
+            localOfflineSpeechEnabled = value and 1 == 0,
+            aiWakeWordEnabled = value and 2 == 0,
         )
     }
 
@@ -330,4 +368,47 @@ class EyevueFrameDecoder {
     }
 
     fun reset() = buffer.reset()
+}
+
+/** Reassembles the AA15 photo stream used by the vendor's AI-photo path. */
+class EyevuePhotoAssembler {
+    private val buffer = ByteArrayOutputStream()
+    private var receiving = false
+
+    fun append(packet: ByteArray): ByteArray? {
+        if (packet.size < 8) return null
+        val commandId = packet[4].toInt() and 0xFF
+        val payloadEnd = packet.size - 3
+        if (payloadEnd < 5) return null
+
+        return when (commandId) {
+            EyevueProtocol.CMD_RECEIVE_PHOTO_DATA_START -> {
+                buffer.reset()
+                receiving = true
+                null
+            }
+
+            EyevueProtocol.CMD_RECEIVE_PHOTO_DATA -> {
+                // Each photo-data payload starts with a four-byte chunk address.
+                val imageStart = 9
+                if (receiving && payloadEnd > imageStart) {
+                    buffer.write(packet, imageStart, payloadEnd - imageStart)
+                }
+                null
+            }
+
+            EyevueProtocol.CMD_RECEIVE_PHOTO_DATA_END -> {
+                if (!receiving) return null
+                receiving = false
+                buffer.toByteArray().takeIf { it.isNotEmpty() }.also { buffer.reset() }
+            }
+
+            else -> null
+        }
+    }
+
+    fun reset() {
+        receiving = false
+        buffer.reset()
+    }
 }

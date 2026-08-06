@@ -82,6 +82,13 @@ class ImageQuestionPromptResolverTest {
     }
 
     @Test
+    fun voiceListeningCueUsesTheSelectedAppLanguage() {
+        assertEquals("I am listening.", ImageQuestionDefaults.listeningCueForLanguage("en"))
+        assertEquals("Estou ouvindo.", ImageQuestionDefaults.listeningCueForLanguage("pt-BR"))
+        assertEquals("Je vous écoute.", ImageQuestionDefaults.listeningCueForLanguage("fr"))
+    }
+
+    @Test
     fun everyImageRouteReceivesTheSameResolvedPrompt() {
         val resolved = ImageQuestionPromptResolver.resolve(
             settings = builtInSettings("de"),

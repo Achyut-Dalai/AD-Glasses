@@ -52,4 +52,38 @@ class EyevueProtocolTest {
         )
         assertEquals("Eyevue-AP", wifi)
     }
+
+    @Test
+    fun voiceAssistantPacketsMatchVendorBitFlags() {
+        assertArrayEquals(
+            EyevueProtocol.valuePacket(EyevueProtocol.CMD_SET_VOICE_ASSISTANT_STATUS, 1),
+            EyevueProtocol.buildSetVoiceAssistantStatusPacket(
+                localOfflineSpeechEnabled = false,
+                aiWakeWordEnabled = true,
+            ),
+        )
+        val status = EyevueProtocol.parseVoiceAssistantStatus(
+            EyevueFrame(EyevueProtocol.CMD_GET_VOICE_ASSISTANT_STATUS, byteArrayOf(1)),
+        )
+        assertEquals(false, status?.localOfflineSpeechEnabled)
+        assertEquals(true, status?.aiWakeWordEnabled)
+    }
+
+    @Test
+    fun photoAssemblerRemovesChunkAddressAndJoinsImageBytes() {
+        val assembler = EyevuePhotoAssembler()
+        assembler.append(photoPacket(EyevueProtocol.CMD_RECEIVE_PHOTO_DATA_START))
+        assembler.append(photoPacket(EyevueProtocol.CMD_RECEIVE_PHOTO_DATA, byteArrayOf(0, 0, 0, 1, 0xFF.toByte(), 0xD8.toByte())))
+        assembler.append(photoPacket(EyevueProtocol.CMD_RECEIVE_PHOTO_DATA, byteArrayOf(0, 0, 0, 2, 0xFF.toByte(), 0xD9.toByte())))
+
+        val image = assembler.append(photoPacket(EyevueProtocol.CMD_RECEIVE_PHOTO_DATA_END))
+
+        assertArrayEquals(
+            byteArrayOf(0xFF.toByte(), 0xD8.toByte(), 0xFF.toByte(), 0xD9.toByte()),
+            image,
+        )
+    }
+
+    private fun photoPacket(commandId: Int, payload: ByteArray = byteArrayOf()): ByteArray =
+        byteArrayOf(0xAB.toByte(), 0x55, 0, 0, commandId.toByte()) + payload + byteArrayOf(0, 0, 0)
 }

@@ -11,6 +11,7 @@ import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performTextInput
 import com.fersaiyan.cyanbridge.shared.glasses.FirmwarePatchRequestUiState
+import com.fersaiyan.cyanbridge.shared.glasses.AiWakeWordRoute
 import com.fersaiyan.cyanbridge.shared.glasses.GlassesDashboardAction
 import com.fersaiyan.cyanbridge.shared.glasses.GlassesDashboardUiState
 import com.fersaiyan.cyanbridge.shared.glasses.OtaFirmwareSource
@@ -57,6 +58,59 @@ class GlassesDashboardScreenTest {
         composeRule.onNodeWithText("Test image AI description").performClick()
         composeRule.runOnIdle {
             assertEquals(GlassesDashboardAction.TestImageQuestion, action)
+        }
+    }
+
+    @Test
+    fun heyCyanImageRouteRequiresConfirmation() {
+        var action: GlassesDashboardAction? = null
+        composeRule.setContent {
+            CyanBridgeTheme {
+                GlassesDashboardScreen(
+                    state = GlassesDashboardUiState(
+                        showHeyCyanControls = true,
+                        aiWakeWordRoute = AiWakeWordRoute.VOICE_QUESTION,
+                    ),
+                    onAction = { action = it },
+                )
+            }
+        }
+
+        composeRule.onNodeWithTag("ai_wake_word_route_image_question").performClick()
+        composeRule.onNodeWithTag("ai_wake_word_image_warning").assertIsDisplayed()
+        composeRule.runOnIdle { assertEquals(null, action) }
+
+        composeRule.onNodeWithTag("ai_wake_word_image_warning_confirm").performClick()
+        composeRule.runOnIdle {
+            assertEquals(
+                GlassesDashboardAction.SetAiWakeWordRoute(AiWakeWordRoute.IMAGE_QUESTION),
+                action,
+            )
+        }
+    }
+
+    @Test
+    fun eyevueImageRouteDoesNotShowHeyCyanWarning() {
+        var action: GlassesDashboardAction? = null
+        composeRule.setContent {
+            CyanBridgeTheme {
+                GlassesDashboardScreen(
+                    state = GlassesDashboardUiState(
+                        showEyevueControls = true,
+                        aiWakeWordRoute = AiWakeWordRoute.VOICE_QUESTION,
+                    ),
+                    onAction = { action = it },
+                )
+            }
+        }
+
+        composeRule.onNodeWithTag("ai_wake_word_route_image_question").performClick()
+        composeRule.onAllNodesWithText("Use image questions for HeyCyan?").assertCountEquals(0)
+        composeRule.runOnIdle {
+            assertEquals(
+                GlassesDashboardAction.SetAiWakeWordRoute(AiWakeWordRoute.IMAGE_QUESTION),
+                action,
+            )
         }
     }
 

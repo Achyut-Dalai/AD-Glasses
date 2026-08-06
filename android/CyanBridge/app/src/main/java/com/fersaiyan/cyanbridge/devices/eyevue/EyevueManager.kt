@@ -3,11 +3,17 @@ package com.fersaiyan.cyanbridge.devices.eyevue
 import android.content.Context
 import android.util.Log
 import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.CoroutineStart
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.async
+import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.MutableSharedFlow
+import kotlinx.coroutines.flow.SharedFlow
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.collect
 import kotlinx.coroutines.flow.filter
@@ -29,6 +35,8 @@ data class EyevueState(
     val project: String? = null,
     val isVideoRecording: Boolean = false,
     val isAudioRecording: Boolean = false,
+    val aiWakeWordEnabled: Boolean? = null,
+    val localOfflineSpeechEnabled: Boolean? = null,
     val lastError: String? = null,
 )
 
@@ -49,9 +57,11 @@ class EyevueManager private constructor(context: Context) {
     private val client = EyevueGattClient(context.applicationContext)
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
     private val _state = MutableStateFlow(EyevueState())
+    private val _wakeWordEvents = MutableSharedFlow<Unit>(extraBufferCapacity = 1)
     private var connectJob: Job? = null
 
     val state: StateFlow<EyevueState> = _state.asStateFlow()
+    val wakeWordEvents: SharedFlow<Unit> = _wakeWordEvents.asSharedFlow()
 
     init {
         scope.launch {
@@ -103,6 +113,7 @@ class EyevueManager private constructor(context: Context) {
             sendNow(EyevueProtocol.buildGetCustomerPacket(), "get customer")
             sendNow(EyevueProtocol.buildGetBatteryPacket(), "get battery")
             sendNow(EyevueProtocol.buildGetCapacityPacket(), "get capacity")
+            sendNow(EyevueProtocol.buildGetVoiceAssistantStatusPacket(), "get AI wake-word status")
         }
     }
 
@@ -123,6 +134,19 @@ class EyevueManager private constructor(context: Context) {
     fun takePhoto(highQuality: Boolean = true) = send(
         EyevueProtocol.buildPhotoPacket(highQuality),
         "take photo",
+    )
+
+    suspend fun capturePhotoForAi(timeoutMs: Long = 12_000L): ByteArray? = coroutineScope {
+        val photo = async(start = CoroutineStart.UNDISPATCHED) { client.photos.first() }
+        takePhoto(highQuality = true)
+        withTimeoutOrNull(timeoutMs) { photo.await() }.also {
+            if (it == null) photo.cancel()
+        }
+    }
+
+    fun stopVoiceRecognition() = send(
+        EyevueProtocol.buildStopVoiceRecognitionPacket(),
+        "stop voice recognition",
     )
 
     fun toggleVideo() {
@@ -248,8 +272,28 @@ class EyevueManager private constructor(context: Context) {
                 lastError = null,
             )
         }
+        EyevueProtocol.parseVoiceAssistantStatus(frame)?.let { status ->
+            _state.value = _state.value.copy(
+                aiWakeWordEnabled = status.aiWakeWordEnabled,
+                localOfflineSpeechEnabled = status.localOfflineSpeechEnabled,
+            )
+            if (!status.aiWakeWordEnabled) {
+                send(
+                    EyevueProtocol.buildSetVoiceAssistantStatusPacket(
+                        localOfflineSpeechEnabled = status.localOfflineSpeechEnabled,
+                        aiWakeWordEnabled = true,
+                    ),
+                    "enable AI wake word",
+                )
+            }
+        }
 
         when (frame.commandId) {
+            EyevueProtocol.CMD_RECEIVE_VOICE_DATA_START -> {
+                Log.i(TAG, "Eyevue AI wake word started a voice stream")
+                _wakeWordEvents.tryEmit(Unit)
+            }
+
             EyevueProtocol.CMD_GET_CAPACITY,
             EyevueProtocol.CMD_RECEIVE_THUMBNAIL_COUNT,
             -> parseU16(frame.payload)?.let { count ->

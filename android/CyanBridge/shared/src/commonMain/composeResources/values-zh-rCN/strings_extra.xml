@@ -472,6 +472,13 @@
     <string name="dashboard_quality_clearer">更清晰</string>
     <string name="dashboard_quality_detailed">详细</string>
     <string name="dashboard_test_image">测试 AI 图像描述</string>
+    <string name="dashboard_ai_wake_word_route">唤醒词操作</string>
+    <string name="dashboard_ai_wake_word_route_description">在 HeyCyan 和 Eyevue 眼镜上，AI 唤醒词启动：</string>
+    <string name="dashboard_ai_wake_word_voice">语音提问</string>
+    <string name="dashboard_ai_wake_word_image">图像提问</string>
+    <string name="dashboard_ai_wake_word_image_warning_title">让 HeyCyan 使用图像提问？</string>
+    <string name="dashboard_ai_wake_word_image_warning_body">HeyCyan SDK 不会为 AI 语音唤醒词和硬件 AI 音频提问按钮提供不同的事件。选择图像提问后，按下硬件按钮进行 AI 语音提问也会启动图像提问。如果简单问题没有询问所拍摄的图像，可以忽略该图像，但响应时间会更长，尤其是在使用本地模型时。</string>
+    <string name="dashboard_ai_wake_word_image_warning_confirm">使用图像提问</string>
     <string name="dashboard_image_query_unavailable">图像查询不可用</string>
     <string name="dashboard_register_listener">注册设备监听器</string>
     <string name="dashboard_classic_scan">经典蓝牙扫描</string>

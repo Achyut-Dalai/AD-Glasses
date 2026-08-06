@@ -27,6 +27,20 @@ data class ResolvedImageQuestionPrompt(
 }
 
 object ImageQuestionDefaults {
+    fun listeningCueForLanguage(languageTag: String): String = when (
+        Locale.forLanguageTag(languageTag).language.lowercase(Locale.ROOT)
+    ) {
+        "pt" -> "Estou ouvindo."
+        "es" -> "Te escucho."
+        "de" -> "Ich höre zu."
+        "fr" -> "Je vous écoute."
+        "it" -> "Ti ascolto."
+        "zh" -> "我在听。"
+        "ko" -> "듣고 있습니다."
+        "ru" -> "Я слушаю."
+        else -> "I am listening."
+    }
+
     fun questionCueForLanguage(languageTag: String): String = when (
         Locale.forLanguageTag(languageTag).language.lowercase(Locale.ROOT)
     ) {
@@ -54,6 +68,14 @@ object ImageQuestionDefaults {
         "ru" -> "Дайте мне краткое описание изображения"
         else -> "Give me a concise description of the image"
     }
+
+    fun responseLanguageInstruction(languageTag: String): String =
+        "Answer only in ${languageLabel(languageTag)} ($languageTag)."
+
+    private fun languageLabel(languageTag: String): String =
+        Locale.forLanguageTag(languageTag)
+            .getDisplayLanguage(Locale.ENGLISH)
+            .ifBlank { languageTag }
 }
 
 object ImageQuestionPromptResolver {
@@ -68,13 +90,7 @@ object ImageQuestionPromptResolver {
             }
 
         return ResolvedImageQuestionPrompt(
-            text = "$question\n\nAnswer only in ${languageLabel(languageTag)} ($languageTag).",
+            text = "$question\n\n${ImageQuestionDefaults.responseLanguageInstruction(languageTag)}",
         )
-    }
-
-    private fun languageLabel(languageTag: String): String {
-        return Locale.forLanguageTag(languageTag)
-            .getDisplayLanguage(Locale.ENGLISH)
-            .ifBlank { languageTag }
     }
 }

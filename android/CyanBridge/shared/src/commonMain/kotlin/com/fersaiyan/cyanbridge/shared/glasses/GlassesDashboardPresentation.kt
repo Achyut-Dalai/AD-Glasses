@@ -19,6 +19,7 @@ data class GlassesDashboardUiState(
     val meeting: GlassesMeetingUiState = GlassesMeetingUiState(),
     val nativePluginShortcut: NativePluginShortcutUiState? = null,
     val assistantMode: GlassesAssistantMode = GlassesAssistantMode.PHONE_ASSISTANT,
+    val aiWakeWordRoute: AiWakeWordRoute = AiWakeWordRoute.VOICE_QUESTION,
     val imageQueryEnabled: Boolean = true,
     val imageQueryLabel: String = "Test image AI description",
     val imageThumbnailQualitySdkValue: Int = 5,
@@ -80,6 +81,16 @@ data class GlassesMeetingUiState(
 enum class GlassesAssistantMode {
     PHONE_ASSISTANT,
     CUSTOM_AI_PROVIDER,
+}
+
+enum class AiWakeWordRoute {
+    VOICE_QUESTION,
+    IMAGE_QUESTION;
+
+    companion object {
+        fun fromRaw(raw: String?): AiWakeWordRoute =
+            entries.firstOrNull { it.name == raw?.trim()?.uppercase() } ?: VOICE_QUESTION
+    }
 }
 
 data class MetaRaybanUiState(
@@ -193,6 +204,7 @@ sealed interface GlassesDashboardAction {
     data object StopMeetingCapture : GlassesDashboardAction
     data class RunNativePluginShortcut(val action: NativePluginShortcutAction) : GlassesDashboardAction
     data class SelectAssistantMode(val mode: GlassesAssistantMode) : GlassesDashboardAction
+    data class SetAiWakeWordRoute(val route: AiWakeWordRoute) : GlassesDashboardAction
     data class SelectImageThumbnailQuality(val sdkValue: Int) : GlassesDashboardAction
     data object RefreshRecordingSettings : GlassesDashboardAction
     data class SetWearingDetection(val enabled: Boolean) : GlassesDashboardAction

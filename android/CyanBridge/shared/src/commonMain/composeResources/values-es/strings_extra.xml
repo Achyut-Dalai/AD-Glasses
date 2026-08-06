@@ -472,6 +472,13 @@
     <string name="dashboard_quality_clearer">Mas clara</string>
     <string name="dashboard_quality_detailed">Detallada</string>
     <string name="dashboard_test_image">Probar descripción de imagen con IA</string>
+    <string name="dashboard_ai_wake_word_route">Acción de la palabra de activación</string>
+    <string name="dashboard_ai_wake_word_route_description">En gafas HeyCyan y Eyevue, la activación por palabra de activación inicia:</string>
+    <string name="dashboard_ai_wake_word_voice">Pregunta de voz</string>
+    <string name="dashboard_ai_wake_word_image">Pregunta sobre imagen</string>
+    <string name="dashboard_ai_wake_word_image_warning_title">¿Usar preguntas sobre imágenes para HeyCyan?</string>
+    <string name="dashboard_ai_wake_word_image_warning_body">El SDK de HeyCyan no expone eventos distintos para la palabra de activación por voz de IA y el botón físico de preguntas de audio de IA. Si eliges preguntas sobre imágenes, pulsar el botón físico para una pregunta de voz de IA también iniciará una pregunta sobre imágenes. Las preguntas sencillas pueden ignorar la imagen capturada si no preguntan sobre ella, pero las respuestas tardarán más, especialmente con modelos locales.</string>
+    <string name="dashboard_ai_wake_word_image_warning_confirm">Usar preguntas sobre imágenes</string>
     <string name="dashboard_image_query_unavailable">Consulta de imagen no disponible</string>
     <string name="dashboard_register_listener">Registrar listener del dispositivo</string>
     <string name="dashboard_classic_scan">Escaneo Bluetooth clasico</string>

@@ -50,16 +50,20 @@ class EyevueGattClient(
 
     private val operationMutex = Mutex()
     private val decoder = EyevueFrameDecoder()
+    private val photoAssembler = EyevuePhotoAssembler()
     private val _state = MutableStateFlow(EyevueGattState.DISCONNECTED)
     private val _frames = MutableSharedFlow<EyevueFrame>(extraBufferCapacity = 64)
+    private val _photos = MutableSharedFlow<ByteArray>(extraBufferCapacity = 1)
 
     val state: StateFlow<EyevueGattState> = _state.asStateFlow()
     val frames: SharedFlow<EyevueFrame> = _frames.asSharedFlow()
+    val photos: SharedFlow<ByteArray> = _photos.asSharedFlow()
 
     @Volatile
     private var gatt: BluetoothGatt? = null
     private var writeCharacteristic: BluetoothGattCharacteristic? = null
     private var notifyCharacteristic: BluetoothGattCharacteristic? = null
+    private var photoNotifyCharacteristic: BluetoothGattCharacteristic? = null
     private var connectContinuation: CancellableContinuation<Unit>? = null
     private var serviceContinuation: CancellableContinuation<Unit>? = null
     private var descriptorContinuation: CancellableContinuation<Unit>? = null
@@ -182,8 +186,10 @@ class EyevueGattClient(
             characteristic: BluetoothGattCharacteristic,
             value: ByteArray,
         ) {
-            if (characteristic.uuid != EyevueProtocol.COMMAND_NOTIFY_UUID) return
-            decoder.append(value).forEach(_frames::tryEmit)
+            when (characteristic.uuid) {
+                EyevueProtocol.COMMAND_NOTIFY_UUID -> decoder.append(value).forEach(_frames::tryEmit)
+                EyevueProtocol.PHOTO_NOTIFY_UUID -> photoAssembler.append(value)?.let(_photos::tryEmit)
+            }
         }
     }
 
@@ -250,24 +256,12 @@ class EyevueGattClient(
                     ?: throw IOException("Eyevue AA13 write characteristic was not found")
                 val commandNotify = notifyCharacteristic
                     ?: throw IOException("Eyevue AA14 notify characteristic was not found")
-                val cccd = commandNotify.getDescriptor(EyevueProtocol.CCCD_UUID)
-                    ?: throw IOException("Eyevue AA14 CCCD was not found")
+                val photoNotify = photoNotifyCharacteristic
+                    ?: throw IOException("Eyevue AA15 photo characteristic was not found")
 
-                withTimeout(OPERATION_TIMEOUT_MS) {
-                    suspendCancellableCoroutine<Unit> { continuation ->
-                        descriptorContinuation = continuation
-                        continuation.invokeOnCancellation {
-                            descriptorContinuation = null
-                            closeGatt()
-                        }
-                        connectedGatt.setCharacteristicNotification(commandNotify, true)
-                        cccd.value = ENABLE_NOTIFICATION_VALUE
-                        if (!connectedGatt.writeDescriptor(cccd)) {
-                            descriptorContinuation = null
-                            continuation.resumeWithException(IOException("writeDescriptor returned false"))
-                        }
-                    }
-                }
+                enableNotifications(connectedGatt, commandNotify, "AA14")
+                enableNotifications(connectedGatt, photoNotify, "AA15")
+                connectedGatt.requestMtu(512)
 
                 commandWrite.writeType = BluetoothGattCharacteristic.WRITE_TYPE_DEFAULT
                 _state.value = EyevueGattState.CONNECTED
@@ -326,6 +320,7 @@ class EyevueGattClient(
         pendingWrite = null
         closeGatt()
         decoder.reset()
+        photoAssembler.reset()
         _state.value = EyevueGattState.DISCONNECTED
     }
 
@@ -337,6 +332,7 @@ class EyevueGattClient(
         gatt = null
         writeCharacteristic = null
         notifyCharacteristic = null
+        photoNotifyCharacteristic = null
         try {
             currentGatt?.disconnect()
             currentGatt?.close()
@@ -350,10 +346,37 @@ class EyevueGattClient(
             ?: run {
                 writeCharacteristic = null
                 notifyCharacteristic = null
+                photoNotifyCharacteristic = null
                 return
             }
         writeCharacteristic = service.getCharacteristic(EyevueProtocol.COMMAND_WRITE_UUID)
         notifyCharacteristic = service.getCharacteristic(EyevueProtocol.COMMAND_NOTIFY_UUID)
+        photoNotifyCharacteristic = service.getCharacteristic(EyevueProtocol.PHOTO_NOTIFY_UUID)
+    }
+
+    @SuppressLint("MissingPermission")
+    private suspend fun enableNotifications(
+        currentGatt: BluetoothGatt,
+        characteristic: BluetoothGattCharacteristic,
+        label: String,
+    ) {
+        val cccd = characteristic.getDescriptor(EyevueProtocol.CCCD_UUID)
+            ?: throw IOException("Eyevue $label CCCD was not found")
+        withTimeout(OPERATION_TIMEOUT_MS) {
+            suspendCancellableCoroutine<Unit> { continuation ->
+                descriptorContinuation = continuation
+                continuation.invokeOnCancellation {
+                    descriptorContinuation = null
+                    closeGatt()
+                }
+                currentGatt.setCharacteristicNotification(characteristic, true)
+                cccd.value = ENABLE_NOTIFICATION_VALUE
+                if (!currentGatt.writeDescriptor(cccd)) {
+                    descriptorContinuation = null
+                    continuation.resumeWithException(IOException("Eyevue $label descriptor write returned false"))
+                }
+            }
+        }
     }
 
     private fun hasConnectPermission(): Boolean =

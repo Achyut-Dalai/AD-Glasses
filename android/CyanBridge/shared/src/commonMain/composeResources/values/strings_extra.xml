@@ -477,6 +477,13 @@
     <string name="dashboard_quality_clearer">Clearer</string>
     <string name="dashboard_quality_detailed">Detailed</string>
     <string name="dashboard_test_image">Test image AI description</string>
+    <string name="dashboard_ai_wake_word_route">Wake-word action</string>
+    <string name="dashboard_ai_wake_word_route_description">For HeyCyan and Eyevue glasses, the AI wake-word activation starts:</string>
+    <string name="dashboard_ai_wake_word_voice">Voice question</string>
+    <string name="dashboard_ai_wake_word_image">Image question</string>
+    <string name="dashboard_ai_wake_word_image_warning_title">Use image questions for HeyCyan?</string>
+    <string name="dashboard_ai_wake_word_image_warning_body">The HeyCyan SDK does not expose separate events for the AI voice wake word and the hardware AI audio-question button. If you choose AI image questions, pressing the hardware button for an AI voice question will also start an image question. Simple questions can ignore the captured image when they do not ask about it, but responses will take longer, especially with local models.</string>
+    <string name="dashboard_ai_wake_word_image_warning_confirm">Use image questions</string>
     <string name="dashboard_image_query_unavailable">Image query unavailable</string>
     <string name="dashboard_register_listener">Register device listener</string>
     <string name="dashboard_classic_scan">Classic Bluetooth scan</string>

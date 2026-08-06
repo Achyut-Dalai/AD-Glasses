@@ -472,6 +472,13 @@
     <string name="dashboard_quality_clearer">Plus claire</string>
     <string name="dashboard_quality_detailed">Detaillee</string>
     <string name="dashboard_test_image">Tester la description d image IA</string>
+    <string name="dashboard_ai_wake_word_route">Action du mot d activation</string>
+    <string name="dashboard_ai_wake_word_route_description">Sur les lunettes HeyCyan et Eyevue, l activation par mot-cle demarre :</string>
+    <string name="dashboard_ai_wake_word_voice">Question vocale</string>
+    <string name="dashboard_ai_wake_word_image">Question sur l image</string>
+    <string name="dashboard_ai_wake_word_image_warning_title">Utiliser les questions sur image pour HeyCyan ?</string>
+    <string name="dashboard_ai_wake_word_image_warning_body">Le SDK HeyCyan n expose pas d evenements distincts pour le mot d activation vocale de l IA et le bouton materiel de question audio IA. Si vous choisissez les questions sur image, le bouton materiel utilise pour une question vocale IA lancera egalement une question sur image. Les questions simples peuvent ignorer l image capturee si elles ne portent pas dessus, mais la reponse sera plus lente, surtout avec les modeles locaux.</string>
+    <string name="dashboard_ai_wake_word_image_warning_confirm">Utiliser les questions sur image</string>
     <string name="dashboard_image_query_unavailable">Requete d image indisponible</string>
     <string name="dashboard_register_listener">Enregistrer l'ecouteur de l'appareil</string>
     <string name="dashboard_classic_scan">Analyse Bluetooth classique</string>

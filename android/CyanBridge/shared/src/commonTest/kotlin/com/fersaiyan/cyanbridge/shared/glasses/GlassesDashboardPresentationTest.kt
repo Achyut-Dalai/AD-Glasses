@@ -43,6 +43,16 @@ class GlassesDashboardPresentationTest {
     }
 
     @Test
+    fun wakeWordRouteIsDashboardOwnedAndDefaultsToVoice() {
+        assertEquals(AiWakeWordRoute.VOICE_QUESTION, GlassesDashboardUiState().aiWakeWordRoute)
+        assertEquals(
+            AiWakeWordRoute.IMAGE_QUESTION,
+            GlassesDashboardAction.SetAiWakeWordRoute(AiWakeWordRoute.IMAGE_QUESTION).route,
+        )
+        assertEquals(AiWakeWordRoute.VOICE_QUESTION, AiWakeWordRoute.fromRaw("unsupported"))
+    }
+
+    @Test
     fun captureSettingsActionsKeepTheirDeviceValues() {
         assertEquals(
             true,

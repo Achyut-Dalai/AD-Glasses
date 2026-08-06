@@ -472,6 +472,13 @@
     <string name="dashboard_quality_clearer">Четче</string>
     <string name="dashboard_quality_detailed">Подробно</string>
     <string name="dashboard_test_image">Проверить описание изображения ИИ</string>
+    <string name="dashboard_ai_wake_word_route">Действие фразы активации</string>
+    <string name="dashboard_ai_wake_word_route_description">На очках HeyCyan и Eyevue активация фразой запускает:</string>
+    <string name="dashboard_ai_wake_word_voice">Голосовой вопрос</string>
+    <string name="dashboard_ai_wake_word_image">Вопрос по изображению</string>
+    <string name="dashboard_ai_wake_word_image_warning_title">Использовать вопросы по изображению для HeyCyan?</string>
+    <string name="dashboard_ai_wake_word_image_warning_body">SDK HeyCyan не предоставляет отдельные события для голосовой фразы активации ИИ и аппаратной кнопки аудиовопроса ИИ. Если выбрать вопросы по изображению, нажатие аппаратной кнопки для голосового вопроса ИИ также запустит вопрос по изображению. Простые вопросы могут не учитывать снятое изображение, если в них нет вопроса о нем, но ответы будут дольше, особенно при использовании локальных моделей.</string>
+    <string name="dashboard_ai_wake_word_image_warning_confirm">Использовать вопросы по изображению</string>
     <string name="dashboard_image_query_unavailable">Запрос изображения недоступен</string>
     <string name="dashboard_register_listener">Зарегистрировать слушатель устройства</string>
     <string name="dashboard_classic_scan">Классическое сканирование Bluetooth</string>
