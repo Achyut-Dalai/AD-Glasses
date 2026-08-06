@@ -288,6 +288,7 @@ class SettingsActivity : AppCompatActivity(), SettingsScreenActions {
         refreshSettingsUi()
     }
 
+
     override fun openLocalModels() {
         startActivity(Intent(this, LocalModelsConfigureActivity::class.java))
     }
