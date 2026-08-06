@@ -125,6 +125,14 @@
     <string name="compose_walking_attention_hint">Например: предупреждай меня о животных, транспорте и предметах, о которые можно споткнуться</string>
     <string name="compose_walking_attention_support">Пишите естественно или используйте диктовку клавиатуры. Встроенные предупреждения безопасности остаются активными.</string>
     <string name="compose_walking_attention_summary">Walking Aid будет особенно обращать внимание на: %1$s.</string>
+    <string name="compose_walking_attention_unsaved">Переведите и сохраните этот текст, прежде чем Walking Aid начнёт его использовать.</string>
+    <string name="compose_walking_translation_source">Источник перевода</string>
+    <string name="compose_walking_translation_local">Локальная модель</string>
+    <string name="compose_walking_translation_cloud">Облачная модель</string>
+    <string name="compose_walking_translate_save">Перевести и сохранить</string>
+    <string name="compose_walking_translation_failed">Ошибка перевода: %1$s</string>
+    <string name="compose_walking_original_input">Исходный текст: %1$s</string>
+    <string name="compose_walking_model_input">Ввод для модели (английский): %1$s</string>
     <string name="compose_walking_depth_enabled">Оценка глубины включена</string>
     <string name="compose_walking_source">Источник</string>
     <string name="compose_walking_additional_instructions_description">Дополнительные инструкции для всех запросов Walking Aid (описание изображения, глубина и модель состояния). Они относятся только к этому плагину и не меняют общий профиль зрения в настройках.</string>

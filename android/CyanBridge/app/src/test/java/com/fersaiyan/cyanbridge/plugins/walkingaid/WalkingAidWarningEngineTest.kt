@@ -45,6 +45,28 @@ class WalkingAidWarningEngineTest {
     }
 
     @Test
+    fun misspelledWatchlistTermMatchesDetectedLabel() {
+        val detection = DetectionResult(
+            objects = listOf(
+                DetectedObject(
+                    label = "bicycle",
+                    confidence = 0.9f,
+                    boundingBox = RectF(0.05f, 0.2f, 0.2f, 0.45f),
+                    position = "left",
+                ),
+            ),
+        )
+
+        val decision = WalkingAidWarningEngine.evaluate(
+            detection,
+            depth = null,
+            focusDescription = "Please warn me about bicylces",
+        )
+
+        assertTrue(decision.shouldWarn)
+    }
+
+    @Test
     fun qualityThreeUsesChatAiPacketWithoutHomeModeSuffix() {
         val packet = WalkingAidImageCapture.buildChatAiCaptureCommand(3)
 

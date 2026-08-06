@@ -125,6 +125,14 @@
     <string name="compose_walking_attention_hint">예: 반려동물, 차량, 걸려 넘어질 수 있는 물체를 알려 주세요</string>
     <string name="compose_walking_attention_support">자연스럽게 입력하거나 키보드 받아쓰기를 사용하세요. 기본 안전 알림은 계속 활성화됩니다.</string>
     <string name="compose_walking_attention_summary">Walking Aid가 다음 대상에 특히 주의합니다: %1$s.</string>
+    <string name="compose_walking_attention_unsaved">Walking Aid에서 사용하기 전에 이 입력을 번역하고 저장하세요.</string>
+    <string name="compose_walking_translation_source">번역 소스</string>
+    <string name="compose_walking_translation_local">로컬 모델</string>
+    <string name="compose_walking_translation_cloud">클라우드 모델</string>
+    <string name="compose_walking_translate_save">번역 및 저장</string>
+    <string name="compose_walking_translation_failed">번역 실패: %1$s</string>
+    <string name="compose_walking_original_input">원본 입력: %1$s</string>
+    <string name="compose_walking_model_input">모델 입력(영어): %1$s</string>
     <string name="compose_walking_depth_enabled">깊이 감지 사용</string>
     <string name="compose_walking_source">소스</string>
     <string name="compose_walking_additional_instructions_description">모든 Walking Aid 프롬프트(이미지 설명, 깊이, 상태 모델)에 추가되는 지침입니다. 이 플러그인에만 적용되며 설정의 전역 시각 프로필에는 영향을 주지 않습니다.</string>

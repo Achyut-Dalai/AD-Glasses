@@ -225,7 +225,7 @@ class WalkingAidService : Service() {
                 val imageSource = WalkingAidPreferences.getImageDescriptionSource(this@WalkingAidService)
                 val depthSource = WalkingAidPreferences.getDepthSource(this@WalkingAidService)
                 val customInstructions = WalkingAidPreferences.getCustomPrompt(this@WalkingAidService)
-                val focusDescription = WalkingAidPreferences.getFocusDescription(this@WalkingAidService)
+                val focusDescription = WalkingAidPreferences.getModelFocusDescription(this@WalkingAidService)
                 val promptSuffix = customInstructions.takeIf { it.isNotBlank() }
                     ?.let { "\nAdditional user instructions: $it" }
                     .orEmpty()

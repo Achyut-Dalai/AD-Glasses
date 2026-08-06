@@ -56,6 +56,7 @@ import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -103,6 +104,7 @@ fun WalkingAidSettingsScreen(
 ) {
     val context = LocalContext.current
     val scrollState = rememberScrollState()
+    val uiScope = rememberCoroutineScope()
 
     val hasCamera = remember { DeviceCapabilityHelper.hasCamera(context) }
     val cameraUnavailableReason = remember { DeviceCapabilityHelper.unavailableCameraReason(context) }
@@ -123,6 +125,12 @@ fun WalkingAidSettingsScreen(
     // Model picker, latency test & readiness dialogs
     var yoloModelType by remember { mutableStateOf(WalkingAidPreferences.getYoloModelType(context)) }
     var focusDescriptionText by remember { mutableStateOf(WalkingAidPreferences.getFocusDescription(context)) }
+    var savedFocusOriginal by remember { mutableStateOf(WalkingAidPreferences.getFocusDescription(context)) }
+    var savedModelFocusText by remember { mutableStateOf(WalkingAidPreferences.getModelFocusDescription(context)) }
+    var focusTranslationSource by remember { mutableStateOf(WalkingAidPreferences.getStateModelSource(context)) }
+    var savedFocusTranslationSource by remember { mutableStateOf(WalkingAidPreferences.getStateModelSource(context)) }
+    var isTranslatingFocus by remember { mutableStateOf(false) }
+    var focusTranslationError by remember { mutableStateOf<String?>(null) }
     var isTestingLatency by remember { mutableStateOf(false) }
     var showLatencyReportDialog by remember { mutableStateOf(false) }
     var latencyReportText by remember { mutableStateOf("") }
@@ -676,16 +684,23 @@ fun WalkingAidSettingsScreen(
                         value = focusDescriptionText,
                         onValueChange = { newValue ->
                             focusDescriptionText = newValue
-                            WalkingAidPreferences.setFocusDescription(context, newValue)
+                            focusTranslationError = null
                         },
                         placeholder = { Text(stringResource(R.string.compose_walking_attention_hint)) },
                         modifier = Modifier.fillMaxWidth(),
                         minLines = 2,
                         maxLines = 4,
                         supportingText = {
-                            val understood = WalkingAidFocusMapper.resolve(focusDescriptionText)
+                            val understood = WalkingAidFocusMapper.resolve(
+                                savedModelFocusText.takeIf { focusDescriptionText.trim() == savedFocusOriginal } ?: "",
+                            )
                             Text(
-                                if (understood.isEmpty()) {
+                                if (
+                                    focusDescriptionText.trim() != savedFocusOriginal ||
+                                    focusTranslationSource != savedFocusTranslationSource
+                                ) {
+                                    stringResource(R.string.compose_walking_attention_unsaved)
+                                } else if (understood.isEmpty()) {
                                     stringResource(R.string.compose_walking_attention_support)
                                 } else {
                                     stringResource(
@@ -696,6 +711,90 @@ fun WalkingAidSettingsScreen(
                             )
                         },
                     )
+                    Spacer(modifier = Modifier.height(8.dp))
+                    Text(
+                        stringResource(R.string.compose_walking_translation_source),
+                        style = MaterialTheme.typography.bodyMedium,
+                        fontWeight = FontWeight.Medium,
+                    )
+                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        FilterChip(
+                            selected = focusTranslationSource == "local",
+                            onClick = { focusTranslationSource = "local" },
+                            label = { Text(stringResource(R.string.compose_walking_translation_local)) },
+                        )
+                        FilterChip(
+                            selected = focusTranslationSource == "cloud",
+                            onClick = { focusTranslationSource = "cloud" },
+                            label = { Text(stringResource(R.string.compose_walking_translation_cloud)) },
+                        )
+                    }
+                    Spacer(modifier = Modifier.height(8.dp))
+                    Button(
+                        enabled = !isTranslatingFocus,
+                        onClick = {
+                            val original = focusDescriptionText.trim().take(500)
+                            if (original.isBlank()) {
+                                WalkingAidPreferences.setFocusDescription(context, "")
+                                savedFocusOriginal = ""
+                                savedModelFocusText = ""
+                                savedFocusTranslationSource = focusTranslationSource
+                                return@Button
+                            }
+                            isTranslatingFocus = true
+                            focusTranslationError = null
+                            uiScope.launch {
+                                runCatching {
+                                    withContext(Dispatchers.IO) {
+                                        WalkingAidFocusTranslator.create(context)
+                                            .translateToEnglish(original, focusTranslationSource)
+                                    }
+                                }.onSuccess { translated ->
+                                    WalkingAidPreferences.setCachedFocusTranslation(
+                                        context = context,
+                                        original = original,
+                                        source = focusTranslationSource,
+                                        english = translated,
+                                    )
+                                    savedFocusOriginal = original
+                                    savedModelFocusText = translated
+                                    savedFocusTranslationSource = focusTranslationSource
+                                }.onFailure { error ->
+                                    focusTranslationError = error.message ?: "Translation failed"
+                                }
+                                isTranslatingFocus = false
+                            }
+                        },
+                    ) {
+                        if (isTranslatingFocus) {
+                            CircularProgressIndicator(
+                                modifier = Modifier.width(18.dp).height(18.dp),
+                                strokeWidth = 2.dp,
+                            )
+                            Spacer(modifier = Modifier.width(8.dp))
+                        }
+                        Text(stringResource(R.string.compose_walking_translate_save))
+                    }
+                    focusTranslationError?.let { error ->
+                        Spacer(modifier = Modifier.height(6.dp))
+                        Text(
+                            stringResource(R.string.compose_walking_translation_failed, error),
+                            color = MaterialTheme.colorScheme.error,
+                            style = MaterialTheme.typography.bodySmall,
+                        )
+                    }
+                    if (savedFocusOriginal.isNotBlank()) {
+                        Spacer(modifier = Modifier.height(8.dp))
+                        Text(
+                            stringResource(R.string.compose_walking_original_input, savedFocusOriginal),
+                            style = MaterialTheme.typography.bodySmall,
+                        )
+                        Text(
+                            stringResource(R.string.compose_walking_model_input, savedModelFocusText),
+                            style = MaterialTheme.typography.bodySmall,
+                            fontWeight = FontWeight.Medium,
+                        )
+                    }
                 }
             }
 

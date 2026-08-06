@@ -20,6 +20,9 @@ object WalkingAidPreferences {
     private const val KEY_YOLO_MODEL_TYPE = "yolo_model_type"
     private const val KEY_WATCHLIST_TERMS = "watchlist_terms"
     private const val KEY_FOCUS_DESCRIPTION = "focus_description"
+    private const val KEY_FOCUS_TRANSLATION_ORIGINAL = "focus_translation_original"
+    private const val KEY_FOCUS_TRANSLATION_SOURCE = "focus_translation_source"
+    private const val KEY_FOCUS_TRANSLATION_ENGLISH = "focus_translation_english"
     private const val KEY_THUMBNAIL_QUALITY_LEVEL = "thumbnail_quality_level"
     private const val KEY_PHOTO_SETTLE_DELAY_MS = "photo_settle_delay_ms"
     private const val MAX_CUSTOM_PROMPT_CHARS = 1_500
@@ -161,7 +164,39 @@ object WalkingAidPreferences {
             ?: prefs(context).getString(KEY_WATCHLIST_TERMS, "").orEmpty()
 
     fun setFocusDescription(context: Context, description: String) {
-        prefs(context).edit().putString(KEY_FOCUS_DESCRIPTION, description.trim().take(500)).apply()
+        val normalized = description.trim().take(500)
+        val preferences = prefs(context)
+        val edit = preferences.edit().putString(KEY_FOCUS_DESCRIPTION, normalized)
+        if (preferences.getString(KEY_FOCUS_TRANSLATION_ORIGINAL, null) != normalized) {
+            edit.remove(KEY_FOCUS_TRANSLATION_ORIGINAL)
+                .remove(KEY_FOCUS_TRANSLATION_SOURCE)
+                .remove(KEY_FOCUS_TRANSLATION_ENGLISH)
+        }
+        edit.apply()
+    }
+
+    fun getCachedFocusTranslation(context: Context, original: String, source: String): String? {
+        val preferences = prefs(context)
+        if (preferences.getString(KEY_FOCUS_TRANSLATION_ORIGINAL, null) != original.trim().take(500)) return null
+        if (!preferences.getString(KEY_FOCUS_TRANSLATION_SOURCE, null).equals(source, ignoreCase = true)) return null
+        return preferences.getString(KEY_FOCUS_TRANSLATION_ENGLISH, null)?.takeIf { it.isNotBlank() }
+    }
+
+    fun setCachedFocusTranslation(context: Context, original: String, source: String, english: String) {
+        val normalizedOriginal = original.trim().take(500)
+        prefs(context).edit()
+            .putString(KEY_FOCUS_DESCRIPTION, normalizedOriginal)
+            .putString(KEY_STATE_MODEL_SOURCE, source)
+            .putString(KEY_FOCUS_TRANSLATION_ORIGINAL, normalizedOriginal)
+            .putString(KEY_FOCUS_TRANSLATION_SOURCE, source)
+            .putString(KEY_FOCUS_TRANSLATION_ENGLISH, english.trim())
+            .apply()
+    }
+
+    fun getModelFocusDescription(context: Context): String {
+        val original = getFocusDescription(context).trim()
+        val source = getStateModelSource(context)
+        return getCachedFocusTranslation(context, original, source) ?: original
     }
 
     fun getThumbnailQualityLevel(context: Context): Int =

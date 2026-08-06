@@ -125,6 +125,14 @@
     <string name="compose_walking_attention_hint">For example: Please warn me about pets, traffic, and things I could trip over</string>
     <string name="compose_walking_attention_support">Write naturally or use keyboard dictation. Built-in safety alerts remain active.</string>
     <string name="compose_walking_attention_summary">Walking Aid will pay extra attention to %1$s.</string>
+    <string name="compose_walking_attention_unsaved">Translate and save this input before Walking Aid uses it.</string>
+    <string name="compose_walking_translation_source">Translation source</string>
+    <string name="compose_walking_translation_local">Local model</string>
+    <string name="compose_walking_translation_cloud">Cloud model</string>
+    <string name="compose_walking_translate_save">Translate and save</string>
+    <string name="compose_walking_translation_failed">Translation failed: %1$s</string>
+    <string name="compose_walking_original_input">Original input: %1$s</string>
+    <string name="compose_walking_model_input">Model input (English): %1$s</string>
     <string name="compose_walking_depth_enabled">Depth enabled</string>
     <string name="compose_walking_source">Source</string>
     <string name="compose_walking_additional_instructions_description">Additional instructions appended to all Walking Aid prompts (image description, depth, and state model). These are specific to this plugin and do not affect the global vision profile in Settings.</string>

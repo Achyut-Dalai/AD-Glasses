@@ -45,6 +45,14 @@ class LiteRtVisionBackend(
 
     var detectorInitError: String? = null
         private set
+    var depthInitError: String? = null
+        private set
+
+    val isDetectorModelLoaded: Boolean
+        get() = detectorInterpreter != null
+
+    val isDepthModelLoaded: Boolean
+        get() = depthInterpreter != null
 
     private var modelWidth = 640
     private var modelHeight = 640
@@ -193,7 +201,10 @@ class LiteRtVisionBackend(
         try {
             val depthFile = locateModel("depth_anything_3_small.tflite")
                 ?: locateModel("depth_anything_v2_small.tflite")
-                ?: return
+                ?: run {
+                    depthInitError = "Depth Anything TFLite model file missing or empty"
+                    return
+                }
             val buffer = loadModelFile(depthFile)
             val options = Interpreter.Options().apply {
                 setUseXNNPACK(true)
@@ -214,6 +225,7 @@ class LiteRtVisionBackend(
             }
             Log.i(TAG, "Relative depth model (${depthWidth}x${depthHeight}) initialized via LiteRT")
         } catch (e: Exception) {
+            depthInitError = "Failed initializing Depth Anything model: ${e.message}"
             Log.e(TAG, "Failed initializing Depth model: ${e.message}", e)
         }
     }

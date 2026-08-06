@@ -125,6 +125,14 @@
     <string name="compose_walking_attention_hint">Ad esempio: avvisami di animali, traffico e oggetti su cui potrei inciampare</string>
     <string name="compose_walking_attention_support">Scrivi in modo naturale o usa la dettatura della tastiera. Gli avvisi di sicurezza integrati restano attivi.</string>
     <string name="compose_walking_attention_summary">Walking Aid presterà particolare attenzione a %1$s.</string>
+    <string name="compose_walking_attention_unsaved">Traduci e salva questo testo prima che Walking Aid lo utilizzi.</string>
+    <string name="compose_walking_translation_source">Fonte della traduzione</string>
+    <string name="compose_walking_translation_local">Modello locale</string>
+    <string name="compose_walking_translation_cloud">Modello cloud</string>
+    <string name="compose_walking_translate_save">Traduci e salva</string>
+    <string name="compose_walking_translation_failed">Traduzione non riuscita: %1$s</string>
+    <string name="compose_walking_original_input">Testo originale: %1$s</string>
+    <string name="compose_walking_model_input">Input del modello (inglese): %1$s</string>
     <string name="compose_walking_depth_enabled">Profondità attivata</string>
     <string name="compose_walking_source">Origine</string>
     <string name="compose_walking_additional_instructions_description">Istruzioni aggiuntive aggiunte a tutti i prompt di Walking Aid (descrizione dell immagine, profondità e modello dello stato). Sono specifiche di questo plugin e non modificano il profilo visivo globale nelle Impostazioni.</string>

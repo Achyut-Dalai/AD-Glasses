@@ -37,7 +37,10 @@ object WalkingAidWarningEngine {
     ): WarningDecision {
         val frameAgeMs = (nowMs - frameTimestampMs).coerceAtLeast(0L)
         val isStale = frameAgeMs > MAX_WARNING_FRAME_AGE_MS
-        val userKeywords = WalkingAidFocusMapper.resolve(focusDescription)
+        val customWatchLabels = WalkingAidFocusMapper.matchDetectedLabels(
+            text = focusDescription,
+            detectedLabels = detection.objects.map { it.label },
+        ).map { it.lowercase() }.toSet()
 
         var candidateAlert: String? = null
         var candidateKey = ""
@@ -45,7 +48,7 @@ object WalkingAidWarningEngine {
 
         // 1. Check approaching center hazards (Priority 1: Immediate collision risk)
         for (obj in detection.objects.takeUnless { isStale }.orEmpty()) {
-            val isCustomWatch = userKeywords.any { keyword -> matchesClass(obj.label, keyword) }
+            val isCustomWatch = obj.label.lowercase() in customWatchLabels
             val isCritical = CRITICAL_NAVIGATION_CLASSES.contains(obj.label) || isCustomWatch
 
             if (isCritical && obj.position == "center" && obj.approaching) {
@@ -65,7 +68,7 @@ object WalkingAidWarningEngine {
                 // An approaching track uses the shorter urgent cooldown and must not fall through
                 // to a second obstacle alert while that urgent alert is cooling down.
                 if (obj.approaching) continue
-                val isCustomWatch = userKeywords.any { keyword -> matchesClass(obj.label, keyword) }
+                val isCustomWatch = obj.label.lowercase() in customWatchLabels
                 val isCritical = CRITICAL_NAVIGATION_CLASSES.contains(obj.label) || isCustomWatch
 
                 val boxHeight = obj.boundingBox.bottom - obj.boundingBox.top
@@ -151,10 +154,6 @@ object WalkingAidWarningEngine {
     private fun recordAlert(key: String, nowMs: Long) {
         lastAlertTimeMap[key] = nowMs
     }
-
-    private fun matchesClass(label: String, keyword: String): Boolean =
-        label.equals(keyword, ignoreCase = true) ||
-            "${label}s".equals(keyword, ignoreCase = true)
 
     private fun alertKey(prefix: String, detection: com.fersaiyan.cyanbridge.plugins.walkingaid.vision.DetectedObject): String =
         detection.trackId?.let { "${prefix}_track_$it" }

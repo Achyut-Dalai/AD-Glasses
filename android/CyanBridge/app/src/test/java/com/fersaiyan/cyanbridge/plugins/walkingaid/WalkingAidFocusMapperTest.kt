@@ -22,6 +22,37 @@ class WalkingAidFocusMapperTest {
 
     @Test
     fun unknownWordsDoNotCreateFakeDetectorLabels() {
-        assertTrue(WalkingAidFocusMapper.resolve("low branches and open doors").isEmpty())
+        val matches = WalkingAidFocusMapper.resolve("low branches and open doors")
+        assertTrue("Unexpected matches: $matches", matches.isEmpty())
+    }
+
+    @Test
+    fun fuzzyMatchesTyposOnlyAgainstLabelsDetectedInFrame() {
+        val matches = WalkingAidFocusMapper.matchDetectedLabels(
+            text = "Warn me about bicylces and busses",
+            detectedLabels = listOf("bicycle", "bus", "dog"),
+        )
+
+        assertEquals(listOf("bicycle", "bus"), matches)
+    }
+
+    @Test
+    fun casualCategoryIsLimitedToObjectsDetectedInFrame() {
+        val matches = WalkingAidFocusMapper.matchDetectedLabels(
+            text = "Pay attention to traffic",
+            detectedLabels = listOf("person", "car", "truck"),
+        )
+
+        assertEquals(listOf("car", "truck"), matches)
+    }
+
+    @Test
+    fun similarSubstringDoesNotMatchShortClassName() {
+        assertTrue(
+            WalkingAidFocusMapper.matchDetectedLabels(
+                text = "catch anything unusual",
+                detectedLabels = listOf("cat"),
+            ).isEmpty(),
+        )
     }
 }
