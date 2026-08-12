@@ -1,4 +1,4 @@
-package com.fersaiyan.cyanbridge.localagent.shizuku;
+package com.achyut.adglasses.localagent.shizuku;
 
 interface ILocalAgentShizukuInput {
     void destroy() = 16777114;
