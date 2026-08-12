@@ -1,8 +1,8 @@
-package com.fersaiyan.cyanbridge.ai.transcription
+package com.achyut.adglasses.ai.transcription
 
-import com.fersaiyan.cyanbridge.ai.transcription.backend.FakeTranscriptionBackend
-import com.fersaiyan.cyanbridge.ai.transcription.retry.RetryPolicy
-import com.fersaiyan.cyanbridge.ai.transcription.storage.TranscriptStore
+import com.achyut.adglasses.ai.transcription.backend.FakeTranscriptionBackend
+import com.achyut.adglasses.ai.transcription.retry.RetryPolicy
+import com.achyut.adglasses.ai.transcription.storage.TranscriptStore
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.toList
 import kotlinx.coroutines.runBlocking

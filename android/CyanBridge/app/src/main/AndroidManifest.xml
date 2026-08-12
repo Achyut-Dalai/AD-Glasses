@@ -131,8 +131,8 @@
         <receiver android:name=".plugins.errandbrain.ErrandBrainReminderReceiver" android:exported="false" />
         <receiver android:name=".ai.image.ImageAutomationStatusReceiver" android:exported="true">
             <intent-filter>
-                <action android:name="com.fersaiyan.cyanbridge.AI_IMAGE_STATUS" />
-                <action android:name="com.fersaiyan.cyanbridge.AI_IMAGE_PROFILE" />
+                <action android:name="com.achyut.adglasses.AI_IMAGE_STATUS" />
+                <action android:name="com.achyut.adglasses.AI_IMAGE_PROFILE" />
             </intent-filter>
         </receiver>
 

@@ -1,9 +1,9 @@
-package com.fersaiyan.cyanbridge.chat
+package com.achyut.adglasses.chat
 
-import com.fersaiyan.cyanbridge.shared.chat.ChatRepository
-import com.fersaiyan.cyanbridge.shared.chat.ChatRole
-import com.fersaiyan.cyanbridge.shared.chat.ChatMessage
-import com.fersaiyan.cyanbridge.shared.chat.ChatThread
+import com.achyut.adglasses.shared.chat.ChatRepository
+import com.achyut.adglasses.shared.chat.ChatRole
+import com.achyut.adglasses.shared.chat.ChatMessage
+import com.achyut.adglasses.shared.chat.ChatThread
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 

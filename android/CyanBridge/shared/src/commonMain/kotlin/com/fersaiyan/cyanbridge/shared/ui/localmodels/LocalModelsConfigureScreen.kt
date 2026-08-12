@@ -1,4 +1,4 @@
-package com.fersaiyan.cyanbridge.shared.ui.localmodels
+package com.achyut.adglasses.shared.ui.localmodels
 
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -52,14 +52,14 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
-import com.fersaiyan.cyanbridge.shared.localmodels.LocalModelDownloadUiState
-import com.fersaiyan.cyanbridge.shared.localmodels.LocalModelOptionField
-import com.fersaiyan.cyanbridge.shared.localmodels.LocalModelTextField
-import com.fersaiyan.cyanbridge.shared.localmodels.LocalModelToggleField
-import com.fersaiyan.cyanbridge.shared.localmodels.LocalModelsAction
-import com.fersaiyan.cyanbridge.shared.localmodels.LocalModelsConfigureUiState
-import com.fersaiyan.cyanbridge.shared.localmodels.LocalModelsSection
-import com.fersaiyan.cyanbridge.shared.generated.resources.*
+import com.achyut.adglasses.shared.localmodels.LocalModelDownloadUiState
+import com.achyut.adglasses.shared.localmodels.LocalModelOptionField
+import com.achyut.adglasses.shared.localmodels.LocalModelTextField
+import com.achyut.adglasses.shared.localmodels.LocalModelToggleField
+import com.achyut.adglasses.shared.localmodels.LocalModelsAction
+import com.achyut.adglasses.shared.localmodels.LocalModelsConfigureUiState
+import com.achyut.adglasses.shared.localmodels.LocalModelsSection
+import com.achyut.adglasses.shared.generated.resources.*
 import org.jetbrains.compose.resources.ExperimentalResourceApi
 import org.jetbrains.compose.resources.stringResource
 

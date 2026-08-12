@@ -1,6 +1,6 @@
-package com.fersaiyan.cyanbridge.shared.navigation
+package com.achyut.adglasses.shared.navigation
 
-import com.fersaiyan.cyanbridge.shared.icons.AppIcon
+import com.achyut.adglasses.shared.icons.AppIcon
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertNotNull

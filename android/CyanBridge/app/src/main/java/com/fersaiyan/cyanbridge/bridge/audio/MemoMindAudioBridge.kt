@@ -1,4 +1,4 @@
-package com.fersaiyan.cyanbridge.bridge.audio
+package com.achyut.adglasses.bridge.audio
 
 import android.annotation.SuppressLint
 import android.bluetooth.BluetoothGattCharacteristic
@@ -11,8 +11,8 @@ import android.media.AudioRecord
 import android.media.AudioTrack
 import android.media.MediaRecorder
 import android.util.Log
-import com.fersaiyan.cyanbridge.bridge.devices.memomind.MemoMindConstants
-import com.fersaiyan.cyanbridge.bridge.devices.memomind.MemoMindGattClient
+import com.achyut.adglasses.bridge.devices.memomind.MemoMindConstants
+import com.achyut.adglasses.bridge.devices.memomind.MemoMindGattClient
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableSharedFlow

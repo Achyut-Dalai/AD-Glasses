@@ -1,7 +1,7 @@
-package com.fersaiyan.cyanbridge.memoryvault
+package com.achyut.adglasses.memoryvault
 
-import com.fersaiyan.cyanbridge.data.local.entity.LocalEmbeddingStoreEntity
-import com.fersaiyan.cyanbridge.ui.MyApplication
+import com.achyut.adglasses.data.local.entity.LocalEmbeddingStoreEntity
+import com.achyut.adglasses.ui.MyApplication
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import org.json.JSONArray

@@ -1,4 +1,4 @@
-package com.fersaiyan.cyanbridge.shared.navigation
+package com.achyut.adglasses.shared.navigation
 
 import kotlin.test.Test
 import kotlin.test.assertEquals

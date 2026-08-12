@@ -1,7 +1,7 @@
-package com.fersaiyan.cyanbridge.localagent.userfacts
+package com.achyut.adglasses.localagent.userfacts
 
 import android.content.Context
-import com.fersaiyan.cyanbridge.localagent.memory.LocalAgentMemoryStore
+import com.achyut.adglasses.localagent.memory.LocalAgentMemoryStore
 
 object UserFactsStorage {
 

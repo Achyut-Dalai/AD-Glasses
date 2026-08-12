@@ -1,4 +1,4 @@
-package com.fersaiyan.cyanbridge.shared.ble
+package com.achyut.adglasses.shared.ble
 
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.StateFlow

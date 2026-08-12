@@ -1,4 +1,4 @@
-package com.fersaiyan.cyanbridge.ui
+package com.achyut.adglasses.ui
 
 import android.content.Context
 import android.content.Intent
@@ -8,14 +8,14 @@ import androidx.appcompat.app.AppCompatActivity
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
-import com.fersaiyan.cyanbridge.MainActivity
-import com.fersaiyan.cyanbridge.shared.ui.onboarding.OnboardingLanguageOption
-import com.fersaiyan.cyanbridge.shared.ui.onboarding.WelcomeScreen
-import com.fersaiyan.cyanbridge.ui.appearance.AppearancePreferences
-import com.fersaiyan.cyanbridge.ui.appearance.rememberAppearanceSettings
-import com.fersaiyan.cyanbridge.ui.localization.AppLanguage
-import com.fersaiyan.cyanbridge.ui.localization.AppLanguagePreferences
-import com.fersaiyan.cyanbridge.ui.theme.CyanBridgeTheme
+import com.achyut.adglasses.MainActivity
+import com.achyut.adglasses.shared.ui.onboarding.OnboardingLanguageOption
+import com.achyut.adglasses.shared.ui.onboarding.WelcomeScreen
+import com.achyut.adglasses.ui.appearance.AppearancePreferences
+import com.achyut.adglasses.ui.appearance.rememberAppearanceSettings
+import com.achyut.adglasses.ui.localization.AppLanguage
+import com.achyut.adglasses.ui.localization.AppLanguagePreferences
+import com.achyut.adglasses.ui.theme.CyanBridgeTheme
 
 class WelcomeActivity : AppCompatActivity() {
 

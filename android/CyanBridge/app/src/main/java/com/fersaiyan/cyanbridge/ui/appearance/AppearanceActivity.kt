@@ -1,12 +1,12 @@
-package com.fersaiyan.cyanbridge.ui.appearance
+package com.achyut.adglasses.ui.appearance
 
 import android.os.Build
-import com.fersaiyan.cyanbridge.shared.ui.appearance.AppearanceScreen
+import com.achyut.adglasses.shared.ui.appearance.AppearanceScreen
 import android.os.Bundle
 import androidx.activity.compose.setContent
 import androidx.appcompat.app.AppCompatActivity
 import androidx.compose.runtime.getValue
-import com.fersaiyan.cyanbridge.ui.theme.CyanBridgeTheme
+import com.achyut.adglasses.ui.theme.CyanBridgeTheme
 
 class AppearanceActivity : AppCompatActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {

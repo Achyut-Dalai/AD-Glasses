@@ -1,8 +1,8 @@
-package com.fersaiyan.cyanbridge.devices
+package com.achyut.adglasses.devices
 
 import android.os.ParcelUuid
-import com.fersaiyan.cyanbridge.devices.eyevue.EyevueProtocol
-import com.fersaiyan.cyanbridge.shared.devices.DeviceClass
+import com.achyut.adglasses.devices.eyevue.EyevueProtocol
+import com.achyut.adglasses.shared.devices.DeviceClass
 
 /**
  * Chapter 3 heuristics:

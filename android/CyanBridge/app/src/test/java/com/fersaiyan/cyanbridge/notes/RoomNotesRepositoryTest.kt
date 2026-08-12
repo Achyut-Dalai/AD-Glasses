@@ -1,10 +1,10 @@
-package com.fersaiyan.cyanbridge.notes
+package com.achyut.adglasses.notes
 
 import android.content.Context
 import androidx.room.Room
 import androidx.test.core.app.ApplicationProvider
-import com.fersaiyan.cyanbridge.ai.summarization.FakeSummarizationService
-import com.fersaiyan.cyanbridge.data.local.AppDatabase
+import com.achyut.adglasses.ai.summarization.FakeSummarizationService
+import com.achyut.adglasses.data.local.AppDatabase
 import kotlinx.coroutines.runBlocking
 import org.junit.After
 import org.junit.Assert.assertEquals

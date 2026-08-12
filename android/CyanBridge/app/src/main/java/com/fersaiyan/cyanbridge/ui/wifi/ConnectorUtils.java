@@ -1,4 +1,4 @@
-package com.fersaiyan.cyanbridge.ui.wifi;
+package com.achyut.adglasses.ui.wifi;
 
 import android.net.wifi.ScanResult;
 import android.net.wifi.WifiConfiguration;

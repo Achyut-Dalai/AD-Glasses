@@ -1,4 +1,4 @@
-package com.fersaiyan.cyanbridge.plugins.livecaptioncloud
+package com.achyut.adglasses.plugins.livecaptioncloud
 
 data class CaptionEntry(
     val timestampMs: Long,

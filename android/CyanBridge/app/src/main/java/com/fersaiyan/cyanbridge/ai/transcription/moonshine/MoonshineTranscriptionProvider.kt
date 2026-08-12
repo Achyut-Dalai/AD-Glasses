@@ -1,4 +1,4 @@
-package com.fersaiyan.cyanbridge.ai.transcription.moonshine
+package com.achyut.adglasses.ai.transcription.moonshine
 
 import ai.moonshine.voice.TranscriptEvent
 import ai.moonshine.voice.TranscriptEventListener
@@ -9,8 +9,8 @@ import android.media.MediaExtractor
 import android.media.MediaFormat
 import android.os.Build
 import android.util.Log
-import com.fersaiyan.cyanbridge.ai.transcription.SilenceCompactor
-import com.fersaiyan.cyanbridge.ai.transcription.TranscriptionProvider
+import com.achyut.adglasses.ai.transcription.SilenceCompactor
+import com.achyut.adglasses.ai.transcription.TranscriptionProvider
 import java.io.File
 import java.nio.ByteBuffer
 import java.nio.ByteOrder

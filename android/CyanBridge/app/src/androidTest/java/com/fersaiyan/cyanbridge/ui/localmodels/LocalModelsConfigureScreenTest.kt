@@ -1,7 +1,7 @@
-package com.fersaiyan.cyanbridge.ui.localmodels
+package com.achyut.adglasses.ui.localmodels
 
 import androidx.compose.ui.test.assertIsDisplayed
-import com.fersaiyan.cyanbridge.shared.ui.localmodels.LocalModelsConfigureScreen
+import com.achyut.adglasses.shared.ui.localmodels.LocalModelsConfigureScreen
 import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
@@ -9,10 +9,10 @@ import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.hasText
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performScrollToNode
-import com.fersaiyan.cyanbridge.shared.localmodels.LocalModelsAction
-import com.fersaiyan.cyanbridge.shared.localmodels.LocalModelsConfigureUiState
-import com.fersaiyan.cyanbridge.shared.localmodels.LocalModelDownloadUiState
-import com.fersaiyan.cyanbridge.ui.theme.CyanBridgeTheme
+import com.achyut.adglasses.shared.localmodels.LocalModelsAction
+import com.achyut.adglasses.shared.localmodels.LocalModelsConfigureUiState
+import com.achyut.adglasses.shared.localmodels.LocalModelDownloadUiState
+import com.achyut.adglasses.ui.theme.CyanBridgeTheme
 import org.junit.Assert.assertEquals
 import org.junit.Rule
 import org.junit.Test
@@ -75,7 +75,7 @@ class LocalModelsConfigureScreenTest {
     fun activeDownloadRemainsVisibleWhenScrolledToBottomAndCanBeCancelled() {
         var action: LocalModelsAction? = null
         val catalogEntries = List(10) { index ->
-            com.fersaiyan.cyanbridge.shared.localmodels.LocalModelCatalogUiItem(
+            com.achyut.adglasses.shared.localmodels.LocalModelCatalogUiItem(
                 id = "model_$index",
                 title = "Catalog Model $index",
                 details = "Test description $index · 1.5 GB",

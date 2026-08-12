@@ -1,4 +1,4 @@
-package com.fersaiyan.cyanbridge.studiobridge
+package com.achyut.adglasses.studiobridge
 
 import android.app.NotificationChannel
 import android.app.NotificationManager
@@ -10,9 +10,9 @@ import android.os.Build
 import android.os.IBinder
 import androidx.core.app.NotificationCompat
 import androidx.core.app.ServiceCompat
-import com.fersaiyan.cyanbridge.MainActivity
-import com.fersaiyan.cyanbridge.R
-import com.fersaiyan.cyanbridge.ui.hasNotificationPermission
+import com.achyut.adglasses.MainActivity
+import com.achyut.adglasses.R
+import com.achyut.adglasses.ui.hasNotificationPermission
 
 /** Keeps voice approvals eligible for microphone access while the app is backgrounded. */
 class StudioBridgeForegroundService : Service() {

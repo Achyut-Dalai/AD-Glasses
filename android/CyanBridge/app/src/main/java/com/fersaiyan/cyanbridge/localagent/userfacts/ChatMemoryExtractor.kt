@@ -1,7 +1,7 @@
-package com.fersaiyan.cyanbridge.localagent.userfacts
+package com.achyut.adglasses.localagent.userfacts
 
 import android.content.Context
-import com.fersaiyan.cyanbridge.ai.router.AiAssistantRouter
+import com.achyut.adglasses.ai.router.AiAssistantRouter
 import org.json.JSONArray
 import org.json.JSONObject
 

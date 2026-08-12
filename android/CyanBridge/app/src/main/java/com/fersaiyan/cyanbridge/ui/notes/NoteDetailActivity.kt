@@ -1,4 +1,4 @@
-package com.fersaiyan.cyanbridge.ui.notes
+package com.achyut.adglasses.ui.notes
 
 import android.content.ClipData
 import android.content.ClipboardManager
@@ -11,11 +11,11 @@ import androidx.appcompat.app.AppCompatActivity
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
-import com.fersaiyan.cyanbridge.shared.ui.notes.NoteDetailScreen
-import com.fersaiyan.cyanbridge.ui.MyApplication
-import com.fersaiyan.cyanbridge.ui.appearance.AppearancePreferences
-import com.fersaiyan.cyanbridge.ui.appearance.rememberAppearanceSettings
-import com.fersaiyan.cyanbridge.ui.theme.CyanBridgeTheme
+import com.achyut.adglasses.shared.ui.notes.NoteDetailScreen
+import com.achyut.adglasses.ui.MyApplication
+import com.achyut.adglasses.ui.appearance.AppearancePreferences
+import com.achyut.adglasses.ui.appearance.rememberAppearanceSettings
+import com.achyut.adglasses.ui.theme.CyanBridgeTheme
 import kotlinx.coroutines.MainScope
 import kotlinx.coroutines.cancel
 import kotlinx.coroutines.launch

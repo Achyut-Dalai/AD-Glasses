@@ -1,8 +1,8 @@
-package com.fersaiyan.cyanbridge.shared.glasses
+package com.achyut.adglasses.shared.glasses
 
-import com.fersaiyan.cyanbridge.shared.navigation.AppDestination
-import com.fersaiyan.cyanbridge.shared.plugins.NativePluginShortcutAction
-import com.fersaiyan.cyanbridge.shared.plugins.NativePluginShortcutUiState
+import com.achyut.adglasses.shared.navigation.AppDestination
+import com.achyut.adglasses.shared.plugins.NativePluginShortcutAction
+import com.achyut.adglasses.shared.plugins.NativePluginShortcutUiState
 
 /**
  * Platform-neutral presentation state for the glasses dashboard. Android BLE,

@@ -1,4 +1,4 @@
-package com.fersaiyan.cyanbridge.ota
+package com.achyut.adglasses.ota
 
 import java.io.File
 import org.junit.Assert.assertEquals

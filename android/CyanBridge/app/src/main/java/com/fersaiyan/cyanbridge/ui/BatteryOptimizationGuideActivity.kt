@@ -1,4 +1,4 @@
-package com.fersaiyan.cyanbridge.ui
+package com.achyut.adglasses.ui
 
 import android.content.ActivityNotFoundException
 import android.content.Context
@@ -14,12 +14,12 @@ import androidx.appcompat.app.AppCompatActivity
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
-import com.fersaiyan.cyanbridge.MainActivity
-import com.fersaiyan.cyanbridge.R
-import com.fersaiyan.cyanbridge.ui.appearance.AppearancePreferences
-import com.fersaiyan.cyanbridge.ui.appearance.rememberAppearanceSettings
-import com.fersaiyan.cyanbridge.shared.ui.onboarding.BatteryOptimizationGuideScreen
-import com.fersaiyan.cyanbridge.ui.theme.CyanBridgeTheme
+import com.achyut.adglasses.MainActivity
+import com.achyut.adglasses.R
+import com.achyut.adglasses.ui.appearance.AppearancePreferences
+import com.achyut.adglasses.ui.appearance.rememberAppearanceSettings
+import com.achyut.adglasses.shared.ui.onboarding.BatteryOptimizationGuideScreen
+import com.achyut.adglasses.ui.theme.CyanBridgeTheme
 
 class BatteryOptimizationGuideActivity : AppCompatActivity() {
     private var optimizationIgnored by mutableStateOf(false)

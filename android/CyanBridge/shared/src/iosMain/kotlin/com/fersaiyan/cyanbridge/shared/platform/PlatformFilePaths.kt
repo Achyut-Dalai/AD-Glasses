@@ -1,4 +1,4 @@
-package com.fersaiyan.cyanbridge.shared.platform
+package com.achyut.adglasses.shared.platform
 
 actual object PlatformFilePaths {
     actual fun dataDirectory(): String {

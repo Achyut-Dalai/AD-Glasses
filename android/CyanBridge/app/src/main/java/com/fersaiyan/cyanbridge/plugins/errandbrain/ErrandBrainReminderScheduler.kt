@@ -1,4 +1,4 @@
-package com.fersaiyan.cyanbridge.plugins.errandbrain
+package com.achyut.adglasses.plugins.errandbrain
 
 import android.app.AlarmManager
 import android.app.PendingIntent
@@ -9,7 +9,7 @@ import android.os.Build
 import android.util.Log
 
 object ErrandBrainReminderScheduler {
-    private const val ACTION_REMINDER = "com.fersaiyan.cyanbridge.ACTION_ERRAND_BRAIN_REMINDER"
+    private const val ACTION_REMINDER = "com.achyut.adglasses.ACTION_ERRAND_BRAIN_REMINDER"
     private const val EXTRA_REMINDER_ID = "reminder_id"
     private const val EXTRA_TITLE = "title"
     private const val EXTRA_DESCRIPTION = "description"

@@ -1,4 +1,4 @@
-package com.fersaiyan.cyanbridge.shared.platform
+package com.achyut.adglasses.shared.platform
 
 import android.content.Context
 import android.content.SharedPreferences

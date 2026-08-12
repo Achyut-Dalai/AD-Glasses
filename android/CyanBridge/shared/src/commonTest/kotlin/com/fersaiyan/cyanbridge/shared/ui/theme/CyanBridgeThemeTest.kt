@@ -1,9 +1,9 @@
-package com.fersaiyan.cyanbridge.shared.ui.theme
+package com.achyut.adglasses.shared.ui.theme
 
 import androidx.compose.ui.graphics.Color
-import com.fersaiyan.cyanbridge.shared.appearance.AccentProfiles
-import com.fersaiyan.cyanbridge.shared.appearance.AppearanceSettings
-import com.fersaiyan.cyanbridge.shared.appearance.ThemeMode
+import com.achyut.adglasses.shared.appearance.AccentProfiles
+import com.achyut.adglasses.shared.appearance.AppearanceSettings
+import com.achyut.adglasses.shared.appearance.ThemeMode
 import kotlin.test.Test
 import kotlin.test.assertEquals
 

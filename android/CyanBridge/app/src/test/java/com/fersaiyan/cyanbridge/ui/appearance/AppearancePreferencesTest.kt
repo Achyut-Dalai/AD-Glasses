@@ -1,10 +1,10 @@
-package com.fersaiyan.cyanbridge.ui.appearance
+package com.achyut.adglasses.ui.appearance
 
 import android.content.Context
 import androidx.test.core.app.ApplicationProvider
-import com.fersaiyan.cyanbridge.shared.appearance.AccentProfiles
-import com.fersaiyan.cyanbridge.shared.appearance.AppearanceSettings
-import com.fersaiyan.cyanbridge.shared.appearance.ThemeMode
+import com.achyut.adglasses.shared.appearance.AccentProfiles
+import com.achyut.adglasses.shared.appearance.AppearanceSettings
+import com.achyut.adglasses.shared.appearance.ThemeMode
 import org.junit.Assert.assertEquals
 import org.junit.Before
 import org.junit.Test

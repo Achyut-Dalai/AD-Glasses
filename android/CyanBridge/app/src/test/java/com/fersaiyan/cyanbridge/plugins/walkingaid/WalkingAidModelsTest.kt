@@ -1,4 +1,4 @@
-package com.fersaiyan.cyanbridge.plugins.walkingaid
+package com.achyut.adglasses.plugins.walkingaid
 
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNotNull

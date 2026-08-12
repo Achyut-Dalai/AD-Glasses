@@ -1,4 +1,4 @@
-package com.fersaiyan.cyanbridge.ai.transcription.moonshine
+package com.achyut.adglasses.ai.transcription.moonshine
 
 import ai.moonshine.voice.JNI
 import android.content.Context

@@ -1,4 +1,4 @@
-package com.fersaiyan.cyanbridge.ai.live
+package com.achyut.adglasses.ai.live
 
 /** States surfaced by the preview UI; no audio payload is retained in these states. */
 enum class GeminiLiveState {

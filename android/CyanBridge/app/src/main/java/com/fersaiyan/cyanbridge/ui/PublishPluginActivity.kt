@@ -1,4 +1,4 @@
-package com.fersaiyan.cyanbridge.ui
+package com.achyut.adglasses.ui
 
 import android.os.Bundle
 import android.widget.Toast
@@ -8,13 +8,13 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.lifecycle.lifecycleScope
-import com.fersaiyan.cyanbridge.ai.router.AiProviderPrefs
-import com.fersaiyan.cyanbridge.shared.plugins.CommunityPluginCatalog
-import com.fersaiyan.cyanbridge.shared.plugins.PublishPluginUiState
-import com.fersaiyan.cyanbridge.ui.appearance.AppearancePreferences
-import com.fersaiyan.cyanbridge.ui.appearance.rememberAppearanceSettings
-import com.fersaiyan.cyanbridge.shared.ui.plugins.PublishPluginScreen
-import com.fersaiyan.cyanbridge.ui.theme.CyanBridgeTheme
+import com.achyut.adglasses.ai.router.AiProviderPrefs
+import com.achyut.adglasses.shared.plugins.CommunityPluginCatalog
+import com.achyut.adglasses.shared.plugins.PublishPluginUiState
+import com.achyut.adglasses.ui.appearance.AppearancePreferences
+import com.achyut.adglasses.ui.appearance.rememberAppearanceSettings
+import com.achyut.adglasses.shared.ui.plugins.PublishPluginScreen
+import com.achyut.adglasses.ui.theme.CyanBridgeTheme
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext

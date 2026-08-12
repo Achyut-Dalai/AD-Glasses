@@ -1,4 +1,4 @@
-package com.fersaiyan.cyanbridge.shared.plugins
+package com.achyut.adglasses.shared.plugins
 
 data class NativePluginCardData(
     val id: String,

@@ -1,4 +1,4 @@
-package com.fersaiyan.cyanbridge.plugins.livecaptioncloud
+package com.achyut.adglasses.plugins.livecaptioncloud
 
 import android.app.Notification
 import android.app.NotificationChannel
@@ -8,8 +8,8 @@ import android.content.Context
 import android.content.Intent
 import android.os.Build
 import androidx.core.app.NotificationCompat
-import com.fersaiyan.cyanbridge.MainActivity
-import com.fersaiyan.cyanbridge.R
+import com.achyut.adglasses.MainActivity
+import com.achyut.adglasses.R
 
 object LiveCaptionCloudNotificationHelper {
     const val CHANNEL_ID = "live_caption_cloud_service"

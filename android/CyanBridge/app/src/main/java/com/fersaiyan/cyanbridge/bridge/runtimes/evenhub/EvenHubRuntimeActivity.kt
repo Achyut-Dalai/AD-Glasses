@@ -1,4 +1,4 @@
-package com.fersaiyan.cyanbridge.bridge.runtimes.evenhub
+package com.achyut.adglasses.bridge.runtimes.evenhub
 
 import android.annotation.SuppressLint
 import android.os.Bundle
@@ -12,11 +12,11 @@ import androidx.appcompat.app.AppCompatActivity
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
-import com.fersaiyan.cyanbridge.bridge.core.DisplayCommand
-import com.fersaiyan.cyanbridge.bridge.core.GlassesBridge
-import com.fersaiyan.cyanbridge.ui.appearance.AppearancePreferences
-import com.fersaiyan.cyanbridge.ui.appearance.rememberAppearanceSettings
-import com.fersaiyan.cyanbridge.ui.theme.CyanBridgeTheme
+import com.achyut.adglasses.bridge.core.DisplayCommand
+import com.achyut.adglasses.bridge.core.GlassesBridge
+import com.achyut.adglasses.ui.appearance.AppearancePreferences
+import com.achyut.adglasses.ui.appearance.rememberAppearanceSettings
+import com.achyut.adglasses.ui.theme.CyanBridgeTheme
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob

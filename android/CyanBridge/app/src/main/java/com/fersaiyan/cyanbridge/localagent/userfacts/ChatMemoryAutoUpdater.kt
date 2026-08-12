@@ -1,8 +1,8 @@
-package com.fersaiyan.cyanbridge.localagent.userfacts
+package com.achyut.adglasses.localagent.userfacts
 
 import android.content.Context
 import android.util.Log
-import com.fersaiyan.cyanbridge.localagent.dailyfacts.DailyFactsStorage
+import com.achyut.adglasses.localagent.dailyfacts.DailyFactsStorage
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale

@@ -1,8 +1,8 @@
-package com.fersaiyan.cyanbridge.devices
-import com.fersaiyan.cyanbridge.shared.devices.DeviceProfile
+package com.achyut.adglasses.devices
+import com.achyut.adglasses.shared.devices.DeviceProfile
 
 import android.content.Context
-import com.fersaiyan.cyanbridge.shared.devices.DeviceClass
+import com.achyut.adglasses.shared.devices.DeviceClass
 
 /**
  * SharedPreferences-backed storage for device class selection.

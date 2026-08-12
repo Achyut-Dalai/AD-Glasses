@@ -1,4 +1,4 @@
-package com.fersaiyan.cyanbridge.shared.icons
+package com.achyut.adglasses.shared.icons
 
 enum class AppIcon {
     Glasses,

@@ -1,8 +1,8 @@
-package com.fersaiyan.cyanbridge.agent
+package com.achyut.adglasses.agent
 
 import android.content.Context
 import androidx.test.core.app.ApplicationProvider
-import com.fersaiyan.cyanbridge.shared.glasses.GlassesAssistantMode
+import com.achyut.adglasses.shared.glasses.GlassesAssistantMode
 import org.junit.Assert.assertEquals
 import org.junit.Test
 import org.junit.runner.RunWith

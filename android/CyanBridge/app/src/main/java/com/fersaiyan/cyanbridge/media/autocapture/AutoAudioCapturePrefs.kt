@@ -1,4 +1,4 @@
-package com.fersaiyan.cyanbridge.media.autocapture
+package com.achyut.adglasses.media.autocapture
 
 import android.content.Context
 

@@ -1,11 +1,11 @@
-package com.fersaiyan.cyanbridge.data.local.dao
+package com.achyut.adglasses.data.local.dao
 
 import androidx.room.Dao
 import androidx.room.Insert
 import androidx.room.OnConflictStrategy
 import androidx.room.Query
 import androidx.room.Update
-import com.fersaiyan.cyanbridge.data.local.entity.PendingAction
+import com.achyut.adglasses.data.local.entity.PendingAction
 import kotlinx.coroutines.flow.Flow
 
 @Dao

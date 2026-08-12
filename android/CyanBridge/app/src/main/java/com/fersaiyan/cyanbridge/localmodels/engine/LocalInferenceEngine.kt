@@ -1,6 +1,6 @@
-package com.fersaiyan.cyanbridge.localmodels.engine
+package com.achyut.adglasses.localmodels.engine
 
-import com.fersaiyan.cyanbridge.localmodels.settings.LocalComputeBackend
+import com.achyut.adglasses.localmodels.settings.LocalComputeBackend
 
 data class EngineLoadConfig(
     val contextSize: Int,

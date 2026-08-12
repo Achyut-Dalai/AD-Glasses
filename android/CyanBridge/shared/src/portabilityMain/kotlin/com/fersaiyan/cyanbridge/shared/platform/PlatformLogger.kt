@@ -1,4 +1,4 @@
-package com.fersaiyan.cyanbridge.shared.platform
+package com.achyut.adglasses.shared.platform
 
 actual object PlatformLogger {
     actual fun d(tag: String, message: String) { println("[DEBUG] $tag: $message") }

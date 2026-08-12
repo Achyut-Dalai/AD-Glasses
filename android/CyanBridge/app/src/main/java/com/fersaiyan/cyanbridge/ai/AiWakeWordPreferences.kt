@@ -1,7 +1,7 @@
-package com.fersaiyan.cyanbridge.ai
+package com.achyut.adglasses.ai
 
 import android.content.Context
-import com.fersaiyan.cyanbridge.shared.glasses.AiWakeWordRoute
+import com.achyut.adglasses.shared.glasses.AiWakeWordRoute
 
 object AiWakeWordPreferences {
     private const val PREFS = "ai_wake_word"

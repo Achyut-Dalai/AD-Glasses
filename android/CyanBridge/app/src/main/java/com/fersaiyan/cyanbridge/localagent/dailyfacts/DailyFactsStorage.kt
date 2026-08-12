@@ -1,7 +1,7 @@
-package com.fersaiyan.cyanbridge.localagent.dailyfacts
+package com.achyut.adglasses.localagent.dailyfacts
 
 import android.content.Context
-import com.fersaiyan.cyanbridge.localagent.memory.LocalAgentMemoryStore
+import com.achyut.adglasses.localagent.memory.LocalAgentMemoryStore
 import java.util.LinkedHashSet
 
 object DailyFactsStorage {

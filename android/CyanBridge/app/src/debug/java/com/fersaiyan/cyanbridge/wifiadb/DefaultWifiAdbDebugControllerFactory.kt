@@ -1,4 +1,4 @@
-package com.fersaiyan.cyanbridge.wifiadb
+package com.achyut.adglasses.wifiadb
 
 import android.Manifest
 import android.content.Context
@@ -11,7 +11,7 @@ import android.net.wifi.p2p.WifiP2pInfo
 import android.os.Build
 import android.util.Log
 import androidx.core.content.ContextCompat
-import com.fersaiyan.cyanbridge.ui.wifi.p2p.WifiP2pManagerSingleton
+import com.achyut.adglasses.ui.wifi.p2p.WifiP2pManagerSingleton
 import com.oudmon.ble.base.bluetooth.BleOperateManager
 import com.oudmon.ble.base.bluetooth.DeviceManager
 import com.oudmon.ble.base.communication.LargeDataHandler

@@ -1,4 +1,4 @@
-package com.fersaiyan.cyanbridge.ota
+package com.achyut.adglasses.ota
 
 import android.content.Context
 import android.annotation.SuppressLint
@@ -19,8 +19,8 @@ import androidx.media3.common.PlaybackException
 import androidx.media3.common.Player
 import androidx.media3.exoplayer.ExoPlayer
 import androidx.media3.exoplayer.rtsp.RtspMediaSource
-import com.fersaiyan.cyanbridge.BuildConfig
-import com.fersaiyan.cyanbridge.ui.wifi.p2p.WifiP2pManagerSingleton
+import com.achyut.adglasses.BuildConfig
+import com.achyut.adglasses.ui.wifi.p2p.WifiP2pManagerSingleton
 import com.oudmon.ble.base.bluetooth.BleOperateManager
 import com.oudmon.ble.base.bluetooth.DeviceManager
 import com.oudmon.ble.base.communication.LargeDataHandler

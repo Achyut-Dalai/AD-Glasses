@@ -1,4 +1,4 @@
-package com.fersaiyan.cyanbridge.localagent.supervision
+package com.achyut.adglasses.localagent.supervision
 
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNotNull

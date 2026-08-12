@@ -1,4 +1,4 @@
-package com.fersaiyan.cyanbridge.media.autocapture
+package com.achyut.adglasses.media.autocapture
 
 import android.Manifest
 import android.app.Notification
@@ -17,18 +17,18 @@ import androidx.core.app.NotificationCompat
 import androidx.core.app.ServiceCompat
 import androidx.core.content.ContextCompat
 import androidx.fragment.app.FragmentActivity
-import com.fersaiyan.cyanbridge.MainActivity
-import com.fersaiyan.cyanbridge.R
-import com.fersaiyan.cyanbridge.devices.DeviceProfileStore
-import com.fersaiyan.cyanbridge.glasses.GlassesSessionCoordinator
-import com.fersaiyan.cyanbridge.plugins.PluginVoicePermissions
-import com.fersaiyan.cyanbridge.ui.ensureBluetoothRuntimePermission
-import com.fersaiyan.cyanbridge.ui.hasBluetooth
-import com.fersaiyan.cyanbridge.ui.hasNotificationPermission
-import com.fersaiyan.cyanbridge.ui.hasWifiP2pPermission
+import com.achyut.adglasses.MainActivity
+import com.achyut.adglasses.R
+import com.achyut.adglasses.devices.DeviceProfileStore
+import com.achyut.adglasses.glasses.GlassesSessionCoordinator
+import com.achyut.adglasses.plugins.PluginVoicePermissions
+import com.achyut.adglasses.ui.ensureBluetoothRuntimePermission
+import com.achyut.adglasses.ui.hasBluetooth
+import com.achyut.adglasses.ui.hasNotificationPermission
+import com.achyut.adglasses.ui.hasWifiP2pPermission
 import com.oudmon.ble.base.bluetooth.BleOperateManager
 import com.oudmon.ble.base.communication.LargeDataHandler
-import com.fersaiyan.cyanbridge.audio.MeetingCapturePrefs
+import com.achyut.adglasses.audio.MeetingCapturePrefs
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -533,8 +533,8 @@ class AutoAudioCaptureService : Service() {
 
         private val RUNNING = AtomicBoolean(false)
 
-        const val ACTION_START = "com.fersaiyan.cyanbridge.action.AUTO_AUDIO_CAPTURE_START"
-        const val ACTION_STOP = "com.fersaiyan.cyanbridge.action.AUTO_AUDIO_CAPTURE_STOP"
+        const val ACTION_START = "com.achyut.adglasses.action.AUTO_AUDIO_CAPTURE_START"
+        const val ACTION_STOP = "com.achyut.adglasses.action.AUTO_AUDIO_CAPTURE_STOP"
 
         fun start(context: Context) {
             if (DeviceProfileStore.isMetaSelected(context)) {

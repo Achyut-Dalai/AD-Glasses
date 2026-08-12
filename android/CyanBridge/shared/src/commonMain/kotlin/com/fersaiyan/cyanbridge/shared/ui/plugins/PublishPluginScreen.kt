@@ -1,4 +1,4 @@
-package com.fersaiyan.cyanbridge.shared.ui.plugins
+package com.achyut.adglasses.shared.ui.plugins
 
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
@@ -38,9 +38,9 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
-import com.fersaiyan.cyanbridge.shared.plugins.PublishPluginUiState
-import com.fersaiyan.cyanbridge.shared.generated.resources.*
-import com.fersaiyan.cyanbridge.shared.ui.localizedPluginCategory
+import com.achyut.adglasses.shared.plugins.PublishPluginUiState
+import com.achyut.adglasses.shared.generated.resources.*
+import com.achyut.adglasses.shared.ui.localizedPluginCategory
 import org.jetbrains.compose.resources.ExperimentalResourceApi
 import org.jetbrains.compose.resources.stringResource
 

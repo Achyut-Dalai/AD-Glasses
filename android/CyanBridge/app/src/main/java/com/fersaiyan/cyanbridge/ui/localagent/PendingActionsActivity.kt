@@ -1,4 +1,4 @@
-package com.fersaiyan.cyanbridge.ui.localagent
+package com.achyut.adglasses.ui.localagent
 
 import android.content.Intent
 import android.os.Build
@@ -10,19 +10,19 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.lifecycle.lifecycleScope
-import com.fersaiyan.cyanbridge.data.local.entity.PendingAction
-import com.fersaiyan.cyanbridge.localagent.LocalAgentAccessibilityBridge
-import com.fersaiyan.cyanbridge.localagent.LocalAgentActionParser
-import com.fersaiyan.cyanbridge.localagent.LocalAgentDeviceState
-import com.fersaiyan.cyanbridge.localagent.LocalAgentIntents
-import com.fersaiyan.cyanbridge.localagent.LocalAgentPrefs
-import com.fersaiyan.cyanbridge.localagent.LocalAgentService
-import com.fersaiyan.cyanbridge.localagent.actions.LocalAgentActionManager
-import com.fersaiyan.cyanbridge.shared.ui.localagent.PendingActionsScreen
-import com.fersaiyan.cyanbridge.ui.MyApplication
-import com.fersaiyan.cyanbridge.ui.appearance.AppearancePreferences
-import com.fersaiyan.cyanbridge.ui.appearance.rememberAppearanceSettings
-import com.fersaiyan.cyanbridge.ui.theme.CyanBridgeTheme
+import com.achyut.adglasses.data.local.entity.PendingAction
+import com.achyut.adglasses.localagent.LocalAgentAccessibilityBridge
+import com.achyut.adglasses.localagent.LocalAgentActionParser
+import com.achyut.adglasses.localagent.LocalAgentDeviceState
+import com.achyut.adglasses.localagent.LocalAgentIntents
+import com.achyut.adglasses.localagent.LocalAgentPrefs
+import com.achyut.adglasses.localagent.LocalAgentService
+import com.achyut.adglasses.localagent.actions.LocalAgentActionManager
+import com.achyut.adglasses.shared.ui.localagent.PendingActionsScreen
+import com.achyut.adglasses.ui.MyApplication
+import com.achyut.adglasses.ui.appearance.AppearancePreferences
+import com.achyut.adglasses.ui.appearance.rememberAppearanceSettings
+import com.achyut.adglasses.ui.theme.CyanBridgeTheme
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -107,31 +107,31 @@ class PendingActionsActivity : AppCompatActivity() {
         }.trimEnd()
     }
 
-    private fun describeAction(action: com.fersaiyan.cyanbridge.localagent.LocalAgentAction): String {
+    private fun describeAction(action: com.achyut.adglasses.localagent.LocalAgentAction): String {
         return when (action) {
-            is com.fersaiyan.cyanbridge.localagent.LocalAgentAction.OpenApp -> "Open ${action.appName}."
-            is com.fersaiyan.cyanbridge.localagent.LocalAgentAction.ClickText -> "Click ${action.text}."
-            is com.fersaiyan.cyanbridge.localagent.LocalAgentAction.ClickCoord -> "Tap the highlighted control."
-            is com.fersaiyan.cyanbridge.localagent.LocalAgentAction.TypeText -> "Type ${action.text}."
-            is com.fersaiyan.cyanbridge.localagent.LocalAgentAction.PressEnter -> "Press enter."
-            is com.fersaiyan.cyanbridge.localagent.LocalAgentAction.Scroll -> "Scroll the screen."
-            is com.fersaiyan.cyanbridge.localagent.LocalAgentAction.Swipe -> "Swipe the screen."
-            is com.fersaiyan.cyanbridge.localagent.LocalAgentAction.LongPress -> "Long press the selected control."
-            is com.fersaiyan.cyanbridge.localagent.LocalAgentAction.GlobalBack -> "Press back."
-            is com.fersaiyan.cyanbridge.localagent.LocalAgentAction.GlobalHome -> "Go home."
-            is com.fersaiyan.cyanbridge.localagent.LocalAgentAction.OpenNotifications -> "Open notifications."
-            is com.fersaiyan.cyanbridge.localagent.LocalAgentAction.OpenRecents -> "Open recent apps."
-            is com.fersaiyan.cyanbridge.localagent.LocalAgentAction.OpenContacts -> "Open contacts."
-            is com.fersaiyan.cyanbridge.localagent.LocalAgentAction.MakeCall -> "Call ${action.number}."
-            is com.fersaiyan.cyanbridge.localagent.LocalAgentAction.SendSms -> "Send a message to ${action.number}."
-            is com.fersaiyan.cyanbridge.localagent.LocalAgentAction.SendEmail -> "Send an email to ${action.to}."
-            is com.fersaiyan.cyanbridge.localagent.LocalAgentAction.SetAlarm -> "Set an alarm."
-            is com.fersaiyan.cyanbridge.localagent.LocalAgentAction.ReadScreenAloud -> "Read the screen aloud."
-            is com.fersaiyan.cyanbridge.localagent.LocalAgentAction.ToggleWifi -> "Open Wi-Fi settings."
-            is com.fersaiyan.cyanbridge.localagent.LocalAgentAction.ToggleBluetooth -> "Open Bluetooth settings."
-            is com.fersaiyan.cyanbridge.localagent.LocalAgentAction.ToggleFlashlight -> "Open flashlight settings."
-            is com.fersaiyan.cyanbridge.localagent.LocalAgentAction.Wait -> "Wait briefly."
-            is com.fersaiyan.cyanbridge.localagent.LocalAgentAction.Finish -> "Finish the task."
+            is com.achyut.adglasses.localagent.LocalAgentAction.OpenApp -> "Open ${action.appName}."
+            is com.achyut.adglasses.localagent.LocalAgentAction.ClickText -> "Click ${action.text}."
+            is com.achyut.adglasses.localagent.LocalAgentAction.ClickCoord -> "Tap the highlighted control."
+            is com.achyut.adglasses.localagent.LocalAgentAction.TypeText -> "Type ${action.text}."
+            is com.achyut.adglasses.localagent.LocalAgentAction.PressEnter -> "Press enter."
+            is com.achyut.adglasses.localagent.LocalAgentAction.Scroll -> "Scroll the screen."
+            is com.achyut.adglasses.localagent.LocalAgentAction.Swipe -> "Swipe the screen."
+            is com.achyut.adglasses.localagent.LocalAgentAction.LongPress -> "Long press the selected control."
+            is com.achyut.adglasses.localagent.LocalAgentAction.GlobalBack -> "Press back."
+            is com.achyut.adglasses.localagent.LocalAgentAction.GlobalHome -> "Go home."
+            is com.achyut.adglasses.localagent.LocalAgentAction.OpenNotifications -> "Open notifications."
+            is com.achyut.adglasses.localagent.LocalAgentAction.OpenRecents -> "Open recent apps."
+            is com.achyut.adglasses.localagent.LocalAgentAction.OpenContacts -> "Open contacts."
+            is com.achyut.adglasses.localagent.LocalAgentAction.MakeCall -> "Call ${action.number}."
+            is com.achyut.adglasses.localagent.LocalAgentAction.SendSms -> "Send a message to ${action.number}."
+            is com.achyut.adglasses.localagent.LocalAgentAction.SendEmail -> "Send an email to ${action.to}."
+            is com.achyut.adglasses.localagent.LocalAgentAction.SetAlarm -> "Set an alarm."
+            is com.achyut.adglasses.localagent.LocalAgentAction.ReadScreenAloud -> "Read the screen aloud."
+            is com.achyut.adglasses.localagent.LocalAgentAction.ToggleWifi -> "Open Wi-Fi settings."
+            is com.achyut.adglasses.localagent.LocalAgentAction.ToggleBluetooth -> "Open Bluetooth settings."
+            is com.achyut.adglasses.localagent.LocalAgentAction.ToggleFlashlight -> "Open flashlight settings."
+            is com.achyut.adglasses.localagent.LocalAgentAction.Wait -> "Wait briefly."
+            is com.achyut.adglasses.localagent.LocalAgentAction.Finish -> "Finish the task."
         }
     }
 

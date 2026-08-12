@@ -1,4 +1,4 @@
-package com.fersaiyan.cyanbridge.shared.platform
+package com.achyut.adglasses.shared.platform
 
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.filterNotNull

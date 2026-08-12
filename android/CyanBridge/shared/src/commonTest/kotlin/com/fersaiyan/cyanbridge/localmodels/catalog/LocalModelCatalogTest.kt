@@ -1,4 +1,4 @@
-package com.fersaiyan.cyanbridge.localmodels.catalog
+package com.achyut.adglasses.localmodels.catalog
 
 import kotlin.test.Test
 import kotlin.test.assertEquals

@@ -1,6 +1,6 @@
-package com.fersaiyan.cyanbridge.shared.persistence
+package com.achyut.adglasses.shared.persistence
 
-import com.fersaiyan.cyanbridge.shared.platform.PlatformLogger
+import com.achyut.adglasses.shared.platform.PlatformLogger
 
 /**
  * Android implementation of [ChatRepository] that delegates to Room DAOs.

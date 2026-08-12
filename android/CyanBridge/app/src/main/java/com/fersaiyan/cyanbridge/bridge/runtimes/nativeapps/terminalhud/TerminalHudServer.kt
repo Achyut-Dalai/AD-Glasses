@@ -1,4 +1,4 @@
-package com.fersaiyan.cyanbridge.bridge.runtimes.nativeapps.terminalhud
+package com.achyut.adglasses.bridge.runtimes.nativeapps.terminalhud
 
 import android.util.Log
 import kotlinx.coroutines.CoroutineScope

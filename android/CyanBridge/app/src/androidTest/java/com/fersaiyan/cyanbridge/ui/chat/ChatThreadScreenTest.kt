@@ -1,4 +1,4 @@
-package com.fersaiyan.cyanbridge.ui.chat
+package com.achyut.adglasses.ui.chat
 
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -10,16 +10,16 @@ import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performTextInput
-import com.fersaiyan.cyanbridge.shared.chat.ChatAttachmentsUiState
-import com.fersaiyan.cyanbridge.shared.chat.ChatComposerUiState
-import com.fersaiyan.cyanbridge.shared.chat.ChatMessage
-import com.fersaiyan.cyanbridge.shared.chat.ChatRole
-import com.fersaiyan.cyanbridge.shared.chat.ChatThread
-import com.fersaiyan.cyanbridge.shared.chat.ChatThreadEvent
-import com.fersaiyan.cyanbridge.shared.chat.ChatThreadStateReducer
-import com.fersaiyan.cyanbridge.shared.chat.ChatThreadUiState
-import com.fersaiyan.cyanbridge.shared.ui.chat.ChatThreadScreen
-import com.fersaiyan.cyanbridge.ui.theme.CyanBridgeTheme
+import com.achyut.adglasses.shared.chat.ChatAttachmentsUiState
+import com.achyut.adglasses.shared.chat.ChatComposerUiState
+import com.achyut.adglasses.shared.chat.ChatMessage
+import com.achyut.adglasses.shared.chat.ChatRole
+import com.achyut.adglasses.shared.chat.ChatThread
+import com.achyut.adglasses.shared.chat.ChatThreadEvent
+import com.achyut.adglasses.shared.chat.ChatThreadStateReducer
+import com.achyut.adglasses.shared.chat.ChatThreadUiState
+import com.achyut.adglasses.shared.ui.chat.ChatThreadScreen
+import com.achyut.adglasses.ui.theme.CyanBridgeTheme
 import org.junit.Assert.assertEquals
 import org.junit.Rule
 import org.junit.Test

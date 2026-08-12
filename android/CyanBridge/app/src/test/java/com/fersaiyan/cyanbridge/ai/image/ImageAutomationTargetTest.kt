@@ -1,4 +1,4 @@
-package com.fersaiyan.cyanbridge.ai.image
+package com.achyut.adglasses.ai.image
 
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse

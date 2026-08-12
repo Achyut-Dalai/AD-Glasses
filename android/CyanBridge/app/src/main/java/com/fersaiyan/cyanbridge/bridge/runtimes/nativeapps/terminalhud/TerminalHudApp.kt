@@ -1,10 +1,10 @@
-package com.fersaiyan.cyanbridge.bridge.runtimes.nativeapps.terminalhud
+package com.achyut.adglasses.bridge.runtimes.nativeapps.terminalhud
 
 import android.util.Log
-import com.fersaiyan.cyanbridge.bridge.core.DisplayCommand
-import com.fersaiyan.cyanbridge.bridge.core.GlassesBridge
-import com.fersaiyan.cyanbridge.bridge.core.GestureType
-import com.fersaiyan.cyanbridge.bridge.core.InputEvent
+import com.achyut.adglasses.bridge.core.DisplayCommand
+import com.achyut.adglasses.bridge.core.GlassesBridge
+import com.achyut.adglasses.bridge.core.GestureType
+import com.achyut.adglasses.bridge.core.InputEvent
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob

@@ -1,7 +1,7 @@
-package com.fersaiyan.cyanbridge.ui
+package com.achyut.adglasses.ui
 
 import android.content.Context
-import com.fersaiyan.cyanbridge.shared.plugins.NativePluginIds
+import com.achyut.adglasses.shared.plugins.NativePluginIds
 
 object CommunityPluginPrefs {
     private const val PREFS = "community_plugins"

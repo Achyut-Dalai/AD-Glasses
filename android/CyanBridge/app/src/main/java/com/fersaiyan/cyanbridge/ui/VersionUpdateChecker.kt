@@ -1,4 +1,4 @@
-package com.fersaiyan.cyanbridge.ui
+package com.achyut.adglasses.ui
 
 import android.app.Activity
 import android.app.Dialog
@@ -25,11 +25,11 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.ComposeView
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
-import com.fersaiyan.cyanbridge.ai.router.AiProviderPrefs
-import com.fersaiyan.cyanbridge.R
-import com.fersaiyan.cyanbridge.ui.appearance.AppearancePreferences
-import com.fersaiyan.cyanbridge.ui.appearance.rememberAppearanceSettings
-import com.fersaiyan.cyanbridge.ui.theme.CyanBridgeTheme
+import com.achyut.adglasses.ai.router.AiProviderPrefs
+import com.achyut.adglasses.R
+import com.achyut.adglasses.ui.appearance.AppearancePreferences
+import com.achyut.adglasses.ui.appearance.rememberAppearanceSettings
+import com.achyut.adglasses.ui.theme.CyanBridgeTheme
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch

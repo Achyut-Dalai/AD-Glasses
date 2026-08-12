@@ -1,4 +1,4 @@
-package com.fersaiyan.cyanbridge.localmodels.templates
+package com.achyut.adglasses.localmodels.templates
 
 data class PromptMessage(
     val role: String,

@@ -28,11 +28,11 @@ def metaGithubToken = System.getenv("GITHUB_TOKEN") ?: localProperties.getProper
 def metaDatEnabled = metaGithubToken != null && !metaGithubToken.trim().isEmpty()
 
 android {
-    namespace = "com.fersaiyan.cyanbridge"
+    namespace = "com.achyut.adglasses"
     compileSdk = 35
 
     defaultConfig {
-        applicationId = "com.fersaiyan.cyanbridge"
+        applicationId = "com.achyut.adglasses"
         // Meta DAT declares minSdk 29. Keep the regular build on API 24 if Meta SDK is skipped.
         minSdk = metaDatEnabled ? 29 : 24
         targetSdk = 35

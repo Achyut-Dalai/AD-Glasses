@@ -1,16 +1,16 @@
-package com.fersaiyan.cyanbridge
+package com.achyut.adglasses
 
 import androidx.compose.ui.test.assertCountEquals
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.onNodeWithText
-import com.fersaiyan.cyanbridge.shared.devices.DeviceClass
-import com.fersaiyan.cyanbridge.shared.devices.DeviceProfile
-import com.fersaiyan.cyanbridge.shared.devices.GlassesManagerGating
-import com.fersaiyan.cyanbridge.shared.glasses.GlassesDashboardUiState
-import com.fersaiyan.cyanbridge.shared.ui.glasses.GlassesDashboardScreen
-import com.fersaiyan.cyanbridge.ui.theme.CyanBridgeTheme
+import com.achyut.adglasses.shared.devices.DeviceClass
+import com.achyut.adglasses.shared.devices.DeviceProfile
+import com.achyut.adglasses.shared.devices.GlassesManagerGating
+import com.achyut.adglasses.shared.glasses.GlassesDashboardUiState
+import com.achyut.adglasses.shared.ui.glasses.GlassesDashboardScreen
+import com.achyut.adglasses.ui.theme.CyanBridgeTheme
 import org.junit.Rule
 import org.junit.Test
 

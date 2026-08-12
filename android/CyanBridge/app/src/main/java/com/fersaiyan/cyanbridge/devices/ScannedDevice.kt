@@ -1,7 +1,7 @@
-package com.fersaiyan.cyanbridge.devices
+package com.achyut.adglasses.devices
 
 import android.os.ParcelUuid
-import com.fersaiyan.cyanbridge.shared.devices.DeviceClass
+import com.achyut.adglasses.shared.devices.DeviceClass
 
 /**
  * UI model for a discovered Bluetooth device.

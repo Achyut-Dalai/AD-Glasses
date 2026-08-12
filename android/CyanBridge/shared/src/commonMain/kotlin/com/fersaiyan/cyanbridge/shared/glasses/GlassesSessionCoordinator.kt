@@ -1,4 +1,4 @@
-package com.fersaiyan.cyanbridge.shared.glasses
+package com.achyut.adglasses.shared.glasses
 
 /**
  * The vendor SDK exposes singleton BLE response/listener slots and a singleton P2P controller.

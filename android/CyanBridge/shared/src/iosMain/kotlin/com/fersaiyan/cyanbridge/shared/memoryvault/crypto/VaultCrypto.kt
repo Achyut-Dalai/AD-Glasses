@@ -1,4 +1,4 @@
-package com.fersaiyan.cyanbridge.shared.memoryvault.crypto
+package com.achyut.adglasses.shared.memoryvault.crypto
 
 import kotlinx.cinterop.ExperimentalForeignApi
 import kotlinx.cinterop.addressOf

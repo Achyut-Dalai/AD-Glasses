@@ -1,4 +1,4 @@
-package com.fersaiyan.cyanbridge.studiobridge
+package com.achyut.adglasses.studiobridge
 
 import android.content.Context
 import androidx.test.core.app.ApplicationProvider

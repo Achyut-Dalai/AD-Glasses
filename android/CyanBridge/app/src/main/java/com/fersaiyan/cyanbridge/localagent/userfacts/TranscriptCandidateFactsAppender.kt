@@ -1,7 +1,7 @@
-package com.fersaiyan.cyanbridge.localagent.userfacts
+package com.achyut.adglasses.localagent.userfacts
 
 import android.content.Context
-import com.fersaiyan.cyanbridge.data.local.entity.CaptureSession
+import com.achyut.adglasses.data.local.entity.CaptureSession
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale

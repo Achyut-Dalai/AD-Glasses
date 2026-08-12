@@ -1,4 +1,4 @@
-package com.fersaiyan.cyanbridge.ui.chat
+package com.achyut.adglasses.ui.chat
 
 import android.content.res.ColorStateList
 import android.graphics.Color
@@ -8,11 +8,11 @@ import android.widget.TextView
 import androidx.core.content.ContextCompat
 import androidx.core.graphics.ColorUtils
 import androidx.recyclerview.widget.RecyclerView
-import com.fersaiyan.cyanbridge.R
-import com.fersaiyan.cyanbridge.shared.chat.ChatMessage
-import com.fersaiyan.cyanbridge.shared.chat.ChatRole
-import com.fersaiyan.cyanbridge.databinding.ItemMessageReceivedBinding
-import com.fersaiyan.cyanbridge.databinding.ItemMessageSentBinding
+import com.achyut.adglasses.R
+import com.achyut.adglasses.shared.chat.ChatMessage
+import com.achyut.adglasses.shared.chat.ChatRole
+import com.achyut.adglasses.databinding.ItemMessageReceivedBinding
+import com.achyut.adglasses.databinding.ItemMessageSentBinding
 
 class ChatMessageAdapter : RecyclerView.Adapter<RecyclerView.ViewHolder>() {
 

@@ -1,4 +1,4 @@
-package com.fersaiyan.cyanbridge.localmodels.download
+package com.achyut.adglasses.localmodels.download
 
 import android.app.NotificationChannel
 import android.app.NotificationManager
@@ -10,8 +10,8 @@ import android.os.Build
 import android.os.IBinder
 import android.util.Log
 import androidx.core.app.NotificationCompat
-import com.fersaiyan.cyanbridge.agent.LocalModelsConfigureActivity
-import com.fersaiyan.cyanbridge.localmodels.catalog.LocalModelCatalogRepository
+import com.achyut.adglasses.agent.LocalModelsConfigureActivity
+import com.achyut.adglasses.localmodels.catalog.LocalModelCatalogRepository
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -29,13 +29,13 @@ class ModelDownloadForegroundService : Service() {
         const val CHANNEL_ID = "model_download_progress"
         const val NOTIFICATION_ID = 1001
 
-        const val ACTION_DOWNLOAD = "com.fersaiyan.cyanbridge.action.DOWNLOAD_MODEL"
-        const val ACTION_CANCEL = "com.fersaiyan.cyanbridge.action.CANCEL_DOWNLOAD"
+        const val ACTION_DOWNLOAD = "com.achyut.adglasses.action.DOWNLOAD_MODEL"
+        const val ACTION_CANCEL = "com.achyut.adglasses.action.CANCEL_DOWNLOAD"
         const val EXTRA_MODEL_ID = "model_id"
         const val EXTRA_HF_TOKEN = "hf_token"
 
-        const val BROADCAST_DOWNLOAD_FINISHED = "com.fersaiyan.cyanbridge.DOWNLOAD_FINISHED"
-        const val BROADCAST_PROGRESS = "com.fersaiyan.cyanbridge.DOWNLOAD_PROGRESS"
+        const val BROADCAST_DOWNLOAD_FINISHED = "com.achyut.adglasses.DOWNLOAD_FINISHED"
+        const val BROADCAST_PROGRESS = "com.achyut.adglasses.DOWNLOAD_PROGRESS"
         const val EXTRA_SUCCESS = "success"
         const val EXTRA_ERROR = "error"
         const val EXTRA_PERCENT = "percent"

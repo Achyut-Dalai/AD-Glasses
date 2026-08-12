@@ -1,6 +1,6 @@
-package com.fersaiyan.cyanbridge.shared.bridge.audio
+package com.achyut.adglasses.shared.bridge.audio
 
-import com.fersaiyan.cyanbridge.shared.platform.PlatformLogger
+import com.achyut.adglasses.shared.platform.PlatformLogger
 
 /**
  * Parser for WQ Record Protocol V2 frames used by MemoMind glasses.

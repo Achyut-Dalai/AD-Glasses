@@ -1,7 +1,7 @@
-package com.fersaiyan.cyanbridge.shared.persistence
+package com.achyut.adglasses.shared.persistence
 
-import com.fersaiyan.cyanbridge.shared.platform.PlatformLogger
-import com.fersaiyan.cyanbridge.shared.platform.createPlatformPreferences
+import com.achyut.adglasses.shared.platform.PlatformLogger
+import com.achyut.adglasses.shared.platform.createPlatformPreferences
 import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.Serializable

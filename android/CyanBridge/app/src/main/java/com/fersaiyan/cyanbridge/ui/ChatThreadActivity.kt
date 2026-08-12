@@ -1,4 +1,4 @@
-package com.fersaiyan.cyanbridge.ui
+package com.achyut.adglasses.ui
 
 import android.Manifest
 import android.content.Intent
@@ -26,53 +26,53 @@ import androidx.lifecycle.lifecycleScope
 import androidx.work.ExistingWorkPolicy
 import androidx.work.WorkInfo
 import androidx.work.WorkManager
-import com.fersaiyan.cyanbridge.MainActivity
-import com.fersaiyan.cyanbridge.agent.LocalAgentPrefs as AutomationPrefs
-import com.fersaiyan.cyanbridge.agent.LocalModelsConfigureActivity
-import com.fersaiyan.cyanbridge.ai.router.AiProviderPrefs
-import com.fersaiyan.cyanbridge.ai.router.AiProviderType
-import com.fersaiyan.cyanbridge.ai.router.AiAssistantRouter as RelayAiAssistantRouter
-import com.fersaiyan.cyanbridge.shared.chat.ChatRole
-import com.fersaiyan.cyanbridge.chat.ChatStore
-import com.fersaiyan.cyanbridge.chat.ChatStoreRepository
-import com.fersaiyan.cyanbridge.localagent.LocalAgentPrefs
-import com.fersaiyan.cyanbridge.localagent.context.LocalAgentContextBuilder
-import com.fersaiyan.cyanbridge.localagent.dailyfacts.DailyFactsReviewProtocol
-import com.fersaiyan.cyanbridge.localagent.dailyfacts.DailyFactsReviewProtocol.ReviewBatchItem
-import com.fersaiyan.cyanbridge.localagent.dailyfacts.DailyFactsStorage
-import com.fersaiyan.cyanbridge.localagent.dailyfacts.DailyFactsReviewThreadStore
-import com.fersaiyan.cyanbridge.localagent.dailyfacts.OcrDailyFactsSeeder
-import com.fersaiyan.cyanbridge.localagent.userfacts.CandidateUserFactsStorage
-import com.fersaiyan.cyanbridge.localagent.userfacts.UserFactsStorage
-import com.fersaiyan.cyanbridge.localagent.userfacts.ChatMemoryAutoUpdater
-import com.fersaiyan.cyanbridge.localagent.dailysummary.DailySummaryPrefs
-import com.fersaiyan.cyanbridge.localagent.dailysummary.DailySummaryRegenerateWorker
-import com.fersaiyan.cyanbridge.localagent.memory.LocalAgentMemorySearch
-import com.fersaiyan.cyanbridge.localagent.memory.LocalAgentMemoryStore
-import com.fersaiyan.cyanbridge.localmodels.provider.LocalModelRequestPriority
-import com.fersaiyan.cyanbridge.localmodels.provider.LocalModelsProvider
-import com.fersaiyan.cyanbridge.localmodels.settings.LocalGenerationSettings
-import com.fersaiyan.cyanbridge.localmodels.settings.LocalModelRuntime
-import com.fersaiyan.cyanbridge.localmodels.settings.LocalModelSettingsRepository
-import com.fersaiyan.cyanbridge.localmodels.storage.LocalModelStorageRepository
-import com.fersaiyan.cyanbridge.memoryvault.MemoryModeManager
-import com.fersaiyan.cyanbridge.shared.chat.ChatAppearanceMenuAction
-import com.fersaiyan.cyanbridge.shared.chat.ChatAttachmentsUiState
-import com.fersaiyan.cyanbridge.shared.chat.ChatComposerPrimaryAction
-import com.fersaiyan.cyanbridge.shared.chat.ChatComposerUiState
-import com.fersaiyan.cyanbridge.shared.chat.DailySummaryProgressUiState
-import com.fersaiyan.cyanbridge.shared.chat.ChatThreadEvent
-import com.fersaiyan.cyanbridge.ui.chat.ChatAppearancePrefs
-import com.fersaiyan.cyanbridge.shared.ui.chat.ChatAppearanceMenuDialog
-import com.fersaiyan.cyanbridge.shared.ui.chat.ChatThreadScreen
-import com.fersaiyan.cyanbridge.shared.chat.ChatThreadStateReducer
-import com.fersaiyan.cyanbridge.shared.chat.ChatThreadUiState
-import com.fersaiyan.cyanbridge.shared.navigation.AppDestination
-import com.fersaiyan.cyanbridge.shared.settings.AgentProviderType
-import com.fersaiyan.cyanbridge.ui.appearance.AppearancePreferences
-import com.fersaiyan.cyanbridge.ui.appearance.rememberAppearanceSettings
-import com.fersaiyan.cyanbridge.ui.debug.DebugLogSupport
-import com.fersaiyan.cyanbridge.ui.theme.CyanBridgeTheme
+import com.achyut.adglasses.MainActivity
+import com.achyut.adglasses.agent.LocalAgentPrefs as AutomationPrefs
+import com.achyut.adglasses.agent.LocalModelsConfigureActivity
+import com.achyut.adglasses.ai.router.AiProviderPrefs
+import com.achyut.adglasses.ai.router.AiProviderType
+import com.achyut.adglasses.ai.router.AiAssistantRouter as RelayAiAssistantRouter
+import com.achyut.adglasses.shared.chat.ChatRole
+import com.achyut.adglasses.chat.ChatStore
+import com.achyut.adglasses.chat.ChatStoreRepository
+import com.achyut.adglasses.localagent.LocalAgentPrefs
+import com.achyut.adglasses.localagent.context.LocalAgentContextBuilder
+import com.achyut.adglasses.localagent.dailyfacts.DailyFactsReviewProtocol
+import com.achyut.adglasses.localagent.dailyfacts.DailyFactsReviewProtocol.ReviewBatchItem
+import com.achyut.adglasses.localagent.dailyfacts.DailyFactsStorage
+import com.achyut.adglasses.localagent.dailyfacts.DailyFactsReviewThreadStore
+import com.achyut.adglasses.localagent.dailyfacts.OcrDailyFactsSeeder
+import com.achyut.adglasses.localagent.userfacts.CandidateUserFactsStorage
+import com.achyut.adglasses.localagent.userfacts.UserFactsStorage
+import com.achyut.adglasses.localagent.userfacts.ChatMemoryAutoUpdater
+import com.achyut.adglasses.localagent.dailysummary.DailySummaryPrefs
+import com.achyut.adglasses.localagent.dailysummary.DailySummaryRegenerateWorker
+import com.achyut.adglasses.localagent.memory.LocalAgentMemorySearch
+import com.achyut.adglasses.localagent.memory.LocalAgentMemoryStore
+import com.achyut.adglasses.localmodels.provider.LocalModelRequestPriority
+import com.achyut.adglasses.localmodels.provider.LocalModelsProvider
+import com.achyut.adglasses.localmodels.settings.LocalGenerationSettings
+import com.achyut.adglasses.localmodels.settings.LocalModelRuntime
+import com.achyut.adglasses.localmodels.settings.LocalModelSettingsRepository
+import com.achyut.adglasses.localmodels.storage.LocalModelStorageRepository
+import com.achyut.adglasses.memoryvault.MemoryModeManager
+import com.achyut.adglasses.shared.chat.ChatAppearanceMenuAction
+import com.achyut.adglasses.shared.chat.ChatAttachmentsUiState
+import com.achyut.adglasses.shared.chat.ChatComposerPrimaryAction
+import com.achyut.adglasses.shared.chat.ChatComposerUiState
+import com.achyut.adglasses.shared.chat.DailySummaryProgressUiState
+import com.achyut.adglasses.shared.chat.ChatThreadEvent
+import com.achyut.adglasses.ui.chat.ChatAppearancePrefs
+import com.achyut.adglasses.shared.ui.chat.ChatAppearanceMenuDialog
+import com.achyut.adglasses.shared.ui.chat.ChatThreadScreen
+import com.achyut.adglasses.shared.chat.ChatThreadStateReducer
+import com.achyut.adglasses.shared.chat.ChatThreadUiState
+import com.achyut.adglasses.shared.navigation.AppDestination
+import com.achyut.adglasses.shared.settings.AgentProviderType
+import com.achyut.adglasses.ui.appearance.AppearancePreferences
+import com.achyut.adglasses.ui.appearance.rememberAppearanceSettings
+import com.achyut.adglasses.ui.debug.DebugLogSupport
+import com.achyut.adglasses.ui.theme.CyanBridgeTheme
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.sync.Mutex
@@ -1720,7 +1720,7 @@ class ChatThreadActivity : AppCompatActivity() {
 
     private fun computeContextBudgets(
         isDailyReview: Boolean,
-        selectedModel: com.fersaiyan.cyanbridge.localmodels.storage.InstalledLocalModel?,
+        selectedModel: com.achyut.adglasses.localmodels.storage.InstalledLocalModel?,
         contextSize: Int,
     ): ContextBudgets {
         val normalizedCtx = contextSize.coerceIn(
@@ -2472,7 +2472,7 @@ class ChatThreadActivity : AppCompatActivity() {
             }
 
             AppDestination.GLASSES -> Intent(this, MainActivity::class.java)
-            AppDestination.MEDIA -> Intent(this, com.fersaiyan.cyanbridge.ui.recordings.RecordingsListActivity::class.java)
+            AppDestination.MEDIA -> Intent(this, com.achyut.adglasses.ui.recordings.RecordingsListActivity::class.java)
             AppDestination.PLUGINS -> Intent(this, CommunityPluginsActivity::class.java)
             AppDestination.SETTINGS -> Intent(this, SettingsActivity::class.java)
         }

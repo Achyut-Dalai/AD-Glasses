@@ -1,4 +1,4 @@
-package com.fersaiyan.cyanbridge.ai.transcription.chunking
+package com.achyut.adglasses.ai.transcription.chunking
 
 import org.junit.Assert.assertArrayEquals
 import org.junit.Assert.assertEquals

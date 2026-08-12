@@ -21,4 +21,4 @@
 #-renamesourcefileattribute SourceFile
 
 # Shizuku creates this Binder user service by its class name outside the normal Android manifest.
--keep class com.fersaiyan.cyanbridge.localagent.shizuku.LocalAgentShizukuUserService { <init>(...); *; }
+-keep class com.achyut.adglasses.localagent.shizuku.LocalAgentShizukuUserService { <init>(...); *; }

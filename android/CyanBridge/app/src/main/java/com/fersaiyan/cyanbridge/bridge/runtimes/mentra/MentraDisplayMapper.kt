@@ -1,7 +1,7 @@
-package com.fersaiyan.cyanbridge.bridge.runtimes.mentra
+package com.achyut.adglasses.bridge.runtimes.mentra
 
 import android.util.Log
-import com.fersaiyan.cyanbridge.bridge.core.DisplayCommand
+import com.achyut.adglasses.bridge.core.DisplayCommand
 import org.json.JSONObject
 
 /**

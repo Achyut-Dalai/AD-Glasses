@@ -1,4 +1,4 @@
-package com.fersaiyan.cyanbridge.localagent
+package com.achyut.adglasses.localagent
 
 object LocalAgentObserver {
     fun observe(): LocalAgentObservation {

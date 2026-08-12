@@ -8,14 +8,14 @@
 		<nme>CyanBridge Gemini Image v2</nme>
 		<Share sr="Share">
 			<b>false</b>
-			<d>Gemini-only image automation profile v2 for CyanBridge. CyanBridge explicitly shares image_uri and question with Gemini first; this profile runs only when handoff_mode=direct_share, fills %question, and sends through a Gemini resource ID. Do not use it for ChatGPT. To enable answer-ready follow-ups, add a Tasker Send Intent action after Gemini finishes with action com.fersaiyan.cyanbridge.AI_IMAGE_STATUS and extras callback_session, callback_token, and status=answer_ready from the incoming event.</d>
+			<d>Gemini-only image automation profile v2 for CyanBridge. CyanBridge explicitly shares image_uri and question with Gemini first; this profile runs only when handoff_mode=direct_share, fills %question, and sends through a Gemini resource ID. Do not use it for ChatGPT. To enable answer-ready follow-ups, add a Tasker Send Intent action after Gemini finishes with action com.achyut.adglasses.AI_IMAGE_STATUS and extras callback_session, callback_token, and status=answer_ready from the incoming event.</d>
 			<g>Artificial Intelligence,Assistant,Gemini,CyanBridge</g>
 			<p>true</p>
 			<t></t>
 		</Share>
 		<Event sr="con0" ve="2">
 			<code>599</code>
-			<Str sr="arg0" ve="3">com.fersaiyan.cyanbridge.AI_EVENT</Str>
+			<Str sr="arg0" ve="3">com.achyut.adglasses.AI_EVENT</Str>
 			<Int sr="arg1" val="0"/>
 			<Int sr="arg2" val="0"/>
 			<Str sr="arg3" ve="3"/>

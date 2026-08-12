@@ -1,11 +1,11 @@
-package com.fersaiyan.cyanbridge.localmodels.device
+package com.achyut.adglasses.localmodels.device
 
 import android.app.ActivityManager
 import android.content.Context
 import android.os.Build
 import android.os.StatFs
-import com.fersaiyan.cyanbridge.localmodels.catalog.LocalModelCatalogEntry
-import com.fersaiyan.cyanbridge.localmodels.settings.LocalModelPerformanceProfile
+import com.achyut.adglasses.localmodels.catalog.LocalModelCatalogEntry
+import com.achyut.adglasses.localmodels.settings.LocalModelPerformanceProfile
 
 data class DeviceSnapshot(
     val primaryAbi: String,

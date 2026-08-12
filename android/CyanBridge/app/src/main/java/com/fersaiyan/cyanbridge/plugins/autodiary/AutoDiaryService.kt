@@ -1,4 +1,4 @@
-package com.fersaiyan.cyanbridge.plugins.autodiary
+package com.achyut.adglasses.plugins.autodiary
 
 import android.app.Notification
 import android.app.NotificationChannel
@@ -18,17 +18,17 @@ import androidx.work.ExistingWorkPolicy
 import androidx.work.OneTimeWorkRequestBuilder
 import androidx.work.WorkManager
 import androidx.work.workDataOf
-import com.fersaiyan.cyanbridge.MainActivity
-import com.fersaiyan.cyanbridge.R
-import com.fersaiyan.cyanbridge.agent.LocalAgentPrefs
-import com.fersaiyan.cyanbridge.localagent.dailysummary.DailySummaryRegenerateWorker
-import com.fersaiyan.cyanbridge.memoryvault.MemoryModeManager
-import com.fersaiyan.cyanbridge.shared.plugins.NativePluginIds
-import com.fersaiyan.cyanbridge.ui.CommunityPluginPrefs
-import com.fersaiyan.cyanbridge.ui.hasAccessibilityServicePermission
-import com.fersaiyan.cyanbridge.ui.ensureNotificationPermission
-import com.fersaiyan.cyanbridge.ui.hasNotificationPermission
-import com.fersaiyan.cyanbridge.ui.requestAccessibilityServicePermission
+import com.achyut.adglasses.MainActivity
+import com.achyut.adglasses.R
+import com.achyut.adglasses.agent.LocalAgentPrefs
+import com.achyut.adglasses.localagent.dailysummary.DailySummaryRegenerateWorker
+import com.achyut.adglasses.memoryvault.MemoryModeManager
+import com.achyut.adglasses.shared.plugins.NativePluginIds
+import com.achyut.adglasses.ui.CommunityPluginPrefs
+import com.achyut.adglasses.ui.hasAccessibilityServicePermission
+import com.achyut.adglasses.ui.ensureNotificationPermission
+import com.achyut.adglasses.ui.hasNotificationPermission
+import com.achyut.adglasses.ui.requestAccessibilityServicePermission
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
@@ -149,9 +149,9 @@ class AutoDiaryService : Service() {
         private const val NOTIFICATION_ID = 55241
         private val RUNNING = AtomicBoolean(false)
 
-        const val ACTION_START = "com.fersaiyan.cyanbridge.action.AUTO_DIARY_START"
-        const val ACTION_STOP = "com.fersaiyan.cyanbridge.action.AUTO_DIARY_STOP"
-        const val ACTION_SUMMARIZE = "com.fersaiyan.cyanbridge.action.AUTO_DIARY_SUMMARIZE"
+        const val ACTION_START = "com.achyut.adglasses.action.AUTO_DIARY_START"
+        const val ACTION_STOP = "com.achyut.adglasses.action.AUTO_DIARY_STOP"
+        const val ACTION_SUMMARIZE = "com.achyut.adglasses.action.AUTO_DIARY_SUMMARIZE"
 
         /** Enables AutoDiary only after its shared capture prerequisites are available. */
         fun enable(context: Context): Boolean {

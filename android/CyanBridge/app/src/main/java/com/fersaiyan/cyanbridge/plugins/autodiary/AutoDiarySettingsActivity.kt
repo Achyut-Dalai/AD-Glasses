@@ -1,4 +1,4 @@
-package com.fersaiyan.cyanbridge.plugins.autodiary
+package com.achyut.adglasses.plugins.autodiary
 
 import android.content.Intent
 import android.os.Bundle
@@ -40,18 +40,18 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.ui.unit.dp
-import com.fersaiyan.cyanbridge.R
-import com.fersaiyan.cyanbridge.agent.LocalAgentPrefs
-import com.fersaiyan.cyanbridge.localagent.daily.DailyFactsReminderScheduler
-import com.fersaiyan.cyanbridge.localagent.dailyfacts.DailyBulletsSettings
-import com.fersaiyan.cyanbridge.ui.NativePluginShortcutPreference
-import com.fersaiyan.cyanbridge.ui.hasAccessibilityServicePermission
-import com.fersaiyan.cyanbridge.ui.localagent.AppBlacklistActivity
-import com.fersaiyan.cyanbridge.ui.localagent.DailyFactsActivity
-import com.fersaiyan.cyanbridge.ui.localagent.ScreenCapturesActivity
-import com.fersaiyan.cyanbridge.ui.localagent.DailySummaryActivity
-import com.fersaiyan.cyanbridge.ui.installComposeHostWithLegacyAdapter
-import com.fersaiyan.cyanbridge.ui.setThemedComposeContent
+import com.achyut.adglasses.R
+import com.achyut.adglasses.agent.LocalAgentPrefs
+import com.achyut.adglasses.localagent.daily.DailyFactsReminderScheduler
+import com.achyut.adglasses.localagent.dailyfacts.DailyBulletsSettings
+import com.achyut.adglasses.ui.NativePluginShortcutPreference
+import com.achyut.adglasses.ui.hasAccessibilityServicePermission
+import com.achyut.adglasses.ui.localagent.AppBlacklistActivity
+import com.achyut.adglasses.ui.localagent.DailyFactsActivity
+import com.achyut.adglasses.ui.localagent.ScreenCapturesActivity
+import com.achyut.adglasses.ui.localagent.DailySummaryActivity
+import com.achyut.adglasses.ui.installComposeHostWithLegacyAdapter
+import com.achyut.adglasses.ui.setThemedComposeContent
 
 class AutoDiarySettingsActivity : AppCompatActivity() {
     private var autoDiaryEnabled by mutableStateOf(false)
@@ -133,8 +133,8 @@ fun AutoDiarySettingsScreen(
     val scrollState = rememberScrollState()
     var interval by remember { mutableIntStateOf(LocalAgentPrefs.getCaptureIntervalMin(context)) }
     var reminder by remember { mutableStateOf(LocalAgentPrefs.isDailyFactsReminderEnabled(context)) }
-    var autoSaveFacts by remember { mutableStateOf(com.fersaiyan.cyanbridge.localagent.userfacts.ChatMemoryPrefs.isAutoSaveDailyFactsEnabled(context)) }
-    var extractFacts by remember { mutableStateOf(com.fersaiyan.cyanbridge.localagent.userfacts.ChatMemoryPrefs.isExtractUserFactCandidatesEnabled(context)) }
+    var autoSaveFacts by remember { mutableStateOf(com.achyut.adglasses.localagent.userfacts.ChatMemoryPrefs.isAutoSaveDailyFactsEnabled(context)) }
+    var extractFacts by remember { mutableStateOf(com.achyut.adglasses.localagent.userfacts.ChatMemoryPrefs.isExtractUserFactCandidatesEnabled(context)) }
     var maxTokens by remember { mutableIntStateOf(DailyBulletsSettings.getMaxTokensPerBullet(context)) }
     var prompt by remember { mutableStateOf(DailyBulletsSettings.getBulletPrompt(context)) }
 
@@ -168,7 +168,7 @@ fun AutoDiarySettingsScreen(
                 onCheckedChange = onEnabledChanged,
             )
             NativePluginShortcutPreference(
-                pluginId = com.fersaiyan.cyanbridge.shared.plugins.NativePluginIds.AUTO_DIARY,
+                pluginId = com.achyut.adglasses.shared.plugins.NativePluginIds.AUTO_DIARY,
                     pluginTitle = stringResource(R.string.compose_plugin_name_autodiary),
             )
             Text(stringResource(R.string.compose_screen_capture), style = MaterialTheme.typography.titleMedium)
@@ -215,11 +215,11 @@ fun AutoDiarySettingsScreen(
             }
             SwitchSetting(stringResource(R.string.compose_auto_save_daily_facts), autoSaveFacts) {
                 autoSaveFacts = it
-                com.fersaiyan.cyanbridge.localagent.userfacts.ChatMemoryPrefs.setAutoSaveDailyFactsEnabled(context, it)
+                com.achyut.adglasses.localagent.userfacts.ChatMemoryPrefs.setAutoSaveDailyFactsEnabled(context, it)
             }
             SwitchSetting(stringResource(R.string.compose_extract_user_fact_candidates), extractFacts) {
                 extractFacts = it
-                com.fersaiyan.cyanbridge.localagent.userfacts.ChatMemoryPrefs.setExtractUserFactCandidatesEnabled(context, it)
+                com.achyut.adglasses.localagent.userfacts.ChatMemoryPrefs.setExtractUserFactCandidatesEnabled(context, it)
             }
             NumberSetting(
                 label = stringResource(R.string.compose_daily_summary_refresh_hours),

@@ -1,7 +1,7 @@
-package com.fersaiyan.cyanbridge.localagent
+package com.achyut.adglasses.localagent
 
 import android.content.Context
-import com.fersaiyan.cyanbridge.agent.LocalAgentPrefs as AutomationPrefs
+import com.achyut.adglasses.agent.LocalAgentPrefs as AutomationPrefs
 
 object LocalAgentSafetyPolicy {
     fun blockedReason(context: Context, packageName: String?): String? {

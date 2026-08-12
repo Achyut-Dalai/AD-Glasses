@@ -1,4 +1,4 @@
-package com.fersaiyan.cyanbridge.bridge.devices.memomind
+package com.achyut.adglasses.bridge.devices.memomind
 
 import android.annotation.SuppressLint
 import android.bluetooth.BluetoothDevice
@@ -13,7 +13,7 @@ import android.content.pm.PackageManager
 import android.os.Build
 import android.util.Log
 import androidx.core.content.ContextCompat
-import com.fersaiyan.cyanbridge.bridge.core.GlassesBridgeState
+import com.achyut.adglasses.bridge.core.GlassesBridgeState
 import kotlinx.coroutines.CancellableContinuation
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.flow.Flow

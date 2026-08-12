@@ -1,12 +1,12 @@
-package com.fersaiyan.cyanbridge.ui.chat
+package com.achyut.adglasses.ui.chat
 
 import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
-import com.fersaiyan.cyanbridge.shared.chat.ChatAppearanceMenuAction
-import com.fersaiyan.cyanbridge.shared.ui.chat.ChatAppearanceMenuDialog
-import com.fersaiyan.cyanbridge.ui.theme.CyanBridgeTheme
+import com.achyut.adglasses.shared.chat.ChatAppearanceMenuAction
+import com.achyut.adglasses.shared.ui.chat.ChatAppearanceMenuDialog
+import com.achyut.adglasses.ui.theme.CyanBridgeTheme
 import org.junit.Assert.assertEquals
 import org.junit.Rule
 import org.junit.Test

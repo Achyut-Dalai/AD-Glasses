@@ -1,7 +1,7 @@
-package com.fersaiyan.cyanbridge.memoryvault
+package com.achyut.adglasses.memoryvault
 
 import android.content.Context
-import com.fersaiyan.cyanbridge.memoryvault.crypto.VaultKeyManager
+import com.achyut.adglasses.memoryvault.crypto.VaultKeyManager
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.runBlocking
 

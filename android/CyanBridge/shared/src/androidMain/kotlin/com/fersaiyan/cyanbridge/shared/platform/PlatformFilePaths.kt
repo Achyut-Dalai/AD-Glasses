@@ -1,4 +1,4 @@
-package com.fersaiyan.cyanbridge.shared.platform
+package com.achyut.adglasses.shared.platform
 
 import android.os.Environment
 import java.io.File
@@ -14,7 +14,7 @@ actual object PlatformFilePaths {
 
     private fun getAppContext(): android.content.Context {
         return try {
-            val clazz = Class.forName("com.fersaiyan.cyanbridge.ui.MyApplication")
+            val clazz = Class.forName("com.achyut.adglasses.ui.MyApplication")
             val app = clazz.getMethod("getInstance").invoke(null)
             app as android.content.Context
         } catch (_: Exception) {

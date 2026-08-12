@@ -1,7 +1,7 @@
-package com.fersaiyan.cyanbridge.ui
+package com.achyut.adglasses.ui
 
-import com.fersaiyan.cyanbridge.shared.devices.DeviceProfile
-import com.fersaiyan.cyanbridge.shared.devices.ScannedDevice as SharedScannedDevice
+import com.achyut.adglasses.shared.devices.DeviceProfile
+import com.achyut.adglasses.shared.devices.ScannedDevice as SharedScannedDevice
 
 import android.bluetooth.BluetoothAdapter
 import android.bluetooth.BluetoothDevice
@@ -16,17 +16,17 @@ import androidx.activity.compose.setContent
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
-import com.fersaiyan.cyanbridge.shared.devices.DeviceClass
-import com.fersaiyan.cyanbridge.devices.DeviceClassifier
-import com.fersaiyan.cyanbridge.devices.DeviceProfileStore
-import com.fersaiyan.cyanbridge.devices.eyevue.EyevueManager
-import com.fersaiyan.cyanbridge.devices.metarayban.MetaRaybanManager
-import com.fersaiyan.cyanbridge.devices.meizumyvu.MeizuMyvuManager
-import com.fersaiyan.cyanbridge.devices.ScannedDevice
-import com.fersaiyan.cyanbridge.ui.appearance.AppearancePreferences
-import com.fersaiyan.cyanbridge.ui.appearance.rememberAppearanceSettings
-import com.fersaiyan.cyanbridge.shared.ui.DeviceBindScreen
-import com.fersaiyan.cyanbridge.ui.theme.CyanBridgeTheme
+import com.achyut.adglasses.shared.devices.DeviceClass
+import com.achyut.adglasses.devices.DeviceClassifier
+import com.achyut.adglasses.devices.DeviceProfileStore
+import com.achyut.adglasses.devices.eyevue.EyevueManager
+import com.achyut.adglasses.devices.metarayban.MetaRaybanManager
+import com.achyut.adglasses.devices.meizumyvu.MeizuMyvuManager
+import com.achyut.adglasses.devices.ScannedDevice
+import com.achyut.adglasses.ui.appearance.AppearancePreferences
+import com.achyut.adglasses.ui.appearance.rememberAppearanceSettings
+import com.achyut.adglasses.shared.ui.DeviceBindScreen
+import com.achyut.adglasses.ui.theme.CyanBridgeTheme
 import com.hjq.permissions.OnPermissionCallback
 import com.hjq.permissions.XXPermissions
 import com.oudmon.ble.base.bluetooth.BleOperateManager

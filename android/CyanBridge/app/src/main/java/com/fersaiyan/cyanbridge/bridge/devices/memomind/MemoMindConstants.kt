@@ -1,4 +1,4 @@
-package com.fersaiyan.cyanbridge.bridge.devices.memomind
+package com.achyut.adglasses.bridge.devices.memomind
 
 import java.util.UUID
 

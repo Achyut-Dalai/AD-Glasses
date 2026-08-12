@@ -1,6 +1,6 @@
-package com.fersaiyan.cyanbridge.notes
+package com.achyut.adglasses.notes
 
-import com.fersaiyan.cyanbridge.data.local.entity.Note
+import com.achyut.adglasses.data.local.entity.Note
 import kotlinx.coroutines.flow.Flow
 
 /**

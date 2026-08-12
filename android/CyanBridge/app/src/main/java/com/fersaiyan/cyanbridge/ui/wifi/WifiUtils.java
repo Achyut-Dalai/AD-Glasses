@@ -1,4 +1,4 @@
-package com.fersaiyan.cyanbridge.ui.wifi;
+package com.achyut.adglasses.ui.wifi;
 
 public class WifiUtils {
     public static void wifiLog(String message) {

@@ -1,4 +1,4 @@
-package com.fersaiyan.cyanbridge.ai.live
+package com.achyut.adglasses.ai.live
 
 import org.junit.Assert.assertArrayEquals
 import org.junit.Assert.assertEquals

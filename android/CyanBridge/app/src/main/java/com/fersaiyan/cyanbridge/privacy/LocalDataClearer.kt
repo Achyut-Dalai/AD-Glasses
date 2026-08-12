@@ -1,13 +1,13 @@
-package com.fersaiyan.cyanbridge.privacy
+package com.achyut.adglasses.privacy
 
 import android.content.Context
 import android.util.Log
-import com.fersaiyan.cyanbridge.audio.MeetingCapturePrefs
-import com.fersaiyan.cyanbridge.audio.MeetingCaptureService
-import com.fersaiyan.cyanbridge.chat.ChatStore
-import com.fersaiyan.cyanbridge.memoryvault.MemoryVaultService
-import com.fersaiyan.cyanbridge.memoryvault.VaultLockStateManager
-import com.fersaiyan.cyanbridge.ui.MyApplication
+import com.achyut.adglasses.audio.MeetingCapturePrefs
+import com.achyut.adglasses.audio.MeetingCaptureService
+import com.achyut.adglasses.chat.ChatStore
+import com.achyut.adglasses.memoryvault.MemoryVaultService
+import com.achyut.adglasses.memoryvault.VaultLockStateManager
+import com.achyut.adglasses.ui.MyApplication
 import java.io.File
 
 /**

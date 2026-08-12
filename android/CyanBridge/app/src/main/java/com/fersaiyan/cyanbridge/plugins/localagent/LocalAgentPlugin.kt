@@ -1,16 +1,16 @@
-package com.fersaiyan.cyanbridge.plugins.localagent
+package com.achyut.adglasses.plugins.localagent
 
 import android.content.Context
-import com.fersaiyan.cyanbridge.agent.LocalAgentPrefs as AutomationPrefs
-import com.fersaiyan.cyanbridge.ai.router.AiProviderPrefs
-import com.fersaiyan.cyanbridge.ai.router.AiProviderType
-import com.fersaiyan.cyanbridge.localagent.LocalAgentController
-import com.fersaiyan.cyanbridge.localagent.LocalAgentNotificationSpeaker
-import com.fersaiyan.cyanbridge.localagent.LocalAgentPrefs as RuntimePrefs
-import com.fersaiyan.cyanbridge.localagent.LocalAgentTelegramService
-import com.fersaiyan.cyanbridge.shared.plugins.NativePluginIds
-import com.fersaiyan.cyanbridge.shared.settings.AgentProviderType
-import com.fersaiyan.cyanbridge.ui.CommunityPluginPrefs
+import com.achyut.adglasses.agent.LocalAgentPrefs as AutomationPrefs
+import com.achyut.adglasses.ai.router.AiProviderPrefs
+import com.achyut.adglasses.ai.router.AiProviderType
+import com.achyut.adglasses.localagent.LocalAgentController
+import com.achyut.adglasses.localagent.LocalAgentNotificationSpeaker
+import com.achyut.adglasses.localagent.LocalAgentPrefs as RuntimePrefs
+import com.achyut.adglasses.localagent.LocalAgentTelegramService
+import com.achyut.adglasses.shared.plugins.NativePluginIds
+import com.achyut.adglasses.shared.settings.AgentProviderType
+import com.achyut.adglasses.ui.CommunityPluginPrefs
 
 /**
  * Native-plugin facade for the existing Local Agent runtime.

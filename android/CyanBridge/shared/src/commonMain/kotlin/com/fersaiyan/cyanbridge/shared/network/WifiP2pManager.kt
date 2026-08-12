@@ -1,4 +1,4 @@
-package com.fersaiyan.cyanbridge.shared.network
+package com.achyut.adglasses.shared.network
 
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.StateFlow

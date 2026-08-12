@@ -1,7 +1,7 @@
-package com.fersaiyan.cyanbridge.ui.appearance
+package com.achyut.adglasses.ui.appearance
 
 import androidx.compose.runtime.getValue
-import com.fersaiyan.cyanbridge.shared.ui.appearance.AppearanceScreen
+import com.achyut.adglasses.shared.ui.appearance.AppearanceScreen
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.test.assertIsSelected
@@ -9,8 +9,8 @@ import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
-import com.fersaiyan.cyanbridge.shared.appearance.AppearanceSettings
-import com.fersaiyan.cyanbridge.ui.theme.CyanBridgeTheme
+import com.achyut.adglasses.shared.appearance.AppearanceSettings
+import com.achyut.adglasses.ui.theme.CyanBridgeTheme
 import org.junit.Rule
 import org.junit.Test
 

@@ -1,4 +1,4 @@
-package com.fersaiyan.cyanbridge.plugins
+package com.achyut.adglasses.plugins
 
 import android.Manifest
 import android.app.Notification

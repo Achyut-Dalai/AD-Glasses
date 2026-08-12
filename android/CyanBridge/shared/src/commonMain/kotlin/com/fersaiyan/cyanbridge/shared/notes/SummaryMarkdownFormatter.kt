@@ -1,4 +1,4 @@
-package com.fersaiyan.cyanbridge.shared.notes
+package com.achyut.adglasses.shared.notes
 
 /**
  * Stable, structured summary formatter.

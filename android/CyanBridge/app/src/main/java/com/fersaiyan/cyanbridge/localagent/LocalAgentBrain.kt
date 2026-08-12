@@ -1,7 +1,7 @@
-package com.fersaiyan.cyanbridge.localagent
+package com.achyut.adglasses.localagent
 
 import android.content.Context
-import com.fersaiyan.cyanbridge.ai.router.AgentInferenceRouter
+import com.achyut.adglasses.ai.router.AgentInferenceRouter
 
 /**
  * "Brain" interface: takes an observation and returns a JSON plan.

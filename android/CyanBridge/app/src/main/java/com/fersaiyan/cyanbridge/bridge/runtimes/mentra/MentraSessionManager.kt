@@ -1,4 +1,4 @@
-package com.fersaiyan.cyanbridge.bridge.runtimes.mentra
+package com.achyut.adglasses.bridge.runtimes.mentra
 
 import android.util.Log
 import org.json.JSONObject

@@ -1,4 +1,4 @@
-package com.fersaiyan.cyanbridge.ai.live
+package com.achyut.adglasses.ai.live
 
 import android.Manifest
 import android.content.pm.PackageManager
@@ -12,12 +12,12 @@ import androidx.appcompat.app.AppCompatActivity
 import androidx.core.content.ContextCompat
 import androidx.lifecycle.lifecycleScope
 import com.google.android.material.button.MaterialButton
-import com.fersaiyan.cyanbridge.R
-import com.fersaiyan.cyanbridge.agent.ProSubscriptionPrefs
-import com.fersaiyan.cyanbridge.ai.vision.ImageQuestionPreferences
-import com.fersaiyan.cyanbridge.ai.vision.ImageQuestionPromptResolver
-import com.fersaiyan.cyanbridge.ai.vision.ImageQuestionRoute
-import com.fersaiyan.cyanbridge.ui.localization.AppLanguagePreferences
+import com.achyut.adglasses.R
+import com.achyut.adglasses.agent.ProSubscriptionPrefs
+import com.achyut.adglasses.ai.vision.ImageQuestionPreferences
+import com.achyut.adglasses.ai.vision.ImageQuestionPromptResolver
+import com.achyut.adglasses.ai.vision.ImageQuestionRoute
+import com.achyut.adglasses.ui.localization.AppLanguagePreferences
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext

@@ -1,4 +1,4 @@
-package com.fersaiyan.cyanbridge.ai.transcription.storage
+package com.achyut.adglasses.ai.transcription.storage
 
 /**
  * Transcript persistence abstraction.

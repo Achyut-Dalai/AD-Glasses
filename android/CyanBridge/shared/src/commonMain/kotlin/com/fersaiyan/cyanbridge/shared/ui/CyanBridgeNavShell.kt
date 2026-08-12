@@ -1,4 +1,4 @@
-package com.fersaiyan.cyanbridge.shared.ui
+package com.achyut.adglasses.shared.ui
 
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.consumeWindowInsets
@@ -14,10 +14,10 @@ import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
-import com.fersaiyan.cyanbridge.shared.icons.AppIcon
-import com.fersaiyan.cyanbridge.shared.icons.imageVector
-import com.fersaiyan.cyanbridge.shared.navigation.AppDestination
-import com.fersaiyan.cyanbridge.shared.navigation.icon
+import com.achyut.adglasses.shared.icons.AppIcon
+import com.achyut.adglasses.shared.icons.imageVector
+import com.achyut.adglasses.shared.navigation.AppDestination
+import com.achyut.adglasses.shared.navigation.icon
 
 @Composable
 fun CyanBridgeNavShell(

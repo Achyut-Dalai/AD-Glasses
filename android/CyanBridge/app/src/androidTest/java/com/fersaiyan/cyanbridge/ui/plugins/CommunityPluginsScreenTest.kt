@@ -1,4 +1,4 @@
-package com.fersaiyan.cyanbridge.ui.plugins
+package com.achyut.adglasses.ui.plugins
 
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -12,11 +12,11 @@ import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performScrollToNode
-import com.fersaiyan.cyanbridge.shared.plugins.CommunityPluginCardData
-import com.fersaiyan.cyanbridge.shared.plugins.NativePluginCardData
-import com.fersaiyan.cyanbridge.shared.plugins.PluginTimeWindow
-import com.fersaiyan.cyanbridge.shared.ui.plugins.CommunityPluginsScreen
-import com.fersaiyan.cyanbridge.ui.theme.CyanBridgeTheme
+import com.achyut.adglasses.shared.plugins.CommunityPluginCardData
+import com.achyut.adglasses.shared.plugins.NativePluginCardData
+import com.achyut.adglasses.shared.plugins.PluginTimeWindow
+import com.achyut.adglasses.shared.ui.plugins.CommunityPluginsScreen
+import com.achyut.adglasses.ui.theme.CyanBridgeTheme
 import org.junit.Assert.assertEquals
 import org.junit.Rule
 import org.junit.Test

@@ -1,4 +1,4 @@
-package com.fersaiyan.cyanbridge.shared.ui.notes
+package com.achyut.adglasses.shared.ui.notes
 
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -39,8 +39,8 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
-import com.fersaiyan.cyanbridge.shared.notes.NoteSummary
-import com.fersaiyan.cyanbridge.shared.generated.resources.*
+import com.achyut.adglasses.shared.notes.NoteSummary
+import com.achyut.adglasses.shared.generated.resources.*
 import org.jetbrains.compose.resources.ExperimentalResourceApi
 import org.jetbrains.compose.resources.stringResource
 

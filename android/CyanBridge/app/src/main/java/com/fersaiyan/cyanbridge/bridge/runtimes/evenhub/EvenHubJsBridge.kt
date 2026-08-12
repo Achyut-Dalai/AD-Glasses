@@ -1,4 +1,4 @@
-package com.fersaiyan.cyanbridge.bridge.runtimes.evenhub
+package com.achyut.adglasses.bridge.runtimes.evenhub
 
 import android.util.Log
 import android.webkit.JavascriptInterface

@@ -1,4 +1,4 @@
-package com.fersaiyan.cyanbridge.ai.live
+package com.achyut.adglasses.ai.live
 
 import android.content.Context
 import android.media.AudioAttributes
@@ -16,8 +16,8 @@ import android.net.NetworkCapabilities
 import android.os.Build
 import android.util.Base64
 import android.util.Log
-import com.fersaiyan.cyanbridge.agent.ProSubscriptionServerPrefs
-import com.fersaiyan.cyanbridge.ai.router.AiProviderPrefs
+import com.achyut.adglasses.agent.ProSubscriptionServerPrefs
+import com.achyut.adglasses.ai.router.AiProviderPrefs
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job

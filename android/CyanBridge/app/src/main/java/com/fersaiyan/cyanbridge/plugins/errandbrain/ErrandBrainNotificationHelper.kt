@@ -1,4 +1,4 @@
-package com.fersaiyan.cyanbridge.plugins.errandbrain
+package com.achyut.adglasses.plugins.errandbrain
 
 import android.app.Notification
 import android.app.NotificationChannel
@@ -8,8 +8,8 @@ import android.content.Context
 import android.content.Intent
 import android.os.Build
 import androidx.core.app.NotificationCompat
-import com.fersaiyan.cyanbridge.MainActivity
-import com.fersaiyan.cyanbridge.R
+import com.achyut.adglasses.MainActivity
+import com.achyut.adglasses.R
 
 object ErrandBrainNotificationHelper {
     const val CHANNEL_ID = "errand_brain_service"

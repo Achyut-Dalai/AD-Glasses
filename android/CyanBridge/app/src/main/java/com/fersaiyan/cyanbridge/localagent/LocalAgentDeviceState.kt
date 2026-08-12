@@ -1,4 +1,4 @@
-package com.fersaiyan.cyanbridge.localagent
+package com.achyut.adglasses.localagent
 
 import android.app.KeyguardManager
 import android.content.Context

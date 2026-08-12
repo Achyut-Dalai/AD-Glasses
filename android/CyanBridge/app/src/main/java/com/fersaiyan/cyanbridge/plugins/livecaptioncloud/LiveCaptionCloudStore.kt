@@ -1,4 +1,4 @@
-package com.fersaiyan.cyanbridge.plugins.livecaptioncloud
+package com.achyut.adglasses.plugins.livecaptioncloud
 
 import android.content.Context
 import android.util.Log

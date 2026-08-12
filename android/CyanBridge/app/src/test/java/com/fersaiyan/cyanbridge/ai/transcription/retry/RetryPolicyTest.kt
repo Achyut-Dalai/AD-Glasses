@@ -1,4 +1,4 @@
-package com.fersaiyan.cyanbridge.ai.transcription.retry
+package com.achyut.adglasses.ai.transcription.retry
 
 import kotlinx.coroutines.runBlocking
 import org.junit.Assert.assertEquals

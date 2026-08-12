@@ -1,4 +1,4 @@
-package com.fersaiyan.cyanbridge.bridge.notifications
+package com.achyut.adglasses.bridge.notifications
 
 import android.app.KeyguardManager
 import android.content.ComponentName
@@ -6,11 +6,11 @@ import android.content.Context
 import android.service.notification.NotificationListenerService
 import android.service.notification.StatusBarNotification
 import android.util.Log
-import com.fersaiyan.cyanbridge.bridge.core.DisplayCommand
-import com.fersaiyan.cyanbridge.bridge.core.GlassesBridge
-import com.fersaiyan.cyanbridge.agent.LocalAgentPrefs as AutomationPrefs
-import com.fersaiyan.cyanbridge.localagent.LocalAgentNotificationSpeaker
-import com.fersaiyan.cyanbridge.localagent.LocalAgentPrefs
+import com.achyut.adglasses.bridge.core.DisplayCommand
+import com.achyut.adglasses.bridge.core.GlassesBridge
+import com.achyut.adglasses.agent.LocalAgentPrefs as AutomationPrefs
+import com.achyut.adglasses.localagent.LocalAgentNotificationSpeaker
+import com.achyut.adglasses.localagent.LocalAgentPrefs
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
@@ -34,7 +34,7 @@ class NotificationForwarderService : NotificationListenerService() {
 
     companion object {
         private const val TAG = "NotificationForwarder"
-        private const val CYANBRIDGE_PACKAGE = "com.fersaiyan.cyanbridge"
+        private const val CYANBRIDGE_PACKAGE = "com.achyut.adglasses"
 
         /** Global toggle — set from UI. */
         @Volatile

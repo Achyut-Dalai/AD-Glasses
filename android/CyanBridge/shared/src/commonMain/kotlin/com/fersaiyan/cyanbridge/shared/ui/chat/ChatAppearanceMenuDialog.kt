@@ -1,4 +1,4 @@
-package com.fersaiyan.cyanbridge.shared.ui.chat
+package com.achyut.adglasses.shared.ui.chat
 
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -9,15 +9,15 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.style.TextAlign
-import com.fersaiyan.cyanbridge.shared.chat.ChatAppearanceMenuAction
-import com.fersaiyan.cyanbridge.shared.generated.resources.Res
-import com.fersaiyan.cyanbridge.shared.generated.resources.action_cancel
-import com.fersaiyan.cyanbridge.shared.generated.resources.chat_appearance
-import com.fersaiyan.cyanbridge.shared.generated.resources.chat_change_assistant_bubble
-import com.fersaiyan.cyanbridge.shared.generated.resources.chat_change_user_bubble
-import com.fersaiyan.cyanbridge.shared.generated.resources.chat_choose_wallpaper
-import com.fersaiyan.cyanbridge.shared.generated.resources.chat_remove_wallpaper
-import com.fersaiyan.cyanbridge.shared.generated.resources.chat_reset_appearance
+import com.achyut.adglasses.shared.chat.ChatAppearanceMenuAction
+import com.achyut.adglasses.shared.generated.resources.Res
+import com.achyut.adglasses.shared.generated.resources.action_cancel
+import com.achyut.adglasses.shared.generated.resources.chat_appearance
+import com.achyut.adglasses.shared.generated.resources.chat_change_assistant_bubble
+import com.achyut.adglasses.shared.generated.resources.chat_change_user_bubble
+import com.achyut.adglasses.shared.generated.resources.chat_choose_wallpaper
+import com.achyut.adglasses.shared.generated.resources.chat_remove_wallpaper
+import com.achyut.adglasses.shared.generated.resources.chat_reset_appearance
 import org.jetbrains.compose.resources.ExperimentalResourceApi
 import org.jetbrains.compose.resources.stringResource
 

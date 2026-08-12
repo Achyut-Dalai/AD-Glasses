@@ -1,4 +1,4 @@
-package com.fersaiyan.cyanbridge.shared.plugins
+package com.achyut.adglasses.shared.plugins
 
 import kotlin.test.Test
 import kotlin.test.assertEquals

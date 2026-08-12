@@ -1,9 +1,9 @@
-package com.fersaiyan.cyanbridge.localmodels
+package com.achyut.adglasses.localmodels
 
-import com.fersaiyan.cyanbridge.localmodels.catalog.LocalModelCatalogRepository
-import com.fersaiyan.cyanbridge.localmodels.device.DeviceCapabilityService
-import com.fersaiyan.cyanbridge.localmodels.device.DeviceSnapshot
-import com.fersaiyan.cyanbridge.localmodels.settings.LocalModelPerformanceProfile
+import com.achyut.adglasses.localmodels.catalog.LocalModelCatalogRepository
+import com.achyut.adglasses.localmodels.device.DeviceCapabilityService
+import com.achyut.adglasses.localmodels.device.DeviceSnapshot
+import com.achyut.adglasses.localmodels.settings.LocalModelPerformanceProfile
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Test

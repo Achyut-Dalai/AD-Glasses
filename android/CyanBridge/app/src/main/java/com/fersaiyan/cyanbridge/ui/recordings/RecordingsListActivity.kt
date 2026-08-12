@@ -1,4 +1,4 @@
-package com.fersaiyan.cyanbridge.ui.recordings
+package com.achyut.adglasses.ui.recordings
 
 import android.content.BroadcastReceiver
 import android.content.Intent
@@ -16,47 +16,47 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.localbroadcastmanager.content.LocalBroadcastManager
-import com.fersaiyan.cyanbridge.MainActivity
-import com.fersaiyan.cyanbridge.R
-import com.fersaiyan.cyanbridge.agent.LocalModelsConfigureActivity
-import com.fersaiyan.cyanbridge.ai.transcription.DefaultTranscriptionService
-import com.fersaiyan.cyanbridge.ai.transcription.GemmaLiteRtTranscriptionProvider
-import com.fersaiyan.cyanbridge.ai.transcription.Mp4AudioChunker
-import com.fersaiyan.cyanbridge.ai.transcription.NoOpAudioChunker
-import com.fersaiyan.cyanbridge.ai.transcription.RetryPolicy
-import com.fersaiyan.cyanbridge.ai.transcription.RetryingTranscriptionProvider
-import com.fersaiyan.cyanbridge.ai.transcription.TranscriptionProgress
-import com.fersaiyan.cyanbridge.ai.transcription.TranscriptionResult
-import com.fersaiyan.cyanbridge.ai.transcription.TranscriptionService
-import com.fersaiyan.cyanbridge.ai.transcription.moonshine.MoonshineModelManager
-import com.fersaiyan.cyanbridge.ai.transcription.moonshine.MoonshineTranscriptionProvider
-import com.fersaiyan.cyanbridge.shared.recordings.MeetingRecordingUiState as SharedMeetingRecordingUiState
-import com.fersaiyan.cyanbridge.shared.recordings.RecordingItem
-import com.fersaiyan.cyanbridge.shared.recordings.SyncedMediaItem
-import com.fersaiyan.cyanbridge.shared.recordings.TranscriptDialogUiState as SharedTranscriptDialogUiState
-import com.fersaiyan.cyanbridge.shared.recordings.TranscriptionEngine
-import com.fersaiyan.cyanbridge.shared.recordings.TranscriptionProgressUiState as SharedTranscriptionProgressUiState
-import com.fersaiyan.cyanbridge.shared.settings.CaptureSource
-import com.fersaiyan.cyanbridge.audio.MeetingCapturePrefs
-import com.fersaiyan.cyanbridge.audio.MeetingCaptureService
-import com.fersaiyan.cyanbridge.shared.chat.ChatRole
-import com.fersaiyan.cyanbridge.chat.ChatStore
-import com.fersaiyan.cyanbridge.data.local.entity.CaptureSession
-import com.fersaiyan.cyanbridge.localagent.userfacts.TranscriptCandidateFactsAppender
-import com.fersaiyan.cyanbridge.localmodels.settings.LocalModelRuntime
-import com.fersaiyan.cyanbridge.localmodels.settings.LocalModelSettingsRepository
-import com.fersaiyan.cyanbridge.localmodels.storage.LocalModelStorageRepository
-import com.fersaiyan.cyanbridge.privacy.PrivacyPrefs
-import com.fersaiyan.cyanbridge.shared.navigation.AppDestination
-import com.fersaiyan.cyanbridge.shared.ui.recordings.RecordingsScreen
-import com.fersaiyan.cyanbridge.ui.ChatThreadActivity
-import com.fersaiyan.cyanbridge.ui.CommunityPluginsActivity
-import com.fersaiyan.cyanbridge.ui.MyApplication
-import com.fersaiyan.cyanbridge.ui.SettingsActivity
-import com.fersaiyan.cyanbridge.ui.appearance.AppearancePreferences
-import com.fersaiyan.cyanbridge.ui.appearance.rememberAppearanceSettings
-import com.fersaiyan.cyanbridge.ui.debug.DebugLogSupport
-import com.fersaiyan.cyanbridge.ui.theme.CyanBridgeTheme
+import com.achyut.adglasses.MainActivity
+import com.achyut.adglasses.R
+import com.achyut.adglasses.agent.LocalModelsConfigureActivity
+import com.achyut.adglasses.ai.transcription.DefaultTranscriptionService
+import com.achyut.adglasses.ai.transcription.GemmaLiteRtTranscriptionProvider
+import com.achyut.adglasses.ai.transcription.Mp4AudioChunker
+import com.achyut.adglasses.ai.transcription.NoOpAudioChunker
+import com.achyut.adglasses.ai.transcription.RetryPolicy
+import com.achyut.adglasses.ai.transcription.RetryingTranscriptionProvider
+import com.achyut.adglasses.ai.transcription.TranscriptionProgress
+import com.achyut.adglasses.ai.transcription.TranscriptionResult
+import com.achyut.adglasses.ai.transcription.TranscriptionService
+import com.achyut.adglasses.ai.transcription.moonshine.MoonshineModelManager
+import com.achyut.adglasses.ai.transcription.moonshine.MoonshineTranscriptionProvider
+import com.achyut.adglasses.shared.recordings.MeetingRecordingUiState as SharedMeetingRecordingUiState
+import com.achyut.adglasses.shared.recordings.RecordingItem
+import com.achyut.adglasses.shared.recordings.SyncedMediaItem
+import com.achyut.adglasses.shared.recordings.TranscriptDialogUiState as SharedTranscriptDialogUiState
+import com.achyut.adglasses.shared.recordings.TranscriptionEngine
+import com.achyut.adglasses.shared.recordings.TranscriptionProgressUiState as SharedTranscriptionProgressUiState
+import com.achyut.adglasses.shared.settings.CaptureSource
+import com.achyut.adglasses.audio.MeetingCapturePrefs
+import com.achyut.adglasses.audio.MeetingCaptureService
+import com.achyut.adglasses.shared.chat.ChatRole
+import com.achyut.adglasses.chat.ChatStore
+import com.achyut.adglasses.data.local.entity.CaptureSession
+import com.achyut.adglasses.localagent.userfacts.TranscriptCandidateFactsAppender
+import com.achyut.adglasses.localmodels.settings.LocalModelRuntime
+import com.achyut.adglasses.localmodels.settings.LocalModelSettingsRepository
+import com.achyut.adglasses.localmodels.storage.LocalModelStorageRepository
+import com.achyut.adglasses.privacy.PrivacyPrefs
+import com.achyut.adglasses.shared.navigation.AppDestination
+import com.achyut.adglasses.shared.ui.recordings.RecordingsScreen
+import com.achyut.adglasses.ui.ChatThreadActivity
+import com.achyut.adglasses.ui.CommunityPluginsActivity
+import com.achyut.adglasses.ui.MyApplication
+import com.achyut.adglasses.ui.SettingsActivity
+import com.achyut.adglasses.ui.appearance.AppearancePreferences
+import com.achyut.adglasses.ui.appearance.rememberAppearanceSettings
+import com.achyut.adglasses.ui.debug.DebugLogSupport
+import com.achyut.adglasses.ui.theme.CyanBridgeTheme
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
@@ -344,8 +344,8 @@ class RecordingsListActivity : AppCompatActivity() {
         uiScope.launch {
             try {
                 val result = withContext(Dispatchers.IO) {
-                    val provider: com.fersaiyan.cyanbridge.ai.transcription.TranscriptionProvider
-                    val chunker: com.fersaiyan.cyanbridge.ai.transcription.AudioChunker
+                    val provider: com.achyut.adglasses.ai.transcription.TranscriptionProvider
+                    val chunker: com.achyut.adglasses.ai.transcription.AudioChunker
 
                     when (engine) {
                         TranscriptionEngine.GEMMA -> {

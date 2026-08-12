@@ -1,7 +1,7 @@
-package com.fersaiyan.cyanbridge.devices
+package com.achyut.adglasses.devices
 
 import android.content.Context
-import com.fersaiyan.cyanbridge.shared.devices.DeviceClass
+import com.achyut.adglasses.shared.devices.DeviceClass
 
 /**
  * Utility helper to query hardware capabilities for the currently selected device profile.

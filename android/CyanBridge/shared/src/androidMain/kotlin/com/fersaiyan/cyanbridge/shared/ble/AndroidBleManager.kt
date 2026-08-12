@@ -1,6 +1,6 @@
-package com.fersaiyan.cyanbridge.shared.ble
+package com.achyut.adglasses.shared.ble
 
-import com.fersaiyan.cyanbridge.shared.platform.PlatformLogger
+import com.achyut.adglasses.shared.platform.PlatformLogger
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow

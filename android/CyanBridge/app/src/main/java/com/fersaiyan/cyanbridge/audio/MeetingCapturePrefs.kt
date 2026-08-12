@@ -1,5 +1,5 @@
-package com.fersaiyan.cyanbridge.audio
-import com.fersaiyan.cyanbridge.shared.settings.CaptureSource
+package com.achyut.adglasses.audio
+import com.achyut.adglasses.shared.settings.CaptureSource
 
 import android.content.Context
 

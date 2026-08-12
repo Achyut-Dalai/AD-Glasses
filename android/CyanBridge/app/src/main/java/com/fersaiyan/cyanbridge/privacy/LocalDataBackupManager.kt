@@ -1,10 +1,10 @@
-package com.fersaiyan.cyanbridge.privacy
+package com.achyut.adglasses.privacy
 
 import android.content.Context
 import android.net.Uri
-import com.fersaiyan.cyanbridge.shared.chat.ChatRole
-import com.fersaiyan.cyanbridge.chat.ChatStore
-import com.fersaiyan.cyanbridge.memoryvault.MemoryVaultService
+import com.achyut.adglasses.shared.chat.ChatRole
+import com.achyut.adglasses.chat.ChatStore
+import com.achyut.adglasses.memoryvault.MemoryVaultService
 import org.json.JSONArray
 import org.json.JSONObject
 import java.io.ByteArrayOutputStream

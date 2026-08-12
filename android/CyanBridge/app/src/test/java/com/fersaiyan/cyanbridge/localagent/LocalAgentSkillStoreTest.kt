@@ -1,4 +1,4 @@
-package com.fersaiyan.cyanbridge.localagent
+package com.achyut.adglasses.localagent
 
 import android.content.Context
 import androidx.test.core.app.ApplicationProvider

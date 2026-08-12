@@ -1,4 +1,4 @@
-package com.fersaiyan.cyanbridge.shared.settings
+package com.achyut.adglasses.shared.settings
 
 enum class AgentProviderType {
     TASKER,

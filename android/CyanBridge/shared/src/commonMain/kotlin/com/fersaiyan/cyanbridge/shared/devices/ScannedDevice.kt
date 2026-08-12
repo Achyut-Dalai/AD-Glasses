@@ -1,4 +1,4 @@
-package com.fersaiyan.cyanbridge.shared.devices
+package com.achyut.adglasses.shared.devices
 
 data class ScannedDevice(
     val macAddress: String,

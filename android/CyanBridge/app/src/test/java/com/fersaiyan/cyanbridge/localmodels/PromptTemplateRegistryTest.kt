@@ -1,7 +1,7 @@
-package com.fersaiyan.cyanbridge.localmodels
+package com.achyut.adglasses.localmodels
 
-import com.fersaiyan.cyanbridge.localmodels.templates.PromptMessage
-import com.fersaiyan.cyanbridge.localmodels.templates.PromptTemplateRegistry
+import com.achyut.adglasses.localmodels.templates.PromptMessage
+import com.achyut.adglasses.localmodels.templates.PromptTemplateRegistry
 import org.junit.Assert.assertTrue
 import org.junit.Test
 

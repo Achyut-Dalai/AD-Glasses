@@ -1,4 +1,4 @@
-package com.fersaiyan.cyanbridge.bridge.audio
+package com.achyut.adglasses.bridge.audio
 
 import android.media.MediaCodec
 import android.media.MediaFormat

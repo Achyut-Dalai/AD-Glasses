@@ -1,4 +1,4 @@
-package com.fersaiyan.cyanbridge.audio
+package com.achyut.adglasses.audio
 
 /**
  * Pure timer helpers so we can unit test timer behavior without Android dependencies.

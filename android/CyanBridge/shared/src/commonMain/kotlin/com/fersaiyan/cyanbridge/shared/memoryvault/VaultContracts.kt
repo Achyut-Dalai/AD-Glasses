@@ -1,4 +1,4 @@
-package com.fersaiyan.cyanbridge.shared.memoryvault
+package com.achyut.adglasses.shared.memoryvault
 
 data class WrappedKeyManifest(
     val keyRef: String,

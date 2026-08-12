@@ -1,9 +1,9 @@
-package com.fersaiyan.cyanbridge.shared.platform
+package com.achyut.adglasses.shared.platform
 
-import com.fersaiyan.cyanbridge.shared.appearance.AppearanceSettings
-import com.fersaiyan.cyanbridge.shared.navigation.AppDestination
-import com.fersaiyan.cyanbridge.shared.notes.StructuredSummary
-import com.fersaiyan.cyanbridge.shared.notes.SummaryMarkdownFormatter
+import com.achyut.adglasses.shared.appearance.AppearanceSettings
+import com.achyut.adglasses.shared.navigation.AppDestination
+import com.achyut.adglasses.shared.notes.StructuredSummary
+import com.achyut.adglasses.shared.notes.SummaryMarkdownFormatter
 
 /** A small stable entry point for Swift/Objective-C framework integration smoke tests. */
 object CyanBridgeSharedBootstrap {

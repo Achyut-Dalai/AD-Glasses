@@ -1,12 +1,12 @@
-package com.fersaiyan.cyanbridge.localmodels.download
+package com.achyut.adglasses.localmodels.download
 
 import android.content.Context
 import android.util.Log
-import com.fersaiyan.cyanbridge.localmodels.catalog.LocalModelCatalogEntry
-import com.fersaiyan.cyanbridge.localmodels.device.DeviceCapabilityService
-import com.fersaiyan.cyanbridge.localmodels.storage.InstalledLocalModel
-import com.fersaiyan.cyanbridge.localmodels.storage.LocalModelFileUtils
-import com.fersaiyan.cyanbridge.localmodels.storage.LocalModelStorageRepository
+import com.achyut.adglasses.localmodels.catalog.LocalModelCatalogEntry
+import com.achyut.adglasses.localmodels.device.DeviceCapabilityService
+import com.achyut.adglasses.localmodels.storage.InstalledLocalModel
+import com.achyut.adglasses.localmodels.storage.LocalModelFileUtils
+import com.achyut.adglasses.localmodels.storage.LocalModelStorageRepository
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.ensureActive

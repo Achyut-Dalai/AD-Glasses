@@ -1,4 +1,4 @@
-package com.fersaiyan.cyanbridge.wifiadb
+package com.achyut.adglasses.wifiadb
 
 import java.net.InetSocketAddress
 import java.net.ServerSocket

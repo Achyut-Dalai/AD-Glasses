@@ -1,4 +1,4 @@
-package com.fersaiyan.cyanbridge.ai.transcription.chunking
+package com.achyut.adglasses.ai.transcription.chunking
 
 import java.io.File
 

@@ -1,4 +1,4 @@
-package com.fersaiyan.cyanbridge.localagent.actions
+package com.achyut.adglasses.localagent.actions
 
 import android.content.Context
 import android.content.Intent
@@ -7,12 +7,12 @@ import android.net.Uri
 import android.provider.AlarmClock
 import android.provider.ContactsContract
 import android.provider.Settings
-import com.fersaiyan.cyanbridge.data.local.entity.PendingAction
-import com.fersaiyan.cyanbridge.localagent.LocalAgentAction
-import com.fersaiyan.cyanbridge.localagent.LocalAgentDeviceState
-import com.fersaiyan.cyanbridge.localagent.LocalAgentPrefs
-import com.fersaiyan.cyanbridge.localagent.LocalAgentService
-import com.fersaiyan.cyanbridge.ui.MyApplication
+import com.achyut.adglasses.data.local.entity.PendingAction
+import com.achyut.adglasses.localagent.LocalAgentAction
+import com.achyut.adglasses.localagent.LocalAgentDeviceState
+import com.achyut.adglasses.localagent.LocalAgentPrefs
+import com.achyut.adglasses.localagent.LocalAgentService
+import com.achyut.adglasses.ui.MyApplication
 import org.json.JSONObject
 
 /**

@@ -1,6 +1,6 @@
-package com.fersaiyan.cyanbridge.ota
+package com.achyut.adglasses.ota
 
-import com.fersaiyan.cyanbridge.shared.glasses.OtaFirmwareSource
+import com.achyut.adglasses.shared.glasses.OtaFirmwareSource
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNull

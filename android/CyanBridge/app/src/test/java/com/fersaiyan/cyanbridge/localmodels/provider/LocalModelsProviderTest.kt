@@ -1,6 +1,6 @@
-package com.fersaiyan.cyanbridge.localmodels.provider
+package com.achyut.adglasses.localmodels.provider
 
-import com.fersaiyan.cyanbridge.localmodels.templates.PromptMessage
+import com.achyut.adglasses.localmodels.templates.PromptMessage
 import org.junit.Assert.assertTrue
 import org.junit.Test
 

@@ -1,15 +1,15 @@
-package com.fersaiyan.cyanbridge.localagent.memory
+package com.achyut.adglasses.localagent.memory
 
 import android.content.Context
 import android.util.Log
-import com.fersaiyan.cyanbridge.data.local.entity.MemoryChunk
-import com.fersaiyan.cyanbridge.data.local.entity.MemoryChunkSources
-import com.fersaiyan.cyanbridge.memoryvault.MemoryPolicyService
-import com.fersaiyan.cyanbridge.memoryvault.MemoryRefMapper
-import com.fersaiyan.cyanbridge.shared.settings.MemorySourceType
-import com.fersaiyan.cyanbridge.memoryvault.MemoryVaultBootstrap
-import com.fersaiyan.cyanbridge.memoryvault.VaultLockStateManager
-import com.fersaiyan.cyanbridge.ui.MyApplication
+import com.achyut.adglasses.data.local.entity.MemoryChunk
+import com.achyut.adglasses.data.local.entity.MemoryChunkSources
+import com.achyut.adglasses.memoryvault.MemoryPolicyService
+import com.achyut.adglasses.memoryvault.MemoryRefMapper
+import com.achyut.adglasses.shared.settings.MemorySourceType
+import com.achyut.adglasses.memoryvault.MemoryVaultBootstrap
+import com.achyut.adglasses.memoryvault.VaultLockStateManager
+import com.achyut.adglasses.ui.MyApplication
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
@@ -102,11 +102,11 @@ object LocalAgentMemoryRoomIndex {
         query: String,
         limit: Int = 20,
         context: Context = MyApplication.CONTEXT,
-    ): List<com.fersaiyan.cyanbridge.data.local.dao.MemoryChunkDao.SearchHit> {
+    ): List<com.achyut.adglasses.data.local.dao.MemoryChunkDao.SearchHit> {
         if (VaultLockStateManager.isLocked(context)) return emptyList()
         val q = toFtsQuery(query)
         if (q.isBlank()) return emptyList()
-        val mode = com.fersaiyan.cyanbridge.memoryvault.MemoryModeManager.getSelectedMode(context)
+        val mode = com.achyut.adglasses.memoryvault.MemoryModeManager.getSelectedMode(context)
         return MyApplication.database.memoryChunkDao().searchWithSnippet(q, limit)
             .filter { it.source == MemoryChunkSources.SCREEN_CAPTURE }
             .filter { hit ->

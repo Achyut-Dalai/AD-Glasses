@@ -1,4 +1,4 @@
-package com.fersaiyan.cyanbridge.shared.ui.debug
+package com.achyut.adglasses.shared.ui.debug
 
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -29,7 +29,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.unit.dp
 import androidx.compose.foundation.text.selection.SelectionContainer
-import com.fersaiyan.cyanbridge.shared.generated.resources.*
+import com.achyut.adglasses.shared.generated.resources.*
 import org.jetbrains.compose.resources.ExperimentalResourceApi
 import org.jetbrains.compose.resources.stringResource
 

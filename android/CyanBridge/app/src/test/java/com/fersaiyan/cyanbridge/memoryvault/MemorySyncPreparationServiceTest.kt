@@ -1,4 +1,4 @@
-package com.fersaiyan.cyanbridge.memoryvault
+package com.achyut.adglasses.memoryvault
 
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNotNull

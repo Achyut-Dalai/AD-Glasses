@@ -1,4 +1,4 @@
-package com.fersaiyan.cyanbridge.memoryvault
+package com.achyut.adglasses.memoryvault
 
 import android.content.Context
 import java.io.File

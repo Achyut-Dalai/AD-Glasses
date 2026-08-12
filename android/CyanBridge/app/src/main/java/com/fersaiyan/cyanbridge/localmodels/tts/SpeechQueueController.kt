@@ -1,4 +1,4 @@
-package com.fersaiyan.cyanbridge.localmodels.tts
+package com.achyut.adglasses.localmodels.tts
 
 import android.content.Context
 import android.media.AudioAttributes

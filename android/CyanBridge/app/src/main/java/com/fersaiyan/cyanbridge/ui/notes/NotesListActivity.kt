@@ -1,4 +1,4 @@
-package com.fersaiyan.cyanbridge.ui.notes
+package com.achyut.adglasses.ui.notes
 
 import android.content.Intent
 import android.os.Bundle
@@ -8,13 +8,13 @@ import androidx.appcompat.app.AppCompatActivity
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
-import com.fersaiyan.cyanbridge.data.local.entity.Note
-import com.fersaiyan.cyanbridge.shared.notes.NoteSummary
-import com.fersaiyan.cyanbridge.shared.ui.notes.NotesListScreen
-import com.fersaiyan.cyanbridge.ui.MyApplication
-import com.fersaiyan.cyanbridge.ui.appearance.AppearancePreferences
-import com.fersaiyan.cyanbridge.ui.appearance.rememberAppearanceSettings
-import com.fersaiyan.cyanbridge.ui.theme.CyanBridgeTheme
+import com.achyut.adglasses.data.local.entity.Note
+import com.achyut.adglasses.shared.notes.NoteSummary
+import com.achyut.adglasses.shared.ui.notes.NotesListScreen
+import com.achyut.adglasses.ui.MyApplication
+import com.achyut.adglasses.ui.appearance.AppearancePreferences
+import com.achyut.adglasses.ui.appearance.rememberAppearanceSettings
+import com.achyut.adglasses.ui.theme.CyanBridgeTheme
 import java.text.DateFormat
 import java.util.Date
 import kotlinx.coroutines.Job

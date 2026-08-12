@@ -1,4 +1,4 @@
-package com.fersaiyan.cyanbridge.ui.debug
+package com.achyut.adglasses.ui.debug
 
 import android.content.Context
 import android.content.Intent
@@ -7,13 +7,13 @@ import android.widget.Toast
 import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.content.FileProvider
-import com.fersaiyan.cyanbridge.agent.LocalAgentPrefs as AutomationPrefs
-import com.fersaiyan.cyanbridge.agent.ProSubscriptionServerPrefs
-import com.fersaiyan.cyanbridge.ai.router.AiProviderPrefs
-import com.fersaiyan.cyanbridge.devices.DeviceProfileStore
-import com.fersaiyan.cyanbridge.devices.metarayban.MetaRaybanManager
-import com.fersaiyan.cyanbridge.localmodels.settings.LocalModelSettingsRepository
-import com.fersaiyan.cyanbridge.localmodels.storage.LocalModelStorageRepository
+import com.achyut.adglasses.agent.LocalAgentPrefs as AutomationPrefs
+import com.achyut.adglasses.agent.ProSubscriptionServerPrefs
+import com.achyut.adglasses.ai.router.AiProviderPrefs
+import com.achyut.adglasses.devices.DeviceProfileStore
+import com.achyut.adglasses.devices.metarayban.MetaRaybanManager
+import com.achyut.adglasses.localmodels.settings.LocalModelSettingsRepository
+import com.achyut.adglasses.localmodels.storage.LocalModelStorageRepository
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch

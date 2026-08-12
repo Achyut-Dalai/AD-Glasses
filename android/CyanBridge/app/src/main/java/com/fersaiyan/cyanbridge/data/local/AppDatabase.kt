@@ -1,36 +1,36 @@
-package com.fersaiyan.cyanbridge.data.local
+package com.achyut.adglasses.data.local
 
 import androidx.room.Database
 import androidx.room.RoomDatabase
 import androidx.room.migration.Migration
 import androidx.sqlite.db.SupportSQLiteDatabase
-import com.fersaiyan.cyanbridge.data.local.dao.CaptureSessionDao
-import com.fersaiyan.cyanbridge.data.local.dao.CaptureTranscriptDao
-import com.fersaiyan.cyanbridge.data.local.dao.ChatDao
-import com.fersaiyan.cyanbridge.data.local.dao.MemoryChunkDao
-import com.fersaiyan.cyanbridge.data.local.dao.MemoryVaultDao
-import com.fersaiyan.cyanbridge.data.local.dao.MessageDao
-import com.fersaiyan.cyanbridge.data.local.dao.NoteDao
-import com.fersaiyan.cyanbridge.data.local.dao.PendingActionDao
-import com.fersaiyan.cyanbridge.data.local.dao.TranscriptionDao
-import com.fersaiyan.cyanbridge.data.local.entity.CaptureSession
-import com.fersaiyan.cyanbridge.data.local.entity.CaptureTranscript
-import com.fersaiyan.cyanbridge.data.local.entity.Chat
-import com.fersaiyan.cyanbridge.data.local.entity.LocalEmbeddingStoreEntity
-import com.fersaiyan.cyanbridge.data.local.entity.LocalSearchIndexStateEntity
-import com.fersaiyan.cyanbridge.data.local.entity.MemoryChunk // (FTS5 table created via SQL; no Room entity)
-import com.fersaiyan.cyanbridge.data.local.entity.MemoryModePreferenceEntity
-import com.fersaiyan.cyanbridge.data.local.entity.MemoryPolicyMetadataEntity
-import com.fersaiyan.cyanbridge.data.local.entity.Message
-import com.fersaiyan.cyanbridge.data.local.entity.MigrationStateEntity
-import com.fersaiyan.cyanbridge.data.local.entity.Note
-import com.fersaiyan.cyanbridge.data.local.entity.PendingAction
-import com.fersaiyan.cyanbridge.data.local.entity.SyncPayloadManifestEntity
-import com.fersaiyan.cyanbridge.data.local.entity.SyncPreparationQueueEntity
-import com.fersaiyan.cyanbridge.data.local.entity.TranscriptionRecord
-import com.fersaiyan.cyanbridge.data.local.entity.VaultItemEntity
-import com.fersaiyan.cyanbridge.data.local.entity.VaultItemKeyEntity
-import com.fersaiyan.cyanbridge.data.local.entity.VaultLockStateEntity
+import com.achyut.adglasses.data.local.dao.CaptureSessionDao
+import com.achyut.adglasses.data.local.dao.CaptureTranscriptDao
+import com.achyut.adglasses.data.local.dao.ChatDao
+import com.achyut.adglasses.data.local.dao.MemoryChunkDao
+import com.achyut.adglasses.data.local.dao.MemoryVaultDao
+import com.achyut.adglasses.data.local.dao.MessageDao
+import com.achyut.adglasses.data.local.dao.NoteDao
+import com.achyut.adglasses.data.local.dao.PendingActionDao
+import com.achyut.adglasses.data.local.dao.TranscriptionDao
+import com.achyut.adglasses.data.local.entity.CaptureSession
+import com.achyut.adglasses.data.local.entity.CaptureTranscript
+import com.achyut.adglasses.data.local.entity.Chat
+import com.achyut.adglasses.data.local.entity.LocalEmbeddingStoreEntity
+import com.achyut.adglasses.data.local.entity.LocalSearchIndexStateEntity
+import com.achyut.adglasses.data.local.entity.MemoryChunk // (FTS5 table created via SQL; no Room entity)
+import com.achyut.adglasses.data.local.entity.MemoryModePreferenceEntity
+import com.achyut.adglasses.data.local.entity.MemoryPolicyMetadataEntity
+import com.achyut.adglasses.data.local.entity.Message
+import com.achyut.adglasses.data.local.entity.MigrationStateEntity
+import com.achyut.adglasses.data.local.entity.Note
+import com.achyut.adglasses.data.local.entity.PendingAction
+import com.achyut.adglasses.data.local.entity.SyncPayloadManifestEntity
+import com.achyut.adglasses.data.local.entity.SyncPreparationQueueEntity
+import com.achyut.adglasses.data.local.entity.TranscriptionRecord
+import com.achyut.adglasses.data.local.entity.VaultItemEntity
+import com.achyut.adglasses.data.local.entity.VaultItemKeyEntity
+import com.achyut.adglasses.data.local.entity.VaultLockStateEntity
 
 @Database(
     entities = [

@@ -1,4 +1,4 @@
-package com.fersaiyan.cyanbridge.ui.localagent
+package com.achyut.adglasses.ui.localagent
 
 import android.content.Intent
 import android.os.Bundle
@@ -11,15 +11,15 @@ import androidx.compose.runtime.setValue
 import androidx.work.ExistingWorkPolicy
 import androidx.work.WorkInfo
 import androidx.work.WorkManager
-import com.fersaiyan.cyanbridge.localagent.dailysummary.DailySummaryGenerator
-import com.fersaiyan.cyanbridge.localagent.dailysummary.DailySummaryPrefs
-import com.fersaiyan.cyanbridge.localagent.dailysummary.DailySummaryRegenerateWorker
-import com.fersaiyan.cyanbridge.localagent.dailysummary.DailySummaryRunHistory
-import com.fersaiyan.cyanbridge.localagent.memory.LocalAgentMemoryStore
-import com.fersaiyan.cyanbridge.shared.ui.localagent.DailySummaryScreen
-import com.fersaiyan.cyanbridge.ui.appearance.AppearancePreferences
-import com.fersaiyan.cyanbridge.ui.appearance.rememberAppearanceSettings
-import com.fersaiyan.cyanbridge.ui.theme.CyanBridgeTheme
+import com.achyut.adglasses.localagent.dailysummary.DailySummaryGenerator
+import com.achyut.adglasses.localagent.dailysummary.DailySummaryPrefs
+import com.achyut.adglasses.localagent.dailysummary.DailySummaryRegenerateWorker
+import com.achyut.adglasses.localagent.dailysummary.DailySummaryRunHistory
+import com.achyut.adglasses.localagent.memory.LocalAgentMemoryStore
+import com.achyut.adglasses.shared.ui.localagent.DailySummaryScreen
+import com.achyut.adglasses.ui.appearance.AppearancePreferences
+import com.achyut.adglasses.ui.appearance.rememberAppearanceSettings
+import com.achyut.adglasses.ui.theme.CyanBridgeTheme
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale

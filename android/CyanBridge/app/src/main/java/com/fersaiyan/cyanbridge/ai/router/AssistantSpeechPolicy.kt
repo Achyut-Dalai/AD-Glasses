@@ -1,4 +1,4 @@
-package com.fersaiyan.cyanbridge.ai.router
+package com.achyut.adglasses.ai.router
 
 object AssistantSpeechPolicy {
     private const val DEFAULT_CLARIFICATION = "Please say exactly what you want me to do."

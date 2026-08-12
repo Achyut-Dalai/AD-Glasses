@@ -1,4 +1,4 @@
-package com.fersaiyan.cyanbridge.shared.ui.localagent
+package com.achyut.adglasses.shared.ui.localagent
 
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -39,7 +39,7 @@ import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.foundation.text.selection.SelectionContainer
-import com.fersaiyan.cyanbridge.shared.generated.resources.*
+import com.achyut.adglasses.shared.generated.resources.*
 import org.jetbrains.compose.resources.ExperimentalResourceApi
 import org.jetbrains.compose.resources.stringResource
 

@@ -1,4 +1,4 @@
-package com.fersaiyan.cyanbridge.privacy
+package com.achyut.adglasses.privacy
 
 /**
  * Chapter 8 MVP redaction.

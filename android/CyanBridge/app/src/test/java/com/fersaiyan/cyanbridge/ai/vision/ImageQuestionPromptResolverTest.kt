@@ -1,6 +1,6 @@
-package com.fersaiyan.cyanbridge.ai.vision
+package com.achyut.adglasses.ai.vision
 
-import com.fersaiyan.cyanbridge.ai.image.ImageQuestionBroadcast
+import com.achyut.adglasses.ai.image.ImageQuestionBroadcast
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue

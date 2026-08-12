@@ -1,4 +1,4 @@
-package com.fersaiyan.cyanbridge.shared.ui.settings
+package com.achyut.adglasses.shared.ui.settings
 
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -52,21 +52,21 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import androidx.compose.foundation.text.KeyboardOptions
-import com.fersaiyan.cyanbridge.shared.generated.resources.*
-import com.fersaiyan.cyanbridge.shared.navigation.AppDestination
-import com.fersaiyan.cyanbridge.shared.navigation.icon
-import com.fersaiyan.cyanbridge.shared.icons.imageVector
-import com.fersaiyan.cyanbridge.shared.settings.AgentProviderType
-import com.fersaiyan.cyanbridge.shared.settings.CaptureSource
-import com.fersaiyan.cyanbridge.shared.settings.MemoryPrivacyMode
-import com.fersaiyan.cyanbridge.shared.settings.MemorySourceType
-import com.fersaiyan.cyanbridge.shared.settings.SettingsSection
+import com.achyut.adglasses.shared.generated.resources.*
+import com.achyut.adglasses.shared.navigation.AppDestination
+import com.achyut.adglasses.shared.navigation.icon
+import com.achyut.adglasses.shared.icons.imageVector
+import com.achyut.adglasses.shared.settings.AgentProviderType
+import com.achyut.adglasses.shared.settings.CaptureSource
+import com.achyut.adglasses.shared.settings.MemoryPrivacyMode
+import com.achyut.adglasses.shared.settings.MemorySourceType
+import com.achyut.adglasses.shared.settings.SettingsSection
 import org.jetbrains.compose.resources.ExperimentalResourceApi
 import org.jetbrains.compose.resources.stringResource
-import com.fersaiyan.cyanbridge.shared.ui.localizedDestinationLabel
-import com.fersaiyan.cyanbridge.shared.ui.localizedMemoryModeDescription
-import com.fersaiyan.cyanbridge.shared.ui.localizedMemoryModeTitle
-import com.fersaiyan.cyanbridge.shared.ui.localizedProviderLabel
+import com.achyut.adglasses.shared.ui.localizedDestinationLabel
+import com.achyut.adglasses.shared.ui.localizedMemoryModeDescription
+import com.achyut.adglasses.shared.ui.localizedMemoryModeTitle
+import com.achyut.adglasses.shared.ui.localizedProviderLabel
 
 data class SettingsUiState(
     val isCloudSubscribed: Boolean = false,

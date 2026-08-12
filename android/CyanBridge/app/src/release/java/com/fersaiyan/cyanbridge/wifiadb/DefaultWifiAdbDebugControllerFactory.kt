@@ -1,4 +1,4 @@
-package com.fersaiyan.cyanbridge.wifiadb
+package com.achyut.adglasses.wifiadb
 
 import android.content.Context
 import kotlinx.coroutines.flow.MutableStateFlow

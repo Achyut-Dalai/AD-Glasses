@@ -1,12 +1,12 @@
-package com.fersaiyan.cyanbridge.ui.chat
+package com.achyut.adglasses.ui.chat
 
 import android.view.LayoutInflater
 import android.view.ViewGroup
 import androidx.appcompat.app.AlertDialog
 import androidx.recyclerview.widget.RecyclerView
-import com.fersaiyan.cyanbridge.R
-import com.fersaiyan.cyanbridge.shared.chat.ChatThread
-import com.fersaiyan.cyanbridge.databinding.ItemChatThreadBinding
+import com.achyut.adglasses.R
+import com.achyut.adglasses.shared.chat.ChatThread
+import com.achyut.adglasses.databinding.ItemChatThreadBinding
 
 class ChatThreadAdapter(
     private val onClick: (ChatThread) -> Unit,

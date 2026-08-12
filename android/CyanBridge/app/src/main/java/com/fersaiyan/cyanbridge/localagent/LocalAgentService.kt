@@ -1,4 +1,4 @@
-package com.fersaiyan.cyanbridge.localagent
+package com.achyut.adglasses.localagent
 
 import android.app.Notification
 import android.app.NotificationChannel
@@ -15,15 +15,15 @@ import android.speech.tts.TextToSpeech
 import android.speech.tts.UtteranceProgressListener
 import android.util.Log
 import androidx.core.app.NotificationCompat
-import com.fersaiyan.cyanbridge.localagent.AudioSessionCoordinator
-import com.fersaiyan.cyanbridge.localagent.LocalAgentLanguage
+import com.achyut.adglasses.localagent.AudioSessionCoordinator
+import com.achyut.adglasses.localagent.LocalAgentLanguage
 import androidx.core.content.ContextCompat
 import androidx.localbroadcastmanager.content.LocalBroadcastManager
-import com.fersaiyan.cyanbridge.MainActivity
-import com.fersaiyan.cyanbridge.R
-import com.fersaiyan.cyanbridge.agent.LocalAgentPrefs as AutomationPrefs
-import com.fersaiyan.cyanbridge.localagent.memory.LocalAgentMemoryStore
-import com.fersaiyan.cyanbridge.ui.hasNotificationPermission
+import com.achyut.adglasses.MainActivity
+import com.achyut.adglasses.R
+import com.achyut.adglasses.agent.LocalAgentPrefs as AutomationPrefs
+import com.achyut.adglasses.localagent.memory.LocalAgentMemoryStore
+import com.achyut.adglasses.ui.hasNotificationPermission
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
@@ -1016,7 +1016,7 @@ class LocalAgentService : Service() {
 
     private fun buildNotification(content: String): Notification {
         val target = if (content == "Waiting for your approval") {
-            com.fersaiyan.cyanbridge.ui.localagent.PendingActionsActivity::class.java
+            com.achyut.adglasses.ui.localagent.PendingActionsActivity::class.java
         } else {
             MainActivity::class.java
         }
@@ -1056,8 +1056,8 @@ class LocalAgentService : Service() {
         private const val TAG = "LocalAgentService"
 
         // Legacy action names (kept to avoid breaking any old entrypoints).
-        private const val ACTION_START_LEGACY = "com.fersaiyan.cyanbridge.action.LOCAL_AGENT_START"
-        private const val ACTION_STOP_LEGACY = "com.fersaiyan.cyanbridge.action.LOCAL_AGENT_STOP"
+        private const val ACTION_START_LEGACY = "com.achyut.adglasses.action.LOCAL_AGENT_START"
+        private const val ACTION_STOP_LEGACY = "com.achyut.adglasses.action.LOCAL_AGENT_STOP"
 
         private const val NOTIFICATION_CHANNEL_ID = "local_agent"
         private const val NOTIFICATION_ID = 937

@@ -1,4 +1,4 @@
-package com.fersaiyan.cyanbridge.ai.router
+package com.achyut.adglasses.ai.router
 
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNull

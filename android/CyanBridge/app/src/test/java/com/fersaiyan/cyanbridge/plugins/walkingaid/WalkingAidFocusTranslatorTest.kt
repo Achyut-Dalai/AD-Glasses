@@ -1,4 +1,4 @@
-package com.fersaiyan.cyanbridge.plugins.walkingaid
+package com.achyut.adglasses.plugins.walkingaid
 
 import android.content.Context
 import androidx.test.core.app.ApplicationProvider

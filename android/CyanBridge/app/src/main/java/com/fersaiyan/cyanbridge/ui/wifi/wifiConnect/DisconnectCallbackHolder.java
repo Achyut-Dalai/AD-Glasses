@@ -1,9 +1,9 @@
-package com.fersaiyan.cyanbridge.ui.wifi.wifiConnect;
+package com.achyut.adglasses.ui.wifi.wifiConnect;
 
 import android.net.ConnectivityManager;
 import android.net.Network;
 import android.net.NetworkRequest;
-import com.fersaiyan.cyanbridge.ui.wifi.WifiUtils;
+import com.achyut.adglasses.ui.wifi.WifiUtils;
 
 /* loaded from: classes.dex */
 public class DisconnectCallbackHolder {

@@ -1,6 +1,6 @@
-package com.fersaiyan.cyanbridge.shared.appearance
+package com.achyut.adglasses.shared.appearance
 
-import com.fersaiyan.cyanbridge.shared.platform.PlatformPreferences
+import com.achyut.adglasses.shared.platform.PlatformPreferences
 
 const val APPEARANCE_PREFERENCES_NAME = "cyanbridge_appearance"
 

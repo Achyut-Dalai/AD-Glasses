@@ -1,6 +1,6 @@
-package com.fersaiyan.cyanbridge.chat
+package com.achyut.adglasses.chat
 
-import com.fersaiyan.cyanbridge.shared.chat.ChatRole
+import com.achyut.adglasses.shared.chat.ChatRole
 import kotlinx.coroutines.runBlocking
 import org.junit.After
 import org.junit.Assert.assertEquals

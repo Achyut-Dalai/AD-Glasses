@@ -1,9 +1,9 @@
-package com.fersaiyan.cyanbridge.memoryvault
+package com.achyut.adglasses.memoryvault
 
 import android.content.Context
-import com.fersaiyan.cyanbridge.data.local.entity.VaultLockStateEntity
-import com.fersaiyan.cyanbridge.memoryvault.crypto.VaultKeyManager
-import com.fersaiyan.cyanbridge.ui.MyApplication
+import com.achyut.adglasses.data.local.entity.VaultLockStateEntity
+import com.achyut.adglasses.memoryvault.crypto.VaultKeyManager
+import com.achyut.adglasses.ui.MyApplication
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.runBlocking
 

@@ -1,4 +1,4 @@
-package com.fersaiyan.cyanbridge.ota
+package com.achyut.adglasses.ota
 
 import android.util.Log
 import com.oudmon.ble.base.bluetooth.BleOperateManager

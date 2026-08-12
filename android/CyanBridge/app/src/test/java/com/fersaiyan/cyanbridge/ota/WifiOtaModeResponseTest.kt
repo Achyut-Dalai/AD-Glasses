@@ -1,4 +1,4 @@
-package com.fersaiyan.cyanbridge.ota
+package com.achyut.adglasses.ota
 
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue

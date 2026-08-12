@@ -1,4 +1,4 @@
-package com.fersaiyan.cyanbridge.shared.notes
+package com.achyut.adglasses.shared.notes
 
 /** Platform-neutral input for turning a transcript into structured meeting notes. */
 data class SummarizationRequest(

@@ -1,4 +1,4 @@
-package com.fersaiyan.cyanbridge.ota
+package com.achyut.adglasses.ota
 
 import android.util.Log
 import java.io.File

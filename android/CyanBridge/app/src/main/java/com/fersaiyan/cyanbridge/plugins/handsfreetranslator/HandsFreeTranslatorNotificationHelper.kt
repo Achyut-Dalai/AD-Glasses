@@ -1,4 +1,4 @@
-package com.fersaiyan.cyanbridge.plugins.handsfreetranslator
+package com.achyut.adglasses.plugins.handsfreetranslator
 
 import android.app.Notification
 import android.app.NotificationChannel
@@ -8,8 +8,8 @@ import android.content.Context
 import android.content.Intent
 import android.os.Build
 import androidx.core.app.NotificationCompat
-import com.fersaiyan.cyanbridge.MainActivity
-import com.fersaiyan.cyanbridge.R
+import com.achyut.adglasses.MainActivity
+import com.achyut.adglasses.R
 
 object HandsFreeTranslatorNotificationHelper {
     const val CHANNEL_ID = "hands_free_translator_service"

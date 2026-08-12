@@ -1,4 +1,4 @@
-package com.fersaiyan.cyanbridge.ai.transcription
+package com.achyut.adglasses.ai.transcription
 
 import android.content.Context
 import android.media.MediaCodec
@@ -6,11 +6,11 @@ import android.media.MediaExtractor
 import android.media.MediaFormat
 import android.os.Build
 import android.util.Log
-import com.fersaiyan.cyanbridge.localmodels.provider.LocalModelRequestPriority
-import com.fersaiyan.cyanbridge.localmodels.provider.LocalModelsProvider
-import com.fersaiyan.cyanbridge.localmodels.settings.LocalModelRuntime
-import com.fersaiyan.cyanbridge.localmodels.settings.LocalModelSettingsRepository
-import com.fersaiyan.cyanbridge.localmodels.storage.LocalModelStorageRepository
+import com.achyut.adglasses.localmodels.provider.LocalModelRequestPriority
+import com.achyut.adglasses.localmodels.provider.LocalModelsProvider
+import com.achyut.adglasses.localmodels.settings.LocalModelRuntime
+import com.achyut.adglasses.localmodels.settings.LocalModelSettingsRepository
+import com.achyut.adglasses.localmodels.storage.LocalModelStorageRepository
 import java.io.ByteArrayOutputStream
 import java.io.File
 import java.io.FileOutputStream

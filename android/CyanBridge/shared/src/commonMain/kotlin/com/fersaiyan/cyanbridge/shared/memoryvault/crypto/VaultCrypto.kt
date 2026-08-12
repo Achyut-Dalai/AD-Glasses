@@ -1,4 +1,4 @@
-package com.fersaiyan.cyanbridge.shared.memoryvault.crypto
+package com.achyut.adglasses.shared.memoryvault.crypto
 
 data class CipherEnvelope(
     val version: Int,

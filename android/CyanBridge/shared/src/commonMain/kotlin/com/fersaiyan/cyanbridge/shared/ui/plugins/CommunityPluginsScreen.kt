@@ -1,4 +1,4 @@
-package com.fersaiyan.cyanbridge.shared.ui.plugins
+package com.achyut.adglasses.shared.ui.plugins
 
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
@@ -51,14 +51,14 @@ import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
-import com.fersaiyan.cyanbridge.shared.generated.resources.*
-import com.fersaiyan.cyanbridge.shared.navigation.AppDestination
-import com.fersaiyan.cyanbridge.shared.navigation.icon
-import com.fersaiyan.cyanbridge.shared.icons.imageVector
-import com.fersaiyan.cyanbridge.shared.plugins.CommunityPluginCardData
-import com.fersaiyan.cyanbridge.shared.plugins.NativePluginCardData
-import com.fersaiyan.cyanbridge.shared.plugins.PluginTimeWindow
-import com.fersaiyan.cyanbridge.shared.ui.localizedDestinationLabel
+import com.achyut.adglasses.shared.generated.resources.*
+import com.achyut.adglasses.shared.navigation.AppDestination
+import com.achyut.adglasses.shared.navigation.icon
+import com.achyut.adglasses.shared.icons.imageVector
+import com.achyut.adglasses.shared.plugins.CommunityPluginCardData
+import com.achyut.adglasses.shared.plugins.NativePluginCardData
+import com.achyut.adglasses.shared.plugins.PluginTimeWindow
+import com.achyut.adglasses.shared.ui.localizedDestinationLabel
 import kotlin.math.floor
 import org.jetbrains.compose.resources.ExperimentalResourceApi
 import org.jetbrains.compose.resources.stringResource

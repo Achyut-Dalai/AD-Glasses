@@ -1,4 +1,4 @@
-package com.fersaiyan.cyanbridge.data.local.dao
+package com.achyut.adglasses.data.local.dao
 
 import androidx.room.Dao
 import androidx.room.Insert
@@ -7,7 +7,7 @@ import androidx.room.Query
 import androidx.room.RawQuery
 import androidx.sqlite.db.SimpleSQLiteQuery
 import androidx.sqlite.db.SupportSQLiteQuery
-import com.fersaiyan.cyanbridge.data.local.entity.MemoryChunk
+import com.achyut.adglasses.data.local.entity.MemoryChunk
 
 @Dao
 interface MemoryChunkDao {

@@ -1,4 +1,4 @@
-package com.fersaiyan.cyanbridge.ui.chat
+package com.achyut.adglasses.ui.chat
 
 import android.animation.ValueAnimator
 import android.view.View

@@ -1,4 +1,4 @@
-package com.fersaiyan.cyanbridge.ai.transcription.retry
+package com.achyut.adglasses.ai.transcription.retry
 
 import kotlinx.coroutines.delay
 import kotlin.math.min

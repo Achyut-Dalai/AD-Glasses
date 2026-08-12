@@ -1,4 +1,4 @@
-package com.fersaiyan.cyanbridge.shared.chat
+package com.achyut.adglasses.shared.chat
 
 data class ChatThreadSummary(
     val id: String,

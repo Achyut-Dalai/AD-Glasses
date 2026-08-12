@@ -1,10 +1,10 @@
-package com.fersaiyan.cyanbridge.ai.summarization
+package com.achyut.adglasses.ai.summarization
 
 import android.content.Context
-import com.fersaiyan.cyanbridge.ai.router.CliRelayClient
-import com.fersaiyan.cyanbridge.shared.notes.StructuredSummary
-import com.fersaiyan.cyanbridge.shared.notes.SummarizationRequest
-import com.fersaiyan.cyanbridge.shared.notes.SummarizationService
+import com.achyut.adglasses.ai.router.CliRelayClient
+import com.achyut.adglasses.shared.notes.StructuredSummary
+import com.achyut.adglasses.shared.notes.SummarizationRequest
+import com.achyut.adglasses.shared.notes.SummarizationService
 
 /**
  * AI-powered summarization service that delegates to local or cloud LLM models

@@ -1,4 +1,4 @@
-package com.fersaiyan.cyanbridge.shared.ai
+package com.achyut.adglasses.shared.ai
 
 /**
  * Cross-platform AI service abstraction.

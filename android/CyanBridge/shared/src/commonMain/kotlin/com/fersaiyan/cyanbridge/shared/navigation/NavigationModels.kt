@@ -1,6 +1,6 @@
-package com.fersaiyan.cyanbridge.shared.navigation
+package com.achyut.adglasses.shared.navigation
 
-import com.fersaiyan.cyanbridge.shared.icons.AppIcon
+import com.achyut.adglasses.shared.icons.AppIcon
 
 val AppDestination.label: String
     get() = when (this) {

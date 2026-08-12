@@ -1,4 +1,4 @@
-package com.fersaiyan.cyanbridge.plugins.visualdiary
+package com.achyut.adglasses.plugins.visualdiary
 
 import android.content.Context
 import androidx.test.core.app.ApplicationProvider

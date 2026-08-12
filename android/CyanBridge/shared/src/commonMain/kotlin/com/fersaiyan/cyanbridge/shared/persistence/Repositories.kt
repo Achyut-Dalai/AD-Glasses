@@ -1,4 +1,4 @@
-package com.fersaiyan.cyanbridge.shared.persistence
+package com.achyut.adglasses.shared.persistence
 
 /**
  * Cross-platform persistence abstraction for CyanBridge data.

@@ -1,4 +1,4 @@
-package com.fersaiyan.cyanbridge.media
+package com.achyut.adglasses.media
 
 import kotlinx.coroutines.suspendCancellableCoroutine
 import okhttp3.Call

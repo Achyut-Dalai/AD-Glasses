@@ -1,4 +1,4 @@
-package com.fersaiyan.cyanbridge.bridge.core
+package com.achyut.adglasses.bridge.core
 
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.StateFlow

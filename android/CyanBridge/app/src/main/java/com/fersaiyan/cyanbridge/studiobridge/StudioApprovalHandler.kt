@@ -1,4 +1,4 @@
-package com.fersaiyan.cyanbridge.studiobridge
+package com.achyut.adglasses.studiobridge
 
 import android.Manifest
 import android.content.Context
@@ -14,7 +14,7 @@ import android.speech.tts.TextToSpeech
 import android.speech.tts.UtteranceProgressListener
 import android.util.Log
 import androidx.core.content.ContextCompat
-import com.fersaiyan.cyanbridge.localmodels.remote.RemoteOpenAiClient
+import com.achyut.adglasses.localmodels.remote.RemoteOpenAiClient
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers

@@ -1,4 +1,4 @@
-package com.fersaiyan.cyanbridge.memoryvault.crypto
+package com.achyut.adglasses.memoryvault.crypto
 
 import java.security.SecureRandom
 import javax.crypto.Cipher

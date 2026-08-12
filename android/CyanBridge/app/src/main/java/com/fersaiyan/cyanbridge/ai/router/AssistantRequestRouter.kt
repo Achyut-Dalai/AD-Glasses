@@ -1,7 +1,7 @@
-package com.fersaiyan.cyanbridge.ai.router
+package com.achyut.adglasses.ai.router
 
 import android.content.Context
-import com.fersaiyan.cyanbridge.shared.settings.AgentProviderType
+import com.achyut.adglasses.shared.settings.AgentProviderType
 import org.json.JSONException
 import org.json.JSONObject
 import org.json.JSONTokener

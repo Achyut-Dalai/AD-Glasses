@@ -1,8 +1,8 @@
-package com.fersaiyan.cyanbridge.ai.transcription
+package com.achyut.adglasses.ai.transcription
 
-import com.fersaiyan.cyanbridge.ai.transcription.backend.HttpTranscriptionBackend
-import com.fersaiyan.cyanbridge.ai.transcription.retry.RetryPolicy
-import com.fersaiyan.cyanbridge.ai.transcription.storage.TranscriptStore
+import com.achyut.adglasses.ai.transcription.backend.HttpTranscriptionBackend
+import com.achyut.adglasses.ai.transcription.retry.RetryPolicy
+import com.achyut.adglasses.ai.transcription.storage.TranscriptStore
 import kotlinx.coroutines.flow.Flow
 
 /**
@@ -26,7 +26,7 @@ class HttpTranscriptionService(
     override fun transcribe(request: TranscriptionRequest): Flow<TranscriptionEvent> = delegate.transcribe(request)
 
     override suspend fun transcribe(
-        session: com.fersaiyan.cyanbridge.data.local.entity.CaptureSession,
+        session: com.achyut.adglasses.data.local.entity.CaptureSession,
         options: TranscriptionService.Options,
         onProgress: (TranscriptionProgress) -> Unit,
     ): TranscriptionResult = delegate.transcribe(session, options, onProgress)

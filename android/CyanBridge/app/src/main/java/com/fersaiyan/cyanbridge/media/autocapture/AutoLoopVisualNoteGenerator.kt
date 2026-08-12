@@ -1,18 +1,18 @@
-package com.fersaiyan.cyanbridge.media.autocapture
+package com.achyut.adglasses.media.autocapture
 
 import android.content.Context
 import android.os.Handler
 import android.os.Looper
 import android.util.Log
 import android.widget.Toast
-import com.fersaiyan.cyanbridge.glasses.GlassesSessionCoordinator
-import com.fersaiyan.cyanbridge.devices.DeviceProfileStore
-import com.fersaiyan.cyanbridge.localagent.userfacts.CandidateUserFactsStorage
-import com.fersaiyan.cyanbridge.localmodels.provider.LocalModelRequestPriority
-import com.fersaiyan.cyanbridge.localmodels.provider.LocalModelsProvider
-import com.fersaiyan.cyanbridge.localmodels.settings.LocalModelRuntime
-import com.fersaiyan.cyanbridge.localmodels.settings.LocalModelSettingsRepository
-import com.fersaiyan.cyanbridge.localmodels.storage.LocalModelStorageRepository
+import com.achyut.adglasses.glasses.GlassesSessionCoordinator
+import com.achyut.adglasses.devices.DeviceProfileStore
+import com.achyut.adglasses.localagent.userfacts.CandidateUserFactsStorage
+import com.achyut.adglasses.localmodels.provider.LocalModelRequestPriority
+import com.achyut.adglasses.localmodels.provider.LocalModelsProvider
+import com.achyut.adglasses.localmodels.settings.LocalModelRuntime
+import com.achyut.adglasses.localmodels.settings.LocalModelSettingsRepository
+import com.achyut.adglasses.localmodels.storage.LocalModelStorageRepository
 import com.oudmon.ble.base.bluetooth.BleOperateManager
 import com.oudmon.ble.base.communication.LargeDataHandler
 import kotlinx.coroutines.CompletableDeferred

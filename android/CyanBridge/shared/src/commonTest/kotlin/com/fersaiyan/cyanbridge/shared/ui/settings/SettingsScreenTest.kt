@@ -1,10 +1,10 @@
-package com.fersaiyan.cyanbridge.shared.ui.settings
+package com.achyut.adglasses.shared.ui.settings
 
-import com.fersaiyan.cyanbridge.shared.settings.AgentProviderType
-import com.fersaiyan.cyanbridge.shared.settings.CaptureSource
-import com.fersaiyan.cyanbridge.shared.settings.MemoryPrivacyMode
-import com.fersaiyan.cyanbridge.shared.settings.MemorySourceType
-import com.fersaiyan.cyanbridge.shared.settings.SettingsSection
+import com.achyut.adglasses.shared.settings.AgentProviderType
+import com.achyut.adglasses.shared.settings.CaptureSource
+import com.achyut.adglasses.shared.settings.MemoryPrivacyMode
+import com.achyut.adglasses.shared.settings.MemorySourceType
+import com.achyut.adglasses.shared.settings.SettingsSection
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertTrue

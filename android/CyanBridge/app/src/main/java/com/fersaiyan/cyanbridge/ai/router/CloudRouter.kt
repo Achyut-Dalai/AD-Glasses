@@ -1,12 +1,12 @@
-package com.fersaiyan.cyanbridge.ai.router
+package com.achyut.adglasses.ai.router
 
 import android.content.Context
 import android.util.Base64
-import com.fersaiyan.cyanbridge.shared.settings.AgentProviderType
-import com.fersaiyan.cyanbridge.agent.LocalAgentPrefs as AutomationPrefs
-import com.fersaiyan.cyanbridge.agent.ProSubscriptionAiPrefs
-import com.fersaiyan.cyanbridge.agent.ProSubscriptionServerPrefs
-import com.fersaiyan.cyanbridge.localmodels.provider.LocalModelsProvider
+import com.achyut.adglasses.shared.settings.AgentProviderType
+import com.achyut.adglasses.agent.LocalAgentPrefs as AutomationPrefs
+import com.achyut.adglasses.agent.ProSubscriptionAiPrefs
+import com.achyut.adglasses.agent.ProSubscriptionServerPrefs
+import com.achyut.adglasses.localmodels.provider.LocalModelsProvider
 import org.json.JSONArray
 import org.json.JSONObject
 import java.io.BufferedReader

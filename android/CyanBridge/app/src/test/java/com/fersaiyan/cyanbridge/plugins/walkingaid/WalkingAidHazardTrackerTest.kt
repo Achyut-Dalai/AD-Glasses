@@ -1,11 +1,11 @@
-package com.fersaiyan.cyanbridge.plugins.walkingaid
+package com.achyut.adglasses.plugins.walkingaid
 
 import android.graphics.Bitmap
 import android.graphics.Color
 import android.graphics.RectF
 import androidx.test.core.app.ApplicationProvider
-import com.fersaiyan.cyanbridge.plugins.walkingaid.vision.DetectedObject
-import com.fersaiyan.cyanbridge.plugins.walkingaid.vision.HazardMotionState
+import com.achyut.adglasses.plugins.walkingaid.vision.DetectedObject
+import com.achyut.adglasses.plugins.walkingaid.vision.HazardMotionState
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNotNull

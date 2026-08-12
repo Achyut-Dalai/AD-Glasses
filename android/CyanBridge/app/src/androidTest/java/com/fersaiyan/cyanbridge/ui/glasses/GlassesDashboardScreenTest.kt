@@ -1,4 +1,4 @@
-package com.fersaiyan.cyanbridge.ui.glasses
+package com.achyut.adglasses.ui.glasses
 
 import androidx.compose.ui.test.assertIsEnabled
 import androidx.compose.ui.test.assertIsDisplayed
@@ -10,19 +10,19 @@ import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performTextInput
-import com.fersaiyan.cyanbridge.shared.glasses.FirmwarePatchRequestUiState
-import com.fersaiyan.cyanbridge.shared.glasses.AiWakeWordRoute
-import com.fersaiyan.cyanbridge.shared.glasses.GlassesDashboardAction
-import com.fersaiyan.cyanbridge.shared.glasses.GlassesDashboardUiState
-import com.fersaiyan.cyanbridge.shared.glasses.OtaFirmwareSource
-import com.fersaiyan.cyanbridge.shared.glasses.MetaRaybanUiState
-import com.fersaiyan.cyanbridge.shared.glasses.WifiAdbDebugUiState
-import com.fersaiyan.cyanbridge.shared.plugins.NativePluginIds
-import com.fersaiyan.cyanbridge.shared.plugins.NativePluginShortcutAction
-import com.fersaiyan.cyanbridge.shared.plugins.NativePluginShortcutButton
-import com.fersaiyan.cyanbridge.shared.plugins.NativePluginShortcutUiState
-import com.fersaiyan.cyanbridge.shared.ui.glasses.GlassesDashboardScreen
-import com.fersaiyan.cyanbridge.ui.theme.CyanBridgeTheme
+import com.achyut.adglasses.shared.glasses.FirmwarePatchRequestUiState
+import com.achyut.adglasses.shared.glasses.AiWakeWordRoute
+import com.achyut.adglasses.shared.glasses.GlassesDashboardAction
+import com.achyut.adglasses.shared.glasses.GlassesDashboardUiState
+import com.achyut.adglasses.shared.glasses.OtaFirmwareSource
+import com.achyut.adglasses.shared.glasses.MetaRaybanUiState
+import com.achyut.adglasses.shared.glasses.WifiAdbDebugUiState
+import com.achyut.adglasses.shared.plugins.NativePluginIds
+import com.achyut.adglasses.shared.plugins.NativePluginShortcutAction
+import com.achyut.adglasses.shared.plugins.NativePluginShortcutButton
+import com.achyut.adglasses.shared.plugins.NativePluginShortcutUiState
+import com.achyut.adglasses.shared.ui.glasses.GlassesDashboardScreen
+import com.achyut.adglasses.ui.theme.CyanBridgeTheme
 import org.junit.Assert.assertEquals
 import org.junit.Rule
 import org.junit.Test
@@ -279,7 +279,7 @@ class GlassesDashboardScreenTest {
                     state = GlassesDashboardUiState(
                         firmwarePatchRequest = FirmwarePatchRequestUiState(
                             source = OtaFirmwareSource.STEALTH_CATALOG,
-                            target = com.fersaiyan.cyanbridge.shared.glasses.OtaTargetSelection.V821_WIFI,
+                            target = com.achyut.adglasses.shared.glasses.OtaTargetSelection.V821_WIFI,
                             targetHardwareVersion = "WIFIAM01G1_V9.2",
                             targetFirmwareVersion = "WIFIAM01G1_1.00.23_2510111600",
                             wifiHardwareVersion = "WIFIAM01G1_V9.2",
@@ -317,7 +317,7 @@ class GlassesDashboardScreenTest {
                     state = GlassesDashboardUiState(
                         firmwarePatchRequest = FirmwarePatchRequestUiState(
                             source = OtaFirmwareSource.DEBUG_CATALOG,
-                            target = com.fersaiyan.cyanbridge.shared.glasses.OtaTargetSelection.JIELI_BLE,
+                            target = com.achyut.adglasses.shared.glasses.OtaTargetSelection.JIELI_BLE,
                             targetHardwareVersion = "AM01G1_V9.2",
                             targetFirmwareVersion = "AM01G1_9.20.03_260112",
                             wifiHardwareVersion = "WIFIAM01G1_V9.2",

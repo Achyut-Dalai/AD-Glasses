@@ -1,4 +1,4 @@
-package com.fersaiyan.cyanbridge.plugins.meetingsparknotes
+package com.achyut.adglasses.plugins.meetingsparknotes
 
 import android.app.Notification
 import android.app.NotificationChannel
@@ -8,8 +8,8 @@ import android.content.Context
 import android.content.Intent
 import android.os.Build
 import androidx.core.app.NotificationCompat
-import com.fersaiyan.cyanbridge.MainActivity
-import com.fersaiyan.cyanbridge.R
+import com.achyut.adglasses.MainActivity
+import com.achyut.adglasses.R
 
 object MeetingSparkNotesNotificationHelper {
     const val CHANNEL_ID = "meeting_spark_notes_service"

@@ -1,4 +1,4 @@
-package com.fersaiyan.cyanbridge.localagent.daily
+package com.achyut.adglasses.localagent.daily
 
 import android.app.NotificationChannel
 import android.app.NotificationManager
@@ -8,10 +8,10 @@ import android.content.Context
 import android.content.Intent
 import android.os.Build
 import androidx.core.app.NotificationCompat
-import com.fersaiyan.cyanbridge.R
-import com.fersaiyan.cyanbridge.localagent.memory.LocalAgentMemoryStore
-import com.fersaiyan.cyanbridge.memoryvault.MemoryModeManager
-import com.fersaiyan.cyanbridge.ui.ChatThreadActivity
+import com.achyut.adglasses.R
+import com.achyut.adglasses.localagent.memory.LocalAgentMemoryStore
+import com.achyut.adglasses.memoryvault.MemoryModeManager
+import com.achyut.adglasses.ui.ChatThreadActivity
 
 class DailyFactsReminderReceiver : BroadcastReceiver() {
 
@@ -66,7 +66,7 @@ class DailyFactsReminderReceiver : BroadcastReceiver() {
     }
 
     companion object {
-        const val ACTION_REMIND = "com.fersaiyan.cyanbridge.action.DAILY_FACTS_REMIND"
+        const val ACTION_REMIND = "com.achyut.adglasses.action.DAILY_FACTS_REMIND"
 
         private const val CHANNEL_ID = "daily_facts"
         private const val NOTIF_ID = 44102

@@ -1,8 +1,8 @@
-package com.fersaiyan.cyanbridge.ui.chat
+package com.achyut.adglasses.ui.chat
 
 import android.content.Context
 import androidx.core.content.ContextCompat
-import com.fersaiyan.cyanbridge.R
+import com.achyut.adglasses.R
 
 object ChatAppearancePrefs {
     private const val PREFS = "chat_appearance_prefs"

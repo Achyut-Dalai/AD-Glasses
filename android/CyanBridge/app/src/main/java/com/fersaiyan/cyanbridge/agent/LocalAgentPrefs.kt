@@ -1,8 +1,8 @@
-package com.fersaiyan.cyanbridge.agent
+package com.achyut.adglasses.agent
 
 import android.content.Context
-import com.fersaiyan.cyanbridge.shared.glasses.GlassesAssistantMode
-import com.fersaiyan.cyanbridge.shared.settings.AgentProviderType
+import com.achyut.adglasses.shared.glasses.GlassesAssistantMode
+import com.achyut.adglasses.shared.settings.AgentProviderType
 
 object LocalAgentPrefs {
     private const val PREFS = "local_agent_prefs"

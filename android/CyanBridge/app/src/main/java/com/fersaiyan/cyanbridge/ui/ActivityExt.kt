@@ -1,4 +1,4 @@
-package com.fersaiyan.cyanbridge.ui
+package com.achyut.adglasses.ui
 import android.app.Activity
 import android.content.Context
 import android.content.Intent

@@ -1,4 +1,4 @@
-package com.fersaiyan.cyanbridge.ui.localagent
+package com.achyut.adglasses.ui.localagent
 
 import android.os.Bundle
 import android.widget.Toast
@@ -7,11 +7,11 @@ import androidx.appcompat.app.AppCompatActivity
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
-import com.fersaiyan.cyanbridge.localagent.memory.LocalAgentMemoryStore
-import com.fersaiyan.cyanbridge.shared.ui.localagent.LocalAgentDocumentScreen
-import com.fersaiyan.cyanbridge.ui.appearance.AppearancePreferences
-import com.fersaiyan.cyanbridge.ui.appearance.rememberAppearanceSettings
-import com.fersaiyan.cyanbridge.ui.theme.CyanBridgeTheme
+import com.achyut.adglasses.localagent.memory.LocalAgentMemoryStore
+import com.achyut.adglasses.shared.ui.localagent.LocalAgentDocumentScreen
+import com.achyut.adglasses.ui.appearance.AppearancePreferences
+import com.achyut.adglasses.ui.appearance.rememberAppearanceSettings
+import com.achyut.adglasses.ui.theme.CyanBridgeTheme
 
 class DailyFactsActivity : AppCompatActivity() {
 

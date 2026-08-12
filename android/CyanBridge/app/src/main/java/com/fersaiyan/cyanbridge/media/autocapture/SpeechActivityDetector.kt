@@ -1,4 +1,4 @@
-package com.fersaiyan.cyanbridge.media.autocapture
+package com.achyut.adglasses.media.autocapture
 
 /**
  * Lightweight real-time speech activity detector based on RMS energy.

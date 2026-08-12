@@ -1,8 +1,8 @@
-package com.fersaiyan.cyanbridge.ai.summarization
+package com.achyut.adglasses.ai.summarization
 
-import com.fersaiyan.cyanbridge.shared.notes.StructuredSummary
-import com.fersaiyan.cyanbridge.shared.notes.SummarizationRequest
-import com.fersaiyan.cyanbridge.shared.notes.SummarizationService
+import com.achyut.adglasses.shared.notes.StructuredSummary
+import com.achyut.adglasses.shared.notes.SummarizationRequest
+import com.achyut.adglasses.shared.notes.SummarizationService
 
 /**
  * Deterministic summarizer for tests.

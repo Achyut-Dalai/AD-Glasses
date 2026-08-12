@@ -1,13 +1,13 @@
-package com.fersaiyan.cyanbridge.shared.ui.glasses
+package com.achyut.adglasses.shared.ui.glasses
 
-import com.fersaiyan.cyanbridge.shared.glasses.GlassesAssistantMode
-import com.fersaiyan.cyanbridge.shared.glasses.GlassesDashboardAction
-import com.fersaiyan.cyanbridge.shared.glasses.GlassesDashboardUiState
-import com.fersaiyan.cyanbridge.shared.glasses.GlassesSyncFlow
-import com.fersaiyan.cyanbridge.shared.glasses.GlassesTransferUiState
-import com.fersaiyan.cyanbridge.shared.glasses.MetaRaybanUiState
-import com.fersaiyan.cyanbridge.shared.glasses.OtaSectionUiState
-import com.fersaiyan.cyanbridge.shared.navigation.AppDestination
+import com.achyut.adglasses.shared.glasses.GlassesAssistantMode
+import com.achyut.adglasses.shared.glasses.GlassesDashboardAction
+import com.achyut.adglasses.shared.glasses.GlassesDashboardUiState
+import com.achyut.adglasses.shared.glasses.GlassesSyncFlow
+import com.achyut.adglasses.shared.glasses.GlassesTransferUiState
+import com.achyut.adglasses.shared.glasses.MetaRaybanUiState
+import com.achyut.adglasses.shared.glasses.OtaSectionUiState
+import com.achyut.adglasses.shared.navigation.AppDestination
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse

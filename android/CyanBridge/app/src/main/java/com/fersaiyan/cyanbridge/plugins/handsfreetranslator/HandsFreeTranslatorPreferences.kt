@@ -1,4 +1,4 @@
-package com.fersaiyan.cyanbridge.plugins.handsfreetranslator
+package com.achyut.adglasses.plugins.handsfreetranslator
 
 import android.content.Context
 

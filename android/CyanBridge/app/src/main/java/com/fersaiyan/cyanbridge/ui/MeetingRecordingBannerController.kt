@@ -1,4 +1,4 @@
-package com.fersaiyan.cyanbridge.ui
+package com.achyut.adglasses.ui
 
 import android.content.BroadcastReceiver
 import android.content.Context
@@ -7,9 +7,9 @@ import android.content.IntentFilter
 import android.view.View
 import android.widget.TextView
 import androidx.localbroadcastmanager.content.LocalBroadcastManager
-import com.fersaiyan.cyanbridge.shared.settings.CaptureSource
-import com.fersaiyan.cyanbridge.audio.MeetingCapturePrefs
-import com.fersaiyan.cyanbridge.audio.MeetingCaptureService
+import com.achyut.adglasses.shared.settings.CaptureSource
+import com.achyut.adglasses.audio.MeetingCapturePrefs
+import com.achyut.adglasses.audio.MeetingCaptureService
 
 /**
  * Chapter 8: Recording transparency.

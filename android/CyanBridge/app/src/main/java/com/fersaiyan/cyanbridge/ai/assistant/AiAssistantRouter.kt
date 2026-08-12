@@ -1,7 +1,7 @@
-package com.fersaiyan.cyanbridge.ai.assistant
+package com.achyut.adglasses.ai.assistant
 
 import android.content.Context
-import com.fersaiyan.cyanbridge.shared.chat.ChatMessage
+import com.achyut.adglasses.shared.chat.ChatMessage
 
 /**
  * Central routing point for the chat assistant.

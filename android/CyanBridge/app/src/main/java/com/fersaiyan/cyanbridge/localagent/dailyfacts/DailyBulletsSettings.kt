@@ -1,4 +1,4 @@
-package com.fersaiyan.cyanbridge.localagent.dailyfacts
+package com.achyut.adglasses.localagent.dailyfacts
 
 import android.content.Context
 

@@ -1,4 +1,4 @@
-package com.fersaiyan.cyanbridge.ui
+package com.achyut.adglasses.ui
 
 import android.content.Intent
 import android.os.Bundle
@@ -11,26 +11,26 @@ import androidx.appcompat.app.AppCompatActivity
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
-import com.fersaiyan.cyanbridge.MainActivity
-import com.fersaiyan.cyanbridge.R
-import com.fersaiyan.cyanbridge.agent.LocalModelsConfigureActivity
-import com.fersaiyan.cyanbridge.agent.LocalAgentPrefs as AutomationPrefs
-import com.fersaiyan.cyanbridge.ai.router.AiProviderPrefs
-import com.fersaiyan.cyanbridge.ai.router.AiProviderType
-import com.fersaiyan.cyanbridge.chat.ChatStore
-import com.fersaiyan.cyanbridge.localagent.dailyfacts.DailyFactsReviewThreadStore
-import com.fersaiyan.cyanbridge.localmodels.storage.LocalModelStorageRepository
-import com.fersaiyan.cyanbridge.memoryvault.MemoryModeManager
-import com.fersaiyan.cyanbridge.shared.chat.ChatAppearanceMenuAction
-import com.fersaiyan.cyanbridge.ui.chat.ChatAppearancePrefs
-import com.fersaiyan.cyanbridge.shared.ui.chat.ChatAppearanceMenuDialog
-import com.fersaiyan.cyanbridge.ui.appearance.AppearancePreferences
-import com.fersaiyan.cyanbridge.ui.appearance.rememberAppearanceSettings
-import com.fersaiyan.cyanbridge.shared.ui.chat.ChatListScreen
-import com.fersaiyan.cyanbridge.ui.theme.CyanBridgeTheme
-import com.fersaiyan.cyanbridge.shared.navigation.AppDestination
-import com.fersaiyan.cyanbridge.shared.settings.AgentProviderType
-import com.fersaiyan.cyanbridge.shared.chat.ChatThreadSummary
+import com.achyut.adglasses.MainActivity
+import com.achyut.adglasses.R
+import com.achyut.adglasses.agent.LocalModelsConfigureActivity
+import com.achyut.adglasses.agent.LocalAgentPrefs as AutomationPrefs
+import com.achyut.adglasses.ai.router.AiProviderPrefs
+import com.achyut.adglasses.ai.router.AiProviderType
+import com.achyut.adglasses.chat.ChatStore
+import com.achyut.adglasses.localagent.dailyfacts.DailyFactsReviewThreadStore
+import com.achyut.adglasses.localmodels.storage.LocalModelStorageRepository
+import com.achyut.adglasses.memoryvault.MemoryModeManager
+import com.achyut.adglasses.shared.chat.ChatAppearanceMenuAction
+import com.achyut.adglasses.ui.chat.ChatAppearancePrefs
+import com.achyut.adglasses.shared.ui.chat.ChatAppearanceMenuDialog
+import com.achyut.adglasses.ui.appearance.AppearancePreferences
+import com.achyut.adglasses.ui.appearance.rememberAppearanceSettings
+import com.achyut.adglasses.shared.ui.chat.ChatListScreen
+import com.achyut.adglasses.ui.theme.CyanBridgeTheme
+import com.achyut.adglasses.shared.navigation.AppDestination
+import com.achyut.adglasses.shared.settings.AgentProviderType
+import com.achyut.adglasses.shared.chat.ChatThreadSummary
 import java.text.SimpleDateFormat
 import java.util.Calendar
 import java.util.Date
@@ -156,7 +156,7 @@ class ChatListActivity : AppCompatActivity() {
         val target = when (destination) {
             AppDestination.GLASSES -> Intent(this, MainActivity::class.java)
             AppDestination.CHATS -> buildRecentChatIntent()
-            AppDestination.MEDIA -> Intent(this, com.fersaiyan.cyanbridge.ui.recordings.RecordingsListActivity::class.java)
+            AppDestination.MEDIA -> Intent(this, com.achyut.adglasses.ui.recordings.RecordingsListActivity::class.java)
             AppDestination.PLUGINS -> Intent(this, CommunityPluginsActivity::class.java)
             AppDestination.SETTINGS -> Intent(this, SettingsActivity::class.java)
         }
@@ -168,7 +168,7 @@ class ChatListActivity : AppCompatActivity() {
         val last = ChatStore.listNonEmptyThreads().firstOrNull()
         val lastUserAt = last?.let { thread ->
             ChatStore.listMessages(thread.id)
-                .lastOrNull { it.role == com.fersaiyan.cyanbridge.shared.chat.ChatRole.USER }
+                .lastOrNull { it.role == com.achyut.adglasses.shared.chat.ChatRole.USER }
                 ?.createdAt
         } ?: 0L
         val openChatId = last?.id?.takeIf {

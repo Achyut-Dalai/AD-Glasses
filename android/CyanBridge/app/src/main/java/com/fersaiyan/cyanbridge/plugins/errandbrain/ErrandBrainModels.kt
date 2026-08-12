@@ -1,4 +1,4 @@
-package com.fersaiyan.cyanbridge.plugins.errandbrain
+package com.achyut.adglasses.plugins.errandbrain
 
 data class TaskEntry(
     val id: String,

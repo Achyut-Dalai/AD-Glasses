@@ -1,4 +1,4 @@
-package com.fersaiyan.cyanbridge.localagent.shizuku
+package com.achyut.adglasses.localagent.shizuku
 
 import android.content.Context
 import androidx.annotation.Keep

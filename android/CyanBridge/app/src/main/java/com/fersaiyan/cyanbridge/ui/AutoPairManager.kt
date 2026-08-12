@@ -1,4 +1,4 @@
-package com.fersaiyan.cyanbridge.ui
+package com.achyut.adglasses.ui
 
 import android.Manifest
 import android.bluetooth.BluetoothAdapter
@@ -8,10 +8,10 @@ import android.content.pm.PackageManager
 import android.os.Build
 import android.util.Log
 import androidx.core.content.ContextCompat
-import com.fersaiyan.cyanbridge.devices.DeviceProfileStore
-import com.fersaiyan.cyanbridge.devices.eyevue.EyevueManager
-import com.fersaiyan.cyanbridge.devices.meizumyvu.MeizuMyvuManager
-import com.fersaiyan.cyanbridge.shared.devices.DeviceClass
+import com.achyut.adglasses.devices.DeviceProfileStore
+import com.achyut.adglasses.devices.eyevue.EyevueManager
+import com.achyut.adglasses.devices.meizumyvu.MeizuMyvuManager
+import com.achyut.adglasses.shared.devices.DeviceClass
 import com.hjq.permissions.Permission
 import com.hjq.permissions.XXPermissions
 import com.oudmon.ble.base.bluetooth.BleOperateManager

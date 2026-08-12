@@ -1,8 +1,8 @@
-package com.fersaiyan.cyanbridge.ai.live
+package com.achyut.adglasses.ai.live
 
 import android.graphics.BitmapFactory
-import com.fersaiyan.cyanbridge.ai.image.ImageThumbnailQuality
-import com.fersaiyan.cyanbridge.shared.glasses.GlassesSessionCoordinator
+import com.achyut.adglasses.ai.image.ImageThumbnailQuality
+import com.achyut.adglasses.shared.glasses.GlassesSessionCoordinator
 import com.oudmon.ble.base.bluetooth.BleOperateManager
 import com.oudmon.ble.base.communication.LargeDataHandler
 import kotlinx.coroutines.CompletableDeferred

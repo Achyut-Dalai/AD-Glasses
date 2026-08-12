@@ -1,7 +1,7 @@
-package com.fersaiyan.cyanbridge.localagent.memory
+package com.achyut.adglasses.localagent.memory
 
 import android.content.Context
-import com.fersaiyan.cyanbridge.memoryvault.MemorySearchOrchestrator
+import com.achyut.adglasses.memoryvault.MemorySearchOrchestrator
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.runBlocking
 

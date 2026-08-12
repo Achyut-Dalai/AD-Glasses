@@ -1,4 +1,4 @@
-package com.fersaiyan.cyanbridge.data.local.entity
+package com.achyut.adglasses.data.local.entity
 
 import androidx.room.Entity
 import androidx.room.PrimaryKey

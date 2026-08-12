@@ -1,4 +1,4 @@
-package com.fersaiyan.cyanbridge.shared.ui.onboarding
+package com.achyut.adglasses.shared.ui.onboarding
 
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -26,14 +26,14 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
-import com.fersaiyan.cyanbridge.shared.icons.AppIcon
-import com.fersaiyan.cyanbridge.shared.icons.imageVector
-import com.fersaiyan.cyanbridge.shared.generated.resources.Res
-import com.fersaiyan.cyanbridge.shared.generated.resources.onboarding_language_description
-import com.fersaiyan.cyanbridge.shared.generated.resources.onboarding_language_title
-import com.fersaiyan.cyanbridge.shared.generated.resources.onboarding_start_setup
-import com.fersaiyan.cyanbridge.shared.generated.resources.onboarding_welcome_body
-import com.fersaiyan.cyanbridge.shared.generated.resources.onboarding_welcome_title
+import com.achyut.adglasses.shared.icons.AppIcon
+import com.achyut.adglasses.shared.icons.imageVector
+import com.achyut.adglasses.shared.generated.resources.Res
+import com.achyut.adglasses.shared.generated.resources.onboarding_language_description
+import com.achyut.adglasses.shared.generated.resources.onboarding_language_title
+import com.achyut.adglasses.shared.generated.resources.onboarding_start_setup
+import com.achyut.adglasses.shared.generated.resources.onboarding_welcome_body
+import com.achyut.adglasses.shared.generated.resources.onboarding_welcome_title
 import org.jetbrains.compose.resources.ExperimentalResourceApi
 import org.jetbrains.compose.resources.stringResource
 

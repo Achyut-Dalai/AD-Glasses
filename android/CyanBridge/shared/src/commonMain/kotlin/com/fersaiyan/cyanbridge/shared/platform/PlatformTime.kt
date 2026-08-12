@@ -1,3 +1,3 @@
-package com.fersaiyan.cyanbridge.shared.platform
+package com.achyut.adglasses.shared.platform
 
 expect fun platformCurrentTimeMillis(): Long

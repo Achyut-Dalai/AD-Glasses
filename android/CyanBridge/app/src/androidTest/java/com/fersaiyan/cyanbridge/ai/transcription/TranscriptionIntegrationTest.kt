@@ -1,12 +1,12 @@
-package com.fersaiyan.cyanbridge.ai.transcription
+package com.achyut.adglasses.ai.transcription
 
 import androidx.room.Room
 import androidx.test.core.app.ApplicationProvider
 import androidx.test.ext.junit.runners.AndroidJUnit4
-import com.fersaiyan.cyanbridge.data.local.AppDatabase
-import com.fersaiyan.cyanbridge.data.local.entity.CaptureSession
-import com.fersaiyan.cyanbridge.data.repository.CyanBridgeRepository
-import com.fersaiyan.cyanbridge.privacy.PrivacyPrefs
+import com.achyut.adglasses.data.local.AppDatabase
+import com.achyut.adglasses.data.local.entity.CaptureSession
+import com.achyut.adglasses.data.repository.CyanBridgeRepository
+import com.achyut.adglasses.privacy.PrivacyPrefs
 import kotlinx.coroutines.runBlocking
 import org.junit.After
 import org.junit.Assert.assertEquals

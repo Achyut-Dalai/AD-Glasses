@@ -1,6 +1,6 @@
-package com.fersaiyan.cyanbridge.devices
+package com.achyut.adglasses.devices
 
-import com.fersaiyan.cyanbridge.shared.devices.DeviceClass
+import com.achyut.adglasses.shared.devices.DeviceClass
 import org.junit.Assert.assertEquals
 import org.junit.Test
 

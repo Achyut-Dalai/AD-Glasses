@@ -1,4 +1,4 @@
-package com.fersaiyan.cyanbridge.ui.appearance
+package com.achyut.adglasses.ui.appearance
 
 import android.content.Context
 import android.content.SharedPreferences
@@ -7,9 +7,9 @@ import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.State
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import com.fersaiyan.cyanbridge.shared.appearance.AccentProfiles
-import com.fersaiyan.cyanbridge.shared.appearance.AppearanceSettings
-import com.fersaiyan.cyanbridge.shared.appearance.ThemeMode
+import com.achyut.adglasses.shared.appearance.AccentProfiles
+import com.achyut.adglasses.shared.appearance.AppearanceSettings
+import com.achyut.adglasses.shared.appearance.ThemeMode
 
 class AppearancePreferences(context: Context) {
     private val preferences = context.applicationContext.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)

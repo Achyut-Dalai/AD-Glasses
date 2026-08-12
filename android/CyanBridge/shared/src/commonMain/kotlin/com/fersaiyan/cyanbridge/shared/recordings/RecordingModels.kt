@@ -1,4 +1,4 @@
-package com.fersaiyan.cyanbridge.shared.recordings
+package com.achyut.adglasses.shared.recordings
 
 data class RecordingItem(
     val id: Long,

@@ -1,4 +1,4 @@
-package com.fersaiyan.cyanbridge.localmodels.remote
+package com.achyut.adglasses.localmodels.remote
 
 import java.io.File
 import java.util.Base64

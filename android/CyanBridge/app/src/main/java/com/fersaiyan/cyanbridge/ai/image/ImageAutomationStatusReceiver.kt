@@ -1,4 +1,4 @@
-package com.fersaiyan.cyanbridge.ai.image
+package com.achyut.adglasses.ai.image
 
 import android.content.BroadcastReceiver
 import android.content.Context

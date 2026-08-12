@@ -1,4 +1,4 @@
-package com.fersaiyan.cyanbridge.plugins.localagent
+package com.achyut.adglasses.plugins.localagent
 
 import android.content.BroadcastReceiver
 import android.content.ComponentName
@@ -49,28 +49,28 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.res.stringResource
 import androidx.lifecycle.lifecycleScope
 import androidx.localbroadcastmanager.content.LocalBroadcastManager
-import com.fersaiyan.cyanbridge.R
-import com.fersaiyan.cyanbridge.agent.LocalAgentPrefs as AutomationPrefs
-import com.fersaiyan.cyanbridge.agent.LocalModelsConfigureActivity
-import com.fersaiyan.cyanbridge.bridge.notifications.NotificationForwarderService
-import com.fersaiyan.cyanbridge.localagent.LocalAgentController
-import com.fersaiyan.cyanbridge.localagent.LocalAgentIntents
-import com.fersaiyan.cyanbridge.localagent.LocalAgentPrefs as RuntimePrefs
-import com.fersaiyan.cyanbridge.localagent.LocalAgentShizukuFallback
-import com.fersaiyan.cyanbridge.localagent.LocalAgentTaskHistory
-import com.fersaiyan.cyanbridge.localagent.LocalAgentTelegramService
-import com.fersaiyan.cyanbridge.localagent.LocalAgentTelegramProtocol
-import com.fersaiyan.cyanbridge.localagent.accessibility.LocalAgentAccessibilityService
-import com.fersaiyan.cyanbridge.localagent.memory.LocalAgentMemoryStore
-import com.fersaiyan.cyanbridge.localmodels.session.LocalChatSessionManager
-import com.fersaiyan.cyanbridge.plugins.autodiary.AutoDiarySettingsActivity
-import com.fersaiyan.cyanbridge.shared.plugins.NativePluginIds
-import com.fersaiyan.cyanbridge.shared.settings.AgentProviderType
-import com.fersaiyan.cyanbridge.ui.NativePluginShortcutPreference
-import com.fersaiyan.cyanbridge.ui.hasNotificationPermission
-import com.fersaiyan.cyanbridge.ui.installComposeHostWithLegacyAdapter
-import com.fersaiyan.cyanbridge.ui.localagent.PendingActionsActivity
-import com.fersaiyan.cyanbridge.ui.setThemedComposeContent
+import com.achyut.adglasses.R
+import com.achyut.adglasses.agent.LocalAgentPrefs as AutomationPrefs
+import com.achyut.adglasses.agent.LocalModelsConfigureActivity
+import com.achyut.adglasses.bridge.notifications.NotificationForwarderService
+import com.achyut.adglasses.localagent.LocalAgentController
+import com.achyut.adglasses.localagent.LocalAgentIntents
+import com.achyut.adglasses.localagent.LocalAgentPrefs as RuntimePrefs
+import com.achyut.adglasses.localagent.LocalAgentShizukuFallback
+import com.achyut.adglasses.localagent.LocalAgentTaskHistory
+import com.achyut.adglasses.localagent.LocalAgentTelegramService
+import com.achyut.adglasses.localagent.LocalAgentTelegramProtocol
+import com.achyut.adglasses.localagent.accessibility.LocalAgentAccessibilityService
+import com.achyut.adglasses.localagent.memory.LocalAgentMemoryStore
+import com.achyut.adglasses.localmodels.session.LocalChatSessionManager
+import com.achyut.adglasses.plugins.autodiary.AutoDiarySettingsActivity
+import com.achyut.adglasses.shared.plugins.NativePluginIds
+import com.achyut.adglasses.shared.settings.AgentProviderType
+import com.achyut.adglasses.ui.NativePluginShortcutPreference
+import com.achyut.adglasses.ui.hasNotificationPermission
+import com.achyut.adglasses.ui.installComposeHostWithLegacyAdapter
+import com.achyut.adglasses.ui.localagent.PendingActionsActivity
+import com.achyut.adglasses.ui.setThemedComposeContent
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import java.text.SimpleDateFormat
@@ -443,7 +443,7 @@ class LocalAgentSettingsActivity : AppCompatActivity() {
                 )
                 OutlinedButton(
                     onClick = {
-                        startActivity(Intent(this@LocalAgentSettingsActivity, com.fersaiyan.cyanbridge.ui.SettingsActivity::class.java))
+                        startActivity(Intent(this@LocalAgentSettingsActivity, com.achyut.adglasses.ui.SettingsActivity::class.java))
                     },
                     modifier = Modifier.fillMaxWidth(),
                 ) {

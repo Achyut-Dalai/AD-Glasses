@@ -1,4 +1,4 @@
-package com.fersaiyan.cyanbridge.plugins.visualdiary
+package com.achyut.adglasses.plugins.visualdiary
 
 import android.app.Notification
 import android.app.NotificationChannel
@@ -15,15 +15,15 @@ import androidx.core.app.NotificationCompat
 import androidx.core.app.ServiceCompat
 import androidx.core.content.ContextCompat
 import androidx.fragment.app.FragmentActivity
-import com.fersaiyan.cyanbridge.MainActivity
-import com.fersaiyan.cyanbridge.R
-import com.fersaiyan.cyanbridge.devices.DeviceProfileStore
-import com.fersaiyan.cyanbridge.devices.metarayban.MetaRaybanManager
-import com.fersaiyan.cyanbridge.media.autocapture.AutoLoopVisualNoteGenerator
-import com.fersaiyan.cyanbridge.shared.plugins.NativePluginIds
-import com.fersaiyan.cyanbridge.ui.CommunityPluginPrefs
-import com.fersaiyan.cyanbridge.ui.ensureNotificationPermission
-import com.fersaiyan.cyanbridge.ui.hasNotificationPermission
+import com.achyut.adglasses.MainActivity
+import com.achyut.adglasses.R
+import com.achyut.adglasses.devices.DeviceProfileStore
+import com.achyut.adglasses.devices.metarayban.MetaRaybanManager
+import com.achyut.adglasses.media.autocapture.AutoLoopVisualNoteGenerator
+import com.achyut.adglasses.shared.plugins.NativePluginIds
+import com.achyut.adglasses.ui.CommunityPluginPrefs
+import com.achyut.adglasses.ui.ensureNotificationPermission
+import com.achyut.adglasses.ui.hasNotificationPermission
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
@@ -35,7 +35,7 @@ import kotlinx.coroutines.launch
 import java.util.concurrent.atomic.AtomicBoolean
 import java.util.concurrent.atomic.AtomicInteger
 
-import com.fersaiyan.cyanbridge.devices.DeviceCapabilityHelper
+import com.achyut.adglasses.devices.DeviceCapabilityHelper
 
 /**
  * Periodic visual-diary host. HeyCyan uses its existing thumbnail path; Meta
@@ -245,9 +245,9 @@ class VisualDiaryService : Service() {
         private const val CAPTURE_KEEP_ALIVE_MS = 60_000L
         private val RUNNING = AtomicBoolean(false)
 
-        const val ACTION_START = "com.fersaiyan.cyanbridge.action.VISUAL_DIARY_START"
-        const val ACTION_STOP = "com.fersaiyan.cyanbridge.action.VISUAL_DIARY_STOP"
-        const val ACTION_CAPTURE_NOW = "com.fersaiyan.cyanbridge.action.VISUAL_DIARY_CAPTURE_NOW"
+        const val ACTION_START = "com.achyut.adglasses.action.VISUAL_DIARY_START"
+        const val ACTION_STOP = "com.achyut.adglasses.action.VISUAL_DIARY_STOP"
+        const val ACTION_CAPTURE_NOW = "com.achyut.adglasses.action.VISUAL_DIARY_CAPTURE_NOW"
 
         /** Enables Visual Diary only after it can run as a foreground service. */
         fun enable(context: Context): Boolean {

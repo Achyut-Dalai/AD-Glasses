@@ -1,12 +1,12 @@
-package com.fersaiyan.cyanbridge.chat
+package com.achyut.adglasses.chat
 
-import com.fersaiyan.cyanbridge.shared.chat.ChatMessage
-import com.fersaiyan.cyanbridge.shared.chat.ChatRole
-import com.fersaiyan.cyanbridge.shared.chat.ChatThread
-import com.fersaiyan.cyanbridge.data.local.entity.Chat as ChatEntity
-import com.fersaiyan.cyanbridge.data.local.entity.Message as MessageEntity
-import com.fersaiyan.cyanbridge.data.repository.CyanBridgeRepository
-import com.fersaiyan.cyanbridge.ui.MyApplication
+import com.achyut.adglasses.shared.chat.ChatMessage
+import com.achyut.adglasses.shared.chat.ChatRole
+import com.achyut.adglasses.shared.chat.ChatThread
+import com.achyut.adglasses.data.local.entity.Chat as ChatEntity
+import com.achyut.adglasses.data.local.entity.Message as MessageEntity
+import com.achyut.adglasses.data.repository.CyanBridgeRepository
+import com.achyut.adglasses.ui.MyApplication
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.runBlocking
 import java.util.UUID

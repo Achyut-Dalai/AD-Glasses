@@ -1,4 +1,4 @@
-package com.fersaiyan.cyanbridge.ui.wifi.p2p
+package com.achyut.adglasses.ui.wifi.p2p
 
 import android.net.wifi.p2p.WifiP2pDevice
 import com.heycyan.core.connectivity.p2p.CoreWifiP2pBroadcastReceiver

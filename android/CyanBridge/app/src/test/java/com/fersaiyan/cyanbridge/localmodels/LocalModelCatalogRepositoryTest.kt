@@ -1,6 +1,6 @@
-package com.fersaiyan.cyanbridge.localmodels
+package com.achyut.adglasses.localmodels
 
-import com.fersaiyan.cyanbridge.localmodels.catalog.LocalModelCatalogRepository
+import com.achyut.adglasses.localmodels.catalog.LocalModelCatalogRepository
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNotNull
 import org.junit.Assert.assertTrue

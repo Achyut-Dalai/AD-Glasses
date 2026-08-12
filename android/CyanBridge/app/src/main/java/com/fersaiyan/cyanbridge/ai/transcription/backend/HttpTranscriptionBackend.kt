@@ -1,7 +1,7 @@
-package com.fersaiyan.cyanbridge.ai.transcription.backend
+package com.achyut.adglasses.ai.transcription.backend
 
-import com.fersaiyan.cyanbridge.ai.transcription.TranscriptionError
-import com.fersaiyan.cyanbridge.ai.transcription.chunking.FileChunk
+import com.achyut.adglasses.ai.transcription.TranscriptionError
+import com.achyut.adglasses.ai.transcription.chunking.FileChunk
 import okhttp3.MediaType.Companion.toMediaTypeOrNull
 import okhttp3.MultipartBody
 import okhttp3.OkHttpClient

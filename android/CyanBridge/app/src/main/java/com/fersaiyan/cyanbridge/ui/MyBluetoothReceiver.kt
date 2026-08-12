@@ -1,4 +1,4 @@
-package com.fersaiyan.cyanbridge.ui
+package com.achyut.adglasses.ui
 import android.bluetooth.BluetoothDevice
 import android.nfc.Tag
 import android.os.UserManager
@@ -8,7 +8,7 @@ import com.oudmon.ble.base.bluetooth.DeviceManager
 import com.oudmon.ble.base.bluetooth.QCBluetoothCallbackCloneReceiver
 import com.oudmon.ble.base.communication.Constants
 import com.oudmon.ble.base.communication.LargeDataHandler
-import com.fersaiyan.cyanbridge.devices.DeviceProfileStore
+import com.achyut.adglasses.devices.DeviceProfileStore
 import org.greenrobot.eventbus.EventBus
 
 /**

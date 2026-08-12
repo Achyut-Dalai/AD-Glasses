@@ -1,4 +1,4 @@
-package com.fersaiyan.cyanbridge.ai.transcription
+package com.achyut.adglasses.ai.transcription
 
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue

@@ -1,7 +1,7 @@
-package com.fersaiyan.cyanbridge.localagent.dailyfacts
+package com.achyut.adglasses.localagent.dailyfacts
 
 import android.content.Context
-import com.fersaiyan.cyanbridge.localagent.memory.LocalAgentMemoryStore
+import com.achyut.adglasses.localagent.memory.LocalAgentMemoryStore
 import org.json.JSONObject
 import java.text.SimpleDateFormat
 import java.util.Calendar

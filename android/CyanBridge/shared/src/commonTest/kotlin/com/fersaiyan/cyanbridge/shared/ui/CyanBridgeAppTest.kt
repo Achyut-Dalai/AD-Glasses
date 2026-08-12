@@ -1,12 +1,12 @@
-package com.fersaiyan.cyanbridge.shared.ui
+package com.achyut.adglasses.shared.ui
 
-import com.fersaiyan.cyanbridge.shared.appearance.AccentProfiles
-import com.fersaiyan.cyanbridge.shared.appearance.AppearanceSettings
-import com.fersaiyan.cyanbridge.shared.appearance.ThemeMode
-import com.fersaiyan.cyanbridge.shared.glasses.GlassesDashboardAction
-import com.fersaiyan.cyanbridge.shared.glasses.GlassesDashboardUiState
-import com.fersaiyan.cyanbridge.shared.glasses.GlassesSyncFlow
-import com.fersaiyan.cyanbridge.shared.navigation.AppDestination
+import com.achyut.adglasses.shared.appearance.AccentProfiles
+import com.achyut.adglasses.shared.appearance.AppearanceSettings
+import com.achyut.adglasses.shared.appearance.ThemeMode
+import com.achyut.adglasses.shared.glasses.GlassesDashboardAction
+import com.achyut.adglasses.shared.glasses.GlassesDashboardUiState
+import com.achyut.adglasses.shared.glasses.GlassesSyncFlow
+import com.achyut.adglasses.shared.navigation.AppDestination
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse

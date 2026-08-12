@@ -1,10 +1,10 @@
-package com.fersaiyan.cyanbridge.data.local.dao
+package com.achyut.adglasses.data.local.dao
 
 import androidx.room.Dao
 import androidx.room.Insert
 import androidx.room.OnConflictStrategy
 import androidx.room.Query
-import com.fersaiyan.cyanbridge.data.local.entity.CaptureTranscript
+import com.achyut.adglasses.data.local.entity.CaptureTranscript
 
 @Dao
 interface CaptureTranscriptDao {

@@ -1,6 +1,6 @@
-package com.fersaiyan.cyanbridge.shared.glasses
+package com.achyut.adglasses.shared.glasses
 
-import com.fersaiyan.cyanbridge.shared.navigation.AppDestination
+import com.achyut.adglasses.shared.navigation.AppDestination
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse

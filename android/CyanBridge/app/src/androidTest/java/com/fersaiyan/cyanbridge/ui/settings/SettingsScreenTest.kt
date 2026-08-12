@@ -1,4 +1,4 @@
-package com.fersaiyan.cyanbridge.ui.settings
+package com.achyut.adglasses.ui.settings
 
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -8,11 +8,11 @@ import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
-import com.fersaiyan.cyanbridge.shared.settings.SettingsSection
-import com.fersaiyan.cyanbridge.shared.ui.settings.SettingsScreen
-import com.fersaiyan.cyanbridge.shared.ui.settings.SettingsScreenActions
-import com.fersaiyan.cyanbridge.shared.ui.settings.SettingsUiState
-import com.fersaiyan.cyanbridge.ui.theme.CyanBridgeTheme
+import com.achyut.adglasses.shared.settings.SettingsSection
+import com.achyut.adglasses.shared.ui.settings.SettingsScreen
+import com.achyut.adglasses.shared.ui.settings.SettingsScreenActions
+import com.achyut.adglasses.shared.ui.settings.SettingsUiState
+import com.achyut.adglasses.ui.theme.CyanBridgeTheme
 import org.junit.Assert.assertEquals
 import org.junit.Rule
 import org.junit.Test

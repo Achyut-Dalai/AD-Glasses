@@ -1,8 +1,8 @@
-package com.fersaiyan.cyanbridge.localagent
+package com.achyut.adglasses.localagent
 
 import android.content.Context
 import androidx.test.core.app.ApplicationProvider
-import com.fersaiyan.cyanbridge.agent.LocalAgentPrefs as AutomationPrefs
+import com.achyut.adglasses.agent.LocalAgentPrefs as AutomationPrefs
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue

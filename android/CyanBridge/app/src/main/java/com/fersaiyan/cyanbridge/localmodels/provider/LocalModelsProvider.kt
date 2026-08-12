@@ -1,16 +1,16 @@
-package com.fersaiyan.cyanbridge.localmodels.provider
+package com.achyut.adglasses.localmodels.provider
 
 import android.content.Context
-import com.fersaiyan.cyanbridge.localmodels.catalog.LocalModelCatalogRepository
-import com.fersaiyan.cyanbridge.localmodels.session.LocalChatSessionManager
-import com.fersaiyan.cyanbridge.localmodels.settings.LocalModelSettingsRepository
-import com.fersaiyan.cyanbridge.localmodels.settings.LocalModelRuntime
-import com.fersaiyan.cyanbridge.localmodels.storage.LocalModelStorageRepository
-import com.fersaiyan.cyanbridge.localmodels.templates.PromptMessage
-import com.fersaiyan.cyanbridge.localmodels.templates.PromptTemplateRegistry
-import com.fersaiyan.cyanbridge.localmodels.settings.LocalComputeBackend
-import com.fersaiyan.cyanbridge.localmodels.remote.RemoteOpenAiClient
-import com.fersaiyan.cyanbridge.localmodels.remote.RemoteOpenAiPrefs
+import com.achyut.adglasses.localmodels.catalog.LocalModelCatalogRepository
+import com.achyut.adglasses.localmodels.session.LocalChatSessionManager
+import com.achyut.adglasses.localmodels.settings.LocalModelSettingsRepository
+import com.achyut.adglasses.localmodels.settings.LocalModelRuntime
+import com.achyut.adglasses.localmodels.storage.LocalModelStorageRepository
+import com.achyut.adglasses.localmodels.templates.PromptMessage
+import com.achyut.adglasses.localmodels.templates.PromptTemplateRegistry
+import com.achyut.adglasses.localmodels.settings.LocalComputeBackend
+import com.achyut.adglasses.localmodels.remote.RemoteOpenAiClient
+import com.achyut.adglasses.localmodels.remote.RemoteOpenAiPrefs
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 

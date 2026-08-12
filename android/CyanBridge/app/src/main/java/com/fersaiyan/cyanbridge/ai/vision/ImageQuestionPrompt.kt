@@ -1,4 +1,4 @@
-package com.fersaiyan.cyanbridge.ai.vision
+package com.achyut.adglasses.ai.vision
 
 import java.util.Locale
 

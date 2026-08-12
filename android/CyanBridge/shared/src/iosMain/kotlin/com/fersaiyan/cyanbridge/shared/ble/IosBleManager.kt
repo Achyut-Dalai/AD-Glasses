@@ -1,4 +1,4 @@
-package com.fersaiyan.cyanbridge.shared.ble
+package com.achyut.adglasses.shared.ble
 
 import kotlinx.cinterop.ExperimentalForeignApi
 import kotlinx.cinterop.ObjCSignatureOverride
@@ -36,8 +36,8 @@ import platform.Foundation.NSData
 import platform.Foundation.NSError
 import platform.Foundation.NSNumber
 import platform.darwin.NSObject
-import com.fersaiyan.cyanbridge.shared.platform.PlatformLogger
-import com.fersaiyan.cyanbridge.shared.platform.toIosNSData
+import com.achyut.adglasses.shared.platform.PlatformLogger
+import com.achyut.adglasses.shared.platform.toIosNSData
 import kotlin.coroutines.resume
 import kotlin.coroutines.resumeWithException
 

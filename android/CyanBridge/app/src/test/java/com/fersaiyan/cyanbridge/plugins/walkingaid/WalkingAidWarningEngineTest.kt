@@ -1,8 +1,8 @@
-package com.fersaiyan.cyanbridge.plugins.walkingaid
+package com.achyut.adglasses.plugins.walkingaid
 
 import android.graphics.RectF
-import com.fersaiyan.cyanbridge.plugins.walkingaid.vision.DetectedObject
-import com.fersaiyan.cyanbridge.plugins.walkingaid.vision.DetectionResult
+import com.achyut.adglasses.plugins.walkingaid.vision.DetectedObject
+import com.achyut.adglasses.plugins.walkingaid.vision.DetectionResult
 import org.junit.Assert.assertTrue
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse

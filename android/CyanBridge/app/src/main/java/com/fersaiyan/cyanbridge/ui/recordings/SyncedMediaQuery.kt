@@ -1,11 +1,11 @@
-package com.fersaiyan.cyanbridge.ui.recordings
+package com.achyut.adglasses.ui.recordings
 
 import android.content.ContentUris
 import android.content.Context
 import android.os.Build
 import android.provider.MediaStore
-import com.fersaiyan.cyanbridge.media.SyncedMediaFolder
-import com.fersaiyan.cyanbridge.shared.recordings.SyncedMediaItem
+import com.achyut.adglasses.media.SyncedMediaFolder
+import com.achyut.adglasses.shared.recordings.SyncedMediaItem
 
 object SyncedMediaQuery {
     fun query(

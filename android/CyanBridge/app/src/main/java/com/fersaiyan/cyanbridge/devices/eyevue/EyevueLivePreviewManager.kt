@@ -1,4 +1,4 @@
-package com.fersaiyan.cyanbridge.devices.eyevue
+package com.achyut.adglasses.devices.eyevue
 
 import android.content.Context
 import android.net.Uri
@@ -10,7 +10,7 @@ import androidx.media3.common.Player
 import androidx.media3.common.util.UnstableApi
 import androidx.media3.exoplayer.ExoPlayer
 import androidx.media3.exoplayer.rtsp.RtspMediaSource
-import com.fersaiyan.cyanbridge.ota.LivePreviewState
+import com.achyut.adglasses.ota.LivePreviewState
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers

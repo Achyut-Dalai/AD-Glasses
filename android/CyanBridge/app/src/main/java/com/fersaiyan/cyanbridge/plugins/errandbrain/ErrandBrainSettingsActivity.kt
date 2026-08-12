@@ -1,4 +1,4 @@
-package com.fersaiyan.cyanbridge.plugins.errandbrain
+package com.achyut.adglasses.plugins.errandbrain
 
 import android.os.Bundle
 import android.widget.Toast
@@ -44,13 +44,13 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
-import com.fersaiyan.cyanbridge.R
-import com.fersaiyan.cyanbridge.plugins.PluginVoicePermissions
-import com.fersaiyan.cyanbridge.shared.plugins.NativePluginIds
-import com.fersaiyan.cyanbridge.ui.CommunityPluginPrefs
-import com.fersaiyan.cyanbridge.ui.installComposeHostWithLegacyAdapter
-import com.fersaiyan.cyanbridge.ui.NativePluginShortcutPreference
-import com.fersaiyan.cyanbridge.ui.setThemedComposeContent
+import com.achyut.adglasses.R
+import com.achyut.adglasses.plugins.PluginVoicePermissions
+import com.achyut.adglasses.shared.plugins.NativePluginIds
+import com.achyut.adglasses.ui.CommunityPluginPrefs
+import com.achyut.adglasses.ui.installComposeHostWithLegacyAdapter
+import com.achyut.adglasses.ui.NativePluginShortcutPreference
+import com.achyut.adglasses.ui.setThemedComposeContent
 
 class ErrandBrainSettingsActivity : AppCompatActivity() {
 

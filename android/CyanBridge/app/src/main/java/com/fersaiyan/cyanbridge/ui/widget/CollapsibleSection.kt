@@ -1,4 +1,4 @@
-package com.fersaiyan.cyanbridge.ui.widget
+package com.achyut.adglasses.ui.widget
 
 import android.animation.ValueAnimator
 import android.content.Context
@@ -9,7 +9,7 @@ import android.widget.ImageView
 import android.widget.LinearLayout
 import android.widget.TextView
 import androidx.interpolator.view.animation.FastOutSlowInInterpolator
-import com.fersaiyan.cyanbridge.R
+import com.achyut.adglasses.R
 
 /**
  * A collapsible card section with a header that can be clicked to expand/collapse.

@@ -1,4 +1,4 @@
-package com.fersaiyan.cyanbridge.devices.eyevue
+package com.achyut.adglasses.devices.eyevue
 
 import org.junit.Assert.assertArrayEquals
 import org.junit.Assert.assertEquals

@@ -1,9 +1,9 @@
-package com.fersaiyan.cyanbridge.ai.transcription.storage
+package com.achyut.adglasses.ai.transcription.storage
 
 import android.content.Context
-import com.fersaiyan.cyanbridge.data.local.dao.CaptureTranscriptDao
-import com.fersaiyan.cyanbridge.data.local.entity.CaptureTranscript
-import com.fersaiyan.cyanbridge.privacy.PrivacyPrefs
+import com.achyut.adglasses.data.local.dao.CaptureTranscriptDao
+import com.achyut.adglasses.data.local.entity.CaptureTranscript
+import com.achyut.adglasses.privacy.PrivacyPrefs
 
 class RoomTranscriptStore(
     private val context: Context,

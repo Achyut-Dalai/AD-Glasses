@@ -1,4 +1,4 @@
-package com.fersaiyan.cyanbridge.memoryvault.crypto
+package com.achyut.adglasses.memoryvault.crypto
 
 import android.content.Context
 import android.util.Base64

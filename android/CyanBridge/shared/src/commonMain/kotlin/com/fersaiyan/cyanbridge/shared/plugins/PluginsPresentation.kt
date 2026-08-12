@@ -1,4 +1,4 @@
-package com.fersaiyan.cyanbridge.shared.plugins
+package com.achyut.adglasses.shared.plugins
 
 /** Platform-neutral data displayed by the Community Plugins presentation. */
 data class CommunityPluginCardData(

@@ -1,4 +1,4 @@
-package com.fersaiyan.cyanbridge.shared.ui.recordings
+package com.achyut.adglasses.shared.ui.recordings
 
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
@@ -53,8 +53,8 @@ import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
-import com.fersaiyan.cyanbridge.shared.recordings.SyncedMediaItem
-import com.fersaiyan.cyanbridge.shared.generated.resources.*
+import com.achyut.adglasses.shared.recordings.SyncedMediaItem
+import com.achyut.adglasses.shared.generated.resources.*
 import org.jetbrains.compose.resources.ExperimentalResourceApi
 import org.jetbrains.compose.resources.stringResource
 

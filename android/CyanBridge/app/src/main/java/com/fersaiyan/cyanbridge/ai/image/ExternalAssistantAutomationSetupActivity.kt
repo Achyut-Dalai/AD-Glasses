@@ -1,4 +1,4 @@
-package com.fersaiyan.cyanbridge.ai.image
+package com.achyut.adglasses.ai.image
 
 import android.content.Intent
 import android.os.Bundle
@@ -47,11 +47,11 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.core.content.FileProvider
 import androidx.lifecycle.lifecycleScope
-import com.fersaiyan.cyanbridge.R
-import com.fersaiyan.cyanbridge.MainActivity
-import com.fersaiyan.cyanbridge.ui.appearance.AppearancePreferences
-import com.fersaiyan.cyanbridge.ui.appearance.rememberAppearanceSettings
-import com.fersaiyan.cyanbridge.ui.theme.CyanBridgeTheme
+import com.achyut.adglasses.R
+import com.achyut.adglasses.MainActivity
+import com.achyut.adglasses.ui.appearance.AppearancePreferences
+import com.achyut.adglasses.ui.appearance.rememberAppearanceSettings
+import com.achyut.adglasses.ui.theme.CyanBridgeTheme
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import java.io.File

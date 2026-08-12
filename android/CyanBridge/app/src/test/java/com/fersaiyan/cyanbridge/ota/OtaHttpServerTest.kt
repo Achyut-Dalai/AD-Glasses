@@ -1,4 +1,4 @@
-package com.fersaiyan.cyanbridge.ota
+package com.achyut.adglasses.ota
 
 import java.net.InetSocketAddress
 import java.net.ServerSocket

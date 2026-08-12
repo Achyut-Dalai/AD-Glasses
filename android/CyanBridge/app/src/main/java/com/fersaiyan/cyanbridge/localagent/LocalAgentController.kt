@@ -1,14 +1,14 @@
-package com.fersaiyan.cyanbridge.localagent
+package com.achyut.adglasses.localagent
 
 import android.content.ComponentName
 import android.content.Context
 import android.content.Intent
 import android.content.pm.PackageManager
 import androidx.fragment.app.FragmentActivity
-import com.fersaiyan.cyanbridge.ui.ensureNotificationPermission
-import com.fersaiyan.cyanbridge.ui.hasAccessibilityServicePermission
-import com.fersaiyan.cyanbridge.ui.hasNotificationPermission
-import com.fersaiyan.cyanbridge.ui.requestAccessibilityServicePermission
+import com.achyut.adglasses.ui.ensureNotificationPermission
+import com.achyut.adglasses.ui.hasAccessibilityServicePermission
+import com.achyut.adglasses.ui.hasNotificationPermission
+import com.achyut.adglasses.ui.requestAccessibilityServicePermission
 
 /**
  * Best-effort launcher for LocalAgentService via intent actions.
@@ -27,7 +27,7 @@ object LocalAgentController {
     )
 
     // If/when LocalAgentService is added, we expect it to live here.
-    private const val DEFAULT_SERVICE_CLASS = "com.fersaiyan.cyanbridge.localagent.LocalAgentService"
+    private const val DEFAULT_SERVICE_CLASS = "com.achyut.adglasses.localagent.LocalAgentService"
 
     fun start(context: Context): CommandResult = start(context, goal = null)
 

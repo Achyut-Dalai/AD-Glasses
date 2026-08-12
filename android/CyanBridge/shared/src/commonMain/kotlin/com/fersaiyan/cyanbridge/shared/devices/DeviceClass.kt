@@ -1,4 +1,4 @@
-package com.fersaiyan.cyanbridge.shared.devices
+package com.achyut.adglasses.shared.devices
 
 enum class DeviceClass {
     HEY_CYAN,

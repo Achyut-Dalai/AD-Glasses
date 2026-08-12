@@ -1,4 +1,4 @@
-package com.fersaiyan.cyanbridge.localmodels.remote
+package com.achyut.adglasses.localmodels.remote
 
 import android.content.Context
 import android.content.SharedPreferences

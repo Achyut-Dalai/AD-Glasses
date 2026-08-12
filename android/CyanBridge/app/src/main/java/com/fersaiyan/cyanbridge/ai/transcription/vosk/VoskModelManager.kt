@@ -1,4 +1,4 @@
-package com.fersaiyan.cyanbridge.ai.transcription.vosk
+package com.achyut.adglasses.ai.transcription.vosk
 
 import android.content.Context
 import android.util.Log

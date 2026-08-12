@@ -1,4 +1,4 @@
-package com.fersaiyan.cyanbridge.devices.eyevue
+package com.achyut.adglasses.devices.eyevue
 
 import android.content.Context
 import android.util.Log

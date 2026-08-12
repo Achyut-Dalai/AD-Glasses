@@ -1,6 +1,6 @@
-package com.fersaiyan.cyanbridge.memoryvault
+package com.achyut.adglasses.memoryvault
 
-import com.fersaiyan.cyanbridge.shared.settings.MemorySourceType
+import com.achyut.adglasses.shared.settings.MemorySourceType
 
 enum class MemorySensitivityLevel {
     LOW,

@@ -1,5 +1,5 @@
-package com.fersaiyan.cyanbridge.audio
-import com.fersaiyan.cyanbridge.shared.settings.CaptureSource
+package com.achyut.adglasses.audio
+import com.achyut.adglasses.shared.settings.CaptureSource
 
 import android.app.Notification
 import android.app.NotificationChannel
@@ -19,12 +19,12 @@ import android.util.Log
 import androidx.core.app.NotificationCompat
 import androidx.fragment.app.FragmentActivity
 import androidx.localbroadcastmanager.content.LocalBroadcastManager
-import com.fersaiyan.cyanbridge.MainActivity
-import com.fersaiyan.cyanbridge.R
-import com.fersaiyan.cyanbridge.data.local.entity.CaptureSession
-import com.fersaiyan.cyanbridge.media.autocapture.AutoAudioCapturePrefs
-import com.fersaiyan.cyanbridge.plugins.PluginVoicePermissions
-import com.fersaiyan.cyanbridge.ui.MyApplication
+import com.achyut.adglasses.MainActivity
+import com.achyut.adglasses.R
+import com.achyut.adglasses.data.local.entity.CaptureSession
+import com.achyut.adglasses.media.autocapture.AutoAudioCapturePrefs
+import com.achyut.adglasses.plugins.PluginVoicePermissions
+import com.achyut.adglasses.ui.MyApplication
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -484,10 +484,10 @@ class MeetingCaptureService : Service() {
     companion object {
         private const val TAG = "MeetingCaptureService"
 
-        const val ACTION_START = "com.fersaiyan.cyanbridge.action.MEETING_CAPTURE_START"
-        const val ACTION_STOP = "com.fersaiyan.cyanbridge.action.MEETING_CAPTURE_STOP"
+        const val ACTION_START = "com.achyut.adglasses.action.MEETING_CAPTURE_START"
+        const val ACTION_STOP = "com.achyut.adglasses.action.MEETING_CAPTURE_STOP"
 
-        const val ACTION_STATE = "com.fersaiyan.cyanbridge.action.MEETING_CAPTURE_STATE"
+        const val ACTION_STATE = "com.achyut.adglasses.action.MEETING_CAPTURE_STATE"
         const val EXTRA_IS_RECORDING = "extra_is_recording"
         const val EXTRA_SOURCE = "extra_source"
         const val EXTRA_STOP_REASON = "extra_stop_reason"

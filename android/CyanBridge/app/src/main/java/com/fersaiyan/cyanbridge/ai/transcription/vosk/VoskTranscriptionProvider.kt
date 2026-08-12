@@ -1,4 +1,4 @@
-package com.fersaiyan.cyanbridge.ai.transcription.vosk
+package com.achyut.adglasses.ai.transcription.vosk
 
 import android.content.Context
 import android.media.MediaCodec
@@ -6,7 +6,7 @@ import android.media.MediaExtractor
 import android.media.MediaFormat
 import android.os.Build
 import android.util.Log
-import com.fersaiyan.cyanbridge.ai.transcription.TranscriptionProvider
+import com.achyut.adglasses.ai.transcription.TranscriptionProvider
 import org.json.JSONObject
 import org.vosk.Model
 import org.vosk.Recognizer

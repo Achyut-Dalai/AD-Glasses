@@ -1,4 +1,4 @@
-package com.fersaiyan.cyanbridge.shared.icons
+package com.achyut.adglasses.shared.icons
 
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.outlined.ArrowBack

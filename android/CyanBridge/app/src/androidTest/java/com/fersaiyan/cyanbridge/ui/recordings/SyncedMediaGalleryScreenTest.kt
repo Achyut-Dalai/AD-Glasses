@@ -1,12 +1,12 @@
-package com.fersaiyan.cyanbridge.ui.recordings
+package com.achyut.adglasses.ui.recordings
 
 import androidx.compose.ui.test.assertTextContains
 import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
-import com.fersaiyan.cyanbridge.shared.ui.recordings.SyncedMediaGalleryScreen
-import com.fersaiyan.cyanbridge.ui.theme.CyanBridgeTheme
+import com.achyut.adglasses.shared.ui.recordings.SyncedMediaGalleryScreen
+import com.achyut.adglasses.ui.theme.CyanBridgeTheme
 import org.junit.Assert.assertEquals
 import org.junit.Rule
 import org.junit.Test

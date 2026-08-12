@@ -1,8 +1,8 @@
-package com.fersaiyan.cyanbridge.ai.vision
+package com.achyut.adglasses.ai.vision
 
 import android.content.Context
-import com.fersaiyan.cyanbridge.ai.image.ImageThumbnailQuality
-import com.fersaiyan.cyanbridge.ui.localization.AppLanguagePreferences
+import com.achyut.adglasses.ai.image.ImageThumbnailQuality
+import com.achyut.adglasses.ui.localization.AppLanguagePreferences
 import java.util.Locale
 
 object ImageQuestionPreferences {

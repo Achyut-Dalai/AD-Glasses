@@ -1,4 +1,4 @@
-package com.fersaiyan.cyanbridge.wifiadb
+package com.achyut.adglasses.wifiadb
 
 import java.io.File
 import org.junit.Assert.assertEquals

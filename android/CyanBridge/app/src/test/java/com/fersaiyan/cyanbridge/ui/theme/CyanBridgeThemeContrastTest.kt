@@ -1,8 +1,8 @@
-package com.fersaiyan.cyanbridge.ui.theme
+package com.achyut.adglasses.ui.theme
 
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.luminance
-import com.fersaiyan.cyanbridge.shared.appearance.AccentProfiles
+import com.achyut.adglasses.shared.appearance.AccentProfiles
 import org.junit.Assert.assertTrue
 import org.junit.Test
 

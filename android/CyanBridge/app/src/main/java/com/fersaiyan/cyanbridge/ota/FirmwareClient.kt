@@ -1,10 +1,10 @@
-package com.fersaiyan.cyanbridge.ota
+package com.achyut.adglasses.ota
 
 import android.content.Context
 import android.net.Uri
 import android.util.Log
-import com.fersaiyan.cyanbridge.agent.ProSubscriptionServerPrefs
-import com.fersaiyan.cyanbridge.shared.glasses.OtaFirmwareSource
+import com.achyut.adglasses.agent.ProSubscriptionServerPrefs
+import com.achyut.adglasses.shared.glasses.OtaFirmwareSource
 import org.json.JSONObject
 import java.io.File
 import java.io.FileInputStream

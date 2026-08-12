@@ -1,7 +1,7 @@
-package com.fersaiyan.cyanbridge.ai.transcription
+package com.achyut.adglasses.ai.transcription
 
 import android.content.Context
-import com.fersaiyan.cyanbridge.BuildConfig
+import com.achyut.adglasses.BuildConfig
 import java.io.File
 
 /**

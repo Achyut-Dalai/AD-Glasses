@@ -1,4 +1,4 @@
-package com.fersaiyan.cyanbridge.ui.wifi.utils;
+package com.achyut.adglasses.ui.wifi.utils;
 
 public class SSIDUtils {
     public static String convertToQuotedString(String ssid) {

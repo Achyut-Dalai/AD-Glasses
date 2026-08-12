@@ -1,4 +1,4 @@
-package com.fersaiyan.cyanbridge.shared.billing
+package com.achyut.adglasses.shared.billing
 
 import kotlin.test.Test
 import kotlin.test.assertEquals

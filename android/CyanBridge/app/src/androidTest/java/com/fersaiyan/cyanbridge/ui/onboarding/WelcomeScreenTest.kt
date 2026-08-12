@@ -1,13 +1,13 @@
-package com.fersaiyan.cyanbridge.ui.onboarding
+package com.achyut.adglasses.ui.onboarding
 
 import androidx.compose.ui.test.assertIsEnabled
 import androidx.compose.ui.test.assertIsNotEnabled
 import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
-import com.fersaiyan.cyanbridge.shared.ui.onboarding.OnboardingLanguageOption
-import com.fersaiyan.cyanbridge.shared.ui.onboarding.WelcomeScreen
-import com.fersaiyan.cyanbridge.ui.theme.CyanBridgeTheme
+import com.achyut.adglasses.shared.ui.onboarding.OnboardingLanguageOption
+import com.achyut.adglasses.shared.ui.onboarding.WelcomeScreen
+import com.achyut.adglasses.ui.theme.CyanBridgeTheme
 import org.junit.Assert.assertEquals
 import org.junit.Rule
 import org.junit.Test

@@ -1,6 +1,6 @@
-package com.fersaiyan.cyanbridge.localagent
+package com.achyut.adglasses.localagent
 
-import com.fersaiyan.cyanbridge.ai.vision.ImageQuestionPreferences
+import com.achyut.adglasses.ai.vision.ImageQuestionPreferences
 import java.util.Locale
 
 object LocalAgentLanguage {

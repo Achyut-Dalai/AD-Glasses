@@ -1,4 +1,4 @@
-package com.fersaiyan.cyanbridge.shared.ui
+package com.achyut.adglasses.shared.ui
 
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
@@ -16,16 +16,16 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
-import com.fersaiyan.cyanbridge.shared.appearance.AppearanceSettings
-import com.fersaiyan.cyanbridge.shared.glasses.GlassesDashboardAction
-import com.fersaiyan.cyanbridge.shared.glasses.GlassesDashboardUiState
-import com.fersaiyan.cyanbridge.shared.glasses.GlassesSyncFlow
-import com.fersaiyan.cyanbridge.shared.generated.resources.Res
-import com.fersaiyan.cyanbridge.shared.generated.resources.action_open
-import com.fersaiyan.cyanbridge.shared.navigation.AppDestination
-import com.fersaiyan.cyanbridge.shared.ui.appearance.AppearanceScreen
-import com.fersaiyan.cyanbridge.shared.ui.glasses.GlassesDashboardScreen
-import com.fersaiyan.cyanbridge.shared.ui.glasses.GlassesSyncFlowPickerDialog
+import com.achyut.adglasses.shared.appearance.AppearanceSettings
+import com.achyut.adglasses.shared.glasses.GlassesDashboardAction
+import com.achyut.adglasses.shared.glasses.GlassesDashboardUiState
+import com.achyut.adglasses.shared.glasses.GlassesSyncFlow
+import com.achyut.adglasses.shared.generated.resources.Res
+import com.achyut.adglasses.shared.generated.resources.action_open
+import com.achyut.adglasses.shared.navigation.AppDestination
+import com.achyut.adglasses.shared.ui.appearance.AppearanceScreen
+import com.achyut.adglasses.shared.ui.glasses.GlassesDashboardScreen
+import com.achyut.adglasses.shared.ui.glasses.GlassesSyncFlowPickerDialog
 
 /**
  * Root composable for the CyanBridge app.

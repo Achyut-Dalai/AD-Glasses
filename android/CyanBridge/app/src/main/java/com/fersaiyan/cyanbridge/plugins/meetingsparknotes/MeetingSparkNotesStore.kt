@@ -1,4 +1,4 @@
-package com.fersaiyan.cyanbridge.plugins.meetingsparknotes
+package com.achyut.adglasses.plugins.meetingsparknotes
 
 import android.content.Context
 import android.util.Log

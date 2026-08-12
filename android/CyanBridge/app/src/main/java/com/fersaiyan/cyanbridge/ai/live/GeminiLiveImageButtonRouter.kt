@@ -1,4 +1,4 @@
-package com.fersaiyan.cyanbridge.ai.live
+package com.achyut.adglasses.ai.live
 
 /** Routes a glasses AI-photo button event to the foreground Gemini Live session, if any. */
 object GeminiLiveImageButtonRouter {

@@ -1,4 +1,4 @@
-package com.fersaiyan.cyanbridge.bridge.core
+package com.achyut.adglasses.bridge.core
 
 /** Shortcut to create a Text command. */
 fun DisplayCommand.Companion.text(text: String, priority: DisplayPriority = DisplayPriority.NORMAL) =

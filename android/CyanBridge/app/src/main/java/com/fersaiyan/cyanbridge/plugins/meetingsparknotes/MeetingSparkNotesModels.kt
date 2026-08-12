@@ -1,4 +1,4 @@
-package com.fersaiyan.cyanbridge.plugins.meetingsparknotes
+package com.achyut.adglasses.plugins.meetingsparknotes
 
 data class MeetingRecord(
     val timestampMs: Long,

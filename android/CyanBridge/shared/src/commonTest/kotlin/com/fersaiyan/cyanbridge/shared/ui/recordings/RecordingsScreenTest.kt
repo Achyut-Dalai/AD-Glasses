@@ -1,8 +1,8 @@
-package com.fersaiyan.cyanbridge.shared.ui.recordings
+package com.achyut.adglasses.shared.ui.recordings
 
-import com.fersaiyan.cyanbridge.shared.recordings.RecordingItem
-import com.fersaiyan.cyanbridge.shared.recordings.SyncedMediaItem
-import com.fersaiyan.cyanbridge.shared.recordings.TranscriptionEngine
+import com.achyut.adglasses.shared.recordings.RecordingItem
+import com.achyut.adglasses.shared.recordings.SyncedMediaItem
+import com.achyut.adglasses.shared.recordings.TranscriptionEngine
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertNull

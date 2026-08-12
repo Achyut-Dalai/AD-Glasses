@@ -1,4 +1,4 @@
-package com.fersaiyan.cyanbridge.shared.ui.recordings
+package com.achyut.adglasses.shared.ui.recordings
 
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.clickable
@@ -56,17 +56,17 @@ import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Dialog
-import com.fersaiyan.cyanbridge.shared.recordings.MeetingRecordingUiState
-import com.fersaiyan.cyanbridge.shared.recordings.RecordingItem
-import com.fersaiyan.cyanbridge.shared.recordings.SyncedMediaItem
-import com.fersaiyan.cyanbridge.shared.recordings.TranscriptDialogUiState
-import com.fersaiyan.cyanbridge.shared.recordings.TranscriptionEngine
-import com.fersaiyan.cyanbridge.shared.recordings.TranscriptionProgressUiState
-import com.fersaiyan.cyanbridge.shared.navigation.AppDestination
-import com.fersaiyan.cyanbridge.shared.navigation.icon
-import com.fersaiyan.cyanbridge.shared.icons.imageVector
-import com.fersaiyan.cyanbridge.shared.generated.resources.*
-import com.fersaiyan.cyanbridge.shared.ui.localizedDestinationLabel
+import com.achyut.adglasses.shared.recordings.MeetingRecordingUiState
+import com.achyut.adglasses.shared.recordings.RecordingItem
+import com.achyut.adglasses.shared.recordings.SyncedMediaItem
+import com.achyut.adglasses.shared.recordings.TranscriptDialogUiState
+import com.achyut.adglasses.shared.recordings.TranscriptionEngine
+import com.achyut.adglasses.shared.recordings.TranscriptionProgressUiState
+import com.achyut.adglasses.shared.navigation.AppDestination
+import com.achyut.adglasses.shared.navigation.icon
+import com.achyut.adglasses.shared.icons.imageVector
+import com.achyut.adglasses.shared.generated.resources.*
+import com.achyut.adglasses.shared.ui.localizedDestinationLabel
 import org.jetbrains.compose.resources.ExperimentalResourceApi
 import org.jetbrains.compose.resources.stringResource
 

@@ -1,7 +1,7 @@
-package com.fersaiyan.cyanbridge.localagent
+package com.achyut.adglasses.localagent
 
 import android.util.Log
-import com.fersaiyan.cyanbridge.localagent.accessibility.LocalAgentAccessibilityService
+import com.achyut.adglasses.localagent.accessibility.LocalAgentAccessibilityService
 import kotlinx.coroutines.CancellationException
 
 /**

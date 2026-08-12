@@ -1,8 +1,8 @@
-package com.fersaiyan.cyanbridge.agent
+package com.achyut.adglasses.agent
 
 import android.content.Context
-import com.fersaiyan.cyanbridge.localmodels.settings.LocalModelSettingsRepository
-import com.fersaiyan.cyanbridge.localmodels.storage.LocalModelStorageRepository
+import com.achyut.adglasses.localmodels.settings.LocalModelSettingsRepository
+import com.achyut.adglasses.localmodels.storage.LocalModelStorageRepository
 
 object LocalModelsPrefs {
     private const val PREFS = "local_models_prefs"

@@ -1,4 +1,4 @@
-package com.fersaiyan.cyanbridge.ai.image
+package com.achyut.adglasses.ai.image
 
 /** The bytes supplied to the model, not a cosmetic image-quality preference. */
 enum class ImageQuestionSource(

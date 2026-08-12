@@ -1,19 +1,19 @@
-package com.fersaiyan.cyanbridge.shared.appearance
+package com.achyut.adglasses.shared.appearance
 
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertTrue
-import com.fersaiyan.cyanbridge.shared.navigation.AppDestination
-import com.fersaiyan.cyanbridge.shared.chat.ChatThreadSummary
-import com.fersaiyan.cyanbridge.shared.chat.ChatMessage
-import com.fersaiyan.cyanbridge.shared.chat.ChatRole
-import com.fersaiyan.cyanbridge.shared.chat.ChatThread
-import com.fersaiyan.cyanbridge.shared.chat.ChatThreadEvent
-import com.fersaiyan.cyanbridge.shared.chat.ChatThreadStateReducer
-import com.fersaiyan.cyanbridge.shared.chat.ChatThreadUiState
-import com.fersaiyan.cyanbridge.bridge.core.DisplayCommand
-import com.fersaiyan.cyanbridge.bridge.core.DisplayPriority
-import com.fersaiyan.cyanbridge.shared.platform.CyanBridgeSharedBootstrap
+import com.achyut.adglasses.shared.navigation.AppDestination
+import com.achyut.adglasses.shared.chat.ChatThreadSummary
+import com.achyut.adglasses.shared.chat.ChatMessage
+import com.achyut.adglasses.shared.chat.ChatRole
+import com.achyut.adglasses.shared.chat.ChatThread
+import com.achyut.adglasses.shared.chat.ChatThreadEvent
+import com.achyut.adglasses.shared.chat.ChatThreadStateReducer
+import com.achyut.adglasses.shared.chat.ChatThreadUiState
+import com.achyut.adglasses.bridge.core.DisplayCommand
+import com.achyut.adglasses.bridge.core.DisplayPriority
+import com.achyut.adglasses.shared.platform.CyanBridgeSharedBootstrap
 
 class AppearanceModelsTest {
     @Test

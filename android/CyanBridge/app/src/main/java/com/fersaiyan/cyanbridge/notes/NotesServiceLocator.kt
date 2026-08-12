@@ -1,7 +1,7 @@
-package com.fersaiyan.cyanbridge.notes
+package com.achyut.adglasses.notes
 
 import android.content.Context
-import com.fersaiyan.cyanbridge.ui.MyApplication
+import com.achyut.adglasses.ui.MyApplication
 
 /**
  * Minimal service locator so unit tests can override NotesRepository.

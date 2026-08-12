@@ -1,4 +1,4 @@
-package com.fersaiyan.cyanbridge.bridge.devices.memomind
+package com.achyut.adglasses.bridge.devices.memomind
 
 import org.json.JSONArray
 import org.json.JSONObject
@@ -142,7 +142,7 @@ object MemoMindPacketEncoder {
         title: String,
         body: String,
         appName: String = "CyanBridge",
-        packageName: String = "com.fersaiyan.cyanbridge",
+        packageName: String = "com.achyut.adglasses",
     ): ByteArray {
         val payload = JSONObject()
             .put("id", nextNotificationId.getAndIncrement())

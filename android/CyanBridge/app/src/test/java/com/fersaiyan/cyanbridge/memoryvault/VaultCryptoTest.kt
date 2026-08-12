@@ -1,6 +1,6 @@
-package com.fersaiyan.cyanbridge.memoryvault
+package com.achyut.adglasses.memoryvault
 
-import com.fersaiyan.cyanbridge.memoryvault.crypto.VaultCrypto
+import com.achyut.adglasses.memoryvault.crypto.VaultCrypto
 import org.junit.Assert.assertArrayEquals
 import org.junit.Assert.assertNotEquals
 import org.junit.Test

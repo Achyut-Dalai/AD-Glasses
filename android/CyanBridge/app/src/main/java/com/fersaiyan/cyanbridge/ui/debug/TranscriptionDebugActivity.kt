@@ -1,4 +1,4 @@
-package com.fersaiyan.cyanbridge.ui.debug
+package com.achyut.adglasses.ui.debug
 
 import android.os.Bundle
 import android.widget.Toast
@@ -7,21 +7,21 @@ import androidx.appcompat.app.AppCompatActivity
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
-import com.fersaiyan.cyanbridge.ai.transcription.ChunkingTranscriptionService
-import com.fersaiyan.cyanbridge.ai.transcription.TranscriptionEndpointPrefs
-import com.fersaiyan.cyanbridge.ai.transcription.TranscriptionEvent
-import com.fersaiyan.cyanbridge.ai.transcription.TranscriptionRequest
-import com.fersaiyan.cyanbridge.ai.transcription.backend.FakeTranscriptionBackend
-import com.fersaiyan.cyanbridge.ai.transcription.backend.HttpTranscriptionBackend
-import com.fersaiyan.cyanbridge.ai.transcription.backend.TranscriptionBackend
-import com.fersaiyan.cyanbridge.ai.transcription.storage.RoomTranscriptStore
-import com.fersaiyan.cyanbridge.data.local.entity.CaptureSession
-import com.fersaiyan.cyanbridge.privacy.PrivacyPrefs
-import com.fersaiyan.cyanbridge.ui.MyApplication
-import com.fersaiyan.cyanbridge.ui.appearance.AppearancePreferences
-import com.fersaiyan.cyanbridge.shared.ui.debug.TranscriptionDebugScreen
-import com.fersaiyan.cyanbridge.ui.appearance.rememberAppearanceSettings
-import com.fersaiyan.cyanbridge.ui.theme.CyanBridgeTheme
+import com.achyut.adglasses.ai.transcription.ChunkingTranscriptionService
+import com.achyut.adglasses.ai.transcription.TranscriptionEndpointPrefs
+import com.achyut.adglasses.ai.transcription.TranscriptionEvent
+import com.achyut.adglasses.ai.transcription.TranscriptionRequest
+import com.achyut.adglasses.ai.transcription.backend.FakeTranscriptionBackend
+import com.achyut.adglasses.ai.transcription.backend.HttpTranscriptionBackend
+import com.achyut.adglasses.ai.transcription.backend.TranscriptionBackend
+import com.achyut.adglasses.ai.transcription.storage.RoomTranscriptStore
+import com.achyut.adglasses.data.local.entity.CaptureSession
+import com.achyut.adglasses.privacy.PrivacyPrefs
+import com.achyut.adglasses.ui.MyApplication
+import com.achyut.adglasses.ui.appearance.AppearancePreferences
+import com.achyut.adglasses.shared.ui.debug.TranscriptionDebugScreen
+import com.achyut.adglasses.ui.appearance.rememberAppearanceSettings
+import com.achyut.adglasses.ui.theme.CyanBridgeTheme
 import kotlinx.coroutines.MainScope
 import kotlinx.coroutines.cancel
 import kotlinx.coroutines.flow.first
@@ -33,7 +33,7 @@ import java.io.File
  * Minimal manual POC entry point for Chapter 6.
  *
  * Launch via:
- *  adb shell am start -n com.fersaiyan.cyanbridge/.ui.debug.TranscriptionDebugActivity
+ *  adb shell am start -n com.achyut.adglasses/.ui.debug.TranscriptionDebugActivity
  */
 class TranscriptionDebugActivity : AppCompatActivity() {
 

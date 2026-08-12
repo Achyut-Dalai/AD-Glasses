@@ -1,4 +1,4 @@
-package com.fersaiyan.cyanbridge.ui.wifi.p2p
+package com.achyut.adglasses.ui.wifi.p2p
 
 import android.Manifest
 import android.annotation.SuppressLint

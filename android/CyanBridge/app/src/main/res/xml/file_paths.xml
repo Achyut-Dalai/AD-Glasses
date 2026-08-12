@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <paths>
-    <external-path name="my_images" path="Android/data/com.fersaiyan.cyanbridge/files/DCIM" />
+    <external-path name="my_images" path="Android/data/com.achyut.adglasses/files/DCIM" />
     <external-files-path name="external_files" path="DCIM" />
     <external-files-path name="root" path="." />
     <cache-path name="cache" path="." />

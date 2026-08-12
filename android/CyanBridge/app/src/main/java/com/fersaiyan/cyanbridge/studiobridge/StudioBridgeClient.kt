@@ -1,9 +1,9 @@
-package com.fersaiyan.cyanbridge.studiobridge
+package com.achyut.adglasses.studiobridge
 
 import android.content.Context
 import android.os.Build
 import android.util.Log
-import com.fersaiyan.cyanbridge.localmodels.remote.RemoteOpenAiPrefs
+import com.achyut.adglasses.localmodels.remote.RemoteOpenAiPrefs
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers

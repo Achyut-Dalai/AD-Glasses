@@ -1,8 +1,8 @@
-package com.fersaiyan.cyanbridge.bridge.runtimes.mentra
+package com.achyut.adglasses.bridge.runtimes.mentra
 
 import android.util.Log
-import com.fersaiyan.cyanbridge.bridge.core.DisplayCommand
-import com.fersaiyan.cyanbridge.bridge.core.GlassesBridge
+import com.achyut.adglasses.bridge.core.DisplayCommand
+import com.achyut.adglasses.bridge.core.GlassesBridge
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job

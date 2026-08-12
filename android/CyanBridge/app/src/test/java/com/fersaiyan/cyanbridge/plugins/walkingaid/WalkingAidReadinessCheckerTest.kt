@@ -1,7 +1,7 @@
-package com.fersaiyan.cyanbridge.plugins.walkingaid
+package com.achyut.adglasses.plugins.walkingaid
 
 import androidx.test.core.app.ApplicationProvider
-import com.fersaiyan.cyanbridge.agent.ProSubscriptionPrefs
+import com.achyut.adglasses.agent.ProSubscriptionPrefs
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Before

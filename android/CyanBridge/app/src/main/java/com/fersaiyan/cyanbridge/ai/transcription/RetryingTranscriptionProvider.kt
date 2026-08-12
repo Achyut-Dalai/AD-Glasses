@@ -1,4 +1,4 @@
-package com.fersaiyan.cyanbridge.ai.transcription
+package com.achyut.adglasses.ai.transcription
 
 import kotlinx.coroutines.delay
 import java.io.File

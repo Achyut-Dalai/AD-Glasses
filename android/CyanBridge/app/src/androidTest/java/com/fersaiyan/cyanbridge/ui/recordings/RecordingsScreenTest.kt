@@ -1,4 +1,4 @@
-package com.fersaiyan.cyanbridge.ui.recordings
+package com.achyut.adglasses.ui.recordings
 
 import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.test.assertTextContains
@@ -7,12 +7,12 @@ import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
-import com.fersaiyan.cyanbridge.shared.recordings.MeetingRecordingUiState
-import com.fersaiyan.cyanbridge.shared.recordings.RecordingItem
-import com.fersaiyan.cyanbridge.shared.recordings.SyncedMediaItem
-import com.fersaiyan.cyanbridge.shared.recordings.TranscriptionEngine
-import com.fersaiyan.cyanbridge.shared.ui.recordings.RecordingsScreen
-import com.fersaiyan.cyanbridge.ui.theme.CyanBridgeTheme
+import com.achyut.adglasses.shared.recordings.MeetingRecordingUiState
+import com.achyut.adglasses.shared.recordings.RecordingItem
+import com.achyut.adglasses.shared.recordings.SyncedMediaItem
+import com.achyut.adglasses.shared.recordings.TranscriptionEngine
+import com.achyut.adglasses.shared.ui.recordings.RecordingsScreen
+import com.achyut.adglasses.ui.theme.CyanBridgeTheme
 import org.junit.Assert.assertEquals
 import org.junit.Rule
 import org.junit.Test

@@ -1,16 +1,16 @@
-package com.fersaiyan.cyanbridge.shared.platform
+package com.achyut.adglasses.shared.platform
 
-import com.fersaiyan.cyanbridge.shared.ai.AiModelRegistry
-import com.fersaiyan.cyanbridge.shared.ai.ChatAiService
-import com.fersaiyan.cyanbridge.shared.ai.ImageAiService
-import com.fersaiyan.cyanbridge.shared.ai.VoiceAiService
-import com.fersaiyan.cyanbridge.shared.ble.BleManager
-import com.fersaiyan.cyanbridge.shared.network.WifiP2pManager
-import com.fersaiyan.cyanbridge.shared.persistence.ChatRepository
-import com.fersaiyan.cyanbridge.shared.persistence.DeviceProfileRepository
-import com.fersaiyan.cyanbridge.shared.persistence.MediaRecordRepository
-import com.fersaiyan.cyanbridge.shared.persistence.MemoryVaultRepository
-import com.fersaiyan.cyanbridge.shared.persistence.NotesRepository
+import com.achyut.adglasses.shared.ai.AiModelRegistry
+import com.achyut.adglasses.shared.ai.ChatAiService
+import com.achyut.adglasses.shared.ai.ImageAiService
+import com.achyut.adglasses.shared.ai.VoiceAiService
+import com.achyut.adglasses.shared.ble.BleManager
+import com.achyut.adglasses.shared.network.WifiP2pManager
+import com.achyut.adglasses.shared.persistence.ChatRepository
+import com.achyut.adglasses.shared.persistence.DeviceProfileRepository
+import com.achyut.adglasses.shared.persistence.MediaRecordRepository
+import com.achyut.adglasses.shared.persistence.MemoryVaultRepository
+import com.achyut.adglasses.shared.persistence.NotesRepository
 
 /**
  * Service locator for cross-platform services.

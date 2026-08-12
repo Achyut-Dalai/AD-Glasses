@@ -1,4 +1,4 @@
-package com.fersaiyan.cyanbridge.shared.ui.onboarding
+package com.achyut.adglasses.shared.ui.onboarding
 
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -22,20 +22,20 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
-import com.fersaiyan.cyanbridge.shared.generated.resources.Res
-import com.fersaiyan.cyanbridge.shared.generated.resources.onboarding_battery_body
-import com.fersaiyan.cyanbridge.shared.generated.resources.onboarding_battery_disabled
-import com.fersaiyan.cyanbridge.shared.generated.resources.onboarding_battery_enabled
-import com.fersaiyan.cyanbridge.shared.generated.resources.onboarding_battery_headline
-import com.fersaiyan.cyanbridge.shared.generated.resources.onboarding_battery_list
-import com.fersaiyan.cyanbridge.shared.generated.resources.onboarding_battery_title
-import com.fersaiyan.cyanbridge.shared.generated.resources.onboarding_continue
-import com.fersaiyan.cyanbridge.shared.generated.resources.onboarding_disable_battery
-import com.fersaiyan.cyanbridge.shared.generated.resources.onboarding_dont_show_again
-import com.fersaiyan.cyanbridge.shared.generated.resources.onboarding_lock_recents_body
-import com.fersaiyan.cyanbridge.shared.generated.resources.onboarding_lock_recents_title
-import com.fersaiyan.cyanbridge.shared.generated.resources.onboarding_not_now
-import com.fersaiyan.cyanbridge.shared.generated.resources.onboarding_open_app_info
+import com.achyut.adglasses.shared.generated.resources.Res
+import com.achyut.adglasses.shared.generated.resources.onboarding_battery_body
+import com.achyut.adglasses.shared.generated.resources.onboarding_battery_disabled
+import com.achyut.adglasses.shared.generated.resources.onboarding_battery_enabled
+import com.achyut.adglasses.shared.generated.resources.onboarding_battery_headline
+import com.achyut.adglasses.shared.generated.resources.onboarding_battery_list
+import com.achyut.adglasses.shared.generated.resources.onboarding_battery_title
+import com.achyut.adglasses.shared.generated.resources.onboarding_continue
+import com.achyut.adglasses.shared.generated.resources.onboarding_disable_battery
+import com.achyut.adglasses.shared.generated.resources.onboarding_dont_show_again
+import com.achyut.adglasses.shared.generated.resources.onboarding_lock_recents_body
+import com.achyut.adglasses.shared.generated.resources.onboarding_lock_recents_title
+import com.achyut.adglasses.shared.generated.resources.onboarding_not_now
+import com.achyut.adglasses.shared.generated.resources.onboarding_open_app_info
 import org.jetbrains.compose.resources.ExperimentalResourceApi
 import org.jetbrains.compose.resources.stringResource
 

@@ -1,4 +1,4 @@
-package com.fersaiyan.cyanbridge.plugins.walkingaid
+package com.achyut.adglasses.plugins.walkingaid
 
 import android.content.Context
 import android.graphics.BitmapFactory
@@ -6,8 +6,8 @@ import androidx.test.core.app.ApplicationProvider
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.filters.LargeTest
 import androidx.test.platform.app.InstrumentationRegistry
-import com.fersaiyan.cyanbridge.plugins.walkingaid.vision.LiteRtVisionBackend
-import com.fersaiyan.cyanbridge.plugins.walkingaid.vision.VisionFrame
+import com.achyut.adglasses.plugins.walkingaid.vision.LiteRtVisionBackend
+import com.achyut.adglasses.plugins.walkingaid.vision.VisionFrame
 import kotlinx.coroutines.runBlocking
 import okhttp3.OkHttpClient
 import okhttp3.Request

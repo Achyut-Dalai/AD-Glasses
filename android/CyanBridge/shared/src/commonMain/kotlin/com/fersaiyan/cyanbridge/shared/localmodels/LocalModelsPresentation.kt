@@ -1,4 +1,4 @@
-package com.fersaiyan.cyanbridge.shared.localmodels
+package com.achyut.adglasses.shared.localmodels
 
 /**
  * Platform-neutral presentation contract for local-model configuration. Model

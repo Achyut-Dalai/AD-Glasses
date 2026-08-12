@@ -1,9 +1,9 @@
-package com.fersaiyan.cyanbridge.localmodels.engine
+package com.achyut.adglasses.localmodels.engine
 
 import android.content.Context
 import android.util.Log
-import com.fersaiyan.cyanbridge.localmodels.settings.LocalComputeBackend
-import com.fersaiyan.cyanbridge.ui.MyApplication
+import com.achyut.adglasses.localmodels.settings.LocalComputeBackend
+import com.achyut.adglasses.ui.MyApplication
 import com.google.ai.edge.litertlm.Backend
 import com.google.ai.edge.litertlm.Content
 import com.google.ai.edge.litertlm.Conversation

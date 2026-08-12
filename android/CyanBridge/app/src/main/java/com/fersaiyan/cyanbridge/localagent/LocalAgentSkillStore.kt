@@ -1,7 +1,7 @@
-package com.fersaiyan.cyanbridge.localagent
+package com.achyut.adglasses.localagent
 
 import android.content.Context
-import com.fersaiyan.cyanbridge.localagent.actions.LocalAgentActionManager
+import com.achyut.adglasses.localagent.actions.LocalAgentActionManager
 import org.json.JSONArray
 import org.json.JSONObject
 

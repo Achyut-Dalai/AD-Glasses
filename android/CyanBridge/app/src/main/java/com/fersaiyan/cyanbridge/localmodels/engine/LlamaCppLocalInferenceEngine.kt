@@ -1,4 +1,4 @@
-package com.fersaiyan.cyanbridge.localmodels.engine
+package com.achyut.adglasses.localmodels.engine
 import android.net.Uri
 import android.os.ParcelFileDescriptor
 import android.util.Log
@@ -12,8 +12,8 @@ import kotlinx.coroutines.flow.firstOrNull
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import org.nehuatl.llamacpp.LlamaAndroid
-import com.fersaiyan.cyanbridge.localmodels.settings.LocalComputeBackend
-import com.fersaiyan.cyanbridge.ui.MyApplication
+import com.achyut.adglasses.localmodels.settings.LocalComputeBackend
+import com.achyut.adglasses.ui.MyApplication
 import java.io.File
 import java.util.concurrent.atomic.AtomicInteger
 

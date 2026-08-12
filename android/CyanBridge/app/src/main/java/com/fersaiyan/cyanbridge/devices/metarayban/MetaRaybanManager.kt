@@ -1,4 +1,4 @@
-package com.fersaiyan.cyanbridge.devices.metarayban
+package com.achyut.adglasses.devices.metarayban
 
 import android.app.Activity
 import android.content.ContentValues
@@ -10,9 +10,9 @@ import android.os.Build
 import android.os.Environment
 import android.provider.MediaStore
 import android.util.Log
-import com.fersaiyan.cyanbridge.glasses.GlassesSession
-import com.fersaiyan.cyanbridge.glasses.GlassesSessionCoordinator
-import com.fersaiyan.cyanbridge.glasses.GlassesSessionLease
+import com.achyut.adglasses.glasses.GlassesSession
+import com.achyut.adglasses.glasses.GlassesSessionCoordinator
+import com.achyut.adglasses.glasses.GlassesSessionLease
 import com.meta.wearable.dat.camera.Stream
 import com.meta.wearable.dat.camera.addStream
 import com.meta.wearable.dat.camera.types.PhotoData

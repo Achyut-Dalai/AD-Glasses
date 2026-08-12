@@ -1,4 +1,4 @@
-package com.fersaiyan.cyanbridge.ai.image
+package com.achyut.adglasses.ai.image
 
 import android.content.Context
 import java.util.UUID

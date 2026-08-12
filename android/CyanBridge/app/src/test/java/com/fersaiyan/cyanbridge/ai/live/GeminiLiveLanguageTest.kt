@@ -1,9 +1,9 @@
-package com.fersaiyan.cyanbridge.ai.live
+package com.achyut.adglasses.ai.live
 
-import com.fersaiyan.cyanbridge.ai.vision.ImageQuestionDefaults
-import com.fersaiyan.cyanbridge.ai.vision.ImageQuestionPromptResolver
-import com.fersaiyan.cyanbridge.ai.vision.ImageQuestionRoute
-import com.fersaiyan.cyanbridge.ai.vision.ImageQuestionSettings
+import com.achyut.adglasses.ai.vision.ImageQuestionDefaults
+import com.achyut.adglasses.ai.vision.ImageQuestionPromptResolver
+import com.achyut.adglasses.ai.vision.ImageQuestionRoute
+import com.achyut.adglasses.ai.vision.ImageQuestionSettings
 import org.junit.Assert.assertTrue
 import org.junit.Test
 

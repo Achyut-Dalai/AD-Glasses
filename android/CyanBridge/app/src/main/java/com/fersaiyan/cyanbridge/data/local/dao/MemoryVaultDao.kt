@@ -1,19 +1,19 @@
-package com.fersaiyan.cyanbridge.data.local.dao
+package com.achyut.adglasses.data.local.dao
 
 import androidx.room.Dao
 import androidx.room.Insert
 import androidx.room.OnConflictStrategy
 import androidx.room.Query
-import com.fersaiyan.cyanbridge.data.local.entity.LocalEmbeddingStoreEntity
-import com.fersaiyan.cyanbridge.data.local.entity.LocalSearchIndexStateEntity
-import com.fersaiyan.cyanbridge.data.local.entity.MemoryModePreferenceEntity
-import com.fersaiyan.cyanbridge.data.local.entity.MemoryPolicyMetadataEntity
-import com.fersaiyan.cyanbridge.data.local.entity.MigrationStateEntity
-import com.fersaiyan.cyanbridge.data.local.entity.SyncPayloadManifestEntity
-import com.fersaiyan.cyanbridge.data.local.entity.SyncPreparationQueueEntity
-import com.fersaiyan.cyanbridge.data.local.entity.VaultItemEntity
-import com.fersaiyan.cyanbridge.data.local.entity.VaultItemKeyEntity
-import com.fersaiyan.cyanbridge.data.local.entity.VaultLockStateEntity
+import com.achyut.adglasses.data.local.entity.LocalEmbeddingStoreEntity
+import com.achyut.adglasses.data.local.entity.LocalSearchIndexStateEntity
+import com.achyut.adglasses.data.local.entity.MemoryModePreferenceEntity
+import com.achyut.adglasses.data.local.entity.MemoryPolicyMetadataEntity
+import com.achyut.adglasses.data.local.entity.MigrationStateEntity
+import com.achyut.adglasses.data.local.entity.SyncPayloadManifestEntity
+import com.achyut.adglasses.data.local.entity.SyncPreparationQueueEntity
+import com.achyut.adglasses.data.local.entity.VaultItemEntity
+import com.achyut.adglasses.data.local.entity.VaultItemKeyEntity
+import com.achyut.adglasses.data.local.entity.VaultLockStateEntity
 
 @Dao
 interface MemoryVaultDao {

@@ -1,11 +1,11 @@
-package com.fersaiyan.cyanbridge.data.repository
+package com.achyut.adglasses.data.repository
 
-import com.fersaiyan.cyanbridge.data.local.AppDatabase
-import com.fersaiyan.cyanbridge.data.local.entity.CaptureSession
-import com.fersaiyan.cyanbridge.data.local.entity.Chat
-import com.fersaiyan.cyanbridge.data.local.entity.Message
-import com.fersaiyan.cyanbridge.data.local.entity.Note
-import com.fersaiyan.cyanbridge.data.local.entity.TranscriptionRecord
+import com.achyut.adglasses.data.local.AppDatabase
+import com.achyut.adglasses.data.local.entity.CaptureSession
+import com.achyut.adglasses.data.local.entity.Chat
+import com.achyut.adglasses.data.local.entity.Message
+import com.achyut.adglasses.data.local.entity.Note
+import com.achyut.adglasses.data.local.entity.TranscriptionRecord
 import kotlinx.coroutines.flow.Flow
 
 /**

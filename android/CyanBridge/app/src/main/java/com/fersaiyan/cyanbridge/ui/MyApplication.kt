@@ -1,4 +1,4 @@
-package com.fersaiyan.cyanbridge.ui
+package com.achyut.adglasses.ui
 
 import android.app.Application
 import android.bluetooth.BluetoothAdapter
@@ -13,27 +13,27 @@ import com.oudmon.ble.base.bluetooth.BleAction
 import com.oudmon.ble.base.bluetooth.BleBaseControl
 import com.oudmon.ble.base.bluetooth.BleOperateManager
 import com.oudmon.ble.base.communication.LargeDataHandler
-import com.fersaiyan.cyanbridge.agent.LocalAgentPrefs
-import com.fersaiyan.cyanbridge.ai.router.AiProviderPrefs
-import com.fersaiyan.cyanbridge.ai.router.AiProviderType
-import com.fersaiyan.cyanbridge.localmodels.storage.LocalModelStorageRepository
-import com.fersaiyan.cyanbridge.localagent.daily.DailyFactsReminderScheduler
-import com.fersaiyan.cyanbridge.plugins.autodiary.AutoDiaryService
-import com.fersaiyan.cyanbridge.plugins.localagent.LocalAgentPlugin
-import com.fersaiyan.cyanbridge.plugins.PluginVoicePermissions
-import com.fersaiyan.cyanbridge.plugins.visualdiary.VisualDiaryPreferences
-import com.fersaiyan.cyanbridge.plugins.visualdiary.VisualDiaryService
-import com.fersaiyan.cyanbridge.memoryvault.MemoryVaultBootstrap
-import com.fersaiyan.cyanbridge.devices.DeviceProfileStore
-import com.fersaiyan.cyanbridge.media.autocapture.AutoAudioCapturePrefs
-import com.fersaiyan.cyanbridge.media.autocapture.AutoAudioCaptureService
-import com.fersaiyan.cyanbridge.localmodels.remote.RemoteOpenAiPrefs
-import com.fersaiyan.cyanbridge.studiobridge.StudioApprovalHandler
-import com.fersaiyan.cyanbridge.studiobridge.StudioBridgeClient
-import com.fersaiyan.cyanbridge.studiobridge.StudioBridgeForegroundService
-import com.fersaiyan.cyanbridge.ui.localization.AppLanguagePreferences
-import com.fersaiyan.cyanbridge.shared.platform.CyanBridgeServices
-import com.fersaiyan.cyanbridge.shared.platform.initPlatformPreferences
+import com.achyut.adglasses.agent.LocalAgentPrefs
+import com.achyut.adglasses.ai.router.AiProviderPrefs
+import com.achyut.adglasses.ai.router.AiProviderType
+import com.achyut.adglasses.localmodels.storage.LocalModelStorageRepository
+import com.achyut.adglasses.localagent.daily.DailyFactsReminderScheduler
+import com.achyut.adglasses.plugins.autodiary.AutoDiaryService
+import com.achyut.adglasses.plugins.localagent.LocalAgentPlugin
+import com.achyut.adglasses.plugins.PluginVoicePermissions
+import com.achyut.adglasses.plugins.visualdiary.VisualDiaryPreferences
+import com.achyut.adglasses.plugins.visualdiary.VisualDiaryService
+import com.achyut.adglasses.memoryvault.MemoryVaultBootstrap
+import com.achyut.adglasses.devices.DeviceProfileStore
+import com.achyut.adglasses.media.autocapture.AutoAudioCapturePrefs
+import com.achyut.adglasses.media.autocapture.AutoAudioCaptureService
+import com.achyut.adglasses.localmodels.remote.RemoteOpenAiPrefs
+import com.achyut.adglasses.studiobridge.StudioApprovalHandler
+import com.achyut.adglasses.studiobridge.StudioBridgeClient
+import com.achyut.adglasses.studiobridge.StudioBridgeForegroundService
+import com.achyut.adglasses.ui.localization.AppLanguagePreferences
+import com.achyut.adglasses.shared.platform.CyanBridgeServices
+import com.achyut.adglasses.shared.platform.initPlatformPreferences
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
@@ -156,7 +156,7 @@ class MyApplication : Application(){
         if (CyanBridgeServices.isInitialized()) return
 
         // Create Android BLE manager wrapper
-        val androidBleManager = com.fersaiyan.cyanbridge.shared.ble.AndroidBleManager(
+        val androidBleManager = com.achyut.adglasses.shared.ble.AndroidBleManager(
             bleOperateManager = BleOperateManager.getInstance(),
             largeDataHandler = LargeDataHandler.getInstance(),
             deviceManager = com.oudmon.ble.base.bluetooth.DeviceManager.getInstance(),
@@ -257,19 +257,19 @@ class MyApplication : Application(){
             }
         private lateinit var instance: MyApplication
 
-        val database: com.fersaiyan.cyanbridge.data.local.AppDatabase by lazy {
+        val database: com.achyut.adglasses.data.local.AppDatabase by lazy {
             androidx.room.Room.databaseBuilder(
                 CONTEXT,
-                com.fersaiyan.cyanbridge.data.local.AppDatabase::class.java,
+                com.achyut.adglasses.data.local.AppDatabase::class.java,
                 "cyanbridge-db"
             )
                 .addMigrations(
-                    com.fersaiyan.cyanbridge.data.local.AppDatabase.MIGRATION_1_2,
-                    com.fersaiyan.cyanbridge.data.local.AppDatabase.MIGRATION_2_3,
-                    com.fersaiyan.cyanbridge.data.local.AppDatabase.MIGRATION_3_4,
-                    com.fersaiyan.cyanbridge.data.local.AppDatabase.MIGRATION_4_5,
-                    com.fersaiyan.cyanbridge.data.local.AppDatabase.MIGRATION_5_6,
-                    com.fersaiyan.cyanbridge.data.local.AppDatabase.MIGRATION_6_7,
+                    com.achyut.adglasses.data.local.AppDatabase.MIGRATION_1_2,
+                    com.achyut.adglasses.data.local.AppDatabase.MIGRATION_2_3,
+                    com.achyut.adglasses.data.local.AppDatabase.MIGRATION_3_4,
+                    com.achyut.adglasses.data.local.AppDatabase.MIGRATION_4_5,
+                    com.achyut.adglasses.data.local.AppDatabase.MIGRATION_5_6,
+                    com.achyut.adglasses.data.local.AppDatabase.MIGRATION_6_7,
                 )
                 .addCallback(
                     object : androidx.room.RoomDatabase.Callback() {
@@ -278,9 +278,9 @@ class MyApplication : Application(){
                             // Room doesn't (yet) support declaring FTS5 virtual tables via annotations.
                             // Ensure the FTS5 index exists for fresh installs.
                             runCatching {
-                                com.fersaiyan.cyanbridge.data.local.AppDatabase.MIGRATION_4_5.migrate(db)
-                                com.fersaiyan.cyanbridge.data.local.AppDatabase.MIGRATION_5_6.migrate(db)
-                                com.fersaiyan.cyanbridge.data.local.AppDatabase.MIGRATION_6_7.migrate(db)
+                                com.achyut.adglasses.data.local.AppDatabase.MIGRATION_4_5.migrate(db)
+                                com.achyut.adglasses.data.local.AppDatabase.MIGRATION_5_6.migrate(db)
+                                com.achyut.adglasses.data.local.AppDatabase.MIGRATION_6_7.migrate(db)
                             }
                         }
                     }
@@ -288,17 +288,17 @@ class MyApplication : Application(){
                 .build()
         }
 
-        val repository: com.fersaiyan.cyanbridge.data.repository.CyanBridgeRepository by lazy {
-            com.fersaiyan.cyanbridge.data.repository.CyanBridgeRepository(database)
+        val repository: com.achyut.adglasses.data.repository.CyanBridgeRepository by lazy {
+            com.achyut.adglasses.data.repository.CyanBridgeRepository(database)
         }
 
         // Chapter 7: summarization + notes workflow
-        val summarizationService: com.fersaiyan.cyanbridge.shared.notes.SummarizationService by lazy {
-            com.fersaiyan.cyanbridge.ai.summarization.AiSummarizationService(CONTEXT)
+        val summarizationService: com.achyut.adglasses.shared.notes.SummarizationService by lazy {
+            com.achyut.adglasses.ai.summarization.AiSummarizationService(CONTEXT)
         }
 
-        val notesRepository: com.fersaiyan.cyanbridge.notes.NotesRepository by lazy {
-            com.fersaiyan.cyanbridge.notes.RoomNotesRepository(
+        val notesRepository: com.achyut.adglasses.notes.NotesRepository by lazy {
+            com.achyut.adglasses.notes.RoomNotesRepository(
                 noteDao = database.noteDao(),
                 summarizationService = summarizationService,
             )

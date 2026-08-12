@@ -1,6 +1,6 @@
-package com.fersaiyan.cyanbridge.localmodels.settings
+package com.achyut.adglasses.localmodels.settings
 
-import com.fersaiyan.cyanbridge.localmodels.catalog.LocalModelCatalogEntry
+import com.achyut.adglasses.localmodels.catalog.LocalModelCatalogEntry
 
 enum class LocalModelPerformanceProfile(val label: String) {
     FAST("Fast"),

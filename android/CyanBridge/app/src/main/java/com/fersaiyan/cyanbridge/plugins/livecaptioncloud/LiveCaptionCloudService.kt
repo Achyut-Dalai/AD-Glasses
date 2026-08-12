@@ -1,16 +1,16 @@
-package com.fersaiyan.cyanbridge.plugins.livecaptioncloud
+package com.achyut.adglasses.plugins.livecaptioncloud
 
 import android.app.Service
 import android.content.Context
 import android.content.Intent
 import android.os.IBinder
 import android.util.Log
-import com.fersaiyan.cyanbridge.ai.router.CliCloudClient
-import com.fersaiyan.cyanbridge.bridge.core.DisplayCommand
-import com.fersaiyan.cyanbridge.bridge.core.GlassesBridge
-import com.fersaiyan.cyanbridge.plugins.PluginVoiceRecognizer
-import com.fersaiyan.cyanbridge.plugins.startPluginVoiceForeground
-import com.fersaiyan.cyanbridge.plugins.startPluginVoiceService
+import com.achyut.adglasses.ai.router.CliCloudClient
+import com.achyut.adglasses.bridge.core.DisplayCommand
+import com.achyut.adglasses.bridge.core.GlassesBridge
+import com.achyut.adglasses.plugins.PluginVoiceRecognizer
+import com.achyut.adglasses.plugins.startPluginVoiceForeground
+import com.achyut.adglasses.plugins.startPluginVoiceService
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
@@ -200,8 +200,8 @@ class LiveCaptionCloudService : Service() {
         private const val TAG = "LiveCaptionCloud"
         private const val NOTIFICATION_TEXT_LIMIT = 100
 
-        const val ACTION_START = "com.fersaiyan.cyanbridge.ACTION_START_CAPTION"
-        const val ACTION_STOP = "com.fersaiyan.cyanbridge.ACTION_STOP_CAPTION"
+        const val ACTION_START = "com.achyut.adglasses.ACTION_START_CAPTION"
+        const val ACTION_STOP = "com.achyut.adglasses.ACTION_STOP_CAPTION"
 
         fun start(context: Context) {
             startPluginVoiceService(

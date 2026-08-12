@@ -1,4 +1,4 @@
-package com.fersaiyan.cyanbridge.ai
+package com.achyut.adglasses.ai
 
 import android.app.NotificationChannel
 import android.app.NotificationManager
@@ -14,8 +14,8 @@ import android.util.Log
 import androidx.core.app.NotificationCompat
 import androidx.core.app.ServiceCompat
 import androidx.core.content.ContextCompat
-import com.fersaiyan.cyanbridge.MainActivity
-import com.fersaiyan.cyanbridge.R
+import com.achyut.adglasses.MainActivity
+import com.achyut.adglasses.R
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
@@ -122,8 +122,8 @@ class AiQuestionForegroundService : Service() {
         private const val CHANNEL_ID = "ai_question_work"
         private const val NOTIFICATION_ID = 7043
         private const val MAX_WORK_DURATION_MS = 2L * 60L * 1000L
-        private const val ACTION_START = "com.fersaiyan.cyanbridge.action.AI_QUESTION_START"
-        private const val ACTION_STOP = "com.fersaiyan.cyanbridge.action.AI_QUESTION_STOP"
+        private const val ACTION_START = "com.achyut.adglasses.action.AI_QUESTION_START"
+        private const val ACTION_STOP = "com.achyut.adglasses.action.AI_QUESTION_STOP"
         private const val EXTRA_STATUS = "status"
 
         fun start(context: Context, status: String) {

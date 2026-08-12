@@ -1,11 +1,11 @@
-package com.fersaiyan.cyanbridge.shared.media
+package com.achyut.adglasses.shared.media
 
-import com.fersaiyan.cyanbridge.shared.persistence.MediaRecordEntity
-import com.fersaiyan.cyanbridge.shared.persistence.MediaRecordRepository
-import com.fersaiyan.cyanbridge.shared.platform.PlatformFilePaths
-import com.fersaiyan.cyanbridge.shared.platform.PlatformHttpClient
-import com.fersaiyan.cyanbridge.shared.platform.PlatformLogger
-import com.fersaiyan.cyanbridge.shared.platform.platformCurrentTimeMillis
+import com.achyut.adglasses.shared.persistence.MediaRecordEntity
+import com.achyut.adglasses.shared.persistence.MediaRecordRepository
+import com.achyut.adglasses.shared.platform.PlatformFilePaths
+import com.achyut.adglasses.shared.platform.PlatformHttpClient
+import com.achyut.adglasses.shared.platform.PlatformLogger
+import com.achyut.adglasses.shared.platform.platformCurrentTimeMillis
 import platform.Foundation.NSFileManager
 import kotlinx.cinterop.ExperimentalForeignApi
 

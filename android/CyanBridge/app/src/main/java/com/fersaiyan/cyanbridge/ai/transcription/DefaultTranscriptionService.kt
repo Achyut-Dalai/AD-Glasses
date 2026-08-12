@@ -1,10 +1,10 @@
-package com.fersaiyan.cyanbridge.ai.transcription
+package com.achyut.adglasses.ai.transcription
 
 import android.content.Context
-import com.fersaiyan.cyanbridge.data.local.entity.CaptureSession
-import com.fersaiyan.cyanbridge.data.local.entity.TranscriptionRecord
-import com.fersaiyan.cyanbridge.data.repository.CyanBridgeRepository
-import com.fersaiyan.cyanbridge.privacy.PrivacyPrefs
+import com.achyut.adglasses.data.local.entity.CaptureSession
+import com.achyut.adglasses.data.local.entity.TranscriptionRecord
+import com.achyut.adglasses.data.repository.CyanBridgeRepository
+import com.achyut.adglasses.privacy.PrivacyPrefs
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import java.io.File

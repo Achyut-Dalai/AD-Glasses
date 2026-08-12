@@ -1,4 +1,4 @@
-package com.fersaiyan.cyanbridge.agent
+package com.achyut.adglasses.agent
 
 import android.net.Uri
 import org.junit.Assert.assertEquals

@@ -1,4 +1,4 @@
-package com.fersaiyan.cyanbridge.devices.meizumyvu
+package com.achyut.adglasses.devices.meizumyvu
 
 import android.app.Notification
 import android.app.NotificationChannel
@@ -13,9 +13,9 @@ import android.os.IBinder
 import android.util.Log
 import androidx.core.content.ContextCompat
 import androidx.fragment.app.FragmentActivity
-import com.fersaiyan.cyanbridge.MainActivity
-import com.fersaiyan.cyanbridge.ui.ensureNotificationPermission
-import com.fersaiyan.cyanbridge.ui.hasNotificationPermission
+import com.achyut.adglasses.MainActivity
+import com.achyut.adglasses.ui.ensureNotificationPermission
+import com.achyut.adglasses.ui.hasNotificationPermission
 
 /** Keeps MYVU's BLE heartbeat and per-session RFCOMM relay alive off-screen. */
 class MeizuMyvuConnectionService : Service() {
@@ -71,7 +71,7 @@ class MeizuMyvuConnectionService : Service() {
 
     companion object {
         private const val TAG = "MeizuMyvuService"
-        private const val ACTION_CONNECT = "com.fersaiyan.cyanbridge.meizu.CONNECT"
+        private const val ACTION_CONNECT = "com.achyut.adglasses.meizu.CONNECT"
         private const val EXTRA_MAC = "mac"
         private const val CHANNEL_ID = "myvu_connection"
         private const val NOTIFICATION_ID = 7101

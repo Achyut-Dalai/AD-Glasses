@@ -1,4 +1,4 @@
-package com.fersaiyan.cyanbridge.ai.assistant
+package com.achyut.adglasses.ai.assistant
 
 import android.content.Context
 

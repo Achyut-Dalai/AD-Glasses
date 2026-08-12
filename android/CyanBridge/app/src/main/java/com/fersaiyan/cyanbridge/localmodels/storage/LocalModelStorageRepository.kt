@@ -1,9 +1,9 @@
-package com.fersaiyan.cyanbridge.localmodels.storage
+package com.achyut.adglasses.localmodels.storage
 
 import android.content.Context
 import android.net.Uri
 import android.os.StatFs
-import com.fersaiyan.cyanbridge.localmodels.catalog.LocalModelCatalogEntry
+import com.achyut.adglasses.localmodels.catalog.LocalModelCatalogEntry
 import org.json.JSONArray
 import org.json.JSONObject
 import java.io.File

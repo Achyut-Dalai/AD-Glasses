@@ -1,4 +1,4 @@
-package com.fersaiyan.cyanbridge.ui
+package com.achyut.adglasses.ui
 import android.content.ComponentName
 import android.content.Context
 import android.content.Intent
@@ -12,7 +12,7 @@ import androidx.fragment.app.FragmentActivity
 import com.hjq.permissions.OnPermissionCallback
 import com.hjq.permissions.Permission
 import com.hjq.permissions.XXPermissions
-import com.fersaiyan.cyanbridge.localagent.accessibility.LocalAgentAccessibilityService
+import com.achyut.adglasses.localagent.accessibility.LocalAgentAccessibilityService
 
 /**
  * @author hzy ,

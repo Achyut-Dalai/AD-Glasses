@@ -1,4 +1,4 @@
-package com.fersaiyan.cyanbridge.agent
+package com.achyut.adglasses.agent
 
 import android.content.BroadcastReceiver
 import android.content.Context
@@ -30,42 +30,42 @@ import com.google.android.material.button.MaterialButton
 import com.google.android.material.progressindicator.LinearProgressIndicator
 import com.google.android.material.switchmaterial.SwitchMaterial
 import com.google.android.material.textfield.TextInputEditText
-import com.fersaiyan.cyanbridge.R
-import com.fersaiyan.cyanbridge.localmodels.catalog.LocalModelCatalogEntry
-import com.fersaiyan.cyanbridge.localmodels.catalog.LocalModelCatalogRepository
-import com.fersaiyan.cyanbridge.localmodels.device.DeviceCapabilityService
-import com.fersaiyan.cyanbridge.localmodels.device.DeviceSnapshot
-import com.fersaiyan.cyanbridge.localmodels.download.ModelDownloadForegroundService
-import com.fersaiyan.cyanbridge.localmodels.session.LocalChatSessionManager
-import com.fersaiyan.cyanbridge.localmodels.settings.LocalComputeBackend
-import com.fersaiyan.cyanbridge.localmodels.settings.LocalGenerationSettings
-import com.fersaiyan.cyanbridge.localmodels.settings.LocalModelPerformanceProfile
-import com.fersaiyan.cyanbridge.localmodels.settings.LocalModelRuntime
-import com.fersaiyan.cyanbridge.localmodels.settings.LocalModelSettingsRepository
-import com.fersaiyan.cyanbridge.localmodels.storage.InstalledLocalModel
-import com.fersaiyan.cyanbridge.localmodels.storage.LocalModelFileUtils
-import com.fersaiyan.cyanbridge.localmodels.storage.LocalModelStorageRepository
-import com.fersaiyan.cyanbridge.localmodels.remote.RemoteOpenAiClient
-import com.fersaiyan.cyanbridge.localmodels.remote.RemoteOpenAiPrefs
-import com.fersaiyan.cyanbridge.plugins.PluginVoicePermissions
-import com.fersaiyan.cyanbridge.shared.localmodels.InstalledModelUiItem
-import com.fersaiyan.cyanbridge.shared.localmodels.LocalModelCatalogUiItem
-import com.fersaiyan.cyanbridge.shared.localmodels.LocalModelDownloadUiState
-import com.fersaiyan.cyanbridge.shared.localmodels.LocalModelGenerationUiState
-import com.fersaiyan.cyanbridge.shared.localmodels.LocalModelOptionField
-import com.fersaiyan.cyanbridge.shared.localmodels.LocalModelTextField
-import com.fersaiyan.cyanbridge.shared.localmodels.LocalModelToggleField
-import com.fersaiyan.cyanbridge.shared.localmodels.LocalModelsAction
-import com.fersaiyan.cyanbridge.shared.localmodels.LocalModelsConfigureUiState
-import com.fersaiyan.cyanbridge.shared.localmodels.LocalModelsSection
-import com.fersaiyan.cyanbridge.shared.localmodels.RemoteInferenceUiState
-import com.fersaiyan.cyanbridge.shared.localmodels.StudioBridgeUiState
-import com.fersaiyan.cyanbridge.ui.appearance.AppearancePreferences
-import com.fersaiyan.cyanbridge.ui.appearance.rememberAppearanceSettings
-import com.fersaiyan.cyanbridge.ui.debug.DebugLogSupport
-import com.fersaiyan.cyanbridge.shared.ui.localmodels.LocalModelsConfigureScreen
-import com.fersaiyan.cyanbridge.ui.theme.CyanBridgeTheme
-import com.fersaiyan.cyanbridge.ui.installComposeHostWithLegacyAdapter
+import com.achyut.adglasses.R
+import com.achyut.adglasses.localmodels.catalog.LocalModelCatalogEntry
+import com.achyut.adglasses.localmodels.catalog.LocalModelCatalogRepository
+import com.achyut.adglasses.localmodels.device.DeviceCapabilityService
+import com.achyut.adglasses.localmodels.device.DeviceSnapshot
+import com.achyut.adglasses.localmodels.download.ModelDownloadForegroundService
+import com.achyut.adglasses.localmodels.session.LocalChatSessionManager
+import com.achyut.adglasses.localmodels.settings.LocalComputeBackend
+import com.achyut.adglasses.localmodels.settings.LocalGenerationSettings
+import com.achyut.adglasses.localmodels.settings.LocalModelPerformanceProfile
+import com.achyut.adglasses.localmodels.settings.LocalModelRuntime
+import com.achyut.adglasses.localmodels.settings.LocalModelSettingsRepository
+import com.achyut.adglasses.localmodels.storage.InstalledLocalModel
+import com.achyut.adglasses.localmodels.storage.LocalModelFileUtils
+import com.achyut.adglasses.localmodels.storage.LocalModelStorageRepository
+import com.achyut.adglasses.localmodels.remote.RemoteOpenAiClient
+import com.achyut.adglasses.localmodels.remote.RemoteOpenAiPrefs
+import com.achyut.adglasses.plugins.PluginVoicePermissions
+import com.achyut.adglasses.shared.localmodels.InstalledModelUiItem
+import com.achyut.adglasses.shared.localmodels.LocalModelCatalogUiItem
+import com.achyut.adglasses.shared.localmodels.LocalModelDownloadUiState
+import com.achyut.adglasses.shared.localmodels.LocalModelGenerationUiState
+import com.achyut.adglasses.shared.localmodels.LocalModelOptionField
+import com.achyut.adglasses.shared.localmodels.LocalModelTextField
+import com.achyut.adglasses.shared.localmodels.LocalModelToggleField
+import com.achyut.adglasses.shared.localmodels.LocalModelsAction
+import com.achyut.adglasses.shared.localmodels.LocalModelsConfigureUiState
+import com.achyut.adglasses.shared.localmodels.LocalModelsSection
+import com.achyut.adglasses.shared.localmodels.RemoteInferenceUiState
+import com.achyut.adglasses.shared.localmodels.StudioBridgeUiState
+import com.achyut.adglasses.ui.appearance.AppearancePreferences
+import com.achyut.adglasses.ui.appearance.rememberAppearanceSettings
+import com.achyut.adglasses.ui.debug.DebugLogSupport
+import com.achyut.adglasses.shared.ui.localmodels.LocalModelsConfigureScreen
+import com.achyut.adglasses.ui.theme.CyanBridgeTheme
+import com.achyut.adglasses.ui.installComposeHostWithLegacyAdapter
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.CancellationException
@@ -362,7 +362,7 @@ class LocalModelsConfigureActivity : AppCompatActivity() {
         val templateOptions = buildList {
             add("Auto (catalog default)")
             addAll(
-                com.fersaiyan.cyanbridge.localmodels.templates.PromptTemplateRegistry.templates.map {
+                com.achyut.adglasses.localmodels.templates.PromptTemplateRegistry.templates.map {
                     "${it.label} (${it.id})"
                 },
             )
@@ -762,7 +762,7 @@ class LocalModelsConfigureActivity : AppCompatActivity() {
         spinnerComputeBackend.adapter = ArrayAdapter(this, android.R.layout.simple_spinner_dropdown_item, backends)
 
         val templateItems = mutableListOf("Auto (catalog default)")
-        templateItems += com.fersaiyan.cyanbridge.localmodels.templates.PromptTemplateRegistry.templates.map {
+        templateItems += com.achyut.adglasses.localmodels.templates.PromptTemplateRegistry.templates.map {
             "${it.label} (${it.id})"
         }
         spinnerTemplateOverride.adapter = ArrayAdapter(this, android.R.layout.simple_spinner_dropdown_item, templateItems)
@@ -1203,7 +1203,7 @@ class LocalModelsConfigureActivity : AppCompatActivity() {
         suppressProfileSelection = false
         applySettingsToInputs(settings)
 
-        val templates = com.fersaiyan.cyanbridge.localmodels.templates.PromptTemplateRegistry.templates
+        val templates = com.achyut.adglasses.localmodels.templates.PromptTemplateRegistry.templates
         val idx = templates.indexOfFirst { it.id == settings.templateOverrideId }
         spinnerTemplateOverride.setSelection(if (idx >= 0) idx + 1 else 0)
     }
@@ -1303,7 +1303,7 @@ class LocalModelsConfigureActivity : AppCompatActivity() {
     private fun selectedTemplateOverrideId(): String? {
         val pos = spinnerTemplateOverride.selectedItemPosition
         if (pos <= 0) return null
-        return com.fersaiyan.cyanbridge.localmodels.templates.PromptTemplateRegistry.templates
+        return com.achyut.adglasses.localmodels.templates.PromptTemplateRegistry.templates
             .getOrNull(pos - 1)
             ?.id
     }
@@ -1721,7 +1721,7 @@ class LocalModelsConfigureActivity : AppCompatActivity() {
         Toast.makeText(this, msg, Toast.LENGTH_SHORT).show()
         tvRemoteStatus.text = if (enabled) "Active: $model @ $url" else ""
         if (RemoteOpenAiPrefs.isBridgeEnabled(this)) {
-            val restarted = (application as? com.fersaiyan.cyanbridge.ui.MyApplication)
+            val restarted = (application as? com.achyut.adglasses.ui.MyApplication)
                 ?.startStudioBridge() == true
             tvStudioBridgeStatus.text = if (restarted) {
                 "Bridge reconnecting with the updated server settings."
@@ -1832,7 +1832,7 @@ class LocalModelsConfigureActivity : AppCompatActivity() {
         RemoteOpenAiPrefs.setBridgeEnabled(this, enabled)
 
         // Start or stop the bridge client.
-        val app = application as? com.fersaiyan.cyanbridge.ui.MyApplication
+        val app = application as? com.achyut.adglasses.ui.MyApplication
         if (enabled) {
             if (app?.startStudioBridge() != true) {
                 tvStudioBridgeStatus.text = "Bridge could not start. Check model and microphone access."

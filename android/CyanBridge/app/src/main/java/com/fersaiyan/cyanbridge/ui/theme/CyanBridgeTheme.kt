@@ -1,4 +1,4 @@
-package com.fersaiyan.cyanbridge.ui.theme
+package com.achyut.adglasses.ui.theme
 
 import android.app.Activity
 import android.content.Context
@@ -16,12 +16,12 @@ import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalView
 import androidx.core.view.WindowCompat
-import com.fersaiyan.cyanbridge.shared.appearance.AccentProfile
-import com.fersaiyan.cyanbridge.shared.appearance.AccentProfiles
-import com.fersaiyan.cyanbridge.shared.appearance.AppearanceSettings
-import com.fersaiyan.cyanbridge.shared.ui.theme.highContrastColorScheme
-import com.fersaiyan.cyanbridge.shared.ui.theme.resolveDarkTheme
-import com.fersaiyan.cyanbridge.shared.ui.theme.cyanBridgeColorScheme as sharedCyanBridgeColorScheme
+import com.achyut.adglasses.shared.appearance.AccentProfile
+import com.achyut.adglasses.shared.appearance.AccentProfiles
+import com.achyut.adglasses.shared.appearance.AppearanceSettings
+import com.achyut.adglasses.shared.ui.theme.highContrastColorScheme
+import com.achyut.adglasses.shared.ui.theme.resolveDarkTheme
+import com.achyut.adglasses.shared.ui.theme.cyanBridgeColorScheme as sharedCyanBridgeColorScheme
 
 /** Kept as the Android-facing entry point for existing theme callers. */
 fun cyanBridgeColorScheme(

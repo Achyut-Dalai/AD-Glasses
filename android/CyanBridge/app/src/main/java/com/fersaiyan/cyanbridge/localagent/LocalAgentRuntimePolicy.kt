@@ -1,4 +1,4 @@
-package com.fersaiyan.cyanbridge.localagent
+package com.achyut.adglasses.localagent
 
 /** Small, deterministic guardrails around otherwise model-driven UI control. */
 object LocalAgentRuntimePolicy {

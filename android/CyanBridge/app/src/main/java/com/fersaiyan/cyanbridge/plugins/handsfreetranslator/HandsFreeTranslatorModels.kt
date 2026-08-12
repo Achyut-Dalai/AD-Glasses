@@ -1,4 +1,4 @@
-package com.fersaiyan.cyanbridge.plugins.handsfreetranslator
+package com.achyut.adglasses.plugins.handsfreetranslator
 
 data class TranslationEntry(
     val timestampMs: Long,

@@ -1,6 +1,6 @@
-package com.fersaiyan.cyanbridge.ui.recordings
+package com.achyut.adglasses.ui.recordings
 
-import com.fersaiyan.cyanbridge.data.local.entity.CaptureSession
+import com.achyut.adglasses.data.local.entity.CaptureSession
 import org.junit.Assert.assertTrue
 import org.junit.Test
 

@@ -1,4 +1,4 @@
-package com.fersaiyan.cyanbridge.ai.image
+package com.achyut.adglasses.ai.image
 
 /**
  * The app selected for a voice request is not necessarily safe to automate for image requests.

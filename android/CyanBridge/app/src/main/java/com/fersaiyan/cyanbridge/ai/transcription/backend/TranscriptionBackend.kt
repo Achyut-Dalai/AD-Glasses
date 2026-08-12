@@ -1,6 +1,6 @@
-package com.fersaiyan.cyanbridge.ai.transcription.backend
+package com.achyut.adglasses.ai.transcription.backend
 
-import com.fersaiyan.cyanbridge.ai.transcription.chunking.FileChunk
+import com.achyut.adglasses.ai.transcription.chunking.FileChunk
 
 /**
  * Backend/provider that can transcribe one chunk.

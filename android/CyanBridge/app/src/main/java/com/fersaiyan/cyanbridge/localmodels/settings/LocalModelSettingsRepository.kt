@@ -1,7 +1,7 @@
-package com.fersaiyan.cyanbridge.localmodels.settings
+package com.achyut.adglasses.localmodels.settings
 
 import android.content.Context
-import com.fersaiyan.cyanbridge.localmodels.catalog.LocalModelCatalogRepository
+import com.achyut.adglasses.localmodels.catalog.LocalModelCatalogRepository
 import org.json.JSONObject
 
 object LocalModelSettingsRepository {

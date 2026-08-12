@@ -67,12 +67,12 @@ commonTest.dependencies {
 }
 
 compose.resources {
-    packageOfResClass = "com.fersaiyan.cyanbridge.shared.generated.resources"
+    packageOfResClass = "com.achyut.adglasses.shared.generated.resources"
     publicResClass = true
 }
 
 android {
-    namespace = "com.fersaiyan.cyanbridge.shared"
+    namespace = "com.achyut.adglasses.shared"
     compileSdk = 35
 
     defaultConfig {

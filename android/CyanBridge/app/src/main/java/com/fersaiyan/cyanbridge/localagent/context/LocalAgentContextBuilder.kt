@@ -1,8 +1,8 @@
-package com.fersaiyan.cyanbridge.localagent.context
+package com.achyut.adglasses.localagent.context
 
 import android.content.Context
-import com.fersaiyan.cyanbridge.localagent.dailysummary.DailySummaryPrefs
-import com.fersaiyan.cyanbridge.localagent.memory.LocalAgentMemoryStore
+import com.achyut.adglasses.localagent.dailysummary.DailySummaryPrefs
+import com.achyut.adglasses.localagent.memory.LocalAgentMemoryStore
 import java.io.File
 import java.text.SimpleDateFormat
 import java.util.Date
@@ -12,7 +12,7 @@ import java.util.Locale
  * Builds a compact System prompt that injects *personal local context* for normal chats.
  *
  * Context timing (normal chats):
- * - [com.fersaiyan.cyanbridge.ui.ChatThreadActivity.buildRelayMessages] will:
+ * - [com.achyut.adglasses.ui.ChatThreadActivity.buildRelayMessages] will:
  *   1) optionally queue daily-summary regeneration in background
  *   2) optionally add retrieval hits (LocalAgentMemorySearch)
  *   3) call [buildSystemMessage] to inject a System prompt on every send

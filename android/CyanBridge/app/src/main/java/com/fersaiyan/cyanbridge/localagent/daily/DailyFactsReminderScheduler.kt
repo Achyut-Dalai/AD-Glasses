@@ -1,4 +1,4 @@
-package com.fersaiyan.cyanbridge.localagent.daily
+package com.achyut.adglasses.localagent.daily
 
 import android.app.AlarmManager
 import android.app.PendingIntent

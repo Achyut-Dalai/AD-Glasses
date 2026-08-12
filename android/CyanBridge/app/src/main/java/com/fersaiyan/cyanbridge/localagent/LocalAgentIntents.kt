@@ -1,4 +1,4 @@
-package com.fersaiyan.cyanbridge.localagent
+package com.achyut.adglasses.localagent
 
 /**
  * Intent contract between the app UI and the (optional) local agent runtime.
@@ -7,18 +7,18 @@ package com.fersaiyan.cyanbridge.localagent
  */
 object LocalAgentIntents {
     // Commands (UI -> Service)
-    const val ACTION_START = "com.fersaiyan.cyanbridge.localagent.action.START"
-    const val ACTION_STOP = "com.fersaiyan.cyanbridge.localagent.action.STOP"
-    const val ACTION_DEMO = "com.fersaiyan.cyanbridge.localagent.action.DEMO"
-    const val ACTION_READ_SCREEN_ALOUD = "com.fersaiyan.cyanbridge.localagent.action.READ_SCREEN_ALOUD"
-    const val ACTION_GET_STATUS = "com.fersaiyan.cyanbridge.localagent.action.GET_STATUS"
-    const val ACTION_RESUME_AFTER_APPROVAL = "com.fersaiyan.cyanbridge.localagent.action.RESUME_AFTER_APPROVAL"
-    const val ACTION_TELEGRAM_REMOTE_START = "com.fersaiyan.cyanbridge.localagent.action.TELEGRAM_REMOTE_START"
-    const val ACTION_TELEGRAM_REMOTE_STOP = "com.fersaiyan.cyanbridge.localagent.action.TELEGRAM_REMOTE_STOP"
+    const val ACTION_START = "com.achyut.adglasses.localagent.action.START"
+    const val ACTION_STOP = "com.achyut.adglasses.localagent.action.STOP"
+    const val ACTION_DEMO = "com.achyut.adglasses.localagent.action.DEMO"
+    const val ACTION_READ_SCREEN_ALOUD = "com.achyut.adglasses.localagent.action.READ_SCREEN_ALOUD"
+    const val ACTION_GET_STATUS = "com.achyut.adglasses.localagent.action.GET_STATUS"
+    const val ACTION_RESUME_AFTER_APPROVAL = "com.achyut.adglasses.localagent.action.RESUME_AFTER_APPROVAL"
+    const val ACTION_TELEGRAM_REMOTE_START = "com.achyut.adglasses.localagent.action.TELEGRAM_REMOTE_START"
+    const val ACTION_TELEGRAM_REMOTE_STOP = "com.achyut.adglasses.localagent.action.TELEGRAM_REMOTE_STOP"
 
     // Events (Service -> UI)
-    const val ACTION_STATUS_CHANGED = "com.fersaiyan.cyanbridge.localagent.action.STATUS_CHANGED"
-    const val ACTION_TELEGRAM_STATUS_CHANGED = "com.fersaiyan.cyanbridge.localagent.action.TELEGRAM_STATUS_CHANGED"
+    const val ACTION_STATUS_CHANGED = "com.achyut.adglasses.localagent.action.STATUS_CHANGED"
+    const val ACTION_TELEGRAM_STATUS_CHANGED = "com.achyut.adglasses.localagent.action.TELEGRAM_STATUS_CHANGED"
 
     // Extras
     const val EXTRA_STATUS = "status"

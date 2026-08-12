@@ -1,4 +1,4 @@
-package com.fersaiyan.cyanbridge.bridge.runtimes.nativeapps.terminalhud
+package com.achyut.adglasses.bridge.runtimes.nativeapps.terminalhud
 
 /**
  * State model for the Terminal HUD display.

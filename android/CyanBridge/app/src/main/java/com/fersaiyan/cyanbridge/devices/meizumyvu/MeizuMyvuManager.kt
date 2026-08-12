@@ -1,15 +1,15 @@
-package com.fersaiyan.cyanbridge.devices.meizumyvu
+package com.achyut.adglasses.devices.meizumyvu
 
 import android.content.Context
 import android.util.Log
-import com.fersaiyan.cyanbridge.bridge.core.BridgeError
-import com.fersaiyan.cyanbridge.bridge.core.DeviceInfo
-import com.fersaiyan.cyanbridge.bridge.core.DisplayCommand
-import com.fersaiyan.cyanbridge.bridge.core.GlassesBridge
-import com.fersaiyan.cyanbridge.bridge.core.GlassesBridgeState
-import com.fersaiyan.cyanbridge.bridge.core.GlassesCapability
-import com.fersaiyan.cyanbridge.bridge.core.GlassesDeviceAdapter
-import com.fersaiyan.cyanbridge.bridge.core.InputEvent
+import com.achyut.adglasses.bridge.core.BridgeError
+import com.achyut.adglasses.bridge.core.DeviceInfo
+import com.achyut.adglasses.bridge.core.DisplayCommand
+import com.achyut.adglasses.bridge.core.GlassesBridge
+import com.achyut.adglasses.bridge.core.GlassesBridgeState
+import com.achyut.adglasses.bridge.core.GlassesCapability
+import com.achyut.adglasses.bridge.core.GlassesDeviceAdapter
+import com.achyut.adglasses.bridge.core.InputEvent
 import com.myvu.client.service.ConnectionManager
 import com.myvu.client.service.ConnectionState
 import kotlinx.coroutines.flow.Flow

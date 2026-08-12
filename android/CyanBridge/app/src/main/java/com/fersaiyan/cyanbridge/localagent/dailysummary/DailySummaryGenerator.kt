@@ -1,21 +1,21 @@
-package com.fersaiyan.cyanbridge.localagent.dailysummary
+package com.achyut.adglasses.localagent.dailysummary
 
 import android.content.Context
-import com.fersaiyan.cyanbridge.shared.settings.AgentProviderType
-import com.fersaiyan.cyanbridge.agent.LocalAgentPrefs as AutomationPrefs
-import com.fersaiyan.cyanbridge.agent.ProSubscriptionAiPrefs
-import com.fersaiyan.cyanbridge.agent.ProSubscriptionPrefs
+import com.achyut.adglasses.shared.settings.AgentProviderType
+import com.achyut.adglasses.agent.LocalAgentPrefs as AutomationPrefs
+import com.achyut.adglasses.agent.ProSubscriptionAiPrefs
+import com.achyut.adglasses.agent.ProSubscriptionPrefs
 import org.json.JSONObject
 import java.io.File
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
-import com.fersaiyan.cyanbridge.ai.router.AiAssistantRouter
-import com.fersaiyan.cyanbridge.ai.router.CliRelayClient
-import com.fersaiyan.cyanbridge.localmodels.provider.LocalModelRequestPriority
-import com.fersaiyan.cyanbridge.localmodels.provider.LocalModelsProvider
-import com.fersaiyan.cyanbridge.localagent.memory.LocalAgentMemoryStore
-import com.fersaiyan.cyanbridge.localagent.dailyfacts.DailyBulletsSettings
+import com.achyut.adglasses.ai.router.AiAssistantRouter
+import com.achyut.adglasses.ai.router.CliRelayClient
+import com.achyut.adglasses.localmodels.provider.LocalModelRequestPriority
+import com.achyut.adglasses.localmodels.provider.LocalModelsProvider
+import com.achyut.adglasses.localagent.memory.LocalAgentMemoryStore
+import com.achyut.adglasses.localagent.dailyfacts.DailyBulletsSettings
 
 object DailySummaryGenerator {
     private val localModelsProvider = LocalModelsProvider()

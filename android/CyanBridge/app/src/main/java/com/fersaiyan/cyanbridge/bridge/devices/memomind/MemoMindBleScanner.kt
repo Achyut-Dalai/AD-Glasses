@@ -1,4 +1,4 @@
-package com.fersaiyan.cyanbridge.bridge.devices.memomind
+package com.achyut.adglasses.bridge.devices.memomind
 
 import android.annotation.SuppressLint
 import android.bluetooth.BluetoothAdapter
@@ -11,7 +11,7 @@ import android.content.pm.PackageManager
 import android.os.Build
 import android.util.Log
 import androidx.core.content.ContextCompat
-import com.fersaiyan.cyanbridge.bridge.core.DeviceInfo
+import com.achyut.adglasses.bridge.core.DeviceInfo
 import kotlinx.coroutines.channels.awaitClose
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.callbackFlow

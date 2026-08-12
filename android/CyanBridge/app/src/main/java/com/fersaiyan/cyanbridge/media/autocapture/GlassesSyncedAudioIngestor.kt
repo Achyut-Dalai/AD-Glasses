@@ -1,25 +1,25 @@
-package com.fersaiyan.cyanbridge.media.autocapture
+package com.achyut.adglasses.media.autocapture
 
 import android.content.Context
 import android.media.MediaMetadataRetriever
 import android.util.Log
-import com.fersaiyan.cyanbridge.shared.settings.AgentProviderType
-import com.fersaiyan.cyanbridge.agent.LocalAgentPrefs as AutomationPrefs
-import com.fersaiyan.cyanbridge.ai.transcription.AudioChunker
-import com.fersaiyan.cyanbridge.ai.transcription.DefaultTranscriptionService
-import com.fersaiyan.cyanbridge.ai.transcription.GemmaLiteRtTranscriptionProvider
-import com.fersaiyan.cyanbridge.ai.transcription.Mp4AudioChunker
-import com.fersaiyan.cyanbridge.ai.transcription.NoOpAudioChunker
-import com.fersaiyan.cyanbridge.ai.transcription.RetryPolicy
-import com.fersaiyan.cyanbridge.ai.transcription.RetryingTranscriptionProvider
-import com.fersaiyan.cyanbridge.ai.transcription.TranscriptionProvider
-import com.fersaiyan.cyanbridge.ai.transcription.TranscriptionResult
-import com.fersaiyan.cyanbridge.ai.transcription.TranscriptionService
-import com.fersaiyan.cyanbridge.ai.transcription.moonshine.MoonshineModelManager
-import com.fersaiyan.cyanbridge.ai.transcription.moonshine.MoonshineTranscriptionProvider
-import com.fersaiyan.cyanbridge.data.local.entity.CaptureSession
-import com.fersaiyan.cyanbridge.localagent.userfacts.TranscriptCandidateFactsAppender
-import com.fersaiyan.cyanbridge.ui.MyApplication
+import com.achyut.adglasses.shared.settings.AgentProviderType
+import com.achyut.adglasses.agent.LocalAgentPrefs as AutomationPrefs
+import com.achyut.adglasses.ai.transcription.AudioChunker
+import com.achyut.adglasses.ai.transcription.DefaultTranscriptionService
+import com.achyut.adglasses.ai.transcription.GemmaLiteRtTranscriptionProvider
+import com.achyut.adglasses.ai.transcription.Mp4AudioChunker
+import com.achyut.adglasses.ai.transcription.NoOpAudioChunker
+import com.achyut.adglasses.ai.transcription.RetryPolicy
+import com.achyut.adglasses.ai.transcription.RetryingTranscriptionProvider
+import com.achyut.adglasses.ai.transcription.TranscriptionProvider
+import com.achyut.adglasses.ai.transcription.TranscriptionResult
+import com.achyut.adglasses.ai.transcription.TranscriptionService
+import com.achyut.adglasses.ai.transcription.moonshine.MoonshineModelManager
+import com.achyut.adglasses.ai.transcription.moonshine.MoonshineTranscriptionProvider
+import com.achyut.adglasses.data.local.entity.CaptureSession
+import com.achyut.adglasses.localagent.userfacts.TranscriptCandidateFactsAppender
+import com.achyut.adglasses.ui.MyApplication
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob

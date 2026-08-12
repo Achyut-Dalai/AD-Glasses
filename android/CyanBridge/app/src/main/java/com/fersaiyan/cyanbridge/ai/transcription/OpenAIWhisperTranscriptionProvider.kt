@@ -1,4 +1,4 @@
-package com.fersaiyan.cyanbridge.ai.transcription
+package com.achyut.adglasses.ai.transcription
 
 import okhttp3.MediaType.Companion.toMediaType
 import okhttp3.MultipartBody

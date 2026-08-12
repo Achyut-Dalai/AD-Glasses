@@ -1,4 +1,4 @@
-package com.fersaiyan.cyanbridge.shared.ui.glasses
+package com.achyut.adglasses.shared.ui.glasses
 
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -13,12 +13,12 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.unit.dp
-import com.fersaiyan.cyanbridge.shared.glasses.GlassesSyncFlow
-import com.fersaiyan.cyanbridge.shared.ui.localizedSyncFlowDescription
-import com.fersaiyan.cyanbridge.shared.ui.localizedSyncFlowLabel
-import com.fersaiyan.cyanbridge.shared.generated.resources.Res
-import com.fersaiyan.cyanbridge.shared.generated.resources.action_cancel
-import com.fersaiyan.cyanbridge.shared.generated.resources.sync_flow_title
+import com.achyut.adglasses.shared.glasses.GlassesSyncFlow
+import com.achyut.adglasses.shared.ui.localizedSyncFlowDescription
+import com.achyut.adglasses.shared.ui.localizedSyncFlowLabel
+import com.achyut.adglasses.shared.generated.resources.Res
+import com.achyut.adglasses.shared.generated.resources.action_cancel
+import com.achyut.adglasses.shared.generated.resources.sync_flow_title
 import org.jetbrains.compose.resources.ExperimentalResourceApi
 import org.jetbrains.compose.resources.stringResource
 

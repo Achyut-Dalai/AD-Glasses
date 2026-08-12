@@ -1,10 +1,10 @@
-package com.fersaiyan.cyanbridge.notes
+package com.achyut.adglasses.notes
 
-import com.fersaiyan.cyanbridge.data.local.dao.NoteDao
-import com.fersaiyan.cyanbridge.data.local.entity.Note
-import com.fersaiyan.cyanbridge.shared.notes.SummarizationRequest
-import com.fersaiyan.cyanbridge.shared.notes.SummarizationService
-import com.fersaiyan.cyanbridge.shared.notes.SummaryMarkdownFormatter
+import com.achyut.adglasses.data.local.dao.NoteDao
+import com.achyut.adglasses.data.local.entity.Note
+import com.achyut.adglasses.shared.notes.SummarizationRequest
+import com.achyut.adglasses.shared.notes.SummarizationService
+import com.achyut.adglasses.shared.notes.SummaryMarkdownFormatter
 import kotlinx.coroutines.flow.Flow
 
 /**

@@ -1,4 +1,4 @@
-package com.fersaiyan.cyanbridge.bridge.runtimes.mentra
+package com.achyut.adglasses.bridge.runtimes.mentra
 
 /**
  * Constants for MentraOS message types used in the relay protocol.

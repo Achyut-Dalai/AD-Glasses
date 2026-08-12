@@ -1,4 +1,4 @@
-package com.fersaiyan.cyanbridge.shared.appearance
+package com.achyut.adglasses.shared.appearance
 
 enum class ThemeMode {
     SYSTEM,

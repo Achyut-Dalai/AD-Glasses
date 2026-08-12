@@ -1,6 +1,6 @@
-package com.fersaiyan.cyanbridge.ai.transcription
+package com.achyut.adglasses.ai.transcription
 
-import com.fersaiyan.cyanbridge.data.local.entity.CaptureSession
+import com.achyut.adglasses.data.local.entity.CaptureSession
 import kotlinx.coroutines.flow.Flow
 
 /**

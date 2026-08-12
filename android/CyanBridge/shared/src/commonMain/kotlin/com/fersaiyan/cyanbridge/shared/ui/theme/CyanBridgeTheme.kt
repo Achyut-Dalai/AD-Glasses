@@ -1,4 +1,4 @@
-package com.fersaiyan.cyanbridge.shared.ui.theme
+package com.achyut.adglasses.shared.ui.theme
 
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.material3.ColorScheme
@@ -8,10 +8,10 @@ import androidx.compose.material3.darkColorScheme
 import androidx.compose.material3.lightColorScheme
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.graphics.Color
-import com.fersaiyan.cyanbridge.shared.appearance.AccentProfile
-import com.fersaiyan.cyanbridge.shared.appearance.AccentProfiles
-import com.fersaiyan.cyanbridge.shared.appearance.AppearanceSettings
-import com.fersaiyan.cyanbridge.shared.appearance.ThemeMode
+import com.achyut.adglasses.shared.appearance.AccentProfile
+import com.achyut.adglasses.shared.appearance.AccentProfiles
+import com.achyut.adglasses.shared.appearance.AppearanceSettings
+import com.achyut.adglasses.shared.appearance.ThemeMode
 
 private val LightBackground = Color(0xFFF8FAFB)
 private val LightSurface = Color(0xFFFFFFFF)

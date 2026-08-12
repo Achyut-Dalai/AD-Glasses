@@ -1,9 +1,9 @@
-package com.fersaiyan.cyanbridge.ui.localization
+package com.achyut.adglasses.ui.localization
 
 import android.content.Context
 import androidx.appcompat.app.AppCompatDelegate
 import androidx.core.os.LocaleListCompat
-import com.fersaiyan.cyanbridge.R
+import com.achyut.adglasses.R
 
 enum class AppLanguage(
     val languageTag: String,

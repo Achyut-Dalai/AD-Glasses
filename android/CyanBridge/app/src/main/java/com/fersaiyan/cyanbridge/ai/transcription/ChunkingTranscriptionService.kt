@@ -1,10 +1,10 @@
-package com.fersaiyan.cyanbridge.ai.transcription
+package com.achyut.adglasses.ai.transcription
 
-import com.fersaiyan.cyanbridge.ai.transcription.backend.HttpTranscriptionBackend
-import com.fersaiyan.cyanbridge.ai.transcription.backend.TranscriptionBackend
-import com.fersaiyan.cyanbridge.ai.transcription.chunking.FileChunker
-import com.fersaiyan.cyanbridge.ai.transcription.retry.RetryPolicy
-import com.fersaiyan.cyanbridge.ai.transcription.storage.TranscriptStore
+import com.achyut.adglasses.ai.transcription.backend.HttpTranscriptionBackend
+import com.achyut.adglasses.ai.transcription.backend.TranscriptionBackend
+import com.achyut.adglasses.ai.transcription.chunking.FileChunker
+import com.achyut.adglasses.ai.transcription.retry.RetryPolicy
+import com.achyut.adglasses.ai.transcription.storage.TranscriptStore
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.Flow
@@ -100,7 +100,7 @@ class ChunkingTranscriptionService(
     }.flowOn(ioDispatcher)
 
     override suspend fun transcribe(
-        session: com.fersaiyan.cyanbridge.data.local.entity.CaptureSession,
+        session: com.achyut.adglasses.data.local.entity.CaptureSession,
         options: TranscriptionService.Options,
         onProgress: (TranscriptionProgress) -> Unit,
     ): TranscriptionResult {
