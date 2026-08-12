@@ -20,7 +20,7 @@ object GlassesAssistantRoutingPolicy {
         }
         return when (customProvider) {
             AgentProviderType.LOCAL_AGENT -> GlassesAssistantRoute.LOCAL
-            AgentProviderType.PRO_SUBSCRIPTION -> GlassesAssistantRoute.PRO
+            AgentProviderType.CLOUD -> GlassesAssistantRoute.PRO
             AgentProviderType.TASKER -> GlassesAssistantRoute.TASKER_EXTERNAL_UI
         }
     }

@@ -53,7 +53,7 @@ import com.fersaiyan.cyanbridge.shared.generated.resources.plugin_category_other
 import com.fersaiyan.cyanbridge.shared.generated.resources.plugin_category_planner
 import com.fersaiyan.cyanbridge.shared.generated.resources.plugin_category_productivity
 import com.fersaiyan.cyanbridge.shared.generated.resources.provider_local
-import com.fersaiyan.cyanbridge.shared.generated.resources.provider_pro
+import com.fersaiyan.cyanbridge.shared.generated.resources.provider_cloud
 import com.fersaiyan.cyanbridge.shared.generated.resources.provider_tasker
 import com.fersaiyan.cyanbridge.shared.generated.resources.sync_flow_custom_description
 import com.fersaiyan.cyanbridge.shared.generated.resources.sync_flow_custom_title
@@ -114,7 +114,7 @@ fun localizedProviderLabel(provider: AgentProviderType): String = stringResource
     when (provider) {
         AgentProviderType.TASKER -> Res.string.provider_tasker
         AgentProviderType.LOCAL_AGENT -> Res.string.provider_local
-        AgentProviderType.PRO_SUBSCRIPTION -> Res.string.provider_pro
+        AgentProviderType.CLOUD -> Res.string.provider_cloud
     },
 )
 
@@ -203,7 +203,7 @@ fun localizedOtaTargetDescription(target: OtaTargetSelection): String = stringRe
 @Composable
 fun localizedOtaSourceLabel(source: OtaFirmwareSource): String = stringResource(
     when (source) {
-        OtaFirmwareSource.PERSONAL_FILE -> Res.string.ota_source_personal
+        OtaFirmwareSource.LOCAL_FILE -> Res.string.ota_source_local
         OtaFirmwareSource.STEALTH_CATALOG -> Res.string.ota_source_stealth
         OtaFirmwareSource.DEBUG_CATALOG -> Res.string.ota_source_debug
     },
@@ -213,7 +213,7 @@ fun localizedOtaSourceLabel(source: OtaFirmwareSource): String = stringResource(
 @Composable
 fun localizedOtaSourceDescription(source: OtaFirmwareSource): String = stringResource(
     when (source) {
-        OtaFirmwareSource.PERSONAL_FILE -> Res.string.ota_source_personal_description
+        OtaFirmwareSource.LOCAL_FILE -> Res.string.ota_source_local_description
         OtaFirmwareSource.STEALTH_CATALOG -> Res.string.ota_source_stealth_description
         OtaFirmwareSource.DEBUG_CATALOG -> Res.string.ota_source_debug_description
     },

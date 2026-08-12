@@ -29,8 +29,6 @@ import androidx.work.WorkManager
 import com.fersaiyan.cyanbridge.MainActivity
 import com.fersaiyan.cyanbridge.agent.LocalAgentPrefs as AutomationPrefs
 import com.fersaiyan.cyanbridge.agent.LocalModelsConfigureActivity
-import com.fersaiyan.cyanbridge.agent.ProSubscriptionAiPrefs
-import com.fersaiyan.cyanbridge.agent.ProSubscriptionRelayClient
 import com.fersaiyan.cyanbridge.ai.router.AiProviderPrefs
 import com.fersaiyan.cyanbridge.ai.router.AiProviderType
 import com.fersaiyan.cyanbridge.ai.router.AiAssistantRouter as RelayAiAssistantRouter
@@ -513,10 +511,8 @@ class ChatThreadActivity : AppCompatActivity() {
     }
 
     private fun showRelayModelPicker() {
-        val current = ProSubscriptionAiPrefs.getRequestsModel(this)
         lifecycleScope.launch {
             val options = withContext(Dispatchers.IO) {
-                val fetched = ProSubscriptionRelayClient.fetchAvailableModels(this@ChatThreadActivity).getOrElse { emptyList() }
                 val merged = linkedMapOf<String, String>()
                 merged["auto"] = "auto"
                 fetched.forEach { option ->
@@ -554,7 +550,6 @@ class ChatThreadActivity : AppCompatActivity() {
                     val picked = options.getOrNull(which) ?: return@setItems
                     val pickedId = picked.key
                     val pickedLabel = picked.value
-                    ProSubscriptionAiPrefs.setRequestsModel(this@ChatThreadActivity, pickedId)
                     refreshModelBadge("Ready")
                     android.widget.Toast.makeText(
                         this@ChatThreadActivity,
@@ -594,14 +589,14 @@ class ChatThreadActivity : AppCompatActivity() {
     private fun isLocalModelsProviderSelected(): Boolean {
         return when (AutomationPrefs.getProviderType(this)) {
             AgentProviderType.LOCAL_AGENT -> true
-            AgentProviderType.PRO_SUBSCRIPTION -> false
+            AgentProviderType.CLOUD -> false
             AgentProviderType.TASKER -> AiProviderPrefs.getProvider(this) == AiProviderType.LOCAL_MODELS
         }
     }
 
     private fun isRelayProviderSelected(): Boolean {
         return when (AutomationPrefs.getProviderType(this)) {
-            AgentProviderType.PRO_SUBSCRIPTION -> true
+            AgentProviderType.CLOUD -> true
             AgentProviderType.LOCAL_AGENT -> false
             AgentProviderType.TASKER -> AiProviderPrefs.getProvider(this) == AiProviderType.CLI_RELAY
         }
@@ -619,7 +614,6 @@ class ChatThreadActivity : AppCompatActivity() {
             }
 
             isRelayProviderSelected() -> {
-                val selected = ProSubscriptionAiPrefs.getRequestsModel(this).ifBlank { "auto" }
                 "Relay model: $selected"
             }
 
@@ -678,7 +672,6 @@ class ChatThreadActivity : AppCompatActivity() {
     }
 
     private fun showRelayDownToastIfNeeded(message: String?) {
-        val hint = ProSubscriptionRelayClient.relayUnavailableHintFromText(message.orEmpty()) ?: return
         android.widget.Toast.makeText(this, hint, android.widget.Toast.LENGTH_LONG).show()
     }
 
@@ -696,7 +689,7 @@ class ChatThreadActivity : AppCompatActivity() {
 
     private fun mediaAttachmentUnsupportedReason(): String? {
         return when (AutomationPrefs.getProviderType(this)) {
-            AgentProviderType.PRO_SUBSCRIPTION -> null
+            AgentProviderType.CLOUD -> null
             AgentProviderType.LOCAL_AGENT -> if (supportsCurrentLocalRuntimeMedia()) {
                 null
             } else {
@@ -710,7 +703,6 @@ class ChatThreadActivity : AppCompatActivity() {
                     "Local media attachments require Local Models + LiteRT runtime."
                 }
                 AiProviderType.MOCK,
-                AiProviderType.COMPANY_BACKEND -> "Media attachments require Pro Subscription or Local Models + LiteRT."
             }
         }
     }

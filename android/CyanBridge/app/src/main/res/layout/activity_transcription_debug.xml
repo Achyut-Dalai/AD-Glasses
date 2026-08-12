@@ -20,7 +20,7 @@
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:layout_marginTop="12dp"
-            android:text="Provider" />
+            android:text="Cloudvider" />
 
         <RadioGroup
             android:layout_width="match_parent"
@@ -109,9 +109,9 @@
             android:layout_marginTop="12dp"
             android:text="Transcribe latest session" />
 
-        <ProgressBar
+        <CloudgressBar
             android:id="@+id/progressBar"
-            style="@android:style/Widget.ProgressBar.Horizontal"
+            style="@android:style/Widget.CloudgressBar.Horizontal"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:layout_marginTop="12dp"

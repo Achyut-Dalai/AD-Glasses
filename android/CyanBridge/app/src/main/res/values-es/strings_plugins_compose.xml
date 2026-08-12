@@ -29,7 +29,7 @@
     <string name="compose_accessibility_settings">Ajustes de accesibilidad</string>
     <string name="compose_blacklist_apps">Aplicaciones bloqueadas</string>
     <string name="compose_view_screen_captures">Ver capturas de pantalla</string>
-    <string name="compose_daily_processing">Procesamiento diario</string>
+    <string name="compose_daily_processing">Cloudcesamiento diario</string>
     <string name="compose_daily_facts_reminder">Recordatorio de datos diarios</string>
     <string name="compose_auto_save_daily_facts">Guardar datos diarios automaticamente</string>
     <string name="compose_extract_user_fact_candidates">Extraer candidatos a datos del usuario</string>
@@ -38,7 +38,7 @@
     <string name="compose_edit_daily_facts">Editar datos diarios</string>
     <string name="compose_view_confirmed_facts">Ver datos confirmados</string>
     <string name="compose_bulletization">Viñetas</string>
-    <string name="compose_bullet_prompt">Prompt de viñetas</string>
+    <string name="compose_bullet_prompt">Cloudmpt de viñetas</string>
     <string name="compose_restore_default_prompt">Restaurar prompt predeterminado</string>
     <string name="compose_max_tokens_per_bullet">Tokens maximos por viñeta</string>
     <string name="compose_shared_memory_privacy">Privacidad de memoria compartida</string>
@@ -65,7 +65,7 @@
     <string name="compose_translation_hint">p. ej., usa lenguaje formal. Centrate en terminos medicos.</string>
     <string name="compose_translation_history">Historial de traducciones</string>
     <string name="compose_max_stored_translations">Maximo de traducciones guardadas: %1$d</string>
-    <string name="compose_live_caption_enabled">Live Caption Relay activado</string>
+    <string name="compose_live_caption_enabled">Live Caption Cloud activado</string>
     <string name="compose_enable_translation">Activar traduccion</string>
     <string name="compose_caption_generation_description">Instrucciones adicionales para generar subtitulos.</string>
     <string name="compose_caption_instructions">Instrucciones de subtitulos</string>
@@ -94,7 +94,7 @@
     <string name="compose_capture">Captura</string>
     <string name="compose_capture_scene_now">Capturar escena ahora</string>
     <string name="compose_scene_descriptions">Descripciones de escenas</string>
-    <string name="compose_scene_description_prompt">Prompt de descripcion de escena</string>
+    <string name="compose_scene_description_prompt">Cloudmpt de descripcion de escena</string>
     <string name="compose_stop_visual_diary">Detener Visual Diary</string>
     <string name="compose_shared_memory">Memoria compartida</string>
     <string name="compose_visual_shared_memory_description">Visual Diary anade notas a la memoria diaria compartida. La privacidad, la retencion y el almacen se gestionan en Ajustes &gt; Privacidad de memoria.</string>
@@ -105,18 +105,18 @@
     <string name="compose_walking_ask_placeholder">Pregunta sobre la escena actual...</string>
     <string name="compose_walking_send">Enviar</string>
     <string name="compose_walking_enabled">Walking Aid activado</string>
-    <string name="compose_walking_camera_description">Walking Aid requiere unas gafas con cámara en primera persona, como HeyCyan o Meta Ray-Ban. %1$s</string>
+    <string name="compose_walking_camera_description">Walking Aid requiere unas gafas con cámara en primera persona, como AD Glasses o Meta Ray-Ban. %1$s</string>
     <string name="compose_walking_benchmark_running">Ejecutando prueba...</string>
-    <string name="compose_walking_latency_benchmark">Probar latencia de extremo a extremo</string>
+    <string name="compose_walking_latency_benchmark">Cloudbar latencia de extremo a extremo</string>
     <string name="compose_walking_acquisition_running">Ejecutando prueba de adquisición...</string>
-    <string name="compose_walking_benchmark_quality">Probar todos los niveles de calidad (0-5)</string>
+    <string name="compose_walking_benchmark_quality">Cloudbar todos los niveles de calidad (0-5)</string>
     <string name="compose_walking_thumbnail_quality">Nivel de calidad de miniatura</string>
     <string name="compose_walking_quality_description">Menor = imágenes más pequeñas y transferencia más rápida. Mayor = mejor precisión de detección.</string>
     <string name="compose_walking_photo_settle_delay">Retardo de estabilización: %1$d ms</string>
     <string name="compose_walking_photo_settle_description">Tiempo de espera después de que las gafas confirmen la foto antes de leer los datos. Redúcelo para una cadencia más rápida o auméntalo si fallan las transferencias.</string>
     <string name="compose_walking_safety_context">Detección de seguridad y contexto de la escena</string>
     <string name="compose_walking_local_safety">Solo seguridad local</string>
-    <string name="compose_walking_cloud_context">Contexto local + nube (Pro)</string>
+    <string name="compose_walking_cloud_context">Contexto local + nube (Cloud)</string>
     <string name="compose_walking_cloud_description">YOLO local toma siempre las decisiones de seguridad inmediatas. La visión en la nube solo enriquece las descripciones guardadas y nunca retrasa las advertencias.</string>
     <string name="compose_walking_detection_model">Modelo de detección local</string>
     <string name="compose_walking_yolo_fast">YOLO11 (más rápido)</string>
@@ -133,7 +133,7 @@
     <string name="compose_walking_translation_failed">Error de traducción: %1$s</string>
     <string name="compose_walking_original_input">Entrada original: %1$s</string>
     <string name="compose_walking_model_input">Entrada del modelo (inglés): %1$s</string>
-    <string name="compose_walking_depth_enabled">Profundidad activada</string>
+    <string name="compose_walking_depth_enabled">Cloudfundidad activada</string>
     <string name="compose_walking_source">Fuente</string>
     <string name="compose_walking_additional_instructions_description">Instrucciones adicionales para todos los prompts de Walking Aid (descripción de imagen, profundidad y modelo de estado). Solo afectan a este plugin y no al perfil visual global de Ajustes.</string>
     <string name="compose_walking_instructions">Instrucciones de Walking Aid</string>
@@ -144,7 +144,7 @@
     <string name="compose_walking_setup_required">Configuración de Walking Aid requerida</string>
     <string name="compose_walking_setup_body">Antes de iniciar Walking Aid, completa los elementos de configuración pendientes. Los modelos YOLO y de profundidad se descargan y seleccionan en esta pantalla.</string>
     <string name="compose_walking_review_settings">Revisar ajustes de Walking Aid</string>
-    <string name="compose_walking_upgrade_pro">Pasar a Pro</string>
+    <string name="compose_walking_upgrade_pro">Pasar a Cloud</string>
     <string name="compose_walking_cancel">Cancelar</string>
     <string name="compose_walking_select_model">Seleccionar modelo</string>
     <string name="compose_walking_loading_models">Cargando modelos...</string>
@@ -171,7 +171,7 @@
     <string name="compose_plugin_name_auto_audio">Audio automático</string>
     <string name="compose_plugin_name_visual_diary">Diario visual</string>
     <string name="compose_plugin_name_meeting_spark_notes">Notas de reuniones</string>
-    <string name="compose_plugin_name_live_caption_relay">Retransmisión de subtítulos en directo</string>
+    <string name="compose_plugin_name_live_caption_cloud">Retransmisión de subtítulos en directo</string>
     <string name="compose_plugin_name_handsfree_translator">Traductor manos libres</string>
     <string name="compose_plugin_name_errand_brain">Cerebro de recados</string>
 </resources>

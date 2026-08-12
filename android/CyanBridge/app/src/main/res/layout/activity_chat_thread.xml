@@ -84,7 +84,7 @@
             android:textSize="11sp"
             android:text="Daily summary bullets: 0/0" />
 
-        <com.google.android.material.progressindicator.LinearProgressIndicator
+        <com.google.android.material.progressindicator.LinearCloudgressIndicator
             android:id="@+id/progress_daily_summary_bullets"
             android:layout_width="match_parent"
             android:layout_height="6dp"

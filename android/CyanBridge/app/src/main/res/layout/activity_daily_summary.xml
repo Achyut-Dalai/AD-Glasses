@@ -68,7 +68,7 @@
             android:textSize="13sp"
             android:textStyle="bold" />
 
-        <com.google.android.material.progressindicator.LinearProgressIndicator
+        <com.google.android.material.progressindicator.LinearCloudgressIndicator
             android:id="@+id/progress_summary"
             android:layout_width="match_parent"
             android:layout_height="8dp"

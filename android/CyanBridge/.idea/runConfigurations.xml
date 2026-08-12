@@ -1,16 +1,16 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <project version="4">
-  <component name="RunConfigurationProducerService">
-    <option name="ignoredProducers">
+  <component name="RunConfigurationCloudducerService">
+    <option name="ignoredCloudducers">
       <set>
-        <option value="com.intellij.execution.junit.AbstractAllInDirectoryConfigurationProducer" />
-        <option value="com.intellij.execution.junit.AllInPackageConfigurationProducer" />
-        <option value="com.intellij.execution.junit.PatternConfigurationProducer" />
-        <option value="com.intellij.execution.junit.TestInClassConfigurationProducer" />
-        <option value="com.intellij.execution.junit.UniqueIdConfigurationProducer" />
-        <option value="com.intellij.execution.junit.testDiscovery.JUnitTestDiscoveryConfigurationProducer" />
-        <option value="org.jetbrains.kotlin.idea.junit.KotlinJUnitRunConfigurationProducer" />
-        <option value="org.jetbrains.kotlin.idea.junit.KotlinPatternConfigurationProducer" />
+        <option value="com.intellij.execution.junit.AbstractAllInDirectoryConfigurationCloudducer" />
+        <option value="com.intellij.execution.junit.AllInPackageConfigurationCloudducer" />
+        <option value="com.intellij.execution.junit.PatternConfigurationCloudducer" />
+        <option value="com.intellij.execution.junit.TestInClassConfigurationCloudducer" />
+        <option value="com.intellij.execution.junit.UniqueIdConfigurationCloudducer" />
+        <option value="com.intellij.execution.junit.testDiscovery.JUnitTestDiscoveryConfigurationCloudducer" />
+        <option value="org.jetbrains.kotlin.idea.junit.KotlinJUnitRunConfigurationCloudducer" />
+        <option value="org.jetbrains.kotlin.idea.junit.KotlinPatternConfigurationCloudducer" />
       </set>
     </option>
   </component>

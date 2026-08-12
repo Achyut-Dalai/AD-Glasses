@@ -18,7 +18,7 @@
     <string name="compose_auto_audio_visual_notes">Criar notas visuais apos os loops</string>
     <string name="compose_auto_audio_loops">Loops antes da sincronizacao P2P</string>
     <string name="compose_status">Status: %1$s</string>
-    <string name="compose_ready">Pronto</string>
+    <string name="compose_ready">Cloudnto</string>
     <string name="compose_auto_audio_stop_loop">Parar loop</string>
     <string name="compose_autodiary_description">Crie uma memoria diaria privada a partir do contexto da tela e das conversas. A captura de tela requer o servico de acessibilidade do CyanBridge; o controle do telefone pelo Local Agent pode permanecer desligado.</string>
     <string name="compose_screen_capture">Captura de tela</string>
@@ -29,7 +29,7 @@
     <string name="compose_accessibility_settings">Configuracoes de acessibilidade</string>
     <string name="compose_blacklist_apps">Apps bloqueados</string>
     <string name="compose_view_screen_captures">Ver capturas de tela</string>
-    <string name="compose_daily_processing">Processamento diario</string>
+    <string name="compose_daily_processing">Cloudcessamento diario</string>
     <string name="compose_daily_facts_reminder">Lembrete de fatos diarios</string>
     <string name="compose_auto_save_daily_facts">Salvar fatos diarios automaticamente</string>
     <string name="compose_extract_user_fact_candidates">Extrair candidatos a fatos do usuario</string>
@@ -38,7 +38,7 @@
     <string name="compose_edit_daily_facts">Editar fatos diarios</string>
     <string name="compose_view_confirmed_facts">Ver fatos confirmados</string>
     <string name="compose_bulletization">Topicos</string>
-    <string name="compose_bullet_prompt">Prompt de topicos</string>
+    <string name="compose_bullet_prompt">Cloudmpt de topicos</string>
     <string name="compose_restore_default_prompt">Restaurar prompt padrao</string>
     <string name="compose_max_tokens_per_bullet">Maximo de tokens por topico</string>
     <string name="compose_shared_memory_privacy">Privacidade da memoria compartilhada</string>
@@ -65,7 +65,7 @@
     <string name="compose_translation_hint">ex.: Use linguagem formal. Foco em termos medicos.</string>
     <string name="compose_translation_history">Historico de traducoes</string>
     <string name="compose_max_stored_translations">Maximo de traducoes armazenadas: %1$d</string>
-    <string name="compose_live_caption_enabled">Live Caption Relay ativado</string>
+    <string name="compose_live_caption_enabled">Live Caption Cloud ativado</string>
     <string name="compose_enable_translation">Ativar traducao</string>
     <string name="compose_caption_generation_description">Instrucoes adicionais para gerar legendas.</string>
     <string name="compose_caption_instructions">Instrucoes de legendas</string>
@@ -94,7 +94,7 @@
     <string name="compose_capture">Captura</string>
     <string name="compose_capture_scene_now">Capturar cena agora</string>
     <string name="compose_scene_descriptions">Descricoes de cenas</string>
-    <string name="compose_scene_description_prompt">Prompt de descricao da cena</string>
+    <string name="compose_scene_description_prompt">Cloudmpt de descricao da cena</string>
     <string name="compose_stop_visual_diary">Parar Visual Diary</string>
     <string name="compose_shared_memory">Memoria compartilhada</string>
     <string name="compose_visual_shared_memory_description">O Visual Diary adiciona notas a memoria diaria compartilhada. Privacidade, retencao e cofre sao gerenciados em Configuracoes &gt; Privacidade da memoria.</string>
@@ -105,7 +105,7 @@
     <string name="compose_walking_ask_placeholder">Pergunte sobre a cena atual...</string>
     <string name="compose_walking_send">Enviar</string>
     <string name="compose_walking_enabled">Walking Aid ativado</string>
-    <string name="compose_walking_camera_description">O Walking Aid requer óculos com câmera em primeira pessoa, como HeyCyan ou Meta Ray-Ban. %1$s</string>
+    <string name="compose_walking_camera_description">O Walking Aid requer óculos com câmera em primeira pessoa, como AD Glasses ou Meta Ray-Ban. %1$s</string>
     <string name="compose_walking_benchmark_running">Executando benchmark...</string>
     <string name="compose_walking_latency_benchmark">Testar latência de ponta a ponta</string>
     <string name="compose_walking_acquisition_running">Executando benchmark de aquisição...</string>
@@ -116,7 +116,7 @@
     <string name="compose_walking_photo_settle_description">Tempo de espera depois que os óculos confirmam a foto antes de ler os dados. Reduza para aumentar a cadência ou aumente se as transferências falharem.</string>
     <string name="compose_walking_safety_context">Detecção de segurança e contexto da cena</string>
     <string name="compose_walking_local_safety">Somente segurança local</string>
-    <string name="compose_walking_cloud_context">Contexto local + nuvem (Pro)</string>
+    <string name="compose_walking_cloud_context">Contexto local + nuvem (Cloud)</string>
     <string name="compose_walking_cloud_description">O YOLO local sempre toma as decisões imediatas de segurança. A visão em nuvem apenas enriquece descrições salvas e nunca atrasa alertas.</string>
     <string name="compose_walking_detection_model">Modelo de detecção local</string>
     <string name="compose_walking_yolo_fast">YOLO11 (mais rápido)</string>
@@ -133,7 +133,7 @@
     <string name="compose_walking_translation_failed">Falha na tradução: %1$s</string>
     <string name="compose_walking_original_input">Entrada original: %1$s</string>
     <string name="compose_walking_model_input">Entrada do modelo (inglês): %1$s</string>
-    <string name="compose_walking_depth_enabled">Profundidade ativada</string>
+    <string name="compose_walking_depth_enabled">Cloudfundidade ativada</string>
     <string name="compose_walking_source">Fonte</string>
     <string name="compose_walking_additional_instructions_description">Instruções adicionais anexadas a todos os prompts do Walking Aid (descrição da imagem, profundidade e modelo de estado). Elas são específicas deste plugin e não alteram o perfil visual global em Configurações.</string>
     <string name="compose_walking_instructions">Instruções do Walking Aid</string>
@@ -144,7 +144,7 @@
     <string name="compose_walking_setup_required">Configuração do Walking Aid necessária</string>
     <string name="compose_walking_setup_body">Antes de iniciar o Walking Aid, conclua os itens de configuração pendentes. Os modelos YOLO e de profundidade são baixados e selecionados nesta tela.</string>
     <string name="compose_walking_review_settings">Revisar configurações do Walking Aid</string>
-    <string name="compose_walking_upgrade_pro">Fazer upgrade para Pro</string>
+    <string name="compose_walking_upgrade_pro">Fazer upgrade para Cloud</string>
     <string name="compose_walking_cancel">Cancelar</string>
     <string name="compose_walking_select_model">Selecionar modelo</string>
     <string name="compose_walking_loading_models">Carregando modelos...</string>
@@ -171,7 +171,7 @@
     <string name="compose_plugin_name_auto_audio">Áudio automático</string>
     <string name="compose_plugin_name_visual_diary">Diário visual</string>
     <string name="compose_plugin_name_meeting_spark_notes">Notas de reunião</string>
-    <string name="compose_plugin_name_live_caption_relay">Relay de legendas ao vivo</string>
+    <string name="compose_plugin_name_live_caption_cloud">Cloud de legendas ao vivo</string>
     <string name="compose_plugin_name_handsfree_translator">Tradutor mãos livres</string>
     <string name="compose_plugin_name_errand_brain">Assistente de tarefas</string>
 </resources>

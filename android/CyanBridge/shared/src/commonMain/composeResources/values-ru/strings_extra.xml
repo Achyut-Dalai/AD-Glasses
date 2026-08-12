@@ -34,18 +34,18 @@
     <string name="settings_bluetooth_mic">Микрофон Bluetooth</string>
     <string name="settings_phone_mic">Микрофон телефона</string>
     <string name="settings_detecting_audio_source">Определение источника аудио</string>
-    <string name="settings_pro_subscription_settings">Настройки подписки Pro</string>
-    <string name="settings_pro_subscription">Подписка Pro</string>
+    <string name="settings_pro_subscription_settings">Настройки подписки Cloud</string>
+    <string name="settings_pro_subscription">Подписка Cloud</string>
     <string name="settings_pro_active">PRO АКТИВНА</string>
     <string name="settings_pro_badge">PRO</string>
     <string name="settings_current_plan">Текущий план: %1$s. Управляйте премиум-функциями и преимуществами.</string>
     <string name="settings_unlock_premium">Откройте премиум-функции и помогите финансировать поддержку новых умных очков.</string>
     <string name="settings_manage_subscription">Управлять подпиской</string>
     <string name="settings_view_plans">Посмотреть планы</string>
-    <string name="settings_provider_description">Выберите провайдера для режима Local / Pro / Tasker на экране «Очки».</string>
+    <string name="settings_provider_description">Выберите провайдера для режима Local / Cloud / Tasker на экране «Очки».</string>
     <string name="settings_configure_local_models">Настроить локальные модели</string>
     <string name="settings_current_mode">Текущий режим: %1$s</string>
-    <string name="settings_requires_pro">Требуется подписка Pro</string>
+    <string name="settings_requires_pro">Требуется подписка Cloud</string>
     <string name="settings_sync_eligibility">Параметры синхронизации</string>
     <string name="settings_explicit_facts">Явные факты</string>
     <string name="settings_daily_facts">Ежедневные факты</string>
@@ -74,7 +74,7 @@
     <string name="settings_faq_local_models_question">Как настроить локальные модели?</string>
     <string name="settings_faq_local_models_answer">Откройте Local Agent в разделе «Нативные плагины» и настройте модель на этом устройстве.</string>
     <string name="settings_faq_subscription_question">Нужна ли подписка?</string>
-    <string name="settings_faq_subscription_answer">Нет. Tasker и локальные модели можно использовать без подписки. Pro необязательна.</string>
+    <string name="settings_faq_subscription_answer">Нет. Tasker и локальные модели можно использовать без подписки. Cloud необязательна.</string>
     <string name="settings_faq_data_question">Как обрабатываются данные?</string>
     <string name="settings_faq_data_answer">По умолчанию данные остаются на этом телефоне. Их можно экспортировать, импортировать или удалить в разделе «Данные».</string>
     <string name="settings_faq_source_question">Можно ли проверить исходный код?</string>
@@ -164,7 +164,7 @@
     <string name="media_folder_hint">Файлы, загруженные CyanBridge</string>
 
     <string name="sync_flow_title">Выберите способ синхронизации</string>
-    <string name="device_class_heycyan">HeyCyan</string>
+    <string name="device_class_ad_glasses">AD Glasses</string>
     <string name="device_class_eye_vue">Eyevue</string>
     <string name="device_class_meta_rayban">Meta Ray-Ban</string>
     <string name="device_class_meizu_myvu">Meizu MYVU / Star Air</string>
@@ -174,7 +174,7 @@
     <string name="plugins_title">Плагины сообщества</string>
     <string name="plugins_refresh">Обновить плагины</string>
     <string name="plugins_publish">Опубликовать плагин</string>
-    <string name="plugins_future_notice">В будущем лучшие плагины будут приносить разработчикам реальные денежные призы, пропорциональные числу пользователей Pro с включенным плагином.</string>
+    <string name="plugins_future_notice">В будущем лучшие плагины будут приносить разработчикам реальные денежные призы, пропорциональные числу пользователей Cloud с включенным плагином.</string>
     <string name="plugins_trending">Популярные плагины</string>
     <string name="plugins_top_voted">Лидеры голосования</string>
     <string name="plugins_top_downloaded">Самые скачиваемые</string>
@@ -213,12 +213,12 @@
     <string name="publish_taskernet_link">Ссылка TaskerNet *</string>
     <string name="publish_taskernet_hint">Введите URL профиля TaskerNet.</string>
     <string name="publish_how_it_works">Как работает публикация</string>
-    <string name="publish_steps">1. Отправка проходит проверку.\n\n2. Одобренные плагины появляются в разделе «Плагины сообщества».\n\n3. Лучшие плагины могут получать призы пропорционально числу пользователей Pro.</string>
+    <string name="publish_steps">1. Отправка проходит проверку.\n\n2. Одобренные плагины появляются в разделе «Плагины сообщества».\n\n3. Лучшие плагины могут получать призы пропорционально числу пользователей Cloud.</string>
     <string name="publish_submitting">Отправка...</string>
     <string name="publish_submit">Отправить плагин</string>
 
-    <string name="pro_subscription_title">Подписка Pro</string>
-    <string name="pro_intro">Используйте CyanBridge бесплатно с локальными моделями. Pro необязательна для облачного ИИ и синхронизации.</string>
+    <string name="pro_subscription_title">Подписка Cloud</string>
+    <string name="pro_intro">Используйте CyanBridge бесплатно с локальными моделями. Cloud необязательна для облачного ИИ и синхронизации.</string>
     <string name="pro_choose_plan">Выберите план</string>
     <string name="pro_free_trial">Бесплатный пробный период — 30 дней</string>
     <string name="pro_google_play_price">Google Play: %1$s</string>
@@ -257,7 +257,7 @@
     <string name="pro_google_price">Цена, показанная Google Play</string>
     <string name="pro_asaas_description">Недорогая прямая оплата картой. Точная сумма в BRL и сумма продления отображаются до оплаты.</string>
     <string name="pro_paddle_description">Глобальная оплата картой. Возможные налоги и итоговая сумма продления отображаются до оплаты.</string>
-    <string name="pro_settings_title">Настройки Pro</string>
+    <string name="pro_settings_title">Настройки Cloud</string>
     <string name="pro_plan">План</string>
     <string name="pro_refresh">Обновить</string>
     <string name="pro_change_plan">Изменить план</string>
@@ -286,7 +286,7 @@
     <string name="pro_beta_interest">Зарегистрируйте интерес к функциям бета-облака.</string>
     <string name="pro_signup_beta">Записаться в бета-облако</string>
     <string name="pro_gemini_live_title">Gemini Live (голос и зрение, предварительная версия)</string>
-    <string name="pro_gemini_live_description">Прямое подключение к Google Gemini Live. Требуется активный платный план Pro и доступ к сети. Живой звук и выбранные неподвижные изображения отправляются в Google.</string>
+    <string name="pro_gemini_live_description">Прямое подключение к Google Gemini Live. Требуется активный платный план Cloud и доступ к сети. Живой звук и выбранные неподвижные изображения отправляются в Google.</string>
     <string name="pro_open_gemini_live">Открыть предварительный просмотр Gemini Live</string>
     <string name="pro_save">Сохранить</string>
     <string name="pro_plan_localized_terms">Локализованная цена и условия продления отображаются при оплате.</string>
@@ -385,7 +385,7 @@
 
     <string name="dashboard_title">Очки</string>
     <string name="dashboard_privileged_adb_title">Риск привилегированного ADB</string>
-    <string name="dashboard_privileged_adb_body">Привилегированный ADB может вывести очки из строя или стереть их. Используйте его только на изолированном лабораторном устройстве и в восстанавливаемой сети. Сначала принудительно остановите официальное приложение HeyCyan. Перед продолжением остановите синхронизацию медиа, OTA, предварительный просмотр, запись и автоматическую съемку. Сеанс не сохраняется и прекращается при уходе с этого экрана.</string>
+    <string name="dashboard_privileged_adb_body">Привилегированный ADB может вывести очки из строя или стереть их. Используйте его только на изолированном лабораторном устройстве и в восстанавливаемой сети. Сначала принудительно остановите официальное приложение AD Glasses. Перед продолжением остановите синхронизацию медиа, OTA, предварительный просмотр, запись и автоматическую съемку. Сеанс не сохраняется и прекращается при уходе с этого экрана.</string>
     <string name="dashboard_privileged_adb_acknowledge">Я явно принимаю разрушительный риск и ограничения использования только в лаборатории.</string>
     <string name="dashboard_start_privileged_adb">Запустить привилегированный ADB</string>
     <string name="dashboard_connection">Подключение</string>
@@ -398,9 +398,9 @@
     <string name="dashboard_adb_wifi">ADB через Wi-Fi Direct очков</string>
     <string name="dashboard_status">Состояние: %1$s</string>
     <string name="dashboard_glasses_ip">IP очков: %1$s</string>
-    <string name="dashboard_relay_endpoints">Конечные точки ретранслятора: %1$s</string>
+    <string name="dashboard_cloud_endpoints">Конечные точки ретранслятора: %1$s</string>
     <string name="dashboard_usb_warning">Одного USB-модема недостаточно. Предпочтительна отладка телефона по USB с adb forward.</string>
-    <string name="dashboard_start_adb_relay">Запустить ретранслятор ADB</string>
+    <string name="dashboard_start_adb_cloud">Запустить ретранслятор ADB</string>
     <string name="dashboard_stop">Остановить</string>
     <string name="dashboard_shortcut_title">Ярлык вкладки «Очки»</string>
     <string name="dashboard_shortcut_description">Выберите нативный плагин в его настройках, чтобы разместить его действия здесь.</string>
@@ -442,7 +442,7 @@
     <string name="dashboard_limits_unavailable">Загрузите настройки, чтобы увидеть ограничения этих очков.</string>
     <string name="dashboard_ai_assistant">ИИ-ассистент</string>
     <string name="dashboard_phone_assistant">Ассистент телефона</string>
-    <string name="dashboard_custom_provider">Local / Pro / Tasker</string>
+    <string name="dashboard_custom_provider">Local / Cloud / Tasker</string>
     <string name="dashboard_test_voice">Проверить голос</string>
     <string name="dashboard_gemini_chatgpt_setup">Настройка автоматизации Gemini / ChatGPT</string>
     <string name="dashboard_meizu_title">Meizu MYVU / Star Air</string>
@@ -473,11 +473,11 @@
     <string name="dashboard_quality_detailed">Подробно</string>
     <string name="dashboard_test_image">Проверить описание изображения ИИ</string>
     <string name="dashboard_ai_wake_word_route">Действие фразы активации</string>
-    <string name="dashboard_ai_wake_word_route_description">На очках HeyCyan и Eyevue активация фразой запускает:</string>
+    <string name="dashboard_ai_wake_word_route_description">На очках AD Glasses и Eyevue активация фразой запускает:</string>
     <string name="dashboard_ai_wake_word_voice">Голосовой вопрос</string>
     <string name="dashboard_ai_wake_word_image">Вопрос по изображению</string>
-    <string name="dashboard_ai_wake_word_image_warning_title">Использовать вопросы по изображению для HeyCyan?</string>
-    <string name="dashboard_ai_wake_word_image_warning_body">SDK HeyCyan не предоставляет отдельные события для голосовой фразы активации ИИ и аппаратной кнопки аудиовопроса ИИ. Если выбрать вопросы по изображению, нажатие аппаратной кнопки для голосового вопроса ИИ также запустит вопрос по изображению. Простые вопросы могут не учитывать снятое изображение, если в них нет вопроса о нем, но ответы будут дольше, особенно при использовании локальных моделей.</string>
+    <string name="dashboard_ai_wake_word_image_warning_title">Использовать вопросы по изображению для AD Glasses?</string>
+    <string name="dashboard_ai_wake_word_image_warning_body">SDK AD Glasses не предоставляет отдельные события для голосовой фразы активации ИИ и аппаратной кнопки аудиовопроса ИИ. Если выбрать вопросы по изображению, нажатие аппаратной кнопки для голосового вопроса ИИ также запустит вопрос по изображению. Простые вопросы могут не учитывать снятое изображение, если в них нет вопроса о нем, но ответы будут дольше, особенно при использовании локальных моделей.</string>
     <string name="dashboard_ai_wake_word_image_warning_confirm">Использовать вопросы по изображению</string>
     <string name="dashboard_image_query_unavailable">Запрос изображения недоступен</string>
     <string name="dashboard_register_listener">Зарегистрировать слушатель устройства</string>
@@ -506,7 +506,7 @@
 
     <string name="provider_tasker">Tasker</string>
     <string name="provider_local">Локальный</string>
-    <string name="provider_pro">Pro</string>
+    <string name="provider_cloud">Cloud</string>
     <string name="memory_private_local">Приватная локальная</string>
     <string name="memory_private_local_description">Память, индексы и поиск остаются на устройстве.</string>
     <string name="memory_encrypted_sync">Зашифрованная синхронизация</string>
@@ -515,7 +515,7 @@
     <string name="memory_fast_cloud_description">Будущий режим облачной памяти. Недоступен до появления бэкенда.</string>
     <string name="memory_confidential_cloud">Конфиденциальное облако, бета</string>
     <string name="memory_confidential_cloud_description">Будущий конфиденциальный облачный режим. Недоступен до появления бэкенда.</string>
-    <string name="sync_flow_official_title">Сценарий приложения HeyCyan</string>
+    <string name="sync_flow_official_title">Сценарий приложения AD Glasses</string>
     <string name="sync_flow_official_description">Строгая синхронизация BLE + P2P как у поставщика</string>
     <string name="sync_flow_custom_title">Свой сценарий</string>
     <string name="sync_flow_custom_description">Разрешение CyanBridge с резервным сканированием</string>
@@ -523,8 +523,8 @@
     <string name="ota_target_wifi_description">V821 Linux — исправляет rootfs и скрипты init</string>
     <string name="ota_target_ble">Микросхема BLE (.bin)</string>
     <string name="ota_target_ble_description">SoC JieLi — исправляет прошивку LED, затвора и событий</string>
-    <string name="ota_source_personal">Личные файлы прошивки</string>
-    <string name="ota_source_personal_description">Выберите оба локальных файла: Wi-Fi .swu, затем BLE .bin</string>
+    <string name="ota_source_local">Личные файлы прошивки</string>
+    <string name="ota_source_local_description">Выберите оба локальных файла: Wi-Fi .swu, затем BLE .bin</string>
     <string name="ota_source_stealth">Копия на stealth-сервере</string>
     <string name="ota_source_stealth_description">Найти одобренные исправления на точной исходной базе для обеих микросхем</string>
     <string name="ota_source_debug">Копия на отладочном сервере</string>

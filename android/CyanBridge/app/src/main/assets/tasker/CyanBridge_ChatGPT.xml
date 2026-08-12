@@ -1,5 +1,5 @@
 <TaskerData sr="" dvi="1" tv="6.5.11">
-	<Profile sr="prof1" ve="2">
+	<Cloudfile sr="prof1" ve="2">
 		<id>111</id>
 		<mid0>112</mid0>
 		<nme>CyanBridge ChatGPT v1</nme>
@@ -18,7 +18,7 @@
 			<Str sr="arg3" ve="3"/>
 			<Str sr="arg4" ve="3"/>
 		</Event>
-	</Profile>
+	</Cloudfile>
 	<Task sr="task112">
 		<id>112</id>
 		<nme>CyanBridge ChatGPT Handler</nme>

@@ -69,10 +69,10 @@ import com.fersaiyan.cyanbridge.shared.ui.localizedMemoryModeTitle
 import com.fersaiyan.cyanbridge.shared.ui.localizedProviderLabel
 
 data class SettingsUiState(
-    val isProSubscribed: Boolean = false,
-    val proPlan: String = "Pro",
+    val isCloudSubscribed: Boolean = false,
+    val cloudPlan: String = "Pro",
     val appLanguageLabel: String = "System default",
-    val providerType: AgentProviderType = AgentProviderType.PRO_SUBSCRIPTION,
+    val providerType: AgentProviderType = AgentProviderType.CLOUD,
     val defaultImageQuestion: String = "Give me a concise description of the image",
     val memoryMode: MemoryPrivacyMode = MemoryPrivacyMode.PRIVATE_LOCAL,
     val memoryModeAvailability: String = "",
@@ -166,9 +166,9 @@ fun SettingsScreen(
             verticalArrangement = Arrangement.spacedBy(12.dp),
         ) {
             item {
-                ProSubscriptionCard(
-                    isSubscribed = state.isProSubscribed,
-                    proPlan = state.proPlan,
+                CloudSubscriptionCard(
+                    isSubscribed = state.isCloudSubscribed,
+                    cloudPlan = state.cloudPlan,
                     onClick = actions::openSubscription,
                 )
             }
@@ -299,9 +299,9 @@ private fun MeetingRecordingBanner(
 }
 
 @Composable
-private fun ProSubscriptionCard(
+private fun CloudSubscriptionCard(
     isSubscribed: Boolean,
-    proPlan: String,
+    cloudPlan: String,
     onClick: () -> Unit,
 ) {
     Card(
@@ -373,7 +373,7 @@ private fun ProSubscriptionCard(
                     }
                     Text(
                         text = if (isSubscribed) {
-                            stringResource(Res.string.settings_current_plan, proPlan)
+                            stringResource(Res.string.settings_current_plan, cloudPlan)
                         } else {
                             stringResource(Res.string.settings_unlock_premium)
                         },
@@ -557,8 +557,8 @@ private fun MemoryPrivacyContent(state: SettingsUiState, actions: SettingsScreen
         )
     }
     MemoryPrivacyMode.entries.forEach { mode ->
-        val requiresPro = mode != MemoryPrivacyMode.PRIVATE_LOCAL
-        val enabled = state.isProSubscribed || !requiresPro
+        val requiresCloud = mode != MemoryPrivacyMode.PRIVATE_LOCAL
+        val enabled = state.isCloudSubscribed || !requiresCloud
         Row(
             modifier = Modifier
                 .fillMaxWidth()

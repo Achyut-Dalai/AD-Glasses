@@ -3,7 +3,7 @@ package com.fersaiyan.cyanbridge.ai.router
 import android.content.Context
 import com.fersaiyan.cyanbridge.shared.settings.AgentProviderType
 import com.fersaiyan.cyanbridge.agent.LocalAgentPrefs as AutomationPrefs
-import com.fersaiyan.cyanbridge.agent.ProSubscriptionAiPrefs
+import com.fersaiyan.cyanbridge.agent.CloudAiPrefs
 import com.fersaiyan.cyanbridge.localmodels.provider.LocalModelsProvider
 import com.fersaiyan.cyanbridge.localmodels.remote.RemoteOpenAiPrefs
 import kotlinx.coroutines.CancellationException
@@ -94,15 +94,15 @@ object AgentInferenceRouter {
                     maxTokens = UI_PLANNING_MAX_TOKENS,
                 )
 
-                AgentProviderType.PRO_SUBSCRIPTION -> CliRelayClient.imageQuery(
+                AgentProviderType.CLOUD -> CloudClient.imageQuery(
                     context = context,
                     imagePath = usableImagePath,
                     prompt = multimodalPrompt(systemPrompt, userPrompt),
-                    modelOverride = ProSubscriptionAiPrefs.getTasksModel(context),
+                    modelOverride = CloudAiPrefs.getTasksModel(context),
                 ).getOrThrow()
 
                 AgentProviderType.TASKER -> when (AiProviderPrefs.getProvider(context)) {
-                    AiProviderType.CLI_RELAY -> CliRelayClient.imageQuery(
+                    AiProviderType.CLOUD_API -> CloudClient.imageQuery(
                         context = context,
                         imagePath = usableImagePath,
                         prompt = multimodalPrompt(systemPrompt, userPrompt),
@@ -154,10 +154,10 @@ object AgentInferenceRouter {
         providerType: AgentProviderType = AutomationPrefs.getProviderType(context),
     ): Boolean {
         return when (providerType) {
-            AgentProviderType.PRO_SUBSCRIPTION -> true
+            AgentProviderType.CLOUD -> true
             AgentProviderType.LOCAL_AGENT -> isRemoteLocalModelsPlanner(context)
             AgentProviderType.TASKER -> when (AiProviderPrefs.getProvider(context)) {
-                AiProviderType.CLI_RELAY -> true
+                AiProviderType.CLOUD_API -> true
                 AiProviderType.LOCAL_MODELS -> isRemoteLocalModelsPlanner(context)
                 AiProviderType.MOCK,
                 AiProviderType.COMPANY_BACKEND -> false
@@ -182,12 +182,12 @@ object AgentInferenceRouter {
                 maxTokens = if (purpose == AgentInferencePurpose.CLASSIFICATION) 256 else 512,
             )
 
-            AgentProviderType.PRO_SUBSCRIPTION -> CliRelayClient.chat(
+            AgentProviderType.CLOUD -> CloudClient.chat(
                 context = context,
                 chatId = sessionId,
                 prompt = userPrompt,
                 messages = messages,
-                modelOverride = ProSubscriptionAiPrefs.getTasksModel(context),
+                modelOverride = CloudAiPrefs.getTasksModel(context),
             ).getOrThrow()
 
             AgentProviderType.TASKER -> completeUsingAiProviderPrefs(
@@ -224,7 +224,7 @@ object AgentInferenceRouter {
         messages: List<Map<String, String>>,
     ): String {
         return when (AiProviderPrefs.getProvider(context)) {
-            AiProviderType.CLI_RELAY -> CliRelayClient.chat(
+            AiProviderType.CLOUD_API -> CloudClient.chat(
                 context = context,
                 chatId = sessionId,
                 prompt = userPrompt,

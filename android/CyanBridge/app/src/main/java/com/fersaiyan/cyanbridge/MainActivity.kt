@@ -1,267 +1,171 @@
 package com.fersaiyan.cyanbridge
-import com.fersaiyan.cyanbridge.shared.devices.DeviceProfile
+
 import android.Manifest
 import android.app.Activity
+import android.app.AlertDialog
+import android.app.KeyguardManager
 import android.bluetooth.BluetoothAdapter
 import android.content.BroadcastReceiver
 import android.content.ClipData
+import android.content.ContentValues
 import android.content.Context
 import android.content.Intent
 import android.content.IntentFilter
 import android.content.pm.PackageManager
 import android.graphics.BitmapFactory
-import android.widget.ArrayAdapter
-import androidx.localbroadcastmanager.content.LocalBroadcastManager
-import com.fersaiyan.cyanbridge.shared.settings.AgentProviderType
-import com.fersaiyan.cyanbridge.ai.AiWakeWordPreferences
-import com.fersaiyan.cyanbridge.agent.LocalAgentPrefs as AutomationPrefs
-import com.fersaiyan.cyanbridge.ui.VersionUpdateChecker
-import com.fersaiyan.cyanbridge.localagent.AudioSessionCoordinator
-import com.fersaiyan.cyanbridge.localagent.LocalAgentController
-import com.fersaiyan.cyanbridge.localagent.LocalAgentIntents
-import com.fersaiyan.cyanbridge.localagent.LocalAgentPrefs
-import com.fersaiyan.cyanbridge.shared.settings.CaptureSource
-import com.fersaiyan.cyanbridge.audio.MeetingCapturePrefs
-import com.fersaiyan.cyanbridge.audio.MeetingCaptureService
-import com.fersaiyan.cyanbridge.media.GlassesMediaPrefs
-import com.fersaiyan.cyanbridge.media.SyncedMediaFolder
-import com.fersaiyan.cyanbridge.media.VendorAlbumDownloader
-import com.fersaiyan.cyanbridge.ota.FirmwareClient
-import com.fersaiyan.cyanbridge.ota.InstalledFirmwareVersions
-import com.fersaiyan.cyanbridge.ota.FirmwareResult
-import com.fersaiyan.cyanbridge.ota.OtaManager
-import com.fersaiyan.cyanbridge.ota.OtaReadinessStage
-import com.fersaiyan.cyanbridge.ota.OtaState
-import com.fersaiyan.cyanbridge.ota.OtaTarget
-import com.fersaiyan.cyanbridge.ota.expectedFirmwareExtension
-import com.fersaiyan.cyanbridge.ota.firmwareRelayBaseUrl
-import com.fersaiyan.cyanbridge.ota.isExpectedFirmwareFilename
-import com.fersaiyan.cyanbridge.glasses.GlassesSession
-import com.fersaiyan.cyanbridge.glasses.GlassesSessionLease
-import com.fersaiyan.cyanbridge.glasses.GlassesSessionCoordinator
-import com.fersaiyan.cyanbridge.glasses.BackgroundGlassesCommandPermit
-import com.fersaiyan.cyanbridge.wifiadb.DefaultWifiAdbDebugControllerFactory
-import com.fersaiyan.cyanbridge.media.autocapture.AutoAudioCapturePrefs
-import com.fersaiyan.cyanbridge.media.autocapture.AutoAudioCaptureService
-import com.fersaiyan.cyanbridge.media.autocapture.GlassesSyncedAudioIngestor
-import android.os.Build
-import android.os.Bundle
-import android.util.Log
-import android.widget.Toast
-import android.view.View
-import androidx.annotation.RequiresApi
-import androidx.appcompat.app.AppCompatActivity
-import androidx.appcompat.app.AlertDialog
-import androidx.core.app.ActivityCompat
-import androidx.core.content.ContextCompat
-import androidx.lifecycle.lifecycleScope
-import com.hjq.permissions.OnPermissionCallback
-import com.hjq.permissions.XXPermissions
-import com.oudmon.ble.base.communication.utils.ByteUtil
-import com.oudmon.ble.base.bluetooth.BleOperateManager
-import com.oudmon.ble.base.bluetooth.DeviceManager
-import com.oudmon.ble.base.communication.LargeDataHandler
-import com.oudmon.ble.base.communication.bigData.resp.GlassesDeviceNotifyListener
-import com.oudmon.ble.base.communication.bigData.resp.GlassesDeviceNotifyRsp
-import com.fersaiyan.cyanbridge.databinding.AcitivytMainBinding
-import com.fersaiyan.cyanbridge.ui.DeviceBindActivity
-import com.fersaiyan.cyanbridge.ui.ChatListActivity
-import com.fersaiyan.cyanbridge.ui.ChatThreadActivity
-import com.fersaiyan.cyanbridge.ui.CommunityPluginPrefs
-import com.fersaiyan.cyanbridge.ui.CommunityPluginsActivity
-import com.fersaiyan.cyanbridge.ui.SettingsActivity
-import com.fersaiyan.cyanbridge.plugins.PluginVoicePermissions
-import com.fersaiyan.cyanbridge.plugins.autodiary.AutoDiaryService
-import com.fersaiyan.cyanbridge.plugins.localagent.LocalAgentPlugin
-import com.fersaiyan.cyanbridge.plugins.visualdiary.VisualDiaryPreferences
-import com.fersaiyan.cyanbridge.plugins.visualdiary.VisualDiaryService
-import com.fersaiyan.cyanbridge.plugins.errandbrain.ErrandBrainPreferences
-import com.fersaiyan.cyanbridge.plugins.errandbrain.ErrandBrainService
-import com.fersaiyan.cyanbridge.plugins.handsfreetranslator.HandsFreeTranslatorPreferences
-import com.fersaiyan.cyanbridge.plugins.handsfreetranslator.HandsFreeTranslatorService
-import com.fersaiyan.cyanbridge.plugins.livecaptionrelay.LiveCaptionRelayPreferences
-import com.fersaiyan.cyanbridge.plugins.livecaptionrelay.LiveCaptionRelayService
-import com.fersaiyan.cyanbridge.plugins.meetingsparknotes.MeetingSparkNotesPreferences
-import com.fersaiyan.cyanbridge.plugins.meetingsparknotes.MeetingSparkNotesService
-import com.fersaiyan.cyanbridge.plugins.walkingaid.WalkingAidPreferences
-import com.fersaiyan.cyanbridge.plugins.walkingaid.WalkingAidImageCapture
-import com.fersaiyan.cyanbridge.plugins.walkingaid.WalkingAidService
-// import com.fersaiyan.cyanbridge.ui.notes.NotesListActivity
-import com.fersaiyan.cyanbridge.ui.recordings.RecordingsListActivity
-import com.fersaiyan.cyanbridge.ui.BluetoothUtils
-import com.fersaiyan.cyanbridge.ui.BluetoothEvent
-import com.fersaiyan.cyanbridge.ui.AutoPairManager
-import com.fersaiyan.cyanbridge.chat.ChatStore
-import com.fersaiyan.cyanbridge.devices.DeviceProfileStore
-import com.fersaiyan.cyanbridge.devices.eyevue.EyevueManager
-import com.fersaiyan.cyanbridge.devices.eyevue.EyevueLivePreviewManager
-import com.fersaiyan.cyanbridge.devices.eyevue.EyevueMediaProfile
-import com.fersaiyan.cyanbridge.devices.eyevue.EyevueMediaSync
-import com.fersaiyan.cyanbridge.devices.eyevue.EyevueMediaType
-import com.fersaiyan.cyanbridge.devices.eyevue.EyevueWifiTransport
-import com.fersaiyan.cyanbridge.devices.meizumyvu.MeizuMyvuManager
-import com.fersaiyan.cyanbridge.shared.devices.GlassesManagerGating
-import com.fersaiyan.cyanbridge.ai.transcription.DefaultTranscriptionService
-import com.fersaiyan.cyanbridge.ai.transcription.Mp4AudioChunker
-import com.fersaiyan.cyanbridge.ai.transcription.NoOpAudioChunker
-import com.fersaiyan.cyanbridge.ai.transcription.OpenAIWhisperTranscriptionProvider
-import com.fersaiyan.cyanbridge.ai.transcription.RetryPolicy
-import com.fersaiyan.cyanbridge.ai.transcription.RetryingTranscriptionProvider
-import com.fersaiyan.cyanbridge.ai.transcription.vosk.VoskModelManager
-import com.fersaiyan.cyanbridge.ai.transcription.vosk.VoskTranscriptionProvider
-import com.fersaiyan.cyanbridge.ai.transcription.TranscriptionProgress
-import com.fersaiyan.cyanbridge.ai.transcription.TranscriptionResult
-import com.fersaiyan.cyanbridge.ai.transcription.TranscriptionService
-import com.fersaiyan.cyanbridge.privacy.PrivacyPrefs
-import com.fersaiyan.cyanbridge.ui.MyApplication
-import com.fersaiyan.cyanbridge.ui.bleIpBridge
-import com.fersaiyan.cyanbridge.ui.hasBluetooth
-import com.fersaiyan.cyanbridge.ui.hasAccessibilityServicePermission
-import com.fersaiyan.cyanbridge.ui.hasNotificationPermission
-import com.fersaiyan.cyanbridge.ui.hasWifiP2pPermission
-import com.fersaiyan.cyanbridge.ui.requestBluetoothPermission
-import com.fersaiyan.cyanbridge.ui.requestAccessibilityServicePermission
-import com.fersaiyan.cyanbridge.ui.ensureNotificationPermission
-import com.fersaiyan.cyanbridge.ui.requestWifiP2pPermission
-import com.fersaiyan.cyanbridge.ui.setOnClickListener
-import com.fersaiyan.cyanbridge.ui.startKtxActivity
-import com.fersaiyan.cyanbridge.ui.debug.DebugLogSupport
-import com.fersaiyan.cyanbridge.ui.wifi.p2p.WifiP2pManagerSingleton
-import android.net.wifi.p2p.WifiP2pDevice
-import android.net.wifi.p2p.WifiP2pInfo
+import android.media.MediaScannerConnection
 import android.net.ConnectivityManager
 import android.net.Network
-import android.provider.MediaStore
-import android.provider.OpenableColumns
-import android.content.ContentValues
-import android.media.MediaScannerConnection
-import android.os.Environment
-import org.greenrobot.eventbus.EventBus
-import org.greenrobot.eventbus.Subscribe
-import org.greenrobot.eventbus.ThreadMode
-import com.fersaiyan.cyanbridge.ui.BatteryOptimizationGuideActivity
-// import kotlinx.coroutines.CompletableDeferred
-import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.CancellationException
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.Job
-import kotlinx.coroutines.SupervisorJob
-import kotlinx.coroutines.ensureActive
-import kotlinx.coroutines.launch
-import kotlinx.coroutines.isActive
-import java.io.File
-import java.io.FileOutputStream
-import java.io.InputStream
-import java.io.ByteArrayOutputStream
-import java.io.IOException
-import java.net.HttpURLConnection
-import java.net.InetAddress
-import java.net.URL
-import java.net.InetSocketAddress
-import java.net.Socket
-import java.util.concurrent.atomic.AtomicReference
-import javax.net.SocketFactory
-import java.text.SimpleDateFormat
-import java.util.Locale
-import java.security.SecureRandom
-import java.util.concurrent.ConcurrentHashMap
-import java.util.concurrent.atomic.AtomicBoolean
-import androidx.core.content.FileProvider
-import kotlinx.coroutines.withContext
-import kotlinx.coroutines.delay
-import kotlinx.coroutines.CompletableDeferred
-import kotlinx.coroutines.supervisorScope
-import kotlinx.coroutines.withTimeoutOrNull
-import kotlinx.coroutines.cancelChildren
-import kotlinx.coroutines.sync.Semaphore
-import kotlinx.coroutines.sync.withPermit
-import kotlinx.coroutines.suspendCancellableCoroutine
-import kotlin.coroutines.coroutineContext
-import kotlin.coroutines.resume
-
-import android.provider.Settings
 import android.net.Uri
-import android.app.KeyguardManager
-
+import android.os.Build
+import android.os.Bundle
+import android.os.Environment
+import android.provider.MediaStore
+import android.provider.Settings
 import android.speech.RecognitionListener
 import android.speech.RecognizerIntent
 import android.speech.SpeechRecognizer
 import android.speech.tts.TextToSpeech
 import android.speech.tts.UtteranceProgressListener
+import android.util.Log
+import android.view.View
+import android.widget.ArrayAdapter
+import android.widget.Toast
 import androidx.activity.compose.setContent
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.annotation.RequiresApi
+import androidx.appcompat.app.AppCompatActivity
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
-import com.fersaiyan.cyanbridge.agent.ProSubscriptionAiPrefs
-import com.fersaiyan.cyanbridge.agent.ProSubscriptionServerPrefs
+import androidx.core.app.ActivityCompat
+import androidx.core.content.ContextCompat
+import androidx.lifecycle.lifecycleScope
+import androidx.localbroadcastmanager.content.LocalBroadcastManager
+import com.fersaiyan.cyanbridge.agent.AiPrefs
+import com.fersaiyan.cyanbridge.agent.LocalAgentPrefs as AutomationPrefs
+import com.fersaiyan.cyanbridge.agent.ServerPrefs
+import com.fersaiyan.cyanbridge.ai.AiQuestionForegroundService
+import com.fersaiyan.cyanbridge.ai.AiWakeWordPreferences
 import com.fersaiyan.cyanbridge.ai.router.AssistantIntent
 import com.fersaiyan.cyanbridge.ai.router.AssistantRequest
 import com.fersaiyan.cyanbridge.ai.router.AssistantRequestRouter
 import com.fersaiyan.cyanbridge.ai.router.AssistantRequestSource
 import com.fersaiyan.cyanbridge.ai.router.AssistantSpeechPolicy
+import com.fersaiyan.cyanbridge.ai.router.CloudClient
 import com.fersaiyan.cyanbridge.ai.router.GlassesAssistantRoute
 import com.fersaiyan.cyanbridge.ai.router.GlassesAssistantRoutingPolicy
-import com.fersaiyan.cyanbridge.ai.router.CliRelayClient
-import com.fersaiyan.cyanbridge.ai.vision.ImageQuestionPreferences
+import com.fersaiyan.cyanbridge.ai.transcription.TranscriptionProgress
+import com.fersaiyan.cyanbridge.ai.transcription.vosk.VoskTranscriptionProvider
 import com.fersaiyan.cyanbridge.ai.vision.ImageQuestionDefaults
+import com.fersaiyan.cyanbridge.ai.vision.ImageQuestionPreferences
 import com.fersaiyan.cyanbridge.ai.vision.ImageQuestionPromptResolver
 import com.fersaiyan.cyanbridge.ai.vision.ImageQuestionRoute
 import com.fersaiyan.cyanbridge.ai.vision.ResolvedImageQuestionPrompt
-import com.fersaiyan.cyanbridge.ai.image.DefaultAssistantResolver
-import com.fersaiyan.cyanbridge.ai.image.ExternalAssistantAutomationInspector
-import com.fersaiyan.cyanbridge.ai.image.ExternalAssistantAutomationPolicy
-import com.fersaiyan.cyanbridge.ai.image.ExternalAssistantAutomationSetupActivity
-import com.fersaiyan.cyanbridge.ai.image.ExternalImageAutomationIntents
-import com.fersaiyan.cyanbridge.ai.image.ExternalImageAutomationStage
-import com.fersaiyan.cyanbridge.ai.image.ExternalImageAutomationStore
-import com.fersaiyan.cyanbridge.ai.image.ImageAutomationTarget
-import com.fersaiyan.cyanbridge.ai.image.ImageQuestionBroadcast
-import com.fersaiyan.cyanbridge.ai.image.ImageQuestionSource
-import com.fersaiyan.cyanbridge.ai.image.ImageQuestionSourcePolicy
-import com.fersaiyan.cyanbridge.ai.image.ImageThumbnailQuality
-import com.fersaiyan.cyanbridge.ai.AiQuestionForegroundService
-import com.fersaiyan.cyanbridge.ai.image.HighQualityFailureChoice
-import com.fersaiyan.cyanbridge.shared.glasses.GlassesAssistantMode
-import com.fersaiyan.cyanbridge.shared.glasses.AiWakeWordRoute
-import com.fersaiyan.cyanbridge.shared.glasses.GlassesDashboardAction
-import com.fersaiyan.cyanbridge.shared.glasses.GlassesDashboardUiState
-import com.fersaiyan.cyanbridge.shared.glasses.FirmwarePatchRequestUiState
-import com.fersaiyan.cyanbridge.shared.glasses.GlassesSyncFlow
-import com.fersaiyan.cyanbridge.shared.glasses.GlassesTransferUiState
-import com.fersaiyan.cyanbridge.shared.glasses.MetaRaybanUiState
-import com.fersaiyan.cyanbridge.shared.glasses.MeizuMyvuUiState
-import com.fersaiyan.cyanbridge.shared.glasses.OtaFirmwareSource
-import com.fersaiyan.cyanbridge.shared.glasses.WifiAdbDebugUiState
-import com.fersaiyan.cyanbridge.shared.navigation.AppDestination
-import com.fersaiyan.cyanbridge.shared.plugins.NativePluginIds
-import com.fersaiyan.cyanbridge.shared.plugins.NativePluginShortcutAction
-import com.fersaiyan.cyanbridge.shared.plugins.NativePluginShortcutButton
-import com.fersaiyan.cyanbridge.shared.plugins.NativePluginShortcutUiState
-import com.fersaiyan.cyanbridge.localagent.LocalAgentAccessibilityBridge
-import com.fersaiyan.cyanbridge.localagent.context.LocalAgentContextBuilder
-import com.fersaiyan.cyanbridge.localagent.dailyfacts.DailyFactsStorage
-import com.fersaiyan.cyanbridge.localagent.memory.LocalAgentMemorySearch
+import com.fersaiyan.cyanbridge.audio.MeetingCapturePrefs
+import com.fersaiyan.cyanbridge.audio.MeetingCaptureService
+import com.fersaiyan.cyanbridge.chat.ChatStore
+import com.fersaiyan.cyanbridge.databinding.ActivityMainBinding
+import com.fersaiyan.cyanbridge.devices.DeviceProfileStore
+import com.fersaiyan.cyanbridge.devices.eyevue.EyevueLivePreviewManager
+import com.fersaiyan.cyanbridge.devices.eyevue.EyevueManager
+import com.fersaiyan.cyanbridge.devices.eyevue.EyevueMediaProfile
+import com.fersaiyan.cyanbridge.devices.eyevue.EyevueMediaSync
+import com.fersaiyan.cyanbridge.devices.eyevue.EyevueMediaType
+import com.fersaiyan.cyanbridge.devices.eyevue.EyevueWifiTransport
+import com.fersaiyan.cyanbridge.devices.meizumyvu.MeizuMyvuManager
+import com.fersaiyan.cyanbridge.glasses.BackgroundGlassesCommandPermit
+import com.fersaiyan.cyanbridge.glasses.GlassesSession
+import com.fersaiyan.cyanbridge.glasses.GlassesSessionCoordinator
+import com.fersaiyan.cyanbridge.glasses.GlassesSessionLease
+import com.fersaiyan.cyanbridge.localagent.AudioSessionCoordinator
+import com.fersaiyan.cyanbridge.localagent.LocalAgentController
+import com.fersaiyan.cyanbridge.localagent.LocalAgentIntents
+import com.fersaiyan.cyanbridge.localagent.LocalAgentPrefs
 import com.fersaiyan.cyanbridge.localagent.memory.LocalAgentMemoryStore
-import com.fersaiyan.cyanbridge.localagent.userfacts.CandidateUserFactsStorage
 import com.fersaiyan.cyanbridge.localmodels.provider.LocalModelsProvider
-import com.fersaiyan.cyanbridge.localmodels.tts.StreamingSpeechSessionManager
 import com.fersaiyan.cyanbridge.localmodels.settings.LocalModelRuntime
 import com.fersaiyan.cyanbridge.localmodels.settings.LocalModelSettingsRepository
 import com.fersaiyan.cyanbridge.localmodels.storage.LocalModelStorageRepository
+import com.fersaiyan.cyanbridge.localmodels.tts.StreamingSpeechSessionManager
 import com.fersaiyan.cyanbridge.memoryvault.MemoryPolicyService
+import com.fersaiyan.cyanbridge.ota.FirmwareClient
+import com.fersaiyan.cyanbridge.ota.FirmwareResult
+import com.fersaiyan.cyanbridge.ota.InstalledFirmwareVersions
+import com.fersaiyan.cyanbridge.ota.OtaManager
+import com.fersaiyan.cyanbridge.ota.OtaReadinessStage
+import com.fersaiyan.cyanbridge.ota.OtaState
+import com.fersaiyan.cyanbridge.ota.OtaTarget
+import com.fersaiyan.cyanbridge.ota.expectedFirmwareExtension
+import com.fersaiyan.cyanbridge.ota.firmwareCloudBaseUrl
+import com.fersaiyan.cyanbridge.ota.isExpectedFirmwareFilename
+import com.fersaiyan.cyanbridge.plugins.PluginVoicePermissions
+import com.fersaiyan.cyanbridge.plugins.autodiary.AutoDiaryService
+import com.fersaiyan.cyanbridge.plugins.errandbrain.ErrandBrainPreferences
+import com.fersaiyan.cyanbridge.plugins.errandbrain.ErrandBrainService
+import com.fersaiyan.cyanbridge.plugins.handsfreetranslator.HandsFreeTranslatorPreferences
+import com.fersaiyan.cyanbridge.plugins.handsfreetranslator.HandsFreeTranslatorService
+import com.fersaiyan.cyanbridge.plugins.livecaptioncloud.LiveCaptionCloudPreferences
+import com.fersaiyan.cyanbridge.plugins.livecaptioncloud.LiveCaptionCloudService
+import com.fersaiyan.cyanbridge.plugins.localagent.LocalAgentPlugin
+import com.fersaiyan.cyanbridge.plugins.meetingsparknotes.MeetingSparkNotesPreferences
+import com.fersaiyan.cyanbridge.plugins.meetingsparknotes.MeetingSparkNotesService
+import com.fersaiyan.cyanbridge.plugins.visualdiary.VisualDiaryPreferences
+import com.fersaiyan.cyanbridge.plugins.visualdiary.VisualDiaryService
+import com.fersaiyan.cyanbridge.shared.devices.DeviceProfile
+import com.fersaiyan.cyanbridge.shared.devices.GlassesManagerGating
+import com.fersaiyan.cyanbridge.shared.settings.AgentProviderType
+import com.fersaiyan.cyanbridge.shared.settings.CaptureSource
+import com.fersaiyan.cyanbridge.shared.ui.CyanBridgeApp
+import com.fersaiyan.cyanbridge.ui.AutoPairManager
+import com.fersaiyan.cyanbridge.ui.ChatListActivity
+import com.fersaiyan.cyanbridge.ui.ChatThreadActivity
+import com.fersaiyan.cyanbridge.ui.CommunityPluginPrefs
+import com.fersaiyan.cyanbridge.ui.CommunityPluginsActivity
+import com.fersaiyan.cyanbridge.ui.DeviceBindActivity
+import com.fersaiyan.cyanbridge.ui.SettingsActivity
+import com.fersaiyan.cyanbridge.ui.VersionUpdateChecker
 import com.fersaiyan.cyanbridge.ui.appearance.AppearancePreferences
 import com.fersaiyan.cyanbridge.ui.appearance.rememberAppearanceSettings
-import com.fersaiyan.cyanbridge.shared.ui.CyanBridgeApp
+import com.fersaiyan.cyanbridge.ui.debug.DebugLogSupport
 import com.fersaiyan.cyanbridge.ui.theme.CyanBridgeTheme
-import android.content.ClipboardManager
+import com.fersaiyan.cyanbridge.ui.wifi.p2p.WifiP2pManagerSingleton
+import com.fersaiyan.cyanbridge.wifiadb.DefaultWifiAdbDebugControllerFactory
+import com.hjq.permissions.OnPermissionCallback
+import com.hjq.permissions.XXPermissions
 import com.meta.wearable.dat.core.Wearables
 import com.meta.wearable.dat.core.types.Permission
 import com.meta.wearable.dat.core.types.PermissionStatus
-import kotlinx.coroutines.flow.combine
-import kotlinx.coroutines.flow.map
+import com.oudmon.ble.base.bluetooth.BleOperateManager
+import com.oudmon.ble.base.bluetooth.DeviceManager
+import com.oudmon.ble.base.communication.LargeDataHandler
+import com.oudmon.ble.base.communication.bigData.resp.GlassesDeviceNotifyListener
+import com.oudmon.ble.base.communication.bigData.resp.GlassesDeviceNotifyRsp
+import com.oudmon.ble.base.communication.utils.ByteUtil
+import java.io.ByteArrayOutputStream
+import java.io.File
+import java.io.FileOutputStream
+import java.io.InputStream
+import java.net.HttpURLConnection
+import java.net.InetSocketAddress
+import java.net.Socket
+import java.net.URL
+import java.util.concurrent.ConcurrentHashMap
+import java.util.concurrent.atomic.AtomicBoolean
+import java.util.concurrent.atomic.AtomicReference
+import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.flow.merge
-
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
+import java.util.Locale
+import java.text.SimpleDateFormat
+import java.security.SecureRandom
+import com.fersaiyan.cyanbridge.localagent.LocalAgentIntents
+import com.fersaiyan.cyanbridge.ai.image.ExternalImageAutomationIntents
 
 class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
     private var tts: TextToSpeech? = null
@@ -271,12 +175,20 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
     }
     private val ttsDoneCallbacks = ConcurrentHashMap<String, () -> Unit>()
     private val assistantRequestRouter = AssistantRequestRouter()
-    private var pendingVoiceImageQuestion: String? = null
-    private var pendingImageQuestionOfferSpokenQuestion = false
 
-    // Optional Local Agent UI status
+    private val imageQueryInProgress = AtomicBoolean(false)
+    private val imageThumbnailRequestInProgress = AtomicBoolean(false)
+    private val imageCaptureAwaitingNotification = AtomicBoolean(false)
+    private val metaPhotoCaptureInProgress = AtomicBoolean(false)
+    private var isAiHijackEnabled = true
+    private var pendingImageCaptureSourceTag: String? = null
+    private var pendingImageQuestionSource = com.fersaiyan.cyanbridge.ai.image.ImageQuestionSourcePolicy.defaultSource()
+    private var pendingImageThumbnailQuality = com.fersaiyan.cyanbridge.ai.image.ImageQuestionSourcePolicy.defaultThumbnailQuality()
+    private var pendingImageCaptureStartedAtMs: Long = 0L
+
     private var agentReceiverRegistered = false
     private var imageAutomationStatusReceiverRegistered = false
+
     private val imageAutomationStatusReceiver = object : BroadcastReceiver() {
         override fun onReceive(context: Context?, intent: Intent?) {
             if (intent?.action == ExternalImageAutomationIntents.internalStatusAction(packageName)) {
@@ -284,78 +196,22 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
             }
         }
     }
+
     private val agentStatusReceiver = object : BroadcastReceiver() {
         override fun onReceive(context: Context?, intent: Intent?) {
             if (intent == null) return
-
             val status = intent.getStringExtra(LocalAgentIntents.EXTRA_STATUS)
             val lastError = intent.getStringExtra(LocalAgentIntents.EXTRA_LAST_ERROR)
             val isTerminal = intent.getBooleanExtra(LocalAgentIntents.EXTRA_IS_TERMINAL, false)
             val userMessage = intent.getStringExtra(LocalAgentIntents.EXTRA_USER_MESSAGE)
-
-            if (!status.isNullOrBlank()) {
-                LocalAgentPrefs.setStatus(this@MainActivity, status)
-            }
-            if (!lastError.isNullOrBlank()) {
-                LocalAgentPrefs.setLastError(this@MainActivity, lastError)
-            }
-
+            if (!status.isNullOrBlank()) LocalAgentPrefs.setStatus(this@MainActivity, status)
+            if (!lastError.isNullOrBlank()) LocalAgentPrefs.setLastError(this@MainActivity, lastError)
             if (isTerminal && !userMessage.isNullOrBlank()) {
                 Toast.makeText(this@MainActivity, userMessage, Toast.LENGTH_SHORT).show()
             }
-
             refreshAgentStatusUi()
         }
     }
-    override fun onInit(status: Int) {
-        ttsReady = status == TextToSpeech.SUCCESS
-        Log.i("ImageQuestionAudio", "TTS initialization status=$status ready=$ttsReady")
-        if (status == TextToSpeech.SUCCESS) {
-            tts?.language = Locale.getDefault()
-        }
-        localSpeechSessionManager.attachTtsEngine(tts, ttsReady)
-    }
-
-    private fun speak(text: String) {
-        speak(text, languageTag = null, utteranceId = null, onDone = null, streamType = null)
-    }
-
-    private fun speakVision(text: String, onDone: (() -> Unit)? = null) {
-        speak(
-            text = text,
-            languageTag = ImageQuestionPreferences.get(this).appLanguageTag,
-            utteranceId = null,
-            onDone = onDone,
-            streamType = null,
-        )
-    }
-
-    private fun speak(
-        text: String,
-        languageTag: String? = null,
-        utteranceId: String?,
-        streamType: Int? = null,
-        onDone: (() -> Unit)? = null,
-    ) {
-        val engine = tts
-        languageTag?.takeIf { it.isNotBlank() }?.let { tag ->
-            val result = engine?.setLanguage(Locale.forLanguageTag(tag))
-            if (result == TextToSpeech.LANG_MISSING_DATA || result == TextToSpeech.LANG_NOT_SUPPORTED) {
-                Log.w(TAG, "Text-to-speech voice unavailable for $tag")
-            }
-            Log.i("ImageQuestionAudio", "TTS language tag=$tag result=$result")
-        }
-        val id = utteranceId ?: "utt_${System.currentTimeMillis()}"
-        val wrappedOnDone: () -> Unit = {
-            try {
-                onDone?.invoke()
-            } finally {
-                AudioSessionCoordinator.markIdle()
-            }
-        }
-        ttsDoneCallbacks[id] = wrappedOnDone
-
-        val bundle = Bundle().apply {
             putString(TextToSpeech.Engine.KEY_PARAM_UTTERANCE_ID, id)
             streamType?.let { putString(TextToSpeech.Engine.KEY_PARAM_STREAM, it.toString()) }
         }
@@ -415,7 +271,7 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
     }
 
     // Keeps the existing Android control handlers alive while Compose owns the visible tree.
-    private lateinit var binding: AcitivytMainBinding
+    private lateinit var binding: ActivityMainBinding
     private var dashboardState by mutableStateOf(
         GlassesDashboardUiState(
             wifiAdbDebug = WifiAdbDebugUiState(isAvailable = BuildConfig.DEBUG),
@@ -435,9 +291,9 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
     private val otaManager by lazy { OtaManager(this) }
     private var otaPreparationJob: Job? = null
     private var pendingPersonalFirmwareTarget: OtaTarget? = null
-    private var stagedPersonalWifiFirmware: File? = null
+    private var stagedLocalWifiFirmware: File? = null
     private var otaExpectedDeviceAddress: String? = null
-    private val personalFirmwarePicker =
+    private val localFirmwarePicker =
         registerForActivityResult(ActivityResultContracts.OpenDocument()) { uri ->
             val target = pendingPersonalFirmwareTarget
             pendingPersonalFirmwareTarget = null
@@ -481,102 +337,6 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
     private var downloadP2pTeardownInProgress = false
     private var downloadExitTransferRequested = false
     private var downloadCancelledByUser = false
-    private var lastDownloadBleIpAtMs: Long = 0L
-    private var downloadInitialPhaseTimeoutJob: Job? = null
-    private var downloadInitialPhaseCompleted = false
-    private var downloadSupportDialogShown = false
-    private var downloadStartedAtMs: Long = 0L
-    private var noMatchPeerCount = 0
-    private var downloadP2pRestartCount = 0
-    private val maxP2pRestarts = 3
-    private val seenP2pPeers = mutableSetOf<String>()
-    private var lastPeerSetHash: Int = 0
-    private var officialSystemSuccess = false
-    private var officialBleCallbackSuccess = false
-    private var officialFlowRetryCount = 0
-    private val officialFlowRetryLimit = 1
-    private var officialDisconnectRecoveryJob: Job? = null
-    private var officialMediaErrorCount = 0
-
-    // Guard against concurrent/duplicate image queries
-    private val imageQueryInProgress = java.util.concurrent.atomic.AtomicBoolean(false)
-    private val imageThumbnailRequestInProgress = java.util.concurrent.atomic.AtomicBoolean(false)
-    private val imageCaptureAwaitingNotification = java.util.concurrent.atomic.AtomicBoolean(false)
-    private val metaPhotoCaptureInProgress = java.util.concurrent.atomic.AtomicBoolean(false)
-    private val pendingImageCapturePermit = AtomicReference<BackgroundGlassesCommandPermit?>(null)
-    @Volatile
-    private var pendingImageCaptureSourceTag: String? = null
-    private var pendingImageQuestionSource = ImageQuestionSourcePolicy.defaultSource()
-    private var pendingImageThumbnailQuality = ImageQuestionSourcePolicy.defaultThumbnailQuality()
-    private var pendingImageCaptureStartedAtMs: Long = 0L
-    private var mediaDownloadPurpose = MediaDownloadPurpose.FULL_SYNC
-    private var highQualityImageRequest: HighQualityImageRequest? = null
-    private var lastImageQueryAtMs: Long = 0L
-    private var activeParallelAudioQuestionDeferred: kotlinx.coroutines.CompletableDeferred<String?>? = null
-    private var activeParallelAudioQuestionJob: Job? = null
-
-    // Official app registers the notify listener with cmdType=2 for album import.
-    // Keep our main listener (cmdType=100) for general events, and add a narrow
-    // one for the download flow so we don't duplicate thumbnail/audio handling.
-    private val downloadNotifyListener by lazy { DownloadNotifyListener() }
-    private var downloadNotifyListenerRegistered = false
-
-    // UI state for P2P sync progress
-    private var transferTotalJpg = 0
-    private var transferTotalMp4 = 0
-    private var transferTotalOpus = 0
-    private var transferDoneJpg = 0
-    private var transferDoneMp4 = 0
-    private var transferDoneOpus = 0
-    private var lastFileProgressUiAtMs: Long = 0L
-    private var batteryPollJob: Job? = null
-    private val batteryPollIntervalMs = 60_000L
-    private val downloadInitialPhaseTimeoutMs = 45_000L
-    private var pendingBatteryToast = false
-    private var batteryCallbackRegistered = false
-    private var enabledFeaturePermissionRequestActive = false
-    private var enabledMetaCameraCheckActive = false
-    private var enabledAccessibilityPromptShown = false
-
-    // Chapter 5: meeting capture UI + state
-    private val meetingTimerOptions: List<Pair<Long?, String>> = listOf(
-        null to "No timer",
-        15L * 60L to "15 min",
-        60L * 60L to "1 hour",
-        3L * 60L * 60L to "3 hours",
-    )
-    private var meetingCaptureStateReceiver: BroadcastReceiver? = null
-
-    // Meta Ray-Ban integration
-    private var metaRaybanManager: com.fersaiyan.cyanbridge.devices.metarayban.MetaRaybanManager? = null
-    private var metaRaybanUiJob: Job? = null
-    private var pendingMetaDatAction: (() -> Unit)? = null
-    private var pendingMetaCameraAction: (() -> Unit)? = null
-    private var meizuMyvuManager: MeizuMyvuManager? = null
-    private var meizuMyvuUiJob: Job? = null
-    private var eyevueManager: EyevueManager? = null
-    private var eyevueUiJob: Job? = null
-    private var eyevueWakeWordJob: Job? = null
-    private val eyevueAiPhotoInProgress = AtomicBoolean(false)
-
-    private val metaAndroidPermissionLauncher =
-        registerForActivityResult(ActivityResultContracts.RequestMultiplePermissions()) { result ->
-            val action = pendingMetaDatAction
-            pendingMetaDatAction = null
-            enabledMetaCameraCheckActive = false
-            if (result.values.all { it }) {
-                val manager = getOrCreateMetaRaybanManager()
-                manager.initialize()
-                if (manager.isInitialized.value) {
-                    action?.invoke()
-                } else {
-                    showMetaError(
-                        "Android/DAT initialization",
-                        manager.lastError.value ?: "Unable to initialize Meta Wearables DAT",
-                    )
-                }
-            } else {
-                val denied = result.filterValues { !it }.keys.joinToString().ifBlank { "unknown" }
                 showMetaError(
                     "Android permissions",
                     "Meta needs Bluetooth and camera permissions; denied=$denied",
@@ -600,7 +360,7 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        binding = AcitivytMainBinding.inflate(layoutInflater)
+        binding = ActivityMainBinding.inflate(layoutInflater)
         aiAssistantMode = when (AutomationPrefs.getGlassesAssistantMode(this)) {
             GlassesAssistantMode.PHONE_ASSISTANT -> AI_MODE_PHONE_ASSISTANT
             GlassesAssistantMode.CUSTOM_AI_PROVIDER -> AI_MODE_CUSTOM_AI_PROVIDER
@@ -752,8 +512,8 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
         otaPreparationJob = null
         otaManager.cancel()
         pendingPersonalFirmwareTarget = null
-        stagedPersonalWifiFirmware?.takeIf { it.exists() }?.delete()
-        stagedPersonalWifiFirmware = null
+        stagedLocalWifiFirmware?.takeIf { it.exists() }?.delete()
+        stagedLocalWifiFirmware = null
         if (!otaManager.isActive) {
             releaseExclusiveGlassesSession(otaSessionLease)
         }
@@ -881,7 +641,6 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
         }
 
         val notificationFeatureEnabled =
-            WalkingAidPreferences.isEnabled(this) ||
                 AutoDiaryService.isEnabled(this) ||
                 VisualDiaryPreferences.isEnabled(this) ||
                 LocalAgentPlugin.isEnabled(this) ||
@@ -922,7 +681,7 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
             MeetingSparkNotesService.start(this)
         }
         if (CommunityPluginPrefs.isNativePluginEnabled(this, NativePluginIds.LIVE_CAPTION_RELAY)) {
-            LiveCaptionRelayService.start(this)
+            LiveCaptionCloudService.start(this)
         }
         if (CommunityPluginPrefs.isNativePluginEnabled(this, NativePluginIds.HANDS_FREE_TRANSLATOR)) {
             HandsFreeTranslatorService.start(this)
@@ -937,25 +696,21 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
 
     private fun ensureEnabledMetaCameraFeature() {
         if (!isMetaRaybanSelected() || !hasNotificationPermission(this)) return
-        if (!WalkingAidPreferences.isEnabled(this) && !VisualDiaryPreferences.isEnabled(this)) return
         if (enabledMetaCameraCheckActive) return
 
         enabledMetaCameraCheckActive = true
         ensureMetaCameraReady {
             enabledMetaCameraCheckActive = false
-            if (WalkingAidPreferences.isEnabled(this)) WalkingAidService.start(this)
             if (VisualDiaryPreferences.isEnabled(this)) VisualDiaryService.startIfEnabled(this)
         }
     }
 
     private fun startEnabledCameraFeatures() {
         if (isMetaRaybanSelected()) {
-            if (WalkingAidPreferences.isEnabled(this) || VisualDiaryPreferences.isEnabled(this)) {
                 ensureEnabledMetaCameraFeature()
             }
             return
         }
-        if (WalkingAidPreferences.isEnabled(this)) WalkingAidService.start(this)
         if (VisualDiaryPreferences.isEnabled(this)) VisualDiaryService.startIfEnabled(this)
     }
 
@@ -1537,8 +1292,8 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
                 otaPreparationJob?.cancel()
                 otaPreparationJob = null
                 pendingPersonalFirmwareTarget = null
-                stagedPersonalWifiFirmware?.takeIf { it.exists() }?.delete()
-                stagedPersonalWifiFirmware = null
+                stagedLocalWifiFirmware?.takeIf { it.exists() }?.delete()
+                stagedLocalWifiFirmware = null
                 otaManager.cancel()
                 if (!managerWasActive) {
                     releaseExclusiveGlassesSession(otaSessionLease)
@@ -1667,7 +1422,7 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
             )
             NativePluginIds.LIVE_CAPTION_RELAY -> NativePluginShortcutUiState(
                 id = id,
-                title = "Live Caption Relay",
+                title = "Live Caption Cloud",
                 description = "Caption live speech from the phone or glasses microphone.",
                 isEnabled = CommunityPluginPrefs.isNativePluginEnabled(this, id),
                 buttons = listOf(
@@ -1797,8 +1552,8 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
                             MeetingSparkNotesService.start(this)
                         }
                         NativePluginIds.LIVE_CAPTION_RELAY -> {
-                            LiveCaptionRelayPreferences.setEnabled(this, true)
-                            LiveCaptionRelayService.start(this)
+                            LiveCaptionCloudPreferences.setEnabled(this, true)
+                            LiveCaptionCloudService.start(this)
                         }
                         NativePluginIds.HANDS_FREE_TRANSLATOR -> {
                             HandsFreeTranslatorPreferences.setEnabled(this, true)
@@ -1809,8 +1564,6 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
                             ErrandBrainService.start(this)
                         }
                         NativePluginIds.WALKING_AID -> {
-                            WalkingAidPreferences.setEnabled(this, true)
-                            WalkingAidService.start(this)
                         }
                         NativePluginIds.AUTO_AUDIO -> AutoAudioCaptureService.start(this)
                     }
@@ -1862,8 +1615,8 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
                         MeetingSparkNotesService.stop(this)
                     }
                     NativePluginIds.LIVE_CAPTION_RELAY -> {
-                        LiveCaptionRelayPreferences.setEnabled(this, false)
-                        LiveCaptionRelayService.stop(this)
+                        LiveCaptionCloudPreferences.setEnabled(this, false)
+                        LiveCaptionCloudService.stop(this)
                     }
                     NativePluginIds.HANDS_FREE_TRANSLATOR -> {
                         HandsFreeTranslatorPreferences.setEnabled(this, false)
@@ -1874,8 +1627,6 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
                         ErrandBrainService.stop(this)
                     }
                     NativePluginIds.WALKING_AID -> {
-                        WalkingAidPreferences.setEnabled(this, false)
-                        WalkingAidService.stop(this)
                     }
                     NativePluginIds.AUTO_AUDIO -> AutoAudioCaptureService.stop(this)
                 }
@@ -2051,7 +1802,7 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
                         return@setOnClickListener
                     }
 
-                    triggerCliRelayImageCaptureAndQuery()
+                    triggerCloudImageCaptureAndQuery()
                 }
 
                 binding.btnModeGemini -> {
@@ -2531,10 +2282,10 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
         }
 
         when (source) {
-            OtaFirmwareSource.PERSONAL_FILE -> {
+            OtaFirmwareSource.LOCAL_FILE -> {
                 val otaLease = acquireExclusiveGlassesSession(GlassesSession.OTA) ?: return
                 otaSessionLease = otaLease
-                stagedPersonalWifiFirmware = null
+                stagedLocalWifiFirmware = null
                 pendingPersonalFirmwareTarget = OtaTarget.V821_WIFI
                 dashboardState = dashboardState.copy(
                     ota = dashboardState.ota.copy(
@@ -2546,7 +2297,7 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
                     ),
                 )
                 try {
-                    personalFirmwarePicker.launch(arrayOf("*/*"))
+                    localFirmwarePicker.launch(arrayOf("*/*"))
                 } catch (error: Exception) {
                     finishPersonalFirmwareSelection("Could not open the Wi-Fi firmware picker: ${error.message}")
                 }
@@ -2577,7 +2328,7 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
                 val firmwareFile = copyPersonalFirmware(uri, target)
                 withContext(Dispatchers.Main) {
                     if (target == OtaTarget.V821_WIFI) {
-                        stagedPersonalWifiFirmware = firmwareFile
+                        stagedLocalWifiFirmware = firmwareFile
                         pendingPersonalFirmwareTarget = OtaTarget.JIELI_BLE
                         dashboardState = dashboardState.copy(
                             ota = dashboardState.ota.copy(
@@ -2588,18 +2339,18 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
                             ),
                         )
                         try {
-                            personalFirmwarePicker.launch(arrayOf("*/*"))
+                            localFirmwarePicker.launch(arrayOf("*/*"))
                         } catch (error: Exception) {
                             finishPersonalFirmwareSelection("Could not open the BLE firmware picker: ${error.message}")
                         }
                     } else {
-                        val wifiFile = stagedPersonalWifiFirmware
+                        val wifiFile = stagedLocalWifiFirmware
                             ?: throw IllegalStateException("The Wi-Fi firmware file was not staged")
-                        stagedPersonalWifiFirmware = null
+                        stagedLocalWifiFirmware = null
                         startCombinedOtaWithLease(
                             wifiFile = wifiFile,
                             bleFile = firmwareFile,
-                            source = OtaFirmwareSource.PERSONAL_FILE,
+                            source = OtaFirmwareSource.LOCAL_FILE,
                             otaLease = requireNotNull(otaSessionLease),
                         )
                     }
@@ -2619,8 +2370,8 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
 
     private fun finishPersonalFirmwareSelection(message: String? = null) {
         pendingPersonalFirmwareTarget = null
-        stagedPersonalWifiFirmware?.takeIf { it.exists() }?.delete()
-        stagedPersonalWifiFirmware = null
+        stagedLocalWifiFirmware?.takeIf { it.exists() }?.delete()
+        stagedLocalWifiFirmware = null
         if (!otaManager.isActive) {
             releaseExclusiveGlassesSession(otaSessionLease)
         }
@@ -2905,8 +2656,8 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
                             wifiFirmwareVersion = deviceInfo.wifiFirmwareVersion.orEmpty().ifBlank { "unknown" },
                             bleHardwareVersion = deviceInfo.hardwareVersion.orEmpty().ifBlank { "unknown" },
                             bleFirmwareVersion = deviceInfo.firmwareVersion.orEmpty().ifBlank { "unknown" },
-                            relayMessage = result.message,
-                            suggestedContactEmail = ProSubscriptionServerPrefs.getAccountEmail(this@MainActivity),
+                            cloudMessage = result.message,
+                            suggestedContactEmail = ServerPrefs.getAccountEmail(this@MainActivity),
                         ),
                     )
                 }
@@ -2958,9 +2709,9 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
                     wifiFirmwareVersion = request.wifiFirmwareVersion,
                     bleHardwareVersion = request.bleHardwareVersion,
                     bleFirmwareVersion = request.bleFirmwareVersion,
-                    relayMessage = request.relayMessage,
+                    cloudMessage = request.cloudMessage,
                 ),
-                relayBaseUrl = firmwareRelayBaseUrl(this@MainActivity),
+                cloudBaseUrl = firmwareCloudBaseUrl(this@MainActivity),
             )
             withContext(Dispatchers.Main) {
                 result.onSuccess { logId ->
@@ -3333,7 +3084,7 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
                         stateLabel = runtime.stateLabel,
                         detail = runtime.detail,
                         glassesIp = runtime.glassesIp,
-                        relayEndpoints = runtime.relayEndpoints,
+                        cloudEndpoints = runtime.cloudEndpoints,
                         preferredCommand = runtime.preferredCommand,
                         canStart = runtime.canStart,
                         canStop = runtime.canStop,
@@ -3573,7 +3324,7 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
             GlassesAssistantRoute.PHONE_ASSISTANT -> AI_MODE_PHONE_ASSISTANT
             GlassesAssistantRoute.TASKER_EXTERNAL_UI -> AI_MODE_TASKER
             GlassesAssistantRoute.LOCAL,
-            GlassesAssistantRoute.PRO -> AI_MODE_CUSTOM_AI_PROVIDER
+            GlassesAssistantRoute.CLOUD -> AI_MODE_CUSTOM_AI_PROVIDER
         }
     }
 
@@ -3610,7 +3361,7 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
         GlassesAssistantRoute.PHONE_ASSISTANT,
         GlassesAssistantRoute.TASKER_EXTERNAL_UI -> true
         GlassesAssistantRoute.LOCAL,
-        GlassesAssistantRoute.PRO -> false
+        GlassesAssistantRoute.CLOUD -> false
     }
 
     private fun selectedImageAutomationTarget(): ImageAutomationTarget {
@@ -3898,13 +3649,13 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
         )
 
         return when (providerType) {
-            AgentProviderType.PRO_SUBSCRIPTION -> {
-                CliRelayClient.chat(
+            AgentProviderType.CLOUD -> {
+                CloudClient.chat(
                     context = this,
                     chatId = "glasses_${System.currentTimeMillis()}",
                     prompt = userPrompt,
                     messages = messages,
-                    modelOverride = ProSubscriptionAiPrefs.getRequestsModel(this),
+                    modelOverride = AiPrefs.getRequestsModel(this),
                 ).getOrElse {
                     "Pro endpoint error: ${it.message ?: "unknown error"}"
                 }
@@ -3928,7 +3679,7 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
                 }
 
             AgentProviderType.TASKER -> {
-                CliRelayClient.chat(
+                CloudClient.chat(
                     context = this,
                     chatId = "glasses_${System.currentTimeMillis()}",
                     prompt = userPrompt,
@@ -3989,12 +3740,12 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
         val queryJob = CoroutineScope(Dispatchers.IO).launch {
             try {
                 val finalReply = when (providerType) {
-                    AgentProviderType.PRO_SUBSCRIPTION -> {
-                        val visionResult = CliRelayClient.imageQuery(
+                    AgentProviderType.CLOUD -> {
+                        val visionResult = CloudClient.imageQuery(
                             context = this@MainActivity,
                             imagePath = imagePath,
                             prompt = resolvedPrompt.forRoute(ImageQuestionRoute.PRO_RELAY),
-                            modelOverride = ProSubscriptionAiPrefs.getQuestionsModel(this@MainActivity),
+                            modelOverride = AiPrefs.getQuestionsModel(this@MainActivity),
                         )
 
                         if (visionResult.isFailure) {
@@ -4009,7 +3760,7 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
                             if (visionReply.isBlank()) {
                                 "I couldn't analyze that image right now. Please try again."
                             } else if (looksLikeVisionFailed(visionReply)) {
-                                Log.w("AIHijack", "Vision relay couldn't process image. Reply: ${visionReply.take(100)}")
+                                Log.w("AIHijack", "Vision cloud couldn't process image. Reply: ${visionReply.take(100)}")
                                 runOnUiThread {
                                     Toast.makeText(this@MainActivity, "Vision model couldn't process image", Toast.LENGTH_LONG).show()
                                 }
@@ -4043,7 +3794,7 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
                     }
 
                     AgentProviderType.TASKER -> {
-                        val visionResult = CliRelayClient.imageQuery(
+                        val visionResult = CloudClient.imageQuery(
                             context = this@MainActivity,
                             imagePath = imagePath,
                             prompt = resolvedPrompt.forRoute(ImageQuestionRoute.TASKER_GEMINI),
@@ -4117,7 +3868,7 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
                 .ifBlank { Locale.getDefault().toLanguageTag() }
         }
 
-    private fun triggerCliRelayImageCaptureAndQuery() {
+    private fun triggerCloudImageCaptureAndQuery() {
         handleGlassesImageButtonPressed(
             triggerCapture = true,
             sourceTag = "test_button",
@@ -4984,7 +4735,7 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
             "communication=$communicationDevice, devices=[$devices]"
     }
 
-    private fun triggerCliRelayVoiceQuery(
+    private fun triggerCloudVoiceQuery(
         memoryAwareChosenProvider: Boolean = false,
         chosenProviderType: AgentProviderType? = null,
     ) {
@@ -4996,7 +4747,7 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
                 .request(object : OnPermissionCallback {
                     override fun onGranted(permissions: MutableList<String>, all: Boolean) {
                         if (all) {
-                            triggerCliRelayVoiceQuery(memoryAwareChosenProvider, chosenProviderType)
+                            triggerCloudVoiceQuery(memoryAwareChosenProvider, chosenProviderType)
                         } else {
                             Toast.makeText(
                                 this@MainActivity,
@@ -5121,17 +4872,17 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
                                     providerType = selectedProvider,
                                 )
                             } else {
-                                val modelOverride = if (selectedProvider == AgentProviderType.PRO_SUBSCRIPTION) {
-                                    ProSubscriptionAiPrefs.getQuestionsModel(this@MainActivity)
+                                val modelOverride = if (selectedProvider == AgentProviderType.CLOUD) {
+                                    AiPrefs.getQuestionsModel(this@MainActivity)
                                 } else {
                                     null
                                 }
 
-                                CliRelayClient.voiceQuery(
+                                CloudClient.voiceQuery(
                                     context = this@MainActivity,
                                     prompt = prompt,
                                     modelOverride = modelOverride,
-                                ).getOrElse { "Relay unavailable: ${it.message ?: "unknown error"}" }
+                                ).getOrElse { "Cloud unavailable: ${it.message ?: "unknown error"}" }
                             }
 
                             runOnUiThread {
@@ -5233,16 +4984,16 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
 
         when (currentAssistantRoute()) {
             GlassesAssistantRoute.LOCAL -> {
-                triggerCliRelayVoiceQuery(
+                triggerCloudVoiceQuery(
                     memoryAwareChosenProvider = true,
                     chosenProviderType = AgentProviderType.LOCAL_AGENT,
                 )
             }
 
-            GlassesAssistantRoute.PRO -> {
-                triggerCliRelayVoiceQuery(
+            GlassesAssistantRoute.CLOUD -> {
+                triggerCloudVoiceQuery(
                     memoryAwareChosenProvider = true,
-                    chosenProviderType = AgentProviderType.PRO_SUBSCRIPTION,
+                    chosenProviderType = AgentProviderType.CLOUD,
                 )
             }
 
@@ -5519,7 +5270,7 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
         
         val internalProvider = when (currentAssistantRoute()) {
             GlassesAssistantRoute.LOCAL -> AgentProviderType.LOCAL_AGENT
-            GlassesAssistantRoute.PRO -> AgentProviderType.PRO_SUBSCRIPTION
+            GlassesAssistantRoute.CLOUD -> AgentProviderType.CLOUD
             GlassesAssistantRoute.PHONE_ASSISTANT,
             GlassesAssistantRoute.TASKER_EXTERNAL_UI -> null
         }
@@ -9915,7 +9666,6 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
                 }
                 //Glasses pass quick recognition / AI Photo
                 0x02 -> {
-                    if (WalkingAidImageCapture.isAwaitingPhotoReady()) {
                         Log.i("DeviceNotify", "Walking Aid consumed its requested photo-ready notification")
                         return
                     }

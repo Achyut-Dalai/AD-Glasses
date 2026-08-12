@@ -40,7 +40,7 @@ Derniere version : %2$s</string>
     <string name="compose_local_agent_use_screenshots">Utiliser des captures pour la planification de Local Agent</string>
     <string name="compose_local_agent_remote_screenshots">Autoriser l envoi de captures aux planificateurs distants</string>
     <string name="compose_local_agent_screenshot_requirements">Android 11 ou version ulterieure et la prise en charge des captures par l accessibilite sont necessaires. Les captures sont supprimees apres chaque etape et ne sont pas ajoutees a l historique ou a la memoire de Local Agent.</string>
-    <string name="compose_local_agent_remote_screenshot_consent">Desactive par defaut. Activez cette option uniquement si vous acceptez que le planificateur cloud, relay ou OpenAI distant selectionne recoive la capture actuelle. Sinon la planification distante reste textuelle.</string>
+    <string name="compose_local_agent_remote_screenshot_consent">Desactive par defaut. Activez cette option uniquement si vous acceptez que le planificateur cloud, cloud ou OpenAI distant selectionne recoive la capture actuelle. Sinon la planification distante reste textuelle.</string>
     <string name="compose_local_agent_screenshot_status">Etat de la capture : %1$s</string>
     <string name="compose_local_agent_runtime_safety">Execution et securite</string>
     <string name="compose_local_agent_runtime_description">L agent peut inspecter l interface accessible, toucher, saisir du texte, envoyer des formulaires, faire defiler et ouvrir des applications. Les appels, SMS et e-mails ouvrent le composeur ou le redacteur natif et sont a haut risque selon la politique d approbation par defaut. Le controle du telephone et la planification par captures s arretent lorsque le telephone est verrouille ou inactif.</string>
@@ -95,7 +95,7 @@ Derniere version : %2$s</string>
     <string name="compose_range_error">Utilisez %1$d a %2$d</string>
     <string name="compose_provider_tasker">Tasker</string>
     <string name="compose_provider_local">Local</string>
-    <string name="compose_provider_pro">Pro</string>
+    <string name="compose_provider_pro">Cloud</string>
     <string name="compose_not_now">Pas maintenant</string>
     <string name="compose_continue">Continuer</string>
     <string name="compose_close">Fermer</string>

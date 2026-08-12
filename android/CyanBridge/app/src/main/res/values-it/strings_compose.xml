@@ -25,7 +25,7 @@ Ultima versione: %2$s</string>
     <string name="compose_external_import_profile">Importa profilo Tasker corrispondente</string>
     <string name="compose_external_verify_profile">Verifica profilo importato</string>
     <string name="compose_external_open_accessibility">Apri impostazioni accessibilita</string>
-    <string name="compose_external_test_voice">Prova avvio vocale Tasker</string>
+    <string name="compose_external_test_voice">Cloudva avvio vocale Tasker</string>
     <string name="compose_external_setup_checks">Controlli configurazione</string>
     <string name="compose_external_last_state">Ultimo stato automazione immagini: %1$s</string>
     <string name="compose_local_agent_settings_title">Impostazioni di Local Agent</string>
@@ -40,7 +40,7 @@ Ultima versione: %2$s</string>
     <string name="compose_local_agent_use_screenshots">Usa schermate per la pianificazione di Local Agent</string>
     <string name="compose_local_agent_remote_screenshots">Consenti l invio delle schermate ai pianificatori remoti</string>
     <string name="compose_local_agent_screenshot_requirements">Sono richiesti Android 11 o versioni successive e il supporto alle schermate dell accessibilita. Le schermate vengono eliminate dopo ogni passaggio e non vengono aggiunte alla cronologia o alla memoria di Local Agent.</string>
-    <string name="compose_local_agent_remote_screenshot_consent">Disattivato per impostazione predefinita. Attivalo solo se autorizzi il pianificatore cloud, relay o remoto compatibile con OpenAI selezionato a ricevere la schermata corrente. Altrimenti la pianificazione remota resta solo testuale.</string>
+    <string name="compose_local_agent_remote_screenshot_consent">Disattivato per impostazione predefinita. Attivalo solo se autorizzi il pianificatore cloud, cloud o remoto compatibile con OpenAI selezionato a ricevere la schermata corrente. Altrimenti la pianificazione remota resta solo testuale.</string>
     <string name="compose_local_agent_screenshot_status">Stato schermata: %1$s</string>
     <string name="compose_local_agent_runtime_safety">Runtime e sicurezza</string>
     <string name="compose_local_agent_runtime_description">L agente puo ispezionare l interfaccia accessibile, toccare, digitare, inviare moduli, scorrere e aprire app. Chiamate, SMS ed email aprono il dialer o il compositore nativo e sono considerate ad alto rischio dalla politica di approvazione predefinita. Il controllo del telefono e la pianificazione con schermate si interrompono quando il telefono e bloccato o inattivo.</string>
@@ -95,7 +95,7 @@ Ultima versione: %2$s</string>
     <string name="compose_range_error">Usa da %1$d a %2$d</string>
     <string name="compose_provider_tasker">Tasker</string>
     <string name="compose_provider_local">Locale</string>
-    <string name="compose_provider_pro">Pro</string>
+    <string name="compose_provider_pro">Cloud</string>
     <string name="compose_not_now">Non ora</string>
     <string name="compose_continue">Continua</string>
     <string name="compose_close">Chiudi</string>

@@ -24,7 +24,7 @@
     <string name="settings_intro">Padroes que priorizam a privacidade, controles locais e configuracoes de automacao.</string>
     <string name="settings_appearance">Aparencia</string>
     <string name="settings_appearance_description">Tema, perfil de destaque, cor dinamica e contraste</string>
-    <string name="settings_custom_ai_provider">Provedor de IA personalizado</string>
+    <string name="settings_custom_ai_provider">Cloudvedor de IA personalizado</string>
     <string name="settings_memory_privacy">Privacidade da memoria</string>
     <string name="settings_transcripts">Transcricoes</string>
     <string name="settings_data">Dados</string>
@@ -34,18 +34,18 @@
     <string name="settings_bluetooth_mic">Microfone Bluetooth</string>
     <string name="settings_phone_mic">Microfone do telefone</string>
     <string name="settings_detecting_audio_source">Detectando fonte de audio</string>
-    <string name="settings_pro_subscription_settings">Configuracoes da assinatura Pro</string>
-    <string name="settings_pro_subscription">Assinatura Pro</string>
+    <string name="settings_pro_subscription_settings">Configuracoes da assinatura Cloud</string>
+    <string name="settings_pro_subscription">Assinatura Cloud</string>
     <string name="settings_pro_active">PRO ATIVO</string>
     <string name="settings_pro_badge">PRO</string>
     <string name="settings_current_plan">Plano atual: %1$s. Gerencie recursos e beneficios premium.</string>
     <string name="settings_unlock_premium">Desbloqueie recursos premium e ajude a financiar o suporte a novos oculos inteligentes.</string>
     <string name="settings_manage_subscription">Gerenciar assinatura</string>
     <string name="settings_view_plans">Ver planos</string>
-    <string name="settings_provider_description">Escolha o provedor usado pelo modo Local / Pro / Tasker na tela Oculos.</string>
+    <string name="settings_provider_description">Escolha o provedor usado pelo modo Local / Cloud / Tasker na tela Oculos.</string>
     <string name="settings_configure_local_models">Configurar modelos locais</string>
     <string name="settings_current_mode">Modo atual: %1$s</string>
-    <string name="settings_requires_pro">Requer uma assinatura Pro</string>
+    <string name="settings_requires_pro">Requer uma assinatura Cloud</string>
     <string name="settings_sync_eligibility">Elegibilidade da sincronizacao</string>
     <string name="settings_explicit_facts">Fatos explicitos</string>
     <string name="settings_daily_facts">Fatos diarios</string>
@@ -74,7 +74,7 @@
     <string name="settings_faq_local_models_question">Como configuro os modelos locais?</string>
     <string name="settings_faq_local_models_answer">Abra o Local Agent em Plugins nativos e configure um modelo neste dispositivo.</string>
     <string name="settings_faq_subscription_question">Preciso de uma assinatura?</string>
-    <string name="settings_faq_subscription_answer">Nao. Tasker e modelos locais podem ser usados sem assinatura. O Pro e opcional.</string>
+    <string name="settings_faq_subscription_answer">Nao. Tasker e modelos locais podem ser usados sem assinatura. O Cloud e opcional.</string>
     <string name="settings_faq_data_question">Como os dados sao tratados?</string>
     <string name="settings_faq_data_answer">Por padrao, os dados ficam neste telefone. Voce pode exportar, importar ou limpar tudo em Dados.</string>
     <string name="settings_faq_source_question">Posso revisar o codigo-fonte?</string>
@@ -164,7 +164,7 @@
     <string name="media_folder_hint">Arquivos baixados pelo CyanBridge</string>
 
     <string name="sync_flow_title">Escolher fluxo de sincronizacao</string>
-    <string name="device_class_heycyan">HeyCyan</string>
+    <string name="device_class_ad_glasses">AD Glasses</string>
     <string name="device_class_eye_vue">Eyevue</string>
     <string name="device_class_meta_rayban">Meta Ray-Ban</string>
     <string name="device_class_meizu_myvu">Meizu MYVU / Star Air</string>
@@ -174,7 +174,7 @@
     <string name="plugins_title">Plugins da comunidade</string>
     <string name="plugins_refresh">Atualizar plugins</string>
     <string name="plugins_publish">Publicar plugin</string>
-    <string name="plugins_future_notice">Aviso futuro: os principais plugins terao premios em dinheiro para desenvolvedores, proporcionais ao numero de usuarios Pro com o plugin ativado.</string>
+    <string name="plugins_future_notice">Aviso futuro: os principais plugins terao premios em dinheiro para desenvolvedores, proporcionais ao numero de usuarios Cloud com o plugin ativado.</string>
     <string name="plugins_trending">Plugins em alta</string>
     <string name="plugins_top_voted">Mais votados</string>
     <string name="plugins_top_downloaded">Mais baixados</string>
@@ -213,12 +213,12 @@
     <string name="publish_taskernet_link">Link do TaskerNet *</string>
     <string name="publish_taskernet_hint">Digite a URL do TaskerNet para seu perfil.</string>
     <string name="publish_how_it_works">Como funciona a publicacao</string>
-    <string name="publish_steps">1. Seu envio sera revisado.\n\n2. Plugins aprovados aparecem em Plugins da comunidade.\n\n3. Os melhores plugins podem ganhar premios proporcionais aos usuarios Pro.</string>
+    <string name="publish_steps">1. Seu envio sera revisado.\n\n2. Plugins aprovados aparecem em Plugins da comunidade.\n\n3. Os melhores plugins podem ganhar premios proporcionais aos usuarios Cloud.</string>
     <string name="publish_submitting">Enviando...</string>
     <string name="publish_submit">Enviar plugin</string>
 
-    <string name="pro_subscription_title">Assinatura Pro</string>
-    <string name="pro_intro">Use o CyanBridge gratuitamente com modelos locais. O Pro e opcional para IA na nuvem e sincronizacao na nuvem.</string>
+    <string name="pro_subscription_title">Assinatura Cloud</string>
+    <string name="pro_intro">Use o CyanBridge gratuitamente com modelos locais. O Cloud e opcional para IA na nuvem e sincronizacao na nuvem.</string>
     <string name="pro_choose_plan">Escolher um plano</string>
     <string name="pro_free_trial">Teste gratis - 30 dias</string>
     <string name="pro_google_play_price">Google Play: %1$s</string>
@@ -257,7 +257,7 @@
     <string name="pro_google_price">Preco mostrado pelo Google Play</string>
     <string name="pro_asaas_description">Checkout direto com cartao e menor custo. O total exato em BRL e o valor da renovacao aparecem antes do pagamento.</string>
     <string name="pro_paddle_description">Checkout global com cartao. Impostos aplicaveis e o total final da renovacao aparecem antes do pagamento.</string>
-    <string name="pro_settings_title">Configuracoes Pro</string>
+    <string name="pro_settings_title">Configuracoes Cloud</string>
     <string name="pro_plan">Plano</string>
     <string name="pro_refresh">Atualizar</string>
     <string name="pro_change_plan">Alterar plano</string>
@@ -286,7 +286,7 @@
     <string name="pro_beta_interest">Registre interesse nos recursos da nuvem beta.</string>
     <string name="pro_signup_beta">Inscrever-se na nuvem beta</string>
     <string name="pro_gemini_live_title">Gemini Live (voz e visao, previa)</string>
-    <string name="pro_gemini_live_description">Conexao direta com o Google Gemini Live. Requer um plano Pro pago ativo e acesso a rede. Audio ao vivo e imagens fixas deliberadas sao enviados ao Google.</string>
+    <string name="pro_gemini_live_description">Conexao direta com o Google Gemini Live. Requer um plano Cloud pago ativo e acesso a rede. Audio ao vivo e imagens fixas deliberadas sao enviados ao Google.</string>
     <string name="pro_open_gemini_live">Abrir previa do Gemini Live</string>
     <string name="pro_save">Salvar</string>
     <string name="pro_plan_localized_terms">Preco localizado e termos de renovacao aparecem no checkout.</string>
@@ -351,7 +351,7 @@
     <string name="local_models_unsaved_message">As configuracoes do modelo local mudaram. Sair sem salvar?</string>
     <string name="local_models_keep_editing">Continuar editando</string>
     <string name="local_models_discard">Descartar</string>
-    <string name="local_models_download_progress">Progresso do download</string>
+    <string name="local_models_download_progress">Cloudgresso do download</string>
     <string name="local_models_cancel_download">Cancelar download</string>
     <string name="local_models_collapse">Recolher %1$s</string>
     <string name="local_models_expand">Expandir %1$s</string>
@@ -385,7 +385,7 @@
 
     <string name="dashboard_title">Oculos</string>
     <string name="dashboard_privileged_adb_title">Risco do ADB privilegiado</string>
-    <string name="dashboard_privileged_adb_body">O ADB privilegiado pode inutilizar ou apagar os oculos. Use-o apenas em um dispositivo e rede de laboratorio isolados e recuperaveis. Pare o app oficial HeyCyan primeiro. Pare a sincronizacao de midia, OTA, visualizacao ao vivo, gravacao e captura automatica antes de continuar. Esta sessao nao e persistente e para quando esta tela sai do primeiro plano.</string>
+    <string name="dashboard_privileged_adb_body">O ADB privilegiado pode inutilizar ou apagar os oculos. Use-o apenas em um dispositivo e rede de laboratorio isolados e recuperaveis. Pare o app oficial AD Glasses primeiro. Pare a sincronizacao de midia, OTA, visualizacao ao vivo, gravacao e captura automatica antes de continuar. Esta sessao nao e persistente e para quando esta tela sai do primeiro plano.</string>
     <string name="dashboard_privileged_adb_acknowledge">Aceito explicitamente o risco destrutivo e as restricoes para uso em laboratorio.</string>
     <string name="dashboard_start_privileged_adb">Iniciar ADB privilegiado</string>
     <string name="dashboard_connection">Conexao</string>
@@ -398,9 +398,9 @@
     <string name="dashboard_adb_wifi">ADB pelo Wi-Fi Direct dos oculos</string>
     <string name="dashboard_status">Status: %1$s</string>
     <string name="dashboard_glasses_ip">IP dos oculos: %1$s</string>
-    <string name="dashboard_relay_endpoints">Endpoints do relay: %1$s</string>
+    <string name="dashboard_cloud_endpoints">Endpoints do cloud: %1$s</string>
     <string name="dashboard_usb_warning">O tethering USB sozinho nao e confiavel. Prefira a depuracao USB do telefone com adb forward.</string>
-    <string name="dashboard_start_adb_relay">Iniciar relay ADB</string>
+    <string name="dashboard_start_adb_cloud">Iniciar cloud ADB</string>
     <string name="dashboard_stop">Parar</string>
     <string name="dashboard_shortcut_title">Atalho da aba Oculos</string>
     <string name="dashboard_shortcut_description">Escolha um plugin nativo nas configuracoes para colocar as acoes dele aqui.</string>
@@ -414,7 +414,7 @@
     <string name="dashboard_battery">Bateria: %1$d%%</string>
     <string name="dashboard_battery_unknown">Bateria: --%</string>
     <string name="dashboard_storage">Armazenamento: %1$s</string>
-    <string name="dashboard_sync_progress">Progresso da sincronizacao</string>
+    <string name="dashboard_sync_progress">Cloudgresso da sincronizacao</string>
     <string name="dashboard_flow">Fluxo: %1$s</string>
     <string name="dashboard_stop_sync">Parar sincronizacao</string>
     <string name="dashboard_media_controls">Controles de midia</string>
@@ -442,13 +442,13 @@
     <string name="dashboard_limits_unavailable">Carregue as configuracoes para ver os limites suportados por estes oculos.</string>
     <string name="dashboard_ai_assistant">Assistente de IA</string>
     <string name="dashboard_phone_assistant">Assistente do telefone</string>
-    <string name="dashboard_custom_provider">Local / Pro / Tasker</string>
+    <string name="dashboard_custom_provider">Local / Cloud / Tasker</string>
     <string name="dashboard_test_voice">Testar voz</string>
     <string name="dashboard_gemini_chatgpt_setup">Configuracao de automacao Gemini / ChatGPT</string>
     <string name="dashboard_meizu_title">Meizu MYVU / Star Air</string>
-    <string name="dashboard_protocol">Protocolo: %1$s</string>
+    <string name="dashboard_protocol">Cloudtocolo: %1$s</string>
     <string name="dashboard_device">Dispositivo: %1$s</string>
-    <string name="dashboard_meizu_description">O MYVU usa sua propria troca de chaves BLE e relay RFCOMM. Mantenha o app oficial MYVU desconectado enquanto conecta.</string>
+    <string name="dashboard_meizu_description">O MYVU usa sua propria troca de chaves BLE e cloud RFCOMM. Mantenha o app oficial MYVU desconectado enquanto conecta.</string>
     <string name="dashboard_connect">Conectar</string>
     <string name="dashboard_test_notification">Testar notificacao</string>
     <string name="dashboard_show_text">Mostrar texto</string>
@@ -473,11 +473,11 @@
     <string name="dashboard_quality_detailed">Detalhada</string>
     <string name="dashboard_test_image">Testar descrição de imagem por IA</string>
     <string name="dashboard_ai_wake_word_route">Ação da palavra de ativação</string>
-    <string name="dashboard_ai_wake_word_route_description">Nos óculos HeyCyan e Eyevue, a ativação por palavra de ativação inicia:</string>
+    <string name="dashboard_ai_wake_word_route_description">Nos óculos AD Glasses e Eyevue, a ativação por palavra de ativação inicia:</string>
     <string name="dashboard_ai_wake_word_voice">Pergunta de voz</string>
     <string name="dashboard_ai_wake_word_image">Pergunta sobre imagem</string>
-    <string name="dashboard_ai_wake_word_image_warning_title">Usar perguntas com imagem no HeyCyan?</string>
-    <string name="dashboard_ai_wake_word_image_warning_body">O SDK do HeyCyan não expõe eventos diferentes para a palavra de ativação de voz da IA e o botão físico de perguntas de áudio da IA. Se você escolher perguntas com imagem, pressionar o botão físico para uma pergunta de voz da IA também iniciará uma pergunta com imagem. Perguntas simples podem ignorar a imagem capturada quando não perguntarem sobre ela, mas as respostas serão mais demoradas, especialmente com modelos locais.</string>
+    <string name="dashboard_ai_wake_word_image_warning_title">Usar perguntas com imagem no AD Glasses?</string>
+    <string name="dashboard_ai_wake_word_image_warning_body">O SDK do AD Glasses não expõe eventos diferentes para a palavra de ativação de voz da IA e o botão físico de perguntas de áudio da IA. Se você escolher perguntas com imagem, pressionar o botão físico para uma pergunta de voz da IA também iniciará uma pergunta com imagem. Perguntas simples podem ignorar a imagem capturada quando não perguntarem sobre ela, mas as respostas serão mais demoradas, especialmente com modelos locais.</string>
     <string name="dashboard_ai_wake_word_image_warning_confirm">Usar perguntas com imagem</string>
     <string name="dashboard_image_query_unavailable">Consulta de imagem indisponível</string>
     <string name="dashboard_register_listener">Registrar listener do dispositivo</string>
@@ -506,7 +506,7 @@
 
     <string name="provider_tasker">Tasker</string>
     <string name="provider_local">Local</string>
-    <string name="provider_pro">Pro</string>
+    <string name="provider_cloud">Cloud</string>
     <string name="memory_private_local">Privada local</string>
     <string name="memory_private_local_description">Toda a memoria, os indices e a recuperacao permanecem no dispositivo.</string>
     <string name="memory_encrypted_sync">Sincronizacao criptografada</string>
@@ -515,7 +515,7 @@
     <string name="memory_fast_cloud_description">Futuro modo de memoria na nuvem. Indisponivel ate existir um backend.</string>
     <string name="memory_confidential_cloud">Nuvem confidencial beta</string>
     <string name="memory_confidential_cloud_description">Futuro modo de nuvem confidencial. Indisponivel ate existir um backend.</string>
-    <string name="sync_flow_official_title">Fluxo do app HeyCyan</string>
+    <string name="sync_flow_official_title">Fluxo do app AD Glasses</string>
     <string name="sync_flow_official_description">Sincronizacao BLE + P2P rigorosa como a do fornecedor</string>
     <string name="sync_flow_custom_title">Fluxo personalizado</string>
     <string name="sync_flow_custom_description">Resolvedor CyanBridge com busca alternativa</string>
@@ -523,15 +523,15 @@
     <string name="ota_target_wifi_description">V821 Linux - aplica patches no rootfs e scripts de inicializacao</string>
     <string name="ota_target_ble">Chip BLE (.bin)</string>
     <string name="ota_target_ble_description">SoC JieLi - aplica patches no firmware de LED, obturador e eventos</string>
-    <string name="ota_source_personal">Arquivos de firmware pessoais</string>
-    <string name="ota_source_personal_description">Escolha os dois arquivos locais: Wi-Fi .swu e depois BLE .bin</string>
+    <string name="ota_source_local">Arquivos de firmware pessoais</string>
+    <string name="ota_source_local_description">Escolha os dois arquivos locais: Wi-Fi .swu e depois BLE .bin</string>
     <string name="ota_source_stealth">Copia do servidor stealth</string>
     <string name="ota_source_stealth_description">Resolva patches aprovados de base exata para os dois chips</string>
     <string name="ota_source_debug">Copia do servidor de depuracao</string>
     <string name="ota_source_debug_description">Resolva patches de laboratorio de versao exata</string>
     <string name="diagnostics_title">Depuracao de transcricao</string>
     <string name="diagnostics_description">Diagnosticos de desenvolvedor para o pipeline de transcricao do capitulo 6.</string>
-    <string name="diagnostics_provider">Provedor</string>
+    <string name="diagnostics_provider">Cloudvedor</string>
     <string name="diagnostics_fake">Falso</string>
     <string name="diagnostics_http">HTTP</string>
     <string name="diagnostics_endpoint">URL do endpoint HTTP</string>
@@ -548,7 +548,7 @@
     <string name="time_hours_ago">Ha %1$d h</string>
     <string name="time_days_ago">Ha %1$d d</string>
     <string name="shared_chat_unavailable">O gerenciamento de assinaturas nao esta disponivel neste host. Nenhuma autorizacao foi alterada.</string>
-    <string name="plugin_category_productivity">Produtividade</string>
+    <string name="plugin_category_productivity">Clouddutividade</string>
     <string name="plugin_category_accessibility">Acessibilidade</string>
     <string name="plugin_category_planner">Planejamento</string>
     <string name="plugin_category_mobility">Mobilidade</string>

@@ -13,8 +13,8 @@ dependencyResolutionManagement {
         google()
         mavenCentral()
         maven { url = uri("https://jitpack.io") }
-        // JetBrains Compose Multiplatform (Skiko native binaries for iOS)
-        maven { url = uri("https://maven.packagist.org") }
+        // JetBrains Compose Multiplatform
+        maven { url = uri("https://maven.pkg.jetbrains.space/public/p/compose/dev") }
 
         // Meta Wearables DAT SDK (requires GitHub token with read:packages scope)
         val localProps = java.util.Properties()
@@ -28,7 +28,7 @@ dependencyResolutionManagement {
             maven {
                 url = uri("https://maven.pkg.github.com/facebook/meta-wearables-dat-android")
                 credentials {
-                    username = ""
+                    username = "achyutdalai"
                     password = githubToken
                 }
             }
@@ -42,8 +42,8 @@ include(":shared")
 // Moonshine Voice (local wrapper module that builds vendored native sources)
 include(":moonshine-voice")
 
-// HeyCyan Core - bundled as composite build for easy compilation
-val heycyanCoreDir = file("../../heycyan-core")
-if (heycyanCoreDir.exists()) {
-    includeBuild(heycyanCoreDir)
+// AD Glasses Core - bundled as composite build for easy compilation
+val ad_glassesCoreDir = file("../../ad_glasses-core")
+if (ad_glassesCoreDir.exists()) {
+    includeBuild(ad_glassesCoreDir)
 }

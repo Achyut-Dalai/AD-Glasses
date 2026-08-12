@@ -134,7 +134,7 @@ class ChatListActivity : AppCompatActivity() {
     private fun isLocalModelsMissingSelection(): Boolean {
         val localSelected = when (AutomationPrefs.getProviderType(this)) {
             AgentProviderType.LOCAL_AGENT -> true
-            AgentProviderType.PRO_SUBSCRIPTION -> false
+            AgentProviderType.CLOUD -> false
             AgentProviderType.TASKER -> AiProviderPrefs.getProvider(this) == AiProviderType.LOCAL_MODELS
         }
         if (!localSelected) return false

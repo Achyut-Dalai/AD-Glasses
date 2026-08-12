@@ -95,7 +95,7 @@
     <string name="compose_range_error">%1$d에서 %2$d 사이를 사용하세요</string>
     <string name="compose_provider_tasker">Tasker</string>
     <string name="compose_provider_local">로컬</string>
-    <string name="compose_provider_pro">Pro</string>
+    <string name="compose_provider_pro">Cloud</string>
     <string name="compose_not_now">나중에</string>
     <string name="compose_continue">계속</string>
     <string name="compose_close">닫기</string>

@@ -65,7 +65,7 @@
     <string name="compose_translation_hint">Например: использовать официальный стиль. Уделять внимание медицинским терминам.</string>
     <string name="compose_translation_history">История переводов</string>
     <string name="compose_max_stored_translations">Максимум сохраненных переводов: %1$d</string>
-    <string name="compose_live_caption_enabled">Live Caption Relay включен</string>
+    <string name="compose_live_caption_enabled">Live Caption Cloud включен</string>
     <string name="compose_enable_translation">Включить перевод</string>
     <string name="compose_caption_generation_description">Дополнительные инструкции для создания субтитров.</string>
     <string name="compose_caption_instructions">Инструкции субтитров</string>
@@ -105,7 +105,7 @@
     <string name="compose_walking_ask_placeholder">Задайте вопрос о текущей сцене...</string>
     <string name="compose_walking_send">Отправить</string>
     <string name="compose_walking_enabled">Walking Aid включен</string>
-    <string name="compose_walking_camera_description">Для Walking Aid нужны очки с камерой от первого лица, например HeyCyan или Meta Ray-Ban. %1$s</string>
+    <string name="compose_walking_camera_description">Для Walking Aid нужны очки с камерой от первого лица, например AD Glasses или Meta Ray-Ban. %1$s</string>
     <string name="compose_walking_benchmark_running">Выполняется тест...</string>
     <string name="compose_walking_latency_benchmark">Проверить сквозную задержку</string>
     <string name="compose_walking_acquisition_running">Выполняется тест захвата...</string>
@@ -116,7 +116,7 @@
     <string name="compose_walking_photo_settle_description">Время ожидания после подтверждения фото очками перед чтением данных. Уменьшите для более быстрого темпа или увеличьте при сбоях передачи.</string>
     <string name="compose_walking_safety_context">Распознавание безопасности и контекст сцены</string>
     <string name="compose_walking_local_safety">Только локальная безопасность</string>
-    <string name="compose_walking_cloud_context">Локальный + облачный контекст (Pro)</string>
+    <string name="compose_walking_cloud_context">Локальный + облачный контекст (Cloud)</string>
     <string name="compose_walking_cloud_description">Локальный YOLO всегда принимает немедленные решения о безопасности. Облачное зрение только дополняет сохраненные описания сцен и не задерживает предупреждения.</string>
     <string name="compose_walking_detection_model">Локальная модель распознавания</string>
     <string name="compose_walking_yolo_fast">YOLO11 (быстрее)</string>
@@ -144,7 +144,7 @@
     <string name="compose_walking_setup_required">Требуется настройка Walking Aid</string>
     <string name="compose_walking_setup_body">Перед запуском Walking Aid выполните недостающие пункты настройки. Модели YOLO и глубины скачиваются и выбираются на этом экране.</string>
     <string name="compose_walking_review_settings">Проверить настройки Walking Aid</string>
-    <string name="compose_walking_upgrade_pro">Перейти на Pro</string>
+    <string name="compose_walking_upgrade_pro">Перейти на Cloud</string>
     <string name="compose_walking_cancel">Отмена</string>
     <string name="compose_walking_select_model">Выбрать модель</string>
     <string name="compose_walking_loading_models">Загрузка моделей...</string>
@@ -171,7 +171,7 @@
     <string name="compose_plugin_name_auto_audio">Автоматическое аудио</string>
     <string name="compose_plugin_name_visual_diary">Визуальный дневник</string>
     <string name="compose_plugin_name_meeting_spark_notes">Заметки встреч</string>
-    <string name="compose_plugin_name_live_caption_relay">Ретрансляция живых субтитров</string>
+    <string name="compose_plugin_name_live_caption_cloud">Ретрансляция живых субтитров</string>
     <string name="compose_plugin_name_handsfree_translator">Переводчик без рук</string>
     <string name="compose_plugin_name_errand_brain">Помощник поручений</string>
 </resources>

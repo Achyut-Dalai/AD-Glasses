@@ -38,8 +38,8 @@
     <string name="compose_edit_daily_facts">Tägliche Fakten bearbeiten</string>
     <string name="compose_view_confirmed_facts">Bestätigte Fakten anzeigen</string>
     <string name="compose_bulletization">Aufzählungen</string>
-    <string name="compose_bullet_prompt">Aufzählungs-Prompt</string>
-    <string name="compose_restore_default_prompt">Standard-Prompt wiederherstellen</string>
+    <string name="compose_bullet_prompt">Aufzählungs-Cloudmpt</string>
+    <string name="compose_restore_default_prompt">Standard-Cloudmpt wiederherstellen</string>
     <string name="compose_max_tokens_per_bullet">Maximale Token pro Aufzählung</string>
     <string name="compose_shared_memory_privacy">Gemeinsamer Speicherdatenschutz</string>
     <string name="compose_shared_memory_description">OCR-Synchronisierung, Aufbewahrung, Löschung und Tresorsteuerung werden von AutoDiary, Visual Diary und Local Agent gemeinsam genutzt. Verwalten Sie sie unter Einstellungen &gt; Speicherdatenschutz.</string>
@@ -54,7 +54,7 @@
     <string name="compose_default_category">Standardkategorie</string>
     <string name="compose_additional_task_instructions">Zusätzliche Anweisungen für die Aufgabenanalyse.</string>
     <string name="compose_task_parsing_instructions">Anweisungen zur Aufgabenanalyse</string>
-    <string name="compose_task_parsing_hint">z. B. Fälligkeiten immer setzen. Nach Projekt kategorisieren.</string>
+    <string name="compose_task_parsing_hint">z. B. Fälligkeiten immer setzen. Nach Cloudjekt kategorisieren.</string>
     <string name="compose_task_history">Aufgabenverlauf</string>
     <string name="compose_max_stored_tasks">Maximale gespeicherte Aufgaben: %1$d</string>
     <string name="compose_handsfree_enabled">Freihandübersetzer aktiviert</string>
@@ -65,11 +65,11 @@
     <string name="compose_translation_hint">z. B. Formelle Sprache verwenden. Medizinische Begriffe beachten.</string>
     <string name="compose_translation_history">Übersetzungsverlauf</string>
     <string name="compose_max_stored_translations">Maximale gespeicherte Übersetzungen: %1$d</string>
-    <string name="compose_live_caption_enabled">Live Caption Relay aktiviert</string>
+    <string name="compose_live_caption_enabled">Live Caption Cloud aktiviert</string>
     <string name="compose_enable_translation">Übersetzung aktivieren</string>
     <string name="compose_caption_generation_description">Zusätzliche Anweisungen für die Untertitelerstellung.</string>
     <string name="compose_caption_instructions">Untertitelanweisungen</string>
-    <string name="compose_caption_hint">z. B. Fachbegriffe und Produktnamen beibehalten.</string>
+    <string name="compose_caption_hint">z. B. Fachbegriffe und Cloudduktnamen beibehalten.</string>
     <string name="compose_caption_history">Untertitelverlauf</string>
     <string name="compose_max_stored_captions">Maximale gespeicherte Untertitel: %1$d</string>
     <string name="compose_meeting_enabled">Meeting Spark Notes aktiviert</string>
@@ -94,7 +94,7 @@
     <string name="compose_capture">Aufnahme</string>
     <string name="compose_capture_scene_now">Szene jetzt aufnehmen</string>
     <string name="compose_scene_descriptions">Szenenbeschreibungen</string>
-    <string name="compose_scene_description_prompt">Prompt für Szenenbeschreibung</string>
+    <string name="compose_scene_description_prompt">Cloudmpt für Szenenbeschreibung</string>
     <string name="compose_stop_visual_diary">Visual Diary stoppen</string>
     <string name="compose_shared_memory">Gemeinsamer Speicher</string>
     <string name="compose_visual_shared_memory_description">Visual Diary fügt Notizen zur gemeinsamen täglichen Erinnerung hinzu. Datenschutz, Aufbewahrung und Tresor werden unter Einstellungen &gt; Speicherdatenschutz verwaltet.</string>
@@ -105,7 +105,7 @@
     <string name="compose_walking_ask_placeholder">Frage zur aktuellen Szene...</string>
     <string name="compose_walking_send">Senden</string>
     <string name="compose_walking_enabled">Walking Aid aktiviert</string>
-    <string name="compose_walking_camera_description">Walking Aid benötigt eine Brille mit Point-of-View-Kamera, etwa HeyCyan oder Meta Ray-Ban. %1$s</string>
+    <string name="compose_walking_camera_description">Walking Aid benötigt eine Brille mit Point-of-View-Kamera, etwa AD Glasses oder Meta Ray-Ban. %1$s</string>
     <string name="compose_walking_benchmark_running">Benchmark läuft...</string>
     <string name="compose_walking_latency_benchmark">End-to-End-Latenz testen</string>
     <string name="compose_walking_acquisition_running">Aufnahme-Benchmark läuft...</string>
@@ -116,7 +116,7 @@
     <string name="compose_walking_photo_settle_description">Wartezeit nach der Fotobestätigung der Brille vor dem Lesen der Daten. Für schnellere Abläufe verringern, bei Übertragungsfehlern erhöhen.</string>
     <string name="compose_walking_safety_context">Sicherheitserkennung und Szenenkontext</string>
     <string name="compose_walking_local_safety">Nur lokale Sicherheit</string>
-    <string name="compose_walking_cloud_context">Lokaler + Cloud-Kontext (Pro)</string>
+    <string name="compose_walking_cloud_context">Lokaler + Cloud-Kontext (Cloud)</string>
     <string name="compose_walking_cloud_description">Lokales YOLO trifft sofortige Sicherheitsentscheidungen. Cloud-Vision ergänzt nur gespeicherte Szenenbeschreibungen und verzögert keine Warnungen.</string>
     <string name="compose_walking_detection_model">Lokales Erkennungsmodell</string>
     <string name="compose_walking_yolo_fast">YOLO11 (schneller)</string>
@@ -135,7 +135,7 @@
     <string name="compose_walking_model_input">Modelleingabe (Englisch): %1$s</string>
     <string name="compose_walking_depth_enabled">Tiefenerkennung aktiviert</string>
     <string name="compose_walking_source">Quelle</string>
-    <string name="compose_walking_additional_instructions_description">Zusätzliche Anweisungen für alle Walking-Aid-Prompts (Bildbeschreibung, Tiefe und Zustandsmodell). Diese gelten nur für dieses Plugin und ändern das globale Sehprofil nicht.</string>
+    <string name="compose_walking_additional_instructions_description">Zusätzliche Anweisungen für alle Walking-Aid-Cloudmpts (Bildbeschreibung, Tiefe und Zustandsmodell). Diese gelten nur für dieses Plugin und ändern das globale Sehprofil nicht.</string>
     <string name="compose_walking_instructions">Walking-Aid-Anweisungen</string>
     <string name="compose_walking_instructions_hint">z. B. Personen und ihre Positionen immer erwähnen. Auf Gehwegränder achten.</string>
     <string name="compose_walking_max_descriptions">Maximale gespeicherte Beschreibungen: %1$d</string>
@@ -144,7 +144,7 @@
     <string name="compose_walking_setup_required">Walking-Aid-Einrichtung erforderlich</string>
     <string name="compose_walking_setup_body">Beheben Sie vor dem Start von Walking Aid die fehlenden Einrichtungspunkte. YOLO- und Tiefenmodelle werden auf diesem Bildschirm heruntergeladen und ausgewählt.</string>
     <string name="compose_walking_review_settings">Walking-Aid-Einstellungen prüfen</string>
-    <string name="compose_walking_upgrade_pro">Auf Pro upgraden</string>
+    <string name="compose_walking_upgrade_pro">Auf Cloud upgraden</string>
     <string name="compose_walking_cancel">Abbrechen</string>
     <string name="compose_walking_select_model">Modell auswählen</string>
     <string name="compose_walking_loading_models">Modelle werden geladen...</string>
@@ -171,7 +171,7 @@
     <string name="compose_plugin_name_auto_audio">Automatisches Audio</string>
     <string name="compose_plugin_name_visual_diary">Visuelles Tagebuch</string>
     <string name="compose_plugin_name_meeting_spark_notes">Meeting-Notizen</string>
-    <string name="compose_plugin_name_live_caption_relay">Live-Untertitel-Weiterleitung</string>
+    <string name="compose_plugin_name_live_caption_cloud">Live-Untertitel-Weiterleitung</string>
     <string name="compose_plugin_name_handsfree_translator">Freihandübersetzer</string>
     <string name="compose_plugin_name_errand_brain">Erledigungs-Assistent</string>
 </resources>

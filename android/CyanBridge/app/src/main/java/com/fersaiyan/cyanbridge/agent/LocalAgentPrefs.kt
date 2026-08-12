@@ -27,8 +27,8 @@ object LocalAgentPrefs {
             ?.uppercase()
         return when (raw) {
             AgentProviderType.LOCAL_AGENT.name -> AgentProviderType.LOCAL_AGENT
-            "API_MODELS" -> AgentProviderType.PRO_SUBSCRIPTION
-            AgentProviderType.PRO_SUBSCRIPTION.name -> AgentProviderType.PRO_SUBSCRIPTION
+            "API_MODELS" -> AgentProviderType.CLOUD
+            AgentProviderType.CLOUD.name -> AgentProviderType.CLOUD
             AgentProviderType.TASKER.name -> AgentProviderType.TASKER
             null, "" -> AgentProviderType.TASKER
             else -> AgentProviderType.TASKER

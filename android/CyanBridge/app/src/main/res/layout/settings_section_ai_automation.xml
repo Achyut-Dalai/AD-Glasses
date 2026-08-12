@@ -32,10 +32,10 @@
             android:textColor="@color/text_primary" />
 
         <com.google.android.material.radiobutton.MaterialRadioButton
-            android:id="@+id/rb_provider_pro_subscription"
+            android:id="@+id/rb_provider_cloud"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:text="Pro"
+            android:text="Cloud"
             android:textColor="@color/text_primary" />
     </RadioGroup>
 
@@ -51,7 +51,7 @@
     </LinearLayout>
 
     <com.google.android.material.card.MaterialCardView
-        android:id="@+id/btn_configure_pro_subscription"
+        android:id="@+id/btn_configure_cloud"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:layout_marginTop="8dp"
@@ -80,7 +80,7 @@
                 <TextView
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
-                    android:text="Pro Subscription"
+                    android:text="Cloud Subscription"
                     android:textColor="@color/text_primary"
                     android:textSize="15sp"
                     android:textStyle="bold" />

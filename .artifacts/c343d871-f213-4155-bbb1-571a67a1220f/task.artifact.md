@@ -1,0 +1,27 @@
+# Project Revamp Task List
+
+- [ ] **1. Build System & Core Module**
+    - [ ] Rename `heycyan-core` directory to `ad_glasses-core`.
+    - [ ] Update `settings.gradle.kts` with correct token logic and core path.
+    - [ ] Update namespaces in all `build.gradle.kts` files in `ad_glasses-core`.
+    - [ ] Update core dependency in app `build.gradle` and remove billing dependencies.
+- [ ] **2. Enum & Model Updates**
+    - [ ] Rename `AgentProviderType.PRO_SUBSCRIPTION` to `CLOUD`.
+    - [ ] Rename `OtaFirmwareSource.PERSONAL_FILE` to `LOCAL_FILE`.
+    - [ ] Update `NavigationModels.kt` and `LocalizedStrings.kt` to match.
+- [ ] **3. Feature Removal**
+    - [ ] Delete `com.fersaiyan.cyanbridge.plugins.walkingaid` package.
+    - [ ] Delete all billing/subscription logic in app and shared modules.
+    - [ ] Clean up `AndroidManifest.xml` (remove activities/services and fix typos).
+- [ ] **4. MainActivity Stabilization**
+    - [ ] Deduplicate imports.
+    - [ ] Consolidate class variables.
+    - [ ] Fix all `when` blocks to be exhaustive with new enum values.
+    - [ ] Verify 0x02 and 0x03 hardware branch logic.
+- [ ] **5. UI & String Cleanup**
+    - [ ] Rename "HeyCyan" -> "AD Glasses" in all `strings.xml` files.
+    - [ ] Rename "Relay" -> "Cloud" in all `strings.xml` files.
+    - [ ] Remove all restricted feature strings.
+- [ ] **6. Verification**
+    - [ ] Run full clean build.
+    - [ ] Verify functionality of Meta Ray-Ban and remaining plugins.

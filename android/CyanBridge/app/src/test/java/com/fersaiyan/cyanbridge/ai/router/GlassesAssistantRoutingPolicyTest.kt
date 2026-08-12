@@ -29,7 +29,7 @@ class GlassesAssistantRoutingPolicyTest {
             GlassesAssistantRoute.PRO,
             GlassesAssistantRoutingPolicy.resolve(
                 GlassesAssistantMode.CUSTOM_AI_PROVIDER,
-                AgentProviderType.PRO_SUBSCRIPTION,
+                AgentProviderType.CLOUD,
             ),
         )
         assertEquals(

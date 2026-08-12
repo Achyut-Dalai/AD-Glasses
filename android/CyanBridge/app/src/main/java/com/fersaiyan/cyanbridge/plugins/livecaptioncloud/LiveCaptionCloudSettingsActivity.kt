@@ -1,4 +1,4 @@
-package com.fersaiyan.cyanbridge.plugins.livecaptionrelay
+package com.fersaiyan.cyanbridge.plugins.livecaptioncloud
 
 import android.os.Bundle
 import android.widget.Toast
@@ -52,21 +52,21 @@ import com.fersaiyan.cyanbridge.ui.installComposeHostWithLegacyAdapter
 import com.fersaiyan.cyanbridge.ui.NativePluginShortcutPreference
 import com.fersaiyan.cyanbridge.ui.setThemedComposeContent
 
-class LiveCaptionRelaySettingsActivity : AppCompatActivity() {
+class LiveCaptionCloudSettingsActivity : AppCompatActivity() {
 
     private lateinit var composeView: ComposeView
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        composeView = installComposeHostWithLegacyAdapter(R.layout.activity_live_caption_relay_settings)
+        composeView = installComposeHostWithLegacyAdapter(R.layout.activity_live_caption_cloud_settings)
 
         setThemedComposeContent(composeView) {
-            LiveCaptionRelaySettingsScreen(
+            LiveCaptionCloudSettingsScreen(
                 onBack = ::finish,
                 onStartService = {
-                    PluginVoicePermissions.ensure(this) { LiveCaptionRelayService.start(this) }
+                    PluginVoicePermissions.ensure(this) { LiveCaptionCloudService.start(this) }
                 },
-                onStopService = { LiveCaptionRelayService.stop(this) },
+                onStopService = { LiveCaptionCloudService.stop(this) },
             )
         }
     }
@@ -74,7 +74,7 @@ class LiveCaptionRelaySettingsActivity : AppCompatActivity() {
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun LiveCaptionRelaySettingsScreen(
+fun LiveCaptionCloudSettingsScreen(
     onBack: () -> Unit,
     onStartService: () -> Unit,
     onStopService: () -> Unit,
@@ -82,19 +82,19 @@ fun LiveCaptionRelaySettingsScreen(
     val context = LocalContext.current
     val scrollState = rememberScrollState()
 
-    var enabled by remember { mutableStateOf(LiveCaptionRelayPreferences.isEnabled(context)) }
-    var sourceLanguage by remember { mutableStateOf(LiveCaptionRelayPreferences.getSourceLanguage(context)) }
-    var targetLanguage by remember { mutableStateOf(LiveCaptionRelayPreferences.getTargetLanguage(context)) }
-    var translationEnabled by remember { mutableStateOf(LiveCaptionRelayPreferences.isTranslationEnabled(context)) }
-    var maxHistory by remember { mutableIntStateOf(LiveCaptionRelayPreferences.getMaxHistory(context)) }
-    var customPrompt by remember { mutableStateOf(LiveCaptionRelayPreferences.getCustomPrompt(context)) }
+    var enabled by remember { mutableStateOf(LiveCaptionCloudPreferences.isEnabled(context)) }
+    var sourceLanguage by remember { mutableStateOf(LiveCaptionCloudPreferences.getSourceLanguage(context)) }
+    var targetLanguage by remember { mutableStateOf(LiveCaptionCloudPreferences.getTargetLanguage(context)) }
+    var translationEnabled by remember { mutableStateOf(LiveCaptionCloudPreferences.isTranslationEnabled(context)) }
+    var maxHistory by remember { mutableIntStateOf(LiveCaptionCloudPreferences.getMaxHistory(context)) }
+    var customPrompt by remember { mutableStateOf(LiveCaptionCloudPreferences.getCustomPrompt(context)) }
 
     val languageOptions = listOf("en", "es", "fr", "de", "it", "pt", "zh", "ja", "ko")
 
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text(stringResource(R.string.compose_plugin_settings_title, stringResource(R.string.compose_plugin_name_live_caption_relay))) },
+                title = { Text(stringResource(R.string.compose_plugin_settings_title, stringResource(R.string.compose_plugin_name_live_caption_cloud))) },
                 navigationIcon = {
                     IconButton(onClick = onBack) {
                         Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = stringResource(R.string.compose_back))
@@ -131,10 +131,10 @@ fun LiveCaptionRelaySettingsScreen(
                             checked = enabled,
                             onCheckedChange = { newValue ->
                                 enabled = newValue
-                                LiveCaptionRelayPreferences.setEnabled(context, newValue)
+                                LiveCaptionCloudPreferences.setEnabled(context, newValue)
                                 CommunityPluginPrefs.setNativePluginEnabled(
                                     context,
-                                    NativePluginIds.LIVE_CAPTION_RELAY,
+                                    NativePluginIds.LIVE_CAPTION_CLOUD,
                                     newValue,
                                 )
                                 if (newValue) {
@@ -150,8 +150,8 @@ fun LiveCaptionRelaySettingsScreen(
 
             SectionTitle(stringResource(R.string.compose_glasses_tab))
             NativePluginShortcutPreference(
-                pluginId = NativePluginIds.LIVE_CAPTION_RELAY,
-                pluginTitle = stringResource(R.string.compose_plugin_name_live_caption_relay),
+                pluginId = NativePluginIds.LIVE_CAPTION_CLOUD,
+                pluginTitle = stringResource(R.string.compose_plugin_name_live_caption_cloud),
             )
 
             // Section: Language
@@ -176,7 +176,7 @@ fun LiveCaptionRelaySettingsScreen(
                                 selected = sourceLanguage == lang,
                                 onClick = {
                                     sourceLanguage = lang
-                                    LiveCaptionRelayPreferences.setSourceLanguage(context, lang)
+                                    LiveCaptionCloudPreferences.setSourceLanguage(context, lang)
                                 },
                                 label = { Text(lang.uppercase()) },
                                 colors = FilterChipDefaults.filterChipColors(
@@ -198,7 +198,7 @@ fun LiveCaptionRelaySettingsScreen(
                             checked = translationEnabled,
                             onCheckedChange = { newValue ->
                                 translationEnabled = newValue
-                                LiveCaptionRelayPreferences.setTranslationEnabled(context, newValue)
+                                LiveCaptionCloudPreferences.setTranslationEnabled(context, newValue)
                             },
                         )
                     }
@@ -220,7 +220,7 @@ fun LiveCaptionRelaySettingsScreen(
                                     selected = targetLanguage == lang,
                                     onClick = {
                                         targetLanguage = lang
-                                        LiveCaptionRelayPreferences.setTargetLanguage(context, lang)
+                                        LiveCaptionCloudPreferences.setTargetLanguage(context, lang)
                                     },
                                     label = { Text(lang.uppercase()) },
                                     colors = FilterChipDefaults.filterChipColors(
@@ -251,7 +251,7 @@ fun LiveCaptionRelaySettingsScreen(
                         onValueChange = { newValue ->
                             if (newValue.length <= 1000) {
                                 customPrompt = newValue
-                                LiveCaptionRelayPreferences.setCustomPrompt(context, newValue)
+                                LiveCaptionCloudPreferences.setCustomPrompt(context, newValue)
                             }
                         },
                         modifier = Modifier.fillMaxWidth(),
@@ -279,7 +279,7 @@ fun LiveCaptionRelaySettingsScreen(
                         value = maxHistory.toFloat(),
                         onValueChange = { newValue ->
                             maxHistory = newValue.toInt()
-                            LiveCaptionRelayPreferences.setMaxHistory(context, newValue.toInt())
+                            LiveCaptionCloudPreferences.setMaxHistory(context, newValue.toInt())
                         },
                         valueRange = 50f..500f,
                         steps = 44,
@@ -290,7 +290,7 @@ fun LiveCaptionRelaySettingsScreen(
 
                     Button(
                         onClick = {
-                            LiveCaptionRelayStore().clear(context)
+                            LiveCaptionCloudStore().clear(context)
                             Toast.makeText(context, context.getString(R.string.compose_history_cleared), Toast.LENGTH_SHORT).show()
                         },
                         modifier = Modifier.fillMaxWidth(),

@@ -1,9 +1,9 @@
-package com.fersaiyan.cyanbridge.plugins.livecaptionrelay
+package com.fersaiyan.cyanbridge.plugins.livecaptioncloud
 
 import android.content.Context
 
-object LiveCaptionRelayPreferences {
-    private const val PREFS = "live_caption_relay_prefs"
+object LiveCaptionCloudPreferences {
+    private const val PREFS = "live_caption_cloud_prefs"
 
     private const val KEY_ENABLED = "enabled"
     private const val KEY_SOURCE_LANGUAGE = "source_language"

@@ -95,7 +95,7 @@
     <string name="compose_range_error">请输入 %1$d 到 %2$d</string>
     <string name="compose_provider_tasker">Tasker</string>
     <string name="compose_provider_local">本地</string>
-    <string name="compose_provider_pro">Pro</string>
+    <string name="compose_provider_pro">Cloud</string>
     <string name="compose_not_now">暂不</string>
     <string name="compose_continue">继续</string>
     <string name="compose_close">关闭</string>

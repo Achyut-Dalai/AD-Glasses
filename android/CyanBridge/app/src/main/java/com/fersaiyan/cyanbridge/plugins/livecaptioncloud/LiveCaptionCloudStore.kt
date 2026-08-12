@@ -1,13 +1,13 @@
-package com.fersaiyan.cyanbridge.plugins.livecaptionrelay
+package com.fersaiyan.cyanbridge.plugins.livecaptioncloud
 
 import android.content.Context
 import android.util.Log
 import org.json.JSONArray
 import org.json.JSONObject
 
-class LiveCaptionRelayStore {
-    private val TAG = "LiveCaptionRelayStore"
-    private val PREFS = "live_caption_relay_store"
+class LiveCaptionCloudStore {
+    private val TAG = "LiveCaptionCloudStore"
+    private val PREFS = "live_caption_cloud_store"
     private val KEY_CAPTIONS = "captions_json"
 
     private val lock = Any()

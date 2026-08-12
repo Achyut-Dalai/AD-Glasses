@@ -7,7 +7,7 @@ import java.io.InputStreamReader
 import java.net.HttpURLConnection
 import java.net.URL
 
-data class RelayServerCapabilities(
+data class CloudServerCapabilities(
     val raw: JSONObject,
     val chat: Boolean,
     val voiceQuery: Boolean,
@@ -17,17 +17,17 @@ data class RelayServerCapabilities(
     val transcriptionHttp: Boolean,
 )
 
-object RelayServerCapabilitiesClient {
+object CloudServerCapabilitiesClient {
     private const val CONNECT_TIMEOUT_MS = 5000
     private const val READ_TIMEOUT_MS = 10000
     private const val CACHE_TTL_MS = 60_000L
 
     private var cachedAtMs: Long = 0L
     private var cachedBaseUrl: String = ""
-    private var cachedCapabilities: RelayServerCapabilities? = null
+    private var cachedCapabilities: CloudServerCapabilities? = null
 
     @Synchronized
-    fun get(context: Context, forceRefresh: Boolean = false): Result<RelayServerCapabilities> {
+    fun get(context: Context, forceRefresh: Boolean = false): Result<CloudServerCapabilities> {
         val baseUrl = AiProviderPrefs.getRelayBaseUrl(context).trim().trimEnd('/')
         if (baseUrl.isBlank()) {
             return Result.failure(IllegalStateException("Relay base URL is blank"))
@@ -69,9 +69,9 @@ object RelayServerCapabilitiesClient {
         cachedBaseUrl = ""
     }
 
-    private fun parseCapabilities(payload: JSONObject): RelayServerCapabilities {
+    private fun parseCapabilities(payload: JSONObject): CloudServerCapabilities {
         val caps = payload.optJSONObject("capabilities") ?: payload
-        return RelayServerCapabilities(
+        return CloudServerCapabilities(
             raw = payload,
             chat = caps.optBoolean("chat", true),
             voiceQuery = caps.optBoolean("voice_query", caps.optBoolean("chat", true)),

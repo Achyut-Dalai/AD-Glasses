@@ -65,7 +65,7 @@
     <string name="compose_translation_hint">예: 격식 있는 언어를 사용합니다. 의학 용어에 집중합니다.</string>
     <string name="compose_translation_history">번역 기록</string>
     <string name="compose_max_stored_translations">저장된 번역 최대 개수: %1$d</string>
-    <string name="compose_live_caption_enabled">Live Caption Relay 사용 설정됨</string>
+    <string name="compose_live_caption_enabled">Live Caption Cloud 사용 설정됨</string>
     <string name="compose_enable_translation">번역 사용</string>
     <string name="compose_caption_generation_description">자막 생성을 위한 추가 지침입니다.</string>
     <string name="compose_caption_instructions">자막 지침</string>
@@ -105,7 +105,7 @@
     <string name="compose_walking_ask_placeholder">현재 장면에 대해 질문하세요...</string>
     <string name="compose_walking_send">보내기</string>
     <string name="compose_walking_enabled">Walking Aid 활성화됨</string>
-    <string name="compose_walking_camera_description">Walking Aid에는 HeyCyan 또는 Meta Ray-Ban과 같은 1인칭 카메라가 있는 안경이 필요합니다. %1$s</string>
+    <string name="compose_walking_camera_description">Walking Aid에는 AD Glasses 또는 Meta Ray-Ban과 같은 1인칭 카메라가 있는 안경이 필요합니다. %1$s</string>
     <string name="compose_walking_benchmark_running">벤치마크 실행 중...</string>
     <string name="compose_walking_latency_benchmark">종단 간 지연 시간 테스트</string>
     <string name="compose_walking_acquisition_running">획득 벤치마크 실행 중...</string>
@@ -116,7 +116,7 @@
     <string name="compose_walking_photo_settle_description">안경이 사진을 확인한 후 데이터를 읽기 전까지 기다리는 시간입니다. 더 빠른 주기를 원하면 줄이고 전송이 실패하면 늘리세요.</string>
     <string name="compose_walking_safety_context">안전 감지 및 장면 맥락</string>
     <string name="compose_walking_local_safety">로컬 안전만 사용</string>
-    <string name="compose_walking_cloud_context">로컬 + 클라우드 맥락 (Pro)</string>
+    <string name="compose_walking_cloud_context">로컬 + 클라우드 맥락 (Cloud)</string>
     <string name="compose_walking_cloud_description">로컬 YOLO가 항상 즉시 안전 판단을 내립니다. 클라우드 비전은 저장된 장면 설명만 보완하며 경고를 지연하지 않습니다.</string>
     <string name="compose_walking_detection_model">로컬 감지 모델</string>
     <string name="compose_walking_yolo_fast">YOLO11 (빠름)</string>
@@ -144,7 +144,7 @@
     <string name="compose_walking_setup_required">Walking Aid 설정 필요</string>
     <string name="compose_walking_setup_body">Walking Aid를 시작하기 전에 누락된 설정을 완료하세요. 이 화면에서 YOLO 및 깊이 모델을 다운로드하고 선택할 수 있습니다.</string>
     <string name="compose_walking_review_settings">Walking Aid 설정 검토</string>
-    <string name="compose_walking_upgrade_pro">Pro로 업그레이드</string>
+    <string name="compose_walking_upgrade_pro">Cloud로 업그레이드</string>
     <string name="compose_walking_cancel">취소</string>
     <string name="compose_walking_select_model">모델 선택</string>
     <string name="compose_walking_loading_models">모델 로드 중...</string>
@@ -171,7 +171,7 @@
     <string name="compose_plugin_name_auto_audio">자동 오디오</string>
     <string name="compose_plugin_name_visual_diary">비주얼 다이어리</string>
     <string name="compose_plugin_name_meeting_spark_notes">회의 메모</string>
-    <string name="compose_plugin_name_live_caption_relay">실시간 자막 릴레이</string>
+    <string name="compose_plugin_name_live_caption_cloud">실시간 자막 릴레이</string>
     <string name="compose_plugin_name_handsfree_translator">핸즈프리 번역기</string>
     <string name="compose_plugin_name_errand_brain">심부름 도우미</string>
 </resources>

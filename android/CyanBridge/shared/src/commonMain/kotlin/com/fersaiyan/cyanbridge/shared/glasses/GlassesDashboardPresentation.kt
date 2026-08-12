@@ -141,8 +141,8 @@ enum class OtaFirmwareSource(
     val label: String,
     val description: String,
 ) {
-    PERSONAL_FILE(
-        label = "Personal firmware files",
+    LOCAL_FILE(
+        label = "Local firmware files",
         description = "Choose both local files: Wi-Fi .swu, then BLE .bin",
     ),
     STEALTH_CATALOG(

@@ -226,7 +226,7 @@
           <option name="id" value="caiman" />
           <option name="labId" value="google" />
           <option name="manufacturer" value="Google" />
-          <option name="name" value="Pixel 9 Pro" />
+          <option name="name" value="Pixel 9 Cloud" />
           <option name="screenDensity" value="360" />
           <option name="screenX" value="960" />
           <option name="screenY" value="2142" />
@@ -238,7 +238,7 @@
           <option name="id" value="caiman" />
           <option name="labId" value="google" />
           <option name="manufacturer" value="Google" />
-          <option name="name" value="Pixel 9 Pro" />
+          <option name="name" value="Pixel 9 Cloud" />
           <option name="screenDensity" value="360" />
           <option name="screenX" value="960" />
           <option name="screenY" value="2142" />
@@ -251,7 +251,7 @@
           <option name="id" value="comet" />
           <option name="labId" value="google" />
           <option name="manufacturer" value="Google" />
-          <option name="name" value="Pixel 9 Pro Fold" />
+          <option name="name" value="Pixel 9 Cloud Fold" />
           <option name="screenDensity" value="390" />
           <option name="screenX" value="2076" />
           <option name="screenY" value="2152" />
@@ -264,7 +264,7 @@
           <option name="id" value="comet" />
           <option name="labId" value="google" />
           <option name="manufacturer" value="Google" />
-          <option name="name" value="Pixel 9 Pro Fold" />
+          <option name="name" value="Pixel 9 Cloud Fold" />
           <option name="screenDensity" value="390" />
           <option name="screenX" value="2076" />
           <option name="screenY" value="2152" />
@@ -531,7 +531,7 @@
           <option name="id" value="husky" />
           <option name="labId" value="google" />
           <option name="manufacturer" value="Google" />
-          <option name="name" value="Pixel 8 Pro" />
+          <option name="name" value="Pixel 8 Cloud" />
           <option name="screenDensity" value="390" />
           <option name="screenX" value="1008" />
           <option name="screenY" value="2244" />
@@ -555,7 +555,7 @@
           <option name="id" value="komodo" />
           <option name="labId" value="google" />
           <option name="manufacturer" value="Google" />
-          <option name="name" value="Pixel 9 Pro XL" />
+          <option name="name" value="Pixel 9 Cloud XL" />
           <option name="screenDensity" value="360" />
           <option name="screenX" value="1008" />
           <option name="screenY" value="2244" />
@@ -567,7 +567,7 @@
           <option name="id" value="komodo" />
           <option name="labId" value="google" />
           <option name="manufacturer" value="Google" />
-          <option name="name" value="Pixel 9 Pro XL" />
+          <option name="name" value="Pixel 9 Cloud XL" />
           <option name="screenDensity" value="360" />
           <option name="screenX" value="1008" />
           <option name="screenY" value="2244" />

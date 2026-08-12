@@ -65,7 +65,7 @@
     <string name="compose_translation_hint">e.g. Use formal language. Focus on medical terms.</string>
     <string name="compose_translation_history">Translation History</string>
     <string name="compose_max_stored_translations">Max stored translations: %1$d</string>
-    <string name="compose_live_caption_enabled">Live Caption Relay enabled</string>
+    <string name="compose_live_caption_enabled">Live Caption Cloud enabled</string>
     <string name="compose_enable_translation">Enable translation</string>
     <string name="compose_caption_generation_description">Additional instructions for caption generation.</string>
     <string name="compose_caption_instructions">Caption instructions</string>
@@ -105,7 +105,7 @@
     <string name="compose_walking_ask_placeholder">Ask about the current scene...</string>
     <string name="compose_walking_send">Send</string>
     <string name="compose_walking_enabled">Walking Aid enabled</string>
-    <string name="compose_walking_camera_description">Walking Aid requires glasses with a point-of-view camera (such as HeyCyan or Meta Ray-Ban). %1$s</string>
+    <string name="compose_walking_camera_description">Walking Aid requires glasses with a point-of-view camera (such as AD Glasses or Meta Ray-Ban). %1$s</string>
     <string name="compose_walking_benchmark_running">Running Benchmark...</string>
     <string name="compose_walking_latency_benchmark">Test End-to-End Latency</string>
     <string name="compose_walking_acquisition_running">Running Acquisition Benchmark...</string>
@@ -116,7 +116,7 @@
     <string name="compose_walking_photo_settle_description">Time to wait after glasses confirm photo before reading data. Reduce for faster cadence, increase if transfers fail.</string>
     <string name="compose_walking_safety_context">Safety detection and scene context</string>
     <string name="compose_walking_local_safety">Local safety only</string>
-    <string name="compose_walking_cloud_context">Local + Cloud context (Pro)</string>
+    <string name="compose_walking_cloud_context">Local + Cloud context (Cloud)</string>
     <string name="compose_walking_cloud_description">Local YOLO always makes immediate safety decisions. Cloud vision only enriches saved scene descriptions and never delays warnings.</string>
     <string name="compose_walking_detection_model">Local detection model</string>
     <string name="compose_walking_yolo_fast">YOLO11 (faster)</string>
@@ -144,7 +144,7 @@
     <string name="compose_walking_setup_required">Walking Aid Setup Required</string>
     <string name="compose_walking_setup_body">Before starting Walking Aid, complete the missing setup items. YOLO and depth models are downloaded and selected in this screen.</string>
     <string name="compose_walking_review_settings">Review Walking Aid Settings</string>
-    <string name="compose_walking_upgrade_pro">Upgrade to Pro</string>
+    <string name="compose_walking_upgrade_pro">Upgrade to Cloud</string>
     <string name="compose_walking_cancel">Cancel</string>
     <string name="compose_walking_select_model">Select Model</string>
     <string name="compose_walking_loading_models">Loading models...</string>
@@ -171,7 +171,7 @@
     <string name="compose_plugin_name_auto_audio">Auto Audio</string>
     <string name="compose_plugin_name_visual_diary">Visual Diary</string>
     <string name="compose_plugin_name_meeting_spark_notes">Meeting Spark Notes</string>
-    <string name="compose_plugin_name_live_caption_relay">Live Caption Relay</string>
+    <string name="compose_plugin_name_live_caption_cloud">Live Caption Cloud</string>
     <string name="compose_plugin_name_handsfree_translator">Hands-Free Translator</string>
     <string name="compose_plugin_name_errand_brain">Errand Brain</string>
 </resources>

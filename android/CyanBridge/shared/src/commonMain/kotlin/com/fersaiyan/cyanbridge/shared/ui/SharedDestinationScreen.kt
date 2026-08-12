@@ -15,11 +15,7 @@ import com.fersaiyan.cyanbridge.shared.chat.ChatThreadSummary
 import com.fersaiyan.cyanbridge.shared.chat.ChatThreadUiState
 import com.fersaiyan.cyanbridge.shared.chat.ChatAttachmentsUiState
 import com.fersaiyan.cyanbridge.shared.chat.ChatComposerUiState
-import com.fersaiyan.cyanbridge.shared.billing.ProSubscriptionAction
-import com.fersaiyan.cyanbridge.shared.billing.ProSubscriptionUiState
-import com.fersaiyan.cyanbridge.shared.billing.unavailableProSubscriptionStatus
 import com.fersaiyan.cyanbridge.shared.navigation.AppDestination
-import com.fersaiyan.cyanbridge.shared.navigation.SharedSubscriptionRoute
 import com.fersaiyan.cyanbridge.shared.navigation.closeSubscription
 import com.fersaiyan.cyanbridge.shared.navigation.openSubscription
 import com.fersaiyan.cyanbridge.shared.persistence.ChatEntity
@@ -42,7 +38,6 @@ import com.fersaiyan.cyanbridge.shared.platform.platformCurrentTimeMillis
 import com.fersaiyan.cyanbridge.shared.ui.chat.ChatListScreen
 import com.fersaiyan.cyanbridge.shared.ui.chat.ChatThreadScreen
 import com.fersaiyan.cyanbridge.shared.ui.plugins.CommunityPluginsScreen
-import com.fersaiyan.cyanbridge.shared.ui.pro.ProSubscriptionScreen
 import com.fersaiyan.cyanbridge.shared.ui.recordings.RecordingsScreen
 import com.fersaiyan.cyanbridge.shared.ui.recordings.SyncedMediaGalleryScreen
 import com.fersaiyan.cyanbridge.shared.ui.settings.SettingsScreenActions
@@ -65,11 +60,8 @@ fun SharedDestinationScreen(
     destination: AppDestination,
     onDestinationSelected: (AppDestination) -> Unit,
     onOpenAppearance: () -> Unit = {},
-    proSubscriptionState: ProSubscriptionUiState = ProSubscriptionUiState(),
-    onProSubscriptionAction: (ProSubscriptionAction) -> String = ::unavailableProSubscriptionStatus,
 ) {
     var subscriptionRoute by remember(destination) {
-        mutableStateOf(SharedSubscriptionRoute.SETTINGS)
     }
 
     when (destination) {
@@ -77,16 +69,13 @@ fun SharedDestinationScreen(
         AppDestination.MEDIA -> SharedMediaDestination(onDestinationSelected)
         AppDestination.PLUGINS -> SharedPluginsDestination(onDestinationSelected)
         AppDestination.SETTINGS -> when (subscriptionRoute) {
-            SharedSubscriptionRoute.SETTINGS -> SharedSettingsDestination(
                 onDestinationSelected = onDestinationSelected,
                 onOpenAppearance = onOpenAppearance,
                 onOpenSubscription = {
                     subscriptionRoute = subscriptionRoute.openSubscription()
                 },
             )
-            SharedSubscriptionRoute.PRO_SUBSCRIPTION -> SharedProSubscriptionDestination(
                 initialState = proSubscriptionState,
-                onSubscriptionAction = onProSubscriptionAction,
                 onBack = { subscriptionRoute = subscriptionRoute.closeSubscription() },
             )
         }
@@ -433,28 +422,18 @@ private fun SharedSettingsDestination(
 
 @OptIn(ExperimentalResourceApi::class)
 @Composable
-private fun SharedProSubscriptionDestination(
-    initialState: ProSubscriptionUiState,
-    onSubscriptionAction: (ProSubscriptionAction) -> String,
     onBack: () -> Unit,
 ) {
     var state by remember(initialState) { mutableStateOf(initialState) }
     val unavailableSubscriptionStatus = stringResource(Res.string.shared_chat_unavailable)
 
-    fun reportUnavailableAction(action: ProSubscriptionAction) {
         state = state.copy(
             status = onSubscriptionAction(action),
         )
     }
 
-    ProSubscriptionScreen(
         state = state,
         onPlanSelected = { plan -> state = state.copy(selectedPlan = plan) },
-        onStartFreeTrial = { reportUnavailableAction(ProSubscriptionAction.SUBSCRIBE) },
-        onSubscribeWithGooglePlay = { reportUnavailableAction(ProSubscriptionAction.SUBSCRIBE) },
-        onSubscribeOnWebsite = { reportUnavailableAction(ProSubscriptionAction.SUBSCRIBE) },
-        onCheckoutUnavailable = { reportUnavailableAction(ProSubscriptionAction.SUBSCRIBE) },
-        onDonate = { reportUnavailableAction(ProSubscriptionAction.DONATE) },
         onCancelSubscription = {
             state = state.copy(
                  status = unavailableSubscriptionStatus,
@@ -515,7 +494,7 @@ private class SharedSettingsScreenActions(
 private const val SHARED_SETTINGS_PREFS = "cyanbridge_shared_settings"
 
 private fun loadSharedSettings(preferences: PlatformPreferences): SettingsUiState = SettingsUiState(
-    providerType = AgentProviderType.valueOf(preferences.getString("provider_type", AgentProviderType.PRO_SUBSCRIPTION.name)),
+    providerType = AgentProviderType.valueOf(preferences.getString("provider_type", AgentProviderType.CLOUD.name)),
     memoryMode = MemoryPrivacyMode.fromRaw(preferences.getString("memory_mode", MemoryPrivacyMode.PRIVATE_LOCAL.name)),
     syncExplicit = preferences.getBoolean("sync_explicit", true),
     syncDaily = preferences.getBoolean("sync_daily", true),

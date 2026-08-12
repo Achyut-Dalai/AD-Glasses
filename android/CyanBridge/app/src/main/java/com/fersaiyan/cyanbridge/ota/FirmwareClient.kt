@@ -23,14 +23,14 @@ fun OtaTarget.isExpectedFirmwareFilename(filename: String): Boolean =
     filename.endsWith(expectedFirmwareExtension(), ignoreCase = true)
 
 internal fun OtaFirmwareSource.serverChannel(): String? = when (this) {
-  OtaFirmwareSource.PERSONAL_FILE -> null
+  OtaFirmwareSource.LOCAL_FILE -> null
   OtaFirmwareSource.STEALTH_CATALOG -> "stealth"
   OtaFirmwareSource.DEBUG_CATALOG -> "debug"
 }
 
 /** The legacy stealth catalog is authorized as the server's LED channel. */
 private fun OtaFirmwareSource.serverRiskChannel(): String? = when (this) {
-    OtaFirmwareSource.PERSONAL_FILE -> null
+    OtaFirmwareSource.LOCAL_FILE -> null
     OtaFirmwareSource.STEALTH_CATALOG -> "led"
     OtaFirmwareSource.DEBUG_CATALOG -> "debug"
 }

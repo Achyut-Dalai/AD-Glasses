@@ -1,11 +1,11 @@
-package com.fersaiyan.cyanbridge.plugins.livecaptionrelay
+package com.fersaiyan.cyanbridge.plugins.livecaptioncloud
 
 import android.app.Service
 import android.content.Context
 import android.content.Intent
 import android.os.IBinder
 import android.util.Log
-import com.fersaiyan.cyanbridge.ai.router.CliRelayClient
+import com.fersaiyan.cyanbridge.ai.router.CliCloudClient
 import com.fersaiyan.cyanbridge.bridge.core.DisplayCommand
 import com.fersaiyan.cyanbridge.bridge.core.GlassesBridge
 import com.fersaiyan.cyanbridge.plugins.PluginVoiceRecognizer
@@ -19,16 +19,16 @@ import kotlinx.coroutines.launch
 import java.util.concurrent.atomic.AtomicBoolean
 
 /** Provides live phone captions from the selected Android microphone or connected glasses mic. */
-class LiveCaptionRelayService : Service() {
+class LiveCaptionCloudService : Service() {
 
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
-    private val captionStore = LiveCaptionRelayStore()
+    private val captionStore = LiveCaptionCloudStore()
     private val translating = AtomicBoolean(false)
     private var voiceRecognizer: PluginVoiceRecognizer? = null
 
     override fun onCreate() {
         super.onCreate()
-        LiveCaptionRelayNotificationHelper.ensureChannel(this)
+        LiveCaptionCloudNotificationHelper.ensureChannel(this)
         captionStore.load(this)
     }
 
@@ -38,7 +38,7 @@ class LiveCaptionRelayService : Service() {
         when (intent?.action) {
             ACTION_START -> startCaptioning()
             ACTION_STOP -> stopCaptioning()
-            null -> if (LiveCaptionRelayPreferences.isEnabled(this)) startCaptioning() else stopSelf()
+            null -> if (LiveCaptionCloudPreferences.isEnabled(this)) startCaptioning() else stopSelf()
         }
         return START_NOT_STICKY
     }
@@ -53,8 +53,8 @@ class LiveCaptionRelayService : Service() {
         if (voiceRecognizer != null) return
         if (!startPluginVoiceForeground(
                 service = this,
-                notificationId = LiveCaptionRelayNotificationHelper.NOTIFICATION_ID,
-                notification = LiveCaptionRelayNotificationHelper.buildNotification(this, "Starting live captions..."),
+                notificationId = LiveCaptionCloudNotificationHelper.NOTIFICATION_ID,
+                notification = LiveCaptionCloudNotificationHelper.buildNotification(this, "Starting live captions..."),
             )
         ) {
             Log.w(TAG, "Missing microphone or notification permission")
@@ -62,12 +62,12 @@ class LiveCaptionRelayService : Service() {
             return
         }
 
-        val sourceLanguage = LiveCaptionRelayPreferences.getSourceLanguage(this)
+        val sourceLanguage = LiveCaptionCloudPreferences.getSourceLanguage(this)
         val recognizer = PluginVoiceRecognizer(
             context = this,
             languageTag = sourceLanguage,
             onPartialText = { partial ->
-                LiveCaptionRelayNotificationHelper.updateNotification(
+                LiveCaptionCloudNotificationHelper.updateNotification(
                     this,
                     "Listening: ${partial.take(NOTIFICATION_TEXT_LIMIT)}",
                 )
@@ -75,7 +75,7 @@ class LiveCaptionRelayService : Service() {
             onFinalText = ::saveCaption,
             onError = { message ->
                 Log.w(TAG, message)
-                LiveCaptionRelayNotificationHelper.updateNotification(this, message)
+                LiveCaptionCloudNotificationHelper.updateNotification(this, message)
             },
         )
         if (!recognizer.start()) {
@@ -84,7 +84,7 @@ class LiveCaptionRelayService : Service() {
             return
         }
         voiceRecognizer = recognizer
-        LiveCaptionRelayNotificationHelper.updateNotification(this, "Listening for speech...")
+        LiveCaptionCloudNotificationHelper.updateNotification(this, "Listening for speech...")
     }
 
     private fun stopCaptioning() {
@@ -95,8 +95,8 @@ class LiveCaptionRelayService : Service() {
     }
 
     private fun saveCaption(text: String) {
-        val sourceLanguage = LiveCaptionRelayPreferences.getSourceLanguage(this)
-        if (!LiveCaptionRelayPreferences.isTranslationEnabled(this)) {
+        val sourceLanguage = LiveCaptionCloudPreferences.getSourceLanguage(this)
+        if (!LiveCaptionCloudPreferences.isTranslationEnabled(this)) {
             persistCaption(
                 CaptionEntry(
                     timestampMs = System.currentTimeMillis(),
@@ -125,7 +125,7 @@ class LiveCaptionRelayService : Service() {
         }
         scope.launch {
             try {
-                val targetLanguage = LiveCaptionRelayPreferences.getTargetLanguage(this@LiveCaptionRelayService)
+                val targetLanguage = LiveCaptionCloudPreferences.getTargetLanguage(this@LiveCaptionCloudService)
                 val translated = translateCaption(text, sourceLanguage, targetLanguage)
                 persistCaption(
                     CaptionEntry(
@@ -156,10 +156,10 @@ class LiveCaptionRelayService : Service() {
     }
 
     private fun persistCaption(caption: CaptionEntry) {
-        captionStore.addCaption(caption, LiveCaptionRelayPreferences.getMaxHistory(this))
-        captionStore.persist(this, LiveCaptionRelayPreferences.getMaxHistory(this))
+        captionStore.addCaption(caption, LiveCaptionCloudPreferences.getMaxHistory(this))
+        captionStore.persist(this, LiveCaptionCloudPreferences.getMaxHistory(this))
         val displayText = caption.translatedText ?: caption.originalText
-        LiveCaptionRelayNotificationHelper.updateNotification(
+        LiveCaptionCloudNotificationHelper.updateNotification(
             this,
             "Caption: ${displayText.take(NOTIFICATION_TEXT_LIMIT)}",
         )
@@ -175,18 +175,18 @@ class LiveCaptionRelayService : Service() {
         sourceLanguage: String,
         targetLanguage: String,
     ): String? {
-        val customPrompt = LiveCaptionRelayPreferences.getCustomPrompt(this)
+        val customPrompt = LiveCaptionCloudPreferences.getCustomPrompt(this)
         val prompt = buildString {
             append("Translate this live caption from $sourceLanguage to $targetLanguage. ")
             append("Return only the translated caption. Caption: \"$text\". ")
             if (customPrompt.isNotBlank()) append("Additional instructions: $customPrompt")
         }
-        return CliRelayClient.chat(
+        return CliCloudClient.chat(
             context = this,
             chatId = "live_caption_${System.currentTimeMillis()}",
             prompt = prompt,
             messages = listOf(mapOf("role" to "user", "content" to prompt)),
-            modelOverride = LiveCaptionRelayPreferences.getCloudModelId(this),
+            modelOverride = LiveCaptionCloudPreferences.getCloudModelId(this),
         ).fold(
             onSuccess = { it.trim().takeIf(String::isNotBlank) },
             onFailure = { error ->
@@ -197,7 +197,7 @@ class LiveCaptionRelayService : Service() {
     }
 
     companion object {
-        private const val TAG = "LiveCaptionRelay"
+        private const val TAG = "LiveCaptionCloud"
         private const val NOTIFICATION_TEXT_LIMIT = 100
 
         const val ACTION_START = "com.fersaiyan.cyanbridge.ACTION_START_CAPTION"
@@ -206,13 +206,13 @@ class LiveCaptionRelayService : Service() {
         fun start(context: Context) {
             startPluginVoiceService(
                 context,
-                Intent(context, LiveCaptionRelayService::class.java).setAction(ACTION_START),
+                Intent(context, LiveCaptionCloudService::class.java).setAction(ACTION_START),
             )
         }
 
         fun stop(context: Context) {
             context.startService(
-                Intent(context, LiveCaptionRelayService::class.java).setAction(ACTION_STOP),
+                Intent(context, LiveCaptionCloudService::class.java).setAction(ACTION_STOP),
             )
         }
     }

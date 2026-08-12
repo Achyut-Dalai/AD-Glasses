@@ -44,39 +44,6 @@ android {
         def openAiKey = project.findProperty("OPENAI_API_KEY") ?: ""
         buildConfigField "String", "OPENAI_API_KEY", "\"${openAiKey}\""
 
-        def proCheapSku = project.findProperty("PRO_CHEAP_SKU") ?: "pro_cheap"
-        def proStandardSku = project.findProperty("PRO_STANDARD_SKU") ?: "pro_standard"
-        def proMaxSku = project.findProperty("PRO_MAX_SKU") ?: "pro_max"
-        // Never fall back to the first Play offer. Configure a base plan for each product,
-        // and an offer ID only when that specific promotional offer should be purchased.
-        def proCheapBasePlanId = project.findProperty("PRO_CHEAP_BASE_PLAN_ID") ?: "pro-cheap"
-        def proStandardBasePlanId = project.findProperty("PRO_STANDARD_BASE_PLAN_ID") ?: "pro-standard"
-        def proMaxBasePlanId = project.findProperty("PRO_MAX_BASE_PLAN_ID") ?: "pro-max"
-        def proCheapOfferId = project.findProperty("PRO_CHEAP_OFFER_ID") ?: ""
-        def proStandardOfferId = project.findProperty("PRO_STANDARD_OFFER_ID") ?: ""
-        def proMaxOfferId = project.findProperty("PRO_MAX_OFFER_ID") ?: ""
-        def proMonthlySku = project.findProperty("PRO_MONTHLY_SKU") ?: "pro_monthly"
-        def proYearlySku = project.findProperty("PRO_YEARLY_SKU") ?: "pro_yearly"
-        def proVerifyUrl = project.findProperty("PRO_SUB_VERIFY_URL") ?: ""
-        def webSubscribeUrl = project.findProperty("WEB_SUBSCRIBE_URL") ?: ""
-        def webAllowedCountries = project.findProperty("WEB_SUB_ALLOWED_COUNTRIES") ?: ""
-        def donationUrl = project.findProperty("DONATION_URL") ?: "https://buymeacoffee.com/"
-        buildConfigField "String", "PRO_CHEAP_SKU", "\"${proCheapSku}\""
-        buildConfigField "String", "PRO_STANDARD_SKU", "\"${proStandardSku}\""
-        buildConfigField "String", "PRO_MAX_SKU", "\"${proMaxSku}\""
-        buildConfigField "String", "PRO_CHEAP_BASE_PLAN_ID", "\"${proCheapBasePlanId}\""
-        buildConfigField "String", "PRO_STANDARD_BASE_PLAN_ID", "\"${proStandardBasePlanId}\""
-        buildConfigField "String", "PRO_MAX_BASE_PLAN_ID", "\"${proMaxBasePlanId}\""
-        buildConfigField "String", "PRO_CHEAP_OFFER_ID", "\"${proCheapOfferId}\""
-        buildConfigField "String", "PRO_STANDARD_OFFER_ID", "\"${proStandardOfferId}\""
-        buildConfigField "String", "PRO_MAX_OFFER_ID", "\"${proMaxOfferId}\""
-        buildConfigField "String", "PRO_MONTHLY_SKU", "\"${proMonthlySku}\""
-        buildConfigField "String", "PRO_YEARLY_SKU", "\"${proYearlySku}\""
-        buildConfigField "String", "PRO_SUB_VERIFY_URL", "\"${proVerifyUrl}\""
-        buildConfigField "String", "WEB_SUBSCRIBE_URL", "\"${webSubscribeUrl}\""
-        buildConfigField "String", "WEB_SUB_ALLOWED_COUNTRIES", "\"${webAllowedCountries}\""
-        buildConfigField "String", "DONATION_URL", "\"${donationUrl}\""
-
         vectorDrawables {
             useSupportLibrary = true
         }
@@ -148,7 +115,7 @@ dependencies {
                     ?: ""
     ).toString().trim()
     def coreConnectivityVersion = project.findProperty("heycyanCoreConnectivityVersion") ?: "0.1.0-SNAPSHOT"
-    implementation("com.heycyan.core:core-connectivity:${coreConnectivityVersion}")
+    implementation("com.ad_glasses.core:core-connectivity:${coreConnectivityVersion}")
     implementation project(":shared")
     implementation files("libs/glasses_sdk_20250723_v01.aar")
     implementation(libs.androidx.core.ktx)
@@ -178,7 +145,6 @@ dependencies {
     implementation 'androidx.media3:media3-exoplayer-rtsp:1.5.1'
     implementation 'androidx.media3:media3-ui:1.5.1'
     implementation "androidx.security:security-crypto:1.1.0-alpha06"
-    implementation 'com.android.billingclient:billing-ktx:8.1.0'
     implementation "androidx.lifecycle:lifecycle-viewmodel-ktx:2.8.0"
     implementation "androidx.work:work-runtime-ktx:2.9.1"
     implementation "org.jetbrains.kotlinx:kotlinx-coroutines-android:1.7.3"

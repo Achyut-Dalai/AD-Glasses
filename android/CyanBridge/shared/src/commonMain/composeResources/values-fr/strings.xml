@@ -17,7 +17,7 @@
     <string name="device_bind_details">%1$s - Signal %2$d</string>
     <string name="device_bind_detected">Détecté : %1$s</string>
     <string name="device_bind_select_type">Sélectionnez le type de lunettes</string>
-    <string name="vision_profile_title">Profil de vision</string>
+    <string name="vision_profile_title">Cloudfil de vision</string>
     <string name="vision_profile_description">Les descriptions d'images utilisent : %1$s</string>
     <string name="vision_instructions_title">Instructions visuelles supplémentaires</string>
     <string name="image_questions_title">Questions d'image par IA</string>

@@ -65,7 +65,7 @@
     <string name="compose_translation_hint">例如：使用正式语言。重点关注医学术语。</string>
     <string name="compose_translation_history">翻译历史记录</string>
     <string name="compose_max_stored_translations">最多保存的翻译：%1$d</string>
-    <string name="compose_live_caption_enabled">Live Caption Relay 已启用</string>
+    <string name="compose_live_caption_enabled">Live Caption Cloud 已启用</string>
     <string name="compose_enable_translation">启用翻译</string>
     <string name="compose_caption_generation_description">生成字幕的附加说明。</string>
     <string name="compose_caption_instructions">字幕说明</string>
@@ -105,7 +105,7 @@
     <string name="compose_walking_ask_placeholder">询问当前场景...</string>
     <string name="compose_walking_send">发送</string>
     <string name="compose_walking_enabled">Walking Aid 已启用</string>
-    <string name="compose_walking_camera_description">Walking Aid 需要带第一视角摄像头的眼镜，例如 HeyCyan 或 Meta Ray-Ban。%1$s</string>
+    <string name="compose_walking_camera_description">Walking Aid 需要带第一视角摄像头的眼镜，例如 AD Glasses 或 Meta Ray-Ban。%1$s</string>
     <string name="compose_walking_benchmark_running">正在运行基准测试...</string>
     <string name="compose_walking_latency_benchmark">测试端到端延迟</string>
     <string name="compose_walking_acquisition_running">正在运行采集基准测试...</string>
@@ -116,7 +116,7 @@
     <string name="compose_walking_photo_settle_description">眼镜确认照片后、读取数据前的等待时间。减少此值可提高频率，传输失败时请增加。</string>
     <string name="compose_walking_safety_context">安全检测和场景上下文</string>
     <string name="compose_walking_local_safety">仅本地安全</string>
-    <string name="compose_walking_cloud_context">本地 + 云端上下文 (Pro)</string>
+    <string name="compose_walking_cloud_context">本地 + 云端上下文 (Cloud)</string>
     <string name="compose_walking_cloud_description">本地 YOLO 始终立即做出安全判断。云端视觉只丰富保存的场景描述，不会延迟警告。</string>
     <string name="compose_walking_detection_model">本地检测模型</string>
     <string name="compose_walking_yolo_fast">YOLO11（更快）</string>
@@ -144,7 +144,7 @@
     <string name="compose_walking_setup_required">需要设置 Walking Aid</string>
     <string name="compose_walking_setup_body">启动 Walking Aid 前，请完成缺失的设置项目。YOLO 和深度模型可在此页面下载并选择。</string>
     <string name="compose_walking_review_settings">检查 Walking Aid 设置</string>
-    <string name="compose_walking_upgrade_pro">升级到 Pro</string>
+    <string name="compose_walking_upgrade_pro">升级到 Cloud</string>
     <string name="compose_walking_cancel">取消</string>
     <string name="compose_walking_select_model">选择模型</string>
     <string name="compose_walking_loading_models">正在加载模型...</string>
@@ -171,7 +171,7 @@
     <string name="compose_plugin_name_auto_audio">自动音频</string>
     <string name="compose_plugin_name_visual_diary">视觉日记</string>
     <string name="compose_plugin_name_meeting_spark_notes">会议速记</string>
-    <string name="compose_plugin_name_live_caption_relay">实时字幕中继</string>
+    <string name="compose_plugin_name_live_caption_cloud">实时字幕中继</string>
     <string name="compose_plugin_name_handsfree_translator">免提翻译器</string>
     <string name="compose_plugin_name_errand_brain">跑腿助手</string>
 </resources>

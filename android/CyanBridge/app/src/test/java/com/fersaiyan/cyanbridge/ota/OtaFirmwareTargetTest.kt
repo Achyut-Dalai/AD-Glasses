@@ -27,7 +27,7 @@ class OtaFirmwareTargetTest {
 
     @Test
     fun `only approved server sources map to catalog channels`() {
-        assertNull(OtaFirmwareSource.PERSONAL_FILE.serverChannel())
+        assertNull(OtaFirmwareSource.LOCAL_FILE.serverChannel())
         assertEquals("stealth", OtaFirmwareSource.STEALTH_CATALOG.serverChannel())
         assertEquals("debug", OtaFirmwareSource.DEBUG_CATALOG.serverChannel())
     }

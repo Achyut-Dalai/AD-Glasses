@@ -2,10 +2,10 @@
 <project version="4">
   <component name="GradleMigrationSettings" migrationVersion="1" />
   <component name="GradleSettings">
-    <option name="linkedExternalProjectsSettings">
-      <GradleProjectSettings>
+    <option name="linkedExternalCloudjectsSettings">
+      <GradleCloudjectSettings>
         <option name="testRunner" value="CHOOSE_PER_TEST" />
-        <option name="externalProjectPath" value="$PROJECT_DIR$" />
+        <option name="externalCloudjectPath" value="$PROJECT_DIR$" />
         <option name="gradleJvm" value="#GRADLE_LOCAL_JAVA_HOME" />
         <option name="modules">
           <set>
@@ -14,7 +14,7 @@
             <option value="$PROJECT_DIR$/app" />
           </set>
         </option>
-      </GradleProjectSettings>
+      </GradleCloudjectSettings>
     </option>
   </component>
 </project>

@@ -5,7 +5,6 @@
     <string name="action_cancel">Cancel</string>
     <string name="action_save">Save</string>
     <string name="vision_profile_selection_title">Choose vision profile</string>
-    <string name="vision_profile_walking">Walking</string>
     <string name="vision_profile_detailed">Detailed</string>
     <string name="vision_custom_instructions_title">Additional vision instructions</string>
     <string name="vision_custom_instructions_hint">Optional instructions used for every image description</string>
@@ -66,7 +65,7 @@
     <string name="onboarding_glasses_connection_details">Bluetooth permission is used only to discover, pair with, and communicate with your glasses. You can continue without allowing it now and grant it later when you connect a device.</string>
 
     <string name="onboarding_optional_features_title">Optional Features, Your Choice</string>
-    <string name="onboarding_optional_features_desc">AutoDiary, Auto Audio, Local Agent, and Pro features are optional and configured from Plugins.</string>
+    <string name="onboarding_optional_features_desc">AutoDiary, Auto Audio, Local Agent, and Cloud features are optional and configured from Plugins.</string>
     <string name="onboarding_optional_features_details">Start with glasses connection, then explore Plugins whenever you are ready. Each plugin explains what it does and requests only the permissions it needs when you enable it. You can review or turn off features at any time.</string>
 
     <string name="onboarding_open_source_title">Built in the Open</string>
@@ -105,12 +104,11 @@
     <!-- Onboarding: Local Storage -->
     <string name="onboarding_local_storage_title">Your Data Stays on Your Device</string>
     <string name="onboarding_local_storage_desc">All your data is encrypted and stored locally on your phone.</string>
-    <string name="onboarding_local_storage_details">Your chats, screen captures, recordings, and AI memories are encrypted using industry-standard encryption and stored only on your device. Future cloud sync options will be available with a Pro Subscription, allowing you to securely sync across devices. Cloud options are currently greyed out until you activate Pro.</string>
+    <string name="onboarding_local_storage_details">Your chats, screen captures, recordings, and AI memories are encrypted using industry-standard encryption and stored only on your device. Future cloud sync options will be available with a Cloud Subscription, allowing you to securely sync across devices. Cloud options are currently greyed out until you activate Cloud.</string>
 
-    <!-- Onboarding: Pro Subscription -->
+    <!-- Onboarding: Cloud Subscription -->
     <string name="onboarding_pro_sub_title">Unlock Premium Features</string>
     <string name="onboarding_pro_sub_desc">Optional cloud features for power users.</string>
-    <string name="onboarding_pro_sub_details">You can use the ENTIRE app completely FREE with local models running on your phone (Qwen 2.5 1.7B, Whisper for transcription, etc.). No internet required!\n\nPro Subscription is ONLY needed for:\n• Cloud AI models (API costs money)\n• Cloud memory sync across devices\n\n🔒 STEALTH MODE FIRMWARE (coming soon)\nThe upcoming Stealth Mode enables silent capture of audio, photos, and videos from your glasses. This requires a one-time payment of the Standard or Max Pro plan for the modded firmware flash. You can cancel your subscription afterward and keep Stealth Mode indefinitely!\n\n🎁 FREE TRIAL\nNew users get a free 1-month Pro trial (rate-limited among all free trial users). Cancel anytime.</string>
 
     <!-- Chat deletion -->
     <string name="delete_chat_title">Delete Chat</string>
@@ -124,29 +122,10 @@
     <string name="synced_media_open_failed">Unable to open this media item.</string>
     <string name="synced_media_video_badge">VIDEO</string>
     <string name="auto_audio_speech_extend">Extend loop when speech detected (avoid cutting conversations)</string>
-    <string name="legacy_checkout_dialog_title">CyanBridge Pro Support Note</string>
-    <string name="legacy_checkout_dialog_message">Hi, thanks for your interest in the Pro Sub. I work on this project besides my PhD studies and your comments and support motivate me. I havent been able to setup Stripe yet because of their special requirements for Brazilian businesses, so for now i am using a payment processor called Asaas and the checkout page is sadly in portuguese, so please use Google Translate. I know this is a bummer and i am actively looking for a better alternative. Thanks again for your support!</string>
+    <string name="legacy_checkout_dialog_title">CyanBridge Cloud Support Note</string>
+    <string name="legacy_checkout_dialog_message">Hi, thanks for your interest in the Cloud Sub. I work on this project besides my PhD studies and your comments and support motivate me. I havent been able to setup Stripe yet because of their special requirements for Brazilian businesses, so for now i am using a payment processor called Asaas and the checkout page is sadly in portuguese, so please use Google Translate. I know this is a bummer and i am actively looking for a better alternative. Thanks again for your support!</string>
     <string name="legacy_checkout_open_button">Open Asaas Card Form</string>
     <string name="legacy_checkout_return_title">Did you finish the Asaas form?</string>
-    <string name="legacy_checkout_return_message">If you completed the secure Asaas card form in the browser, tap I Completed Payment and CyanBridge will verify your subscription now.</string>
     <string name="legacy_checkout_confirm_button">I Completed Payment</string>
     <string name="legacy_checkout_reopen_button">Open Card Form Again</string>
-    <string name="donation_intro_dialog_title">CyanBridge Asaas Support Note</string>
-    <string name="donation_intro_dialog_message">Hi, thanks for considering a donation to CyanBridge! I work on this project besides my PhD studies, and your support means a lot. I haven\'t been able to set up Stripe yet because of their special requirements for Brazilian businesses, so for now I\'m using a payment processor called Asaas. The checkout page is in Portuguese, so please use Google Translate if needed. I\'m actively looking for a better alternative. Thanks again for your support!</string>
-    <string name="donation_intro_open_button">Open Asaas Card Form</string>
-    <string name="walking_aid_title">Walking Aid</string>
-    <string name="walking_aid_settings">Walking Aid Settings</string>
-    <string name="walking_aid_general">General</string>
-    <string name="walking_aid_capture_interval">Capture interval</string>
-    <string name="walking_aid_image_recognition">Image Recognition</string>
-    <string name="walking_aid_depth_estimation">Depth Estimation</string>
-    <string name="walking_aid_output">Output</string>
-    <string name="walking_aid_tts_enabled">Speak descriptions aloud</string>
-    <string name="walking_aid_safety_disclaimer">Safety disclaimer on first warning</string>
-    <string name="walking_aid_history">Image History</string>
-    <string name="walking_aid_clear_history">Clear History</string>
-    <string name="walking_aid_source_local">Local (on-device)</string>
-    <string name="walking_aid_source_cloud">Cloud (Pro)</string>
-    <string name="walking_aid_not_connected">Walking Aid: Glasses not connected. Please connect your glasses first.</string>
-    <string name="walking_aid_meeting_active">Walking Aid: Meeting recording is active. Stop the meeting before enabling Walking Aid.</string>
 </resources>

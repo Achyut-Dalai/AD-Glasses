@@ -40,7 +40,7 @@ Latest version: %2$s</string>
     <string name="compose_local_agent_use_screenshots">Use screenshots for Local Agent planning</string>
     <string name="compose_local_agent_remote_screenshots">Allow screenshots to be sent to remote planners</string>
     <string name="compose_local_agent_screenshot_requirements">Android 11+ and Accessibility screenshot support are required. Screenshots are deleted after each planning step and are not added to Local Agent history or memory.</string>
-    <string name="compose_local_agent_remote_screenshot_consent">Off by default. Enable this only if you consent to the selected cloud, relay, or remote OpenAI-compatible planner receiving the current screenshot. Otherwise remote planning stays text-only.</string>
+    <string name="compose_local_agent_remote_screenshot_consent">Off by default. Enable this only if you consent to the selected cloud, cloud, or remote OpenAI-compatible planner receiving the current screenshot. Otherwise remote planning stays text-only.</string>
     <string name="compose_local_agent_screenshot_status">Screenshot status: %1$s</string>
     <string name="compose_local_agent_runtime_safety">Runtime and Safety</string>
     <string name="compose_local_agent_runtime_description">The agent can inspect accessible app UI, tap, type, submit fields, scroll, and open apps. Calls, SMS, and email open the native dialer or composer and are high-risk under the default approval policy. Phone control and screenshot planning stop while the phone is locked or inactive.</string>
@@ -95,7 +95,7 @@ Latest version: %2$s</string>
     <string name="compose_range_error">Use %1$d to %2$d</string>
     <string name="compose_provider_tasker">Tasker</string>
     <string name="compose_provider_local">Local</string>
-    <string name="compose_provider_pro">Pro</string>
+    <string name="compose_provider_cloud">Cloud</string>
     <string name="compose_not_now">Not now</string>
     <string name="compose_continue">Continue</string>
     <string name="compose_close">Close</string>

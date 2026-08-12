@@ -25,7 +25,7 @@ Ultima version: %2$s</string>
     <string name="compose_external_import_profile">Importar perfil de Tasker compatible</string>
     <string name="compose_external_verify_profile">Verificar perfil importado</string>
     <string name="compose_external_open_accessibility">Abrir ajustes de accesibilidad</string>
-    <string name="compose_external_test_voice">Probar inicio de voz de Tasker</string>
+    <string name="compose_external_test_voice">Cloudbar inicio de voz de Tasker</string>
     <string name="compose_external_setup_checks">Comprobaciones de configuracion</string>
     <string name="compose_external_last_state">Ultimo estado de automatizacion de imagen: %1$s</string>
     <string name="compose_local_agent_settings_title">Ajustes de Local Agent</string>
@@ -40,7 +40,7 @@ Ultima version: %2$s</string>
     <string name="compose_local_agent_use_screenshots">Usar capturas para la planificacion de Local Agent</string>
     <string name="compose_local_agent_remote_screenshots">Permitir enviar capturas a planificadores remotos</string>
     <string name="compose_local_agent_screenshot_requirements">Se necesita Android 11 o posterior y compatibilidad de capturas de Accesibilidad. Las capturas se eliminan despues de cada paso y no se anaden al historial ni a la memoria de Local Agent.</string>
-    <string name="compose_local_agent_remote_screenshot_consent">Desactivado de forma predeterminada. Activalo solo si aceptas que el planificador en la nube, relay o remoto compatible con OpenAI seleccionado reciba la captura actual. De lo contrario, la planificacion remota usa solo texto.</string>
+    <string name="compose_local_agent_remote_screenshot_consent">Desactivado de forma predeterminada. Activalo solo si aceptas que el planificador en la nube, cloud o remoto compatible con OpenAI seleccionado reciba la captura actual. De lo contrario, la planificacion remota usa solo texto.</string>
     <string name="compose_local_agent_screenshot_status">Estado de captura: %1$s</string>
     <string name="compose_local_agent_runtime_safety">Runtime y seguridad</string>
     <string name="compose_local_agent_runtime_description">El agente puede inspeccionar la interfaz accesible, tocar, escribir, enviar formularios, desplazarse y abrir aplicaciones. Las llamadas, SMS y correos abren el marcador o redactor nativo y son de alto riesgo segun la politica de aprobacion predeterminada. El control del telefono y la planificacion con capturas se detienen cuando el telefono esta bloqueado o inactivo.</string>
@@ -95,7 +95,7 @@ Ultima version: %2$s</string>
     <string name="compose_range_error">Usa de %1$d a %2$d</string>
     <string name="compose_provider_tasker">Tasker</string>
     <string name="compose_provider_local">Local</string>
-    <string name="compose_provider_pro">Pro</string>
+    <string name="compose_provider_cloud">Cloud</string>
     <string name="compose_not_now">Ahora no</string>
     <string name="compose_continue">Continuar</string>
     <string name="compose_close">Cerrar</string>

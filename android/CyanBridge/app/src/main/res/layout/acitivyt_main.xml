@@ -229,7 +229,7 @@
                 android:textColor="@color/text_primary"
                 android:textSize="13sp" />
 
-            <ProgressBar
+            <CloudgressBar
                 android:id="@+id/progress_transfer"
                 style="?android:attr/progressBarStyleHorizontal"
                 android:layout_width="match_parent"
@@ -633,7 +633,7 @@
 
             <!-- SECTION: HEY_CYAN EXTRAS (capability gated) -->
             <LinearLayout
-                android:id="@+id/layout_heycyan_extras"
+                android:id="@+id/layout_ad_glasses_extras"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:orientation="vertical">
@@ -710,7 +710,7 @@
                         android:layout_width="0dp"
                         android:layout_height="wrap_content"
                         android:layout_weight="1"
-                        android:text="Local/Pro/Tasker"
+                        android:text="Local/Cloud/Tasker"
                         android:backgroundTint="@color/card_bg"
                         android:textColor="@color/text_secondary"/>
                 </LinearLayout>

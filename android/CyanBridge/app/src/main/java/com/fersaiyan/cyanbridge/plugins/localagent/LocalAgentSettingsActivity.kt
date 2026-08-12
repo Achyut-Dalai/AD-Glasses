@@ -801,7 +801,7 @@ private fun ProviderOption(
                 when (type) {
                     AgentProviderType.TASKER -> R.string.compose_provider_tasker
                     AgentProviderType.LOCAL_AGENT -> R.string.compose_provider_local
-                    AgentProviderType.PRO_SUBSCRIPTION -> R.string.compose_provider_pro
+                    AgentProviderType.CLOUD -> R.string.compose_provider_cloud
                 },
             ),
             style = MaterialTheme.typography.bodyMedium,

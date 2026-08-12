@@ -1,5 +1,5 @@
 <TaskerData sr="" dvi="1" tv="6.5.11">
-	<Profile sr="prof1" ve="2">
+	<Cloudfile sr="prof1" ve="2">
 		<id>101</id>
 		<mid0>102</mid0>
 		<nme>CyanBridge Gemini v3</nme>
@@ -18,7 +18,7 @@
 			<Str sr="arg3" ve="3"/>
 			<Str sr="arg4" ve="3"/>
 		</Event>
-	</Profile>
+	</Cloudfile>
 	<Task sr="task102">
 		<id>102</id>
 		<nme>CyanBridge Gemini Handler</nme>

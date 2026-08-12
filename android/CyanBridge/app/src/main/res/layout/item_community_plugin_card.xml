@@ -39,7 +39,7 @@
                 android:background="@drawable/bg_community_hero"
                 android:paddingHorizontal="10dp"
                 android:paddingVertical="4dp"
-                android:text="Productivity"
+                android:text="Cloudductivity"
                 android:textColor="@color/text_primary"
                 android:textSize="10sp"
                 android:textStyle="bold" />

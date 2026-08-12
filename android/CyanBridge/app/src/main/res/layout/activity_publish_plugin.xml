@@ -210,7 +210,7 @@
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
                         android:layout_marginTop="8dp"
-                        android:text="1. Your plugin submission is sent to our Termux server for review\n\n2. Once approved, it will appear in the Community Plugins list\n\n3. Top plugins may earn real cash prizes proportional to Pro users"
+                        android:text="1. Your plugin submission is sent to our Termux server for review\n\n2. Once approved, it will appear in the Community Plugins list\n\n3. Top plugins may earn real cash prizes proportional to Cloud users"
                         android:textColor="@color/text_primary"
                         android:textSize="12sp"
                         android:lineSpacingExtra="4dp" />

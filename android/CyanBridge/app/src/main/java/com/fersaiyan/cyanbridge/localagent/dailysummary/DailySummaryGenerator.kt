@@ -65,7 +65,7 @@ object DailySummaryGenerator {
     fun providerHint(context: Context): String {
         return when (AutomationPrefs.getProviderType(context)) {
             AgentProviderType.LOCAL_AGENT -> "local_models"
-            AgentProviderType.PRO_SUBSCRIPTION -> "cli_relay"
+            AgentProviderType.CLOUD -> "cli_relay"
             AgentProviderType.TASKER -> if (ProSubscriptionPrefs.isActiveLocally(context)) "cli_relay" else "ai_router"
         }
     }
@@ -677,7 +677,7 @@ Remember: You MUST output a valid summary. Do not refuse.
                     .getOrThrow()
             }
 
-            AgentProviderType.PRO_SUBSCRIPTION -> runRelay(context, prompt)
+            AgentProviderType.CLOUD -> runRelay(context, prompt)
 
             AgentProviderType.TASKER -> {
                 if (hasPro) {

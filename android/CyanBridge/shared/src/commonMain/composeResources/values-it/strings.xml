@@ -17,7 +17,7 @@
     <string name="device_bind_details">%1$s - Segnale %2$d</string>
     <string name="device_bind_detected">Rilevato: %1$s</string>
     <string name="device_bind_select_type">Seleziona il tipo di occhiali</string>
-    <string name="vision_profile_title">Profilo visivo</string>
+    <string name="vision_profile_title">Cloudfilo visivo</string>
     <string name="vision_profile_description">Le descrizioni delle immagini usano: %1$s</string>
     <string name="vision_instructions_title">Istruzioni visive aggiuntive</string>
     <string name="image_questions_title">Domande sulle immagini con IA</string>

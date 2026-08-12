@@ -20,10 +20,10 @@ Neueste Version: %2$s</string>
     <string name="compose_external_setup_title">Gemini-/ChatGPT-Einrichtung</string>
     <string name="compose_external_back">Zurück</string>
     <string name="compose_external_refresh_status">Einrichtungsstatus aktualisieren</string>
-    <string name="compose_external_description">CyanBridge verwendet den Standardassistenten von Android. Wählen Sie Gemini oder ChatGPT, importieren Sie das passende Tasker-Profil und aktivieren Sie AutoInput für Bildfragen.</string>
+    <string name="compose_external_description">CyanBridge verwendet den Standardassistenten von Android. Wählen Sie Gemini oder ChatGPT, importieren Sie das passende Tasker-Cloudfil und aktivieren Sie AutoInput für Bildfragen.</string>
     <string name="compose_external_choose_assistant">Standardassistent des Telefons auswählen</string>
-    <string name="compose_external_import_profile">Passendes Tasker-Profil importieren</string>
-    <string name="compose_external_verify_profile">Importiertes Profil prüfen</string>
+    <string name="compose_external_import_profile">Passendes Tasker-Cloudfil importieren</string>
+    <string name="compose_external_verify_profile">Importiertes Cloudfil prüfen</string>
     <string name="compose_external_open_accessibility">Bedienungshilfen öffnen</string>
     <string name="compose_external_test_voice">Tasker-Sprachstart testen</string>
     <string name="compose_external_setup_checks">Einrichtungsprüfungen</string>
@@ -40,7 +40,7 @@ Neueste Version: %2$s</string>
     <string name="compose_local_agent_use_screenshots">Screenshots für Local-Agent-Planung verwenden</string>
     <string name="compose_local_agent_remote_screenshots">Screenshots an externe Planer senden</string>
     <string name="compose_local_agent_screenshot_requirements">Android 11+ und Screenshot-Unterstützung der Bedienungshilfen sind erforderlich. Screenshots werden nach jedem Planungsschritt gelöscht und nicht in Verlauf oder Speicher des Local Agent aufgenommen.</string>
-    <string name="compose_local_agent_remote_screenshot_consent">Standardmäßig deaktiviert. Aktivieren Sie dies nur, wenn der ausgewählte Cloud-, Relay- oder entfernte OpenAI-kompatible Planer den aktuellen Screenshot erhalten darf. Andernfalls bleibt die externe Planung textbasiert.</string>
+    <string name="compose_local_agent_remote_screenshot_consent">Standardmäßig deaktiviert. Aktivieren Sie dies nur, wenn der ausgewählte Cloud-, Cloud- oder entfernte OpenAI-kompatible Planer den aktuellen Screenshot erhalten darf. Andernfalls bleibt die externe Planung textbasiert.</string>
     <string name="compose_local_agent_screenshot_status">Screenshot-Status: %1$s</string>
     <string name="compose_local_agent_runtime_safety">Laufzeit und Sicherheit</string>
     <string name="compose_local_agent_runtime_description">Der Agent kann zugängliche App-Oberflächen prüfen, tippen, Text eingeben, Felder absenden, scrollen und Apps öffnen. Anrufe, SMS und E-Mails öffnen den nativen Wähler oder Verfasser und gelten gemäß Standardrichtlinie als risikoreich. Telefonsteuerung und Screenshotplanung werden bei gesperrtem oder inaktivem Telefon beendet.</string>
@@ -95,7 +95,7 @@ Neueste Version: %2$s</string>
     <string name="compose_range_error">Verwenden Sie %1$d bis %2$d</string>
     <string name="compose_provider_tasker">Tasker</string>
     <string name="compose_provider_local">Lokal</string>
-    <string name="compose_provider_pro">Pro</string>
+    <string name="compose_provider_cloud">Cloud</string>
     <string name="compose_not_now">Nicht jetzt</string>
     <string name="compose_continue">Weiter</string>
     <string name="compose_close">Schließen</string>

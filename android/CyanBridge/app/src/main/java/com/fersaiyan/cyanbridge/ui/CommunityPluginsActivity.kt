@@ -27,15 +27,12 @@ import com.fersaiyan.cyanbridge.shared.plugins.PluginTimeWindow
 import com.fersaiyan.cyanbridge.ui.appearance.AppearancePreferences
 import com.fersaiyan.cyanbridge.ui.appearance.rememberAppearanceSettings
 import com.fersaiyan.cyanbridge.shared.ui.plugins.CommunityPluginsScreen
-import com.fersaiyan.cyanbridge.plugins.walkingaid.WalkingAidService
-import com.fersaiyan.cyanbridge.plugins.walkingaid.WalkingAidSettingsActivity
-import com.fersaiyan.cyanbridge.plugins.walkingaid.WalkingAidPreferences
 import com.fersaiyan.cyanbridge.plugins.meetingsparknotes.MeetingSparkNotesService
 import com.fersaiyan.cyanbridge.plugins.meetingsparknotes.MeetingSparkNotesSettingsActivity
 import com.fersaiyan.cyanbridge.plugins.meetingsparknotes.MeetingSparkNotesPreferences
-import com.fersaiyan.cyanbridge.plugins.livecaptionrelay.LiveCaptionRelayService
-import com.fersaiyan.cyanbridge.plugins.livecaptionrelay.LiveCaptionRelaySettingsActivity
-import com.fersaiyan.cyanbridge.plugins.livecaptionrelay.LiveCaptionRelayPreferences
+import com.fersaiyan.cyanbridge.plugins.livecaptioncloud.LiveCaptionCloudService
+import com.fersaiyan.cyanbridge.plugins.livecaptioncloud.LiveCaptionCloudSettingsActivity
+import com.fersaiyan.cyanbridge.plugins.livecaptioncloud.LiveCaptionCloudPreferences
 import com.fersaiyan.cyanbridge.plugins.handsfreetranslator.HandsFreeTranslatorService
 import com.fersaiyan.cyanbridge.plugins.handsfreetranslator.HandsFreeTranslatorSettingsActivity
 import com.fersaiyan.cyanbridge.plugins.handsfreetranslator.HandsFreeTranslatorPreferences
@@ -116,11 +113,9 @@ class CommunityPluginsActivity : AppCompatActivity() {
                 hasSettings = true,
             ),
             NativePluginCardData(
-                id = NativePluginIds.WALKING_AID,
                 title = "Walking Aid",
                 description = cameraUnavailableReason ?: "Real-time scene description and obstacle warnings for blind navigation. Captures images from glasses at regular intervals and describes the environment.",
                 badge = "Accessibility",
-                enabled = hasCamera && CommunityPluginPrefs.isNativePluginEnabled(this, NativePluginIds.WALKING_AID),
                 hasSettings = true,
                 isAvailable = hasCamera,
             ),
@@ -133,15 +128,15 @@ class CommunityPluginsActivity : AppCompatActivity() {
                 hasSettings = true,
             ),
             NativePluginCardData(
-                id = NativePluginIds.LIVE_CAPTION_RELAY,
-                title = "Live Caption Relay",
+                id = NativePluginIds.LIVE_CAPTION_CLOUD,
+                title = "Live Caption Cloud",
                 description = if (selectedClass == DeviceClass.MEIZU_MYVU) {
                     "Captions live speech and streams text directly to your Meizu MYVU heads-up display."
                 } else {
                     "Captions live speech from your phone or Bluetooth glasses mic, with optional translation."
                 },
                 badge = "Accessibility",
-                enabled = CommunityPluginPrefs.isNativePluginEnabled(this, NativePluginIds.LIVE_CAPTION_RELAY),
+                enabled = CommunityPluginPrefs.isNativePluginEnabled(this, NativePluginIds.LIVE_CAPTION_CLOUD),
                 hasSettings = true,
             ),
             NativePluginCardData(
@@ -208,9 +203,8 @@ class CommunityPluginsActivity : AppCompatActivity() {
                     onOpenNativePluginSettings = { pluginId ->
                         when (pluginId) {
                             NativePluginIds.LOCAL_AGENT -> startActivity(Intent(this, LocalAgentSettingsActivity::class.java))
-                            NativePluginIds.WALKING_AID -> startActivity(Intent(this, WalkingAidSettingsActivity::class.java))
                             NativePluginIds.MEETING_SPARK_NOTES -> startActivity(Intent(this, MeetingSparkNotesSettingsActivity::class.java))
-                            NativePluginIds.LIVE_CAPTION_RELAY -> startActivity(Intent(this, LiveCaptionRelaySettingsActivity::class.java))
+                            NativePluginIds.LIVE_CAPTION_CLOUD -> startActivity(Intent(this, LiveCaptionCloudSettingsActivity::class.java))
                             NativePluginIds.HANDS_FREE_TRANSLATOR -> startActivity(Intent(this, HandsFreeTranslatorSettingsActivity::class.java))
                             NativePluginIds.ERRAND_BRAIN -> startActivity(Intent(this, ErrandBrainSettingsActivity::class.java))
                             NativePluginIds.AUTO_DIARY -> startActivity(Intent(this, AutoDiarySettingsActivity::class.java))
@@ -252,7 +246,6 @@ class CommunityPluginsActivity : AppCompatActivity() {
         }
         if (enabled &&
             DeviceProfileStore.isMetaSelected(this) &&
-            pluginId in setOf(NativePluginIds.WALKING_AID, NativePluginIds.VISUAL_DIARY)
         ) {
             val manager = MetaRaybanManager.getInstance(this)
             if (!manager.isInitialized.value) manager.initialize()
@@ -337,16 +330,14 @@ class CommunityPluginsActivity : AppCompatActivity() {
                 LocalAgentPlugin.setEnabled(this, enabled)
             }
             "walking_aid" -> {
-                WalkingAidPreferences.setEnabled(this, enabled)
-                if (enabled) WalkingAidService.start(this) else WalkingAidService.stop(this)
             }
             "meeting_spark_notes" -> {
                 MeetingSparkNotesPreferences.setEnabled(this, enabled)
                 if (enabled) MeetingSparkNotesService.start(this) else MeetingSparkNotesService.stop(this)
             }
-            "live_caption_relay" -> {
-                LiveCaptionRelayPreferences.setEnabled(this, enabled)
-                if (enabled) LiveCaptionRelayService.start(this) else LiveCaptionRelayService.stop(this)
+            "live_caption_cloud" -> {
+                LiveCaptionCloudPreferences.setEnabled(this, enabled)
+                if (enabled) LiveCaptionCloudService.start(this) else LiveCaptionCloudService.stop(this)
             }
             "hands_free_translator" -> {
                 HandsFreeTranslatorPreferences.setEnabled(this, enabled)
@@ -405,8 +396,8 @@ class CommunityPluginsActivity : AppCompatActivity() {
     }
 
     private fun downloadCommunityPlugins(): List<CommunityPluginCardData> {
-        val relayUrl = AiProviderPrefs.getRelayBaseUrl(this).trimEnd('/')
-        val connection = java.net.URL("$relayUrl/plugins").openConnection()
+        val cloudUrl = AiProviderPrefs.getCloudBaseUrl(this).trimEnd('/')
+        val connection = java.net.URL("$cloudUrl/plugins").openConnection()
             as java.net.HttpURLConnection
         try {
             connection.requestMethod = "GET"
@@ -512,14 +503,13 @@ class CommunityPluginsActivity : AppCompatActivity() {
     private companion object {
         private val VOICE_PLUGIN_IDS = setOf(
             "meeting_spark_notes",
-            "live_caption_relay",
+            "live_caption_cloud",
             "hands_free_translator",
             "errand_brain",
             NativePluginIds.AUTO_AUDIO,
         )
 
         private val NOTIFICATION_PLUGIN_IDS = setOf(
-            NativePluginIds.WALKING_AID,
             NativePluginIds.AUTO_DIARY,
             NativePluginIds.VISUAL_DIARY,
         )

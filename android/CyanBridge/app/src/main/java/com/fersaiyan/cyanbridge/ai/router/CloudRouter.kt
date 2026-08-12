@@ -17,25 +17,25 @@ import java.net.HttpURLConnection
 import java.net.URL
 import kotlinx.coroutines.delay
 
-private data class RelayRequest(
+private data class CloudRequest(
     val type: String,
     val payload: String,
     val createdAtMs: Long,
 )
 
-object CliRelayQueue {
-    private const val PREFS_NAME = "cli_relay_queue"
+object CliCloudQueue {
+    private const val PREFS_NAME = "cli_cloud_queue"
     private const val KEY_ITEMS = "items"
 
     private fun prefs(context: Context) = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
 
     @Synchronized
-    private fun read(context: Context): MutableList<RelayRequest> {
+    private fun read(context: Context): MutableList<CloudRequest> {
         val raw = prefs(context).getString(KEY_ITEMS, "[]") ?: "[]"
         val arr = JSONArray(raw)
         return MutableList(arr.length()) { idx ->
             val obj = arr.optJSONObject(idx) ?: JSONObject()
-            RelayRequest(
+            CloudRequest(
                 type = obj.optString("type"),
                 payload = obj.optString("payload"),
                 createdAtMs = obj.optLong("createdAtMs", System.currentTimeMillis()),
@@ -44,7 +44,7 @@ object CliRelayQueue {
     }
 
     @Synchronized
-    private fun write(context: Context, items: List<RelayRequest>) {
+    private fun write(context: Context, items: List<CloudRequest>) {
         val arr = JSONArray()
         items.forEach {
             arr.put(
@@ -59,13 +59,13 @@ object CliRelayQueue {
 
     fun enqueueVoice(context: Context, prompt: String) {
         val items = read(context)
-        items += RelayRequest("voice", prompt, System.currentTimeMillis())
+        items += CloudRequest("voice", prompt, System.currentTimeMillis())
         write(context, items)
     }
 
     fun enqueueImage(context: Context, imagePath: String) {
         val items = read(context)
-        items += RelayRequest("image", imagePath, System.currentTimeMillis())
+        items += CloudRequest("image", imagePath, System.currentTimeMillis())
         write(context, items)
     }
 
@@ -74,12 +74,12 @@ object CliRelayQueue {
     suspend fun flush(context: Context): Int {
         val pending = read(context)
         if (pending.isEmpty()) return 0
-        val remaining = mutableListOf<RelayRequest>()
+        val remaining = mutableListOf<CloudRequest>()
         var delivered = 0
         pending.forEach { req ->
             val success = when (req.type) {
-                "voice" -> CliRelayClient.voiceQuery(context, req.payload).isSuccess
-                "image" -> CliRelayClient.imageQuery(context, req.payload).isSuccess
+                "voice" -> CliCloudClient.voiceQuery(context, req.payload).isSuccess
+                "image" -> CliCloudClient.imageQuery(context, req.payload).isSuccess
                 else -> true
             }
             if (success) {
@@ -93,7 +93,7 @@ object CliRelayQueue {
     }
 }
 
-object CliRelayClient {
+object CliCloudClient {
     private const val CONNECT_TIMEOUT_MS = 7000
     private const val READ_TIMEOUT_MS = 120000
 
@@ -115,7 +115,7 @@ object CliRelayClient {
             val response = postJson(
                 context,
                 endpoint(context, "/health"),
-                JSONObject().put("backend", AiProviderPrefs.getRelayBackend(context).wire)
+                JSONObject().put("backend", AiProviderPrefs.getCloudBackend(context).wire)
             )
             val status = response.optString("status", "unknown")
             val backend = response.optString("backend", "unknown")
@@ -130,7 +130,7 @@ object CliRelayClient {
         messages: List<Map<String, String>>,
         modelOverride: String? = null,
     ): Result<String> = runCatching {
-        RelayServerCapabilitiesClient.get(context).getOrNull()?.let { caps ->
+        CloudServerCapabilitiesClient.get(context).getOrNull()?.let { caps ->
             if (!caps.chat) {
                 throw IllegalStateException("Server capability unavailable: chat")
             }
@@ -145,7 +145,7 @@ object CliRelayClient {
                 context,
                 endpoint(context, "/chat"),
                 JSONObject()
-                    .put("backend", AiProviderPrefs.getRelayBackend(context).wire)
+                    .put("backend", AiProviderPrefs.getCloudBackend(context).wire)
                     .put("chatId", chatId)
                     .put("prompt", prompt)
                     .put("messages", messagesArray)
@@ -155,7 +155,7 @@ object CliRelayClient {
                     }
             )
             response.optString("reply").ifBlank {
-                throw IllegalStateException("Relay returned empty chat reply")
+                throw IllegalStateException("Cloud returned empty chat reply")
             }
         }
     }
@@ -163,7 +163,7 @@ object CliRelayClient {
     suspend fun voiceQuery(
         context: Context,
         prompt: String,
-        backendOverride: CliRelayBackend? = null,
+        backendOverride: CliCloudBackend? = null,
         modelOverride: String? = null,
     ): Result<String> = runCatching {
         voiceQueryDetailed(
@@ -177,10 +177,10 @@ object CliRelayClient {
     suspend fun voiceQueryDetailed(
         context: Context,
         prompt: String,
-        backendOverride: CliRelayBackend? = null,
+        backendOverride: CliCloudBackend? = null,
         modelOverride: String? = null,
     ): Result<VoiceQueryDetails> = runCatching {
-        RelayServerCapabilitiesClient.get(context).getOrNull()?.let { caps ->
+        CloudServerCapabilitiesClient.get(context).getOrNull()?.let { caps ->
             if (!caps.voiceQuery) {
                 throw IllegalStateException("Server capability unavailable: voice_query")
             }
@@ -192,7 +192,7 @@ object CliRelayClient {
                 context,
                 endpoint(context, "/voice-query"),
                 JSONObject()
-                    .put("backend", (backendOverride ?: AiProviderPrefs.getRelayBackend(context)).wire)
+                    .put("backend", (backendOverride ?: AiProviderPrefs.getCloudBackend(context)).wire)
                     .put("prompt", prompt)
                     .apply {
                         val model = modelOverride?.trim().orEmpty()
@@ -201,7 +201,7 @@ object CliRelayClient {
             )
             val elapsedMs = (System.currentTimeMillis() - started).coerceAtLeast(1L)
             val reply = response.optString("reply").ifBlank {
-                throw IllegalStateException("Relay returned empty voice reply")
+                throw IllegalStateException("Cloud returned empty voice reply")
             }
 
             VoiceQueryDetails(
@@ -220,10 +220,10 @@ object CliRelayClient {
         context: Context,
         imagePath: String,
         prompt: String? = null,
-        backendOverride: CliRelayBackend? = null,
+        backendOverride: CliCloudBackend? = null,
         modelOverride: String? = null,
     ): Result<String> = runCatching {
-        RelayServerCapabilitiesClient.get(context).getOrNull()?.let { caps ->
+        CloudServerCapabilitiesClient.get(context).getOrNull()?.let { caps ->
             if (!caps.imageQuery) {
                 throw IllegalStateException("Server capability unavailable: image_query")
             }
@@ -239,7 +239,7 @@ object CliRelayClient {
             context,
             endpoint(context, "/image-query"),
             JSONObject()
-                .put("backend", (backendOverride ?: AiProviderPrefs.getRelayBackend(context)).wire)
+                .put("backend", (backendOverride ?: AiProviderPrefs.getCloudBackend(context)).wire)
                 .put("filename", file.name)
                 .put("imageBase64", imageBase64)
                 .apply {
@@ -250,7 +250,7 @@ object CliRelayClient {
                 }
         )
         response.optString("reply").ifBlank {
-            throw IllegalStateException("Relay returned empty image reply")
+            throw IllegalStateException("Cloud returned empty image reply")
         }
     }
 
@@ -278,7 +278,7 @@ object CliRelayClient {
                 },
         )
         response.optString("reply").ifBlank {
-            throw IllegalStateException("Relay returned empty audio reply")
+            throw IllegalStateException("Cloud returned empty audio reply")
         }
     }
 
@@ -302,9 +302,9 @@ object CliRelayClient {
     }
 
     private fun endpoint(context: Context, path: String): String {
-        val base = AiProviderPrefs.getRelayBaseUrl(context).trimEnd('/')
+        val base = AiProviderPrefs.getCloudBaseUrl(context).trimEnd('/')
         require(base.startsWith("http://") || base.startsWith("https://")) {
-            "Relay URL must start with http:// or https://"
+            "Cloud URL must start with http:// or https://"
         }
         return "$base$path"
     }
@@ -326,7 +326,7 @@ object CliRelayClient {
         val body = BufferedReader(InputStreamReader(stream ?: conn.inputStream)).use { it.readText() }
         conn.disconnect()
         if (code !in 200..299) {
-            throw IllegalStateException("Relay HTTP $code: $body")
+            throw IllegalStateException("Cloud HTTP $code: $body")
         }
         return JSONObject(body)
     }
@@ -656,7 +656,7 @@ object AiAssistantRouter {
         callbacks: ChatStreamCallbacks?,
     ): String {
         val providerType = when (AutomationPrefs.getProviderType(context)) {
-            AgentProviderType.PRO_SUBSCRIPTION -> AiProviderType.CLI_RELAY
+            AgentProviderType.CLOUD -> AiProviderType.CLI_RELAY
             AgentProviderType.LOCAL_AGENT -> AiProviderType.LOCAL_MODELS
             AgentProviderType.TASKER -> AiProviderPrefs.getProvider(context)
         }
@@ -669,12 +669,12 @@ object AiAssistantRouter {
                 "Company backend is not configured yet in this build."
             }
             AiProviderType.CLI_RELAY -> {
-                val modelOverride = if (AutomationPrefs.getProviderType(context) == AgentProviderType.PRO_SUBSCRIPTION) {
+                val modelOverride = if (AutomationPrefs.getProviderType(context) == AgentProviderType.CLOUD) {
                     ProSubscriptionAiPrefs.getRequestsModel(context)
                 } else {
                     null
                 }
-                val mediaModelOverride = if (AutomationPrefs.getProviderType(context) == AgentProviderType.PRO_SUBSCRIPTION) {
+                val mediaModelOverride = if (AutomationPrefs.getProviderType(context) == AgentProviderType.CLOUD) {
                     ProSubscriptionAiPrefs.getQuestionsModel(context)
                 } else {
                     modelOverride
@@ -687,7 +687,7 @@ object AiAssistantRouter {
                             userPrompt
                         }
                         add(
-                            CliRelayClient.imageQuery(
+                            CliCloudClient.imageQuery(
                                 context = context,
                                 imagePath = imagePath,
                                 prompt = imagePrompt,
@@ -697,7 +697,7 @@ object AiAssistantRouter {
                     }
                     if (!audioPath.isNullOrBlank()) {
                         add(
-                            CliRelayClient.audioQuery(
+                            CliCloudClient.audioQuery(
                                 context = context,
                                 audioPath = audioPath,
                                 prompt = userPrompt,
@@ -722,7 +722,7 @@ object AiAssistantRouter {
                             append("Give one coherent answer using all attached media.")
                         }
                     }
-                    CliRelayClient.chat(
+                    CliCloudClient.chat(
                         context = context,
                         chatId = chatId,
                         prompt = synthesisPrompt,
@@ -733,7 +733,7 @@ object AiAssistantRouter {
                         modelOverride = if (mediaReplies.isEmpty()) modelOverride else mediaModelOverride,
                     )
                 }
-                result.getOrElse { "Relay unavailable (${it.message})." }
+                result.getOrElse { "Cloud unavailable (${it.message})." }
             }
 
             AiProviderType.LOCAL_MODELS -> {
@@ -759,13 +759,13 @@ object AiAssistantRouter {
             AiProviderType.MOCK -> "Demo mode reply: $prompt"
             AiProviderType.COMPANY_BACKEND -> "Company backend is not configured yet in this build."
             AiProviderType.CLI_RELAY -> {
-                val modelOverride = if (AutomationPrefs.getProviderType(context) == AgentProviderType.PRO_SUBSCRIPTION) {
+                val modelOverride = if (AutomationPrefs.getProviderType(context) == AgentProviderType.CLOUD) {
                     ProSubscriptionAiPrefs.getTasksModel(context)
                 } else {
                     null
                 }
-                val result = CliRelayClient.voiceQuery(context, prompt, modelOverride = modelOverride)
-                result.getOrElse { "Relay unavailable (${it.message})." }
+                val result = CliCloudClient.voiceQuery(context, prompt, modelOverride = modelOverride)
+                result.getOrElse { "Cloud unavailable (${it.message})." }
             }
 
             AiProviderType.LOCAL_MODELS -> {

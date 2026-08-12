@@ -20,10 +20,6 @@ import com.fersaiyan.cyanbridge.R
 import com.fersaiyan.cyanbridge.MainActivity
 import com.fersaiyan.cyanbridge.agent.LocalAgentPrefs as AutomationPrefs
 import com.fersaiyan.cyanbridge.agent.LocalModelsConfigureActivity
-import com.fersaiyan.cyanbridge.agent.ProSubscriptionActivity
-import com.fersaiyan.cyanbridge.agent.ProSubscriptionPrefs
-import com.fersaiyan.cyanbridge.agent.ProSubscriptionSettingsActivity
-import com.fersaiyan.cyanbridge.agent.ProSubscriptionVerifier
 import com.fersaiyan.cyanbridge.ai.router.AiProviderPrefs
 import com.fersaiyan.cyanbridge.ai.router.AiProviderType
 import com.fersaiyan.cyanbridge.ai.vision.ImageQuestionPreferences
@@ -123,9 +119,7 @@ class SettingsActivity : AppCompatActivity(), SettingsScreenActions {
     override fun onResume() {
         super.onResume()
         refreshSettingsUi()
-        if (ProSubscriptionPrefs.isSubscribed(this)) {
             lifecycleScope.launch(Dispatchers.IO) {
-                ProSubscriptionVerifier.verifyNow(this@SettingsActivity)
                 withContext(Dispatchers.Main) { refreshSettingsUi() }
             }
         }
@@ -162,7 +156,7 @@ class SettingsActivity : AppCompatActivity(), SettingsScreenActions {
         AiProviderPrefs.setProvider(
             this,
             when (type) {
-                AgentProviderType.PRO_SUBSCRIPTION -> AiProviderType.CLI_RELAY
+                AgentProviderType.CLOUD -> AiProviderType.CLI_RELAY
                 AgentProviderType.LOCAL_AGENT -> AiProviderType.LOCAL_MODELS
                 AgentProviderType.TASKER -> AiProviderType.MOCK
             },
@@ -187,8 +181,6 @@ class SettingsActivity : AppCompatActivity(), SettingsScreenActions {
         val providerType = AutomationPrefs.getProviderType(this)
         val imageQuestionSettings = ImageQuestionPreferences.get(this)
         settingsUiState = SettingsUiState(
-            isProSubscribed = ProSubscriptionPrefs.isActiveLocally(this),
-            proPlan = formatPlan(ProSubscriptionPrefs.getPlan(this)),
             appLanguageLabel = AppLanguagePreferences.selected(this).displayName(this),
             providerType = providerType,
             defaultImageQuestion = imageQuestionSettings.defaultQuestion,
@@ -244,17 +236,12 @@ class SettingsActivity : AppCompatActivity(), SettingsScreenActions {
             .show()
     }
 
-    override fun openSubscription() {
-        val target = if (ProSubscriptionPrefs.isActiveLocally(this)) {
-            ProSubscriptionSettingsActivity::class.java
         } else {
-            ProSubscriptionActivity::class.java
         }
         startActivity(Intent(this, target))
     }
 
     override fun setMemoryMode(mode: MemoryPrivacyMode) {
-        if (!ProSubscriptionPrefs.isActiveLocally(this) && mode != MemoryPrivacyMode.PRIVATE_LOCAL) {
             Toast.makeText(this, "This memory mode requires a Pro subscription", Toast.LENGTH_SHORT).show()
             return
         }

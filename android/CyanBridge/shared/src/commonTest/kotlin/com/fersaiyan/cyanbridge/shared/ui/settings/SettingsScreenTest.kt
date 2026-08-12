@@ -34,7 +34,7 @@ class SettingsScreenTest {
     @Test
     fun agentProviderTypesCoverAllOptions() {
         val types = AgentProviderType.entries
-        assertTrue(types.contains(AgentProviderType.PRO_SUBSCRIPTION))
+        assertTrue(types.contains(AgentProviderType.CLOUD))
         assertTrue(types.contains(AgentProviderType.LOCAL_AGENT))
         assertTrue(types.contains(AgentProviderType.TASKER))
     }

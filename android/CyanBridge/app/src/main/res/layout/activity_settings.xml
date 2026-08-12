@@ -132,7 +132,7 @@
     </com.google.android.material.card.MaterialCardView>
 
     <com.google.android.material.card.MaterialCardView
-        android:id="@+id/btn_configure_pro_subscription"
+        android:id="@+id/btn_configure_cloud"
         android:layout_width="0dp"
         android:layout_height="wrap_content"
         android:layout_marginTop="12dp"
@@ -166,7 +166,7 @@
                     android:id="@+id/tv_pro_banner_title"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
-                    android:text="Pro Subscription"
+                    android:text="Cloud Subscription"
                     android:textColor="@color/text_primary"
                     android:textSize="15sp"
                     android:textStyle="bold" />
@@ -199,7 +199,7 @@
         android:layout_height="0dp"
         android:fillViewport="true"
         android:layout_marginTop="16dp"
-        app:layout_constraintTop_toBottomOf="@id/btn_configure_pro_subscription"
+        app:layout_constraintTop_toBottomOf="@id/btn_configure_cloud"
         app:layout_constraintBottom_toTopOf="@id/bottom_navigation"
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintEnd_toEndOf="parent">
@@ -264,7 +264,7 @@
                         <TextView
                             android:layout_width="match_parent"
                             android:layout_height="wrap_content"
-                            android:text="Provider Type"
+                            android:text="Cloudvider Type"
                             android:textColor="@color/text_primary"
                             android:textStyle="bold" />
 
@@ -289,10 +289,10 @@
                                 android:textColor="@color/text_primary" />
 
                             <com.google.android.material.radiobutton.MaterialRadioButton
-                                android:id="@+id/rb_provider_pro_subscription"
+                                android:id="@+id/rb_provider_cloud"
                                 android:layout_width="match_parent"
                                 android:layout_height="wrap_content"
-                                android:text="Pro Subscription"
+                                android:text="Cloud Subscription"
                                 android:textColor="@color/text_primary" />
                         </RadioGroup>
 
@@ -535,7 +535,7 @@
                             android:text="If enough time has passed, regeneration is queued in background and won't block chat replies."
                             android:textColor="@color/text_secondary"
                             android:textSize="11sp" />
-        <!-- Mini Section: Custom Bullet Prompts -->
+        <!-- Mini Section: Custom Bullet Cloudmpts -->
         <TextView
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
@@ -1590,7 +1590,7 @@
                             android:layout_width="match_parent"
                             android:layout_height="wrap_content"
                             android:layout_marginTop="4dp"
-                            android:text="No. You can use Tasker or Local Models without subscribing. Pro is optional and adds premium managed features."
+                            android:text="No. You can use Tasker or Local Models without subscribing. Cloud is optional and adds premium managed features."
                             android:textColor="@color/text_secondary"
                             android:textSize="12sp" />
 

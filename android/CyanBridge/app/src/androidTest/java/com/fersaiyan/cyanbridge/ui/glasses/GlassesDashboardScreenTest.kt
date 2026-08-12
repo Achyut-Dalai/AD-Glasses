@@ -257,14 +257,14 @@ class GlassesDashboardScreenTest {
 
         composeRule.onNodeWithText("Choose combined OTA files").performClick()
         composeRule.onNodeWithTag("ota_firmware_source_picker").assertIsDisplayed()
-        composeRule.onNodeWithTag("ota_firmware_source_personal_file").assertIsNotEnabled()
+        composeRule.onNodeWithTag("ota_firmware_source_local_file").assertIsNotEnabled()
 
         composeRule.onNodeWithTag("ota_firmware_risk_acknowledgement").performClick()
-        composeRule.onNodeWithTag("ota_firmware_source_personal_file").assertIsEnabled().performClick()
+        composeRule.onNodeWithTag("ota_firmware_source_local_file").assertIsEnabled().performClick()
 
         composeRule.runOnIdle {
             assertEquals(
-                GlassesDashboardAction.RequestOtaFirmware(OtaFirmwareSource.PERSONAL_FILE),
+                GlassesDashboardAction.RequestOtaFirmware(OtaFirmwareSource.LOCAL_FILE),
                 action,
             )
         }

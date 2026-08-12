@@ -1,4 +1,4 @@
-package com.fersaiyan.cyanbridge.plugins.livecaptionrelay
+package com.fersaiyan.cyanbridge.plugins.livecaptioncloud
 
 import android.app.Notification
 import android.app.NotificationChannel
@@ -11,8 +11,8 @@ import androidx.core.app.NotificationCompat
 import com.fersaiyan.cyanbridge.MainActivity
 import com.fersaiyan.cyanbridge.R
 
-object LiveCaptionRelayNotificationHelper {
-    const val CHANNEL_ID = "live_caption_relay_service"
+object LiveCaptionCloudNotificationHelper {
+    const val CHANNEL_ID = "live_caption_cloud_service"
     const val NOTIFICATION_ID = 77423
 
     fun ensureChannel(context: Context) {
@@ -20,7 +20,7 @@ object LiveCaptionRelayNotificationHelper {
         val nm = context.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
         val ch = NotificationChannel(
             CHANNEL_ID,
-            "Live Caption Relay",
+            "Live Caption Cloud",
             NotificationManager.IMPORTANCE_LOW
         ).apply {
             description = "Streams glasses audio and provides live captions"
@@ -39,8 +39,8 @@ object LiveCaptionRelayNotificationHelper {
             PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE,
         )
 
-        val stopIntent = Intent(context, LiveCaptionRelayService::class.java).apply {
-            action = LiveCaptionRelayService.ACTION_STOP
+        val stopIntent = Intent(context, LiveCaptionCloudService::class.java).apply {
+            action = LiveCaptionCloudService.ACTION_STOP
         }
         val stopPi = PendingIntent.getService(
             context,
@@ -51,7 +51,7 @@ object LiveCaptionRelayNotificationHelper {
 
         return NotificationCompat.Builder(context, CHANNEL_ID)
             .setSmallIcon(R.mipmap.ic_launcher)
-            .setContentTitle("Live Caption Relay")
+            .setContentTitle("Live Caption Cloud")
             .setContentText(content)
             .setStyle(NotificationCompat.BigTextStyle().bigText(content))
             .setCategory(NotificationCompat.CATEGORY_SERVICE)
