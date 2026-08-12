@@ -92,7 +92,6 @@
         <activity android:name=".ui.CommunityPluginsActivity" android:exported="false" android:label="Community Plugins" />
         <activity android:name=".ui.PublishPluginActivity" android:exported="false" android:label="Publish Plugin" />
         <activity android:name=".plugins.meetingsparknotes.MeetingSparkNotesSettingsActivity" android:exported="false" android:label="Meeting Spark Notes Settings" />
-        <activity android:name=".plugins.livecaptioncloud.LiveCaptionCloudSettingsActivity" android:exported="false" android:label="Live Caption Cloud Settings" />
         <activity android:name=".plugins.handsfreetranslator.HandsFreeTranslatorSettingsActivity" android:exported="false" android:label="Hands-Free Translator Settings" />
         <activity android:name=".plugins.errandbrain.ErrandBrainSettingsActivity" android:exported="false" android:label="Errand Brain Settings" />
         <activity android:name=".ui.localagent.PendingActionsActivity" android:exported="false" android:label="Pending actions" />
@@ -122,7 +121,6 @@
             <meta-data android:name="android.accessibilityservice" android:resource="@xml/accessibility_service_config" />
         </service>
         <service android:name=".plugins.meetingsparknotes.MeetingSparkNotesService" android:exported="false" android:foregroundServiceType="microphone" />
-        <service android:name=".plugins.livecaptioncloud.LiveCaptionCloudService" android:exported="false" android:foregroundServiceType="microphone" />
         <service android:name=".plugins.handsfreetranslator.HandsFreeTranslatorService" android:exported="false" android:foregroundServiceType="microphone" />
         <service android:name=".plugins.errandbrain.ErrandBrainService" android:exported="false" android:foregroundServiceType="microphone" />
         <service android:name=".plugins.autodiary.AutoDiaryService" android:exported="false" android:foregroundServiceType="dataSync" />
