@@ -1,66 +1,79 @@
-# Personal Glasses App Conversion Plan ("AD glasses")
+# Comprehensive Project Revamp: Terminology, Feature Removal, and Build Stabilization
 
-This plan converts the CyanBridge project into a personal-use application called "AD glasses". It removes commercial billing/subscription dependencies while unlocking all advanced features (Pro) for personal use with your own API credentials.
+This plan outlines the complete set of changes required to modernize the repository, standardize terminology, remove restricted features (Walking Aid, Billing, Subscriptions, Donations), and stabilize the build system (Meta SDK integration).
 
 ## User Review Required
 
 > [!IMPORTANT]
-> This plan will hardcode your subscription status to "Active" locally. It will also bypass the company's verification servers, ensuring the app never reverts to "Free" mode.
-
+> **Wake Word Logic**: We will retain "heycyan" or "eyevue" as internal wake word values where they directly interact with glasses firmware to ensure hardware compatibility. However, the UI will display "AD Glasses".
+>
 > [!WARNING]
-> We are keeping the internal package name `com.fersaiyan.cyanbridge` to ensure Tasker and system permissions remain functional. Only the displayed name and branding will change.
+> **Destructive Removal**: This plan involves the complete removal of the `WalkingAid` plugin and all billing/subscription code. These features will no longer be recoverable from the codebase once this is finalized.
 
 ## Proposed Changes
 
-### Branding & Renaming
-Rename the app from "CyanBridge" to "AD glasses" across all user-visible strings and launcher labels.
+### 1. Build System & Dependency Management
+**Goal**: Ensure the project compiles with the Meta Wearables SDK and uses the correct repository structure.
 
-#### [MODIFY] [strings.xml](file:///Users/achyutdalai/Development/Alternative-HeyCyan-App-and-SDK/android/CyanBridge/app/src/main/res/values/strings.xml)
-- Update `app_name` to "AD glasses".
-- Replace other user-facing "CyanBridge" mentions with "AD glasses".
+- **[MODIFY] [settings.gradle.kts](file:///Users/achyutdalai/Development/Alternative-HeyCyan-App-and-SDK/android/CyanBridge/settings.gradle.kts)**:
+    - Fix the `github_token` logic to correctly read from `local.properties`.
+    - Update the composite build path for the core module to `ad_glasses-core`.
+    - Use `achyutdalai` as the Maven credentials username.
+- **[MODIFY] [build.gradle](file:///Users/achyutdalai/Development/Alternative-HeyCyan-App-and-SDK/android/CyanBridge/app/build.gradle)**:
+    - Remove all `buildConfigField` entries related toSkus, SKUSkus, SKUPrices, and Subscriptions.
+    - Remove the `com.android.billingclient:billing-ktx` dependency.
+- **[RENAME] `heycyan-core` to `ad_glasses-core`**:
+    - Update all `build.gradle.kts` files inside the core module to use the `com.ad_glasses.core` namespace.
 
-#### [MODIFY] [strings_compose.xml](file:///Users/achyutdalai/Development/Alternative-HeyCyan-App-and-SDK/android/CyanBridge/app/src/main/res/values/strings_compose.xml)
-- Update branding in the Material 3/Compose parts of the app.
+### 2. Core Terminology Update (Frontend & Internal Logic)
+**Goal**: Transition from "HeyCyan" and "Relay" branding to "AD Glasses" and "Cloud".
 
----
+- **Global String Replacement (Non-Destructive)**:
+    - `HeyCyan` -> `AD Glasses` (UI strings)
+    - `heycyan` -> `ad_glasses` (only in UI/packages, not in hardware protocols)
+    - `Relay` -> `Cloud`
+    - `Pro` / `Advanced` -> `Cloud` or `Developer`
+    - `Personal` -> `Local`
+- **[MODIFY] [SettingsModels.kt](file:///Users/achyutdalai/Development/Alternative-HeyCyan-App-and-SDK/android/CyanBridge/shared/src/commonMain/kotlin/com/fersaiyan/cyanbridge/shared/settings/SettingsModels.kt)**:
+    - Rename `AgentProviderType.PRO_SUBSCRIPTION` to `AgentProviderType.CLOUD`.
+- **[MODIFY] [GlassesDashboardPresentation.kt](file:///Users/achyutdalai/Development/Alternative-HeyCyan-App-and-SDK/android/CyanBridge/shared/src/commonMain/kotlin/com/fersaiyan/cyanbridge/shared/glasses/GlassesDashboardPresentation.kt)**:
+    - Rename `OtaFirmwareSource.PERSONAL_FILE` to `OtaFirmwareSource.LOCAL_FILE`.
 
-### Pro Subscription Bypass
-Hardcode the subscription status to "Active" and disable background verification.
+### 3. Feature Removal (Walking Aid, Billing, Donations)
+**Goal**: Strip the codebase of all unused or restricted feature sets.
 
-#### [MODIFY] [ProSubscriptionPrefs.kt](file:///Users/achyutdalai/Development/Alternative-HeyCyan-App-and-SDK/android/CyanBridge/app/src/main/java/com/fersaiyan/cyanbridge/agent/ProSubscriptionPrefs.kt)
-- Modify `isActiveLocally` to always return `true`.
-- Modify `isSubscribed` to always return `true`.
-- Modify `getPlan` to return a high-tier plan (e.g., "max") by default.
+- **[DELETE] `com.fersaiyan.cyanbridge.plugins.walkingaid`**: Remove the entire package.
+- **[DELETE] Billing & Subscription Logic**:
+    - Remove `ProSubscriptionAiPrefs`, `ProSubscriptionServerPrefs`, and all billing-related classes in `android/CyanBridge/app/src/main/java/com/fersaiyan/cyanbridge/agent/`.
+    - Remove `android/CyanBridge/shared/src/commonMain/kotlin/com/fersaiyan/cyanbridge/shared/billing/` directory.
+- **[MODIFY] [AndroidManifest.xml](file:///Users/achyutdalai/Development/Alternative-HeyCyan-App-and-SDK/android/CyanBridge/app/src/main/AndroidManifest.xml)**:
+    - Remove all activities and services related to Walking Aid and Subscriptions.
+    - Fix any "Cloudvider" typos caused by previous bulk edits.
 
-#### [MODIFY] [ProSubscriptionVerifier.kt](file:///Users/achyutdalai/Development/Alternative-HeyCyan-App-and-SDK/android/CyanBridge/app/src/main/java/com/fersaiyan/cyanbridge/agent/ProSubscriptionVerifier.kt)
-- Modify `verifyNow` to immediately return a successful local status without making network calls.
+### 4. MainActivity Stabilization
+**Goal**: Fix the 10k line core activity which has become unstable due to conflicting edits.
 
----
+- **[MODIFY] [MainActivity.kt](file:///Users/achyutdalai/Development/Alternative-HeyCyan-App-and-SDK/android/CyanBridge/app/src/main/java/com/fersaiyan/cyanbridge/MainActivity.kt)**:
+    - Clean and deduplicate imports at the top of the file.
+    - Ensure a single, correct set of class-level variables (`imageQueryInProgress`, `isAiHijackEnabled`, etc.).
+    - Fix all `when` blocks to be exhaustive after the enum renames (adding `CLOUD` and `LOCAL_FILE` branches).
+    - Restore original "heycyan" strings only in the hardware notification listeners (0x02, 0x03, etc.) to maintain firmware compatibility.
 
-### UI Cleanup (Removal of Commercial Entry Points)
-Remove buttons and screens that ask the user to pay or manage a commercial subscription.
+### 5. UI Resource Cleanup
+**Goal**: Align resources with the new branding and removed features.
 
-#### [MODIFY] [SettingsActivity.kt](file:///Users/achyutdalai/Development/Alternative-HeyCyan-App-and-SDK/android/CyanBridge/app/src/main/java/com/fersaiyan/cyanbridge/ui/SettingsActivity.kt)
-- Remove the "Subscription" button and the logic that opens `ProSubscriptionActivity`.
-- Remove "Pro required" warnings for memory sync features.
-
-#### [MODIFY] [MainActivity.kt](file:///Users/achyutdalai/Development/Alternative-HeyCyan-App-and-SDK/android/CyanBridge/app/src/main/java/com/fersaiyan/cyanbridge/MainActivity.kt)
-- Clean up any branding or purchase-related UI elements.
-
----
-
-### Cleanup of Unused Logic
-Delete files that are purely dedicated to commercial billing and checkout.
-
-#### [DELETE] [PlayBillingManager.kt](file:///Users/achyutdalai/Development/Alternative-HeyCyan-App-and-SDK/android/CyanBridge/app/src/main/java/com/fersaiyan/cyanbridge/agent/PlayBillingManager.kt)
-#### [DELETE] [SubscriptionCheckoutPolicy.kt](file:///Users/achyutdalai/Development/Alternative-HeyCyan-App-and-SDK/android/CyanBridge/app/src/main/java/com/fersaiyan/cyanbridge/agent/SubscriptionCheckoutPolicy.kt)
-#### [DELETE] [WebSubscriptionCallbackActivity.kt](file:///Users/achyutdalai/Development/Alternative-HeyCyan-App-and-SDK/android/CyanBridge/app/src/main/java/com/fersaiyan/cyanbridge/agent/WebSubscriptionCallbackActivity.kt)
+- **[MODIFY] [strings.xml](file:///Users/achyutdalai/Development/Alternative-HeyCyan-App-and-SDK/android/CyanBridge/app/src/main/res/values/strings.xml)** & **[strings_extra.xml](file:///Users/achyutdalai/Development/Alternative-HeyCyan-App-and-SDK/android/CyanBridge/shared/src/commonMain/composeResources/values/strings_extra.xml)**:
+    - Remove all keys related to walking aid, billing, and donations.
+    - Finalize "AD Glasses" and "Cloud" terminology in all user-facing labels.
 
 ## Verification Plan
 
+### Automated Tests
+- Run `./gradlew :app:assembleDebug` to verify compilation.
+- Check generated `BuildConfig` to ensure restricted fields are gone.
+
 ### Manual Verification
-1. Build and install the app.
-2. Confirm the launcher icon is labeled "AD glasses".
-3. Open Settings and verify that no "Buy Pro" button exists.
-4. Verify that "Gemini Live" can be opened without a "Pro required" error.
-5. Verify that advanced features like "Cloud Vision" in Walking Aid are unlocked.
+- Launch the app and verify the "AD Glasses" branding in the dashboard.
+- Confirm "Developer Tools" section appears instead of "Advanced".
+- Verify that the Meta Ray-Ban features still function via the DAT SDK.
+- Confirm the "Walking Aid" plugin is gone from the "Community Plugins" screen.
