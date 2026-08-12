@@ -6,7 +6,7 @@ import android.os.Bundle
 import androidx.activity.compose.setContent
 import androidx.appcompat.app.AppCompatActivity
 import androidx.compose.runtime.getValue
-import com.achyut.adglasses.ui.theme.CyanBridgeTheme
+import com.achyut.adglasses.ui.theme.AdGlassesTheme
 
 class AppearanceActivity : AppCompatActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -14,7 +14,7 @@ class AppearanceActivity : AppCompatActivity() {
         val preferences = AppearancePreferences(this)
         setContent {
             val settings by rememberAppearanceSettings(preferences)
-            CyanBridgeTheme(settings) {
+            AdGlassesTheme(settings) {
                 AppearanceScreen(
                     settings = settings,
                     dynamicColorAvailable = Build.VERSION.SDK_INT >= Build.VERSION_CODES.S,

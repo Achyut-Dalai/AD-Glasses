@@ -16,7 +16,7 @@ import com.achyut.adglasses.bridge.core.DisplayCommand
 import com.achyut.adglasses.bridge.core.GlassesBridge
 import com.achyut.adglasses.ui.appearance.AppearancePreferences
 import com.achyut.adglasses.ui.appearance.rememberAppearanceSettings
-import com.achyut.adglasses.ui.theme.CyanBridgeTheme
+import com.achyut.adglasses.ui.theme.AdGlassesTheme
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
@@ -44,7 +44,7 @@ class EvenHubRuntimeActivity : AppCompatActivity() {
         val appearancePreferences = AppearancePreferences(this)
         setContent {
             val appearance by rememberAppearanceSettings(appearancePreferences)
-            CyanBridgeTheme(appearance) {
+            AdGlassesTheme(appearance) {
                 EvenHubRuntimeScreen(
                     url = urlInput,
                     logs = runtimeLog,

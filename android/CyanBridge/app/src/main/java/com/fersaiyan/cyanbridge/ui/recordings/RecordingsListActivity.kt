@@ -56,7 +56,7 @@ import com.achyut.adglasses.ui.SettingsActivity
 import com.achyut.adglasses.ui.appearance.AppearancePreferences
 import com.achyut.adglasses.ui.appearance.rememberAppearanceSettings
 import com.achyut.adglasses.ui.debug.DebugLogSupport
-import com.achyut.adglasses.ui.theme.CyanBridgeTheme
+import com.achyut.adglasses.ui.theme.AdGlassesTheme
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
@@ -122,7 +122,7 @@ class RecordingsListActivity : AppCompatActivity() {
         val appearancePreferences = AppearancePreferences(this)
         setContent {
             val appearance by rememberAppearanceSettings(appearancePreferences)
-            CyanBridgeTheme(appearance) {
+            AdGlassesTheme(appearance) {
                 val recordingItems = sessions.map { it.toRecordingItem() }
                 RecordingsScreen(
                     sessions = recordingItems,

@@ -12,7 +12,7 @@ import com.achyut.adglasses.shared.settings.SettingsSection
 import com.achyut.adglasses.shared.ui.settings.SettingsScreen
 import com.achyut.adglasses.shared.ui.settings.SettingsScreenActions
 import com.achyut.adglasses.shared.ui.settings.SettingsUiState
-import com.achyut.adglasses.ui.theme.CyanBridgeTheme
+import com.achyut.adglasses.ui.theme.AdGlassesTheme
 import org.junit.Assert.assertEquals
 import org.junit.Rule
 import org.junit.Test
@@ -43,7 +43,7 @@ class SettingsScreenTest {
         } as SettingsScreenActions
 
         composeRule.setContent {
-            CyanBridgeTheme {
+            AdGlassesTheme {
                 SettingsScreen(
                     state = SettingsUiState(),
                     expandedSections = expanded,

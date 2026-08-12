@@ -11,7 +11,7 @@ import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performTextInput
 import com.achyut.adglasses.shared.plugins.PublishPluginUiState
 import com.achyut.adglasses.shared.ui.plugins.PublishPluginScreen
-import com.achyut.adglasses.ui.theme.CyanBridgeTheme
+import com.achyut.adglasses.ui.theme.AdGlassesTheme
 import org.junit.Assert.assertEquals
 import org.junit.Rule
 import org.junit.Test
@@ -26,7 +26,7 @@ class PublishPluginScreenTest {
         var submitCount = 0
 
         composeRule.setContent {
-            CyanBridgeTheme {
+            AdGlassesTheme {
                 PublishPluginScreen(
                     state = state,
                     categories = listOf("Productivity", "Other"),

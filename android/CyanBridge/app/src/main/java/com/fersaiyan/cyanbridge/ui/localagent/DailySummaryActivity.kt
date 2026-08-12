@@ -19,7 +19,7 @@ import com.achyut.adglasses.localagent.memory.LocalAgentMemoryStore
 import com.achyut.adglasses.shared.ui.localagent.DailySummaryScreen
 import com.achyut.adglasses.ui.appearance.AppearancePreferences
 import com.achyut.adglasses.ui.appearance.rememberAppearanceSettings
-import com.achyut.adglasses.ui.theme.CyanBridgeTheme
+import com.achyut.adglasses.ui.theme.AdGlassesTheme
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
@@ -48,7 +48,7 @@ class DailySummaryActivity : AppCompatActivity() {
         val appearancePreferences = AppearancePreferences(this)
         setContent {
             val appearance by rememberAppearanceSettings(appearancePreferences)
-            CyanBridgeTheme(appearance) {
+            AdGlassesTheme(appearance) {
                 DailySummaryScreen(
                     title = "Daily summary ($date)",
                     path = file.absolutePath,

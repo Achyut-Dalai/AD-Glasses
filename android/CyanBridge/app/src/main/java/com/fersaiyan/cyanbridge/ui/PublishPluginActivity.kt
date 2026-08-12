@@ -14,7 +14,7 @@ import com.achyut.adglasses.shared.plugins.PublishPluginUiState
 import com.achyut.adglasses.ui.appearance.AppearancePreferences
 import com.achyut.adglasses.ui.appearance.rememberAppearanceSettings
 import com.achyut.adglasses.shared.ui.plugins.PublishPluginScreen
-import com.achyut.adglasses.ui.theme.CyanBridgeTheme
+import com.achyut.adglasses.ui.theme.AdGlassesTheme
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -31,7 +31,7 @@ class PublishPluginActivity : AppCompatActivity() {
         val appearancePreferences = AppearancePreferences(this)
         setContent {
             val appearance by rememberAppearanceSettings(appearancePreferences)
-            CyanBridgeTheme(appearance) {
+            AdGlassesTheme(appearance) {
                 PublishPluginScreen(
                     state = uiState,
                     categories = categories,

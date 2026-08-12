@@ -18,7 +18,7 @@ import com.achyut.adglasses.localagent.memory.LocalAgentMemoryStore
 import com.achyut.adglasses.ui.appearance.AppearancePreferences
 import com.achyut.adglasses.ui.appearance.rememberAppearanceSettings
 import com.achyut.adglasses.shared.ui.onboarding.FeatureOnboardingScreen
-import com.achyut.adglasses.ui.theme.CyanBridgeTheme
+import com.achyut.adglasses.ui.theme.AdGlassesTheme
 import com.hjq.permissions.OnPermissionCallback
 import com.hjq.permissions.Permission
 import com.hjq.permissions.XXPermissions
@@ -65,7 +65,7 @@ class OnboardingFeatureActivity : AppCompatActivity() {
         val appearancePreferences = AppearancePreferences(this)
         setContent {
             val appearance by rememberAppearanceSettings(appearancePreferences)
-            CyanBridgeTheme(appearance) {
+            AdGlassesTheme(appearance) {
                 FeatureOnboardingScreen(
                     title = getString(feature.titleRes),
                     description = getString(feature.descriptionRes),

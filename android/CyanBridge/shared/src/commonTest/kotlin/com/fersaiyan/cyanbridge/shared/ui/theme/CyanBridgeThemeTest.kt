@@ -7,7 +7,7 @@ import com.achyut.adglasses.shared.appearance.ThemeMode
 import kotlin.test.Test
 import kotlin.test.assertEquals
 
-class CyanBridgeThemeTest {
+class AdGlassesThemeTest {
     @Test
     fun schemeUsesProfileSecondaryAndTertiaryColorsInBothModes() {
         val profile = AccentProfiles.find("rose")

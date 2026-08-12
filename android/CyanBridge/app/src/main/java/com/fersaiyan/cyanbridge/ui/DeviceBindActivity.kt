@@ -26,7 +26,7 @@ import com.achyut.adglasses.devices.ScannedDevice
 import com.achyut.adglasses.ui.appearance.AppearancePreferences
 import com.achyut.adglasses.ui.appearance.rememberAppearanceSettings
 import com.achyut.adglasses.shared.ui.DeviceBindScreen
-import com.achyut.adglasses.ui.theme.CyanBridgeTheme
+import com.achyut.adglasses.ui.theme.AdGlassesTheme
 import com.hjq.permissions.OnPermissionCallback
 import com.hjq.permissions.XXPermissions
 import com.oudmon.ble.base.bluetooth.BleOperateManager
@@ -57,7 +57,7 @@ class DeviceBindActivity : BaseActivity() {
         val appearancePreferences = AppearancePreferences(this)
         setContent {
             val appearance by rememberAppearanceSettings(appearancePreferences)
-            CyanBridgeTheme(appearance) {
+            AdGlassesTheme(appearance) {
                 DeviceBindScreen(
                     devices = scannedDevices.map { it.toShared() },
                     isScanning = isScanning,

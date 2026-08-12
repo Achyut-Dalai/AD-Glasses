@@ -10,7 +10,7 @@ import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import com.achyut.adglasses.shared.appearance.AppearanceSettings
-import com.achyut.adglasses.ui.theme.CyanBridgeTheme
+import com.achyut.adglasses.ui.theme.AdGlassesTheme
 import org.junit.Rule
 import org.junit.Test
 
@@ -22,7 +22,7 @@ class AppearanceScreenTest {
     fun exposesNamedAccentChoicesAndSelectionState() {
         var settings by mutableStateOf(AppearanceSettings())
         composeRule.setContent {
-            CyanBridgeTheme(settings) {
+            AdGlassesTheme(settings) {
                 AppearanceScreen(
                     settings = settings,
                     dynamicColorAvailable = true,

@@ -19,7 +19,7 @@ import com.achyut.adglasses.shared.recordings.SyncedMediaItem
 import com.achyut.adglasses.shared.ui.recordings.SyncedMediaGalleryScreen
 import com.achyut.adglasses.ui.appearance.AppearancePreferences
 import com.achyut.adglasses.ui.appearance.rememberAppearanceSettings
-import com.achyut.adglasses.ui.theme.CyanBridgeTheme
+import com.achyut.adglasses.ui.theme.AdGlassesTheme
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.MainScope
@@ -40,7 +40,7 @@ class SyncedMediaGalleryActivity : AppCompatActivity() {
         val appearancePreferences = AppearancePreferences(this)
         setContent {
             val appearance by rememberAppearanceSettings(appearancePreferences)
-            CyanBridgeTheme(appearance) {
+            AdGlassesTheme(appearance) {
                 SyncedMediaGalleryScreen(
                     mediaItems = mediaItems,
                     isLoading = isLoading,

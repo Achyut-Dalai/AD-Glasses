@@ -14,7 +14,7 @@ import com.achyut.adglasses.shared.ui.notes.NotesListScreen
 import com.achyut.adglasses.ui.MyApplication
 import com.achyut.adglasses.ui.appearance.AppearancePreferences
 import com.achyut.adglasses.ui.appearance.rememberAppearanceSettings
-import com.achyut.adglasses.ui.theme.CyanBridgeTheme
+import com.achyut.adglasses.ui.theme.AdGlassesTheme
 import java.text.DateFormat
 import java.util.Date
 import kotlinx.coroutines.Job
@@ -36,7 +36,7 @@ class NotesListActivity : AppCompatActivity() {
         val appearancePreferences = AppearancePreferences(this)
         setContent {
             val appearance by rememberAppearanceSettings(appearancePreferences)
-            CyanBridgeTheme(appearance) {
+            AdGlassesTheme(appearance) {
                 NotesListScreen(
                     notes = notes.map { NoteSummary(it.id, it.title, it.summary, it.createdAt) },
                     showCreateDialog = showCreateDialog,

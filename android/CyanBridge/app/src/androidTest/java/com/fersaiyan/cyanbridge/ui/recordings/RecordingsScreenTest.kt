@@ -12,7 +12,7 @@ import com.achyut.adglasses.shared.recordings.RecordingItem
 import com.achyut.adglasses.shared.recordings.SyncedMediaItem
 import com.achyut.adglasses.shared.recordings.TranscriptionEngine
 import com.achyut.adglasses.shared.ui.recordings.RecordingsScreen
-import com.achyut.adglasses.ui.theme.CyanBridgeTheme
+import com.achyut.adglasses.ui.theme.AdGlassesTheme
 import org.junit.Assert.assertEquals
 import org.junit.Rule
 import org.junit.Test
@@ -41,7 +41,7 @@ class RecordingsScreenTest {
         var openedMedia = 0
 
         composeRule.setContent {
-            CyanBridgeTheme {
+            AdGlassesTheme {
                 RecordingsScreen(
                     sessions = listOf(session),
                     isLoading = false,
@@ -95,7 +95,7 @@ class RecordingsScreenTest {
         var openedId: Long? = null
 
         composeRule.setContent {
-            CyanBridgeTheme {
+            AdGlassesTheme {
                 RecordingsScreen(
                     sessions = emptyList(),
                     isLoading = false,

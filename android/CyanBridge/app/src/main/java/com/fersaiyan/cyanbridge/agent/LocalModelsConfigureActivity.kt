@@ -64,7 +64,7 @@ import com.achyut.adglasses.ui.appearance.AppearancePreferences
 import com.achyut.adglasses.ui.appearance.rememberAppearanceSettings
 import com.achyut.adglasses.ui.debug.DebugLogSupport
 import com.achyut.adglasses.shared.ui.localmodels.LocalModelsConfigureScreen
-import com.achyut.adglasses.ui.theme.CyanBridgeTheme
+import com.achyut.adglasses.ui.theme.AdGlassesTheme
 import com.achyut.adglasses.ui.installComposeHostWithLegacyAdapter
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
@@ -244,7 +244,7 @@ class LocalModelsConfigureActivity : AppCompatActivity() {
         val appearancePreferences = AppearancePreferences(this)
         composeView.setContent {
             val appearance by rememberAppearanceSettings(appearancePreferences)
-            CyanBridgeTheme(appearance) {
+            AdGlassesTheme(appearance) {
                 LocalModelsConfigureScreen(
                     state = composeState,
                     onAction = ::handleComposeAction,

@@ -10,7 +10,7 @@ import com.achyut.adglasses.shared.devices.DeviceProfile
 import com.achyut.adglasses.shared.devices.GlassesManagerGating
 import com.achyut.adglasses.shared.glasses.GlassesDashboardUiState
 import com.achyut.adglasses.shared.ui.glasses.GlassesDashboardScreen
-import com.achyut.adglasses.ui.theme.CyanBridgeTheme
+import com.achyut.adglasses.ui.theme.AdGlassesTheme
 import org.junit.Rule
 import org.junit.Test
 
@@ -32,7 +32,7 @@ class GlassesManagerUiGatingTest {
         )
 
         composeRule.setContent {
-            CyanBridgeTheme {
+            AdGlassesTheme {
                 GlassesDashboardScreen(
                     state = GlassesDashboardUiState(
                         showHeyCyanControls = model.isVisible(GlassesManagerGating.Action.HEY_CYAN_EXTRAS),
@@ -62,7 +62,7 @@ class GlassesManagerUiGatingTest {
         )
 
         composeRule.setContent {
-            CyanBridgeTheme {
+            AdGlassesTheme {
                 GlassesDashboardScreen(
                     state = GlassesDashboardUiState(
                         showHeyCyanControls = model.isVisible(GlassesManagerGating.Action.HEY_CYAN_EXTRAS),

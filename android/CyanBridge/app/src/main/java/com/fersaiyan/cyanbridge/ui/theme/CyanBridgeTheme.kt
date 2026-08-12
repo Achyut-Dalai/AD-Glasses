@@ -31,7 +31,7 @@ fun cyanBridgeColorScheme(
 ): ColorScheme = sharedCyanBridgeColorScheme(profile, darkTheme, highContrast)
 
 @Composable
-fun CyanBridgeTheme(
+fun AdGlassesTheme(
     settings: AppearanceSettings = AppearanceSettings(),
     content: @Composable () -> Unit,
 ) {

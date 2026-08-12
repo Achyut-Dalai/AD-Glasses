@@ -53,7 +53,7 @@ import com.achyut.adglasses.shared.ui.settings.SettingsScreenActions
 import com.achyut.adglasses.shared.ui.settings.SettingsUiState
 import com.achyut.adglasses.ui.localization.AppLanguage
 import com.achyut.adglasses.ui.localization.AppLanguagePreferences
-import com.achyut.adglasses.ui.theme.CyanBridgeTheme
+import com.achyut.adglasses.ui.theme.AdGlassesTheme
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -105,7 +105,7 @@ class SettingsActivity : AppCompatActivity(), SettingsScreenActions {
         val appearancePreferences = AppearancePreferences(this)
         setContent {
             val appearance by rememberAppearanceSettings(appearancePreferences)
-            CyanBridgeTheme(appearance) {
+            AdGlassesTheme(appearance) {
                 SettingsScreen(
                     state = settingsUiState,
                     expandedSections = expandedSections,

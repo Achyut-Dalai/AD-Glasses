@@ -6,7 +6,7 @@ import com.achyut.adglasses.shared.appearance.AccentProfiles
 import org.junit.Assert.assertTrue
 import org.junit.Test
 
-class CyanBridgeThemeContrastTest {
+class AdGlassesThemeContrastTest {
     @Test
     fun curatedSchemesMeetTextAndControlContrastTargets() {
         AccentProfiles.all.forEach { profile ->

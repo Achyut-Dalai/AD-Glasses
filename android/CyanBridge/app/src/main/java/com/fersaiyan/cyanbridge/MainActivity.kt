@@ -128,7 +128,7 @@ import com.achyut.adglasses.ui.VersionUpdateChecker
 import com.achyut.adglasses.ui.appearance.AppearancePreferences
 import com.achyut.adglasses.ui.appearance.rememberAppearanceSettings
 import com.achyut.adglasses.ui.debug.DebugLogSupport
-import com.achyut.adglasses.ui.theme.CyanBridgeTheme
+import com.achyut.adglasses.ui.theme.AdGlassesTheme
 import com.achyut.adglasses.ui.wifi.p2p.WifiP2pManagerSingleton
 import com.achyut.adglasses.wifiadb.DefaultWifiAdbDebugControllerFactory
 import com.hjq.permissions.OnPermissionCallback
@@ -376,7 +376,7 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
         binding.bottomNavigation.visibility = View.GONE
         setContent {
             val appearance by rememberAppearanceSettings(appearancePreferences)
-            CyanBridgeTheme(appearance) {
+            AdGlassesTheme(appearance) {
                 CyanBridgeApp(
                     dashboardState = dashboardState,
                     onDashboardAction = ::handleDashboardAction,

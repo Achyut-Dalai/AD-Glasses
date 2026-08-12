@@ -29,7 +29,7 @@ import com.achyut.adglasses.ai.router.AiProviderPrefs
 import com.achyut.adglasses.R
 import com.achyut.adglasses.ui.appearance.AppearancePreferences
 import com.achyut.adglasses.ui.appearance.rememberAppearanceSettings
-import com.achyut.adglasses.ui.theme.CyanBridgeTheme
+import com.achyut.adglasses.ui.theme.AdGlassesTheme
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
@@ -111,7 +111,7 @@ object VersionUpdateChecker {
             ComposeView(activity).apply {
                 setContent {
                     val appearance by rememberAppearanceSettings(AppearancePreferences(activity))
-                    CyanBridgeTheme(appearance) {
+                    AdGlassesTheme(appearance) {
                         VersionUpdateDialogContent(
                             currentVersion = currentVersion,
                             latestVersion = latestVersion,

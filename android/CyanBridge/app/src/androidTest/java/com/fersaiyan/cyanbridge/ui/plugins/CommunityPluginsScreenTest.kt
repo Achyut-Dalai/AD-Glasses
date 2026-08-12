@@ -16,7 +16,7 @@ import com.achyut.adglasses.shared.plugins.CommunityPluginCardData
 import com.achyut.adglasses.shared.plugins.NativePluginCardData
 import com.achyut.adglasses.shared.plugins.PluginTimeWindow
 import com.achyut.adglasses.shared.ui.plugins.CommunityPluginsScreen
-import com.achyut.adglasses.ui.theme.CyanBridgeTheme
+import com.achyut.adglasses.ui.theme.AdGlassesTheme
 import org.junit.Assert.assertEquals
 import org.junit.Rule
 import org.junit.Test
@@ -48,7 +48,7 @@ class CommunityPluginsScreenTest {
         )
 
         composeRule.setContent {
-            CyanBridgeTheme {
+            AdGlassesTheme {
                 CommunityPluginsScreen(
                     plugins = listOf(plugin),
                     selectedWindow = selectedWindow,
@@ -91,7 +91,7 @@ class CommunityPluginsScreenTest {
             hasSettings = true,
         )
         composeRule.setContent {
-            CyanBridgeTheme {
+            AdGlassesTheme {
                 CommunityPluginsScreen(
                     plugins = emptyList(),
                     selectedWindow = PluginTimeWindow.ALL_TIME,
@@ -135,7 +135,7 @@ class CommunityPluginsScreenTest {
         )
 
         composeRule.setContent {
-            CyanBridgeTheme {
+            AdGlassesTheme {
                 CommunityPluginsScreen(
                     plugins = listOf(plugin),
                     selectedWindow = PluginTimeWindow.ALL_TIME,

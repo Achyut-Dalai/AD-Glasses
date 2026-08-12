@@ -19,7 +19,7 @@ import com.achyut.adglasses.shared.chat.ChatThreadEvent
 import com.achyut.adglasses.shared.chat.ChatThreadStateReducer
 import com.achyut.adglasses.shared.chat.ChatThreadUiState
 import com.achyut.adglasses.shared.ui.chat.ChatThreadScreen
-import com.achyut.adglasses.ui.theme.CyanBridgeTheme
+import com.achyut.adglasses.ui.theme.AdGlassesTheme
 import org.junit.Assert.assertEquals
 import org.junit.Rule
 import org.junit.Test
@@ -40,7 +40,7 @@ class ChatThreadScreenTest {
         var attachActionCount = 0
 
         composeRule.setContent {
-            CyanBridgeTheme {
+            AdGlassesTheme {
                 ChatThreadScreen(
                     state = state,
                     messages = messages,
@@ -87,7 +87,7 @@ class ChatThreadScreenTest {
     @Test
     fun exposesRecordingAndNavigationControlsWithAccessibleLabels() {
         composeRule.setContent {
-            CyanBridgeTheme {
+            AdGlassesTheme {
                 ChatThreadScreen(
                     state = ChatThreadUiState(),
                     messages = emptyList(),

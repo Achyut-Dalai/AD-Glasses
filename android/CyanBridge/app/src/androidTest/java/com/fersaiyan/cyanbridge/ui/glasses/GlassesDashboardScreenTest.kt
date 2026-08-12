@@ -22,7 +22,7 @@ import com.achyut.adglasses.shared.plugins.NativePluginShortcutAction
 import com.achyut.adglasses.shared.plugins.NativePluginShortcutButton
 import com.achyut.adglasses.shared.plugins.NativePluginShortcutUiState
 import com.achyut.adglasses.shared.ui.glasses.GlassesDashboardScreen
-import com.achyut.adglasses.ui.theme.CyanBridgeTheme
+import com.achyut.adglasses.ui.theme.AdGlassesTheme
 import org.junit.Assert.assertEquals
 import org.junit.Rule
 import org.junit.Test
@@ -35,7 +35,7 @@ class GlassesDashboardScreenTest {
     fun rendersCapabilityGatedControlsAndDispatchesActions() {
         var action: GlassesDashboardAction? = null
         composeRule.setContent {
-            CyanBridgeTheme {
+            AdGlassesTheme {
                 GlassesDashboardScreen(
                     state = GlassesDashboardUiState(
                         connectionLabel = "Connected - Cyan",
@@ -65,7 +65,7 @@ class GlassesDashboardScreenTest {
     fun heyCyanImageRouteRequiresConfirmation() {
         var action: GlassesDashboardAction? = null
         composeRule.setContent {
-            CyanBridgeTheme {
+            AdGlassesTheme {
                 GlassesDashboardScreen(
                     state = GlassesDashboardUiState(
                         showHeyCyanControls = true,
@@ -93,7 +93,7 @@ class GlassesDashboardScreenTest {
     fun eyevueImageRouteDoesNotShowHeyCyanWarning() {
         var action: GlassesDashboardAction? = null
         composeRule.setContent {
-            CyanBridgeTheme {
+            AdGlassesTheme {
                 GlassesDashboardScreen(
                     state = GlassesDashboardUiState(
                         showEyevueControls = true,
@@ -117,7 +117,7 @@ class GlassesDashboardScreenTest {
     @Test
     fun keepsCoreGlassesActionsVisibleOutsideAdvancedControls() {
         composeRule.setContent {
-            CyanBridgeTheme {
+            AdGlassesTheme {
                 GlassesDashboardScreen(
                     state = GlassesDashboardUiState(showHeyCyanControls = true),
                     onAction = {},
@@ -139,7 +139,7 @@ class GlassesDashboardScreenTest {
     @Test
     fun metaKeepsAssistantActionsButHidesHeyCyanMediaControls() {
         composeRule.setContent {
-            CyanBridgeTheme {
+            AdGlassesTheme {
                 GlassesDashboardScreen(
                     state = GlassesDashboardUiState(
                         connectionLabel = "Meta Ray-Ban ready",
@@ -162,7 +162,7 @@ class GlassesDashboardScreenTest {
     fun metaErrorKeepsDiagnosticsActionVisible() {
         var action: GlassesDashboardAction? = null
         composeRule.setContent {
-            CyanBridgeTheme {
+            AdGlassesTheme {
                 GlassesDashboardScreen(
                     state = GlassesDashboardUiState(
                         showMetaRaybanControls = true,
@@ -182,7 +182,7 @@ class GlassesDashboardScreenTest {
     fun rendersSelectedNativePluginShortcutsAndDispatchesAction() {
         var action: GlassesDashboardAction? = null
         composeRule.setContent {
-            CyanBridgeTheme {
+            AdGlassesTheme {
                 GlassesDashboardScreen(
                     state = GlassesDashboardUiState(
                         nativePluginShortcut = NativePluginShortcutUiState(
@@ -216,7 +216,7 @@ class GlassesDashboardScreenTest {
     fun privilegedWifiAdbRequiresExplicitRiskAcknowledgement() {
         var action: GlassesDashboardAction? = null
         composeRule.setContent {
-            CyanBridgeTheme {
+            AdGlassesTheme {
                 GlassesDashboardScreen(
                     state = GlassesDashboardUiState(
                         wifiAdbDebug = WifiAdbDebugUiState(isAvailable = true),
@@ -244,7 +244,7 @@ class GlassesDashboardScreenTest {
     fun otaSourcePickerRequiresCompatibilityAcknowledgement() {
         var action: GlassesDashboardAction? = null
         composeRule.setContent {
-            CyanBridgeTheme {
+            AdGlassesTheme {
                 GlassesDashboardScreen(
                     state = GlassesDashboardUiState(
                         showHeyCyanControls = true,
@@ -274,7 +274,7 @@ class GlassesDashboardScreenTest {
     fun unavailableFirmwareCanSendAnExactVersionPatchRequest() {
         var action: GlassesDashboardAction? = null
         composeRule.setContent {
-            CyanBridgeTheme {
+            AdGlassesTheme {
                 GlassesDashboardScreen(
                     state = GlassesDashboardUiState(
                         firmwarePatchRequest = FirmwarePatchRequestUiState(
@@ -312,7 +312,7 @@ class GlassesDashboardScreenTest {
     fun unavailableFirmwarePatchRequestCanBeCancelled() {
         var action: GlassesDashboardAction? = null
         composeRule.setContent {
-            CyanBridgeTheme {
+            AdGlassesTheme {
                 GlassesDashboardScreen(
                     state = GlassesDashboardUiState(
                         firmwarePatchRequest = FirmwarePatchRequestUiState(

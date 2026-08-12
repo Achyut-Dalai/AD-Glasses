@@ -19,7 +19,7 @@ import com.achyut.adglasses.R
 import com.achyut.adglasses.ui.appearance.AppearancePreferences
 import com.achyut.adglasses.ui.appearance.rememberAppearanceSettings
 import com.achyut.adglasses.shared.ui.onboarding.BatteryOptimizationGuideScreen
-import com.achyut.adglasses.ui.theme.CyanBridgeTheme
+import com.achyut.adglasses.ui.theme.AdGlassesTheme
 
 class BatteryOptimizationGuideActivity : AppCompatActivity() {
     private var optimizationIgnored by mutableStateOf(false)
@@ -30,7 +30,7 @@ class BatteryOptimizationGuideActivity : AppCompatActivity() {
         val appearancePreferences = AppearancePreferences(this)
         setContent {
             val appearance by rememberAppearanceSettings(appearancePreferences)
-            CyanBridgeTheme(appearance) {
+            AdGlassesTheme(appearance) {
                 BatteryOptimizationGuideScreen(
                     optimizationIgnored = optimizationIgnored,
                     onDisableOptimization = ::openDisableBatteryOptimizationFlow,

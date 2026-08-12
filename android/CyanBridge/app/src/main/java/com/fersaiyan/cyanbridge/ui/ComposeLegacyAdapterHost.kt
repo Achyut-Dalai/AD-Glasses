@@ -9,7 +9,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.ui.platform.ComposeView
 import com.achyut.adglasses.ui.appearance.AppearancePreferences
 import com.achyut.adglasses.ui.appearance.rememberAppearanceSettings
-import com.achyut.adglasses.ui.theme.CyanBridgeTheme
+import com.achyut.adglasses.ui.theme.AdGlassesTheme
 
 /**
  * Hosts a Compose screen while preserving a hidden View tree for mature Android handlers.
@@ -49,6 +49,6 @@ internal fun AppCompatActivity.setThemedComposeContent(
     val appearancePreferences = AppearancePreferences(this)
     composeView.setContent {
         val appearance by rememberAppearanceSettings(appearancePreferences)
-        CyanBridgeTheme(appearance, content)
+        AdGlassesTheme(appearance, content)
     }
 }

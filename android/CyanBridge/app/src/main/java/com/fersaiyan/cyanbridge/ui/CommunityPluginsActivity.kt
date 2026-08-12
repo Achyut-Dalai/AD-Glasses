@@ -54,7 +54,7 @@ import com.achyut.adglasses.ui.ensureNotificationPermission
 import com.achyut.adglasses.ui.hasNotificationPermission
 import com.achyut.adglasses.shared.plugins.NativePluginIds
 import com.achyut.adglasses.ui.recordings.RecordingsListActivity
-import com.achyut.adglasses.ui.theme.CyanBridgeTheme
+import com.achyut.adglasses.ui.theme.AdGlassesTheme
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -194,7 +194,7 @@ class CommunityPluginsActivity : AppCompatActivity() {
         val appearancePreferences = AppearancePreferences(this)
         setContent {
             val appearance by rememberAppearanceSettings(appearancePreferences)
-            CyanBridgeTheme(appearance) {
+            AdGlassesTheme(appearance) {
                 CommunityPluginsScreen(
                     plugins = communityPlugins,
                     selectedWindow = selectedWindow,

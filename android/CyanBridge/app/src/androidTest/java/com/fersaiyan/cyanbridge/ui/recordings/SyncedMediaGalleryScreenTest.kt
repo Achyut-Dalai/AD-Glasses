@@ -6,7 +6,7 @@ import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import com.achyut.adglasses.shared.ui.recordings.SyncedMediaGalleryScreen
-import com.achyut.adglasses.ui.theme.CyanBridgeTheme
+import com.achyut.adglasses.ui.theme.AdGlassesTheme
 import org.junit.Assert.assertEquals
 import org.junit.Rule
 import org.junit.Test
@@ -20,7 +20,7 @@ class SyncedMediaGalleryScreenTest {
         var refreshCount = 0
 
         composeRule.setContent {
-            CyanBridgeTheme {
+            AdGlassesTheme {
                 SyncedMediaGalleryScreen(
                     mediaItems = emptyList(),
                     isLoading = false,

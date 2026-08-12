@@ -15,7 +15,7 @@ import com.achyut.adglasses.ui.appearance.AppearancePreferences
 import com.achyut.adglasses.ui.appearance.rememberAppearanceSettings
 import com.achyut.adglasses.ui.localization.AppLanguage
 import com.achyut.adglasses.ui.localization.AppLanguagePreferences
-import com.achyut.adglasses.ui.theme.CyanBridgeTheme
+import com.achyut.adglasses.ui.theme.AdGlassesTheme
 
 class WelcomeActivity : AppCompatActivity() {
 
@@ -44,7 +44,7 @@ class WelcomeActivity : AppCompatActivity() {
         val appearancePreferences = AppearancePreferences(this)
         setContent {
             val appearance by rememberAppearanceSettings(appearancePreferences)
-            CyanBridgeTheme(appearance) {
+            AdGlassesTheme(appearance) {
                 WelcomeScreen(
                     languageOptions = languageOptions,
                     selectedLanguageId = selectedLanguageId,

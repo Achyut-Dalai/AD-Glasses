@@ -51,7 +51,7 @@ import com.achyut.adglasses.R
 import com.achyut.adglasses.MainActivity
 import com.achyut.adglasses.ui.appearance.AppearancePreferences
 import com.achyut.adglasses.ui.appearance.rememberAppearanceSettings
-import com.achyut.adglasses.ui.theme.CyanBridgeTheme
+import com.achyut.adglasses.ui.theme.AdGlassesTheme
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import java.io.File
@@ -65,7 +65,7 @@ class ExternalAssistantAutomationSetupActivity : AppCompatActivity() {
         val appearancePreferences = AppearancePreferences(this)
         setContent {
             val appearance by rememberAppearanceSettings(appearancePreferences)
-            CyanBridgeTheme(appearance) {
+            AdGlassesTheme(appearance) {
                 ExternalAssistantAutomationSetupScreen(
                     state = uiState,
                     onBack = ::finish,

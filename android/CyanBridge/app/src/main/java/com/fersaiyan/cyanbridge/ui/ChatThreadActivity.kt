@@ -72,7 +72,7 @@ import com.achyut.adglasses.shared.settings.AgentProviderType
 import com.achyut.adglasses.ui.appearance.AppearancePreferences
 import com.achyut.adglasses.ui.appearance.rememberAppearanceSettings
 import com.achyut.adglasses.ui.debug.DebugLogSupport
-import com.achyut.adglasses.ui.theme.CyanBridgeTheme
+import com.achyut.adglasses.ui.theme.AdGlassesTheme
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.sync.Mutex
@@ -184,7 +184,7 @@ class ChatThreadActivity : AppCompatActivity() {
         val appearancePreferences = AppearancePreferences(this)
         setContent {
             val appearance by rememberAppearanceSettings(appearancePreferences)
-            CyanBridgeTheme(appearance) {
+            AdGlassesTheme(appearance) {
                 val visibleMessages = ChatThreadStateReducer.visibleMessages(
                     messages = chatThreadUiState.messages,
                     chatId = chatId.orEmpty(),

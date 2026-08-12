@@ -7,7 +7,7 @@ import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import com.achyut.adglasses.shared.ui.onboarding.OnboardingLanguageOption
 import com.achyut.adglasses.shared.ui.onboarding.WelcomeScreen
-import com.achyut.adglasses.ui.theme.CyanBridgeTheme
+import com.achyut.adglasses.ui.theme.AdGlassesTheme
 import org.junit.Assert.assertEquals
 import org.junit.Rule
 import org.junit.Test
@@ -20,7 +20,7 @@ class WelcomeScreenTest {
     fun setupRequiresAnExplicitLanguageChoice() {
         var selectedLanguage: String? = null
         composeRule.setContent {
-            CyanBridgeTheme {
+            AdGlassesTheme {
                 WelcomeScreen(
                     languageOptions = listOf(
                         OnboardingLanguageOption("ENGLISH", "English"),
@@ -42,7 +42,7 @@ class WelcomeScreenTest {
     @Test
     fun setupIsEnabledAfterLanguageWasSelected() {
         composeRule.setContent {
-            CyanBridgeTheme {
+            AdGlassesTheme {
                 WelcomeScreen(
                     languageOptions = listOf(OnboardingLanguageOption("ENGLISH", "English")),
                     selectedLanguageId = "ENGLISH",

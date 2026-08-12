@@ -12,7 +12,7 @@ import androidx.compose.ui.test.performScrollToNode
 import com.achyut.adglasses.shared.localmodels.LocalModelsAction
 import com.achyut.adglasses.shared.localmodels.LocalModelsConfigureUiState
 import com.achyut.adglasses.shared.localmodels.LocalModelDownloadUiState
-import com.achyut.adglasses.ui.theme.CyanBridgeTheme
+import com.achyut.adglasses.ui.theme.AdGlassesTheme
 import org.junit.Assert.assertEquals
 import org.junit.Rule
 import org.junit.Test
@@ -25,7 +25,7 @@ class LocalModelsConfigureScreenTest {
     fun rendersRuntimeAndDispatchesImportAction() {
         var action: LocalModelsAction? = null
         composeRule.setContent {
-            CyanBridgeTheme {
+            AdGlassesTheme {
                 LocalModelsConfigureScreen(
                     state = LocalModelsConfigureUiState(
                         engineStatus = "Runtimes available: llama.cpp + LiteRT",
@@ -48,7 +48,7 @@ class LocalModelsConfigureScreenTest {
     fun activeDownloadIsVisibleAndCanBeCancelled() {
         var action: LocalModelsAction? = null
         composeRule.setContent {
-            CyanBridgeTheme {
+            AdGlassesTheme {
                 LocalModelsConfigureScreen(
                     state = LocalModelsConfigureUiState(
                         download = LocalModelDownloadUiState(
@@ -85,7 +85,7 @@ class LocalModelsConfigureScreenTest {
             )
         }
         composeRule.setContent {
-            CyanBridgeTheme {
+            AdGlassesTheme {
                 LocalModelsConfigureScreen(
                     state = LocalModelsConfigureUiState(
                         catalog = catalogEntries,
@@ -118,7 +118,7 @@ class LocalModelsConfigureScreenTest {
     fun composeBackConfirmsEditedSettingsBeforeLeaving() {
         var action: LocalModelsAction? = null
         composeRule.setContent {
-            CyanBridgeTheme {
+            AdGlassesTheme {
                 LocalModelsConfigureScreen(
                     state = LocalModelsConfigureUiState(hasUnsavedChanges = true),
                     onAction = { action = it },

@@ -12,7 +12,7 @@ import com.achyut.adglasses.localagent.memory.LocalAgentMemoryStore
 import com.achyut.adglasses.shared.ui.localagent.LocalAgentDocumentScreen
 import com.achyut.adglasses.ui.appearance.AppearancePreferences
 import com.achyut.adglasses.ui.appearance.rememberAppearanceSettings
-import com.achyut.adglasses.ui.theme.CyanBridgeTheme
+import com.achyut.adglasses.ui.theme.AdGlassesTheme
 import org.json.JSONObject
 import java.io.File
 import java.text.SimpleDateFormat
@@ -32,7 +32,7 @@ class ScreenCapturesActivity : AppCompatActivity() {
         val appearancePreferences = AppearancePreferences(this)
         setContent {
             val appearance by rememberAppearanceSettings(appearancePreferences)
-            CyanBridgeTheme(appearance) {
+            AdGlassesTheme(appearance) {
                 LocalAgentDocumentScreen(
                     title = title,
                     path = path,
