@@ -396,7 +396,7 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
                 stagePersonalFirmware(uri, target)
             }
         }
-    private val livePreviewManager by lazy { com.fersaiyan.adglasses.ota.LivePreviewManager(this) }
+    private val livePreviewManager by lazy { com.achyut.adglasses.ota.LivePreviewManager(this) }
     private var livePreviewDialog: AlertDialog? = null
     private val wifiAdbDebugController by lazy { DefaultWifiAdbDebugControllerFactory.create(this) }
 
@@ -493,7 +493,7 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
     private var meetingCaptureStateReceiver: BroadcastReceiver? = null
 
     // Meta Ray-Ban integration
-    private var metaRaybanManager: com.fersaiyan.adglasses.devices.metarayban.MetaRaybanManager? = null
+    private var metaRaybanManager: com.achyut.adglasses.devices.metarayban.MetaRaybanManager? = null
     private var metaRaybanUiJob: Job? = null
     private var pendingMetaDatAction: (() -> Unit)? = null
     private var pendingMetaCameraAction: (() -> Unit)? = null
@@ -721,11 +721,11 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
         super.onResume()
         handleExternalImageAutomationStatus()
         if (
-            com.fersaiyan.adglasses.localmodels.remote.RemoteOpenAiPrefs.isBridgeConfigured(this) &&
-            !com.fersaiyan.adglasses.studiobridge.StudioBridgeClient.isRunning() &&
-            com.fersaiyan.adglasses.studiobridge.StudioApprovalHandler.canCaptureVoice(this)
+            com.achyut.adglasses.localmodels.remote.RemoteOpenAiPrefs.isBridgeConfigured(this) &&
+            !com.achyut.adglasses.studiobridge.StudioBridgeClient.isRunning() &&
+            com.achyut.adglasses.studiobridge.StudioApprovalHandler.canCaptureVoice(this)
         ) {
-            (application as? com.fersaiyan.adglasses.ui.MyApplication)?.startStudioBridge()
+            (application as? com.achyut.adglasses.ui.MyApplication)?.startStudioBridge()
         }
         try {
                 if (!BluetoothUtils.isEnabledBluetooth(this)) {
@@ -768,7 +768,7 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
         if (enabledFeaturePermissionRequestActive) return
 
         val voicePluginEnabled =
-            com.fersaiyan.adglasses.localmodels.remote.RemoteOpenAiPrefs.isBridgeConfigured(this) ||
+            com.achyut.adglasses.localmodels.remote.RemoteOpenAiPrefs.isBridgeConfigured(this) ||
                 AutoAudioCapturePrefs.isEnabled(this) ||
                 setOf(
                     NativePluginIds.MEETING_SPARK_NOTES,
@@ -840,7 +840,7 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
         if (CommunityPluginPrefs.isNativePluginEnabled(this, NativePluginIds.ERRAND_BRAIN)) {
             ErrandBrainService.start(this)
         }
-        if (com.fersaiyan.adglasses.localmodels.remote.RemoteOpenAiPrefs.isBridgeConfigured(this)) {
+        if (com.achyut.adglasses.localmodels.remote.RemoteOpenAiPrefs.isBridgeConfigured(this)) {
             (application as? MyApplication)?.startStudioBridge()
         }
     }
@@ -880,9 +880,9 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
         return manager.handleRegistrationCallback(callbackIntent)
     }
 
-    private fun getOrCreateMetaRaybanManager(): com.fersaiyan.adglasses.devices.metarayban.MetaRaybanManager {
+    private fun getOrCreateMetaRaybanManager(): com.achyut.adglasses.devices.metarayban.MetaRaybanManager {
         return metaRaybanManager
-            ?: com.fersaiyan.adglasses.devices.metarayban.MetaRaybanManager
+            ?: com.achyut.adglasses.devices.metarayban.MetaRaybanManager
                 .getInstance(this)
                 .also { manager ->
                     metaRaybanManager = manager
@@ -891,7 +891,7 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
     }
 
     private fun observeMetaRaybanState(
-        manager: com.fersaiyan.adglasses.devices.metarayban.MetaRaybanManager,
+        manager: com.achyut.adglasses.devices.metarayban.MetaRaybanManager,
     ) {
         if (metaRaybanUiJob != null) return
         metaRaybanUiJob = lifecycleScope.launch {
@@ -1633,7 +1633,7 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
                 val now = System.currentTimeMillis()
                 val lastUserAt = last?.let { thread ->
                     ChatStore.listMessages(thread.id)
-                        .lastOrNull { it.role == com.fersaiyan.adglasses.shared.chat.ChatRole.USER }
+                        .lastOrNull { it.role == com.achyut.adglasses.shared.chat.ChatRole.USER }
                         ?.createdAt
                 } ?: 0L
                 val openChatId = last?.id?.takeIf { lastUserAt > 0L && now - lastUserAt < 30 * 60 * 1000L }
@@ -2258,7 +2258,7 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
                     ota.state == OtaState.COMPLETE ||
                     ota.state == OtaState.FAILED
                 dashboardState = dashboardState.copy(
-                    ota = com.fersaiyan.adglasses.shared.glasses.OtaSectionUiState(
+                    ota = com.achyut.adglasses.shared.glasses.OtaSectionUiState(
                         stateLabel = ota.state.name.replace("_", " ").lowercase()
                             .replaceFirstChar { it.uppercase() },
                         detail = ota.detail.ifBlank { ota.error.orEmpty() },
@@ -2749,9 +2749,9 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
         }
     }
 
-    private fun OtaTarget.toOtaTargetSelection(): com.fersaiyan.adglasses.shared.glasses.OtaTargetSelection = when (this) {
-        OtaTarget.V821_WIFI -> com.fersaiyan.adglasses.shared.glasses.OtaTargetSelection.V821_WIFI
-        OtaTarget.JIELI_BLE -> com.fersaiyan.adglasses.shared.glasses.OtaTargetSelection.JIELI_BLE
+    private fun OtaTarget.toOtaTargetSelection(): com.achyut.adglasses.shared.glasses.OtaTargetSelection = when (this) {
+        OtaTarget.V821_WIFI -> com.achyut.adglasses.shared.glasses.OtaTargetSelection.V821_WIFI
+        OtaTarget.JIELI_BLE -> com.achyut.adglasses.shared.glasses.OtaTargetSelection.JIELI_BLE
     }
 
     /**
@@ -2984,7 +2984,7 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
                     lastLabel = lp.stateLabel
                 }
                 dashboardState = dashboardState.copy(
-                    livePreview = com.fersaiyan.adglasses.shared.glasses.LivePreviewUiState(
+                    livePreview = com.achyut.adglasses.shared.glasses.LivePreviewUiState(
                         isAvailable = BuildConfig.DEBUG,
                         stateLabel = lp.stateLabel,
                         detail = lp.detail,
@@ -4913,7 +4913,7 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
             val status = when {
                 !manager.isInitialized.value -> "Meta Ray-Ban selected"
                 manager.isCameraReady() -> "Meta Ray-Ban ready"
-                manager.registrationState.value == com.fersaiyan.adglasses.devices.metarayban.MetaRaybanManager.RegistrationState.REGISTERED ->
+                manager.registrationState.value == com.achyut.adglasses.devices.metarayban.MetaRaybanManager.RegistrationState.REGISTERED ->
                     "Meta Ray-Ban registered"
                 else -> "Meta Ray-Ban not registered"
             }
@@ -5316,23 +5316,23 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
         binding.tvMetaDisplayState.text = "Display: ${if (isDisplayActive) "Active" else "Inactive"}"
 
         // Enable/disable buttons based on state
-        binding.btnMetaRegister.isEnabled = regState != com.fersaiyan.adglasses.devices.metarayban.MetaRaybanManager.RegistrationState.REGISTERED &&
-            regState != com.fersaiyan.adglasses.devices.metarayban.MetaRaybanManager.RegistrationState.REGISTERING
-        binding.btnMetaUnregister.isEnabled = regState == com.fersaiyan.adglasses.devices.metarayban.MetaRaybanManager.RegistrationState.REGISTERED
+        binding.btnMetaRegister.isEnabled = regState != com.achyut.adglasses.devices.metarayban.MetaRaybanManager.RegistrationState.REGISTERED &&
+            regState != com.achyut.adglasses.devices.metarayban.MetaRaybanManager.RegistrationState.REGISTERING
+        binding.btnMetaUnregister.isEnabled = regState == com.achyut.adglasses.devices.metarayban.MetaRaybanManager.RegistrationState.REGISTERED
 
-        binding.btnMetaSessionStart.isEnabled = regState == com.fersaiyan.adglasses.devices.metarayban.MetaRaybanManager.RegistrationState.REGISTERED &&
+        binding.btnMetaSessionStart.isEnabled = regState == com.achyut.adglasses.devices.metarayban.MetaRaybanManager.RegistrationState.REGISTERED &&
             manager.availableDeviceCount.value > 0 &&
-            sessionState == com.fersaiyan.adglasses.devices.metarayban.MetaRaybanManager.DeviceSessionState.IDLE
-        binding.btnMetaSessionStop.isEnabled = sessionState != com.fersaiyan.adglasses.devices.metarayban.MetaRaybanManager.DeviceSessionState.IDLE
+            sessionState == com.achyut.adglasses.devices.metarayban.MetaRaybanManager.DeviceSessionState.IDLE
+        binding.btnMetaSessionStop.isEnabled = sessionState != com.achyut.adglasses.devices.metarayban.MetaRaybanManager.DeviceSessionState.IDLE
 
-        binding.btnMetaStreamStart.isEnabled = sessionState == com.fersaiyan.adglasses.devices.metarayban.MetaRaybanManager.DeviceSessionState.STARTED &&
-            streamState == com.fersaiyan.adglasses.devices.metarayban.MetaRaybanManager.StreamState.STOPPED
-        binding.btnMetaStreamStop.isEnabled = streamState == com.fersaiyan.adglasses.devices.metarayban.MetaRaybanManager.StreamState.STREAMING
+        binding.btnMetaStreamStart.isEnabled = sessionState == com.achyut.adglasses.devices.metarayban.MetaRaybanManager.DeviceSessionState.STARTED &&
+            streamState == com.achyut.adglasses.devices.metarayban.MetaRaybanManager.StreamState.STOPPED
+        binding.btnMetaStreamStop.isEnabled = streamState == com.achyut.adglasses.devices.metarayban.MetaRaybanManager.StreamState.STREAMING
 
-        binding.btnMetaCapturePhoto.isEnabled = streamState == com.fersaiyan.adglasses.devices.metarayban.MetaRaybanManager.StreamState.STREAMING
+        binding.btnMetaCapturePhoto.isEnabled = streamState == com.achyut.adglasses.devices.metarayban.MetaRaybanManager.StreamState.STREAMING
 
         binding.btnMetaViewPhoto.isEnabled = manager.lastCapturedPhoto.value != null
-        binding.btnMetaDisplayStart.isEnabled = displayCapable && sessionState == com.fersaiyan.adglasses.devices.metarayban.MetaRaybanManager.DeviceSessionState.STARTED && !isDisplayActive
+        binding.btnMetaDisplayStart.isEnabled = displayCapable && sessionState == com.achyut.adglasses.devices.metarayban.MetaRaybanManager.DeviceSessionState.STARTED && !isDisplayActive
         binding.btnMetaDisplayStop.isEnabled = displayCapable && isDisplayActive
         updateDashboardState { state ->
             state.copy(
@@ -5345,17 +5345,17 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
                     lastError = manager.lastError.value,
                     displayCapable = displayCapable,
                     displayActive = isDisplayActive,
-                    canRegister = regState != com.fersaiyan.adglasses.devices.metarayban.MetaRaybanManager.RegistrationState.REGISTERED &&
-                        regState != com.fersaiyan.adglasses.devices.metarayban.MetaRaybanManager.RegistrationState.REGISTERING,
-                    canUnregister = regState == com.fersaiyan.adglasses.devices.metarayban.MetaRaybanManager.RegistrationState.REGISTERED,
-                    canStartSession = regState == com.fersaiyan.adglasses.devices.metarayban.MetaRaybanManager.RegistrationState.REGISTERED &&
+                    canRegister = regState != com.achyut.adglasses.devices.metarayban.MetaRaybanManager.RegistrationState.REGISTERED &&
+                        regState != com.achyut.adglasses.devices.metarayban.MetaRaybanManager.RegistrationState.REGISTERING,
+                    canUnregister = regState == com.achyut.adglasses.devices.metarayban.MetaRaybanManager.RegistrationState.REGISTERED,
+                    canStartSession = regState == com.achyut.adglasses.devices.metarayban.MetaRaybanManager.RegistrationState.REGISTERED &&
                         manager.availableDeviceCount.value > 0 &&
-                        sessionState == com.fersaiyan.adglasses.devices.metarayban.MetaRaybanManager.DeviceSessionState.IDLE,
-                    canStopSession = sessionState != com.fersaiyan.adglasses.devices.metarayban.MetaRaybanManager.DeviceSessionState.IDLE,
-                    canStartStream = sessionState == com.fersaiyan.adglasses.devices.metarayban.MetaRaybanManager.DeviceSessionState.STARTED &&
-                        streamState == com.fersaiyan.adglasses.devices.metarayban.MetaRaybanManager.StreamState.STOPPED,
-                    canStopStream = streamState == com.fersaiyan.adglasses.devices.metarayban.MetaRaybanManager.StreamState.STREAMING,
-                    canCapturePhoto = streamState == com.fersaiyan.adglasses.devices.metarayban.MetaRaybanManager.StreamState.STREAMING,
+                        sessionState == com.achyut.adglasses.devices.metarayban.MetaRaybanManager.DeviceSessionState.IDLE,
+                    canStopSession = sessionState != com.achyut.adglasses.devices.metarayban.MetaRaybanManager.DeviceSessionState.IDLE,
+                    canStartStream = sessionState == com.achyut.adglasses.devices.metarayban.MetaRaybanManager.DeviceSessionState.STARTED &&
+                        streamState == com.achyut.adglasses.devices.metarayban.MetaRaybanManager.StreamState.STOPPED,
+                    canStopStream = streamState == com.achyut.adglasses.devices.metarayban.MetaRaybanManager.StreamState.STREAMING,
+                    canCapturePhoto = streamState == com.achyut.adglasses.devices.metarayban.MetaRaybanManager.StreamState.STREAMING,
                     hasCapturedPhoto = manager.lastCapturedPhoto.value != null,
                 ),
             )
@@ -6980,14 +6980,14 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
         if (isFinishing || isDestroyed) return
         check(
             ImageQuestionSourcePolicy.onHighQualityFailure() ==
-                com.fersaiyan.adglasses.ai.image.ImageSourceResolution.AWAITING_EXPLICIT_FALLBACK_CHOICE,
+                com.achyut.adglasses.ai.image.ImageSourceResolution.AWAITING_EXPLICIT_FALLBACK_CHOICE,
         )
         AlertDialog.Builder(this)
             .setTitle("High-quality image unavailable")
             .setMessage("$reason\n\nAD Glasses has not sent a preview automatically.")
             .setPositiveButton("Retry high quality") { _, _ ->
                 when (ImageQuestionSourcePolicy.resolveHighQualityFailure(HighQualityFailureChoice.RETRY_HIGH_QUALITY)) {
-                    com.fersaiyan.adglasses.ai.image.ImageSourceResolution.HIGH_QUALITY -> {
+                    com.achyut.adglasses.ai.image.ImageSourceResolution.HIGH_QUALITY -> {
                         highQualityImageRequest = request
                         pendingImageQuestionSource = ImageQuestionSource.HIGH_QUALITY
                         requestHighQualityImageForQuestion(request.sourceTag)
@@ -6998,7 +6998,7 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
             .setNegativeButton("Use fast preview") { _, _ ->
                 if (
                     ImageQuestionSourcePolicy.resolveHighQualityFailure(HighQualityFailureChoice.USE_FAST_PREVIEW) ==
-                    com.fersaiyan.adglasses.ai.image.ImageSourceResolution.FAST_PREVIEW
+                    com.achyut.adglasses.ai.image.ImageSourceResolution.FAST_PREVIEW
                 ) {
                     highQualityImageRequest = null
                     pendingImageQuestionSource = ImageQuestionSource.FAST_PREVIEW
@@ -7008,7 +7008,7 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
             .setNeutralButton("Cancel") { _, _ ->
                 if (
                     ImageQuestionSourcePolicy.resolveHighQualityFailure(HighQualityFailureChoice.CANCEL) ==
-                    com.fersaiyan.adglasses.ai.image.ImageSourceResolution.CANCELLED
+                    com.achyut.adglasses.ai.image.ImageSourceResolution.CANCELLED
                 ) {
                     highQualityImageRequest = null
                     clearPendingVoiceImageQuestion(request.sourceTag)
