@@ -65,7 +65,7 @@ class GlassesDashboardScreenTest {
     fun assistantModesExposeOnlyPhoneAndCustomAi() {
         val modes = GlassesAssistantMode.entries
         assertEquals(
-            listOf(GlassesAssistantMode.PHONE_ASSISTANT, GlassesAssistantMode.CUSTOM_AI_PROVIDER),
+            listOf(GlassesAssistantMode.GEMINI, GlassesAssistantMode.CHAT_GPT, GlassesAssistantMode.PHONE_ASSISTANT, GlassesAssistantMode.CUSTOM_AI_PROVIDER),
             modes,
         )
     }
