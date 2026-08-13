@@ -334,9 +334,9 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
         private var loggedLargeDataHandlerMethods = false
         private const val AI_MODE_GEMINI = "Gemini"
         private const val AI_MODE_CHATGPT = "ChatGPT"
-        private const val AI_MODE_PHONE_DEFAULT = "PhoneDefault"
+        private const val AI_MODE_PHONE_ASSISTANT = "PhoneDefault"
         private const val AI_MODE_TASKER = "Tasker"
-        private const val AI_MODE_CHOSEN_PROVIDER = "ChosenProvider"
+        private const val AI_MODE_CUSTOM_AI_PROVIDER = "ChosenProvider"
         private const val QUERY_MAX_AGENT_PERSONA_CHARS = 1200
         private const val QUERY_MAX_USER_FACTS_CHARS = 1400
         private const val QUERY_MAX_CONFIRMED_FACTS_CHARS = 1800
@@ -1258,8 +1258,8 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
             is SharedDashboardAction.SelectAssistantMode -> when (action.mode) {
                 GlassesAssistantMode.GEMINI -> binding.btnModeGemini.performClick()
                 GlassesAssistantMode.CHAT_GPT -> binding.btnModeChatgpt.performClick()
-                GlassesAssistantMode.PHONE_DEFAULT -> selectPhoneDefaultAssistant()
-                GlassesAssistantMode.CHOSEN_PROVIDER -> binding.btnModeTasker.performClick()
+                GlassesAssistantMode.PHONE_ASSISTANT -> selectPhoneDefaultAssistant()
+                GlassesAssistantMode.CUSTOM_AI_PROVIDER -> binding.btnModeTasker.performClick()
             }
             is SharedDashboardAction.SelectImageThumbnailQuality -> {
                 val quality = ImageQuestionPreferences.setThumbnailQuality(this, action.sdkValue)
@@ -1830,7 +1830,7 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
                 }
 
                 binding.btnModeTasker -> {
-                    aiAssistantMode = AI_MODE_CHOSEN_PROVIDER
+                    aiAssistantMode = AI_MODE_CUSTOM_AI_PROVIDER
                     refreshAiModeButtons()
 
                     val msg = when (AutomationPrefs.getProviderType(this@MainActivity)) {
@@ -3301,17 +3301,17 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
     }
 
     private fun resolveEffectiveAiAssistantMode(): String {
-        if (aiAssistantMode != AI_MODE_CHOSEN_PROVIDER) {
+        if (aiAssistantMode != AI_MODE_CUSTOM_AI_PROVIDER) {
             return aiAssistantMode
         }
         return when (AutomationPrefs.getProviderType(this)) {
             AgentProviderType.TASKER -> AI_MODE_TASKER
-            AgentProviderType.PRO_SUBSCRIPTION -> AI_MODE_CHOSEN_PROVIDER
-            AgentProviderType.LOCAL_AGENT -> AI_MODE_CHOSEN_PROVIDER
+            AgentProviderType.PRO_SUBSCRIPTION -> AI_MODE_CUSTOM_AI_PROVIDER
+            AgentProviderType.LOCAL_AGENT -> AI_MODE_CUSTOM_AI_PROVIDER
         }
     }
 
-    private fun isChosenProviderMode(): Boolean = aiAssistantMode == AI_MODE_CHOSEN_PROVIDER
+    private fun isChosenProviderMode(): Boolean = aiAssistantMode == AI_MODE_CUSTOM_AI_PROVIDER
 
     private fun isChosenProviderCloudEndpoint(): Boolean {
         if (!isChosenProviderMode()) return false
@@ -3343,7 +3343,7 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
     private fun isGeminiOrChatGptModeSelected(): Boolean {
         return aiAssistantMode == AI_MODE_GEMINI ||
             aiAssistantMode == AI_MODE_CHATGPT ||
-            aiAssistantMode == AI_MODE_PHONE_DEFAULT
+            aiAssistantMode == AI_MODE_PHONE_ASSISTANT
     }
 
     private fun selectedImageAutomationTarget(): ImageAutomationTarget {
@@ -3435,14 +3435,14 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
 
         binding.btnModeGemini.setTextColor(if (aiAssistantMode == AI_MODE_GEMINI) activeColor else inactiveColor)
         binding.btnModeChatgpt.setTextColor(if (aiAssistantMode == AI_MODE_CHATGPT) activeColor else inactiveColor)
-        val chosenProviderSelected = aiAssistantMode == AI_MODE_CHOSEN_PROVIDER
+        val chosenProviderSelected = aiAssistantMode == AI_MODE_CUSTOM_AI_PROVIDER
         binding.btnModeTasker.setTextColor(if (chosenProviderSelected) activeColor else inactiveColor)
         updateDashboardState { state ->
             state.copy(
                 assistantMode = when (aiAssistantMode) {
                     AI_MODE_CHATGPT -> GlassesAssistantMode.CHAT_GPT
-                    AI_MODE_PHONE_DEFAULT -> GlassesAssistantMode.PHONE_DEFAULT
-                    AI_MODE_CHOSEN_PROVIDER -> GlassesAssistantMode.CHOSEN_PROVIDER
+                    AI_MODE_PHONE_ASSISTANT -> GlassesAssistantMode.PHONE_ASSISTANT
+                    AI_MODE_CUSTOM_AI_PROVIDER -> GlassesAssistantMode.CUSTOM_AI_PROVIDER
                     else -> GlassesAssistantMode.GEMINI
                 },
             )
@@ -3451,7 +3451,7 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
     }
 
     private fun selectPhoneDefaultAssistant() {
-        aiAssistantMode = AI_MODE_PHONE_DEFAULT
+        aiAssistantMode = AI_MODE_PHONE_ASSISTANT
         refreshAiModeButtons()
         val assistantPackage = DefaultAssistantResolver.packageName(this)
         val result = when (selectedImageAutomationTarget()) {
@@ -4563,7 +4563,7 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
 
         val selectedProvider = AutomationPrefs.getProviderType(this)
         val useChosenProviderMemoryAware =
-            aiAssistantMode == AI_MODE_CHOSEN_PROVIDER &&
+            aiAssistantMode == AI_MODE_CUSTOM_AI_PROVIDER &&
                 (selectedProvider == AgentProviderType.PRO_SUBSCRIPTION ||
                     selectedProvider == AgentProviderType.LOCAL_AGENT)
         if (useChosenProviderMemoryAware) {
@@ -4619,7 +4619,7 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
 
     private fun usesExternalImageAutomation(): Boolean {
         if (AiProviderPrefs.getProvider(this) == RelayProviderType.CLI_RELAY) return false
-        if (aiAssistantMode == AI_MODE_CHOSEN_PROVIDER &&
+        if (aiAssistantMode == AI_MODE_CUSTOM_AI_PROVIDER &&
             AutomationPrefs.getProviderType(this) != AgentProviderType.TASKER
         ) {
             return false
@@ -4839,7 +4839,7 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
         }
         
         val selectedProvider = AutomationPrefs.getProviderType(this)
-        val isChosenProviderMode = aiAssistantMode == AI_MODE_CHOSEN_PROVIDER
+        val isChosenProviderMode = aiAssistantMode == AI_MODE_CUSTOM_AI_PROVIDER
 
         // Route ChosenProvider with memory-aware providers
         val useChosenProviderMemoryAware =
