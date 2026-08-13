@@ -1357,7 +1357,7 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
             SharedDashboardAction.MeizuDisconnect -> getOrCreateMeizuMyvuManager().disconnect()
             SharedDashboardAction.MeizuSendTestNotification -> getOrCreateMeizuMyvuManager().sendTestNotification()
             SharedDashboardAction.MeizuShowTestTeleprompter -> getOrCreateMeizuMyvuManager().showTeleprompter(
-                "AD Glasses",
+                "AdGlasses",
                 "MYVU display connected\n\nNative voice plugins can now use the MYVU headset microphone and display bridge.",
             )
             SharedDashboardAction.MeizuSyncClock -> getOrCreateMeizuMyvuManager().syncClock()
@@ -4075,7 +4075,7 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
             )
 
             // Gemini/Tasker owns external playback. A Tasker answer_ready callback offers an
-            // explicit follow-up instead of treating AD Glasses TTS as if it were speaking.
+            // explicit follow-up instead of treating AdGlasses TTS as if it were speaking.
             if (externalAutomation) return@launch
 
             waitForTtsToFinish(timeoutMs = 90_000L)
@@ -4501,7 +4501,7 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
                         AssistantIntent.EXECUTE_UI_TASK -> runOnUiThread {
                             stopSco()
                             if (!AutomationPrefs.isLocalAgentAutomationEnabled(this@MainActivity)) {
-                                speak("Enable Local Agent phone control in AD Glasses settings first.")
+                                speak("Enable Local Agent phone control in AdGlasses settings first.")
                                 return@runOnUiThread
                             }
                             if (isDeviceLockedForAutomation()) {
@@ -4509,7 +4509,7 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
                                 return@runOnUiThread
                             }
                             if (!LocalAgentAccessibilityBridge.isConnected()) {
-                                speak("Please enable AD Glasses accessibility control first.")
+                                speak("Please enable AdGlasses accessibility control first.")
                                 return@runOnUiThread
                             }
 
@@ -4665,7 +4665,7 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
             setPackage(targetPackage)
             putExtra(Intent.EXTRA_STREAM, imageUri)
             putExtra(Intent.EXTRA_TEXT, question)
-            clipData = ClipData.newRawUri("AD Glasses image", imageUri)
+            clipData = ClipData.newRawUri("AdGlasses image", imageUri)
             addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
         }
         return runCatching {
@@ -6482,7 +6482,7 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
 
             setTransferDetail("Sync is taking longer than expected")
             maybeShowP2pSyncLogHelp(
-                reason = "AD Glasses got stuck before media transfer started. The sync button was pressed ${waitedSeconds}s ago and the transfer counters never advanced.",
+                reason = "AdGlasses got stuck before media transfer started. The sync button was pressed ${waitedSeconds}s ago and the transfer counters never advanced.",
             )
         }
     }
@@ -6574,9 +6574,9 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
         downloadSupportDialogShown = true
 
         val reason = buildString {
-            appendLine("AD Glasses found other Wi‑Fi Direct devices but could not find the glasses ($pairedDevice) among them.")
+            appendLine("AdGlasses found other Wi‑Fi Direct devices but could not find the glasses ($pairedDevice) among them.")
             appendLine()
-            appendLine("IMPORTANT: If the official HeyCyan app is installed, force-stop it now (Settings → Apps → HeyCyan → Force Stop). It may be holding the P2P connection and preventing AD Glasses from discovering the glasses.")
+            appendLine("IMPORTANT: If the official HeyCyan app is installed, force-stop it now (Settings → Apps → HeyCyan → Force Stop). It may be holding the P2P connection and preventing AdGlasses from discovering the glasses.")
             appendLine()
             appendLine("Also try turning OFF the following devices or moving away from them, then tap Try Again:")
             appendLine()
@@ -6584,7 +6584,7 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
                 appendLine("  • $peer")
             }
             appendLine()
-            appendLine("If the problem persists, send the logs to the AD Glasses server.")
+            appendLine("If the problem persists, send the logs to the AdGlasses server.")
         }
 
         AlertDialog.Builder(this)
@@ -6984,7 +6984,7 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
         )
         AlertDialog.Builder(this)
             .setTitle("High-quality image unavailable")
-            .setMessage("$reason\n\nAD Glasses has not sent a preview automatically.")
+            .setMessage("$reason\n\nAdGlasses has not sent a preview automatically.")
             .setPositiveButton("Retry high quality") { _, _ ->
                 when (ImageQuestionSourcePolicy.resolveHighQualityFailure(HighQualityFailureChoice.RETRY_HIGH_QUALITY)) {
                     com.achyut.adglasses.ai.image.ImageSourceResolution.HIGH_QUALITY -> {
@@ -7601,7 +7601,7 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
                 put(MediaStore.Video.Media.DATE_ADDED, takenTimeMs / 1000)
                 put(MediaStore.Video.Media.DATE_MODIFIED, takenTimeMs / 1000)
                 if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
-                    // Keep videos in the same DCIM/AD Glasses folder as photos.
+                    // Keep videos in the same DCIM/AdGlasses folder as photos.
                     put(MediaStore.Video.Media.RELATIVE_PATH, SyncedMediaFolder.relativePath)
                     put(MediaStore.Video.Media.IS_PENDING, 1)
                 }
@@ -7671,7 +7671,7 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
                 put(MediaStore.MediaColumns.DATE_MODIFIED, takenTimeMs / 1000)
 
                 if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
-                    // Keep alongside photos/videos per your preference (DCIM/AD Glasses).
+                    // Keep alongside photos/videos per your preference (DCIM/AdGlasses).
                     put(MediaStore.MediaColumns.RELATIVE_PATH, SyncedMediaFolder.relativePath)
                     put(MediaStore.MediaColumns.IS_PENDING, 1)
                 }
@@ -7821,7 +7821,7 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
         val out = ByteArrayOutputStream()
 
         val opusHead = buildOpusHead(channels = 1, preSkip = 0)
-        val opusTags = buildOpusTags(vendor = "AD Glasses")
+        val opusTags = buildOpusTags(vendor = "AdGlasses")
 
         // Header pages
         writeOggPage(out, serial, seq++, granulePosition = 0, headerType = 0x02, packets = listOf(opusHead))
@@ -8264,7 +8264,7 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
         }
         if (!downloadInitialPhaseCompleted) {
             maybeShowP2pSyncLogHelp(
-                reason = "AD Glasses failed during the initial P2P sync steps before any media transfer progress was shown. Error: $message",
+                reason = "AdGlasses failed during the initial P2P sync steps before any media transfer progress was shown. Error: $message",
             )
         }
         finishDownloadInitialPhase("error: $message")
