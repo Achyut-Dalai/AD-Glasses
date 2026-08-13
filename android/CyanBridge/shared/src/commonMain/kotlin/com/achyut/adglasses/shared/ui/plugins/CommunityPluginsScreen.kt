@@ -149,7 +149,7 @@ fun CommunityPluginsScreen(
             item { PluginHero() }
             item {
                 Text(
-                    text = "Future notice: top plugins will have real cash prizes for developers, proportional to the number of Pro subscription users with the plugin enabled.",
+                    text = "Future notice: top plugins will have real cash prizes for developers.",
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )

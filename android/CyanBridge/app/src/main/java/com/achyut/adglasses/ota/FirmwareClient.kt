@@ -327,13 +327,13 @@ class FirmwareClient(
                         }
                         Log.w(TAG, "  currentPlan: $currentPlan, requiredPlans: $requiredPlans")
                         Log.i(TAG, "=== FIRMWARE FETCH BLOCKED (subscription) ===")
-                        FirmwareResult.SubscriptionRequired(message, currentPlan, requiredPlans)
+                        FirmwareResult.NotAvailable(message, "")
                     }
 
                     "subscription_expired" -> {
                         Log.w(TAG, "  Subscription expired")
                         Log.i(TAG, "=== FIRMWARE FETCH BLOCKED (expired) ===")
-                        FirmwareResult.SubscriptionRequired(message, "expired", listOf("standard", "max"))
+                        FirmwareResult.NotAvailable(message, "")
                     }
 
                     "debug_firmware_access_required" -> {

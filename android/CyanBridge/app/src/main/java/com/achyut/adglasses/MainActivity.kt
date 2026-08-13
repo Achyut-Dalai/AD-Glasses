@@ -82,8 +82,6 @@ import com.achyut.adglasses.plugins.livecaptioncloud.LiveCaptionCloudPreferences
 import com.achyut.adglasses.plugins.livecaptioncloud.LiveCaptionCloudService
 import com.achyut.adglasses.plugins.meetingsparknotes.MeetingSparkNotesPreferences
 import com.achyut.adglasses.plugins.meetingsparknotes.MeetingSparkNotesService
-// import com.achyut.adglasses.plugins.walkingaid.WalkingAidPreferences
-// import com.achyut.adglasses.plugins.walkingaid.WalkingAidService
 // import com.achyut.adglasses.ui.notes.NotesListActivity
 import com.achyut.adglasses.ui.recordings.RecordingsListActivity
 import com.achyut.adglasses.ui.BluetoothUtils
@@ -794,7 +792,6 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
         }
 
         val notificationFeatureEnabled =
-            WalkingAidPreferences.isEnabled(this) ||
                 AutoDiaryService.isEnabled(this) ||
                 VisualDiaryPreferences.isEnabled(this) ||
                 LocalAgentPlugin.isEnabled(this) ||
@@ -848,25 +845,21 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
 
     private fun ensureEnabledMetaCameraFeature() {
         if (!isMetaRaybanSelected() || !hasNotificationPermission(this)) return
-        if (!WalkingAidPreferences.isEnabled(this) && !VisualDiaryPreferences.isEnabled(this)) return
         if (enabledMetaCameraCheckActive) return
 
         enabledMetaCameraCheckActive = true
         ensureMetaCameraReady {
             enabledMetaCameraCheckActive = false
-            if (WalkingAidPreferences.isEnabled(this)) WalkingAidService.start(this)
             if (VisualDiaryPreferences.isEnabled(this)) VisualDiaryService.startIfEnabled(this)
         }
     }
 
     private fun startEnabledCameraFeatures() {
         if (isMetaRaybanSelected()) {
-            if (WalkingAidPreferences.isEnabled(this) || VisualDiaryPreferences.isEnabled(this)) {
                 ensureEnabledMetaCameraFeature()
             }
             return
         }
-        if (WalkingAidPreferences.isEnabled(this)) WalkingAidService.start(this)
         if (VisualDiaryPreferences.isEnabled(this)) VisualDiaryService.startIfEnabled(this)
     }
 
@@ -1452,16 +1445,6 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
                     NativePluginShortcutButton(NativePluginShortcutAction.STOP, "Stop listening"),
                 ),
             )
-            NativePluginIds.WALKING_AID -> NativePluginShortcutUiState(
-                id = id,
-                title = "Walking Aid",
-                description = "Start or stop scene descriptions and obstacle warnings.",
-                isEnabled = CommunityPluginPrefs.isNativePluginEnabled(this, id),
-                buttons = listOf(
-                    NativePluginShortcutButton(NativePluginShortcutAction.START, "Start walking aid"),
-                    NativePluginShortcutButton(NativePluginShortcutAction.STOP, "Stop walking aid"),
-                ),
-            )
             NativePluginIds.AUTO_DIARY -> NativePluginShortcutUiState(
                 id = id,
                 title = "AutoDiary",
@@ -1523,7 +1506,6 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
         if (isMeizuMyvuSelected() && pluginId in setOf(
                 NativePluginIds.AUTO_AUDIO,
                 NativePluginIds.VISUAL_DIARY,
-                NativePluginIds.WALKING_AID,
             )
         ) {
             Toast.makeText(
@@ -1565,9 +1547,6 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
                             ErrandBrainPreferences.setEnabled(this, true)
                             ErrandBrainService.start(this)
                         }
-                        NativePluginIds.WALKING_AID -> {
-                            WalkingAidPreferences.setEnabled(this, true)
-                            WalkingAidService.start(this)
                         }
                         NativePluginIds.AUTO_AUDIO -> AutoAudioCaptureService.start(this)
                     }
@@ -1577,7 +1556,6 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
         }
 
         if (isMetaRaybanSelected() &&
-            pluginId in setOf(NativePluginIds.WALKING_AID, NativePluginIds.VISUAL_DIARY)
         ) {
             val manager = getOrCreateMetaRaybanManager()
             if (!manager.isInitialized.value) manager.initialize()
@@ -1595,7 +1573,6 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
             return
         }
 
-        if (pluginId == NativePluginIds.WALKING_AID ||
             pluginId == NativePluginIds.LOCAL_AGENT ||
             pluginId == NativePluginIds.AUTO_DIARY ||
             pluginId == NativePluginIds.VISUAL_DIARY
@@ -1630,9 +1607,6 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
                         ErrandBrainPreferences.setEnabled(this, false)
                         ErrandBrainService.stop(this)
                     }
-                    NativePluginIds.WALKING_AID -> {
-                        WalkingAidPreferences.setEnabled(this, false)
-                        WalkingAidService.stop(this)
                     }
                     NativePluginIds.AUTO_AUDIO -> AutoAudioCaptureService.stop(this)
                 }
@@ -1835,7 +1809,7 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
 
                     val msg = when (AutomationPrefs.getProviderType(this@MainActivity)) {
                         AgentProviderType.TASKER -> "AI Mode: Chosen Provider (Tasker Broadcast)"
-                        AgentProviderType.PRO_SUBSCRIPTION -> "AI Mode: Chosen Provider (Pro Subscription)"
+                        AgentProviderType.CLOUD_API -> "AI Mode: Chosen Provider (Pro Subscription)"
                         AgentProviderType.LOCAL_AGENT -> "AI Mode: Chosen Provider (Local Agent)"
                     }
                     Toast.makeText(this@MainActivity, msg, Toast.LENGTH_SHORT).show()
@@ -3306,7 +3280,7 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
         }
         return when (AutomationPrefs.getProviderType(this)) {
             AgentProviderType.TASKER -> AI_MODE_TASKER
-            AgentProviderType.PRO_SUBSCRIPTION -> AI_MODE_CUSTOM_AI_PROVIDER
+            AgentProviderType.CLOUD_API -> AI_MODE_CUSTOM_AI_PROVIDER
             AgentProviderType.LOCAL_AGENT -> AI_MODE_CUSTOM_AI_PROVIDER
         }
     }
@@ -3316,7 +3290,7 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
     private fun isChosenProviderCloudEndpoint(): Boolean {
         if (!isChosenProviderMode()) return false
         return when (AutomationPrefs.getProviderType(this)) {
-            AgentProviderType.PRO_SUBSCRIPTION -> true
+            AgentProviderType.CLOUD_API -> true
             AgentProviderType.LOCAL_AGENT,
             AgentProviderType.TASKER -> false
         }
@@ -3635,13 +3609,13 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
         )
 
         return when (providerType) {
-            AgentProviderType.PRO_SUBSCRIPTION -> {
+            AgentProviderType.CLOUD_API -> {
                 CliRelayClient.chat(
                     context = this,
                     chatId = "glasses_${System.currentTimeMillis()}",
                     prompt = userPrompt,
                     messages = messages,
-                    modelOverride = ProSubscriptionAiPrefs.getRequestsModel(this),
+                    modelOverride = null,
                 ).getOrElse {
                     "Pro endpoint error: ${it.message ?: "unknown error"}"
                 }
@@ -3710,12 +3684,12 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
         CoroutineScope(Dispatchers.IO).launch {
             try {
                 val finalReply = when (providerType) {
-                    AgentProviderType.PRO_SUBSCRIPTION -> {
+                    AgentProviderType.CLOUD_API -> {
                         val visionResult = CliRelayClient.imageQuery(
                             context = this@MainActivity,
                             imagePath = imagePath,
                             prompt = resolvedPrompt.forRoute(ImageQuestionRoute.PRO_RELAY),
-                            modelOverride = ProSubscriptionAiPrefs.getQuestionsModel(this@MainActivity),
+                            modelOverride = null,
                         )
 
                         if (visionResult.isFailure) {
@@ -4478,8 +4452,8 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
                                     providerType = selectedProvider,
                                 )
                             } else {
-                                val modelOverride = if (selectedProvider == AgentProviderType.PRO_SUBSCRIPTION) {
-                                    ProSubscriptionAiPrefs.getQuestionsModel(this@MainActivity)
+                                val modelOverride = if (selectedProvider == AgentProviderType.CLOUD_API) {
+                                    null
                                 } else {
                                     null
                                 }
@@ -4564,7 +4538,7 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
         val selectedProvider = AutomationPrefs.getProviderType(this)
         val useChosenProviderMemoryAware =
             aiAssistantMode == AI_MODE_CUSTOM_AI_PROVIDER &&
-                (selectedProvider == AgentProviderType.PRO_SUBSCRIPTION ||
+                (selectedProvider == AgentProviderType.CLOUD_API ||
                     selectedProvider == AgentProviderType.LOCAL_AGENT)
         if (useChosenProviderMemoryAware) {
             triggerCliRelayVoiceQuery(
@@ -4844,7 +4818,7 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
         // Route ChosenProvider with memory-aware providers
         val useChosenProviderMemoryAware =
             isChosenProviderMode &&
-                (selectedProvider == AgentProviderType.PRO_SUBSCRIPTION ||
+                (selectedProvider == AgentProviderType.CLOUD_API ||
                     selectedProvider == AgentProviderType.LOCAL_AGENT)
         if (useChosenProviderMemoryAware) {
             triggerMemoryAwareImageQuery(imagePath, selectedProvider, resolvedPrompt)
@@ -4858,8 +4832,8 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
 
             CoroutineScope(Dispatchers.IO).launch {
                 try {
-                    val modelOverride = if (AutomationPrefs.getProviderType(this@MainActivity) == AgentProviderType.PRO_SUBSCRIPTION) {
-                        ProSubscriptionAiPrefs.getQuestionsModel(this@MainActivity)
+                    val modelOverride = if (AutomationPrefs.getProviderType(this@MainActivity) == AgentProviderType.CLOUD_API) {
+                        null
                     } else {
                         null
                     }

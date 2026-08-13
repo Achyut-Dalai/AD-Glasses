@@ -17,8 +17,6 @@ import com.achyut.adglasses.shared.ai.TokenUsage
 import com.achyut.adglasses.shared.ai.VoiceAiService
 import com.achyut.adglasses.shared.appearance.APPEARANCE_PREFERENCES_NAME
 import com.achyut.adglasses.shared.appearance.AppearanceSettingsStore
-import com.achyut.adglasses.shared.billing.ProSubscriptionAction
-import com.achyut.adglasses.shared.billing.ProSubscriptionUiState
 import com.achyut.adglasses.shared.ble.IosBleManager
 import com.achyut.adglasses.shared.ble.BleConnectionState
 import com.achyut.adglasses.shared.ble.BleNotificationListener
@@ -71,12 +69,6 @@ private const val DEFAULT_RELAY_URL = "https://cyanbridge.vercel.app"
 private const val IOS_TRANSFER_IP_TIMEOUT_MS = 15_000L
 private const val IOS_HOST_CREDENTIAL_TIMEOUT_MS = 10_000L
 private val IOS_TRANSFER_MODE_COMMAND = byteArrayOf(0x02, 0x01, 0x04)
-private val IOS_PRO_SUBSCRIPTION_STATE = ProSubscriptionUiState(
-    status = "iOS checkout is unavailable until account sign-in and verified billing are implemented. Pro is not active.",
-    selectedPlan = "free_trial",
-    webCheckoutAvailable = false,
-    isSubscribed = false,
-)
 
 /**
  * Initialize ADGlassesServices with iOS implementations and return the ComposeUIViewController.
@@ -142,18 +134,12 @@ private fun IosCyanBridgeApp(
                 appearanceSettings = appearanceStore.load()
             },
             useSharedDestinations = true,
-            proSubscriptionState = IOS_PRO_SUBSCRIPTION_STATE,
-            onProSubscriptionAction = ::iosProSubscriptionActionStatus,
+
+
         )
     }
 }
 
-private fun iosProSubscriptionActionStatus(action: ProSubscriptionAction): String = when (action) {
-    ProSubscriptionAction.SUBSCRIBE ->
-        "iOS billing is not available yet. No payment was started and no Pro entitlement was granted."
-    ProSubscriptionAction.DONATE ->
-        "iOS donations are not available yet. No payment was started."
-}
 
 // ── iOS local Wi-Fi manager using NEHotspotConfiguration ──
 
