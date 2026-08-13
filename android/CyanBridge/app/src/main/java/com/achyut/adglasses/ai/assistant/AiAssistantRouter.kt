@@ -8,7 +8,7 @@ import com.achyut.adglasses.shared.chat.ChatMessage
  *
  * For now, this is intentionally small: it exists to make provider routing explicit and testable.
  */
-class AiAssistantRouter(
+class CliCloudRouter(
     private val localAgentRouter: LocalAgentRouter = LocalAgentRouter(),
 ) {
 
