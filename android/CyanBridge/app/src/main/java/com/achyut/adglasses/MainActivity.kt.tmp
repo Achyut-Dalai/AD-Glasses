@@ -1,0 +1,118 @@
+    private fun isDashboardActionBlockedByExclusiveSession(action: SharedDashboardAction): Boolean {
+        if (
+            action is SharedDashboardAction.Navigate ||
+            action is SharedDashboardAction.SetAiWakeWordRoute ||
+            action is SharedDashboardAction.SubmitFirmwarePatchRequest ||
+            action is SharedDashboardAction.SelectImageThumbnailQuality ||
+            action == SharedDashboardAction.DismissFirmwarePatchRequest ||
+            action == SharedDashboardAction.MetaSendDiagnostics
+        ) {
+            return false
+        }
+        val activeSession = GlassesSessionCoordinator.currentSession() ?: return false
+        val isAllowed = if (activeSession == GlassesSession.WIFI_ADB_DEBUG) {
+            action == SharedDashboardAction.StopWifiAdbDebug
+        } else if (activeSession == GlassesSession.META_CAMERA) {
+            when (action) {
+                is SharedDashboardAction.Navigate -> true
+                is SharedDashboardAction.SetAiWakeWordRoute -> true
+                SharedDashboardAction.StartMeetingCapture,
+                SharedDashboardAction.StopMeetingCapture,
+                is SharedDashboardAction.RunNativePluginShortcut,
+                is SharedDashboardAction.SelectAssistantMode,
+                SharedDashboardAction.TestVoiceQuestion,
+                SharedDashboardAction.TestImageQuestion,
+                SharedDashboardAction.OpenExternalImageAutomationDiagnostics,
+                SharedDashboardAction.StartAgent,
+                SharedDashboardAction.StopAgent,
+                SharedDashboardAction.RunAgentDemo,
+                SharedDashboardAction.MetaStopSession,
+                SharedDashboardAction.MetaStopStream,
+                SharedDashboardAction.MetaStopDisplay,
+                SharedDashboardAction.MetaCapturePhoto,
+                SharedDashboardAction.MetaViewPhoto,
+                SharedDashboardAction.MetaStartSession,
+                SharedDashboardAction.MetaStartStream,
+                SharedDashboardAction.MetaStartDisplay,
+                SharedDashboardAction.MetaSendDiagnostics -> true
+                else -> false
+            }
+        } else {
+            when (action) {
+                is SharedDashboardAction.Navigate -> true
+                is SharedDashboardAction.SetAiWakeWordRoute -> true
+                SharedDashboardAction.StopSync -> activeSession == GlassesSession.MEDIA_SYNC
+                SharedDashboardAction.StopLivePreview -> activeSession == GlassesSession.LIVE_PREVIEW
+                SharedDashboardAction.CancelOta -> activeSession == GlassesSession.OTA
+                else -> false
+            }
+        }
+        if (isAllowed) return false
+
+        Toast.makeText(
+            this,
+            "${activeSession.label.replaceFirstChar { it.uppercase() }} is using the glasses connection.",
+            Toast.LENGTH_SHORT,
+        ).show()
+        return true
+    }
+
+    private fun handleDashboardAction(action: SharedDashboardAction) {
+        if (isDashboardActionBlockedByExclusiveSession(action)) return
+        when (action) {
+            is SharedDashboardAction.Navigate -> navigateToDestination(action.destination)
+            is SharedDashboardAction.SetAiWakeWordRoute -> {
+                AiWakeWordPreferences.setRoute(this, action.route)
+            }
+            SharedDashboardAction.Scan -> {
+                if (isMeizuMyvuSelected()) {
+                    startKtxActivity<DeviceBindActivity>()
+                } else if (isMetaRaybanSelected()) {
+                    ensureMetaDatReady { updateConnectionStatus(false) }
+                } else {
+                    binding.btnScan.performClick()
+                }
+            }
+            SharedDashboardAction.Reconnect -> {
+                if (isMeizuMyvuSelected()) {
+                    DeviceProfileStore.loadLastSelected(this)?.macAddress?.let {
+                        getOrCreateMeizuMyvuManager().connect(it, this)
+                    } ?: startKtxActivity<DeviceBindActivity>()
+                } else if (isMetaRaybanSelected()) {
+                    ensureMetaDatReady { updateConnectionStatus(false) }
+                } else {
+                    binding.btnConnect.performClick()
+                }
+            }
+            SharedDashboardAction.Disconnect -> {
+                if (isMeizuMyvuSelected()) {
+                    getOrCreateMeizuMyvuManager().disconnect()
+                } else if (isMetaRaybanSelected()) {
+                    metaRaybanManager?.stopSession()
+                    updateConnectionStatus(false)
+                } else {
+                    binding.btnDisconnect.performClick()
+                }
+            }
+            is SharedDashboardAction.SelectMeetingTimer -> {
+                val index = action.index.coerceIn(0, meetingTimerOptions.lastIndex)
+                binding.spinnerMeetingTimer.setSelection(index)
+                updateDashboardState { state ->
+                    state.copy(meeting = state.meeting.copy(timerIndex = index))
+                }
+            }
+            SharedDashboardAction.StartMeetingCapture -> binding.btnMeetingStart.performClick()
+            SharedDashboardAction.StopMeetingCapture -> binding.btnMeetingStop.performClick()
+            is SharedDashboardAction.RunNativePluginShortcut -> {
+                runNativePluginShortcut(action.action)
+            }
+            is SharedDashboardAction.SelectAssistantMode -> when (action.mode) {
+                GlassesAssistantMode.GEMINI -> binding.btnModeGemini.performClick()
+                GlassesAssistantMode.CHAT_GPT -> binding.btnModeChatgpt.performClick()
+                GlassesAssistantMode.PHONE_ASSISTANT -> selectPhoneDefaultAssistant()
+                GlassesAssistantMode.CUSTOM_AI_PROVIDER -> binding.btnModeTasker.performClick()
+            }
+            is SharedDashboardAction.SelectImageThumbnailQuality -> {
+                ImageQuestionPreferences.setThumbnailQuality(this, action.sdkValue)
+                refreshThumbnailQualityUi()
+            }

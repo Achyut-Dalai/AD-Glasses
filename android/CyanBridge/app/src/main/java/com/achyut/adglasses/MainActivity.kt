@@ -1,4 +1,5 @@
 package com.achyut.adglasses
+import com.achyut.adglasses.ai.AiWakeWordPreferences
 import com.achyut.adglasses.shared.devices.DeviceProfile
 
 import android.Manifest
@@ -82,8 +83,6 @@ import com.achyut.adglasses.plugins.livecaptioncloud.LiveCaptionCloudPreferences
 import com.achyut.adglasses.plugins.livecaptioncloud.LiveCaptionCloudService
 import com.achyut.adglasses.plugins.meetingsparknotes.MeetingSparkNotesPreferences
 import com.achyut.adglasses.plugins.meetingsparknotes.MeetingSparkNotesService
-import com.achyut.adglasses.plugins.walkingaid.WalkingAidPreferences
-import com.achyut.adglasses.plugins.walkingaid.WalkingAidService
 // import com.achyut.adglasses.ui.notes.NotesListActivity
 import com.achyut.adglasses.ui.recordings.RecordingsListActivity
 import com.achyut.adglasses.ui.BluetoothUtils
@@ -198,7 +197,7 @@ import com.achyut.adglasses.ai.vision.ImageQuestionPromptResolver
 import com.achyut.adglasses.ai.vision.ImageQuestionRoute
 import com.achyut.adglasses.ai.vision.ResolvedImageQuestionPrompt
 import com.achyut.adglasses.ai.image.DefaultAssistantResolver
-import com.achyut.adglasses.ai.image.ExternalGeminiAutomationDiagnosticsActivity
+import com.achyut.adglasses.ai.image.ExternalAssistantAutomationSetupActivity
 import com.achyut.adglasses.ai.image.ExternalImageAutomationIntents
 import com.achyut.adglasses.ai.image.ExternalImageAutomationStage
 import com.achyut.adglasses.ai.image.ExternalImageAutomationStore
@@ -553,8 +552,8 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
         binding.bottomNavigation.visibility = View.GONE
         setContent {
             val appearance by rememberAppearanceSettings(appearancePreferences)
-            AD GlassesTheme(appearance) {
-                AD GlassesApp(
+            AdGlassesTheme(appearance) {
+                AdGlassesApp(
                     dashboardState = dashboardState,
                     onDashboardAction = ::handleDashboardAction,
                     showSyncFlowPicker = showDownloadFlowPicker,
@@ -794,7 +793,6 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
         }
 
         val notificationFeatureEnabled =
-            WalkingAidPreferences.isEnabled(this) ||
                 AutoDiaryService.isEnabled(this) ||
                 VisualDiaryPreferences.isEnabled(this) ||
                 LocalAgentPlugin.isEnabled(this) ||
@@ -848,25 +846,21 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
 
     private fun ensureEnabledMetaCameraFeature() {
         if (!isMetaRaybanSelected() || !hasNotificationPermission(this)) return
-        if (!WalkingAidPreferences.isEnabled(this) && !VisualDiaryPreferences.isEnabled(this)) return
         if (enabledMetaCameraCheckActive) return
 
         enabledMetaCameraCheckActive = true
         ensureMetaCameraReady {
             enabledMetaCameraCheckActive = false
-            if (WalkingAidPreferences.isEnabled(this)) WalkingAidService.start(this)
             if (VisualDiaryPreferences.isEnabled(this)) VisualDiaryService.startIfEnabled(this)
         }
     }
 
     private fun startEnabledCameraFeatures() {
         if (isMetaRaybanSelected()) {
-            if (WalkingAidPreferences.isEnabled(this) || VisualDiaryPreferences.isEnabled(this)) {
                 ensureEnabledMetaCameraFeature()
             }
             return
         }
-        if (WalkingAidPreferences.isEnabled(this)) WalkingAidService.start(this)
         if (VisualDiaryPreferences.isEnabled(this)) VisualDiaryService.startIfEnabled(this)
     }
 
@@ -1172,6 +1166,7 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
             when (action) {
                 is SharedDashboardAction.Navigate -> true
                 is SharedDashboardAction.SetAiWakeWordRoute -> true
+                is SharedDashboardAction.SetAiWakeWordRoute -> true
                 SharedDashboardAction.StartMeetingCapture,
                 SharedDashboardAction.StopMeetingCapture,
                 is SharedDashboardAction.RunNativePluginShortcut,
@@ -1196,6 +1191,7 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
         } else {
             when (action) {
                 is SharedDashboardAction.Navigate -> true
+                is SharedDashboardAction.SetAiWakeWordRoute -> true
                 is SharedDashboardAction.SetAiWakeWordRoute -> true
                 SharedDashboardAction.StopSync -> activeSession == GlassesSession.MEDIA_SYNC
                 SharedDashboardAction.StopLivePreview -> activeSession == GlassesSession.LIVE_PREVIEW
@@ -1266,11 +1262,11 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
                 GlassesAssistantMode.GEMINI -> binding.btnModeGemini.performClick()
                 GlassesAssistantMode.CHAT_GPT -> binding.btnModeChatgpt.performClick()
                 GlassesAssistantMode.PHONE_ASSISTANT -> selectPhoneAssistant()
-                GlassesAssistantMode.CUSTOM_AI_PROVIDER -> binding.btnModeCustomAiProvider.performClick()
+                GlassesAssistantMode.CUSTOM_AI_PROVIDER -> binding.btnModeTasker.performClick()
             }
             is SharedDashboardAction.SelectImageThumbnailQuality -> {
-                ImageQuestionPreferences.setImageThumbnailQuality(this, action.sdkValue)
-                refreshImageThumbnailQualityUi()
+                ImageQuestionPreferences.setThumbnailQuality(this, action.sdkValue)
+                refreshImageThumbnailQuality()
             }
             SharedDashboardAction.TestVoiceQuestion -> binding.btnTestHijackVoice.performClick()
             SharedDashboardAction.TestImageQuestion -> binding.btnTestHijackImage.performClick()
@@ -1453,7 +1449,6 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
                     NativePluginShortcutButton(NativePluginShortcutAction.STOP, "Stop listening"),
                 ),
             )
-            NativePluginIds.WALKING_AID -> NativePluginShortcutUiState(
                 id = id,
                 title = "Walking Aid",
                 description = "Start or stop scene descriptions and obstacle warnings.",
@@ -1524,7 +1519,6 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
         if (isMeizuMyvuSelected() && pluginId in setOf(
                 NativePluginIds.AUTO_AUDIO,
                 NativePluginIds.VISUAL_DIARY,
-                NativePluginIds.WALKING_AID,
             )
         ) {
             Toast.makeText(
@@ -1566,9 +1560,6 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
                             ErrandBrainPreferences.setEnabled(this, true)
                             ErrandBrainService.start(this)
                         }
-                        NativePluginIds.WALKING_AID -> {
-                            WalkingAidPreferences.setEnabled(this, true)
-                            WalkingAidService.start(this)
                         }
                         NativePluginIds.AUTO_AUDIO -> AutoAudioCaptureService.start(this)
                     }
@@ -1578,7 +1569,6 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
         }
 
         if (isMetaRaybanSelected() &&
-            pluginId in setOf(NativePluginIds.WALKING_AID, NativePluginIds.VISUAL_DIARY)
         ) {
             val manager = getOrCreateMetaRaybanManager()
             if (!manager.isInitialized.value) manager.initialize()
@@ -1596,7 +1586,6 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
             return
         }
 
-        if (pluginId == NativePluginIds.WALKING_AID ||
             pluginId == NativePluginIds.LOCAL_AGENT ||
             pluginId == NativePluginIds.AUTO_DIARY ||
             pluginId == NativePluginIds.VISUAL_DIARY
@@ -1631,9 +1620,6 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
                         ErrandBrainPreferences.setEnabled(this, false)
                         ErrandBrainService.stop(this)
                     }
-                    NativePluginIds.WALKING_AID -> {
-                        WalkingAidPreferences.setEnabled(this, false)
-                        WalkingAidService.stop(this)
                     }
                     NativePluginIds.AUTO_AUDIO -> AutoAudioCaptureService.stop(this)
                 }
@@ -1690,7 +1676,7 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
             binding.btnPullOtaTest,
             binding.btnModeGemini,
             binding.btnModeChatgpt,
-            binding.btnModeCustomAiProvider,
+            binding.btnModeTasker,
             binding.btnTestHijackVoice,
             binding.btnTestHijackImage,
             binding.btnToggleAdvanced,
@@ -1830,7 +1816,7 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
                     Toast.makeText(this@MainActivity, "AI Mode: ChatGPT", Toast.LENGTH_SHORT).show()
                 }
 
-                binding.btnModeCustomAiProvider -> {
+                binding.btnModeTasker -> {
                     aiAssistantMode = AI_MODE_CUSTOM_AI_PROVIDER
                     refreshAiModeButtons()
 
@@ -3437,7 +3423,7 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
         binding.btnModeGemini.setTextColor(if (aiAssistantMode == AI_MODE_GEMINI) activeColor else inactiveColor)
         binding.btnModeChatgpt.setTextColor(if (aiAssistantMode == AI_MODE_CHATGPT) activeColor else inactiveColor)
         val chosenProviderSelected = aiAssistantMode == AI_MODE_CUSTOM_AI_PROVIDER
-        binding.btnModeCustomAiProvider.setTextColor(if (chosenProviderSelected) activeColor else inactiveColor)
+        binding.btnModeTasker.setTextColor(if (chosenProviderSelected) activeColor else inactiveColor)
         updateDashboardState { state ->
             state.copy(
                 assistantMode = when (aiAssistantMode) {
@@ -3451,7 +3437,7 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
         refreshAiQueryButtonsState()
     }
 
-    private fun selectPhoneAssistantAssistant() {
+    private fun selectPhoneAssistant() {
         aiAssistantMode = AI_MODE_PHONE_ASSISTANT
         refreshAiModeButtons()
         val assistantPackage = DefaultAssistantResolver.packageName(this)
