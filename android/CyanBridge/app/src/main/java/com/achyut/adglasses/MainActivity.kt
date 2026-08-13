@@ -794,7 +794,6 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
         }
 
         val notificationFeatureEnabled =
-            WalkingAidPreferences.isEnabled(this) ||
                 AutoDiaryService.isEnabled(this) ||
                 VisualDiaryPreferences.isEnabled(this) ||
                 LocalAgentPlugin.isEnabled(this) ||
@@ -848,25 +847,21 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
 
     private fun ensureEnabledMetaCameraFeature() {
         if (!isMetaRaybanSelected() || !hasNotificationPermission(this)) return
-        if (!WalkingAidPreferences.isEnabled(this) && !VisualDiaryPreferences.isEnabled(this)) return
         if (enabledMetaCameraCheckActive) return
 
         enabledMetaCameraCheckActive = true
         ensureMetaCameraReady {
             enabledMetaCameraCheckActive = false
-            if (WalkingAidPreferences.isEnabled(this)) WalkingAidService.start(this)
             if (VisualDiaryPreferences.isEnabled(this)) VisualDiaryService.startIfEnabled(this)
         }
     }
 
     private fun startEnabledCameraFeatures() {
         if (isMetaRaybanSelected()) {
-            if (WalkingAidPreferences.isEnabled(this) || VisualDiaryPreferences.isEnabled(this)) {
                 ensureEnabledMetaCameraFeature()
             }
             return
         }
-        if (WalkingAidPreferences.isEnabled(this)) WalkingAidService.start(this)
         if (VisualDiaryPreferences.isEnabled(this)) VisualDiaryService.startIfEnabled(this)
     }
 
@@ -1452,7 +1447,6 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
                     NativePluginShortcutButton(NativePluginShortcutAction.STOP, "Stop listening"),
                 ),
             )
-            NativePluginIds.WALKING_AID -> NativePluginShortcutUiState(
                 id = id,
                 title = "Walking Aid",
                 description = "Start or stop scene descriptions and obstacle warnings.",
@@ -1523,7 +1517,6 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
         if (isMeizuMyvuSelected() && pluginId in setOf(
                 NativePluginIds.AUTO_AUDIO,
                 NativePluginIds.VISUAL_DIARY,
-                NativePluginIds.WALKING_AID,
             )
         ) {
             Toast.makeText(
@@ -1565,9 +1558,6 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
                             ErrandBrainPreferences.setEnabled(this, true)
                             ErrandBrainService.start(this)
                         }
-                        NativePluginIds.WALKING_AID -> {
-                            WalkingAidPreferences.setEnabled(this, true)
-                            WalkingAidService.start(this)
                         }
                         NativePluginIds.AUTO_AUDIO -> AutoAudioCaptureService.start(this)
                     }
@@ -1577,7 +1567,6 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
         }
 
         if (isMetaRaybanSelected() &&
-            pluginId in setOf(NativePluginIds.WALKING_AID, NativePluginIds.VISUAL_DIARY)
         ) {
             val manager = getOrCreateMetaRaybanManager()
             if (!manager.isInitialized.value) manager.initialize()
@@ -1595,7 +1584,6 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
             return
         }
 
-        if (pluginId == NativePluginIds.WALKING_AID ||
             pluginId == NativePluginIds.LOCAL_AGENT ||
             pluginId == NativePluginIds.AUTO_DIARY ||
             pluginId == NativePluginIds.VISUAL_DIARY
@@ -1630,9 +1618,6 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
                         ErrandBrainPreferences.setEnabled(this, false)
                         ErrandBrainService.stop(this)
                     }
-                    NativePluginIds.WALKING_AID -> {
-                        WalkingAidPreferences.setEnabled(this, false)
-                        WalkingAidService.stop(this)
                     }
                     NativePluginIds.AUTO_AUDIO -> AutoAudioCaptureService.stop(this)
                 }
