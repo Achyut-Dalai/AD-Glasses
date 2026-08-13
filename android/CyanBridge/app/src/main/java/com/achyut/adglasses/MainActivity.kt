@@ -1,5 +1,4 @@
 package com.achyut.adglasses
-import com.achyut.adglasses.ai.AiWakeWordPreferences
 import com.achyut.adglasses.shared.devices.DeviceProfile
 
 import android.Manifest
@@ -63,7 +62,7 @@ import com.oudmon.ble.base.bluetooth.DeviceManager
 import com.oudmon.ble.base.communication.LargeDataHandler
 import com.oudmon.ble.base.communication.bigData.resp.GlassesDeviceNotifyListener
 import com.oudmon.ble.base.communication.bigData.resp.GlassesDeviceNotifyRsp
-import com.achyut.adglasses.databinding.ActivityMainBinding
+import com.achyut.adglasses.databinding.AcitivytMainBinding
 import com.achyut.adglasses.ui.DeviceBindActivity
 import com.achyut.adglasses.ui.ChatListActivity
 import com.achyut.adglasses.ui.ChatThreadActivity
@@ -79,10 +78,12 @@ import com.achyut.adglasses.plugins.errandbrain.ErrandBrainPreferences
 import com.achyut.adglasses.plugins.errandbrain.ErrandBrainService
 import com.achyut.adglasses.plugins.handsfreetranslator.HandsFreeTranslatorPreferences
 import com.achyut.adglasses.plugins.handsfreetranslator.HandsFreeTranslatorService
-import com.achyut.adglasses.plugins.livecaptioncloud.LiveCaptionCloudPreferences
-import com.achyut.adglasses.plugins.livecaptioncloud.LiveCaptionCloudService
+import com.achyut.adglasses.plugins.livecaptionrelay.LiveCaptionRelayPreferences
+import com.achyut.adglasses.plugins.livecaptionrelay.LiveCaptionRelayService
 import com.achyut.adglasses.plugins.meetingsparknotes.MeetingSparkNotesPreferences
 import com.achyut.adglasses.plugins.meetingsparknotes.MeetingSparkNotesService
+import com.achyut.adglasses.plugins.walkingaid.WalkingAidPreferences
+import com.achyut.adglasses.plugins.walkingaid.WalkingAidService
 // import com.achyut.adglasses.ui.notes.NotesListActivity
 import com.achyut.adglasses.ui.recordings.RecordingsListActivity
 import com.achyut.adglasses.ui.BluetoothUtils
@@ -182,8 +183,8 @@ import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
-import com.achyut.adglasses.agent.AiPrefs
-import com.achyut.adglasses.agent.ServerPrefs
+import com.achyut.adglasses.agent.ProSubscriptionAiPrefs
+import com.achyut.adglasses.agent.ProSubscriptionServerPrefs
 import com.achyut.adglasses.ai.router.AssistantIntent
 import com.achyut.adglasses.ai.router.AssistantRequest
 import com.achyut.adglasses.ai.router.AssistantRequestRouter
@@ -191,13 +192,13 @@ import com.achyut.adglasses.ai.router.AssistantRequestSource
 import com.achyut.adglasses.ai.router.AssistantSpeechPolicy
 import com.achyut.adglasses.ai.router.AiProviderPrefs
 import com.achyut.adglasses.ai.router.AiProviderType as RelayProviderType
-import com.achyut.adglasses.ai.router.CliCloudClient
+import com.achyut.adglasses.ai.router.CliRelayClient
 import com.achyut.adglasses.ai.vision.ImageQuestionPreferences
 import com.achyut.adglasses.ai.vision.ImageQuestionPromptResolver
 import com.achyut.adglasses.ai.vision.ImageQuestionRoute
 import com.achyut.adglasses.ai.vision.ResolvedImageQuestionPrompt
 import com.achyut.adglasses.ai.image.DefaultAssistantResolver
-import com.achyut.adglasses.ai.image.ExternalAssistantAutomationSetupActivity
+import com.achyut.adglasses.ai.image.ExternalGeminiAutomationDiagnosticsActivity
 import com.achyut.adglasses.ai.image.ExternalImageAutomationIntents
 import com.achyut.adglasses.ai.image.ExternalImageAutomationStage
 import com.achyut.adglasses.ai.image.ExternalImageAutomationStore
@@ -208,7 +209,7 @@ import com.achyut.adglasses.ai.image.ImageQuestionSourcePolicy
 import com.achyut.adglasses.ai.image.ImageThumbnailQuality
 import com.achyut.adglasses.ai.image.HighQualityFailureChoice
 import com.achyut.adglasses.shared.glasses.GlassesAssistantMode
-import com.achyut.adglasses.shared.glasses.GlassesDashboardAction as SharedDashboardAction
+import com.achyut.adglasses.shared.glasses.GlassesDashboardAction
 import com.achyut.adglasses.shared.glasses.GlassesDashboardUiState
 import com.achyut.adglasses.shared.glasses.FirmwarePatchRequestUiState
 import com.achyut.adglasses.shared.glasses.GlassesSyncFlow
@@ -235,8 +236,8 @@ import com.achyut.adglasses.localmodels.storage.LocalModelStorageRepository
 import com.achyut.adglasses.memoryvault.MemoryPolicyService
 import com.achyut.adglasses.ui.appearance.AppearancePreferences
 import com.achyut.adglasses.ui.appearance.rememberAppearanceSettings
-import com.achyut.adglasses.shared.ui.AdGlassesApp
-import com.achyut.adglasses.ui.theme.AdGlassesTheme
+import com.achyut.adglasses.shared.ui.AD GlassesApp
+import com.achyut.adglasses.ui.theme.AD GlassesTheme
 import android.content.ClipboardManager
 import com.meta.wearable.dat.core.Wearables
 import com.meta.wearable.dat.core.types.Permission
@@ -333,9 +334,9 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
         private var loggedLargeDataHandlerMethods = false
         private const val AI_MODE_GEMINI = "Gemini"
         private const val AI_MODE_CHATGPT = "ChatGPT"
-        private const val AI_MODE_PHONE_ASSISTANT = "PhoneAssistant"
+        private const val AI_MODE_PHONE_DEFAULT = "PhoneDefault"
         private const val AI_MODE_TASKER = "Tasker"
-        private const val AI_MODE_CUSTOM_AI_PROVIDER = "CustomAiProvider"
+        private const val AI_MODE_CHOSEN_PROVIDER = "ChosenProvider"
         private const val QUERY_MAX_AGENT_PERSONA_CHARS = 1200
         private const val QUERY_MAX_USER_FACTS_CHARS = 1400
         private const val QUERY_MAX_CONFIRMED_FACTS_CHARS = 1800
@@ -367,7 +368,7 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
     }
 
     // Keeps the existing Android control handlers alive while Compose owns the visible tree.
-    private lateinit var binding: ActivityMainBinding
+    private lateinit var binding: AcitivytMainBinding
     private var dashboardState by mutableStateOf(
         GlassesDashboardUiState(
             wifiAdbDebug = WifiAdbDebugUiState(isAvailable = BuildConfig.DEBUG),
@@ -540,7 +541,7 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        binding = ActivityMainBinding.inflate(layoutInflater)
+        binding = AcitivytMainBinding.inflate(layoutInflater)
         initView()
         refreshImageThumbnailQuality()
         setupMeetingCaptureUi()
@@ -552,8 +553,8 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
         binding.bottomNavigation.visibility = View.GONE
         setContent {
             val appearance by rememberAppearanceSettings(appearancePreferences)
-            AdGlassesTheme(appearance) {
-                AdGlassesApp(
+            AD GlassesTheme(appearance) {
+                AD GlassesApp(
                     dashboardState = dashboardState,
                     onDashboardAction = ::handleDashboardAction,
                     showSyncFlowPicker = showDownloadFlowPicker,
@@ -771,7 +772,7 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
                 AutoAudioCapturePrefs.isEnabled(this) ||
                 setOf(
                     NativePluginIds.MEETING_SPARK_NOTES,
-                    NativePluginIds.LIVE_CAPTION_CLOUD,
+                    NativePluginIds.LIVE_CAPTION_RELAY,
                     NativePluginIds.HANDS_FREE_TRANSLATOR,
                     NativePluginIds.ERRAND_BRAIN,
                     NativePluginIds.AUTO_AUDIO,
@@ -793,6 +794,7 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
         }
 
         val notificationFeatureEnabled =
+            WalkingAidPreferences.isEnabled(this) ||
                 AutoDiaryService.isEnabled(this) ||
                 VisualDiaryPreferences.isEnabled(this) ||
                 LocalAgentPlugin.isEnabled(this) ||
@@ -830,8 +832,8 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
         if (CommunityPluginPrefs.isNativePluginEnabled(this, NativePluginIds.MEETING_SPARK_NOTES)) {
             MeetingSparkNotesService.start(this)
         }
-        if (CommunityPluginPrefs.isNativePluginEnabled(this, NativePluginIds.LIVE_CAPTION_CLOUD)) {
-            LiveCaptionCloudService.start(this)
+        if (CommunityPluginPrefs.isNativePluginEnabled(this, NativePluginIds.LIVE_CAPTION_RELAY)) {
+            LiveCaptionRelayService.start(this)
         }
         if (CommunityPluginPrefs.isNativePluginEnabled(this, NativePluginIds.HANDS_FREE_TRANSLATOR)) {
             HandsFreeTranslatorService.start(this)
@@ -846,21 +848,25 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
 
     private fun ensureEnabledMetaCameraFeature() {
         if (!isMetaRaybanSelected() || !hasNotificationPermission(this)) return
+        if (!WalkingAidPreferences.isEnabled(this) && !VisualDiaryPreferences.isEnabled(this)) return
         if (enabledMetaCameraCheckActive) return
 
         enabledMetaCameraCheckActive = true
         ensureMetaCameraReady {
             enabledMetaCameraCheckActive = false
+            if (WalkingAidPreferences.isEnabled(this)) WalkingAidService.start(this)
             if (VisualDiaryPreferences.isEnabled(this)) VisualDiaryService.startIfEnabled(this)
         }
     }
 
     private fun startEnabledCameraFeatures() {
         if (isMetaRaybanSelected()) {
+            if (WalkingAidPreferences.isEnabled(this) || VisualDiaryPreferences.isEnabled(this)) {
                 ensureEnabledMetaCameraFeature()
             }
             return
         }
+        if (WalkingAidPreferences.isEnabled(this)) WalkingAidService.start(this)
         if (VisualDiaryPreferences.isEnabled(this)) VisualDiaryService.startIfEnabled(this)
     }
 
@@ -1148,54 +1154,48 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
         }
     }
 
-    private fun isDashboardActionBlockedByExclusiveSession(action: SharedDashboardAction): Boolean {
+    private fun isDashboardActionBlockedByExclusiveSession(action: GlassesDashboardAction): Boolean {
         if (
-            action is SharedDashboardAction.Navigate ||
-            action is SharedDashboardAction.SetAiWakeWordRoute ||
-            action is SharedDashboardAction.SubmitFirmwarePatchRequest ||
-            action is SharedDashboardAction.SelectImageThumbnailQuality ||
-            action == SharedDashboardAction.DismissFirmwarePatchRequest ||
-            action == SharedDashboardAction.MetaSendDiagnostics
+            action is GlassesDashboardAction.SubmitFirmwarePatchRequest ||
+            action is GlassesDashboardAction.SelectImageThumbnailQuality ||
+            action == GlassesDashboardAction.DismissFirmwarePatchRequest ||
+            action == GlassesDashboardAction.MetaSendDiagnostics
         ) {
             return false
         }
         val activeSession = GlassesSessionCoordinator.currentSession() ?: return false
         val isAllowed = if (activeSession == GlassesSession.WIFI_ADB_DEBUG) {
-            action == SharedDashboardAction.StopWifiAdbDebug
+            action == GlassesDashboardAction.StopWifiAdbDebug
         } else if (activeSession == GlassesSession.META_CAMERA) {
             when (action) {
-                is SharedDashboardAction.Navigate -> true
-                is SharedDashboardAction.SetAiWakeWordRoute -> true
-                is SharedDashboardAction.SetAiWakeWordRoute -> true
-                SharedDashboardAction.StartMeetingCapture,
-                SharedDashboardAction.StopMeetingCapture,
-                is SharedDashboardAction.RunNativePluginShortcut,
-                is SharedDashboardAction.SelectAssistantMode,
-                SharedDashboardAction.TestVoiceQuestion,
-                SharedDashboardAction.TestImageQuestion,
-                SharedDashboardAction.OpenExternalImageAutomationDiagnostics,
-                SharedDashboardAction.StartAgent,
-                SharedDashboardAction.StopAgent,
-                SharedDashboardAction.RunAgentDemo,
-                SharedDashboardAction.MetaStopSession,
-                SharedDashboardAction.MetaStopStream,
-                SharedDashboardAction.MetaStopDisplay,
-                SharedDashboardAction.MetaCapturePhoto,
-                SharedDashboardAction.MetaViewPhoto,
-                SharedDashboardAction.MetaStartSession,
-                SharedDashboardAction.MetaStartStream,
-                SharedDashboardAction.MetaStartDisplay,
-                SharedDashboardAction.MetaSendDiagnostics -> true
+                is GlassesDashboardAction.Navigate,
+                GlassesDashboardAction.StartMeetingCapture,
+                GlassesDashboardAction.StopMeetingCapture,
+                is GlassesDashboardAction.RunNativePluginShortcut,
+                is GlassesDashboardAction.SelectAssistantMode,
+                GlassesDashboardAction.TestVoiceQuestion,
+                GlassesDashboardAction.TestImageQuestion,
+                GlassesDashboardAction.OpenExternalImageAutomationDiagnostics,
+                GlassesDashboardAction.StartAgent,
+                GlassesDashboardAction.StopAgent,
+                GlassesDashboardAction.RunAgentDemo,
+                GlassesDashboardAction.MetaStopSession,
+                GlassesDashboardAction.MetaStopStream,
+                GlassesDashboardAction.MetaStopDisplay,
+                GlassesDashboardAction.MetaCapturePhoto,
+                GlassesDashboardAction.MetaViewPhoto,
+                GlassesDashboardAction.MetaStartSession,
+                GlassesDashboardAction.MetaStartStream,
+                GlassesDashboardAction.MetaStartDisplay,
+                GlassesDashboardAction.MetaSendDiagnostics -> true
                 else -> false
             }
         } else {
             when (action) {
-                is SharedDashboardAction.Navigate -> true
-                is SharedDashboardAction.SetAiWakeWordRoute -> true
-                is SharedDashboardAction.SetAiWakeWordRoute -> true
-                SharedDashboardAction.StopSync -> activeSession == GlassesSession.MEDIA_SYNC
-                SharedDashboardAction.StopLivePreview -> activeSession == GlassesSession.LIVE_PREVIEW
-                SharedDashboardAction.CancelOta -> activeSession == GlassesSession.OTA
+                is GlassesDashboardAction.Navigate -> true
+                GlassesDashboardAction.StopSync -> activeSession == GlassesSession.MEDIA_SYNC
+                GlassesDashboardAction.StopLivePreview -> activeSession == GlassesSession.LIVE_PREVIEW
+                GlassesDashboardAction.CancelOta -> activeSession == GlassesSession.OTA
                 else -> false
             }
         }
@@ -1209,14 +1209,11 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
         return true
     }
 
-    private fun handleDashboardAction(action: SharedDashboardAction) {
+    private fun handleDashboardAction(action: GlassesDashboardAction) {
         if (isDashboardActionBlockedByExclusiveSession(action)) return
         when (action) {
-            is SharedDashboardAction.Navigate -> navigateToDestination(action.destination)
-            is SharedDashboardAction.SetAiWakeWordRoute -> {
-                AiWakeWordPreferences.setRoute(this, action.route)
-            }
-            SharedDashboardAction.Scan -> {
+            is GlassesDashboardAction.Navigate -> navigateToDestination(action.destination)
+            GlassesDashboardAction.Scan -> {
                 if (isMeizuMyvuSelected()) {
                     startKtxActivity<DeviceBindActivity>()
                 } else if (isMetaRaybanSelected()) {
@@ -1225,7 +1222,7 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
                     binding.btnScan.performClick()
                 }
             }
-            SharedDashboardAction.Reconnect -> {
+            GlassesDashboardAction.Reconnect -> {
                 if (isMeizuMyvuSelected()) {
                     DeviceProfileStore.loadLastSelected(this)?.macAddress?.let {
                         getOrCreateMeizuMyvuManager().connect(it, this)
@@ -1236,7 +1233,7 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
                     binding.btnConnect.performClick()
                 }
             }
-            SharedDashboardAction.Disconnect -> {
+            GlassesDashboardAction.Disconnect -> {
                 if (isMeizuMyvuSelected()) {
                     getOrCreateMeizuMyvuManager().disconnect()
                 } else if (isMetaRaybanSelected()) {
@@ -1246,61 +1243,67 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
                     binding.btnDisconnect.performClick()
                 }
             }
-            is SharedDashboardAction.SelectMeetingTimer -> {
+            is GlassesDashboardAction.SelectMeetingTimer -> {
                 val index = action.index.coerceIn(0, meetingTimerOptions.lastIndex)
                 binding.spinnerMeetingTimer.setSelection(index)
                 updateDashboardState { state ->
                     state.copy(meeting = state.meeting.copy(timerIndex = index))
                 }
             }
-            SharedDashboardAction.StartMeetingCapture -> binding.btnMeetingStart.performClick()
-            SharedDashboardAction.StopMeetingCapture -> binding.btnMeetingStop.performClick()
-            is SharedDashboardAction.RunNativePluginShortcut -> {
+            GlassesDashboardAction.StartMeetingCapture -> binding.btnMeetingStart.performClick()
+            GlassesDashboardAction.StopMeetingCapture -> binding.btnMeetingStop.performClick()
+            is GlassesDashboardAction.RunNativePluginShortcut -> {
                 runNativePluginShortcut(action.action)
             }
-            is SharedDashboardAction.SelectAssistantMode -> when (action.mode) {
+            is GlassesDashboardAction.SelectAssistantMode -> when (action.mode) {
                 GlassesAssistantMode.GEMINI -> binding.btnModeGemini.performClick()
                 GlassesAssistantMode.CHAT_GPT -> binding.btnModeChatgpt.performClick()
-                GlassesAssistantMode.PHONE_ASSISTANT -> selectPhoneAssistant()
-                GlassesAssistantMode.CUSTOM_AI_PROVIDER -> binding.btnModeTasker.performClick()
+                GlassesAssistantMode.PHONE_DEFAULT -> selectPhoneDefaultAssistant()
+                GlassesAssistantMode.CHOSEN_PROVIDER -> binding.btnModeTasker.performClick()
             }
-            is SharedDashboardAction.SelectImageThumbnailQuality -> {
-                ImageQuestionPreferences.setThumbnailQuality(this, action.sdkValue)
-                refreshImageThumbnailQuality()
+            is GlassesDashboardAction.SelectImageThumbnailQuality -> {
+                val quality = ImageQuestionPreferences.setThumbnailQuality(this, action.sdkValue)
+                pendingImageThumbnailQuality = quality
+                updateDashboardState { state ->
+                    state.copy(
+                        imageThumbnailQualitySdkValue = quality.sdkValue,
+                        imageThumbnailQualityLabel = quality.label,
+                    )
+                }
             }
-            SharedDashboardAction.TestVoiceQuestion -> binding.btnTestHijackVoice.performClick()
-            SharedDashboardAction.TestImageQuestion -> binding.btnTestHijackImage.performClick()
-            SharedDashboardAction.OpenExternalImageAutomationDiagnostics -> {
+            GlassesDashboardAction.TestVoiceQuestion -> binding.btnTestHijackVoice.performClick()
+            GlassesDashboardAction.TestImageQuestion -> binding.btnTestHijackImage.performClick()
+            GlassesDashboardAction.OpenExternalImageAutomationDiagnostics -> {
                 startActivity(
-                    Intent(this, ExternalAssistantAutomationSetupActivity::class.java)
+                    Intent(this, ExternalGeminiAutomationDiagnosticsActivity::class.java)
                         .putExtra("assistant", resolveEffectiveAiAssistantMode()),
                 )
             }
-            SharedDashboardAction.CapturePhoto -> binding.btnCamera.performClick()
-            SharedDashboardAction.ToggleVideo -> binding.btnVideo.performClick()
-            SharedDashboardAction.StartAudioRecording -> binding.btnRecord.performClick()
-            SharedDashboardAction.RequestMediaCount -> binding.btnMediaCount.performClick()
-            SharedDashboardAction.StartSync -> binding.btnDataDownload.performClick()
-            SharedDashboardAction.StopSync -> binding.btnTransferStop.performClick()
-            SharedDashboardAction.ToggleAdvanced -> {
+            GlassesDashboardAction.CapturePhoto -> binding.btnCamera.performClick()
+            GlassesDashboardAction.ToggleVideo -> binding.btnVideo.performClick()
+            GlassesDashboardAction.StartAudioRecording -> binding.btnRecord.performClick()
+            GlassesDashboardAction.RequestMediaCount -> binding.btnMediaCount.performClick()
+            GlassesDashboardAction.StartSync -> binding.btnDataDownload.performClick()
+            GlassesDashboardAction.StopSync -> binding.btnTransferStop.performClick()
+            GlassesDashboardAction.ToggleAdvanced -> {
                 binding.btnToggleAdvanced.performClick()
                 updateDashboardState { state ->
                     state.copy(advancedExpanded = !state.advancedExpanded)
                 }
             }
-            SharedDashboardAction.StartAgent -> binding.btnAgentStart.performClick()
-            SharedDashboardAction.StopAgent -> binding.btnAgentStop.performClick()
-            SharedDashboardAction.RunAgentDemo -> binding.btnAgentDemo.performClick()
-            SharedDashboardAction.RequestBattery -> binding.btnBattery.performClick()
-            SharedDashboardAction.RequestVersion -> binding.btnVersion.performClick()
-            SharedDashboardAction.SyncTime -> binding.btnSetTime.performClick()
-            SharedDashboardAction.RequestVolume -> binding.btnVolume.performClick()
-            SharedDashboardAction.AddDeviceListener -> binding.btnAddListener.performClick()
-            SharedDashboardAction.StartClassicBluetoothScan -> binding.btnBt.performClick()
-            SharedDashboardAction.DumpOtaInfo -> binding.btnOtaInfo.performClick()
-            SharedDashboardAction.TestPullOta -> binding.btnPullOtaTest.performClick()
-            is SharedDashboardAction.RequestOtaFirmware -> requestOtaFirmware(action.source)
-            is SharedDashboardAction.SubmitFirmwarePatchRequest -> {
+            GlassesDashboardAction.StartAgent -> binding.btnAgentStart.performClick()
+            GlassesDashboardAction.StopAgent -> binding.btnAgentStop.performClick()
+            GlassesDashboardAction.RunAgentDemo -> binding.btnAgentDemo.performClick()
+            GlassesDashboardAction.RequestBattery -> binding.btnBattery.performClick()
+            GlassesDashboardAction.RequestVersion -> binding.btnVersion.performClick()
+            GlassesDashboardAction.SyncTime -> binding.btnSetTime.performClick()
+            GlassesDashboardAction.RequestVolume -> binding.btnVolume.performClick()
+            GlassesDashboardAction.AddDeviceListener -> binding.btnAddListener.performClick()
+            GlassesDashboardAction.StartClassicBluetoothScan -> binding.btnBt.performClick()
+            GlassesDashboardAction.DumpOtaInfo -> binding.btnOtaInfo.performClick()
+            GlassesDashboardAction.TestPullOta -> binding.btnPullOtaTest.performClick()
+            is GlassesDashboardAction.RequestOtaFirmware -> requestOtaFirmware(action.source)
+            is GlassesDashboardAction.SubmitFirmwarePatchRequest -> {
                 val request = dashboardState.firmwarePatchRequest ?: return
                 if (request.isSubmitting) return
                 dashboardState = dashboardState.copy(
@@ -1311,12 +1314,12 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
                 )
                 submitFirmwarePatchRequest(request, action.contactEmail)
             }
-            SharedDashboardAction.DismissFirmwarePatchRequest -> {
+            GlassesDashboardAction.DismissFirmwarePatchRequest -> {
                 if (dashboardState.firmwarePatchRequest?.isSubmitting != true) {
                     dashboardState = dashboardState.copy(firmwarePatchRequest = null)
                 }
             }
-            SharedDashboardAction.CancelOta -> {
+            GlassesDashboardAction.CancelOta -> {
                 val managerWasActive = otaManager.isActive
                 otaPreparationJob?.cancel()
                 otaPreparationJob = null
@@ -1329,41 +1332,41 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
                     resetOtaDashboardToIdle()
                 }
             }
-            SharedDashboardAction.StartLivePreview -> startLivePreview()
-            SharedDashboardAction.StopLivePreview -> {
+            GlassesDashboardAction.StartLivePreview -> startLivePreview()
+            GlassesDashboardAction.StopLivePreview -> {
                 Log.i("LivePreview", "BUTTON TAP: Stop Live Preview")
                 stopLivePreview()
             }
-            SharedDashboardAction.RequestStartWifiAdbDebug -> {
+            GlassesDashboardAction.RequestStartWifiAdbDebug -> {
                 if (BuildConfig.DEBUG) startWifiAdbDebug()
             }
-            SharedDashboardAction.StopWifiAdbDebug -> {
+            GlassesDashboardAction.StopWifiAdbDebug -> {
                 if (BuildConfig.DEBUG) wifiAdbDebugController.stop()
             }
-            SharedDashboardAction.MetaRegister -> binding.btnMetaRegister.performClick()
-            SharedDashboardAction.MetaUnregister -> binding.btnMetaUnregister.performClick()
-            SharedDashboardAction.MetaStartSession -> binding.btnMetaSessionStart.performClick()
-            SharedDashboardAction.MetaStopSession -> binding.btnMetaSessionStop.performClick()
-            SharedDashboardAction.MetaStartStream -> binding.btnMetaStreamStart.performClick()
-            SharedDashboardAction.MetaStopStream -> binding.btnMetaStreamStop.performClick()
-            SharedDashboardAction.MetaCapturePhoto -> binding.btnMetaCapturePhoto.performClick()
-            SharedDashboardAction.MetaViewPhoto -> binding.btnMetaViewPhoto.performClick()
-            SharedDashboardAction.MetaStartDisplay -> binding.btnMetaDisplayStart.performClick()
-            SharedDashboardAction.MetaStopDisplay -> binding.btnMetaDisplayStop.performClick()
-            SharedDashboardAction.MetaSendDiagnostics -> showMetaDiagnostics()
-            SharedDashboardAction.MeizuConnect -> {
+            GlassesDashboardAction.MetaRegister -> binding.btnMetaRegister.performClick()
+            GlassesDashboardAction.MetaUnregister -> binding.btnMetaUnregister.performClick()
+            GlassesDashboardAction.MetaStartSession -> binding.btnMetaSessionStart.performClick()
+            GlassesDashboardAction.MetaStopSession -> binding.btnMetaSessionStop.performClick()
+            GlassesDashboardAction.MetaStartStream -> binding.btnMetaStreamStart.performClick()
+            GlassesDashboardAction.MetaStopStream -> binding.btnMetaStreamStop.performClick()
+            GlassesDashboardAction.MetaCapturePhoto -> binding.btnMetaCapturePhoto.performClick()
+            GlassesDashboardAction.MetaViewPhoto -> binding.btnMetaViewPhoto.performClick()
+            GlassesDashboardAction.MetaStartDisplay -> binding.btnMetaDisplayStart.performClick()
+            GlassesDashboardAction.MetaStopDisplay -> binding.btnMetaDisplayStop.performClick()
+            GlassesDashboardAction.MetaSendDiagnostics -> showMetaDiagnostics()
+            GlassesDashboardAction.MeizuConnect -> {
                 DeviceProfileStore.loadLastSelected(this)?.macAddress?.let {
                     getOrCreateMeizuMyvuManager().connect(it, this)
                 } ?: Toast.makeText(this, "Select MYVU glasses from Scan first", Toast.LENGTH_LONG).show()
             }
-            SharedDashboardAction.MeizuDisconnect -> getOrCreateMeizuMyvuManager().disconnect()
-            SharedDashboardAction.MeizuSendTestNotification -> getOrCreateMeizuMyvuManager().sendTestNotification()
-            SharedDashboardAction.MeizuShowTestTeleprompter -> getOrCreateMeizuMyvuManager().showTeleprompter(
+            GlassesDashboardAction.MeizuDisconnect -> getOrCreateMeizuMyvuManager().disconnect()
+            GlassesDashboardAction.MeizuSendTestNotification -> getOrCreateMeizuMyvuManager().sendTestNotification()
+            GlassesDashboardAction.MeizuShowTestTeleprompter -> getOrCreateMeizuMyvuManager().showTeleprompter(
                 "AD Glasses",
                 "MYVU display connected\n\nNative voice plugins can now use the MYVU headset microphone and display bridge.",
             )
-            SharedDashboardAction.MeizuSyncClock -> getOrCreateMeizuMyvuManager().syncClock()
-            SharedDashboardAction.MeizuSetComfortBrightness -> getOrCreateMeizuMyvuManager().setBrightness(70)
+            GlassesDashboardAction.MeizuSyncClock -> getOrCreateMeizuMyvuManager().syncClock()
+            GlassesDashboardAction.MeizuSetComfortBrightness -> getOrCreateMeizuMyvuManager().setBrightness(70)
         }
     }
 
@@ -1419,7 +1422,7 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
                     NativePluginShortcutButton(NativePluginShortcutAction.SUMMARIZE, "Summarize"),
                 ),
             )
-            NativePluginIds.LIVE_CAPTION_CLOUD -> NativePluginShortcutUiState(
+            NativePluginIds.LIVE_CAPTION_RELAY -> NativePluginShortcutUiState(
                 id = id,
                 title = "Live Caption Relay",
                 description = "Caption live speech from the phone or glasses microphone.",
@@ -1449,6 +1452,7 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
                     NativePluginShortcutButton(NativePluginShortcutAction.STOP, "Stop listening"),
                 ),
             )
+            NativePluginIds.WALKING_AID -> NativePluginShortcutUiState(
                 id = id,
                 title = "Walking Aid",
                 description = "Start or stop scene descriptions and obstacle warnings.",
@@ -1519,6 +1523,7 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
         if (isMeizuMyvuSelected() && pluginId in setOf(
                 NativePluginIds.AUTO_AUDIO,
                 NativePluginIds.VISUAL_DIARY,
+                NativePluginIds.WALKING_AID,
             )
         ) {
             Toast.makeText(
@@ -1548,9 +1553,9 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
                             MeetingSparkNotesPreferences.setEnabled(this, true)
                             MeetingSparkNotesService.start(this)
                         }
-                        NativePluginIds.LIVE_CAPTION_CLOUD -> {
-                            LiveCaptionCloudPreferences.setEnabled(this, true)
-                            LiveCaptionCloudService.start(this)
+                        NativePluginIds.LIVE_CAPTION_RELAY -> {
+                            LiveCaptionRelayPreferences.setEnabled(this, true)
+                            LiveCaptionRelayService.start(this)
                         }
                         NativePluginIds.HANDS_FREE_TRANSLATOR -> {
                             HandsFreeTranslatorPreferences.setEnabled(this, true)
@@ -1560,6 +1565,9 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
                             ErrandBrainPreferences.setEnabled(this, true)
                             ErrandBrainService.start(this)
                         }
+                        NativePluginIds.WALKING_AID -> {
+                            WalkingAidPreferences.setEnabled(this, true)
+                            WalkingAidService.start(this)
                         }
                         NativePluginIds.AUTO_AUDIO -> AutoAudioCaptureService.start(this)
                     }
@@ -1569,6 +1577,7 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
         }
 
         if (isMetaRaybanSelected() &&
+            pluginId in setOf(NativePluginIds.WALKING_AID, NativePluginIds.VISUAL_DIARY)
         ) {
             val manager = getOrCreateMetaRaybanManager()
             if (!manager.isInitialized.value) manager.initialize()
@@ -1586,6 +1595,7 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
             return
         }
 
+        if (pluginId == NativePluginIds.WALKING_AID ||
             pluginId == NativePluginIds.LOCAL_AGENT ||
             pluginId == NativePluginIds.AUTO_DIARY ||
             pluginId == NativePluginIds.VISUAL_DIARY
@@ -1608,9 +1618,9 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
                         MeetingSparkNotesPreferences.setEnabled(this, false)
                         MeetingSparkNotesService.stop(this)
                     }
-                    NativePluginIds.LIVE_CAPTION_CLOUD -> {
-                        LiveCaptionCloudPreferences.setEnabled(this, false)
-                        LiveCaptionCloudService.stop(this)
+                    NativePluginIds.LIVE_CAPTION_RELAY -> {
+                        LiveCaptionRelayPreferences.setEnabled(this, false)
+                        LiveCaptionRelayService.stop(this)
                     }
                     NativePluginIds.HANDS_FREE_TRANSLATOR -> {
                         HandsFreeTranslatorPreferences.setEnabled(this, false)
@@ -1620,6 +1630,9 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
                         ErrandBrainPreferences.setEnabled(this, false)
                         ErrandBrainService.stop(this)
                     }
+                    NativePluginIds.WALKING_AID -> {
+                        WalkingAidPreferences.setEnabled(this, false)
+                        WalkingAidService.stop(this)
                     }
                     NativePluginIds.AUTO_AUDIO -> AutoAudioCaptureService.stop(this)
                 }
@@ -1817,12 +1830,12 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
                 }
 
                 binding.btnModeTasker -> {
-                    aiAssistantMode = AI_MODE_CUSTOM_AI_PROVIDER
+                    aiAssistantMode = AI_MODE_CHOSEN_PROVIDER
                     refreshAiModeButtons()
 
                     val msg = when (AutomationPrefs.getProviderType(this@MainActivity)) {
                         AgentProviderType.TASKER -> "AI Mode: Chosen Provider (Tasker Broadcast)"
-                        AgentProviderType.CLOUD_API -> "AI Mode: Chosen Provider (Pro Subscription)"
+                        AgentProviderType.PRO_SUBSCRIPTION -> "AI Mode: Chosen Provider (Pro Subscription)"
                         AgentProviderType.LOCAL_AGENT -> "AI Mode: Chosen Provider (Local Agent)"
                     }
                     Toast.makeText(this@MainActivity, msg, Toast.LENGTH_SHORT).show()
@@ -2667,7 +2680,7 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
                             bleHardwareVersion = deviceInfo.hardwareVersion.orEmpty().ifBlank { "unknown" },
                             bleFirmwareVersion = deviceInfo.firmwareVersion.orEmpty().ifBlank { "unknown" },
                             relayMessage = result.message,
-                            suggestedContactEmail = ServerPrefs.getAccountEmail(this@MainActivity),
+                            suggestedContactEmail = ProSubscriptionServerPrefs.getAccountEmail(this@MainActivity),
                         ),
                     )
                 }
@@ -3288,29 +3301,29 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
     }
 
     private fun resolveEffectiveAiAssistantMode(): String {
-        if (aiAssistantMode != AI_MODE_CUSTOM_AI_PROVIDER) {
+        if (aiAssistantMode != AI_MODE_CHOSEN_PROVIDER) {
             return aiAssistantMode
         }
         return when (AutomationPrefs.getProviderType(this)) {
             AgentProviderType.TASKER -> AI_MODE_TASKER
-            AgentProviderType.CLOUD_API -> AI_MODE_CUSTOM_AI_PROVIDER
-            AgentProviderType.LOCAL_AGENT -> AI_MODE_CUSTOM_AI_PROVIDER
+            AgentProviderType.PRO_SUBSCRIPTION -> AI_MODE_CHOSEN_PROVIDER
+            AgentProviderType.LOCAL_AGENT -> AI_MODE_CHOSEN_PROVIDER
         }
     }
 
-    private fun isCustomAiProviderMode(): Boolean = aiAssistantMode == AI_MODE_CUSTOM_AI_PROVIDER
+    private fun isChosenProviderMode(): Boolean = aiAssistantMode == AI_MODE_CHOSEN_PROVIDER
 
-    private fun isCustomAiProviderCloudEndpoint(): Boolean {
-        if (!isCustomAiProviderMode()) return false
+    private fun isChosenProviderCloudEndpoint(): Boolean {
+        if (!isChosenProviderMode()) return false
         return when (AutomationPrefs.getProviderType(this)) {
-            AgentProviderType.CLOUD_API -> true
+            AgentProviderType.PRO_SUBSCRIPTION -> true
             AgentProviderType.LOCAL_AGENT,
             AgentProviderType.TASKER -> false
         }
     }
 
     private fun imageQueryUnsupportedReasonForCurrentSelection(): String? {
-        if (!isCustomAiProviderMode()) return null
+        if (!isChosenProviderMode()) return null
         if (AutomationPrefs.getProviderType(this) != AgentProviderType.LOCAL_AGENT) return null
 
         val selected = LocalModelStorageRepository.resolveSelectedModel(this)
@@ -3330,7 +3343,7 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
     private fun isGeminiOrChatGptModeSelected(): Boolean {
         return aiAssistantMode == AI_MODE_GEMINI ||
             aiAssistantMode == AI_MODE_CHATGPT ||
-            aiAssistantMode == AI_MODE_PHONE_ASSISTANT
+            aiAssistantMode == AI_MODE_PHONE_DEFAULT
     }
 
     private fun selectedImageAutomationTarget(): ImageAutomationTarget {
@@ -3341,7 +3354,7 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
     }
 
     private fun externalImageAutomationUnsupportedReason(): String? {
-        if (!isGeminiOrChatGptModeSelected() || AiProviderPrefs.getProvider(this) == RelayProviderType.CLOUD_API) {
+        if (!isGeminiOrChatGptModeSelected() || AiProviderPrefs.getProvider(this) == RelayProviderType.CLI_RELAY) {
             return null
         }
 
@@ -3356,7 +3369,7 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
 
     private fun requiresTaskerAutomationForImageQuestions(): Boolean {
         if (!isGeminiOrChatGptModeSelected()) return false
-        return AiProviderPrefs.getProvider(this) != RelayProviderType.CLOUD_API &&
+        return AiProviderPrefs.getProvider(this) != RelayProviderType.CLI_RELAY &&
             selectedImageAutomationTarget().imageAutomationSupported
     }
 
@@ -3422,14 +3435,14 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
 
         binding.btnModeGemini.setTextColor(if (aiAssistantMode == AI_MODE_GEMINI) activeColor else inactiveColor)
         binding.btnModeChatgpt.setTextColor(if (aiAssistantMode == AI_MODE_CHATGPT) activeColor else inactiveColor)
-        val chosenProviderSelected = aiAssistantMode == AI_MODE_CUSTOM_AI_PROVIDER
+        val chosenProviderSelected = aiAssistantMode == AI_MODE_CHOSEN_PROVIDER
         binding.btnModeTasker.setTextColor(if (chosenProviderSelected) activeColor else inactiveColor)
         updateDashboardState { state ->
             state.copy(
                 assistantMode = when (aiAssistantMode) {
                     AI_MODE_CHATGPT -> GlassesAssistantMode.CHAT_GPT
-                    AI_MODE_PHONE_ASSISTANT -> GlassesAssistantMode.PHONE_ASSISTANT
-                    AI_MODE_CUSTOM_AI_PROVIDER -> GlassesAssistantMode.CUSTOM_AI_PROVIDER
+                    AI_MODE_PHONE_DEFAULT -> GlassesAssistantMode.PHONE_DEFAULT
+                    AI_MODE_CHOSEN_PROVIDER -> GlassesAssistantMode.CHOSEN_PROVIDER
                     else -> GlassesAssistantMode.GEMINI
                 },
             )
@@ -3437,8 +3450,8 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
         refreshAiQueryButtonsState()
     }
 
-    private fun selectPhoneAssistant() {
-        aiAssistantMode = AI_MODE_PHONE_ASSISTANT
+    private fun selectPhoneDefaultAssistant() {
+        aiAssistantMode = AI_MODE_PHONE_DEFAULT
         refreshAiModeButtons()
         val assistantPackage = DefaultAssistantResolver.packageName(this)
         val result = when (selectedImageAutomationTarget()) {
@@ -3607,7 +3620,7 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
         )
     }
 
-    private suspend fun runMemoryAwareCustomAiProviderQuery(
+    private suspend fun runMemoryAwareChosenProviderQuery(
         userPrompt: String,
         providerType: AgentProviderType,
         imagePaths: List<String> = emptyList(),
@@ -3622,13 +3635,13 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
         )
 
         return when (providerType) {
-            AgentProviderType.CLOUD_API -> {
-                CliCloudClient.chat(
+            AgentProviderType.PRO_SUBSCRIPTION -> {
+                CliRelayClient.chat(
                     context = this,
                     chatId = "glasses_${System.currentTimeMillis()}",
                     prompt = userPrompt,
                     messages = messages,
-                    modelOverride = AiPrefs.getRequestsModel(this),
+                    modelOverride = ProSubscriptionAiPrefs.getRequestsModel(this),
                 ).getOrElse {
                     "Pro endpoint error: ${it.message ?: "unknown error"}"
                 }
@@ -3636,7 +3649,7 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
 
             AgentProviderType.LOCAL_AGENT ->
                 runCatching {
-                    val modelIssue = validateSelectedGemmaForCustomAiProvider(imageRequested = imagePaths.isNotEmpty())
+                    val modelIssue = validateSelectedGemmaForChosenProvider(imageRequested = imagePaths.isNotEmpty())
                     if (modelIssue != null) {
                         return@runCatching modelIssue
                     }
@@ -3651,7 +3664,7 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
                 }
 
             AgentProviderType.TASKER -> {
-                CliCloudClient.chat(
+                CliRelayClient.chat(
                     context = this,
                     chatId = "glasses_${System.currentTimeMillis()}",
                     prompt = userPrompt,
@@ -3661,7 +3674,7 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
         }.trim()
     }
 
-    private fun validateSelectedGemmaForCustomAiProvider(imageRequested: Boolean): String? {
+    private fun validateSelectedGemmaForChosenProvider(imageRequested: Boolean): String? {
         val selected = LocalModelStorageRepository.resolveSelectedModel(this)
             ?: return "No local model selected. Install/select Gemma 4 LiteRT in Settings."
         val settings = LocalModelSettingsRepository.getForModel(this, selected.id)
@@ -3697,12 +3710,12 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
         CoroutineScope(Dispatchers.IO).launch {
             try {
                 val finalReply = when (providerType) {
-                    AgentProviderType.CLOUD_API -> {
-                        val visionResult = CliCloudClient.imageQuery(
+                    AgentProviderType.PRO_SUBSCRIPTION -> {
+                        val visionResult = CliRelayClient.imageQuery(
                             context = this@MainActivity,
                             imagePath = imagePath,
                             prompt = resolvedPrompt.forRoute(ImageQuestionRoute.PRO_RELAY),
-                            modelOverride = AiPrefs.getQuestionsModel(this@MainActivity),
+                            modelOverride = ProSubscriptionAiPrefs.getQuestionsModel(this@MainActivity),
                         )
 
                         if (visionResult.isFailure) {
@@ -3729,7 +3742,7 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
                     }
 
                     AgentProviderType.LOCAL_AGENT -> {
-                        runMemoryAwareCustomAiProviderQuery(
+                        runMemoryAwareChosenProviderQuery(
                             userPrompt = resolvedPrompt.forRoute(ImageQuestionRoute.LOCAL_GEMMA),
                             providerType = AgentProviderType.LOCAL_AGENT,
                             imagePaths = listOf(imagePath),
@@ -3737,7 +3750,7 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
                     }
 
                     AgentProviderType.TASKER -> {
-                        val visionResult = CliCloudClient.imageQuery(
+                        val visionResult = CliRelayClient.imageQuery(
                             context = this@MainActivity,
                             imagePath = imagePath,
                             prompt = resolvedPrompt.forRoute(ImageQuestionRoute.TASKER_GEMINI),
@@ -4337,7 +4350,7 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
     }
 
     private fun triggerCliRelayVoiceQuery(
-        memoryAwareCustomAiProvider: Boolean = false,
+        memoryAwareChosenProvider: Boolean = false,
         chosenProviderType: AgentProviderType? = null,
     ) {
         if (isGlassesCommandBlocked("voice-query command")) return
@@ -4347,7 +4360,7 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
                 .request(object : OnPermissionCallback {
                     override fun onGranted(permissions: MutableList<String>, all: Boolean) {
                         if (all) {
-                            triggerCliRelayVoiceQuery(memoryAwareCustomAiProvider, chosenProviderType)
+                            triggerCliRelayVoiceQuery(memoryAwareChosenProvider, chosenProviderType)
                         } else {
                             Toast.makeText(
                                 this@MainActivity,
@@ -4442,7 +4455,7 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
                 CoroutineScope(Dispatchers.IO).launch {
                     val selectedProvider = chosenProviderType
                         ?: AutomationPrefs.getProviderType(this@MainActivity)
-                    val routingProvider = if (memoryAwareCustomAiProvider) {
+                    val routingProvider = if (memoryAwareChosenProvider) {
                         selectedProvider
                     } else {
                         // Follow AiProviderPrefs, matching the existing generic relay/local answer path.
@@ -4459,19 +4472,19 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
 
                     when (routing.intent) {
                         AssistantIntent.ANSWER_QUESTION -> {
-                            val reply = if (memoryAwareCustomAiProvider) {
-                                runMemoryAwareCustomAiProviderQuery(
+                            val reply = if (memoryAwareChosenProvider) {
+                                runMemoryAwareChosenProviderQuery(
                                     userPrompt = prompt,
                                     providerType = selectedProvider,
                                 )
                             } else {
-                                val modelOverride = if (selectedProvider == AgentProviderType.CLOUD_API) {
-                                    AiPrefs.getQuestionsModel(this@MainActivity)
+                                val modelOverride = if (selectedProvider == AgentProviderType.PRO_SUBSCRIPTION) {
+                                    ProSubscriptionAiPrefs.getQuestionsModel(this@MainActivity)
                                 } else {
                                     null
                                 }
 
-                                CliCloudClient.voiceQuery(
+                                CliRelayClient.voiceQuery(
                                     context = this@MainActivity,
                                     prompt = prompt,
                                     modelOverride = modelOverride,
@@ -4549,13 +4562,13 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
         Log.i("AIHijack", "Triggering Voice Query for $effectiveMode")
 
         val selectedProvider = AutomationPrefs.getProviderType(this)
-        val useCustomAiProviderMemoryAware =
-            aiAssistantMode == AI_MODE_CUSTOM_AI_PROVIDER &&
-                (selectedProvider == AgentProviderType.CLOUD_API ||
+        val useChosenProviderMemoryAware =
+            aiAssistantMode == AI_MODE_CHOSEN_PROVIDER &&
+                (selectedProvider == AgentProviderType.PRO_SUBSCRIPTION ||
                     selectedProvider == AgentProviderType.LOCAL_AGENT)
-        if (useCustomAiProviderMemoryAware) {
+        if (useChosenProviderMemoryAware) {
             triggerCliRelayVoiceQuery(
-                memoryAwareCustomAiProvider = true,
+                memoryAwareChosenProvider = true,
                 chosenProviderType = selectedProvider,
             )
             return
@@ -4565,7 +4578,7 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
         // Only route through CLI relay when NOT in Gemini/ChatGPT mode (those use native apps).
         if (effectiveMode != AI_MODE_GEMINI && effectiveMode != AI_MODE_CHATGPT) {
             val relayProvider = AiProviderPrefs.getProvider(this)
-            if (relayProvider == RelayProviderType.CLOUD_API) {
+            if (relayProvider == RelayProviderType.CLI_RELAY) {
                 triggerCliRelayVoiceQuery()
                 return
             }
@@ -4605,8 +4618,8 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
     }
 
     private fun usesExternalImageAutomation(): Boolean {
-        if (AiProviderPrefs.getProvider(this) == RelayProviderType.CLOUD_API) return false
-        if (aiAssistantMode == AI_MODE_CUSTOM_AI_PROVIDER &&
+        if (AiProviderPrefs.getProvider(this) == RelayProviderType.CLI_RELAY) return false
+        if (aiAssistantMode == AI_MODE_CHOSEN_PROVIDER &&
             AutomationPrefs.getProviderType(this) != AgentProviderType.TASKER
         ) {
             return false
@@ -4826,32 +4839,32 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
         }
         
         val selectedProvider = AutomationPrefs.getProviderType(this)
-        val isCustomAiProviderMode = aiAssistantMode == AI_MODE_CUSTOM_AI_PROVIDER
+        val isChosenProviderMode = aiAssistantMode == AI_MODE_CHOSEN_PROVIDER
 
-        // Route CustomAiProvider with memory-aware providers
-        val useCustomAiProviderMemoryAware =
-            isCustomAiProviderMode &&
-                (selectedProvider == AgentProviderType.CLOUD_API ||
+        // Route ChosenProvider with memory-aware providers
+        val useChosenProviderMemoryAware =
+            isChosenProviderMode &&
+                (selectedProvider == AgentProviderType.PRO_SUBSCRIPTION ||
                     selectedProvider == AgentProviderType.LOCAL_AGENT)
-        if (useCustomAiProviderMemoryAware) {
+        if (useChosenProviderMemoryAware) {
             triggerMemoryAwareImageQuery(imagePath, selectedProvider, resolvedPrompt)
             return
         }
 
         val relayProvider = AiProviderPrefs.getProvider(this)
-        if (relayProvider == RelayProviderType.CLOUD_API) {
+        if (relayProvider == RelayProviderType.CLI_RELAY) {
             Log.i("AIHijack", "Sending image query to CLI relay: $imagePath")
             val visionPrompt = resolvedPrompt.forRoute(ImageQuestionRoute.PRO_RELAY)
 
             CoroutineScope(Dispatchers.IO).launch {
                 try {
-                    val modelOverride = if (AutomationPrefs.getProviderType(this@MainActivity) == AgentProviderType.CLOUD_API) {
-                        AiPrefs.getQuestionsModel(this@MainActivity)
+                    val modelOverride = if (AutomationPrefs.getProviderType(this@MainActivity) == AgentProviderType.PRO_SUBSCRIPTION) {
+                        ProSubscriptionAiPrefs.getQuestionsModel(this@MainActivity)
                     } else {
                         null
                     }
 
-                    val result = CliCloudClient.imageQuery(
+                    val result = CliRelayClient.imageQuery(
                         context = this@MainActivity,
                         imagePath = imagePath,
                         prompt = visionPrompt,
