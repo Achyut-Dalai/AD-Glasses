@@ -25,7 +25,7 @@ class CyanBridgeAppTest {
     fun appearanceSettingsDefaultsAreStable() {
         val settings = AppearanceSettings()
         assertEquals(ThemeMode.SYSTEM, settings.themeMode)
-        assertEquals(AccentProfiles.CYAN_ID, settings.accentProfileId)
+        assertEquals(AccentProfiles.MONOCHROME_ID, settings.accentProfileId)
     }
 
     @Test
