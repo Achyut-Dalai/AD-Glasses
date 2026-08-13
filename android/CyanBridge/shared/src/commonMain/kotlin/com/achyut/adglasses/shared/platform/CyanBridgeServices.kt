@@ -19,17 +19,17 @@ import com.achyut.adglasses.shared.persistence.NotesRepository
  * Usage:
  * ```
  * // In platform init code:
- * CyanBridgeServices.initialize(
+ * ADGlassesServices.initialize(
  *     bleManager = IosBleManager(),
  *     chatRepository = IosChatRepository(),
  *     // ...
  * )
  *
  * // In shared code:
- * val ble = CyanBridgeServices.bleManager
+ * val ble = ADGlassesServices.bleManager
  * ```
  */
-object CyanBridgeServices {
+object ADGlassesServices {
     private var initialized = false
 
     lateinit var bleManager: BleManager
@@ -81,7 +81,7 @@ object CyanBridgeServices {
         imageAiService: ImageAiService,
         aiModelRegistry: AiModelRegistry,
     ) {
-        check(!initialized) { "CyanBridgeServices already initialized" }
+        check(!initialized) { "ADGlassesServices already initialized" }
         this.bleManager = bleManager
         this.wifiP2pManager = wifiP2pManager
         this.chatRepository = chatRepository
@@ -94,10 +94,10 @@ object CyanBridgeServices {
         this.imageAiService = imageAiService
         this.aiModelRegistry = aiModelRegistry
         initialized = true
-        PlatformLogger.i(TAG, "CyanBridgeServices initialized")
+        PlatformLogger.i(TAG, "ADGlassesServices initialized")
     }
 
     fun isInitialized(): Boolean = initialized
 
-    private const val TAG = "CyanBridgeServices"
+    private const val TAG = "ADGlassesServices"
 }

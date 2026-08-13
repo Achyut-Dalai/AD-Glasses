@@ -8,8 +8,8 @@
     <string name="destination_glasses_subtitle">Connect and control your glasses.</string>
     <string name="destination_chats_subtitle">Start a conversation or select an existing chat.</string>
     <string name="destination_media_subtitle">Synced photos, videos, and recordings will appear here.</string>
-    <string name="destination_plugins_subtitle">Browse and configure CyanBridge plugins.</string>
-    <string name="destination_settings_subtitle">Configure your CyanBridge experience.</string>
+    <string name="destination_plugins_subtitle">Browse and configure AD Glasses plugins.</string>
+    <string name="destination_settings_subtitle">Configure your AD Glasses experience.</string>
     <string name="action_open">Open</string>
     <string name="action_delete">Delete</string>
     <string name="action_share">Share</string>
@@ -74,7 +74,7 @@
     <string name="settings_faq_data_question">How is data handled?</string>
     <string name="settings_faq_data_answer">Data stays on this phone by default. You can export, import, or clear it from Data.</string>
     <string name="settings_faq_source_question">Can I review the source?</string>
-    <string name="settings_faq_source_answer">Yes. CyanBridge is open source and its behavior can be reviewed in the project repository.</string>
+    <string name="settings_faq_source_answer">Yes. AD Glasses is open source and its behavior can be reviewed in the project repository.</string>
     <string name="settings_range_error">Use %1$d to %2$d</string>
 
     <!-- Appearance -->
@@ -154,7 +154,7 @@
     <string name="media_empty">No synced photos or videos yet.</string>
     <string name="media_video">Video</string>
     <string name="media_selected_content_description">Selected</string>
-    <string name="media_folder_hint">Files downloaded by CyanBridge</string>
+    <string name="media_folder_hint">Files downloaded by AD Glasses</string>
 
     <!-- Device and sync dialogs -->
     <string name="sync_flow_title">Choose sync flow</string>
@@ -211,7 +211,7 @@
     <string name="publish_submitting">Submitting...</string>
     <string name="publish_submit">Submit Plugin</string>
 
-    <string name="pro_intro">Use CyanBridge completely free with local models. Cloud is optional for cloud AI and cloud sync.</string>
+    <string name="pro_intro">Use AD Glasses completely free with local models. Cloud is optional for cloud AI and cloud sync.</string>
     <string name="pro_choose_plan">Choose a plan</string>
     <string name="pro_free_trial">Free trial - 30 days</string>
     <string name="pro_google_play_price">Google Play: %1$s</string>
@@ -310,7 +310,7 @@
     <string name="local_models_test_connection">Test connection</string>
     <string name="local_models_save">Save</string>
     <string name="local_models_studio_bridge">Studio Bridge</string>
-    <string name="local_models_studio_description">Receive CyanBridge Model Studio approval prompts over Tailscale and respond by voice.</string>
+    <string name="local_models_studio_description">Receive AD Glasses Model Studio approval prompts over Tailscale and respond by voice.</string>
     <string name="local_models_enable_studio">Enable Studio Bridge</string>
     <string name="local_models_api_key_remote">API key (same as Remote Server)</string>
     <string name="local_models_save_connect">Save and connect</string>
@@ -478,16 +478,16 @@
     <string name="dashboard_ota_description">Run one controlled update for both chips: Wi-Fi .swu first, then BLE .bin after a fresh readiness check.</string>
     <string name="dashboard_choose_ota_files">Choose combined OTA files</string>
     <string name="dashboard_ota_choose_source">Choose source for both firmware components</string>
-    <string name="dashboard_ota_source_body_one">Firmware is model- and chip-specific. CyanBridge stages both components before flashing anything, then follows the official order: Wi-Fi SWU first and BLE BIN second. A Wi-Fi failure never starts BLE DFU.</string>
+    <string name="dashboard_ota_source_body_one">Firmware is model- and chip-specific. AD Glasses stages both components before flashing anything, then follows the official order: Wi-Fi SWU first and BLE BIN second. A Wi-Fi failure never starts BLE DFU.</string>
     <string name="dashboard_ota_source_body_two">Server copies are selected only when both files exactly match the Wi-Fi and Bluetooth versions currently reported by these glasses. Personal files require two selections: a .swu followed by a .bin.</string>
     <string name="dashboard_ota_acknowledge">I verified this image matches this glasses model and chip target.</string>
     <string name="dashboard_request_patch">Request firmware patch</string>
-    <string name="dashboard_patch_body_one">CyanBridge only downloads patched firmware built from the exact version reported by each target chip. The developer cannot verify which Wi-Fi and Bluetooth chip versions are compatible, so mixed or unverified versions are never offered.</string>
+    <string name="dashboard_patch_body_one">AD Glasses only downloads patched firmware built from the exact version reported by each target chip. The developer cannot verify which Wi-Fi and Bluetooth chip versions are compatible, so mixed or unverified versions are never offered.</string>
     <string name="dashboard_patch_body_two">Some old or very recent versions may not be available yet. Send a request for this exact version and the developer will contact you at the email below to assist, probably within 48 hours.</string>
     <string name="dashboard_requested">Requested: %1$s\nHardware: %2$s\nFirmware: %3$s</string>
     <string name="dashboard_contact_email">Contact email</string>
     <string name="dashboard_valid_email">Enter a valid email address</string>
-    <string name="dashboard_email_supporting">Version details and OTA diagnostics will be sent to CyanBridge.</string>
+    <string name="dashboard_email_supporting">Version details and OTA diagnostics will be sent to AD Glasses.</string>
     <string name="dashboard_sending">Sending...</string>
     <string name="dashboard_send_request">Send request</string>
     <string name="dashboard_ota_done">Done</string>
@@ -509,7 +509,7 @@
     <string name="sync_flow_official_title">AD Glasses app flow</string>
     <string name="sync_flow_official_description">Vendor-like strict BLE + P2P sync</string>
     <string name="sync_flow_custom_title">Custom flow</string>
-    <string name="sync_flow_custom_description">CyanBridge resolver with fallback scanning</string>
+    <string name="sync_flow_custom_description">AD Glasses resolver with fallback scanning</string>
     <string name="ota_target_wifi">Wi-Fi chip (.swu)</string>
     <string name="ota_target_wifi_description">V821 Linux - patches rootfs/init scripts</string>
     <string name="ota_target_ble">BLE chip (.bin)</string>

@@ -1,0 +1,321 @@
+package com.achyut.adglasses.ui
+
+import com.achyut.adglasses.shared.devices.DeviceProfile
+import com.achyut.adglasses.shared.devices.ScannedDevice as SharedScannedDevice
+
+import android.bluetooth.BluetoothAdapter
+import android.bluetooth.BluetoothDevice
+import android.bluetooth.le.ScanResult
+import android.content.Intent
+import android.os.Bundle
+import android.os.Handler
+import android.os.Looper
+import android.util.Log
+import android.widget.Toast
+import androidx.activity.compose.setContent
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.setValue
+import com.achyut.adglasses.shared.devices.DeviceClass
+import com.achyut.adglasses.devices.DeviceClassifier
+import com.achyut.adglasses.devices.DeviceProfileStore
+import com.achyut.adglasses.devices.eyevue.EyevueManager
+import com.achyut.adglasses.devices.metarayban.MetaRaybanManager
+import com.achyut.adglasses.devices.meizumyvu.MeizuMyvuManager
+import com.achyut.adglasses.devices.ScannedDevice
+import com.achyut.adglasses.ui.appearance.AppearancePreferences
+import com.achyut.adglasses.ui.appearance.rememberAppearanceSettings
+import com.achyut.adglasses.shared.ui.DeviceBindScreen
+import com.achyut.adglasses.ui.theme.AdGlassesTheme
+import com.hjq.permissions.OnPermissionCallback
+import com.hjq.permissions.XXPermissions
+import com.oudmon.ble.base.bluetooth.BleOperateManager
+import com.oudmon.ble.base.scan.BleScannerHelper
+import com.oudmon.ble.base.scan.ScanRecord
+import com.oudmon.ble.base.scan.ScanWrapperCallback
+import org.greenrobot.eventbus.EventBus
+import org.greenrobot.eventbus.Subscribe
+import org.greenrobot.eventbus.ThreadMode
+
+class DeviceBindActivity : BaseActivity() {
+    private var scanSize = 0
+    private val scanTimeout = ScanTimeout()
+    private val handler = Handler(Looper.getMainLooper())
+    private val deviceList = mutableListOf<ScannedDevice>()
+    private val bleScanCallback = BleCallback()
+
+    private var scannedDevices by mutableStateOf<List<ScannedDevice>>(emptyList())
+    private var isScanning by mutableStateOf(false)
+    private var connectingDevice by mutableStateOf<ScannedDevice?>(null)
+    private var selectedDeviceClass by mutableStateOf(DeviceClass.HEY_CYAN)
+    private var initialScanStarted = false
+    private var lastDeviceListPublishAtMs = 0L
+
+    override fun onCreate(savedInstanceState: Bundle?) {
+        super.onCreate(savedInstanceState)
+        EventBus.getDefault().register(this)
+        val appearancePreferences = AppearancePreferences(this)
+        setContent {
+            val appearance by rememberAppearanceSettings(appearancePreferences)
+            AdGlassesTheme(appearance) {
+                DeviceBindScreen(
+                    devices = scannedDevices.map { it.toShared() },
+                    isScanning = isScanning,
+                    connectingDevice = connectingDevice?.toShared(),
+                    selectedClass = selectedDeviceClass,
+                    onScan = ::startScan,
+                    onSelectDevice = { sharedDevice ->
+                        val device = deviceList.firstOrNull {
+                            it.macAddress.equals(sharedDevice.macAddress, ignoreCase = true)
+                        }
+                        if (device != null) {
+                            connectingDevice = device
+                            selectedDeviceClass = device.effectiveSelectedClass().takeUnless {
+                                it == DeviceClass.UNKNOWN
+                            } ?: DeviceClass.HEY_CYAN
+                        }
+                    },
+                    onSelectedClassChange = { selectedDeviceClass = it },
+                    onConfirmConnection = ::confirmConnection,
+                    onDismissConnection = { connectingDevice = null },
+                    onBack = ::finish,
+                )
+            }
+        }
+    }
+
+    override fun onResume() {
+        super.onResume()
+        if (!initialScanStarted) {
+            initialScanStarted = true
+            startScan()
+        }
+    }
+
+    override fun setupViews() = Unit
+
+    @Subscribe(threadMode = ThreadMode.MAIN)
+    fun onMessageEvent(messageEvent: BluetoothEvent) {
+        Log.i(TAG, "onMessageEvent: ${messageEvent.connect}")
+        if (messageEvent.connect) finish()
+    }
+
+    private fun startScan() {
+        handler.removeCallbacks(scanTimeout)
+        deviceList.clear()
+        scannedDevices = emptyList()
+        lastDeviceListPublishAtMs = 0L
+        if (!hasBluetooth(this)) {
+            isScanning = false
+            requestBluetoothPermission(this, PermissionCallback())
+            return
+        }
+        BleScannerHelper.getInstance().reSetCallback()
+        if (!BluetoothUtils.isEnabledBluetooth(this)) {
+            startActivityForResult(Intent(BluetoothAdapter.ACTION_REQUEST_ENABLE), REQUEST_ENABLE_BLUETOOTH)
+            return
+        }
+        scanSize = 0
+        isScanning = true
+        BleScannerHelper.getInstance().scanDevice(this, null, bleScanCallback)
+        handler.postDelayed(scanTimeout, 15_000)
+    }
+
+    private fun confirmConnection() {
+        val device = connectingDevice ?: return
+        if (!hasBluetooth(this)) {
+            Toast.makeText(this, "Bluetooth permission is required to connect", Toast.LENGTH_SHORT).show()
+            requestBluetoothPermission(this, PermissionCallback())
+            return
+        }
+        connectingDevice = null
+        handler.removeCallbacks(scanTimeout)
+        BleScannerHelper.getInstance().stopScan(this)
+        isScanning = false
+
+        AutoPairManager.setAutoReconnectSuppressed(false, reason = "user_manual_pair")
+        device.userSelectedClass = selectedDeviceClass
+        DeviceProfileStore.saveLastSelected(
+            this,
+            DeviceProfile(
+                macAddress = device.macAddress,
+                advertisedName = device.advertisedName,
+                detectedClass = device.detectedClass,
+                selectedClass = selectedDeviceClass,
+                userOverridden = true,
+            ),
+        )
+
+        if (selectedDeviceClass == DeviceClass.META_RAYBAN) {
+            MetaRaybanManager.getInstance(this).initialize()
+            Toast.makeText(
+                this,
+                "Meta Ray-Ban selected. Register it from the glasses dashboard.",
+                Toast.LENGTH_LONG,
+            ).show()
+            finish()
+            return
+        }
+
+        if (selectedDeviceClass == DeviceClass.MEIZU_MYVU) {
+            MeizuMyvuManager.getInstance(this).connect(device.macAddress, this)
+            Toast.makeText(
+                this,
+                "Connecting to Meizu MYVU. Keep the official MYVU app disconnected.",
+                Toast.LENGTH_LONG,
+            ).show()
+            finish()
+            return
+        }
+
+        if (selectedDeviceClass == DeviceClass.EYEVUE) {
+            EyevueManager.getInstance(this).connect(device.macAddress, device.advertisedName)
+            Toast.makeText(
+                this,
+                "Connecting to Eyevue over Bluetooth.",
+                Toast.LENGTH_LONG,
+            ).show()
+            finish()
+            return
+        }
+
+        BleOperateManager.getInstance().connectDirectly(device.macAddress)
+    }
+
+    private fun upsertDevice(
+        mac: String,
+        name: String?,
+        rssi: Int,
+        scanRecord: ScanRecord? = null,
+    ) {
+        val sanitizedName = name?.trim()?.takeIf { it.isNotEmpty() }
+        val existingIndex = deviceList.indexOfFirst { it.macAddress.equals(mac, ignoreCase = true) }
+        if (existingIndex >= 0) {
+            val existing = deviceList[existingIndex]
+            val previousName = existing.advertisedName
+            val previousClass = existing.detectedClass
+            existing.rssi = rssi
+            if (existing.advertisedName.isNullOrBlank() && sanitizedName != null) {
+                existing.advertisedName = sanitizedName
+            }
+            scanRecord?.serviceUuids?.takeIf { it.isNotEmpty() }?.let { existing.serviceUuids = it }
+            existing.setDetectedClass(DeviceClassifier.guessDeviceClass(existing.advertisedName, existing.serviceUuids))
+            publishDevices(
+                force = previousName != existing.advertisedName || previousClass != existing.detectedClass,
+            )
+            return
+        }
+        val detectedClass = DeviceClassifier.guessDeviceClass(sanitizedName, scanRecord?.serviceUuids.orEmpty())
+        if (sanitizedName == null && detectedClass == DeviceClass.UNKNOWN) return
+
+        val newDevice = ScannedDevice(
+            macAddress = mac,
+            advertisedName = sanitizedName ?: detectedClass.displayName(),
+            rssi = rssi,
+            serviceUuids = scanRecord?.serviceUuids.orEmpty(),
+        )
+        DeviceProfileStore.getUserOverrideForMac(this, mac)?.let { override ->
+            if (override != newDevice.detectedClass) newDevice.userSelectedClass = override
+        }
+        scanSize++
+        deviceList += newDevice
+        publishDevices(force = true)
+        if (scanSize > 30) BleScannerHelper.getInstance().stopScan(this)
+    }
+
+    private fun publishDevices(force: Boolean = false) {
+        val now = System.currentTimeMillis()
+        if (!force && now - lastDeviceListPublishAtMs < DEVICE_LIST_PUBLISH_INTERVAL_MS) return
+        lastDeviceListPublishAtMs = now
+        scannedDevices = deviceList.toList()
+    }
+
+    override fun onDestroy() {
+        handler.removeCallbacks(scanTimeout)
+        if (EventBus.getDefault().isRegistered(this)) EventBus.getDefault().unregister(this)
+        super.onDestroy()
+    }
+
+    @Deprecated("Deprecated in AndroidX Activity; retained for the vendor scanner flow.")
+    override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
+        super.onActivityResult(requestCode, resultCode, data)
+        if (requestCode == REQUEST_ENABLE_BLUETOOTH && BluetoothUtils.isEnabledBluetooth(this)) {
+            startScan()
+        }
+    }
+
+    private inner class ScanTimeout : Runnable {
+        override fun run() {
+            BleScannerHelper.getInstance().stopScan(this@DeviceBindActivity)
+            isScanning = false
+        }
+    }
+
+    private inner class PermissionCallback : OnPermissionCallback {
+        override fun onGranted(permissions: MutableList<String>, all: Boolean) {
+            if (all) startScan()
+        }
+
+        override fun onDenied(permissions: MutableList<String>, never: Boolean) {
+            super.onDenied(permissions, never)
+            Toast.makeText(
+                this@DeviceBindActivity,
+                "Bluetooth permission is required to find and connect to glasses",
+                Toast.LENGTH_LONG,
+            ).show()
+            if (never) XXPermissions.startPermissionActivity(this@DeviceBindActivity, permissions)
+        }
+    }
+
+    private inner class BleCallback : ScanWrapperCallback {
+        override fun onStart() {
+            isScanning = true
+        }
+
+        override fun onStop() {
+            isScanning = false
+        }
+
+        override fun onLeScan(device: BluetoothDevice?, rssi: Int, scanRecord: ByteArray?) {
+            if (!hasBluetooth(this@DeviceBindActivity)) {
+                return
+            }
+            val bluetoothDevice = device ?: return
+            val address = bluetoothDevice.address
+            val name = runCatching { bluetoothDevice.name }.getOrNull()
+            upsertDevice(address, name, rssi)
+        }
+
+        override fun onScanFailed(errorCode: Int) {
+            isScanning = false
+            Log.w(TAG, "Scan failed: $errorCode")
+        }
+
+        override fun onParsedData(device: BluetoothDevice?, scanRecord: ScanRecord?) {
+            if (!hasBluetooth(this@DeviceBindActivity)) {
+                return
+            }
+            val bluetoothDevice = device ?: return
+            val address = bluetoothDevice.address
+            val name = runCatching { scanRecord?.deviceName ?: bluetoothDevice.name }.getOrNull()
+            val rssi = deviceList.firstOrNull { it.macAddress.equals(address, true) }?.rssi ?: 0
+            upsertDevice(address, name, rssi, scanRecord)
+        }
+
+        override fun onBatchScanResults(results: MutableList<ScanResult>?) = Unit
+    }
+
+    private fun ScannedDevice.toShared(): SharedScannedDevice = SharedScannedDevice(
+        macAddress = macAddress,
+        advertisedName = advertisedName,
+        rssi = rssi,
+        detectedClass = detectedClass,
+        selectedClass = userSelectedClass,
+        userOverridden = userOverridden(),
+    )
+
+    private companion object {
+        const val REQUEST_ENABLE_BLUETOOTH = 300
+        const val DEVICE_LIST_PUBLISH_INTERVAL_MS = 1_000L
+    }
+}

@@ -18,19 +18,13 @@ data class GlassesDashboardUiState(
     val transfer: GlassesTransferUiState = GlassesTransferUiState(),
     val meeting: GlassesMeetingUiState = GlassesMeetingUiState(),
     val nativePluginShortcut: NativePluginShortcutUiState? = null,
-    val assistantMode: GlassesAssistantMode = GlassesAssistantMode.PHONE_ASSISTANT,
+    val assistantMode: GlassesAssistantMode = GlassesAssistantMode.GEMINI,
     val aiWakeWordRoute: AiWakeWordRoute = AiWakeWordRoute.VOICE_QUESTION,
     val imageQueryEnabled: Boolean = true,
     val imageQueryLabel: String = "Test image AI description",
     val imageThumbnailQualitySdkValue: Int = 5,
     val imageThumbnailQualityLabel: String = "Detailed",
-    val wearingDetectionEnabled: Boolean? = null,
-    val videoRecordingDurationSeconds: Int? = null,
-    val videoRecordingDurationOptionsSeconds: List<Int> = emptyList(),
-    val audioRecordingDurationSeconds: Int? = null,
-    val audioRecordingDurationOptionsSeconds: List<Int> = emptyList(),
     val showHeyCyanControls: Boolean = false,
-    val showEyevueControls: Boolean = false,
     val showMetaRaybanControls: Boolean = false,
     val showMeizuMyvuControls: Boolean = false,
     val advancedExpanded: Boolean = false,
@@ -67,7 +61,7 @@ enum class GlassesSyncFlow(
     ),
     CUSTOM(
         label = "Custom flow",
-        description = "CyanBridge resolver with fallback scanning",
+        description = "AD Glasses resolver with fallback scanning",
     ),
 }
 
@@ -79,6 +73,8 @@ data class GlassesMeetingUiState(
 )
 
 enum class GlassesAssistantMode {
+    GEMINI,
+    CHAT_GPT,
     PHONE_ASSISTANT,
     CUSTOM_AI_PROVIDER,
 }
@@ -88,8 +84,10 @@ enum class AiWakeWordRoute {
     IMAGE_QUESTION;
 
     companion object {
-        fun fromRaw(raw: String?): AiWakeWordRoute =
-            entries.firstOrNull { it.name == raw?.trim()?.uppercase() } ?: VOICE_QUESTION
+        fun fromRaw(raw: String?): AiWakeWordRoute {
+            return entries.firstOrNull { it.name.equals(raw, ignoreCase = true) }
+                ?: VOICE_QUESTION
+        }
     }
 }
 
@@ -141,8 +139,8 @@ enum class OtaFirmwareSource(
     val label: String,
     val description: String,
 ) {
-    LOCAL_FILE(
-        label = "Local firmware files",
+    PERSONAL_FILE(
+        label = "Personal firmware files",
         description = "Choose both local files: Wi-Fi .swu, then BLE .bin",
     ),
     STEALTH_CATALOG(
@@ -206,10 +204,6 @@ sealed interface GlassesDashboardAction {
     data class SelectAssistantMode(val mode: GlassesAssistantMode) : GlassesDashboardAction
     data class SetAiWakeWordRoute(val route: AiWakeWordRoute) : GlassesDashboardAction
     data class SelectImageThumbnailQuality(val sdkValue: Int) : GlassesDashboardAction
-    data object RefreshRecordingSettings : GlassesDashboardAction
-    data class SetWearingDetection(val enabled: Boolean) : GlassesDashboardAction
-    data class SetVideoRecordingDuration(val seconds: Int) : GlassesDashboardAction
-    data class SetAudioRecordingDuration(val seconds: Int) : GlassesDashboardAction
     data object TestVoiceQuestion : GlassesDashboardAction
     data object TestImageQuestion : GlassesDashboardAction
     data object OpenExternalImageAutomationDiagnostics : GlassesDashboardAction

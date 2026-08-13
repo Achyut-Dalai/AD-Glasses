@@ -7,8 +7,8 @@
     <string name="destination_glasses_subtitle">Conecte e controle seus oculos.</string>
     <string name="destination_chats_subtitle">Inicie uma conversa ou selecione uma conversa existente.</string>
     <string name="destination_media_subtitle">Fotos, videos e gravacoes sincronizados aparecerao aqui.</string>
-    <string name="destination_plugins_subtitle">Explore e configure os plugins do CyanBridge.</string>
-    <string name="destination_settings_subtitle">Configure sua experiencia com o CyanBridge.</string>
+    <string name="destination_plugins_subtitle">Explore e configure os plugins do AD Glasses.</string>
+    <string name="destination_settings_subtitle">Configure sua experiencia com o AD Glasses.</string>
     <string name="action_open">Abrir</string>
     <string name="action_delete">Excluir</string>
     <string name="action_share">Compartilhar</string>
@@ -78,7 +78,7 @@
     <string name="settings_faq_data_question">Como os dados sao tratados?</string>
     <string name="settings_faq_data_answer">Por padrao, os dados ficam neste telefone. Voce pode exportar, importar ou limpar tudo em Dados.</string>
     <string name="settings_faq_source_question">Posso revisar o codigo-fonte?</string>
-    <string name="settings_faq_source_answer">Sim. O CyanBridge e open source e seu comportamento pode ser revisado no repositorio do projeto.</string>
+    <string name="settings_faq_source_answer">Sim. O AD Glasses e open source e seu comportamento pode ser revisado no repositorio do projeto.</string>
     <string name="settings_range_error">Use de %1$d a %2$d</string>
 
     <string name="appearance_title">Aparencia</string>
@@ -161,7 +161,7 @@
     <string name="media_empty">Nenhuma foto ou video sincronizado ainda.</string>
     <string name="media_video">Video</string>
     <string name="media_selected_content_description">Selecionado</string>
-    <string name="media_folder_hint">Arquivos baixados pelo CyanBridge</string>
+    <string name="media_folder_hint">Arquivos baixados pelo AD Glasses</string>
 
     <string name="sync_flow_title">Escolher fluxo de sincronizacao</string>
     <string name="device_class_ad_glasses">AD Glasses</string>
@@ -218,7 +218,7 @@
     <string name="publish_submit">Enviar plugin</string>
 
     <string name="pro_subscription_title">Assinatura Cloud</string>
-    <string name="pro_intro">Use o CyanBridge gratuitamente com modelos locais. O Cloud e opcional para IA na nuvem e sincronizacao na nuvem.</string>
+    <string name="pro_intro">Use o AD Glasses gratuitamente com modelos locais. O Cloud e opcional para IA na nuvem e sincronizacao na nuvem.</string>
     <string name="pro_choose_plan">Escolher um plano</string>
     <string name="pro_free_trial">Teste gratis - 30 dias</string>
     <string name="pro_google_play_price">Google Play: %1$s</string>
@@ -322,7 +322,7 @@
     <string name="local_models_test_connection">Testar conexao</string>
     <string name="local_models_save">Salvar</string>
     <string name="local_models_studio_bridge">Studio Bridge</string>
-    <string name="local_models_studio_description">Receba pedidos de aprovacao do CyanBridge Model Studio pelo Tailscale e responda por voz.</string>
+    <string name="local_models_studio_description">Receba pedidos de aprovacao do AD Glasses Model Studio pelo Tailscale e responda por voz.</string>
     <string name="local_models_enable_studio">Ativar Studio Bridge</string>
     <string name="local_models_api_key_remote">Chave de API (igual ao Servidor remoto)</string>
     <string name="local_models_save_connect">Salvar e conectar</string>
@@ -351,7 +351,7 @@
     <string name="local_models_unsaved_message">As configuracoes do modelo local mudaram. Sair sem salvar?</string>
     <string name="local_models_keep_editing">Continuar editando</string>
     <string name="local_models_discard">Descartar</string>
-    <string name="local_models_download_progress">Cloudgresso do download</string>
+    <string name="local_models_download_progress">Progresso do download</string>
     <string name="local_models_cancel_download">Cancelar download</string>
     <string name="local_models_collapse">Recolher %1$s</string>
     <string name="local_models_expand">Expandir %1$s</string>
@@ -414,7 +414,7 @@
     <string name="dashboard_battery">Bateria: %1$d%%</string>
     <string name="dashboard_battery_unknown">Bateria: --%</string>
     <string name="dashboard_storage">Armazenamento: %1$s</string>
-    <string name="dashboard_sync_progress">Cloudgresso da sincronizacao</string>
+    <string name="dashboard_sync_progress">Progresso da sincronizacao</string>
     <string name="dashboard_flow">Fluxo: %1$s</string>
     <string name="dashboard_stop_sync">Parar sincronizacao</string>
     <string name="dashboard_media_controls">Controles de midia</string>
@@ -488,16 +488,16 @@
     <string name="dashboard_ota_description">Execute uma atualizacao controlada para os dois chips: Wi-Fi .swu primeiro e BLE .bin depois de uma nova verificacao de prontidao.</string>
     <string name="dashboard_choose_ota_files">Escolher arquivos OTA combinados</string>
     <string name="dashboard_ota_choose_source">Escolher a origem dos dois componentes do firmware</string>
-    <string name="dashboard_ota_source_body_one">O firmware e especifico do modelo e do chip. O CyanBridge prepara os dois componentes antes de gravar e segue a ordem oficial: Wi-Fi SWU primeiro e BLE BIN depois. Uma falha do Wi-Fi nunca inicia o DFU do BLE.</string>
+    <string name="dashboard_ota_source_body_one">O firmware e especifico do modelo e do chip. O AD Glasses prepara os dois componentes antes de gravar e segue a ordem oficial: Wi-Fi SWU primeiro e BLE BIN depois. Uma falha do Wi-Fi nunca inicia o DFU do BLE.</string>
     <string name="dashboard_ota_source_body_two">Copias do servidor so sao selecionadas quando os dois arquivos correspondem exatamente as versoes Wi-Fi e Bluetooth informadas por estes oculos. Arquivos pessoais exigem duas selecoes: primeiro um .swu e depois um .bin.</string>
     <string name="dashboard_ota_acknowledge">Verifiquei que esta imagem corresponde ao modelo dos oculos e ao chip de destino.</string>
     <string name="dashboard_request_patch">Solicitar patch de firmware</string>
-    <string name="dashboard_patch_body_one">O CyanBridge baixa apenas firmware corrigido criado a partir da versao exata informada por cada chip de destino. O desenvolvedor nao pode verificar quais versoes dos chips Wi-Fi e Bluetooth sao compativeis, portanto versoes mistas ou nao verificadas nunca sao oferecidas.</string>
+    <string name="dashboard_patch_body_one">O AD Glasses baixa apenas firmware corrigido criado a partir da versao exata informada por cada chip de destino. O desenvolvedor nao pode verificar quais versoes dos chips Wi-Fi e Bluetooth sao compativeis, portanto versoes mistas ou nao verificadas nunca sao oferecidas.</string>
     <string name="dashboard_patch_body_two">Algumas versoes antigas ou muito recentes podem ainda nao estar disponiveis. Envie uma solicitacao para esta versao exata e o desenvolvedor entrara em contato pelo e-mail abaixo, provavelmente em ate 48 horas.</string>
     <string name="dashboard_requested">Solicitado: %1$s\nHardware: %2$s\nFirmware: %3$s</string>
     <string name="dashboard_contact_email">E-mail de contato</string>
     <string name="dashboard_valid_email">Digite um endereco de e-mail valido</string>
-    <string name="dashboard_email_supporting">Detalhes da versao e diagnosticos OTA serao enviados ao CyanBridge.</string>
+    <string name="dashboard_email_supporting">Detalhes da versao e diagnosticos OTA serao enviados ao AD Glasses.</string>
     <string name="dashboard_sending">Enviando...</string>
     <string name="dashboard_send_request">Enviar solicitacao</string>
     <string name="dashboard_ota_done">Concluido</string>
@@ -518,7 +518,7 @@
     <string name="sync_flow_official_title">Fluxo do app AD Glasses</string>
     <string name="sync_flow_official_description">Sincronizacao BLE + P2P rigorosa como a do fornecedor</string>
     <string name="sync_flow_custom_title">Fluxo personalizado</string>
-    <string name="sync_flow_custom_description">Resolvedor CyanBridge com busca alternativa</string>
+    <string name="sync_flow_custom_description">Resolvedor AD Glasses com busca alternativa</string>
     <string name="ota_target_wifi">Chip Wi-Fi (.swu)</string>
     <string name="ota_target_wifi_description">V821 Linux - aplica patches no rootfs e scripts de inicializacao</string>
     <string name="ota_target_ble">Chip BLE (.bin)</string>

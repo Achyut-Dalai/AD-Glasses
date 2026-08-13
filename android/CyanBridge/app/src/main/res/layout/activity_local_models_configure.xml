@@ -152,7 +152,7 @@
                         android:textSize="12sp"
                         android:letterSpacing="0.1" />
 
-                    <com.google.android.material.progressindicator.LinearCloudgressIndicator
+                    <com.google.android.material.progressindicator.LinearProgressIndicator
                         android:id="@+id/progress_download"
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
@@ -506,7 +506,7 @@
                         <TextView
                             android:layout_width="match_parent"
                             android:layout_height="wrap_content"
-                            android:text="When a CyanBridge Studio auto-session needs your approval (e.g. file writes, tool calls), the desktop will notify this phone via Tailscale. Your phone plays the prompt on your Bluetooth speaker and listens for your voice reply."
+                            android:text="When a AD Glasses Studio auto-session needs your approval (e.g. file writes, tool calls), the desktop will notify this phone via Tailscale. Your phone plays the prompt on your Bluetooth speaker and listens for your voice reply."
                             android:textColor="@color/text_secondary"
                             android:textSize="12sp" />
 

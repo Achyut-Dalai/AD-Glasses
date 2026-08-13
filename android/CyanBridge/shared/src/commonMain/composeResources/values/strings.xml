@@ -1,4 +1,5 @@
 <resources>
+    <string name="app_name">AD Glasses</string>
     <string name="settings_title">Settings</string>
     <string name="settings_language">Language</string>
     <string name="settings_language_description">App language: %1$s</string>
@@ -30,20 +31,20 @@
 
     <!-- First-run onboarding -->
     <string name="onboarding_language_title">Choose your app language</string>
-    <string name="onboarding_language_description">Select the language CyanBridge should use for onboarding, plugin settings, screens, and dialogs.</string>
+    <string name="onboarding_language_description">Select the language AD Glasses should use for onboarding, plugin settings, screens, and dialogs.</string>
     <string name="onboarding_language_continue">Continue</string>
-    <string name="onboarding_welcome_title">Welcome to CyanBridge</string>
+    <string name="onboarding_welcome_title">Welcome to AD Glasses</string>
     <string name="onboarding_welcome_body">Connect your smart glasses and configure Android for a stable background connection.</string>
     <string name="onboarding_start_setup">Start setup</string>
     <string name="onboarding_setup">Setup</string>
     <string name="onboarding_connect_glasses_title">Connect your glasses</string>
-    <string name="onboarding_connect_glasses_body">CyanBridge needs nearby-device access to discover and connect to your glasses. Android may also request location on older phones because it requires it for Bluetooth scanning. Wi-Fi Direct permission is requested later, only when you transfer media.</string>
+    <string name="onboarding_connect_glasses_body">AD Glasses needs nearby-device access to discover and connect to your glasses. Android may also request location on older phones because it requires it for Bluetooth scanning. Wi-Fi Direct permission is requested later, only when you transfer media.</string>
     <string name="onboarding_bluetooth_allowed">Bluetooth access is allowed</string>
     <string name="onboarding_bluetooth_denied">Bluetooth access has not been granted</string>
     <string name="onboarding_allow_glasses_connection">Allow glasses connection</string>
     <string name="onboarding_permission_granted">Permission granted</string>
     <string name="onboarding_media_files_title">Media and AI files</string>
-    <string name="onboarding_media_files_body">CyanBridge uses file access to save media transferred from your glasses and to manage AI models and related local files. You can continue without allowing it now, but media sync and some AI features will need it later.</string>
+    <string name="onboarding_media_files_body">AD Glasses uses file access to save media transferred from your glasses and to manage AI models and related local files. You can continue without allowing it now, but media sync and some AI features will need it later.</string>
     <string name="onboarding_file_access_allowed">File access is allowed</string>
     <string name="onboarding_file_access_denied">File access has not been granted</string>
     <string name="onboarding_allow_media_access">Allow media and AI file access</string>
@@ -54,8 +55,8 @@
     <string name="onboarding_accessibility_disabled">Accessibility is currently disabled</string>
     <string name="onboarding_open_accessibility">Open accessibility settings</string>
     <string name="onboarding_open_source_title">Open source by design</string>
-    <string name="onboarding_open_source_body">Inspect how CyanBridge works, report security concerns, suggest improvements, or contribute code. Community review helps make the app safer and better for everyone.</string>
-    <string name="onboarding_open_github">Open CyanBridge on GitHub</string>
+    <string name="onboarding_open_source_body">Inspect how AD Glasses works, report security concerns, suggest improvements, or contribute code. Community review helps make the app safer and better for everyone.</string>
+    <string name="onboarding_open_github">Open AD Glasses on GitHub</string>
     <string name="onboarding_skip_all">Skip all</string>
     <string name="onboarding_back">Back</string>
     <string name="onboarding_next">Next</string>
@@ -63,14 +64,14 @@
 
     <!-- Battery onboarding -->
     <string name="onboarding_battery_title">Battery optimization</string>
-    <string name="onboarding_battery_headline">Keep CyanBridge running</string>
+    <string name="onboarding_battery_headline">Keep AD Glasses running</string>
     <string name="onboarding_battery_body">Android battery optimization can interrupt Bluetooth, media sync, local automation, and meeting capture.</string>
-    <string name="onboarding_battery_disabled">Battery optimization is disabled for CyanBridge.</string>
-    <string name="onboarding_battery_enabled">Battery optimization is currently enabled for CyanBridge.</string>
+    <string name="onboarding_battery_disabled">Battery optimization is disabled for AD Glasses.</string>
+    <string name="onboarding_battery_enabled">Battery optimization is currently enabled for AD Glasses.</string>
     <string name="onboarding_disable_battery">Disable battery optimization</string>
     <string name="onboarding_battery_list">Open battery optimization list</string>
-    <string name="onboarding_lock_recents_title">Lock CyanBridge in Recents</string>
-    <string name="onboarding_lock_recents_body">Some phones also stop background work when an app is swiped away. Open Recents, find CyanBridge, then use your phone's Lock, Keep open, Pin, or Don't optimize option. The name varies by manufacturer.</string>
+    <string name="onboarding_lock_recents_title">Lock AD Glasses in Recents</string>
+    <string name="onboarding_lock_recents_body">Some phones also stop background work when an app is swiped away. Open Recents, find AD Glasses, then use your phone's Lock, Keep open, Pin, or Don't optimize option. The name varies by manufacturer.</string>
     <string name="onboarding_open_app_info">Open app info for app-lock controls</string>
     <string name="onboarding_continue">Continue</string>
     <string name="onboarding_not_now">Not now</string>

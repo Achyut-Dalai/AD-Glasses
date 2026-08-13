@@ -35,7 +35,7 @@ dependencyResolutionManagement {
         }
     }
 }
-rootProject.name = "CyanBridgeManagerApp"
+rootProject.name = "ADGlassesManagerApp"
 include(":app")
 include(":shared")
 

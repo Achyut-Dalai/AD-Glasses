@@ -9,7 +9,7 @@ class LivePreviewSourceSafetyTest {
     @Test
     fun `live preview remains a passive probe`() {
         val source = File(
-            "src/main/java/com/fersaiyan/cyanbridge/ota/LivePreviewManager.kt",
+            "src/main/java/com/achyut/adglasses/ota/LivePreviewManager.kt",
         ).readText()
 
         assertTrue(source.contains("PASSIVE MODE: no BLE mode-control command will be sent"))

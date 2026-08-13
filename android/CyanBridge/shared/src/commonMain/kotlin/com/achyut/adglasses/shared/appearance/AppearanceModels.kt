@@ -8,7 +8,7 @@ enum class ThemeMode {
 
 data class AppearanceSettings(
     val themeMode: ThemeMode = ThemeMode.SYSTEM,
-    val accentProfileId: String = AccentProfiles.CYAN_ID,
+    val accentProfileId: String = AccentProfiles.ADGLASSES_ID,
     val useDynamicColor: Boolean = false,
     val highContrast: Boolean = false,
 )
@@ -32,8 +32,25 @@ data class AccentProfile(
 
 object AccentProfiles {
     const val CYAN_ID = "cyan"
+    const val ADGLASSES_ID = "adglasses"
 
     val all = listOf(
+        AccentProfile(
+            id = ADGLASSES_ID,
+            label = "AD Glasses",
+            lightPrimaryArgb = 0xFF000000, // Black
+            lightContainerArgb = 0xFFF0F0F0, // Light Gray
+            lightSecondaryArgb = 0xFF404040, // Dark Gray
+            lightSecondaryContainerArgb = 0xFFE0E0E0,
+            lightTertiaryArgb = 0xFF606060,
+            lightTertiaryContainerArgb = 0xFFF5F5F5,
+            darkPrimaryArgb = 0xFFFFFFFF, // White
+            darkContainerArgb = 0xFF1A1A1A, // Very Dark Gray (Vercel-style)
+            darkSecondaryArgb = 0xFFB0B0B0, // Light Gray
+            darkSecondaryContainerArgb = 0xFF333333,
+            darkTertiaryArgb = 0xFFA0A0A0,
+            darkTertiaryContainerArgb = 0xFF262626,
+        ),
         AccentProfile(
             id = CYAN_ID,
             label = "Cyan",

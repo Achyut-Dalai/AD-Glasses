@@ -1,5 +1,5 @@
 <resources>
-    <string name="app_name">CyanBridge</string>
+    <string name="app_name">AD Glasses</string>
     <string name="language_system_default">Predeterminado del sistema</string>
     <string name="language_selection_title">Elige el idioma de la aplicación</string>
     <string name="action_cancel">Cancelar</string>
@@ -25,18 +25,18 @@
     <string name="walking_aid_not_connected">Walking Aid: Gafas no conectadas. Conecta tus gafas primero.</string>
     <string name="walking_aid_meeting_active">Walking Aid: Grabación de reunión activa. Detén la reunión antes de activar Walking Aid.</string>
     <string name="onboarding_glasses_connection_title">Conecta tus gafas</string>
-    <string name="onboarding_glasses_connection_desc">Permite que CyanBridge encuentre y conecte tus gafas cercanas.</string>
+    <string name="onboarding_glasses_connection_desc">Permite que AD Glasses encuentre y conecte tus gafas cercanas.</string>
     <string name="onboarding_glasses_connection_details">El permiso Bluetooth solo se usa para detectar, emparejar y comunicarse con tus gafas. Puedes continuar sin permitirlo ahora y concederlo más tarde al conectar un dispositivo.</string>
     <string name="onboarding_optional_features_title">Funciones opcionales, tú eliges</string>
     <string name="onboarding_optional_features_desc">AutoDiary, Auto Audio, Local Agent y las funciones Cloud son opcionales y se configuran desde Plugins.</string>
     <string name="onboarding_optional_features_details">Empieza conectando las gafas y explora Plugins cuando quieras. Cada plugin explica lo que hace y solicita solo los permisos que necesita al activarlo. Puedes revisar o desactivar las funciones en cualquier momento.</string>
     <string name="onboarding_open_source_title">Desarrollado de forma abierta</string>
-    <string name="onboarding_open_source_desc">Revisa el código, informa de problemas y ayuda a mejorar CyanBridge para todos.</string>
-    <string name="onboarding_open_source_details">CyanBridge es de código abierto. Consulta el código para entender su comportamiento, informa de errores o problemas de seguridad, sugiere mejoras o contribuye mediante GitHub.</string>
+    <string name="onboarding_open_source_desc">Revisa el código, informa de problemas y ayuda a mejorar AD Glasses para todos.</string>
+    <string name="onboarding_open_source_details">AD Glasses es de código abierto. Consulta el código para entender su comportamiento, informa de errores o problemas de seguridad, sugiere mejoras o contribuye mediante GitHub.</string>
     <string name="onboarding_skip_all">Omitir todo</string>
     <string name="onboarding_back">Atrás</string>
     <string name="onboarding_next">Siguiente</string>
     <string name="onboarding_get_started">Comenzar</string>
     <string name="meta_diagnostics_title">Diagnóstico de Meta Ray-Ban</string>
-    <string name="meta_diagnostics_description">CyanBridge recopilará el estado reciente de Meta DAT, los errores, los detalles del dispositivo y las entradas filtradas de logcat para investigar el problema.</string>
+    <string name="meta_diagnostics_description">AD Glasses recopilará el estado reciente de Meta DAT, los errores, los detalles del dispositivo y las entradas filtradas de logcat para investigar el problema.</string>
 </resources>

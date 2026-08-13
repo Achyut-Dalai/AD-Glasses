@@ -19,24 +19,24 @@
         async createStartUpPageContainer(params) {
             console.log('[EvenHub Shim] createStartUpPageContainer', params);
             const text = this._extractText(params);
-            if (text && window.CyanBridgeEvenHubBridge) {
-                window.CyanBridgeEvenHubBridge.createPage(JSON.stringify(params));
+            if (text && window.ADGlassesEvenHubBridge) {
+                window.ADGlassesEvenHubBridge.createPage(JSON.stringify(params));
             }
             return 0; // success
         }
 
         async textContainerUpgrade(containerID, containerName, content, contentOffset, contentLength) {
             console.log('[EvenHub Shim] textContainerUpgrade', containerID, containerName, content);
-            if (window.CyanBridgeEvenHubBridge) {
-                window.CyanBridgeEvenHubBridge.updateText(containerID, containerName, content, contentOffset, contentLength);
+            if (window.ADGlassesEvenHubBridge) {
+                window.ADGlassesEvenHubBridge.updateText(containerID, containerName, content, contentOffset, contentLength);
             }
             return true;
         }
 
         async rebuildPageContainer(params) {
             console.log('[EvenHub Shim] rebuildPageContainer', params);
-            if (window.CyanBridgeEvenHubBridge) {
-                window.CyanBridgeEvenHubBridge.rebuildPage(JSON.stringify(params));
+            if (window.ADGlassesEvenHubBridge) {
+                window.ADGlassesEvenHubBridge.rebuildPage(JSON.stringify(params));
             }
             return true;
         }
@@ -48,8 +48,8 @@
 
         async shutDownPageContainer(exitMode) {
             console.log('[EvenHub Shim] shutDownPageContainer', exitMode);
-            if (window.CyanBridgeEvenHubBridge) {
-                window.CyanBridgeEvenHubBridge.shutDown(exitMode);
+            if (window.ADGlassesEvenHubBridge) {
+                window.ADGlassesEvenHubBridge.shutDown(exitMode);
             }
             return true;
         }
@@ -75,7 +75,7 @@
 
         getDeviceInfo() {
             return Promise.resolve({
-                model: 'MemoMind (via CyanBridge)',
+                model: 'MemoMind (via AD Glasses)',
                 serialNumber: 'N/A',
                 battery: 85,
                 wearingStatus: 'unknown',
@@ -86,8 +86,8 @@
 
         getUserInfo() {
             return Promise.resolve({
-                uid: 'cyanbridge-user',
-                name: 'CyanBridge User',
+                uid: 'adglasses-user',
+                name: 'AD Glasses User',
                 avatar: '',
                 country: 'US',
             });

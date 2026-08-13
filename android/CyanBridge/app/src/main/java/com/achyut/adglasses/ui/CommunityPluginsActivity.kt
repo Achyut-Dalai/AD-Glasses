@@ -1,0 +1,425 @@
+package com.achyut.adglasses.ui
+
+import android.content.Intent
+import android.net.Uri
+import android.os.Bundle
+import android.widget.Toast
+import androidx.activity.compose.setContent
+import androidx.appcompat.app.AppCompatActivity
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.setValue
+import androidx.lifecycle.lifecycleScope
+import com.achyut.adglasses.MainActivity
+import com.achyut.adglasses.ai.router.AiProviderPrefs
+import com.achyut.adglasses.devices.DeviceProfileStore
+import com.achyut.adglasses.shared.devices.DeviceClass
+import com.achyut.adglasses.shared.chat.ChatRole
+import com.achyut.adglasses.chat.ChatStore
+import com.achyut.adglasses.shared.navigation.AppDestination
+import com.achyut.adglasses.shared.plugins.CommunityPluginCardData
+import com.achyut.adglasses.shared.plugins.NativePluginCardData
+import com.achyut.adglasses.shared.plugins.PluginTimeWindow
+import com.achyut.adglasses.ui.appearance.AppearancePreferences
+import com.achyut.adglasses.ui.appearance.rememberAppearanceSettings
+import com.achyut.adglasses.shared.ui.plugins.CommunityPluginsScreen
+import com.achyut.adglasses.plugins.meetingsparknotes.MeetingSparkNotesService
+import com.achyut.adglasses.plugins.meetingsparknotes.MeetingSparkNotesSettingsActivity
+import com.achyut.adglasses.plugins.meetingsparknotes.MeetingSparkNotesPreferences
+import com.achyut.adglasses.plugins.livecaptioncloud.LiveCaptionCloudService
+import com.achyut.adglasses.plugins.livecaptioncloud.LiveCaptionCloudSettingsActivity
+import com.achyut.adglasses.plugins.livecaptioncloud.LiveCaptionCloudPreferences
+import com.achyut.adglasses.plugins.handsfreetranslator.HandsFreeTranslatorService
+import com.achyut.adglasses.plugins.handsfreetranslator.HandsFreeTranslatorSettingsActivity
+import com.achyut.adglasses.plugins.handsfreetranslator.HandsFreeTranslatorPreferences
+import com.achyut.adglasses.plugins.errandbrain.ErrandBrainService
+import com.achyut.adglasses.plugins.errandbrain.ErrandBrainSettingsActivity
+import com.achyut.adglasses.plugins.errandbrain.ErrandBrainPreferences
+import com.achyut.adglasses.plugins.autodiary.AutoDiaryService
+import com.achyut.adglasses.plugins.autodiary.AutoDiarySettingsActivity
+import com.achyut.adglasses.plugins.localagent.LocalAgentPlugin
+import com.achyut.adglasses.plugins.localagent.LocalAgentSettingsActivity
+import com.achyut.adglasses.plugins.autoaudio.AutoAudioSettingsActivity
+import com.achyut.adglasses.plugins.visualdiary.VisualDiaryPreferences
+import com.achyut.adglasses.plugins.visualdiary.VisualDiarySettingsActivity
+import com.achyut.adglasses.plugins.visualdiary.VisualDiaryService
+import com.achyut.adglasses.media.autocapture.AutoAudioCapturePrefs
+import com.achyut.adglasses.media.autocapture.AutoAudioCaptureService
+import com.achyut.adglasses.plugins.PluginVoicePermissions
+import com.achyut.adglasses.ui.ensureNotificationPermission
+import com.achyut.adglasses.ui.hasNotificationPermission
+import com.achyut.adglasses.shared.plugins.NativePluginIds
+import com.achyut.adglasses.ui.recordings.RecordingsListActivity
+import com.achyut.adglasses.ui.theme.AdGlassesTheme
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
+import org.json.JSONArray
+import org.json.JSONObject
+
+class CommunityPluginsActivity : AppCompatActivity() {
+
+    private var selectedWindow by mutableStateOf(PluginTimeWindow.ALL_TIME)
+    private var isRefreshing by mutableStateOf(false)
+    private var serverPluginsLoaded = false
+    private var communityPlugins by mutableStateOf<List<CommunityPluginCardData>>(emptyList())
+
+    private var nativePluginsState by mutableStateOf<List<NativePluginCardData>>(emptyList())
+
+    private fun nativePluginPool(): List<NativePluginCardData> {
+        return listOf(
+            NativePluginCardData(
+                id = NativePluginIds.LOCAL_AGENT,
+                title = "Local Agent",
+                description = "Private phone automation with accessibility controls, action approval, local planning, and shared diary memory.",
+                badge = "Automation",
+                enabled = LocalAgentPlugin.isEnabled(this),
+                hasSettings = true,
+            ),
+            NativePluginCardData(
+                id = NativePluginIds.MEETING_SPARK_NOTES,
+                title = "Meeting Spark Notes",
+                description = "Turns live voice capture and chats into concise meeting summaries with action items.",
+                badge = "Productivity",
+                enabled = CommunityPluginPrefs.isNativePluginEnabled(this, NativePluginIds.MEETING_SPARK_NOTES),
+                hasSettings = true,
+            ),
+            NativePluginCardData(
+                id = NativePluginIds.LIVE_CAPTION_CLOUD,
+                title = "Live Caption Cloud",
+                description = "Captions live speech from your phone or Bluetooth glasses mic, with optional translation.",
+                badge = "Accessibility",
+                enabled = CommunityPluginPrefs.isNativePluginEnabled(this, NativePluginIds.LIVE_CAPTION_CLOUD),
+                hasSettings = true,
+            ),
+            NativePluginCardData(
+                id = NativePluginIds.HANDS_FREE_TRANSLATOR,
+                title = "Hands-Free Translator",
+                description = "Continuously translates live speech from your phone or Bluetooth glasses mic while enabled.",
+                badge = "Language",
+                enabled = CommunityPluginPrefs.isNativePluginEnabled(this, NativePluginIds.HANDS_FREE_TRANSLATOR),
+                hasSettings = true,
+            ),
+            NativePluginCardData(
+                id = NativePluginIds.ERRAND_BRAIN,
+                title = "Errand Brain",
+                description = "Turns live voice notes into checklist tasks. Say “remind me in…” to schedule a phone reminder.",
+                badge = "Planner",
+                enabled = CommunityPluginPrefs.isNativePluginEnabled(this, NativePluginIds.ERRAND_BRAIN),
+                hasSettings = true,
+            ),
+            NativePluginCardData(
+                id = NativePluginIds.AUTO_DIARY,
+                title = "AutoDiary",
+                description = "Collect screen context and turn it into private daily facts, bullets, and summaries.",
+                badge = "Productivity",
+                enabled = AutoDiaryService.isEnabled(this),
+                hasSettings = true,
+            ),
+            NativePluginCardData(
+                id = NativePluginIds.AUTO_AUDIO,
+                title = "Auto Audio",
+                description = "Record glasses audio in resilient 15-minute loops with optional speech extension and sync.",
+                badge = "Media",
+                enabled = AutoAudioCapturePrefs.isEnabled(this),
+                hasSettings = true,
+            ),
+            NativePluginCardData(
+                id = NativePluginIds.VISUAL_DIARY,
+                title = "Visual Diary",
+                description = "Capture glasses scenes, describe them with Gemma, and append concise notes to daily memory.",
+                badge = "Productivity",
+                enabled = VisualDiaryPreferences.isEnabled(this),
+                hasSettings = true,
+            ),
+        )
+    }
+
+    override fun onCreate(savedInstanceState: Bundle?) {
+        super.onCreate(savedInstanceState)
+        refreshNativePluginUi()
+
+        val appearancePreferences = AppearancePreferences(this)
+        setContent {
+            val appearance by rememberAppearanceSettings(appearancePreferences)
+            AdGlassesTheme(appearance) {
+                CommunityPluginsScreen(
+                    plugins = communityPlugins,
+                    selectedWindow = selectedWindow,
+                    isRefreshing = isRefreshing,
+                    nativePlugins = nativePluginsState,
+                    onOpenNativePluginSettings = { pluginId ->
+                        when (pluginId) {
+                            NativePluginIds.LOCAL_AGENT -> startActivity(Intent(this, LocalAgentSettingsActivity::class.java))
+                            NativePluginIds.MEETING_SPARK_NOTES -> startActivity(Intent(this, MeetingSparkNotesSettingsActivity::class.java))
+                            NativePluginIds.LIVE_CAPTION_CLOUD -> startActivity(Intent(this, LiveCaptionCloudSettingsActivity::class.java))
+                            NativePluginIds.HANDS_FREE_TRANSLATOR -> startActivity(Intent(this, HandsFreeTranslatorSettingsActivity::class.java))
+                            NativePluginIds.ERRAND_BRAIN -> startActivity(Intent(this, ErrandBrainSettingsActivity::class.java))
+                            NativePluginIds.AUTO_DIARY -> startActivity(Intent(this, AutoDiarySettingsActivity::class.java))
+                            NativePluginIds.AUTO_AUDIO -> startActivity(Intent(this, AutoAudioSettingsActivity::class.java))
+                            NativePluginIds.VISUAL_DIARY -> startActivity(Intent(this, VisualDiarySettingsActivity::class.java))
+                        }
+                    },
+                    onToggleNativePlugin = ::toggleNativePlugin,
+                    onWindowSelected = { selectedWindow = it },
+                    onRefresh = ::fetchPluginsFromServer,
+                    onOpenCommunityPlugin = ::openCommunityPlugin,
+                    onPublishPlugin = {
+                        startActivity(Intent(this, PublishPluginActivity::class.java))
+                    },
+                    onDestinationSelected = ::navigateTo,
+                )
+            }
+        }
+        fetchPluginsFromServer()
+    }
+
+    override fun onResume() {
+        super.onResume()
+        refreshNativePluginUi()
+    }
+
+    private fun refreshNativePluginUi() {
+        nativePluginsState = nativePluginPool()
+    }
+
+    private fun toggleNativePlugin(pluginId: String, enabled: Boolean) {
+        if (pluginId == NativePluginIds.AUTO_DIARY) {
+            applyNativePluginToggle(pluginId, enabled)
+            return
+        }
+
+        if (enabled && pluginId in VOICE_PLUGIN_IDS && !PluginVoicePermissions.hasRequiredPermissions(this)) {
+            PluginVoicePermissions.request(this) { granted ->
+                if (granted) {
+                    applyNativePluginToggle(pluginId, enabled = true)
+                } else {
+                    Toast.makeText(
+                        this,
+                        "Microphone and notification permissions are required for $pluginId",
+                        Toast.LENGTH_LONG,
+                    ).show()
+                }
+            }
+            return
+        }
+        if (enabled && pluginId in NOTIFICATION_PLUGIN_IDS && !hasNotificationPermission(this)) {
+            ensureNotificationPermission(this, pluginId) {
+                applyNativePluginToggle(pluginId, enabled = true)
+            }
+            return
+        }
+        applyNativePluginToggle(pluginId, enabled)
+    }
+
+    private fun applyNativePluginToggle(pluginId: String, enabled: Boolean) {
+        when (pluginId) {
+            NativePluginIds.AUTO_DIARY -> {
+                if (enabled) AutoDiaryService.enable(this) else AutoDiaryService.disable(this)
+                refreshNativePluginUi()
+                return
+            }
+            NativePluginIds.VISUAL_DIARY -> {
+                if (enabled) VisualDiaryService.enable(this) else VisualDiaryService.disable(this)
+                refreshNativePluginUi()
+                return
+            }
+        }
+        CommunityPluginPrefs.setNativePluginEnabled(this, pluginId, enabled)
+        nativePluginsState = nativePluginsState.map {
+            if (it.id == pluginId) it.copy(enabled = enabled) else it
+        }
+        when (pluginId) {
+            NativePluginIds.LOCAL_AGENT -> {
+                LocalAgentPlugin.setEnabled(this, enabled)
+            }
+            NativePluginIds.MEETING_SPARK_NOTES -> {
+                MeetingSparkNotesPreferences.setEnabled(this, enabled)
+                if (enabled) MeetingSparkNotesService.start(this) else MeetingSparkNotesService.stop(this)
+            }
+            NativePluginIds.LIVE_CAPTION_CLOUD -> {
+                LiveCaptionCloudPreferences.setEnabled(this, enabled)
+                if (enabled) LiveCaptionCloudService.start(this) else LiveCaptionCloudService.stop(this)
+            }
+            NativePluginIds.HANDS_FREE_TRANSLATOR -> {
+                HandsFreeTranslatorPreferences.setEnabled(this, enabled)
+                if (enabled) HandsFreeTranslatorService.start(this) else HandsFreeTranslatorService.stop(this)
+            }
+            NativePluginIds.ERRAND_BRAIN -> {
+                ErrandBrainPreferences.setEnabled(this, enabled)
+                if (enabled) ErrandBrainService.start(this) else ErrandBrainService.stop(this)
+            }
+            NativePluginIds.AUTO_AUDIO -> {
+                AutoAudioCapturePrefs.setEnabled(this, enabled)
+                if (enabled) AutoAudioCaptureService.start(this) else AutoAudioCaptureService.stop(this)
+            }
+        }
+    }
+
+    private fun fetchPluginsFromServer() {
+        if (isRefreshing) return
+        if (!serverPluginsLoaded) {
+            Toast.makeText(this, "Fetching plugins from server...", Toast.LENGTH_SHORT).show()
+        }
+        isRefreshing = true
+
+        lifecycleScope.launch {
+            val result = withContext(Dispatchers.IO) {
+                runCatching { downloadCommunityPlugins() }
+            }
+
+            isRefreshing = false
+            result.onSuccess { plugins ->
+                communityPlugins = plugins
+                serverPluginsLoaded = true
+                Toast.makeText(this@CommunityPluginsActivity, "Plugins refreshed from server!", Toast.LENGTH_SHORT).show()
+            }.onFailure {
+                Toast.makeText(
+                    this@CommunityPluginsActivity,
+                    "Server unavailable. No community plugins were loaded.",
+                    Toast.LENGTH_LONG,
+                ).show()
+            }
+        }
+    }
+
+    private fun openCommunityPlugin(plugin: CommunityPluginCardData) {
+        val link = plugin.taskerNetLink ?: plugin.downloadUrl ?: return
+        runCatching {
+            startActivity(
+                Intent(
+                    Intent.ACTION_VIEW,
+                    Uri.parse(link),
+                ),
+            )
+        }.onFailure {
+            Toast.makeText(this, "Could not open ${plugin.title}", Toast.LENGTH_SHORT).show()
+        }
+    }
+
+    private fun downloadCommunityPlugins(): List<CommunityPluginCardData> {
+        val cloudUrl = AiProviderPrefs.getCloudBaseUrl(this).trimEnd('/')
+        val connection = java.net.URL("$cloudUrl/plugins").openConnection()
+            as java.net.HttpURLConnection
+        try {
+            connection.requestMethod = "GET"
+            connection.connectTimeout = 5_000
+            connection.readTimeout = 5_000
+            if (connection.responseCode != java.net.HttpURLConnection.HTTP_OK) {
+                error("HTTP ${connection.responseCode}")
+            }
+            val payload = connection.inputStream.bufferedReader().use { it.readText() }
+            return parseCommunityPlugins(payload)
+        } finally {
+            connection.disconnect()
+        }
+    }
+
+    private fun parseCommunityPlugins(payload: String): List<CommunityPluginCardData> {
+        val trimmed = payload.trim()
+        val array = if (trimmed.startsWith("[")) {
+            JSONArray(trimmed)
+        } else {
+            val root = JSONObject(trimmed)
+            root.optJSONArray("plugins") ?: root.optJSONArray("data") ?: JSONArray()
+        }
+
+        return buildList {
+            for (index in 0 until array.length()) {
+                val plugin = array.optJSONObject(index) ?: continue
+                val title = plugin.readString("title", "name") ?: continue
+                val id = plugin.readString("id", "slug") ?: title
+                
+                // Filter out Walking Aid and other blocked keywords
+                if (title.contains("Walking Aid", ignoreCase = true) || 
+                    id.contains("walking_aid", ignoreCase = true)) continue
+                
+                add(
+                    CommunityPluginCardData(
+                        id = id,
+                        title = title,
+                        author = plugin.readString("author", "publisher") ?: "Unknown",
+                        description = plugin.readString("description") ?: "",
+                        badge = plugin.readString("badge", "category") ?: "Other",
+                        downloadsAll = plugin.readMetric("downloads", "all_time", "all", "allTime"),
+                        downloadsMonthly = plugin.readMetric("downloads", "monthly", "month"),
+                        downloadsWeekly = plugin.readMetric("downloads", "weekly", "week"),
+                        votesAll = plugin.readMetric("votes", "all_time", "all", "allTime"),
+                        votesMonthly = plugin.readMetric("votes", "monthly", "month"),
+                        votesWeekly = plugin.readMetric("votes", "weekly", "week"),
+                        trendAll = plugin.readMetric("trend", "all_time", "all", "allTime"),
+                         trendMonthly = plugin.readMetric("trend", "monthly", "month"),
+                         trendWeekly = plugin.readMetric("trend", "weekly", "week"),
+                         taskerNetLink = plugin.readString("taskernet_link", "taskerNetLink", "taskernetLink"),
+                         downloadUrl = plugin.readString("download_url", "downloadUrl"),
+                     ),
+                )
+            }
+        }
+    }
+
+    private fun JSONObject.readString(vararg keys: String): String? {
+        return keys.firstNotNullOfOrNull { key ->
+            optString(key).trim().takeIf { it.isNotBlank() }
+        }
+    }
+
+    private fun JSONObject.readMetric(key: String, vararg names: String): Int {
+        val nested = optJSONObject(key)
+        if (nested != null) {
+            nested.readInt(*names)?.let { return it }
+        }
+        val flatKeys = names.map { name -> "${key}_$name" } + names.map { name -> "${key}${name.replaceFirstChar { it.uppercase() }}" }
+        return readInt(*flatKeys.toTypedArray()) ?: 0
+    }
+
+    private fun JSONObject.readInt(vararg keys: String): Int? {
+        return keys.firstNotNullOfOrNull { key ->
+            if (has(key)) optInt(key) else null
+        }
+    }
+
+    private fun navigateTo(destination: AppDestination) {
+        val target = when (destination) {
+            AppDestination.GLASSES -> Intent(this, MainActivity::class.java)
+            AppDestination.CHATS -> buildRecentChatIntent()
+            AppDestination.MEDIA -> Intent(this, RecordingsListActivity::class.java)
+            AppDestination.PLUGINS -> return
+            AppDestination.SETTINGS -> Intent(this, SettingsActivity::class.java)
+        }
+        target.addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP or Intent.FLAG_ACTIVITY_SINGLE_TOP)
+        startActivity(target)
+    }
+
+    private fun buildRecentChatIntent(): Intent {
+        val last = ChatStore.listNonEmptyThreads().firstOrNull()
+        val lastUserAt = last?.let { thread ->
+            ChatStore.listMessages(thread.id)
+                .lastOrNull { it.role == ChatRole.USER }
+                ?.createdAt
+        } ?: 0L
+        val openChatId = last?.id?.takeIf {
+            lastUserAt > 0L && System.currentTimeMillis() - lastUserAt < 30 * 60 * 1_000
+        }
+        return Intent(this, ChatThreadActivity::class.java).apply {
+            if (openChatId != null) {
+                putExtra(ChatThreadActivity.EXTRA_CHAT_ID, openChatId)
+            }
+        }
+    }
+
+    private companion object {
+        private val VOICE_PLUGIN_IDS = setOf(
+            NativePluginIds.MEETING_SPARK_NOTES,
+            NativePluginIds.LIVE_CAPTION_CLOUD,
+            NativePluginIds.HANDS_FREE_TRANSLATOR,
+            NativePluginIds.ERRAND_BRAIN,
+            NativePluginIds.AUTO_AUDIO,
+        )
+
+        private val NOTIFICATION_PLUGIN_IDS = setOf(
+            NativePluginIds.AUTO_DIARY,
+            NativePluginIds.VISUAL_DIARY,
+        )
+    }
+}

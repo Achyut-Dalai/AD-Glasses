@@ -3,13 +3,13 @@ package com.achyut.adglasses.shared.settings
 enum class AgentProviderType {
     TASKER,
     LOCAL_AGENT,
-    CLOUD;
+    CLOUD_API;
 
     val label: String
         get() = when (this) {
             TASKER -> "Tasker"
-            LOCAL_AGENT -> "Local"
-            CLOUD -> "Cloud"
+            LOCAL_AGENT -> "Local agent"
+            CLOUD_API -> "AD Glasses Cloud"
         }
 }
 

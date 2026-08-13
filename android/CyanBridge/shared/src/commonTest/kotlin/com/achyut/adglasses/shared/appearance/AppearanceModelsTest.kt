@@ -11,7 +11,7 @@ import com.achyut.adglasses.shared.chat.ChatThread
 import com.achyut.adglasses.shared.chat.ChatThreadEvent
 import com.achyut.adglasses.shared.chat.ChatThreadStateReducer
 import com.achyut.adglasses.shared.chat.ChatThreadUiState
-import com.achyut.adglasses.bridge.core.DisplayCommand
+import com.achyut.adglasses.shared.bridge.core.DisplayCommand
 import com.achyut.adglasses.bridge.core.DisplayPriority
 import com.achyut.adglasses.shared.platform.CyanBridgeSharedBootstrap
 

@@ -79,11 +79,11 @@ private val IOS_PRO_SUBSCRIPTION_STATE = ProSubscriptionUiState(
 )
 
 /**
- * Initialize CyanBridgeServices with iOS implementations and return the ComposeUIViewController.
+ * Initialize ADGlassesServices with iOS implementations and return the ComposeUIViewController.
  */
 fun MainViewController() = ComposeUIViewController {
     val controller = remember { IosAppController() }
-    if (!CyanBridgeServices.isInitialized()) {
+    if (!ADGlassesServices.isInitialized()) {
         controller.initializeServices()
     }
     val dashboardState by controller.dashboardState.collectAsState()
@@ -96,7 +96,7 @@ fun MainViewController() = ComposeUIViewController {
 /** Used only by the simulator screenshot harness to exercise each root route. */
 fun MainViewControllerForDestination(destination: String) = ComposeUIViewController {
     val controller = remember { IosAppController() }
-    if (!CyanBridgeServices.isInitialized()) {
+    if (!ADGlassesServices.isInitialized()) {
         controller.initializeServices()
     }
     val dashboardState by controller.dashboardState.collectAsState()
@@ -377,8 +377,8 @@ private class IosAppController {
     }
 
     fun initializeServices() {
-        if (CyanBridgeServices.isInitialized()) return
-        CyanBridgeServices.initialize(
+        if (ADGlassesServices.isInitialized()) return
+        ADGlassesServices.initialize(
             bleManager = bleManager,
             wifiP2pManager = wifiP2pManager,
             chatRepository = chatRepository,

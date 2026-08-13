@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <style name="Theme.AdGlassesManager" parent="Theme.MaterialComponents.DayNight.NoActionBar">
-        <!-- CyanBridge AI branding (MVP) -->
+        <!-- AD Glasses AI branding (MVP) -->
         <item name="colorPrimary">@color/cyan_accent</item>
         <item name="colorPrimaryVariant">@color/card_bg</item>
         <item name="colorSecondary">@color/cyan_accent</item>

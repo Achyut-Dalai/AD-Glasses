@@ -76,7 +76,7 @@
                 <action android:name="android.intent.action.VIEW" />
                 <category android:name="android.intent.category.DEFAULT" />
                 <category android:name="android.intent.category.BROWSABLE" />
-                <data android:scheme="cyanbridge" />
+                <data android:scheme="adglasses" />
             </intent-filter>
         </activity>
 
@@ -141,7 +141,7 @@
         <provider android:name="rikka.shizuku.ShizukuProvider" android:authorities="${applicationId}.shizuku" android:enabled="true" android:exported="true" android:multiprocess="false" android:permission="android.permission.INTERACT_ACROSS_USERS_FULL" />
         <service android:name=".media.autocapture.AutoAudioCaptureService" android:exported="false" android:foregroundServiceType="dataSync" />
         <service android:name=".studiobridge.StudioBridgeForegroundService" android:exported="false" android:foregroundServiceType="microphone" />
-        <service android:name=".bridge.notifications.NotificationForwarderService" android:exported="true" android:label="CyanBridge notification forwarding" android:permission="android.permission.BIND_NOTIFICATION_LISTENER_SERVICE">
+        <service android:name=".bridge.notifications.NotificationForwarderService" android:exported="true" android:label="AD Glasses notification forwarding" android:permission="android.permission.BIND_NOTIFICATION_LISTENER_SERVICE">
             <intent-filter>
                 <action android:name="android.service.notification.NotificationListenerService" />
             </intent-filter>

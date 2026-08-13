@@ -7,8 +7,8 @@
     <string name="destination_glasses_subtitle">连接并控制眼镜。</string>
     <string name="destination_chats_subtitle">开始对话或选择已有聊天。</string>
     <string name="destination_media_subtitle">同步的照片、视频和录音会显示在这里。</string>
-    <string name="destination_plugins_subtitle">浏览并配置 CyanBridge 插件。</string>
-    <string name="destination_settings_subtitle">配置 CyanBridge 使用体验。</string>
+    <string name="destination_plugins_subtitle">浏览并配置 AD Glasses 插件。</string>
+    <string name="destination_settings_subtitle">配置 AD Glasses 使用体验。</string>
     <string name="action_open">打开</string>
     <string name="action_delete">删除</string>
     <string name="action_share">分享</string>
@@ -78,7 +78,7 @@
     <string name="settings_faq_data_question">数据如何处理？</string>
     <string name="settings_faq_data_answer">默认情况下数据保留在此手机上。你可以在“数据”中导出、导入或清除数据。</string>
     <string name="settings_faq_source_question">可以查看源代码吗？</string>
-    <string name="settings_faq_source_answer">可以。CyanBridge 是开源项目，可在项目仓库中查看其行为。</string>
+    <string name="settings_faq_source_answer">可以。AD Glasses 是开源项目，可在项目仓库中查看其行为。</string>
     <string name="settings_range_error">请输入 %1$d 到 %2$d</string>
 
     <string name="appearance_title">外观</string>
@@ -161,7 +161,7 @@
     <string name="media_empty">暂无同步的照片或视频。</string>
     <string name="media_video">视频</string>
     <string name="media_selected_content_description">已选择</string>
-    <string name="media_folder_hint">CyanBridge 下载的文件</string>
+    <string name="media_folder_hint">AD Glasses 下载的文件</string>
 
     <string name="sync_flow_title">选择同步流程</string>
     <string name="device_class_ad_glasses">AD Glasses</string>
@@ -218,7 +218,7 @@
     <string name="publish_submit">提交插件</string>
 
     <string name="pro_subscription_title">Cloud 订阅</string>
-    <string name="pro_intro">使用本地模型即可免费使用完整的 CyanBridge。云端 AI 和云同步可选 Cloud。</string>
+    <string name="pro_intro">使用本地模型即可免费使用完整的 AD Glasses。云端 AI 和云同步可选 Cloud。</string>
     <string name="pro_choose_plan">选择方案</string>
     <string name="pro_free_trial">免费试用 - 30 天</string>
     <string name="pro_google_play_price">Google Play：%1$s</string>
@@ -322,7 +322,7 @@
     <string name="local_models_test_connection">测试连接</string>
     <string name="local_models_save">保存</string>
     <string name="local_models_studio_bridge">Studio Bridge</string>
-    <string name="local_models_studio_description">通过 Tailscale 接收 CyanBridge Model Studio 的批准请求并用语音回应。</string>
+    <string name="local_models_studio_description">通过 Tailscale 接收 AD Glasses Model Studio 的批准请求并用语音回应。</string>
     <string name="local_models_enable_studio">启用 Studio Bridge</string>
     <string name="local_models_api_key_remote">API 密钥（与远程服务器相同）</string>
     <string name="local_models_save_connect">保存并连接</string>
@@ -488,16 +488,16 @@
     <string name="dashboard_ota_description">为两颗芯片执行一次受控更新：先更新 Wi-Fi .swu，再经过新的就绪检查更新 BLE .bin。</string>
     <string name="dashboard_choose_ota_files">选择组合 OTA 文件</string>
     <string name="dashboard_ota_choose_source">选择两个固件组件的来源</string>
-    <string name="dashboard_ota_source_body_one">固件与型号和芯片有关。CyanBridge 会在刷写前准备两个组件，然后遵循官方顺序：先 Wi-Fi SWU，再 BLE BIN。Wi-Fi 失败时绝不会启动 BLE DFU。</string>
+    <string name="dashboard_ota_source_body_one">固件与型号和芯片有关。AD Glasses 会在刷写前准备两个组件，然后遵循官方顺序：先 Wi-Fi SWU，再 BLE BIN。Wi-Fi 失败时绝不会启动 BLE DFU。</string>
     <string name="dashboard_ota_source_body_two">只有当两个文件与这些眼镜报告的 Wi-Fi 和蓝牙版本完全匹配时，才会选择服务器副本。个人文件需要两次选择：先选 .swu，再选 .bin。</string>
     <string name="dashboard_ota_acknowledge">我已确认此镜像与眼镜型号和目标芯片匹配。</string>
     <string name="dashboard_request_patch">请求固件补丁</string>
-    <string name="dashboard_patch_body_one">CyanBridge 只下载根据每个目标芯片报告的确切版本构建的补丁固件。开发者无法验证 Wi-Fi 和蓝牙芯片版本是否兼容，因此不会提供混合或未经验证的版本。</string>
+    <string name="dashboard_patch_body_one">AD Glasses 只下载根据每个目标芯片报告的确切版本构建的补丁固件。开发者无法验证 Wi-Fi 和蓝牙芯片版本是否兼容，因此不会提供混合或未经验证的版本。</string>
     <string name="dashboard_patch_body_two">某些旧版本或最新版本可能尚未提供。请为此确切版本发送请求，开发者可能会在 48 小时内通过下方邮箱联系你。</string>
     <string name="dashboard_requested">已请求：%1$s\n硬件：%2$s\n固件：%3$s</string>
     <string name="dashboard_contact_email">联系邮箱</string>
     <string name="dashboard_valid_email">请输入有效的电子邮件地址</string>
-    <string name="dashboard_email_supporting">版本详情和 OTA 诊断将发送给 CyanBridge。</string>
+    <string name="dashboard_email_supporting">版本详情和 OTA 诊断将发送给 AD Glasses。</string>
     <string name="dashboard_sending">正在发送...</string>
     <string name="dashboard_send_request">发送请求</string>
     <string name="dashboard_ota_done">完成</string>
@@ -518,7 +518,7 @@
     <string name="sync_flow_official_title">AD Glasses 应用流程</string>
     <string name="sync_flow_official_description">类似供应商的严格 BLE + P2P 同步</string>
     <string name="sync_flow_custom_title">自定义流程</string>
-    <string name="sync_flow_custom_description">带备用扫描的 CyanBridge 解析器</string>
+    <string name="sync_flow_custom_description">带备用扫描的 AD Glasses 解析器</string>
     <string name="ota_target_wifi">Wi-Fi 芯片（.swu）</string>
     <string name="ota_target_wifi_description">V821 Linux - 修补 rootfs/init 脚本</string>
     <string name="ota_target_ble">BLE 芯片（.bin）</string>

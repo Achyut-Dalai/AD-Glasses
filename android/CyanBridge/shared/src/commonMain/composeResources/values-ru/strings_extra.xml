@@ -7,8 +7,8 @@
     <string name="destination_glasses_subtitle">Подключайте очки и управляйте ими.</string>
     <string name="destination_chats_subtitle">Начните разговор или выберите существующий чат.</string>
     <string name="destination_media_subtitle">Синхронизированные фото, видео и записи появятся здесь.</string>
-    <string name="destination_plugins_subtitle">Просматривайте и настраивайте плагины CyanBridge.</string>
-    <string name="destination_settings_subtitle">Настройте работу CyanBridge.</string>
+    <string name="destination_plugins_subtitle">Просматривайте и настраивайте плагины AD Glasses.</string>
+    <string name="destination_settings_subtitle">Настройте работу AD Glasses.</string>
     <string name="action_open">Открыть</string>
     <string name="action_delete">Удалить</string>
     <string name="action_share">Поделиться</string>
@@ -78,7 +78,7 @@
     <string name="settings_faq_data_question">Как обрабатываются данные?</string>
     <string name="settings_faq_data_answer">По умолчанию данные остаются на этом телефоне. Их можно экспортировать, импортировать или удалить в разделе «Данные».</string>
     <string name="settings_faq_source_question">Можно ли проверить исходный код?</string>
-    <string name="settings_faq_source_answer">Да. CyanBridge имеет открытый исходный код, а его поведение можно проверить в репозитории проекта.</string>
+    <string name="settings_faq_source_answer">Да. AD Glasses имеет открытый исходный код, а его поведение можно проверить в репозитории проекта.</string>
     <string name="settings_range_error">Используйте значение от %1$d до %2$d</string>
 
     <string name="appearance_title">Внешний вид</string>
@@ -161,7 +161,7 @@
     <string name="media_empty">Синхронизированных фото или видео пока нет.</string>
     <string name="media_video">Видео</string>
     <string name="media_selected_content_description">Выбрано</string>
-    <string name="media_folder_hint">Файлы, загруженные CyanBridge</string>
+    <string name="media_folder_hint">Файлы, загруженные AD Glasses</string>
 
     <string name="sync_flow_title">Выберите способ синхронизации</string>
     <string name="device_class_ad_glasses">AD Glasses</string>
@@ -218,7 +218,7 @@
     <string name="publish_submit">Отправить плагин</string>
 
     <string name="pro_subscription_title">Подписка Cloud</string>
-    <string name="pro_intro">Используйте CyanBridge бесплатно с локальными моделями. Cloud необязательна для облачного ИИ и синхронизации.</string>
+    <string name="pro_intro">Используйте AD Glasses бесплатно с локальными моделями. Cloud необязательна для облачного ИИ и синхронизации.</string>
     <string name="pro_choose_plan">Выберите план</string>
     <string name="pro_free_trial">Бесплатный пробный период — 30 дней</string>
     <string name="pro_google_play_price">Google Play: %1$s</string>
@@ -322,7 +322,7 @@
     <string name="local_models_test_connection">Проверить подключение</string>
     <string name="local_models_save">Сохранить</string>
     <string name="local_models_studio_bridge">Studio Bridge</string>
-    <string name="local_models_studio_description">Получайте запросы на подтверждение CyanBridge Model Studio через Tailscale и отвечайте голосом.</string>
+    <string name="local_models_studio_description">Получайте запросы на подтверждение AD Glasses Model Studio через Tailscale и отвечайте голосом.</string>
     <string name="local_models_enable_studio">Включить Studio Bridge</string>
     <string name="local_models_api_key_remote">Ключ API (как у удаленного сервера)</string>
     <string name="local_models_save_connect">Сохранить и подключиться</string>
@@ -488,16 +488,16 @@
     <string name="dashboard_ota_description">Выполните контролируемое обновление обеих микросхем: сначала Wi-Fi .swu, затем BLE .bin после новой проверки готовности.</string>
     <string name="dashboard_choose_ota_files">Выбрать объединенные файлы OTA</string>
     <string name="dashboard_ota_choose_source">Выберите источник обоих компонентов прошивки</string>
-    <string name="dashboard_ota_source_body_one">Прошивка зависит от модели и микросхемы. CyanBridge подготавливает оба компонента до начала прошивки, затем соблюдает официальный порядок: сначала Wi-Fi SWU, потом BLE BIN. Сбой Wi-Fi никогда не запускает BLE DFU.</string>
+    <string name="dashboard_ota_source_body_one">Прошивка зависит от модели и микросхемы. AD Glasses подготавливает оба компонента до начала прошивки, затем соблюдает официальный порядок: сначала Wi-Fi SWU, потом BLE BIN. Сбой Wi-Fi никогда не запускает BLE DFU.</string>
     <string name="dashboard_ota_source_body_two">Копии сервера выбираются только при точном совпадении обоих файлов с версиями Wi-Fi и Bluetooth, сообщенными этими очками. Для личных файлов требуется выбрать два файла: сначала .swu, затем .bin.</string>
     <string name="dashboard_ota_acknowledge">Я проверил, что этот образ соответствует модели очков и целевой микросхеме.</string>
     <string name="dashboard_request_patch">Запросить исправление прошивки</string>
-    <string name="dashboard_patch_body_one">CyanBridge скачивает только исправленную прошивку, собранную из точной версии каждой целевой микросхемы. Разработчик не может проверить совместимость версий Wi-Fi и Bluetooth, поэтому смешанные или непроверенные версии не предлагаются.</string>
+    <string name="dashboard_patch_body_one">AD Glasses скачивает только исправленную прошивку, собранную из точной версии каждой целевой микросхемы. Разработчик не может проверить совместимость версий Wi-Fi и Bluetooth, поэтому смешанные или непроверенные версии не предлагаются.</string>
     <string name="dashboard_patch_body_two">Некоторые старые или самые новые версии могут быть пока недоступны. Отправьте запрос для этой точной версии, и разработчик свяжется с вами по указанной ниже почте, вероятно, в течение 48 часов.</string>
     <string name="dashboard_requested">Запрошено: %1$s\nОборудование: %2$s\nПрошивка: %3$s</string>
     <string name="dashboard_contact_email">Контактная почта</string>
     <string name="dashboard_valid_email">Введите действительный адрес электронной почты</string>
-    <string name="dashboard_email_supporting">Сведения о версии и диагностика OTA будут отправлены в CyanBridge.</string>
+    <string name="dashboard_email_supporting">Сведения о версии и диагностика OTA будут отправлены в AD Glasses.</string>
     <string name="dashboard_sending">Отправка...</string>
     <string name="dashboard_send_request">Отправить запрос</string>
     <string name="dashboard_ota_done">Готово</string>
@@ -518,7 +518,7 @@
     <string name="sync_flow_official_title">Сценарий приложения AD Glasses</string>
     <string name="sync_flow_official_description">Строгая синхронизация BLE + P2P как у поставщика</string>
     <string name="sync_flow_custom_title">Свой сценарий</string>
-    <string name="sync_flow_custom_description">Разрешение CyanBridge с резервным сканированием</string>
+    <string name="sync_flow_custom_description">Разрешение AD Glasses с резервным сканированием</string>
     <string name="ota_target_wifi">Микросхема Wi-Fi (.swu)</string>
     <string name="ota_target_wifi_description">V821 Linux — исправляет rootfs и скрипты init</string>
     <string name="ota_target_ble">Микросхема BLE (.bin)</string>

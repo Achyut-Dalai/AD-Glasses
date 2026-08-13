@@ -81,7 +81,7 @@
 
     </LinearLayout>
 
-    <com.google.android.material.progressindicator.LinearCloudgressIndicator
+    <com.google.android.material.progressindicator.LinearProgressIndicator
         android:id="@+id/progress_transcribe"
         android:layout_width="0dp"
         android:layout_height="wrap_content"

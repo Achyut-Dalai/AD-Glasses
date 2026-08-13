@@ -8,16 +8,16 @@ import org.junit.Test
 
 class WifiAdbSourceSafetyTest {
     private val debugSource = File(
-        "src/debug/java/com/fersaiyan/cyanbridge/wifiadb/DefaultWifiAdbDebugControllerFactory.kt",
+        "src/debug/java/com/achyut/adglasses/wifiadb/DefaultWifiAdbDebugControllerFactory.kt",
     ).readText()
     private val releaseSource = File(
-        "src/release/java/com/fersaiyan/cyanbridge/wifiadb/DefaultWifiAdbDebugControllerFactory.kt",
+        "src/release/java/com/achyut/adglasses/wifiadb/DefaultWifiAdbDebugControllerFactory.kt",
     ).readText()
     private val relaySource = File(
-        "src/debug/java/com/fersaiyan/cyanbridge/wifiadb/RawTcpRelay.kt",
+        "src/debug/java/com/achyut/adglasses/wifiadb/RawTcpRelay.kt",
     ).readText()
     private val p2pSource = File(
-        "src/main/java/com/fersaiyan/cyanbridge/ui/wifi/p2p/WifiP2pManagerSingleton.kt",
+        "src/main/java/com/achyut/adglasses/ui/wifi/p2p/WifiP2pManagerSingleton.kt",
     ).readText()
 
     @Test
@@ -59,7 +59,7 @@ class WifiAdbSourceSafetyTest {
         assertFalse(releaseSource.contains("ServerSocket"))
         assertFalse(releaseSource.contains("Socket("))
 
-        val mainSource = File("src/main/java/com/fersaiyan/cyanbridge/MainActivity.kt").readText()
+        val mainSource = File("src/main/java/com/achyut/adglasses/MainActivity.kt").readText()
         assertTrue(mainSource.contains("wifiAdbDebug = WifiAdbDebugUiState(isAvailable = BuildConfig.DEBUG)"))
         assertTrue(mainSource.contains("if (BuildConfig.DEBUG) startWifiAdbDebug()"))
     }
