@@ -183,8 +183,8 @@ import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
-import com.achyut.adglasses.agent.ProSubscriptionAiPrefs
-import com.achyut.adglasses.agent.ProSubscriptionServerPrefs
+import com.achyut.adglasses.agent.AiPrefs
+import com.achyut.adglasses.agent.ServerPrefs
 import com.achyut.adglasses.ai.router.AssistantIntent
 import com.achyut.adglasses.ai.router.AssistantRequest
 import com.achyut.adglasses.ai.router.AssistantRequestRouter
@@ -192,7 +192,7 @@ import com.achyut.adglasses.ai.router.AssistantRequestSource
 import com.achyut.adglasses.ai.router.AssistantSpeechPolicy
 import com.achyut.adglasses.ai.router.AiProviderPrefs
 import com.achyut.adglasses.ai.router.AiProviderType as RelayProviderType
-import com.achyut.adglasses.ai.router.CliRelayClient
+import com.achyut.adglasses.ai.router.CliCloudClient
 import com.achyut.adglasses.ai.vision.ImageQuestionPreferences
 import com.achyut.adglasses.ai.vision.ImageQuestionPromptResolver
 import com.achyut.adglasses.ai.vision.ImageQuestionRoute
@@ -1835,7 +1835,7 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
 
                     val msg = when (AutomationPrefs.getProviderType(this@MainActivity)) {
                         AgentProviderType.TASKER -> "AI Mode: Chosen Provider (Tasker Broadcast)"
-                        AgentProviderType.PRO_SUBSCRIPTION -> "AI Mode: Chosen Provider (Pro Subscription)"
+                        AgentProviderType.CLOUD_API -> "AI Mode: Chosen Provider (Pro Subscription)"
                         AgentProviderType.LOCAL_AGENT -> "AI Mode: Chosen Provider (Local Agent)"
                     }
                     Toast.makeText(this@MainActivity, msg, Toast.LENGTH_SHORT).show()
@@ -2680,7 +2680,7 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
                             bleHardwareVersion = deviceInfo.hardwareVersion.orEmpty().ifBlank { "unknown" },
                             bleFirmwareVersion = deviceInfo.firmwareVersion.orEmpty().ifBlank { "unknown" },
                             relayMessage = result.message,
-                            suggestedContactEmail = ProSubscriptionServerPrefs.getAccountEmail(this@MainActivity),
+                            suggestedContactEmail = ServerPrefs.getAccountEmail(this@MainActivity),
                         ),
                     )
                 }
@@ -3306,7 +3306,7 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
         }
         return when (AutomationPrefs.getProviderType(this)) {
             AgentProviderType.TASKER -> AI_MODE_TASKER
-            AgentProviderType.PRO_SUBSCRIPTION -> AI_MODE_CHOSEN_PROVIDER
+            AgentProviderType.CLOUD_API -> AI_MODE_CHOSEN_PROVIDER
             AgentProviderType.LOCAL_AGENT -> AI_MODE_CHOSEN_PROVIDER
         }
     }
@@ -3316,7 +3316,7 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
     private fun isChosenProviderCloudEndpoint(): Boolean {
         if (!isChosenProviderMode()) return false
         return when (AutomationPrefs.getProviderType(this)) {
-            AgentProviderType.PRO_SUBSCRIPTION -> true
+            AgentProviderType.CLOUD_API -> true
             AgentProviderType.LOCAL_AGENT,
             AgentProviderType.TASKER -> false
         }
@@ -3354,7 +3354,7 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
     }
 
     private fun externalImageAutomationUnsupportedReason(): String? {
-        if (!isGeminiOrChatGptModeSelected() || AiProviderPrefs.getProvider(this) == RelayProviderType.CLI_RELAY) {
+        if (!isGeminiOrChatGptModeSelected() || AiProviderPrefs.getProvider(this) == RelayProviderType.CLOUD_API) {
             return null
         }
 
@@ -3369,7 +3369,7 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
 
     private fun requiresTaskerAutomationForImageQuestions(): Boolean {
         if (!isGeminiOrChatGptModeSelected()) return false
-        return AiProviderPrefs.getProvider(this) != RelayProviderType.CLI_RELAY &&
+        return AiProviderPrefs.getProvider(this) != RelayProviderType.CLOUD_API &&
             selectedImageAutomationTarget().imageAutomationSupported
     }
 
@@ -3635,13 +3635,13 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
         )
 
         return when (providerType) {
-            AgentProviderType.PRO_SUBSCRIPTION -> {
-                CliRelayClient.chat(
+            AgentProviderType.CLOUD_API -> {
+                CliCloudClient.chat(
                     context = this,
                     chatId = "glasses_${System.currentTimeMillis()}",
                     prompt = userPrompt,
                     messages = messages,
-                    modelOverride = ProSubscriptionAiPrefs.getRequestsModel(this),
+                    modelOverride = AiPrefs.getRequestsModel(this),
                 ).getOrElse {
                     "Pro endpoint error: ${it.message ?: "unknown error"}"
                 }
@@ -3664,7 +3664,7 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
                 }
 
             AgentProviderType.TASKER -> {
-                CliRelayClient.chat(
+                CliCloudClient.chat(
                     context = this,
                     chatId = "glasses_${System.currentTimeMillis()}",
                     prompt = userPrompt,
@@ -3710,12 +3710,12 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
         CoroutineScope(Dispatchers.IO).launch {
             try {
                 val finalReply = when (providerType) {
-                    AgentProviderType.PRO_SUBSCRIPTION -> {
-                        val visionResult = CliRelayClient.imageQuery(
+                    AgentProviderType.CLOUD_API -> {
+                        val visionResult = CliCloudClient.imageQuery(
                             context = this@MainActivity,
                             imagePath = imagePath,
                             prompt = resolvedPrompt.forRoute(ImageQuestionRoute.PRO_RELAY),
-                            modelOverride = ProSubscriptionAiPrefs.getQuestionsModel(this@MainActivity),
+                            modelOverride = AiPrefs.getQuestionsModel(this@MainActivity),
                         )
 
                         if (visionResult.isFailure) {
@@ -3750,7 +3750,7 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
                     }
 
                     AgentProviderType.TASKER -> {
-                        val visionResult = CliRelayClient.imageQuery(
+                        val visionResult = CliCloudClient.imageQuery(
                             context = this@MainActivity,
                             imagePath = imagePath,
                             prompt = resolvedPrompt.forRoute(ImageQuestionRoute.TASKER_GEMINI),
@@ -4478,13 +4478,13 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
                                     providerType = selectedProvider,
                                 )
                             } else {
-                                val modelOverride = if (selectedProvider == AgentProviderType.PRO_SUBSCRIPTION) {
-                                    ProSubscriptionAiPrefs.getQuestionsModel(this@MainActivity)
+                                val modelOverride = if (selectedProvider == AgentProviderType.CLOUD_API) {
+                                    AiPrefs.getQuestionsModel(this@MainActivity)
                                 } else {
                                     null
                                 }
 
-                                CliRelayClient.voiceQuery(
+                                CliCloudClient.voiceQuery(
                                     context = this@MainActivity,
                                     prompt = prompt,
                                     modelOverride = modelOverride,
@@ -4564,7 +4564,7 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
         val selectedProvider = AutomationPrefs.getProviderType(this)
         val useChosenProviderMemoryAware =
             aiAssistantMode == AI_MODE_CHOSEN_PROVIDER &&
-                (selectedProvider == AgentProviderType.PRO_SUBSCRIPTION ||
+                (selectedProvider == AgentProviderType.CLOUD_API ||
                     selectedProvider == AgentProviderType.LOCAL_AGENT)
         if (useChosenProviderMemoryAware) {
             triggerCliRelayVoiceQuery(
@@ -4578,7 +4578,7 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
         // Only route through CLI relay when NOT in Gemini/ChatGPT mode (those use native apps).
         if (effectiveMode != AI_MODE_GEMINI && effectiveMode != AI_MODE_CHATGPT) {
             val relayProvider = AiProviderPrefs.getProvider(this)
-            if (relayProvider == RelayProviderType.CLI_RELAY) {
+            if (relayProvider == RelayProviderType.CLOUD_API) {
                 triggerCliRelayVoiceQuery()
                 return
             }
@@ -4618,7 +4618,7 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
     }
 
     private fun usesExternalImageAutomation(): Boolean {
-        if (AiProviderPrefs.getProvider(this) == RelayProviderType.CLI_RELAY) return false
+        if (AiProviderPrefs.getProvider(this) == RelayProviderType.CLOUD_API) return false
         if (aiAssistantMode == AI_MODE_CHOSEN_PROVIDER &&
             AutomationPrefs.getProviderType(this) != AgentProviderType.TASKER
         ) {
@@ -4844,7 +4844,7 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
         // Route ChosenProvider with memory-aware providers
         val useChosenProviderMemoryAware =
             isChosenProviderMode &&
-                (selectedProvider == AgentProviderType.PRO_SUBSCRIPTION ||
+                (selectedProvider == AgentProviderType.CLOUD_API ||
                     selectedProvider == AgentProviderType.LOCAL_AGENT)
         if (useChosenProviderMemoryAware) {
             triggerMemoryAwareImageQuery(imagePath, selectedProvider, resolvedPrompt)
@@ -4852,19 +4852,19 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
         }
 
         val relayProvider = AiProviderPrefs.getProvider(this)
-        if (relayProvider == RelayProviderType.CLI_RELAY) {
+        if (relayProvider == RelayProviderType.CLOUD_API) {
             Log.i("AIHijack", "Sending image query to CLI relay: $imagePath")
             val visionPrompt = resolvedPrompt.forRoute(ImageQuestionRoute.PRO_RELAY)
 
             CoroutineScope(Dispatchers.IO).launch {
                 try {
-                    val modelOverride = if (AutomationPrefs.getProviderType(this@MainActivity) == AgentProviderType.PRO_SUBSCRIPTION) {
-                        ProSubscriptionAiPrefs.getQuestionsModel(this@MainActivity)
+                    val modelOverride = if (AutomationPrefs.getProviderType(this@MainActivity) == AgentProviderType.CLOUD_API) {
+                        AiPrefs.getQuestionsModel(this@MainActivity)
                     } else {
                         null
                     }
 
-                    val result = CliRelayClient.imageQuery(
+                    val result = CliCloudClient.imageQuery(
                         context = this@MainActivity,
                         imagePath = imagePath,
                         prompt = visionPrompt,
