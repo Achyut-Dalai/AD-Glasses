@@ -207,7 +207,7 @@ import com.achyut.adglasses.ai.image.ImageQuestionSourcePolicy
 import com.achyut.adglasses.ai.image.ImageThumbnailQuality
 import com.achyut.adglasses.ai.image.HighQualityFailureChoice
 import com.achyut.adglasses.shared.glasses.GlassesAssistantMode
-import com.achyut.adglasses.shared.glasses.SharedDashboardAction as SharedDashboardAction
+import com.achyut.adglasses.shared.glasses.GlassesDashboardAction as SharedDashboardAction
 import com.achyut.adglasses.shared.glasses.GlassesDashboardUiState
 import com.achyut.adglasses.shared.glasses.FirmwarePatchRequestUiState
 import com.achyut.adglasses.shared.glasses.GlassesSyncFlow
@@ -832,7 +832,7 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
             MeetingSparkNotesService.start(this)
         }
         if (CommunityPluginPrefs.isNativePluginEnabled(this, NativePluginIds.LIVE_CAPTION_RELAY)) {
-            LiveCaptionRelayService.start(this)
+            LiveCaptionCloudService.start(this)
         }
         if (CommunityPluginPrefs.isNativePluginEnabled(this, NativePluginIds.HANDS_FREE_TRANSLATOR)) {
             HandsFreeTranslatorService.start(this)
@@ -1547,8 +1547,8 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
                             MeetingSparkNotesService.start(this)
                         }
                         NativePluginIds.LIVE_CAPTION_RELAY -> {
-                            LiveCaptionRelayPreferences.setEnabled(this, true)
-                            LiveCaptionRelayService.start(this)
+                            LiveCaptionCloudPreferences.setEnabled(this, true)
+                            LiveCaptionCloudService.start(this)
                         }
                         NativePluginIds.HANDS_FREE_TRANSLATOR -> {
                             HandsFreeTranslatorPreferences.setEnabled(this, true)
@@ -1607,8 +1607,8 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
                         MeetingSparkNotesService.stop(this)
                     }
                     NativePluginIds.LIVE_CAPTION_RELAY -> {
-                        LiveCaptionRelayPreferences.setEnabled(this, false)
-                        LiveCaptionRelayService.stop(this)
+                        LiveCaptionCloudPreferences.setEnabled(this, false)
+                        LiveCaptionCloudService.stop(this)
                     }
                     NativePluginIds.HANDS_FREE_TRANSLATOR -> {
                         HandsFreeTranslatorPreferences.setEnabled(this, false)
