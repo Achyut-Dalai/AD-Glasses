@@ -62,7 +62,7 @@ import com.oudmon.ble.base.bluetooth.DeviceManager
 import com.oudmon.ble.base.communication.LargeDataHandler
 import com.oudmon.ble.base.communication.bigData.resp.GlassesDeviceNotifyListener
 import com.oudmon.ble.base.communication.bigData.resp.GlassesDeviceNotifyRsp
-import com.achyut.adglasses.databinding.AcitivytMainBinding
+import com.achyut.adglasses.databinding.ActivityMainBinding
 import com.achyut.adglasses.ui.DeviceBindActivity
 import com.achyut.adglasses.ui.ChatListActivity
 import com.achyut.adglasses.ui.ChatThreadActivity
@@ -78,12 +78,10 @@ import com.achyut.adglasses.plugins.errandbrain.ErrandBrainPreferences
 import com.achyut.adglasses.plugins.errandbrain.ErrandBrainService
 import com.achyut.adglasses.plugins.handsfreetranslator.HandsFreeTranslatorPreferences
 import com.achyut.adglasses.plugins.handsfreetranslator.HandsFreeTranslatorService
-import com.achyut.adglasses.plugins.livecaptionrelay.LiveCaptionRelayPreferences
-import com.achyut.adglasses.plugins.livecaptionrelay.LiveCaptionRelayService
+import com.achyut.adglasses.plugins.livecaptioncloud.LiveCaptionCloudPreferences
+import com.achyut.adglasses.plugins.livecaptioncloud.LiveCaptionCloudService
 import com.achyut.adglasses.plugins.meetingsparknotes.MeetingSparkNotesPreferences
 import com.achyut.adglasses.plugins.meetingsparknotes.MeetingSparkNotesService
-import com.achyut.adglasses.plugins.walkingaid.WalkingAidPreferences
-import com.achyut.adglasses.plugins.walkingaid.WalkingAidService
 // import com.achyut.adglasses.ui.notes.NotesListActivity
 import com.achyut.adglasses.ui.recordings.RecordingsListActivity
 import com.achyut.adglasses.ui.BluetoothUtils
@@ -198,7 +196,7 @@ import com.achyut.adglasses.ai.vision.ImageQuestionPromptResolver
 import com.achyut.adglasses.ai.vision.ImageQuestionRoute
 import com.achyut.adglasses.ai.vision.ResolvedImageQuestionPrompt
 import com.achyut.adglasses.ai.image.DefaultAssistantResolver
-import com.achyut.adglasses.ai.image.ExternalGeminiAutomationDiagnosticsActivity
+import com.achyut.adglasses.ai.image.ExternalAssistantAutomationSetupActivity
 import com.achyut.adglasses.ai.image.ExternalImageAutomationIntents
 import com.achyut.adglasses.ai.image.ExternalImageAutomationStage
 import com.achyut.adglasses.ai.image.ExternalImageAutomationStore
@@ -209,7 +207,7 @@ import com.achyut.adglasses.ai.image.ImageQuestionSourcePolicy
 import com.achyut.adglasses.ai.image.ImageThumbnailQuality
 import com.achyut.adglasses.ai.image.HighQualityFailureChoice
 import com.achyut.adglasses.shared.glasses.GlassesAssistantMode
-import com.achyut.adglasses.shared.glasses.GlassesDashboardAction
+import com.achyut.adglasses.shared.glasses.SharedDashboardAction as SharedDashboardAction
 import com.achyut.adglasses.shared.glasses.GlassesDashboardUiState
 import com.achyut.adglasses.shared.glasses.FirmwarePatchRequestUiState
 import com.achyut.adglasses.shared.glasses.GlassesSyncFlow
@@ -223,6 +221,8 @@ import com.achyut.adglasses.shared.plugins.NativePluginIds
 import com.achyut.adglasses.shared.plugins.NativePluginShortcutAction
 import com.achyut.adglasses.shared.plugins.NativePluginShortcutButton
 import com.achyut.adglasses.shared.plugins.NativePluginShortcutUiState
+import com.achyut.adglasses.shared.glasses.GlassesSession as SharedGlassesSession
+import com.achyut.adglasses.shared.glasses.GlassesSessionCoordinator as SharedSessionCoordinator
 import com.achyut.adglasses.localagent.LocalAgentAccessibilityBridge
 import com.achyut.adglasses.localagent.context.LocalAgentContextBuilder
 import com.achyut.adglasses.localagent.dailyfacts.DailyFactsStorage
@@ -368,7 +368,7 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
     }
 
     // Keeps the existing Android control handlers alive while Compose owns the visible tree.
-    private lateinit var binding: AcitivytMainBinding
+    private lateinit var binding: ActivityMainBinding
     private var dashboardState by mutableStateOf(
         GlassesDashboardUiState(
             wifiAdbDebug = WifiAdbDebugUiState(isAvailable = BuildConfig.DEBUG),
@@ -541,7 +541,7 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        binding = AcitivytMainBinding.inflate(layoutInflater)
+        binding = ActivityMainBinding.inflate(layoutInflater)
         initView()
         refreshImageThumbnailQuality()
         setupMeetingCaptureUi()
@@ -1154,48 +1154,48 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
         }
     }
 
-    private fun isDashboardActionBlockedByExclusiveSession(action: GlassesDashboardAction): Boolean {
+    private fun isDashboardActionBlockedByExclusiveSession(action: SharedDashboardAction): Boolean {
         if (
-            action is GlassesDashboardAction.SubmitFirmwarePatchRequest ||
-            action is GlassesDashboardAction.SelectImageThumbnailQuality ||
-            action == GlassesDashboardAction.DismissFirmwarePatchRequest ||
-            action == GlassesDashboardAction.MetaSendDiagnostics
+            action is SharedDashboardAction.SubmitFirmwarePatchRequest ||
+            action is SharedDashboardAction.SelectImageThumbnailQuality ||
+            action == SharedDashboardAction.DismissFirmwarePatchRequest ||
+            action == SharedDashboardAction.MetaSendDiagnostics
         ) {
             return false
         }
         val activeSession = GlassesSessionCoordinator.currentSession() ?: return false
         val isAllowed = if (activeSession == GlassesSession.WIFI_ADB_DEBUG) {
-            action == GlassesDashboardAction.StopWifiAdbDebug
+            action == SharedDashboardAction.StopWifiAdbDebug
         } else if (activeSession == GlassesSession.META_CAMERA) {
             when (action) {
-                is GlassesDashboardAction.Navigate,
-                GlassesDashboardAction.StartMeetingCapture,
-                GlassesDashboardAction.StopMeetingCapture,
-                is GlassesDashboardAction.RunNativePluginShortcut,
-                is GlassesDashboardAction.SelectAssistantMode,
-                GlassesDashboardAction.TestVoiceQuestion,
-                GlassesDashboardAction.TestImageQuestion,
-                GlassesDashboardAction.OpenExternalImageAutomationDiagnostics,
-                GlassesDashboardAction.StartAgent,
-                GlassesDashboardAction.StopAgent,
-                GlassesDashboardAction.RunAgentDemo,
-                GlassesDashboardAction.MetaStopSession,
-                GlassesDashboardAction.MetaStopStream,
-                GlassesDashboardAction.MetaStopDisplay,
-                GlassesDashboardAction.MetaCapturePhoto,
-                GlassesDashboardAction.MetaViewPhoto,
-                GlassesDashboardAction.MetaStartSession,
-                GlassesDashboardAction.MetaStartStream,
-                GlassesDashboardAction.MetaStartDisplay,
-                GlassesDashboardAction.MetaSendDiagnostics -> true
+                is SharedDashboardAction.Navigate,
+                SharedDashboardAction.StartMeetingCapture,
+                SharedDashboardAction.StopMeetingCapture,
+                is SharedDashboardAction.RunNativePluginShortcut,
+                is SharedDashboardAction.SelectAssistantMode,
+                SharedDashboardAction.TestVoiceQuestion,
+                SharedDashboardAction.TestImageQuestion,
+                SharedDashboardAction.OpenExternalImageAutomationDiagnostics,
+                SharedDashboardAction.StartAgent,
+                SharedDashboardAction.StopAgent,
+                SharedDashboardAction.RunAgentDemo,
+                SharedDashboardAction.MetaStopSession,
+                SharedDashboardAction.MetaStopStream,
+                SharedDashboardAction.MetaStopDisplay,
+                SharedDashboardAction.MetaCapturePhoto,
+                SharedDashboardAction.MetaViewPhoto,
+                SharedDashboardAction.MetaStartSession,
+                SharedDashboardAction.MetaStartStream,
+                SharedDashboardAction.MetaStartDisplay,
+                SharedDashboardAction.MetaSendDiagnostics -> true
                 else -> false
             }
         } else {
             when (action) {
-                is GlassesDashboardAction.Navigate -> true
-                GlassesDashboardAction.StopSync -> activeSession == GlassesSession.MEDIA_SYNC
-                GlassesDashboardAction.StopLivePreview -> activeSession == GlassesSession.LIVE_PREVIEW
-                GlassesDashboardAction.CancelOta -> activeSession == GlassesSession.OTA
+                is SharedDashboardAction.Navigate -> true
+                SharedDashboardAction.StopSync -> activeSession == GlassesSession.MEDIA_SYNC
+                SharedDashboardAction.StopLivePreview -> activeSession == GlassesSession.LIVE_PREVIEW
+                SharedDashboardAction.CancelOta -> activeSession == GlassesSession.OTA
                 else -> false
             }
         }
@@ -1209,11 +1209,11 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
         return true
     }
 
-    private fun handleDashboardAction(action: GlassesDashboardAction) {
+    private fun handleDashboardAction(action: SharedDashboardAction) {
         if (isDashboardActionBlockedByExclusiveSession(action)) return
         when (action) {
-            is GlassesDashboardAction.Navigate -> navigateToDestination(action.destination)
-            GlassesDashboardAction.Scan -> {
+            is SharedDashboardAction.Navigate -> navigateToDestination(action.destination)
+            SharedDashboardAction.Scan -> {
                 if (isMeizuMyvuSelected()) {
                     startKtxActivity<DeviceBindActivity>()
                 } else if (isMetaRaybanSelected()) {
@@ -1222,7 +1222,7 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
                     binding.btnScan.performClick()
                 }
             }
-            GlassesDashboardAction.Reconnect -> {
+            SharedDashboardAction.Reconnect -> {
                 if (isMeizuMyvuSelected()) {
                     DeviceProfileStore.loadLastSelected(this)?.macAddress?.let {
                         getOrCreateMeizuMyvuManager().connect(it, this)
@@ -1233,7 +1233,7 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
                     binding.btnConnect.performClick()
                 }
             }
-            GlassesDashboardAction.Disconnect -> {
+            SharedDashboardAction.Disconnect -> {
                 if (isMeizuMyvuSelected()) {
                     getOrCreateMeizuMyvuManager().disconnect()
                 } else if (isMetaRaybanSelected()) {
@@ -1243,25 +1243,25 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
                     binding.btnDisconnect.performClick()
                 }
             }
-            is GlassesDashboardAction.SelectMeetingTimer -> {
+            is SharedDashboardAction.SelectMeetingTimer -> {
                 val index = action.index.coerceIn(0, meetingTimerOptions.lastIndex)
                 binding.spinnerMeetingTimer.setSelection(index)
                 updateDashboardState { state ->
                     state.copy(meeting = state.meeting.copy(timerIndex = index))
                 }
             }
-            GlassesDashboardAction.StartMeetingCapture -> binding.btnMeetingStart.performClick()
-            GlassesDashboardAction.StopMeetingCapture -> binding.btnMeetingStop.performClick()
-            is GlassesDashboardAction.RunNativePluginShortcut -> {
+            SharedDashboardAction.StartMeetingCapture -> binding.btnMeetingStart.performClick()
+            SharedDashboardAction.StopMeetingCapture -> binding.btnMeetingStop.performClick()
+            is SharedDashboardAction.RunNativePluginShortcut -> {
                 runNativePluginShortcut(action.action)
             }
-            is GlassesDashboardAction.SelectAssistantMode -> when (action.mode) {
+            is SharedDashboardAction.SelectAssistantMode -> when (action.mode) {
                 GlassesAssistantMode.GEMINI -> binding.btnModeGemini.performClick()
                 GlassesAssistantMode.CHAT_GPT -> binding.btnModeChatgpt.performClick()
                 GlassesAssistantMode.PHONE_DEFAULT -> selectPhoneDefaultAssistant()
                 GlassesAssistantMode.CHOSEN_PROVIDER -> binding.btnModeTasker.performClick()
             }
-            is GlassesDashboardAction.SelectImageThumbnailQuality -> {
+            is SharedDashboardAction.SelectImageThumbnailQuality -> {
                 val quality = ImageQuestionPreferences.setThumbnailQuality(this, action.sdkValue)
                 pendingImageThumbnailQuality = quality
                 updateDashboardState { state ->
@@ -1271,39 +1271,39 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
                     )
                 }
             }
-            GlassesDashboardAction.TestVoiceQuestion -> binding.btnTestHijackVoice.performClick()
-            GlassesDashboardAction.TestImageQuestion -> binding.btnTestHijackImage.performClick()
-            GlassesDashboardAction.OpenExternalImageAutomationDiagnostics -> {
+            SharedDashboardAction.TestVoiceQuestion -> binding.btnTestHijackVoice.performClick()
+            SharedDashboardAction.TestImageQuestion -> binding.btnTestHijackImage.performClick()
+            SharedDashboardAction.OpenExternalImageAutomationDiagnostics -> {
                 startActivity(
                     Intent(this, ExternalGeminiAutomationDiagnosticsActivity::class.java)
                         .putExtra("assistant", resolveEffectiveAiAssistantMode()),
                 )
             }
-            GlassesDashboardAction.CapturePhoto -> binding.btnCamera.performClick()
-            GlassesDashboardAction.ToggleVideo -> binding.btnVideo.performClick()
-            GlassesDashboardAction.StartAudioRecording -> binding.btnRecord.performClick()
-            GlassesDashboardAction.RequestMediaCount -> binding.btnMediaCount.performClick()
-            GlassesDashboardAction.StartSync -> binding.btnDataDownload.performClick()
-            GlassesDashboardAction.StopSync -> binding.btnTransferStop.performClick()
-            GlassesDashboardAction.ToggleAdvanced -> {
+            SharedDashboardAction.CapturePhoto -> binding.btnCamera.performClick()
+            SharedDashboardAction.ToggleVideo -> binding.btnVideo.performClick()
+            SharedDashboardAction.StartAudioRecording -> binding.btnRecord.performClick()
+            SharedDashboardAction.RequestMediaCount -> binding.btnMediaCount.performClick()
+            SharedDashboardAction.StartSync -> binding.btnDataDownload.performClick()
+            SharedDashboardAction.StopSync -> binding.btnTransferStop.performClick()
+            SharedDashboardAction.ToggleAdvanced -> {
                 binding.btnToggleAdvanced.performClick()
                 updateDashboardState { state ->
                     state.copy(advancedExpanded = !state.advancedExpanded)
                 }
             }
-            GlassesDashboardAction.StartAgent -> binding.btnAgentStart.performClick()
-            GlassesDashboardAction.StopAgent -> binding.btnAgentStop.performClick()
-            GlassesDashboardAction.RunAgentDemo -> binding.btnAgentDemo.performClick()
-            GlassesDashboardAction.RequestBattery -> binding.btnBattery.performClick()
-            GlassesDashboardAction.RequestVersion -> binding.btnVersion.performClick()
-            GlassesDashboardAction.SyncTime -> binding.btnSetTime.performClick()
-            GlassesDashboardAction.RequestVolume -> binding.btnVolume.performClick()
-            GlassesDashboardAction.AddDeviceListener -> binding.btnAddListener.performClick()
-            GlassesDashboardAction.StartClassicBluetoothScan -> binding.btnBt.performClick()
-            GlassesDashboardAction.DumpOtaInfo -> binding.btnOtaInfo.performClick()
-            GlassesDashboardAction.TestPullOta -> binding.btnPullOtaTest.performClick()
-            is GlassesDashboardAction.RequestOtaFirmware -> requestOtaFirmware(action.source)
-            is GlassesDashboardAction.SubmitFirmwarePatchRequest -> {
+            SharedDashboardAction.StartAgent -> binding.btnAgentStart.performClick()
+            SharedDashboardAction.StopAgent -> binding.btnAgentStop.performClick()
+            SharedDashboardAction.RunAgentDemo -> binding.btnAgentDemo.performClick()
+            SharedDashboardAction.RequestBattery -> binding.btnBattery.performClick()
+            SharedDashboardAction.RequestVersion -> binding.btnVersion.performClick()
+            SharedDashboardAction.SyncTime -> binding.btnSetTime.performClick()
+            SharedDashboardAction.RequestVolume -> binding.btnVolume.performClick()
+            SharedDashboardAction.AddDeviceListener -> binding.btnAddListener.performClick()
+            SharedDashboardAction.StartClassicBluetoothScan -> binding.btnBt.performClick()
+            SharedDashboardAction.DumpOtaInfo -> binding.btnOtaInfo.performClick()
+            SharedDashboardAction.TestPullOta -> binding.btnPullOtaTest.performClick()
+            is SharedDashboardAction.RequestOtaFirmware -> requestOtaFirmware(action.source)
+            is SharedDashboardAction.SubmitFirmwarePatchRequest -> {
                 val request = dashboardState.firmwarePatchRequest ?: return
                 if (request.isSubmitting) return
                 dashboardState = dashboardState.copy(
@@ -1314,12 +1314,12 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
                 )
                 submitFirmwarePatchRequest(request, action.contactEmail)
             }
-            GlassesDashboardAction.DismissFirmwarePatchRequest -> {
+            SharedDashboardAction.DismissFirmwarePatchRequest -> {
                 if (dashboardState.firmwarePatchRequest?.isSubmitting != true) {
                     dashboardState = dashboardState.copy(firmwarePatchRequest = null)
                 }
             }
-            GlassesDashboardAction.CancelOta -> {
+            SharedDashboardAction.CancelOta -> {
                 val managerWasActive = otaManager.isActive
                 otaPreparationJob?.cancel()
                 otaPreparationJob = null
@@ -1332,41 +1332,41 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
                     resetOtaDashboardToIdle()
                 }
             }
-            GlassesDashboardAction.StartLivePreview -> startLivePreview()
-            GlassesDashboardAction.StopLivePreview -> {
+            SharedDashboardAction.StartLivePreview -> startLivePreview()
+            SharedDashboardAction.StopLivePreview -> {
                 Log.i("LivePreview", "BUTTON TAP: Stop Live Preview")
                 stopLivePreview()
             }
-            GlassesDashboardAction.RequestStartWifiAdbDebug -> {
+            SharedDashboardAction.RequestStartWifiAdbDebug -> {
                 if (BuildConfig.DEBUG) startWifiAdbDebug()
             }
-            GlassesDashboardAction.StopWifiAdbDebug -> {
+            SharedDashboardAction.StopWifiAdbDebug -> {
                 if (BuildConfig.DEBUG) wifiAdbDebugController.stop()
             }
-            GlassesDashboardAction.MetaRegister -> binding.btnMetaRegister.performClick()
-            GlassesDashboardAction.MetaUnregister -> binding.btnMetaUnregister.performClick()
-            GlassesDashboardAction.MetaStartSession -> binding.btnMetaSessionStart.performClick()
-            GlassesDashboardAction.MetaStopSession -> binding.btnMetaSessionStop.performClick()
-            GlassesDashboardAction.MetaStartStream -> binding.btnMetaStreamStart.performClick()
-            GlassesDashboardAction.MetaStopStream -> binding.btnMetaStreamStop.performClick()
-            GlassesDashboardAction.MetaCapturePhoto -> binding.btnMetaCapturePhoto.performClick()
-            GlassesDashboardAction.MetaViewPhoto -> binding.btnMetaViewPhoto.performClick()
-            GlassesDashboardAction.MetaStartDisplay -> binding.btnMetaDisplayStart.performClick()
-            GlassesDashboardAction.MetaStopDisplay -> binding.btnMetaDisplayStop.performClick()
-            GlassesDashboardAction.MetaSendDiagnostics -> showMetaDiagnostics()
-            GlassesDashboardAction.MeizuConnect -> {
+            SharedDashboardAction.MetaRegister -> binding.btnMetaRegister.performClick()
+            SharedDashboardAction.MetaUnregister -> binding.btnMetaUnregister.performClick()
+            SharedDashboardAction.MetaStartSession -> binding.btnMetaSessionStart.performClick()
+            SharedDashboardAction.MetaStopSession -> binding.btnMetaSessionStop.performClick()
+            SharedDashboardAction.MetaStartStream -> binding.btnMetaStreamStart.performClick()
+            SharedDashboardAction.MetaStopStream -> binding.btnMetaStreamStop.performClick()
+            SharedDashboardAction.MetaCapturePhoto -> binding.btnMetaCapturePhoto.performClick()
+            SharedDashboardAction.MetaViewPhoto -> binding.btnMetaViewPhoto.performClick()
+            SharedDashboardAction.MetaStartDisplay -> binding.btnMetaDisplayStart.performClick()
+            SharedDashboardAction.MetaStopDisplay -> binding.btnMetaDisplayStop.performClick()
+            SharedDashboardAction.MetaSendDiagnostics -> showMetaDiagnostics()
+            SharedDashboardAction.MeizuConnect -> {
                 DeviceProfileStore.loadLastSelected(this)?.macAddress?.let {
                     getOrCreateMeizuMyvuManager().connect(it, this)
                 } ?: Toast.makeText(this, "Select MYVU glasses from Scan first", Toast.LENGTH_LONG).show()
             }
-            GlassesDashboardAction.MeizuDisconnect -> getOrCreateMeizuMyvuManager().disconnect()
-            GlassesDashboardAction.MeizuSendTestNotification -> getOrCreateMeizuMyvuManager().sendTestNotification()
-            GlassesDashboardAction.MeizuShowTestTeleprompter -> getOrCreateMeizuMyvuManager().showTeleprompter(
+            SharedDashboardAction.MeizuDisconnect -> getOrCreateMeizuMyvuManager().disconnect()
+            SharedDashboardAction.MeizuSendTestNotification -> getOrCreateMeizuMyvuManager().sendTestNotification()
+            SharedDashboardAction.MeizuShowTestTeleprompter -> getOrCreateMeizuMyvuManager().showTeleprompter(
                 "AD Glasses",
                 "MYVU display connected\n\nNative voice plugins can now use the MYVU headset microphone and display bridge.",
             )
-            GlassesDashboardAction.MeizuSyncClock -> getOrCreateMeizuMyvuManager().syncClock()
-            GlassesDashboardAction.MeizuSetComfortBrightness -> getOrCreateMeizuMyvuManager().setBrightness(70)
+            SharedDashboardAction.MeizuSyncClock -> getOrCreateMeizuMyvuManager().syncClock()
+            SharedDashboardAction.MeizuSetComfortBrightness -> getOrCreateMeizuMyvuManager().setBrightness(70)
         }
     }
 
