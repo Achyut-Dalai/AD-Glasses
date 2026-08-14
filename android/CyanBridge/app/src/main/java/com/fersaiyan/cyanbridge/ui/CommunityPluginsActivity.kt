@@ -27,9 +27,6 @@ import com.fersaiyan.cyanbridge.shared.plugins.PluginTimeWindow
 import com.fersaiyan.cyanbridge.ui.appearance.AppearancePreferences
 import com.fersaiyan.cyanbridge.ui.appearance.rememberAppearanceSettings
 import com.fersaiyan.cyanbridge.shared.ui.plugins.CommunityPluginsScreen
-import com.fersaiyan.cyanbridge.plugins.walkingaid.WalkingAidService
-import com.fersaiyan.cyanbridge.plugins.walkingaid.WalkingAidSettingsActivity
-import com.fersaiyan.cyanbridge.plugins.walkingaid.WalkingAidPreferences
 import com.fersaiyan.cyanbridge.plugins.meetingsparknotes.MeetingSparkNotesService
 import com.fersaiyan.cyanbridge.plugins.meetingsparknotes.MeetingSparkNotesSettingsActivity
 import com.fersaiyan.cyanbridge.plugins.meetingsparknotes.MeetingSparkNotesPreferences
@@ -116,15 +113,6 @@ class CommunityPluginsActivity : AppCompatActivity() {
                 hasSettings = true,
             ),
             NativePluginCardData(
-                id = NativePluginIds.WALKING_AID,
-                title = "Walking Aid",
-                description = cameraUnavailableReason ?: "Real-time scene description and obstacle warnings for blind navigation. Captures images from glasses at regular intervals and describes the environment.",
-                badge = "Accessibility",
-                enabled = hasCamera && CommunityPluginPrefs.isNativePluginEnabled(this, NativePluginIds.WALKING_AID),
-                hasSettings = true,
-                isAvailable = hasCamera,
-            ),
-            NativePluginCardData(
                 id = NativePluginIds.MEETING_SPARK_NOTES,
                 title = "Meeting Spark Notes",
                 description = "Turns live voice capture and chats into concise meeting summaries with action items.",
@@ -208,7 +196,6 @@ class CommunityPluginsActivity : AppCompatActivity() {
                     onOpenNativePluginSettings = { pluginId ->
                         when (pluginId) {
                             NativePluginIds.LOCAL_AGENT -> startActivity(Intent(this, LocalAgentSettingsActivity::class.java))
-                            NativePluginIds.WALKING_AID -> startActivity(Intent(this, WalkingAidSettingsActivity::class.java))
                             NativePluginIds.MEETING_SPARK_NOTES -> startActivity(Intent(this, MeetingSparkNotesSettingsActivity::class.java))
                             NativePluginIds.LIVE_CAPTION_RELAY -> startActivity(Intent(this, LiveCaptionRelaySettingsActivity::class.java))
                             NativePluginIds.HANDS_FREE_TRANSLATOR -> startActivity(Intent(this, HandsFreeTranslatorSettingsActivity::class.java))
@@ -252,7 +239,7 @@ class CommunityPluginsActivity : AppCompatActivity() {
         }
         if (enabled &&
             DeviceProfileStore.isMetaSelected(this) &&
-            pluginId in setOf(NativePluginIds.WALKING_AID, NativePluginIds.VISUAL_DIARY)
+            pluginId == NativePluginIds.VISUAL_DIARY
         ) {
             val manager = MetaRaybanManager.getInstance(this)
             if (!manager.isInitialized.value) manager.initialize()
@@ -335,10 +322,6 @@ class CommunityPluginsActivity : AppCompatActivity() {
         when (pluginId) {
             NativePluginIds.LOCAL_AGENT -> {
                 LocalAgentPlugin.setEnabled(this, enabled)
-            }
-            "walking_aid" -> {
-                WalkingAidPreferences.setEnabled(this, enabled)
-                if (enabled) WalkingAidService.start(this) else WalkingAidService.stop(this)
             }
             "meeting_spark_notes" -> {
                 MeetingSparkNotesPreferences.setEnabled(this, enabled)
@@ -519,7 +502,6 @@ class CommunityPluginsActivity : AppCompatActivity() {
         )
 
         private val NOTIFICATION_PLUGIN_IDS = setOf(
-            NativePluginIds.WALKING_AID,
             NativePluginIds.AUTO_DIARY,
             NativePluginIds.VISUAL_DIARY,
         )

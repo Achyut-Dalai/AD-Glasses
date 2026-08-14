@@ -449,12 +449,12 @@
     <string name="dashboard_protocol">프로토콜: %1$s</string>
     <string name="dashboard_device">기기: %1$s</string>
     <string name="dashboard_meizu_description">MYVU는 자체 BLE 키 교환과 RFCOMM 릴레이를 사용합니다. 연결하는 동안 공식 MYVU 앱을 연결 해제 상태로 유지하세요.</string>
+    <string name="dashboard_meizu_unsupported">연결 후 음성 플러그인은 MYVU HFP 마이크 경로를 사용합니다. MYVU에는 카메라나 미디어 저장소가 없으므로 카메라 캡처, 미디어 동기화 및 Visual Diary는 지원되지 않습니다.</string>
     <string name="dashboard_connect">연결</string>
     <string name="dashboard_test_notification">알림 테스트</string>
     <string name="dashboard_show_text">텍스트 표시</string>
     <string name="dashboard_sync_clock">시계 동기화</string>
     <string name="dashboard_comfort_brightness">편안한 밝기</string>
-    <string name="dashboard_meizu_unsupported">연결 후 음성 플러그인은 MYVU HFP 마이크 경로를 사용합니다. MYVU에는 카메라나 미디어 저장소가 없으므로 카메라 캡처, 미디어 동기화, Visual Diary 및 Walking Aid는 지원되지 않습니다.</string>
     <string name="dashboard_local_agent">Local Agent</string>
     <string name="dashboard_last_error">최근 오류: %1$s</string>
     <string name="dashboard_demo">데모</string>

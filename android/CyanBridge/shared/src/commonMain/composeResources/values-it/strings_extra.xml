@@ -449,12 +449,12 @@
     <string name="dashboard_protocol">Protocollo: %1$s</string>
     <string name="dashboard_device">Dispositivo: %1$s</string>
     <string name="dashboard_meizu_description">MYVU usa il proprio scambio chiavi BLE e un relay RFCOMM. Mantieni disconnessa l'app ufficiale MYVU durante la connessione.</string>
+    <string name="dashboard_meizu_unsupported">Dopo la connessione i plugin vocali usano il percorso microfono HFP di MYVU. Acquisizione fotocamera, sincronizzazione media e Visual Diary non sono supportati perche MYVU non ha fotocamera ne archivio media.</string>
     <string name="dashboard_connect">Connetti</string>
     <string name="dashboard_test_notification">Prova notifica</string>
     <string name="dashboard_show_text">Mostra testo</string>
     <string name="dashboard_sync_clock">Sincronizza orologio</string>
     <string name="dashboard_comfort_brightness">Luminosita confortevole</string>
-    <string name="dashboard_meizu_unsupported">Dopo la connessione i plugin vocali usano il percorso microfono HFP di MYVU. Acquisizione fotocamera, sincronizzazione media, Visual Diary e Walking Aid non sono supportati perche MYVU non ha fotocamera ne archivio media.</string>
     <string name="dashboard_local_agent">Local Agent</string>
     <string name="dashboard_last_error">Ultimo errore: %1$s</string>
     <string name="dashboard_demo">Demo</string>

@@ -449,12 +449,12 @@
     <string name="dashboard_protocol">Протокол: %1$s</string>
     <string name="dashboard_device">Устройство: %1$s</string>
     <string name="dashboard_meizu_description">MYVU использует собственный обмен ключами BLE и ретранслятор RFCOMM. Отключите официальное приложение MYVU на время подключения.</string>
+    <string name="dashboard_meizu_unsupported">После подключения голосовые плагины используют микрофонный маршрут HFP MYVU. Съемка камерой, синхронизация медиа и Visual Diary не поддерживаются, так как у MYVU нет камеры и хранилища медиа.</string>
     <string name="dashboard_connect">Подключить</string>
     <string name="dashboard_test_notification">Проверить уведомление</string>
     <string name="dashboard_show_text">Показать текст</string>
     <string name="dashboard_sync_clock">Синхронизировать часы</string>
     <string name="dashboard_comfort_brightness">Комфортная яркость</string>
-    <string name="dashboard_meizu_unsupported">После подключения голосовые плагины используют микрофонный маршрут HFP MYVU. Съемка камерой, синхронизация медиа, Visual Diary и Walking Aid не поддерживаются, так как у MYVU нет камеры и хранилища медиа.</string>
     <string name="dashboard_local_agent">Local Agent</string>
     <string name="dashboard_last_error">Последняя ошибка: %1$s</string>
     <string name="dashboard_demo">Демо</string>

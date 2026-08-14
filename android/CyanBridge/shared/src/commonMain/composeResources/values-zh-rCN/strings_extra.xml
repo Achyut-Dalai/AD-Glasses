@@ -449,12 +449,12 @@
     <string name="dashboard_protocol">协议：%1$s</string>
     <string name="dashboard_device">设备：%1$s</string>
     <string name="dashboard_meizu_description">MYVU 使用自己的 BLE 密钥交换和 RFCOMM 中继。连接时请保持官方 MYVU 应用断开。</string>
+    <string name="dashboard_meizu_unsupported">连接后，语音插件使用 MYVU HFP 麦克风路径。MYVU 没有相机或媒体存储，因此不支持相机捕获、媒体同步和 Visual Diary。</string>
     <string name="dashboard_connect">连接</string>
     <string name="dashboard_test_notification">测试通知</string>
     <string name="dashboard_show_text">显示文本</string>
     <string name="dashboard_sync_clock">同步时钟</string>
     <string name="dashboard_comfort_brightness">舒适亮度</string>
-    <string name="dashboard_meizu_unsupported">连接后，语音插件使用 MYVU HFP 麦克风路径。MYVU 没有相机或媒体存储，因此不支持相机捕获、媒体同步、Visual Diary 和 Walking Aid。</string>
     <string name="dashboard_local_agent">Local Agent</string>
     <string name="dashboard_last_error">最后错误：%1$s</string>
     <string name="dashboard_demo">演示</string>

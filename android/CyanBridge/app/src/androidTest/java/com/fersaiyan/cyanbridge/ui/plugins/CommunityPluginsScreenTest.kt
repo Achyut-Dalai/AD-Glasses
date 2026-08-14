@@ -83,10 +83,10 @@ class CommunityPluginsScreenTest {
         var settingsOpened = false
         var toggledValue: Boolean? = null
         val nativePlugin = NativePluginCardData(
-            id = "walking_aid",
-            title = "Walking Aid",
-            description = "Scene description for navigation.",
-            badge = "Accessibility",
+            id = "visual_diary",
+            title = "Visual Diary",
+            description = "Capture moments for a private daily diary.",
+            badge = "Memory",
             enabled = false,
             hasSettings = true,
         )
@@ -106,9 +106,9 @@ class CommunityPluginsScreenTest {
                 )
             }
         }
-        composeRule.onNodeWithTag("native_plugin_card_walking_aid").assertExists()
-        composeRule.onNodeWithText("Walking Aid").assertExists()
-        composeRule.onNodeWithContentDescription("Walking Aid settings").performClick()
+        composeRule.onNodeWithTag("native_plugin_card_visual_diary").assertExists()
+        composeRule.onNodeWithText("Visual Diary").assertExists()
+        composeRule.onNodeWithContentDescription("Visual Diary settings").performClick()
         composeRule.runOnIdle {
             assertEquals(true, settingsOpened)
         }

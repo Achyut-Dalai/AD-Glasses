@@ -134,19 +134,4 @@
     <string name="donation_intro_dialog_title">CyanBridge Asaas Support Note</string>
     <string name="donation_intro_dialog_message">Hi, thanks for considering a donation to CyanBridge! I work on this project besides my PhD studies, and your support means a lot. I haven\'t been able to set up Stripe yet because of their special requirements for Brazilian businesses, so for now I\'m using a payment processor called Asaas. The checkout page is in Portuguese, so please use Google Translate if needed. I\'m actively looking for a better alternative. Thanks again for your support!</string>
     <string name="donation_intro_open_button">Open Asaas Card Form</string>
-    <string name="walking_aid_title">Walking Aid</string>
-    <string name="walking_aid_settings">Walking Aid Settings</string>
-    <string name="walking_aid_general">General</string>
-    <string name="walking_aid_capture_interval">Capture interval</string>
-    <string name="walking_aid_image_recognition">Image Recognition</string>
-    <string name="walking_aid_depth_estimation">Depth Estimation</string>
-    <string name="walking_aid_output">Output</string>
-    <string name="walking_aid_tts_enabled">Speak descriptions aloud</string>
-    <string name="walking_aid_safety_disclaimer">Safety disclaimer on first warning</string>
-    <string name="walking_aid_history">Image History</string>
-    <string name="walking_aid_clear_history">Clear History</string>
-    <string name="walking_aid_source_local">Local (on-device)</string>
-    <string name="walking_aid_source_cloud">Cloud (Pro)</string>
-    <string name="walking_aid_not_connected">Walking Aid: Glasses not connected. Please connect your glasses first.</string>
-    <string name="walking_aid_meeting_active">Walking Aid: Meeting recording is active. Stop the meeting before enabling Walking Aid.</string>
 </resources>

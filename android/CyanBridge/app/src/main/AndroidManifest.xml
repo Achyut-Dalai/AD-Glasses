@@ -167,11 +167,6 @@
             android:label="Publish Plugin" />
 
         <activity
-            android:name=".plugins.walkingaid.WalkingAidSettingsActivity"
-            android:exported="false"
-            android:label="Walking Aid Settings" />
-
-        <activity
             android:name=".plugins.meetingsparknotes.MeetingSparkNotesSettingsActivity"
             android:exported="false"
             android:label="Meeting Spark Notes Settings" />
@@ -190,12 +185,6 @@
             android:name=".plugins.errandbrain.ErrandBrainSettingsActivity"
             android:exported="false"
             android:label="Errand Brain Settings" />
-
-        <activity
-            android:name=".plugins.walkingaid.WalkingAidChatActivity"
-            android:exported="false"
-            android:label="Walking Aid Chat"
-            android:windowSoftInputMode="adjustResize" />
 
         <activity
             android:name=".ui.localagent.PendingActionsActivity"
@@ -343,11 +332,6 @@
                 android:name="android.accessibilityservice"
                 android:resource="@xml/accessibility_service_config" />
         </service>
-
-        <service
-            android:name=".plugins.walkingaid.WalkingAidService"
-            android:exported="false"
-            android:foregroundServiceType="dataSync" />
 
         <service
             android:name=".plugins.meetingsparknotes.MeetingSparkNotesService"

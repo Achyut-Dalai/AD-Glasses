@@ -51,7 +51,6 @@ object DebugLogSupport {
         "MainActivity",
         "MetaRaybanManager",
         "VisualDiaryService",
-        "WalkingAidService",
         "CommunityPluginsActivity",
         "ChatThreadActivity",
         "SettingsActivity",

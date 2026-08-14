@@ -201,12 +201,6 @@ dependencies {
     // LiteRT runtime for local models (Google's inference engine)
     implementation("com.google.ai.edge.litertlm:litertlm-android:0.14.0")
 
-    // Keep Walking Aid's vision runtime separate from LiteRT-LM. Loading the generic
-    // LiteRT artifacts alongside LiteRT-LM can leave nativeSendMessage blocked.
-    implementation("org.tensorflow:tensorflow-lite:2.16.1")
-    implementation("org.tensorflow:tensorflow-lite-gpu:2.16.1")
-    implementation("org.tensorflow:tensorflow-lite-support:0.4.4")
-
     // Offline transcription fallback (Moonshine; vendored module)
     implementation project(":moonshine-voice")
 
