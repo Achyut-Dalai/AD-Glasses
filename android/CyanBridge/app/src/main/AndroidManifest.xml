@@ -236,47 +236,10 @@
             android:exported="false"
             android:label="Synced photos and videos" />
 
-        <!-- Pro subscription configuration activities -->
         <activity
-            android:name=".agent.ProSubscriptionActivity"
-            android:exported="true"
-            android:label="Pro Subscription">
-            <intent-filter>
-                <action android:name="android.intent.action.VIEW" />
-
-                <category android:name="android.intent.category.DEFAULT" />
-                <category android:name="android.intent.category.BROWSABLE" />
-
-                <data
-                    android:scheme="fersaiyan"
-                    android:host="pro-sub"
-                    android:path="/restore" />
-            </intent-filter>
-        </activity>
-
-        <activity
-            android:name=".agent.WebSubscriptionCallbackActivity"
-            android:exported="true"
-            android:label="Subscription Callback"
-            android:theme="@style/Theme.AppCompat.DayNight.NoActionBar">
-            <!-- The relay must publish assetlinks.json for this HTTPS App Link. -->
-            <intent-filter android:autoVerify="true">
-                <action android:name="android.intent.action.VIEW" />
-
-                <category android:name="android.intent.category.DEFAULT" />
-                <category android:name="android.intent.category.BROWSABLE" />
-
-                <data
-                    android:scheme="https"
-                    android:host="cyanbridge.vercel.app"
-                    android:path="/web-subscribe/callback" />
-            </intent-filter>
-        </activity>
-
-        <activity
-            android:name=".agent.ProSubscriptionSettingsActivity"
+            android:name=".agent.CloudSettingsActivity"
             android:exported="false"
-            android:label="Pro Subscription Settings" />
+            android:label="Cloud AI" />
         <activity
             android:name=".ai.live.GeminiLiveActivity"
             android:exported="false"

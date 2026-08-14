@@ -13,7 +13,7 @@
     <string name="onboarding_glasses_connection_desc">Permite que CyanBridge encuentre y conecte tus gafas cercanas.</string>
     <string name="onboarding_glasses_connection_details">El permiso Bluetooth solo se usa para detectar, emparejar y comunicarse con tus gafas. Puedes continuar sin permitirlo ahora y concederlo más tarde al conectar un dispositivo.</string>
     <string name="onboarding_optional_features_title">Funciones opcionales, tú eliges</string>
-    <string name="onboarding_optional_features_desc">AutoDiary, Auto Audio, Local Agent y las funciones Pro son opcionales y se configuran desde Plugins.</string>
+    <string name="onboarding_optional_features_desc">AutoDiary, Auto Audio, Local Agent, and Cloud AI are optional and configured from Plugins or Settings.</string>
     <string name="onboarding_optional_features_details">Empieza conectando las gafas y explora Plugins cuando quieras. Cada plugin explica lo que hace y solicita solo los permisos que necesita al activarlo. Puedes revisar o desactivar las funciones en cualquier momento.</string>
     <string name="onboarding_open_source_title">Desarrollado de forma abierta</string>
     <string name="onboarding_open_source_desc">Revisa el código, informa de problemas y ayuda a mejorar CyanBridge para todos.</string>

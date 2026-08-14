@@ -13,7 +13,7 @@
     <string name="onboarding_glasses_connection_desc">允许 CyanBridge 查找并连接附近的眼镜。</string>
     <string name="onboarding_glasses_connection_details">蓝牙权限仅用于发现、配对和与眼镜通信。您可以现在不允许，稍后连接设备时再授予权限。</string>
     <string name="onboarding_optional_features_title">可选功能，由您选择</string>
-    <string name="onboarding_optional_features_desc">AutoDiary、Auto Audio、Local Agent 和 Pro 功能都是可选的，可在插件中配置。</string>
+    <string name="onboarding_optional_features_desc">AutoDiary, Auto Audio, Local Agent, and Cloud AI are optional and configured from Plugins or Settings.</string>
     <string name="onboarding_optional_features_details">先连接眼镜，然后在准备好时探索插件。每个插件都会说明功能，并在启用时只请求所需权限。您可以随时查看或关闭功能。</string>
     <string name="onboarding_open_source_title">坚持开源</string>
     <string name="onboarding_open_source_desc">查看代码、报告问题并帮助改进 CyanBridge。</string>

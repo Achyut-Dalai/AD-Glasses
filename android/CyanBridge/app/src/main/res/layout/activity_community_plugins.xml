@@ -64,7 +64,7 @@
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:layout_marginTop="14dp"
-                android:text="Future notice: top plugins will have real cash prizes for developers, proportional to the number of Pro subscription users with the plugin enabled."
+                android:text="Community plugins are local and optional. Review each plugin's permissions before enabling it."
                 android:textColor="@color/text_secondary"
                 android:textSize="12sp" />
 

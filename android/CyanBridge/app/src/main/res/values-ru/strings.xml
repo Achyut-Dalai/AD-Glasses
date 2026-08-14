@@ -13,7 +13,7 @@
     <string name="onboarding_glasses_connection_desc">Разрешите CyanBridge найти и подключить очки поблизости.</string>
     <string name="onboarding_glasses_connection_details">Разрешение Bluetooth используется только для поиска, сопряжения и связи с очками. Можно продолжить без него и предоставить разрешение позже при подключении устройства.</string>
     <string name="onboarding_optional_features_title">Дополнительные функции — выбор за вами</string>
-    <string name="onboarding_optional_features_desc">AutoDiary, Auto Audio, Local Agent и функции Pro являются необязательными и настраиваются в разделе «Плагины».</string>
+    <string name="onboarding_optional_features_desc">AutoDiary, Auto Audio, Local Agent, and Cloud AI are optional and configured from Plugins or Settings.</string>
     <string name="onboarding_optional_features_details">Сначала подключите очки, а затем изучите плагины, когда будете готовы. Каждый плагин объясняет назначение и запрашивает только необходимые разрешения при включении. Функции можно просматривать и отключать в любое время.</string>
     <string name="onboarding_open_source_title">Открытая разработка</string>
     <string name="onboarding_open_source_desc">Изучайте код, сообщайте о проблемах и помогайте улучшать CyanBridge.</string>

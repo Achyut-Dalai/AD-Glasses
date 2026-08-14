@@ -17,8 +17,6 @@ import com.fersaiyan.cyanbridge.shared.ai.TokenUsage
 import com.fersaiyan.cyanbridge.shared.ai.VoiceAiService
 import com.fersaiyan.cyanbridge.shared.appearance.APPEARANCE_PREFERENCES_NAME
 import com.fersaiyan.cyanbridge.shared.appearance.AppearanceSettingsStore
-import com.fersaiyan.cyanbridge.shared.billing.ProSubscriptionAction
-import com.fersaiyan.cyanbridge.shared.billing.ProSubscriptionUiState
 import com.fersaiyan.cyanbridge.shared.ble.IosBleManager
 import com.fersaiyan.cyanbridge.shared.ble.BleConnectionState
 import com.fersaiyan.cyanbridge.shared.ble.BleNotificationListener
@@ -67,16 +65,10 @@ import platform.Foundation.dataUsingEncoding
 import platform.Foundation.NSData
 import platform.Foundation.base64EncodedStringWithOptions
 
-private const val DEFAULT_RELAY_URL = "https://cyanbridge.vercel.app"
+private const val DEFAULT_RELAY_URL = ""
 private const val IOS_TRANSFER_IP_TIMEOUT_MS = 15_000L
 private const val IOS_HOST_CREDENTIAL_TIMEOUT_MS = 10_000L
 private val IOS_TRANSFER_MODE_COMMAND = byteArrayOf(0x02, 0x01, 0x04)
-private val IOS_PRO_SUBSCRIPTION_STATE = ProSubscriptionUiState(
-    status = "iOS checkout is unavailable until account sign-in and verified billing are implemented. Pro is not active.",
-    selectedPlan = "free_trial",
-    webCheckoutAvailable = false,
-    isSubscribed = false,
-)
 
 /**
  * Initialize CyanBridgeServices with iOS implementations and return the ComposeUIViewController.
@@ -142,17 +134,8 @@ private fun IosCyanBridgeApp(
                 appearanceSettings = appearanceStore.load()
             },
             useSharedDestinations = true,
-            proSubscriptionState = IOS_PRO_SUBSCRIPTION_STATE,
-            onProSubscriptionAction = ::iosProSubscriptionActionStatus,
         )
     }
-}
-
-private fun iosProSubscriptionActionStatus(action: ProSubscriptionAction): String = when (action) {
-    ProSubscriptionAction.SUBSCRIBE ->
-        "iOS billing is not available yet. No payment was started and no Pro entitlement was granted."
-    ProSubscriptionAction.DONATE ->
-        "iOS donations are not available yet. No payment was started."
 }
 
 // ── iOS local Wi-Fi manager using NEHotspotConfiguration ──

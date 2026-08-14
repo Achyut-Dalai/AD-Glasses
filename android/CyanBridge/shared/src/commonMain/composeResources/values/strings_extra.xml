@@ -36,18 +36,9 @@
     <string name="settings_bluetooth_mic">Bluetooth mic</string>
     <string name="settings_phone_mic">Phone mic</string>
     <string name="settings_detecting_audio_source">Detecting audio source</string>
-    <string name="settings_pro_subscription_settings">Pro Subscription Settings</string>
-    <string name="settings_pro_subscription">Pro Subscription</string>
-    <string name="settings_pro_active">PRO ACTIVE</string>
-    <string name="settings_pro_badge">PRO</string>
-    <string name="settings_current_plan">Current plan: %1$s. Manage premium features and perks.</string>
-    <string name="settings_unlock_premium">Unlock premium features and help fund new smartglasses support.</string>
-    <string name="settings_manage_subscription">Manage subscription</string>
-    <string name="settings_view_plans">View plans</string>
-    <string name="settings_provider_description">Choose the provider used by the Local / Pro / Tasker mode on the Glasses screen.</string>
+    <string name="settings_provider_description">Choose between Tasker, on-device models, or your configured Cloud AI relay.</string>
     <string name="settings_configure_local_models">Configure local models</string>
     <string name="settings_current_mode">Current mode: %1$s</string>
-    <string name="settings_requires_pro">Requires a Pro subscription</string>
     <string name="settings_sync_eligibility">Sync eligibility</string>
     <string name="settings_explicit_facts">Explicit facts</string>
     <string name="settings_daily_facts">Daily facts</string>
@@ -75,8 +66,6 @@
     <string name="settings_send_debug_logs">Send debug logs</string>
     <string name="settings_faq_local_models_question">How do I set up Local Models?</string>
     <string name="settings_faq_local_models_answer">Open Local Agent from Native Plugins, then configure a model on this device.</string>
-    <string name="settings_faq_subscription_question">Do I need a subscription?</string>
-    <string name="settings_faq_subscription_answer">No. Tasker and Local Models can be used without a subscription. Pro is optional.</string>
     <string name="settings_faq_data_question">How is data handled?</string>
     <string name="settings_faq_data_answer">Data stays on this phone by default. You can export, import, or clear it from Data.</string>
     <string name="settings_faq_source_question">Can I review the source?</string>
@@ -175,7 +164,6 @@
     <string name="plugins_title">Community Plugins</string>
     <string name="plugins_refresh">Refresh plugins</string>
     <string name="plugins_publish">Publish plugin</string>
-    <string name="plugins_future_notice">Future notice: top plugins will have real cash prizes for developers, proportional to the number of Pro subscription users with the plugin enabled.</string>
     <string name="plugins_trending">Trending plugins</string>
     <string name="plugins_top_voted">Top voted</string>
     <string name="plugins_top_downloaded">Top downloaded</string>
@@ -214,92 +202,15 @@
     <string name="publish_taskernet_link">TaskerNet link *</string>
     <string name="publish_taskernet_hint">Enter the TaskerNet URL for your profile.</string>
     <string name="publish_how_it_works">How publishing works</string>
-    <string name="publish_steps">1. Your submission is sent for review.\n\n2. Approved plugins appear in Community Plugins.\n\n3. Top plugins may earn prizes proportional to Pro users.</string>
+    <string name="publish_steps">1. Your submission is reviewed.
+
+2. Approved plugins appear in Community Plugins.
+
+3. Users remain in control of every plugin they enable.</string>
     <string name="publish_submitting">Submitting...</string>
     <string name="publish_submit">Submit Plugin</string>
 
     <!-- Pro subscription -->
-    <string name="pro_subscription_title">Pro subscription</string>
-    <string name="pro_intro">Use CyanBridge completely free with local models. Pro is optional for cloud AI and cloud sync.</string>
-    <string name="pro_choose_plan">Choose a plan</string>
-    <string name="pro_free_trial">Free trial - 30 days</string>
-    <string name="pro_google_play_price">Google Play: %1$s</string>
-    <string name="pro_google_play_checkout_price">Google Play price shown at checkout</string>
-    <string name="pro_choose_checkout_compare">Choose checkout to compare options</string>
-    <string name="pro_benefit_support">Fund ongoing device support</string>
-    <string name="pro_benefit_support_description">Subscriptions help fund bug fixes and compatibility for more glasses.</string>
-    <string name="pro_benefit_plugins">Support plugin developers</string>
-    <string name="pro_benefit_plugins_description">Help sustain community workflows and automation plugins.</string>
-    <string name="pro_benefit_cloud">Encrypted cloud options</string>
-    <string name="pro_benefit_cloud_description">Optional cross-device cloud sync remains separate from local-first workflows.</string>
-    <string name="pro_benefit_priority">Priority support</string>
-    <string name="pro_benefit_priority_description">Get priority access to support channels and early feature access.</string>
-    <string name="pro_checkout_choices">Checkout choices</string>
-    <string name="pro_checkout_choices_description">Use lower-cost web checkout with Asaas or Paddle, or use the easier in-app Google Play checkout.</string>
-    <string name="pro_donate_asaas">Donate via Asaas</string>
-    <string name="pro_cancel_subscription">Cancel subscription</string>
-    <string name="pro_cancel_description">You retain access through the current billing period after cancellation.</string>
-    <string name="pro_back">Back</string>
-    <string name="pro_start_free_trial">Start free trial</string>
-    <string name="pro_choose_checkout">Choose checkout</string>
-    <string name="pro_choose_checkout_title">Choose checkout</string>
-    <string name="pro_monthly_renewal">%1$s renews monthly. Web prices are confirmed again before payment.</string>
-    <string name="pro_web_checkout">Web checkout</string>
-    <string name="pro_continue_provider">Continue with %1$s</string>
-    <string name="pro_google_play">Google Play</string>
-    <string name="pro_google_play_price_detail">Google Play price: %1$s. Google Play manages payment and renewal in-app.</string>
-    <string name="pro_change_web_subscription">Change this web subscription through website checkout to avoid overlapping subscriptions.</string>
-    <string name="pro_google_play_availability">Google Play availability and localized price load from the Play Store.</string>
-    <string name="pro_use_google_play">Use Google Play</string>
-    <string name="pro_use_web_checkout">Use web checkout for this change</string>
-    <string name="pro_google_play_unavailable">Google Play unavailable</string>
-    <string name="pro_not_now">Not now</string>
-    <string name="pro_asaas_price">About %1$s/month (%2$s processing), charged in BRL</string>
-    <string name="pro_paddle_price">%1$s/month (%2$s checkout adjustment) in USD</string>
-    <string name="pro_google_price">Price shown by Google Play</string>
-    <string name="pro_asaas_description">Lower-cost direct card checkout. The exact BRL total and renewal amount are shown before payment.</string>
-    <string name="pro_paddle_description">Global card checkout. Any applicable tax and the final renewal total are shown before payment.</string>
-    <string name="pro_settings_title">Pro settings</string>
-    <string name="pro_plan">Plan</string>
-    <string name="pro_refresh">Refresh</string>
-    <string name="pro_change_plan">Change plan</string>
-    <string name="pro_account">Account</string>
-    <string name="pro_refresh_account">Refresh account</string>
-    <string name="pro_model_routing">AI model routing</string>
-    <string name="pro_requests">Requests</string>
-    <string name="pro_questions">Questions</string>
-    <string name="pro_tasks">Tasks</string>
-    <string name="pro_refresh_models">Refresh models</string>
-    <string name="pro_refresh_quota">Refresh quota</string>
-    <string name="pro_preferences">Preferences</string>
-    <string name="pro_cloud_sync">Cloud sync</string>
-    <string name="pro_priority_support">Priority support</string>
-    <string name="pro_plugin_rewards">Plugin rewards</string>
-    <string name="pro_early_device_access">Early device access</string>
-    <string name="pro_backup_frequency">Backup frequency</string>
-    <string name="pro_one_hour">1 hour</string>
-    <string name="pro_six_hours">6 hours</string>
-    <string name="pro_daily">Daily</string>
-    <string name="pro_support_channel">Support channel</string>
-    <string name="pro_in_app">In-app</string>
-    <string name="pro_email">Email</string>
-    <string name="pro_discord">Discord</string>
-    <string name="pro_beta_cloud">Beta cloud</string>
-    <string name="pro_beta_interest">Register interest for beta cloud features.</string>
-    <string name="pro_signup_beta">Sign up for beta cloud</string>
-    <string name="pro_gemini_live_title">Gemini Live (voice and vision, preview)</string>
-    <string name="pro_gemini_live_description">Direct Google Gemini Live connection. Requires an active paid Pro plan and network access. Live audio and deliberate still images are sent to Google.</string>
-    <string name="pro_open_gemini_live">Open Gemini Live preview</string>
-    <string name="pro_save">Save</string>
-    <string name="pro_plan_localized_terms">Localized price and renewal terms are shown in checkout.</string>
-    <string name="pro_select_model">Select model</string>
-    <string name="pro_model_title">%1$s model</string>
-    <string name="pro_close">Close</string>
-    <string name="pro_cancel_question">Cancel subscription?</string>
-    <string name="pro_cancel_trial_question">Are you sure you want to end your free trial now?</string>
-    <string name="pro_cancel_period">You will keep access until the end of your current billing period.</string>
-    <string name="pro_yes_cancel">Yes, cancel</string>
-    <string name="pro_keep_subscription">Keep subscription</string>
 
     <!-- Local models -->
     <string name="local_models_title">Local models</string>
@@ -447,7 +358,7 @@
     <string name="dashboard_limits_unavailable">Load settings to see the limits supported by these glasses.</string>
     <string name="dashboard_ai_assistant">AI assistant</string>
     <string name="dashboard_phone_assistant">Phone Assistant</string>
-    <string name="dashboard_custom_provider">Local / Pro / Tasker</string>
+    <string name="dashboard_custom_provider">Local / Cloud AI / Tasker</string>
     <string name="dashboard_test_voice">Test voice</string>
     <string name="dashboard_gemini_chatgpt_setup">Gemini / ChatGPT automation setup</string>
     <string name="dashboard_meizu_title">Meizu MYVU / Star Air</string>
@@ -512,7 +423,7 @@
     <!-- Model labels and diagnostics -->
     <string name="provider_tasker">Tasker</string>
     <string name="provider_local">Local</string>
-    <string name="provider_pro">Pro</string>
+    <string name="provider_pro">Cloud AI</string>
     <string name="memory_private_local">Private Local</string>
     <string name="memory_private_local_description">All memory, indexes, and retrieval stay on-device.</string>
     <string name="memory_encrypted_sync">Encrypted Sync</string>
@@ -561,7 +472,6 @@
     <string name="time_minutes_ago">%1$d m ago</string>
     <string name="time_hours_ago">%1$d h ago</string>
     <string name="time_days_ago">%1$d d ago</string>
-    <string name="shared_chat_unavailable">Subscription management is unavailable on this host. No entitlement was changed.</string>
     <string name="plugin_category_productivity">Productivity</string>
     <string name="plugin_category_accessibility">Accessibility</string>
     <string name="plugin_category_planner">Planner</string>

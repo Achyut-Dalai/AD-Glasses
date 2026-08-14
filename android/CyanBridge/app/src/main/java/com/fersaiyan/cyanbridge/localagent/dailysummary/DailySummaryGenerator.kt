@@ -3,14 +3,14 @@ package com.fersaiyan.cyanbridge.localagent.dailysummary
 import android.content.Context
 import com.fersaiyan.cyanbridge.shared.settings.AgentProviderType
 import com.fersaiyan.cyanbridge.agent.LocalAgentPrefs as AutomationPrefs
-import com.fersaiyan.cyanbridge.agent.ProSubscriptionAiPrefs
-import com.fersaiyan.cyanbridge.agent.ProSubscriptionPrefs
+import com.fersaiyan.cyanbridge.agent.CloudAiPrefs
 import org.json.JSONObject
 import java.io.File
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
 import com.fersaiyan.cyanbridge.ai.router.AiAssistantRouter
+import com.fersaiyan.cyanbridge.ai.router.AiProviderPrefs
 import com.fersaiyan.cyanbridge.ai.router.CliRelayClient
 import com.fersaiyan.cyanbridge.localmodels.provider.LocalModelRequestPriority
 import com.fersaiyan.cyanbridge.localmodels.provider.LocalModelsProvider
@@ -66,7 +66,7 @@ object DailySummaryGenerator {
         return when (AutomationPrefs.getProviderType(context)) {
             AgentProviderType.LOCAL_AGENT -> "local_models"
             AgentProviderType.PRO_SUBSCRIPTION -> "cli_relay"
-            AgentProviderType.TASKER -> if (ProSubscriptionPrefs.isActiveLocally(context)) "cli_relay" else "ai_router"
+            AgentProviderType.TASKER -> if (AiProviderPrefs.isRelayConfigured(context)) "cli_relay" else "ai_router"
         }
     }
 
@@ -663,13 +663,13 @@ Remember: You MUST output a valid summary. Do not refuse.
 
     private suspend fun generateSummary(context: Context, prompt: String): ProviderResponse {
         val agentType = AutomationPrefs.getProviderType(context)
-        val hasPro = ProSubscriptionPrefs.isActiveLocally(context)
+        val relayConfigured = AiProviderPrefs.isRelayConfigured(context)
 
         return when (agentType) {
             AgentProviderType.LOCAL_AGENT -> {
                 runCatching { runLocalModels(context, prompt) }
                     .recoverCatching { localErr ->
-                        if (!hasPro) {
+                        if (!relayConfigured) {
                             throw IllegalStateException("Local model unavailable (${localErr.message}).")
                         }
                         runRelay(context, prompt)
@@ -680,7 +680,7 @@ Remember: You MUST output a valid summary. Do not refuse.
             AgentProviderType.PRO_SUBSCRIPTION -> runRelay(context, prompt)
 
             AgentProviderType.TASKER -> {
-                if (hasPro) {
+                if (relayConfigured) {
                     runRelay(context, prompt)
                 } else {
                     runRouterFallback(context, prompt)
@@ -690,7 +690,7 @@ Remember: You MUST output a valid summary. Do not refuse.
     }
 
     private suspend fun runRelay(context: Context, prompt: String): ProviderResponse {
-        val modelOverride = ProSubscriptionAiPrefs.getTasksModel(context)
+        val modelOverride = CloudAiPrefs.getTasksModel(context)
             .trim()
             .takeIf { it.isNotBlank() }
 

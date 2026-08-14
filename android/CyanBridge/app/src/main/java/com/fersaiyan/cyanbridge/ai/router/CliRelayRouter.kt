@@ -4,8 +4,8 @@ import android.content.Context
 import android.util.Base64
 import com.fersaiyan.cyanbridge.shared.settings.AgentProviderType
 import com.fersaiyan.cyanbridge.agent.LocalAgentPrefs as AutomationPrefs
-import com.fersaiyan.cyanbridge.agent.ProSubscriptionAiPrefs
-import com.fersaiyan.cyanbridge.agent.ProSubscriptionServerPrefs
+import com.fersaiyan.cyanbridge.agent.CloudAiPrefs
+import com.fersaiyan.cyanbridge.agent.CloudServerPrefs
 import com.fersaiyan.cyanbridge.localmodels.provider.LocalModelsProvider
 import org.json.JSONArray
 import org.json.JSONObject
@@ -316,7 +316,7 @@ object CliRelayClient {
         conn.readTimeout = READ_TIMEOUT_MS
         conn.doOutput = true
         conn.setRequestProperty("Content-Type", "application/json; charset=utf-8")
-        val serverToken = ProSubscriptionServerPrefs.getApiToken(context)
+        val serverToken = CloudServerPrefs.getApiToken(context)
         if (serverToken.isNotBlank()) {
             conn.setRequestProperty("Authorization", "Bearer $serverToken")
         }
@@ -670,12 +670,12 @@ object AiAssistantRouter {
             }
             AiProviderType.CLI_RELAY -> {
                 val modelOverride = if (AutomationPrefs.getProviderType(context) == AgentProviderType.PRO_SUBSCRIPTION) {
-                    ProSubscriptionAiPrefs.getRequestsModel(context)
+                    CloudAiPrefs.getRequestsModel(context)
                 } else {
                     null
                 }
                 val mediaModelOverride = if (AutomationPrefs.getProviderType(context) == AgentProviderType.PRO_SUBSCRIPTION) {
-                    ProSubscriptionAiPrefs.getQuestionsModel(context)
+                    CloudAiPrefs.getQuestionsModel(context)
                 } else {
                     modelOverride
                 }
@@ -760,7 +760,7 @@ object AiAssistantRouter {
             AiProviderType.COMPANY_BACKEND -> "Company backend is not configured yet in this build."
             AiProviderType.CLI_RELAY -> {
                 val modelOverride = if (AutomationPrefs.getProviderType(context) == AgentProviderType.PRO_SUBSCRIPTION) {
-                    ProSubscriptionAiPrefs.getTasksModel(context)
+                    CloudAiPrefs.getTasksModel(context)
                 } else {
                     null
                 }

@@ -8,7 +8,7 @@ import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.content.FileProvider
 import com.fersaiyan.cyanbridge.agent.LocalAgentPrefs as AutomationPrefs
-import com.fersaiyan.cyanbridge.agent.ProSubscriptionServerPrefs
+import com.fersaiyan.cyanbridge.agent.CloudServerPrefs
 import com.fersaiyan.cyanbridge.ai.router.AiProviderPrefs
 import com.fersaiyan.cyanbridge.devices.DeviceProfileStore
 import com.fersaiyan.cyanbridge.devices.metarayban.MetaRaybanManager
@@ -223,7 +223,7 @@ object DebugLogSupport {
         val baseUrl = relayBaseUrl?.trim()?.trimEnd('/')?.takeIf { it.isNotBlank() }
             ?: AiProviderPrefs.getRelayBaseUrl(context).trimEnd('/')
         val url = URL("$baseUrl/logs/submit")
-        val token = ProSubscriptionServerPrefs.getApiToken(context)
+        val token = CloudServerPrefs.getApiToken(context)
 
         val payload = org.json.JSONObject()
             .put("issue_type", issueType)

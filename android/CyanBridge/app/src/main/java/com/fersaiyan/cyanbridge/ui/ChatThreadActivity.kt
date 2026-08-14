@@ -29,8 +29,8 @@ import androidx.work.WorkManager
 import com.fersaiyan.cyanbridge.MainActivity
 import com.fersaiyan.cyanbridge.agent.LocalAgentPrefs as AutomationPrefs
 import com.fersaiyan.cyanbridge.agent.LocalModelsConfigureActivity
-import com.fersaiyan.cyanbridge.agent.ProSubscriptionAiPrefs
-import com.fersaiyan.cyanbridge.agent.ProSubscriptionRelayClient
+import com.fersaiyan.cyanbridge.agent.CloudAiPrefs
+import com.fersaiyan.cyanbridge.agent.CloudRelayClient
 import com.fersaiyan.cyanbridge.ai.router.AiProviderPrefs
 import com.fersaiyan.cyanbridge.ai.router.AiProviderType
 import com.fersaiyan.cyanbridge.ai.router.AiAssistantRouter as RelayAiAssistantRouter
@@ -513,10 +513,10 @@ class ChatThreadActivity : AppCompatActivity() {
     }
 
     private fun showRelayModelPicker() {
-        val current = ProSubscriptionAiPrefs.getRequestsModel(this)
+        val current = CloudAiPrefs.getRequestsModel(this)
         lifecycleScope.launch {
             val options = withContext(Dispatchers.IO) {
-                val fetched = ProSubscriptionRelayClient.fetchAvailableModels(this@ChatThreadActivity).getOrElse { emptyList() }
+                val fetched = CloudRelayClient.fetchAvailableModels(this@ChatThreadActivity).getOrElse { emptyList() }
                 val merged = linkedMapOf<String, String>()
                 merged["auto"] = "auto"
                 fetched.forEach { option ->
@@ -554,7 +554,7 @@ class ChatThreadActivity : AppCompatActivity() {
                     val picked = options.getOrNull(which) ?: return@setItems
                     val pickedId = picked.key
                     val pickedLabel = picked.value
-                    ProSubscriptionAiPrefs.setRequestsModel(this@ChatThreadActivity, pickedId)
+                    CloudAiPrefs.setRequestsModel(this@ChatThreadActivity, pickedId)
                     refreshModelBadge("Ready")
                     android.widget.Toast.makeText(
                         this@ChatThreadActivity,
@@ -619,7 +619,7 @@ class ChatThreadActivity : AppCompatActivity() {
             }
 
             isRelayProviderSelected() -> {
-                val selected = ProSubscriptionAiPrefs.getRequestsModel(this).ifBlank { "auto" }
+                val selected = CloudAiPrefs.getRequestsModel(this).ifBlank { "auto" }
                 "Relay model: $selected"
             }
 
@@ -678,7 +678,7 @@ class ChatThreadActivity : AppCompatActivity() {
     }
 
     private fun showRelayDownToastIfNeeded(message: String?) {
-        val hint = ProSubscriptionRelayClient.relayUnavailableHintFromText(message.orEmpty()) ?: return
+        val hint = CloudRelayClient.relayUnavailableHintFromText(message.orEmpty()) ?: return
         android.widget.Toast.makeText(this, hint, android.widget.Toast.LENGTH_LONG).show()
     }
 

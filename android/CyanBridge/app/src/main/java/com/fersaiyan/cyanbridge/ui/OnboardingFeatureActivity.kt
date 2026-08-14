@@ -179,7 +179,7 @@ class OnboardingFeatureActivity : AppCompatActivity() {
         private const val GLASSES_CONNECTION_FEATURE_INDEX = 0
         private const val SCREEN_MEMORY_FEATURE_INDEX = 1
         private const val OPEN_SOURCE_FEATURE_INDEX = 2
-        private const val GITHUB_REPOSITORY_URL = "https://github.com/FerSaiyan/Alternative-HeyCyan-App-and-SDK"
+        private const val GITHUB_REPOSITORY_URL = "https://github.com/Achyut-Dalai/AD-Glasses"
 
         private val FEATURES = listOf(
             OnboardingFeature(

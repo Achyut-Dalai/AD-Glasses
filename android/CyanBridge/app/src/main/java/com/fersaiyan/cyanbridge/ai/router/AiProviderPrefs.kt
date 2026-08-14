@@ -29,8 +29,10 @@ object AiProviderPrefs {
     private const val KEY_PROVIDER = "provider"
     private const val KEY_RELAY_BASE_URL = "relay_base_url"
     private const val KEY_RELAY_BACKEND = "relay_backend"
-    private const val LEGACY_PUBLIC_RELAY_URL = "https://carelens-wine.vercel.app"
-    private const val DEFAULT_PUBLIC_RELAY_URL = "https://cyanbridge.vercel.app"
+    private val AUTHOR_RELAY_URLS = setOf(
+        "https://carelens-wine.vercel.app",
+        "https://cyanbridge.vercel.app",
+    )
 
     private fun prefs(context: Context) = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
 
@@ -42,20 +44,18 @@ object AiProviderPrefs {
     }
 
     fun getRelayBaseUrl(context: Context): String =
-        prefs(context).getString(KEY_RELAY_BASE_URL, DEFAULT_PUBLIC_RELAY_URL)
+        prefs(context).getString(KEY_RELAY_BASE_URL, "")
             ?.trim()
             .orEmpty()
             .let { current ->
-                when {
-                    current.isBlank() -> DEFAULT_PUBLIC_RELAY_URL
-                    current == LEGACY_PUBLIC_RELAY_URL -> DEFAULT_PUBLIC_RELAY_URL
-                    else -> current
-                }
+                if (current.trimEnd('/') in AUTHOR_RELAY_URLS) "" else current
             }
 
     fun setRelayBaseUrl(context: Context, value: String) {
-        prefs(context).edit().putString(KEY_RELAY_BASE_URL, value.trim()).apply()
+        prefs(context).edit().putString(KEY_RELAY_BASE_URL, value.trim().trimEnd('/')).apply()
     }
+
+    fun isRelayConfigured(context: Context): Boolean = getRelayBaseUrl(context).isNotBlank()
 
     fun getRelayBackend(context: Context): CliRelayBackend =
         CliRelayBackend.fromWire(prefs(context).getString(KEY_RELAY_BACKEND, CliRelayBackend.GEMINI.wire))

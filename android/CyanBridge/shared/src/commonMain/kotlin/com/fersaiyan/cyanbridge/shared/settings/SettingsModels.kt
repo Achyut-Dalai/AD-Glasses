@@ -9,7 +9,7 @@ enum class AgentProviderType {
         get() = when (this) {
             TASKER -> "Tasker"
             LOCAL_AGENT -> "Local"
-            PRO_SUBSCRIPTION -> "Pro"
+            PRO_SUBSCRIPTION -> "Cloud AI"
         }
 }
 

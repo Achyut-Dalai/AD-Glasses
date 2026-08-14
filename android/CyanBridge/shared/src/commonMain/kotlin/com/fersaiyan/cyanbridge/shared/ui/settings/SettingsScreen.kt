@@ -46,7 +46,6 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
@@ -69,8 +68,8 @@ import com.fersaiyan.cyanbridge.shared.ui.localizedMemoryModeTitle
 import com.fersaiyan.cyanbridge.shared.ui.localizedProviderLabel
 
 data class SettingsUiState(
-    val isProSubscribed: Boolean = false,
-    val proPlan: String = "Pro",
+    val cloudConfigured: Boolean = false,
+    val cloudSummary: String = "Add your relay URL and optional token",
     val appLanguageLabel: String = "System default",
     val providerType: AgentProviderType = AgentProviderType.PRO_SUBSCRIPTION,
     val defaultImageQuestion: String = "Give me a concise description of the image",
@@ -97,7 +96,7 @@ interface SettingsScreenActions {
     fun onDestinationSelected(destination: AppDestination)
     fun openAppearance()
     fun openAppLanguageSelection()
-    fun openSubscription()
+    fun openCloudAi()
     fun setProviderType(type: AgentProviderType)
     fun openLocalModels()
     fun setDefaultImageQuestion(question: String)
@@ -166,10 +165,10 @@ fun SettingsScreen(
             verticalArrangement = Arrangement.spacedBy(12.dp),
         ) {
             item {
-                ProSubscriptionCard(
-                    isSubscribed = state.isProSubscribed,
-                    proPlan = state.proPlan,
-                    onClick = actions::openSubscription,
+                CloudAiCard(
+                    configured = state.cloudConfigured,
+                    summary = state.cloudSummary,
+                    onClick = actions::openCloudAi,
                 )
             }
             if (state.meetingRecording) {
@@ -299,15 +298,15 @@ private fun MeetingRecordingBanner(
 }
 
 @Composable
-private fun ProSubscriptionCard(
-    isSubscribed: Boolean,
-    proPlan: String,
+private fun CloudAiCard(
+    configured: Boolean,
+    summary: String,
     onClick: () -> Unit,
 ) {
     Card(
         modifier = Modifier
             .fillMaxWidth()
-            .testTag("settings_subscription")
+            .testTag("settings_cloud_ai")
             .clickable(onClick = onClick),
         colors = CardDefaults.cardColors(
             containerColor = MaterialTheme.colorScheme.tertiaryContainer,
@@ -345,13 +344,7 @@ private fun ProSubscriptionCard(
                         horizontalArrangement = Arrangement.spacedBy(8.dp),
                     ) {
                         Text(
-                            text = stringResource(
-                                if (isSubscribed) {
-                                    Res.string.settings_pro_subscription_settings
-                                } else {
-                                    Res.string.settings_pro_subscription
-                                },
-                            ),
+                            text = "Cloud AI",
                             modifier = Modifier.weight(1f),
                             style = MaterialTheme.typography.titleMedium,
                             fontWeight = FontWeight.Bold,
@@ -362,9 +355,7 @@ private fun ProSubscriptionCard(
                             shape = MaterialTheme.shapes.small,
                         ) {
                             Text(
-                                text = stringResource(
-                                    if (isSubscribed) Res.string.settings_pro_active else Res.string.settings_pro_badge,
-                                ),
+                                text = if (configured) "READY" else "SETUP",
                                 modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
                                 style = MaterialTheme.typography.labelSmall,
                                 fontWeight = FontWeight.Bold,
@@ -372,11 +363,7 @@ private fun ProSubscriptionCard(
                         }
                     }
                     Text(
-                        text = if (isSubscribed) {
-                            stringResource(Res.string.settings_current_plan, proPlan)
-                        } else {
-                            stringResource(Res.string.settings_unlock_premium)
-                        },
+                        text = summary,
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onTertiaryContainer,
                     )
@@ -390,11 +377,7 @@ private fun ProSubscriptionCard(
                     contentColor = MaterialTheme.colorScheme.onTertiary,
                 ),
             ) {
-                Text(
-                    stringResource(
-                        if (isSubscribed) Res.string.settings_manage_subscription else Res.string.settings_view_plans,
-                    ),
-                )
+                Text(if (configured) "Manage cloud" else "Configure cloud")
             }
         }
     }
@@ -557,28 +540,20 @@ private fun MemoryPrivacyContent(state: SettingsUiState, actions: SettingsScreen
         )
     }
     MemoryPrivacyMode.entries.forEach { mode ->
-        val requiresPro = mode != MemoryPrivacyMode.PRIVATE_LOCAL
-        val enabled = state.isProSubscribed || !requiresPro
         Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .alpha(if (enabled) 1f else 0.5f)
-                .clickable(enabled = enabled) { actions.setMemoryMode(mode) },
+                .clickable { actions.setMemoryMode(mode) },
             verticalAlignment = Alignment.CenterVertically,
         ) {
             RadioButton(
                 selected = state.memoryMode == mode,
-                onClick = { if (enabled) actions.setMemoryMode(mode) },
-                enabled = enabled,
+                onClick = { actions.setMemoryMode(mode) },
             )
             Column {
                  Text(localizedMemoryModeTitle(mode), style = MaterialTheme.typography.bodyMedium)
                 Text(
-                    text = if (enabled) {
-                        localizedMemoryModeDescription(mode)
-                    } else {
-                        stringResource(Res.string.settings_requires_pro)
-                    },
+                    text = localizedMemoryModeDescription(mode),
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
@@ -680,7 +655,6 @@ private fun SupportContent(actions: SettingsScreenActions) {
 private fun FaqContent() {
     val items = listOf(
         stringResource(Res.string.settings_faq_local_models_question) to stringResource(Res.string.settings_faq_local_models_answer),
-        stringResource(Res.string.settings_faq_subscription_question) to stringResource(Res.string.settings_faq_subscription_answer),
         stringResource(Res.string.settings_faq_data_question) to stringResource(Res.string.settings_faq_data_answer),
         stringResource(Res.string.settings_faq_source_question) to stringResource(Res.string.settings_faq_source_answer),
     )

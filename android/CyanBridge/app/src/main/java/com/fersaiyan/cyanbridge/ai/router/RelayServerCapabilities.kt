@@ -13,7 +13,6 @@ data class RelayServerCapabilities(
     val voiceQuery: Boolean,
     val imageQuery: Boolean,
     val openAiChatCompletions: Boolean,
-    val subscriptionVerify: Boolean,
     val transcriptionHttp: Boolean,
 )
 
@@ -77,7 +76,6 @@ object RelayServerCapabilitiesClient {
             voiceQuery = caps.optBoolean("voice_query", caps.optBoolean("chat", true)),
             imageQuery = caps.optBoolean("image_query", true),
             openAiChatCompletions = caps.optBoolean("openai_chat_completions", true),
-            subscriptionVerify = caps.optBoolean("subscription_verify", false),
             transcriptionHttp = caps.optBoolean("transcription_http", false),
         )
     }

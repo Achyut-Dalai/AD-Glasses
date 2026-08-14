@@ -95,7 +95,7 @@ Latest version: %2$s</string>
     <string name="compose_range_error">Use %1$d to %2$d</string>
     <string name="compose_provider_tasker">Tasker</string>
     <string name="compose_provider_local">Local</string>
-    <string name="compose_provider_pro">Pro</string>
+    <string name="compose_provider_pro">Cloud AI</string>
     <string name="compose_not_now">Not now</string>
     <string name="compose_continue">Continue</string>
     <string name="compose_close">Close</string>

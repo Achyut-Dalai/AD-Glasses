@@ -16,7 +16,7 @@ import android.net.NetworkCapabilities
 import android.os.Build
 import android.util.Base64
 import android.util.Log
-import com.fersaiyan.cyanbridge.agent.ProSubscriptionServerPrefs
+import com.fersaiyan.cyanbridge.agent.CloudServerPrefs
 import com.fersaiyan.cyanbridge.ai.router.AiProviderPrefs
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -191,7 +191,7 @@ class GeminiLiveClient(
     }
 
     private fun requestToken(language: String, imagePrompt: String): TokenConfig {
-        val authToken = ProSubscriptionServerPrefs.getApiToken(appContext).trim()
+        val authToken = CloudServerPrefs.getApiToken(appContext).trim()
         check(authToken.isNotBlank()) { "Sign in to CyanBridge before starting Gemini Live" }
         val base = AiProviderPrefs.getRelayBaseUrl(appContext).trim().trimEnd('/')
         check(base.startsWith("https://")) { "Gemini Live requires a secure relay URL" }
@@ -228,7 +228,7 @@ class GeminiLiveClient(
         outputAudioMs: Long,
         imageCount: Int,
     ) {
-        val authToken = ProSubscriptionServerPrefs.getApiToken(appContext).trim()
+        val authToken = CloudServerPrefs.getApiToken(appContext).trim()
         val base = AiProviderPrefs.getRelayBaseUrl(appContext).trim().trimEnd('/')
         if (authToken.isBlank() || !base.startsWith("https://")) return
         val request = Request.Builder()

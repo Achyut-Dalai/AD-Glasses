@@ -56,6 +56,7 @@ object VersionUpdateChecker {
         CoroutineScope(Dispatchers.IO).launch {
             try {
                 val relayUrl = AiProviderPrefs.getRelayBaseUrl(context)
+                if (relayUrl.isBlank()) return@launch
                 val url = java.net.URL("$relayUrl/version/latest")
                 val connection = url.openConnection() as java.net.HttpURLConnection
                 connection.requestMethod = "GET"
@@ -118,7 +119,7 @@ object VersionUpdateChecker {
                             onDownload = {
                                 try {
                                     val url = downloadUrl.ifBlank {
-                                        "https://github.com/FerSaiyan/Alternative-HeyCyan-App-and-SDK/releases"
+                                        "https://github.com/Achyut-Dalai/AD-Glasses/releases"
                                     }
                                     context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(url)))
                                 } catch (_: Exception) {
@@ -179,6 +180,12 @@ object VersionUpdateChecker {
         CoroutineScope(Dispatchers.IO).launch {
             try {
                 val relayUrl = AiProviderPrefs.getRelayBaseUrl(context)
+                if (relayUrl.isBlank()) {
+                    withContext(Dispatchers.Main) {
+                        Toast.makeText(context, "Configure Cloud AI before checking relay updates", Toast.LENGTH_SHORT).show()
+                    }
+                    return@launch
+                }
                 val url = java.net.URL("$relayUrl/version/latest")
                 val connection = url.openConnection() as java.net.HttpURLConnection
                 connection.requestMethod = "GET"

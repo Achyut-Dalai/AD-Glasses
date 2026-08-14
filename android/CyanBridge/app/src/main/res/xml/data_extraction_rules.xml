@@ -6,18 +6,14 @@
 <data-extraction-rules>
     <cloud-backup>
         <exclude domain="sharedpref" path="remote_openai_secrets.xml"/>
-        <exclude domain="sharedpref" path="pro_subscription_server_prefs.xml"/>
-        <exclude domain="sharedpref" path="pro_subscription_server_secrets.xml"/>
-        <exclude domain="sharedpref" path="pending_donation_prefs.xml"/>
-        <exclude domain="sharedpref" path="pending_donation_secrets.xml"/>
+        <exclude domain="sharedpref" path="cloud_server_prefs.xml"/>
+        <exclude domain="sharedpref" path="cloud_server_secrets.xml"/>
         <exclude domain="sharedpref" path="pending_legacy_checkout_prefs.xml"/>
     </cloud-backup>
     <device-transfer>
         <exclude domain="sharedpref" path="remote_openai_secrets.xml"/>
-        <exclude domain="sharedpref" path="pro_subscription_server_prefs.xml"/>
-        <exclude domain="sharedpref" path="pro_subscription_server_secrets.xml"/>
-        <exclude domain="sharedpref" path="pending_donation_prefs.xml"/>
-        <exclude domain="sharedpref" path="pending_donation_secrets.xml"/>
+        <exclude domain="sharedpref" path="cloud_server_prefs.xml"/>
+        <exclude domain="sharedpref" path="cloud_server_secrets.xml"/>
         <exclude domain="sharedpref" path="pending_legacy_checkout_prefs.xml"/>
     </device-transfer>
 </data-extraction-rules>

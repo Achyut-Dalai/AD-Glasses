@@ -13,7 +13,6 @@ import androidx.core.content.ContextCompat
 import androidx.lifecycle.lifecycleScope
 import com.google.android.material.button.MaterialButton
 import com.fersaiyan.cyanbridge.R
-import com.fersaiyan.cyanbridge.agent.ProSubscriptionPrefs
 import com.fersaiyan.cyanbridge.ai.vision.ImageQuestionPreferences
 import com.fersaiyan.cyanbridge.ai.vision.ImageQuestionPromptResolver
 import com.fersaiyan.cyanbridge.ai.vision.ImageQuestionRoute
@@ -92,10 +91,6 @@ class GeminiLiveActivity : AppCompatActivity(), GeminiLiveClient.Listener {
     }
 
     private fun explainAndRequestMicrophone() {
-        if (!hasPaidPlan()) {
-            Toast.makeText(this, "Gemini Live requires an active paid Pro plan and network access.", Toast.LENGTH_LONG).show()
-            return
-        }
         AlertDialog.Builder(this)
             .setTitle("Gemini Live preview")
             .setMessage("Gemini Live listens through your microphone and sends live audio to Google. While this screen is open, press the glasses AI photo button to deliberately send its thumbnail to Gemini. This preview requires network access.")
@@ -135,11 +130,6 @@ class GeminiLiveActivity : AppCompatActivity(), GeminiLiveClient.Listener {
                 }
             hardwareImageCaptureInProgress.set(false)
         }
-    }
-
-    private fun hasPaidPlan(): Boolean {
-        return ProSubscriptionPrefs.isActiveLocally(this) &&
-            ProSubscriptionPrefs.getPlan(this).lowercase() in setOf("cheap", "standard", "max")
     }
 
     private fun hasPermission(permission: String): Boolean =

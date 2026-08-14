@@ -3,7 +3,7 @@ package com.fersaiyan.cyanbridge.ai.router
 import android.content.Context
 import com.fersaiyan.cyanbridge.shared.settings.AgentProviderType
 import com.fersaiyan.cyanbridge.agent.LocalAgentPrefs as AutomationPrefs
-import com.fersaiyan.cyanbridge.agent.ProSubscriptionAiPrefs
+import com.fersaiyan.cyanbridge.agent.CloudAiPrefs
 import com.fersaiyan.cyanbridge.localmodels.provider.LocalModelsProvider
 import com.fersaiyan.cyanbridge.localmodels.remote.RemoteOpenAiPrefs
 import kotlinx.coroutines.CancellationException
@@ -98,7 +98,7 @@ object AgentInferenceRouter {
                     context = context,
                     imagePath = usableImagePath,
                     prompt = multimodalPrompt(systemPrompt, userPrompt),
-                    modelOverride = ProSubscriptionAiPrefs.getTasksModel(context),
+                    modelOverride = CloudAiPrefs.getTasksModel(context),
                 ).getOrThrow()
 
                 AgentProviderType.TASKER -> when (AiProviderPrefs.getProvider(context)) {
@@ -187,7 +187,7 @@ object AgentInferenceRouter {
                 chatId = sessionId,
                 prompt = userPrompt,
                 messages = messages,
-                modelOverride = ProSubscriptionAiPrefs.getTasksModel(context),
+                modelOverride = CloudAiPrefs.getTasksModel(context),
             ).getOrThrow()
 
             AgentProviderType.TASKER -> completeUsingAiProviderPrefs(

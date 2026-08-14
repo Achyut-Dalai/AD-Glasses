@@ -190,8 +190,8 @@ import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
-import com.fersaiyan.cyanbridge.agent.ProSubscriptionAiPrefs
-import com.fersaiyan.cyanbridge.agent.ProSubscriptionServerPrefs
+import com.fersaiyan.cyanbridge.agent.CloudAiPrefs
+import com.fersaiyan.cyanbridge.agent.CloudServerPrefs
 import com.fersaiyan.cyanbridge.ai.router.AssistantIntent
 import com.fersaiyan.cyanbridge.ai.router.AssistantRequest
 import com.fersaiyan.cyanbridge.ai.router.AssistantRequestRouter
@@ -2878,7 +2878,7 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
                             bleHardwareVersion = deviceInfo.hardwareVersion.orEmpty().ifBlank { "unknown" },
                             bleFirmwareVersion = deviceInfo.firmwareVersion.orEmpty().ifBlank { "unknown" },
                             relayMessage = result.message,
-                            suggestedContactEmail = ProSubscriptionServerPrefs.getAccountEmail(this@MainActivity),
+                            suggestedContactEmail = CloudServerPrefs.getAccountEmail(this@MainActivity),
                         ),
                     )
                 }
@@ -2886,14 +2886,6 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
                 is FirmwareResult.DebugAccessRequired -> {
                     AlertDialog.Builder(this@MainActivity)
                         .setTitle("Debug Firmware Access Required")
-                        .setMessage(result.message)
-                        .setPositiveButton("OK", null)
-                        .show()
-                }
-
-                is FirmwareResult.SubscriptionRequired -> {
-                    AlertDialog.Builder(this@MainActivity)
-                        .setTitle("Firmware Access Required")
                         .setMessage(result.message)
                         .setPositiveButton("OK", null)
                         .show()
@@ -3876,7 +3868,7 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
                     chatId = "glasses_${System.currentTimeMillis()}",
                     prompt = userPrompt,
                     messages = messages,
-                    modelOverride = ProSubscriptionAiPrefs.getRequestsModel(this),
+                    modelOverride = CloudAiPrefs.getRequestsModel(this),
                 ).getOrElse {
                     "Pro endpoint error: ${it.message ?: "unknown error"}"
                 }
@@ -3966,7 +3958,7 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
                             context = this@MainActivity,
                             imagePath = imagePath,
                             prompt = resolvedPrompt.forRoute(ImageQuestionRoute.PRO_RELAY),
-                            modelOverride = ProSubscriptionAiPrefs.getQuestionsModel(this@MainActivity),
+                            modelOverride = CloudAiPrefs.getQuestionsModel(this@MainActivity),
                         )
 
                         if (visionResult.isFailure) {
@@ -5094,7 +5086,7 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
                                 )
                             } else {
                                 val modelOverride = if (selectedProvider == AgentProviderType.PRO_SUBSCRIPTION) {
-                                    ProSubscriptionAiPrefs.getQuestionsModel(this@MainActivity)
+                                    CloudAiPrefs.getQuestionsModel(this@MainActivity)
                                 } else {
                                     null
                                 }

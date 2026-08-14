@@ -3,7 +3,8 @@ package com.fersaiyan.cyanbridge.ota
 import android.content.Context
 import android.net.Uri
 import android.util.Log
-import com.fersaiyan.cyanbridge.agent.ProSubscriptionServerPrefs
+import com.fersaiyan.cyanbridge.agent.CloudServerPrefs
+import com.fersaiyan.cyanbridge.ai.router.AiProviderPrefs
 import com.fersaiyan.cyanbridge.shared.glasses.OtaFirmwareSource
 import org.json.JSONObject
 import java.io.File
@@ -93,7 +94,7 @@ internal fun firmwareRelayBaseUrl(context: Context): String =
         .getString("base_url", null)
         ?.trim()
         .takeUnless { it.isNullOrBlank() }
-        ?: "https://cyanbridge.vercel.app"
+        ?: AiProviderPrefs.getRelayBaseUrl(context)
 
 /**
  * Result of a firmware catalog lookup + download.
@@ -101,12 +102,6 @@ internal fun firmwareRelayBaseUrl(context: Context): String =
 sealed class FirmwareResult {
     data class Ready(val file: File, val filename: String) : FirmwareResult()
     data class NotAvailable(val message: String, val hardwareVersion: String) : FirmwareResult()
-    data class SubscriptionRequired(
-        val message: String,
-        val currentPlan: String,
-        val requiredPlans: List<String>,
-    ) : FirmwareResult()
-
     data class DebugAccessRequired(val message: String) : FirmwareResult()
 
     data class Error(val message: String) : FirmwareResult()
@@ -167,11 +162,11 @@ class FirmwareClient(
         }
 
         // Step 2: Get API token
-        val apiToken = ProSubscriptionServerPrefs.getApiToken(context)
-        val accountEmail = ProSubscriptionServerPrefs.getAccountEmail(context)
+        val apiToken = CloudServerPrefs.getApiToken(context)
+        val accountEmail = CloudServerPrefs.getAccountEmail(context)
         if (apiToken.isBlank()) {
             Log.e(TAG, "[2/5] FAIL: No API token available. User not signed in.")
-            return FirmwareResult.Error("No API token available. Please sign in to your CyanBridge account.")
+            return FirmwareResult.Error("No API token available. Configure your cloud relay in Settings.")
         }
         Log.i(TAG, "[2/5] API token present (email: ${accountEmail.ifBlank { "(none)" }})")
 
@@ -313,29 +308,9 @@ class FirmwareClient(
                 val error = json.optString("error", "")
                 val message = json.optString("message", "Access denied")
 
-                Log.w(TAG, "[4/5] Subscription gate: error=$error, message=$message")
+                Log.w(TAG, "[4/5] Relay rejected firmware request: error=$error, message=$message")
 
                 when (error) {
-                    "subscription_required" -> {
-                        val currentPlan = json.optString("currentPlan", "unknown")
-                        val requiredPlans = mutableListOf<String>()
-                        val arr = json.optJSONArray("requiredPlans")
-                        if (arr != null) {
-                            for (i in 0 until arr.length()) {
-                                requiredPlans.add(arr.getString(i))
-                            }
-                        }
-                        Log.w(TAG, "  currentPlan: $currentPlan, requiredPlans: $requiredPlans")
-                        Log.i(TAG, "=== FIRMWARE FETCH BLOCKED (subscription) ===")
-                        FirmwareResult.SubscriptionRequired(message, currentPlan, requiredPlans)
-                    }
-
-                    "subscription_expired" -> {
-                        Log.w(TAG, "  Subscription expired")
-                        Log.i(TAG, "=== FIRMWARE FETCH BLOCKED (expired) ===")
-                        FirmwareResult.SubscriptionRequired(message, "expired", listOf("standard", "max"))
-                    }
-
                     "debug_firmware_access_required" -> {
                         Log.w(TAG, "  Debug firmware entitlement is missing")
                         FirmwareResult.DebugAccessRequired(message)

@@ -14,7 +14,7 @@ class SettingsScreenTest {
     @Test
     fun defaultUiStateUsesPrivacyFirstDefaults() {
         val state = SettingsUiState()
-        assertEquals(false, state.isProSubscribed)
+        assertEquals(false, state.cloudConfigured)
         assertEquals(MemoryPrivacyMode.PRIVATE_LOCAL, state.memoryMode)
         assertEquals(true, state.redactNamesEnabled)
         assertEquals(false, state.transcriptStorageEnabled)
@@ -69,13 +69,13 @@ class SettingsScreenTest {
     @Test
     fun stateCopyPreservesUnrelatedFields() {
         val original = SettingsUiState(
-            isProSubscribed = true,
-            proPlan = "Max",
+            cloudConfigured = true,
+            cloudSummary = "https://relay.example",
             ocrRetentionDays = 12,
         )
         val updated = original.copy(memoryMode = MemoryPrivacyMode.ENCRYPTED_SYNC)
-        assertEquals(true, updated.isProSubscribed)
-        assertEquals("Max", updated.proPlan)
+        assertEquals(true, updated.cloudConfigured)
+        assertEquals("https://relay.example", updated.cloudSummary)
         assertEquals(12, updated.ocrRetentionDays)
         assertEquals(MemoryPrivacyMode.ENCRYPTED_SYNC, updated.memoryMode)
     }

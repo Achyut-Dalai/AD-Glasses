@@ -149,7 +149,7 @@ fun CommunityPluginsScreen(
             item { PluginHero() }
             item {
                 Text(
-                     text = stringResource(Res.string.plugins_future_notice),
+                     text = "Community plugins are optional. Review permissions before enabling a workflow.",
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
