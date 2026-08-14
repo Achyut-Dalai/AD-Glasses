@@ -24,11 +24,15 @@ dependencyResolutionManagement {
         }
         val githubToken = System.getenv("GITHUB_TOKEN")
             ?: localProps.getProperty("github_token")
+            ?: localProps.getProperty("meta_token")
+        val githubUsername = System.getenv("GITHUB_ACTOR")
+            ?: localProps.getProperty("github_username")
+            ?: "Achyut-Dalai"
         if (!githubToken.isNullOrBlank()) {
             maven {
                 url = uri("https://maven.pkg.github.com/facebook/meta-wearables-dat-android")
                 credentials {
-                    username = ""
+                    username = githubUsername
                     password = githubToken
                 }
             }
