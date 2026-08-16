@@ -1,6 +1,7 @@
 package com.fersaiyan.cyanbridge.ui.adglasses
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -11,6 +12,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
@@ -21,11 +23,14 @@ import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.Add
+import androidx.compose.material.icons.outlined.ArrowForward
+import androidx.compose.material.icons.outlined.Public
 import androidx.compose.material.icons.rounded.ArrowUpward
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -96,6 +101,17 @@ internal fun ADNativeConversationScreen(
         messages = ChatStore.listMessages(threadId)
     }
 
+    fun focusComposer() {
+        composerFocusRequester.requestFocus()
+        keyboardController?.show()
+    }
+
+    fun useSuggestion(prompt: String, requestWeb: Boolean = false) {
+        message = prompt
+        webSearch = requestWeb
+        focusComposer()
+    }
+
     fun send() {
         val prompt = message.trim()
         if (prompt.isEmpty() || sending) return
@@ -137,13 +153,12 @@ internal fun ADNativeConversationScreen(
         onNavigationRequestApplied(request.id)
         if (!request.prefill.isNullOrBlank() || request.webSearchRequested) {
             delay(90)
-            composerFocusRequester.requestFocus()
-            keyboardController?.show()
+            focusComposer()
         }
     }
 
     // Glasses-originated turns use the same durable session. Refresh while this surface is
-    // visible so the phone stays a live review surface without requiring a reopen.
+    // visible so the phone remains a live review surface without requiring a reopen.
     LaunchedEffect(threadId) {
         while (isActive) {
             delay(CONVERSATION_REFRESH_MS)
@@ -169,7 +184,7 @@ internal fun ADNativeConversationScreen(
 
     Column(Modifier.fillMaxSize()) {
         Row(
-            modifier = Modifier.fillMaxWidth().padding(start = 16.dp, end = 8.dp, top = 8.dp, bottom = 6.dp),
+            modifier = Modifier.fillMaxWidth().padding(start = 18.dp, end = 10.dp, top = 14.dp, bottom = 8.dp),
             verticalAlignment = Alignment.CenterVertically,
         ) {
             Text("Chats", style = MaterialTheme.typography.headlineSmall, modifier = Modifier.weight(1f))
@@ -181,12 +196,17 @@ internal fun ADNativeConversationScreen(
                         message = ""
                         webSearch = false
                         errorText = null
-                        composerFocusRequester.requestFocus()
-                        keyboardController?.show()
+                        focusComposer()
                     }
                 },
+                modifier = Modifier.size(42.dp),
             ) {
-                Icon(Icons.Outlined.Add, contentDescription = "New chat")
+                Box(
+                    modifier = Modifier.size(34.dp).background(ADColors.Surface, CircleShape),
+                    contentAlignment = Alignment.Center,
+                ) {
+                    Icon(Icons.Outlined.Add, contentDescription = "New chat", tint = ADColors.Ink, modifier = Modifier.size(20.dp))
+                }
             }
         }
 
@@ -196,110 +216,236 @@ internal fun ADNativeConversationScreen(
             contentPadding = androidx.compose.foundation.layout.PaddingValues(
                 start = 16.dp,
                 end = 16.dp,
-                top = 12.dp,
-                bottom = 18.dp,
+                top = 10.dp,
+                bottom = 22.dp,
             ),
-            verticalArrangement = Arrangement.spacedBy(13.dp),
+            verticalArrangement = Arrangement.spacedBy(20.dp),
         ) {
             if (messages.isEmpty() && pendingPrompt == null) {
                 item(key = "empty") {
-                    Box(
-                        modifier = Modifier.fillParentMaxSize(),
-                        contentAlignment = Alignment.Center,
-                    ) {
-                        Column(
-                            horizontalAlignment = Alignment.CenterHorizontally,
-                            modifier = Modifier.padding(horizontal = 36.dp),
-                        ) {
-                            Text("Start a chat", style = MaterialTheme.typography.titleLarge)
-                            Spacer(Modifier.size(7.dp))
-                            Text(
-                                "Messages from the glasses and phone stay together here.",
-                                style = MaterialTheme.typography.bodyMedium,
-                                color = ADColors.Muted,
-                                textAlign = TextAlign.Center,
-                            )
-                        }
-                    }
+                    ADConversationEmptyState(onSuggestion = ::useSuggestion)
                 }
             }
 
             items(messages, key = { it.id }) { chatMessage ->
-                ADMessageBubble(chatMessage)
+                ADConversationTurn(chatMessage)
             }
 
             pendingPrompt?.takeUnless { pendingAlreadyPersisted }?.let { prompt ->
                 item(key = "pending-user") {
-                    ADPendingUserBubble(prompt)
+                    ADUserTurn(prompt)
                 }
             }
 
             if (pendingPrompt != null) {
                 item(key = "pending-reply") {
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.Start,
-                    ) {
-                        Box(
-                            modifier = Modifier
-                                .background(ADColors.Surface, RoundedCornerShape(18.dp))
-                                .padding(horizontal = 16.dp, vertical = 13.dp),
-                        ) {
-                            CircularProgressIndicator(
-                                modifier = Modifier.size(18.dp),
-                                strokeWidth = 2.dp,
-                                color = ADColors.Ink,
-                            )
-                        }
-                    }
+                    ADAssistantThinking()
                 }
             }
 
             errorText?.let { error ->
                 item(key = "error") {
-                    Text(
-                        text = error,
-                        modifier = Modifier.fillMaxWidth().padding(horizontal = 2.dp, vertical = 5.dp),
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = ADColors.Error,
-                    )
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .background(ADColors.ErrorSoft, RoundedCornerShape(14.dp))
+                            .padding(horizontal = 14.dp, vertical = 11.dp),
+                    ) {
+                        Text(
+                            text = error,
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = ADColors.Error,
+                        )
+                    }
                 }
             }
         }
 
+        ADConversationComposer(
+            message = message,
+            onMessageChange = { message = it },
+            webSearch = webSearch,
+            sending = sending,
+            focusRequester = composerFocusRequester,
+            onSend = ::send,
+        )
+    }
+}
+
+@Composable
+private fun ADConversationEmptyState(
+    onSuggestion: (String, Boolean) -> Unit,
+) {
+    Column(
+        modifier = Modifier.fillMaxWidth().padding(top = 58.dp, bottom = 28.dp),
+        horizontalAlignment = Alignment.CenterHorizontally,
+    ) {
+        ADGlassesMark(Modifier.size(48.dp))
+        Spacer(Modifier.size(18.dp))
+        Text("Start a conversation", style = MaterialTheme.typography.headlineSmall)
+        Spacer(Modifier.size(7.dp))
+        Text(
+            "Continue here or pick up a conversation started through the glasses.",
+            style = MaterialTheme.typography.bodyMedium,
+            color = ADColors.Muted,
+            textAlign = TextAlign.Center,
+            modifier = Modifier.padding(horizontal = 34.dp),
+        )
+        Spacer(Modifier.size(28.dp))
         Column(
-            modifier = Modifier
-                .fillMaxWidth()
-                .background(ADColors.Background)
-                .padding(horizontal = 12.dp, vertical = 10.dp),
+            modifier = Modifier.fillMaxWidth(),
+            verticalArrangement = Arrangement.spacedBy(2.dp),
         ) {
-            if (webSearch) {
-                Text(
-                    "Web Search",
-                    style = MaterialTheme.typography.labelMedium,
-                    color = ADColors.Blue,
-                    modifier = Modifier.padding(start = 12.dp, bottom = 6.dp),
-                )
+            ADPromptSuggestion("What did I capture today?") { onSuggestion("What did I capture today?", false) }
+            ADPromptSuggestion("Search the web for something current", web = true) {
+                onSuggestion("Search the web for ", true)
             }
+            ADPromptSuggestion("Help me plan something") { onSuggestion("Help me plan ", false) }
+        }
+    }
+}
+
+@Composable
+private fun ADPromptSuggestion(
+    text: String,
+    web: Boolean = false,
+    onClick: () -> Unit,
+) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clickable(onClick = onClick)
+            .padding(horizontal = 8.dp, vertical = 12.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        if (web) {
+            Icon(Icons.Outlined.Public, null, tint = ADColors.Muted, modifier = Modifier.size(18.dp))
+            Spacer(Modifier.size(9.dp))
+        }
+        Text(text, style = MaterialTheme.typography.bodyLarge, modifier = Modifier.weight(1f))
+        Icon(Icons.Outlined.ArrowForward, null, tint = ADColors.Muted, modifier = Modifier.size(18.dp))
+    }
+}
+
+@Composable
+private fun ADConversationTurn(message: ChatMessage) {
+    if (message.role == ChatRole.USER) {
+        ADUserTurn(message.content)
+    } else {
+        ADAssistantTurn(message.content)
+    }
+}
+
+@Composable
+private fun ADUserTurn(content: String) {
+    Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End) {
+        Box(
+            modifier = Modifier
+                .widthIn(max = 336.dp)
+                .background(
+                    ADColors.BlueSoft,
+                    RoundedCornerShape(
+                        topStart = 20.dp,
+                        topEnd = 20.dp,
+                        bottomStart = 20.dp,
+                        bottomEnd = 7.dp,
+                    ),
+                )
+                .padding(horizontal = 15.dp, vertical = 11.dp),
+        ) {
+            ADConversationMessageBody(content = content, userMessage = true)
+        }
+    }
+}
+
+@Composable
+private fun ADAssistantTurn(content: String) {
+    Row(
+        modifier = Modifier.fillMaxWidth(),
+        verticalAlignment = Alignment.Top,
+        horizontalArrangement = Arrangement.spacedBy(10.dp),
+    ) {
+        Box(
+            modifier = Modifier.size(28.dp).background(ADColors.Surface, CircleShape),
+            contentAlignment = Alignment.Center,
+        ) {
+            ADGlassesMark(Modifier.size(20.dp))
+        }
+        Box(modifier = Modifier.weight(1f).padding(top = 2.dp, end = 4.dp)) {
+            ADConversationMessageBody(content = content, userMessage = false)
+        }
+    }
+}
+
+@Composable
+private fun ADAssistantThinking() {
+    Row(
+        modifier = Modifier.fillMaxWidth(),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(10.dp),
+    ) {
+        Box(
+            modifier = Modifier.size(28.dp).background(ADColors.Surface, CircleShape),
+            contentAlignment = Alignment.Center,
+        ) {
+            ADGlassesMark(Modifier.size(20.dp))
+        }
+        CircularProgressIndicator(
+            modifier = Modifier.size(15.dp),
+            strokeWidth = 1.8.dp,
+            color = ADColors.Muted,
+        )
+        Text("Thinking…", style = MaterialTheme.typography.bodyMedium, color = ADColors.Muted)
+    }
+}
+
+@Composable
+private fun ADConversationComposer(
+    message: String,
+    onMessageChange: (String) -> Unit,
+    webSearch: Boolean,
+    sending: Boolean,
+    focusRequester: FocusRequester,
+    onSend: () -> Unit,
+) {
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .background(ADColors.Background)
+            .padding(start = 12.dp, end = 12.dp, top = 7.dp, bottom = 10.dp),
+    ) {
+        if (webSearch) {
             Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .background(ADColors.Surface, RoundedCornerShape(24.dp))
-                    .padding(start = 16.dp, end = 7.dp, top = 8.dp, bottom = 8.dp),
+                modifier = Modifier.padding(start = 9.dp, bottom = 7.dp),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(6.dp),
+            ) {
+                Icon(Icons.Outlined.Public, null, tint = ADColors.Blue, modifier = Modifier.size(15.dp))
+                Text("Web search", style = MaterialTheme.typography.labelMedium, color = ADColors.Blue)
+            }
+        }
+        Surface(
+            modifier = Modifier.fillMaxWidth(),
+            color = ADColors.Surface,
+            shape = RoundedCornerShape(24.dp),
+            shadowElevation = 2.dp,
+        ) {
+            Row(
+                modifier = Modifier.padding(start = 16.dp, end = 7.dp, top = 7.dp, bottom = 7.dp),
                 verticalAlignment = Alignment.Bottom,
             ) {
                 BasicTextField(
                     value = message,
-                    onValueChange = { message = it },
+                    onValueChange = onMessageChange,
                     modifier = Modifier
                         .weight(1f)
                         .heightIn(min = 40.dp, max = 128.dp)
-                        .focusRequester(composerFocusRequester)
+                        .focusRequester(focusRequester)
                         .padding(vertical = 8.dp),
                     textStyle = MaterialTheme.typography.bodyLarge.copy(color = ADColors.Ink),
                     cursorBrush = SolidColor(ADColors.Ink),
                     keyboardOptions = KeyboardOptions(imeAction = ImeAction.Send),
-                    keyboardActions = KeyboardActions(onSend = { send() }),
+                    keyboardActions = KeyboardActions(onSend = { onSend() }),
                     maxLines = 5,
                     decorationBox = { textField ->
                         Box(contentAlignment = Alignment.CenterStart) {
@@ -314,63 +460,23 @@ internal fun ADNativeConversationScreen(
                         }
                     },
                 )
+                val sendEnabled = message.isNotBlank() && !sending
                 IconButton(
-                    onClick = { send() },
-                    enabled = message.isNotBlank() && !sending,
+                    onClick = onSend,
+                    enabled = sendEnabled,
                     modifier = Modifier.size(40.dp).background(
-                        if (message.isNotBlank() && !sending) ADColors.Ink else ADColors.SurfaceSubtle,
+                        if (sendEnabled) ADColors.Ink else ADColors.SurfaceSubtle,
                         CircleShape,
                     ),
                 ) {
                     Icon(
                         Icons.Rounded.ArrowUpward,
                         contentDescription = "Send",
-                        tint = if (message.isNotBlank() && !sending) Color.White else ADColors.Muted,
-                        modifier = Modifier.size(21.dp),
+                        tint = if (sendEnabled) Color.White else ADColors.Muted,
+                        modifier = Modifier.size(20.dp),
                     )
                 }
             }
-        }
-    }
-}
-
-@Composable
-private fun ADMessageBubble(message: ChatMessage) {
-    val user = message.role == ChatRole.USER
-    Row(
-        modifier = Modifier.fillMaxWidth(),
-        horizontalArrangement = if (user) Arrangement.End else Arrangement.Start,
-    ) {
-        Box(
-            modifier = Modifier
-                .fillMaxWidth(if (user) 0.82f else 0.94f)
-                .background(
-                    if (user) ADColors.Ink else Color.Transparent,
-                    RoundedCornerShape(20.dp),
-                )
-                .padding(
-                    horizontal = if (user) 15.dp else 2.dp,
-                    vertical = if (user) 11.dp else 5.dp,
-                ),
-        ) {
-            ADConversationMessageBody(
-                content = message.content,
-                userMessage = user,
-            )
-        }
-    }
-}
-
-@Composable
-private fun ADPendingUserBubble(text: String) {
-    Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End) {
-        Box(
-            modifier = Modifier
-                .fillMaxWidth(0.82f)
-                .background(ADColors.Ink, RoundedCornerShape(20.dp))
-                .padding(horizontal = 15.dp, vertical = 11.dp),
-        ) {
-            ADConversationMessageBody(content = text, userMessage = true)
         }
     }
 }
