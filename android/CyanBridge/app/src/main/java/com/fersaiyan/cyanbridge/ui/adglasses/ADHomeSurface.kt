@@ -17,33 +17,29 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.outlined.AutoAwesome
 import androidx.compose.material.icons.outlined.BatteryFull
 import androidx.compose.material.icons.outlined.CameraAlt
-import androidx.compose.material.icons.outlined.ChatBubble
 import androidx.compose.material.icons.outlined.GraphicEq
+import androidx.compose.material.icons.outlined.Language
 import androidx.compose.material.icons.outlined.Mic
+import androidx.compose.material.icons.outlined.PhoneAndroid
 import androidx.compose.material.icons.outlined.PhotoCamera
+import androidx.compose.material.icons.outlined.Public
 import androidx.compose.material.icons.outlined.Storage
 import androidx.compose.material.icons.outlined.Sync
 import androidx.compose.material.icons.outlined.Videocam
 import androidx.compose.material.icons.outlined.Visibility
 import androidx.compose.material.icons.rounded.KeyboardArrowRight
 import androidx.compose.material3.CircularProgressIndicator
-import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
@@ -55,7 +51,6 @@ import com.fersaiyan.cyanbridge.devices.DeviceProfileStore
 import com.fersaiyan.cyanbridge.shared.glasses.GlassesDashboardUiState
 
 /** Quiet control surface for the glasses. */
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 internal fun ADHomeSurface(
     state: GlassesDashboardUiState,
@@ -63,18 +58,20 @@ internal fun ADHomeSurface(
     onOpenDevice: () -> Unit,
     onOpenSync: () -> Unit,
     onOpenSettings: () -> Unit,
-    onOpenConversations: () -> Unit,
-    onOpenLibrary: () -> Unit,
-    onOpenModes: () -> Unit,
+    onOpenTranslator: () -> Unit,
+    onOpenWebSearch: () -> Unit,
+    onOpenPhoneControl: () -> Unit,
+    onOpenTasks: () -> Unit,
 ) {
-    var captureSheet by remember { mutableStateOf(false) }
     val context = LocalContext.current
     val profile = DeviceProfileStore.loadLastSelected(context)
         ?.takeIf { ADDeviceSupportPolicy.isPairable(it.selectedClass) }
     val device = buildADDevicePresentation(state, profile)
-    val runtimeModeTitle = state.nativePluginShortcut?.takeIf { it.isEnabled }?.title
-    val activeModeTitle = runtimeModeTitle?.let { runtimeTitle ->
-        ADAutomation.entries.firstOrNull { it.runtimeTitle == runtimeTitle }?.title ?: "Mode"
+    val runtimeTaskTitle = state.nativePluginShortcut?.takeIf { it.isEnabled }?.title
+    val activeTaskTitle = runtimeTaskTitle?.let { runtimeTitle ->
+        ADAutomation.entries
+            .firstOrNull { it.visibleInTasks && it.runtimeTitle == runtimeTitle }
+            ?.title
     }
 
     Column(Modifier.fillMaxSize()) {
@@ -102,14 +99,14 @@ internal fun ADHomeSurface(
                 )
             }
 
-            if (state.meeting.isRecording || state.transfer.isVisible || activeModeTitle != null) {
+            if (state.meeting.isRecording || state.transfer.isVisible || activeTaskTitle != null) {
                 item {
                     Column(verticalArrangement = Arrangement.spacedBy(9.dp)) {
-                        Text("Active", style = MaterialTheme.typography.titleLarge)
+                        Text("Active", style = MaterialTheme.typography.titleMedium)
                         if (state.meeting.isRecording) {
                             ADLiveRow(
                                 icon = Icons.Outlined.GraphicEq,
-                                title = "Meeting recording",
+                                title = "Audio recording",
                                 detail = state.meeting.bannerLabel.ifBlank { state.meeting.sourceLabel },
                                 status = "LIVE",
                                 onClick = host.onStopRecording,
@@ -124,13 +121,13 @@ internal fun ADHomeSurface(
                                 onClick = onOpenSync,
                             )
                         }
-                        activeModeTitle?.let {
+                        activeTaskTitle?.let {
                             ADLiveRow(
-                                icon = Icons.Outlined.AutoAwesome,
+                                icon = Icons.Outlined.Language,
                                 title = it,
-                                detail = "Mode active",
+                                detail = "Task active",
                                 status = "ON",
-                                onClick = onOpenModes,
+                                onClick = onOpenTasks,
                             )
                         }
                     }
@@ -138,83 +135,69 @@ internal fun ADHomeSurface(
             }
 
             item {
-                Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                    ADHomeAction(
-                        title = "Ask",
-                        detail = "Voice",
-                        icon = Icons.Outlined.Mic,
-                        modifier = Modifier.weight(1f),
-                        onClick = host.onVoiceQuestion,
-                    )
-                    ADHomeAction(
-                        title = "See",
-                        detail = "Glasses camera",
-                        icon = Icons.Outlined.Visibility,
-                        modifier = Modifier.weight(1f),
-                        onClick = host.onImageQuestion,
-                    )
+                Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                    Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                        ADHomeAction(
+                            title = "Ask",
+                            detail = "Voice question",
+                            icon = Icons.Outlined.Mic,
+                            modifier = Modifier.weight(1f),
+                            onClick = host.onVoiceQuestion,
+                        )
+                        ADHomeAction(
+                            title = "Photo",
+                            detail = "Capture now",
+                            icon = Icons.Outlined.PhotoCamera,
+                            modifier = Modifier.weight(1f),
+                            onClick = host.onCapturePhoto,
+                        )
+                    }
+                    Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                        ADHomeAction(
+                            title = "Video",
+                            detail = "Record from glasses",
+                            icon = Icons.Outlined.Videocam,
+                            modifier = Modifier.weight(1f),
+                            onClick = host.onToggleVideo,
+                        )
+                        ADHomeAction(
+                            title = "Live translate",
+                            detail = "Spoken translation",
+                            icon = Icons.Outlined.Language,
+                            modifier = Modifier.weight(1f),
+                            onClick = onOpenTranslator,
+                        )
+                    }
                 }
             }
 
             item {
-                Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
+                Column(verticalArrangement = Arrangement.spacedBy(1.dp)) {
                     ADHomeLink(
-                        icon = Icons.Outlined.ChatBubble,
-                        title = "Conversations",
-                        detail = "Continue or review",
-                        onClick = onOpenConversations,
-                    )
-                    ADHomeLink(
-                        icon = Icons.Outlined.CameraAlt,
-                        title = "Capture",
-                        detail = "Photo or video",
-                        onClick = { captureSheet = true },
-                    )
-                    ADHomeLink(
-                        icon = Icons.Outlined.Sync,
-                        title = "Library",
-                        detail = if (state.transfer.isVisible) "Sync in progress" else "Media and saved results",
-                        onClick = if (state.transfer.isVisible) onOpenSync else onOpenLibrary,
+                        icon = Icons.Outlined.Visibility,
+                        title = "Ask what I see",
+                        detail = "Use the glasses camera with AI",
+                        onClick = host.onImageQuestion,
                     )
                     ADHomeLink(
                         icon = Icons.Outlined.GraphicEq,
-                        title = if (state.meeting.isRecording) "Stop recording" else "Record",
-                        detail = if (state.meeting.isRecording) "Recording now" else "Audio recording",
+                        title = if (state.meeting.isRecording) "Stop recording" else "Record audio",
+                        detail = if (state.meeting.isRecording) "Recording now" else "Save an audio recording",
                         onClick = if (state.meeting.isRecording) host.onStopRecording else host.onStartRecording,
                     )
+                    ADHomeLink(
+                        icon = Icons.Outlined.Public,
+                        title = "Search web",
+                        detail = "Start a fresh web-backed question",
+                        onClick = onOpenWebSearch,
+                    )
+                    ADHomeLink(
+                        icon = Icons.Outlined.PhoneAndroid,
+                        title = "Phone control",
+                        detail = "Apps and supported Android actions",
+                        onClick = onOpenPhoneControl,
+                    )
                 }
-            }
-        }
-    }
-
-    if (captureSheet) {
-        ModalBottomSheet(
-            onDismissRequest = { captureSheet = false },
-            containerColor = ADColors.Surface,
-        ) {
-            Column(
-                modifier = Modifier.fillMaxWidth().padding(start = 20.dp, end = 20.dp, bottom = 28.dp),
-                verticalArrangement = Arrangement.spacedBy(6.dp),
-            ) {
-                Text("Glasses camera", style = MaterialTheme.typography.headlineMedium)
-                Text(
-                    "Ask about what the glasses see, or save a photo or video.",
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = ADColors.Muted,
-                    modifier = Modifier.padding(bottom = 8.dp),
-                )
-                ADSettingsRow(Icons.Outlined.Visibility, "Ask what I see", onClick = {
-                    captureSheet = false
-                    host.onImageQuestion()
-                })
-                ADSettingsRow(Icons.Outlined.PhotoCamera, "Take photo", onClick = {
-                    captureSheet = false
-                    host.onCapturePhoto()
-                })
-                ADSettingsRow(Icons.Outlined.Videocam, "Record video", onClick = {
-                    captureSheet = false
-                    host.onToggleVideo()
-                })
             }
         }
     }
@@ -305,33 +288,40 @@ private fun ADReadinessStage(
 private fun ADHomeAction(
     title: String,
     detail: String,
-    icon: androidx.compose.ui.graphics.vector.ImageVector,
+    icon: ImageVector,
     modifier: Modifier = Modifier,
     onClick: () -> Unit,
 ) {
     Column(
         modifier = modifier
-            .heightIn(min = 102.dp)
+            .heightIn(min = 116.dp)
             .background(ADColors.Surface, RoundedCornerShape(20.dp))
             .clickable(onClick = onClick)
             .padding(15.dp),
-        verticalArrangement = Arrangement.Center,
+        verticalArrangement = Arrangement.SpaceBetween,
     ) {
         Box(
-            Modifier.size(38.dp).background(ADColors.SurfaceSubtle, RoundedCornerShape(12.dp)),
+            Modifier.size(40.dp).background(ADColors.SurfaceSubtle, RoundedCornerShape(12.dp)),
             contentAlignment = Alignment.Center,
         ) {
-            Icon(icon, null, tint = ADColors.Ink, modifier = Modifier.size(20.dp))
+            Icon(icon, null, tint = ADColors.Ink, modifier = Modifier.size(21.dp))
         }
-        Spacer(Modifier.height(9.dp))
-        Text(title, style = MaterialTheme.typography.titleMedium)
-        Text(detail, style = MaterialTheme.typography.bodySmall, color = ADColors.Muted)
+        Spacer(Modifier.height(12.dp))
+        Text(title, style = MaterialTheme.typography.titleMedium, maxLines = 1)
+        Spacer(Modifier.height(2.dp))
+        Text(
+            detail,
+            style = MaterialTheme.typography.bodySmall,
+            color = ADColors.Muted,
+            maxLines = 2,
+            overflow = TextOverflow.Ellipsis,
+        )
     }
 }
 
 @Composable
 private fun ADHomeLink(
-    icon: androidx.compose.ui.graphics.vector.ImageVector,
+    icon: ImageVector,
     title: String,
     detail: String,
     onClick: () -> Unit,
@@ -348,13 +338,13 @@ private fun ADHomeLink(
             Text(title, style = MaterialTheme.typography.titleMedium)
             Text(detail, style = MaterialTheme.typography.bodySmall, color = ADColors.Muted)
         }
-        Icon(Icons.Rounded.KeyboardArrowRight, null, tint = ADColors.Muted)
+        Icon(Icons.Rounded.KeyboardArrowRight, null, tint = ADColors.Muted, modifier = Modifier.size(22.dp))
     }
 }
 
 @Composable
 private fun ADLiveRow(
-    icon: androidx.compose.ui.graphics.vector.ImageVector,
+    icon: ImageVector,
     title: String,
     detail: String,
     status: String,

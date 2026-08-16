@@ -24,6 +24,7 @@ data class ADNavigationRequest(
     val destination: ADExternalDestination,
     val prefill: String? = null,
     val threadId: String? = null,
+    val webSearchRequested: Boolean = false,
 )
 
 /**
@@ -37,6 +38,7 @@ object ADNavigationRequestStore {
     private const val KEY_DESTINATION = "destination"
     private const val KEY_PREFILL = "prefill"
     private const val KEY_THREAD_ID = "thread_id"
+    private const val KEY_WEB_SEARCH = "web_search"
 
     private val ids = AtomicLong(System.currentTimeMillis())
     private val mutableRequest = MutableStateFlow<ADNavigationRequest?>(null)
@@ -57,6 +59,7 @@ object ADNavigationRequestStore {
         destination: ADExternalDestination,
         prefill: String? = null,
         threadId: String? = null,
+        webSearchRequested: Boolean = false,
     ): ADNavigationRequest {
         val request = ADNavigationRequest(
             id = ids.updateAndGet { previous ->
@@ -65,6 +68,7 @@ object ADNavigationRequestStore {
             destination = destination,
             prefill = prefill?.trim()?.takeIf { it.isNotEmpty() },
             threadId = threadId?.trim()?.takeIf { it.isNotEmpty() },
+            webSearchRequested = webSearchRequested,
         )
         persist(context.applicationContext, request)
         loaded = true
@@ -89,6 +93,7 @@ object ADNavigationRequestStore {
             .edit()
             .putLong(KEY_ID, request.id)
             .putString(KEY_DESTINATION, request.destination.name)
+            .putBoolean(KEY_WEB_SEARCH, request.webSearchRequested)
             .apply {
                 if (request.prefill == null) remove(KEY_PREFILL) else putString(KEY_PREFILL, request.prefill)
                 if (request.threadId == null) remove(KEY_THREAD_ID) else putString(KEY_THREAD_ID, request.threadId)
@@ -108,6 +113,7 @@ object ADNavigationRequestStore {
             destination = destination,
             prefill = prefs.getString(KEY_PREFILL, null),
             threadId = prefs.getString(KEY_THREAD_ID, null),
+            webSearchRequested = prefs.getBoolean(KEY_WEB_SEARCH, false),
         )
     }
 }

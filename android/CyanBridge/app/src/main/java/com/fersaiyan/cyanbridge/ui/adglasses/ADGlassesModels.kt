@@ -2,9 +2,10 @@ package com.fersaiyan.cyanbridge.ui.adglasses
 
 enum class ADTab(val label: String) {
     HOME("Home"),
-    ASSISTANT("Conversations"),
+    CHATS("Chats"),
     LIBRARY("Library"),
-    AUTOMATIONS("Modes"),
+    TASKS("Tasks"),
+    AI("AI"),
 }
 
 enum class ADRoute {
@@ -12,8 +13,8 @@ enum class ADRoute {
     DEVICE_CENTER,
     SYNC,
     SETTINGS,
-    AI_SERVICES,
-    ROUTING,
+    AI_RELAY,
+    AI_LOCAL,
     PRIVACY,
     STORAGE,
     LANGUAGE,
@@ -21,7 +22,7 @@ enum class ADRoute {
     ADVANCED,
     ABOUT,
     FIRMWARE,
-    AUTOMATION_DETAIL,
+    TASK_DETAIL,
     LIBRARY_CAPTURES,
     LIBRARY_RECORDINGS,
     LIBRARY_NOTES,
@@ -34,18 +35,21 @@ enum class ADAutomation(
     val boundary: String,
     /** Existing service/plugin title used only to reconcile runtime state. */
     val runtimeTitle: String = title,
+    /** Product task list visibility. Runtime compatibility entries may remain hidden. */
+    val visibleInTasks: Boolean = true,
 ) {
     LOCAL_AGENT(
         "Phone Control",
-        "Use the phone for actions you ask for.",
+        "Open apps, navigate and complete supported phone actions from the glasses.",
         "Phone actions",
         "On device",
         "Local Agent",
+        false,
     ),
     MEETING_NOTES(
         "Meeting Notes",
-        "Record, transcribe and summarize meetings.",
-        "Meetings",
+        "Record, transcribe and summarize a meeting.",
+        "Meeting notes",
         "Automatic",
         "Meeting Spark Notes",
     ),
@@ -55,11 +59,12 @@ enum class ADAutomation(
         "Accessibility",
         "On device",
         "Live Caption Relay",
+        false,
     ),
     TRANSLATOR(
-        "Translator",
-        "Translate conversations with spoken output.",
-        "Language",
+        "Live Translator",
+        "Translate a conversation and hear the result through the glasses.",
+        "Translation",
         "Automatic",
         "Hands-Free Translator",
     ),
@@ -83,6 +88,7 @@ enum class ADAutomation(
         "Capture",
         "Automatic",
         "Auto Audio",
+        false,
     ),
     VISUAL_DIARY(
         "Visual Diary",

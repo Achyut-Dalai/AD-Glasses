@@ -20,13 +20,14 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.rounded.ArrowBack
-import androidx.compose.material.icons.rounded.Bolt
+import androidx.compose.material.icons.rounded.AutoAwesome
 import androidx.compose.material.icons.rounded.ChatBubble
+import androidx.compose.material.icons.rounded.Check
+import androidx.compose.material.icons.rounded.Checklist
 import androidx.compose.material.icons.rounded.Home
 import androidx.compose.material.icons.rounded.KeyboardArrowRight
 import androidx.compose.material.icons.rounded.PhotoLibrary
 import androidx.compose.material.icons.rounded.Settings
-import androidx.compose.material.icons.rounded.Check
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -36,10 +37,10 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.layout.ContentScale
-import androidx.compose.ui.draw.clip
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.font.FontWeight
@@ -85,13 +86,19 @@ internal fun ADTopBar(
                         modifier = Modifier.size(34.dp).background(ADColors.Surface, CircleShape),
                         contentAlignment = Alignment.Center,
                     ) {
-                        Icon(Icons.Rounded.Settings, contentDescription = "Settings", tint = ADColors.Ink, modifier = Modifier.size(19.dp))
+                        Icon(
+                            Icons.Rounded.Settings,
+                            contentDescription = "Settings",
+                            tint = ADColors.Ink,
+                            modifier = Modifier.size(19.dp),
+                        )
                     }
                 }
             }
         }
         return
     }
+
     Row(
         modifier = Modifier
             .fillMaxWidth()
@@ -99,8 +106,8 @@ internal fun ADTopBar(
             .padding(horizontal = 16.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        when {
-            showBack -> IconButton(onClick = onBack, modifier = Modifier.size(40.dp)) {
+        if (showBack) {
+            IconButton(onClick = onBack, modifier = Modifier.size(40.dp)) {
                 Icon(Icons.AutoMirrored.Rounded.ArrowBack, contentDescription = "Back", tint = ADColors.Blue)
             }
         }
@@ -141,15 +148,16 @@ internal fun ADBottomNavigation(selected: ADTab, onSelected: (ADTab) -> Unit) {
         Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(horizontal = 8.dp, vertical = 7.dp),
+                .padding(horizontal = 4.dp, vertical = 6.dp),
             horizontalArrangement = Arrangement.SpaceAround,
         ) {
             ADTab.entries.forEach { tab ->
                 val icon = when (tab) {
                     ADTab.HOME -> Icons.Rounded.Home
-                    ADTab.ASSISTANT -> Icons.Rounded.ChatBubble
+                    ADTab.CHATS -> Icons.Rounded.ChatBubble
                     ADTab.LIBRARY -> Icons.Rounded.PhotoLibrary
-                    ADTab.AUTOMATIONS -> Icons.Rounded.Bolt
+                    ADTab.TASKS -> Icons.Rounded.Checklist
+                    ADTab.AI -> Icons.Rounded.AutoAwesome
                 }
                 ADBottomNavigationItem(
                     tab = tab,
@@ -173,7 +181,7 @@ private fun ADBottomNavigationItem(
     val tint = if (selected) ADColors.Blue else ADColors.Muted
     Column(
         modifier = modifier
-            .heightIn(min = 56.dp)
+            .heightIn(min = 54.dp)
             .clickable(
                 role = Role.Tab,
                 interactionSource = remember { MutableInteractionSource() },
@@ -184,8 +192,7 @@ private fun ADBottomNavigationItem(
         verticalArrangement = Arrangement.Center,
     ) {
         Box(
-            modifier = Modifier
-                .size(width = 42.dp, height = 30.dp),
+            modifier = Modifier.size(width = 38.dp, height = 28.dp),
             contentAlignment = Alignment.Center,
         ) {
             Icon(icon, contentDescription = tab.label, tint = tint, modifier = Modifier.size(20.dp))
@@ -193,8 +200,9 @@ private fun ADBottomNavigationItem(
         Text(
             tab.label,
             color = tint,
-            style = MaterialTheme.typography.labelMedium,
+            style = MaterialTheme.typography.labelSmall,
             fontWeight = if (selected) FontWeight.SemiBold else FontWeight.Medium,
+            maxLines = 1,
         )
     }
 }

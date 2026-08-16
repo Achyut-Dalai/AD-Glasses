@@ -149,7 +149,7 @@ internal fun ADGlassesDeviceCenterScreen(
             HorizontalDivider(color = ADColors.Separator)
             ADDeviceCapability("Camera", "See and capture through the glasses camera")
             HorizontalDivider(color = ADColors.Separator)
-            ADDeviceCapability("Phone intelligence", "AI, web, memory, modes and phone actions")
+            ADDeviceCapability("Phone intelligence", "AI, web, memory, tasks and phone actions")
         }
 
         ADSectionTitle("Device tools")

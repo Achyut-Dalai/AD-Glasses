@@ -21,18 +21,28 @@ object LocalAgentPrefs {
     private const val KEY_DAILY_SUMMARY_AUTO_REFRESH_HOURS = "daily_summary_auto_refresh_hours"
 
     fun getProviderType(context: Context): AgentProviderType {
-        val raw = context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
+        val preferences = context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
+        val raw = preferences
             .getString(KEY_PROVIDER_TYPE, null)
             ?.trim()
             ?.uppercase()
-        return when (raw) {
+        val provider = when (raw) {
             AgentProviderType.LOCAL_AGENT.name -> AgentProviderType.LOCAL_AGENT
-            "API_MODELS" -> AgentProviderType.PRO_SUBSCRIPTION
+            "API_MODELS",
             AgentProviderType.PRO_SUBSCRIPTION.name -> AgentProviderType.PRO_SUBSCRIPTION
-            AgentProviderType.TASKER.name -> AgentProviderType.TASKER
-            null, "" -> AgentProviderType.TASKER
-            else -> AgentProviderType.TASKER
+
+            // AD Glasses no longer uses Tasker/external UI automation as its default AI path.
+            // Migrate old/unset values to the internal relay provider.
+            AgentProviderType.TASKER.name,
+            null,
+            "" -> AgentProviderType.PRO_SUBSCRIPTION
+
+            else -> AgentProviderType.PRO_SUBSCRIPTION
         }
+        if (raw != provider.name) {
+            preferences.edit().putString(KEY_PROVIDER_TYPE, provider.name).apply()
+        }
+        return provider
     }
 
     fun setProviderType(context: Context, type: AgentProviderType) {
@@ -48,18 +58,20 @@ object LocalAgentPrefs {
             .getString(KEY_GLASSES_ASSISTANT_MODE, null)
             ?.trim()
             ?.uppercase()
+
+        // External phone-assistant/Tasker image automation used to be the default. The product
+        // now routes glasses questions and vision through the provider configured in the AI tab.
         val mode = when (stored) {
             GlassesAssistantMode.CUSTOM_AI_PROVIDER.name,
-            "CHOSEN_PROVIDER" -> GlassesAssistantMode.CUSTOM_AI_PROVIDER
-
+            "CHOSEN_PROVIDER",
             GlassesAssistantMode.PHONE_ASSISTANT.name,
             "GEMINI",
             "CHAT_GPT",
             "PHONE_DEFAULT",
             null,
-            "" -> GlassesAssistantMode.PHONE_ASSISTANT
+            "" -> GlassesAssistantMode.CUSTOM_AI_PROVIDER
 
-            else -> GlassesAssistantMode.PHONE_ASSISTANT
+            else -> GlassesAssistantMode.CUSTOM_AI_PROVIDER
         }
         if (stored != mode.name) {
             preferences.edit().putString(KEY_GLASSES_ASSISTANT_MODE, mode.name).apply()

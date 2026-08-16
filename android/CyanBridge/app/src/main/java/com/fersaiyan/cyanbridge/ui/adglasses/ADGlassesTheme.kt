@@ -85,6 +85,13 @@ private val ADTypography = Typography(
         fontWeight = FontWeight.Bold,
         letterSpacing = (-0.3).sp,
     ),
+    headlineSmall = TextStyle(
+        fontFamily = FontFamily.SansSerif,
+        fontSize = 20.sp,
+        lineHeight = 26.sp,
+        fontWeight = FontWeight.SemiBold,
+        letterSpacing = (-0.2).sp,
+    ),
     titleLarge = TextStyle(
         fontFamily = FontFamily.SansSerif,
         fontSize = 18.sp,
@@ -109,6 +116,12 @@ private val ADTypography = Typography(
         lineHeight = 20.sp,
         fontWeight = FontWeight.Normal,
     ),
+    bodySmall = TextStyle(
+        fontFamily = FontFamily.SansSerif,
+        fontSize = 12.5.sp,
+        lineHeight = 18.sp,
+        fontWeight = FontWeight.Normal,
+    ),
     labelLarge = TextStyle(
         fontFamily = FontFamily.SansSerif,
         fontSize = 14.sp,
@@ -119,6 +132,12 @@ private val ADTypography = Typography(
         fontFamily = FontFamily.SansSerif,
         fontSize = 12.sp,
         lineHeight = 16.sp,
+        fontWeight = FontWeight.Medium,
+    ),
+    labelSmall = TextStyle(
+        fontFamily = FontFamily.SansSerif,
+        fontSize = 11.sp,
+        lineHeight = 14.sp,
         fontWeight = FontWeight.Medium,
     ),
 )
