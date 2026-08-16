@@ -16,29 +16,29 @@ import java.io.File
 class ADProductSurfaceIsolationTest {
 
     @Test
-    fun nativeAdUiDoesNotReferenceLegacyActivities() {
+    fun nativeAdUiDoesNotImportLegacyActivitiesOrSharedNavigation() {
         val uiDir = sourceFile("src/main/java/com/fersaiyan/cyanbridge/ui/adglasses")
         assertTrue("AD UI source directory should exist", uiDir.isDirectory)
 
-        val forbidden = listOf(
-            "ChatListActivity",
-            "ChatThreadActivity",
-            "SettingsActivity",
-            "CommunityPluginsActivity",
-            "PublishPluginActivity",
-            "NotesListActivity",
-            "RecordingsListActivity",
-            "SyncedMediaGalleryActivity",
-            "AppDestination.",
+        val forbiddenImports = listOf(
+            "import com.fersaiyan.cyanbridge.ui.ChatListActivity",
+            "import com.fersaiyan.cyanbridge.ui.ChatThreadActivity",
+            "import com.fersaiyan.cyanbridge.ui.SettingsActivity",
+            "import com.fersaiyan.cyanbridge.ui.CommunityPluginsActivity",
+            "import com.fersaiyan.cyanbridge.ui.PublishPluginActivity",
+            "import com.fersaiyan.cyanbridge.ui.notes.NotesListActivity",
+            "import com.fersaiyan.cyanbridge.ui.recordings.RecordingsListActivity",
+            "import com.fersaiyan.cyanbridge.ui.recordings.SyncedMediaGalleryActivity",
+            "import com.fersaiyan.cyanbridge.shared.navigation.AppDestination",
         )
 
         uiDir.walkTopDown()
             .filter { it.isFile && it.extension == "kt" }
             .forEach { file ->
                 val source = file.readText()
-                forbidden.forEach { token ->
+                forbiddenImports.forEach { token ->
                     assertFalse(
-                        "${file.name} must not directly reference legacy route token $token",
+                        "${file.name} must not import legacy product route $token",
                         source.contains(token),
                     )
                 }
