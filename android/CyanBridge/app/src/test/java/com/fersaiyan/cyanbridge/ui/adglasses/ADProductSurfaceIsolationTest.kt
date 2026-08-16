@@ -1,10 +1,10 @@
 package com.fersaiyan.cyanbridge.ui.adglasses
 
+import java.io.File
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Test
-import java.io.File
 
 /** Verifies the installed AD Glasses product surface, not just navigation intent. */
 class ADProductSurfaceIsolationTest {
@@ -50,9 +50,7 @@ class ADProductSurfaceIsolationTest {
         listOf(
             ".ui.BatteryOptimizationGuideActivity",
             ".ui.OnboardingFeatureActivity",
-        ).forEach { removed ->
-            assertFalse(manifest.contains("android:name=\"$removed\""))
-        }
+        ).forEach { removed -> assertFalse(manifest.contains("android:name=\"$removed\"")) }
     }
 
     @Test
@@ -64,25 +62,43 @@ class ADProductSurfaceIsolationTest {
     }
 
     @Test
-    fun obsoleteAdUiBundlesAreDeletedButDeviceToolsRemainNative() {
+    fun obsoleteAdUiBundlesAndTasksPageStayDeleted() {
         val uiDir = sourceFile("src/main/java/com/fersaiyan/cyanbridge/ui/adglasses")
         listOf(
             "ADMainScreens.kt",
             "ADDetailScreens.kt",
             "ADModeNativeModel.kt",
             "ADPrimarySurfaces.kt",
+            "ADModesScreen.kt",
         ).forEach { obsolete ->
-            assertFalse("$obsolete is an obsolete AD UI bundle and must stay deleted", File(uiDir, obsolete).exists())
+            assertFalse("$obsolete is not part of the current AD product surface", File(uiDir, obsolete).exists())
         }
 
         assertTrue(File(uiDir, "ADHomeSurface.kt").isFile)
         assertTrue(File(uiDir, "ADNativeConversationScreen.kt").isFile)
         assertTrue(File(uiDir, "ADNativeLibraryScreens.kt").isFile)
-        assertTrue(File(uiDir, "ADModesScreen.kt").isFile)
         assertTrue(File(uiDir, "ADNativeAiScreen.kt").isFile)
+        assertTrue(File(uiDir, "ADAssistantAppsScreen.kt").isFile)
         assertTrue(File(uiDir, "ADNativeSettingsHubScreen.kt").isFile)
         assertTrue(File(uiDir, "ADSyncScreen.kt").isFile)
         assertTrue(File(uiDir, "ADFirmwareScreen.kt").isFile)
+    }
+
+    @Test
+    fun primaryTabsAreExactlyHomeChatsAiLibraryInThatOrder() {
+        val models = sourceFile(
+            "src/main/java/com/fersaiyan/cyanbridge/ui/adglasses/ADGlassesModels.kt",
+        ).readText()
+        val enumBody = Regex("enum class ADTab\\(val label: String\\) \\{([\\s\\S]*?)\\n}")
+            .find(models)?.groupValues?.get(1).orEmpty()
+
+        val labels = Regex("\\w+\\(\"([^\"]+)\"\\)")
+            .findAll(enumBody)
+            .map { it.groupValues[1] }
+            .toList()
+
+        assertEquals(listOf("Home", "Chats", "AI", "Library"), labels)
+        assertFalse(models.contains("TASKS(\"Tasks\")"))
     }
 
     @Test
@@ -97,8 +113,8 @@ class ADProductSurfaceIsolationTest {
             "ADHomeSurface",
             "ADNativeConversationScreen",
             "ADNativeLibraryScreen",
-            "ADTasksScreen",
             "ADNativeAiScreen",
+            "ADAssistantAppsScreen",
             "ADGlassesDeviceCenterScreen",
             "ADSyncScreen",
             "ADFirmwareScreen",
@@ -126,6 +142,64 @@ class ADProductSurfaceIsolationTest {
                 matches.size,
             )
         }
+    }
+
+    @Test
+    fun aiOwnsCapabilitiesAndDoesNotRepeatItsTabTitle() {
+        val ai = sourceFile(
+            "src/main/java/com/fersaiyan/cyanbridge/ui/adglasses/ADNativeAiScreen.kt",
+        ).readText()
+        val app = sourceFile(
+            "src/main/java/com/fersaiyan/cyanbridge/ui/adglasses/ADGlassesApp.kt",
+        ).readText()
+
+        listOf("Capabilities", "Translate", "Meeting Notes", "Visual Diary", "Daily Diary", "Errands", "Phone Control")
+            .forEach { label -> assertTrue("AI should surface $label", ai.contains("\"$label\"")) }
+        assertTrue(ai.contains("\"Assistant apps\""))
+        assertFalse(ai.contains("ADTopBar(title = \"AI\")"))
+        assertTrue(app.contains("ADRoute.AI_ASSISTANT_APPS -> ADAssistantAppsScreen"))
+        assertFalse(app.contains("ADTasksScreen("))
+    }
+
+    @Test
+    fun pairingCopyIsHardwareNeutralAndSafeInsetAware() {
+        val pairing = sourceFile(
+            "src/main/java/com/fersaiyan/cyanbridge/ui/adglasses/ADGlassesPairingScreen.kt",
+        ).readText()
+        assertTrue(pairing.contains("Looking for nearby glasses"))
+        assertTrue(pairing.contains("WindowInsets.safeDrawing"))
+        assertFalse("Pairing presentation must not hard-code current hardware", pairing.contains("HeyCyan"))
+    }
+
+    @Test
+    fun conversationsUseLightNativeTurnsAndNoUtilityToolbar() {
+        val chats = sourceFile(
+            "src/main/java/com/fersaiyan/cyanbridge/ui/adglasses/ADNativeConversationScreen.kt",
+        ).readText()
+        val rich = sourceFile(
+            "src/main/java/com/fersaiyan/cyanbridge/ui/adglasses/ADConversationRichContent.kt",
+        ).readText()
+
+        assertTrue(chats.contains("ADColors.BlueSoft"))
+        assertTrue(chats.contains("ADAssistantTurn"))
+        assertTrue(chats.contains("Start a conversation"))
+        assertFalse(chats.contains("ADColors.Ink, RoundedCornerShape(20.dp)"))
+        assertFalse(chats.contains("Icons.Outlined.CameraAlt"))
+        assertFalse(chats.contains("Icons.Outlined.Mic"))
+        assertTrue(rich.contains("ADConversationLinkKind.IMAGE"))
+        assertTrue(rich.contains("ADConversationLinkKind.VIDEO"))
+        assertTrue(rich.contains("ADConversationLinkKind.AUDIO"))
+        assertTrue(rich.contains("ADConversationLinkKind.DOCUMENT"))
+    }
+
+    @Test
+    fun capabilityDetailDoesNotExposeTaskStartStopLanguage() {
+        val detail = sourceFile(
+            "src/main/java/com/fersaiyan/cyanbridge/ui/adglasses/ADNativeModeDetailScreen.kt",
+        ).readText()
+        assertFalse(detail.contains("\"Start task\""))
+        assertFalse(detail.contains("\"Stop task\""))
+        assertFalse(detail.contains("this task by voice"))
     }
 
     @Test
@@ -181,10 +255,7 @@ class ADProductSurfaceIsolationTest {
             .forEach { file ->
                 val source = file.readText()
                 forbiddenImports.forEach { token ->
-                    assertFalse(
-                        "${file.name} must not import replaced product route $token",
-                        source.contains(token),
-                    )
+                    assertFalse("${file.name} must not import replaced product route $token", source.contains(token))
                 }
             }
     }
@@ -203,6 +274,7 @@ class ADProductSurfaceIsolationTest {
             "host.onOpenNotes",
             "host.onOpenLegacySettings",
             "host.onOpenAutomationSettings",
+            "ADTasksScreen(",
             "ADDeviceCenterScreen(",
             "ADSettingsScreen(",
             "ADAiServicesScreen(",
@@ -212,33 +284,10 @@ class ADProductSurfaceIsolationTest {
         }
     }
 
-    @Test
-    fun pairingTargetsValidatedHeyCyanWithoutExpandingDeviceCenterScope() {
-        val pairing = sourceFile(
-            "src/main/java/com/fersaiyan/cyanbridge/ui/adglasses/ADGlassesPairingScreen.kt",
-        ).readText()
-        val deviceCenter = sourceFile(
-            "src/main/java/com/fersaiyan/cyanbridge/ui/adglasses/ADGlassesDeviceCenterScreen.kt",
-        ).readText()
-
-        assertTrue(pairing.contains("Looking for HeyCyan glasses"))
-        assertFalse(deviceCenter.contains("Eyevue · Experimental"))
-        assertFalse(deviceCenter.contains("Meizu MYVU · Experimental"))
-
-        val firmware = sourceFile(
-            "src/main/java/com/fersaiyan/cyanbridge/ui/adglasses/ADFirmwareScreen.kt",
-        ).readText()
-        assertFalse(
-            "Firmware UI copy should stay hardware-neutral even while the current adapter is HeyCyan",
-            firmware.contains("\"HeyCyan"),
-        )
-    }
-
     private fun sourceFile(relativePath: String): File {
         val direct = File(relativePath)
         if (direct.exists()) return direct
 
-        // Some IDE/test runners use the repository root rather than the :app module.
         val fromRepoRoot = File("android/CyanBridge/app", relativePath)
         if (fromRepoRoot.exists()) return fromRepoRoot
 
