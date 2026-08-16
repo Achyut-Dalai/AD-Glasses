@@ -35,14 +35,60 @@ enum class ADAutomation(
     /** Existing service/plugin title used only to reconcile runtime state. */
     val runtimeTitle: String = title,
 ) {
-    LOCAL_AGENT("Local Agent", "Phone actions with approval.", "Phone actions", "On device"),
-    MEETING_NOTES("Meeting Spark Notes", "Record, transcribe, and summarize meetings.", "Meetings", "Automatic"),
-    LIVE_CAPTIONS("Live Caption Relay", "Live speech into readable captions.", "Accessibility", "On device"),
-    TRANSLATOR("Hands-Free Translator", "Conversation translation with spoken output.", "Language", "Automatic"),
-    ERRAND_BRAIN("Errand Brain", "Spoken errands into tasks and reminders.", "Planning", "Your cloud"),
-    AUTO_DIARY("Auto Diary", "Private daily context summary.", "Memory", "On device"),
-    AUTO_AUDIO("Auto Audio", "Scheduled capture, sync, and transcription.", "Capture", "Automatic"),
-    VISUAL_DIARY("Visual Diary", "Captures into a searchable visual timeline.", "Vision", "Automatic"),
+    LOCAL_AGENT(
+        "Phone Control",
+        "Use the phone for actions you ask for.",
+        "Phone actions",
+        "On device",
+        "Local Agent",
+    ),
+    MEETING_NOTES(
+        "Meeting Notes",
+        "Record, transcribe and summarize meetings.",
+        "Meetings",
+        "Automatic",
+        "Meeting Spark Notes",
+    ),
+    LIVE_CAPTIONS(
+        "Live Captions",
+        "Turn nearby speech into readable live captions.",
+        "Accessibility",
+        "On device",
+        "Live Caption Relay",
+    ),
+    TRANSLATOR(
+        "Translator",
+        "Translate conversations with spoken output.",
+        "Language",
+        "Automatic",
+        "Hands-Free Translator",
+    ),
+    ERRAND_BRAIN(
+        "Errands",
+        "Turn spoken errands into tasks and reminders.",
+        "Planning",
+        "Configured AI",
+        "Errand Brain",
+    ),
+    AUTO_DIARY(
+        "Daily Diary",
+        "Create a private daily context summary.",
+        "Memory",
+        "On device",
+        "Auto Diary",
+    ),
+    AUTO_AUDIO(
+        "Auto Audio",
+        "Capture, sync and transcribe audio on a schedule.",
+        "Capture",
+        "Automatic",
+    ),
+    VISUAL_DIARY(
+        "Visual Diary",
+        "Turn captures into a searchable visual timeline.",
+        "Vision",
+        "Automatic",
+    ),
 }
 
 data class ADHostActions(
