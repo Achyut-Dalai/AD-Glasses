@@ -5,18 +5,35 @@ import org.junit.Assert.assertTrue
 import org.junit.Test
 import java.io.File
 
-/**
- * Product-level guardrails for AD Glasses UI.
- *
- * Legacy Activities may remain in the repository while backend/runtime migration is
- * ongoing, but native AD surfaces must not navigate to them directly. Likewise,
- * generic product surfaces must not be renamed around whichever hardware family is
- * primary today.
- */
+/** Verifies the installed AD Glasses product surface, not just navigation intent. */
 class ADProductSurfaceIsolationTest {
 
     @Test
-    fun nativeAdUiDoesNotImportLegacyActivitiesOrSharedNavigation() {
+    fun replacedLegacyActivitiesAreNotInstalledComponents() {
+        val manifest = sourceFile("src/main/AndroidManifest.xml").readText()
+        val replacedActivities = listOf(
+            ".ui.ChatListActivity",
+            ".ui.ChatThreadActivity",
+            ".ui.SettingsActivity",
+            ".ui.appearance.AppearanceActivity",
+            ".ui.CommunityPluginsActivity",
+            ".ui.PublishPluginActivity",
+            ".ui.notes.NotesListActivity",
+            ".ui.notes.NoteDetailActivity",
+            ".ui.recordings.RecordingsListActivity",
+            ".ui.recordings.SyncedMediaGalleryActivity",
+        )
+
+        replacedActivities.forEach { activity ->
+            assertFalse(
+                "$activity has an AD-native replacement and must not be registered in the APK",
+                manifest.contains("android:name=\"$activity\""),
+            )
+        }
+    }
+
+    @Test
+    fun nativeAdUiDoesNotImportReplacedActivitiesOrSharedNavigation() {
         val uiDir = sourceFile("src/main/java/com/fersaiyan/cyanbridge/ui/adglasses")
         assertTrue("AD UI source directory should exist", uiDir.isDirectory)
 
@@ -38,7 +55,7 @@ class ADProductSurfaceIsolationTest {
                 val source = file.readText()
                 forbiddenImports.forEach { token ->
                     assertFalse(
-                        "${file.name} must not import legacy product route $token",
+                        "${file.name} must not import replaced product route $token",
                         source.contains(token),
                     )
                 }
