@@ -10,6 +10,7 @@ enum class ADTab(val label: String) {
 enum class ADRoute {
     MAIN,
     DEVICE_CENTER,
+    DEVICE_IDENTITY,
     SYNC,
     SETTINGS,
     AI_SERVICES,
@@ -22,6 +23,9 @@ enum class ADRoute {
     ABOUT,
     FIRMWARE,
     AUTOMATION_DETAIL,
+    LIBRARY_CAPTURES,
+    LIBRARY_RECORDINGS,
+    LIBRARY_NOTES,
 }
 
 enum class ADAutomation(
