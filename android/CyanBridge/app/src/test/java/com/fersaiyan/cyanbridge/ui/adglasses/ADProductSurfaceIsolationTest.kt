@@ -9,28 +9,48 @@ import java.io.File
 class ADProductSurfaceIsolationTest {
 
     @Test
-    fun replacedLegacyActivitiesAreNotInstalledComponents() {
+    fun replacedLegacyPageNamesAreAliasesNotLegacyActivities() {
         val manifest = sourceFile("src/main/AndroidManifest.xml").readText()
-        val replacedActivities = listOf(
-            ".ui.ChatListActivity",
-            ".ui.ChatThreadActivity",
-            ".ui.SettingsActivity",
-            ".ui.appearance.AppearanceActivity",
-            ".ui.CommunityPluginsActivity",
-            ".ui.PublishPluginActivity",
-            ".ui.notes.NotesListActivity",
-            ".ui.notes.NoteDetailActivity",
-            ".ui.recordings.RecordingsListActivity",
-            ".ui.recordings.SyncedMediaGalleryActivity",
-            ".ui.BatteryOptimizationGuideActivity",
-            ".ui.OnboardingFeatureActivity",
+        val aliases = mapOf(
+            ".ui.ChatListActivity" to ".ui.adglasses.ADConversationsRedirectActivity",
+            ".ui.ChatThreadActivity" to ".ui.adglasses.ADConversationsRedirectActivity",
+            ".ui.SettingsActivity" to ".ui.adglasses.ADSettingsRedirectActivity",
+            ".ui.appearance.AppearanceActivity" to ".ui.adglasses.ADSettingsRedirectActivity",
+            ".ui.CommunityPluginsActivity" to ".ui.adglasses.ADModesRedirectActivity",
+            ".ui.PublishPluginActivity" to ".ui.adglasses.ADModesRedirectActivity",
+            ".ui.notes.NotesListActivity" to ".ui.adglasses.ADNotesRedirectActivity",
+            ".ui.notes.NoteDetailActivity" to ".ui.adglasses.ADNotesRedirectActivity",
+            ".ui.recordings.RecordingsListActivity" to ".ui.adglasses.ADRecordingsRedirectActivity",
+            ".ui.recordings.SyncedMediaGalleryActivity" to ".ui.adglasses.ADCapturesRedirectActivity",
         )
 
-        replacedActivities.forEach { activity ->
-            assertFalse(
-                "$activity has an AD-native replacement and must not be registered in the APK",
-                manifest.contains("android:name=\"$activity\""),
+        aliases.forEach { (legacyName, target) ->
+            val legacyActivity = Regex(
+                """<activity\b[^>]*android:name\s*=\s*\"${Regex.escape(legacyName)}\"""",
             )
+            assertFalse(
+                "$legacyName must never be registered as its old Activity UI",
+                legacyActivity.containsMatchIn(manifest),
+            )
+
+            val alias = Regex(
+                """<activity-alias\b[^>]*android:name\s*=\s*\"${Regex.escape(legacyName)}\"[^>]*android:targetActivity\s*=\s*\"${Regex.escape(target)}\"""",
+            )
+            assertTrue(
+                "$legacyName should resolve only through native AD redirect $target",
+                alias.containsMatchIn(manifest),
+            )
+        }
+    }
+
+    @Test
+    fun removedOnboardingActivitiesAreNotInstalledComponents() {
+        val manifest = sourceFile("src/main/AndroidManifest.xml").readText()
+        listOf(
+            ".ui.BatteryOptimizationGuideActivity",
+            ".ui.OnboardingFeatureActivity",
+        ).forEach { removed ->
+            assertFalse(manifest.contains("android:name=\"$removed\""))
         }
     }
 
