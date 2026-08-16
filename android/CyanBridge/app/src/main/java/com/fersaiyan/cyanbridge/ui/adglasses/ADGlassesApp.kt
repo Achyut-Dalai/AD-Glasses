@@ -57,9 +57,7 @@ fun ADGlassesApp(
                 selectedTab = ADTab.CHATS
                 conversationRequest = request
             }
-            ADExternalDestination.SETTINGS -> {
-                routeStack = listOf(ADRoute.MAIN, ADRoute.SETTINGS)
-            }
+            ADExternalDestination.SETTINGS -> routeStack = listOf(ADRoute.MAIN, ADRoute.SETTINGS)
             ADExternalDestination.MODES -> {
                 routeStack = listOf(ADRoute.MAIN)
                 selectedTab = ADTab.AI
@@ -127,6 +125,7 @@ fun ADGlassesApp(
                         ADTab.AI -> ADNativeAiScreen(
                             onRelaySettings = { navigateTo(ADRoute.AI_RELAY) },
                             onLocalSettings = { navigateTo(ADRoute.AI_LOCAL) },
+                            onAssistantApps = { navigateTo(ADRoute.AI_ASSISTANT_APPS) },
                             onOpenCapability = openCapability,
                         )
                         ADTab.LIBRARY -> ADNativeLibraryScreen(
@@ -159,6 +158,7 @@ fun ADGlassesApp(
                     )
                     ADRoute.AI_RELAY -> ADNativeRelaySettingsScreen(navigateBack)
                     ADRoute.AI_LOCAL -> ADNativeLocalAiSettingsScreen(navigateBack)
+                    ADRoute.AI_ASSISTANT_APPS -> ADAssistantAppsScreen(navigateBack)
                     ADRoute.PRIVACY -> ADPrivacyCenterScreen(navigateBack)
                     ADRoute.STORAGE -> ADStorageScreen(navigateBack)
                     ADRoute.LANGUAGE -> ADLanguageScreen(navigateBack)
