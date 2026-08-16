@@ -36,9 +36,12 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
@@ -64,6 +67,8 @@ internal fun ADNativeConversationScreen(
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
     val listState = rememberLazyListState()
+    val composerFocusRequester = remember { FocusRequester() }
+    val keyboardController = LocalSoftwareKeyboardController.current
     val session = remember(context) { AssistantConversationSession.get(context) }
     val orchestrator = remember(context) {
         AssistantOrchestrator(
@@ -130,6 +135,11 @@ internal fun ADNativeConversationScreen(
         webSearch = request.webSearchRequested
         errorText = null
         onNavigationRequestApplied(request.id)
+        if (!request.prefill.isNullOrBlank() || request.webSearchRequested) {
+            delay(90)
+            composerFocusRequester.requestFocus()
+            keyboardController?.show()
+        }
     }
 
     // Glasses-originated turns use the same durable session. Refresh while this surface is
@@ -171,6 +181,8 @@ internal fun ADNativeConversationScreen(
                         message = ""
                         webSearch = false
                         errorText = null
+                        composerFocusRequester.requestFocus()
+                        keyboardController?.show()
                     }
                 },
             ) {
@@ -279,7 +291,11 @@ internal fun ADNativeConversationScreen(
                 BasicTextField(
                     value = message,
                     onValueChange = { message = it },
-                    modifier = Modifier.weight(1f).heightIn(min = 40.dp, max = 128.dp).padding(vertical = 8.dp),
+                    modifier = Modifier
+                        .weight(1f)
+                        .heightIn(min = 40.dp, max = 128.dp)
+                        .focusRequester(composerFocusRequester)
+                        .padding(vertical = 8.dp),
                     textStyle = MaterialTheme.typography.bodyLarge.copy(color = ADColors.Ink),
                     cursorBrush = SolidColor(ADColors.Ink),
                     keyboardOptions = KeyboardOptions(imeAction = ImeAction.Send),
