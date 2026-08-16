@@ -26,7 +26,7 @@ class ADProductSurfaceIsolationTest {
 
         aliases.forEach { (legacyName, target) ->
             val legacyActivity = Regex(
-                """<activity\b[^>]*android:name\s*=\s*\"${Regex.escape(legacyName)}\"""",
+                """<activity\s+[^>]*android:name\s*=\s*\"${Regex.escape(legacyName)}\"""",
             )
             assertFalse(
                 "$legacyName must never be registered as its old Activity UI",
@@ -34,7 +34,7 @@ class ADProductSurfaceIsolationTest {
             )
 
             val alias = Regex(
-                """<activity-alias\b[^>]*android:name\s*=\s*\"${Regex.escape(legacyName)}\"[^>]*android:targetActivity\s*=\s*\"${Regex.escape(target)}\"""",
+                """<activity-alias\s+[^>]*android:name\s*=\s*\"${Regex.escape(legacyName)}\"[^>]*android:targetActivity\s*=\s*\"${Regex.escape(target)}\"""",
             )
             assertTrue(
                 "$legacyName should resolve only through native AD redirect $target",
