@@ -93,9 +93,9 @@ fun ADGlassesPairingScreen(
                             Text(
                                 when {
                                     isScanning && devices.isEmpty() -> "Keep your glasses nearby and ready to connect."
-                                    isScanning -> "${devices.size} supported ${if (devices.size == 1) "device" else "devices"} found"
-                                    devices.isEmpty() -> "Scan for supported glasses nearby."
-                                    else -> "Tap your glasses to connect. Device type is detected automatically."
+                                    isScanning -> "Glasses found nearby."
+                                    devices.isEmpty() -> "Scan for your glasses nearby."
+                                    else -> "Tap your glasses to connect. Detection is automatic."
                                 },
                                 style = MaterialTheme.typography.bodyMedium,
                                 color = ADColors.Muted,
@@ -162,7 +162,7 @@ private fun ADPairingDeviceRow(
     device: ScannedDevice,
     onClick: () -> Unit,
 ) {
-    val deviceClass = device.effectiveSelectedClass()
+    val deviceClass = device.detectedClass
     Row(
         modifier = Modifier
             .fillMaxWidth()
