@@ -21,10 +21,7 @@ data class AssistantModeCommand(
     val action: AssistantModeAction,
 )
 
-/**
- * Fast-path for commands that should never need an LLM round-trip.
- * Configuration still belongs on the phone; this only starts/stops an already configured mode.
- */
+/** Fast-path for starting/stopping product tasks and phone control without an LLM round-trip. */
 object AssistantModeCommandRouter {
     fun parse(text: String): AssistantModeCommand? {
         val normalized = text.trim().lowercase()
@@ -39,10 +36,8 @@ object AssistantModeCommandRouter {
         val mode = when {
             TRANSLATOR.containsMatchIn(normalized) -> AssistantMode.TRANSLATOR
             MEETING.containsMatchIn(normalized) -> AssistantMode.MEETING_NOTES
-            CAPTIONS.containsMatchIn(normalized) -> AssistantMode.LIVE_CAPTIONS
             ERRANDS.containsMatchIn(normalized) -> AssistantMode.ERRAND_BRAIN
             AUTO_DIARY.containsMatchIn(normalized) -> AssistantMode.AUTO_DIARY
-            AUTO_AUDIO.containsMatchIn(normalized) -> AssistantMode.AUTO_AUDIO
             VISUAL_DIARY.containsMatchIn(normalized) -> AssistantMode.VISUAL_DIARY
             LOCAL_AGENT.containsMatchIn(normalized) -> AssistantMode.LOCAL_AGENT
             else -> return null
@@ -56,10 +51,8 @@ object AssistantModeCommandRouter {
 
     private val TRANSLATOR = Regex("\\b(translat(?:e|or|ion)|interpreter)\\b")
     private val MEETING = Regex("\\b(meeting notes?|meeting mode|spark notes?|take notes?)\\b")
-    private val CAPTIONS = Regex("\\b(live captions?|captions?|caption mode)\\b")
     private val ERRANDS = Regex("\\b(errand brain|errand mode|errands?)\\b")
     private val AUTO_DIARY = Regex("\\b(auto diary|automatic diary|diary mode)\\b")
-    private val AUTO_AUDIO = Regex("\\b(auto audio|automatic audio|audio capture)\\b")
     private val VISUAL_DIARY = Regex("\\b(visual diary|visual memory|visual timeline)\\b")
     private val LOCAL_AGENT = Regex("\\b(local agent|phone agent|phone control)\\b")
 }
