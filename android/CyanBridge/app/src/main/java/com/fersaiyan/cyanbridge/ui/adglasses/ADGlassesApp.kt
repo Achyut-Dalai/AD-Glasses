@@ -54,14 +54,15 @@ fun ADGlassesApp(
             ) {
                 when (route) {
                     ADRoute.MAIN -> when (selectedTab) {
-                        ADTab.HOME -> ADHomeScreen(
+                        ADTab.HOME -> ADHomeSurface(
                             state = dashboardState,
                             host = host,
                             onOpenDevice = { navigateTo(ADRoute.DEVICE_CENTER) },
                             onOpenSync = { navigateTo(ADRoute.SYNC) },
                             onOpenSettings = { navigateTo(ADRoute.SETTINGS) },
-                            onOpenAssistant = { selectedTab = ADTab.ASSISTANT },
+                            onOpenConversations = { selectedTab = ADTab.ASSISTANT },
                             onOpenLibrary = { selectedTab = ADTab.LIBRARY },
+                            onOpenModes = { selectedTab = ADTab.AUTOMATIONS },
                         )
                         ADTab.ASSISTANT -> ADConversationsScreen(host = host)
                         ADTab.LIBRARY -> ADLibraryScreen(

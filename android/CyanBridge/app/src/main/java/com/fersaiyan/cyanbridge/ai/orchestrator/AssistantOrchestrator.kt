@@ -8,6 +8,7 @@ import com.fersaiyan.cyanbridge.ai.router.AssistantRequestSource
 import com.fersaiyan.cyanbridge.shared.chat.ChatMessage
 import com.fersaiyan.cyanbridge.shared.settings.AgentProviderType
 
+/** Where a turn entered AD from. */
 enum class AssistantInputSurface {
     GLASSES_VOICE,
     GLASSES_VISION,
@@ -16,10 +17,13 @@ enum class AssistantInputSurface {
     AUTOMATION,
 }
 
+/** A normalized turn before routing/execution. */
 data class AssistantTurn(
     val text: String,
     val surface: AssistantInputSurface,
-    val imageAttached: Boolean = false,
+    /** Concrete local image produced by the existing glasses/phone capture pipeline. */
+    val imagePath: String? = null,
+    /** null = automatic, true/false = explicit user/UI preference. */
     val webRequested: Boolean? = null,
 )
 
@@ -31,10 +35,16 @@ data class AssistantExecutionContext(
 )
 
 data class AssistantResult(
+    /** Concise response suitable for spoken delivery on displayless glasses. */
     val spokenText: String,
+    /** Richer/full text persisted for phone review. */
     val richText: String = spokenText,
 )
 
+/**
+ * Execution boundary around capabilities that already exist in MainActivity/services.
+ * The orchestrator decides; existing BLE/Wi-Fi/media/Local Agent subsystems execute.
+ */
 interface AssistantCapabilityExecutor {
     suspend fun answer(
         prompt: String,
@@ -43,6 +53,7 @@ interface AssistantCapabilityExecutor {
 
     suspend fun analyzeImage(
         prompt: String,
+        imagePath: String?,
         context: AssistantExecutionContext,
     ): AssistantResult
 
@@ -50,11 +61,20 @@ interface AssistantCapabilityExecutor {
         goal: String,
         context: AssistantExecutionContext,
     ): AssistantResult
+
+    suspend fun executeModeCommand(
+        command: AssistantModeCommand,
+        context: AssistantExecutionContext,
+    ): AssistantResult
 }
 
 /**
- * Shared control plane for glasses voice, glasses vision and phone continuation.
- * Existing BLE/Wi-Fi/media/Local Agent implementations remain executors outside this class.
+ * Single control plane for glasses voice, glasses vision and phone continuation.
+ *
+ * Every accepted turn is persisted to the same ChatStore-backed session before it is
+ * executed, and every assistant response is persisted afterwards. This lets
+ * "what is this?" -> "how much is it?" -> "find a better one" remain one conversation
+ * even as the selected capability changes between turns.
  */
 class AssistantOrchestrator(
     context: Context,
@@ -74,18 +94,11 @@ class AssistantOrchestrator(
         session.addUserTurn(prompt)
         val threadId = session.activeThreadId()
         val history = session.messages()
-        val useWeb = AssistantWebPolicy.shouldUseWeb(prompt, turn.webRequested)
-
-        val decision = router.route(
-            context = appContext,
-            request = AssistantRequest(
-                text = prompt,
-                source = turn.surface.toRouterSource(),
-                imageAttached = turn.imageAttached || turn.surface == AssistantInputSurface.GLASSES_VISION,
-            ),
-            providerType = providerType,
+        val useWeb = AssistantWebPolicy.shouldUseWeb(
+            text = prompt,
+            requested = turn.webRequested,
+            history = history,
         )
-
         val executionContext = AssistantExecutionContext(
             threadId = threadId,
             history = history,
@@ -93,19 +106,37 @@ class AssistantOrchestrator(
             surface = turn.surface,
         )
 
-        val result = when (decision.intent) {
-            AssistantIntent.ANSWER_QUESTION -> executor.answer(prompt, executionContext)
-            AssistantIntent.ANALYZE_IMAGE -> executor.analyzeImage(
-                decision.normalizedGoal ?: prompt,
-                executionContext,
+        // Obvious mode commands are deterministic and should not pay an LLM routing cost.
+        val modeCommand = AssistantModeCommandRouter.parse(prompt)
+        val result = if (modeCommand != null) {
+            executor.executeModeCommand(modeCommand, executionContext)
+        } else {
+            val decision = router.route(
+                context = appContext,
+                request = AssistantRequest(
+                    text = prompt,
+                    source = turn.surface.toRouterSource(),
+                    imageAttached = !turn.imagePath.isNullOrBlank() ||
+                        turn.surface == AssistantInputSurface.GLASSES_VISION,
+                ),
+                providerType = providerType,
             )
-            AssistantIntent.EXECUTE_UI_TASK -> executor.executePhoneAction(
-                decision.normalizedGoal ?: prompt,
-                executionContext,
-            )
-            AssistantIntent.CLARIFY -> AssistantResult(
-                spokenText = decision.clarification ?: "What would you like me to do?",
-            )
+
+            when (decision.intent) {
+                AssistantIntent.ANSWER_QUESTION -> executor.answer(prompt, executionContext)
+                AssistantIntent.ANALYZE_IMAGE -> executor.analyzeImage(
+                    prompt = decision.normalizedGoal ?: prompt,
+                    imagePath = turn.imagePath,
+                    context = executionContext,
+                )
+                AssistantIntent.EXECUTE_UI_TASK -> executor.executePhoneAction(
+                    decision.normalizedGoal ?: prompt,
+                    executionContext,
+                )
+                AssistantIntent.CLARIFY -> AssistantResult(
+                    spokenText = decision.clarification ?: "What would you like me to do?",
+                )
+            }
         }
 
         val persisted = result.richText.trim().ifBlank { result.spokenText.trim() }
@@ -120,7 +151,7 @@ class AssistantOrchestrator(
     private fun AssistantInputSurface.toRouterSource(): AssistantRequestSource = when (this) {
         AssistantInputSurface.GLASSES_VOICE -> AssistantRequestSource.GLASSES_VOICE
         AssistantInputSurface.GLASSES_VISION -> AssistantRequestSource.GLASSES_IMAGE
-        AssistantInputSurface.PHONE_TEXT,
+        AssistantInputSurface.PHONE_TEXT -> AssistantRequestSource.CHAT
         AssistantInputSurface.PHONE_VOICE,
         AssistantInputSurface.AUTOMATION -> AssistantRequestSource.APP_UI
     }
