@@ -25,54 +25,14 @@ enum class ADAutomation(
     val outcome: String,
     val boundary: String,
 ) {
-    LOCAL_AGENT(
-        "Local Agent",
-        "Phone actions with approval.",
-        "Phone actions",
-        "On device",
-    ),
-    MEETING_NOTES(
-        "Meeting Spark Notes",
-        "Record, transcribe, and summarize meetings.",
-        "Meetings",
-        "Automatic",
-    ),
-    LIVE_CAPTIONS(
-        "Live Caption Relay",
-        "Live speech into readable captions.",
-        "Accessibility",
-        "On device",
-    ),
-    TRANSLATOR(
-        "Hands-Free Translator",
-        "Conversation translation with spoken output.",
-        "Language",
-        "Automatic",
-    ),
-    ERRAND_BRAIN(
-        "Errand Brain",
-        "Spoken errands into tasks and reminders.",
-        "Planning",
-        "Your cloud",
-    ),
-    AUTO_DIARY(
-        "Auto Diary",
-        "Private daily context summary.",
-        "Memory",
-        "On device",
-    ),
-    AUTO_AUDIO(
-        "Auto Audio",
-        "Scheduled capture, sync, and transcription.",
-        "Capture",
-        "Automatic",
-    ),
-    VISUAL_DIARY(
-        "Visual Diary",
-        "Captures into a searchable visual timeline.",
-        "Vision",
-        "Automatic",
-    ),
+    LOCAL_AGENT("Local Agent", "Phone actions with approval.", "Phone actions", "On device"),
+    MEETING_NOTES("Meeting Spark Notes", "Record, transcribe, and summarize meetings.", "Meetings", "Automatic"),
+    LIVE_CAPTIONS("Live Caption Relay", "Live speech into readable captions.", "Accessibility", "On device"),
+    TRANSLATOR("Hands-Free Translator", "Conversation translation with spoken output.", "Language", "Automatic"),
+    ERRAND_BRAIN("Errand Brain", "Spoken errands into tasks and reminders.", "Planning", "Your cloud"),
+    AUTO_DIARY("Auto Diary", "Private daily context summary.", "Memory", "On device"),
+    AUTO_AUDIO("Auto Audio", "Scheduled capture, sync, and transcription.", "Capture", "Automatic"),
+    VISUAL_DIARY("Visual Diary", "Captures into a searchable visual timeline.", "Vision", "Automatic"),
 }
 
 data class ADHostActions(
