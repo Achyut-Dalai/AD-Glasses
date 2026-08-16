@@ -1,9 +1,9 @@
 package com.fersaiyan.cyanbridge.ui.adglasses
 
+import android.app.Activity
 import android.content.Context
 import android.content.Intent
 import android.os.Bundle
-import androidx.appcompat.app.AppCompatActivity
 import com.fersaiyan.cyanbridge.MainActivity
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -113,7 +113,7 @@ object ADNavigationRequestStore {
 }
 
 /** Invisible compatibility target; it never renders a legacy product page. */
-abstract class ADLegacyRouteRedirectActivity : AppCompatActivity() {
+abstract class ADLegacyRouteRedirectActivity : Activity() {
     abstract val destination: ADExternalDestination
 
     protected open fun requestPrefill(intent: Intent): String? = null
