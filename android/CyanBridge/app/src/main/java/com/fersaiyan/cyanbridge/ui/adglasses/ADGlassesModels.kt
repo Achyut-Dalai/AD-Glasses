@@ -13,8 +13,13 @@ enum class ADRoute {
     SYNC,
     SETTINGS,
     AI_SERVICES,
+    ROUTING,
     PRIVACY,
+    STORAGE,
+    LANGUAGE,
+    PERMISSIONS,
     ADVANCED,
+    ABOUT,
     FIRMWARE,
     AUTOMATION_DETAIL,
 }
