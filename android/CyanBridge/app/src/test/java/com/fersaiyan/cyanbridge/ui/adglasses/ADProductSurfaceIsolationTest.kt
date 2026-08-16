@@ -33,6 +33,18 @@ class ADProductSurfaceIsolationTest {
     }
 
     @Test
+    fun builtProductKeepsAdGlassesIdentity() {
+        val strings = sourceFile("src/main/res/values/strings.xml").readText()
+        val gradle = sourceFile("build.gradle").readText()
+        val manifest = sourceFile("src/main/AndroidManifest.xml").readText()
+
+        assertTrue(strings.contains("<string name=\"app_name\">AD Glasses</string>"))
+        assertFalse("System-facing strings must not expose CyanBridge branding", strings.contains("CyanBridge"))
+        assertTrue("APK artifact should use the AD Glasses product name", gradle.contains("outputFileName = \"AD-Glasses.apk\""))
+        assertTrue(manifest.contains("android:label=\"AD Glasses notification access\""))
+    }
+
+    @Test
     fun nativeAdUiDoesNotImportReplacedActivitiesOrSharedNavigation() {
         val uiDir = sourceFile("src/main/java/com/fersaiyan/cyanbridge/ui/adglasses")
         assertTrue("AD UI source directory should exist", uiDir.isDirectory)
