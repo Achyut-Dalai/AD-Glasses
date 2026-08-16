@@ -78,10 +78,11 @@ enum class ADAutomation(
         "Auto Diary",
     ),
     AUTO_AUDIO(
-        "Auto Audio",
+        "Auto Capture",
         "Capture, sync and transcribe audio on a schedule.",
         "Capture",
         "Automatic",
+        "Auto Audio",
     ),
     VISUAL_DIARY(
         "Visual Diary",

@@ -91,7 +91,7 @@ internal fun ADFirmwareScreen(
 
         ADSectionTitle("Preflight")
         ADCard {
-            ADFirmwareCheck("Supported glasses profile", supportedProfile)
+            ADFirmwareCheck("Firmware support", supportedProfile)
             HorizontalDivider(Modifier.padding(start = 34.dp), color = ADColors.Separator)
             ADFirmwareCheck("Bluetooth connected", bluetoothReady)
         }
@@ -101,7 +101,7 @@ internal fun ADFirmwareScreen(
                 Text("Firmware is not available for these glasses yet.", style = MaterialTheme.typography.titleMedium)
                 Spacer(Modifier.height(4.dp))
                 Text(
-                    "AD Glasses will only expose an update path after the connected hardware has a validated firmware adapter.",
+                    "Updates appear here once the connected glasses have a validated firmware path.",
                     style = MaterialTheme.typography.bodyMedium,
                     color = ADColors.Muted,
                 )

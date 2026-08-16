@@ -21,11 +21,11 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.rounded.ArrowBack
 import androidx.compose.material.icons.rounded.Bolt
+import androidx.compose.material.icons.rounded.ChatBubble
 import androidx.compose.material.icons.rounded.Home
 import androidx.compose.material.icons.rounded.KeyboardArrowRight
 import androidx.compose.material.icons.rounded.PhotoLibrary
 import androidx.compose.material.icons.rounded.Settings
-import androidx.compose.material.icons.rounded.SmartToy
 import androidx.compose.material.icons.rounded.Check
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -147,7 +147,7 @@ internal fun ADBottomNavigation(selected: ADTab, onSelected: (ADTab) -> Unit) {
             ADTab.entries.forEach { tab ->
                 val icon = when (tab) {
                     ADTab.HOME -> Icons.Rounded.Home
-                    ADTab.ASSISTANT -> Icons.Rounded.SmartToy
+                    ADTab.ASSISTANT -> Icons.Rounded.ChatBubble
                     ADTab.LIBRARY -> Icons.Rounded.PhotoLibrary
                     ADTab.AUTOMATIONS -> Icons.Rounded.Bolt
                 }
