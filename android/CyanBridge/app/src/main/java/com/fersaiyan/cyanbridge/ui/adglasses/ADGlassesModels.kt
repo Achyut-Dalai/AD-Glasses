@@ -22,6 +22,9 @@ enum class ADRoute {
     ABOUT,
     FIRMWARE,
     AUTOMATION_DETAIL,
+    LIBRARY_CAPTURES,
+    LIBRARY_RECORDINGS,
+    LIBRARY_NOTES,
 }
 
 enum class ADAutomation(
