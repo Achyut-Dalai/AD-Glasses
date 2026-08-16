@@ -62,6 +62,7 @@ fun ADGlassesApp(
                             onOpenSettings = { navigateTo(ADRoute.SETTINGS) },
                             onOpenConversations = { selectedTab = ADTab.ASSISTANT },
                             onOpenLibrary = { selectedTab = ADTab.LIBRARY },
+                            onOpenModes = { selectedTab = ADTab.AUTOMATIONS },
                         )
                         ADTab.ASSISTANT -> ADConversationsScreen(host = host)
                         ADTab.LIBRARY -> ADLibraryScreen(
