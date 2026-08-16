@@ -16,12 +16,11 @@ import androidx.activity.compose.setContent
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
+import com.fersaiyan.cyanbridge.devices.ADDeviceSupportPolicy
 import com.fersaiyan.cyanbridge.shared.devices.DeviceClass
 import com.fersaiyan.cyanbridge.devices.DeviceClassifier
 import com.fersaiyan.cyanbridge.devices.DeviceProfileStore
-import com.fersaiyan.cyanbridge.devices.eyevue.EyevueManager
 import com.fersaiyan.cyanbridge.devices.metarayban.MetaRaybanManager
-import com.fersaiyan.cyanbridge.devices.meizumyvu.MeizuMyvuManager
 import com.fersaiyan.cyanbridge.devices.ScannedDevice
 import com.fersaiyan.cyanbridge.ui.adglasses.ADGlassesTheme
 import com.fersaiyan.cyanbridge.ui.adglasses.ADNativeDeviceBindScreen
@@ -67,12 +66,14 @@ class DeviceBindActivity : BaseActivity() {
                         }
                         if (device != null) {
                             connectingDevice = device
-                            selectedDeviceClass = device.effectiveSelectedClass().takeUnless {
-                                it == DeviceClass.UNKNOWN
-                            } ?: DeviceClass.HEY_CYAN
+                            selectedDeviceClass = ADDeviceSupportPolicy.defaultSelection(device.detectedClass)
                         }
                     },
-                    onSelectedClassChange = { selectedDeviceClass = it },
+                    onSelectedClassChange = { requested ->
+                        if (ADDeviceSupportPolicy.isSelectable(requested)) {
+                            selectedDeviceClass = requested
+                        }
+                    },
                     onConfirmConnection = ::confirmConnection,
                     onDismissConnection = { connectingDevice = null },
                     onBack = ::finish,
@@ -127,6 +128,15 @@ class DeviceBindActivity : BaseActivity() {
 
     private fun confirmConnection() {
         val device = connectingDevice ?: return
+        if (!ADDeviceSupportPolicy.isSelectable(selectedDeviceClass)) {
+            connectingDevice = null
+            Toast.makeText(
+                this,
+                "That glasses profile is not enabled in AD Glasses.",
+                Toast.LENGTH_LONG,
+            ).show()
+            return
+        }
         if (!hasBluetooth(this)) {
             Toast.makeText(this, "Bluetooth permission is required to connect", Toast.LENGTH_SHORT).show()
             requestBluetoothPermission(this, PermissionCallback())
@@ -138,7 +148,8 @@ class DeviceBindActivity : BaseActivity() {
         isScanning = false
 
         AutoPairManager.setAutoReconnectSuppressed(false, reason = "user_manual_pair")
-        device.userSelectedClass = selectedDeviceClass
+        val userOverrodeDetection = device.detectedClass != selectedDeviceClass
+        device.userSelectedClass = selectedDeviceClass.takeIf { userOverrodeDetection }
         DeviceProfileStore.saveLastSelected(
             this,
             DeviceProfile(
@@ -146,47 +157,25 @@ class DeviceBindActivity : BaseActivity() {
                 advertisedName = device.advertisedName,
                 detectedClass = device.detectedClass,
                 selectedClass = selectedDeviceClass,
-                userOverridden = true,
+                userOverridden = userOverrodeDetection,
             ),
         )
 
         if (selectedDeviceClass == DeviceClass.META_RAYBAN) {
-            // Meta devices are owned by DAT. Saving the profile is enough here; calling
-            // the Oudmon connector would make the rest of the app treat Meta as HeyCyan.
+            // Meta remains the only planned second product family. DAT owns its transport;
+            // never route it through the HeyCyan SDK connector.
             MetaRaybanManager.getInstance(this).initialize()
             Toast.makeText(
                 this,
-                "Meta Ray-Ban selected. Finish registration from Device Center.",
+                "Meta Ray-Ban profile saved. Finish registration from Device Center when you use Meta glasses.",
                 Toast.LENGTH_LONG,
             ).show()
             finish()
             return
         }
 
-        if (selectedDeviceClass == DeviceClass.MEIZU_MYVU) {
-            // MYVU owns a BLE ECDH session and an RFCOMM relay. The HeyCyan SDK
-            // connector cannot establish either transport.
-            MeizuMyvuManager.getInstance(this).connect(device.macAddress, this)
-            Toast.makeText(
-                this,
-                "Connecting to Meizu MYVU. Keep the official MYVU app disconnected.",
-                Toast.LENGTH_LONG,
-            ).show()
-            finish()
-            return
-        }
-
-        if (selectedDeviceClass == DeviceClass.EYEVUE) {
-            EyevueManager.getInstance(this).connect(device.macAddress, device.advertisedName)
-            Toast.makeText(
-                this,
-                "Connecting to Eyevue over Bluetooth.",
-                Toast.LENGTH_LONG,
-            ).show()
-            finish()
-            return
-        }
-
+        // The only remaining selectable class is HeyCyan. Other upstream device managers
+        // intentionally stay in the tree for compatibility but are not reachable here.
         BleOperateManager.getInstance().connectDirectly(device.macAddress)
     }
 
@@ -222,9 +211,11 @@ class DeviceBindActivity : BaseActivity() {
             rssi = rssi,
             serviceUuids = scanRecord?.serviceUuids.orEmpty(),
         )
-        DeviceProfileStore.getUserOverrideForMac(this, mac)?.let { override ->
-            if (override != newDevice.detectedClass) newDevice.userSelectedClass = override
-        }
+        DeviceProfileStore.getUserOverrideForMac(this, mac)
+            ?.takeIf(ADDeviceSupportPolicy::isSelectable)
+            ?.let { override ->
+                if (override != newDevice.detectedClass) newDevice.userSelectedClass = override
+            }
         scanSize++
         deviceList += newDevice
         publishDevices(force = true)
@@ -236,7 +227,9 @@ class DeviceBindActivity : BaseActivity() {
         val now = System.currentTimeMillis()
         if (!force && now - lastDeviceListPublishAtMs < DEVICE_LIST_PUBLISH_INTERVAL_MS) return
         lastDeviceListPublishAtMs = now
-        scannedDevices = deviceList.toList()
+        scannedDevices = deviceList
+            .filter { ADDeviceSupportPolicy.shouldShowScanResult(it.detectedClass) }
+            .toList()
     }
 
     override fun onDestroy() {
