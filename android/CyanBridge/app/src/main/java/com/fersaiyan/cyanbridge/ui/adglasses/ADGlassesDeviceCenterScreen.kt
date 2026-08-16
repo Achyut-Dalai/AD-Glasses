@@ -32,10 +32,11 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
+import com.fersaiyan.cyanbridge.devices.ADDeviceSupportPolicy
 import com.fersaiyan.cyanbridge.devices.DeviceProfileStore
 import com.fersaiyan.cyanbridge.shared.glasses.GlassesDashboardUiState
 
-/** Product-facing device center. Upstream-only device families stay out of this surface. */
+/** Product-facing device center. Vendor-specific details stay behind capability/runtime layers. */
 @Composable
 internal fun ADGlassesDeviceCenterScreen(
     state: GlassesDashboardUiState,
@@ -47,8 +48,9 @@ internal fun ADGlassesDeviceCenterScreen(
 ) {
     val context = LocalContext.current
     val profile = DeviceProfileStore.loadLastSelected(context)
+        ?.takeIf { ADDeviceSupportPolicy.isPairable(it.selectedClass) }
     val presentation = buildADDevicePresentation(state, profile)
-    val identity = presentation.identityLabel ?: "HeyCyan glasses"
+    val identity = presentation.identityLabel ?: if (profile == null) "No glasses connected" else "Glasses"
 
     ADDetailLayout("Device Center", onBack) {
         ADCard {
@@ -141,13 +143,13 @@ internal fun ADGlassesDeviceCenterScreen(
             }
         }
 
-        ADSectionTitle("What these glasses can use")
+        ADSectionTitle("Capabilities")
         ADCard {
             ADDeviceCapability("Voice", "Ask and control through the glasses")
             HorizontalDivider(color = ADColors.Separator)
             ADDeviceCapability("Camera", "See and capture through the glasses camera")
             HorizontalDivider(color = ADColors.Separator)
-            ADDeviceCapability("Assistant", "AI, web, memory, modes and phone actions run on the phone")
+            ADDeviceCapability("Phone intelligence", "AI, web, memory, modes and phone actions")
         }
 
         ADSectionTitle("Device tools")
@@ -164,7 +166,7 @@ internal fun ADGlassesDeviceCenterScreen(
             ADSettingsRow(
                 icon = Icons.Outlined.SystemUpdateAlt,
                 title = "Firmware Lab",
-                subtitle = "HeyCyan firmware tools with preflight checks",
+                subtitle = "Firmware tools with careful preflight checks",
                 onClick = onFirmware,
                 iconTint = Color.White,
                 iconBackground = ADColors.Warning,
