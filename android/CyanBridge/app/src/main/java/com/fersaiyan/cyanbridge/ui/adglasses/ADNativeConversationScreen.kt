@@ -51,9 +51,21 @@ import com.fersaiyan.cyanbridge.shared.chat.ChatMessage
 import com.fersaiyan.cyanbridge.shared.chat.ChatRole
 import kotlinx.coroutines.launch
 
-/** Native phone continuation for the same durable conversation used by the glasses. */
+/** Compatibility adapter while MainActivity still owns the broad host contract. */
 @Composable
 internal fun ADNativeConversationScreen(host: ADHostActions) {
+    ADNativeConversationScreen(
+        onVoiceQuestion = host.onVoiceQuestion,
+        onImageQuestion = host.onImageQuestion,
+    )
+}
+
+/** Native phone continuation for the same durable conversation used by the glasses. */
+@Composable
+internal fun ADNativeConversationScreen(
+    onVoiceQuestion: () -> Unit,
+    onImageQuestion: () -> Unit,
+) {
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
     val session = remember(context) { AssistantConversationSession.get(context) }
@@ -220,10 +232,10 @@ internal fun ADNativeConversationScreen(host: ADHostActions) {
                     modifier = Modifier.fillMaxWidth(),
                     verticalAlignment = Alignment.CenterVertically,
                 ) {
-                    IconButton(onClick = host.onImageQuestion, enabled = !sending, modifier = Modifier.size(38.dp)) {
+                    IconButton(onClick = onImageQuestion, enabled = !sending, modifier = Modifier.size(38.dp)) {
                         Icon(Icons.Outlined.CameraAlt, "Ask what I see", tint = ADColors.Muted, modifier = Modifier.size(20.dp))
                     }
-                    IconButton(onClick = host.onVoiceQuestion, enabled = !sending, modifier = Modifier.size(38.dp)) {
+                    IconButton(onClick = onVoiceQuestion, enabled = !sending, modifier = Modifier.size(38.dp)) {
                         Icon(Icons.Outlined.Mic, "Voice", tint = ADColors.Muted, modifier = Modifier.size(20.dp))
                     }
                     IconButton(
