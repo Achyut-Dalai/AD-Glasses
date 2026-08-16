@@ -1,7 +1,12 @@
 package com.fersaiyan.cyanbridge.ui.adglasses
 
 import android.content.Intent
+import android.graphics.Bitmap
+import android.graphics.BitmapFactory
 import android.net.Uri
+import android.os.Build
+import android.util.Size
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -9,9 +14,12 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.aspectRatio
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.Code
@@ -19,27 +27,38 @@ import androidx.compose.material.icons.outlined.Description
 import androidx.compose.material.icons.outlined.GraphicEq
 import androidx.compose.material.icons.outlined.Image
 import androidx.compose.material.icons.outlined.Link
+import androidx.compose.material.icons.outlined.PlayArrow
 import androidx.compose.material.icons.outlined.Videocam
 import androidx.compose.material.icons.rounded.KeyboardArrowRight
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 
 /**
  * Small presentation model for rich conversation output.
  *
  * AD Glasses deliberately does not auto-download arbitrary remote media embedded in an
  * AI response. A result may present a photo/video/audio/link card, and the user chooses
- * whether to open it. Local glasses media is previewed directly in Library instead.
+ * whether to open it. Media already on this phone may be previewed inline.
  */
 internal sealed interface ADConversationBlock {
     data class TextBlock(val text: String) : ADConversationBlock
@@ -117,11 +136,14 @@ private fun ADConversationLinkCard(
     userMessage: Boolean,
 ) {
     val context = LocalContext.current
+    val uri = remember(block.target) { runCatching { Uri.parse(block.target) }.getOrNull() }
     val icon = block.kind.icon()
     val kindLabel = block.kind.label()
     val detail = displayTarget(block.target)
+    val localPreview = uri?.scheme in setOf("content", "file") &&
+        block.kind in setOf(ADConversationLinkKind.IMAGE, ADConversationLinkKind.VIDEO)
 
-    Row(
+    Column(
         modifier = Modifier
             .fillMaxWidth()
             .background(
@@ -129,53 +151,129 @@ private fun ADConversationLinkCard(
                 RoundedCornerShape(15.dp),
             )
             .clickable {
-                val uri = runCatching { Uri.parse(block.target) }.getOrNull() ?: return@clickable
-                val intent = Intent(Intent.ACTION_VIEW, uri).apply {
-                    if (uri.scheme == "content") addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+                val targetUri = uri ?: return@clickable
+                val intent = Intent(Intent.ACTION_VIEW, targetUri).apply {
+                    if (targetUri.scheme == "content") addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
                 }
                 runCatching { context.startActivity(intent) }
             }
             .padding(12.dp),
-        verticalAlignment = Alignment.CenterVertically,
+        verticalArrangement = Arrangement.spacedBy(if (localPreview) 10.dp else 0.dp),
     ) {
-        Box(
-            modifier = Modifier
-                .size(38.dp)
-                .background(
-                    if (userMessage) Color.White.copy(alpha = 0.12f) else ADColors.Surface,
-                    RoundedCornerShape(11.dp),
-                ),
-            contentAlignment = Alignment.Center,
-        ) {
+        if (localPreview && uri != null) {
+            ADConversationLocalMediaPreview(
+                uri = uri,
+                video = block.kind == ADConversationLinkKind.VIDEO,
+                userMessage = userMessage,
+            )
+        }
+
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Box(
+                modifier = Modifier
+                    .size(38.dp)
+                    .background(
+                        if (userMessage) Color.White.copy(alpha = 0.12f) else ADColors.Surface,
+                        RoundedCornerShape(11.dp),
+                    ),
+                contentAlignment = Alignment.Center,
+            ) {
+                Icon(
+                    icon,
+                    contentDescription = null,
+                    tint = if (userMessage) Color.White else ADColors.Ink,
+                    modifier = Modifier.size(20.dp),
+                )
+            }
+            Column(Modifier.padding(start = 11.dp).weight(1f)) {
+                Text(
+                    block.label.ifBlank { kindLabel },
+                    style = MaterialTheme.typography.titleSmall,
+                    color = if (userMessage) Color.White else ADColors.Ink,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                )
+                Text(
+                    "$kindLabel · $detail",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = if (userMessage) Color.White.copy(alpha = 0.72f) else ADColors.Muted,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                )
+            }
+            Spacer(Modifier.size(6.dp))
             Icon(
-                icon,
+                Icons.Rounded.KeyboardArrowRight,
+                contentDescription = "Open",
+                tint = if (userMessage) Color.White.copy(alpha = 0.72f) else ADColors.Muted,
+            )
+        }
+    }
+}
+
+@Composable
+private fun ADConversationLocalMediaPreview(
+    uri: Uri,
+    video: Boolean,
+    userMessage: Boolean,
+) {
+    val context = LocalContext.current
+    var thumbnail by remember(uri.toString()) { mutableStateOf<Bitmap?>(null) }
+
+    LaunchedEffect(uri) {
+        thumbnail = withContext(Dispatchers.IO) {
+            when (uri.scheme) {
+                "content" -> {
+                    if (Build.VERSION.SDK_INT < Build.VERSION_CODES.Q) return@withContext null
+                    runCatching {
+                        context.contentResolver.loadThumbnail(uri, Size(960, 600), null)
+                    }.getOrNull()
+                }
+                "file" -> runCatching { BitmapFactory.decodeFile(uri.path) }.getOrNull()
+                else -> null
+            }
+        }
+    }
+
+    Box(
+        modifier = Modifier
+            .fillMaxWidth()
+            .aspectRatio(16f / 10f)
+            .clip(RoundedCornerShape(12.dp))
+            .background(
+                if (userMessage) Color.White.copy(alpha = 0.08f) else ADColors.Surface,
+            ),
+        contentAlignment = Alignment.Center,
+    ) {
+        thumbnail?.let {
+            Image(
+                bitmap = it.asImageBitmap(),
                 contentDescription = null,
-                tint = if (userMessage) Color.White else ADColors.Ink,
-                modifier = Modifier.size(20.dp),
+                modifier = Modifier.fillMaxSize(),
+                contentScale = ContentScale.Crop,
             )
-        }
-        Column(Modifier.padding(start = 11.dp).weight(1f)) {
-            Text(
-                block.label.ifBlank { kindLabel },
-                style = MaterialTheme.typography.titleSmall,
-                color = if (userMessage) Color.White else ADColors.Ink,
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis,
-            )
-            Text(
-                "$kindLabel · $detail",
-                style = MaterialTheme.typography.bodySmall,
-                color = if (userMessage) Color.White.copy(alpha = 0.72f) else ADColors.Muted,
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis,
-            )
-        }
-        Spacer(Modifier.size(6.dp))
-        Icon(
-            Icons.Rounded.KeyboardArrowRight,
-            contentDescription = "Open",
-            tint = if (userMessage) Color.White.copy(alpha = 0.72f) else ADColors.Muted,
+        } ?: Icon(
+            if (video) Icons.Outlined.Videocam else Icons.Outlined.Image,
+            contentDescription = null,
+            tint = if (userMessage) Color.White.copy(alpha = 0.75f) else ADColors.Muted,
+            modifier = Modifier.size(34.dp),
         )
+
+        if (video) {
+            Box(
+                modifier = Modifier
+                    .size(44.dp)
+                    .background(ADColors.Ink.copy(alpha = 0.78f), CircleShape),
+                contentAlignment = Alignment.Center,
+            ) {
+                Icon(
+                    Icons.Outlined.PlayArrow,
+                    contentDescription = "Play video",
+                    tint = Color.White,
+                    modifier = Modifier.size(24.dp),
+                )
+            }
+        }
     }
 }
 
