@@ -10,7 +10,7 @@ class ADScreenInventoryTest {
     @Test
     fun primaryTabsStayFocusedOnGlassesFirstProduct() {
         assertEquals(
-            listOf("Home", "Conversations", "Library", "Modes"),
+            listOf("Home", "Chats", "Library", "Tasks", "AI"),
             ADTab.entries.map { it.label },
         )
     }
@@ -32,7 +32,7 @@ class ADScreenInventoryTest {
                 "ADVANCED",
                 "ABOUT",
                 "FIRMWARE",
-                "AUTOMATION_DETAIL",
+                "TASK_DETAIL",
                 "LIBRARY_CAPTURES",
                 "LIBRARY_RECORDINGS",
                 "LIBRARY_NOTES",
@@ -49,14 +49,13 @@ class ADScreenInventoryTest {
 
         val requiredMappings = listOf(
             "ADTab.HOME -> ADHomeSurface(",
-            "ADTab.ASSISTANT -> ADNativeConversationScreen(",
+            "ADTab.CHATS -> ADNativeConversationScreen(",
             "ADTab.LIBRARY -> ADNativeLibraryScreen(",
-            "ADTab.AUTOMATIONS -> ADModesScreen(",
+            "ADTab.TASKS -> ADTasksScreen(",
+            "ADTab.AI -> ADNativeAiScreen()",
             "ADRoute.DEVICE_CENTER -> ADGlassesDeviceCenterScreen(",
             "ADRoute.SYNC -> ADSyncScreen(",
-            "ADRoute.SETTINGS -> ADSettingsHubScreen(",
-            "ADRoute.AI_SERVICES -> ADIntelligenceScreen(",
-            "ADRoute.ROUTING -> ADRoutingScreen(",
+            "ADRoute.SETTINGS -> ADNativeSettingsHubScreen(",
             "ADRoute.PRIVACY -> ADPrivacyCenterScreen(",
             "ADRoute.STORAGE -> ADStorageScreen(",
             "ADRoute.LANGUAGE -> ADLanguageScreen(",
@@ -64,7 +63,7 @@ class ADScreenInventoryTest {
             "ADRoute.ADVANCED -> ADAdvancedScreen(",
             "ADRoute.ABOUT -> ADAboutScreen(",
             "ADRoute.FIRMWARE -> ADFirmwareScreen(",
-            "ADRoute.AUTOMATION_DETAIL -> ADNativeModeDetailScreen(",
+            "ADRoute.TASK_DETAIL -> ADNativeTaskDetailScreen(",
             "ADRoute.LIBRARY_CAPTURES -> ADNativeCapturesScreen(",
             "ADRoute.LIBRARY_RECORDINGS -> ADNativeRecordingsScreen(",
             "ADRoute.LIBRARY_NOTES -> ADNativeNotesScreen(",
