@@ -49,6 +49,7 @@ import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.fersaiyan.cyanbridge.R
+import com.fersaiyan.cyanbridge.devices.ADDeviceSupportPolicy
 import com.fersaiyan.cyanbridge.devices.DeviceProfileStore
 import com.fersaiyan.cyanbridge.shared.glasses.GlassesDashboardUiState
 
@@ -68,8 +69,12 @@ internal fun ADHomeSurface(
     var captureSheet by remember { mutableStateOf(false) }
     val context = LocalContext.current
     val profile = DeviceProfileStore.loadLastSelected(context)
+        ?.takeIf { ADDeviceSupportPolicy.isPairable(it.selectedClass) }
     val device = buildADDevicePresentation(state, profile)
-    val activeMode = state.nativePluginShortcut?.takeIf { it.isEnabled }?.title
+    val runtimeModeTitle = state.nativePluginShortcut?.takeIf { it.isEnabled }?.title
+    val activeModeTitle = runtimeModeTitle?.let { runtimeTitle ->
+        ADAutomation.entries.firstOrNull { it.runtimeTitle == runtimeTitle }?.title ?: "Mode"
+    }
 
     Column(Modifier.fillMaxSize()) {
         ADTopBar(showBrand = true, showSettings = true, onSettings = onOpenSettings)
@@ -96,7 +101,7 @@ internal fun ADHomeSurface(
                 )
             }
 
-            if (state.meeting.isRecording || state.transfer.isVisible || activeMode != null) {
+            if (state.meeting.isRecording || state.transfer.isVisible || activeModeTitle != null) {
                 item {
                     Column(verticalArrangement = Arrangement.spacedBy(9.dp)) {
                         Text("Active", style = MaterialTheme.typography.titleLarge)
@@ -118,7 +123,7 @@ internal fun ADHomeSurface(
                                 onClick = onOpenSync,
                             )
                         }
-                        activeMode?.let {
+                        activeModeTitle?.let {
                             ADLiveRow(
                                 icon = Icons.Outlined.AutoAwesome,
                                 title = it,
