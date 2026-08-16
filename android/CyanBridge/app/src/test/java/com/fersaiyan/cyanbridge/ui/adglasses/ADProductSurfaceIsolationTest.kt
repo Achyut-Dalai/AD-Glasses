@@ -22,6 +22,8 @@ class ADProductSurfaceIsolationTest {
             ".ui.notes.NoteDetailActivity",
             ".ui.recordings.RecordingsListActivity",
             ".ui.recordings.SyncedMediaGalleryActivity",
+            ".ui.BatteryOptimizationGuideActivity",
+            ".ui.OnboardingFeatureActivity",
         )
 
         replacedActivities.forEach { activity ->
@@ -33,10 +35,19 @@ class ADProductSurfaceIsolationTest {
     }
 
     @Test
+    fun obsoleteOnboardingSourceIsDeleted() {
+        val uiDir = sourceFile("src/main/java/com/fersaiyan/cyanbridge/ui")
+        assertFalse(File(uiDir, "BatteryOptimizationGuideActivity.kt").exists())
+        assertFalse(File(uiDir, "OnboardingFeatureActivity.kt").exists())
+        assertTrue(File(uiDir, "WelcomeActivity.kt").isFile)
+    }
+
+    @Test
     fun obsoleteAdUiBundlesAreDeletedButDeviceToolsRemainNative() {
         val uiDir = sourceFile("src/main/java/com/fersaiyan/cyanbridge/ui/adglasses")
         assertFalse(File(uiDir, "ADMainScreens.kt").exists())
         assertFalse(File(uiDir, "ADDetailScreens.kt").exists())
+        assertFalse(File(uiDir, "ADModeNativeModel.kt").exists())
 
         assertTrue(File(uiDir, "ADHomeSurface.kt").isFile)
         assertTrue(File(uiDir, "ADNativeConversationScreen.kt").isFile)
