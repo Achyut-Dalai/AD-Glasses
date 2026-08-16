@@ -17,11 +17,10 @@ import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicTextField
+import androidx.compose.foundation.text.KeyboardActions
+import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.Add
-import androidx.compose.material.icons.outlined.CameraAlt
-import androidx.compose.material.icons.outlined.Mic
-import androidx.compose.material.icons.outlined.Public
 import androidx.compose.material.icons.rounded.ArrowUpward
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
@@ -40,6 +39,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import com.fersaiyan.cyanbridge.agent.LocalAgentPrefs
@@ -58,8 +58,6 @@ import kotlinx.coroutines.launch
 /** Native phone continuation for the same durable conversation used by the glasses. */
 @Composable
 internal fun ADNativeConversationScreen(
-    onVoiceQuestion: () -> Unit,
-    onImageQuestion: () -> Unit,
     navigationRequest: ADNavigationRequest? = null,
     onNavigationRequestApplied: (Long) -> Unit = {},
 ) {
@@ -82,6 +80,13 @@ internal fun ADNativeConversationScreen(
     var pendingPrompt by remember { mutableStateOf<String?>(null) }
     var errorText by remember { mutableStateOf<String?>(null) }
 
+    val pendingAlreadyPersisted = pendingPrompt?.let { prompt ->
+        messages.asReversed()
+            .firstOrNull { it.role == ChatRole.USER }
+            ?.content
+            ?.trim() == prompt.trim()
+    } == true
+
     fun refresh() {
         messages = ChatStore.listMessages(threadId)
     }
@@ -89,7 +94,9 @@ internal fun ADNativeConversationScreen(
     fun send() {
         val prompt = message.trim()
         if (prompt.isEmpty() || sending) return
+        val useWeb = webSearch
         message = ""
+        webSearch = false
         pendingPrompt = prompt
         sending = true
         errorText = null
@@ -99,7 +106,7 @@ internal fun ADNativeConversationScreen(
                     turn = AssistantTurn(
                         text = prompt,
                         surface = AssistantInputSurface.PHONE_TEXT,
-                        webRequested = if (webSearch) true else null,
+                        webRequested = if (useWeb) true else null,
                     ),
                     providerType = LocalAgentPrefs.getProviderType(context),
                 )
@@ -120,12 +127,13 @@ internal fun ADNativeConversationScreen(
         threadId = requestedThreadId
         messages = ChatStore.listMessages(requestedThreadId)
         request.prefill?.takeIf { it.isNotBlank() }?.let { message = it }
+        webSearch = request.webSearchRequested
         errorText = null
         onNavigationRequestApplied(request.id)
     }
 
     // Glasses-originated turns use the same durable session. Refresh while this surface is
-    // visible so the phone can act as a live review surface without requiring a reopen.
+    // visible so the phone stays a live review surface without requiring a reopen.
     LaunchedEffect(threadId) {
         while (isActive) {
             delay(CONVERSATION_REFRESH_MS)
@@ -139,9 +147,10 @@ internal fun ADNativeConversationScreen(
         }
     }
 
-    LaunchedEffect(messages.size, pendingPrompt, errorText) {
+    LaunchedEffect(messages.size, pendingPrompt, pendingAlreadyPersisted, errorText) {
         val dynamicCount = messages.size +
-            (if (pendingPrompt != null) 2 else 0) +
+            (if (pendingPrompt != null && !pendingAlreadyPersisted) 1 else 0) +
+            (if (pendingPrompt != null) 1 else 0) +
             (if (errorText != null) 1 else 0)
         if (dynamicCount > 0) {
             runCatching { listState.animateScrollToItem(dynamicCount - 1) }
@@ -153,17 +162,19 @@ internal fun ADNativeConversationScreen(
             modifier = Modifier.fillMaxWidth().padding(start = 16.dp, end = 8.dp, top = 8.dp, bottom = 6.dp),
             verticalAlignment = Alignment.CenterVertically,
         ) {
-            Text("Conversations", style = MaterialTheme.typography.headlineSmall, modifier = Modifier.weight(1f))
+            Text("Chats", style = MaterialTheme.typography.headlineSmall, modifier = Modifier.weight(1f))
             IconButton(
                 onClick = {
                     if (!sending) {
                         threadId = orchestrator.startNewConversation()
                         messages = emptyList()
+                        message = ""
+                        webSearch = false
                         errorText = null
                     }
                 },
             ) {
-                Icon(Icons.Outlined.Add, contentDescription = "New conversation")
+                Icon(Icons.Outlined.Add, contentDescription = "New chat")
             }
         }
 
@@ -173,10 +184,10 @@ internal fun ADNativeConversationScreen(
             contentPadding = androidx.compose.foundation.layout.PaddingValues(
                 start = 16.dp,
                 end = 16.dp,
-                top = 10.dp,
-                bottom = 16.dp,
+                top = 12.dp,
+                bottom = 18.dp,
             ),
-            verticalArrangement = Arrangement.spacedBy(10.dp),
+            verticalArrangement = Arrangement.spacedBy(13.dp),
         ) {
             if (messages.isEmpty() && pendingPrompt == null) {
                 item(key = "empty") {
@@ -184,13 +195,19 @@ internal fun ADNativeConversationScreen(
                         modifier = Modifier.fillParentMaxSize(),
                         contentAlignment = Alignment.Center,
                     ) {
-                        Text(
-                            "Conversations from the glasses appear here.\nContinue from the phone whenever you need the screen.",
-                            style = MaterialTheme.typography.bodyLarge,
-                            color = ADColors.Muted,
-                            textAlign = TextAlign.Center,
-                            modifier = Modifier.padding(horizontal = 34.dp),
-                        )
+                        Column(
+                            horizontalAlignment = Alignment.CenterHorizontally,
+                            modifier = Modifier.padding(horizontal = 36.dp),
+                        ) {
+                            Text("Start a chat", style = MaterialTheme.typography.titleLarge)
+                            Spacer(Modifier.size(7.dp))
+                            Text(
+                                "Messages from the glasses and phone stay together here.",
+                                style = MaterialTheme.typography.bodyMedium,
+                                color = ADColors.Muted,
+                                textAlign = TextAlign.Center,
+                            )
+                        }
                     }
                 }
             }
@@ -199,10 +216,13 @@ internal fun ADNativeConversationScreen(
                 ADMessageBubble(chatMessage)
             }
 
-            pendingPrompt?.let { prompt ->
+            pendingPrompt?.takeUnless { pendingAlreadyPersisted }?.let { prompt ->
                 item(key = "pending-user") {
                     ADPendingUserBubble(prompt)
                 }
+            }
+
+            if (pendingPrompt != null) {
                 item(key = "pending-reply") {
                     Row(
                         modifier = Modifier.fillMaxWidth(),
@@ -225,18 +245,12 @@ internal fun ADNativeConversationScreen(
 
             errorText?.let { error ->
                 item(key = "error") {
-                    Box(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .background(ADColors.Surface, RoundedCornerShape(16.dp))
-                            .padding(13.dp),
-                    ) {
-                        Text(
-                            text = error,
-                            style = MaterialTheme.typography.bodyMedium,
-                            color = ADColors.Error,
-                        )
-                    }
+                    Text(
+                        text = error,
+                        modifier = Modifier.fillMaxWidth().padding(horizontal = 2.dp, vertical = 5.dp),
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = ADColors.Error,
+                    )
                 }
             }
         }
@@ -247,67 +261,57 @@ internal fun ADNativeConversationScreen(
                 .background(ADColors.Background)
                 .padding(horizontal = 12.dp, vertical = 10.dp),
         ) {
-            Column(
+            if (webSearch) {
+                Text(
+                    "Web Search",
+                    style = MaterialTheme.typography.labelMedium,
+                    color = ADColors.Blue,
+                    modifier = Modifier.padding(start = 12.dp, bottom = 6.dp),
+                )
+            }
+            Row(
                 modifier = Modifier
                     .fillMaxWidth()
                     .background(ADColors.Surface, RoundedCornerShape(24.dp))
-                    .padding(start = 15.dp, end = 8.dp, top = 12.dp, bottom = 7.dp),
+                    .padding(start = 16.dp, end = 7.dp, top = 8.dp, bottom = 8.dp),
+                verticalAlignment = Alignment.Bottom,
             ) {
                 BasicTextField(
                     value = message,
                     onValueChange = { message = it },
-                    modifier = Modifier.fillMaxWidth().heightIn(min = 42.dp, max = 132.dp),
+                    modifier = Modifier.weight(1f).heightIn(min = 40.dp, max = 128.dp).padding(vertical = 8.dp),
                     textStyle = MaterialTheme.typography.bodyLarge.copy(color = ADColors.Ink),
                     cursorBrush = SolidColor(ADColors.Ink),
+                    keyboardOptions = KeyboardOptions(imeAction = ImeAction.Send),
+                    keyboardActions = KeyboardActions(onSend = { send() }),
+                    maxLines = 5,
                     decorationBox = { textField ->
-                        Box(contentAlignment = Alignment.TopStart) {
+                        Box(contentAlignment = Alignment.CenterStart) {
                             if (message.isBlank()) {
-                                Text("Message", style = MaterialTheme.typography.bodyLarge, color = ADColors.Muted)
+                                Text(
+                                    if (webSearch) "Search the web" else "Message",
+                                    style = MaterialTheme.typography.bodyLarge,
+                                    color = ADColors.Muted,
+                                )
                             }
                             textField()
                         }
                     },
                 )
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    verticalAlignment = Alignment.CenterVertically,
+                IconButton(
+                    onClick = { send() },
+                    enabled = message.isNotBlank() && !sending,
+                    modifier = Modifier.size(40.dp).background(
+                        if (message.isNotBlank() && !sending) ADColors.Ink else ADColors.SurfaceSubtle,
+                        CircleShape,
+                    ),
                 ) {
-                    IconButton(onClick = onImageQuestion, enabled = !sending, modifier = Modifier.size(38.dp)) {
-                        Icon(Icons.Outlined.CameraAlt, "Ask what I see", tint = ADColors.Muted, modifier = Modifier.size(20.dp))
-                    }
-                    IconButton(onClick = onVoiceQuestion, enabled = !sending, modifier = Modifier.size(38.dp)) {
-                        Icon(Icons.Outlined.Mic, "Voice", tint = ADColors.Muted, modifier = Modifier.size(20.dp))
-                    }
-                    IconButton(
-                        onClick = { webSearch = !webSearch },
-                        enabled = !sending,
-                        modifier = Modifier
-                            .size(38.dp)
-                            .background(if (webSearch) ADColors.BlueSoft else Color.Transparent, CircleShape),
-                    ) {
-                        Icon(
-                            Icons.Outlined.Public,
-                            "Web Search",
-                            tint = if (webSearch) ADColors.Blue else ADColors.Muted,
-                            modifier = Modifier.size(19.dp),
-                        )
-                    }
-                    Spacer(Modifier.weight(1f))
-                    IconButton(
-                        onClick = { send() },
-                        enabled = message.isNotBlank() && !sending,
-                        modifier = Modifier.size(40.dp).background(
-                            if (message.isNotBlank() && !sending) ADColors.Ink else ADColors.SurfaceSubtle,
-                            CircleShape,
-                        ),
-                    ) {
-                        Icon(
-                            Icons.Rounded.ArrowUpward,
-                            contentDescription = "Send",
-                            tint = if (message.isNotBlank() && !sending) Color.White else ADColors.Muted,
-                            modifier = Modifier.size(21.dp),
-                        )
-                    }
+                    Icon(
+                        Icons.Rounded.ArrowUpward,
+                        contentDescription = "Send",
+                        tint = if (message.isNotBlank() && !sending) Color.White else ADColors.Muted,
+                        modifier = Modifier.size(21.dp),
+                    )
                 }
             }
         }
