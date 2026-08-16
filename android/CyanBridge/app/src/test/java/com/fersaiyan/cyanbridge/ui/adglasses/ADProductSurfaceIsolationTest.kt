@@ -46,7 +46,7 @@ class ADProductSurfaceIsolationTest {
     }
 
     @Test
-    fun adNavigationRootDoesNotUseCompatibilityEscapeCallbacks() {
+    fun adNavigationRootDoesNotUseCompatibilityEscapeCallbacksOrOldSurfaces() {
         val source = sourceFile(
             "src/main/java/com/fersaiyan/cyanbridge/ui/adglasses/ADGlassesApp.kt",
         ).readText()
@@ -59,8 +59,11 @@ class ADProductSurfaceIsolationTest {
             "host.onOpenNotes",
             "host.onOpenLegacySettings",
             "host.onOpenAutomationSettings",
+            "ADDeviceCenterScreen(",
+            "ADSettingsScreen(",
+            "ADAiServicesScreen(",
         ).forEach { token ->
-            assertFalse("AD navigation root must not invoke compatibility callback $token", source.contains(token))
+            assertFalse("AD navigation root must not use compatibility token $token", source.contains(token))
         }
     }
 
