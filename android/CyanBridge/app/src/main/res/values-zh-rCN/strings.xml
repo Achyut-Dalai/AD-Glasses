@@ -1,5 +1,5 @@
 <resources>
-    <string name="app_name">CyanBridge</string>
+    <string name="app_name">AD Glasses</string>
     <string name="language_system_default">跟随系统</string>
     <string name="language_selection_title">选择应用语言</string>
     <string name="action_cancel">取消</string>

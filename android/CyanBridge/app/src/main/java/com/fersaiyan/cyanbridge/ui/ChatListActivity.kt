@@ -84,6 +84,8 @@ class ChatListActivity : AppCompatActivity() {
                     },
                     onChatAppearance = ::showChatAppearanceMenu,
                     onDestinationSelected = ::navigateTo,
+                    showAppNavigation = false,
+                    onNavigateBack = ::finish,
                 )
                 if (chatAppearanceMenuVisible) {
                     ChatAppearanceMenuDialog(

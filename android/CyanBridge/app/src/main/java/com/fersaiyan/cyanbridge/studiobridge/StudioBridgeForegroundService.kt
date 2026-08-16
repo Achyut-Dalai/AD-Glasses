@@ -42,7 +42,7 @@ class StudioBridgeForegroundService : Service() {
             PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE,
         )
         val notification = NotificationCompat.Builder(this, CHANNEL_ID)
-            .setSmallIcon(R.mipmap.ic_launcher)
+            .setSmallIcon(R.drawable.ic_stat_ad_glasses)
             .setContentTitle("Studio Bridge connected")
             .setContentText("Listening for voice approval requests")
             .setContentIntent(openApp)

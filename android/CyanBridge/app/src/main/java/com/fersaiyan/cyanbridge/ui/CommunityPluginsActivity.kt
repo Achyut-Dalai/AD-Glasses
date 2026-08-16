@@ -213,6 +213,8 @@ class CommunityPluginsActivity : AppCompatActivity() {
                         startActivity(Intent(this, PublishPluginActivity::class.java))
                     },
                     onDestinationSelected = ::navigateTo,
+                    showAppNavigation = false,
+                    onNavigateBack = ::finish,
                 )
             }
         }

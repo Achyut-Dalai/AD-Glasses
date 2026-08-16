@@ -54,6 +54,7 @@ import androidx.compose.ui.unit.dp
 import com.fersaiyan.cyanbridge.shared.generated.resources.*
 import com.fersaiyan.cyanbridge.shared.navigation.AppDestination
 import com.fersaiyan.cyanbridge.shared.navigation.icon
+import com.fersaiyan.cyanbridge.shared.icons.AppIcon
 import com.fersaiyan.cyanbridge.shared.icons.imageVector
 import com.fersaiyan.cyanbridge.shared.plugins.CommunityPluginCardData
 import com.fersaiyan.cyanbridge.shared.plugins.NativePluginCardData
@@ -77,6 +78,8 @@ fun CommunityPluginsScreen(
     nativePlugins: List<NativePluginCardData> = emptyList(),
     onOpenNativePluginSettings: (String) -> Unit = {},
     onToggleNativePlugin: (String, Boolean) -> Unit = { _, _ -> },
+    showAppNavigation: Boolean = true,
+    onNavigateBack: (() -> Unit)? = null,
 ) {
     var selectedPluginTitle by rememberSaveable { mutableStateOf<String?>(null) }
     var detailsPluginTitle by rememberSaveable { mutableStateOf<String?>(null) }
@@ -89,6 +92,13 @@ fun CommunityPluginsScreen(
         topBar = {
             TopAppBar(
                  title = { Text(stringResource(Res.string.plugins_title)) },
+                navigationIcon = {
+                    if (onNavigateBack != null) {
+                        IconButton(onClick = onNavigateBack) {
+                            Icon(AppIcon.Back.imageVector(), contentDescription = "Back")
+                        }
+                    }
+                },
                 actions = {
                     IconButton(
                         onClick = onRefresh,
@@ -107,19 +117,21 @@ fun CommunityPluginsScreen(
             )
         },
         bottomBar = {
-            NavigationBar {
-                AppDestination.entries.forEach { destination ->
-                    NavigationBarItem(
-                        selected = destination == AppDestination.PLUGINS,
-                        onClick = { onDestinationSelected(destination) },
-                        icon = {
-                            Icon(
-                                imageVector = destination.icon.imageVector(),
-                                contentDescription = null,
-                            )
-                        },
-                         label = { Text(localizedDestinationLabel(destination)) },
-                    )
+            if (showAppNavigation) {
+                NavigationBar {
+                    AppDestination.entries.forEach { destination ->
+                        NavigationBarItem(
+                            selected = destination == AppDestination.PLUGINS,
+                            onClick = { onDestinationSelected(destination) },
+                            icon = {
+                                Icon(
+                                    imageVector = destination.icon.imageVector(),
+                                    contentDescription = null,
+                                )
+                            },
+                             label = { Text(localizedDestinationLabel(destination)) },
+                        )
+                    }
                 }
             }
         },

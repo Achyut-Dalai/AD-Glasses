@@ -23,10 +23,8 @@ import com.fersaiyan.cyanbridge.devices.eyevue.EyevueManager
 import com.fersaiyan.cyanbridge.devices.metarayban.MetaRaybanManager
 import com.fersaiyan.cyanbridge.devices.meizumyvu.MeizuMyvuManager
 import com.fersaiyan.cyanbridge.devices.ScannedDevice
-import com.fersaiyan.cyanbridge.ui.appearance.AppearancePreferences
-import com.fersaiyan.cyanbridge.ui.appearance.rememberAppearanceSettings
 import com.fersaiyan.cyanbridge.shared.ui.DeviceBindScreen
-import com.fersaiyan.cyanbridge.ui.theme.CyanBridgeTheme
+import com.fersaiyan.cyanbridge.ui.adglasses.ADGlassesTheme
 import com.hjq.permissions.OnPermissionCallback
 import com.hjq.permissions.XXPermissions
 import com.oudmon.ble.base.bluetooth.BleOperateManager
@@ -54,16 +52,15 @@ class DeviceBindActivity : BaseActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         EventBus.getDefault().register(this)
-        val appearancePreferences = AppearancePreferences(this)
         setContent {
-            val appearance by rememberAppearanceSettings(appearancePreferences)
-            CyanBridgeTheme(appearance) {
+            ADGlassesTheme {
                 DeviceBindScreen(
                     devices = scannedDevices.map { it.toShared() },
                     isScanning = isScanning,
                     connectingDevice = connectingDevice?.toShared(),
                     selectedClass = selectedDeviceClass,
                     onScan = ::startScan,
+                    onStopScan = ::stopScan,
                     onSelectDevice = { sharedDevice ->
                         val device = deviceList.firstOrNull {
                             it.macAddress.equals(sharedDevice.macAddress, ignoreCase = true)
@@ -120,6 +117,12 @@ class DeviceBindActivity : BaseActivity() {
         isScanning = true
         BleScannerHelper.getInstance().scanDevice(this, null, bleScanCallback)
         handler.postDelayed(scanTimeout, 15_000)
+    }
+
+    private fun stopScan() {
+        handler.removeCallbacks(scanTimeout)
+        BleScannerHelper.getInstance().stopScan(this)
+        isScanning = false
     }
 
     private fun confirmConnection() {

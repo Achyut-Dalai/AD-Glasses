@@ -54,6 +54,7 @@ import androidx.compose.foundation.text.KeyboardOptions
 import com.fersaiyan.cyanbridge.shared.generated.resources.*
 import com.fersaiyan.cyanbridge.shared.navigation.AppDestination
 import com.fersaiyan.cyanbridge.shared.navigation.icon
+import com.fersaiyan.cyanbridge.shared.icons.AppIcon
 import com.fersaiyan.cyanbridge.shared.icons.imageVector
 import com.fersaiyan.cyanbridge.shared.settings.AgentProviderType
 import com.fersaiyan.cyanbridge.shared.settings.CaptureSource
@@ -127,26 +128,39 @@ fun SettingsScreen(
     expandedSections: Set<SettingsSection>,
     onToggleSection: (SettingsSection) -> Unit,
     actions: SettingsScreenActions,
+    showAppNavigation: Boolean = true,
+    onNavigateBack: (() -> Unit)? = null,
 ) {
     Scaffold(
         contentWindowInsets = WindowInsets.safeDrawing,
         topBar = {
-            TopAppBar(title = { Text(stringResource(Res.string.settings_title)) })
+            TopAppBar(
+                title = { Text(stringResource(Res.string.settings_title)) },
+                navigationIcon = {
+                    if (onNavigateBack != null) {
+                        androidx.compose.material3.IconButton(onClick = onNavigateBack) {
+                            Icon(AppIcon.Back.imageVector(), contentDescription = "Back")
+                        }
+                    }
+                },
+            )
         },
         bottomBar = {
-            NavigationBar {
-                AppDestination.entries.forEach { destination ->
-                    NavigationBarItem(
-                        selected = destination == AppDestination.SETTINGS,
-                        onClick = { actions.onDestinationSelected(destination) },
-                        icon = {
-                            Icon(
-                                imageVector = destination.icon.imageVector(),
-                                contentDescription = null,
-                            )
-                        },
-                        label = { Text(localizedDestinationLabel(destination)) },
-                    )
+            if (showAppNavigation) {
+                NavigationBar {
+                    AppDestination.entries.forEach { destination ->
+                        NavigationBarItem(
+                            selected = destination == AppDestination.SETTINGS,
+                            onClick = { actions.onDestinationSelected(destination) },
+                            icon = {
+                                Icon(
+                                    imageVector = destination.icon.imageVector(),
+                                    contentDescription = null,
+                                )
+                            },
+                            label = { Text(localizedDestinationLabel(destination)) },
+                        )
+                    }
                 }
             }
         },

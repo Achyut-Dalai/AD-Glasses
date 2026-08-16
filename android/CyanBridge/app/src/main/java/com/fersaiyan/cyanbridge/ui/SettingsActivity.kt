@@ -112,6 +112,8 @@ class SettingsActivity : AppCompatActivity(), SettingsScreenActions {
                     expandedSections = expandedSections,
                     onToggleSection = ::toggleSection,
                     actions = this@SettingsActivity,
+                    showAppNavigation = false,
+                    onNavigateBack = ::finish,
                 )
             }
         }

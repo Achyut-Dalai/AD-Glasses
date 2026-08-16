@@ -50,7 +50,7 @@ object HandsFreeTranslatorNotificationHelper {
         )
 
         return NotificationCompat.Builder(context, CHANNEL_ID)
-            .setSmallIcon(R.mipmap.ic_launcher)
+            .setSmallIcon(R.drawable.ic_stat_ad_glasses)
             .setContentTitle("Hands-Free Translator")
             .setContentText(content)
             .setStyle(NotificationCompat.BigTextStyle().bigText(content))

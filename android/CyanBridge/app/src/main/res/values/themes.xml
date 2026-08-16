@@ -1,14 +1,19 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <style name="Theme.CyanBridgeManager" parent="Theme.MaterialComponents.DayNight.NoActionBar">
-        <!-- CyanBridge AI branding (MVP) -->
-        <item name="colorPrimary">@color/cyan_accent</item>
-        <item name="colorPrimaryVariant">@color/card_bg</item>
-        <item name="colorSecondary">@color/cyan_accent</item>
+    <style name="Theme.CyanBridgeManager" parent="Theme.MaterialComponents.Light.NoActionBar">
+        <item name="colorPrimary">@color/ad_blue</item>
+        <item name="colorPrimaryVariant">@color/ad_blue</item>
+        <item name="colorSecondary">@color/ad_blue</item>
 
-        <item name="android:windowBackground">@color/bg_dark</item>
-        <item name="android:statusBarColor">@color/bg_dark</item>
-        <item name="android:navigationBarColor">@color/card_bg</item>
+        <item name="android:windowBackground">@color/ad_background</item>
+        <item name="android:windowSplashScreenBackground">@color/ad_background</item>
+        <item name="android:windowSplashScreenAnimatedIcon">@mipmap/ic_launcher</item>
+        <item name="android:windowSplashScreenIconBackgroundColor">@color/ad_surface</item>
+        <item name="android:statusBarColor">@color/ad_background</item>
+        <item name="android:navigationBarColor">@color/ad_surface</item>
+        <item name="android:windowLightStatusBar">true</item>
+        <item name="android:windowLightNavigationBar">true</item>
+        <item name="android:forceDarkAllowed">false</item>
 
         <item name="windowActionBar">false</item>
         <item name="windowNoTitle">true</item>

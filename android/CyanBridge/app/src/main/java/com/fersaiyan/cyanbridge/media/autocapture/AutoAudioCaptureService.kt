@@ -504,7 +504,7 @@ class AutoAudioCaptureService : Service() {
         )
 
         return NotificationCompat.Builder(this, CHANNEL_ID)
-            .setSmallIcon(R.mipmap.ic_launcher)
+            .setSmallIcon(R.drawable.ic_stat_ad_glasses)
             .setContentTitle("Auto audio capture")
             .setContentText(content)
             .setStyle(NotificationCompat.BigTextStyle().bigText(content))

@@ -1,5 +1,5 @@
 <resources>
-    <string name="app_name">CyanBridge</string>
+    <string name="app_name">AD Glasses</string>
     <string name="language_system_default">Systemstandard</string>
     <string name="language_selection_title">App-Sprache auswählen</string>
     <string name="action_cancel">Abbrechen</string>

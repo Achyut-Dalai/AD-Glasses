@@ -64,6 +64,7 @@ import com.fersaiyan.cyanbridge.shared.recordings.TranscriptionEngine
 import com.fersaiyan.cyanbridge.shared.recordings.TranscriptionProgressUiState
 import com.fersaiyan.cyanbridge.shared.navigation.AppDestination
 import com.fersaiyan.cyanbridge.shared.navigation.icon
+import com.fersaiyan.cyanbridge.shared.icons.AppIcon
 import com.fersaiyan.cyanbridge.shared.icons.imageVector
 import com.fersaiyan.cyanbridge.shared.generated.resources.*
 import com.fersaiyan.cyanbridge.shared.ui.localizedDestinationLabel
@@ -96,12 +97,21 @@ fun RecordingsScreen(
     onDismissEngineChooser: () -> Unit,
     onDismissTranscript: () -> Unit,
     onDestinationSelected: (AppDestination) -> Unit = {},
+    showAppNavigation: Boolean = true,
+    onNavigateBack: (() -> Unit)? = null,
 ) {
     Scaffold(
         contentWindowInsets = WindowInsets.safeDrawing,
         topBar = {
             TopAppBar(
                  title = { Text(stringResource(Res.string.recordings_title)) },
+                navigationIcon = {
+                    if (onNavigateBack != null) {
+                        IconButton(onClick = onNavigateBack) {
+                            Icon(AppIcon.Back.imageVector(), contentDescription = "Back")
+                        }
+                    }
+                },
                 actions = {
                     IconButton(onClick = onOpenSyncedMedia) {
                         Icon(
@@ -113,19 +123,21 @@ fun RecordingsScreen(
             )
         },
         bottomBar = {
-            NavigationBar {
-                AppDestination.entries.forEach { destination ->
-                    NavigationBarItem(
-                        selected = destination == AppDestination.MEDIA,
-                        onClick = { onDestinationSelected(destination) },
-                        icon = {
-                            Icon(
-                                imageVector = destination.icon.imageVector(),
-                                contentDescription = null,
-                            )
-                        },
-                         label = { Text(localizedDestinationLabel(destination)) },
-                    )
+            if (showAppNavigation) {
+                NavigationBar {
+                    AppDestination.entries.forEach { destination ->
+                        NavigationBarItem(
+                            selected = destination == AppDestination.MEDIA,
+                            onClick = { onDestinationSelected(destination) },
+                            icon = {
+                                Icon(
+                                    imageVector = destination.icon.imageVector(),
+                                    contentDescription = null,
+                                )
+                            },
+                             label = { Text(localizedDestinationLabel(destination)) },
+                        )
+                    }
                 }
             }
         },

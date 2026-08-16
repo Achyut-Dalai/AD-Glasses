@@ -150,6 +150,8 @@ class RecordingsListActivity : AppCompatActivity() {
                     onDismissEngineChooser = { pendingTranscriptionSession = null },
                     onDismissTranscript = { transcriptDialog = null },
                     onDestinationSelected = ::navigateTo,
+                    showAppNavigation = false,
+                    onNavigateBack = ::finish,
                 )
             }
         }

@@ -83,8 +83,20 @@ import com.fersaiyan.cyanbridge.plugins.livecaptionrelay.LiveCaptionRelayPrefere
 import com.fersaiyan.cyanbridge.plugins.livecaptionrelay.LiveCaptionRelayService
 import com.fersaiyan.cyanbridge.plugins.meetingsparknotes.MeetingSparkNotesPreferences
 import com.fersaiyan.cyanbridge.plugins.meetingsparknotes.MeetingSparkNotesService
-// import com.fersaiyan.cyanbridge.ui.notes.NotesListActivity
+import com.fersaiyan.cyanbridge.plugins.autoaudio.AutoAudioSettingsActivity
+import com.fersaiyan.cyanbridge.plugins.autodiary.AutoDiarySettingsActivity
+import com.fersaiyan.cyanbridge.plugins.errandbrain.ErrandBrainSettingsActivity
+import com.fersaiyan.cyanbridge.plugins.handsfreetranslator.HandsFreeTranslatorSettingsActivity
+import com.fersaiyan.cyanbridge.plugins.livecaptionrelay.LiveCaptionRelaySettingsActivity
+import com.fersaiyan.cyanbridge.plugins.localagent.LocalAgentSettingsActivity
+import com.fersaiyan.cyanbridge.plugins.meetingsparknotes.MeetingSparkNotesSettingsActivity
+import com.fersaiyan.cyanbridge.plugins.visualdiary.VisualDiarySettingsActivity
+import com.fersaiyan.cyanbridge.ui.notes.NotesListActivity
 import com.fersaiyan.cyanbridge.ui.recordings.RecordingsListActivity
+import com.fersaiyan.cyanbridge.ui.recordings.SyncedMediaGalleryActivity
+import com.fersaiyan.cyanbridge.ui.adglasses.ADAutomation
+import com.fersaiyan.cyanbridge.ui.adglasses.ADGlassesApp
+import com.fersaiyan.cyanbridge.ui.adglasses.ADHostActions
 import com.fersaiyan.cyanbridge.ui.BluetoothUtils
 import com.fersaiyan.cyanbridge.ui.BluetoothEvent
 import com.fersaiyan.cyanbridge.ui.AutoPairManager
@@ -136,7 +148,6 @@ import android.os.Environment
 import org.greenrobot.eventbus.EventBus
 import org.greenrobot.eventbus.Subscribe
 import org.greenrobot.eventbus.ThreadMode
-import com.fersaiyan.cyanbridge.ui.BatteryOptimizationGuideActivity
 // import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.CancellationException
@@ -608,26 +619,49 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
         setupAgentControlsUi()
         setupMetaRaybanUi()
         refreshNativePluginShortcutState()
-        val appearancePreferences = AppearancePreferences(this)
         // Hide the view-based bottom navigation; the shared CMP nav shell owns it now.
         binding.bottomNavigation.visibility = View.GONE
         setContent {
-            val appearance by rememberAppearanceSettings(appearancePreferences)
-            CyanBridgeTheme(appearance) {
-                CyanBridgeApp(
-                    dashboardState = dashboardState,
-                    onDashboardAction = ::handleDashboardAction,
-                    showSyncFlowPicker = showDownloadFlowPicker,
-                    onSyncFlowPickerDismiss = { showDownloadFlowPicker = false },
-                    onSyncFlowSelected = { flow ->
-                        showDownloadFlowPicker = false
-                        Log.i("DataDownload", "User selected sync flow: ${flow.label}")
-                        startDataDownload(flow)
+            ADGlassesApp(
+                dashboardState = dashboardState,
+                host = ADHostActions(
+                    onScan = { handleDashboardAction(GlassesDashboardAction.Scan) },
+                    onReconnect = { handleDashboardAction(GlassesDashboardAction.Reconnect) },
+                    onDisconnect = { handleDashboardAction(GlassesDashboardAction.Disconnect) },
+                    onStartSync = { handleDashboardAction(GlassesDashboardAction.StartSync) },
+                    onStopSync = { handleDashboardAction(GlassesDashboardAction.StopSync) },
+                    onCapturePhoto = { handleDashboardAction(GlassesDashboardAction.CapturePhoto) },
+                    onToggleVideo = { handleDashboardAction(GlassesDashboardAction.ToggleVideo) },
+                    onStartRecording = { handleDashboardAction(GlassesDashboardAction.StartMeetingCapture) },
+                    onStopRecording = { handleDashboardAction(GlassesDashboardAction.StopMeetingCapture) },
+                    onVoiceQuestion = { handleDashboardAction(GlassesDashboardAction.TestVoiceQuestion) },
+                    onImageQuestion = { handleDashboardAction(GlassesDashboardAction.TestImageQuestion) },
+                    onOpenChat = { navigateToDestination(AppDestination.CHATS) },
+                    onOpenChatWithPrompt = { prompt ->
+                        startActivity(Intent(this@MainActivity, ChatThreadActivity::class.java).apply {
+                            putExtra(ChatThreadActivity.EXTRA_PREFILL_MESSAGE, prompt)
+                        })
                     },
-                    appearanceSettings = appearance,
-                    onNavigateToActivity = ::navigateToDestination,
-                )
-            }
+                    onOpenPhotos = {
+                        startActivity(Intent(this@MainActivity, SyncedMediaGalleryActivity::class.java))
+                    },
+                    onOpenMedia = { navigateToDestination(AppDestination.MEDIA) },
+                    onOpenNotes = {
+                        startActivity(Intent(this@MainActivity, NotesListActivity::class.java))
+                    },
+                    onOpenLegacySettings = { navigateToDestination(AppDestination.SETTINGS) },
+                    onOpenDeviceSetup = { startKtxActivity<DeviceBindActivity>() },
+                    onChooseFirmwareFiles = {
+                        handleDashboardAction(
+                            GlassesDashboardAction.RequestOtaFirmware(OtaFirmwareSource.PERSONAL_FILE),
+                        )
+                    },
+                    onCancelFirmware = {
+                        handleDashboardAction(GlassesDashboardAction.CancelOta)
+                    },
+                    onOpenAutomationSettings = ::openAutomationSettings,
+                ),
+            )
         }
         observeOtaState()
         observeLivePreviewState()
@@ -678,7 +712,6 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
         handleMetaRegistrationIntent(intent)
         handleTaskerCommand(intent)
 
-        BatteryOptimizationGuideActivity.launchIfNeeded(this)
     }
 
     override fun onStart() {
@@ -828,18 +861,11 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
                 }
         } catch (e: Exception) {
         }
+        // Do not request Nearby Devices merely because the dashboard became visible.
+        // Explore-without-pairing must stay usable; hardware actions request access
+        // just in time through ensureBluetoothPermission()/DeviceBindActivity.
         if (!hasBluetooth(this)) {
-            requestBluetoothPermission(this, BluetoothPermissionCallback())
-        }
-
-        // Check for Overlay permission needed for background launch
-        if (isAiHijackEnabled && !Settings.canDrawOverlays(this)) {
-            val intent = Intent(
-                Settings.ACTION_MANAGE_OVERLAY_PERMISSION,
-                Uri.parse("package:$packageName")
-            )
-            startActivityForResult(intent, 1234)
-            Toast.makeText(this, "Please enable Overlay permission for background AI", Toast.LENGTH_LONG).show()
+            Log.d("Permissions", "Nearby Devices not granted; waiting for a hardware action")
         }
 
         refreshAiQueryButtonsState()
@@ -1465,7 +1491,9 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
             GlassesDashboardAction.StartSync -> if (isEyevueSelected()) {
                 startEyevueMediaSync()
             } else {
-                binding.btnDataDownload.performClick()
+                // The Compose shell has no legacy flow-picker host. Start the proven
+                // resolver flow directly so the primary Sync action is never a no-op.
+                startDataDownload(mode = GlassesSyncFlow.CUSTOM)
             }
             GlassesDashboardAction.StopSync -> if (isEyevueSelected()) {
                 stopEyevueMediaSync()
@@ -1884,6 +1912,20 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
         }
     }
 
+    private fun openAutomationSettings(automation: ADAutomation) {
+        val target = when (automation) {
+            ADAutomation.LOCAL_AGENT -> LocalAgentSettingsActivity::class.java
+            ADAutomation.MEETING_NOTES -> MeetingSparkNotesSettingsActivity::class.java
+            ADAutomation.LIVE_CAPTIONS -> LiveCaptionRelaySettingsActivity::class.java
+            ADAutomation.TRANSLATOR -> HandsFreeTranslatorSettingsActivity::class.java
+            ADAutomation.ERRAND_BRAIN -> ErrandBrainSettingsActivity::class.java
+            ADAutomation.AUTO_DIARY -> AutoDiarySettingsActivity::class.java
+            ADAutomation.AUTO_AUDIO -> AutoAudioSettingsActivity::class.java
+            ADAutomation.VISUAL_DIARY -> VisualDiarySettingsActivity::class.java
+        }
+        startActivity(Intent(this, target))
+    }
+
     private fun initView() {
         setOnClickListener(
             binding.btnScan,
@@ -2251,9 +2293,11 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
         refreshAiModeButtons()
 
         binding.cbHijackEnabled.setOnCheckedChangeListener { _, isChecked ->
-
             isAiHijackEnabled = isChecked
-            if (isChecked) configureHeyCyanWakeWordIfNeeded()
+            if (isChecked) {
+                configureHeyCyanWakeWordIfNeeded()
+                requestAiOverlayPermissionIfNeeded()
+            }
             Toast.makeText(this, "Hijack ${if (isChecked) "Enabled" else "Disabled"}", Toast.LENGTH_SHORT).show()
         }
 
@@ -2266,6 +2310,21 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
             binding.cbImageAsAssistant.text = modeName
             Toast.makeText(this, "Image Hijack: $modeName", Toast.LENGTH_SHORT).show()
         }
+    }
+
+    private fun requestAiOverlayPermissionIfNeeded() {
+        if (Settings.canDrawOverlays(this)) return
+
+        val intent = Intent(
+            Settings.ACTION_MANAGE_OVERLAY_PERMISSION,
+            Uri.parse("package:$packageName"),
+        )
+        startActivityForResult(intent, 1234)
+        Toast.makeText(
+            this,
+            "Allow display over other apps for background AI",
+            Toast.LENGTH_LONG,
+        ).show()
     }
 
     private fun dumpOtaServerInfo() {

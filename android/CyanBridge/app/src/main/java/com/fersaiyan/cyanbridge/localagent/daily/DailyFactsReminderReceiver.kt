@@ -41,7 +41,7 @@ class DailyFactsReminderReceiver : BroadcastReceiver() {
         )
 
         val notification = NotificationCompat.Builder(context, CHANNEL_ID)
-            .setSmallIcon(R.mipmap.ic_launcher)
+            .setSmallIcon(R.drawable.ic_stat_ad_glasses)
             .setContentTitle("Daily facts")
             .setContentText("Quick check: verify today’s facts for your Local Agent memory")
             .setContentIntent(openPi)

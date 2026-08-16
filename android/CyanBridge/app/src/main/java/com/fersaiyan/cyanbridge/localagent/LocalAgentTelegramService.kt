@@ -276,7 +276,7 @@ class LocalAgentTelegramService : Service() {
             PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE,
         )
         return NotificationCompat.Builder(this, NOTIFICATION_CHANNEL_ID)
-            .setSmallIcon(R.mipmap.ic_launcher)
+            .setSmallIcon(R.drawable.ic_stat_ad_glasses)
             .setContentTitle("Local Agent remote control")
             .setContentText("Listening only to the configured Telegram chat")
             .setContentIntent(openIntent)

@@ -30,4 +30,10 @@
     <color name="text_primary">#E6EDF3</color>
     <color name="text_secondary">#8B949E</color>
     <color name="danger">#FF5252</color>
+
+    <!-- AD Glasses light-only application shell -->
+    <color name="ad_background">#FFF5F5F7</color>
+    <color name="ad_surface">#FFFFFFFF</color>
+    <color name="ad_blue">#FF2C2C2E</color>
+    <color name="ad_ink">#FF1D1D1F</color>
 </resources>

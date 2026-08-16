@@ -312,7 +312,7 @@ class MeetingCaptureService : Service() {
         }
 
         return NotificationCompat.Builder(this, NOTIFICATION_CHANNEL_ID)
-            .setSmallIcon(R.mipmap.ic_launcher)
+            .setSmallIcon(R.drawable.ic_stat_ad_glasses)
             .setContentTitle(title)
             .setContentText(text)
             .setContentIntent(openPi)

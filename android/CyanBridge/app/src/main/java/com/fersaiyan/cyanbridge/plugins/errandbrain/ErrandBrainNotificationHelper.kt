@@ -50,7 +50,7 @@ object ErrandBrainNotificationHelper {
         )
 
         return NotificationCompat.Builder(context, CHANNEL_ID)
-            .setSmallIcon(R.mipmap.ic_launcher)
+            .setSmallIcon(R.drawable.ic_stat_ad_glasses)
             .setContentTitle("Errand Brain")
             .setContentText(content)
             .setStyle(NotificationCompat.BigTextStyle().bigText(content))
@@ -88,7 +88,7 @@ object ErrandBrainNotificationHelper {
         )
         val content = description.ifBlank { title }
         val notification = NotificationCompat.Builder(context, CHANNEL_ID)
-            .setSmallIcon(R.mipmap.ic_launcher)
+            .setSmallIcon(R.drawable.ic_stat_ad_glasses)
             .setContentTitle("Errand Brain reminder")
             .setContentText(title)
             .setStyle(NotificationCompat.BigTextStyle().bigText(content))

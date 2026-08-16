@@ -213,6 +213,7 @@ class ChatThreadActivity : AppCompatActivity() {
                     onRecordAudio = ::toggleAudioRecording,
                     onClearAttachments = ::clearPendingAttachments,
                     onDestinationSelected = ::navigateTo,
+                    showAppNavigation = false,
                 )
                 if (chatAppearanceMenuVisible) {
                     ChatAppearanceMenuDialog(

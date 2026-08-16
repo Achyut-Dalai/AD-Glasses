@@ -67,12 +67,21 @@ fun ChatListScreen(
     onNewChat: () -> Unit,
     onChatAppearance: () -> Unit,
     onDestinationSelected: (AppDestination) -> Unit,
+    showAppNavigation: Boolean = true,
+    onNavigateBack: (() -> Unit)? = null,
 ) {
     Scaffold(
         contentWindowInsets = WindowInsets.safeDrawing,
         topBar = {
             TopAppBar(
                  title = { Text(stringResource(Res.string.nav_chats)) },
+                navigationIcon = {
+                    if (onNavigateBack != null) {
+                        IconButton(onClick = onNavigateBack) {
+                            Icon(AppIcon.Back.imageVector(), contentDescription = "Back")
+                        }
+                    }
+                },
                 actions = {
                     IconButton(onClick = onChatAppearance) {
                         Icon(
@@ -84,19 +93,21 @@ fun ChatListScreen(
             )
         },
         bottomBar = {
-            NavigationBar {
-                AppDestination.entries.forEach { destination ->
-                    NavigationBarItem(
-                        selected = destination == AppDestination.CHATS,
-                        onClick = { onDestinationSelected(destination) },
-                        icon = {
-                            Icon(
-                                imageVector = destination.icon.imageVector(),
-                                contentDescription = null,
-                            )
-                        },
-                         label = { Text(localizedDestinationLabel(destination)) },
-                    )
+            if (showAppNavigation) {
+                NavigationBar {
+                    AppDestination.entries.forEach { destination ->
+                        NavigationBarItem(
+                            selected = destination == AppDestination.CHATS,
+                            onClick = { onDestinationSelected(destination) },
+                            icon = {
+                                Icon(
+                                    imageVector = destination.icon.imageVector(),
+                                    contentDescription = null,
+                                )
+                            },
+                             label = { Text(localizedDestinationLabel(destination)) },
+                        )
+                    }
                 }
             }
         },

@@ -3,19 +3,11 @@ package com.fersaiyan.cyanbridge.ui
 import android.content.Context
 import android.content.Intent
 import android.os.Bundle
+import android.widget.Toast
 import androidx.activity.compose.setContent
 import androidx.appcompat.app.AppCompatActivity
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.setValue
 import com.fersaiyan.cyanbridge.MainActivity
-import com.fersaiyan.cyanbridge.shared.ui.onboarding.OnboardingLanguageOption
-import com.fersaiyan.cyanbridge.shared.ui.onboarding.WelcomeScreen
-import com.fersaiyan.cyanbridge.ui.appearance.AppearancePreferences
-import com.fersaiyan.cyanbridge.ui.appearance.rememberAppearanceSettings
-import com.fersaiyan.cyanbridge.ui.localization.AppLanguage
-import com.fersaiyan.cyanbridge.ui.localization.AppLanguagePreferences
-import com.fersaiyan.cyanbridge.ui.theme.CyanBridgeTheme
+import com.fersaiyan.cyanbridge.ui.adglasses.ADWelcomeScreen
 
 class WelcomeActivity : AppCompatActivity() {
 
@@ -28,44 +20,50 @@ class WelcomeActivity : AppCompatActivity() {
             return
         }
 
-        val storedLanguage = AppLanguagePreferences.selected(this)
-        var selectedLanguageId by mutableStateOf(
-            if (AppLanguagePreferences.hasUserSelectedLanguage(this)) storedLanguage.name else "",
-        )
-        var languageSelectionComplete by mutableStateOf(
-            AppLanguagePreferences.hasUserSelectedLanguage(this),
-        )
-        val languageOptions = AppLanguage.entries.map { language ->
-            OnboardingLanguageOption(
-                id = language.name,
-                label = language.displayName(this),
-            )
-        }
-        val appearancePreferences = AppearancePreferences(this)
         setContent {
-            val appearance by rememberAppearanceSettings(appearancePreferences)
-            CyanBridgeTheme(appearance) {
-                WelcomeScreen(
-                    languageOptions = languageOptions,
-                    selectedLanguageId = selectedLanguageId,
-                    languageSelectionComplete = languageSelectionComplete,
-                    onLanguageSelected = { option ->
-                        val language = AppLanguage.fromStored(option.id)
-                        AppLanguagePreferences.select(this, language)
-                        selectedLanguageId = language.name
-                        languageSelectionComplete = true
-                    },
-                    onStartSetup = {
-                        startActivity(Intent(this, BatteryOptimizationGuideActivity::class.java))
-                        finish()
-                    },
-                )
-            }
+            ADWelcomeScreen(
+                onStartSetup = {
+                    completeOnboarding()
+                    startActivities(
+                        arrayOf(
+                            Intent(this, MainActivity::class.java),
+                            Intent(this, DeviceBindActivity::class.java),
+                        ),
+                    )
+                    finish()
+                },
+                onExplore = {
+                    completeOnboarding()
+                    startActivity(Intent(this, MainActivity::class.java))
+                    finish()
+                },
+                onSupportedDevices = {
+                    Toast.makeText(
+                        this,
+                        "HeyCyan is primary. Eyevue, Meta and Meizu support is experimental; generic audio is limited.",
+                        Toast.LENGTH_LONG,
+                    ).show()
+                },
+                onPrivacy = {
+                    Toast.makeText(
+                        this,
+                        "Local data stays on this phone unless you deliberately configure an external service.",
+                        Toast.LENGTH_LONG,
+                    ).show()
+                },
+            )
         }
     }
 
     private fun isOnboardingCompleted(): Boolean {
         val prefs = getSharedPreferences("cyanbridge_prefs", Context.MODE_PRIVATE)
         return prefs.getBoolean("onboarding_completed", false)
+    }
+
+    private fun completeOnboarding() {
+        getSharedPreferences("cyanbridge_prefs", Context.MODE_PRIVATE)
+            .edit()
+            .putBoolean("onboarding_completed", true)
+            .apply()
     }
 }
