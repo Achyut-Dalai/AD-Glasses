@@ -150,12 +150,10 @@ fun ADGlassesApp(
                         onAdvanced = { navigateTo(ADRoute.ADVANCED) },
                     )
                     ADRoute.SYNC -> ADSyncScreen(dashboardState, host, navigateBack)
-                    ADRoute.SETTINGS -> ADSettingsHubScreen(
+                    ADRoute.SETTINGS -> ADNativeSettingsHubScreen(
                         state = dashboardState,
                         onBack = navigateBack,
                         onDevice = { navigateTo(ADRoute.DEVICE_CENTER) },
-                        onIntelligence = { showMainTab(ADTab.AI) },
-                        onRouting = { showMainTab(ADTab.AI) },
                         onPrivacy = { navigateTo(ADRoute.PRIVACY) },
                         onStorage = { navigateTo(ADRoute.STORAGE) },
                         onLanguage = { navigateTo(ADRoute.LANGUAGE) },
