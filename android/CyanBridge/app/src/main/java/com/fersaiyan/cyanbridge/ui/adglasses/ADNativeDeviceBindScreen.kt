@@ -13,7 +13,6 @@ import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
@@ -37,6 +36,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import com.fersaiyan.cyanbridge.devices.ADDeviceSupportPolicy
 import com.fersaiyan.cyanbridge.shared.devices.DeviceClass
 import com.fersaiyan.cyanbridge.shared.devices.ScannedDevice
 
@@ -98,10 +98,10 @@ fun ADNativeDeviceBindScreen(
                             )
                             Text(
                                 when {
-                                    isScanning && devices.isEmpty() -> "Keep the glasses nearby and ready to pair."
-                                    isScanning -> "${devices.size} nearby ${if (devices.size == 1) "device" else "devices"} found"
-                                    devices.isEmpty() -> "Bluetooth and Nearby Devices are used only for discovery and connection."
-                                    else -> "Choose the glasses you want AD Glasses to use."
+                                    isScanning && devices.isEmpty() -> "Keep your HeyCyan glasses nearby and ready to pair."
+                                    isScanning -> "${devices.size} possible ${if (devices.size == 1) "device" else "devices"} found"
+                                    devices.isEmpty() -> "HeyCyan is the primary supported glasses profile. Meta is reserved for future use."
+                                    else -> "Choose your glasses. Devices recognized as unsupported are hidden from setup."
                                 },
                                 style = MaterialTheme.typography.bodyMedium,
                                 color = ADColors.Muted,
@@ -178,27 +178,25 @@ fun ADNativeDeviceBindScreen(
                     style = MaterialTheme.typography.titleMedium,
                 )
                 Text(
-                    "Choose the hardware profile only if detection looks wrong. AD Glasses remembers your choice for this device.",
+                    "If detection is uncertain, choose between the two AD Glasses product profiles. Other upstream device types stay internal and are not enabled here.",
                     style = MaterialTheme.typography.bodyMedium,
                     color = ADColors.Muted,
                 )
 
                 ADCard {
-                    DeviceClass.entries
-                        .filter { it != DeviceClass.UNKNOWN }
-                        .forEachIndexed { index, deviceClass ->
-                            ADPairingClassRow(
-                                deviceClass = deviceClass,
-                                selected = selectedClass == deviceClass,
-                                onClick = { onSelectedClassChange(deviceClass) },
+                    ADDeviceSupportPolicy.selectable.forEachIndexed { index, deviceClass ->
+                        ADPairingClassRow(
+                            deviceClass = deviceClass,
+                            selected = selectedClass == deviceClass,
+                            onClick = { onSelectedClassChange(deviceClass) },
+                        )
+                        if (index != ADDeviceSupportPolicy.selectable.lastIndex) {
+                            HorizontalDivider(
+                                modifier = Modifier.padding(start = 46.dp),
+                                color = ADColors.Separator,
                             )
-                            if (index != DeviceClass.entries.count { it != DeviceClass.UNKNOWN } - 1) {
-                                HorizontalDivider(
-                                    modifier = Modifier.padding(start = 46.dp),
-                                    color = ADColors.Separator,
-                                )
-                            }
                         }
+                    }
                 }
 
                 Button(
@@ -221,6 +219,11 @@ private fun ADPairingDeviceRow(
     onClick: () -> Unit,
 ) {
     val effectiveClass = device.effectiveSelectedClass()
+    val classLabel = when {
+        ADDeviceSupportPolicy.isValidated(effectiveClass) -> "HeyCyan"
+        ADDeviceSupportPolicy.isPlanned(effectiveClass) -> "Meta Ray-Ban · future"
+        else -> "Unidentified glasses"
+    }
     Row(
         modifier = Modifier
             .fillMaxWidth()
@@ -238,14 +241,14 @@ private fun ADPairingDeviceRow(
         }
         Column(Modifier.padding(start = 11.dp).weight(1f)) {
             Text(
-                device.advertisedName?.takeIf { it.isNotBlank() } ?: effectiveClass.displayName(),
+                device.advertisedName?.takeIf { it.isNotBlank() } ?: classLabel,
                 style = MaterialTheme.typography.titleMedium,
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis,
             )
             Text(
                 buildString {
-                    append(effectiveClass.displayName())
+                    append(classLabel)
                     if (device.rssi != 0) append(" · ${signalLabel(device.rssi)}")
                 },
                 style = MaterialTheme.typography.bodyMedium,
@@ -264,6 +267,11 @@ private fun ADPairingClassRow(
     selected: Boolean,
     onClick: () -> Unit,
 ) {
+    val detail = when {
+        ADDeviceSupportPolicy.isValidated(deviceClass) -> "Supported now"
+        ADDeviceSupportPolicy.isPlanned(deviceClass) -> "Reserved for future use"
+        else -> "Not enabled"
+    }
     Row(
         modifier = Modifier
             .fillMaxWidth()
@@ -287,11 +295,10 @@ private fun ADPairingClassRow(
                 modifier = Modifier.size(19.dp),
             )
         }
-        Text(
-            deviceClass.displayName(),
-            modifier = Modifier.padding(start = 11.dp).weight(1f),
-            style = MaterialTheme.typography.bodyLarge,
-        )
+        Column(Modifier.padding(start = 11.dp).weight(1f)) {
+            Text(deviceClass.displayName(), style = MaterialTheme.typography.bodyLarge)
+            Text(detail, style = MaterialTheme.typography.bodySmall, color = ADColors.Muted)
+        }
         if (selected) ADStatusChip("SELECTED", ADStatusTone.SUCCESS)
     }
 }
