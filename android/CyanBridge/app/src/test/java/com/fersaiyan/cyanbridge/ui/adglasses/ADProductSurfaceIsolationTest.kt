@@ -79,6 +79,8 @@ class ADProductSurfaceIsolationTest {
         assertTrue(File(uiDir, "ADNativeConversationScreen.kt").isFile)
         assertTrue(File(uiDir, "ADNativeLibraryScreens.kt").isFile)
         assertTrue(File(uiDir, "ADModesScreen.kt").isFile)
+        assertTrue(File(uiDir, "ADNativeAiScreen.kt").isFile)
+        assertTrue(File(uiDir, "ADNativeSettingsHubScreen.kt").isFile)
         assertTrue(File(uiDir, "ADSyncScreen.kt").isFile)
         assertTrue(File(uiDir, "ADFirmwareScreen.kt").isFile)
     }
@@ -95,20 +97,19 @@ class ADProductSurfaceIsolationTest {
             "ADHomeSurface",
             "ADNativeConversationScreen",
             "ADNativeLibraryScreen",
-            "ADModesScreen",
+            "ADTasksScreen",
+            "ADNativeAiScreen",
             "ADGlassesDeviceCenterScreen",
             "ADSyncScreen",
             "ADFirmwareScreen",
-            "ADSettingsHubScreen",
-            "ADIntelligenceScreen",
-            "ADRoutingScreen",
+            "ADNativeSettingsHubScreen",
             "ADPrivacyCenterScreen",
             "ADStorageScreen",
             "ADLanguageScreen",
             "ADPermissionsScreen",
             "ADAdvancedScreen",
             "ADAboutScreen",
-            "ADNativeModeDetailScreen",
+            "ADNativeTaskDetailScreen",
             "ADNativeCapturesScreen",
             "ADNativeRecordingsScreen",
             "ADNativeNotesScreen",
@@ -159,7 +160,7 @@ class ADProductSurfaceIsolationTest {
     }
 
     @Test
-    fun nativeAdUiDoesNotImportReplacedActivitiesOrSharedNavigation() {
+    fun nativeAdUiDoesNotImportReplacedProductActivitiesOrSharedNavigation() {
         val uiDir = sourceFile("src/main/java/com/fersaiyan/cyanbridge/ui/adglasses")
         assertTrue("AD UI source directory should exist", uiDir.isDirectory)
 
@@ -212,14 +213,17 @@ class ADProductSurfaceIsolationTest {
     }
 
     @Test
-    fun genericDeviceSurfacesDoNotHardcodeCurrentHardwareBrand() {
-        listOf(
+    fun pairingTargetsValidatedHeyCyanWithoutExpandingDeviceCenterScope() {
+        val pairing = sourceFile(
             "src/main/java/com/fersaiyan/cyanbridge/ui/adglasses/ADGlassesPairingScreen.kt",
+        ).readText()
+        val deviceCenter = sourceFile(
             "src/main/java/com/fersaiyan/cyanbridge/ui/adglasses/ADGlassesDeviceCenterScreen.kt",
-        ).forEach { path ->
-            val source = sourceFile(path).readText()
-            assertFalse("$path should stay hardware-neutral", source.contains("HeyCyan"))
-        }
+        ).readText()
+
+        assertTrue(pairing.contains("Looking for HeyCyan glasses"))
+        assertFalse(deviceCenter.contains("Eyevue · Experimental"))
+        assertFalse(deviceCenter.contains("Meizu MYVU · Experimental"))
 
         val firmware = sourceFile(
             "src/main/java/com/fersaiyan/cyanbridge/ui/adglasses/ADFirmwareScreen.kt",
