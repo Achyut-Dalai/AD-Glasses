@@ -85,13 +85,13 @@ internal fun ADConversationMessageBody(
     userMessage: Boolean,
 ) {
     val blocks = parseADConversationBlocks(content)
-    Column(verticalArrangement = Arrangement.spacedBy(9.dp)) {
+    Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
         blocks.forEach { block ->
             when (block) {
                 is ADConversationBlock.TextBlock -> Text(
                     text = block.text,
                     style = MaterialTheme.typography.bodyLarge,
-                    color = if (userMessage) Color.White else ADColors.Ink,
+                    color = ADColors.Ink,
                 )
                 is ADConversationBlock.CodeBlock -> ADConversationCodeBlock(block)
                 is ADConversationBlock.LinkBlock -> ADConversationLinkCard(block, userMessage)
@@ -148,7 +148,7 @@ private fun ADConversationLinkCard(
         modifier = Modifier
             .fillMaxWidth()
             .background(
-                if (userMessage) Color.White.copy(alpha = 0.12f) else ADColors.SurfaceSubtle,
+                if (userMessage) ADColors.Surface.copy(alpha = 0.72f) else ADColors.Surface,
                 RoundedCornerShape(15.dp),
             )
             .clickable {
@@ -173,16 +173,13 @@ private fun ADConversationLinkCard(
             Box(
                 modifier = Modifier
                     .size(38.dp)
-                    .background(
-                        if (userMessage) Color.White.copy(alpha = 0.12f) else ADColors.Surface,
-                        RoundedCornerShape(11.dp),
-                    ),
+                    .background(ADColors.SurfaceSubtle, RoundedCornerShape(11.dp)),
                 contentAlignment = Alignment.Center,
             ) {
                 Icon(
                     icon,
                     contentDescription = null,
-                    tint = if (userMessage) Color.White else ADColors.Ink,
+                    tint = ADColors.Ink,
                     modifier = Modifier.size(20.dp),
                 )
             }
@@ -190,14 +187,14 @@ private fun ADConversationLinkCard(
                 Text(
                     block.label.ifBlank { kindLabel },
                     style = MaterialTheme.typography.titleSmall,
-                    color = if (userMessage) Color.White else ADColors.Ink,
+                    color = ADColors.Ink,
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis,
                 )
                 Text(
                     "$kindLabel · $detail",
                     style = MaterialTheme.typography.bodySmall,
-                    color = if (userMessage) Color.White.copy(alpha = 0.72f) else ADColors.Muted,
+                    color = ADColors.Muted,
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis,
                 )
@@ -206,7 +203,7 @@ private fun ADConversationLinkCard(
             Icon(
                 Icons.Rounded.KeyboardArrowRight,
                 contentDescription = "Open",
-                tint = if (userMessage) Color.White.copy(alpha = 0.72f) else ADColors.Muted,
+                tint = ADColors.Muted,
             )
         }
     }
@@ -250,9 +247,7 @@ private fun ADConversationLocalMediaPreview(
             .fillMaxWidth()
             .aspectRatio(16f / 10f)
             .clip(RoundedCornerShape(12.dp))
-            .background(
-                if (userMessage) Color.White.copy(alpha = 0.08f) else ADColors.Surface,
-            ),
+            .background(ADColors.SurfaceSubtle),
         contentAlignment = Alignment.Center,
     ) {
         thumbnail?.let {
@@ -265,7 +260,7 @@ private fun ADConversationLocalMediaPreview(
         } ?: Icon(
             if (video) Icons.Outlined.Videocam else Icons.Outlined.Image,
             contentDescription = null,
-            tint = if (userMessage) Color.White.copy(alpha = 0.75f) else ADColors.Muted,
+            tint = ADColors.Muted,
             modifier = Modifier.size(34.dp),
         )
 
