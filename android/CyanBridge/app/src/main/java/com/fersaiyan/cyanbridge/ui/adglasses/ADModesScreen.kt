@@ -57,7 +57,7 @@ internal fun ADModesScreen(
             item {
                 Column(verticalArrangement = Arrangement.spacedBy(5.dp)) {
                     Text(
-                        "Things your glasses can do",
+                        "Things glasses can do for me",
                         style = MaterialTheme.typography.headlineMedium,
                     )
                     Text(
