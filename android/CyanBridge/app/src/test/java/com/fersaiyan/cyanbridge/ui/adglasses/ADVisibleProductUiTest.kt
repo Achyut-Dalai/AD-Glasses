@@ -1,16 +1,15 @@
 package com.fersaiyan.cyanbridge.ui.adglasses
 
+import java.io.File
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Test
-import java.io.File
 
 class ADVisibleProductUiTest {
 
     private val visibleSurfacePaths = listOf(
         "src/main/java/com/fersaiyan/cyanbridge/ui/adglasses/ADComponents.kt",
         "src/main/java/com/fersaiyan/cyanbridge/ui/adglasses/ADHomeSurface.kt",
-        "src/main/java/com/fersaiyan/cyanbridge/ui/adglasses/ADModesScreen.kt",
         "src/main/java/com/fersaiyan/cyanbridge/ui/adglasses/ADNativeConversationScreen.kt",
         "src/main/java/com/fersaiyan/cyanbridge/ui/adglasses/ADConversationRichContent.kt",
         "src/main/java/com/fersaiyan/cyanbridge/ui/adglasses/ADNativeLibraryScreens.kt",
@@ -23,6 +22,7 @@ class ADVisibleProductUiTest {
         "src/main/java/com/fersaiyan/cyanbridge/ui/adglasses/ADAdvancedScreen.kt",
         "src/main/java/com/fersaiyan/cyanbridge/ui/adglasses/ADNativeModeDetailScreen.kt",
         "src/main/java/com/fersaiyan/cyanbridge/ui/adglasses/ADNativeAiScreen.kt",
+        "src/main/java/com/fersaiyan/cyanbridge/ui/adglasses/ADAssistantAppsScreen.kt",
     )
 
     @Test
@@ -37,6 +37,7 @@ class ADVisibleProductUiTest {
             "\"Errand Brain",
             "\"Auto Diary",
             "\"Auto Audio",
+            "Things glasses can do for me",
         )
 
         visibleSurfacePaths.forEach { path ->
@@ -51,7 +52,7 @@ class ADVisibleProductUiTest {
     }
 
     @Test
-    fun chatsUseChatIconAndHomeDoesNotDuplicateChatNavigation() {
+    fun chatsUseConversationIconAndHomeDoesNotDuplicateChatNavigation() {
         val components = sourceFile(
             "src/main/java/com/fersaiyan/cyanbridge/ui/adglasses/ADComponents.kt",
         ).readText()
@@ -59,28 +60,30 @@ class ADVisibleProductUiTest {
             "src/main/java/com/fersaiyan/cyanbridge/ui/adglasses/ADHomeSurface.kt",
         ).readText()
 
-        assertTrue(components.contains("ADTab.CHATS -> Icons.Rounded.ChatBubble"))
+        assertTrue(components.contains("ADTab.CHATS -> Icons.Rounded.Forum"))
         assertFalse(home.contains("title = \"Conversations\""))
         assertFalse(home.contains("title = \"Chats\""))
         assertFalse(home.contains("onOpenConversations"))
     }
 
     @Test
-    fun tasksStayCompactAndExcludeRetiredFeatures() {
-        val tasks = sourceFile(
-            "src/main/java/com/fersaiyan/cyanbridge/ui/adglasses/ADModesScreen.kt",
+    fun tasksTabIsGoneAndCapabilitiesLiveInAi() {
+        val models = sourceFile(
+            "src/main/java/com/fersaiyan/cyanbridge/ui/adglasses/ADGlassesModels.kt",
+        ).readText()
+        val ai = sourceFile(
+            "src/main/java/com/fersaiyan/cyanbridge/ui/adglasses/ADNativeAiScreen.kt",
         ).readText()
         val details = sourceFile(
             "src/main/java/com/fersaiyan/cyanbridge/ui/adglasses/ADNativeModeDetailScreen.kt",
         ).readText()
 
-        assertTrue(tasks.contains("ADTopBar(title = \"Tasks\")"))
-        assertTrue(tasks.contains("filter { it.visibleInTasks }"))
-        assertFalse(tasks.contains("Things glasses can do for me"))
+        assertFalse(models.contains("TASKS(\"Tasks\")"))
+        assertTrue(ai.contains("Text(\"Capabilities\""))
         assertFalse(details.contains("Start mode"))
         assertFalse(details.contains("Stop mode"))
-        assertTrue(details.contains("Start task"))
-        assertTrue(details.contains("Stop task"))
+        assertFalse(details.contains("Start task"))
+        assertFalse(details.contains("Stop task"))
     }
 
     @Test
@@ -91,9 +94,10 @@ class ADVisibleProductUiTest {
 
         assertFalse(chats.contains("Icons.Outlined.CameraAlt"))
         assertFalse(chats.contains("Icons.Outlined.Mic"))
-        assertFalse(chats.contains("Icons.Outlined.Public"))
         assertTrue(chats.contains("pendingAlreadyPersisted"))
         assertTrue(chats.contains("KeyboardActions(onSend = { send() })"))
+        assertTrue(chats.contains("ADColors.BlueSoft"))
+        assertTrue(chats.contains("ADAssistantTurn"))
     }
 
     @Test
@@ -104,6 +108,8 @@ class ADVisibleProductUiTest {
 
         assertTrue(pairing.contains("WindowInsets.safeDrawing"))
         assertTrue(pairing.contains("val deviceClass = device.detectedClass"))
+        assertTrue(pairing.contains("Looking for nearby glasses"))
+        assertFalse(pairing.contains("HeyCyan"))
         assertFalse(pairing.contains("effectiveSelectedClass()"))
         assertFalse(pairing.contains("ModalBottomSheet"))
         assertFalse(pairing.contains("onSelectedClassChange"))
@@ -118,12 +124,12 @@ class ADVisibleProductUiTest {
             "src/main/java/com/fersaiyan/cyanbridge/ui/adglasses/ADNativeSettingsHubScreen.kt",
         ).readText()
 
-        assertTrue(ai.contains("Text(\"Default AI\""))
+        assertTrue(ai.contains("ADAiSection(title = \"Default AI\")"))
         assertTrue(ai.contains("title = \"Gemini\""))
         assertTrue(ai.contains("title = \"OpenAI / Codex\""))
         assertTrue(ai.contains("title = \"Local AI\""))
-        assertTrue(ai.contains("title = \"Web Search\""))
-        assertTrue(ai.contains("title = \"Phone control\""))
+        assertTrue(ai.contains("title = \"Assistant apps\""))
+        assertFalse(ai.contains("ADTopBar(title = \"AI\")"))
         assertFalse(settings.contains("AI and web"))
         assertFalse(settings.contains("Routing"))
     }
