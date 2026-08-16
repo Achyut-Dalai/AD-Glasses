@@ -47,6 +47,28 @@ class ADConversationRichContentTest {
     }
 
     @Test
+    fun extractsInlineMarkdownLinkWithoutDroppingSurroundingProse() {
+        val blocks = parseADConversationBlocks(
+            "You can read the [full source](https://example.com/source) for details.",
+        )
+
+        assertEquals(3, blocks.size)
+        assertEquals("You can read the", (blocks[0] as ADConversationBlock.TextBlock).text)
+        assertEquals("full source", (blocks[1] as ADConversationBlock.LinkBlock).label)
+        assertEquals("for details.", (blocks[2] as ADConversationBlock.TextBlock).text)
+    }
+
+    @Test
+    fun extractsRawUrlInsideProse() {
+        val blocks = parseADConversationBlocks("Result: https://example.com/report.pdf is ready")
+
+        assertEquals(3, blocks.size)
+        assertEquals("Result:", (blocks[0] as ADConversationBlock.TextBlock).text)
+        assertEquals(ADConversationLinkKind.DOCUMENT, (blocks[1] as ADConversationBlock.LinkBlock).kind)
+        assertEquals("is ready", (blocks[2] as ADConversationBlock.TextBlock).text)
+    }
+
+    @Test
     fun preservesNormalMultilineTextAsOneReadableBlock() {
         val blocks = parseADConversationBlocks("First line\nSecond line")
         assertEquals(1, blocks.size)
