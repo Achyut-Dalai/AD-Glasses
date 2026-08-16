@@ -1,5 +1,6 @@
 package com.fersaiyan.cyanbridge.ui.adglasses
 
+import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Test
@@ -65,9 +66,14 @@ class ADProductSurfaceIsolationTest {
     @Test
     fun obsoleteAdUiBundlesAreDeletedButDeviceToolsRemainNative() {
         val uiDir = sourceFile("src/main/java/com/fersaiyan/cyanbridge/ui/adglasses")
-        assertFalse(File(uiDir, "ADMainScreens.kt").exists())
-        assertFalse(File(uiDir, "ADDetailScreens.kt").exists())
-        assertFalse(File(uiDir, "ADModeNativeModel.kt").exists())
+        listOf(
+            "ADMainScreens.kt",
+            "ADDetailScreens.kt",
+            "ADModeNativeModel.kt",
+            "ADPrimarySurfaces.kt",
+        ).forEach { obsolete ->
+            assertFalse("$obsolete is an obsolete AD UI bundle and must stay deleted", File(uiDir, obsolete).exists())
+        }
 
         assertTrue(File(uiDir, "ADHomeSurface.kt").isFile)
         assertTrue(File(uiDir, "ADNativeConversationScreen.kt").isFile)
@@ -75,6 +81,50 @@ class ADProductSurfaceIsolationTest {
         assertTrue(File(uiDir, "ADModesScreen.kt").isFile)
         assertTrue(File(uiDir, "ADSyncScreen.kt").isFile)
         assertTrue(File(uiDir, "ADFirmwareScreen.kt").isFile)
+    }
+
+    @Test
+    fun everyCanonicalProductSurfaceHasExactlyOneImplementation() {
+        val uiDir = sourceFile("src/main/java/com/fersaiyan/cyanbridge/ui/adglasses")
+        val kotlinSources = uiDir.walkTopDown()
+            .filter { it.isFile && it.extension == "kt" }
+            .associateWith { it.readText() }
+
+        val canonicalSurfaces = listOf(
+            "ADGlassesApp",
+            "ADHomeSurface",
+            "ADNativeConversationScreen",
+            "ADNativeLibraryScreen",
+            "ADModesScreen",
+            "ADGlassesDeviceCenterScreen",
+            "ADSyncScreen",
+            "ADFirmwareScreen",
+            "ADSettingsHubScreen",
+            "ADIntelligenceScreen",
+            "ADRoutingScreen",
+            "ADPrivacyCenterScreen",
+            "ADStorageScreen",
+            "ADLanguageScreen",
+            "ADPermissionsScreen",
+            "ADAdvancedScreen",
+            "ADAboutScreen",
+            "ADNativeModeDetailScreen",
+            "ADNativeCapturesScreen",
+            "ADNativeRecordingsScreen",
+            "ADNativeNotesScreen",
+        )
+
+        canonicalSurfaces.forEach { functionName ->
+            val declaration = Regex("""\bfun\s+${Regex.escape(functionName)}\s*\(""")
+            val matches = kotlinSources.entries.flatMap { (file, source) ->
+                declaration.findAll(source).map { file.name }.toList()
+            }
+            assertEquals(
+                "$functionName must have exactly one canonical implementation, found in $matches",
+                1,
+                matches.size,
+            )
+        }
     }
 
     @Test
