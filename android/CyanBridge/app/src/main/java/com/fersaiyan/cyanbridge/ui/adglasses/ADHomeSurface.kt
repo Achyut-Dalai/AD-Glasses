@@ -45,16 +45,12 @@ import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.res.painterResource
-import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.fersaiyan.cyanbridge.R
 import com.fersaiyan.cyanbridge.shared.glasses.GlassesDashboardUiState
 
-/**
- * Glasses-first Home. This deliberately behaves like a readiness/control surface rather
- * than a toolbox: the user should leave the phone in a pocket once AD and the glasses are ready.
- */
+/** Quiet control surface for the glasses. */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 internal fun ADHomeSurface(
@@ -87,30 +83,6 @@ internal fun ADHomeSurface(
             verticalArrangement = Arrangement.spacedBy(18.dp),
         ) {
             item {
-                Column(verticalArrangement = Arrangement.spacedBy(7.dp)) {
-                    ADStatusChip(
-                        text = if (connected) "AD READY" else if (connecting) "CONNECTING" else "GLASSES OFFLINE",
-                        tone = if (connected) ADStatusTone.SUCCESS else ADStatusTone.INFO,
-                        showCheck = connected,
-                    )
-                    Text(
-                        text = if (connected) "Your glasses are ready." else "Make your glasses the interface.",
-                        style = MaterialTheme.typography.headlineMedium,
-                        fontWeight = FontWeight.Bold,
-                    )
-                    Text(
-                        text = if (connected) {
-                            "Talk, look, and act through AD. The phone can stay out of the way."
-                        } else {
-                            "Connect once here. After that, AD should handle normal use through voice and camera."
-                        },
-                        style = MaterialTheme.typography.bodyLarge,
-                        color = ADColors.Muted,
-                    )
-                }
-            }
-
-            item {
                 ADReadinessStage(
                     state = state,
                     connected = connected,
@@ -127,7 +99,7 @@ internal fun ADHomeSurface(
             if (state.meeting.isRecording || state.transfer.isVisible || activeMode != null) {
                 item {
                     Column(verticalArrangement = Arrangement.spacedBy(9.dp)) {
-                        Text("Active now", style = MaterialTheme.typography.titleLarge)
+                        Text("Active", style = MaterialTheme.typography.titleLarge)
                         if (state.meeting.isRecording) {
                             ADLiveRow(
                                 icon = Icons.Outlined.GraphicEq,
@@ -150,7 +122,7 @@ internal fun ADHomeSurface(
                             ADLiveRow(
                                 icon = Icons.Outlined.AutoAwesome,
                                 title = it,
-                                detail = "Running as an AD mode",
+                                detail = "Mode active",
                                 status = "ON",
                                 onClick = onOpenModes,
                             )
@@ -160,24 +132,21 @@ internal fun ADHomeSurface(
             }
 
             item {
-                Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
-                    Text("From the glasses", style = MaterialTheme.typography.titleLarge)
-                    Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                        ADHomeAction(
-                            title = "Ask AD",
-                            detail = "Voice conversation",
-                            icon = Icons.Outlined.Mic,
-                            modifier = Modifier.weight(1f),
-                            onClick = host.onVoiceQuestion,
-                        )
-                        ADHomeAction(
-                            title = "What I see",
-                            detail = "Glasses camera",
-                            icon = Icons.Outlined.Visibility,
-                            modifier = Modifier.weight(1f),
-                            onClick = host.onImageQuestion,
-                        )
-                    }
+                Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                    ADHomeAction(
+                        title = "Ask",
+                        detail = "Voice",
+                        icon = Icons.Outlined.Mic,
+                        modifier = Modifier.weight(1f),
+                        onClick = host.onVoiceQuestion,
+                    )
+                    ADHomeAction(
+                        title = "See",
+                        detail = "Camera",
+                        icon = Icons.Outlined.Visibility,
+                        modifier = Modifier.weight(1f),
+                        onClick = host.onImageQuestion,
+                    )
                 }
             }
 
@@ -185,26 +154,26 @@ internal fun ADHomeSurface(
                 Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
                     ADHomeLink(
                         icon = Icons.Outlined.AutoAwesome,
-                        title = "Continue a conversation",
-                        detail = "History, links and longer answers",
+                        title = "Conversations",
+                        detail = "Continue or review",
                         onClick = onOpenConversations,
                     )
                     ADHomeLink(
                         icon = Icons.Outlined.CameraAlt,
-                        title = "Capture media",
-                        detail = "Photo or video from the glasses",
+                        title = "Capture",
+                        detail = "Photo or video",
                         onClick = { captureSheet = true },
                     )
                     ADHomeLink(
                         icon = Icons.Outlined.Sync,
-                        title = "Sync & library",
-                        detail = "Bring captures to the phone",
+                        title = "Library",
+                        detail = if (state.transfer.isVisible) "Sync in progress" else "Media and saved results",
                         onClick = if (state.transfer.isVisible) onOpenSync else onOpenLibrary,
                     )
                     ADHomeLink(
                         icon = Icons.Outlined.GraphicEq,
                         title = if (state.meeting.isRecording) "Stop recording" else "Record",
-                        detail = if (state.meeting.isRecording) "Meeting capture is active" else "Start an audio recording",
+                        detail = if (state.meeting.isRecording) "Recording now" else "Audio recording",
                         onClick = if (state.meeting.isRecording) host.onStopRecording else host.onStartRecording,
                     )
                 }
@@ -221,9 +190,9 @@ internal fun ADHomeSurface(
                 modifier = Modifier.fillMaxWidth().padding(start = 20.dp, end = 20.dp, bottom = 28.dp),
                 verticalArrangement = Arrangement.spacedBy(6.dp),
             ) {
-                Text("Use the glasses camera", style = MaterialTheme.typography.headlineMedium)
+                Text("Glasses camera", style = MaterialTheme.typography.headlineMedium)
                 Text(
-                    "AD can understand what you see or save the media for later.",
+                    "Ask about what the glasses see, or save a photo or video.",
                     style = MaterialTheme.typography.bodyMedium,
                     color = ADColors.Muted,
                     modifier = Modifier.padding(bottom = 8.dp),
@@ -262,7 +231,7 @@ private fun ADReadinessStage(
         Box(
             modifier = Modifier
                 .fillMaxWidth()
-                .height(180.dp)
+                .height(166.dp)
                 .background(
                     Brush.radialGradient(listOf(Color(0xFFF8FAFD), Color(0xFFE9EDF4))),
                     RoundedCornerShape(topStart = 24.dp, topEnd = 24.dp),
@@ -271,13 +240,13 @@ private fun ADReadinessStage(
         ) {
             Image(
                 painter = painterResource(R.drawable.ad_glasses_hero_v4),
-                contentDescription = "AD smart glasses",
-                modifier = Modifier.fillMaxWidth().height(164.dp).padding(horizontal = 22.dp),
+                contentDescription = "Glasses",
+                modifier = Modifier.fillMaxWidth().height(150.dp).padding(horizontal = 22.dp),
                 contentScale = ContentScale.Fit,
             )
         }
         Row(
-            modifier = Modifier.fillMaxWidth().heightIn(min = 62.dp).padding(horizontal = 15.dp),
+            modifier = Modifier.fillMaxWidth().heightIn(min = 60.dp).padding(horizontal = 15.dp),
             verticalAlignment = Alignment.CenterVertically,
         ) {
             if (connecting) {
@@ -287,20 +256,13 @@ private fun ADReadinessStage(
                     Modifier.size(8.dp).background(if (connected) ADColors.Success else ADColors.Muted, CircleShape),
                 )
             }
-            Column(Modifier.padding(start = 10.dp).weight(1f)) {
-                Text(
-                    state.connectionLabel,
-                    style = MaterialTheme.typography.titleMedium,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis,
-                )
-                Text(
-                    state.deviceClassLabel,
-                    style = MaterialTheme.typography.bodySmall,
-                    color = ADColors.Muted,
-                    maxLines = 1,
-                )
-            }
+            Text(
+                state.connectionLabel,
+                style = MaterialTheme.typography.titleMedium,
+                modifier = Modifier.padding(start = 10.dp).weight(1f),
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+            )
             if (connected) {
                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
                     if (state.showBattery && state.batteryPercent != null) {
@@ -334,19 +296,19 @@ private fun ADHomeAction(
 ) {
     Column(
         modifier = modifier
-            .heightIn(min = 112.dp)
+            .heightIn(min = 102.dp)
             .background(ADColors.Surface, RoundedCornerShape(20.dp))
             .clickable(onClick = onClick)
             .padding(15.dp),
         verticalArrangement = Arrangement.Center,
     ) {
         Box(
-            Modifier.size(40.dp).background(ADColors.SurfaceSubtle, RoundedCornerShape(12.dp)),
+            Modifier.size(38.dp).background(ADColors.SurfaceSubtle, RoundedCornerShape(12.dp)),
             contentAlignment = Alignment.Center,
         ) {
-            Icon(icon, null, tint = ADColors.Ink, modifier = Modifier.size(21.dp))
+            Icon(icon, null, tint = ADColors.Ink, modifier = Modifier.size(20.dp))
         }
-        Spacer(Modifier.height(10.dp))
+        Spacer(Modifier.height(9.dp))
         Text(title, style = MaterialTheme.typography.titleMedium)
         Text(detail, style = MaterialTheme.typography.bodySmall, color = ADColors.Muted)
     }
