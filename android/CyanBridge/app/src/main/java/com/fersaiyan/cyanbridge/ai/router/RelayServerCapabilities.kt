@@ -12,6 +12,7 @@ data class RelayServerCapabilities(
     val chat: Boolean,
     val voiceQuery: Boolean,
     val imageQuery: Boolean,
+    val webSearch: Boolean,
     val openAiChatCompletions: Boolean,
     val transcriptionHttp: Boolean,
 )
@@ -75,6 +76,12 @@ object RelayServerCapabilitiesClient {
             chat = caps.optBoolean("chat", true),
             voiceQuery = caps.optBoolean("voice_query", caps.optBoolean("chat", true)),
             imageQuery = caps.optBoolean("image_query", true),
+            // Missing means the server has not explicitly promised grounding support.
+            // Also accept common aliases while relay deployments migrate their contract.
+            webSearch = caps.optBoolean(
+                "web_search",
+                caps.optBoolean("webSearch", caps.optBoolean("grounding", false)),
+            ),
             openAiChatCompletions = caps.optBoolean("openai_chat_completions", true),
             transcriptionHttp = caps.optBoolean("transcription_http", false),
         )
