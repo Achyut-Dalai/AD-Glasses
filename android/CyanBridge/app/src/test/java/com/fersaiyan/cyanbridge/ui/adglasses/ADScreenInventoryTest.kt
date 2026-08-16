@@ -1,22 +1,22 @@
 package com.fersaiyan.cyanbridge.ui.adglasses
 
+import java.io.File
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 import org.junit.Test
-import java.io.File
 
 class ADScreenInventoryTest {
 
     @Test
     fun primaryTabsStayFocusedOnGlassesFirstProduct() {
         assertEquals(
-            listOf("Home", "Chats", "Library", "Tasks", "AI"),
+            listOf("Home", "Chats", "AI", "Library"),
             ADTab.entries.map { it.label },
         )
     }
 
     @Test
-    fun phaseOneRoutesRemainComplete() {
+    fun currentRoutesRemainComplete() {
         assertEquals(
             setOf(
                 "MAIN",
@@ -25,6 +25,7 @@ class ADScreenInventoryTest {
                 "SETTINGS",
                 "AI_RELAY",
                 "AI_LOCAL",
+                "AI_ASSISTANT_APPS",
                 "PRIVACY",
                 "STORAGE",
                 "LANGUAGE",
@@ -50,14 +51,14 @@ class ADScreenInventoryTest {
         val requiredMappings = listOf(
             "ADTab.HOME -> ADHomeSurface(",
             "ADTab.CHATS -> ADNativeConversationScreen(",
-            "ADTab.LIBRARY -> ADNativeLibraryScreen(",
-            "ADTab.TASKS -> ADTasksScreen(",
             "ADTab.AI -> ADNativeAiScreen(",
+            "ADTab.LIBRARY -> ADNativeLibraryScreen(",
             "ADRoute.DEVICE_CENTER -> ADGlassesDeviceCenterScreen(",
             "ADRoute.SYNC -> ADSyncScreen(",
             "ADRoute.SETTINGS -> ADNativeSettingsHubScreen(",
             "ADRoute.AI_RELAY -> ADNativeRelaySettingsScreen(",
             "ADRoute.AI_LOCAL -> ADNativeLocalAiSettingsScreen(",
+            "ADRoute.AI_ASSISTANT_APPS -> ADAssistantAppsScreen(",
             "ADRoute.PRIVACY -> ADPrivacyCenterScreen(",
             "ADRoute.STORAGE -> ADStorageScreen(",
             "ADRoute.LANGUAGE -> ADLanguageScreen(",
