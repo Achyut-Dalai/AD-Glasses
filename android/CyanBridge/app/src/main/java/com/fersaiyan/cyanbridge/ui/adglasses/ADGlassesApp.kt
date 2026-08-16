@@ -40,10 +40,15 @@ fun ADGlassesApp(
             modifier = Modifier.fillMaxSize(),
             containerColor = ADColors.Background,
             contentWindowInsets = WindowInsets.safeDrawing,
-            bottomBar = { if (route == ADRoute.MAIN) ADBottomNavigation(selectedTab) { selectedTab = it } },
+            bottomBar = {
+                if (route == ADRoute.MAIN) ADBottomNavigation(selectedTab) { selectedTab = it }
+            },
         ) { innerPadding ->
             Box(
-                modifier = Modifier.fillMaxSize().padding(innerPadding).consumeWindowInsets(innerPadding),
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(innerPadding)
+                    .consumeWindowInsets(innerPadding),
             ) {
                 when (route) {
                     ADRoute.MAIN -> when (selectedTab) {
@@ -66,21 +71,65 @@ fun ADGlassesApp(
                             onNotes = { navigateTo(ADRoute.LIBRARY_NOTES) },
                         )
                         ADTab.AUTOMATIONS -> ADModesScreen(
-                            activeShortcutTitle = dashboardState.nativePluginShortcut?.takeIf { it.isEnabled }?.title,
-                            onMode = { selectedAutomation = it; navigateTo(ADRoute.AUTOMATION_DETAIL) },
+                            activeShortcutTitle = dashboardState.nativePluginShortcut
+                                ?.takeIf { it.isEnabled }
+                                ?.title,
+                            onMode = {
+                                selectedAutomation = it
+                                navigateTo(ADRoute.AUTOMATION_DETAIL)
+                            },
                         )
                     }
-                    ADRoute.LIBRARY_CAPTURES -> ADNativeCapturesScreen(navigateBack) { navigateTo(ADRoute.SYNC) }
+
+                    ADRoute.DEVICE_CENTER -> ADDeviceCenterScreen(
+                        state = dashboardState,
+                        host = host,
+                        onBack = navigateBack,
+                        onSync = { navigateTo(ADRoute.SYNC) },
+                        onFirmware = { navigateTo(ADRoute.FIRMWARE) },
+                        onAdvanced = { navigateTo(ADRoute.ADVANCED) },
+                    )
+                    ADRoute.SYNC -> ADSyncScreen(dashboardState, host, navigateBack)
+                    ADRoute.SETTINGS -> ADSettingsHubScreen(
+                        state = dashboardState,
+                        onBack = navigateBack,
+                        onDevice = { navigateTo(ADRoute.DEVICE_CENTER) },
+                        onIntelligence = { navigateTo(ADRoute.AI_SERVICES) },
+                        onRouting = { navigateTo(ADRoute.ROUTING) },
+                        onPrivacy = { navigateTo(ADRoute.PRIVACY) },
+                        onStorage = { navigateTo(ADRoute.STORAGE) },
+                        onLanguage = { navigateTo(ADRoute.LANGUAGE) },
+                        onPermissions = { navigateTo(ADRoute.PERMISSIONS) },
+                        onAdvanced = { navigateTo(ADRoute.ADVANCED) },
+                        onAbout = { navigateTo(ADRoute.ABOUT) },
+                    )
+                    ADRoute.AI_SERVICES -> ADIntelligenceScreen(
+                        onBack = navigateBack,
+                        onRouting = { navigateTo(ADRoute.ROUTING) },
+                    )
+                    ADRoute.ROUTING -> ADRoutingScreen(navigateBack)
+                    ADRoute.PRIVACY -> ADPrivacyCenterScreen(navigateBack)
+                    ADRoute.STORAGE -> ADStorageScreen(navigateBack)
+                    ADRoute.LANGUAGE -> ADLanguageScreen(navigateBack)
+                    ADRoute.PERMISSIONS -> ADPermissionsScreen(navigateBack)
+                    ADRoute.ADVANCED -> ADAdvancedCenterScreen(
+                        onBack = navigateBack,
+                        onDevice = { navigateTo(ADRoute.DEVICE_CENTER) },
+                    )
+                    ADRoute.ABOUT -> ADAboutScreen(navigateBack)
+                    ADRoute.FIRMWARE -> ADFirmwareScreen(dashboardState, host, navigateBack)
+                    ADRoute.AUTOMATION_DETAIL -> ADNativeModeDetailScreen(
+                        automation = selectedAutomation,
+                        initiallyActive = dashboardState.nativePluginShortcut?.title == selectedAutomation.title &&
+                            dashboardState.nativePluginShortcut?.isEnabled == true,
+                        onBack = navigateBack,
+                    )
+                    ADRoute.LIBRARY_CAPTURES -> ADNativeCapturesScreen(
+                        onBack = navigateBack,
+                        onOpenSync = { navigateTo(ADRoute.SYNC) },
+                    )
                     ADRoute.LIBRARY_RECORDINGS -> ADNativeRecordingsScreen(navigateBack)
                     ADRoute.LIBRARY_NOTES -> ADNativeNotesScreen(navigateBack)
-                    else -> ADLegacyRouteContent(
-                        route = route,
-                        dashboardState = dashboardState,
-                        host = host,
-                        navigateTo = navigateTo,
-                        navigateBack = navigateBack,
-                        selectedAutomation = selectedAutomation,
-                    )
                 }
             }
         }
