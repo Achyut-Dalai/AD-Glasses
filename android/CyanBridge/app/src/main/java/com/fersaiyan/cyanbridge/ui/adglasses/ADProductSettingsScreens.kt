@@ -22,7 +22,6 @@ import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.foundation.verticalScroll
@@ -32,7 +31,6 @@ import androidx.compose.material.icons.outlined.Bluetooth
 import androidx.compose.material.icons.outlined.CameraAlt
 import androidx.compose.material.icons.outlined.CheckCircle
 import androidx.compose.material.icons.outlined.Cloud
-import androidx.compose.material.icons.outlined.Code
 import androidx.compose.material.icons.outlined.Description
 import androidx.compose.material.icons.outlined.DeveloperMode
 import androidx.compose.material.icons.outlined.Info
@@ -56,6 +54,7 @@ import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -74,11 +73,14 @@ import com.fersaiyan.cyanbridge.agent.LocalAgentPrefs
 import com.fersaiyan.cyanbridge.ai.router.AiProviderPrefs
 import com.fersaiyan.cyanbridge.ai.router.AiProviderType
 import com.fersaiyan.cyanbridge.ai.router.CliRelayBackend
+import com.fersaiyan.cyanbridge.devices.DeviceProfileStore
 import com.fersaiyan.cyanbridge.media.SyncedMediaFolder
 import com.fersaiyan.cyanbridge.privacy.PrivacyPrefs
 import com.fersaiyan.cyanbridge.shared.glasses.GlassesDashboardUiState
 import java.io.File
 import java.util.Locale
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 
 @Composable
 internal fun ADSettingsHubScreen(
@@ -94,16 +96,28 @@ internal fun ADSettingsHubScreen(
     onAdvanced: () -> Unit,
     onAbout: () -> Unit,
 ) {
+    val context = LocalContext.current
+    val presentation = buildADDevicePresentation(
+        state = state,
+        profile = DeviceProfileStore.loadLastSelected(context),
+    )
+
     ADProductPage("Settings", onBack) {
         ADCard(onClick = onDevice) {
             Row(verticalAlignment = Alignment.CenterVertically) {
                 ADGlassesMark(Modifier.size(width = 42.dp, height = 28.dp))
                 Column(Modifier.padding(start = 13.dp).weight(1f)) {
                     Text(
-                        if (state.deviceClassLabel.equals("Unknown", true)) "Glasses" else state.deviceClassLabel,
+                        presentation.identityLabel ?: "Glasses",
                         style = MaterialTheme.typography.titleMedium,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
                     )
-                    Text(state.connectionLabel, style = MaterialTheme.typography.bodyMedium, color = ADColors.Muted)
+                    Text(
+                        presentation.statusLabel,
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = ADColors.Muted,
+                    )
                 }
             }
         }
@@ -127,7 +141,7 @@ internal fun ADSettingsHubScreen(
         }
 
         ADProductSettingsGroup("AD Glasses") {
-            ADSettingsRow(Icons.Outlined.DeveloperMode, "Advanced", "Diagnostics and experimental features", onAdvanced)
+            ADSettingsRow(Icons.Outlined.DeveloperMode, "Advanced", "Diagnostics and system controls", onAdvanced)
             ADProductDivider()
             ADSettingsRow(Icons.Outlined.Info, "About AD Glasses", "Version and product information", onAbout)
         }
@@ -282,8 +296,8 @@ internal fun ADPrivacyCenterScreen(onBack: () -> Unit) {
                 PrivacyPrefs.setIncludeFullTranscriptionInExportsEnabled(context, it)
             }
         }
-        ADProductSettingsGroup("Phone actions") {
-            ADToggleRow(Icons.Outlined.Security, "Confirm sensitive actions", "Ask before Local Agent performs protected actions", confirmations) {
+        ADProductSettingsGroup("Phone Control") {
+            ADToggleRow(Icons.Outlined.Security, "Confirm sensitive actions", "Ask before protected phone actions run", confirmations) {
                 confirmations = it
                 LocalAgentPrefs.setRequireConfirmationEnabled(context, it)
             }
@@ -299,18 +313,38 @@ internal fun ADPrivacyCenterScreen(onBack: () -> Unit) {
 @Composable
 internal fun ADStorageScreen(onBack: () -> Unit) {
     val context = LocalContext.current
-    val cacheBytes = remember { folderBytes(context.cacheDir) }
-    val filesBytes = remember { folderBytes(context.filesDir) }
-    val synced = remember { querySyncedMedia(context) }
+    var cacheBytes by remember { mutableStateOf<Long?>(null) }
+    var filesBytes by remember { mutableStateOf<Long?>(null) }
+    var synced by remember { mutableStateOf<ADSyncedMediaStats?>(null) }
+
+    LaunchedEffect(Unit) {
+        val stats = withContext(Dispatchers.IO) {
+            Triple(
+                folderBytes(context.cacheDir),
+                folderBytes(context.filesDir),
+                querySyncedMedia(context),
+            )
+        }
+        cacheBytes = stats.first
+        filesBytes = stats.second
+        synced = stats.third
+    }
+
     ADProductPage("Storage", onBack) {
         ADCard {
             Text("On this phone", style = MaterialTheme.typography.titleLarge)
             Spacer(Modifier.height(12.dp))
-            ADStorageMetric("App data", formatBytes(filesBytes))
+            ADStorageMetric("App data", filesBytes?.let(::formatBytes) ?: "Calculating…")
             ADProductDivider(0.dp)
-            ADStorageMetric("Cache", formatBytes(cacheBytes))
+            ADStorageMetric("Cache", cacheBytes?.let(::formatBytes) ?: "Calculating…")
             ADProductDivider(0.dp)
-            ADStorageMetric("Synced glasses media", if (synced.count == 0) "None yet" else "${synced.count} items · ${formatBytes(synced.bytes)}")
+            ADStorageMetric(
+                "Synced glasses media",
+                when (val current = synced) {
+                    null -> "Calculating…"
+                    else -> if (current.count == 0) "None yet" else "${current.count} items · ${formatBytes(current.bytes)}"
+                },
+            )
         }
         ADCard {
             Text("Glasses media", style = MaterialTheme.typography.titleMedium)
@@ -322,7 +356,13 @@ internal fun ADStorageScreen(onBack: () -> Unit) {
             )
         }
         OutlinedButton(
-            onClick = { runCatching { context.cacheDir.deleteRecursively(); context.cacheDir.mkdirs() } },
+            onClick = {
+                runCatching {
+                    context.cacheDir.deleteRecursively()
+                    context.cacheDir.mkdirs()
+                }
+                cacheBytes = folderBytes(context.cacheDir)
+            },
             modifier = Modifier.fillMaxWidth(),
         ) { Text("Clear app cache") }
     }
@@ -389,29 +429,6 @@ internal fun ADPermissionsScreen(onBack: () -> Unit) {
 }
 
 @Composable
-internal fun ADAdvancedCenterScreen(onBack: () -> Unit, onDevice: () -> Unit) {
-    val context = LocalContext.current
-    ADProductPage("Advanced", onBack) {
-        ADProductSettingsGroup("Diagnostics") {
-            ADSettingsRow(Icons.Outlined.Bluetooth, "Device diagnostics", "Connection, sync and firmware tools", onDevice)
-            ADProductDivider()
-            ADSettingsRow(Icons.Outlined.Code, "Android app settings", "System-level app and battery controls", {
-                openAppSettings(context.packageName, context::startActivity)
-            })
-        }
-        ADCard {
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                Icon(Icons.Outlined.DeveloperMode, null, tint = ADColors.Warning)
-                Column(Modifier.padding(start = 11.dp).weight(1f)) {
-                    Text("Experimental features", style = MaterialTheme.typography.titleMedium)
-                    Text("Only expose experiments here when they have an AD Glasses flow.", color = ADColors.Muted)
-                }
-            }
-        }
-    }
-}
-
-@Composable
 internal fun ADAboutScreen(onBack: () -> Unit) {
     ADProductPage("About AD Glasses", onBack) {
         ADCard {
@@ -437,7 +454,7 @@ internal fun ADAboutScreen(onBack: () -> Unit) {
             ADProductStatusRow(Icons.Outlined.Public, "Current information", "Web Search through your configured relay")
         }
         Text(
-            "AD Glasses includes open-source components and device SDK integrations. Required license notices remain part of the distribution even when legacy product screens are removed.",
+            "AD Glasses includes open-source components and device SDK integrations. Required license notices remain part of the distribution.",
             style = MaterialTheme.typography.bodyMedium,
             color = ADColors.Muted,
         )

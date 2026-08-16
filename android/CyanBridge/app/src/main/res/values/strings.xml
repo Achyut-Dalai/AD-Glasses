@@ -30,84 +30,84 @@
     <string name="text_17">Test pull-mode OTA (writeIpToSoc)</string>
     <string name="scan_device">Scan Device</string>
 
-    <string name="battery_opt_title">Keep CyanBridge Running</string>
-    <string name="battery_opt_status_on">Status: Battery optimization is ON for CyanBridge</string>
-    <string name="battery_opt_status_off">Status: Battery optimization is OFF for CyanBridge</string>
-    <string name="battery_opt_body">Some midrange/low-end phones may disconnect Bluetooth devices when CyanBridge is in the background or when you close the app. To keep your glasses connected, disable battery optimization for CyanBridge.</string>
+    <string name="battery_opt_title">Keep AD Glasses Running</string>
+    <string name="battery_opt_status_on">Status: Battery optimization is ON for AD Glasses</string>
+    <string name="battery_opt_status_off">Status: Battery optimization is OFF for AD Glasses</string>
+    <string name="battery_opt_body">Some phones may disconnect Bluetooth devices when AD Glasses is in the background. If that happens, disable battery optimization for AD Glasses so your glasses can stay connected.</string>
     <string name="battery_opt_disable_button">Disable Battery Optimization</string>
     <string name="battery_opt_open_list_button">Open Battery Optimization Settings</string>
     <string name="battery_opt_open_app_info_button">Open App Info</string>
-    <string name="battery_opt_lock_app_title">Also lock CyanBridge in Recents</string>
-    <string name="battery_opt_lock_app_body">Open Recents, find CyanBridge, then use the app menu (often a long-press or tap the app icon) and choose Lock/Pin/Keep open. This prevents the system from clearing the app.</string>
-    <string name="battery_opt_done_button">I Locked It</string>
+    <string name="battery_opt_lock_app_title">Keep AD Glasses available in the background</string>
+    <string name="battery_opt_lock_app_body">If your phone offers a Lock, Pin, or Keep open option in Recents, you can use it for AD Glasses to reduce background cleanup.</string>
+    <string name="battery_opt_done_button">Done</string>
     <string name="battery_opt_skip_button">Don\'t show again</string>
-    <string name="battery_opt_still_on_toast">Battery optimization still appears to be ON. Please disable it, then tap "I Locked It" again.</string>
+    <string name="battery_opt_still_on_toast">Battery optimization still appears to be ON. Disable it if background connection problems continue.</string>
     <string name="battery_opt_not_supported">Battery optimization settings are not available on this Android version.</string>
     <string name="battery_opt_cant_open_settings">Could not open settings on this device.</string>
 
-    <string name="welcome_title">Welcome to CyanBridge</string>
-    <string name="welcome_body">Let\'s get you set up with your smart glasses. We need to configure a few things to ensure a stable connection.</string>
-    <string name="welcome_button">Start Setup</string>
-    <string name="app_lock_guide_title">Prevent RAM Cleanup</string>
-    <string name="app_lock_guide_body">Android often closes apps running in the background to save RAM. To avoid disconnections, please \"Lock\" CyanBridge in your Recents menu.</string>
-    <string name="app_lock_guide_instructions">1. Swipe up from the bottom (or tap the Square button) to see recent apps.\n2. Find CyanBridge.\n3. Tap the icon at the top or long-press the preview.\n4. Select \"Lock this app\" or the Lock icon.</string>
-    <string name="app_lock_guide_button">Finish Setup</string>
+    <string name="welcome_title">AD Glasses</string>
+    <string name="welcome_body">Connect your glasses, or continue without them and finish setup later.</string>
+    <string name="welcome_button">Connect glasses</string>
+    <string name="app_lock_guide_title">Keep AD Glasses Available</string>
+    <string name="app_lock_guide_body">Some Android phones aggressively stop background apps. If your phone offers an app-lock option in Recents, using it can help keep the glasses connection available.</string>
+    <string name="app_lock_guide_instructions">Open Recents, find AD Glasses, and use Lock, Pin, or Keep open if your phone provides that option.</string>
+    <string name="app_lock_guide_button">Done</string>
 
     <!-- Local agent automation (AccessibilityService) -->
-    <string name="local_agent_accessibility_service_label">Local Agent Automation</string>
-    <string name="local_agent_accessibility_service_description">Enables on-device automation primitives for the Local Agent, including optional screenshot capture when explicitly enabled in Local Agent settings.</string>
+    <string name="local_agent_accessibility_service_label">AD Glasses phone control</string>
+    <string name="local_agent_accessibility_service_description">Allows AD Glasses to read and operate the current Android interface for phone-control actions you request. Optional screenshot capture remains separately controlled.</string>
 
-    <!-- Legacy/compat: kept for code added by local-agent-service worktree -->
-    <string name="local_agent_accessibility_description">Local agent screen observer (MVP)</string>
+    <!-- Legacy/compat key retained for code paths that still reference it. -->
+    <string name="local_agent_accessibility_description">AD Glasses phone-control accessibility service</string>
 
     <!-- Onboarding: Daily Facts -->
     <string name="onboarding_glasses_connection_title">Connect Your Glasses</string>
-    <string name="onboarding_glasses_connection_desc">Allow CyanBridge to find and connect to your nearby glasses.</string>
-    <string name="onboarding_glasses_connection_details">Bluetooth permission is used only to discover, pair with, and communicate with your glasses. You can continue without allowing it now and grant it later when you connect a device.</string>
+    <string name="onboarding_glasses_connection_desc">Allow AD Glasses to find and connect to nearby supported glasses.</string>
+    <string name="onboarding_glasses_connection_details">Bluetooth permission is used to discover, connect to, and communicate with your glasses. You can continue without it and grant access later when you connect glasses.</string>
 
-    <string name="onboarding_optional_features_title">Optional Features, Your Choice</string>
-    <string name="onboarding_optional_features_desc">AutoDiary, Auto Audio, Local Agent, and Cloud AI are optional and configured from Plugins or Settings.</string>
-    <string name="onboarding_optional_features_details">Start with glasses connection, then explore Plugins whenever you are ready. Each plugin explains what it does and requests only the permissions it needs when you enable it. You can review or turn off features at any time.</string>
+    <string name="onboarding_optional_features_title">Optional Features</string>
+    <string name="onboarding_optional_features_desc">Modes, phone control, local models, and cloud AI are optional and can be configured later.</string>
+    <string name="onboarding_optional_features_details">Start with the glasses connection, then enable only the modes and services you want. Each capability can request its own Android permission when it needs one.</string>
 
-    <string name="onboarding_open_source_title">Built in the Open</string>
-    <string name="onboarding_open_source_desc">Review the code, report issues, and help improve CyanBridge for everyone.</string>
-    <string name="onboarding_open_source_details">CyanBridge is open source. Inspect the code to understand its behavior, report bugs or security concerns, suggest improvements, or contribute changes through GitHub.</string>
+    <string name="onboarding_open_source_title">Open-source foundation</string>
+    <string name="onboarding_open_source_desc">AD Glasses is built on open-source components and smart-glasses SDK integrations.</string>
+    <string name="onboarding_open_source_details">Required license notices remain part of the app distribution. The AD Glasses product UI is separate from the upstream compatibility code it builds on.</string>
 
-    <string name="onboarding_daily_facts_title">Daily Facts &amp; Diary</string>
-    <string name="onboarding_daily_facts_desc">AutoDiary can turn selected screen context into private daily facts and summaries.</string>
-    <string name="onboarding_daily_facts_details">Enable and configure AutoDiary later from Plugins. It can remind you to review daily facts, create summaries, and keep your settings in one place. CyanBridge asks for notification access only when you turn on a reminder.</string>
+    <string name="onboarding_daily_facts_title">Daily Diary</string>
+    <string name="onboarding_daily_facts_desc">Daily Diary can turn selected phone context into private daily facts and summaries.</string>
+    <string name="onboarding_daily_facts_details">Enable Daily Diary only if you want it. Its saved context and reminder behavior can be reviewed or disabled later.</string>
 
     <!-- Onboarding: Screen Capture -->
     <string name="onboarding_screen_capture_title">Screen Memory</string>
-    <string name="onboarding_screen_capture_desc">AutoDiary can read screen text for local memory when you enable it from Plugins.</string>
-    <string name="onboarding_screen_capture_details">Screen text is stored locally for AutoDiary. Local Agent phone control reads the current interface only for actions you explicitly request. Apps in your blacklist are skipped. Review the Accessibility disclosure below before enabling this optional feature in Android settings.</string>
+    <string name="onboarding_screen_capture_desc">Screen Memory can read selected screen text for local context when you enable it.</string>
+    <string name="onboarding_screen_capture_details">Screen text may be stored locally for enabled memory features. Phone Control reads the current interface only for actions you request. Apps in your blacklist are skipped. Review the Accessibility disclosure before enabling this optional Android permission.</string>
     <string name="onboarding_accessibility_disclosure_title">Accessibility access disclosure</string>
-    <string name="onboarding_accessibility_disclosure_body">CyanBridge uses Android Accessibility only if you enable it. Accessibility lets CyanBridge read text and interface structure from apps on your screen. It is used to save optional Screen Memory and to let the Local Agent tap, type, scroll, and navigate on your behalf. Screen content is stored locally for Screen Memory. When you request a Local Agent action, current screen content may be processed by the AI provider you selected, including a cloud provider if you chose one. Optional Local Agent screenshots require a separate setting and are never sent to a remote planner unless you separately allow remote screenshot upload. Apps in your blacklist are skipped. CyanBridge does not enable Accessibility automatically, and you can turn off Accessibility, Screen Memory, or Local Agent at any time.</string>
-    <string name="onboarding_local_agent_toggle">Enable Local Agent phone control</string>
-    <string name="onboarding_open_accessibility_settings">Review and enable Accessibility</string>
+    <string name="onboarding_accessibility_disclosure_body">AD Glasses uses Android Accessibility only if you enable it. Accessibility can let AD Glasses read text and interface structure from apps on your screen and can let Phone Control tap, type, scroll, and navigate for actions you request. Enabled Screen Memory features may save selected screen context locally. When you request a phone-control action, current screen context may be processed by the AI route you selected, including a remote service if you configured one. Optional screenshots remain separately controlled. Apps in your blacklist are skipped. You can disable Accessibility, Screen Memory, or Phone Control at any time.</string>
+    <string name="onboarding_local_agent_toggle">Enable Phone Control</string>
+    <string name="onboarding_open_accessibility_settings">Review Accessibility access</string>
     <string name="onboarding_skip_all">Skip all</string>
     <string name="onboarding_back">Back</string>
     <string name="onboarding_next">Next</string>
     <string name="onboarding_get_started">Get started</string>
     <string name="meta_diagnostics_title">Meta Ray-Ban diagnostics</string>
-    <string name="meta_diagnostics_description">CyanBridge will collect the recent Meta DAT state, errors, device details, and filtered logcat entries so the issue can be investigated.</string>
+    <string name="meta_diagnostics_description">AD Glasses can collect recent Meta integration state, errors, device details, and filtered diagnostic logs when troubleshooting is needed.</string>
 
     <!-- Onboarding: Audio Capture -->
-    <string name="onboarding_audio_capture_title">Continuous Audio Recording</string>
-    <string name="onboarding_audio_capture_desc">Auto Audio can record glasses audio for transcription and daily summaries when enabled from Plugins.</string>
-    <string name="onboarding_audio_capture_details">Auto Audio records in 15-minute chunks, then transcribes them for optional summaries. You can review and delete recordings at any time. CyanBridge explains and requests notification or microphone access only if the options you choose need them.</string>
+    <string name="onboarding_audio_capture_title">Auto Capture</string>
+    <string name="onboarding_audio_capture_desc">Auto Capture can record glasses audio for transcription and summaries when you enable it.</string>
+    <string name="onboarding_audio_capture_details">When enabled, Auto Capture can record audio in chunks and transcribe it for supported workflows. You can review and delete saved recordings from Library.</string>
 
     <!-- Onboarding: Agent Personality -->
-    <string name="onboarding_agent_personality_title">Personalize Your AI</string>
-    <string name="onboarding_agent_personality_desc">Customize how the AI assistant behaves and what it knows about you.</string>
-    <string name="onboarding_agent_personality_details">You can customize the agent\'s personality (how it talks, its tone) and provide facts about yourself (your job, hobbies, family, preferences). This makes the AI more personal and helpful. You can edit these anytime in Settings.</string>
+    <string name="onboarding_agent_personality_title">Assistant Preferences</string>
+    <string name="onboarding_agent_personality_desc">Choose how the assistant should respond and what personal context it may use.</string>
+    <string name="onboarding_agent_personality_details">Assistant preferences and personal context can be changed later from Settings when those capabilities are enabled.</string>
 
     <!-- Onboarding: Local Storage -->
-    <string name="onboarding_local_storage_title">Your Data Stays on Your Device</string>
-    <string name="onboarding_local_storage_desc">All your data is encrypted and stored locally on your phone.</string>
-    <string name="onboarding_local_storage_details">Your chats, screen captures, recordings, and AI memories are encrypted and stored on your device. Optional cloud features connect only to the relay URL and credentials you configure.</string>
+    <string name="onboarding_local_storage_title">Your Data on This Phone</string>
+    <string name="onboarding_local_storage_desc">Chats, synced media, notes, and supported memory data are stored on this phone unless a configured capability needs a remote service.</string>
+    <string name="onboarding_local_storage_details">Remote AI, Web Search, or other connected services receive only the data required by the capability you choose to use. Storage, encryption, and relay security are reviewed separately by each runtime rather than implied by this screen.</string>
 
-    <!-- Chat deletion -->
+    <!-- Legacy chat/media strings retained for compatibility source that is no longer an installed product page. -->
     <string name="delete_chat_title">Delete Chat</string>
     <string name="delete_chat_message">Delete \"%s\"? This cannot be undone.</string>
     <string name="chat_deleted">Chat deleted</string>

@@ -3,7 +3,6 @@ package com.fersaiyan.cyanbridge.ui
 import android.content.Context
 import android.content.Intent
 import android.os.Bundle
-import android.widget.Toast
 import androidx.activity.compose.setContent
 import androidx.appcompat.app.AppCompatActivity
 import com.fersaiyan.cyanbridge.MainActivity
@@ -37,25 +36,12 @@ class WelcomeActivity : AppCompatActivity() {
                     startActivity(Intent(this, MainActivity::class.java))
                     finish()
                 },
-                onSupportedDevices = {
-                    Toast.makeText(
-                        this,
-                        "HeyCyan is primary. Eyevue, Meta and Meizu support is experimental; generic audio is limited.",
-                        Toast.LENGTH_LONG,
-                    ).show()
-                },
-                onPrivacy = {
-                    Toast.makeText(
-                        this,
-                        "Local data stays on this phone unless you deliberately configure an external service.",
-                        Toast.LENGTH_LONG,
-                    ).show()
-                },
             )
         }
     }
 
     private fun isOnboardingCompleted(): Boolean {
+        // Keep the existing preference namespace so upgrades retain first-run state.
         val prefs = getSharedPreferences("cyanbridge_prefs", Context.MODE_PRIVATE)
         return prefs.getBoolean("onboarding_completed", false)
     }

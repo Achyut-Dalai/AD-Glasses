@@ -1,8 +1,12 @@
 package com.fersaiyan.cyanbridge.ui.adglasses
 
 import android.content.Intent
+import android.graphics.Bitmap
 import android.media.MediaPlayer
 import android.net.Uri
+import android.os.Build
+import android.util.Size
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -10,6 +14,7 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.heightIn
@@ -31,6 +36,7 @@ import androidx.compose.material.icons.outlined.Videocam
 import androidx.compose.material.icons.rounded.KeyboardArrowRight
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
@@ -45,6 +51,9 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.asImageBitmap
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -157,6 +166,7 @@ internal fun ADNativeCapturesScreen(
 
     LaunchedEffect(Unit) {
         loading = true
+        error = null
         media = runCatching {
             withContext(Dispatchers.IO) { SyncedMediaQuery.query(context) }
         }.onFailure {
@@ -174,7 +184,23 @@ internal fun ADNativeCapturesScreen(
         ) {
             error?.let { message -> item { ADLibraryMessage(message, warning = true) } }
             when {
-                loading -> item { ADLibraryMessage("Loading captures…") }
+                loading -> item {
+                    ADCard {
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            CircularProgressIndicator(
+                                modifier = Modifier.size(20.dp),
+                                strokeWidth = 2.dp,
+                                color = ADColors.Ink,
+                            )
+                            Text(
+                                "Loading captures",
+                                modifier = Modifier.padding(start = 11.dp),
+                                style = MaterialTheme.typography.bodyMedium,
+                                color = ADColors.Muted,
+                            )
+                        }
+                    }
+                }
                 media.isEmpty() -> {
                     item {
                         ADEmptyLibraryState(
@@ -191,31 +217,96 @@ internal fun ADNativeCapturesScreen(
                     }
                 }
                 else -> items(media, key = { "${it.id}-${it.isVideo}" }) { item ->
-                    ADCard(onClick = { open(item) }) {
-                        Row(verticalAlignment = Alignment.CenterVertically) {
-                            Box(
-                                Modifier.size(44.dp).background(ADColors.SurfaceSubtle, RoundedCornerShape(12.dp)),
-                                contentAlignment = Alignment.Center,
-                            ) {
-                                Icon(
-                                    if (item.isVideo) Icons.Outlined.Videocam else Icons.Outlined.Image,
-                                    null,
-                                    tint = ADColors.Ink,
-                                )
-                            }
-                            Column(Modifier.padding(start = 12.dp).weight(1f)) {
-                                Text(
-                                    item.displayName,
-                                    style = MaterialTheme.typography.titleMedium,
-                                    maxLines = 1,
-                                    overflow = TextOverflow.Ellipsis,
-                                )
-                                Text(if (item.isVideo) "Video" else "Photo", color = ADColors.Muted)
-                            }
-                            Icon(Icons.Rounded.KeyboardArrowRight, null, tint = ADColors.Muted)
-                        }
-                    }
+                    ADCaptureCard(item = item, onClick = { open(item) })
                 }
+            }
+        }
+    }
+}
+
+@Composable
+private fun ADCaptureCard(
+    item: SyncedMediaItem,
+    onClick: () -> Unit,
+) {
+    ADCard(onClick = onClick) {
+        ADCapturePreview(item)
+        Spacer(Modifier.size(11.dp))
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Column(Modifier.weight(1f)) {
+                Text(
+                    item.displayName,
+                    style = MaterialTheme.typography.titleMedium,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                )
+                Text(
+                    if (item.isVideo) "Video from glasses" else "Photo from glasses",
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = ADColors.Muted,
+                )
+            }
+            ADStatusChip(
+                if (item.isVideo) "VIDEO" else "PHOTO",
+                ADStatusTone.NEUTRAL,
+            )
+        }
+    }
+}
+
+@Composable
+private fun ADCapturePreview(item: SyncedMediaItem) {
+    val context = LocalContext.current
+    var thumbnail by remember(item.contentUriString) { mutableStateOf<Bitmap?>(null) }
+
+    LaunchedEffect(item.contentUriString) {
+        thumbnail = withContext(Dispatchers.IO) {
+            if (Build.VERSION.SDK_INT < Build.VERSION_CODES.Q) return@withContext null
+            runCatching {
+                context.contentResolver.loadThumbnail(
+                    Uri.parse(item.contentUriString),
+                    Size(960, 600),
+                    null,
+                )
+            }.getOrNull()
+        }
+    }
+
+    Box(
+        modifier = Modifier
+            .fillMaxWidth()
+            .aspectRatio(16f / 10f)
+            .clip(RoundedCornerShape(16.dp))
+            .background(ADColors.SurfaceSubtle),
+        contentAlignment = Alignment.Center,
+    ) {
+        thumbnail?.let {
+            Image(
+                bitmap = it.asImageBitmap(),
+                contentDescription = item.displayName,
+                modifier = Modifier.fillMaxSize(),
+                contentScale = ContentScale.Crop,
+            )
+        } ?: Icon(
+            if (item.isVideo) Icons.Outlined.Videocam else Icons.Outlined.Image,
+            contentDescription = null,
+            tint = ADColors.Muted,
+            modifier = Modifier.size(36.dp),
+        )
+
+        if (item.isVideo) {
+            Box(
+                modifier = Modifier
+                    .size(46.dp)
+                    .background(ADColors.Ink.copy(alpha = 0.78f), CircleShape),
+                contentAlignment = Alignment.Center,
+            ) {
+                Icon(
+                    Icons.Outlined.PlayArrow,
+                    contentDescription = "Play video",
+                    tint = androidx.compose.ui.graphics.Color.White,
+                    modifier = Modifier.size(25.dp),
+                )
             }
         }
     }
@@ -287,7 +378,7 @@ internal fun ADNativeRecordingsScreen(onBack: () -> Unit) {
                 item {
                     ADEmptyLibraryState(
                         title = "No recordings yet",
-                        detail = "Record from Home or start a meeting mode from the glasses.",
+                        detail = "Record from Home or start Meeting Notes through the glasses.",
                     )
                 }
             } else {
@@ -304,7 +395,7 @@ internal fun ADNativeRecordingsScreen(onBack: () -> Unit) {
                             ) {
                                 Icon(
                                     if (playingId == session.id) Icons.Outlined.Pause else Icons.Outlined.PlayArrow,
-                                    contentDescription = if (playingId == session.id) "Pause" else "Play",
+                                    contentDescription = if (playingId == session.id) "Stop" else "Play",
                                     tint = ADColors.Ink,
                                 )
                             }

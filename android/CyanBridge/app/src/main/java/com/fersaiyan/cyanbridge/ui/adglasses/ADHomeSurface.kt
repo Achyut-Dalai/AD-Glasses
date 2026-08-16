@@ -49,6 +49,7 @@ import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.fersaiyan.cyanbridge.R
+import com.fersaiyan.cyanbridge.devices.ADDeviceSupportPolicy
 import com.fersaiyan.cyanbridge.devices.DeviceProfileStore
 import com.fersaiyan.cyanbridge.shared.glasses.GlassesDashboardUiState
 
@@ -68,23 +69,11 @@ internal fun ADHomeSurface(
     var captureSheet by remember { mutableStateOf(false) }
     val context = LocalContext.current
     val profile = DeviceProfileStore.loadLastSelected(context)
-    val connected = state.connectionLabel.contains("connected", ignoreCase = true) &&
-        !state.connectionLabel.contains("disconnected", ignoreCase = true)
-    val connecting = state.connectionLabel.contains("connecting", ignoreCase = true) ||
-        state.connectionLabel.contains("reconnect", ignoreCase = true)
-    val activeMode = state.nativePluginShortcut?.takeIf { it.isEnabled }?.title
-    val deviceName = profile?.advertisedName
-        ?.trim()
-        ?.takeIf { it.isNotBlank() && !it.equals("Unknown", ignoreCase = true) }
-    val deviceClass = state.deviceClassLabel
-        .trim()
-        .takeIf { it.isNotBlank() && !it.equals("Unknown", ignoreCase = true) }
-    val deviceIdentity = when {
-        deviceName != null && deviceClass != null && !deviceName.contains(deviceClass, ignoreCase = true) ->
-            "$deviceName · $deviceClass"
-        deviceName != null -> deviceName
-        deviceClass != null -> deviceClass
-        else -> null
+        ?.takeIf { ADDeviceSupportPolicy.isPairable(it.selectedClass) }
+    val device = buildADDevicePresentation(state, profile)
+    val runtimeModeTitle = state.nativePluginShortcut?.takeIf { it.isEnabled }?.title
+    val activeModeTitle = runtimeModeTitle?.let { runtimeTitle ->
+        ADAutomation.entries.firstOrNull { it.runtimeTitle == runtimeTitle }?.title ?: "Mode"
     }
 
     Column(Modifier.fillMaxSize()) {
@@ -102,19 +91,17 @@ internal fun ADHomeSurface(
             item {
                 ADReadinessStage(
                     state = state,
-                    connected = connected,
-                    connecting = connecting,
-                    deviceIdentity = deviceIdentity,
+                    device = device,
                     onOpenDevice = onOpenDevice,
                     onConnect = when {
-                        connected -> host.onDisconnect
-                        deviceIdentity == null -> host.onOpenDeviceSetup
+                        device.connected -> host.onDisconnect
+                        device.shouldOpenSetup -> host.onOpenDeviceSetup
                         else -> host.onReconnect
                     },
                 )
             }
 
-            if (state.meeting.isRecording || state.transfer.isVisible || activeMode != null) {
+            if (state.meeting.isRecording || state.transfer.isVisible || activeModeTitle != null) {
                 item {
                     Column(verticalArrangement = Arrangement.spacedBy(9.dp)) {
                         Text("Active", style = MaterialTheme.typography.titleLarge)
@@ -136,7 +123,7 @@ internal fun ADHomeSurface(
                                 onClick = onOpenSync,
                             )
                         }
-                        activeMode?.let {
+                        activeModeTitle?.let {
                             ADLiveRow(
                                 icon = Icons.Outlined.AutoAwesome,
                                 title = it,
@@ -235,9 +222,7 @@ internal fun ADHomeSurface(
 @Composable
 private fun ADReadinessStage(
     state: GlassesDashboardUiState,
-    connected: Boolean,
-    connecting: Boolean,
-    deviceIdentity: String?,
+    device: ADDevicePresentation,
     onOpenDevice: () -> Unit,
     onConnect: () -> Unit,
 ) {
@@ -268,27 +253,23 @@ private fun ADReadinessStage(
             modifier = Modifier.fillMaxWidth().heightIn(min = 66.dp).padding(horizontal = 15.dp, vertical = 9.dp),
             verticalAlignment = Alignment.CenterVertically,
         ) {
-            if (connecting) {
+            if (device.connecting) {
                 CircularProgressIndicator(modifier = Modifier.size(16.dp), strokeWidth = 2.dp, color = ADColors.Blue)
             } else {
                 Box(
-                    Modifier.size(8.dp).background(if (connected) ADColors.Success else ADColors.Muted, CircleShape),
+                    Modifier.size(8.dp).background(if (device.connected) ADColors.Success else ADColors.Muted, CircleShape),
                 )
             }
             Column(Modifier.padding(start = 10.dp).weight(1f)) {
                 Text(
-                    when {
-                        connected -> "Connected"
-                        connecting -> state.connectionLabel
-                        else -> state.connectionLabel.takeUnless { it.equals("Unknown", ignoreCase = true) } ?: "Disconnected"
-                    },
+                    device.statusLabel,
                     style = MaterialTheme.typography.titleMedium,
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis,
                 )
-                if (connected && deviceIdentity != null) {
+                if (device.connected && device.identityLabel != null) {
                     Text(
-                        deviceIdentity,
+                        device.identityLabel,
                         style = MaterialTheme.typography.bodySmall,
                         color = ADColors.Muted,
                         maxLines = 1,
@@ -296,7 +277,7 @@ private fun ADReadinessStage(
                     )
                 }
             }
-            if (connected) {
+            if (device.connected) {
                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
                     if (state.showBattery && state.batteryPercent != null) {
                         Icon(Icons.Outlined.BatteryFull, null, tint = ADColors.Muted, modifier = Modifier.size(16.dp))
@@ -307,7 +288,7 @@ private fun ADReadinessStage(
                         Text(state.storageLabel, style = MaterialTheme.typography.labelMedium)
                     }
                 }
-            } else if (!connecting) {
+            } else if (!device.connecting) {
                 Text(
                     "Connect",
                     style = MaterialTheme.typography.labelLarge,

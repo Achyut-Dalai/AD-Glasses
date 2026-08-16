@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <style name="Theme.CyanBridgeManager" parent="Theme.MaterialComponents.Light.NoActionBar">
+    <style name="Theme.ADGlasses" parent="Theme.MaterialComponents.Light.NoActionBar">
         <item name="colorPrimary">@color/ad_blue</item>
         <item name="colorPrimaryVariant">@color/ad_blue</item>
         <item name="colorSecondary">@color/ad_blue</item>
@@ -17,5 +17,17 @@
 
         <item name="windowActionBar">false</item>
         <item name="windowNoTitle">true</item>
+    </style>
+
+    <!-- Compatibility name retained only for inherited manifest/resource references. -->
+    <style name="Theme.CyanBridgeManager" parent="Theme.ADGlasses" />
+
+    <!-- Invisible hand-off used only by compatibility activity aliases. -->
+    <style name="Theme.ADGlasses.Redirect" parent="@android:style/Theme.Translucent.NoTitleBar">
+        <item name="android:windowIsTranslucent">true</item>
+        <item name="android:windowBackground">@android:color/transparent</item>
+        <item name="android:backgroundDimEnabled">false</item>
+        <item name="android:windowDisablePreview">true</item>
+        <item name="android:windowNoTitle">true</item>
     </style>
 </resources>

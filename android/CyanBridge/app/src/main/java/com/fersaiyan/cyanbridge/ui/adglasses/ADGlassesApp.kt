@@ -9,11 +9,14 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.safeDrawing
 import androidx.compose.material3.Scaffold
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import com.fersaiyan.cyanbridge.shared.glasses.GlassesDashboardUiState
 
 @Composable
@@ -21,9 +24,14 @@ fun ADGlassesApp(
     dashboardState: GlassesDashboardUiState,
     host: ADHostActions,
 ) {
+    val context = LocalContext.current
+    val navigationRequests = remember(context) { ADNavigationRequestStore.observe(context) }
+    val externalRequest by navigationRequests.collectAsState()
+
     var selectedTab by remember { mutableStateOf(ADTab.HOME) }
     var routeStack by remember { mutableStateOf(listOf(ADRoute.MAIN)) }
     var selectedAutomation by remember { mutableStateOf(ADAutomation.LOCAL_AGENT) }
+    var conversationRequest by remember { mutableStateOf<ADNavigationRequest?>(null) }
 
     val route = routeStack.last()
     val navigateTo: (ADRoute) -> Unit = { destination ->
@@ -31,6 +39,37 @@ fun ADGlassesApp(
     }
     val navigateBack = {
         if (routeStack.size > 1) routeStack = routeStack.dropLast(1)
+    }
+
+    LaunchedEffect(externalRequest?.id) {
+        val request = externalRequest ?: return@LaunchedEffect
+        when (request.destination) {
+            ADExternalDestination.CONVERSATIONS -> {
+                routeStack = listOf(ADRoute.MAIN)
+                selectedTab = ADTab.ASSISTANT
+                conversationRequest = request
+            }
+            ADExternalDestination.SETTINGS -> {
+                routeStack = listOf(ADRoute.MAIN, ADRoute.SETTINGS)
+            }
+            ADExternalDestination.MODES -> {
+                routeStack = listOf(ADRoute.MAIN)
+                selectedTab = ADTab.AUTOMATIONS
+            }
+            ADExternalDestination.LIBRARY_CAPTURES -> {
+                selectedTab = ADTab.LIBRARY
+                routeStack = listOf(ADRoute.MAIN, ADRoute.LIBRARY_CAPTURES)
+            }
+            ADExternalDestination.LIBRARY_RECORDINGS -> {
+                selectedTab = ADTab.LIBRARY
+                routeStack = listOf(ADRoute.MAIN, ADRoute.LIBRARY_RECORDINGS)
+            }
+            ADExternalDestination.LIBRARY_NOTES -> {
+                selectedTab = ADTab.LIBRARY
+                routeStack = listOf(ADRoute.MAIN, ADRoute.LIBRARY_NOTES)
+            }
+        }
+        ADNavigationRequestStore.consume(context, request.id)
     }
 
     BackHandler(enabled = route != ADRoute.MAIN) { navigateBack() }
@@ -62,7 +101,14 @@ fun ADGlassesApp(
                             onOpenLibrary = { selectedTab = ADTab.LIBRARY },
                             onOpenModes = { selectedTab = ADTab.AUTOMATIONS },
                         )
-                        ADTab.ASSISTANT -> ADNativeConversationScreen(host = host)
+                        ADTab.ASSISTANT -> ADNativeConversationScreen(
+                            onVoiceQuestion = host.onVoiceQuestion,
+                            onImageQuestion = host.onImageQuestion,
+                            navigationRequest = conversationRequest,
+                            onNavigationRequestApplied = { requestId ->
+                                if (conversationRequest?.id == requestId) conversationRequest = null
+                            },
+                        )
                         ADTab.LIBRARY -> ADNativeLibraryScreen(
                             transferActive = dashboardState.transfer.isVisible,
                             onOpenSync = { navigateTo(ADRoute.SYNC) },
@@ -102,22 +148,31 @@ fun ADGlassesApp(
                         onAdvanced = { navigateTo(ADRoute.ADVANCED) },
                         onAbout = { navigateTo(ADRoute.ABOUT) },
                     )
-                    ADRoute.AI_SERVICES -> ADIntelligenceScreen(onBack = navigateBack, onRouting = { navigateTo(ADRoute.ROUTING) })
+                    ADRoute.AI_SERVICES -> ADIntelligenceScreen(
+                        onBack = navigateBack,
+                        onRouting = { navigateTo(ADRoute.ROUTING) },
+                    )
                     ADRoute.ROUTING -> ADRoutingScreen(navigateBack)
                     ADRoute.PRIVACY -> ADPrivacyCenterScreen(navigateBack)
                     ADRoute.STORAGE -> ADStorageScreen(navigateBack)
                     ADRoute.LANGUAGE -> ADLanguageScreen(navigateBack)
                     ADRoute.PERMISSIONS -> ADPermissionsScreen(navigateBack)
-                    ADRoute.ADVANCED -> ADAdvancedCenterScreen(onBack = navigateBack, onDevice = { navigateTo(ADRoute.DEVICE_CENTER) })
+                    ADRoute.ADVANCED -> ADAdvancedScreen(
+                        onBack = navigateBack,
+                        onDevice = { navigateTo(ADRoute.DEVICE_CENTER) },
+                    )
                     ADRoute.ABOUT -> ADAboutScreen(navigateBack)
                     ADRoute.FIRMWARE -> ADFirmwareScreen(dashboardState, host, navigateBack)
                     ADRoute.AUTOMATION_DETAIL -> ADNativeModeDetailScreen(
                         automation = selectedAutomation,
-                        initiallyActive = dashboardState.nativePluginShortcut?.title == selectedAutomation.title &&
+                        initiallyActive = dashboardState.nativePluginShortcut?.title == selectedAutomation.runtimeTitle &&
                             dashboardState.nativePluginShortcut?.isEnabled == true,
                         onBack = navigateBack,
                     )
-                    ADRoute.LIBRARY_CAPTURES -> ADNativeCapturesScreen(onBack = navigateBack, onOpenSync = { navigateTo(ADRoute.SYNC) })
+                    ADRoute.LIBRARY_CAPTURES -> ADNativeCapturesScreen(
+                        onBack = navigateBack,
+                        onOpenSync = { navigateTo(ADRoute.SYNC) },
+                    )
                     ADRoute.LIBRARY_RECORDINGS -> ADNativeRecordingsScreen(navigateBack)
                     ADRoute.LIBRARY_NOTES -> ADNativeNotesScreen(navigateBack)
                 }
