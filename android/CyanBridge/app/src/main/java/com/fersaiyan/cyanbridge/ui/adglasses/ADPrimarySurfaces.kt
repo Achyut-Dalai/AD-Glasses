@@ -44,18 +44,19 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import com.fersaiyan.cyanbridge.ai.orchestrator.ADConversationNavigator
 
 /**
- * The phone is a continuation and review surface for an assistant that primarily lives
- * on the glasses. The shared session/orchestrator will replace the legacy chat callbacks
- * beneath this UI without changing the product model shown here.
+ * Phone continuation/review for the same durable AD thread used by the glasses.
  */
 @Composable
 internal fun ADConversationsScreen(host: ADHostActions) {
     var message by remember { mutableStateOf("") }
+    val context = LocalContext.current
 
     Column(Modifier.fillMaxSize()) {
         ADTopBar(title = "Conversations")
@@ -78,7 +79,7 @@ internal fun ADConversationsScreen(host: ADHostActions) {
                         fontWeight = FontWeight.Bold,
                     )
                     Text(
-                        text = "Your spoken and visual requests will live in one conversation. Use the phone for typing, long answers, links and history.",
+                        text = "Spoken, visual and phone turns share one AD conversation. Use this screen for typing, longer answers, links and history.",
                         style = MaterialTheme.typography.bodyLarge,
                         color = ADColors.Muted,
                     )
@@ -117,17 +118,13 @@ internal fun ADConversationsScreen(host: ADHostActions) {
                         BasicTextField(
                             value = message,
                             onValueChange = { message = it },
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .height(82.dp),
+                            modifier = Modifier.fillMaxWidth().height(82.dp),
                             singleLine = false,
                             textStyle = MaterialTheme.typography.bodyLarge.copy(color = ADColors.Ink),
                             cursorBrush = SolidColor(ADColors.Ink),
                             decorationBox = { textField ->
                                 Box(
-                                    modifier = Modifier
-                                        .fillMaxSize()
-                                        .padding(horizontal = 2.dp, vertical = 2.dp),
+                                    modifier = Modifier.fillMaxSize().padding(horizontal = 2.dp, vertical = 2.dp),
                                     contentAlignment = Alignment.TopStart,
                                 ) {
                                     if (message.isBlank()) {
@@ -146,7 +143,7 @@ internal fun ADConversationsScreen(host: ADHostActions) {
                             verticalAlignment = Alignment.CenterVertically,
                         ) {
                             Text(
-                                text = "Same AD, different screen",
+                                text = "Same AD, same thread",
                                 style = MaterialTheme.typography.labelMedium,
                                 color = ADColors.Muted,
                             )
@@ -154,19 +151,14 @@ internal fun ADConversationsScreen(host: ADHostActions) {
                             IconButton(
                                 onClick = {
                                     val prompt = message.trim()
-                                    if (prompt.isEmpty()) host.onOpenChat()
-                                    else {
-                                        host.onOpenChatWithPrompt(prompt)
-                                        message = ""
-                                    }
+                                    ADConversationNavigator.open(context, prompt.takeIf { it.isNotEmpty() })
+                                    if (prompt.isNotEmpty()) message = ""
                                 },
-                                modifier = Modifier
-                                    .size(42.dp)
-                                    .background(ADColors.Ink, CircleShape),
+                                modifier = Modifier.size(42.dp).background(ADColors.Ink, CircleShape),
                             ) {
                                 Icon(
                                     Icons.Rounded.ArrowUpward,
-                                    contentDescription = "Send",
+                                    contentDescription = "Continue conversation",
                                     tint = Color.White,
                                     modifier = Modifier.size(21.dp),
                                 )
@@ -177,7 +169,10 @@ internal fun ADConversationsScreen(host: ADHostActions) {
             }
 
             item {
-                ADCard(modifier = Modifier.fillMaxWidth(), onClick = host.onOpenChat) {
+                ADCard(
+                    modifier = Modifier.fillMaxWidth(),
+                    onClick = { ADConversationNavigator.open(context) },
+                ) {
                     Row(verticalAlignment = Alignment.CenterVertically) {
                         Box(
                             modifier = Modifier
@@ -192,15 +187,11 @@ internal fun ADConversationsScreen(host: ADHostActions) {
                                 modifier = Modifier.size(21.dp),
                             )
                         }
-                        Column(
-                            modifier = Modifier
-                                .padding(start = 13.dp)
-                                .weight(1f),
-                        ) {
-                            Text("Conversation history", style = MaterialTheme.typography.titleMedium)
+                        Column(modifier = Modifier.padding(start = 13.dp).weight(1f)) {
+                            Text("Current AD conversation", style = MaterialTheme.typography.titleMedium)
                             Spacer(Modifier.height(2.dp))
                             Text(
-                                "Review saved chats and longer responses.",
+                                "Review the same durable thread used by AD.",
                                 style = MaterialTheme.typography.bodyMedium,
                                 color = ADColors.Muted,
                             )
@@ -276,7 +267,7 @@ internal fun ADModesScreen(
                         fontWeight = FontWeight.Bold,
                     )
                     Text(
-                        text = "Configure ongoing behaviours here. AD can then start supported modes from voice without making you operate the phone.",
+                        text = "Configure ongoing behaviours here. AD can start supported modes from voice without making you operate the phone.",
                         style = MaterialTheme.typography.bodyLarge,
                         color = ADColors.Muted,
                     )
@@ -293,11 +284,7 @@ internal fun ADModesScreen(
                         verticalAlignment = Alignment.CenterVertically,
                     ) {
                         Box(Modifier.size(9.dp).background(ADColors.Success, CircleShape))
-                        Column(
-                            modifier = Modifier
-                                .padding(start = 12.dp)
-                                .weight(1f),
-                        ) {
+                        Column(modifier = Modifier.padding(start = 12.dp).weight(1f)) {
                             Text("Active now", style = MaterialTheme.typography.labelMedium, color = ADColors.Success)
                             Text(activeShortcutTitle, style = MaterialTheme.typography.titleMedium)
                         }
@@ -306,9 +293,7 @@ internal fun ADModesScreen(
                 }
             }
 
-            item {
-                Text("Available modes", style = MaterialTheme.typography.titleLarge)
-            }
+            item { Text("Available modes", style = MaterialTheme.typography.titleLarge) }
 
             items(ADAutomation.entries, key = { it.name }) { mode ->
                 ADModeRow(
@@ -362,11 +347,7 @@ private fun ADModeRow(
                 modifier = Modifier.size(22.dp),
             )
         }
-        Column(
-            modifier = Modifier
-                .padding(start = 13.dp, end = 8.dp)
-                .weight(1f),
-        ) {
+        Column(modifier = Modifier.padding(start = 13.dp, end = 8.dp).weight(1f)) {
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Text(mode.title, style = MaterialTheme.typography.titleMedium)
                 if (active) {
