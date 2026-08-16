@@ -44,10 +44,12 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.fersaiyan.cyanbridge.R
+import com.fersaiyan.cyanbridge.devices.DeviceProfileStore
 import com.fersaiyan.cyanbridge.shared.glasses.GlassesDashboardUiState
 
 /** Quiet control surface for the glasses. */
@@ -64,11 +66,26 @@ internal fun ADHomeSurface(
     onOpenModes: () -> Unit,
 ) {
     var captureSheet by remember { mutableStateOf(false) }
+    val context = LocalContext.current
+    val profile = DeviceProfileStore.loadLastSelected(context)
     val connected = state.connectionLabel.contains("connected", ignoreCase = true) &&
         !state.connectionLabel.contains("disconnected", ignoreCase = true)
     val connecting = state.connectionLabel.contains("connecting", ignoreCase = true) ||
         state.connectionLabel.contains("reconnect", ignoreCase = true)
     val activeMode = state.nativePluginShortcut?.takeIf { it.isEnabled }?.title
+    val deviceName = profile?.advertisedName
+        ?.trim()
+        ?.takeIf { it.isNotBlank() && !it.equals("Unknown", ignoreCase = true) }
+    val deviceClass = state.deviceClassLabel
+        .trim()
+        .takeIf { it.isNotBlank() && !it.equals("Unknown", ignoreCase = true) }
+    val deviceIdentity = when {
+        deviceName != null && deviceClass != null && !deviceName.contains(deviceClass, ignoreCase = true) ->
+            "$deviceName · $deviceClass"
+        deviceName != null -> deviceName
+        deviceClass != null -> deviceClass
+        else -> null
+    }
 
     Column(Modifier.fillMaxSize()) {
         ADTopBar(showBrand = true, showSettings = true, onSettings = onOpenSettings)
@@ -87,10 +104,11 @@ internal fun ADHomeSurface(
                     state = state,
                     connected = connected,
                     connecting = connecting,
+                    deviceIdentity = deviceIdentity,
                     onOpenDevice = onOpenDevice,
                     onConnect = when {
                         connected -> host.onDisconnect
-                        state.deviceClassLabel == "Unknown" -> host.onOpenDeviceSetup
+                        deviceIdentity == null -> host.onOpenDeviceSetup
                         else -> host.onReconnect
                     },
                 )
@@ -142,7 +160,7 @@ internal fun ADHomeSurface(
                     )
                     ADHomeAction(
                         title = "See",
-                        detail = "Camera",
+                        detail = "Glasses camera",
                         icon = Icons.Outlined.Visibility,
                         modifier = Modifier.weight(1f),
                         onClick = host.onImageQuestion,
@@ -219,6 +237,7 @@ private fun ADReadinessStage(
     state: GlassesDashboardUiState,
     connected: Boolean,
     connecting: Boolean,
+    deviceIdentity: String?,
     onOpenDevice: () -> Unit,
     onConnect: () -> Unit,
 ) {
@@ -246,7 +265,7 @@ private fun ADReadinessStage(
             )
         }
         Row(
-            modifier = Modifier.fillMaxWidth().heightIn(min = 60.dp).padding(horizontal = 15.dp),
+            modifier = Modifier.fillMaxWidth().heightIn(min = 66.dp).padding(horizontal = 15.dp, vertical = 9.dp),
             verticalAlignment = Alignment.CenterVertically,
         ) {
             if (connecting) {
@@ -256,13 +275,27 @@ private fun ADReadinessStage(
                     Modifier.size(8.dp).background(if (connected) ADColors.Success else ADColors.Muted, CircleShape),
                 )
             }
-            Text(
-                state.connectionLabel,
-                style = MaterialTheme.typography.titleMedium,
-                modifier = Modifier.padding(start = 10.dp).weight(1f),
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis,
-            )
+            Column(Modifier.padding(start = 10.dp).weight(1f)) {
+                Text(
+                    when {
+                        connected -> "Connected"
+                        connecting -> state.connectionLabel
+                        else -> state.connectionLabel.takeUnless { it.equals("Unknown", ignoreCase = true) } ?: "Disconnected"
+                    },
+                    style = MaterialTheme.typography.titleMedium,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                )
+                if (connected && deviceIdentity != null) {
+                    Text(
+                        deviceIdentity,
+                        style = MaterialTheme.typography.bodySmall,
+                        color = ADColors.Muted,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
+                    )
+                }
+            }
             if (connected) {
                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
                     if (state.showBattery && state.batteryPercent != null) {
