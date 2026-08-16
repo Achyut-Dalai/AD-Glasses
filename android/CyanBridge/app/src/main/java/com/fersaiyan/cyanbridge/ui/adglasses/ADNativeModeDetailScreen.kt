@@ -1,20 +1,16 @@
 package com.fersaiyan.cyanbridge.ui.adglasses
 
 import androidx.compose.foundation.background
-import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.AutoAwesome
 import androidx.compose.material.icons.outlined.CheckCircle
@@ -72,94 +68,85 @@ internal fun ADNativeModeDetailScreen(
         if (!failure) active = action == AssistantModeAction.START
     }
 
-    Column(Modifier.fillMaxSize()) {
-        ADTopBar(title = automation.title, showBack = true, onBack = onBack)
-        Column(
-            modifier = Modifier
-                .fillMaxSize()
-                .verticalScroll(rememberScrollState())
-                .padding(start = 16.dp, end = 16.dp, top = 6.dp, bottom = 30.dp),
-            verticalArrangement = Arrangement.spacedBy(18.dp),
-        ) {
+    ADPageLayout(automation.title, onBack) {
+        ADCard {
+            Row(verticalAlignment = Alignment.Top) {
+                Box(
+                    Modifier.size(48.dp).background(
+                        if (active) ADColors.SuccessSoft else ADColors.BlueSoft,
+                        RoundedCornerShape(15.dp),
+                    ),
+                    contentAlignment = Alignment.Center,
+                ) {
+                    Icon(
+                        Icons.Outlined.AutoAwesome,
+                        contentDescription = null,
+                        tint = if (active) ADColors.Success else ADColors.Blue,
+                    )
+                }
+                Column(Modifier.padding(start = 13.dp).weight(1f)) {
+                    Text(automation.outcome, style = MaterialTheme.typography.labelLarge, color = ADColors.Blue)
+                    Spacer(Modifier.height(3.dp))
+                    Text(automation.summary, style = MaterialTheme.typography.bodyLarge)
+                }
+                ADStatusChip(
+                    if (active) "ON" else "OFF",
+                    if (active) ADStatusTone.SUCCESS else ADStatusTone.NEUTRAL,
+                )
+            }
+        }
+
+        ADCard {
+            ADNativeModeMetric(Icons.Outlined.Lock, "Processing", automation.boundary)
+            HorizontalDivider(Modifier.padding(start = 32.dp), color = ADColors.Separator)
+            ADNativeModeMetric(Icons.Outlined.FolderOpen, "Output", automation.nativeOutput())
+        }
+
+        resultText?.let { message ->
             ADCard {
                 Row(verticalAlignment = Alignment.Top) {
-                    Box(
-                        Modifier.size(48.dp).background(
-                            if (active) ADColors.SuccessSoft else ADColors.BlueSoft,
-                            RoundedCornerShape(15.dp),
-                        ),
-                        contentAlignment = Alignment.Center,
-                    ) {
-                        Icon(
-                            Icons.Outlined.AutoAwesome,
-                            contentDescription = null,
-                            tint = if (active) ADColors.Success else ADColors.Blue,
-                        )
-                    }
-                    Column(Modifier.padding(start = 13.dp).weight(1f)) {
-                        Text(automation.outcome, style = MaterialTheme.typography.labelLarge, color = ADColors.Blue)
-                        Spacer(Modifier.height(3.dp))
-                        Text(automation.summary, style = MaterialTheme.typography.bodyLarge)
-                    }
-                    ADStatusChip(
-                        if (active) "ON" else "OFF",
-                        if (active) ADStatusTone.SUCCESS else ADStatusTone.NEUTRAL,
+                    Icon(
+                        if (lastSucceeded == false) Icons.Outlined.ErrorOutline else Icons.Outlined.CheckCircle,
+                        contentDescription = null,
+                        tint = if (lastSucceeded == false) ADColors.Warning else ADColors.Success,
+                        modifier = Modifier.size(22.dp),
+                    )
+                    Text(
+                        message,
+                        modifier = Modifier.padding(start = 10.dp).weight(1f),
+                        style = MaterialTheme.typography.bodyMedium,
                     )
                 }
             }
-
-            ADCard {
-                ADNativeModeMetric(Icons.Outlined.Lock, "Processing", automation.boundary)
-                HorizontalDivider(Modifier.padding(start = 32.dp), color = ADColors.Separator)
-                ADNativeModeMetric(Icons.Outlined.FolderOpen, "Output", automation.nativeOutput())
-            }
-
-            resultText?.let { message ->
-                ADCard {
-                    Row(verticalAlignment = Alignment.Top) {
-                        Icon(
-                            if (lastSucceeded == false) Icons.Outlined.ErrorOutline else Icons.Outlined.CheckCircle,
-                            contentDescription = null,
-                            tint = if (lastSucceeded == false) ADColors.Warning else ADColors.Success,
-                            modifier = Modifier.size(22.dp),
-                        )
-                        Text(
-                            message,
-                            modifier = Modifier.padding(start = 10.dp).weight(1f),
-                            style = MaterialTheme.typography.bodyMedium,
-                        )
-                    }
-                }
-            }
-
-            if (active) {
-                OutlinedButton(
-                    onClick = { execute(AssistantModeAction.STOP) },
-                    modifier = Modifier.fillMaxWidth().heightIn(min = 50.dp),
-                    colors = ButtonDefaults.outlinedButtonColors(contentColor = ADColors.Error),
-                ) {
-                    Icon(Icons.Outlined.StopCircle, contentDescription = null)
-                    Spacer(Modifier.size(8.dp))
-                    Text("Stop mode")
-                }
-            } else {
-                Button(
-                    onClick = { execute(AssistantModeAction.START) },
-                    modifier = Modifier.fillMaxWidth().heightIn(min = 50.dp),
-                    colors = ButtonDefaults.buttonColors(containerColor = ADColors.Ink),
-                ) {
-                    Icon(Icons.Outlined.PlayArrow, contentDescription = null)
-                    Spacer(Modifier.size(8.dp))
-                    Text("Start mode")
-                }
-            }
-
-            Text(
-                "You can also start or stop this mode by voice from the glasses.",
-                style = MaterialTheme.typography.bodyMedium,
-                color = ADColors.Muted,
-            )
         }
+
+        if (active) {
+            OutlinedButton(
+                onClick = { execute(AssistantModeAction.STOP) },
+                modifier = Modifier.fillMaxWidth().heightIn(min = 50.dp),
+                colors = ButtonDefaults.outlinedButtonColors(contentColor = ADColors.Error),
+            ) {
+                Icon(Icons.Outlined.StopCircle, contentDescription = null)
+                Spacer(Modifier.size(8.dp))
+                Text("Stop mode")
+            }
+        } else {
+            Button(
+                onClick = { execute(AssistantModeAction.START) },
+                modifier = Modifier.fillMaxWidth().heightIn(min = 50.dp),
+                colors = ButtonDefaults.buttonColors(containerColor = ADColors.Ink),
+            ) {
+                Icon(Icons.Outlined.PlayArrow, contentDescription = null)
+                Spacer(Modifier.size(8.dp))
+                Text("Start mode")
+            }
+        }
+
+        Text(
+            "You can also start or stop this mode by voice from the glasses.",
+            style = MaterialTheme.typography.bodyMedium,
+            color = ADColors.Muted,
+        )
     }
 }
 
