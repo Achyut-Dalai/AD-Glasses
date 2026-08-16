@@ -329,11 +329,12 @@ internal fun parseADConversationBlocks(content: String): List<ADConversationBloc
             return@forEach
         }
 
-        parseStandaloneLink(trimmed)?.let { link ->
-            flushText()
-            blocks += link
-        } ?: run {
+        val inline = parseInlineLinks(line)
+        if (inline == null) {
             textBuffer += line
+        } else {
+            flushText()
+            blocks += inline
         }
     }
 
@@ -341,34 +342,53 @@ internal fun parseADConversationBlocks(content: String): List<ADConversationBloc
     return blocks.ifEmpty { listOf(ADConversationBlock.TextBlock(content)) }
 }
 
-private fun parseStandaloneLink(line: String): ADConversationBlock.LinkBlock? {
-    if (line.isBlank()) return null
-
-    MARKDOWN_IMAGE.matchEntire(line)?.let { match ->
-        val label = match.groupValues[1].ifBlank { "Image" }
-        val target = match.groupValues[2].trim()
-        return ADConversationBlock.LinkBlock(label, target, inferLinkKind(target, imageHint = true))
+private fun parseInlineLinks(line: String): List<ADConversationBlock>? {
+    val markdownMatches = MARKDOWN_INLINE.findAll(line).toList()
+    if (markdownMatches.isNotEmpty()) {
+        return buildInlineBlocks(line, markdownMatches) { match ->
+            val imageHint = match.groupValues[1] == "!"
+            val label = match.groupValues[2].trim().ifBlank {
+                if (imageHint) "Image" else displayTarget(match.groupValues[3])
+            }
+            val target = match.groupValues[3].trim()
+            ADConversationBlock.LinkBlock(label, target, inferLinkKind(target, imageHint))
+        }
     }
 
-    MARKDOWN_LINK.matchEntire(line)?.let { match ->
-        val label = match.groupValues[1].trim()
-        val target = match.groupValues[2].trim()
-        return ADConversationBlock.LinkBlock(label, target, inferLinkKind(target))
-    }
-
-    if (line.startsWith("https://", true) ||
-        line.startsWith("http://", true) ||
-        line.startsWith("content://", true) ||
-        line.startsWith("file://", true)
-    ) {
-        return ADConversationBlock.LinkBlock(
-            label = displayTarget(line),
-            target = line,
-            kind = inferLinkKind(line),
+    val rawMatches = RAW_URL.findAll(line).toList()
+    if (rawMatches.isEmpty()) return null
+    return buildInlineBlocks(line, rawMatches) { match ->
+        val target = match.value.trimEnd('.', ',', ';')
+        ADConversationBlock.LinkBlock(
+            label = displayTarget(target),
+            target = target,
+            kind = inferLinkKind(target),
         )
     }
+}
 
-    return null
+private fun buildInlineBlocks(
+    line: String,
+    matches: List<MatchResult>,
+    linkFor: (MatchResult) -> ADConversationBlock.LinkBlock,
+): List<ADConversationBlock> {
+    val blocks = mutableListOf<ADConversationBlock>()
+    var cursor = 0
+
+    fun addText(fragment: String) {
+        val text = fragment.trim()
+        if (text.isNotEmpty() && !PUNCTUATION_ONLY.matches(text)) {
+            blocks += ADConversationBlock.TextBlock(text)
+        }
+    }
+
+    matches.forEach { match ->
+        if (match.range.first > cursor) addText(line.substring(cursor, match.range.first))
+        blocks += linkFor(match)
+        cursor = match.range.last + 1
+    }
+    if (cursor < line.length) addText(line.substring(cursor))
+    return blocks
 }
 
 private fun inferLinkKind(target: String, imageHint: Boolean = false): ADConversationLinkKind {
@@ -413,5 +433,6 @@ private fun ADConversationLinkKind.label(): String = when (this) {
     ADConversationLinkKind.LINK -> "Link"
 }
 
-private val MARKDOWN_IMAGE = Regex("!\\[([^]]*)]\\(([^)]+)\\)")
-private val MARKDOWN_LINK = Regex("\\[([^]]+)]\\(([^)]+)\\)")
+private val MARKDOWN_INLINE = Regex("(!?)\\[([^]]*)]\\(([^)]+)\\)")
+private val RAW_URL = Regex("(?:https?://|content://|file://)[^\\s<>()]+", RegexOption.IGNORE_CASE)
+private val PUNCTUATION_ONLY = Regex("[.,;:!?\\])}]+")
