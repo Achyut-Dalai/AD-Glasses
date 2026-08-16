@@ -110,21 +110,11 @@
         </activity>
 
         <activity
-            android:name=".ui.BatteryOptimizationGuideActivity"
-            android:exported="false"
-            android:label="@string/battery_opt_title" />
-
-        <activity
-            android:name=".ui.OnboardingFeatureActivity"
-            android:exported="false"
-            android:label="Setup" />
-
-        <activity
             android:name=".ui.DeviceBindActivity"
             android:exported="false"
             android:label="Connect glasses" />
 
-        <!-- Compatibility runtimes may remain compiled, but replaced CyanBridge product
+        <!-- Compatibility runtimes may remain compiled, but replaced upstream product
              pages are intentionally not registered as Android Activities. -->
         <service
             android:name=".devices.meizumyvu.MeizuMyvuConnectionService"
