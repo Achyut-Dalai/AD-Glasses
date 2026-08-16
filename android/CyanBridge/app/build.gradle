@@ -108,6 +108,15 @@ android {
             includeAndroidResources = true
         }
     }
+
+    // The installed application label and the distributable artifact should both
+    // identify the product as AD Glasses. Build type already has its own output
+    // directory, so debug/release variants can safely share this filename.
+    applicationVariants.all { variant ->
+        variant.outputs.all { output ->
+            outputFileName = "AD-Glasses.apk"
+        }
+    }
 }
 
 
