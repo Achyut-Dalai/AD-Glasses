@@ -60,6 +60,8 @@ import kotlinx.coroutines.launch
 internal fun ADNativeConversationScreen(
     onVoiceQuestion: () -> Unit,
     onImageQuestion: () -> Unit,
+    navigationRequest: ADNavigationRequest? = null,
+    onNavigationRequestApplied: (Long) -> Unit = {},
 ) {
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
@@ -109,6 +111,17 @@ internal fun ADNativeConversationScreen(
             threadId = session.activeThreadId()
             refresh()
         }
+    }
+
+    LaunchedEffect(navigationRequest?.id) {
+        val request = navigationRequest ?: return@LaunchedEffect
+        request.threadId?.let(session::selectThread)
+        val requestedThreadId = session.activeThreadId()
+        threadId = requestedThreadId
+        messages = ChatStore.listMessages(requestedThreadId)
+        request.prefill?.takeIf { it.isNotBlank() }?.let { message = it }
+        errorText = null
+        onNavigationRequestApplied(request.id)
     }
 
     // Glasses-originated turns use the same durable session. Refresh while this surface is
