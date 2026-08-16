@@ -20,6 +20,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.AutoAwesome
 import androidx.compose.material.icons.outlined.BatteryFull
 import androidx.compose.material.icons.outlined.CameraAlt
+import androidx.compose.material.icons.outlined.ChatBubble
 import androidx.compose.material.icons.outlined.GraphicEq
 import androidx.compose.material.icons.outlined.Mic
 import androidx.compose.material.icons.outlined.PhotoCamera
@@ -158,7 +159,7 @@ internal fun ADHomeSurface(
             item {
                 Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
                     ADHomeLink(
-                        icon = Icons.Outlined.AutoAwesome,
+                        icon = Icons.Outlined.ChatBubble,
                         title = "Conversations",
                         detail = "Continue or review",
                         onClick = onOpenConversations,
