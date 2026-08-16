@@ -1,16 +1,11 @@
 package com.fersaiyan.cyanbridge.ai.orchestrator
 
 import android.content.Context
-import com.fersaiyan.cyanbridge.ai.router.AiAssistantRouter
+import com.fersaiyan.cyanbridge.ai.router.AgentInferencePurpose
+import com.fersaiyan.cyanbridge.ai.router.AgentInferenceRouter
 import com.fersaiyan.cyanbridge.localagent.LocalAgentController
 
-/**
- * Android execution bridge for AD decisions.
- *
- * Device transport remains in the existing capture/session code; this class only invokes
- * mature AI, web, vision, mode and Local Agent capabilities once the orchestrator has
- * decided what the turn means.
- */
+/** Android execution bridge for AD decisions. */
 class AndroidAssistantCapabilityExecutor(
     context: Context,
 ) : AssistantCapabilityExecutor {
@@ -34,11 +29,12 @@ class AndroidAssistantCapabilityExecutor(
                 )
             }
         } else {
-            AiAssistantRouter.chatReply(
+            AgentInferenceRouter.complete(
                 context = appContext,
-                chatId = context.threadId,
+                purpose = AgentInferencePurpose.UI_PLANNING,
+                sessionId = context.threadId,
+                systemPrompt = conversationSystemPrompt(context),
                 userPrompt = prompt,
-                messages = context.history.toRelayHistory(excludeTrailingPrompt = prompt),
             )
         }
         return reply.toDisplaylessResult()
@@ -56,16 +52,15 @@ class AndroidAssistantCapabilityExecutor(
             )
         }
 
-        val reply = AiAssistantRouter.chatReplyStreaming(
+        val result = AgentInferenceRouter.completeUiPlanning(
             context = appContext,
-            chatId = context.threadId,
+            sessionId = context.threadId,
+            systemPrompt = conversationSystemPrompt(context),
             userPrompt = prompt,
-            messages = context.history.toRelayHistory(excludeTrailingPrompt = prompt),
-            imagePaths = listOf(imagePath),
-            audioPath = null,
-            callbacks = null,
+            imagePath = imagePath,
+            allowRemoteImageUpload = true,
         )
-        return reply.toDisplaylessResult()
+        return result.content.toDisplaylessResult()
     }
 
     override suspend fun executePhoneAction(
@@ -88,21 +83,19 @@ class AndroidAssistantCapabilityExecutor(
         context: AssistantExecutionContext,
     ): AssistantResult = modes.execute(command)
 
-    private fun List<com.fersaiyan.cyanbridge.shared.chat.ChatMessage>.toRelayHistory(
-        excludeTrailingPrompt: String,
-    ): List<Map<String, String>> {
-        val trimmedPrompt = excludeTrailingPrompt.trim()
-        val usable = if (
-            isNotEmpty() &&
-            last().role == com.fersaiyan.cyanbridge.shared.chat.ChatRole.USER &&
-            last().content.trim() == trimmedPrompt
-        ) dropLast(1) else this
-
-        return usable.map { message ->
-            mapOf(
-                "role" to message.role.name.lowercase(),
-                "content" to message.content,
-            )
+    private fun conversationSystemPrompt(context: AssistantExecutionContext): String = buildString {
+        appendLine("You are AD, the conversational assistant for displayless smart glasses.")
+        appendLine("Answer naturally and directly. Lead with the useful spoken answer and avoid giant tables.")
+        appendLine("Maintain context across turns. The phone can hold richer detail, but do not make the user operate it unless visual confirmation is genuinely needed.")
+        val prior = context.history.dropLast(1).takeLast(8)
+        if (prior.isNotEmpty()) {
+            appendLine()
+            appendLine("Recent conversation:")
+            prior.forEach { message ->
+                append(message.role.name.lowercase())
+                append(": ")
+                appendLine(message.content.take(1_200))
+            }
         }
     }
 
@@ -111,10 +104,7 @@ class AndroidAssistantCapabilityExecutor(
         if (rich.isBlank()) return AssistantResult("I didn’t get a usable answer.")
         val spoken = rich
             .replace(Regex("\\s+"), " ")
-            .let { text ->
-                if (text.length <= 420) text
-                else text.take(417).trimEnd() + "…"
-            }
+            .let { text -> if (text.length <= 420) text else text.take(417).trimEnd() + "…" }
         return AssistantResult(spokenText = spoken, richText = rich)
     }
 }
