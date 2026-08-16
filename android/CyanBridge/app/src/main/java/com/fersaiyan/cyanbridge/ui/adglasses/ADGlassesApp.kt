@@ -122,7 +122,7 @@ fun ADGlassesApp(
                     ADRoute.FIRMWARE -> ADFirmwareScreen(dashboardState, host, navigateBack)
                     ADRoute.AUTOMATION_DETAIL -> ADNativeModeDetailScreen(
                         automation = selectedAutomation,
-                        initiallyActive = dashboardState.nativePluginShortcut?.title == selectedAutomation.title &&
+                        initiallyActive = dashboardState.nativePluginShortcut?.title == selectedAutomation.runtimeTitle &&
                             dashboardState.nativePluginShortcut?.isEnabled == true,
                         onBack = navigateBack,
                     )
