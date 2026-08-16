@@ -42,6 +42,8 @@ internal fun ADModesScreen(
     activeShortcutTitle: String?,
     onMode: (ADAutomation) -> Unit,
 ) {
+    val activeMode = ADAutomation.entries.firstOrNull { it.runtimeTitle == activeShortcutTitle }
+
     Column(Modifier.fillMaxSize()) {
         ADTopBar(title = "Modes")
         LazyColumn(
@@ -68,7 +70,7 @@ internal fun ADModesScreen(
                 }
             }
 
-            activeShortcutTitle?.let { activeTitle ->
+            activeShortcutTitle?.let {
                 item {
                     ADCard {
                         Row(verticalAlignment = Alignment.CenterVertically) {
@@ -81,7 +83,10 @@ internal fun ADModesScreen(
                                     style = MaterialTheme.typography.labelMedium,
                                     color = ADColors.Success,
                                 )
-                                Text(activeTitle, style = MaterialTheme.typography.titleMedium)
+                                Text(
+                                    activeMode?.title ?: "Active mode",
+                                    style = MaterialTheme.typography.titleMedium,
+                                )
                             }
                             ADStatusChip("ON", ADStatusTone.SUCCESS, showCheck = true)
                         }
@@ -92,7 +97,7 @@ internal fun ADModesScreen(
             items(ADAutomation.entries, key = { it.name }) { mode ->
                 ADModeRow(
                     mode = mode,
-                    active = mode.title == activeShortcutTitle,
+                    active = mode.runtimeTitle == activeShortcutTitle,
                     onClick = { onMode(mode) },
                 )
             }
