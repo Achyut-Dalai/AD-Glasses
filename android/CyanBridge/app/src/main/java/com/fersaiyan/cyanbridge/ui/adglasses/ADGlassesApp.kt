@@ -63,17 +63,17 @@ fun ADGlassesApp(
                             onOpenAssistant = { selectedTab = ADTab.ASSISTANT },
                             onOpenLibrary = { selectedTab = ADTab.LIBRARY },
                         )
-                        ADTab.ASSISTANT -> ADAssistantScreen(host = host)
+                        ADTab.ASSISTANT -> ADConversationsScreen(host = host)
                         ADTab.LIBRARY -> ADLibraryScreen(
                             host = host,
                             transferActive = dashboardState.transfer.isVisible,
                             onOpenSync = { navigateTo(ADRoute.SYNC) },
                         )
-                        ADTab.AUTOMATIONS -> ADAutomationsScreen(
+                        ADTab.AUTOMATIONS -> ADModesScreen(
                             activeShortcutTitle = dashboardState.nativePluginShortcut
                                 ?.takeIf { it.isEnabled }
                                 ?.title,
-                            onAutomation = {
+                            onMode = {
                                 selectedAutomation = it
                                 navigateTo(ADRoute.AUTOMATION_DETAIL)
                             },
