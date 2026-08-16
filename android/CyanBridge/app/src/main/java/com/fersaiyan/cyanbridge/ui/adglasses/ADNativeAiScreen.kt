@@ -8,13 +8,11 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.AutoAwesome
@@ -60,9 +58,7 @@ enum class ADAiChoice {
 @Composable
 internal fun ADNativeAiScreen() {
     val context = LocalContext.current
-    var selected by remember {
-        mutableStateOf(resolveAiChoice(context))
-    }
+    var selected by remember { mutableStateOf(resolveAiChoice(context)) }
 
     fun select(choice: ADAiChoice) {
         selected = choice
@@ -122,7 +118,7 @@ internal fun ADNativeAiScreen() {
                             title = "OpenAI / Codex",
                             detail = "Use the Codex relay backend",
                             selected = selected == ADAiChoice.OPENAI_CODEX,
-                            onClick = { select(ADAIChoice.OPENAI_CODEX) },
+                            onClick = { select(ADAiChoice.OPENAI_CODEX) },
                         )
                         HorizontalDivider(Modifier.padding(start = 48.dp), color = ADColors.Separator)
                         ADAiChoiceRow(
@@ -130,7 +126,7 @@ internal fun ADNativeAiScreen() {
                             title = "Local AI",
                             detail = "Run a configured model on this phone",
                             selected = selected == ADAiChoice.LOCAL,
-                            onClick = { select(ADAIChoice.LOCAL) },
+                            onClick = { select(ADAiChoice.LOCAL) },
                         )
                     }
                 }
@@ -155,7 +151,11 @@ internal fun ADNativeAiScreen() {
                         ADAiActionRow(
                             icon = Icons.Outlined.Public,
                             title = "Web Search",
-                            detail = if (relayConfigured) "Available for fresh and current questions" else "Configure a relay to enable web-backed answers",
+                            detail = if (relayConfigured) {
+                                "Available for fresh and current questions"
+                            } else {
+                                "Configure a relay to enable web-backed answers"
+                            },
                             onClick = {
                                 context.startActivity(Intent(context, CloudSettingsActivity::class.java))
                             },
