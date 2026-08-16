@@ -30,7 +30,7 @@ fun ADGlassesApp(
 
     var selectedTab by remember { mutableStateOf(ADTab.HOME) }
     var routeStack by remember { mutableStateOf(listOf(ADRoute.MAIN)) }
-    var selectedAutomation by remember { mutableStateOf(ADAutomation.LOCAL_AGENT) }
+    var selectedAutomation by remember { mutableStateOf(ADAutomation.TRANSLATOR) }
     var conversationRequest by remember { mutableStateOf<ADNavigationRequest?>(null) }
 
     val route = routeStack.last()
@@ -40,13 +40,17 @@ fun ADGlassesApp(
     val navigateBack = {
         if (routeStack.size > 1) routeStack = routeStack.dropLast(1)
     }
+    val showMainTab: (ADTab) -> Unit = { tab ->
+        routeStack = listOf(ADRoute.MAIN)
+        selectedTab = tab
+    }
 
     LaunchedEffect(externalRequest?.id) {
         val request = externalRequest ?: return@LaunchedEffect
         when (request.destination) {
             ADExternalDestination.CONVERSATIONS -> {
                 routeStack = listOf(ADRoute.MAIN)
-                selectedTab = ADTab.ASSISTANT
+                selectedTab = ADTab.CHATS
                 conversationRequest = request
             }
             ADExternalDestination.SETTINGS -> {
@@ -54,7 +58,7 @@ fun ADGlassesApp(
             }
             ADExternalDestination.MODES -> {
                 routeStack = listOf(ADRoute.MAIN)
-                selectedTab = ADTab.AUTOMATIONS
+                selectedTab = ADTab.TASKS
             }
             ADExternalDestination.LIBRARY_CAPTURES -> {
                 selectedTab = ADTab.LIBRARY
@@ -97,13 +101,23 @@ fun ADGlassesApp(
                             onOpenDevice = { navigateTo(ADRoute.DEVICE_CENTER) },
                             onOpenSync = { navigateTo(ADRoute.SYNC) },
                             onOpenSettings = { navigateTo(ADRoute.SETTINGS) },
-                            onOpenConversations = { selectedTab = ADTab.ASSISTANT },
-                            onOpenLibrary = { selectedTab = ADTab.LIBRARY },
-                            onOpenModes = { selectedTab = ADTab.AUTOMATIONS },
+                            onOpenTranslator = {
+                                selectedAutomation = ADAutomation.TRANSLATOR
+                                navigateTo(ADRoute.TASK_DETAIL)
+                            },
+                            onOpenWebSearch = {
+                                conversationRequest = ADNavigationRequest(
+                                    id = System.currentTimeMillis(),
+                                    destination = ADExternalDestination.CONVERSATIONS,
+                                    prefill = "Search the web for ",
+                                    webSearchRequested = true,
+                                )
+                                showMainTab(ADTab.CHATS)
+                            },
+                            onOpenPhoneControl = { showMainTab(ADTab.AI) },
+                            onOpenTasks = { showMainTab(ADTab.TASKS) },
                         )
-                        ADTab.ASSISTANT -> ADNativeConversationScreen(
-                            onVoiceQuestion = host.onVoiceQuestion,
-                            onImageQuestion = host.onImageQuestion,
+                        ADTab.CHATS -> ADNativeConversationScreen(
                             navigationRequest = conversationRequest,
                             onNavigationRequestApplied = { requestId ->
                                 if (conversationRequest?.id == requestId) conversationRequest = null
@@ -116,15 +130,16 @@ fun ADGlassesApp(
                             onRecordings = { navigateTo(ADRoute.LIBRARY_RECORDINGS) },
                             onNotes = { navigateTo(ADRoute.LIBRARY_NOTES) },
                         )
-                        ADTab.AUTOMATIONS -> ADModesScreen(
+                        ADTab.TASKS -> ADTasksScreen(
                             activeShortcutTitle = dashboardState.nativePluginShortcut
                                 ?.takeIf { it.isEnabled }
                                 ?.title,
-                            onMode = {
+                            onTask = {
                                 selectedAutomation = it
-                                navigateTo(ADRoute.AUTOMATION_DETAIL)
+                                navigateTo(ADRoute.TASK_DETAIL)
                             },
                         )
+                        ADTab.AI -> ADNativeAiScreen()
                     }
                     ADRoute.DEVICE_CENTER -> ADGlassesDeviceCenterScreen(
                         state = dashboardState,
@@ -139,8 +154,8 @@ fun ADGlassesApp(
                         state = dashboardState,
                         onBack = navigateBack,
                         onDevice = { navigateTo(ADRoute.DEVICE_CENTER) },
-                        onIntelligence = { navigateTo(ADRoute.AI_SERVICES) },
-                        onRouting = { navigateTo(ADRoute.ROUTING) },
+                        onIntelligence = { showMainTab(ADTab.AI) },
+                        onRouting = { showMainTab(ADTab.AI) },
                         onPrivacy = { navigateTo(ADRoute.PRIVACY) },
                         onStorage = { navigateTo(ADRoute.STORAGE) },
                         onLanguage = { navigateTo(ADRoute.LANGUAGE) },
@@ -150,7 +165,7 @@ fun ADGlassesApp(
                     )
                     ADRoute.AI_SERVICES -> ADIntelligenceScreen(
                         onBack = navigateBack,
-                        onRouting = { navigateTo(ADRoute.ROUTING) },
+                        onRouting = { showMainTab(ADTab.AI) },
                     )
                     ADRoute.ROUTING -> ADRoutingScreen(navigateBack)
                     ADRoute.PRIVACY -> ADPrivacyCenterScreen(navigateBack)
@@ -163,7 +178,7 @@ fun ADGlassesApp(
                     )
                     ADRoute.ABOUT -> ADAboutScreen(navigateBack)
                     ADRoute.FIRMWARE -> ADFirmwareScreen(dashboardState, host, navigateBack)
-                    ADRoute.AUTOMATION_DETAIL -> ADNativeModeDetailScreen(
+                    ADRoute.TASK_DETAIL -> ADNativeTaskDetailScreen(
                         automation = selectedAutomation,
                         initiallyActive = dashboardState.nativePluginShortcut?.title == selectedAutomation.runtimeTitle &&
                             dashboardState.nativePluginShortcut?.isEnabled == true,
