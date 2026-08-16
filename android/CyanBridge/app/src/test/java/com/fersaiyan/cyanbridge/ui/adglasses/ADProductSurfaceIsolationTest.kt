@@ -33,6 +33,36 @@ class ADProductSurfaceIsolationTest {
     }
 
     @Test
+    fun obsoleteAdUiBundlesAreDeletedButDeviceToolsRemainNative() {
+        val uiDir = sourceFile("src/main/java/com/fersaiyan/cyanbridge/ui/adglasses")
+        assertFalse(File(uiDir, "ADMainScreens.kt").exists())
+        assertFalse(File(uiDir, "ADDetailScreens.kt").exists())
+
+        assertTrue(File(uiDir, "ADHomeSurface.kt").isFile)
+        assertTrue(File(uiDir, "ADNativeConversationScreen.kt").isFile)
+        assertTrue(File(uiDir, "ADNativeLibraryScreens.kt").isFile)
+        assertTrue(File(uiDir, "ADModesScreen.kt").isFile)
+        assertTrue(File(uiDir, "ADSyncScreen.kt").isFile)
+        assertTrue(File(uiDir, "ADFirmwareScreen.kt").isFile)
+    }
+
+    @Test
+    fun deviceCenterKeepsSyncFirmwareAndDiagnosticsAsStableDestinations() {
+        val deviceCenter = sourceFile(
+            "src/main/java/com/fersaiyan/cyanbridge/ui/adglasses/ADGlassesDeviceCenterScreen.kt",
+        ).readText()
+        val app = sourceFile(
+            "src/main/java/com/fersaiyan/cyanbridge/ui/adglasses/ADGlassesApp.kt",
+        ).readText()
+
+        assertTrue(deviceCenter.contains("title = \"Sync media\""))
+        assertTrue(deviceCenter.contains("title = \"Firmware\""))
+        assertTrue(deviceCenter.contains("title = \"Advanced\""))
+        assertTrue(app.contains("ADRoute.SYNC -> ADSyncScreen"))
+        assertTrue(app.contains("ADRoute.FIRMWARE -> ADFirmwareScreen"))
+    }
+
+    @Test
     fun builtProductKeepsAdGlassesIdentity() {
         val strings = sourceFile("src/main/res/values/strings.xml").readText()
         val gradle = sourceFile("build.gradle").readText()
@@ -40,7 +70,10 @@ class ADProductSurfaceIsolationTest {
 
         assertTrue(strings.contains("<string name=\"app_name\">AD Glasses</string>"))
         assertFalse("System-facing strings must not expose CyanBridge branding", strings.contains("CyanBridge"))
-        assertTrue("APK artifact should use the AD Glasses product name", gradle.contains("outputFileName = \"AD-Glasses.apk\""))
+        assertTrue(
+            "APK artifact should use the AD Glasses product name",
+            gradle.contains("outputFileName = \"AD-Glasses.apk\""),
+        )
         assertTrue(manifest.contains("android:label=\"AD Glasses notification access\""))
     }
 
@@ -106,6 +139,14 @@ class ADProductSurfaceIsolationTest {
             val source = sourceFile(path).readText()
             assertFalse("$path should stay hardware-neutral", source.contains("HeyCyan"))
         }
+
+        val firmware = sourceFile(
+            "src/main/java/com/fersaiyan/cyanbridge/ui/adglasses/ADFirmwareScreen.kt",
+        ).readText()
+        assertFalse(
+            "Firmware UI copy should stay hardware-neutral even while the current adapter is HeyCyan",
+            firmware.contains("\"HeyCyan"),
+        )
     }
 
     private fun sourceFile(relativePath: String): File {
