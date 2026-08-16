@@ -175,7 +175,7 @@ internal fun ADNativeAiScreen(
                     title = "OpenAI / Codex",
                     detail = "OpenAI-compatible Codex route through your relay",
                     selected = selected == ADAiChoice.OPENAI_CODEX,
-                    onClick = { select(ADAIChoice.OPENAI_CODEX) },
+                    onClick = { select(ADAiChoice.OPENAI_CODEX) },
                 )
                 ADSectionDivider()
                 ADAiChoiceRow(
@@ -183,7 +183,7 @@ internal fun ADNativeAiScreen(
                     title = "Local AI",
                     detail = "Run a configured model on this phone",
                     selected = selected == ADAiChoice.LOCAL,
-                    onClick = { select(ADAIChoice.LOCAL) },
+                    onClick = { select(ADAiChoice.LOCAL) },
                 )
             }
         }
