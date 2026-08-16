@@ -13,6 +13,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicTextField
@@ -28,6 +29,7 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -49,16 +51,9 @@ import com.fersaiyan.cyanbridge.ai.orchestrator.AssistantTurn
 import com.fersaiyan.cyanbridge.chat.ChatStore
 import com.fersaiyan.cyanbridge.shared.chat.ChatMessage
 import com.fersaiyan.cyanbridge.shared.chat.ChatRole
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
-
-/** Compatibility adapter while MainActivity still owns the broad host contract. */
-@Composable
-internal fun ADNativeConversationScreen(host: ADHostActions) {
-    ADNativeConversationScreen(
-        onVoiceQuestion = host.onVoiceQuestion,
-        onImageQuestion = host.onImageQuestion,
-    )
-}
 
 /** Native phone continuation for the same durable conversation used by the glasses. */
 @Composable
@@ -68,6 +63,7 @@ internal fun ADNativeConversationScreen(
 ) {
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
+    val listState = rememberLazyListState()
     val session = remember(context) { AssistantConversationSession.get(context) }
     val orchestrator = remember(context) {
         AssistantOrchestrator(
@@ -115,6 +111,30 @@ internal fun ADNativeConversationScreen(
         }
     }
 
+    // Glasses-originated turns use the same durable session. Refresh while this surface is
+    // visible so the phone can act as a live review surface without requiring a reopen.
+    LaunchedEffect(threadId) {
+        while (isActive) {
+            delay(CONVERSATION_REFRESH_MS)
+            val activeThreadId = session.activeThreadId()
+            if (activeThreadId != threadId) {
+                threadId = activeThreadId
+                break
+            }
+            val latest = ChatStore.listMessages(threadId)
+            if (latest != messages) messages = latest
+        }
+    }
+
+    LaunchedEffect(messages.size, pendingPrompt, errorText) {
+        val dynamicCount = messages.size +
+            (if (pendingPrompt != null) 2 else 0) +
+            (if (errorText != null) 1 else 0)
+        if (dynamicCount > 0) {
+            runCatching { listState.animateScrollToItem(dynamicCount - 1) }
+        }
+    }
+
     Column(Modifier.fillMaxSize()) {
         Row(
             modifier = Modifier.fillMaxWidth().padding(start = 16.dp, end = 8.dp, top = 8.dp, bottom = 6.dp),
@@ -135,6 +155,7 @@ internal fun ADNativeConversationScreen(
         }
 
         LazyColumn(
+            state = listState,
             modifier = Modifier.weight(1f).fillMaxWidth(),
             contentPadding = androidx.compose.foundation.layout.PaddingValues(
                 start = 16.dp,
@@ -145,13 +166,13 @@ internal fun ADNativeConversationScreen(
             verticalArrangement = Arrangement.spacedBy(10.dp),
         ) {
             if (messages.isEmpty() && pendingPrompt == null) {
-                item {
+                item(key = "empty") {
                     Box(
                         modifier = Modifier.fillParentMaxSize(),
                         contentAlignment = Alignment.Center,
                     ) {
                         Text(
-                            "Your conversations from the glasses will appear here.\nYou can also continue from the phone.",
+                            "Conversations from the glasses appear here.\nContinue from the phone whenever you need the screen.",
                             style = MaterialTheme.typography.bodyLarge,
                             color = ADColors.Muted,
                             textAlign = TextAlign.Center,
@@ -320,3 +341,5 @@ private fun ADPendingUserBubble(text: String) {
         }
     }
 }
+
+private const val CONVERSATION_REFRESH_MS = 1_250L
