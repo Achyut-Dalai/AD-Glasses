@@ -139,7 +139,10 @@ fun ADGlassesApp(
                                 navigateTo(ADRoute.TASK_DETAIL)
                             },
                         )
-                        ADTab.AI -> ADNativeAiScreen()
+                        ADTab.AI -> ADNativeAiScreen(
+                            onRelaySettings = { navigateTo(ADRoute.AI_RELAY) },
+                            onLocalSettings = { navigateTo(ADRoute.AI_LOCAL) },
+                        )
                     }
                     ADRoute.DEVICE_CENTER -> ADGlassesDeviceCenterScreen(
                         state = dashboardState,
@@ -161,11 +164,8 @@ fun ADGlassesApp(
                         onAdvanced = { navigateTo(ADRoute.ADVANCED) },
                         onAbout = { navigateTo(ADRoute.ABOUT) },
                     )
-                    ADRoute.AI_SERVICES -> ADIntelligenceScreen(
-                        onBack = navigateBack,
-                        onRouting = { showMainTab(ADTab.AI) },
-                    )
-                    ADRoute.ROUTING -> ADRoutingScreen(navigateBack)
+                    ADRoute.AI_RELAY -> ADNativeRelaySettingsScreen(navigateBack)
+                    ADRoute.AI_LOCAL -> ADNativeLocalAiSettingsScreen(navigateBack)
                     ADRoute.PRIVACY -> ADPrivacyCenterScreen(navigateBack)
                     ADRoute.STORAGE -> ADStorageScreen(navigateBack)
                     ADRoute.LANGUAGE -> ADLanguageScreen(navigateBack)
