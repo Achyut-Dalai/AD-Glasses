@@ -64,13 +64,16 @@ class DeviceBindActivity : BaseActivity() {
                         val device = deviceList.firstOrNull {
                             it.macAddress.equals(sharedDevice.macAddress, ignoreCase = true)
                         }
-                        if (device != null) {
+                        if (device != null && ADDeviceSupportPolicy.isPairable(device.detectedClass)) {
+                            // AD Glasses currently has one validated BLE product family: HeyCyan.
+                            // Detection is the source of truth; do not ask the user to classify it.
+                            selectedDeviceClass = device.detectedClass
                             connectingDevice = device
-                            selectedDeviceClass = ADDeviceSupportPolicy.defaultSelection(device.detectedClass)
+                            confirmConnection()
                         }
                     },
                     onSelectedClassChange = { requested ->
-                        if (ADDeviceSupportPolicy.isSelectable(requested)) {
+                        if (ADDeviceSupportPolicy.isPairable(requested)) {
                             selectedDeviceClass = requested
                         }
                     },
@@ -128,7 +131,7 @@ class DeviceBindActivity : BaseActivity() {
 
     private fun confirmConnection() {
         val device = connectingDevice ?: return
-        if (!ADDeviceSupportPolicy.isSelectable(selectedDeviceClass)) {
+        if (!ADDeviceSupportPolicy.isPairable(selectedDeviceClass)) {
             connectingDevice = null
             Toast.makeText(
                 this,
@@ -148,34 +151,20 @@ class DeviceBindActivity : BaseActivity() {
         isScanning = false
 
         AutoPairManager.setAutoReconnectSuppressed(false, reason = "user_manual_pair")
-        val userOverrodeDetection = device.detectedClass != selectedDeviceClass
-        device.userSelectedClass = selectedDeviceClass.takeIf { userOverrodeDetection }
+        device.userSelectedClass = null
         DeviceProfileStore.saveLastSelected(
             this,
             DeviceProfile(
                 macAddress = device.macAddress,
                 advertisedName = device.advertisedName,
                 detectedClass = device.detectedClass,
-                selectedClass = selectedDeviceClass,
-                userOverridden = userOverrodeDetection,
+                selectedClass = device.detectedClass,
+                userOverridden = false,
             ),
         )
 
-        if (selectedDeviceClass == DeviceClass.META_RAYBAN) {
-            // Meta remains the only planned second product family. DAT owns its transport;
-            // never route it through the HeyCyan SDK connector.
-            MetaRaybanManager.getInstance(this).initialize()
-            Toast.makeText(
-                this,
-                "Meta Ray-Ban profile saved. Finish registration from Device Center when you use Meta glasses.",
-                Toast.LENGTH_LONG,
-            ).show()
-            finish()
-            return
-        }
-
-        // The only remaining selectable class is HeyCyan. Other upstream device managers
-        // intentionally stay in the tree for compatibility but are not reachable here.
+        // The only current generic BLE pairing route is HeyCyan. Meta will use a
+        // dedicated integration when enabled; upstream-only managers stay unreachable.
         BleOperateManager.getInstance().connectDirectly(device.macAddress)
     }
 
@@ -211,11 +200,8 @@ class DeviceBindActivity : BaseActivity() {
             rssi = rssi,
             serviceUuids = scanRecord?.serviceUuids.orEmpty(),
         )
-        DeviceProfileStore.getUserOverrideForMac(this, mac)
-            ?.takeIf(ADDeviceSupportPolicy::isSelectable)
-            ?.let { override ->
-                if (override != newDevice.detectedClass) newDevice.userSelectedClass = override
-            }
+        // Old per-MAC overrides remain readable for upstream compatibility but no longer
+        // change AD Glasses pairing decisions; the detector owns the product classification.
         scanSize++
         deviceList += newDevice
         publishDevices(force = true)
@@ -279,9 +265,7 @@ class DeviceBindActivity : BaseActivity() {
         }
 
         override fun onLeScan(device: BluetoothDevice?, rssi: Int, scanRecord: ByteArray?) {
-            if (!hasBluetooth(this@DeviceBindActivity)) {
-                return
-            }
+            if (!hasBluetooth(this@DeviceBindActivity)) return
             val bluetoothDevice = device ?: return
             val address = bluetoothDevice.address
             val name = runCatching { bluetoothDevice.name }.getOrNull()
@@ -294,9 +278,7 @@ class DeviceBindActivity : BaseActivity() {
         }
 
         override fun onParsedData(device: BluetoothDevice?, scanRecord: ScanRecord?) {
-            if (!hasBluetooth(this@DeviceBindActivity)) {
-                return
-            }
+            if (!hasBluetooth(this@DeviceBindActivity)) return
             val bluetoothDevice = device ?: return
             val address = bluetoothDevice.address
             val name = runCatching { scanRecord?.deviceName ?: bluetoothDevice.name }.getOrNull()
@@ -312,8 +294,8 @@ class DeviceBindActivity : BaseActivity() {
         advertisedName = advertisedName,
         rssi = rssi,
         detectedClass = detectedClass,
-        selectedClass = userSelectedClass,
-        userOverridden = userOverridden(),
+        selectedClass = null,
+        userOverridden = false,
     )
 
     private companion object {
