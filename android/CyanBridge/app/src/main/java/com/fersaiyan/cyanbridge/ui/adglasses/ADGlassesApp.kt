@@ -64,7 +64,7 @@ fun ADGlassesApp(
                             onOpenLibrary = { selectedTab = ADTab.LIBRARY },
                             onOpenModes = { selectedTab = ADTab.AUTOMATIONS },
                         )
-                        ADTab.ASSISTANT -> ADConversationsScreen(host = host)
+                        ADTab.ASSISTANT -> ADNativeConversationScreen(host = host)
                         ADTab.LIBRARY -> ADLibraryScreen(
                             host = host,
                             transferActive = dashboardState.transfer.isVisible,
@@ -80,6 +80,7 @@ fun ADGlassesApp(
                             },
                         )
                     }
+
                     ADRoute.DEVICE_CENTER -> ADDeviceCenterScreen(
                         state = dashboardState,
                         host = host,
@@ -89,18 +90,33 @@ fun ADGlassesApp(
                         onAdvanced = { navigateTo(ADRoute.ADVANCED) },
                     )
                     ADRoute.SYNC -> ADSyncScreen(dashboardState, host, navigateBack)
-                    ADRoute.SETTINGS -> ADSettingsScreen(
+                    ADRoute.SETTINGS -> ADSettingsHubScreen(
                         state = dashboardState,
                         onBack = navigateBack,
                         onDevice = { navigateTo(ADRoute.DEVICE_CENTER) },
-                        onAi = { navigateTo(ADRoute.AI_SERVICES) },
+                        onIntelligence = { navigateTo(ADRoute.AI_SERVICES) },
+                        onRouting = { navigateTo(ADRoute.ROUTING) },
                         onPrivacy = { navigateTo(ADRoute.PRIVACY) },
+                        onStorage = { navigateTo(ADRoute.STORAGE) },
+                        onLanguage = { navigateTo(ADRoute.LANGUAGE) },
+                        onPermissions = { navigateTo(ADRoute.PERMISSIONS) },
                         onAdvanced = { navigateTo(ADRoute.ADVANCED) },
-                        onLegacySettings = host.onOpenLegacySettings,
+                        onAbout = { navigateTo(ADRoute.ABOUT) },
                     )
-                    ADRoute.AI_SERVICES -> ADAiServicesScreen(navigateBack, host)
-                    ADRoute.PRIVACY -> ADPrivacyScreen(navigateBack, host)
-                    ADRoute.ADVANCED -> ADAdvancedScreen(navigateBack, host)
+                    ADRoute.AI_SERVICES -> ADIntelligenceScreen(
+                        onBack = navigateBack,
+                        onRouting = { navigateTo(ADRoute.ROUTING) },
+                    )
+                    ADRoute.ROUTING -> ADRoutingScreen(navigateBack)
+                    ADRoute.PRIVACY -> ADPrivacyCenterScreen(navigateBack)
+                    ADRoute.STORAGE -> ADStorageScreen(navigateBack)
+                    ADRoute.LANGUAGE -> ADLanguageScreen(navigateBack)
+                    ADRoute.PERMISSIONS -> ADPermissionsScreen(navigateBack)
+                    ADRoute.ADVANCED -> ADAdvancedCenterScreen(
+                        onBack = navigateBack,
+                        onDevice = { navigateTo(ADRoute.DEVICE_CENTER) },
+                    )
+                    ADRoute.ABOUT -> ADAboutScreen(navigateBack)
                     ADRoute.FIRMWARE -> ADFirmwareScreen(dashboardState, host, navigateBack)
                     ADRoute.AUTOMATION_DETAIL -> ADAutomationDetailScreen(
                         automation = selectedAutomation,
