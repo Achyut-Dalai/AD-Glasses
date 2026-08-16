@@ -65,6 +65,7 @@ internal fun ADHomeSurface(
     onOpenSettings: () -> Unit,
     onOpenConversations: () -> Unit,
     onOpenLibrary: () -> Unit,
+    onOpenModes: () -> Unit,
 ) {
     var captureSheet by remember { mutableStateOf(false) }
     val connected = state.connectionLabel.contains("connected", ignoreCase = true) &&
@@ -151,7 +152,7 @@ internal fun ADHomeSurface(
                                 title = it,
                                 detail = "Running as an AD mode",
                                 status = "ON",
-                                onClick = {},
+                                onClick = onOpenModes,
                             )
                         }
                     }
