@@ -46,6 +46,25 @@ class ADProductSurfaceIsolationTest {
     }
 
     @Test
+    fun adNavigationRootDoesNotUseCompatibilityEscapeCallbacks() {
+        val source = sourceFile(
+            "src/main/java/com/fersaiyan/cyanbridge/ui/adglasses/ADGlassesApp.kt",
+        ).readText()
+
+        listOf(
+            "host.onOpenChat",
+            "host.onOpenChatWithPrompt",
+            "host.onOpenPhotos",
+            "host.onOpenMedia",
+            "host.onOpenNotes",
+            "host.onOpenLegacySettings",
+            "host.onOpenAutomationSettings",
+        ).forEach { token ->
+            assertFalse("AD navigation root must not invoke compatibility callback $token", source.contains(token))
+        }
+    }
+
+    @Test
     fun genericDeviceSurfacesDoNotHardcodeCurrentHardwareBrand() {
         listOf(
             "src/main/java/com/fersaiyan/cyanbridge/ui/adglasses/ADGlassesPairingScreen.kt",
