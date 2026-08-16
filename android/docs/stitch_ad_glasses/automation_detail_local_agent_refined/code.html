@@ -1,0 +1,323 @@
+<!DOCTYPE html>
+
+<html class="light" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Local Agent Automation Detail</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Hanken+Grotesk:wght@400;500;600&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+      tailwind.config = {
+        darkMode: "class",
+        theme: {
+          extend: {
+            "colors": {
+                    "secondary-container": "#4090fe",
+                    "on-surface": "#161c27",
+                    "canvas": "#F6F7F9",
+                    "surface-container-high": "#e2e8f8",
+                    "on-secondary-fixed": "#001b3e",
+                    "secondary-fixed": "#d6e3ff",
+                    "on-tertiary": "#ffffff",
+                    "inverse-surface": "#2a313d",
+                    "surface-control": "#FFFFFF",
+                    "cool-gray": "#717785",
+                    "on-error": "#ffffff",
+                    "on-tertiary-fixed-variant": "#444749",
+                    "on-primary-fixed": "#1b1b1b",
+                    "background": "#f9f9ff",
+                    "on-tertiary-fixed": "#191c1e",
+                    "secondary-fixed-dim": "#aac7ff",
+                    "electric-blue": "#1978E5",
+                    "tertiary-fixed-dim": "#c5c7c8",
+                    "surface-variant": "#dde2f2",
+                    "surface-container-highest": "#dde2f2",
+                    "primary-fixed-dim": "#c6c6c6",
+                    "on-surface-variant": "#4c4546",
+                    "outline-variant": "#cfc4c5",
+                    "on-background": "#161c27",
+                    "on-error-container": "#93000a",
+                    "graphite-black": "#000000",
+                    "inverse-primary": "#c6c6c6",
+                    "tertiary-container": "#191c1e",
+                    "error": "#ba1a1a",
+                    "primary": "#000000",
+                    "inverse-on-surface": "#ecf0ff",
+                    "tertiary-fixed": "#e1e2e4",
+                    "surface-dim": "#d4daea",
+                    "surface-container": "#e8eefe",
+                    "on-primary-fixed-variant": "#474747",
+                    "primary-fixed": "#e2e2e2",
+                    "on-tertiary-container": "#828486",
+                    "tertiary": "#000000",
+                    "surface": "#f9f9ff",
+                    "on-secondary-container": "#002958",
+                    "surface-container-low": "#f0f3ff",
+                    "outline": "#7e7576",
+                    "on-primary-container": "#848484",
+                    "success-teal": "#008080",
+                    "surface-tint": "#5e5e5e",
+                    "on-primary": "#ffffff",
+                    "surface-container-lowest": "#ffffff",
+                    "primary-container": "#1b1b1b",
+                    "surface-bright": "#f9f9ff",
+                    "on-secondary": "#ffffff",
+                    "warning-amber": "#FFBF00",
+                    "on-secondary-fixed-variant": "#00458d",
+                    "secondary": "#005db8",
+                    "error-container": "#ffdad6"
+            },
+            "borderRadius": {
+                    "DEFAULT": "0.25rem",
+                    "lg": "0.5rem",
+                    "xl": "0.75rem",
+                    "full": "9999px"
+            },
+            "spacing": {
+                    "base": "4px",
+                    "hero-stage": "220px",
+                    "gap-xs": "4px",
+                    "gap-sm": "8px",
+                    "touch-target": "48px",
+                    "margin-page": "16px"
+            },
+            "fontFamily": {
+                    "headline-md": ["Hanken Grotesk"],
+                    "body-lg": ["Hanken Grotesk"],
+                    "label-lg": ["Hanken Grotesk"],
+                    "label-md": ["Hanken Grotesk"],
+                    "label-sm": ["Hanken Grotesk"],
+                    "body-md": ["Hanken Grotesk"],
+                    "headline-lg": ["Hanken Grotesk"]
+            },
+            "fontSize": {
+                    "headline-md": ["20px", {"lineHeight": "28px", "letterSpacing": "-0.01em", "fontWeight": "600"}],
+                    "body-lg": ["16px", {"lineHeight": "24px", "fontWeight": "400"}],
+                    "label-lg": ["14px", {"lineHeight": "20px", "fontWeight": "500"}],
+                    "label-md": ["12px", {"lineHeight": "16px", "fontWeight": "500"}],
+                    "label-sm": ["11px", {"lineHeight": "16px", "letterSpacing": "0.05em", "fontWeight": "500"}],
+                    "body-md": ["14px", {"lineHeight": "20px", "fontWeight": "400"}],
+                    "headline-lg": ["24px", {"lineHeight": "32px", "letterSpacing": "-0.02em", "fontWeight": "600"}]
+            }
+          }
+        }
+      }
+    </script>
+<style>
+        body { font-family: 'Hanken Grotesk', sans-serif; background-color: #F6F7F9; }
+        .hairline-b { border-bottom: 1px solid #dde2f2; }
+        .hairline-t { border-top: 1px solid #dde2f2; }
+        .hairline-l { border-left: 1px solid #dde2f2; }
+        .hairline-r { border-right: 1px solid #dde2f2; }
+        .material-symbols-outlined { font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24; }
+        .icon-fill { font-variation-settings: 'FILL' 1; }
+        /* Hide scrollbar for clean UI */
+        ::-webkit-scrollbar { display: none; }
+    </style>
+<style>
+    body {
+      min-height: max(884px, 100dvh);
+    }
+  </style>
+<style>
+    body {
+      min-height: max(884px, 100dvh);
+    }
+  </style>
+  </head>
+<body class="text-on-surface antialiased bg-canvas min-h-screen flex flex-col pb-24 md:pb-0">
+<!-- TopAppBar -->
+<header class="w-full sticky top-0 z-50 bg-surface dark:bg-surface-dim flat no shadows flex items-center justify-between px-container-padding h-16 w-full max-w-5xl mx-auto hairline-b">
+<button class="w-touch-target h-touch-target flex items-center justify-center text-primary dark:text-primary-fixed-dim hover:bg-surface-container-high dark:hover:bg-surface-container-highest transition-colors active:scale-95 duration-100">
+<span class="material-symbols-outlined">arrow_back</span>
+</button>
+<h1 class="font-headline-sm text-headline-sm font-display-sm text-display-sm text-primary dark:text-primary-fixed-dim">Automation Detail</h1>
+<button class="w-touch-target h-touch-target flex items-center justify-center text-primary dark:text-primary-fixed-dim hover:bg-surface-container-high dark:hover:bg-surface-container-highest transition-colors active:scale-95 duration-100">
+<span class="material-symbols-outlined">settings</span>
+</button>
+</header>
+<main class="w-full max-w-5xl mx-auto px-margin-page py-6 flex-grow flex flex-col gap-6">
+<!-- Header / Hero Section -->
+<section class="bg-surface-control rounded-lg hairline-b hairline-t hairline-l hairline-r p-6 flex items-start justify-between">
+<div class="flex gap-4 items-center">
+<div class="w-16 h-16 rounded-full bg-surface-container flex items-center justify-center relative">
+<span class="material-symbols-outlined text-3xl text-secondary-container icon-fill">smart_toy</span>
+<div class="absolute bottom-0 right-0 w-4 h-4 rounded-full bg-success-teal border-2 border-surface-control"></div>
+</div>
+<div>
+<h2 class="font-headline-lg text-headline-lg text-graphite-black">Local Agent</h2>
+<p class="font-body-md text-body-md text-cool-gray mt-1">Autonomous Device Assistant</p>
+</div>
+</div>
+<div class="flex items-center gap-3">
+<span class="font-label-lg text-label-lg text-on-surface">Active</span>
+<!-- Toggle Switch (HTML structure) -->
+<label class="relative inline-flex items-center cursor-pointer">
+<input checked="" class="sr-only peer" type="checkbox" value=""/>
+<div class="w-11 h-6 bg-surface-variant peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-cool-gray after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-success-teal"></div>
+</label>
+</div>
+</section>
+<!-- Main Content Grid -->
+<div class="grid grid-cols-1 md:grid-cols-12 gap-6">
+<!-- Left Column (Manifest & Config) -->
+<div class="md:col-span-8 flex flex-col gap-6">
+<!-- Manifest Section -->
+<section class="bg-surface-control rounded-lg hairline-b hairline-t hairline-l hairline-r overflow-hidden">
+<div class="px-5 py-4 hairline-b bg-surface-bright flex justify-between items-center">
+<h3 class="font-headline-md text-headline-md text-graphite-black">Manifest</h3>
+<span class="px-2 py-1 bg-surface-container-high rounded text-label-sm font-label-sm text-cool-gray uppercase tracking-wider">Capabilities</span>
+</div>
+<div class="flex flex-col">
+<div class="flex items-start gap-4 p-5 hairline-b">
+<div class="w-10 h-10 rounded-full bg-surface-container-low flex items-center justify-center shrink-0">
+<span class="material-symbols-outlined text-electric-blue">smartphone</span>
+</div>
+<div>
+<h4 class="font-label-lg text-label-lg text-on-surface">Phone Screen Context</h4>
+<p class="font-body-md text-body-md text-cool-gray mt-1">Reads current screen state for contextual actions.</p>
+</div>
+<div class="ml-auto">
+<span class="px-2 py-1 bg-secondary-fixed text-on-secondary-fixed-variant rounded-full text-label-sm font-label-sm">Enabled</span>
+</div>
+</div>
+<div class="flex items-start gap-4 p-5 hairline-b">
+<div class="w-10 h-10 rounded-full bg-surface-container-low flex items-center justify-center shrink-0">
+<span class="material-symbols-outlined text-electric-blue">notifications_active</span>
+</div>
+<div>
+<h4 class="font-label-lg text-label-lg text-on-surface">Notifications</h4>
+<p class="font-body-md text-body-md text-cool-gray mt-1">Intercepts and acts on incoming system alerts.</p>
+</div>
+<div class="ml-auto">
+<span class="px-2 py-1 bg-secondary-fixed text-on-secondary-fixed-variant rounded-full text-label-sm font-label-sm">Enabled</span>
+</div>
+</div>
+<div class="flex items-start gap-4 p-5 hairline-b">
+<div class="w-10 h-10 rounded-full bg-surface-container-low flex items-center justify-center shrink-0">
+<span class="material-symbols-outlined text-electric-blue">folder</span>
+</div>
+<div>
+<h4 class="font-label-lg text-label-lg text-on-surface">Local Files</h4>
+<p class="font-body-md text-body-md text-cool-gray mt-1">Access to designated local directories for file manipulation.</p>
+</div>
+<div class="ml-auto">
+<span class="px-2 py-1 bg-surface-variant text-on-surface-variant rounded-full text-label-sm font-label-sm">Restricted</span>
+</div>
+</div>
+<div class="flex items-start gap-4 p-5">
+<div class="w-10 h-10 rounded-full bg-surface-container-low flex items-center justify-center shrink-0">
+<span class="material-symbols-outlined text-electric-blue">memory</span>
+</div>
+<div>
+<h4 class="font-label-lg text-label-lg text-on-surface">Memory</h4>
+<p class="font-body-md text-body-md text-cool-gray mt-1">Cross-session context retention and user preference learning.</p>
+</div>
+<div class="ml-auto flex items-center gap-2">
+<span class="w-2 h-2 rounded-full bg-warning-amber"></span>
+<span class="text-label-sm font-label-sm text-on-surface">Training</span>
+</div>
+</div>
+</div>
+</section>
+<!-- Configuration Section -->
+<section class="bg-surface-control rounded-lg hairline-b hairline-t hairline-l hairline-r overflow-hidden">
+<div class="px-5 py-4 hairline-b bg-surface-bright">
+<h3 class="font-headline-md text-headline-md text-graphite-black">Configuration</h3>
+</div>
+<div class="p-5 grid grid-cols-1 sm:grid-cols-2 gap-6">
+<!-- System Readiness -->
+<div class="flex flex-col gap-3">
+<h4 class="font-label-sm text-label-sm text-cool-gray uppercase tracking-wider">System Readiness</h4>
+<div class="bg-canvas rounded p-3 flex justify-between items-center hairline-b hairline-t hairline-l hairline-r">
+<div class="flex items-center gap-2">
+<span class="material-symbols-outlined text-success-teal text-[18px]">check_circle</span>
+<span class="font-label-md text-label-md text-on-surface">Accessibility Service</span>
+</div>
+<span class="text-label-sm font-label-sm text-success-teal">Ready</span>
+</div>
+<div class="bg-canvas rounded p-3 flex justify-between items-center hairline-b hairline-t hairline-l hairline-r">
+<div class="flex items-center gap-2">
+<span class="material-symbols-outlined text-success-teal text-[18px]">check_circle</span>
+<span class="font-label-md text-label-md text-on-surface">Notification Access</span>
+</div>
+<span class="text-label-sm font-label-sm text-success-teal">Ready</span>
+</div>
+</div>
+<!-- Approval Policy -->
+<div class="flex flex-col gap-3">
+<h4 class="font-label-sm text-label-sm text-cool-gray uppercase tracking-wider">Approval Policy</h4>
+<div class="border border-electric-blue bg-surface-container-low rounded p-4 flex flex-col gap-2 relative overflow-hidden">
+<div class="flex items-center justify-between">
+<span class="font-label-lg text-label-lg text-electric-blue">Ask Before Acting</span>
+<span class="material-symbols-outlined text-electric-blue">policy</span>
+</div>
+<p class="font-body-md text-body-md text-on-surface-variant text-sm">Agent will prompt for confirmation before executing any destructive or high-impact actions.</p>
+<button class="mt-2 text-left font-label-md text-label-md text-electric-blue hover:underline w-max">Change Policy</button>
+</div>
+</div>
+</div>
+</section>
+</div>
+<!-- Right Column (Quick Links / Meta) -->
+<div class="md:col-span-4 flex flex-col gap-6">
+<section class="grid grid-cols-2 md:grid-cols-1 gap-4">
+<!-- Quick Action Cards -->
+<a class="bg-surface-control rounded-lg hairline-b hairline-t hairline-l hairline-r p-5 flex flex-col items-start gap-4 hover:bg-surface-container-low transition-colors group" href="#">
+<div class="w-10 h-10 rounded-full bg-secondary-fixed flex items-center justify-center">
+<span class="material-symbols-outlined text-on-secondary-fixed-variant">hourglass_empty</span>
+</div>
+<div>
+<h4 class="font-label-lg text-label-lg text-graphite-black group-hover:text-electric-blue transition-colors">Pending Actions</h4>
+<p class="font-body-md text-body-md text-cool-gray mt-1">3 awaiting approval</p>
+</div>
+</a>
+<a class="bg-surface-control rounded-lg hairline-b hairline-t hairline-l hairline-r p-5 flex flex-col items-start gap-4 hover:bg-surface-container-low transition-colors group" href="#">
+<div class="w-10 h-10 rounded-full bg-surface-container flex items-center justify-center">
+<span class="material-symbols-outlined text-on-surface">history</span>
+</div>
+<div>
+<h4 class="font-label-lg text-label-lg text-graphite-black group-hover:text-electric-blue transition-colors">Task History</h4>
+<p class="font-body-md text-body-md text-cool-gray mt-1">View execution logs</p>
+</div>
+</a>
+<a class="bg-surface-control rounded-lg hairline-b hairline-t hairline-l hairline-r p-5 flex flex-col items-start gap-4 hover:bg-surface-container-low transition-colors group" href="#">
+<div class="w-10 h-10 rounded-full bg-surface-container flex items-center justify-center">
+<span class="material-symbols-outlined text-on-surface">tune</span>
+</div>
+<div>
+<h4 class="font-label-lg text-label-lg text-graphite-black group-hover:text-electric-blue transition-colors">Advanced Settings</h4>
+<p class="font-body-md text-body-md text-cool-gray mt-1">Parameters &amp; thresholds</p>
+</div>
+</a>
+</section>
+<!-- Privacy/On-Device Chip -->
+<div class="bg-surface-control rounded-lg hairline-b hairline-t hairline-l hairline-r p-4 flex items-center gap-3 justify-center">
+<span class="material-symbols-outlined text-success-teal text-[20px]">shield</span>
+<span class="font-label-md text-label-md text-on-surface uppercase tracking-wide">100% On-Device Processing</span>
+</div>
+</div>
+</div>
+</main>
+<!-- BottomNavBar (Mobile Only) -->
+<nav class="md:hidden fixed bottom-0 w-full z-50 pb-safe bg-surface-container dark:bg-surface-container-lowest shadow-sm flex justify-around items-center h-20 px-4 w-full hairline-t">
+<a class="flex flex-col items-center justify-center text-on-surface-variant dark:text-outline hover:text-primary dark:hover:text-primary-fixed transition-all active:scale-90 duration-200" href="#">
+<span class="material-symbols-outlined mb-1">home</span>
+<span class="font-label-md text-label-md font-display-sm text-display-sm text-primary">Home</span>
+</a>
+<a class="flex flex-col items-center justify-center text-on-surface-variant dark:text-outline hover:text-primary dark:hover:text-primary-fixed transition-all active:scale-90 duration-200" href="#">
+<span class="material-symbols-outlined mb-1">smart_toy</span>
+<span class="font-label-md text-label-md font-display-sm text-display-sm text-primary">Devices</span>
+</a>
+<a class="flex flex-col items-center justify-center bg-secondary-container dark:bg-on-secondary-fixed-variant text-on-secondary-container dark:text-secondary-fixed rounded-full px-5 py-1 active:scale-90 duration-200" href="#">
+<span class="material-symbols-outlined mb-1 icon-fill">bolt</span>
+<span class="font-label-md text-label-md font-display-sm text-display-sm text-primary">Automate</span>
+</a>
+<a class="flex flex-col items-center justify-center text-on-surface-variant dark:text-outline hover:text-primary dark:hover:text-primary-fixed transition-all active:scale-90 duration-200" href="#">
+<span class="material-symbols-outlined mb-1">person</span>
+<span class="font-label-md text-label-md font-display-sm text-display-sm text-primary">Profile</span>
+</a>
+</nav>
+</body></html>

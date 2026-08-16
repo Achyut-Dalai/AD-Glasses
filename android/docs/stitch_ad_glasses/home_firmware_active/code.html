@@ -1,0 +1,229 @@
+<!DOCTYPE html>
+
+<html class="light" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>AD Glasses - Home</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+      tailwind.config = {
+        darkMode: "class",
+        theme: {
+          extend: {
+            "colors": {
+                    "surface-tint": "#095db7",
+                    "tertiary-container": "#964400",
+                    "tertiary-fixed": "#ffdbc9",
+                    "outline-variant": "#c1c6d5",
+                    "secondary-fixed": "#d6e3ff",
+                    "on-secondary": "#ffffff",
+                    "outline": "#727783",
+                    "on-secondary-container": "#3f5881",
+                    "tertiary": "#723200",
+                    "on-tertiary-fixed-variant": "#753400",
+                    "primary-container": "#0a73e0",
+                    "primary-fixed-dim": "#aac7ff",
+                    "surface": "#f9f9ff",
+                    "on-error-container": "#93000a",
+                    "primary": "#004389",
+                    "surface-container-lowest": "#ffffff",
+                    "on-tertiary-container": "#ffc9ac",
+                    "on-primary": "#ffffff",
+                    "secondary-fixed-dim": "#aec7f6",
+                    "primary-fixed": "#d6e3ff",
+                    "on-tertiary-fixed": "#321200",
+                    "on-secondary-fixed-variant": "#2e476f",
+                    "surface-variant": "#e0e2eb",
+                    "secondary-container": "#b6d0ff",
+                    "secondary": "#465f88",
+                    "surface-dim": "#d7dae3",
+                    "surface-container": "#ebedf7",
+                    "on-primary-fixed-variant": "#00458d",
+                    "on-primary-container": "#c0d5ff",
+                    "background": "#f9f9ff",
+                    "surface-container-highest": "#e0e2eb",
+                    "on-error": "#ffffff",
+                    "surface-container-low": "#f1f3fc",
+                    "on-surface-variant": "#424752",
+                    "error-container": "#ffdad6",
+                    "inverse-on-surface": "#eef0fa",
+                    "surface-bright": "#f9f9ff",
+                    "inverse-surface": "#2d3037",
+                    "on-surface": "#181c22",
+                    "on-tertiary": "#ffffff",
+                    "tertiary-fixed-dim": "#ffb68c",
+                    "on-background": "#181c22",
+                    "on-secondary-fixed": "#001b3d",
+                    "inverse-primary": "#aac7ff",
+                    "surface-container-high": "#e6e8f1",
+                    "error": "#ba1a1a",
+                    "on-primary-fixed": "#001b3e"
+            },
+            "borderRadius": {
+                    "DEFAULT": "0.25rem",
+                    "lg": "0.5rem",
+                    "xl": "0.75rem",
+                    "full": "9999px"
+            },
+            "spacing": {
+                    "section-gap": "1.5rem",
+                    "grid-gutter": "1rem",
+                    "element-gap": "0.75rem",
+                    "container-padding": "1rem"
+            },
+            "fontFamily": {
+                    "body-sm": ["Inter"],
+                    "body-md": ["Inter"],
+                    "display-sm": ["Inter"],
+                    "label-sm": ["Inter"],
+                    "headline-sm": ["Inter"],
+                    "label-lg": ["Inter"],
+                    "label-md": ["Inter"]
+            },
+            "fontSize": {
+                    "body-sm": ["0.75rem", {"lineHeight": "1rem", "fontWeight": "400"}],
+                    "body-md": ["0.875rem", {"lineHeight": "1.25rem", "fontWeight": "400"}],
+                    "display-sm": ["1.125rem", {"lineHeight": "1.5rem", "letterSpacing": "0.15em", "fontWeight": "700"}],
+                    "label-sm": ["10px", {"lineHeight": "12px", "fontWeight": "500"}],
+                    "headline-sm": ["0.875rem", {"lineHeight": "1.25rem", "fontWeight": "600"}],
+                    "label-lg": ["0.75rem", {"lineHeight": "1rem", "fontWeight": "600"}],
+                    "label-md": ["11px", {"lineHeight": "1rem", "fontWeight": "500"}]
+            }
+          }
+        }
+      }
+    </script>
+<style>
+        .pb-safe { padding-bottom: env(safe-area-inset-bottom, 20px); }
+        .material-symbols-outlined { font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24; }
+    </style>
+<style>
+    body {
+      min-height: max(884px, 100dvh);
+    }
+  </style>
+  </head>
+<body class="bg-background text-on-background font-body-md min-h-screen flex flex-col selection:bg-primary-container selection:text-on-primary-container pb-[80px]">
+<!-- TopAppBar -->
+<nav class="bg-background w-full top-0 transition-colors duration-300 ease-in-out flex justify-between items-center px-6 py-4 z-40 sticky">
+<button class="text-primary hover:bg-surface-variant/10 p-2 -ml-2 rounded-full transition-colors">
+<span class="material-symbols-outlined">eyeglasses</span>
+</button>
+<h1 class="text-xl font-bold tracking-tighter text-on-background">AD Glasses</h1>
+<button class="text-primary hover:bg-surface-variant/10 p-2 -mr-2 rounded-full transition-colors">
+<span class="material-symbols-outlined">settings</span>
+</button>
+</nav>
+<!-- Main Content Canvas -->
+<main class="flex-grow w-full max-w-5xl mx-auto px-4 py-6 space-y-6">
+<!-- Device Stage: Firmware Update in Progress -->
+<section class="bg-surface-container-highest rounded-xl p-6 border border-outline-variant/30 flex flex-col items-center justify-center space-y-4 relative overflow-hidden shadow-sm">
+<!-- Subtle pulsing background layer for activity -->
+<div class="absolute inset-0 bg-primary/5 animate-pulse"></div>
+<div class="relative z-10 flex flex-col items-center text-center space-y-3 w-full">
+<div class="w-20 h-20 rounded-full bg-surface flex items-center justify-center shadow-sm relative">
+<!-- Spinning indicator ring -->
+<div class="absolute inset-0 rounded-full border-4 border-surface-dim border-t-primary animate-spin"></div>
+<span class="material-symbols-outlined text-4xl text-primary" style="font-variation-settings: 'FILL' 1;">system_update</span>
+</div>
+<div>
+<h2 class="font-headline-sm text-headline-sm text-on-surface mb-1">HeyCyan Pro</h2>
+<div class="flex items-center justify-center space-x-2">
+<span class="w-2 h-2 rounded-full bg-primary animate-ping"></span>
+<span class="font-label-md text-label-md text-primary uppercase tracking-widest">Firmware Update in Progress</span>
+</div>
+</div>
+</div>
+</section>
+<!-- Activity Banner -->
+<section class="bg-surface-container rounded-xl p-5 border border-outline-variant/20 space-y-4">
+<div class="flex justify-between items-start">
+<div class="flex items-center space-x-3">
+<div class="bg-primary/10 p-2 rounded-lg">
+<span class="material-symbols-outlined text-primary">downloading</span>
+</div>
+<div>
+<h3 class="font-label-lg text-label-lg text-on-surface">Firmware update</h3>
+<p class="font-label-md text-label-md text-on-surface-variant mt-0.5">Do not disconnect device</p>
+</div>
+</div>
+<span class="font-label-md text-label-md text-primary font-semibold">45%</span>
+</div>
+<!-- Progress Indicator -->
+<div class="w-full bg-surface-dim rounded-full h-1.5 overflow-hidden">
+<div class="bg-primary h-1.5 rounded-full transition-all duration-1000 ease-in-out relative" style="width: 45%">
+<div class="absolute inset-0 bg-white/20 animate-pulse"></div>
+</div>
+</div>
+<div class="flex justify-end pt-2 border-t border-outline-variant/10">
+<button class="font-label-md text-label-md text-primary uppercase font-semibold hover:underline flex items-center gap-1 transition-opacity hover:opacity-80">
+                    Open update
+                    <span class="material-symbols-outlined text-[14px]">chevron_right</span>
+</button>
+</div>
+</section>
+<!-- Blocked Quick Actions -->
+<section class="space-y-4">
+<h3 class="font-label-md text-label-md text-on-surface-variant uppercase tracking-wider px-1">Quick Actions</h3>
+<div class="grid grid-cols-3 gap-4 opacity-40 pointer-events-none grayscale transition-all duration-300">
+<!-- Capture (Disabled) -->
+<div class="flex flex-col items-center space-y-2">
+<div class="w-14 h-14 rounded-full bg-surface-container flex items-center justify-center border border-outline-variant/20">
+<span class="material-symbols-outlined text-on-surface-variant">photo_camera</span>
+</div>
+<span class="font-label-md text-label-md text-on-surface-variant">Capture</span>
+</div>
+<!-- Record (Disabled) -->
+<div class="flex flex-col items-center space-y-2">
+<div class="w-14 h-14 rounded-full bg-surface-container flex items-center justify-center border border-outline-variant/20">
+<span class="material-symbols-outlined text-on-surface-variant">videocam</span>
+</div>
+<span class="font-label-md text-label-md text-on-surface-variant">Record</span>
+</div>
+<!-- Sync (Disabled) -->
+<div class="flex flex-col items-center space-y-2">
+<div class="w-14 h-14 rounded-full bg-surface-container flex items-center justify-center border border-outline-variant/20">
+<span class="material-symbols-outlined text-on-surface-variant">sync</span>
+</div>
+<span class="font-label-md text-label-md text-on-surface-variant">Sync</span>
+</div>
+</div>
+<div class="text-center mt-4">
+<p class="font-label-sm text-label-sm text-on-surface-variant flex items-center justify-center gap-1">
+<span class="material-symbols-outlined text-[12px]">info</span>
+                    Actions disabled during update
+                </p>
+</div>
+</section>
+</main>
+<!-- BottomNavBar -->
+<nav class="bg-surface-container fixed bottom-0 left-0 w-full z-50 flex justify-around items-center px-4 py-3 pb-safe shadow-lg md:hidden">
+<!-- Active: Home -->
+<button class="flex flex-col items-center justify-center bg-secondary-container text-on-secondary-container rounded-xl px-4 py-1 hover:opacity-80 transition-all duration-150 active:scale-95 group cursor-default">
+<span class="material-symbols-outlined mb-1 transition-transform group-active:scale-95" style="font-variation-settings: 'FILL' 1;">home</span>
+<span class="font-label-md text-label-md">Home</span>
+</button>
+<!-- Inactive: Assistant -->
+<button class="flex flex-col items-center justify-center text-on-surface-variant hover:opacity-80 transition-all duration-150 active:scale-95 group">
+<span class="material-symbols-outlined mb-1 transition-transform group-active:scale-95">smart_toy</span>
+<span class="font-label-md text-label-md">Assistant</span>
+</button>
+<!-- Inactive: Library -->
+<button class="flex flex-col items-center justify-center text-on-surface-variant hover:opacity-80 transition-all duration-150 active:scale-95 group">
+<span class="material-symbols-outlined mb-1 transition-transform group-active:scale-95">photo_library</span>
+<span class="font-label-md text-label-md">Library</span>
+</button>
+<!-- Inactive: Automations -->
+<button class="flex flex-col items-center justify-center text-on-surface-variant hover:opacity-80 transition-all duration-150 active:scale-95 group">
+<span class="material-symbols-outlined mb-1 transition-transform group-active:scale-95">auto_awesome</span>
+<span class="font-label-md text-label-md">Automations</span>
+</button>
+</nav>
+<!-- Desktop Side Nav Spacer (Hidden on mobile, ensures layout parity if expanded) -->
+<div class="hidden md:flex fixed bottom-0 left-0 w-full z-50 justify-around items-center px-4 py-3 bg-surface-container text-on-surface-variant border-t border-outline-variant/10">
+<p class="font-label-sm text-label-sm text-on-surface-variant">Navigation moved to Side/Top on Desktop per system rules</p>
+</div>
+</body></html>

@@ -1,0 +1,543 @@
+<!DOCTYPE html>
+
+<html class="light" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" name="viewport"/>
+<title>AD Glasses - Devices</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+          darkMode: "class",
+          theme: {
+            extend: {
+              "colors": {
+                      "surface-container-lowest": "#ffffff",
+                      "on-primary-container": "#c0d5ff",
+                      "outline": "#727783",
+                      "surface-bright": "#f9f9ff",
+                      "on-tertiary-fixed-variant": "#753400",
+                      "on-secondary": "#ffffff",
+                      "on-background": "#181c22",
+                      "on-primary-fixed-variant": "#00458d",
+                      "tertiary-container": "#964400",
+                      "on-tertiary-fixed": "#321200",
+                      "primary-fixed-dim": "#aac7ff",
+                      "outline-variant": "#c2c6d4",
+                      "surface": "#f9f9ff",
+                      "on-surface": "#181c22",
+                      "on-surface-variant": "#424752",
+                      "secondary-fixed": "#d6e3ff",
+                      "background": "#f9f9ff",
+                      "inverse-on-surface": "#eef0fa",
+                      "primary-container": "#0a73e0",
+                      "secondary": "#465f88",
+                      "on-primary-fixed": "#001b3e",
+                      "secondary-fixed-dim": "#aec7f6",
+                      "on-tertiary-container": "#ffc9ac",
+                      "surface-container": "#ebedf7",
+                      "on-secondary-fixed-variant": "#2e476f",
+                      "error": "#ba1a1a",
+                      "surface-container-highest": "#e0e2eb",
+                      "secondary-container": "#b6d0ff",
+                      "surface-container-high": "#e6e8f1",
+                      "on-secondary-fixed": "#001b3d",
+                      "surface-dim": "#d7dae3",
+                      "inverse-surface": "#2d3037",
+                      "inverse-primary": "#aac7ff",
+                      "tertiary-fixed": "#ffdbc9",
+                      "primary": "#004389",
+                      "on-tertiary": "#ffffff",
+                      "on-error": "#ffffff",
+                      "surface-variant": "#e0e2eb",
+                      "tertiary": "#723200",
+                      "on-error-container": "#93000a",
+                      "primary-fixed": "#d6e3ff",
+                      "surface-container-low": "#f1f3fc",
+                      "surface-tint": "#095db7",
+                      "on-secondary-container": "#3f5881",
+                      "error-container": "#ffdad6",
+                      "tertiary-fixed-dim": "#ffb68c",
+                      "on-primary": "#ffffff"
+              },
+              "borderRadius": {
+                      "DEFAULT": "0.25rem",
+                      "lg": "0.5rem",
+                      "xl": "0.75rem",
+                      "full": "9999px",
+                      "2xl": "1rem",
+                      "3xl": "1.5rem"
+              },
+              "spacing": {
+                      "element-gap": "0.75rem",
+                      "container-padding": "1rem",
+                      "section-gap": "1.5rem",
+                      "grid-gutter": "1rem"
+              },
+              "fontFamily": {
+                      "label-sm": ["Inter"],
+                      "label-md": ["Inter"],
+                      "label-lg": ["Inter"],
+                      "body-sm": ["Inter"],
+                      "body-md": ["Inter"],
+                      "display-sm": ["Inter"],
+                      "headline-sm": ["Inter"],
+                      "title-md": ["Inter"]
+              },
+              "fontSize": {
+                      "label-sm": ["10px", {"lineHeight": "12px", "fontWeight": "500"}],
+                      "label-md": ["11px", {"lineHeight": "1rem", "fontWeight": "500"}],
+                      "label-lg": ["0.75rem", {"lineHeight": "1rem", "fontWeight": "600"}],
+                      "body-sm": ["0.75rem", {"lineHeight": "1rem", "fontWeight": "400"}],
+                      "body-md": ["0.875rem", {"lineHeight": "1.25rem", "fontWeight": "400"}],
+                      "display-sm": ["1.125rem", {"lineHeight": "1.5rem", "letterSpacing": "0.15em", "fontWeight": "700"}],
+                      "headline-sm": ["0.875rem", {"lineHeight": "1.25rem", "fontWeight": "600"}],
+                      "title-md": ["1rem", {"lineHeight": "1.5rem", "fontWeight": "600"}]
+              }
+            }
+          }
+        }
+    </script>
+<style>
+        /* Mobile Specific Overrides & Setup */
+        html, body {
+            overflow-x: hidden;
+            width: 100vw;
+            height: 100vh;
+            background-color: theme('colors.background');
+            color: theme('colors.on-background');
+            -webkit-tap-highlight-color: transparent;
+        }
+        
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+        }
+        .material-symbols-outlined[data-weight="fill"] {
+            font-variation-settings: 'FILL' 1;
+        }
+
+        /* View Transitions & Flow Layout */
+        .flow-container {
+            display: flex;
+            width: 500vw; /* 5 frames */
+            height: 100%;
+            transition: transform 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+        .frame {
+            width: 100vw;
+            height: 100%;
+            flex-shrink: 0;
+            overflow-y: auto;
+            position: relative;
+            padding-bottom: 80px; /* Space for bottom nav or bottom sheets */
+        }
+
+        /* Radar Scanning Animation */
+        .radar-scan {
+            position: relative;
+            width: 200px;
+            height: 200px;
+            border-radius: 50%;
+            border: 1px solid theme('colors.outline-variant');
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            overflow: hidden;
+            margin: 0 auto;
+        }
+        .radar-scan::before {
+            content: '';
+            position: absolute;
+            width: 100%;
+            height: 100%;
+            border-radius: 50%;
+            background: conic-gradient(from 0deg, transparent 70%, theme('colors.primary') 100%);
+            animation: spin 3s linear infinite;
+        }
+        .radar-scan::after {
+            content: '';
+            position: absolute;
+            width: 98%;
+            height: 98%;
+            border-radius: 50%;
+            background-color: theme('colors.surface');
+        }
+        
+        /* Pulse Animation for Scanning Nodes */
+        .pulse-node {
+            animation: pulse-ring 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+        }
+
+        @keyframes spin {
+            100% { transform: rotate(360deg); }
+        }
+        @keyframes pulse-ring {
+            0% { transform: scale(0.8); opacity: 1; }
+            100% { transform: scale(2.5); opacity: 0; }
+        }
+
+        /* Slide Up Animation */
+        .slide-up-enter {
+            transform: translateY(100%);
+        }
+        .slide-up-enter-active {
+            transform: translateY(0);
+            transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+        
+        /* Glass/Backdrop Utility */
+        .backdrop-blur-nav {
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+        }
+    </style>
+<style>
+    body {
+      min-height: max(884px, 100dvh);
+    }
+  </style>
+  </head>
+<body class="bg-background text-on-background font-body-md antialiased selection:bg-primary-container selection:text-on-primary-container">
+<!-- Top App Bar (Shared across frames) -->
+<header class="fixed top-0 w-full z-40 bg-background/90 backdrop-blur-nav border-b border-outline-variant/10">
+<div class="flex justify-between items-center px-6 py-4 w-full h-16">
+<button aria-label="Go back" class="text-on-surface-variant hover:bg-surface-variant/10 rounded-full p-2 transition-colors duration-300 ease-in-out opacity-0 pointer-events-none" id="back-btn">
+<span class="material-symbols-outlined">arrow_back</span>
+</button>
+<h1 class="font-headline-sm text-headline-sm tracking-tight text-primary font-bold tracking-tighter" id="header-title">Devices</h1>
+<button aria-label="Settings" class="text-on-surface-variant hover:bg-surface-variant/10 rounded-full p-2 transition-colors duration-300 ease-in-out">
+<span class="material-symbols-outlined">settings</span>
+</button>
+</div>
+</header>
+<!-- Main Content Container for Frames -->
+<main class="w-full h-full pt-16 overflow-hidden">
+<div class="flow-container" id="flow-container">
+<!-- FRAME 1: Devices Hub -->
+<section class="frame p-4 space-y-6" id="frame-1">
+<!-- Hero Active Device -->
+<div class="bg-surface-container-low rounded-3xl p-6 border border-outline-variant/20 shadow-sm relative overflow-hidden group">
+<div class="absolute inset-0 bg-gradient-to-br from-primary-container/20 to-transparent opacity-50"></div>
+<div class="relative z-10 flex flex-col items-center text-center space-y-4">
+<div class="w-24 h-24 rounded-full bg-surface-container flex items-center justify-center shadow-inner relative">
+<span class="material-symbols-outlined text-4xl text-primary" data-weight="fill">eyeglasses</span>
+<div class="absolute bottom-1 right-1 w-4 h-4 bg-emerald-500 rounded-full border-2 border-surface-container-low"></div>
+</div>
+<div>
+<h2 class="font-title-md text-title-md text-on-surface">HeyCyan Pro</h2>
+<p class="font-body-sm text-body-sm text-on-surface-variant flex items-center justify-center gap-1 mt-1">
+<span class="material-symbols-outlined text-[14px]">battery_5_bar</span> 85% • Connected
+                            </p>
+</div>
+<div class="flex gap-3 w-full pt-2">
+<button class="flex-1 bg-surface-container-high hover:bg-surface-container-highest text-on-surface font-label-lg text-label-lg py-3 rounded-xl transition-colors">
+                                Disconnect
+                            </button>
+<button class="flex-1 bg-primary text-on-primary font-label-lg text-label-lg py-3 rounded-xl transition-colors">
+                                Settings
+                            </button>
+</div>
+</div>
+</div>
+<!-- Add Device Actions -->
+<div class="space-y-3">
+<h3 class="font-label-lg text-label-lg text-on-surface-variant px-2 uppercase tracking-wider">Pair New</h3>
+<button class="w-full flex items-center p-4 bg-surface-container-lowest rounded-2xl border border-outline-variant/30 hover:bg-surface-container transition-colors group" onclick="goToFrame(1, 'Choose Brand')">
+<div class="w-10 h-10 rounded-full bg-surface-container flex items-center justify-center text-primary group-hover:bg-primary-container group-hover:text-on-primary-container transition-colors">
+<span class="material-symbols-outlined">add_circle</span>
+</div>
+<div class="ml-4 text-left flex-1">
+<h4 class="font-label-lg text-label-lg text-on-surface">Add glasses</h4>
+<p class="font-body-sm text-body-sm text-on-surface-variant">Scan for nearby compatible devices</p>
+</div>
+<span class="material-symbols-outlined text-on-surface-variant">chevron_right</span>
+</button>
+<button class="w-full flex items-center p-4 bg-surface-container-lowest rounded-2xl border border-outline-variant/30 hover:bg-surface-container transition-colors group" onclick="goToFrame(1, 'Choose Brand')">
+<div class="w-10 h-10 rounded-full bg-surface-container flex items-center justify-center text-secondary group-hover:bg-secondary-container group-hover:text-on-secondary-container transition-colors">
+<span class="material-symbols-outlined">list</span>
+</div>
+<div class="ml-4 text-left flex-1">
+<h4 class="font-label-lg text-label-lg text-on-surface">Choose by brand</h4>
+<p class="font-body-sm text-body-sm text-on-surface-variant">View all supported manufacturers</p>
+</div>
+<span class="material-symbols-outlined text-on-surface-variant">chevron_right</span>
+</button>
+</div>
+</section>
+<!-- FRAME 2: Choose Brand -->
+<section class="frame p-4 space-y-6" id="frame-2">
+<div class="sticky top-0 bg-background/95 backdrop-blur-sm z-10 pb-4 pt-2">
+<div class="relative">
+<span class="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-on-surface-variant">search</span>
+<input class="w-full bg-surface-container-low border-outline-variant/30 rounded-xl pl-10 pr-4 py-3 font-body-md text-on-surface focus:ring-primary focus:border-primary" placeholder="Search brands..." type="text"/>
+</div>
+</div>
+<div class="space-y-4">
+<!-- Primary Support -->
+<div>
+<h3 class="font-label-lg text-label-lg text-on-surface-variant px-2 mb-2">Primary Support</h3>
+<div class="bg-surface-container-lowest rounded-2xl border border-outline-variant/30 overflow-hidden divide-y divide-outline-variant/10">
+<button class="w-full flex items-center p-4 hover:bg-surface-container transition-colors" onclick="goToFrame(2, 'Scanning')">
+<div class="w-10 h-10 rounded-full bg-primary-container text-on-primary-container flex items-center justify-center font-bold">H</div>
+<div class="ml-4 text-left flex-1">
+<h4 class="font-label-lg text-label-lg text-on-surface">HeyCyan</h4>
+<p class="font-body-sm text-body-sm text-on-surface-variant">Full capability access</p>
+</div>
+<span class="material-symbols-outlined text-on-surface-variant">chevron_right</span>
+</button>
+</div>
+</div>
+<!-- Experimental Support -->
+<div>
+<h3 class="font-label-lg text-label-lg text-on-surface-variant px-2 mb-2">Experimental</h3>
+<div class="bg-surface-container-lowest rounded-2xl border border-outline-variant/30 overflow-hidden divide-y divide-outline-variant/10">
+<button class="w-full flex items-center p-4 hover:bg-surface-container transition-colors" onclick="goToFrame(2, 'Scanning')">
+<div class="w-10 h-10 rounded-full bg-secondary-container text-on-secondary-container flex items-center justify-center font-bold">E</div>
+<div class="ml-4 text-left flex-1">
+<h4 class="font-label-lg text-label-lg text-on-surface">Eyevue</h4>
+<p class="font-body-sm text-body-sm text-on-surface-variant">Beta protocol</p>
+</div>
+<span class="material-symbols-outlined text-on-surface-variant">chevron_right</span>
+</button>
+<button class="w-full flex items-center p-4 hover:bg-surface-container transition-colors" onclick="goToFrame(2, 'Scanning')">
+<div class="w-10 h-10 rounded-full bg-tertiary-container text-on-tertiary-container flex items-center justify-center font-bold">M</div>
+<div class="ml-4 text-left flex-1">
+<h4 class="font-label-lg text-label-lg text-on-surface">Meta Ray-Ban</h4>
+<p class="font-body-sm text-body-sm text-on-surface-variant">Partial capabilities (Audio only)</p>
+</div>
+<span class="material-symbols-outlined text-on-surface-variant">chevron_right</span>
+</button>
+</div>
+</div>
+</div>
+</section>
+<!-- FRAME 3: Scanning -->
+<section class="frame p-4 flex flex-col items-center justify-center" id="frame-3">
+<div class="flex-1 flex flex-col items-center justify-center w-full relative">
+<div class="radar-scan mb-8">
+<div class="absolute z-10 w-16 h-16 bg-surface-container-lowest rounded-full flex items-center justify-center shadow-sm">
+<span class="material-symbols-outlined text-3xl text-primary animate-pulse">bluetooth_searching</span>
+</div>
+<!-- Simulated found device node -->
+<div class="absolute top-8 right-8 z-20 cursor-pointer" onclick="showConfirmSheet()">
+<div class="pulse-node absolute inset-0 bg-primary/30 rounded-full"></div>
+<div class="w-3 h-3 bg-primary rounded-full border border-surface relative z-10"></div>
+<div class="absolute top-4 left-1/2 -translate-x-1/2 whitespace-nowrap bg-surface-container px-2 py-1 rounded-md shadow-sm font-label-sm text-label-sm text-on-surface">
+                                HeyCyan X1
+                            </div>
+</div>
+</div>
+<h2 class="font-title-md text-title-md text-on-surface mb-2">Looking for glasses...</h2>
+<p class="font-body-sm text-body-sm text-on-surface-variant text-center max-w-xs">Make sure your glasses are turned on, close by, and in pairing mode.</p>
+</div>
+</section>
+<!-- FRAME 4: Connecting -->
+<section class="frame p-4 flex flex-col justify-between" id="frame-4">
+<div class="flex-1 flex flex-col items-center justify-center space-y-8 mt-12">
+<div class="w-32 h-32 relative">
+<svg class="w-full h-full" viewbox="0 0 100 100">
+<!-- Background track -->
+<circle class="text-surface-variant" cx="50" cy="50" fill="none" r="45" stroke="currentColor" stroke-width="4"></circle>
+<!-- Progress arc -->
+<circle class="text-primary transition-all duration-1000 ease-out" cx="50" cy="50" fill="none" id="connection-progress" r="45" stroke="currentColor" stroke-dasharray="283" stroke-dashoffset="100" stroke-width="4"></circle>
+</svg>
+<div class="absolute inset-0 flex items-center justify-center">
+<span class="material-symbols-outlined text-4xl text-primary" id="connection-icon">sync</span>
+</div>
+</div>
+<div class="text-center w-full max-w-sm px-6">
+<h2 class="font-title-md text-title-md text-on-surface mb-6" id="connection-title">Connecting to HeyCyan X1</h2>
+<!-- Connection Steps -->
+<div class="space-y-4 text-left">
+<div class="flex items-center gap-3 opacity-100 transition-opacity" id="step-1">
+<span class="material-symbols-outlined text-primary text-sm">check_circle</span>
+<span class="font-body-sm text-body-sm text-on-surface">Preparing connection</span>
+</div>
+<div class="flex items-center gap-3 opacity-50 transition-opacity" id="step-2">
+<span class="material-symbols-outlined text-on-surface-variant animate-spin text-sm">progress_activity</span>
+<span class="font-body-sm text-body-sm text-on-surface-variant">Exchanging keys</span>
+</div>
+<div class="flex items-center gap-3 opacity-30 transition-opacity" id="step-3">
+<span class="material-symbols-outlined text-on-surface-variant text-sm">download</span>
+<span class="font-body-sm text-body-sm text-on-surface-variant">Reading capabilities</span>
+</div>
+</div>
+</div>
+</div>
+<div class="pt-8 opacity-0 transition-opacity duration-500" id="success-action">
+<button class="w-full bg-primary text-on-primary font-label-lg text-label-lg py-4 rounded-2xl shadow-sm hover:opacity-90 transition-opacity" onclick="goToFrame(0, 'Devices')">
+                        Go to Dashboard
+                    </button>
+</div>
+</section>
+</div>
+</main>
+<!-- Bottom Nav Bar (Hidden logically on non-hub frames, but structure present) -->
+<nav class="fixed bottom-0 left-0 w-full z-30 bg-surface-container border-t border-outline-variant/10 shadow-[0_-4px_6px_-1px_rgba(0,0,0,0.05)] pb-safe transition-transform duration-300" id="bottom-nav">
+<div class="flex justify-around items-center px-4 py-3">
+<a class="flex flex-col items-center justify-center text-on-surface-variant hover:opacity-80 transition-opacity" href="#">
+<span class="material-symbols-outlined mb-1">home</span>
+<span class="font-label-sm text-label-sm">Home</span>
+</a>
+<a class="flex flex-col items-center justify-center text-on-surface-variant hover:opacity-80 transition-opacity" href="#">
+<span class="material-symbols-outlined mb-1">smart_toy</span>
+<span class="font-label-sm text-label-sm">Assistant</span>
+</a>
+<a class="flex flex-col items-center justify-center text-on-surface-variant hover:opacity-80 transition-opacity" href="#">
+<span class="material-symbols-outlined mb-1">photo_library</span>
+<span class="font-label-sm text-label-sm">Library</span>
+</a>
+<a class="flex flex-col items-center justify-center bg-secondary-container text-on-secondary-container rounded-xl px-4 py-1 transition-transform active:scale-95 duration-150" href="#">
+<span class="material-symbols-outlined mb-1" data-weight="fill">devices</span>
+<span class="font-label-sm text-label-sm">Devices</span>
+</a>
+</div>
+</nav>
+<!-- Confirm Device Bottom Sheet Overlay -->
+<div class="fixed inset-0 bg-black/40 backdrop-blur-sm z-50 opacity-0 pointer-events-none transition-opacity duration-300" id="confirm-sheet-overlay"></div>
+<!-- Confirm Device Bottom Sheet -->
+<div class="fixed bottom-0 left-0 w-full bg-surface-container-lowest rounded-t-3xl z-50 transform translate-y-full transition-transform duration-300 cubic-bezier(0.4, 0, 0.2, 1) pb-safe shadow-[0_-10px_40px_rgba(0,0,0,0.1)]" id="confirm-sheet">
+<div class="w-12 h-1.5 bg-outline-variant/40 rounded-full mx-auto mt-4 mb-6"></div>
+<div class="px-6 pb-6 space-y-6">
+<div class="flex items-start justify-between">
+<div>
+<h2 class="font-title-md text-title-md text-on-surface">HeyCyan X1 Found</h2>
+<p class="font-body-sm text-body-sm text-on-surface-variant mt-1">Generation 2 • Primary Support</p>
+</div>
+<div class="w-12 h-12 bg-primary-container text-on-primary-container rounded-full flex items-center justify-center">
+<span class="material-symbols-outlined" data-weight="fill">eyeglasses</span>
+</div>
+</div>
+<!-- Capability Preview Bento -->
+<div class="grid grid-cols-2 gap-3">
+<div class="bg-surface p-3 rounded-xl border border-outline-variant/20 flex flex-col gap-2">
+<span class="material-symbols-outlined text-primary text-sm">mic</span>
+<span class="font-label-md text-label-md text-on-surface">Voice Input</span>
+</div>
+<div class="bg-surface p-3 rounded-xl border border-outline-variant/20 flex flex-col gap-2">
+<span class="material-symbols-outlined text-primary text-sm">visibility</span>
+<span class="font-label-md text-label-md text-on-surface">Camera Feed</span>
+</div>
+<div class="bg-surface p-3 rounded-xl border border-outline-variant/20 flex flex-col gap-2">
+<span class="material-symbols-outlined text-primary text-sm">speaker</span>
+<span class="font-label-md text-label-md text-on-surface">Audio Out</span>
+</div>
+<div class="bg-surface p-3 rounded-xl border border-outline-variant/20 flex flex-col gap-2 opacity-50">
+<span class="material-symbols-outlined text-on-surface-variant text-sm">display_settings</span>
+<span class="font-label-md text-label-md text-on-surface-variant line-through">HUD Display</span>
+</div>
+</div>
+<div class="flex gap-3 pt-2">
+<button class="flex-1 bg-surface-container hover:bg-surface-container-high text-on-surface font-label-lg text-label-lg py-4 rounded-2xl transition-colors" onclick="hideConfirmSheet()">
+                    Cancel
+                </button>
+<button class="flex-[2] bg-primary text-on-primary font-label-lg text-label-lg py-4 rounded-2xl shadow-sm hover:bg-primary/90 transition-colors" onclick="startConnection()">
+                    Connect Device
+                </button>
+</div>
+</div>
+</div>
+<script>
+        let currentFrameIndex = 0;
+        const frameTitles = ["Devices", "Select Brand", "Scanning", "Connecting"];
+        
+        function goToFrame(index, title) {
+            currentFrameIndex = index;
+            const container = document.getElementById('flow-container');
+            container.style.transform = `translateX(-${index * 100}vw)`;
+            
+            // Update Header
+            document.getElementById('header-title').innerText = title;
+            
+            // Toggle Back Button & Nav
+            const backBtn = document.getElementById('back-btn');
+            const bottomNav = document.getElementById('bottom-nav');
+            
+            if (index > 0) {
+                backBtn.style.opacity = '1';
+                backBtn.style.pointerEvents = 'auto';
+                backBtn.onclick = () => goToFrame(index === 3 ? 0 : index - 1, frameTitles[index === 3 ? 0 : index - 1]);
+                bottomNav.style.transform = 'translateY(100%)'; // Hide nav
+            } else {
+                backBtn.style.opacity = '0';
+                backBtn.style.pointerEvents = 'none';
+                bottomNav.style.transform = 'translateY(0)'; // Show nav
+            }
+        }
+
+        // Bottom Sheet Logic
+        const overlay = document.getElementById('confirm-sheet-overlay');
+        const sheet = document.getElementById('confirm-sheet');
+
+        function showConfirmSheet() {
+            overlay.style.opacity = '1';
+            overlay.style.pointerEvents = 'auto';
+            sheet.style.transform = 'translateY(0)';
+        }
+
+        function hideConfirmSheet() {
+            overlay.style.opacity = '0';
+            overlay.style.pointerEvents = 'none';
+            sheet.style.transform = 'translateY(100%)';
+        }
+
+        function startConnection() {
+            hideConfirmSheet();
+            setTimeout(() => {
+                goToFrame(3, 'Pairing');
+                simulateConnectionProcess();
+            }, 300); // Wait for sheet to slide down
+        }
+
+        // Connection Animation Sequence
+        function simulateConnectionProcess() {
+            const progress = document.getElementById('connection-progress');
+            const icon = document.getElementById('connection-icon');
+            const title = document.getElementById('connection-title');
+            
+            // Reset state
+            progress.style.strokeDashoffset = '283';
+            icon.innerText = 'sync';
+            icon.classList.add('animate-spin');
+            icon.classList.remove('text-emerald-500');
+            icon.classList.add('text-primary');
+            progress.classList.remove('text-emerald-500');
+            progress.classList.add('text-primary');
+            document.getElementById('success-action').style.opacity = '0';
+            
+            // Step 1: Prep (already showing)
+            setTimeout(() => {
+                progress.style.strokeDashoffset = '200';
+                
+                // Step 2: Keys
+                setTimeout(() => {
+                    progress.style.strokeDashoffset = '100';
+                    document.getElementById('step-2').classList.remove('opacity-50');
+                    document.getElementById('step-2').innerHTML = '<span class="material-symbols-outlined text-primary text-sm">check_circle</span><span class="font-body-sm text-body-sm text-on-surface">Exchanging keys</span>';
+                    
+                    // Step 3: Caps
+                    setTimeout(() => {
+                        progress.style.strokeDashoffset = '0';
+                        document.getElementById('step-3').classList.remove('opacity-30');
+                        document.getElementById('step-3').innerHTML = '<span class="material-symbols-outlined text-primary text-sm">check_circle</span><span class="font-body-sm text-body-sm text-on-surface">Reading capabilities</span>';
+                        
+                        // Success
+                        setTimeout(() => {
+                            icon.classList.remove('animate-spin');
+                            icon.innerText = 'check';
+                            icon.classList.remove('text-primary');
+                            icon.classList.add('text-emerald-500');
+                            progress.classList.remove('text-primary');
+                            progress.classList.add('text-emerald-500');
+                            title.innerText = 'Connected Successfully';
+                            
+                            document.getElementById('success-action').style.opacity = '1';
+                        }, 600);
+                    }, 1200);
+                }, 1200);
+            }, 800);
+        }
+    </script>
+</body></html>

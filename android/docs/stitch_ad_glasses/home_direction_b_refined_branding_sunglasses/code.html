@@ -1,0 +1,192 @@
+<!DOCTYPE html><html class="light" lang="en"><head>
+<meta charset="utf-8">
+<meta content="width=device-width, initial-scale=1.0" name="viewport">
+<title>AD Glasses - Home</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&amp;display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet">
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    "colors": {
+                        "background": "#F6F7F9",
+                        "on-background": "#111111",
+                        "surface": "#ffffff",
+                        "on-surface": "#111111",
+                        "on-surface-variant": "#4b5563",
+                        "surface-container": "#ffffff",
+                        "surface-container-high": "#f3f4f6",
+                        "primary": "#111111",
+                        "primary-container": "#f3f4f6",
+                        "on-primary-container": "#111111",
+                        "secondary-container": "#e5e7eb",
+                        "on-secondary-container": "#111111",
+                        "error-container": "#fee2e2",
+                        "error": "#dc2626",
+                        "outline-variant": "#e5e7eb",
+                        "teal": "#0d9488"
+                    },
+                    "borderRadius": {
+                        "DEFAULT": "0.25rem",
+                        "lg": "0.5rem",
+                        "xl": "0.75rem",
+                        "2xl": "1rem",
+                        "3xl": "1.5rem",
+                        "full": "9999px"
+                    },
+                    "fontFamily": {
+                        "headline": ["Inter", "sans-serif"],
+                        "display": ["Inter", "sans-serif"],
+                        "body": ["Inter", "sans-serif"],
+                        "label": ["Inter", "sans-serif"]
+                    }
+                }
+            }
+        }
+    </script>
+<style>
+        body { font-family: 'Inter', sans-serif; }
+        .pb-safe { padding-bottom: env(safe-area-inset-bottom, 20px); }
+        .hide-scrollbar::-webkit-scrollbar { display: none; }
+        .hide-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+    </style>
+</head>
+<body class="bg-background text-on-background min-h-screen flex flex-col antialiased selection:bg-primary selection:text-white">
+<!-- Top App Bar -->
+<header class="w-full top-0 bg-background z-40 sticky">
+<div class="flex justify-between items-center px-6 py-4 w-full">
+<button class="p-2 -ml-2 rounded-full hover:bg-surface-container-high transition-colors duration-300 ease-in-out text-on-surface-variant focus:outline-none focus:ring-2 focus:ring-primary"><img alt="AD Glasses Logo" class="w-8 h-8 object-contain" src="https://lh3.googleusercontent.com/aida-public/AB6AXuDlvaIjQxYjGhBYdhyjxm3fb03Ye-wfb8MRtZyAvjfOAnp3i6pbTZ6DML4kqgW1YnXQNXyM9VK2O3szvEzNTHipZeE0eJNwuVcJtUfqRxmSX2vonnGn0pGNN-ZyRAFZgqV1qV_dE_v4e7IxaZiETR20q_NuwpA3Cv6OYlALzg-jXjuTHVlh6UJri8NdPdKMxiDpEl9vF4SJSrricmQR1todrV1kSYbaGRK9mR4qhGtbtFMN7IibJJ0K"></button>
+<h1 class="font-headline tracking-tight text-lg font-bold tracking-tighter text-on-background uppercase">AD Glasses</h1>
+<button class="p-2 -mr-2 rounded-full hover:bg-surface-container-high transition-colors duration-300 ease-in-out text-on-surface-variant focus:outline-none focus:ring-2 focus:ring-primary">
+<span class="material-symbols-outlined" data-icon="settings">settings</span>
+</button>
+</div>
+</header>
+<!-- Main Content -->
+<main class="flex-1 overflow-y-auto pb-24 px-4 md:px-8 max-w-5xl mx-auto w-full space-y-6">
+<!-- Device Stage -->
+<section class="w-full space-y-4">
+<div class="relative w-full h-[220px] rounded-3xl bg-surface-container-high overflow-hidden flex flex-col items-center justify-center shadow-sm border border-outline-variant/50">
+<img alt="AD Glasses Render" class="w-full h-full object-cover z-10" src="https://lh3.googleusercontent.com/aida-public/AB6AXuB6WkP1gAoqFrMcEFD6jTeZq4I1XZP1vTTl5GH73ZaTKXk60AY1LHeZXgPsJgSdv_ADbYtH9hqTMo6izFBqRtkC84cXtq2LabNsqSGq-FdVHt6768siElzqrAcjVcIiDqRru7wGCdqG37jQsGoD1N9uEH0Yj5YbQZugdDFggdbjd9UWbB6VTr9kPcNj8frsC8anryS7MmnQdMyuhCWyYUdtnjliWort1By5j9o8edPtNCVZ7rfa-SM9">
+</div>
+<!-- Metrics Layout -->
+<div class="flex justify-center items-center gap-6 px-2">
+<div class="flex items-center gap-2">
+<div class="w-2 h-2 rounded-full bg-teal animate-pulse"></div>
+<span class="font-label text-sm font-semibold text-on-surface">Connected</span>
+</div>
+<div class="w-px h-4 bg-outline-variant"></div>
+<div class="flex items-center gap-1.5">
+<span class="material-symbols-outlined text-[18px] text-on-surface-variant" data-icon="battery_5_bar">battery_5_bar</span>
+<span class="text-sm font-semibold text-on-surface">82%</span>
+</div>
+<div class="w-px h-4 bg-outline-variant"></div>
+<div class="flex items-center gap-1.5">
+<span class="material-symbols-outlined text-[18px] text-on-surface-variant" data-icon="sd_storage">sd_storage</span>
+<span class="text-sm font-semibold text-on-surface">61%</span>
+</div>
+</div>
+</section>
+<!-- Quick Actions Grid -->
+<section class="grid grid-cols-4 gap-3">
+<button class="flex flex-col items-center justify-center gap-2 p-3 rounded-2xl bg-surface hover:bg-surface-container-high transition-colors active:scale-95 duration-150 border border-outline-variant/50 shadow-sm">
+<div class="w-10 h-10 rounded-full bg-primary-container flex items-center justify-center text-primary">
+<span class="material-symbols-outlined" data-icon="mic">mic</span>
+</div>
+<span class="text-xs font-semibold text-on-surface">Ask</span>
+</button>
+<button class="flex flex-col items-center justify-center gap-2 p-3 rounded-2xl bg-surface hover:bg-surface-container-high transition-colors active:scale-95 duration-150 border border-outline-variant/50 shadow-sm">
+<div class="w-10 h-10 rounded-full bg-primary-container flex items-center justify-center text-primary">
+<span class="material-symbols-outlined" data-icon="photo_camera">photo_camera</span>
+</div>
+<span class="text-xs font-semibold text-on-surface">Capture</span>
+</button>
+<button class="flex flex-col items-center justify-center gap-2 p-3 rounded-2xl bg-surface hover:bg-surface-container-high transition-colors active:scale-95 duration-150 border border-outline-variant/50 shadow-sm relative overflow-hidden group">
+<div class="absolute inset-0 bg-primary/5 translate-x-[-100%] group-hover:translate-x-[100%] transition-transform duration-1000"></div>
+<div class="w-10 h-10 rounded-full bg-primary flex items-center justify-center text-white shadow-sm">
+<span class="material-symbols-outlined" data-icon="sync">sync</span>
+</div>
+<span class="text-xs font-semibold text-on-surface">Sync</span>
+</button>
+<button class="flex flex-col items-center justify-center gap-2 p-3 rounded-2xl bg-surface hover:bg-surface-container-high transition-colors active:scale-95 duration-150 border border-outline-variant/50 shadow-sm">
+<div class="w-10 h-10 rounded-full bg-error-container flex items-center justify-center text-error">
+<span class="material-symbols-outlined" data-icon="radio_button_checked">radio_button_checked</span>
+</div>
+<span class="text-xs font-semibold text-on-surface">Record</span>
+</button>
+</section>
+<!-- Today Content - Bento Grid Style -->
+<section class="space-y-4">
+
+<div class="grid grid-cols-2 gap-4">
+<!-- Recent Photos -->
+<div class="col-span-2 sm:col-span-1 rounded-2xl bg-surface p-4 shadow-sm border border-outline-variant/50 flex flex-col gap-3">
+<div class="flex justify-between items-center">
+<h3 class="text-sm font-bold text-on-surface">Recent Captures</h3>
+<button class="text-primary text-xs font-bold hover:underline">View all</button>
+</div>
+<div class="flex gap-2 overflow-x-auto hide-scrollbar pb-1">
+<img class="w-20 h-20 rounded-xl object-cover shrink-0 bg-surface-container-high" data-alt="A modern, high-tech coffee shop interior captured through smart glasses, featuring bright natural light, sleek wooden tables, and a focused, professional blue aesthetic. Clean composition with a shallow depth of field." src="https://lh3.googleusercontent.com/aida-public/AB6AXuDkVGzgRPw3l8oy3DWookyD2ClkItsU_RTE_MJ7dWBqP9dOheYQwz1AlSDTwd9wvudtHN_9tzYsedbXNbnTDAmJVMnPElK_qTiy_-2QAajSBzJtSTP5C_ExY8qm9XDz4yui_Hnt3vKa_AZrJ1zXzuFYH7XndOzCWbePRdCHsfOpQ3kz4DWnI1PlIIlyDvbw8ZIws4QdeYM8Aya-OiZWjpX_2JqIqv1pAiYDBVWxUcHknU1JDxLpKZWv">
+<img class="w-20 h-20 rounded-xl object-cover shrink-0 bg-surface-container-high" data-alt="A bright, modern cityscape on a clear day, captured from eye-level perspective through smart glasses. Sleek glass buildings reflecting the blue sky, emphasizing a clean, professional, and structured aesthetic." src="https://lh3.googleusercontent.com/aida-public/AB6AXuCF73LkJxKojAnFMhNiEWBwI_w8I8pZS5tXrJNrE_a-NhFK435ShTz9y3OT2V3gfZ09tNhBAxf9QcxotjKU9RYrsQeT_S15O-xxzpUBjtll9UKVhl60v4SZxIHa_yjG5gjmYptrx1Zea3i5mHKX7oU0sd5TrrZON1GwsWx1s8DwphYDCQqHPMxg5jd5uOd60j3TwE_qlXhJa5nLZxAWbvc811mkTR3xAGj1WTioYk6QaEvcujBn9AdQ">
+<img alt="Recent capture 3" class="w-20 h-20 rounded-xl object-cover shrink-0 bg-surface-container-high" src="https://lh3.googleusercontent.com/aida-public/AB6AXuDkVGzgRPw3l8oy3DWookyD2ClkItsU_RTE_MJ7dWBqP9dOheYQwz1AlSDTwd9wvudtHN_9tzYsedbXNbnTDAmJVMnPElK_qTiy_-2QAajSBzJtSTP5C_ExY8qm9XDz4yui_Hnt3vKa_AZrJ1zXzuFYH7XndOzCWbePRdCHsfOpQ3kz4DWnI1PlIIlyDvbw8ZIws4QdeYM8Aya-OiZWjpX_2JqIqv1pAiYDBVWxUcHknU1JDxLpKZWv"><div class="w-20 h-20 rounded-xl bg-surface-container-high flex items-center justify-center shrink-0 border border-outline-variant/30">
+<span class="material-symbols-outlined text-on-surface-variant" data-icon="add">add</span>
+</div>
+</div>
+</div>
+<!-- Daily Summary -->
+<div class="col-span-2 sm:col-span-1 rounded-2xl bg-surface p-4 shadow-sm border border-outline-variant/50 flex flex-col justify-between">
+<div class="flex items-start gap-3">
+<div class="p-2 rounded-full bg-primary-container text-on-primary-container">
+<span class="material-symbols-outlined" data-icon="summarize">summarize</span>
+</div>
+<div>
+<h3 class="text-sm font-bold text-on-surface">Daily Summary</h3>
+<p class="text-xs text-on-surface-variant mt-1 leading-relaxed">You recorded 3 voice notes and captured 12 photos today. AI has generated a brief for your afternoon meeting.</p>
+</div>
+</div>
+<button class="mt-4 w-full py-2 bg-surface-container-high rounded-lg text-primary text-sm font-bold border border-outline-variant/30 hover:bg-secondary-container transition-colors">Read Brief</button>
+</div>
+</div>
+</section>
+<!-- Automations Shortcut -->
+<section class="rounded-2xl bg-surface p-4 flex items-center justify-between border border-outline-variant/50 cursor-pointer hover:bg-surface-container-high transition-colors shadow-sm">
+<div class="flex items-center gap-3">
+<div class="w-10 h-10 rounded-full bg-secondary-container text-on-secondary-container flex items-center justify-center">
+<span class="material-symbols-outlined" data-icon="auto_awesome">auto_awesome</span>
+</div>
+<div>
+<h3 class="text-sm font-bold text-on-surface">Active Routine</h3>
+<p class="text-xs text-on-surface-variant">Work Mode (Focus notifications)</p>
+</div>
+</div>
+<span class="material-symbols-outlined text-on-surface-variant" data-icon="chevron_right">chevron_right</span>
+</section>
+</main>
+<!-- Bottom Navigation Bar -->
+<nav class="fixed bottom-0 left-0 w-full z-50 flex justify-around items-center px-4 py-3 pb-safe bg-surface border-t border-outline-variant/30 md:hidden">
+<!-- Home (Active) -->
+<button class="flex flex-col items-center justify-center bg-secondary-container text-on-secondary-container rounded-xl px-4 py-1 hover:opacity-80 transition-all active:scale-95 duration-150">
+<span class="material-symbols-outlined" data-icon="home" style="font-variation-settings: 'FILL' 1;">home</span>
+<span class="font-label text-[11px] font-bold mt-1">Home</span>
+</button>
+<!-- Assistant -->
+<button class="flex flex-col items-center justify-center text-on-surface-variant hover:opacity-80 transition-all active:scale-95 duration-150 px-4 py-1">
+<span class="material-symbols-outlined" data-icon="smart_toy">smart_toy</span>
+<span class="font-label text-[11px] font-semibold mt-1">Assistant</span>
+</button>
+<!-- Library -->
+<button class="flex flex-col items-center justify-center text-on-surface-variant hover:opacity-80 transition-all active:scale-95 duration-150 px-4 py-1">
+<span class="material-symbols-outlined" data-icon="photo_library">photo_library</span>
+<span class="font-label text-[11px] font-semibold mt-1">Library</span>
+</button>
+<!-- Automations -->
+<button class="flex flex-col items-center justify-center text-on-surface-variant hover:opacity-80 transition-all active:scale-95 duration-150 px-4 py-1">
+<span class="material-symbols-outlined" data-icon="auto_awesome">auto_awesome</span>
+<span class="font-label text-[11px] font-semibold mt-1">Automations</span>
+</button>
+</nav>
+
+
+</body></html>

@@ -1,0 +1,215 @@
+<!DOCTYPE html>
+
+<html lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>AD Glasses - Setup &amp; Permissions</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Hanken+Grotesk:wght@400;500;600&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    "colors": {
+                        "primary-fixed": "#e2e2e2",
+                        "surface-container-lowest": "#ffffff",
+                        "tertiary": "#000000",
+                        "surface-container-highest": "#dde2f2",
+                        "primary-fixed-dim": "#c6c6c6",
+                        "on-tertiary": "#ffffff",
+                        "primary-container": "#1b1b1b",
+                        "on-secondary-container": "#002958",
+                        "graphite-black": "#000000",
+                        "primary": "#000000",
+                        "success-teal": "#008080",
+                        "error": "#ba1a1a",
+                        "warning-amber": "#FFBF00",
+                        "on-tertiary-container": "#828486",
+                        "on-tertiary-fixed": "#191c1e",
+                        "on-primary-container": "#848484",
+                        "surface-container-high": "#e2e8f8",
+                        "outline": "#7e7576",
+                        "surface": "#f9f9ff",
+                        "inverse-surface": "#2a313d",
+                        "surface-container-low": "#f0f3ff",
+                        "surface-bright": "#f9f9ff",
+                        "secondary": "#005db8",
+                        "tertiary-container": "#191c1e",
+                        "tertiary-fixed-dim": "#c5c7c8",
+                        "secondary-fixed": "#d6e3ff",
+                        "surface-control": "#FFFFFF",
+                        "surface-variant": "#dde2f2",
+                        "on-secondary-fixed": "#001b3e",
+                        "inverse-on-surface": "#ecf0ff",
+                        "on-error-container": "#93000a",
+                        "on-surface": "#161c27",
+                        "secondary-container": "#4090fe",
+                        "on-primary-fixed": "#1b1b1b",
+                        "secondary-fixed-dim": "#aac7ff",
+                        "on-primary": "#ffffff",
+                        "surface-tint": "#5e5e5e",
+                        "cool-gray": "#717785",
+                        "on-secondary": "#ffffff",
+                        "on-surface-variant": "#4c4546",
+                        "inverse-primary": "#c6c6c6",
+                        "electric-blue": "#1978E5",
+                        "on-secondary-fixed-variant": "#00458d",
+                        "surface-dim": "#d4daea",
+                        "on-background": "#161c27",
+                        "outline-variant": "#cfc4c5",
+                        "on-primary-fixed-variant": "#474747",
+                        "on-tertiary-fixed-variant": "#444749",
+                        "tertiary-fixed": "#e1e2e4",
+                        "surface-container": "#e8eefe",
+                        "background": "#f9f9ff",
+                        "canvas": "#F6F7F9",
+                        "error-container": "#ffdad6",
+                        "on-error": "#ffffff"
+                    },
+                    "borderRadius": {
+                        "DEFAULT": "0.25rem",
+                        "lg": "0.5rem",
+                        "xl": "0.75rem",
+                        "full": "9999px"
+                    },
+                    "spacing": {
+                        "base": "4px",
+                        "gap-sm": "8px",
+                        "margin-page": "16px",
+                        "touch-target": "48px",
+                        "hero-stage": "220px",
+                        "gap-xs": "4px"
+                    },
+                    "fontFamily": {
+                        "label-md": ["Hanken Grotesk"],
+                        "label-sm": ["Hanken Grotesk"],
+                        "body-lg": ["Hanken Grotesk"],
+                        "headline-md": ["Hanken Grotesk"],
+                        "body-md": ["Hanken Grotesk"],
+                        "headline-lg": ["Hanken Grotesk"],
+                        "label-lg": ["Hanken Grotesk"]
+                    },
+                    "fontSize": {
+                        "label-md": ["12px", { "lineHeight": "16px", "fontWeight": "500" }],
+                        "label-sm": ["11px", { "lineHeight": "16px", "letterSpacing": "0.05em", "fontWeight": "500" }],
+                        "body-lg": ["16px", { "lineHeight": "24px", "fontWeight": "400" }],
+                        "headline-md": ["20px", { "lineHeight": "28px", "letterSpacing": "-0.01em", "fontWeight": "600" }],
+                        "body-md": ["14px", { "lineHeight": "20px", "fontWeight": "400" }],
+                        "headline-lg": ["24px", { "lineHeight": "32px", "letterSpacing": "-0.02em", "fontWeight": "600" }],
+                        "label-lg": ["14px", { "lineHeight": "20px", "fontWeight": "500" }]
+                    }
+                }
+            }
+        }
+    </script>
+<style>
+        body { font-family: 'Hanken Grotesk', sans-serif; }
+    </style>
+<style>
+    body {
+      min-height: max(884px, 100dvh);
+    }
+  </style>
+<style>
+    body {
+      min-height: max(884px, 100dvh);
+    }
+  </style>
+  </head>
+<body class="bg-canvas min-h-screen flex flex-col font-body-md text-on-surface antialiased">
+<!-- TopAppBar (From JSON) -->
+<header class="bg-background w-full top-0 sticky flex justify-between items-center px-margin-page h-touch-target z-50">
+<button class="text-primary font-headline-md text-headline-md hover:opacity-80 scale-98 transition-transform duration-200 flex items-center justify-center w-touch-target h-touch-target">
+<span class="material-symbols-outlined" style="font-variation-settings: 'wght' 400;">lens_blur</span>
+</button>
+<div class="text-primary font-headline-md text-headline-md text-center flex-1">
+<!-- Headline empty in JSON -->
+</div>
+<button class="text-primary font-headline-md text-headline-md hover:opacity-80 scale-98 transition-transform duration-200 flex items-center justify-center w-touch-target h-touch-target">
+<span class="material-symbols-outlined" style="font-variation-settings: 'wght' 400;">settings</span>
+</button>
+</header>
+<!-- Main Content Canvas -->
+<main class="flex-1 flex flex-col px-margin-page py-8 max-w-md mx-auto w-full">
+<!-- Header Text -->
+<div class="mb-8">
+<span class="font-label-sm text-label-sm text-cool-gray uppercase tracking-widest mb-2 block">Step 1 of 3</span>
+<h1 class="font-headline-lg text-headline-lg text-primary mb-3">Permissions</h1>
+<p class="font-body-md text-body-md text-on-surface-variant">
+                To provide a seamless hardware connection and full feature access, AD Glasses require the following permissions.
+            </p>
+</div>
+<!-- Permissions Grouped Card (Architectural, Light-Mode) -->
+<div class="bg-surface-container-lowest rounded-xl border border-outline-variant/40 shadow-sm overflow-hidden mb-10 divide-y divide-outline-variant/30">
+<!-- Row: Nearby devices -->
+<div class="p-5 flex items-start gap-4">
+<div class="mt-1 text-on-surface-variant">
+<span class="material-symbols-outlined">bluetooth_searching</span>
+</div>
+<div class="flex-1">
+<h3 class="font-label-lg text-label-lg text-primary">Nearby devices</h3>
+<p class="font-body-md text-body-md text-on-surface-variant mt-0.5 mb-2">Required to discover and securely pair with your glasses.</p>
+<div class="flex items-center gap-1.5 text-success-teal font-label-sm text-label-sm">
+<span class="material-symbols-outlined text-[14px]" style="font-variation-settings: 'FILL' 1;">check_circle</span>
+<span>Allowed</span>
+</div>
+</div>
+</div>
+<!-- Row: Notifications -->
+<div class="p-5 flex items-start gap-4">
+<div class="mt-1 text-on-surface-variant">
+<span class="material-symbols-outlined">notifications</span>
+</div>
+<div class="flex-1">
+<h3 class="font-label-lg text-label-lg text-primary">Notifications</h3>
+<p class="font-body-md text-body-md text-on-surface-variant mt-0.5 mb-2">Allows the app to alert you about battery levels and firmware updates.</p>
+<div class="inline-flex items-center gap-1.5 text-warning-amber bg-warning-amber/10 px-2.5 py-1 rounded font-label-sm text-label-sm">
+<span class="material-symbols-outlined text-[14px]">error</span>
+<span>Needs attention</span>
+</div>
+</div>
+</div>
+<!-- Row: Microphone -->
+<div class="p-5 flex items-start gap-4">
+<div class="mt-1 text-on-surface-variant">
+<span class="material-symbols-outlined">mic</span>
+</div>
+<div class="flex-1">
+<h3 class="font-label-lg text-label-lg text-primary">Microphone</h3>
+<p class="font-body-md text-body-md text-on-surface-variant mt-0.5 mb-2">Enables voice commands and text dictation on-device.</p>
+<div class="inline-flex items-center gap-1.5 text-warning-amber bg-warning-amber/10 px-2.5 py-1 rounded font-label-sm text-label-sm">
+<span class="material-symbols-outlined text-[14px]">error</span>
+<span>Needs attention</span>
+</div>
+</div>
+</div>
+<!-- Row: Photos/Media -->
+<div class="p-5 flex items-start gap-4">
+<div class="mt-1 text-on-surface-variant">
+<span class="material-symbols-outlined">photo_library</span>
+</div>
+<div class="flex-1">
+<h3 class="font-label-lg text-label-lg text-primary">Photos/Media</h3>
+<p class="font-body-md text-body-md text-on-surface-variant mt-0.5 mb-2">Allows transferring captured media from your glasses to your phone gallery.</p>
+<div class="flex items-center gap-1.5 text-success-teal font-label-sm text-label-sm">
+<span class="material-symbols-outlined text-[14px]" style="font-variation-settings: 'FILL' 1;">check_circle</span>
+<span>Allowed</span>
+</div>
+</div>
+</div>
+</div>
+<div class="mt-auto pt-4 flex flex-col gap-6">
+<!-- Primary Action -->
+<button class="bg-graphite-black text-on-primary w-full h-touch-target rounded-full flex items-center justify-center font-label-lg text-label-lg scale-98 transition-transform duration-200 hover:opacity-90 shadow-sm">
+                Scan for glasses
+            </button>
+<!-- Secondary Link -->
+<button class="text-center font-label-md text-label-md text-on-surface-variant hover:text-primary transition-colors duration-200 pb-safe">
+                Choose by brand
+            </button>
+</div>
+</main>
+</body></html>

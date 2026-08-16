@@ -1,0 +1,391 @@
+<!DOCTYPE html>
+
+<html lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Privacy &amp; Data - Transparency-First</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+  tailwind.config = {
+    darkMode: "class",
+    theme: {
+      extend: {
+        "colors": {
+                "surface-container": "#ebeef6",
+                "status-connected": "#1275e2",
+                "tertiary-container": "#964400",
+                "on-tertiary-fixed-variant": "#753400",
+                "on-primary": "#ffffff",
+                "on-error-container": "#93000a",
+                "on-primary-fixed-variant": "#00458d",
+                "secondary-fixed": "#d6e3ff",
+                "surface-tint": "#095db7",
+                "error": "#ba1a1a",
+                "tertiary-fixed-dim": "#ffb68c",
+                "on-secondary-fixed-variant": "#2e476f",
+                "inverse-surface": "#2d3137",
+                "surface-container-low": "#f1f3fc",
+                "inverse-on-surface": "#eef1f9",
+                "surface-container-highest": "#dfe2eb",
+                "secondary-container": "#b6d0ff",
+                "error-container": "#ffdad6",
+                "primary": "#004389",
+                "outline-variant": "#c2c6d4",
+                "outline": "#727783",
+                "tertiary": "#723200",
+                "background": "#f8f9ff",
+                "on-primary-container": "#c0d5ff",
+                "surface-bright": "#f8f9ff",
+                "on-tertiary-fixed": "#321200",
+                "on-secondary": "#ffffff",
+                "primary-container": "#005ab4",
+                "on-surface": "#181c22",
+                "surface-glass": "rgba(249, 249, 255, 0.8)",
+                "on-error": "#ffffff",
+                "secondary-fixed-dim": "#aec7f6",
+                "on-tertiary-container": "#ffc9ac",
+                "on-secondary-container": "#3f5881",
+                "surface-variant": "#dfe2eb",
+                "stage-halo-start": "rgba(10, 115, 224, 0.15)",
+                "surface-container-high": "#e5e8f1",
+                "surface-dim": "#d7dae2",
+                "surface-container-lowest": "#ffffff",
+                "on-tertiary": "#ffffff",
+                "inverse-primary": "#aac7ff",
+                "secondary": "#465f88",
+                "on-primary-fixed": "#001b3e",
+                "on-surface-variant": "#424752",
+                "tertiary-fixed": "#ffdbc9",
+                "background-alt": "#F6F7F9",
+                "on-secondary-fixed": "#001b3d",
+                "primary-fixed": "#d6e3ff",
+                "surface": "#f8f9ff",
+                "primary-fixed-dim": "#aac7ff",
+                "on-background": "#181c22"
+        },
+        "borderRadius": {
+                "DEFAULT": "0.25rem",
+                "lg": "0.5rem",
+                "xl": "0.75rem",
+                "full": "9999px"
+        },
+        "spacing": {
+                "element-gap": "0.75rem",
+                "section-gap": "2rem",
+                "touch-target-min": "40px",
+                "container-margin": "1rem"
+        },
+        "fontFamily": {
+                "body-md": [
+                        "Inter"
+                ],
+                "label-xs": [
+                        "Inter"
+                ],
+                "label-sm": [
+                        "Inter"
+                ],
+                "body-sm": [
+                        "Inter"
+                ],
+                "headline-md": [
+                        "Inter"
+                ],
+                "display-lg": [
+                        "Inter"
+                ]
+        },
+        "fontSize": {
+                "body-md": [
+                        "16px",
+                        {
+                                "lineHeight": "24px",
+                                "fontWeight": "400"
+                        }
+                ],
+                "label-xs": [
+                        "10px",
+                        {
+                                "lineHeight": "12px",
+                                "fontWeight": "600"
+                        }
+                ],
+                "label-sm": [
+                        "12px",
+                        {
+                                "lineHeight": "16px",
+                                "fontWeight": "500"
+                        }
+                ],
+                "body-sm": [
+                        "14px",
+                        {
+                                "lineHeight": "20px",
+                                "fontWeight": "500"
+                        }
+                ],
+                "headline-md": [
+                        "18px",
+                        {
+                                "lineHeight": "24px",
+                                "fontWeight": "700"
+                        }
+                ],
+                "display-lg": [
+                        "24px",
+                        {
+                                "lineHeight": "32px",
+                                "letterSpacing": "-0.025em",
+                                "fontWeight": "800"
+                        }
+                ]
+        }
+},
+    },
+  }
+</script>
+<style>
+  body {
+    -webkit-tap-highlight-color: transparent;
+  }
+</style>
+<style>
+    body {
+      min-height: max(884px, 100dvh);
+    }
+  </style>
+</head>
+<body class="bg-background-alt text-on-surface font-body-md antialiased pb-24 md:pb-0">
+<!-- TopAppBar -->
+<header class="bg-surface-container-lowest border-b border-outline-variant w-full top-0 sticky z-40 hidden md:flex items-center px-4 h-16 w-full shadow-sm">
+<div class="flex items-center w-full justify-between max-w-7xl mx-auto">
+<div class="flex items-center gap-4">
+<button class="text-primary hover:bg-surface-container-low transition-colors active:opacity-70 rounded-full p-2 h-touch-target-min w-touch-target-min flex items-center justify-center">
+<span class="material-symbols-outlined" data-icon="arrow_back">arrow_back</span>
+</button>
+<h1 class="text-on-surface font-headline-md font-bold text-lg">Settings</h1>
+</div>
+<div class="hidden md:flex gap-6">
+<a class="text-on-surface-variant font-body-sm font-medium hover:text-on-surface transition-colors flex items-center gap-2 px-3 py-2 rounded-lg hover:bg-surface-container-low" href="#">
+<span class="material-symbols-outlined text-[20px]" data-icon="home">home</span> Home
+         </a>
+<a class="text-on-surface-variant font-body-sm font-medium hover:text-on-surface transition-colors flex items-center gap-2 px-3 py-2 rounded-lg hover:bg-surface-container-low" href="#">
+<span class="material-symbols-outlined text-[20px]" data-icon="smart_toy">smart_toy</span> Assistant
+         </a>
+<a class="text-on-surface-variant font-body-sm font-medium hover:text-on-surface transition-colors flex items-center gap-2 px-3 py-2 rounded-lg hover:bg-surface-container-low" href="#">
+<span class="material-symbols-outlined text-[20px]" data-icon="auto_stories">auto_stories</span> Library
+         </a>
+<a class="text-primary font-body-sm font-bold hover:bg-surface-container-low transition-colors flex items-center gap-2 px-3 py-2 rounded-lg bg-surface-container-low" href="#">
+<span class="material-symbols-outlined text-[20px] font-variation-settings: 'FILL' 1;" data-icon="settings_input_component">settings_input_component</span> Automations
+         </a>
+</div>
+</div>
+</header>
+<!-- Mobile Top App Bar (Back only) -->
+<header class="md:hidden bg-surface-glass backdrop-blur-md w-full top-0 sticky z-40 flex items-center px-4 h-16 w-full border-b border-outline-variant">
+<div class="flex items-center gap-4 w-full">
+<button class="text-on-surface hover:bg-surface-container-low transition-colors active:opacity-70 rounded-full p-2 h-touch-target-min w-touch-target-min flex items-center justify-center">
+<span class="material-symbols-outlined" data-icon="arrow_back">arrow_back</span>
+</button>
+<h1 class="text-on-surface font-headline-md font-bold text-lg">Privacy &amp; Data</h1>
+</div>
+</header>
+<main class="max-w-3xl mx-auto px-container-margin py-section-gap flex flex-col gap-section-gap">
+<!-- Data Trust Summary -->
+<section class="flex flex-col gap-element-gap">
+<h2 class="font-headline-md text-headline-md text-on-surface">Data Trust</h2>
+<div class="grid grid-cols-1 md:grid-cols-2 gap-element-gap">
+<!-- On-Device Card -->
+<div class="bg-surface-container-lowest rounded-xl p-6 shadow-sm border border-outline-variant flex flex-col gap-4 relative overflow-hidden">
+<div class="absolute inset-0 bg-stage-halo-start opacity-50 z-0 pointer-events-none"></div>
+<div class="relative z-10 flex flex-col gap-4">
+<div class="flex items-center gap-3">
+<div class="h-10 w-10 rounded-full bg-primary-container text-on-primary-container flex items-center justify-center">
+<span class="material-symbols-outlined" data-icon="memory">memory</span>
+</div>
+<div>
+<h3 class="font-headline-md text-headline-md text-on-surface">On Device</h3>
+<div class="flex items-center gap-1 mt-1">
+<span class="h-2 w-2 rounded-full bg-status-connected"></span>
+<span class="font-label-xs text-label-xs text-status-connected uppercase tracking-wider">Local Boundary</span>
+</div>
+</div>
+</div>
+<p class="font-body-sm text-body-sm text-on-surface-variant">
+                    Raw sensor data, voice commands, and biometrics never leave your physical device hardware.
+                </p>
+</div>
+</div>
+<!-- Cloud Sync Card -->
+<div class="bg-surface-container-lowest rounded-xl p-6 shadow-sm border border-outline-variant flex flex-col gap-4">
+<div class="flex items-center gap-3">
+<div class="h-10 w-10 rounded-full bg-surface-container-highest text-on-surface-variant flex items-center justify-center">
+<span class="material-symbols-outlined" data-icon="cloud_sync">cloud_sync</span>
+</div>
+<div>
+<h3 class="font-headline-md text-headline-md text-on-surface">Your Cloud</h3>
+<div class="flex items-center gap-1 mt-1">
+<span class="h-2 w-2 rounded-full bg-outline"></span>
+<span class="font-label-xs text-label-xs text-outline uppercase tracking-wider">End-to-End Encrypted</span>
+</div>
+</div>
+</div>
+<p class="font-body-sm text-body-sm text-on-surface-variant">
+                Only aggregated trends, configuration backups, and explicit external API calls are transmitted.
+            </p>
+</div>
+</div>
+</section>
+<!-- Hardware Manifest -->
+<section class="flex flex-col gap-element-gap">
+<h2 class="font-headline-md text-headline-md text-on-surface">Hardware Manifest</h2>
+<div class="bg-surface-container-lowest rounded-xl shadow-sm border border-outline-variant overflow-hidden">
+<div class="flex items-center justify-between p-4 border-b border-outline-variant">
+<div class="flex items-center gap-3">
+<span class="material-symbols-outlined text-primary">mic</span>
+<span class="font-body-md font-medium text-on-surface">Microphone</span>
+</div>
+<span class="font-label-sm text-status-connected bg-status-connected/10 px-2 py-1 rounded-full">Active While Using</span>
+</div>
+<div class="flex items-center justify-between p-4 border-b border-outline-variant">
+<div class="flex items-center gap-3">
+<span class="material-symbols-outlined text-primary">videocam</span>
+<span class="font-body-md font-medium text-on-surface">Camera</span>
+</div>
+<span class="font-label-sm text-outline bg-outline/10 px-2 py-1 rounded-full text-on-surface-variant">Denied</span>
+</div>
+<div class="flex items-center justify-between p-4">
+<div class="flex items-center gap-3">
+<span class="material-symbols-outlined text-primary">location_on</span>
+<span class="font-body-md font-medium text-on-surface">Precise GPS</span>
+</div>
+<span class="font-label-sm text-status-connected bg-status-connected/10 px-2 py-1 rounded-full">Always Allow</span>
+</div>
+</div>
+</section>
+<!-- Memory Mode Selection -->
+<section class="flex flex-col gap-element-gap">
+<h2 class="font-headline-md text-headline-md text-on-surface">Memory Mode</h2>
+<div class="space-y-3">
+<label class="flex items-start gap-4 p-4 rounded-xl border-2 border-primary bg-surface-container-lowest cursor-pointer relative overflow-hidden shadow-sm">
+<div class="absolute inset-0 bg-primary/5 pointer-events-none"></div>
+<input checked="" class="mt-1 h-5 w-5 text-primary border-outline focus:ring-primary" name="memory_mode" type="radio"/>
+<div class="flex-1">
+<div class="flex items-center gap-2 mb-1">
+<span class="material-symbols-outlined text-primary" style="font-variation-settings: 'FILL' 1;">target</span>
+<p class="font-body-md text-body-md font-bold text-on-surface">Selective Recording</p>
+</div>
+<p class="font-body-sm text-body-sm text-on-surface-variant">Only saves explicit interactions and tagged insights.</p>
+</div>
+</label>
+<label class="flex items-start gap-4 p-4 rounded-xl border border-outline-variant bg-surface-container-lowest cursor-pointer hover:bg-surface-variant/50 transition-colors shadow-sm">
+<input class="mt-1 h-5 w-5 text-primary border-outline focus:ring-primary" name="memory_mode" type="radio"/>
+<div class="flex-1">
+<div class="flex items-center gap-2 mb-1">
+<span class="material-symbols-outlined text-on-surface-variant">all_inclusive</span>
+<p class="font-body-md text-body-md font-bold text-on-surface">Continuous Capture</p>
+</div>
+<p class="font-body-sm text-body-sm text-on-surface-variant">Background processing for complete context. Battery intensive.</p>
+</div>
+</label>
+<label class="flex items-start gap-4 p-4 rounded-xl border border-outline-variant bg-surface-container-lowest cursor-pointer hover:bg-surface-variant/50 transition-colors shadow-sm">
+<input class="mt-1 h-5 w-5 text-primary border-outline focus:ring-primary" name="memory_mode" type="radio"/>
+<div class="flex-1">
+<div class="flex items-center gap-2 mb-1">
+<span class="material-symbols-outlined text-on-surface-variant">pause_circle</span>
+<p class="font-body-md text-body-md font-bold text-on-surface">Paused</p>
+</div>
+<p class="font-body-sm text-body-sm text-on-surface-variant">No data captured. AI capabilities severely limited.</p>
+</div>
+</label>
+</div>
+</section>
+<!-- Data Inventory Grid -->
+<section class="flex flex-col gap-element-gap">
+<h2 class="font-headline-md text-headline-md text-on-surface">Data Inventory</h2>
+<div class="grid grid-cols-2 gap-3">
+<div class="bg-inverse-surface text-inverse-on-surface p-4 rounded-xl flex flex-col justify-between aspect-square shadow-sm border border-outline/30">
+<div class="flex justify-between items-start">
+<span class="material-symbols-outlined text-primary-fixed-dim" style="font-variation-settings: 'FILL' 1;">forum</span>
+<span class="font-label-xs text-label-xs font-bold bg-primary/20 text-primary-fixed px-2 py-0.5 rounded-full">Text</span>
+</div>
+<div>
+<p class="font-display-lg text-display-lg font-bold text-surface-container-lowest">4.2k</p>
+<p class="font-label-sm text-label-sm text-outline-variant">Conversations</p>
+</div>
+</div>
+<div class="bg-inverse-surface text-inverse-on-surface p-4 rounded-xl flex flex-col justify-between aspect-square shadow-sm border border-outline/30">
+<div class="flex justify-between items-start">
+<span class="material-symbols-outlined text-tertiary-fixed-dim" style="font-variation-settings: 'FILL' 1;">image</span>
+<span class="font-label-xs text-label-xs font-bold bg-tertiary/20 text-tertiary-fixed px-2 py-0.5 rounded-full">Visual</span>
+</div>
+<div>
+<p class="font-display-lg text-display-lg font-bold text-surface-container-lowest">842</p>
+<p class="font-label-sm text-label-sm text-outline-variant">Images &amp; Screens</p>
+</div>
+</div>
+<div class="bg-inverse-surface text-inverse-on-surface p-4 rounded-xl flex flex-col justify-between aspect-square shadow-sm border border-outline/30">
+<div class="flex justify-between items-start">
+<span class="material-symbols-outlined text-secondary-fixed-dim" style="font-variation-settings: 'FILL' 1;">mic</span>
+<span class="font-label-xs text-label-xs font-bold bg-secondary/20 text-secondary-fixed px-2 py-0.5 rounded-full">Audio</span>
+</div>
+<div>
+<p class="font-display-lg text-display-lg font-bold text-surface-container-lowest">12h</p>
+<p class="font-label-sm text-label-sm text-outline-variant">Voice Memos</p>
+</div>
+</div>
+<div class="bg-inverse-surface text-inverse-on-surface p-4 rounded-xl flex flex-col justify-between aspect-square shadow-sm border border-outline/30">
+<div class="flex justify-between items-start">
+<span class="material-symbols-outlined text-primary-fixed-dim" style="font-variation-settings: 'FILL' 1;">location_on</span>
+<span class="font-label-xs text-label-xs font-bold bg-primary/20 text-primary-fixed px-2 py-0.5 rounded-full">Context</span>
+</div>
+<div>
+<p class="font-display-lg text-display-lg font-bold text-surface-container-lowest">56</p>
+<p class="font-label-sm text-label-sm text-outline-variant">Locations</p>
+</div>
+</div>
+</div>
+</section>
+<!-- Action Areas -->
+<section class="flex flex-col gap-element-gap mt-4">
+<button class="flex items-center justify-between p-4 bg-surface-container-lowest rounded-xl border border-outline-variant hover:bg-surface-variant transition-colors w-full text-left shadow-sm">
+<div class="flex items-center gap-3">
+<span class="material-symbols-outlined text-on-surface-variant">download</span>
+<p class="font-body-md text-body-md font-medium text-on-surface">Export Data Archive</p>
+</div>
+<span class="material-symbols-outlined text-on-surface-variant">chevron_right</span>
+</button>
+<button class="flex items-center justify-between p-4 bg-error-container text-on-error-container rounded-xl hover:opacity-90 transition-opacity w-full text-left shadow-sm">
+<div class="flex items-center gap-3">
+<span class="material-symbols-outlined text-error">delete_forever</span>
+<p class="font-body-md text-body-md font-medium text-on-error-container">Clear Local Memory</p>
+</div>
+<span class="material-symbols-outlined text-error">chevron_right</span>
+</button>
+</section>
+</main>
+<!-- BottomNavBar (Mobile Only) -->
+<nav class="md:hidden fixed bottom-0 left-0 w-full flex justify-around items-center h-20 bg-surface-container-lowest pb-safe border-t border-outline-variant z-50">
+<a class="flex flex-col items-center justify-center text-on-surface-variant font-label-sm hover:text-on-surface transition-colors active:scale-95 w-16 h-full gap-1" href="#">
+<span class="material-symbols-outlined text-[24px]" data-icon="home">home</span>
+<span>Home</span>
+</a>
+<a class="flex flex-col items-center justify-center text-on-surface-variant font-label-sm hover:text-on-surface transition-colors active:scale-95 w-16 h-full gap-1" href="#">
+<span class="material-symbols-outlined text-[24px]" data-icon="smart_toy">smart_toy</span>
+<span>Assistant</span>
+</a>
+<a class="flex flex-col items-center justify-center text-on-surface-variant font-label-sm hover:text-on-surface transition-colors active:scale-95 w-16 h-full gap-1" href="#">
+<span class="material-symbols-outlined text-[24px]" data-icon="auto_stories">auto_stories</span>
+<span>Library</span>
+</a>
+<a class="flex flex-col items-center justify-center text-primary font-bold font-label-sm transition-colors active:scale-95 w-16 h-full gap-1" href="#">
+<div class="bg-secondary-container text-on-secondary-container px-4 py-1 rounded-xl flex items-center justify-center">
+<span class="material-symbols-outlined text-[24px] font-variation-settings: 'FILL' 1;" data-icon="settings_input_component">settings_input_component</span>
+</div>
+<span>Automations</span>
+</a>
+</nav>
+</body></html>

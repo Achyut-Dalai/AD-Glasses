@@ -1,0 +1,295 @@
+<!DOCTYPE html>
+
+<html lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Auto Diary Configuration</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+          darkMode: "class",
+          theme: {
+            extend: {
+              "colors": {
+                      "surface-tint": "#095db7",
+                      "secondary-container": "#b6d0ff",
+                      "on-error-container": "#93000a",
+                      "on-primary-fixed": "#001b3e",
+                      "surface": "#f9f9ff",
+                      "on-primary-fixed-variant": "#00458d",
+                      "tertiary": "#723200",
+                      "on-secondary-fixed-variant": "#2e476f",
+                      "surface-container": "#ebedf7",
+                      "tertiary-fixed-dim": "#ffb68c",
+                      "inverse-on-surface": "#eef0fa",
+                      "on-secondary-container": "#3f5881",
+                      "secondary-fixed": "#d6e3ff",
+                      "primary-fixed": "#d6e3ff",
+                      "surface-container-low": "#f1f3fc",
+                      "on-error": "#ffffff",
+                      "on-surface-variant": "#414753",
+                      "surface-container-lowest": "#ffffff",
+                      "secondary-fixed-dim": "#aec7f6",
+                      "primary": "#004389",
+                      "on-tertiary-container": "#ffc9ac",
+                      "outline": "#727783",
+                      "on-secondary-fixed": "#001b3d",
+                      "on-primary": "#ffffff",
+                      "on-tertiary": "#ffffff",
+                      "background": "#f9f9ff",
+                      "on-surface": "#181c22",
+                      "primary-container": "#0a73e0",
+                      "surface-variant": "#e0e2eb",
+                      "outline-variant": "#c2c6d4",
+                      "on-secondary": "#ffffff",
+                      "surface-bright": "#f9f9ff",
+                      "secondary": "#465f88",
+                      "primary-fixed-dim": "#aac7ff",
+                      "error-container": "#ffdad6",
+                      "surface-container-highest": "#e0e2eb",
+                      "inverse-surface": "#2d3037",
+                      "surface-dim": "#d7dae3",
+                      "tertiary-container": "#964400",
+                      "inverse-primary": "#aac7ff",
+                      "surface-container-high": "#e6e8f1",
+                      "on-tertiary-fixed-variant": "#753400",
+                      "on-background": "#181c22",
+                      "on-primary-container": "#c0d5ff",
+                      "error": "#ba1a1a",
+                      "on-tertiary-fixed": "#321200",
+                      "tertiary-fixed": "#ffdbc9"
+              },
+              "borderRadius": {
+                      "DEFAULT": "0.25rem",
+                      "lg": "0.5rem",
+                      "xl": "0.75rem",
+                      "full": "9999px"
+              },
+              "spacing": {
+                      "grid-gutter": "1rem",
+                      "element-gap": "0.75rem",
+                      "container-padding": "1rem",
+                      "section-gap": "1.5rem"
+              },
+              "fontFamily": {
+                      "body-md": [
+                              "Inter"
+                      ],
+                      "label-sm": [
+                              "Inter"
+                      ],
+                      "display-sm": [
+                              "Inter"
+                      ],
+                      "label-md": [
+                              "Inter"
+                      ],
+                      "label-lg": [
+                              "Inter"
+                      ],
+                      "headline-sm": [
+                              "Inter"
+                      ],
+                      "body-sm": [
+                              "Inter"
+                      ]
+              },
+              "fontSize": {
+                      "body-md": [
+                              "0.875rem",
+                              {
+                                      "lineHeight": "1.25rem",
+                                      "fontWeight": "400"
+                              }
+                      ],
+                      "label-sm": [
+                              "10px",
+                              {
+                                      "lineHeight": "12px",
+                                      "fontWeight": "500"
+                              }
+                      ],
+                      "display-sm": [
+                              "1.125rem",
+                              {
+                                      "lineHeight": "1.5rem",
+                                      "letterSpacing": "0.15em",
+                                      "fontWeight": "700"
+                              }
+                      ],
+                      "label-md": [
+                              "11px",
+                              {
+                                      "lineHeight": "1rem",
+                                      "fontWeight": "500"
+                              }
+                      ],
+                      "label-lg": [
+                              "0.75rem",
+                              {
+                                      "lineHeight": "1rem",
+                                      "fontWeight": "600"
+                              }
+                      ],
+                      "headline-sm": [
+                              "0.875rem",
+                              {
+                                      "lineHeight": "1.25rem",
+                                      "fontWeight": "600"
+                              }
+                      ],
+                      "body-sm": [
+                              "0.75rem",
+                              {
+                                      "lineHeight": "1rem",
+                                      "fontWeight": "400"
+                              }
+                      ]
+              }
+            }
+          }
+        }
+    </script>
+<style>
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+        }
+    </style>
+<style>
+    body {
+      min-height: max(884px, 100dvh);
+    }
+  </style>
+  </head>
+<body class="bg-surface text-on-surface font-body-md antialiased h-screen overflow-hidden selection:bg-primary-container selection:text-on-primary-container">
+<div class="relative flex h-full w-full flex-col bg-slate-50 group/design-root overflow-x-hidden overflow-y-auto" style='font-family: Inter, "Noto Sans", sans-serif;'>
+<!-- Shared Component Start -->
+<div class="flex items-center bg-slate-50 p-4 pb-2 justify-between shrink-0">
+<div class="text-[#0c141d] flex size-12 shrink-0 items-center" data-icon="ArrowLeft" data-size="24px" data-weight="regular">
+<svg fill="currentColor" height="24px" viewbox="0 0 256 256" width="24px" xmlns="http://www.w3.org/2000/svg">
+<path d="M224,128a8,8,0,0,1-8,8H59.31l58.35,58.34a8,8,0,0,1-11.32,11.32l-72-72a8,8,0,0,1,0-11.32l72-72a8,8,0,0,1,11.32,11.32L59.31,120H216A8,8,0,0,1,224,128Z"></path>
+</svg>
+</div>
+<h2 class="text-[#0c141d] text-lg font-bold leading-tight tracking-[-0.015em] flex-1">Auto Diary</h2>
+</div>
+<div class="flex items-center gap-4 bg-slate-50 px-4 min-h-[72px] py-2 justify-between shrink-0">
+<div class="flex flex-col justify-center">
+<p class="text-[#0c141d] text-base font-medium leading-normal line-clamp-1">Status</p>
+<p class="text-[#4573a1] text-sm font-normal leading-normal line-clamp-2">Off</p>
+</div>
+<div class="shrink-0">
+<label class="relative flex h-[31px] w-[51px] cursor-pointer items-center rounded-full border-none bg-[#e6edf4] p-0.5 has-[:checked]:justify-end has-[:checked]:bg-[#005ab4]">
+<div class="h-full w-[27px] rounded-full bg-white" style="box-shadow: rgba(0, 0, 0, 0.15) 0px 3px 8px, rgba(0, 0, 0, 0.06) 0px 3px 1px;"></div>
+<input class="invisible absolute" type="checkbox"/>
+</label>
+</div>
+</div>
+<div class="flex gap-4 bg-slate-50 px-4 py-3 justify-between shrink-0">
+<div class="flex flex-1 flex-col justify-center">
+<p class="text-[#0c141d] text-base font-medium leading-normal">Compatibility</p>
+<p class="text-[#4573a1] text-sm font-normal leading-normal">Accessibility required</p>
+</div>
+<div class="shrink-0">
+<div class="text-[#0c141d] flex size-7 items-center justify-center" data-icon="Info" data-size="24px" data-weight="regular">
+<svg fill="currentColor" height="24px" viewbox="0 0 256 256" width="24px" xmlns="http://www.w3.org/2000/svg">
+<path d="M128,24A104,104,0,1,0,232,128,104.11,104.11,0,0,0,128,24Zm0,192a88,88,0,1,1,88-88A88.1,88.1,0,0,1,128,216Zm16-40a8,8,0,0,1-8,8,16,16,0,0,1-16-16V128a8,8,0,0,1,0-16,16,16,0,0,1,16,16v40A8,8,0,0,1,144,176ZM112,84a12,12,0,1,1,12,12A12,12,0,0,1,112,84Z"></path>
+</svg>
+</div>
+</div>
+</div>
+<h3 class="text-[#0c141d] text-lg font-bold leading-tight tracking-[-0.015em] px-4 pb-2 pt-4 shrink-0">Manifest</h3>
+<div class="flex gap-3 p-3 flex-wrap pr-4 pb-6 shrink-0">
+<div class="flex h-8 shrink-0 items-center justify-center gap-x-2 rounded-lg bg-[#e6edf4] pl-4 pr-4">
+<p class="text-[#0c141d] text-sm font-medium leading-normal">Phone screen context</p>
+</div>
+<div class="flex h-8 shrink-0 items-center justify-center gap-x-2 rounded-lg bg-[#e6edf4] pl-4 pr-4">
+<p class="text-[#0c141d] text-sm font-medium leading-normal">Memory</p>
+</div>
+<div class="flex h-8 shrink-0 items-center justify-center gap-x-2 rounded-lg bg-[#e6edf4] pl-4 pr-4">
+<p class="text-[#0c141d] text-sm font-medium leading-normal">Local files</p>
+</div>
+</div>
+<!-- Shared Component End -->
+<!-- New Config Section Integration -->
+<div class="flex-1 bg-surface rounded-t-3xl shadow-[0_-8px_16px_-4px_rgba(0,0,0,0.05)] flex flex-col z-10">
+<div class="px-container-padding py-6 flex-1">
+<h3 class="font-display-sm text-on-surface mb-section-gap">Configuration</h3>
+<div class="bg-surface-container-lowest rounded-xl border border-outline-variant overflow-hidden flex flex-col shadow-sm">
+<!-- Accessibility Readiness -->
+<button class="w-full flex items-center justify-between p-4 border-b border-outline-variant hover:bg-surface-container-low focus:bg-surface-container-low transition-colors text-left outline-none">
+<div class="flex items-center gap-4">
+<span class="material-symbols-outlined text-error" data-icon="warning" style="font-variation-settings: 'FILL' 1;">warning</span>
+<div>
+<p class="font-headline-sm text-on-surface">Accessibility readiness</p>
+<p class="font-body-sm text-error">Action required</p>
+</div>
+</div>
+<span class="material-symbols-outlined text-on-surface-variant" data-icon="chevron_right">chevron_right</span>
+</button>
+<!-- Capture Interval -->
+<button class="w-full flex items-center justify-between p-4 border-b border-outline-variant hover:bg-surface-container-low focus:bg-surface-container-low transition-colors text-left outline-none">
+<div class="flex items-center gap-4">
+<span class="material-symbols-outlined text-primary" data-icon="timer">timer</span>
+<div>
+<p class="font-headline-sm text-on-surface">Capture interval</p>
+<p class="font-body-sm text-on-surface-variant">Every 5 minutes</p>
+</div>
+</div>
+<span class="material-symbols-outlined text-on-surface-variant" data-icon="chevron_right">chevron_right</span>
+</button>
+<!-- App privacy blacklist -->
+<button class="w-full flex items-center justify-between p-4 border-b border-outline-variant hover:bg-surface-container-low focus:bg-surface-container-low transition-colors text-left outline-none">
+<div class="flex items-center gap-4">
+<span class="material-symbols-outlined text-primary" data-icon="block">block</span>
+<div>
+<p class="font-headline-sm text-on-surface">App privacy blacklist</p>
+<p class="font-body-sm text-on-surface-variant">4 apps excluded</p>
+</div>
+</div>
+<span class="material-symbols-outlined text-on-surface-variant" data-icon="chevron_right">chevron_right</span>
+</button>
+<!-- OCR/Name-redaction -->
+<div class="flex items-center justify-between p-4 border-b border-outline-variant bg-surface-container-lowest">
+<div class="flex items-center gap-4">
+<span class="material-symbols-outlined text-primary" data-icon="visibility_off">visibility_off</span>
+<div>
+<p class="font-headline-sm text-on-surface">OCR / Name-redaction</p>
+<p class="font-body-sm text-on-surface-variant">Blur sensitive text on device</p>
+</div>
+</div>
+<label class="relative inline-flex items-center cursor-pointer shrink-0 ml-2">
+<input checked="" class="sr-only peer" type="checkbox" value=""/>
+<div class="w-11 h-6 bg-surface-variant peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-on-primary after:border-outline-variant after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-primary"></div>
+</label>
+</div>
+<!-- Retention -->
+<button class="w-full flex items-center justify-between p-4 hover:bg-surface-container-low focus:bg-surface-container-low transition-colors text-left outline-none">
+<div class="flex items-center gap-4">
+<span class="material-symbols-outlined text-primary" data-icon="delete_sweep">delete_sweep</span>
+<div>
+<p class="font-headline-sm text-on-surface">Retention</p>
+<p class="font-body-sm text-on-surface-variant">30 days</p>
+</div>
+</div>
+<span class="material-symbols-outlined text-on-surface-variant" data-icon="chevron_right">chevron_right</span>
+</button>
+</div>
+</div>
+<!-- Sticky Bottom Actions -->
+<div class="p-container-padding bg-surface border-t border-outline-variant pb-8 shrink-0 mt-auto">
+<div class="flex flex-col gap-element-gap">
+<button class="w-full flex items-center justify-center gap-2 py-3.5 px-4 rounded-full bg-secondary-container text-on-secondary-container font-label-lg hover:bg-secondary-fixed-dim transition-colors focus:ring-2 focus:ring-offset-2 focus:ring-primary focus:outline-none">
+<span class="material-symbols-outlined text-[20px]" data-icon="preview">preview</span>
+                        Safe Preview <span class="font-normal opacity-80">(Stores nothing)</span>
+</button>
+<button class="w-full flex items-center justify-center gap-2 py-3.5 px-4 rounded-full bg-primary text-on-primary font-label-lg hover:bg-on-primary-fixed-variant transition-colors shadow-sm focus:ring-2 focus:ring-offset-2 focus:ring-primary focus:outline-none">
+<span class="material-symbols-outlined text-[20px]" data-icon="check_circle">check_circle</span>
+                        Review &amp; Enable
+                    </button>
+</div>
+</div>
+</div>
+</div>
+</body></html>

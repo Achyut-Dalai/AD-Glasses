@@ -1,0 +1,279 @@
+<!DOCTYPE html>
+
+<html class="light" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>AD Glasses - Settings</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+      tailwind.config = {
+        darkMode: "class",
+        theme: {
+          extend: {
+            "colors": {
+                    "surface": "#f9f9ff",
+                    "surface-container-low": "#f1f3fc",
+                    "primary-fixed": "#d6e3ff",
+                    "surface-dim": "#d7dae3",
+                    "surface-container": "#ebedf7",
+                    "on-surface": "#181c22",
+                    "tertiary-container": "#964400",
+                    "inverse-primary": "#aac7ff",
+                    "primary-fixed-dim": "#aac7ff",
+                    "tertiary": "#723200",
+                    "on-tertiary-container": "#ffc9ac",
+                    "on-secondary-fixed-variant": "#2e476f",
+                    "on-tertiary": "#ffffff",
+                    "primary": "#004389",
+                    "on-primary-container": "#c0d5ff",
+                    "on-tertiary-fixed-variant": "#753400",
+                    "secondary-container": "#b6d0ff",
+                    "primary-container": "#0a73e0",
+                    "on-background": "#181c22",
+                    "surface-bright": "#f9f9ff",
+                    "surface-container-lowest": "#ffffff",
+                    "on-primary-fixed": "#001b3e",
+                    "on-error": "#ffffff",
+                    "on-primary": "#ffffff",
+                    "surface-variant": "#e0e2eb",
+                    "secondary-fixed": "#d6e3ff",
+                    "outline-variant": "#c2c6d4",
+                    "tertiary-fixed-dim": "#ffb68c",
+                    "on-error-container": "#93000a",
+                    "inverse-on-surface": "#eef0fa",
+                    "on-secondary-fixed": "#001b3d",
+                    "tertiary-fixed": "#ffdbc9",
+                    "surface-container-highest": "#e0e2eb",
+                    "on-secondary": "#ffffff",
+                    "outline": "#727783",
+                    "on-surface-variant": "#414753",
+                    "surface-tint": "#095db7",
+                    "surface-container-high": "#e6e8f1",
+                    "secondary-fixed-dim": "#aec7f6",
+                    "on-tertiary-fixed": "#321200",
+                    "secondary": "#465f88",
+                    "inverse-surface": "#2d3037",
+                    "on-secondary-container": "#3f5881",
+                    "background": "#f9f9ff",
+                    "on-primary-fixed-variant": "#00458d",
+                    "error-container": "#ffdad6",
+                    "error": "#ba1a1a"
+            },
+            "borderRadius": {
+                    "DEFAULT": "0.25rem",
+                    "lg": "0.5rem",
+                    "xl": "0.75rem",
+                    "full": "9999px"
+            },
+            "spacing": {
+                    "container-padding": "1rem",
+                    "element-gap": "0.75rem",
+                    "section-gap": "1.5rem",
+                    "grid-gutter": "1rem"
+            },
+            "fontFamily": {
+                    "label-lg": ["Inter"],
+                    "label-md": ["Inter"],
+                    "display-sm": ["Inter"],
+                    "headline-sm": ["Inter"],
+                    "label-sm": ["Inter"],
+                    "body-md": ["Inter"],
+                    "body-sm": ["Inter"]
+            },
+            "fontSize": {
+                    "label-lg": ["0.75rem", {"lineHeight": "1rem", "fontWeight": "600"}],
+                    "label-md": ["11px", {"lineHeight": "1rem", "fontWeight": "500"}],
+                    "display-sm": ["1.125rem", {"lineHeight": "1.5rem", "letterSpacing": "0.15em", "fontWeight": "700"}],
+                    "headline-sm": ["0.875rem", {"lineHeight": "1.25rem", "fontWeight": "600"}],
+                    "label-sm": ["10px", {"lineHeight": "12px", "fontWeight": "500"}],
+                    "body-md": ["0.875rem", {"lineHeight": "1.25rem", "fontWeight": "400"}],
+                    "body-sm": ["0.75rem", {"lineHeight": "1rem", "fontWeight": "400"}]
+            }
+          }
+        }
+      }
+    </script>
+<style>
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+        }
+        .filled-icon {
+            font-variation-settings: 'FILL' 1, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+        }
+        /* Hide scrollbar for clean aesthetic */
+        ::-webkit-scrollbar {
+            width: 0px;
+            background: transparent;
+        }
+    </style>
+<style>
+    body {
+      min-height: max(884px, 100dvh);
+    }
+  </style>
+  </head>
+<body class="bg-surface text-on-surface font-body-md antialiased selection:bg-primary-container selection:text-on-primary-container">
+<div class="relative flex flex-col h-screen w-full max-w-md mx-auto overflow-hidden bg-surface shadow-2xl">
+<!-- Top App Bar -->
+<header class="flex items-center justify-between px-4 h-14 bg-surface-container-lowest border-b border-surface-variant shrink-0 z-10">
+<div class="flex items-center gap-3">
+<button class="flex items-center justify-center p-2 -ml-2 rounded-full hover:bg-surface-variant transition-colors active:bg-surface-dim">
+<span class="material-symbols-outlined text-on-surface" data-icon="arrow_back">arrow_back</span>
+</button>
+<h1 class="font-display-sm text-on-surface tracking-normal">Settings</h1>
+</div>
+</header>
+<!-- Scrollable Content -->
+<main class="flex-1 overflow-y-auto pb-24">
+<!-- Summaries Section -->
+<section class="mt-4 bg-surface-container-lowest border-y border-surface-variant">
+<button class="w-full flex items-center justify-between px-4 py-3 border-b border-surface-variant hover:bg-surface transition-colors text-left">
+<div class="flex flex-col">
+<span class="font-headline-sm text-on-surface">Active Device</span>
+<span class="font-body-sm text-on-surface-variant mt-0.5">HeyCyan Pro (Connected)</span>
+</div>
+<span class="material-symbols-outlined text-on-surface-variant" data-icon="chevron_right">chevron_right</span>
+</button>
+<button class="w-full flex items-center justify-between px-4 py-3 hover:bg-surface transition-colors text-left">
+<div class="flex flex-col">
+<span class="font-headline-sm text-on-surface">AI Readiness</span>
+<span class="font-body-sm text-on-surface-variant mt-0.5">On-device / Your cloud (Ready)</span>
+</div>
+<span class="material-symbols-outlined text-on-surface-variant" data-icon="chevron_right">chevron_right</span>
+</button>
+</section>
+<!-- GENERAL Section -->
+<section class="mt-section-gap">
+<h2 class="px-4 pb-2 font-label-lg text-primary uppercase tracking-wider">General</h2>
+<div class="bg-surface-container-lowest border-y border-surface-variant">
+<button class="w-full flex items-center justify-between px-4 py-3 border-b border-surface-variant hover:bg-surface transition-colors">
+<span class="font-body-md text-on-surface">Language</span>
+<div class="flex items-center gap-1">
+<span class="font-body-sm text-on-surface-variant">English</span>
+<span class="material-symbols-outlined text-outline" data-icon="chevron_right">chevron_right</span>
+</div>
+</button>
+<button class="w-full flex items-center justify-between px-4 py-3 border-b border-surface-variant hover:bg-surface transition-colors">
+<span class="font-body-md text-on-surface">Notifications</span>
+<div class="flex items-center gap-1">
+<span class="font-body-sm text-on-surface-variant">On</span>
+<span class="material-symbols-outlined text-outline" data-icon="chevron_right">chevron_right</span>
+</div>
+</button>
+<button class="w-full flex items-center justify-between px-4 py-3 hover:bg-surface transition-colors">
+<span class="font-body-md text-on-surface">Permissions</span>
+<div class="flex items-center gap-1">
+<span class="font-body-sm text-on-surface-variant">Review</span>
+<span class="material-symbols-outlined text-outline" data-icon="chevron_right">chevron_right</span>
+</div>
+</button>
+</div>
+</section>
+<!-- INTELLIGENCE Section -->
+<section class="mt-section-gap">
+<h2 class="px-4 pb-2 font-label-lg text-primary uppercase tracking-wider">Intelligence</h2>
+<div class="bg-surface-container-lowest border-y border-surface-variant">
+<button class="w-full flex items-center justify-between px-4 py-3 border-b border-surface-variant hover:bg-surface transition-colors">
+<span class="font-body-md text-on-surface">AI Services and Models</span>
+<span class="material-symbols-outlined text-outline" data-icon="chevron_right">chevron_right</span>
+</button>
+<button class="w-full flex items-center justify-between px-4 py-3 border-b border-surface-variant hover:bg-surface transition-colors">
+<span class="font-body-md text-on-surface">Assistant routing defaults</span>
+<span class="material-symbols-outlined text-outline" data-icon="chevron_right">chevron_right</span>
+</button>
+<button class="w-full flex items-center justify-between px-4 py-3 border-b border-surface-variant hover:bg-surface transition-colors">
+<span class="font-body-md text-on-surface">Image-question defaults</span>
+<span class="material-symbols-outlined text-outline" data-icon="chevron_right">chevron_right</span>
+</button>
+<button class="w-full flex items-center justify-between px-4 py-3 hover:bg-surface transition-colors">
+<span class="font-body-md text-on-surface">Automation provider</span>
+<span class="material-symbols-outlined text-outline" data-icon="chevron_right">chevron_right</span>
+</button>
+</div>
+</section>
+<!-- PRIVACY Section -->
+<section class="mt-section-gap">
+<h2 class="px-4 pb-2 font-label-lg text-primary uppercase tracking-wider">Privacy</h2>
+<div class="bg-surface-container-lowest border-y border-surface-variant">
+<button class="w-full flex items-center justify-between px-4 py-3 border-b border-surface-variant hover:bg-surface transition-colors">
+<span class="font-body-md text-on-surface">Privacy and Data</span>
+<span class="material-symbols-outlined text-outline" data-icon="chevron_right">chevron_right</span>
+</button>
+<button class="w-full flex items-center justify-between px-4 py-3 border-b border-surface-variant hover:bg-surface transition-colors">
+<span class="font-body-md text-on-surface">Transcript storage</span>
+<span class="material-symbols-outlined text-outline" data-icon="chevron_right">chevron_right</span>
+</button>
+<button class="w-full flex items-center justify-between px-4 py-3 hover:bg-surface transition-colors">
+<span class="font-body-md text-on-surface">Passive automation pause</span>
+<div class="flex items-center gap-1">
+<span class="font-body-sm text-on-surface-variant">Off</span>
+<span class="material-symbols-outlined text-outline" data-icon="chevron_right">chevron_right</span>
+</div>
+</button>
+</div>
+</section>
+<!-- DATA Section -->
+<section class="mt-section-gap">
+<h2 class="px-4 pb-2 font-label-lg text-primary uppercase tracking-wider">Data</h2>
+<div class="bg-surface-container-lowest border-y border-surface-variant">
+<button class="w-full flex items-center justify-between px-4 py-3 border-b border-surface-variant hover:bg-surface transition-colors">
+<span class="font-body-md text-on-surface">Storage usage</span>
+<span class="material-symbols-outlined text-outline" data-icon="chevron_right">chevron_right</span>
+</button>
+<button class="w-full flex items-center justify-between px-4 py-3 border-b border-surface-variant hover:bg-surface transition-colors">
+<span class="font-body-md text-on-surface">Export local data</span>
+<span class="material-symbols-outlined text-outline" data-icon="chevron_right">chevron_right</span>
+</button>
+<button class="w-full flex items-center justify-between px-4 py-3 border-b border-surface-variant hover:bg-surface transition-colors">
+<span class="font-body-md text-on-surface">Import local data</span>
+<span class="material-symbols-outlined text-outline" data-icon="chevron_right">chevron_right</span>
+</button>
+<button class="w-full flex items-center justify-between px-4 py-3 hover:bg-error-container/20 transition-colors">
+<span class="font-body-md text-error">Clear local data</span>
+<span class="material-symbols-outlined text-error opacity-70" data-icon="chevron_right">chevron_right</span>
+</button>
+</div>
+</section>
+<!-- SUPPORT Section -->
+<section class="mt-section-gap mb-8">
+<h2 class="px-4 pb-2 font-label-lg text-primary uppercase tracking-wider">Support</h2>
+<div class="bg-surface-container-lowest border-y border-surface-variant">
+<button class="w-full flex items-center justify-between px-4 py-3 border-b border-surface-variant hover:bg-surface transition-colors">
+<span class="font-body-md text-on-surface">Advanced and Diagnostics</span>
+<span class="material-symbols-outlined text-outline" data-icon="chevron_right">chevron_right</span>
+</button>
+<button class="w-full flex items-center justify-between px-4 py-3 border-b border-surface-variant hover:bg-surface transition-colors">
+<span class="font-body-md text-on-surface">FAQ / Help</span>
+<span class="material-symbols-outlined text-outline" data-icon="chevron_right">chevron_right</span>
+</button>
+<div class="w-full flex items-center justify-between px-4 py-3">
+<span class="font-body-md text-on-surface">About AD Glasses</span>
+<span class="font-body-sm text-on-surface-variant">v1.0.4</span>
+</div>
+</div>
+</section>
+</main>
+<!-- Bottom Navigation -->
+<nav class="absolute bottom-0 w-full bg-surface-container-lowest border-t border-surface-variant pb-safe z-20">
+<div class="flex justify-around items-center px-2 py-2">
+<a class="flex flex-col items-center gap-1 p-2 min-w-[64px] text-on-surface-variant hover:text-primary transition-colors" href="#">
+<span class="material-symbols-outlined" data-icon="home">home</span>
+<span class="font-label-md">Home</span>
+</a>
+<a class="flex flex-col items-center gap-1 p-2 min-w-[64px] text-on-surface-variant hover:text-primary transition-colors" href="#">
+<span class="material-symbols-outlined" data-icon="watch">watch</span>
+<span class="font-label-md">Devices</span>
+</a>
+<a class="flex flex-col items-center gap-1 p-2 min-w-[64px] text-primary" href="#">
+<span class="material-symbols-outlined filled-icon" data-icon="settings">settings</span>
+<span class="font-label-md">Settings</span>
+</a>
+</div>
+<!-- Safe area bottom padding for mobile -->
+<div class="h-4 w-full"></div>
+</nav>
+</div>
+</body></html>

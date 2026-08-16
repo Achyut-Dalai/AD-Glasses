@@ -1,0 +1,172 @@
+<!DOCTYPE html>
+
+<html class="light" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>HeyCyan Firmware Lab - Update Complete</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+          darkMode: "class",
+          theme: {
+            extend: {
+              "colors": {
+                      "on-primary-container": "#c0d5ff",
+                      "surface-dim": "#d7dae3",
+                      "secondary-container": "#b6d0ff",
+                      "secondary": "#465f88",
+                      "surface-container-lowest": "#ffffff",
+                      "background": "#f9f9ff",
+                      "tertiary": "#723200",
+                      "on-error-container": "#93000a",
+                      "surface-container-high": "#e6e8f1",
+                      "error-container": "#ffdad6",
+                      "on-secondary-container": "#3f5881",
+                      "surface-bright": "#f9f9ff",
+                      "primary": "#004389",
+                      "on-surface-variant": "#424752",
+                      "surface": "#f9f9ff",
+                      "on-primary": "#ffffff",
+                      "on-secondary-fixed-variant": "#2e476f",
+                      "on-tertiary": "#ffffff",
+                      "on-background": "#181c22",
+                      "tertiary-container": "#964400",
+                      "surface-container-low": "#f1f3fc",
+                      "on-primary-fixed": "#001b3e",
+                      "inverse-surface": "#2d3037",
+                      "inverse-on-surface": "#eef0fa",
+                      "primary-fixed-dim": "#aac7ff",
+                      "primary-fixed": "#d6e3ff",
+                      "tertiary-fixed-dim": "#ffb68c",
+                      "on-tertiary-container": "#ffc9ac",
+                      "surface-container-highest": "#e0e2eb",
+                      "on-tertiary-fixed": "#321200",
+                      "on-surface": "#181c22",
+                      "primary-container": "#005ab4",
+                      "outline-variant": "#c2c6d4",
+                      "on-secondary": "#ffffff",
+                      "inverse-primary": "#aac7ff",
+                      "surface-variant": "#e0e2eb",
+                      "on-tertiary-fixed-variant": "#753400",
+                      "surface-container": "#ebedf7",
+                      "on-primary-fixed-variant": "#00458d",
+                      "on-secondary-fixed": "#001b3d",
+                      "surface-tint": "#095db7",
+                      "outline": "#727783",
+                      "tertiary-fixed": "#ffdbc9",
+                      "secondary-fixed-dim": "#aec7f6",
+                      "error": "#ba1a1a",
+                      "on-error": "#ffffff",
+                      "secondary-fixed": "#d6e3ff"
+              },
+              "borderRadius": {
+                      "DEFAULT": "0.25rem",
+                      "lg": "0.5rem",
+                      "xl": "0.75rem",
+                      "full": "9999px"
+              },
+              "spacing": {
+                      "container-padding": "1rem",
+                      "element-gap": "0.75rem",
+                      "section-gap": "1.5rem",
+                      "grid-gutter": "1rem"
+              },
+              "fontFamily": {
+                      "label-sm": ["Inter"],
+                      "body-md": ["Inter"],
+                      "body-sm": ["Inter"],
+                      "headline-sm": ["Inter"],
+                      "display-sm": ["Inter"],
+                      "label-lg": ["Inter"],
+                      "label-md": ["Inter"]
+              },
+              "fontSize": {
+                      "label-sm": ["10px", {"lineHeight": "12px", "fontWeight": "500"}],
+                      "body-md": ["0.875rem", {"lineHeight": "1.25rem", "fontWeight": "400"}],
+                      "body-sm": ["0.75rem", {"lineHeight": "1rem", "fontWeight": "400"}],
+                      "headline-sm": ["0.875rem", {"lineHeight": "1.25rem", "fontWeight": "600"}],
+                      "display-sm": ["1.125rem", {"lineHeight": "1.5rem", "letterSpacing": "0.15em", "fontWeight": "700"}],
+                      "label-lg": ["0.75rem", {"lineHeight": "1rem", "fontWeight": "600"}],
+                      "label-md": ["11px", {"lineHeight": "1rem", "fontWeight": "500"}]
+              }
+            }
+          }
+        }
+    </script>
+<style>
+        body { font-family: 'Inter', sans-serif; }
+    </style>
+<style>
+    body {
+      min-height: max(884px, 100dvh);
+    }
+  </style>
+  </head>
+<body class="bg-surface text-on-surface h-screen flex flex-col items-center justify-center p-4">
+<!-- Main Container -->
+<div class="w-full max-w-md bg-surface-container rounded-xl shadow-sm border border-outline-variant/30 overflow-hidden flex flex-col">
+<!-- Header -->
+<div class="p-6 pb-4 flex flex-col items-center text-center border-b border-outline-variant/20 bg-surface-container-highest">
+<div class="w-16 h-16 rounded-full bg-primary-container text-on-primary-container flex items-center justify-center mb-4">
+<span class="material-symbols-outlined text-4xl" style="font-variation-settings: 'FILL' 1;">check_circle</span>
+</div>
+<h1 class="font-display-sm text-display-sm text-primary mb-1">Update Complete</h1>
+<p class="font-body-md text-body-md text-on-surface-variant">Firmware successfully applied.</p>
+<p class="font-body-sm text-body-sm text-outline mt-2">Verified at <span id="timestamp">10:42 AM, Oct 24</span></p>
+</div>
+<!-- Firmware Details Bento -->
+<div class="p-4 space-y-4 flex-1">
+<!-- Wi-Fi Module -->
+<div class="bg-surface rounded-lg p-4 border border-outline-variant/20 flex flex-col gap-3">
+<div class="flex items-center gap-2 text-primary">
+<span class="material-symbols-outlined text-lg">wifi</span>
+<h2 class="font-headline-sm text-headline-sm">Wi-Fi Module</h2>
+</div>
+<div class="grid grid-cols-2 gap-4">
+<div class="flex flex-col">
+<span class="font-label-sm text-label-sm text-outline uppercase tracking-wider mb-1">Previous</span>
+<span class="font-body-sm text-body-sm text-on-surface-variant line-through">v2.1.04-beta</span>
+</div>
+<div class="flex flex-col">
+<span class="font-label-sm text-label-sm text-outline uppercase tracking-wider mb-1">Current</span>
+<span class="font-body-sm text-body-sm text-primary font-medium">v2.2.00-stable</span>
+</div>
+</div>
+</div>
+<!-- Bluetooth Chip -->
+<div class="bg-surface rounded-lg p-4 border border-outline-variant/20 flex flex-col gap-3">
+<div class="flex items-center gap-2 text-primary">
+<span class="material-symbols-outlined text-lg">bluetooth</span>
+<h2 class="font-headline-sm text-headline-sm">Bluetooth Chip</h2>
+</div>
+<div class="grid grid-cols-2 gap-4">
+<div class="flex flex-col">
+<span class="font-label-sm text-label-sm text-outline uppercase tracking-wider mb-1">Previous</span>
+<span class="font-body-sm text-body-sm text-on-surface-variant line-through">fw_bt_901a</span>
+</div>
+<div class="flex flex-col">
+<span class="font-label-sm text-label-sm text-outline uppercase tracking-wider mb-1">Current</span>
+<span class="font-body-sm text-body-sm text-primary font-medium">fw_bt_902c</span>
+</div>
+</div>
+</div>
+</div>
+<!-- Action Area -->
+<div class="p-6 pt-2 bg-surface-container">
+<button class="w-full bg-primary text-on-primary font-label-lg text-label-lg py-3 rounded-full hover:bg-primary/90 transition-colors active:scale-95 duration-100 flex items-center justify-center gap-2">
+                Done
+            </button>
+</div>
+</div>
+<script>
+        // Set dynamic timestamp
+        const now = new Date();
+        const timeOptions = { hour: 'numeric', minute: '2-digit', hour12: true };
+        const dateOptions = { month: 'short', day: 'numeric' };
+        document.getElementById('timestamp').textContent = 
+            now.toLocaleTimeString('en-US', timeOptions) + ', ' + now.toLocaleDateString('en-US', dateOptions);
+    </script>
+</body></html>

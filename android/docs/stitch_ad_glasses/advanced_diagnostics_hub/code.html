@@ -1,0 +1,232 @@
+<!DOCTYPE html>
+
+<html lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Advanced &amp; Diagnostics - Hub</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    "colors": {
+                        "on-primary-container": "#c0d5ff",
+                        "surface-dim": "#d7dae3",
+                        "secondary-container": "#b6d0ff",
+                        "secondary": "#465f88",
+                        "surface-container-lowest": "#ffffff",
+                        "background": "#f9f9ff",
+                        "tertiary": "#723200",
+                        "on-error-container": "#93000a",
+                        "surface-container-high": "#e6e8f1",
+                        "error-container": "#ffdad6",
+                        "on-secondary-container": "#3f5881",
+                        "surface-bright": "#f9f9ff",
+                        "primary": "#004389",
+                        "on-surface-variant": "#424752",
+                        "surface": "#f9f9ff",
+                        "on-primary": "#ffffff",
+                        "on-secondary-fixed-variant": "#2e476f",
+                        "on-tertiary": "#ffffff",
+                        "on-background": "#181c22",
+                        "tertiary-container": "#964400",
+                        "surface-container-low": "#f1f3fc",
+                        "on-primary-fixed": "#001b3e",
+                        "inverse-surface": "#2d3037",
+                        "inverse-on-surface": "#eef0fa",
+                        "primary-fixed-dim": "#aac7ff",
+                        "primary-fixed": "#d6e3ff",
+                        "tertiary-fixed-dim": "#ffb68c",
+                        "on-tertiary-container": "#ffc9ac",
+                        "surface-container-highest": "#e0e2eb",
+                        "on-tertiary-fixed": "#321200",
+                        "on-surface": "#181c22",
+                        "primary-container": "#005ab4",
+                        "outline-variant": "#c2c6d4",
+                        "on-secondary": "#ffffff",
+                        "inverse-primary": "#aac7ff",
+                        "surface-variant": "#e0e2eb",
+                        "on-tertiary-fixed-variant": "#753400",
+                        "surface-container": "#ebedf7",
+                        "on-primary-fixed-variant": "#00458d",
+                        "on-secondary-fixed": "#001b3d",
+                        "surface-tint": "#095db7",
+                        "outline": "#727783",
+                        "tertiary-fixed": "#ffdbc9",
+                        "secondary-fixed-dim": "#aec7f6",
+                        "error": "#ba1a1a",
+                        "on-error": "#ffffff",
+                        "secondary-fixed": "#d6e3ff"
+                    },
+                    "borderRadius": {
+                        "DEFAULT": "0.25rem",
+                        "lg": "0.5rem",
+                        "xl": "0.75rem",
+                        "full": "9999px"
+                    },
+                    "spacing": {
+                        "container-padding": "1rem",
+                        "element-gap": "0.75rem",
+                        "section-gap": "1.5rem",
+                        "grid-gutter": "1rem"
+                    },
+                    "fontFamily": {
+                        "label-sm": ["Inter"],
+                        "body-md": ["Inter"],
+                        "body-sm": ["Inter"],
+                        "headline-sm": ["Inter"],
+                        "display-sm": ["Inter"],
+                        "label-lg": ["Inter"],
+                        "label-md": ["Inter"]
+                    },
+                    "fontSize": {
+                        "label-sm": ["10px", {"lineHeight": "12px", "fontWeight": "500"}],
+                        "body-md": ["0.875rem", {"lineHeight": "1.25rem", "fontWeight": "400"}],
+                        "body-sm": ["0.75rem", {"lineHeight": "1rem", "fontWeight": "400"}],
+                        "headline-sm": ["0.875rem", {"lineHeight": "1.25rem", "fontWeight": "600"}],
+                        "display-sm": ["1.125rem", {"lineHeight": "1.5rem", "letterSpacing": "0.15em", "fontWeight": "700"}],
+                        "label-lg": ["0.75rem", {"lineHeight": "1rem", "fontWeight": "600"}],
+                        "label-md": ["11px", {"lineHeight": "1rem", "fontWeight": "500"}]
+                    }
+                }
+            }
+        }
+    </script>
+<style>
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+        }
+    </style>
+<style>
+    body {
+      min-height: max(884px, 100dvh);
+    }
+  </style>
+  </head>
+<body class="bg-surface text-on-surface antialiased min-h-screen">
+<!-- TopAppBar -->
+<header class="bg-surface sticky top-0 z-50 flex items-center justify-between px-container-padding h-16 w-full max-w-5xl mx-auto">
+<button class="text-primary hover:bg-surface-container-high transition-colors active:scale-95 duration-100 p-2 rounded-full flex items-center justify-center">
+<span class="material-symbols-outlined" data-icon="arrow_back">arrow_back</span>
+</button>
+<h1 class="font-display-sm text-display-sm text-primary flex-1 text-center pr-10">Advanced &amp; Diagnostics</h1>
+</header>
+<main class="w-full max-w-5xl mx-auto px-container-padding py-6 space-y-section-gap">
+<!-- DIAGNOSTICS -->
+<section class="space-y-element-gap">
+<h2 class="font-label-lg text-label-lg text-on-surface-variant uppercase tracking-wider pl-2">DIAGNOSTICS</h2>
+<div class="bg-surface-container rounded-xl overflow-hidden border border-outline-variant/20 shadow-sm flex flex-col">
+<button class="flex items-center justify-between p-4 hover:bg-surface-container-high transition-colors text-left border-b border-outline-variant/10 active:scale-[0.99] duration-100">
+<div class="flex flex-col">
+<span class="font-headline-sm text-headline-sm text-on-surface">Versions</span>
+<span class="font-body-sm text-body-sm text-on-surface-variant">App, Firmware, OS details</span>
+</div>
+<span class="material-symbols-outlined text-outline">chevron_right</span>
+</button>
+<button class="flex items-center justify-between p-4 hover:bg-surface-container-high transition-colors text-left border-b border-outline-variant/10 active:scale-[0.99] duration-100">
+<div class="flex flex-col">
+<span class="font-headline-sm text-headline-sm text-on-surface">Redacted Logs</span>
+<span class="font-body-sm text-body-sm text-on-surface-variant">View privacy-safe system logs</span>
+</div>
+<span class="material-symbols-outlined text-outline">chevron_right</span>
+</button>
+<button class="flex items-center justify-between p-4 hover:bg-surface-container-high transition-colors text-left active:scale-[0.99] duration-100">
+<div class="flex flex-col">
+<span class="font-headline-sm text-headline-sm text-on-surface">Export Bundle</span>
+<span class="font-body-sm text-body-sm text-on-surface-variant">Download full diagnostic package</span>
+</div>
+<span class="material-symbols-outlined text-outline">download</span>
+</button>
+</div>
+</section>
+<!-- HEYCYAN LABS -->
+<section class="space-y-element-gap">
+<h2 class="font-label-lg text-label-lg text-on-surface-variant uppercase tracking-wider pl-2">HEYCYAN LABS</h2>
+<div class="bg-surface-container rounded-xl overflow-hidden border border-outline-variant/20 shadow-sm flex flex-col">
+<button class="flex items-center justify-between p-4 hover:bg-surface-container-high transition-colors text-left border-b border-outline-variant/10 active:scale-[0.99] duration-100">
+<div class="flex flex-col">
+<span class="font-headline-sm text-headline-sm text-on-surface">Live Preview</span>
+<span class="font-body-sm text-body-sm text-on-surface-variant">Experimental UI features</span>
+</div>
+<div class="flex items-center gap-2">
+<div class="w-8 h-4 bg-primary-container rounded-full relative flex items-center">
+<div class="w-3 h-3 bg-on-primary-container rounded-full absolute right-1"></div>
+</div>
+</div>
+</button>
+<button class="flex items-center justify-between p-4 hover:bg-surface-container-high transition-colors text-left border-b border-outline-variant/10 active:scale-[0.99] duration-100">
+<div class="flex flex-col">
+<span class="font-headline-sm text-headline-sm text-on-surface">OTA Logs</span>
+<span class="font-body-sm text-body-sm text-on-surface-variant">Over-the-air update tracing</span>
+</div>
+<span class="material-symbols-outlined text-outline">chevron_right</span>
+</button>
+<button class="flex items-center justify-between p-4 hover:bg-surface-container-high transition-colors text-left border-b border-outline-variant/10 active:scale-[0.99] duration-100">
+<div class="flex flex-col">
+<span class="font-headline-sm text-headline-sm text-on-surface">ADB Debug</span>
+<span class="font-body-sm text-body-sm text-on-surface-variant">Advanced device bridge config</span>
+</div>
+<span class="material-symbols-outlined text-outline">chevron_right</span>
+</button>
+<button class="flex items-center justify-between p-4 hover:bg-surface-container-high transition-colors text-left active:scale-[0.99] duration-100">
+<div class="flex flex-col">
+<span class="font-headline-sm text-headline-sm text-on-surface">Listeners</span>
+<span class="font-body-sm text-body-sm text-on-surface-variant">Active event subscriptions</span>
+</div>
+<span class="material-symbols-outlined text-outline">chevron_right</span>
+</button>
+</div>
+</section>
+<!-- EXTERNAL AI -->
+<section class="space-y-element-gap">
+<h2 class="font-label-lg text-label-lg text-on-surface-variant uppercase tracking-wider pl-2">EXTERNAL AI</h2>
+<div class="bg-surface-container rounded-xl overflow-hidden border border-outline-variant/20 shadow-sm flex flex-col">
+<div class="flex items-center justify-between p-4 border-b border-outline-variant/10">
+<div class="flex flex-col">
+<span class="font-headline-sm text-headline-sm text-on-surface">Tasker Integration</span>
+<span class="font-body-sm text-body-sm text-on-surface-variant">Status: Connected</span>
+</div>
+<span class="material-symbols-outlined text-primary" style="font-variation-settings: 'FILL' 1;">check_circle</span>
+</div>
+<div class="flex items-center justify-between p-4">
+<div class="flex flex-col">
+<span class="font-headline-sm text-headline-sm text-on-surface">Assistant Agent</span>
+<span class="font-body-sm text-body-sm text-on-surface-variant">Status: Idle</span>
+</div>
+<span class="material-symbols-outlined text-outline">pending</span>
+</div>
+</div>
+</section>
+<!-- EXTERNAL RUNTIMES -->
+<section class="space-y-element-gap pb-10">
+<h2 class="font-label-lg text-label-lg text-on-surface-variant uppercase tracking-wider pl-2">EXTERNAL RUNTIMES</h2>
+<div class="bg-surface-container rounded-xl overflow-hidden border border-outline-variant/20 shadow-sm flex flex-col">
+<button class="flex items-center justify-between p-4 hover:bg-surface-container-high transition-colors text-left border-b border-outline-variant/10 active:scale-[0.99] duration-100">
+<div class="flex flex-col">
+<span class="font-headline-sm text-headline-sm text-on-surface">GlassesBridge</span>
+<span class="font-body-sm text-body-sm text-on-surface-variant">v2.4.1 - Active</span>
+</div>
+<span class="material-symbols-outlined text-outline">chevron_right</span>
+</button>
+<button class="flex items-center justify-between p-4 hover:bg-surface-container-high transition-colors text-left border-b border-outline-variant/10 active:scale-[0.99] duration-100">
+<div class="flex flex-col">
+<span class="font-headline-sm text-headline-sm text-on-surface">EvenHub</span>
+<span class="font-body-sm text-body-sm text-on-surface-variant">v1.0.8 - Disconnected</span>
+</div>
+<span class="material-symbols-outlined text-outline">chevron_right</span>
+</button>
+<button class="flex items-center justify-between p-4 hover:bg-surface-container-high transition-colors text-left active:scale-[0.99] duration-100">
+<div class="flex flex-col">
+<span class="font-headline-sm text-headline-sm text-on-surface">Mentra</span>
+<span class="font-body-sm text-body-sm text-on-surface-variant">Not Configured</span>
+</div>
+<span class="material-symbols-outlined text-outline">chevron_right</span>
+</button>
+</div>
+</section>
+</main>
+</body></html>

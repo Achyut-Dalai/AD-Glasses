@@ -1,0 +1,295 @@
+<!DOCTYPE html>
+
+<html class="light" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Firmware Lab - AD Glasses</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Hanken+Grotesk:wght@400;500;600;700;800;900&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    "colors": {
+                        "secondary-fixed-dim": "#aac7ff",
+                        "secondary": "#005db8",
+                        "on-primary": "#ffffff",
+                        "on-secondary": "#ffffff",
+                        "outline-variant": "#cfc4c5",
+                        "cool-gray": "#717785",
+                        "surface": "#f9f9ff",
+                        "secondary-fixed": "#d6e3ff",
+                        "primary": "#000000",
+                        "primary-fixed": "#e2e2e2",
+                        "on-tertiary-fixed-variant": "#444749",
+                        "warning-amber": "#FFBF00",
+                        "tertiary": "#000000",
+                        "on-tertiary": "#ffffff",
+                        "on-error-container": "#93000a",
+                        "surface-dim": "#d4daea",
+                        "tertiary-fixed": "#e1e2e4",
+                        "on-tertiary-container": "#828486",
+                        "surface-tint": "#5e5e5e",
+                        "inverse-surface": "#2a313d",
+                        "surface-container-low": "#f0f3ff",
+                        "surface-container-highest": "#dde2f2",
+                        "on-primary-fixed": "#1b1b1b",
+                        "inverse-primary": "#c6c6c6",
+                        "background": "#f9f9ff",
+                        "surface-variant": "#dde2f2",
+                        "secondary-container": "#4090fe",
+                        "on-primary-fixed-variant": "#474747",
+                        "electric-blue": "#1978E5",
+                        "surface-container-high": "#e2e8f8",
+                        "outline": "#7e7576",
+                        "on-secondary-fixed": "#001b3e",
+                        "on-secondary-fixed-variant": "#00458d",
+                        "canvas": "#F6F7F9",
+                        "on-secondary-container": "#002958",
+                        "surface-container": "#e8eefe",
+                        "surface-bright": "#f9f9ff",
+                        "graphite-black": "#000000",
+                        "primary-container": "#1b1b1b",
+                        "on-surface": "#161c27",
+                        "surface-control": "#FFFFFF",
+                        "on-background": "#161c27",
+                        "success-teal": "#008080",
+                        "on-tertiary-fixed": "#191c1e",
+                        "on-error": "#ffffff",
+                        "surface-container-lowest": "#ffffff",
+                        "on-primary-container": "#848484",
+                        "tertiary-container": "#191c1e",
+                        "primary-fixed-dim": "#c6c6c6",
+                        "error-container": "#ffdad6",
+                        "inverse-on-surface": "#ecf0ff",
+                        "error": "#ba1a1a",
+                        "on-surface-variant": "#4c4546",
+                        "tertiary-fixed-dim": "#c5c7c8"
+                    },
+                    "borderRadius": {
+                        "DEFAULT": "0.25rem",
+                        "lg": "0.5rem",
+                        "xl": "0.75rem",
+                        "full": "9999px"
+                    },
+                    "spacing": {
+                        "gap-xs": "4px",
+                        "hero-stage": "220px",
+                        "base": "4px",
+                        "margin-page": "16px",
+                        "touch-target": "48px",
+                        "gap-sm": "8px"
+                    },
+                    "fontFamily": {
+                        "body-lg": ["Hanken Grotesk"],
+                        "label-md": ["Hanken Grotesk"],
+                        "headline-md": ["Hanken Grotesk"],
+                        "label-lg": ["Hanken Grotesk"],
+                        "body-md": ["Hanken Grotesk"],
+                        "headline-lg": ["Hanken Grotesk"],
+                        "label-sm": ["Hanken Grotesk"],
+                        "display": ["Hanken Grotesk"]
+                    },
+                    "fontSize": {
+                        "body-lg": ["16px", { "lineHeight": "24px", "fontWeight": "400" }],
+                        "label-md": ["12px", { "lineHeight": "16px", "fontWeight": "500" }],
+                        "headline-md": ["20px", { "lineHeight": "28px", "letterSpacing": "-0.01em", "fontWeight": "600" }],
+                        "label-lg": ["14px", { "lineHeight": "20px", "fontWeight": "500" }],
+                        "body-md": ["14px", { "lineHeight": "20px", "fontWeight": "400" }],
+                        "headline-lg": ["24px", { "lineHeight": "32px", "letterSpacing": "-0.02em", "fontWeight": "600" }],
+                        "label-sm": ["11px", { "lineHeight": "16px", "letterSpacing": "0.05em", "fontWeight": "500" }]
+                    }
+                }
+            }
+        }
+    </script>
+<style>
+        body {
+            background-color: theme('colors.canvas');
+            color: theme('colors.on-background');
+            -webkit-font-smoothing: antialiased;
+            -moz-osx-font-smoothing: grayscale;
+        }
+        
+        .timeline-line {
+            width: 1px;
+            background: linear-gradient(to bottom, theme('colors.outline-variant') 50%, transparent 50%);
+            background-size: 1px 8px;
+        }
+        
+        .progress-pulse {
+            animation: pulse-amber 2s infinite;
+        }
+        
+        @keyframes pulse-amber {
+            0% { box-shadow: 0 0 0 0 rgba(255, 191, 0, 0.4); }
+            70% { box-shadow: 0 0 0 6px rgba(255, 191, 0, 0); }
+            100% { box-shadow: 0 0 0 0 rgba(255, 191, 0, 0); }
+        }
+
+        .hold-btn-progress {
+            transition: width 0.1s linear;
+        }
+    </style>
+<style>
+    body {
+      min-height: max(884px, 100dvh);
+    }
+  </style>
+  </head>
+<body class="font-body-md min-h-screen flex flex-col pb-24 md:pb-0">
+<!-- TopAppBar -->
+<header class="docked full-width top-0 bg-surface/80 backdrop-blur-md flex justify-between items-center px-6 py-4 w-full z-40 sticky">
+<button aria-label="Back" class="h-touch-target w-touch-target flex items-center justify-center text-on-surface-variant hover:bg-surface-container-low transition-colors rounded-full">
+<span class="material-symbols-outlined text-2xl" data-icon="close">close</span>
+</button>
+<div class="font-headline text-on-surface font-bold text-headline-md">Firmware Lab</div>
+<div class="h-touch-target w-touch-target flex items-center justify-center opacity-0 pointer-events-none">
+<span class="material-symbols-outlined text-2xl">settings</span>
+</div>
+</header>
+<main class="flex-grow w-full max-w-[600px] mx-auto px-margin-page py-6">
+<!-- Device Stage & Info -->
+<section class="mb-8">
+<div class="bg-surface-control rounded-xl p-6 shadow-sm border border-outline-variant flex flex-col items-center">
+<div class="w-full h-hero-stage flex items-center justify-center relative mb-4 overflow-hidden">
+<img alt="Smart Glasses Product Render" class="w-full h-full object-contain transition-transform duration-700 hover:scale-105" src="https://lh3.googleusercontent.com/aida/AP1WRLtaeLt_1Zt2BQfly_xM6uqawzRfhWiB2kerV1X6cojgN60HOQ_UNxXqszoX5BF3S4n85g7hdsc7qp_C7zyP51h1XvnqAB3PUwYC70p5HyYPKlW8een8gZNUrBAcbidtCC_nHMfuyQMQ5OtPV1CAqimWp8k6WEln6Q4FW_gm-eWrhSl_uRt9Cxo3taKgu_XTt1xBsoTVtFhs6alSPZ6MFcH4o5O1sLYhxLq5VPqQu9WuYWp7HZLdHXaxumY"/>
+</div>
+<div class="text-center w-full">
+<h1 class="font-headline-lg text-headline-lg text-on-surface mb-1">AD Glasses v2.1.4</h1>
+<p class="font-body-md text-body-md text-on-surface-variant mb-4">Critical security &amp; performance update</p>
+<div class="inline-flex items-center gap-2 bg-surface-container-low px-3 py-1.5 rounded-full border border-outline-variant">
+<span class="w-2 h-2 rounded-full bg-success-teal"></span>
+<span class="font-label-md text-label-md text-on-surface">Connected • 84% Battery</span>
+</div>
+</div>
+</div>
+</section>
+<!-- Warning Banner -->
+<div class="mb-8 bg-error-container/50 border border-error-container rounded-lg p-4 flex items-start gap-3">
+<span class="material-symbols-outlined text-error mt-0.5" data-weight="fill">warning</span>
+<div>
+<h3 class="font-label-lg text-label-lg text-on-surface mb-1">Do not close the app</h3>
+<p class="font-body-md text-body-md text-on-surface-variant">Keep your phone nearby and avoid navigating away during the update process to prevent bricking.</p>
+</div>
+</div>
+<!-- 6-Stage Timeline -->
+<section class="mb-10 bg-surface-control rounded-xl p-6 shadow-sm border border-outline-variant">
+<h2 class="font-headline-md text-headline-md text-on-surface mb-6">Update Sequence</h2>
+<div class="relative pl-3">
+<!-- Line -->
+<div class="absolute left-[23px] top-4 bottom-8 timeline-line"></div>
+<div class="flex flex-col gap-6">
+<!-- Stage 1: Complete -->
+<div class="flex items-start gap-4 relative z-10">
+<div class="w-6 h-6 rounded-full bg-success-teal flex items-center justify-center shrink-0 mt-0.5">
+<span class="material-symbols-outlined text-white text-[14px]" data-weight="fill">check</span>
+</div>
+<div>
+<h4 class="font-label-lg text-label-lg text-on-surface">Validating Package</h4>
+<p class="font-body-md text-body-md text-cool-gray">Checksum verified • 24.5 MB</p>
+</div>
+</div>
+<!-- Stage 2: Complete -->
+<div class="flex items-start gap-4 relative z-10">
+<div class="w-6 h-6 rounded-full bg-success-teal flex items-center justify-center shrink-0 mt-0.5">
+<span class="material-symbols-outlined text-white text-[14px]" data-weight="fill">check</span>
+</div>
+<div>
+<h4 class="font-label-lg text-label-lg text-on-surface">Establishing BLE Handshake</h4>
+<p class="font-body-md text-body-md text-cool-gray">Secured connection established</p>
+</div>
+</div>
+<!-- Stage 3: Active -->
+<div class="flex items-start gap-4 relative z-10">
+<div class="w-6 h-6 rounded-full bg-surface-control border-2 border-warning-amber flex items-center justify-center shrink-0 mt-0.5 progress-pulse">
+<span class="w-2 h-2 bg-warning-amber rounded-full"></span>
+</div>
+<div>
+<h4 class="font-label-lg text-label-lg text-on-surface font-semibold">Transferring Wi-Fi Binary</h4>
+<p class="font-body-md text-body-md text-on-surface-variant">45% • ~2 mins remaining</p>
+</div>
+</div>
+<!-- Stage 4: Pending -->
+<div class="flex items-start gap-4 relative z-10 opacity-50">
+<div class="w-6 h-6 rounded-full bg-surface-control border-2 border-outline-variant flex items-center justify-center shrink-0 mt-0.5"></div>
+<div>
+<h4 class="font-label-lg text-label-lg text-on-surface">Flashing Bootloader</h4>
+<p class="font-body-md text-body-md text-cool-gray">Pending</p>
+</div>
+</div>
+<!-- Stage 5: Pending -->
+<div class="flex items-start gap-4 relative z-10 opacity-50">
+<div class="w-6 h-6 rounded-full bg-surface-control border-2 border-outline-variant flex items-center justify-center shrink-0 mt-0.5"></div>
+<div>
+<h4 class="font-label-lg text-label-lg text-on-surface">Installing Core OS</h4>
+<p class="font-body-md text-body-md text-cool-gray">Pending</p>
+</div>
+</div>
+<!-- Stage 6: Pending -->
+<div class="flex items-start gap-4 relative z-10 opacity-50">
+<div class="w-6 h-6 rounded-full bg-surface-control border-2 border-outline-variant flex items-center justify-center shrink-0 mt-0.5"></div>
+<div>
+<h4 class="font-label-lg text-label-lg text-on-surface">Rebooting Device</h4>
+<p class="font-body-md text-body-md text-cool-gray">Pending</p>
+</div>
+</div>
+</div>
+</div>
+</section>
+<!-- Action Area -->
+<div class="mt-8 mb-6">
+<button class="w-full h-14 bg-graphite-black text-white rounded-lg font-headline-md text-headline-md relative overflow-hidden flex items-center justify-center transition-transform active:scale-[0.98]" id="holdToUpdateBtn">
+<div class="absolute left-0 top-0 bottom-0 bg-secondary hold-btn-progress" id="holdProgress" style="width: 0%;"></div>
+<span class="relative z-10 flex items-center gap-2">
+<span class="material-symbols-outlined" data-weight="fill">system_update_alt</span>
+                    Hold to Update
+                </span>
+</button>
+<p class="text-center font-label-sm text-label-sm text-cool-gray mt-3 uppercase tracking-widest">Hold for 3 seconds to initiate</p>
+</div>
+</main>
+<script>
+        // Simple hold-to-update interaction
+        const btn = document.getElementById('holdToUpdateBtn');
+        const progress = document.getElementById('holdProgress');
+        let holdTimer;
+        let progressInterval;
+        let currentProgress = 0;
+
+        const startHold = () => {
+            currentProgress = 0;
+            progress.style.width = '0%';
+            
+            progressInterval = setInterval(() => {
+                currentProgress += 3.33; // ~100% over 3 seconds (100ms intervals)
+                if (currentProgress >= 100) {
+                    currentProgress = 100;
+                    clearInterval(progressInterval);
+                    // trigger action
+                    btn.querySelector('span.z-10').innerHTML = '<span class="material-symbols-outlined">sync</span> Updating...';
+                }
+                progress.style.width = `${currentProgress}%`;
+            }, 100);
+        };
+
+        const endHold = () => {
+            clearInterval(progressInterval);
+            if (currentProgress < 100) {
+                currentProgress = 0;
+                progress.style.width = '0%';
+            }
+        };
+
+        btn.addEventListener('mousedown', startHold);
+        btn.addEventListener('mouseup', endHold);
+        btn.addEventListener('mouseleave', endHold);
+        
+        btn.addEventListener('touchstart', (e) => { e.preventDefault(); startHold(); });
+        btn.addEventListener('touchend', endHold);
+        btn.addEventListener('touchcancel', endHold);
+    </script>
+</body></html>

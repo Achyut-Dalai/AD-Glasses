@@ -1,0 +1,156 @@
+<!DOCTYPE html>
+
+<html lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>AD Glasses Sync Center - Complete</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+  tailwind.config = {
+    darkMode: "class",
+    theme: {
+      extend: {
+        "colors": {
+                "surface-container-high": "#e6e8f1",
+                "error-container": "#ffdad6",
+                "tertiary-fixed-dim": "#ffb68c",
+                "surface": "#f9f9ff",
+                "surface-container-highest": "#e0e2eb",
+                "on-secondary": "#ffffff",
+                "on-error-container": "#93000a",
+                "on-secondary-fixed-variant": "#2e476f",
+                "on-tertiary-container": "#ffc9ac",
+                "outline": "#727783",
+                "on-surface": "#181c22",
+                "surface-container": "#ebedf7",
+                "on-secondary-container": "#3f5881",
+                "tertiary-fixed": "#ffdbc9",
+                "on-background": "#181c22",
+                "inverse-primary": "#aac7ff",
+                "inverse-surface": "#2d3037",
+                "on-secondary-fixed": "#001b3d",
+                "secondary-fixed-dim": "#aec7f6",
+                "outline-variant": "#c1c6d5",
+                "background": "#f9f9ff",
+                "primary-container": "#005ab4",
+                "surface-variant": "#e0e2eb",
+                "inverse-on-surface": "#eef0fa",
+                "secondary-container": "#b6d0ff",
+                "surface-dim": "#d7dae3",
+                "secondary-fixed": "#d6e3ff",
+                "on-primary-fixed-variant": "#00458d",
+                "surface-container-low": "#f1f3fc",
+                "on-tertiary": "#ffffff",
+                "on-primary-fixed": "#001b3e",
+                "primary-fixed-dim": "#aac7ff",
+                "on-tertiary-fixed": "#321200",
+                "on-tertiary-fixed-variant": "#753400",
+                "surface-container-lowest": "#ffffff",
+                "error": "#ba1a1a",
+                "on-surface-variant": "#424752",
+                "secondary": "#465f88",
+                "on-error": "#ffffff",
+                "tertiary-container": "#964400",
+                "surface-bright": "#f9f9ff",
+                "primary": "#004389",
+                "surface-tint": "#095db7",
+                "on-primary": "#ffffff",
+                "primary-fixed": "#d6e3ff",
+                "tertiary": "#723200",
+                "on-primary-container": "#c0d5ff"
+        },
+        "borderRadius": {
+                "DEFAULT": "0.25rem",
+                "lg": "0.5rem",
+                "xl": "0.75rem",
+                "full": "9999px"
+        },
+        "spacing": {
+                "container-padding": "1rem",
+                "section-gap": "1.5rem",
+                "element-gap": "0.75rem",
+                "grid-gutter": "1rem"
+        },
+        "fontFamily": {
+                "label-lg": ["Inter", "sans-serif"],
+                "headline-sm": ["Inter", "sans-serif"],
+                "label-sm": ["Inter", "sans-serif"],
+                "label-md": ["Inter", "sans-serif"],
+                "display-sm": ["Inter", "sans-serif"],
+                "body-md": ["Inter", "sans-serif"],
+                "body-sm": ["Inter", "sans-serif"]
+        },
+        "fontSize": {
+                "label-lg": ["0.75rem", { "lineHeight": "1rem", "fontWeight": "600" }],
+                "headline-sm": ["0.875rem", { "lineHeight": "1.25rem", "fontWeight": "600" }],
+                "label-sm": ["10px", { "lineHeight": "12px", "fontWeight": "500" }],
+                "label-md": ["11px", { "lineHeight": "1rem", "fontWeight": "500" }],
+                "display-sm": ["1.125rem", { "lineHeight": "1.5rem", "letterSpacing": "0.15em", "fontWeight": "700" }],
+                "body-md": ["0.875rem", { "lineHeight": "1.25rem", "fontWeight": "400" }],
+                "body-sm": ["0.75rem", { "lineHeight": "1rem", "fontWeight": "400" }]
+        }
+      }
+    }
+  }
+</script>
+<style>
+  body { font-family: 'Inter', sans-serif; }
+</style>
+<style>
+    body {
+      min-height: max(884px, 100dvh);
+    }
+  </style>
+  </head>
+<body class="bg-surface text-on-surface antialiased">
+<!-- Shared Component: TopAppBar (Used as the page shell for this specific flow) -->
+<div class="relative flex h-auto min-h-screen w-full flex-col bg-slate-50 group/design-root overflow-x-hidden" style='font-family: Inter, "Noto Sans", sans-serif;'>
+<div class="flex items-center bg-slate-50 p-4 pb-2 justify-between">
+<div class="text-[#0c141d] flex size-12 shrink-0 items-center" data-icon="X" data-size="24px" data-weight="regular">
+<span class="material-symbols-outlined" style="font-size: 24px;">close</span>
+</div>
+<h2 class="text-[#0c141d] text-lg font-bold leading-tight tracking-[-0.015em] flex-1 text-center pr-12">Sync Summary</h2>
+</div>
+<div class="flex flex-col px-4 py-6">
+<div class="flex flex-col items-center gap-6">
+<!-- Modified inline style to comply with strict image pipeline rules while preserving component structure -->
+<div class="bg-center bg-no-repeat aspect-video bg-cover rounded-lg w-full max-w-[360px]" data-alt="A sleek, high-tech pair of augmented reality smart glasses resting on a pristine white minimalist studio surface. Soft, high-key studio lighting emphasizes the premium graphite finish and precision optics. The environment feels modern, airy, and functional, reflecting a successful digital synchronization process. The color palette features neutral whites, soft greys, and subtle tech-blue reflections on the lenses." style="background-image: url('https://lh3.googleusercontent.com/aida-public/AB6AXuDJ0a2NAUm3x4MnxnN6TUJvPebKIoLM7RJziKzh2z0R5TEZ0PmrC3c_qUz6LNiHw-Lkp2IyZucUIStjajBCsNlNX1bmnfapcupXfR8C4D3VgCr6Ynbukims1q5vZLaVPiQHmb6MnICEOMxKBawy44Kl_XiwW5kFGl0ZYL50vzMYR7wyddhACPpkoB26klWyJnO9KKIWxljT2ZZmH2NshShErbUf7e87ObGgX53B1eMwCu0hWBvOlwAa');"></div>
+<p class="text-[#0c141d] text-lg font-bold leading-tight tracking-[-0.015em] max-w-[480px] text-center">15 items imported successfully.</p>
+</div>
+</div>
+<div class="flex items-center gap-4 bg-slate-50 px-4 min-h-14">
+<div class="text-[#0c141d] flex items-center justify-center rounded-lg bg-[#e6edf4] shrink-0 size-10" data-icon="CheckCircle" data-size="24px" data-weight="regular">
+<span class="material-symbols-outlined text-primary" style="font-size: 24px;">check_circle</span>
+</div>
+<p class="text-[#0c141d] text-base font-normal leading-normal flex-1 truncate">Imported: 15</p>
+</div>
+<div class="flex items-center gap-4 bg-slate-50 px-4 min-h-14">
+<div class="text-[#0c141d] flex items-center justify-center rounded-lg bg-[#e6edf4] shrink-0 size-10" data-icon="Info" data-size="24px" data-weight="regular">
+<span class="material-symbols-outlined text-outline" style="font-size: 24px;">info</span>
+</div>
+<p class="text-[#0c141d] text-base font-normal leading-normal flex-1 truncate">Skipped (Duplicates): 2</p>
+</div>
+<div class="flex items-center gap-4 bg-slate-50 px-4 min-h-14">
+<div class="text-[#0c141d] flex items-center justify-center rounded-lg bg-[#e6edf4] shrink-0 size-10" data-icon="WarningCircle" data-size="24px" data-weight="regular">
+<span class="material-symbols-outlined text-error" style="font-size: 24px;">error</span>
+</div>
+<p class="text-[#0c141d] text-base font-normal leading-normal flex-1 truncate">Failed: 1</p>
+</div>
+<div class="h-5 bg-slate-50"></div>
+<!-- New Section: Actions & Footer (Themed) -->
+<div class="mt-auto flex flex-col px-container-padding pb-8 pt-4 gap-element-gap bg-slate-50">
+<button class="w-full flex items-center justify-center bg-primary text-on-primary rounded-full py-3.5 px-6 font-label-lg shadow-sm transition-opacity hover:opacity-90 active:opacity-80">
+        Open Library
+      </button>
+<button class="w-full flex items-center justify-center border border-outline text-primary rounded-full py-3.5 px-6 font-label-lg transition-colors hover:bg-surface-container-low active:bg-surface-container">
+        Retry failed items
+      </button>
+<p class="text-body-sm text-on-surface-variant text-center mt-6 px-2">
+        Files remain on your glasses until you choose to remove them in Device Center.
+      </p>
+</div>
+</div>
+</body></html>

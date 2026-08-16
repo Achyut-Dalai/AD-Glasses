@@ -1,0 +1,299 @@
+<!DOCTYPE html>
+
+<html class="h-full" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>AD Glasses - Sync Center</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Hanken+Grotesk:wght@400;500;600;700;800;900&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+          darkMode: "class",
+          theme: {
+            extend: {
+              "colors": {
+                      "secondary-fixed-dim": "#aac7ff",
+                      "secondary": "#005db8",
+                      "on-primary": "#ffffff",
+                      "on-secondary": "#ffffff",
+                      "outline-variant": "#cfc4c5",
+                      "cool-gray": "#717785",
+                      "surface": "#f9f9ff",
+                      "secondary-fixed": "#d6e3ff",
+                      "primary": "#000000",
+                      "primary-fixed": "#e2e2e2",
+                      "on-tertiary-fixed-variant": "#444749",
+                      "warning-amber": "#FFBF00",
+                      "tertiary": "#000000",
+                      "on-tertiary": "#ffffff",
+                      "on-error-container": "#93000a",
+                      "surface-dim": "#d4daea",
+                      "tertiary-fixed": "#e1e2e4",
+                      "on-tertiary-container": "#828486",
+                      "surface-tint": "#5e5e5e",
+                      "inverse-surface": "#2a313d",
+                      "surface-container-low": "#f0f3ff",
+                      "surface-container-highest": "#dde2f2",
+                      "on-primary-fixed": "#1b1b1b",
+                      "inverse-primary": "#c6c6c6",
+                      "background": "#f9f9ff",
+                      "surface-variant": "#dde2f2",
+                      "secondary-container": "#4090fe",
+                      "on-primary-fixed-variant": "#474747",
+                      "electric-blue": "#1978E5",
+                      "surface-container-high": "#e2e8f8",
+                      "outline": "#7e7576",
+                      "on-secondary-fixed": "#001b3e",
+                      "on-secondary-fixed-variant": "#00458d",
+                      "canvas": "#F6F7F9",
+                      "on-secondary-container": "#002958",
+                      "surface-container": "#e8eefe",
+                      "surface-bright": "#f9f9ff",
+                      "graphite-black": "#000000",
+                      "primary-container": "#1b1b1b",
+                      "on-surface": "#161c27",
+                      "surface-control": "#FFFFFF",
+                      "on-background": "#161c27",
+                      "success-teal": "#008080",
+                      "on-tertiary-fixed": "#191c1e",
+                      "on-error": "#ffffff",
+                      "surface-container-lowest": "#ffffff",
+                      "on-primary-container": "#848484",
+                      "tertiary-container": "#191c1e",
+                      "primary-fixed-dim": "#c6c6c6",
+                      "error-container": "#ffdad6",
+                      "inverse-on-surface": "#ecf0ff",
+                      "error": "#ba1a1a",
+                      "on-surface-variant": "#4c4546",
+                      "tertiary-fixed-dim": "#c5c7c8"
+              },
+              "borderRadius": {
+                      "DEFAULT": "0.25rem",
+                      "lg": "0.5rem",
+                      "xl": "0.75rem",
+                      "full": "9999px"
+              },
+              "spacing": {
+                      "gap-xs": "4px",
+                      "hero-stage": "220px",
+                      "base": "4px",
+                      "margin-page": "16px",
+                      "touch-target": "48px",
+                      "gap-sm": "8px"
+              },
+              "fontFamily": {
+                      "body-lg": [
+                              "Hanken Grotesk"
+                      ],
+                      "label-md": [
+                              "Hanken Grotesk"
+                      ],
+                      "headline-md": [
+                              "Hanken Grotesk"
+                      ],
+                      "label-lg": [
+                              "Hanken Grotesk"
+                      ],
+                      "body-md": [
+                              "Hanken Grotesk"
+                      ],
+                      "headline-lg": [
+                              "Hanken Grotesk"
+                      ],
+                      "label-sm": [
+                              "Hanken Grotesk"
+                      ]
+              },
+              "fontSize": {
+                      "body-lg": [
+                              "16px",
+                              {
+                                      "lineHeight": "24px",
+                                      "fontWeight": "400"
+                              }
+                      ],
+                      "label-md": [
+                              "12px",
+                              {
+                                      "lineHeight": "16px",
+                                      "fontWeight": "500"
+                              }
+                      ],
+                      "headline-md": [
+                              "20px",
+                              {
+                                      "lineHeight": "28px",
+                                      "letterSpacing": "-0.01em",
+                                      "fontWeight": "600"
+                              }
+                      ],
+                      "label-lg": [
+                              "14px",
+                              {
+                                      "lineHeight": "20px",
+                                      "fontWeight": "500"
+                              }
+                      ],
+                      "body-md": [
+                              "14px",
+                              {
+                                      "lineHeight": "20px",
+                                      "fontWeight": "400"
+                              }
+                      ],
+                      "headline-lg": [
+                              "24px",
+                              {
+                                      "lineHeight": "32px",
+                                      "letterSpacing": "-0.02em",
+                                      "fontWeight": "600"
+                              }
+                      ],
+                      "label-sm": [
+                              "11px",
+                              {
+                                      "lineHeight": "16px",
+                                      "letterSpacing": "0.05em",
+                                      "fontWeight": "500"
+                              }
+                      ]
+              }
+      },
+          },
+        }
+      </script>
+<style>
+        .progress-ring__circle {
+            transition: stroke-dashoffset 0.35s;
+            transform: rotate(-90deg);
+            transform-origin: 50% 50%;
+        }
+      </style>
+<style>
+    body {
+      min-height: max(884px, 100dvh);
+    }
+  </style>
+<style>
+    body {
+      min-height: max(884px, 100dvh);
+    }
+  </style>
+  </head>
+<body class="bg-canvas text-on-surface h-full flex flex-col antialiased selection:bg-electric-blue selection:text-on-primary">
+<!-- TopAppBar (Transactional - Hidden Nav, just title and back/close intent) -->
+<header class="flex justify-between items-center px-6 py-4 w-full bg-surface/80 backdrop-blur-md sticky top-0 z-40">
+<button aria-label="Close Sync" class="w-[48px] h-[48px] flex items-center justify-center text-on-surface hover:bg-surface-container-low transition-colors rounded-full">
+<span class="material-symbols-outlined" data-icon="close">close</span>
+</button>
+<h1 class="font-headline-md text-headline-md text-on-surface font-bold text-center flex-1">Sync Center</h1>
+<div class="w-[48px] h-[48px]"></div> <!-- Spacer for centering -->
+</header>
+<main class="flex-1 flex flex-col px-margin-page pb-24 overflow-y-auto">
+<!-- Circular Progress Gauge Section -->
+<section class="flex flex-col items-center justify-center mt-12 mb-8 relative">
+<div class="relative w-64 h-64 flex items-center justify-center">
+<svg class="w-full h-full" viewbox="0 0 120 120">
+<!-- Background Circle -->
+<circle class="text-surface-container-high stroke-current" cx="60" cy="60" fill="transparent" r="54" stroke-width="4"></circle>
+<!-- Progress Circle (Animated via inline JS) -->
+<circle class="text-electric-blue stroke-current progress-ring__circle" cx="60" cy="60" fill="transparent" id="progressCircle" r="54" stroke-dasharray="339.292" stroke-dashoffset="108.57" stroke-linecap="round" stroke-width="6"></circle>
+</svg>
+<div class="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
+<span class="font-headline-lg text-[48px] leading-[48px] font-bold text-on-surface tracking-tighter" id="progressText">68%</span>
+<span class="font-label-md text-label-md text-cool-gray mt-2 uppercase tracking-widest">Transferring</span>
+</div>
+<!-- Ambient Halo Effect -->
+<div class="absolute inset-0 rounded-full bg-electric-blue opacity-[0.03] blur-2xl scale-125 -z-10"></div>
+</div>
+<div class="mt-8 text-center flex flex-col items-center gap-2">
+<div class="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-surface border border-outline-variant/30">
+<span class="w-2 h-2 rounded-full bg-electric-blue animate-pulse"></span>
+<span class="font-label-sm text-label-sm text-on-surface-variant uppercase tracking-widest">Syncing 14 Items</span>
+</div>
+<p class="font-body-md text-body-md text-cool-gray mt-1">Estimated time remaining: 2m 45s</p>
+</div>
+</section>
+<!-- Detailed Breakdown -->
+<section class="flex flex-col gap-4 mb-auto">
+<!-- Current Item Card -->
+<div class="bg-surface rounded-xl p-4 border border-outline-variant/20 shadow-sm flex flex-col gap-3">
+<div class="flex justify-between items-center">
+<span class="font-label-md text-label-md text-cool-gray uppercase tracking-wider">Current File</span>
+<span class="font-label-sm text-label-sm text-on-surface-variant bg-surface-container-low px-2 py-0.5 rounded-full">Resumable</span>
+</div>
+<div class="flex items-center gap-4">
+<div class="w-12 h-12 bg-surface-container-high rounded-lg flex items-center justify-center text-secondary">
+<span class="material-symbols-outlined" data-icon="movie" data-weight="fill" style="font-variation-settings: 'FILL' 1;">movie</span>
+</div>
+<div class="flex-1 min-w-0">
+<h3 class="font-headline-md text-[16px] leading-tight text-on-surface truncate">Video_01.mp4</h3>
+<div class="flex justify-between items-center mt-1">
+<span class="font-label-sm text-label-sm text-cool-gray">1.2 GB / 2.4 GB</span>
+<span class="font-label-sm text-label-sm text-on-surface font-semibold">50%</span>
+</div>
+<!-- Mini progress bar -->
+<div class="h-1 w-full bg-surface-container-high rounded-full mt-2 overflow-hidden">
+<div class="h-full bg-electric-blue w-1/2 rounded-full"></div>
+</div>
+</div>
+</div>
+</div>
+<!-- Queue Summary (Bento Style) -->
+<div class="grid grid-cols-2 gap-4">
+<div class="bg-surface rounded-xl p-4 border border-outline-variant/20 shadow-sm flex flex-col justify-between aspect-square">
+<span class="material-symbols-outlined text-cool-gray mb-2" data-icon="image">image</span>
+<div>
+<p class="font-headline-md text-headline-md text-on-surface">12</p>
+<p class="font-label-md text-label-md text-cool-gray">Photos</p>
+</div>
+</div>
+<div class="bg-surface rounded-xl p-4 border border-outline-variant/20 shadow-sm flex flex-col justify-between aspect-square">
+<span class="material-symbols-outlined text-cool-gray mb-2" data-icon="data_usage">data_usage</span>
+<div>
+<p class="font-headline-md text-headline-md text-on-surface">4.2 GB</p>
+<p class="font-label-md text-label-md text-cool-gray">Total Data</p>
+</div>
+</div>
+</div>
+</section>
+</main>
+<!-- Bottom Action Area -->
+<div class="fixed bottom-0 w-full px-margin-page pb-8 pt-4 bg-gradient-to-t from-canvas via-canvas to-transparent z-40">
+<button class="w-full h-touch-target bg-surface text-error border border-error-container rounded-lg font-label-lg text-label-lg font-semibold flex items-center justify-center gap-2 hover:bg-error-container transition-colors active:scale-[0.98]">
+<span class="material-symbols-outlined" data-icon="cancel">cancel</span>
+            Cancel Sync
+        </button>
+</div>
+<script>
+        // Simple script to animate the progress circle slightly to simulate activity
+        document.addEventListener('DOMContentLoaded', () => {
+            const circle = document.getElementById('progressCircle');
+            const radius = circle.r.baseVal.value;
+            const circumference = radius * 2 * Math.PI;
+            
+            circle.style.strokeDasharray = `${circumference} ${circumference}`;
+            circle.style.strokeDashoffset = `${circumference}`;
+
+            function setProgress(percent) {
+                const offset = circumference - percent / 100 * circumference;
+                circle.style.strokeDashoffset = offset;
+            }
+
+            // Initial setting
+            setTimeout(() => setProgress(68), 100);
+            
+            // Simulate very slow progress
+            let currentProgress = 68;
+            setInterval(() => {
+                if(currentProgress < 100) {
+                    currentProgress += 0.5;
+                    setProgress(currentProgress);
+                    document.getElementById('progressText').innerText = Math.floor(currentProgress) + '%';
+                }
+            }, 3000);
+        });
+    </script>
+</body></html>

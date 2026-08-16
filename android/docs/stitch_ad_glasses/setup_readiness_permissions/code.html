@@ -1,0 +1,228 @@
+<!DOCTYPE html>
+
+<html class="light" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" name="viewport"/>
+<title>Glasses Setup Checklist</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    colors: {
+                        "surface-container-lowest": "#ffffff",
+                        "on-primary-container": "#c0d5ff",
+                        "outline": "#727783",
+                        "surface-bright": "#f9f9ff",
+                        "on-tertiary-fixed-variant": "#753400",
+                        "on-secondary": "#ffffff",
+                        "on-background": "#181c22",
+                        "on-primary-fixed-variant": "#00458d",
+                        "tertiary-container": "#964400",
+                        "on-tertiary-fixed": "#321200",
+                        "primary-fixed-dim": "#aac7ff",
+                        "outline-variant": "#c2c6d4",
+                        "surface": "#f9f9ff",
+                        "on-surface": "#181c22",
+                        "on-surface-variant": "#424752",
+                        "secondary-fixed": "#d6e3ff",
+                        "background": "#f9f9ff",
+                        "inverse-on-surface": "#eef0fa",
+                        "primary-container": "#0a73e0",
+                        "secondary": "#465f88",
+                        "on-primary-fixed": "#001b3e",
+                        "secondary-fixed-dim": "#aec7f6",
+                        "on-tertiary-container": "#ffc9ac",
+                        "surface-container": "#ebedf7",
+                        "on-secondary-fixed-variant": "#2e476f",
+                        "error": "#ba1a1a",
+                        "surface-container-highest": "#e0e2eb",
+                        "secondary-container": "#b6d0ff",
+                        "surface-container-high": "#e6e8f1",
+                        "on-secondary-fixed": "#001b3d",
+                        "surface-dim": "#d7dae3",
+                        "inverse-surface": "#2d3037",
+                        "inverse-primary": "#aac7ff",
+                        "tertiary-fixed": "#ffdbc9",
+                        "primary": "#004389",
+                        "on-tertiary": "#ffffff",
+                        "on-error": "#ffffff",
+                        "surface-variant": "#e0e2eb",
+                        "tertiary": "#723200",
+                        "on-error-container": "#93000a",
+                        "primary-fixed": "#d6e3ff",
+                        "surface-container-low": "#f1f3fc",
+                        "surface-tint": "#095db7",
+                        "on-secondary-container": "#3f5881",
+                        "error-container": "#ffdad6",
+                        "tertiary-fixed-dim": "#ffb68c",
+                        "on-primary": "#ffffff"
+                    },
+                    borderRadius: {
+                        DEFAULT: "0.25rem",
+                        lg: "0.5rem",
+                        xl: "0.75rem",
+                        full: "9999px"
+                    },
+                    spacing: {
+                        "element-gap": "0.75rem",
+                        "container-padding": "1rem",
+                        "section-gap": "1.5rem",
+                        "grid-gutter": "1rem"
+                    },
+                    fontFamily: {
+                        "label-sm": ["Inter"],
+                        "label-md": ["Inter"],
+                        "label-lg": ["Inter"],
+                        "body-sm": ["Inter"],
+                        "body-md": ["Inter"],
+                        "display-sm": ["Inter"],
+                        "headline-sm": ["Inter"]
+                    },
+                    fontSize: {
+                        "label-sm": ["10px", { lineHeight: "12px", fontWeight: "500" }],
+                        "label-md": ["11px", { lineHeight: "1rem", fontWeight: "500" }],
+                        "label-lg": ["0.75rem", { lineHeight: "1rem", fontWeight: "600" }],
+                        "body-sm": ["0.75rem", { lineHeight: "1rem", fontWeight: "400" }],
+                        "body-md": ["0.875rem", { lineHeight: "1.25rem", fontWeight: "400" }],
+                        "display-sm": ["1.125rem", { lineHeight: "1.5rem", letterSpacing: "0.15em", fontWeight: "700" }],
+                        "headline-sm": ["0.875rem", { lineHeight: "1.25rem", fontWeight: "600" }]
+                    }
+                }
+            }
+        }
+    </script>
+<style>
+        body { font-family: 'Inter', sans-serif; -webkit-tap-highlight-color: transparent; }
+        .pb-safe { padding-bottom: env(safe-area-inset-bottom, 20px); }
+        .pt-safe { padding-top: env(safe-area-inset-top, 20px); }
+    </style>
+<style>
+    body {
+      min-height: max(884px, 100dvh);
+    }
+  </style>
+  </head>
+<body class="bg-background text-on-background min-h-screen flex flex-col pt-safe pb-safe selection:bg-primary-container selection:text-on-primary-container">
+<!-- TopAppBar -->
+<header class="bg-surface w-full top-0 sticky z-40 transition-colors duration-200">
+<div class="flex items-center justify-between px-4 py-2 w-full max-w-5xl mx-auto">
+<button aria-label="Close setup" class="w-10 h-10 flex items-center justify-center rounded-full hover:bg-surface-container-highest/50 text-on-surface-variant transition-colors group focus:outline-none focus:ring-2 focus:ring-primary/50">
+<span class="material-symbols-outlined transition-transform group-active:scale-95" data-icon="close">close</span>
+</button>
+<h1 class="font-display-sm text-display-sm text-on-surface">Glasses Setup</h1>
+<button aria-label="Help" class="w-10 h-10 flex items-center justify-center rounded-full hover:bg-surface-container-highest/50 text-on-surface-variant transition-colors group focus:outline-none focus:ring-2 focus:ring-primary/50">
+<span class="material-symbols-outlined transition-transform group-active:scale-95" data-icon="help">help</span>
+</button>
+</div>
+</header>
+<main class="flex-grow flex flex-col px-4 max-w-md mx-auto w-full pb-24">
+<!-- Progress Header -->
+<div class="py-6 space-y-4">
+<div class="flex items-center justify-between px-2">
+<div class="flex flex-col items-center">
+<div class="w-8 h-8 rounded-full bg-primary text-on-primary flex items-center justify-center font-label-md text-label-md shadow-sm">1</div>
+<span class="mt-2 font-label-sm text-label-sm text-primary">Prepare</span>
+</div>
+<div class="flex-grow h-[2px] bg-surface-dim mx-2 rounded-full relative">
+<div class="absolute left-0 top-0 h-full bg-primary rounded-full w-0"></div>
+</div>
+<div class="flex flex-col items-center">
+<div class="w-8 h-8 rounded-full bg-surface-container-highest text-on-surface-variant flex items-center justify-center font-label-md text-label-md border border-outline-variant/30">2</div>
+<span class="mt-2 font-label-sm text-label-sm text-on-surface-variant">Find</span>
+</div>
+<div class="flex-grow h-[2px] bg-surface-dim mx-2 rounded-full"></div>
+<div class="flex flex-col items-center">
+<div class="w-8 h-8 rounded-full bg-surface-container-highest text-on-surface-variant flex items-center justify-center font-label-md text-label-md border border-outline-variant/30">3</div>
+<span class="mt-2 font-label-sm text-label-sm text-on-surface-variant">Confirm</span>
+</div>
+</div>
+</div>
+<!-- Content Area -->
+<div class="space-y-6 flex-grow">
+<div class="space-y-1">
+<h2 class="font-headline-sm text-headline-sm text-on-surface">Checklist for initial readiness</h2>
+<p class="font-body-md text-body-md text-on-surface-variant">We need a few permissions to find and connect to your glasses.</p>
+</div>
+<!-- Permission List -->
+<div class="space-y-3">
+<!-- Nearby Devices (Required Initial State) -->
+<div class="p-4 rounded-xl bg-surface-container-low border border-outline-variant/30 shadow-sm flex items-start space-x-4">
+<div class="mt-1 flex-shrink-0 text-primary">
+<span class="material-symbols-outlined" data-icon="settings_bluetooth">settings_bluetooth</span>
+</div>
+<div class="flex-grow min-w-0">
+<div class="flex items-center justify-between mb-1">
+<h3 class="font-label-lg text-label-lg text-on-surface truncate pr-2">Nearby devices</h3>
+<span class="flex-shrink-0 px-2 py-0.5 rounded-full bg-surface-container-highest text-on-surface-variant font-label-sm text-label-sm">Not requested</span>
+</div>
+<p class="font-body-sm text-body-sm text-on-surface-variant mb-2">Required for discovery</p>
+<button class="px-4 py-1.5 rounded-full bg-primary text-on-primary font-label-md text-label-md hover:bg-surface-tint active:scale-95 transition-all focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2">Allow access</button>
+</div>
+</div>
+<!-- Bluetooth -->
+<div class="p-4 rounded-xl bg-surface-container-lowest border border-outline-variant/20 flex items-start space-x-4 opacity-70">
+<div class="mt-1 flex-shrink-0 text-on-surface-variant">
+<span class="material-symbols-outlined" data-icon="bluetooth">bluetooth</span>
+</div>
+<div class="flex-grow min-w-0">
+<div class="flex items-center justify-between mb-1">
+<h3 class="font-label-lg text-label-lg text-on-surface truncate pr-2">Bluetooth</h3>
+<span class="flex-shrink-0 px-2 py-0.5 rounded-full bg-surface-container text-on-surface-variant font-label-sm text-label-sm">Pending</span>
+</div>
+<p class="font-body-sm text-body-sm text-on-surface-variant">For control</p>
+</div>
+</div>
+<!-- Notifications -->
+<div class="p-4 rounded-xl bg-surface-container-lowest border border-outline-variant/20 flex items-start space-x-4 opacity-70">
+<div class="mt-1 flex-shrink-0 text-on-surface-variant">
+<span class="material-symbols-outlined" data-icon="notifications">notifications</span>
+</div>
+<div class="flex-grow min-w-0">
+<div class="flex items-center justify-between mb-1">
+<h3 class="font-label-lg text-label-lg text-on-surface truncate pr-2">Notifications</h3>
+<span class="flex-shrink-0 px-2 py-0.5 rounded-full bg-surface-container text-on-surface-variant font-label-sm text-label-sm">Pending</span>
+</div>
+<p class="font-body-sm text-body-sm text-on-surface-variant">Updates</p>
+</div>
+</div>
+<!-- Microphone -->
+<div class="p-4 rounded-xl bg-surface-container-lowest border border-outline-variant/20 flex items-start space-x-4 opacity-70">
+<div class="mt-1 flex-shrink-0 text-on-surface-variant">
+<span class="material-symbols-outlined" data-icon="mic">mic</span>
+</div>
+<div class="flex-grow min-w-0">
+<div class="flex items-center justify-between mb-1">
+<h3 class="font-label-lg text-label-lg text-on-surface truncate pr-2">Microphone</h3>
+<span class="flex-shrink-0 px-2 py-0.5 rounded-full bg-surface-container text-on-surface-variant font-label-sm text-label-sm">Pending</span>
+</div>
+<p class="font-body-sm text-body-sm text-on-surface-variant">Assistant</p>
+</div>
+</div>
+<!-- Photos and media -->
+<div class="p-4 rounded-xl bg-surface-container-lowest border border-outline-variant/20 flex items-start space-x-4 opacity-70">
+<div class="mt-1 flex-shrink-0 text-on-surface-variant">
+<span class="material-symbols-outlined" data-icon="photo_library">photo_library</span>
+</div>
+<div class="flex-grow min-w-0">
+<div class="flex items-center justify-between mb-1">
+<h3 class="font-label-lg text-label-lg text-on-surface truncate pr-2">Photos and media</h3>
+<span class="flex-shrink-0 px-2 py-0.5 rounded-full bg-surface-container text-on-surface-variant font-label-sm text-label-sm">Pending</span>
+</div>
+<p class="font-body-sm text-body-sm text-on-surface-variant">Library</p>
+</div>
+</div>
+</div>
+</div>
+</main>
+<!-- Bottom Action Area (Hidden normally, shown for setup flows) -->
+<div class="fixed bottom-0 w-full z-50 pb-safe bg-surface-container-lowest border-t border-outline-variant/30 px-4 py-4 md:hidden">
+<button class="w-full h-12 rounded-full bg-surface-container-highest text-on-surface-variant font-label-lg text-label-lg flex items-center justify-center opacity-50 cursor-not-allowed" disabled="">
+            Scan for glasses
+        </button>
+</div>
+</body></html>

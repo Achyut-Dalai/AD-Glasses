@@ -1,0 +1,340 @@
+<!DOCTYPE html>
+
+<html class="light" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Assistant - Structured Knowledge</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Hanken+Grotesk:wght@400;500;600;700&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+          darkMode: "class",
+          theme: {
+            extend: {
+              "colors": {
+                      "primary-fixed-dim": "#c6c6c6",
+                      "success-teal": "#008080",
+                      "on-secondary-fixed": "#001b3e",
+                      "surface-control": "#FFFFFF",
+                      "primary": "#000000",
+                      "on-tertiary": "#ffffff",
+                      "tertiary-fixed": "#e1e2e4",
+                      "on-secondary": "#ffffff",
+                      "tertiary-container": "#191c1e",
+                      "primary-fixed": "#e2e2e2",
+                      "on-error": "#ffffff",
+                      "on-primary-fixed": "#1b1b1b",
+                      "outline": "#7e7576",
+                      "surface-variant": "#dde2f2",
+                      "surface-container-highest": "#dde2f2",
+                      "graphite-black": "#000000",
+                      "warning-amber": "#FFBF00",
+                      "error": "#ba1a1a",
+                      "on-secondary-fixed-variant": "#00458d",
+                      "surface-container-high": "#e2e8f8",
+                      "cool-gray": "#717785",
+                      "electric-blue": "#1978E5",
+                      "surface": "#f9f9ff",
+                      "secondary-fixed-dim": "#aac7ff",
+                      "on-surface": "#161c27",
+                      "on-tertiary-container": "#828486",
+                      "on-primary-fixed-variant": "#474747",
+                      "on-secondary-container": "#002958",
+                      "inverse-on-surface": "#ecf0ff",
+                      "secondary-fixed": "#d6e3ff",
+                      "primary-container": "#1b1b1b",
+                      "secondary-container": "#4090fe",
+                      "background": "#f9f9ff",
+                      "on-primary-container": "#848484",
+                      "on-surface-variant": "#4c4546",
+                      "tertiary-fixed-dim": "#c5c7c8",
+                      "surface-dim": "#d4daea",
+                      "surface-bright": "#f9f9ff",
+                      "on-error-container": "#93000a",
+                      "on-background": "#161c27",
+                      "surface-container": "#e8eefe",
+                      "surface-container-lowest": "#ffffff",
+                      "error-container": "#ffdad6",
+                      "outline-variant": "#cfc4c5",
+                      "inverse-surface": "#2a313d",
+                      "surface-container-low": "#f0f3ff",
+                      "secondary": "#005db8",
+                      "tertiary": "#000000",
+                      "on-tertiary-fixed-variant": "#444749",
+                      "on-tertiary-fixed": "#191c1e",
+                      "on-primary": "#ffffff",
+                      "inverse-primary": "#c6c6c6",
+                      "canvas": "#F6F7F9",
+                      "surface-tint": "#5e5e5e"
+              },
+              "borderRadius": {
+                      "DEFAULT": "0.25rem",
+                      "lg": "0.5rem",
+                      "xl": "0.75rem",
+                      "full": "9999px"
+              },
+              "spacing": {
+                      "gap-xs": "4px",
+                      "gap-sm": "8px",
+                      "touch-target": "48px",
+                      "hero-stage": "220px",
+                      "base": "4px",
+                      "margin-page": "16px"
+              },
+              "fontFamily": {
+                      "label-md": [
+                              "Hanken Grotesk"
+                      ],
+                      "label-sm": [
+                              "Hanken Grotesk"
+                      ],
+                      "body-lg": [
+                              "Hanken Grotesk"
+                      ],
+                      "label-lg": [
+                              "Hanken Grotesk"
+                      ],
+                      "headline-lg": [
+                              "Hanken Grotesk"
+                      ],
+                      "body-md": [
+                              "Hanken Grotesk"
+                      ],
+                      "headline-md": [
+                              "Hanken Grotesk"
+                      ]
+              },
+              "fontSize": {
+                      "label-md": [
+                              "12px",
+                              {
+                                      "lineHeight": "16px",
+                                      "fontWeight": "500"
+                              }
+                      ],
+                      "label-sm": [
+                              "11px",
+                              {
+                                      "lineHeight": "16px",
+                                      "letterSpacing": "0.05em",
+                                      "fontWeight": "500"
+                              }
+                      ],
+                      "body-lg": [
+                              "16px",
+                              {
+                                      "lineHeight": "24px",
+                                      "fontWeight": "400"
+                              }
+                      ],
+                      "label-lg": [
+                              "14px",
+                              {
+                                      "lineHeight": "20px",
+                                      "fontWeight": "500"
+                              }
+                      ],
+                      "headline-lg": [
+                              "24px",
+                              {
+                                      "lineHeight": "32px",
+                                      "letterSpacing": "-0.02em",
+                                      "fontWeight": "600"
+                              }
+                      ],
+                      "body-md": [
+                              "14px",
+                              {
+                                      "lineHeight": "20px",
+                                      "fontWeight": "400"
+                              }
+                      ],
+                      "headline-md": [
+                              "20px",
+                              {
+                                      "lineHeight": "28px",
+                                      "letterSpacing": "-0.01em",
+                                      "fontWeight": "600"
+                              }
+                      ]
+              }
+            }
+          }
+        }
+    </script>
+<style>
+        body {
+            font-family: 'Hanken Grotesk', sans-serif;
+            background-color: theme('colors.canvas');
+            color: theme('colors.on-background');
+        }
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+        }
+        .material-symbols-outlined.fill {
+            font-variation-settings: 'FILL' 1;
+        }
+    </style>
+<style>
+    body {
+      min-height: max(884px, 100dvh);
+    }
+  </style>
+  </head>
+<body class="bg-canvas min-h-screen flex flex-col pb-20 md:pb-0 font-body-md text-on-background antialiased">
+<!-- TopAppBar -->
+<header class="w-full top-0 sticky z-40 bg-background transition-shadow duration-300" id="top-app-bar">
+<div class="flex justify-between items-center px-margin-page h-touch-target w-full max-w-screen-xl mx-auto">
+<button aria-label="Menu" class="w-10 h-10 flex items-center justify-center rounded-full hover:bg-surface-variant transition-colors active:scale-95 text-primary">
+<span class="material-symbols-outlined text-2xl" data-icon="menu">menu</span>
+</button>
+<div class="flex items-center gap-2">
+<img alt="Assistant Logo" class="h-6 w-6 object-contain" src="https://lh3.googleusercontent.com/aida/AP1WRLvf9P6GqbyZ-mEkmoK8rz1k4WZ_EVB3-QXNxJuPNPBXhE-AMcGFIXlzvBQWNlt3ht9vPSoOFxSjqiRT8kFzphsTfDkWvcbiDljU1yXVJeoxk4TUnAs9kZEatcm-OfBZ0TNpNBzRaov9gcSoBbsvDbZ_YrX-lSgtxdTWEHkV-9HezubKmLzI_tbME-U8jAy8KRpVzCORgiZhMWnXEEtDgcGJX8_oVjbr3pJ3HFdSS7WBtkk3Npy4i4nqUQ"/>
+<h1 class="font-headline-md text-headline-md font-bold text-graphite-black tracking-tight">Assistant</h1>
+</div>
+<button aria-label="Settings" class="w-10 h-10 flex items-center justify-center rounded-full hover:bg-surface-variant transition-colors active:scale-95 text-primary">
+<span class="material-symbols-outlined text-2xl" data-icon="settings">settings</span>
+</button>
+</div>
+</header>
+<!-- Main Content Canvas -->
+<main class="flex-grow w-full max-w-2xl mx-auto px-margin-page py-6 flex flex-col gap-6">
+<!-- User Query Bubble -->
+<div class="self-end flex max-w-[85%]">
+<div class="bg-surface-control text-on-surface px-4 py-3 rounded-2xl rounded-tr-sm shadow-sm border border-outline-variant/30 flex flex-col gap-1">
+<p class="font-body-lg text-body-lg">Summarize my last meeting.</p>
+<span class="font-label-sm text-label-sm text-cool-gray self-end mt-1">10:42 AM</span>
+</div>
+</div>
+<!-- Assistant Response Container -->
+<div class="self-start flex flex-col w-full max-w-[95%] sm:max-w-[90%] gap-3">
+<!-- Metadata & Privacy Tag -->
+<div class="flex items-center gap-2 pl-2">
+<span class="material-symbols-outlined text-[18px] text-electric-blue fill" data-icon="sparkles">auto_awesome</span>
+<span class="font-label-sm text-label-sm text-cool-gray uppercase tracking-wider flex items-center gap-1">
+                    Your cloud <span class="w-1 h-1 rounded-full bg-cool-gray inline-block mx-1"></span> Gemini 1.5 Pro
+                </span>
+</div>
+<!-- Structured Knowledge Card -->
+<div class="bg-surface-control rounded-xl p-5 shadow-[0_2px_8px_rgba(0,0,0,0.04)] border border-outline-variant/40 flex flex-col gap-5">
+<!-- Audio Player Inline -->
+<div class="bg-surface rounded-lg p-3 border border-outline-variant/50 flex items-center gap-3">
+<button class="w-10 h-10 rounded-full bg-graphite-black text-on-primary flex items-center justify-center hover:opacity-90 active:scale-95 transition-all shadow-sm">
+<span class="material-symbols-outlined fill text-xl" data-icon="play_arrow">play_arrow</span>
+</button>
+<div class="flex-grow flex flex-col">
+<div class="flex justify-between items-end mb-1">
+<span class="font-label-md text-label-md text-on-surface font-semibold">Weekly Sync: Project Alpha</span>
+<span class="font-label-sm text-label-sm text-cool-gray">00:00 / 45:12</span>
+</div>
+<!-- Fake Waveform/Scrubber -->
+<div class="w-full h-1.5 bg-surface-variant rounded-full overflow-hidden flex relative">
+<div class="absolute left-0 top-0 bottom-0 w-0 bg-electric-blue rounded-full"></div>
+</div>
+</div>
+</div>
+<hr class="border-t border-outline-variant/30 w-full"/>
+<!-- Summary Content -->
+<div class="flex flex-col gap-4">
+<h2 class="font-headline-md text-headline-md font-semibold text-graphite-black">Meeting Summary</h2>
+<p class="font-body-md text-body-md text-on-surface-variant leading-relaxed">
+                        The team discussed the upcoming Q3 milestones for Project Alpha. Engineering reported a slight delay in backend integration, while Design finalized the new mobile UI mockups. Marketing needs finalized assets by Friday to prepare the launch campaign.
+                    </p>
+<!-- Bento-style structured blocks -->
+<div class="grid grid-cols-1 sm:grid-cols-2 gap-3 mt-2">
+<!-- Key Takeaways -->
+<div class="bg-surface p-4 rounded-lg border border-outline-variant/30">
+<h3 class="font-label-md text-label-md font-semibold text-on-surface flex items-center gap-1.5 mb-2">
+<span class="material-symbols-outlined text-[16px] text-electric-blue" data-icon="insights">insights</span>
+                                Key Takeaways
+                            </h3>
+<ul class="font-body-md text-body-md text-on-surface-variant space-y-1.5 pl-5 list-disc marker:text-cool-gray/50">
+<li>Backend integration delayed by 2 days.</li>
+<li>Design mockups approved for final dev handoff.</li>
+<li>Launch date remains firm despite slight delays.</li>
+</ul>
+</div>
+<!-- Action Items -->
+<div class="bg-surface p-4 rounded-lg border border-outline-variant/30">
+<h3 class="font-label-md text-label-md font-semibold text-on-surface flex items-center gap-1.5 mb-2">
+<span class="material-symbols-outlined text-[16px] text-warning-amber" data-icon="task_alt">task_alt</span>
+                                Action Items
+                            </h3>
+<div class="flex flex-col gap-2">
+<label class="flex items-start gap-2 cursor-pointer group">
+<input class="mt-0.5 rounded border-outline-variant text-electric-blue focus:ring-electric-blue bg-surface-control w-4 h-4" type="checkbox"/>
+<span class="font-body-md text-body-md text-on-surface-variant group-hover:text-on-surface transition-colors">Sarah: Send final assets to Marketing.</span>
+</label>
+<label class="flex items-start gap-2 cursor-pointer group">
+<input class="mt-0.5 rounded border-outline-variant text-electric-blue focus:ring-electric-blue bg-surface-control w-4 h-4" type="checkbox"/>
+<span class="font-body-md text-body-md text-on-surface-variant group-hover:text-on-surface transition-colors">Dev Team: Unblock integration issue.</span>
+</label>
+</div>
+</div>
+</div>
+</div>
+</div>
+<!-- Quick Actions -->
+<div class="flex gap-2 pl-2 mt-1 overflow-x-auto pb-2 scrollbar-hide">
+<button class="bg-surface-control border border-outline-variant/60 rounded-full px-4 py-1.5 font-label-md text-label-md text-on-surface hover:bg-surface transition-colors flex-shrink-0 flex items-center gap-1.5">
+<span class="material-symbols-outlined text-[16px]" data-icon="content_copy">content_copy</span> Copy
+                </button>
+<button class="bg-surface-control border border-outline-variant/60 rounded-full px-4 py-1.5 font-label-md text-label-md text-on-surface hover:bg-surface transition-colors flex-shrink-0 flex items-center gap-1.5">
+<span class="material-symbols-outlined text-[16px]" data-icon="share">share</span> Share
+                </button>
+<button class="bg-surface-control border border-outline-variant/60 rounded-full px-4 py-1.5 font-label-md text-label-md text-on-surface hover:bg-surface transition-colors flex-shrink-0 flex items-center gap-1.5">
+<span class="material-symbols-outlined text-[16px]" data-icon="forward_to_inbox">forward_to_inbox</span> Email to team
+                </button>
+</div>
+</div>
+<!-- Input Area Placeholder (Anchored to bottom above nav on mobile, absolute on desktop) -->
+<div class="mt-auto pt-4 sticky bottom-0 bg-gradient-to-t from-canvas via-canvas to-transparent pb-4 z-30">
+<div class="relative w-full max-w-2xl mx-auto">
+<input class="w-full bg-surface-control border border-outline-variant rounded-full pl-5 pr-12 py-3.5 font-body-lg text-body-lg text-on-surface placeholder:text-cool-gray focus:outline-none focus:border-electric-blue focus:ring-1 focus:ring-electric-blue transition-all shadow-sm" placeholder="Ask a follow-up question..." type="text"/>
+<button class="absolute right-2 top-1/2 -translate-y-1/2 w-10 h-10 rounded-full bg-graphite-black text-on-primary flex items-center justify-center hover:opacity-90 active:scale-95 transition-transform">
+<span class="material-symbols-outlined text-xl" data-icon="arrow_upward">arrow_upward</span>
+</button>
+</div>
+</div>
+</main>
+<!-- BottomNavBar -->
+<nav class="fixed bottom-0 left-0 w-full flex justify-around items-center px-margin-page py-2 bg-surface-container-lowest border-t border-outline-variant z-50 md:hidden">
+<button class="flex flex-col items-center justify-center text-cool-gray hover:text-primary transition-colors active:scale-98 transition-transform duration-200 group w-16">
+<div class="w-12 h-8 rounded-full flex items-center justify-center group-hover:bg-surface-variant transition-colors mb-1">
+<span class="material-symbols-outlined text-2xl" data-icon="visibility">visibility</span>
+</div>
+<span class="font-label-sm text-label-sm">Vision</span>
+</button>
+<button class="flex flex-col items-center justify-center text-secondary-container dark:text-secondary-container hover:text-primary transition-colors active:scale-98 transition-transform duration-200 group w-16">
+<div class="w-12 h-8 rounded-full bg-secondary-container/10 flex items-center justify-center mb-1">
+<span class="material-symbols-outlined text-2xl fill text-electric-blue" data-icon="chat_bubble">chat_bubble</span>
+</div>
+<span class="font-label-sm text-label-sm font-semibold text-graphite-black">Chat</span>
+</button>
+<button class="flex flex-col items-center justify-center text-cool-gray hover:text-primary transition-colors active:scale-98 transition-transform duration-200 group w-16">
+<div class="w-12 h-8 rounded-full flex items-center justify-center group-hover:bg-surface-variant transition-colors mb-1">
+<span class="material-symbols-outlined text-2xl" data-icon="history">history</span>
+</div>
+<span class="font-label-sm text-label-sm">History</span>
+</button>
+<button class="flex flex-col items-center justify-center text-cool-gray hover:text-primary transition-colors active:scale-98 transition-transform duration-200 group w-16">
+<div class="w-12 h-8 rounded-full flex items-center justify-center group-hover:bg-surface-variant transition-colors mb-1">
+<span class="material-symbols-outlined text-2xl" data-icon="glasses">qr_code_2</span>
+</div>
+<span class="font-label-sm text-label-sm">Glasses</span>
+</button>
+</nav>
+<script>
+        // Simple scroll shadow for top app bar
+        window.addEventListener('scroll', () => {
+            const header = document.getElementById('top-app-bar');
+            if (window.scrollY > 10) {
+                header.classList.add('shadow-sm', 'border-b', 'border-outline-variant/30');
+            } else {
+                header.classList.remove('shadow-sm', 'border-b', 'border-outline-variant/30');
+            }
+        });
+    </script>
+</body></html>

@@ -1,0 +1,306 @@
+<!DOCTYPE html>
+
+<html lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Meeting Summary Detail</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    "colors": {
+                        "primary-fixed-dim": "#aac7ff",
+                        "outline-variant": "#c2c6d4",
+                        "primary": "#004389",
+                        "surface-container-high": "#e5e8f1",
+                        "tertiary-fixed-dim": "#ffb68c",
+                        "inverse-on-surface": "#eef1f9",
+                        "on-secondary-fixed": "#001b3d",
+                        "surface-container": "#ebeef6",
+                        "secondary": "#465f88",
+                        "surface": "#f8f9ff",
+                        "on-error": "#ffffff",
+                        "on-tertiary": "#ffffff",
+                        "surface-variant": "#dfe2eb",
+                        "on-primary-fixed": "#001b3e",
+                        "surface-tint": "#095db7",
+                        "on-secondary": "#ffffff",
+                        "on-primary": "#ffffff",
+                        "on-tertiary-fixed": "#321200",
+                        "error": "#ba1a1a",
+                        "tertiary": "#723200",
+                        "on-surface": "#181c22",
+                        "surface-glass": "rgba(249, 249, 255, 0.8)",
+                        "on-error-container": "#93000a",
+                        "tertiary-container": "#964400",
+                        "outline": "#727783",
+                        "surface-bright": "#f8f9ff",
+                        "secondary-fixed": "#d6e3ff",
+                        "on-primary-container": "#c0d5ff",
+                        "secondary-fixed-dim": "#aec7f6",
+                        "background-alt": "#F6F7F9",
+                        "on-primary-fixed-variant": "#00458d",
+                        "on-surface-variant": "#424752",
+                        "on-tertiary-container": "#ffc9ac",
+                        "surface-container-lowest": "#ffffff",
+                        "tertiary-fixed": "#ffdbc9",
+                        "secondary-container": "#b6d0ff",
+                        "inverse-surface": "#2d3137",
+                        "surface-dim": "#d7dae2",
+                        "on-secondary-container": "#3f5881",
+                        "surface-container-low": "#f1f3fc",
+                        "surface-container-highest": "#dfe2eb",
+                        "primary-container": "#005ab4",
+                        "on-background": "#181c22",
+                        "on-secondary-fixed-variant": "#2e476f",
+                        "primary-fixed": "#d6e3ff",
+                        "stage-halo-start": "rgba(10, 115, 224, 0.15)",
+                        "on-tertiary-fixed-variant": "#753400",
+                        "status-connected": "#1275e2",
+                        "error-container": "#ffdad6",
+                        "inverse-primary": "#aac7ff",
+                        "background": "#f8f9ff"
+                    },
+                    "borderRadius": {
+                        "DEFAULT": "0.25rem",
+                        "lg": "0.5rem",
+                        "xl": "0.75rem",
+                        "full": "9999px"
+                    },
+                    "spacing": {
+                        "element-gap": "0.75rem",
+                        "section-gap": "2rem",
+                        "touch-target-min": "40px",
+                        "container-margin": "1rem"
+                    },
+                    "fontFamily": {
+                        "body-md": ["Inter"],
+                        "label-xs": ["Inter"],
+                        "label-sm": ["Inter"],
+                        "body-sm": ["Inter"],
+                        "headline-md": ["Inter"],
+                        "display-lg": ["Inter"]
+                    },
+                    "fontSize": {
+                        "body-md": ["16px", {"lineHeight": "24px", "fontWeight": "400"}],
+                        "label-xs": ["10px", {"lineHeight": "12px", "fontWeight": "600"}],
+                        "label-sm": ["12px", {"lineHeight": "16px", "fontWeight": "500"}],
+                        "body-sm": ["14px", {"lineHeight": "20px", "fontWeight": "500"}],
+                        "headline-md": ["18px", {"lineHeight": "24px", "fontWeight": "700"}],
+                        "display-lg": ["24px", {"lineHeight": "32px", "letterSpacing": "-0.025em", "fontWeight": "800"}]
+                    }
+                }
+            }
+        }
+    </script>
+<style>
+        body {
+            background-color: #f8f9ff; /* background */
+            color: #181c22; /* on-background */
+        }
+        .glass-header {
+            backdrop-filter: blur(12px);
+            background-color: rgba(249, 249, 255, 0.8);
+        }
+        /* Custom Checkbox Styling */
+        input[type="checkbox"] {
+            accent-color: #004389; /* primary */
+        }
+    </style>
+<style>
+    body {
+      min-height: max(884px, 100dvh);
+    }
+  </style>
+  </head>
+<body class="min-h-screen bg-background text-on-background pb-safe pb-24 md:pb-0">
+<!-- Top App Bar -->
+<header class="glass-header fixed top-0 w-full z-50 flex items-center justify-between px-4 py-3 border-b border-surface-variant">
+<div class="flex items-center gap-4">
+<button class="w-10 h-10 rounded-full flex items-center justify-center hover:bg-surface-container-low transition-colors active:scale-95 text-on-surface">
+<span class="material-symbols-outlined" data-icon="arrow_back">arrow_back</span>
+</button>
+<h1 class="font-headline-md text-headline-md text-on-surface">Media Detail</h1>
+</div>
+<div class="flex items-center gap-2">
+<button class="w-10 h-10 rounded-full flex items-center justify-center hover:bg-surface-container-low transition-colors active:scale-95 text-on-surface">
+<span class="material-symbols-outlined" data-icon="more_vert">more_vert</span>
+</button>
+</div>
+</header>
+<!-- Main Content -->
+<main class="pt-20 px-container-margin max-w-3xl mx-auto space-y-section-gap">
+<!-- Header Section -->
+<section class="bg-surface-container-lowest rounded-xl p-6 shadow-sm">
+<div class="flex flex-col gap-2">
+<div class="flex items-center gap-2 text-primary font-label-sm text-label-sm">
+<span class="material-symbols-outlined text-sm" data-icon="auto_awesome">auto_awesome</span>
+<span>AI Generated • Lumina Nano 2.0 Model</span>
+</div>
+<h2 class="font-display-lg text-display-lg text-on-surface">Q3 Product Roadmap Review</h2>
+<div class="flex items-center gap-4 text-on-surface-variant font-body-sm text-body-sm mt-2">
+<div class="flex items-center gap-1">
+<span class="material-symbols-outlined text-sm" data-icon="calendar_today">calendar_today</span>
+<span>Oct 14, 2023 • 10:00 AM</span>
+</div>
+<div class="flex items-center gap-1">
+<span class="material-symbols-outlined text-sm" data-icon="schedule">schedule</span>
+<span>45 mins</span>
+</div>
+</div>
+</div>
+<!-- Attendees -->
+<div class="mt-6">
+<h3 class="font-label-sm text-label-sm text-on-surface-variant mb-3 uppercase tracking-wider">Attendees (4)</h3>
+<div class="flex flex-wrap gap-2">
+<div class="flex items-center gap-2 bg-surface-container-low rounded-full px-3 py-1">
+<img class="w-6 h-6 rounded-full object-cover" data-alt="A professional headshot of a young male executive in a modern, well-lit office setting. High contrast studio lighting, crisp focus, tech-forward aesthetic with cool tones." src="https://lh3.googleusercontent.com/aida-public/AB6AXuDYaBvakuMMvWwxOcDL990VkkrdwyEcP5nyRUhIhA46cEfMw_6Wd9E9WodPM5NqQqauRKPwIkIs1pk7Jk6J5XtiVIPQ2lf5I6hSSviFHcSj6N5OqjlWhaOO1xqRUS7U0is8zo08hURsUlqiATZCcbrksb8RUQr4hBPShSYBYW4VW2z3VX3SKhlXnhJBSWEb4aLs4pHpKX_2qeNoeyG-pjHK0EYQ3i27k7FjJfx1gAeifkOYCVk_b_g_"/>
+<span class="font-body-sm text-body-sm text-on-surface">Alex (You)</span>
+</div>
+<div class="flex items-center gap-2 bg-surface-container-low rounded-full px-3 py-1">
+<img class="w-6 h-6 rounded-full object-cover" data-alt="A professional headshot of a female product manager wearing smart glasses in a sleek corporate environment. Bright lighting, clean background, conveying a high-tech modern workspace." src="https://lh3.googleusercontent.com/aida-public/AB6AXuC7rJx8bkZWexAU-yttzipkPD6Ux-UaNuZPoYGNMNisVBg74XyOGrn18383UoRC8DjZfjYEox6cTkut2gvtnoxMSAG4eT8Rax-XMXCBW6rW3YRlGX0Y7N1gvleVyZOI6Q_W9y6vrIviZz2l029xUZXOa2Ezs3TeUqYUTpu73Q1oHb7_S65ZzqN_cA0UiIek5muw3zRgNkKrdthV7VRVkjnTIKBgTL0BeR019qGKpkPXOTVoOy1Xnrhg"/>
+<span class="font-body-sm text-body-sm text-on-surface">Sarah Chen</span>
+</div>
+<div class="flex items-center gap-2 bg-surface-container-low rounded-full px-3 py-1">
+<img class="w-6 h-6 rounded-full object-cover" data-alt="A professional headshot of a middle-aged male software engineer. Natural lighting, confident expression, set against a blurred background of architectural lines to imply a tech hub." src="https://lh3.googleusercontent.com/aida-public/AB6AXuBKHHbIIEa1taOF-f9kYzJw2nlXr7EtWk18K1TBFg3RlLGNl5_erHAv8EvOHCb_54cD44wR-KNZ0bokPw-BEpEGpPsxrrcymM2BNX8UGH3Y8eyY1uWN38ds2c0SzLUiWeC9GeYOJbQ7o-EWDICI3_a0kc6wjZY_40zLr7g0d2qqACOgpCcCV75RfJqTt6iKZkeXp2d6d-Kb6LlYSmC92ajHzUbaZBbyb_WuFYK8SPruIWh5NQG5Zhn8"/>
+<span class="font-body-sm text-body-sm text-on-surface">Marcus L.</span>
+</div>
+<div class="flex items-center gap-2 bg-surface-container-low rounded-full px-3 py-1">
+<img class="w-6 h-6 rounded-full object-cover" data-alt="A professional headshot of a young female designer with short hair. High contrast, studio graphite style, minimalist background, conveying creativity and precision." src="https://lh3.googleusercontent.com/aida-public/AB6AXuC-R8GWORmHJuKO9pLQMDx2MrcYJugxzJPx0wr3XNbHAGANS1VV77kb3013BVu6zC9BeBLLWIsZe79n6FpzJcbM3zTyXk8NEXTrCMrtB3dLJeJtkf_WREvQHzurd0fU2FVuHWAVUJ2fnkmtFSG1YTwGt1NK0jnuDIzNVY6u0ZTn2zK2F-jeODXeLkjPSI5WVbyneYvSjK3MfxQx3ybMYNtX43GkVrOWDxAEqedbEWwvgKQx1womDKvN"/>
+<span class="font-body-sm text-body-sm text-on-surface">Elena R.</span>
+</div>
+</div>
+</div>
+</section>
+<!-- Quick Recap -->
+<section class="bg-surface-container-lowest rounded-xl p-6 shadow-sm border-l-4 border-primary">
+<h3 class="font-headline-md text-headline-md text-on-surface mb-3 flex items-center gap-2">
+<span class="material-symbols-outlined text-primary" data-icon="summarize">summarize</span>
+                Quick Recap
+            </h3>
+<p class="font-body-md text-body-md text-on-surface-variant leading-relaxed">
+                The team reviewed the upcoming Q3 roadmap, focusing heavily on the integration of the new AR overlay features. Sarah presented the revised timeline, which pushes the beta launch back by two weeks to accommodate additional user testing. Marcus confirmed the backend API is ready for integration. The primary concern raised was performance drops on older hardware, which Elena is currently investigating.
+            </p>
+</section>
+<!-- Decisions & Action Items (Bento Grid Style) -->
+<div class="grid grid-cols-1 md:grid-cols-2 gap-element-gap">
+<!-- Decisions -->
+<section class="bg-surface-container-lowest rounded-xl p-6 shadow-sm">
+<h3 class="font-headline-md text-headline-md text-on-surface mb-4 flex items-center gap-2">
+<span class="material-symbols-outlined text-secondary" data-icon="gavel">gavel</span>
+                    Key Decisions
+                </h3>
+<ul class="space-y-4">
+<li class="flex items-start gap-3">
+<span class="material-symbols-outlined text-primary mt-0.5" data-icon="check_circle">check_circle</span>
+<p class="font-body-sm text-body-sm text-on-surface">Beta launch delayed to Aug 15th for additional QA.</p>
+</li>
+<li class="flex items-start gap-3">
+<span class="material-symbols-outlined text-primary mt-0.5" data-icon="check_circle">check_circle</span>
+<p class="font-body-sm text-body-sm text-on-surface">Legacy hardware support will be maintained for v1.0.</p>
+</li>
+<li class="flex items-start gap-3">
+<span class="material-symbols-outlined text-primary mt-0.5" data-icon="check_circle">check_circle</span>
+<p class="font-body-sm text-body-sm text-on-surface">Marketing budget reallocated to focus on developer outreach.</p>
+</li>
+</ul>
+</section>
+<!-- Action Items -->
+<section class="bg-surface-container-lowest rounded-xl p-6 shadow-sm">
+<h3 class="font-headline-md text-headline-md text-on-surface mb-4 flex items-center gap-2">
+<span class="material-symbols-outlined text-status-connected" data-icon="task_alt">task_alt</span>
+                    Action Items
+                </h3>
+<div class="space-y-3">
+<label class="flex items-start gap-3 p-3 rounded-lg hover:bg-surface-container-low transition-colors cursor-pointer border border-surface-variant">
+<input class="mt-1 w-4 h-4 rounded border-outline text-primary focus:ring-primary" type="checkbox"/>
+<div class="flex-1">
+<p class="font-body-sm text-body-sm text-on-surface">Update Jira timeline with new beta dates.</p>
+<span class="font-label-xs text-label-xs text-secondary mt-1 block">Assigned to: Sarah</span>
+</div>
+</label>
+<label class="flex items-start gap-3 p-3 rounded-lg hover:bg-surface-container-low transition-colors cursor-pointer border border-surface-variant">
+<input checked="" class="mt-1 w-4 h-4 rounded border-outline text-primary focus:ring-primary" type="checkbox"/>
+<div class="flex-1">
+<p class="font-body-sm text-body-sm text-on-surface line-through text-on-surface-variant">Send API documentation to external partners.</p>
+<span class="font-label-xs text-label-xs text-secondary mt-1 block">Assigned to: Marcus</span>
+</div>
+</label>
+<label class="flex items-start gap-3 p-3 rounded-lg hover:bg-surface-container-low transition-colors cursor-pointer border border-surface-variant">
+<input class="mt-1 w-4 h-4 rounded border-outline text-primary focus:ring-primary" type="checkbox"/>
+<div class="flex-1">
+<p class="font-body-sm text-body-sm text-on-surface">Draft performance report for older devices.</p>
+<span class="font-label-xs text-label-xs text-secondary mt-1 block">Assigned to: Elena</span>
+</div>
+</label>
+</div>
+</section>
+</div>
+<!-- Original Source Links -->
+<section class="bg-surface-container-lowest rounded-xl p-6 shadow-sm">
+<h3 class="font-headline-md text-headline-md text-on-surface mb-4">Original Recording</h3>
+<div class="flex flex-col sm:flex-row gap-4">
+<a class="flex items-center gap-3 bg-surface-container p-4 rounded-lg flex-1 hover:bg-surface-container-high transition-colors" href="#">
+<div class="w-10 h-10 rounded-full bg-primary-container text-on-primary-container flex items-center justify-center">
+<span class="material-symbols-outlined" data-icon="videocam">videocam</span>
+</div>
+<div>
+<p class="font-body-sm text-body-sm text-on-surface font-semibold">View Video</p>
+<p class="font-label-sm text-label-sm text-on-surface-variant">45:12 • 1.2 GB</p>
+</div>
+</a>
+<a class="flex items-center gap-3 bg-surface-container p-4 rounded-lg flex-1 hover:bg-surface-container-high transition-colors" href="#">
+<div class="w-10 h-10 rounded-full bg-secondary-container text-on-secondary-container flex items-center justify-center">
+<span class="material-symbols-outlined" data-icon="headphones">headphones</span>
+</div>
+<div>
+<p class="font-body-sm text-body-sm text-on-surface font-semibold">Listen to Audio</p>
+<p class="font-label-sm text-label-sm text-on-surface-variant">45:12 • 45 MB</p>
+</div>
+</a>
+</div>
+</section>
+<!-- Actions -->
+<div class="flex flex-col sm:flex-row gap-4 pb-8">
+<button class="flex-1 bg-primary text-on-primary font-body-sm text-body-sm py-3 px-6 rounded-full flex items-center justify-center gap-2 hover:bg-on-primary-fixed-variant transition-colors shadow-sm">
+<span class="material-symbols-outlined" data-icon="share">share</span>
+                Share Summary
+            </button>
+<div class="flex gap-4 flex-1">
+<button class="flex-1 bg-surface-container-high text-on-surface font-body-sm text-body-sm py-3 px-6 rounded-full flex items-center justify-center gap-2 hover:bg-surface-variant transition-colors border border-outline-variant">
+<span class="material-symbols-outlined" data-icon="edit">edit</span>
+                    Edit
+                </button>
+<button class="flex-1 bg-error-container text-on-error-container font-body-sm text-body-sm py-3 px-6 rounded-full flex items-center justify-center gap-2 hover:opacity-80 transition-opacity border border-error-container">
+<span class="material-symbols-outlined" data-icon="delete">delete</span>
+                    Delete
+                </button>
+</div>
+</div>
+</main>
+<!-- Bottom Nav Bar (Mobile Only) -->
+<nav class="md:hidden bg-surface-container dark:bg-surface-container-highest shadow-md fixed bottom-0 w-full z-50 rounded-t-xl flex justify-around items-center px-4 pb-6 pt-3">
+<!-- Info (Active semantic match for Detail View) -->
+<a class="flex flex-col items-center justify-center bg-primary-container dark:bg-on-primary-fixed-variant text-on-primary-container dark:text-primary-fixed rounded-full px-4 py-1 active:scale-90 transition-transform duration-200" href="#">
+<span class="material-symbols-outlined" data-icon="info" data-weight="fill" style="font-variation-settings: 'FILL' 1;">info</span>
+<span class="font-label-xs text-xs font-semibold mt-1">Info</span>
+</a>
+<a class="flex flex-col items-center justify-center text-on-secondary-container dark:text-secondary-fixed-dim hover:bg-secondary-container dark:hover:bg-on-secondary-fixed-variant transition-all rounded-lg p-2 active:scale-90 transition-transform duration-200" href="#">
+<span class="material-symbols-outlined" data-icon="chat_bubble">chat_bubble</span>
+<span class="font-label-xs text-xs font-semibold mt-1">Ask</span>
+</a>
+<a class="flex flex-col items-center justify-center text-on-secondary-container dark:text-secondary-fixed-dim hover:bg-secondary-container dark:hover:bg-on-secondary-fixed-variant transition-all rounded-lg p-2 active:scale-90 transition-transform duration-200" href="#">
+<span class="material-symbols-outlined" data-icon="share">share</span>
+<span class="font-label-xs text-xs font-semibold mt-1">Share</span>
+</a>
+<a class="flex flex-col items-center justify-center text-on-secondary-container dark:text-secondary-fixed-dim hover:bg-secondary-container dark:hover:bg-on-secondary-fixed-variant transition-all rounded-lg p-2 active:scale-90 transition-transform duration-200" href="#">
+<span class="material-symbols-outlined" data-icon="delete">delete</span>
+<span class="font-label-xs text-xs font-semibold mt-1">Delete</span>
+</a>
+</nav>
+</body></html>

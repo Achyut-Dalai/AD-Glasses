@@ -1,0 +1,286 @@
+<!DOCTYPE html>
+
+<html lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Meta Ray-Ban - Device Center</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+          darkMode: "class",
+          theme: {
+            extend: {
+              "colors": {
+                      "surface-container-lowest": "#ffffff",
+                      "surface-container": "#ebedf7",
+                      "tertiary-fixed": "#ffdbc9",
+                      "tertiary": "#723200",
+                      "on-primary": "#ffffff",
+                      "inverse-primary": "#aac7ff",
+                      "on-secondary-container": "#3f5881",
+                      "surface": "#f9f9ff",
+                      "on-tertiary": "#ffffff",
+                      "on-surface": "#181c22",
+                      "primary-container": "#0a73e0",
+                      "tertiary-fixed-dim": "#ffb68c",
+                      "secondary-fixed": "#d6e3ff",
+                      "secondary-container": "#b6d0ff",
+                      "on-secondary-fixed-variant": "#2e476f",
+                      "background": "#f9f9ff",
+                      "surface-container-low": "#f1f3fc",
+                      "on-primary-container": "#c0d5ff",
+                      "primary": "#004389",
+                      "surface-bright": "#f9f9ff",
+                      "inverse-on-surface": "#eef0fa",
+                      "on-error-container": "#93000a",
+                      "primary-fixed": "#d6e3ff",
+                      "tertiary-container": "#964400",
+                      "on-surface-variant": "#424752",
+                      "surface-variant": "#e0e2eb",
+                      "on-primary-fixed": "#001b3e",
+                      "on-secondary": "#ffffff",
+                      "outline-variant": "#c2c6d4",
+                      "on-tertiary-fixed-variant": "#753400",
+                      "surface-container-high": "#e6e8f1",
+                      "on-background": "#181c22",
+                      "surface-tint": "#095db7",
+                      "on-tertiary-container": "#ffc9ac",
+                      "secondary-fixed-dim": "#aec7f6",
+                      "surface-container-highest": "#e0e2eb",
+                      "on-error": "#ffffff",
+                      "on-secondary-fixed": "#001b3d",
+                      "error": "#ba1a1a",
+                      "outline": "#727783",
+                      "inverse-surface": "#2d3037",
+                      "primary-fixed-dim": "#aac7ff",
+                      "secondary": "#465f88",
+                      "error-container": "#ffdad6",
+                      "surface-dim": "#d7dae3",
+                      "on-tertiary-fixed": "#321200",
+                      "on-primary-fixed-variant": "#00458d"
+              },
+              "borderRadius": {
+                      "DEFAULT": "0.25rem",
+                      "lg": "0.5rem",
+                      "xl": "0.75rem",
+                      "full": "9999px"
+              },
+              "spacing": {
+                      "container-padding": "1rem",
+                      "grid-gutter": "1rem",
+                      "section-gap": "1.5rem",
+                      "element-gap": "0.75rem"
+              },
+              "fontFamily": {
+                      "display-sm": [
+                              "Inter"
+                      ],
+                      "label-lg": [
+                              "Inter"
+                      ],
+                      "body-md": [
+                              "Inter"
+                      ],
+                      "headline-sm": [
+                              "Inter"
+                      ],
+                      "label-md": [
+                              "Inter"
+                      ],
+                      "body-sm": [
+                              "Inter"
+                      ],
+                      "label-sm": [
+                              "Inter"
+                      ]
+              },
+              "fontSize": {
+                      "display-sm": [
+                              "1.125rem",
+                              {
+                                      "lineHeight": "1.5rem",
+                                      "letterSpacing": "0.15em",
+                                      "fontWeight": "700"
+                              }
+                      ],
+                      "label-lg": [
+                              "0.75rem",
+                              {
+                                      "lineHeight": "1rem",
+                                      "fontWeight": "600"
+                              }
+                      ],
+                      "body-md": [
+                              "0.875rem",
+                              {
+                                      "lineHeight": "1.25rem",
+                                      "fontWeight": "400"
+                              }
+                      ],
+                      "headline-sm": [
+                              "0.875rem",
+                              {
+                                      "lineHeight": "1.25rem",
+                                      "fontWeight": "600"
+                              }
+                      ],
+                      "label-md": [
+                              "11px",
+                              {
+                                      "lineHeight": "1rem",
+                                      "fontWeight": "500"
+                              }
+                      ],
+                      "body-sm": [
+                              "0.75rem",
+                              {
+                                      "lineHeight": "1rem",
+                                      "fontWeight": "400"
+                              }
+                      ],
+                      "label-sm": [
+                              "10px",
+                              {
+                                      "lineHeight": "12px",
+                                      "fontWeight": "500"
+                              }
+                      ]
+              }
+      },
+          },
+        }
+      </script>
+<style>
+          .pb-safe { padding-bottom: env(safe-area-inset-bottom, 20px); }
+          .material-symbols-outlined { font-variation-settings: 'FILL' 0; }
+          .material-symbols-outlined.fill { font-variation-settings: 'FILL' 1; }
+      </style>
+<style>
+    body {
+      min-height: max(884px, 100dvh);
+    }
+  </style>
+  </head>
+<body class="bg-background text-on-background antialiased min-h-screen flex flex-col font-body-md">
+<!-- TopAppBar -->
+<header class="bg-surface dark:bg-surface text-primary dark:text-primary-fixed w-full top-0 sticky flat no shadows border-b border-outline-variant/20 z-40">
+<div class="flex justify-between items-center px-container-padding h-14 max-w-5xl mx-auto">
+<div class="flex items-center gap-3">
+<div class="w-8 h-8 rounded-full bg-surface-container-high overflow-hidden shrink-0 flex items-center justify-center">
+<span class="material-symbols-outlined text-on-surface-variant text-[20px]">person</span>
+</div>
+</div>
+<h1 class="font-display-sm text-display-sm text-on-surface tracking-tight text-center truncate px-4 font-bold">Glasses Pro</h1>
+<div class="flex items-center gap-3">
+<button class="w-10 h-10 rounded-full flex items-center justify-center text-on-surface-variant hover:bg-surface-container-low transition-colors scale-95 duration-150">
+<span class="material-symbols-outlined text-[24px]">settings</span>
+</button>
+</div>
+</div>
+</header>
+<main class="flex-grow max-w-5xl mx-auto w-full px-container-padding py-section-gap space-y-section-gap mb-24">
+<!-- Device Header & Status -->
+<section class="flex flex-col items-center text-center space-y-4">
+<div class="relative w-full max-w-md aspect-video rounded-xl overflow-hidden bg-surface-container-low border border-outline-variant/30 flex items-center justify-center shadow-sm">
+<img class="w-full h-full object-cover" data-alt="A high-end, studio photography style image of sleek, modern smart glasses (Meta Ray-Ban style) resting on a minimalist surface. The lighting is soft and directional, highlighting the matte black finish and embedded camera lenses. The aesthetic is clean, corporate modern, and high-tech, shot against a crisp light-mode background." src="https://lh3.googleusercontent.com/aida-public/AB6AXuCAIMZi_iLbOvZozpEKxuxVT_r-bDerWt3OoylZspr0B1Onp0Xl5o9l4SNlndfn1J7t6vmVdPgCC3y2EbZk7fKXZecnx3JxJidu-h7MH9RPr6ZG_AcA7COt8OnrgbWjXCjeRJP0ixRHcix0OrHqZEnTsu1r9S62wqt_9YzjTWGy04OoW9GTvTQpjYfORDdyARVxZKH2a1U9xF09bkC3Ftqlpgs238cbcc_EHqe9UqVl8u55j2HUBckx"/>
+<div class="absolute top-3 left-3 flex gap-2">
+<span class="bg-surface/80 backdrop-blur-sm text-on-surface font-label-sm text-label-sm px-2 py-1 rounded-full border border-outline-variant/20 flex items-center gap-1">
+<span class="w-1.5 h-1.5 rounded-full bg-primary"></span>
+                        Connected
+                    </span>
+<span class="bg-error-container/80 backdrop-blur-sm text-on-error-container font-label-sm text-label-sm px-2 py-1 rounded-full border border-error/20">
+                        Experimental
+                    </span>
+</div>
+</div>
+<div>
+<h2 class="font-headline-sm text-headline-sm text-on-surface">Meta Ray-Ban</h2>
+<p class="font-body-sm text-body-sm text-on-surface-variant mt-1">Wayfarer Large • L:90% R:90% C:100%</p>
+</div>
+</section>
+<!-- Limited Capability Banner -->
+<section class="bg-surface-container border border-outline-variant/30 rounded-xl p-4 shadow-sm flex items-start gap-3">
+<span class="material-symbols-outlined text-error shrink-0">warning</span>
+<div>
+<h3 class="font-label-lg text-label-lg text-on-surface">Limited Capability Mode</h3>
+<p class="font-body-sm text-body-sm text-on-surface-variant mt-1">Camera stream and media sync features are currently unavailable in this experimental build. Basic Bluetooth and voice commands remain active.</p>
+</div>
+</section>
+<!-- Quick Actions Grid -->
+<section class="grid grid-cols-3 gap-element-gap">
+<button class="flex flex-col items-center justify-center p-4 bg-surface-container-highest rounded-xl border border-outline-variant/30 hover:bg-surface-variant transition-colors shadow-sm">
+<div class="w-12 h-12 rounded-full bg-primary-container text-on-primary-container flex items-center justify-center mb-2">
+<span class="material-symbols-outlined text-[24px]">mic</span>
+</div>
+<span class="font-label-md text-label-md text-on-surface">Ask Meta</span>
+</button>
+<div class="flex flex-col items-center justify-center p-4 bg-surface-container-lowest opacity-50 rounded-xl border border-outline-variant/20 cursor-not-allowed">
+<div class="w-12 h-12 rounded-full bg-surface-variant text-on-surface-variant flex items-center justify-center mb-2">
+<span class="material-symbols-outlined text-[24px]">photo_camera</span>
+</div>
+<span class="font-label-md text-label-md text-on-surface-variant">Not Implemented</span>
+</div>
+<div class="flex flex-col items-center justify-center p-4 bg-surface-container-lowest opacity-50 rounded-xl border border-outline-variant/20 cursor-not-allowed">
+<div class="w-12 h-12 rounded-full bg-surface-variant text-on-surface-variant flex items-center justify-center mb-2">
+<span class="material-symbols-outlined text-[24px]">sync</span>
+</div>
+<span class="font-label-md text-label-md text-on-surface-variant">SDK Pending</span>
+</div>
+</section>
+<!-- Supported Settings -->
+<section class="bg-surface-container-lowest rounded-xl border border-outline-variant/30 overflow-hidden shadow-sm">
+<div class="p-4 border-b border-outline-variant/20 bg-surface-container-low">
+<h3 class="font-headline-sm text-headline-sm text-on-surface">Supported Controls</h3>
+</div>
+<div class="divide-y divide-outline-variant/20">
+<div class="flex items-center justify-between p-4">
+<div class="flex items-center gap-3">
+<span class="material-symbols-outlined text-on-surface-variant">volume_up</span>
+<div>
+<p class="font-body-md text-body-md text-on-surface">Audio Volume</p>
+<p class="font-body-sm text-body-sm text-on-surface-variant">Media &amp; Voice</p>
+</div>
+</div>
+<div class="w-24 h-2 bg-surface-dim rounded-full overflow-hidden">
+<div class="w-2/3 h-full bg-primary rounded-full"></div>
+</div>
+</div>
+<div class="flex items-center justify-between p-4">
+<div class="flex items-center gap-3">
+<span class="material-symbols-outlined text-on-surface-variant">bluetooth</span>
+<div>
+<p class="font-body-md text-body-md text-on-surface">Bluetooth Connection</p>
+<p class="font-body-sm text-body-sm text-on-surface-variant">Connected to Phone</p>
+</div>
+</div>
+<label class="relative inline-flex items-center cursor-pointer">
+<input checked="" class="sr-only peer" type="checkbox" value=""/>
+<div class="w-11 h-6 bg-surface-dim peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-primary"></div>
+</label>
+</div>
+</div>
+</section>
+</main>
+<!-- BottomNavBar -->
+<nav class="md:hidden bg-surface-container dark:bg-surface-container fixed bottom-0 w-full z-50 border-t border-outline-variant/30 backdrop-blur-sm shadow-sm flex justify-around items-center h-20 pb-safe px-4 tap-highlight-none transition-all duration-200">
+<a class="flex flex-col items-center justify-center text-on-surface-variant hover:text-primary w-16" href="#">
+<span class="material-symbols-outlined text-[24px] mb-1">home</span>
+<span class="font-label-md text-label-md">Home</span>
+</a>
+<a class="flex flex-col items-center justify-center bg-secondary-container text-on-secondary-container rounded-xl px-3 py-1.5 hover:text-primary w-20" href="#">
+<span class="material-symbols-outlined text-[24px] mb-1 fill">smart_toy</span>
+<span class="font-label-md text-label-md">Assistant</span>
+</a>
+<a class="flex flex-col items-center justify-center text-on-surface-variant hover:text-primary w-16" href="#">
+<span class="material-symbols-outlined text-[24px] mb-1">auto_stories</span>
+<span class="font-label-md text-label-md">Library</span>
+</a>
+<a class="flex flex-col items-center justify-center text-on-surface-variant hover:text-primary w-16" href="#">
+<span class="material-symbols-outlined text-[24px] mb-1">settings_input_component</span>
+<span class="font-label-md text-label-md">Automations</span>
+</a>
+</nav>
+</body></html>

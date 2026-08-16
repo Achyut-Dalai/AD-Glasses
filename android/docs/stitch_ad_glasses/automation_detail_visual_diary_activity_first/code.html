@@ -1,0 +1,282 @@
+<!DOCTYPE html>
+
+<html class="light" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Automation Activity &amp; History</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    "colors": {
+                        "primary-fixed": "#d6e3ff",
+                        "on-secondary": "#ffffff",
+                        "surface-container-lowest": "#ffffff",
+                        "on-tertiary-fixed-variant": "#753400",
+                        "background": "#f9f9ff",
+                        "on-surface-variant": "#424752",
+                        "on-primary": "#ffffff",
+                        "surface-container-low": "#f1f3fc",
+                        "on-primary-container": "#c0d5ff",
+                        "primary-container": "#0a73e0",
+                        "on-error": "#ffffff",
+                        "outline-variant": "#c2c6d4",
+                        "surface-variant": "#e0e2eb",
+                        "inverse-primary": "#aac7ff",
+                        "tertiary-container": "#964400",
+                        "on-tertiary-fixed": "#321200",
+                        "tertiary": "#723200",
+                        "on-surface": "#181c22",
+                        "on-primary-fixed": "#001b3e",
+                        "secondary-fixed-dim": "#aec7f6",
+                        "outline": "#727783",
+                        "surface-bright": "#f9f9ff",
+                        "on-secondary-fixed-variant": "#2e476f",
+                        "surface-container-highest": "#e0e2eb",
+                        "primary-fixed-dim": "#aac7ff",
+                        "secondary-container": "#b6d0ff",
+                        "error-container": "#ffdad6",
+                        "on-tertiary-container": "#ffc9ac",
+                        "on-tertiary": "#ffffff",
+                        "secondary-fixed": "#d6e3ff",
+                        "surface-container": "#ebedf7",
+                        "inverse-surface": "#2d3037",
+                        "on-secondary-container": "#3f5881",
+                        "primary": "#004389",
+                        "on-secondary-fixed": "#001b3d",
+                        "tertiary-fixed-dim": "#ffb68c",
+                        "surface-dim": "#d7dae3",
+                        "tertiary-fixed": "#ffdbc9",
+                        "on-error-container": "#93000a",
+                        "surface": "#f9f9ff",
+                        "surface-container-high": "#e6e8f1",
+                        "on-primary-fixed-variant": "#00458d",
+                        "secondary": "#465f88",
+                        "inverse-on-surface": "#eef0fa",
+                        "surface-tint": "#095db7",
+                        "on-background": "#181c22",
+                        "error": "#ba1a1a"
+                    },
+                    "borderRadius": {
+                        "DEFAULT": "0.25rem",
+                        "lg": "0.5rem",
+                        "xl": "0.75rem",
+                        "full": "9999px"
+                    },
+                    "spacing": {
+                        "grid-gutter": "1rem",
+                        "container-padding": "1rem",
+                        "element-gap": "0.75rem",
+                        "section-gap": "1.5rem"
+                    },
+                    "fontFamily": {
+                        "body-sm": ["Inter"],
+                        "label-md": ["Inter"],
+                        "label-sm": ["Inter"],
+                        "display-sm": ["Inter"],
+                        "label-lg": ["Inter"],
+                        "body-md": ["Inter"],
+                        "headline-sm": ["Inter"]
+                    },
+                    "fontSize": {
+                        "body-sm": ["0.75rem", { "lineHeight": "1rem", "fontWeight": "400" }],
+                        "label-md": ["11px", { "lineHeight": "1rem", "fontWeight": "500" }],
+                        "label-sm": ["10px", { "lineHeight": "12px", "fontWeight": "500" }],
+                        "display-sm": ["1.125rem", { "lineHeight": "1.5rem", "letterSpacing": "0.15em", "fontWeight": "700" }],
+                        "label-lg": ["0.75rem", { "lineHeight": "1rem", "fontWeight": "600" }],
+                        "body-md": ["0.875rem", { "lineHeight": "1.25rem", "fontWeight": "400" }],
+                        "headline-sm": ["0.875rem", { "lineHeight": "1.25rem", "fontWeight": "600" }]
+                    }
+                }
+            }
+        }
+    </script>
+<style>
+        .pb-safe { padding-bottom: env(safe-area-inset-bottom); }
+        .material-symbols-outlined { font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24; }
+        .material-symbols-outlined.fill { font-variation-settings: 'FILL' 1; }
+        
+        /* Custom scrollbar for horizontal lists */
+        .no-scrollbar::-webkit-scrollbar { display: none; }
+        .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+        
+        .toggle-checkbox:checked { right: 0; border-color: #004389; }
+        .toggle-checkbox:checked + .toggle-label { background-color: #004389; }
+        .toggle-checkbox:checked + .toggle-label:after { transform: translateX(100%); border-color: white; }
+    </style>
+<style>
+    body {
+      min-height: max(884px, 100dvh);
+    }
+  </style>
+  </head>
+<body class="bg-background text-on-background antialiased font-body-md min-h-screen pb-24 md:pb-0">
+<!-- TopAppBar -->
+<header class="w-full sticky top-0 z-50 bg-surface dark:bg-surface-dim flat no shadows border-b border-outline-variant/20 md:border-none">
+<div class="flex items-center justify-between px-container-padding h-16 w-full max-w-5xl mx-auto">
+<button class="text-on-surface-variant hover:bg-surface-container-high transition-colors active:scale-95 duration-100 p-2 rounded-full flex items-center justify-center">
+<span class="material-symbols-outlined" data-icon="arrow_back">arrow_back</span>
+</button>
+<h1 class="font-display-sm text-display-sm text-primary dark:text-primary-fixed-dim">Automation Detail</h1>
+<button class="text-on-surface-variant hover:bg-surface-container-high transition-colors active:scale-95 duration-100 p-2 rounded-full flex items-center justify-center">
+<span class="material-symbols-outlined" data-icon="settings">settings</span>
+</button>
+</div>
+</header>
+<main class="w-full max-w-5xl mx-auto px-container-padding pt-6 pb-safe space-y-section-gap">
+<!-- Status Header Module -->
+<section class="bg-surface-container rounded-xl p-6 border border-outline-variant/30 flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+<div>
+<div class="flex items-center gap-2 mb-1">
+<span class="w-2.5 h-2.5 rounded-full bg-primary animate-pulse"></span>
+<h2 class="font-headline-sm text-headline-sm text-on-surface">Living Room Camera</h2>
+</div>
+<p class="font-body-sm text-body-sm text-on-surface-variant">Monitoring motion and recording clips.</p>
+</div>
+<div class="flex items-center gap-3">
+<span class="font-label-lg text-label-lg text-on-surface-variant">Active</span>
+<div class="relative inline-block w-12 mr-2 align-middle select-none transition duration-200 ease-in">
+<input checked="" class="toggle-checkbox absolute block w-6 h-6 rounded-full bg-white border-4 appearance-none cursor-pointer border-outline-variant outline-none" id="toggle" name="toggle" type="checkbox"/>
+<label class="toggle-label block overflow-hidden h-6 rounded-full bg-primary cursor-pointer" for="toggle"></label>
+</div>
+</div>
+</section>
+<!-- Analytics Overview -->
+<section class="grid grid-cols-2 md:grid-cols-4 gap-4">
+<div class="bg-surface-container-lowest rounded-xl p-4 border border-outline-variant/20 shadow-sm flex flex-col items-center justify-center text-center">
+<span class="material-symbols-outlined text-primary mb-2" data-icon="videocam">videocam</span>
+<span class="font-display-sm text-display-sm text-on-surface">12</span>
+<span class="font-label-sm text-label-sm text-on-surface-variant uppercase">Clips Today</span>
+</div>
+<div class="bg-surface-container-lowest rounded-xl p-4 border border-outline-variant/20 shadow-sm flex flex-col items-center justify-center text-center">
+<span class="material-symbols-outlined text-primary mb-2" data-icon="directions_run">directions_run</span>
+<span class="font-display-sm text-display-sm text-on-surface">45</span>
+<span class="font-label-sm text-label-sm text-on-surface-variant uppercase">Motion Events</span>
+</div>
+<div class="bg-surface-container-lowest rounded-xl p-4 border border-outline-variant/20 shadow-sm flex flex-col items-center justify-center text-center">
+<span class="material-symbols-outlined text-primary mb-2" data-icon="wifi">wifi</span>
+<span class="font-display-sm text-display-sm text-on-surface">99%</span>
+<span class="font-label-sm text-label-sm text-on-surface-variant uppercase">Uptime</span>
+</div>
+<div class="bg-surface-container-lowest rounded-xl p-4 border border-outline-variant/20 shadow-sm flex flex-col items-center justify-center text-center">
+<span class="material-symbols-outlined text-primary mb-2" data-icon="sd_storage">sd_storage</span>
+<span class="font-display-sm text-display-sm text-on-surface">4.2GB</span>
+<span class="font-label-sm text-label-sm text-on-surface-variant uppercase">Storage Used</span>
+</div>
+</section>
+<!-- Recent Insights / Masonry Grid -->
+<section class="space-y-4">
+<div class="flex justify-between items-end">
+<h3 class="font-headline-sm text-headline-sm text-on-surface">Recent Insights</h3>
+<button class="font-label-lg text-label-lg text-primary hover:underline">View All</button>
+</div>
+<div class="columns-1 md:columns-2 lg:columns-3 gap-4 space-y-4">
+<!-- Card 1 (Taller) -->
+<div class="break-inside-avoid bg-surface-container-lowest rounded-xl overflow-hidden border border-outline-variant/20 shadow-sm relative group cursor-pointer">
+<img class="w-full h-48 object-cover" data-alt="A modern, high-tech interior living room seen through a crisp security camera feed. Light mode aesthetic, bright daylight streaming in, clean lines, white and gray furniture. High fidelity color transitions, sharp focus." src="https://lh3.googleusercontent.com/aida-public/AB6AXuCbkdfZUzI8Lh7Gfg1qnkc5lAeaiqM0ZBqMXlsdCciP1H6I9RN_yBcGCYWODTB6PCSux2Uy279TjwhsiAA6r36y-7GxpSRL0m9shSYqfq6dwF_i9x5ianJV52uYDZ77nCF8BA_50plesqkMzIjcVrXhKSq9PoU53X3z7kpzs8kAZuE2lLUQ91suRGueKUilMpt9NvQdCR7Mgryv0X5FYN7SlT4h8RaB53NwUPf056u9GqZhiWVQOSR9"/>
+<div class="absolute top-2 left-2 bg-black/40 backdrop-blur-sm rounded-full px-2 py-1 flex items-center gap-1">
+<span class="w-1.5 h-1.5 rounded-full bg-error"></span>
+<span class="font-label-sm text-label-sm text-white">Motion Detected</span>
+</div>
+<div class="p-4 bg-surface-container-lowest">
+<div class="flex justify-between items-center mb-1">
+<span class="font-label-md text-label-md text-on-surface">Person detected in Living Room</span>
+<span class="font-label-sm text-label-sm text-on-surface-variant">10:42 AM</span>
+</div>
+<p class="font-body-sm text-body-sm text-on-surface-variant">Confidence: 98%</p>
+</div>
+</div>
+<!-- Card 2 (Shorter) -->
+<div class="break-inside-avoid bg-surface-container-lowest rounded-xl overflow-hidden border border-outline-variant/20 shadow-sm relative group cursor-pointer">
+<img class="w-full h-32 object-cover" data-alt="A small, close-up shot of a modern robotic vacuum cleaner moving across a light wood floor. Corporate modern style, bright lighting, soft organic shapes of the vacuum contrasting with the structured floor. Tech-refined look." src="https://lh3.googleusercontent.com/aida-public/AB6AXuB8mZmXniz8im8eimqBV0JX9rLk-ElQRx52NLdr0ErQPVCgJBb8bzDk14D1x96jLpkNbg2tmH-QFBKPqIbvjTmNzTF6sAOlt1IBZ5Y9TdaqTo0gL7TX-yQw0a90yuga4zr20hF8p6bhTpbCSFVZOfij2ZZULYeafCL3VIcDy5cYO8NASDA4kexplrgKbO6_RDx1drnueYofoaGT3FzlOz0ZbuLQ5LqrK-2VWAhix7uB2b9mZ2vE8Jyz"/>
+<div class="p-4 bg-surface-container-lowest">
+<div class="flex justify-between items-center mb-1">
+<span class="font-label-md text-label-md text-on-surface">Pet detected</span>
+<span class="font-label-sm text-label-sm text-on-surface-variant">09:15 AM</span>
+</div>
+</div>
+</div>
+<!-- Card 3 -->
+<div class="break-inside-avoid bg-surface-container-lowest rounded-xl overflow-hidden border border-outline-variant/20 shadow-sm relative group cursor-pointer">
+<div class="p-4 bg-surface-container-highest">
+<div class="flex items-start gap-3">
+<div class="w-10 h-10 rounded-full bg-primary-container flex items-center justify-center flex-shrink-0">
+<span class="material-symbols-outlined text-on-primary-container" data-icon="update">update</span>
+</div>
+<div>
+<h4 class="font-label-md text-label-md text-on-surface mb-1">Firmware Updated</h4>
+<p class="font-body-sm text-body-sm text-on-surface-variant">Device successfully updated to version 2.4.1. Connectivity improved.</p>
+<span class="block mt-2 font-label-sm text-label-sm text-on-surface-variant">Yesterday, 11:00 PM</span>
+</div>
+</div>
+</div>
+</div>
+<!-- Card 4 -->
+<div class="break-inside-avoid bg-surface-container-lowest rounded-xl overflow-hidden border border-outline-variant/20 shadow-sm relative group cursor-pointer">
+<img class="w-full h-40 object-cover" data-alt="A wide-angle security camera view of a bright, modern minimalist hallway in a smart home. Light mode, pristine white walls, deep black shadows for contrast. High-end residential architecture, crisp focus, tech-refined aesthetic." src="https://lh3.googleusercontent.com/aida-public/AB6AXuDwCBYZfg_DnR60Y3Mas_fqbco-_MEXsBso1FRwlLuPqZreYpNzoSObhnvBEFunvoSat_JyUzwtBl7_IKDVvmsqR-C3dZa-ab0YwRrG-iH1JfrP5Hw6EnzmAGin-KKYxKTRwJBdlXOXIJ7XjsKBRSjzhN-6Q2iX4IPwDaQpfd-ZpiI3gkaRt1Sw24ErhamgSeBLrfReMMxJI_Oncxj88s-JAa33P-24uP3IuRgQzuo5Li2mGRcM51VJ"/>
+<div class="absolute top-2 left-2 bg-black/40 backdrop-blur-sm rounded-full px-2 py-1 flex items-center gap-1">
+<span class="w-1.5 h-1.5 rounded-full bg-error"></span>
+<span class="font-label-sm text-label-sm text-white">Motion Detected</span>
+</div>
+<div class="p-4 bg-surface-container-lowest">
+<div class="flex justify-between items-center mb-1">
+<span class="font-label-md text-label-md text-on-surface">Unrecognized movement</span>
+<span class="font-label-sm text-label-sm text-on-surface-variant">Yesterday, 4:20 PM</span>
+</div>
+</div>
+</div>
+</div>
+</section>
+<!-- Quick Settings Module (Secondary) -->
+<section class="space-y-4 mt-8 pt-8 border-t border-outline-variant/20">
+<h3 class="font-headline-sm text-headline-sm text-on-surface">Device Settings</h3>
+<div class="bg-surface-container-lowest rounded-xl border border-outline-variant/20 overflow-hidden shadow-sm">
+<div class="flex items-center justify-between p-4 border-b border-outline-variant/10 hover:bg-surface-container-low cursor-pointer transition-colors">
+<div class="flex items-center gap-3">
+<span class="material-symbols-outlined text-on-surface-variant" data-icon="notifications">notifications</span>
+<span class="font-body-md text-body-md text-on-surface">Alert Preferences</span>
+</div>
+<span class="material-symbols-outlined text-on-surface-variant" data-icon="chevron_right">chevron_right</span>
+</div>
+<div class="flex items-center justify-between p-4 border-b border-outline-variant/10 hover:bg-surface-container-low cursor-pointer transition-colors">
+<div class="flex items-center gap-3">
+<span class="material-symbols-outlined text-on-surface-variant" data-icon="schedule">schedule</span>
+<span class="font-body-md text-body-md text-on-surface">Automation Schedule</span>
+</div>
+<span class="material-symbols-outlined text-on-surface-variant" data-icon="chevron_right">chevron_right</span>
+</div>
+<div class="flex items-center justify-between p-4 hover:bg-surface-container-low cursor-pointer transition-colors">
+<div class="flex items-center gap-3">
+<span class="material-symbols-outlined text-on-surface-variant" data-icon="security">security</span>
+<span class="font-body-md text-body-md text-on-surface">Privacy &amp; Permissions</span>
+</div>
+<span class="material-symbols-outlined text-on-surface-variant" data-icon="chevron_right">chevron_right</span>
+</div>
+</div>
+</section>
+</main>
+<!-- BottomNavBar (Mobile Only) -->
+<nav class="md:hidden fixed bottom-0 w-full z-50 pb-safe bg-surface-container dark:bg-surface-container-lowest shadow-sm flex justify-around items-center h-20 px-4">
+<a class="flex flex-col items-center justify-center text-on-surface-variant dark:text-outline hover:text-primary dark:hover:text-primary-fixed transition-all active:scale-90 duration-200" href="#">
+<span class="material-symbols-outlined mb-1" data-icon="home">home</span>
+<span class="font-label-md text-label-md">Home</span>
+</a>
+<a class="flex flex-col items-center justify-center text-on-surface-variant dark:text-outline hover:text-primary dark:hover:text-primary-fixed transition-all active:scale-90 duration-200" href="#">
+<span class="material-symbols-outlined mb-1" data-icon="smart_toy">smart_toy</span>
+<span class="font-label-md text-label-md">Devices</span>
+</a>
+<a class="flex flex-col items-center justify-center bg-secondary-container dark:bg-on-secondary-fixed-variant text-on-secondary-container dark:text-secondary-fixed rounded-full px-5 py-1 hover:text-primary dark:hover:text-primary-fixed transition-all active:scale-90 duration-200" href="#">
+<span class="material-symbols-outlined fill mb-1" data-icon="bolt" data-weight="fill">bolt</span>
+<span class="font-label-md text-label-md">Automate</span>
+</a>
+<a class="flex flex-col items-center justify-center text-on-surface-variant dark:text-outline hover:text-primary dark:hover:text-primary-fixed transition-all active:scale-90 duration-200" href="#">
+<span class="material-symbols-outlined mb-1" data-icon="person">person</span>
+<span class="font-label-md text-label-md">Profile</span>
+</a>
+</nav>
+</body></html>

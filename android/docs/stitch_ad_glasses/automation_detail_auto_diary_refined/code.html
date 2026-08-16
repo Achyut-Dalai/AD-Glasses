@@ -1,0 +1,288 @@
+<!DOCTYPE html>
+
+<html class="light" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Auto Diary - Automation Detail</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Hanken+Grotesk:wght@400;500;600&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    "colors": {
+                            "secondary-container": "#4090fe",
+                            "on-surface": "#161c27",
+                            "canvas": "#F6F7F9",
+                            "surface-container-high": "#e2e8f8",
+                            "on-secondary-fixed": "#001b3e",
+                            "secondary-fixed": "#d6e3ff",
+                            "on-tertiary": "#ffffff",
+                            "inverse-surface": "#2a313d",
+                            "surface-control": "#FFFFFF",
+                            "cool-gray": "#717785",
+                            "on-error": "#ffffff",
+                            "on-tertiary-fixed-variant": "#444749",
+                            "on-primary-fixed": "#1b1b1b",
+                            "background": "#f9f9ff",
+                            "on-tertiary-fixed": "#191c1e",
+                            "secondary-fixed-dim": "#aac7ff",
+                            "electric-blue": "#1978E5",
+                            "tertiary-fixed-dim": "#c5c7c8",
+                            "surface-variant": "#dde2f2",
+                            "surface-container-highest": "#dde2f2",
+                            "primary-fixed-dim": "#c6c6c6",
+                            "on-surface-variant": "#4c4546",
+                            "outline-variant": "#cfc4c5",
+                            "on-background": "#161c27",
+                            "on-error-container": "#93000a",
+                            "graphite-black": "#000000",
+                            "inverse-primary": "#c6c6c6",
+                            "tertiary-container": "#191c1e",
+                            "error": "#ba1a1a",
+                            "primary": "#000000",
+                            "inverse-on-surface": "#ecf0ff",
+                            "tertiary-fixed": "#e1e2e4",
+                            "surface-dim": "#d4daea",
+                            "surface-container": "#e8eefe",
+                            "on-primary-fixed-variant": "#474747",
+                            "primary-fixed": "#e2e2e2",
+                            "on-tertiary-container": "#828486",
+                            "tertiary": "#000000",
+                            "surface": "#f9f9ff",
+                            "on-secondary-container": "#002958",
+                            "surface-container-low": "#f0f3ff",
+                            "outline": "#7e7576",
+                            "on-primary-container": "#848484",
+                            "success-teal": "#008080",
+                            "surface-tint": "#5e5e5e",
+                            "on-primary": "#ffffff",
+                            "surface-container-lowest": "#ffffff",
+                            "primary-container": "#1b1b1b",
+                            "surface-bright": "#f9f9ff",
+                            "on-secondary": "#ffffff",
+                            "warning-amber": "#FFBF00",
+                            "on-secondary-fixed-variant": "#00458d",
+                            "secondary": "#005db8",
+                            "error-container": "#ffdad6"
+                    },
+                    "borderRadius": {
+                            "DEFAULT": "0.25rem",
+                            "lg": "0.5rem",
+                            "xl": "0.75rem",
+                            "full": "9999px"
+                    },
+                    "spacing": {
+                            "base": "4px",
+                            "hero-stage": "220px",
+                            "gap-xs": "4px",
+                            "gap-sm": "8px",
+                            "touch-target": "48px",
+                            "margin-page": "16px"
+                    },
+                    "fontFamily": {
+                            "headline-md": ["Hanken Grotesk"],
+                            "body-lg": ["Hanken Grotesk"],
+                            "label-lg": ["Hanken Grotesk"],
+                            "label-md": ["Hanken Grotesk"],
+                            "label-sm": ["Hanken Grotesk"],
+                            "body-md": ["Hanken Grotesk"],
+                            "headline-lg": ["Hanken Grotesk"]
+                    },
+                    "fontSize": {
+                            "headline-md": ["20px", {"lineHeight": "28px", "letterSpacing": "-0.01em", "fontWeight": "600"}],
+                            "body-lg": ["16px", {"lineHeight": "24px", "fontWeight": "400"}],
+                            "label-lg": ["14px", {"lineHeight": "20px", "fontWeight": "500"}],
+                            "label-md": ["12px", {"lineHeight": "16px", "fontWeight": "500"}],
+                            "label-sm": ["11px", {"lineHeight": "16px", "letterSpacing": "0.05em", "fontWeight": "500"}],
+                            "body-md": ["14px", {"lineHeight": "20px", "fontWeight": "400"}],
+                            "headline-lg": ["24px", {"lineHeight": "32px", "letterSpacing": "-0.02em", "fontWeight": "600"}]
+                    }
+                }
+            }
+        }
+    </script>
+<style>
+        body {
+            background-color: theme('colors.canvas');
+            color: theme('colors.on-surface');
+            -webkit-font-smoothing: antialiased;
+        }
+        .hardware-border {
+            border: 1px solid theme('colors.surface-variant');
+        }
+        .toggle-checkbox:checked {
+            right: 0;
+            border-color: theme('colors.success-teal');
+        }
+        .toggle-checkbox:checked + .toggle-label {
+            background-color: theme('colors.success-teal');
+        }
+    </style>
+<style>
+    body {
+      min-height: max(884px, 100dvh);
+    }
+  </style>
+<style>
+    body {
+      min-height: max(884px, 100dvh);
+    }
+  </style>
+  </head>
+<body class="min-h-screen flex flex-col font-body-md">
+<!-- TopAppBar Semantic Shell -->
+<header class="w-full sticky top-0 z-50 bg-surface dark:bg-surface-dim flex items-center justify-between px-container-padding h-16 max-w-5xl mx-auto shadow-sm">
+<button class="h-touch-target w-touch-target flex items-center justify-center text-primary dark:text-primary-fixed-dim hover:bg-surface-container-high dark:hover:bg-surface-container-highest transition-colors rounded-full active:scale-95 duration-100">
+<span class="material-symbols-outlined" data-icon="arrow_back">arrow_back</span>
+</button>
+<h1 class="font-headline-md text-headline-md text-primary dark:text-primary-fixed-dim">Automation Detail</h1>
+<button class="h-touch-target w-touch-target flex items-center justify-center text-primary dark:text-primary-fixed-dim hover:bg-surface-container-high dark:hover:bg-surface-container-highest transition-colors rounded-full active:scale-95 duration-100">
+<span class="material-symbols-outlined" data-icon="settings">settings</span>
+</button>
+</header>
+<!-- Main Content Area -->
+<main class="flex-grow w-full max-w-5xl mx-auto px-margin-page py-6 pb-32">
+<!-- Hero / Identification Section -->
+<section class="mb-8 flex flex-col items-center justify-center text-center">
+<div class="w-24 h-24 bg-surface-control rounded-full flex items-center justify-center hardware-border shadow-sm mb-4">
+<span class="material-symbols-outlined text-4xl text-electric-blue" data-icon="history_edu" style="font-variation-settings: 'FILL' 1;">history_edu</span>
+</div>
+<h2 class="font-headline-lg text-headline-lg text-primary mb-1">Auto Diary</h2>
+<p class="font-body-md text-body-md text-on-surface-variant max-w-md mx-auto">Silently captures screen context and local events to generate a private daily timeline.</p>
+<div class="mt-6 flex items-center justify-center space-x-3">
+<span class="font-label-lg text-label-lg text-on-surface">Status</span>
+<div class="relative inline-block w-12 mr-2 align-middle select-none transition duration-200 ease-in">
+<input checked="" class="toggle-checkbox absolute block w-6 h-6 rounded-full bg-white border-4 appearance-none cursor-pointer transition-all duration-300 z-10 top-0 left-0" id="toggle" name="toggle" type="checkbox"/>
+<label class="toggle-label block overflow-hidden h-6 rounded-full bg-surface-variant cursor-pointer transition-colors duration-300" for="toggle"></label>
+</div>
+<span class="font-label-sm text-label-sm px-2 py-1 bg-success-teal text-white rounded-sm uppercase tracking-wider">Active</span>
+</div>
+</section>
+<div class="grid grid-cols-1 md:grid-cols-12 gap-6">
+<!-- Left Column: Context & Diagnostics -->
+<div class="md:col-span-5 space-y-6">
+<!-- Compatibility & Rationale -->
+<div class="bg-surface-control rounded-xl p-6 hardware-border shadow-sm">
+<div class="flex items-center space-x-2 mb-4">
+<span class="material-symbols-outlined text-cool-gray" data-icon="accessibility_new">accessibility_new</span>
+<h3 class="font-headline-md text-headline-md text-primary">System Requirements</h3>
+</div>
+<p class="font-body-md text-body-md text-on-surface-variant mb-4">Auto Diary relies on advanced Accessibility APIs to read screen contents without requiring intrusive permissions or cloud processing.</p>
+<div class="flex items-center justify-between p-3 bg-surface rounded-lg border border-surface-variant">
+<div class="flex items-center space-x-3">
+<span class="material-symbols-outlined text-success-teal" data-icon="check_circle" style="font-variation-settings: 'FILL' 1;">check_circle</span>
+<span class="font-label-lg text-label-lg">Accessibility Service</span>
+</div>
+<span class="font-label-md text-label-md text-success-teal">Granted</span>
+</div>
+</div>
+<!-- Manifest Badges (Privacy Focus) -->
+<div class="bg-surface-control rounded-xl p-6 hardware-border shadow-sm">
+<h3 class="font-headline-md text-headline-md text-primary mb-4">Data Manifest</h3>
+<div class="flex flex-wrap gap-2">
+<div class="inline-flex items-center px-3 py-1.5 rounded-full bg-surface-container-high border border-surface-variant">
+<span class="material-symbols-outlined text-sm mr-1.5 text-cool-gray" data-icon="smartphone">smartphone</span>
+<span class="font-label-md text-label-md text-on-surface">Screen Context</span>
+</div>
+<div class="inline-flex items-center px-3 py-1.5 rounded-full bg-surface-container-high border border-surface-variant">
+<span class="material-symbols-outlined text-sm mr-1.5 text-cool-gray" data-icon="memory">memory</span>
+<span class="font-label-md text-label-md text-on-surface">Volatile Memory</span>
+</div>
+<div class="inline-flex items-center px-3 py-1.5 rounded-full bg-surface-container-high border border-surface-variant">
+<span class="material-symbols-outlined text-sm mr-1.5 text-cool-gray" data-icon="folder_managed">folder_managed</span>
+<span class="font-label-md text-label-md text-on-surface">Local Storage Only</span>
+</div>
+<div class="inline-flex items-center px-3 py-1.5 rounded-full bg-surface-container-high border border-success-teal text-success-teal bg-opacity-10">
+<span class="material-symbols-outlined text-sm mr-1.5" data-icon="cloud_off">cloud_off</span>
+<span class="font-label-md text-label-md">No Cloud Sync</span>
+</div>
+</div>
+</div>
+</div>
+<!-- Right Column: Configuration -->
+<div class="md:col-span-7 space-y-6">
+<div class="bg-surface-control rounded-xl p-0 hardware-border shadow-sm overflow-hidden">
+<div class="p-6 border-b border-surface-variant bg-surface">
+<h3 class="font-headline-md text-headline-md text-primary">Configuration Profile</h3>
+</div>
+<div class="divide-y divide-surface-variant">
+<!-- Setting: Capture Interval -->
+<div class="p-6 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+<div>
+<h4 class="font-label-lg text-label-lg text-on-surface">Capture Interval</h4>
+<p class="font-body-md text-body-md text-on-surface-variant mt-1">Frequency of contextual snapshots.</p>
+</div>
+<div class="flex items-center space-x-2 bg-surface-container rounded-lg p-1 border border-surface-variant">
+<button class="px-3 py-1.5 font-label-md text-label-md rounded bg-surface-control shadow-sm text-primary">15s</button>
+<button class="px-3 py-1.5 font-label-md text-label-md rounded text-on-surface-variant hover:text-primary">30s</button>
+<button class="px-3 py-1.5 font-label-md text-label-md rounded text-on-surface-variant hover:text-primary">60s</button>
+</div>
+</div>
+<!-- Setting: OCR/Redaction -->
+<div class="p-6 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+<div>
+<h4 class="font-label-lg text-label-lg text-on-surface">On-Device Redaction</h4>
+<p class="font-body-md text-body-md text-on-surface-variant mt-1">Automatically obscure names and sensitive data via ML.</p>
+</div>
+<div class="relative inline-block w-12 align-middle select-none">
+<input checked="" class="toggle-checkbox absolute block w-6 h-6 rounded-full bg-white border-4 appearance-none cursor-pointer transition-all duration-300 z-10 top-0 left-0" type="checkbox"/>
+<label class="toggle-label block overflow-hidden h-6 rounded-full bg-surface-variant cursor-pointer transition-colors duration-300"></label>
+</div>
+</div>
+<!-- Setting: App Blacklist -->
+<div class="p-6">
+<div class="flex items-center justify-between mb-4">
+<div>
+<h4 class="font-label-lg text-label-lg text-on-surface">Exclusion List (Blacklist)</h4>
+<p class="font-body-md text-body-md text-on-surface-variant mt-1">Apps where capture is strictly prohibited.</p>
+</div>
+<button class="text-electric-blue font-label-md text-label-md hover:underline flex items-center">
+<span class="material-symbols-outlined text-sm mr-1" data-icon="add">add</span> Add App
+                                </button>
+</div>
+<div class="flex flex-wrap gap-2">
+<span class="px-3 py-1 bg-surface rounded-md border border-surface-variant font-label-md text-label-md flex items-center">
+                                    Banking App <span class="material-symbols-outlined text-sm ml-2 text-cool-gray cursor-pointer hover:text-error" data-icon="close">close</span>
+</span>
+<span class="px-3 py-1 bg-surface rounded-md border border-surface-variant font-label-md text-label-md flex items-center">
+                                    Secure Messenger <span class="material-symbols-outlined text-sm ml-2 text-cool-gray cursor-pointer hover:text-error" data-icon="close">close</span>
+</span>
+<span class="px-3 py-1 bg-surface rounded-md border border-surface-variant font-label-md text-label-md flex items-center">
+                                    Password Manager <span class="material-symbols-outlined text-sm ml-2 text-cool-gray cursor-pointer hover:text-error" data-icon="close">close</span>
+</span>
+</div>
+</div>
+<!-- Setting: Retention -->
+<div class="p-6 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+<div>
+<h4 class="font-label-lg text-label-lg text-on-surface">Data Retention</h4>
+<p class="font-body-md text-body-md text-on-surface-variant mt-1">Local timeline storage duration.</p>
+</div>
+<select class="bg-surface border border-surface-variant text-on-surface font-label-md text-label-md rounded-md focus:ring-electric-blue focus:border-electric-blue block p-2.5">
+<option>7 Days</option>
+<option selected="">14 Days</option>
+<option>30 Days</option>
+<option>Until Space Needed</option>
+</select>
+</div>
+</div>
+</div>
+<!-- Danger Zone -->
+<div class="mt-8 p-6 rounded-xl border border-error-container bg-surface flex items-center justify-between">
+<div>
+<h4 class="font-label-lg text-label-lg text-error">Purge Timeline Data</h4>
+<p class="font-body-md text-body-md text-on-surface-variant mt-1">Instantly delete all local captures for this automation.</p>
+</div>
+<button class="px-4 py-2 bg-surface-control border border-error text-error font-label-md text-label-md rounded-md hover:bg-error hover:text-white transition-colors">
+                        Purge Data
+                    </button>
+</div>
+</div>
+</div>
+</main>
+<!-- Semantic BottomNavBar Navigation (Suppressed based on logic, but present structurally if needed. In this detail view, it should logically be suppressed per "Task-Focused: Any sub-page featuring a Close or Back action". Thus, it is omitted from rendering to prioritize canvas.) -->
+</body></html>

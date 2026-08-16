@@ -1,0 +1,239 @@
+<!DOCTYPE html>
+
+<html class="light" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0, viewport-fit=cover" name="viewport"/>
+<title>Agent Setup</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    "colors": {
+                        "surface-variant": "#dfe2eb",
+                        "surface-container-high": "#e5e8f1",
+                        "surface-dim": "#d7dae2",
+                        "secondary-fixed-dim": "#aec7f6",
+                        "on-tertiary-fixed": "#321200",
+                        "tertiary": "#723200",
+                        "surface-bright": "#f8f9ff",
+                        "inverse-surface": "#2d3137",
+                        "error-container": "#ffdad6",
+                        "on-error": "#ffffff",
+                        "on-primary-fixed": "#001b3e",
+                        "on-surface": "#181c22",
+                        "on-secondary-fixed": "#001b3d",
+                        "surface-container-highest": "#dfe2eb",
+                        "on-surface-variant": "#424752",
+                        "secondary-container": "#b6d0ff",
+                        "background": "#f8f9ff",
+                        "stage-halo-start": "rgba(10, 115, 224, 0.15)",
+                        "outline-variant": "#c2c6d4",
+                        "error": "#ba1a1a",
+                        "on-primary-container": "#c0d5ff",
+                        "surface": "#f8f9ff",
+                        "on-error-container": "#93000a",
+                        "secondary": "#465f88",
+                        "background-alt": "#F6F7F9",
+                        "on-secondary-container": "#3f5881",
+                        "inverse-primary": "#aac7ff",
+                        "primary-container": "#005ab4",
+                        "tertiary-fixed-dim": "#ffb68c",
+                        "inverse-on-surface": "#eef1f9",
+                        "on-tertiary-fixed-variant": "#753400",
+                        "surface-tint": "#095db7",
+                        "surface-container-lowest": "#ffffff",
+                        "primary-fixed": "#d6e3ff",
+                        "surface-container-low": "#f1f3fc",
+                        "surface-glass": "rgba(249, 249, 255, 0.8)",
+                        "on-background": "#181c22",
+                        "on-secondary-fixed-variant": "#2e476f",
+                        "surface-container": "#ebeef6",
+                        "outline": "#727783",
+                        "tertiary-fixed": "#ffdbc9",
+                        "on-secondary": "#ffffff",
+                        "on-tertiary-container": "#ffc9ac",
+                        "primary": "#004389",
+                        "tertiary-container": "#964400",
+                        "status-connected": "#1275e2",
+                        "primary-fixed-dim": "#aac7ff",
+                        "secondary-fixed": "#d6e3ff",
+                        "on-primary": "#ffffff",
+                        "on-primary-fixed-variant": "#00458d",
+                        "on-tertiary": "#ffffff"
+                    },
+                    "borderRadius": {
+                        "DEFAULT": "0.25rem",
+                        "lg": "0.5rem",
+                        "xl": "0.75rem",
+                        "full": "9999px"
+                    },
+                    "spacing": {
+                        "touch-target-min": "40px",
+                        "container-margin": "1rem",
+                        "section-gap": "2rem",
+                        "element-gap": "0.75rem"
+                    },
+                    "fontFamily": {
+                        "label-sm": ["Inter"],
+                        "body-md": ["Inter"],
+                        "label-xs": ["Inter"],
+                        "display-lg": ["Inter"],
+                        "headline-md": ["Inter"],
+                        "body-sm": ["Inter"]
+                    },
+                    "fontSize": {
+                        "label-sm": ["12px", { "lineHeight": "16px", "fontWeight": "500" }],
+                        "body-md": ["16px", { "lineHeight": "24px", "fontWeight": "400" }],
+                        "label-xs": ["10px", { "lineHeight": "12px", "fontWeight": "600" }],
+                        "display-lg": ["24px", { "lineHeight": "32px", "letterSpacing": "-0.025em", "fontWeight": "800" }],
+                        "headline-md": ["18px", { "lineHeight": "24px", "fontWeight": "700" }],
+                        "body-sm": ["14px", { "lineHeight": "20px", "fontWeight": "500" }]
+                    }
+                }
+            }
+        }
+    </script>
+<style>
+        body {
+            background-color: #F6F7F9; /* background-alt */
+            -webkit-font-smoothing: antialiased;
+        }
+        /* Custom scrollbar to match sleek design */
+        ::-webkit-scrollbar { width: 6px; }
+        ::-webkit-scrollbar-track { background: transparent; }
+        ::-webkit-scrollbar-thumb { background: #dfe2eb; border-radius: 3px; }
+        ::-webkit-scrollbar-thumb:hover { background: #c2c6d4; }
+        
+        /* Material symbols setup */
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+        }
+        .material-symbols-outlined.fill {
+            font-variation-settings: 'FILL' 1, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+        }
+    </style>
+<style>
+    body {
+      min-height: max(884px, 100dvh);
+    }
+  </style>
+  </head>
+<body class="bg-background-alt text-on-background min-h-screen pb-safe">
+<!-- TopAppBar -->
+<header class="fixed top-0 w-full z-50 backdrop-blur-xl bg-surface-glass/80 shadow-sm transition-colors duration-200">
+<div class="flex justify-between items-center h-16 px-container-margin w-full z-50">
+<button aria-label="Menu" class="w-touch-target-min h-touch-target-min flex items-center justify-center rounded-full text-on-surface-variant hover:bg-surface-container-low transition-colors duration-200">
+<span class="material-symbols-outlined text-[24px]">menu</span>
+</button>
+<h1 class="font-display-lg text-display-lg text-on-surface">Agent Setup</h1>
+<button aria-label="Settings" class="w-touch-target-min h-touch-target-min flex items-center justify-center rounded-full text-on-surface-variant hover:bg-surface-container-low transition-colors duration-200">
+<span class="material-symbols-outlined text-[24px]">settings</span>
+</button>
+</div>
+</header>
+<!-- Main Content -->
+<main class="pt-24 px-container-margin flex flex-col gap-section-gap max-w-lg mx-auto">
+<!-- Device Stage (Hero) -->
+<section class="relative flex flex-col items-center justify-center pt-8 pb-4">
+<div class="absolute w-64 h-64 rounded-full" style="background: radial-gradient(circle, rgba(10, 115, 224, 0.15) 0%, rgba(255,255,255,0) 70%); z-index: -1;"></div>
+<div class="relative w-32 h-32 flex items-center justify-center mb-6">
+<!-- Status indicator - Amber/Red for Action Required -->
+<div class="absolute -right-2 top-2 w-6 h-6 rounded-full bg-error flex items-center justify-center border-2 border-surface-container-lowest z-10">
+<span class="material-symbols-outlined text-[14px] text-on-error font-bold">priority_high</span>
+</div>
+<!-- Abstract Device/Agent Icon representing the Local Agent -->
+<div class="w-24 h-24 rounded-2xl bg-surface-container-highest flex items-center justify-center shadow-inner relative overflow-hidden">
+<span class="material-symbols-outlined text-[48px] text-on-surface-variant z-10">smart_toy</span>
+<div class="absolute inset-0 bg-gradient-to-tr from-error/10 to-transparent"></div>
+</div>
+</div>
+<div class="text-center flex flex-col gap-1">
+<h2 class="font-headline-md text-headline-md text-on-surface">Action Required</h2>
+<p class="font-body-md text-body-md text-on-surface-variant max-w-[280px]">Local agent needs additional permissions to function fully.</p>
+</div>
+</section>
+<!-- Readiness Panel -->
+<section class="flex flex-col gap-element-gap">
+<h3 class="font-label-sm text-label-sm text-on-surface-variant uppercase tracking-wider px-2">Readiness Status</h3>
+<div class="bg-surface-container-lowest rounded-xl shadow-sm overflow-hidden flex flex-col divide-y divide-surface-variant">
+<!-- Accessibility Item (Action Required) -->
+<div class="p-4 flex items-start gap-4 bg-error-container/20">
+<div class="w-10 h-10 rounded-full bg-error-container flex items-center justify-center shrink-0">
+<span class="material-symbols-outlined text-error text-[20px]">accessibility_new</span>
+</div>
+<div class="flex-1 flex flex-col gap-1 pt-0.5">
+<div class="flex justify-between items-center">
+<span class="font-body-md text-body-md text-on-surface font-semibold">Accessibility</span>
+<span class="font-label-xs text-label-xs text-error font-bold px-2 py-0.5 rounded-full bg-error-container">Action required</span>
+</div>
+<p class="font-body-sm text-body-sm text-on-surface-variant">Required for phone control and screenshot planning.</p>
+<button class="mt-3 w-full bg-primary text-on-primary font-body-sm text-body-sm py-2.5 rounded-lg hover:bg-primary-container hover:text-on-primary-container transition-colors duration-200 flex items-center justify-center gap-2">
+<span>Open Accessibility settings</span>
+<span class="material-symbols-outlined text-[18px]">open_in_new</span>
+</button>
+</div>
+</div>
+<!-- Network Item (Ready) -->
+<div class="p-4 flex items-center gap-4 opacity-75">
+<div class="w-10 h-10 rounded-full bg-surface-container flex items-center justify-center shrink-0">
+<span class="material-symbols-outlined text-status-connected text-[20px]">wifi</span>
+</div>
+<div class="flex-1 flex flex-col">
+<div class="flex justify-between items-center">
+<span class="font-body-md text-body-md text-on-surface">Local Network</span>
+<span class="material-symbols-outlined text-status-connected text-[20px]">check_circle</span>
+</div>
+<p class="font-body-sm text-body-sm text-on-surface-variant">Connected to Home_Wi-Fi</p>
+</div>
+</div>
+<!-- Storage Item (Ready) -->
+<div class="p-4 flex items-center gap-4 opacity-75">
+<div class="w-10 h-10 rounded-full bg-surface-container flex items-center justify-center shrink-0">
+<span class="material-symbols-outlined text-status-connected text-[20px]">sd_storage</span>
+</div>
+<div class="flex-1 flex flex-col">
+<div class="flex justify-between items-center">
+<span class="font-body-md text-body-md text-on-surface">Storage Allocation</span>
+<span class="material-symbols-outlined text-status-connected text-[20px]">check_circle</span>
+</div>
+<p class="font-body-sm text-body-sm text-on-surface-variant">Sufficient space available (12GB)</p>
+</div>
+</div>
+</div>
+</section>
+<!-- Info Banner -->
+<section class="bg-surface-container-low rounded-xl p-4 flex gap-3 border border-outline-variant/30">
+<span class="material-symbols-outlined text-on-surface-variant text-[20px] shrink-0 mt-0.5">info</span>
+<p class="font-body-sm text-body-sm text-on-surface-variant">
+<strong class="text-on-surface font-semibold block mb-1">Background Operation Limit</strong>
+                Phone control and screenshot planning stop while the phone is locked. Non-control features remain active.
+            </p>
+</section>
+</main>
+<!-- Spacer for Bottom Nav -->
+<div class="h-24"></div>
+<!-- BottomNavBar -->
+<nav class="fixed bottom-0 w-full rounded-t-xl bg-surface dark:bg-surface-dim shadow-[0_-1px_3px_0_rgba(0,0,0,0.05)] shadow-lg z-50 flex justify-around items-center h-20 px-2 pb-safe md:hidden">
+<button class="flex flex-col items-center justify-center text-on-secondary-fixed-variant hover:bg-surface-container-high transition-all active:scale-95 duration-100 w-16 h-14 rounded-xl group">
+<span class="material-symbols-outlined mb-1 group-hover:scale-110 transition-transform">home</span>
+<span class="font-label-xs text-label-xs">Home</span>
+</button>
+<button class="flex flex-col items-center justify-center bg-secondary-container text-on-secondary-container rounded-xl px-4 py-1 hover:bg-surface-container-high transition-all active:scale-95 duration-100 h-14 group">
+<span class="material-symbols-outlined mb-1 fill">smart_toy</span>
+<span class="font-label-xs text-label-xs">Assistant</span>
+</button>
+<button class="flex flex-col items-center justify-center text-on-secondary-fixed-variant hover:bg-surface-container-high transition-all active:scale-95 duration-100 w-16 h-14 rounded-xl group">
+<span class="material-symbols-outlined mb-1 group-hover:scale-110 transition-transform">auto_stories</span>
+<span class="font-label-xs text-label-xs">Library</span>
+</button>
+<button class="flex flex-col items-center justify-center text-on-secondary-fixed-variant hover:bg-surface-container-high transition-all active:scale-95 duration-100 w-16 h-14 rounded-xl group">
+<span class="material-symbols-outlined mb-1 group-hover:scale-110 transition-transform">settings_input_component</span>
+<span class="font-label-xs text-label-xs">Automations</span>
+</button>
+</nav>
+</body></html>

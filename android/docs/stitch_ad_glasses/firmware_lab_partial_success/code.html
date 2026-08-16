@@ -1,0 +1,206 @@
+<!DOCTYPE html>
+
+<html lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Cyan Firmware Lab - Partial Success</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+      tailwind.config = {
+        darkMode: "class",
+        theme: {
+          extend: {
+            "colors": {
+                    "on-primary-container": "#c0d5ff",
+                    "surface-dim": "#d7dae3",
+                    "secondary-container": "#b6d0ff",
+                    "secondary": "#465f88",
+                    "surface-container-lowest": "#ffffff",
+                    "background": "#f9f9ff",
+                    "tertiary": "#723200",
+                    "on-error-container": "#93000a",
+                    "surface-container-high": "#e6e8f1",
+                    "error-container": "#ffdad6",
+                    "on-secondary-container": "#3f5881",
+                    "surface-bright": "#f9f9ff",
+                    "primary": "#004389",
+                    "on-surface-variant": "#424752",
+                    "surface": "#f9f9ff",
+                    "on-primary": "#ffffff",
+                    "on-secondary-fixed-variant": "#2e476f",
+                    "on-tertiary": "#ffffff",
+                    "on-background": "#181c22",
+                    "tertiary-container": "#964400",
+                    "surface-container-low": "#f1f3fc",
+                    "on-primary-fixed": "#001b3e",
+                    "inverse-surface": "#2d3037",
+                    "inverse-on-surface": "#eef0fa",
+                    "primary-fixed-dim": "#aac7ff",
+                    "primary-fixed": "#d6e3ff",
+                    "tertiary-fixed-dim": "#ffb68c",
+                    "on-tertiary-container": "#ffc9ac",
+                    "surface-container-highest": "#e0e2eb",
+                    "on-tertiary-fixed": "#321200",
+                    "on-surface": "#181c22",
+                    "primary-container": "#005ab4",
+                    "outline-variant": "#c2c6d4",
+                    "on-secondary": "#ffffff",
+                    "inverse-primary": "#aac7ff",
+                    "surface-variant": "#e0e2eb",
+                    "on-tertiary-fixed-variant": "#753400",
+                    "surface-container": "#ebedf7",
+                    "on-primary-fixed-variant": "#00458d",
+                    "on-secondary-fixed": "#001b3d",
+                    "surface-tint": "#095db7",
+                    "outline": "#727783",
+                    "tertiary-fixed": "#ffdbc9",
+                    "secondary-fixed-dim": "#aec7f6",
+                    "error": "#ba1a1a",
+                    "on-error": "#ffffff",
+                    "secondary-fixed": "#d6e3ff"
+            },
+            "borderRadius": {
+                    "DEFAULT": "0.25rem",
+                    "lg": "0.5rem",
+                    "xl": "0.75rem",
+                    "full": "9999px"
+            },
+            "spacing": {
+                    "container-padding": "1rem",
+                    "element-gap": "0.75rem",
+                    "section-gap": "1.5rem",
+                    "grid-gutter": "1rem"
+            },
+            "fontFamily": {
+                    "label-sm": ["Inter"],
+                    "body-md": ["Inter"],
+                    "body-sm": ["Inter"],
+                    "headline-sm": ["Inter"],
+                    "display-sm": ["Inter"],
+                    "label-lg": ["Inter"],
+                    "label-md": ["Inter"]
+            },
+            "fontSize": {
+                    "label-sm": ["10px", {"lineHeight": "12px", "fontWeight": "500"}],
+                    "body-md": ["0.875rem", {"lineHeight": "1.25rem", "fontWeight": "400"}],
+                    "body-sm": ["0.75rem", {"lineHeight": "1rem", "fontWeight": "400"}],
+                    "headline-sm": ["0.875rem", {"lineHeight": "1.25rem", "fontWeight": "600"}],
+                    "display-sm": ["1.125rem", {"lineHeight": "1.5rem", "letterSpacing": "0.15em", "fontWeight": "700"}],
+                    "label-lg": ["0.75rem", {"lineHeight": "1rem", "fontWeight": "600"}],
+                    "label-md": ["11px", {"lineHeight": "1rem", "fontWeight": "500"}]
+            }
+          }
+        }
+      }
+    </script>
+<style>
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+        }
+        .material-symbols-outlined.fill-icon {
+            font-variation-settings: 'FILL' 1;
+        }
+        
+        /* Subtle pulse for the warning state */
+        @keyframes subtle-pulse-warning {
+            0%, 100% { opacity: 1; transform: scale(1); }
+            50% { opacity: 0.8; transform: scale(0.98); }
+        }
+        .animate-warning-pulse {
+            animation: subtle-pulse-warning 3s ease-in-out infinite;
+        }
+    </style>
+<style>
+    body {
+      min-height: max(884px, 100dvh);
+    }
+  </style>
+  </head>
+<body class="bg-surface text-on-surface min-h-screen flex flex-col font-sans antialiased selection:bg-primary-container selection:text-on-primary-container">
+<!-- TopAppBar (Suppressed default nav, minimal transactional header) -->
+<header class="bg-surface w-full sticky top-0 z-50 flex items-center justify-between px-container-padding h-16 w-full max-w-5xl mx-auto border-b border-outline-variant/20">
+<button class="text-on-surface-variant hover:bg-surface-container-high transition-colors active:scale-95 duration-100 p-2 rounded-full flex items-center justify-center">
+<span class="material-symbols-outlined">close</span>
+</button>
+<h1 class="font-display-sm text-display-sm text-on-surface">Update Status</h1>
+<div class="w-10"></div> <!-- Spacer for centering -->
+</header>
+<!-- Main Canvas -->
+<main class="flex-grow flex flex-col items-center justify-center p-container-padding max-w-5xl mx-auto w-full space-y-section-gap pb-32">
+<!-- Status Hero -->
+<div class="flex flex-col items-center text-center space-y-4 max-w-md w-full">
+<div class="w-24 h-24 rounded-full bg-surface-container-high flex items-center justify-center border border-outline-variant/30 relative">
+<!-- Inner warning circle -->
+<div class="absolute inset-2 rounded-full bg-surface-container-highest flex items-center justify-center animate-warning-pulse">
+<span class="material-symbols-outlined fill-icon text-tertiary-container" style="font-size: 40px;">warning</span>
+</div>
+</div>
+<div>
+<h2 class="font-display-sm text-display-sm text-on-surface mb-2">Partial Update</h2>
+<p class="font-body-md text-body-md text-on-surface-variant">
+                    Wi-Fi firmware installed successfully, but the Bluetooth module lost connection during the final step. Your device is safe and operational.
+                </p>
+</div>
+</div>
+<!-- Bento Grid for Component Status -->
+<div class="grid grid-cols-1 md:grid-cols-2 gap-grid-gutter w-full max-w-2xl">
+<!-- Wi-Fi Success Card -->
+<div class="bg-surface-container rounded-xl p-4 border border-outline-variant/20 flex flex-col space-y-3">
+<div class="flex items-center justify-between">
+<div class="flex items-center space-x-2">
+<span class="material-symbols-outlined text-primary">wifi</span>
+<h3 class="font-headline-sm text-headline-sm text-on-surface">Wi-Fi Module</h3>
+</div>
+<div class="bg-primary-container text-on-primary-container font-label-sm text-label-sm px-2 py-1 rounded-full flex items-center space-x-1">
+<span class="material-symbols-outlined fill-icon" style="font-size: 12px;">check_circle</span>
+<span>Success</span>
+</div>
+</div>
+<div class="flex justify-between items-end mt-auto pt-2 border-t border-outline-variant/10">
+<span class="font-body-sm text-body-sm text-on-surface-variant">Version</span>
+<span class="font-label-lg text-label-lg text-on-surface">v2.4.1-rc3</span>
+</div>
+</div>
+<!-- Bluetooth Failed Card -->
+<div class="bg-error-container/30 rounded-xl p-4 border border-error/20 flex flex-col space-y-3">
+<div class="flex items-center justify-between">
+<div class="flex items-center space-x-2">
+<span class="material-symbols-outlined text-error">bluetooth</span>
+<h3 class="font-headline-sm text-headline-sm text-on-surface">Bluetooth LE</h3>
+</div>
+<div class="bg-error-container text-on-error-container font-label-sm text-label-sm px-2 py-1 rounded-full flex items-center space-x-1">
+<span class="material-symbols-outlined fill-icon" style="font-size: 12px;">error</span>
+<span>Failed</span>
+</div>
+</div>
+<div class="flex justify-between items-end mt-auto pt-2 border-t border-error/10">
+<span class="font-body-sm text-body-sm text-on-surface-variant">Current Version</span>
+<span class="font-label-lg text-label-lg text-on-surface">v1.9.8 (Old)</span>
+</div>
+</div>
+<!-- Diagnostics Note -->
+<div class="md:col-span-2 bg-surface-container-lowest rounded-xl p-4 border border-outline-variant/30 flex items-start space-x-3">
+<span class="material-symbols-outlined text-outline mt-0.5">info</span>
+<p class="font-body-sm text-body-sm text-on-surface-variant">
+                     Error Code: <span class="font-mono bg-surface-container px-1 py-0.5 rounded text-on-surface">ERR_BLE_TIMEOUT_0x4A</span>. Ensure the device remains powered on while attempting recovery.
+                 </p>
+</div>
+</div>
+</main>
+<!-- Bottom Action Area (Sticky) -->
+<div class="fixed bottom-0 w-full bg-surface-container/90 backdrop-blur-md border-t border-outline-variant/20 px-container-padding py-4 pb-safe z-40">
+<div class="max-w-2xl mx-auto flex flex-col sm:flex-row gap-3">
+<button class="flex-1 bg-surface-container-highest hover:bg-surface-variant text-on-surface font-label-lg text-label-lg py-3 px-6 rounded-full flex items-center justify-center space-x-2 transition-colors active:scale-95 duration-100 border border-outline-variant/30">
+<span class="material-symbols-outlined" style="font-size: 18px;">bug_report</span>
+<span>Export Diagnostics</span>
+</button>
+<button class="flex-1 bg-primary hover:bg-primary/90 text-on-primary font-label-lg text-label-lg py-3 px-6 rounded-full flex items-center justify-center space-x-2 transition-colors active:scale-95 duration-100 shadow-sm">
+<span class="material-symbols-outlined" style="font-size: 18px;">refresh</span>
+<span>Retry BLE Update</span>
+</button>
+</div>
+</div>
+</body></html>

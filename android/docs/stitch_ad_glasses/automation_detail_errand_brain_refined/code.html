@@ -1,0 +1,287 @@
+<!DOCTYPE html>
+
+<html class="h-full" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Automation Detail - Errand Brain</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Hanken+Grotesk:wght@400;500;600&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+      tailwind.config = {
+        darkMode: "class",
+        theme: {
+          extend: {
+            "colors": {
+                    "secondary-container": "#4090fe",
+                    "on-surface": "#161c27",
+                    "canvas": "#F6F7F9",
+                    "surface-container-high": "#e2e8f8",
+                    "on-secondary-fixed": "#001b3e",
+                    "secondary-fixed": "#d6e3ff",
+                    "on-tertiary": "#ffffff",
+                    "inverse-surface": "#2a313d",
+                    "surface-control": "#FFFFFF",
+                    "cool-gray": "#717785",
+                    "on-error": "#ffffff",
+                    "on-tertiary-fixed-variant": "#444749",
+                    "on-primary-fixed": "#1b1b1b",
+                    "background": "#f9f9ff",
+                    "on-tertiary-fixed": "#191c1e",
+                    "secondary-fixed-dim": "#aac7ff",
+                    "electric-blue": "#1978E5",
+                    "tertiary-fixed-dim": "#c5c7c8",
+                    "surface-variant": "#dde2f2",
+                    "surface-container-highest": "#dde2f2",
+                    "primary-fixed-dim": "#c6c6c6",
+                    "on-surface-variant": "#4c4546",
+                    "outline-variant": "#cfc4c5",
+                    "on-background": "#161c27",
+                    "on-error-container": "#93000a",
+                    "graphite-black": "#000000",
+                    "inverse-primary": "#c6c6c6",
+                    "tertiary-container": "#191c1e",
+                    "error": "#ba1a1a",
+                    "primary": "#000000",
+                    "inverse-on-surface": "#ecf0ff",
+                    "tertiary-fixed": "#e1e2e4",
+                    "surface-dim": "#d4daea",
+                    "surface-container": "#e8eefe",
+                    "on-primary-fixed-variant": "#474747",
+                    "primary-fixed": "#e2e2e2",
+                    "on-tertiary-container": "#828486",
+                    "tertiary": "#000000",
+                    "surface": "#f9f9ff",
+                    "on-secondary-container": "#002958",
+                    "surface-container-low": "#f0f3ff",
+                    "outline": "#7e7576",
+                    "on-primary-container": "#848484",
+                    "success-teal": "#008080",
+                    "surface-tint": "#5e5e5e",
+                    "on-primary": "#ffffff",
+                    "surface-container-lowest": "#ffffff",
+                    "primary-container": "#1b1b1b",
+                    "surface-bright": "#f9f9ff",
+                    "on-secondary": "#ffffff",
+                    "warning-amber": "#FFBF00",
+                    "on-secondary-fixed-variant": "#00458d",
+                    "secondary": "#005db8",
+                    "error-container": "#ffdad6"
+            },
+            "borderRadius": {
+                    "DEFAULT": "0.25rem",
+                    "lg": "0.5rem",
+                    "xl": "0.75rem",
+                    "full": "9999px"
+            },
+            "spacing": {
+                    "base": "4px",
+                    "hero-stage": "220px",
+                    "gap-xs": "4px",
+                    "gap-sm": "8px",
+                    "touch-target": "48px",
+                    "margin-page": "16px"
+            },
+            "fontFamily": {
+                    "headline-md": ["Hanken Grotesk"],
+                    "body-lg": ["Hanken Grotesk"],
+                    "label-lg": ["Hanken Grotesk"],
+                    "label-md": ["Hanken Grotesk"],
+                    "label-sm": ["Hanken Grotesk"],
+                    "body-md": ["Hanken Grotesk"],
+                    "headline-lg": ["Hanken Grotesk"]
+            },
+            "fontSize": {
+                    "headline-md": ["20px", {"lineHeight": "28px", "letterSpacing": "-0.01em", "fontWeight": "600"}],
+                    "body-lg": ["16px", {"lineHeight": "24px", "fontWeight": "400"}],
+                    "label-lg": ["14px", {"lineHeight": "20px", "fontWeight": "500"}],
+                    "label-md": ["12px", {"lineHeight": "16px", "fontWeight": "500"}],
+                    "label-sm": ["11px", {"lineHeight": "16px", "letterSpacing": "0.05em", "fontWeight": "500"}],
+                    "body-md": ["14px", {"lineHeight": "20px", "fontWeight": "400"}],
+                    "headline-lg": ["24px", {"lineHeight": "32px", "letterSpacing": "-0.02em", "fontWeight": "600"}]
+            }
+          }
+        }
+      }
+    </script>
+<style>
+        body { font-family: 'Hanken Grotesk', sans-serif; }
+        .hairline-top { border-top: 1px solid #cfc4c5; }
+        .hairline-bottom { border-bottom: 1px solid #cfc4c5; }
+        .hairline-border { border: 1px solid #cfc4c5; }
+        
+        /* Hardware Toggle Switch */
+        .toggle-checkbox:checked {
+            right: 0;
+            border-color: #1978E5;
+        }
+        .toggle-checkbox:checked + .toggle-label {
+            background-color: #1978E5;
+        }
+        .toggle-checkbox:checked + .toggle-label:after {
+            transform: translateX(100%);
+            border-color: white;
+        }
+        .toggle-label {
+            width: 44px;
+            height: 24px;
+            background-color: #cfc4c5;
+            border-radius: 9999px;
+            position: relative;
+            cursor: pointer;
+            transition: background-color 0.2s ease-in-out;
+        }
+        .toggle-label:after {
+            content: '';
+            position: absolute;
+            top: 2px;
+            left: 2px;
+            width: 20px;
+            height: 20px;
+            background-color: white;
+            border-radius: 50%;
+            transition: transform 0.2s ease-in-out;
+            box-shadow: 0 1px 2px rgba(0,0,0,0.1);
+        }
+    </style>
+<style>
+    body {
+      min-height: max(884px, 100dvh);
+    }
+  </style>
+<style>
+    body {
+      min-height: max(884px, 100dvh);
+    }
+  </style>
+  </head>
+<body class="bg-canvas text-on-surface h-full flex flex-col antialiased">
+<!-- TopAppBar -->
+<header class="bg-surface dark:bg-surface-dim sticky top-0 z-50 flat no shadows text-primary dark:text-primary-fixed-dim">
+<div class="flex items-center justify-between px-margin-page h-16 w-full max-w-5xl mx-auto">
+<button aria-label="Go back" class="w-12 h-12 flex items-center justify-start hover:bg-surface-container-high dark:hover:bg-surface-container-highest transition-colors active:scale-95 duration-100 rounded-full">
+<span class="material-symbols-outlined text-on-surface-variant dark:text-on-surface-variant" data-icon="arrow_back">arrow_back</span>
+</button>
+<h1 class="font-headline-sm text-headline-sm font-bold tracking-tight">Automation Detail</h1>
+<button aria-label="Settings" class="w-12 h-12 flex items-center justify-end hover:bg-surface-container-high dark:hover:bg-surface-container-highest transition-colors active:scale-95 duration-100 rounded-full">
+<span class="material-symbols-outlined text-on-surface-variant dark:text-on-surface-variant" data-icon="settings">settings</span>
+</button>
+</div>
+</header>
+<!-- Main Content -->
+<main class="flex-grow w-full max-w-5xl mx-auto px-margin-page py-6 pb-32">
+<!-- Header Section -->
+<section class="mb-8 flex items-start justify-between">
+<div>
+<h2 class="font-headline-lg text-headline-lg text-graphite-black mb-1">Errand Brain</h2>
+<p class="font-body-md text-body-md text-cool-gray">System Task Automation</p>
+</div>
+<div class="flex items-center gap-2 bg-white px-3 py-1.5 rounded-full hairline-border">
+<div class="w-2 h-2 rounded-full bg-success-teal"></div>
+<span class="font-label-sm text-label-sm text-on-surface uppercase tracking-wider">Active</span>
+</div>
+</section>
+<!-- Voice Input Required Card -->
+<section class="bg-surface-control rounded-lg p-5 mb-6 hairline-border shadow-sm flex items-start gap-4">
+<div class="w-10 h-10 rounded-full bg-surface-container flex items-center justify-center shrink-0">
+<span class="material-symbols-outlined text-electric-blue" data-icon="mic" data-weight="fill" style="font-variation-settings: 'FILL' 1;">mic</span>
+</div>
+<div>
+<h3 class="font-label-lg text-label-lg text-graphite-black mb-1">Voice Input Required</h3>
+<p class="font-body-sm text-body-sm text-cool-gray leading-relaxed">
+                    This automation analyzes ambient audio streams to identify action items. It requires active microphone access during defined operational windows to function correctly.
+                </p>
+</div>
+</section>
+<!-- Grid Layout for Config & Manifest -->
+<div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
+<!-- Configuration Column -->
+<section class="flex flex-col gap-6">
+<div>
+<h3 class="font-label-md text-label-md text-cool-gray uppercase tracking-wider mb-3 pl-1">Configuration</h3>
+<div class="bg-surface-control rounded-lg hairline-border overflow-hidden">
+<!-- Input Field: Language -->
+<div class="p-4 hairline-bottom">
+<label class="block font-label-md text-label-md text-cool-gray mb-1">Voice Input Language</label>
+<div class="flex items-center justify-between">
+<span class="font-body-lg text-body-lg text-graphite-black">English (US)</span>
+<span class="material-symbols-outlined text-cool-gray" data-icon="chevron_right">chevron_right</span>
+</div>
+</div>
+<!-- Input Field: Destination -->
+<div class="p-4">
+<label class="block font-label-md text-label-md text-cool-gray mb-1">Reminder Destination</label>
+<div class="flex items-center justify-between">
+<span class="font-body-lg text-body-lg text-graphite-black">System Tasks</span>
+<span class="material-symbols-outlined text-cool-gray" data-icon="chevron_right">chevron_right</span>
+</div>
+</div>
+</div>
+</div>
+<!-- Toggles -->
+<div>
+<div class="bg-surface-control rounded-lg hairline-border p-4 flex items-center justify-between">
+<div>
+<span class="block font-label-lg text-label-lg text-graphite-black">Confirm Before Create</span>
+<span class="block font-label-sm text-label-sm text-cool-gray mt-0.5">Require manual approval for new tasks</span>
+</div>
+<div class="relative inline-block w-11 h-6 align-middle select-none">
+<input checked="" class="toggle-checkbox absolute block w-6 h-6 rounded-full bg-white border-4 appearance-none cursor-pointer opacity-0 z-10" id="toggle-confirm" name="toggle" type="checkbox"/>
+<label class="toggle-label block overflow-hidden h-6 rounded-full bg-gray-300 cursor-pointer" for="toggle-confirm"></label>
+</div>
+</div>
+</div>
+</section>
+<!-- Manifest Access Column -->
+<section>
+<h3 class="font-label-md text-label-md text-cool-gray uppercase tracking-wider mb-3 pl-1">Manifest Access</h3>
+<div class="bg-surface-control rounded-lg hairline-border overflow-hidden">
+<!-- Access Item: Mic -->
+<div class="p-4 hairline-bottom flex items-center gap-3 hover:bg-canvas transition-colors">
+<span class="material-symbols-outlined text-outline" data-icon="mic">mic</span>
+<div class="flex-grow">
+<span class="block font-label-lg text-label-lg text-graphite-black">Microphone</span>
+<span class="block font-label-sm text-label-sm text-cool-gray">Active listening required</span>
+</div>
+<div class="px-2 py-1 bg-surface-variant rounded text-on-surface-variant font-label-sm text-label-sm">Required</div>
+</div>
+<!-- Access Item: Notifications -->
+<div class="p-4 hairline-bottom flex items-center gap-3 hover:bg-canvas transition-colors">
+<span class="material-symbols-outlined text-outline" data-icon="notifications">notifications</span>
+<div class="flex-grow">
+<span class="block font-label-lg text-label-lg text-graphite-black">Notifications</span>
+<span class="block font-label-sm text-label-sm text-cool-gray">Alerts for identified tasks</span>
+</div>
+<div class="px-2 py-1 bg-surface-variant rounded text-on-surface-variant font-label-sm text-label-sm">Granted</div>
+</div>
+<!-- Access Item: Memory -->
+<div class="p-4 flex items-center gap-3 hover:bg-canvas transition-colors">
+<span class="material-symbols-outlined text-outline" data-icon="memory">memory</span>
+<div class="flex-grow">
+<span class="block font-label-lg text-label-lg text-graphite-black">Memory Context</span>
+<span class="block font-label-sm text-label-sm text-cool-gray">Historical pattern matching</span>
+</div>
+<div class="relative inline-block w-11 h-6 align-middle select-none shrink-0">
+<input checked="" class="toggle-checkbox absolute block w-6 h-6 rounded-full bg-white border-4 appearance-none cursor-pointer opacity-0 z-10" id="toggle-memory" name="toggle-memory" type="checkbox"/>
+<label class="toggle-label block overflow-hidden h-6 rounded-full bg-gray-300 cursor-pointer" for="toggle-memory"></label>
+</div>
+</div>
+</div>
+<div class="mt-4 flex gap-2">
+<span class="px-2.5 py-1 rounded-full bg-surface-variant text-on-surface-variant font-label-sm text-label-sm border border-outline-variant flex items-center gap-1">
+<span class="material-symbols-outlined" data-icon="cloud_off" style="font-size: 14px;">cloud_off</span>
+                        On device processing
+                    </span>
+</div>
+</section>
+</div>
+<!-- Action Area -->
+<div class="flex justify-end pt-4">
+<button class="bg-graphite-black text-white font-label-lg text-label-lg px-6 py-3 rounded-lg flex items-center justify-center min-w-[120px] hover:opacity-90 active:scale-[0.98] transition-all">
+                Save Configuration
+            </button>
+</div>
+</main>
+<!-- BottomNavBar (Hidden on md and up as per Shell visibility logic for destinations, though this is a detail screen, instructions asked to render based on shared components, but wait, 'Automation Detail' implies it's a detail screen, which is task-focused. "You MUST exclude the navigation shell if the page intent is: Linear/Transactional... Task-Focused: Any sub-page featuring a 'Close' or 'Back' action". I will exclude the bottom nav to prioritize the canvas as per the filter mandate.) -->
+</body></html>

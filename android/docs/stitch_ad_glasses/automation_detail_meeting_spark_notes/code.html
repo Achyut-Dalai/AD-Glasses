@@ -1,0 +1,266 @@
+<!DOCTYPE html>
+
+<html class="light" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Automation Detail - Meeting Spark Notes</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    "colors": {
+                            "on-primary-fixed-variant": "#00458d",
+                            "surface-container": "#ebedf7",
+                            "primary-fixed": "#d6e3ff",
+                            "primary-container": "#005ab4",
+                            "on-background": "#181c22",
+                            "secondary-container": "#b6d0ff",
+                            "secondary-fixed": "#d6e3ff",
+                            "surface-container-highest": "#e0e2eb",
+                            "surface": "#f9f9ff",
+                            "on-primary": "#ffffff",
+                            "outline-variant": "#c1c6d5",
+                            "surface-bright": "#f9f9ff",
+                            "inverse-on-surface": "#eef0fa",
+                            "surface-container-lowest": "#ffffff",
+                            "on-primary-container": "#c0d5ff",
+                            "on-surface-variant": "#424752",
+                            "on-tertiary-fixed": "#321200",
+                            "surface-container-low": "#f1f3fc",
+                            "on-surface": "#181c22",
+                            "primary": "#004389",
+                            "background": "#f9f9ff",
+                            "surface-container-high": "#e6e8f1",
+                            "on-primary-fixed": "#001b3e",
+                            "on-tertiary": "#ffffff",
+                            "tertiary-fixed": "#ffdbc9",
+                            "surface-variant": "#e0e2eb",
+                            "primary-fixed-dim": "#aac7ff",
+                            "tertiary-fixed-dim": "#ffb68c",
+                            "on-error-container": "#93000a",
+                            "outline": "#727783",
+                            "tertiary": "#723200",
+                            "tertiary-container": "#964400",
+                            "on-tertiary-container": "#ffc9ac",
+                            "secondary": "#465f88",
+                            "secondary-fixed-dim": "#aec7f6",
+                            "surface-tint": "#095db7",
+                            "on-error": "#ffffff",
+                            "on-secondary": "#ffffff",
+                            "on-secondary-fixed-variant": "#2e476f",
+                            "surface-dim": "#d7dae3",
+                            "on-secondary-fixed": "#001b3d",
+                            "on-tertiary-fixed-variant": "#753400",
+                            "on-secondary-container": "#3f5881",
+                            "inverse-surface": "#2d3037",
+                            "error-container": "#ffdad6",
+                            "error": "#ba1a1a",
+                            "inverse-primary": "#aac7ff"
+                    },
+                    "borderRadius": {
+                            "DEFAULT": "0.25rem",
+                            "lg": "0.5rem",
+                            "xl": "0.75rem",
+                            "full": "9999px"
+                    },
+                    "spacing": {
+                            "element-gap": "0.75rem",
+                            "grid-gutter": "1rem",
+                            "container-padding": "1rem",
+                            "section-gap": "1.5rem"
+                    },
+                    "fontFamily": {
+                            "label-lg": ["Inter"],
+                            "label-md": ["Inter"],
+                            "label-sm": ["Inter"],
+                            "display-sm": ["Inter"],
+                            "body-md": ["Inter"],
+                            "headline-sm": ["Inter"],
+                            "body-sm": ["Inter"]
+                    },
+                    "fontSize": {
+                            "label-lg": ["0.75rem", { "lineHeight": "1rem", "fontWeight": "600" }],
+                            "label-md": ["11px", { "lineHeight": "1rem", "fontWeight": "500" }],
+                            "label-sm": ["10px", { "lineHeight": "12px", "fontWeight": "500" }],
+                            "display-sm": ["1.125rem", { "lineHeight": "1.5rem", "letterSpacing": "0.15em", "fontWeight": "700" }],
+                            "body-md": ["0.875rem", { "lineHeight": "1.25rem", "fontWeight": "400" }],
+                            "headline-sm": ["0.875rem", { "lineHeight": "1.25rem", "fontWeight": "600" }],
+                            "body-sm": ["0.75rem", { "lineHeight": "1rem", "fontWeight": "400" }]
+                    }
+                }
+            }
+        }
+    </script>
+<style>
+        body {
+            -webkit-font-smoothing: antialiased;
+            -moz-osx-font-smoothing: grayscale;
+        }
+    </style>
+<style>
+    body {
+      min-height: max(884px, 100dvh);
+    }
+  </style>
+  </head>
+<body class="bg-background text-on-background min-h-screen pb-safe">
+<!-- TopAppBar Semantic Shell -->
+<header class="w-full sticky top-0 z-50 bg-surface dark:bg-surface-dim">
+<div class="flex items-center justify-between px-container-padding h-16 w-full max-w-5xl mx-auto">
+<button class="text-primary dark:text-primary-fixed-dim hover:bg-surface-container-high dark:hover:bg-surface-container-highest transition-colors active:scale-95 duration-100 p-2 rounded-full flex items-center justify-center">
+<span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 0;">arrow_back</span>
+</button>
+<h1 class="font-display-sm text-display-sm text-primary dark:text-primary-fixed-dim">Automation Detail</h1>
+<button class="text-primary dark:text-primary-fixed-dim hover:bg-surface-container-high dark:hover:bg-surface-container-highest transition-colors active:scale-95 duration-100 p-2 rounded-full flex items-center justify-center">
+<span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 0;">settings</span>
+</button>
+</div>
+</header>
+<main class="w-full max-w-5xl mx-auto px-container-padding py-section-gap space-y-6">
+<!-- Hero Section -->
+<section class="flex flex-col md:flex-row gap-6 items-start">
+<div class="flex-1 space-y-4">
+<div class="flex items-center gap-3">
+<div class="w-12 h-12 rounded-full bg-primary-container text-on-primary-container flex items-center justify-center">
+<span class="material-symbols-outlined text-2xl" style="font-variation-settings: 'FILL' 1;">mic</span>
+</div>
+<div>
+<h2 class="font-display-sm text-display-sm text-on-surface">Meeting Spark Notes</h2>
+<p class="font-body-md text-body-md text-on-surface-variant mt-1">Summarize conversations and extract action items.</p>
+</div>
+</div>
+<div class="flex items-center gap-4 pt-2">
+<div class="flex items-center gap-2">
+<div class="w-2.5 h-2.5 rounded-full bg-surface-dim border border-outline-variant"></div>
+<span class="font-label-md text-label-md text-on-surface-variant uppercase tracking-wider">Status: Off</span>
+</div>
+<div class="flex items-center gap-2">
+<span class="material-symbols-outlined text-[16px] text-on-surface-variant">headset_mic</span>
+<span class="font-label-md text-label-md text-on-surface-variant uppercase tracking-wider">Mic Required</span>
+</div>
+</div>
+</div>
+<div class="w-full md:w-auto flex flex-col sm:flex-row gap-3">
+<button class="flex-1 md:flex-none px-6 py-3 rounded-full bg-surface-container text-on-surface font-label-lg text-label-lg hover:bg-surface-container-high transition-colors flex items-center justify-center gap-2">
+<span class="material-symbols-outlined text-[18px]">play_circle</span>
+                    Test Recording
+                </button>
+<button class="flex-1 md:flex-none px-6 py-3 rounded-full bg-primary-container text-on-primary-container font-label-lg text-label-lg hover:bg-primary transition-colors hover:text-on-primary flex items-center justify-center gap-2">
+<span class="material-symbols-outlined text-[18px]">check_circle</span>
+                    Review &amp; Enable
+                </button>
+</div>
+</section>
+<hr class="border-outline-variant/20"/>
+<!-- Bento Grid Configuration -->
+<section class="grid grid-cols-1 md:grid-cols-2 gap-grid-gutter">
+<!-- Manifest Card -->
+<div class="bg-surface-container rounded-xl p-6 border border-outline-variant/20 shadow-sm space-y-4">
+<h3 class="font-headline-sm text-headline-sm text-on-surface flex items-center gap-2">
+<span class="material-symbols-outlined text-[20px]">list_alt</span>
+                    Manifest
+                </h3>
+<ul class="space-y-3">
+<li class="flex items-center justify-between p-3 rounded-lg bg-surface border border-outline-variant/10">
+<div class="flex items-center gap-3">
+<span class="material-symbols-outlined text-primary">mic</span>
+<span class="font-body-sm text-body-sm text-on-surface">Microphone</span>
+</div>
+<span class="font-label-sm text-label-sm px-2 py-1 bg-surface-container-highest text-on-surface-variant rounded-md">Required</span>
+</li>
+<li class="flex items-center justify-between p-3 rounded-lg bg-surface border border-outline-variant/10">
+<div class="flex items-center gap-3">
+<span class="material-symbols-outlined text-primary">cloud</span>
+<span class="font-body-sm text-body-sm text-on-surface">Your Cloud</span>
+</div>
+<span class="font-label-sm text-label-sm px-2 py-1 bg-surface-container-highest text-on-surface-variant rounded-md">Required</span>
+</li>
+<li class="flex items-center justify-between p-3 rounded-lg bg-surface border border-outline-variant/10">
+<div class="flex items-center gap-3">
+<span class="material-symbols-outlined text-primary">memory</span>
+<span class="font-body-sm text-body-sm text-on-surface">Memory</span>
+</div>
+<span class="font-label-sm text-label-sm px-2 py-1 bg-surface-container text-on-surface-variant rounded-md border border-outline-variant/20">Optional</span>
+</li>
+</ul>
+</div>
+<!-- Configuration Card -->
+<div class="bg-surface-container rounded-xl p-6 border border-outline-variant/20 shadow-sm space-y-5">
+<h3 class="font-headline-sm text-headline-sm text-on-surface flex items-center gap-2">
+<span class="material-symbols-outlined text-[20px]">tune</span>
+                    Configuration
+                </h3>
+<div class="space-y-4">
+<!-- Mic Input -->
+<div>
+<label class="block font-label-md text-label-md text-on-surface-variant mb-1">Mic Input</label>
+<select class="w-full bg-surface border border-outline-variant/30 rounded-lg px-3 py-2 font-body-sm text-body-sm text-on-surface focus:ring-1 focus:ring-primary focus:border-primary outline-none">
+<option>Bluetooth Headset</option>
+<option>Phone Microphone</option>
+<option>External USB Mic</option>
+</select>
+</div>
+<!-- Transcription Provider -->
+<div>
+<label class="block font-label-md text-label-md text-on-surface-variant mb-1">Transcription Provider</label>
+<select class="w-full bg-surface border border-outline-variant/30 rounded-lg px-3 py-2 font-body-sm text-body-sm text-on-surface focus:ring-1 focus:ring-primary focus:border-primary outline-none">
+<option>Cloud Default (Fastest)</option>
+<option>On-Device Neural (Private)</option>
+<option>High Accuracy Model</option>
+</select>
+</div>
+<!-- Structure Toggles -->
+<div class="pt-2">
+<label class="block font-label-md text-label-md text-on-surface-variant mb-2">Summary Structure</label>
+<div class="space-y-2">
+<label class="flex items-center justify-between p-2 rounded-lg hover:bg-surface-container-highest cursor-pointer transition-colors">
+<span class="font-body-sm text-body-sm text-on-surface">Overview</span>
+<input checked="" class="rounded text-primary focus:ring-primary border-outline-variant bg-surface" type="checkbox"/>
+</label>
+<label class="flex items-center justify-between p-2 rounded-lg hover:bg-surface-container-highest cursor-pointer transition-colors">
+<span class="font-body-sm text-body-sm text-on-surface">Decisions</span>
+<input checked="" class="rounded text-primary focus:ring-primary border-outline-variant bg-surface" type="checkbox"/>
+</label>
+<label class="flex items-center justify-between p-2 rounded-lg hover:bg-surface-container-highest cursor-pointer transition-colors">
+<span class="font-body-sm text-body-sm text-on-surface">Action Items</span>
+<input checked="" class="rounded text-primary focus:ring-primary border-outline-variant bg-surface" type="checkbox"/>
+</label>
+</div>
+</div>
+<!-- Additional Toggles -->
+<div class="pt-2 border-t border-outline-variant/20">
+<label class="flex items-center justify-between p-2 rounded-lg hover:bg-surface-container-highest cursor-pointer transition-colors">
+<span class="font-body-sm text-body-sm text-on-surface">Show Live Transcript</span>
+<div class="relative inline-flex items-center cursor-pointer">
+<input class="sr-only peer" type="checkbox"/>
+<div class="w-9 h-5 bg-surface-dim peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-primary"></div>
+</div>
+</label>
+<label class="flex items-center justify-between p-2 rounded-lg hover:bg-surface-container-highest cursor-pointer transition-colors">
+<span class="font-body-sm text-body-sm text-on-surface">Save Audio Recording</span>
+<div class="relative inline-flex items-center cursor-pointer">
+<input checked="" class="sr-only peer" type="checkbox"/>
+<div class="w-9 h-5 bg-surface-dim peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-primary"></div>
+</div>
+</label>
+</div>
+</div>
+</div>
+</section>
+<!-- Decorative Image Context (Optional, kept minimal) -->
+<section class="w-full h-32 rounded-xl overflow-hidden relative border border-outline-variant/20">
+<div class="bg-cover bg-center w-full h-full opacity-60" data-alt="A sleek, modern corporate meeting room setup featuring a minimalist conference table. Soft, cool lighting illuminates the sleek technological surface. The aesthetic is clean, technical, and highly refined, utilizing a monochrome graphite palette with subtle blue LED status indicators. The atmosphere conveys focus, intelligence, and seamless productivity." style="background-image: url('https://lh3.googleusercontent.com/aida-public/AB6AXuCdcWOHyKf4lL82MvDbbWrU6bIVuKvn6sE4T9pCt5jdmhg33B7Z7XwBdzj2UEISKLrsA3drxYY1igqnGE9ZWme1b3HaT9PqGKWfLqwRhDApzuB5Nhcmt9Ly1-TNw-JgOADIsaMu7q-VBRG3PxieYkBNhNr2H2YFOaZuY4bBgQ8KM9bsJDgThVToHPWDS_i4fX035vaVIuvyidTDNkdHb5M30ANBuRuXtuY6Aa7kX8fQOU4ZirCaO8UN')"></div>
+<div class="absolute inset-0 bg-gradient-to-r from-surface to-transparent flex items-center p-6">
+<span class="font-display-sm text-display-sm text-on-surface opacity-80">Studio Graphite Environment</span>
+</div>
+</section>
+</main>
+<!-- Navigation logic: This is a detail screen ("Automation Detail") with a "Back" action. 
+         Following the 'Automatic Suppression' rule for task-focused sub-pages with a 'Back' action, 
+         the BottomNavBar is suppressed. -->
+</body></html>

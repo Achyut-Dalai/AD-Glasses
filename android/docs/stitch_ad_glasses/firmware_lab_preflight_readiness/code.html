@@ -1,0 +1,255 @@
+<!DOCTYPE html>
+
+<html lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>HeyCyan Firmware Lab - Preflight Readiness</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com" rel="preconnect"/>
+<link crossorigin="" href="https://fonts.gstatic.com" rel="preconnect"/>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+      tailwind.config = {
+        darkMode: "class",
+        theme: {
+          extend: {
+            "colors": {
+                    "on-secondary": "#ffffff",
+                    "on-secondary-fixed-variant": "#2e476f",
+                    "secondary-container": "#b6d0ff",
+                    "error": "#ba1a1a",
+                    "primary-fixed-dim": "#aac7ff",
+                    "on-primary-fixed-variant": "#00458d",
+                    "inverse-primary": "#aac7ff",
+                    "surface-container": "#ebedf7",
+                    "primary": "#004389",
+                    "on-primary-container": "#c0d5ff",
+                    "outline": "#727783",
+                    "on-primary": "#ffffff",
+                    "surface-container-low": "#f1f3fc",
+                    "surface-variant": "#e0e2eb",
+                    "surface-dim": "#d7dae3",
+                    "inverse-on-surface": "#eef0fa",
+                    "surface-container-highest": "#e0e2eb",
+                    "outline-variant": "#c2c6d4",
+                    "on-error-container": "#93000a",
+                    "surface-tint": "#095db7",
+                    "tertiary-fixed-dim": "#ffb68c",
+                    "on-tertiary": "#ffffff",
+                    "on-primary-fixed": "#001b3e",
+                    "tertiary": "#723200",
+                    "background": "#f9f9ff",
+                    "on-surface": "#181c22",
+                    "surface-bright": "#f9f9ff",
+                    "tertiary-container": "#964400",
+                    "on-tertiary-container": "#ffc9ac",
+                    "secondary-fixed": "#d6e3ff",
+                    "surface-container-lowest": "#ffffff",
+                    "primary-container": "#005ab4",
+                    "inverse-surface": "#2d3037",
+                    "secondary": "#465f88",
+                    "on-surface-variant": "#424752",
+                    "on-secondary-fixed": "#001b3d",
+                    "surface": "#f9f9ff",
+                    "on-tertiary-fixed": "#321200",
+                    "on-error": "#ffffff",
+                    "tertiary-fixed": "#ffdbc9",
+                    "on-background": "#181c22",
+                    "secondary-fixed-dim": "#aec7f6",
+                    "on-tertiary-fixed-variant": "#753400",
+                    "surface-container-high": "#e6e8f1",
+                    "error-container": "#ffdad6",
+                    "on-secondary-container": "#3f5881",
+                    "primary-fixed": "#d6e3ff"
+            },
+            "borderRadius": {
+                    "DEFAULT": "0.25rem",
+                    "lg": "0.5rem",
+                    "xl": "0.75rem",
+                    "full": "9999px"
+            },
+            "spacing": {
+                    "container-padding": "1rem",
+                    "element-gap": "0.75rem",
+                    "section-gap": "1.5rem",
+                    "grid-gutter": "1rem"
+            },
+            "fontFamily": {
+                    "display-sm": [
+                            "Inter"
+                    ],
+                    "label-lg": [
+                            "Inter"
+                    ],
+                    "body-md": [
+                            "Inter"
+                    ],
+                    "label-md": [
+                            "Inter"
+                    ],
+                    "body-sm": [
+                            "Inter"
+                    ],
+                    "label-sm": [
+                            "Inter"
+                    ],
+                    "headline-sm": [
+                            "Inter"
+                    ]
+            },
+            "fontSize": {
+                    "display-sm": [
+                            "1.125rem",
+                            {
+                                    "lineHeight": "1.5rem",
+                                    "letterSpacing": "0.15em",
+                                    "fontWeight": "700"
+                            }
+                    ],
+                    "label-lg": [
+                            "0.75rem",
+                            {
+                                    "lineHeight": "1rem",
+                                    "fontWeight": "600"
+                            }
+                    ],
+                    "body-md": [
+                            "0.875rem",
+                            {
+                                    "lineHeight": "1.25rem",
+                                    "fontWeight": "400"
+                            }
+                    ],
+                    "label-md": [
+                            "11px",
+                            {
+                                    "lineHeight": "1rem",
+                                    "fontWeight": "500"
+                            }
+                    ],
+                    "body-sm": [
+                            "0.75rem",
+                            {
+                                    "lineHeight": "1rem",
+                                    "fontWeight": "400"
+                            }
+                    ],
+                    "label-sm": [
+                            "10px",
+                            {
+                                    "lineHeight": "12px",
+                                    "fontWeight": "500"
+                            }
+                    ],
+                    "headline-sm": [
+                            "0.875rem",
+                            {
+                                    "lineHeight": "1.25rem",
+                                    "fontWeight": "600"
+                            }
+                    ]
+            }
+    },
+        },
+      }
+    </script>
+<style>
+        body {
+            -webkit-tap-highlight-color: transparent;
+        }
+    </style>
+<style>
+    body {
+      min-height: max(884px, 100dvh);
+    }
+  </style>
+  </head>
+<body class="bg-surface text-on-surface font-body-md antialiased pb-24">
+<!-- SHARED COMPONENT: TopAppBar (Immutable) -->
+<div class="relative flex h-auto min-h-screen w-full flex-col bg-slate-50 group/design-root overflow-x-hidden" style="--checkbox-tick-svg: url('data:image/svg+xml,%3csvg viewBox=%270 0 16 16%27 fill=%27rgb(248,250,252)%27 xmlns=%27http://www.w3.org/2000/svg%27%3e%3cpath d=%27M12.207 4.793a1 1 0 010 1.414l-5 5a1 1 0 01-1.414 0l-2-2a1 1 0 011.414-1.414L6.5 9.086l4.293-4.293a1 1 0 011.414 0z%27/%3e%3c/svg%3e'); font-family: Inter, &quot;Noto Sans&quot;, sans-serif;">
+<div class="flex items-center bg-slate-50 p-4 pb-2 justify-between">
+<div class="text-[#0c141d] flex size-12 shrink-0 items-center" data-icon="ArrowLeft" data-size="24px" data-weight="regular">
+<svg fill="currentColor" height="24px" viewbox="0 0 256 256" width="24px" xmlns="http://www.w3.org/2000/svg">
+<path d="M224,128a8,8,0,0,1-8,8H59.31l58.35,58.34a8,8,0,0,1-11.32,11.32l-72-72a8,8,0,0,1,0-11.32l72-72a8,8,0,0,1,11.32,11.32L59.31,120H216A8,8,0,0,1,224,128Z"></path>
+</svg>
+</div>
+<h2 class="text-[#0c141d] text-lg font-bold leading-tight tracking-[-0.015em] flex-1">Firmware Lab</h2>
+</div>
+<h2 class="text-[#0c141d] text-[22px] font-bold leading-tight tracking-[-0.015em] px-4 pb-3 pt-5">Preflight Readiness</h2>
+<div class="px-4">
+<label class="flex gap-x-3 py-3 flex-row">
+<input class="h-5 w-5 rounded border-[#cddbea] border-2 bg-transparent text-[#005ab4] checked:bg-[#005ab4] checked:border-[#005ab4] checked:bg-[image:--checkbox-tick-svg] focus:ring-0 focus:ring-offset-0 focus:border-[#cddbea] focus:outline-none" type="checkbox"/>
+<p class="text-[#0c141d] text-base font-normal leading-normal">Device profile match confirmed</p>
+</label>
+<label class="flex gap-x-3 py-3 flex-row">
+<input class="h-5 w-5 rounded border-[#cddbea] border-2 bg-transparent text-[#005ab4] checked:bg-[#005ab4] checked:border-[#005ab4] checked:bg-[image:--checkbox-tick-svg] focus:ring-0 focus:ring-offset-0 focus:border-[#cddbea] focus:outline-none" type="checkbox"/>
+<p class="text-[#0c141d] text-base font-normal leading-normal">Artifact validation (.swu and .bin) passed</p>
+</label>
+<label class="flex gap-x-3 py-3 flex-row">
+<input class="h-5 w-5 rounded border-[#cddbea] border-2 bg-transparent text-[#005ab4] checked:bg-[#005ab4] checked:border-[#005ab4] checked:bg-[image:--checkbox-tick-svg] focus:ring-0 focus:ring-offset-0 focus:border-[#cddbea] focus:outline-none" type="checkbox"/>
+<p class="text-[#0c141d] text-base font-normal leading-normal">Adequate power levels (Phone/Glasses)</p>
+</label>
+<label class="flex gap-x-3 py-3 flex-row">
+<input class="h-5 w-5 rounded border-[#cddbea] border-2 bg-transparent text-[#005ab4] checked:bg-[#005ab4] checked:border-[#005ab4] checked:bg-[image:--checkbox-tick-svg] focus:ring-0 focus:ring-offset-0 focus:border-[#cddbea] focus:outline-none" type="checkbox"/>
+<p class="text-[#0c141d] text-base font-normal leading-normal">Bluetooth and Wi-Fi permissions granted</p>
+</label>
+<label class="flex gap-x-3 py-3 flex-row">
+<input class="h-5 w-5 rounded border-[#cddbea] border-2 bg-transparent text-[#005ab4] checked:bg-[#005ab4] checked:border-[#005ab4] checked:bg-[image:--checkbox-tick-svg] focus:ring-0 focus:ring-offset-0 focus:border-[#cddbea] focus:outline-none" type="checkbox"/>
+<p class="text-[#0c141d] text-base font-normal leading-normal">Stable connection established</p>
+</label>
+<label class="flex gap-x-3 py-3 flex-row">
+<input class="h-5 w-5 rounded border-[#cddbea] border-2 bg-transparent text-[#005ab4] checked:bg-[#005ab4] checked:border-[#005ab4] checked:bg-[image:--checkbox-tick-svg] focus:ring-0 focus:ring-offset-0 focus:border-[#cddbea] focus:outline-none" type="checkbox"/>
+<p class="text-[#0c141d] text-base font-normal leading-normal">No conflicting sessions (sync/recording)</p>
+</label>
+</div>
+<p class="text-[#0c141d] text-base font-normal leading-normal pb-3 pt-1 px-4">
+            Warning: Interrupting a firmware update can result in permanent device damage. Ensure glasses remain connected and powered.
+          </p>
+<div class="px-4">
+<label class="flex gap-x-3 py-3 flex-row">
+<input class="h-5 w-5 rounded border-[#cddbea] border-2 bg-transparent text-[#005ab4] checked:bg-[#005ab4] checked:border-[#005ab4] checked:bg-[image:--checkbox-tick-svg] focus:ring-0 focus:ring-offset-0 focus:border-[#cddbea] focus:outline-none" type="checkbox"/>
+<p class="text-[#0c141d] text-base font-normal leading-normal">I acknowledge the risks and wish to proceed</p>
+</label>
+</div>
+<div class="h-5 bg-slate-50"></div>
+</div>
+<!-- END SHARED COMPONENT -->
+<!-- New Section: Sticky Bottom Action Bar -->
+<div class="fixed bottom-0 left-0 right-0 p-container-padding bg-surface-container-lowest border-t border-surface-variant z-50">
+<button class="w-full bg-primary text-on-primary font-headline-sm py-4 rounded-full flex items-center justify-center gap-2 transition-all duration-300 opacity-50 cursor-not-allowed" disabled="" id="initiateUpdateBtn">
+<span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 1;">system_update_alt</span>
+            Initiate Update Sequence
+        </button>
+</div>
+<script>
+        document.addEventListener('DOMContentLoaded', () => {
+            const checkboxes = document.querySelectorAll('input[type="checkbox"]');
+            const submitBtn = document.getElementById('initiateUpdateBtn');
+
+            function evaluatePreflightStatus() {
+                let allSystemsGo = true;
+                checkboxes.forEach(checkbox => {
+                    if (!checkbox.checked) {
+                        allSystemsGo = false;
+                    }
+                });
+
+                if (allSystemsGo) {
+                    submitBtn.disabled = false;
+                    submitBtn.classList.remove('opacity-50', 'cursor-not-allowed');
+                    submitBtn.classList.add('shadow-md', 'hover:bg-primary-container', 'hover:text-on-primary-container');
+                } else {
+                    submitBtn.disabled = true;
+                    submitBtn.classList.add('opacity-50', 'cursor-not-allowed');
+                    submitBtn.classList.remove('shadow-md', 'hover:bg-primary-container', 'hover:text-on-primary-container');
+                }
+            }
+
+            checkboxes.forEach(checkbox => {
+                checkbox.addEventListener('change', evaluatePreflightStatus);
+            });
+        });
+    </script>
+</body></html>

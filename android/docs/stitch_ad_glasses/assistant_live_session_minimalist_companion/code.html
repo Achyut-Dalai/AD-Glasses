@@ -1,0 +1,166 @@
+<!DOCTYPE html>
+
+<html lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Assistant Live Session - Minimalist Companion</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+      tailwind.config = {
+        darkMode: "class",
+        theme: {
+          extend: {
+            "colors": {
+                    "surface-bright": "#f9f9ff",
+                    "on-secondary-fixed-variant": "#2e476f",
+                    "on-tertiary-fixed": "#321200",
+                    "surface-container": "#ebedf7",
+                    "error": "#ba1a1a",
+                    "tertiary-container": "#964400",
+                    "tertiary-fixed-dim": "#ffb68c",
+                    "primary-container": "#0a73e0",
+                    "primary-fixed-dim": "#aac7ff",
+                    "surface-container-low": "#f1f3fc",
+                    "secondary": "#465f88",
+                    "surface-container-high": "#e6e8f1",
+                    "on-primary-fixed": "#001b3e",
+                    "surface-container-highest": "#e0e2eb",
+                    "inverse-surface": "#2d3037",
+                    "primary-fixed": "#d6e3ff",
+                    "on-error": "#ffffff",
+                    "surface-container-lowest": "#ffffff",
+                    "on-secondary-container": "#3f5881",
+                    "on-tertiary": "#ffffff",
+                    "secondary-fixed": "#d6e3ff",
+                    "surface-tint": "#095db7",
+                    "on-secondary": "#ffffff",
+                    "on-primary-container": "#c0d5ff",
+                    "secondary-container": "#b6d0ff",
+                    "secondary-fixed-dim": "#aec7f6",
+                    "on-background": "#181c22",
+                    "outline-variant": "#c2c6d4",
+                    "surface-dim": "#d7dae3",
+                    "tertiary-fixed": "#ffdbc9",
+                    "primary": "#004389",
+                    "on-surface-variant": "#414753",
+                    "surface-variant": "#e0e2eb",
+                    "background": "#f9f9ff",
+                    "on-tertiary-fixed-variant": "#753400",
+                    "tertiary": "#723200",
+                    "on-primary-fixed-variant": "#00458d",
+                    "on-surface": "#181c22",
+                    "error-container": "#ffdad6",
+                    "surface": "#f9f9ff",
+                    "outline": "#727783",
+                    "inverse-on-surface": "#eef0fa",
+                    "on-secondary-fixed": "#001b3d",
+                    "on-tertiary-container": "#ffc9ac",
+                    "on-primary": "#ffffff",
+                    "inverse-primary": "#aac7ff",
+                    "on-error-container": "#93000a"
+            },
+            "borderRadius": {
+                    "DEFAULT": "0.25rem",
+                    "lg": "0.5rem",
+                    "xl": "0.75rem",
+                    "full": "9999px"
+            },
+            "spacing": {
+                    "element-gap": "0.75rem",
+                    "section-gap": "1.5rem",
+                    "container-padding": "1rem",
+                    "grid-gutter": "1rem"
+            },
+            "fontFamily": {
+                    "display-sm": ["Inter"],
+                    "headline-sm": ["Inter"],
+                    "label-lg": ["Inter"],
+                    "label-sm": ["Inter"],
+                    "body-sm": ["Inter"],
+                    "label-md": ["Inter"],
+                    "body-md": ["Inter"]
+            },
+            "fontSize": {
+                    "display-sm": ["1.125rem", {"lineHeight": "1.5rem", "letterSpacing": "0.15em", "fontWeight": "700"}],
+                    "headline-sm": ["0.875rem", {"lineHeight": "1.25rem", "fontWeight": "600"}],
+                    "label-lg": ["0.75rem", {"lineHeight": "1rem", "fontWeight": "600"}],
+                    "label-sm": ["10px", {"lineHeight": "12px", "fontWeight": "500"}],
+                    "body-sm": ["0.75rem", {"lineHeight": "1rem", "fontWeight": "400"}],
+                    "label-md": ["11px", {"lineHeight": "1rem", "fontWeight": "500"}],
+                    "body-md": ["0.875rem", {"lineHeight": "1.25rem", "fontWeight": "400"}]
+            }
+          }
+        }
+      }
+    </script>
+<style>
+        .waveform-line {
+            animation: pulse-width 2s ease-in-out infinite alternate;
+        }
+        @keyframes pulse-width {
+            0% { transform: scaleX(0.8) scaleY(0.9); opacity: 0.6; }
+            100% { transform: scaleX(1.1) scaleY(1.1); opacity: 1; }
+        }
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 300, 'GRAD' 0, 'opsz' 24;
+        }
+    </style>
+<style>
+    body {
+      min-height: max(884px, 100dvh);
+    }
+  </style>
+  </head>
+<body class="bg-surface-container-lowest text-on-surface h-screen flex flex-col font-body-md overflow-hidden">
+<!-- Top Navigation (Minimalist) -->
+<header class="flex items-center justify-end px-container-padding py-section-gap w-full z-50 fixed top-0 bg-transparent">
+<button class="w-12 h-12 flex items-center justify-center rounded-full text-on-surface-variant hover:bg-surface-container-low transition-colors active:scale-95 duration-150">
+<span class="material-symbols-outlined text-[28px]" data-icon="close">close</span>
+</button>
+</header>
+<!-- Main Content Canvas -->
+<main class="flex-grow flex flex-col items-center justify-center relative px-container-padding z-10 w-full max-w-5xl mx-auto">
+<!-- Central Waveform "River" Container -->
+<div class="relative w-full h-32 flex items-center justify-center">
+<!-- Simulated thin horizontal flowing waveform -->
+<div class="absolute inset-0 flex items-center justify-center opacity-80 mix-blend-multiply">
+<svg class="waveform-line text-primary overflow-visible" height="40" preserveaspectratio="none" viewbox="0 0 400 40" width="80%">
+<path d="M0,20 Q50,0 100,20 T200,20 T300,20 T400,20" fill="none" stroke="currentColor" stroke-linecap="round" stroke-width="1.5"></path>
+<path class="opacity-50" d="M0,20 Q50,40 100,20 T200,20 T300,20 T400,20" fill="none" stroke="currentColor" stroke-linecap="round" stroke-width="1" style="animation-delay: 0.5s;"></path>
+<path class="opacity-30" d="M0,20 Q60,10 120,20 T240,20 T360,20 T400,20" fill="none" stroke="#0a73e0" stroke-linecap="round" stroke-width="0.5" style="animation-delay: 1s;"></path>
+</svg>
+</div>
+<!-- Optional subtle glow effect -->
+<div class="absolute w-3/4 h-8 bg-primary/5 blur-xl rounded-full"></div>
+</div>
+<!-- Recognized Phrase Text -->
+<div class="mt-8 text-center px-6 w-full max-w-md">
+<p class="font-body-md text-on-surface-variant/70 tracking-wide font-light">I'm listening, how can I assist you?</p>
+</div>
+</main>
+<!-- Bottom Controls (Minimalist) -->
+<footer class="fixed bottom-0 w-full z-50 flex justify-center items-center px-container-padding pb-12 pt-6 bg-gradient-to-t from-surface-container-lowest via-surface-container-lowest to-transparent">
+<div class="flex items-center gap-element-gap">
+<!-- Mute Button -->
+<button class="w-14 h-14 flex items-center justify-center rounded-full bg-surface-container-low text-on-surface hover:bg-surface-container transition-colors active:scale-90 duration-200 shadow-sm border border-outline-variant/20">
+<span class="material-symbols-outlined text-[24px]" data-icon="mic_off">mic_off</span>
+</button>
+<!-- End Call Button (Primary Action) -->
+<button class="w-16 h-16 flex items-center justify-center rounded-full bg-error-container text-on-error-container hover:bg-error hover:text-on-error transition-all active:scale-90 duration-200 shadow-sm border border-error/20 mx-4">
+<span class="material-symbols-outlined text-[28px] font-variation-settings: 'FILL' 1;" data-icon="call_end" data-weight="fill" style="font-variation-settings: 'FILL' 1;">call_end</span>
+</button>
+<!-- Camera/Vision Button -->
+<button class="w-14 h-14 flex items-center justify-center rounded-full bg-surface-container-low text-on-surface hover:bg-surface-container transition-colors active:scale-90 duration-200 shadow-sm border border-outline-variant/20">
+<span class="material-symbols-outlined text-[24px]" data-icon="videocam">videocam</span>
+</button>
+</div>
+</footer>
+<!-- Atmosphere / Decorative elements -->
+<div class="fixed inset-0 pointer-events-none z-0">
+<!-- Subtle gradient overlay to ensure pure white focus center -->
+<div class="absolute inset-0 bg-[radial-gradient(ellipse_at_center,_var(--tw-gradient-stops))] from-transparent via-surface-container-lowest/50 to-surface-container-lowest/80"></div>
+</div>
+</body></html>

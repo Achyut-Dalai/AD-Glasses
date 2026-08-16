@@ -1,0 +1,216 @@
+<!DOCTYPE html>
+
+<html class="light" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Firmware Details</title>
+<!-- Google Fonts -->
+<link href="https://fonts.googleapis.com" rel="preconnect"/>
+<link crossorigin="" href="https://fonts.gstatic.com" rel="preconnect"/>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&amp;display=swap" rel="stylesheet"/>
+<!-- Material Symbols -->
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<!-- Tailwind CSS -->
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<!-- Tailwind Config -->
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    "colors": {
+                        "surface-bright": "#f8f9ff",
+                        "on-background": "#181c22",
+                        "surface-glass": "rgba(249, 249, 255, 0.8)",
+                        "outline-variant": "#c2c6d4",
+                        "surface-container": "#ebeef6",
+                        "background": "#f8f9ff",
+                        "tertiary": "#723200",
+                        "secondary": "#465f88",
+                        "inverse-surface": "#2d3137",
+                        "surface-container-high": "#e5e8f1",
+                        "on-secondary": "#ffffff",
+                        "on-error-container": "#93000a",
+                        "secondary-fixed": "#d6e3ff",
+                        "on-secondary-fixed-variant": "#2e476f",
+                        "on-tertiary-fixed-variant": "#753400",
+                        "surface-tint": "#095db7",
+                        "inverse-primary": "#aac7ff",
+                        "primary-fixed": "#d6e3ff",
+                        "primary-container": "#005ab4",
+                        "on-tertiary-container": "#ffc9ac",
+                        "secondary-fixed-dim": "#aec7f6",
+                        "on-secondary-container": "#3f5881",
+                        "on-primary-fixed-variant": "#00458d",
+                        "on-error": "#ffffff",
+                        "background-alt": "#F6F7F9",
+                        "on-tertiary-fixed": "#321200",
+                        "on-surface-variant": "#424752",
+                        "surface-dim": "#d7dae2",
+                        "surface-container-highest": "#dfe2eb",
+                        "error": "#ba1a1a",
+                        "tertiary-fixed-dim": "#ffb68c",
+                        "surface-container-low": "#f1f3fc",
+                        "error-container": "#ffdad6",
+                        "on-primary-fixed": "#001b3e",
+                        "tertiary-fixed": "#ffdbc9",
+                        "on-surface": "#181c22",
+                        "primary-fixed-dim": "#aac7ff",
+                        "surface": "#f8f9ff",
+                        "surface-container-lowest": "#ffffff",
+                        "status-connected": "#1275e2",
+                        "tertiary-container": "#964400",
+                        "surface-variant": "#dfe2eb",
+                        "on-primary-container": "#c0d5ff",
+                        "on-primary": "#ffffff",
+                        "outline": "#727783",
+                        "on-secondary-fixed": "#001b3d",
+                        "inverse-on-surface": "#eef1f9",
+                        "secondary-container": "#b6d0ff",
+                        "primary": "#004389",
+                        "on-tertiary": "#ffffff",
+                        "stage-halo-start": "rgba(10, 115, 224, 0.15)"
+                    },
+                    "borderRadius": {
+                        "DEFAULT": "0.25rem",
+                        "lg": "0.5rem",
+                        "xl": "0.75rem",
+                        "full": "9999px"
+                    },
+                    "spacing": {
+                        "element-gap": "0.75rem",
+                        "container-margin": "1rem",
+                        "section-gap": "2rem",
+                        "touch-target-min": "40px"
+                    },
+                    "fontFamily": {
+                        "label-xs": ["Inter"],
+                        "body-sm": ["Inter"],
+                        "display-lg": ["Inter"],
+                        "headline-md": ["Inter"],
+                        "body-md": ["Inter"],
+                        "label-sm": ["Inter"]
+                    },
+                    "fontSize": {
+                        "label-xs": ["10px", { "lineHeight": "12px", "fontWeight": "600" }],
+                        "body-sm": ["14px", { "lineHeight": "20px", "fontWeight": "500" }],
+                        "display-lg": ["24px", { "lineHeight": "32px", "letterSpacing": "-0.025em", "fontWeight": "800" }],
+                        "headline-md": ["18px", { "lineHeight": "24px", "fontWeight": "700" }],
+                        "body-md": ["16px", { "lineHeight": "24px", "fontWeight": "400" }],
+                        "label-sm": ["12px", { "lineHeight": "16px", "fontWeight": "500" }]
+                    }
+                }
+            }
+        }
+    </script>
+<style>
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+        }
+        .halo-stage {
+            background: radial-gradient(circle at center, var(--tw-colors-stage-halo-start) 0%, transparent 70%);
+        }
+    </style>
+<style>
+    body {
+      min-height: max(884px, 100dvh);
+    }
+  </style>
+  </head>
+<body class="bg-background-alt text-on-background antialiased min-h-screen flex flex-col font-body-md">
+<!-- TopAppBar -->
+<header class="fixed w-full top-0 z-50 bg-surface/80 backdrop-blur-md dark:bg-surface-dim/80 flat no shadows transition-colors duration-200">
+<div class="flex items-center justify-between px-4 py-2 w-full max-w-5xl mx-auto h-[60px]">
+<button class="w-10 h-10 flex items-center justify-center text-primary dark:text-primary-fixed-dim hover:bg-surface-container-highest/50 rounded-full transition-colors duration-200">
+<span class="material-symbols-outlined">close</span>
+</button>
+<h1 class="font-headline-md text-headline-md text-on-surface dark:text-on-surface-variant font-bold tracking-tight">Firmware Details</h1>
+<button class="w-10 h-10 flex items-center justify-center text-primary dark:text-primary-fixed-dim hover:bg-surface-container-highest/50 rounded-full transition-colors duration-200">
+<span class="material-symbols-outlined">help</span>
+</button>
+</div>
+</header>
+<!-- Main Content -->
+<main class="flex-1 w-full max-w-5xl mx-auto pt-[80px] pb-24 px-container-margin flex flex-col gap-section-gap">
+<!-- Stage / Device Identity -->
+<section class="flex flex-col items-center justify-center relative w-full h-[240px] rounded-2xl overflow-hidden bg-surface-container-lowest shadow-sm">
+<div class="absolute inset-0 halo-stage w-full h-full pointer-events-none"></div>
+<img class="z-10 object-contain w-3/4 h-3/4 mt-4 drop-shadow-xl" data-alt="A sleek pair of high-tech smart glasses resting on a pristine, minimalist surface in a brightly lit studio environment. Soft, diffused lighting accentuates the matte graphite finish and subtle technological components embedded in the frame. The overall mood is modern, premium, and sophisticated, perfectly aligned with a light-mode corporate tech aesthetic." src="https://lh3.googleusercontent.com/aida-public/AB6AXuBCLr7v1rk84NRDmWDHdmfri45BG87H-d5ozHKUBxUCdlBBp9NbR0tmJi6sQsVBrHyYXs62vveeqiSd2p0O_fRDtX_fA3Mz5mKBmC0eOK1ZoDXU2f9Ns6YkDRKl9xVJuZDV8RTHzazL69ey53nb-qULDcRQ-dvVqbkFB2ngNjaSYYwEqWssNWOwWJDXb6yeDsr3cyb4Ronf_YlqNbKuBgGG1SqpJgbHizu7zP-eMWfqH8kMlfMsANKc"/>
+<div class="absolute bottom-4 left-0 w-full flex flex-col items-center z-20">
+<h2 class="font-display-lg text-display-lg text-on-surface">HeyCyan Pro</h2>
+<div class="flex items-center gap-2 mt-1">
+<span class="w-2 h-2 rounded-full bg-status-connected shadow-[0_0_8px_rgba(18,117,226,0.5)]"></span>
+<span class="font-label-sm text-label-sm text-on-surface-variant">Active Connection</span>
+</div>
+</div>
+</section>
+<!-- System Stats Grid -->
+<section class="grid grid-cols-2 gap-element-gap">
+<div class="bg-surface-container-lowest p-4 rounded-xl shadow-sm flex flex-col gap-1">
+<span class="font-label-sm text-label-sm text-outline flex items-center gap-1">
+<span class="material-symbols-outlined text-[16px]">schedule</span> Uptime
+                </span>
+<span class="font-headline-md text-headline-md text-on-surface">14d 6h 22m</span>
+</div>
+<div class="bg-surface-container-lowest p-4 rounded-xl shadow-sm flex flex-col gap-1">
+<span class="font-label-sm text-label-sm text-outline flex items-center gap-1">
+<span class="material-symbols-outlined text-[16px]">memory</span> HW Revision
+                </span>
+<span class="font-headline-md text-headline-md text-on-surface">Rev. 2.1B</span>
+</div>
+</section>
+<!-- Installed Components -->
+<section class="flex flex-col gap-element-gap">
+<h3 class="font-headline-md text-headline-md text-on-surface mb-2">Installed Components</h3>
+<div class="flex flex-col gap-2">
+<!-- Component Card: Wi-Fi -->
+<div class="bg-surface-container-lowest p-4 rounded-xl shadow-sm flex items-center justify-between hover:bg-surface-container-low transition-colors duration-200 cursor-pointer">
+<div class="flex items-center gap-4">
+<div class="w-10 h-10 rounded-full bg-surface-container flex items-center justify-center text-primary">
+<span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 1;">wifi</span>
+</div>
+<div class="flex flex-col">
+<span class="font-body-sm text-body-sm text-on-surface">Wi-Fi Module</span>
+<span class="font-label-xs text-label-xs text-on-surface-variant">v4.0.12 • Built Oct 12</span>
+</div>
+</div>
+<span class="material-symbols-outlined text-outline-variant">chevron_right</span>
+</div>
+<!-- Component Card: BLE -->
+<div class="bg-surface-container-lowest p-4 rounded-xl shadow-sm flex items-center justify-between hover:bg-surface-container-low transition-colors duration-200 cursor-pointer">
+<div class="flex items-center gap-4">
+<div class="w-10 h-10 rounded-full bg-surface-container flex items-center justify-center text-primary">
+<span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 1;">bluetooth</span>
+</div>
+<div class="flex flex-col">
+<span class="font-body-sm text-body-sm text-on-surface">BLE Transceiver</span>
+<span class="font-label-xs text-label-xs text-on-surface-variant">v2.1.8 • Built Sep 28</span>
+</div>
+</div>
+<span class="material-symbols-outlined text-outline-variant">chevron_right</span>
+</div>
+<!-- Component Card: Memory Controller -->
+<div class="bg-surface-container-lowest p-4 rounded-xl shadow-sm flex items-center justify-between hover:bg-surface-container-low transition-colors duration-200 cursor-pointer">
+<div class="flex items-center gap-4">
+<div class="w-10 h-10 rounded-full bg-surface-container flex items-center justify-center text-primary">
+<span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 1;">sd_storage</span>
+</div>
+<div class="flex flex-col">
+<span class="font-body-sm text-body-sm text-on-surface">Memory Controller</span>
+<span class="font-label-xs text-label-xs text-on-surface-variant">v1.5.0 • Built Nov 02</span>
+</div>
+</div>
+<span class="material-symbols-outlined text-outline-variant">chevron_right</span>
+</div>
+</div>
+</section>
+</main>
+<!-- Bottom Action Area -->
+<div class="fixed bottom-0 left-0 w-full bg-surface/90 backdrop-blur-md border-t border-outline-variant/30 px-container-margin py-4 pb-safe z-40 flex justify-center shadow-[0_-4px_24px_rgba(0,0,0,0.02)]">
+<button class="w-full max-w-sm h-12 bg-on-background text-on-primary rounded-full font-body-sm text-body-sm flex items-center justify-center gap-2 hover:bg-inverse-surface transition-colors duration-200 shadow-md">
+<span class="material-symbols-outlined text-[18px]">update</span>
+            Check for Updates
+        </button>
+</div>
+</body></html>

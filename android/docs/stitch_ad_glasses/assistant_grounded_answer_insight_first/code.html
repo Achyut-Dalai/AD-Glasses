@@ -1,0 +1,200 @@
+<!DOCTYPE html>
+
+<html lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Assistant - Web Grounded Answer</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+  tailwind.config = {
+    darkMode: "class",
+    theme: {
+      extend: {
+        "colors": {
+                "inverse-primary": "#aac7ff",
+                "error-container": "#ffdad6",
+                "secondary-container": "#b6d0ff",
+                "on-secondary-container": "#3f5881",
+                "on-tertiary": "#ffffff",
+                "surface-container-lowest": "#ffffff",
+                "on-secondary-fixed-variant": "#2e476f",
+                "on-error": "#ffffff",
+                "on-primary-fixed-variant": "#00458d",
+                "on-secondary": "#ffffff",
+                "background": "#f9f9ff",
+                "surface-tint": "#095db7",
+                "primary-container": "#0a73e0",
+                "surface-container-low": "#f1f3fc",
+                "on-background": "#181c22",
+                "surface-bright": "#f9f9ff",
+                "inverse-surface": "#2d3037",
+                "surface-container": "#ebedf7",
+                "primary-fixed": "#d6e3ff",
+                "tertiary": "#723200",
+                "on-surface-variant": "#424752",
+                "on-tertiary-container": "#ffc9ac",
+                "secondary-fixed": "#d6e3ff",
+                "on-primary": "#ffffff",
+                "secondary-fixed-dim": "#aec7f6",
+                "on-primary-container": "#c0d5ff",
+                "outline-variant": "#c2c6d4",
+                "surface-container-highest": "#e0e2eb",
+                "tertiary-container": "#964400",
+                "surface-container-high": "#e6e8f1",
+                "on-surface": "#181c22",
+                "error": "#ba1a1a",
+                "on-error-container": "#93000a",
+                "secondary": "#465f88",
+                "outline": "#727783",
+                "tertiary-fixed": "#ffdbc9",
+                "surface-dim": "#d7dae3",
+                "on-tertiary-fixed": "#321200",
+                "primary": "#004389",
+                "on-primary-fixed": "#001b3e",
+                "surface-variant": "#e0e2eb",
+                "surface": "#f9f9ff",
+                "on-secondary-fixed": "#001b3d",
+                "inverse-on-surface": "#eef0fa",
+                "tertiary-fixed-dim": "#ffb68c",
+                "on-tertiary-fixed-variant": "#753400",
+                "primary-fixed-dim": "#aac7ff"
+        },
+        "borderRadius": {
+                "DEFAULT": "0.25rem",
+                "lg": "0.5rem",
+                "xl": "0.75rem",
+                "full": "9999px"
+        },
+        "spacing": {
+                "container-padding": "1rem",
+                "section-gap": "1.5rem",
+                "element-gap": "0.75rem",
+                "grid-gutter": "1rem"
+        },
+        "fontFamily": {
+                "body-md": ["Inter"],
+                "label-md": ["Inter"],
+                "headline-sm": ["Inter"],
+                "label-sm": ["Inter"],
+                "display-sm": ["Inter"],
+                "body-sm": ["Inter"],
+                "label-lg": ["Inter"]
+        },
+        "fontSize": {
+                "body-md": ["0.875rem", {"lineHeight": "1.25rem", "fontWeight": "400"}],
+                "label-md": ["11px", {"lineHeight": "1rem", "fontWeight": "500"}],
+                "headline-sm": ["0.875rem", {"lineHeight": "1.25rem", "fontWeight": "600"}],
+                "label-sm": ["10px", {"lineHeight": "12px", "fontWeight": "500"}],
+                "display-sm": ["1.125rem", {"lineHeight": "1.5rem", "letterSpacing": "0.15em", "fontWeight": "700"}],
+                "body-sm": ["0.75rem", {"lineHeight": "1rem", "fontWeight": "400"}],
+                "label-lg": ["0.75rem", {"lineHeight": "1rem", "fontWeight": "600"}]
+        }
+      }
+    }
+  }
+</script>
+<style>
+    body {
+      min-height: max(884px, 100dvh);
+    }
+  </style>
+</head>
+<body class="bg-background text-on-surface font-body-md antialiased selection:bg-primary-container selection:text-on-primary-container">
+<div class="relative flex h-auto min-h-screen w-full flex-col bg-background group/design-root overflow-x-hidden mx-auto max-w-3xl border-x border-outline-variant/20 shadow-sm">
+<!-- Top App Bar / Header -->
+<div class="flex items-center bg-background p-4 pb-2 justify-between sticky top-0 z-10 border-b border-outline-variant/20">
+<button aria-label="Go back" class="text-on-surface hover:bg-surface-container rounded-full p-2 transition-colors flex size-12 shrink-0 items-center justify-center">
+<span class="material-symbols-outlined text-[24px]">arrow_back</span>
+</button>
+<div class="flex-1 flex justify-center pr-12">
+<span class="material-symbols-outlined text-[28px] text-on-surface">bubble_chart</span>
+</div>
+</div>
+<div class="flex-1 overflow-y-auto pb-24">
+<!-- User Message -->
+<div class="flex items-end gap-3 p-4 justify-end mt-4">
+<div class="flex flex-1 flex-col gap-1 items-end">
+<p class="text-on-surface-variant text-[13px] font-normal leading-normal max-w-[360px] text-right">User</p>
+<p class="text-[15px] font-normal leading-normal flex max-w-[360px] rounded-2xl rounded-tr-sm px-4 py-3 bg-surface-container text-on-surface shadow-sm border border-outline-variant/20">
+          When is the next local design meetup?
+        </p>
+</div>
+<div class="bg-center bg-no-repeat aspect-square bg-cover rounded-full w-10 shrink-0 border border-outline-variant/20" data-alt="A clean, minimalist 3D rendering of a generic user avatar, featuring soft matte textures and a cool neutral gray and blue color palette, set in a bright, modern lighting environment." style='background-image: url("https://lh3.googleusercontent.com/aida-public/AB6AXuAIp_fUrsce20L7Tlo1bhwgxQkOnBLFceL23u4NbFGi6etP3DesRDeuq8oshHZ9rIPxsGtN7vjghHMrNRXGqZxzrgoNgkfs1jbzUmB0-axZFjwlGPbPuh3VB-jK5PmxZi74VoXUY8qnOs6cFkT-t5OKuWn-fOCBfL1myYNCPQa6y7tBWjRSrTXkK9GyDoituGEAV5tiwHmXZ2Zl0unuPxSkPAsbV6NaroE2IkvJP2_8uTHQZH7fZCO2");'></div>
+</div>
+<!-- Assistant Response -->
+<div class="flex items-start gap-3 p-4">
+<div class="bg-center bg-no-repeat aspect-square bg-cover rounded-full w-10 shrink-0 border border-outline-variant/20 mt-6" data-alt="A stylized, friendly geometric icon representing an AI assistant, composed of overlapping rounded shapes in soft pastel blue and vibrant primary blue hues, isolated on a stark white background." style='background-image: url("https://lh3.googleusercontent.com/aida-public/AB6AXuCgxVuw0FZQoTde3JxXJ2X0fbfjIQoD4G8tPbQcrJLNj0pqsO8BixX-BC6v03e4LKC5HjbU3lXq--mIiUZDwIm6CtqKUVZHZkAOkgNnPP4TxOeHazM5TS9LjtO4jhBuuI0LUnat650ghdVQddBRfTcBi1Uye3-6PGQ0_CJkwqtrpiBdQGgmJlhiSUl6uQslQ0LyLKkyD_gK-LHesOz0LAfmCVNnoCsqwqULYBEVy_xTTy2ZYXXcPtwV");'></div>
+<div class="flex flex-1 flex-col gap-1 items-start">
+<p class="text-on-surface-variant text-[13px] font-normal leading-normal max-w-[360px]">Assistant</p>
+<div class="w-full max-w-[480px] rounded-2xl rounded-tl-sm border border-outline-variant/30 bg-surface-container-lowest p-5 shadow-sm">
+<p class="text-[17px] font-medium leading-relaxed text-on-surface">
+          Based on search results, the next local design meetup is scheduled for Thursday, October 19th at 6:30 PM. It will be hosted at the downtown community center.
+        </p>
+<div class="mt-5 pt-4 border-t border-outline-variant/20 flex gap-2">
+<div class="flex h-7 shrink-0 items-center justify-center gap-x-1.5 rounded-md bg-surface-container px-2.5">
+<span class="material-symbols-outlined text-[14px] text-on-surface-variant">search</span>
+<span class="text-on-surface-variant text-[11px] font-semibold uppercase tracking-wider">Searched the web</span>
+</div>
+</div>
+</div>
+</div>
+</div>
+<!-- Sources Section -->
+<div class="pl-[68px] pr-4 mt-4">
+<h3 class="text-on-surface-variant font-label-md uppercase tracking-[0.08em] mb-3 flex items-center gap-2">
+        References
+      </h3>
+<div class="flex flex-col border-y border-outline-variant/20">
+<!-- Source Item 1 -->
+<a class="group flex items-start gap-3 py-3 border-b border-outline-variant/20 last:border-b-0 hover:bg-surface-container-low transition-colors px-2 -mx-2 rounded-md" href="#">
+<span class="text-on-surface-variant font-body-sm mt-0.5">[1]</span>
+<div class="flex-1 min-w-0">
+<p class="font-body-md text-on-surface font-medium truncate group-hover:text-primary transition-colors">October Design &amp; Tech Gatherings</p>
+<p class="font-label-md text-on-surface-variant truncate mt-0.5">designevents.local</p>
+</div>
+<span class="material-symbols-outlined text-[16px] text-outline group-hover:text-primary transition-colors mt-0.5">arrow_outward</span>
+</a>
+<!-- Source Item 2 -->
+<a class="group flex items-start gap-3 py-3 border-b border-outline-variant/20 last:border-b-0 hover:bg-surface-container-low transition-colors px-2 -mx-2 rounded-md" href="#">
+<span class="text-on-surface-variant font-body-sm mt-0.5">[2]</span>
+<div class="flex-1 min-w-0">
+<p class="font-body-md text-on-surface font-medium truncate group-hover:text-primary transition-colors">Downtown Center Event Calendar</p>
+<p class="font-label-md text-on-surface-variant truncate mt-0.5">communitycenter.org</p>
+</div>
+<span class="material-symbols-outlined text-[16px] text-outline group-hover:text-primary transition-colors mt-0.5">arrow_outward</span>
+</a>
+</div>
+</div>
+<!-- Actions Section -->
+<div class="pl-[68px] pr-4 mt-8 flex flex-wrap gap-2">
+<button class="flex items-center gap-2 px-4 py-2 rounded-lg border border-outline-variant/40 bg-surface-container-lowest text-on-surface hover:bg-surface-container-low hover:text-primary transition-colors font-label-lg shadow-sm">
+<span class="material-symbols-outlined text-[16px]">open_in_new</span>
+        Open sources
+      </button>
+<button class="flex items-center gap-2 px-4 py-2 rounded-lg border border-outline-variant/40 bg-surface-container-lowest text-on-surface hover:bg-surface-container-low hover:text-primary transition-colors font-label-lg shadow-sm">
+<span class="material-symbols-outlined text-[16px]">chat</span>
+        Ask follow-up
+      </button>
+<button class="flex items-center gap-2 px-4 py-2 rounded-lg border border-outline-variant/40 bg-surface-container-lowest text-on-surface hover:bg-surface-container-low hover:text-primary transition-colors font-label-lg shadow-sm">
+<span class="material-symbols-outlined text-[16px]">volume_up</span>
+        Read aloud
+      </button>
+<button class="flex items-center gap-2 px-4 py-2 rounded-lg border border-outline-variant/40 bg-surface-container-lowest text-on-surface hover:bg-surface-container-low hover:text-primary transition-colors font-label-lg shadow-sm">
+<span class="material-symbols-outlined text-[16px]">bookmark_add</span>
+        Save to Library
+      </button>
+</div>
+</div>
+<!-- Bottom Input Area -->
+<div class="sticky bottom-0 w-full bg-surface/90 backdrop-blur-sm pt-4 pb-6 px-4 border-t border-outline-variant/20">
+<div class="relative flex items-center bg-surface-container-lowest rounded-xl pr-2 pl-4 py-2 shadow-sm border border-outline-variant/40 focus-within:border-primary focus-within:ring-1 focus-within:ring-primary transition-all">
+<input class="flex-1 bg-transparent border-none focus:ring-0 text-on-surface placeholder:text-on-surface-variant font-body-md py-2" placeholder="Ask a follow-up question..." type="text"/>
+<button class="w-10 h-10 rounded-lg bg-surface-container-high text-on-surface flex items-center justify-center hover:bg-primary hover:text-on-primary transition-colors shrink-0">
+<span class="material-symbols-outlined text-[20px]">send</span>
+</button>
+</div>
+</div>
+</div>
+</body></html>

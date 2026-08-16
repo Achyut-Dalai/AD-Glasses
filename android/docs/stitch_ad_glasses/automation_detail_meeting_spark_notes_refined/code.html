@@ -1,0 +1,253 @@
+<!DOCTYPE html>
+
+<html lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Meeting Spark Notes Automation</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Hanken+Grotesk:wght@400;500;600&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    colors: {
+                        "secondary-container": "#4090fe",
+                        "on-surface": "#161c27",
+                        "canvas": "#F6F7F9",
+                        "surface-container-high": "#e2e8f8",
+                        "on-secondary-fixed": "#001b3e",
+                        "secondary-fixed": "#d6e3ff",
+                        "on-tertiary": "#ffffff",
+                        "inverse-surface": "#2a313d",
+                        "surface-control": "#FFFFFF",
+                        "cool-gray": "#717785",
+                        "on-error": "#ffffff",
+                        "on-tertiary-fixed-variant": "#444749",
+                        "on-primary-fixed": "#1b1b1b",
+                        "background": "#f9f9ff",
+                        "on-tertiary-fixed": "#191c1e",
+                        "secondary-fixed-dim": "#aac7ff",
+                        "electric-blue": "#1978E5",
+                        "tertiary-fixed-dim": "#c5c7c8",
+                        "surface-variant": "#dde2f2",
+                        "surface-container-highest": "#dde2f2",
+                        "primary-fixed-dim": "#c6c6c6",
+                        "on-surface-variant": "#4c4546",
+                        "outline-variant": "#cfc4c5",
+                        "on-background": "#161c27",
+                        "on-error-container": "#93000a",
+                        "graphite-black": "#000000",
+                        "inverse-primary": "#c6c6c6",
+                        "tertiary-container": "#191c1e",
+                        "error": "#ba1a1a",
+                        "primary": "#000000",
+                        "inverse-on-surface": "#ecf0ff",
+                        "tertiary-fixed": "#e1e2e4",
+                        "surface-dim": "#d4daea",
+                        "surface-container": "#e8eefe",
+                        "on-primary-fixed-variant": "#474747",
+                        "primary-fixed": "#e2e2e2",
+                        "on-tertiary-container": "#828486",
+                        "tertiary": "#000000",
+                        "surface": "#f9f9ff",
+                        "on-secondary-container": "#002958",
+                        "surface-container-low": "#f0f3ff",
+                        "outline": "#7e7576",
+                        "on-primary-container": "#848484",
+                        "success-teal": "#008080",
+                        "surface-tint": "#5e5e5e",
+                        "on-primary": "#ffffff",
+                        "surface-container-lowest": "#ffffff",
+                        "primary-container": "#1b1b1b",
+                        "surface-bright": "#f9f9ff",
+                        "on-secondary": "#ffffff",
+                        "warning-amber": "#FFBF00",
+                        "on-secondary-fixed-variant": "#00458d",
+                        "secondary": "#005db8",
+                        "error-container": "#ffdad6"
+                    },
+                    borderRadius: {
+                        "DEFAULT": "0.25rem",
+                        "lg": "0.5rem",
+                        "xl": "0.75rem",
+                        "full": "9999px"
+                    },
+                    spacing: {
+                        "base": "4px",
+                        "hero-stage": "220px",
+                        "gap-xs": "4px",
+                        "gap-sm": "8px",
+                        "touch-target": "48px",
+                        "margin-page": "16px"
+                    },
+                    fontFamily: {
+                        "headline-md": ["Hanken Grotesk"],
+                        "body-lg": ["Hanken Grotesk"],
+                        "label-lg": ["Hanken Grotesk"],
+                        "label-md": ["Hanken Grotesk"],
+                        "label-sm": ["Hanken Grotesk"],
+                        "body-md": ["Hanken Grotesk"],
+                        "headline-lg": ["Hanken Grotesk"]
+                    },
+                    fontSize: {
+                        "headline-md": ["20px", { lineHeight: "28px", letterSpacing: "-0.01em", fontWeight: "600" }],
+                        "body-lg": ["16px", { lineHeight: "24px", fontWeight: "400" }],
+                        "label-lg": ["14px", { lineHeight: "20px", fontWeight: "500" }],
+                        "label-md": ["12px", { lineHeight: "16px", fontWeight: "500" }],
+                        "label-sm": ["11px", { lineHeight: "16px", letterSpacing: "0.05em", fontWeight: "500" }],
+                        "body-md": ["14px", { lineHeight: "20px", fontWeight: "400" }],
+                        "headline-lg": ["24px", { lineHeight: "32px", letterSpacing: "-0.02em", fontWeight: "600" }]
+                    }
+                }
+            }
+        }
+    </script>
+<style>
+        body { background-color: theme('colors.canvas'); color: theme('colors.on-surface'); }
+        .hairline-bottom { border-bottom: 1px solid theme('colors.surface-variant'); }
+        .hairline-top { border-top: 1px solid theme('colors.surface-variant'); }
+        .hairline-all { border: 1px solid theme('colors.surface-variant'); }
+    </style>
+<style>
+    body {
+      min-height: max(884px, 100dvh);
+    }
+  </style>
+<style>
+    body {
+      min-height: max(884px, 100dvh);
+    }
+  </style>
+  </head>
+<body class="antialiased min-h-screen pb-[100px] flex flex-col items-center">
+<!-- TopAppBar -->
+<header class="w-full sticky top-0 z-50 bg-surface dark:bg-surface-dim flat no shadows border-b-0">
+<div class="flex items-center justify-between px-margin-page h-16 w-full max-w-5xl mx-auto">
+<button aria-label="Back" class="h-touch-target w-touch-target flex items-center justify-center -ml-3 hover:bg-surface-container-high transition-colors active:scale-95 duration-100 rounded-full">
+<span class="material-symbols-outlined text-primary" data-icon="arrow_back">arrow_back</span>
+</button>
+<h1 class="font-headline-md text-headline-md text-primary font-bold tracking-tight">Meeting Spark Notes</h1>
+<button aria-label="Settings" class="h-touch-target w-touch-target flex items-center justify-center -mr-3 hover:bg-surface-container-high transition-colors active:scale-95 duration-100 rounded-full">
+<span class="material-symbols-outlined text-primary" data-icon="settings">settings</span>
+</button>
+</div>
+</header>
+<main class="w-full max-w-5xl mx-auto px-margin-page pt-8 pb-24 flex flex-col gap-12">
+<!-- Hero Stage / Manifest -->
+<section class="flex flex-col gap-6">
+<div class="flex items-center gap-4">
+<div class="h-16 w-16 rounded-full bg-primary flex items-center justify-center shadow-sm">
+<span class="material-symbols-outlined text-on-primary text-[32px]" data-icon="mic" style="font-variation-settings: 'FILL' 1;">mic</span>
+</div>
+<div>
+<h2 class="font-headline-lg text-headline-lg text-primary">Audio Intelligence</h2>
+<p class="font-body-md text-body-md text-on-surface-variant mt-1">Automatically capture and synthesize critical meeting data.</p>
+</div>
+</div>
+<div class="grid grid-cols-3 gap-4 mt-4">
+<div class="bg-surface-control hairline-all rounded-lg p-4 flex flex-col items-center justify-center gap-2 text-center shadow-sm">
+<span class="material-symbols-outlined text-electric-blue" data-icon="mic_external_on">mic_external_on</span>
+<span class="font-label-md text-label-md text-on-surface">Microphone</span>
+</div>
+<div class="bg-surface-control hairline-all rounded-lg p-4 flex flex-col items-center justify-center gap-2 text-center shadow-sm">
+<span class="material-symbols-outlined text-electric-blue" data-icon="cloud_sync">cloud_sync</span>
+<span class="font-label-md text-label-md text-on-surface">Your Cloud</span>
+</div>
+<div class="bg-surface-control hairline-all rounded-lg p-4 flex flex-col items-center justify-center gap-2 text-center shadow-sm">
+<span class="material-symbols-outlined text-electric-blue" data-icon="memory">memory</span>
+<span class="font-label-md text-label-md text-on-surface">Memory</span>
+</div>
+</div>
+</section>
+<!-- Configuration Grid -->
+<section class="flex flex-col gap-6">
+<h3 class="font-headline-md text-headline-md text-primary hairline-bottom pb-4">Configuration</h3>
+<div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+<!-- Mic Input -->
+<div class="bg-surface-control hairline-all rounded-lg p-6 shadow-sm flex flex-col gap-4">
+<div class="flex items-center justify-between">
+<span class="font-label-lg text-label-lg text-on-surface">Mic Input</span>
+<span class="bg-surface-container-high px-2 py-1 rounded font-label-sm text-label-sm text-on-surface-variant uppercase tracking-wider">Active</span>
+</div>
+<div class="relative">
+<select class="w-full bg-canvas hairline-all rounded-md h-touch-target px-4 font-body-md text-body-md text-on-surface appearance-none focus:ring-1 focus:ring-electric-blue focus:border-electric-blue outline-none transition-colors">
+<option value="bluetooth">Bluetooth Headset</option>
+<option value="internal">Device Internal Mic</option>
+<option value="external">USB External Mic</option>
+</select>
+<span class="material-symbols-outlined absolute right-4 top-1/2 -translate-y-1/2 text-on-surface-variant pointer-events-none" data-icon="expand_more">expand_more</span>
+</div>
+</div>
+<!-- Transcription Provider -->
+<div class="bg-surface-control hairline-all rounded-lg p-6 shadow-sm flex flex-col gap-4">
+<div class="flex items-center justify-between">
+<span class="font-label-lg text-label-lg text-on-surface">Transcription Provider</span>
+<div class="flex gap-2">
+<span class="bg-surface-container-high px-2 py-1 rounded font-label-sm text-label-sm text-on-surface-variant flex items-center gap-1"><span class="w-2 h-2 rounded-full bg-electric-blue"></span> Cloud</span>
+</div>
+</div>
+<div class="relative">
+<select class="w-full bg-canvas hairline-all rounded-md h-touch-target px-4 font-body-md text-body-md text-on-surface appearance-none focus:ring-1 focus:ring-electric-blue focus:border-electric-blue outline-none transition-colors">
+<option value="cloud_default">Cloud Default</option>
+<option value="on_device">On-Device (Limited)</option>
+</select>
+<span class="material-symbols-outlined absolute right-4 top-1/2 -translate-y-1/2 text-on-surface-variant pointer-events-none" data-icon="expand_more">expand_more</span>
+</div>
+</div>
+</div>
+<!-- Summary Structure -->
+<div class="bg-surface-control hairline-all rounded-lg p-6 shadow-sm mt-2">
+<h4 class="font-label-lg text-label-lg text-on-surface mb-4">Summary Structure</h4>
+<div class="flex flex-col gap-4">
+<label class="flex items-center gap-3 cursor-pointer group">
+<div class="relative flex items-center">
+<input checked="" class="peer sr-only" type="checkbox"/>
+<div class="w-6 h-6 rounded hairline-all bg-canvas peer-checked:bg-primary peer-checked:border-primary transition-colors flex items-center justify-center">
+<span class="material-symbols-outlined text-white text-[16px] opacity-0 peer-checked:opacity-100 transition-opacity" data-icon="check">check</span>
+</div>
+</div>
+<span class="font-body-md text-body-md text-on-surface group-hover:text-primary transition-colors">Overview</span>
+</label>
+<label class="flex items-center gap-3 cursor-pointer group">
+<div class="relative flex items-center">
+<input checked="" class="peer sr-only" type="checkbox"/>
+<div class="w-6 h-6 rounded hairline-all bg-canvas peer-checked:bg-primary peer-checked:border-primary transition-colors flex items-center justify-center">
+<span class="material-symbols-outlined text-white text-[16px] opacity-0 peer-checked:opacity-100 transition-opacity" data-icon="check">check</span>
+</div>
+</div>
+<span class="font-body-md text-body-md text-on-surface group-hover:text-primary transition-colors">Decisions</span>
+</label>
+<label class="flex items-center gap-3 cursor-pointer group">
+<div class="relative flex items-center">
+<input checked="" class="peer sr-only" type="checkbox"/>
+<div class="w-6 h-6 rounded hairline-all bg-canvas peer-checked:bg-primary peer-checked:border-primary transition-colors flex items-center justify-center">
+<span class="material-symbols-outlined text-white text-[16px] opacity-0 peer-checked:opacity-100 transition-opacity" data-icon="check">check</span>
+</div>
+</div>
+<span class="font-body-md text-body-md text-on-surface group-hover:text-primary transition-colors">Action Items</span>
+</label>
+</div>
+</div>
+<!-- Toggles -->
+<div class="bg-surface-control hairline-all rounded-lg p-6 shadow-sm mt-2 flex items-center justify-between">
+<div>
+<span class="font-label-lg text-label-lg text-on-surface block">Save Audio Recording</span>
+<span class="font-body-md text-body-md text-on-surface-variant text-[13px]">Retain raw audio files locally.</span>
+</div>
+<button aria-checked="false" class="relative inline-flex h-6 w-11 items-center rounded-full bg-cool-gray transition-colors focus:outline-none focus:ring-2 focus:ring-electric-blue focus:ring-offset-2" onclick="this.setAttribute('aria-checked', this.getAttribute('aria-checked') === 'true' ? 'false' : 'true'); this.classList.toggle('bg-electric-blue'); this.classList.toggle('bg-cool-gray'); this.querySelector('span').classList.toggle('translate-x-6'); this.querySelector('span').classList.toggle('translate-x-1');" role="switch">
+<span class="inline-block h-4 w-4 translate-x-1 transform rounded-full bg-white transition duration-200 ease-in-out"></span>
+</button>
+</div>
+</section>
+<!-- Atmospheric Image -->
+<div class="mt-8 rounded-xl overflow-hidden shadow-md h-48 w-full relative">
+<div class="absolute inset-0 bg-gradient-to-t from-graphite-black/80 to-transparent z-10 flex items-end p-6">
+<span class="font-headline-md text-headline-md text-white">Studio Graphite Environment</span>
+</div>
+<div class="bg-cover bg-center w-full h-full grayscale-[20%]" data-alt="A sleek, modern corporate meeting room viewed through a minimalist, light-mode lens. The room features high-end brushed graphite tables, architectural lighting, and pristine white structural elements. The atmosphere is quiet, precise, and highly professional, embodying a premium hardware aesthetic with sharp contrasts and deliberate architectural spacing. Soft, diffused daylight filters through frosted glass." style="background-image: url('https://lh3.googleusercontent.com/aida-public/AB6AXuCEy9OnEZSTJtKNkM18OvFhlGobcBUj2VuDe6Bq74LZNLkjUllxmJ1xaB-1WiyGyUpDedCTQAzaxke_pzZIrtJkPIMbDlLKPFW7hQPQWZjb2nnYBwgNzSFTu_L_qMZLJslg0kX0izcDHt_IkmOvXY4Q-JZ0OUMJQPhvyg1sqZn-EnBJ2TYxQ_Jxe8ppA4fsaIxLIxLL2Ii6nFzBQnXAwQtZu6IqdFYzHzd2AL_hR7IPK2mtw1GRNsfE')"></div>
+</div>
+</main>
+</body></html>

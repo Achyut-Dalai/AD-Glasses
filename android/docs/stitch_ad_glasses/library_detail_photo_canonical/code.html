@@ -1,0 +1,223 @@
+<!DOCTYPE html>
+
+<html lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Photo Detail - AD Glasses Library</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+  tailwind.config = {
+    darkMode: "class",
+    theme: {
+      extend: {
+        "colors": {
+                "primary": "#004389",
+                "tertiary-fixed-dim": "#ffb68c",
+                "on-secondary-container": "#3f5881",
+                "on-surface": "#181c22",
+                "background": "#f9f9ff",
+                "on-tertiary-fixed-variant": "#753400",
+                "surface-tint": "#095db7",
+                "on-tertiary": "#ffffff",
+                "on-primary-fixed-variant": "#00458d",
+                "outline-variant": "#c1c6d5",
+                "tertiary-fixed": "#ffdbc9",
+                "surface-container-lowest": "#ffffff",
+                "on-primary-fixed": "#001b3e",
+                "surface-dim": "#d7dae3",
+                "inverse-primary": "#aac7ff",
+                "inverse-surface": "#2d3037",
+                "error-container": "#ffdad6",
+                "secondary-container": "#b6d0ff",
+                "tertiary": "#723200",
+                "on-primary": "#ffffff",
+                "surface-container": "#ebedf7",
+                "primary-fixed-dim": "#aac7ff",
+                "surface-container-low": "#f1f3fc",
+                "surface-variant": "#e0e2eb",
+                "on-error-container": "#93000a",
+                "on-surface-variant": "#424752",
+                "surface-container-highest": "#e0e2eb",
+                "error": "#ba1a1a",
+                "on-background": "#181c22",
+                "surface-container-high": "#e6e8f1",
+                "outline": "#727783",
+                "on-error": "#ffffff",
+                "secondary-fixed-dim": "#aec7f6",
+                "tertiary-container": "#964400",
+                "primary-fixed": "#d6e3ff",
+                "surface": "#f9f9ff",
+                "on-tertiary-container": "#ffc9ac",
+                "primary-container": "#0a73e0",
+                "on-tertiary-fixed": "#321200",
+                "on-secondary-fixed": "#001b3d",
+                "inverse-on-surface": "#eef0fa",
+                "secondary-fixed": "#d6e3ff",
+                "secondary": "#465f88",
+                "on-secondary": "#ffffff",
+                "surface-bright": "#f9f9ff",
+                "on-primary-container": "#c0d5ff",
+                "on-secondary-fixed-variant": "#2e476f"
+        },
+        "borderRadius": {
+                "DEFAULT": "0.25rem",
+                "lg": "0.5rem",
+                "xl": "0.75rem",
+                "full": "9999px"
+        },
+        "spacing": {
+                "section-gap": "1.5rem",
+                "grid-gutter": "1rem",
+                "element-gap": "0.75rem",
+                "container-padding": "1rem"
+        },
+        "fontFamily": {
+                "label-lg": [
+                        "Inter"
+                ],
+                "body-md": [
+                        "Inter"
+                ],
+                "label-md": [
+                        "Inter"
+                ],
+                "headline-sm": [
+                        "Inter"
+                ],
+                "label-sm": [
+                        "Inter"
+                ],
+                "display-sm": [
+                        "Inter"
+                ],
+                "body-sm": [
+                        "Inter"
+                ]
+        },
+        "fontSize": {
+                "label-lg": [
+                        "0.75rem",
+                        {
+                                "lineHeight": "1rem",
+                                "fontWeight": "600"
+                        }
+                ],
+                "body-md": [
+                        "0.875rem",
+                        {
+                                "lineHeight": "1.25rem",
+                                "fontWeight": "400"
+                        }
+                ],
+                "label-md": [
+                        "11px",
+                        {
+                                "lineHeight": "1rem",
+                                "fontWeight": "500"
+                        }
+                ],
+                "headline-sm": [
+                        "0.875rem",
+                        {
+                                "lineHeight": "1.25rem",
+                                "fontWeight": "600"
+                        }
+                ],
+                "label-sm": [
+                        "10px",
+                        {
+                                "lineHeight": "12px",
+                                "fontWeight": "500"
+                        }
+                ],
+                "display-sm": [
+                        "1.125rem",
+                        {
+                                "lineHeight": "1.5rem",
+                                "letterSpacing": "0.15em",
+                                "fontWeight": "700"
+                        }
+                ],
+                "body-sm": [
+                        "0.75rem",
+                        {
+                                "lineHeight": "1rem",
+                                "fontWeight": "400"
+                        }
+                ]
+        }
+},
+    },
+  }
+</script>
+<style>
+  body {
+    font-family: 'Inter', sans-serif;
+  }
+</style>
+<style>
+    body {
+      min-height: max(884px, 100dvh);
+    }
+  </style>
+  </head>
+<body class="bg-background text-on-background min-h-screen flex flex-col">
+<!-- Top Bar Minimal Back -->
+<div class="flex items-center p-4 bg-background border-b border-surface-variant justify-between sticky top-0 z-10">
+<button class="w-10 h-10 flex items-center justify-center rounded-full hover:bg-surface-container-high text-on-surface">
+<span class="material-symbols-outlined" data-icon="arrow_back">arrow_back</span>
+</button>
+<div class="text-on-surface flex items-center justify-center" data-icon="more_vert">
+<span class="material-symbols-outlined" data-icon="more_vert">more_vert</span>
+</div>
+</div>
+<!-- Main Content Area -->
+<div class="flex-1 overflow-y-auto pb-24">
+<!-- Edge to Edge Media -->
+<div class="w-full aspect-[4/3] bg-surface-container-high relative">
+<img class="w-full h-full object-cover" data-alt="A vivid, high-resolution photograph taken from the perspective of smart glasses, showing a bustling outdoor cafe on a sunny afternoon in a light-mode UI style with soft natural lighting and bright blue skies." src="https://lh3.googleusercontent.com/aida-public/AB6AXuAly7BPt1_r5qUAz9C2zcKKdLfUnOpls0bQB-Enm2yrOca198F7VeKuUoK2k2lQ2GjceN1LX-Bfu76mgIFPiI6M_k_PGdA4AGR7d5l3r1aYc_8ZzseJvHXM1VVdWiwNCEoYdWaCpuurRGLjKHE_GoUCSbhQSp_PZLxP80KFQtRg7puTqc5u2QL2PdIZ24Xqsj3oSQCufmw5tE0ZTn0axvYRGFxABR9bPbvdFouvxqPstd7LmP48wZEQ"/>
+</div>
+<!-- Details Section -->
+<div class="p-container-padding flex flex-col gap-element-gap">
+<h1 class="text-display-sm text-on-surface m-0">HeyCyan Pro</h1>
+<p class="text-body-md text-on-surface-variant m-0">Captured with glasses • 2:14 PM • 12MP • 2.4MB</p>
+<!-- Action Button -->
+<button class="mt-element-gap bg-primary text-on-primary rounded-full py-3 px-6 text-label-lg font-semibold flex items-center justify-center gap-2 w-full hover:bg-primary-container hover:text-on-primary-container transition-colors shadow-sm">
+<span class="material-symbols-outlined" data-icon="chat_bubble">chat_bubble</span>
+            Ask about this photo
+        </button>
+</div>
+</div>
+<!-- Bottom Nav Bar (Shared Component format adapted for this specific view per instructions, normally excluded for focused task flows, but this is a detail view so we use the provided bottom bar) -->
+<div class="fixed bottom-0 w-full bg-background border-t border-surface-variant z-20">
+<div class="flex gap-2 px-4 pb-4 pt-3 max-w-md mx-auto">
+<a class="flex flex-1 flex-col items-center justify-center gap-1 rounded-full text-on-surface hover:bg-surface-container-high py-2 transition-colors" href="#">
+<div class="flex h-8 items-center justify-center">
+<span class="material-symbols-outlined" data-icon="share">share</span>
+</div>
+<span class="text-label-sm">Share</span>
+</a>
+<a class="flex flex-1 flex-col items-center justify-center gap-1 text-on-surface-variant hover:bg-surface-container-high rounded-full py-2 transition-colors" href="#">
+<div class="flex h-8 items-center justify-center">
+<span class="material-symbols-outlined" data-icon="bookmark">bookmark</span>
+</div>
+<span class="text-label-sm">Save</span>
+</a>
+<a class="flex flex-1 flex-col items-center justify-center gap-1 text-on-surface-variant hover:bg-surface-container-high rounded-full py-2 transition-colors" href="#">
+<div class="flex h-8 items-center justify-center">
+<span class="material-symbols-outlined" data-icon="add">add</span>
+</div>
+<span class="text-label-sm">Add</span>
+</a>
+<a class="flex flex-1 flex-col items-center justify-center gap-1 text-on-surface-variant hover:bg-error-container hover:text-on-error-container rounded-full py-2 transition-colors" href="#">
+<div class="flex h-8 items-center justify-center">
+<span class="material-symbols-outlined" data-icon="delete">delete</span>
+</div>
+<span class="text-label-sm">Delete</span>
+</a>
+</div>
+</div>
+</body></html>

@@ -1,0 +1,318 @@
+<!DOCTYPE html>
+
+<html class="light" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>AD Glasses - Library Highlights</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    "colors": {
+                        "surface-container-lowest": "#ffffff",
+                        "on-secondary-container": "#3f5881",
+                        "secondary-container": "#b6d0ff",
+                        "on-primary": "#ffffff",
+                        "inverse-primary": "#aac7ff",
+                        "on-primary-fixed-variant": "#00458d",
+                        "surface-container-low": "#f1f3fc",
+                        "tertiary": "#964400",
+                        "primary": "#005ab4",
+                        "on-surface": "#181c22",
+                        "on-secondary": "#ffffff",
+                        "surface-container-highest": "#e0e2eb",
+                        "surface-variant": "#e0e2eb",
+                        "on-surface-variant": "#414753",
+                        "on-primary-fixed": "#001b3e",
+                        "tertiary-fixed": "#ffdbc9",
+                        "surface": "#f9f9ff",
+                        "error-container": "#ffdad6",
+                        "on-background": "#181c22",
+                        "on-secondary-fixed-variant": "#2d476f",
+                        "secondary-fixed": "#d6e3ff",
+                        "background": "#f9f9ff",
+                        "on-tertiary-fixed": "#321200",
+                        "outline": "#717785",
+                        "on-error": "#ffffff",
+                        "primary-fixed-dim": "#aac7ff",
+                        "surface-bright": "#f9f9ff",
+                        "tertiary-fixed-dim": "#ffb68c",
+                        "tertiary-container": "#bd5700",
+                        "outline-variant": "#c1c6d5",
+                        "on-tertiary": "#ffffff",
+                        "on-tertiary-container": "#fffbff",
+                        "on-error-container": "#93000a",
+                        "on-secondary-fixed": "#001b3d",
+                        "secondary": "#465f88",
+                        "primary-container": "#0a73e0",
+                        "surface-dim": "#d7dae3",
+                        "surface-container-high": "#e6e8f1",
+                        "inverse-on-surface": "#eef0fa",
+                        "on-tertiary-fixed-variant": "#763400",
+                        "error": "#ba1a1a",
+                        "surface-tint": "#005db8",
+                        "surface-container": "#ebedf7",
+                        "primary-fixed": "#d6e3ff",
+                        "on-primary-container": "#fefcff",
+                        "inverse-surface": "#2d3037",
+                        "secondary-fixed-dim": "#aec7f7"
+                    },
+                    "borderRadius": {
+                        "DEFAULT": "0.25rem",
+                        "lg": "0.5rem",
+                        "xl": "0.75rem",
+                        "full": "9999px"
+                    },
+                    "fontFamily": {
+                        "headline": ["Inter", "sans-serif"],
+                        "display": ["Inter", "sans-serif"],
+                        "body": ["Inter", "sans-serif"],
+                        "label": ["Inter", "sans-serif"]
+                    }
+                }
+            }
+        }
+    </script>
+<style>
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+        }
+        .icon-fill {
+            font-variation-settings: 'FILL' 1, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+        }
+    </style>
+<style>
+    body {
+      min-height: max(884px, 100dvh);
+    }
+  </style>
+  </head>
+<body class="bg-background text-on-background font-body antialiased min-h-screen pb-24 md:pb-0">
+<!-- TopAppBar -->
+<header class="bg-background w-full top-0 z-40 sticky transition-colors duration-300 ease-in-out">
+<div class="flex justify-between items-center px-6 py-4 w-full max-w-7xl mx-auto">
+<!-- Leading Icon & Brand -->
+<div class="flex items-center gap-3">
+<span class="material-symbols-outlined text-primary text-2xl" data-icon="eyeglasses">eyeglasses</span>
+<h1 class="text-xl font-bold tracking-tighter text-on-background font-headline">AD Glasses</h1>
+</div>
+<!-- Desktop Navigation Cluster (Responsive Pivot) -->
+<nav class="hidden md:flex items-center gap-8">
+<a class="flex items-center gap-2 text-on-surface-variant hover:bg-surface-variant/10 transition-colors duration-300 ease-in-out px-3 py-2 rounded-lg text-label-medium font-label" href="#">
+<span class="material-symbols-outlined" data-icon="home">home</span>
+                    Home
+                </a>
+<a class="flex items-center gap-2 text-on-surface-variant hover:bg-surface-variant/10 transition-colors duration-300 ease-in-out px-3 py-2 rounded-lg text-label-medium font-label" href="#">
+<span class="material-symbols-outlined" data-icon="smart_toy">smart_toy</span>
+                    Assistant
+                </a>
+<a class="flex items-center gap-2 text-primary font-medium hover:bg-surface-variant/10 transition-colors duration-300 ease-in-out px-3 py-2 rounded-lg text-label-medium font-label bg-secondary-container/30" href="#">
+<span class="material-symbols-outlined icon-fill" data-icon="photo_library" data-weight="fill">photo_library</span>
+                    Library
+                </a>
+<a class="flex items-center gap-2 text-on-surface-variant hover:bg-surface-variant/10 transition-colors duration-300 ease-in-out px-3 py-2 rounded-lg text-label-medium font-label" href="#">
+<span class="material-symbols-outlined" data-icon="auto_awesome">auto_awesome</span>
+                    Automations
+                </a>
+</nav>
+<!-- Trailing Icon -->
+<button class="text-on-surface-variant hover:bg-surface-variant/10 p-2 rounded-full transition-colors duration-300 ease-in-out flex items-center justify-center">
+<span class="material-symbols-outlined" data-icon="settings">settings</span>
+</button>
+</div>
+</header>
+<!-- Main Canvas -->
+<main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 w-full">
+<!-- Header Section -->
+<div class="mb-8 flex justify-between items-end">
+<div>
+<h2 class="text-2xl md:text-3xl font-headline font-bold text-on-surface tracking-tight">Recent Highlights</h2>
+<p class="text-on-surface-variant mt-2 text-sm md:text-base">Your most important captured moments and insights.</p>
+</div>
+<button class="hidden md:flex items-center gap-2 text-primary text-sm font-medium hover:bg-surface-container-low px-4 py-2 rounded-lg transition-colors">
+<span class="material-symbols-outlined text-[20px]" data-icon="filter_list">filter_list</span>
+                Filter
+            </button>
+</div>
+<!-- High-Impact Bento Grid -->
+<div class="grid grid-cols-1 md:grid-cols-12 gap-6 mb-16">
+<!-- Hero Card (Spans more columns) -->
+<div class="md:col-span-8 bg-surface-container-lowest rounded-2xl overflow-hidden border border-outline-variant shadow-sm hover:shadow-md transition-shadow group flex flex-col relative h-[420px]">
+<div class="relative h-2/3 w-full overflow-hidden">
+<img class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-700 ease-in-out" data-alt="A modern, bright office meeting room viewed through the perspective of smart glasses. The scene is clean, professional, and slightly futuristic, with soft natural light coming from large windows. A digital overlay shows subtle UI elements in a cool blue color palette, highlighting a whiteboard with abstract graphs and notes. The overall aesthetic is clean, efficient, and technologically advanced, fitting a high-end corporate environment." src="https://lh3.googleusercontent.com/aida-public/AB6AXuC3cI4KO4nsFou2kpARJZ_ObpPZ8Mjv80HF-KbugwNcqch8ZMnLF7H2b7-eQGQzTV9W4WRzO8H-j5K9Wsoq-t24VbNZcEsiU7K4cH9Q8JMZTQvJSJl-fA1YZrQ4JPR_NMg8WnzKapQ-RnMXYoBbJUS6fIrHG-0y7DcWOrOJDd4lDhUpVM82HUEvuSWh5hONWzl9H40K9QGSKDpiaMcGAZEqj4AltuvH7nxYZNS5E6PENX6pdWRWnHLn"/>
+<!-- Metadata Badges -->
+<div class="absolute top-4 left-4 flex gap-2">
+<span class="bg-secondary-container/90 backdrop-blur-sm text-on-secondary-container text-xs font-label font-medium px-3 py-1.5 rounded-full flex items-center gap-1">
+<span class="material-symbols-outlined text-[14px]" data-icon="auto_awesome">auto_awesome</span>
+                            AI Summary
+                        </span>
+<span class="bg-surface-container-lowest/90 backdrop-blur-sm text-on-surface text-xs font-label font-medium px-3 py-1.5 rounded-full shadow-sm">
+                            2 hours ago
+                        </span>
+</div>
+<div class="absolute bottom-4 right-4 bg-inverse-surface/80 backdrop-blur-md text-inverse-on-surface text-xs font-medium px-2 py-1 rounded-md flex items-center gap-1">
+<span class="material-symbols-outlined text-[14px]" data-icon="schedule">schedule</span>
+                        0:45
+                    </div>
+</div>
+<div class="p-6 flex flex-col justify-between flex-grow">
+<div>
+<h3 class="text-xl font-headline font-semibold text-on-surface mb-1">Project Alpha Meeting Insights</h3>
+<p class="text-on-surface-variant text-sm line-clamp-2">Key takeaways from the Q3 planning session, including action items for the engineering team and budget approvals.</p>
+</div>
+<!-- Quick Actions -->
+<div class="flex items-center gap-3 mt-4">
+<button class="bg-primary text-on-primary hover:bg-primary/90 py-2 px-5 rounded-lg text-sm font-medium flex items-center gap-2 transition-colors">
+<span class="material-symbols-outlined text-[18px]" data-icon="smart_toy">smart_toy</span>
+                            Ask Assistant
+                        </button>
+<button class="bg-surface-container-high text-on-surface hover:bg-surface-container-highest py-2 px-4 rounded-lg text-sm font-medium flex items-center gap-2 transition-colors border border-transparent">
+<span class="material-symbols-outlined text-[18px]" data-icon="share">share</span>
+                            Share
+                        </button>
+</div>
+</div>
+</div>
+<!-- Side Cards -->
+<div class="md:col-span-4 flex flex-col gap-6">
+<!-- Side Card 1 -->
+<div class="bg-surface-container-lowest rounded-xl overflow-hidden border border-outline-variant shadow-sm hover:shadow-md transition-shadow group flex flex-col h-full relative">
+<div class="relative h-48 w-full overflow-hidden">
+<img class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-700 ease-in-out" data-alt="A crisp, high-resolution close-up of a printed financial document lying on a minimalist white desk. The image has a clean, professional aesthetic with cool blue and grey tones dominating the scene. A subtle digital scanning effect or bounding box overlay suggests the document is being analyzed by smart glasses. The lighting is even and bright, ensuring perfect readability and a premium tech feel." src="https://lh3.googleusercontent.com/aida-public/AB6AXuB3PkZNpq3UVLoI54VWzZ6lHsbw5bpTwCj1h-WjfnrTY28ntOoj2Krfg990Y8uDn5_vMIxYbz41p-NfLNdUWv96MJiFFydmtBprjvdkZ_nKnL9Pv3LK6aqLMXTbnWmZ1W58zeDG7fU9pFg9atMytF-q21pMLbrUFK2WaBG_0IoBEwh4yEGxfc7-jK0B0UCNuUpAmeeOkJBE9PMauQTSmk8o-yfgR9cViuQZsBVUcUfufYZvk9bKd1RQ"/>
+<div class="absolute top-3 left-3">
+<span class="bg-surface-container-lowest/90 backdrop-blur-sm text-on-surface text-xs font-label font-medium px-2.5 py-1 rounded-full shadow-sm flex items-center gap-1 border border-outline-variant/30">
+<span class="material-symbols-outlined text-[14px]" data-icon="document_scanner">document_scanner</span>
+                                Document Scan
+                            </span>
+</div>
+</div>
+<div class="p-4 flex flex-col justify-between flex-grow">
+<div>
+<h3 class="text-base font-headline font-semibold text-on-surface mb-1">Q3 Financial Report</h3>
+<p class="text-on-surface-variant text-xs mb-3">Yesterday • 2 pages</p>
+</div>
+<button class="w-full bg-surface-container text-primary hover:bg-surface-container-high py-2 rounded-lg text-sm font-medium flex items-center justify-center gap-2 transition-colors">
+                            Extract Text
+                        </button>
+</div>
+</div>
+<!-- Side Card 2 -->
+<div class="bg-surface-container-lowest rounded-xl overflow-hidden border border-outline-variant shadow-sm hover:shadow-md transition-shadow group flex flex-col h-full relative">
+<div class="relative h-48 w-full overflow-hidden">
+<img class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-700 ease-in-out" data-alt="A scenic view of a modern architectural building interior captured from a first-person perspective. The lighting is balanced but the overall color grading leans towards a cool, reliable blue tone characteristic of a modern tech brand. Subtle augmented reality markers indicate structural dimensions. The image feels structured, high-quality, and precise, representing spatial awareness by a sophisticated device." src="https://lh3.googleusercontent.com/aida-public/AB6AXuCZM79MlEFJnwPJFhgJSyhZfUwTTCjLhChdNlobwoNFXTb6yBGqcVY593B7tweBlQnzEGWYCh-w-OZETzZePoVvO8xICJX3guJ8W-JlDWlIxLnkvAl1nqooRlITHgiZwSqgaMS0s3PQqNE1yWR8tF_3WBOSTrzY9jHAe8wC4TjmqXbWmnJwwywmopn1Uq0Xsprboecqa3-SfATEaKkkMte2wTOdZcv_XzdUFYQgsWXusjzPGmRhQI8Q"/>
+<div class="absolute top-3 left-3">
+<span class="bg-surface-container-lowest/90 backdrop-blur-sm text-on-surface text-xs font-label font-medium px-2.5 py-1 rounded-full shadow-sm flex items-center gap-1 border border-outline-variant/30">
+<span class="material-symbols-outlined text-[14px]" data-icon="visibility">visibility</span>
+                                Captured View
+                            </span>
+</div>
+</div>
+<div class="p-4 flex flex-col justify-between flex-grow">
+<div>
+<h3 class="text-base font-headline font-semibold text-on-surface mb-1">Lobby Spatial Map</h3>
+<p class="text-on-surface-variant text-xs mb-3">Tuesday • 3D Mesh</p>
+</div>
+<button class="w-full bg-surface-container text-primary hover:bg-surface-container-high py-2 rounded-lg text-sm font-medium flex items-center justify-center gap-2 transition-colors">
+                            View Model
+                        </button>
+</div>
+</div>
+</div>
+</div>
+<!-- Secondary List Section -->
+<div class="mb-8">
+<h3 class="text-lg font-headline font-semibold text-on-surface mb-4">Earlier this week</h3>
+<div class="flex flex-col gap-3">
+<!-- List Item 1 -->
+<div class="flex items-center p-3 bg-surface-container-lowest rounded-xl hover:bg-surface-container-low transition-colors cursor-pointer group border border-transparent hover:border-outline-variant/50">
+<div class="w-16 h-16 rounded-lg overflow-hidden flex-shrink-0 relative">
+<img class="w-full h-full object-cover" data-alt="A close-up shot of a modern espresso machine brewing coffee, captured in a clean, professional aesthetic. Cool lighting accents the stainless steel components, maintaining a sleek, technological feel despite the organic subject matter." src="https://lh3.googleusercontent.com/aida-public/AB6AXuDuNMv9zqhiJOZ0aOR0EmRrwLsCTrYHTGztfKr9PuYirMMtWtzP_yY9VmkwkK4wP2rYvnqH-k0bWqmI6Nn_wzddBPLM8fnKc9ebQfQvXO5c5GR0ApdY8J5mw-e9mCgDcLmQBV3SRhxdk4oKTaWD7zIV-9k_GukLiJDd0X98KeIrORgEHKZHdAF3qExWqz9anMV2dXqgNh4aS39ZW4EoSS1lMLmTz1E6pEBISOsO0U88mW1PU6DkkWXv"/>
+<div class="absolute inset-0 bg-black/20 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
+<span class="material-symbols-outlined text-white text-xl" data-icon="play_arrow">play_arrow</span>
+</div>
+</div>
+<div class="ml-4 flex-grow">
+<h4 class="text-sm font-medium text-on-surface">Morning Routine Analysis</h4>
+<div class="flex items-center gap-2 mt-1 text-xs text-on-surface-variant">
+<span class="flex items-center gap-1"><span class="material-symbols-outlined text-[14px]" data-icon="videocam">videocam</span> Video</span>
+<span>•</span>
+<span>Monday, 8:30 AM</span>
+</div>
+</div>
+<div class="pr-2 opacity-0 group-hover:opacity-100 transition-opacity flex gap-2">
+<button class="p-2 text-on-surface-variant hover:text-primary hover:bg-surface-container rounded-full transition-colors">
+<span class="material-symbols-outlined text-[20px]" data-icon="more_vert">more_vert</span>
+</button>
+</div>
+</div>
+<!-- List Item 2 -->
+<div class="flex items-center p-3 bg-surface-container-lowest rounded-xl hover:bg-surface-container-low transition-colors cursor-pointer group border border-transparent hover:border-outline-variant/50">
+<div class="w-16 h-16 rounded-lg overflow-hidden flex-shrink-0 bg-surface-container flex items-center justify-center text-primary">
+<span class="material-symbols-outlined text-3xl" data-icon="mic">mic</span>
+</div>
+<div class="ml-4 flex-grow">
+<h4 class="text-sm font-medium text-on-surface">Voice Note: Design Ideas</h4>
+<div class="flex items-center gap-2 mt-1 text-xs text-on-surface-variant">
+<span class="flex items-center gap-1"><span class="material-symbols-outlined text-[14px]" data-icon="graphic_eq">graphic_eq</span> Audio</span>
+<span>•</span>
+<span>Sunday, 4:15 PM</span>
+<span>•</span>
+<span>2:30</span>
+</div>
+</div>
+<div class="pr-2 opacity-0 group-hover:opacity-100 transition-opacity flex gap-2">
+<button class="p-2 text-on-surface-variant hover:text-primary hover:bg-surface-container rounded-full transition-colors">
+<span class="material-symbols-outlined text-[20px]" data-icon="more_vert">more_vert</span>
+</button>
+</div>
+</div>
+<!-- List Item 3 -->
+<div class="flex items-center p-3 bg-surface-container-lowest rounded-xl hover:bg-surface-container-low transition-colors cursor-pointer group border border-transparent hover:border-outline-variant/50">
+<div class="w-16 h-16 rounded-lg overflow-hidden flex-shrink-0 relative">
+<img class="w-full h-full object-cover" data-alt="A clean, wide-angle shot of an empty minimalist parking garage. The structure is concrete with stark white lines and cool blue ambient lighting, representing a spatial memory or location marker captured in high fidelity by a smart wearable device." src="https://lh3.googleusercontent.com/aida-public/AB6AXuBq9ke2PwVRn26CGJ49Hww9GyaZ-ychi4ZP-Jkz1LL8b6mGFS2ZClY5RZRW-nEN3B0mQCCkbhAb72PYpcvguxQjLDotXjMZAqKmuniU8afIb6wUb3MkHPritngVp8mBYevgsYe72nc78Wh9xj8E2rtc0ZpV7ubVoTP7Cm-Blh2ESGP80U83k9X7E3oCJxdNGiEJJK_yD-cm9K1ban-eitrf1M_InAnsc8x8AJU4Xd_lNsuoGEQzreuH"/>
+</div>
+<div class="ml-4 flex-grow">
+<h4 class="text-sm font-medium text-on-surface">Location Marker: Parking Spot</h4>
+<div class="flex items-center gap-2 mt-1 text-xs text-on-surface-variant">
+<span class="flex items-center gap-1"><span class="material-symbols-outlined text-[14px]" data-icon="location_on">location_on</span> Location</span>
+<span>•</span>
+<span>Sunday, 1:00 PM</span>
+</div>
+</div>
+<div class="pr-2 opacity-0 group-hover:opacity-100 transition-opacity flex gap-2">
+<button class="p-2 text-on-surface-variant hover:text-primary hover:bg-surface-container rounded-full transition-colors">
+<span class="material-symbols-outlined text-[20px]" data-icon="more_vert">more_vert</span>
+</button>
+</div>
+</div>
+</div>
+<button class="w-full mt-4 py-3 text-sm font-medium text-primary hover:bg-surface-container-low rounded-xl transition-colors">
+                View All Media
+            </button>
+</div>
+</main>
+<!-- BottomNavBar (Mobile Only) -->
+<nav class="md:hidden fixed bottom-0 left-0 w-full z-50 flex justify-around items-center px-4 py-3 pb-safe bg-surface-container shadow-lg shadow-black/5">
+<a class="flex flex-col items-center justify-center text-on-surface-variant hover:opacity-80 transition-opacity duration-150 group min-w-[64px]" href="#">
+<span class="material-symbols-outlined mb-1 group-active:scale-95 transition-transform" data-icon="home">home</span>
+<span class="font-label text-[11px] tracking-wide">Home</span>
+</a>
+<a class="flex flex-col items-center justify-center text-on-surface-variant hover:opacity-80 transition-opacity duration-150 group min-w-[64px]" href="#">
+<span class="material-symbols-outlined mb-1 group-active:scale-95 transition-transform" data-icon="smart_toy">smart_toy</span>
+<span class="font-label text-[11px] tracking-wide">Assistant</span>
+</a>
+<a class="flex flex-col items-center justify-center bg-secondary-container text-on-secondary-container rounded-xl px-4 py-1 group min-w-[64px] active:scale-95 transition-transform duration-150" href="#">
+<span class="material-symbols-outlined icon-fill mb-1" data-icon="photo_library" data-weight="fill">photo_library</span>
+<span class="font-label text-[11px] font-medium tracking-wide">Library</span>
+</a>
+<a class="flex flex-col items-center justify-center text-on-surface-variant hover:opacity-80 transition-opacity duration-150 group min-w-[64px]" href="#">
+<span class="material-symbols-outlined mb-1 group-active:scale-95 transition-transform" data-icon="auto_awesome">auto_awesome</span>
+<span class="font-label text-[11px] tracking-wide">Automations</span>
+</a>
+</nav>
+</body></html>

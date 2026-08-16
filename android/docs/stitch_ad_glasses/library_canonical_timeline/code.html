@@ -1,0 +1,249 @@
+<!DOCTYPE html>
+
+<html class="light" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0, viewport-fit=cover" name="viewport"/>
+<title>AD Glasses - Library</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    "colors": {
+                        "surface-tint": "#095db7",
+                        "tertiary-container": "#964400",
+                        "tertiary-fixed": "#ffdbc9",
+                        "outline-variant": "#c1c6d5",
+                        "secondary-fixed": "#d6e3ff",
+                        "on-secondary": "#ffffff",
+                        "outline": "#727783",
+                        "on-secondary-container": "#3f5881",
+                        "tertiary": "#723200",
+                        "on-tertiary-fixed-variant": "#753400",
+                        "primary-container": "#0a73e0",
+                        "primary-fixed-dim": "#aac7ff",
+                        "surface": "#f9f9ff",
+                        "on-error-container": "#93000a",
+                        "primary": "#004389",
+                        "surface-container-lowest": "#ffffff",
+                        "on-tertiary-container": "#ffc9ac",
+                        "on-primary": "#ffffff",
+                        "secondary-fixed-dim": "#aec7f6",
+                        "primary-fixed": "#d6e3ff",
+                        "on-tertiary-fixed": "#321200",
+                        "on-secondary-fixed-variant": "#2e476f",
+                        "surface-variant": "#e0e2eb",
+                        "secondary-container": "#b6d0ff",
+                        "secondary": "#465f88",
+                        "surface-dim": "#d7dae3",
+                        "surface-container": "#ebedf7",
+                        "on-primary-fixed-variant": "#00458d",
+                        "on-primary-container": "#c0d5ff",
+                        "background": "#f9f9ff",
+                        "surface-container-highest": "#e0e2eb",
+                        "on-error": "#ffffff",
+                        "surface-container-low": "#f1f3fc",
+                        "on-surface-variant": "#424752",
+                        "error-container": "#ffdad6",
+                        "inverse-on-surface": "#eef0fa",
+                        "surface-bright": "#f9f9ff",
+                        "inverse-surface": "#2d3037",
+                        "on-surface": "#181c22",
+                        "on-tertiary": "#ffffff",
+                        "tertiary-fixed-dim": "#ffb68c",
+                        "on-background": "#181c22",
+                        "on-secondary-fixed": "#001b3d",
+                        "inverse-primary": "#aac7ff",
+                        "surface-container-high": "#e6e8f1",
+                        "error": "#ba1a1a",
+                        "on-primary-fixed": "#001b3e"
+                    },
+                    "borderRadius": {
+                        "DEFAULT": "0.25rem",
+                        "lg": "0.5rem",
+                        "xl": "0.75rem",
+                        "full": "9999px"
+                    },
+                    "spacing": {
+                        "section-gap": "1.5rem",
+                        "grid-gutter": "1rem",
+                        "element-gap": "0.75rem",
+                        "container-padding": "1rem"
+                    },
+                    "fontFamily": {
+                        "body-sm": ["Inter"],
+                        "body-md": ["Inter"],
+                        "display-sm": ["Inter"],
+                        "label-sm": ["Inter"],
+                        "headline-sm": ["Inter"],
+                        "label-lg": ["Inter"],
+                        "label-md": ["Inter"]
+                    },
+                    "fontSize": {
+                        "body-sm": ["0.75rem", { "lineHeight": "1rem", "fontWeight": "400" }],
+                        "body-md": ["0.875rem", { "lineHeight": "1.25rem", "fontWeight": "400" }],
+                        "display-sm": ["1.125rem", { "lineHeight": "1.5rem", "letterSpacing": "0.15em", "fontWeight": "700" }],
+                        "label-sm": ["10px", { "lineHeight": "12px", "fontWeight": "500" }],
+                        "headline-sm": ["0.875rem", { "lineHeight": "1.25rem", "fontWeight": "600" }],
+                        "label-lg": ["0.75rem", { "lineHeight": "1rem", "fontWeight": "600" }],
+                        "label-md": ["11px", { "lineHeight": "1rem", "fontWeight": "500" }]
+                    }
+                }
+            }
+        }
+    </script>
+<style>
+        .pb-safe { padding-bottom: env(safe-area-inset-bottom, 24px); }
+        .glass-overlay { background: linear-gradient(180deg, rgba(249, 249, 255, 0.00) 0%, #F9F9FF 100%); }
+        /* Hide scrollbar for clean look but keep functionality */
+        .no-scrollbar::-webkit-scrollbar { display: none; }
+        .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+    </style>
+<style>
+    body {
+      min-height: max(884px, 100dvh);
+    }
+  </style>
+  </head>
+<body class="bg-background text-on-background font-body-md antialiased min-h-screen flex flex-col items-center">
+<div class="w-full max-w-5xl mx-auto flex flex-col min-h-screen relative pb-24 md:pb-0 pt-[72px]">
+<!-- TopAppBar -->
+<header class="bg-background text-primary w-full top-0 fixed max-w-5xl z-40">
+<div class="flex justify-between items-center px-6 py-4 w-full h-[72px]">
+<button class="flex items-center justify-center w-10 h-10 rounded-full hover:bg-surface-variant/10 transition-colors duration-300 ease-in-out text-on-surface-variant">
+<span class="material-symbols-outlined" data-icon="eyeglasses">eyeglasses</span>
+</button>
+<div class="text-xl font-bold tracking-tighter text-on-background font-headline-sm">
+                    AD Glasses
+                </div>
+<button class="flex items-center justify-center w-10 h-10 rounded-full hover:bg-surface-variant/10 transition-colors duration-300 ease-in-out text-on-surface-variant">
+<span class="material-symbols-outlined" data-icon="settings">settings</span>
+</button>
+</div>
+<!-- Library Header & Controls -->
+<div class="px-6 pb-4 bg-background/95 backdrop-blur-md flex flex-col gap-4 border-b border-outline-variant/20 shadow-sm">
+<div class="flex justify-between items-end">
+<h1 class="font-display-sm text-display-sm text-on-background">Library</h1>
+<div class="flex bg-surface-container rounded-lg p-1">
+<button class="px-4 py-1.5 rounded bg-background shadow-sm font-label-md text-label-md text-on-surface">Timeline</button>
+<button class="px-4 py-1.5 rounded hover:bg-surface-variant/50 transition-colors font-label-md text-label-md text-on-surface-variant">Collections</button>
+</div>
+</div>
+<!-- Search -->
+<div class="relative">
+<span class="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-on-surface-variant text-lg">search</span>
+<input class="w-full bg-surface-container-low border border-outline-variant/30 rounded-lg pl-10 pr-4 py-2.5 font-body-sm text-body-sm text-on-surface focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary transition-all placeholder:text-on-surface-variant/70" placeholder="Search captures, notes, places..." type="text"/>
+<button class="absolute right-3 top-1/2 -translate-y-1/2 text-primary">
+<span class="material-symbols-outlined text-lg">mic</span>
+</button>
+</div>
+<!-- Filter Chips -->
+<div class="flex gap-2 overflow-x-auto no-scrollbar pb-1">
+<button class="flex-shrink-0 px-4 py-1.5 rounded-full bg-primary text-on-primary font-label-sm text-label-sm">All</button>
+<button class="flex-shrink-0 px-4 py-1.5 rounded-full bg-surface-container-high text-on-surface border border-outline-variant/20 hover:bg-surface-variant transition-colors font-label-sm text-label-sm">Photos</button>
+<button class="flex-shrink-0 px-4 py-1.5 rounded-full bg-surface-container-high text-on-surface border border-outline-variant/20 hover:bg-surface-variant transition-colors font-label-sm text-label-sm">Videos</button>
+<button class="flex-shrink-0 px-4 py-1.5 rounded-full bg-surface-container-high text-on-surface border border-outline-variant/20 hover:bg-surface-variant transition-colors font-label-sm text-label-sm">Audio</button>
+<button class="flex-shrink-0 px-4 py-1.5 rounded-full bg-surface-container-high text-on-surface border border-outline-variant/20 hover:bg-surface-variant transition-colors font-label-sm text-label-sm">Notes</button>
+<button class="flex-shrink-0 px-4 py-1.5 rounded-full bg-surface-container-high text-on-surface border border-outline-variant/20 hover:bg-surface-variant transition-colors font-label-sm text-label-sm flex items-center gap-1">
+<span class="material-symbols-outlined text-[14px]">auto_awesome</span> Memories
+                    </button>
+</div>
+</div>
+</header>
+<!-- Main Content Area - Added top padding to account for fixed header -->
+<main class="flex-1 px-4 md:px-6 py-6 space-y-8 mt-[180px] md:mb-10 w-full max-w-5xl mx-auto">
+<!-- Today Group -->
+<section class="space-y-4">
+<div class="flex justify-between items-center sticky top-[252px] bg-background/90 backdrop-blur z-20 py-2">
+<h2 class="font-headline-sm text-headline-sm text-on-surface">Today</h2>
+<span class="font-label-sm text-label-sm text-on-surface-variant">4 Items</span>
+</div>
+<div class="grid grid-cols-2 md:grid-cols-4 gap-4">
+<!-- Photo Item -->
+<div class="group relative aspect-square rounded-xl overflow-hidden bg-surface-container-low border border-outline-variant/20 cursor-pointer">
+<div class="absolute inset-0 bg-surface-variant/30 flex items-center justify-center">
+<img class="object-cover w-full h-full opacity-80 group-hover:opacity-100 transition-opacity" data-alt="A bright, minimalist office desk with a laptop, notebooks, and a cup of coffee. Sunlight streams through a window, casting crisp shadows. The scene is captured with a modern, clean aesthetic, emphasizing clarity and organization, fitting a high-tech corporate environment." src="https://lh3.googleusercontent.com/aida-public/AB6AXuBJwQQYw8NoRCQPJcVB41UfkxiUrpScKeEHg27wBp4DKE8NEq15Rp8BPB_4uHb6k1Tc3BG63qrfp3ZL20EPOgbnLRHKvrcdofUZbhBiBeNyN6X_OffgT6tcAZlZakN4PsQnIQUllOnmvqxptLCuCirEggQQLupp1q3x8VSYbXasKgfYjzx2TpcQU1zDMDjtspogLtaeqQ-OExsbFgJeZc1B_3SZSR96OYvJIIppHg5VCgcJUrWblqde"/>
+</div>
+<div class="absolute top-2 right-2 flex gap-1">
+<span class="bg-surface/80 backdrop-blur p-1 rounded text-primary flex items-center justify-center shadow-sm">
+<span class="material-symbols-outlined text-[14px]" data-icon="eyeglasses">eyeglasses</span>
+</span>
+</div>
+<div class="absolute top-2 left-2 w-5 h-5 rounded-full border border-outline-variant/50 bg-surface/50 opacity-0 group-hover:opacity-100 transition-opacity"></div>
+<div class="absolute bottom-0 w-full p-2 bg-gradient-to-t from-black/60 to-transparent">
+<span class="font-label-sm text-label-sm text-white">09:42 AM</span>
+</div>
+</div>
+<!-- Video Item -->
+<div class="group relative aspect-square rounded-xl overflow-hidden bg-surface-container-low border border-outline-variant/20 cursor-pointer">
+<div class="absolute inset-0 bg-surface-variant/30 flex items-center justify-center">
+<img class="object-cover w-full h-full opacity-80 group-hover:opacity-100 transition-opacity" data-alt="A dynamic, slightly blurred shot of a bustling city street corner during a bright day. Pedestrians are crossing, and sleek, modern cars drive by. The image conveys motion and urban energy, captured in a clean, modern aesthetic suitable for a high-tech app interface." src="https://lh3.googleusercontent.com/aida-public/AB6AXuDZTIpgkkOZ03P0uqAIZ4GDQlYOtatvrHC6qmXJTHrDt2RgnAvSde6-QgYU1n57QB3KzVHawtcRpOFbp-fiX3fkIXniiWA8FbAvbFdfu2Y3kLLjqetYOJoe5pINfJqQSKrKGdjGm7842TdUIhJSsd43vk1KiTe2YmQrkzwj6Ytuzr04kF0CrCBm4aj7qN9MzZKkH8V252ftk-EL5dxj08gdGmTjE8nYV465mfTdm-Wd3PJ1s1V7P0T2"/>
+</div>
+<div class="absolute top-2 right-2 flex gap-1">
+<span class="bg-surface/80 backdrop-blur p-1 rounded text-primary flex items-center justify-center shadow-sm">
+<span class="material-symbols-outlined text-[14px]" data-icon="eyeglasses">eyeglasses</span>
+</span>
+</div>
+<div class="absolute inset-0 flex items-center justify-center pointer-events-none">
+<span class="material-symbols-outlined text-white/80 text-4xl drop-shadow-md">play_circle</span>
+</div>
+<div class="absolute top-2 left-2 w-5 h-5 rounded-full border border-outline-variant/50 bg-surface/50 opacity-0 group-hover:opacity-100 transition-opacity"></div>
+<div class="absolute bottom-0 w-full p-2 flex justify-between items-end bg-gradient-to-t from-black/60 to-transparent">
+<span class="font-label-sm text-label-sm text-white">11:15 AM</span>
+<span class="font-label-sm text-label-sm text-white font-medium bg-black/40 px-1.5 py-0.5 rounded">0:12</span>
+</div>
+</div>
+</div>
+</section>
+</main>
+<!-- Sync Banner -->
+<div class="fixed bottom-20 md:bottom-6 left-1/2 -translate-x-1/2 bg-surface-container-high rounded-full px-4 py-2 shadow-lg flex items-center gap-3 border border-outline-variant/20 z-40 animate-pulse">
+<span class="material-symbols-outlined text-primary text-sm animate-spin" data-icon="sync">sync</span>
+<span class="font-label-md text-label-md text-on-surface">Syncing 12/15 items...</span>
+</div>
+<!-- BottomNavBar (Mobile Only) -->
+<nav class="md:hidden bg-surface-container text-primary fixed bottom-0 w-full z-50 shadow-lg pb-safe">
+<div class="flex justify-around items-center px-4 py-3">
+<a class="flex flex-col items-center justify-center text-on-surface-variant hover:opacity-80 transition-transform active:scale-95 duration-150 w-16" href="#">
+<span class="material-symbols-outlined mb-1" data-icon="home">home</span>
+<span class="font-label text-label-md text-[10px]">Home</span>
+</a>
+<a class="flex flex-col items-center justify-center text-on-surface-variant hover:opacity-80 transition-transform active:scale-95 duration-150 w-16" href="#">
+<span class="material-symbols-outlined mb-1" data-icon="smart_toy">smart_toy</span>
+<span class="font-label text-label-md text-[10px]">Assistant</span>
+</a>
+<a class="flex flex-col items-center justify-center bg-secondary-container text-on-secondary-container rounded-xl px-4 py-1 hover:opacity-80 transition-transform active:scale-95 duration-150 w-16" href="#">
+<span class="material-symbols-outlined mb-1" data-icon="photo_library" style="font-variation-settings: 'FILL' 1;">photo_library</span>
+<span class="font-label text-label-md text-[10px] font-medium">Library</span>
+</a>
+<a class="flex flex-col items-center justify-center text-on-surface-variant hover:opacity-80 transition-transform active:scale-95 duration-150 w-16" href="#">
+<span class="material-symbols-outlined mb-1" data-icon="auto_awesome">auto_awesome</span>
+<span class="font-label text-label-md text-[10px]">Automations</span>
+</a>
+</div>
+</nav>
+<!-- Desktop Sidebar Nav (Hidden on Mobile) -->
+<aside class="hidden md:flex flex-col fixed left-0 top-0 bottom-0 w-64 bg-surface-container border-r border-outline-variant/20 pt-24 px-4 gap-2 z-30">
+<a class="flex items-center gap-3 px-4 py-3 rounded-lg text-on-surface-variant hover:bg-surface-variant/50 transition-colors" href="#">
+<span class="material-symbols-outlined">home</span>
+<span class="font-label-lg text-label-lg">Home</span>
+</a>
+<a class="flex items-center gap-3 px-4 py-3 rounded-lg text-on-surface-variant hover:bg-surface-variant/50 transition-colors" href="#">
+<span class="material-symbols-outlined">smart_toy</span>
+<span class="font-label-lg text-label-lg">Assistant</span>
+</a>
+<a class="flex items-center gap-3 px-4 py-3 rounded-lg bg-secondary-container text-on-secondary-container font-medium" href="#">
+<span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 1;">photo_library</span>
+<span class="font-label-lg text-label-lg">Library</span>
+</a>
+<a class="flex items-center gap-3 px-4 py-3 rounded-lg text-on-surface-variant hover:bg-surface-variant/50 transition-colors" href="#">
+<span class="material-symbols-outlined">auto_awesome</span>
+<span class="font-label-lg text-label-lg">Automations</span>
+</a>
+</aside>
+</div>
+</body></html>

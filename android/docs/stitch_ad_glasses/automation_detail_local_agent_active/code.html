@@ -1,0 +1,258 @@
+<!DOCTYPE html>
+
+<html lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Local Agent - Automation Detail</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+          darkMode: "class",
+          theme: {
+            extend: {
+              "colors": {
+                      "surface-container": "#ebeef6",
+                      "primary-fixed": "#d6e3ff",
+                      "surface-glass": "rgba(249, 249, 255, 0.8)",
+                      "inverse-primary": "#aac7ff",
+                      "surface-container-low": "#f1f3fc",
+                      "surface-dim": "#d7dae2",
+                      "error-container": "#ffdad6",
+                      "surface-tint": "#095db7",
+                      "on-tertiary-container": "#ffc9ac",
+                      "inverse-on-surface": "#eef1f9",
+                      "on-secondary": "#ffffff",
+                      "primary-fixed-dim": "#aac7ff",
+                      "primary-container": "#005ab4",
+                      "on-background": "#181c22",
+                      "on-secondary-container": "#3f5881",
+                      "secondary-fixed-dim": "#aec7f6",
+                      "secondary-container": "#b6d0ff",
+                      "on-secondary-fixed": "#001b3d",
+                      "on-primary-container": "#c0d5ff",
+                      "surface": "#f8f9ff",
+                      "tertiary-container": "#964400",
+                      "stage-halo-start": "rgba(10, 115, 224, 0.15)",
+                      "on-primary-fixed-variant": "#00458d",
+                      "surface-variant": "#dfe2eb",
+                      "secondary-fixed": "#d6e3ff",
+                      "on-primary": "#ffffff",
+                      "on-surface-variant": "#424752",
+                      "tertiary": "#723200",
+                      "outline": "#727783",
+                      "on-tertiary-fixed": "#321200",
+                      "secondary": "#465f88",
+                      "on-error-container": "#93000a",
+                      "error": "#ba1a1a",
+                      "status-connected": "#1275e2",
+                      "surface-bright": "#f8f9ff",
+                      "on-surface": "#181c22",
+                      "on-primary-fixed": "#001b3e",
+                      "surface-container-high": "#e5e8f1",
+                      "surface-container-highest": "#dfe2eb",
+                      "on-error": "#ffffff",
+                      "background-alt": "#F6F7F9",
+                      "outline-variant": "#c2c6d4",
+                      "surface-container-lowest": "#ffffff",
+                      "background": "#f8f9ff",
+                      "on-secondary-fixed-variant": "#2e476f",
+                      "on-tertiary": "#ffffff",
+                      "tertiary-fixed-dim": "#ffb68c",
+                      "tertiary-fixed": "#ffdbc9",
+                      "on-tertiary-fixed-variant": "#753400",
+                      "primary": "#004389",
+                      "inverse-surface": "#2d3137"
+              },
+              "borderRadius": {
+                      "DEFAULT": "0.25rem",
+                      "lg": "0.5rem",
+                      "xl": "0.75rem",
+                      "full": "9999px"
+              },
+              "spacing": {
+                      "section-gap": "2rem",
+                      "element-gap": "0.75rem",
+                      "touch-target-min": "40px",
+                      "container-margin": "1rem",
+                      "safe": "env(safe-area-inset-bottom)"
+              },
+              "fontFamily": {
+                      "label-sm": ["Inter"],
+                      "label-xs": ["Inter"],
+                      "display-lg": ["Inter"],
+                      "body-sm": ["Inter"],
+                      "body-md": ["Inter"],
+                      "headline-md": ["Inter"]
+              },
+              "fontSize": {
+                      "label-sm": ["12px", { "lineHeight": "16px", "fontWeight": "500" }],
+                      "label-xs": ["10px", { "lineHeight": "12px", "fontWeight": "600" }],
+                      "display-lg": ["24px", { "lineHeight": "32px", "letterSpacing": "-0.025em", "fontWeight": "800" }],
+                      "body-sm": ["14px", { "lineHeight": "20px", "fontWeight": "500" }],
+                      "body-md": ["16px", { "lineHeight": "24px", "fontWeight": "400" }],
+                      "headline-md": ["18px", { "lineHeight": "24px", "fontWeight": "700" }]
+              }
+            }
+          }
+        }
+    </script>
+<style>
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+        }
+        .material-symbols-outlined.fill {
+            font-variation-settings: 'FILL' 1, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+        }
+        
+        /* Subtle grid background for the stage area */
+        .stage-bg {
+            background-image: linear-gradient(to right, rgba(114, 119, 131, 0.05) 1px, transparent 1px),
+                              linear-gradient(to bottom, rgba(114, 119, 131, 0.05) 1px, transparent 1px);
+            background-size: 20px 20px;
+        }
+    </style>
+<style>
+    body {
+      min-height: max(884px, 100dvh);
+    }
+  </style>
+  </head>
+<body class="bg-background text-on-background min-h-screen font-body-md antialiased selection:bg-primary-container selection:text-on-primary-container pb-safe">
+<!-- Top App Bar (Customized for Detail View) -->
+<header class="fixed top-0 left-0 w-full z-50 flex justify-between items-center px-container-margin h-14 bg-surface-glass backdrop-blur-md">
+<button aria-label="Go back" class="h-touch-target-min w-touch-target-min flex items-center justify-center text-on-surface hover:bg-surface-variant/50 rounded-full transition-colors">
+<span class="material-symbols-outlined text-xl" data-icon="arrow_back">arrow_back</span>
+</button>
+<span class="text-headline-md font-headline-md tracking-widest text-on-surface">LUMINA</span>
+<div class="h-touch-target-min w-touch-target-min"></div> <!-- Spacer for center alignment -->
+</header>
+<main class="pt-20 px-container-margin max-w-2xl mx-auto pb-10 space-y-section-gap flex flex-col items-center">
+<!-- Device Stage / Hero -->
+<section class="w-full flex flex-col items-center justify-center py-8 relative rounded-2xl stage-bg overflow-hidden">
+<!-- Stage Halo -->
+<div class="absolute inset-0 flex items-center justify-center pointer-events-none">
+<div class="w-48 h-48 bg-stage-halo-start rounded-full blur-3xl"></div>
+</div>
+<div class="relative z-10 flex flex-col items-center space-y-4 text-center">
+<div class="w-20 h-20 bg-surface-container-lowest rounded-full shadow-sm flex items-center justify-center border border-surface-variant">
+<span class="material-symbols-outlined fill text-primary text-4xl" data-icon="memory">memory</span>
+</div>
+<div>
+<h1 class="text-display-lg font-display-lg text-on-surface">Local Agent</h1>
+<p class="text-body-sm font-body-sm text-on-surface-variant mt-2 max-w-[280px]">Autonomous assistant that handles device-level tasks and requests.</p>
+</div>
+<!-- Status Pill -->
+<div class="flex items-center gap-2 bg-surface-container-lowest border border-surface-variant rounded-full px-3 py-1 shadow-sm mt-2">
+<span class="relative flex h-2.5 w-2.5">
+<span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-status-connected opacity-75"></span>
+<span class="relative inline-flex rounded-full h-2.5 w-2.5 bg-status-connected"></span>
+</span>
+<span class="text-label-sm font-label-sm text-status-connected font-semibold uppercase tracking-wider">Running</span>
+</div>
+<!-- Primary Action -->
+<button class="mt-6 h-touch-target-min px-6 rounded-full bg-inverse-surface text-on-secondary hover:bg-on-surface-variant transition-colors flex items-center gap-2 font-body-sm shadow-sm">
+<span class="material-symbols-outlined text-sm" data-icon="stop_circle">stop_circle</span>
+                    Stop Agent
+                </button>
+</div>
+</section>
+<!-- Technical Parameters Bento Grid -->
+<section class="w-full grid grid-cols-1 md:grid-cols-2 gap-3">
+<!-- Inputs -->
+<div class="bg-surface-container-lowest rounded-xl p-4 shadow-sm border border-surface-container flex flex-col justify-between">
+<div class="flex items-center gap-2 mb-3 text-on-surface-variant">
+<span class="material-symbols-outlined text-sm" data-icon="input">input</span>
+<span class="text-label-xs font-label-xs uppercase tracking-wider">Active Inputs</span>
+</div>
+<div class="space-y-2">
+<div class="flex items-center gap-2 bg-surface rounded-lg p-2 border border-surface-container-high">
+<span class="material-symbols-outlined text-primary text-sm" data-icon="smartphone">smartphone</span>
+<span class="text-label-sm font-label-sm text-on-surface">Phone Screen Context</span>
+</div>
+<div class="flex items-center gap-2 bg-surface rounded-lg p-2 border border-surface-container-high">
+<span class="material-symbols-outlined text-primary text-sm" data-icon="notifications">notifications</span>
+<span class="text-label-sm font-label-sm text-on-surface">System Notifications</span>
+</div>
+</div>
+</div>
+<div class="flex flex-col gap-3">
+<!-- Output -->
+<div class="bg-surface-container-lowest rounded-xl p-4 shadow-sm border border-surface-container flex-1">
+<div class="flex items-center gap-2 mb-2 text-on-surface-variant">
+<span class="material-symbols-outlined text-sm" data-icon="output">output</span>
+<span class="text-label-xs font-label-xs uppercase tracking-wider">Output Target</span>
+</div>
+<div class="flex items-center gap-2">
+<span class="material-symbols-outlined text-secondary" data-icon="database">database</span>
+<span class="text-body-sm font-body-sm text-on-surface font-semibold">Local Memory</span>
+</div>
+</div>
+<!-- Processing Boundary -->
+<div class="bg-surface-container-lowest rounded-xl p-4 shadow-sm border border-surface-container flex-1">
+<div class="flex items-center gap-2 mb-2 text-on-surface-variant">
+<span class="material-symbols-outlined text-sm" data-icon="cloud_sync">cloud_sync</span>
+<span class="text-label-xs font-label-xs uppercase tracking-wider">Compute Boundary</span>
+</div>
+<div class="flex items-center gap-2">
+<span class="text-body-sm font-body-sm text-on-surface font-semibold">Mixed</span>
+<span class="text-label-sm font-label-sm text-on-surface-variant">(On-device + Personal Cloud)</span>
+</div>
+</div>
+</div>
+</section>
+<!-- Activity Timeline -->
+<section class="w-full bg-surface-container-lowest rounded-xl p-5 shadow-sm border border-surface-container">
+<h2 class="text-headline-md font-headline-md text-on-surface mb-6 flex items-center gap-2">
+<span class="material-symbols-outlined text-primary" data-icon="history">history</span>
+                Recent Activity
+            </h2>
+<div class="relative pl-4 space-y-6 before:absolute before:inset-y-0 before:left-[11px] before:w-[2px] before:bg-surface-variant">
+<!-- Timeline Item 1 -->
+<div class="relative pl-6">
+<div class="absolute left-[-5px] top-1 w-3 h-3 rounded-full bg-primary border-2 border-surface-container-lowest shadow-sm z-10"></div>
+<div class="flex justify-between items-start mb-1">
+<span class="text-body-sm font-body-sm font-semibold text-on-surface">Intercepted Notification</span>
+<span class="text-label-xs font-label-xs text-on-surface-variant">Just now</span>
+</div>
+<p class="text-label-sm font-label-sm text-on-surface-variant">Categorized incoming email as 'Low Priority' and suppressed sound based on focus context.</p>
+</div>
+<!-- Timeline Item 2 -->
+<div class="relative pl-6">
+<div class="absolute left-[-5px] top-1 w-3 h-3 rounded-full bg-surface-variant border-2 border-surface-container-lowest z-10"></div>
+<div class="flex justify-between items-start mb-1">
+<span class="text-body-sm font-body-sm font-semibold text-on-surface">Screen Context Analysis</span>
+<span class="text-label-xs font-label-xs text-on-surface-variant">12 mins ago</span>
+</div>
+<p class="text-label-sm font-label-sm text-on-surface-variant">Extracted calendar date from image to suggest new event creation.</p>
+</div>
+<!-- Timeline Item 3 -->
+<div class="relative pl-6">
+<div class="absolute left-[-5px] top-1 w-3 h-3 rounded-full bg-surface-variant border-2 border-surface-container-lowest z-10"></div>
+<div class="flex justify-between items-start mb-1">
+<span class="text-body-sm font-body-sm font-semibold text-on-surface">Memory Optimization</span>
+<span class="text-label-xs font-label-xs text-on-surface-variant">1 hr ago</span>
+</div>
+<p class="text-label-sm font-label-sm text-on-surface-variant">Archived 14 transient tasks from local buffer.</p>
+</div>
+</div>
+</section>
+<!-- Deeper Settings -->
+<section class="w-full">
+<button class="w-full flex items-center justify-between p-4 bg-surface-container-lowest rounded-xl shadow-sm border border-surface-container hover:bg-surface-container-low transition-colors">
+<div class="flex items-center gap-3">
+<div class="w-8 h-8 rounded-full bg-surface flex items-center justify-center text-on-surface-variant">
+<span class="material-symbols-outlined text-sm" data-icon="rule">rule</span>
+</div>
+<div class="text-left">
+<span class="block text-body-sm font-body-sm font-semibold text-on-surface">Exclusion List</span>
+<span class="block text-label-xs font-label-xs text-on-surface-variant">Apps and contexts to ignore</span>
+</div>
+</div>
+<span class="material-symbols-outlined text-on-surface-variant" data-icon="chevron_right">chevron_right</span>
+</button>
+</section>
+</main>
+</body></html>

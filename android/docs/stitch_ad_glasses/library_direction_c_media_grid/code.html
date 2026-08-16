@@ -1,0 +1,286 @@
+<!DOCTYPE html>
+
+<html class="light" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Library - Direction C</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+          darkMode: "class",
+          theme: {
+            extend: {
+              "colors": {
+                      "on-primary-fixed-variant": "#00458d",
+                      "on-surface-variant": "#414753",
+                      "on-tertiary-fixed-variant": "#763400",
+                      "tertiary-container": "#bd5700",
+                      "on-secondary-container": "#3f5881",
+                      "secondary-fixed": "#d6e3ff",
+                      "tertiary": "#964400",
+                      "background": "#f9f9ff",
+                      "on-error-container": "#93000a",
+                      "surface": "#f9f9ff",
+                      "primary": "#005ab4",
+                      "on-error": "#ffffff",
+                      "error-container": "#ffdad6",
+                      "tertiary-fixed-dim": "#ffb68c",
+                      "primary-fixed": "#d6e3ff",
+                      "secondary": "#465f88",
+                      "inverse-on-surface": "#eef0fa",
+                      "on-secondary": "#ffffff",
+                      "secondary-container": "#b6d0ff",
+                      "on-tertiary-container": "#fffbff",
+                      "on-primary-fixed": "#001b3e",
+                      "surface-container-lowest": "#ffffff",
+                      "inverse-surface": "#2d3037",
+                      "on-surface": "#181c22",
+                      "outline": "#717785",
+                      "surface-bright": "#f9f9ff",
+                      "on-secondary-fixed-variant": "#2d476f",
+                      "inverse-primary": "#aac7ff",
+                      "outline-variant": "#c1c6d5",
+                      "tertiary-fixed": "#ffdbc9",
+                      "secondary-fixed-dim": "#aec7f7",
+                      "surface-tint": "#005db8",
+                      "on-secondary-fixed": "#001b3d",
+                      "on-tertiary": "#ffffff",
+                      "surface-variant": "#e0e2eb",
+                      "on-tertiary-fixed": "#321200",
+                      "surface-container-highest": "#e0e2eb",
+                      "primary-fixed-dim": "#aac7ff",
+                      "surface-dim": "#d7dae3",
+                      "on-background": "#181c22",
+                      "surface-container": "#ebedf7",
+                      "surface-container-low": "#f1f3fc",
+                      "surface-container-high": "#e6e8f1",
+                      "on-primary": "#ffffff",
+                      "error": "#ba1a1a",
+                      "primary-container": "#0a73e0",
+                      "on-primary-container": "#fefcff"
+              },
+              "borderRadius": {
+                      "DEFAULT": "0.25rem",
+                      "lg": "0.5rem",
+                      "xl": "0.75rem",
+                      "full": "9999px"
+              },
+              "spacing": {},
+              "fontFamily": {
+                      "headline": [
+                              "Inter"
+                      ],
+                      "display": [
+                              "Inter"
+                      ],
+                      "body": [
+                              "Inter"
+                      ],
+                      "label": [
+                              "Inter"
+                      ]
+              },
+              "fontSize": {}
+      },
+          },
+        }
+      </script>
+<style>
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #f9f9ff; /* background from tailwind config */
+            color: #181c22; /* on-background from tailwind config */
+        }
+        
+        .masonry-grid {
+            column-count: 1;
+            column-gap: 1rem;
+        }
+
+        @media (min-width: 640px) {
+            .masonry-grid {
+                column-count: 2;
+            }
+        }
+        
+        @media (min-width: 1024px) {
+            .masonry-grid {
+                column-count: 3;
+            }
+        }
+        
+        @media (min-width: 1280px) {
+             .masonry-grid {
+                column-count: 4;
+            }
+        }
+
+        .masonry-item {
+            break-inside: avoid;
+            margin-bottom: 1rem;
+        }
+    </style>
+<style>
+    body {
+      min-height: max(884px, 100dvh);
+    }
+  </style>
+  </head>
+<body class="bg-background text-on-background min-h-screen pb-20 pt-16">
+<!-- TopAppBar from JSON -->
+<header class="bg-surface dark:bg-surface fixed top-0 w-full z-50 bg-surface-container-low flat no shadows">
+<div class="flex justify-between items-center px-4 h-16 w-full max-w-7xl mx-auto">
+<div class="flex items-center gap-3">
+<span class="material-symbols-outlined text-primary dark:text-primary-fixed" data-icon="glasses">qr_code_2</span>
+<h1 class="text-xl font-headline font-bold text-on-surface">Library</h1>
+</div>
+<!-- Added Search Field as requested by prompt -->
+<div class="hidden md:flex flex-1 max-w-md mx-8 relative">
+<span class="material-symbols-outlined absolute left-3 top-1/2 transform -translate-y-1/2 text-on-surface-variant text-sm">search</span>
+<input class="w-full pl-10 pr-4 py-2 rounded-full border border-outline-variant bg-surface-container-lowest focus:border-primary focus:ring-1 focus:ring-primary text-sm outline-none transition-all" placeholder="Search library..." type="text"/>
+</div>
+<div class="flex items-center gap-2">
+<button class="md:hidden p-2 text-on-surface-variant hover:bg-surface-container-high transition-colors rounded-full active:scale-95 transition-transform">
+<span class="material-symbols-outlined">search</span>
+</button>
+<button class="p-2 text-on-surface-variant hover:bg-surface-container-high transition-colors rounded-full active:scale-95 transition-transform">
+<span class="material-symbols-outlined" data-icon="settings">settings</span>
+</button>
+</div>
+</div>
+</header>
+<main class="w-full max-w-7xl mx-auto px-4 py-6">
+<!-- Filter Chips -->
+<div class="flex gap-2 overflow-x-auto pb-4 scrollbar-hide mb-6 mt-4">
+<button class="px-4 py-1.5 rounded-full bg-secondary-container text-on-secondary-container text-sm font-medium border border-transparent whitespace-nowrap transition-colors shadow-sm">All</button>
+<button class="px-4 py-1.5 rounded-full bg-surface-container-lowest text-on-surface-variant text-sm font-medium border border-outline-variant hover:bg-surface-container-low whitespace-nowrap transition-colors">Photos</button>
+<button class="px-4 py-1.5 rounded-full bg-surface-container-lowest text-on-surface-variant text-sm font-medium border border-outline-variant hover:bg-surface-container-low whitespace-nowrap transition-colors">Videos</button>
+<button class="px-4 py-1.5 rounded-full bg-surface-container-lowest text-on-surface-variant text-sm font-medium border border-outline-variant hover:bg-surface-container-low whitespace-nowrap transition-colors">Notes</button>
+<button class="px-4 py-1.5 rounded-full bg-surface-container-lowest text-on-surface-variant text-sm font-medium border border-outline-variant hover:bg-surface-container-low whitespace-nowrap transition-colors">Meetings</button>
+</div>
+<!-- Masonry Grid -->
+<div class="masonry-grid">
+<!-- Photo Item -->
+<div class="masonry-item relative group rounded-xl overflow-hidden shadow-sm hover:shadow-md transition-shadow">
+<img class="w-full h-auto block rounded-xl" data-alt="A high-quality, professional photograph of a modern office meeting room setting captured through smart glasses point-of-view. The lighting is bright and even, casting soft shadows. Colleagues are visible engaged in discussion over architectural plans on a large table. The mood is collaborative and focused, utilizing a corporate color palette of blues and whites, consistent with a clean, light-mode modern UI aesthetic." src="https://lh3.googleusercontent.com/aida-public/AB6AXuC7eZVzNVFjgozmpWD54MC3njSEMJSKaQXplwyycAKz5-V6r7rmBQjfY4_Dytxrs2ZehL14t8LTxFCeifksigOO7TyfnLwP4f57EnSDUNY14FXYPuLvqnrKS4Ib-s7vm4GD4u5a9J7OxAwzAP0yS55GhNNtXMSoChc5ns7R5wlqQMVxoLSphEDyaJV4o-f0iNES4f3HGLQUxI0Vh1if_3OMnWW4fwecXp8xl7ubajmfc7jfq46UJo2t"/>
+<div class="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity flex flex-col justify-end p-4">
+<p class="text-white font-medium text-sm">Design Sync Meeting</p>
+<p class="text-gray-300 text-xs mt-1">10:30 AM • 4 Photos</p>
+</div>
+<div class="absolute top-2 right-2 bg-black/40 backdrop-blur-sm rounded-full p-1.5 text-white">
+<span class="material-symbols-outlined text-[16px]">photo_camera</span>
+</div>
+</div>
+<!-- Note Item -->
+<div class="masonry-item bg-surface-container-lowest border border-surface-container-high rounded-xl p-5 shadow-sm hover:shadow-md transition-shadow">
+<div class="flex items-center gap-2 mb-3">
+<span class="material-symbols-outlined text-primary text-sm p-1.5 bg-primary-container/10 rounded-full">note_alt</span>
+<span class="text-xs font-semibold text-primary uppercase tracking-wider">Quick Idea</span>
+</div>
+<h3 class="font-headline font-bold text-on-surface mb-2 leading-tight">Revise Onboarding Flow</h3>
+<p class="text-on-surface-variant text-sm leading-relaxed mb-4">
+                    Captured from voice note: Need to streamline the initial sign-up process. Users are dropping off at the permissions screen. Suggest moving permissions request after value proposition is shown.
+                </p>
+<div class="flex justify-between items-center text-xs text-outline">
+<span>Today, 2:15 PM</span>
+<button class="hover:text-primary transition-colors"><span class="material-symbols-outlined text-[18px]">more_horiz</span></button>
+</div>
+</div>
+<!-- Video Item -->
+<div class="masonry-item relative group rounded-xl overflow-hidden shadow-sm hover:shadow-md transition-shadow">
+<img class="w-full h-auto block rounded-xl" data-alt="A wide-angle, first-person perspective video still captured via smart glasses. The scene shows a beautiful, sunlit park pathway in the morning. Tall green trees line the path, and a clear blue sky is visible. The lighting is natural, bright, and airy. A minimalist recording interface overlay with a red dot is subtly integrated. The visual style feels crisp, modern, and aligned with a refreshing light-mode interface." src="https://lh3.googleusercontent.com/aida-public/AB6AXuAnMh1gpUGSOq0uWuI7VHkorJbnGOkQbWpatYmeKKvVQ2MhsDjuBCj0G5hvVNrjxp-3dnznnd_wgoELPJAU6JIi-RlqtzhWgxAaR7H_RuTV_o9DnFdP7XxS-XwJpsNLJ-x932bEyyWblk0SDlDDuWL8B7IWIG7Pbo-zzck8CNV_VAEEBaIsZ_eV85ITaIW3nCFeQkck-UPNyzjp5fBAmkaPfAxE5SFUy0SOgMWG60nOSTHrR49YnqGd"/>
+<div class="absolute inset-0 bg-black/20 flex items-center justify-center">
+<div class="bg-white/30 backdrop-blur-md rounded-full p-3 border border-white/50 cursor-pointer hover:bg-white/40 transition-colors">
+<span class="material-symbols-outlined text-white text-2xl" style="font-variation-settings: 'FILL' 1;">play_arrow</span>
+</div>
+</div>
+<div class="absolute bottom-3 right-3 bg-black/60 text-white text-[10px] font-bold px-2 py-1 rounded backdrop-blur-sm">
+                    02:45
+                </div>
+<div class="absolute top-2 left-2 flex gap-1">
+<span class="bg-red-500 text-white text-[10px] font-bold px-2 py-0.5 rounded flex items-center gap-1"><span class="w-1.5 h-1.5 bg-white rounded-full animate-pulse"></span>REC</span>
+</div>
+</div>
+<!-- Meeting Summary Card -->
+<div class="masonry-item bg-surface-container-lowest border-l-4 border-l-primary rounded-xl p-5 shadow-sm hover:shadow-md transition-shadow">
+<div class="flex justify-between items-start mb-3">
+<div class="flex items-center gap-2">
+<span class="material-symbols-outlined text-primary text-sm p-1.5 bg-primary-container/10 rounded-full">record_voice_over</span>
+<span class="text-xs font-semibold text-primary uppercase tracking-wider">Meeting Transcript</span>
+</div>
+<span class="text-xs text-outline bg-surface-container px-2 py-1 rounded-md">Yesterday</span>
+</div>
+<h3 class="font-headline font-bold text-on-surface mb-1">Q3 Roadmap Planning</h3>
+<p class="text-sm text-on-surface-variant mb-4">Attendees: Sarah, Mike, Alex</p>
+<div class="space-y-2 mb-4">
+<div class="flex gap-2 items-start">
+<span class="material-symbols-outlined text-secondary text-[16px] mt-0.5">check_circle</span>
+<p class="text-sm text-on-surface">Agreed to prioritize mobile app performance updates.</p>
+</div>
+<div class="flex gap-2 items-start">
+<span class="material-symbols-outlined text-secondary text-[16px] mt-0.5">check_circle</span>
+<p class="text-sm text-on-surface">Mike to send revised budget by Friday.</p>
+</div>
+<div class="flex gap-2 items-start opacity-70">
+<span class="material-symbols-outlined text-outline text-[16px] mt-0.5">pending</span>
+<p class="text-sm text-on-surface-variant">Pending approval on new hires.</p>
+</div>
+</div>
+<button class="w-full py-2 bg-surface-container-low hover:bg-surface-container text-primary text-sm font-medium rounded-lg transition-colors border border-outline-variant/30">View Full Transcript</button>
+</div>
+<!-- Photo Item -->
+<div class="masonry-item relative group rounded-xl overflow-hidden shadow-sm hover:shadow-md transition-shadow">
+<img class="w-full h-auto block rounded-xl" data-alt="A clean, minimalist photo of a modern desk setup taken from an overhead, slightly angled perspective typical of smart glasses. A sleek laptop, a notebook, and a white coffee mug rest on a light wood grain desk surface. Natural window light spills across the scene, creating a calm, productive, and professional mood. The colors are muted, relying on whites, light woods, and soft greys, perfectly suited for a modern, trust-inspiring corporate UI." src="https://lh3.googleusercontent.com/aida-public/AB6AXuAgDEcHU53NWdJdwUAVFMHjF4TUJ4OaKiV6TMmXoEmIalBe4C0dXJNYRfIlCe8r8AcfgDxdMdlLNtro9uCD4iQCarRnARDoPdehPE0CZEUs4RobSVD6LGifP9b0kGUn8ic2BlkqK5WmcqACz0-kraMYEQERXfZsohMtwKOp3BvlOw0S7a0_LIQkTds3815Hht1bwWL3AGpQxhTOvfSWQkdeLfqPGLKn-NSX0fu6LNAK-CeAYW0L76H4"/>
+<div class="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity flex flex-col justify-end p-4">
+<p class="text-white font-medium text-sm">Desk Setup Update</p>
+<p class="text-gray-300 text-xs mt-1">Mon • 1 Photo</p>
+</div>
+<div class="absolute top-2 right-2 bg-black/40 backdrop-blur-sm rounded-full p-1.5 text-white">
+<span class="material-symbols-outlined text-[16px]">photo_camera</span>
+</div>
+</div>
+<!-- Code Snippet Note -->
+<div class="masonry-item bg-[#1e1e1e] rounded-xl p-4 shadow-sm hover:shadow-md transition-shadow">
+<div class="flex justify-between items-center mb-3">
+<div class="flex items-center gap-2">
+<span class="material-symbols-outlined text-secondary-fixed text-sm p-1.5 bg-white/10 rounded-full">code</span>
+<span class="text-xs font-semibold text-secondary-fixed uppercase tracking-wider">Captured Text</span>
+</div>
+<button class="text-gray-400 hover:text-white transition-colors"><span class="material-symbols-outlined text-[16px]">content_copy</span></button>
+</div>
+<pre class="text-gray-300 text-xs font-mono overflow-x-auto p-2 bg-black/50 rounded-lg"><code>function calculateTotal(items) {
+  return items.reduce((sum, item) =&gt; {
+    return sum + (item.price * item.qty);
+  }, 0);
+}</code></pre>
+<p class="text-gray-400 text-[10px] mt-2 text-right">Scanned from whiteboard</p>
+</div>
+</div>
+</main>
+<!-- BottomNavBar from JSON - Library is Active -->
+<nav class="md:hidden bg-surface dark:bg-surface-container fixed bottom-0 w-full z-50 bg-surface-container-low shadow-sm fixed bottom-0 w-full z-50 flex justify-around items-center h-16 px-2">
+<!-- Home - Inactive -->
+<a class="flex flex-col items-center justify-center text-on-surface-variant px-4 py-1 hover:bg-surface-container-highest transition-colors active:scale-90 transition-transform rounded-xl" href="#">
+<span class="material-symbols-outlined" data-icon="home">home</span>
+<span class="font-label text-xs mt-1">Home</span>
+</a>
+<!-- Assistant - Inactive -->
+<a class="flex flex-col items-center justify-center text-on-surface-variant px-4 py-1 hover:bg-surface-container-highest transition-colors active:scale-90 transition-transform rounded-xl" href="#">
+<span class="material-symbols-outlined" data-icon="smart_toy">smart_toy</span>
+<span class="font-label text-xs mt-1">Assistant</span>
+</a>
+<!-- Library - ACTIVE -->
+<a class="flex flex-col items-center justify-center bg-secondary-container text-on-secondary-container rounded-xl px-4 py-1 hover:bg-surface-container-highest transition-colors active:scale-90 transition-transform" href="#">
+<span class="material-symbols-outlined" data-icon="auto_stories" style="font-variation-settings: 'FILL' 1;">auto_stories</span>
+<span class="font-label text-xs mt-1 font-bold">Library</span>
+</a>
+<!-- Automations - Inactive -->
+<a class="flex flex-col items-center justify-center text-on-surface-variant px-4 py-1 hover:bg-surface-container-highest transition-colors active:scale-90 transition-transform rounded-xl" href="#">
+<span class="material-symbols-outlined" data-icon="settings_suggest">settings_suggest</span>
+<span class="font-label text-xs mt-1">Automations</span>
+</a>
+</nav>
+</body></html>

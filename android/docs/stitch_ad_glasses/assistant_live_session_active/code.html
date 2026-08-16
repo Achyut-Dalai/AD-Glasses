@@ -1,0 +1,193 @@
+<!DOCTYPE html>
+
+<html lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Live Session</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    "colors": {
+                        "on-surface-variant": "#424752",
+                        "surface-bright": "#f9f9ff",
+                        "inverse-on-surface": "#eef0fa",
+                        "surface-container-high": "#e6e8f1",
+                        "surface-container": "#ebedf7",
+                        "primary": "#004389",
+                        "surface-container-low": "#f1f3fc",
+                        "surface-variant": "#e0e2eb",
+                        "on-primary-fixed": "#001b3e",
+                        "on-secondary": "#ffffff",
+                        "inverse-primary": "#aac7ff",
+                        "secondary-fixed-dim": "#aec7f6",
+                        "secondary-fixed": "#d6e3ff",
+                        "on-background": "#181c22",
+                        "tertiary": "#723200",
+                        "primary-container": "#005ab4",
+                        "on-primary": "#ffffff",
+                        "tertiary-fixed": "#ffdbc9",
+                        "outline-variant": "#c1c6d5",
+                        "outline": "#727783",
+                        "surface-tint": "#095db7",
+                        "inverse-surface": "#2d3037",
+                        "on-error-container": "#93000a",
+                        "primary-fixed-dim": "#aac7ff",
+                        "primary-fixed": "#d6e3ff",
+                        "error": "#ba1a1a",
+                        "secondary-container": "#b6d0ff",
+                        "on-tertiary-container": "#ffc9ac",
+                        "on-tertiary-fixed-variant": "#753400",
+                        "on-tertiary-fixed": "#321200",
+                        "on-primary-container": "#c0d5ff",
+                        "on-secondary-fixed-variant": "#2e476f",
+                        "on-surface": "#181c22",
+                        "surface": "#f9f9ff",
+                        "surface-container-highest": "#e0e2eb",
+                        "tertiary-container": "#964400",
+                        "on-secondary-fixed": "#001b3d",
+                        "surface-container-lowest": "#ffffff",
+                        "tertiary-fixed-dim": "#ffb68c",
+                        "on-tertiary": "#ffffff",
+                        "on-error": "#ffffff",
+                        "on-primary-fixed-variant": "#00458d",
+                        "error-container": "#ffdad6",
+                        "secondary": "#465f88",
+                        "background": "#f9f9ff",
+                        "on-secondary-container": "#3f5881",
+                        "surface-dim": "#d7dae3"
+                    },
+                    "borderRadius": {
+                        "DEFAULT": "0.25rem",
+                        "lg": "0.5rem",
+                        "xl": "0.75rem",
+                        "full": "9999px"
+                    },
+                    "spacing": {
+                        "section-gap": "1.5rem",
+                        "container-padding": "1rem",
+                        "element-gap": "0.75rem",
+                        "grid-gutter": "1rem"
+                    },
+                    "fontFamily": {
+                        "label-sm": ["Inter"],
+                        "body-md": ["Inter"],
+                        "headline-sm": ["Inter"],
+                        "label-lg": ["Inter"],
+                        "body-sm": ["Inter"],
+                        "display-sm": ["Inter"],
+                        "label-md": ["Inter"]
+                    },
+                    "fontSize": {
+                        "label-sm": ["10px", { "lineHeight": "12px", "fontWeight": "500" }],
+                        "body-md": ["0.875rem", { "lineHeight": "1.25rem", "fontWeight": "400" }],
+                        "headline-sm": ["0.875rem", { "lineHeight": "1.25rem", "fontWeight": "600" }],
+                        "label-lg": ["0.75rem", { "lineHeight": "1rem", "fontWeight": "600" }],
+                        "body-sm": ["0.75rem", { "lineHeight": "1rem", "fontWeight": "400" }],
+                        "display-sm": ["1.125rem", { "lineHeight": "1.5rem", "letterSpacing": "0.15em", "fontWeight": "700" }],
+                        "label-md": ["11px", { "lineHeight": "1rem", "fontWeight": "500" }]
+                    }
+                }
+            }
+        }
+    </script>
+<style>
+        .waveform {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 6px;
+            width: 100%;
+            height: 100%;
+        }
+        .waveform-bar {
+            width: 8px;
+            border-radius: 4px;
+            background-color: var(--tw-colors-primary, #004389);
+            animation: pulse 1s ease-in-out infinite alternate;
+        }
+        .waveform-bar:nth-child(1) { height: 20%; animation-delay: 0s; }
+        .waveform-bar:nth-child(2) { height: 50%; animation-delay: -0.2s; }
+        .waveform-bar:nth-child(3) { height: 80%; animation-delay: -0.4s; }
+        .waveform-bar:nth-child(4) { height: 40%; animation-delay: -0.6s; }
+        .waveform-bar:nth-child(5) { height: 30%; animation-delay: -0.8s; }
+        
+        @keyframes pulse {
+            0% { transform: scaleY(0.5); opacity: 0.5; }
+            100% { transform: scaleY(1); opacity: 1; }
+        }
+    </style>
+<style>
+    body {
+      min-height: max(884px, 100dvh);
+    }
+  </style>
+  </head>
+<body class="bg-background text-on-background font-body-md antialiased min-h-screen">
+<!-- Shared Component: TopAppBar / Live Session Focused View -->
+<div class="relative flex h-auto min-h-screen w-full flex-col bg-surface group/design-root overflow-x-hidden font-body-md">
+<div class="flex items-center bg-surface p-4 pb-2 justify-between">
+<div class="text-on-surface flex size-12 shrink-0 items-center justify-center cursor-pointer rounded-full hover:bg-surface-variant transition-colors" data-icon="close" data-size="24px" data-weight="regular">
+<span class="material-symbols-outlined text-[24px]">close</span>
+</div>
+<h2 class="text-on-surface text-lg font-headline-sm leading-tight tracking-[-0.015em] flex-1 text-center">Live Session</h2>
+<div class="flex w-12 items-center justify-end">
+<button class="flex max-w-[480px] cursor-pointer items-center justify-center overflow-hidden rounded-full h-12 w-12 bg-transparent text-on-surface hover:bg-surface-variant transition-colors min-w-0 p-0">
+<div class="text-on-surface flex items-center justify-center" data-icon="photo_camera" data-size="24px" data-weight="regular">
+<span class="material-symbols-outlined text-[24px]">photo_camera</span>
+</div>
+</button>
+</div>
+</div>
+<h1 class="text-primary tracking-tight text-[32px] font-display-sm leading-tight px-4 text-center pb-3 pt-6 animate-pulse">Listening...</h1>
+<div class="flex w-full grow bg-surface @container p-4 flex-col justify-center">
+<div class="w-full gap-1 overflow-hidden bg-surface-container-low @[480px]:gap-2 aspect-[3/2] rounded-xl flex items-center justify-center relative shadow-sm border border-outline-variant/30">
+<!-- Simulated Waveform instead of static placeholder image for live feel -->
+<div class="waveform absolute inset-0 z-10">
+<div class="waveform-bar"></div>
+<div class="waveform-bar"></div>
+<div class="waveform-bar"></div>
+<div class="waveform-bar"></div>
+<div class="waveform-bar"></div>
+</div>
+<!-- Keeping structural integrity of the requested placeholder div but obscuring it conceptually with the waveform -->
+<div class="w-full bg-center bg-no-repeat bg-cover aspect-auto rounded-none flex-1 opacity-5" data-alt="A completely blank minimalist placeholder background to support a live audio waveform visualization. Subtle grey tones, completely plain, clean studio aesthetic." style='background-image: url("https://lh3.googleusercontent.com/aida-public/AB6AXuDrTyxv2pe2ZDq4HrEHvimbnUhLobxbPFofuDPzCT4lipoE274j3-gAjWCoptNYxK8vUKoi107jQQ_5LIUwUdCn9Kpj593PcQxX59p1zwoS3DlrFjd8VoK1Ui6SNlWtHH1O2xyqNAVYXJvMDlbbQZv7p2z5WVIA9KDEongPPUbtQaQZiCpK9lq5qMdTVykgiLH_D-8aHwCYbAvrLdSl6WW6UsrYDOedUF3vXhh9JXxpRfdR5uG5YbQd");'></div>
+</div>
+</div>
+<p class="text-on-surface-variant text-base font-body-md leading-relaxed pb-6 pt-2 px-6 text-center italic">"I understand, you'd like to check your recent activity and review the..."</p>
+<div class="@container pb-8">
+<div class="gap-4 px-6 grid-cols-[repeat(auto-fit, minmax(80px,_1fr))] grid justify-center max-w-sm mx-auto">
+<div class="flex flex-col items-center gap-3 bg-surface py-2 text-center group cursor-pointer">
+<div class="rounded-full bg-surface-variant group-hover:bg-primary-container transition-colors p-4 shadow-sm">
+<div class="text-on-surface group-hover:text-on-primary transition-colors flex items-center justify-center" data-icon="mic_off" data-size="24px" data-weight="regular">
+<span class="material-symbols-outlined text-[24px]">mic_off</span>
+</div>
+</div>
+<p class="text-on-surface text-sm font-label-md leading-normal">Mute</p>
+</div>
+<div class="flex flex-col items-center gap-3 bg-surface py-2 text-center group cursor-pointer">
+<div class="rounded-full bg-surface-variant group-hover:bg-primary-container transition-colors p-4 shadow-sm">
+<div class="text-on-surface group-hover:text-on-primary transition-colors flex items-center justify-center" data-icon="videocam_off" data-size="24px" data-weight="regular">
+<span class="material-symbols-outlined text-[24px]">videocam_off</span>
+</div>
+</div>
+<p class="text-on-surface text-sm font-label-md leading-normal">Camera</p>
+</div>
+<div class="flex flex-col items-center gap-3 bg-surface py-2 text-center group cursor-pointer">
+<div class="rounded-full bg-error text-on-error hover:bg-on-error-container transition-colors p-4 shadow-md">
+<div class="flex items-center justify-center" data-icon="call_end" data-size="24px" data-weight="regular">
+<span class="material-symbols-outlined text-[24px]" style="font-variation-settings: 'FILL' 1;">call_end</span>
+</div>
+</div>
+<p class="text-on-surface text-sm font-label-md leading-normal text-error">End</p>
+</div>
+</div>
+</div>
+<div class="h-safe-area-bottom bg-surface"></div>
+</div>
+</body></html>

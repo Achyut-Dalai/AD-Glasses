@@ -1,0 +1,102 @@
+<!DOCTYPE html>
+
+<html class="light" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Data Export Confirmation</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    colors: {
+                        graphite: {
+                            50: '#F6F7F9',
+                            100: '#E8E9EC',
+                            200: '#D1D3D8',
+                            300: '#A9ACB4',
+                            400: '#7E828C',
+                            500: '#5F636E',
+                            600: '#4A4D57',
+                            700: '#3D3F47',
+                            800: '#34363C',
+                            900: '#1A1C1E',
+                            950: '#0D0E10',
+                        }
+                    },
+                    "borderRadius": {
+                        "DEFAULT": "0.25rem",
+                        "lg": "0.5rem",
+                        "xl": "0.75rem",
+                        "2xl": "1rem",
+                        "full": "9999px"
+                    },
+                    "fontFamily": {
+                        "headline": ["Inter", "sans-serif"],
+                        "display": ["Inter", "sans-serif"],
+                        "body": ["Inter", "sans-serif"],
+                        "label": ["Inter", "sans-serif"]
+                    }
+                }
+            }
+        }
+    </script>
+<style>
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+        }
+    </style>
+<style>
+    body {
+      min-height: max(884px, 100dvh);
+    }
+  </style>
+</head>
+<body class="bg-graphite-50 font-body text-graphite-900 min-h-screen flex items-center justify-center p-4">
+<!-- Modal / Bottom Sheet Style Container -->
+<main class="w-full max-w-md bg-white rounded-2xl shadow-xl border border-graphite-100 overflow-hidden flex flex-col">
+<div class="p-8 flex flex-col gap-8">
+<!-- Icon & Headline -->
+<div class="flex flex-col items-center text-center gap-5">
+<div class="w-16 h-16 rounded-full bg-graphite-50 border border-graphite-100 flex items-center justify-center">
+<span class="material-symbols-outlined text-graphite-900 text-3xl" data-icon="download">download</span>
+</div>
+<h1 class="font-headline font-semibold text-2xl text-graphite-900 tracking-tight">Export all data?</h1>
+</div>
+<!-- Explanation Content -->
+<div class="bg-graphite-50 rounded-xl p-5 border border-graphite-100/50">
+<p class="font-body text-graphite-600 text-sm leading-relaxed text-center">
+                    Creates a local archive of all media, transcripts, and notes. Redacts tokens and personal IDs by default.
+                </p>
+</div>
+<!-- Data Details List -->
+<ul class="space-y-4 px-2">
+<li class="flex items-center gap-4 text-sm text-graphite-700">
+<span class="material-symbols-outlined text-graphite-400 text-xl" data-icon="perm_media">perm_media</span>
+<span class="font-medium">Media files (.mp4, .jpg)</span>
+</li>
+<li class="flex items-center gap-4 text-sm text-graphite-700">
+<span class="material-symbols-outlined text-graphite-400 text-xl" data-icon="description">description</span>
+<span class="font-medium">Transcripts (.txt, .json)</span>
+</li>
+<li class="flex items-center gap-4 text-sm text-graphite-700">
+<span class="material-symbols-outlined text-graphite-400 text-xl" data-icon="shield">shield</span>
+<span class="font-medium">Personal IDs (Redacted)</span>
+</li>
+</ul>
+<!-- Actions -->
+<div class="flex flex-col gap-3 mt-4">
+<button class="w-full py-3.5 px-4 bg-graphite-900 text-white rounded-xl font-label font-medium hover:bg-black transition-colors flex items-center justify-center gap-2 shadow-sm">
+<span class="material-symbols-outlined text-lg" data-icon="archive">archive</span>
+                    Export now
+                </button>
+<button class="w-full py-3.5 px-4 text-graphite-600 rounded-xl font-label font-medium hover:bg-graphite-50 transition-colors">
+                    Cancel
+                </button>
+</div>
+</div>
+</main>
+</body></html>

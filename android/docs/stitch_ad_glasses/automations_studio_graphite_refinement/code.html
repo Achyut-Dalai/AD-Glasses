@@ -1,0 +1,309 @@
+<!DOCTYPE html>
+
+<html class="light" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Automations - AD Glasses</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com" rel="preconnect"/>
+<link crossorigin="" href="https://fonts.gstatic.com" rel="preconnect"/>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+          darkMode: "class",
+          theme: {
+            extend: {
+              "colors": {
+                      "on-secondary": "#ffffff",
+                      "tertiary-container": "#964400",
+                      "on-error-container": "#93000a",
+                      "surface-variant": "#dfe2eb",
+                      "surface-container": "#ebeef6",
+                      "error": "#ba1a1a",
+                      "on-secondary-fixed-variant": "#2e476f",
+                      "on-tertiary-fixed": "#321200",
+                      "surface-container-highest": "#dfe2eb",
+                      "surface-dim": "#d7dae2",
+                      "inverse-on-surface": "#eef1f9",
+                      "primary": "#004389",
+                      "stage-halo-start": "rgba(10, 115, 224, 0.15)",
+                      "on-primary": "#ffffff",
+                      "on-tertiary-container": "#ffc9ac",
+                      "secondary-fixed-dim": "#aec7f6",
+                      "on-primary-fixed": "#001b3e",
+                      "secondary-fixed": "#d6e3ff",
+                      "secondary-container": "#b6d0ff",
+                      "on-primary-fixed-variant": "#00458d",
+                      "tertiary": "#723200",
+                      "surface-bright": "#f8f9ff",
+                      "on-surface-variant": "#424752",
+                      "on-secondary-container": "#3f5881",
+                      "on-secondary-fixed": "#001b3d",
+                      "surface": "#f8f9ff",
+                      "on-error": "#ffffff",
+                      "on-surface": "#181c22",
+                      "on-background": "#181c22",
+                      "inverse-surface": "#2d3137",
+                      "surface-glass": "rgba(249, 249, 255, 0.8)",
+                      "on-tertiary": "#ffffff",
+                      "secondary": "#465f88",
+                      "surface-container-low": "#f1f3fc",
+                      "inverse-primary": "#aac7ff",
+                      "primary-fixed": "#d6e3ff",
+                      "on-primary-container": "#c0d5ff",
+                      "primary-fixed-dim": "#aac7ff",
+                      "surface-container-high": "#e5e8f1",
+                      "error-container": "#ffdad6",
+                      "surface-container-lowest": "#ffffff",
+                      "outline-variant": "#c2c6d4",
+                      "on-tertiary-fixed-variant": "#753400",
+                      "tertiary-fixed": "#ffdbc9",
+                      "surface-tint": "#095db7",
+                      "background-alt": "#F6F7F9",
+                      "tertiary-fixed-dim": "#ffb68c",
+                      "background": "#f8f9ff",
+                      "status-connected": "#1275e2",
+                      "primary-container": "#005ab4",
+                      "outline": "#727783"
+              },
+              "borderRadius": {
+                      "DEFAULT": "0.25rem",
+                      "lg": "0.5rem",
+                      "xl": "0.75rem",
+                      "full": "9999px"
+              },
+              "spacing": {
+                      "touch-target-min": "40px",
+                      "element-gap": "0.75rem",
+                      "container-margin": "1rem",
+                      "section-gap": "2rem"
+              },
+              "fontFamily": {
+                      "label-sm": [
+                              "Inter"
+                      ],
+                      "label-xs": [
+                              "Inter"
+                      ],
+                      "display-lg": [
+                              "Inter"
+                      ],
+                      "body-sm": [
+                              "Inter"
+                      ],
+                      "body-md": [
+                              "Inter"
+                      ],
+                      "headline-md": [
+                              "Inter"
+                      ]
+              },
+              "fontSize": {
+                      "label-sm": [
+                              "12px",
+                              {
+                                      "lineHeight": "16px",
+                                      "fontWeight": "500"
+                              }
+                      ],
+                      "label-xs": [
+                              "10px",
+                              {
+                                      "lineHeight": "12px",
+                                      "fontWeight": "600"
+                              }
+                      ],
+                      "display-lg": [
+                              "24px",
+                              {
+                                      "lineHeight": "32px",
+                                      "letterSpacing": "-0.025em",
+                                      "fontWeight": "800"
+                              }
+                      ],
+                      "body-sm": [
+                              "14px",
+                              {
+                                      "lineHeight": "20px",
+                                      "fontWeight": "500"
+                              }
+                      ],
+                      "body-md": [
+                              "16px",
+                              {
+                                      "lineHeight": "24px",
+                                      "fontWeight": "400"
+                              }
+                      ],
+                      "headline-md": [
+                              "18px",
+                              {
+                                      "lineHeight": "24px",
+                                      "fontWeight": "700"
+                              }
+                      ]
+              }
+      },
+          },
+        }
+      </script>
+<style>
+          .bg-radial-halo {
+              background: radial-gradient(circle at top center, rgba(10, 115, 224, 0.15) 0%, transparent 70%);
+          }
+          .glass-panel {
+              background: rgba(255, 255, 255, 0.7);
+              backdrop-filter: blur(12px);
+              -webkit-backdrop-filter: blur(12px);
+              border: 1px solid rgba(255, 255, 255, 0.3);
+          }
+          .toggle-checkbox:checked {
+            right: 0;
+            border-color: #005ab4; /* primary-container */
+          }
+          .toggle-checkbox:checked + .toggle-label {
+            background-color: #005ab4; /* primary-container */
+          }
+      </style>
+<style>
+    body {
+      min-height: max(884px, 100dvh);
+    }
+  </style>
+  </head>
+<body class="bg-background-alt text-on-background font-body-md antialiased min-h-screen flex flex-col pt-[72px] pb-[96px] md:pb-[24px]">
+<!-- TopAppBar -->
+<header class="fixed top-0 w-full z-50 bg-surface/80 backdrop-blur-md flex justify-between items-center px-6 py-4">
+<button class="w-touch-target-min h-touch-target-min flex items-center justify-center rounded-full hover:bg-surface-container-low transition-colors text-on-surface-variant">
+<span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 0;">eyeglasses</span>
+</button>
+<h1 class="text-xl font-display font-black tracking-tighter text-on-surface">AD Glasses</h1>
+<button class="w-touch-target-min h-touch-target-min flex items-center justify-center rounded-full hover:bg-surface-container-low transition-colors text-on-surface-variant">
+<span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 0;">settings</span>
+</button>
+</header>
+<main class="flex-grow px-container-margin md:px-8 max-w-4xl mx-auto w-full pt-8 space-y-section-gap relative">
+<!-- Background Halo Effect -->
+<div class="absolute top-0 left-1/2 -translate-x-1/2 w-[600px] h-[400px] bg-radial-halo -z-10 pointer-events-none"></div>
+<!-- Global Control Section -->
+<section class="glass-panel rounded-xl p-6 shadow-sm flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
+<div>
+<h2 class="font-headline-md text-headline-md text-on-surface mb-1">Automation Status</h2>
+<p class="font-body-sm text-body-sm text-on-surface-variant">Manage all automated background tasks and data collection.</p>
+</div>
+<div class="flex items-center gap-3">
+<span class="font-label-sm text-label-sm text-on-surface-variant uppercase tracking-widest">Active</span>
+<div class="relative inline-block w-12 mr-2 align-middle select-none transition duration-200 ease-in">
+<input checked="" class="toggle-checkbox absolute block w-6 h-6 rounded-full bg-white border-4 appearance-none cursor-pointer transition-all duration-300 z-10 top-0 left-0 checked:translate-x-6 checked:border-primary-container" id="global-toggle" name="toggle" type="checkbox"/>
+<label class="toggle-label block overflow-hidden h-6 rounded-full bg-surface-dim cursor-pointer transition-colors duration-300" for="global-toggle"></label>
+</div>
+</div>
+</section>
+<!-- Automation Catalog -->
+<section class="grid grid-cols-1 md:grid-cols-2 gap-6">
+<!-- Local Agent Card -->
+<article class="bg-surface-container-lowest rounded-xl p-6 shadow-sm flex flex-col relative overflow-hidden group hover:shadow-md transition-shadow">
+<div class="flex justify-between items-start mb-4 relative z-10">
+<div class="w-12 h-12 rounded-full bg-surface-container-low flex items-center justify-center text-primary">
+<span class="material-symbols-outlined text-2xl">memory</span>
+</div>
+<div class="flex items-center gap-2">
+<span class="flex h-2 w-2 relative">
+<span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-status-connected opacity-75"></span>
+<span class="relative inline-flex rounded-full h-2 w-2 bg-status-connected"></span>
+</span>
+<span class="font-label-xs text-label-xs text-status-connected uppercase tracking-wider">Running</span>
+</div>
+</div>
+<h3 class="font-headline-md text-headline-md text-on-surface mb-2 relative z-10">Local Agent</h3>
+<p class="font-body-sm text-body-sm text-on-surface-variant mb-6 flex-grow relative z-10">On-device processing for real-time context awareness. Handles voice commands and environmental analysis without sending data to the cloud.</p>
+<div class="border-t border-outline-variant/50 pt-4 mt-auto flex justify-between items-center relative z-10">
+<div class="flex items-center gap-1.5 text-on-surface-variant font-label-xs text-label-xs">
+<span class="material-symbols-outlined text-[14px]">shield</span>
+<span>Strict Privacy Boundary</span>
+</div>
+<button class="font-label-sm text-label-sm text-primary hover:text-primary-fixed transition-colors">Configure</button>
+</div>
+<!-- subtle background decoration -->
+<div class="absolute -bottom-8 -right-8 w-32 h-32 bg-primary/5 rounded-full blur-2xl group-hover:bg-primary/10 transition-colors"></div>
+</article>
+<!-- Meeting Spark Notes Card -->
+<article class="bg-surface-container-lowest rounded-xl p-6 shadow-sm flex flex-col relative overflow-hidden group hover:shadow-md transition-shadow">
+<div class="flex justify-between items-start mb-4 relative z-10">
+<div class="w-12 h-12 rounded-full bg-surface-container-low flex items-center justify-center text-tertiary-container">
+<span class="material-symbols-outlined text-2xl">summarize</span>
+</div>
+<div class="flex items-center gap-2">
+<span class="relative inline-flex rounded-full h-2 w-2 bg-outline"></span>
+<span class="font-label-xs text-label-xs text-on-surface-variant uppercase tracking-wider">Standby</span>
+</div>
+</div>
+<h3 class="font-headline-md text-headline-md text-on-surface mb-2 relative z-10">Meeting Spark Notes</h3>
+<p class="font-body-sm text-body-sm text-on-surface-variant mb-6 flex-grow relative z-10">Automatically transcribes and summarizes scheduled meetings. Extracts action items and key decisions when calendar sync is active.</p>
+<div class="border-t border-outline-variant/50 pt-4 mt-auto flex justify-between items-center relative z-10">
+<div class="flex items-center gap-1.5 text-on-surface-variant font-label-xs text-label-xs">
+<span class="material-symbols-outlined text-[14px]">cloud_sync</span>
+<span>Cloud Processing</span>
+</div>
+<button class="font-label-sm text-label-sm text-primary hover:text-primary-fixed transition-colors">Configure</button>
+</div>
+</article>
+<!-- Visual Diary Card -->
+<article class="bg-surface-container-lowest rounded-xl p-6 shadow-sm flex flex-col relative overflow-hidden group hover:shadow-md transition-shadow md:col-span-2">
+<div class="flex justify-between items-start mb-4 relative z-10">
+<div class="w-12 h-12 rounded-full bg-surface-container-low flex items-center justify-center text-secondary">
+<span class="material-symbols-outlined text-2xl">photo_library</span>
+</div>
+<div class="relative inline-block w-10 align-middle select-none transition duration-200 ease-in">
+<input checked="" class="toggle-checkbox absolute block w-5 h-5 rounded-full bg-white border-4 appearance-none cursor-pointer transition-all duration-300 z-10 top-0.5 left-0 checked:translate-x-5 checked:border-primary-container" id="diary-toggle" name="toggle-diary" type="checkbox"/>
+<label class="toggle-label block overflow-hidden h-6 rounded-full bg-surface-dim cursor-pointer transition-colors duration-300" for="diary-toggle"></label>
+</div>
+</div>
+<div class="flex flex-col md:flex-row gap-6 relative z-10">
+<div class="flex-grow">
+<h3 class="font-headline-md text-headline-md text-on-surface mb-2">Visual Diary</h3>
+<p class="font-body-sm text-body-sm text-on-surface-variant mb-4">Captures significant moments throughout your day based on biometric excitement and locational changes. Compiles a daily retrospective reel.</p>
+<div class="flex flex-wrap gap-2 mb-4">
+<span class="px-2 py-1 rounded-full border border-outline-variant text-label-xs font-label-xs text-on-surface-variant">Camera Access Required</span>
+<span class="px-2 py-1 rounded-full border border-outline-variant text-label-xs font-label-xs text-on-surface-variant">Location Services</span>
+</div>
+</div>
+<div class="w-full md:w-1/3 h-32 rounded-lg overflow-hidden relative">
+<img class="w-full h-full object-cover" data-alt="A highly detailed conceptual image representing a visual diary. Multiple semi-transparent Polaroid-style photos overlap in a subtle, airy arrangement against a clean, light-mode background. The color palette features cool greys, soft whites, and muted secondary blues. The lighting is soft and diffused, creating a modern, minimalist, and tech-forward aesthetic suitable for a premium wearable app interface." src="https://lh3.googleusercontent.com/aida-public/AB6AXuBqNgs5pnDV22cRbtgbrgge5PSUmOLploOdBhEGDxFyPqR9J5Uo0aMaug_pNacF3bLKlD8p7YJNxZVue7gLBFhgS63kZTk1uUpIVvSYtYqJu-YeHtJoFGtwmnDN36Dt7kdrAhizgsbIXxQfBW7T0nAqNwVD1mmxfuCF4jTVv8cYjuzZiTqgh5lzfukTQAyoVqmhxLOv7OqLB3Cf2F7z_VWTlP-mx20gGRF2mR8EBkBSdiGAr7XfR0Kf"/>
+<div class="absolute inset-0 bg-gradient-to-t from-black/40 to-transparent flex items-end p-3">
+<span class="font-label-xs text-label-xs text-white">12 Captures Today</span>
+</div>
+</div>
+</div>
+<div class="border-t border-outline-variant/50 pt-4 mt-6 flex justify-between items-center relative z-10">
+<div class="flex items-center gap-1.5 text-on-surface-variant font-label-xs text-label-xs">
+<span class="material-symbols-outlined text-[14px]">lock</span>
+<span>Local Storage Only</span>
+</div>
+<button class="font-label-sm text-label-sm text-primary hover:text-primary-fixed transition-colors">Review Logs</button>
+</div>
+</article>
+</section>
+</main>
+<!-- BottomNavBar -->
+<nav class="fixed bottom-0 left-0 w-full z-50 flex justify-around items-center px-4 pb-6 pt-2 bg-surface/95 backdrop-blur-lg border-t border-outline-variant md:hidden">
+<a class="flex flex-col items-center justify-center text-on-surface-variant p-2 scale-95 active:scale-90 transition-transform hover:text-primary" href="#">
+<span class="material-symbols-outlined mb-1" style="font-variation-settings: 'FILL' 0;">home</span>
+<span class="font-label text-xs uppercase tracking-widest">Home</span>
+</a>
+<a class="flex flex-col items-center justify-center text-on-surface-variant p-2 scale-95 active:scale-90 transition-transform hover:text-primary" href="#">
+<span class="material-symbols-outlined mb-1" style="font-variation-settings: 'FILL' 0;">smart_toy</span>
+<span class="font-label text-xs uppercase tracking-widest">Assistant</span>
+</a>
+<a class="flex flex-col items-center justify-center text-on-surface-variant p-2 scale-95 active:scale-90 transition-transform hover:text-primary" href="#">
+<span class="material-symbols-outlined mb-1" style="font-variation-settings: 'FILL' 0;">auto_stories</span>
+<span class="font-label text-xs uppercase tracking-widest">Library</span>
+</a>
+<a class="flex flex-col items-center justify-center bg-primary-container text-on-primary-container rounded-xl px-3 py-1 scale-95 active:scale-90 transition-transform" href="#">
+<span class="material-symbols-outlined mb-1" style="font-variation-settings: 'FILL' 1;">settings_input_component</span>
+<span class="font-label text-xs uppercase tracking-widest">Automations</span>
+</a>
+</nav>
+</body></html>

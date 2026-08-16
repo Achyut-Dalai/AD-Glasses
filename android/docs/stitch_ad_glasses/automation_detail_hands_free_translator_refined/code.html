@@ -1,0 +1,316 @@
+<!DOCTYPE html>
+
+<html class="light" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" name="viewport"/>
+<title>Automation Detail - Hands-Free Translator</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Hanken+Grotesk:wght@400;500;600&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    "colors": {
+                        "secondary-container": "#4090fe",
+                        "on-surface": "#161c27",
+                        "canvas": "#F6F7F9",
+                        "surface-container-high": "#e2e8f8",
+                        "on-secondary-fixed": "#001b3e",
+                        "secondary-fixed": "#d6e3ff",
+                        "on-tertiary": "#ffffff",
+                        "inverse-surface": "#2a313d",
+                        "surface-control": "#FFFFFF",
+                        "cool-gray": "#717785",
+                        "on-error": "#ffffff",
+                        "on-tertiary-fixed-variant": "#444749",
+                        "on-primary-fixed": "#1b1b1b",
+                        "background": "#f9f9ff",
+                        "on-tertiary-fixed": "#191c1e",
+                        "secondary-fixed-dim": "#aac7ff",
+                        "electric-blue": "#1978E5",
+                        "tertiary-fixed-dim": "#c5c7c8",
+                        "surface-variant": "#dde2f2",
+                        "surface-container-highest": "#dde2f2",
+                        "primary-fixed-dim": "#c6c6c6",
+                        "on-surface-variant": "#4c4546",
+                        "outline-variant": "#cfc4c5",
+                        "on-background": "#161c27",
+                        "on-error-container": "#93000a",
+                        "graphite-black": "#000000",
+                        "inverse-primary": "#c6c6c6",
+                        "tertiary-container": "#191c1e",
+                        "error": "#ba1a1a",
+                        "primary": "#000000",
+                        "inverse-on-surface": "#ecf0ff",
+                        "tertiary-fixed": "#e1e2e4",
+                        "surface-dim": "#d4daea",
+                        "surface-container": "#e8eefe",
+                        "on-primary-fixed-variant": "#474747",
+                        "primary-fixed": "#e2e2e2",
+                        "on-tertiary-container": "#828486",
+                        "tertiary": "#000000",
+                        "surface": "#f9f9ff",
+                        "on-secondary-container": "#002958",
+                        "surface-container-low": "#f0f3ff",
+                        "outline": "#7e7576",
+                        "on-primary-container": "#848484",
+                        "success-teal": "#008080",
+                        "surface-tint": "#5e5e5e",
+                        "on-primary": "#ffffff",
+                        "surface-container-lowest": "#ffffff",
+                        "primary-container": "#1b1b1b",
+                        "surface-bright": "#f9f9ff",
+                        "on-secondary": "#ffffff",
+                        "warning-amber": "#FFBF00",
+                        "on-secondary-fixed-variant": "#00458d",
+                        "secondary": "#005db8",
+                        "error-container": "#ffdad6"
+                    },
+                    "borderRadius": {
+                        "DEFAULT": "0.25rem",
+                        "lg": "0.5rem",
+                        "xl": "0.75rem",
+                        "full": "9999px"
+                    },
+                    "spacing": {
+                        "base": "4px",
+                        "hero-stage": "220px",
+                        "gap-xs": "4px",
+                        "gap-sm": "8px",
+                        "touch-target": "48px",
+                        "margin-page": "16px"
+                    },
+                    "fontFamily": {
+                        "headline-md": ["Hanken Grotesk"],
+                        "body-lg": ["Hanken Grotesk"],
+                        "label-lg": ["Hanken Grotesk"],
+                        "label-md": ["Hanken Grotesk"],
+                        "label-sm": ["Hanken Grotesk"],
+                        "body-md": ["Hanken Grotesk"],
+                        "headline-lg": ["Hanken Grotesk"]
+                    },
+                    "fontSize": {
+                        "headline-md": ["20px", { "lineHeight": "28px", "letterSpacing": "-0.01em", "fontWeight": "600" }],
+                        "body-lg": ["16px", { "lineHeight": "24px", "fontWeight": "400" }],
+                        "label-lg": ["14px", { "lineHeight": "20px", "fontWeight": "500" }],
+                        "label-md": ["12px", { "lineHeight": "16px", "fontWeight": "500" }],
+                        "label-sm": ["11px", { "lineHeight": "16px", "letterSpacing": "0.05em", "fontWeight": "500" }],
+                        "body-md": ["14px", { "lineHeight": "20px", "fontWeight": "400" }],
+                        "headline-lg": ["24px", { "lineHeight": "32px", "letterSpacing": "-0.02em", "fontWeight": "600" }]
+                    }
+                }
+            }
+        }
+    </script>
+<style>
+        body { background-color: theme('colors.canvas'); color: theme('colors.on-surface'); font-family: 'Hanken Grotesk', sans-serif; }
+        .hairline-b { border-bottom: 1px solid theme('colors.outline-variant'); }
+        .hairline-t { border-top: 1px solid theme('colors.outline-variant'); }
+        .hairline-l { border-left: 1px solid theme('colors.outline-variant'); }
+        .elevation-flat { box-shadow: none; }
+        .material-symbols-outlined { font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24; }
+        .icon-fill { font-variation-settings: 'FILL' 1; }
+        /* Hide scrollbar for clean UI */
+        ::-webkit-scrollbar { display: none; }
+    </style>
+<style>
+    body {
+      min-height: max(884px, 100dvh);
+    }
+  </style>
+<style>
+    body {
+      min-height: max(884px, 100dvh);
+    }
+  </style>
+  </head>
+<body class="antialiased pb-24 selection:bg-secondary-container selection:text-on-secondary-container">
+<!-- TopAppBar -->
+<header class="bg-surface dark:bg-surface-dim text-primary dark:text-primary-fixed-dim w-full sticky top-0 z-50 elevation-flat transition-colors">
+<div class="flex items-center justify-between px-margin-page h-16 w-full max-w-5xl mx-auto hairline-b">
+<button aria-label="Go Back" class="w-touch-target h-touch-target flex items-center justify-start text-on-surface-variant hover:bg-surface-container-high active:scale-95 duration-100 rounded-full transition-all">
+<span class="material-symbols-outlined text-[24px]" data-icon="arrow_back">arrow_back</span>
+</button>
+<h1 class="font-headline-md text-headline-md text-primary tracking-tight">Hands-Free Translator</h1>
+<button aria-label="Settings" class="w-touch-target h-touch-target flex items-center justify-end text-on-surface-variant hover:bg-surface-container-high active:scale-95 duration-100 rounded-full transition-all">
+<span class="material-symbols-outlined text-[24px]" data-icon="settings">settings</span>
+</button>
+</div>
+</header>
+<main class="max-w-5xl mx-auto px-margin-page pt-6 space-y-8">
+<!-- Hero Identity -->
+<section class="flex flex-col items-center justify-center py-4">
+<div class="w-16 h-16 rounded-full bg-surface-container flex items-center justify-center mb-4">
+<span class="material-symbols-outlined text-[32px] text-electric-blue icon-fill" data-icon="translate">translate</span>
+</div>
+<div class="flex items-center space-x-2 bg-surface-control px-3 py-1 rounded-full border border-outline-variant shadow-sm mb-2">
+<span class="w-2 h-2 rounded-full bg-success-teal"></span>
+<span class="font-label-md text-label-md text-on-surface-variant">Active Configuration</span>
+</div>
+</section>
+<!-- How It Works (Vertical Stepper) -->
+<section class="bg-surface-control rounded-xl border border-outline-variant p-6 space-y-0">
+<h2 class="font-headline-md text-headline-md text-on-surface mb-6">Execution Flow</h2>
+<div class="relative pl-8">
+<!-- Vertical Line -->
+<div class="absolute left-3 top-2 bottom-6 w-px bg-outline-variant"></div>
+<!-- Step 1: Listen -->
+<div class="relative mb-8">
+<div class="absolute -left-8 top-0 w-6 h-6 rounded-full bg-surface-control border-2 border-outline-variant flex items-center justify-center z-10">
+<span class="w-2 h-2 rounded-full bg-electric-blue"></span>
+</div>
+<div class="flex items-start">
+<div class="flex-1">
+<h3 class="font-label-lg text-label-lg text-on-surface mb-1 flex items-center">
+<span class="material-symbols-outlined text-[18px] mr-2 text-cool-gray" data-icon="mic">mic</span>
+                                Input Capture
+                            </h3>
+<p class="font-body-md text-body-md text-on-surface-variant">Continuously samples ambient audio via selected microphone.</p>
+</div>
+</div>
+</div>
+<!-- Step 2: Process -->
+<div class="relative mb-8">
+<div class="absolute -left-8 top-0 w-6 h-6 rounded-full bg-surface-control border-2 border-outline-variant flex items-center justify-center z-10">
+<span class="w-2 h-2 rounded-full bg-electric-blue"></span>
+</div>
+<div class="flex items-start">
+<div class="flex-1">
+<h3 class="font-label-lg text-label-lg text-on-surface mb-1 flex items-center">
+<span class="material-symbols-outlined text-[18px] mr-2 text-cool-gray" data-icon="memory">memory</span>
+                                Neural Translation
+                            </h3>
+<p class="font-body-md text-body-md text-on-surface-variant">On-device ML model processes speech to text and translates to target language.</p>
+</div>
+</div>
+</div>
+<!-- Step 3: Output -->
+<div class="relative">
+<div class="absolute -left-8 top-0 w-6 h-6 rounded-full bg-surface-control border-2 border-outline-variant flex items-center justify-center z-10">
+<span class="w-2 h-2 rounded-full outline outline-1 outline-outline-variant"></span>
+</div>
+<div class="flex items-start">
+<div class="flex-1">
+<h3 class="font-label-lg text-label-lg text-on-surface mb-1 flex items-center">
+<span class="material-symbols-outlined text-[18px] mr-2 text-cool-gray" data-icon="output">output</span>
+                                Multimodal Output
+                            </h3>
+<p class="font-body-md text-body-md text-on-surface-variant">Delivers translated text via AR display and audio synthesis.</p>
+</div>
+</div>
+</div>
+</div>
+</section>
+<!-- Configuration -->
+<section class="space-y-6">
+<h2 class="font-headline-md text-headline-md text-on-surface ml-2">Parameters</h2>
+<div class="bg-surface-control rounded-xl border border-outline-variant divide-y divide-outline-variant">
+<!-- Language Pairs -->
+<div class="p-4 flex flex-col space-y-4">
+<div class="flex justify-between items-center">
+<span class="font-label-lg text-label-lg text-on-surface">Language Pair</span>
+</div>
+<div class="flex items-center space-x-4 bg-canvas p-3 rounded-lg">
+<div class="flex-1">
+<label class="font-label-sm text-label-sm text-on-surface-variant block mb-1 uppercase tracking-wider">Source</label>
+<select class="w-full bg-transparent border-none p-0 font-body-lg text-body-lg text-on-surface focus:ring-0 cursor-pointer">
+<option selected="" value="en">English (US)</option>
+<option value="es">Spanish</option>
+<option value="fr">French</option>
+</select>
+</div>
+<div class="w-8 h-8 rounded-full bg-surface-control flex items-center justify-center shadow-sm shrink-0 border border-outline-variant">
+<span class="material-symbols-outlined text-[18px] text-cool-gray" data-icon="sync_alt">sync_alt</span>
+</div>
+<div class="flex-1">
+<label class="font-label-sm text-label-sm text-on-surface-variant block mb-1 uppercase tracking-wider">Target</label>
+<select class="w-full bg-transparent border-none p-0 font-body-lg text-body-lg text-on-surface focus:ring-0 cursor-pointer">
+<option selected="" value="es">Spanish (MX)</option>
+<option value="en">English</option>
+<option value="fr">French</option>
+</select>
+</div>
+</div>
+</div>
+<!-- Audio Routing -->
+<div class="p-4 flex flex-col space-y-4">
+<div class="flex justify-between items-center mb-2">
+<span class="font-label-lg text-label-lg text-on-surface">Input Routing</span>
+</div>
+<div class="grid grid-cols-2 gap-3">
+<button class="bg-surface-container border-2 border-electric-blue rounded-lg p-3 flex flex-col items-center justify-center text-center transition-all">
+<span class="material-symbols-outlined text-[24px] mb-2 text-electric-blue icon-fill" data-icon="glasses">qr_code_2</span>
+<span class="font-label-md text-label-md text-on-surface">Glasses Mic</span>
+<span class="font-label-sm text-label-sm text-on-surface-variant mt-1">High precision</span>
+</button>
+<button class="bg-surface-control border border-outline-variant rounded-lg p-3 flex flex-col items-center justify-center text-center hover:bg-surface-container-low transition-all">
+<span class="material-symbols-outlined text-[24px] mb-2 text-cool-gray" data-icon="smartphone">smartphone</span>
+<span class="font-label-md text-label-md text-on-surface">Phone Mic</span>
+<span class="font-label-sm text-label-sm text-on-surface-variant mt-1">Wide field</span>
+</button>
+</div>
+</div>
+<!-- Output Modality -->
+<div class="p-4">
+<div class="flex justify-between items-center mb-4">
+<span class="font-label-lg text-label-lg text-on-surface">Output Modality</span>
+</div>
+<div class="space-y-3">
+<label class="flex items-center justify-between p-3 rounded-lg border border-outline-variant bg-surface-control cursor-pointer hover:bg-surface-container-low transition-colors">
+<div class="flex items-center">
+<span class="material-symbols-outlined text-[20px] text-cool-gray mr-3" data-icon="subtitles">subtitles</span>
+<span class="font-body-md text-body-md text-on-surface">AR Display (Subtitles)</span>
+</div>
+<input checked="" class="form-checkbox h-5 w-5 text-electric-blue rounded border-outline-variant focus:ring-electric-blue focus:ring-offset-0" type="checkbox"/>
+</label>
+<label class="flex items-center justify-between p-3 rounded-lg border border-outline-variant bg-surface-control cursor-pointer hover:bg-surface-container-low transition-colors">
+<div class="flex items-center">
+<span class="material-symbols-outlined text-[20px] text-cool-gray mr-3" data-icon="headphones">headphones</span>
+<span class="font-body-md text-body-md text-on-surface">Bone Conduction Audio</span>
+</div>
+<input checked="" class="form-checkbox h-5 w-5 text-electric-blue rounded border-outline-variant focus:ring-electric-blue focus:ring-offset-0" type="checkbox"/>
+</label>
+</div>
+</div>
+</div>
+</section>
+<!-- Requirements Manifest -->
+<section class="space-y-4">
+<h2 class="font-headline-md text-headline-md text-on-surface ml-2">System Dependencies</h2>
+<div class="bg-canvas rounded-xl p-4 border border-outline-variant">
+<ul class="space-y-3">
+<li class="flex items-center justify-between">
+<div class="flex items-center">
+<span class="material-symbols-outlined text-[18px] text-cool-gray mr-3" data-icon="language">language</span>
+<span class="font-body-md text-body-md text-on-surface">Language Packs</span>
+</div>
+<span class="font-label-sm text-label-sm text-success-teal bg-surface-container px-2 py-1 rounded">Installed</span>
+</li>
+<li class="flex items-center justify-between">
+<div class="flex items-center">
+<span class="material-symbols-outlined text-[18px] text-cool-gray mr-3" data-icon="battery_charging_full">battery_charging_full</span>
+<span class="font-body-md text-body-md text-on-surface">Battery Policy</span>
+</div>
+<span class="font-label-sm text-label-sm text-on-surface-variant bg-surface-variant px-2 py-1 rounded">&gt; 15%</span>
+</li>
+<li class="flex items-center justify-between">
+<div class="flex items-center">
+<span class="material-symbols-outlined text-[18px] text-cool-gray mr-3" data-icon="lock">lock</span>
+<span class="font-body-md text-body-md text-on-surface">Privacy Model</span>
+</div>
+<span class="font-label-sm text-label-sm text-on-surface bg-surface-control px-2 py-1 rounded border border-outline-variant">On-Device</span>
+</li>
+</ul>
+</div>
+</section>
+<!-- Primary Action -->
+<div class="pt-6 pb-8">
+<button class="w-full bg-graphite-black text-white font-label-lg text-label-lg h-touch-target rounded-lg flex items-center justify-center active:scale-95 transition-transform duration-200">
+                Update Configuration
+            </button>
+</div>
+</main>
+</body></html>

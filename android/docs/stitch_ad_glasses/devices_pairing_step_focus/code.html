@@ -1,0 +1,356 @@
+<!DOCTYPE html>
+
+<html class="light" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" name="viewport"/>
+<title>HeyCyan - Device Pairing</title>
+<!-- Material Symbols -->
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<!-- Google Fonts: Inter -->
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<!-- Tailwind CSS -->
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<!-- Tailwind Configuration -->
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    colors: {
+                        "tertiary-container": "#964400",
+                        "on-tertiary-container": "#ffc9ac",
+                        "on-secondary-fixed": "#001b3d",
+                        "on-primary-fixed-variant": "#00458d",
+                        "surface-dim": "#d7dae2",
+                        "inverse-primary": "#aac7ff",
+                        "background": "#f8f9ff",
+                        "surface-variant": "#dfe2eb",
+                        "inverse-surface": "#2d3137",
+                        "on-surface": "#181c22",
+                        "on-primary-container": "#c0d5ff",
+                        "on-secondary-fixed-variant": "#2e476f",
+                        "secondary-fixed": "#d6e3ff",
+                        "status-connected": "#1275e2",
+                        "surface-bright": "#f8f9ff",
+                        "surface-container-high": "#e5e8f1",
+                        "secondary-fixed-dim": "#aec7f6",
+                        "error": "#ba1a1a",
+                        "tertiary": "#723200",
+                        "on-primary": "#ffffff",
+                        "tertiary-fixed-dim": "#ffb68c",
+                        "primary-fixed-dim": "#aac7ff",
+                        "inverse-on-surface": "#eef1f9",
+                        "tertiary-fixed": "#ffdbc9",
+                        "primary": "#004389",
+                        "outline": "#727783",
+                        "secondary": "#465f88",
+                        "on-tertiary": "#ffffff",
+                        "on-surface-variant": "#424752",
+                        "stage-halo-start": "rgba(10, 115, 224, 0.15)",
+                        "on-secondary-container": "#3f5881",
+                        "background-alt": "#F6F7F9",
+                        "surface": "#f8f9ff",
+                        "surface-container-highest": "#dfe2eb",
+                        "primary-fixed": "#d6e3ff",
+                        "primary-container": "#005ab4",
+                        "outline-variant": "#c2c6d4",
+                        "error-container": "#ffdad6",
+                        "on-error-container": "#93000a",
+                        "on-primary-fixed": "#001b3e",
+                        "surface-glass": "rgba(249, 249, 255, 0.8)",
+                        "surface-container-lowest": "#ffffff",
+                        "surface-tint": "#095db7",
+                        "surface-container-low": "#f1f3fc",
+                        "on-background": "#181c22",
+                        "surface-container": "#ebeef6",
+                        "secondary-container": "#b6d0ff",
+                        "on-error": "#ffffff",
+                        "on-tertiary-fixed": "#321200",
+                        "on-secondary": "#ffffff",
+                        "on-tertiary-fixed-variant": "#753400"
+                    },
+                    borderRadius: {
+                        "DEFAULT": "0.25rem",
+                        "lg": "0.5rem",
+                        "xl": "0.75rem",
+                        "full": "9999px"
+                    },
+                    spacing: {
+                        "element-gap": "0.75rem",
+                        "container-margin": "1rem",
+                        "touch-target-min": "40px",
+                        "section-gap": "2rem"
+                    },
+                    fontFamily: {
+                        "label-xs": ["Inter"],
+                        "body-sm": ["Inter"],
+                        "headline-md": ["Inter"],
+                        "body-md": ["Inter"],
+                        "label-sm": ["Inter"],
+                        "display-lg": ["Inter"]
+                    },
+                    fontSize: {
+                        "label-xs": ["10px", { lineHeight: "12px", fontWeight: "600" }],
+                        "body-sm": ["14px", { lineHeight: "20px", fontWeight: "500" }],
+                        "headline-md": ["18px", { lineHeight: "24px", fontWeight: "700" }],
+                        "body-md": ["16px", { lineHeight: "24px", fontWeight: "400" }],
+                        "label-sm": ["12px", { lineHeight: "16px", fontWeight: "500" }],
+                        "display-lg": ["24px", { lineHeight: "32px", letterSpacing: "-0.025em", fontWeight: "800" }]
+                    }
+                }
+            }
+        }
+    </script>
+<style>
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+        }
+        
+        .material-symbols-outlined.fill {
+            font-variation-settings: 'FILL' 1, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+        }
+
+        /* Ambient Stage Halo */
+        .stage-halo {
+            background: radial-gradient(circle at center, var(--tw-colors-stage-halo-start) 0%, transparent 70%);
+        }
+
+        /* Glassmorphism Blur */
+        .glass-panel {
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+        }
+
+        /* Smooth Hide/Show for Bottom Sheet */
+        .bottom-sheet {
+            transform: translateY(100%);
+            transition: transform 0.4s cubic-bezier(0.32, 0.72, 0, 1);
+        }
+        .bottom-sheet.open {
+            transform: translateY(0);
+        }
+        
+        .backdrop {
+            opacity: 0;
+            pointer-events: none;
+            transition: opacity 0.3s ease;
+        }
+        .backdrop.open {
+            opacity: 1;
+            pointer-events: auto;
+        }
+    </style>
+</head>
+<body class="bg-background text-on-background font-body-md antialiased min-h-screen flex flex-col relative overflow-x-hidden selection:bg-secondary-container selection:text-on-secondary-container">
+<!-- Top App Bar (Task-Focused Context, hidden TopNav but showing Back) -->
+<header class="w-full top-0 sticky z-40 bg-surface-glass glass-panel border-none">
+<div class="flex justify-between items-center px-6 h-16 w-full max-w-3xl mx-auto">
+<button aria-label="Go Back" class="w-touch-target-min h-touch-target-min flex items-center justify-center rounded-full hover:bg-surface-container-high active:scale-95 transition-all duration-150 text-on-surface-variant">
+<span class="material-symbols-outlined">arrow_back</span>
+</button>
+<div class="flex items-center gap-2">
+<img alt="HeyCyan Logo" class="h-6 w-6 object-contain" src="https://lh3.googleusercontent.com/aida/AP1WRLvf9P6GqbyZ-mEkmoK8rz1k4WZ_EVB3-QXNxJuPNPBXhE-AMcGFIXlzvBQWNlt3ht9vPSoOFxSjqiRT8kFzphsTfDkWvcbiDljU1yXVJeoxk4TUnAs9kZEatcm-OfBZ0TNpNBzRaov9gcSoBbsvDbZ_YrX-lSgtxdTWEHkV-9HezubKmLzI_tbME-U8jAy8KRpVzCORgiZhMWnXEEtDgcGJX8_oVjbr3pJ3HFdSS7WBtkk3Npy4i4nqUQ"/>
+<h1 class="font-headline-md text-on-background">Device Pairing</h1>
+</div>
+<button aria-label="Help" class="w-touch-target-min h-touch-target-min flex items-center justify-center rounded-full hover:bg-surface-container-high active:scale-95 transition-all duration-150 text-on-surface-variant">
+<span class="material-symbols-outlined">help</span>
+</button>
+</div>
+</header>
+<main class="flex-1 w-full max-w-3xl mx-auto flex flex-col px-container-margin pb-32">
+<!-- Active Device Section -->
+<section class="mt-section-gap flex flex-col gap-element-gap">
+<div class="flex items-center justify-between px-2">
+<h2 class="font-headline-md text-on-surface-variant">Active Device</h2>
+<div class="flex items-center gap-1.5 bg-surface-container-low px-3 py-1 rounded-full border border-surface-container-high shadow-sm">
+<div class="w-2 h-2 rounded-full bg-status-connected animate-pulse"></div>
+<span class="font-label-sm text-on-surface-variant">Connected</span>
+</div>
+</div>
+<div class="bg-surface-container-lowest rounded-xl p-6 shadow-sm border border-surface-container relative overflow-hidden group">
+<!-- Soft background glow for connected state -->
+<div class="absolute -top-10 -right-10 w-32 h-32 bg-status-connected opacity-5 rounded-full blur-2xl"></div>
+<div class="flex items-center justify-between relative z-10">
+<div class="flex flex-col gap-1">
+<h3 class="font-headline-md text-on-background">HeyCyan Pro</h3>
+<p class="font-body-sm text-on-surface-variant">Firmware v2.4.1</p>
+</div>
+<div class="flex flex-col items-end gap-1">
+<div class="flex items-center gap-1.5 text-on-surface">
+<span class="material-symbols-outlined fill text-lg">battery_5_bar</span>
+<span class="font-label-sm font-semibold">84%</span>
+</div>
+<button class="text-primary font-label-sm hover:underline mt-1">Manage</button>
+</div>
+</div>
+</div>
+</section>
+<!-- Divider -->
+<div class="h-px bg-surface-container-high w-full my-section-gap"></div>
+<!-- Step-by-Step Pairing Section -->
+<section class="flex flex-col gap-6">
+<div class="px-2">
+<h2 class="font-display-lg text-on-background">Pair New Device</h2>
+<p class="font-body-sm text-on-surface-variant mt-1">Follow the steps below to connect a new device to your ecosystem.</p>
+</div>
+<div class="flex flex-col gap-4 relative">
+<!-- Vertical Line Connector -->
+<div class="absolute left-[1.35rem] top-10 bottom-10 w-0.5 bg-surface-container-high z-0"></div>
+<!-- Step 1: Scanning -->
+<div class="flex gap-4 relative z-10">
+<div class="w-10 h-10 rounded-full bg-primary flex items-center justify-center shadow-sm shrink-0">
+<span class="font-headline-md text-on-primary">1</span>
+</div>
+<div class="flex-1 bg-surface-container-lowest rounded-xl p-5 shadow-sm border border-surface-container">
+<div class="flex items-start justify-between">
+<div class="flex flex-col gap-1">
+<h3 class="font-headline-md text-on-background">Scan Nearby</h3>
+<p class="font-body-sm text-on-surface-variant">Searching for devices in pairing mode via Bluetooth.</p>
+</div>
+<div class="w-8 h-8 rounded-full bg-surface-container flex items-center justify-center animate-spin">
+<span class="material-symbols-outlined text-on-surface-variant text-sm">sync</span>
+</div>
+</div>
+<!-- Mock Scanning Radar -->
+<div class="mt-4 h-24 bg-surface-container-low rounded-lg relative overflow-hidden flex items-center justify-center border border-surface-container-high">
+<div class="absolute w-full h-full stage-halo"></div>
+<!-- Radar sweep effect (simplified with CSS) -->
+<div class="absolute w-full h-full rounded-full border border-primary/20 scale-50 animate-ping"></div>
+<div class="absolute w-full h-full rounded-full border border-primary/10 scale-75 animate-ping" style="animation-delay: 0.5s;"></div>
+<!-- Found Device Blip (Triggering Sheet) -->
+<button class="relative z-10 flex flex-col items-center gap-1 group focus:outline-none focus:ring-2 focus:ring-primary rounded-lg p-2" id="trigger-sheet">
+<div class="w-3 h-3 bg-status-connected rounded-full shadow-[0_0_8px_rgba(18,117,226,0.8)] group-hover:scale-125 transition-transform duration-200"></div>
+<span class="font-label-xs text-status-connected bg-surface-container-lowest px-2 py-0.5 rounded shadow-sm border border-surface-container-high opacity-90">HeyCyan X1</span>
+</button>
+</div>
+</div>
+</div>
+<!-- Step 2: Manual Entry -->
+<div class="flex gap-4 relative z-10 opacity-60 grayscale-[0.2]">
+<div class="w-10 h-10 rounded-full bg-surface-container-high flex items-center justify-center border border-outline-variant shrink-0">
+<span class="font-headline-md text-on-surface-variant">2</span>
+</div>
+<div class="flex-1 bg-surface-container-lowest rounded-xl p-5 shadow-sm border border-surface-container">
+<h3 class="font-headline-md text-on-background">Choose by Brand</h3>
+<p class="font-body-sm text-on-surface-variant mb-4 mt-1">If your device isn't appearing, select it manually.</p>
+<div class="grid grid-cols-2 gap-3">
+<button class="h-12 rounded-lg border border-surface-container-high bg-surface flex items-center justify-center gap-2 hover:bg-surface-container transition-colors" disabled="">
+<span class="material-symbols-outlined text-sm text-on-surface-variant">qr_code_2</span>
+<span class="font-label-sm text-on-surface">Eyewear</span>
+</button>
+<button class="h-12 rounded-lg border border-surface-container-high bg-surface flex items-center justify-center gap-2 hover:bg-surface-container transition-colors" disabled="">
+<span class="material-symbols-outlined text-sm text-on-surface-variant">headphones</span>
+<span class="font-label-sm text-on-surface">Audio</span>
+</button>
+</div>
+</div>
+</div>
+</div>
+</section>
+</main>
+<!-- Backdrop for Bottom Sheet -->
+<div class="fixed inset-0 bg-on-background/40 z-50 backdrop backdrop-blur-sm open" id="sheet-backdrop"></div>
+<!-- Bottom Sheet: Found Device Details -->
+<div class="fixed bottom-0 left-0 w-full z-50 bottom-sheet bg-surface-container-lowest rounded-t-[1.5rem] shadow-[0_-8px_30px_rgba(0,0,0,0.08)] open flex flex-col max-h-[90vh]" id="device-sheet">
+<!-- Drag Handle -->
+<div class="w-full flex justify-center pt-3 pb-2 touch-none" id="sheet-handle">
+<div class="w-12 h-1.5 bg-surface-container-high rounded-full"></div>
+</div>
+<div class="px-6 pb-safe overflow-y-auto flex-1">
+<!-- Stage Header & Image -->
+<div class="relative w-full h-48 flex items-center justify-center mb-4">
+<div class="absolute inset-0 stage-halo rounded-xl"></div>
+<img alt="HeyCyan X1 Render" class="relative z-10 w-full h-full object-contain mix-blend-multiply drop-shadow-md" src="https://lh3.googleusercontent.com/aida/AP1WRLtC7A76AZx5Vvs01DR1AONRS4MFiiy6OcZRsny96grxRQF2ZS2eBKzw2HbriSV2OGm_TieMs34N_si8weTX7HyVkBHC91drTonf4aVULwb39a9rXYQUWtqYBkJ_huvmNUDGqWVrns5a5RTlxAnpNC-2iuO9CijSKBVBtsM8qLrhUAhMEOsBCoRJrnUv20ylnqN4mhwNtKdLmz3EGErlaVRmXiBEnCPrCXGJZSy_VFYdvkOc-OaIua4WLw"/>
+</div>
+<!-- Device Title -->
+<div class="text-center mb-6">
+<div class="inline-flex items-center gap-1.5 bg-secondary-fixed text-on-secondary-fixed px-3 py-1 rounded-full mb-2">
+<span class="material-symbols-outlined text-sm">bluetooth_searching</span>
+<span class="font-label-xs">Ready to Pair</span>
+</div>
+<h2 class="font-display-lg text-on-background">HeyCyan X1</h2>
+<p class="font-body-sm text-on-surface-variant">Smart Audio Sunglasses</p>
+</div>
+<!-- Capabilities Grid -->
+<div class="grid grid-cols-3 gap-3 mb-8">
+<div class="bg-surface-container-low rounded-lg p-3 flex flex-col items-center text-center gap-2 border border-surface-container-high">
+<div class="w-8 h-8 rounded-full bg-surface-container flex items-center justify-center text-on-surface">
+<span class="material-symbols-outlined text-lg">mic</span>
+</div>
+<span class="font-label-xs text-on-surface-variant">Voice Assistant</span>
+</div>
+<div class="bg-surface-container-low rounded-lg p-3 flex flex-col items-center text-center gap-2 border border-surface-container-high">
+<div class="w-8 h-8 rounded-full bg-surface-container flex items-center justify-center text-on-surface">
+<span class="material-symbols-outlined text-lg">camera</span>
+</div>
+<span class="font-label-xs text-on-surface-variant">HD Camera</span>
+</div>
+<div class="bg-surface-container-low rounded-lg p-3 flex flex-col items-center text-center gap-2 border border-surface-container-high">
+<div class="w-8 h-8 rounded-full bg-surface-container flex items-center justify-center text-on-surface">
+<span class="material-symbols-outlined text-lg">volume_up</span>
+</div>
+<span class="font-label-xs text-on-surface-variant">Spatial Audio</span>
+</div>
+</div>
+<!-- Primary Action -->
+<div class="mt-auto mb-6 px-2">
+<button class="w-full h-14 bg-inverse-surface text-inverse-on-surface font-headline-md rounded-xl shadow-md hover:bg-on-background active:scale-[0.98] transition-all duration-200 flex items-center justify-center gap-2">
+<span class="material-symbols-outlined">bluetooth_connected</span>
+                    Connect Device
+                </button>
+</div>
+</div>
+</div>
+<!-- Script to handle Bottom Sheet logic -->
+<script>
+        document.addEventListener('DOMContentLoaded', () => {
+            const sheet = document.getElementById('device-sheet');
+            const backdrop = document.getElementById('sheet-backdrop');
+            const triggerBtn = document.getElementById('trigger-sheet');
+            
+            // Function to close sheet
+            const closeSheet = () => {
+                sheet.classList.remove('open');
+                backdrop.classList.remove('open');
+            };
+
+            // Function to open sheet
+            const openSheet = () => {
+                sheet.classList.add('open');
+                backdrop.classList.add('open');
+            };
+
+            // Close when clicking backdrop
+            backdrop.addEventListener('click', closeSheet);
+
+            // Open when clicking the blip on the radar
+            triggerBtn.addEventListener('click', openSheet);
+
+            // Simple swipe down to close logic
+            let startY = 0;
+            let currentY = 0;
+            const handle = document.getElementById('sheet-handle');
+
+            handle.addEventListener('touchstart', (e) => {
+                startY = e.touches[0].clientY;
+            }, {passive: true});
+
+            handle.addEventListener('touchmove', (e) => {
+                currentY = e.touches[0].clientY;
+                const diff = currentY - startY;
+                if (diff > 0) {
+                    sheet.style.transform = `translateY(${diff}px)`;
+                }
+            }, {passive: true});
+
+            handle.addEventListener('touchend', (e) => {
+                const diff = currentY - startY;
+                sheet.style.transform = ''; // reset inline style
+                if (diff > 50) {
+                    closeSheet();
+                }
+            });
+        });
+    </script>
+</body></html>

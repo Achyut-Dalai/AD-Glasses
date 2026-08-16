@@ -1,0 +1,280 @@
+<!DOCTYPE html>
+
+<html class="light" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" name="viewport"/>
+<title>Assistant Hub - Lumina Graphite</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    colors: {
+                        "on-secondary": "#ffffff",
+                        "tertiary-container": "#964400",
+                        "on-error-container": "#93000a",
+                        "surface-variant": "#dfe2eb",
+                        "surface-container": "#ebeef6",
+                        "error": "#ba1a1a",
+                        "on-secondary-fixed-variant": "#2e476f",
+                        "on-tertiary-fixed": "#321200",
+                        "surface-container-highest": "#dfe2eb",
+                        "surface-dim": "#d7dae2",
+                        "inverse-on-surface": "#eef1f9",
+                        "primary": "#004389",
+                        "stage-halo-start": "rgba(10, 115, 224, 0.15)",
+                        "on-primary": "#ffffff",
+                        "on-tertiary-container": "#ffc9ac",
+                        "secondary-fixed-dim": "#aec7f6",
+                        "on-primary-fixed": "#001b3e",
+                        "secondary-fixed": "#d6e3ff",
+                        "secondary-container": "#b6d0ff",
+                        "on-primary-fixed-variant": "#00458d",
+                        "tertiary": "#723200",
+                        "surface-bright": "#f8f9ff",
+                        "on-surface-variant": "#424752",
+                        "on-secondary-container": "#3f5881",
+                        "on-secondary-fixed": "#001b3d",
+                        "surface": "#f8f9ff",
+                        "on-error": "#ffffff",
+                        "on-surface": "#181c22",
+                        "on-background": "#181c22",
+                        "inverse-surface": "#2d3137",
+                        "surface-glass": "rgba(249, 249, 255, 0.8)",
+                        "on-tertiary": "#ffffff",
+                        "secondary": "#465f88",
+                        "surface-container-low": "#f1f3fc",
+                        "inverse-primary": "#aac7ff",
+                        "primary-fixed": "#d6e3ff",
+                        "on-primary-container": "#c0d5ff",
+                        "primary-fixed-dim": "#aac7ff",
+                        "surface-container-high": "#e5e8f1",
+                        "error-container": "#ffdad6",
+                        "surface-container-lowest": "#ffffff",
+                        "outline-variant": "#c2c6d4",
+                        "on-tertiary-fixed-variant": "#753400",
+                        "tertiary-fixed": "#ffdbc9",
+                        "surface-tint": "#095db7",
+                        "background-alt": "#F6F7F9",
+                        "tertiary-fixed-dim": "#ffb68c",
+                        "background": "#f8f9ff",
+                        "status-connected": "#1275e2",
+                        "primary-container": "#005ab4",
+                        "outline": "#727783"
+                    },
+                    borderRadius: {
+                        "DEFAULT": "0.25rem",
+                        "lg": "0.5rem",
+                        "xl": "0.75rem",
+                        "full": "9999px"
+                    },
+                    spacing: {
+                        "touch-target-min": "40px",
+                        "element-gap": "0.75rem",
+                        "container-margin": "1rem",
+                        "section-gap": "2rem"
+                    },
+                    fontFamily: {
+                        "label-sm": ["Inter"],
+                        "label-xs": ["Inter"],
+                        "display-lg": ["Inter"],
+                        "body-sm": ["Inter"],
+                        "body-md": ["Inter"],
+                        "headline-md": ["Inter"],
+                        "display-sm": ["Inter"],
+                        "headline-sm": ["Inter"],
+                        "label-md": ["Inter"]
+                    },
+                    fontSize: {
+                        "label-sm": ["12px", { lineHeight: "16px", fontWeight: "500" }],
+                        "label-xs": ["10px", { lineHeight: "12px", fontWeight: "600" }],
+                        "display-lg": ["24px", { lineHeight: "32px", letterSpacing: "-0.025em", fontWeight: "800" }],
+                        "body-sm": ["14px", { lineHeight: "20px", fontWeight: "500" }],
+                        "body-md": ["16px", { lineHeight: "24px", fontWeight: "400" }],
+                        "headline-md": ["18px", { lineHeight: "24px", fontWeight: "700" }],
+                        "display-sm": ["20px", { lineHeight: "28px", letterSpacing: "0.1em", fontWeight: "700" }],
+                        "headline-sm": ["16px", { lineHeight: "24px", fontWeight: "600" }],
+                        "label-md": ["14px", { lineHeight: "20px", fontWeight: "600" }]
+                    }
+                }
+            }
+        };
+    </script>
+<style>
+        .stage-halo {
+            background: radial-gradient(circle at center, rgba(10, 115, 224, 0.08) 0%, rgba(248, 249, 255, 0) 70%);
+        }
+        .glass-panel {
+            background: rgba(255, 255, 255, 0.6);
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+            border: 1px solid rgba(255, 255, 255, 0.4);
+        }
+    </style>
+<style>
+    body {
+      min-height: max(884px, 100dvh);
+    }
+  </style>
+  </head>
+<body class="bg-background text-on-surface antialiased min-h-screen flex flex-col pb-safe">
+<!-- TopAppBar -->
+<header class="fixed top-0 w-full z-50 bg-surface/80 backdrop-blur-md">
+<div class="flex items-center justify-between px-container-margin h-14 w-full max-w-5xl mx-auto">
+<button class="flex items-center justify-center w-touch-target-min h-touch-target-min rounded-full hover:bg-surface-container transition-opacity duration-200 active:opacity-70 text-on-surface-variant">
+<span class="material-symbols-outlined" data-icon="glasses">qr_code_2</span>
+</button>
+<h1 class="font-display-sm text-display-sm tracking-widest text-on-surface uppercase">AD GLASSES</h1>
+<button class="flex items-center justify-center w-touch-target-min h-touch-target-min rounded-full overflow-hidden hover:bg-surface-container transition-opacity duration-200 active:opacity-70 border border-outline-variant">
+<img alt="User Profile" class="w-full h-full object-cover" data-alt="A small, professional avatar portrait of a user in a well-lit, modern corporate environment, wearing subtle smart glasses. Soft, neutral color palette with high-key lighting." src="https://lh3.googleusercontent.com/aida-public/AB6AXuDiXcILSiTTak-Lje8bKPmr5uw-1lGcZ9DHcx9nf7GP-uIgl-Wur8ySh_egGkokaVKiLQSEXOxeBTy2MZsBLtKoKS4ptLdm2Rhanwpfu2Pmn5qBrPmZ7wClxJv2y9vW4kNqKgpuItWhx8dN0MNYZ4CdvBUZ8kks47PXgSEW6xymbIRmy2eNo2L6CBFneTurbqLnbqsyomr1JNdJ6LziFIsceWK5V0odXsC-3mEHqp_1gVtAD-D_KJDy"/>
+</button>
+</div>
+</header>
+<!-- Main Content Canvas -->
+<main class="flex-grow pt-[calc(3.5rem+1rem)] px-container-margin pb-[calc(5rem+2rem)] max-w-5xl mx-auto w-full flex flex-col gap-section-gap">
+<!-- Multimodal Stage (2x2 Grid) -->
+<section class="relative rounded-2xl bg-surface-container-low shadow-sm p-4 overflow-hidden">
+<div class="absolute inset-0 stage-halo pointer-events-none"></div>
+<div class="relative z-10 flex flex-col gap-4">
+<div class="flex items-center justify-between">
+<h2 class="font-headline-md text-headline-md text-on-surface">Assistant Modalities</h2>
+<div class="flex items-center gap-2 px-3 py-1 bg-surface-container-lowest rounded-full border border-outline-variant shadow-sm">
+<span class="w-2 h-2 rounded-full bg-status-connected"></span>
+<span class="font-label-xs text-label-xs text-on-surface-variant uppercase tracking-wider">Device Active</span>
+</div>
+</div>
+<div class="grid grid-cols-2 gap-3">
+<!-- Live Voice -->
+<button class="flex flex-col items-center justify-center gap-3 bg-surface-container-lowest p-6 rounded-xl shadow-sm hover:bg-surface transition-colors border border-transparent hover:border-outline-variant group">
+<div class="w-12 h-12 rounded-full bg-primary/10 flex items-center justify-center group-hover:scale-110 transition-transform">
+<span class="material-symbols-outlined text-primary text-2xl" data-icon="mic" data-weight="fill" style="font-variation-settings: 'FILL' 1;">mic</span>
+</div>
+<span class="font-body-sm text-body-sm text-on-surface font-semibold">Voice</span>
+</button>
+<!-- Visual Search -->
+<button class="flex flex-col items-center justify-center gap-3 bg-surface-container-lowest p-6 rounded-xl shadow-sm hover:bg-surface transition-colors border border-transparent hover:border-outline-variant group">
+<div class="w-12 h-12 rounded-full bg-secondary-container/30 flex items-center justify-center group-hover:scale-110 transition-transform">
+<span class="material-symbols-outlined text-primary text-2xl" data-icon="center_focus_strong">center_focus_strong</span>
+</div>
+<span class="font-body-sm text-body-sm text-on-surface font-semibold">Visual</span>
+</button>
+<!-- Text Query -->
+<button class="flex flex-col items-center justify-center gap-3 bg-surface-container-lowest p-6 rounded-xl shadow-sm hover:bg-surface transition-colors border border-transparent hover:border-outline-variant group">
+<div class="w-12 h-12 rounded-full bg-secondary-container/30 flex items-center justify-center group-hover:scale-110 transition-transform">
+<span class="material-symbols-outlined text-primary text-2xl" data-icon="chat">chat</span>
+</div>
+<span class="font-body-sm text-body-sm text-on-surface font-semibold">Text</span>
+</button>
+<!-- Live Translate -->
+<button class="flex flex-col items-center justify-center gap-3 bg-surface-container-lowest p-6 rounded-xl shadow-sm hover:bg-surface transition-colors border border-transparent hover:border-outline-variant group">
+<div class="w-12 h-12 rounded-full bg-secondary-container/30 flex items-center justify-center group-hover:scale-110 transition-transform">
+<span class="material-symbols-outlined text-primary text-2xl" data-icon="translate">translate</span>
+</div>
+<span class="font-body-sm text-body-sm text-on-surface font-semibold">Translate</span>
+</button>
+</div>
+</div>
+</section>
+<!-- Privacy Boundary Indicator -->
+<div class="flex items-center justify-center gap-2 py-2">
+<span class="material-symbols-outlined text-outline text-sm" data-icon="lock">lock</span>
+<span class="font-label-sm text-label-sm text-outline uppercase tracking-wider">On-Device Processing</span>
+</div>
+<!-- Recent Conversations List -->
+<section class="flex flex-col gap-4">
+<h3 class="font-headline-sm text-headline-sm text-on-surface-variant px-1">Recent Activity</h3>
+<div class="flex flex-col gap-2">
+<!-- List Item 1 -->
+<div class="flex items-start gap-4 p-4 bg-surface-container-lowest rounded-xl shadow-sm cursor-pointer hover:bg-surface transition-colors border border-transparent hover:border-outline-variant">
+<div class="w-10 h-10 rounded-full bg-surface-container-low flex items-center justify-center shrink-0">
+<span class="material-symbols-outlined text-secondary text-xl" data-icon="restaurant">restaurant</span>
+</div>
+<div class="flex-grow flex flex-col min-w-0">
+<div class="flex justify-between items-baseline mb-1">
+<span class="font-body-sm text-body-sm font-semibold text-on-surface truncate">Menu Translation</span>
+<span class="font-label-xs text-label-xs text-on-surface-variant shrink-0 ml-2">2h ago</span>
+</div>
+<p class="font-body-sm text-body-sm text-on-surface-variant truncate">Translated Italian menu items via visual search.</p>
+</div>
+</div>
+<!-- List Item 2 -->
+<div class="flex items-start gap-4 p-4 bg-surface-container-lowest rounded-xl shadow-sm cursor-pointer hover:bg-surface transition-colors border border-transparent hover:border-outline-variant">
+<div class="w-10 h-10 rounded-full bg-surface-container-low flex items-center justify-center shrink-0">
+<span class="material-symbols-outlined text-secondary text-xl" data-icon="route">route</span>
+</div>
+<div class="flex-grow flex flex-col min-w-0">
+<div class="flex justify-between items-baseline mb-1">
+<span class="font-body-sm text-body-sm font-semibold text-on-surface truncate">Navigation to Station</span>
+<span class="font-label-xs text-label-xs text-on-surface-variant shrink-0 ml-2">Yesterday</span>
+</div>
+<p class="font-body-sm text-body-sm text-on-surface-variant truncate">Voice query for quickest walking route to Central.</p>
+</div>
+</div>
+<!-- List Item 3 -->
+<div class="flex items-start gap-4 p-4 bg-surface-container-lowest rounded-xl shadow-sm cursor-pointer hover:bg-surface transition-colors border border-transparent hover:border-outline-variant">
+<div class="w-10 h-10 rounded-full bg-surface-container-low flex items-center justify-center shrink-0">
+<span class="material-symbols-outlined text-secondary text-xl" data-icon="lightbulb">lightbulb</span>
+</div>
+<div class="flex-grow flex flex-col min-w-0">
+<div class="flex justify-between items-baseline mb-1">
+<span class="font-body-sm text-body-sm font-semibold text-on-surface truncate">Smart Home Summary</span>
+<span class="font-label-xs text-label-xs text-on-surface-variant shrink-0 ml-2">Yesterday</span>
+</div>
+<p class="font-body-sm text-body-sm text-on-surface-variant truncate">Asked for status of living room lights and thermostat.</p>
+</div>
+</div>
+</div>
+</section>
+</main>
+<!-- BottomNavBar -->
+<nav class="md:hidden fixed bottom-0 left-0 w-full z-50 flex justify-around items-center px-4 pb-safe h-20 bg-surface-container dark:bg-surface-container shadow-sm rounded-t-xl transition-all duration-300 ease-in-out scale-active-95">
+<a class="flex flex-col items-center justify-center text-on-surface-variant hover:text-primary transition-colors group" href="#">
+<span class="material-symbols-outlined text-2xl mb-1 group-hover:scale-110 transition-transform" data-icon="home">home</span>
+<span class="font-label-md text-label-md">Home</span>
+</a>
+<!-- Active Tab: Assistant -->
+<a class="flex flex-col items-center justify-center bg-secondary-container text-on-secondary-container rounded-full px-5 py-1" href="#">
+<span class="material-symbols-outlined text-2xl mb-1" data-icon="smart_toy" data-weight="fill" style="font-variation-settings: 'FILL' 1;">smart_toy</span>
+<span class="font-label-md text-label-md">Assistant</span>
+</a>
+<a class="flex flex-col items-center justify-center text-on-surface-variant hover:text-primary transition-colors group" href="#">
+<span class="material-symbols-outlined text-2xl mb-1 group-hover:scale-110 transition-transform" data-icon="auto_stories">auto_stories</span>
+<span class="font-label-md text-label-md">Library</span>
+</a>
+<a class="flex flex-col items-center justify-center text-on-surface-variant hover:text-primary transition-colors group" href="#">
+<span class="material-symbols-outlined text-2xl mb-1 group-hover:scale-110 transition-transform" data-icon="bolt">bolt</span>
+<span class="font-label-md text-label-md">Automations</span>
+</a>
+</nav>
+<!-- Desktop Side Nav Spacer (Hidden on mobile) -->
+<div class="hidden md:flex fixed top-0 left-0 h-full w-64 bg-surface-container shadow-sm p-4 flex-col gap-4 z-40 border-r border-outline-variant pt-20">
+<a class="flex items-center gap-3 px-4 py-3 text-on-surface-variant hover:bg-surface hover:text-primary rounded-lg transition-colors" href="#">
+<span class="material-symbols-outlined" data-icon="home">home</span>
+<span class="font-body-md font-medium">Home</span>
+</a>
+<a class="flex items-center gap-3 px-4 py-3 bg-secondary-container text-on-secondary-container rounded-lg transition-colors" href="#">
+<span class="material-symbols-outlined" data-icon="smart_toy" data-weight="fill" style="font-variation-settings: 'FILL' 1;">smart_toy</span>
+<span class="font-body-md font-medium">Assistant</span>
+</a>
+<a class="flex items-center gap-3 px-4 py-3 text-on-surface-variant hover:bg-surface hover:text-primary rounded-lg transition-colors" href="#">
+<span class="material-symbols-outlined" data-icon="auto_stories">auto_stories</span>
+<span class="font-body-md font-medium">Library</span>
+</a>
+<a class="flex items-center gap-3 px-4 py-3 text-on-surface-variant hover:bg-surface hover:text-primary rounded-lg transition-colors" href="#">
+<span class="material-symbols-outlined" data-icon="bolt">bolt</span>
+<span class="font-body-md font-medium">Automations</span>
+</a>
+</div>
+<style>
+        /* Adjust main canvas padding for desktop side nav */
+        @media (min-width: 768px) {
+            main {
+                padding-left: calc(16rem + 1rem); /* 64 (w-64) * 0.25rem = 16rem */
+            }
+        }
+    </style>
+</body></html>

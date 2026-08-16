@@ -1,0 +1,230 @@
+<!DOCTYPE html>
+
+<html class="light" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0, viewport-fit=cover" name="viewport"/>
+<title>Video Detail - AD Glasses</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    "colors": {
+                        "surface-bright": "#f9f9ff",
+                        "surface-dim": "#d7dae3",
+                        "primary-fixed": "#d6e3ff",
+                        "primary": "#005ab4",
+                        "surface-container-high": "#e6e8f1",
+                        "on-error-container": "#93000a",
+                        "on-background": "#181c22",
+                        "on-surface": "#181c22",
+                        "tertiary-fixed": "#ffdbc9",
+                        "on-tertiary": "#ffffff",
+                        "on-primary-container": "#fefcff",
+                        "primary-container": "#0a73e0",
+                        "surface": "#f9f9ff",
+                        "on-secondary": "#ffffff",
+                        "background": "#f9f9ff",
+                        "primary-fixed-dim": "#aac7ff",
+                        "secondary": "#465f88",
+                        "on-secondary-container": "#3f5881",
+                        "surface-container-lowest": "#ffffff",
+                        "secondary-fixed": "#d6e3ff",
+                        "error": "#ba1a1a",
+                        "on-tertiary-container": "#fffbff",
+                        "surface-container-low": "#f1f3fc",
+                        "on-tertiary-fixed": "#321200",
+                        "on-primary-fixed-variant": "#00458d",
+                        "outline-variant": "#c1c6d5",
+                        "surface-tint": "#005db8",
+                        "error-container": "#ffdad6",
+                        "on-error": "#ffffff",
+                        "on-secondary-fixed": "#001b3d",
+                        "inverse-surface": "#2d3037",
+                        "secondary-fixed-dim": "#aec7f7",
+                        "secondary-container": "#b6d0ff",
+                        "on-secondary-fixed-variant": "#2d476f",
+                        "inverse-on-surface": "#eef0fa",
+                        "surface-container": "#ebedf7",
+                        "on-primary-fixed": "#001b3e",
+                        "on-primary": "#ffffff",
+                        "tertiary": "#964400",
+                        "on-tertiary-fixed-variant": "#763400",
+                        "surface-variant": "#e0e2eb",
+                        "on-surface-variant": "#414753",
+                        "tertiary-fixed-dim": "#ffb68c",
+                        "outline": "#717785",
+                        "tertiary-container": "#bd5700",
+                        "surface-container-highest": "#e0e2eb",
+                        "inverse-primary": "#aac7ff"
+                    },
+                    "borderRadius": {
+                        "DEFAULT": "0.25rem",
+                        "lg": "0.5rem",
+                        "xl": "0.75rem",
+                        "full": "9999px"
+                    },
+                    "fontFamily": {
+                        "headline": ["Inter"],
+                        "display": ["Inter"],
+                        "body": ["Inter"],
+                        "label": ["Inter"]
+                    }
+                }
+            }
+        }
+    </script>
+<style>
+    body {
+      min-height: max(884px, 100dvh);
+    }
+  </style>
+  </head>
+<body class="bg-background text-on-background font-body antialiased selection:bg-primary-container selection:text-on-primary-container min-h-screen flex flex-col">
+<!-- TopAppBar (From JSON logic, adapted for task-focused back navigation) -->
+<header class="w-full top-0 sticky bg-surface-bright dark:bg-surface-dim z-40 transition-colors">
+<div class="flex justify-between items-center px-6 h-16 w-full max-w-7xl mx-auto">
+<button aria-label="Go back" class="text-on-surface-variant dark:text-on-surface-variant hover:bg-surface-container-high dark:hover:bg-surface-container-highest transition-colors rounded-full p-2 active:scale-95 duration-150 flex items-center justify-center">
+<span class="material-symbols-outlined text-2xl">arrow_back</span>
+</button>
+<h1 class="font-headline text-headline-sm font-semibold text-on-surface">Video Details</h1>
+<button aria-label="Share" class="text-on-surface-variant dark:text-on-surface-variant hover:bg-surface-container-high dark:hover:bg-surface-container-highest transition-colors rounded-full p-2 active:scale-95 duration-150 flex items-center justify-center">
+<span class="material-symbols-outlined text-2xl">share</span>
+</button>
+</div>
+<div class="h-px w-full bg-surface-container-low dark:bg-surface-container"></div>
+</header>
+<!-- Main Content Canvas -->
+<main class="flex-grow w-full max-w-4xl mx-auto px-4 sm:px-6 md:px-8 py-6 pb-32">
+<!-- Video Player Section -->
+<section class="mb-8 rounded-2xl overflow-hidden shadow-sm relative group cursor-pointer bg-surface-container-low">
+<div class="aspect-video relative">
+<img class="w-full h-full object-cover" data-alt="A high-resolution still frame from a point-of-view smart glasses recording. The scene shows an architectural blueprint spread out on a well-lit wooden desk. The perspective is first-person, focusing on hands pointing at specific structural lines. The aesthetic is clean, professional, and brightly lit with cool daylight, typical of a modern engineering office environment." src="https://lh3.googleusercontent.com/aida-public/AB6AXuCpukWkf3kRF4VRoxWPeJUO_bXCNzdwnO1w01uxPpenKj6UiQwfErFSWj6RLL-MJcVHfq0Bd5-R3zDy6gPjjZFlyYDUu_b7PrfPFTLI8ZrzJvKaLwZcZrr73O6bJYD0sWj4_rBKtIzfzSUCJCQr-_9nTgMOiQG4XJ2ViJp9cY5qpgYOnT3sSpdk-j0i8UCHpSeijrJF9rI7-XYgrPOMaES8RE1iJvITj6lr9bqExg-Qc6IwqhbT28I-"/>
+<div class="absolute inset-0 bg-black/20 flex items-center justify-center transition-opacity group-hover:bg-black/30">
+<button aria-label="Play video" class="w-16 h-16 bg-surface-bright/90 backdrop-blur-md rounded-full flex items-center justify-center text-primary shadow-lg transform transition-transform group-hover:scale-105 active:scale-95">
+<span class="material-symbols-outlined text-4xl" style="font-variation-settings: 'FILL' 1;">play_arrow</span>
+</button>
+</div>
+<!-- Inline Duration Badge -->
+<div class="absolute bottom-4 right-4 bg-inverse-surface/80 backdrop-blur-sm text-inverse-on-surface font-label text-xs font-medium px-2 py-1 rounded-md">
+                    0:45
+                </div>
+</div>
+<!-- Video Metadata Bar -->
+<div class="bg-surface-bright px-4 py-3 flex items-center justify-between border-b border-surface-container-low">
+<h2 class="font-display font-medium text-on-surface truncate">Blueprint Walkthrough</h2>
+<div class="flex items-center gap-4 text-sm font-label text-on-surface-variant shrink-0">
+<div class="flex items-center gap-1.5" title="Resolution">
+<span class="material-symbols-outlined text-lg">hd</span>
+<span>1080p</span>
+</div>
+<div class="flex items-center gap-1.5 text-primary" title="Sync Status">
+<span class="material-symbols-outlined text-lg" style="font-variation-settings: 'FILL' 1;">cloud_done</span>
+<span>Auto-synced</span>
+</div>
+</div>
+</div>
+</section>
+<!-- Bento Grid Layout for Details & Actions -->
+<div class="grid grid-cols-1 md:grid-cols-12 gap-6">
+<!-- AI Insights (Left Col Desktop) -->
+<section class="md:col-span-8 bg-surface-bright rounded-2xl p-6 border border-surface-container-low shadow-sm">
+<div class="flex items-center gap-2 mb-4">
+<span class="material-symbols-outlined text-primary text-xl">smart_toy</span>
+<h3 class="font-headline text-lg font-semibold text-on-surface">AI Insights</h3>
+</div>
+<div class="space-y-4">
+<p class="text-on-surface-variant text-sm font-body leading-relaxed">
+                        Automated summary of recorded interactions and key points discussed during the session.
+                    </p>
+<ul class="space-y-3">
+<li class="flex items-start gap-3">
+<span class="material-symbols-outlined text-primary-container text-lg mt-0.5" style="font-variation-settings: 'FILL' 1;">check_circle</span>
+<span class="text-on-surface text-sm font-body">Identified structural load-bearing walls in the north quadrant blueprint.</span>
+</li>
+<li class="flex items-start gap-3">
+<span class="material-symbols-outlined text-primary-container text-lg mt-0.5" style="font-variation-settings: 'FILL' 1;">check_circle</span>
+<span class="text-on-surface text-sm font-body">Highlighted potential HVAC routing conflicts with current plumbing layout.</span>
+</li>
+<li class="flex items-start gap-3">
+<span class="material-symbols-outlined text-primary-container text-lg mt-0.5" style="font-variation-settings: 'FILL' 1;">check_circle</span>
+<span class="text-on-surface text-sm font-body">Confirmed material specifications for the secondary decking area.</span>
+</li>
+</ul>
+</div>
+<!-- Primary Action -->
+<button class="mt-6 w-full flex items-center justify-center gap-2 bg-primary text-on-primary font-label font-medium text-sm px-6 py-3 rounded-lg hover:bg-primary-container transition-colors active:scale-95 duration-150 shadow-sm">
+<span class="material-symbols-outlined text-xl">chat_bubble</span>
+                    Ask Assistant about this video
+                </button>
+</section>
+<!-- Secondary Actions (Right Col Desktop) -->
+<section class="md:col-span-4 flex flex-col gap-4">
+<div class="bg-surface-bright rounded-2xl p-5 border border-surface-container-low shadow-sm hover:shadow-md transition-shadow cursor-pointer group">
+<div class="flex items-center gap-3">
+<div class="w-10 h-10 rounded-full bg-secondary-container text-on-secondary-container flex items-center justify-center group-hover:bg-primary-container group-hover:text-on-primary-container transition-colors">
+<span class="material-symbols-outlined">imagesmode</span>
+</div>
+<div class="flex-grow">
+<h4 class="font-headline text-sm font-semibold text-on-surface">Extract frames</h4>
+<p class="text-xs text-on-surface-variant font-body">Save key moments as photos</p>
+</div>
+<span class="material-symbols-outlined text-on-surface-variant group-hover:text-primary transition-colors">chevron_right</span>
+</div>
+</div>
+<div class="bg-surface-bright rounded-2xl p-5 border border-surface-container-low shadow-sm hover:shadow-md transition-shadow cursor-pointer group">
+<div class="flex items-center gap-3">
+<div class="w-10 h-10 rounded-full bg-secondary-container text-on-secondary-container flex items-center justify-center group-hover:bg-primary-container group-hover:text-on-primary-container transition-colors">
+<span class="material-symbols-outlined">summarize</span>
+</div>
+<div class="flex-grow">
+<h4 class="font-headline text-sm font-semibold text-on-surface">Generate summary</h4>
+<p class="text-xs text-on-surface-variant font-body">Create formal text report</p>
+</div>
+<span class="material-symbols-outlined text-on-surface-variant group-hover:text-primary transition-colors">chevron_right</span>
+</div>
+</div>
+<div class="bg-surface-bright rounded-2xl p-5 border border-surface-container-low shadow-sm">
+<div class="flex items-center gap-3 mb-2">
+<div class="w-10 h-10 rounded-full bg-surface-container-highest text-on-surface-variant flex items-center justify-center">
+<span class="material-symbols-outlined">closed_caption</span>
+</div>
+<div>
+<h4 class="font-headline text-sm font-semibold text-on-surface">Transcription</h4>
+<p class="text-xs text-secondary font-medium font-body flex items-center gap-1">
+<span class="w-1.5 h-1.5 rounded-full bg-primary inline-block"></span>
+                                Completed
+                            </p>
+</div>
+</div>
+<button class="w-full mt-2 text-sm text-primary font-medium font-label py-1.5 hover:bg-surface-container-low rounded-md transition-colors text-left px-2">
+                        View full transcript
+                    </button>
+</div>
+</section>
+</div>
+</main>
+<!-- Persistent Bottom Player Controls (Minimal task-focused overlay) -->
+<!-- Note: Suppressed main nav JSON because this is a detail/task screen with a back button -->
+<div class="fixed bottom-6 left-1/2 transform -translate-x-1/2 w-[90%] max-w-sm bg-inverse-surface text-inverse-on-surface rounded-full px-4 py-3 flex items-center justify-between shadow-lg z-50">
+<button class="p-2 hover:bg-on-surface-variant/20 rounded-full transition-colors active:scale-95 flex items-center justify-center">
+<span class="material-symbols-outlined text-xl">replay_10</span>
+</button>
+<div class="flex items-center gap-3">
+<button class="w-10 h-10 bg-primary-container text-on-primary-container rounded-full flex items-center justify-center shadow-md active:scale-95 transition-transform">
+<span class="material-symbols-outlined text-2xl" style="font-variation-settings: 'FILL' 1;">play_arrow</span>
+</button>
+</div>
+<button class="p-2 hover:bg-on-surface-variant/20 rounded-full transition-colors active:scale-95 flex items-center justify-center">
+<span class="material-symbols-outlined text-xl">forward_10</span>
+</button>
+<div class="w-px h-6 bg-on-surface-variant/30 mx-1"></div>
+<button class="p-2 hover:bg-on-surface-variant/20 rounded-full transition-colors active:scale-95 flex items-center justify-center">
+<span class="material-symbols-outlined text-xl">volume_up</span>
+</button>
+</div>
+</body></html>

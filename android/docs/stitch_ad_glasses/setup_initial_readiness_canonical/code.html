@@ -1,0 +1,225 @@
+<!DOCTYPE html><html class="light" lang="en"><head>
+<meta charset="utf-8">
+<meta content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" name="viewport">
+<title>Glasses Setup</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&amp;display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet">
+<script id="tailwind-config">
+      tailwind.config = {
+        darkMode: "class",
+        theme: {
+          extend: {
+            "colors": {
+                    "on-tertiary-fixed-variant": "#753400",
+                    "primary-fixed-dim": "#aac7ff",
+                    "on-secondary": "#ffffff",
+                    "outline-variant": "#c2c6d4",
+                    "primary-container": "#005ab4",
+                    "on-surface-variant": "#424752",
+                    "on-secondary-fixed-variant": "#2e476f",
+                    "on-secondary-fixed": "#001b3d",
+                    "on-surface": "#181c22",
+                    "on-error-container": "#93000a",
+                    "tertiary-fixed-dim": "#ffb68c",
+                    "surface-container-lowest": "#ffffff",
+                    "surface-container-low": "#f1f3fc",
+                    "surface-tint": "#095db7",
+                    "tertiary-container": "#964400",
+                    "on-tertiary-container": "#ffc9ac",
+                    "on-primary-container": "#c0d5ff",
+                    "on-tertiary-fixed": "#321200",
+                    "inverse-primary": "#aac7ff",
+                    "on-error": "#ffffff",
+                    "secondary-container": "#b6d0ff",
+                    "primary": "#004389",
+                    "secondary": "#465f88",
+                    "primary-fixed": "#d6e3ff",
+                    "surface-container-highest": "#e0e2eb",
+                    "surface-container": "#ebedf7",
+                    "on-tertiary": "#ffffff",
+                    "surface": "#f9f9ff",
+                    "outline": "#727783",
+                    "secondary-fixed": "#d6e3ff",
+                    "inverse-surface": "#2d3037",
+                    "on-secondary-container": "#3f5881",
+                    "surface-dim": "#d7dae3",
+                    "background": "#f9f9ff",
+                    "error": "#ba1a1a",
+                    "surface-bright": "#f9f9ff",
+                    "tertiary-fixed": "#ffdbc9",
+                    "on-primary-fixed": "#001b3e",
+                    "secondary-fixed-dim": "#aec7f6",
+                    "surface-container-high": "#e6e8f1",
+                    "surface-variant": "#e0e2eb",
+                    "error-container": "#ffdad6",
+                    "inverse-on-surface": "#eef0fa",
+                    "on-primary-fixed-variant": "#00458d",
+                    "on-primary": "#ffffff",
+                    "on-background": "#181c22",
+                    "tertiary": "#723200"
+            },
+            "borderRadius": {
+                    "DEFAULT": "0.25rem",
+                    "lg": "0.5rem",
+                    "xl": "0.75rem",
+                    "full": "9999px"
+            },
+            "spacing": {
+                    "container-padding": "1rem",
+                    "grid-gutter": "1rem",
+                    "element-gap": "0.75rem",
+                    "section-gap": "1.5rem"
+            },
+            "fontFamily": {
+                    "display-sm": ["Inter"],
+                    "label-md": ["Inter"],
+                    "headline-sm": ["Inter"],
+                    "body-sm": ["Inter"],
+                    "body-md": ["Inter"],
+                    "label-lg": ["Inter"],
+                    "label-sm": ["Inter"]
+            },
+            "fontSize": {
+                    "display-sm": ["1.125rem", {"lineHeight": "1.5rem", "letterSpacing": "0.15em", "fontWeight": "700"}],
+                    "label-md": ["11px", {"lineHeight": "1rem", "fontWeight": "500"}],
+                    "headline-sm": ["0.875rem", {"lineHeight": "1.25rem", "fontWeight": "600"}],
+                    "body-sm": ["0.75rem", {"lineHeight": "1rem", "fontWeight": "400"}],
+                    "body-md": ["0.875rem", {"lineHeight": "1.25rem", "fontWeight": "400"}],
+                    "label-lg": ["0.75rem", {"lineHeight": "1rem", "fontWeight": "600"}],
+                    "label-sm": ["10px", {"lineHeight": "12px", "fontWeight": "500"}]
+            }
+          }
+        }
+      }
+    </script>
+<style>
+        .pb-safe { padding-bottom: env(safe-area-inset-bottom, 20px); }
+        .pt-safe { padding-top: env(safe-area-inset-top, 0px); }
+        body { -webkit-tap-highlight-color: transparent; }
+    </style>
+</head>
+<body class="bg-[#F6F7F9] text-on-surface min-h-screen flex flex-col font-body-md antialiased pt-safe pb-safe selection:bg-primary-container selection:text-on-primary-container">
+<!-- TopAppBar -->
+<header class="bg-surface dark:bg-surface-dim w-full top-0 sticky z-50 transition-colors duration-200">
+<div class="flex items-center justify-between px-4 py-2 w-full max-w-5xl mx-auto h-14">
+<button aria-label="Go back" class="w-10 h-10 flex items-center justify-center rounded-full hover:bg-surface-container-highest/50 transition-colors duration-200 text-on-surface-variant dark:text-outline">
+<span class="material-symbols-outlined text-[24px]">close</span>
+</button>
+<h1 class="font-display-sm text-display-sm text-on-surface dark:text-on-surface-variant flex-1 text-center truncate px-4">Glasses Setup</h1>
+<button aria-label="Help" class="w-10 h-10 flex items-center justify-center rounded-full hover:bg-surface-container-highest/50 transition-colors duration-200 text-on-surface-variant dark:text-outline">
+<span class="material-symbols-outlined text-[24px]">help</span>
+</button>
+</div>
+</header>
+<!-- Main Content Canvas -->
+<main class="flex-1 w-full max-w-md mx-auto px-container-padding flex flex-col pt-4 pb-24">
+<!-- Progress Indicator -->
+<div class="flex items-center justify-center space-x-2 mb-section-gap w-full px-4">
+<div class="flex-1 flex flex-col items-center gap-1">
+<div class="w-full h-1.5 rounded-full bg-primary relative overflow-hidden"></div>
+<span class="font-label-md text-label-md text-primary">Prepare</span>
+</div>
+<div class="flex-1 flex flex-col items-center gap-1 opacity-40">
+<div class="w-full h-1.5 rounded-full bg-surface-dim relative overflow-hidden"></div>
+<span class="font-label-md text-label-md text-on-surface-variant">Find</span>
+</div>
+<div class="flex-1 flex flex-col items-center gap-1 opacity-40">
+<div class="w-full h-1.5 rounded-full bg-surface-dim relative overflow-hidden"></div>
+<span class="font-label-md text-label-md text-on-surface-variant">Confirm</span>
+</div>
+</div>
+<div class="text-center mb-8">
+<div class="w-16 h-16 bg-surface-container mx-auto rounded-full flex items-center justify-center mb-4 border border-outline-variant/20 shadow-sm">
+<span class="material-symbols-outlined text-[32px] text-primary" style="font-variation-settings: 'FILL' 0;">qr_code_2</span>
+</div>
+<h2 class="text-2xl font-bold tracking-tight text-on-surface mb-2">Ready to connect</h2>
+<p class="font-body-sm text-body-sm text-on-surface-variant">We need a few permissions to find and connect your glasses securely.</p>
+</div>
+<!-- Permissions List -->
+<div class="space-y-3 mb-8">
+<!-- Nearby Devices (Required) -->
+<div class="bg-surface-container-lowest rounded-xl p-4 flex items-center gap-4 border border-primary/30 shadow-sm relative overflow-hidden">
+<div class="absolute left-0 top-0 bottom-0 w-1 bg-primary"></div>
+<div class="w-10 h-10 rounded-full bg-primary-container/20 flex items-center justify-center shrink-0">
+<span class="material-symbols-outlined text-primary" style="font-variation-settings: 'FILL' 1;">sensors</span>
+</div>
+<div class="flex-1">
+<div class="flex items-center justify-between mb-0.5">
+<h3 class="font-headline-sm text-headline-sm text-on-surface">Nearby devices</h3>
+<span class="font-label-sm text-label-sm bg-error-container text-on-error-container px-2 py-0.5 rounded text-[9px] uppercase tracking-wider font-bold">Required</span>
+</div>
+<p class="font-body-sm text-body-sm text-on-surface-variant mb-2">Needed to detect the glasses.</p>
+<button class="font-label-lg text-label-lg text-primary hover:text-primary-fixed-dim transition-colors flex items-center gap-1 group">
+                        Allow
+                        <span class="material-symbols-outlined text-[16px] group-hover:translate-x-0.5 transition-transform">arrow_forward</span>
+</button>
+</div>
+</div>
+<!-- Bluetooth (Allowed) -->
+<div class="bg-surface-container-lowest rounded-xl p-4 flex items-center gap-4 border border-outline-variant/20 opacity-70">
+<div class="w-10 h-10 rounded-full bg-surface-container flex items-center justify-center shrink-0">
+<span class="material-symbols-outlined text-on-surface-variant">bluetooth</span>
+</div>
+<div class="flex-1">
+<div class="flex items-center justify-between mb-0.5">
+<h3 class="font-headline-sm text-headline-sm text-on-surface line-through decoration-on-surface-variant/30">Bluetooth</h3>
+<span class="font-label-sm text-label-sm bg-surface-container-highest text-on-surface-variant px-2 py-0.5 rounded flex items-center gap-1">
+<span class="material-symbols-outlined text-[12px]">check</span> Allowed
+                        </span>
+</div>
+</div>
+</div>
+<!-- Notifications -->
+<div class="bg-surface-container-lowest rounded-xl p-4 flex items-center gap-4 border border-outline-variant/20">
+<div class="w-10 h-10 rounded-full bg-surface-container flex items-center justify-center shrink-0">
+<span class="material-symbols-outlined text-on-surface-variant">notifications</span>
+</div>
+<div class="flex-1">
+<div class="flex items-center justify-between">
+<h3 class="font-headline-sm text-headline-sm text-on-surface">Notifications</h3>
+<span class="font-label-sm text-label-sm text-outline">Not requested</span>
+</div>
+</div>
+</div>
+<!-- Microphone -->
+<div class="bg-surface-container-lowest rounded-xl p-4 flex items-center gap-4 border border-outline-variant/20">
+<div class="w-10 h-10 rounded-full bg-surface-container flex items-center justify-center shrink-0">
+<span class="material-symbols-outlined text-on-surface-variant">mic</span>
+</div>
+<div class="flex-1">
+<div class="flex items-center justify-between">
+<h3 class="font-headline-sm text-headline-sm text-on-surface">Microphone</h3>
+<span class="font-label-sm text-label-sm text-outline">Not requested</span>
+</div>
+</div>
+</div>
+<!-- Photos and media -->
+<div class="bg-surface-container-lowest rounded-xl p-4 flex items-center gap-4 border border-outline-variant/20">
+<div class="w-10 h-10 rounded-full bg-surface-container flex items-center justify-center shrink-0">
+<span class="material-symbols-outlined text-on-surface-variant">perm_media</span>
+</div>
+<div class="flex-1">
+<div class="flex items-center justify-between">
+<h3 class="font-headline-sm text-headline-sm text-on-surface">Photos and media</h3>
+<span class="font-label-sm text-label-sm text-outline">Not requested</span>
+</div>
+</div>
+</div>
+</div>
+<p class="font-label-md text-label-md text-outline text-center px-4 mb-8">
+<span class="material-symbols-outlined text-[14px] align-middle mr-1">info</span>
+            Permissions for camera, audio, and location are requested only when a specific feature requires them.
+        </p>
+<!-- Actions -->
+<div class="mt-auto flex flex-col gap-3 pb-8">
+<button class="w-full h-12 bg-[#181c22] text-white rounded-full font-headline-sm text-headline-sm flex items-center justify-center gap-2 hover:bg-black active:scale-[0.98] transition-all shadow-sm">
+                Allow nearby devices
+            </button>
+
+</div>
+</main>
+
+
+</body></html>

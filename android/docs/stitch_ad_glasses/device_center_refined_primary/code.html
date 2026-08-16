@@ -1,0 +1,243 @@
+<!DOCTYPE html>
+
+<html class="light" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Device Center</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Hanken+Grotesk:wght@400;500;600;700;800;900&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    "colors": {
+                        "secondary-fixed-dim": "#aac7ff",
+                        "secondary": "#005db8",
+                        "on-primary": "#ffffff",
+                        "on-secondary": "#ffffff",
+                        "outline-variant": "#cfc4c5",
+                        "cool-gray": "#717785",
+                        "surface": "#f9f9ff",
+                        "secondary-fixed": "#d6e3ff",
+                        "primary": "#000000",
+                        "primary-fixed": "#e2e2e2",
+                        "on-tertiary-fixed-variant": "#444749",
+                        "warning-amber": "#FFBF00",
+                        "tertiary": "#000000",
+                        "on-tertiary": "#ffffff",
+                        "on-error-container": "#93000a",
+                        "surface-dim": "#d4daea",
+                        "tertiary-fixed": "#e1e2e4",
+                        "on-tertiary-container": "#828486",
+                        "surface-tint": "#5e5e5e",
+                        "inverse-surface": "#2a313d",
+                        "surface-container-low": "#f0f3ff",
+                        "surface-container-highest": "#dde2f2",
+                        "on-primary-fixed": "#1b1b1b",
+                        "inverse-primary": "#c6c6c6",
+                        "background": "#f9f9ff",
+                        "surface-variant": "#dde2f2",
+                        "secondary-container": "#4090fe",
+                        "on-primary-fixed-variant": "#474747",
+                        "electric-blue": "#1978E5",
+                        "surface-container-high": "#e2e8f8",
+                        "outline": "#7e7576",
+                        "on-secondary-fixed": "#001b3e",
+                        "on-secondary-fixed-variant": "#00458d",
+                        "canvas": "#F6F7F9",
+                        "on-secondary-container": "#002958",
+                        "surface-container": "#e8eefe",
+                        "surface-bright": "#f9f9ff",
+                        "graphite-black": "#000000",
+                        "primary-container": "#1b1b1b",
+                        "on-surface": "#161c27",
+                        "surface-control": "#FFFFFF",
+                        "on-background": "#161c27",
+                        "success-teal": "#008080",
+                        "on-tertiary-fixed": "#191c1e",
+                        "on-error": "#ffffff",
+                        "surface-container-lowest": "#ffffff",
+                        "on-primary-container": "#848484",
+                        "tertiary-container": "#191c1e",
+                        "primary-fixed-dim": "#c6c6c6",
+                        "error-container": "#ffdad6",
+                        "inverse-on-surface": "#ecf0ff",
+                        "error": "#ba1a1a",
+                        "on-surface-variant": "#4c4546",
+                        "tertiary-fixed-dim": "#c5c7c8"
+                    },
+                    "borderRadius": {
+                        "DEFAULT": "0.25rem",
+                        "lg": "0.5rem",
+                        "xl": "0.75rem",
+                        "full": "9999px"
+                    },
+                    "spacing": {
+                        "gap-xs": "4px",
+                        "hero-stage": "220px",
+                        "base": "4px",
+                        "margin-page": "16px",
+                        "touch-target": "48px",
+                        "gap-sm": "8px"
+                    },
+                    "fontFamily": {
+                        "body-lg": ["Hanken Grotesk"],
+                        "label-md": ["Hanken Grotesk"],
+                        "headline-md": ["Hanken Grotesk"],
+                        "label-lg": ["Hanken Grotesk"],
+                        "body-md": ["Hanken Grotesk"],
+                        "headline-lg": ["Hanken Grotesk"],
+                        "label-sm": ["Hanken Grotesk"],
+                        "display": ["Hanken Grotesk"]
+                    },
+                    "fontSize": {
+                        "body-lg": ["16px", {"lineHeight": "24px", "fontWeight": "400"}],
+                        "label-md": ["12px", {"lineHeight": "16px", "fontWeight": "500"}],
+                        "headline-md": ["20px", {"lineHeight": "28px", "letterSpacing": "-0.01em", "fontWeight": "600"}],
+                        "label-lg": ["14px", {"lineHeight": "20px", "fontWeight": "500"}],
+                        "body-md": ["14px", {"lineHeight": "20px", "fontWeight": "400"}],
+                        "headline-lg": ["24px", {"lineHeight": "32px", "letterSpacing": "-0.02em", "fontWeight": "600"}],
+                        "label-sm": ["11px", {"lineHeight": "16px", "letterSpacing": "0.05em", "fontWeight": "500"}]
+                    }
+                }
+            }
+        }
+    </script>
+<style>
+        body { background-color: theme('colors.canvas'); }
+        .parallax-shadow { transition: transform 0.1s ease-out; }
+    </style>
+<style>
+    body {
+      min-height: max(884px, 100dvh);
+    }
+  </style>
+  </head>
+<body class="font-body-md text-on-background min-h-screen pb-[80px]">
+<!-- TopAppBar -->
+<header class="docked full-width top-0 bg-surface/80 backdrop-blur-md flat no shadows flex justify-between items-center px-6 py-4 w-full border-none shadow-none z-40 sticky">
+<button aria-label="Settings" class="w-[48px] h-[48px] flex items-center justify-center hover:bg-surface-container-low transition-colors rounded-full">
+<span class="material-symbols-outlined text-[24px] text-primary" data-icon="settings">settings</span>
+</button>
+<h1 class="text-xl font-display font-black tracking-tighter text-on-surface">AD Glasses</h1>
+<button aria-label="Menu" class="w-[48px] h-[48px] flex items-center justify-center hover:bg-surface-container-low transition-colors rounded-full">
+<span class="material-symbols-outlined text-[24px] text-primary" data-icon="more_vert">more_vert</span>
+</button>
+</header>
+<main class="max-w-md mx-auto relative pt-4 px-margin-page pb-24">
+<!-- Hero Stage -->
+<section class="relative w-full h-[240px] flex flex-col items-center justify-center mb-8">
+<!-- Connection Halo -->
+<div class="absolute inset-0 bg-secondary/5 rounded-full blur-3xl w-48 h-48 mx-auto top-1/2 -translate-y-1/2"></div>
+<div class="relative z-10 text-center mb-2">
+<div class="inline-flex items-center gap-2 bg-surface border border-outline-variant rounded-full px-3 py-1 mb-2 shadow-sm">
+<span class="w-2 h-2 rounded-full bg-success-teal animate-pulse"></span>
+<span class="font-label-md text-label-md text-on-surface">Connected</span>
+</div>
+</div>
+<!-- Product Render Image -->
+<div class="relative w-full max-w-[280px] h-auto z-20 group">
+<img alt="Satin graphite smart glasses" class="w-full h-auto drop-shadow-sm group-hover:-translate-y-1 transition-transform duration-300" src="https://lh3.googleusercontent.com/aida/AP1WRLtaeLt_1Zt2BQfly_xM6uqawzRfhWiB2kerV1X6cojgN60HOQ_UNxXqszoX5BF3S4n85g7hdsc7qp_C7zyP51h1XvnqAB3PUwYC70p5HyYPKlW8een8gZNUrBAcbidtCC_nHMfuyQMQ5OtPV1CAqimWp8k6WEln6Q4FW_gm-eWrhSl_uRt9Cxo3taKgu_XTt1xBsoTVtFhs6alSPZ6MFcH4o5O1sLYhxLq5VPqQu9WuYWp7HZLdHXaxumY"/>
+<!-- Soft shadow -->
+<div class="absolute -bottom-4 left-1/2 -translate-x-1/2 w-3/4 h-4 bg-black/5 blur-md rounded-[100%]"></div>
+</div>
+<!-- Metrics Bar -->
+<div class="flex justify-center gap-6 mt-6 w-full max-w-xs mx-auto">
+<div class="flex items-center gap-2 bg-surface px-4 py-2 rounded-xl border border-outline-variant shadow-sm w-1/2 justify-center">
+<span class="material-symbols-outlined text-[20px] text-on-surface-variant">battery_5_bar</span>
+<span class="font-label-md text-label-md text-on-surface">82%</span>
+</div>
+<div class="flex items-center gap-2 bg-surface px-4 py-2 rounded-xl border border-outline-variant shadow-sm w-1/2 justify-center">
+<span class="material-symbols-outlined text-[20px] text-on-surface-variant">cloud_download</span>
+<span class="font-label-md text-label-md text-on-surface">12GB</span>
+</div>
+</div>
+</section>
+<!-- Hardware Controls -->
+<section class="space-y-3">
+<h2 class="font-label-md text-label-md text-on-surface-variant uppercase tracking-widest pl-2 mb-4">Device Settings</h2>
+<!-- Sync Media -->
+<div class="bg-surface rounded-xl p-4 flex items-center justify-between border border-outline-variant/50 shadow-sm min-h-[72px]">
+<div class="flex items-center gap-4">
+<div class="w-10 h-10 rounded-full bg-surface-container-low flex items-center justify-center">
+<span class="material-symbols-outlined text-electric-blue">sync</span>
+</div>
+<div>
+<h3 class="font-headline-md text-body-lg text-on-surface">Sync Media</h3>
+<p class="font-body-md text-label-sm text-on-surface-variant mt-1">Last synced 2h ago</p>
+</div>
+</div>
+<button aria-label="Sync Now" class="w-[48px] h-[48px] flex items-center justify-center rounded-full bg-graphite-black text-white hover:scale-95 transition-transform">
+<span class="material-symbols-outlined text-[20px]">play_arrow</span>
+</button>
+</div>
+<!-- Firmware Update -->
+<div class="bg-surface rounded-xl p-4 flex items-center justify-between border border-outline-variant/50 shadow-sm min-h-[72px]">
+<div class="flex items-center gap-4">
+<div class="w-10 h-10 rounded-full bg-surface-container-low flex items-center justify-center relative">
+<span class="material-symbols-outlined text-on-surface">system_update</span>
+<span class="absolute top-0 right-0 w-3 h-3 bg-warning-amber rounded-full border-2 border-surface"></span>
+</div>
+<div>
+<h3 class="font-headline-md text-body-lg text-on-surface">Firmware</h3>
+<p class="font-body-md text-label-sm text-on-surface-variant mt-1">Update available (v2.1)</p>
+</div>
+</div>
+<button class="px-4 h-[36px] rounded-full bg-surface-container-low text-on-surface font-label-md text-label-md hover:bg-surface-variant transition-colors border border-outline-variant/30">
+                    Update
+                </button>
+</div>
+<!-- Wearing Detection -->
+<div class="bg-surface rounded-xl p-4 flex items-center justify-between border border-outline-variant/50 shadow-sm min-h-[72px]">
+<div class="flex items-center gap-4">
+<div class="w-10 h-10 rounded-full bg-surface-container-low flex items-center justify-center">
+<span class="material-symbols-outlined text-on-surface">face</span>
+</div>
+<div>
+<h3 class="font-headline-md text-body-lg text-on-surface">Wearing Detection</h3>
+<p class="font-body-md text-label-sm text-on-surface-variant mt-1">Auto-pause when removed</p>
+</div>
+</div>
+<label class="relative inline-flex items-center cursor-pointer min-w-[48px] min-h-[48px] justify-center">
+<input checked="" class="sr-only peer" type="checkbox" value=""/>
+<div class="w-11 h-6 bg-surface-variant peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[14px] after:left-[6px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-graphite-black"></div>
+</label>
+</div>
+<!-- Volume Slider (Simplified) -->
+<div class="bg-surface rounded-xl p-4 border border-outline-variant/50 shadow-sm mt-4">
+<div class="flex items-center gap-4 mb-3">
+<span class="material-symbols-outlined text-on-surface-variant">volume_up</span>
+<h3 class="font-headline-md text-body-lg text-on-surface">System Volume</h3>
+</div>
+<div class="flex items-center gap-3">
+<span class="font-label-sm text-label-sm text-on-surface-variant">0%</span>
+<input class="w-full h-1 bg-surface-variant rounded-lg appearance-none cursor-pointer accent-graphite-black" max="100" min="0" type="range" value="75"/>
+<span class="font-label-sm text-label-sm text-on-surface-variant">100%</span>
+</div>
+</div>
+</section>
+</main>
+<!-- BottomNavBar -->
+<nav class="fixed bottom-0 left-0 w-full z-50 flex justify-around items-center px-4 pb-6 pt-2 bg-surface/95 backdrop-blur-lg border-t border-outline-variant shadow-sm md:hidden rounded-t-xl">
+<!-- Active Item: Home (Assuming this is the primary device dashboard) -->
+<button class="flex flex-col items-center justify-center bg-primary-container text-on-primary-container rounded-xl px-3 py-1 scale-95 transition-transform">
+<span class="material-symbols-outlined text-[24px]" data-icon="home" style="font-variation-settings: 'FILL' 1;">home</span>
+<span class="font-label text-xs uppercase tracking-widest mt-1">Home</span>
+</button>
+<button class="flex flex-col items-center justify-center text-on-surface-variant p-2 hover:text-primary transition-all">
+<span class="material-symbols-outlined text-[24px]" data-icon="smart_toy">smart_toy</span>
+<span class="font-label text-xs uppercase tracking-widest mt-1">Assistant</span>
+</button>
+<button class="flex flex-col items-center justify-center text-on-surface-variant p-2 hover:text-primary transition-all">
+<span class="material-symbols-outlined text-[24px]" data-icon="auto_stories">auto_stories</span>
+<span class="font-label text-xs uppercase tracking-widest mt-1">Library</span>
+</button>
+<button class="flex flex-col items-center justify-center text-on-surface-variant p-2 hover:text-primary transition-all">
+<span class="material-symbols-outlined text-[24px]" data-icon="settings_input_component">settings_input_component</span>
+<span class="font-label text-xs uppercase tracking-widest mt-1">Automations</span>
+</button>
+</nav>
+</body></html>

@@ -1,0 +1,247 @@
+<!DOCTYPE html>
+
+<html lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Meeting Summary Detail</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    colors: {
+                        "on-primary-fixed-variant": "#00458d",
+                        "on-surface-variant": "#414753",
+                        "on-tertiary-fixed-variant": "#763400",
+                        "tertiary-container": "#bd5700",
+                        "on-secondary-container": "#3f5881",
+                        "secondary-fixed": "#d6e3ff",
+                        "tertiary": "#964400",
+                        "background": "#f9f9ff",
+                        "on-error-container": "#93000a",
+                        "surface": "#f9f9ff",
+                        "primary": "#005ab4",
+                        "on-error": "#ffffff",
+                        "error-container": "#ffdad6",
+                        "tertiary-fixed-dim": "#ffb68c",
+                        "primary-fixed": "#d6e3ff",
+                        "secondary": "#465f88",
+                        "inverse-on-surface": "#eef0fa",
+                        "on-secondary": "#ffffff",
+                        "secondary-container": "#b6d0ff",
+                        "on-tertiary-container": "#fffbff",
+                        "on-primary-fixed": "#001b3e",
+                        "surface-container-lowest": "#ffffff",
+                        "inverse-surface": "#2d3037",
+                        "on-surface": "#181c22",
+                        "outline": "#717785",
+                        "surface-bright": "#f9f9ff",
+                        "on-secondary-fixed-variant": "#2d476f",
+                        "inverse-primary": "#aac7ff",
+                        "outline-variant": "#c1c6d5",
+                        "tertiary-fixed": "#ffdbc9",
+                        "secondary-fixed-dim": "#aec7f7",
+                        "surface-tint": "#005db8",
+                        "on-secondary-fixed": "#001b3d",
+                        "on-tertiary": "#ffffff",
+                        "surface-variant": "#e0e2eb",
+                        "on-tertiary-fixed": "#321200",
+                        "surface-container-highest": "#e0e2eb",
+                        "primary-fixed-dim": "#aac7ff",
+                        "surface-dim": "#d7dae3",
+                        "on-background": "#181c22",
+                        "surface-container": "#ebedf7",
+                        "surface-container-low": "#f1f3fc",
+                        "surface-container-high": "#e6e8f1",
+                        "on-primary": "#ffffff",
+                        "error": "#ba1a1a",
+                        "primary-container": "#0a73e0",
+                        "on-primary-container": "#fefcff"
+                    },
+                    borderRadius: {
+                        "DEFAULT": "0.25rem",
+                        "lg": "0.5rem",
+                        "xl": "0.75rem",
+                        "full": "9999px"
+                    },
+                    fontFamily: {
+                        "headline": ["Inter", "sans-serif"],
+                        "display": ["Inter", "sans-serif"],
+                        "body": ["Inter", "sans-serif"],
+                        "label": ["Inter", "sans-serif"]
+                    }
+                }
+            }
+        }
+    </script>
+<style>
+        .waveform-bar {
+            width: 3px;
+            background-color: #005ab4; /* primary */
+            border-radius: 999px;
+            animation: pulse 1.5s infinite ease-in-out alternate;
+        }
+        @keyframes pulse {
+            0% { height: 20%; opacity: 0.6; }
+            100% { height: 100%; opacity: 1; }
+        }
+        .waveform-bar:nth-child(even) { animation-duration: 1.2s; animation-delay: 0.2s; }
+        .waveform-bar:nth-child(3n) { animation-duration: 1.8s; animation-delay: 0.5s; }
+        
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+        }
+    </style>
+<style>
+    body {
+      min-height: max(884px, 100dvh);
+    }
+  </style>
+  </head>
+<body class="bg-background text-on-background font-body antialiased min-h-screen pb-24">
+<!-- Detail Header (Custom TopAppBar for deep link task focus) -->
+<header class="sticky top-0 z-40 bg-surface/90 backdrop-blur-md border-b border-surface-variant transition-all">
+<div class="max-w-4xl mx-auto px-4 md:px-8 h-16 flex items-center justify-between">
+<button class="flex items-center gap-2 text-primary hover:bg-surface-container-low px-3 py-1.5 rounded-lg transition-colors group">
+<span class="material-symbols-outlined text-xl group-hover:-translate-x-1 transition-transform">arrow_back</span>
+<span class="font-label font-medium">Library</span>
+</button>
+<div class="flex items-center gap-2">
+<button aria-label="Share" class="w-10 h-10 flex items-center justify-center rounded-full text-on-surface-variant hover:bg-surface-container transition-colors">
+<span class="material-symbols-outlined">share</span>
+</button>
+<button aria-label="Export" class="w-10 h-10 flex items-center justify-center rounded-full text-on-surface-variant hover:bg-surface-container transition-colors">
+<span class="material-symbols-outlined">download</span>
+</button>
+</div>
+</div>
+</header>
+<!-- Main Content Canvas -->
+<main class="max-w-3xl mx-auto px-4 md:px-8 pt-8 md:pt-12 pb-16">
+<!-- Header Section -->
+<div class="mb-10">
+<div class="flex flex-wrap items-center gap-3 mb-4">
+<span class="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-secondary-container/50 text-on-secondary-container text-xs font-label font-semibold tracking-wide">
+<span class="material-symbols-outlined text-[14px]">videocam</span>
+                    Zoom Sync
+                </span>
+<span class="text-sm font-label text-on-surface-variant">October 24, 2023 • 45 mins</span>
+</div>
+<h1 class="font-headline text-3xl md:text-4xl font-bold text-on-surface leading-tight tracking-tight mb-6">
+                Q4 Product Strategy &amp; Design System Alignment
+            </h1>
+<!-- Contextual Primary Action -->
+<button class="w-full md:w-auto inline-flex items-center justify-center gap-2 px-6 py-3 bg-primary-container text-on-primary-container hover:bg-primary-container/90 rounded-lg font-label font-medium shadow-sm transition-all active:scale-95">
+<span class="material-symbols-outlined">auto_awesome</span>
+                Ask Assistant about this meeting
+            </button>
+</div>
+<!-- Editorial Content Structure -->
+<article class="space-y-12">
+<!-- Context Section -->
+<section>
+<h2 class="font-headline text-xl font-semibold text-on-surface mb-4 flex items-center gap-2">
+<span class="material-symbols-outlined text-primary">info</span>
+                    Context
+                </h2>
+<p class="text-lg text-on-surface-variant leading-relaxed">
+                    The team gathered to align on the upcoming Q4 rollout of the Nexus Modern design system across core web properties. Discussion centered on balancing the aggressive timeline with necessary technical debt remediation. The overarching goal is to present a unified, cool, and professional aesthetic by end of year, shifting away from the legacy warm palettes.
+                </p>
+</section>
+<!-- Key Decisions (Bento Grid Style) -->
+<section>
+<h2 class="font-headline text-xl font-semibold text-on-surface mb-4 flex items-center gap-2">
+<span class="material-symbols-outlined text-primary">verified</span>
+                    Key Decisions
+                </h2>
+<div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+<div class="bg-surface-container-lowest border border-outline-variant/30 rounded-xl p-5 shadow-sm">
+<div class="w-8 h-8 rounded-full bg-secondary-container/50 flex items-center justify-center mb-3 text-secondary">
+<span class="material-symbols-outlined text-sm">palette</span>
+</div>
+<h3 class="font-headline font-semibold text-on-surface mb-2">Palette Transition</h3>
+<p class="text-sm text-on-surface-variant leading-normal">Approved immediate deprecation of legacy orange tokens. All new sections must utilize the cool blue structural palette.</p>
+</div>
+<div class="bg-surface-container-lowest border border-outline-variant/30 rounded-xl p-5 shadow-sm">
+<div class="w-8 h-8 rounded-full bg-secondary-container/50 flex items-center justify-center mb-3 text-secondary">
+<span class="material-symbols-outlined text-sm">grid_view</span>
+</div>
+<h3 class="font-headline font-semibold text-on-surface mb-2">Fluid Grid Adoption</h3>
+<p class="text-sm text-on-surface-variant leading-normal">Agreed to enforce the 12-column desktop / 4-column mobile fluid grid strictly for all upcoming landing pages.</p>
+</div>
+</div>
+</section>
+<!-- Action Items (List Style) -->
+<section>
+<h2 class="font-headline text-xl font-semibold text-on-surface mb-4 flex items-center gap-2">
+<span class="material-symbols-outlined text-primary">check_circle</span>
+                    Action Items
+                </h2>
+<div class="bg-surface-container-low rounded-xl overflow-hidden border border-outline-variant/20">
+<ul class="divide-y divide-outline-variant/20">
+<li class="flex items-start gap-4 p-4 hover:bg-surface-container/50 transition-colors">
+<input class="mt-1 w-5 h-5 rounded border-outline-variant text-primary focus:ring-primary focus:ring-offset-surface-container-low bg-surface-container-lowest" type="checkbox"/>
+<div>
+<p class="font-body font-medium text-on-surface">Update Shared Components JSON with new tonal layers.</p>
+<p class="text-sm text-on-surface-variant mt-1">Assigned to: Sarah J. • Due: Friday</p>
+</div>
+</li>
+<li class="flex items-start gap-4 p-4 hover:bg-surface-container/50 transition-colors">
+<input class="mt-1 w-5 h-5 rounded border-outline-variant text-primary focus:ring-primary focus:ring-offset-surface-container-low bg-surface-container-lowest" type="checkbox"/>
+<div>
+<p class="font-body font-medium text-on-surface">Audit existing detail pages for typography compliance.</p>
+<p class="text-sm text-on-surface-variant mt-1">Assigned to: Marcus T. • Due: Next Tuesday</p>
+</div>
+</li>
+<li class="flex items-start gap-4 p-4 hover:bg-surface-container/50 transition-colors">
+<input class="mt-1 w-5 h-5 rounded border-outline-variant text-primary focus:ring-primary focus:ring-offset-surface-container-low bg-surface-container-lowest" type="checkbox"/>
+<div>
+<p class="font-body font-medium text-on-surface">Finalize conflict resolution protocol documentation.</p>
+<p class="text-sm text-on-surface-variant mt-1">Assigned to: Alex D. • Due: Friday</p>
+</div>
+</li>
+</ul>
+</div>
+</section>
+</article>
+</main>
+<!-- Fixed Audio Playback Footer -->
+<div class="fixed bottom-0 left-0 w-full bg-surface/95 backdrop-blur-lg border-t border-surface-variant shadow-[0_-4px_20px_rgba(0,0,0,0.05)] z-50">
+<div class="max-w-4xl mx-auto px-4 md:px-8 h-20 flex items-center gap-4 md:gap-6">
+<!-- Play Control -->
+<button aria-label="Play recording" class="w-12 h-12 flex-shrink-0 flex items-center justify-center rounded-full bg-primary text-on-primary hover:bg-primary/90 transition-transform active:scale-90 shadow-sm">
+<span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 1;">play_arrow</span>
+</button>
+<!-- Waveform & Progress -->
+<div class="flex-grow flex flex-col justify-center h-full gap-1">
+<div class="flex justify-between items-end mb-1">
+<span class="text-xs font-label font-medium text-primary">12:45</span>
+<span class="text-xs font-label text-on-surface-variant">45:00</span>
+</div>
+<!-- Abstract Waveform Visualization -->
+<div class="h-8 w-full flex items-end gap-[2px] opacity-70 hover:opacity-100 transition-opacity cursor-pointer">
+<!-- Generating a pseudo-waveform with CSS -->
+<script>
+                        for(let i=0; i<60; i++) {
+                            let height = Math.random() * 80 + 20; // 20% to 100%
+                            document.write(`<div class="waveform-bar flex-grow rounded-full bg-primary" style="height: ${height}%; opacity: ${i < 20 ? 1 : 0.3}"></div>`);
+                        }
+                    </script>
+</div>
+</div>
+<!-- Secondary Controls -->
+<div class="hidden md:flex items-center gap-2">
+<button aria-label="Playback speed" class="w-10 h-10 flex items-center justify-center rounded-full text-on-surface-variant hover:bg-surface-container transition-colors">
+<span class="text-sm font-label font-medium">1x</span>
+</button>
+<button aria-label="More options" class="w-10 h-10 flex items-center justify-center rounded-full text-on-surface-variant hover:bg-surface-container transition-colors">
+<span class="material-symbols-outlined">more_vert</span>
+</button>
+</div>
+</div>
+</div>
+</body></html>

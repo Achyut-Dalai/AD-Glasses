@@ -1,0 +1,264 @@
+<!DOCTYPE html>
+
+<html class="light" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Automation Detail</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    "colors": {
+                        "on-primary-container": "#c0d5ff",
+                        "surface-dim": "#d7dae3",
+                        "secondary-container": "#b6d0ff",
+                        "secondary": "#465f88",
+                        "surface-container-lowest": "#ffffff",
+                        "background": "#f9f9ff",
+                        "tertiary": "#723200",
+                        "on-error-container": "#93000a",
+                        "surface-container-high": "#e6e8f1",
+                        "error-container": "#ffdad6",
+                        "on-secondary-container": "#3f5881",
+                        "surface-bright": "#f9f9ff",
+                        "primary": "#004389",
+                        "on-surface-variant": "#424752",
+                        "surface": "#f9f9ff",
+                        "on-primary": "#ffffff",
+                        "on-secondary-fixed-variant": "#2e476f",
+                        "on-tertiary": "#ffffff",
+                        "on-background": "#181c22",
+                        "tertiary-container": "#964400",
+                        "surface-container-low": "#f1f3fc",
+                        "on-primary-fixed": "#001b3e",
+                        "inverse-surface": "#2d3037",
+                        "inverse-on-surface": "#eef0fa",
+                        "primary-fixed-dim": "#aac7ff",
+                        "primary-fixed": "#d6e3ff",
+                        "tertiary-fixed-dim": "#ffb68c",
+                        "on-tertiary-container": "#ffc9ac",
+                        "surface-container-highest": "#e0e2eb",
+                        "on-tertiary-fixed": "#321200",
+                        "on-surface": "#181c22",
+                        "primary-container": "#005ab4",
+                        "outline-variant": "#c2c6d4",
+                        "on-secondary": "#ffffff",
+                        "inverse-primary": "#aac7ff",
+                        "surface-variant": "#e0e2eb",
+                        "on-tertiary-fixed-variant": "#753400",
+                        "surface-container": "#ebedf7",
+                        "on-primary-fixed-variant": "#00458d",
+                        "on-secondary-fixed": "#001b3d",
+                        "surface-tint": "#095db7",
+                        "outline": "#727783",
+                        "tertiary-fixed": "#ffdbc9",
+                        "secondary-fixed-dim": "#aec7f6",
+                        "error": "#ba1a1a",
+                        "on-error": "#ffffff",
+                        "secondary-fixed": "#d6e3ff"
+                    },
+                    "borderRadius": {
+                        "DEFAULT": "0.25rem",
+                        "lg": "0.5rem",
+                        "xl": "0.75rem",
+                        "full": "9999px"
+                    },
+                    "spacing": {
+                        "container-padding": "1rem",
+                        "element-gap": "0.75rem",
+                        "section-gap": "1.5rem",
+                        "grid-gutter": "1rem"
+                    },
+                    "fontFamily": {
+                        "label-sm": ["Inter"],
+                        "body-md": ["Inter"],
+                        "body-sm": ["Inter"],
+                        "headline-sm": ["Inter"],
+                        "display-sm": ["Inter"],
+                        "label-lg": ["Inter"],
+                        "label-md": ["Inter"]
+                    },
+                    "fontSize": {
+                        "label-sm": ["10px", { "lineHeight": "12px", "fontWeight": "500" }],
+                        "body-md": ["0.875rem", { "lineHeight": "1.25rem", "fontWeight": "400" }],
+                        "body-sm": ["0.75rem", { "lineHeight": "1rem", "fontWeight": "400" }],
+                        "headline-sm": ["0.875rem", { "lineHeight": "1.25rem", "fontWeight": "600" }],
+                        "display-sm": ["1.125rem", { "lineHeight": "1.5rem", "letterSpacing": "0.15em", "fontWeight": "700" }],
+                        "label-lg": ["0.75rem", { "lineHeight": "1rem", "fontWeight": "600" }],
+                        "label-md": ["11px", { "lineHeight": "1rem", "fontWeight": "500" }]
+                    }
+                }
+            }
+        }
+    </script>
+<style>
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+        }
+        .animate-pulse-slow {
+            animation: pulse 3s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+        }
+    </style>
+<style>
+    body {
+      min-height: max(884px, 100dvh);
+    }
+  </style>
+  </head>
+<body class="bg-background text-on-background font-body-md min-h-screen flex flex-col pb-safe antialiased">
+<!-- TopAppBar -->
+<header class="bg-surface text-primary font-headline-sm text-headline-sm w-full sticky top-0 z-50 flex items-center justify-between px-container-padding h-16 max-w-5xl mx-auto shadow-sm">
+<button class="text-primary hover:bg-surface-container-high transition-colors active:scale-95 duration-100 p-2 rounded-full flex items-center justify-center">
+<span class="material-symbols-outlined">arrow_back</span>
+</button>
+<h1 class="font-display-sm text-display-sm text-primary flex-1 text-center">Automation Detail</h1>
+<button class="text-primary hover:bg-surface-container-high transition-colors active:scale-95 duration-100 p-2 rounded-full flex items-center justify-center">
+<span class="material-symbols-outlined">settings</span>
+</button>
+</header>
+<!-- Main Content Canvas -->
+<main class="flex-1 w-full max-w-5xl mx-auto px-container-padding py-section-gap space-y-6">
+<!-- Header / Context -->
+<div class="text-center space-y-2">
+<h2 class="font-headline-sm text-headline-sm text-on-surface">HeyCyan Firmware Lab</h2>
+<p class="font-body-sm text-body-sm text-on-surface-variant flex items-center justify-center gap-1">
+<span class="material-symbols-outlined text-[16px] text-error">warning</span>
+                Critical Stage: Do not turn off or move away
+            </p>
+</div>
+<!-- Main Progress Card -->
+<div class="bg-surface-container-lowest rounded-xl border border-outline-variant/30 shadow-sm p-6 space-y-8">
+<!-- Global Progress Bar -->
+<div class="space-y-2">
+<div class="flex justify-between font-label-lg text-label-lg text-primary">
+<span>Overall Progress</span>
+<span>45%</span>
+</div>
+<div class="h-1.5 w-full bg-surface-dim rounded-full overflow-hidden">
+<div class="h-full bg-primary transition-all duration-500 ease-out" style="width: 45%;"></div>
+</div>
+</div>
+<!-- Vertical Timeline -->
+<div class="relative space-y-6 before:absolute before:inset-0 before:ml-[15px] before:-translate-x-px md:before:mx-auto md:before:translate-x-0 before:h-full before:w-0.5 before:bg-surface-dim">
+<!-- Stage 1: Done -->
+<div class="relative flex items-center gap-4 md:justify-center">
+<div class="absolute left-0 md:left-1/2 md:-translate-x-1/2 w-8 h-8 rounded-full bg-primary text-on-primary flex items-center justify-center shadow-sm z-10">
+<span class="material-symbols-outlined text-[18px]">check</span>
+</div>
+<div class="ml-12 md:ml-0 md:w-1/2 md:pr-12 md:text-right">
+<h3 class="font-label-lg text-label-lg text-on-surface">Read versions</h3>
+<p class="font-body-sm text-body-sm text-on-surface-variant">Completed successfully.</p>
+</div>
+<div class="hidden md:block md:w-1/2 md:pl-12"></div>
+</div>
+<!-- Stage 2: Done -->
+<div class="relative flex items-center gap-4 md:justify-center">
+<div class="absolute left-0 md:left-1/2 md:-translate-x-1/2 w-8 h-8 rounded-full bg-primary text-on-primary flex items-center justify-center shadow-sm z-10">
+<span class="material-symbols-outlined text-[18px]">check</span>
+</div>
+<div class="ml-12 md:ml-0 md:w-1/2 md:pr-12 md:text-right">
+<h3 class="font-label-lg text-label-lg text-on-surface">Validate/Stage</h3>
+<p class="font-body-sm text-body-sm text-on-surface-variant">Packages validated.</p>
+</div>
+<div class="hidden md:block md:w-1/2 md:pl-12"></div>
+</div>
+<!-- Stage 3: Active -->
+<div class="relative flex items-center gap-4 md:justify-center">
+<div class="absolute left-0 md:left-1/2 md:-translate-x-1/2 w-8 h-8 rounded-full bg-primary-container text-on-primary-container flex items-center justify-center shadow-sm z-10 ring-4 ring-primary-container/30 animate-pulse-slow">
+<span class="material-symbols-outlined text-[18px]">sync</span>
+</div>
+<div class="ml-12 md:ml-0 md:w-1/2 md:pr-12 md:text-right">
+<h3 class="font-label-lg text-label-lg text-primary">Update Wi-Fi</h3>
+<p class="font-body-sm text-body-sm text-primary-container">Flashing radio firmware...</p>
+</div>
+<div class="hidden md:block md:w-1/2 md:pl-12"></div>
+</div>
+<!-- Stage 4: Pending -->
+<div class="relative flex items-center gap-4 md:justify-center">
+<div class="absolute left-0 md:left-1/2 md:-translate-x-1/2 w-8 h-8 rounded-full bg-surface-container-high text-outline flex items-center justify-center shadow-sm z-10 border border-outline-variant/50">
+<span class="material-symbols-outlined text-[18px]">pending</span>
+</div>
+<div class="ml-12 md:ml-0 md:w-1/2 md:pr-12 md:text-right opacity-50">
+<h3 class="font-label-lg text-label-lg text-on-surface">Restore/Recheck</h3>
+<p class="font-body-sm text-body-sm text-on-surface-variant">Waiting...</p>
+</div>
+<div class="hidden md:block md:w-1/2 md:pl-12"></div>
+</div>
+<!-- Stage 5: Pending -->
+<div class="relative flex items-center gap-4 md:justify-center">
+<div class="absolute left-0 md:left-1/2 md:-translate-x-1/2 w-8 h-8 rounded-full bg-surface-container-high text-outline flex items-center justify-center shadow-sm z-10 border border-outline-variant/50">
+<span class="material-symbols-outlined text-[18px]">pending</span>
+</div>
+<div class="ml-12 md:ml-0 md:w-1/2 md:pr-12 md:text-right opacity-50">
+<h3 class="font-label-lg text-label-lg text-on-surface">Update Bluetooth</h3>
+<p class="font-body-sm text-body-sm text-on-surface-variant">Waiting...</p>
+</div>
+<div class="hidden md:block md:w-1/2 md:pl-12"></div>
+</div>
+<!-- Stage 6: Pending -->
+<div class="relative flex items-center gap-4 md:justify-center">
+<div class="absolute left-0 md:left-1/2 md:-translate-x-1/2 w-8 h-8 rounded-full bg-surface-container-high text-outline flex items-center justify-center shadow-sm z-10 border border-outline-variant/50">
+<span class="material-symbols-outlined text-[18px]">pending</span>
+</div>
+<div class="ml-12 md:ml-0 md:w-1/2 md:pr-12 md:text-right opacity-50">
+<h3 class="font-label-lg text-label-lg text-on-surface">Verify</h3>
+<p class="font-body-sm text-body-sm text-on-surface-variant">Waiting...</p>
+</div>
+<div class="hidden md:block md:w-1/2 md:pl-12"></div>
+</div>
+</div>
+</div>
+<!-- Expandable Log -->
+<details class="group bg-surface-container-lowest rounded-xl border border-outline-variant/30 shadow-sm overflow-hidden">
+<summary class="flex items-center justify-between p-4 cursor-pointer font-label-lg text-label-lg text-on-surface-variant hover:bg-surface-container-low transition-colors">
+<span class="flex items-center gap-2">
+<span class="material-symbols-outlined text-[18px]">terminal</span>
+                    Technical Detail Log
+                </span>
+<span class="material-symbols-outlined transition-transform duration-200 group-open:rotate-180">expand_more</span>
+</summary>
+<div class="p-4 bg-inverse-surface text-inverse-on-surface font-mono text-[10px] sm:text-xs leading-relaxed max-h-48 overflow-y-auto">
+<p>[10:04:12] Initiating firmware update sequence...</p>
+<p>[10:04:13] Stage 1: Read versions - OK (v2.4.1 -&gt; v2.5.0)</p>
+<p>[10:04:15] Stage 2: Validate/Stage - Hash verified.</p>
+<p>[10:04:18] Stage 3: Update Wi-Fi - Erasing sector 4...</p>
+<p class="text-primary-fixed-dim">[10:04:22] Stage 3: Update Wi-Fi - Writing blocks (45%)...</p>
+</div>
+</details>
+</main>
+<!-- BottomNavBar -->
+<nav class="bg-surface-container text-primary font-label-md text-label-md fixed bottom-0 w-full z-50 pb-safe shadow-sm flex justify-around items-center h-20 px-4 md:hidden">
+<a class="flex flex-col items-center justify-center text-on-surface-variant hover:text-primary transition-all active:scale-90 duration-200" href="#">
+<span class="material-symbols-outlined mb-1">home</span>
+            Home
+        </a>
+<a class="flex flex-col items-center justify-center text-on-surface-variant hover:text-primary transition-all active:scale-90 duration-200" href="#">
+<span class="material-symbols-outlined mb-1">smart_toy</span>
+            Devices
+        </a>
+<a class="flex flex-col items-center justify-center bg-secondary-container text-on-secondary-container rounded-full px-5 py-1 active:scale-90 duration-200" href="#">
+<span class="material-symbols-outlined mb-1" style="font-variation-settings: 'FILL' 1;">bolt</span>
+            Automate
+        </a>
+<a class="flex flex-col items-center justify-center text-on-surface-variant hover:text-primary transition-all active:scale-90 duration-200" href="#">
+<span class="material-symbols-outlined mb-1">person</span>
+            Profile
+        </a>
+</nav>
+<script>
+        // Simple auto-scroll to bottom of log if expanded
+        const detailsLog = document.querySelector('details');
+        const logContainer = detailsLog.querySelector('div');
+        
+        detailsLog.addEventListener('toggle', (e) => {
+            if (detailsLog.open) {
+                logContainer.scrollTop = logContainer.scrollHeight;
+            }
+        });
+    </script>
+</body></html>

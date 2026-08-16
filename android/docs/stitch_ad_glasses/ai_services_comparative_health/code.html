@@ -1,0 +1,269 @@
+<!DOCTYPE html>
+
+<html lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>AI Services &amp; Models - AD Glasses</title>
+<!-- Material Symbols -->
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<!-- Google Fonts: Hanken Grotesk -->
+<link href="https://fonts.googleapis.com" rel="preconnect"/>
+<link crossorigin="" href="https://fonts.gstatic.com" rel="preconnect"/>
+<link href="https://fonts.googleapis.com/css2?family=Hanken+Grotesk:wght@400;500;600;700;800;900&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<!-- Tailwind CSS -->
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<!-- Tailwind Configuration -->
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    colors: {
+                        "secondary-fixed-dim": "#aac7ff",
+                        "secondary": "#005db8",
+                        "on-primary": "#ffffff",
+                        "on-secondary": "#ffffff",
+                        "outline-variant": "#cfc4c5",
+                        "cool-gray": "#717785",
+                        "surface": "#f9f9ff",
+                        "secondary-fixed": "#d6e3ff",
+                        "primary": "#000000",
+                        "primary-fixed": "#e2e2e2",
+                        "on-tertiary-fixed-variant": "#444749",
+                        "warning-amber": "#FFBF00",
+                        "tertiary": "#000000",
+                        "on-tertiary": "#ffffff",
+                        "on-error-container": "#93000a",
+                        "surface-dim": "#d4daea",
+                        "tertiary-fixed": "#e1e2e4",
+                        "on-tertiary-container": "#828486",
+                        "surface-tint": "#5e5e5e",
+                        "inverse-surface": "#2a313d",
+                        "surface-container-low": "#f0f3ff",
+                        "surface-container-highest": "#dde2f2",
+                        "on-primary-fixed": "#1b1b1b",
+                        "inverse-primary": "#c6c6c6",
+                        "background": "#f9f9ff",
+                        "surface-variant": "#dde2f2",
+                        "secondary-container": "#4090fe",
+                        "on-primary-fixed-variant": "#474747",
+                        "electric-blue": "#1978E5",
+                        "surface-container-high": "#e2e8f8",
+                        "outline": "#7e7576",
+                        "on-secondary-fixed": "#001b3e",
+                        "on-secondary-fixed-variant": "#00458d",
+                        "canvas": "#F6F7F9",
+                        "on-secondary-container": "#002958",
+                        "surface-container": "#e8eefe",
+                        "surface-bright": "#f9f9ff",
+                        "graphite-black": "#000000",
+                        "primary-container": "#1b1b1b",
+                        "on-surface": "#161c27",
+                        "surface-control": "#FFFFFF",
+                        "on-background": "#161c27",
+                        "success-teal": "#008080",
+                        "on-tertiary-fixed": "#191c1e",
+                        "on-error": "#ffffff",
+                        "surface-container-lowest": "#ffffff",
+                        "on-primary-container": "#848484",
+                        "tertiary-container": "#191c1e",
+                        "primary-fixed-dim": "#c6c6c6",
+                        "error-container": "#ffdad6",
+                        "inverse-on-surface": "#ecf0ff",
+                        "error": "#ba1a1a",
+                        "on-surface-variant": "#4c4546",
+                        "tertiary-fixed-dim": "#c5c7c8"
+                    },
+                    borderRadius: {
+                        "DEFAULT": "0.25rem",
+                        "lg": "0.5rem",
+                        "xl": "0.75rem",
+                        "full": "9999px"
+                    },
+                    spacing: {
+                        "gap-xs": "4px",
+                        "hero-stage": "220px",
+                        "base": "4px",
+                        "margin-page": "16px",
+                        "touch-target": "48px",
+                        "gap-sm": "8px"
+                    },
+                    fontFamily: {
+                        "body-lg": ["Hanken Grotesk"],
+                        "label-md": ["Hanken Grotesk"],
+                        "headline-md": ["Hanken Grotesk"],
+                        "label-lg": ["Hanken Grotesk"],
+                        "body-md": ["Hanken Grotesk"],
+                        "headline-lg": ["Hanken Grotesk"],
+                        "label-sm": ["Hanken Grotesk"]
+                    },
+                    fontSize: {
+                        "body-lg": ["16px", { lineHeight: "24px", fontWeight: "400" }],
+                        "label-md": ["12px", { lineHeight: "16px", fontWeight: "500" }],
+                        "headline-md": ["20px", { lineHeight: "28px", letterSpacing: "-0.01em", fontWeight: "600" }],
+                        "label-lg": ["14px", { lineHeight: "20px", fontWeight: "500" }],
+                        "body-md": ["14px", { lineHeight: "20px", fontWeight: "400" }],
+                        "headline-lg": ["24px", { lineHeight: "32px", letterSpacing: "-0.02em", fontWeight: "600" }],
+                        "label-sm": ["11px", { lineHeight: "16px", letterSpacing: "0.05em", fontWeight: "500" }]
+                    }
+                }
+            }
+        }
+    </script>
+<style>
+        .pulse-amber {
+            animation: pulse-amber-anim 2s infinite;
+        }
+        @keyframes pulse-amber-anim {
+            0% { box-shadow: 0 0 0 0 rgba(255, 191, 0, 0.4); }
+            70% { box-shadow: 0 0 0 4px rgba(255, 191, 0, 0); }
+            100% { box-shadow: 0 0 0 0 rgba(255, 191, 0, 0); }
+        }
+    </style>
+<style>
+    body {
+      min-height: max(884px, 100dvh);
+    }
+  </style>
+<style>
+    body {
+      min-height: max(884px, 100dvh);
+    }
+  </style>
+  </head>
+<body class="bg-canvas text-on-surface font-body-md antialiased selection:bg-secondary-fixed selection:text-on-surface">
+<!-- TopAppBar -->
+<header class="fixed top-0 w-full z-50 bg-surface/80 backdrop-blur-md flex justify-between items-center px-6 py-4">
+<button class="w-touch-target h-touch-target flex items-center justify-center hover:bg-surface-container-low transition-colors rounded-full text-primary">
+<span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 0;">eyeglasses</span>
+</button>
+<h1 class="font-headline-md text-headline-md font-bold text-on-surface tracking-tighter">AD Glasses</h1>
+<button class="w-touch-target h-touch-target flex items-center justify-center hover:bg-surface-container-low transition-colors rounded-full text-primary">
+<span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 0;">settings</span>
+</button>
+</header>
+<!-- Main Content Canvas -->
+<main class="pt-24 pb-32 px-margin-page max-w-4xl mx-auto">
+<!-- Header Section -->
+<div class="flex flex-col md:flex-row md:items-end justify-between gap-4 mb-8">
+<div>
+<h2 class="font-headline-lg text-headline-lg text-on-surface mb-2">Architecture &amp; Models</h2>
+<p class="font-body-md text-body-md text-on-surface-variant max-w-md">Real-time status of your hybrid intelligence stack. Privacy boundaries are strictly enforced.</p>
+</div>
+<button class="bg-graphite-black text-on-primary h-touch-target px-6 rounded-lg font-label-lg text-label-lg flex items-center justify-center gap-2 hover:bg-inverse-surface active:scale-[0.98] transition-all whitespace-nowrap shadow-sm">
+<span class="material-symbols-outlined text-[18px]">medical_services</span>
+                Run diagnostic test
+            </button>
+</div>
+<!-- Comparative Layout Container -->
+<div class="grid grid-cols-1 md:grid-cols-2 gap-margin-page">
+<!-- On-Device Card -->
+<section class="bg-surface-container-lowest rounded-xl border border-outline-variant shadow-sm flex flex-col overflow-hidden">
+<div class="p-6 border-b border-outline-variant bg-surface-bright/50">
+<div class="flex items-center justify-between mb-4">
+<div class="flex items-center gap-2">
+<span class="material-symbols-outlined text-success-teal">memory</span>
+<h3 class="font-headline-md text-headline-md text-on-surface">On device</h3>
+</div>
+<span class="bg-surface-container text-on-surface font-label-sm text-label-sm px-2.5 py-1 rounded-full uppercase tracking-widest border border-outline-variant/50">Local</span>
+</div>
+<p class="font-body-md text-body-md text-cool-gray">Processed locally. Zero latency and absolute privacy for sensory input.</p>
+</div>
+<div class="p-6 flex flex-col gap-6">
+<!-- Model Item -->
+<div class="flex justify-between items-center group">
+<div class="flex flex-col gap-1">
+<span class="font-label-md text-label-md text-cool-gray uppercase tracking-wider">Audio Transcription</span>
+<span class="font-body-lg text-body-lg text-on-surface font-medium">Moonshine Small</span>
+</div>
+<div class="flex flex-col items-end gap-1">
+<div class="flex items-center gap-2 bg-surface px-3 py-1.5 rounded-full border border-outline-variant/30">
+<div class="w-2 h-2 rounded-full bg-success-teal"></div>
+<span class="font-label-md text-label-md text-success-teal">Ready</span>
+</div>
+</div>
+</div>
+<div class="w-full h-px bg-outline-variant/50"></div>
+<!-- Model Item -->
+<div class="flex justify-between items-center group">
+<div class="flex flex-col gap-1">
+<span class="font-label-md text-label-md text-cool-gray uppercase tracking-wider">Computer Vision</span>
+<span class="font-body-lg text-body-lg text-on-surface font-medium">MobileNetV3</span>
+</div>
+<div class="flex flex-col items-end gap-1">
+<div class="flex items-center gap-2 bg-surface px-3 py-1.5 rounded-full border border-warning-amber/30">
+<div class="w-2 h-2 rounded-full bg-warning-amber pulse-amber"></div>
+<span class="font-label-md text-label-md text-warning-amber">Active</span>
+</div>
+</div>
+</div>
+</div>
+</section>
+<!-- Cloud Card -->
+<section class="bg-surface-container-lowest rounded-xl border border-outline-variant shadow-sm flex flex-col overflow-hidden relative">
+<!-- Subtle ambient halo for cloud -->
+<div class="absolute top-0 right-0 w-32 h-32 bg-electric-blue/5 rounded-full blur-2xl -translate-y-1/2 translate-x-1/4 pointer-events-none"></div>
+<div class="p-6 border-b border-outline-variant bg-surface-bright/50 z-10">
+<div class="flex items-center justify-between mb-4">
+<div class="flex items-center gap-2">
+<span class="material-symbols-outlined text-electric-blue">cloud_sync</span>
+<h3 class="font-headline-md text-headline-md text-on-surface">Your cloud</h3>
+</div>
+<span class="bg-surface-container-high text-electric-blue font-label-sm text-label-sm px-2.5 py-1 rounded-full uppercase tracking-widest border border-electric-blue/20">Relay</span>
+</div>
+<p class="font-body-md text-body-md text-cool-gray">Secure relay enabled. Handles complex reasoning and memory augmentation.</p>
+</div>
+<div class="p-6 flex flex-col gap-6 z-10">
+<!-- Model Item -->
+<div class="flex justify-between items-center group">
+<div class="flex flex-col gap-1">
+<span class="font-label-md text-label-md text-cool-gray uppercase tracking-wider">Reasoning Engine</span>
+<span class="font-body-lg text-body-lg text-on-surface font-medium">Gemini 1.5 Pro</span>
+</div>
+<div class="flex flex-col items-end gap-1">
+<div class="flex items-center gap-2 bg-surface px-3 py-1.5 rounded-full border border-outline-variant/30">
+<div class="w-2 h-2 rounded-full bg-success-teal"></div>
+<span class="font-label-md text-label-md text-success-teal">Connected</span>
+</div>
+</div>
+</div>
+<div class="w-full h-px bg-outline-variant/50"></div>
+<!-- Model Item -->
+<div class="flex justify-between items-center group">
+<div class="flex flex-col gap-1">
+<span class="font-label-md text-label-md text-cool-gray uppercase tracking-wider">Memory DB</span>
+<span class="font-body-lg text-body-lg text-on-surface font-medium">Pinecone Vector</span>
+</div>
+<div class="flex flex-col items-end gap-1">
+<div class="flex items-center gap-2 bg-surface px-3 py-1.5 rounded-full border border-outline-variant/30">
+<div class="w-2 h-2 rounded-full bg-success-teal"></div>
+<span class="font-label-md text-label-md text-success-teal">Synced</span>
+</div>
+</div>
+</div>
+</div>
+</section>
+</div>
+</main>
+<!-- BottomNavBar -->
+<nav class="fixed bottom-0 left-0 w-full z-50 flex justify-around items-center px-4 pb-6 pt-2 bg-surface/95 backdrop-blur-lg border-t border-outline-variant md:hidden">
+<button class="flex flex-col items-center justify-center text-on-surface-variant p-2 w-16 hover:text-primary transition-all scale-95 active:scale-90">
+<span class="material-symbols-outlined mb-1">home</span>
+<span class="font-label-sm text-label-sm uppercase tracking-widest text-[10px]">Home</span>
+</button>
+<!-- Active Tab: Assistant -->
+<button class="flex flex-col items-center justify-center bg-primary-container text-on-primary-container rounded-xl px-3 py-1 w-20 scale-95 active:scale-90 transition-transform">
+<span class="material-symbols-outlined mb-1 text-on-primary-container" style="font-variation-settings: 'FILL' 1;">smart_toy</span>
+<span class="font-label-sm text-label-sm uppercase tracking-widest text-[10px] text-on-primary-container">Assistant</span>
+</button>
+<button class="flex flex-col items-center justify-center text-on-surface-variant p-2 w-16 hover:text-primary transition-all scale-95 active:scale-90">
+<span class="material-symbols-outlined mb-1">auto_stories</span>
+<span class="font-label-sm text-label-sm uppercase tracking-widest text-[10px]">Library</span>
+</button>
+<button class="flex flex-col items-center justify-center text-on-surface-variant p-2 w-16 hover:text-primary transition-all scale-95 active:scale-90">
+<span class="material-symbols-outlined mb-1">settings_input_component</span>
+<span class="font-label-sm text-label-sm uppercase tracking-widest text-[10px] truncate w-full text-center">Automations</span>
+</button>
+</nav>
+</body></html>

@@ -1,0 +1,149 @@
+<!DOCTYPE html>
+
+<html class="light" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Connection Interrupted</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    "colors": {
+                        "outline-variant": "#c2c6d4",
+                        "surface-container-highest": "#e0e2eb",
+                        "secondary-container": "#b6d0ff",
+                        "on-secondary-fixed-variant": "#2e476f",
+                        "on-primary-container": "#c0d5ff",
+                        "surface-container-low": "#f1f3fc",
+                        "on-secondary-container": "#3f5881",
+                        "on-secondary": "#ffffff",
+                        "secondary-fixed-dim": "#aec7f6",
+                        "inverse-on-surface": "#eef0fa",
+                        "on-tertiary": "#ffffff",
+                        "surface": "#f9f9ff",
+                        "on-error": "#ffffff",
+                        "inverse-primary": "#aac7ff",
+                        "surface-variant": "#e0e2eb",
+                        "surface-tint": "#095db7",
+                        "on-background": "#181c22",
+                        "error": "#ba1a1a",
+                        "surface-container": "#ebedf7",
+                        "outline": "#727783",
+                        "on-tertiary-container": "#ffc9ac",
+                        "tertiary-fixed-dim": "#ffb68c",
+                        "primary": "#004389",
+                        "on-surface-variant": "#414753",
+                        "background": "#f9f9ff",
+                        "on-primary-fixed": "#001b3e",
+                        "on-primary-fixed-variant": "#00458d",
+                        "on-tertiary-fixed-variant": "#753400",
+                        "primary-fixed": "#d6e3ff",
+                        "on-primary": "#ffffff",
+                        "surface-container-high": "#e6e8f1",
+                        "tertiary-fixed": "#ffdbc9",
+                        "on-tertiary-fixed": "#321200",
+                        "on-surface": "#181c22",
+                        "tertiary-container": "#964400",
+                        "on-secondary-fixed": "#001b3d",
+                        "surface-container-lowest": "#ffffff",
+                        "inverse-surface": "#2d3037",
+                        "surface-dim": "#d7dae3",
+                        "tertiary": "#723200",
+                        "secondary": "#465f88",
+                        "primary-container": "#0a73e0",
+                        "error-container": "#ffdad6",
+                        "on-error-container": "#93000a",
+                        "surface-bright": "#f9f9ff",
+                        "secondary-fixed": "#d6e3ff",
+                        "primary-fixed-dim": "#aac7ff"
+                    },
+                    "borderRadius": {
+                        "DEFAULT": "0.25rem",
+                        "lg": "0.5rem",
+                        "xl": "0.75rem",
+                        "full": "9999px"
+                    },
+                    "spacing": {
+                        "grid-gutter": "1rem",
+                        "element-gap": "0.75rem",
+                        "container-padding": "1rem",
+                        "section-gap": "1.5rem"
+                    },
+                    "fontFamily": {
+                        "label-sm": ["Inter"],
+                        "headline-sm": ["Inter"],
+                        "label-lg": ["Inter"],
+                        "body-sm": ["Inter"],
+                        "display-sm": ["Inter"],
+                        "body-md": ["Inter"],
+                        "label-md": ["Inter"]
+                    },
+                    "fontSize": {
+                        "label-sm": ["10px", { "lineHeight": "12px", "fontWeight": "500" }],
+                        "headline-sm": ["0.875rem", { "lineHeight": "1.25rem", "fontWeight": "600" }],
+                        "label-lg": ["0.75rem", { "lineHeight": "1rem", "fontWeight": "600" }],
+                        "body-sm": ["0.75rem", { "lineHeight": "1rem", "fontWeight": "400" }],
+                        "display-sm": ["1.125rem", { "lineHeight": "1.5rem", "letterSpacing": "0.15em", "fontWeight": "700" }],
+                        "body-md": ["0.875rem", { "lineHeight": "1.25rem", "fontWeight": "400" }],
+                        "label-md": ["11px", { "lineHeight": "1rem", "fontWeight": "500" }]
+                    }
+                }
+            }
+        }
+    </script>
+<style>
+        .pulse-error {
+            animation: pulse-ring 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+        }
+        @keyframes pulse-ring {
+            0% { transform: scale(0.8); opacity: 0.5; }
+            100% { transform: scale(1.5); opacity: 0; }
+        }
+    </style>
+<style>
+    body {
+      min-height: max(884px, 100dvh);
+    }
+  </style>
+  </head>
+<body class="bg-background text-on-background font-body-md min-h-screen flex flex-col items-center justify-center p-container-padding antialiased">
+<div class="w-full max-w-md flex flex-col gap-section-gap">
+<header class="w-full flex items-center justify-center pb-4 border-b border-outline-variant/20">
+<h1 class="font-display-sm text-on-surface uppercase tracking-widest text-center">Connection Interrupted</h1>
+</header>
+<main class="bg-surface-container-lowest rounded-xl shadow-sm border border-outline-variant/30 p-8 flex flex-col items-center text-center relative overflow-hidden">
+<div class="absolute inset-0 pointer-events-none opacity-20" style="background-image: radial-gradient(circle at center, var(--tw-colors-error-container) 0%, transparent 70%);"></div>
+<div class="relative w-24 h-24 flex items-center justify-center mb-6">
+<div class="absolute inset-0 bg-error/10 rounded-full pulse-error"></div>
+<div class="relative bg-surface-container rounded-full w-16 h-16 flex items-center justify-center border border-error/20">
+<span class="material-symbols-outlined text-4xl text-error" style="font-variation-settings: 'FILL' 1;">wifi_off</span>
+</div>
+</div>
+<h2 class="font-display-sm text-on-surface mb-2">Local Wi-Fi unavailable</h2>
+<p class="font-body-md text-on-surface-variant mb-8 max-w-[280px]">
+                The glasses and phone lost their direct connection. Ensure your glasses are nearby and powered on.
+            </p>
+<div class="w-full bg-surface-container-low border border-outline-variant/20 rounded-lg p-4 flex items-start gap-3 mb-8">
+<span class="material-symbols-outlined text-secondary mt-0.5" style="font-variation-settings: 'FILL' 1;">cloud_done</span>
+<div class="text-left flex-1">
+<p class="font-label-md text-on-surface mb-0.5">Status Check</p>
+<p class="font-body-sm text-on-surface-variant">3 files were saved before the interruption.</p>
+</div>
+</div>
+<div class="w-full flex flex-col gap-3">
+<button class="w-full h-12 bg-on-surface hover:bg-on-surface/90 text-surface font-label-lg uppercase rounded-full transition-colors flex items-center justify-center gap-2">
+<span class="material-symbols-outlined text-[18px]">refresh</span>
+                    Try again
+                </button>
+<button class="w-full h-12 bg-transparent border border-outline hover:bg-surface-container-low text-on-surface font-label-lg uppercase rounded-full transition-colors flex items-center justify-center">
+                    Continue later
+                </button>
+</div>
+</main>
+</div>
+</body></html>
