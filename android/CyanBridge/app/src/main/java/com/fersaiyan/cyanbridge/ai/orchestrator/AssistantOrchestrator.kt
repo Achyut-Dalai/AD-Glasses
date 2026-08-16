@@ -21,7 +21,8 @@ enum class AssistantInputSurface {
 data class AssistantTurn(
     val text: String,
     val surface: AssistantInputSurface,
-    val imageAttached: Boolean = false,
+    /** Concrete local image produced by the existing glasses/phone capture pipeline. */
+    val imagePath: String? = null,
     /** null = automatic, true/false = explicit user/UI preference. */
     val webRequested: Boolean? = null,
 )
@@ -41,9 +42,8 @@ data class AssistantResult(
 )
 
 /**
- * Execution boundary around the capabilities that already exist in MainActivity/services.
- * This deliberately keeps BLE/Wi-Fi/media/Local Agent implementations outside the
- * orchestrator. The orchestrator decides; existing subsystems execute.
+ * Execution boundary around capabilities that already exist in MainActivity/services.
+ * The orchestrator decides; existing BLE/Wi-Fi/media/Local Agent subsystems execute.
  */
 interface AssistantCapabilityExecutor {
     suspend fun answer(
@@ -53,6 +53,7 @@ interface AssistantCapabilityExecutor {
 
     suspend fun analyzeImage(
         prompt: String,
+        imagePath: String?,
         context: AssistantExecutionContext,
     ): AssistantResult
 
@@ -71,9 +72,9 @@ interface AssistantCapabilityExecutor {
  * Single control plane for glasses voice, glasses vision and phone continuation.
  *
  * Every accepted turn is persisted to the same ChatStore-backed session before it is
- * executed, and every assistant response is persisted afterwards. This is what lets
+ * executed, and every assistant response is persisted afterwards. This lets
  * "what is this?" -> "how much is it?" -> "find a better one" remain one conversation
- * even as the required capability changes between turns.
+ * even as the selected capability changes between turns.
  */
 class AssistantOrchestrator(
     context: Context,
@@ -115,7 +116,8 @@ class AssistantOrchestrator(
                 request = AssistantRequest(
                     text = prompt,
                     source = turn.surface.toRouterSource(),
-                    imageAttached = turn.imageAttached || turn.surface == AssistantInputSurface.GLASSES_VISION,
+                    imageAttached = !turn.imagePath.isNullOrBlank() ||
+                        turn.surface == AssistantInputSurface.GLASSES_VISION,
                 ),
                 providerType = providerType,
             )
@@ -123,8 +125,9 @@ class AssistantOrchestrator(
             when (decision.intent) {
                 AssistantIntent.ANSWER_QUESTION -> executor.answer(prompt, executionContext)
                 AssistantIntent.ANALYZE_IMAGE -> executor.analyzeImage(
-                    decision.normalizedGoal ?: prompt,
-                    executionContext,
+                    prompt = decision.normalizedGoal ?: prompt,
+                    imagePath = turn.imagePath,
+                    context = executionContext,
                 )
                 AssistantIntent.EXECUTE_UI_TASK -> executor.executePhoneAction(
                     decision.normalizedGoal ?: prompt,
