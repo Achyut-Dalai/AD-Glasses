@@ -14,6 +14,7 @@ enum class ADRoute {
     SETTINGS,
     AI_RELAY,
     AI_LOCAL,
+    AI_ASSISTANT_APPS,
     PRIVACY,
     STORAGE,
     LANGUAGE,
