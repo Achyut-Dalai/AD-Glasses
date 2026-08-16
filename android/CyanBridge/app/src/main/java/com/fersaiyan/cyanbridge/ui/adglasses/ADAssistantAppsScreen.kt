@@ -5,7 +5,6 @@ import android.provider.Settings
 import android.widget.Toast
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -17,10 +16,10 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.Android
+import androidx.compose.material.icons.outlined.Apps
 import androidx.compose.material.icons.outlined.CheckCircle
 import androidx.compose.material.icons.outlined.PhoneAndroid
 import androidx.compose.material.icons.outlined.Settings
-import androidx.compose.material.icons.outlined.SmartToy
 import androidx.compose.material.icons.rounded.KeyboardArrowRight
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
@@ -146,12 +145,10 @@ internal fun ADAssistantAppsScreen(onBack: () -> Unit) {
         ADCard {
             Row(verticalAlignment = Alignment.Top) {
                 Box(
-                    modifier = Modifier
-                        .size(46.dp)
-                        .background(ADColors.SurfaceSubtle, RoundedCornerShape(14.dp)),
+                    modifier = Modifier.size(46.dp).background(ADColors.SurfaceSubtle, RoundedCornerShape(14.dp)),
                     contentAlignment = Alignment.Center,
                 ) {
-                    Icon(Icons.Outlined.SmartToy, contentDescription = null, tint = ADColors.Ink)
+                    Icon(Icons.Outlined.Apps, contentDescription = null, tint = ADColors.Ink)
                 }
                 Column(Modifier.padding(start = 13.dp).weight(1f)) {
                     Text("Optional app handoff", style = MaterialTheme.typography.titleLarge)
@@ -180,15 +177,13 @@ internal fun ADAssistantAppsScreen(onBack: () -> Unit) {
                 title = "Voice handoff",
                 detail = if (voiceReady) "Ready" else "Advanced bridge setup needed",
                 ready = voiceReady,
-                onClick = {},
             )
             HorizontalDivider(Modifier.padding(start = 49.dp), color = ADColors.Separator)
             ADAssistantAppStatusRow(
-                icon = Icons.Outlined.SmartToy,
+                icon = Icons.Outlined.Apps,
                 title = "Image handoff",
                 detail = if (imageReady) "Ready" else "Advanced bridge and accessibility setup needed",
                 ready = imageReady,
-                onClick = {},
             )
         }
 
@@ -262,13 +257,11 @@ private fun ADAssistantAppStatusRow(
     title: String,
     detail: String,
     ready: Boolean,
-    onClick: () -> Unit,
+    onClick: (() -> Unit)? = null,
 ) {
+    val clickModifier = if (onClick != null) Modifier.clickable(onClick = onClick) else Modifier
     Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .clickable(onClick = onClick)
-            .padding(vertical = 13.dp),
+        modifier = Modifier.fillMaxWidth().then(clickModifier).padding(vertical = 13.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
         Box(
@@ -281,10 +274,9 @@ private fun ADAssistantAppStatusRow(
             Text(title, style = MaterialTheme.typography.titleMedium)
             Text(detail, style = MaterialTheme.typography.bodySmall, color = ADColors.Muted)
         }
-        if (ready) {
-            Icon(Icons.Outlined.CheckCircle, contentDescription = "Ready", tint = ADColors.Success, modifier = Modifier.size(21.dp))
-        } else if (onClick !== {}) {
-            Icon(Icons.Rounded.KeyboardArrowRight, contentDescription = null, tint = ADColors.Muted, modifier = Modifier.size(22.dp))
+        when {
+            ready -> Icon(Icons.Outlined.CheckCircle, contentDescription = "Ready", tint = ADColors.Success, modifier = Modifier.size(21.dp))
+            onClick != null -> Icon(Icons.Rounded.KeyboardArrowRight, contentDescription = null, tint = ADColors.Muted, modifier = Modifier.size(22.dp))
         }
     }
 }
