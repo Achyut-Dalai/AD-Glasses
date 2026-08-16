@@ -34,6 +34,18 @@ class AssistantConversationSession private constructor(
         return created.id
     }
 
+    /**
+     * Select an existing durable thread when a compatibility/deep-link route points at it.
+     * Invalid or already-deleted thread ids are ignored rather than creating phantom history.
+     */
+    @Synchronized
+    fun selectThread(threadId: String?): Boolean {
+        val candidate = threadId?.trim().orEmpty()
+        if (candidate.isBlank() || ChatStore.getThread(candidate) == null) return false
+        prefs.edit().putString(KEY_ACTIVE_THREAD_ID, candidate).apply()
+        return true
+    }
+
     fun messages(): List<ChatMessage> = ChatStore.listMessages(activeThreadId())
 
     fun addUserTurn(text: String): ChatMessage = ChatStore.addMessage(
