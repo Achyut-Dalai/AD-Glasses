@@ -2,7 +2,7 @@ package com.fersaiyan.cyanbridge.ui.adglasses
 
 import android.content.Intent
 import android.net.Uri
-import android.provider.Settings
+import android.provider.Settings as AndroidSettings
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
@@ -51,7 +51,7 @@ internal fun ADAdvancedScreen(
                         runCatching {
                             context.startActivity(
                                 Intent(
-                                    Settings.ACTION_APPLICATION_DETAILS_SETTINGS,
+                                    AndroidSettings.ACTION_APPLICATION_DETAILS_SETTINGS,
                                     Uri.parse("package:${context.packageName}"),
                                 ),
                             )
