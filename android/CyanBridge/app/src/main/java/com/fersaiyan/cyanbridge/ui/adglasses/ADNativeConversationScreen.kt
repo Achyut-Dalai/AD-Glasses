@@ -191,12 +191,18 @@ internal fun ADNativeConversationScreen(
 
             errorText?.let { error ->
                 item(key = "error") {
-                    Text(
-                        text = error,
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = ADColors.Error,
-                        modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp),
-                    )
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .background(ADColors.Surface, RoundedCornerShape(16.dp))
+                            .padding(13.dp),
+                    ) {
+                        Text(
+                            text = error,
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = ADColors.Error,
+                        )
+                    }
                 }
             }
         }
@@ -293,10 +299,9 @@ private fun ADMessageBubble(message: ChatMessage) {
                     vertical = if (user) 11.dp else 5.dp,
                 ),
         ) {
-            Text(
-                text = message.content,
-                style = MaterialTheme.typography.bodyLarge,
-                color = if (user) Color.White else ADColors.Ink,
+            ADConversationMessageBody(
+                content = message.content,
+                userMessage = user,
             )
         }
     }
@@ -311,7 +316,7 @@ private fun ADPendingUserBubble(text: String) {
                 .background(ADColors.Ink, RoundedCornerShape(20.dp))
                 .padding(horizontal = 15.dp, vertical = 11.dp),
         ) {
-            Text(text, style = MaterialTheme.typography.bodyLarge, color = Color.White)
+            ADConversationMessageBody(content = text, userMessage = true)
         }
     }
 }
