@@ -114,7 +114,7 @@ fun ADGlassesApp(
                     ADRoute.STORAGE -> ADStorageScreen(navigateBack)
                     ADRoute.LANGUAGE -> ADLanguageScreen(navigateBack)
                     ADRoute.PERMISSIONS -> ADPermissionsScreen(navigateBack)
-                    ADRoute.ADVANCED -> ADAdvancedCenterScreen(
+                    ADRoute.ADVANCED -> ADAdvancedScreen(
                         onBack = navigateBack,
                         onDevice = { navigateTo(ADRoute.DEVICE_CENTER) },
                     )
