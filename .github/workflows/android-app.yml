@@ -20,6 +20,7 @@ on:
 
 permissions:
   contents: read
+  packages: read
 
 concurrency:
   group: android-app-${{ github.ref }}
@@ -30,6 +31,12 @@ jobs:
     name: Build and test AD Glasses
     runs-on: ubuntu-latest
     timeout-minutes: 45
+    env:
+      # build.gradle/settings.gradle.kts use these for the optional Meta DAT package.
+      # Supplying the Actions token keeps CI on the same source/dependency path as a
+      # developer machine with Meta package credentials instead of silently skipping it.
+      GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      GITHUB_ACTOR: ${{ github.actor }}
 
     steps:
       - name: Check out source
@@ -38,7 +45,7 @@ jobs:
           submodules: recursive
 
       - name: Set up Java 17
-        uses: actions/setup-java@v4
+        uses: actions/setup-java@v5
         with:
           distribution: temurin
           java-version: "17"
@@ -54,7 +61,7 @@ jobs:
           "platforms;android-35"
           "build-tools;35.0.0"
           "cmake;3.22.1"
-          "ndk;26.1.10909125"
+          "ndk;27.0.12077973"
 
       - name: Run app unit tests
         working-directory: android/CyanBridge
