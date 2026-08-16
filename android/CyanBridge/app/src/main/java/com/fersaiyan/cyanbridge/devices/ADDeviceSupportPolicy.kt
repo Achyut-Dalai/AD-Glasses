@@ -5,43 +5,34 @@ import com.fersaiyan.cyanbridge.shared.devices.DeviceClass
 /**
  * Product support boundary for AD Glasses.
  *
- * The upstream codebase knows about more hardware than this personal app intends
- * to expose. Keep those classes in the shared/device layers for compatibility and
- * future upstream ports, but only HeyCyan and Meta are valid AD Glasses product
- * choices.
+ * Upstream may understand many hardware families. AD Glasses keeps those classes
+ * internally for compatibility, but only hardware we actually validate is allowed
+ * through the normal pairing flow.
  */
 object ADDeviceSupportPolicy {
     /** Hardware currently owned and expected to be the primary validated path. */
     val validated: Set<DeviceClass> = setOf(DeviceClass.HEY_CYAN)
 
-    /** Reserved product path we may validate later without reopening the taxonomy. */
+    /** Reserved product family for a future dedicated integration. */
     val planned: Set<DeviceClass> = setOf(DeviceClass.META_RAYBAN)
-
-    /** Device classes AD Glasses is willing to expose or connect as product choices. */
-    val selectable: List<DeviceClass> = listOf(
-        DeviceClass.HEY_CYAN,
-        DeviceClass.META_RAYBAN,
-    )
 
     fun isValidated(deviceClass: DeviceClass): Boolean = deviceClass in validated
 
     fun isPlanned(deviceClass: DeviceClass): Boolean = deviceClass in planned
 
-    fun isSelectable(deviceClass: DeviceClass): Boolean = deviceClass in selectable
+    /** Only validated hardware is pairable from the current AD Glasses setup flow. */
+    fun isPairable(deviceClass: DeviceClass): Boolean = isValidated(deviceClass)
 
     /**
-     * Unknown scan results stay visible so an oddly-advertising HeyCyan can still be
-     * manually identified. A positively recognized unsupported product stays hidden.
+     * Generic BLE setup should contain only devices we can confidently identify and
+     * support. Unknown devices are not promoted into a manual type-selection flow.
+     * Meta will use its own dedicated pairing path when enabled.
      */
-    fun shouldShowScanResult(deviceClass: DeviceClass): Boolean =
-        deviceClass == DeviceClass.UNKNOWN || isSelectable(deviceClass)
-
-    fun defaultSelection(detectedClass: DeviceClass): DeviceClass =
-        detectedClass.takeIf(::isSelectable) ?: DeviceClass.HEY_CYAN
+    fun shouldShowScanResult(deviceClass: DeviceClass): Boolean = isPairable(deviceClass)
 
     fun supportLabel(deviceClass: DeviceClass): String = when {
         isValidated(deviceClass) -> "Supported"
         isPlanned(deviceClass) -> "Planned"
-        else -> "Not enabled in AD Glasses"
+        else -> "Internal compatibility only"
     }
 }
