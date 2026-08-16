@@ -39,9 +39,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
-import com.fersaiyan.cyanbridge.agent.CloudSettingsActivity
 import com.fersaiyan.cyanbridge.agent.LocalAgentPrefs
-import com.fersaiyan.cyanbridge.agent.LocalModelsConfigureActivity
 import com.fersaiyan.cyanbridge.ai.router.AiProviderPrefs
 import com.fersaiyan.cyanbridge.ai.router.AiProviderType
 import com.fersaiyan.cyanbridge.ai.router.CliRelayBackend
@@ -56,7 +54,10 @@ enum class ADAiChoice {
 }
 
 @Composable
-internal fun ADNativeAiScreen() {
+internal fun ADNativeAiScreen(
+    onRelaySettings: () -> Unit,
+    onLocalSettings: () -> Unit,
+) {
     val context = LocalContext.current
     var selected by remember { mutableStateOf(resolveAiChoice(context)) }
 
@@ -156,9 +157,7 @@ internal fun ADNativeAiScreen() {
                             } else {
                                 "Configure a relay to enable web-backed answers"
                             },
-                            onClick = {
-                                context.startActivity(Intent(context, CloudSettingsActivity::class.java))
-                            },
+                            onClick = onRelaySettings,
                         )
                         HorizontalDivider(Modifier.padding(start = 48.dp), color = ADColors.Separator)
                         ADAiActionRow(
@@ -190,18 +189,14 @@ internal fun ADNativeAiScreen() {
                             icon = Icons.Outlined.Settings,
                             title = "Relay settings",
                             detail = if (relayConfigured) "Server and model routing" else "Add your relay server",
-                            onClick = {
-                                context.startActivity(Intent(context, CloudSettingsActivity::class.java))
-                            },
+                            onClick = onRelaySettings,
                         )
                         HorizontalDivider(Modifier.padding(start = 48.dp), color = ADColors.Separator)
                         ADAiActionRow(
                             icon = Icons.Outlined.Computer,
                             title = "Local and OpenAI-compatible models",
-                            detail = "Install local models or configure an OpenAI-compatible server",
-                            onClick = {
-                                context.startActivity(Intent(context, LocalModelsConfigureActivity::class.java))
-                            },
+                            detail = "Local model files and OpenAI-compatible endpoints",
+                            onClick = onLocalSettings,
                         )
                     }
                 }
