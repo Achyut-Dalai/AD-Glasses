@@ -2,9 +2,9 @@ package com.fersaiyan.cyanbridge.ui.adglasses
 
 enum class ADTab(val label: String) {
     HOME("Home"),
-    ASSISTANT("Assistant"),
+    ASSISTANT("Conversations"),
     LIBRARY("Library"),
-    AUTOMATIONS("Automations"),
+    AUTOMATIONS("Modes"),
 }
 
 enum class ADRoute {
