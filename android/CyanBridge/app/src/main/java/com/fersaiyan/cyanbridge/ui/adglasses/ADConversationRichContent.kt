@@ -1,0 +1,309 @@
+package com.fersaiyan.cyanbridge.ui.adglasses
+
+import android.content.Intent
+import android.net.Uri
+import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.outlined.Code
+import androidx.compose.material.icons.outlined.Description
+import androidx.compose.material.icons.outlined.GraphicEq
+import androidx.compose.material.icons.outlined.Image
+import androidx.compose.material.icons.outlined.Link
+import androidx.compose.material.icons.outlined.Videocam
+import androidx.compose.material.icons.rounded.KeyboardArrowRight
+import androidx.compose.material3.Icon
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Text
+import androidx.compose.runtime.Composable
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.text.font.FontFamily
+import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.unit.dp
+
+/**
+ * Small presentation model for rich conversation output.
+ *
+ * AD Glasses deliberately does not auto-download arbitrary remote media embedded in an
+ * AI response. A result may present a photo/video/audio/link card, and the user chooses
+ * whether to open it. Local glasses media is previewed directly in Library instead.
+ */
+internal sealed interface ADConversationBlock {
+    data class TextBlock(val text: String) : ADConversationBlock
+    data class CodeBlock(val language: String?, val code: String) : ADConversationBlock
+    data class LinkBlock(
+        val label: String,
+        val target: String,
+        val kind: ADConversationLinkKind,
+    ) : ADConversationBlock
+}
+
+internal enum class ADConversationLinkKind {
+    IMAGE,
+    VIDEO,
+    AUDIO,
+    DOCUMENT,
+    LINK,
+}
+
+@Composable
+internal fun ADConversationMessageBody(
+    content: String,
+    userMessage: Boolean,
+) {
+    val blocks = parseADConversationBlocks(content)
+    Column(verticalArrangement = Arrangement.spacedBy(9.dp)) {
+        blocks.forEach { block ->
+            when (block) {
+                is ADConversationBlock.TextBlock -> Text(
+                    text = block.text,
+                    style = MaterialTheme.typography.bodyLarge,
+                    color = if (userMessage) Color.White else ADColors.Ink,
+                )
+                is ADConversationBlock.CodeBlock -> ADConversationCodeBlock(block)
+                is ADConversationBlock.LinkBlock -> ADConversationLinkCard(block, userMessage)
+            }
+        }
+    }
+}
+
+@Composable
+private fun ADConversationCodeBlock(block: ADConversationBlock.CodeBlock) {
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .background(ADColors.SurfaceSubtle, RoundedCornerShape(14.dp))
+            .padding(13.dp),
+        verticalArrangement = Arrangement.spacedBy(7.dp),
+    ) {
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Icon(
+                Icons.Outlined.Code,
+                contentDescription = null,
+                tint = ADColors.Muted,
+                modifier = Modifier.size(17.dp),
+            )
+            Text(
+                block.language?.takeIf { it.isNotBlank() } ?: "Code",
+                modifier = Modifier.padding(start = 7.dp),
+                style = MaterialTheme.typography.labelMedium,
+                color = ADColors.Muted,
+            )
+        }
+        Text(
+            block.code,
+            style = MaterialTheme.typography.bodyMedium.copy(fontFamily = FontFamily.Monospace),
+            color = ADColors.Ink,
+        )
+    }
+}
+
+@Composable
+private fun ADConversationLinkCard(
+    block: ADConversationBlock.LinkBlock,
+    userMessage: Boolean,
+) {
+    val context = LocalContext.current
+    val icon = block.kind.icon()
+    val kindLabel = block.kind.label()
+    val detail = displayTarget(block.target)
+
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .background(
+                if (userMessage) Color.White.copy(alpha = 0.12f) else ADColors.SurfaceSubtle,
+                RoundedCornerShape(15.dp),
+            )
+            .clickable {
+                val uri = runCatching { Uri.parse(block.target) }.getOrNull() ?: return@clickable
+                val intent = Intent(Intent.ACTION_VIEW, uri).apply {
+                    if (uri.scheme == "content") addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+                }
+                runCatching { context.startActivity(intent) }
+            }
+            .padding(12.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Box(
+            modifier = Modifier
+                .size(38.dp)
+                .background(
+                    if (userMessage) Color.White.copy(alpha = 0.12f) else ADColors.Surface,
+                    RoundedCornerShape(11.dp),
+                ),
+            contentAlignment = Alignment.Center,
+        ) {
+            Icon(
+                icon,
+                contentDescription = null,
+                tint = if (userMessage) Color.White else ADColors.Ink,
+                modifier = Modifier.size(20.dp),
+            )
+        }
+        Column(Modifier.padding(start = 11.dp).weight(1f)) {
+            Text(
+                block.label.ifBlank { kindLabel },
+                style = MaterialTheme.typography.titleSmall,
+                color = if (userMessage) Color.White else ADColors.Ink,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+            )
+            Text(
+                "$kindLabel · $detail",
+                style = MaterialTheme.typography.bodySmall,
+                color = if (userMessage) Color.White.copy(alpha = 0.72f) else ADColors.Muted,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+            )
+        }
+        Spacer(Modifier.size(6.dp))
+        Icon(
+            Icons.Rounded.KeyboardArrowRight,
+            contentDescription = "Open",
+            tint = if (userMessage) Color.White.copy(alpha = 0.72f) else ADColors.Muted,
+        )
+    }
+}
+
+internal fun parseADConversationBlocks(content: String): List<ADConversationBlock> {
+    if (content.isBlank()) return emptyList()
+
+    val blocks = mutableListOf<ADConversationBlock>()
+    val textBuffer = mutableListOf<String>()
+    val codeBuffer = mutableListOf<String>()
+    var codeLanguage: String? = null
+    var inCode = false
+
+    fun flushText() {
+        if (textBuffer.isEmpty()) return
+        val text = textBuffer.joinToString("\n").trim()
+        if (text.isNotEmpty()) blocks += ADConversationBlock.TextBlock(text)
+        textBuffer.clear()
+    }
+
+    fun flushCode() {
+        val code = codeBuffer.joinToString("\n").trimEnd()
+        if (code.isNotEmpty()) blocks += ADConversationBlock.CodeBlock(codeLanguage, code)
+        codeBuffer.clear()
+        codeLanguage = null
+    }
+
+    content.lines().forEach { line ->
+        val trimmed = line.trim()
+        if (trimmed.startsWith("```")) {
+            if (inCode) {
+                flushCode()
+                inCode = false
+            } else {
+                flushText()
+                codeLanguage = trimmed.removePrefix("```").trim().ifBlank { null }
+                inCode = true
+            }
+            return@forEach
+        }
+
+        if (inCode) {
+            codeBuffer += line
+            return@forEach
+        }
+
+        parseStandaloneLink(trimmed)?.let { link ->
+            flushText()
+            blocks += link
+        } ?: run {
+            textBuffer += line
+        }
+    }
+
+    if (inCode) flushCode() else flushText()
+    return blocks.ifEmpty { listOf(ADConversationBlock.TextBlock(content)) }
+}
+
+private fun parseStandaloneLink(line: String): ADConversationBlock.LinkBlock? {
+    if (line.isBlank()) return null
+
+    MARKDOWN_IMAGE.matchEntire(line)?.let { match ->
+        val label = match.groupValues[1].ifBlank { "Image" }
+        val target = match.groupValues[2].trim()
+        return ADConversationBlock.LinkBlock(label, target, inferLinkKind(target, imageHint = true))
+    }
+
+    MARKDOWN_LINK.matchEntire(line)?.let { match ->
+        val label = match.groupValues[1].trim()
+        val target = match.groupValues[2].trim()
+        return ADConversationBlock.LinkBlock(label, target, inferLinkKind(target))
+    }
+
+    if (line.startsWith("https://", true) ||
+        line.startsWith("http://", true) ||
+        line.startsWith("content://", true) ||
+        line.startsWith("file://", true)
+    ) {
+        return ADConversationBlock.LinkBlock(
+            label = displayTarget(line),
+            target = line,
+            kind = inferLinkKind(line),
+        )
+    }
+
+    return null
+}
+
+private fun inferLinkKind(target: String, imageHint: Boolean = false): ADConversationLinkKind {
+    if (imageHint) return ADConversationLinkKind.IMAGE
+    val clean = target.substringBefore('?').substringBefore('#').lowercase()
+    return when {
+        clean.endsWith(".jpg") || clean.endsWith(".jpeg") || clean.endsWith(".png") ||
+            clean.endsWith(".webp") || clean.endsWith(".gif") -> ADConversationLinkKind.IMAGE
+        clean.endsWith(".mp4") || clean.endsWith(".mov") || clean.endsWith(".m4v") ||
+            clean.endsWith(".webm") -> ADConversationLinkKind.VIDEO
+        clean.endsWith(".mp3") || clean.endsWith(".wav") || clean.endsWith(".m4a") ||
+            clean.endsWith(".aac") || clean.endsWith(".ogg") -> ADConversationLinkKind.AUDIO
+        clean.endsWith(".pdf") || clean.endsWith(".doc") || clean.endsWith(".docx") ||
+            clean.endsWith(".txt") || clean.endsWith(".csv") || clean.endsWith(".json") -> ADConversationLinkKind.DOCUMENT
+        else -> ADConversationLinkKind.LINK
+    }
+}
+
+private fun displayTarget(target: String): String {
+    val uri = runCatching { Uri.parse(target) }.getOrNull()
+    return when {
+        uri == null -> target
+        !uri.host.isNullOrBlank() -> uri.host.orEmpty().removePrefix("www.")
+        uri.lastPathSegment?.isNotBlank() == true -> uri.lastPathSegment.orEmpty()
+        else -> target.take(72)
+    }
+}
+
+private fun ADConversationLinkKind.icon(): ImageVector = when (this) {
+    ADConversationLinkKind.IMAGE -> Icons.Outlined.Image
+    ADConversationLinkKind.VIDEO -> Icons.Outlined.Videocam
+    ADConversationLinkKind.AUDIO -> Icons.Outlined.GraphicEq
+    ADConversationLinkKind.DOCUMENT -> Icons.Outlined.Description
+    ADConversationLinkKind.LINK -> Icons.Outlined.Link
+}
+
+private fun ADConversationLinkKind.label(): String = when (this) {
+    ADConversationLinkKind.IMAGE -> "Image"
+    ADConversationLinkKind.VIDEO -> "Video"
+    ADConversationLinkKind.AUDIO -> "Audio"
+    ADConversationLinkKind.DOCUMENT -> "Document"
+    ADConversationLinkKind.LINK -> "Link"
+}
+
+private val MARKDOWN_IMAGE = Regex("!\\[([^]]*)]\\(([^)]+)\\)")
+private val MARKDOWN_LINK = Regex("\\[([^]]+)]\\(([^)]+)\\)")
