@@ -32,6 +32,8 @@ enum class ADAutomation(
     val summary: String,
     val outcome: String,
     val boundary: String,
+    /** Existing service/plugin title used only to reconcile runtime state. */
+    val runtimeTitle: String = title,
 ) {
     LOCAL_AGENT("Local Agent", "Phone actions with approval.", "Phone actions", "On device"),
     MEETING_NOTES("Meeting Spark Notes", "Record, transcribe, and summarize meetings.", "Meetings", "Automatic"),
