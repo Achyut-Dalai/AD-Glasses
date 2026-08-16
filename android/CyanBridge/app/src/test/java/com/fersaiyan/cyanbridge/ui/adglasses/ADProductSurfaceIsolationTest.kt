@@ -62,6 +62,7 @@ class ADProductSurfaceIsolationTest {
             "ADDeviceCenterScreen(",
             "ADSettingsScreen(",
             "ADAiServicesScreen(",
+            "ADAdvancedCenterScreen(",
         ).forEach { token ->
             assertFalse("AD navigation root must not use compatibility token $token", source.contains(token))
         }
