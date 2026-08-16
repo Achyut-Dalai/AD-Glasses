@@ -9,11 +9,14 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.safeDrawing
 import androidx.compose.material3.Scaffold
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import com.fersaiyan.cyanbridge.shared.glasses.GlassesDashboardUiState
 
 @Composable
@@ -21,9 +24,14 @@ fun ADGlassesApp(
     dashboardState: GlassesDashboardUiState,
     host: ADHostActions,
 ) {
+    val context = LocalContext.current
+    val navigationRequests = remember(context) { ADNavigationRequestStore.observe(context) }
+    val externalRequest by navigationRequests.collectAsState()
+
     var selectedTab by remember { mutableStateOf(ADTab.HOME) }
     var routeStack by remember { mutableStateOf(listOf(ADRoute.MAIN)) }
     var selectedAutomation by remember { mutableStateOf(ADAutomation.LOCAL_AGENT) }
+    var conversationRequest by remember { mutableStateOf<ADNavigationRequest?>(null) }
 
     val route = routeStack.last()
     val navigateTo: (ADRoute) -> Unit = { destination ->
@@ -31,6 +39,37 @@ fun ADGlassesApp(
     }
     val navigateBack = {
         if (routeStack.size > 1) routeStack = routeStack.dropLast(1)
+    }
+
+    LaunchedEffect(externalRequest?.id) {
+        val request = externalRequest ?: return@LaunchedEffect
+        when (request.destination) {
+            ADExternalDestination.CONVERSATIONS -> {
+                routeStack = listOf(ADRoute.MAIN)
+                selectedTab = ADTab.ASSISTANT
+                conversationRequest = request
+            }
+            ADExternalDestination.SETTINGS -> {
+                routeStack = listOf(ADRoute.MAIN, ADRoute.SETTINGS)
+            }
+            ADExternalDestination.MODES -> {
+                routeStack = listOf(ADRoute.MAIN)
+                selectedTab = ADTab.AUTOMATIONS
+            }
+            ADExternalDestination.LIBRARY_CAPTURES -> {
+                selectedTab = ADTab.LIBRARY
+                routeStack = listOf(ADRoute.MAIN, ADRoute.LIBRARY_CAPTURES)
+            }
+            ADExternalDestination.LIBRARY_RECORDINGS -> {
+                selectedTab = ADTab.LIBRARY
+                routeStack = listOf(ADRoute.MAIN, ADRoute.LIBRARY_RECORDINGS)
+            }
+            ADExternalDestination.LIBRARY_NOTES -> {
+                selectedTab = ADTab.LIBRARY
+                routeStack = listOf(ADRoute.MAIN, ADRoute.LIBRARY_NOTES)
+            }
+        }
+        ADNavigationRequestStore.consume(context, request.id)
     }
 
     BackHandler(enabled = route != ADRoute.MAIN) { navigateBack() }
@@ -65,6 +104,10 @@ fun ADGlassesApp(
                         ADTab.ASSISTANT -> ADNativeConversationScreen(
                             onVoiceQuestion = host.onVoiceQuestion,
                             onImageQuestion = host.onImageQuestion,
+                            navigationRequest = conversationRequest,
+                            onNavigationRequestApplied = { requestId ->
+                                if (conversationRequest?.id == requestId) conversationRequest = null
+                            },
                         )
                         ADTab.LIBRARY -> ADNativeLibraryScreen(
                             transferActive = dashboardState.transfer.isVisible,
