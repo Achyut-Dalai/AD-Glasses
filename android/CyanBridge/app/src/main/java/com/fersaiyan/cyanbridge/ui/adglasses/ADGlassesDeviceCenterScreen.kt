@@ -52,7 +52,7 @@ internal fun ADGlassesDeviceCenterScreen(
     val presentation = buildADDevicePresentation(state, profile)
     val identity = presentation.identityLabel ?: if (profile == null) "No glasses connected" else "Glasses"
 
-    ADDetailLayout("Device Center", onBack) {
+    ADPageLayout("Device Center", onBack) {
         ADCard {
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Box(
@@ -165,8 +165,8 @@ internal fun ADGlassesDeviceCenterScreen(
             HorizontalDivider(Modifier.padding(start = 48.dp), color = ADColors.Separator)
             ADSettingsRow(
                 icon = Icons.Outlined.SystemUpdateAlt,
-                title = "Firmware Lab",
-                subtitle = "Firmware tools with careful preflight checks",
+                title = "Firmware",
+                subtitle = "Updates and recovery with preflight checks",
                 onClick = onFirmware,
                 iconTint = Color.White,
                 iconBackground = ADColors.Warning,
@@ -174,8 +174,8 @@ internal fun ADGlassesDeviceCenterScreen(
             HorizontalDivider(Modifier.padding(start = 48.dp), color = ADColors.Separator)
             ADSettingsRow(
                 icon = Icons.Outlined.DeveloperMode,
-                title = "Advanced and diagnostics",
-                subtitle = "Logs, runtime status and recovery tools",
+                title = "Advanced",
+                subtitle = "Connection diagnostics and Android controls",
                 onClick = onAdvanced,
                 iconTint = Color.White,
                 iconBackground = ADColors.Muted,
