@@ -40,9 +40,9 @@ import com.fersaiyan.cyanbridge.ai.orchestrator.AssistantMode
 import com.fersaiyan.cyanbridge.ai.orchestrator.AssistantModeAction
 import com.fersaiyan.cyanbridge.ai.orchestrator.AssistantModeCommand
 
-/** Native start/stop surface for a mode. No plugin SettingsActivity is required. */
+/** Native start/stop surface for a task. No plugin SettingsActivity is required. */
 @Composable
-internal fun ADNativeModeDetailScreen(
+internal fun ADNativeTaskDetailScreen(
     automation: ADAutomation,
     initiallyActive: Boolean,
     onBack: () -> Unit,
@@ -90,16 +90,16 @@ internal fun ADNativeModeDetailScreen(
                     Text(automation.summary, style = MaterialTheme.typography.bodyLarge)
                 }
                 ADStatusChip(
-                    if (active) "ON" else "OFF",
+                    if (active) "On" else "Off",
                     if (active) ADStatusTone.SUCCESS else ADStatusTone.NEUTRAL,
                 )
             }
         }
 
         ADCard {
-            ADNativeModeMetric(Icons.Outlined.Lock, "Processing", automation.boundary)
+            ADTaskMetric(Icons.Outlined.Lock, "Processing", automation.boundary)
             HorizontalDivider(Modifier.padding(start = 32.dp), color = ADColors.Separator)
-            ADNativeModeMetric(Icons.Outlined.FolderOpen, "Output", automation.nativeOutput())
+            ADTaskMetric(Icons.Outlined.FolderOpen, "Saved as", automation.nativeOutput())
         }
 
         resultText?.let { message ->
@@ -128,7 +128,7 @@ internal fun ADNativeModeDetailScreen(
             ) {
                 Icon(Icons.Outlined.StopCircle, contentDescription = null)
                 Spacer(Modifier.size(8.dp))
-                Text("Stop mode")
+                Text("Stop task")
             }
         } else {
             Button(
@@ -138,12 +138,12 @@ internal fun ADNativeModeDetailScreen(
             ) {
                 Icon(Icons.Outlined.PlayArrow, contentDescription = null)
                 Spacer(Modifier.size(8.dp))
-                Text("Start mode")
+                Text("Start task")
             }
         }
 
         Text(
-            "You can also start or stop this mode by voice from the glasses.",
+            "You can also start or stop this task by voice from the glasses.",
             style = MaterialTheme.typography.bodyMedium,
             color = ADColors.Muted,
         )
@@ -151,7 +151,7 @@ internal fun ADNativeModeDetailScreen(
 }
 
 @Composable
-private fun ADNativeModeMetric(
+private fun ADTaskMetric(
     icon: androidx.compose.ui.graphics.vector.ImageVector,
     label: String,
     value: String,
