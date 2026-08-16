@@ -2,7 +2,7 @@ package com.fersaiyan.cyanbridge.ui.adglasses
 
 import android.content.Intent
 import android.graphics.Bitmap
-import android.graphics.BitmapFactory
+import android.media.ThumbnailUtils
 import android.net.Uri
 import android.os.Build
 import android.util.Size
@@ -50,6 +50,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import java.io.File
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 
@@ -220,16 +221,25 @@ private fun ADConversationLocalMediaPreview(
     val context = LocalContext.current
     var thumbnail by remember(uri.toString()) { mutableStateOf<Bitmap?>(null) }
 
-    LaunchedEffect(uri) {
+    LaunchedEffect(uri, video) {
         thumbnail = withContext(Dispatchers.IO) {
+            if (Build.VERSION.SDK_INT < Build.VERSION_CODES.Q) return@withContext null
             when (uri.scheme) {
-                "content" -> {
-                    if (Build.VERSION.SDK_INT < Build.VERSION_CODES.Q) return@withContext null
+                "content" -> runCatching {
+                    context.contentResolver.loadThumbnail(uri, Size(960, 600), null)
+                }.getOrNull()
+                "file" -> {
+                    val path = uri.path ?: return@withContext null
+                    val file = File(path)
+                    if (!file.isFile) return@withContext null
                     runCatching {
-                        context.contentResolver.loadThumbnail(uri, Size(960, 600), null)
+                        if (video) {
+                            ThumbnailUtils.createVideoThumbnail(file, Size(960, 600), null)
+                        } else {
+                            ThumbnailUtils.createImageThumbnail(file, Size(960, 600), null)
+                        }
                     }.getOrNull()
                 }
-                "file" -> runCatching { BitmapFactory.decodeFile(uri.path) }.getOrNull()
                 else -> null
             }
         }
