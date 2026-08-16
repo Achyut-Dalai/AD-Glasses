@@ -80,8 +80,7 @@ fun ADGlassesApp(
                             },
                         )
                     }
-
-                    ADRoute.DEVICE_CENTER -> ADDeviceCenterScreen(
+                    ADRoute.DEVICE_CENTER -> ADGlassesDeviceCenterScreen(
                         state = dashboardState,
                         host = host,
                         onBack = navigateBack,
@@ -103,19 +102,13 @@ fun ADGlassesApp(
                         onAdvanced = { navigateTo(ADRoute.ADVANCED) },
                         onAbout = { navigateTo(ADRoute.ABOUT) },
                     )
-                    ADRoute.AI_SERVICES -> ADIntelligenceScreen(
-                        onBack = navigateBack,
-                        onRouting = { navigateTo(ADRoute.ROUTING) },
-                    )
+                    ADRoute.AI_SERVICES -> ADIntelligenceScreen(onBack = navigateBack, onRouting = { navigateTo(ADRoute.ROUTING) })
                     ADRoute.ROUTING -> ADRoutingScreen(navigateBack)
                     ADRoute.PRIVACY -> ADPrivacyCenterScreen(navigateBack)
                     ADRoute.STORAGE -> ADStorageScreen(navigateBack)
                     ADRoute.LANGUAGE -> ADLanguageScreen(navigateBack)
                     ADRoute.PERMISSIONS -> ADPermissionsScreen(navigateBack)
-                    ADRoute.ADVANCED -> ADAdvancedCenterScreen(
-                        onBack = navigateBack,
-                        onDevice = { navigateTo(ADRoute.DEVICE_CENTER) },
-                    )
+                    ADRoute.ADVANCED -> ADAdvancedCenterScreen(onBack = navigateBack, onDevice = { navigateTo(ADRoute.DEVICE_CENTER) })
                     ADRoute.ABOUT -> ADAboutScreen(navigateBack)
                     ADRoute.FIRMWARE -> ADFirmwareScreen(dashboardState, host, navigateBack)
                     ADRoute.AUTOMATION_DETAIL -> ADNativeModeDetailScreen(
@@ -124,10 +117,7 @@ fun ADGlassesApp(
                             dashboardState.nativePluginShortcut?.isEnabled == true,
                         onBack = navigateBack,
                     )
-                    ADRoute.LIBRARY_CAPTURES -> ADNativeCapturesScreen(
-                        onBack = navigateBack,
-                        onOpenSync = { navigateTo(ADRoute.SYNC) },
-                    )
+                    ADRoute.LIBRARY_CAPTURES -> ADNativeCapturesScreen(onBack = navigateBack, onOpenSync = { navigateTo(ADRoute.SYNC) })
                     ADRoute.LIBRARY_RECORDINGS -> ADNativeRecordingsScreen(navigateBack)
                     ADRoute.LIBRARY_NOTES -> ADNativeNotesScreen(navigateBack)
                 }

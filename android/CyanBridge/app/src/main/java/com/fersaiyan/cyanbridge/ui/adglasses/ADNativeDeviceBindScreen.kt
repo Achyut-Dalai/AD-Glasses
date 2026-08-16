@@ -13,13 +13,11 @@ import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.Bluetooth
 import androidx.compose.material.icons.outlined.BluetoothSearching
-import androidx.compose.material.icons.outlined.CheckCircle
 import androidx.compose.material.icons.outlined.Close
 import androidx.compose.material.icons.rounded.KeyboardArrowRight
 import androidx.compose.material3.Button
@@ -29,7 +27,6 @@ import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -40,7 +37,7 @@ import androidx.compose.ui.unit.dp
 import com.fersaiyan.cyanbridge.shared.devices.DeviceClass
 import com.fersaiyan.cyanbridge.shared.devices.ScannedDevice
 
-/** AD Glasses pairing surface. The Activity keeps ownership of scanner and transport logic. */
+/** AD Glasses pairing surface. Device detection decides whether a result is pairable. */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun ADNativeDeviceBindScreen(
@@ -56,6 +53,12 @@ fun ADNativeDeviceBindScreen(
     onDismissConnection: () -> Unit,
     onBack: () -> Unit,
 ) {
+    // The extra callbacks remain in the signature temporarily so the scanner Activity can
+    // migrate without touching its stable transport code. Product UI no longer exposes a
+    // manual device-type decision.
+    @Suppress("UNUSED_VARIABLE") val ignoredLegacySelectionState = connectingDevice to selectedClass
+    @Suppress("UNUSED_VARIABLE") val ignoredLegacyCallbacks = Triple(onSelectedClassChange, onConfirmConnection, onDismissConnection)
+
     Column(Modifier.fillMaxSize()) {
         ADTopBar(title = "Connect glasses", showBack = true, onBack = onBack)
         LazyColumn(
@@ -93,15 +96,15 @@ fun ADNativeDeviceBindScreen(
                         }
                         Column(Modifier.padding(start = 14.dp).weight(1f)) {
                             Text(
-                                if (isScanning) "Looking for glasses" else "Find nearby glasses",
+                                if (isScanning) "Looking for HeyCyan" else "Find your glasses",
                                 style = MaterialTheme.typography.titleLarge,
                             )
                             Text(
                                 when {
-                                    isScanning && devices.isEmpty() -> "Keep the glasses nearby and ready to pair."
-                                    isScanning -> "${devices.size} nearby ${if (devices.size == 1) "device" else "devices"} found"
-                                    devices.isEmpty() -> "Bluetooth and Nearby Devices are used only for discovery and connection."
-                                    else -> "Choose the glasses you want AD Glasses to use."
+                                    isScanning && devices.isEmpty() -> "Keep the glasses nearby and ready to connect."
+                                    isScanning -> "${devices.size} HeyCyan ${if (devices.size == 1) "device" else "devices"} found"
+                                    devices.isEmpty() -> "Scan for the HeyCyan glasses you want this phone to use."
+                                    else -> "Tap your glasses to connect. Device type is detected automatically."
                                 },
                                 style = MaterialTheme.typography.bodyMedium,
                                 color = ADColors.Muted,
@@ -126,7 +129,7 @@ fun ADNativeDeviceBindScreen(
                         ) {
                             Icon(Icons.Outlined.BluetoothSearching, contentDescription = null)
                             Spacer(Modifier.size(8.dp))
-                            Text(if (devices.isEmpty()) "Scan for glasses" else "Scan again")
+                            Text(if (devices.isEmpty()) "Scan for HeyCyan" else "Scan again")
                         }
                     }
                 }
@@ -152,63 +155,10 @@ fun ADNativeDeviceBindScreen(
             if (!isScanning && devices.isEmpty()) {
                 item {
                     Text(
-                        "If nothing appears, make sure another companion app is not actively connected to the glasses, then scan again.",
+                        "If the glasses do not appear, make sure Bluetooth is on and another companion app is not actively connected, then scan again.",
                         style = MaterialTheme.typography.bodyMedium,
                         color = ADColors.Muted,
                     )
-                }
-            }
-        }
-    }
-
-    connectingDevice?.let { device ->
-        ModalBottomSheet(
-            onDismissRequest = onDismissConnection,
-            containerColor = ADColors.Surface,
-        ) {
-            Column(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(start = 20.dp, end = 20.dp, bottom = 30.dp),
-                verticalArrangement = Arrangement.spacedBy(14.dp),
-            ) {
-                Text("Use these glasses", style = MaterialTheme.typography.headlineMedium)
-                Text(
-                    device.advertisedName?.takeIf { it.isNotBlank() } ?: "Nearby Bluetooth device",
-                    style = MaterialTheme.typography.titleMedium,
-                )
-                Text(
-                    "Choose the hardware profile only if detection looks wrong. AD Glasses remembers your choice for this device.",
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = ADColors.Muted,
-                )
-
-                ADCard {
-                    DeviceClass.entries
-                        .filter { it != DeviceClass.UNKNOWN }
-                        .forEachIndexed { index, deviceClass ->
-                            ADPairingClassRow(
-                                deviceClass = deviceClass,
-                                selected = selectedClass == deviceClass,
-                                onClick = { onSelectedClassChange(deviceClass) },
-                            )
-                            if (index != DeviceClass.entries.count { it != DeviceClass.UNKNOWN } - 1) {
-                                HorizontalDivider(
-                                    modifier = Modifier.padding(start = 46.dp),
-                                    color = ADColors.Separator,
-                                )
-                            }
-                        }
-                }
-
-                Button(
-                    onClick = onConfirmConnection,
-                    modifier = Modifier.fillMaxWidth().heightIn(min = 50.dp),
-                    colors = ButtonDefaults.buttonColors(containerColor = ADColors.Ink),
-                ) {
-                    Icon(Icons.Outlined.Bluetooth, contentDescription = null)
-                    Spacer(Modifier.size(8.dp))
-                    Text("Connect")
                 }
             }
         }
@@ -220,7 +170,6 @@ private fun ADPairingDeviceRow(
     device: ScannedDevice,
     onClick: () -> Unit,
 ) {
-    val effectiveClass = device.effectiveSelectedClass()
     Row(
         modifier = Modifier
             .fillMaxWidth()
@@ -238,14 +187,14 @@ private fun ADPairingDeviceRow(
         }
         Column(Modifier.padding(start = 11.dp).weight(1f)) {
             Text(
-                device.advertisedName?.takeIf { it.isNotBlank() } ?: effectiveClass.displayName(),
+                device.advertisedName?.takeIf { it.isNotBlank() } ?: "HeyCyan glasses",
                 style = MaterialTheme.typography.titleMedium,
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis,
             )
             Text(
                 buildString {
-                    append(effectiveClass.displayName())
+                    append("HeyCyan")
                     if (device.rssi != 0) append(" · ${signalLabel(device.rssi)}")
                 },
                 style = MaterialTheme.typography.bodyMedium,
@@ -254,45 +203,7 @@ private fun ADPairingDeviceRow(
                 overflow = TextOverflow.Ellipsis,
             )
         }
-        Icon(Icons.Rounded.KeyboardArrowRight, contentDescription = null, tint = ADColors.Muted)
-    }
-}
-
-@Composable
-private fun ADPairingClassRow(
-    deviceClass: DeviceClass,
-    selected: Boolean,
-    onClick: () -> Unit,
-) {
-    Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .clickable(onClick = onClick)
-            .padding(vertical = 12.dp),
-        verticalAlignment = Alignment.CenterVertically,
-    ) {
-        Box(
-            Modifier
-                .size(36.dp)
-                .background(
-                    if (selected) ADColors.SuccessSoft else ADColors.SurfaceSubtle,
-                    RoundedCornerShape(10.dp),
-                ),
-            contentAlignment = Alignment.Center,
-        ) {
-            Icon(
-                if (selected) Icons.Outlined.CheckCircle else Icons.Outlined.Bluetooth,
-                contentDescription = null,
-                tint = if (selected) ADColors.Success else ADColors.Muted,
-                modifier = Modifier.size(19.dp),
-            )
-        }
-        Text(
-            deviceClass.displayName(),
-            modifier = Modifier.padding(start = 11.dp).weight(1f),
-            style = MaterialTheme.typography.bodyLarge,
-        )
-        if (selected) ADStatusChip("SELECTED", ADStatusTone.SUCCESS)
+        Icon(Icons.Rounded.KeyboardArrowRight, contentDescription = "Connect", tint = ADColors.Muted)
     }
 }
 
