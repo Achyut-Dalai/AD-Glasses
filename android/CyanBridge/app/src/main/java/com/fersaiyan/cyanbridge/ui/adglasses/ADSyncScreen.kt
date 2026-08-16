@@ -1,22 +1,17 @@
 package com.fersaiyan.cyanbridge.ui.adglasses
 
 import androidx.compose.foundation.background
-import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.Bluetooth
 import androidx.compose.material.icons.outlined.StopCircle
@@ -39,6 +34,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import com.fersaiyan.cyanbridge.devices.ADDeviceSupportPolicy
 import com.fersaiyan.cyanbridge.devices.DeviceProfileStore
 import com.fersaiyan.cyanbridge.shared.glasses.GlassesDashboardUiState
 
@@ -50,17 +46,16 @@ internal fun ADSyncScreen(
     onBack: () -> Unit,
 ) {
     val context = LocalContext.current
-    val presentation = buildADDevicePresentation(
-        state = state,
-        profile = DeviceProfileStore.loadLastSelected(context),
-    )
+    val profile = DeviceProfileStore.loadLastSelected(context)
+        ?.takeIf { ADDeviceSupportPolicy.isPairable(it.selectedClass) }
+    val presentation = buildADDevicePresentation(state = state, profile = profile)
     val transfer = state.transfer
     val transferProgress = transfer.progress
     val knownCounts = transfer.countsLabel
         .takeUnless { it.isBlank() || it == "Photos: --  Videos: --  Audio: --" }
     val flow = transfer.flowLabel.takeUnless { it.isBlank() || it == "--" } ?: "Local Wi-Fi"
 
-    ADSyncLayout("Sync", onBack) {
+    ADPageLayout("Sync", onBack) {
         ADCard {
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Box(
@@ -172,25 +167,6 @@ private fun ADSyncMetricRow(icon: ImageVector, label: String, value: String) {
             textAlign = TextAlign.End,
             maxLines = 2,
             overflow = TextOverflow.Ellipsis,
-        )
-    }
-}
-
-@Composable
-private fun ADSyncLayout(
-    title: String,
-    onBack: () -> Unit,
-    content: @Composable ColumnScope.() -> Unit,
-) {
-    Column(Modifier.fillMaxSize()) {
-        ADTopBar(title = title, showBack = true, onBack = onBack)
-        Column(
-            modifier = Modifier
-                .fillMaxSize()
-                .verticalScroll(rememberScrollState())
-                .padding(start = 16.dp, end = 16.dp, top = 6.dp, bottom = 30.dp),
-            verticalArrangement = Arrangement.spacedBy(18.dp),
-            content = content,
         )
     }
 }
