@@ -23,8 +23,8 @@ import com.fersaiyan.cyanbridge.devices.eyevue.EyevueManager
 import com.fersaiyan.cyanbridge.devices.metarayban.MetaRaybanManager
 import com.fersaiyan.cyanbridge.devices.meizumyvu.MeizuMyvuManager
 import com.fersaiyan.cyanbridge.devices.ScannedDevice
-import com.fersaiyan.cyanbridge.shared.ui.DeviceBindScreen
 import com.fersaiyan.cyanbridge.ui.adglasses.ADGlassesTheme
+import com.fersaiyan.cyanbridge.ui.adglasses.ADNativeDeviceBindScreen
 import com.hjq.permissions.OnPermissionCallback
 import com.hjq.permissions.XXPermissions
 import com.oudmon.ble.base.bluetooth.BleOperateManager
@@ -54,7 +54,7 @@ class DeviceBindActivity : BaseActivity() {
         EventBus.getDefault().register(this)
         setContent {
             ADGlassesTheme {
-                DeviceBindScreen(
+                ADNativeDeviceBindScreen(
                     devices = scannedDevices.map { it.toShared() },
                     isScanning = isScanning,
                     connectingDevice = connectingDevice?.toShared(),
@@ -156,7 +156,7 @@ class DeviceBindActivity : BaseActivity() {
             MetaRaybanManager.getInstance(this).initialize()
             Toast.makeText(
                 this,
-                "Meta Ray-Ban selected. Register it from the glasses dashboard.",
+                "Meta Ray-Ban selected. Finish registration from Device Center.",
                 Toast.LENGTH_LONG,
             ).show()
             finish()
