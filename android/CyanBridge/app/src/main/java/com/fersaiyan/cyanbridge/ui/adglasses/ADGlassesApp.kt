@@ -127,6 +127,7 @@ fun ADGlassesApp(
                         ADTab.AI -> ADNativeAiScreen(
                             onRelaySettings = { navigateTo(ADRoute.AI_RELAY) },
                             onLocalSettings = { navigateTo(ADRoute.AI_LOCAL) },
+                            onOpenCapability = openCapability,
                         )
                         ADTab.LIBRARY -> ADNativeLibraryScreen(
                             transferActive = dashboardState.transfer.isVisible,
