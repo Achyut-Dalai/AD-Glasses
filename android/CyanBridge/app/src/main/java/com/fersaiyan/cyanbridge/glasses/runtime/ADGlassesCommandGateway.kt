@@ -9,34 +9,49 @@ import java.util.concurrent.atomic.AtomicReference
 /**
  * Process-level command boundary between AD Assistant/UI and the native glasses transport.
  *
- * Consumers never need an Activity. During migration MainActivity is adapted here; the persistent
- * glasses runtime/service can replace that adapter without changing React Native, Gemini tools or
- * automation routing.
+ * The persistent runtime always gets first chance to handle a command. During the migration the
+ * Activity adapter remains a compatibility fallback for vendor operations that have not yet been
+ * extracted. Consumers never need to know which owner completed the action.
  */
 object ADGlassesCommandGateway {
     interface Runtime {
+        /** Return true only when this owner accepted the action. */
         fun dispatch(action: GlassesDashboardAction): Boolean
         fun snapshot(): GlassesDashboardUiState?
     }
 
-    private val runtime = AtomicReference<Runtime?>(null)
+    private val persistentRuntime = AtomicReference<Runtime?>(null)
+    private val activityRuntime = AtomicReference<Runtime?>(null)
 
-    fun attach(owner: Runtime) {
-        runtime.set(owner)
+    fun attachPersistent(owner: Runtime) {
+        persistentRuntime.set(owner)
     }
 
-    fun detach(owner: Runtime) {
-        runtime.compareAndSet(owner, null)
+    fun detachPersistent(owner: Runtime) {
+        persistentRuntime.compareAndSet(owner, null)
     }
 
-    fun dispatch(action: GlassesDashboardAction): Boolean = runtime.get()?.dispatch(action) == true
+    fun attachActivity(owner: Runtime) {
+        activityRuntime.set(owner)
+    }
 
-    fun snapshot(): GlassesDashboardUiState? = runtime.get()?.snapshot()
+    fun detachActivity(owner: Runtime) {
+        activityRuntime.compareAndSet(owner, null)
+    }
 
-    fun attached(): Boolean = runtime.get() != null
+    fun dispatch(action: GlassesDashboardAction): Boolean {
+        if (persistentRuntime.get()?.dispatch(action) == true) return true
+        return activityRuntime.get()?.dispatch(action) == true
+    }
+
+    fun snapshot(): GlassesDashboardUiState? =
+        persistentRuntime.get()?.snapshot() ?: activityRuntime.get()?.snapshot()
+
+    fun hasPersistentRuntime(): Boolean = persistentRuntime.get() != null
+    fun hasActivityFallback(): Boolean = activityRuntime.get() != null
 }
 
-/** Temporary adapter around the inherited Activity-owned runtime. */
+/** Temporary adapter around inherited Activity-only operations. */
 class ADLegacyMainActivityRuntime(activity: MainActivity) : ADGlassesCommandGateway.Runtime {
     private val activityRef = WeakReference(activity)
 
