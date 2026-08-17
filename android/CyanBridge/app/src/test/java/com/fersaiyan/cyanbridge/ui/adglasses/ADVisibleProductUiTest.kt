@@ -146,21 +146,28 @@ class ADVisibleProductUiTest {
         assertTrue(ai.contains("ADAutomation.LOCAL_AGENT.title"))
         assertTrue(ai.contains("Icons.Outlined.AutoStories"))
         assertTrue(ai.contains("Icons.Outlined.Timeline"))
-        assertTrue(ai.contains("Icons.Outlined.Schedule"))
+        assertTrue(ai.contains("Icons.Outlined.EventRepeat"))
         assertTrue(ai.contains("Icons.Outlined.Bolt"))
+        assertTrue(ai.contains("\"Apps & Android actions\""))
+        assertFalse(ai.contains("\"Setup required\""))
     }
 
     @Test
-    fun welcomeIsPosterLikeAndContainsOnlyTheProductStatement() {
+    fun welcomeUsesSeparateEditorialStatementAndGlassesStage() {
         val welcome = sourceFile(
             "src/main/java/com/fersaiyan/cyanbridge/ui/adglasses/ADWelcomeScreen.kt",
         ).readText()
 
-        assertTrue(welcome.contains("YOUR GLASSES\\nYOUR AI\\nYOUR DATA"))
-        assertTrue(welcome.contains("alpha(0.16f)"))
+        assertTrue(welcome.contains("text = \"YOUR GLASSES\""))
+        assertTrue(welcome.contains("text = \"YOUR AI\""))
+        assertTrue(welcome.contains("text = \"YOUR DATA\""))
+        assertTrue(welcome.contains("R.drawable.ad_glasses_hero_v4"))
+        assertTrue(welcome.contains("RoundedCornerShape(28.dp)"))
+        assertTrue(welcome.contains(".border("))
         assertTrue(welcome.contains("AD GLASSES"))
         assertTrue(welcome.contains("Connect glasses"))
         assertTrue(welcome.contains("Continue without glasses"))
+        assertFalse(welcome.contains("alpha(0.16f)"))
         assertFalse(welcome.contains("A private brain for the glasses you wear."))
         assertFalse(welcome.contains("Connect when you are ready."))
     }
@@ -180,6 +187,17 @@ class ADVisibleProductUiTest {
         assertFalse(details.contains("0xFF6D5C82"))
         assertFalse(details.contains("0xFF7A654B"))
         assertFalse(details.contains("0xFF4F6E66"))
+    }
+
+    @Test
+    fun visibleProductVersionIsAlpha() {
+        val gradle = sourceFile("build.gradle").readText()
+        val settings = sourceFile(
+            "src/main/java/com/fersaiyan/cyanbridge/ui/adglasses/ADProductSettingsScreens.kt",
+        ).readText()
+
+        assertTrue(gradle.contains("versionName = \"alpha\""))
+        assertTrue(settings.contains("Version ${'$'}{BuildConfig.VERSION_NAME}"))
     }
 
     @Test
