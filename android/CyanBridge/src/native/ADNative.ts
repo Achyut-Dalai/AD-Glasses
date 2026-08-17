@@ -36,6 +36,8 @@ export type RecordingItem = {
   deviceClass: string;
   captureSource: string;
   audioPath: string;
+  transcript: string;
+  transcriptionStatus: string;
 };
 
 export type NoteItem = {
@@ -72,19 +74,11 @@ const emptyConversation: ConversationState = {threadId: '', messages: []};
 export const ADNative = {
   async dashboard(): Promise<DashboardState> {
     if (!native?.getDashboardState) return fallbackDashboard;
-    try {
-      return await native.getDashboardState();
-    } catch {
-      return fallbackDashboard;
-    }
+    try { return await native.getDashboardState(); } catch { return fallbackDashboard; }
   },
   async conversation(): Promise<ConversationState> {
     if (!native?.getConversation) return emptyConversation;
-    try {
-      return await native.getConversation();
-    } catch {
-      return emptyConversation;
-    }
+    try { return await native.getConversation(); } catch { return emptyConversation; }
   },
   async newConversation(): Promise<ConversationState> {
     if (!native?.newConversation) return emptyConversation;
@@ -106,10 +100,6 @@ export const ADNative = {
     if (!native?.getNotes) return [];
     try { return await native.getNotes(); } catch { return []; }
   },
-  open(route: string) {
-    native?.openNativeRoute?.(route);
-  },
-  action(action: string, payload?: Record<string, unknown>) {
-    native?.runAction?.(action, payload);
-  },
+  open(route: string) { native?.openNativeRoute?.(route); },
+  action(action: string, payload?: Record<string, unknown>) { native?.runAction?.(action, payload); },
 };
