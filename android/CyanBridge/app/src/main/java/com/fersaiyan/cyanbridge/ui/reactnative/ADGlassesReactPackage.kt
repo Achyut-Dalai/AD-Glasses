@@ -11,6 +11,7 @@ class ADGlassesReactPackage : ReactPackage {
             ADGlassesBridgeModule(reactContext),
             ADProductSettingsModule(reactContext),
             ADPairingModule(reactContext),
+            ADMediaPlaybackModule(reactContext),
         )
 
     override fun createViewManagers(reactContext: ReactApplicationContext): List<ViewManager<*, *>> = emptyList()
