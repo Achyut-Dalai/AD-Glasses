@@ -77,7 +77,7 @@ enum class ADAutomation(
     ),
     AUTO_DIARY(
         "DayNote",
-        "Turn selected moments and context into a private note for your day.",
+        "Distill the moments that matter into a private note for each day.",
         "Daily memory",
         "On device",
         "Auto Diary",
