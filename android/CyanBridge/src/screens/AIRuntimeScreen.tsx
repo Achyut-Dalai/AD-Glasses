@@ -9,6 +9,7 @@ import {
   ConversationEngine,
   FileEngine,
   GroundingPolicy,
+  ProductSettings,
   SpeechEngine,
   VisibleFallbackPolicy,
   VisionEngine,
@@ -16,6 +17,7 @@ import {
 import {useProductSettings} from '../hooks/useProductSettings';
 
 type Choice<T extends string> = {value: T; title: string; detail: string};
+type CustomKey = 'conversationEngine' | 'speechEngine' | 'visionEngine' | 'fileEngine' | 'groundingPolicy' | 'visibleFallbackPolicy';
 
 const profiles: Choice<AIProfile>[] = [
   {value: 'BALANCED', title: 'Balanced', detail: 'Screen-off first · choose the best available route automatically'},
@@ -76,23 +78,21 @@ export function AIRuntimeScreen({back}: {back: () => void}) {
     setSettings(current => ({...current, aiProfile: value, ...preset, screenOffFirst: preset.visibleFallbackPolicy !== 'ALLOW'}));
   };
 
-  const custom = <K extends keyof typeof setters>(key: K, value: Parameters<(typeof setters)[K]>[0]) => {
-    setters[key](value as never);
+  const custom = (key: CustomKey, value: string) => {
+    switch (key) {
+      case 'conversationEngine': ADProductSettings.setConversationEngine(value as ConversationEngine); break;
+      case 'speechEngine': ADProductSettings.setSpeechEngine(value as SpeechEngine); break;
+      case 'visionEngine': ADProductSettings.setVisionEngine(value as VisionEngine); break;
+      case 'fileEngine': ADProductSettings.setFileEngine(value as FileEngine); break;
+      case 'groundingPolicy': ADProductSettings.setGroundingPolicy(value as GroundingPolicy); break;
+      case 'visibleFallbackPolicy': ADProductSettings.setVisibleFallbackPolicy(value as VisibleFallbackPolicy); break;
+    }
     setSettings(current => ({
       ...current,
       aiProfile: 'CUSTOM',
       [key]: value,
       ...(key === 'visibleFallbackPolicy' ? {screenOffFirst: value !== 'ALLOW'} : {}),
-    }));
-  };
-
-  const setters = {
-    conversationEngine: ADProductSettings.setConversationEngine,
-    speechEngine: ADProductSettings.setSpeechEngine,
-    visionEngine: ADProductSettings.setVisionEngine,
-    fileEngine: ADProductSettings.setFileEngine,
-    groundingPolicy: ADProductSettings.setGroundingPolicy,
-    visibleFallbackPolicy: ADProductSettings.setVisibleFallbackPolicy,
+    } as ProductSettings));
   };
 
   return (
