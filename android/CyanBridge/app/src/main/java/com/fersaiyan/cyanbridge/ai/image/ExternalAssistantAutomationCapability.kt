@@ -19,7 +19,20 @@ data class ExternalAssistantAutomationCapability(
 )
 
 object ExternalAssistantAutomationPolicy {
+    /**
+     * Voice Tasker handoff is a background broadcast path. It must not depend on an
+     * installed/default Gemini or ChatGPT app, AutoInput, an unlocked screen, or a
+     * share target. Those requirements only apply to the legacy external-image UI path.
+     */
     fun voiceBlockingReason(capability: ExternalAssistantAutomationCapability): String? = when {
+        !capability.taskerInstalled ->
+            "Install Tasker and enable the AD Glasses background profile first."
+        !capability.profileCompatible ->
+            "Import and verify the AD Glasses Tasker profile first."
+        else -> null
+    }
+
+    fun imageBlockingReason(capability: ExternalAssistantAutomationCapability): String? = when {
         capability.target == ImageAutomationTarget.NONE ->
             "Set Gemini or ChatGPT as your phone's default assistant first."
         capability.targetPackage == null ->
@@ -29,20 +42,15 @@ object ExternalAssistantAutomationPolicy {
         !capability.profileCompatible ->
             "Import and verify the ${capability.target.label} CyanBridge Tasker profile first."
         capability.phoneLocked ->
-            "Unlock your phone before using Tasker assistant automation."
+            "Unlock your phone before using external image automation."
+        !capability.autoInputInstalled ->
+            "Install AutoInput and complete Gemini / ChatGPT automation setup first."
+        !capability.autoInputAccessibilityEnabled ->
+            "Enable AutoInput accessibility before using external image questions."
+        !capability.imageShareAvailable ->
+            "${capability.target.label} cannot receive image shares on this phone."
         else -> null
     }
-
-    fun imageBlockingReason(capability: ExternalAssistantAutomationCapability): String? =
-        voiceBlockingReason(capability) ?: when {
-            !capability.autoInputInstalled ->
-                "Install AutoInput and complete Gemini / ChatGPT automation setup first."
-            !capability.autoInputAccessibilityEnabled ->
-                "Enable AutoInput accessibility before using external image questions."
-            !capability.imageShareAvailable ->
-                "${capability.target.label} cannot receive image shares on this phone."
-            else -> null
-        }
 }
 
 object ExternalAssistantAutomationInspector {
@@ -80,23 +88,14 @@ object ExternalAssistantAutomationInspector {
     }
 
     private fun isAutoInputAccessibilityEnabled(context: Context): Boolean {
-        if (Settings.Secure.getInt(context.contentResolver, Settings.Secure.ACCESSIBILITY_ENABLED, 0) != 1) {
-            return false
-        }
-        val enabled = Settings.Secure.getString(
-            context.contentResolver,
-            Settings.Secure.ENABLED_ACCESSIBILITY_SERVICES,
-        ).orEmpty()
-        return enabled.split(':')
-            .mapNotNull(ComponentName::unflattenFromString)
-            .any { it.packageName == ExternalImageAutomationIntents.AUTO_INPUT_PACKAGE }
+        if (Settings.Secure.getInt(context.contentResolver, Settings.Secure.ACCESSIBILITY_ENABLED, 0) != 1) return false
+        val enabled = Settings.Secure.getString(context.contentResolver, Settings.Secure.ENABLED_ACCESSIBILITY_SERVICES).orEmpty()
+        return enabled.split(':').mapNotNull(ComponentName::unflattenFromString).any { it.packageName == ExternalImageAutomationIntents.AUTO_INPUT_PACKAGE }
     }
 
     private fun isDeviceLocked(context: Context): Boolean {
         val keyguard = context.getSystemService(Context.KEYGUARD_SERVICE) as? KeyguardManager ?: return false
-        return if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
-            keyguard.isDeviceLocked
-        } else {
+        return if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) keyguard.isDeviceLocked else {
             @Suppress("DEPRECATION")
             keyguard.isKeyguardLocked
         }
