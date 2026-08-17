@@ -1,5 +1,9 @@
 pluginManagement {
-    val reactNativeGradlePluginDir = file("node_modules/@react-native/gradle-plugin")
+    // Keep this as the canonical string-path include used by the React Native 0.86
+    // template. Gradle plugin discovery for com.facebook.react.settings is performed
+    // from this included build during settings evaluation.
+    val reactNativeGradlePluginPath = "node_modules/@react-native/gradle-plugin"
+    val reactNativeGradlePluginDir = settingsDir.resolve(reactNativeGradlePluginPath)
     check(reactNativeGradlePluginDir.isDirectory) {
         """
         React Native dependencies are missing: ${reactNativeGradlePluginDir.path} does not exist.
@@ -10,7 +14,7 @@ pluginManagement {
         Node 22.11+ is required by this project. Then retry the Gradle build or Android Studio sync.
         """.trimIndent()
     }
-    includeBuild(reactNativeGradlePluginDir)
+    includeBuild(reactNativeGradlePluginPath)
     repositories {
         google()
         mavenCentral()
@@ -82,7 +86,7 @@ include(":assistant-role")
 include(":moonshine-voice")
 
 // React Native's Gradle plugin is also an included build for the project itself.
-includeBuild(file("node_modules/@react-native/gradle-plugin"))
+includeBuild("node_modules/@react-native/gradle-plugin")
 
 // HeyCyan Core - bundled as composite build for easy compilation
 val heycyanCoreDir = file("../../heycyan-core")
