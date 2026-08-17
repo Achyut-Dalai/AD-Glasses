@@ -62,6 +62,32 @@ AD glasses connection runtime
 
 The phone display stays off throughout the normal path.
 
+## Use-case routing
+
+The product chooses a route from intent and available capabilities; the user should not have to choose “Gemini vs Tasker vs local AI” for every request.
+
+| User says / does | Primary route | Phone display |
+|---|---|---|
+| “What time is my next meeting?” | AD tool/native calendar integration; Gemini only if language interpretation is needed | Off |
+| “What’s happening with X today?” | Gemini + Google Search grounding | Off |
+| “Explain this to me” / general knowledge | Gemini Live during an active voice session; standard Gemini request for a one-shot turn | Off |
+| “What am I looking at?” | glasses camera frame → Gemini vision/Live | Off |
+| “Read/translate that sign” | glasses camera/audio → Translate capability / Gemini | Off |
+| “Take a photo” | direct glasses command | Off |
+| “Start/stop video” | direct glasses command | Off |
+| “Record this” | direct glasses audio capture | Off |
+| “Summarize that recording” | stored artifact → Moonshine/local transcript → configured reasoning engine | Off while processing; phone UI only if user opens the result |
+| “What did I see yesterday?” | AD memory/index → relevant captures → configured reasoning engine | Off |
+| “Call Alex” | contact resolution → background/system/Tasker executor → spoken confirmation before external communication | Off when Android permits; system confirmation only if required |
+| “Text Alex I’m late” | resolve contact + compose action → spoken confirmation → background executor | Off when destination contract permits |
+| “Turn volume down / pause music” | direct Android/media API where available, otherwise Tasker | Off |
+| “Open X and do Y” | direct app contract/AppFunction when authorized → Tasker → Accessibility fallback | Off unless only visible automation can finish it |
+| “Remind me every weekday…” | AD Cron/scheduler | Off |
+| No internet / private request | Moonshine + local model when configured | Off |
+| User opens a saved photo/recording/note | artifact detail surface with optional voice/text follow-up scoped to that artifact | On by user choice, not required for assistant operation |
+
+This matrix is the product contract. Provider selection changes implementation, not the interaction model.
+
 ## Why this is not the “earbuds launch Gemini” product
 
 Generic Bluetooth-assistant invocation only supplies a microphone/button into the phone's selected assistant. AD additionally owns:
@@ -112,7 +138,7 @@ Fresh/current questions are a reasoning capability, not a navigation destination
 AD chooses the least-visible capable route.
 
 1. **Direct app/native API** — use APIs owned by AD or a target app when a supported contract exists.
-2. **Structured Android agent/app functions** — feature-gated on Android versions/devices where the API and permission model are actually available.
+2. **Structured Android agent/app functions** — feature-gated on Android versions/devices where the API and permission model are actually available. Do not make the product depend on this preview-era path.
 3. **Tasker background broadcast** — broad screen-off Android automation through the stable `com.fersaiyan.cyanbridge.AUTOMATION_EVENT` contract.
 4. **System assistant privilege/fallback** — use system assistant capabilities only when they provide a supported locked-screen operation that AD cannot execute itself.
 5. **Accessibility / visible app automation** — last resort. The user must be told that the phone may need to wake/unlock.
@@ -164,17 +190,20 @@ Already present in this branch:
 - direct native bridge into the existing glasses runtime;
 - direct Tasker background broadcast contract;
 - Tasker-vs-Accessibility executor preference independent of AI provider;
-- Gemini as the default provider in product settings;
-- direct Gemini Live WebSocket client with audio playback, image injection and session resumption;
+- Gemini as the recommended/default cloud provider in product settings;
+- direct Gemini Live WebSocket client with native audio output, image injection and session resumption;
+- Gemini Live glasses-PCM input mode that avoids opening a second phone microphone path;
+- Gemini Live Google Search plus guarded AD function tools;
+- spoken-confirmation boundary for external/sensitive background phone actions;
+- bounded headless `ADGeminiLiveSession` coordinator backed by the foreground-execution service;
 - Moonshine module and existing transcription pipeline;
 - optional Android Assistant role module and React Native role chooser/status.
 
-Next runtime work:
+Remaining runtime work:
 
-- promote Gemini Live from preview/activity scope into a bounded headless AD session;
-- connect the glasses wake session to that headless client without requiring React/Activity visibility;
-- add Live API Google Search and AD function-call tools;
-- route supported tool calls to precise native functions before Tasker;
-- add local/Moonshine fallback at the session router;
+- connect each supported glasses device's raw wake-session audio callback to `ADGeminiLiveSession.offerPcm` without requiring visible Activity state;
+- extract the remaining direct hardware action dispatcher from `MainActivity` into a process/service-scoped glasses runtime so Live tools survive Activity destruction;
+- feed camera frames into the same active Live session for natural “what am I looking at?” follow-ups;
+- add the local/Moonshine fallback policy at the session router rather than only at separate one-shot/transcription paths;
 - replace polling UI state with native events;
 - keep visible assistant-app / Accessibility paths only as explicit fallbacks.
