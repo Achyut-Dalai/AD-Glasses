@@ -10,7 +10,6 @@ import com.facebook.react.bridge.ReactApplicationContext
 import com.facebook.react.bridge.ReactContextBaseJavaModule
 import com.facebook.react.bridge.ReactMethod
 import com.facebook.react.bridge.ReadableMap
-import com.fersaiyan.cyanbridge.MainActivity
 import com.fersaiyan.cyanbridge.agent.LocalAgentPrefs
 import com.fersaiyan.cyanbridge.ai.orchestrator.AndroidAssistantCapabilityExecutor
 import com.fersaiyan.cyanbridge.ai.orchestrator.AndroidModeCommandExecutor
@@ -24,6 +23,7 @@ import com.fersaiyan.cyanbridge.ai.orchestrator.AssistantTurn
 import com.fersaiyan.cyanbridge.ai.router.AiProviderPrefs
 import com.fersaiyan.cyanbridge.ai.router.AiProviderType
 import com.fersaiyan.cyanbridge.ai.router.CliRelayBackend
+import com.fersaiyan.cyanbridge.glasses.runtime.ADGlassesCommandGateway
 import com.fersaiyan.cyanbridge.localmodels.remote.RemoteOpenAiPrefs
 import com.fersaiyan.cyanbridge.shared.chat.ChatRole
 import com.fersaiyan.cyanbridge.shared.glasses.GlassesAssistantMode
@@ -43,8 +43,8 @@ import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 
 /**
- * Thin bridge from the React product shell to the proven Android runtime.
- * No glasses protocol is reimplemented here: protocol ownership stays native.
+ * Thin bridge from the React product shell to the native glasses runtime.
+ * Protocol ownership stays native and Activity lifetime is not part of this API contract.
  */
 class ADGlassesBridgeModule(
     private val reactContext: ReactApplicationContext,
@@ -304,28 +304,10 @@ class ADGlassesBridgeModule(
     }
 
     private fun dispatch(action: GlassesDashboardAction) {
-        val activity = ADRuntimeRegistry.mainActivity() ?: return
-        activity.runOnUiThread {
-            runCatching {
-                val method = MainActivity::class.java.declaredMethods.firstOrNull {
-                    it.name == "handleDashboardAction" && it.parameterTypes.size == 1
-                } ?: return@runCatching
-                method.isAccessible = true
-                method.invoke(activity, action)
-            }
-        }
+        ADGlassesCommandGateway.dispatch(action)
     }
 
-    private fun currentDashboardState(): GlassesDashboardUiState? {
-        val activity = ADRuntimeRegistry.mainActivity() ?: return null
-        return runCatching {
-            val getter = MainActivity::class.java.declaredMethods.firstOrNull {
-                it.name == "getDashboardState" && it.parameterTypes.isEmpty()
-            } ?: return@runCatching null
-            getter.isAccessible = true
-            getter.invoke(activity) as? GlassesDashboardUiState
-        }.getOrNull()
-    }
+    private fun currentDashboardState(): GlassesDashboardUiState? = ADGlassesCommandGateway.snapshot()
 
     private fun startActivity(intent: Intent) {
         intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
