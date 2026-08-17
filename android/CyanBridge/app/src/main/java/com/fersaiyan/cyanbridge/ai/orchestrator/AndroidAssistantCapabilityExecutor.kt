@@ -3,6 +3,9 @@ package com.fersaiyan.cyanbridge.ai.orchestrator
 import android.content.Context
 import com.fersaiyan.cyanbridge.ai.router.AgentInferencePurpose
 import com.fersaiyan.cyanbridge.ai.router.AgentInferenceRouter
+import com.fersaiyan.cyanbridge.automation.AutomationEventBroadcaster
+import com.fersaiyan.cyanbridge.automation.AutomationExecutor
+import com.fersaiyan.cyanbridge.automation.AutomationRoutePrefs
 import com.fersaiyan.cyanbridge.localagent.LocalAgentController
 
 /** Android execution bridge for AD decisions. */
@@ -66,16 +69,26 @@ class AndroidAssistantCapabilityExecutor(
     override suspend fun executePhoneAction(
         goal: String,
         context: AssistantExecutionContext,
-    ): AssistantResult {
-        val result = LocalAgentController.start(appContext, goal)
-        return AssistantResult(
-            spokenText = result.userMessage,
-            richText = if (result.ok) {
-                "Phone action requested: $goal\n${result.userMessage}"
-            } else {
-                "Phone action could not start: $goal\n${result.userMessage}${result.error?.let { "\n$it" }.orEmpty()}"
-            },
-        )
+    ): AssistantResult = when (AutomationRoutePrefs.getExecutor(appContext)) {
+        AutomationExecutor.TASKER -> {
+            AutomationEventBroadcaster.sendPhoneAction(appContext, goal)
+            AssistantResult(
+                spokenText = "Done. I sent that to background automation.",
+                richText = "Background automation requested: $goal",
+            )
+        }
+
+        AutomationExecutor.ACCESSIBILITY -> {
+            val result = LocalAgentController.start(appContext, goal)
+            AssistantResult(
+                spokenText = result.userMessage,
+                richText = if (result.ok) {
+                    "Visible Android fallback requested: $goal\n${result.userMessage}"
+                } else {
+                    "Visible Android fallback could not start: $goal\n${result.userMessage}${result.error?.let { "\n$it" }.orEmpty()}"
+                },
+            )
+        }
     }
 
     override suspend fun executeModeCommand(
@@ -87,6 +100,7 @@ class AndroidAssistantCapabilityExecutor(
         appendLine("You are AD, the conversational assistant for displayless smart glasses.")
         appendLine("Answer naturally and directly. Lead with the useful spoken answer and avoid giant tables.")
         appendLine("Maintain context across turns. The phone can hold richer detail, but do not make the user operate it unless visual confirmation is genuinely needed.")
+        appendLine("Prefer background tools and direct Android capabilities. Treat visible accessibility automation as an explicit last-resort fallback.")
         val prior = context.history.dropLast(1).takeLast(8)
         if (prior.isNotEmpty()) {
             appendLine()
