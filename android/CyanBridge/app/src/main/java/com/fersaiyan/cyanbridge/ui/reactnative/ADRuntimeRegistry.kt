@@ -4,6 +4,7 @@ import android.app.Activity
 import android.app.Application
 import android.os.Bundle
 import com.fersaiyan.cyanbridge.MainActivity
+import com.fersaiyan.cyanbridge.ai.AiQuestionForegroundService
 import com.fersaiyan.cyanbridge.glasses.runtime.ADGlassesCommandGateway
 import com.fersaiyan.cyanbridge.glasses.runtime.ADLegacyMainActivityRuntime
 import java.lang.ref.WeakReference
@@ -29,13 +30,16 @@ object ADRuntimeRegistry : Application.ActivityLifecycleCallbacks {
     override fun onActivityCreated(activity: Activity, savedInstanceState: Bundle?) {
         if (activity !is MainActivity) return
         mainActivityRef = WeakReference(activity)
-        legacyRuntime?.let(ADGlassesCommandGateway::detach)
-        legacyRuntime = ADLegacyMainActivityRuntime(activity).also(ADGlassesCommandGateway::attach)
+        legacyRuntime?.let(ADGlassesCommandGateway::detachActivity)
+        legacyRuntime = ADLegacyMainActivityRuntime(activity).also(ADGlassesCommandGateway::attachActivity)
+        // Start the already-declared connected-device service while a visible Activity makes the
+        // request. It remains the persistent owner after the React/Activity UI goes away.
+        AiQuestionForegroundService.startRuntime(activity.applicationContext)
     }
 
     override fun onActivityDestroyed(activity: Activity) {
         if (activity !== mainActivityRef?.get()) return
-        legacyRuntime?.let(ADGlassesCommandGateway::detach)
+        legacyRuntime?.let(ADGlassesCommandGateway::detachActivity)
         legacyRuntime = null
         mainActivityRef = null
     }
