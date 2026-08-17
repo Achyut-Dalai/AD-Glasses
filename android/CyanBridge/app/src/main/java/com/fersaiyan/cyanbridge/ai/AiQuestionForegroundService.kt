@@ -105,7 +105,7 @@ class AiQuestionForegroundService : Service() {
         idleStopJob?.cancel()
         if (wakeLock.isHeld) wakeLock.release()
         ADGlassesCommandGateway.detachPersistent(persistentRuntime)
-        serviceScope.coroutineContext.cancelChildren()
+        serviceScope.coroutineContext[Job]?.cancel()
         super.onDestroy()
     }
 
