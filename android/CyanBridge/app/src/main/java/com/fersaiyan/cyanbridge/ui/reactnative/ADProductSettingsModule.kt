@@ -15,6 +15,9 @@ import com.facebook.react.bridge.ReactMethod
 import com.fersaiyan.cyanbridge.ai.router.AiProviderPrefs
 import com.fersaiyan.cyanbridge.ai.router.AiProviderType
 import com.fersaiyan.cyanbridge.ai.router.CliRelayBackend
+import com.fersaiyan.cyanbridge.automation.AutomationEventBroadcaster
+import com.fersaiyan.cyanbridge.automation.AutomationExecutor
+import com.fersaiyan.cyanbridge.automation.AutomationRoutePrefs
 import com.fersaiyan.cyanbridge.localmodels.remote.RemoteOpenAiPrefs
 import com.fersaiyan.cyanbridge.localmodels.storage.InstalledLocalModel
 import com.fersaiyan.cyanbridge.localmodels.storage.LocalModelStorageRepository
@@ -98,9 +101,15 @@ class ADProductSettingsModule(
                 }
                 else -> "Gemini"
             }
+            val automationExecutor = when (AutomationRoutePrefs.getExecutor(reactContext)) {
+                AutomationExecutor.TASKER -> "Background / Tasker"
+                AutomationExecutor.ACCESSIBILITY -> "Accessibility fallback"
+            }
             val selectedModelId = LocalModelStorageRepository.getSelectedModelId(reactContext)
             Arguments.createMap().apply {
                 putString("provider", provider)
+                putString("automationExecutor", automationExecutor)
+                putBoolean("taskerInstalled", isPackageInstalled(AutomationEventBroadcaster.TASKER_PACKAGE))
                 putString("relayUrl", AiProviderPrefs.getRelayBaseUrl(reactContext))
                 putString(
                     "relayBackend",
@@ -169,6 +178,16 @@ class ADProductSettingsModule(
     }
 
     @ReactMethod
+    fun setAutomationExecutor(executorName: String) {
+        val executor = if (executorName == "Accessibility fallback") {
+            AutomationExecutor.ACCESSIBILITY
+        } else {
+            AutomationExecutor.TASKER
+        }
+        AutomationRoutePrefs.setExecutor(reactContext, executor)
+    }
+
+    @ReactMethod
     fun selectLocalModel(modelId: String) {
         LocalModelStorageRepository.setSelectedModelId(reactContext, modelId)
     }
@@ -204,6 +223,12 @@ class ADProductSettingsModule(
             reactContext,
             Manifest.permission.RECORD_AUDIO,
         ) == PackageManager.PERMISSION_GRANTED
+
+    private fun isPackageInstalled(packageName: String): Boolean = runCatching {
+        @Suppress("DEPRECATION")
+        reactContext.packageManager.getPackageInfo(packageName, 0)
+        true
+    }.getOrDefault(false)
 
     private companion object {
         const val REQUEST_IMPORT_MODEL = 47031
