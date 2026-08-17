@@ -52,7 +52,7 @@ import java.io.File
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 
-/** Optional handoff to installed Gemini / ChatGPT apps. AD AI remains the default path. */
+/** Optional handoff to installed Gemini / ChatGPT apps. Configured AI remains the default path. */
 @Composable
 internal fun ADAssistantAppsScreen(onBack: () -> Unit) {
     val context = LocalContext.current
@@ -154,7 +154,7 @@ internal fun ADAssistantAppsScreen(onBack: () -> Unit) {
                     Text("Optional app handoff", style = MaterialTheme.typography.titleLarge)
                     Spacer(Modifier.size(4.dp))
                     Text(
-                        "Use an installed Gemini or ChatGPT app for selected glasses requests. Your configured AD AI stays the normal route unless you turn this on.",
+                        "Use an installed Gemini or ChatGPT app for selected glasses requests. Your configured AI stays the normal route unless you turn this on.",
                         style = MaterialTheme.typography.bodyMedium,
                         color = ADColors.Muted,
                     )
@@ -193,7 +193,7 @@ internal fun ADAssistantAppsScreen(onBack: () -> Unit) {
                 if (selectedMode == GlassesAssistantMode.PHONE_ASSISTANT) {
                     "$targetName is currently the assistant-app route."
                 } else {
-                    "Glasses questions currently use your configured AD AI."
+                    "Glasses questions currently use your configured AI."
                 },
                 style = MaterialTheme.typography.bodyLarge,
             )
@@ -205,7 +205,7 @@ internal fun ADAssistantAppsScreen(onBack: () -> Unit) {
                         refresh()
                     },
                     modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp),
-                ) { Text("Use AD AI") }
+                ) { Text("Use AI") }
             } else {
                 Button(
                     onClick = {
