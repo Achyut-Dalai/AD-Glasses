@@ -12,6 +12,7 @@ on:
     branches:
       - main
       - "agent/**"
+      - "ui/**"
     paths:
       - .github/workflows/android-app.yml
       - android/CyanBridge/**
@@ -32,9 +33,6 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 45
     env:
-      # build.gradle/settings.gradle.kts use these for the optional Meta DAT package.
-      # Supplying the Actions token keeps CI on the same source/dependency path as a
-      # developer machine with Meta package credentials instead of silently skipping it.
       GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       GITHUB_ACTOR: ${{ github.actor }}
 
@@ -52,16 +50,29 @@ jobs:
           cache: gradle
           cache-dependency-path: android/CyanBridge/**/*.gradle*
 
+      - name: Set up Node 22
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+
+      - name: Install React Native dependencies
+        working-directory: android/CyanBridge
+        run: npm install --no-audit --no-fund
+
+      - name: Typecheck React Native product shell
+        working-directory: android/CyanBridge
+        run: npm run typecheck
+
       - name: Set up Android SDK
         uses: android-actions/setup-android@v3
 
       - name: Install Android build tools
         run: >-
           sdkmanager
-          "platforms;android-35"
-          "build-tools;35.0.0"
+          "platforms;android-36"
+          "build-tools;36.0.0"
           "cmake;3.22.1"
-          "ndk;27.0.12077973"
+          "ndk;27.1.12297006"
 
       - name: Run app unit tests
         working-directory: android/CyanBridge

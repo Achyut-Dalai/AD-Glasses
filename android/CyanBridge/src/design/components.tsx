@@ -14,6 +14,7 @@ import {
 import Animated, {
   useAnimatedStyle,
   useSharedValue,
+  withDelay,
   withSpring,
   withTiming,
 } from 'react-native-reanimated';
@@ -51,8 +52,8 @@ export function Reveal({children, delay = 0, distance = 10}: PropsWithChildren<{
       y.value = 0;
       return;
     }
-    opacity.value = withTiming(1, {duration: motion.normal});
-    y.value = withTiming(0, {duration: motion.deliberate});
+    opacity.value = withDelay(delay, withTiming(1, {duration: motion.normal}));
+    y.value = withDelay(delay, withTiming(0, {duration: motion.deliberate}));
   }, [delay, reduceMotion, opacity, y]);
   const animatedStyle = useAnimatedStyle(() => ({opacity: opacity.value, transform: [{translateY: y.value}]}));
   return <Animated.View style={animatedStyle}>{children}</Animated.View>;
@@ -61,14 +62,25 @@ export function Reveal({children, delay = 0, distance = 10}: PropsWithChildren<{
 export function PressableScale({children, onPress, style, accessibilityLabel}: PropsWithChildren<{onPress?: () => void; style?: StyleProp<ViewStyle>; accessibilityLabel?: string}>) {
   const reduceMotion = useReducedMotion();
   const scale = useSharedValue(1);
-  const animatedStyle = useAnimatedStyle(() => ({transform: [{scale: scale.value}]}));
+  const opacity = useSharedValue(1);
+  const animatedStyle = useAnimatedStyle(() => ({transform: [{scale: scale.value}], opacity: opacity.value}));
+  const interactive = typeof onPress === 'function';
   return (
     <Pressable
-      accessibilityRole="button"
+      accessibilityRole={interactive ? 'button' : undefined}
       accessibilityLabel={accessibilityLabel}
+      disabled={!interactive}
       onPress={onPress}
-      onPressIn={() => { scale.value = reduceMotion ? 1 : withSpring(0.982, motion.spring); }}
-      onPressOut={() => { scale.value = reduceMotion ? 1 : withSpring(1, motion.spring); }}>
+      onPressIn={() => {
+        if (!interactive || reduceMotion) return;
+        scale.value = withSpring(0.982, motion.spring);
+        opacity.value = withTiming(0.84, {duration: motion.instant});
+      }}
+      onPressOut={() => {
+        if (!interactive || reduceMotion) return;
+        scale.value = withSpring(1, motion.spring);
+        opacity.value = withTiming(1, {duration: motion.fast});
+      }}>
       <Animated.View style={[style, animatedStyle]}>{children}</Animated.View>
     </Pressable>
   );

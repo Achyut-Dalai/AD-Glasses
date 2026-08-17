@@ -12,31 +12,59 @@ import com.facebook.react.bridge.ReactMethod
 import com.facebook.react.bridge.ReadableMap
 import com.fersaiyan.cyanbridge.MainActivity
 import com.fersaiyan.cyanbridge.agent.LocalAgentPrefs
+import com.fersaiyan.cyanbridge.ai.orchestrator.AndroidAssistantCapabilityExecutor
 import com.fersaiyan.cyanbridge.ai.orchestrator.AndroidModeCommandExecutor
+import com.fersaiyan.cyanbridge.ai.orchestrator.AssistantConversationSession
+import com.fersaiyan.cyanbridge.ai.orchestrator.AssistantInputSurface
 import com.fersaiyan.cyanbridge.ai.orchestrator.AssistantMode
 import com.fersaiyan.cyanbridge.ai.orchestrator.AssistantModeAction
 import com.fersaiyan.cyanbridge.ai.orchestrator.AssistantModeCommand
+import com.fersaiyan.cyanbridge.ai.orchestrator.AssistantOrchestrator
+import com.fersaiyan.cyanbridge.ai.orchestrator.AssistantTurn
 import com.fersaiyan.cyanbridge.ai.router.AiProviderPrefs
 import com.fersaiyan.cyanbridge.ai.router.AiProviderType
 import com.fersaiyan.cyanbridge.ai.router.CliRelayBackend
 import com.fersaiyan.cyanbridge.localmodels.remote.RemoteOpenAiPrefs
+import com.fersaiyan.cyanbridge.shared.chat.ChatRole
 import com.fersaiyan.cyanbridge.shared.glasses.GlassesAssistantMode
 import com.fersaiyan.cyanbridge.shared.glasses.GlassesDashboardAction
 import com.fersaiyan.cyanbridge.shared.glasses.GlassesDashboardUiState
 import com.fersaiyan.cyanbridge.shared.glasses.OtaFirmwareSource
 import com.fersaiyan.cyanbridge.shared.settings.AgentProviderType
 import com.fersaiyan.cyanbridge.ui.DeviceBindActivity
+import com.fersaiyan.cyanbridge.ui.MyApplication
+import com.fersaiyan.cyanbridge.ui.recordings.SyncedMediaQuery
 import com.oudmon.ble.base.bluetooth.BleOperateManager
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.cancel
+import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.launch
 
 /**
- * Thin bridge from the new product shell to the proven Android runtime.
- * It deliberately contains no glasses protocol logic: protocol ownership stays native.
+ * Thin bridge from the React product shell to the proven Android runtime.
+ * No glasses protocol is reimplemented here: protocol ownership stays native.
  */
 class ADGlassesBridgeModule(
     private val reactContext: ReactApplicationContext,
 ) : ReactContextBaseJavaModule(reactContext) {
 
+    private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
+    private val session by lazy { AssistantConversationSession.get(reactContext) }
+    private val orchestrator by lazy {
+        AssistantOrchestrator(
+            context = reactContext,
+            executor = AndroidAssistantCapabilityExecutor(reactContext),
+        )
+    }
+
     override fun getName(): String = "ADGlassesBridge"
+
+    override fun invalidate() {
+        scope.cancel()
+        super.invalidate()
+    }
 
     @ReactMethod
     fun getDashboardState(promise: Promise) {
@@ -46,11 +74,108 @@ class ADGlassesBridgeModule(
             ?: BleOperateManager.getInstance().isConnected
         map.putBoolean("connected", connected)
         map.putBoolean("connecting", state?.connectionLabel?.contains("Connecting", ignoreCase = true) == true)
-        map.putString("deviceName", "Glasses")
+        map.putString("deviceName", state?.connectionLabel?.substringAfter("Connected:", "")?.trim().orEmpty().ifBlank { "Glasses" })
         state?.batteryPercent?.let { map.putInt("batteryPercent", it) }
         state?.storageLabel?.takeIf { it != "--" }?.let { map.putString("storageLabel", it) }
         map.putBoolean("syncActive", state?.transfer?.isVisible == true)
         promise.resolve(map)
+    }
+
+    @ReactMethod
+    fun getConversation(promise: Promise) {
+        promise.resolve(conversationMap())
+    }
+
+    @ReactMethod
+    fun newConversation(promise: Promise) {
+        session.startNewConversation()
+        promise.resolve(conversationMap())
+    }
+
+    @ReactMethod
+    fun sendPrompt(text: String, webRequested: Boolean, promise: Promise) {
+        val prompt = text.trim()
+        if (prompt.isBlank()) {
+            promise.reject("E_EMPTY_PROMPT", "Prompt cannot be blank")
+            return
+        }
+        scope.launch {
+            runCatching {
+                orchestrator.handle(
+                    turn = AssistantTurn(
+                        text = prompt,
+                        surface = AssistantInputSurface.PHONE_TEXT,
+                        webRequested = if (webRequested) true else null,
+                    ),
+                    providerType = LocalAgentPrefs.getProviderType(reactContext),
+                )
+                conversationMap()
+            }.onSuccess(promise::resolve)
+                .onFailure { promise.reject("E_ASSISTANT", it.message ?: "Assistant request failed", it) }
+        }
+    }
+
+    @ReactMethod
+    fun getCaptures(promise: Promise) {
+        scope.launch(Dispatchers.IO) {
+            runCatching {
+                Arguments.createArray().apply {
+                    SyncedMediaQuery.query(reactContext).forEach { item ->
+                        pushMap(Arguments.createMap().apply {
+                            putDouble("id", item.id.toDouble())
+                            putString("displayName", item.displayName)
+                            putString("uri", item.contentUriString)
+                            putBoolean("isVideo", item.isVideo)
+                        })
+                    }
+                }
+            }.onSuccess(promise::resolve)
+                .onFailure { promise.reject("E_CAPTURES", it.message ?: "Could not read captures", it) }
+        }
+    }
+
+    @ReactMethod
+    fun getRecordings(promise: Promise) {
+        scope.launch(Dispatchers.IO) {
+            runCatching {
+                val sessions = MyApplication.repository.getAllCaptureSessions().first()
+                Arguments.createArray().apply {
+                    sessions.forEach { item ->
+                        pushMap(Arguments.createMap().apply {
+                            putDouble("id", item.id.toDouble())
+                            putDouble("startedAt", item.startedAt.toDouble())
+                            putDouble("endedAt", item.endedAt.toDouble())
+                            putDouble("durationSec", item.durationSec.toDouble())
+                            putString("deviceClass", item.deviceClass)
+                            putString("captureSource", item.captureSource)
+                            putString("audioPath", item.audioPath)
+                        })
+                    }
+                }
+            }.onSuccess(promise::resolve)
+                .onFailure { promise.reject("E_RECORDINGS", it.message ?: "Could not read recordings", it) }
+        }
+    }
+
+    @ReactMethod
+    fun getNotes(promise: Promise) {
+        scope.launch(Dispatchers.IO) {
+            runCatching {
+                val notes = MyApplication.notesRepository.getAllNotes().first()
+                Arguments.createArray().apply {
+                    notes.forEach { item ->
+                        pushMap(Arguments.createMap().apply {
+                            putDouble("id", item.id.toDouble())
+                            putString("title", item.title)
+                            putString("summary", item.summary)
+                            putDouble("createdAt", item.createdAt.toDouble())
+                            putDouble("updatedAt", item.updatedAt.toDouble())
+                        })
+                    }
+                }
+            }.onSuccess(promise::resolve)
+                .onFailure { promise.reject("E_NOTES", it.message ?: "Could not read notes", it) }
+        }
     }
 
     @ReactMethod
@@ -83,6 +208,7 @@ class ADGlassesBridgeModule(
             "openAccessibility" -> startActivity(Intent(Settings.ACTION_ACCESSIBILITY_SETTINGS))
             "openAssistantSettings" -> startActivity(Intent(Settings.ACTION_VOICE_INPUT_SETTINGS))
             "openAppSettings", "openStorageSettings" -> openAppSettings()
+            "openUri" -> payload?.stringOrNull("uri")?.let(::openUri)
             "completeOnboarding" -> completeOnboarding()
             "capabilityToggle" -> toggleCapability(payload)
             "setAiProvider" -> setAiProvider(payload?.stringOrNull("provider"))
@@ -90,6 +216,20 @@ class ADGlassesBridgeModule(
             "saveRemoteServer" -> saveRemoteServer(payload)
             "exitApp" -> currentActivity?.finishAffinity()
         }
+    }
+
+    private fun conversationMap() = Arguments.createMap().apply {
+        putString("threadId", session.activeThreadId())
+        putArray("messages", Arguments.createArray().apply {
+            session.messages().forEach { message ->
+                pushMap(Arguments.createMap().apply {
+                    putString("id", message.id)
+                    putString("role", if (message.role == ChatRole.USER) "user" else "assistant")
+                    putString("text", message.content)
+                    putDouble("createdAt", message.createdAt.toDouble())
+                })
+            }
+        })
     }
 
     private fun completeOnboarding() {
@@ -190,6 +330,13 @@ class ADGlassesBridgeModule(
     private fun startActivity(intent: Intent) {
         intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
         reactContext.startActivity(intent)
+    }
+
+    private fun openUri(raw: String) {
+        val uri = runCatching { Uri.parse(raw) }.getOrNull() ?: return
+        startActivity(Intent(Intent.ACTION_VIEW, uri).apply {
+            if (uri.scheme == "content") addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+        })
     }
 
     private fun openAppSettings() {

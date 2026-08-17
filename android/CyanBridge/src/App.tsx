@@ -3,6 +3,7 @@ import {BackHandler, StatusBar, StyleSheet, View} from 'react-native';
 import {SafeAreaProvider} from 'react-native-safe-area-context';
 import {BottomBar} from './design/components';
 import {color} from './design/tokens';
+import {ADNative} from './native/ADNative';
 import {AIScreen, HomeScreen, LibraryScreen, PromptScreen} from './screens/MainScreens';
 import {WelcomeScreen} from './screens/WelcomeScreen';
 import {
@@ -47,7 +48,10 @@ export default function App({initialRoute = 'home'}: Props) {
 
   useEffect(() => {
     const sub = BackHandler.addEventListener('hardwareBackPress', () => {
-      if (stack.length <= 1) return false;
+      if (stack.length <= 1) {
+        ADNative.action('exitApp');
+        return true;
+      }
       back();
       return true;
     });
@@ -71,7 +75,7 @@ function RouteView({route, navigate, back}: {route: RouteEntry; navigate: Naviga
   switch (route.name) {
     case 'welcome': return <WelcomeScreen navigate={navigate}/>;
     case 'home': return <HomeScreen navigate={navigate}/>;
-    case 'prompt': return <PromptScreen/>;
+    case 'prompt': return <PromptScreen route={route}/>;
     case 'ai': return <AIScreen navigate={navigate}/>;
     case 'library': return <LibraryScreen navigate={navigate}/>;
     case 'settings': return <SettingsScreen navigate={navigate} back={back}/>;
@@ -92,6 +96,7 @@ function RouteView({route, navigate, back}: {route: RouteEntry; navigate: Naviga
     case 'captures': return <CapturesScreen back={back}/>;
     case 'recordings': return <RecordingsScreen back={back}/>;
     case 'notes': return <NotesScreen back={back}/>;
+    default: return null;
   }
 }
 
