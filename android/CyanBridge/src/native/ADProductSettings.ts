@@ -9,6 +9,8 @@ export type LocalModelItem = {
 
 export type ProductSettings = {
   provider: 'Gemini' | 'OpenAI / Codex' | 'Local AI';
+  automationExecutor: 'Background / Tasker' | 'Accessibility fallback';
+  taskerInstalled: boolean;
   relayUrl: string;
   relayBackend: 'Gemini' | 'OpenAI / Codex';
   relayConfigured: boolean;
@@ -31,6 +33,7 @@ type ProductSettingsModule = {
   setLanguage?: (languageName: string) => void;
   setRedactNames?: (enabled: boolean) => void;
   setTranscriptStorage?: (enabled: boolean) => void;
+  setAutomationExecutor?: (executorName: ProductSettings['automationExecutor']) => void;
   selectLocalModel?: (modelId: string) => void;
 };
 
@@ -38,6 +41,8 @@ const native = NativeModules.ADProductSettings as ProductSettingsModule | undefi
 
 export const defaultProductSettings: ProductSettings = {
   provider: 'Gemini',
+  automationExecutor: 'Background / Tasker',
+  taskerInstalled: false,
   relayUrl: '',
   relayBackend: 'Gemini',
   relayConfigured: false,
@@ -75,6 +80,9 @@ export const ADProductSettings = {
   },
   setTranscriptStorage(enabled: boolean) {
     native?.setTranscriptStorage?.(enabled);
+  },
+  setAutomationExecutor(executorName: ProductSettings['automationExecutor']) {
+    native?.setAutomationExecutor?.(executorName);
   },
   selectLocalModel(modelId: string) {
     native?.selectLocalModel?.(modelId);
