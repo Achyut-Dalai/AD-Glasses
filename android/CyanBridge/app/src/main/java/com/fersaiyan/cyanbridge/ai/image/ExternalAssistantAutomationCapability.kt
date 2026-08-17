@@ -20,15 +20,12 @@ data class ExternalAssistantAutomationCapability(
 
 object ExternalAssistantAutomationPolicy {
     /**
-     * Voice Tasker handoff is a background broadcast path. It must not depend on an
-     * installed/default Gemini or ChatGPT app, AutoInput, an unlocked screen, or a
-     * share target. Those requirements only apply to the legacy external-image UI path.
+     * Voice Tasker handoff is a background broadcast path. Any Tasker profile can
+     * listen for the AD Glasses event directly, so there is no assistant-app,
+     * imported-profile, AutoInput, share-target, screen or unlock dependency.
      */
     fun voiceBlockingReason(capability: ExternalAssistantAutomationCapability): String? = when {
-        !capability.taskerInstalled ->
-            "Install Tasker and enable the AD Glasses background profile first."
-        !capability.profileCompatible ->
-            "Import and verify the AD Glasses Tasker profile first."
+        !capability.taskerInstalled -> "Install Tasker to use the background Tasker route."
         else -> null
     }
 
@@ -80,10 +77,7 @@ object ExternalAssistantAutomationInspector {
     }.getOrDefault(false)
 
     private fun canResolveImageShare(context: Context, packageName: String): Boolean {
-        val intent = Intent(Intent.ACTION_SEND).apply {
-            type = "image/jpeg"
-            setPackage(packageName)
-        }
+        val intent = Intent(Intent.ACTION_SEND).apply { type = "image/jpeg"; setPackage(packageName) }
         return intent.resolveActivity(context.packageManager) != null
     }
 
