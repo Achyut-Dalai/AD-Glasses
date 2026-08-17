@@ -4,6 +4,7 @@ import android.content.Context
 import android.content.Intent
 import android.net.Uri
 import android.provider.Settings
+import androidx.core.content.FileProvider
 import com.facebook.react.bridge.Arguments
 import com.facebook.react.bridge.Promise
 import com.facebook.react.bridge.ReactApplicationContext
@@ -11,6 +12,9 @@ import com.facebook.react.bridge.ReactContextBaseJavaModule
 import com.facebook.react.bridge.ReactMethod
 import com.facebook.react.bridge.ReadableMap
 import com.fersaiyan.cyanbridge.agent.LocalAgentPrefs
+import com.fersaiyan.cyanbridge.ai.orchestrator.ADArtifactContext
+import com.fersaiyan.cyanbridge.ai.orchestrator.ADArtifactContextResolver
+import com.fersaiyan.cyanbridge.ai.orchestrator.ADArtifactContextStore
 import com.fersaiyan.cyanbridge.ai.orchestrator.AndroidAssistantCapabilityExecutor
 import com.fersaiyan.cyanbridge.ai.orchestrator.AndroidModeCommandExecutor
 import com.fersaiyan.cyanbridge.ai.orchestrator.AssistantConversationSession
@@ -41,6 +45,7 @@ import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.cancel
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
+import java.io.File
 
 /**
  * Thin bridge from the React product shell to the native glasses runtime.
@@ -101,10 +106,16 @@ class ADGlassesBridgeModule(
         }
         scope.launch {
             runCatching {
+                val artifact = ADArtifactContextResolver.resolve(
+                    reactContext,
+                    ADArtifactContextStore.get(reactContext),
+                )
                 orchestrator.handle(
                     turn = AssistantTurn(
                         text = prompt,
                         surface = AssistantInputSurface.PHONE_TEXT,
+                        imagePath = artifact?.imagePath,
+                        contextText = artifact?.description,
                         webRequested = if (webRequested) true else null,
                     ),
                     providerType = LocalAgentPrefs.getProviderType(reactContext),
@@ -141,6 +152,7 @@ class ADGlassesBridgeModule(
                 val sessions = MyApplication.repository.getAllCaptureSessions().first()
                 Arguments.createArray().apply {
                     sessions.forEach { item ->
+                        val transcription = MyApplication.repository.getTranscriptionByCaptureSessionId(item.id)
                         pushMap(Arguments.createMap().apply {
                             putDouble("id", item.id.toDouble())
                             putDouble("startedAt", item.startedAt.toDouble())
@@ -149,6 +161,8 @@ class ADGlassesBridgeModule(
                             putString("deviceClass", item.deviceClass)
                             putString("captureSource", item.captureSource)
                             putString("audioPath", item.audioPath)
+                            putString("transcript", transcription?.transcriptText.orEmpty())
+                            putString("transcriptionStatus", transcription?.status.orEmpty())
                         })
                     }
                 }
@@ -209,6 +223,10 @@ class ADGlassesBridgeModule(
             "openAssistantSettings" -> startActivity(Intent(Settings.ACTION_VOICE_INPUT_SETTINGS))
             "openAppSettings", "openStorageSettings" -> openAppSettings()
             "openUri" -> payload?.stringOrNull("uri")?.let(::openUri)
+            "shareUri" -> payload?.stringOrNull("uri")?.let { shareUri(it, payload.stringOrNull("mime")) }
+            "shareFile" -> payload?.stringOrNull("path")?.let { shareFile(it, payload.stringOrNull("mime")) }
+            "setArtifactContext" -> setArtifactContext(payload)
+            "clearArtifactContext" -> ADArtifactContextStore.clear(reactContext)
             "completeOnboarding" -> completeOnboarding()
             "capabilityToggle" -> toggleCapability(payload)
             "setAiProvider" -> setAiProvider(payload?.stringOrNull("provider"))
@@ -216,6 +234,20 @@ class ADGlassesBridgeModule(
             "saveRemoteServer" -> saveRemoteServer(payload)
             "exitApp" -> currentActivity?.finishAffinity()
         }
+    }
+
+    private fun setArtifactContext(payload: ReadableMap?) {
+        if (payload == null) return
+        val kind = payload.stringOrNull("kind") ?: return
+        val id = payload.longOrNull("id") ?: return
+        ADArtifactContextStore.set(
+            reactContext,
+            ADArtifactContext(
+                kind = kind,
+                id = id,
+                label = payload.stringOrNull("label").orEmpty(),
+            ),
+        )
     }
 
     private fun conversationMap() = Arguments.createMap().apply {
@@ -321,6 +353,27 @@ class ADGlassesBridgeModule(
         })
     }
 
+    private fun shareUri(raw: String, mime: String?) {
+        val uri = runCatching { Uri.parse(raw) }.getOrNull() ?: return
+        share(uri, mime ?: reactContext.contentResolver.getType(uri) ?: "*/*")
+    }
+
+    private fun shareFile(path: String, mime: String?) {
+        val file = File(path)
+        if (!file.isFile) return
+        val uri = FileProvider.getUriForFile(reactContext, "${reactContext.packageName}.fileprovider", file)
+        share(uri, mime ?: "application/octet-stream")
+    }
+
+    private fun share(uri: Uri, mime: String) {
+        val send = Intent(Intent.ACTION_SEND).apply {
+            type = mime
+            putExtra(Intent.EXTRA_STREAM, uri)
+            addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+        }
+        startActivity(Intent.createChooser(send, "Share from AD Glasses"))
+    }
+
     private fun openAppSettings() {
         startActivity(
             Intent(
@@ -332,4 +385,7 @@ class ADGlassesBridgeModule(
 
     private fun ReadableMap.stringOrNull(key: String): String? =
         if (hasKey(key) && !isNull(key)) getString(key) else null
+
+    private fun ReadableMap.longOrNull(key: String): Long? =
+        if (hasKey(key) && !isNull(key)) getDouble(key).toLong() else null
 }
