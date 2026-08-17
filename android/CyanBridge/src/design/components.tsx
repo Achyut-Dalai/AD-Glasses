@@ -194,7 +194,6 @@ export function Field({value, onChangeText, placeholder, secureTextEntry}: {valu
 export function BottomBar({selected, navigate}: {selected: RootTab; navigate: Navigate}) {
   const items: {route: RootTab; label: string; icon: IconName}[] = [
     {route: 'home', label: 'Home', icon: 'home'},
-    {route: 'prompt', label: 'Prompt', icon: 'terminal'},
     {route: 'ai', label: 'AI', icon: 'spark'},
     {route: 'library', label: 'Library', icon: 'library'},
   ];
