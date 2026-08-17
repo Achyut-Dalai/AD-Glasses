@@ -60,20 +60,22 @@ object ADGeminiLiveSession {
 
     fun stop() {
         val context = appContext
-        client?.stop()
-        client?.close()
-        client = null
         active.set(false)
-        if (context != null) AiQuestionForegroundService.stop(context)
+        val live = client
+        client = null
         appContext = null
+        live?.close()
+        if (context != null) AiQuestionForegroundService.stop(context)
     }
 
     fun isActive(): Boolean = active.get()
 
     private fun finish(context: Context) {
+        if (!active.getAndSet(false)) return
+        val live = client
         client = null
-        active.set(false)
-        AiQuestionForegroundService.stop(context)
         appContext = null
+        live?.close()
+        AiQuestionForegroundService.stop(context)
     }
 }
