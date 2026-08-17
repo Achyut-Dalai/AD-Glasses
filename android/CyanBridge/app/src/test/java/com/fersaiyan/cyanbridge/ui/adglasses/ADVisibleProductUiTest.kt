@@ -30,6 +30,7 @@ class ADVisibleProductUiTest {
         val forbiddenStringLiterals = listOf(
             "\"Ask AD",
             "\"AD can do",
+            "\"AD AI",
             "\"CyanBridge",
             "\"Meeting Spark Notes",
             "\"Live Caption Relay",
@@ -52,22 +53,26 @@ class ADVisibleProductUiTest {
     }
 
     @Test
-    fun chatsUseConversationIconAndHomeDoesNotDuplicateChatNavigation() {
+    fun promptUsesPromptIconAndHomeDoesNotDuplicatePromptNavigation() {
         val components = sourceFile(
             "src/main/java/com/fersaiyan/cyanbridge/ui/adglasses/ADComponents.kt",
+        ).readText()
+        val models = sourceFile(
+            "src/main/java/com/fersaiyan/cyanbridge/ui/adglasses/ADGlassesModels.kt",
         ).readText()
         val home = sourceFile(
             "src/main/java/com/fersaiyan/cyanbridge/ui/adglasses/ADHomeSurface.kt",
         ).readText()
 
-        assertTrue(components.contains("ADTab.CHATS -> Icons.Rounded.Forum"))
+        assertTrue(models.contains("CHATS(\"Prompt\")"))
+        assertTrue(components.contains("ADTab.CHATS -> Icons.AutoMirrored.Rounded.Send"))
         assertFalse(home.contains("title = \"Conversations\""))
         assertFalse(home.contains("title = \"Chats\""))
         assertFalse(home.contains("onOpenConversations"))
     }
 
     @Test
-    fun tasksTabIsGoneAndCapabilitiesLiveInAi() {
+    fun capabilitiesLiveInAiAndUseIntegratedToggleControls() {
         val models = sourceFile(
             "src/main/java/com/fersaiyan/cyanbridge/ui/adglasses/ADGlassesModels.kt",
         ).readText()
@@ -80,24 +85,46 @@ class ADVisibleProductUiTest {
 
         assertFalse(models.contains("TASKS(\"Tasks\")"))
         assertTrue(ai.contains("Text(\"Capabilities\""))
-        assertFalse(details.contains("Start mode"))
-        assertFalse(details.contains("Stop mode"))
+        assertTrue(details.contains("Switch("))
+        assertTrue(details.contains("automation.capabilityIcon()"))
+        assertFalse(details.contains("OutlinedButton("))
+        assertFalse(details.contains("Button("))
         assertFalse(details.contains("Start task"))
         assertFalse(details.contains("Stop task"))
     }
 
     @Test
-    fun chatsComposerIsTextFirstAndDedupesPersistedPendingTurn() {
-        val chats = sourceFile(
+    fun promptComposerIsTextFirstAndDedupesPersistedPendingTurn() {
+        val prompt = sourceFile(
             "src/main/java/com/fersaiyan/cyanbridge/ui/adglasses/ADNativeConversationScreen.kt",
         ).readText()
 
-        assertFalse(chats.contains("Icons.Outlined.CameraAlt"))
-        assertFalse(chats.contains("Icons.Outlined.Mic"))
-        assertTrue(chats.contains("pendingAlreadyPersisted"))
-        assertTrue(chats.contains("KeyboardActions(onSend = { send() })"))
-        assertTrue(chats.contains("ADColors.BlueSoft"))
-        assertTrue(chats.contains("ADAssistantTurn"))
+        assertFalse(prompt.contains("Icons.Outlined.CameraAlt"))
+        assertFalse(prompt.contains("Icons.Outlined.Mic"))
+        assertFalse(prompt.contains("New chat"))
+        assertTrue(prompt.contains("pendingAlreadyPersisted"))
+        assertTrue(prompt.contains("KeyboardActions(onSend = { onSend() })"))
+        assertTrue(prompt.contains("What do you want to know?"))
+        assertTrue(prompt.contains("Ask AI…"))
+        assertTrue(prompt.contains("ADColors.BlueSoft"))
+        assertTrue(prompt.contains("ADAssistantTurn"))
+    }
+
+    @Test
+    fun capabilityProductNamesStayBroadWhileRuntimeIdsRemainCompatible() {
+        val models = sourceFile(
+            "src/main/java/com/fersaiyan/cyanbridge/ui/adglasses/ADGlassesModels.kt",
+        ).readText()
+        val ai = sourceFile(
+            "src/main/java/com/fersaiyan/cyanbridge/ui/adglasses/ADNativeAiScreen.kt",
+        ).readText()
+
+        assertTrue(models.contains("\"Soundbites\""))
+        assertTrue(models.contains("\"DayNote\""))
+        assertTrue(models.contains("\"Meeting Spark Notes\""))
+        assertTrue(models.contains("\"Auto Diary\""))
+        assertTrue(ai.contains("ADAutomation.MEETING_NOTES.title"))
+        assertTrue(ai.contains("ADAutomation.AUTO_DIARY.title"))
     }
 
     @Test
@@ -124,11 +151,11 @@ class ADVisibleProductUiTest {
             "src/main/java/com/fersaiyan/cyanbridge/ui/adglasses/ADNativeSettingsHubScreen.kt",
         ).readText()
 
-        assertTrue(ai.contains("ADAiSection(title = \"Default AI\")"))
-        assertTrue(ai.contains("title = \"Gemini\""))
-        assertTrue(ai.contains("title = \"OpenAI / Codex\""))
-        assertTrue(ai.contains("title = \"Local AI\""))
-        assertTrue(ai.contains("title = \"Assistant apps\""))
+        assertTrue(ai.contains("ADAiSection(\"Default AI\")"))
+        assertTrue(ai.contains("\"Gemini\""))
+        assertTrue(ai.contains("\"OpenAI / Codex\""))
+        assertTrue(ai.contains("\"Local AI\""))
+        assertTrue(ai.contains("\"Assistant apps\""))
         assertFalse(ai.contains("ADTopBar(title = \"AI\")"))
         assertFalse(settings.contains("AI and web"))
         assertFalse(settings.contains("Routing"))
