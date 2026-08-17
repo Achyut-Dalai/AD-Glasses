@@ -2,7 +2,7 @@ package com.fersaiyan.cyanbridge.ui.adglasses
 
 enum class ADTab(val label: String) {
     HOME("Home"),
-    CHATS("Chats"),
+    CHATS("Prompt"),
     AI("AI"),
     LIBRARY("Library"),
 }
@@ -47,9 +47,9 @@ enum class ADAutomation(
         false,
     ),
     MEETING_NOTES(
-        "Meeting Notes",
-        "Record, transcribe and summarize a meeting.",
-        "Meeting notes",
+        "Soundbites",
+        "Capture spoken moments and turn them into concise notes you can revisit later.",
+        "Audio notes",
         "Automatic",
         "Meeting Spark Notes",
     ),
@@ -76,9 +76,9 @@ enum class ADAutomation(
         "Errand Brain",
     ),
     AUTO_DIARY(
-        "Daily Diary",
-        "Create a private daily context summary.",
-        "Memory",
+        "DayNote",
+        "Build a private daily note from the moments and context you choose to capture.",
+        "Daily note",
         "On device",
         "Auto Diary",
     ),
