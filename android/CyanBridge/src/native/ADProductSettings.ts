@@ -1,5 +1,12 @@
 import {NativeModules} from 'react-native';
 
+export type LocalModelItem = {
+  id: string;
+  name: string;
+  sizeBytes: number;
+  selected: boolean;
+};
+
 export type ProductSettings = {
   provider: 'Gemini' | 'OpenAI / Codex' | 'Local AI';
   relayUrl: string;
@@ -15,11 +22,12 @@ export type ProductSettings = {
   bluetoothGranted: boolean;
   microphoneGranted: boolean;
   automationGranted: boolean;
-  localModels: Array<{id: string; name: string; sizeBytes: number; selected: boolean}>;
+  localModels: LocalModelItem[];
 };
 
 type ProductSettingsModule = {
   getSettings?: () => Promise<ProductSettings>;
+  importLocalModel?: () => Promise<LocalModelItem | null>;
   setLanguage?: (languageName: string) => void;
   setRedactNames?: (enabled: boolean) => void;
   setTranscriptStorage?: (enabled: boolean) => void;
@@ -54,6 +62,10 @@ export const ADProductSettings = {
     } catch {
       return defaultProductSettings;
     }
+  },
+  async importLocalModel(): Promise<LocalModelItem | null> {
+    if (!native?.importLocalModel) return null;
+    return native.importLocalModel();
   },
   setLanguage(languageName: string) {
     native?.setLanguage?.(languageName);
