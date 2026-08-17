@@ -15,6 +15,7 @@ import {
 import {Icon, IconName} from '../design/icons';
 import {color, radius, space, type} from '../design/tokens';
 import {ADNative, ConversationState} from '../native/ADNative';
+import {ADProductSettings} from '../native/ADProductSettings';
 import {useDashboardState} from '../hooks/useDashboardState';
 import type {Navigate, RouteEntry} from '../navigation/routes';
 
@@ -118,7 +119,7 @@ export function PromptScreen({route}: {route?: RouteEntry}) {
       setWebSearch(false);
     } catch (requestError) {
       setError(requestError instanceof Error ? requestError.message : 'Couldn’t finish that request.');
-      await refresh();
+      setConversation(await ADNative.conversation());
     } finally {
       setSending(false);
     }
@@ -185,6 +186,11 @@ const capabilities: {title: string; detail: string; icon: IconName}[] = [
 
 export function AIScreen({navigate}: {navigate: Navigate}) {
   const [provider, setProvider] = useState('Gemini');
+
+  useEffect(() => {
+    ADProductSettings.read().then(settings => setProvider(settings.provider));
+  }, []);
+
   const chooseProvider = (name: string) => {
     setProvider(name);
     ADNative.action('setAiProvider', {provider: name});
