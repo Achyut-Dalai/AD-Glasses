@@ -13,6 +13,7 @@ on:
       - main
       - "agent/**"
       - "ui/**"
+      - "codex/**"
     paths:
       - .github/workflows/android-app.yml
       - android/CyanBridge/**
@@ -62,6 +63,25 @@ jobs:
       - name: Typecheck React Native product shell
         working-directory: android/CyanBridge
         run: npm run typecheck
+
+      - name: Lint React Native product shell
+        working-directory: android/CyanBridge
+        run: npm run lint
+
+      - name: Validate React Native Android project config
+        working-directory: android/CyanBridge
+        run: |
+          node node_modules/react-native/cli.js config > /tmp/ad-rn-config.json
+          node - <<'NODE'
+          const fs = require('fs');
+          const config = JSON.parse(fs.readFileSync('/tmp/ad-rn-config.json', 'utf8'));
+          const android = config.project && config.project.android;
+          console.log(JSON.stringify(android, null, 2));
+          if (!android || android.packageName !== 'com.fersaiyan.cyanbridge') {
+            console.error('Expected React Native CLI to resolve project.android.packageName=com.fersaiyan.cyanbridge');
+            process.exit(1);
+          }
+          NODE
 
       - name: Set up Android SDK
         uses: android-actions/setup-android@v3

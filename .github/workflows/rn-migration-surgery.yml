@@ -1,0 +1,234 @@
+name: RN migration surgery
+
+on:
+  push:
+    branches:
+      - codex/rn-migration-hardening
+    paths:
+      - .github/workflows/rn-migration-surgery.yml
+
+permissions:
+  contents: write
+  packages: read
+
+jobs:
+  patch:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    env:
+      GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      GITHUB_ACTOR: ${{ github.actor }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: codex/rn-migration-hardening
+          submodules: recursive
+
+      - uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: "17"
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+
+      - name: Set up Android SDK
+        uses: android-actions/setup-android@v3
+
+      - name: Install Android build tools
+        run: >-
+          sdkmanager
+          "platforms;android-36"
+          "build-tools;36.0.0"
+          "cmake;3.22.1"
+          "ndk;27.1.12297006"
+
+      - name: Remove Android Compose product shell
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+
+          def replace_once(path: Path, old: str, new: str):
+              text = path.read_text()
+              count = text.count(old)
+              if count != 1:
+                  raise SystemExit(f'{path}: expected exactly one match, found {count}: {old[:100]!r}')
+              path.write_text(text.replace(old, new))
+
+          def remove_braced_call(text: str, marker: str) -> str:
+              start = text.find(marker)
+              if start < 0:
+                  raise SystemExit(f'Could not find braced marker: {marker!r}')
+              brace = text.find('{', start)
+              if brace < 0:
+                  raise SystemExit(f'Could not find opening brace after: {marker!r}')
+              depth = 0
+              i = brace
+              while i < len(text):
+                  if text[i] == '{':
+                      depth += 1
+                  elif text[i] == '}':
+                      depth -= 1
+                      if depth == 0:
+                          end = i + 1
+                          if end < len(text) and text[end] == '\n':
+                              end += 1
+                          return text[:start] + text[end:]
+                  i += 1
+              raise SystemExit(f'Unbalanced braces after: {marker!r}')
+
+          main = Path('android/CyanBridge/app/src/main/java/com/fersaiyan/cyanbridge/MainActivity.kt')
+          text = main.read_text()
+          for line in [
+              'import androidx.activity.compose.setContent\n',
+              'import androidx.compose.runtime.getValue\n',
+              'import androidx.compose.runtime.mutableStateOf\n',
+              'import androidx.compose.runtime.setValue\n',
+              'import com.fersaiyan.cyanbridge.ui.adglasses.ADAutomation\n',
+              'import com.fersaiyan.cyanbridge.ui.adglasses.ADGlassesApp\n',
+              'import com.fersaiyan.cyanbridge.ui.adglasses.ADHostActions\n',
+          ]:
+              count = text.count(line)
+              if count != 1:
+                  raise SystemExit(f'{main}: expected one import {line.strip()!r}, found {count}')
+              text = text.replace(line, '')
+          old_state = '''    // Keeps the existing Android control handlers alive while Compose owns the visible tree.\n    private lateinit var binding: AcitivytMainBinding\n    private var dashboardState by mutableStateOf(\n        GlassesDashboardUiState(\n            wifiAdbDebug = WifiAdbDebugUiState(isAvailable = BuildConfig.DEBUG),\n        ),\n    )\n    private var showDownloadFlowPicker by mutableStateOf(false)\n'''
+          new_state = '''    // Hidden native runtime. React Native owns the visible product tree while this activity\n    // preserves the proven glasses transport, hardware callbacks, sync and OTA lifecycle.\n    private lateinit var binding: AcitivytMainBinding\n    private var dashboardState = GlassesDashboardUiState(\n        wifiAdbDebug = WifiAdbDebugUiState(isAvailable = BuildConfig.DEBUG),\n    )\n    private var showDownloadFlowPicker = false\n'''
+          if text.count(old_state) != 1:
+              raise SystemExit('MainActivity native-state migration anchor changed')
+          text = text.replace(old_state, new_state)
+          text = remove_braced_call(text, '        setContent {')
+          text = remove_braced_call(text, '    private fun openAutomationSettings(automation: ADAutomation) {')
+          text = text.replace(
+              '        // Hide the view-based bottom navigation; the shared CMP nav shell owns it now.\n',
+              '        // This view tree is retained only for hidden native control wiring. RN is visible.\n',
+          )
+          main.write_text(text)
+
+          react_activity = Path('android/CyanBridge/app/src/main/java/com/fersaiyan/cyanbridge/ui/reactnative/ADReactNativeActivity.kt')
+          react_activity.write_text('''package com.fersaiyan.cyanbridge.ui.reactnative\n\nimport android.os.Bundle\nimport com.facebook.react.ReactActivity\nimport com.facebook.react.ReactActivityDelegate\nimport com.facebook.react.defaults.DefaultNewArchitectureEntryPoint.fabricEnabled\nimport com.facebook.react.defaults.DefaultReactActivityDelegate\n\n/** The only user-visible Android product host. Native hardware work stays behind RN modules. */\nclass ADReactNativeActivity : ReactActivity() {\n    override fun getMainComponentName(): String =\n        if (intent?.getBooleanExtra(EXTRA_WELCOME, false) == true) {\n            "ADGlassesWelcome"\n        } else {\n            "ADGlasses"\n        }\n\n    override fun createReactActivityDelegate(): ReactActivityDelegate =\n        object : DefaultReactActivityDelegate(this, mainComponentName, fabricEnabled) {\n            override fun getLaunchOptions(): Bundle? {\n                val route = intent?.getStringExtra(EXTRA_INITIAL_ROUTE)\n                    ?.trim()\n                    ?.takeIf { it.isNotEmpty() }\n                    ?: return null\n                return Bundle().apply {\n                    putString("initialRoute", route)\n                    intent?.getStringExtra(EXTRA_PREFILL)?.let { putString("initialPrefill", it) }\n                    intent?.getStringExtra(EXTRA_THREAD_ID)?.let { putString("initialThreadId", it) }\n                    putBoolean(\n                        "initialWebSearchRequested",\n                        intent?.getBooleanExtra(EXTRA_WEB_SEARCH, false) == true,\n                    )\n                }\n            }\n        }\n\n    companion object {\n        const val EXTRA_WELCOME = "ad_react_welcome"\n        const val EXTRA_INITIAL_ROUTE = "ad_react_initial_route"\n        const val EXTRA_PREFILL = "ad_react_prefill"\n        const val EXTRA_THREAD_ID = "ad_react_thread_id"\n        const val EXTRA_WEB_SEARCH = "ad_react_web_search"\n    }\n}\n''')
+
+          redirect = Path('android/CyanBridge/app/src/main/java/com/fersaiyan/cyanbridge/ui/adglasses/ADLegacyRouteRedirectActivity.kt')
+          redirect.write_text('''package com.fersaiyan.cyanbridge.ui.adglasses\n\nimport android.app.Activity\nimport android.content.Intent\nimport android.os.Bundle\nimport com.fersaiyan.cyanbridge.MainActivity\nimport com.fersaiyan.cyanbridge.ui.reactnative.ADReactNativeActivity\n\n/**\n * Invisible compatibility target for inherited explicit Activity intents. It never renders\n * legacy UI: the native runtime is kept underneath and the requested product route opens in RN.\n */\nabstract class ADLegacyRouteRedirectActivity : Activity() {\n    abstract val route: String\n\n    protected open fun requestPrefill(intent: Intent): String? = null\n    protected open fun requestThreadId(intent: Intent): String? = null\n    protected open fun requestWebSearch(intent: Intent): Boolean = false\n\n    override fun onCreate(savedInstanceState: Bundle?) {\n        super.onCreate(savedInstanceState)\n        val runtime = Intent(this, MainActivity::class.java).apply {\n            addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP or Intent.FLAG_ACTIVITY_SINGLE_TOP)\n        }\n        val productShell = Intent(this, ADReactNativeActivity::class.java).apply {\n            putExtra(ADReactNativeActivity.EXTRA_INITIAL_ROUTE, route)\n            requestPrefill(intent)?.let { putExtra(ADReactNativeActivity.EXTRA_PREFILL, it) }\n            requestThreadId(intent)?.let { putExtra(ADReactNativeActivity.EXTRA_THREAD_ID, it) }\n            putExtra(ADReactNativeActivity.EXTRA_WEB_SEARCH, requestWebSearch(intent))\n        }\n        startActivities(arrayOf(runtime, productShell))\n        finish()\n        overridePendingTransition(0, 0)\n    }\n}\n\nclass ADConversationsRedirectActivity : ADLegacyRouteRedirectActivity() {\n    override val route = "prompt"\n    override fun requestPrefill(intent: Intent): String? = intent.getStringExtra("prefill_message")\n    override fun requestThreadId(intent: Intent): String? = intent.getStringExtra("chat_id")\n}\n\nclass ADSettingsRedirectActivity : ADLegacyRouteRedirectActivity() {\n    override val route = "settings"\n}\n\nclass ADModesRedirectActivity : ADLegacyRouteRedirectActivity() {\n    override val route = "ai"\n}\n\nclass ADCapturesRedirectActivity : ADLegacyRouteRedirectActivity() {\n    override val route = "captures"\n}\n\nclass ADRecordingsRedirectActivity : ADLegacyRouteRedirectActivity() {\n    override val route = "recordings"\n}\n\nclass ADNotesRedirectActivity : ADLegacyRouteRedirectActivity() {\n    override val route = "notes"\n}\n''')
+
+          app = Path('android/CyanBridge/src/App.tsx')
+          text = app.read_text()
+          old = "type Props = {initialRoute?: RouteName};\n\nexport default function App({initialRoute = 'home'}: Props) {\n  const [stack, setStack] = useState<RouteEntry[]>([{name: initialRoute}]);"
+          new = """type Props = {\n  initialRoute?: RouteName;\n  initialPrefill?: string;\n  initialThreadId?: string;\n  initialWebSearchRequested?: boolean;\n};\n\nexport default function App({\n  initialRoute = 'home',\n  initialPrefill,\n  initialThreadId,\n  initialWebSearchRequested = false,\n}: Props) {\n  const initialParams = initialRoute === 'prompt'\n    ? {prefill: initialPrefill, threadId: initialThreadId, web: initialWebSearchRequested}\n    : undefined;\n  const [stack, setStack] = useState<RouteEntry[]>([{name: initialRoute, params: initialParams}]);"""
+          if text.count(old) != 1:
+              raise SystemExit('App.tsx initial-props anchor changed')
+          app.write_text(text.replace(old, new))
+
+          main_screens = Path('android/CyanBridge/src/screens/MainScreens.tsx')
+          text = main_screens.read_text()
+          old = "  const [value, setValue] = useState('');"
+          new = "  const [value, setValue] = useState(() => typeof route?.params?.prefill === 'string' ? route.params.prefill : '');"
+          if text.count(old) != 1:
+              raise SystemExit('Prompt prefill anchor changed')
+          main_screens.write_text(text.replace(old, new))
+
+          manifest = Path('android/CyanBridge/app/src/main/AndroidManifest.xml')
+          text = manifest.read_text()
+          if '.ui.reactnative.ADReactNativeActivity' in text:
+              raise SystemExit('RN activity is already declared; migration script needs review')
+          anchor = '''        <activity\n            android:name=".ui.DeviceBindActivity"\n            android:exported="false"\n            android:label="Connect glasses" />\n'''
+          rn_decl = '''        <activity\n            android:name=".ui.reactnative.ADReactNativeActivity"\n            android:exported="false"\n            android:configChanges="keyboard|keyboardHidden|orientation|screenLayout|screenSize|smallestScreenSize|uiMode"\n            android:windowSoftInputMode="adjustResize" />\n\n'''
+          if text.count(anchor) != 1:
+              raise SystemExit('Manifest DeviceBindActivity anchor changed')
+          text = text.replace(anchor, rn_decl + anchor)
+          text = text.replace(
+              '            invisible redirects that hand the request to the native AD navigation shell.\n',
+              '            invisible redirects that hand the request to the React Native product shell.\n',
+          )
+          manifest.write_text(text)
+
+          gradle = Path('android/CyanBridge/app/build.gradle')
+          text = gradle.read_text()
+          removals = [
+              '    alias(libs.plugins.kotlin.compose.compiler)\n',
+              '        compose = true\n',
+              '    implementation(libs.androidx.activity.compose)\n',
+              '    implementation(platform(libs.androidx.compose.bom))\n',
+              '    implementation(libs.androidx.ui)\n',
+              '    implementation(libs.androidx.ui.graphics)\n',
+              '    implementation(libs.androidx.ui.tooling.preview)\n',
+              '    implementation(libs.androidx.material3)\n',
+              '    implementation("androidx.compose.material:material-icons-extended")\n',
+              '    debugImplementation(libs.androidx.ui.tooling)\n',
+              '    debugImplementation(libs.androidx.ui.test.manifest)\n',
+              '    androidTestImplementation(platform(libs.androidx.compose.bom))\n',
+              '    androidTestImplementation(libs.androidx.ui.test.junit4)\n',
+          ]
+          for item in removals:
+              count = text.count(item)
+              if count != 1:
+                  raise SystemExit(f'app/build.gradle expected one Compose entry {item.strip()!r}, found {count}')
+              text = text.replace(item, '')
+          gradle.write_text(text)
+
+          legacy_dir = Path('android/CyanBridge/app/src/main/java/com/fersaiyan/cyanbridge/ui/adglasses')
+          kept = redirect.name
+          removed = []
+          for path in sorted(legacy_dir.glob('*.kt')):
+              if path.name == kept:
+                  continue
+              path.unlink()
+              removed.append(path.name)
+          if not removed:
+              raise SystemExit('Expected legacy Compose product files to remove')
+          print('Removed legacy product files:', ', '.join(removed))
+          PY
+
+      - name: Assert Android product layer is Compose-free
+        run: |
+          if grep -R -n -E 'androidx\.compose|@Composable|setContent[[:space:]]*\{' android/CyanBridge/app/src/main/java android/CyanBridge/app/src/androidTest 2>/dev/null; then
+            echo "Compose references remain in the Android app product layer"
+            exit 1
+          fi
+          if grep -n -E 'compose|Compose' android/CyanBridge/app/build.gradle; then
+            echo "Compose configuration remains in app/build.gradle"
+            exit 1
+          fi
+          echo "Android app product module is Compose-free"
+
+      - name: Show remaining adglasses references outside compatibility redirect
+        run: |
+          grep -R -n 'ui\.adglasses' android/CyanBridge/app/src/main/java --exclude='ADLegacyRouteRedirectActivity.kt' || true
+
+      - name: Install React Native dependencies
+        working-directory: android/CyanBridge
+        run: npm install --no-audit --no-fund
+
+      - name: Verify React Native source
+        working-directory: android/CyanBridge
+        run: |
+          npm run typecheck
+          npm run lint
+          node node_modules/react-native/cli.js config > /tmp/ad-rn-config.json
+          node - <<'NODE'
+          const fs = require('fs');
+          const config = JSON.parse(fs.readFileSync('/tmp/ad-rn-config.json', 'utf8'));
+          const android = config.project && config.project.android;
+          console.log(JSON.stringify(android, null, 2));
+          if (!android || android.packageName !== 'com.fersaiyan.cyanbridge') process.exit(1);
+          NODE
+
+      - name: Build migrated Android app
+        working-directory: android/CyanBridge
+        run: ./gradlew --no-daemon :app:testDebugUnitTest :app:assembleDebug --stacktrace
+
+      - name: Verify branded APK
+        run: test -f android/CyanBridge/app/build/outputs/apk/debug/AD-Glasses.apk
+
+      - name: Commit compile-tested RN takeover
+        run: |
+          git config user.name "Achyut-Dalai"
+          git config user.email "79808239+Achyut-Dalai@users.noreply.github.com"
+          git add android/CyanBridge/app android/CyanBridge/src
+          if git diff --cached --quiet; then
+            echo "No migration source changes to commit"
+            exit 0
+          fi
+          git commit -m "refactor(android): remove legacy Compose product shell"
+          git push origin HEAD:codex/rn-migration-hardening

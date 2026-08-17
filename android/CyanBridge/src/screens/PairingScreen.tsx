@@ -17,7 +17,7 @@ import {
   useReducedMotion,
 } from '../design/components';
 import {Icon} from '../design/icons';
-import {color, motion, radius, space, type} from '../design/tokens';
+import {color, motion, type} from '../design/tokens';
 import {ADPairing, emptyPairingState, PairingDevice, PairingState} from '../native/ADPairing';
 import {useDashboardState} from '../hooks/useDashboardState';
 

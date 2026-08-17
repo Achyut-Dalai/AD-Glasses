@@ -5,7 +5,6 @@ import {
   Divider,
   Field,
   GlassesImage,
-  IconTile,
   ListRow,
   PrimaryButton,
   Screen,
@@ -13,7 +12,7 @@ import {
   TopBar,
 } from '../design/components';
 import {Icon} from '../design/icons';
-import {color, radius, space, type} from '../design/tokens';
+import {color, space, type} from '../design/tokens';
 import {useDashboardState} from '../hooks/useDashboardState';
 import {useProductSettings} from '../hooks/useProductSettings';
 import {ADNative} from '../native/ADNative';
