@@ -36,10 +36,22 @@ import org.json.JSONObject
 import java.util.concurrent.TimeUnit
 import java.util.concurrent.atomic.AtomicBoolean
 
-/** Direct Gemini Live WebSocket client. The relay only issues the short-lived token. */
+enum class GeminiLiveAudioInput {
+    PHONE_MICROPHONE,
+    GLASSES_PCM,
+}
+
+/**
+ * Direct Gemini Live WebSocket client. The relay only issues the short-lived token.
+ *
+ * The product runtime can select GLASSES_PCM so a headless glasses session does not open a
+ * second phone-microphone pipeline. The preview Activity keeps PHONE_MICROPHONE by default.
+ */
 class GeminiLiveClient(
     context: Context,
     private val listener: Listener,
+    private val audioInput: GeminiLiveAudioInput = GeminiLiveAudioInput.PHONE_MICROPHONE,
+    private val toolExecutor: GeminiLiveToolExecutor = NoOpGeminiLiveToolExecutor,
 ) {
     interface Listener {
         fun onStateChanged(state: GeminiLiveState, detail: String = "")
@@ -164,7 +176,7 @@ class GeminiLiveClient(
         if (active.get() && state == GeminiLiveState.LISTENING) resumeCapture()
     }
 
-    /** Accepts a suitable raw glasses PCM source if one is exposed by the device SDK. */
+    /** Feeds the Live session from the glasses/device SDK instead of Android AudioRecord. */
     fun offerGlassesPcm(pcm: ShortArray, sampleRateHz: Int) {
         if (!active.get() || !captureEnabled.get()) return
         val normalized = PcmResampler.resampleMono16(pcm, sampleRateHz, INPUT_SAMPLE_RATE_HZ)
@@ -192,7 +204,7 @@ class GeminiLiveClient(
 
     private fun requestToken(language: String, imagePrompt: String): TokenConfig {
         val authToken = CloudServerPrefs.getApiToken(appContext).trim()
-        check(authToken.isNotBlank()) { "Sign in to CyanBridge before starting Gemini Live" }
+        check(authToken.isNotBlank()) { "Sign in to AD Glasses before starting Gemini Live" }
         val base = AiProviderPrefs.getRelayBaseUrl(appContext).trim().trimEnd('/')
         check(base.startsWith("https://")) { "Gemini Live requires a secure relay URL" }
         val body = JSONObject()
@@ -277,7 +289,11 @@ class GeminiLiveClient(
                 sendSetup(webSocket, config)
                 scheduleSessionResumption(webSocket)
                 startPlayback()
-                startCapture()
+                if (audioInput == GeminiLiveAudioInput.PHONE_MICROPHONE) {
+                    startCapture()
+                } else {
+                    enableGlassesCapture()
+                }
                 setState(GeminiLiveState.LISTENING, "Gemini Live is listening")
             }
 
@@ -306,12 +322,55 @@ class GeminiLiveClient(
         val resumption = JSONObject().apply {
             sessionResumptionHandle?.takeIf { it.isNotBlank() }?.let { put("handle", it) }
         }
+        val toolDeclarations = JSONArray()
+            .put(functionDeclaration("capture_photo", "Capture a photo with the connected glasses."))
+            .put(functionDeclaration("toggle_video", "Start or stop glasses video recording."))
+            .put(functionDeclaration("start_recording", "Start an audio recording from the glasses."))
+            .put(functionDeclaration("stop_recording", "Stop the active glasses audio recording."))
+            .put(functionDeclaration("start_sync", "Start syncing glasses media to the phone."))
+            .put(functionDeclaration("stop_sync", "Stop the active glasses media sync."))
+            .put(
+                JSONObject()
+                    .put("name", "background_phone_action")
+                    .put(
+                        "description",
+                        "Request a screen-off Android action through AD background automation. " +
+                            "For calls, messages, sharing, purchases, deletes, installs or security changes, first call with confirmed=false; " +
+                            "ask the user for spoken confirmation if the tool returns requires_confirmation, then call again with confirmed=true.",
+                    )
+                    .put(
+                        "parameters",
+                        JSONObject()
+                            .put("type", "OBJECT")
+                            .put(
+                                "properties",
+                                JSONObject()
+                                    .put("goal", JSONObject().put("type", "STRING"))
+                                    .put("confirmed", JSONObject().put("type", "BOOLEAN")),
+                            )
+                            .put("required", JSONArray().put("goal")),
+                    ),
+            )
+        val tools = JSONArray()
+            .put(JSONObject().put("googleSearch", JSONObject()))
+            .put(JSONObject().put("functionDeclarations", toolDeclarations))
         val setup = JSONObject()
             .put("model", config.model)
             .put("generationConfig", JSONObject().put("responseModalities", JSONArray().put("AUDIO")))
+            .put(
+                "systemInstruction",
+                JSONObject().put(
+                    "parts",
+                    JSONArray().put(JSONObject().put("text", SYSTEM_INSTRUCTION)),
+                ),
+            )
+            .put("tools", tools)
             .put("sessionResumption", resumption)
         check(webSocket.send(JSONObject().put("setup", setup).toString())) { "Live setup could not be sent" }
     }
+
+    private fun functionDeclaration(name: String, description: String): JSONObject =
+        JSONObject().put("name", name).put("description", description)
 
     private fun handleServerMessage(raw: String) {
         val message = runCatching { JSONObject(raw) }.getOrElse {
@@ -322,6 +381,8 @@ class GeminiLiveClient(
             ?.optString("newHandle")
             ?.takeIf { it.isNotBlank() }
             ?.let { sessionResumptionHandle = it }
+
+        message.optJSONObject("toolCall")?.let(::handleToolCall)
 
         val serverContent = message.optJSONObject("serverContent") ?: return
         if (serverContent.optBoolean("interrupted", false)) {
@@ -338,6 +399,44 @@ class GeminiLiveClient(
         }
     }
 
+    private fun handleToolCall(toolCall: JSONObject) {
+        val calls = toolCall.optJSONArray("functionCalls") ?: return
+        scope.launch {
+            val responses = JSONArray()
+            for (index in 0 until calls.length()) {
+                val call = calls.optJSONObject(index) ?: continue
+                val id = call.optString("id")
+                val name = call.optString("name")
+                if (name.isBlank()) continue
+                val args = call.optJSONObject("args") ?: JSONObject()
+                val response = runCatching { toolExecutor.execute(name, args) }
+                    .getOrElse { error ->
+                        JSONObject()
+                            .put("ok", false)
+                            .put("error", error.message ?: "AD tool failed")
+                    }
+                responses.put(
+                    JSONObject()
+                        .apply { if (id.isNotBlank()) put("id", id) }
+                        .put("name", name)
+                        .put("response", response),
+                )
+            }
+            if (responses.length() > 0) {
+                socket?.send(
+                    JSONObject()
+                        .put("toolResponse", JSONObject().put("functionResponses", responses))
+                        .toString(),
+                )
+            }
+        }
+    }
+
+    private fun enableGlassesCapture() {
+        if (!captureEnabled.compareAndSet(false, true)) return
+        requestAudioFocus()
+    }
+
     private fun startCapture() {
         if (!captureEnabled.compareAndSet(false, true)) return
         requestAudioFocus()
@@ -347,6 +446,7 @@ class GeminiLiveClient(
             AudioFormat.ENCODING_PCM_16BIT,
         )
         if (minBuffer <= 0) {
+            captureEnabled.set(false)
             setState(GeminiLiveState.ERROR, "Microphone is unavailable")
             return
         }
@@ -359,6 +459,7 @@ class GeminiLiveClient(
         )
         if (newRecorder.state != AudioRecord.STATE_INITIALIZED) {
             newRecorder.release()
+            captureEnabled.set(false)
             setState(GeminiLiveState.ERROR, "Microphone could not be initialized")
             return
         }
@@ -385,7 +486,8 @@ class GeminiLiveClient(
     }
 
     private fun resumeCapture() {
-        if (active.get() && socket != null && state == GeminiLiveState.LISTENING) startCapture()
+        if (!active.get() || socket == null || state != GeminiLiveState.LISTENING) return
+        if (audioInput == GeminiLiveAudioInput.PHONE_MICROPHONE) startCapture() else enableGlassesCapture()
     }
 
     private fun stopCapture() = pauseCapture()
@@ -502,7 +604,6 @@ class GeminiLiveClient(
 
     private fun notifyRouteChange() {
         if (active.get() && state == GeminiLiveState.LISTENING) {
-            // AudioRecord/AudioTrack follow Android's active Bluetooth or glasses route.
             setState(GeminiLiveState.LISTENING, "Audio route changed")
         }
     }
@@ -519,5 +620,12 @@ class GeminiLiveClient(
         const val INPUT_CHUNK_BYTES = 640 // 20 ms of mono PCM16 at 16 kHz.
         const val SESSION_RESUMPTION_RECONNECT_MS = 9 * 60 * 1000L
         const val MAX_IMAGES_PER_SESSION = 10
+        const val SYSTEM_INSTRUCTION =
+            "You are AD, the voice assistant inside displayless smart glasses. " +
+                "Be concise and conversational because answers are heard, not read. " +
+                "Use Google Search when current information is needed. " +
+                "Use AD tools for glasses and phone actions instead of asking the user to operate the phone. " +
+                "Prefer screen-off actions. If a tool asks for confirmation, ask the user clearly and wait for yes before retrying it as confirmed. " +
+                "Never claim an action succeeded unless the tool response says it did."
     }
 }
