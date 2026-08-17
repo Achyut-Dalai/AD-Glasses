@@ -1,10 +1,9 @@
 package com.fersaiyan.cyanbridge.ai.live
 
 import android.content.Context
-import com.fersaiyan.cyanbridge.MainActivity
 import com.fersaiyan.cyanbridge.automation.AutomationEventBroadcaster
+import com.fersaiyan.cyanbridge.glasses.runtime.ADGlassesCommandGateway
 import com.fersaiyan.cyanbridge.shared.glasses.GlassesDashboardAction
-import com.fersaiyan.cyanbridge.ui.reactnative.ADRuntimeRegistry
 import org.json.JSONObject
 
 /** Executes only the narrow tools exposed to a Gemini Live AD session. */
@@ -53,7 +52,7 @@ class ADGeminiLiveToolExecutor(context: Context) : GeminiLiveToolExecutor {
                 .put("goal", goal)
         }
 
-        // Tasker is a true background contract and must not depend on MainActivity being alive.
+        // Tasker is a true background contract and must not depend on any Activity being alive.
         AutomationEventBroadcaster.sendPhoneAction(appContext, goal)
         return JSONObject()
             .put("ok", true)
@@ -62,22 +61,12 @@ class ADGeminiLiveToolExecutor(context: Context) : GeminiLiveToolExecutor {
     }
 
     private fun dispatch(action: GlassesDashboardAction, message: String): JSONObject {
-        val activity = ADRuntimeRegistry.mainActivity()
-            ?: return JSONObject()
+        if (!ADGlassesCommandGateway.dispatch(action)) {
+            return JSONObject()
                 .put("ok", false)
-                .put("error", "This glasses action still requires the native device runtime to be attached")
-        return runCatching {
-            activity.runOnUiThread {
-                val method = MainActivity::class.java.declaredMethods.firstOrNull {
-                    it.name == "handleDashboardAction" && it.parameterTypes.size == 1
-                } ?: return@runOnUiThread
-                method.isAccessible = true
-                method.invoke(activity, action)
-            }
-            JSONObject().put("ok", true).put("message", message)
-        }.getOrElse { error ->
-            JSONObject().put("ok", false).put("error", error.message ?: "Native glasses action failed")
+                .put("error", "The native glasses runtime is not attached")
         }
+        return JSONObject().put("ok", true).put("message", message)
     }
 }
 
