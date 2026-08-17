@@ -21,8 +21,11 @@ export type RouteName =
   | 'firmware'
   | 'capability'
   | 'captures'
+  | 'capture-detail'
   | 'recordings'
-  | 'notes';
+  | 'recording-detail'
+  | 'notes'
+  | 'note-detail';
 
 export type RouteEntry = {
   name: RouteName;
