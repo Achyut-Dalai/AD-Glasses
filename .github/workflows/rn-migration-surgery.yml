@@ -1,0 +1,84 @@
+name: RN migration surgery
+
+on:
+  push:
+    branches:
+      - codex/rn-migration-hardening
+    paths:
+      - .github/workflows/rn-migration-surgery.yml
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: codex/rn-migration-hardening
+          submodules: recursive
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+
+      - name: Apply asserted RN lint cleanup
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+
+          replacements = {
+              Path('android/CyanBridge/src/screens/PairingScreen.tsx'): [
+                  ("import {color, motion, radius, space, type} from '../design/tokens';",
+                   "import {color, motion, type} from '../design/tokens';"),
+              ],
+              Path('android/CyanBridge/src/screens/SettingsScreens.tsx'): [
+                  ("  IconTile,\n", ""),
+                  ("import {color, radius, space, type} from '../design/tokens';",
+                   "import {color, space, type} from '../design/tokens';"),
+              ],
+          }
+
+          for path, edits in replacements.items():
+              text = path.read_text()
+              for old, new in edits:
+                  count = text.count(old)
+                  if count != 1:
+                      raise SystemExit(f'{path}: expected exactly one match for {old!r}, found {count}')
+                  text = text.replace(old, new)
+              path.write_text(text)
+          PY
+
+      - name: Install React Native dependencies
+        working-directory: android/CyanBridge
+        run: npm install --no-audit --no-fund
+
+      - name: Verify React Native source
+        working-directory: android/CyanBridge
+        run: |
+          npm run typecheck
+          npm run lint
+
+      - name: Print resolved React Native Android config
+        working-directory: android/CyanBridge
+        run: |
+          node node_modules/react-native/cli.js config > /tmp/ad-rn-config.json
+          node - <<'NODE'
+          const fs = require('fs');
+          const config = JSON.parse(fs.readFileSync('/tmp/ad-rn-config.json', 'utf8'));
+          console.log(JSON.stringify(config.project && config.project.android, null, 2));
+          NODE
+
+      - name: Commit verified migration cleanup
+        run: |
+          git config user.name "Achyut-Dalai"
+          git config user.email "79808239+Achyut-Dalai@users.noreply.github.com"
+          git add android/CyanBridge/src/screens/PairingScreen.tsx android/CyanBridge/src/screens/SettingsScreens.tsx
+          if git diff --cached --quiet; then
+            echo "No source changes to commit"
+            exit 0
+          fi
+          git commit -m "fix(rn): clear migration lint errors"
+          git push origin HEAD:codex/rn-migration-hardening
