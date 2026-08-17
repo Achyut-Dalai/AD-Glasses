@@ -75,7 +75,7 @@ export function AIRuntimeScreen({back}: {back: () => void}) {
       : value === 'PRIVATE'
         ? {conversationEngine: 'LOCAL' as const, speechEngine: 'MOONSHINE' as const, visionEngine: 'LOCAL_GEMMA' as const, fileEngine: 'LOCAL' as const, groundingPolicy: 'NEVER' as const, visibleFallbackPolicy: 'NEVER' as const}
         : {conversationEngine: 'AUTO' as const, speechEngine: 'AUTO' as const, visionEngine: 'AUTO' as const, fileEngine: 'AUTO' as const, groundingPolicy: 'AUTO' as const, visibleFallbackPolicy: 'ASK' as const};
-    setSettings(current => ({...current, aiProfile: value, ...preset, screenOffFirst: preset.visibleFallbackPolicy !== 'ALLOW'}));
+    setSettings(current => ({...current, aiProfile: value, ...preset, screenOffFirst: true}));
   };
 
   const custom = (key: CustomKey, value: string) => {
