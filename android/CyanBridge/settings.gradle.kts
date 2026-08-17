@@ -13,7 +13,17 @@ plugins {
 }
 
 extensions.configure<com.facebook.react.ReactSettingsExtension> {
-    autolinkLibrariesFromCommand()
+    // RNGP defaults the config command to rootDirectory/../, which is correct for a
+    // conventional <js-root>/android layout. AD Glasses intentionally embeds React Native
+    // directly in this existing Gradle root, so run autolinking from the workspace itself.
+    autolinkLibrariesFromCommand(
+        workingDirectory = settings.layout.rootDirectory.asFile,
+        lockFiles = settings.layout.rootDirectory.files(
+            "package-lock.json",
+            "package.json",
+            "react-native.config.js",
+        ),
+    )
 }
 
 dependencyResolutionManagement {

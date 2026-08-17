@@ -1,4 +1,17 @@
 // Top-level build file where you can add configuration options common to all sub-projects/modules.
+buildscript {
+    repositories {
+        google()
+        mavenCentral()
+    }
+    dependencies {
+        // React Native's integration guide loads RNGP on the buildscript classpath so the
+        // legacy root-project plugin below is available to this existing Android build.
+        // The included build in settings.gradle.kts supplies the local plugin implementation.
+        classpath("com.facebook.react:react-native-gradle-plugin")
+    }
+}
+
 plugins {
     alias(libs.plugins.android.application) apply false
     alias(libs.plugins.android.library) apply false
