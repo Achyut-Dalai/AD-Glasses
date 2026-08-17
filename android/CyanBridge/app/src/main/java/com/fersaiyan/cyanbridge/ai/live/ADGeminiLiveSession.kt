@@ -43,7 +43,7 @@ object ADGeminiLiveSession {
                 override fun onNetworkChanged(available: Boolean) = listener.onNetworkChanged(available)
             },
             audioInput = GeminiLiveAudioInput.GLASSES_PCM,
-            toolExecutor = ADGeminiLiveToolExecutor(),
+            toolExecutor = ADGeminiLiveToolExecutor(application),
         )
         client = live
         live.start(language, imagePrompt)
