@@ -1,5 +1,6 @@
 package com.fersaiyan.cyanbridge.ui.adglasses
 
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.Row
@@ -21,9 +22,12 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import com.fersaiyan.cyanbridge.R
 import com.fersaiyan.cyanbridge.devices.DeviceProfileStore
 import com.fersaiyan.cyanbridge.shared.glasses.GlassesDashboardUiState
 
@@ -48,7 +52,12 @@ internal fun ADNativeSettingsHubScreen(
     ADPageLayout("Settings", onBack) {
         ADCard(onClick = onDevice) {
             Row(verticalAlignment = Alignment.CenterVertically) {
-                ADGlassesMark(Modifier.size(width = 42.dp, height = 28.dp))
+                Image(
+                    painter = painterResource(R.drawable.ad_glasses_hero_v4),
+                    contentDescription = "Glasses",
+                    modifier = Modifier.size(width = 72.dp, height = 38.dp),
+                    contentScale = ContentScale.Fit,
+                )
                 Column(Modifier.padding(start = 13.dp).weight(1f)) {
                     Text(
                         presentation.identityLabel ?: "Glasses",
