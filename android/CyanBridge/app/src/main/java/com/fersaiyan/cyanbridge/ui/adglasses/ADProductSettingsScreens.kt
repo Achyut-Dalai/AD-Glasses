@@ -158,7 +158,7 @@ internal fun ADIntelligenceScreen(onBack: () -> Unit, onRouting: () -> Unit) {
             Text("For the glasses", style = MaterialTheme.typography.titleLarge)
             Spacer(Modifier.height(5.dp))
             Text(
-                "Answers, vision and Web Search run on the phone, then the useful part is spoken through the glasses. Longer results stay in Conversations.",
+                "Answers, vision and Web Search run on the phone, then the useful part is spoken through the glasses. Longer results stay in Prompt.",
                 style = MaterialTheme.typography.bodyLarge,
                 color = ADColors.Muted,
             )
@@ -296,8 +296,8 @@ internal fun ADPrivacyCenterScreen(onBack: () -> Unit) {
                 PrivacyPrefs.setIncludeFullTranscriptionInExportsEnabled(context, it)
             }
         }
-        ADProductSettingsGroup("Phone Control") {
-            ADToggleRow(Icons.Outlined.Security, "Confirm sensitive actions", "Ask before protected phone actions run", confirmations) {
+        ADProductSettingsGroup("Automation") {
+            ADToggleRow(Icons.Outlined.Security, "Confirm sensitive actions", "Ask before protected automation actions run", confirmations) {
                 confirmations = it
                 LocalAgentPrefs.setRequireConfirmationEnabled(context, it)
             }

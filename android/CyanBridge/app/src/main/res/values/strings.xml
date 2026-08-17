@@ -54,36 +54,36 @@
     <string name="app_lock_guide_button">Done</string>
 
     <!-- Local agent automation (AccessibilityService) -->
-    <string name="local_agent_accessibility_service_label">AD Glasses phone control</string>
-    <string name="local_agent_accessibility_service_description">Allows AD Glasses to read and operate the current Android interface for phone-control actions you request. Optional screenshot capture remains separately controlled.</string>
+    <string name="local_agent_accessibility_service_label">Glasses automation</string>
+    <string name="local_agent_accessibility_service_description">Allows Glasses automation to read and operate the current Android interface for actions you request from your glasses. Optional screenshot capture remains separately controlled.</string>
 
     <!-- Legacy/compat key retained for code paths that still reference it. -->
-    <string name="local_agent_accessibility_description">AD Glasses phone-control accessibility service</string>
+    <string name="local_agent_accessibility_description">Glasses automation accessibility service</string>
 
-    <!-- Onboarding: Daily Diary -->
+    <!-- Onboarding: DayNote -->
     <string name="onboarding_glasses_connection_title">Connect Your Glasses</string>
     <string name="onboarding_glasses_connection_desc">Allow AD Glasses to find and connect to nearby supported glasses.</string>
     <string name="onboarding_glasses_connection_details">Bluetooth permission is used to discover, connect to, and communicate with your glasses. You can continue without it and grant access later when you connect glasses.</string>
 
     <string name="onboarding_optional_features_title">Optional Features</string>
-    <string name="onboarding_optional_features_desc">Modes, phone control, local models, and cloud AI are optional and can be configured later.</string>
+    <string name="onboarding_optional_features_desc">Modes, automation, local models, and cloud AI are optional and can be configured later.</string>
     <string name="onboarding_optional_features_details">Start with the glasses connection, then enable only the modes and services you want. Each capability can request its own Android permission when it needs one.</string>
 
     <string name="onboarding_open_source_title">Open-source foundation</string>
     <string name="onboarding_open_source_desc">AD Glasses is built on open-source components and smart-glasses SDK integrations.</string>
     <string name="onboarding_open_source_details">Required license notices remain part of the app distribution. The AD Glasses product UI is separate from the upstream compatibility code it builds on.</string>
 
-    <string name="onboarding_daily_facts_title">Daily Diary</string>
-    <string name="onboarding_daily_facts_desc">Daily Diary can turn selected phone context into a private entry that helps you remember your day.</string>
-    <string name="onboarding_daily_facts_details">Enable Daily Diary only if you want it. Its saved context and reminder behavior can be reviewed or disabled later.</string>
+    <string name="onboarding_daily_facts_title">DayNote</string>
+    <string name="onboarding_daily_facts_desc">DayNote can turn selected phone context into a private note that helps you remember your day.</string>
+    <string name="onboarding_daily_facts_details">Enable DayNote only if you want it. Its saved context and reminder behavior can be reviewed or disabled later.</string>
 
     <!-- Onboarding: Screen Capture -->
     <string name="onboarding_screen_capture_title">Screen Memory</string>
     <string name="onboarding_screen_capture_desc">Screen Memory can read selected screen text for local context when you enable it.</string>
-    <string name="onboarding_screen_capture_details">Screen text may be stored locally for enabled memory features. Phone Control reads the current interface only for actions you request. Apps in your blacklist are skipped. Review the Accessibility disclosure before enabling this optional Android permission.</string>
+    <string name="onboarding_screen_capture_details">Screen text may be stored locally for enabled memory features. Automation reads the current interface only for actions you request. Apps in your blacklist are skipped. Review the Accessibility disclosure before enabling this optional Android permission.</string>
     <string name="onboarding_accessibility_disclosure_title">Accessibility access disclosure</string>
-    <string name="onboarding_accessibility_disclosure_body">AD Glasses uses Android Accessibility only if you enable it. Accessibility can let AD Glasses read text and interface structure from apps on your screen and can let Phone Control tap, type, scroll, and navigate for actions you request. Enabled Screen Memory features may save selected screen context locally. When you request a phone-control action, current screen context may be processed by the AI route you selected, including a remote service if you configured one. Optional screenshots remain separately controlled. Apps in your blacklist are skipped. You can disable Accessibility, Screen Memory, or Phone Control at any time.</string>
-    <string name="onboarding_local_agent_toggle">Enable Phone Control</string>
+    <string name="onboarding_accessibility_disclosure_body">AD Glasses uses Android Accessibility only if you enable it. Accessibility can let AD Glasses read text and interface structure from apps on your screen and can let Automation tap, type, scroll, and navigate for actions you request. Enabled Screen Memory features may save selected screen context locally. When you request an automation action, current screen context may be processed by the AI route you selected, including a remote service if you configured one. Optional screenshots remain separately controlled. Apps in your blacklist are skipped. You can disable Accessibility, Screen Memory, or Automation at any time.</string>
+    <string name="onboarding_local_agent_toggle">Enable Automation</string>
     <string name="onboarding_open_accessibility_settings">Review Accessibility access</string>
     <string name="onboarding_skip_all">Skip all</string>
     <string name="onboarding_back">Back</string>

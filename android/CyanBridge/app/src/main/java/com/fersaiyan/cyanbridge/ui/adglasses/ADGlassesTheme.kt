@@ -21,14 +21,14 @@ import androidx.core.view.WindowCompat
 internal object ADColors {
     val Ink = Color(0xFF1D1D1F)
     val Muted = Color(0xFF6E6E73)
-    // Keep the product predominantly monochrome, but allow one restrained slate accent
-    // to carry focus, selection, and AI activity without making the interface feel loud.
-    val Blue = Color(0xFF52627A)
-    val BlueDeep = Color(0xFF29364A)
-    val BlueSoft = Color(0xFFEBEFF5)
-    val Background = Color(0xFFF6F6F7)
+    // Product chrome stays deliberately monochrome: ink, white, grey and silver.
+    // Semantic success/warning/error colours remain reserved for actual state feedback.
+    val Blue = Color(0xFF2C2C2E)
+    val BlueDeep = Color(0xFF111113)
+    val BlueSoft = Color(0xFFEAEAED)
+    val Background = Color(0xFFF5F5F7)
     val Surface = Color(0xFFFFFFFF)
-    val SurfaceSubtle = Color(0xFFEDEEF1)
+    val SurfaceSubtle = Color(0xFFEDEDEF)
     val Glass = Color(0xF7FFFFFF)
     val Outline = Color(0xFFC6C6C8)
     val Separator = Color(0x3C3C434A)

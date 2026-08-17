@@ -20,13 +20,13 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.Apps
 import androidx.compose.material.icons.outlined.AutoAwesome
-import androidx.compose.material.icons.outlined.CalendarMonth
+import androidx.compose.material.icons.outlined.AutoStories
+import androidx.compose.material.icons.outlined.Bolt
 import androidx.compose.material.icons.outlined.CheckCircle
-import androidx.compose.material.icons.outlined.Checklist
 import androidx.compose.material.icons.outlined.Cloud
 import androidx.compose.material.icons.outlined.Computer
 import androidx.compose.material.icons.outlined.GraphicEq
-import androidx.compose.material.icons.outlined.PhoneAndroid
+import androidx.compose.material.icons.outlined.Schedule
 import androidx.compose.material.icons.outlined.Timeline
 import androidx.compose.material.icons.rounded.KeyboardArrowRight
 import androidx.compose.material.icons.rounded.Translate
@@ -87,7 +87,7 @@ internal fun ADNativeAiScreen(
     }
 
     val relayConfigured = AiProviderPrefs.isRelayConfigured(context)
-    val phoneControlReady = hasAccessibilityServicePermission(context)
+    val automationReady = hasAccessibilityServicePermission(context)
 
     LazyColumn(
         modifier = Modifier.fillMaxSize(),
@@ -120,7 +120,7 @@ internal fun ADNativeAiScreen(
                         onOpenCapability(ADAutomation.VISUAL_DIARY)
                     }
                     ADAiCapabilityTile(
-                        Icons.Outlined.CalendarMonth,
+                        Icons.Outlined.AutoStories,
                         ADAutomation.AUTO_DIARY.title,
                         "Private daily memory",
                         Modifier.weight(1f),
@@ -129,16 +129,21 @@ internal fun ADNativeAiScreen(
                     }
                 }
                 Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                    ADAiCapabilityTile(Icons.Outlined.Checklist, "Errands", "Tasks & reminders", Modifier.weight(1f)) {
+                    ADAiCapabilityTile(
+                        Icons.Outlined.Schedule,
+                        ADAutomation.ERRAND_BRAIN.title,
+                        "Scheduled tasks",
+                        Modifier.weight(1f),
+                    ) {
                         onOpenCapability(ADAutomation.ERRAND_BRAIN)
                     }
                     ADAiCapabilityTile(
-                        Icons.Outlined.PhoneAndroid,
-                        "Phone Control",
-                        if (phoneControlReady) "Android actions" else "Setup required",
+                        Icons.Outlined.Bolt,
+                        ADAutomation.LOCAL_AGENT.title,
+                        if (automationReady) "Android actions" else "Setup required",
                         Modifier.weight(1f),
                     ) {
-                        if (phoneControlReady) onOpenCapability(ADAutomation.LOCAL_AGENT)
+                        if (automationReady) onOpenCapability(ADAutomation.LOCAL_AGENT)
                         else context.startActivity(Intent(Settings.ACTION_ACCESSIBILITY_SETTINGS))
                     }
                 }

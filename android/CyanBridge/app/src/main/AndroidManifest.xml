@@ -214,7 +214,7 @@
         <activity
             android:name=".plugins.meetingsparknotes.MeetingSparkNotesSettingsActivity"
             android:exported="false"
-            android:label="Meeting Notes settings" />
+            android:label="Soundbites settings" />
 
         <activity
             android:name=".plugins.livecaptionrelay.LiveCaptionRelaySettingsActivity"
@@ -229,7 +229,7 @@
         <activity
             android:name=".plugins.errandbrain.ErrandBrainSettingsActivity"
             android:exported="false"
-            android:label="Errands settings" />
+            android:label="Cron settings" />
 
         <activity
             android:name=".ui.localagent.PendingActionsActivity"
@@ -280,12 +280,12 @@
         <activity
             android:name=".plugins.autodiary.AutoDiarySettingsActivity"
             android:exported="false"
-            android:label="Daily Diary settings" />
+            android:label="DayNote settings" />
 
         <activity
             android:name=".plugins.localagent.LocalAgentSettingsActivity"
             android:exported="false"
-            android:label="Phone Control settings" />
+            android:label="Automation settings" />
 
         <activity
             android:name=".plugins.autoaudio.AutoAudioSettingsActivity"
@@ -295,7 +295,7 @@
         <activity
             android:name=".plugins.visualdiary.VisualDiarySettingsActivity"
             android:exported="false"
-            android:label="Visual Diary settings" />
+            android:label="Timeline settings" />
 
         <activity
             android:name=".bridge.runtimes.evenhub.EvenHubRuntimeActivity"

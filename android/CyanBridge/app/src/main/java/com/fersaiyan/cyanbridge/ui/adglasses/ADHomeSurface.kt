@@ -18,9 +18,9 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.BatteryFull
+import androidx.compose.material.icons.outlined.Bolt
 import androidx.compose.material.icons.outlined.GraphicEq
 import androidx.compose.material.icons.outlined.Mic
-import androidx.compose.material.icons.outlined.PhoneAndroid
 import androidx.compose.material.icons.outlined.PhotoCamera
 import androidx.compose.material.icons.outlined.Public
 import androidx.compose.material.icons.outlined.Storage
@@ -191,8 +191,8 @@ internal fun ADHomeSurface(
                         onClick = onOpenWebSearch,
                     )
                     ADHomeLink(
-                        icon = Icons.Outlined.PhoneAndroid,
-                        title = "Phone control",
+                        icon = Icons.Outlined.Bolt,
+                        title = "Automation",
                         detail = "Apps and supported Android actions",
                         onClick = onOpenPhoneControl,
                     )

@@ -31,8 +31,8 @@ import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.ArrowForward
-import androidx.compose.material.icons.outlined.EditNote
 import androidx.compose.material.icons.outlined.Public
+import androidx.compose.material.icons.outlined.Terminal
 import androidx.compose.material.icons.rounded.Add
 import androidx.compose.material.icons.rounded.ArrowUpward
 import androidx.compose.material3.Icon
@@ -233,9 +233,9 @@ internal fun ADNativeConversationScreen(
                 contentAlignment = Alignment.Center,
             ) {
                 Icon(
-                    Icons.Outlined.EditNote,
+                    Icons.Outlined.Terminal,
                     contentDescription = null,
-                    tint = ADColors.Blue,
+                    tint = ADColors.Ink,
                     modifier = Modifier.size(22.dp),
                 )
             }
@@ -249,7 +249,7 @@ internal fun ADNativeConversationScreen(
             }
             if (messages.isNotEmpty() || pendingPrompt != null) {
                 Surface(
-                    color = if (sending) ADColors.SurfaceSubtle else ADColors.BlueSoft,
+                    color = ADColors.SurfaceSubtle,
                     shape = RoundedCornerShape(14.dp),
                 ) {
                     Row(
@@ -262,13 +262,13 @@ internal fun ADNativeConversationScreen(
                         Icon(
                             Icons.Rounded.Add,
                             contentDescription = null,
-                            tint = if (sending) ADColors.Muted else ADColors.Blue,
+                            tint = if (sending) ADColors.Muted else ADColors.Ink,
                             modifier = Modifier.size(17.dp),
                         )
                         Text(
                             "New",
                             style = MaterialTheme.typography.labelLarge,
-                            color = if (sending) ADColors.Muted else ADColors.Blue,
+                            color = if (sending) ADColors.Muted else ADColors.Ink,
                         )
                     }
                 }
@@ -343,23 +343,21 @@ internal fun ADNativeConversationScreen(
 
 @Composable
 private fun ADLiveAudioState(recording: Boolean) {
-    val accent = if (recording) ADColors.Error else ADColors.Blue
-    val background = if (recording) ADColors.ErrorSoft else ADColors.BlueSoft
     Row(
         modifier = Modifier
             .fillMaxWidth()
             .padding(horizontal = 18.dp, vertical = 2.dp)
-            .background(background, RoundedCornerShape(14.dp))
+            .background(ADColors.SurfaceSubtle, RoundedCornerShape(14.dp))
             .padding(horizontal = 12.dp, vertical = 9.dp),
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(9.dp),
     ) {
-        ADActivityWaveform(color = accent, compact = true)
+        ADActivityWaveform(color = ADColors.Ink, compact = true)
         Column(Modifier.weight(1f)) {
             Text(
                 if (recording) "Audio capture active" else "AI audio active",
                 style = MaterialTheme.typography.labelLarge,
-                color = accent,
+                color = ADColors.Ink,
             )
             Text(
                 if (recording) "Recording is running in the background" else "Voice playback is active",
@@ -381,13 +379,13 @@ private fun ADConversationEmptyState(
         Box(
             modifier = Modifier
                 .size(64.dp)
-                .background(ADColors.BlueSoft, RoundedCornerShape(20.dp)),
+                .background(ADColors.SurfaceSubtle, RoundedCornerShape(20.dp)),
             contentAlignment = Alignment.Center,
         ) {
             Icon(
-                Icons.Outlined.EditNote,
+                Icons.Outlined.Terminal,
                 contentDescription = null,
-                tint = ADColors.Blue,
+                tint = ADColors.Ink,
                 modifier = Modifier.size(30.dp),
             )
         }
@@ -432,13 +430,13 @@ private fun ADPromptSuggestion(
         Box(
             modifier = Modifier
                 .size(34.dp)
-                .background(if (web) ADColors.BlueSoft else ADColors.SurfaceSubtle, RoundedCornerShape(10.dp)),
+                .background(ADColors.SurfaceSubtle, RoundedCornerShape(10.dp)),
             contentAlignment = Alignment.Center,
         ) {
             Icon(
-                if (web) Icons.Outlined.Public else Icons.Outlined.EditNote,
+                if (web) Icons.Outlined.Public else Icons.Outlined.Terminal,
                 contentDescription = null,
-                tint = if (web) ADColors.Blue else ADColors.Ink,
+                tint = ADColors.Ink,
                 modifier = Modifier.size(17.dp),
             )
         }
@@ -467,7 +465,7 @@ private fun ADUserTurn(content: String) {
             modifier = Modifier
                 .widthIn(max = 336.dp)
                 .background(
-                    ADColors.BlueSoft,
+                    ADColors.SurfaceSubtle,
                     RoundedCornerShape(
                         topStart = 20.dp,
                         topEnd = 20.dp,
@@ -514,7 +512,7 @@ private fun ADAssistantThinking() {
         ) {
             ADGlassesMark(Modifier.size(20.dp))
         }
-        ADActivityWaveform(color = ADColors.Blue, compact = true)
+        ADActivityWaveform(color = ADColors.Ink, compact = true)
         Text("AI is working…", style = MaterialTheme.typography.bodyMedium, color = ADColors.Muted)
     }
 }
@@ -599,8 +597,8 @@ private fun ADConversationComposer(
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.spacedBy(6.dp),
             ) {
-                Icon(Icons.Outlined.Public, null, tint = ADColors.Blue, modifier = Modifier.size(15.dp))
-                Text("Web search", style = MaterialTheme.typography.labelMedium, color = ADColors.Blue)
+                Icon(Icons.Outlined.Public, null, tint = ADColors.Ink, modifier = Modifier.size(15.dp))
+                Text("Web search", style = MaterialTheme.typography.labelMedium, color = ADColors.Ink)
             }
         }
         Surface(
