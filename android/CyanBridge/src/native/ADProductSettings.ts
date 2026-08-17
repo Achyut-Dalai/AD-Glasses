@@ -1,0 +1,70 @@
+import {NativeModules} from 'react-native';
+
+export type ProductSettings = {
+  provider: 'Gemini' | 'OpenAI / Codex' | 'Local AI';
+  relayUrl: string;
+  relayBackend: 'Gemini' | 'OpenAI / Codex';
+  relayConfigured: boolean;
+  remoteEnabled: boolean;
+  remoteUrl: string;
+  remoteModel: string;
+  language: string;
+  redactNames: boolean;
+  transcriptStorage: boolean;
+  cameraGranted: boolean;
+  bluetoothGranted: boolean;
+  microphoneGranted: boolean;
+  automationGranted: boolean;
+  localModels: Array<{id: string; name: string; sizeBytes: number; selected: boolean}>;
+};
+
+type ProductSettingsModule = {
+  getSettings?: () => Promise<ProductSettings>;
+  setLanguage?: (languageName: string) => void;
+  setRedactNames?: (enabled: boolean) => void;
+  setTranscriptStorage?: (enabled: boolean) => void;
+  selectLocalModel?: (modelId: string) => void;
+};
+
+const native = NativeModules.ADProductSettings as ProductSettingsModule | undefined;
+
+export const defaultProductSettings: ProductSettings = {
+  provider: 'Gemini',
+  relayUrl: '',
+  relayBackend: 'Gemini',
+  relayConfigured: false,
+  remoteEnabled: false,
+  remoteUrl: '',
+  remoteModel: '',
+  language: 'SYSTEM',
+  redactNames: true,
+  transcriptStorage: false,
+  cameraGranted: false,
+  bluetoothGranted: false,
+  microphoneGranted: false,
+  automationGranted: false,
+  localModels: [],
+};
+
+export const ADProductSettings = {
+  async read(): Promise<ProductSettings> {
+    if (!native?.getSettings) return defaultProductSettings;
+    try {
+      return await native.getSettings();
+    } catch {
+      return defaultProductSettings;
+    }
+  },
+  setLanguage(languageName: string) {
+    native?.setLanguage?.(languageName);
+  },
+  setRedactNames(enabled: boolean) {
+    native?.setRedactNames?.(enabled);
+  },
+  setTranscriptStorage(enabled: boolean) {
+    native?.setTranscriptStorage?.(enabled);
+  },
+  selectLocalModel(modelId: string) {
+    native?.selectLocalModel?.(modelId);
+  },
+};
