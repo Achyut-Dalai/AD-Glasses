@@ -1,4 +1,5 @@
 pluginManagement {
+    includeBuild("node_modules/@react-native/gradle-plugin")
     repositories {
         google()
         mavenCentral()
@@ -6,8 +7,19 @@ pluginManagement {
         maven { url = uri("https://jitpack.io") }
     }
 }
+
+plugins {
+    id("com.facebook.react.settings")
+}
+
+extensions.configure<com.facebook.react.ReactSettingsExtension> {
+    autolinkLibrariesFromCommand()
+}
+
 dependencyResolutionManagement {
-    repositoriesMode.set(RepositoriesMode.FAIL_ON_PROJECT_REPOS)
+    // React Native and autolinked native modules may contribute project repositories.
+    // Prefer the audited settings repositories while allowing those plugin additions.
+    repositoriesMode.set(RepositoriesMode.PREFER_SETTINGS)
     repositories {
         mavenLocal()
         google()
@@ -39,12 +51,16 @@ dependencyResolutionManagement {
         }
     }
 }
+
 rootProject.name = "CyanBridgeManagerApp"
 include(":app")
 include(":shared")
 
 // Moonshine Voice (local wrapper module that builds vendored native sources)
 include(":moonshine-voice")
+
+// React Native's Gradle plugin is also an included build for the project itself.
+includeBuild("node_modules/@react-native/gradle-plugin")
 
 // HeyCyan Core - bundled as composite build for easy compilation
 val heycyanCoreDir = file("../../heycyan-core")
