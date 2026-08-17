@@ -44,6 +44,10 @@ fun ADGlassesApp(
         routeStack = listOf(ADRoute.MAIN)
         selectedTab = tab
     }
+    val openCapability: (ADAutomation) -> Unit = { automation ->
+        selectedAutomation = automation
+        navigateTo(ADRoute.TASK_DETAIL)
+    }
 
     LaunchedEffect(externalRequest?.id) {
         val request = externalRequest ?: return@LaunchedEffect
@@ -53,12 +57,10 @@ fun ADGlassesApp(
                 selectedTab = ADTab.CHATS
                 conversationRequest = request
             }
-            ADExternalDestination.SETTINGS -> {
-                routeStack = listOf(ADRoute.MAIN, ADRoute.SETTINGS)
-            }
+            ADExternalDestination.SETTINGS -> routeStack = listOf(ADRoute.MAIN, ADRoute.SETTINGS)
             ADExternalDestination.MODES -> {
                 routeStack = listOf(ADRoute.MAIN)
-                selectedTab = ADTab.TASKS
+                selectedTab = ADTab.AI
             }
             ADExternalDestination.LIBRARY_CAPTURES -> {
                 selectedTab = ADTab.LIBRARY
@@ -101,10 +103,7 @@ fun ADGlassesApp(
                             onOpenDevice = { navigateTo(ADRoute.DEVICE_CENTER) },
                             onOpenSync = { navigateTo(ADRoute.SYNC) },
                             onOpenSettings = { navigateTo(ADRoute.SETTINGS) },
-                            onOpenTranslator = {
-                                selectedAutomation = ADAutomation.TRANSLATOR
-                                navigateTo(ADRoute.TASK_DETAIL)
-                            },
+                            onOpenTranslator = { openCapability(ADAutomation.TRANSLATOR) },
                             onOpenWebSearch = {
                                 conversationRequest = ADNavigationRequest(
                                     id = System.currentTimeMillis(),
@@ -115,7 +114,7 @@ fun ADGlassesApp(
                                 showMainTab(ADTab.CHATS)
                             },
                             onOpenPhoneControl = { showMainTab(ADTab.AI) },
-                            onOpenTasks = { showMainTab(ADTab.TASKS) },
+                            onOpenTasks = { showMainTab(ADTab.AI) },
                         )
                         ADTab.CHATS -> ADNativeConversationScreen(
                             navigationRequest = conversationRequest,
@@ -123,25 +122,18 @@ fun ADGlassesApp(
                                 if (conversationRequest?.id == requestId) conversationRequest = null
                             },
                         )
+                        ADTab.AI -> ADNativeAiScreen(
+                            onRelaySettings = { navigateTo(ADRoute.AI_RELAY) },
+                            onLocalSettings = { navigateTo(ADRoute.AI_LOCAL) },
+                            onAssistantApps = { navigateTo(ADRoute.AI_ASSISTANT_APPS) },
+                            onOpenCapability = openCapability,
+                        )
                         ADTab.LIBRARY -> ADNativeLibraryScreen(
                             transferActive = dashboardState.transfer.isVisible,
                             onOpenSync = { navigateTo(ADRoute.SYNC) },
                             onCaptures = { navigateTo(ADRoute.LIBRARY_CAPTURES) },
                             onRecordings = { navigateTo(ADRoute.LIBRARY_RECORDINGS) },
                             onNotes = { navigateTo(ADRoute.LIBRARY_NOTES) },
-                        )
-                        ADTab.TASKS -> ADTasksScreen(
-                            activeShortcutTitle = dashboardState.nativePluginShortcut
-                                ?.takeIf { it.isEnabled }
-                                ?.title,
-                            onTask = {
-                                selectedAutomation = it
-                                navigateTo(ADRoute.TASK_DETAIL)
-                            },
-                        )
-                        ADTab.AI -> ADNativeAiScreen(
-                            onRelaySettings = { navigateTo(ADRoute.AI_RELAY) },
-                            onLocalSettings = { navigateTo(ADRoute.AI_LOCAL) },
                         )
                     }
                     ADRoute.DEVICE_CENTER -> ADGlassesDeviceCenterScreen(
@@ -166,6 +158,7 @@ fun ADGlassesApp(
                     )
                     ADRoute.AI_RELAY -> ADNativeRelaySettingsScreen(navigateBack)
                     ADRoute.AI_LOCAL -> ADNativeLocalAiSettingsScreen(navigateBack)
+                    ADRoute.AI_ASSISTANT_APPS -> ADAssistantAppsScreen(navigateBack)
                     ADRoute.PRIVACY -> ADPrivacyCenterScreen(navigateBack)
                     ADRoute.STORAGE -> ADStorageScreen(navigateBack)
                     ADRoute.LANGUAGE -> ADLanguageScreen(navigateBack)

@@ -40,7 +40,7 @@ import com.fersaiyan.cyanbridge.ai.orchestrator.AssistantMode
 import com.fersaiyan.cyanbridge.ai.orchestrator.AssistantModeAction
 import com.fersaiyan.cyanbridge.ai.orchestrator.AssistantModeCommand
 
-/** Native start/stop surface for a task. No plugin SettingsActivity is required. */
+/** Native control surface for an AI capability. No plugin SettingsActivity is required. */
 @Composable
 internal fun ADNativeTaskDetailScreen(
     automation: ADAutomation,
@@ -97,9 +97,9 @@ internal fun ADNativeTaskDetailScreen(
         }
 
         ADCard {
-            ADTaskMetric(Icons.Outlined.Lock, "Processing", automation.boundary)
+            ADCapabilityMetric(Icons.Outlined.Lock, "Processing", automation.boundary)
             HorizontalDivider(Modifier.padding(start = 32.dp), color = ADColors.Separator)
-            ADTaskMetric(Icons.Outlined.FolderOpen, "Saved as", automation.nativeOutput())
+            ADCapabilityMetric(Icons.Outlined.FolderOpen, "Saved as", automation.nativeOutput())
         }
 
         resultText?.let { message ->
@@ -128,7 +128,7 @@ internal fun ADNativeTaskDetailScreen(
             ) {
                 Icon(Icons.Outlined.StopCircle, contentDescription = null)
                 Spacer(Modifier.size(8.dp))
-                Text("Stop task")
+                Text("Stop")
             }
         } else {
             Button(
@@ -138,12 +138,12 @@ internal fun ADNativeTaskDetailScreen(
             ) {
                 Icon(Icons.Outlined.PlayArrow, contentDescription = null)
                 Spacer(Modifier.size(8.dp))
-                Text("Start task")
+                Text("Start")
             }
         }
 
         Text(
-            "You can also start or stop this task by voice from the glasses.",
+            "You can also turn this on or off by voice from the glasses.",
             style = MaterialTheme.typography.bodyMedium,
             color = ADColors.Muted,
         )
@@ -151,7 +151,7 @@ internal fun ADNativeTaskDetailScreen(
 }
 
 @Composable
-private fun ADTaskMetric(
+private fun ADCapabilityMetric(
     icon: androidx.compose.ui.graphics.vector.ImageVector,
     label: String,
     value: String,

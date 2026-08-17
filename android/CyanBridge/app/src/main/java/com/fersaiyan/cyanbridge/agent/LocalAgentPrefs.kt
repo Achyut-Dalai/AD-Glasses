@@ -31,8 +31,8 @@ object LocalAgentPrefs {
             "API_MODELS",
             AgentProviderType.PRO_SUBSCRIPTION.name -> AgentProviderType.PRO_SUBSCRIPTION
 
-            // AD Glasses no longer uses Tasker/external UI automation as its default AI path.
-            // Migrate old/unset values to the internal relay provider.
+            // Tasker is no longer the default AI provider. Old/unset provider values migrate
+            // to the internal relay path; optional assistant-app handoff is tracked separately.
             AgentProviderType.TASKER.name,
             null,
             "" -> AgentProviderType.PRO_SUBSCRIPTION
@@ -59,12 +59,12 @@ object LocalAgentPrefs {
             ?.trim()
             ?.uppercase()
 
-        // External phone-assistant/Tasker image automation used to be the default. The product
-        // now routes glasses questions and vision through the provider configured in the AI tab.
+        // AD AI remains the default. PHONE_ASSISTANT is retained only when a user explicitly
+        // selects the optional installed-assistant-app route from the native AI screen.
         val mode = when (stored) {
+            GlassesAssistantMode.PHONE_ASSISTANT.name -> GlassesAssistantMode.PHONE_ASSISTANT
             GlassesAssistantMode.CUSTOM_AI_PROVIDER.name,
             "CHOSEN_PROVIDER",
-            GlassesAssistantMode.PHONE_ASSISTANT.name,
             "GEMINI",
             "CHAT_GPT",
             "PHONE_DEFAULT",

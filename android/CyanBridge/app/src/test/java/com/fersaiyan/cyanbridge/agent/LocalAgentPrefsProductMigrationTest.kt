@@ -29,7 +29,7 @@ class LocalAgentPrefsProductMigrationTest {
     }
 
     @Test
-    fun legacyTaskerAndPhoneAssistantValuesMigrateAwayFromExternalUi() {
+    fun legacyTaskerProviderMigratesButExplicitPhoneAssistantRemainsAvailable() {
         context.getSharedPreferences("local_agent_prefs", Context.MODE_PRIVATE)
             .edit()
             .putString("provider_type", AgentProviderType.TASKER.name)
@@ -37,6 +37,16 @@ class LocalAgentPrefsProductMigrationTest {
             .commit()
 
         assertEquals(AgentProviderType.PRO_SUBSCRIPTION, LocalAgentPrefs.getProviderType(context))
+        assertEquals(GlassesAssistantMode.PHONE_ASSISTANT, LocalAgentPrefs.getGlassesAssistantMode(context))
+    }
+
+    @Test
+    fun oldNamedAssistantValuesDoNotBecomeImplicitPhoneAutomation() {
+        context.getSharedPreferences("local_agent_prefs", Context.MODE_PRIVATE)
+            .edit()
+            .putString("glasses_assistant_mode", "CHAT_GPT")
+            .commit()
+
         assertEquals(GlassesAssistantMode.CUSTOM_AI_PROVIDER, LocalAgentPrefs.getGlassesAssistantMode(context))
     }
 }

@@ -3,9 +3,8 @@ package com.fersaiyan.cyanbridge.ui.adglasses
 enum class ADTab(val label: String) {
     HOME("Home"),
     CHATS("Chats"),
-    LIBRARY("Library"),
-    TASKS("Tasks"),
     AI("AI"),
+    LIBRARY("Library"),
 }
 
 enum class ADRoute {
@@ -15,6 +14,7 @@ enum class ADRoute {
     SETTINGS,
     AI_RELAY,
     AI_LOCAL,
+    AI_ASSISTANT_APPS,
     PRIVACY,
     STORAGE,
     LANGUAGE,
@@ -35,7 +35,7 @@ enum class ADAutomation(
     val boundary: String,
     /** Existing service/plugin title used only to reconcile runtime state. */
     val runtimeTitle: String = title,
-    /** Product task list visibility. Runtime compatibility entries may remain hidden. */
+    /** Product capability visibility. Runtime compatibility entries may remain hidden. */
     val visibleInTasks: Boolean = true,
 ) {
     LOCAL_AGENT(
@@ -62,8 +62,8 @@ enum class ADAutomation(
         false,
     ),
     TRANSLATOR(
-        "Live Translator",
-        "Translate a conversation and hear the result through the glasses.",
+        "Translate",
+        "Live translation for conversations through your glasses.",
         "Translation",
         "Automatic",
         "Hands-Free Translator",

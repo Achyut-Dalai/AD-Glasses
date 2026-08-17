@@ -18,9 +18,7 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.BatteryFull
-import androidx.compose.material.icons.outlined.CameraAlt
 import androidx.compose.material.icons.outlined.GraphicEq
-import androidx.compose.material.icons.outlined.Language
 import androidx.compose.material.icons.outlined.Mic
 import androidx.compose.material.icons.outlined.PhoneAndroid
 import androidx.compose.material.icons.outlined.PhotoCamera
@@ -30,6 +28,7 @@ import androidx.compose.material.icons.outlined.Sync
 import androidx.compose.material.icons.outlined.Videocam
 import androidx.compose.material.icons.outlined.Visibility
 import androidx.compose.material.icons.rounded.KeyboardArrowRight
+import androidx.compose.material.icons.rounded.Translate
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
@@ -67,8 +66,8 @@ internal fun ADHomeSurface(
     val profile = DeviceProfileStore.loadLastSelected(context)
         ?.takeIf { ADDeviceSupportPolicy.isPairable(it.selectedClass) }
     val device = buildADDevicePresentation(state, profile)
-    val runtimeTaskTitle = state.nativePluginShortcut?.takeIf { it.isEnabled }?.title
-    val activeTaskTitle = runtimeTaskTitle?.let { runtimeTitle ->
+    val runtimeCapabilityTitle = state.nativePluginShortcut?.takeIf { it.isEnabled }?.title
+    val activeCapabilityTitle = runtimeCapabilityTitle?.let { runtimeTitle ->
         ADAutomation.entries
             .firstOrNull { it.visibleInTasks && it.runtimeTitle == runtimeTitle }
             ?.title
@@ -99,7 +98,7 @@ internal fun ADHomeSurface(
                 )
             }
 
-            if (state.meeting.isRecording || state.transfer.isVisible || activeTaskTitle != null) {
+            if (state.meeting.isRecording || state.transfer.isVisible || activeCapabilityTitle != null) {
                 item {
                     Column(verticalArrangement = Arrangement.spacedBy(9.dp)) {
                         Text("Active", style = MaterialTheme.typography.titleMedium)
@@ -121,11 +120,11 @@ internal fun ADHomeSurface(
                                 onClick = onOpenSync,
                             )
                         }
-                        activeTaskTitle?.let {
+                        activeCapabilityTitle?.let {
                             ADLiveRow(
-                                icon = Icons.Outlined.Language,
+                                icon = Icons.Rounded.Translate,
                                 title = it,
-                                detail = "Task active",
+                                detail = "Capability active",
                                 status = "ON",
                                 onClick = onOpenTasks,
                             )
@@ -161,9 +160,9 @@ internal fun ADHomeSurface(
                             onClick = host.onToggleVideo,
                         )
                         ADHomeAction(
-                            title = "Live translate",
-                            detail = "Spoken translation",
-                            icon = Icons.Outlined.Language,
+                            title = "Translate",
+                            detail = "Live Translation",
+                            icon = Icons.Rounded.Translate,
                             modifier = Modifier.weight(1f),
                             onClick = onOpenTranslator,
                         )

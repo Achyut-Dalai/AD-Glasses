@@ -21,9 +21,8 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.rounded.ArrowBack
 import androidx.compose.material.icons.rounded.AutoAwesome
-import androidx.compose.material.icons.rounded.ChatBubble
 import androidx.compose.material.icons.rounded.Check
-import androidx.compose.material.icons.rounded.Checklist
+import androidx.compose.material.icons.rounded.Forum
 import androidx.compose.material.icons.rounded.Home
 import androidx.compose.material.icons.rounded.KeyboardArrowRight
 import androidx.compose.material.icons.rounded.PhotoLibrary
@@ -142,22 +141,21 @@ internal fun ADGlassesMark(modifier: Modifier = Modifier) {
 @Composable
 internal fun ADBottomNavigation(selected: ADTab, onSelected: (ADTab) -> Unit) {
     Surface(
-        color = ADColors.Surface.copy(alpha = 0.97f),
-        shadowElevation = 2.dp,
+        color = ADColors.Surface.copy(alpha = 0.98f),
+        shadowElevation = 3.dp,
     ) {
         Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(horizontal = 4.dp, vertical = 6.dp),
+                .padding(horizontal = 10.dp, vertical = 7.dp),
             horizontalArrangement = Arrangement.SpaceAround,
         ) {
             ADTab.entries.forEach { tab ->
                 val icon = when (tab) {
                     ADTab.HOME -> Icons.Rounded.Home
-                    ADTab.CHATS -> Icons.Rounded.ChatBubble
-                    ADTab.LIBRARY -> Icons.Rounded.PhotoLibrary
-                    ADTab.TASKS -> Icons.Rounded.Checklist
+                    ADTab.CHATS -> Icons.Rounded.Forum
                     ADTab.AI -> Icons.Rounded.AutoAwesome
+                    ADTab.LIBRARY -> Icons.Rounded.PhotoLibrary
                 }
                 ADBottomNavigationItem(
                     tab = tab,
@@ -181,7 +179,7 @@ private fun ADBottomNavigationItem(
     val tint = if (selected) ADColors.Blue else ADColors.Muted
     Column(
         modifier = modifier
-            .heightIn(min = 54.dp)
+            .heightIn(min = 52.dp)
             .clickable(
                 role = Role.Tab,
                 interactionSource = remember { MutableInteractionSource() },
@@ -192,10 +190,10 @@ private fun ADBottomNavigationItem(
         verticalArrangement = Arrangement.Center,
     ) {
         Box(
-            modifier = Modifier.size(width = 38.dp, height = 28.dp),
+            modifier = Modifier.size(width = 40.dp, height = 27.dp),
             contentAlignment = Alignment.Center,
         ) {
-            Icon(icon, contentDescription = tab.label, tint = tint, modifier = Modifier.size(20.dp))
+            Icon(icon, contentDescription = tab.label, tint = tint, modifier = Modifier.size(21.dp))
         }
         Text(
             tab.label,
