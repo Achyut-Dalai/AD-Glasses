@@ -14,18 +14,20 @@ import {
   CapturesScreen,
   DeviceScreen,
   FirmwareScreen,
-  LanguageScreen,
-  LocalAIScreen,
   NotesScreen,
   PairingScreen,
+  RecordingsScreen,
+  SyncScreen,
+} from './screens/DetailScreens';
+import {
+  LanguageScreen,
+  LocalAIScreen,
   PermissionsScreen,
   PrivacyScreen,
-  RecordingsScreen,
   RelayScreen,
   SettingsScreen,
   StorageScreen,
-  SyncScreen,
-} from './screens/DetailScreens';
+} from './screens/SettingsScreens';
 import type {Navigate, RootTab, RouteEntry, RouteName} from './navigation/routes';
 import {rootTabs} from './navigation/routes';
 
@@ -58,7 +60,10 @@ export default function App({initialRoute = 'home'}: Props) {
     return () => sub.remove();
   }, [back, stack.length]);
 
-  const tab = useMemo(() => rootTabs.includes(current.name as RootTab) ? current.name as RootTab : undefined, [current.name]);
+  const tab = useMemo(
+    () => rootTabs.includes(current.name as RootTab) ? current.name as RootTab : undefined,
+    [current.name],
+  );
 
   return (
     <SafeAreaProvider>
@@ -100,4 +105,4 @@ function RouteView({route, navigate, back}: {route: RouteEntry; navigate: Naviga
   }
 }
 
-const styles = StyleSheet.create({app:{flex:1,backgroundColor:color.canvas}});
+const styles = StyleSheet.create({app: {flex: 1, backgroundColor: color.canvas}});
