@@ -15,13 +15,18 @@ import {
   AdvancedScreen,
   AssistantAppsScreen,
   CapabilityScreen,
-  CapturesScreen,
   DeviceScreen,
   FirmwareScreen,
-  NotesScreen,
-  RecordingsScreen,
   SyncScreen,
 } from './screens/DetailScreens';
+import {
+  CaptureDetailScreen,
+  CapturesScreen,
+  NoteDetailScreen,
+  NotesScreen,
+  RecordingDetailScreen,
+  RecordingsScreen,
+} from './screens/ArtifactScreens';
 import {
   LanguageScreen,
   PermissionsScreen,
@@ -101,9 +106,12 @@ function RouteView({route, navigate, back}: {route: RouteEntry; navigate: Naviga
     case 'about': return <AboutScreen back={back}/>;
     case 'firmware': return <FirmwareScreen back={back}/>;
     case 'capability': return <CapabilityScreen route={route} back={back}/>;
-    case 'captures': return <CapturesScreen back={back}/>;
-    case 'recordings': return <RecordingsScreen back={back}/>;
-    case 'notes': return <NotesScreen back={back}/>;
+    case 'captures': return <CapturesScreen navigate={navigate} back={back}/>;
+    case 'capture-detail': return <CaptureDetailScreen route={route} navigate={navigate} back={back}/>;
+    case 'recordings': return <RecordingsScreen navigate={navigate} back={back}/>;
+    case 'recording-detail': return <RecordingDetailScreen route={route} navigate={navigate} back={back}/>;
+    case 'notes': return <NotesScreen navigate={navigate} back={back}/>;
+    case 'note-detail': return <NoteDetailScreen route={route} navigate={navigate} back={back}/>;
     default: return null;
   }
 }
