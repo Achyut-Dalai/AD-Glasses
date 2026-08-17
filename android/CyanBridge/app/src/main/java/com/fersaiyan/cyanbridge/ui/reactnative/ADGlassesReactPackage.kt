@@ -10,6 +10,7 @@ class ADGlassesReactPackage : ReactPackage {
         listOf(
             ADGlassesBridgeModule(reactContext),
             ADProductSettingsModule(reactContext),
+            ADPairingModule(reactContext),
         )
 
     override fun createViewManagers(reactContext: ReactApplicationContext): List<ViewManager<*, *>> = emptyList()
