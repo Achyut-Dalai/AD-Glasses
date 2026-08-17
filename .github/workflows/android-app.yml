@@ -13,6 +13,7 @@ on:
       - main
       - "agent/**"
       - "ui/**"
+      - "codex/**"
     paths:
       - .github/workflows/android-app.yml
       - android/CyanBridge/**
