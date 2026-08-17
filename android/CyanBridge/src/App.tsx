@@ -6,6 +6,7 @@ import {color} from './design/tokens';
 import {ADNative} from './native/ADNative';
 import {HomeScreen, LibraryScreen, PromptScreen} from './screens/MainScreens';
 import {AIScreen} from './screens/AIScreen';
+import {AIRuntimeScreen} from './screens/AIRuntimeScreen';
 import {WelcomeScreen} from './screens/WelcomeScreen';
 import {PairingScreen} from './screens/PairingScreen';
 import {LocalAIScreen} from './screens/LocalAIScreen';
@@ -83,6 +84,7 @@ function RouteView({route, navigate, back}: {route: RouteEntry; navigate: Naviga
     case 'home': return <HomeScreen navigate={navigate}/>;
     case 'prompt': return <PromptScreen route={route}/>;
     case 'ai': return <AIScreen navigate={navigate}/>;
+    case 'ai-runtime': return <AIRuntimeScreen back={back}/>;
     case 'library': return <LibraryScreen navigate={navigate}/>;
     case 'settings': return <SettingsScreen navigate={navigate} back={back}/>;
     case 'device': return <DeviceScreen navigate={navigate} back={back}/>;
