@@ -24,9 +24,9 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 
 /**
- * Keeps an already-started glasses voice or image question alive while MainActivity is stopped.
- * Inference remains in the existing local-model session; this service only supplies Android's
- * foreground execution and wake-lock guarantees.
+ * Keeps an already-started AD glasses question/session alive while the visible Activity is stopped.
+ * It supplies Android foreground-execution and wake-lock guarantees only; the selected assistant
+ * runtime (Gemini Live, standard provider, or local AI) owns inference.
  */
 class AiQuestionForegroundService : Service() {
     private val serviceScope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
@@ -36,11 +36,11 @@ class AiQuestionForegroundService : Service() {
     override fun onCreate() {
         super.onCreate()
         val powerManager = getSystemService(Context.POWER_SERVICE) as PowerManager
-        wakeLock = powerManager.newWakeLock(PowerManager.PARTIAL_WAKE_LOCK, "$packageName:ai-question")
+        wakeLock = powerManager.newWakeLock(PowerManager.PARTIAL_WAKE_LOCK, "$packageName:ad-assistant")
             .apply { setReferenceCounted(false) }
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
             getSystemService(NotificationManager::class.java).createNotificationChannel(
-                NotificationChannel(CHANNEL_ID, "AI questions", NotificationManager.IMPORTANCE_LOW),
+                NotificationChannel(CHANNEL_ID, "AD Assistant", NotificationManager.IMPORTANCE_LOW),
             )
         }
     }
@@ -56,14 +56,14 @@ class AiQuestionForegroundService : Service() {
             return START_NOT_STICKY
         }
 
-        val status = intent.getStringExtra(EXTRA_STATUS).orEmpty().ifBlank { "Processing glasses question" }
+        val status = intent.getStringExtra(EXTRA_STATUS).orEmpty().ifBlank { "AD is working through your glasses" }
         startForegroundSafely(status, isQueryActive = true)
         if (wakeLock.isHeld) wakeLock.release()
         wakeLock.acquire(MAX_WORK_DURATION_MS)
         idleStopJob?.cancel()
         idleStopJob = serviceScope.launch {
             delay(MAX_WORK_DURATION_MS)
-            Log.w(TAG, "AI question wake lock expired")
+            Log.w(TAG, "AD assistant wake lock expired")
             if (wakeLock.isHeld) wakeLock.release()
             stopQuestionWork()
         }
@@ -87,7 +87,7 @@ class AiQuestionForegroundService : Service() {
         )
         val notification = NotificationCompat.Builder(this, CHANNEL_ID)
             .setSmallIcon(R.drawable.ic_stat_ad_glasses)
-            .setContentTitle("CyanBridge AI question")
+            .setContentTitle("AD Glasses")
             .setContentText(status)
             .setContentIntent(openApp)
             .setCategory(NotificationCompat.CATEGORY_SERVICE)
@@ -107,7 +107,7 @@ class AiQuestionForegroundService : Service() {
                     0
                 },
             )
-        }.onFailure { Log.e(TAG, "Unable to start AI question foreground service", it) }
+        }.onFailure { Log.e(TAG, "Unable to start AD assistant foreground service", it) }
     }
 
     private fun stopQuestionWork() {
@@ -118,7 +118,7 @@ class AiQuestionForegroundService : Service() {
     }
 
     companion object {
-        private const val TAG = "AiQuestionForeground"
+        private const val TAG = "ADAssistantForeground"
         private const val CHANNEL_ID = "ai_question_work"
         private const val NOTIFICATION_ID = 7043
         private const val MAX_WORK_DURATION_MS = 2L * 60L * 1000L
@@ -131,7 +131,7 @@ class AiQuestionForegroundService : Service() {
                 .setAction(ACTION_START)
                 .putExtra(EXTRA_STATUS, status)
             runCatching { ContextCompat.startForegroundService(context, intent) }
-                .onFailure { Log.w(TAG, "Unable to request AI question foreground service", it) }
+                .onFailure { Log.w(TAG, "Unable to request AD assistant foreground service", it) }
         }
 
         fun stop(context: Context) {
