@@ -53,7 +53,7 @@ class ADVisibleProductUiTest {
     }
 
     @Test
-    fun promptUsesPromptIconAndHomeDoesNotDuplicatePromptNavigation() {
+    fun promptUsesTerminalIconAndHomeDoesNotDuplicatePromptNavigation() {
         val components = sourceFile(
             "src/main/java/com/fersaiyan/cyanbridge/ui/adglasses/ADComponents.kt",
         ).readText()
@@ -65,14 +65,14 @@ class ADVisibleProductUiTest {
         ).readText()
 
         assertTrue(models.contains("CHATS(\"Prompt\")"))
-        assertTrue(components.contains("ADTab.CHATS -> Icons.Outlined.EditNote"))
+        assertTrue(components.contains("ADTab.CHATS -> Icons.Outlined.Terminal"))
         assertFalse(home.contains("title = \"Conversations\""))
         assertFalse(home.contains("title = \"Chats\""))
         assertFalse(home.contains("onOpenConversations"))
     }
 
     @Test
-    fun capabilitiesUseEditorialToggleControlsInsteadOfStartStopButtons() {
+    fun capabilitiesUseMonochromeEditorialToggleControls() {
         val models = sourceFile(
             "src/main/java/com/fersaiyan/cyanbridge/ui/adglasses/ADGlassesModels.kt",
         ).readText()
@@ -88,7 +88,9 @@ class ADVisibleProductUiTest {
         assertTrue(details.contains("Switch("))
         assertTrue(details.contains("automation.capabilityIcon()"))
         assertTrue(details.contains("ADCapabilityDetailRow("))
-        assertTrue(details.contains("capabilityPalette()"))
+        assertTrue(details.contains("ADColors.SurfaceSubtle"))
+        assertFalse(details.contains("capabilityPalette()"))
+        assertFalse(details.contains("ADCapabilityPalette"))
         assertTrue(details.contains("\"DETAILS\""))
         assertFalse(details.contains("OutlinedButton("))
         assertFalse(details.contains("Button("))
@@ -105,6 +107,7 @@ class ADVisibleProductUiTest {
         assertFalse(prompt.contains("Icons.Outlined.CameraAlt"))
         assertFalse(prompt.contains("Icons.Outlined.Mic"))
         assertFalse(prompt.contains("New chat"))
+        assertTrue(prompt.contains("Icons.Outlined.Terminal"))
         assertTrue(prompt.contains("session.startNewConversation()"))
         assertTrue(prompt.contains("Icons.Rounded.Add"))
         assertTrue(prompt.contains("pendingAlreadyPersisted"))
@@ -114,7 +117,7 @@ class ADVisibleProductUiTest {
         assertTrue(prompt.contains("ADActivityWaveform"))
         assertTrue(prompt.contains("AudioSessionCoordinator.isBusy()"))
         assertTrue(prompt.contains("MeetingCapturePrefs.getState(context).isRecording"))
-        assertTrue(prompt.contains("ADColors.BlueSoft"))
+        assertTrue(prompt.contains("ADColors.SurfaceSubtle"))
         assertTrue(prompt.contains("ADAssistantTurn"))
     }
 
@@ -128,28 +131,55 @@ class ADVisibleProductUiTest {
         ).readText()
 
         assertTrue(models.contains("\"Soundbites\""))
-        assertTrue(models.contains("\"Daily Diary\""))
+        assertTrue(models.contains("\"DayNote\""))
         assertTrue(models.contains("\"Timeline\""))
+        assertTrue(models.contains("\"Automation\""))
+        assertTrue(models.contains("\"Cron\""))
         assertTrue(models.contains("\"Meeting Spark Notes\""))
         assertTrue(models.contains("\"Auto Diary\""))
         assertTrue(models.contains("\"Visual Diary\""))
+        assertTrue(models.contains("\"Errand Brain\""))
         assertTrue(ai.contains("ADAutomation.MEETING_NOTES.title"))
         assertTrue(ai.contains("ADAutomation.AUTO_DIARY.title"))
         assertTrue(ai.contains("ADAutomation.VISUAL_DIARY.title"))
-        assertTrue(ai.contains("Icons.Outlined.CalendarMonth"))
+        assertTrue(ai.contains("ADAutomation.ERRAND_BRAIN.title"))
+        assertTrue(ai.contains("ADAutomation.LOCAL_AGENT.title"))
+        assertTrue(ai.contains("Icons.Outlined.AutoStories"))
         assertTrue(ai.contains("Icons.Outlined.Timeline"))
+        assertTrue(ai.contains("Icons.Outlined.Schedule"))
+        assertTrue(ai.contains("Icons.Outlined.Bolt"))
     }
 
     @Test
-    fun welcomeKeepsProductStatementWithoutChangingOnboardingState() {
+    fun welcomeIsPosterLikeAndContainsOnlyTheProductStatement() {
         val welcome = sourceFile(
             "src/main/java/com/fersaiyan/cyanbridge/ui/adglasses/ADWelcomeScreen.kt",
         ).readText()
 
-        assertTrue(welcome.contains("YOUR GLASSES · YOUR AI · YOUR DATA"))
-        assertTrue(welcome.contains("A private brain for the glasses you wear."))
+        assertTrue(welcome.contains("YOUR GLASSES\\nYOUR AI\\nYOUR DATA"))
+        assertTrue(welcome.contains("alpha(0.16f)"))
+        assertTrue(welcome.contains("AD GLASSES"))
         assertTrue(welcome.contains("Connect glasses"))
         assertTrue(welcome.contains("Continue without glasses"))
+        assertFalse(welcome.contains("A private brain for the glasses you wear."))
+        assertFalse(welcome.contains("Connect when you are ready."))
+    }
+
+    @Test
+    fun productChromeUsesMonochromePalette() {
+        val theme = sourceFile(
+            "src/main/java/com/fersaiyan/cyanbridge/ui/adglasses/ADGlassesTheme.kt",
+        ).readText()
+        val details = sourceFile(
+            "src/main/java/com/fersaiyan/cyanbridge/ui/adglasses/ADNativeModeDetailScreen.kt",
+        ).readText()
+
+        assertTrue(theme.contains("val Blue = Color(0xFF2C2C2E)"))
+        assertTrue(theme.contains("val BlueDeep = Color(0xFF111113)"))
+        assertTrue(theme.contains("val BlueSoft = Color(0xFFEAEAED)"))
+        assertFalse(details.contains("0xFF6D5C82"))
+        assertFalse(details.contains("0xFF7A654B"))
+        assertFalse(details.contains("0xFF4F6E66"))
     }
 
     @Test
