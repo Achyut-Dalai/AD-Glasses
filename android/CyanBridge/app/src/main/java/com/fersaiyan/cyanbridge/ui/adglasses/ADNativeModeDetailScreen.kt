@@ -12,15 +12,15 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.outlined.CalendarMonth
+import androidx.compose.material.icons.outlined.AutoStories
+import androidx.compose.material.icons.outlined.Bolt
 import androidx.compose.material.icons.outlined.CheckCircle
-import androidx.compose.material.icons.outlined.Checklist
 import androidx.compose.material.icons.outlined.ErrorOutline
 import androidx.compose.material.icons.outlined.FolderOpen
 import androidx.compose.material.icons.outlined.GraphicEq
 import androidx.compose.material.icons.outlined.Lock
 import androidx.compose.material.icons.outlined.Mic
-import androidx.compose.material.icons.outlined.PhoneAndroid
+import androidx.compose.material.icons.outlined.Schedule
 import androidx.compose.material.icons.outlined.Timeline
 import androidx.compose.material.icons.rounded.Translate
 import androidx.compose.material3.HorizontalDivider
@@ -36,7 +36,6 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
@@ -58,7 +57,6 @@ internal fun ADNativeTaskDetailScreen(
     var active by remember(automation, initiallyActive) { mutableStateOf(initiallyActive) }
     var resultText by remember(automation) { mutableStateOf<String?>(null) }
     var lastSucceeded by remember(automation) { mutableStateOf<Boolean?>(null) }
-    val palette = automation.capabilityPalette()
 
     fun execute(action: AssistantModeAction) {
         val result = executor.execute(
@@ -83,20 +81,20 @@ internal fun ADNativeTaskDetailScreen(
             Box(
                 modifier = Modifier
                     .size(62.dp)
-                    .background(palette.soft, RoundedCornerShape(20.dp)),
+                    .background(ADColors.SurfaceSubtle, RoundedCornerShape(20.dp)),
                 contentAlignment = Alignment.Center,
             ) {
                 Icon(
                     automation.capabilityIcon(),
                     contentDescription = null,
-                    tint = palette.accent,
+                    tint = ADColors.Ink,
                     modifier = Modifier.size(29.dp),
                 )
             }
             Text(
                 text = automation.outcome.uppercase(),
                 style = MaterialTheme.typography.labelMedium,
-                color = palette.accent,
+                color = ADColors.Muted,
                 letterSpacing = 1.05.sp,
             )
             Text(
@@ -108,7 +106,7 @@ internal fun ADNativeTaskDetailScreen(
 
         Surface(
             modifier = Modifier.fillMaxWidth(),
-            color = if (active) palette.soft else ADColors.Surface,
+            color = if (active) ADColors.SurfaceSubtle else ADColors.Surface,
             shape = RoundedCornerShape(22.dp),
             shadowElevation = if (active) 0.dp else 1.dp,
         ) {
@@ -154,16 +152,12 @@ internal fun ADNativeTaskDetailScreen(
                 icon = Icons.Outlined.Lock,
                 label = "Processing",
                 value = automation.boundary,
-                accent = palette.accent,
-                soft = palette.soft,
             )
             HorizontalDivider(Modifier.padding(start = 48.dp), color = ADColors.Separator)
             ADCapabilityDetailRow(
                 icon = Icons.Outlined.FolderOpen,
                 label = "Saved as",
                 value = automation.nativeOutput(),
-                accent = palette.accent,
-                soft = palette.soft,
             )
         }
 
@@ -208,18 +202,16 @@ private fun ADCapabilityDetailRow(
     icon: ImageVector,
     label: String,
     value: String,
-    accent: Color,
-    soft: Color,
 ) {
     Row(
         modifier = Modifier.fillMaxWidth().padding(vertical = 11.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
         Box(
-            modifier = Modifier.size(36.dp).background(soft, RoundedCornerShape(11.dp)),
+            modifier = Modifier.size(36.dp).background(ADColors.SurfaceSubtle, RoundedCornerShape(11.dp)),
             contentAlignment = Alignment.Center,
         ) {
-            Icon(icon, contentDescription = null, tint = accent, modifier = Modifier.size(19.dp))
+            Icon(icon, contentDescription = null, tint = ADColors.Ink, modifier = Modifier.size(19.dp))
         }
         Column(Modifier.padding(start = 12.dp).weight(1f)) {
             Text(label, style = MaterialTheme.typography.bodySmall, color = ADColors.Muted)
@@ -229,29 +221,13 @@ private fun ADCapabilityDetailRow(
     }
 }
 
-private data class ADCapabilityPalette(
-    val accent: Color,
-    val soft: Color,
-)
-
-private fun ADAutomation.capabilityPalette(): ADCapabilityPalette = when (this) {
-    ADAutomation.MEETING_NOTES -> ADCapabilityPalette(Color(0xFF6D5C82), Color(0xFFF0EDF5))
-    ADAutomation.AUTO_DIARY -> ADCapabilityPalette(Color(0xFF7A654B), Color(0xFFF4F0E8))
-    ADAutomation.VISUAL_DIARY -> ADCapabilityPalette(Color(0xFF4F6E66), Color(0xFFEAF2EF))
-    ADAutomation.TRANSLATOR -> ADCapabilityPalette(Color(0xFF526A87), Color(0xFFEBF0F6))
-    ADAutomation.ERRAND_BRAIN -> ADCapabilityPalette(Color(0xFF6C6952), Color(0xFFF1F0E9))
-    ADAutomation.LOCAL_AGENT -> ADCapabilityPalette(Color(0xFF596A76), Color(0xFFEDF1F3))
-    ADAutomation.LIVE_CAPTIONS -> ADCapabilityPalette(Color(0xFF5F6782), Color(0xFFEEF0F6))
-    ADAutomation.AUTO_AUDIO -> ADCapabilityPalette(Color(0xFF6B6078), Color(0xFFF1EEF4))
-}
-
 private fun ADAutomation.capabilityIcon(): ImageVector = when (this) {
-    ADAutomation.LOCAL_AGENT -> Icons.Outlined.PhoneAndroid
+    ADAutomation.LOCAL_AGENT -> Icons.Outlined.Bolt
     ADAutomation.MEETING_NOTES -> Icons.Outlined.GraphicEq
     ADAutomation.LIVE_CAPTIONS -> Icons.Outlined.GraphicEq
     ADAutomation.TRANSLATOR -> Icons.Rounded.Translate
-    ADAutomation.ERRAND_BRAIN -> Icons.Outlined.Checklist
-    ADAutomation.AUTO_DIARY -> Icons.Outlined.CalendarMonth
+    ADAutomation.ERRAND_BRAIN -> Icons.Outlined.Schedule
+    ADAutomation.AUTO_DIARY -> Icons.Outlined.AutoStories
     ADAutomation.AUTO_AUDIO -> Icons.Outlined.Mic
     ADAutomation.VISUAL_DIARY -> Icons.Outlined.Timeline
 }
@@ -272,8 +248,8 @@ private fun ADAutomation.nativeOutput(): String = when (this) {
     ADAutomation.MEETING_NOTES -> "Transcript and notes"
     ADAutomation.LIVE_CAPTIONS -> "Live captions"
     ADAutomation.TRANSLATOR -> "Translated speech"
-    ADAutomation.ERRAND_BRAIN -> "Tasks and reminders"
-    ADAutomation.AUTO_DIARY -> "Private diary entry"
+    ADAutomation.ERRAND_BRAIN -> "Scheduled tasks and reminders"
+    ADAutomation.AUTO_DIARY -> "Private daily note"
     ADAutomation.AUTO_AUDIO -> "Audio and transcript"
     ADAutomation.VISUAL_DIARY -> "Visual timeline"
 }

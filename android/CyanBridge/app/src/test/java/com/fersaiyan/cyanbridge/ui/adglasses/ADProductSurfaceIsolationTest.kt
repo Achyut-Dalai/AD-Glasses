@@ -113,14 +113,18 @@ class ADProductSurfaceIsolationTest {
             "src/main/java/com/fersaiyan/cyanbridge/ui/adglasses/ADGlassesApp.kt",
         ).readText()
 
-        listOf("Capabilities", "Translate", "Errands", "Phone Control")
+        listOf("Capabilities", "Translate")
             .forEach { label -> assertTrue("AI should surface $label", ai.contains("\"$label\"")) }
         assertTrue(ai.contains("ADAutomation.MEETING_NOTES.title"))
         assertTrue(ai.contains("ADAutomation.AUTO_DIARY.title"))
         assertTrue(ai.contains("ADAutomation.VISUAL_DIARY.title"))
+        assertTrue(ai.contains("ADAutomation.ERRAND_BRAIN.title"))
+        assertTrue(ai.contains("ADAutomation.LOCAL_AGENT.title"))
         assertTrue(models.contains("\"Soundbites\""))
-        assertTrue(models.contains("\"Daily Diary\""))
+        assertTrue(models.contains("\"DayNote\""))
         assertTrue(models.contains("\"Timeline\""))
+        assertTrue(models.contains("\"Cron\""))
+        assertTrue(models.contains("\"Automation\""))
         assertTrue(ai.contains("\"Assistant apps\""))
         assertFalse(ai.contains("ADTopBar(title = \"AI\")"))
         assertTrue(app.contains("ADRoute.AI_ASSISTANT_APPS -> ADAssistantAppsScreen"))
@@ -146,7 +150,8 @@ class ADProductSurfaceIsolationTest {
             "src/main/java/com/fersaiyan/cyanbridge/ui/adglasses/ADConversationRichContent.kt",
         ).readText()
 
-        assertTrue(prompt.contains("ADColors.BlueSoft"))
+        assertTrue(prompt.contains("Icons.Outlined.Terminal"))
+        assertTrue(prompt.contains("ADColors.SurfaceSubtle"))
         assertTrue(prompt.contains("ADAssistantTurn"))
         assertTrue(prompt.contains("What do you want to know?"))
         assertTrue(prompt.contains("Ask AI…"))
@@ -155,7 +160,6 @@ class ADProductSurfaceIsolationTest {
         assertTrue(prompt.contains("AudioSessionCoordinator.isBusy()"))
         assertTrue(prompt.contains("MeetingCapturePrefs.getState(context).isRecording"))
         assertFalse(prompt.contains("New chat"))
-        assertFalse(prompt.contains("ADColors.Ink, RoundedCornerShape(20.dp)"))
         assertFalse(prompt.contains("Icons.Outlined.CameraAlt"))
         assertFalse(prompt.contains("Icons.Outlined.Mic"))
         assertTrue(rich.contains("ADConversationLinkKind.IMAGE"))
@@ -165,14 +169,16 @@ class ADProductSurfaceIsolationTest {
     }
 
     @Test
-    fun capabilityDetailUsesEditorialToggleInsteadOfStartStopButtons() {
+    fun capabilityDetailUsesMonochromeEditorialToggleInsteadOfStartStopButtons() {
         val detail = sourceFile(
             "src/main/java/com/fersaiyan/cyanbridge/ui/adglasses/ADNativeModeDetailScreen.kt",
         ).readText()
         assertTrue(detail.contains("Switch("))
         assertTrue(detail.contains("automation.capabilityIcon()"))
         assertTrue(detail.contains("ADCapabilityDetailRow("))
-        assertTrue(detail.contains("capabilityPalette()"))
+        assertTrue(detail.contains("ADColors.SurfaceSubtle"))
+        assertFalse(detail.contains("capabilityPalette()"))
+        assertFalse(detail.contains("ADCapabilityPalette"))
         assertFalse(detail.contains("OutlinedButton("))
         assertFalse(detail.contains("Button("))
         assertFalse(detail.contains("\"Start task\""))
@@ -181,12 +187,34 @@ class ADProductSurfaceIsolationTest {
     }
 
     @Test
-    fun welcomeKeepsTheGlassesAiDataProductStatement() {
+    fun welcomeIsAProductPosterNotAnExplainer() {
         val welcome = sourceFile(
             "src/main/java/com/fersaiyan/cyanbridge/ui/adglasses/ADWelcomeScreen.kt",
         ).readText()
-        assertTrue(welcome.contains("YOUR GLASSES · YOUR AI · YOUR DATA"))
-        assertTrue(welcome.contains("A private brain for the glasses you wear."))
+        assertTrue(welcome.contains("YOUR GLASSES\\nYOUR AI\\nYOUR DATA"))
+        assertTrue(welcome.contains("alpha(0.16f)"))
+        assertTrue(welcome.contains("AD GLASSES"))
+        assertFalse(welcome.contains("A private brain for the glasses you wear."))
+        assertFalse(welcome.contains("Connect when you are ready."))
+    }
+
+    @Test
+    fun automationUsesProductFacingLabelsWhileRuntimeIdentifiersStayCompatible() {
+        val models = sourceFile(
+            "src/main/java/com/fersaiyan/cyanbridge/ui/adglasses/ADGlassesModels.kt",
+        ).readText()
+        val strings = sourceFile("src/main/res/values/strings.xml").readText()
+        val manifest = sourceFile("src/main/AndroidManifest.xml").readText()
+
+        assertTrue(models.contains("\"Automation\""))
+        assertTrue(models.contains("\"Cron\""))
+        assertTrue(models.contains("\"Local Agent\""))
+        assertTrue(models.contains("\"Errand Brain\""))
+        assertTrue(strings.contains("<string name=\"local_agent_accessibility_service_label\">Glasses automation</string>"))
+        assertTrue(manifest.contains("android:label=\"Automation settings\""))
+        assertTrue(manifest.contains("android:label=\"Cron settings\""))
+        assertTrue(manifest.contains("android:label=\"DayNote settings\""))
+        assertTrue(manifest.contains("android:label=\"Timeline settings\""))
     }
 
     @Test

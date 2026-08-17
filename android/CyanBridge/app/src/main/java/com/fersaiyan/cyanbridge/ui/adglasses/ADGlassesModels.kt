@@ -39,9 +39,9 @@ enum class ADAutomation(
     val visibleInTasks: Boolean = true,
 ) {
     LOCAL_AGENT(
-        "Phone Control",
-        "Open apps, navigate and complete supported phone actions from the glasses.",
-        "Phone actions",
+        "Automation",
+        "Open apps, navigate and complete supported Android actions from the glasses.",
+        "Android actions",
         "On device",
         "Local Agent",
         false,
@@ -69,15 +69,15 @@ enum class ADAutomation(
         "Hands-Free Translator",
     ),
     ERRAND_BRAIN(
-        "Errands",
-        "Turn spoken errands into tasks and reminders.",
-        "Planning",
+        "Cron",
+        "Turn spoken requests into scheduled tasks and reminders.",
+        "Scheduled tasks",
         "Configured AI",
         "Errand Brain",
     ),
     AUTO_DIARY(
-        "Daily Diary",
-        "Turn selected moments and context into a private diary entry for your day.",
+        "DayNote",
+        "Turn selected moments and context into a private note for your day.",
         "Daily memory",
         "On device",
         "Auto Diary",
