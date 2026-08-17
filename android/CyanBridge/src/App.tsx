@@ -6,6 +6,7 @@ import {color} from './design/tokens';
 import {ADNative} from './native/ADNative';
 import {AIScreen, HomeScreen, LibraryScreen, PromptScreen} from './screens/MainScreens';
 import {WelcomeScreen} from './screens/WelcomeScreen';
+import {PairingScreen} from './screens/PairingScreen';
 import {
   AboutScreen,
   AdvancedScreen,
@@ -15,7 +16,6 @@ import {
   DeviceScreen,
   FirmwareScreen,
   NotesScreen,
-  PairingScreen,
   RecordingsScreen,
   SyncScreen,
 } from './screens/DetailScreens';
