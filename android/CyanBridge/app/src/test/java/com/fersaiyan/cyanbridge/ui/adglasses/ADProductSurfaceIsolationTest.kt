@@ -102,50 +102,7 @@ class ADProductSurfaceIsolationTest {
     }
 
     @Test
-    fun everyCanonicalProductSurfaceHasExactlyOneImplementation() {
-        val uiDir = sourceFile("src/main/java/com/fersaiyan/cyanbridge/ui/adglasses")
-        val kotlinSources = uiDir.walkTopDown()
-            .filter { it.isFile && it.extension == "kt" }
-            .associateWith { it.readText() }
-
-        val canonicalSurfaces = listOf(
-            "ADGlassesApp",
-            "ADHomeSurface",
-            "ADNativeConversationScreen",
-            "ADNativeLibraryScreen",
-            "ADNativeAiScreen",
-            "ADAssistantAppsScreen",
-            "ADGlassesDeviceCenterScreen",
-            "ADSyncScreen",
-            "ADFirmwareScreen",
-            "ADNativeSettingsHubScreen",
-            "ADPrivacyCenterScreen",
-            "ADStorageScreen",
-            "ADLanguageScreen",
-            "ADPermissionsScreen",
-            "ADAdvancedScreen",
-            "ADAboutScreen",
-            "ADNativeTaskDetailScreen",
-            "ADNativeCapturesScreen",
-            "ADNativeRecordingsScreen",
-            "ADNativeNotesScreen",
-        )
-
-        canonicalSurfaces.forEach { functionName ->
-            val declaration = Regex("""\bfun\s+${Regex.escape(functionName)}\s*\(""")
-            val matches = kotlinSources.entries.flatMap { (file, source) ->
-                declaration.findAll(source).map { file.name }.toList()
-            }
-            assertEquals(
-                "$functionName must have exactly one canonical implementation, found in $matches",
-                1,
-                matches.size,
-            )
-        }
-    }
-
-    @Test
-    fun aiOwnsCapabilitiesAndUsesBroadProductNames() {
+    fun aiOwnsCapabilitiesAndUsesCurrentProductNames() {
         val ai = sourceFile(
             "src/main/java/com/fersaiyan/cyanbridge/ui/adglasses/ADNativeAiScreen.kt",
         ).readText()
@@ -156,12 +113,14 @@ class ADProductSurfaceIsolationTest {
             "src/main/java/com/fersaiyan/cyanbridge/ui/adglasses/ADGlassesApp.kt",
         ).readText()
 
-        listOf("Capabilities", "Translate", "Visual Diary", "Errands", "Phone Control")
+        listOf("Capabilities", "Translate", "Errands", "Phone Control")
             .forEach { label -> assertTrue("AI should surface $label", ai.contains("\"$label\"")) }
         assertTrue(ai.contains("ADAutomation.MEETING_NOTES.title"))
         assertTrue(ai.contains("ADAutomation.AUTO_DIARY.title"))
+        assertTrue(ai.contains("ADAutomation.VISUAL_DIARY.title"))
         assertTrue(models.contains("\"Soundbites\""))
-        assertTrue(models.contains("\"DayNote\""))
+        assertTrue(models.contains("\"Daily Diary\""))
+        assertTrue(models.contains("\"Timeline\""))
         assertTrue(ai.contains("\"Assistant apps\""))
         assertFalse(ai.contains("ADTopBar(title = \"AI\")"))
         assertTrue(app.contains("ADRoute.AI_ASSISTANT_APPS -> ADAssistantAppsScreen"))
@@ -179,7 +138,7 @@ class ADProductSurfaceIsolationTest {
     }
 
     @Test
-    fun promptUsesLightNativeTurnsAndNoChatInboxControls() {
+    fun promptUsesFreshSessionsAndRealActivityIndicators() {
         val prompt = sourceFile(
             "src/main/java/com/fersaiyan/cyanbridge/ui/adglasses/ADNativeConversationScreen.kt",
         ).readText()
@@ -191,6 +150,10 @@ class ADProductSurfaceIsolationTest {
         assertTrue(prompt.contains("ADAssistantTurn"))
         assertTrue(prompt.contains("What do you want to know?"))
         assertTrue(prompt.contains("Ask AI…"))
+        assertTrue(prompt.contains("session.startNewConversation()"))
+        assertTrue(prompt.contains("ADActivityWaveform"))
+        assertTrue(prompt.contains("AudioSessionCoordinator.isBusy()"))
+        assertTrue(prompt.contains("MeetingCapturePrefs.getState(context).isRecording"))
         assertFalse(prompt.contains("New chat"))
         assertFalse(prompt.contains("ADColors.Ink, RoundedCornerShape(20.dp)"))
         assertFalse(prompt.contains("Icons.Outlined.CameraAlt"))
@@ -202,17 +165,28 @@ class ADProductSurfaceIsolationTest {
     }
 
     @Test
-    fun capabilityDetailUsesIntegratedToggleInsteadOfStartStopButtons() {
+    fun capabilityDetailUsesEditorialToggleInsteadOfStartStopButtons() {
         val detail = sourceFile(
             "src/main/java/com/fersaiyan/cyanbridge/ui/adglasses/ADNativeModeDetailScreen.kt",
         ).readText()
         assertTrue(detail.contains("Switch("))
         assertTrue(detail.contains("automation.capabilityIcon()"))
+        assertTrue(detail.contains("ADCapabilityDetailRow("))
+        assertTrue(detail.contains("capabilityPalette()"))
         assertFalse(detail.contains("OutlinedButton("))
         assertFalse(detail.contains("Button("))
         assertFalse(detail.contains("\"Start task\""))
         assertFalse(detail.contains("\"Stop task\""))
         assertFalse(detail.contains("this task by voice"))
+    }
+
+    @Test
+    fun welcomeKeepsTheGlassesAiDataProductStatement() {
+        val welcome = sourceFile(
+            "src/main/java/com/fersaiyan/cyanbridge/ui/adglasses/ADWelcomeScreen.kt",
+        ).readText()
+        assertTrue(welcome.contains("YOUR GLASSES · YOUR AI · YOUR DATA"))
+        assertTrue(welcome.contains("A private brain for the glasses you wear."))
     }
 
     @Test

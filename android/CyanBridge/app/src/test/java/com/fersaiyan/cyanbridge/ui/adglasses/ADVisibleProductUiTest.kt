@@ -65,14 +65,14 @@ class ADVisibleProductUiTest {
         ).readText()
 
         assertTrue(models.contains("CHATS(\"Prompt\")"))
-        assertTrue(components.contains("ADTab.CHATS -> Icons.AutoMirrored.Rounded.Send"))
+        assertTrue(components.contains("ADTab.CHATS -> Icons.Outlined.EditNote"))
         assertFalse(home.contains("title = \"Conversations\""))
         assertFalse(home.contains("title = \"Chats\""))
         assertFalse(home.contains("onOpenConversations"))
     }
 
     @Test
-    fun capabilitiesLiveInAiAndUseIntegratedToggleControls() {
+    fun capabilitiesUseEditorialToggleControlsInsteadOfStartStopButtons() {
         val models = sourceFile(
             "src/main/java/com/fersaiyan/cyanbridge/ui/adglasses/ADGlassesModels.kt",
         ).readText()
@@ -87,6 +87,9 @@ class ADVisibleProductUiTest {
         assertTrue(ai.contains("Text(\"Capabilities\""))
         assertTrue(details.contains("Switch("))
         assertTrue(details.contains("automation.capabilityIcon()"))
+        assertTrue(details.contains("ADCapabilityDetailRow("))
+        assertTrue(details.contains("capabilityPalette()"))
+        assertTrue(details.contains("\"DETAILS\""))
         assertFalse(details.contains("OutlinedButton("))
         assertFalse(details.contains("Button("))
         assertFalse(details.contains("Start task"))
@@ -94,7 +97,7 @@ class ADVisibleProductUiTest {
     }
 
     @Test
-    fun promptComposerIsTextFirstAndDedupesPersistedPendingTurn() {
+    fun promptComposerSupportsFreshSessionsAndRealActivityMotion() {
         val prompt = sourceFile(
             "src/main/java/com/fersaiyan/cyanbridge/ui/adglasses/ADNativeConversationScreen.kt",
         ).readText()
@@ -102,10 +105,15 @@ class ADVisibleProductUiTest {
         assertFalse(prompt.contains("Icons.Outlined.CameraAlt"))
         assertFalse(prompt.contains("Icons.Outlined.Mic"))
         assertFalse(prompt.contains("New chat"))
+        assertTrue(prompt.contains("session.startNewConversation()"))
+        assertTrue(prompt.contains("Icons.Rounded.Add"))
         assertTrue(prompt.contains("pendingAlreadyPersisted"))
         assertTrue(prompt.contains("KeyboardActions(onSend = { onSend() })"))
         assertTrue(prompt.contains("What do you want to know?"))
         assertTrue(prompt.contains("Ask AI…"))
+        assertTrue(prompt.contains("ADActivityWaveform"))
+        assertTrue(prompt.contains("AudioSessionCoordinator.isBusy()"))
+        assertTrue(prompt.contains("MeetingCapturePrefs.getState(context).isRecording"))
         assertTrue(prompt.contains("ADColors.BlueSoft"))
         assertTrue(prompt.contains("ADAssistantTurn"))
     }
@@ -120,11 +128,28 @@ class ADVisibleProductUiTest {
         ).readText()
 
         assertTrue(models.contains("\"Soundbites\""))
-        assertTrue(models.contains("\"DayNote\""))
+        assertTrue(models.contains("\"Daily Diary\""))
+        assertTrue(models.contains("\"Timeline\""))
         assertTrue(models.contains("\"Meeting Spark Notes\""))
         assertTrue(models.contains("\"Auto Diary\""))
+        assertTrue(models.contains("\"Visual Diary\""))
         assertTrue(ai.contains("ADAutomation.MEETING_NOTES.title"))
         assertTrue(ai.contains("ADAutomation.AUTO_DIARY.title"))
+        assertTrue(ai.contains("ADAutomation.VISUAL_DIARY.title"))
+        assertTrue(ai.contains("Icons.Outlined.CalendarMonth"))
+        assertTrue(ai.contains("Icons.Outlined.Timeline"))
+    }
+
+    @Test
+    fun welcomeKeepsProductStatementWithoutChangingOnboardingState() {
+        val welcome = sourceFile(
+            "src/main/java/com/fersaiyan/cyanbridge/ui/adglasses/ADWelcomeScreen.kt",
+        ).readText()
+
+        assertTrue(welcome.contains("YOUR GLASSES · YOUR AI · YOUR DATA"))
+        assertTrue(welcome.contains("A private brain for the glasses you wear."))
+        assertTrue(welcome.contains("Connect glasses"))
+        assertTrue(welcome.contains("Continue without glasses"))
     }
 
     @Test
