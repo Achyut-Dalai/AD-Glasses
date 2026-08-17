@@ -21,21 +21,48 @@ class ADVisibleProductUiTest {
     }
 
     @Test
-    fun aiUsesCurrentCapabilityLanguageAndCronIdentity() {
-        val ai = rnFile("src/screens/MainScreens.tsx").readText()
-        assertTrue(ai.contains("DayNote', detail: 'Daily moments, distilled'"))
-        assertTrue(ai.contains("Cron', detail: 'Recurring scheduled work', icon: 'repeat'"))
-        assertTrue(ai.contains("Automation', detail: 'Apps & Android actions'"))
-        assertFalse(ai.contains("Setup required"))
+    fun primaryNavigationIsControlAiAndMemoryNotChat() {
+        val routes = rnFile("src/navigation/routes.ts").readText()
+        val components = rnFile("src/design/components.tsx").readText()
+        assertTrue(routes.contains("export type RootTab = 'home' | 'ai' | 'library'"))
+        assertTrue(routes.contains("rootTabs: RootTab[] = ['home', 'ai', 'library']"))
+        assertTrue(routes.contains("| 'prompt'")) // hidden compatibility/context route remains available
+        assertFalse(components.contains("route: 'prompt', label:"))
+        assertFalse(components.contains("label: 'Prompt'"))
     }
 
     @Test
-    fun settingsUsesTheProductGlassesImageForDeviceIdentity() {
-        val details = rnFile("src/screens/DetailScreens.tsx").readText()
-        assertTrue(details.contains("styles.settingsGlasses"))
-        assertTrue(details.contains("<GlassesImage height={62}"))
-        assertTrue(details.contains("<GlassesImage height={170}"))
-        assertTrue(details.contains("Version alpha"))
+    fun homeStartsGlassesActionsWithoutOpeningChat() {
+        val home = rnFile("src/screens/MainScreens.tsx").readText()
+        assertTrue(home.contains("title=\"Ask\" detail=\"Voice question\" onPress={() => ADNative.action('voiceQuestion')}"))
+        assertTrue(home.contains("title=\"What I see\" detail=\"Ask with vision\" onPress={() => ADNative.action('imageQuestion')}"))
+        assertTrue(home.contains("title=\"Snap\" detail=\"Capture a photo\" onPress={() => ADNative.action('capturePhoto')}"))
+        assertFalse(home.contains("title=\"Search web\""))
+        assertFalse(home.contains("navigate('prompt', {web: true})"))
+    }
+
+    @Test
+    fun aiIsRouterAndKeepsCurrentCapabilityLanguage() {
+        val ai = rnFile("src/screens/MainScreens.tsx").readText()
+        assertTrue(ai.contains("Primary brain"))
+        assertTrue(ai.contains("Vision brain"))
+        assertTrue(ai.contains("Private brain"))
+        assertTrue(ai.contains("Automation executor"))
+        assertTrue(ai.contains("Native actions → Tasker → Accessibility fallback"))
+        assertTrue(ai.contains("DayNote', detail: 'Daily moments, distilled'"))
+        assertTrue(ai.contains("Cron', detail: 'Recurring scheduled work', icon: 'repeat'"))
+        assertTrue(ai.contains("Automation', detail: 'Apps & Android actions'"))
+    }
+
+    @Test
+    fun taskerVoiceRouteIsBackgroundOnly() {
+        val policy = sourceFile("src/main/java/com/fersaiyan/cyanbridge/ai/image/ExternalAssistantAutomationCapability.kt").readText()
+        val prefs = sourceFile("src/main/java/com/fersaiyan/cyanbridge/agent/LocalAgentPrefs.kt").readText()
+        assertTrue(policy.contains("Voice Tasker handoff is a background broadcast path"))
+        assertTrue(policy.contains("!capability.taskerInstalled"))
+        assertFalse(policy.substringAfter("fun voiceBlockingReason").substringBefore("fun imageBlockingReason").contains("phoneLocked"))
+        assertFalse(policy.substringAfter("fun voiceBlockingReason").substringBefore("fun imageBlockingReason").contains("autoInput"))
+        assertTrue(prefs.contains("AgentProviderType.TASKER.name -> AgentProviderType.TASKER"))
     }
 
     @Test
@@ -61,7 +88,8 @@ class ADVisibleProductUiTest {
     fun nativeBridgeReusesTheExistingGlassesRuntime() {
         val bridge = sourceFile("src/main/java/com/fersaiyan/cyanbridge/ui/reactnative/ADGlassesBridgeModule.kt").readText()
         assertTrue(bridge.contains("GlassesDashboardAction.CapturePhoto"))
-        assertTrue(bridge.contains("GlassesDashboardAction.StartSync"))
+        assertTrue(bridge.contains("GlassesDashboardAction.TestVoiceQuestion"))
+        assertTrue(bridge.contains("GlassesDashboardAction.TestImageQuestion"))
         assertTrue(bridge.contains("AssistantOrchestrator"))
         assertTrue(bridge.contains("fun sendPrompt"))
         assertTrue(bridge.contains("SyncedMediaQuery.query"))
