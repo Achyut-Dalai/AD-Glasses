@@ -7,12 +7,28 @@ export type LocalModelItem = {
   selected: boolean;
 };
 
+export type AIProfile = 'BALANCED' | 'FAST' | 'PRIVATE' | 'CUSTOM';
+export type ConversationEngine = 'AUTO' | 'GEMINI_LIVE' | 'GEMINI_STANDARD' | 'LOCAL';
+export type SpeechEngine = 'AUTO' | 'GEMINI_NATIVE_AUDIO' | 'MOONSHINE' | 'VOSK';
+export type VisionEngine = 'AUTO' | 'GEMINI_LIVE' | 'GEMINI_STANDARD' | 'LOCAL_GEMMA';
+export type FileEngine = 'AUTO' | 'GEMINI_FILES' | 'GEMINI_INLINE' | 'LOCAL';
+export type GroundingPolicy = 'AUTO' | 'ALWAYS' | 'NEVER';
+export type VisibleFallbackPolicy = 'ASK' | 'NEVER' | 'ALLOW';
+
 export type ProductSettings = {
   provider: 'Gemini' | 'OpenAI / Codex' | 'Local AI';
   automationExecutor: 'Background / Tasker' | 'Accessibility fallback';
   taskerInstalled: boolean;
   assistantRoleAvailable: boolean;
   assistantRoleHeld: boolean;
+  aiProfile: AIProfile;
+  conversationEngine: ConversationEngine;
+  speechEngine: SpeechEngine;
+  visionEngine: VisionEngine;
+  fileEngine: FileEngine;
+  groundingPolicy: GroundingPolicy;
+  visibleFallbackPolicy: VisibleFallbackPolicy;
+  screenOffFirst: boolean;
   relayUrl: string;
   relayBackend: 'Gemini' | 'OpenAI / Codex';
   relayConfigured: boolean;
@@ -32,6 +48,13 @@ export type ProductSettings = {
 type ProductSettingsModule = {
   getSettings?: () => Promise<ProductSettings>;
   requestAssistantRole?: () => Promise<boolean>;
+  setAiProfile?: (name: AIProfile) => void;
+  setConversationEngine?: (name: ConversationEngine) => void;
+  setSpeechEngine?: (name: SpeechEngine) => void;
+  setVisionEngine?: (name: VisionEngine) => void;
+  setFileEngine?: (name: FileEngine) => void;
+  setGroundingPolicy?: (name: GroundingPolicy) => void;
+  setVisibleFallbackPolicy?: (name: VisibleFallbackPolicy) => void;
   importLocalModel?: () => Promise<LocalModelItem | null>;
   setLanguage?: (languageName: string) => void;
   setRedactNames?: (enabled: boolean) => void;
@@ -48,6 +71,14 @@ export const defaultProductSettings: ProductSettings = {
   taskerInstalled: false,
   assistantRoleAvailable: false,
   assistantRoleHeld: false,
+  aiProfile: 'BALANCED',
+  conversationEngine: 'AUTO',
+  speechEngine: 'AUTO',
+  visionEngine: 'AUTO',
+  fileEngine: 'AUTO',
+  groundingPolicy: 'AUTO',
+  visibleFallbackPolicy: 'ASK',
+  screenOffFirst: true,
   relayUrl: '',
   relayBackend: 'Gemini',
   relayConfigured: false,
@@ -81,23 +112,22 @@ export const ADProductSettings = {
       return false;
     }
   },
+  setAiProfile(name: AIProfile) { native?.setAiProfile?.(name); },
+  setConversationEngine(name: ConversationEngine) { native?.setConversationEngine?.(name); },
+  setSpeechEngine(name: SpeechEngine) { native?.setSpeechEngine?.(name); },
+  setVisionEngine(name: VisionEngine) { native?.setVisionEngine?.(name); },
+  setFileEngine(name: FileEngine) { native?.setFileEngine?.(name); },
+  setGroundingPolicy(name: GroundingPolicy) { native?.setGroundingPolicy?.(name); },
+  setVisibleFallbackPolicy(name: VisibleFallbackPolicy) { native?.setVisibleFallbackPolicy?.(name); },
   async importLocalModel(): Promise<LocalModelItem | null> {
     if (!native?.importLocalModel) return null;
     return native.importLocalModel();
   },
-  setLanguage(languageName: string) {
-    native?.setLanguage?.(languageName);
-  },
-  setRedactNames(enabled: boolean) {
-    native?.setRedactNames?.(enabled);
-  },
-  setTranscriptStorage(enabled: boolean) {
-    native?.setTranscriptStorage?.(enabled);
-  },
+  setLanguage(languageName: string) { native?.setLanguage?.(languageName); },
+  setRedactNames(enabled: boolean) { native?.setRedactNames?.(enabled); },
+  setTranscriptStorage(enabled: boolean) { native?.setTranscriptStorage?.(enabled); },
   setAutomationExecutor(executorName: ProductSettings['automationExecutor']) {
     native?.setAutomationExecutor?.(executorName);
   },
-  selectLocalModel(modelId: string) {
-    native?.selectLocalModel?.(modelId);
-  },
+  selectLocalModel(modelId: string) { native?.selectLocalModel?.(modelId); },
 };
