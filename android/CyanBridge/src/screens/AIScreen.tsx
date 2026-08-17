@@ -41,13 +41,13 @@ export function AIScreen({navigate}: {navigate: Navigate}) {
       icon: 'mic' as IconName,
       title: 'Live conversation',
       detail: 'Low-latency voice from the glasses, with vision when needed',
-      value: settings.provider === 'Gemini' ? 'Gemini Live' : settings.provider,
+      value: settings.conversationEngine === 'GEMINI_LIVE' || (settings.conversationEngine === 'AUTO' && settings.provider === 'Gemini') ? 'Gemini Live' : settings.provider,
     },
     {
       icon: 'web' as IconName,
       title: 'Current knowledge',
       detail: 'Fresh information is grounded during the AI request, not sent to a search screen',
-      value: settings.provider === 'Gemini' ? 'Gemini + Search' : settings.provider,
+      value: settings.groundingPolicy === 'NEVER' ? 'Off' : settings.provider === 'Gemini' ? 'Gemini + Search' : settings.provider,
     },
     {
       icon: 'lock' as IconName,
@@ -61,7 +61,7 @@ export function AIScreen({navigate}: {navigate: Navigate}) {
       detail: 'Screen-off execution is preferred; visible UI automation is an explicit fallback',
       value: settings.automationExecutor,
     },
-  ], [hasLocalModel, settings.automationExecutor, settings.provider]);
+  ], [hasLocalModel, settings.automationExecutor, settings.conversationEngine, settings.groundingPolicy, settings.provider]);
 
   const chooseProvider = (name: Provider) => {
     setSettings(current => ({...current, provider: name}));
@@ -97,8 +97,8 @@ export function AIScreen({navigate}: {navigate: Navigate}) {
               <Text style={styles.meta}>Your glasses wake AD directly. The phone can stay dark.</Text>
             </View>
             <StatusPill
-              label={settings.assistantRoleHeld ? 'SYSTEM ASSISTANT' : 'GLASSES READY'}
-              tone={settings.assistantRoleHeld ? 'success' : 'neutral'}
+              label={settings.screenOffFirst ? 'SCREEN-OFF FIRST' : 'VISIBLE FALLBACKS'}
+              tone={settings.screenOffFirst ? 'success' : 'warning'}
             />
           </View>
           {settings.assistantRoleAvailable && !settings.assistantRoleHeld ? (
@@ -120,6 +120,14 @@ export function AIScreen({navigate}: {navigate: Navigate}) {
                 {index < routes.length - 1 ? <Divider/> : null}
               </React.Fragment>
             ))}
+            <Divider/>
+            <ListRow
+              icon="settings"
+              title="Customize routing"
+              detail="Conversation, speech, vision, files, grounding and visible fallback"
+              value={profileLabel(settings.aiProfile)}
+              onPress={() => navigate('ai-runtime')}
+            />
           </Card>
         </View>
       </Reveal>
@@ -210,6 +218,13 @@ export function AIScreen({navigate}: {navigate: Navigate}) {
       </Reveal>
     </Screen>
   );
+}
+
+function profileLabel(profile: ProductSettings['aiProfile']) {
+  if (profile === 'FAST') return 'Fast';
+  if (profile === 'PRIVATE') return 'Private';
+  if (profile === 'CUSTOM') return 'Custom';
+  return 'Balanced';
 }
 
 const styles = StyleSheet.create({
