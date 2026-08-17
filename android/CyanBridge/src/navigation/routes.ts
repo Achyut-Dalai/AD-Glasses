@@ -10,6 +10,7 @@ export type RouteName =
   | 'sync'
   | 'relay'
   | 'local-ai'
+  | 'ai-runtime'
   | 'assistant-apps'
   | 'privacy'
   | 'storage'
