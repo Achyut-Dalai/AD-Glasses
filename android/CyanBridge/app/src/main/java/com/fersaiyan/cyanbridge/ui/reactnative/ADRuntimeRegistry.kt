@@ -4,12 +4,18 @@ import android.app.Activity
 import android.app.Application
 import android.os.Bundle
 import com.fersaiyan.cyanbridge.MainActivity
+import com.fersaiyan.cyanbridge.glasses.runtime.ADGlassesCommandGateway
+import com.fersaiyan.cyanbridge.glasses.runtime.ADLegacyMainActivityRuntime
 import java.lang.ref.WeakReference
 
-/** Keeps a non-owning handle to the native glasses runtime while React owns presentation. */
+/**
+ * Tracks Activity lifetime for compatibility while command ownership migrates to a persistent
+ * native glasses runtime. Product code should use ADGlassesCommandGateway, not this registry.
+ */
 object ADRuntimeRegistry : Application.ActivityLifecycleCallbacks {
     private var installed = false
     private var mainActivityRef: WeakReference<MainActivity>? = null
+    private var legacyRuntime: ADLegacyMainActivityRuntime? = null
 
     @Synchronized
     fun install(application: Application) {
@@ -21,11 +27,17 @@ object ADRuntimeRegistry : Application.ActivityLifecycleCallbacks {
     fun mainActivity(): MainActivity? = mainActivityRef?.get()
 
     override fun onActivityCreated(activity: Activity, savedInstanceState: Bundle?) {
-        if (activity is MainActivity) mainActivityRef = WeakReference(activity)
+        if (activity !is MainActivity) return
+        mainActivityRef = WeakReference(activity)
+        legacyRuntime?.let(ADGlassesCommandGateway::detach)
+        legacyRuntime = ADLegacyMainActivityRuntime(activity).also(ADGlassesCommandGateway::attach)
     }
 
     override fun onActivityDestroyed(activity: Activity) {
-        if (activity === mainActivityRef?.get()) mainActivityRef = null
+        if (activity !== mainActivityRef?.get()) return
+        legacyRuntime?.let(ADGlassesCommandGateway::detach)
+        legacyRuntime = null
+        mainActivityRef = null
     }
 
     override fun onActivityStarted(activity: Activity) = Unit
