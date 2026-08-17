@@ -15,6 +15,7 @@ import com.facebook.react.bridge.ReactMethod
 import com.fersaiyan.cyanbridge.ai.router.AiProviderPrefs
 import com.fersaiyan.cyanbridge.ai.router.AiProviderType
 import com.fersaiyan.cyanbridge.ai.router.CliRelayBackend
+import com.fersaiyan.cyanbridge.assistant.ADAssistantRole
 import com.fersaiyan.cyanbridge.automation.AutomationEventBroadcaster
 import com.fersaiyan.cyanbridge.automation.AutomationExecutor
 import com.fersaiyan.cyanbridge.automation.AutomationRoutePrefs
@@ -33,13 +34,14 @@ import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.cancel
 import kotlinx.coroutines.launch
 
-/** Product-facing preferences and permission state for React Native settings surfaces. */
+/** Product-facing preferences, runtime-role and permission state for React Native settings. */
 class ADProductSettingsModule(
     private val reactContext: ReactApplicationContext,
 ) : ReactContextBaseJavaModule(reactContext) {
 
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
     private var pendingImportPromise: Promise? = null
+    private var pendingAssistantRolePromise: Promise? = null
 
     private val activityListener = object : BaseActivityEventListener() {
         override fun onActivityResult(
@@ -48,6 +50,12 @@ class ADProductSettingsModule(
             resultCode: Int,
             data: Intent?,
         ) {
+            if (requestCode == REQUEST_ASSISTANT_ROLE) {
+                val promise = pendingAssistantRolePromise ?: return
+                pendingAssistantRolePromise = null
+                promise.resolve(ADAssistantRole.state(reactContext).held)
+                return
+            }
             if (requestCode != REQUEST_IMPORT_MODEL) return
             val promise = pendingImportPromise ?: return
             pendingImportPromise = null
@@ -86,6 +94,8 @@ class ADProductSettingsModule(
     override fun invalidate() {
         pendingImportPromise?.resolve(null)
         pendingImportPromise = null
+        pendingAssistantRolePromise?.resolve(false)
+        pendingAssistantRolePromise = null
         scope.cancel()
         super.invalidate()
     }
@@ -105,11 +115,14 @@ class ADProductSettingsModule(
                 AutomationExecutor.TASKER -> "Background / Tasker"
                 AutomationExecutor.ACCESSIBILITY -> "Accessibility fallback"
             }
+            val assistantRole = ADAssistantRole.state(reactContext)
             val selectedModelId = LocalModelStorageRepository.getSelectedModelId(reactContext)
             Arguments.createMap().apply {
                 putString("provider", provider)
                 putString("automationExecutor", automationExecutor)
                 putBoolean("taskerInstalled", isPackageInstalled(AutomationEventBroadcaster.TASKER_PACKAGE))
+                putBoolean("assistantRoleAvailable", assistantRole.available)
+                putBoolean("assistantRoleHeld", assistantRole.held)
                 putString("relayUrl", AiProviderPrefs.getRelayBaseUrl(reactContext))
                 putString(
                     "relayBackend",
@@ -138,6 +151,31 @@ class ADProductSettingsModule(
             }
         }.onSuccess(promise::resolve)
             .onFailure { promise.reject("E_PRODUCT_SETTINGS", it.message ?: "Could not read settings", it) }
+    }
+
+    @ReactMethod
+    fun requestAssistantRole(promise: Promise) {
+        if (pendingAssistantRolePromise != null) {
+            promise.reject("E_ASSISTANT_ROLE_BUSY", "The assistant chooser is already open")
+            return
+        }
+        val role = ADAssistantRole.state(reactContext)
+        if (!role.available) {
+            promise.resolve(false)
+            return
+        }
+        if (role.held) {
+            promise.resolve(true)
+            return
+        }
+        val activity = currentActivity
+        val intent = ADAssistantRole.requestIntent(reactContext)
+        if (activity == null || intent == null) {
+            promise.reject("E_ASSISTANT_ROLE_ACTIVITY", "The app is not ready to open the Android assistant chooser")
+            return
+        }
+        pendingAssistantRolePromise = promise
+        activity.startActivityForResult(intent, REQUEST_ASSISTANT_ROLE)
     }
 
     @ReactMethod
@@ -232,5 +270,6 @@ class ADProductSettingsModule(
 
     private companion object {
         const val REQUEST_IMPORT_MODEL = 47031
+        const val REQUEST_ASSISTANT_ROLE = 47032
     }
 }
