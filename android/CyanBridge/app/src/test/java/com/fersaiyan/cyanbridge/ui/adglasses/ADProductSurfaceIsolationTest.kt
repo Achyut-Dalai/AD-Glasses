@@ -125,6 +125,9 @@ class ADProductSurfaceIsolationTest {
         assertTrue(models.contains("\"Timeline\""))
         assertTrue(models.contains("\"Cron\""))
         assertTrue(models.contains("\"Automation\""))
+        assertTrue(ai.contains("\"Apps & Android actions\""))
+        assertFalse(ai.contains("\"Setup required\""))
+        assertTrue(ai.contains("Icons.Outlined.EventRepeat"))
         assertTrue(ai.contains("\"Assistant apps\""))
         assertFalse(ai.contains("ADTopBar(title = \"AI\")"))
         assertTrue(app.contains("ADRoute.AI_ASSISTANT_APPS -> ADAssistantAppsScreen"))
@@ -177,6 +180,7 @@ class ADProductSurfaceIsolationTest {
         assertTrue(detail.contains("automation.capabilityIcon()"))
         assertTrue(detail.contains("ADCapabilityDetailRow("))
         assertTrue(detail.contains("ADColors.SurfaceSubtle"))
+        assertTrue(detail.contains("Icons.Outlined.EventRepeat"))
         assertFalse(detail.contains("capabilityPalette()"))
         assertFalse(detail.contains("ADCapabilityPalette"))
         assertFalse(detail.contains("OutlinedButton("))
@@ -187,13 +191,16 @@ class ADProductSurfaceIsolationTest {
     }
 
     @Test
-    fun welcomeIsAProductPosterNotAnExplainer() {
+    fun welcomeUsesSeparateProductStatementAndHeroStage() {
         val welcome = sourceFile(
             "src/main/java/com/fersaiyan/cyanbridge/ui/adglasses/ADWelcomeScreen.kt",
         ).readText()
-        assertTrue(welcome.contains("YOUR GLASSES\\nYOUR AI\\nYOUR DATA"))
-        assertTrue(welcome.contains("alpha(0.16f)"))
-        assertTrue(welcome.contains("AD GLASSES"))
+        assertTrue(welcome.contains("text = \"YOUR GLASSES\""))
+        assertTrue(welcome.contains("text = \"YOUR AI\""))
+        assertTrue(welcome.contains("text = \"YOUR DATA\""))
+        assertTrue(welcome.contains("R.drawable.ad_glasses_hero_v4"))
+        assertTrue(welcome.contains("RoundedCornerShape(28.dp)"))
+        assertFalse(welcome.contains("alpha(0.16f)"))
         assertFalse(welcome.contains("A private brain for the glasses you wear."))
         assertFalse(welcome.contains("Connect when you are ready."))
     }
@@ -234,13 +241,14 @@ class ADProductSurfaceIsolationTest {
     }
 
     @Test
-    fun builtProductKeepsAdGlassesIdentity() {
+    fun builtProductKeepsAdGlassesIdentityAndAlphaVersion() {
         val strings = sourceFile("src/main/res/values/strings.xml").readText()
         val gradle = sourceFile("build.gradle").readText()
         val manifest = sourceFile("src/main/AndroidManifest.xml").readText()
 
         assertTrue(strings.contains("<string name=\"app_name\">AD Glasses</string>"))
         assertFalse("System-facing strings must not expose CyanBridge branding", strings.contains("CyanBridge"))
+        assertTrue(gradle.contains("versionName = \"alpha\""))
         assertTrue(
             "APK artifact should use the AD Glasses product name",
             gradle.contains("outputFileName = \"AD-Glasses.apk\""),
