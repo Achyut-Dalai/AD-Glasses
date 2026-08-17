@@ -7,6 +7,7 @@ import {ADNative} from './native/ADNative';
 import {AIScreen, HomeScreen, LibraryScreen, PromptScreen} from './screens/MainScreens';
 import {WelcomeScreen} from './screens/WelcomeScreen';
 import {PairingScreen} from './screens/PairingScreen';
+import {LocalAIScreen} from './screens/LocalAIScreen';
 import {
   AboutScreen,
   AdvancedScreen,
@@ -21,7 +22,6 @@ import {
 } from './screens/DetailScreens';
 import {
   LanguageScreen,
-  LocalAIScreen,
   PermissionsScreen,
   PrivacyScreen,
   RelayScreen,
