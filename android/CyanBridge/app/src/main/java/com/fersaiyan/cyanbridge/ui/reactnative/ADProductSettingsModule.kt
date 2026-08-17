@@ -15,6 +15,14 @@ import com.facebook.react.bridge.ReactMethod
 import com.fersaiyan.cyanbridge.ai.router.AiProviderPrefs
 import com.fersaiyan.cyanbridge.ai.router.AiProviderType
 import com.fersaiyan.cyanbridge.ai.router.CliRelayBackend
+import com.fersaiyan.cyanbridge.ai.runtime.ADConversationEngine
+import com.fersaiyan.cyanbridge.ai.runtime.ADFileEngine
+import com.fersaiyan.cyanbridge.ai.runtime.ADGroundingPolicy
+import com.fersaiyan.cyanbridge.ai.runtime.ADIntelligencePrefs
+import com.fersaiyan.cyanbridge.ai.runtime.ADIntelligenceProfile
+import com.fersaiyan.cyanbridge.ai.runtime.ADSpeechEngine
+import com.fersaiyan.cyanbridge.ai.runtime.ADVisibleFallbackPolicy
+import com.fersaiyan.cyanbridge.ai.runtime.ADVisionEngine
 import com.fersaiyan.cyanbridge.assistant.ADAssistantRole
 import com.fersaiyan.cyanbridge.automation.AutomationEventBroadcaster
 import com.fersaiyan.cyanbridge.automation.AutomationExecutor
@@ -34,7 +42,7 @@ import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.cancel
 import kotlinx.coroutines.launch
 
-/** Product-facing preferences, runtime-role and permission state for React Native settings. */
+/** Product-facing preferences, assistant routing and permission state for React Native settings. */
 class ADProductSettingsModule(
     private val reactContext: ReactApplicationContext,
 ) : ReactContextBaseJavaModule(reactContext) {
@@ -116,6 +124,7 @@ class ADProductSettingsModule(
                 AutomationExecutor.ACCESSIBILITY -> "Accessibility fallback"
             }
             val assistantRole = ADAssistantRole.state(reactContext)
+            val intelligence = ADIntelligencePrefs.get(reactContext)
             val selectedModelId = LocalModelStorageRepository.getSelectedModelId(reactContext)
             Arguments.createMap().apply {
                 putString("provider", provider)
@@ -123,6 +132,14 @@ class ADProductSettingsModule(
                 putBoolean("taskerInstalled", isPackageInstalled(AutomationEventBroadcaster.TASKER_PACKAGE))
                 putBoolean("assistantRoleAvailable", assistantRole.available)
                 putBoolean("assistantRoleHeld", assistantRole.held)
+                putString("aiProfile", intelligence.profile.name)
+                putString("conversationEngine", intelligence.conversation.name)
+                putString("speechEngine", intelligence.speech.name)
+                putString("visionEngine", intelligence.vision.name)
+                putString("fileEngine", intelligence.files.name)
+                putString("groundingPolicy", intelligence.grounding.name)
+                putString("visibleFallbackPolicy", intelligence.visibleFallback.name)
+                putBoolean("screenOffFirst", intelligence.screenOffFirst)
                 putString("relayUrl", AiProviderPrefs.getRelayBaseUrl(reactContext))
                 putString(
                     "relayBackend",
@@ -176,6 +193,42 @@ class ADProductSettingsModule(
         }
         pendingAssistantRolePromise = promise
         activity.startActivityForResult(intent, REQUEST_ASSISTANT_ROLE)
+    }
+
+    @ReactMethod
+    fun setAiProfile(name: String) {
+        val profile = ADIntelligenceProfile.entries.firstOrNull { it.name == name } ?: ADIntelligenceProfile.BALANCED
+        ADIntelligencePrefs.applyProfile(reactContext, profile)
+    }
+
+    @ReactMethod
+    fun setConversationEngine(name: String) {
+        ADConversationEngine.entries.firstOrNull { it.name == name }?.let { ADIntelligencePrefs.setConversation(reactContext, it) }
+    }
+
+    @ReactMethod
+    fun setSpeechEngine(name: String) {
+        ADSpeechEngine.entries.firstOrNull { it.name == name }?.let { ADIntelligencePrefs.setSpeech(reactContext, it) }
+    }
+
+    @ReactMethod
+    fun setVisionEngine(name: String) {
+        ADVisionEngine.entries.firstOrNull { it.name == name }?.let { ADIntelligencePrefs.setVision(reactContext, it) }
+    }
+
+    @ReactMethod
+    fun setFileEngine(name: String) {
+        ADFileEngine.entries.firstOrNull { it.name == name }?.let { ADIntelligencePrefs.setFiles(reactContext, it) }
+    }
+
+    @ReactMethod
+    fun setGroundingPolicy(name: String) {
+        ADGroundingPolicy.entries.firstOrNull { it.name == name }?.let { ADIntelligencePrefs.setGrounding(reactContext, it) }
+    }
+
+    @ReactMethod
+    fun setVisibleFallbackPolicy(name: String) {
+        ADVisibleFallbackPolicy.entries.firstOrNull { it.name == name }?.let { ADIntelligencePrefs.setVisibleFallback(reactContext, it) }
     }
 
     @ReactMethod
