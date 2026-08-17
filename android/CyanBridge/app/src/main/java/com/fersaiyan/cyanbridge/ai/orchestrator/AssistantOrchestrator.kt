@@ -23,6 +23,8 @@ data class AssistantTurn(
     val surface: AssistantInputSurface,
     /** Concrete local image produced by the existing glasses/phone capture pipeline. */
     val imagePath: String? = null,
+    /** Hidden artifact description supplied to the model but not persisted as the user's words. */
+    val contextText: String? = null,
     /** null = automatic, true/false = explicit user/UI preference. */
     val webRequested: Boolean? = null,
 )
@@ -32,6 +34,7 @@ data class AssistantExecutionContext(
     val history: List<ChatMessage>,
     val useWeb: Boolean,
     val surface: AssistantInputSurface,
+    val artifactContext: String? = null,
 )
 
 data class AssistantResult(
@@ -71,10 +74,9 @@ interface AssistantCapabilityExecutor {
 /**
  * Single control plane for glasses voice, glasses vision and phone continuation.
  *
- * Every accepted turn is persisted to the same ChatStore-backed session before it is
- * executed, and every assistant response is persisted afterwards. This lets
- * "what is this?" -> "how much is it?" -> "find a better one" remain one conversation
- * even as the selected capability changes between turns.
+ * Every accepted user turn is persisted exactly as spoken/typed. Hidden artifact context is
+ * carried separately so a photo transcript/note can inform the model without masquerading as
+ * something the user said.
  */
 class AssistantOrchestrator(
     context: Context,
@@ -104,6 +106,7 @@ class AssistantOrchestrator(
             history = history,
             useWeb = useWeb,
             surface = turn.surface,
+            artifactContext = turn.contextText?.trim()?.takeIf { it.isNotBlank() },
         )
 
         // Obvious mode commands are deterministic and should not pay an LLM routing cost.
