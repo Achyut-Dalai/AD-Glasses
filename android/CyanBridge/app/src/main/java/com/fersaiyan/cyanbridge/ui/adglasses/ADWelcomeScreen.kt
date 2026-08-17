@@ -16,6 +16,7 @@ import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -25,10 +26,12 @@ import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import com.fersaiyan.cyanbridge.R
 
-/** Minimal first-run surface: connect the glasses or enter the app and do it later. */
+/** First-run product surface. Display only when onboarding state asks for it. */
 @Composable
 fun ADWelcomeScreen(
     onStartSetup: () -> Unit,
@@ -49,24 +52,56 @@ fun ADWelcomeScreen(
                     .padding(horizontal = 20.dp),
                 horizontalAlignment = Alignment.CenterHorizontally,
             ) {
-                Spacer(Modifier.height(28.dp))
+                Spacer(Modifier.height(22.dp))
                 Box(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .height(236.dp)
+                        .height(224.dp)
                         .background(
-                            Brush.radialGradient(listOf(Color(0xFFF8FAFD), Color(0xFFE9EDF4))),
-                            RoundedCornerShape(24.dp),
+                            Brush.radialGradient(
+                                listOf(
+                                    Color(0xFFFAFBFD),
+                                    ADColors.BlueSoft,
+                                    Color(0xFFE7E9ED),
+                                ),
+                            ),
+                            RoundedCornerShape(26.dp),
                         ),
                     contentAlignment = Alignment.Center,
                 ) {
                     Image(
                         painter = painterResource(R.drawable.ad_glasses_hero_v4),
                         contentDescription = "Smart glasses",
-                        modifier = Modifier.fillMaxSize().padding(horizontal = 16.dp, vertical = 8.dp),
+                        modifier = Modifier.fillMaxSize().padding(horizontal = 14.dp, vertical = 8.dp),
                         contentScale = ContentScale.Fit,
                     )
                 }
+
+                Spacer(Modifier.height(24.dp))
+                Text(
+                    text = "YOUR GLASSES · YOUR AI · YOUR DATA",
+                    style = MaterialTheme.typography.labelMedium,
+                    color = ADColors.Blue,
+                    letterSpacing = 1.55.sp,
+                    textAlign = TextAlign.Center,
+                )
+                Spacer(Modifier.height(9.dp))
+                Text(
+                    text = "A private brain for the glasses you wear.",
+                    style = MaterialTheme.typography.headlineMedium,
+                    color = ADColors.Ink,
+                    textAlign = TextAlign.Center,
+                    modifier = Modifier.padding(horizontal = 18.dp),
+                )
+                Spacer(Modifier.height(8.dp))
+                Text(
+                    text = "Connect when you are ready. Your prompts, captures and memories stay centered around you.",
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = ADColors.Muted,
+                    textAlign = TextAlign.Center,
+                    modifier = Modifier.padding(horizontal = 18.dp),
+                )
+
                 Spacer(Modifier.weight(1f))
                 Button(
                     onClick = onStartSetup,

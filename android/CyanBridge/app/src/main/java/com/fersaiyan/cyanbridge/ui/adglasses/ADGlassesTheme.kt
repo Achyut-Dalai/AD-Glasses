@@ -21,14 +21,14 @@ import androidx.core.view.WindowCompat
 internal object ADColors {
     val Ink = Color(0xFF1D1D1F)
     val Muted = Color(0xFF6E6E73)
-    // The interface is intentionally neutral. Colour is reserved for semantic
-    // states such as success, warning, recording, and errors.
-    val Blue = Color(0xFF2C2C2E)
-    val BlueDeep = Color(0xFF111113)
-    val BlueSoft = Color(0xFFEAEAED)
-    val Background = Color(0xFFF5F5F7)
+    // Keep the product predominantly monochrome, but allow one restrained slate accent
+    // to carry focus, selection, and AI activity without making the interface feel loud.
+    val Blue = Color(0xFF52627A)
+    val BlueDeep = Color(0xFF29364A)
+    val BlueSoft = Color(0xFFEBEFF5)
+    val Background = Color(0xFFF6F6F7)
     val Surface = Color(0xFFFFFFFF)
-    val SurfaceSubtle = Color(0xFFEDEDEF)
+    val SurfaceSubtle = Color(0xFFEDEEF1)
     val Glass = Color(0xF7FFFFFF)
     val Outline = Color(0xFFC6C6C8)
     val Separator = Color(0x3C3C434A)
@@ -67,42 +67,42 @@ private val ADTypography = Typography(
     displaySmall = TextStyle(
         fontFamily = FontFamily.SansSerif,
         fontSize = 32.sp,
-        lineHeight = 38.sp,
-        fontWeight = FontWeight.Bold,
-        letterSpacing = (-0.8).sp,
+        lineHeight = 39.sp,
+        fontWeight = FontWeight.SemiBold,
+        letterSpacing = (-0.65).sp,
     ),
     headlineLarge = TextStyle(
         fontFamily = FontFamily.SansSerif,
         fontSize = 28.sp,
-        lineHeight = 34.sp,
-        fontWeight = FontWeight.Bold,
-        letterSpacing = (-0.55).sp,
+        lineHeight = 35.sp,
+        fontWeight = FontWeight.SemiBold,
+        letterSpacing = (-0.45).sp,
     ),
     headlineMedium = TextStyle(
         fontFamily = FontFamily.SansSerif,
         fontSize = 22.sp,
-        lineHeight = 28.sp,
-        fontWeight = FontWeight.Bold,
-        letterSpacing = (-0.3).sp,
+        lineHeight = 29.sp,
+        fontWeight = FontWeight.SemiBold,
+        letterSpacing = (-0.2).sp,
     ),
     headlineSmall = TextStyle(
         fontFamily = FontFamily.SansSerif,
         fontSize = 20.sp,
-        lineHeight = 26.sp,
-        fontWeight = FontWeight.SemiBold,
-        letterSpacing = (-0.2).sp,
+        lineHeight = 27.sp,
+        fontWeight = FontWeight.Medium,
+        letterSpacing = (-0.1).sp,
     ),
     titleLarge = TextStyle(
         fontFamily = FontFamily.SansSerif,
         fontSize = 18.sp,
-        lineHeight = 24.sp,
-        fontWeight = FontWeight.SemiBold,
+        lineHeight = 25.sp,
+        fontWeight = FontWeight.Medium,
     ),
     titleMedium = TextStyle(
         fontFamily = FontFamily.SansSerif,
         fontSize = 16.sp,
         lineHeight = 22.sp,
-        fontWeight = FontWeight.SemiBold,
+        fontWeight = FontWeight.Medium,
     ),
     bodyLarge = TextStyle(
         fontFamily = FontFamily.SansSerif,
@@ -126,7 +126,7 @@ private val ADTypography = Typography(
         fontFamily = FontFamily.SansSerif,
         fontSize = 14.sp,
         lineHeight = 18.sp,
-        fontWeight = FontWeight.SemiBold,
+        fontWeight = FontWeight.Medium,
     ),
     labelMedium = TextStyle(
         fontFamily = FontFamily.SansSerif,

@@ -60,7 +60,7 @@
     <!-- Legacy/compat key retained for code paths that still reference it. -->
     <string name="local_agent_accessibility_description">AD Glasses phone-control accessibility service</string>
 
-    <!-- Onboarding: DayNote -->
+    <!-- Onboarding: Daily Diary -->
     <string name="onboarding_glasses_connection_title">Connect Your Glasses</string>
     <string name="onboarding_glasses_connection_desc">Allow AD Glasses to find and connect to nearby supported glasses.</string>
     <string name="onboarding_glasses_connection_details">Bluetooth permission is used to discover, connect to, and communicate with your glasses. You can continue without it and grant access later when you connect glasses.</string>
@@ -73,9 +73,9 @@
     <string name="onboarding_open_source_desc">AD Glasses is built on open-source components and smart-glasses SDK integrations.</string>
     <string name="onboarding_open_source_details">Required license notices remain part of the app distribution. The AD Glasses product UI is separate from the upstream compatibility code it builds on.</string>
 
-    <string name="onboarding_daily_facts_title">DayNote</string>
-    <string name="onboarding_daily_facts_desc">DayNote can turn selected phone context into a private note that helps you remember your day.</string>
-    <string name="onboarding_daily_facts_details">Enable DayNote only if you want it. Its saved context and reminder behavior can be reviewed or disabled later.</string>
+    <string name="onboarding_daily_facts_title">Daily Diary</string>
+    <string name="onboarding_daily_facts_desc">Daily Diary can turn selected phone context into a private entry that helps you remember your day.</string>
+    <string name="onboarding_daily_facts_details">Enable Daily Diary only if you want it. Its saved context and reminder behavior can be reviewed or disabled later.</string>
 
     <!-- Onboarding: Screen Capture -->
     <string name="onboarding_screen_capture_title">Screen Memory</string>

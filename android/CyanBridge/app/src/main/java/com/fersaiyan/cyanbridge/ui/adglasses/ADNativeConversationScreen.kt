@@ -1,5 +1,11 @@
 package com.fersaiyan.cyanbridge.ui.adglasses
 
+import androidx.compose.animation.core.FastOutSlowInEasing
+import androidx.compose.animation.core.RepeatMode
+import androidx.compose.animation.core.animateFloat
+import androidx.compose.animation.core.infiniteRepeatable
+import androidx.compose.animation.core.rememberInfiniteTransition
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -9,9 +15,11 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -22,11 +30,11 @@ import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.rounded.Send
 import androidx.compose.material.icons.outlined.ArrowForward
+import androidx.compose.material.icons.outlined.EditNote
 import androidx.compose.material.icons.outlined.Public
+import androidx.compose.material.icons.rounded.Add
 import androidx.compose.material.icons.rounded.ArrowUpward
-import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -56,7 +64,9 @@ import com.fersaiyan.cyanbridge.ai.orchestrator.AssistantConversationSession
 import com.fersaiyan.cyanbridge.ai.orchestrator.AssistantInputSurface
 import com.fersaiyan.cyanbridge.ai.orchestrator.AssistantOrchestrator
 import com.fersaiyan.cyanbridge.ai.orchestrator.AssistantTurn
+import com.fersaiyan.cyanbridge.audio.MeetingCapturePrefs
 import com.fersaiyan.cyanbridge.chat.ChatStore
+import com.fersaiyan.cyanbridge.localagent.AudioSessionCoordinator
 import com.fersaiyan.cyanbridge.shared.chat.ChatMessage
 import com.fersaiyan.cyanbridge.shared.chat.ChatRole
 import kotlinx.coroutines.delay
@@ -89,6 +99,8 @@ internal fun ADNativeConversationScreen(
     var sending by remember { mutableStateOf(false) }
     var pendingPrompt by remember { mutableStateOf<String?>(null) }
     var errorText by remember { mutableStateOf<String?>(null) }
+    var aiAudioActive by remember { mutableStateOf(AudioSessionCoordinator.isBusy()) }
+    var recordingActive by remember { mutableStateOf(MeetingCapturePrefs.getState(context).isRecording) }
 
     val pendingAlreadyPersisted = pendingPrompt?.let { prompt ->
         messages.asReversed()
@@ -110,6 +122,21 @@ internal fun ADNativeConversationScreen(
         message = prompt
         webSearch = requestWeb
         focusComposer()
+    }
+
+    fun startNewPrompt() {
+        if (sending) return
+        val newThreadId = session.startNewConversation()
+        threadId = newThreadId
+        messages = emptyList()
+        message = ""
+        webSearch = false
+        pendingPrompt = null
+        errorText = null
+        scope.launch {
+            delay(80)
+            focusComposer()
+        }
     }
 
     fun send() {
@@ -172,6 +199,16 @@ internal fun ADNativeConversationScreen(
         }
     }
 
+    // These indicators are intentionally driven by real runtime state. Do not show a fake
+    // listening animation when no audio session or recording is actually active.
+    LaunchedEffect(Unit) {
+        while (isActive) {
+            aiAudioActive = AudioSessionCoordinator.isBusy()
+            recordingActive = MeetingCapturePrefs.getState(context).isRecording
+            delay(ACTIVITY_REFRESH_MS)
+        }
+    }
+
     LaunchedEffect(messages.size, pendingPrompt, pendingAlreadyPersisted, errorText) {
         val dynamicCount = messages.size +
             (if (pendingPrompt != null && !pendingAlreadyPersisted) 1 else 0) +
@@ -186,7 +223,7 @@ internal fun ADNativeConversationScreen(
         Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(start = 18.dp, end = 18.dp, top = 16.dp, bottom = 8.dp),
+                .padding(start = 18.dp, end = 14.dp, top = 16.dp, bottom = 8.dp),
             verticalAlignment = Alignment.CenterVertically,
         ) {
             Box(
@@ -196,10 +233,10 @@ internal fun ADNativeConversationScreen(
                 contentAlignment = Alignment.Center,
             ) {
                 Icon(
-                    Icons.AutoMirrored.Rounded.Send,
+                    Icons.Outlined.EditNote,
                     contentDescription = null,
                     tint = ADColors.Blue,
-                    modifier = Modifier.size(21.dp),
+                    modifier = Modifier.size(22.dp),
                 )
             }
             Column(Modifier.padding(start = 12.dp).weight(1f)) {
@@ -210,6 +247,36 @@ internal fun ADNativeConversationScreen(
                     color = ADColors.Muted,
                 )
             }
+            if (messages.isNotEmpty() || pendingPrompt != null) {
+                Surface(
+                    color = if (sending) ADColors.SurfaceSubtle else ADColors.BlueSoft,
+                    shape = RoundedCornerShape(14.dp),
+                ) {
+                    Row(
+                        modifier = Modifier
+                            .clickable(enabled = !sending, onClick = ::startNewPrompt)
+                            .padding(horizontal = 11.dp, vertical = 8.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(5.dp),
+                    ) {
+                        Icon(
+                            Icons.Rounded.Add,
+                            contentDescription = null,
+                            tint = if (sending) ADColors.Muted else ADColors.Blue,
+                            modifier = Modifier.size(17.dp),
+                        )
+                        Text(
+                            "New",
+                            style = MaterialTheme.typography.labelLarge,
+                            color = if (sending) ADColors.Muted else ADColors.Blue,
+                        )
+                    }
+                }
+            }
+        }
+
+        if (recordingActive || aiAudioActive) {
+            ADLiveAudioState(recording = recordingActive)
         }
 
         LazyColumn(
@@ -275,6 +342,35 @@ internal fun ADNativeConversationScreen(
 }
 
 @Composable
+private fun ADLiveAudioState(recording: Boolean) {
+    val accent = if (recording) ADColors.Error else ADColors.Blue
+    val background = if (recording) ADColors.ErrorSoft else ADColors.BlueSoft
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 18.dp, vertical = 2.dp)
+            .background(background, RoundedCornerShape(14.dp))
+            .padding(horizontal = 12.dp, vertical = 9.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(9.dp),
+    ) {
+        ADActivityWaveform(color = accent, compact = true)
+        Column(Modifier.weight(1f)) {
+            Text(
+                if (recording) "Audio capture active" else "AI audio active",
+                style = MaterialTheme.typography.labelLarge,
+                color = accent,
+            )
+            Text(
+                if (recording) "Recording is running in the background" else "Voice playback is active",
+                style = MaterialTheme.typography.bodySmall,
+                color = ADColors.Muted,
+            )
+        }
+    }
+}
+
+@Composable
 private fun ADConversationEmptyState(
     onSuggestion: (String, Boolean) -> Unit,
 ) {
@@ -289,10 +385,10 @@ private fun ADConversationEmptyState(
             contentAlignment = Alignment.Center,
         ) {
             Icon(
-                Icons.AutoMirrored.Rounded.Send,
+                Icons.Outlined.EditNote,
                 contentDescription = null,
                 tint = ADColors.Blue,
-                modifier = Modifier.size(29.dp),
+                modifier = Modifier.size(30.dp),
             )
         }
         Spacer(Modifier.size(18.dp))
@@ -340,7 +436,7 @@ private fun ADPromptSuggestion(
             contentAlignment = Alignment.Center,
         ) {
             Icon(
-                if (web) Icons.Outlined.Public else Icons.AutoMirrored.Rounded.Send,
+                if (web) Icons.Outlined.Public else Icons.Outlined.EditNote,
                 contentDescription = null,
                 tint = if (web) ADColors.Blue else ADColors.Ink,
                 modifier = Modifier.size(17.dp),
@@ -418,12 +514,67 @@ private fun ADAssistantThinking() {
         ) {
             ADGlassesMark(Modifier.size(20.dp))
         }
-        CircularProgressIndicator(
-            modifier = Modifier.size(15.dp),
-            strokeWidth = 1.8.dp,
-            color = ADColors.Muted,
-        )
-        Text("Thinking…", style = MaterialTheme.typography.bodyMedium, color = ADColors.Muted)
+        ADActivityWaveform(color = ADColors.Blue, compact = true)
+        Text("AI is working…", style = MaterialTheme.typography.bodyMedium, color = ADColors.Muted)
+    }
+}
+
+@Composable
+private fun ADActivityWaveform(
+    color: Color,
+    compact: Boolean,
+) {
+    val transition = rememberInfiniteTransition(label = "prompt-audio-wave")
+    val first by transition.animateFloat(
+        initialValue = 0.22f,
+        targetValue = 1f,
+        animationSpec = infiniteRepeatable(
+            animation = tween(560, easing = FastOutSlowInEasing),
+            repeatMode = RepeatMode.Reverse,
+        ),
+        label = "wave-1",
+    )
+    val second by transition.animateFloat(
+        initialValue = 0.3f,
+        targetValue = 0.82f,
+        animationSpec = infiniteRepeatable(
+            animation = tween(640, delayMillis = 110, easing = FastOutSlowInEasing),
+            repeatMode = RepeatMode.Reverse,
+        ),
+        label = "wave-2",
+    )
+    val third by transition.animateFloat(
+        initialValue = 0.18f,
+        targetValue = 0.94f,
+        animationSpec = infiniteRepeatable(
+            animation = tween(520, delayMillis = 190, easing = FastOutSlowInEasing),
+            repeatMode = RepeatMode.Reverse,
+        ),
+        label = "wave-3",
+    )
+    val fourth by transition.animateFloat(
+        initialValue = 0.28f,
+        targetValue = 0.72f,
+        animationSpec = infiniteRepeatable(
+            animation = tween(610, delayMillis = 70, easing = FastOutSlowInEasing),
+            repeatMode = RepeatMode.Reverse,
+        ),
+        label = "wave-4",
+    )
+    val maxHeight = if (compact) 15f else 20f
+    Row(
+        modifier = Modifier.height(maxHeight.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(2.5.dp),
+    ) {
+        listOf(first, second, third, fourth).forEach { level ->
+            Box(
+                modifier = Modifier
+                    .width(3.dp)
+                    .height((4f + (maxHeight - 4f) * level).dp)
+                    .background(color, CircleShape),
+            )
+        }
     }
 }
 
@@ -493,7 +644,7 @@ private fun ADConversationComposer(
                     onClick = onSend,
                     enabled = sendEnabled,
                     modifier = Modifier.size(40.dp).background(
-                        if (sendEnabled) ADColors.Ink else ADColors.SurfaceSubtle,
+                        if (sendEnabled) ADColors.BlueDeep else ADColors.SurfaceSubtle,
                         CircleShape,
                     ),
                 ) {
@@ -510,3 +661,4 @@ private fun ADConversationComposer(
 }
 
 private const val CONVERSATION_REFRESH_MS = 1_250L
+private const val ACTIVITY_REFRESH_MS = 350L

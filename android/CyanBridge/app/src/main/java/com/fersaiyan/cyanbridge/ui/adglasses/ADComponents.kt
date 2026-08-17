@@ -20,7 +20,7 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.rounded.ArrowBack
-import androidx.compose.material.icons.automirrored.rounded.Send
+import androidx.compose.material.icons.outlined.EditNote
 import androidx.compose.material.icons.rounded.AutoAwesome
 import androidx.compose.material.icons.rounded.Check
 import androidx.compose.material.icons.rounded.Home
@@ -153,7 +153,7 @@ internal fun ADBottomNavigation(selected: ADTab, onSelected: (ADTab) -> Unit) {
             ADTab.entries.forEach { tab ->
                 val icon = when (tab) {
                     ADTab.HOME -> Icons.Rounded.Home
-                    ADTab.CHATS -> Icons.AutoMirrored.Rounded.Send
+                    ADTab.CHATS -> Icons.Outlined.EditNote
                     ADTab.AI -> Icons.Rounded.AutoAwesome
                     ADTab.LIBRARY -> Icons.Rounded.PhotoLibrary
                 }

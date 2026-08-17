@@ -1,6 +1,7 @@
 package com.fersaiyan.cyanbridge.ui.adglasses
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -11,20 +12,21 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.outlined.CalendarMonth
 import androidx.compose.material.icons.outlined.CheckCircle
 import androidx.compose.material.icons.outlined.Checklist
-import androidx.compose.material.icons.outlined.Description
 import androidx.compose.material.icons.outlined.ErrorOutline
 import androidx.compose.material.icons.outlined.FolderOpen
 import androidx.compose.material.icons.outlined.GraphicEq
 import androidx.compose.material.icons.outlined.Lock
 import androidx.compose.material.icons.outlined.Mic
 import androidx.compose.material.icons.outlined.PhoneAndroid
-import androidx.compose.material.icons.outlined.PhotoLibrary
+import androidx.compose.material.icons.outlined.Timeline
 import androidx.compose.material.icons.rounded.Translate
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -34,9 +36,11 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import com.fersaiyan.cyanbridge.ai.orchestrator.AndroidModeCommandExecutor
 import com.fersaiyan.cyanbridge.ai.orchestrator.AssistantMode
 import com.fersaiyan.cyanbridge.ai.orchestrator.AssistantModeAction
@@ -54,6 +58,7 @@ internal fun ADNativeTaskDetailScreen(
     var active by remember(automation, initiallyActive) { mutableStateOf(initiallyActive) }
     var resultText by remember(automation) { mutableStateOf<String?>(null) }
     var lastSucceeded by remember(automation) { mutableStateOf<Boolean?>(null) }
+    val palette = automation.capabilityPalette()
 
     fun execute(action: AssistantModeAction) {
         val result = executor.execute(
@@ -71,96 +76,173 @@ internal fun ADNativeTaskDetailScreen(
     }
 
     ADPageLayout(automation.title, onBack) {
-        ADCard {
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                Box(
-                    Modifier.size(48.dp).background(
-                        if (active) ADColors.SuccessSoft else ADColors.BlueSoft,
-                        RoundedCornerShape(15.dp),
-                    ),
-                    contentAlignment = Alignment.Center,
-                ) {
-                    Icon(
-                        automation.capabilityIcon(),
-                        contentDescription = null,
-                        tint = if (active) ADColors.Success else ADColors.Blue,
-                        modifier = Modifier.size(23.dp),
-                    )
-                }
-                Column(Modifier.padding(start = 13.dp, end = 10.dp).weight(1f)) {
-                    Text(automation.title, style = MaterialTheme.typography.titleMedium)
-                    Spacer(Modifier.height(2.dp))
-                    Text(
-                        automation.outcome,
-                        style = MaterialTheme.typography.labelMedium,
-                        color = if (active) ADColors.Success else ADColors.Blue,
-                    )
-                }
-                Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                    Switch(
-                        checked = active,
-                        onCheckedChange = { enabled ->
-                            execute(if (enabled) AssistantModeAction.START else AssistantModeAction.STOP)
-                        },
-                    )
-                    Text(
-                        if (active) "On" else "Off",
-                        style = MaterialTheme.typography.labelSmall,
-                        color = if (active) ADColors.Success else ADColors.Muted,
-                    )
-                }
+        Column(
+            modifier = Modifier.fillMaxWidth().padding(top = 4.dp, bottom = 2.dp),
+            verticalArrangement = Arrangement.spacedBy(13.dp),
+        ) {
+            Box(
+                modifier = Modifier
+                    .size(62.dp)
+                    .background(palette.soft, RoundedCornerShape(20.dp)),
+                contentAlignment = Alignment.Center,
+            ) {
+                Icon(
+                    automation.capabilityIcon(),
+                    contentDescription = null,
+                    tint = palette.accent,
+                    modifier = Modifier.size(29.dp),
+                )
             }
-            Spacer(Modifier.height(13.dp))
             Text(
-                automation.summary,
-                style = MaterialTheme.typography.bodyMedium,
+                text = automation.outcome.uppercase(),
+                style = MaterialTheme.typography.labelMedium,
+                color = palette.accent,
+                letterSpacing = 1.05.sp,
+            )
+            Text(
+                text = automation.summary,
+                style = MaterialTheme.typography.bodyLarge,
                 color = ADColors.Muted,
             )
         }
 
-        ADCard {
-            ADCapabilityMetric(Icons.Outlined.Lock, "Processing", automation.boundary)
-            HorizontalDivider(Modifier.padding(start = 32.dp), color = ADColors.Separator)
-            ADCapabilityMetric(Icons.Outlined.FolderOpen, "Saved as", automation.nativeOutput())
+        Surface(
+            modifier = Modifier.fillMaxWidth(),
+            color = if (active) palette.soft else ADColors.Surface,
+            shape = RoundedCornerShape(22.dp),
+            shadowElevation = if (active) 0.dp else 1.dp,
+        ) {
+            Row(
+                modifier = Modifier.padding(horizontal = 18.dp, vertical = 16.dp),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Column(Modifier.weight(1f)) {
+                    Text(
+                        text = if (active) "On" else "Off",
+                        style = MaterialTheme.typography.titleLarge,
+                        color = ADColors.Ink,
+                    )
+                    Spacer(Modifier.height(3.dp))
+                    Text(
+                        text = if (active) {
+                            "Ready when you use it from the glasses or phone."
+                        } else {
+                            "Turn it on when you want this capability available."
+                        },
+                        style = MaterialTheme.typography.bodySmall,
+                        color = ADColors.Muted,
+                    )
+                }
+                Switch(
+                    checked = active,
+                    onCheckedChange = { enabled ->
+                        execute(if (enabled) AssistantModeAction.START else AssistantModeAction.STOP)
+                    },
+                )
+            }
+        }
+
+        Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
+            Text(
+                text = "DETAILS",
+                style = MaterialTheme.typography.labelSmall,
+                color = ADColors.Muted,
+                letterSpacing = 1.2.sp,
+                modifier = Modifier.padding(start = 2.dp, bottom = 5.dp),
+            )
+            ADCapabilityDetailRow(
+                icon = Icons.Outlined.Lock,
+                label = "Processing",
+                value = automation.boundary,
+                accent = palette.accent,
+                soft = palette.soft,
+            )
+            HorizontalDivider(Modifier.padding(start = 48.dp), color = ADColors.Separator)
+            ADCapabilityDetailRow(
+                icon = Icons.Outlined.FolderOpen,
+                label = "Saved as",
+                value = automation.nativeOutput(),
+                accent = palette.accent,
+                soft = palette.soft,
+            )
         }
 
         resultText?.let { message ->
-            ADCard {
-                Row(verticalAlignment = Alignment.Top) {
+            val failed = lastSucceeded == false
+            Surface(
+                modifier = Modifier.fillMaxWidth(),
+                color = if (failed) ADColors.WarningSoft else ADColors.SuccessSoft,
+                shape = RoundedCornerShape(17.dp),
+            ) {
+                Row(
+                    modifier = Modifier.padding(horizontal = 15.dp, vertical = 13.dp),
+                    verticalAlignment = Alignment.Top,
+                ) {
                     Icon(
-                        if (lastSucceeded == false) Icons.Outlined.ErrorOutline else Icons.Outlined.CheckCircle,
+                        if (failed) Icons.Outlined.ErrorOutline else Icons.Outlined.CheckCircle,
                         contentDescription = null,
-                        tint = if (lastSucceeded == false) ADColors.Warning else ADColors.Success,
-                        modifier = Modifier.size(22.dp),
+                        tint = if (failed) ADColors.Warning else ADColors.Success,
+                        modifier = Modifier.size(21.dp),
                     )
                     Text(
                         message,
                         modifier = Modifier.padding(start = 10.dp).weight(1f),
                         style = MaterialTheme.typography.bodyMedium,
+                        color = ADColors.Ink,
                     )
                 }
             }
         }
 
         Text(
-            "You can also turn this on or off by voice from the glasses.",
-            style = MaterialTheme.typography.bodyMedium,
+            "Tip · You can also turn this capability on or off by voice from the glasses.",
+            style = MaterialTheme.typography.bodySmall,
             color = ADColors.Muted,
+            modifier = Modifier.padding(horizontal = 2.dp),
         )
     }
 }
 
 @Composable
-private fun ADCapabilityMetric(
+private fun ADCapabilityDetailRow(
     icon: ImageVector,
     label: String,
     value: String,
+    accent: Color,
+    soft: Color,
 ) {
-    Row(Modifier.padding(vertical = 11.dp), verticalAlignment = Alignment.CenterVertically) {
-        Icon(icon, contentDescription = null, tint = ADColors.Muted, modifier = Modifier.size(21.dp))
-        Text(label, Modifier.padding(start = 11.dp).weight(1f), style = MaterialTheme.typography.bodyLarge)
-        Text(value, style = MaterialTheme.typography.bodyMedium, color = ADColors.Muted)
+    Row(
+        modifier = Modifier.fillMaxWidth().padding(vertical = 11.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Box(
+            modifier = Modifier.size(36.dp).background(soft, RoundedCornerShape(11.dp)),
+            contentAlignment = Alignment.Center,
+        ) {
+            Icon(icon, contentDescription = null, tint = accent, modifier = Modifier.size(19.dp))
+        }
+        Column(Modifier.padding(start = 12.dp).weight(1f)) {
+            Text(label, style = MaterialTheme.typography.bodySmall, color = ADColors.Muted)
+            Spacer(Modifier.height(1.dp))
+            Text(value, style = MaterialTheme.typography.bodyLarge, color = ADColors.Ink)
+        }
     }
+}
+
+private data class ADCapabilityPalette(
+    val accent: Color,
+    val soft: Color,
+)
+
+private fun ADAutomation.capabilityPalette(): ADCapabilityPalette = when (this) {
+    ADAutomation.MEETING_NOTES -> ADCapabilityPalette(Color(0xFF6D5C82), Color(0xFFF0EDF5))
+    ADAutomation.AUTO_DIARY -> ADCapabilityPalette(Color(0xFF7A654B), Color(0xFFF4F0E8))
+    ADAutomation.VISUAL_DIARY -> ADCapabilityPalette(Color(0xFF4F6E66), Color(0xFFEAF2EF))
+    ADAutomation.TRANSLATOR -> ADCapabilityPalette(Color(0xFF526A87), Color(0xFFEBF0F6))
+    ADAutomation.ERRAND_BRAIN -> ADCapabilityPalette(Color(0xFF6C6952), Color(0xFFF1F0E9))
+    ADAutomation.LOCAL_AGENT -> ADCapabilityPalette(Color(0xFF596A76), Color(0xFFEDF1F3))
+    ADAutomation.LIVE_CAPTIONS -> ADCapabilityPalette(Color(0xFF5F6782), Color(0xFFEEF0F6))
+    ADAutomation.AUTO_AUDIO -> ADCapabilityPalette(Color(0xFF6B6078), Color(0xFFF1EEF4))
 }
 
 private fun ADAutomation.capabilityIcon(): ImageVector = when (this) {
@@ -169,9 +251,9 @@ private fun ADAutomation.capabilityIcon(): ImageVector = when (this) {
     ADAutomation.LIVE_CAPTIONS -> Icons.Outlined.GraphicEq
     ADAutomation.TRANSLATOR -> Icons.Rounded.Translate
     ADAutomation.ERRAND_BRAIN -> Icons.Outlined.Checklist
-    ADAutomation.AUTO_DIARY -> Icons.Outlined.Description
+    ADAutomation.AUTO_DIARY -> Icons.Outlined.CalendarMonth
     ADAutomation.AUTO_AUDIO -> Icons.Outlined.Mic
-    ADAutomation.VISUAL_DIARY -> Icons.Outlined.PhotoLibrary
+    ADAutomation.VISUAL_DIARY -> Icons.Outlined.Timeline
 }
 
 private fun ADAutomation.toAssistantMode(): AssistantMode = when (this) {
@@ -191,7 +273,7 @@ private fun ADAutomation.nativeOutput(): String = when (this) {
     ADAutomation.LIVE_CAPTIONS -> "Live captions"
     ADAutomation.TRANSLATOR -> "Translated speech"
     ADAutomation.ERRAND_BRAIN -> "Tasks and reminders"
-    ADAutomation.AUTO_DIARY -> "Private daily note"
+    ADAutomation.AUTO_DIARY -> "Private diary entry"
     ADAutomation.AUTO_AUDIO -> "Audio and transcript"
     ADAutomation.VISUAL_DIARY -> "Visual timeline"
 }
