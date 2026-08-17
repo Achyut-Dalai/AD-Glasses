@@ -44,9 +44,7 @@ class ADPersistentGlassesRuntime(context: Context) : ADGlassesCommandGateway.Run
             GlassesDashboardAction.RequestMediaCount -> ifEyevueConnected { eyevue.requestMediaCount() }
             GlassesDashboardAction.SyncTime -> ifEyevueConnected { eyevue.syncTime() }
             GlassesDashboardAction.RequestVolume -> ifEyevueConnected { eyevue.requestVolume() }
-            GlassesDashboardAction.Disconnect -> ifEyevueSelected {
-                eyevue.disconnect()
-            }
+            GlassesDashboardAction.Disconnect -> ifEyevueSelected { eyevue.disconnect() }
             GlassesDashboardAction.Reconnect -> ifEyevueSelected {
                 val profile = DeviceProfileStore.loadLastSelected(appContext)
                 if (profile != null && !eyevue.isConnected()) {
@@ -91,12 +89,9 @@ class ADPersistentGlassesRuntime(context: Context) : ADGlassesCommandGateway.Run
         return true
     }
 
-    private inline val ifEyevueSelected: ((() -> Unit) -> Boolean)
-        get() = { block ->
-            if (!DeviceProfileStore.isEyevueSelected(appContext)) false
-            else {
-                block()
-                true
-            }
-        }
+    private inline fun ifEyevueSelected(block: () -> Unit): Boolean {
+        if (!DeviceProfileStore.isEyevueSelected(appContext)) return false
+        block()
+        return true
+    }
 }
