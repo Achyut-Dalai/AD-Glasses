@@ -7,24 +7,25 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.outlined.AutoAwesome
 import androidx.compose.material.icons.outlined.CheckCircle
+import androidx.compose.material.icons.outlined.Checklist
+import androidx.compose.material.icons.outlined.Description
 import androidx.compose.material.icons.outlined.ErrorOutline
 import androidx.compose.material.icons.outlined.FolderOpen
+import androidx.compose.material.icons.outlined.GraphicEq
 import androidx.compose.material.icons.outlined.Lock
-import androidx.compose.material.icons.outlined.PlayArrow
-import androidx.compose.material.icons.outlined.StopCircle
-import androidx.compose.material3.Button
-import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material.icons.outlined.Mic
+import androidx.compose.material.icons.outlined.PhoneAndroid
+import androidx.compose.material.icons.outlined.PhotoLibrary
+import androidx.compose.material.icons.rounded.Translate
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedButton
+import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -33,6 +34,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import com.fersaiyan.cyanbridge.ai.orchestrator.AndroidModeCommandExecutor
@@ -70,7 +72,7 @@ internal fun ADNativeTaskDetailScreen(
 
     ADPageLayout(automation.title, onBack) {
         ADCard {
-            Row(verticalAlignment = Alignment.Top) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
                 Box(
                     Modifier.size(48.dp).background(
                         if (active) ADColors.SuccessSoft else ADColors.BlueSoft,
@@ -79,21 +81,41 @@ internal fun ADNativeTaskDetailScreen(
                     contentAlignment = Alignment.Center,
                 ) {
                     Icon(
-                        Icons.Outlined.AutoAwesome,
+                        automation.capabilityIcon(),
                         contentDescription = null,
                         tint = if (active) ADColors.Success else ADColors.Blue,
+                        modifier = Modifier.size(23.dp),
                     )
                 }
-                Column(Modifier.padding(start = 13.dp).weight(1f)) {
-                    Text(automation.outcome, style = MaterialTheme.typography.labelLarge, color = ADColors.Blue)
-                    Spacer(Modifier.height(3.dp))
-                    Text(automation.summary, style = MaterialTheme.typography.bodyLarge)
+                Column(Modifier.padding(start = 13.dp, end = 10.dp).weight(1f)) {
+                    Text(automation.title, style = MaterialTheme.typography.titleMedium)
+                    Spacer(Modifier.height(2.dp))
+                    Text(
+                        automation.outcome,
+                        style = MaterialTheme.typography.labelMedium,
+                        color = if (active) ADColors.Success else ADColors.Blue,
+                    )
                 }
-                ADStatusChip(
-                    if (active) "On" else "Off",
-                    if (active) ADStatusTone.SUCCESS else ADStatusTone.NEUTRAL,
-                )
+                Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                    Switch(
+                        checked = active,
+                        onCheckedChange = { enabled ->
+                            execute(if (enabled) AssistantModeAction.START else AssistantModeAction.STOP)
+                        },
+                    )
+                    Text(
+                        if (active) "On" else "Off",
+                        style = MaterialTheme.typography.labelSmall,
+                        color = if (active) ADColors.Success else ADColors.Muted,
+                    )
+                }
             }
+            Spacer(Modifier.height(13.dp))
+            Text(
+                automation.summary,
+                style = MaterialTheme.typography.bodyMedium,
+                color = ADColors.Muted,
+            )
         }
 
         ADCard {
@@ -120,28 +142,6 @@ internal fun ADNativeTaskDetailScreen(
             }
         }
 
-        if (active) {
-            OutlinedButton(
-                onClick = { execute(AssistantModeAction.STOP) },
-                modifier = Modifier.fillMaxWidth().heightIn(min = 50.dp),
-                colors = ButtonDefaults.outlinedButtonColors(contentColor = ADColors.Error),
-            ) {
-                Icon(Icons.Outlined.StopCircle, contentDescription = null)
-                Spacer(Modifier.size(8.dp))
-                Text("Stop")
-            }
-        } else {
-            Button(
-                onClick = { execute(AssistantModeAction.START) },
-                modifier = Modifier.fillMaxWidth().heightIn(min = 50.dp),
-                colors = ButtonDefaults.buttonColors(containerColor = ADColors.Ink),
-            ) {
-                Icon(Icons.Outlined.PlayArrow, contentDescription = null)
-                Spacer(Modifier.size(8.dp))
-                Text("Start")
-            }
-        }
-
         Text(
             "You can also turn this on or off by voice from the glasses.",
             style = MaterialTheme.typography.bodyMedium,
@@ -152,7 +152,7 @@ internal fun ADNativeTaskDetailScreen(
 
 @Composable
 private fun ADCapabilityMetric(
-    icon: androidx.compose.ui.graphics.vector.ImageVector,
+    icon: ImageVector,
     label: String,
     value: String,
 ) {
@@ -161,6 +161,17 @@ private fun ADCapabilityMetric(
         Text(label, Modifier.padding(start = 11.dp).weight(1f), style = MaterialTheme.typography.bodyLarge)
         Text(value, style = MaterialTheme.typography.bodyMedium, color = ADColors.Muted)
     }
+}
+
+private fun ADAutomation.capabilityIcon(): ImageVector = when (this) {
+    ADAutomation.LOCAL_AGENT -> Icons.Outlined.PhoneAndroid
+    ADAutomation.MEETING_NOTES -> Icons.Outlined.GraphicEq
+    ADAutomation.LIVE_CAPTIONS -> Icons.Outlined.GraphicEq
+    ADAutomation.TRANSLATOR -> Icons.Rounded.Translate
+    ADAutomation.ERRAND_BRAIN -> Icons.Outlined.Checklist
+    ADAutomation.AUTO_DIARY -> Icons.Outlined.Description
+    ADAutomation.AUTO_AUDIO -> Icons.Outlined.Mic
+    ADAutomation.VISUAL_DIARY -> Icons.Outlined.PhotoLibrary
 }
 
 private fun ADAutomation.toAssistantMode(): AssistantMode = when (this) {
@@ -180,7 +191,7 @@ private fun ADAutomation.nativeOutput(): String = when (this) {
     ADAutomation.LIVE_CAPTIONS -> "Live captions"
     ADAutomation.TRANSLATOR -> "Translated speech"
     ADAutomation.ERRAND_BRAIN -> "Tasks and reminders"
-    ADAutomation.AUTO_DIARY -> "Private daily summary"
+    ADAutomation.AUTO_DIARY -> "Private daily note"
     ADAutomation.AUTO_AUDIO -> "Audio and transcript"
     ADAutomation.VISUAL_DIARY -> "Visual timeline"
 }
