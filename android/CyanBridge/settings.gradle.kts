@@ -1,5 +1,16 @@
 pluginManagement {
-    includeBuild("node_modules/@react-native/gradle-plugin")
+    val reactNativeGradlePluginDir = file("node_modules/@react-native/gradle-plugin")
+    check(reactNativeGradlePluginDir.isDirectory) {
+        """
+        React Native dependencies are missing: ${reactNativeGradlePluginDir.path} does not exist.
+        From this Gradle/React Native root run:
+
+          npm install
+
+        Node 22.11+ is required by this project. Then retry the Gradle build or Android Studio sync.
+        """.trimIndent()
+    }
+    includeBuild(reactNativeGradlePluginDir)
     repositories {
         google()
         mavenCentral()
@@ -71,7 +82,7 @@ include(":assistant-role")
 include(":moonshine-voice")
 
 // React Native's Gradle plugin is also an included build for the project itself.
-includeBuild("node_modules/@react-native/gradle-plugin")
+includeBuild(file("node_modules/@react-native/gradle-plugin"))
 
 // HeyCyan Core - bundled as composite build for easy compilation
 val heycyanCoreDir = file("../../heycyan-core")
