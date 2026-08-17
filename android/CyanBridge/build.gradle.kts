@@ -10,3 +10,6 @@ plugins {
     alias(libs.plugins.kotlin.serialization) apply false
     alias(libs.plugins.atomicfu) apply false
 }
+
+// Lets the React Native Gradle plugin coordinate React/Hermes versions across modules.
+apply(plugin = "com.facebook.react.rootproject")

@@ -5,8 +5,11 @@ import android.content.Context
 enum class AiProviderType(val wire: String, val label: String) {
     MOCK("mock", "Mock (local demo)"),
     COMPANY_BACKEND("company_backend", "Company Backend (stub)"),
-    CLI_RELAY("cli_relay", "CLI Relay (Codex/Gemini)"),
-    LOCAL_MODELS("local_models", "Local Models (on-device)");
+    // Keep the stable wire value for stored preferences and relay compatibility. The provider is
+    // no longer conceptually a CLI: AD can use direct Gemini Live while the relay supplies auth,
+    // ephemeral tokens, non-Live inference and alternate backends.
+    CLI_RELAY("cli_relay", "Cloud AI"),
+    LOCAL_MODELS("local_models", "Local AI");
 
     companion object {
         fun fromWire(value: String?): AiProviderType =
@@ -15,8 +18,8 @@ enum class AiProviderType(val wire: String, val label: String) {
 }
 
 enum class CliRelayBackend(val wire: String, val label: String) {
-    GEMINI("gemini", "Gemini CLI"),
-    CODEX("codex", "Codex CLI");
+    GEMINI("gemini", "Gemini"),
+    CODEX("codex", "OpenAI / Codex");
 
     companion object {
         fun fromWire(value: String?): CliRelayBackend =

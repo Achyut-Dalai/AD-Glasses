@@ -5,242 +5,214 @@ import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Test
 
+/** Source-level guardrails for the React Native product migration. */
 class ADVisibleProductUiTest {
 
-    private val visibleSurfacePaths = listOf(
-        "src/main/java/com/fersaiyan/cyanbridge/ui/adglasses/ADComponents.kt",
-        "src/main/java/com/fersaiyan/cyanbridge/ui/adglasses/ADHomeSurface.kt",
-        "src/main/java/com/fersaiyan/cyanbridge/ui/adglasses/ADNativeConversationScreen.kt",
-        "src/main/java/com/fersaiyan/cyanbridge/ui/adglasses/ADConversationRichContent.kt",
-        "src/main/java/com/fersaiyan/cyanbridge/ui/adglasses/ADNativeLibraryScreens.kt",
-        "src/main/java/com/fersaiyan/cyanbridge/ui/adglasses/ADGlassesDeviceCenterScreen.kt",
-        "src/main/java/com/fersaiyan/cyanbridge/ui/adglasses/ADGlassesPairingScreen.kt",
-        "src/main/java/com/fersaiyan/cyanbridge/ui/adglasses/ADNativeSettingsHubScreen.kt",
-        "src/main/java/com/fersaiyan/cyanbridge/ui/adglasses/ADWelcomeScreen.kt",
-        "src/main/java/com/fersaiyan/cyanbridge/ui/adglasses/ADSyncScreen.kt",
-        "src/main/java/com/fersaiyan/cyanbridge/ui/adglasses/ADFirmwareScreen.kt",
-        "src/main/java/com/fersaiyan/cyanbridge/ui/adglasses/ADAdvancedScreen.kt",
-        "src/main/java/com/fersaiyan/cyanbridge/ui/adglasses/ADNativeModeDetailScreen.kt",
-        "src/main/java/com/fersaiyan/cyanbridge/ui/adglasses/ADNativeAiScreen.kt",
-        "src/main/java/com/fersaiyan/cyanbridge/ui/adglasses/ADAssistantAppsScreen.kt",
-    )
-
     @Test
-    fun visibleScreensDoNotExposeUpstreamProductOrPluginNames() {
-        val forbiddenStringLiterals = listOf(
-            "\"Ask AD",
-            "\"AD can do",
-            "\"AD AI",
-            "\"CyanBridge",
-            "\"Meeting Spark Notes",
-            "\"Live Caption Relay",
-            "\"Hands-Free Translator",
-            "\"Errand Brain",
-            "\"Auto Diary",
-            "\"Auto Audio",
-            "Things glasses can do for me",
-        )
-
-        visibleSurfacePaths.forEach { path ->
-            val source = sourceFile(path).readText()
-            forbiddenStringLiterals.forEach { forbidden ->
-                assertFalse(
-                    "$path must not expose visible legacy/upstream copy beginning with $forbidden",
-                    source.contains(forbidden),
-                )
-            }
-        }
-    }
-
-    @Test
-    fun promptUsesTerminalIconAndHomeDoesNotDuplicatePromptNavigation() {
-        val components = sourceFile(
-            "src/main/java/com/fersaiyan/cyanbridge/ui/adglasses/ADComponents.kt",
-        ).readText()
-        val models = sourceFile(
-            "src/main/java/com/fersaiyan/cyanbridge/ui/adglasses/ADGlassesModels.kt",
-        ).readText()
-        val home = sourceFile(
-            "src/main/java/com/fersaiyan/cyanbridge/ui/adglasses/ADHomeSurface.kt",
-        ).readText()
-
-        assertTrue(models.contains("CHATS(\"Prompt\")"))
-        assertTrue(components.contains("ADTab.CHATS -> Icons.Outlined.Terminal"))
-        assertFalse(home.contains("title = \"Conversations\""))
-        assertFalse(home.contains("title = \"Chats\""))
-        assertFalse(home.contains("onOpenConversations"))
-    }
-
-    @Test
-    fun capabilitiesUseMonochromeEditorialToggleControls() {
-        val models = sourceFile(
-            "src/main/java/com/fersaiyan/cyanbridge/ui/adglasses/ADGlassesModels.kt",
-        ).readText()
-        val ai = sourceFile(
-            "src/main/java/com/fersaiyan/cyanbridge/ui/adglasses/ADNativeAiScreen.kt",
-        ).readText()
-        val details = sourceFile(
-            "src/main/java/com/fersaiyan/cyanbridge/ui/adglasses/ADNativeModeDetailScreen.kt",
-        ).readText()
-
-        assertFalse(models.contains("TASKS(\"Tasks\")"))
-        assertTrue(ai.contains("Text(\"Capabilities\""))
-        assertTrue(details.contains("Switch("))
-        assertTrue(details.contains("automation.capabilityIcon()"))
-        assertTrue(details.contains("ADCapabilityDetailRow("))
-        assertTrue(details.contains("ADColors.SurfaceSubtle"))
-        assertFalse(details.contains("capabilityPalette()"))
-        assertFalse(details.contains("ADCapabilityPalette"))
-        assertTrue(details.contains("\"DETAILS\""))
-        assertFalse(details.contains("OutlinedButton("))
-        assertFalse(details.contains("Button("))
-        assertFalse(details.contains("Start task"))
-        assertFalse(details.contains("Stop task"))
-    }
-
-    @Test
-    fun promptComposerSupportsFreshSessionsAndRealActivityMotion() {
-        val prompt = sourceFile(
-            "src/main/java/com/fersaiyan/cyanbridge/ui/adglasses/ADNativeConversationScreen.kt",
-        ).readText()
-
-        assertFalse(prompt.contains("Icons.Outlined.CameraAlt"))
-        assertFalse(prompt.contains("Icons.Outlined.Mic"))
-        assertFalse(prompt.contains("New chat"))
-        assertTrue(prompt.contains("Icons.Outlined.Terminal"))
-        assertTrue(prompt.contains("session.startNewConversation()"))
-        assertTrue(prompt.contains("Icons.Rounded.Add"))
-        assertTrue(prompt.contains("pendingAlreadyPersisted"))
-        assertTrue(prompt.contains("KeyboardActions(onSend = { onSend() })"))
-        assertTrue(prompt.contains("What do you want to know?"))
-        assertTrue(prompt.contains("Ask AI…"))
-        assertTrue(prompt.contains("ADActivityWaveform"))
-        assertTrue(prompt.contains("AudioSessionCoordinator.isBusy()"))
-        assertTrue(prompt.contains("MeetingCapturePrefs.getState(context).isRecording"))
-        assertTrue(prompt.contains("ADColors.SurfaceSubtle"))
-        assertTrue(prompt.contains("ADAssistantTurn"))
-    }
-
-    @Test
-    fun capabilityProductNamesStayBroadWhileRuntimeIdsRemainCompatible() {
-        val models = sourceFile(
-            "src/main/java/com/fersaiyan/cyanbridge/ui/adglasses/ADGlassesModels.kt",
-        ).readText()
-        val ai = sourceFile(
-            "src/main/java/com/fersaiyan/cyanbridge/ui/adglasses/ADNativeAiScreen.kt",
-        ).readText()
-
-        assertTrue(models.contains("\"Soundbites\""))
-        assertTrue(models.contains("\"DayNote\""))
-        assertTrue(models.contains("\"Timeline\""))
-        assertTrue(models.contains("\"Automation\""))
-        assertTrue(models.contains("\"Cron\""))
-        assertTrue(models.contains("\"Meeting Spark Notes\""))
-        assertTrue(models.contains("\"Auto Diary\""))
-        assertTrue(models.contains("\"Visual Diary\""))
-        assertTrue(models.contains("\"Errand Brain\""))
-        assertTrue(ai.contains("ADAutomation.MEETING_NOTES.title"))
-        assertTrue(ai.contains("ADAutomation.AUTO_DIARY.title"))
-        assertTrue(ai.contains("ADAutomation.VISUAL_DIARY.title"))
-        assertTrue(ai.contains("ADAutomation.ERRAND_BRAIN.title"))
-        assertTrue(ai.contains("ADAutomation.LOCAL_AGENT.title"))
-        assertTrue(ai.contains("Icons.Outlined.AutoStories"))
-        assertTrue(ai.contains("Icons.Outlined.Timeline"))
-        assertTrue(ai.contains("Icons.Outlined.EventRepeat"))
-        assertTrue(ai.contains("Icons.Outlined.Bolt"))
-        assertTrue(ai.contains("\"Apps & Android actions\""))
-        assertFalse(ai.contains("\"Setup required\""))
-    }
-
-    @Test
-    fun welcomeUsesSeparateEditorialStatementAndGlassesStage() {
-        val welcome = sourceFile(
-            "src/main/java/com/fersaiyan/cyanbridge/ui/adglasses/ADWelcomeScreen.kt",
-        ).readText()
-
-        assertTrue(welcome.contains("text = \"YOUR GLASSES\""))
-        assertTrue(welcome.contains("text = \"YOUR AI\""))
-        assertTrue(welcome.contains("text = \"YOUR DATA\""))
-        assertTrue(welcome.contains("R.drawable.ad_glasses_hero_v4"))
-        assertTrue(welcome.contains("RoundedCornerShape(28.dp)"))
-        assertTrue(welcome.contains(".border("))
-        assertTrue(welcome.contains("AD GLASSES"))
+    fun welcomeKeepsOnlyTheStatementGlassesAndActions() {
+        val welcome = rnFile("src/screens/WelcomeScreen.tsx").readText()
+        assertTrue(welcome.contains("YOUR GLASSES"))
+        assertTrue(welcome.contains("YOUR AI"))
+        assertTrue(welcome.contains("YOUR DATA"))
+        assertTrue(welcome.contains("GlassesImage"))
         assertTrue(welcome.contains("Connect glasses"))
         assertTrue(welcome.contains("Continue without glasses"))
-        assertFalse(welcome.contains("alpha(0.16f)"))
-        assertFalse(welcome.contains("A private brain for the glasses you wear."))
-        assertFalse(welcome.contains("Connect when you are ready."))
+        assertFalse(welcome.contains("AD GLASSES"))
     }
 
     @Test
-    fun productChromeUsesMonochromePalette() {
-        val theme = sourceFile(
-            "src/main/java/com/fersaiyan/cyanbridge/ui/adglasses/ADGlassesTheme.kt",
-        ).readText()
-        val details = sourceFile(
-            "src/main/java/com/fersaiyan/cyanbridge/ui/adglasses/ADNativeModeDetailScreen.kt",
-        ).readText()
-
-        assertTrue(theme.contains("val Blue = Color(0xFF2C2C2E)"))
-        assertTrue(theme.contains("val BlueDeep = Color(0xFF111113)"))
-        assertTrue(theme.contains("val BlueSoft = Color(0xFFEAEAED)"))
-        assertFalse(details.contains("0xFF6D5C82"))
-        assertFalse(details.contains("0xFF7A654B"))
-        assertFalse(details.contains("0xFF4F6E66"))
+    fun primaryNavigationIsControlAiAndMemoryNotChat() {
+        val routes = rnFile("src/navigation/routes.ts").readText()
+        val components = rnFile("src/design/components.tsx").readText()
+        assertTrue(routes.contains("export type RootTab = 'home' | 'ai' | 'library'"))
+        assertTrue(routes.contains("rootTabs: RootTab[] = ['home', 'ai', 'library']"))
+        assertTrue(routes.contains("| 'prompt'")) // hidden artifact-context route remains available
+        assertFalse(components.contains("route: 'prompt', label:"))
+        assertFalse(components.contains("label: 'Prompt'"))
     }
 
     @Test
-    fun visibleProductVersionIsAlpha() {
+    fun homeStartsGlassesActionsWithoutOpeningChat() {
+        val home = rnFile("src/screens/MainScreens.tsx").readText()
+        assertTrue(home.contains("title=\"Ask\" detail=\"Voice question\" onPress={() => ADNative.action('voiceQuestion')}"))
+        assertTrue(home.contains("title=\"What I see\" detail=\"Ask with vision\" onPress={() => ADNative.action('imageQuestion')}"))
+        assertTrue(home.contains("title=\"Snap\" detail=\"Capture a photo\" onPress={() => ADNative.action('capturePhoto')}"))
+        assertFalse(home.contains("title=\"Search web\""))
+        assertFalse(home.contains("navigate('prompt', {web: true})"))
+    }
+
+    @Test
+    fun aiIsAdFirstAndKeepsCurrentCapabilityLanguage() {
+        val ai = rnFile("src/screens/AIScreen.tsx").readText()
+        assertTrue(ai.contains("AD is the assistant. Gemini, local models and Android tools work behind it."))
+        assertTrue(ai.contains("Gemini Live"))
+        assertTrue(ai.contains("Gemini + Search"))
+        assertTrue(ai.contains("Moonshine + Local AI"))
+        assertTrue(ai.contains("Background / Tasker"))
+        assertTrue(ai.contains("Accessibility fallback"))
+        assertTrue(ai.contains("direct AD integration, not the Gemini app UI"))
+        assertTrue(ai.contains("navigate('ai-runtime')"))
+        assertTrue(ai.contains("DayNote', detail: 'Daily moments, distilled'"))
+        assertTrue(ai.contains("Cron', detail: 'Recurring scheduled work', icon: 'repeat'"))
+        assertTrue(ai.contains("Automation', detail: 'Apps & Android actions'"))
+        assertFalse(ai.contains("title=\"System assistants\""))
+    }
+
+    @Test
+    fun intelligenceRuntimeIsOpenEndedAndScreenOffFirst() {
+        val prefs = sourceFile("src/main/java/com/fersaiyan/cyanbridge/ai/runtime/ADIntelligencePrefs.kt").readText()
+        val ui = rnFile("src/screens/AIRuntimeScreen.tsx").readText()
+        assertTrue(prefs.contains("BALANCED"))
+        assertTrue(prefs.contains("FAST"))
+        assertTrue(prefs.contains("PRIVATE"))
+        assertTrue(prefs.contains("GEMINI_LIVE"))
+        assertTrue(prefs.contains("MOONSHINE"))
+        assertTrue(prefs.contains("LOCAL_GEMMA"))
+        assertTrue(prefs.contains("GEMINI_FILES"))
+        assertTrue(prefs.contains("ADVisibleFallbackPolicy.ASK"))
+        assertTrue(ui.contains("Build your AD"))
+        assertTrue(ui.contains("Files & artifacts"))
+        assertTrue(ui.contains("Fresh information"))
+        assertTrue(ui.contains("Never wake the screen"))
+    }
+
+    @Test
+    fun adCanHoldTheAndroidAssistantRoleWithoutBecomingAVisibleAssistantUi() {
+        val manifest = projectFile("assistant-role/src/main/AndroidManifest.xml").readText()
+        val metadata = projectFile("assistant-role/src/main/res/xml/ad_voice_interaction_service.xml").readText()
+        val role = projectFile("assistant-role/src/main/java/com/fersaiyan/cyanbridge/assistant/ADAssistantRole.kt").readText()
+        assertTrue(manifest.contains("android.service.voice.VoiceInteractionService"))
+        assertTrue(manifest.contains("android.permission.BIND_VOICE_INTERACTION"))
+        assertTrue(manifest.contains("android.voice_interaction"))
+        assertTrue(metadata.contains("android:supportsLaunchVoiceAssistFromKeyguard=\"true\""))
+        assertTrue(role.contains("RoleManager.ROLE_ASSISTANT"))
+        assertTrue(role.contains("setUiEnabled(false)"))
+        assertTrue(role.contains("The glasses wake word remains the product's primary entry point"))
+    }
+
+    @Test
+    fun taskerIsBackgroundExecutionAndAccessibilityIsExplicitFallback() {
+        val routing = sourceFile("src/main/java/com/fersaiyan/cyanbridge/automation/AutomationRoutePrefs.kt").readText()
+        val executor = sourceFile("src/main/java/com/fersaiyan/cyanbridge/ai/orchestrator/AndroidAssistantCapabilityExecutor.kt").readText()
+        val broadcaster = sourceFile("src/main/java/com/fersaiyan/cyanbridge/automation/AutomationEventBroadcaster.kt").readText()
+        assertTrue(routing.contains("AutomationExecutor.TASKER"))
+        assertTrue(executor.contains("AutomationExecutor.TASKER"))
+        assertTrue(executor.contains("AutomationEventBroadcaster.sendPhoneAction"))
+        assertTrue(executor.contains("AutomationExecutor.ACCESSIBILITY"))
+        assertTrue(broadcaster.contains("com.fersaiyan.cyanbridge.AUTOMATION_EVENT"))
+        assertTrue(broadcaster.contains("setPackage(TASKER_PACKAGE)"))
+    }
+
+    @Test
+    fun legacyTaskerVoicePolicyNoLongerRequiresAnUnlockedAssistantUi() {
+        val policy = sourceFile("src/main/java/com/fersaiyan/cyanbridge/ai/image/ExternalAssistantAutomationCapability.kt").readText()
+        val prefs = sourceFile("src/main/java/com/fersaiyan/cyanbridge/agent/LocalAgentPrefs.kt").readText()
+        assertTrue(policy.contains("Voice Tasker handoff is a background broadcast path"))
+        assertTrue(policy.contains("!capability.taskerInstalled"))
+        assertFalse(policy.substringAfter("fun voiceBlockingReason").substringBefore("fun imageBlockingReason").contains("phoneLocked"))
+        assertFalse(policy.substringAfter("fun voiceBlockingReason").substringBefore("fun imageBlockingReason").contains("autoInput"))
+        assertTrue(prefs.contains("AgentProviderType.TASKER.name -> AgentProviderType.TASKER"))
+    }
+
+    @Test
+    fun geminiLiveAlreadyHasDirectAudioVisionSearchToolsAndSessionResumption() {
+        val live = sourceFile("src/main/java/com/fersaiyan/cyanbridge/ai/live/GeminiLiveClient.kt").readText()
+        val tools = sourceFile("src/main/java/com/fersaiyan/cyanbridge/ai/live/GeminiLiveTools.kt").readText()
+        assertTrue(live.contains("Direct Gemini Live WebSocket client"))
+        assertTrue(live.contains("fun offerGlassesPcm"))
+        assertTrue(live.contains("fun sendImage"))
+        assertTrue(live.contains("responseModalities"))
+        assertTrue(live.contains("sessionResumption"))
+        assertTrue(live.contains("googleSearch"))
+        assertTrue(live.contains("functionDeclarations"))
+        assertTrue(live.contains("AudioTrack.Builder"))
+        assertTrue(tools.contains("ADGlassesCommandGateway.dispatch"))
+        assertFalse(tools.contains("ADRuntimeRegistry.mainActivity"))
+        assertFalse(tools.contains("MainActivity::class.java"))
+    }
+
+    @Test
+    fun moonshineIsPartOfThePrivateOfflineSpeechLane() {
         val gradle = sourceFile("build.gradle").readText()
-        val settings = sourceFile(
-            "src/main/java/com/fersaiyan/cyanbridge/ui/adglasses/ADProductSettingsScreens.kt",
-        ).readText()
+        val runtime = projectFile("AD_ASSISTANT_RUNTIME.md").readText()
+        assertTrue(gradle.contains("implementation project(\":moonshine-voice\")"))
+        assertTrue(runtime.contains("Moonshine/local speech is the private/offline transcription lane"))
+        assertTrue(runtime.contains("The phone display stays off throughout the normal path."))
+    }
 
+    @Test
+    fun productShellCoversEveryActiveRoute() {
+        val app = rnFile("src/App.tsx").readText()
+        listOf(
+            "welcome", "home", "prompt", "ai", "ai-runtime", "library", "settings", "device",
+            "pairing", "sync", "relay", "local-ai", "assistant-apps", "privacy",
+            "storage", "language", "permissions", "advanced", "about", "firmware",
+            "capability", "captures", "recordings", "notes",
+        ).forEach { route -> assertTrue("RN shell must render $route", app.contains("case '$route'")) }
+    }
+
+    @Test
+    fun motionHonorsStaggerAndReducedMotion() {
+        val components = rnFile("src/design/components.tsx").readText()
+        assertTrue(components.contains("AccessibilityInfo.isReduceMotionEnabled"))
+        assertTrue(components.contains("withDelay(delay"))
+        assertTrue(components.contains("withSpring(0.982"))
+    }
+
+    @Test
+    fun nativeBridgeUsesActivityIndependentGlassesGateway() {
+        val bridge = sourceFile("src/main/java/com/fersaiyan/cyanbridge/ui/reactnative/ADGlassesBridgeModule.kt").readText()
+        val gateway = sourceFile("src/main/java/com/fersaiyan/cyanbridge/glasses/runtime/ADGlassesCommandGateway.kt").readText()
+        assertTrue(bridge.contains("GlassesDashboardAction.CapturePhoto"))
+        assertTrue(bridge.contains("GlassesDashboardAction.TestVoiceQuestion"))
+        assertTrue(bridge.contains("GlassesDashboardAction.TestImageQuestion"))
+        assertTrue(bridge.contains("AssistantOrchestrator"))
+        assertTrue(bridge.contains("fun sendPrompt"))
+        assertTrue(bridge.contains("SyncedMediaQuery.query"))
+        assertTrue(bridge.contains("getAllCaptureSessions().first()"))
+        assertTrue(bridge.contains("notesRepository.getAllNotes().first()"))
+        assertTrue(bridge.contains("ADGlassesCommandGateway.dispatch"))
+        assertTrue(bridge.contains("ADGlassesCommandGateway.snapshot"))
+        assertFalse(bridge.contains("MainActivity::class.java"))
+        assertTrue(gateway.contains("interface Runtime"))
+        assertTrue(gateway.contains("ADLegacyMainActivityRuntime"))
+    }
+
+    @Test
+    fun reactNativeFoundationUsesNewArchitectureAndAlphaProductVersion() {
+        val pkg = rnFile("package.json").readText()
+        val properties = rnFile("gradle.properties").readText()
+        val gradle = sourceFile("build.gradle").readText()
+        assertTrue(pkg.contains("\"react-native\": \"0.86.2\""))
+        assertTrue(pkg.contains("react-native-reanimated"))
+        assertTrue(properties.contains("newArchEnabled=true"))
+        assertTrue(properties.contains("hermesEnabled=true"))
         assertTrue(gradle.contains("versionName = \"alpha\""))
-        assertTrue(settings.contains("Version ${'$'}{BuildConfig.VERSION_NAME}"))
-    }
-
-    @Test
-    fun pairingUsesSafeDrawingAndDetectedIdentityWithoutManualSelectionFallback() {
-        val pairing = sourceFile(
-            "src/main/java/com/fersaiyan/cyanbridge/ui/adglasses/ADGlassesPairingScreen.kt",
-        ).readText()
-
-        assertTrue(pairing.contains("WindowInsets.safeDrawing"))
-        assertTrue(pairing.contains("val deviceClass = device.detectedClass"))
-        assertTrue(pairing.contains("Looking for nearby glasses"))
-        assertFalse(pairing.contains("HeyCyan"))
-        assertFalse(pairing.contains("effectiveSelectedClass()"))
-        assertFalse(pairing.contains("ModalBottomSheet"))
-        assertFalse(pairing.contains("onSelectedClassChange"))
-    }
-
-    @Test
-    fun aiIsAFirstClassTabAndSettingsHubDoesNotDuplicateIt() {
-        val ai = sourceFile(
-            "src/main/java/com/fersaiyan/cyanbridge/ui/adglasses/ADNativeAiScreen.kt",
-        ).readText()
-        val settings = sourceFile(
-            "src/main/java/com/fersaiyan/cyanbridge/ui/adglasses/ADNativeSettingsHubScreen.kt",
-        ).readText()
-
-        assertTrue(ai.contains("ADAiSection(\"Default AI\")"))
-        assertTrue(ai.contains("\"Gemini\""))
-        assertTrue(ai.contains("\"OpenAI / Codex\""))
-        assertTrue(ai.contains("\"Local AI\""))
-        assertTrue(ai.contains("\"Assistant apps\""))
-        assertFalse(ai.contains("ADTopBar(title = \"AI\")"))
-        assertFalse(settings.contains("AI and web"))
-        assertFalse(settings.contains("Routing"))
     }
 
     private fun sourceFile(relativePath: String): File {
         val direct = File(relativePath)
         if (direct.exists()) return direct
-
         val fromRepoRoot = File("android/CyanBridge/app", relativePath)
         if (fromRepoRoot.exists()) return fromRepoRoot
-
         return direct
+    }
+
+    private fun rnFile(relativePath: String): File {
+        val direct = File(relativePath)
+        if (direct.exists()) return direct
+        val fromAppModule = File("../$relativePath")
+        if (fromAppModule.exists()) return fromAppModule
+        val fromRepoRoot = File("android/CyanBridge/$relativePath")
+        if (fromRepoRoot.exists()) return fromRepoRoot
+        return direct
+    }
+
+    private fun projectFile(relativePath: String): File {
+        val fromAppModule = File("../$relativePath")
+        if (fromAppModule.exists()) return fromAppModule
+        val fromRepoRoot = File("android/CyanBridge/$relativePath")
+        if (fromRepoRoot.exists()) return fromRepoRoot
+        return File(relativePath)
     }
 }

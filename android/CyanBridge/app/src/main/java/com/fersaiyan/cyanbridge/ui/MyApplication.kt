@@ -7,60 +7,78 @@ import android.content.Context
 import android.content.Intent
 import android.content.IntentFilter
 import android.os.Build
-import androidx.localbroadcastmanager.content.LocalBroadcastManager
 import androidx.core.content.ContextCompat
-import com.oudmon.ble.base.bluetooth.BleAction
-import com.oudmon.ble.base.bluetooth.BleBaseControl
-import com.oudmon.ble.base.bluetooth.BleOperateManager
-import com.oudmon.ble.base.communication.LargeDataHandler
+import androidx.localbroadcastmanager.content.LocalBroadcastManager
+import com.facebook.react.PackageList
+import com.facebook.react.ReactApplication
+import com.facebook.react.ReactHost
+import com.facebook.react.ReactNativeApplicationEntryPoint.loadReactNative
+import com.facebook.react.defaults.DefaultReactHost.getDefaultReactHost
 import com.fersaiyan.cyanbridge.agent.LocalAgentPrefs
 import com.fersaiyan.cyanbridge.ai.router.AiProviderPrefs
 import com.fersaiyan.cyanbridge.ai.router.AiProviderType
-import com.fersaiyan.cyanbridge.localmodels.storage.LocalModelStorageRepository
-import com.fersaiyan.cyanbridge.localagent.daily.DailyFactsReminderScheduler
-import com.fersaiyan.cyanbridge.plugins.autodiary.AutoDiaryService
-import com.fersaiyan.cyanbridge.plugins.localagent.LocalAgentPlugin
-import com.fersaiyan.cyanbridge.plugins.PluginVoicePermissions
-import com.fersaiyan.cyanbridge.plugins.visualdiary.VisualDiaryPreferences
-import com.fersaiyan.cyanbridge.plugins.visualdiary.VisualDiaryService
-import com.fersaiyan.cyanbridge.memoryvault.MemoryVaultBootstrap
 import com.fersaiyan.cyanbridge.devices.DeviceProfileStore
+import com.fersaiyan.cyanbridge.localagent.daily.DailyFactsReminderScheduler
+import com.fersaiyan.cyanbridge.localmodels.remote.RemoteOpenAiPrefs
+import com.fersaiyan.cyanbridge.localmodels.storage.LocalModelStorageRepository
 import com.fersaiyan.cyanbridge.media.autocapture.AutoAudioCapturePrefs
 import com.fersaiyan.cyanbridge.media.autocapture.AutoAudioCaptureService
-import com.fersaiyan.cyanbridge.localmodels.remote.RemoteOpenAiPrefs
+import com.fersaiyan.cyanbridge.memoryvault.MemoryVaultBootstrap
+import com.fersaiyan.cyanbridge.plugins.PluginVoicePermissions
+import com.fersaiyan.cyanbridge.plugins.autodiary.AutoDiaryService
+import com.fersaiyan.cyanbridge.plugins.localagent.LocalAgentPlugin
+import com.fersaiyan.cyanbridge.plugins.visualdiary.VisualDiaryPreferences
+import com.fersaiyan.cyanbridge.plugins.visualdiary.VisualDiaryService
+import com.fersaiyan.cyanbridge.shared.platform.CyanBridgeServices
+import com.fersaiyan.cyanbridge.shared.platform.initPlatformPreferences
 import com.fersaiyan.cyanbridge.studiobridge.StudioApprovalHandler
 import com.fersaiyan.cyanbridge.studiobridge.StudioBridgeClient
 import com.fersaiyan.cyanbridge.studiobridge.StudioBridgeForegroundService
 import com.fersaiyan.cyanbridge.ui.localization.AppLanguagePreferences
-import com.fersaiyan.cyanbridge.shared.platform.CyanBridgeServices
-import com.fersaiyan.cyanbridge.shared.platform.initPlatformPreferences
+import com.fersaiyan.cyanbridge.ui.reactnative.ADGlassesReactPackage
+import com.fersaiyan.cyanbridge.ui.reactnative.ADRuntimeRegistry
+import com.oudmon.ble.base.bluetooth.BleAction
+import com.oudmon.ble.base.bluetooth.BleBaseControl
+import com.oudmon.ble.base.bluetooth.BleOperateManager
+import com.oudmon.ble.base.communication.LargeDataHandler
+import java.io.File
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.launch
-import java.io.File
-import kotlin.properties.Delegates
 
 /**
- * @Author: Hzy
- * @CreateDate: 2021/6/25 11:50
- *
- * "Programs should be written for other people to read,
- * and only incidentally for machines to execute"
+ * Application process owner for both the inherited glasses runtime and the React Native
+ * product shell. Native services remain authoritative; React owns presentation.
  */
-class MyApplication : Application(){
+class MyApplication : Application(), ReactApplication {
+
+    override val reactHost: ReactHost by lazy {
+        getDefaultReactHost(
+            context = applicationContext,
+            packageList = PackageList(this).packages.apply {
+                add(ADGlassesReactPackage())
+            },
+        )
+    }
 
     private val appScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
     private var studioApprovalHandler: StudioApprovalHandler? = null
 
     var hardwareVersion: String = ""
-    var firmwareVersion:String =""
+    var firmwareVersion: String = ""
 
     override fun onCreate() {
         super.onCreate()
         application = this
         instance = this
         CONTEXT = applicationContext
+
+        // RN 0.86 New Architecture / Hermes initialization. This does not replace any
+        // native service; it only makes the product shell available to the process.
+        ADRuntimeRegistry.install(this)
+        loadReactNative(this)
+
         AppLanguagePreferences.applyStoredLocale(this)
         initBle()
 
@@ -98,12 +116,9 @@ class MyApplication : Application(){
         // Initialize KMP shared services
         runCatching { initPlatformPreferences(this) }
         runCatching { initSharedServices() }
-
     }
 
-    /**
-     * Start the Studio Bridge WebSocket connection for approval notifications.
-     */
+    /** Start the Studio Bridge WebSocket connection for approval notifications. */
     fun startStudioBridge(): Boolean {
         if (!RemoteOpenAiPrefs.isBridgeConfigured(this)) return false
         if (!PluginVoicePermissions.hasRequiredPermissions(this)) return false
@@ -128,9 +143,7 @@ class MyApplication : Application(){
         return true
     }
 
-    /**
-     * Stop the Studio Bridge WebSocket connection.
-     */
+    /** Stop the Studio Bridge WebSocket connection. */
     fun stopStudioBridge() {
         StudioBridgeClient.stop()
         stopService(Intent(this, StudioBridgeForegroundService::class.java))
@@ -155,24 +168,17 @@ class MyApplication : Application(){
     private fun initSharedServices() {
         if (CyanBridgeServices.isInitialized()) return
 
-        // Create Android BLE manager wrapper
         val androidBleManager = com.fersaiyan.cyanbridge.shared.ble.AndroidBleManager(
             bleOperateManager = BleOperateManager.getInstance(),
             largeDataHandler = LargeDataHandler.getInstance(),
             deviceManager = com.oudmon.ble.base.bluetooth.DeviceManager.getInstance(),
         )
-
-        // Create Android Wi-Fi P2P manager wrapper
         val androidWifiP2pManager = AndroidWifiP2pManagerWrapper()
-
-        // Create Android repositories wrapping Room
         val chatRepo = AndroidChatRepositoryWrapper()
         val notesRepo = AndroidNotesRepositoryWrapper()
         val deviceRepo = AndroidDeviceProfileRepositoryWrapper()
         val vaultRepo = AndroidMemoryVaultRepositoryWrapper()
         val mediaRepo = AndroidMediaRecordRepositoryWrapper()
-
-        // Create AI services
         val chatAi = AndroidChatAiService()
         val voiceAi = AndroidVoiceAiService()
         val imageAi = AndroidImageAiService()
@@ -214,7 +220,6 @@ class MyApplication : Application(){
         } else {
             registerReceiver(deviceReceiver, deviceFilter)
         }
-
     }
 
     fun getDeviceIntentFilter(): IntentFilter? {
@@ -227,16 +232,13 @@ class MyApplication : Application(){
     }
 
     fun getAppRootFile(context: Context): File {
-        // /storage/emulated/0/Android/data/pack_name/files
-        return if(context.getExternalFilesDir("")!=null){
+        return if (context.getExternalFilesDir("") != null) {
             context.getExternalFilesDir("")!!
-        }else{
+        } else {
             val externalSaveDir = context.externalCacheDir
             externalSaveDir ?: context.cacheDir
         }
-
     }
-
 
     companion object {
         private var application: Application? = null
@@ -261,7 +263,7 @@ class MyApplication : Application(){
             androidx.room.Room.databaseBuilder(
                 CONTEXT,
                 com.fersaiyan.cyanbridge.data.local.AppDatabase::class.java,
-                "cyanbridge-db"
+                "cyanbridge-db",
             )
                 .addMigrations(
                     com.fersaiyan.cyanbridge.data.local.AppDatabase.MIGRATION_1_2,
@@ -275,15 +277,13 @@ class MyApplication : Application(){
                     object : androidx.room.RoomDatabase.Callback() {
                         override fun onCreate(db: androidx.sqlite.db.SupportSQLiteDatabase) {
                             super.onCreate(db)
-                            // Room doesn't (yet) support declaring FTS5 virtual tables via annotations.
-                            // Ensure the FTS5 index exists for fresh installs.
                             runCatching {
                                 com.fersaiyan.cyanbridge.data.local.AppDatabase.MIGRATION_4_5.migrate(db)
                                 com.fersaiyan.cyanbridge.data.local.AppDatabase.MIGRATION_5_6.migrate(db)
                                 com.fersaiyan.cyanbridge.data.local.AppDatabase.MIGRATION_6_7.migrate(db)
                             }
                         }
-                    }
+                    },
                 )
                 .build()
         }
@@ -292,7 +292,6 @@ class MyApplication : Application(){
             com.fersaiyan.cyanbridge.data.repository.CyanBridgeRepository(database)
         }
 
-        // Chapter 7: summarization + notes workflow
         val summarizationService: com.fersaiyan.cyanbridge.shared.notes.SummarizationService by lazy {
             com.fersaiyan.cyanbridge.ai.summarization.AiSummarizationService(CONTEXT)
         }
@@ -309,8 +308,6 @@ class MyApplication : Application(){
                 ?: throw RuntimeException("Application not initialized. onCreate not yet called.")
         }
 
-        fun getInstance(): MyApplication {
-            return instance
-        }
+        fun getInstance(): MyApplication = instance
     }
 }

@@ -22,3 +22,11 @@
 
 # Shizuku creates this Binder user service by its class name outside the normal Android manifest.
 -keep class com.fersaiyan.cyanbridge.localagent.shizuku.LocalAgentShizukuUserService { <init>(...); *; }
+
+# The first React Native migration bridge intentionally reuses MainActivity's proven
+# dashboard dispatcher through reflection. Keep these two private entry points stable
+# until that runtime is extracted into a dedicated service/controller.
+-keepclassmembers class com.fersaiyan.cyanbridge.MainActivity {
+    private void handleDashboardAction(com.fersaiyan.cyanbridge.shared.glasses.GlassesDashboardAction);
+    private com.fersaiyan.cyanbridge.shared.glasses.GlassesDashboardUiState getDashboardState();
+}

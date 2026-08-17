@@ -122,7 +122,7 @@ internal fun ADNativeAiScreen(
                     ADAiCapabilityTile(
                         Icons.Outlined.AutoStories,
                         ADAutomation.AUTO_DIARY.title,
-                        "Private daily memory",
+                        "Daily moments, distilled",
                         Modifier.weight(1f),
                     ) {
                         onOpenCapability(ADAutomation.AUTO_DIARY)

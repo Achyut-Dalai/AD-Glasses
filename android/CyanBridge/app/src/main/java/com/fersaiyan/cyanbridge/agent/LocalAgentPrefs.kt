@@ -22,189 +22,104 @@ object LocalAgentPrefs {
 
     fun getProviderType(context: Context): AgentProviderType {
         val preferences = context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
-        val raw = preferences
-            .getString(KEY_PROVIDER_TYPE, null)
-            ?.trim()
-            ?.uppercase()
+        val raw = preferences.getString(KEY_PROVIDER_TYPE, null)?.trim()?.uppercase()
         val provider = when (raw) {
             AgentProviderType.LOCAL_AGENT.name -> AgentProviderType.LOCAL_AGENT
-            "API_MODELS",
-            AgentProviderType.PRO_SUBSCRIPTION.name -> AgentProviderType.PRO_SUBSCRIPTION
-
-            // Tasker is no longer the default AI provider. Old/unset provider values migrate
-            // to the internal relay path; optional assistant-app handoff is tracked separately.
-            AgentProviderType.TASKER.name,
-            null,
-            "" -> AgentProviderType.PRO_SUBSCRIPTION
-
+            "API_MODELS", AgentProviderType.PRO_SUBSCRIPTION.name -> AgentProviderType.PRO_SUBSCRIPTION
+            // TASKER is an explicit background handoff route. Never migrate it away once a
+            // user deliberately selects it; no external assistant UI is implied by this value.
+            AgentProviderType.TASKER.name -> AgentProviderType.TASKER
+            null, "" -> AgentProviderType.PRO_SUBSCRIPTION
             else -> AgentProviderType.PRO_SUBSCRIPTION
         }
-        if (raw != provider.name) {
-            preferences.edit().putString(KEY_PROVIDER_TYPE, provider.name).apply()
-        }
+        if (raw != provider.name) preferences.edit().putString(KEY_PROVIDER_TYPE, provider.name).apply()
         return provider
     }
 
     fun setProviderType(context: Context, type: AgentProviderType) {
-        context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
-            .edit()
-            .putString(KEY_PROVIDER_TYPE, type.name)
-            .apply()
+        context.getSharedPreferences(PREFS, Context.MODE_PRIVATE).edit().putString(KEY_PROVIDER_TYPE, type.name).apply()
     }
 
     fun getGlassesAssistantMode(context: Context): GlassesAssistantMode {
         val preferences = context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
-        val stored = preferences
-            .getString(KEY_GLASSES_ASSISTANT_MODE, null)
-            ?.trim()
-            ?.uppercase()
-
-        // AD AI remains the default. PHONE_ASSISTANT is retained only when a user explicitly
-        // selects the optional installed-assistant-app route from the native AI screen.
+        val stored = preferences.getString(KEY_GLASSES_ASSISTANT_MODE, null)?.trim()?.uppercase()
         val mode = when (stored) {
             GlassesAssistantMode.PHONE_ASSISTANT.name -> GlassesAssistantMode.PHONE_ASSISTANT
             GlassesAssistantMode.CUSTOM_AI_PROVIDER.name,
-            "CHOSEN_PROVIDER",
-            "GEMINI",
-            "CHAT_GPT",
-            "PHONE_DEFAULT",
-            null,
-            "" -> GlassesAssistantMode.CUSTOM_AI_PROVIDER
-
+            "CHOSEN_PROVIDER", "GEMINI", "CHAT_GPT", "PHONE_DEFAULT", null, "" -> GlassesAssistantMode.CUSTOM_AI_PROVIDER
             else -> GlassesAssistantMode.CUSTOM_AI_PROVIDER
         }
-        if (stored != mode.name) {
-            preferences.edit().putString(KEY_GLASSES_ASSISTANT_MODE, mode.name).apply()
-        }
+        if (stored != mode.name) preferences.edit().putString(KEY_GLASSES_ASSISTANT_MODE, mode.name).apply()
         return mode
     }
 
     fun setGlassesAssistantMode(context: Context, mode: GlassesAssistantMode) {
-        context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
-            .edit()
-            .putString(KEY_GLASSES_ASSISTANT_MODE, mode.name)
-            .apply()
+        context.getSharedPreferences(PREFS, Context.MODE_PRIVATE).edit().putString(KEY_GLASSES_ASSISTANT_MODE, mode.name).apply()
     }
 
-    fun isLocalAgentAutomationEnabled(context: Context): Boolean {
-        return context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
-            .getBoolean(KEY_AUTOMATION_ENABLED, false)
-    }
+    fun isLocalAgentAutomationEnabled(context: Context): Boolean =
+        context.getSharedPreferences(PREFS, Context.MODE_PRIVATE).getBoolean(KEY_AUTOMATION_ENABLED, false)
 
     fun setLocalAgentAutomationEnabled(context: Context, enabled: Boolean) {
-        context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
-            .edit()
-            .putBoolean(KEY_AUTOMATION_ENABLED, enabled)
-            .apply()
+        context.getSharedPreferences(PREFS, Context.MODE_PRIVATE).edit().putBoolean(KEY_AUTOMATION_ENABLED, enabled).apply()
     }
 
-    fun isRequireConfirmationEnabled(context: Context): Boolean {
-        return context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
-            .getBoolean(KEY_REQUIRE_CONFIRMATION, true)
-    }
+    fun isRequireConfirmationEnabled(context: Context): Boolean =
+        context.getSharedPreferences(PREFS, Context.MODE_PRIVATE).getBoolean(KEY_REQUIRE_CONFIRMATION, true)
 
     fun setRequireConfirmationEnabled(context: Context, enabled: Boolean) {
-        context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
-            .edit()
-            .putBoolean(KEY_REQUIRE_CONFIRMATION, enabled)
-            .apply()
+        context.getSharedPreferences(PREFS, Context.MODE_PRIVATE).edit().putBoolean(KEY_REQUIRE_CONFIRMATION, enabled).apply()
     }
 
-    fun getMaxSteps(context: Context): Int {
-        val v = context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
-            .getInt(KEY_MAX_STEPS, 8)
-        return v.coerceIn(1, 200)
-    }
+    fun getMaxSteps(context: Context): Int =
+        context.getSharedPreferences(PREFS, Context.MODE_PRIVATE).getInt(KEY_MAX_STEPS, 8).coerceIn(1, 200)
 
     fun setMaxSteps(context: Context, steps: Int) {
-        context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
-            .edit()
-            .putInt(KEY_MAX_STEPS, steps.coerceIn(1, 200))
-            .apply()
+        context.getSharedPreferences(PREFS, Context.MODE_PRIVATE).edit().putInt(KEY_MAX_STEPS, steps.coerceIn(1, 200)).apply()
     }
 
-    fun isAutoCaptureEnabled(context: Context): Boolean {
-        return context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
-            .getBoolean(KEY_AUTO_CAPTURE_ENABLED, false)
-    }
+    fun isAutoCaptureEnabled(context: Context): Boolean =
+        context.getSharedPreferences(PREFS, Context.MODE_PRIVATE).getBoolean(KEY_AUTO_CAPTURE_ENABLED, false)
 
     fun setAutoCaptureEnabled(context: Context, enabled: Boolean) {
-        context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
-            .edit()
-            .putBoolean(KEY_AUTO_CAPTURE_ENABLED, enabled)
-            .apply()
+        context.getSharedPreferences(PREFS, Context.MODE_PRIVATE).edit().putBoolean(KEY_AUTO_CAPTURE_ENABLED, enabled).apply()
     }
 
-    fun getCaptureIntervalMin(context: Context): Int {
-        val v = context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
-            .getInt(KEY_CAPTURE_INTERVAL_MIN, 10)
-        return v.coerceIn(1, 24 * 60)
-    }
+    fun getCaptureIntervalMin(context: Context): Int =
+        context.getSharedPreferences(PREFS, Context.MODE_PRIVATE).getInt(KEY_CAPTURE_INTERVAL_MIN, 10).coerceIn(1, 24 * 60)
 
     fun setCaptureIntervalMin(context: Context, minutes: Int) {
-        context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
-            .edit()
-            .putInt(KEY_CAPTURE_INTERVAL_MIN, minutes.coerceIn(1, 24 * 60))
-            .apply()
+        context.getSharedPreferences(PREFS, Context.MODE_PRIVATE).edit().putInt(KEY_CAPTURE_INTERVAL_MIN, minutes.coerceIn(1, 24 * 60)).apply()
     }
 
     fun getCaptureBlacklistPackages(context: Context): Set<String> {
-        val raw = context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
-            .getStringSet(KEY_CAPTURE_BLACKLIST, null)
-            ?: emptySet()
-        return raw
-            .map { it.trim().lowercase() }
-            .filter { it.isNotBlank() }
-            .toSet()
+        val raw = context.getSharedPreferences(PREFS, Context.MODE_PRIVATE).getStringSet(KEY_CAPTURE_BLACKLIST, null) ?: emptySet()
+        return raw.map { it.trim().lowercase() }.filter { it.isNotBlank() }.toSet()
     }
 
     fun setCaptureBlacklistPackages(context: Context, packages: Set<String>) {
-        // Use commit() for reliability: users may blacklist many apps at once and immediately
-        // leave the screen; apply() is async and can be lost if the process is killed.
-        val clean = packages
-            .map { it.trim().lowercase() }
-            .filter { it.isNotBlank() }
-            .toSet()
-        context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
-            .edit()
-            .putStringSet(KEY_CAPTURE_BLACKLIST, HashSet(clean))
-            .commit()
+        val clean = packages.map { it.trim().lowercase() }.filter { it.isNotBlank() }.toSet()
+        context.getSharedPreferences(PREFS, Context.MODE_PRIVATE).edit().putStringSet(KEY_CAPTURE_BLACKLIST, HashSet(clean)).commit()
     }
 
-    fun isHideSystemAppsEnabled(context: Context): Boolean {
-        return context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
-            .getBoolean(KEY_HIDE_SYSTEM_APPS, true)
-    }
+    fun isHideSystemAppsEnabled(context: Context): Boolean =
+        context.getSharedPreferences(PREFS, Context.MODE_PRIVATE).getBoolean(KEY_HIDE_SYSTEM_APPS, true)
 
     fun setHideSystemAppsEnabled(context: Context, enabled: Boolean) {
-        context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
-            .edit()
-            .putBoolean(KEY_HIDE_SYSTEM_APPS, enabled)
-            .apply()
+        context.getSharedPreferences(PREFS, Context.MODE_PRIVATE).edit().putBoolean(KEY_HIDE_SYSTEM_APPS, enabled).apply()
     }
 
-    fun isDailyFactsReminderEnabled(context: Context): Boolean {
-        return context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
-            .getBoolean(KEY_DAILY_FACTS_REMINDER_ENABLED, true)
-    }
+    fun isDailyFactsReminderEnabled(context: Context): Boolean =
+        context.getSharedPreferences(PREFS, Context.MODE_PRIVATE).getBoolean(KEY_DAILY_FACTS_REMINDER_ENABLED, true)
 
     fun setDailyFactsReminderEnabled(context: Context, enabled: Boolean) {
-        context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
-            .edit()
-            .putBoolean(KEY_DAILY_FACTS_REMINDER_ENABLED, enabled)
-            .apply()
+        context.getSharedPreferences(PREFS, Context.MODE_PRIVATE).edit().putBoolean(KEY_DAILY_FACTS_REMINDER_ENABLED, enabled).apply()
     }
 
-    fun getDailySummaryAutoRefreshHours(context: Context): Int {
-        val v = context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
-            .getInt(KEY_DAILY_SUMMARY_AUTO_REFRESH_HOURS, 3)
-        return v.coerceIn(1, 24)
-    }
+    fun getDailySummaryAutoRefreshHours(context: Context): Int =
+        context.getSharedPreferences(PREFS, Context.MODE_PRIVATE).getInt(KEY_DAILY_SUMMARY_AUTO_REFRESH_HOURS, 3).coerceIn(1, 24)
 
     fun setDailySummaryAutoRefreshHours(context: Context, hours: Int) {
-        context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
-            .edit()
-            .putInt(KEY_DAILY_SUMMARY_AUTO_REFRESH_HOURS, hours.coerceIn(1, 24))
-            .apply()
+        context.getSharedPreferences(PREFS, Context.MODE_PRIVATE).edit().putInt(KEY_DAILY_SUMMARY_AUTO_REFRESH_HOURS, hours.coerceIn(1, 24)).apply()
     }
 }
