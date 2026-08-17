@@ -1,5 +1,6 @@
 package com.fersaiyan.cyanbridge.ai.live
 
+import android.content.Context
 import com.fersaiyan.cyanbridge.MainActivity
 import com.fersaiyan.cyanbridge.automation.AutomationEventBroadcaster
 import com.fersaiyan.cyanbridge.shared.glasses.GlassesDashboardAction
@@ -23,7 +24,9 @@ object NoOpGeminiLiveToolExecutor : GeminiLiveToolExecutor {
  * Precise glasses actions stay native. Broad Android actions are emitted to the background
  * automation contract. Sensitive/external actions require a second, confirmed tool call.
  */
-class ADGeminiLiveToolExecutor : GeminiLiveToolExecutor {
+class ADGeminiLiveToolExecutor(context: Context) : GeminiLiveToolExecutor {
+    private val appContext = context.applicationContext
+
     override suspend fun execute(name: String, args: JSONObject): JSONObject = when (name) {
         "capture_photo" -> dispatch(GlassesDashboardAction.CapturePhoto, "Photo capture requested")
         "toggle_video" -> dispatch(GlassesDashboardAction.ToggleVideo, "Video recording toggled")
@@ -50,9 +53,8 @@ class ADGeminiLiveToolExecutor : GeminiLiveToolExecutor {
                 .put("goal", goal)
         }
 
-        val activity = ADRuntimeRegistry.mainActivity()
-            ?: return JSONObject().put("ok", false).put("error", "AD runtime is not attached")
-        AutomationEventBroadcaster.sendPhoneAction(activity.applicationContext, goal)
+        // Tasker is a true background contract and must not depend on MainActivity being alive.
+        AutomationEventBroadcaster.sendPhoneAction(appContext, goal)
         return JSONObject()
             .put("ok", true)
             .put("executed_in_background", true)
@@ -61,7 +63,9 @@ class ADGeminiLiveToolExecutor : GeminiLiveToolExecutor {
 
     private fun dispatch(action: GlassesDashboardAction, message: String): JSONObject {
         val activity = ADRuntimeRegistry.mainActivity()
-            ?: return JSONObject().put("ok", false).put("error", "AD glasses runtime is not attached")
+            ?: return JSONObject()
+                .put("ok", false)
+                .put("error", "This glasses action still requires the native device runtime to be attached")
         return runCatching {
             activity.runOnUiThread {
                 val method = MainActivity::class.java.declaredMethods.firstOrNull {
