@@ -3,10 +3,8 @@ package com.fersaiyan.cyanbridge.ui.adglasses
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
-import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
@@ -19,7 +17,6 @@ import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
-import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -56,32 +53,10 @@ fun ADWelcomeScreen(
                 .windowInsetsPadding(WindowInsets.safeDrawing)
                 .padding(horizontal = 20.dp),
         ) {
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(top = 15.dp),
-                horizontalArrangement = Arrangement.Center,
-                verticalAlignment = Alignment.CenterVertically,
-            ) {
-                Image(
-                    painter = painterResource(R.drawable.ad_glasses_icon_source),
-                    contentDescription = "AD Glasses",
-                    modifier = Modifier.size(32.dp),
-                    contentScale = ContentScale.Fit,
-                )
-                Text(
-                    text = "AD GLASSES",
-                    style = MaterialTheme.typography.titleMedium,
-                    fontWeight = FontWeight.SemiBold,
-                    letterSpacing = 2.5.sp,
-                    modifier = Modifier.padding(start = 10.dp),
-                )
-            }
-
             Column(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(top = 28.dp),
+                    .padding(top = 34.dp),
             ) {
                 Text(
                     text = "YOUR GLASSES",
@@ -109,17 +84,17 @@ fun ADWelcomeScreen(
                 )
             }
 
-            Spacer(Modifier.size(22.dp))
+            Spacer(Modifier.size(24.dp))
 
             Box(
                 modifier = Modifier
                     .fillMaxWidth()
                     .weight(1f)
-                    .heightIn(min = 176.dp, max = 278.dp)
+                    .heightIn(min = 184.dp, max = 286.dp)
                     .background(
                         Brush.linearGradient(
                             listOf(
-                                Color.White.copy(alpha = 0.92f),
+                                Color.White.copy(alpha = 0.94f),
                                 Color(0xFFE9E9EC),
                             ),
                         ),
@@ -127,7 +102,7 @@ fun ADWelcomeScreen(
                     )
                     .border(
                         width = 1.dp,
-                        color = ADColors.Outline.copy(alpha = 0.55f),
+                        color = ADColors.Outline.copy(alpha = 0.50f),
                         shape = RoundedCornerShape(28.dp),
                     )
                     .padding(horizontal = 10.dp, vertical = 8.dp),
