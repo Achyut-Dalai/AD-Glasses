@@ -1,7 +1,8 @@
-export type RootTab = 'home' | 'prompt' | 'ai' | 'library';
+export type RootTab = 'home' | 'ai' | 'library';
 
 export type RouteName =
   | RootTab
+  | 'prompt'
   | 'welcome'
   | 'pairing'
   | 'settings'
@@ -29,4 +30,8 @@ export type RouteEntry = {
 
 export type Navigate = (name: RouteName, params?: RouteEntry['params']) => void;
 
-export const rootTabs: RootTab[] = ['home', 'prompt', 'ai', 'library'];
+/**
+ * The phone is a control plane and memory viewer for the glasses, not a chat app.
+ * Prompt remains a hidden compatibility route for contextual/internal sessions.
+ */
+export const rootTabs: RootTab[] = ['home', 'ai', 'library'];
