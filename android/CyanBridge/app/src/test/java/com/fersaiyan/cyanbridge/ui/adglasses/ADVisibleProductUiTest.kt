@@ -32,7 +32,8 @@ class ADVisibleProductUiTest {
     @Test
     fun settingsUsesTheProductGlassesImageForDeviceIdentity() {
         val details = rnFile("src/screens/DetailScreens.tsx").readText()
-        assertTrue(details.contains("settingsGlasses}><GlassesImage"))
+        assertTrue(details.contains("styles.settingsGlasses"))
+        assertTrue(details.contains("<GlassesImage height={62}"))
         assertTrue(details.contains("<GlassesImage height={170}"))
         assertTrue(details.contains("Version alpha"))
     }
