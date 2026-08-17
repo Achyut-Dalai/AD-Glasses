@@ -25,7 +25,7 @@ import androidx.compose.material.icons.outlined.Checklist
 import androidx.compose.material.icons.outlined.Cloud
 import androidx.compose.material.icons.outlined.Computer
 import androidx.compose.material.icons.outlined.Description
-import androidx.compose.material.icons.outlined.Memory
+import androidx.compose.material.icons.outlined.GraphicEq
 import androidx.compose.material.icons.outlined.PhoneAndroid
 import androidx.compose.material.icons.outlined.PhotoLibrary
 import androidx.compose.material.icons.rounded.KeyboardArrowRight
@@ -101,7 +101,12 @@ internal fun ADNativeAiScreen(
                     ADAiCapabilityTile(Icons.Rounded.Translate, "Translate", "Live translation", Modifier.weight(1f)) {
                         onOpenCapability(ADAutomation.TRANSLATOR)
                     }
-                    ADAiCapabilityTile(Icons.Outlined.Description, "Meeting Notes", "Record & summarize", Modifier.weight(1f)) {
+                    ADAiCapabilityTile(
+                        Icons.Outlined.GraphicEq,
+                        ADAutomation.MEETING_NOTES.title,
+                        "Audio to notes",
+                        Modifier.weight(1f),
+                    ) {
                         onOpenCapability(ADAutomation.MEETING_NOTES)
                     }
                 }
@@ -109,7 +114,12 @@ internal fun ADNativeAiScreen(
                     ADAiCapabilityTile(Icons.Outlined.PhotoLibrary, "Visual Diary", "Searchable captures", Modifier.weight(1f)) {
                         onOpenCapability(ADAutomation.VISUAL_DIARY)
                     }
-                    ADAiCapabilityTile(Icons.Outlined.Memory, "Daily Diary", "Private daily context", Modifier.weight(1f)) {
+                    ADAiCapabilityTile(
+                        Icons.Outlined.Description,
+                        ADAutomation.AUTO_DIARY.title,
+                        "Private daily note",
+                        Modifier.weight(1f),
+                    ) {
                         onOpenCapability(ADAutomation.AUTO_DIARY)
                     }
                 }

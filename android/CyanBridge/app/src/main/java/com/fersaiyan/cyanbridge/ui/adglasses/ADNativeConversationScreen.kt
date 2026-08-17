@@ -22,7 +22,7 @@ import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.outlined.Add
+import androidx.compose.material.icons.automirrored.rounded.Send
 import androidx.compose.material.icons.outlined.ArrowForward
 import androidx.compose.material.icons.outlined.Public
 import androidx.compose.material.icons.rounded.ArrowUpward
@@ -63,7 +63,7 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 
-/** Native phone continuation for the same durable conversation used by the glasses. */
+/** Native phone continuation for the same durable assistant session used by the glasses. */
 @Composable
 internal fun ADNativeConversationScreen(
     navigationRequest: ADNavigationRequest? = null,
@@ -184,29 +184,31 @@ internal fun ADNativeConversationScreen(
 
     Column(Modifier.fillMaxSize()) {
         Row(
-            modifier = Modifier.fillMaxWidth().padding(start = 18.dp, end = 10.dp, top = 14.dp, bottom = 8.dp),
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(start = 18.dp, end = 18.dp, top = 16.dp, bottom = 8.dp),
             verticalAlignment = Alignment.CenterVertically,
         ) {
-            Text("Chats", style = MaterialTheme.typography.headlineSmall, modifier = Modifier.weight(1f))
-            IconButton(
-                onClick = {
-                    if (!sending) {
-                        threadId = orchestrator.startNewConversation()
-                        messages = emptyList()
-                        message = ""
-                        webSearch = false
-                        errorText = null
-                        focusComposer()
-                    }
-                },
-                modifier = Modifier.size(42.dp),
+            Box(
+                modifier = Modifier
+                    .size(42.dp)
+                    .background(ADColors.BlueSoft, RoundedCornerShape(13.dp)),
+                contentAlignment = Alignment.Center,
             ) {
-                Box(
-                    modifier = Modifier.size(34.dp).background(ADColors.Surface, CircleShape),
-                    contentAlignment = Alignment.Center,
-                ) {
-                    Icon(Icons.Outlined.Add, contentDescription = "New chat", tint = ADColors.Ink, modifier = Modifier.size(20.dp))
-                }
+                Icon(
+                    Icons.AutoMirrored.Rounded.Send,
+                    contentDescription = null,
+                    tint = ADColors.Blue,
+                    modifier = Modifier.size(21.dp),
+                )
+            }
+            Column(Modifier.padding(start = 12.dp).weight(1f)) {
+                Text("Prompt", style = MaterialTheme.typography.headlineSmall)
+                Text(
+                    "Ask AI from your phone or glasses",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = ADColors.Muted,
+                )
             }
         }
 
@@ -277,24 +279,36 @@ private fun ADConversationEmptyState(
     onSuggestion: (String, Boolean) -> Unit,
 ) {
     Column(
-        modifier = Modifier.fillMaxWidth().padding(top = 58.dp, bottom = 28.dp),
+        modifier = Modifier.fillMaxWidth().padding(top = 40.dp, bottom = 28.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
     ) {
-        ADGlassesMark(Modifier.size(48.dp))
+        Box(
+            modifier = Modifier
+                .size(64.dp)
+                .background(ADColors.BlueSoft, RoundedCornerShape(20.dp)),
+            contentAlignment = Alignment.Center,
+        ) {
+            Icon(
+                Icons.AutoMirrored.Rounded.Send,
+                contentDescription = null,
+                tint = ADColors.Blue,
+                modifier = Modifier.size(29.dp),
+            )
+        }
         Spacer(Modifier.size(18.dp))
-        Text("Start a conversation", style = MaterialTheme.typography.headlineSmall)
+        Text("What do you want to know?", style = MaterialTheme.typography.headlineSmall)
         Spacer(Modifier.size(7.dp))
         Text(
-            "Continue here or pick up a conversation started through the glasses.",
+            "Ask AI anything, use web search when freshness matters, or continue a request started on your glasses.",
             style = MaterialTheme.typography.bodyMedium,
             color = ADColors.Muted,
             textAlign = TextAlign.Center,
-            modifier = Modifier.padding(horizontal = 34.dp),
+            modifier = Modifier.padding(horizontal = 26.dp),
         )
         Spacer(Modifier.size(28.dp))
         Column(
             modifier = Modifier.fillMaxWidth(),
-            verticalArrangement = Arrangement.spacedBy(2.dp),
+            verticalArrangement = Arrangement.spacedBy(9.dp),
         ) {
             ADPromptSuggestion("What did I capture today?") { onSuggestion("What did I capture today?", false) }
             ADPromptSuggestion("Search the web for something current", web = true) {
@@ -314,15 +328,29 @@ private fun ADPromptSuggestion(
     Row(
         modifier = Modifier
             .fillMaxWidth()
+            .background(ADColors.Surface, RoundedCornerShape(16.dp))
             .clickable(onClick = onClick)
-            .padding(horizontal = 8.dp, vertical = 12.dp),
+            .padding(horizontal = 14.dp, vertical = 13.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        if (web) {
-            Icon(Icons.Outlined.Public, null, tint = ADColors.Muted, modifier = Modifier.size(18.dp))
-            Spacer(Modifier.size(9.dp))
+        Box(
+            modifier = Modifier
+                .size(34.dp)
+                .background(if (web) ADColors.BlueSoft else ADColors.SurfaceSubtle, RoundedCornerShape(10.dp)),
+            contentAlignment = Alignment.Center,
+        ) {
+            Icon(
+                if (web) Icons.Outlined.Public else Icons.AutoMirrored.Rounded.Send,
+                contentDescription = null,
+                tint = if (web) ADColors.Blue else ADColors.Ink,
+                modifier = Modifier.size(17.dp),
+            )
         }
-        Text(text, style = MaterialTheme.typography.bodyLarge, modifier = Modifier.weight(1f))
+        Text(
+            text,
+            style = MaterialTheme.typography.bodyLarge,
+            modifier = Modifier.padding(start = 11.dp).weight(1f),
+        )
         Icon(Icons.Outlined.ArrowForward, null, tint = ADColors.Muted, modifier = Modifier.size(18.dp))
     }
 }
@@ -451,7 +479,7 @@ private fun ADConversationComposer(
                         Box(contentAlignment = Alignment.CenterStart) {
                             if (message.isBlank()) {
                                 Text(
-                                    if (webSearch) "Search the web" else "Message",
+                                    if (webSearch) "Search the web" else "Ask AI…",
                                     style = MaterialTheme.typography.bodyLarge,
                                     color = ADColors.Muted,
                                 )
@@ -471,7 +499,7 @@ private fun ADConversationComposer(
                 ) {
                     Icon(
                         Icons.Rounded.ArrowUpward,
-                        contentDescription = "Send",
+                        contentDescription = "Send prompt",
                         tint = if (sendEnabled) Color.White else ADColors.Muted,
                         modifier = Modifier.size(20.dp),
                     )

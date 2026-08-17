@@ -85,7 +85,7 @@ class ADProductSurfaceIsolationTest {
     }
 
     @Test
-    fun primaryTabsAreExactlyHomeChatsAiLibraryInThatOrder() {
+    fun primaryTabsAreExactlyHomePromptAiLibraryInThatOrder() {
         val models = sourceFile(
             "src/main/java/com/fersaiyan/cyanbridge/ui/adglasses/ADGlassesModels.kt",
         ).readText()
@@ -97,7 +97,7 @@ class ADProductSurfaceIsolationTest {
             .map { it.groupValues[1] }
             .toList()
 
-        assertEquals(listOf("Home", "Chats", "AI", "Library"), labels)
+        assertEquals(listOf("Home", "Prompt", "AI", "Library"), labels)
         assertFalse(models.contains("TASKS(\"Tasks\")"))
     }
 
@@ -145,16 +145,23 @@ class ADProductSurfaceIsolationTest {
     }
 
     @Test
-    fun aiOwnsCapabilitiesAndDoesNotRepeatItsTabTitle() {
+    fun aiOwnsCapabilitiesAndUsesBroadProductNames() {
         val ai = sourceFile(
             "src/main/java/com/fersaiyan/cyanbridge/ui/adglasses/ADNativeAiScreen.kt",
+        ).readText()
+        val models = sourceFile(
+            "src/main/java/com/fersaiyan/cyanbridge/ui/adglasses/ADGlassesModels.kt",
         ).readText()
         val app = sourceFile(
             "src/main/java/com/fersaiyan/cyanbridge/ui/adglasses/ADGlassesApp.kt",
         ).readText()
 
-        listOf("Capabilities", "Translate", "Meeting Notes", "Visual Diary", "Daily Diary", "Errands", "Phone Control")
+        listOf("Capabilities", "Translate", "Visual Diary", "Errands", "Phone Control")
             .forEach { label -> assertTrue("AI should surface $label", ai.contains("\"$label\"")) }
+        assertTrue(ai.contains("ADAutomation.MEETING_NOTES.title"))
+        assertTrue(ai.contains("ADAutomation.AUTO_DIARY.title"))
+        assertTrue(models.contains("\"Soundbites\""))
+        assertTrue(models.contains("\"DayNote\""))
         assertTrue(ai.contains("\"Assistant apps\""))
         assertFalse(ai.contains("ADTopBar(title = \"AI\")"))
         assertTrue(app.contains("ADRoute.AI_ASSISTANT_APPS -> ADAssistantAppsScreen"))
@@ -172,20 +179,22 @@ class ADProductSurfaceIsolationTest {
     }
 
     @Test
-    fun conversationsUseLightNativeTurnsAndNoUtilityToolbar() {
-        val chats = sourceFile(
+    fun promptUsesLightNativeTurnsAndNoChatInboxControls() {
+        val prompt = sourceFile(
             "src/main/java/com/fersaiyan/cyanbridge/ui/adglasses/ADNativeConversationScreen.kt",
         ).readText()
         val rich = sourceFile(
             "src/main/java/com/fersaiyan/cyanbridge/ui/adglasses/ADConversationRichContent.kt",
         ).readText()
 
-        assertTrue(chats.contains("ADColors.BlueSoft"))
-        assertTrue(chats.contains("ADAssistantTurn"))
-        assertTrue(chats.contains("Start a conversation"))
-        assertFalse(chats.contains("ADColors.Ink, RoundedCornerShape(20.dp)"))
-        assertFalse(chats.contains("Icons.Outlined.CameraAlt"))
-        assertFalse(chats.contains("Icons.Outlined.Mic"))
+        assertTrue(prompt.contains("ADColors.BlueSoft"))
+        assertTrue(prompt.contains("ADAssistantTurn"))
+        assertTrue(prompt.contains("What do you want to know?"))
+        assertTrue(prompt.contains("Ask AI…"))
+        assertFalse(prompt.contains("New chat"))
+        assertFalse(prompt.contains("ADColors.Ink, RoundedCornerShape(20.dp)"))
+        assertFalse(prompt.contains("Icons.Outlined.CameraAlt"))
+        assertFalse(prompt.contains("Icons.Outlined.Mic"))
         assertTrue(rich.contains("ADConversationLinkKind.IMAGE"))
         assertTrue(rich.contains("ADConversationLinkKind.VIDEO"))
         assertTrue(rich.contains("ADConversationLinkKind.AUDIO"))
@@ -193,10 +202,14 @@ class ADProductSurfaceIsolationTest {
     }
 
     @Test
-    fun capabilityDetailDoesNotExposeTaskStartStopLanguage() {
+    fun capabilityDetailUsesIntegratedToggleInsteadOfStartStopButtons() {
         val detail = sourceFile(
             "src/main/java/com/fersaiyan/cyanbridge/ui/adglasses/ADNativeModeDetailScreen.kt",
         ).readText()
+        assertTrue(detail.contains("Switch("))
+        assertTrue(detail.contains("automation.capabilityIcon()"))
+        assertFalse(detail.contains("OutlinedButton("))
+        assertFalse(detail.contains("Button("))
         assertFalse(detail.contains("\"Start task\""))
         assertFalse(detail.contains("\"Stop task\""))
         assertFalse(detail.contains("this task by voice"))

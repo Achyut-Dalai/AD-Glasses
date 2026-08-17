@@ -10,7 +10,7 @@ class ADScreenInventoryTest {
     @Test
     fun primaryTabsStayFocusedOnGlassesFirstProduct() {
         assertEquals(
-            listOf("Home", "Chats", "AI", "Library"),
+            listOf("Home", "Prompt", "AI", "Library"),
             ADTab.entries.map { it.label },
         )
     }
