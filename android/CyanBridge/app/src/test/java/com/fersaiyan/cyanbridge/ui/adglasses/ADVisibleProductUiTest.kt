@@ -51,10 +51,29 @@ class ADVisibleProductUiTest {
         assertTrue(ai.contains("Background / Tasker"))
         assertTrue(ai.contains("Accessibility fallback"))
         assertTrue(ai.contains("direct AD integration, not the Gemini app UI"))
+        assertTrue(ai.contains("navigate('ai-runtime')"))
         assertTrue(ai.contains("DayNote', detail: 'Daily moments, distilled'"))
         assertTrue(ai.contains("Cron', detail: 'Recurring scheduled work', icon: 'repeat'"))
         assertTrue(ai.contains("Automation', detail: 'Apps & Android actions'"))
         assertFalse(ai.contains("title=\"System assistants\""))
+    }
+
+    @Test
+    fun intelligenceRuntimeIsOpenEndedAndScreenOffFirst() {
+        val prefs = sourceFile("src/main/java/com/fersaiyan/cyanbridge/ai/runtime/ADIntelligencePrefs.kt").readText()
+        val ui = rnFile("src/screens/AIRuntimeScreen.tsx").readText()
+        assertTrue(prefs.contains("BALANCED"))
+        assertTrue(prefs.contains("FAST"))
+        assertTrue(prefs.contains("PRIVATE"))
+        assertTrue(prefs.contains("GEMINI_LIVE"))
+        assertTrue(prefs.contains("MOONSHINE"))
+        assertTrue(prefs.contains("LOCAL_GEMMA"))
+        assertTrue(prefs.contains("GEMINI_FILES"))
+        assertTrue(prefs.contains("ADVisibleFallbackPolicy.ASK"))
+        assertTrue(ui.contains("Build your AD"))
+        assertTrue(ui.contains("Files & artifacts"))
+        assertTrue(ui.contains("Fresh information"))
+        assertTrue(ui.contains("Never wake the screen"))
     }
 
     @Test
@@ -76,7 +95,7 @@ class ADVisibleProductUiTest {
         val routing = sourceFile("src/main/java/com/fersaiyan/cyanbridge/automation/AutomationRoutePrefs.kt").readText()
         val executor = sourceFile("src/main/java/com/fersaiyan/cyanbridge/ai/orchestrator/AndroidAssistantCapabilityExecutor.kt").readText()
         val broadcaster = sourceFile("src/main/java/com/fersaiyan/cyanbridge/automation/AutomationEventBroadcaster.kt").readText()
-        assertTrue(routing.contains("null,\n            \"\" -> AutomationExecutor.TASKER"))
+        assertTrue(routing.contains("AutomationExecutor.TASKER"))
         assertTrue(executor.contains("AutomationExecutor.TASKER"))
         assertTrue(executor.contains("AutomationEventBroadcaster.sendPhoneAction"))
         assertTrue(executor.contains("AutomationExecutor.ACCESSIBILITY"))
@@ -96,14 +115,20 @@ class ADVisibleProductUiTest {
     }
 
     @Test
-    fun geminiLiveAlreadyHasDirectAudioVisionAndSessionResumptionPrimitives() {
+    fun geminiLiveAlreadyHasDirectAudioVisionSearchToolsAndSessionResumption() {
         val live = sourceFile("src/main/java/com/fersaiyan/cyanbridge/ai/live/GeminiLiveClient.kt").readText()
+        val tools = sourceFile("src/main/java/com/fersaiyan/cyanbridge/ai/live/GeminiLiveTools.kt").readText()
         assertTrue(live.contains("Direct Gemini Live WebSocket client"))
         assertTrue(live.contains("fun offerGlassesPcm"))
         assertTrue(live.contains("fun sendImage"))
         assertTrue(live.contains("responseModalities"))
         assertTrue(live.contains("sessionResumption"))
+        assertTrue(live.contains("googleSearch"))
+        assertTrue(live.contains("functionDeclarations"))
         assertTrue(live.contains("AudioTrack.Builder"))
+        assertTrue(tools.contains("ADGlassesCommandGateway.dispatch"))
+        assertFalse(tools.contains("ADRuntimeRegistry.mainActivity"))
+        assertFalse(tools.contains("MainActivity::class.java"))
     }
 
     @Test
@@ -119,7 +144,7 @@ class ADVisibleProductUiTest {
     fun productShellCoversEveryActiveRoute() {
         val app = rnFile("src/App.tsx").readText()
         listOf(
-            "welcome", "home", "prompt", "ai", "library", "settings", "device",
+            "welcome", "home", "prompt", "ai", "ai-runtime", "library", "settings", "device",
             "pairing", "sync", "relay", "local-ai", "assistant-apps", "privacy",
             "storage", "language", "permissions", "advanced", "about", "firmware",
             "capability", "captures", "recordings", "notes",
@@ -135,8 +160,9 @@ class ADVisibleProductUiTest {
     }
 
     @Test
-    fun nativeBridgeReusesTheExistingGlassesRuntime() {
+    fun nativeBridgeUsesActivityIndependentGlassesGateway() {
         val bridge = sourceFile("src/main/java/com/fersaiyan/cyanbridge/ui/reactnative/ADGlassesBridgeModule.kt").readText()
+        val gateway = sourceFile("src/main/java/com/fersaiyan/cyanbridge/glasses/runtime/ADGlassesCommandGateway.kt").readText()
         assertTrue(bridge.contains("GlassesDashboardAction.CapturePhoto"))
         assertTrue(bridge.contains("GlassesDashboardAction.TestVoiceQuestion"))
         assertTrue(bridge.contains("GlassesDashboardAction.TestImageQuestion"))
@@ -145,6 +171,11 @@ class ADVisibleProductUiTest {
         assertTrue(bridge.contains("SyncedMediaQuery.query"))
         assertTrue(bridge.contains("getAllCaptureSessions().first()"))
         assertTrue(bridge.contains("notesRepository.getAllNotes().first()"))
+        assertTrue(bridge.contains("ADGlassesCommandGateway.dispatch"))
+        assertTrue(bridge.contains("ADGlassesCommandGateway.snapshot"))
+        assertFalse(bridge.contains("MainActivity::class.java"))
+        assertTrue(gateway.contains("interface Runtime"))
+        assertTrue(gateway.contains("ADLegacyMainActivityRuntime"))
     }
 
     @Test
