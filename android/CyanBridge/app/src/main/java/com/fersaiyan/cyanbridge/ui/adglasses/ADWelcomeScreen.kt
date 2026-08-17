@@ -2,6 +2,8 @@ package com.fersaiyan.cyanbridge.ui.adglasses
 
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -14,6 +16,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.safeDrawing
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.windowInsetsPadding
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.MaterialTheme
@@ -22,13 +25,11 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.fersaiyan.cyanbridge.R
@@ -46,9 +47,9 @@ fun ADWelcomeScreen(
                 .background(
                     Brush.verticalGradient(
                         listOf(
-                            Color(0xFFF8F8F9),
+                            Color(0xFFFAFAFB),
                             ADColors.Background,
-                            Color(0xFFEDEDEF),
+                            Color(0xFFF0F0F2),
                         ),
                     ),
                 )
@@ -56,52 +57,96 @@ fun ADWelcomeScreen(
                 .padding(horizontal = 20.dp),
         ) {
             Row(
-                modifier = Modifier.fillMaxWidth().padding(top = 16.dp),
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(top = 15.dp),
+                horizontalArrangement = Arrangement.Center,
                 verticalAlignment = Alignment.CenterVertically,
             ) {
                 Image(
                     painter = painterResource(R.drawable.ad_glasses_icon_source),
                     contentDescription = "AD Glasses",
-                    modifier = Modifier.size(34.dp),
+                    modifier = Modifier.size(32.dp),
                     contentScale = ContentScale.Fit,
                 )
                 Text(
                     text = "AD GLASSES",
                     style = MaterialTheme.typography.titleMedium,
                     fontWeight = FontWeight.SemiBold,
-                    letterSpacing = 2.4.sp,
+                    letterSpacing = 2.5.sp,
                     modifier = Modifier.padding(start = 10.dp),
                 )
             }
 
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(top = 28.dp),
+            ) {
+                Text(
+                    text = "YOUR GLASSES",
+                    color = ADColors.Ink,
+                    fontSize = 42.sp,
+                    lineHeight = 44.sp,
+                    fontWeight = FontWeight.Medium,
+                    letterSpacing = (-1.15).sp,
+                )
+                Text(
+                    text = "YOUR AI",
+                    color = ADColors.Ink,
+                    fontSize = 42.sp,
+                    lineHeight = 44.sp,
+                    fontWeight = FontWeight.Medium,
+                    letterSpacing = (-1.15).sp,
+                )
+                Text(
+                    text = "YOUR DATA",
+                    color = ADColors.Ink,
+                    fontSize = 42.sp,
+                    lineHeight = 44.sp,
+                    fontWeight = FontWeight.Medium,
+                    letterSpacing = (-1.15).sp,
+                )
+            }
+
+            Spacer(Modifier.size(22.dp))
+
             Box(
-                modifier = Modifier.weight(1f).fillMaxWidth(),
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .weight(1f)
+                    .heightIn(min = 176.dp, max = 278.dp)
+                    .background(
+                        Brush.linearGradient(
+                            listOf(
+                                Color.White.copy(alpha = 0.92f),
+                                Color(0xFFE9E9EC),
+                            ),
+                        ),
+                        RoundedCornerShape(28.dp),
+                    )
+                    .border(
+                        width = 1.dp,
+                        color = ADColors.Outline.copy(alpha = 0.55f),
+                        shape = RoundedCornerShape(28.dp),
+                    )
+                    .padding(horizontal = 10.dp, vertical = 8.dp),
                 contentAlignment = Alignment.Center,
             ) {
                 Image(
                     painter = painterResource(R.drawable.ad_glasses_hero_v4),
                     contentDescription = "Smart glasses",
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .alpha(0.16f)
-                        .padding(horizontal = 2.dp),
+                    modifier = Modifier.fillMaxSize(),
                     contentScale = ContentScale.Fit,
-                )
-                Text(
-                    text = "YOUR GLASSES\nYOUR AI\nYOUR DATA",
-                    color = ADColors.Ink,
-                    fontSize = 40.sp,
-                    lineHeight = 47.sp,
-                    fontWeight = FontWeight.SemiBold,
-                    letterSpacing = (-0.9).sp,
-                    textAlign = TextAlign.Center,
                 )
             }
 
+            Spacer(Modifier.size(22.dp))
             Button(
                 onClick = onStartSetup,
                 modifier = Modifier.fillMaxWidth().heightIn(min = 52.dp),
                 colors = ButtonDefaults.buttonColors(containerColor = ADColors.Ink),
+                shape = RoundedCornerShape(15.dp),
             ) {
                 Text("Connect glasses")
             }
@@ -109,10 +154,11 @@ fun ADWelcomeScreen(
             OutlinedButton(
                 onClick = onExplore,
                 modifier = Modifier.fillMaxWidth().heightIn(min = 50.dp),
+                shape = RoundedCornerShape(15.dp),
             ) {
                 Text("Continue without glasses")
             }
-            Spacer(Modifier.size(42.dp))
+            Spacer(Modifier.size(22.dp))
         }
     }
 }

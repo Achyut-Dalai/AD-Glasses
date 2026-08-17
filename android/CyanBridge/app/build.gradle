@@ -39,7 +39,7 @@ android {
         minSdk = metaDatEnabled ? 29 : 24
         targetSdk = 35
         versionCode = 14
-        versionName = "2.1.0"
+        versionName = "alpha"
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
 
         // Chapter 6: optional transcription API key (do not commit secrets).

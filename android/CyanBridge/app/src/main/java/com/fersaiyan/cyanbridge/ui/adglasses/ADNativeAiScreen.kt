@@ -25,8 +25,8 @@ import androidx.compose.material.icons.outlined.Bolt
 import androidx.compose.material.icons.outlined.CheckCircle
 import androidx.compose.material.icons.outlined.Cloud
 import androidx.compose.material.icons.outlined.Computer
+import androidx.compose.material.icons.outlined.EventRepeat
 import androidx.compose.material.icons.outlined.GraphicEq
-import androidx.compose.material.icons.outlined.Schedule
 import androidx.compose.material.icons.outlined.Timeline
 import androidx.compose.material.icons.rounded.KeyboardArrowRight
 import androidx.compose.material.icons.rounded.Translate
@@ -130,7 +130,7 @@ internal fun ADNativeAiScreen(
                 }
                 Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
                     ADAiCapabilityTile(
-                        Icons.Outlined.Schedule,
+                        Icons.Outlined.EventRepeat,
                         ADAutomation.ERRAND_BRAIN.title,
                         "Scheduled tasks",
                         Modifier.weight(1f),
@@ -140,7 +140,7 @@ internal fun ADNativeAiScreen(
                     ADAiCapabilityTile(
                         Icons.Outlined.Bolt,
                         ADAutomation.LOCAL_AGENT.title,
-                        if (automationReady) "Android actions" else "Setup required",
+                        "Apps & Android actions",
                         Modifier.weight(1f),
                     ) {
                         if (automationReady) onOpenCapability(ADAutomation.LOCAL_AGENT)

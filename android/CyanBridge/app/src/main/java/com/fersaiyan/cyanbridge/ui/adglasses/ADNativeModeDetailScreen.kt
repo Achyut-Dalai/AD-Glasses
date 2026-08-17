@@ -16,11 +16,11 @@ import androidx.compose.material.icons.outlined.AutoStories
 import androidx.compose.material.icons.outlined.Bolt
 import androidx.compose.material.icons.outlined.CheckCircle
 import androidx.compose.material.icons.outlined.ErrorOutline
+import androidx.compose.material.icons.outlined.EventRepeat
 import androidx.compose.material.icons.outlined.FolderOpen
 import androidx.compose.material.icons.outlined.GraphicEq
 import androidx.compose.material.icons.outlined.Lock
 import androidx.compose.material.icons.outlined.Mic
-import androidx.compose.material.icons.outlined.Schedule
 import androidx.compose.material.icons.outlined.Timeline
 import androidx.compose.material.icons.rounded.Translate
 import androidx.compose.material3.HorizontalDivider
@@ -226,7 +226,7 @@ private fun ADAutomation.capabilityIcon(): ImageVector = when (this) {
     ADAutomation.MEETING_NOTES -> Icons.Outlined.GraphicEq
     ADAutomation.LIVE_CAPTIONS -> Icons.Outlined.GraphicEq
     ADAutomation.TRANSLATOR -> Icons.Rounded.Translate
-    ADAutomation.ERRAND_BRAIN -> Icons.Outlined.Schedule
+    ADAutomation.ERRAND_BRAIN -> Icons.Outlined.EventRepeat
     ADAutomation.AUTO_DIARY -> Icons.Outlined.AutoStories
     ADAutomation.AUTO_AUDIO -> Icons.Outlined.Mic
     ADAutomation.VISUAL_DIARY -> Icons.Outlined.Timeline
