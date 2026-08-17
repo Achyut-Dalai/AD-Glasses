@@ -20,14 +20,14 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.Apps
 import androidx.compose.material.icons.outlined.AutoAwesome
+import androidx.compose.material.icons.outlined.CalendarMonth
 import androidx.compose.material.icons.outlined.CheckCircle
 import androidx.compose.material.icons.outlined.Checklist
 import androidx.compose.material.icons.outlined.Cloud
 import androidx.compose.material.icons.outlined.Computer
-import androidx.compose.material.icons.outlined.Description
 import androidx.compose.material.icons.outlined.GraphicEq
 import androidx.compose.material.icons.outlined.PhoneAndroid
-import androidx.compose.material.icons.outlined.PhotoLibrary
+import androidx.compose.material.icons.outlined.Timeline
 import androidx.compose.material.icons.rounded.KeyboardArrowRight
 import androidx.compose.material.icons.rounded.Translate
 import androidx.compose.material3.HorizontalDivider
@@ -111,13 +111,18 @@ internal fun ADNativeAiScreen(
                     }
                 }
                 Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                    ADAiCapabilityTile(Icons.Outlined.PhotoLibrary, "Visual Diary", "Searchable captures", Modifier.weight(1f)) {
+                    ADAiCapabilityTile(
+                        Icons.Outlined.Timeline,
+                        ADAutomation.VISUAL_DIARY.title,
+                        "Searchable visual memory",
+                        Modifier.weight(1f),
+                    ) {
                         onOpenCapability(ADAutomation.VISUAL_DIARY)
                     }
                     ADAiCapabilityTile(
-                        Icons.Outlined.Description,
+                        Icons.Outlined.CalendarMonth,
                         ADAutomation.AUTO_DIARY.title,
-                        "Private daily note",
+                        "Private daily memory",
                         Modifier.weight(1f),
                     ) {
                         onOpenCapability(ADAutomation.AUTO_DIARY)
@@ -163,8 +168,8 @@ internal fun ADNativeAiScreen(
 @Composable
 private fun ADAiCapabilityTile(icon: ImageVector, title: String, detail: String, modifier: Modifier = Modifier, onClick: () -> Unit) {
     Column(modifier = modifier.heightIn(min = 112.dp).background(ADColors.Surface, RoundedCornerShape(18.dp)).clickable(onClick = onClick).padding(14.dp)) {
-        Box(Modifier.size(38.dp).background(ADColors.SurfaceSubtle, RoundedCornerShape(11.dp)), contentAlignment = Alignment.Center) {
-            Icon(icon, null, tint = ADColors.Ink, modifier = Modifier.size(20.dp))
+        Box(Modifier.size(38.dp).background(ADColors.BlueSoft, RoundedCornerShape(11.dp)), contentAlignment = Alignment.Center) {
+            Icon(icon, null, tint = ADColors.Blue, modifier = Modifier.size(20.dp))
         }
         Spacer(Modifier.weight(1f))
         Text(title, style = MaterialTheme.typography.titleMedium, maxLines = 1, overflow = TextOverflow.Ellipsis)

@@ -76,9 +76,9 @@ enum class ADAutomation(
         "Errand Brain",
     ),
     AUTO_DIARY(
-        "DayNote",
-        "Build a private daily note from the moments and context you choose to capture.",
-        "Daily note",
+        "Daily Diary",
+        "Turn selected moments and context into a private diary entry for your day.",
+        "Daily memory",
         "On device",
         "Auto Diary",
     ),
@@ -91,10 +91,11 @@ enum class ADAutomation(
         false,
     ),
     VISUAL_DIARY(
-        "Visual Diary",
-        "Turn captures into a searchable visual timeline.",
-        "Vision",
+        "Timeline",
+        "Turn visual captures into a searchable timeline you can revisit by moment.",
+        "Visual memory",
         "Automatic",
+        "Visual Diary",
     ),
 }
 
