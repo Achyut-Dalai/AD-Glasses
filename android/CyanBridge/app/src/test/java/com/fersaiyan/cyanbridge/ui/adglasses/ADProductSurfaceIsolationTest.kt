@@ -102,7 +102,7 @@ class ADProductSurfaceIsolationTest {
     }
 
     @Test
-    fun aiOwnsCapabilitiesAndUsesCurrentProductNames() {
+    fun aiUsesCurrentProductNamesWithoutCapabilitiesHeading() {
         val ai = sourceFile(
             "src/main/java/com/fersaiyan/cyanbridge/ui/adglasses/ADNativeAiScreen.kt",
         ).readText()
@@ -113,8 +113,8 @@ class ADProductSurfaceIsolationTest {
             "src/main/java/com/fersaiyan/cyanbridge/ui/adglasses/ADGlassesApp.kt",
         ).readText()
 
-        listOf("Capabilities", "Translate")
-            .forEach { label -> assertTrue("AI should surface $label", ai.contains("\"$label\"")) }
+        assertTrue("AI should surface Translate", ai.contains("\"Translate\""))
+        assertFalse("AI should not show a redundant Capabilities heading", ai.contains("\"Capabilities\""))
         assertTrue(ai.contains("ADAutomation.MEETING_NOTES.title"))
         assertTrue(ai.contains("ADAutomation.AUTO_DIARY.title"))
         assertTrue(ai.contains("ADAutomation.VISUAL_DIARY.title"))
