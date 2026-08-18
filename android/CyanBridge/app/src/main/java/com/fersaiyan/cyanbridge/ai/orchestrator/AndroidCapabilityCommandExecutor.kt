@@ -1,8 +1,6 @@
 package com.fersaiyan.cyanbridge.ai.orchestrator
 
 import android.content.Context
-import com.fersaiyan.cyanbridge.media.autocapture.AutoAudioCapturePrefs
-import com.fersaiyan.cyanbridge.media.autocapture.AutoAudioCaptureService
 import com.fersaiyan.cyanbridge.plugins.PluginVoicePermissions
 import com.fersaiyan.cyanbridge.plugins.autodiary.AutoDiaryService
 import com.fersaiyan.cyanbridge.plugins.errandbrain.ErrandBrainPreferences
@@ -27,7 +25,6 @@ class AndroidCapabilityCommandExecutor(
         AssistantCapability.MEETING_NOTES -> MeetingSparkNotesPreferences.isEnabled(context)
         AssistantCapability.LIVE_CAPTIONS -> LiveCaptionRelayPreferences.isEnabled(context)
         AssistantCapability.ERRAND_BRAIN -> ErrandBrainPreferences.isEnabled(context)
-        AssistantCapability.AUTO_AUDIO -> AutoAudioCapturePrefs.isEnabled(context)
         AssistantCapability.AUTO_DIARY -> AutoDiaryService.isEnabled(context)
         AssistantCapability.VISUAL_DIARY -> VisualDiaryPreferences.isEnabled(context)
         AssistantCapability.LOCAL_AGENT -> LocalAgentPlugin.isEnabled(context)
@@ -48,7 +45,6 @@ class AndroidCapabilityCommandExecutor(
         AssistantCapability.LIVE_CAPTIONS -> "Live Captions"
         AssistantCapability.ERRAND_BRAIN -> "Cron"
         AssistantCapability.AUTO_DIARY -> "DayNote"
-        AssistantCapability.AUTO_AUDIO -> "Auto Capture"
         AssistantCapability.VISUAL_DIARY -> "Timeline"
         AssistantCapability.LOCAL_AGENT -> "Automation"
     }
@@ -86,14 +82,6 @@ class AndroidCapabilityCommandExecutor(
                     stop = { ErrandBrainService.stop(context) },
                     started = "Cron listening started.",
                     stopped = "Cron listening stopped.",
-                )
-
-                AssistantCapability.AUTO_AUDIO -> toggle(
-                    command,
-                    start = { AutoAudioCaptureService.start(context) },
-                    stop = { AutoAudioCaptureService.stop(context) },
-                    started = "Auto Capture started.",
-                    stopped = "Auto Capture stopped.",
                 )
 
                 AssistantCapability.AUTO_DIARY -> when (command.action) {
@@ -191,23 +179,6 @@ class AndroidCapabilityCommandExecutor(
             AssistantCapability.LIVE_CAPTIONS -> LiveCaptionRelayPreferences.setEnabled(context, enabled)
             AssistantCapability.ERRAND_BRAIN -> ErrandBrainPreferences.setEnabled(context, enabled)
             else -> Unit
-        }
-    }
-
-    private inline fun toggle(
-        command: AssistantCapabilityCommand,
-        start: () -> Unit,
-        stop: () -> Unit,
-        started: String,
-        stopped: String,
-    ): AssistantResult = when (command.action) {
-        AssistantCapabilityAction.START -> {
-            start()
-            AssistantResult(started)
-        }
-        AssistantCapabilityAction.STOP -> {
-            stop()
-            AssistantResult(stopped)
         }
     }
 
