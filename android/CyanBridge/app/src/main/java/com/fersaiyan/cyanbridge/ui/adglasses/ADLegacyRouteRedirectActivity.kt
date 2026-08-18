@@ -13,7 +13,7 @@ import java.util.concurrent.atomic.AtomicLong
 enum class ADExternalDestination {
     CONVERSATIONS,
     SETTINGS,
-    MODES,
+    AI,
     LIBRARY_CAPTURES,
     LIBRARY_RECORDINGS,
     LIBRARY_NOTES,
@@ -98,8 +98,13 @@ object ADNavigationRequestStore {
     private fun readPersisted(context: Context): ADNavigationRequest? {
         val prefs = context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
         val id = prefs.getLong(KEY_ID, 0L)
-        val destination = prefs.getString(KEY_DESTINATION, null)
-            ?.let { raw -> runCatching { ADExternalDestination.valueOf(raw) }.getOrNull() }
+        val destination = prefs.getString(KEY_DESTINATION, null)?.let { raw ->
+            when (raw) {
+                // Migrate an in-flight request written by older AD builds.
+                "MODES" -> ADExternalDestination.AI
+                else -> runCatching { ADExternalDestination.valueOf(raw) }.getOrNull()
+            }
+        }
         if (id <= 0L || destination == null) return null
         return ADNavigationRequest(
             id = id,
@@ -134,6 +139,7 @@ abstract class ADLegacyRouteRedirectActivity : Activity() {
             },
         )
         finish()
+        @Suppress("DEPRECATION")
         overridePendingTransition(0, 0)
     }
 }
@@ -149,8 +155,8 @@ class ADSettingsRedirectActivity : ADLegacyRouteRedirectActivity() {
     override val destination = ADExternalDestination.SETTINGS
 }
 
-class ADModesRedirectActivity : ADLegacyRouteRedirectActivity() {
-    override val destination = ADExternalDestination.MODES
+class ADAiRedirectActivity : ADLegacyRouteRedirectActivity() {
+    override val destination = ADExternalDestination.AI
 }
 
 class ADCapturesRedirectActivity : ADLegacyRouteRedirectActivity() {
