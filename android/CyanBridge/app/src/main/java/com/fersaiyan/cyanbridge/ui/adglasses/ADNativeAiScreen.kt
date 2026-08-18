@@ -165,11 +165,26 @@ internal fun ADNativeAiScreen(
 
         item {
             ADAiSection("Default AI") {
-                ADAiChoiceRow(Icons.Outlined.AutoAwesome, "Gemini", "Gemini through your relay", selected == ADAiChoice.GEMINI) { select(ADAIChoiceFix.GEMINI.toChoice()) }
+                ADAiChoiceRow(
+                    Icons.Outlined.AutoAwesome,
+                    "Gemini",
+                    "Gemini through your relay",
+                    selected == ADAiChoice.GEMINI,
+                ) { select(ADAiChoice.GEMINI) }
                 ADAiSectionDivider()
-                ADAiChoiceRow(Icons.Outlined.Cloud, "OpenAI / Codex", "OpenAI-compatible route through your relay", selected == ADAiChoice.OPENAI_CODEX) { select(ADAIChoiceFix.OPENAI_CODEX.toChoice()) }
+                ADAiChoiceRow(
+                    Icons.Outlined.Cloud,
+                    "OpenAI / Codex",
+                    "OpenAI-compatible route through your relay",
+                    selected == ADAiChoice.OPENAI_CODEX,
+                ) { select(ADAiChoice.OPENAI_CODEX) }
                 ADAiSectionDivider()
-                ADAiChoiceRow(Icons.Outlined.Computer, "Local AI", "Run a configured model on this phone", selected == ADAiChoice.LOCAL) { select(ADAIChoiceFix.LOCAL.toChoice()) }
+                ADAiChoiceRow(
+                    Icons.Outlined.Computer,
+                    "Local AI",
+                    "Run a configured model on this phone",
+                    selected == ADAiChoice.LOCAL,
+                ) { select(ADAiChoice.LOCAL) }
             }
         }
 
@@ -183,14 +198,6 @@ internal fun ADNativeAiScreen(
             }
         }
     }
-}
-
-/* Kept private to make the call sites visually compact without changing the public provider enum. */
-private enum class ADAIChoiceFix { GEMINI, OPENAI_CODEX, LOCAL }
-private fun ADAIChoiceFix.toChoice(): ADAiChoice = when (this) {
-    ADAIChoiceFix.GEMINI -> ADAiChoice.GEMINI
-    ADAIChoiceFix.OPENAI_CODEX -> ADAiChoice.OPENAI_CODEX
-    ADAIChoiceFix.LOCAL -> ADAiChoice.LOCAL
 }
 
 @Composable
