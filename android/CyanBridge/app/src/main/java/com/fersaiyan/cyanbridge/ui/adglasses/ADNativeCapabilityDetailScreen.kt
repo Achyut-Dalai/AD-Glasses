@@ -21,7 +21,6 @@ import androidx.compose.material.icons.outlined.FolderOpen
 import androidx.compose.material.icons.outlined.GraphicEq
 import androidx.compose.material.icons.outlined.Info
 import androidx.compose.material.icons.outlined.Lock
-import androidx.compose.material.icons.outlined.Mic
 import androidx.compose.material.icons.outlined.Timeline
 import androidx.compose.material.icons.rounded.Translate
 import androidx.compose.material3.HorizontalDivider
@@ -270,7 +269,6 @@ private fun ADAutomation.capabilityIcon(): ImageVector = when (this) {
     ADAutomation.TRANSLATOR -> Icons.Rounded.Translate
     ADAutomation.ERRAND_BRAIN -> Icons.Outlined.EventRepeat
     ADAutomation.AUTO_DIARY -> Icons.Outlined.AutoStories
-    ADAutomation.AUTO_AUDIO -> Icons.Outlined.Mic
     ADAutomation.VISUAL_DIARY -> Icons.Outlined.Timeline
 }
 
@@ -280,7 +278,6 @@ internal fun ADAutomation.toAssistantCapability(): AssistantCapability = when (t
     ADAutomation.LIVE_CAPTIONS -> AssistantCapability.LIVE_CAPTIONS
     ADAutomation.ERRAND_BRAIN -> AssistantCapability.ERRAND_BRAIN
     ADAutomation.AUTO_DIARY -> AssistantCapability.AUTO_DIARY
-    ADAutomation.AUTO_AUDIO -> AssistantCapability.AUTO_AUDIO
     ADAutomation.VISUAL_DIARY -> AssistantCapability.VISUAL_DIARY
     ADAutomation.LOCAL_AGENT -> AssistantCapability.LOCAL_AGENT
 }
@@ -292,6 +289,5 @@ private fun ADAutomation.nativeOutput(): String = when (this) {
     ADAutomation.TRANSLATOR -> "Translated speech"
     ADAutomation.ERRAND_BRAIN -> "Scheduled tasks and reminders"
     ADAutomation.AUTO_DIARY -> "Private daily note"
-    ADAutomation.AUTO_AUDIO -> "Audio and transcript"
     ADAutomation.VISUAL_DIARY -> "Visual timeline"
 }
