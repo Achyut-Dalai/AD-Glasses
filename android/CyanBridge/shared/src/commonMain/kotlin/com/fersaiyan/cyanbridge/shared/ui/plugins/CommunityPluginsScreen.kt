@@ -17,10 +17,6 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.rememberScrollState
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.outlined.Add
-import androidx.compose.material.icons.outlined.Refresh
-import androidx.compose.material.icons.outlined.Settings
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
@@ -91,11 +87,11 @@ fun CommunityPluginsScreen(
         contentWindowInsets = WindowInsets.safeDrawing,
         topBar = {
             TopAppBar(
-                 title = { Text(stringResource(Res.string.plugins_title)) },
+                title = { Text(stringResource(Res.string.plugins_title)) },
                 navigationIcon = {
                     if (onNavigateBack != null) {
                         IconButton(onClick = onNavigateBack) {
-                            Icon(AppIcon.Back.imageVector(), contentDescription = "Back")
+                            Icon(AppIcon.Back.imageVector(), contentDescription = stringResource(Res.string.action_back))
                         }
                     }
                 },
@@ -108,8 +104,8 @@ fun CommunityPluginsScreen(
                             CircularProgressIndicator(modifier = Modifier.size(20.dp), strokeWidth = 2.dp)
                         } else {
                             Icon(
-                                imageVector = Icons.Outlined.Refresh,
-                                 contentDescription = stringResource(Res.string.plugins_refresh),
+                                imageVector = AppIcon.Sync.imageVector(),
+                                contentDescription = stringResource(Res.string.plugins_refresh),
                             )
                         }
                     }
@@ -129,7 +125,7 @@ fun CommunityPluginsScreen(
                                     contentDescription = null,
                                 )
                             },
-                             label = { Text(localizedDestinationLabel(destination)) },
+                            label = { Text(localizedDestinationLabel(destination)) },
                         )
                     }
                 }
@@ -138,8 +134,8 @@ fun CommunityPluginsScreen(
         floatingActionButton = {
             FloatingActionButton(onClick = onPublishPlugin) {
                 Icon(
-                    imageVector = Icons.Outlined.Add,
-                     contentDescription = stringResource(Res.string.plugins_publish),
+                    imageVector = AppIcon.Add.imageVector(),
+                    contentDescription = stringResource(Res.string.plugins_publish),
                 )
             }
         },
@@ -161,7 +157,7 @@ fun CommunityPluginsScreen(
             item { PluginHero() }
             item {
                 Text(
-                     text = "Community plugins are optional. Review permissions before enabling a workflow.",
+                    text = "Community plugins are optional. Review permissions before enabling a workflow.",
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
@@ -182,7 +178,7 @@ fun CommunityPluginsScreen(
                     onWindowSelected = onWindowSelected,
                 )
             }
-             item { PluginSectionLabel(stringResource(Res.string.plugins_trending)) }
+            item { PluginSectionLabel(stringResource(Res.string.plugins_trending)) }
             itemsIndexed(trending, key = { _, plugin -> "trending-${plugin.title}" }) { index, plugin ->
                 PluginCard(
                     plugin = plugin,
@@ -196,7 +192,7 @@ fun CommunityPluginsScreen(
                     onOpenPlugin = { onOpenCommunityPlugin(plugin) },
                 )
             }
-             item { PluginSectionLabel(stringResource(Res.string.plugins_top_voted)) }
+            item { PluginSectionLabel(stringResource(Res.string.plugins_top_voted)) }
             itemsIndexed(topVoted, key = { _, plugin -> "voted-${plugin.title}" }) { index, plugin ->
                 PluginCard(
                     plugin = plugin,
@@ -210,7 +206,7 @@ fun CommunityPluginsScreen(
                     onOpenPlugin = { onOpenCommunityPlugin(plugin) },
                 )
             }
-             item { PluginSectionLabel(stringResource(Res.string.plugins_top_downloaded)) }
+            item { PluginSectionLabel(stringResource(Res.string.plugins_top_downloaded)) }
             itemsIndexed(topDownloaded, key = { _, plugin -> "downloaded-${plugin.title}" }) { index, plugin ->
                 PluginCard(
                     plugin = plugin,
@@ -261,12 +257,12 @@ private fun PluginHero() {
             verticalArrangement = Arrangement.spacedBy(6.dp),
         ) {
             Text(
-                 text = stringResource(Res.string.plugins_hero_title),
+                text = stringResource(Res.string.plugins_hero_title),
                 style = MaterialTheme.typography.titleLarge,
                 color = MaterialTheme.colorScheme.onPrimaryContainer,
             )
             Text(
-                 text = stringResource(Res.string.plugins_hero_body),
+                text = stringResource(Res.string.plugins_hero_body),
                 style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.onPrimaryContainer,
             )
@@ -328,8 +324,8 @@ private fun NativePluginCard(
                 if (plugin.hasSettings) {
                     IconButton(onClick = onOpenSettings) {
                         Icon(
-                            imageVector = Icons.Outlined.Settings,
-                             contentDescription = stringResource(Res.string.plugins_settings_content_description, plugin.title),
+                            imageVector = AppIcon.Settings.imageVector(),
+                            contentDescription = stringResource(Res.string.plugins_settings_content_description, plugin.title),
                         )
                     }
                 }
@@ -345,7 +341,7 @@ private fun PeriodFilter(
 ) {
     Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
         Text(
-             text = stringResource(Res.string.plugins_filter_sort),
+            text = stringResource(Res.string.plugins_filter_sort),
             style = MaterialTheme.typography.labelLarge,
             color = MaterialTheme.colorScheme.primary,
         )
@@ -357,7 +353,7 @@ private fun PeriodFilter(
                 FilterChip(
                     selected = window == selectedWindow,
                     onClick = { onWindowSelected(window) },
-                     label = { Text(localizedPluginTimeWindow(window)) },
+                    label = { Text(localizedPluginTimeWindow(window)) },
                 )
             }
         }
@@ -411,7 +407,7 @@ private fun PluginCard(
                 }
             }
             Text(
-                 text = stringResource(Res.string.plugins_by_author, plugin.author),
+                text = stringResource(Res.string.plugins_by_author, plugin.author),
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
@@ -425,19 +421,19 @@ private fun PluginCard(
                 horizontalArrangement = Arrangement.SpaceBetween,
             ) {
                 Text(
-                     text = stringResource(Res.string.plugins_downloads, formatCount(plugin.downloads(window))),
+                    text = stringResource(Res.string.plugins_downloads, formatCount(plugin.downloads(window))),
                     style = MaterialTheme.typography.labelSmall,
                 )
                 Text(
-                     text = stringResource(Res.string.plugins_votes, formatCount(plugin.votes(window))),
+                    text = stringResource(Res.string.plugins_votes, formatCount(plugin.votes(window))),
                     style = MaterialTheme.typography.labelSmall,
                 )
                 Text(
-                     text = stringResource(
-                         Res.string.plugins_trend,
-                         localizedPluginTimeWindow(window),
-                         plugin.trend(window),
-                     ),
+                    text = stringResource(
+                        Res.string.plugins_trend,
+                        localizedPluginTimeWindow(window),
+                        plugin.trend(window),
+                    ),
                     style = MaterialTheme.typography.labelSmall,
                     color = MaterialTheme.colorScheme.primary,
                 )
@@ -460,7 +456,7 @@ private fun PluginCard(
                         onClick = onOpenPlugin,
                         modifier = Modifier.fillMaxWidth(),
                     ) {
-                         Text(stringResource(Res.string.plugins_open_tasker))
+                        Text(stringResource(Res.string.plugins_open_tasker))
                     }
                 }
                 !plugin.downloadUrl.isNullOrBlank() -> {
@@ -468,7 +464,7 @@ private fun PluginCard(
                         onClick = onOpenPlugin,
                         modifier = Modifier.fillMaxWidth(),
                     ) {
-                         Text(stringResource(Res.string.plugins_download))
+                        Text(stringResource(Res.string.plugins_download))
                     }
                 }
             }
