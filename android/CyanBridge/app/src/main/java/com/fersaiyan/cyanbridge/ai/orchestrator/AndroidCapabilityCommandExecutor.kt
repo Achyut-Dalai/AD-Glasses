@@ -54,7 +54,7 @@ class AndroidCapabilityCommandExecutor(
     }
 
     fun execute(command: AssistantCapabilityCommand): AssistantResult {
-        return runCatching {
+        val result = runCatching {
             when (command.capability) {
                 AssistantCapability.TRANSLATOR -> toggleVoice(
                     command,
@@ -139,6 +139,8 @@ class AndroidCapabilityCommandExecutor(
                 richText = "Capability command failed: ${error.message ?: error::class.java.simpleName}",
             )
         }
+        AssistantCapabilityRuntimeEvents.notifyChanged()
+        return result
     }
 
     private fun toggleVoice(
