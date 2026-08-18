@@ -4,6 +4,7 @@ import android.app.Activity
 import android.content.Context
 import android.content.Intent
 import android.os.Bundle
+import com.fersaiyan.cyanbridge.MainActivity
 import com.fersaiyan.cyanbridge.ui.reactnative.ADReactNativeActivity
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -133,15 +134,16 @@ abstract class ADLegacyRouteRedirectActivity : Activity() {
             threadId = requestThreadId(intent),
             webSearchRequested = requestWebSearch(intent),
         )
-        startActivity(
-            Intent(this, ADReactNativeActivity::class.java).apply {
-                addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP)
-                putExtra(ADReactNativeActivity.EXTRA_INITIAL_ROUTE, destination.reactRoute())
-                request.prefill?.let { putExtra(ADReactNativeActivity.EXTRA_INITIAL_PREFILL, it) }
-                request.threadId?.let { putExtra(ADReactNativeActivity.EXTRA_INITIAL_THREAD_ID, it) }
-                putExtra(ADReactNativeActivity.EXTRA_INITIAL_WEB_SEARCH, request.webSearchRequested)
-            },
-        )
+        val runtime = Intent(this, MainActivity::class.java).apply {
+            addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP or Intent.FLAG_ACTIVITY_SINGLE_TOP)
+        }
+        val productShell = Intent(this, ADReactNativeActivity::class.java).apply {
+            putExtra(ADReactNativeActivity.EXTRA_INITIAL_ROUTE, destination.reactRoute())
+            request.prefill?.let { putExtra(ADReactNativeActivity.EXTRA_INITIAL_PREFILL, it) }
+            request.threadId?.let { putExtra(ADReactNativeActivity.EXTRA_INITIAL_THREAD_ID, it) }
+            putExtra(ADReactNativeActivity.EXTRA_INITIAL_WEB_SEARCH, request.webSearchRequested)
+        }
+        startActivities(arrayOf(runtime, productShell))
         finish()
         overridePendingTransition(0, 0)
     }
