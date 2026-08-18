@@ -39,7 +39,6 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.platform.ComposeView
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
@@ -48,19 +47,14 @@ import com.fersaiyan.cyanbridge.R
 import com.fersaiyan.cyanbridge.plugins.PluginVoicePermissions
 import com.fersaiyan.cyanbridge.shared.plugins.NativePluginIds
 import com.fersaiyan.cyanbridge.ui.CommunityPluginPrefs
-import com.fersaiyan.cyanbridge.ui.installComposeHostWithLegacyAdapter
 import com.fersaiyan.cyanbridge.ui.NativePluginShortcutPreference
 import com.fersaiyan.cyanbridge.ui.setThemedComposeContent
 
 class ErrandBrainSettingsActivity : AppCompatActivity() {
 
-    private lateinit var composeView: ComposeView
-
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        composeView = installComposeHostWithLegacyAdapter(R.layout.activity_errand_brain_settings)
-
-        setThemedComposeContent(composeView) {
+        setThemedComposeContent {
             ErrandBrainSettingsScreen(
                 onBack = ::finish,
                 onStartService = {
@@ -117,7 +111,6 @@ fun ErrandBrainSettingsScreen(
                 .verticalScroll(scrollState),
             verticalArrangement = Arrangement.spacedBy(12.dp),
         ) {
-            // Section: General
             SectionTitle(stringResource(R.string.compose_general))
             Card(
                 modifier = Modifier.fillMaxWidth(),
@@ -140,17 +133,12 @@ fun ErrandBrainSettingsScreen(
                                     NativePluginIds.ERRAND_BRAIN,
                                     newValue,
                                 )
-                                if (newValue) {
-                                    onStartService()
-                                } else {
-                                    onStopService()
-                                }
+                                if (newValue) onStartService() else onStopService()
                             },
                         )
                     }
 
                     Spacer(modifier = Modifier.height(12.dp))
-
                     Row(
                         modifier = Modifier.fillMaxWidth(),
                         horizontalArrangement = Arrangement.SpaceBetween,
@@ -167,7 +155,6 @@ fun ErrandBrainSettingsScreen(
                     }
 
                     Spacer(modifier = Modifier.height(8.dp))
-
                     Row(
                         modifier = Modifier.fillMaxWidth(),
                         horizontalArrangement = Arrangement.SpaceBetween,
@@ -191,7 +178,6 @@ fun ErrandBrainSettingsScreen(
                 pluginTitle = stringResource(R.string.compose_plugin_name_errand_brain),
             )
 
-            // Section: Reminders
             SectionTitle(stringResource(R.string.compose_reminders))
             Card(
                 modifier = Modifier.fillMaxWidth(),
@@ -224,7 +210,6 @@ fun ErrandBrainSettingsScreen(
                 }
             }
 
-            // Section: Defaults
             SectionTitle(stringResource(R.string.compose_defaults))
             Card(
                 modifier = Modifier.fillMaxWidth(),
@@ -254,7 +239,6 @@ fun ErrandBrainSettingsScreen(
                     }
 
                     Spacer(modifier = Modifier.height(12.dp))
-
                     Text(
                         stringResource(R.string.compose_default_category),
                         style = MaterialTheme.typography.bodyMedium,
@@ -279,7 +263,6 @@ fun ErrandBrainSettingsScreen(
                 }
             }
 
-            // Section: Custom Instructions
             SectionTitle(stringResource(R.string.compose_custom_instructions))
             Card(
                 modifier = Modifier.fillMaxWidth(),
@@ -301,8 +284,8 @@ fun ErrandBrainSettingsScreen(
                             }
                         },
                         modifier = Modifier.fillMaxWidth(),
-                         label = { Text(stringResource(R.string.compose_task_parsing_instructions)) },
-                         placeholder = { Text(stringResource(R.string.compose_task_parsing_hint)) },
+                        label = { Text(stringResource(R.string.compose_task_parsing_instructions)) },
+                        placeholder = { Text(stringResource(R.string.compose_task_parsing_hint)) },
                         minLines = 2,
                         maxLines = 4,
                         supportingText = { Text("${customPrompt.length}/1000") },
@@ -310,7 +293,6 @@ fun ErrandBrainSettingsScreen(
                 }
             }
 
-            // Section: History
             SectionTitle(stringResource(R.string.compose_task_history))
             Card(
                 modifier = Modifier.fillMaxWidth(),
@@ -333,7 +315,6 @@ fun ErrandBrainSettingsScreen(
                     )
 
                     Spacer(modifier = Modifier.height(8.dp))
-
                     Button(
                         onClick = {
                             ErrandBrainStore().clear(context)
