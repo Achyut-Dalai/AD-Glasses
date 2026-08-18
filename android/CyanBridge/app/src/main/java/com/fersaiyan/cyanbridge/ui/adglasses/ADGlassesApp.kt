@@ -105,7 +105,6 @@ fun ADGlassesApp(
                             onOpenDevice = { navigateTo(ADRoute.DEVICE_CENTER) },
                             onOpenSync = { navigateTo(ADRoute.SYNC) },
                             onOpenSettings = { navigateTo(ADRoute.SETTINGS) },
-                            onOpenTranslator = { openCapability(ADAutomation.TRANSLATOR) },
                             onOpenWebSearch = {
                                 conversationRequest = ADNavigationRequest(
                                     id = System.currentTimeMillis(),
@@ -115,7 +114,6 @@ fun ADGlassesApp(
                                 )
                                 showMainTab(ADTab.CHATS)
                             },
-                            onOpenPhoneControl = { showMainTab(ADTab.AI) },
                         )
                         ADTab.CHATS -> ADNativeConversationScreen(
                             navigationRequest = conversationRequest,
