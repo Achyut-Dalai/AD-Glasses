@@ -1,5 +1,6 @@
 package com.fersaiyan.cyanbridge.ui.adglasses
 
+import android.widget.Toast
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -17,21 +18,23 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.rounded.KeyboardArrowRight
 import androidx.compose.material.icons.outlined.BatteryFull
 import androidx.compose.material.icons.outlined.GraphicEq
 import androidx.compose.material.icons.outlined.Mic
 import androidx.compose.material.icons.outlined.PhotoCamera
-import androidx.compose.material.icons.outlined.Public
 import androidx.compose.material.icons.outlined.Storage
 import androidx.compose.material.icons.outlined.Sync
 import androidx.compose.material.icons.outlined.Videocam
 import androidx.compose.material.icons.outlined.Visibility
+import androidx.compose.material.icons.rounded.Translate
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Brush
@@ -40,14 +43,20 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.fersaiyan.cyanbridge.R
+import com.fersaiyan.cyanbridge.ai.orchestrator.AndroidCapabilityCommandExecutor
+import com.fersaiyan.cyanbridge.ai.orchestrator.AssistantCapability
+import com.fersaiyan.cyanbridge.ai.orchestrator.AssistantCapabilityAction
+import com.fersaiyan.cyanbridge.ai.orchestrator.AssistantCapabilityCommand
+import com.fersaiyan.cyanbridge.ai.orchestrator.AssistantCapabilityRuntimeEvents
 import com.fersaiyan.cyanbridge.devices.ADDeviceSupportPolicy
 import com.fersaiyan.cyanbridge.devices.DeviceProfileStore
 import com.fersaiyan.cyanbridge.shared.glasses.GlassesDashboardUiState
 
-/** Quiet control surface for the glasses. Capability state belongs on the AI page. */
+/** Glasses-first control surface. Everyday actions live here; configuration stays elsewhere. */
 @Composable
 internal fun ADHomeSurface(
     state: GlassesDashboardUiState,
@@ -55,12 +64,25 @@ internal fun ADHomeSurface(
     onOpenDevice: () -> Unit,
     onOpenSync: () -> Unit,
     onOpenSettings: () -> Unit,
-    onOpenWebSearch: () -> Unit,
 ) {
     val context = LocalContext.current
     val profile = DeviceProfileStore.loadLastSelected(context)
         ?.takeIf { ADDeviceSupportPolicy.isPairable(it.selectedClass) }
     val device = buildADDevicePresentation(state, profile)
+    val runtimeVersion by AssistantCapabilityRuntimeEvents.version.collectAsState()
+    val capabilityExecutor = remember(context, runtimeVersion) { AndroidCapabilityCommandExecutor(context) }
+    val translateActive = capabilityExecutor.isActive(AssistantCapability.TRANSLATOR)
+    val soundbitesActive = capabilityExecutor.isActive(AssistantCapability.MEETING_NOTES)
+
+    fun toggleCapability(capability: AssistantCapability) {
+        val action = if (capabilityExecutor.isActive(capability)) {
+            AssistantCapabilityAction.STOP
+        } else {
+            AssistantCapabilityAction.START
+        }
+        val result = capabilityExecutor.execute(AssistantCapabilityCommand(capability, action))
+        Toast.makeText(context, result.spokenText, Toast.LENGTH_SHORT).show()
+    }
 
     Column(Modifier.fillMaxSize()) {
         ADTopBar(showBrand = true, showSettings = true, onSettings = onOpenSettings)
@@ -96,7 +118,6 @@ internal fun ADHomeSurface(
                                 icon = Icons.Outlined.GraphicEq,
                                 title = "Audio recording",
                                 detail = state.meeting.bannerLabel.ifBlank { state.meeting.sourceLabel },
-                                status = "LIVE",
                                 onClick = host.onStopRecording,
                             )
                         }
@@ -105,7 +126,6 @@ internal fun ADHomeSurface(
                                 icon = Icons.Outlined.Sync,
                                 title = "Media sync",
                                 detail = state.transfer.detail,
-                                status = "ACTIVE",
                                 onClick = onOpenSync,
                             )
                         }
@@ -117,15 +137,15 @@ internal fun ADHomeSurface(
                 Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
                     Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
                         ADHomeAction(
-                            title = "Ask",
-                            detail = "Voice question",
+                            title = "Ask AI",
+                            detail = "Ask by voice",
                             icon = Icons.Outlined.Mic,
                             modifier = Modifier.weight(1f),
                             onClick = host.onVoiceQuestion,
                         )
                         ADHomeAction(
                             title = "Photo",
-                            detail = "Capture now",
+                            detail = "Take a photo",
                             icon = Icons.Outlined.PhotoCamera,
                             modifier = Modifier.weight(1f),
                             onClick = host.onCapturePhoto,
@@ -140,9 +160,28 @@ internal fun ADHomeSurface(
                             onClick = host.onToggleVideo,
                         )
                         ADHomeAction(
-                            title = if (state.meeting.isRecording) "Stop audio" else "Record audio",
-                            detail = if (state.meeting.isRecording) "Recording now" else "Save a recording",
+                            title = "Translate",
+                            detail = "Live conversation",
+                            icon = Icons.Rounded.Translate,
+                            active = translateActive,
+                            modifier = Modifier.weight(1f),
+                            onClick = { toggleCapability(AssistantCapability.TRANSLATOR) },
+                        )
+                    }
+                    Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                        ADHomeAction(
+                            title = "Soundbites",
+                            detail = "Turn speech into notes",
                             icon = Icons.Outlined.GraphicEq,
+                            active = soundbitesActive,
+                            modifier = Modifier.weight(1f),
+                            onClick = { toggleCapability(AssistantCapability.MEETING_NOTES) },
+                        )
+                        ADHomeAction(
+                            title = "Audio",
+                            detail = if (state.meeting.isRecording) "Stop recording" else "Start recording",
+                            icon = Icons.Outlined.GraphicEq,
+                            active = state.meeting.isRecording,
                             modifier = Modifier.weight(1f),
                             onClick = if (state.meeting.isRecording) host.onStopRecording else host.onStartRecording,
                         )
@@ -151,20 +190,7 @@ internal fun ADHomeSurface(
             }
 
             item {
-                Column(verticalArrangement = Arrangement.spacedBy(1.dp)) {
-                    ADHomeLink(
-                        icon = Icons.Outlined.Visibility,
-                        title = "Ask what I see",
-                        detail = "Use the glasses camera with AI",
-                        onClick = host.onImageQuestion,
-                    )
-                    ADHomeLink(
-                        icon = Icons.Outlined.Public,
-                        title = "Search web",
-                        detail = "Start a fresh web-backed question",
-                        onClick = onOpenWebSearch,
-                    )
-                }
+                ADSmartLensCard(onClick = host.onImageQuestion)
             }
         }
     }
@@ -257,21 +283,26 @@ private fun ADHomeAction(
     detail: String,
     icon: ImageVector,
     modifier: Modifier = Modifier,
+    active: Boolean = false,
     onClick: () -> Unit,
 ) {
+    val container = if (active) ADColors.SurfaceSubtle else ADColors.Surface
+    val iconContainer = if (active) ADColors.Ink else ADColors.SurfaceSubtle
+    val iconColor = if (active) ADColors.Surface else ADColors.Ink
+
     Column(
         modifier = modifier
             .heightIn(min = 116.dp)
-            .background(ADColors.Surface, RoundedCornerShape(20.dp))
+            .background(container, RoundedCornerShape(20.dp))
             .clickable(onClick = onClick)
             .padding(15.dp),
         verticalArrangement = Arrangement.SpaceBetween,
     ) {
         Box(
-            Modifier.size(40.dp).background(ADColors.SurfaceSubtle, RoundedCornerShape(12.dp)),
+            Modifier.size(40.dp).background(iconContainer, RoundedCornerShape(12.dp)),
             contentAlignment = Alignment.Center,
         ) {
-            Icon(icon, null, tint = ADColors.Ink, modifier = Modifier.size(21.dp))
+            Icon(icon, null, tint = iconColor, modifier = Modifier.size(21.dp))
         }
         Spacer(Modifier.height(12.dp))
         Text(title, style = MaterialTheme.typography.titleMedium, maxLines = 1)
@@ -287,25 +318,45 @@ private fun ADHomeAction(
 }
 
 @Composable
-private fun ADHomeLink(
-    icon: ImageVector,
-    title: String,
-    detail: String,
-    onClick: () -> Unit,
-) {
+private fun ADSmartLensCard(onClick: () -> Unit) {
     Row(
-        modifier = Modifier.fillMaxWidth().clickable(onClick = onClick).padding(vertical = 12.dp, horizontal = 2.dp),
+        modifier = Modifier
+            .fillMaxWidth()
+            .heightIn(min = 128.dp)
+            .background(
+                Brush.linearGradient(listOf(Color.White, ADColors.SurfaceSubtle)),
+                RoundedCornerShape(24.dp),
+            )
+            .clickable(onClick = onClick)
+            .padding(horizontal = 18.dp, vertical = 17.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
         Box(
-            Modifier.size(40.dp).background(ADColors.SurfaceSubtle, RoundedCornerShape(11.dp)),
+            modifier = Modifier
+                .size(68.dp)
+                .background(ADColors.Ink, RoundedCornerShape(22.dp)),
             contentAlignment = Alignment.Center,
-        ) { Icon(icon, null, tint = ADColors.Ink, modifier = Modifier.size(20.dp)) }
-        Column(Modifier.padding(start = 12.dp).weight(1f)) {
-            Text(title, style = MaterialTheme.typography.titleMedium)
-            Text(detail, style = MaterialTheme.typography.bodySmall, color = ADColors.Muted)
+        ) {
+            Icon(
+                Icons.Outlined.Visibility,
+                contentDescription = null,
+                tint = Color.White,
+                modifier = Modifier.size(30.dp),
+            )
         }
-        Icon(Icons.AutoMirrored.Rounded.KeyboardArrowRight, null, tint = ADColors.Muted, modifier = Modifier.size(22.dp))
+        Column(Modifier.padding(start = 17.dp).weight(1f)) {
+            Text(
+                "Smart Lens",
+                style = MaterialTheme.typography.titleLarge,
+                fontWeight = FontWeight.SemiBold,
+            )
+            Spacer(Modifier.height(5.dp))
+            Text(
+                "Ask AI about what your glasses see.",
+                style = MaterialTheme.typography.bodyMedium,
+                color = ADColors.Muted,
+            )
+        }
     }
 }
 
@@ -314,7 +365,6 @@ private fun ADLiveRow(
     icon: ImageVector,
     title: String,
     detail: String,
-    status: String,
     onClick: () -> Unit,
 ) {
     Row(
@@ -333,6 +383,5 @@ private fun ADLiveRow(
             Text(title, style = MaterialTheme.typography.titleMedium)
             Text(detail, style = MaterialTheme.typography.bodySmall, color = ADColors.Muted, maxLines = 1)
         }
-        ADStatusChip(status, ADStatusTone.SUCCESS)
     }
 }
