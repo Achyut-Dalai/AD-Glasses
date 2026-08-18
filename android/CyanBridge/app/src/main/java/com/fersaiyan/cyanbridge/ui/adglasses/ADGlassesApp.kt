@@ -33,7 +33,7 @@ fun ADGlassesApp(
     var routeStack by remember { mutableStateOf(listOf(ADRoute.MAIN)) }
     var selectedAutomation by remember { mutableStateOf(ADAutomation.TRANSLATOR) }
     var conversationRequest by remember { mutableStateOf<ADNavigationRequest?>(null) }
-    var themeStyle by remember(context) { mutableStateOf(ADThemePreferences.get(context)) }
+    var onboardingComplete by remember(context) { mutableStateOf(ADWelcomePreferences.isComplete(context)) }
 
     val route = routeStack.last()
     val navigateTo: (ADRoute) -> Unit = { destination ->
@@ -80,9 +80,24 @@ fun ADGlassesApp(
         ADNavigationRequestStore.consume(context, request.id)
     }
 
-    BackHandler(enabled = route != ADRoute.MAIN) { navigateBack() }
+    BackHandler(enabled = onboardingComplete && route != ADRoute.MAIN) { navigateBack() }
 
-    ADGlassesTheme(style = themeStyle) {
+    ADGlassesTheme {
+        if (!onboardingComplete) {
+            ADWelcomeScreen(
+                onStartSetup = {
+                    ADWelcomePreferences.markComplete(context)
+                    onboardingComplete = true
+                    host.onOpenDeviceSetup()
+                },
+                onExplore = {
+                    ADWelcomePreferences.markComplete(context)
+                    onboardingComplete = true
+                },
+            )
+            return@ADGlassesTheme
+        }
+
         Scaffold(
             modifier = Modifier.fillMaxSize(),
             containerColor = MaterialTheme.colorScheme.background,
@@ -146,11 +161,6 @@ fun ADGlassesApp(
                     ADRoute.SYNC -> ADSyncScreen(dashboardState, host, navigateBack)
                     ADRoute.SETTINGS -> ADNativeSettingsHubScreen(
                         state = dashboardState,
-                        themeStyle = themeStyle,
-                        onThemeStyleChanged = { style ->
-                            themeStyle = style
-                            ADThemePreferences.set(context, style)
-                        },
                         onBack = navigateBack,
                         onDevice = { navigateTo(ADRoute.DEVICE_CENTER) },
                         onPrivacy = { navigateTo(ADRoute.PRIVACY) },
@@ -171,7 +181,7 @@ fun ADGlassesApp(
                         onBack = navigateBack,
                         onDevice = { navigateTo(ADRoute.DEVICE_CENTER) },
                     )
-                    ADRoute.ABOUT -> ADAboutScreen(navigateBack)
+                    ADRoute.ABOUT -> ADMinimalAboutScreen(navigateBack)
                     ADRoute.FIRMWARE -> ADFirmwareScreen(dashboardState, host, navigateBack)
                     ADRoute.CAPABILITY_DETAIL -> ADNativeCapabilityDetailScreen(
                         automation = selectedAutomation,
