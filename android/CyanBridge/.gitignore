@@ -24,14 +24,10 @@ keystore.properties
 # APK files
 *.apk
 
-# Node modules
-node_modules/
-
 # Build artifacts
 */build/
 build/
 moonshine-voice/build/
-node_modules/
 
 # Local model artifacts (never commit weights)
 *.gguf
