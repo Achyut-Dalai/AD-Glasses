@@ -4,7 +4,8 @@ import android.app.Activity
 import android.content.Context
 import android.content.ContextWrapper
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.MaterialExpressiveTheme
+import androidx.compose.material3.MotionScheme
 import androidx.compose.material3.Shapes
 import androidx.compose.material3.Typography
 import androidx.compose.material3.lightColorScheme
@@ -208,8 +209,8 @@ fun ADGlassesTheme(
     if (!view.isInEditMode) {
         SideEffect {
             context.findActivity()?.window?.let { window ->
-                // System-bar colours are intentionally not set: targetSdk 35 is edge-to-edge.
-                // Only icon contrast is controlled through the non-deprecated insets controller.
+                // API 37 targets edge-to-edge. System-bar colours are not mutated;
+                // only icon contrast is controlled through the insets controller.
                 WindowCompat.getInsetsController(window, view).apply {
                     isAppearanceLightStatusBars = true
                     isAppearanceLightNavigationBars = true
@@ -218,12 +219,9 @@ fun ADGlassesTheme(
         }
     }
 
-    // Material 3 Expressive is applied through the pilot's bolder typography, shape
-    // hierarchy and expressive Material components. The dedicated
-    // MaterialExpressiveTheme/MotionScheme APIs require the Android 37 / AGP 9.1
-    // toolchain, so the product stays on its supported Android 36 toolchain here.
-    MaterialTheme(
+    MaterialExpressiveTheme(
         colorScheme = scheme,
+        motionScheme = MotionScheme.expressive(),
         shapes = shapes,
         typography = ADTypography,
         content = content,
