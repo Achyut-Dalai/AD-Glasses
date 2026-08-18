@@ -22,7 +22,7 @@ class ExternalAssistantAutomationPolicyTest {
     }
 
     @Test
-    fun unsupportedDefaultAssistantIsRejected() {
+    fun unsupportedDefaultAssistantIsRejectedForImages() {
         val capability = readyCapability(ImageAutomationTarget.NONE).copy(targetPackage = null)
 
         assertEquals(
@@ -32,12 +32,13 @@ class ExternalAssistantAutomationPolicyTest {
     }
 
     @Test
-    fun lockedPhoneFailsImmediately() {
+    fun lockedPhoneStillAllowsBackgroundVoiceTaskerHandoff() {
         val capability = readyCapability(ImageAutomationTarget.GEMINI).copy(phoneLocked = true)
 
+        assertNull(ExternalAssistantAutomationPolicy.voiceBlockingReason(capability))
         assertEquals(
-            "Unlock your phone before using Tasker assistant automation.",
-            ExternalAssistantAutomationPolicy.voiceBlockingReason(capability),
+            "Unlock your phone before using external image automation.",
+            ExternalAssistantAutomationPolicy.imageBlockingReason(capability),
         )
     }
 
