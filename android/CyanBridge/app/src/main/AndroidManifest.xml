@@ -94,6 +94,14 @@
                 <action android:name="android.intent.action.MAIN" />
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
+            <!-- External wearable callbacks enter through the RN launcher. WelcomeActivity
+                 forwards the URI to the hidden native runtime and keeps React Native visible. -->
+            <intent-filter>
+                <action android:name="android.intent.action.VIEW" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.BROWSABLE" />
+                <data android:scheme="cyanbridge" />
+            </intent-filter>
         </activity>
 
         <activity
@@ -104,16 +112,8 @@
 
         <activity
             android:name=".MainActivity"
-            android:exported="true"
-            android:label="@string/app_name">
-            <!-- Callback scheme retained for the future Meta registration path. -->
-            <intent-filter>
-                <action android:name="android.intent.action.VIEW" />
-                <category android:name="android.intent.category.DEFAULT" />
-                <category android:name="android.intent.category.BROWSABLE" />
-                <data android:scheme="cyanbridge" />
-            </intent-filter>
-        </activity>
+            android:exported="false"
+            android:label="@string/app_name" />
 
         <activity
             android:name=".ui.DeviceBindActivity"
