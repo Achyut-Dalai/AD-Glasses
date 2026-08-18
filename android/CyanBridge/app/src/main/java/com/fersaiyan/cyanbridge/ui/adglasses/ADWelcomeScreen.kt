@@ -26,7 +26,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Brush
-import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.ColorFilter
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
@@ -46,9 +46,9 @@ fun ADWelcomeScreen(
             .background(
                 Brush.verticalGradient(
                     listOf(
-                        Color(0xFFFCFCFD),
+                        ADColors.HeroStart,
                         ADColors.Background,
-                        Color(0xFFF1F1F3),
+                        ADColors.HeroEnd,
                     ),
                 ),
             )
@@ -59,9 +59,7 @@ fun ADWelcomeScreen(
             modifier = Modifier.fillMaxWidth().padding(top = 24.dp),
             verticalAlignment = Alignment.CenterVertically,
         ) {
-            Box(
-                modifier = Modifier.size(9.dp).background(ADColors.Ink, CircleShape),
-            )
+            Box(modifier = Modifier.size(9.dp).background(ADColors.Ink, CircleShape))
             Text(
                 text = "AD GLASSES",
                 modifier = Modifier.padding(start = 9.dp),
@@ -70,9 +68,7 @@ fun ADWelcomeScreen(
             )
         }
 
-        Column(
-            modifier = Modifier.fillMaxWidth().padding(top = 34.dp),
-        ) {
+        Column(modifier = Modifier.fillMaxWidth().padding(top = 34.dp)) {
             Text(
                 text = "Your glasses.",
                 color = ADColors.Ink,
@@ -115,17 +111,17 @@ fun ADWelcomeScreen(
                 .background(
                     Brush.radialGradient(
                         listOf(
-                            Color.White,
-                            Color(0xFFF1F2F4),
-                            Color(0xFFE7E9ED),
+                            ADColors.HeroStart,
+                            ADColors.HeroMiddle,
+                            ADColors.HeroEnd,
                         ),
                     ),
-                    RoundedCornerShape(26.dp),
+                    RoundedCornerShape(28.dp),
                 )
                 .border(
                     width = 1.dp,
                     color = ADColors.Outline.copy(alpha = 0.38f),
-                    shape = RoundedCornerShape(26.dp),
+                    shape = RoundedCornerShape(28.dp),
                 )
                 .padding(horizontal = 10.dp, vertical = 8.dp),
             contentAlignment = Alignment.Center,
@@ -135,23 +131,27 @@ fun ADWelcomeScreen(
                 contentDescription = "Smart glasses",
                 modifier = Modifier.fillMaxSize(),
                 contentScale = ContentScale.Fit,
+                colorFilter = if (ADColors.IsDark) ColorFilter.tint(ADColors.Ink.copy(alpha = 0.88f)) else null,
             )
         }
 
         Spacer(Modifier.size(22.dp))
         Button(
             onClick = onStartSetup,
-            modifier = Modifier.fillMaxWidth().heightIn(min = 52.dp),
-            colors = ButtonDefaults.buttonColors(containerColor = ADColors.Ink),
-            shape = RoundedCornerShape(15.dp),
+            modifier = Modifier.fillMaxWidth().heightIn(min = 54.dp),
+            colors = ButtonDefaults.buttonColors(
+                containerColor = ADColors.Ink,
+                contentColor = ADColors.Surface,
+            ),
+            shape = RoundedCornerShape(18.dp),
         ) {
             Text("Connect glasses")
         }
         Spacer(Modifier.size(10.dp))
         OutlinedButton(
             onClick = onExplore,
-            modifier = Modifier.fillMaxWidth().heightIn(min = 50.dp),
-            shape = RoundedCornerShape(15.dp),
+            modifier = Modifier.fillMaxWidth().heightIn(min = 52.dp),
+            shape = RoundedCornerShape(18.dp),
         ) {
             Text("Continue without glasses")
         }
