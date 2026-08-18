@@ -113,7 +113,10 @@ fun ADGlassesPairingScreen(
                             Button(
                                 onClick = onScan,
                                 modifier = Modifier.fillMaxWidth().heightIn(min = 50.dp),
-                                colors = ButtonDefaults.buttonColors(containerColor = ADColors.Ink),
+                                colors = ButtonDefaults.buttonColors(
+                                    containerColor = ADColors.Ink,
+                                    contentColor = ADColors.Surface,
+                                ),
                             ) {
                                 Icon(Icons.Outlined.Refresh, contentDescription = null, modifier = Modifier.size(19.dp))
                                 Spacer(Modifier.size(8.dp))
@@ -179,7 +182,7 @@ private fun ADScanVisual(isScanning: Boolean, found: Boolean) {
             modifier = Modifier.size(66.dp),
             shape = CircleShape,
             color = ADColors.Ink,
-            contentColor = androidx.compose.ui.graphics.Color.White,
+            contentColor = ADColors.Surface,
         ) {
             Box(contentAlignment = Alignment.Center) {
                 Icon(
