@@ -67,7 +67,11 @@ class MemoMindBleScanner(
 
         val scanner: BluetoothLeScanner
         try {
-            scanner = adapter.bluetoothLeScanner
+            scanner = adapter.bluetoothLeScanner ?: run {
+                Log.w(TAG, "BluetoothLeScanner is unavailable – cannot scan")
+                close()
+                return@callbackFlow
+            }
         } catch (e: SecurityException) {
             Log.e(TAG, "SecurityException getting bluetoothLeScanner", e)
             close(e)
