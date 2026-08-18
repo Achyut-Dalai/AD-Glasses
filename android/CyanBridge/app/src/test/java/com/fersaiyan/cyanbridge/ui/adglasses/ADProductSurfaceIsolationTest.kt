@@ -17,8 +17,8 @@ class ADProductSurfaceIsolationTest {
             ".ui.ChatThreadActivity" to ".ui.adglasses.ADConversationsRedirectActivity",
             ".ui.SettingsActivity" to ".ui.adglasses.ADSettingsRedirectActivity",
             ".ui.appearance.AppearanceActivity" to ".ui.adglasses.ADSettingsRedirectActivity",
-            ".ui.CommunityPluginsActivity" to ".ui.adglasses.ADModesRedirectActivity",
-            ".ui.PublishPluginActivity" to ".ui.adglasses.ADModesRedirectActivity",
+            ".ui.CommunityPluginsActivity" to ".ui.adglasses.ADAiRedirectActivity",
+            ".ui.PublishPluginActivity" to ".ui.adglasses.ADAiRedirectActivity",
             ".ui.notes.NotesListActivity" to ".ui.adglasses.ADNotesRedirectActivity",
             ".ui.notes.NoteDetailActivity" to ".ui.adglasses.ADNotesRedirectActivity",
             ".ui.recordings.RecordingsListActivity" to ".ui.adglasses.ADRecordingsRedirectActivity",
@@ -70,6 +70,7 @@ class ADProductSurfaceIsolationTest {
             "ADModeNativeModel.kt",
             "ADPrimarySurfaces.kt",
             "ADModesScreen.kt",
+            "ADNativeModeDetailScreen.kt",
         ).forEach { obsolete ->
             assertFalse("$obsolete is not part of the current AD product surface", File(uiDir, obsolete).exists())
         }
@@ -78,6 +79,7 @@ class ADProductSurfaceIsolationTest {
         assertTrue(File(uiDir, "ADNativeConversationScreen.kt").isFile)
         assertTrue(File(uiDir, "ADNativeLibraryScreens.kt").isFile)
         assertTrue(File(uiDir, "ADNativeAiScreen.kt").isFile)
+        assertTrue(File(uiDir, "ADNativeCapabilityDetailScreen.kt").isFile)
         assertTrue(File(uiDir, "ADAssistantAppsScreen.kt").isFile)
         assertTrue(File(uiDir, "ADNativeSettingsHubScreen.kt").isFile)
         assertTrue(File(uiDir, "ADSyncScreen.kt").isFile)
@@ -115,6 +117,7 @@ class ADProductSurfaceIsolationTest {
 
         assertTrue("AI should surface Translate", ai.contains("\"Translate\""))
         assertFalse("AI should not show a redundant Capabilities heading", ai.contains("\"Capabilities\""))
+        assertFalse("AI should not show the retired Modes heading", ai.contains("\"Modes\""))
         assertTrue(ai.contains("ADAutomation.MEETING_NOTES.title"))
         assertTrue(ai.contains("ADAutomation.AUTO_DIARY.title"))
         assertTrue(ai.contains("ADAutomation.VISUAL_DIARY.title"))
@@ -131,7 +134,32 @@ class ADProductSurfaceIsolationTest {
         assertTrue(ai.contains("\"Assistant apps\""))
         assertFalse(ai.contains("ADTopBar(title = \"AI\")"))
         assertTrue(app.contains("ADRoute.AI_ASSISTANT_APPS -> ADAssistantAppsScreen"))
+        assertTrue(app.contains("ADRoute.CAPABILITY_DETAIL -> ADNativeCapabilityDetailScreen"))
+        assertFalse(app.contains("ADRoute.TASK_DETAIL"))
         assertFalse(app.contains("ADTasksScreen("))
+    }
+
+    @Test
+    fun capabilityNavigationDoesNotUseRetiredModesRoute() {
+        val redirects = sourceFile(
+            "src/main/java/com/fersaiyan/cyanbridge/ui/adglasses/ADLegacyRouteRedirectActivity.kt",
+        ).readText()
+        val manifest = sourceFile("src/main/AndroidManifest.xml").readText()
+
+        assertTrue(redirects.contains("ADExternalDestination.AI"))
+        assertTrue(redirects.contains("class ADAiRedirectActivity"))
+        assertFalse(redirects.contains("ADExternalDestination.MODES"))
+        assertFalse(redirects.contains("class ADModesRedirectActivity"))
+        assertFalse(manifest.contains("ADModesRedirectActivity"))
+    }
+
+    @Test
+    fun capabilityCommandArchitectureDoesNotUseRetiredModeTypes() {
+        val orchestratorDir = sourceFile("src/main/java/com/fersaiyan/cyanbridge/ai/orchestrator")
+        assertFalse(File(orchestratorDir, "AssistantModeCommandRouter.kt").exists())
+        assertFalse(File(orchestratorDir, "AndroidModeCommandExecutor.kt").exists())
+        assertTrue(File(orchestratorDir, "AssistantCapabilityCommandRouter.kt").isFile)
+        assertTrue(File(orchestratorDir, "AndroidCapabilityCommandExecutor.kt").isFile)
     }
 
     @Test
@@ -174,13 +202,15 @@ class ADProductSurfaceIsolationTest {
     @Test
     fun capabilityDetailUsesMonochromeEditorialToggleInsteadOfStartStopButtons() {
         val detail = sourceFile(
-            "src/main/java/com/fersaiyan/cyanbridge/ui/adglasses/ADNativeModeDetailScreen.kt",
+            "src/main/java/com/fersaiyan/cyanbridge/ui/adglasses/ADNativeCapabilityDetailScreen.kt",
         ).readText()
         assertTrue(detail.contains("Switch("))
         assertTrue(detail.contains("automation.capabilityIcon()"))
         assertTrue(detail.contains("ADCapabilityDetailRow("))
         assertTrue(detail.contains("ADColors.SurfaceSubtle"))
         assertTrue(detail.contains("Icons.Outlined.EventRepeat"))
+        assertTrue(detail.contains("isExclusiveVoiceCapability"))
+        assertTrue(detail.contains("will switch live listening"))
         assertFalse(detail.contains("capabilityPalette()"))
         assertFalse(detail.contains("ADCapabilityPalette"))
         assertFalse(detail.contains("OutlinedButton("))
