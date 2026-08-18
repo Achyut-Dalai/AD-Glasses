@@ -38,10 +38,27 @@ import {
 import type {Navigate, RootTab, RouteEntry, RouteName} from './navigation/routes';
 import {rootTabs} from './navigation/routes';
 
-type Props = {initialRoute?: RouteName};
+type Props = {
+  initialRoute?: RouteName;
+  initialPrefill?: string;
+  initialThreadId?: string;
+  initialWebSearchRequested?: boolean;
+};
 
-export default function App({initialRoute = 'home'}: Props) {
-  const [stack, setStack] = useState<RouteEntry[]>([{name: initialRoute}]);
+export default function App({
+  initialRoute = 'home',
+  initialPrefill,
+  initialThreadId,
+  initialWebSearchRequested = false,
+}: Props) {
+  const [stack, setStack] = useState<RouteEntry[]>([{
+    name: initialRoute,
+    params: initialRoute === 'prompt' ? {
+      prefill: initialPrefill,
+      threadId: initialThreadId,
+      web: initialWebSearchRequested,
+    } : undefined,
+  }]);
   const current = stack[stack.length - 1] ?? {name: 'home' as RouteName};
 
   const navigate: Navigate = useCallback((name, params) => {
@@ -94,7 +111,7 @@ function RouteView({route, navigate, back}: {route: RouteEntry; navigate: Naviga
     case 'settings': return <SettingsScreen navigate={navigate} back={back}/>;
     case 'device': return <DeviceScreen navigate={navigate} back={back}/>;
     case 'pairing': return <PairingScreen back={back}/>;
-    case 'sync': return <SyncScreen back={back}/>;
+    case 'sync': return <SyncScreen navigate={navigate} back={back}/>;
     case 'relay': return <RelayScreen back={back}/>;
     case 'local-ai': return <LocalAIScreen back={back}/>;
     case 'assistant-apps': return <AssistantAppsScreen back={back}/>;
