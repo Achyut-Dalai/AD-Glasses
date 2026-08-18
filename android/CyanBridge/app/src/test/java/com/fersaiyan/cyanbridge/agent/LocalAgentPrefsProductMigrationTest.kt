@@ -29,14 +29,14 @@ class LocalAgentPrefsProductMigrationTest {
     }
 
     @Test
-    fun legacyTaskerProviderMigratesButExplicitPhoneAssistantRemainsAvailable() {
+    fun explicitTaskerProviderAndPhoneAssistantSelectionsRemainAvailable() {
         context.getSharedPreferences("local_agent_prefs", Context.MODE_PRIVATE)
             .edit()
             .putString("provider_type", AgentProviderType.TASKER.name)
             .putString("glasses_assistant_mode", GlassesAssistantMode.PHONE_ASSISTANT.name)
             .commit()
 
-        assertEquals(AgentProviderType.PRO_SUBSCRIPTION, LocalAgentPrefs.getProviderType(context))
+        assertEquals(AgentProviderType.TASKER, LocalAgentPrefs.getProviderType(context))
         assertEquals(GlassesAssistantMode.PHONE_ASSISTANT, LocalAgentPrefs.getGlassesAssistantMode(context))
     }
 
