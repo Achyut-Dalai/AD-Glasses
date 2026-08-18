@@ -71,6 +71,7 @@ class ADProductSurfaceIsolationTest {
             "ADPrimarySurfaces.kt",
             "ADModesScreen.kt",
             "ADNativeModeDetailScreen.kt",
+            "ADLegacyRouteRedirectActivity.kt",
         ).forEach { obsolete ->
             assertFalse("$obsolete is not part of the current AD product surface", File(uiDir, obsolete).exists())
         }
@@ -84,6 +85,7 @@ class ADProductSurfaceIsolationTest {
         assertTrue(File(uiDir, "ADNativeSettingsHubScreen.kt").isFile)
         assertTrue(File(uiDir, "ADSyncScreen.kt").isFile)
         assertTrue(File(uiDir, "ADFirmwareScreen.kt").isFile)
+        assertTrue(File(uiDir, "ADRouteRedirectActivity.kt").isFile)
     }
 
     @Test
@@ -142,14 +144,16 @@ class ADProductSurfaceIsolationTest {
     @Test
     fun capabilityNavigationDoesNotUseRetiredModesRoute() {
         val redirects = sourceFile(
-            "src/main/java/com/fersaiyan/cyanbridge/ui/adglasses/ADLegacyRouteRedirectActivity.kt",
+            "src/main/java/com/fersaiyan/cyanbridge/ui/adglasses/ADRouteRedirectActivity.kt",
         ).readText()
         val manifest = sourceFile("src/main/AndroidManifest.xml").readText()
 
         assertTrue(redirects.contains("ADExternalDestination.AI"))
+        assertTrue(redirects.contains("abstract class ADRouteRedirectActivity"))
         assertTrue(redirects.contains("class ADAiRedirectActivity"))
         assertFalse(redirects.contains("ADExternalDestination.MODES"))
         assertFalse(redirects.contains("class ADModesRedirectActivity"))
+        assertFalse(redirects.contains("class ADLegacyRouteRedirectActivity"))
         assertFalse(manifest.contains("ADModesRedirectActivity"))
     }
 
@@ -292,6 +296,7 @@ class ADProductSurfaceIsolationTest {
         assertTrue("AD UI source directory should exist", uiDir.isDirectory)
 
         val forbiddenImports = listOf(
+            "import com.fersaiyan.cyanbridge.MainActivity",
             "import com.fersaiyan.cyanbridge.ui.ChatListActivity",
             "import com.fersaiyan.cyanbridge.ui.ChatThreadActivity",
             "import com.fersaiyan.cyanbridge.ui.SettingsActivity",
