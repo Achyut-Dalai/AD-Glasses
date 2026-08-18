@@ -74,8 +74,7 @@ internal fun ADHomeSurface(
     val device = buildADDevicePresentation(state, profile)
     val runtimeVersion by AssistantCapabilityRuntimeEvents.version.collectAsState()
     val capabilityExecutor = remember(context, runtimeVersion) { AndroidCapabilityCommandExecutor(context) }
-    val activeListener = capabilityExecutor.activeVoiceCapability()
-    val activeListeningCapability = activeListener?.let { running ->
+    val activeCapabilities = capabilityExecutor.activeCapabilities().mapNotNull { running ->
         ADAutomation.entries.firstOrNull { it.toAssistantCapability() == running }
     }
 
@@ -104,7 +103,7 @@ internal fun ADHomeSurface(
                 )
             }
 
-            if (state.meeting.isRecording || state.transfer.isVisible || activeListeningCapability != null) {
+            if (state.meeting.isRecording || state.transfer.isVisible || activeCapabilities.isNotEmpty()) {
                 item {
                     Column(verticalArrangement = Arrangement.spacedBy(9.dp)) {
                         Text("Active", style = MaterialTheme.typography.titleMedium)
@@ -126,11 +125,13 @@ internal fun ADHomeSurface(
                                 onClick = onOpenSync,
                             )
                         }
-                        activeListeningCapability?.let { capability ->
+                        activeCapabilities.forEach { capability ->
+                            val nativeCapability = capability.toAssistantCapability()
+                            val liveListening = capabilityExecutor.isExclusiveVoiceCapability(nativeCapability)
                             ADLiveRow(
                                 icon = capability.homeActiveIcon(),
                                 title = capability.title,
-                                detail = "Live listening",
+                                detail = if (liveListening) "Live listening" else capability.homeActiveDetail(),
                                 status = "ON",
                                 onClick = if (capability == ADAutomation.TRANSLATOR) onOpenTranslator else onOpenTasks,
                             )
@@ -381,4 +382,16 @@ private fun ADAutomation.homeActiveIcon(): ImageVector = when (this) {
     ADAutomation.ERRAND_BRAIN -> Icons.Outlined.EventRepeat
     ADAutomation.LOCAL_AGENT -> Icons.Outlined.Bolt
     ADAutomation.AUTO_DIARY, ADAutomation.AUTO_AUDIO, ADAutomation.VISUAL_DIARY -> Icons.Outlined.Mic
+}
+
+private fun ADAutomation.homeActiveDetail(): String = when (this) {
+    ADAutomation.LOCAL_AGENT -> "Android actions available"
+    ADAutomation.AUTO_DIARY -> "Building your private daily note"
+    ADAutomation.AUTO_AUDIO -> "Background audio capture enabled"
+    ADAutomation.VISUAL_DIARY -> "Visual timeline capture enabled"
+    ADAutomation.TRANSLATOR,
+    ADAutomation.MEETING_NOTES,
+    ADAutomation.LIVE_CAPTIONS,
+    ADAutomation.ERRAND_BRAIN,
+    -> "Live listening"
 }
