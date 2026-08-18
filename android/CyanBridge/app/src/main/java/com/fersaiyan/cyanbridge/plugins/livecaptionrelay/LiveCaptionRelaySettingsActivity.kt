@@ -39,7 +39,6 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.platform.ComposeView
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
@@ -48,19 +47,14 @@ import com.fersaiyan.cyanbridge.R
 import com.fersaiyan.cyanbridge.plugins.PluginVoicePermissions
 import com.fersaiyan.cyanbridge.shared.plugins.NativePluginIds
 import com.fersaiyan.cyanbridge.ui.CommunityPluginPrefs
-import com.fersaiyan.cyanbridge.ui.installComposeHostWithLegacyAdapter
 import com.fersaiyan.cyanbridge.ui.NativePluginShortcutPreference
 import com.fersaiyan.cyanbridge.ui.setThemedComposeContent
 
 class LiveCaptionRelaySettingsActivity : AppCompatActivity() {
 
-    private lateinit var composeView: ComposeView
-
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        composeView = installComposeHostWithLegacyAdapter(R.layout.activity_live_caption_relay_settings)
-
-        setThemedComposeContent(composeView) {
+        setThemedComposeContent {
             LiveCaptionRelaySettingsScreen(
                 onBack = ::finish,
                 onStartService = {
@@ -114,7 +108,6 @@ fun LiveCaptionRelaySettingsScreen(
                 .verticalScroll(scrollState),
             verticalArrangement = Arrangement.spacedBy(12.dp),
         ) {
-            // Section: General
             SectionTitle(stringResource(R.string.compose_general))
             Card(
                 modifier = Modifier.fillMaxWidth(),
@@ -137,11 +130,7 @@ fun LiveCaptionRelaySettingsScreen(
                                     NativePluginIds.LIVE_CAPTION_RELAY,
                                     newValue,
                                 )
-                                if (newValue) {
-                                    onStartService()
-                                } else {
-                                    onStopService()
-                                }
+                                if (newValue) onStartService() else onStopService()
                             },
                         )
                     }
@@ -154,7 +143,6 @@ fun LiveCaptionRelaySettingsScreen(
                 pluginTitle = stringResource(R.string.compose_plugin_name_live_caption_relay),
             )
 
-            // Section: Language
             SectionTitle(stringResource(R.string.compose_language))
             Card(
                 modifier = Modifier.fillMaxWidth(),
@@ -187,7 +175,6 @@ fun LiveCaptionRelaySettingsScreen(
                     }
 
                     Spacer(modifier = Modifier.height(12.dp))
-
                     Row(
                         modifier = Modifier.fillMaxWidth(),
                         horizontalArrangement = Arrangement.SpaceBetween,
@@ -233,7 +220,6 @@ fun LiveCaptionRelaySettingsScreen(
                 }
             }
 
-            // Section: Custom Instructions
             SectionTitle(stringResource(R.string.compose_custom_instructions))
             Card(
                 modifier = Modifier.fillMaxWidth(),
@@ -255,8 +241,8 @@ fun LiveCaptionRelaySettingsScreen(
                             }
                         },
                         modifier = Modifier.fillMaxWidth(),
-                         label = { Text(stringResource(R.string.compose_caption_instructions)) },
-                         placeholder = { Text(stringResource(R.string.compose_caption_hint)) },
+                        label = { Text(stringResource(R.string.compose_caption_instructions)) },
+                        placeholder = { Text(stringResource(R.string.compose_caption_hint)) },
                         minLines = 2,
                         maxLines = 4,
                         supportingText = { Text("${customPrompt.length}/1000") },
@@ -264,7 +250,6 @@ fun LiveCaptionRelaySettingsScreen(
                 }
             }
 
-            // Section: History
             SectionTitle(stringResource(R.string.compose_caption_history))
             Card(
                 modifier = Modifier.fillMaxWidth(),
@@ -287,7 +272,6 @@ fun LiveCaptionRelaySettingsScreen(
                     )
 
                     Spacer(modifier = Modifier.height(8.dp))
-
                     Button(
                         onClick = {
                             LiveCaptionRelayStore().clear(context)
