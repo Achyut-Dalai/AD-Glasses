@@ -67,6 +67,7 @@ class MeetingSparkNotesService : Service() {
 
     override fun onDestroy() {
         voiceRecognizer.stop()
+        MeetingSparkNotesPreferences.setEnabled(this, false)
         scope.cancel()
         super.onDestroy()
     }
@@ -81,6 +82,7 @@ class MeetingSparkNotesService : Service() {
                 ),
             )
         ) {
+            MeetingSparkNotesPreferences.setEnabled(this, false)
             Log.w(TAG, "Missing microphone or notification permission")
             stopSelf()
             return
@@ -88,10 +90,12 @@ class MeetingSparkNotesService : Service() {
 
         synchronized(transcriptLock) { transcriptLines.clear() }
         if (!voiceRecognizer.start()) {
+            MeetingSparkNotesPreferences.setEnabled(this, false)
             stopForeground(STOP_FOREGROUND_REMOVE)
             stopSelf()
             return
         }
+        MeetingSparkNotesPreferences.setEnabled(this, true)
         MeetingSparkNotesNotificationHelper.updateNotification(
             this,
             "Listening for meeting speech...",
@@ -110,6 +114,7 @@ class MeetingSparkNotesService : Service() {
     }
 
     private fun stopMeetingCapture() {
+        MeetingSparkNotesPreferences.setEnabled(this, false)
         voiceRecognizer.stop()
         summarizeTranscript(currentTranscript())
     }
