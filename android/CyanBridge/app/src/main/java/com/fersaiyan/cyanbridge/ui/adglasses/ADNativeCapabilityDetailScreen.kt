@@ -31,6 +31,8 @@ import androidx.compose.material3.Surface
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -45,6 +47,7 @@ import com.fersaiyan.cyanbridge.ai.orchestrator.AndroidCapabilityCommandExecutor
 import com.fersaiyan.cyanbridge.ai.orchestrator.AssistantCapability
 import com.fersaiyan.cyanbridge.ai.orchestrator.AssistantCapabilityAction
 import com.fersaiyan.cyanbridge.ai.orchestrator.AssistantCapabilityCommand
+import com.fersaiyan.cyanbridge.ai.orchestrator.AssistantCapabilityRuntimeEvents
 
 /** Native control surface for an AI capability. No plugin SettingsActivity is required. */
 @Composable
@@ -53,11 +56,16 @@ internal fun ADNativeCapabilityDetailScreen(
     onBack: () -> Unit,
 ) {
     val context = LocalContext.current
-    val executor = remember(context) { AndroidCapabilityCommandExecutor(context) }
+    val runtimeVersion by AssistantCapabilityRuntimeEvents.version.collectAsState()
+    val executor = remember(context, runtimeVersion) { AndroidCapabilityCommandExecutor(context) }
     val capability = automation.toAssistantCapability()
     var active by remember(automation) { mutableStateOf(executor.isActive(capability)) }
     var resultText by remember(automation) { mutableStateOf<String?>(null) }
     var lastSucceeded by remember(automation) { mutableStateOf<Boolean?>(null) }
+
+    LaunchedEffect(runtimeVersion, automation) {
+        active = executor.isActive(capability)
+    }
 
     val switchingFrom = if (!active && executor.isExclusiveVoiceCapability(capability)) {
         executor.activeVoiceCapability(excluding = capability)
