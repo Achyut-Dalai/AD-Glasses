@@ -120,7 +120,7 @@ internal fun ADNativeSettingsHubScreen(
                 )
             }
             Text(
-                "Same AD, different energy. No gradients, no AI wallpaper.",
+                "Choose quiet monochrome or a warmer editorial palette.",
                 style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
