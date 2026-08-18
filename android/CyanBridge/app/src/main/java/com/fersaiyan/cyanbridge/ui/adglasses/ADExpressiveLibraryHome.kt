@@ -22,6 +22,7 @@ import androidx.compose.material.icons.outlined.Sync
 import androidx.compose.material.icons.outlined.VideoLibrary
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
@@ -79,6 +80,7 @@ internal fun ADExpressiveLibraryHome(
                                     color = ADColors.Muted,
                                 )
                             }
+                            ADStatusChip("ACTIVE", ADStatusTone.INFO)
                         }
                     }
                 }
@@ -137,40 +139,37 @@ private fun ADLibraryHero(
         modifier = Modifier.fillMaxWidth(),
         shape = RoundedCornerShape(26.dp),
         color = ADColors.Surface,
+        shadowElevation = 1.dp,
     ) {
-        Column(Modifier.padding(19.dp)) {
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                Box(
-                    modifier = Modifier
-                        .size(50.dp)
-                        .background(ADColors.Ink, RoundedCornerShape(16.dp)),
-                    contentAlignment = Alignment.Center,
+        Column(Modifier.padding(18.dp)) {
+            Row(verticalAlignment = Alignment.Top) {
+                Surface(
+                    modifier = Modifier.size(52.dp),
+                    shape = RoundedCornerShape(17.dp),
+                    color = ADColors.Ink,
+                    contentColor = ADColors.Surface,
                 ) {
-                    Icon(
-                        Icons.Outlined.VideoLibrary,
-                        contentDescription = null,
-                        tint = ADColors.Surface,
-                        modifier = Modifier.size(25.dp),
-                    )
+                    Box(contentAlignment = Alignment.Center) {
+                        Icon(Icons.Outlined.VideoLibrary, contentDescription = null, modifier = Modifier.size(25.dp))
+                    }
                 }
-                Spacer(Modifier.weight(1f))
-                Text(
+                Column(Modifier.padding(start = 14.dp).weight(1f)) {
+                    Text(title, style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.SemiBold)
+                    Spacer(Modifier.height(4.dp))
+                    Text(detail, style = MaterialTheme.typography.bodyMedium, color = ADColors.Muted)
+                }
+                ADStatusChip(
                     if (transferActive) "SYNCING" else "LOCAL",
-                    style = MaterialTheme.typography.labelSmall,
-                    color = ADColors.Muted,
-                    letterSpacing = 1.05.sp,
+                    if (transferActive) ADStatusTone.INFO else ADStatusTone.NEUTRAL,
                 )
             }
-            Spacer(Modifier.height(20.dp))
-            Text(title, style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.SemiBold)
-            Spacer(Modifier.height(6.dp))
-            Text(detail, style = MaterialTheme.typography.bodyMedium, color = ADColors.Muted)
-            Spacer(Modifier.height(18.dp))
+            Spacer(Modifier.height(16.dp))
+            HorizontalDivider(color = ADColors.Separator)
+            Spacer(Modifier.height(14.dp))
             Button(
                 onClick = onOpenSync,
                 modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp),
                 colors = ButtonDefaults.buttonColors(containerColor = ADColors.Ink),
-                shape = RoundedCornerShape(15.dp),
             ) {
                 Icon(Icons.Outlined.Sync, contentDescription = null)
                 Spacer(Modifier.size(8.dp))
