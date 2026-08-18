@@ -35,6 +35,7 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -47,6 +48,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.fersaiyan.cyanbridge.agent.LocalAgentPrefs
 import com.fersaiyan.cyanbridge.ai.orchestrator.AndroidCapabilityCommandExecutor
+import com.fersaiyan.cyanbridge.ai.orchestrator.AssistantCapabilityRuntimeEvents
 import com.fersaiyan.cyanbridge.ai.router.AiProviderPrefs
 import com.fersaiyan.cyanbridge.ai.router.AiProviderType
 import com.fersaiyan.cyanbridge.ai.router.CliRelayBackend
@@ -64,7 +66,8 @@ internal fun ADNativeAiScreen(
     onOpenCapability: (ADAutomation) -> Unit = {},
 ) {
     val context = LocalContext.current
-    val capabilityExecutor = remember(context) { AndroidCapabilityCommandExecutor(context) }
+    val runtimeVersion by AssistantCapabilityRuntimeEvents.version.collectAsState()
+    val capabilityExecutor = remember(context, runtimeVersion) { AndroidCapabilityCommandExecutor(context) }
     var selected by remember { mutableStateOf(resolveAiChoice(context)) }
 
     fun select(choice: ADAiChoice) {
@@ -188,9 +191,9 @@ internal fun ADNativeAiScreen(
             ADAiSection("Default AI") {
                 ADAiChoiceRow(Icons.Outlined.AutoAwesome, "Gemini", "Gemini through your relay", selected == ADAiChoice.GEMINI) { select(ADAiChoice.GEMINI) }
                 ADAiSectionDivider()
-                ADAiChoiceRow(Icons.Outlined.Cloud, "OpenAI / Codex", "OpenAI-compatible route through your relay", selected == ADAiChoice.OPENAI_CODEX) { select(ADAiChoice.OPENAI_CODEX) }
+                ADAiChoiceRow(Icons.Outlined.Cloud, "OpenAI / Codex", "OpenAI-compatible route through your relay", selected == ADAiChoice.OPENAI_CODEX) { select(ADAIChoice.OPENAI_CODEX) }
                 ADAiSectionDivider()
-                ADAiChoiceRow(Icons.Outlined.Computer, "Local AI", "Run a configured model on this phone", selected == ADAiChoice.LOCAL) { select(ADAiChoice.LOCAL) }
+                ADAiChoiceRow(Icons.Outlined.Computer, "Local AI", "Run a configured model on this phone", selected == ADAiChoice.LOCAL) { select(ADAIChoice.LOCAL) }
             }
         }
         item {
