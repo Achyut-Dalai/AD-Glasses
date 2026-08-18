@@ -3,8 +3,7 @@ package com.fersaiyan.cyanbridge.ui.adglasses
 import android.content.Context
 
 enum class ADThemeStyle(val label: String) {
-    MONO("Mono"),
-    VIBE("Vibe"),
+    MONOCHROME("Monochrome"),
 }
 
 internal object ADThemePreferences {
@@ -13,9 +12,12 @@ internal object ADThemePreferences {
 
     fun get(context: Context): ADThemeStyle {
         val stored = context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
-            .getString(KEY_STYLE, ADThemeStyle.MONO.name)
-        return runCatching { ADThemeStyle.valueOf(stored ?: ADThemeStyle.MONO.name) }
-            .getOrDefault(ADThemeStyle.MONO)
+            .getString(KEY_STYLE, ADThemeStyle.MONOCHROME.name)
+        return when (stored) {
+            ADThemeStyle.MONOCHROME.name -> ADThemeStyle.MONOCHROME
+            "MONO", "VIBE" -> ADThemeStyle.MONOCHROME
+            else -> ADThemeStyle.MONOCHROME
+        }
     }
 
     fun set(context: Context, style: ADThemeStyle) {
