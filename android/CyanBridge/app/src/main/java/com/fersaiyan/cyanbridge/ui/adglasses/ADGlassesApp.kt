@@ -32,7 +32,7 @@ fun ADGlassesApp(
     var selectedTab by remember { mutableStateOf(ADTab.HOME) }
     var routeStack by remember { mutableStateOf(listOf(ADRoute.MAIN)) }
     var conversationRequest by remember { mutableStateOf<ADNavigationRequest?>(null) }
-    val themeStyle = remember(context) { ADThemePreferences.get(context) }
+    var themeStyle by remember(context) { mutableStateOf(ADThemePreferences.get(context)) }
     var onboardingComplete by remember(context) { mutableStateOf(ADWelcomePreferences.isComplete(context)) }
 
     val route = routeStack.last()
@@ -41,6 +41,10 @@ fun ADGlassesApp(
     }
     val navigateBack = {
         if (routeStack.size > 1) routeStack = routeStack.dropLast(1)
+    }
+    val changeTheme: (ADThemeStyle) -> Unit = { style ->
+        themeStyle = style
+        ADThemePreferences.set(context, style)
     }
 
     LaunchedEffect(externalRequest?.id) {
@@ -160,6 +164,8 @@ fun ADGlassesApp(
                     ADRoute.LANGUAGE -> ADLanguageScreen(navigateBack)
                     ADRoute.PERMISSIONS -> ADPermissionsScreen(navigateBack)
                     ADRoute.ADVANCED -> ADAdvancedScreen(
+                        themeStyle = themeStyle,
+                        onThemeStyleChanged = changeTheme,
                         onBack = navigateBack,
                         onDevice = { navigateTo(ADRoute.DEVICE_CENTER) },
                     )
