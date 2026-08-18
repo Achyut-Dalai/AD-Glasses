@@ -51,14 +51,19 @@ export default function App({
   initialThreadId,
   initialWebSearchRequested = false,
 }: Props) {
-  const [stack, setStack] = useState<RouteEntry[]>([{
-    name: initialRoute,
-    params: initialRoute === 'prompt' ? {
-      prefill: initialPrefill,
-      threadId: initialThreadId,
-      web: initialWebSearchRequested,
-    } : undefined,
-  }]);
+  const [stack, setStack] = useState<RouteEntry[]>(() => {
+    const initialEntry: RouteEntry = {
+      name: initialRoute,
+      params: initialRoute === 'prompt' ? {
+        prefill: initialPrefill,
+        threadId: initialThreadId,
+        web: initialWebSearchRequested,
+      } : undefined,
+    };
+    return rootTabs.includes(initialRoute as RootTab)
+      ? [initialEntry]
+      : [{name: 'home'}, initialEntry];
+  });
   const current = stack[stack.length - 1] ?? {name: 'home' as RouteName};
 
   const navigate: Navigate = useCallback((name, params) => {
