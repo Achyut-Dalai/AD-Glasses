@@ -2,6 +2,7 @@ package com.fersaiyan.cyanbridge.ota
 
 import android.util.Log
 import java.io.File
+import java.net.BindException
 import java.net.InetAddress
 import java.net.InetSocketAddress
 import java.net.ServerSocket
@@ -32,10 +33,7 @@ class OtaHttpServer(
             Log.w(TAG, "Server already running, stopping previous instance")
             stop()
         }
-        val socket = ServerSocket().apply {
-            reuseAddress = true
-            bind(InetSocketAddress(InetAddress.getByName(bindAddress), port))
-        }
+        val socket = bindServerSocket(bindAddress)
         serveFile = file
         serverSocket = socket
         running = true
@@ -104,6 +102,43 @@ class OtaHttpServer(
         Log.i(TAG, "Stopped")
     }
 
+    /**
+     * A just-closed listener can remain transiently unavailable on some kernels/runtimes even
+     * with SO_REUSEADDR enabled. OTA restart keeps the same P2P address and port, so retry only
+     * that narrow BindException window rather than changing the URL or transport seen by glasses.
+     */
+    private fun bindServerSocket(bindAddress: String): ServerSocket {
+        val address = InetSocketAddress(InetAddress.getByName(bindAddress), port)
+        var lastBindError: BindException? = null
+        repeat(RESTART_BIND_ATTEMPTS) { attempt ->
+            val candidate = ServerSocket()
+            try {
+                candidate.reuseAddress = true
+                candidate.bind(address)
+                return candidate
+            } catch (error: BindException) {
+                lastBindError = error
+                runCatching { candidate.close() }
+                if (attempt == RESTART_BIND_ATTEMPTS - 1) return@repeat
+                Log.w(
+                    TAG,
+                    "Port $port still releasing after OTA server stop; retrying bind " +
+                        "(${attempt + 1}/$RESTART_BIND_ATTEMPTS)",
+                )
+                try {
+                    Thread.sleep(RESTART_BIND_RETRY_DELAY_MS)
+                } catch (interrupted: InterruptedException) {
+                    Thread.currentThread().interrupt()
+                    throw error
+                }
+            } catch (error: Exception) {
+                runCatching { candidate.close() }
+                throw error
+            }
+        }
+        throw lastBindError ?: BindException("Could not bind OTA HTTP server to $bindAddress:$port")
+    }
+
     private fun handleClient(socket: Socket, file: File) {
         try {
             val input = socket.getInputStream().bufferedReader()
@@ -151,5 +186,7 @@ class OtaHttpServer(
     companion object {
         private const val TAG = "OtaHttpServer"
         private const val CLIENT_READ_TIMEOUT_MS = 10_000
+        private const val RESTART_BIND_ATTEMPTS = 5
+        private const val RESTART_BIND_RETRY_DELAY_MS = 25L
     }
 }
