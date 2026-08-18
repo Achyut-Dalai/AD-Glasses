@@ -215,9 +215,7 @@ class EyevueWifiTransport(
                         when (intent?.action) {
                             WifiP2pManager.WIFI_P2P_PEERS_CHANGED_ACTION -> requestP2pPeers()
                             WifiP2pManager.WIFI_P2P_CONNECTION_CHANGED_ACTION -> {
-                                val networkInfo = intent.getParcelableExtra<NetworkInfo>(
-                                    WifiP2pManager.EXTRA_NETWORK_INFO,
-                                )
+                                val networkInfo = intent.p2pNetworkInfo()
                                 if (networkInfo?.isConnected == true) {
                                     manager.requestConnectionInfo(channel) { connectionInfo ->
                                         if (connectionInfo.groupFormed && continuation.isActive) {
@@ -298,6 +296,7 @@ class EyevueWifiTransport(
             val prefix = "192.168.49."
             val deadline = System.currentTimeMillis() + P2P_ROUTE_TIMEOUT_MS
             while (System.currentTimeMillis() < deadline) {
+                @Suppress("DEPRECATION")
                 val candidate = connectivityManager.allNetworks.firstOrNull { network ->
                     val capabilities = connectivityManager.getNetworkCapabilities(network)
                         ?: return@firstOrNull false
@@ -319,6 +318,14 @@ class EyevueWifiTransport(
                 "Eyevue P2P connected for $ssid but no usable Wi-Fi route appeared " +
                     "(groupOwner=${info.groupOwnerAddress?.hostAddress})",
             )
+        }
+
+    @Suppress("DEPRECATION")
+    private fun Intent.p2pNetworkInfo(): NetworkInfo? =
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            getParcelableExtra(WifiP2pManager.EXTRA_NETWORK_INFO, NetworkInfo::class.java)
+        } else {
+            getParcelableExtra(WifiP2pManager.EXTRA_NETWORK_INFO)
         }
 
     private fun hasWifiPermission(): Boolean {
