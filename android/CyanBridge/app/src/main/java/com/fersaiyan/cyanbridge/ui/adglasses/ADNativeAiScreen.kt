@@ -96,7 +96,6 @@ internal fun ADNativeAiScreen(
     ) {
         item {
             Column(verticalArrangement = Arrangement.spacedBy(11.dp)) {
-                Text("Capabilities", style = MaterialTheme.typography.titleLarge)
                 Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
                     ADAiCapabilityTile(Icons.Rounded.Translate, "Translate", "Live translation", Modifier.weight(1f)) {
                         onOpenCapability(ADAutomation.TRANSLATOR)
@@ -151,11 +150,11 @@ internal fun ADNativeAiScreen(
         }
         item {
             ADAiSection("Default AI") {
-                ADAiChoiceRow(Icons.Outlined.AutoAwesome, "Gemini", "Gemini through your relay", selected == ADAiChoice.GEMINI) { select(ADAiChoice.GEMINI) }
+                ADAiChoiceRow(Icons.Outlined.AutoAwesome, "Gemini", "Gemini through your relay", selected == ADAiChoice.GEMINI) { select(ADAIChoice.GEMINI) }
                 ADAiSectionDivider()
-                ADAiChoiceRow(Icons.Outlined.Cloud, "OpenAI / Codex", "OpenAI-compatible route through your relay", selected == ADAiChoice.OPENAI_CODEX) { select(ADAiChoice.OPENAI_CODEX) }
+                ADAiChoiceRow(Icons.Outlined.Cloud, "OpenAI / Codex", "OpenAI-compatible route through your relay", selected == ADAiChoice.OPENAI_CODEX) { select(ADAIChoice.OPENAI_CODEX) }
                 ADAiSectionDivider()
-                ADAiChoiceRow(Icons.Outlined.Computer, "Local AI", "Run a configured model on this phone", selected == ADAiChoice.LOCAL) { select(ADAiChoice.LOCAL) }
+                ADAiChoiceRow(Icons.Outlined.Computer, "Local AI", "Run a configured model on this phone", selected == ADAiChoice.LOCAL) { select(ADAIChoice.LOCAL) }
             }
         }
         item {
