@@ -82,6 +82,19 @@ enum class ADAutomation(
         "On device",
         "Auto Diary",
     ),
+    /**
+     * Not a product capability. Kept temporarily so the inherited MainActivity host can compile
+     * until its old audio-capture switch is removed; it is never shown on the AD Glasses AI UI.
+     */
+    @Deprecated("Background audio auto-capture is removed from the AD Glasses product")
+    AUTO_AUDIO(
+        "Removed audio capture",
+        "Removed",
+        "Removed",
+        "Removed",
+        "Auto Audio",
+        false,
+    ),
     VISUAL_DIARY(
         "Timeline",
         "Turn visual captures into a searchable timeline you can revisit by moment.",
