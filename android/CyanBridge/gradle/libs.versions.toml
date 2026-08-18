@@ -1,16 +1,16 @@
 [versions]
-agp = "8.12.1"
-kotlin = "2.3.10"
+agp = "9.3.1"
+kotlin = "2.4.10"
 ksp = "2.3.10"
 coreKtx = "1.16.0"
-junit = "4.14-SNAPSHOT"
+junit = "4.13.2"
 junitVersion = "1.2.1"
 espressoCore = "3.6.1"
 lifecycleRuntimeKtx = "2.9.2"
 activityCompose = "1.13.0"
 composeBom = "2026.06.00"
-material3 = "1.4.0"
-compose-multiplatform = "1.8.2"
+material3 = "1.5.0-alpha25"
+compose-multiplatform = "1.11.0"
 appcompat = "1.7.1"
 room = "2.7.0"
 coroutines = "1.10.1"
@@ -43,7 +43,7 @@ kotlinx-atomicfu = { group = "org.jetbrains.kotlinx", name = "atomicfu", version
 [plugins]
 android-application = { id = "com.android.application", version.ref = "agp" }
 android-library = { id = "com.android.library", version.ref = "agp" }
-kotlin-android = { id = "org.jetbrains.kotlin.android", version.ref = "kotlin" }
+android-kotlin-multiplatform-library = { id = "com.android.kotlin.multiplatform.library", version.ref = "agp" }
 kotlin-multiplatform = { id = "org.jetbrains.kotlin.multiplatform", version.ref = "kotlin" }
 compose-multiplatform = { id = "org.jetbrains.compose", version.ref = "compose-multiplatform" }
 kotlin-compose-compiler = { id = "org.jetbrains.kotlin.plugin.compose", version.ref = "kotlin" }
