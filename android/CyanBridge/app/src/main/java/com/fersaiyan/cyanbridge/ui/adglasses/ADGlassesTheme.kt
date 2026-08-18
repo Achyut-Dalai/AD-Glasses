@@ -3,7 +3,10 @@ package com.fersaiyan.cyanbridge.ui.adglasses
 import android.app.Activity
 import android.content.Context
 import android.content.ContextWrapper
-import androidx.compose.material3.MaterialTheme
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material3.MaterialExpressiveTheme
+import androidx.compose.material3.MotionScheme
+import androidx.compose.material3.Shapes
 import androidx.compose.material3.Typography
 import androidx.compose.material3.lightColorScheme
 import androidx.compose.runtime.Composable
@@ -14,13 +17,14 @@ import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.core.view.WindowCompat
 
 internal object ADColors {
     val Ink = Color(0xFF1D1D1F)
     val Muted = Color(0xFF6E6E73)
-    // Product chrome stays deliberately monochrome: ink, white, grey and silver.
+    // Existing product chrome remains monochrome until each screen is intentionally migrated.
     // Semantic success/warning/error colours remain reserved for actual state feedback.
     val Blue = Color(0xFF2C2C2E)
     val BlueDeep = Color(0xFF111113)
@@ -39,69 +43,104 @@ internal object ADColors {
     val ErrorSoft = Color(0xFFFFEBEA)
 }
 
-private val ADColorScheme = lightColorScheme(
-    primary = ADColors.Blue,
+private val MonoColorScheme = lightColorScheme(
+    primary = Color(0xFF202124),
     onPrimary = Color.White,
-    primaryContainer = ADColors.BlueSoft,
-    onPrimaryContainer = ADColors.Ink,
-    secondary = ADColors.Ink,
+    primaryContainer = Color(0xFFE8E8EA),
+    onPrimaryContainer = Color(0xFF171719),
+    secondary = Color(0xFF55565A),
     onSecondary = Color.White,
-    secondaryContainer = ADColors.SurfaceSubtle,
-    onSecondaryContainer = ADColors.Ink,
-    background = ADColors.Background,
-    onBackground = ADColors.Ink,
-    surface = ADColors.Surface,
-    onSurface = ADColors.Ink,
-    surfaceVariant = ADColors.SurfaceSubtle,
-    onSurfaceVariant = ADColors.Muted,
-    outline = ADColors.Outline,
-    outlineVariant = ADColors.Outline,
+    secondaryContainer = Color(0xFFEDEDEF),
+    onSecondaryContainer = Color(0xFF202124),
+    tertiary = Color(0xFF6A6B70),
+    onTertiary = Color.White,
+    tertiaryContainer = Color(0xFFF1F1F3),
+    onTertiaryContainer = Color(0xFF202124),
+    background = Color(0xFFF5F5F7),
+    onBackground = Color(0xFF1D1D1F),
+    surface = Color(0xFFFFFFFF),
+    onSurface = Color(0xFF1D1D1F),
+    surfaceVariant = Color(0xFFEDEDEF),
+    onSurfaceVariant = Color(0xFF626368),
+    outline = Color(0xFFC6C6C8),
+    outlineVariant = Color(0xFFE0E0E3),
     error = ADColors.Error,
     onError = Color.White,
     errorContainer = ADColors.ErrorSoft,
     onErrorContainer = ADColors.Error,
 )
 
+/**
+ * Vibe is an editorial, solid-colour theme: warm paper + deep teal + vermilion.
+ * It deliberately avoids neon gradients and generic blue/purple "AI" styling.
+ */
+private val VibeColorScheme = lightColorScheme(
+    primary = Color(0xFF006B6B),
+    onPrimary = Color.White,
+    primaryContainer = Color(0xFFB8F1ED),
+    onPrimaryContainer = Color(0xFF003737),
+    secondary = Color(0xFFD65332),
+    onSecondary = Color.White,
+    secondaryContainer = Color(0xFFFFDBD0),
+    onSecondaryContainer = Color(0xFF571808),
+    tertiary = Color(0xFF7A6300),
+    onTertiary = Color.White,
+    tertiaryContainer = Color(0xFFFFE36E),
+    onTertiaryContainer = Color(0xFF302600),
+    background = Color(0xFFF8F3E8),
+    onBackground = Color(0xFF20201D),
+    surface = Color(0xFFFFFBF3),
+    onSurface = Color(0xFF20201D),
+    surfaceVariant = Color(0xFFEDE6D8),
+    onSurfaceVariant = Color(0xFF625E55),
+    outline = Color(0xFF8E887D),
+    outlineVariant = Color(0xFFD6CFC1),
+    error = Color(0xFFBA1A1A),
+    onError = Color.White,
+    errorContainer = Color(0xFFFFDAD6),
+    onErrorContainer = Color(0xFF410002),
+)
+
 private val ADTypography = Typography(
     displaySmall = TextStyle(
         fontFamily = FontFamily.SansSerif,
-        fontSize = 32.sp,
-        lineHeight = 39.sp,
-        fontWeight = FontWeight.SemiBold,
-        letterSpacing = (-0.65).sp,
+        fontSize = 34.sp,
+        lineHeight = 40.sp,
+        fontWeight = FontWeight.Bold,
+        letterSpacing = (-0.7).sp,
     ),
     headlineLarge = TextStyle(
         fontFamily = FontFamily.SansSerif,
-        fontSize = 28.sp,
-        lineHeight = 35.sp,
-        fontWeight = FontWeight.SemiBold,
-        letterSpacing = (-0.45).sp,
+        fontSize = 30.sp,
+        lineHeight = 36.sp,
+        fontWeight = FontWeight.Bold,
+        letterSpacing = (-0.55).sp,
     ),
     headlineMedium = TextStyle(
         fontFamily = FontFamily.SansSerif,
-        fontSize = 22.sp,
-        lineHeight = 29.sp,
+        fontSize = 24.sp,
+        lineHeight = 30.sp,
         fontWeight = FontWeight.SemiBold,
-        letterSpacing = (-0.2).sp,
+        letterSpacing = (-0.25).sp,
     ),
     headlineSmall = TextStyle(
         fontFamily = FontFamily.SansSerif,
-        fontSize = 20.sp,
+        fontSize = 21.sp,
         lineHeight = 27.sp,
-        fontWeight = FontWeight.Medium,
+        fontWeight = FontWeight.SemiBold,
         letterSpacing = (-0.1).sp,
     ),
     titleLarge = TextStyle(
         fontFamily = FontFamily.SansSerif,
-        fontSize = 18.sp,
+        fontSize = 19.sp,
         lineHeight = 25.sp,
-        fontWeight = FontWeight.Medium,
+        fontWeight = FontWeight.SemiBold,
     ),
     titleMedium = TextStyle(
         fontFamily = FontFamily.SansSerif,
         fontSize = 16.sp,
         lineHeight = 22.sp,
-        fontWeight = FontWeight.Medium,
+        fontWeight = FontWeight.SemiBold,
     ),
     bodyLarge = TextStyle(
         fontFamily = FontFamily.SansSerif,
@@ -125,29 +164,53 @@ private val ADTypography = Typography(
         fontFamily = FontFamily.SansSerif,
         fontSize = 14.sp,
         lineHeight = 18.sp,
-        fontWeight = FontWeight.Medium,
+        fontWeight = FontWeight.SemiBold,
     ),
     labelMedium = TextStyle(
         fontFamily = FontFamily.SansSerif,
         fontSize = 12.sp,
         lineHeight = 16.sp,
-        fontWeight = FontWeight.Medium,
+        fontWeight = FontWeight.SemiBold,
     ),
     labelSmall = TextStyle(
         fontFamily = FontFamily.SansSerif,
         fontSize = 11.sp,
         lineHeight = 14.sp,
-        fontWeight = FontWeight.Medium,
+        fontWeight = FontWeight.SemiBold,
     ),
 )
 
+private val MonoShapes = Shapes(
+    extraSmall = RoundedCornerShape(8.dp),
+    small = RoundedCornerShape(12.dp),
+    medium = RoundedCornerShape(18.dp),
+    large = RoundedCornerShape(26.dp),
+    extraLarge = RoundedCornerShape(34.dp),
+)
+
+private val VibeShapes = Shapes(
+    extraSmall = RoundedCornerShape(10.dp),
+    small = RoundedCornerShape(16.dp),
+    medium = RoundedCornerShape(24.dp),
+    large = RoundedCornerShape(32.dp),
+    extraLarge = RoundedCornerShape(44.dp),
+)
+
 @Composable
-fun ADGlassesTheme(content: @Composable () -> Unit) {
+fun ADGlassesTheme(
+    style: ADThemeStyle = ADThemeStyle.MONO,
+    content: @Composable () -> Unit,
+) {
     val view = LocalView.current
     val context = LocalContext.current
+    val scheme = if (style == ADThemeStyle.VIBE) VibeColorScheme else MonoColorScheme
+    val shapes = if (style == ADThemeStyle.VIBE) VibeShapes else MonoShapes
+
     if (!view.isInEditMode) {
         SideEffect {
             context.findActivity()?.window?.let { window ->
+                // System-bar colours are intentionally not set: targetSdk 35 is edge-to-edge.
+                // Only icon contrast is controlled through the non-deprecated insets controller.
                 WindowCompat.getInsetsController(window, view).apply {
                     isAppearanceLightStatusBars = true
                     isAppearanceLightNavigationBars = true
@@ -155,8 +218,11 @@ fun ADGlassesTheme(content: @Composable () -> Unit) {
             }
         }
     }
-    MaterialTheme(
-        colorScheme = ADColorScheme,
+
+    MaterialExpressiveTheme(
+        colorScheme = scheme,
+        motionScheme = MotionScheme.expressive(),
+        shapes = shapes,
         typography = ADTypography,
         content = content,
     )
