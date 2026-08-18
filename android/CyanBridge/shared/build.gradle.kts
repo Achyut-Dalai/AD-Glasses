@@ -11,7 +11,7 @@ val enableAppleTargets = providers.gradleProperty("enableAppleTargets").orNull =
 kotlin {
     android {
         namespace = "com.fersaiyan.cyanbridge.shared"
-        compileSdk = 37
+        compileSdk = 36
         minSdk = 24
         compilerOptions {
             jvmTarget.set(org.jetbrains.kotlin.gradle.dsl.JvmTarget.JVM_17)
