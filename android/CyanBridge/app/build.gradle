@@ -23,14 +23,14 @@ def metaDatEnabled = metaGithubToken != null && !metaGithubToken.trim().isEmpty(
 
 android {
     namespace = "com.fersaiyan.cyanbridge"
-    compileSdk = 36
+    compileSdk = 37
     ndkVersion = "29.0.14206865"
 
     defaultConfig {
         applicationId = "com.fersaiyan.cyanbridge"
         // Meta DAT declares minSdk 29. Keep the regular build on API 24 if Meta SDK is skipped.
         minSdk = metaDatEnabled ? 29 : 24
-        targetSdk = 36
+        targetSdk = 37
         versionCode = 14
         versionName = "alpha"
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
@@ -73,15 +73,12 @@ android {
     }
 
     buildFeatures {
-        // AD Glasses has no app-module XML layouts. Product presentation is Compose-only.
         viewBinding = false
         buildConfig = true
         compose = true
         aidl = true
     }
 
-    // MYVU's protocol is maintained as a pinned upstream submodule. The source
-    // contains the hardware-verified StarryNet BLE/ECDH/RFCOMM implementation.
     sourceSets {
         main {
             java.srcDir("src/main/myvu-upstream/android/app/src/main/java")
