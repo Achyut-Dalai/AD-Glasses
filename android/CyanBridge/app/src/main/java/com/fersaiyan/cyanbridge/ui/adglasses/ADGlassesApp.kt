@@ -31,7 +31,6 @@ fun ADGlassesApp(
 
     var selectedTab by remember { mutableStateOf(ADTab.HOME) }
     var routeStack by remember { mutableStateOf(listOf(ADRoute.MAIN)) }
-    var selectedAutomation by remember { mutableStateOf(ADAutomation.TRANSLATOR) }
     var conversationRequest by remember { mutableStateOf<ADNavigationRequest?>(null) }
     var onboardingComplete by remember(context) { mutableStateOf(ADWelcomePreferences.isComplete(context)) }
 
@@ -41,14 +40,6 @@ fun ADGlassesApp(
     }
     val navigateBack = {
         if (routeStack.size > 1) routeStack = routeStack.dropLast(1)
-    }
-    val showMainTab: (ADTab) -> Unit = { tab ->
-        routeStack = listOf(ADRoute.MAIN)
-        selectedTab = tab
-    }
-    val openCapability: (ADAutomation) -> Unit = { automation ->
-        selectedAutomation = automation
-        navigateTo(ADRoute.CAPABILITY_DETAIL)
     }
 
     LaunchedEffect(externalRequest?.id) {
@@ -120,15 +111,6 @@ fun ADGlassesApp(
                             onOpenDevice = { navigateTo(ADRoute.DEVICE_CENTER) },
                             onOpenSync = { navigateTo(ADRoute.SYNC) },
                             onOpenSettings = { navigateTo(ADRoute.SETTINGS) },
-                            onOpenWebSearch = {
-                                conversationRequest = ADNavigationRequest(
-                                    id = System.currentTimeMillis(),
-                                    destination = ADExternalDestination.CONVERSATIONS,
-                                    prefill = "Search the web for ",
-                                    webSearchRequested = true,
-                                )
-                                showMainTab(ADTab.CHATS)
-                            },
                         )
                         ADTab.CHATS -> ADNativeConversationScreen(
                             navigationRequest = conversationRequest,
@@ -140,9 +122,8 @@ fun ADGlassesApp(
                             onRelaySettings = { navigateTo(ADRoute.AI_RELAY) },
                             onLocalSettings = { navigateTo(ADRoute.AI_LOCAL) },
                             onAssistantApps = { navigateTo(ADRoute.AI_ASSISTANT_APPS) },
-                            onOpenCapability = openCapability,
                         )
-                        ADTab.LIBRARY -> ADNativeLibraryScreen(
+                        ADTab.LIBRARY -> ADExpressiveLibraryHome(
                             transferActive = dashboardState.transfer.isVisible,
                             onOpenSync = { navigateTo(ADRoute.SYNC) },
                             onCaptures = { navigateTo(ADRoute.LIBRARY_CAPTURES) },
@@ -183,10 +164,6 @@ fun ADGlassesApp(
                     )
                     ADRoute.ABOUT -> ADMinimalAboutScreen(navigateBack)
                     ADRoute.FIRMWARE -> ADFirmwareScreen(dashboardState, host, navigateBack)
-                    ADRoute.CAPABILITY_DETAIL -> ADNativeCapabilityDetailScreen(
-                        automation = selectedAutomation,
-                        onBack = navigateBack,
-                    )
                     ADRoute.LIBRARY_CAPTURES -> ADNativeCapturesScreen(
                         onBack = navigateBack,
                         onOpenSync = { navigateTo(ADRoute.SYNC) },
