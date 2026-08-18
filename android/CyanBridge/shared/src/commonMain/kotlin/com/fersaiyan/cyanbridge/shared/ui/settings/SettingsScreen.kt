@@ -16,10 +16,6 @@ import androidx.compose.foundation.layout.safeDrawing
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.outlined.AutoAwesome
-import androidx.compose.material.icons.outlined.ExpandLess
-import androidx.compose.material.icons.outlined.ExpandMore
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
@@ -342,7 +338,7 @@ private fun CloudAiCard(
                     shape = MaterialTheme.shapes.small,
                 ) {
                     Icon(
-                        imageVector = Icons.Outlined.AutoAwesome,
+                        imageVector = AppIcon.Model.imageVector(),
                         contentDescription = null,
                         modifier = Modifier.padding(8.dp),
                     )
@@ -457,7 +453,7 @@ private fun SettingsSectionCard(
                     color = MaterialTheme.colorScheme.primary,
                 )
                 Icon(
-                    imageVector = if (expanded) Icons.Outlined.ExpandLess else Icons.Outlined.ExpandMore,
+                    imageVector = if (expanded) AppIcon.ExpandLess.imageVector() else AppIcon.ExpandMore.imageVector(),
                     contentDescription = if (expanded) {
                         stringResource(Res.string.local_models_collapse, title)
                     } else {
@@ -565,7 +561,7 @@ private fun MemoryPrivacyContent(state: SettingsUiState, actions: SettingsScreen
                 onClick = { actions.setMemoryMode(mode) },
             )
             Column {
-                 Text(localizedMemoryModeTitle(mode), style = MaterialTheme.typography.bodyMedium)
+                Text(localizedMemoryModeTitle(mode), style = MaterialTheme.typography.bodyMedium)
                 Text(
                     text = localizedMemoryModeDescription(mode),
                     style = MaterialTheme.typography.bodySmall,
