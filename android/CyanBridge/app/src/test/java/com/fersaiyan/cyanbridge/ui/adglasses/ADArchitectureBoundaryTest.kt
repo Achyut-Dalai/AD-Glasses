@@ -25,12 +25,17 @@ class ADArchitectureBoundaryTest {
     @Test
     fun hiddenMainActivityXmlAndLegacyComposeHostStayDeleted() {
         assertFalse(sourceFile("src/main/res/layout/acitivyt_main.xml").exists())
+        assertFalse(sourceFile("src/main/res/layout").exists())
         assertFalse(
             sourceFile("src/main/java/com/fersaiyan/cyanbridge/ui/ComposeLegacyAdapterHost.kt").exists(),
         )
         assertTrue(
             sourceFile("src/main/java/com/fersaiyan/cyanbridge/ui/ComposeActivityHost.kt").isFile,
         )
+
+        val gradle = sourceFile("build.gradle").readText()
+        assertTrue(gradle.contains("viewBinding = false"))
+        assertTrue(gradle.contains("compose = true"))
     }
 
     @Test
