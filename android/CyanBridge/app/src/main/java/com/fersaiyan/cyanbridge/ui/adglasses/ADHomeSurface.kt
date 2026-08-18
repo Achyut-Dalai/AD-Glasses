@@ -44,7 +44,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Brush
-import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.ColorFilter
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
@@ -171,7 +171,7 @@ internal fun ADHomeSurface(
                         ADCapabilityTile(
                             title = "Web",
                             detail = if (webMode == AssistantWebMode.ON) {
-                                "Web preferred for every AI question"
+                                "Web preferred for supported AI questions"
                             } else {
                                 "Automatic when freshness matters"
                             },
@@ -183,7 +183,7 @@ internal fun ADHomeSurface(
                                 webMode = if (webMode == AssistantWebMode.ON) AssistantWebMode.AUTO else AssistantWebMode.ON
                                 AssistantWebModePreferences.set(context, webMode)
                                 capabilityFeedback = if (webMode == AssistantWebMode.ON) {
-                                    "Web is on for the assistant, including glasses questions."
+                                    "Web is preferred for supported assistant routes."
                                 } else {
                                     "Web returned to automatic mode."
                                 }
@@ -302,9 +302,9 @@ private fun ADReadinessStage(
                 .background(
                     Brush.radialGradient(
                         listOf(
-                            Color(0xFFFCFCFD),
-                            Color(0xFFF2F3F5),
-                            Color(0xFFE8EAEE),
+                            ADColors.HeroStart,
+                            ADColors.HeroMiddle,
+                            ADColors.HeroEnd,
                         ),
                     ),
                     RoundedCornerShape(topStart = 22.dp, topEnd = 22.dp),
@@ -316,6 +316,7 @@ private fun ADReadinessStage(
                 contentDescription = "Glasses",
                 modifier = Modifier.fillMaxWidth().height(144.dp).padding(horizontal = 24.dp),
                 contentScale = ContentScale.Fit,
+                colorFilter = if (ADColors.IsDark) ColorFilter.tint(ADColors.Ink.copy(alpha = 0.88f)) else null,
             )
         }
         Row(
@@ -408,7 +409,7 @@ private fun ADCapabilityTile(
                 Icon(
                     icon,
                     null,
-                    tint = if (active) Color.White else ADColors.Ink,
+                    tint = if (active) ADColors.Surface else ADColors.Ink,
                     modifier = Modifier.size(20.dp),
                 )
             }
@@ -455,7 +456,7 @@ private fun ADWideCapabilityTile(
             Modifier.size(42.dp).background(if (active) ADColors.Ink else ADColors.SurfaceSubtle, RoundedCornerShape(12.dp)),
             contentAlignment = Alignment.Center,
         ) {
-            Icon(icon, null, tint = if (active) Color.White else ADColors.Ink, modifier = Modifier.size(21.dp))
+            Icon(icon, null, tint = if (active) ADColors.Surface else ADColors.Ink, modifier = Modifier.size(21.dp))
         }
         Column(Modifier.padding(start = 12.dp).weight(1f)) {
             Text(title, style = MaterialTheme.typography.titleMedium)
