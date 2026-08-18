@@ -129,7 +129,7 @@ fun ADGlassesPairingScreen(
 
             if (devices.isNotEmpty()) {
                 item(key = "nearby-title") { ADSectionEyebrow("Nearby") }
-                items(devices, key = { "device-${it.address}" }) { device ->
+                items(devices, key = { "device-${it.macAddress}" }) { device ->
                     ADPairingDeviceCard(device = device, onClick = { onConnect(device) })
                 }
             }
