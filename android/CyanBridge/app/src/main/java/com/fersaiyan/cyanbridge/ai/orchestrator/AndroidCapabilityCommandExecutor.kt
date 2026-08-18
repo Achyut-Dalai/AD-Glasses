@@ -3,8 +3,6 @@ package com.fersaiyan.cyanbridge.ai.orchestrator
 import android.content.Context
 import com.fersaiyan.cyanbridge.plugins.PluginVoicePermissions
 import com.fersaiyan.cyanbridge.plugins.autodiary.AutoDiaryService
-import com.fersaiyan.cyanbridge.plugins.errandbrain.ErrandBrainPreferences
-import com.fersaiyan.cyanbridge.plugins.errandbrain.ErrandBrainService
 import com.fersaiyan.cyanbridge.plugins.handsfreetranslator.HandsFreeTranslatorPreferences
 import com.fersaiyan.cyanbridge.plugins.handsfreetranslator.HandsFreeTranslatorService
 import com.fersaiyan.cyanbridge.plugins.livecaptionrelay.LiveCaptionRelayPreferences
@@ -24,7 +22,6 @@ class AndroidCapabilityCommandExecutor(
         AssistantCapability.TRANSLATOR -> HandsFreeTranslatorPreferences.isEnabled(context)
         AssistantCapability.MEETING_NOTES -> MeetingSparkNotesPreferences.isEnabled(context)
         AssistantCapability.LIVE_CAPTIONS -> LiveCaptionRelayPreferences.isEnabled(context)
-        AssistantCapability.ERRAND_BRAIN -> ErrandBrainPreferences.isEnabled(context)
         AssistantCapability.AUTO_DIARY -> AutoDiaryService.isEnabled(context)
         AssistantCapability.VISUAL_DIARY -> VisualDiaryPreferences.isEnabled(context)
         AssistantCapability.LOCAL_AGENT -> LocalAgentPlugin.isEnabled(context)
@@ -43,7 +40,6 @@ class AndroidCapabilityCommandExecutor(
         AssistantCapability.TRANSLATOR -> "Translate"
         AssistantCapability.MEETING_NOTES -> "Soundbites"
         AssistantCapability.LIVE_CAPTIONS -> "Live Captions"
-        AssistantCapability.ERRAND_BRAIN -> "Cron"
         AssistantCapability.AUTO_DIARY -> "DayNote"
         AssistantCapability.VISUAL_DIARY -> "Timeline"
         AssistantCapability.LOCAL_AGENT -> "Automation"
@@ -74,14 +70,6 @@ class AndroidCapabilityCommandExecutor(
                     stop = { LiveCaptionRelayService.stop(context) },
                     started = "Live Captions started.",
                     stopped = "Live Captions stopped.",
-                )
-
-                AssistantCapability.ERRAND_BRAIN -> toggleVoice(
-                    command,
-                    start = { ErrandBrainService.start(context) },
-                    stop = { ErrandBrainService.stop(context) },
-                    started = "Cron listening started.",
-                    stopped = "Cron listening stopped.",
                 )
 
                 AssistantCapability.AUTO_DIARY -> when (command.action) {
@@ -167,7 +155,6 @@ class AndroidCapabilityCommandExecutor(
             AssistantCapability.TRANSLATOR -> HandsFreeTranslatorService.stop(context)
             AssistantCapability.MEETING_NOTES -> MeetingSparkNotesService.stop(context)
             AssistantCapability.LIVE_CAPTIONS -> LiveCaptionRelayService.stop(context)
-            AssistantCapability.ERRAND_BRAIN -> ErrandBrainService.stop(context)
             else -> Unit
         }
     }
@@ -177,7 +164,6 @@ class AndroidCapabilityCommandExecutor(
             AssistantCapability.TRANSLATOR -> HandsFreeTranslatorPreferences.setEnabled(context, enabled)
             AssistantCapability.MEETING_NOTES -> MeetingSparkNotesPreferences.setEnabled(context, enabled)
             AssistantCapability.LIVE_CAPTIONS -> LiveCaptionRelayPreferences.setEnabled(context, enabled)
-            AssistantCapability.ERRAND_BRAIN -> ErrandBrainPreferences.setEnabled(context, enabled)
             else -> Unit
         }
     }
@@ -187,7 +173,6 @@ class AndroidCapabilityCommandExecutor(
             AssistantCapability.TRANSLATOR,
             AssistantCapability.MEETING_NOTES,
             AssistantCapability.LIVE_CAPTIONS,
-            AssistantCapability.ERRAND_BRAIN,
         )
     }
 }
