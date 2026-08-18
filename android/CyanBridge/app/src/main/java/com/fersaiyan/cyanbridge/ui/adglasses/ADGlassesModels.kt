@@ -22,7 +22,7 @@ enum class ADRoute {
     ADVANCED,
     ABOUT,
     FIRMWARE,
-    TASK_DETAIL,
+    CAPABILITY_DETAIL,
     LIBRARY_CAPTURES,
     LIBRARY_RECORDINGS,
     LIBRARY_NOTES,
@@ -35,8 +35,8 @@ enum class ADAutomation(
     val boundary: String,
     /** Existing service/plugin title used only to reconcile runtime state. */
     val runtimeTitle: String = title,
-    /** Product capability visibility. Runtime compatibility entries may remain hidden. */
-    val visibleInTasks: Boolean = true,
+    /** Product capability visibility on the primary AI surface. */
+    val visibleInAi: Boolean = true,
 ) {
     LOCAL_AGENT(
         "Automation",
