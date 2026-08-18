@@ -8,8 +8,8 @@ import android.content.Context
 import android.content.Intent
 import android.os.Build
 import androidx.core.app.NotificationCompat
-import com.fersaiyan.cyanbridge.MainActivity
 import com.fersaiyan.cyanbridge.R
+import com.fersaiyan.cyanbridge.navigation.ADAppLaunchIntents
 
 object ErrandBrainNotificationHelper {
     const val CHANNEL_ID = "errand_brain_service"
@@ -20,10 +20,10 @@ object ErrandBrainNotificationHelper {
         val nm = context.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
         val ch = NotificationChannel(
             CHANNEL_ID,
-            "Errand Brain",
-            NotificationManager.IMPORTANCE_DEFAULT
+            "Cron",
+            NotificationManager.IMPORTANCE_DEFAULT,
         ).apply {
-            description = "Manages tasks and reminders from voice notes"
+            description = "Tasks and reminders created from spoken requests"
             setShowBadge(false)
             lockscreenVisibility = Notification.VISIBILITY_PRIVATE
         }
@@ -31,11 +31,10 @@ object ErrandBrainNotificationHelper {
     }
 
     fun buildNotification(context: Context, content: String): Notification {
-        val openIntent = Intent(context, MainActivity::class.java)
         val openPi = PendingIntent.getActivity(
             context,
             0,
-            openIntent,
+            ADAppLaunchIntents.productHome(context),
             PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE,
         )
 
@@ -51,7 +50,7 @@ object ErrandBrainNotificationHelper {
 
         return NotificationCompat.Builder(context, CHANNEL_ID)
             .setSmallIcon(R.drawable.ic_stat_ad_glasses)
-            .setContentTitle("Errand Brain")
+            .setContentTitle("Cron")
             .setContentText(content)
             .setStyle(NotificationCompat.BigTextStyle().bigText(content))
             .setCategory(NotificationCompat.CATEGORY_SERVICE)
@@ -64,32 +63,29 @@ object ErrandBrainNotificationHelper {
                 NotificationCompat.Action.Builder(
                     0,
                     "Stop",
-                    stopPi
-                ).build()
+                    stopPi,
+                ).build(),
             )
             .build()
     }
 
     fun updateNotification(context: Context, content: String) {
         val nm = context.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
-        runCatching {
-            nm.notify(NOTIFICATION_ID, buildNotification(context, content))
-        }
+        runCatching { nm.notify(NOTIFICATION_ID, buildNotification(context, content)) }
     }
 
     fun showReminder(context: Context, reminderId: String, title: String, description: String) {
         ensureChannel(context)
-        val openIntent = Intent(context, MainActivity::class.java)
         val openPi = PendingIntent.getActivity(
             context,
             reminderId.hashCode(),
-            openIntent,
+            ADAppLaunchIntents.productHome(context),
             PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE,
         )
         val content = description.ifBlank { title }
         val notification = NotificationCompat.Builder(context, CHANNEL_ID)
             .setSmallIcon(R.drawable.ic_stat_ad_glasses)
-            .setContentTitle("Errand Brain reminder")
+            .setContentTitle("Cron reminder")
             .setContentText(title)
             .setStyle(NotificationCompat.BigTextStyle().bigText(content))
             .setCategory(NotificationCompat.CATEGORY_REMINDER)
