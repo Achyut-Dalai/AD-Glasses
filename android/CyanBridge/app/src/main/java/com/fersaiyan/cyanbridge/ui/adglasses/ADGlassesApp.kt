@@ -7,6 +7,7 @@ import androidx.compose.foundation.layout.consumeWindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.safeDrawing
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -32,6 +33,7 @@ fun ADGlassesApp(
     var routeStack by remember { mutableStateOf(listOf(ADRoute.MAIN)) }
     var selectedAutomation by remember { mutableStateOf(ADAutomation.TRANSLATOR) }
     var conversationRequest by remember { mutableStateOf<ADNavigationRequest?>(null) }
+    var themeStyle by remember(context) { mutableStateOf(ADThemePreferences.get(context)) }
 
     val route = routeStack.last()
     val navigateTo: (ADRoute) -> Unit = { destination ->
@@ -80,10 +82,10 @@ fun ADGlassesApp(
 
     BackHandler(enabled = route != ADRoute.MAIN) { navigateBack() }
 
-    ADGlassesTheme {
+    ADGlassesTheme(style = themeStyle) {
         Scaffold(
             modifier = Modifier.fillMaxSize(),
-            containerColor = ADColors.Background,
+            containerColor = MaterialTheme.colorScheme.background,
             contentWindowInsets = WindowInsets.safeDrawing,
             bottomBar = {
                 if (route == ADRoute.MAIN) ADBottomNavigation(selectedTab) { selectedTab = it }
@@ -114,7 +116,6 @@ fun ADGlassesApp(
                                 showMainTab(ADTab.CHATS)
                             },
                             onOpenPhoneControl = { showMainTab(ADTab.AI) },
-                            onOpenTasks = { showMainTab(ADTab.AI) },
                         )
                         ADTab.CHATS -> ADNativeConversationScreen(
                             navigationRequest = conversationRequest,
@@ -147,6 +148,11 @@ fun ADGlassesApp(
                     ADRoute.SYNC -> ADSyncScreen(dashboardState, host, navigateBack)
                     ADRoute.SETTINGS -> ADNativeSettingsHubScreen(
                         state = dashboardState,
+                        themeStyle = themeStyle,
+                        onThemeStyleChanged = { style ->
+                            themeStyle = style
+                            ADThemePreferences.set(context, style)
+                        },
                         onBack = navigateBack,
                         onDevice = { navigateTo(ADRoute.DEVICE_CENTER) },
                         onPrivacy = { navigateTo(ADRoute.PRIVACY) },
