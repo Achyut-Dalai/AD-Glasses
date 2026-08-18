@@ -47,7 +47,7 @@ import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.fersaiyan.cyanbridge.R
-import com.fersaiyan.cyanbridge.ai.orchestrator.AndroidModeCommandExecutor
+import com.fersaiyan.cyanbridge.ai.orchestrator.AndroidCapabilityCommandExecutor
 import com.fersaiyan.cyanbridge.devices.ADDeviceSupportPolicy
 import com.fersaiyan.cyanbridge.devices.DeviceProfileStore
 import com.fersaiyan.cyanbridge.shared.glasses.GlassesDashboardUiState
@@ -69,10 +69,10 @@ internal fun ADHomeSurface(
     val profile = DeviceProfileStore.loadLastSelected(context)
         ?.takeIf { ADDeviceSupportPolicy.isPairable(it.selectedClass) }
     val device = buildADDevicePresentation(state, profile)
-    val capabilityExecutor = remember(context) { AndroidModeCommandExecutor(context) }
-    val activeListener = capabilityExecutor.activeVoiceMode()
+    val capabilityExecutor = remember(context) { AndroidCapabilityCommandExecutor(context) }
+    val activeListener = capabilityExecutor.activeVoiceCapability()
     val activeListeningCapability = activeListener?.let { running ->
-        ADAutomation.entries.firstOrNull { it.toAssistantMode() == running }
+        ADAutomation.entries.firstOrNull { it.toAssistantCapability() == running }
     }
 
     Column(Modifier.fillMaxSize()) {
