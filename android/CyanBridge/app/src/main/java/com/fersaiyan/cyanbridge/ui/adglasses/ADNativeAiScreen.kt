@@ -163,7 +163,7 @@ internal fun ADNativeAiScreen(
                     "OpenAI / Codex",
                     "OpenAI-compatible route through your relay",
                     selected == ADAiChoice.OPENAI_CODEX,
-                ) { select(ADAIChoice = ADAiChoice.OPENAI_CODEX, onSelect = ::select) }
+                ) { select(ADAiChoice.OPENAI_CODEX) }
                 ADAiSectionDivider()
                 ADAiChoiceRow(
                     Icons.Outlined.Computer,
@@ -313,10 +313,6 @@ private fun ADAiActionRow(icon: ImageVector, title: String, detail: String, onCl
             Text(detail, style = MaterialTheme.typography.bodySmall, color = ADColors.Muted, maxLines = 2, overflow = TextOverflow.Ellipsis)
         }
     }
-}
-
-private fun select(ADAIChoice: ADAiChoice, onSelect: (ADAiChoice) -> Unit) {
-    onSelect(ADAIChoice)
 }
 
 private fun resolveAiChoice(context: android.content.Context): ADAiChoice = when (LocalAgentPrefs.getProviderType(context)) {
