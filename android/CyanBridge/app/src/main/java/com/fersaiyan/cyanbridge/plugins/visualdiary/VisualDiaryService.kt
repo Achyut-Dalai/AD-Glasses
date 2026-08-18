@@ -15,11 +15,12 @@ import androidx.core.app.NotificationCompat
 import androidx.core.app.ServiceCompat
 import androidx.core.content.ContextCompat
 import androidx.fragment.app.FragmentActivity
-import com.fersaiyan.cyanbridge.MainActivity
 import com.fersaiyan.cyanbridge.R
+import com.fersaiyan.cyanbridge.devices.DeviceCapabilityHelper
 import com.fersaiyan.cyanbridge.devices.DeviceProfileStore
 import com.fersaiyan.cyanbridge.devices.metarayban.MetaRaybanManager
 import com.fersaiyan.cyanbridge.media.autocapture.AutoLoopVisualNoteGenerator
+import com.fersaiyan.cyanbridge.navigation.ADAppLaunchIntents
 import com.fersaiyan.cyanbridge.shared.plugins.NativePluginIds
 import com.fersaiyan.cyanbridge.ui.CommunityPluginPrefs
 import com.fersaiyan.cyanbridge.ui.ensureNotificationPermission
@@ -35,11 +36,9 @@ import kotlinx.coroutines.launch
 import java.util.concurrent.atomic.AtomicBoolean
 import java.util.concurrent.atomic.AtomicInteger
 
-import com.fersaiyan.cyanbridge.devices.DeviceCapabilityHelper
-
 /**
- * Periodic visual-diary host. HeyCyan uses its existing thumbnail path; Meta
- * uses the shared DAT one-shot camera path before entering the same Gemma pipeline.
+ * Periodic Timeline host. HeyCyan uses its existing thumbnail path; Meta uses the shared
+ * DAT one-shot camera path before entering the same private visual-note pipeline.
  */
 class VisualDiaryService : Service() {
 
@@ -56,7 +55,8 @@ class VisualDiaryService : Service() {
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
         if (!DeviceCapabilityHelper.hasCamera(this)) {
-            Log.w(TAG, "Stopping VisualDiaryService: selected device profile has no camera")
+            Log.w(TAG, "Stopping Timeline: selected device profile has no camera")
+            VisualDiaryPreferences.setEnabled(this, false)
             stopSelf()
             return START_NOT_STICKY
         }
@@ -78,9 +78,9 @@ class VisualDiaryService : Service() {
     private fun startLoop() {
         if (RUNNING.getAndSet(true)) return
 
-        if (!startForegroundSafely("Visual Diary is ready")) {
+        if (!startForegroundSafely("Timeline is ready")) {
             RUNNING.set(false)
-            disable(this, "Notification permission is required for Visual Diary")
+            disable(this, "Notification permission is required for Timeline")
             return
         }
 
@@ -90,11 +90,8 @@ class VisualDiaryService : Service() {
                 if (!manager.isInitialized.value) manager.initialize()
                 if (!manager.awaitCameraReady()) {
                     val detail = manager.lastError.value
-                        ?: "Register and connect a Meta camera before using Visual Diary"
-                    Log.e(
-                        TAG,
-                        "Meta Visual Diary cannot start: $detail\n${manager.diagnosticsSnapshot()}",
-                    )
+                        ?: "Register and connect a Meta camera before using Timeline"
+                    Log.e(TAG, "Meta Timeline cannot start: $detail\n${manager.diagnosticsSnapshot()}")
                     VisualDiaryPreferences.setLastError(
                         this@VisualDiaryService,
                         "Meta camera unavailable: $detail",
@@ -116,7 +113,7 @@ class VisualDiaryService : Service() {
     }
 
     private fun captureNowAndKeepAlive() {
-        if (!startForegroundSafely("Capturing a glasses scene")) {
+        if (!startForegroundSafely("Capturing a Timeline scene")) {
             stopSelf()
             return
         }
@@ -129,7 +126,7 @@ class VisualDiaryService : Service() {
 
     private suspend fun captureNow() {
         val index = captureIndex.incrementAndGet()
-        updateNotification("Capturing scene note #$index")
+        updateNotification("Capturing Timeline note #$index")
 
         if (DeviceProfileStore.isMetaSelected(this)) {
             val manager = MetaRaybanManager.getInstance(this)
@@ -142,8 +139,7 @@ class VisualDiaryService : Service() {
                 Log.e(TAG, "Meta DAT photo capture failed: $detail\n${manager.diagnosticsSnapshot()}", it)
                 VisualDiaryPreferences.setLastError(this, "Meta capture failed: $detail")
                 updateNotification("Meta capture failed: ${detail.take(120)}")
-            }
-                .getOrNull()
+            }.getOrNull()
             if (file == null) {
                 if (manager.lastError.value.isNullOrBlank()) {
                     VisualDiaryPreferences.setLastError(this, "Meta camera unavailable")
@@ -180,9 +176,7 @@ class VisualDiaryService : Service() {
     }
 
     private fun startForegroundSafely(content: String): Boolean {
-        if (!hasNotificationPermission(this)) {
-            return false
-        }
+        if (!hasNotificationPermission(this)) return false
         return runCatching {
             val notification = notification(content)
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
@@ -209,10 +203,10 @@ class VisualDiaryService : Service() {
         manager.createNotificationChannel(
             NotificationChannel(
                 CHANNEL_ID,
-                "Visual Diary",
+                "Timeline",
                 NotificationManager.IMPORTANCE_LOW,
             ).apply {
-                description = "Automatic glasses scene notes"
+                description = "Private automatic glasses scene notes"
                 setShowBadge(false)
                 lockscreenVisibility = Notification.VISIBILITY_PRIVATE
             },
@@ -223,12 +217,12 @@ class VisualDiaryService : Service() {
         val openPendingIntent = PendingIntent.getActivity(
             this,
             0,
-            Intent(this, MainActivity::class.java),
+            ADAppLaunchIntents.productHome(this),
             PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE,
         )
         return NotificationCompat.Builder(this, CHANNEL_ID)
             .setSmallIcon(R.drawable.ic_stat_ad_glasses)
-            .setContentTitle("Visual Diary")
+            .setContentTitle("Timeline")
             .setContentText(content)
             .setCategory(NotificationCompat.CATEGORY_SERVICE)
             .setOngoing(RUNNING.get())
@@ -249,13 +243,13 @@ class VisualDiaryService : Service() {
         const val ACTION_STOP = "com.fersaiyan.cyanbridge.action.VISUAL_DIARY_STOP"
         const val ACTION_CAPTURE_NOW = "com.fersaiyan.cyanbridge.action.VISUAL_DIARY_CAPTURE_NOW"
 
-        /** Enables Visual Diary only after it can run as a foreground service. */
+        /** Enables Timeline only after it can run as a foreground service. */
         fun enable(context: Context): Boolean {
             if (!hasNotificationPermission(context)) {
                 if (context is FragmentActivity) {
                     ensureNotificationPermission(
                         activity = context,
-                        feature = "Visual Diary",
+                        feature = "Timeline",
                         onDenied = { disable(context) },
                         onGranted = { enable(context) },
                     )
@@ -267,7 +261,7 @@ class VisualDiaryService : Service() {
             return true
         }
 
-        /** Restores an already-enabled Visual Diary without prompting from a background context. */
+        /** Restores an already-enabled Timeline without prompting from a background context. */
         fun startIfEnabled(context: Context): Boolean {
             if (!VisualDiaryPreferences.isEnabled(context) || !hasNotificationPermission(context)) {
                 return false
@@ -290,7 +284,7 @@ class VisualDiaryService : Service() {
         fun captureNow(context: Context) {
             if (!hasNotificationPermission(context)) {
                 if (context is FragmentActivity) {
-                    ensureNotificationPermission(context, "Visual Diary") {
+                    ensureNotificationPermission(context, "Timeline") {
                         captureNow(context)
                     }
                 }
