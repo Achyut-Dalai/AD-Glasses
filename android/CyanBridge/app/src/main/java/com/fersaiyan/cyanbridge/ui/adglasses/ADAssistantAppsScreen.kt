@@ -39,7 +39,6 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import androidx.core.content.FileProvider
-import com.fersaiyan.cyanbridge.MainActivity
 import com.fersaiyan.cyanbridge.agent.LocalAgentPrefs
 import com.fersaiyan.cyanbridge.ai.image.ExternalAssistantAutomationInspector
 import com.fersaiyan.cyanbridge.ai.image.ExternalAssistantAutomationPolicy
@@ -122,7 +121,7 @@ internal fun ADAssistantAppsScreen(onBack: () -> Unit) {
         }
         verifying = true
         val token = TaskerImageProfileStore.beginVerification(context)
-        context.sendBroadcast(Intent(MainActivity.aiEventAction(context.packageName)).apply {
+        context.sendBroadcast(Intent(ExternalImageAutomationIntents.assistantEventAction(context.packageName)).apply {
             setPackage(ExternalImageAutomationIntents.TASKER_PACKAGE)
             putExtra(ImageQuestionBroadcast.EXTRA_TYPE, "profile_check")
             putExtra(ImageQuestionBroadcast.EXTRA_ASSISTANT, current.target.label)
