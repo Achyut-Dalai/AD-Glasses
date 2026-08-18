@@ -14,11 +14,9 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.rounded.KeyboardArrowRight
-import androidx.compose.material.icons.outlined.Check
 import androidx.compose.material.icons.outlined.DeveloperMode
 import androidx.compose.material.icons.outlined.Info
 import androidx.compose.material.icons.outlined.Language
-import androidx.compose.material.icons.outlined.Palette
 import androidx.compose.material.icons.outlined.PrivacyTip
 import androidx.compose.material.icons.outlined.Security
 import androidx.compose.material.icons.outlined.Storage
@@ -44,8 +42,6 @@ import com.fersaiyan.cyanbridge.shared.glasses.GlassesDashboardUiState
 @Composable
 internal fun ADNativeSettingsHubScreen(
     state: GlassesDashboardUiState,
-    themeStyle: ADThemeStyle,
-    onThemeStyleChanged: (ADThemeStyle) -> Unit,
     onBack: () -> Unit,
     onDevice: () -> Unit,
     onPrivacy: () -> Unit,
@@ -105,41 +101,6 @@ internal fun ADNativeSettingsHubScreen(
             }
         }
 
-        Column(verticalArrangement = Arrangement.spacedBy(9.dp)) {
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                Icon(
-                    Icons.Outlined.Palette,
-                    contentDescription = null,
-                    modifier = Modifier.size(18.dp),
-                    tint = MaterialTheme.colorScheme.primary,
-                )
-                Text(
-                    "Appearance",
-                    modifier = Modifier.padding(start = 8.dp),
-                    style = MaterialTheme.typography.titleMedium,
-                )
-            }
-            Text(
-                "Choose quiet monochrome or a warmer editorial palette.",
-                style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-            )
-            Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                ADThemeChoice(
-                    title = "Mono",
-                    detail = "Quiet · graphite",
-                    selected = themeStyle == ADThemeStyle.MONO,
-                    modifier = Modifier.weight(1f),
-                ) { onThemeStyleChanged(ADThemeStyle.MONO) }
-                ADThemeChoice(
-                    title = "Vibe",
-                    detail = "Editorial · warm",
-                    selected = themeStyle == ADThemeStyle.VIBE,
-                    modifier = Modifier.weight(1f),
-                ) { onThemeStyleChanged(ADThemeStyle.VIBE) }
-            }
-        }
-
         ADExpressiveSettingsGroup("Privacy & data") {
             ADExpressiveSettingsRow(Icons.Outlined.PrivacyTip, "Privacy", "Transcripts, redaction and exports", onPrivacy)
             ADExpressiveSettingsDivider()
@@ -160,52 +121,7 @@ internal fun ADNativeSettingsHubScreen(
         ADExpressiveSettingsGroup("AD Glasses") {
             ADExpressiveSettingsRow(Icons.Outlined.DeveloperMode, "Advanced", "Diagnostics and system controls", onAdvanced)
             ADExpressiveSettingsDivider()
-            ADExpressiveSettingsRow(Icons.Outlined.Info, "About AD Glasses", "Version, principles and product information", onAbout)
-        }
-    }
-}
-
-@Composable
-private fun ADThemeChoice(
-    title: String,
-    detail: String,
-    selected: Boolean,
-    modifier: Modifier = Modifier,
-    onClick: () -> Unit,
-) {
-    val container = if (selected) MaterialTheme.colorScheme.secondaryContainer else MaterialTheme.colorScheme.surface
-    val content = if (selected) MaterialTheme.colorScheme.onSecondaryContainer else MaterialTheme.colorScheme.onSurface
-
-    Surface(
-        modifier = modifier.clickable(onClick = onClick),
-        shape = MaterialTheme.shapes.large,
-        color = container,
-        contentColor = content,
-        tonalElevation = if (selected) 2.dp else 0.dp,
-    ) {
-        Column(Modifier.padding(16.dp)) {
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                Text(title, style = MaterialTheme.typography.titleLarge, modifier = Modifier.weight(1f))
-                if (selected) {
-                    Surface(
-                        shape = MaterialTheme.shapes.extraLarge,
-                        color = MaterialTheme.colorScheme.secondary,
-                        contentColor = MaterialTheme.colorScheme.onSecondary,
-                    ) {
-                        Icon(
-                            Icons.Outlined.Check,
-                            contentDescription = "$title selected",
-                            modifier = Modifier.padding(6.dp).size(16.dp),
-                        )
-                    }
-                }
-            }
-            Spacer(Modifier.height(8.dp))
-            Text(
-                detail,
-                style = MaterialTheme.typography.bodyMedium,
-                color = content.copy(alpha = 0.72f),
-            )
+            ADExpressiveSettingsRow(Icons.Outlined.Info, "About AD Glasses", "Version and product information", onAbout)
         }
     }
 }
