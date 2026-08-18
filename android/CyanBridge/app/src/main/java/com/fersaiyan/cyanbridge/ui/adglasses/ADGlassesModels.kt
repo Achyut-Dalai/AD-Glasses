@@ -68,13 +68,6 @@ enum class ADAutomation(
         "Automatic",
         "Hands-Free Translator",
     ),
-    ERRAND_BRAIN(
-        "Cron",
-        "Turn spoken requests into scheduled tasks and reminders.",
-        "Scheduled tasks",
-        "Configured AI",
-        "Errand Brain",
-    ),
     AUTO_DIARY(
         "DayNote",
         "Distill the moments that matter into a private note for each day.",
