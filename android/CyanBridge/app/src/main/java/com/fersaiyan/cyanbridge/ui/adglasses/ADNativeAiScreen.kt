@@ -189,7 +189,7 @@ internal fun ADNativeAiScreen(
         }
         item {
             ADAiSection("Default AI") {
-                ADAiChoiceRow(Icons.Outlined.AutoAwesome, "Gemini", "Gemini through your relay", selected == ADAiChoice.GEMINI) { select(ADAiChoice.GEMINI) }
+                ADAiChoiceRow(Icons.Outlined.AutoAwesome, "Gemini", "Gemini through your relay", selected == ADAiChoice.GEMINI) { select(ADAIChoice.GEMINI) }
                 ADAiSectionDivider()
                 ADAiChoiceRow(Icons.Outlined.Cloud, "OpenAI / Codex", "OpenAI-compatible route through your relay", selected == ADAiChoice.OPENAI_CODEX) { select(ADAIChoice.OPENAI_CODEX) }
                 ADAiSectionDivider()
