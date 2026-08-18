@@ -54,22 +54,34 @@ jobs:
             android/CyanBridge/gradle/libs.versions.toml
             heycyan-core/**/*.gradle*
 
-      - name: Set up Android SDK
-        uses: android-actions/setup-android@v4
-        with:
-          cmdline-tools-version: 15859902
-          packages: platform-tools
+      - name: Install current Android CLI
+        shell: bash
+        run: |
+          sudo mkdir -p /etc/apt/keyrings
+          curl -fsSL https://dl.google.com/linux/linux_signing_key.pub \
+            | sudo tee /etc/apt/keyrings/google.asc >/dev/null
+          echo "deb [arch=amd64 signed-by=/etc/apt/keyrings/google.asc] http://dl.google.com/android/cli/latest/debian/ stable main" \
+            | sudo tee /etc/apt/sources.list.d/android-cli.list >/dev/null
+          sudo apt-get update
+          sudo apt-get install -y android-cli
+          android update
+          android --version
 
       - name: Install Android SDK components
-        run: >-
-          sdkmanager --channel=0
-          "platforms;android-37"
-          "build-tools;36.0.0"
-          "cmake;3.22.1"
-          "ndk;29.0.14206865"
-
-      - name: Show stable native tool versions
-        run: sdkmanager --list --channel=0 | grep -E '(^| )((cmake|ndk);)' | head -80
+        shell: bash
+        run: |
+          SDK_ROOT="$HOME/android-sdk"
+          mkdir -p "$SDK_ROOT"
+          echo "ANDROID_HOME=$SDK_ROOT" >> "$GITHUB_ENV"
+          echo "ANDROID_SDK_ROOT=$SDK_ROOT" >> "$GITHUB_ENV"
+          echo "$SDK_ROOT/platform-tools" >> "$GITHUB_PATH"
+          android --sdk="$SDK_ROOT" sdk install \
+            platforms/android-37 \
+            build-tools/36.0.0 \
+            cmake/3.22.1 \
+            ndk/29.0.14206865 \
+            platform-tools
+          android --sdk="$SDK_ROOT" sdk list '^(platforms/android-37|build-tools/36\.0\.0|cmake/3\.22\.1|ndk/29\.0\.14206865|platform-tools)$' --all-versions
 
       - name: Run app unit tests
         working-directory: android/CyanBridge
@@ -79,20 +91,26 @@ jobs:
           mkdir -p build/ci
           ./gradlew --no-daemon --warning-mode=all :app:testDebugUnitTest --stacktrace 2>&1 | tee /tmp/ad-gradle-unit.log
           status=${PIPESTATUS[0]}
+          grep -Ei '(^e:|^w:|warning:|deprecated|deprecation)' /tmp/ad-gradle-unit.log \
+            | grep -vE '/third_party/|/myvu-upstream/' \
+            | tail -600 > build/ci/gradle-owned-warnings.txt || true
           if [ "$status" -ne 0 ]; then
-            grep -Ei '(^e:|^w:|FAILURE:|What went wrong:|Could not |deprecated|deprecation|error:|Unresolved reference|Compilation error|Caused by:)' /tmp/ad-gradle-unit.log | tail -400 > build/ci/gradle-unit-summary.txt || true
+            grep -Ei '(^e:|^w:|FAILURE:|What went wrong:|Could not |deprecated|deprecation|error:|Unresolved reference|Compilation error|Caused by:)' /tmp/ad-gradle-unit.log \
+              | tail -400 > build/ci/gradle-unit-summary.txt || true
             echo "::group::Compact Gradle failure summary"
             cat build/ci/gradle-unit-summary.txt || true
             echo "::endgroup::"
           fi
           exit "$status"
 
-      - name: Upload unit-test failure diagnostics
-        if: failure()
+      - name: Upload unit-test diagnostics
+        if: always()
         uses: actions/upload-artifact@v7
         with:
-          name: gradle-unit-failure-summary
-          path: android/CyanBridge/build/ci/gradle-unit-summary.txt
+          name: gradle-unit-diagnostics
+          path: |
+            android/CyanBridge/build/ci/gradle-unit-summary.txt
+            android/CyanBridge/build/ci/gradle-owned-warnings.txt
           if-no-files-found: ignore
           retention-days: 2
 
@@ -105,7 +123,8 @@ jobs:
           ./gradlew --no-daemon --warning-mode=all :app:assembleDebug --stacktrace 2>&1 | tee /tmp/ad-gradle-assemble.log
           status=${PIPESTATUS[0]}
           if [ "$status" -ne 0 ]; then
-            grep -Ei '(^e:|^w:|FAILURE:|What went wrong:|Could not |deprecated|deprecation|error:|Unresolved reference|Compilation error|Caused by:)' /tmp/ad-gradle-assemble.log | tail -400 > build/ci/gradle-assemble-summary.txt || true
+            grep -Ei '(^e:|^w:|FAILURE:|What went wrong:|Could not |deprecated|deprecation|error:|Unresolved reference|Compilation error|Caused by:)' /tmp/ad-gradle-assemble.log \
+              | tail -400 > build/ci/gradle-assemble-summary.txt || true
             echo "::group::Compact Gradle failure summary"
             cat build/ci/gradle-assemble-summary.txt || true
             echo "::endgroup::"

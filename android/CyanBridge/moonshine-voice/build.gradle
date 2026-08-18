@@ -4,15 +4,15 @@ plugins {
 
 android {
     namespace = 'ai.moonshine.voice'
-    compileSdk = 36
+    compileSdk = 37
     ndkVersion = '29.0.14206865'
     enableKotlin = false
 
     defaultConfig {
         minSdk = 24
 
-        // Keep release APK size reasonable (matches most modern phones).
-        // If you need emulator/x86 later, add it.
+        // AD Glasses ships arm64 today. Keep the native surface intentionally
+        // narrow until emulator/32-bit binaries are part of our supported matrix.
         ndk {
             abiFilters 'arm64-v8a'
         }
@@ -22,10 +22,13 @@ android {
 
     sourceSets {
         main {
-            // Reuse Moonshine's Java bindings directly from the vendored repo.
+            // Reuse Moonshine's Java bindings directly from the pinned upstream
+            // submodule, including the manifest that declares its opt-in network
+            // and microphone integration contracts.
             java.srcDirs += [
                 '../../../third_party/moonshine/language-bindings/android/java/main/java'
             ]
+            manifest.srcFile('../../../third_party/moonshine/language-bindings/android/java/main/AndroidManifest.xml')
         }
     }
 
@@ -36,10 +39,22 @@ android {
 
     externalNativeBuild {
         cmake {
-            // Keep the repository-pinned CMake until the automated stable-toolchain
-            // audit proposes a newer SDK CMake and CI proves Moonshine against it.
+            // Moonshine upstream currently specifies CMake 3.22.1 for this JNI
+            // build. Dependabot updates the submodule so this pin moves with an
+            // upstream-supported toolchain instead of drifting independently.
             path = file('../../../third_party/moonshine/core/CMakeLists.txt')
             version = '3.22.1'
         }
     }
+}
+
+dependencies {
+    // Keep the wrapper aligned with Moonshine's published Android binding while
+    // resolving versions from our central catalog so automated update PRs cover
+    // these dependencies too.
+    implementation libs.androidx.annotation
+    implementation libs.androidx.core.ktx
+    implementation libs.androidx.appcompat
+    implementation libs.okhttp
+    implementation libs.androidx.work.runtime
 }
