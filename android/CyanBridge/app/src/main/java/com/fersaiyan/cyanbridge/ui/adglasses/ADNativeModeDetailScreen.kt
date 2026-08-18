@@ -49,19 +49,19 @@ import com.fersaiyan.cyanbridge.ai.orchestrator.AssistantModeCommand
 @Composable
 internal fun ADNativeTaskDetailScreen(
     automation: ADAutomation,
-    initiallyActive: Boolean,
     onBack: () -> Unit,
 ) {
     val context = LocalContext.current
     val executor = remember(context) { AndroidModeCommandExecutor(context) }
-    var active by remember(automation, initiallyActive) { mutableStateOf(initiallyActive) }
+    val mode = automation.toAssistantMode()
+    var active by remember(automation) { mutableStateOf(executor.isActive(mode)) }
     var resultText by remember(automation) { mutableStateOf<String?>(null) }
     var lastSucceeded by remember(automation) { mutableStateOf<Boolean?>(null) }
 
     fun execute(action: AssistantModeAction) {
         val result = executor.execute(
             AssistantModeCommand(
-                mode = automation.toAssistantMode(),
+                mode = mode,
                 action = action,
             ),
         )
@@ -70,7 +70,7 @@ internal fun ADNativeTaskDetailScreen(
             result.spokenText.contains("needs permission setup", ignoreCase = true) ||
             result.spokenText.contains("couldn’t change", ignoreCase = true)
         lastSucceeded = !failure
-        if (!failure) active = action == AssistantModeAction.START
+        active = executor.isActive(mode)
     }
 
     ADPageLayout(automation.title, onBack) {
