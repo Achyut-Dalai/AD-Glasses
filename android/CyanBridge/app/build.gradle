@@ -23,14 +23,14 @@ def metaDatEnabled = metaGithubToken != null && !metaGithubToken.trim().isEmpty(
 
 android {
     namespace = "com.fersaiyan.cyanbridge"
-    compileSdk = 37
-    ndkVersion = "27.1.12297006"
+    compileSdk = 36
+    ndkVersion = "29.0.14206865"
 
     defaultConfig {
         applicationId = "com.fersaiyan.cyanbridge"
         // Meta DAT declares minSdk 29. Keep the regular build on API 24 if Meta SDK is skipped.
         minSdk = metaDatEnabled ? 29 : 24
-        targetSdk = 37
+        targetSdk = 36
         versionCode = 14
         versionName = "alpha"
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
@@ -99,8 +99,6 @@ android {
     }
 }
 
-// applicationVariants is removed by AGP 9's new DSL. AGP 9.3.1 exposes the
-// output file name through the public Variant API instead.
 androidComponents {
     onVariants(selector().all()) { variant ->
         variant.outputs.each { output ->
