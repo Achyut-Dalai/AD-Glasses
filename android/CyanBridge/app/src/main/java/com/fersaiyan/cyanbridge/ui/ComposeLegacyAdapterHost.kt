@@ -12,8 +12,11 @@ import com.fersaiyan.cyanbridge.ui.appearance.rememberAppearanceSettings
 import com.fersaiyan.cyanbridge.ui.theme.CyanBridgeTheme
 
 /**
- * Hosts a Compose screen while preserving a hidden View tree for mature Android handlers.
- * The adapter is never part of the visible UI; it only supplies the existing state and effects.
+ * Transitional host for Compose-visible screens whose mature handlers still read
+ * state from an existing View tree. The legacy tree is never displayed.
+ *
+ * Keep usage limited to handler-backed screens and remove it when those handlers
+ * have been extracted into state/controllers that Compose can call directly.
  */
 internal fun AppCompatActivity.installComposeHostWithLegacyAdapter(
     @LayoutRes legacyAdapterLayout: Int,
