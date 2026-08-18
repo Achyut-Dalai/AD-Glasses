@@ -36,7 +36,6 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
@@ -130,22 +129,22 @@ internal fun ADNativeAiScreen(
                 modifier = Modifier.fillMaxWidth(),
                 shape = RoundedCornerShape(26.dp),
                 color = ADColors.Ink,
-                contentColor = Color.White,
+                contentColor = ADColors.Surface,
             ) {
                 Column(Modifier.padding(18.dp)) {
                     Row(verticalAlignment = Alignment.CenterVertically) {
                         Surface(
                             modifier = Modifier.size(48.dp),
                             shape = RoundedCornerShape(16.dp),
-                            color = Color.White.copy(alpha = 0.12f),
-                            contentColor = Color.White,
+                            color = ADColors.Surface.copy(alpha = 0.14f),
+                            contentColor = ADColors.Surface,
                         ) {
                             Box(contentAlignment = Alignment.Center) {
                                 Icon(Icons.Outlined.AutoAwesome, contentDescription = null, modifier = Modifier.size(24.dp))
                             }
                         }
                         Column(Modifier.padding(start = 13.dp).weight(1f)) {
-                            Text("Default AI", style = MaterialTheme.typography.labelMedium, color = Color.White.copy(alpha = 0.68f))
+                            Text("Default AI", style = MaterialTheme.typography.labelMedium, color = ADColors.Surface.copy(alpha = 0.70f))
                             Text(selectedName, style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.SemiBold)
                         }
                     }
@@ -230,8 +229,8 @@ private fun ADAiProviderPill(
         onClick = onClick,
         modifier = modifier.heightIn(min = 44.dp),
         shape = RoundedCornerShape(14.dp),
-        color = if (selected) Color.White else Color.White.copy(alpha = 0.10f),
-        contentColor = if (selected) ADColors.Ink else Color.White,
+        color = if (selected) ADColors.Surface else ADColors.Surface.copy(alpha = 0.12f),
+        contentColor = if (selected) ADColors.Ink else ADColors.Surface,
     ) {
         Box(contentAlignment = Alignment.Center) {
             Text(title, style = MaterialTheme.typography.labelLarge, fontWeight = FontWeight.SemiBold)
@@ -264,7 +263,7 @@ private fun ADPersistentCapabilityCard(
                     Icon(
                         icon,
                         contentDescription = null,
-                        tint = if (checked) Color.White else ADColors.Ink,
+                        tint = if (checked) ADColors.Surface else ADColors.Ink,
                         modifier = Modifier.size(24.dp),
                     )
                 }
