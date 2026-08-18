@@ -38,6 +38,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.ColorFilter
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.res.painterResource
@@ -65,6 +66,7 @@ internal fun ADTopBar(
                 contentDescription = "AD Glasses",
                 modifier = Modifier.size(34.dp).align(Alignment.CenterStart),
                 contentScale = ContentScale.Fit,
+                colorFilter = if (ADColors.IsDark) ColorFilter.tint(ADColors.Ink) else null,
             )
             Text(
                 text = "AD GLASSES",
@@ -140,6 +142,7 @@ internal fun ADGlassesMark(modifier: Modifier = Modifier) {
         contentDescription = null,
         modifier = modifier,
         contentScale = ContentScale.Fit,
+        colorFilter = if (ADColors.IsDark) ColorFilter.tint(ADColors.Ink) else null,
     )
 }
 
@@ -228,7 +231,7 @@ internal fun ADPageHero(
                     modifier = Modifier.size(52.dp),
                     shape = RoundedCornerShape(17.dp),
                     color = ADColors.Ink,
-                    contentColor = Color.White,
+                    contentColor = ADColors.Surface,
                 ) {
                     Box(contentAlignment = Alignment.Center) {
                         Icon(icon, contentDescription = null, modifier = Modifier.size(25.dp))
