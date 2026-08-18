@@ -11,7 +11,7 @@ val enableAppleTargets = providers.gradleProperty("enableAppleTargets").orNull =
 kotlin {
     android {
         namespace = "com.fersaiyan.cyanbridge.shared"
-        compileSdk = 36
+        compileSdk = 37
         minSdk = 24
         compilerOptions {
             jvmTarget.set(org.jetbrains.kotlin.gradle.dsl.JvmTarget.JVM_17)
@@ -21,16 +21,12 @@ kotlin {
         }
     }
 
-    // A second host target keeps common code genuinely multiplatform-testable while
-    // Apple framework linking and vendor integration remain behind the iOS gate.
     jvm("portability") {
         compilerOptions {
             jvmTarget.set(org.jetbrains.kotlin.gradle.dsl.JvmTarget.JVM_17)
         }
     }
 
-    // Apple targets are opt-in so the Android/Linux build remains usable while
-    // the framework is compiled and linked from Xcode on macOS.
     if (enableAppleTargets) {
         iosArm64 {
             binaries.framework {
