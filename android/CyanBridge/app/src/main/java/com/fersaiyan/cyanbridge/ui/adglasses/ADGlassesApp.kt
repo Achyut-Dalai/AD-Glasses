@@ -171,8 +171,6 @@ fun ADGlassesApp(
                     ADRoute.FIRMWARE -> ADFirmwareScreen(dashboardState, host, navigateBack)
                     ADRoute.TASK_DETAIL -> ADNativeTaskDetailScreen(
                         automation = selectedAutomation,
-                        initiallyActive = dashboardState.nativePluginShortcut?.title == selectedAutomation.runtimeTitle &&
-                            dashboardState.nativePluginShortcut?.isEnabled == true,
                         onBack = navigateBack,
                     )
                     ADRoute.LIBRARY_CAPTURES -> ADNativeCapturesScreen(
