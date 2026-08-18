@@ -9,7 +9,6 @@ import androidx.compose.material3.lightColorScheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.SideEffect
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.text.TextStyle
@@ -149,8 +148,6 @@ fun ADGlassesTheme(content: @Composable () -> Unit) {
     if (!view.isInEditMode) {
         SideEffect {
             context.findActivity()?.window?.let { window ->
-                window.statusBarColor = ADColors.Background.toArgb()
-                window.navigationBarColor = ADColors.Surface.toArgb()
                 WindowCompat.getInsetsController(window, view).apply {
                     isAppearanceLightStatusBars = true
                     isAppearanceLightNavigationBars = true
