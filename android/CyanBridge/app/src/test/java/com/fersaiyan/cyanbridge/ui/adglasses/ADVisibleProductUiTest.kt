@@ -16,13 +16,14 @@ class ADVisibleProductUiTest {
             "ADHomeSurface(",
             "ADNativeConversationScreen(",
             "ADNativeAiScreen(",
-            "ADNativeLibraryScreen(",
+            "ADExpressiveLibraryHome(",
             "ADNativeSettingsHubScreen(",
             "ADGlassesDeviceCenterScreen(",
             "ADNativeCapturesScreen(",
             "ADNativeRecordingsScreen(",
             "ADNativeNotesScreen(",
         ).forEach { screen -> assertTrue("Compose shell must render $screen", app.contains(screen)) }
+        assertFalse(app.contains("ADNativeCapabilityDetailScreen("))
     }
 
     @Test
@@ -86,24 +87,31 @@ class ADVisibleProductUiTest {
     }
 
     @Test
-    fun aiPageDoesNotRenderCapabilitiesHeading() {
+    fun aiPageKeepsOnlyPersistentCapabilitiesAndConfiguration() {
         val ai = appFile("src/main/java/com/fersaiyan/cyanbridge/ui/adglasses/ADNativeAiScreen.kt").readText()
         assertFalse(ai.contains("Text(\"Capabilities\""))
-        assertTrue(ai.contains("ADAutomation.TRANSLATOR"))
-        assertTrue(ai.contains("ADAutomation.MEETING_NOTES"))
-        assertTrue(ai.contains("ADAutomation.VISUAL_DIARY"))
-        assertTrue(ai.contains("ADAutomation.AUTO_DIARY"))
-        assertTrue(ai.contains("ADAutomation.ERRAND_BRAIN"))
-        assertTrue(ai.contains("ADAutomation.LOCAL_AGENT"))
+        assertTrue(ai.contains("AssistantCapability.VISUAL_DIARY"))
+        assertTrue(ai.contains("AssistantCapability.AUTO_DIARY"))
+        assertTrue(ai.contains("AssistantCapability.LOCAL_AGENT"))
+        assertTrue(ai.contains("Switch("))
+        assertFalse(ai.contains("AssistantCapability.TRANSLATOR"))
+        assertFalse(ai.contains("AssistantCapability.MEETING_NOTES"))
+        assertFalse(ai.contains("ERRAND_BRAIN"))
+        assertFalse(ai.contains("\"OFF\""))
     }
 
     @Test
-    fun homeStartsGlassesActionsThroughComposeHost() {
+    fun homeStartsCoreGlassesActionsAndOwnsLiveTranslateAndSoundbites() {
         val home = appFile("src/main/java/com/fersaiyan/cyanbridge/ui/adglasses/ADHomeSurface.kt").readText()
         assertTrue(home.contains("onClick = host.onVoiceQuestion"))
         assertTrue(home.contains("onClick = host.onCapturePhoto"))
         assertTrue(home.contains("onClick = host.onToggleVideo"))
         assertTrue(home.contains("onClick = host.onImageQuestion"))
+        assertTrue(home.contains("toggleCapability(AssistantCapability.TRANSLATOR)"))
+        assertTrue(home.contains("toggleCapability(AssistantCapability.MEETING_NOTES)"))
+        listOf("Ask AI", "Photo", "Video", "Translate", "Soundbites", "Audio", "Smart Lens")
+            .forEach { label -> assertTrue(home.contains("\"$label\"")) }
+        assertFalse(home.contains("Search Web"))
     }
 
     @Test
