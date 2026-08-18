@@ -42,7 +42,6 @@ import com.fersaiyan.cyanbridge.R
 import com.fersaiyan.cyanbridge.devices.DeviceCapabilityHelper
 import com.fersaiyan.cyanbridge.shared.plugins.NativePluginIds
 import com.fersaiyan.cyanbridge.ui.NativePluginShortcutPreference
-import com.fersaiyan.cyanbridge.ui.installComposeHostWithLegacyAdapter
 import com.fersaiyan.cyanbridge.ui.setThemedComposeContent
 
 class VisualDiarySettingsActivity : AppCompatActivity() {
@@ -52,8 +51,7 @@ class VisualDiarySettingsActivity : AppCompatActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         refreshUi()
-        val composeView = installComposeHostWithLegacyAdapter(R.layout.activity_visual_diary_settings)
-        setThemedComposeContent(composeView) {
+        setThemedComposeContent {
             VisualDiarySettingsScreen(
                 enabled = visualDiaryEnabled,
                 lastError = lastError,
