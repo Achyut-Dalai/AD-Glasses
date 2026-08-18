@@ -27,11 +27,6 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.rounded.ArrowBack
-import androidx.compose.material.icons.automirrored.rounded.BluetoothSearching
-import androidx.compose.material.icons.automirrored.rounded.KeyboardArrowRight
-import androidx.compose.material.icons.rounded.Bluetooth
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
@@ -61,6 +56,8 @@ import androidx.compose.ui.unit.dp
 import com.fersaiyan.cyanbridge.shared.devices.DeviceClass
 import com.fersaiyan.cyanbridge.shared.devices.ScannedDevice
 import com.fersaiyan.cyanbridge.shared.generated.resources.*
+import com.fersaiyan.cyanbridge.shared.icons.AppIcon
+import com.fersaiyan.cyanbridge.shared.icons.imageVector
 import org.jetbrains.compose.resources.ExperimentalResourceApi
 import org.jetbrains.compose.resources.stringResource
 
@@ -94,7 +91,7 @@ fun DeviceBindScreen(
                 navigationIcon = {
                     IconButton(onClick = onBack) {
                         Icon(
-                            Icons.AutoMirrored.Rounded.ArrowBack,
+                            AppIcon.Back.imageVector(),
                             contentDescription = stringResource(Res.string.action_back),
                             tint = MaterialTheme.colorScheme.primary,
                         )
@@ -220,7 +217,7 @@ private fun ScanStage(
                     modifier = Modifier.fillMaxWidth().height(48.dp),
                     colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary),
                 ) {
-                    Icon(Icons.AutoMirrored.Rounded.BluetoothSearching, null, modifier = Modifier.size(19.dp))
+                    Icon(AppIcon.BluetoothSearching.imageVector(), null, modifier = Modifier.size(19.dp))
                     Spacer(Modifier.width(8.dp))
                     Text(stringResource(Res.string.device_bind_scan))
                 }
@@ -284,7 +281,7 @@ private fun ScanVisual(sweepAngle: Float, active: Boolean) {
         ) {
             Box(contentAlignment = Alignment.Center) {
                 Icon(
-                    if (active) Icons.AutoMirrored.Rounded.BluetoothSearching else Icons.Rounded.Bluetooth,
+                    if (active) AppIcon.BluetoothSearching.imageVector() else AppIcon.Bluetooth.imageVector(),
                     contentDescription = null,
                     tint = primary,
                     modifier = Modifier.size(31.dp),
@@ -312,7 +309,7 @@ private fun DeviceResultRow(device: ScannedDevice, onClick: () -> Unit) {
                     .background(MaterialTheme.colorScheme.primaryContainer, RoundedCornerShape(11.dp)),
                 contentAlignment = Alignment.Center,
             ) {
-                Icon(Icons.Rounded.Bluetooth, null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(22.dp))
+                Icon(AppIcon.Bluetooth.imageVector(), null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(22.dp))
             }
             Column(modifier = Modifier.padding(start = 12.dp).weight(1f)) {
                 Text(
@@ -335,7 +332,7 @@ private fun DeviceResultRow(device: ScannedDevice, onClick: () -> Unit) {
                     overflow = TextOverflow.Ellipsis,
                 )
             }
-            Icon(Icons.AutoMirrored.Rounded.KeyboardArrowRight, null, tint = MaterialTheme.colorScheme.onSurfaceVariant)
+            Icon(AppIcon.ChevronRight.imageVector(), null, tint = MaterialTheme.colorScheme.onSurfaceVariant)
         }
     }
 }
