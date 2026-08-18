@@ -73,7 +73,7 @@ function ActionTile({icon, title, detail, onPress}: {icon: IconName; title: stri
 
 /** Hidden compatibility surface for contextual sessions launched from an artifact or internal route. */
 export function PromptScreen({route}: {route?: RouteEntry}) {
-  const [value, setValue] = useState('');
+  const [value, setValue] = useState(() => typeof route?.params?.prefill === 'string' ? route.params.prefill : '');
   const [conversation, setConversation] = useState<ConversationState>({threadId: '', messages: []});
   const [sending, setSending] = useState(false);
   const [webSearch, setWebSearch] = useState(Boolean(route?.params?.web));

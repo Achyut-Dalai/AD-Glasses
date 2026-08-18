@@ -55,10 +55,12 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: "22"
+          cache: npm
+          cache-dependency-path: android/CyanBridge/package-lock.json
 
       - name: Install React Native dependencies
         working-directory: android/CyanBridge
-        run: npm install --no-audit --no-fund
+        run: npm ci --prefer-offline --no-audit --no-fund
 
       - name: Typecheck React Native product shell
         working-directory: android/CyanBridge

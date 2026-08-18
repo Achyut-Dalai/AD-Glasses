@@ -35,7 +35,6 @@ import com.fersaiyan.cyanbridge.shared.glasses.GlassesDashboardAction
 import com.fersaiyan.cyanbridge.shared.glasses.GlassesDashboardUiState
 import com.fersaiyan.cyanbridge.shared.glasses.OtaFirmwareSource
 import com.fersaiyan.cyanbridge.shared.settings.AgentProviderType
-import com.fersaiyan.cyanbridge.ui.DeviceBindActivity
 import com.fersaiyan.cyanbridge.ui.MyApplication
 import com.fersaiyan.cyanbridge.ui.recordings.SyncedMediaQuery
 import com.oudmon.ble.base.bluetooth.BleOperateManager
@@ -193,16 +192,6 @@ class ADGlassesBridgeModule(
     }
 
     @ReactMethod
-    fun openNativeRoute(route: String) {
-        when (route.lowercase()) {
-            "device-setup", "pairing" -> startActivity(Intent(reactContext, DeviceBindActivity::class.java))
-            "accessibility" -> startActivity(Intent(Settings.ACTION_ACCESSIBILITY_SETTINGS))
-            "assistant-settings" -> startActivity(Intent(Settings.ACTION_VOICE_INPUT_SETTINGS))
-            "app-settings", "storage-settings" -> openAppSettings()
-        }
-    }
-
-    @ReactMethod
     fun runAction(action: String, payload: ReadableMap?) {
         when (action) {
             "scan" -> dispatch(GlassesDashboardAction.Scan)
@@ -218,7 +207,6 @@ class ADGlassesBridgeModule(
             "imageQuestion" -> dispatch(GlassesDashboardAction.TestImageQuestion)
             "chooseFirmware" -> dispatch(GlassesDashboardAction.RequestOtaFirmware(OtaFirmwareSource.PERSONAL_FILE))
             "cancelFirmware" -> dispatch(GlassesDashboardAction.CancelOta)
-            "openDeviceSetup" -> startActivity(Intent(reactContext, DeviceBindActivity::class.java))
             "openAccessibility" -> startActivity(Intent(Settings.ACTION_ACCESSIBILITY_SETTINGS))
             "openAssistantSettings" -> startActivity(Intent(Settings.ACTION_VOICE_INPUT_SETTINGS))
             "openAppSettings", "openStorageSettings" -> openAppSettings()
@@ -232,7 +220,7 @@ class ADGlassesBridgeModule(
             "setAiProvider" -> setAiProvider(payload?.stringOrNull("provider"))
             "saveRelay" -> saveRelay(payload)
             "saveRemoteServer" -> saveRemoteServer(payload)
-            "exitApp" -> currentActivity?.finishAffinity()
+            "exitApp" -> currentActivity?.moveTaskToBack(true)
         }
     }
 

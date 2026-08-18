@@ -56,7 +56,6 @@ type Bridge = {
   getCaptures?: () => Promise<CaptureItem[]>;
   getRecordings?: () => Promise<RecordingItem[]>;
   getNotes?: () => Promise<NoteItem[]>;
-  openNativeRoute?: (route: string) => void;
   runAction?: (action: string, payload?: Record<string, unknown>) => void;
 };
 
@@ -100,6 +99,5 @@ export const ADNative = {
     if (!native?.getNotes) return [];
     try { return await native.getNotes(); } catch { return []; }
   },
-  open(route: string) { native?.openNativeRoute?.(route); },
   action(action: string, payload?: Record<string, unknown>) { native?.runAction?.(action, payload); },
 };
