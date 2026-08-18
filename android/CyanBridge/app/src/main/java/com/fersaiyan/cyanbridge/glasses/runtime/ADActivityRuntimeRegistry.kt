@@ -1,22 +1,21 @@
-package com.fersaiyan.cyanbridge.ui.reactnative
+package com.fersaiyan.cyanbridge.glasses.runtime
 
 import android.app.Activity
 import android.app.Application
 import android.os.Bundle
 import com.fersaiyan.cyanbridge.MainActivity
 import com.fersaiyan.cyanbridge.ai.AiQuestionForegroundService
-import com.fersaiyan.cyanbridge.glasses.runtime.ADGlassesCommandGateway
-import com.fersaiyan.cyanbridge.glasses.runtime.ADLegacyMainActivityRuntime
 import java.lang.ref.WeakReference
 
 /**
- * Tracks Activity lifetime for compatibility while command ownership migrates to a persistent
- * native glasses runtime. Product code should use ADGlassesCommandGateway, not this registry.
+ * Tracks the MainActivity-backed compatibility runtime while native transport ownership is
+ * progressively moved into process-level services. The Compose UI does not depend on this
+ * registry; it exists solely to preserve mature HeyCyan, sync and OTA command handling.
  */
-object ADRuntimeRegistry : Application.ActivityLifecycleCallbacks {
+object ADActivityRuntimeRegistry : Application.ActivityLifecycleCallbacks {
     private var installed = false
     private var mainActivityRef: WeakReference<MainActivity>? = null
-    private var legacyRuntime: ADLegacyMainActivityRuntime? = null
+    private var activityRuntime: ADLegacyMainActivityRuntime? = null
 
     @Synchronized
     fun install(application: Application) {
@@ -30,17 +29,15 @@ object ADRuntimeRegistry : Application.ActivityLifecycleCallbacks {
     override fun onActivityCreated(activity: Activity, savedInstanceState: Bundle?) {
         if (activity !is MainActivity) return
         mainActivityRef = WeakReference(activity)
-        legacyRuntime?.let(ADGlassesCommandGateway::detachActivity)
-        legacyRuntime = ADLegacyMainActivityRuntime(activity).also(ADGlassesCommandGateway::attachActivity)
-        // Start the already-declared connected-device service while a visible Activity makes the
-        // request. It remains the persistent owner after the React/Activity UI goes away.
+        activityRuntime?.let(ADGlassesCommandGateway::detachActivity)
+        activityRuntime = ADLegacyMainActivityRuntime(activity).also(ADGlassesCommandGateway::attachActivity)
         AiQuestionForegroundService.startRuntime(activity.applicationContext)
     }
 
     override fun onActivityDestroyed(activity: Activity) {
         if (activity !== mainActivityRef?.get()) return
-        legacyRuntime?.let(ADGlassesCommandGateway::detachActivity)
-        legacyRuntime = null
+        activityRuntime?.let(ADGlassesCommandGateway::detachActivity)
+        activityRuntime = null
         mainActivityRef = null
     }
 

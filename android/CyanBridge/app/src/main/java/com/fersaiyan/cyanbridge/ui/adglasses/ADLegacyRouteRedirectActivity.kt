@@ -5,7 +5,6 @@ import android.content.Context
 import android.content.Intent
 import android.os.Bundle
 import com.fersaiyan.cyanbridge.MainActivity
-import com.fersaiyan.cyanbridge.ui.reactnative.ADReactNativeActivity
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -28,10 +27,7 @@ data class ADNavigationRequest(
     val webSearchRequested: Boolean = false,
 )
 
-/**
- * Compatibility store retained for native/runtime callers that still post navigation requests.
- * The visible destination is React Native; this store no longer owns presentation.
- */
+/** Compatibility store for native/runtime callers that post Compose navigation requests. */
 object ADNavigationRequestStore {
     private const val PREFS = "ad_navigation_requests"
     private const val KEY_ID = "id"
@@ -62,9 +58,7 @@ object ADNavigationRequestStore {
         webSearchRequested: Boolean = false,
     ): ADNavigationRequest {
         val request = ADNavigationRequest(
-            id = ids.updateAndGet { previous ->
-                maxOf(previous + 1L, System.currentTimeMillis())
-            },
+            id = ids.updateAndGet { previous -> maxOf(previous + 1L, System.currentTimeMillis()) },
             destination = destination,
             prefill = prefill?.trim()?.takeIf { it.isNotEmpty() },
             threadId = threadId?.trim()?.takeIf { it.isNotEmpty() },
@@ -117,7 +111,7 @@ object ADNavigationRequestStore {
     }
 }
 
-/** Invisible compatibility target; inherited native intents always land in React Native. */
+/** Invisible compatibility target; inherited native intents always land in the Compose shell. */
 abstract class ADLegacyRouteRedirectActivity : Activity() {
     abstract val destination: ADExternalDestination
 
@@ -127,34 +121,20 @@ abstract class ADLegacyRouteRedirectActivity : Activity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        val request = ADNavigationRequestStore.post(
+        ADNavigationRequestStore.post(
             context = this,
             destination = destination,
             prefill = requestPrefill(intent),
             threadId = requestThreadId(intent),
             webSearchRequested = requestWebSearch(intent),
         )
-        val runtime = Intent(this, MainActivity::class.java).apply {
-            addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP or Intent.FLAG_ACTIVITY_SINGLE_TOP)
-        }
-        val productShell = Intent(this, ADReactNativeActivity::class.java).apply {
-            putExtra(ADReactNativeActivity.EXTRA_INITIAL_ROUTE, destination.reactRoute())
-            request.prefill?.let { putExtra(ADReactNativeActivity.EXTRA_INITIAL_PREFILL, it) }
-            request.threadId?.let { putExtra(ADReactNativeActivity.EXTRA_INITIAL_THREAD_ID, it) }
-            putExtra(ADReactNativeActivity.EXTRA_INITIAL_WEB_SEARCH, request.webSearchRequested)
-        }
-        startActivities(arrayOf(runtime, productShell))
+        startActivity(
+            Intent(this, MainActivity::class.java).apply {
+                addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP or Intent.FLAG_ACTIVITY_SINGLE_TOP)
+            },
+        )
         finish()
         overridePendingTransition(0, 0)
-    }
-
-    private fun ADExternalDestination.reactRoute(): String = when (this) {
-        ADExternalDestination.CONVERSATIONS -> "prompt"
-        ADExternalDestination.SETTINGS -> "settings"
-        ADExternalDestination.MODES -> "ai"
-        ADExternalDestination.LIBRARY_CAPTURES -> "captures"
-        ADExternalDestination.LIBRARY_RECORDINGS -> "recordings"
-        ADExternalDestination.LIBRARY_NOTES -> "notes"
     }
 }
 
@@ -162,8 +142,7 @@ class ADConversationsRedirectActivity : ADLegacyRouteRedirectActivity() {
     override val destination = ADExternalDestination.CONVERSATIONS
     override fun requestPrefill(intent: Intent): String? = intent.getStringExtra("prefill_message")
     override fun requestThreadId(intent: Intent): String? = intent.getStringExtra("chat_id")
-    override fun requestWebSearch(intent: Intent): Boolean =
-        intent.getBooleanExtra("web_search_requested", false)
+    override fun requestWebSearch(intent: Intent): Boolean = intent.getBooleanExtra("web_search_requested", false)
 }
 
 class ADSettingsRedirectActivity : ADLegacyRouteRedirectActivity() {

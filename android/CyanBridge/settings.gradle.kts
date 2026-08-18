@@ -1,20 +1,4 @@
 pluginManagement {
-    // Keep this as the canonical string-path include used by the React Native 0.86
-    // template. Gradle plugin discovery for com.facebook.react.settings is performed
-    // from this included build during settings evaluation.
-    val reactNativeGradlePluginPath = "node_modules/@react-native/gradle-plugin"
-    val reactNativeGradlePluginDir = settingsDir.resolve(reactNativeGradlePluginPath)
-    check(reactNativeGradlePluginDir.isDirectory) {
-        """
-        React Native dependencies are missing: ${reactNativeGradlePluginDir.path} does not exist.
-        From this Gradle/React Native root run:
-
-          npm install
-
-        Node 22.11+ is required by this project. Then retry the Gradle build or Android Studio sync.
-        """.trimIndent()
-    }
-    includeBuild(reactNativeGradlePluginPath)
     repositories {
         google()
         mavenCentral()
@@ -23,27 +7,7 @@ pluginManagement {
     }
 }
 
-plugins {
-    id("com.facebook.react.settings")
-}
-
-extensions.configure<com.facebook.react.ReactSettingsExtension> {
-    // RNGP defaults the config command to rootDirectory/../, which is correct for a
-    // conventional <js-root>/android layout. AD Glasses intentionally embeds React Native
-    // directly in this existing Gradle root, so run autolinking from the workspace itself.
-    autolinkLibrariesFromCommand(
-        workingDirectory = settings.layout.rootDirectory.asFile,
-        lockFiles = settings.layout.rootDirectory.files(
-            "package-lock.json",
-            "package.json",
-            "react-native.config.js",
-        ),
-    )
-}
-
 dependencyResolutionManagement {
-    // React Native and autolinked native modules may contribute project repositories.
-    // Prefer the audited settings repositories while allowing those plugin additions.
     repositoriesMode.set(RepositoriesMode.PREFER_SETTINGS)
     repositories {
         mavenLocal()
@@ -84,9 +48,6 @@ include(":assistant-role")
 
 // Moonshine Voice (local wrapper module that builds vendored native sources)
 include(":moonshine-voice")
-
-// React Native's Gradle plugin is also an included build for the project itself.
-includeBuild("node_modules/@react-native/gradle-plugin")
 
 // HeyCyan Core - bundled as composite build for easy compilation
 val heycyanCoreDir = file("../../heycyan-core")

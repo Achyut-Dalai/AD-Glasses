@@ -9,15 +9,11 @@ import android.content.IntentFilter
 import android.os.Build
 import androidx.core.content.ContextCompat
 import androidx.localbroadcastmanager.content.LocalBroadcastManager
-import com.facebook.react.PackageList
-import com.facebook.react.ReactApplication
-import com.facebook.react.ReactHost
-import com.facebook.react.ReactNativeApplicationEntryPoint.loadReactNative
-import com.facebook.react.defaults.DefaultReactHost.getDefaultReactHost
 import com.fersaiyan.cyanbridge.agent.LocalAgentPrefs
 import com.fersaiyan.cyanbridge.ai.router.AiProviderPrefs
 import com.fersaiyan.cyanbridge.ai.router.AiProviderType
 import com.fersaiyan.cyanbridge.devices.DeviceProfileStore
+import com.fersaiyan.cyanbridge.glasses.runtime.ADActivityRuntimeRegistry
 import com.fersaiyan.cyanbridge.localagent.daily.DailyFactsReminderScheduler
 import com.fersaiyan.cyanbridge.localmodels.remote.RemoteOpenAiPrefs
 import com.fersaiyan.cyanbridge.localmodels.storage.LocalModelStorageRepository
@@ -35,8 +31,6 @@ import com.fersaiyan.cyanbridge.studiobridge.StudioApprovalHandler
 import com.fersaiyan.cyanbridge.studiobridge.StudioBridgeClient
 import com.fersaiyan.cyanbridge.studiobridge.StudioBridgeForegroundService
 import com.fersaiyan.cyanbridge.ui.localization.AppLanguagePreferences
-import com.fersaiyan.cyanbridge.ui.reactnative.ADGlassesReactPackage
-import com.fersaiyan.cyanbridge.ui.reactnative.ADRuntimeRegistry
 import com.oudmon.ble.base.bluetooth.BleAction
 import com.oudmon.ble.base.bluetooth.BleBaseControl
 import com.oudmon.ble.base.bluetooth.BleOperateManager
@@ -47,20 +41,8 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.launch
 
-/**
- * Application process owner for both the inherited glasses runtime and the React Native
- * product shell. Native services remain authoritative; React owns presentation.
- */
-class MyApplication : Application(), ReactApplication {
-
-    override val reactHost: ReactHost by lazy {
-        getDefaultReactHost(
-            context = applicationContext,
-            packageList = PackageList(this).packages.apply {
-                add(ADGlassesReactPackage())
-            },
-        )
-    }
+/** Application process owner for native services, device transport and the Compose product UI. */
+class MyApplication : Application() {
 
     private val appScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
     private var studioApprovalHandler: StudioApprovalHandler? = null
@@ -74,10 +56,7 @@ class MyApplication : Application(), ReactApplication {
         instance = this
         CONTEXT = applicationContext
 
-        // RN 0.86 New Architecture / Hermes initialization. This does not replace any
-        // native service; it only makes the product shell available to the process.
-        ADRuntimeRegistry.install(this)
-        loadReactNative(this)
+        ADActivityRuntimeRegistry.install(this)
 
         AppLanguagePreferences.applyStoredLocale(this)
         initBle()
@@ -161,10 +140,7 @@ class MyApplication : Application(), ReactApplication {
         }
     }
 
-    /**
-     * Initialize KMP shared services with Android implementations.
-     * This bridges the shared module's abstractions to the Android-specific implementations.
-     */
+    /** Initialize KMP shared services with Android implementations. */
     private fun initSharedServices() {
         if (CyanBridgeServices.isInitialized()) return
 
