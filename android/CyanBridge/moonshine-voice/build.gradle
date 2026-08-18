@@ -4,7 +4,8 @@ plugins {
 
 android {
     namespace = 'ai.moonshine.voice'
-    compileSdk = 37
+    compileSdk = 36
+    ndkVersion = '29.0.14206865'
     enableKotlin = false
 
     defaultConfig {
@@ -35,7 +36,8 @@ android {
 
     externalNativeBuild {
         cmake {
-            // Moonshine builds the JNI lib (moonshine-jni) from this root CMake.
+            // Keep the repository-pinned CMake until the automated stable-toolchain
+            // audit proposes a newer SDK CMake and CI proves Moonshine against it.
             path = file('../../../third_party/moonshine/core/CMakeLists.txt')
             version = '3.22.1'
         }
