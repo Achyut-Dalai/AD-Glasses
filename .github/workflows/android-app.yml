@@ -6,7 +6,7 @@ on:
     paths:
       - .github/workflows/android-app.yml
       - android/CyanBridge/**
-      - android/heycyan-core/**
+      - heycyan-core/**
       - third_party/moonshine/**
   push:
     branches:
@@ -17,7 +17,7 @@ on:
     paths:
       - .github/workflows/android-app.yml
       - android/CyanBridge/**
-      - android/heycyan-core/**
+      - heycyan-core/**
       - third_party/moonshine/**
 
 permissions:
@@ -39,7 +39,7 @@ jobs:
 
     steps:
       - name: Check out source
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
         with:
           submodules: recursive
 
@@ -52,12 +52,12 @@ jobs:
           cache-dependency-path: android/CyanBridge/**/*.gradle*
 
       - name: Set up Android SDK
-        uses: android-actions/setup-android@v3
+        uses: android-actions/setup-android@v4
 
-      - name: Install Android build tools
+      - name: Install Android SDK components
         run: >-
           sdkmanager
-          "platforms;android-36"
+          "platforms;android-37"
           "build-tools;36.0.0"
           "cmake;3.22.1"
           "ndk;27.1.12297006"
@@ -74,7 +74,7 @@ jobs:
         run: test -f android/CyanBridge/app/build/outputs/apk/debug/AD-Glasses.apk
 
       - name: Upload AD Glasses APK
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: AD-Glasses-debug
           path: android/CyanBridge/app/build/outputs/apk/debug/AD-Glasses.apk
