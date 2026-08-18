@@ -48,12 +48,13 @@ import com.fersaiyan.cyanbridge.ai.orchestrator.AssistantCapabilityAction
 import com.fersaiyan.cyanbridge.ai.orchestrator.AssistantCapabilityCommand
 import com.fersaiyan.cyanbridge.ai.orchestrator.AssistantCapabilityRuntimeEvents
 
-/** Native control surface for an AI capability. No plugin SettingsActivity is required. */
+/** Native control surface for a current AI capability. */
 @Composable
 internal fun ADNativeCapabilityDetailScreen(
     automation: ADAutomation,
     onBack: () -> Unit,
 ) {
+    require(automation != ADAutomation.AUTO_AUDIO) { "Background audio auto-capture is not a product capability" }
     val context = LocalContext.current
     val runtimeVersion by AssistantCapabilityRuntimeEvents.version.collectAsState()
     val executor = remember(context, runtimeVersion) { AndroidCapabilityCommandExecutor(context) }
@@ -270,6 +271,7 @@ private fun ADAutomation.capabilityIcon(): ImageVector = when (this) {
     ADAutomation.ERRAND_BRAIN -> Icons.Outlined.EventRepeat
     ADAutomation.AUTO_DIARY -> Icons.Outlined.AutoStories
     ADAutomation.VISUAL_DIARY -> Icons.Outlined.Timeline
+    ADAutomation.AUTO_AUDIO -> error("Removed audio auto-capture has no product icon")
 }
 
 internal fun ADAutomation.toAssistantCapability(): AssistantCapability = when (this) {
@@ -280,6 +282,7 @@ internal fun ADAutomation.toAssistantCapability(): AssistantCapability = when (t
     ADAutomation.AUTO_DIARY -> AssistantCapability.AUTO_DIARY
     ADAutomation.VISUAL_DIARY -> AssistantCapability.VISUAL_DIARY
     ADAutomation.LOCAL_AGENT -> AssistantCapability.LOCAL_AGENT
+    ADAutomation.AUTO_AUDIO -> error("Background audio auto-capture is removed")
 }
 
 private fun ADAutomation.nativeOutput(): String = when (this) {
@@ -290,4 +293,5 @@ private fun ADAutomation.nativeOutput(): String = when (this) {
     ADAutomation.ERRAND_BRAIN -> "Scheduled tasks and reminders"
     ADAutomation.AUTO_DIARY -> "Private daily note"
     ADAutomation.VISUAL_DIARY -> "Visual timeline"
+    ADAutomation.AUTO_AUDIO -> error("Background audio auto-capture is removed")
 }
