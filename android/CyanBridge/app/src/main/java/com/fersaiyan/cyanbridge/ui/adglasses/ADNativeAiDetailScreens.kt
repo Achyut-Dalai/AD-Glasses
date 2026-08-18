@@ -358,7 +358,7 @@ private fun ADInstalledModelCard(
                 Icon(
                     Icons.Outlined.Storage,
                     contentDescription = null,
-                    tint = if (selected) androidx.compose.ui.graphics.Color.White else ADColors.Ink,
+                    tint = if (selected) ADColors.Surface else ADColors.Ink,
                     modifier = Modifier.size(21.dp),
                 )
             }
