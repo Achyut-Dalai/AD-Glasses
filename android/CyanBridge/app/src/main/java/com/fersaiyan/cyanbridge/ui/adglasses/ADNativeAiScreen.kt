@@ -46,7 +46,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.fersaiyan.cyanbridge.agent.LocalAgentPrefs
-import com.fersaiyan.cyanbridge.ai.orchestrator.AndroidModeCommandExecutor
+import com.fersaiyan.cyanbridge.ai.orchestrator.AndroidCapabilityCommandExecutor
 import com.fersaiyan.cyanbridge.ai.router.AiProviderPrefs
 import com.fersaiyan.cyanbridge.ai.router.AiProviderType
 import com.fersaiyan.cyanbridge.ai.router.CliRelayBackend
@@ -64,7 +64,7 @@ internal fun ADNativeAiScreen(
     onOpenCapability: (ADAutomation) -> Unit = {},
 ) {
     val context = LocalContext.current
-    val capabilityExecutor = remember(context) { AndroidModeCommandExecutor(context) }
+    val capabilityExecutor = remember(context) { AndroidCapabilityCommandExecutor(context) }
     var selected by remember { mutableStateOf(resolveAiChoice(context)) }
 
     fun select(choice: ADAiChoice) {
@@ -89,12 +89,12 @@ internal fun ADNativeAiScreen(
     }
 
     fun capabilityState(automation: ADAutomation, defaultDetail: String): Pair<Boolean, String> {
-        val capability = automation.toAssistantMode()
+        val capability = automation.toAssistantCapability()
         val active = capabilityExecutor.isActive(capability)
         if (active) return true to "On · $defaultDetail"
 
-        val currentListener = if (capabilityExecutor.isExclusiveVoiceMode(capability)) {
-            capabilityExecutor.activeVoiceMode(excluding = capability)
+        val currentListener = if (capabilityExecutor.isExclusiveVoiceCapability(capability)) {
+            capabilityExecutor.activeVoiceCapability(excluding = capability)
         } else {
             null
         }
