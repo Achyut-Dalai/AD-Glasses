@@ -39,16 +39,7 @@ class MemoMindBleScanner(
             return manager?.adapter
         }
 
-    // ------------------------------------------------------------------
-    // Public API
-    // ------------------------------------------------------------------
-
-    /**
-     * Start scanning for MemoMind glasses. Emits [DeviceInfo] for each
-     * matching device discovered. The flow completes when [stopScan] is
-     * called via [android.bluetooth.le.ScanCallback.onScanFailed] or when
-     * the collector cancels the collection.
-     */
+    /** Start scanning for MemoMind glasses. */
     @SuppressLint("MissingPermission")
     fun scan(): Flow<DeviceInfo> = callbackFlow {
         if (!hasScanPermissions()) {
@@ -65,25 +56,29 @@ class MemoMindBleScanner(
             return@callbackFlow
         }
 
-        val scanner: BluetoothLeScanner
-        try {
-            scanner = adapter.bluetoothLeScanner
+        val scanner = try {
+            adapter.bluetoothLeScanner
         } catch (e: SecurityException) {
             Log.e(TAG, "SecurityException getting bluetoothLeScanner", e)
             close(e)
             return@callbackFlow
         }
+        if (scanner == null) {
+            // Android returns null when BLE scanning is temporarily unavailable (for example,
+            // while Bluetooth is turning off). Preserve the existing scan contract by ending
+            // this collection cleanly rather than changing scan mode/protocol behaviour.
+            Log.w(TAG, "BluetoothLeScanner is unavailable – cannot scan")
+            close()
+            return@callbackFlow
+        }
 
         val seenAddresses = mutableSetOf<String>()
-
         val scanCallback = object : ScanCallback() {
             override fun onScanResult(callbackType: Int, result: ScanResult) {
                 val device = result.device
                 val name = device.name
                 if (name != null && matchesPattern(name)) {
-                    // Deduplicate: skip if we have already emitted this device address.
                     if (!seenAddresses.add(device.address)) return
-
                     val info = DeviceInfo(
                         id = device.address,
                         name = name,
@@ -97,9 +92,7 @@ class MemoMindBleScanner(
             }
 
             override fun onBatchScanResults(results: List<ScanResult>) {
-                for (result in results) {
-                    onScanResult(0, result)
-                }
+                for (result in results) onScanResult(0, result)
             }
 
             override fun onScanFailed(errorCode: Int) {
@@ -136,10 +129,6 @@ class MemoMindBleScanner(
         }
     }
 
-    // ------------------------------------------------------------------
-    // Internal helpers
-    // ------------------------------------------------------------------
-
     private fun hasScanPermissions(): Boolean {
         if (Build.VERSION.SDK_INT < Build.VERSION_CODES.S) {
             return ContextCompat.checkSelfPermission(
@@ -157,13 +146,8 @@ class MemoMindBleScanner(
             ) == PackageManager.PERMISSION_GRANTED
     }
 
-    /**
-     * Returns true if [name] contains one of the known MemoMind name patterns (case-insensitive).
-     */
     private fun matchesPattern(name: String): Boolean {
         val lower = name.lowercase()
-        return MemoMindConstants.NAME_PATTERNS.any { pattern ->
-            lower.contains(pattern.lowercase())
-        }
+        return MemoMindConstants.NAME_PATTERNS.any { pattern -> lower.contains(pattern.lowercase()) }
     }
 }
