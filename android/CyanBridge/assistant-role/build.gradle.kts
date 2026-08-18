@@ -4,7 +4,7 @@ plugins {
 
 android {
     namespace = "com.fersaiyan.cyanbridge.assistant"
-    compileSdk = 37
+    compileSdk = 36
 
     defaultConfig {
         minSdk = 24
