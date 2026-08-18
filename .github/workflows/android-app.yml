@@ -95,8 +95,8 @@ jobs:
             | grep -vE '/third_party/|/myvu-upstream/' \
             | tail -600 > build/ci/gradle-owned-warnings.txt || true
           if [ "$status" -ne 0 ]; then
-            grep -Ei '(^e:|^w:|FAILURE:|What went wrong:|Could not |deprecated|deprecation|error:|Unresolved reference|Compilation error|Caused by:)' /tmp/ad-gradle-unit.log \
-              | tail -400 > build/ci/gradle-unit-summary.txt || true
+            grep -Ei '(^e:|^w:|FAILURE:|What went wrong:|Could not |deprecated|deprecation|error:|Unresolved reference|Compilation error|Caused by:|> .* FAILED$|tests completed)' /tmp/ad-gradle-unit.log \
+              | tail -500 > build/ci/gradle-unit-summary.txt || true
             echo "::group::Compact Gradle failure summary"
             cat build/ci/gradle-unit-summary.txt || true
             echo "::endgroup::"
@@ -111,6 +111,8 @@ jobs:
           path: |
             android/CyanBridge/build/ci/gradle-unit-summary.txt
             android/CyanBridge/build/ci/gradle-owned-warnings.txt
+            android/CyanBridge/app/build/test-results/testDebugUnitTest/**/*.xml
+            android/CyanBridge/app/build/reports/tests/testDebugUnitTest/**
           if-no-files-found: ignore
           retention-days: 2
 

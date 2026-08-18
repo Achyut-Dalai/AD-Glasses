@@ -14,8 +14,6 @@ import androidx.compose.foundation.layout.safeDrawing
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.outlined.ArrowBack
 import androidx.compose.material3.Card
 import androidx.compose.material3.Checkbox
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -40,6 +38,8 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.foundation.text.selection.SelectionContainer
 import com.fersaiyan.cyanbridge.shared.generated.resources.*
+import com.fersaiyan.cyanbridge.shared.icons.AppIcon
+import com.fersaiyan.cyanbridge.shared.icons.imageVector
 import org.jetbrains.compose.resources.ExperimentalResourceApi
 import org.jetbrains.compose.resources.stringResource
 
@@ -71,7 +71,7 @@ fun LocalAgentDocumentScreen(
                 title = { Text(title) },
                 navigationIcon = {
                     IconButton(onClick = onBack) {
-                         Icon(Icons.AutoMirrored.Outlined.ArrowBack, contentDescription = stringResource(Res.string.action_back))
+                        Icon(AppIcon.Back.imageVector(), contentDescription = stringResource(Res.string.action_back))
                     }
                 },
             )
@@ -134,7 +134,7 @@ fun PendingActionsScreen(
                 title = { Text(stringResource(Res.string.local_agent_pending_actions)) },
                 navigationIcon = {
                     IconButton(onClick = onBack) {
-                         Icon(Icons.AutoMirrored.Outlined.ArrowBack, contentDescription = stringResource(Res.string.action_back))
+                        Icon(AppIcon.Back.imageVector(), contentDescription = stringResource(Res.string.action_back))
                     }
                 },
             )
@@ -149,7 +149,7 @@ fun PendingActionsScreen(
             verticalArrangement = Arrangement.spacedBy(12.dp),
         ) {
             Text(
-                 text = stringResource(Res.string.local_agent_pending_count, pendingCount),
+                text = stringResource(Res.string.local_agent_pending_count, pendingCount),
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
@@ -163,12 +163,12 @@ fun PendingActionsScreen(
             }
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 OutlinedButton(onClick = onReject, enabled = hasPendingAction, modifier = Modifier.weight(1f)) {
-                     Text(stringResource(Res.string.local_agent_reject))
+                    Text(stringResource(Res.string.local_agent_reject))
                 }
                 FilledTonalButton(onClick = onApprove, enabled = hasPendingAction, modifier = Modifier.weight(1f)) {
-                     Text(stringResource(Res.string.local_agent_approve))
+                    Text(stringResource(Res.string.local_agent_approve))
                 }
-                 TextButton(onClick = onRefresh, modifier = Modifier.weight(1f)) { Text(stringResource(Res.string.local_agent_refresh)) }
+                TextButton(onClick = onRefresh, modifier = Modifier.weight(1f)) { Text(stringResource(Res.string.local_agent_refresh)) }
             }
         }
     }
@@ -197,7 +197,7 @@ fun DailySummaryScreen(
                 title = { Text(title) },
                 navigationIcon = {
                     IconButton(onClick = onBack) {
-                         Icon(Icons.AutoMirrored.Outlined.ArrowBack, contentDescription = stringResource(Res.string.action_back))
+                        Icon(AppIcon.Back.imageVector(), contentDescription = stringResource(Res.string.action_back))
                     }
                 },
             )
@@ -228,9 +228,9 @@ fun DailySummaryScreen(
                 }
             }
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                 OutlinedButton(onClick = onRefresh, enabled = !isBusy, modifier = Modifier.weight(1f)) { Text(stringResource(Res.string.local_agent_refresh)) }
-                 FilledTonalButton(onClick = onRegenerate, enabled = !isBusy, modifier = Modifier.weight(1f)) { Text(stringResource(Res.string.local_agent_regenerate)) }
-                 TextButton(onClick = onShare, enabled = !isBusy, modifier = Modifier.weight(1f)) { Text(stringResource(Res.string.local_agent_share)) }
+                OutlinedButton(onClick = onRefresh, enabled = !isBusy, modifier = Modifier.weight(1f)) { Text(stringResource(Res.string.local_agent_refresh)) }
+                FilledTonalButton(onClick = onRegenerate, enabled = !isBusy, modifier = Modifier.weight(1f)) { Text(stringResource(Res.string.local_agent_regenerate)) }
+                TextButton(onClick = onShare, enabled = !isBusy, modifier = Modifier.weight(1f)) { Text(stringResource(Res.string.local_agent_share)) }
             }
         }
     }
@@ -258,7 +258,7 @@ fun AppBlacklistScreen(
                 title = { Text(stringResource(Res.string.local_agent_blacklist_apps)) },
                 navigationIcon = {
                     IconButton(onClick = onBack) {
-                         Icon(Icons.AutoMirrored.Outlined.ArrowBack, contentDescription = stringResource(Res.string.action_back))
+                        Icon(AppIcon.Back.imageVector(), contentDescription = stringResource(Res.string.action_back))
                     }
                 },
             )
@@ -272,11 +272,11 @@ fun AppBlacklistScreen(
                 .padding(horizontal = 16.dp),
         ) {
             Text(
-                 text = if (isLoading) {
-                     stringResource(Res.string.local_agent_loading_apps)
-                 } else {
-                     stringResource(Res.string.local_agent_app_count, apps.size, totalCount)
-                 },
+                text = if (isLoading) {
+                    stringResource(Res.string.local_agent_loading_apps)
+                } else {
+                    stringResource(Res.string.local_agent_app_count, apps.size, totalCount)
+                },
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                 modifier = Modifier.padding(top = 12.dp),
@@ -284,7 +284,7 @@ fun AppBlacklistScreen(
             OutlinedTextField(
                 value = query,
                 onValueChange = onQueryChange,
-                 label = { Text(stringResource(Res.string.local_agent_search)) },
+                label = { Text(stringResource(Res.string.local_agent_search)) },
                 modifier = Modifier.fillMaxWidth().padding(top = 8.dp),
                 singleLine = true,
             )
@@ -292,7 +292,7 @@ fun AppBlacklistScreen(
                 modifier = Modifier.fillMaxWidth().padding(vertical = 8.dp),
                 verticalAlignment = Alignment.CenterVertically,
             ) {
-                 Text(stringResource(Res.string.local_agent_hide_system), modifier = Modifier.weight(1f))
+                Text(stringResource(Res.string.local_agent_hide_system), modifier = Modifier.weight(1f))
                 Switch(checked = hideSystemApps, onCheckedChange = onHideSystemAppsChange)
             }
             HorizontalDivider()
@@ -314,7 +314,7 @@ fun AppBlacklistScreen(
                             Text(
                                 text = buildString {
                                     append(app.packageName)
-                                     if (app.isSystemApp) append(" · ").append(stringResource(Res.string.local_agent_system))
+                                    if (app.isSystemApp) append(" · ").append(stringResource(Res.string.local_agent_system))
                                 },
                                 style = MaterialTheme.typography.bodySmall,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant,
@@ -324,7 +324,7 @@ fun AppBlacklistScreen(
                 }
             }
             FilledTonalButton(onClick = onSave, modifier = Modifier.fillMaxWidth().padding(bottom = 16.dp)) {
-                 Text(stringResource(Res.string.local_agent_save_blacklist))
+                Text(stringResource(Res.string.local_agent_save_blacklist))
             }
         }
     }

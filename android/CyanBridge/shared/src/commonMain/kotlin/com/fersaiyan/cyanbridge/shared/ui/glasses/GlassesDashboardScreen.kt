@@ -16,9 +16,6 @@ import androidx.compose.foundation.layout.safeDrawing
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.outlined.ExpandLess
-import androidx.compose.material.icons.outlined.ExpandMore
 import androidx.compose.material3.Card
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.ButtonDefaults
@@ -65,6 +62,8 @@ import com.fersaiyan.cyanbridge.shared.glasses.LivePreviewUiState
 import com.fersaiyan.cyanbridge.shared.glasses.WifiAdbDebugUiState
 import com.fersaiyan.cyanbridge.shared.navigation.AppDestination
 import com.fersaiyan.cyanbridge.shared.generated.resources.*
+import com.fersaiyan.cyanbridge.shared.icons.AppIcon
+import com.fersaiyan.cyanbridge.shared.icons.imageVector
 import com.fersaiyan.cyanbridge.shared.ui.localizedOtaSourceDescription
 import com.fersaiyan.cyanbridge.shared.ui.localizedOtaSourceLabel
 import com.fersaiyan.cyanbridge.shared.ui.localizedOtaTargetLabel
@@ -88,19 +87,17 @@ fun GlassesDashboardScreen(
                 showWifiAdbConfirmation = false
                 wifiAdbRiskAcknowledged = false
             },
-             title = { Text(stringResource(Res.string.dashboard_privileged_adb_title)) },
+            title = { Text(stringResource(Res.string.dashboard_privileged_adb_title)) },
             text = {
                 Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                    Text(
-                        stringResource(Res.string.dashboard_privileged_adb_body)
-                    )
+                    Text(stringResource(Res.string.dashboard_privileged_adb_body))
                     Row(verticalAlignment = Alignment.CenterVertically) {
                         Checkbox(
                             checked = wifiAdbRiskAcknowledged,
                             onCheckedChange = { wifiAdbRiskAcknowledged = it },
                             modifier = Modifier.testTag("wifi_adb_risk_acknowledgement"),
                         )
-                         Text(stringResource(Res.string.dashboard_privileged_adb_acknowledge))
+                        Text(stringResource(Res.string.dashboard_privileged_adb_acknowledge))
                     }
                 }
             },
@@ -113,7 +110,7 @@ fun GlassesDashboardScreen(
                         wifiAdbRiskAcknowledged = false
                         onAction(GlassesDashboardAction.RequestStartWifiAdbDebug)
                     },
-                 ) { Text(stringResource(Res.string.dashboard_start_privileged_adb)) }
+                ) { Text(stringResource(Res.string.dashboard_start_privileged_adb)) }
             },
             dismissButton = {
                 TextButton(
@@ -121,7 +118,7 @@ fun GlassesDashboardScreen(
                         showWifiAdbConfirmation = false
                         wifiAdbRiskAcknowledged = false
                     },
-                 ) { Text(stringResource(Res.string.action_cancel)) }
+                ) { Text(stringResource(Res.string.action_cancel)) }
             },
         )
     }
@@ -158,7 +155,7 @@ fun GlassesDashboardScreen(
 
     Scaffold(
         contentWindowInsets = WindowInsets.safeDrawing,
-         topBar = { TopAppBar(title = { Text(stringResource(Res.string.dashboard_title)) }) },
+        topBar = { TopAppBar(title = { Text(stringResource(Res.string.dashboard_title)) }) },
     ) { innerPadding ->
         LazyColumn(
             modifier = Modifier
@@ -172,7 +169,7 @@ fun GlassesDashboardScreen(
             if (state.meeting.isRecording) {
                 item {
                     MeetingBanner(
-                         label = state.meeting.bannerLabel.ifBlank { stringResource(Res.string.dashboard_recording_active) },
+                        label = state.meeting.bannerLabel.ifBlank { stringResource(Res.string.dashboard_recording_active) },
                         onStop = { onAction(GlassesDashboardAction.StopMeetingCapture) },
                     )
                 }
@@ -187,16 +184,16 @@ fun GlassesDashboardScreen(
                 }
             }
             item {
-                 SectionTitle(stringResource(Res.string.dashboard_connection))
+                SectionTitle(stringResource(Res.string.dashboard_connection))
                 ActionRow(
-                     primaryLabel = stringResource(Res.string.dashboard_scan),
+                    primaryLabel = stringResource(Res.string.dashboard_scan),
                     onPrimary = { onAction(GlassesDashboardAction.Scan) },
-                     secondaryLabel = stringResource(Res.string.dashboard_reconnect),
+                    secondaryLabel = stringResource(Res.string.dashboard_reconnect),
                     onSecondary = { onAction(GlassesDashboardAction.Reconnect) },
                 )
                 Spacer(Modifier.height(8.dp))
                 ActionButton(
-                     label = stringResource(Res.string.dashboard_disconnect),
+                    label = stringResource(Res.string.dashboard_disconnect),
                     onClick = { onAction(GlassesDashboardAction.Disconnect) },
                     style = ActionButtonStyle.Destructive,
                     modifier = Modifier.fillMaxWidth(),
@@ -234,16 +231,20 @@ fun GlassesDashboardScreen(
                         onClick = { onAction(GlassesDashboardAction.ToggleAdvanced) },
                         modifier = Modifier.fillMaxWidth(),
                     ) {
-                         Text(
-                             if (state.advancedExpanded) {
-                                 stringResource(Res.string.dashboard_hide_advanced)
-                             } else {
-                                 stringResource(Res.string.dashboard_show_advanced)
-                             },
-                         )
+                        Text(
+                            if (state.advancedExpanded) {
+                                stringResource(Res.string.dashboard_hide_advanced)
+                            } else {
+                                stringResource(Res.string.dashboard_show_advanced)
+                            },
+                        )
                         Spacer(Modifier.width(4.dp))
                         Icon(
-                            imageVector = if (state.advancedExpanded) Icons.Outlined.ExpandLess else Icons.Outlined.ExpandMore,
+                            imageVector = if (state.advancedExpanded) {
+                                AppIcon.ExpandLess.imageVector()
+                            } else {
+                                AppIcon.ExpandMore.imageVector()
+                            },
                             contentDescription = null,
                         )
                     }
@@ -277,9 +278,9 @@ private fun WifiAdbDebugSection(
             modifier = Modifier.padding(16.dp),
             verticalArrangement = Arrangement.spacedBy(8.dp),
         ) {
-             SectionTitle(stringResource(Res.string.dashboard_developer_tools), accented = true)
-             Text(stringResource(Res.string.dashboard_adb_wifi), style = MaterialTheme.typography.titleMedium)
-             Text(stringResource(Res.string.dashboard_status, state.stateLabel), style = MaterialTheme.typography.bodyMedium)
+            SectionTitle(stringResource(Res.string.dashboard_developer_tools), accented = true)
+            Text(stringResource(Res.string.dashboard_adb_wifi), style = MaterialTheme.typography.titleMedium)
+            Text(stringResource(Res.string.dashboard_status, state.stateLabel), style = MaterialTheme.typography.bodyMedium)
             if (state.detail.isNotBlank()) {
                 Text(
                     state.detail,
@@ -287,10 +288,10 @@ private fun WifiAdbDebugSection(
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
             }
-             state.glassesIp?.let { Text(stringResource(Res.string.dashboard_glasses_ip, it), style = MaterialTheme.typography.bodySmall) }
+            state.glassesIp?.let { Text(stringResource(Res.string.dashboard_glasses_ip, it), style = MaterialTheme.typography.bodySmall) }
             if (state.relayEndpoints.isNotEmpty()) {
                 Text(
-                     stringResource(Res.string.dashboard_relay_endpoints, state.relayEndpoints.joinToString()),
+                    stringResource(Res.string.dashboard_relay_endpoints, state.relayEndpoints.joinToString()),
                     style = MaterialTheme.typography.bodySmall,
                 )
             }
@@ -298,16 +299,16 @@ private fun WifiAdbDebugSection(
                 Text(state.preferredCommand, style = MaterialTheme.typography.bodySmall)
             }
             Text(
-                 stringResource(Res.string.dashboard_usb_warning),
+                stringResource(Res.string.dashboard_usb_warning),
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.error,
             )
             ActionRow(
-                 primaryLabel = stringResource(Res.string.dashboard_start_adb_relay),
+                primaryLabel = stringResource(Res.string.dashboard_start_adb_relay),
                 onPrimary = onRequestStart,
                 primaryEnabled = state.canStart,
                 primaryStyle = ActionButtonStyle.Primary,
-                 secondaryLabel = stringResource(Res.string.dashboard_stop),
+                secondaryLabel = stringResource(Res.string.dashboard_stop),
                 onSecondary = onStop,
                 secondaryEnabled = state.canStop,
                 secondaryStyle = ActionButtonStyle.Destructive,
@@ -332,12 +333,12 @@ private fun NativePluginShortcutSection(
                 verticalArrangement = Arrangement.spacedBy(8.dp),
             ) {
                 Text(
-                     text = stringResource(Res.string.dashboard_shortcut_title),
+                    text = stringResource(Res.string.dashboard_shortcut_title),
                     style = MaterialTheme.typography.titleMedium,
                     fontWeight = FontWeight.Bold,
                 )
                 Text(
-                     text = stringResource(Res.string.dashboard_shortcut_description),
+                    text = stringResource(Res.string.dashboard_shortcut_description),
                     style = MaterialTheme.typography.bodyMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
@@ -345,7 +346,7 @@ private fun NativePluginShortcutSection(
                     onClick = { onAction(GlassesDashboardAction.Navigate(AppDestination.PLUGINS)) },
                     modifier = Modifier.fillMaxWidth(),
                 ) {
-                     Text(stringResource(Res.string.dashboard_choose_plugin))
+                    Text(stringResource(Res.string.dashboard_choose_plugin))
                 }
             }
         }
@@ -364,7 +365,7 @@ private fun NativePluginShortcutSection(
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Column(modifier = Modifier.weight(1f)) {
                     Text(
-                         text = stringResource(Res.string.dashboard_shortcuts, shortcut.title),
+                        text = stringResource(Res.string.dashboard_shortcuts, shortcut.title),
                         style = MaterialTheme.typography.titleMedium,
                         fontWeight = FontWeight.Bold,
                     )
@@ -390,9 +391,9 @@ private fun NativePluginShortcutSection(
                     shape = MaterialTheme.shapes.small,
                 ) {
                     Text(
-                         text = stringResource(
-                             if (shortcut.isEnabled) Res.string.dashboard_enabled else Res.string.dashboard_stopped,
-                         ),
+                        text = stringResource(
+                            if (shortcut.isEnabled) Res.string.dashboard_enabled else Res.string.dashboard_stopped,
+                        ),
                         modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
                         style = MaterialTheme.typography.labelSmall,
                     )
@@ -429,9 +430,7 @@ private fun NativePluginShortcutSection(
 
 @Composable
 private fun MeetingBanner(label: String, onStop: () -> Unit) {
-    Card(
-        modifier = Modifier.fillMaxWidth(),
-    ) {
+    Card(modifier = Modifier.fillMaxWidth()) {
         Row(
             modifier = Modifier.padding(start = 16.dp, top = 10.dp, end = 8.dp, bottom = 10.dp),
             verticalAlignment = Alignment.CenterVertically,
@@ -442,7 +441,7 @@ private fun MeetingBanner(label: String, onStop: () -> Unit) {
                 style = MaterialTheme.typography.titleSmall,
                 color = MaterialTheme.colorScheme.error,
             )
-             TextButton(onClick = onStop) { Text(stringResource(Res.string.dashboard_stop), color = MaterialTheme.colorScheme.error) }
+            TextButton(onClick = onStop) { Text(stringResource(Res.string.dashboard_stop), color = MaterialTheme.colorScheme.error) }
         }
     }
 }
@@ -455,7 +454,7 @@ private fun StatusCard(state: GlassesDashboardUiState) {
             verticalArrangement = Arrangement.spacedBy(6.dp),
         ) {
             Text(
-                 text = stringResource(Res.string.dashboard_glasses_status),
+                text = stringResource(Res.string.dashboard_glasses_status),
                 style = MaterialTheme.typography.labelLarge,
                 color = MaterialTheme.colorScheme.primary,
                 fontWeight = FontWeight.Bold,
@@ -464,7 +463,7 @@ private fun StatusCard(state: GlassesDashboardUiState) {
                 Column(modifier = Modifier.weight(1f)) {
                     Text(state.connectionLabel, style = MaterialTheme.typography.titleLarge)
                     Text(
-                         text = stringResource(Res.string.dashboard_class, state.deviceClassLabel),
+                        text = stringResource(Res.string.dashboard_class, state.deviceClassLabel),
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                     )
@@ -473,14 +472,14 @@ private fun StatusCard(state: GlassesDashboardUiState) {
                     Column(horizontalAlignment = Alignment.End) {
                         if (state.showBattery) {
                             Text(
-                                 text = state.batteryPercent?.let { stringResource(Res.string.dashboard_battery, it) }
-                                     ?: stringResource(Res.string.dashboard_battery_unknown),
+                                text = state.batteryPercent?.let { stringResource(Res.string.dashboard_battery, it) }
+                                    ?: stringResource(Res.string.dashboard_battery_unknown),
                                 style = MaterialTheme.typography.titleSmall,
                             )
                         }
                         if (state.showStorage) {
                             Text(
-                                 text = stringResource(Res.string.dashboard_storage, state.storageLabel),
+                                text = stringResource(Res.string.dashboard_storage, state.storageLabel),
                                 style = MaterialTheme.typography.bodySmall,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                             )
@@ -502,9 +501,9 @@ private fun TransferCard(
             modifier = Modifier.padding(16.dp),
             verticalArrangement = Arrangement.spacedBy(8.dp),
         ) {
-             Text(stringResource(Res.string.dashboard_sync_progress), style = MaterialTheme.typography.labelLarge, fontWeight = FontWeight.Bold)
+            Text(stringResource(Res.string.dashboard_sync_progress), style = MaterialTheme.typography.labelLarge, fontWeight = FontWeight.Bold)
             Text(
-                 text = stringResource(Res.string.dashboard_flow, state.transfer.flowLabel),
+                text = stringResource(Res.string.dashboard_flow, state.transfer.flowLabel),
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.primary,
             )
@@ -524,7 +523,7 @@ private fun TransferCard(
                     maxLines = 3,
                     overflow = TextOverflow.Ellipsis,
                 )
-                 TextButton(onClick = onStop) { Text(stringResource(Res.string.dashboard_stop_sync), color = MaterialTheme.colorScheme.error) }
+                TextButton(onClick = onStop) { Text(stringResource(Res.string.dashboard_stop_sync), color = MaterialTheme.colorScheme.error) }
             }
         }
     }
@@ -543,37 +542,37 @@ private fun CoreGlassesControls(
         Spacer(Modifier.height(8.dp))
         RecordingSettingsControls(state, onAction)
         Spacer(Modifier.height(8.dp))
-         SectionTitle(stringResource(Res.string.dashboard_media_controls))
+        SectionTitle(stringResource(Res.string.dashboard_media_controls))
         ActionRow(
-             primaryLabel = stringResource(Res.string.dashboard_photo),
+            primaryLabel = stringResource(Res.string.dashboard_photo),
             onPrimary = { onAction(GlassesDashboardAction.CapturePhoto) },
-             secondaryLabel = stringResource(Res.string.dashboard_video),
+            secondaryLabel = stringResource(Res.string.dashboard_video),
             onSecondary = { onAction(GlassesDashboardAction.ToggleVideo) },
         )
         ActionRow(
-             primaryLabel = stringResource(Res.string.dashboard_audio),
+            primaryLabel = stringResource(Res.string.dashboard_audio),
             onPrimary = { onAction(GlassesDashboardAction.StartAudioRecording) },
-             secondaryLabel = stringResource(Res.string.dashboard_count),
+            secondaryLabel = stringResource(Res.string.dashboard_count),
             onSecondary = { onAction(GlassesDashboardAction.RequestMediaCount) },
         )
         ActionButton(
-             label = stringResource(Res.string.dashboard_sync_wifi),
+            label = stringResource(Res.string.dashboard_sync_wifi),
             onClick = { onAction(GlassesDashboardAction.StartSync) },
             style = ActionButtonStyle.Primary,
             modifier = Modifier.fillMaxWidth(),
+        )
+        if (state.livePreview.isAvailable) {
+            Spacer(Modifier.height(8.dp))
+            SectionTitle(
+                if (state.showEyevueControls) {
+                    stringResource(Res.string.dashboard_eye_vue_live_preview)
+                } else {
+                    stringResource(Res.string.dashboard_passive_rtsp_probe)
+                },
             )
-            if (state.livePreview.isAvailable) {
-                Spacer(Modifier.height(8.dp))
-             SectionTitle(
-                 if (state.showEyevueControls) {
-                     stringResource(Res.string.dashboard_eye_vue_live_preview)
-                 } else {
-                     stringResource(Res.string.dashboard_passive_rtsp_probe)
-                 },
-             )
             Text(
                 text = if (state.showEyevueControls) {
-                     stringResource(Res.string.dashboard_eye_vue_description)
+                    stringResource(Res.string.dashboard_eye_vue_description)
                 } else {
                     stringResource(Res.string.dashboard_passive_probe_description)
                 },
@@ -582,7 +581,7 @@ private fun CoreGlassesControls(
             )
             if (state.livePreview.stateLabel != "Idle") {
                 Text(
-                     text = stringResource(Res.string.dashboard_status, state.livePreview.stateLabel),
+                    text = stringResource(Res.string.dashboard_status, state.livePreview.stateLabel),
                     style = MaterialTheme.typography.bodyMedium,
                 )
                 if (state.livePreview.detail.isNotBlank()) {
@@ -597,16 +596,16 @@ private fun CoreGlassesControls(
             }
             ActionRow(
                 primaryLabel = if (state.livePreview.isScanning) {
-                     stringResource(Res.string.dashboard_connecting)
+                    stringResource(Res.string.dashboard_connecting)
                 } else if (state.showEyevueControls) {
-                     stringResource(Res.string.dashboard_start_live_preview)
+                    stringResource(Res.string.dashboard_start_live_preview)
                 } else {
                     stringResource(Res.string.dashboard_arm_passive_probe)
                 },
                 onPrimary = { onAction(GlassesDashboardAction.StartLivePreview) },
                 primaryEnabled = state.livePreview.canStart && !state.livePreview.isScanning,
                 primaryStyle = ActionButtonStyle.Primary,
-                 secondaryLabel = stringResource(Res.string.dashboard_stop),
+                secondaryLabel = stringResource(Res.string.dashboard_stop),
                 onSecondary = { onAction(GlassesDashboardAction.StopLivePreview) },
                 secondaryEnabled = state.livePreview.canStop,
                 secondaryStyle = ActionButtonStyle.Destructive,
@@ -624,20 +623,20 @@ private fun RecordingSettingsControls(
         modifier = Modifier.testTag("glasses_recording_settings"),
         verticalArrangement = Arrangement.spacedBy(8.dp),
     ) {
-         SectionTitle(stringResource(Res.string.dashboard_glasses_capture_settings))
+        SectionTitle(stringResource(Res.string.dashboard_glasses_capture_settings))
         Text(
-             text = stringResource(Res.string.dashboard_capture_settings_description),
+            text = stringResource(Res.string.dashboard_capture_settings_description),
             style = MaterialTheme.typography.bodySmall,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
         )
         Row(verticalAlignment = Alignment.CenterVertically) {
             Column(modifier = Modifier.weight(1f)) {
-                 Text(stringResource(Res.string.dashboard_wearing_detection), style = MaterialTheme.typography.titleSmall)
+                Text(stringResource(Res.string.dashboard_wearing_detection), style = MaterialTheme.typography.titleSmall)
                 Text(
                     text = when (state.wearingDetectionEnabled) {
-                         true -> stringResource(Res.string.dashboard_enabled_on_glasses)
-                         false -> stringResource(Res.string.dashboard_disabled_on_glasses)
-                         null -> stringResource(Res.string.dashboard_load_settings_state)
+                        true -> stringResource(Res.string.dashboard_enabled_on_glasses)
+                        false -> stringResource(Res.string.dashboard_disabled_on_glasses)
+                        null -> stringResource(Res.string.dashboard_load_settings_state)
                     },
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
@@ -653,14 +652,14 @@ private fun RecordingSettingsControls(
             )
         }
         RecordingDurationSelector(
-             title = stringResource(Res.string.dashboard_max_video_length),
+            title = stringResource(Res.string.dashboard_max_video_length),
             currentSeconds = state.videoRecordingDurationSeconds,
             optionsSeconds = state.videoRecordingDurationOptionsSeconds,
             onSelect = { onAction(GlassesDashboardAction.SetVideoRecordingDuration(it)) },
             testTagPrefix = "video_recording_duration",
         )
         RecordingDurationSelector(
-             title = stringResource(Res.string.dashboard_max_audio_length),
+            title = stringResource(Res.string.dashboard_max_audio_length),
             currentSeconds = state.audioRecordingDurationSeconds,
             optionsSeconds = state.audioRecordingDurationOptionsSeconds,
             onSelect = { onAction(GlassesDashboardAction.SetAudioRecordingDuration(it)) },
@@ -672,7 +671,7 @@ private fun RecordingSettingsControls(
                 .fillMaxWidth()
                 .testTag("refresh_recording_settings"),
         ) {
-             Text(stringResource(Res.string.dashboard_load_settings))
+            Text(stringResource(Res.string.dashboard_load_settings))
         }
     }
 }
@@ -688,7 +687,7 @@ private fun RecordingDurationSelector(
     Text(title, style = MaterialTheme.typography.titleSmall)
     if (optionsSeconds.isEmpty()) {
         Text(
-             text = stringResource(Res.string.dashboard_limits_unavailable),
+            text = stringResource(Res.string.dashboard_limits_unavailable),
             style = MaterialTheme.typography.bodySmall,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
         )
@@ -730,17 +729,17 @@ private fun GlassesAssistantControls(
         modifier = Modifier.testTag("glasses_assistant_controls"),
         verticalArrangement = Arrangement.spacedBy(8.dp),
     ) {
-         SectionTitle(stringResource(Res.string.dashboard_ai_assistant), accented = true)
+        SectionTitle(stringResource(Res.string.dashboard_ai_assistant), accented = true)
         Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
             AssistantModeChip(
-                 label = stringResource(Res.string.dashboard_phone_assistant),
+                label = stringResource(Res.string.dashboard_phone_assistant),
                 mode = GlassesAssistantMode.PHONE_ASSISTANT,
                 selectedMode = state.assistantMode,
                 onAction = onAction,
                 modifier = Modifier.weight(1f),
             )
             AssistantModeChip(
-                 label = stringResource(Res.string.dashboard_custom_provider),
+                label = stringResource(Res.string.dashboard_custom_provider),
                 mode = GlassesAssistantMode.CUSTOM_AI_PROVIDER,
                 selectedMode = state.assistantMode,
                 onAction = onAction,
@@ -748,7 +747,7 @@ private fun GlassesAssistantControls(
             )
         }
         ActionRow(
-             primaryLabel = stringResource(Res.string.dashboard_test_voice),
+            primaryLabel = stringResource(Res.string.dashboard_test_voice),
             onPrimary = { onAction(GlassesDashboardAction.TestVoiceQuestion) },
             secondaryLabel = stringResource(
                 if (state.imageQueryEnabled) {
@@ -767,7 +766,7 @@ private fun GlassesAssistantControls(
             onClick = { onAction(GlassesDashboardAction.OpenExternalImageAutomationDiagnostics) },
             modifier = Modifier.fillMaxWidth(),
         ) {
-             Text(stringResource(Res.string.dashboard_gemini_chatgpt_setup))
+            Text(stringResource(Res.string.dashboard_gemini_chatgpt_setup))
         }
     }
 }
@@ -1219,12 +1218,8 @@ private fun OtaFirmwareSourcePickerDialog(
         title = { Text(stringResource(Res.string.dashboard_ota_choose_source)) },
         text = {
             Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                Text(
-                    stringResource(Res.string.dashboard_ota_source_body_one)
-                )
-                Text(
-                    stringResource(Res.string.dashboard_ota_source_body_two)
-                )
+                Text(stringResource(Res.string.dashboard_ota_source_body_one))
+                Text(stringResource(Res.string.dashboard_ota_source_body_two))
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Checkbox(
                         checked = riskAcknowledged,
@@ -1242,9 +1237,9 @@ private fun OtaFirmwareSourcePickerDialog(
                             .testTag("ota_firmware_source_${source.name.lowercase()}"),
                     ) {
                         Column(modifier = Modifier.fillMaxWidth()) {
-                             Text(localizedOtaSourceLabel(source), style = MaterialTheme.typography.labelLarge)
+                            Text(localizedOtaSourceLabel(source), style = MaterialTheme.typography.labelLarge)
                             Text(
-                                 localizedOtaSourceDescription(source),
+                                localizedOtaSourceDescription(source),
                                 style = MaterialTheme.typography.bodySmall,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                             )
@@ -1281,12 +1276,8 @@ private fun FirmwarePatchRequestDialog(
         title = { Text(stringResource(Res.string.dashboard_request_patch)) },
         text = {
             Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
-                Text(
-                    stringResource(Res.string.dashboard_patch_body_one)
-                )
-                Text(
-                    stringResource(Res.string.dashboard_patch_body_two)
-                )
+                Text(stringResource(Res.string.dashboard_patch_body_one))
+                Text(stringResource(Res.string.dashboard_patch_body_two))
                 Text(
                     stringResource(
                         Res.string.dashboard_requested,

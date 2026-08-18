@@ -19,11 +19,6 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.outlined.Image as ImageIcon
-import androidx.compose.material.icons.outlined.Pause
-import androidx.compose.material.icons.outlined.PlayArrow
-import androidx.compose.material.icons.outlined.Stop
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Card
 import androidx.compose.material3.CircularProgressIndicator
@@ -33,6 +28,8 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.NavigationBar
+import androidx.compose.material3.NavigationBarItem
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.RadioButton
 import androidx.compose.material3.Scaffold
@@ -40,8 +37,6 @@ import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
-import androidx.compose.material3.NavigationBar
-import androidx.compose.material3.NavigationBarItem
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -56,17 +51,17 @@ import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Dialog
+import com.fersaiyan.cyanbridge.shared.generated.resources.*
+import com.fersaiyan.cyanbridge.shared.icons.AppIcon
+import com.fersaiyan.cyanbridge.shared.icons.imageVector
+import com.fersaiyan.cyanbridge.shared.navigation.AppDestination
+import com.fersaiyan.cyanbridge.shared.navigation.icon
 import com.fersaiyan.cyanbridge.shared.recordings.MeetingRecordingUiState
 import com.fersaiyan.cyanbridge.shared.recordings.RecordingItem
 import com.fersaiyan.cyanbridge.shared.recordings.SyncedMediaItem
 import com.fersaiyan.cyanbridge.shared.recordings.TranscriptDialogUiState
 import com.fersaiyan.cyanbridge.shared.recordings.TranscriptionEngine
 import com.fersaiyan.cyanbridge.shared.recordings.TranscriptionProgressUiState
-import com.fersaiyan.cyanbridge.shared.navigation.AppDestination
-import com.fersaiyan.cyanbridge.shared.navigation.icon
-import com.fersaiyan.cyanbridge.shared.icons.AppIcon
-import com.fersaiyan.cyanbridge.shared.icons.imageVector
-import com.fersaiyan.cyanbridge.shared.generated.resources.*
 import com.fersaiyan.cyanbridge.shared.ui.localizedDestinationLabel
 import org.jetbrains.compose.resources.ExperimentalResourceApi
 import org.jetbrains.compose.resources.stringResource
@@ -104,19 +99,19 @@ fun RecordingsScreen(
         contentWindowInsets = WindowInsets.safeDrawing,
         topBar = {
             TopAppBar(
-                 title = { Text(stringResource(Res.string.recordings_title)) },
+                title = { Text(stringResource(Res.string.recordings_title)) },
                 navigationIcon = {
                     if (onNavigateBack != null) {
                         IconButton(onClick = onNavigateBack) {
-                            Icon(AppIcon.Back.imageVector(), contentDescription = "Back")
+                            Icon(AppIcon.Back.imageVector(), contentDescription = stringResource(Res.string.action_back))
                         }
                     }
                 },
                 actions = {
                     IconButton(onClick = onOpenSyncedMedia) {
                         Icon(
-                            imageVector = Icons.Outlined.ImageIcon,
-                             contentDescription = stringResource(Res.string.recordings_open_synced_media),
+                            imageVector = AppIcon.Image.imageVector(),
+                            contentDescription = stringResource(Res.string.recordings_open_synced_media),
                         )
                     }
                 },
@@ -135,7 +130,7 @@ fun RecordingsScreen(
                                     contentDescription = null,
                                 )
                             },
-                             label = { Text(localizedDestinationLabel(destination)) },
+                            label = { Text(localizedDestinationLabel(destination)) },
                         )
                     }
                 }
@@ -161,7 +156,7 @@ fun RecordingsScreen(
             if (recentSyncedMedia.isNotEmpty()) {
                 item {
                     Text(
-                         text = stringResource(Res.string.recordings_recent_synced_photos),
+                        text = stringResource(Res.string.recordings_recent_synced_photos),
                         style = MaterialTheme.typography.titleSmall,
                     )
                 }
@@ -195,12 +190,12 @@ fun RecordingsScreen(
                     modifier = Modifier.fillMaxWidth(),
                 ) {
                     Icon(
-                        imageVector = Icons.Outlined.ImageIcon,
+                        imageVector = AppIcon.Image.imageVector(),
                         contentDescription = null,
                         modifier = Modifier.size(18.dp),
                     )
                     Spacer(Modifier.width(8.dp))
-                     Text(stringResource(Res.string.recordings_open_synced_media))
+                    Text(stringResource(Res.string.recordings_open_synced_media))
                 }
             }
             if (isLoading) {
@@ -215,13 +210,11 @@ fun RecordingsScreen(
                     }
                 }
             } else if (sessions.isEmpty()) {
-                item {
-                    EmptyRecordingsState()
-                }
+                item { EmptyRecordingsState() }
             } else {
                 item {
                     Text(
-                         text = stringResource(Res.string.recordings_meeting_captures),
+                        text = stringResource(Res.string.recordings_meeting_captures),
                         style = MaterialTheme.typography.titleSmall,
                     )
                 }
@@ -259,7 +252,7 @@ fun RecordingsScreen(
             text = { Text(transcript.text) },
             confirmButton = {
                 TextButton(onClick = onDismissTranscript) {
-                     Text(stringResource(Res.string.recordings_close))
+                    Text(stringResource(Res.string.recordings_close))
                 }
             },
         )
@@ -283,20 +276,20 @@ private fun MeetingRecordingBanner(
             verticalAlignment = Alignment.CenterVertically,
         ) {
             Column(modifier = Modifier.weight(1f)) {
-                 Text(stringResource(Res.string.settings_recording_active), style = MaterialTheme.typography.titleSmall)
+                Text(stringResource(Res.string.settings_recording_active), style = MaterialTheme.typography.titleSmall)
                 Text(
-                     text = sourceLabel ?: stringResource(Res.string.settings_detecting_audio_source),
+                    text = sourceLabel ?: stringResource(Res.string.settings_detecting_audio_source),
                     style = MaterialTheme.typography.bodySmall,
                 )
             }
             TextButton(onClick = onStop) {
                 Icon(
-                    imageVector = Icons.Outlined.Stop,
+                    imageVector = AppIcon.Stop.imageVector(),
                     contentDescription = null,
                     modifier = Modifier.size(18.dp),
                 )
                 Spacer(Modifier.width(4.dp))
-                 Text(stringResource(Res.string.action_stop))
+                Text(stringResource(Res.string.action_stop))
             }
         }
     }
@@ -325,7 +318,7 @@ private fun SyncedMediaPreview(
                 )
             } else {
                 Icon(
-                    imageVector = Icons.Outlined.ImageIcon,
+                    imageVector = AppIcon.Image.imageVector(),
                     contentDescription = item.displayName,
                     tint = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
@@ -342,9 +335,9 @@ private fun EmptyRecordingsState() {
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.spacedBy(8.dp),
         ) {
-             Text(stringResource(Res.string.recordings_no_recordings), style = MaterialTheme.typography.titleMedium)
+            Text(stringResource(Res.string.recordings_no_recordings), style = MaterialTheme.typography.titleMedium)
             Text(
-                 text = stringResource(Res.string.recordings_no_recordings_description),
+                text = stringResource(Res.string.recordings_no_recordings_description),
                 style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
@@ -371,10 +364,10 @@ private fun RecordingCard(
             Row(verticalAlignment = Alignment.CenterVertically) {
                 IconButton(onClick = onPlay) {
                     Icon(
-                        imageVector = if (isPlaying) Icons.Outlined.Pause else Icons.Outlined.PlayArrow,
-                         contentDescription = stringResource(
-                             if (isPlaying) Res.string.recordings_stop_playback else Res.string.recordings_play_recording,
-                         ),
+                        imageVector = if (isPlaying) AppIcon.Pause.imageVector() else AppIcon.Play.imageVector(),
+                        contentDescription = stringResource(
+                            if (isPlaying) Res.string.recordings_stop_playback else Res.string.recordings_play_recording,
+                        ),
                     )
                 }
                 Spacer(Modifier.width(4.dp))
@@ -392,7 +385,7 @@ private fun RecordingCard(
                     )
                     stopReason?.takeIf { it.isNotBlank() }?.let { reason ->
                         Text(
-                             text = stringResource(Res.string.recordings_stopped_reason, reason),
+                            text = stringResource(Res.string.recordings_stopped_reason, reason),
                             style = MaterialTheme.typography.bodySmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
                         )
@@ -407,16 +400,16 @@ private fun RecordingCard(
                     if (isTranscribing) {
                         CircularProgressIndicator(modifier = Modifier.size(16.dp), strokeWidth = 2.dp)
                         Spacer(Modifier.width(8.dp))
-                         Text(stringResource(Res.string.recordings_transcribing))
+                        Text(stringResource(Res.string.recordings_transcribing))
                     } else {
-                         Text(stringResource(Res.string.recordings_transcribe))
+                        Text(stringResource(Res.string.recordings_transcribe))
                     }
                 }
                 OutlinedButton(
                     onClick = onViewTranscript,
                     enabled = !isTranscribing,
                 ) {
-                     Text(stringResource(Res.string.recordings_view_transcript))
+                    Text(stringResource(Res.string.recordings_view_transcript))
                 }
             }
         }
@@ -432,7 +425,7 @@ private fun TranscriptionEngineDialog(
 ) {
     AlertDialog(
         onDismissRequest = onDismiss,
-         title = { Text(stringResource(Res.string.recordings_transcription_engine)) },
+        title = { Text(stringResource(Res.string.recordings_transcription_engine)) },
         text = {
             Column {
                 TranscriptionEngine.entries.forEach { engine ->
@@ -449,21 +442,21 @@ private fun TranscriptionEngineDialog(
                         )
                         Spacer(Modifier.width(8.dp))
                         Column {
-                             Text(
-                                 stringResource(
-                                     if (engine == TranscriptionEngine.MOONSHINE) {
-                                         Res.string.recordings_moonshine_local
-                                     } else {
-                                         Res.string.recordings_gemma_local
-                                     },
-                                 ),
-                                 style = MaterialTheme.typography.bodyLarge,
-                             )
+                            Text(
+                                stringResource(
+                                    if (engine == TranscriptionEngine.MOONSHINE) {
+                                        Res.string.recordings_moonshine_local
+                                    } else {
+                                        Res.string.recordings_gemma_local
+                                    },
+                                ),
+                                style = MaterialTheme.typography.bodyLarge,
+                            )
                             Text(
                                 text = if (engine == TranscriptionEngine.MOONSHINE) {
-                                     stringResource(Res.string.recordings_local_moonshine)
+                                    stringResource(Res.string.recordings_local_moonshine)
                                 } else {
-                                     stringResource(Res.string.recordings_gemma_litert)
+                                    stringResource(Res.string.recordings_gemma_litert)
                                 },
                                 style = MaterialTheme.typography.bodySmall,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant,
@@ -474,10 +467,10 @@ private fun TranscriptionEngineDialog(
             }
         },
         confirmButton = {
-             TextButton(onClick = onConfirm) { Text(stringResource(Res.string.action_start)) }
+            TextButton(onClick = onConfirm) { Text(stringResource(Res.string.action_start)) }
         },
         dismissButton = {
-             TextButton(onClick = onDismiss) { Text(stringResource(Res.string.action_cancel)) }
+            TextButton(onClick = onDismiss) { Text(stringResource(Res.string.action_cancel)) }
         },
     )
 }

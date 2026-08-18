@@ -15,9 +15,6 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.text.selection.SelectionContainer
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.outlined.ArrowBack
-import androidx.compose.material.icons.outlined.Add
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Card
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -41,6 +38,8 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.fersaiyan.cyanbridge.shared.notes.NoteSummary
 import com.fersaiyan.cyanbridge.shared.generated.resources.*
+import com.fersaiyan.cyanbridge.shared.icons.AppIcon
+import com.fersaiyan.cyanbridge.shared.icons.imageVector
 import org.jetbrains.compose.resources.ExperimentalResourceApi
 import org.jetbrains.compose.resources.stringResource
 
@@ -60,17 +59,17 @@ fun NotesListScreen(
         contentWindowInsets = WindowInsets.safeDrawing,
         topBar = {
             TopAppBar(
-                 title = { Text(stringResource(Res.string.local_agent_notes)) },
+                title = { Text(stringResource(Res.string.local_agent_notes)) },
                 navigationIcon = {
                     IconButton(onClick = onBack) {
-                        Icon(Icons.AutoMirrored.Outlined.ArrowBack, contentDescription = stringResource(Res.string.action_back))
+                        Icon(AppIcon.Back.imageVector(), contentDescription = stringResource(Res.string.action_back))
                     }
                 },
             )
         },
         floatingActionButton = {
             FloatingActionButton(onClick = onShowCreateDialog) {
-                     Icon(Icons.Outlined.Add, contentDescription = stringResource(Res.string.local_agent_new_note))
+                Icon(AppIcon.Add.imageVector(), contentDescription = stringResource(Res.string.local_agent_new_note))
             }
         },
     ) { innerPadding ->
@@ -84,9 +83,9 @@ fun NotesListScreen(
                 horizontalAlignment = Alignment.CenterHorizontally,
                 verticalArrangement = Arrangement.Center,
             ) {
-                 Text(stringResource(Res.string.local_agent_no_notes), style = MaterialTheme.typography.titleMedium)
+                Text(stringResource(Res.string.local_agent_no_notes), style = MaterialTheme.typography.titleMedium)
                 Text(
-                     text = stringResource(Res.string.local_agent_no_notes_description),
+                    text = stringResource(Res.string.local_agent_no_notes_description),
                     style = MaterialTheme.typography.bodyMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
@@ -148,7 +147,7 @@ fun NoteDetailScreen(
                 title = { Text(title) },
                 navigationIcon = {
                     IconButton(onClick = onBack) {
-                 Icon(Icons.AutoMirrored.Outlined.ArrowBack, contentDescription = stringResource(Res.string.action_back))
+                        Icon(AppIcon.Back.imageVector(), contentDescription = stringResource(Res.string.action_back))
                     }
                 },
             )
@@ -168,9 +167,9 @@ fun NoteDetailScreen(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.End,
             ) {
-                 TextButton(onClick = onCopy) { Text(stringResource(Res.string.local_agent_copy)) }
+                TextButton(onClick = onCopy) { Text(stringResource(Res.string.local_agent_copy)) }
                 Spacer(Modifier.width(8.dp))
-                 TextButton(onClick = onShare) { Text(stringResource(Res.string.action_share)) }
+                TextButton(onClick = onShare) { Text(stringResource(Res.string.action_share)) }
             }
         }
     }
@@ -185,30 +184,30 @@ private fun CreateNoteDialog(
     var transcript by remember { mutableStateOf("") }
     AlertDialog(
         onDismissRequest = onDismiss,
-         title = { Text(stringResource(Res.string.local_agent_new_note_from_transcript)) },
+        title = { Text(stringResource(Res.string.local_agent_new_note_from_transcript)) },
         text = {
             Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
                 OutlinedTextField(
                     value = title,
                     onValueChange = { title = it },
-                     label = { Text(stringResource(Res.string.local_agent_title_optional)) },
+                    label = { Text(stringResource(Res.string.local_agent_title_optional)) },
                     modifier = Modifier.fillMaxWidth(),
                     singleLine = true,
                 )
                 OutlinedTextField(
                     value = transcript,
                     onValueChange = { transcript = it },
-                     label = { Text(stringResource(Res.string.local_agent_paste_transcript)) },
+                    label = { Text(stringResource(Res.string.local_agent_paste_transcript)) },
                     modifier = Modifier.fillMaxWidth(),
                     minLines = 5,
                 )
             }
         },
         confirmButton = {
-             TextButton(onClick = { onCreate(title, transcript) }) { Text(stringResource(Res.string.local_agent_create)) }
+            TextButton(onClick = { onCreate(title, transcript) }) { Text(stringResource(Res.string.local_agent_create)) }
         },
         dismissButton = {
-             TextButton(onClick = onDismiss) { Text(stringResource(Res.string.action_cancel)) }
+            TextButton(onClick = onDismiss) { Text(stringResource(Res.string.action_cancel)) }
         },
     )
 }

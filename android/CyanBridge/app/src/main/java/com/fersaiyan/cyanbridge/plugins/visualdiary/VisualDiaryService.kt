@@ -19,7 +19,6 @@ import com.fersaiyan.cyanbridge.R
 import com.fersaiyan.cyanbridge.devices.DeviceCapabilityHelper
 import com.fersaiyan.cyanbridge.devices.DeviceProfileStore
 import com.fersaiyan.cyanbridge.devices.metarayban.MetaRaybanManager
-import com.fersaiyan.cyanbridge.media.autocapture.AutoLoopVisualNoteGenerator
 import com.fersaiyan.cyanbridge.navigation.ADAppLaunchIntents
 import com.fersaiyan.cyanbridge.shared.plugins.NativePluginIds
 import com.fersaiyan.cyanbridge.ui.CommunityPluginPrefs
@@ -77,7 +76,6 @@ class VisualDiaryService : Service() {
 
     private fun startLoop() {
         if (RUNNING.getAndSet(true)) return
-
         if (!startForegroundSafely("Timeline is ready")) {
             RUNNING.set(false)
             disable(this, "Notification permission is required for Timeline")
@@ -148,7 +146,7 @@ class VisualDiaryService : Service() {
                 return
             }
 
-            AutoLoopVisualNoteGenerator.enqueueCapturedPhoto(
+            TimelineVisualNoteGenerator.enqueueCapturedPhoto(
                 context = this,
                 loopIndex = index,
                 image = file,
@@ -158,7 +156,7 @@ class VisualDiaryService : Service() {
             return
         }
 
-        AutoLoopVisualNoteGenerator.enqueueStandalone(
+        TimelineVisualNoteGenerator.enqueueStandalone(
             context = this,
             loopIndex = index,
             promptOverride = VisualDiaryPreferences.getCustomPrompt(this),
@@ -243,7 +241,6 @@ class VisualDiaryService : Service() {
         const val ACTION_STOP = "com.fersaiyan.cyanbridge.action.VISUAL_DIARY_STOP"
         const val ACTION_CAPTURE_NOW = "com.fersaiyan.cyanbridge.action.VISUAL_DIARY_CAPTURE_NOW"
 
-        /** Enables Timeline only after it can run as a foreground service. */
         fun enable(context: Context): Boolean {
             if (!hasNotificationPermission(context)) {
                 if (context is FragmentActivity) {
@@ -261,7 +258,6 @@ class VisualDiaryService : Service() {
             return true
         }
 
-        /** Restores an already-enabled Timeline without prompting from a background context. */
         fun startIfEnabled(context: Context): Boolean {
             if (!VisualDiaryPreferences.isEnabled(context) || !hasNotificationPermission(context)) {
                 return false

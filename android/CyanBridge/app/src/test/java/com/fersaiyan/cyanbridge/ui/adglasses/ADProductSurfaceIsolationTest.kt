@@ -285,7 +285,7 @@ class ADProductSurfaceIsolationTest {
         assertTrue(gradle.contains("versionName = \"alpha\""))
         assertTrue(
             "APK artifact should use the AD Glasses product name",
-            gradle.contains("outputFileName = \"AD-Glasses.apk\""),
+            gradle.contains("outputFileName.set(\"AD-Glasses.apk\")"),
         )
         assertTrue(manifest.contains("android:label=\"AD Glasses notification access\""))
     }

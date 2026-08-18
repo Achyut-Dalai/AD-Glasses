@@ -17,6 +17,8 @@ public final class ConfigSecuritiesCore {
     private ConfigSecuritiesCore() {
     }
 
+    /** Legacy WifiConfiguration security setup used only by Android 9-and-older flows. */
+    @SuppressWarnings("deprecation")
     public static void setupSecurity(WifiConfiguration config, String security, String password) {
         config.allowedAuthAlgorithms.clear();
         config.allowedGroupCiphers.clear();
@@ -92,23 +94,46 @@ public final class ConfigSecuritiesCore {
         setupSecurity(config, security, password);
     }
 
-    public static void setupWifiNetworkSpecifierSecurities(WifiNetworkSpecifier.Builder builder, String security, String password) {
+    /**
+     * Configures the password-only Android 10+ network-specifier path.
+     *
+     * <p>EAP intentionally fails here because enterprise Wi-Fi requires a WifiEnterpriseConfig;
+     * treating an EAP password as a WPA2-personal passphrase can request the wrong network type.
+     * WEP is not supported by WifiNetworkSpecifier.</p>
+     */
+    public static void setupWifiNetworkSpecifierSecurities(
+            WifiNetworkSpecifier.Builder builder,
+            String security,
+            String password) {
+        Objects.requireNonNull(builder, "builder");
+        Objects.requireNonNull(security, "security");
         WifiUtils.wifiLog("Setting up WifiNetworkSpecifier.Builder " + security);
         switch (security) {
-            case SECURITY_EAP:
             case SECURITY_PSK:
+                if (password == null || password.isEmpty()) {
+                    throw new IllegalArgumentException("PSK password must not be empty");
+                }
                 builder.setWpa2Passphrase(password);
                 break;
-            case SECURITY_WEP:
             case SECURITY_NONE:
                 break;
+            case SECURITY_EAP:
+                throw new IllegalArgumentException(
+                        "EAP requires WifiEnterpriseConfig; the password-only specifier API cannot configure it safely");
+            case SECURITY_WEP:
+                throw new IllegalArgumentException("WEP is not supported by WifiNetworkSpecifier");
             default:
-                WifiUtils.wifiLog("Invalid security type: " + security);
-                break;
+                throw new IllegalArgumentException("Invalid security type: " + security);
         }
     }
 
+    @SuppressWarnings("deprecation")
     public static WifiConfiguration getWifiConfiguration(WifiManager wifiMgr, WifiConfiguration configToFind) {
+        if (!ConnectorUtilsCore.supportsLegacyConfiguredNetworkApis()
+                || wifiMgr == null
+                || configToFind == null) {
+            return null;
+        }
         String ssid = configToFind.SSID;
         if (ssid != null && !ssid.isEmpty()) {
             String bssid = configToFind.BSSID != null ? configToFind.BSSID : "";
@@ -119,7 +144,8 @@ public final class ConfigSecuritiesCore {
                 return null;
             }
             for (WifiConfiguration config : configuredNetworks) {
-                if ((bssid.equals(config.BSSID) || ssid.equals(config.SSID)) && Objects.equals(security, getSecurity(config))) {
+                if ((bssid.equals(config.BSSID) || ssid.equals(config.SSID))
+                        && Objects.equals(security, getSecurity(config))) {
                     return config;
                 }
             }
@@ -128,9 +154,19 @@ public final class ConfigSecuritiesCore {
         return null;
     }
 
+    @SuppressWarnings("deprecation")
     public static WifiConfiguration getWifiConfiguration(WifiManager wifiManager, String ssid) {
+        if (!ConnectorUtilsCore.supportsLegacyConfiguredNetworkApis()
+                || wifiManager == null
+                || ssid == null) {
+            return null;
+        }
         String quoted = SSIDUtils.convertToQuotedString(ssid);
-        for (WifiConfiguration config : wifiManager.getConfiguredNetworks()) {
+        List<WifiConfiguration> configuredNetworks = wifiManager.getConfiguredNetworks();
+        if (configuredNetworks == null) {
+            return null;
+        }
+        for (WifiConfiguration config : configuredNetworks) {
             if (config.SSID != null && config.SSID.equals(quoted)) {
                 return config;
             }
@@ -138,24 +174,34 @@ public final class ConfigSecuritiesCore {
         return null;
     }
 
+    @SuppressWarnings("deprecation")
     public static WifiConfiguration getWifiConfiguration(WifiManager wifiManager, ScanResult scanResult) {
-        if (scanResult.BSSID != null && scanResult.SSID != null && !scanResult.SSID.isEmpty() && !scanResult.BSSID.isEmpty()) {
-            String quotedSsid = SSIDUtils.convertToQuotedString(scanResult.SSID);
-            String bssid = scanResult.BSSID;
-            String security = getSecurity(scanResult);
-            List<WifiConfiguration> configuredNetworks = wifiManager.getConfiguredNetworks();
-            if (configuredNetworks == null) {
-                return null;
-            }
-            for (WifiConfiguration config : configuredNetworks) {
-                if ((bssid.equals(config.BSSID) || quotedSsid.equals(config.SSID)) && Objects.equals(security, getSecurity(config))) {
-                    return config;
-                }
+        if (!ConnectorUtilsCore.supportsLegacyConfiguredNetworkApis()
+                || wifiManager == null
+                || scanResult == null
+                || scanResult.BSSID == null
+                || scanResult.SSID == null
+                || scanResult.SSID.isEmpty()
+                || scanResult.BSSID.isEmpty()) {
+            return null;
+        }
+        String quotedSsid = SSIDUtils.convertToQuotedString(scanResult.SSID);
+        String bssid = scanResult.BSSID;
+        String security = getSecurity(scanResult);
+        List<WifiConfiguration> configuredNetworks = wifiManager.getConfiguredNetworks();
+        if (configuredNetworks == null) {
+            return null;
+        }
+        for (WifiConfiguration config : configuredNetworks) {
+            if ((bssid.equals(config.BSSID) || quotedSsid.equals(config.SSID))
+                    && Objects.equals(security, getSecurity(config))) {
+                return config;
             }
         }
         return null;
     }
 
+    @SuppressWarnings("deprecation")
     public static String getSecurity(WifiConfiguration config) {
         ArrayList<String> securityTypes = new ArrayList<>();
         String security = SECURITY_NONE;

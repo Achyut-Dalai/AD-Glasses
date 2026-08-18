@@ -51,6 +51,11 @@ kotlin {
             implementation(libs.compose.material3)
             implementation(libs.compose.ui)
             implementation(libs.compose.components.resources)
+
+            // Compose Multiplatform stopped publishing newer Material Icons Extended
+            // after 1.7.3. Keep the final compatibility artifact explicitly while the
+            // last device-binding/dashboard symbols move to product-owned vectors.
+            implementation("org.jetbrains.compose.material:material-icons-extended:1.7.3")
         }
 
         commonTest.dependencies {
