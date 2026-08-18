@@ -18,6 +18,7 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.rounded.KeyboardArrowRight
 import androidx.compose.material.icons.outlined.Apps
 import androidx.compose.material.icons.outlined.AutoAwesome
 import androidx.compose.material.icons.outlined.AutoStories
@@ -28,7 +29,6 @@ import androidx.compose.material.icons.outlined.Computer
 import androidx.compose.material.icons.outlined.EventRepeat
 import androidx.compose.material.icons.outlined.GraphicEq
 import androidx.compose.material.icons.outlined.Timeline
-import androidx.compose.material.icons.rounded.KeyboardArrowRight
 import androidx.compose.material.icons.rounded.Translate
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
@@ -46,6 +46,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.fersaiyan.cyanbridge.agent.LocalAgentPrefs
+import com.fersaiyan.cyanbridge.ai.orchestrator.AndroidModeCommandExecutor
 import com.fersaiyan.cyanbridge.ai.router.AiProviderPrefs
 import com.fersaiyan.cyanbridge.ai.router.AiProviderType
 import com.fersaiyan.cyanbridge.ai.router.CliRelayBackend
@@ -63,6 +64,7 @@ internal fun ADNativeAiScreen(
     onOpenCapability: (ADAutomation) -> Unit = {},
 ) {
     val context = LocalContext.current
+    val capabilityExecutor = remember(context) { AndroidModeCommandExecutor(context) }
     var selected by remember { mutableStateOf(resolveAiChoice(context)) }
 
     fun select(choice: ADAiChoice) {
@@ -86,8 +88,31 @@ internal fun ADNativeAiScreen(
         }
     }
 
+    fun capabilityState(automation: ADAutomation, defaultDetail: String): Pair<Boolean, String> {
+        val capability = automation.toAssistantMode()
+        val active = capabilityExecutor.isActive(capability)
+        if (active) return true to "On · $defaultDetail"
+
+        val currentListener = if (capabilityExecutor.isExclusiveVoiceMode(capability)) {
+            capabilityExecutor.activeVoiceMode(excluding = capability)
+        } else {
+            null
+        }
+        return false to if (currentListener != null) {
+            "Switch from ${capabilityExecutor.displayName(currentListener)}"
+        } else {
+            defaultDetail
+        }
+    }
+
     val relayConfigured = AiProviderPrefs.isRelayConfigured(context)
     val automationReady = hasAccessibilityServicePermission(context)
+    val translateState = capabilityState(ADAutomation.TRANSLATOR, "Live translation")
+    val soundbitesState = capabilityState(ADAutomation.MEETING_NOTES, "Audio to notes")
+    val timelineState = capabilityState(ADAutomation.VISUAL_DIARY, "Searchable visual memory")
+    val dayNoteState = capabilityState(ADAutomation.AUTO_DIARY, "Daily moments, distilled")
+    val cronState = capabilityState(ADAutomation.ERRAND_BRAIN, "Scheduled tasks")
+    val automationState = capabilityState(ADAutomation.LOCAL_AGENT, "Apps & Android actions")
 
     LazyColumn(
         modifier = Modifier.fillMaxSize(),
@@ -97,13 +122,20 @@ internal fun ADNativeAiScreen(
         item {
             Column(verticalArrangement = Arrangement.spacedBy(11.dp)) {
                 Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                    ADAiCapabilityTile(Icons.Rounded.Translate, "Translate", "Live translation", Modifier.weight(1f)) {
+                    ADAiCapabilityTile(
+                        Icons.Rounded.Translate,
+                        "Translate",
+                        translateState.second,
+                        translateState.first,
+                        Modifier.weight(1f),
+                    ) {
                         onOpenCapability(ADAutomation.TRANSLATOR)
                     }
                     ADAiCapabilityTile(
                         Icons.Outlined.GraphicEq,
                         ADAutomation.MEETING_NOTES.title,
-                        "Audio to notes",
+                        soundbitesState.second,
+                        soundbitesState.first,
                         Modifier.weight(1f),
                     ) {
                         onOpenCapability(ADAutomation.MEETING_NOTES)
@@ -113,7 +145,8 @@ internal fun ADNativeAiScreen(
                     ADAiCapabilityTile(
                         Icons.Outlined.Timeline,
                         ADAutomation.VISUAL_DIARY.title,
-                        "Searchable visual memory",
+                        timelineState.second,
+                        timelineState.first,
                         Modifier.weight(1f),
                     ) {
                         onOpenCapability(ADAutomation.VISUAL_DIARY)
@@ -121,7 +154,8 @@ internal fun ADNativeAiScreen(
                     ADAiCapabilityTile(
                         Icons.Outlined.AutoStories,
                         ADAutomation.AUTO_DIARY.title,
-                        "Daily moments, distilled",
+                        dayNoteState.second,
+                        dayNoteState.first,
                         Modifier.weight(1f),
                     ) {
                         onOpenCapability(ADAutomation.AUTO_DIARY)
@@ -131,7 +165,8 @@ internal fun ADNativeAiScreen(
                     ADAiCapabilityTile(
                         Icons.Outlined.EventRepeat,
                         ADAutomation.ERRAND_BRAIN.title,
-                        "Scheduled tasks",
+                        cronState.second,
+                        cronState.first,
                         Modifier.weight(1f),
                     ) {
                         onOpenCapability(ADAutomation.ERRAND_BRAIN)
@@ -139,7 +174,8 @@ internal fun ADNativeAiScreen(
                     ADAiCapabilityTile(
                         Icons.Outlined.Bolt,
                         ADAutomation.LOCAL_AGENT.title,
-                        "Apps & Android actions",
+                        automationState.second,
+                        automationState.first,
                         Modifier.weight(1f),
                     ) {
                         if (automationReady) onOpenCapability(ADAutomation.LOCAL_AGENT)
@@ -170,10 +206,27 @@ internal fun ADNativeAiScreen(
 }
 
 @Composable
-private fun ADAiCapabilityTile(icon: ImageVector, title: String, detail: String, modifier: Modifier = Modifier, onClick: () -> Unit) {
-    Column(modifier = modifier.heightIn(min = 112.dp).background(ADColors.Surface, RoundedCornerShape(18.dp)).clickable(onClick = onClick).padding(14.dp)) {
-        Box(Modifier.size(38.dp).background(ADColors.BlueSoft, RoundedCornerShape(11.dp)), contentAlignment = Alignment.Center) {
-            Icon(icon, null, tint = ADColors.Blue, modifier = Modifier.size(20.dp))
+private fun ADAiCapabilityTile(
+    icon: ImageVector,
+    title: String,
+    detail: String,
+    active: Boolean,
+    modifier: Modifier = Modifier,
+    onClick: () -> Unit,
+) {
+    Column(
+        modifier = modifier
+            .heightIn(min = 112.dp)
+            .background(if (active) ADColors.SurfaceSubtle else ADColors.Surface, RoundedCornerShape(18.dp))
+            .clickable(onClick = onClick)
+            .padding(14.dp),
+    ) {
+        Row(modifier = Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+            Box(Modifier.size(38.dp).background(ADColors.BlueSoft, RoundedCornerShape(11.dp)), contentAlignment = Alignment.Center) {
+                Icon(icon, null, tint = ADColors.Blue, modifier = Modifier.size(20.dp))
+            }
+            Spacer(Modifier.weight(1f))
+            if (active) ADStatusChip("ON", ADStatusTone.SUCCESS)
         }
         Spacer(Modifier.weight(1f))
         Text(title, style = MaterialTheme.typography.titleMedium, maxLines = 1, overflow = TextOverflow.Ellipsis)
@@ -216,7 +269,7 @@ private fun ADAiActionRow(icon: ImageVector, title: String, detail: String, onCl
             Text(title, style = MaterialTheme.typography.titleMedium)
             Text(detail, style = MaterialTheme.typography.bodySmall, color = ADColors.Muted)
         }
-        Icon(Icons.Rounded.KeyboardArrowRight, null, tint = ADColors.Muted, modifier = Modifier.size(22.dp))
+        Icon(Icons.AutoMirrored.Rounded.KeyboardArrowRight, null, tint = ADColors.Muted, modifier = Modifier.size(22.dp))
     }
 }
 
