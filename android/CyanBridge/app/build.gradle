@@ -3,24 +3,6 @@ plugins {
     alias(libs.plugins.kotlin.android)
     alias(libs.plugins.kotlin.compose.compiler)
     alias(libs.plugins.ksp)
-    id 'com.facebook.react'
-}
-
-react {
-    // package.json and Metro live at android/CyanBridge rather than a parent folder.
-    root = file("../")
-    reactNativeDir = file("../node_modules/react-native")
-    codegenDir = file("../node_modules/@react-native/codegen")
-    cliFile = file("../node_modules/react-native/cli.js")
-
-    // This branch produces a self-contained debug APK for on-device RN-vs-Compose comparison.
-    // RNGP normally treats `debug` as a debuggable variant and deliberately omits the JS bundle,
-    // which makes Metro mandatory at runtime. Keep the Android build debuggable, but do not mark
-    // any variant as bundle-skipping so index.android.bundle and assets are packaged into debug.
-    // Metro can still be used during development, while an installed APK also works offline.
-    debuggableVariants = []
-
-    autolinkLibrariesWithApp()
 }
 
 configurations.configureEach {
@@ -47,12 +29,8 @@ def metaGithubToken = System.getenv("GITHUB_TOKEN")
         ?: localProperties.getProperty("meta_token")
 def metaDatEnabled = metaGithubToken != null && !metaGithubToken.trim().isEmpty()
 
-def jscFlavor = 'io.github.react-native-community:jsc-android:2026004.+'
-
 android {
     namespace = "com.fersaiyan.cyanbridge"
-    // RN 0.86 is built against Android API 36. Keep targetSdk 35 for this migration
-    // so UI replacement does not simultaneously change platform behavior contracts.
     compileSdk = 36
     ndkVersion = "27.1.12297006"
 
@@ -76,7 +54,6 @@ android {
 
     signingConfigs {
         release {
-            // Only configure signing if keystore.properties exists.
             if (keystorePropertiesFile.exists()) {
                 storeFile = file(keystoreProperties["storeFile"])
                 storePassword = keystoreProperties["storePassword"]
@@ -132,9 +109,6 @@ android {
         }
     }
 
-    // The installed application label and the distributable artifact should both
-    // identify the product as AD Glasses. Build type already has its own output
-    // directory, so debug/release variants can safely share this filename.
     applicationVariants.all { variant ->
         variant.outputs.all { output ->
             outputFileName = "AD-Glasses.apk"
@@ -142,21 +116,12 @@ android {
     }
 }
 
-
 dependencies {
     def localLlamaRuntimeAarPath = (
             project.findProperty("localLlamaRuntimeAarPath")
                     ?: ""
     ).toString().trim()
     def coreConnectivityVersion = project.findProperty("heycyanCoreConnectivityVersion") ?: "0.1.0-SNAPSHOT"
-
-    // React Native versions are supplied by the React Native Gradle Plugin.
-    implementation("com.facebook.react:react-android")
-    if (hermesEnabled.toBoolean()) {
-        implementation("com.facebook.react:hermes-android")
-    } else {
-        implementation jscFlavor
-    }
 
     implementation("com.heycyan.core:core-connectivity:${coreConnectivityVersion}")
     implementation project(":shared")
@@ -206,16 +171,10 @@ dependencies {
         implementation files(localLlamaRuntimeAar)
     }
 
-    // LiteRT runtime for local models (Google's inference engine)
     implementation("com.google.ai.edge.litertlm:litertlm-android:0.14.0")
-
-    // Offline transcription fallback (Moonshine; vendored module)
     implementation project(":moonshine-voice")
-
-    // Legacy offline transcription fallback (Vosk) - kept for now until Moonshine is fully wired
     implementation "com.alphacephei:vosk-android:0.3.47"
 
-    // Chapter 2 storage
     def room_version = "2.7.0"
     implementation "androidx.room:room-runtime:$room_version"
     implementation "androidx.room:room-ktx:$room_version"
@@ -226,8 +185,6 @@ dependencies {
     testImplementation 'androidx.test:core:1.6.1'
     testImplementation "androidx.room:room-testing:$room_version"
 
-    // Meta Wearables DAT SDK for Meta Ray-Ban glasses integration.
-    // Requires GitHub token with read:packages scope in GITHUB_TOKEN env var.
     def metaDatVersion = "0.8.0"
     if (metaDatEnabled) {
         implementation("com.meta.wearable:mwdat-core:${metaDatVersion}")
@@ -238,7 +195,6 @@ dependencies {
         logger.warn("No GitHub package token configured - Meta Wearables DAT SDK dependencies will be skipped.")
     }
 
-    // Chapter 4 UI gating test (androidTest)
     androidTestImplementation 'androidx.test:core-ktx:1.6.1'
     androidTestImplementation 'androidx.test.ext:junit:1.2.1'
     androidTestImplementation 'androidx.test:runner:1.6.1'
