@@ -57,18 +57,24 @@ class ErrandBrainService : Service() {
 
     override fun onDestroy() {
         voiceRecognizer?.stop()
+        voiceRecognizer = null
+        ErrandBrainPreferences.setEnabled(this, false)
         scope.cancel()
         super.onDestroy()
     }
 
     private fun startListening() {
-        if (voiceRecognizer != null) return
+        if (voiceRecognizer != null) {
+            ErrandBrainPreferences.setEnabled(this, true)
+            return
+        }
         if (!startPluginVoiceForeground(
                 service = this,
                 notificationId = ErrandBrainNotificationHelper.NOTIFICATION_ID,
-                notification = ErrandBrainNotificationHelper.buildNotification(this, "Starting Errand Brain..."),
+                notification = ErrandBrainNotificationHelper.buildNotification(this, "Starting Cron..."),
             )
         ) {
+            ErrandBrainPreferences.setEnabled(this, false)
             Log.w(TAG, "Missing microphone or notification permission")
             stopSelf()
             return
@@ -90,15 +96,18 @@ class ErrandBrainService : Service() {
             },
         )
         if (!recognizer.start()) {
+            ErrandBrainPreferences.setEnabled(this, false)
             stopForeground(STOP_FOREGROUND_REMOVE)
             stopSelf()
             return
         }
         voiceRecognizer = recognizer
+        ErrandBrainPreferences.setEnabled(this, true)
         ErrandBrainNotificationHelper.updateNotification(this, "Listening for tasks and reminders...")
     }
 
     private fun stopListening() {
+        ErrandBrainPreferences.setEnabled(this, false)
         voiceRecognizer?.stop()
         voiceRecognizer = null
         stopForeground(STOP_FOREGROUND_REMOVE)
