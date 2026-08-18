@@ -19,8 +19,8 @@ import androidx.compose.material.icons.outlined.ErrorOutline
 import androidx.compose.material.icons.outlined.EventRepeat
 import androidx.compose.material.icons.outlined.FolderOpen
 import androidx.compose.material.icons.outlined.GraphicEq
+import androidx.compose.material.icons.outlined.Info
 import androidx.compose.material.icons.outlined.Lock
-import androidx.compose.material.icons.outlined.Mic
 import androidx.compose.material.icons.outlined.Timeline
 import androidx.compose.material.icons.rounded.Translate
 import androidx.compose.material3.HorizontalDivider
@@ -30,6 +30,8 @@ import androidx.compose.material3.Surface
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -40,37 +42,50 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.fersaiyan.cyanbridge.ai.orchestrator.AndroidModeCommandExecutor
-import com.fersaiyan.cyanbridge.ai.orchestrator.AssistantMode
-import com.fersaiyan.cyanbridge.ai.orchestrator.AssistantModeAction
-import com.fersaiyan.cyanbridge.ai.orchestrator.AssistantModeCommand
+import com.fersaiyan.cyanbridge.ai.orchestrator.AndroidCapabilityCommandExecutor
+import com.fersaiyan.cyanbridge.ai.orchestrator.AssistantCapability
+import com.fersaiyan.cyanbridge.ai.orchestrator.AssistantCapabilityAction
+import com.fersaiyan.cyanbridge.ai.orchestrator.AssistantCapabilityCommand
+import com.fersaiyan.cyanbridge.ai.orchestrator.AssistantCapabilityRuntimeEvents
 
-/** Native control surface for an AI capability. No plugin SettingsActivity is required. */
+/** Native control surface for a current AI capability. */
 @Composable
-internal fun ADNativeTaskDetailScreen(
+internal fun ADNativeCapabilityDetailScreen(
     automation: ADAutomation,
-    initiallyActive: Boolean,
     onBack: () -> Unit,
 ) {
+    require(automation != ADAutomation.AUTO_AUDIO) { "Background audio auto-capture is not a product capability" }
     val context = LocalContext.current
-    val executor = remember(context) { AndroidModeCommandExecutor(context) }
-    var active by remember(automation, initiallyActive) { mutableStateOf(initiallyActive) }
+    val runtimeVersion by AssistantCapabilityRuntimeEvents.version.collectAsState()
+    val executor = remember(context, runtimeVersion) { AndroidCapabilityCommandExecutor(context) }
+    val capability = automation.toAssistantCapability()
+    var active by remember(automation) { mutableStateOf(executor.isActive(capability)) }
     var resultText by remember(automation) { mutableStateOf<String?>(null) }
     var lastSucceeded by remember(automation) { mutableStateOf<Boolean?>(null) }
 
-    fun execute(action: AssistantModeAction) {
+    LaunchedEffect(runtimeVersion, automation) {
+        active = executor.isActive(capability)
+    }
+
+    val switchingFrom = if (!active && executor.isExclusiveVoiceCapability(capability)) {
+        executor.activeVoiceCapability(excluding = capability)
+    } else {
+        null
+    }
+
+    fun execute(action: AssistantCapabilityAction) {
         val result = executor.execute(
-            AssistantModeCommand(
-                mode = automation.toAssistantMode(),
+            AssistantCapabilityCommand(
+                capability = capability,
                 action = action,
             ),
         )
         resultText = result.spokenText
-        val failure = result.richText.startsWith("Mode command failed:", ignoreCase = true) ||
+        val failure = result.richText.startsWith("Capability command failed:", ignoreCase = true) ||
             result.spokenText.contains("needs permission setup", ignoreCase = true) ||
             result.spokenText.contains("couldn’t change", ignoreCase = true)
         lastSucceeded = !failure
-        if (!failure) active = action == AssistantModeAction.START
+        active = executor.isActive(capability)
     }
 
     ADPageLayout(automation.title, onBack) {
@@ -104,6 +119,32 @@ internal fun ADNativeTaskDetailScreen(
             )
         }
 
+        switchingFrom?.let { previous ->
+            Surface(
+                modifier = Modifier.fillMaxWidth(),
+                color = ADColors.SurfaceSubtle,
+                shape = RoundedCornerShape(17.dp),
+            ) {
+                Row(
+                    modifier = Modifier.padding(horizontal = 15.dp, vertical = 13.dp),
+                    verticalAlignment = Alignment.Top,
+                ) {
+                    Icon(
+                        Icons.Outlined.Info,
+                        contentDescription = null,
+                        tint = ADColors.Muted,
+                        modifier = Modifier.size(21.dp),
+                    )
+                    Text(
+                        "${executor.displayName(previous)} is using live listening. Turning on ${automation.title} will switch live listening to this capability.",
+                        modifier = Modifier.padding(start = 10.dp).weight(1f),
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = ADColors.Ink,
+                    )
+                }
+            }
+        }
+
         Surface(
             modifier = Modifier.fillMaxWidth(),
             color = if (active) ADColors.SurfaceSubtle else ADColors.Surface,
@@ -122,10 +163,11 @@ internal fun ADNativeTaskDetailScreen(
                     )
                     Spacer(Modifier.height(3.dp))
                     Text(
-                        text = if (active) {
-                            "Ready when you use it from the glasses or phone."
-                        } else {
-                            "Turn it on when you want this capability available."
+                        text = when {
+                            active && executor.isExclusiveVoiceCapability(capability) -> "Listening is assigned to this capability."
+                            active -> "Ready when you use it from the glasses or phone."
+                            switchingFrom != null -> "Turning this on will move live listening here."
+                            else -> "Turn it on when you want this capability available."
                         },
                         style = MaterialTheme.typography.bodySmall,
                         color = ADColors.Muted,
@@ -134,7 +176,7 @@ internal fun ADNativeTaskDetailScreen(
                 Switch(
                     checked = active,
                     onCheckedChange = { enabled ->
-                        execute(if (enabled) AssistantModeAction.START else AssistantModeAction.STOP)
+                        execute(if (enabled) AssistantCapabilityAction.START else AssistantCapabilityAction.STOP)
                     },
                 )
             }
@@ -228,19 +270,19 @@ private fun ADAutomation.capabilityIcon(): ImageVector = when (this) {
     ADAutomation.TRANSLATOR -> Icons.Rounded.Translate
     ADAutomation.ERRAND_BRAIN -> Icons.Outlined.EventRepeat
     ADAutomation.AUTO_DIARY -> Icons.Outlined.AutoStories
-    ADAutomation.AUTO_AUDIO -> Icons.Outlined.Mic
     ADAutomation.VISUAL_DIARY -> Icons.Outlined.Timeline
+    ADAutomation.AUTO_AUDIO -> error("Removed audio auto-capture has no product icon")
 }
 
-private fun ADAutomation.toAssistantMode(): AssistantMode = when (this) {
-    ADAutomation.TRANSLATOR -> AssistantMode.TRANSLATOR
-    ADAutomation.MEETING_NOTES -> AssistantMode.MEETING_NOTES
-    ADAutomation.LIVE_CAPTIONS -> AssistantMode.LIVE_CAPTIONS
-    ADAutomation.ERRAND_BRAIN -> AssistantMode.ERRAND_BRAIN
-    ADAutomation.AUTO_DIARY -> AssistantMode.AUTO_DIARY
-    ADAutomation.AUTO_AUDIO -> AssistantMode.AUTO_AUDIO
-    ADAutomation.VISUAL_DIARY -> AssistantMode.VISUAL_DIARY
-    ADAutomation.LOCAL_AGENT -> AssistantMode.LOCAL_AGENT
+internal fun ADAutomation.toAssistantCapability(): AssistantCapability = when (this) {
+    ADAutomation.TRANSLATOR -> AssistantCapability.TRANSLATOR
+    ADAutomation.MEETING_NOTES -> AssistantCapability.MEETING_NOTES
+    ADAutomation.LIVE_CAPTIONS -> AssistantCapability.LIVE_CAPTIONS
+    ADAutomation.ERRAND_BRAIN -> AssistantCapability.ERRAND_BRAIN
+    ADAutomation.AUTO_DIARY -> AssistantCapability.AUTO_DIARY
+    ADAutomation.VISUAL_DIARY -> AssistantCapability.VISUAL_DIARY
+    ADAutomation.LOCAL_AGENT -> AssistantCapability.LOCAL_AGENT
+    ADAutomation.AUTO_AUDIO -> error("Background audio auto-capture is removed")
 }
 
 private fun ADAutomation.nativeOutput(): String = when (this) {
@@ -250,6 +292,6 @@ private fun ADAutomation.nativeOutput(): String = when (this) {
     ADAutomation.TRANSLATOR -> "Translated speech"
     ADAutomation.ERRAND_BRAIN -> "Scheduled tasks and reminders"
     ADAutomation.AUTO_DIARY -> "Private daily note"
-    ADAutomation.AUTO_AUDIO -> "Audio and transcript"
     ADAutomation.VISUAL_DIARY -> "Visual timeline"
+    ADAutomation.AUTO_AUDIO -> error("Background audio auto-capture is removed")
 }

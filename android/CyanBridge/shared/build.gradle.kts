@@ -1,6 +1,6 @@
 plugins {
     alias(libs.plugins.kotlin.multiplatform)
-    alias(libs.plugins.android.library)
+    alias(libs.plugins.android.kotlin.multiplatform.library)
     alias(libs.plugins.compose.multiplatform)
     alias(libs.plugins.kotlin.compose.compiler)
     alias(libs.plugins.kotlin.serialization)
@@ -9,9 +9,15 @@ plugins {
 val enableAppleTargets = providers.gradleProperty("enableAppleTargets").orNull == "true"
 
 kotlin {
-    androidTarget {
+    android {
+        namespace = "com.fersaiyan.cyanbridge.shared"
+        compileSdk = 36
+        minSdk = 24
         compilerOptions {
             jvmTarget.set(org.jetbrains.kotlin.gradle.dsl.JvmTarget.JVM_17)
+        }
+        withHostTest {
+            isIncludeAndroidResources = true
         }
     }
 
@@ -26,12 +32,6 @@ kotlin {
     // Apple targets are opt-in so the Android/Linux build remains usable while
     // the framework is compiled and linked from Xcode on macOS.
     if (enableAppleTargets) {
-        iosX64 {
-            binaries.framework {
-                baseName = "CyanBridgeShared"
-                isStatic = false
-            }
-        }
         iosArm64 {
             binaries.framework {
                 baseName = "CyanBridgeShared"
@@ -44,43 +44,27 @@ kotlin {
                 isStatic = false
             }
         }
-
     }
 
     sourceSets {
         commonMain.dependencies {
             implementation(libs.kotlinx.coroutines.core)
             implementation(libs.kotlinx.serialization.json)
-            implementation(compose.runtime)
-            implementation(compose.foundation)
-            implementation(compose.material3)
-            implementation(compose.ui)
-            implementation(compose.materialIconsExtended)
-            implementation(compose.components.resources)
+            implementation(libs.compose.runtime)
+            implementation(libs.compose.foundation)
+            implementation(libs.compose.material3)
+            implementation(libs.compose.ui)
+            implementation(libs.compose.components.resources)
         }
-@OptIn(org.jetbrains.compose.ExperimentalComposeLibrary::class)
-commonTest.dependencies {
-    implementation(kotlin("test"))
-    implementation(compose.uiTest)
-}
+
+        commonTest.dependencies {
+            implementation(kotlin("test"))
+            implementation(libs.compose.ui.test)
+        }
     }
 }
 
 compose.resources {
     packageOfResClass = "com.fersaiyan.cyanbridge.shared.generated.resources"
     publicResClass = true
-}
-
-android {
-    namespace = "com.fersaiyan.cyanbridge.shared"
-    compileSdk = 35
-
-    defaultConfig {
-        minSdk = 24
-    }
-
-    compileOptions {
-        sourceCompatibility = JavaVersion.VERSION_17
-        targetCompatibility = JavaVersion.VERSION_17
-    }
 }

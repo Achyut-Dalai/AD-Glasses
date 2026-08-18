@@ -17,8 +17,8 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.rounded.KeyboardArrowRight
 import androidx.compose.material.icons.outlined.BatteryFull
-import androidx.compose.material.icons.outlined.Bolt
 import androidx.compose.material.icons.outlined.GraphicEq
 import androidx.compose.material.icons.outlined.Mic
 import androidx.compose.material.icons.outlined.PhotoCamera
@@ -27,8 +27,6 @@ import androidx.compose.material.icons.outlined.Storage
 import androidx.compose.material.icons.outlined.Sync
 import androidx.compose.material.icons.outlined.Videocam
 import androidx.compose.material.icons.outlined.Visibility
-import androidx.compose.material.icons.rounded.KeyboardArrowRight
-import androidx.compose.material.icons.rounded.Translate
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
@@ -49,7 +47,7 @@ import com.fersaiyan.cyanbridge.devices.ADDeviceSupportPolicy
 import com.fersaiyan.cyanbridge.devices.DeviceProfileStore
 import com.fersaiyan.cyanbridge.shared.glasses.GlassesDashboardUiState
 
-/** Quiet control surface for the glasses. */
+/** Quiet control surface for the glasses. Capability state belongs on the AI page. */
 @Composable
 internal fun ADHomeSurface(
     state: GlassesDashboardUiState,
@@ -57,21 +55,12 @@ internal fun ADHomeSurface(
     onOpenDevice: () -> Unit,
     onOpenSync: () -> Unit,
     onOpenSettings: () -> Unit,
-    onOpenTranslator: () -> Unit,
     onOpenWebSearch: () -> Unit,
-    onOpenPhoneControl: () -> Unit,
-    onOpenTasks: () -> Unit,
 ) {
     val context = LocalContext.current
     val profile = DeviceProfileStore.loadLastSelected(context)
         ?.takeIf { ADDeviceSupportPolicy.isPairable(it.selectedClass) }
     val device = buildADDevicePresentation(state, profile)
-    val runtimeCapabilityTitle = state.nativePluginShortcut?.takeIf { it.isEnabled }?.title
-    val activeCapabilityTitle = runtimeCapabilityTitle?.let { runtimeTitle ->
-        ADAutomation.entries
-            .firstOrNull { it.visibleInTasks && it.runtimeTitle == runtimeTitle }
-            ?.title
-    }
 
     Column(Modifier.fillMaxSize()) {
         ADTopBar(showBrand = true, showSettings = true, onSettings = onOpenSettings)
@@ -98,7 +87,7 @@ internal fun ADHomeSurface(
                 )
             }
 
-            if (state.meeting.isRecording || state.transfer.isVisible || activeCapabilityTitle != null) {
+            if (state.meeting.isRecording || state.transfer.isVisible) {
                 item {
                     Column(verticalArrangement = Arrangement.spacedBy(9.dp)) {
                         Text("Active", style = MaterialTheme.typography.titleMedium)
@@ -118,15 +107,6 @@ internal fun ADHomeSurface(
                                 detail = state.transfer.detail,
                                 status = "ACTIVE",
                                 onClick = onOpenSync,
-                            )
-                        }
-                        activeCapabilityTitle?.let {
-                            ADLiveRow(
-                                icon = Icons.Rounded.Translate,
-                                title = it,
-                                detail = "Capability active",
-                                status = "ON",
-                                onClick = onOpenTasks,
                             )
                         }
                     }
@@ -160,11 +140,11 @@ internal fun ADHomeSurface(
                             onClick = host.onToggleVideo,
                         )
                         ADHomeAction(
-                            title = "Translate",
-                            detail = "Live Translation",
-                            icon = Icons.Rounded.Translate,
+                            title = if (state.meeting.isRecording) "Stop audio" else "Record audio",
+                            detail = if (state.meeting.isRecording) "Recording now" else "Save a recording",
+                            icon = Icons.Outlined.GraphicEq,
                             modifier = Modifier.weight(1f),
-                            onClick = onOpenTranslator,
+                            onClick = if (state.meeting.isRecording) host.onStopRecording else host.onStartRecording,
                         )
                     }
                 }
@@ -179,22 +159,10 @@ internal fun ADHomeSurface(
                         onClick = host.onImageQuestion,
                     )
                     ADHomeLink(
-                        icon = Icons.Outlined.GraphicEq,
-                        title = if (state.meeting.isRecording) "Stop recording" else "Record audio",
-                        detail = if (state.meeting.isRecording) "Recording now" else "Save an audio recording",
-                        onClick = if (state.meeting.isRecording) host.onStopRecording else host.onStartRecording,
-                    )
-                    ADHomeLink(
                         icon = Icons.Outlined.Public,
                         title = "Search web",
                         detail = "Start a fresh web-backed question",
                         onClick = onOpenWebSearch,
-                    )
-                    ADHomeLink(
-                        icon = Icons.Outlined.Bolt,
-                        title = "Automation",
-                        detail = "Apps and supported Android actions",
-                        onClick = onOpenPhoneControl,
                     )
                 }
             }
@@ -337,7 +305,7 @@ private fun ADHomeLink(
             Text(title, style = MaterialTheme.typography.titleMedium)
             Text(detail, style = MaterialTheme.typography.bodySmall, color = ADColors.Muted)
         }
-        Icon(Icons.Rounded.KeyboardArrowRight, null, tint = ADColors.Muted, modifier = Modifier.size(22.dp))
+        Icon(Icons.AutoMirrored.Rounded.KeyboardArrowRight, null, tint = ADColors.Muted, modifier = Modifier.size(22.dp))
     }
 }
 

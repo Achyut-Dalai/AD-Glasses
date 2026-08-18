@@ -10,16 +10,14 @@ import androidx.compose.material3.lightColorScheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.SideEffect
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalView
 import androidx.core.view.WindowCompat
 import com.fersaiyan.cyanbridge.shared.appearance.AccentProfile
-import com.fersaiyan.cyanbridge.shared.appearance.AccentProfiles
 import com.fersaiyan.cyanbridge.shared.appearance.AppearanceSettings
 import com.fersaiyan.cyanbridge.shared.ui.theme.cyanBridgeColorScheme as sharedCyanBridgeColorScheme
 
-/** Kept as the Android-facing entry point for existing theme callers. */
+/** Kept as the Android-facing entry point for existing Compose configuration callers. */
 fun cyanBridgeColorScheme(
     profile: AccentProfile,
     darkTheme: Boolean,
@@ -33,14 +31,12 @@ fun CyanBridgeTheme(
     content: @Composable () -> Unit,
 ) {
     val context = LocalContext.current
-    val colorScheme = ADLegacyColorScheme
+    val colorScheme = ADCompatibilityColorScheme
 
     val view = LocalView.current
     if (!view.isInEditMode) {
         SideEffect {
             context.findActivity()?.window?.let { window ->
-                window.statusBarColor = colorScheme.background.toArgb()
-                window.navigationBarColor = colorScheme.surface.toArgb()
                 WindowCompat.getInsetsController(window, view).apply {
                     isAppearanceLightStatusBars = true
                     isAppearanceLightNavigationBars = true
@@ -56,12 +52,8 @@ fun CyanBridgeTheme(
     )
 }
 
-/**
- * Older Compose destinations still host working media, chat, and plugin logic.
- * Keep them visually inside the same light, neutral AD Glasses product until
- * each destination is replaced by the new shell.
- */
-private val ADLegacyColorScheme = lightColorScheme(
+/** Neutral AD Glasses styling for secondary Compose configuration surfaces. */
+private val ADCompatibilityColorScheme = lightColorScheme(
     primary = Color(0xFF2C2C2E),
     onPrimary = Color.White,
     primaryContainer = Color(0xFFEAEAED),

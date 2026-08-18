@@ -2,6 +2,7 @@ package com.fersaiyan.cyanbridge.plugins.localagent
 
 import android.content.Context
 import com.fersaiyan.cyanbridge.agent.LocalAgentPrefs as AutomationPrefs
+import com.fersaiyan.cyanbridge.ai.orchestrator.AssistantCapabilityRuntimeEvents
 import com.fersaiyan.cyanbridge.ai.router.AiProviderPrefs
 import com.fersaiyan.cyanbridge.ai.router.AiProviderType
 import com.fersaiyan.cyanbridge.localagent.LocalAgentController
@@ -25,6 +26,7 @@ object LocalAgentPlugin {
         AutomationPrefs.isLocalAgentAutomationEnabled(context)
 
     fun setEnabled(context: Context, enabled: Boolean) {
+        val changed = isEnabled(context) != enabled
         AutomationPrefs.setLocalAgentAutomationEnabled(context, enabled)
         CommunityPluginPrefs.setNativePluginEnabled(context, NativePluginIds.LOCAL_AGENT, enabled)
         if (!enabled) {
@@ -36,6 +38,7 @@ object LocalAgentPlugin {
             // resume only that already allowlisted Telegram listener.
             LocalAgentTelegramService.start(context)
         }
+        if (changed) AssistantCapabilityRuntimeEvents.notifyChanged()
     }
 
     fun start(context: Context, goal: String? = null): LocalAgentController.CommandResult {

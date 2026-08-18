@@ -29,9 +29,9 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.rounded.ArrowBack
+import androidx.compose.material.icons.automirrored.rounded.BluetoothSearching
+import androidx.compose.material.icons.automirrored.rounded.KeyboardArrowRight
 import androidx.compose.material.icons.rounded.Bluetooth
-import androidx.compose.material.icons.rounded.BluetoothSearching
-import androidx.compose.material.icons.rounded.KeyboardArrowRight
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
@@ -220,7 +220,7 @@ private fun ScanStage(
                     modifier = Modifier.fillMaxWidth().height(48.dp),
                     colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary),
                 ) {
-                    Icon(Icons.Rounded.BluetoothSearching, null, modifier = Modifier.size(19.dp))
+                    Icon(Icons.AutoMirrored.Rounded.BluetoothSearching, null, modifier = Modifier.size(19.dp))
                     Spacer(Modifier.width(8.dp))
                     Text(stringResource(Res.string.device_bind_scan))
                 }
@@ -284,7 +284,7 @@ private fun ScanVisual(sweepAngle: Float, active: Boolean) {
         ) {
             Box(contentAlignment = Alignment.Center) {
                 Icon(
-                    if (active) Icons.Rounded.BluetoothSearching else Icons.Rounded.Bluetooth,
+                    if (active) Icons.AutoMirrored.Rounded.BluetoothSearching else Icons.Rounded.Bluetooth,
                     contentDescription = null,
                     tint = primary,
                     modifier = Modifier.size(31.dp),
@@ -335,7 +335,7 @@ private fun DeviceResultRow(device: ScannedDevice, onClick: () -> Unit) {
                     overflow = TextOverflow.Ellipsis,
                 )
             }
-            Icon(Icons.Rounded.KeyboardArrowRight, null, tint = MaterialTheme.colorScheme.onSurfaceVariant)
+            Icon(Icons.AutoMirrored.Rounded.KeyboardArrowRight, null, tint = MaterialTheme.colorScheme.onSurfaceVariant)
         }
     }
 }

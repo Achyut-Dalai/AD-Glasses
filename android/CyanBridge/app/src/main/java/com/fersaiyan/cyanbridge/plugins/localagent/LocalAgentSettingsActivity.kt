@@ -68,7 +68,6 @@ import com.fersaiyan.cyanbridge.shared.plugins.NativePluginIds
 import com.fersaiyan.cyanbridge.shared.settings.AgentProviderType
 import com.fersaiyan.cyanbridge.ui.NativePluginShortcutPreference
 import com.fersaiyan.cyanbridge.ui.hasNotificationPermission
-import com.fersaiyan.cyanbridge.ui.installComposeHostWithLegacyAdapter
 import com.fersaiyan.cyanbridge.ui.localagent.PendingActionsActivity
 import com.fersaiyan.cyanbridge.ui.setThemedComposeContent
 import kotlinx.coroutines.Dispatchers
@@ -104,8 +103,7 @@ class LocalAgentSettingsActivity : AppCompatActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         refreshUi()
-        val composeView = installComposeHostWithLegacyAdapter(R.layout.activity_local_agent_settings)
-        setThemedComposeContent(composeView) { LocalAgentSettingsContent() }
+        setThemedComposeContent { LocalAgentSettingsContent() }
     }
 
     override fun onStart() {
@@ -313,7 +311,7 @@ class LocalAgentSettingsActivity : AppCompatActivity() {
             .setMessage(R.string.onboarding_accessibility_disclosure_body)
             .setNegativeButton(R.string.compose_not_now, null)
             .setPositiveButton(R.string.compose_continue) { _, _ ->
-                    runCatching { startActivity(Intent(Settings.ACTION_ACCESSIBILITY_SETTINGS)) }
+                runCatching { startActivity(Intent(Settings.ACTION_ACCESSIBILITY_SETTINGS)) }
                     .onFailure {
                         Toast.makeText(this, R.string.compose_local_agent_unable_open_accessibility, Toast.LENGTH_SHORT).show()
                     }

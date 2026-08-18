@@ -1,6 +1,7 @@
 package com.fersaiyan.cyanbridge.plugins.handsfreetranslator
 
 import android.content.Context
+import com.fersaiyan.cyanbridge.ai.orchestrator.AssistantCapabilityRuntimeEvents
 
 object HandsFreeTranslatorPreferences {
     private const val PREFS = "hands_free_translator_prefs"
@@ -34,7 +35,9 @@ object HandsFreeTranslatorPreferences {
         prefs(context).getBoolean(KEY_ENABLED, DEFAULT_ENABLED)
 
     fun setEnabled(context: Context, enabled: Boolean) {
+        val changed = isEnabled(context) != enabled
         prefs(context).edit().putBoolean(KEY_ENABLED, enabled).apply()
+        if (changed) AssistantCapabilityRuntimeEvents.notifyChanged()
     }
 
     fun getSourceLanguage(context: Context): String =

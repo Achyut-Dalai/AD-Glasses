@@ -6,7 +6,7 @@ on:
     paths:
       - .github/workflows/android-app.yml
       - android/CyanBridge/**
-      - android/heycyan-core/**
+      - heycyan-core/**
       - third_party/moonshine/**
   push:
     branches:
@@ -17,7 +17,7 @@ on:
     paths:
       - .github/workflows/android-app.yml
       - android/CyanBridge/**
-      - android/heycyan-core/**
+      - heycyan-core/**
       - third_party/moonshine/**
 
 permissions:
@@ -39,7 +39,7 @@ jobs:
 
     steps:
       - name: Check out source
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
         with:
           submodules: recursive
 
@@ -49,32 +49,83 @@ jobs:
           distribution: temurin
           java-version: "17"
           cache: gradle
-          cache-dependency-path: android/CyanBridge/**/*.gradle*
+          cache-dependency-path: |
+            android/CyanBridge/**/*.gradle*
+            android/CyanBridge/gradle/libs.versions.toml
+            heycyan-core/**/*.gradle*
 
       - name: Set up Android SDK
-        uses: android-actions/setup-android@v3
+        uses: android-actions/setup-android@v4
+        with:
+          cmdline-tools-version: 15859902
+          packages: platform-tools
 
-      - name: Install Android build tools
+      - name: Install Android SDK components
         run: >-
-          sdkmanager
+          sdkmanager --channel=0
           "platforms;android-36"
           "build-tools;36.0.0"
           "cmake;3.22.1"
-          "ndk;27.1.12297006"
+          "ndk;29.0.14206865"
+
+      - name: Show stable native tool versions
+        run: sdkmanager --list --channel=0 | grep -E '(^| )((cmake|ndk);)' | head -80
 
       - name: Run app unit tests
         working-directory: android/CyanBridge
-        run: ./gradlew --no-daemon :app:testDebugUnitTest --stacktrace
+        shell: bash
+        run: |
+          set +e
+          mkdir -p build/ci
+          ./gradlew --no-daemon --warning-mode=all :app:testDebugUnitTest --stacktrace 2>&1 | tee /tmp/ad-gradle-unit.log
+          status=${PIPESTATUS[0]}
+          if [ "$status" -ne 0 ]; then
+            grep -Ei '(^e:|^w:|FAILURE:|What went wrong:|Could not |deprecated|deprecation|error:|Unresolved reference|Compilation error|Caused by:)' /tmp/ad-gradle-unit.log | tail -400 > build/ci/gradle-unit-summary.txt || true
+            echo "::group::Compact Gradle failure summary"
+            cat build/ci/gradle-unit-summary.txt || true
+            echo "::endgroup::"
+          fi
+          exit "$status"
+
+      - name: Upload unit-test failure diagnostics
+        if: failure()
+        uses: actions/upload-artifact@v7
+        with:
+          name: gradle-unit-failure-summary
+          path: android/CyanBridge/build/ci/gradle-unit-summary.txt
+          if-no-files-found: ignore
+          retention-days: 2
 
       - name: Assemble AD Glasses debug APK
         working-directory: android/CyanBridge
-        run: ./gradlew --no-daemon :app:assembleDebug --stacktrace
+        shell: bash
+        run: |
+          set +e
+          mkdir -p build/ci
+          ./gradlew --no-daemon --warning-mode=all :app:assembleDebug --stacktrace 2>&1 | tee /tmp/ad-gradle-assemble.log
+          status=${PIPESTATUS[0]}
+          if [ "$status" -ne 0 ]; then
+            grep -Ei '(^e:|^w:|FAILURE:|What went wrong:|Could not |deprecated|deprecation|error:|Unresolved reference|Compilation error|Caused by:)' /tmp/ad-gradle-assemble.log | tail -400 > build/ci/gradle-assemble-summary.txt || true
+            echo "::group::Compact Gradle failure summary"
+            cat build/ci/gradle-assemble-summary.txt || true
+            echo "::endgroup::"
+          fi
+          exit "$status"
+
+      - name: Upload assemble failure diagnostics
+        if: failure()
+        uses: actions/upload-artifact@v7
+        with:
+          name: gradle-assemble-failure-summary
+          path: android/CyanBridge/build/ci/gradle-assemble-summary.txt
+          if-no-files-found: ignore
+          retention-days: 2
 
       - name: Verify branded APK output
         run: test -f android/CyanBridge/app/build/outputs/apk/debug/AD-Glasses.apk
 
       - name: Upload AD Glasses APK
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: AD-Glasses-debug
           path: android/CyanBridge/app/build/outputs/apk/debug/AD-Glasses.apk

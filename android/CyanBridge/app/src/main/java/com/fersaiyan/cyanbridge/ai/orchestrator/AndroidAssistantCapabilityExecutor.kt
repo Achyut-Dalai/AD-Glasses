@@ -13,7 +13,7 @@ class AndroidAssistantCapabilityExecutor(
     context: Context,
 ) : AssistantCapabilityExecutor {
     private val appContext = context.applicationContext
-    private val modes = AndroidModeCommandExecutor(context)
+    private val capabilities = AndroidCapabilityCommandExecutor(context)
 
     override suspend fun answer(
         prompt: String,
@@ -91,10 +91,10 @@ class AndroidAssistantCapabilityExecutor(
         }
     }
 
-    override suspend fun executeModeCommand(
-        command: AssistantModeCommand,
+    override suspend fun executeCapabilityCommand(
+        command: AssistantCapabilityCommand,
         context: AssistantExecutionContext,
-    ): AssistantResult = modes.execute(command)
+    ): AssistantResult = capabilities.execute(command)
 
     private fun conversationSystemPrompt(context: AssistantExecutionContext): String = buildString {
         appendLine("You are AD, the conversational assistant for displayless smart glasses.")

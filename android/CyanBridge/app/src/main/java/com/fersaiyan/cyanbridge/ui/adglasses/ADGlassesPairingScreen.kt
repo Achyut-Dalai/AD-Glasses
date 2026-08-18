@@ -19,10 +19,10 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.rounded.KeyboardArrowRight
 import androidx.compose.material.icons.outlined.Bluetooth
 import androidx.compose.material.icons.outlined.Close
 import androidx.compose.material.icons.outlined.Refresh
-import androidx.compose.material.icons.rounded.KeyboardArrowRight
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.CircularProgressIndicator
@@ -243,7 +243,7 @@ private fun ADPairingDeviceRow(
                 overflow = TextOverflow.Ellipsis,
             )
         }
-        Icon(Icons.Rounded.KeyboardArrowRight, contentDescription = "Connect", tint = ADColors.Muted)
+        Icon(Icons.AutoMirrored.Rounded.KeyboardArrowRight, contentDescription = "Connect", tint = ADColors.Muted)
     }
 }
 

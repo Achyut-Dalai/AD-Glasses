@@ -54,9 +54,9 @@ class ADNavigationRequestStoreTest {
     @Test
     fun newRequestsAlwaysReceiveANewerId() {
         val first = ADNavigationRequestStore.post(context, ADExternalDestination.SETTINGS)
-        val second = ADNavigationRequestStore.post(context, ADExternalDestination.MODES)
+        val second = ADNavigationRequestStore.post(context, ADExternalDestination.AI)
 
         assertTrue(second.id > first.id)
-        assertEquals(ADExternalDestination.MODES, ADNavigationRequestStore.observe(context).value?.destination)
+        assertEquals(ADExternalDestination.AI, ADNavigationRequestStore.observe(context).value?.destination)
     }
 }

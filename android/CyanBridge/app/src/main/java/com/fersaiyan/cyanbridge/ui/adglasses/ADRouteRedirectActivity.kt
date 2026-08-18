@@ -4,7 +4,6 @@ import android.app.Activity
 import android.content.Context
 import android.content.Intent
 import android.os.Bundle
-import com.fersaiyan.cyanbridge.MainActivity
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -13,7 +12,7 @@ import java.util.concurrent.atomic.AtomicLong
 enum class ADExternalDestination {
     CONVERSATIONS,
     SETTINGS,
-    MODES,
+    AI,
     LIBRARY_CAPTURES,
     LIBRARY_RECORDINGS,
     LIBRARY_NOTES,
@@ -98,8 +97,13 @@ object ADNavigationRequestStore {
     private fun readPersisted(context: Context): ADNavigationRequest? {
         val prefs = context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
         val id = prefs.getLong(KEY_ID, 0L)
-        val destination = prefs.getString(KEY_DESTINATION, null)
-            ?.let { raw -> runCatching { ADExternalDestination.valueOf(raw) }.getOrNull() }
+        val destination = prefs.getString(KEY_DESTINATION, null)?.let { raw ->
+            when (raw) {
+                // One-time migration for a request persisted by pre-capability builds.
+                "MODES" -> ADExternalDestination.AI
+                else -> runCatching { ADExternalDestination.valueOf(raw) }.getOrNull()
+            }
+        }
         if (id <= 0L || destination == null) return null
         return ADNavigationRequest(
             id = id,
@@ -112,7 +116,7 @@ object ADNavigationRequestStore {
 }
 
 /** Invisible compatibility target; inherited native intents always land in the Compose shell. */
-abstract class ADLegacyRouteRedirectActivity : Activity() {
+abstract class ADRouteRedirectActivity : Activity() {
     abstract val destination: ADExternalDestination
 
     protected open fun requestPrefill(intent: Intent): String? = null
@@ -129,38 +133,37 @@ abstract class ADLegacyRouteRedirectActivity : Activity() {
             webSearchRequested = requestWebSearch(intent),
         )
         startActivity(
-            Intent(this, MainActivity::class.java).apply {
+            Intent().setClassName(packageName, "$packageName.MainActivity").apply {
                 addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP or Intent.FLAG_ACTIVITY_SINGLE_TOP)
             },
         )
         finish()
-        overridePendingTransition(0, 0)
     }
 }
 
-class ADConversationsRedirectActivity : ADLegacyRouteRedirectActivity() {
+class ADConversationsRedirectActivity : ADRouteRedirectActivity() {
     override val destination = ADExternalDestination.CONVERSATIONS
     override fun requestPrefill(intent: Intent): String? = intent.getStringExtra("prefill_message")
     override fun requestThreadId(intent: Intent): String? = intent.getStringExtra("chat_id")
     override fun requestWebSearch(intent: Intent): Boolean = intent.getBooleanExtra("web_search_requested", false)
 }
 
-class ADSettingsRedirectActivity : ADLegacyRouteRedirectActivity() {
+class ADSettingsRedirectActivity : ADRouteRedirectActivity() {
     override val destination = ADExternalDestination.SETTINGS
 }
 
-class ADModesRedirectActivity : ADLegacyRouteRedirectActivity() {
-    override val destination = ADExternalDestination.MODES
+class ADAiRedirectActivity : ADRouteRedirectActivity() {
+    override val destination = ADExternalDestination.AI
 }
 
-class ADCapturesRedirectActivity : ADLegacyRouteRedirectActivity() {
+class ADCapturesRedirectActivity : ADRouteRedirectActivity() {
     override val destination = ADExternalDestination.LIBRARY_CAPTURES
 }
 
-class ADRecordingsRedirectActivity : ADLegacyRouteRedirectActivity() {
+class ADRecordingsRedirectActivity : ADRouteRedirectActivity() {
     override val destination = ADExternalDestination.LIBRARY_RECORDINGS
 }
 
-class ADNotesRedirectActivity : ADLegacyRouteRedirectActivity() {
+class ADNotesRedirectActivity : ADRouteRedirectActivity() {
     override val destination = ADExternalDestination.LIBRARY_NOTES
 }
