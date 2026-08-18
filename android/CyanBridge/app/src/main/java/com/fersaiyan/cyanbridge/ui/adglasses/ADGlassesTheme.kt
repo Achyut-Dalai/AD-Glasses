@@ -4,8 +4,7 @@ import android.app.Activity
 import android.content.Context
 import android.content.ContextWrapper
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material3.MaterialExpressiveTheme
-import androidx.compose.material3.MotionScheme
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Shapes
 import androidx.compose.material3.Typography
 import androidx.compose.material3.lightColorScheme
@@ -219,9 +218,12 @@ fun ADGlassesTheme(
         }
     }
 
-    MaterialExpressiveTheme(
+    // Material 3 Expressive is applied through the pilot's bolder typography, shape
+    // hierarchy and expressive Material components. The dedicated
+    // MaterialExpressiveTheme/MotionScheme APIs require the Android 37 / AGP 9.1
+    // toolchain, so the product stays on its supported Android 36 toolchain here.
+    MaterialTheme(
         colorScheme = scheme,
-        motionScheme = MotionScheme.expressive(),
         shapes = shapes,
         typography = ADTypography,
         content = content,
