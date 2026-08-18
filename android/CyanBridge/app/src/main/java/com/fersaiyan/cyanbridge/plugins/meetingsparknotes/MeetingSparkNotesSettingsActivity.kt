@@ -39,7 +39,6 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.platform.ComposeView
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
@@ -48,19 +47,14 @@ import com.fersaiyan.cyanbridge.R
 import com.fersaiyan.cyanbridge.plugins.PluginVoicePermissions
 import com.fersaiyan.cyanbridge.shared.plugins.NativePluginIds
 import com.fersaiyan.cyanbridge.ui.CommunityPluginPrefs
-import com.fersaiyan.cyanbridge.ui.installComposeHostWithLegacyAdapter
 import com.fersaiyan.cyanbridge.ui.NativePluginShortcutPreference
 import com.fersaiyan.cyanbridge.ui.setThemedComposeContent
 
 class MeetingSparkNotesSettingsActivity : AppCompatActivity() {
 
-    private lateinit var composeView: ComposeView
-
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        composeView = installComposeHostWithLegacyAdapter(R.layout.activity_meeting_spark_notes_settings)
-
-        setThemedComposeContent(composeView) {
+        setThemedComposeContent {
             MeetingSparkNotesSettingsScreen(
                 onBack = ::finish,
                 onStartService = {
@@ -116,7 +110,6 @@ fun MeetingSparkNotesSettingsScreen(
                 .verticalScroll(scrollState),
             verticalArrangement = Arrangement.spacedBy(12.dp),
         ) {
-            // Section: General
             SectionTitle(stringResource(R.string.compose_general))
             Card(
                 modifier = Modifier.fillMaxWidth(),
@@ -139,15 +132,10 @@ fun MeetingSparkNotesSettingsScreen(
                                     NativePluginIds.MEETING_SPARK_NOTES,
                                     newValue,
                                 )
-                                if (newValue) {
-                                    onStartService()
-                                } else {
-                                    onStopService()
-                                }
+                                if (newValue) onStartService() else onStopService()
                             },
                         )
                     }
-
                 }
             }
 
@@ -157,7 +145,6 @@ fun MeetingSparkNotesSettingsScreen(
                 pluginTitle = stringResource(R.string.compose_plugin_name_meeting_spark_notes),
             )
 
-            // Section: Summary Style
             SectionTitle(stringResource(R.string.compose_summary_style))
             Card(
                 modifier = Modifier.fillMaxWidth(),
@@ -178,17 +165,17 @@ fun MeetingSparkNotesSettingsScreen(
                                     summaryStyle = style
                                     MeetingSparkNotesPreferences.setSummaryStyle(context, style)
                                 },
-                                 label = {
-                                     Text(
-                                         stringResource(
-                                             when (style) {
-                                                 "concise" -> R.string.compose_summary_style_concise
-                                                 "detailed" -> R.string.compose_summary_style_detailed
-                                                 else -> R.string.compose_summary_style_action_focused
-                                             },
-                                         ),
-                                     )
-                                 },
+                                label = {
+                                    Text(
+                                        stringResource(
+                                            when (style) {
+                                                "concise" -> R.string.compose_summary_style_concise
+                                                "detailed" -> R.string.compose_summary_style_detailed
+                                                else -> R.string.compose_summary_style_action_focused
+                                            },
+                                        ),
+                                    )
+                                },
                                 colors = FilterChipDefaults.filterChipColors(
                                     selectedContainerColor = MaterialTheme.colorScheme.primary,
                                 ),
@@ -198,7 +185,6 @@ fun MeetingSparkNotesSettingsScreen(
                 }
             }
 
-            // Section: Content Options
             SectionTitle(stringResource(R.string.compose_content_options))
             Card(
                 modifier = Modifier.fillMaxWidth(),
@@ -221,7 +207,6 @@ fun MeetingSparkNotesSettingsScreen(
                     }
 
                     Spacer(modifier = Modifier.height(8.dp))
-
                     Row(
                         modifier = Modifier.fillMaxWidth(),
                         horizontalArrangement = Arrangement.SpaceBetween,
@@ -236,11 +221,9 @@ fun MeetingSparkNotesSettingsScreen(
                             },
                         )
                     }
-
                 }
             }
 
-            // Section: Custom Instructions
             SectionTitle(stringResource(R.string.compose_custom_instructions))
             Card(
                 modifier = Modifier.fillMaxWidth(),
@@ -262,8 +245,8 @@ fun MeetingSparkNotesSettingsScreen(
                             }
                         },
                         modifier = Modifier.fillMaxWidth(),
-                         label = { Text(stringResource(R.string.compose_meeting_instructions)) },
-                         placeholder = { Text(stringResource(R.string.compose_meeting_hint)) },
+                        label = { Text(stringResource(R.string.compose_meeting_instructions)) },
+                        placeholder = { Text(stringResource(R.string.compose_meeting_hint)) },
                         minLines = 3,
                         maxLines = 6,
                         supportingText = { Text("${customPrompt.length}/1500") },
@@ -271,7 +254,6 @@ fun MeetingSparkNotesSettingsScreen(
                 }
             }
 
-            // Section: History
             SectionTitle(stringResource(R.string.compose_meeting_history))
             Card(
                 modifier = Modifier.fillMaxWidth(),
@@ -294,7 +276,6 @@ fun MeetingSparkNotesSettingsScreen(
                     )
 
                     Spacer(modifier = Modifier.height(8.dp))
-
                     Button(
                         onClick = {
                             MeetingSparkNotesStore().clear(context)
@@ -307,7 +288,6 @@ fun MeetingSparkNotesSettingsScreen(
                 }
             }
 
-            // Section: Actions
             SectionTitle(stringResource(R.string.compose_actions))
             Card(
                 modifier = Modifier.fillMaxWidth(),
