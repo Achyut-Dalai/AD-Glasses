@@ -10,11 +10,11 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.CheckCircle
 import androidx.compose.material.icons.outlined.Cloud
@@ -23,9 +23,9 @@ import androidx.compose.material.icons.outlined.Memory
 import androidx.compose.material.icons.outlined.Storage
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
-import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -36,11 +36,11 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.SolidColor
-import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.PasswordVisualTransformation
+import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.platform.LocalContext
 import com.fersaiyan.cyanbridge.ai.router.AiProviderPrefs
 import com.fersaiyan.cyanbridge.ai.router.AiProviderType
 import com.fersaiyan.cyanbridge.ai.router.CliRelayBackend
@@ -58,37 +58,58 @@ internal fun ADNativeRelaySettingsScreen(onBack: () -> Unit) {
     var relayUrl by remember { mutableStateOf(AiProviderPrefs.getRelayBaseUrl(context)) }
     var backend by remember { mutableStateOf(AiProviderPrefs.getRelayBackend(context)) }
     var saved by remember { mutableStateOf(false) }
+    val configured = relayUrl.startsWith("http://") || relayUrl.startsWith("https://")
 
     ADPageLayout("Relay", onBack) {
-        ADCard {
-            Text("Server", style = MaterialTheme.typography.titleMedium)
-            Spacer(Modifier.size(10.dp))
-            ADAiTextField(
-                value = relayUrl,
-                onValueChange = { relayUrl = it; saved = false },
-                placeholder = "https://your-relay.example",
-            )
+        ADPageHero(
+            icon = Icons.Outlined.Cloud,
+            title = "Remote AI relay",
+            detail = "Use your own relay for Gemini or OpenAI/Codex routes and capabilities that need server-side web grounding.",
+            status = if (configured) "CONFIGURED" else "SETUP",
+            statusTone = if (configured) ADStatusTone.SUCCESS else ADStatusTone.NEUTRAL,
+        )
+
+        Column(verticalArrangement = Arrangement.spacedBy(9.dp)) {
+            ADSectionEyebrow("Server")
+            ADCard {
+                Text("Relay address", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold)
+                Spacer(Modifier.height(4.dp))
+                Text(
+                    "AD sends only the requests that are routed to this relay.",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = ADColors.Muted,
+                )
+                Spacer(Modifier.height(12.dp))
+                ADAiTextField(
+                    value = relayUrl,
+                    onValueChange = { relayUrl = it; saved = false },
+                    placeholder = "https://your-relay.example",
+                    label = "Base URL",
+                )
+            }
         }
 
-        ADCard {
-            Text("Backend", style = MaterialTheme.typography.titleMedium)
-            Spacer(Modifier.size(8.dp))
-            ADAiBackendRow(
-                title = "Gemini",
-                detail = "Gemini CLI through your relay",
-                selected = backend == CliRelayBackend.GEMINI,
-            ) {
-                backend = CliRelayBackend.GEMINI
-                saved = false
-            }
-            HorizontalDivider(color = ADColors.Separator)
-            ADAiBackendRow(
-                title = "OpenAI / Codex",
-                detail = "Codex CLI through your relay",
-                selected = backend == CliRelayBackend.CODEX,
-            ) {
-                backend = CliRelayBackend.CODEX
-                saved = false
+        Column(verticalArrangement = Arrangement.spacedBy(9.dp)) {
+            ADSectionEyebrow("Backend")
+            Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                ADAiBackendCard(
+                    title = "Gemini",
+                    detail = "Gemini CLI",
+                    selected = backend == CliRelayBackend.GEMINI,
+                    modifier = Modifier.weight(1f),
+                ) {
+                    backend = CliRelayBackend.GEMINI
+                    saved = false
+                }
+                ADAiBackendCard(
+                    title = "OpenAI / Codex",
+                    detail = "Codex CLI",
+                    selected = backend == CliRelayBackend.CODEX,
+                    modifier = Modifier.weight(1f),
+                ) {
+                    backend = CliRelayBackend.CODEX
+                    saved = false
+                }
             }
         }
 
@@ -99,17 +120,23 @@ internal fun ADNativeRelaySettingsScreen(onBack: () -> Unit) {
                 AiProviderPrefs.setProvider(context, AiProviderType.CLI_RELAY)
                 saved = true
             },
-            modifier = Modifier.fillMaxWidth().heightIn(min = 50.dp),
+            modifier = Modifier.fillMaxWidth().heightIn(min = 52.dp),
             colors = ButtonDefaults.buttonColors(containerColor = ADColors.Ink),
         ) {
-            Text(if (saved) "Saved" else "Save relay")
+            if (saved) Icon(Icons.Outlined.CheckCircle, contentDescription = null, modifier = Modifier.size(19.dp))
+            if (saved) Spacer(Modifier.size(8.dp))
+            Text(if (saved) "Relay saved" else "Save relay")
         }
 
-        Text(
-            "Web Search and remote vision use this relay when those capabilities are requested.",
-            style = MaterialTheme.typography.bodyMedium,
-            color = ADColors.Muted,
-        )
+        ADCard {
+            ADSectionEyebrow("Used for")
+            Spacer(Modifier.height(7.dp))
+            Text(
+                "Remote answers, web-grounded questions and supported remote vision routes use this connection only when the selected AI path calls for it.",
+                style = MaterialTheme.typography.bodyMedium,
+                color = ADColors.Muted,
+            )
+        }
     }
 }
 
@@ -127,6 +154,7 @@ internal fun ADNativeLocalAiSettingsScreen(onBack: () -> Unit) {
     var remoteApiKey by remember { mutableStateOf(RemoteOpenAiPrefs.getApiKey(context)) }
     var remoteSaved by remember { mutableStateOf(false) }
 
+    val selectedModel = installed.firstOrNull { it.id == selectedId }
     val importLauncher = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) { uri ->
         if (uri == null) return@rememberLauncherForActivityResult
         importStatus = "Importing…"
@@ -160,23 +188,33 @@ internal fun ADNativeLocalAiSettingsScreen(onBack: () -> Unit) {
     }
 
     ADPageLayout("Local AI", onBack) {
-        ADCard {
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                Icon(Icons.Outlined.Memory, null, tint = ADColors.Blue, modifier = Modifier.size(22.dp))
-                Text("On this phone", style = MaterialTheme.typography.titleMedium, modifier = Modifier.padding(start = 9.dp))
-            }
-            Spacer(Modifier.size(10.dp))
-            if (installed.isEmpty()) {
-                Text("No local model installed", style = MaterialTheme.typography.bodyLarge)
-                Spacer(Modifier.size(4.dp))
-                Text(
-                    "Import a compatible model file to use on-device AI.",
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = ADColors.Muted,
-                )
+        ADPageHero(
+            icon = Icons.Outlined.Memory,
+            title = selectedModel?.displayName ?: "AI on this phone",
+            detail = if (selectedModel != null) {
+                "${formatAiBytes(selectedModel.sizeBytes)} selected for supported on-device inference."
             } else {
-                installed.forEachIndexed { index, model ->
-                    ADInstalledModelRow(
+                "Import a compatible model to run supported AI work directly on this phone."
+            },
+            status = if (selectedModel != null) "LOCAL READY" else "NO MODEL",
+            statusTone = if (selectedModel != null) ADStatusTone.SUCCESS else ADStatusTone.NEUTRAL,
+        )
+
+        Column(verticalArrangement = Arrangement.spacedBy(9.dp)) {
+            ADSectionEyebrow("Models on this phone")
+            if (installed.isEmpty()) {
+                ADCard {
+                    Text("No local model installed", style = MaterialTheme.typography.titleMedium)
+                    Spacer(Modifier.height(4.dp))
+                    Text(
+                        "AD keeps imported model files in managed app storage and lets you choose which one is active.",
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = ADColors.Muted,
+                    )
+                }
+            } else {
+                installed.forEach { model ->
+                    ADInstalledModelCard(
                         model = model,
                         selected = selectedId == model.id,
                         onClick = {
@@ -184,121 +222,152 @@ internal fun ADNativeLocalAiSettingsScreen(onBack: () -> Unit) {
                             selectedId = model.id
                         },
                     )
-                    if (index != installed.lastIndex) HorizontalDivider(color = ADColors.Separator)
                 }
             }
-            Spacer(Modifier.size(12.dp))
+
             Button(
                 onClick = { importLauncher.launch(arrayOf("*/*")) },
-                modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp),
+                modifier = Modifier.fillMaxWidth().heightIn(min = 50.dp),
                 colors = ButtonDefaults.buttonColors(containerColor = ADColors.Ink),
             ) {
-                Icon(Icons.Outlined.Download, null, modifier = Modifier.size(19.dp))
+                Icon(Icons.Outlined.Download, contentDescription = null, modifier = Modifier.size(19.dp))
                 Spacer(Modifier.size(8.dp))
                 Text("Import model file")
             }
             importStatus?.let {
-                Spacer(Modifier.size(8.dp))
-                Text(it, style = MaterialTheme.typography.bodySmall, color = ADColors.Muted)
+                Text(it, style = MaterialTheme.typography.bodySmall, color = ADColors.Muted, modifier = Modifier.padding(horizontal = 3.dp))
             }
         }
 
-        ADCard {
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                Icon(Icons.Outlined.Cloud, null, tint = ADColors.Blue, modifier = Modifier.size(22.dp))
-                Column(Modifier.padding(start = 9.dp).weight(1f)) {
-                    Text("OpenAI-compatible server", style = MaterialTheme.typography.titleMedium)
-                    Text("Ollama, llama.cpp, vLLM or another compatible endpoint", style = MaterialTheme.typography.bodySmall, color = ADColors.Muted)
+        Column(verticalArrangement = Arrangement.spacedBy(9.dp)) {
+            ADSectionEyebrow("Compatible server")
+            ADCard {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Box(
+                        modifier = Modifier
+                            .size(44.dp)
+                            .background(ADColors.SurfaceSubtle, RoundedCornerShape(14.dp)),
+                        contentAlignment = Alignment.Center,
+                    ) {
+                        Icon(Icons.Outlined.Cloud, contentDescription = null, tint = ADColors.Ink, modifier = Modifier.size(22.dp))
+                    }
+                    Column(Modifier.padding(start = 12.dp).weight(1f)) {
+                        Text("OpenAI-compatible endpoint", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold)
+                        Text(
+                            "Ollama, llama.cpp, vLLM or another compatible server",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = ADColors.Muted,
+                        )
+                    }
+                    Switch(
+                        checked = remoteEnabled,
+                        onCheckedChange = {
+                            remoteEnabled = it
+                            RemoteOpenAiPrefs.setEnabled(context, it)
+                        },
+                    )
                 }
-                Switch(
-                    checked = remoteEnabled,
-                    onCheckedChange = {
-                        remoteEnabled = it
-                        RemoteOpenAiPrefs.setEnabled(context, it)
-                    },
+
+                Spacer(Modifier.height(16.dp))
+                ADAiTextField(
+                    value = remoteUrl,
+                    onValueChange = { remoteUrl = it; remoteSaved = false },
+                    placeholder = "http://192.168.1.50:11434/v1",
+                    label = "Server address",
                 )
+                Spacer(Modifier.height(10.dp))
+                ADAiTextField(
+                    value = remoteModel,
+                    onValueChange = { remoteModel = it; remoteSaved = false },
+                    placeholder = "model name",
+                    label = "Model",
+                )
+                Spacer(Modifier.height(10.dp))
+                ADAiTextField(
+                    value = remoteApiKey,
+                    onValueChange = { remoteApiKey = it; remoteSaved = false },
+                    placeholder = "Optional",
+                    label = "API key",
+                    password = true,
+                )
+                Spacer(Modifier.height(14.dp))
+                Button(
+                    onClick = {
+                        RemoteOpenAiPrefs.setBaseUrl(context, remoteUrl)
+                        RemoteOpenAiPrefs.setModel(context, remoteModel)
+                        RemoteOpenAiPrefs.setApiKey(context, remoteApiKey)
+                        RemoteOpenAiPrefs.setEnabled(context, remoteEnabled)
+                        remoteSaved = true
+                    },
+                    modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp),
+                    colors = ButtonDefaults.buttonColors(containerColor = ADColors.Ink),
+                ) {
+                    if (remoteSaved) Icon(Icons.Outlined.CheckCircle, contentDescription = null, modifier = Modifier.size(18.dp))
+                    if (remoteSaved) Spacer(Modifier.size(8.dp))
+                    Text(if (remoteSaved) "Server saved" else "Save server")
+                }
             }
-            Spacer(Modifier.size(14.dp))
-            Text("Server address", style = MaterialTheme.typography.labelLarge, color = ADColors.Muted)
-            Spacer(Modifier.size(6.dp))
-            ADAiTextField(
-                value = remoteUrl,
-                onValueChange = { remoteUrl = it; remoteSaved = false },
-                placeholder = "http://192.168.1.50:11434/v1",
-            )
-            Spacer(Modifier.size(12.dp))
-            Text("Model", style = MaterialTheme.typography.labelLarge, color = ADColors.Muted)
-            Spacer(Modifier.size(6.dp))
-            ADAiTextField(
-                value = remoteModel,
-                onValueChange = { remoteModel = it; remoteSaved = false },
-                placeholder = "model name",
-            )
-            Spacer(Modifier.size(12.dp))
-            Text("API key", style = MaterialTheme.typography.labelLarge, color = ADColors.Muted)
-            Spacer(Modifier.size(6.dp))
-            ADAiTextField(
-                value = remoteApiKey,
-                onValueChange = { remoteApiKey = it; remoteSaved = false },
-                placeholder = "Optional",
-                password = true,
-            )
-            Spacer(Modifier.size(14.dp))
-            Button(
-                onClick = {
-                    RemoteOpenAiPrefs.setBaseUrl(context, remoteUrl)
-                    RemoteOpenAiPrefs.setModel(context, remoteModel)
-                    RemoteOpenAiPrefs.setApiKey(context, remoteApiKey)
-                    RemoteOpenAiPrefs.setEnabled(context, remoteEnabled)
-                    remoteSaved = true
-                },
-                modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp),
-                colors = ButtonDefaults.buttonColors(containerColor = ADColors.Ink),
-            ) { Text(if (remoteSaved) "Saved" else "Save server") }
         }
     }
 }
 
 @Composable
-private fun ADAiBackendRow(
+private fun ADAiBackendCard(
     title: String,
     detail: String,
     selected: Boolean,
+    modifier: Modifier = Modifier,
     onClick: () -> Unit,
 ) {
-    Row(
-        modifier = Modifier.fillMaxWidth().clickable(onClick = onClick).padding(vertical = 12.dp),
-        verticalAlignment = Alignment.CenterVertically,
+    androidx.compose.material3.Surface(
+        onClick = onClick,
+        modifier = modifier.heightIn(min = 118.dp),
+        shape = RoundedCornerShape(20.dp),
+        color = if (selected) ADColors.SurfaceSubtle else ADColors.Surface,
     ) {
-        Column(Modifier.weight(1f)) {
-            Text(title, style = MaterialTheme.typography.titleMedium)
+        Column(Modifier.padding(15.dp)) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Text(title, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold, modifier = Modifier.weight(1f))
+                if (selected) Icon(Icons.Outlined.CheckCircle, contentDescription = "Selected", tint = ADColors.Ink, modifier = Modifier.size(20.dp))
+            }
+            Spacer(Modifier.height(5.dp))
             Text(detail, style = MaterialTheme.typography.bodySmall, color = ADColors.Muted)
+            Spacer(Modifier.weight(1f))
+            Text(if (selected) "ACTIVE" else "SELECT", style = MaterialTheme.typography.labelSmall, color = ADColors.Muted)
         }
-        if (selected) Icon(Icons.Outlined.CheckCircle, "Selected", tint = ADColors.Blue)
     }
 }
 
 @Composable
-private fun ADInstalledModelRow(
+private fun ADInstalledModelCard(
     model: InstalledLocalModel,
     selected: Boolean,
     onClick: () -> Unit,
 ) {
-    Row(
-        modifier = Modifier.fillMaxWidth().clickable(onClick = onClick).padding(vertical = 12.dp),
-        verticalAlignment = Alignment.CenterVertically,
+    androidx.compose.material3.Surface(
+        onClick = onClick,
+        modifier = Modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(20.dp),
+        color = if (selected) ADColors.SurfaceSubtle else ADColors.Surface,
     ) {
-        Box(
-            Modifier.size(38.dp).background(ADColors.SurfaceSubtle, RoundedCornerShape(11.dp)),
-            contentAlignment = Alignment.Center,
-        ) {
-            Icon(Icons.Outlined.Storage, null, tint = ADColors.Ink, modifier = Modifier.size(20.dp))
+        Row(Modifier.padding(15.dp), verticalAlignment = Alignment.CenterVertically) {
+            Box(
+                Modifier.size(44.dp).background(if (selected) ADColors.Ink else ADColors.SurfaceSubtle, RoundedCornerShape(14.dp)),
+                contentAlignment = Alignment.Center,
+            ) {
+                Icon(
+                    Icons.Outlined.Storage,
+                    contentDescription = null,
+                    tint = if (selected) ADColors.Surface else ADColors.Ink,
+                    modifier = Modifier.size(21.dp),
+                )
+            }
+            Column(Modifier.padding(start = 12.dp).weight(1f)) {
+                Text(model.displayName, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold)
+                Text(formatAiBytes(model.sizeBytes), style = MaterialTheme.typography.bodySmall, color = ADColors.Muted)
+            }
+            if (selected) ADStatusChip("SELECTED", ADStatusTone.NEUTRAL, showCheck = true)
         }
-        Column(Modifier.padding(start = 10.dp).weight(1f)) {
-            Text(model.displayName, style = MaterialTheme.typography.titleMedium)
-            Text(formatAiBytes(model.sizeBytes), style = MaterialTheme.typography.bodySmall, color = ADColors.Muted)
-        }
-        if (selected) Icon(Icons.Outlined.CheckCircle, "Selected", tint = ADColors.Blue)
     }
 }
 
@@ -307,25 +376,18 @@ private fun ADAiTextField(
     value: String,
     onValueChange: (String) -> Unit,
     placeholder: String,
+    label: String,
     password: Boolean = false,
 ) {
-    BasicTextField(
+    OutlinedTextField(
         value = value,
         onValueChange = onValueChange,
-        modifier = Modifier
-            .fillMaxWidth()
-            .background(ADColors.SurfaceSubtle, RoundedCornerShape(12.dp))
-            .padding(horizontal = 13.dp, vertical = 13.dp),
+        modifier = Modifier.fillMaxWidth(),
         singleLine = true,
-        textStyle = MaterialTheme.typography.bodyLarge.copy(color = ADColors.Ink),
-        cursorBrush = SolidColor(ADColors.Ink),
-        visualTransformation = if (password) PasswordVisualTransformation() else androidx.compose.ui.text.input.VisualTransformation.None,
-        decorationBox = { field ->
-            Box(contentAlignment = Alignment.CenterStart) {
-                if (value.isBlank()) Text(placeholder, color = ADColors.Muted, style = MaterialTheme.typography.bodyLarge)
-                field()
-            }
-        },
+        label = { Text(label) },
+        placeholder = { Text(placeholder) },
+        visualTransformation = if (password) PasswordVisualTransformation() else VisualTransformation.None,
+        shape = RoundedCornerShape(16.dp),
     )
 }
 

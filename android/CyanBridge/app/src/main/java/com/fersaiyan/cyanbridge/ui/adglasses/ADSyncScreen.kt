@@ -1,7 +1,6 @@
 package com.fersaiyan.cyanbridge.ui.adglasses
 
-import androidx.compose.foundation.background
-import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -11,7 +10,6 @@ import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.Bluetooth
 import androidx.compose.material.icons.outlined.StopCircle
@@ -21,7 +19,6 @@ import androidx.compose.material.icons.outlined.Wifi
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.CircularProgressIndicator
-import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
@@ -29,10 +26,8 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.text.style.TextAlign
-import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.fersaiyan.cyanbridge.devices.ADDeviceSupportPolicy
 import com.fersaiyan.cyanbridge.devices.DeviceProfileStore
@@ -50,123 +45,142 @@ internal fun ADSyncScreen(
         ?.takeIf { ADDeviceSupportPolicy.isPairable(it.selectedClass) }
     val presentation = buildADDevicePresentation(state = state, profile = profile)
     val transfer = state.transfer
-    val transferProgress = transfer.progress
+    val progress = transfer.progress
     val knownCounts = transfer.countsLabel
         .takeUnless { it.isBlank() || it == "Photos: --  Videos: --  Audio: --" }
     val flow = transfer.flowLabel.takeUnless { it.isBlank() || it == "--" } ?: "Local Wi-Fi"
 
-    ADPageLayout("Sync", onBack) {
-        ADCard {
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                Box(
-                    Modifier.size(48.dp).background(ADColors.BlueSoft, CircleShape),
-                    contentAlignment = Alignment.Center,
-                ) { Icon(Icons.Outlined.Sync, contentDescription = null, tint = ADColors.Blue) }
-                Column(Modifier.padding(start = 13.dp).weight(1f)) {
-                    Text(
-                        when {
-                            transfer.isVisible -> "Transfer in progress"
-                            presentation.connected -> "Sync media"
-                            else -> "Glasses offline"
-                        },
-                        style = MaterialTheme.typography.titleLarge,
-                    )
-                    Text(
-                        when {
-                            transfer.isVisible -> transfer.detail
-                            presentation.connected -> "Ready to bring captures onto this phone"
-                            else -> "Connect glasses to begin"
-                        },
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = ADColors.Muted,
-                    )
-                }
-            }
+    val title = when {
+        transfer.isVisible -> "Bringing media over"
+        presentation.connected -> "Sync from your glasses"
+        else -> "Connect to sync"
+    }
+    val detail = when {
+        transfer.isVisible -> transfer.detail.ifBlank { "Your glasses and phone are transferring captures locally." }
+        presentation.connected -> "Photos, videos and audio can move from the glasses into Library over the supported local transfer path."
+        else -> "Your glasses need to be connected before a media session can start."
+    }
 
+    ADPageLayout("Sync", onBack) {
+        ADPageHero(
+            icon = Icons.Outlined.Sync,
+            title = title,
+            detail = detail,
+            status = when {
+                transfer.isVisible -> "ACTIVE"
+                presentation.connected -> "READY"
+                else -> "OFFLINE"
+            },
+            statusTone = when {
+                transfer.isVisible -> ADStatusTone.INFO
+                presentation.connected -> ADStatusTone.SUCCESS
+                else -> ADStatusTone.NEUTRAL
+            },
+        ) {
             if (transfer.isVisible) {
-                Spacer(Modifier.height(18.dp))
-                if (transferProgress != null) {
+                if (progress != null) {
                     LinearProgressIndicator(
-                        progress = { transferProgress.coerceIn(0f, 1f) },
-                        modifier = Modifier.fillMaxWidth().height(7.dp),
-                        color = ADColors.Blue,
+                        progress = { progress.coerceIn(0f, 1f) },
+                        modifier = Modifier.fillMaxWidth().height(8.dp),
+                        color = ADColors.Ink,
                         trackColor = ADColors.SurfaceSubtle,
                     )
                     Spacer(Modifier.height(8.dp))
-                    Text("${(transferProgress * 100).toInt()}%", style = MaterialTheme.typography.labelLarge)
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Text(
+                            "${(progress * 100).toInt()}%",
+                            style = MaterialTheme.typography.titleMedium,
+                            fontWeight = FontWeight.SemiBold,
+                        )
+                        Spacer(Modifier.weight(1f))
+                        Text("Keep the glasses nearby", style = MaterialTheme.typography.bodySmall, color = ADColors.Muted)
+                    }
                 } else {
-                    CircularProgressIndicator(
-                        color = ADColors.Blue,
-                        modifier = Modifier.size(28.dp),
-                        strokeWidth = 2.5.dp,
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        CircularProgressIndicator(
+                            color = ADColors.Ink,
+                            modifier = Modifier.size(24.dp),
+                            strokeWidth = 2.5.dp,
+                        )
+                        Text(
+                            "Preparing local transfer…",
+                            modifier = Modifier.padding(start = 11.dp),
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = ADColors.Muted,
+                        )
+                    }
+                }
+            } else {
+                Button(
+                    onClick = if (presentation.connected) host.onStartSync else host.onOpenDeviceSetup,
+                    modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp),
+                    colors = ButtonDefaults.buttonColors(containerColor = ADColors.Ink),
+                ) {
+                    Icon(
+                        if (presentation.connected) Icons.Outlined.Sync else Icons.Outlined.Bluetooth,
+                        contentDescription = null,
                     )
+                    Spacer(Modifier.width(8.dp))
+                    Text(if (presentation.connected) "Start sync" else "Connect glasses")
                 }
             }
         }
 
-        ADSectionTitle("Details")
-        ADCard {
-            ADSyncMetricRow(
-                Icons.Outlined.Bluetooth,
-                "Connection",
-                if (presentation.connected) presentation.identityLabel ?: "Connected" else presentation.statusLabel,
+        Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+            ADSectionEyebrow("Transfer path")
+            Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                ADMetricBlock(
+                    label = "Glasses",
+                    value = if (presentation.connected) presentation.identityLabel ?: "Connected" else "Offline",
+                    modifier = Modifier.weight(1f),
+                )
+                ADMetricBlock(
+                    label = "Link",
+                    value = flow,
+                    modifier = Modifier.weight(1f),
+                )
+            }
+            ADMetricBlock(
+                label = "Media detected",
+                value = knownCounts ?: "Scanned when sync begins",
+                modifier = Modifier.fillMaxWidth(),
             )
-            HorizontalDivider(Modifier.padding(start = 32.dp), color = ADColors.Separator)
-            ADSyncMetricRow(Icons.Outlined.Wifi, "Transfer", flow)
-            HorizontalDivider(Modifier.padding(start = 32.dp), color = ADColors.Separator)
-            ADSyncMetricRow(Icons.Outlined.Storage, "Media", knownCounts ?: "Scanned when sync starts")
         }
 
-        Button(
-            onClick = when {
-                transfer.isVisible -> host.onStopSync
-                !presentation.connected -> host.onOpenDeviceSetup
-                else -> host.onStartSync
-            },
-            modifier = Modifier.fillMaxWidth().heightIn(min = 50.dp),
-            colors = ButtonDefaults.buttonColors(
-                containerColor = if (transfer.isVisible) ADColors.Error else ADColors.Ink,
-            ),
-        ) {
-            Icon(
-                when {
-                    transfer.isVisible -> Icons.Outlined.StopCircle
-                    !presentation.connected -> Icons.Outlined.Bluetooth
-                    else -> Icons.Outlined.Sync
-                },
-                contentDescription = null,
-            )
-            Spacer(Modifier.width(8.dp))
-            Text(
-                when {
-                    transfer.isVisible -> "Cancel transfer"
-                    !presentation.connected -> "Connect glasses"
-                    else -> "Start sync"
-                },
-            )
+        ADCard {
+            ADSectionEyebrow("How sync works")
+            Spacer(Modifier.height(7.dp))
+            ADSyncExplanation(Icons.Outlined.Bluetooth, "Bluetooth coordinates the glasses session")
+            ADSyncExplanation(Icons.Outlined.Wifi, "The supported local Wi-Fi path carries larger media")
+            ADSyncExplanation(Icons.Outlined.Storage, "Finished captures appear in Library on this phone")
+        }
+
+        if (transfer.isVisible) {
+            Button(
+                onClick = host.onStopSync,
+                modifier = Modifier.fillMaxWidth().heightIn(min = 52.dp),
+                colors = ButtonDefaults.buttonColors(containerColor = ADColors.Error),
+            ) {
+                Icon(Icons.Outlined.StopCircle, contentDescription = null)
+                Spacer(Modifier.width(8.dp))
+                Text("Cancel transfer")
+            }
         }
     }
 }
 
 @Composable
-private fun ADSyncMetricRow(icon: ImageVector, label: String, value: String) {
-    Row(Modifier.padding(vertical = 12.dp), verticalAlignment = Alignment.CenterVertically) {
-        Icon(icon, contentDescription = null, tint = ADColors.Muted, modifier = Modifier.size(21.dp))
+private fun ADSyncExplanation(icon: androidx.compose.ui.graphics.vector.ImageVector, text: String) {
+    Row(
+        modifier = Modifier.fillMaxWidth().padding(vertical = 8.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Icon(icon, contentDescription = null, tint = ADColors.Muted, modifier = Modifier.size(20.dp))
         Text(
-            label,
-            Modifier.padding(start = 11.dp).weight(0.9f),
-            style = MaterialTheme.typography.bodyLarge,
-            maxLines = 2,
-            overflow = TextOverflow.Ellipsis,
-        )
-        Text(
-            value,
-            modifier = Modifier.weight(1.25f),
+            text,
+            modifier = Modifier.padding(start = 11.dp).weight(1f),
             style = MaterialTheme.typography.bodyMedium,
             color = ADColors.Muted,
-            textAlign = TextAlign.End,
-            maxLines = 2,
-            overflow = TextOverflow.Ellipsis,
         )
     }
 }
