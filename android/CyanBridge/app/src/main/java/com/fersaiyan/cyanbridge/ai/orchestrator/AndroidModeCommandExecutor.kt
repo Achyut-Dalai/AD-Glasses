@@ -1,19 +1,37 @@
 package com.fersaiyan.cyanbridge.ai.orchestrator
 
 import android.content.Context
+import com.fersaiyan.cyanbridge.media.autocapture.AutoAudioCapturePrefs
 import com.fersaiyan.cyanbridge.media.autocapture.AutoAudioCaptureService
 import com.fersaiyan.cyanbridge.plugins.autodiary.AutoDiaryService
+import com.fersaiyan.cyanbridge.plugins.errandbrain.ErrandBrainPreferences
 import com.fersaiyan.cyanbridge.plugins.errandbrain.ErrandBrainService
+import com.fersaiyan.cyanbridge.plugins.handsfreetranslator.HandsFreeTranslatorPreferences
 import com.fersaiyan.cyanbridge.plugins.handsfreetranslator.HandsFreeTranslatorService
+import com.fersaiyan.cyanbridge.plugins.livecaptionrelay.LiveCaptionRelayPreferences
 import com.fersaiyan.cyanbridge.plugins.livecaptionrelay.LiveCaptionRelayService
 import com.fersaiyan.cyanbridge.plugins.localagent.LocalAgentPlugin
+import com.fersaiyan.cyanbridge.plugins.meetingsparknotes.MeetingSparkNotesPreferences
 import com.fersaiyan.cyanbridge.plugins.meetingsparknotes.MeetingSparkNotesService
+import com.fersaiyan.cyanbridge.plugins.visualdiary.VisualDiaryPreferences
 import com.fersaiyan.cyanbridge.plugins.visualdiary.VisualDiaryService
 
 /** Native start/stop bridge for modes that AD can control without UI automation. */
 class AndroidModeCommandExecutor(
     private val context: Context,
 ) {
+    /** Read the persisted runtime state instead of deriving UI state from a selected shortcut. */
+    fun isActive(mode: AssistantMode): Boolean = when (mode) {
+        AssistantMode.TRANSLATOR -> HandsFreeTranslatorPreferences.isEnabled(context)
+        AssistantMode.MEETING_NOTES -> MeetingSparkNotesPreferences.isEnabled(context)
+        AssistantMode.LIVE_CAPTIONS -> LiveCaptionRelayPreferences.isEnabled(context)
+        AssistantMode.ERRAND_BRAIN -> ErrandBrainPreferences.isEnabled(context)
+        AssistantMode.AUTO_AUDIO -> AutoAudioCapturePrefs.isEnabled(context)
+        AssistantMode.AUTO_DIARY -> AutoDiaryService.isEnabled(context)
+        AssistantMode.VISUAL_DIARY -> VisualDiaryPreferences.isEnabled(context)
+        AssistantMode.LOCAL_AGENT -> LocalAgentPlugin.isEnabled(context)
+    }
+
     fun execute(command: AssistantModeCommand): AssistantResult {
         return runCatching {
             when (command.mode) {
