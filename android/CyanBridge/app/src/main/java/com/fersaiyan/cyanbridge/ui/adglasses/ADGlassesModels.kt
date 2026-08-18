@@ -82,14 +82,6 @@ enum class ADAutomation(
         "On device",
         "Auto Diary",
     ),
-    AUTO_AUDIO(
-        "Auto Capture",
-        "Capture, sync and transcribe audio on a schedule.",
-        "Capture",
-        "Automatic",
-        "Auto Audio",
-        false,
-    ),
     VISUAL_DIARY(
         "Timeline",
         "Turn visual captures into a searchable timeline you can revisit by moment.",
