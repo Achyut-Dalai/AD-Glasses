@@ -12,9 +12,9 @@ import androidx.compose.ui.unit.dp
 /**
  * Small, product-owned icon set used by shared Compose UI.
  *
- * Keeping these vectors here avoids depending on the deprecated Compose
- * Multiplatform Material-icons shortcut and keeps Android/iOS icon semantics
- * identical without pulling an entire legacy icon artifact into shared code.
+ * Keeping these vectors here avoids depending on the frozen Material-icons
+ * artifact and keeps Android/iOS icon semantics identical without pulling a
+ * legacy icon library into shared code.
  */
 private object ADSharedIcons {
     private fun outlined(name: String, draw: PathBuilder.() -> Unit): ImageVector =
@@ -118,6 +118,21 @@ private object ADSharedIcons {
     val Attachment = outlined("AD.Attachment") { moveTo(8f, 12f); lineTo(13.5f, 6.5f); curveTo(15f, 5f, 17.5f, 5f, 19f, 6.5f); curveTo(20.5f, 8f, 20.5f, 10.5f, 19f, 12f); lineTo(11f, 20f); curveTo(8.5f, 22.5f, 4.5f, 22f, 3f, 19.5f); curveTo(1.5f, 17f, 2f, 14.5f, 4f, 12.5f); lineTo(12f, 4.5f) }
     val Stop = outlined("AD.Stop") { moveTo(7f, 7f); lineTo(17f, 7f); lineTo(17f, 17f); lineTo(7f, 17f); close() }
     val Close = outlined("AD.Close") { moveTo(6f, 6f); lineTo(18f, 18f); moveTo(18f, 6f); lineTo(6f, 18f) }
+    val Bluetooth = outlined("AD.Bluetooth") {
+        moveTo(12f, 3f); lineTo(17f, 8f); lineTo(7f, 16f); lineTo(12f, 21f); close()
+        moveTo(12f, 3f); lineTo(12f, 21f)
+        moveTo(7f, 8f); lineTo(17f, 16f)
+    }
+    val BluetoothSearching = outlined("AD.BluetoothSearching") {
+        moveTo(10f, 4f); lineTo(15f, 8f); lineTo(7f, 15f); lineTo(10f, 19f); close()
+        moveTo(10f, 4f); lineTo(10f, 19f)
+        moveTo(7f, 8f); lineTo(15f, 15f)
+        moveTo(17f, 7f); curveTo(19f, 9f, 19f, 14f, 17f, 16f)
+        moveTo(19f, 4f); curveTo(23f, 8f, 23f, 15f, 19f, 19f)
+    }
+    val ChevronRight = outlined("AD.ChevronRight") { moveTo(9f, 5f); lineTo(16f, 12f); lineTo(9f, 19f) }
+    val ExpandLess = outlined("AD.ExpandLess") { moveTo(6f, 15f); lineTo(12f, 9f); lineTo(18f, 15f) }
+    val ExpandMore = outlined("AD.ExpandMore") { moveTo(6f, 9f); lineTo(12f, 15f); lineTo(18f, 9f) }
 }
 
 fun AppIcon.imageVector(): ImageVector = when (this) {
@@ -141,4 +156,9 @@ fun AppIcon.imageVector(): ImageVector = when (this) {
     AppIcon.Attachment -> ADSharedIcons.Attachment
     AppIcon.Stop -> ADSharedIcons.Stop
     AppIcon.Close -> ADSharedIcons.Close
+    AppIcon.Bluetooth -> ADSharedIcons.Bluetooth
+    AppIcon.BluetoothSearching -> ADSharedIcons.BluetoothSearching
+    AppIcon.ChevronRight -> ADSharedIcons.ChevronRight
+    AppIcon.ExpandLess -> ADSharedIcons.ExpandLess
+    AppIcon.ExpandMore -> ADSharedIcons.ExpandMore
 }
