@@ -6,7 +6,6 @@ enum class AssistantCapability {
     LIVE_CAPTIONS,
     ERRAND_BRAIN,
     AUTO_DIARY,
-    AUTO_AUDIO,
     VISUAL_DIARY,
     LOCAL_AGENT,
 }
