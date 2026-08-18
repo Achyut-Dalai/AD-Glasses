@@ -1,122 +1,232 @@
 package com.fersaiyan.cyanbridge.agent
 
 import android.os.Bundle
-import android.text.InputType
-import android.view.ViewGroup
-import android.widget.Button
-import android.widget.EditText
-import android.widget.LinearLayout
-import android.widget.ScrollView
-import android.widget.TextView
 import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.foundation.verticalScroll
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material3.Button
+import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedButton
+import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.Scaffold
+import androidx.compose.material3.Text
+import androidx.compose.material3.TopAppBar
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.setValue
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.text.input.KeyboardType
+import androidx.compose.ui.text.input.PasswordVisualTransformation
+import androidx.compose.ui.unit.dp
 import androidx.lifecycle.lifecycleScope
 import com.fersaiyan.cyanbridge.ai.router.AiProviderPrefs
+import com.fersaiyan.cyanbridge.ui.setThemedComposeContent
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 
 /** Configuration for infrastructure owned by the AD Glasses user. */
 class CloudSettingsActivity : AppCompatActivity() {
-    private lateinit var relayUrl: EditText
-    private lateinit var apiToken: EditText
-    private lateinit var accountEmail: EditText
-    private lateinit var requestsModel: EditText
-    private lateinit var questionsModel: EditText
-    private lateinit var tasksModel: EditText
-    private lateinit var status: TextView
+    private var relayUrl by mutableStateOf("")
+    private var apiToken by mutableStateOf("")
+    private var accountEmail by mutableStateOf("")
+    private var requestsModel by mutableStateOf("")
+    private var questionsModel by mutableStateOf("")
+    private var tasksModel by mutableStateOf("")
+    private var status by mutableStateOf("")
+    private var relayUrlError by mutableStateOf<String?>(null)
+    private var testing by mutableStateOf(false)
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        title = "Cloud AI"
-
-        val density = resources.displayMetrics.density
-        val padding = (20 * density).toInt()
-        val content = LinearLayout(this).apply {
-            orientation = LinearLayout.VERTICAL
-            setPadding(padding, padding, padding, padding)
+        relayUrl = AiProviderPrefs.getRelayBaseUrl(this)
+        apiToken = CloudServerPrefs.getApiToken(this)
+        accountEmail = CloudServerPrefs.getAccountEmail(this)
+        requestsModel = CloudAiPrefs.getRequestsModel(this)
+        questionsModel = CloudAiPrefs.getQuestionsModel(this)
+        tasksModel = CloudAiPrefs.getTasksModel(this)
+        status = if (AiProviderPrefs.isRelayConfigured(this)) {
+            "Cloud relay configured"
+        } else {
+            "Cloud relay is not configured"
         }
 
-        content.addView(TextView(this).apply {
-            text = "Connect AD Glasses to infrastructure you control. No subscription or author account is required."
-            textSize = 16f
-        }, matchWrap())
-
-        relayUrl = field(content, "Relay base URL (https://...)", AiProviderPrefs.getRelayBaseUrl(this))
-        apiToken = field(content, "API token (optional)", CloudServerPrefs.getApiToken(this)).apply {
-            inputType = InputType.TYPE_CLASS_TEXT or InputType.TYPE_TEXT_VARIATION_PASSWORD
-        }
-        accountEmail = field(content, "Account email (optional)", CloudServerPrefs.getAccountEmail(this)).apply {
-            inputType = InputType.TYPE_CLASS_TEXT or InputType.TYPE_TEXT_VARIATION_EMAIL_ADDRESS
-        }
-        requestsModel = field(content, "Chat/request model", CloudAiPrefs.getRequestsModel(this))
-        questionsModel = field(content, "Image/question model", CloudAiPrefs.getQuestionsModel(this))
-        tasksModel = field(content, "Automation/task model", CloudAiPrefs.getTasksModel(this))
-
-        content.addView(Button(this).apply {
-            text = "Save configuration"
-            setOnClickListener { save(showConfirmation = true) }
-        }, matchWrap())
-
-        content.addView(Button(this).apply {
-            text = "Save and test connection"
-            setOnClickListener { testConnection() }
-        }, matchWrap())
-
-        status = TextView(this).apply {
-            text = if (AiProviderPrefs.isRelayConfigured(this@CloudSettingsActivity)) {
-                "Cloud relay configured"
-            } else {
-                "Cloud relay is not configured"
-            }
-            setPadding(0, padding / 2, 0, 0)
-        }
-        content.addView(status, matchWrap())
-
-        setContentView(ScrollView(this).apply { addView(content) })
-    }
-
-    private fun field(parent: LinearLayout, hint: String, value: String): EditText {
-        return EditText(this).also { input ->
-            input.hint = hint
-            input.setText(value)
-            input.isSingleLine = true
-            parent.addView(input, matchWrap())
+        setThemedComposeContent {
+            CloudSettingsScreen(
+                relayUrl = relayUrl,
+                apiToken = apiToken,
+                accountEmail = accountEmail,
+                requestsModel = requestsModel,
+                questionsModel = questionsModel,
+                tasksModel = tasksModel,
+                status = status,
+                relayUrlError = relayUrlError,
+                testing = testing,
+                onBack = ::finish,
+                onRelayUrlChange = {
+                    relayUrl = it
+                    relayUrlError = null
+                },
+                onApiTokenChange = { apiToken = it },
+                onAccountEmailChange = { accountEmail = it },
+                onRequestsModelChange = { requestsModel = it },
+                onQuestionsModelChange = { questionsModel = it },
+                onTasksModelChange = { tasksModel = it },
+                onSave = { save(showConfirmation = true) },
+                onTest = ::testConnection,
+            )
         }
     }
 
     private fun save(showConfirmation: Boolean): Boolean {
-        val url = relayUrl.text.toString().trim().trimEnd('/')
+        val url = relayUrl.trim().trimEnd('/')
         if (url.isNotBlank() && !url.startsWith("https://") && !url.startsWith("http://")) {
-            relayUrl.error = "Use a full http:// or https:// URL"
+            relayUrlError = "Use a full http:// or https:// URL"
             return false
         }
+        relayUrl = url
+        relayUrlError = null
         AiProviderPrefs.setRelayBaseUrl(this, url)
-        CloudServerPrefs.setApiToken(this, apiToken.text.toString())
-        CloudServerPrefs.setAccountEmail(this, accountEmail.text.toString())
-        CloudAiPrefs.setRequestsModel(this, requestsModel.text.toString())
-        CloudAiPrefs.setQuestionsModel(this, questionsModel.text.toString())
-        CloudAiPrefs.setTasksModel(this, tasksModel.text.toString())
+        CloudServerPrefs.setApiToken(this, apiToken)
+        CloudServerPrefs.setAccountEmail(this, accountEmail)
+        CloudAiPrefs.setRequestsModel(this, requestsModel)
+        CloudAiPrefs.setQuestionsModel(this, questionsModel)
+        CloudAiPrefs.setTasksModel(this, tasksModel)
+        status = if (url.isBlank()) "Cloud relay is not configured" else "Cloud relay configured"
         if (showConfirmation) Toast.makeText(this, "Cloud configuration saved", Toast.LENGTH_SHORT).show()
         return true
     }
 
     private fun testConnection() {
         if (!save(showConfirmation = false)) return
-        status.text = "Testing relay…"
+        testing = true
+        status = "Testing relay…"
         lifecycleScope.launch {
             val result = withContext(Dispatchers.IO) {
                 CloudRelayClient.fetchAvailableModels(this@CloudSettingsActivity)
             }
-            status.text = result.fold(
+            testing = false
+            status = result.fold(
                 onSuccess = { models -> "Connected. ${models.size} model(s) available." },
                 onFailure = { error -> error.message ?: "Connection failed" },
             )
         }
     }
+}
 
-    private fun matchWrap() = LinearLayout.LayoutParams(
-        ViewGroup.LayoutParams.MATCH_PARENT,
-        ViewGroup.LayoutParams.WRAP_CONTENT,
-    )
+@OptIn(ExperimentalMaterial3Api::class)
+@androidx.compose.runtime.Composable
+private fun CloudSettingsScreen(
+    relayUrl: String,
+    apiToken: String,
+    accountEmail: String,
+    requestsModel: String,
+    questionsModel: String,
+    tasksModel: String,
+    status: String,
+    relayUrlError: String?,
+    testing: Boolean,
+    onBack: () -> Unit,
+    onRelayUrlChange: (String) -> Unit,
+    onApiTokenChange: (String) -> Unit,
+    onAccountEmailChange: (String) -> Unit,
+    onRequestsModelChange: (String) -> Unit,
+    onQuestionsModelChange: (String) -> Unit,
+    onTasksModelChange: (String) -> Unit,
+    onSave: () -> Unit,
+    onTest: () -> Unit,
+) {
+    Scaffold(
+        topBar = {
+            TopAppBar(
+                title = { Text("Cloud AI") },
+                navigationIcon = {
+                    IconButton(onClick = onBack) {
+                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
+                    }
+                },
+            )
+        },
+    ) { paddingValues ->
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(paddingValues)
+                .padding(horizontal = 16.dp, vertical = 12.dp)
+                .verticalScroll(rememberScrollState()),
+            verticalArrangement = Arrangement.spacedBy(12.dp),
+        ) {
+            Text(
+                "Connect AD Glasses to infrastructure you control. No subscription or author account is required.",
+                style = MaterialTheme.typography.bodyMedium,
+            )
+            OutlinedTextField(
+                value = relayUrl,
+                onValueChange = onRelayUrlChange,
+                modifier = Modifier.fillMaxWidth(),
+                label = { Text("Relay base URL") },
+                placeholder = { Text("https://…") },
+                singleLine = true,
+                isError = relayUrlError != null,
+                supportingText = relayUrlError?.let { error -> { Text(error) } },
+                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Uri),
+            )
+            OutlinedTextField(
+                value = apiToken,
+                onValueChange = onApiTokenChange,
+                modifier = Modifier.fillMaxWidth(),
+                label = { Text("API token (optional)") },
+                singleLine = true,
+                visualTransformation = PasswordVisualTransformation(),
+            )
+            OutlinedTextField(
+                value = accountEmail,
+                onValueChange = onAccountEmailChange,
+                modifier = Modifier.fillMaxWidth(),
+                label = { Text("Account email (optional)") },
+                singleLine = true,
+                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Email),
+            )
+            OutlinedTextField(
+                value = requestsModel,
+                onValueChange = onRequestsModelChange,
+                modifier = Modifier.fillMaxWidth(),
+                label = { Text("Chat/request model") },
+                singleLine = true,
+            )
+            OutlinedTextField(
+                value = questionsModel,
+                onValueChange = onQuestionsModelChange,
+                modifier = Modifier.fillMaxWidth(),
+                label = { Text("Image/question model") },
+                singleLine = true,
+            )
+            OutlinedTextField(
+                value = tasksModel,
+                onValueChange = onTasksModelChange,
+                modifier = Modifier.fillMaxWidth(),
+                label = { Text("Automation/task model") },
+                singleLine = true,
+            )
+            Button(onClick = onSave, modifier = Modifier.fillMaxWidth()) {
+                Text("Save configuration")
+            }
+            OutlinedButton(onClick = onTest, enabled = !testing, modifier = Modifier.fillMaxWidth()) {
+                Text(if (testing) "Testing…" else "Save and test connection")
+            }
+            Text(status, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+        }
+    }
 }

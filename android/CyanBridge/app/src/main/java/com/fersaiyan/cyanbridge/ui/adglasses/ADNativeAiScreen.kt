@@ -96,7 +96,6 @@ internal fun ADNativeAiScreen(
     ) {
         item {
             Column(verticalArrangement = Arrangement.spacedBy(11.dp)) {
-                Text("Capabilities", style = MaterialTheme.typography.titleLarge)
                 Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
                     ADAiCapabilityTile(Icons.Rounded.Translate, "Translate", "Live translation", Modifier.weight(1f)) {
                         onOpenCapability(ADAutomation.TRANSLATOR)

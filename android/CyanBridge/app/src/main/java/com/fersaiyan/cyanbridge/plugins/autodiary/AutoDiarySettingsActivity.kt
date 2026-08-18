@@ -50,7 +50,6 @@ import com.fersaiyan.cyanbridge.ui.localagent.AppBlacklistActivity
 import com.fersaiyan.cyanbridge.ui.localagent.DailyFactsActivity
 import com.fersaiyan.cyanbridge.ui.localagent.ScreenCapturesActivity
 import com.fersaiyan.cyanbridge.ui.localagent.DailySummaryActivity
-import com.fersaiyan.cyanbridge.ui.installComposeHostWithLegacyAdapter
 import com.fersaiyan.cyanbridge.ui.setThemedComposeContent
 
 class AutoDiarySettingsActivity : AppCompatActivity() {
@@ -60,8 +59,7 @@ class AutoDiarySettingsActivity : AppCompatActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         refreshUi()
-        val composeView = installComposeHostWithLegacyAdapter(R.layout.activity_auto_diary_settings)
-        setThemedComposeContent(composeView) {
+        setThemedComposeContent {
             AutoDiarySettingsScreen(
                 enabled = autoDiaryEnabled,
                 accessibilityEnabled = accessibilityEnabled,
@@ -169,7 +167,7 @@ fun AutoDiarySettingsScreen(
             )
             NativePluginShortcutPreference(
                 pluginId = com.fersaiyan.cyanbridge.shared.plugins.NativePluginIds.AUTO_DIARY,
-                    pluginTitle = stringResource(R.string.compose_plugin_name_autodiary),
+                pluginTitle = stringResource(R.string.compose_plugin_name_autodiary),
             )
             Text(stringResource(R.string.compose_screen_capture), style = MaterialTheme.typography.titleMedium)
             Text(

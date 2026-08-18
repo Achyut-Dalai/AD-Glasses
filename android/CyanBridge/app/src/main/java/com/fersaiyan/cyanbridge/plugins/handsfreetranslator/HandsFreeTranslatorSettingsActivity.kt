@@ -39,7 +39,6 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.platform.ComposeView
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
@@ -48,19 +47,14 @@ import com.fersaiyan.cyanbridge.R
 import com.fersaiyan.cyanbridge.plugins.PluginVoicePermissions
 import com.fersaiyan.cyanbridge.shared.plugins.NativePluginIds
 import com.fersaiyan.cyanbridge.ui.CommunityPluginPrefs
-import com.fersaiyan.cyanbridge.ui.installComposeHostWithLegacyAdapter
 import com.fersaiyan.cyanbridge.ui.NativePluginShortcutPreference
 import com.fersaiyan.cyanbridge.ui.setThemedComposeContent
 
 class HandsFreeTranslatorSettingsActivity : AppCompatActivity() {
 
-    private lateinit var composeView: ComposeView
-
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        composeView = installComposeHostWithLegacyAdapter(R.layout.activity_hands_free_translator_settings)
-
-        setThemedComposeContent(composeView) {
+        setThemedComposeContent {
             HandsFreeTranslatorSettingsScreen(
                 onBack = ::finish,
                 onStartService = {
@@ -115,7 +109,6 @@ fun HandsFreeTranslatorSettingsScreen(
                 .verticalScroll(scrollState),
             verticalArrangement = Arrangement.spacedBy(12.dp),
         ) {
-            // Section: General
             SectionTitle(stringResource(R.string.compose_general))
             Card(
                 modifier = Modifier.fillMaxWidth(),
@@ -138,11 +131,7 @@ fun HandsFreeTranslatorSettingsScreen(
                                     NativePluginIds.HANDS_FREE_TRANSLATOR,
                                     newValue,
                                 )
-                                if (newValue) {
-                                    onStartService()
-                                } else {
-                                    onStopService()
-                                }
+                                if (newValue) onStartService() else onStopService()
                             },
                         )
                     }
@@ -155,7 +144,6 @@ fun HandsFreeTranslatorSettingsScreen(
                 pluginTitle = stringResource(R.string.compose_plugin_name_handsfree_translator),
             )
 
-            // Section: Language
             SectionTitle(stringResource(R.string.compose_language))
             Card(
                 modifier = Modifier.fillMaxWidth(),
@@ -206,7 +194,6 @@ fun HandsFreeTranslatorSettingsScreen(
                     }
 
                     Spacer(modifier = Modifier.height(12.dp))
-
                     Text(
                         stringResource(R.string.compose_target_language),
                         style = MaterialTheme.typography.bodyMedium,
@@ -234,7 +221,6 @@ fun HandsFreeTranslatorSettingsScreen(
                 }
             }
 
-            // Section: Output
             SectionTitle(stringResource(R.string.compose_output))
             Card(
                 modifier = Modifier.fillMaxWidth(),
@@ -255,11 +241,9 @@ fun HandsFreeTranslatorSettingsScreen(
                             },
                         )
                     }
-
                 }
             }
 
-            // Section: Custom Instructions
             SectionTitle(stringResource(R.string.compose_custom_instructions))
             Card(
                 modifier = Modifier.fillMaxWidth(),
@@ -281,8 +265,8 @@ fun HandsFreeTranslatorSettingsScreen(
                             }
                         },
                         modifier = Modifier.fillMaxWidth(),
-                         label = { Text(stringResource(R.string.compose_translation_instructions)) },
-                         placeholder = { Text(stringResource(R.string.compose_translation_hint)) },
+                        label = { Text(stringResource(R.string.compose_translation_instructions)) },
+                        placeholder = { Text(stringResource(R.string.compose_translation_hint)) },
                         minLines = 2,
                         maxLines = 4,
                         supportingText = { Text("${customPrompt.length}/1000") },
@@ -290,7 +274,6 @@ fun HandsFreeTranslatorSettingsScreen(
                 }
             }
 
-            // Section: History
             SectionTitle(stringResource(R.string.compose_translation_history))
             Card(
                 modifier = Modifier.fillMaxWidth(),
@@ -313,7 +296,6 @@ fun HandsFreeTranslatorSettingsScreen(
                     )
 
                     Spacer(modifier = Modifier.height(8.dp))
-
                     Button(
                         onClick = {
                             HandsFreeTranslatorStore().clear(context)

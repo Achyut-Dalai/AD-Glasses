@@ -74,9 +74,6 @@ class DeviceBindActivity : BaseActivity() {
         }
     }
 
-    // BaseActivity invokes this after Compose installs its host view; no ViewBinding remains.
-    override fun setupViews() = Unit
-
     @Subscribe(threadMode = ThreadMode.MAIN)
     fun onMessageEvent(messageEvent: BluetoothEvent) {
         Log.i(TAG, "onMessageEvent: ${messageEvent.connect}")

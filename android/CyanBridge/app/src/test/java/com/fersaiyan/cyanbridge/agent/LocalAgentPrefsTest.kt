@@ -23,15 +23,12 @@ class LocalAgentPrefsTest {
     }
 
     @Test
-    fun `legacy assistant selections migrate to the two supported modes`() {
+    fun `legacy named assistant selections migrate to custom provider`() {
         val prefs = context.getSharedPreferences("local_agent_prefs", Context.MODE_PRIVATE)
-        listOf("GEMINI", "CHAT_GPT", "PHONE_DEFAULT").forEach { legacy ->
+        listOf("GEMINI", "CHAT_GPT", "PHONE_DEFAULT", "CHOSEN_PROVIDER").forEach { legacy ->
             prefs.edit().putString("glasses_assistant_mode", legacy).commit()
-            assertEquals(GlassesAssistantMode.PHONE_ASSISTANT, LocalAgentPrefs.getGlassesAssistantMode(context))
+            assertEquals(GlassesAssistantMode.CUSTOM_AI_PROVIDER, LocalAgentPrefs.getGlassesAssistantMode(context))
+            assertEquals("CUSTOM_AI_PROVIDER", prefs.getString("glasses_assistant_mode", null))
         }
-
-        prefs.edit().putString("glasses_assistant_mode", "CHOSEN_PROVIDER").commit()
-        assertEquals(GlassesAssistantMode.CUSTOM_AI_PROVIDER, LocalAgentPrefs.getGlassesAssistantMode(context))
-        assertEquals("CUSTOM_AI_PROVIDER", prefs.getString("glasses_assistant_mode", null))
     }
 }

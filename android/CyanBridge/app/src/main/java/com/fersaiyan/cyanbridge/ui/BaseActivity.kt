@@ -1,68 +1,30 @@
 package com.fersaiyan.cyanbridge.ui
+
 import android.app.Activity
 import android.content.Intent
 import android.os.Bundle
-import android.os.Handler
-import android.os.Looper
-import android.os.Message
-import android.view.View
-import android.widget.ImageView
-import android.widget.TextView
 import androidx.appcompat.app.AppCompatActivity
-import com.fersaiyan.cyanbridge.R
-import java.lang.ref.WeakReference
-open class BaseActivity : AppCompatActivity() {
 
-    /**
-     * Whether the current Activity is in the foreground.
-     */
+/**
+ * Small compatibility base retained for device Activities that still share lifecycle helpers.
+ * It no longer assumes or decorates an XML title bar; Compose screens own their own chrome.
+ */
+open class BaseActivity : AppCompatActivity() {
     private var isActive: Boolean = false
 
-    /**
-     * The instance of the current Activity.
-     */
+    /** Current Activity instance retained for historical subclasses. */
     protected var activity: Activity? = null
 
-    /** Weak reference to the current Activity to prevent memory leaks */
-    private var activityWR: WeakReference<Activity>? = null
-
-
-    /**
-     * Log output tag
-     */
+    /** Log output tag retained for historical subclasses. */
     protected val TAG: String = this.javaClass.simpleName
-
-    private val handler: Handler = object : Handler(Looper.getMainLooper()) {
-        override fun handleMessage(msg: Message) {
-            super.handleMessage(msg)
-        }
-    }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         activity = this
-        activityWR = WeakReference(activity!!)
-        val view = this.window.decorView
-    }
-
-    override fun onSaveInstanceState(outState: Bundle) {
-        super.onSaveInstanceState(outState)
-    }
-
-    override fun onRestoreInstanceState(savedInstanceState: Bundle) {
-        super.onRestoreInstanceState(savedInstanceState)
     }
 
     override fun onNewIntent(intent: Intent) {
         super.onNewIntent(intent)
-    }
-
-    override fun onRestart() {
-        super.onRestart()
-    }
-
-    override fun onStart() {
-        super.onStart()
     }
 
     override fun onResume() {
@@ -71,36 +33,12 @@ open class BaseActivity : AppCompatActivity() {
     }
 
     override fun onPause() {
-        super.onPause()
         isActive = false
-    }
-
-    override fun onStop() {
-        super.onStop()
+        super.onPause()
     }
 
     override fun onDestroy() {
-        super.onDestroy()
         activity = null
+        super.onDestroy()
     }
-
-    override fun setContentView(layoutResID: Int) {
-        super.setContentView(layoutResID)
-        setupViews()
-    }
-
-    override fun setContentView(layoutView: View?) {
-        super.setContentView(layoutView)
-        setupViews()
-    }
-
-    protected open fun setupViews() {
-        val navigateBefore = findViewById<ImageView>(R.id.ivNavigateBefore)
-        val tvTitle = findViewById<TextView>(R.id.tvTitle)
-        navigateBefore?.setOnClickListener { finish() }
-        tvTitle?.isSelected = true
-    }
-
-
-
 }
