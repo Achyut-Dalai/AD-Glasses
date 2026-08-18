@@ -113,7 +113,7 @@ fun ADGlassesApp(
                             onOpenSync = { navigateTo(ADRoute.SYNC) },
                             onOpenSettings = { navigateTo(ADRoute.SETTINGS) },
                         )
-                        ADTab.CHATS -> ADNativeConversationScreen(
+                        ADTab.CHATS -> ADExpressiveConversationScreen(
                             navigationRequest = conversationRequest,
                             onNavigationRequestApplied = { requestId ->
                                 if (conversationRequest?.id == requestId) conversationRequest = null
