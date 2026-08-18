@@ -169,7 +169,7 @@ fun ADGlassesApp(
                     )
                     ADRoute.ABOUT -> ADAboutScreen(navigateBack)
                     ADRoute.FIRMWARE -> ADFirmwareScreen(dashboardState, host, navigateBack)
-                    ADRoute.CAPABILITY_DETAIL -> ADNativeTaskDetailScreen(
+                    ADRoute.CAPABILITY_DETAIL -> ADNativeCapabilityDetailScreen(
                         automation = selectedAutomation,
                         onBack = navigateBack,
                     )
