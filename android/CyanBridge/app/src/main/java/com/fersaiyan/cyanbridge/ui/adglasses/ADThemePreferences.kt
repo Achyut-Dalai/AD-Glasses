@@ -4,6 +4,7 @@ import android.content.Context
 
 enum class ADThemeStyle(val label: String) {
     MONOCHROME("Monochrome"),
+    DARK_MONOCHROME("Dark Monochrome"),
 }
 
 internal object ADThemePreferences {
@@ -14,8 +15,7 @@ internal object ADThemePreferences {
         val stored = context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
             .getString(KEY_STYLE, ADThemeStyle.MONOCHROME.name)
 
-        // Vibe and the old MONO enum are intentionally retired. Existing installs migrate
-        // to the single supported light Monochrome product theme until Dark Monochrome lands.
+        // Retired light-theme names always migrate to Monochrome.
         return when (stored) {
             "MONO", "VIBE" -> ADThemeStyle.MONOCHROME
             else -> runCatching { ADThemeStyle.valueOf(stored ?: ADThemeStyle.MONOCHROME.name) }
