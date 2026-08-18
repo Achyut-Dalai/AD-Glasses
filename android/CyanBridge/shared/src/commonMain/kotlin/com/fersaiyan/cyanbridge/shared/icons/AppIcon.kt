@@ -21,4 +21,9 @@ enum class AppIcon {
     Attachment,
     Stop,
     Close,
+    Bluetooth,
+    BluetoothSearching,
+    ChevronRight,
+    ExpandLess,
+    ExpandMore,
 }
