@@ -7,7 +7,6 @@ import androidx.compose.animation.core.infiniteRepeatable
 import androidx.compose.animation.core.rememberInfiniteTransition
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -311,7 +310,7 @@ private fun ADExpressiveConversationEmptyState(webMode: AssistantWebMode) {
             modifier = Modifier.size(66.dp),
             shape = RoundedCornerShape(22.dp),
             color = ADColors.Ink,
-            contentColor = Color.White,
+            contentColor = ADColors.Surface,
         ) {
             Box(contentAlignment = Alignment.Center) {
                 Icon(Icons.Outlined.Terminal, contentDescription = null, modifier = Modifier.size(30.dp))
@@ -500,7 +499,7 @@ private fun ADExpressiveConversationComposer(
                     Icon(
                         Icons.Outlined.Public,
                         contentDescription = if (forceWebForTurn) "Web on for this prompt" else "Use web for this prompt",
-                        tint = if (forceWebForTurn) Color.White else ADColors.Muted,
+                        tint = if (forceWebForTurn) ADColors.Surface else ADColors.Muted,
                         modifier = Modifier.size(19.dp),
                     )
                 }
@@ -542,7 +541,7 @@ private fun ADExpressiveConversationComposer(
                     Icon(
                         Icons.Rounded.ArrowUpward,
                         contentDescription = "Send prompt",
-                        tint = if (sendEnabled) Color.White else ADColors.Muted,
+                        tint = if (sendEnabled) ADColors.Surface else ADColors.Muted,
                         modifier = Modifier.size(20.dp),
                     )
                 }
