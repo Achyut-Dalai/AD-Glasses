@@ -62,7 +62,7 @@ class ADProductSurfaceIsolationTest {
     }
 
     @Test
-    fun obsoleteAdUiBundlesAndTasksPageStayDeleted() {
+    fun focusedAdUiFilesMatchCurrentProductSurface() {
         val uiDir = sourceFile("src/main/java/com/fersaiyan/cyanbridge/ui/adglasses")
         listOf(
             "ADMainScreens.kt",
@@ -72,6 +72,7 @@ class ADProductSurfaceIsolationTest {
             "ADModesScreen.kt",
             "ADNativeModeDetailScreen.kt",
             "ADLegacyRouteRedirectActivity.kt",
+            "ADNativeCapabilityDetailScreen.kt",
         ).forEach { obsolete ->
             assertFalse("$obsolete is not part of the current AD product surface", File(uiDir, obsolete).exists())
         }
@@ -79,8 +80,8 @@ class ADProductSurfaceIsolationTest {
         assertTrue(File(uiDir, "ADHomeSurface.kt").isFile)
         assertTrue(File(uiDir, "ADNativeConversationScreen.kt").isFile)
         assertTrue(File(uiDir, "ADNativeLibraryScreens.kt").isFile)
+        assertTrue(File(uiDir, "ADExpressiveLibraryHome.kt").isFile)
         assertTrue(File(uiDir, "ADNativeAiScreen.kt").isFile)
-        assertTrue(File(uiDir, "ADNativeCapabilityDetailScreen.kt").isFile)
         assertTrue(File(uiDir, "ADAssistantAppsScreen.kt").isFile)
         assertTrue(File(uiDir, "ADNativeSettingsHubScreen.kt").isFile)
         assertTrue(File(uiDir, "ADSyncScreen.kt").isFile)
@@ -106,39 +107,40 @@ class ADProductSurfaceIsolationTest {
     }
 
     @Test
-    fun aiUsesCurrentProductNamesWithoutCapabilitiesHeading() {
+    fun homeOwnsEverydayCapabilitiesWhileAiKeepsPersistentControls() {
+        val home = sourceFile(
+            "src/main/java/com/fersaiyan/cyanbridge/ui/adglasses/ADHomeSurface.kt",
+        ).readText()
         val ai = sourceFile(
             "src/main/java/com/fersaiyan/cyanbridge/ui/adglasses/ADNativeAiScreen.kt",
-        ).readText()
-        val models = sourceFile(
-            "src/main/java/com/fersaiyan/cyanbridge/ui/adglasses/ADGlassesModels.kt",
         ).readText()
         val app = sourceFile(
             "src/main/java/com/fersaiyan/cyanbridge/ui/adglasses/ADGlassesApp.kt",
         ).readText()
 
-        assertTrue("AI should surface Translate", ai.contains("\"Translate\""))
-        assertFalse("AI should not show a redundant Capabilities heading", ai.contains("\"Capabilities\""))
-        assertFalse("AI should not show the retired Modes heading", ai.contains("\"Modes\""))
-        assertTrue(ai.contains("ADAutomation.MEETING_NOTES.title"))
-        assertTrue(ai.contains("ADAutomation.AUTO_DIARY.title"))
-        assertTrue(ai.contains("ADAutomation.VISUAL_DIARY.title"))
-        assertTrue(ai.contains("ADAutomation.ERRAND_BRAIN.title"))
-        assertTrue(ai.contains("ADAutomation.LOCAL_AGENT.title"))
-        assertTrue(models.contains("\"Soundbites\""))
-        assertTrue(models.contains("\"DayNote\""))
-        assertTrue(models.contains("\"Timeline\""))
-        assertTrue(models.contains("\"Cron\""))
-        assertTrue(models.contains("\"Automation\""))
-        assertTrue(ai.contains("\"Apps & Android actions\""))
-        assertFalse(ai.contains("\"Setup required\""))
-        assertTrue(ai.contains("Icons.Outlined.EventRepeat"))
+        listOf("Ask AI", "Photo", "Video", "Translate", "Soundbites", "Audio", "Smart Lens")
+            .forEach { label -> assertTrue("Home should surface $label", home.contains("\"$label\"")) }
+        assertTrue(home.contains("AssistantCapability.TRANSLATOR"))
+        assertTrue(home.contains("AssistantCapability.MEETING_NOTES"))
+        assertTrue(home.contains("onClick = host.onImageQuestion"))
+        assertFalse(home.contains("Search Web"))
+        assertFalse(home.contains("ADHomeLink("))
+
+        assertTrue(ai.contains("\"Timeline\""))
+        assertTrue(ai.contains("\"DayNote\""))
+        assertTrue(ai.contains("\"Automation\""))
+        assertTrue(ai.contains("Switch("))
+        assertFalse("Translate belongs on Home, not AI", ai.contains("\"Translate\""))
+        assertFalse("Soundbites belongs on Home, not AI", ai.contains("\"Soundbites\""))
+        assertFalse("Cron is retired", ai.contains("\"Cron\""))
+        assertFalse(ai.contains("\"Capabilities\""))
+        assertFalse(ai.contains("\"Modes\""))
         assertTrue(ai.contains("\"Assistant apps\""))
-        assertFalse(ai.contains("ADTopBar(title = \"AI\")"))
+
+        assertTrue(app.contains("ADTab.LIBRARY -> ADExpressiveLibraryHome("))
         assertTrue(app.contains("ADRoute.AI_ASSISTANT_APPS -> ADAssistantAppsScreen"))
-        assertTrue(app.contains("ADRoute.CAPABILITY_DETAIL -> ADNativeCapabilityDetailScreen"))
-        assertFalse(app.contains("ADRoute.TASK_DETAIL"))
-        assertFalse(app.contains("ADTasksScreen("))
+        assertFalse(app.contains("ADRoute.CAPABILITY_DETAIL"))
+        assertFalse(app.contains("ADNativeCapabilityDetailScreen("))
     }
 
     @Test
@@ -158,12 +160,17 @@ class ADProductSurfaceIsolationTest {
     }
 
     @Test
-    fun capabilityCommandArchitectureDoesNotUseRetiredModeTypes() {
+    fun capabilityCommandArchitectureDoesNotUseRetiredModeTypesOrCron() {
         val orchestratorDir = sourceFile("src/main/java/com/fersaiyan/cyanbridge/ai/orchestrator")
+        val router = File(orchestratorDir, "AssistantCapabilityCommandRouter.kt").readText()
+        val executor = File(orchestratorDir, "AndroidCapabilityCommandExecutor.kt").readText()
+
         assertFalse(File(orchestratorDir, "AssistantModeCommandRouter.kt").exists())
         assertFalse(File(orchestratorDir, "AndroidModeCommandExecutor.kt").exists())
-        assertTrue(File(orchestratorDir, "AssistantCapabilityCommandRouter.kt").isFile)
-        assertTrue(File(orchestratorDir, "AndroidCapabilityCommandExecutor.kt").isFile)
+        assertFalse(router.contains("ERRAND_BRAIN"))
+        assertFalse(router.contains("\\b(cron|errand"))
+        assertFalse(executor.contains("ErrandBrainService"))
+        assertFalse(executor.contains("ErrandBrainPreferences"))
     }
 
     @Test
@@ -195,8 +202,6 @@ class ADProductSurfaceIsolationTest {
         assertTrue(prompt.contains("AudioSessionCoordinator.isBusy()"))
         assertTrue(prompt.contains("MeetingCapturePrefs.getState(context).isRecording"))
         assertFalse(prompt.contains("New chat"))
-        assertFalse(prompt.contains("Icons.Outlined.CameraAlt"))
-        assertFalse(prompt.contains("Icons.Outlined.Mic"))
         assertTrue(rich.contains("ADConversationLinkKind.IMAGE"))
         assertTrue(rich.contains("ADConversationLinkKind.VIDEO"))
         assertTrue(rich.contains("ADConversationLinkKind.AUDIO"))
@@ -204,24 +209,21 @@ class ADProductSurfaceIsolationTest {
     }
 
     @Test
-    fun capabilityDetailUsesMonochromeEditorialToggleInsteadOfStartStopButtons() {
-        val detail = sourceFile(
-            "src/main/java/com/fersaiyan/cyanbridge/ui/adglasses/ADNativeCapabilityDetailScreen.kt",
-        ).readText()
-        assertTrue(detail.contains("Switch("))
-        assertTrue(detail.contains("automation.capabilityIcon()"))
-        assertTrue(detail.contains("ADCapabilityDetailRow("))
-        assertTrue(detail.contains("ADColors.SurfaceSubtle"))
-        assertTrue(detail.contains("Icons.Outlined.EventRepeat"))
-        assertTrue(detail.contains("isExclusiveVoiceCapability"))
-        assertTrue(detail.contains("will switch live listening"))
-        assertFalse(detail.contains("capabilityPalette()"))
-        assertFalse(detail.contains("ADCapabilityPalette"))
-        assertFalse(detail.contains("OutlinedButton("))
-        assertFalse(detail.contains("Button("))
-        assertFalse(detail.contains("\"Start task\""))
-        assertFalse(detail.contains("\"Stop task\""))
-        assertFalse(detail.contains("this task by voice"))
+    fun inlineCapabilityControlsReplaceGenericDetailPageAndStatusText() {
+        val uiDir = sourceFile("src/main/java/com/fersaiyan/cyanbridge/ui/adglasses")
+        val home = File(uiDir, "ADHomeSurface.kt").readText()
+        val ai = File(uiDir, "ADNativeAiScreen.kt").readText()
+
+        assertFalse(File(uiDir, "ADNativeCapabilityDetailScreen.kt").exists())
+        assertTrue(home.contains("toggleCapability(AssistantCapability.TRANSLATOR)"))
+        assertTrue(home.contains("toggleCapability(AssistantCapability.MEETING_NOTES)"))
+        assertTrue(ai.contains("AssistantCapability.VISUAL_DIARY"))
+        assertTrue(ai.contains("AssistantCapability.AUTO_DIARY"))
+        assertTrue(ai.contains("AssistantCapability.LOCAL_AGENT"))
+        assertTrue(ai.contains("Switch("))
+        assertFalse(ai.contains("ADStatusChip("))
+        assertFalse(home.contains("ADStatusChip(\"OFF\""))
+        assertFalse(home.contains("ADStatusChip(\"ON\""))
     }
 
     @Test
@@ -234,28 +236,27 @@ class ADProductSurfaceIsolationTest {
         assertTrue(welcome.contains("text = \"YOUR DATA\""))
         assertTrue(welcome.contains("R.drawable.ad_glasses_hero_v4"))
         assertTrue(welcome.contains("RoundedCornerShape(28.dp)"))
-        assertFalse(welcome.contains("alpha(0.16f)"))
-        assertFalse(welcome.contains("A private brain for the glasses you wear."))
-        assertFalse(welcome.contains("Connect when you are ready."))
     }
 
     @Test
-    fun automationUsesProductFacingLabelsWhileRuntimeIdentifiersStayCompatible() {
+    fun automationStaysProductFacingWhileCronIsRetired() {
         val models = sourceFile(
             "src/main/java/com/fersaiyan/cyanbridge/ui/adglasses/ADGlassesModels.kt",
         ).readText()
         val strings = sourceFile("src/main/res/values/strings.xml").readText()
-        val manifest = sourceFile("src/main/AndroidManifest.xml").readText()
+        val prefs = sourceFile("src/main/java/com/fersaiyan/cyanbridge/ui/CommunityPluginPrefs.kt").readText()
+        val service = sourceFile(
+            "src/main/java/com/fersaiyan/cyanbridge/plugins/errandbrain/ErrandBrainService.kt",
+        ).readText()
 
         assertTrue(models.contains("\"Automation\""))
-        assertTrue(models.contains("\"Cron\""))
         assertTrue(models.contains("\"Local Agent\""))
-        assertTrue(models.contains("\"Errand Brain\""))
+        assertFalse(models.contains("ERRAND_BRAIN(\n        \"Cron\""))
+        assertTrue(models.contains("@Deprecated(\"Cron is removed from the AD Glasses product\")"))
         assertTrue(strings.contains("<string name=\"local_agent_accessibility_service_label\">Glasses automation</string>"))
-        assertTrue(manifest.contains("android:label=\"Automation settings\""))
-        assertTrue(manifest.contains("android:label=\"Cron settings\""))
-        assertTrue(manifest.contains("android:label=\"DayNote settings\""))
-        assertTrue(manifest.contains("android:label=\"Timeline settings\""))
+        assertTrue(prefs.contains("if (pluginId == NativePluginIds.ERRAND_BRAIN) return false"))
+        assertTrue(service.contains("START_NOT_STICKY"))
+        assertFalse(service.contains("SpeechRecognizer"))
     }
 
     @Test
@@ -283,10 +284,7 @@ class ADProductSurfaceIsolationTest {
         assertTrue(strings.contains("<string name=\"app_name\">AD Glasses</string>"))
         assertFalse("System-facing strings must not expose CyanBridge branding", strings.contains("CyanBridge"))
         assertTrue(gradle.contains("versionName = \"alpha\""))
-        assertTrue(
-            "APK artifact should use the AD Glasses product name",
-            gradle.contains("outputFileName.set(\"AD-Glasses.apk\")"),
-        )
+        assertTrue(gradle.contains("outputFileName.set(\"AD-Glasses.apk\")"))
         assertTrue(manifest.contains("android:label=\"AD Glasses notification access\""))
     }
 
