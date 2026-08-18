@@ -8,8 +8,8 @@ import android.content.Context
 import android.content.Intent
 import android.os.Build
 import androidx.core.app.NotificationCompat
-import com.fersaiyan.cyanbridge.MainActivity
 import com.fersaiyan.cyanbridge.R
+import com.fersaiyan.cyanbridge.navigation.ADAppLaunchIntents
 
 object MeetingSparkNotesNotificationHelper {
     const val CHANNEL_ID = "meeting_spark_notes_service"
@@ -20,10 +20,10 @@ object MeetingSparkNotesNotificationHelper {
         val nm = context.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
         val ch = NotificationChannel(
             CHANNEL_ID,
-            "Meeting Spark Notes",
-            NotificationManager.IMPORTANCE_DEFAULT
+            "Soundbites",
+            NotificationManager.IMPORTANCE_DEFAULT,
         ).apply {
-            description = "Keeps the meeting capture loop running"
+            description = "Live meeting capture and concise AI notes"
             setShowBadge(false)
             lockscreenVisibility = Notification.VISIBILITY_PRIVATE
         }
@@ -31,11 +31,10 @@ object MeetingSparkNotesNotificationHelper {
     }
 
     fun buildNotification(context: Context, content: String): Notification {
-        val openIntent = Intent(context, MainActivity::class.java)
         val openPi = PendingIntent.getActivity(
             context,
             0,
-            openIntent,
+            ADAppLaunchIntents.productHome(context),
             PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE,
         )
 
@@ -51,7 +50,7 @@ object MeetingSparkNotesNotificationHelper {
 
         return NotificationCompat.Builder(context, CHANNEL_ID)
             .setSmallIcon(R.drawable.ic_stat_ad_glasses)
-            .setContentTitle("Meeting Spark Notes")
+            .setContentTitle("Soundbites")
             .setContentText(content)
             .setStyle(NotificationCompat.BigTextStyle().bigText(content))
             .setCategory(NotificationCompat.CATEGORY_SERVICE)
@@ -64,16 +63,14 @@ object MeetingSparkNotesNotificationHelper {
                 NotificationCompat.Action.Builder(
                     0,
                     "Stop",
-                    stopPi
-                ).build()
+                    stopPi,
+                ).build(),
             )
             .build()
     }
 
     fun updateNotification(context: Context, content: String) {
         val nm = context.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
-        runCatching {
-            nm.notify(NOTIFICATION_ID, buildNotification(context, content))
-        }
+        runCatching { nm.notify(NOTIFICATION_ID, buildNotification(context, content)) }
     }
 }
