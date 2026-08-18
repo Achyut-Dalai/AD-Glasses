@@ -6,7 +6,6 @@ import androidx.compose.animation.core.infiniteRepeatable
 import androidx.compose.animation.core.rememberInfiniteTransition
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -21,6 +20,7 @@ import androidx.compose.foundation.layout.safeDrawing
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
@@ -126,8 +126,7 @@ fun ADGlassesPairingScreen(
 
             if (devices.isNotEmpty()) {
                 item(key = "nearby-title") { ADSectionEyebrow("Nearby") }
-                items(devices.size, key = { index -> "device-${devices[index].address}" }) { index ->
-                    val device = devices[index]
+                items(devices, key = { "device-${it.address}" }) { device ->
                     ADPairingDeviceCard(device = device, onClick = { onConnect(device) })
                 }
             }
