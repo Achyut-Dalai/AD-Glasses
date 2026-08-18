@@ -32,7 +32,7 @@ fun ADGlassesApp(
     var selectedTab by remember { mutableStateOf(ADTab.HOME) }
     var routeStack by remember { mutableStateOf(listOf(ADRoute.MAIN)) }
     var conversationRequest by remember { mutableStateOf<ADNavigationRequest?>(null) }
-    var themeStyle by remember(context) { mutableStateOf(ADThemePreferences.get(context)) }
+    val themeStyle = remember(context) { ADThemePreferences.get(context) }
     var onboardingComplete by remember(context) { mutableStateOf(ADWelcomePreferences.isComplete(context)) }
 
     val route = routeStack.last()
@@ -163,7 +163,7 @@ fun ADGlassesApp(
                         onBack = navigateBack,
                         onDevice = { navigateTo(ADRoute.DEVICE_CENTER) },
                     )
-                    ADRoute.ABOUT -> ADAboutScreen(navigateBack)
+                    ADRoute.ABOUT -> ADAboutProductScreen(navigateBack)
                     ADRoute.FIRMWARE -> ADFirmwareScreen(dashboardState, host, navigateBack)
                     ADRoute.LIBRARY_CAPTURES -> ADNativeCapturesScreen(
                         onBack = navigateBack,
