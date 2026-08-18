@@ -19,6 +19,7 @@ import androidx.compose.material.icons.outlined.ErrorOutline
 import androidx.compose.material.icons.outlined.EventRepeat
 import androidx.compose.material.icons.outlined.FolderOpen
 import androidx.compose.material.icons.outlined.GraphicEq
+import androidx.compose.material.icons.outlined.Info
 import androidx.compose.material.icons.outlined.Lock
 import androidx.compose.material.icons.outlined.Mic
 import androidx.compose.material.icons.outlined.Timeline
@@ -53,24 +54,30 @@ internal fun ADNativeTaskDetailScreen(
 ) {
     val context = LocalContext.current
     val executor = remember(context) { AndroidModeCommandExecutor(context) }
-    val mode = automation.toAssistantMode()
-    var active by remember(automation) { mutableStateOf(executor.isActive(mode)) }
+    val capability = automation.toAssistantMode()
+    var active by remember(automation) { mutableStateOf(executor.isActive(capability)) }
     var resultText by remember(automation) { mutableStateOf<String?>(null) }
     var lastSucceeded by remember(automation) { mutableStateOf<Boolean?>(null) }
+
+    val switchingFrom = if (!active && executor.isExclusiveVoiceMode(capability)) {
+        executor.activeVoiceMode(excluding = capability)
+    } else {
+        null
+    }
 
     fun execute(action: AssistantModeAction) {
         val result = executor.execute(
             AssistantModeCommand(
-                mode = mode,
+                mode = capability,
                 action = action,
             ),
         )
         resultText = result.spokenText
-        val failure = result.richText.startsWith("Mode command failed:", ignoreCase = true) ||
+        val failure = result.richText.startsWith("Capability command failed:", ignoreCase = true) ||
             result.spokenText.contains("needs permission setup", ignoreCase = true) ||
             result.spokenText.contains("couldn’t change", ignoreCase = true)
         lastSucceeded = !failure
-        active = executor.isActive(mode)
+        active = executor.isActive(capability)
     }
 
     ADPageLayout(automation.title, onBack) {
@@ -104,6 +111,32 @@ internal fun ADNativeTaskDetailScreen(
             )
         }
 
+        switchingFrom?.let { previous ->
+            Surface(
+                modifier = Modifier.fillMaxWidth(),
+                color = ADColors.SurfaceSubtle,
+                shape = RoundedCornerShape(17.dp),
+            ) {
+                Row(
+                    modifier = Modifier.padding(horizontal = 15.dp, vertical = 13.dp),
+                    verticalAlignment = Alignment.Top,
+                ) {
+                    Icon(
+                        Icons.Outlined.Info,
+                        contentDescription = null,
+                        tint = ADColors.Muted,
+                        modifier = Modifier.size(21.dp),
+                    )
+                    Text(
+                        "${executor.displayName(previous)} is using live listening. Turning on ${automation.title} will switch live listening to this capability.",
+                        modifier = Modifier.padding(start = 10.dp).weight(1f),
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = ADColors.Ink,
+                    )
+                }
+            }
+        }
+
         Surface(
             modifier = Modifier.fillMaxWidth(),
             color = if (active) ADColors.SurfaceSubtle else ADColors.Surface,
@@ -122,10 +155,11 @@ internal fun ADNativeTaskDetailScreen(
                     )
                     Spacer(Modifier.height(3.dp))
                     Text(
-                        text = if (active) {
-                            "Ready when you use it from the glasses or phone."
-                        } else {
-                            "Turn it on when you want this capability available."
+                        text = when {
+                            active && executor.isExclusiveVoiceMode(capability) -> "Listening is assigned to this capability."
+                            active -> "Ready when you use it from the glasses or phone."
+                            switchingFrom != null -> "Turning this on will move live listening here."
+                            else -> "Turn it on when you want this capability available."
                         },
                         style = MaterialTheme.typography.bodySmall,
                         color = ADColors.Muted,
@@ -232,7 +266,7 @@ private fun ADAutomation.capabilityIcon(): ImageVector = when (this) {
     ADAutomation.VISUAL_DIARY -> Icons.Outlined.Timeline
 }
 
-private fun ADAutomation.toAssistantMode(): AssistantMode = when (this) {
+internal fun ADAutomation.toAssistantMode(): AssistantMode = when (this) {
     ADAutomation.TRANSLATOR -> AssistantMode.TRANSLATOR
     ADAutomation.MEETING_NOTES -> AssistantMode.MEETING_NOTES
     ADAutomation.LIVE_CAPTIONS -> AssistantMode.LIVE_CAPTIONS
