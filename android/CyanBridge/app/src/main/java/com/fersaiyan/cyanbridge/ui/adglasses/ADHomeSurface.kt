@@ -19,7 +19,6 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.rounded.KeyboardArrowRight
 import androidx.compose.material.icons.outlined.BatteryFull
-import androidx.compose.material.icons.outlined.Bolt
 import androidx.compose.material.icons.outlined.GraphicEq
 import androidx.compose.material.icons.outlined.Mic
 import androidx.compose.material.icons.outlined.PhotoCamera
@@ -28,7 +27,6 @@ import androidx.compose.material.icons.outlined.Storage
 import androidx.compose.material.icons.outlined.Sync
 import androidx.compose.material.icons.outlined.Videocam
 import androidx.compose.material.icons.outlined.Visibility
-import androidx.compose.material.icons.rounded.Translate
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
@@ -57,9 +55,7 @@ internal fun ADHomeSurface(
     onOpenDevice: () -> Unit,
     onOpenSync: () -> Unit,
     onOpenSettings: () -> Unit,
-    onOpenTranslator: () -> Unit,
     onOpenWebSearch: () -> Unit,
-    onOpenPhoneControl: () -> Unit,
 ) {
     val context = LocalContext.current
     val profile = DeviceProfileStore.loadLastSelected(context)
@@ -144,11 +140,11 @@ internal fun ADHomeSurface(
                             onClick = host.onToggleVideo,
                         )
                         ADHomeAction(
-                            title = "Translate",
-                            detail = "Live Translation",
-                            icon = Icons.Rounded.Translate,
+                            title = if (state.meeting.isRecording) "Stop audio" else "Record audio",
+                            detail = if (state.meeting.isRecording) "Recording now" else "Save a recording",
+                            icon = Icons.Outlined.GraphicEq,
                             modifier = Modifier.weight(1f),
-                            onClick = onOpenTranslator,
+                            onClick = if (state.meeting.isRecording) host.onStopRecording else host.onStartRecording,
                         )
                     }
                 }
@@ -163,22 +159,10 @@ internal fun ADHomeSurface(
                         onClick = host.onImageQuestion,
                     )
                     ADHomeLink(
-                        icon = Icons.Outlined.GraphicEq,
-                        title = if (state.meeting.isRecording) "Stop recording" else "Record audio",
-                        detail = if (state.meeting.isRecording) "Recording now" else "Save an audio recording",
-                        onClick = if (state.meeting.isRecording) host.onStopRecording else host.onStartRecording,
-                    )
-                    ADHomeLink(
                         icon = Icons.Outlined.Public,
                         title = "Search web",
                         detail = "Start a fresh web-backed question",
                         onClick = onOpenWebSearch,
-                    )
-                    ADHomeLink(
-                        icon = Icons.Outlined.Bolt,
-                        title = "Automation",
-                        detail = "Apps and supported Android actions",
-                        onClick = onOpenPhoneControl,
                     )
                 }
             }
