@@ -1,6 +1,7 @@
 package com.fersaiyan.cyanbridge.media.autocapture
 
 import android.content.Context
+import com.fersaiyan.cyanbridge.ai.orchestrator.AssistantCapabilityRuntimeEvents
 
 object AutoAudioCapturePrefs {
     private const val PREFS = "auto_audio_capture_prefs"
@@ -14,16 +15,19 @@ object AutoAudioCapturePrefs {
     private const val KEY_PAUSED_VIDEO = "paused_video"
     private const val KEY_PAUSE_UNTIL_MS = "pause_until_ms"
     private const val KEY_LAST_PAUSE_REASON = "last_pause_reason"
+
     fun isEnabled(context: Context): Boolean {
         return context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
             .getBoolean(KEY_ENABLED, false)
     }
 
     fun setEnabled(context: Context, enabled: Boolean) {
+        val changed = isEnabled(context) != enabled
         context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
             .edit()
             .putBoolean(KEY_ENABLED, enabled)
             .apply()
+        if (changed) AssistantCapabilityRuntimeEvents.notifyChanged()
     }
 
     fun getSuccessfulLoops(context: Context): Int {
