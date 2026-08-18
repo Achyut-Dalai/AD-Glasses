@@ -51,6 +51,8 @@ class HandsFreeTranslatorService : Service() {
 
     override fun onDestroy() {
         voiceRecognizer?.stop()
+        voiceRecognizer = null
+        HandsFreeTranslatorPreferences.setEnabled(this, false)
         tts?.stop()
         tts?.shutdown()
         tts = null
@@ -59,13 +61,17 @@ class HandsFreeTranslatorService : Service() {
     }
 
     private fun startTranslation() {
-        if (voiceRecognizer != null) return
+        if (voiceRecognizer != null) {
+            HandsFreeTranslatorPreferences.setEnabled(this, true)
+            return
+        }
         if (!startPluginVoiceForeground(
                 service = this,
                 notificationId = HandsFreeTranslatorNotificationHelper.NOTIFICATION_ID,
                 notification = HandsFreeTranslatorNotificationHelper.buildNotification(this, "Starting translator..."),
             )
         ) {
+            HandsFreeTranslatorPreferences.setEnabled(this, false)
             Log.w(TAG, "Missing microphone or notification permission")
             stopSelf()
             return
@@ -90,15 +96,18 @@ class HandsFreeTranslatorService : Service() {
             },
         )
         if (!recognizer.start()) {
+            HandsFreeTranslatorPreferences.setEnabled(this, false)
             stopForeground(STOP_FOREGROUND_REMOVE)
             stopSelf()
             return
         }
         voiceRecognizer = recognizer
+        HandsFreeTranslatorPreferences.setEnabled(this, true)
         HandsFreeTranslatorNotificationHelper.updateNotification(this, "Listening for speech to translate...")
     }
 
     private fun stopTranslation() {
+        HandsFreeTranslatorPreferences.setEnabled(this, false)
         voiceRecognizer?.stop()
         voiceRecognizer = null
         stopForeground(STOP_FOREGROUND_REMOVE)
