@@ -12,6 +12,14 @@ react {
     reactNativeDir = file("../node_modules/react-native")
     codegenDir = file("../node_modules/@react-native/codegen")
     cliFile = file("../node_modules/react-native/cli.js")
+
+    // This branch produces a self-contained debug APK for on-device RN-vs-Compose comparison.
+    // RNGP normally treats `debug` as a debuggable variant and deliberately omits the JS bundle,
+    // which makes Metro mandatory at runtime. Keep the Android build debuggable, but do not mark
+    // any variant as bundle-skipping so index.android.bundle and assets are packaged into debug.
+    // Metro can still be used during development, while an installed APK also works offline.
+    debuggableVariants = []
+
     autolinkLibrariesWithApp()
 }
 
