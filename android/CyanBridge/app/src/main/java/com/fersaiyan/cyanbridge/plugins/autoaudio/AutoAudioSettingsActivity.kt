@@ -39,14 +39,12 @@ import com.fersaiyan.cyanbridge.plugins.PluginVoicePermissions
 import com.fersaiyan.cyanbridge.shared.plugins.NativePluginIds
 import com.fersaiyan.cyanbridge.ui.CommunityPluginPrefs
 import com.fersaiyan.cyanbridge.ui.NativePluginShortcutPreference
-import com.fersaiyan.cyanbridge.ui.installComposeHostWithLegacyAdapter
 import com.fersaiyan.cyanbridge.ui.setThemedComposeContent
 
 class AutoAudioSettingsActivity : AppCompatActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        val composeView = installComposeHostWithLegacyAdapter(R.layout.activity_auto_audio_settings)
-        setThemedComposeContent(composeView) {
+        setThemedComposeContent {
             AutoAudioSettingsScreen(
                 onBack = ::finish,
                 onEnabledChanged = ::setEnabled,
