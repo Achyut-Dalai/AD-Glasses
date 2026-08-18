@@ -78,6 +78,12 @@ private object ADSharedIcons {
         moveTo(12f, 10f); curveTo(9.8f, 10f, 8f, 11.8f, 8f, 14f); curveTo(8f, 16.2f, 9.8f, 18f, 12f, 18f)
     }
 
+    val Image = outlined("AD.Image") {
+        moveTo(4f, 5f); lineTo(20f, 5f); lineTo(20f, 19f); lineTo(4f, 19f); close()
+        moveTo(7f, 15f); lineTo(10.5f, 11f); lineTo(13f, 14f); lineTo(15f, 12f); lineTo(19f, 17f)
+        moveTo(8f, 8.5f); lineTo(8f, 8.7f)
+    }
+
     val Video = outlined("AD.Video") {
         moveTo(4f, 7f); lineTo(15f, 7f); lineTo(15f, 17f); lineTo(4f, 17f); close()
         moveTo(15f, 10f); lineTo(20f, 7f); lineTo(20f, 17f); lineTo(15f, 14f)
@@ -116,6 +122,8 @@ private object ADSharedIcons {
     val Back = outlined("AD.Back") { moveTo(19f, 12f); lineTo(5f, 12f); moveTo(5f, 12f); lineTo(11f, 6f); moveTo(5f, 12f); lineTo(11f, 18f) }
     val More = outlined("AD.More") { moveTo(12f, 5f); lineTo(12f, 5.2f); moveTo(12f, 11.9f); lineTo(12f, 12.1f); moveTo(12f, 18.8f); lineTo(12f, 19f) }
     val Attachment = outlined("AD.Attachment") { moveTo(8f, 12f); lineTo(13.5f, 6.5f); curveTo(15f, 5f, 17.5f, 5f, 19f, 6.5f); curveTo(20.5f, 8f, 20.5f, 10.5f, 19f, 12f); lineTo(11f, 20f); curveTo(8.5f, 22.5f, 4.5f, 22f, 3f, 19.5f); curveTo(1.5f, 17f, 2f, 14.5f, 4f, 12.5f); lineTo(12f, 4.5f) }
+    val Play = outlined("AD.Play") { moveTo(9f, 6f); lineTo(18f, 12f); lineTo(9f, 18f); close() }
+    val Pause = outlined("AD.Pause") { moveTo(9f, 6f); lineTo(9f, 18f); moveTo(15f, 6f); lineTo(15f, 18f) }
     val Stop = outlined("AD.Stop") { moveTo(7f, 7f); lineTo(17f, 7f); lineTo(17f, 17f); lineTo(7f, 17f); close() }
     val Close = outlined("AD.Close") { moveTo(6f, 6f); lineTo(18f, 18f); moveTo(18f, 6f); lineTo(6f, 18f) }
     val Bluetooth = outlined("AD.Bluetooth") {
@@ -142,6 +150,7 @@ fun AppIcon.imageVector(): ImageVector = when (this) {
     AppIcon.Settings -> ADSharedIcons.Settings
     AppIcon.Plugins -> ADSharedIcons.Plugins
     AppIcon.Camera -> ADSharedIcons.Camera
+    AppIcon.Image -> ADSharedIcons.Image
     AppIcon.Video -> ADSharedIcons.Video
     AppIcon.Microphone -> ADSharedIcons.Microphone
     AppIcon.Battery -> ADSharedIcons.Battery
@@ -154,6 +163,8 @@ fun AppIcon.imageVector(): ImageVector = when (this) {
     AppIcon.Back -> ADSharedIcons.Back
     AppIcon.More -> ADSharedIcons.More
     AppIcon.Attachment -> ADSharedIcons.Attachment
+    AppIcon.Play -> ADSharedIcons.Play
+    AppIcon.Pause -> ADSharedIcons.Pause
     AppIcon.Stop -> ADSharedIcons.Stop
     AppIcon.Close -> ADSharedIcons.Close
     AppIcon.Bluetooth -> ADSharedIcons.Bluetooth
