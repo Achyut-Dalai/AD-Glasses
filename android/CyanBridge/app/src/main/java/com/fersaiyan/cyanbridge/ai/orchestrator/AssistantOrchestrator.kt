@@ -46,7 +46,7 @@ data class AssistantResult(
 
 /**
  * Execution boundary around capabilities that already exist in MainActivity/services.
- * The orchestrator decides; existing BLE/Wi-Fi/media/Local Agent subsystems execute.
+ * The orchestrator decides; existing BLE/Wi-Fi/media/Automation subsystems execute.
  */
 interface AssistantCapabilityExecutor {
     suspend fun answer(
@@ -65,8 +65,8 @@ interface AssistantCapabilityExecutor {
         context: AssistantExecutionContext,
     ): AssistantResult
 
-    suspend fun executeModeCommand(
-        command: AssistantModeCommand,
+    suspend fun executeCapabilityCommand(
+        command: AssistantCapabilityCommand,
         context: AssistantExecutionContext,
     ): AssistantResult
 }
@@ -109,10 +109,10 @@ class AssistantOrchestrator(
             artifactContext = turn.contextText?.trim()?.takeIf { it.isNotBlank() },
         )
 
-        // Obvious mode commands are deterministic and should not pay an LLM routing cost.
-        val modeCommand = AssistantModeCommandRouter.parse(prompt)
-        val result = if (modeCommand != null) {
-            executor.executeModeCommand(modeCommand, executionContext)
+        // Obvious capability commands are deterministic and should not pay an LLM routing cost.
+        val capabilityCommand = AssistantCapabilityCommandRouter.parse(prompt)
+        val result = if (capabilityCommand != null) {
+            executor.executeCapabilityCommand(capabilityCommand, executionContext)
         } else {
             val decision = router.route(
                 context = appContext,
