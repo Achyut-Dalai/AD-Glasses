@@ -16,6 +16,9 @@ kotlin {
         compilerOptions {
             jvmTarget.set(org.jetbrains.kotlin.gradle.dsl.JvmTarget.JVM_17)
         }
+        withHostTest {
+            isIncludeAndroidResources = true
+        }
     }
 
     // A second host target keeps common code genuinely multiplatform-testable while
@@ -47,18 +50,16 @@ kotlin {
         commonMain.dependencies {
             implementation(libs.kotlinx.coroutines.core)
             implementation(libs.kotlinx.serialization.json)
-            implementation(compose.runtime)
-            implementation(compose.foundation)
-            implementation(compose.material3)
-            implementation(compose.ui)
-            implementation(compose.materialIconsExtended)
-            implementation(compose.components.resources)
+            implementation(libs.compose.runtime)
+            implementation(libs.compose.foundation)
+            implementation(libs.compose.material3)
+            implementation(libs.compose.ui)
+            implementation(libs.compose.components.resources)
         }
 
-        @OptIn(org.jetbrains.compose.ExperimentalComposeLibrary::class)
         commonTest.dependencies {
             implementation(kotlin("test"))
-            implementation(compose.uiTest)
+            implementation(libs.compose.ui.test)
         }
     }
 }
