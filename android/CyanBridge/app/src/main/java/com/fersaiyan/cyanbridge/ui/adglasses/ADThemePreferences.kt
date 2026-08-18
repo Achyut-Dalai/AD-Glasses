@@ -3,8 +3,7 @@ package com.fersaiyan.cyanbridge.ui.adglasses
 import android.content.Context
 
 enum class ADThemeStyle(val label: String) {
-    MONO("Mono"),
-    VIBE("Vibe"),
+    MONOCHROME("Monochrome"),
 }
 
 internal object ADThemePreferences {
@@ -13,9 +12,15 @@ internal object ADThemePreferences {
 
     fun get(context: Context): ADThemeStyle {
         val stored = context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
-            .getString(KEY_STYLE, ADThemeStyle.MONO.name)
-        return runCatching { ADThemeStyle.valueOf(stored ?: ADThemeStyle.MONO.name) }
-            .getOrDefault(ADThemeStyle.MONO)
+            .getString(KEY_STYLE, ADThemeStyle.MONOCHROME.name)
+
+        // Vibe and the old MONO enum are intentionally retired. Existing installs migrate
+        // to the single supported light Monochrome product theme until Dark Monochrome lands.
+        return when (stored) {
+            "MONO", "VIBE" -> ADThemeStyle.MONOCHROME
+            else -> runCatching { ADThemeStyle.valueOf(stored ?: ADThemeStyle.MONOCHROME.name) }
+                .getOrDefault(ADThemeStyle.MONOCHROME)
+        }
     }
 
     fun set(context: Context, style: ADThemeStyle) {
