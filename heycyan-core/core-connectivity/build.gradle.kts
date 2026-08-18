@@ -14,7 +14,7 @@ plugins {
 
 android {
     namespace = "com.heycyan.core.connectivity"
-    compileSdk = 36
+    compileSdk = 37
 
     defaultConfig {
         minSdk = 24
