@@ -124,7 +124,6 @@
         <activity android:name=".agent.LocalModelsConfigureActivity" android:exported="false" android:label="Local models" android:configChanges="orientation|screenSize|screenLayout|keyboardHidden" />
         <activity android:name=".plugins.autodiary.AutoDiarySettingsActivity" android:exported="false" android:label="DayNote settings" />
         <activity android:name=".plugins.localagent.LocalAgentSettingsActivity" android:exported="false" android:label="Automation settings" />
-        <activity android:name=".plugins.autoaudio.AutoAudioSettingsActivity" android:exported="false" android:label="Auto Capture settings" />
         <activity android:name=".plugins.visualdiary.VisualDiarySettingsActivity" android:exported="false" android:label="Timeline settings" />
         <activity android:name=".bridge.runtimes.evenhub.EvenHubRuntimeActivity" android:exported="false" />
 
@@ -169,7 +168,6 @@
             android:multiprocess="false"
             android:permission="android.permission.INTERACT_ACROSS_USERS_FULL" />
 
-        <service android:name=".media.autocapture.AutoAudioCaptureService" android:exported="false" android:foregroundServiceType="dataSync" />
         <service android:name=".studiobridge.StudioBridgeForegroundService" android:exported="false" android:foregroundServiceType="microphone" />
 
         <service
