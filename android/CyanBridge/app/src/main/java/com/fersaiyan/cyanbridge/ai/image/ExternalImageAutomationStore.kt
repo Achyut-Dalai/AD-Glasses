@@ -27,6 +27,7 @@ object ExternalImageAutomationIntents {
     const val EXTRA_PROFILE_VERSION = "profile_version"
     const val EXTRA_PROFILE_TOKEN = "profile_token"
 
+    fun assistantEventAction(packageName: String): String = "$packageName.AI_EVENT"
     fun statusAction(packageName: String): String = "$packageName.AI_IMAGE_STATUS"
     fun profileAction(packageName: String): String = "$packageName.AI_IMAGE_PROFILE"
     fun internalStatusAction(packageName: String): String = "$packageName.AI_IMAGE_STATUS_UPDATED"
