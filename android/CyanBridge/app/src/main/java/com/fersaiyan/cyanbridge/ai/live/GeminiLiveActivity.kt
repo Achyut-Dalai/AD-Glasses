@@ -3,20 +3,42 @@ package com.fersaiyan.cyanbridge.ai.live
 import android.Manifest
 import android.content.pm.PackageManager
 import android.os.Bundle
-import android.view.View
-import android.widget.TextView
 import android.widget.Toast
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.app.AppCompatActivity
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.padding
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material3.Button
+import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedButton
+import androidx.compose.material3.Scaffold
+import androidx.compose.material3.Text
+import androidx.compose.material3.TopAppBar
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.setValue
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.unit.dp
 import androidx.core.content.ContextCompat
 import androidx.lifecycle.lifecycleScope
-import com.google.android.material.button.MaterialButton
-import com.fersaiyan.cyanbridge.R
 import com.fersaiyan.cyanbridge.ai.vision.ImageQuestionPreferences
 import com.fersaiyan.cyanbridge.ai.vision.ImageQuestionPromptResolver
 import com.fersaiyan.cyanbridge.ai.vision.ImageQuestionRoute
 import com.fersaiyan.cyanbridge.ui.localization.AppLanguagePreferences
+import com.fersaiyan.cyanbridge.ui.setThemedComposeContent
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -26,12 +48,11 @@ import java.util.concurrent.atomic.AtomicBoolean
 /** Visible, activity-scoped Gemini Live preview. It never records after Stop or background pause. */
 class GeminiLiveActivity : AppCompatActivity(), GeminiLiveClient.Listener {
     private lateinit var client: GeminiLiveClient
-    private lateinit var status: TextView
-    private lateinit var elapsed: TextView
-    private lateinit var network: TextView
-    private lateinit var indicators: TextView
-    private lateinit var startButton: MaterialButton
-    private lateinit var stopButton: MaterialButton
+    private var statusText by mutableStateOf("Ready")
+    private var elapsedText by mutableStateOf("Session not running")
+    private var networkText by mutableStateOf("Network: checking")
+    private var indicatorsText by mutableStateOf("Microphone: off   Glasses camera: off")
+    private var sessionActive by mutableStateOf(false)
     private var startedAtMs = 0L
     private var liveListening = false
     private var hardwareImageButtonRegistered = false
@@ -42,8 +63,8 @@ class GeminiLiveActivity : AppCompatActivity(), GeminiLiveClient.Listener {
         override fun run() {
             if (startedAtMs > 0L) {
                 val seconds = (System.currentTimeMillis() - startedAtMs) / 1_000L
-                elapsed.text = "Session ${seconds / 60}:${(seconds % 60).toString().padStart(2, '0')}"
-                elapsed.postDelayed(this, 1_000L)
+                elapsedText = "Session ${seconds / 60}:${(seconds % 60).toString().padStart(2, '0')}"
+                window.decorView.postDelayed(this, 1_000L)
             }
         }
     }
@@ -51,20 +72,22 @@ class GeminiLiveActivity : AppCompatActivity(), GeminiLiveClient.Listener {
     private val microphonePermission = registerForActivityResult(ActivityResultContracts.RequestPermission()) { granted ->
         if (granted) startLive() else Toast.makeText(this, "Microphone permission is required for Gemini Live", Toast.LENGTH_LONG).show()
     }
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        setContentView(R.layout.activity_gemini_live)
-        status = findViewById(R.id.gemini_live_status)
-        elapsed = findViewById(R.id.gemini_live_elapsed)
-        network = findViewById(R.id.gemini_live_network)
-        indicators = findViewById(R.id.gemini_live_indicators)
-        startButton = findViewById(R.id.gemini_live_start)
-        stopButton = findViewById(R.id.gemini_live_stop)
         client = GeminiLiveClient(this, this)
-
-        startButton.setOnClickListener { explainAndRequestMicrophone() }
-        stopButton.setOnClickListener { client.stop() }
-        setControls(false)
+        setThemedComposeContent {
+            GeminiLivePreviewScreen(
+                status = statusText,
+                elapsed = elapsedText,
+                network = networkText,
+                indicators = indicatorsText,
+                active = sessionActive,
+                onBack = ::finish,
+                onStart = ::explainAndRequestMicrophone,
+                onStop = { client.stop() },
+            )
+        }
     }
 
     override fun onResume() {
@@ -84,7 +107,7 @@ class GeminiLiveActivity : AppCompatActivity(), GeminiLiveClient.Listener {
     }
 
     override fun onDestroy() {
-        elapsed.removeCallbacks(ticker)
+        window.decorView.removeCallbacks(ticker)
         unregisterHardwareImageButton()
         client.close()
         super.onDestroy()
@@ -114,7 +137,7 @@ class GeminiLiveActivity : AppCompatActivity(), GeminiLiveClient.Listener {
 
     private fun captureHardwareImageQuestion() {
         if (!hardwareImageCaptureInProgress.compareAndSet(false, true)) return
-        status.text = "Receiving glasses AI photo"
+        statusText = "Receiving glasses AI photo"
         lifecycleScope.launch {
             val result = withContext(Dispatchers.IO) {
                 runCatching { GeminiLiveGlassesImageCapture().captureFromHardwareButton() }
@@ -122,8 +145,8 @@ class GeminiLiveActivity : AppCompatActivity(), GeminiLiveClient.Listener {
             result
                 .onSuccess { image ->
                     client.sendImage(image)
-                    indicators.text = "Microphone: on   Glasses AI photo: thumbnail sent"
-                    status.text = "Image sent to Gemini Live"
+                    indicatorsText = "Microphone: on   Glasses AI photo: thumbnail sent"
+                    statusText = "Image sent to Gemini Live"
                 }
                 .onFailure { error ->
                     Toast.makeText(this@GeminiLiveActivity, error.message ?: "Glasses image capture failed", Toast.LENGTH_LONG).show()
@@ -137,35 +160,34 @@ class GeminiLiveActivity : AppCompatActivity(), GeminiLiveClient.Listener {
 
     override fun onStateChanged(state: GeminiLiveState, detail: String) {
         runOnUiThread {
-            status.text = detail.ifBlank { state.name.lowercase().replaceFirstChar(Char::uppercase) }
+            statusText = detail.ifBlank { state.name.lowercase().replaceFirstChar(Char::uppercase) }
             val listening = state == GeminiLiveState.LISTENING
             liveListening = listening
             updateHardwareImageButtonRouting()
             if (listening && startedAtMs == 0L) {
                 startedAtMs = System.currentTimeMillis()
-                elapsed.post(ticker)
+                window.decorView.post(ticker)
             }
             if (state == GeminiLiveState.STOPPED || state == GeminiLiveState.ERROR) {
                 startedAtMs = 0L
-                elapsed.removeCallbacks(ticker)
-                elapsed.text = "Session not running"
+                window.decorView.removeCallbacks(ticker)
+                elapsedText = "Session not running"
             }
-            indicators.text = if (listening) "Gemini Live is listening   Microphone: on   Glasses AI photo: ready" else "Microphone: off   Glasses camera: off"
-            setControls(listening || state == GeminiLiveState.CONNECTING || state == GeminiLiveState.RECONNECTING)
+            indicatorsText = if (listening) {
+                "Gemini Live is listening   Microphone: on   Glasses AI photo: ready"
+            } else {
+                "Microphone: off   Glasses camera: off"
+            }
+            sessionActive = listening || state == GeminiLiveState.CONNECTING || state == GeminiLiveState.RECONNECTING
         }
     }
 
     override fun onInterrupted() {
-        runOnUiThread { status.text = "Gemini was interrupted. Listening for you." }
+        runOnUiThread { statusText = "Gemini was interrupted. Listening for you." }
     }
 
     override fun onNetworkChanged(available: Boolean) {
-        runOnUiThread { network.text = if (available) "Network: connected" else "Network: lost, reconnecting when available" }
-    }
-
-    private fun setControls(active: Boolean) {
-        startButton.visibility = if (active) View.GONE else View.VISIBLE
-        stopButton.visibility = if (active) View.VISIBLE else View.GONE
+        runOnUiThread { networkText = if (available) "Network: connected" else "Network: lost, reconnecting when available" }
     }
 
     private fun updateHardwareImageButtonRouting() {
@@ -182,5 +204,56 @@ class GeminiLiveActivity : AppCompatActivity(), GeminiLiveClient.Listener {
         if (!hardwareImageButtonRegistered) return
         GeminiLiveImageButtonRouter.unregister(hardwareImageButtonHandler)
         hardwareImageButtonRegistered = false
+    }
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun GeminiLivePreviewScreen(
+    status: String,
+    elapsed: String,
+    network: String,
+    indicators: String,
+    active: Boolean,
+    onBack: () -> Unit,
+    onStart: () -> Unit,
+    onStop: () -> Unit,
+) {
+    Scaffold(
+        topBar = {
+            TopAppBar(
+                title = { Text("Gemini Live preview") },
+                navigationIcon = {
+                    IconButton(onClick = onBack) {
+                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
+                    }
+                },
+            )
+        },
+    ) { paddingValues ->
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(paddingValues)
+                .padding(20.dp),
+            verticalArrangement = Arrangement.spacedBy(14.dp),
+        ) {
+            Text(status, style = MaterialTheme.typography.headlineSmall)
+            Text(elapsed, style = MaterialTheme.typography.bodyLarge)
+            Text(network, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            Text(indicators, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            Spacer(Modifier.height(4.dp))
+            Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                if (active) {
+                    OutlinedButton(onClick = onStop, modifier = Modifier.weight(1f)) {
+                        Text("Stop")
+                    }
+                } else {
+                    Button(onClick = onStart, modifier = Modifier.weight(1f)) {
+                        Text("Start Gemini Live")
+                    }
+                }
+            }
+        }
     }
 }
