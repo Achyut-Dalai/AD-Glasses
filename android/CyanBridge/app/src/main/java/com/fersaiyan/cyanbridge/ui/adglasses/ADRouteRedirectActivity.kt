@@ -138,8 +138,6 @@ abstract class ADRouteRedirectActivity : Activity() {
             },
         )
         finish()
-        @Suppress("DEPRECATION")
-        overridePendingTransition(0, 0)
     }
 }
 
