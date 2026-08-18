@@ -17,8 +17,10 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.rounded.KeyboardArrowRight
 import androidx.compose.material.icons.outlined.BatteryFull
 import androidx.compose.material.icons.outlined.Bolt
+import androidx.compose.material.icons.outlined.EventRepeat
 import androidx.compose.material.icons.outlined.GraphicEq
 import androidx.compose.material.icons.outlined.Mic
 import androidx.compose.material.icons.outlined.PhotoCamera
@@ -27,13 +29,13 @@ import androidx.compose.material.icons.outlined.Storage
 import androidx.compose.material.icons.outlined.Sync
 import androidx.compose.material.icons.outlined.Videocam
 import androidx.compose.material.icons.outlined.Visibility
-import androidx.compose.material.icons.rounded.KeyboardArrowRight
 import androidx.compose.material.icons.rounded.Translate
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Brush
@@ -45,6 +47,7 @@ import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.fersaiyan.cyanbridge.R
+import com.fersaiyan.cyanbridge.ai.orchestrator.AndroidModeCommandExecutor
 import com.fersaiyan.cyanbridge.devices.ADDeviceSupportPolicy
 import com.fersaiyan.cyanbridge.devices.DeviceProfileStore
 import com.fersaiyan.cyanbridge.shared.glasses.GlassesDashboardUiState
@@ -66,11 +69,10 @@ internal fun ADHomeSurface(
     val profile = DeviceProfileStore.loadLastSelected(context)
         ?.takeIf { ADDeviceSupportPolicy.isPairable(it.selectedClass) }
     val device = buildADDevicePresentation(state, profile)
-    val runtimeCapabilityTitle = state.nativePluginShortcut?.takeIf { it.isEnabled }?.title
-    val activeCapabilityTitle = runtimeCapabilityTitle?.let { runtimeTitle ->
-        ADAutomation.entries
-            .firstOrNull { it.visibleInTasks && it.runtimeTitle == runtimeTitle }
-            ?.title
+    val capabilityExecutor = remember(context) { AndroidModeCommandExecutor(context) }
+    val activeListener = capabilityExecutor.activeVoiceMode()
+    val activeListeningCapability = activeListener?.let { running ->
+        ADAutomation.entries.firstOrNull { it.toAssistantMode() == running }
     }
 
     Column(Modifier.fillMaxSize()) {
@@ -98,7 +100,7 @@ internal fun ADHomeSurface(
                 )
             }
 
-            if (state.meeting.isRecording || state.transfer.isVisible || activeCapabilityTitle != null) {
+            if (state.meeting.isRecording || state.transfer.isVisible || activeListeningCapability != null) {
                 item {
                     Column(verticalArrangement = Arrangement.spacedBy(9.dp)) {
                         Text("Active", style = MaterialTheme.typography.titleMedium)
@@ -120,13 +122,13 @@ internal fun ADHomeSurface(
                                 onClick = onOpenSync,
                             )
                         }
-                        activeCapabilityTitle?.let {
+                        activeListeningCapability?.let { capability ->
                             ADLiveRow(
-                                icon = Icons.Rounded.Translate,
-                                title = it,
-                                detail = "Capability active",
+                                icon = capability.homeActiveIcon(),
+                                title = capability.title,
+                                detail = "Live listening",
                                 status = "ON",
-                                onClick = onOpenTasks,
+                                onClick = if (capability == ADAutomation.TRANSLATOR) onOpenTranslator else onOpenTasks,
                             )
                         }
                     }
@@ -337,7 +339,7 @@ private fun ADHomeLink(
             Text(title, style = MaterialTheme.typography.titleMedium)
             Text(detail, style = MaterialTheme.typography.bodySmall, color = ADColors.Muted)
         }
-        Icon(Icons.Rounded.KeyboardArrowRight, null, tint = ADColors.Muted, modifier = Modifier.size(22.dp))
+        Icon(Icons.AutoMirrored.Rounded.KeyboardArrowRight, null, tint = ADColors.Muted, modifier = Modifier.size(22.dp))
     }
 }
 
@@ -367,4 +369,12 @@ private fun ADLiveRow(
         }
         ADStatusChip(status, ADStatusTone.SUCCESS)
     }
+}
+
+private fun ADAutomation.homeActiveIcon(): ImageVector = when (this) {
+    ADAutomation.TRANSLATOR -> Icons.Rounded.Translate
+    ADAutomation.MEETING_NOTES, ADAutomation.LIVE_CAPTIONS -> Icons.Outlined.GraphicEq
+    ADAutomation.ERRAND_BRAIN -> Icons.Outlined.EventRepeat
+    ADAutomation.LOCAL_AGENT -> Icons.Outlined.Bolt
+    ADAutomation.AUTO_DIARY, ADAutomation.AUTO_AUDIO, ADAutomation.VISUAL_DIARY -> Icons.Outlined.Mic
 }
