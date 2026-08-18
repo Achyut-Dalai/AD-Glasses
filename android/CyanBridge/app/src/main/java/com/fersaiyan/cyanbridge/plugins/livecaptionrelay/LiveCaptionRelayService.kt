@@ -45,18 +45,24 @@ class LiveCaptionRelayService : Service() {
 
     override fun onDestroy() {
         voiceRecognizer?.stop()
+        voiceRecognizer = null
+        LiveCaptionRelayPreferences.setEnabled(this, false)
         scope.cancel()
         super.onDestroy()
     }
 
     private fun startCaptioning() {
-        if (voiceRecognizer != null) return
+        if (voiceRecognizer != null) {
+            LiveCaptionRelayPreferences.setEnabled(this, true)
+            return
+        }
         if (!startPluginVoiceForeground(
                 service = this,
                 notificationId = LiveCaptionRelayNotificationHelper.NOTIFICATION_ID,
                 notification = LiveCaptionRelayNotificationHelper.buildNotification(this, "Starting live captions..."),
             )
         ) {
+            LiveCaptionRelayPreferences.setEnabled(this, false)
             Log.w(TAG, "Missing microphone or notification permission")
             stopSelf()
             return
@@ -79,15 +85,18 @@ class LiveCaptionRelayService : Service() {
             },
         )
         if (!recognizer.start()) {
+            LiveCaptionRelayPreferences.setEnabled(this, false)
             stopForeground(STOP_FOREGROUND_REMOVE)
             stopSelf()
             return
         }
         voiceRecognizer = recognizer
+        LiveCaptionRelayPreferences.setEnabled(this, true)
         LiveCaptionRelayNotificationHelper.updateNotification(this, "Listening for speech...")
     }
 
     private fun stopCaptioning() {
+        LiveCaptionRelayPreferences.setEnabled(this, false)
         voiceRecognizer?.stop()
         voiceRecognizer = null
         stopForeground(STOP_FOREGROUND_REMOVE)
