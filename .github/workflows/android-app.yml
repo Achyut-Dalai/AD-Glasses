@@ -49,26 +49,35 @@ jobs:
           distribution: temurin
           java-version: "17"
           cache: gradle
-          cache-dependency-path: android/CyanBridge/**/*.gradle*
+          cache-dependency-path: |
+            android/CyanBridge/**/*.gradle*
+            android/CyanBridge/gradle/libs.versions.toml
+            heycyan-core/**/*.gradle*
 
       - name: Set up Android SDK
         uses: android-actions/setup-android@v4
+        with:
+          cmdline-tools-version: 15859902
+          packages: platform-tools
 
       - name: Install Android SDK components
         run: >-
-          sdkmanager
-          "platforms;android-37"
+          sdkmanager --channel=0
+          "platforms;android-36"
           "build-tools;36.0.0"
           "cmake;3.22.1"
-          "ndk;27.1.12297006"
+          "ndk;29.0.14206865"
+
+      - name: Show stable native tool versions
+        run: sdkmanager --list --channel=0 | grep -E '(^| )((cmake|ndk);)' | head -80
 
       - name: Run app unit tests
         working-directory: android/CyanBridge
-        run: ./gradlew --no-daemon :app:testDebugUnitTest --stacktrace
+        run: ./gradlew --no-daemon --warning-mode=all :app:testDebugUnitTest --stacktrace
 
       - name: Assemble AD Glasses debug APK
         working-directory: android/CyanBridge
-        run: ./gradlew --no-daemon :app:assembleDebug --stacktrace
+        run: ./gradlew --no-daemon --warning-mode=all :app:assembleDebug --stacktrace
 
       - name: Verify branded APK output
         run: test -f android/CyanBridge/app/build/outputs/apk/debug/AD-Glasses.apk
