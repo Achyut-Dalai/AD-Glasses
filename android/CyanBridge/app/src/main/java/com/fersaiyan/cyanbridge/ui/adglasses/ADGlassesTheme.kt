@@ -8,7 +8,6 @@ import androidx.compose.material3.MaterialExpressiveTheme
 import androidx.compose.material3.MotionScheme
 import androidx.compose.material3.Shapes
 import androidx.compose.material3.Typography
-import androidx.compose.material3.darkColorScheme
 import androidx.compose.material3.lightColorScheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.SideEffect
@@ -22,104 +21,29 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.core.view.WindowCompat
 
-private data class ADPalette(
-    val ink: Color,
-    val muted: Color,
-    val background: Color,
-    val surface: Color,
-    val surfaceSubtle: Color,
-    val glass: Color,
-    val outline: Color,
-    val separator: Color,
-    val success: Color,
-    val successSoft: Color,
-    val warning: Color,
-    val warningSoft: Color,
-    val error: Color,
-    val errorSoft: Color,
-    val heroStart: Color,
-    val heroMiddle: Color,
-    val heroEnd: Color,
-    val dark: Boolean,
-)
-
-private val LightMonochromePalette = ADPalette(
-    ink = Color(0xFF1D1D1F),
-    muted = Color(0xFF6E6E73),
-    background = Color(0xFFF5F5F7),
-    surface = Color(0xFFFFFFFF),
-    surfaceSubtle = Color(0xFFEDEDEF),
-    glass = Color(0xF7FFFFFF),
-    outline = Color(0xFFC6C6C8),
-    separator = Color(0x3C3C434A),
-    success = Color(0xFF248A3D),
-    successSoft = Color(0xFFEAF7ED),
-    warning = Color(0xFFC93400),
-    warningSoft = Color(0xFFFFF3E8),
-    error = Color(0xFFFF3B30),
-    errorSoft = Color(0xFFFFEBEA),
-    heroStart = Color(0xFFFCFCFD),
-    heroMiddle = Color(0xFFF2F3F5),
-    heroEnd = Color(0xFFE8EAEE),
-    dark = false,
-)
-
-private val DarkMonochromePalette = ADPalette(
-    ink = Color(0xFFF3F3F5),
-    muted = Color(0xFFA9A9AE),
-    background = Color(0xFF09090B),
-    surface = Color(0xFF151517),
-    surfaceSubtle = Color(0xFF232326),
-    glass = Color(0xF2161619),
-    outline = Color(0xFF3A3A3E),
-    separator = Color(0x663A3A3E),
-    success = Color(0xFF72D68A),
-    successSoft = Color(0xFF15321D),
-    warning = Color(0xFFFF9F6E),
-    warningSoft = Color(0xFF3B2115),
-    error = Color(0xFFFF6961),
-    errorSoft = Color(0xFF3C1718),
-    heroStart = Color(0xFF202024),
-    heroMiddle = Color(0xFF151518),
-    heroEnd = Color(0xFF0C0C0F),
-    dark = true,
-)
-
-/**
- * Shared semantic product colors. AD Glasses owns one activity/theme at a time, so the
- * active palette is selected synchronously by ADGlassesTheme before composing its content.
- */
 internal object ADColors {
-    private var palette: ADPalette = LightMonochromePalette
-
-    internal fun use(style: ADThemeStyle) {
-        palette = if (style == ADThemeStyle.DARK_MONOCHROME) DarkMonochromePalette else LightMonochromePalette
-    }
-
-    val Ink get() = palette.ink
-    val Muted get() = palette.muted
-    val Blue get() = palette.ink
-    val BlueDeep get() = if (palette.dark) Color(0xFFF3F3F5) else Color(0xFF111113)
-    val BlueSoft get() = palette.surfaceSubtle
-    val Background get() = palette.background
-    val Surface get() = palette.surface
-    val SurfaceSubtle get() = palette.surfaceSubtle
-    val Glass get() = palette.glass
-    val Outline get() = palette.outline
-    val Separator get() = palette.separator
-    val Success get() = palette.success
-    val SuccessSoft get() = palette.successSoft
-    val Warning get() = palette.warning
-    val WarningSoft get() = palette.warningSoft
-    val Error get() = palette.error
-    val ErrorSoft get() = palette.errorSoft
-    val HeroStart get() = palette.heroStart
-    val HeroMiddle get() = palette.heroMiddle
-    val HeroEnd get() = palette.heroEnd
-    val IsDark get() = palette.dark
+    val Ink = Color(0xFF1D1D1F)
+    val Muted = Color(0xFF6E6E73)
+    // Existing product chrome remains monochrome until each screen is intentionally migrated.
+    // Semantic success/warning/error colours remain reserved for actual state feedback.
+    val Blue = Color(0xFF2C2C2E)
+    val BlueDeep = Color(0xFF111113)
+    val BlueSoft = Color(0xFFEAEAED)
+    val Background = Color(0xFFF5F5F7)
+    val Surface = Color(0xFFFFFFFF)
+    val SurfaceSubtle = Color(0xFFEDEDEF)
+    val Glass = Color(0xF7FFFFFF)
+    val Outline = Color(0xFFC6C6C8)
+    val Separator = Color(0x3C3C434A)
+    val Success = Color(0xFF248A3D)
+    val SuccessSoft = Color(0xFFEAF7ED)
+    val Warning = Color(0xFFC93400)
+    val WarningSoft = Color(0xFFFFF3E8)
+    val Error = Color(0xFFFF3B30)
+    val ErrorSoft = Color(0xFFFFEBEA)
 }
 
-private val MonochromeColorScheme = lightColorScheme(
+private val MonoColorScheme = lightColorScheme(
     primary = Color(0xFF202124),
     onPrimary = Color.White,
     primaryContainer = Color(0xFFE8E8EA),
@@ -140,37 +64,41 @@ private val MonochromeColorScheme = lightColorScheme(
     onSurfaceVariant = Color(0xFF626368),
     outline = Color(0xFFC6C6C8),
     outlineVariant = Color(0xFFE0E0E3),
-    error = Color(0xFFFF3B30),
+    error = ADColors.Error,
     onError = Color.White,
-    errorContainer = Color(0xFFFFEBEA),
-    onErrorContainer = Color(0xFFFF3B30),
+    errorContainer = ADColors.ErrorSoft,
+    onErrorContainer = ADColors.Error,
 )
 
-private val DarkMonochromeColorScheme = darkColorScheme(
-    primary = Color(0xFFF3F3F5),
-    onPrimary = Color(0xFF111113),
-    primaryContainer = Color(0xFF29292D),
-    onPrimaryContainer = Color(0xFFF3F3F5),
-    secondary = Color(0xFFC7C7CC),
-    onSecondary = Color(0xFF18181B),
-    secondaryContainer = Color(0xFF242428),
-    onSecondaryContainer = Color(0xFFE7E7EA),
-    tertiary = Color(0xFFA9A9AE),
-    onTertiary = Color(0xFF111113),
-    tertiaryContainer = Color(0xFF202024),
-    onTertiaryContainer = Color(0xFFE7E7EA),
-    background = Color(0xFF09090B),
-    onBackground = Color(0xFFF3F3F5),
-    surface = Color(0xFF151517),
-    onSurface = Color(0xFFF3F3F5),
-    surfaceVariant = Color(0xFF232326),
-    onSurfaceVariant = Color(0xFFA9A9AE),
-    outline = Color(0xFF4A4A4F),
-    outlineVariant = Color(0xFF2D2D31),
-    error = Color(0xFFFF6961),
-    onError = Color(0xFF250404),
-    errorContainer = Color(0xFF3C1718),
-    onErrorContainer = Color(0xFFFFB4AF),
+/**
+ * Vibe is an editorial, solid-colour theme: warm paper + deep teal + vermilion.
+ * It deliberately avoids neon gradients and generic blue/purple "AI" styling.
+ */
+private val VibeColorScheme = lightColorScheme(
+    primary = Color(0xFF006B6B),
+    onPrimary = Color.White,
+    primaryContainer = Color(0xFFB8F1ED),
+    onPrimaryContainer = Color(0xFF003737),
+    secondary = Color(0xFFD65332),
+    onSecondary = Color.White,
+    secondaryContainer = Color(0xFFFFDBD0),
+    onSecondaryContainer = Color(0xFF571808),
+    tertiary = Color(0xFF7A6300),
+    onTertiary = Color.White,
+    tertiaryContainer = Color(0xFFFFE36E),
+    onTertiaryContainer = Color(0xFF302600),
+    background = Color(0xFFF8F3E8),
+    onBackground = Color(0xFF20201D),
+    surface = Color(0xFFFFFBF3),
+    onSurface = Color(0xFF20201D),
+    surfaceVariant = Color(0xFFEDE6D8),
+    onSurfaceVariant = Color(0xFF625E55),
+    outline = Color(0xFF8E887D),
+    outlineVariant = Color(0xFFD6CFC1),
+    error = Color(0xFFBA1A1A),
+    onError = Color.White,
+    errorContainer = Color(0xFFFFDAD6),
+    onErrorContainer = Color(0xFF410002),
 )
 
 private val ADTypography = Typography(
@@ -252,7 +180,7 @@ private val ADTypography = Typography(
     ),
 )
 
-private val MonochromeShapes = Shapes(
+private val MonoShapes = Shapes(
     extraSmall = RoundedCornerShape(8.dp),
     small = RoundedCornerShape(12.dp),
     medium = RoundedCornerShape(18.dp),
@@ -260,31 +188,41 @@ private val MonochromeShapes = Shapes(
     extraLarge = RoundedCornerShape(34.dp),
 )
 
+private val VibeShapes = Shapes(
+    extraSmall = RoundedCornerShape(10.dp),
+    small = RoundedCornerShape(16.dp),
+    medium = RoundedCornerShape(24.dp),
+    large = RoundedCornerShape(32.dp),
+    extraLarge = RoundedCornerShape(44.dp),
+)
+
 @Composable
 fun ADGlassesTheme(
-    style: ADThemeStyle = ADThemeStyle.MONOCHROME,
+    style: ADThemeStyle = ADThemeStyle.MONO,
     content: @Composable () -> Unit,
 ) {
-    ADColors.use(style)
     val view = LocalView.current
     val context = LocalContext.current
-    val dark = style == ADThemeStyle.DARK_MONOCHROME
+    val scheme = if (style == ADThemeStyle.VIBE) VibeColorScheme else MonoColorScheme
+    val shapes = if (style == ADThemeStyle.VIBE) VibeShapes else MonoShapes
 
     if (!view.isInEditMode) {
         SideEffect {
             context.findActivity()?.window?.let { window ->
+                // API 37 targets edge-to-edge. System-bar colours are not mutated;
+                // only icon contrast is controlled through the insets controller.
                 WindowCompat.getInsetsController(window, view).apply {
-                    isAppearanceLightStatusBars = !dark
-                    isAppearanceLightNavigationBars = !dark
+                    isAppearanceLightStatusBars = true
+                    isAppearanceLightNavigationBars = true
                 }
             }
         }
     }
 
     MaterialExpressiveTheme(
-        colorScheme = if (dark) DarkMonochromeColorScheme else MonochromeColorScheme,
+        colorScheme = scheme,
         motionScheme = MotionScheme.expressive(),
-        shapes = MonochromeShapes,
+        shapes = shapes,
         typography = ADTypography,
         content = content,
     )

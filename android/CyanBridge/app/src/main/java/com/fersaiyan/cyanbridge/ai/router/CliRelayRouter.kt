@@ -2,7 +2,6 @@ package com.fersaiyan.cyanbridge.ai.router
 
 import android.content.Context
 import android.util.Base64
-import com.fersaiyan.cyanbridge.ai.orchestrator.AssistantWebModePreferences
 import com.fersaiyan.cyanbridge.shared.settings.AgentProviderType
 import com.fersaiyan.cyanbridge.agent.LocalAgentPrefs as AutomationPrefs
 import com.fersaiyan.cyanbridge.agent.CloudAiPrefs
@@ -131,13 +130,9 @@ object CliRelayClient {
         messages: List<Map<String, String>>,
         modelOverride: String? = null,
     ): Result<String> = runCatching {
-        val webRequested = AssistantWebModePreferences.explicitOverride(context) == true
         RelayServerCapabilitiesClient.get(context).getOrNull()?.let { caps ->
             if (!caps.chat) {
                 throw IllegalStateException("Server capability unavailable: chat")
-            }
-            if (webRequested && !caps.webSearch) {
-                throw IllegalStateException("Your configured relay does not advertise Web Search yet.")
             }
         }
 
@@ -157,10 +152,6 @@ object CliRelayClient {
                     .apply {
                         val model = modelOverride?.trim().orEmpty()
                         if (model.isNotBlank()) put("model", model)
-                        if (webRequested) {
-                            put("webSearch", true)
-                            put("grounding", true)
-                        }
                     }
             )
             response.optString("reply").ifBlank {
@@ -241,9 +232,9 @@ object CliRelayClient {
         val file = File(imagePath)
         require(file.exists()) { "Image file not found: $imagePath" }
         require(file.length() > 1000) { "Image file too small (${file.length()} bytes), likely corrupted" }
-
+        
         val imageBase64 = Base64.encodeToString(file.readBytes(), Base64.NO_WRAP)
-
+        
         val response = postJson(
             context,
             endpoint(context, "/image-query"),
