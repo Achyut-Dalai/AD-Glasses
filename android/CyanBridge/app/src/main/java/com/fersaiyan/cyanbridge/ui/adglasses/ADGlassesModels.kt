@@ -22,7 +22,6 @@ enum class ADRoute {
     ADVANCED,
     ABOUT,
     FIRMWARE,
-    CAPABILITY_DETAIL,
     LIBRARY_CAPTURES,
     LIBRARY_RECORDINGS,
     LIBRARY_NOTES,
@@ -35,7 +34,6 @@ enum class ADAutomation(
     val boundary: String,
     /** Existing service/plugin title used only to reconcile runtime state. */
     val runtimeTitle: String = title,
-    /** Product capability visibility on the primary AI surface. */
     val visibleInAi: Boolean = true,
 ) {
     LOCAL_AGENT(
@@ -52,6 +50,7 @@ enum class ADAutomation(
         "Audio notes",
         "Automatic",
         "Meeting Spark Notes",
+        false,
     ),
     LIVE_CAPTIONS(
         "Live Captions",
@@ -67,6 +66,7 @@ enum class ADAutomation(
         "Translation",
         "Automatic",
         "Hands-Free Translator",
+        false,
     ),
     ERRAND_BRAIN(
         "Cron",
@@ -74,6 +74,7 @@ enum class ADAutomation(
         "Scheduled tasks",
         "Configured AI",
         "Errand Brain",
+        false,
     ),
     AUTO_DIARY(
         "DayNote",
@@ -82,10 +83,6 @@ enum class ADAutomation(
         "On device",
         "Auto Diary",
     ),
-    /**
-     * Not a product capability. Kept temporarily so the inherited MainActivity host can compile
-     * until its old audio-capture switch is removed; it is never shown on the AD Glasses AI UI.
-     */
     @Deprecated("Background audio auto-capture is removed from the AD Glasses product")
     AUTO_AUDIO(
         "Removed audio capture",
