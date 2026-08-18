@@ -2,6 +2,7 @@ package com.fersaiyan.cyanbridge.ui
 
 import android.view.View
 import android.widget.FrameLayout
+import androidx.activity.compose.setContent
 import androidx.annotation.LayoutRes
 import androidx.appcompat.app.AppCompatActivity
 import androidx.compose.runtime.Composable
@@ -45,6 +46,18 @@ internal fun AppCompatActivity.installComposeHostWithLegacyAdapter(
     }
 }
 
+/** Mount a fully Compose Activity while preserving the user's app appearance settings. */
+internal fun AppCompatActivity.setThemedComposeContent(
+    content: @Composable () -> Unit,
+) {
+    val appearancePreferences = AppearancePreferences(this)
+    setContent {
+        val appearance by rememberAppearanceSettings(appearancePreferences)
+        CyanBridgeTheme(appearance, content)
+    }
+}
+
+/** Transitional overload used only by handler-backed screens that still need a hidden View tree. */
 internal fun AppCompatActivity.setThemedComposeContent(
     composeView: ComposeView,
     content: @Composable () -> Unit,
