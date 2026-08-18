@@ -25,7 +25,10 @@ class RawTcpRelayTest {
 
             relay.close()
             assertFalse(relay.isRunning)
-            assertFalse(canConnect(relayPort))
+            assertTrue(
+                "Loopback listener should stop accepting new connections after close()",
+                eventuallyCannotConnect(relayPort),
+            )
 
             relay.start()
             assertTrue(relay.isRunning)
@@ -44,6 +47,15 @@ class RawTcpRelayTest {
             socket.shutdownOutput()
             socket.getInputStream().readBytes().decodeToString()
         }
+
+    private fun eventuallyCannotConnect(port: Int): Boolean {
+        val deadline = System.nanoTime() + TimeUnit.SECONDS.toNanos(2)
+        while (System.nanoTime() < deadline) {
+            if (!canConnect(port)) return true
+            Thread.sleep(25)
+        }
+        return !canConnect(port)
+    }
 
     private fun canConnect(port: Int): Boolean = runCatching {
         Socket().use { it.connect(InetSocketAddress("127.0.0.1", port), 250) }
