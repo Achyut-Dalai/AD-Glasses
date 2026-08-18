@@ -124,7 +124,7 @@ fun ADGlassesApp(
                             onLocalSettings = { navigateTo(ADRoute.AI_LOCAL) },
                             onAssistantApps = { navigateTo(ADRoute.AI_ASSISTANT_APPS) },
                         )
-                        ADTab.LIBRARY -> ADNativeLibraryScreen(
+                        ADTab.LIBRARY -> ADExpressiveLibraryHome(
                             transferActive = dashboardState.transfer.isVisible,
                             onOpenSync = { navigateTo(ADRoute.SYNC) },
                             onCaptures = { navigateTo(ADRoute.LIBRARY_CAPTURES) },
