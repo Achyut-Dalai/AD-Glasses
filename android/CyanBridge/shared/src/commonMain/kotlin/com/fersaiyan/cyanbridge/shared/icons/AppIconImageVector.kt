@@ -116,8 +116,10 @@ private object ADSharedIcons {
     }
 
     val Send = outlined("AD.Send") { moveTo(4f, 12f); lineTo(20f, 4f); lineTo(15f, 20f); lineTo(11.5f, 13f); close(); moveTo(11.5f, 13f); lineTo(20f, 4f) }
+    val Share = outlined("AD.Share") { moveTo(8f, 12f); lineTo(16f, 5f); moveTo(16f, 5f); lineTo(16f, 9f); moveTo(16f, 5f); lineTo(12f, 5f); moveTo(16f, 5f); curveTo(18f, 7f, 19f, 9f, 19f, 12f); moveTo(5f, 10f); lineTo(5f, 19f); lineTo(17f, 19f); lineTo(17f, 14f) }
     val Appearance = outlined("AD.Appearance") { moveTo(4f, 12f); curveTo(4f, 7.5f, 7.5f, 4f, 12f, 4f); curveTo(16.5f, 4f, 20f, 7.5f, 20f, 12f); curveTo(20f, 16.5f, 16.5f, 20f, 12f, 20f); curveTo(10f, 20f, 9f, 19f, 9f, 17.5f); curveTo(9f, 16f, 10f, 15f, 12f, 15f); lineTo(14f, 15f); curveTo(16f, 15f, 17f, 13.5f, 17f, 12f); curveTo(17f, 10.5f, 16f, 9f, 14f, 9f); lineTo(12f, 9f) }
     val Add = outlined("AD.Add") { moveTo(12f, 5f); lineTo(12f, 19f); moveTo(5f, 12f); lineTo(19f, 12f) }
+    val Check = outlined("AD.Check") { moveTo(5f, 12.5f); lineTo(10f, 17f); lineTo(19f, 7f) }
     val Delete = outlined("AD.Delete") { moveTo(7f, 7f); lineTo(17f, 7f); moveTo(9f, 7f); lineTo(9f, 5f); lineTo(15f, 5f); lineTo(15f, 7f); moveTo(8f, 9f); lineTo(9f, 20f); lineTo(15f, 20f); lineTo(16f, 9f); moveTo(11f, 10f); lineTo(11f, 17f); moveTo(13f, 10f); lineTo(13f, 17f) }
     val Back = outlined("AD.Back") { moveTo(19f, 12f); lineTo(5f, 12f); moveTo(5f, 12f); lineTo(11f, 6f); moveTo(5f, 12f); lineTo(11f, 18f) }
     val More = outlined("AD.More") { moveTo(12f, 5f); lineTo(12f, 5.2f); moveTo(12f, 11.9f); lineTo(12f, 12.1f); moveTo(12f, 18.8f); lineTo(12f, 19f) }
@@ -157,8 +159,10 @@ fun AppIcon.imageVector(): ImageVector = when (this) {
     AppIcon.Sync -> ADSharedIcons.Sync
     AppIcon.Model -> ADSharedIcons.Model
     AppIcon.Send -> ADSharedIcons.Send
+    AppIcon.Share -> ADSharedIcons.Share
     AppIcon.Appearance -> ADSharedIcons.Appearance
     AppIcon.Add -> ADSharedIcons.Add
+    AppIcon.Check -> ADSharedIcons.Check
     AppIcon.Delete -> ADSharedIcons.Delete
     AppIcon.Back -> ADSharedIcons.Back
     AppIcon.More -> ADSharedIcons.More
