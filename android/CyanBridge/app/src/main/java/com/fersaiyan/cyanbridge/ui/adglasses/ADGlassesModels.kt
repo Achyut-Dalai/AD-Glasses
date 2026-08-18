@@ -34,7 +34,6 @@ enum class ADAutomation(
     val boundary: String,
     /** Existing service/plugin title used only to reconcile runtime state. */
     val runtimeTitle: String = title,
-    val visibleInAi: Boolean = true,
 ) {
     LOCAL_AGENT(
         "Automation",
@@ -42,7 +41,6 @@ enum class ADAutomation(
         "Android actions",
         "On device",
         "Local Agent",
-        false,
     ),
     MEETING_NOTES(
         "Soundbites",
@@ -50,7 +48,6 @@ enum class ADAutomation(
         "Audio notes",
         "Automatic",
         "Meeting Spark Notes",
-        false,
     ),
     LIVE_CAPTIONS(
         "Live Captions",
@@ -58,7 +55,6 @@ enum class ADAutomation(
         "Accessibility",
         "On device",
         "Live Caption Relay",
-        false,
     ),
     TRANSLATOR(
         "Translate",
@@ -66,7 +62,6 @@ enum class ADAutomation(
         "Translation",
         "Automatic",
         "Hands-Free Translator",
-        false,
     ),
     ERRAND_BRAIN(
         "Cron",
@@ -74,7 +69,6 @@ enum class ADAutomation(
         "Scheduled tasks",
         "Configured AI",
         "Errand Brain",
-        false,
     ),
     AUTO_DIARY(
         "DayNote",
@@ -90,7 +84,6 @@ enum class ADAutomation(
         "Removed",
         "Removed",
         "Auto Audio",
-        false,
     ),
     VISUAL_DIARY(
         "Timeline",
