@@ -28,7 +28,6 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.ColorFilter
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
@@ -62,26 +61,25 @@ internal fun ADNativeSettingsHubScreen(
         Surface(
             modifier = Modifier.fillMaxWidth().clickable(onClick = onDevice),
             shape = MaterialTheme.shapes.large,
-            color = MaterialTheme.colorScheme.surface,
-            contentColor = MaterialTheme.colorScheme.onSurface,
+            color = MaterialTheme.colorScheme.primaryContainer,
+            contentColor = MaterialTheme.colorScheme.onPrimaryContainer,
         ) {
             Row(
-                modifier = Modifier.padding(horizontal = 16.dp, vertical = 14.dp),
+                modifier = Modifier.padding(horizontal = 18.dp, vertical = 16.dp),
                 verticalAlignment = Alignment.CenterVertically,
             ) {
                 Surface(
                     shape = MaterialTheme.shapes.medium,
-                    color = MaterialTheme.colorScheme.surfaceVariant,
+                    color = MaterialTheme.colorScheme.surface,
                 ) {
                     Image(
                         painter = painterResource(R.drawable.ad_glasses_hero_v4),
                         contentDescription = "Glasses",
-                        modifier = Modifier.size(width = 82.dp, height = 46.dp).padding(6.dp),
+                        modifier = Modifier.size(width = 86.dp, height = 48.dp).padding(6.dp),
                         contentScale = ContentScale.Fit,
-                        colorFilter = if (ADColors.IsDark) ColorFilter.tint(ADColors.Ink.copy(alpha = 0.88f)) else null,
                     )
                 }
-                Column(Modifier.padding(start = 13.dp).weight(1f)) {
+                Column(Modifier.padding(start = 14.dp).weight(1f)) {
                     Text(
                         presentation.identityLabel ?: "Glasses",
                         style = MaterialTheme.typography.titleLarge,
@@ -92,13 +90,13 @@ internal fun ADNativeSettingsHubScreen(
                     Text(
                         presentation.statusLabel,
                         style = MaterialTheme.typography.bodyMedium,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        color = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.72f),
                     )
                 }
                 Icon(
                     Icons.AutoMirrored.Rounded.KeyboardArrowRight,
                     contentDescription = null,
-                    tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                    tint = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.65f),
                 )
             }
         }
@@ -121,14 +119,9 @@ internal fun ADNativeSettingsHubScreen(
         }
 
         ADExpressiveSettingsGroup("AD Glasses") {
-            ADExpressiveSettingsRow(
-                Icons.Outlined.DeveloperMode,
-                "Advanced",
-                "Appearance, diagnostics and system controls",
-                onAdvanced,
-            )
+            ADExpressiveSettingsRow(Icons.Outlined.DeveloperMode, "Advanced", "Diagnostics and system controls", onAdvanced)
             ADExpressiveSettingsDivider()
-            ADExpressiveSettingsRow(Icons.Outlined.Info, "About AD Glasses", "Version, principles and product information", onAbout)
+            ADExpressiveSettingsRow(Icons.Outlined.Info, "About AD Glasses", "Version and product information", onAbout)
         }
     }
 }

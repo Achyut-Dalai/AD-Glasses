@@ -22,6 +22,7 @@ enum class ADRoute {
     ADVANCED,
     ABOUT,
     FIRMWARE,
+    CAPABILITY_DETAIL,
     LIBRARY_CAPTURES,
     LIBRARY_RECORDINGS,
     LIBRARY_NOTES,
@@ -34,6 +35,8 @@ enum class ADAutomation(
     val boundary: String,
     /** Existing service/plugin title used only to reconcile runtime state. */
     val runtimeTitle: String = title,
+    /** Product capability visibility on the primary AI surface. */
+    val visibleInAi: Boolean = true,
 ) {
     LOCAL_AGENT(
         "Automation",
@@ -41,6 +44,7 @@ enum class ADAutomation(
         "Android actions",
         "On device",
         "Local Agent",
+        false,
     ),
     MEETING_NOTES(
         "Soundbites",
@@ -55,6 +59,7 @@ enum class ADAutomation(
         "Accessibility",
         "On device",
         "Live Caption Relay",
+        false,
     ),
     TRANSLATOR(
         "Translate",
@@ -77,6 +82,10 @@ enum class ADAutomation(
         "On device",
         "Auto Diary",
     ),
+    /**
+     * Not a product capability. Kept temporarily so the inherited MainActivity host can compile
+     * until its old audio-capture switch is removed; it is never shown on the AD Glasses AI UI.
+     */
     @Deprecated("Background audio auto-capture is removed from the AD Glasses product")
     AUTO_AUDIO(
         "Removed audio capture",
@@ -84,6 +93,7 @@ enum class ADAutomation(
         "Removed",
         "Removed",
         "Auto Audio",
+        false,
     ),
     VISUAL_DIARY(
         "Timeline",

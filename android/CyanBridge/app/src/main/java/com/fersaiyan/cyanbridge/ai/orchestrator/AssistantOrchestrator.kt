@@ -25,7 +25,7 @@ data class AssistantTurn(
     val imagePath: String? = null,
     /** Hidden artifact description supplied to the model but not persisted as the user's words. */
     val contextText: String? = null,
-    /** null = automatic/global preference, true/false = explicit turn preference. */
+    /** null = automatic, true/false = explicit user/UI preference. */
     val webRequested: Boolean? = null,
 )
 
@@ -96,10 +96,9 @@ class AssistantOrchestrator(
         session.addUserTurn(prompt)
         val threadId = session.activeThreadId()
         val history = session.messages()
-        val requestedWeb = turn.webRequested ?: AssistantWebModePreferences.explicitOverride(appContext)
         val useWeb = AssistantWebPolicy.shouldUseWeb(
             text = prompt,
-            requested = requestedWeb,
+            requested = turn.webRequested,
             history = history,
         )
         val executionContext = AssistantExecutionContext(

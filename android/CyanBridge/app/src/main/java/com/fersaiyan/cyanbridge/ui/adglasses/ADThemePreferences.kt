@@ -4,7 +4,6 @@ import android.content.Context
 
 enum class ADThemeStyle(val label: String) {
     MONOCHROME("Monochrome"),
-    DARK_MONOCHROME("Dark Monochrome"),
 }
 
 internal object ADThemePreferences {
@@ -14,12 +13,10 @@ internal object ADThemePreferences {
     fun get(context: Context): ADThemeStyle {
         val stored = context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
             .getString(KEY_STYLE, ADThemeStyle.MONOCHROME.name)
-
-        // Retired light-theme names always migrate to Monochrome.
         return when (stored) {
+            ADThemeStyle.MONOCHROME.name -> ADThemeStyle.MONOCHROME
             "MONO", "VIBE" -> ADThemeStyle.MONOCHROME
-            else -> runCatching { ADThemeStyle.valueOf(stored ?: ADThemeStyle.MONOCHROME.name) }
-                .getOrDefault(ADThemeStyle.MONOCHROME)
+            else -> ADThemeStyle.MONOCHROME
         }
     }
 
