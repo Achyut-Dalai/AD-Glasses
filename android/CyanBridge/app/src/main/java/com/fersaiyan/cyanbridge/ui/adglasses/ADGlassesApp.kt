@@ -46,7 +46,7 @@ fun ADGlassesApp(
     }
     val openCapability: (ADAutomation) -> Unit = { automation ->
         selectedAutomation = automation
-        navigateTo(ADRoute.TASK_DETAIL)
+        navigateTo(ADRoute.CAPABILITY_DETAIL)
     }
 
     LaunchedEffect(externalRequest?.id) {
@@ -58,7 +58,7 @@ fun ADGlassesApp(
                 conversationRequest = request
             }
             ADExternalDestination.SETTINGS -> routeStack = listOf(ADRoute.MAIN, ADRoute.SETTINGS)
-            ADExternalDestination.MODES -> {
+            ADExternalDestination.AI -> {
                 routeStack = listOf(ADRoute.MAIN)
                 selectedTab = ADTab.AI
             }
@@ -169,7 +169,7 @@ fun ADGlassesApp(
                     )
                     ADRoute.ABOUT -> ADAboutScreen(navigateBack)
                     ADRoute.FIRMWARE -> ADFirmwareScreen(dashboardState, host, navigateBack)
-                    ADRoute.TASK_DETAIL -> ADNativeTaskDetailScreen(
+                    ADRoute.CAPABILITY_DETAIL -> ADNativeTaskDetailScreen(
                         automation = selectedAutomation,
                         onBack = navigateBack,
                     )
