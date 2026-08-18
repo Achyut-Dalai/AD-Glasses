@@ -73,11 +73,31 @@ jobs:
 
       - name: Run app unit tests
         working-directory: android/CyanBridge
-        run: ./gradlew --no-daemon --warning-mode=all :app:testDebugUnitTest --stacktrace
+        shell: bash
+        run: |
+          set +e
+          ./gradlew --no-daemon --warning-mode=all :app:testDebugUnitTest --stacktrace 2>&1 | tee /tmp/ad-gradle-unit.log
+          status=${PIPESTATUS[0]}
+          if [ "$status" -ne 0 ]; then
+            echo "::group::Compact Gradle failure summary"
+            grep -Ei '(^e:|^w:|FAILURE:|What went wrong:|Could not |deprecated|deprecation|error:|Unresolved reference|Compilation error)' /tmp/ad-gradle-unit.log | tail -300 || true
+            echo "::endgroup::"
+          fi
+          exit "$status"
 
       - name: Assemble AD Glasses debug APK
         working-directory: android/CyanBridge
-        run: ./gradlew --no-daemon --warning-mode=all :app:assembleDebug --stacktrace
+        shell: bash
+        run: |
+          set +e
+          ./gradlew --no-daemon --warning-mode=all :app:assembleDebug --stacktrace 2>&1 | tee /tmp/ad-gradle-assemble.log
+          status=${PIPESTATUS[0]}
+          if [ "$status" -ne 0 ]; then
+            echo "::group::Compact Gradle failure summary"
+            grep -Ei '(^e:|^w:|FAILURE:|What went wrong:|Could not |deprecated|deprecation|error:|Unresolved reference|Compilation error)' /tmp/ad-gradle-assemble.log | tail -300 || true
+            echo "::endgroup::"
+          fi
+          exit "$status"
 
       - name: Verify branded APK output
         run: test -f android/CyanBridge/app/build/outputs/apk/debug/AD-Glasses.apk
