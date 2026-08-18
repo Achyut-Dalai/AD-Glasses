@@ -6,6 +6,7 @@ import android.content.Intent;
 import android.net.NetworkInfo;
 import android.net.wifi.p2p.WifiP2pDevice;
 import android.net.wifi.p2p.WifiP2pManager;
+import android.os.Build;
 import android.util.Log;
 
 public class CoreWifiP2pBroadcastReceiver extends BroadcastReceiver {
@@ -39,7 +40,7 @@ public class CoreWifiP2pBroadcastReceiver extends BroadcastReceiver {
         }
 
         if (WifiP2pManager.WIFI_P2P_CONNECTION_CHANGED_ACTION.equals(action)) {
-            NetworkInfo networkInfo = intent.getParcelableExtra(WifiP2pManager.EXTRA_NETWORK_INFO);
+            NetworkInfo networkInfo = getNetworkInfo(intent);
             boolean connected = networkInfo != null && networkInfo.isConnected();
             Log.d(tag, "Connection state changed: " + connected);
 
@@ -54,11 +55,27 @@ public class CoreWifiP2pBroadcastReceiver extends BroadcastReceiver {
         }
 
         if (WifiP2pManager.WIFI_P2P_THIS_DEVICE_CHANGED_ACTION.equals(action)) {
-            WifiP2pDevice device = intent.getParcelableExtra(WifiP2pManager.EXTRA_WIFI_P2P_DEVICE);
+            WifiP2pDevice device = getThisDevice(intent);
             if (device != null) {
                 Log.d(tag, "This device changed: " + device.deviceName + " - " + device.status);
                 handler.onThisDeviceChanged(device);
             }
         }
+    }
+
+    @SuppressWarnings("deprecation")
+    private static NetworkInfo getNetworkInfo(Intent intent) {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            return intent.getParcelableExtra(WifiP2pManager.EXTRA_NETWORK_INFO, NetworkInfo.class);
+        }
+        return intent.getParcelableExtra(WifiP2pManager.EXTRA_NETWORK_INFO);
+    }
+
+    @SuppressWarnings("deprecation")
+    private static WifiP2pDevice getThisDevice(Intent intent) {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            return intent.getParcelableExtra(WifiP2pManager.EXTRA_WIFI_P2P_DEVICE, WifiP2pDevice.class);
+        }
+        return intent.getParcelableExtra(WifiP2pManager.EXTRA_WIFI_P2P_DEVICE);
     }
 }
