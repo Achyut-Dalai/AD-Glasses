@@ -2,8 +2,9 @@ package com.fersaiyan.cyanbridge.ui.adglasses
 
 import android.content.Context
 
+/** AD Glasses intentionally ships with one light product theme. */
 enum class ADThemeStyle(val label: String) {
-    MONOCHROME("Monochrome"),
+    OPTICAL_FROST("Optical Frost"),
 }
 
 internal object ADThemePreferences {
@@ -12,11 +13,13 @@ internal object ADThemePreferences {
 
     fun get(context: Context): ADThemeStyle {
         val stored = context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
-            .getString(KEY_STYLE, ADThemeStyle.MONOCHROME.name)
+            .getString(KEY_STYLE, ADThemeStyle.OPTICAL_FROST.name)
         return when (stored) {
-            ADThemeStyle.MONOCHROME.name -> ADThemeStyle.MONOCHROME
-            "MONO", "VIBE" -> ADThemeStyle.MONOCHROME
-            else -> ADThemeStyle.MONOCHROME
+            ADThemeStyle.OPTICAL_FROST.name,
+            "MONOCHROME",
+            "MONO",
+            "VIBE" -> ADThemeStyle.OPTICAL_FROST
+            else -> ADThemeStyle.OPTICAL_FROST
         }
     }
 
