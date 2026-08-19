@@ -47,7 +47,6 @@ import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import java.io.File
@@ -85,13 +84,13 @@ internal fun ADConversationMessageBody(
     userMessage: Boolean,
 ) {
     val blocks = parseADConversationBlocks(content)
-    Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+    Column(verticalArrangement = Arrangement.spacedBy(11.dp)) {
         blocks.forEach { block ->
             when (block) {
                 is ADConversationBlock.TextBlock -> Text(
                     text = block.text,
                     style = MaterialTheme.typography.bodyLarge,
-                    color = ADColors.Ink,
+                    color = if (userMessage) ADColors.Surface else ADColors.Ink,
                 )
                 is ADConversationBlock.CodeBlock -> ADConversationCodeBlock(block)
                 is ADConversationBlock.LinkBlock -> ADConversationLinkCard(block, userMessage)
@@ -105,9 +104,9 @@ private fun ADConversationCodeBlock(block: ADConversationBlock.CodeBlock) {
     Column(
         modifier = Modifier
             .fillMaxWidth()
-            .background(ADColors.SurfaceSubtle, RoundedCornerShape(14.dp))
-            .padding(13.dp),
-        verticalArrangement = Arrangement.spacedBy(7.dp),
+            .background(ADColors.SurfaceSubtle, RoundedCornerShape(18.dp))
+            .padding(14.dp),
+        verticalArrangement = Arrangement.spacedBy(8.dp),
     ) {
         Row(verticalAlignment = Alignment.CenterVertically) {
             Icon(
@@ -119,13 +118,13 @@ private fun ADConversationCodeBlock(block: ADConversationBlock.CodeBlock) {
             Text(
                 block.language?.takeIf { it.isNotBlank() } ?: "Code",
                 modifier = Modifier.padding(start = 7.dp),
-                style = MaterialTheme.typography.labelMedium,
+                style = MaterialTheme.typography.labelSmall,
                 color = ADColors.Muted,
             )
         }
         Text(
             block.code,
-            style = MaterialTheme.typography.bodyMedium.copy(fontFamily = FontFamily.Monospace),
+            style = MaterialTheme.typography.bodyMedium.copy(fontFamily = ADTechFontFamily),
             color = ADColors.Ink,
         )
     }
@@ -148,8 +147,8 @@ private fun ADConversationLinkCard(
         modifier = Modifier
             .fillMaxWidth()
             .background(
-                if (userMessage) ADColors.Surface.copy(alpha = 0.72f) else ADColors.Surface,
-                RoundedCornerShape(15.dp),
+                if (userMessage) ADColors.Surface.copy(alpha = 0.96f) else ADColors.Surface,
+                RoundedCornerShape(18.dp),
             )
             .clickable {
                 val targetUri = uri ?: return@clickable
@@ -158,8 +157,8 @@ private fun ADConversationLinkCard(
                 }
                 runCatching { context.startActivity(intent) }
             }
-            .padding(12.dp),
-        verticalArrangement = Arrangement.spacedBy(if (localPreview) 10.dp else 0.dp),
+            .padding(13.dp),
+        verticalArrangement = Arrangement.spacedBy(if (localPreview) 11.dp else 0.dp),
     ) {
         if (localPreview && uri != null) {
             ADConversationLocalMediaPreview(
@@ -172,16 +171,11 @@ private fun ADConversationLinkCard(
         Row(verticalAlignment = Alignment.CenterVertically) {
             Box(
                 modifier = Modifier
-                    .size(38.dp)
-                    .background(ADColors.SurfaceSubtle, RoundedCornerShape(11.dp)),
+                    .size(40.dp)
+                    .background(ADColors.SurfaceSubtle, RoundedCornerShape(13.dp)),
                 contentAlignment = Alignment.Center,
             ) {
-                Icon(
-                    icon,
-                    contentDescription = null,
-                    tint = ADColors.Ink,
-                    modifier = Modifier.size(20.dp),
-                )
+                Icon(icon, contentDescription = null, tint = ADColors.Ink, modifier = Modifier.size(20.dp))
             }
             Column(Modifier.padding(start = 11.dp).weight(1f)) {
                 Text(
@@ -246,7 +240,7 @@ private fun ADConversationLocalMediaPreview(
         modifier = Modifier
             .fillMaxWidth()
             .aspectRatio(16f / 10f)
-            .clip(RoundedCornerShape(12.dp))
+            .clip(RoundedCornerShape(15.dp))
             .background(ADColors.SurfaceSubtle),
         contentAlignment = Alignment.Center,
     ) {
@@ -267,15 +261,15 @@ private fun ADConversationLocalMediaPreview(
         if (video) {
             Box(
                 modifier = Modifier
-                    .size(44.dp)
-                    .background(ADColors.Ink.copy(alpha = 0.78f), CircleShape),
+                    .size(46.dp)
+                    .background(ADColors.Ink.copy(alpha = 0.82f), CircleShape),
                 contentAlignment = Alignment.Center,
             ) {
                 Icon(
                     Icons.Outlined.PlayArrow,
                     contentDescription = "Play video",
                     tint = Color.White,
-                    modifier = Modifier.size(24.dp),
+                    modifier = Modifier.size(25.dp),
                 )
             }
         }
