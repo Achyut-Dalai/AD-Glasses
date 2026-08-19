@@ -18,6 +18,7 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.outlined.AutoAwesome
 import androidx.compose.material.icons.outlined.BatteryFull
 import androidx.compose.material.icons.outlined.GraphicEq
 import androidx.compose.material.icons.outlined.Mic
@@ -138,14 +139,12 @@ internal fun ADHomeSurface(
                     Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
                         ADHomeAction(
                             title = "Ask AI",
-                            detail = "Ask by voice",
-                            icon = Icons.Outlined.Mic,
+                            icon = Icons.Outlined.AutoAwesome,
                             modifier = Modifier.weight(1f),
                             onClick = host.onVoiceQuestion,
                         )
                         ADHomeAction(
                             title = "Photo",
-                            detail = "Take a photo",
                             icon = Icons.Outlined.PhotoCamera,
                             modifier = Modifier.weight(1f),
                             onClick = host.onCapturePhoto,
@@ -154,14 +153,12 @@ internal fun ADHomeSurface(
                     Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
                         ADHomeAction(
                             title = "Video",
-                            detail = "Record from glasses",
                             icon = Icons.Outlined.Videocam,
                             modifier = Modifier.weight(1f),
                             onClick = host.onToggleVideo,
                         )
                         ADHomeAction(
                             title = "Translate",
-                            detail = "Live conversation",
                             icon = Icons.Rounded.Translate,
                             active = translateActive,
                             modifier = Modifier.weight(1f),
@@ -171,7 +168,6 @@ internal fun ADHomeSurface(
                     Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
                         ADHomeAction(
                             title = "Soundbites",
-                            detail = "Turn speech into notes",
                             icon = Icons.Outlined.GraphicEq,
                             active = soundbitesActive,
                             modifier = Modifier.weight(1f),
@@ -179,8 +175,7 @@ internal fun ADHomeSurface(
                         )
                         ADHomeAction(
                             title = "Audio",
-                            detail = if (state.meeting.isRecording) "Stop recording" else "Start recording",
-                            icon = Icons.Outlined.GraphicEq,
+                            icon = Icons.Outlined.Mic,
                             active = state.meeting.isRecording,
                             modifier = Modifier.weight(1f),
                             onClick = if (state.meeting.isRecording) host.onStopRecording else host.onStartRecording,
@@ -280,7 +275,6 @@ private fun ADReadinessStage(
 @Composable
 private fun ADHomeAction(
     title: String,
-    detail: String,
     icon: ImageVector,
     modifier: Modifier = Modifier,
     active: Boolean = false,
@@ -292,27 +286,25 @@ private fun ADHomeAction(
 
     Column(
         modifier = modifier
-            .heightIn(min = 116.dp)
-            .background(container, RoundedCornerShape(20.dp))
+            .heightIn(min = 112.dp)
+            .background(container, RoundedCornerShape(22.dp))
             .clickable(onClick = onClick)
-            .padding(15.dp),
-        verticalArrangement = Arrangement.SpaceBetween,
+            .padding(horizontal = 14.dp, vertical = 15.dp),
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.Center,
     ) {
         Box(
-            Modifier.size(40.dp).background(iconContainer, RoundedCornerShape(12.dp)),
+            Modifier.size(54.dp).background(iconContainer, RoundedCornerShape(18.dp)),
             contentAlignment = Alignment.Center,
         ) {
-            Icon(icon, null, tint = iconColor, modifier = Modifier.size(21.dp))
+            Icon(icon, null, tint = iconColor, modifier = Modifier.size(26.dp))
         }
-        Spacer(Modifier.height(12.dp))
-        Text(title, style = MaterialTheme.typography.titleMedium, maxLines = 1)
-        Spacer(Modifier.height(2.dp))
+        Spacer(Modifier.height(11.dp))
         Text(
-            detail,
-            style = MaterialTheme.typography.bodySmall,
-            color = ADColors.Muted,
-            maxLines = 2,
-            overflow = TextOverflow.Ellipsis,
+            title,
+            style = MaterialTheme.typography.titleMedium,
+            fontWeight = FontWeight.SemiBold,
+            maxLines = 1,
         )
     }
 }
