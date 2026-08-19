@@ -1,5 +1,6 @@
 package com.fersaiyan.cyanbridge.ui.adglasses
 
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -51,7 +52,7 @@ internal fun ADExpressiveLibraryHome(
         LazyColumn(
             modifier = Modifier.fillMaxSize(),
             contentPadding = androidx.compose.foundation.layout.PaddingValues(16.dp, 6.dp, 16.dp, 30.dp),
-            verticalArrangement = Arrangement.spacedBy(16.dp),
+            verticalArrangement = Arrangement.spacedBy(18.dp),
         ) {
             item {
                 ADLibraryHero(
@@ -92,28 +93,35 @@ internal fun ADExpressiveLibraryHome(
                 Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
                     Text(
                         "Browse",
-                        style = MaterialTheme.typography.titleLarge,
+                        style = MaterialTheme.typography.titleMedium,
                         fontWeight = FontWeight.SemiBold,
-                        modifier = Modifier.padding(start = 2.dp, bottom = 2.dp),
+                        modifier = Modifier.padding(start = 2.dp, bottom = 1.dp),
                     )
-                    ADLibraryDestinationRow(
+                    ADLibraryPrimaryDestination(
                         icon = Icons.Outlined.Image,
                         title = "Captures",
-                        detail = "Photos and videos",
+                        detail = "Photos and videos from your glasses",
                         onClick = onCaptures,
                     )
-                    ADLibraryDestinationRow(
-                        icon = Icons.Outlined.GraphicEq,
-                        title = "Recordings",
-                        detail = "Audio and transcripts",
-                        onClick = onRecordings,
-                    )
-                    ADLibraryDestinationRow(
-                        icon = Icons.Outlined.Notes,
-                        title = "Notes",
-                        detail = "Saved notes and summaries",
-                        onClick = onNotes,
-                    )
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(10.dp),
+                    ) {
+                        ADLibraryCompactDestination(
+                            icon = Icons.Outlined.GraphicEq,
+                            title = "Recordings",
+                            detail = "Audio and transcripts",
+                            modifier = Modifier.weight(1f),
+                            onClick = onRecordings,
+                        )
+                        ADLibraryCompactDestination(
+                            icon = Icons.Outlined.Notes,
+                            title = "Notes",
+                            detail = "Saved notes and summaries",
+                            modifier = Modifier.weight(1f),
+                            onClick = onNotes,
+                        )
+                    }
                 }
             }
         }
@@ -131,7 +139,8 @@ private fun ADLibraryHero(
         modifier = Modifier.fillMaxWidth(),
         shape = RoundedCornerShape(26.dp),
         color = ADColors.Surface,
-        shadowElevation = 1.dp,
+        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant),
+        shadowElevation = 2.dp,
     ) {
         Column(Modifier.padding(18.dp)) {
             Row(verticalAlignment = Alignment.Top) {
@@ -172,7 +181,7 @@ private fun ADLibraryHero(
 }
 
 @Composable
-private fun ADLibraryDestinationRow(
+private fun ADLibraryPrimaryDestination(
     icon: ImageVector,
     title: String,
     detail: String,
@@ -180,27 +189,30 @@ private fun ADLibraryDestinationRow(
 ) {
     Surface(
         onClick = onClick,
-        modifier = Modifier.fillMaxWidth().heightIn(min = 116.dp),
-        shape = RoundedCornerShape(24.dp),
+        modifier = Modifier.fillMaxWidth().heightIn(min = 132.dp),
+        shape = RoundedCornerShape(30.dp),
         color = ADColors.Surface,
-        tonalElevation = 1.dp,
+        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant),
+        shadowElevation = 1.dp,
     ) {
         Row(
             modifier = Modifier.padding(horizontal = 18.dp, vertical = 18.dp),
             verticalAlignment = Alignment.CenterVertically,
         ) {
-            Box(
-                modifier = Modifier
-                    .size(58.dp)
-                    .background(ADColors.SurfaceSubtle, RoundedCornerShape(19.dp)),
-                contentAlignment = Alignment.Center,
+            Surface(
+                modifier = Modifier.size(68.dp),
+                shape = RoundedCornerShape(22.dp),
+                color = ADColors.Ink,
+                contentColor = ADColors.Surface,
             ) {
-                Icon(icon, contentDescription = null, tint = ADColors.Ink, modifier = Modifier.size(27.dp))
+                Box(contentAlignment = Alignment.Center) {
+                    Icon(icon, contentDescription = null, modifier = Modifier.size(30.dp))
+                }
             }
-            Column(Modifier.padding(start = 16.dp).weight(1f)) {
+            Column(Modifier.padding(start = 17.dp).weight(1f)) {
                 Text(
                     title,
-                    style = MaterialTheme.typography.titleLarge,
+                    style = MaterialTheme.typography.headlineSmall,
                     fontWeight = FontWeight.SemiBold,
                     maxLines = 1,
                 )
@@ -209,7 +221,7 @@ private fun ADLibraryDestinationRow(
                     detail,
                     style = MaterialTheme.typography.bodyMedium,
                     color = ADColors.Muted,
-                    maxLines = 1,
+                    maxLines = 2,
                     overflow = TextOverflow.Ellipsis,
                 )
             }
@@ -217,14 +229,72 @@ private fun ADLibraryDestinationRow(
                 shape = CircleShape,
                 color = ADColors.SurfaceSubtle,
             ) {
-                Box(Modifier.size(38.dp), contentAlignment = Alignment.Center) {
+                Box(Modifier.size(40.dp), contentAlignment = Alignment.Center) {
                     Icon(
                         Icons.AutoMirrored.Rounded.KeyboardArrowRight,
                         contentDescription = null,
                         tint = ADColors.Ink,
-                        modifier = Modifier.size(22.dp),
+                        modifier = Modifier.size(23.dp),
                     )
                 }
+            }
+        }
+    }
+}
+
+@Composable
+private fun ADLibraryCompactDestination(
+    icon: ImageVector,
+    title: String,
+    detail: String,
+    modifier: Modifier = Modifier,
+    onClick: () -> Unit,
+) {
+    Surface(
+        onClick = onClick,
+        modifier = modifier.heightIn(min = 164.dp),
+        shape = RoundedCornerShape(22.dp),
+        color = ADColors.Surface,
+        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant),
+        shadowElevation = 1.dp,
+    ) {
+        Column(
+            modifier = Modifier.padding(15.dp),
+            verticalArrangement = Arrangement.SpaceBetween,
+        ) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Box(
+                    modifier = Modifier
+                        .size(48.dp)
+                        .background(ADColors.SurfaceSubtle, RoundedCornerShape(16.dp)),
+                    contentAlignment = Alignment.Center,
+                ) {
+                    Icon(icon, contentDescription = null, tint = ADColors.Ink, modifier = Modifier.size(23.dp))
+                }
+                Spacer(Modifier.weight(1f))
+                Icon(
+                    Icons.AutoMirrored.Rounded.KeyboardArrowRight,
+                    contentDescription = null,
+                    tint = ADColors.Muted,
+                    modifier = Modifier.size(21.dp),
+                )
+            }
+
+            Column {
+                Text(
+                    title,
+                    style = MaterialTheme.typography.titleLarge,
+                    fontWeight = FontWeight.SemiBold,
+                    maxLines = 1,
+                )
+                Spacer(Modifier.height(4.dp))
+                Text(
+                    detail,
+                    style = MaterialTheme.typography.bodySmall,
+                    color = ADColors.Muted,
+                    maxLines = 2,
+                    overflow = TextOverflow.Ellipsis,
+                )
             }
         }
     }
