@@ -23,10 +23,11 @@ import androidx.compose.material.icons.outlined.Description
 import androidx.compose.material.icons.outlined.Lock
 import androidx.compose.material.icons.outlined.Security
 import androidx.compose.material.icons.outlined.Storage
+import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
@@ -400,7 +401,7 @@ internal fun ADStorageScreenRefined(onBack: () -> Unit) {
             }
         }
 
-        OutlinedButton(
+        Button(
             onClick = {
                 runCatching {
                     context.cacheDir.deleteRecursively()
@@ -408,8 +409,11 @@ internal fun ADStorageScreenRefined(onBack: () -> Unit) {
                 }
                 cacheBytes = adRefinedFolderBytes(context.cacheDir)
             },
-            modifier = Modifier.fillMaxWidth(),
-        ) { Text("Clear temporary cache") }
+            modifier = Modifier.fillMaxWidth().heightIn(min = 46.dp),
+            colors = ButtonDefaults.buttonColors(containerColor = ADColors.Ink),
+        ) {
+            Text("Clear temporary cache")
+        }
     }
 }
 
