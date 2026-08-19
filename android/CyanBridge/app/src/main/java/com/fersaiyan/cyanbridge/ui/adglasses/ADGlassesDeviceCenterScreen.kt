@@ -57,10 +57,10 @@ internal fun ADGlassesDeviceCenterScreen(
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Box(
                     modifier = Modifier
-                        .size(52.dp)
+                        .size(44.dp)
                         .background(
                             if (presentation.connected) ADColors.SuccessSoft else ADColors.SurfaceSubtle,
-                            RoundedCornerShape(15.dp),
+                            RoundedCornerShape(13.dp),
                         ),
                     contentAlignment = Alignment.Center,
                 ) {
@@ -68,13 +68,14 @@ internal fun ADGlassesDeviceCenterScreen(
                         Icons.Outlined.Bluetooth,
                         contentDescription = null,
                         tint = if (presentation.connected) ADColors.Success else ADColors.Muted,
+                        modifier = Modifier.size(20.dp),
                     )
                 }
-                Column(Modifier.padding(start = 14.dp).weight(1f)) {
+                Column(Modifier.padding(start = 11.dp).weight(1f)) {
                     Text(identity, style = MaterialTheme.typography.titleLarge)
                     Text(
                         presentation.statusLabel,
-                        style = MaterialTheme.typography.bodyMedium,
+                        style = MaterialTheme.typography.bodySmall,
                         color = ADColors.Muted,
                     )
                 }
@@ -85,10 +86,10 @@ internal fun ADGlassesDeviceCenterScreen(
                 )
             }
 
-            Spacer(Modifier.height(16.dp))
+            Spacer(Modifier.height(12.dp))
 
             when {
-                presentation.connected -> Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                presentation.connected -> Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                     Button(
                         onClick = host.onDisconnect,
                         colors = ButtonDefaults.buttonColors(containerColor = ADColors.Ink),
@@ -99,7 +100,7 @@ internal fun ADGlassesDeviceCenterScreen(
                         modifier = Modifier.weight(1f),
                     ) { Text("Change glasses") }
                 }
-                profile != null -> Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                profile != null -> Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                     Button(
                         onClick = host.onReconnect,
                         colors = ButtonDefaults.buttonColors(containerColor = ADColors.Ink),
@@ -126,7 +127,7 @@ internal fun ADGlassesDeviceCenterScreen(
                 value = if (presentation.connected) "Bluetooth connected" else "Not connected",
             )
             if (state.showBattery && state.batteryPercent != null) {
-                HorizontalDivider(Modifier.padding(start = 34.dp), color = ADColors.Separator)
+                HorizontalDivider(Modifier.padding(start = 30.dp), color = ADColors.Separator)
                 ADDeviceMetric(
                     icon = Icons.Outlined.BatteryFull,
                     label = "Battery",
@@ -134,7 +135,7 @@ internal fun ADGlassesDeviceCenterScreen(
                 )
             }
             if (state.showStorage && state.storageLabel != "--") {
-                HorizontalDivider(Modifier.padding(start = 34.dp), color = ADColors.Separator)
+                HorizontalDivider(Modifier.padding(start = 30.dp), color = ADColors.Separator)
                 ADDeviceMetric(
                     icon = Icons.Outlined.Storage,
                     label = "Storage",
@@ -162,7 +163,7 @@ internal fun ADGlassesDeviceCenterScreen(
                 iconTint = Color.White,
                 iconBackground = ADColors.Blue,
             )
-            HorizontalDivider(Modifier.padding(start = 48.dp), color = ADColors.Separator)
+            HorizontalDivider(Modifier.padding(start = 42.dp), color = ADColors.Separator)
             ADSettingsRow(
                 icon = Icons.Outlined.SystemUpdateAlt,
                 title = "Firmware",
@@ -171,7 +172,7 @@ internal fun ADGlassesDeviceCenterScreen(
                 iconTint = Color.White,
                 iconBackground = ADColors.Warning,
             )
-            HorizontalDivider(Modifier.padding(start = 48.dp), color = ADColors.Separator)
+            HorizontalDivider(Modifier.padding(start = 42.dp), color = ADColors.Separator)
             ADSettingsRow(
                 icon = Icons.Outlined.DeveloperMode,
                 title = "Advanced",
@@ -191,29 +192,29 @@ private fun ADDeviceMetric(
     value: String,
 ) {
     Row(
-        modifier = Modifier.fillMaxWidth().padding(vertical = 11.dp),
+        modifier = Modifier.fillMaxWidth().padding(vertical = 8.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
         Box(
-            modifier = Modifier.size(28.dp).background(ADColors.SurfaceSubtle, CircleShape),
+            modifier = Modifier.size(26.dp).background(ADColors.SurfaceSubtle, CircleShape),
             contentAlignment = Alignment.Center,
         ) {
-            Icon(icon, contentDescription = null, tint = ADColors.Muted, modifier = Modifier.size(16.dp))
+            Icon(icon, contentDescription = null, tint = ADColors.Muted, modifier = Modifier.size(15.dp))
         }
         Text(
             label,
-            modifier = Modifier.padding(start = 10.dp).weight(1f),
-            style = MaterialTheme.typography.bodyLarge,
+            modifier = Modifier.padding(start = 8.dp).weight(1f),
+            style = MaterialTheme.typography.bodyMedium,
         )
-        Text(value, style = MaterialTheme.typography.bodyMedium, color = ADColors.Muted)
+        Text(value, style = MaterialTheme.typography.bodySmall, color = ADColors.Muted)
     }
 }
 
 @Composable
 private fun ADDeviceCapability(title: String, detail: String) {
-    Column(Modifier.fillMaxWidth().padding(vertical = 11.dp)) {
+    Column(Modifier.fillMaxWidth().padding(vertical = 8.dp)) {
         Text(title, style = MaterialTheme.typography.titleMedium)
-        Spacer(Modifier.height(2.dp))
-        Text(detail, style = MaterialTheme.typography.bodyMedium, color = ADColors.Muted)
+        Spacer(Modifier.height(1.dp))
+        Text(detail, style = MaterialTheme.typography.bodySmall, color = ADColors.Muted)
     }
 }

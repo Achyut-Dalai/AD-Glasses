@@ -29,7 +29,7 @@ internal fun ADAdvancedScreen(
                 subtitle = "Connection, sync, firmware and recovery tools",
                 onClick = onDevice,
             )
-            HorizontalDivider(Modifier.padding(start = 48.dp), color = ADColors.Separator)
+            HorizontalDivider(Modifier.padding(start = 42.dp), color = ADColors.Separator)
             ADSettingsRow(
                 icon = Icons.Outlined.Settings,
                 title = "Android app settings",

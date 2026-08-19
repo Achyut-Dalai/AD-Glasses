@@ -59,10 +59,17 @@ internal fun ADSyncScreen(
         ADCard {
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Box(
-                    Modifier.size(48.dp).background(ADColors.BlueSoft, CircleShape),
+                    Modifier.size(40.dp).background(ADColors.BlueSoft, CircleShape),
                     contentAlignment = Alignment.Center,
-                ) { Icon(Icons.Outlined.Sync, contentDescription = null, tint = ADColors.Blue) }
-                Column(Modifier.padding(start = 13.dp).weight(1f)) {
+                ) {
+                    Icon(
+                        Icons.Outlined.Sync,
+                        contentDescription = null,
+                        tint = ADColors.Blue,
+                        modifier = Modifier.size(19.dp),
+                    )
+                }
+                Column(Modifier.padding(start = 10.dp).weight(1f)) {
                     Text(
                         when {
                             transfer.isVisible -> "Transfer in progress"
@@ -77,28 +84,28 @@ internal fun ADSyncScreen(
                             presentation.connected -> "Ready to bring captures onto this phone"
                             else -> "Connect glasses to begin"
                         },
-                        style = MaterialTheme.typography.bodyMedium,
+                        style = MaterialTheme.typography.bodySmall,
                         color = ADColors.Muted,
                     )
                 }
             }
 
             if (transfer.isVisible) {
-                Spacer(Modifier.height(18.dp))
+                Spacer(Modifier.height(12.dp))
                 if (transferProgress != null) {
                     LinearProgressIndicator(
                         progress = { transferProgress.coerceIn(0f, 1f) },
-                        modifier = Modifier.fillMaxWidth().height(7.dp),
+                        modifier = Modifier.fillMaxWidth().height(5.dp),
                         color = ADColors.Blue,
                         trackColor = ADColors.SurfaceSubtle,
                     )
-                    Spacer(Modifier.height(8.dp))
-                    Text("${(transferProgress * 100).toInt()}%", style = MaterialTheme.typography.labelLarge)
+                    Spacer(Modifier.height(6.dp))
+                    Text("${(transferProgress * 100).toInt()}%", style = MaterialTheme.typography.labelMedium)
                 } else {
                     CircularProgressIndicator(
                         color = ADColors.Blue,
-                        modifier = Modifier.size(28.dp),
-                        strokeWidth = 2.5.dp,
+                        modifier = Modifier.size(24.dp),
+                        strokeWidth = 2.dp,
                     )
                 }
             }
@@ -111,9 +118,9 @@ internal fun ADSyncScreen(
                 "Connection",
                 if (presentation.connected) presentation.identityLabel ?: "Connected" else presentation.statusLabel,
             )
-            HorizontalDivider(Modifier.padding(start = 32.dp), color = ADColors.Separator)
+            HorizontalDivider(Modifier.padding(start = 28.dp), color = ADColors.Separator)
             ADSyncMetricRow(Icons.Outlined.Wifi, "Transfer", flow)
-            HorizontalDivider(Modifier.padding(start = 32.dp), color = ADColors.Separator)
+            HorizontalDivider(Modifier.padding(start = 28.dp), color = ADColors.Separator)
             ADSyncMetricRow(Icons.Outlined.Storage, "Media", knownCounts ?: "Scanned when sync starts")
         }
 
@@ -123,7 +130,7 @@ internal fun ADSyncScreen(
                 !presentation.connected -> host.onOpenDeviceSetup
                 else -> host.onStartSync
             },
-            modifier = Modifier.fillMaxWidth().heightIn(min = 50.dp),
+            modifier = Modifier.fillMaxWidth().heightIn(min = 46.dp),
             colors = ButtonDefaults.buttonColors(
                 containerColor = if (transfer.isVisible) ADColors.Error else ADColors.Ink,
             ),
@@ -135,8 +142,9 @@ internal fun ADSyncScreen(
                     else -> Icons.Outlined.Sync
                 },
                 contentDescription = null,
+                modifier = Modifier.size(18.dp),
             )
-            Spacer(Modifier.width(8.dp))
+            Spacer(Modifier.width(7.dp))
             Text(
                 when {
                     transfer.isVisible -> "Cancel transfer"
@@ -150,19 +158,19 @@ internal fun ADSyncScreen(
 
 @Composable
 private fun ADSyncMetricRow(icon: ImageVector, label: String, value: String) {
-    Row(Modifier.padding(vertical = 12.dp), verticalAlignment = Alignment.CenterVertically) {
-        Icon(icon, contentDescription = null, tint = ADColors.Muted, modifier = Modifier.size(21.dp))
+    Row(Modifier.padding(vertical = 9.dp), verticalAlignment = Alignment.CenterVertically) {
+        Icon(icon, contentDescription = null, tint = ADColors.Muted, modifier = Modifier.size(18.dp))
         Text(
             label,
-            Modifier.padding(start = 11.dp).weight(0.9f),
-            style = MaterialTheme.typography.bodyLarge,
+            Modifier.padding(start = 8.dp).weight(0.9f),
+            style = MaterialTheme.typography.bodyMedium,
             maxLines = 2,
             overflow = TextOverflow.Ellipsis,
         )
         Text(
             value,
             modifier = Modifier.weight(1.25f),
-            style = MaterialTheme.typography.bodyMedium,
+            style = MaterialTheme.typography.bodySmall,
             color = ADColors.Muted,
             textAlign = TextAlign.End,
             maxLines = 2,

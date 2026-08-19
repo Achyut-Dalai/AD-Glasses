@@ -144,17 +144,17 @@ internal fun ADAssistantAppsScreen(onBack: () -> Unit) {
         ADCard {
             Row(verticalAlignment = Alignment.Top) {
                 Box(
-                    modifier = Modifier.size(46.dp).background(ADColors.SurfaceSubtle, RoundedCornerShape(14.dp)),
+                    modifier = Modifier.size(38.dp).background(ADColors.SurfaceSubtle, RoundedCornerShape(12.dp)),
                     contentAlignment = Alignment.Center,
                 ) {
-                    Icon(Icons.Outlined.Apps, contentDescription = null, tint = ADColors.Ink)
+                    Icon(Icons.Outlined.Apps, contentDescription = null, tint = ADColors.Ink, modifier = Modifier.size(19.dp))
                 }
-                Column(Modifier.padding(start = 13.dp).weight(1f)) {
+                Column(Modifier.padding(start = 10.dp).weight(1f)) {
                     Text("Optional app handoff", style = MaterialTheme.typography.titleLarge)
-                    Spacer(Modifier.size(4.dp))
+                    Spacer(Modifier.size(2.dp))
                     Text(
                         "Use an installed Gemini or ChatGPT app for selected glasses requests. Your configured AI stays the normal route unless you turn this on.",
-                        style = MaterialTheme.typography.bodyMedium,
+                        style = MaterialTheme.typography.bodySmall,
                         color = ADColors.Muted,
                     )
                 }
@@ -170,14 +170,14 @@ internal fun ADAssistantAppsScreen(onBack: () -> Unit) {
                 ready = capability.target != ImageAutomationTarget.NONE && capability.targetPackage != null,
                 onClick = ::chooseDefaultAssistant,
             )
-            HorizontalDivider(Modifier.padding(start = 49.dp), color = ADColors.Separator)
+            HorizontalDivider(Modifier.padding(start = 43.dp), color = ADColors.Separator)
             ADAssistantAppStatusRow(
                 icon = Icons.Outlined.PhoneAndroid,
                 title = "Voice handoff",
                 detail = if (voiceReady) "Ready" else "Advanced bridge setup needed",
                 ready = voiceReady,
             )
-            HorizontalDivider(Modifier.padding(start = 49.dp), color = ADColors.Separator)
+            HorizontalDivider(Modifier.padding(start = 43.dp), color = ADColors.Separator)
             ADAssistantAppStatusRow(
                 icon = Icons.Outlined.Apps,
                 title = "Image handoff",
@@ -194,16 +194,16 @@ internal fun ADAssistantAppsScreen(onBack: () -> Unit) {
                 } else {
                     "Glasses questions currently use your configured AI."
                 },
-                style = MaterialTheme.typography.bodyLarge,
+                style = MaterialTheme.typography.bodyMedium,
             )
-            Spacer(Modifier.size(14.dp))
+            Spacer(Modifier.size(9.dp))
             if (selectedMode == GlassesAssistantMode.PHONE_ASSISTANT) {
                 OutlinedButton(
                     onClick = {
                         LocalAgentPrefs.setGlassesAssistantMode(context, GlassesAssistantMode.CUSTOM_AI_PROVIDER)
                         refresh()
                     },
-                    modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp),
+                    modifier = Modifier.fillMaxWidth().heightIn(min = 46.dp),
                 ) { Text("Use AI") }
             } else {
                 Button(
@@ -215,7 +215,7 @@ internal fun ADAssistantAppsScreen(onBack: () -> Unit) {
                             refresh()
                         }
                     },
-                    modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp),
+                    modifier = Modifier.fillMaxWidth().heightIn(min = 46.dp),
                     colors = ButtonDefaults.buttonColors(containerColor = ADColors.Ink),
                 ) { Text("Use assistant app") }
             }
@@ -260,22 +260,22 @@ private fun ADAssistantAppStatusRow(
 ) {
     val clickModifier = if (onClick != null) Modifier.clickable(onClick = onClick) else Modifier
     Row(
-        modifier = Modifier.fillMaxWidth().then(clickModifier).padding(vertical = 13.dp),
+        modifier = Modifier.fillMaxWidth().then(clickModifier).padding(vertical = 9.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
         Box(
-            modifier = Modifier.size(38.dp).background(ADColors.SurfaceSubtle, RoundedCornerShape(11.dp)),
+            modifier = Modifier.size(34.dp).background(ADColors.SurfaceSubtle, RoundedCornerShape(9.dp)),
             contentAlignment = Alignment.Center,
         ) {
-            Icon(icon, contentDescription = null, tint = ADColors.Ink, modifier = Modifier.size(20.dp))
+            Icon(icon, contentDescription = null, tint = ADColors.Ink, modifier = Modifier.size(18.dp))
         }
-        Column(Modifier.padding(start = 11.dp).weight(1f)) {
+        Column(Modifier.padding(start = 9.dp).weight(1f)) {
             Text(title, style = MaterialTheme.typography.titleMedium)
             Text(detail, style = MaterialTheme.typography.bodySmall, color = ADColors.Muted)
         }
         when {
-            ready -> Icon(Icons.Outlined.CheckCircle, contentDescription = "Ready", tint = ADColors.Success, modifier = Modifier.size(21.dp))
-            onClick != null -> Icon(Icons.AutoMirrored.Rounded.KeyboardArrowRight, contentDescription = null, tint = ADColors.Muted, modifier = Modifier.size(22.dp))
+            ready -> Icon(Icons.Outlined.CheckCircle, contentDescription = "Ready", tint = ADColors.Success, modifier = Modifier.size(19.dp))
+            onClick != null -> Icon(Icons.AutoMirrored.Rounded.KeyboardArrowRight, contentDescription = null, tint = ADColors.Muted, modifier = Modifier.size(19.dp))
         }
     }
 }
@@ -287,19 +287,24 @@ private fun ADAssistantSetupAction(
     onClick: () -> Unit,
 ) {
     Row(
-        modifier = Modifier.fillMaxWidth().clickable(onClick = onClick).padding(vertical = 13.dp),
+        modifier = Modifier.fillMaxWidth().clickable(onClick = onClick).padding(vertical = 9.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
         Box(
-            modifier = Modifier.size(38.dp).background(ADColors.SurfaceSubtle, RoundedCornerShape(11.dp)),
+            modifier = Modifier.size(34.dp).background(ADColors.SurfaceSubtle, RoundedCornerShape(9.dp)),
             contentAlignment = Alignment.Center,
         ) {
-            Icon(Icons.Outlined.Settings, contentDescription = null, tint = ADColors.Ink, modifier = Modifier.size(19.dp))
+            Icon(Icons.Outlined.Settings, contentDescription = null, tint = ADColors.Ink, modifier = Modifier.size(17.dp))
         }
-        Column(Modifier.padding(start = 11.dp).weight(1f)) {
+        Column(Modifier.padding(start = 9.dp).weight(1f)) {
             Text(title, style = MaterialTheme.typography.titleMedium)
             Text(detail, style = MaterialTheme.typography.bodySmall, color = ADColors.Muted)
         }
-        Icon(Icons.AutoMirrored.Rounded.KeyboardArrowRight, contentDescription = null, tint = ADColors.Muted, modifier = Modifier.size(22.dp))
+        Icon(
+            Icons.AutoMirrored.Rounded.KeyboardArrowRight,
+            contentDescription = null,
+            tint = ADColors.Muted,
+            modifier = Modifier.size(19.dp),
+        )
     }
 }

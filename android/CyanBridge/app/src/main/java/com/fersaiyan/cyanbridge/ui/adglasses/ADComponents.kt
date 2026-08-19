@@ -60,37 +60,37 @@ internal fun ADTopBar(
 ) {
     if (showBrand) {
         Box(
-            modifier = Modifier.fillMaxWidth().heightIn(min = 54.dp).padding(horizontal = 16.dp),
+            modifier = Modifier.fillMaxWidth().heightIn(min = 50.dp).padding(horizontal = 15.dp),
         ) {
             Image(
                 painter = painterResource(R.drawable.ad_glasses_icon_source),
                 contentDescription = "AD Glasses",
-                modifier = Modifier.size(36.dp).align(Alignment.CenterStart),
+                modifier = Modifier.size(32.dp).align(Alignment.CenterStart),
                 contentScale = ContentScale.Fit,
             )
             Text(
                 text = "AD GLASSES",
-                style = MaterialTheme.typography.titleLarge,
-                fontWeight = FontWeight.SemiBold,
-                letterSpacing = 2.2.sp,
+                style = MaterialTheme.typography.titleMedium,
+                fontWeight = FontWeight.Medium,
+                letterSpacing = 1.8.sp,
                 modifier = Modifier.align(Alignment.Center),
             )
             if (showSettings) {
                 IconButton(
                     onClick = onSettings,
                     modifier = Modifier
-                        .size(42.dp)
+                        .size(40.dp)
                         .align(Alignment.CenterEnd),
                 ) {
                     Box(
-                        modifier = Modifier.size(34.dp).background(ADColors.Surface, CircleShape),
+                        modifier = Modifier.size(30.dp).background(ADColors.Surface, CircleShape),
                         contentAlignment = Alignment.Center,
                     ) {
                         Icon(
                             Icons.Rounded.Settings,
                             contentDescription = "Settings",
                             tint = ADColors.Ink,
-                            modifier = Modifier.size(19.dp),
+                            modifier = Modifier.size(18.dp),
                         )
                     }
                 }
@@ -102,20 +102,25 @@ internal fun ADTopBar(
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .heightIn(min = 54.dp)
-            .padding(horizontal = 16.dp),
+            .heightIn(min = 50.dp)
+            .padding(horizontal = 15.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
         if (showBack) {
             IconButton(onClick = onBack, modifier = Modifier.size(40.dp)) {
-                Icon(Icons.AutoMirrored.Rounded.ArrowBack, contentDescription = "Back", tint = ADColors.Blue)
+                Icon(
+                    Icons.AutoMirrored.Rounded.ArrowBack,
+                    contentDescription = "Back",
+                    tint = ADColors.Blue,
+                    modifier = Modifier.size(20.dp),
+                )
             }
         }
         if (title != null) {
             Text(
                 text = title,
                 style = MaterialTheme.typography.titleLarge,
-                modifier = Modifier.padding(start = if (showBack) 4.dp else 0.dp),
+                modifier = Modifier.padding(start = if (showBack) 2.dp else 0.dp),
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis,
             )
@@ -123,7 +128,12 @@ internal fun ADTopBar(
         Spacer(Modifier.weight(1f))
         if (showSettings) {
             IconButton(onClick = onSettings, modifier = Modifier.size(40.dp)) {
-                Icon(Icons.Rounded.Settings, contentDescription = "Settings", tint = ADColors.Ink)
+                Icon(
+                    Icons.Rounded.Settings,
+                    contentDescription = "Settings",
+                    tint = ADColors.Ink,
+                    modifier = Modifier.size(19.dp),
+                )
             }
         }
     }
@@ -149,7 +159,7 @@ internal fun ADBottomNavigation(selected: ADTab, onSelected: (ADTab) -> Unit) {
             modifier = Modifier
                 .fillMaxWidth()
                 .navigationBarsPadding()
-                .padding(horizontal = 10.dp, vertical = 5.dp),
+                .padding(start = 10.dp, end = 10.dp, top = 3.dp, bottom = 5.dp),
             horizontalArrangement = Arrangement.SpaceAround,
         ) {
             ADTab.entries.forEach { tab ->
@@ -192,16 +202,16 @@ private fun ADBottomNavigationItem(
         verticalArrangement = Arrangement.Center,
     ) {
         Box(
-            modifier = Modifier.size(width = 38.dp, height = 24.dp),
+            modifier = Modifier.size(width = 34.dp, height = 22.dp),
             contentAlignment = Alignment.Center,
         ) {
-            Icon(icon, contentDescription = tab.label, tint = tint, modifier = Modifier.size(20.dp))
+            Icon(icon, contentDescription = tab.label, tint = tint, modifier = Modifier.size(18.dp))
         }
         Text(
             tab.label,
             color = tint,
             style = MaterialTheme.typography.labelSmall,
-            fontWeight = FontWeight.Medium,
+            fontWeight = if (selected) FontWeight.Medium else FontWeight.Normal,
             maxLines = 1,
         )
     }
@@ -210,7 +220,7 @@ private fun ADBottomNavigationItem(
 @Composable
 internal fun ADSectionTitle(title: String, action: String? = null, onAction: () -> Unit = {}) {
     Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth()) {
-        Text(title, style = MaterialTheme.typography.titleLarge)
+        Text(title, style = MaterialTheme.typography.titleMedium)
         Spacer(Modifier.weight(1f))
         if (action != null) {
             Text(
@@ -219,7 +229,7 @@ internal fun ADSectionTitle(title: String, action: String? = null, onAction: () 
                 color = ADColors.Blue,
                 modifier = Modifier
                     .clickable(onClick = onAction)
-                    .padding(7.dp),
+                    .padding(6.dp),
             )
         }
     }
@@ -234,10 +244,10 @@ internal fun ADCard(
     val clickableModifier = if (onClick != null) Modifier.clickable(onClick = onClick) else Modifier
     Column(
         modifier = modifier
-            .clip(RoundedCornerShape(18.dp))
+            .clip(RoundedCornerShape(16.dp))
             .then(clickableModifier)
-            .background(ADColors.Surface, RoundedCornerShape(18.dp))
-            .padding(14.dp),
+            .background(ADColors.Surface, RoundedCornerShape(16.dp))
+            .padding(12.dp),
         content = content,
     )
 }
@@ -263,11 +273,11 @@ internal fun ADStatusChip(
         ADStatusTone.ERROR -> ADColors.Error
     }
     Row(
-        modifier = Modifier.background(background, CircleShape).padding(horizontal = 9.dp, vertical = 5.dp),
+        modifier = Modifier.background(background, CircleShape).padding(horizontal = 8.dp, vertical = 4.dp),
         verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(5.dp),
+        horizontalArrangement = Arrangement.spacedBy(4.dp),
     ) {
-        if (showCheck) Icon(Icons.Rounded.Check, null, tint = foreground, modifier = Modifier.size(14.dp))
+        if (showCheck) Icon(Icons.Rounded.Check, null, tint = foreground, modifier = Modifier.size(13.dp))
         Text(text, color = foreground, style = MaterialTheme.typography.labelMedium)
     }
 }
@@ -288,26 +298,31 @@ internal fun ADSettingsRow(
         modifier = Modifier
             .fillMaxWidth()
             .clickable(onClick = onClick)
-            .padding(vertical = 11.dp),
+            .padding(vertical = 9.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
         Box(
-            modifier = Modifier.size(34.dp).background(iconBackground, RoundedCornerShape(9.dp)),
+            modifier = Modifier.size(32.dp).background(iconBackground, RoundedCornerShape(8.dp)),
             contentAlignment = Alignment.Center,
         ) {
-            Icon(icon, null, tint = iconTint, modifier = Modifier.size(19.dp))
+            Icon(icon, null, tint = iconTint, modifier = Modifier.size(18.dp))
         }
-        Column(Modifier.padding(start = 11.dp, end = 8.dp).weight(1f)) {
+        Column(Modifier.padding(start = 10.dp, end = 7.dp).weight(1f)) {
             Text(title, style = MaterialTheme.typography.titleMedium)
             if (!subtitle.isNullOrBlank()) {
-                Spacer(Modifier.height(2.dp))
+                Spacer(Modifier.height(1.dp))
                 Text(subtitle, style = MaterialTheme.typography.bodyMedium, color = ADColors.Muted)
             }
         }
         if (trailing != null) {
             trailing()
         } else {
-            Icon(Icons.AutoMirrored.Rounded.KeyboardArrowRight, null, tint = ADColors.Muted, modifier = Modifier.size(20.dp))
+            Icon(
+                Icons.AutoMirrored.Rounded.KeyboardArrowRight,
+                null,
+                tint = ADColors.Muted,
+                modifier = Modifier.size(19.dp),
+            )
         }
     }
 }

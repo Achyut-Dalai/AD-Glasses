@@ -51,46 +51,46 @@ fun ADWelcomeScreen(
                     ),
                 )
                 .windowInsetsPadding(WindowInsets.safeDrawing)
-                .padding(horizontal = 20.dp),
+                .padding(horizontal = 17.dp),
         ) {
             Column(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(top = 34.dp),
+                    .padding(top = 22.dp),
             ) {
                 Text(
                     text = "YOUR GLASSES",
                     color = ADColors.Ink,
-                    fontSize = 42.sp,
-                    lineHeight = 44.sp,
+                    fontSize = 33.sp,
+                    lineHeight = 35.sp,
                     fontWeight = FontWeight.Medium,
-                    letterSpacing = (-1.15).sp,
+                    letterSpacing = (-0.7).sp,
                 )
                 Text(
                     text = "YOUR AI",
                     color = ADColors.Ink,
-                    fontSize = 42.sp,
-                    lineHeight = 44.sp,
+                    fontSize = 33.sp,
+                    lineHeight = 35.sp,
                     fontWeight = FontWeight.Medium,
-                    letterSpacing = (-1.15).sp,
+                    letterSpacing = (-0.7).sp,
                 )
                 Text(
                     text = "YOUR DATA",
                     color = ADColors.Ink,
-                    fontSize = 42.sp,
-                    lineHeight = 44.sp,
+                    fontSize = 33.sp,
+                    lineHeight = 35.sp,
                     fontWeight = FontWeight.Medium,
-                    letterSpacing = (-1.15).sp,
+                    letterSpacing = (-0.7).sp,
                 )
             }
 
-            Spacer(Modifier.size(24.dp))
+            Spacer(Modifier.size(17.dp))
 
             Box(
                 modifier = Modifier
                     .fillMaxWidth()
                     .weight(1f)
-                    .heightIn(min = 184.dp, max = 286.dp)
+                    .heightIn(min = 160.dp, max = 240.dp)
                     .background(
                         Brush.linearGradient(
                             listOf(
@@ -98,14 +98,14 @@ fun ADWelcomeScreen(
                                 Color(0xFFE9E9EC),
                             ),
                         ),
-                        RoundedCornerShape(28.dp),
+                        RoundedCornerShape(24.dp),
                     )
                     .border(
                         width = 1.dp,
                         color = ADColors.Outline.copy(alpha = 0.50f),
-                        shape = RoundedCornerShape(28.dp),
+                        shape = RoundedCornerShape(24.dp),
                     )
-                    .padding(horizontal = 10.dp, vertical = 8.dp),
+                    .padding(horizontal = 8.dp, vertical = 7.dp),
                 contentAlignment = Alignment.Center,
             ) {
                 Image(
@@ -116,24 +116,24 @@ fun ADWelcomeScreen(
                 )
             }
 
-            Spacer(Modifier.size(22.dp))
+            Spacer(Modifier.size(16.dp))
             Button(
                 onClick = onStartSetup,
-                modifier = Modifier.fillMaxWidth().heightIn(min = 52.dp),
+                modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp),
                 colors = ButtonDefaults.buttonColors(containerColor = ADColors.Ink),
-                shape = RoundedCornerShape(15.dp),
+                shape = RoundedCornerShape(14.dp),
             ) {
                 Text("Connect glasses")
             }
-            Spacer(Modifier.size(10.dp))
+            Spacer(Modifier.size(8.dp))
             OutlinedButton(
                 onClick = onExplore,
-                modifier = Modifier.fillMaxWidth().heightIn(min = 50.dp),
-                shape = RoundedCornerShape(15.dp),
+                modifier = Modifier.fillMaxWidth().heightIn(min = 46.dp),
+                shape = RoundedCornerShape(14.dp),
             ) {
                 Text("Continue without glasses")
             }
-            Spacer(Modifier.size(22.dp))
+            Spacer(Modifier.size(15.dp))
         }
     }
 }

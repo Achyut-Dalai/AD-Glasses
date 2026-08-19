@@ -24,8 +24,8 @@ internal fun ADPageLayout(
             modifier = Modifier
                 .fillMaxSize()
                 .verticalScroll(rememberScrollState())
-                .padding(start = 16.dp, end = 16.dp, top = 4.dp, bottom = 24.dp),
-            verticalArrangement = Arrangement.spacedBy(14.dp),
+                .padding(start = 14.dp, end = 14.dp, top = 2.dp, bottom = 20.dp),
+            verticalArrangement = Arrangement.spacedBy(11.dp),
             content = content,
         )
     }

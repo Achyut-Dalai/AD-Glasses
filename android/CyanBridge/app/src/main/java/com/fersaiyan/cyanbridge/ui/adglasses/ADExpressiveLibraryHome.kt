@@ -51,8 +51,8 @@ internal fun ADExpressiveLibraryHome(
         ADTopBar(title = "Library")
         LazyColumn(
             modifier = Modifier.fillMaxSize(),
-            contentPadding = androidx.compose.foundation.layout.PaddingValues(16.dp, 4.dp, 16.dp, 22.dp),
-            verticalArrangement = Arrangement.spacedBy(14.dp),
+            contentPadding = androidx.compose.foundation.layout.PaddingValues(14.dp, 2.dp, 14.dp, 18.dp),
+            verticalArrangement = Arrangement.spacedBy(11.dp),
         ) {
             item {
                 ADLibraryHero(
@@ -69,13 +69,18 @@ internal fun ADExpressiveLibraryHome(
                         Row(verticalAlignment = Alignment.CenterVertically) {
                             Box(
                                 modifier = Modifier
-                                    .size(40.dp)
-                                    .background(ADColors.SurfaceSubtle, RoundedCornerShape(14.dp)),
+                                    .size(36.dp)
+                                    .background(ADColors.SurfaceSubtle, RoundedCornerShape(11.dp)),
                                 contentAlignment = Alignment.Center,
                             ) {
-                                Icon(Icons.Outlined.Sync, contentDescription = null, tint = ADColors.Ink)
+                                Icon(
+                                    Icons.Outlined.Sync,
+                                    contentDescription = null,
+                                    tint = ADColors.Ink,
+                                    modifier = Modifier.size(18.dp),
+                                )
                             }
-                            Column(Modifier.padding(start = 11.dp).weight(1f)) {
+                            Column(Modifier.padding(start = 9.dp).weight(1f)) {
                                 Text("New media is arriving", style = MaterialTheme.typography.titleMedium)
                                 Text(
                                     "Open Sync for live transfer progress",
@@ -90,12 +95,12 @@ internal fun ADExpressiveLibraryHome(
             }
 
             item {
-                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                Column(verticalArrangement = Arrangement.spacedBy(7.dp)) {
                     Text(
                         "Browse",
                         style = MaterialTheme.typography.titleMedium,
                         fontWeight = FontWeight.Medium,
-                        modifier = Modifier.padding(start = 2.dp, bottom = 1.dp),
+                        modifier = Modifier.padding(start = 1.dp),
                     )
                     ADLibraryPrimaryDestination(
                         icon = Icons.Outlined.Image,
@@ -105,7 +110,7 @@ internal fun ADExpressiveLibraryHome(
                     )
                     Row(
                         modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.spacedBy(8.dp),
+                        horizontalArrangement = Arrangement.spacedBy(7.dp),
                     ) {
                         ADLibraryCompactDestination(
                             icon = Icons.Outlined.GraphicEq,
@@ -137,43 +142,43 @@ private fun ADLibraryHero(
 ) {
     Surface(
         modifier = Modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(26.dp),
+        shape = RoundedCornerShape(21.dp),
         color = ADColors.Surface,
         border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant),
-        shadowElevation = 2.dp,
+        shadowElevation = 1.dp,
     ) {
-        Column(Modifier.padding(15.dp)) {
+        Column(Modifier.padding(13.dp)) {
             Row(verticalAlignment = Alignment.Top) {
                 Surface(
-                    modifier = Modifier.size(46.dp),
-                    shape = RoundedCornerShape(17.dp),
+                    modifier = Modifier.size(42.dp),
+                    shape = RoundedCornerShape(14.dp),
                     color = ADColors.Ink,
                     contentColor = ADColors.Surface,
                 ) {
                     Box(contentAlignment = Alignment.Center) {
-                        Icon(Icons.Outlined.VideoLibrary, contentDescription = null, modifier = Modifier.size(23.dp))
+                        Icon(Icons.Outlined.VideoLibrary, contentDescription = null, modifier = Modifier.size(20.dp))
                     }
                 }
-                Column(Modifier.padding(start = 12.dp).weight(1f)) {
-                    Text(title, style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Medium)
-                    Spacer(Modifier.height(3.dp))
-                    Text(detail, style = MaterialTheme.typography.bodyMedium, color = ADColors.Muted)
+                Column(Modifier.padding(start = 10.dp).weight(1f)) {
+                    Text(title, style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Medium)
+                    Spacer(Modifier.height(2.dp))
+                    Text(detail, style = MaterialTheme.typography.bodySmall, color = ADColors.Muted)
                 }
                 ADStatusChip(
                     if (transferActive) "SYNCING" else "LOCAL",
                     if (transferActive) ADStatusTone.INFO else ADStatusTone.NEUTRAL,
                 )
             }
-            Spacer(Modifier.height(12.dp))
+            Spacer(Modifier.height(9.dp))
             HorizontalDivider(color = ADColors.Separator)
-            Spacer(Modifier.height(10.dp))
+            Spacer(Modifier.height(8.dp))
             Button(
                 onClick = onOpenSync,
-                modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp),
+                modifier = Modifier.fillMaxWidth().heightIn(min = 44.dp),
                 colors = ButtonDefaults.buttonColors(containerColor = ADColors.Ink),
             ) {
-                Icon(Icons.Outlined.Sync, contentDescription = null)
-                Spacer(Modifier.size(8.dp))
+                Icon(Icons.Outlined.Sync, contentDescription = null, modifier = Modifier.size(18.dp))
+                Spacer(Modifier.size(7.dp))
                 Text(if (transferActive) "View sync" else "Sync from glasses")
             }
         }
@@ -189,52 +194,49 @@ private fun ADLibraryPrimaryDestination(
 ) {
     Surface(
         onClick = onClick,
-        modifier = Modifier.fillMaxWidth().heightIn(min = 112.dp),
-        shape = RoundedCornerShape(30.dp),
+        modifier = Modifier.fillMaxWidth().heightIn(min = 102.dp),
+        shape = RoundedCornerShape(23.dp),
         color = ADColors.Surface,
         border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant),
         shadowElevation = 1.dp,
     ) {
         Row(
-            modifier = Modifier.padding(horizontal = 15.dp, vertical = 15.dp),
+            modifier = Modifier.padding(horizontal = 13.dp, vertical = 12.dp),
             verticalAlignment = Alignment.CenterVertically,
         ) {
             Surface(
-                modifier = Modifier.size(58.dp),
-                shape = RoundedCornerShape(22.dp),
+                modifier = Modifier.size(52.dp),
+                shape = RoundedCornerShape(18.dp),
                 color = ADColors.Ink,
                 contentColor = ADColors.Surface,
             ) {
                 Box(contentAlignment = Alignment.Center) {
-                    Icon(icon, contentDescription = null, modifier = Modifier.size(27.dp))
+                    Icon(icon, contentDescription = null, modifier = Modifier.size(24.dp))
                 }
             }
-            Column(Modifier.padding(start = 14.dp).weight(1f)) {
+            Column(Modifier.padding(start = 12.dp).weight(1f)) {
                 Text(
                     title,
-                    style = MaterialTheme.typography.headlineSmall,
+                    style = MaterialTheme.typography.titleLarge,
                     fontWeight = FontWeight.Medium,
                     maxLines = 1,
                 )
-                Spacer(Modifier.height(3.dp))
+                Spacer(Modifier.height(2.dp))
                 Text(
                     detail,
-                    style = MaterialTheme.typography.bodyMedium,
+                    style = MaterialTheme.typography.bodySmall,
                     color = ADColors.Muted,
                     maxLines = 2,
                     overflow = TextOverflow.Ellipsis,
                 )
             }
-            Surface(
-                shape = CircleShape,
-                color = ADColors.SurfaceSubtle,
-            ) {
-                Box(Modifier.size(36.dp), contentAlignment = Alignment.Center) {
+            Surface(shape = CircleShape, color = ADColors.SurfaceSubtle) {
+                Box(Modifier.size(32.dp), contentAlignment = Alignment.Center) {
                     Icon(
                         Icons.AutoMirrored.Rounded.KeyboardArrowRight,
                         contentDescription = null,
                         tint = ADColors.Ink,
-                        modifier = Modifier.size(21.dp),
+                        modifier = Modifier.size(19.dp),
                     )
                 }
             }
@@ -252,42 +254,42 @@ private fun ADLibraryCompactDestination(
 ) {
     Surface(
         onClick = onClick,
-        modifier = modifier.heightIn(min = 140.dp),
-        shape = RoundedCornerShape(22.dp),
+        modifier = modifier.heightIn(min = 126.dp),
+        shape = RoundedCornerShape(18.dp),
         color = ADColors.Surface,
         border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant),
         shadowElevation = 1.dp,
     ) {
         Column(
-            modifier = Modifier.padding(13.dp),
+            modifier = Modifier.padding(11.dp),
             verticalArrangement = Arrangement.SpaceBetween,
         ) {
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Box(
                     modifier = Modifier
-                        .size(42.dp)
-                        .background(ADColors.SurfaceSubtle, RoundedCornerShape(16.dp)),
+                        .size(38.dp)
+                        .background(ADColors.SurfaceSubtle, RoundedCornerShape(13.dp)),
                     contentAlignment = Alignment.Center,
                 ) {
-                    Icon(icon, contentDescription = null, tint = ADColors.Ink, modifier = Modifier.size(21.dp))
+                    Icon(icon, contentDescription = null, tint = ADColors.Ink, modifier = Modifier.size(19.dp))
                 }
                 Spacer(Modifier.weight(1f))
                 Icon(
                     Icons.AutoMirrored.Rounded.KeyboardArrowRight,
                     contentDescription = null,
                     tint = ADColors.Muted,
-                    modifier = Modifier.size(20.dp),
+                    modifier = Modifier.size(18.dp),
                 )
             }
 
             Column {
                 Text(
                     title,
-                    style = MaterialTheme.typography.titleLarge,
+                    style = MaterialTheme.typography.titleMedium,
                     fontWeight = FontWeight.Medium,
                     maxLines = 1,
                 )
-                Spacer(Modifier.height(3.dp))
+                Spacer(Modifier.height(2.dp))
                 Text(
                     detail,
                     style = MaterialTheme.typography.bodySmall,

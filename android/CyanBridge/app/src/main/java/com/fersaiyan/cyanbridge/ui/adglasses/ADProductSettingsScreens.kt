@@ -93,7 +93,7 @@ internal fun ADPrivacyCenterScreen(onBack: () -> Unit) {
         }
         Text(
             "The glasses are the interface. Data stays on the phone unless a configured capability needs a remote service.",
-            style = MaterialTheme.typography.bodyMedium,
+            style = MaterialTheme.typography.bodySmall,
             color = ADColors.Muted,
         )
     }
@@ -122,7 +122,7 @@ internal fun ADStorageScreen(onBack: () -> Unit) {
     ADPageLayout("Storage", onBack) {
         ADCard {
             Text("On this phone", style = MaterialTheme.typography.titleLarge)
-            Spacer(Modifier.height(12.dp))
+            Spacer(Modifier.height(7.dp))
             ADStorageMetric("App data", filesBytes?.let(::formatBytes) ?: "Calculating…")
             ADSettingsDetailDivider(0.dp)
             ADStorageMetric("Cache", cacheBytes?.let(::formatBytes) ?: "Calculating…")
@@ -137,10 +137,10 @@ internal fun ADStorageScreen(onBack: () -> Unit) {
         }
         ADCard {
             Text("Glasses media", style = MaterialTheme.typography.titleMedium)
-            Spacer(Modifier.height(5.dp))
+            Spacer(Modifier.height(3.dp))
             Text(
                 "Synced captures are kept in ${SyncedMediaFolder.relativePath}. Library is the normal place to review them.",
-                style = MaterialTheme.typography.bodyMedium,
+                style = MaterialTheme.typography.bodySmall,
                 color = ADColors.Muted,
             )
         }
@@ -164,10 +164,14 @@ internal fun ADLanguageScreen(onBack: () -> Unit) {
     ADPageLayout("Language", onBack) {
         ADCard {
             Text("App language", style = MaterialTheme.typography.titleLarge)
-            Spacer(Modifier.height(5.dp))
-            Text(currentLanguage, style = MaterialTheme.typography.bodyLarge)
-            Spacer(Modifier.height(5.dp))
-            Text("AD Glasses supports the languages packaged with the app. Android manages the active app locale.", color = ADColors.Muted)
+            Spacer(Modifier.height(3.dp))
+            Text(currentLanguage, style = MaterialTheme.typography.bodyMedium)
+            Spacer(Modifier.height(3.dp))
+            Text(
+                "AD Glasses supports the languages packaged with the app. Android manages the active app locale.",
+                style = MaterialTheme.typography.bodySmall,
+                color = ADColors.Muted,
+            )
         }
         Button(
             onClick = {
@@ -198,13 +202,25 @@ internal fun ADPermissionsScreen(onBack: () -> Unit) {
         ADCard {
             permissions.forEachIndexed { index, item ->
                 val granted = ContextCompat.checkSelfPermission(context, item.permission) == PackageManager.PERMISSION_GRANTED
-                Row(Modifier.padding(vertical = 10.dp), verticalAlignment = Alignment.CenterVertically) {
-                    Icon(item.icon, null, tint = if (granted) ADColors.Success else ADColors.Muted, modifier = Modifier.size(21.dp))
-                    Column(Modifier.padding(start = 11.dp).weight(1f)) {
+                Row(Modifier.padding(vertical = 7.dp), verticalAlignment = Alignment.CenterVertically) {
+                    Icon(
+                        item.icon,
+                        null,
+                        tint = if (granted) ADColors.Success else ADColors.Muted,
+                        modifier = Modifier.size(18.dp),
+                    )
+                    Column(Modifier.padding(start = 8.dp).weight(1f)) {
                         Text(item.title, style = MaterialTheme.typography.titleMedium)
-                        Text(if (item.required) "Used by glasses features" else "Optional", color = ADColors.Muted)
+                        Text(
+                            if (item.required) "Used by glasses features" else "Optional",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = ADColors.Muted,
+                        )
                     }
-                    ADStatusChip(if (granted) "ALLOWED" else "OFF", if (granted) ADStatusTone.SUCCESS else ADStatusTone.NEUTRAL)
+                    ADStatusChip(
+                        if (granted) "ALLOWED" else "OFF",
+                        if (granted) ADStatusTone.SUCCESS else ADStatusTone.NEUTRAL,
+                    )
                 }
                 if (index != permissions.lastIndex) ADSettingsDetailDivider(0.dp)
             }
@@ -345,14 +361,14 @@ private fun ADSettingsDetailGroup(
     title: String,
     content: @Composable androidx.compose.foundation.layout.ColumnScope.() -> Unit,
 ) {
-    Column(verticalArrangement = Arrangement.spacedBy(9.dp)) {
+    Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
         Text(title, style = MaterialTheme.typography.labelLarge, color = ADColors.Muted)
         ADCard(content = content)
     }
 }
 
 @Composable
-private fun ADSettingsDetailDivider(start: androidx.compose.ui.unit.Dp = 48.dp) {
+private fun ADSettingsDetailDivider(start: androidx.compose.ui.unit.Dp = 42.dp) {
     HorizontalDivider(Modifier.padding(start = start), color = ADColors.Separator)
 }
 
@@ -375,9 +391,9 @@ private fun ADToggleRow(
 
 @Composable
 private fun ADStorageMetric(label: String, value: String) {
-    Row(Modifier.padding(vertical = 11.dp), verticalAlignment = Alignment.CenterVertically) {
-        Text(label, style = MaterialTheme.typography.bodyLarge, modifier = Modifier.weight(1f))
-        Text(value, style = MaterialTheme.typography.bodyMedium, color = ADColors.Muted)
+    Row(Modifier.padding(vertical = 8.dp), verticalAlignment = Alignment.CenterVertically) {
+        Text(label, style = MaterialTheme.typography.bodyMedium, modifier = Modifier.weight(1f))
+        Text(value, style = MaterialTheme.typography.bodySmall, color = ADColors.Muted)
     }
 }
 
