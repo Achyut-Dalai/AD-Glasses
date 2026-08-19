@@ -14,6 +14,7 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
+import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.CircleShape
@@ -59,7 +60,7 @@ internal fun ADTopBar(
 ) {
     if (showBrand) {
         Box(
-            modifier = Modifier.fillMaxWidth().heightIn(min = 58.dp).padding(horizontal = 16.dp),
+            modifier = Modifier.fillMaxWidth().heightIn(min = 54.dp).padding(horizontal = 16.dp),
         ) {
             Image(
                 painter = painterResource(R.drawable.ad_glasses_icon_source),
@@ -70,15 +71,15 @@ internal fun ADTopBar(
             Text(
                 text = "AD GLASSES",
                 style = MaterialTheme.typography.titleLarge,
-                fontWeight = FontWeight.Bold,
-                letterSpacing = 2.7.sp,
+                fontWeight = FontWeight.SemiBold,
+                letterSpacing = 2.2.sp,
                 modifier = Modifier.align(Alignment.Center),
             )
             if (showSettings) {
                 IconButton(
                     onClick = onSettings,
                     modifier = Modifier
-                        .size(44.dp)
+                        .size(42.dp)
                         .align(Alignment.CenterEnd),
                 ) {
                     Box(
@@ -101,7 +102,7 @@ internal fun ADTopBar(
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .heightIn(min = 58.dp)
+            .heightIn(min = 54.dp)
             .padding(horizontal = 16.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
@@ -147,7 +148,8 @@ internal fun ADBottomNavigation(selected: ADTab, onSelected: (ADTab) -> Unit) {
         Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(horizontal = 10.dp, vertical = 7.dp),
+                .navigationBarsPadding()
+                .padding(horizontal = 10.dp, vertical = 5.dp),
             horizontalArrangement = Arrangement.SpaceAround,
         ) {
             ADTab.entries.forEach { tab ->
@@ -179,7 +181,7 @@ private fun ADBottomNavigationItem(
     val tint = if (selected) ADColors.Blue else ADColors.Muted
     Column(
         modifier = modifier
-            .heightIn(min = 52.dp)
+            .heightIn(min = 48.dp)
             .clickable(
                 role = Role.Tab,
                 interactionSource = remember { MutableInteractionSource() },
@@ -190,16 +192,16 @@ private fun ADBottomNavigationItem(
         verticalArrangement = Arrangement.Center,
     ) {
         Box(
-            modifier = Modifier.size(width = 40.dp, height = 27.dp),
+            modifier = Modifier.size(width = 38.dp, height = 24.dp),
             contentAlignment = Alignment.Center,
         ) {
-            Icon(icon, contentDescription = tab.label, tint = tint, modifier = Modifier.size(21.dp))
+            Icon(icon, contentDescription = tab.label, tint = tint, modifier = Modifier.size(20.dp))
         }
         Text(
             tab.label,
             color = tint,
             style = MaterialTheme.typography.labelSmall,
-            fontWeight = if (selected) FontWeight.SemiBold else FontWeight.Medium,
+            fontWeight = FontWeight.Medium,
             maxLines = 1,
         )
     }
@@ -217,7 +219,7 @@ internal fun ADSectionTitle(title: String, action: String? = null, onAction: () 
                 color = ADColors.Blue,
                 modifier = Modifier
                     .clickable(onClick = onAction)
-                    .padding(8.dp),
+                    .padding(7.dp),
             )
         }
     }
@@ -235,7 +237,7 @@ internal fun ADCard(
             .clip(RoundedCornerShape(18.dp))
             .then(clickableModifier)
             .background(ADColors.Surface, RoundedCornerShape(18.dp))
-            .padding(16.dp),
+            .padding(14.dp),
         content = content,
     )
 }
@@ -261,7 +263,7 @@ internal fun ADStatusChip(
         ADStatusTone.ERROR -> ADColors.Error
     }
     Row(
-        modifier = Modifier.background(background, CircleShape).padding(horizontal = 10.dp, vertical = 6.dp),
+        modifier = Modifier.background(background, CircleShape).padding(horizontal = 9.dp, vertical = 5.dp),
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(5.dp),
     ) {
@@ -286,16 +288,16 @@ internal fun ADSettingsRow(
         modifier = Modifier
             .fillMaxWidth()
             .clickable(onClick = onClick)
-            .padding(vertical = 14.dp),
+            .padding(vertical = 11.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
         Box(
-            modifier = Modifier.size(36.dp).background(iconBackground, RoundedCornerShape(9.dp)),
+            modifier = Modifier.size(34.dp).background(iconBackground, RoundedCornerShape(9.dp)),
             contentAlignment = Alignment.Center,
         ) {
-            Icon(icon, null, tint = iconTint, modifier = Modifier.size(20.dp))
+            Icon(icon, null, tint = iconTint, modifier = Modifier.size(19.dp))
         }
-        Column(Modifier.padding(start = 12.dp, end = 8.dp).weight(1f)) {
+        Column(Modifier.padding(start = 11.dp, end = 8.dp).weight(1f)) {
             Text(title, style = MaterialTheme.typography.titleMedium)
             if (!subtitle.isNullOrBlank()) {
                 Spacer(Modifier.height(2.dp))
@@ -305,7 +307,7 @@ internal fun ADSettingsRow(
         if (trailing != null) {
             trailing()
         } else {
-            Icon(Icons.AutoMirrored.Rounded.KeyboardArrowRight, null, tint = ADColors.Muted, modifier = Modifier.size(22.dp))
+            Icon(Icons.AutoMirrored.Rounded.KeyboardArrowRight, null, tint = ADColors.Muted, modifier = Modifier.size(20.dp))
         }
     }
 }
