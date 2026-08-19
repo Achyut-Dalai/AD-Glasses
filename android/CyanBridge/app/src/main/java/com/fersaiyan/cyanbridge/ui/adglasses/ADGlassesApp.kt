@@ -141,7 +141,6 @@ fun ADGlassesApp(
                         onBack = navigateBack,
                         onSync = { navigateTo(ADRoute.SYNC) },
                         onFirmware = { navigateTo(ADRoute.FIRMWARE) },
-                        onAdvanced = { navigateTo(ADRoute.ADVANCED) },
                     )
                     ADRoute.SYNC -> ADSyncScreen(dashboardState, host, navigateBack)
                     ADRoute.SETTINGS -> ADNativeSettingsHubScreen(
@@ -171,14 +170,11 @@ fun ADGlassesApp(
                     ADRoute.AI_RELAY -> ADNativeRelaySettingsScreen(navigateBack)
                     ADRoute.AI_LOCAL -> ADNativeLocalAiSettingsScreen(navigateBack)
                     ADRoute.AI_ASSISTANT_APPS -> ADAssistantAppsScreen(navigateBack)
-                    ADRoute.PRIVACY -> ADPrivacyCenterScreen(navigateBack)
-                    ADRoute.STORAGE -> ADStorageScreen(navigateBack)
+                    ADRoute.PRIVACY -> ADPrivacyCenterScreenRefined(navigateBack)
+                    ADRoute.STORAGE -> ADStorageScreenRefined(navigateBack)
                     ADRoute.LANGUAGE -> ADLanguageScreen(navigateBack)
                     ADRoute.PERMISSIONS -> ADPermissionsScreen(navigateBack)
-                    ADRoute.ADVANCED -> ADAdvancedScreen(
-                        onBack = navigateBack,
-                        onDevice = { navigateTo(ADRoute.DEVICE_CENTER) },
-                    )
+                    ADRoute.ADVANCED -> ADAdvancedScreen(onBack = navigateBack)
                     ADRoute.ABOUT -> ADMinimalAboutScreen(navigateBack)
                     ADRoute.FIRMWARE -> ADFirmwareScreen(dashboardState, host, navigateBack)
                     ADRoute.LIBRARY_CAPTURES -> ADNativeCapturesScreen(

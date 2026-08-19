@@ -15,18 +15,15 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.BatteryFull
 import androidx.compose.material.icons.outlined.GraphicEq
-import androidx.compose.material.icons.outlined.Mic
-import androidx.compose.material.icons.outlined.PhotoCamera
 import androidx.compose.material.icons.outlined.Storage
 import androidx.compose.material.icons.outlined.Sync
-import androidx.compose.material.icons.outlined.Videocam
 import androidx.compose.material.icons.outlined.Visibility
-import androidx.compose.material.icons.rounded.Translate
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
@@ -55,6 +52,15 @@ import com.fersaiyan.cyanbridge.ai.orchestrator.AssistantCapabilityRuntimeEvents
 import com.fersaiyan.cyanbridge.devices.ADDeviceSupportPolicy
 import com.fersaiyan.cyanbridge.devices.DeviceProfileStore
 import com.fersaiyan.cyanbridge.shared.glasses.GlassesDashboardUiState
+
+private enum class ADHomeArtwork {
+    ASK_AI,
+    PHOTO,
+    VIDEO,
+    TRANSLATE,
+    SOUNDBITES,
+    AUDIO,
+}
 
 /** Glasses-first control surface. Everyday actions live here; configuration stays elsewhere. */
 @Composable
@@ -139,14 +145,14 @@ internal fun ADHomeSurface(
                         ADHomeAction(
                             title = "Ask AI",
                             detail = "Ask by voice",
-                            icon = Icons.Outlined.Mic,
+                            artwork = ADHomeArtwork.ASK_AI,
                             modifier = Modifier.weight(1f),
                             onClick = host.onVoiceQuestion,
                         )
                         ADHomeAction(
                             title = "Photo",
                             detail = "Take a photo",
-                            icon = Icons.Outlined.PhotoCamera,
+                            artwork = ADHomeArtwork.PHOTO,
                             modifier = Modifier.weight(1f),
                             onClick = host.onCapturePhoto,
                         )
@@ -155,14 +161,14 @@ internal fun ADHomeSurface(
                         ADHomeAction(
                             title = "Video",
                             detail = "Record from glasses",
-                            icon = Icons.Outlined.Videocam,
+                            artwork = ADHomeArtwork.VIDEO,
                             modifier = Modifier.weight(1f),
                             onClick = host.onToggleVideo,
                         )
                         ADHomeAction(
                             title = "Translate",
                             detail = "Live conversation",
-                            icon = Icons.Rounded.Translate,
+                            artwork = ADHomeArtwork.TRANSLATE,
                             active = translateActive,
                             modifier = Modifier.weight(1f),
                             onClick = { toggleCapability(AssistantCapability.TRANSLATOR) },
@@ -172,7 +178,7 @@ internal fun ADHomeSurface(
                         ADHomeAction(
                             title = "Soundbites",
                             detail = "Turn speech into notes",
-                            icon = Icons.Outlined.GraphicEq,
+                            artwork = ADHomeArtwork.SOUNDBITES,
                             active = soundbitesActive,
                             modifier = Modifier.weight(1f),
                             onClick = { toggleCapability(AssistantCapability.MEETING_NOTES) },
@@ -180,7 +186,7 @@ internal fun ADHomeSurface(
                         ADHomeAction(
                             title = "Audio",
                             detail = if (state.meeting.isRecording) "Stop recording" else "Start recording",
-                            icon = Icons.Outlined.GraphicEq,
+                            artwork = ADHomeArtwork.AUDIO,
                             active = state.meeting.isRecording,
                             modifier = Modifier.weight(1f),
                             onClick = if (state.meeting.isRecording) host.onStopRecording else host.onStartRecording,
@@ -281,29 +287,22 @@ private fun ADReadinessStage(
 private fun ADHomeAction(
     title: String,
     detail: String,
-    icon: ImageVector,
+    artwork: ADHomeArtwork,
     modifier: Modifier = Modifier,
     active: Boolean = false,
     onClick: () -> Unit,
 ) {
     val container = if (active) ADColors.SurfaceSubtle else ADColors.Surface
-    val iconContainer = if (active) ADColors.Ink else ADColors.SurfaceSubtle
-    val iconColor = if (active) ADColors.Surface else ADColors.Ink
 
     Column(
         modifier = modifier
-            .heightIn(min = 84.dp)
+            .heightIn(min = 88.dp)
             .background(container, RoundedCornerShape(16.dp))
             .clickable(onClick = onClick)
             .padding(10.dp),
         verticalArrangement = Arrangement.SpaceBetween,
     ) {
-        Box(
-            Modifier.size(32.dp).background(iconContainer, RoundedCornerShape(9.dp)),
-            contentAlignment = Alignment.Center,
-        ) {
-            Icon(icon, null, tint = iconColor, modifier = Modifier.size(17.dp))
-        }
+        ADHomeArtworkIcon(artwork = artwork, active = active)
         Spacer(Modifier.height(5.dp))
         Text(title, style = MaterialTheme.typography.titleMedium, maxLines = 1)
         Spacer(Modifier.height(1.dp))
@@ -314,6 +313,106 @@ private fun ADHomeAction(
             maxLines = 2,
             overflow = TextOverflow.Ellipsis,
         )
+    }
+}
+
+@Composable
+private fun ADHomeArtworkIcon(
+    artwork: ADHomeArtwork,
+    active: Boolean,
+) {
+    val container = if (active) ADColors.Ink else ADColors.SurfaceSubtle
+    val ink = if (active) ADColors.Surface else ADColors.Ink
+    val cutout = if (active) ADColors.Ink else ADColors.SurfaceSubtle
+
+    Box(
+        modifier = Modifier
+            .size(40.dp)
+            .background(container, RoundedCornerShape(12.dp)),
+        contentAlignment = Alignment.Center,
+    ) {
+        when (artwork) {
+            ADHomeArtwork.ASK_AI -> Row(
+                horizontalArrangement = Arrangement.spacedBy(3.dp),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Column(verticalArrangement = Arrangement.spacedBy(3.dp)) {
+                    Box(Modifier.width(17.dp).height(4.dp).background(ink, RoundedCornerShape(3.dp)))
+                    Box(Modifier.width(12.dp).height(4.dp).background(ink.copy(alpha = 0.55f), RoundedCornerShape(3.dp)))
+                }
+                Box(Modifier.size(7.dp).background(ink, CircleShape))
+            }
+
+            ADHomeArtwork.PHOTO -> Box(
+                modifier = Modifier
+                    .width(25.dp)
+                    .height(21.dp)
+                    .background(ink, RoundedCornerShape(6.dp)),
+                contentAlignment = Alignment.Center,
+            ) {
+                Box(
+                    Modifier
+                        .width(19.dp)
+                        .height(15.dp)
+                        .background(cutout, RoundedCornerShape(4.dp)),
+                    contentAlignment = Alignment.Center,
+                ) {
+                    Box(Modifier.size(7.dp).background(ink, CircleShape))
+                }
+            }
+
+            ADHomeArtwork.VIDEO -> Row(
+                horizontalArrangement = Arrangement.spacedBy(2.dp),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Box(
+                    Modifier
+                        .width(21.dp)
+                        .height(17.dp)
+                        .background(ink, RoundedCornerShape(5.dp)),
+                    contentAlignment = Alignment.Center,
+                ) {
+                    Box(Modifier.width(13.dp).height(9.dp).background(cutout, RoundedCornerShape(3.dp)))
+                }
+                Box(Modifier.width(5.dp).height(12.dp).background(ink.copy(alpha = 0.60f), RoundedCornerShape(3.dp)))
+            }
+
+            ADHomeArtwork.TRANSLATE -> Row(
+                horizontalArrangement = Arrangement.spacedBy(3.dp),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Text("A", style = MaterialTheme.typography.labelLarge, fontWeight = FontWeight.Bold, color = ink)
+                Box(Modifier.width(2.dp).height(18.dp).background(ink.copy(alpha = 0.28f), RoundedCornerShape(2.dp)))
+                Text("文", style = MaterialTheme.typography.labelMedium, fontWeight = FontWeight.Medium, color = ink)
+            }
+
+            ADHomeArtwork.SOUNDBITES -> Row(
+                horizontalArrangement = Arrangement.spacedBy(3.dp),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Box(Modifier.width(4.dp).height(10.dp).background(ink.copy(alpha = 0.48f), RoundedCornerShape(3.dp)))
+                Box(Modifier.width(4.dp).height(20.dp).background(ink, RoundedCornerShape(3.dp)))
+                Box(Modifier.width(4.dp).height(15.dp).background(ink.copy(alpha = 0.70f), RoundedCornerShape(3.dp)))
+                Box(Modifier.width(4.dp).height(24.dp).background(ink, RoundedCornerShape(3.dp)))
+                Box(Modifier.width(4.dp).height(12.dp).background(ink.copy(alpha = 0.48f), RoundedCornerShape(3.dp)))
+            }
+
+            ADHomeArtwork.AUDIO -> Column(
+                horizontalAlignment = Alignment.CenterHorizontally,
+                verticalArrangement = Arrangement.spacedBy(2.dp),
+            ) {
+                Box(
+                    Modifier
+                        .width(11.dp)
+                        .height(19.dp)
+                        .background(ink, RoundedCornerShape(7.dp)),
+                    contentAlignment = Alignment.Center,
+                ) {
+                    Box(Modifier.width(5.dp).height(11.dp).background(cutout, RoundedCornerShape(4.dp)))
+                }
+                Box(Modifier.width(17.dp).height(3.dp).background(ink.copy(alpha = 0.62f), RoundedCornerShape(2.dp)))
+            }
+        }
     }
 }
 
