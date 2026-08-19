@@ -7,6 +7,7 @@ import android.net.Uri
 import android.os.Build
 import android.provider.MediaStore
 import android.provider.Settings
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -14,8 +15,10 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.Bluetooth
 import androidx.compose.material.icons.outlined.CameraAlt
@@ -49,6 +52,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.core.content.ContextCompat
 import com.fersaiyan.cyanbridge.BuildConfig
@@ -94,7 +98,7 @@ internal fun ADPrivacyCenterScreen(onBack: () -> Unit) {
         Text(
             "The glasses are the interface. Data stays on the phone unless a configured capability needs a remote service.",
             style = MaterialTheme.typography.bodySmall,
-            color = ADColors.Muted,
+            color = ADColors.Muted.copy(alpha = 0.80f),
         )
     }
 }
@@ -120,30 +124,72 @@ internal fun ADStorageScreen(onBack: () -> Unit) {
     }
 
     ADPageLayout("Storage", onBack) {
-        ADCard {
-            Text("On this phone", style = MaterialTheme.typography.titleLarge)
-            Spacer(Modifier.height(7.dp))
-            ADStorageMetric("App data", filesBytes?.let(::formatBytes) ?: "Calculating…")
-            ADSettingsDetailDivider(0.dp)
-            ADStorageMetric("Cache", cacheBytes?.let(::formatBytes) ?: "Calculating…")
-            ADSettingsDetailDivider(0.dp)
-            ADStorageMetric(
-                "Synced glasses media",
-                when (val current = synced) {
-                    null -> "Calculating…"
-                    else -> if (current.count == 0) "None yet" else "${current.count} items · ${formatBytes(current.bytes)}"
-                },
+        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            ADStorageStatTile(
+                icon = Icons.Outlined.Storage,
+                label = "App data",
+                value = filesBytes?.let(::formatBytes) ?: "…",
+                modifier = Modifier.weight(1f),
+            )
+            ADStorageStatTile(
+                icon = Icons.Outlined.Storage,
+                label = "Cache",
+                value = cacheBytes?.let(::formatBytes) ?: "…",
+                modifier = Modifier.weight(1f),
             )
         }
-        ADCard {
-            Text("Glasses media", style = MaterialTheme.typography.titleMedium)
-            Spacer(Modifier.height(3.dp))
-            Text(
-                "Synced captures are kept in ${SyncedMediaFolder.relativePath}. Library is the normal place to review them.",
-                style = MaterialTheme.typography.bodySmall,
-                color = ADColors.Muted,
-            )
+
+        val current = synced
+        Surface(
+            modifier = Modifier.fillMaxWidth(),
+            shape = RoundedCornerShape(19.dp),
+            color = MaterialTheme.colorScheme.surface,
+            border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant),
+        ) {
+            Row(
+                modifier = Modifier.padding(12.dp),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Surface(
+                    modifier = Modifier.size(38.dp),
+                    shape = RoundedCornerShape(12.dp),
+                    color = MaterialTheme.colorScheme.surfaceVariant,
+                ) {
+                    Box(contentAlignment = Alignment.Center) {
+                        Icon(
+                            Icons.Outlined.CameraAlt,
+                            contentDescription = null,
+                            tint = ADColors.Ink,
+                            modifier = Modifier.size(19.dp),
+                        )
+                    }
+                }
+                Column(Modifier.padding(start = 10.dp).weight(1f)) {
+                    Text("Glasses media", style = MaterialTheme.typography.titleMedium)
+                    Text(
+                        when {
+                            current == null -> "Reading Library…"
+                            current.count == 0 -> "No synced media yet"
+                            else -> "${current.count} items"
+                        },
+                        style = MaterialTheme.typography.bodySmall,
+                        color = ADColors.Muted.copy(alpha = 0.80f),
+                    )
+                }
+                Text(
+                    when {
+                        current == null -> "…"
+                        current.count == 0 -> "0 B"
+                        else -> formatBytes(current.bytes)
+                    },
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.Medium,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                )
+            }
         }
+
         OutlinedButton(
             onClick = {
                 runCatching {
@@ -158,21 +204,85 @@ internal fun ADStorageScreen(onBack: () -> Unit) {
 }
 
 @Composable
+private fun ADStorageStatTile(
+    icon: ImageVector,
+    label: String,
+    value: String,
+    modifier: Modifier = Modifier,
+) {
+    Surface(
+        modifier = modifier.heightIn(min = 94.dp),
+        shape = RoundedCornerShape(19.dp),
+        color = MaterialTheme.colorScheme.surface,
+        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant),
+    ) {
+        Column(
+            modifier = Modifier.padding(11.dp),
+            verticalArrangement = Arrangement.SpaceBetween,
+        ) {
+            Surface(
+                modifier = Modifier.size(34.dp),
+                shape = RoundedCornerShape(10.dp),
+                color = MaterialTheme.colorScheme.surfaceVariant,
+            ) {
+                Box(contentAlignment = Alignment.Center) {
+                    Icon(icon, contentDescription = null, tint = ADColors.Ink, modifier = Modifier.size(18.dp))
+                }
+            }
+            Column {
+                Text(
+                    value,
+                    style = MaterialTheme.typography.titleLarge,
+                    fontWeight = FontWeight.Medium,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                )
+                Text(
+                    label,
+                    style = MaterialTheme.typography.labelSmall,
+                    color = ADColors.Muted.copy(alpha = 0.78f),
+                )
+            }
+        }
+    }
+}
+
+@Composable
 internal fun ADLanguageScreen(onBack: () -> Unit) {
     val context = LocalContext.current
     val currentLanguage = Locale.getDefault().displayLanguage
+
     ADPageLayout("Language", onBack) {
-        ADCard {
-            Text("App language", style = MaterialTheme.typography.titleLarge)
-            Spacer(Modifier.height(3.dp))
-            Text(currentLanguage, style = MaterialTheme.typography.bodyMedium)
-            Spacer(Modifier.height(3.dp))
-            Text(
-                "AD Glasses supports the languages packaged with the app. Android manages the active app locale.",
-                style = MaterialTheme.typography.bodySmall,
-                color = ADColors.Muted,
-            )
+        Surface(
+            modifier = Modifier.fillMaxWidth(),
+            shape = RoundedCornerShape(20.dp),
+            color = MaterialTheme.colorScheme.surface,
+            border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant),
+        ) {
+            Row(
+                modifier = Modifier.padding(13.dp),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Surface(
+                    modifier = Modifier.size(40.dp),
+                    shape = RoundedCornerShape(12.dp),
+                    color = MaterialTheme.colorScheme.surfaceVariant,
+                ) {
+                    Box(contentAlignment = Alignment.Center) {
+                        Icon(Icons.Outlined.Language, contentDescription = null, tint = ADColors.Ink)
+                    }
+                }
+                Column(Modifier.padding(start = 10.dp).weight(1f)) {
+                    Text("App language", style = MaterialTheme.typography.titleMedium)
+                    Text(
+                        currentLanguage,
+                        style = MaterialTheme.typography.bodySmall,
+                        color = ADColors.Muted.copy(alpha = 0.80f),
+                    )
+                }
+            }
         }
+
         Button(
             onClick = {
                 val intent = if (Build.VERSION.SDK_INT >= 33) {
@@ -184,7 +294,9 @@ internal fun ADLanguageScreen(onBack: () -> Unit) {
             },
             modifier = Modifier.fillMaxWidth(),
             colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary),
-        ) { Text("Choose language") }
+        ) {
+            Text(if (Build.VERSION.SDK_INT >= 33) "Open App languages" else "Open language settings")
+        }
     }
 }
 
@@ -192,44 +304,85 @@ internal fun ADLanguageScreen(onBack: () -> Unit) {
 internal fun ADPermissionsScreen(onBack: () -> Unit) {
     val context = LocalContext.current
     val permissions = buildList {
-        add(ADPermissionItem("Microphone", Icons.Outlined.Mic, Manifest.permission.RECORD_AUDIO, true))
-        add(ADPermissionItem("Camera", Icons.Outlined.CameraAlt, Manifest.permission.CAMERA, true))
-        if (Build.VERSION.SDK_INT >= 31) add(ADPermissionItem("Bluetooth", Icons.Outlined.Bluetooth, Manifest.permission.BLUETOOTH_CONNECT, true))
-        if (Build.VERSION.SDK_INT >= 33) add(ADPermissionItem("Nearby devices", Icons.Outlined.Wifi, Manifest.permission.NEARBY_WIFI_DEVICES, true))
-        if (Build.VERSION.SDK_INT >= 33) add(ADPermissionItem("Notifications", Icons.Outlined.Notifications, Manifest.permission.POST_NOTIFICATIONS, false))
+        add(ADPermissionItem("Microphone", Icons.Outlined.Mic, Manifest.permission.RECORD_AUDIO))
+        add(ADPermissionItem("Camera", Icons.Outlined.CameraAlt, Manifest.permission.CAMERA))
+        if (Build.VERSION.SDK_INT >= 31) {
+            add(ADPermissionItem("Bluetooth", Icons.Outlined.Bluetooth, Manifest.permission.BLUETOOTH_CONNECT))
+        }
+        if (Build.VERSION.SDK_INT >= 33) {
+            add(ADPermissionItem("Nearby devices", Icons.Outlined.Wifi, Manifest.permission.NEARBY_WIFI_DEVICES))
+            add(ADPermissionItem("Notifications", Icons.Outlined.Notifications, Manifest.permission.POST_NOTIFICATIONS))
+        }
     }
+
     ADPageLayout("Permissions", onBack) {
-        ADCard {
-            permissions.forEachIndexed { index, item ->
-                val granted = ContextCompat.checkSelfPermission(context, item.permission) == PackageManager.PERMISSION_GRANTED
-                Row(Modifier.padding(vertical = 7.dp), verticalAlignment = Alignment.CenterVertically) {
-                    Icon(
-                        item.icon,
-                        null,
-                        tint = if (granted) ADColors.Success else ADColors.Muted,
-                        modifier = Modifier.size(18.dp),
-                    )
-                    Column(Modifier.padding(start = 8.dp).weight(1f)) {
-                        Text(item.title, style = MaterialTheme.typography.titleMedium)
-                        Text(
-                            if (item.required) "Used by glasses features" else "Optional",
-                            style = MaterialTheme.typography.bodySmall,
-                            color = ADColors.Muted,
-                        )
-                    }
-                    ADStatusChip(
-                        if (granted) "ALLOWED" else "OFF",
-                        if (granted) ADStatusTone.SUCCESS else ADStatusTone.NEUTRAL,
+        permissions.chunked(2).forEach { pair ->
+            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                pair.forEach { item ->
+                    val granted = ContextCompat.checkSelfPermission(context, item.permission) == PackageManager.PERMISSION_GRANTED
+                    ADPermissionTile(
+                        item = item,
+                        granted = granted,
+                        modifier = Modifier.weight(1f),
                     )
                 }
-                if (index != permissions.lastIndex) ADSettingsDetailDivider(0.dp)
+                if (pair.size == 1) Spacer(Modifier.weight(1f))
             }
         }
+
         Button(
             onClick = { openAppSettings(context.packageName, context::startActivity) },
             modifier = Modifier.fillMaxWidth(),
             colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary),
         ) { Text("Manage permissions") }
+    }
+}
+
+@Composable
+private fun ADPermissionTile(
+    item: ADPermissionItem,
+    granted: Boolean,
+    modifier: Modifier = Modifier,
+) {
+    Surface(
+        modifier = modifier.heightIn(min = 94.dp),
+        shape = RoundedCornerShape(19.dp),
+        color = MaterialTheme.colorScheme.surface,
+        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant),
+    ) {
+        Column(
+            modifier = Modifier.padding(11.dp),
+            verticalArrangement = Arrangement.SpaceBetween,
+        ) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Surface(
+                    modifier = Modifier.size(34.dp),
+                    shape = RoundedCornerShape(10.dp),
+                    color = MaterialTheme.colorScheme.surfaceVariant,
+                ) {
+                    Box(contentAlignment = Alignment.Center) {
+                        Icon(
+                            item.icon,
+                            contentDescription = null,
+                            tint = ADColors.Ink,
+                            modifier = Modifier.size(18.dp),
+                        )
+                    }
+                }
+                Spacer(Modifier.weight(1f))
+                ADStatusChip(
+                    if (granted) "ON" else "OFF",
+                    if (granted) ADStatusTone.SUCCESS else ADStatusTone.NEUTRAL,
+                )
+            }
+            Text(
+                item.title,
+                style = MaterialTheme.typography.titleMedium,
+                fontWeight = FontWeight.Medium,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+            )
+        }
     }
 }
 
@@ -389,14 +542,6 @@ private fun ADToggleRow(
     )
 }
 
-@Composable
-private fun ADStorageMetric(label: String, value: String) {
-    Row(Modifier.padding(vertical = 8.dp), verticalAlignment = Alignment.CenterVertically) {
-        Text(label, style = MaterialTheme.typography.bodyMedium, modifier = Modifier.weight(1f))
-        Text(value, style = MaterialTheme.typography.bodySmall, color = ADColors.Muted)
-    }
-}
-
 private data class ADSyncedMediaStats(val count: Int, val bytes: Long)
 
 private fun querySyncedMedia(context: android.content.Context): ADSyncedMediaStats = runCatching {
@@ -437,7 +582,6 @@ private data class ADPermissionItem(
     val title: String,
     val icon: ImageVector,
     val permission: String,
-    val required: Boolean,
 )
 
 private fun openAppSettings(packageName: String, start: (Intent) -> Unit) {
