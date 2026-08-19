@@ -76,13 +76,15 @@ internal object ADColors {
             ErrorSoft = Color(0xFF3B1D1C)
 
             if (style == ADThemeStyle.MONOCHROME) {
-                Blue = Color(0xFFE0E0E5)
-                BlueDeep = Color(0xFF5B5B63)
+                Blue = Color(0xFF66666F)
+                BlueDeep = Color(0xFF505057)
                 BlueSoft = Color(0xFF29292F)
             } else {
-                Blue = Color(0xFFB8BAFF)
-                BlueDeep = Color(0xFF686CF2)
+                Blue = Color(0xFF777BF5)
+                BlueDeep = Color(0xFF5C60DC)
                 BlueSoft = Color(0xFF292A48)
+                SurfaceSubtle = Color(0xFF25243A)
+                Outline = Color(0xFF454359)
             }
         } else {
             Ink = Color(0xFF1D1D22)
@@ -108,6 +110,9 @@ internal object ADColors {
                 Blue = Color(0xFF5B5FEF)
                 BlueDeep = Color(0xFF4448C9)
                 BlueSoft = Color(0xFFEEF0FF)
+                Background = Color(0xFFFAF9FD)
+                SurfaceSubtle = Color(0xFFF2F1FA)
+                Outline = Color(0xFFDAD8E7)
             }
         }
     }
@@ -126,14 +131,14 @@ private val ColorLightScheme = lightColorScheme(
     onTertiary = Color.White,
     tertiaryContainer = Color(0xFFFFEDC8),
     onTertiaryContainer = Color(0xFF583900),
-    background = Color(0xFFF8F8FB),
+    background = Color(0xFFFAF9FD),
     onBackground = Color(0xFF1D1D22),
     surface = Color.White,
     onSurface = Color(0xFF1D1D22),
-    surfaceVariant = Color(0xFFF0F1F5),
+    surfaceVariant = Color(0xFFF2F1FA),
     onSurfaceVariant = Color(0xFF656570),
     outline = Color(0xFFBFC0CA),
-    outlineVariant = Color(0xFFDADAE2),
+    outlineVariant = Color(0xFFDEDBE8),
     error = Color(0xFFD92D20),
     onError = Color.White,
     errorContainer = Color(0xFFFFECEA),
@@ -157,10 +162,10 @@ private val ColorDarkScheme = darkColorScheme(
     onBackground = Color(0xFFF4F4F7),
     surface = Color(0xFF1A1A1E),
     onSurface = Color(0xFFF4F4F7),
-    surfaceVariant = Color(0xFF24242A),
-    onSurfaceVariant = Color(0xFFB8B8C1),
-    outline = Color(0xFF84848F),
-    outlineVariant = Color(0xFF3B3B44),
+    surfaceVariant = Color(0xFF25243A),
+    onSurfaceVariant = Color(0xFFBCBBC8),
+    outline = Color(0xFF888795),
+    outlineVariant = Color(0xFF454359),
     error = Color(0xFFFF8278),
     onError = Color(0xFF5D0804),
     errorContainer = Color(0xFF5B211E),
