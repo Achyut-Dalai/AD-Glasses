@@ -1,6 +1,8 @@
 package com.fersaiyan.cyanbridge.ui.adglasses
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -27,17 +29,17 @@ import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 
-/** Library landing surface; detail viewers remain unchanged. */
+/** Library landing surface; collections should read as content, not settings destinations. */
 @Composable
 internal fun ADExpressiveLibraryHome(
     transferActive: Boolean,
@@ -50,16 +52,11 @@ internal fun ADExpressiveLibraryHome(
         ADTopBar(title = "Library")
         LazyColumn(
             modifier = Modifier.fillMaxSize(),
-            contentPadding = androidx.compose.foundation.layout.PaddingValues(16.dp, 6.dp, 16.dp, 30.dp),
+            contentPadding = androidx.compose.foundation.layout.PaddingValues(16.dp, 4.dp, 16.dp, 30.dp),
             verticalArrangement = Arrangement.spacedBy(16.dp),
         ) {
             item {
-                ADLibraryHero(
-                    title = "Everything the glasses keep",
-                    detail = "Captures, recordings, transcripts and notes live here after they reach this phone.",
-                    transferActive = transferActive,
-                    onOpenSync = onOpenSync,
-                )
+                ADLibraryHero(transferActive = transferActive, onOpenSync = onOpenSync)
             }
 
             if (transferActive) {
@@ -67,12 +64,10 @@ internal fun ADExpressiveLibraryHome(
                     ADCard(onClick = onOpenSync) {
                         Row(verticalAlignment = Alignment.CenterVertically) {
                             Box(
-                                modifier = Modifier
-                                    .size(44.dp)
-                                    .background(ADColors.SurfaceSubtle, RoundedCornerShape(14.dp)),
+                                modifier = Modifier.size(40.dp).background(ADColors.CyanSoft, RoundedCornerShape(12.dp)),
                                 contentAlignment = Alignment.Center,
                             ) {
-                                Icon(Icons.Outlined.Sync, contentDescription = null, tint = ADColors.Ink)
+                                Icon(Icons.Outlined.Sync, contentDescription = null, tint = ADColors.CyanDeep)
                             }
                             Column(Modifier.padding(start = 12.dp).weight(1f)) {
                                 Text("New media is arriving", style = MaterialTheme.typography.titleMedium)
@@ -82,38 +77,32 @@ internal fun ADExpressiveLibraryHome(
                                     color = ADColors.Muted,
                                 )
                             }
-                            ADStatusChip("ACTIVE", ADStatusTone.INFO)
+                            ADStatusChip("LIVE", ADStatusTone.INFO)
                         }
                     }
                 }
             }
 
             item {
-                Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
-                    Text(
-                        "Browse",
-                        style = MaterialTheme.typography.titleLarge,
-                        fontWeight = FontWeight.SemiBold,
-                        modifier = Modifier.padding(start = 2.dp, bottom = 2.dp),
-                    )
-                    ADLibraryDestinationRow(
-                        icon = Icons.Outlined.Image,
-                        title = "Captures",
-                        detail = "Photos and videos",
-                        onClick = onCaptures,
-                    )
-                    ADLibraryDestinationRow(
-                        icon = Icons.Outlined.GraphicEq,
-                        title = "Recordings",
-                        detail = "Audio and transcripts",
-                        onClick = onRecordings,
-                    )
-                    ADLibraryDestinationRow(
-                        icon = Icons.Outlined.Notes,
-                        title = "Notes",
-                        detail = "Saved notes and summaries",
-                        onClick = onNotes,
-                    )
+                Column(verticalArrangement = Arrangement.spacedBy(9.dp)) {
+                    ADSectionTitle("Collections")
+                    Row(horizontalArrangement = Arrangement.spacedBy(9.dp)) {
+                        ADLibraryCollectionCard(
+                            icon = Icons.Outlined.Image,
+                            title = "Captures",
+                            detail = "Photos & video",
+                            modifier = Modifier.weight(1f),
+                            onClick = onCaptures,
+                        )
+                        ADLibraryCollectionCard(
+                            icon = Icons.Outlined.GraphicEq,
+                            title = "Recordings",
+                            detail = "Audio & text",
+                            modifier = Modifier.weight(1f),
+                            onClick = onRecordings,
+                        )
+                    }
+                    ADLibraryNotesCard(onClick = onNotes)
                 }
             }
         }
@@ -122,110 +111,139 @@ internal fun ADExpressiveLibraryHome(
 
 @Composable
 private fun ADLibraryHero(
-    title: String,
-    detail: String,
     transferActive: Boolean,
     onOpenSync: () -> Unit,
 ) {
-    Surface(
-        modifier = Modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(26.dp),
-        color = ADColors.Surface,
-        shadowElevation = 1.dp,
+    val shape = RoundedCornerShape(20.dp)
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .background(ADColors.Graphite, shape)
+            .padding(18.dp),
     ) {
-        Column(Modifier.padding(18.dp)) {
-            Row(verticalAlignment = Alignment.Top) {
-                Surface(
-                    modifier = Modifier.size(52.dp),
-                    shape = RoundedCornerShape(17.dp),
-                    color = ADColors.Ink,
-                    contentColor = ADColors.Surface,
-                ) {
-                    Box(contentAlignment = Alignment.Center) {
-                        Icon(Icons.Outlined.VideoLibrary, contentDescription = null, modifier = Modifier.size(25.dp))
-                    }
-                }
-                Column(Modifier.padding(start = 14.dp).weight(1f)) {
-                    Text(title, style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.SemiBold)
-                    Spacer(Modifier.height(4.dp))
-                    Text(detail, style = MaterialTheme.typography.bodyMedium, color = ADColors.Muted)
-                }
-                ADStatusChip(
-                    if (transferActive) "SYNCING" else "LOCAL",
-                    if (transferActive) ADStatusTone.INFO else ADStatusTone.NEUTRAL,
+        Row(verticalAlignment = Alignment.Top) {
+            Box(
+                modifier = Modifier
+                    .size(46.dp)
+                    .background(Color.White.copy(alpha = 0.10f), RoundedCornerShape(14.dp)),
+                contentAlignment = Alignment.Center,
+            ) {
+                Icon(
+                    Icons.Outlined.VideoLibrary,
+                    contentDescription = null,
+                    tint = Color.White,
+                    modifier = Modifier.size(23.dp),
                 )
             }
-            Spacer(Modifier.height(16.dp))
-            HorizontalDivider(color = ADColors.Separator)
-            Spacer(Modifier.height(14.dp))
-            Button(
-                onClick = onOpenSync,
-                modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp),
-                colors = ButtonDefaults.buttonColors(containerColor = ADColors.Ink),
-            ) {
-                Icon(Icons.Outlined.Sync, contentDescription = null)
-                Spacer(Modifier.size(8.dp))
-                Text(if (transferActive) "View sync" else "Sync from glasses")
+            Column(Modifier.padding(start = 13.dp).weight(1f)) {
+                Text(
+                    "Your glasses, kept here",
+                    style = MaterialTheme.typography.headlineSmall,
+                    fontWeight = FontWeight.SemiBold,
+                    color = Color.White,
+                )
+                Spacer(Modifier.height(3.dp))
+                Text(
+                    "Captures, recordings and notes stay organized on this phone.",
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = Color.White.copy(alpha = 0.68f),
+                )
             }
+            ADStatusChip(
+                if (transferActive) "SYNCING" else "LOCAL",
+                if (transferActive) ADStatusTone.INFO else ADStatusTone.NEUTRAL,
+            )
+        }
+        Spacer(Modifier.height(15.dp))
+        HorizontalDivider(color = Color.White.copy(alpha = 0.12f))
+        Spacer(Modifier.height(13.dp))
+        Button(
+            onClick = onOpenSync,
+            modifier = Modifier.fillMaxWidth().heightIn(min = 46.dp),
+            shape = RoundedCornerShape(14.dp),
+            colors = ButtonDefaults.buttonColors(
+                containerColor = if (transferActive) ADColors.Cyan else Color.White,
+                contentColor = if (transferActive) Color.White else ADColors.Ink,
+            ),
+        ) {
+            Icon(Icons.Outlined.Sync, contentDescription = null, modifier = Modifier.size(19.dp))
+            Spacer(Modifier.size(7.dp))
+            Text(if (transferActive) "View sync" else "Sync from glasses")
         }
     }
 }
 
 @Composable
-private fun ADLibraryDestinationRow(
+private fun ADLibraryCollectionCard(
     icon: ImageVector,
     title: String,
     detail: String,
+    modifier: Modifier = Modifier,
     onClick: () -> Unit,
 ) {
-    Surface(
-        onClick = onClick,
-        modifier = Modifier.fillMaxWidth().heightIn(min = 116.dp),
-        shape = RoundedCornerShape(24.dp),
-        color = ADColors.Surface,
-        tonalElevation = 1.dp,
+    val shape = RoundedCornerShape(16.dp)
+    Column(
+        modifier = modifier
+            .heightIn(min = 126.dp)
+            .background(ADColors.Surface, shape)
+            .border(1.dp, ADColors.Outline, shape)
+            .clickable(onClick = onClick)
+            .padding(14.dp),
+        verticalArrangement = Arrangement.SpaceBetween,
     ) {
-        Row(
-            modifier = Modifier.padding(horizontal = 18.dp, vertical = 18.dp),
-            verticalAlignment = Alignment.CenterVertically,
+        Box(
+            modifier = Modifier.size(42.dp).background(ADColors.CyanSoft, RoundedCornerShape(12.dp)),
+            contentAlignment = Alignment.Center,
         ) {
-            Box(
-                modifier = Modifier
-                    .size(58.dp)
-                    .background(ADColors.SurfaceSubtle, RoundedCornerShape(19.dp)),
-                contentAlignment = Alignment.Center,
-            ) {
-                Icon(icon, contentDescription = null, tint = ADColors.Ink, modifier = Modifier.size(27.dp))
-            }
-            Column(Modifier.padding(start = 16.dp).weight(1f)) {
-                Text(
-                    title,
-                    style = MaterialTheme.typography.titleLarge,
-                    fontWeight = FontWeight.SemiBold,
-                    maxLines = 1,
-                )
-                Spacer(Modifier.height(5.dp))
-                Text(
-                    detail,
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = ADColors.Muted,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis,
-                )
-            }
-            Surface(
-                shape = CircleShape,
-                color = ADColors.SurfaceSubtle,
-            ) {
-                Box(Modifier.size(38.dp), contentAlignment = Alignment.Center) {
-                    Icon(
-                        Icons.AutoMirrored.Rounded.KeyboardArrowRight,
-                        contentDescription = null,
-                        tint = ADColors.Ink,
-                        modifier = Modifier.size(22.dp),
-                    )
-                }
-            }
+            Icon(icon, contentDescription = null, tint = ADColors.CyanDeep, modifier = Modifier.size(22.dp))
+        }
+        Column {
+            Text(title, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold)
+            Spacer(Modifier.height(2.dp))
+            Text(
+                detail,
+                style = MaterialTheme.typography.bodySmall,
+                color = ADColors.Muted,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+            )
+        }
+    }
+}
+
+@Composable
+private fun ADLibraryNotesCard(onClick: () -> Unit) {
+    val shape = RoundedCornerShape(16.dp)
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .heightIn(min = 78.dp)
+            .background(ADColors.Surface, shape)
+            .border(1.dp, ADColors.Outline, shape)
+            .clickable(onClick = onClick)
+            .padding(horizontal = 14.dp, vertical = 13.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Box(
+            modifier = Modifier.size(42.dp).background(ADColors.SurfaceSubtle, RoundedCornerShape(12.dp)),
+            contentAlignment = Alignment.Center,
+        ) {
+            Icon(Icons.Outlined.Notes, contentDescription = null, tint = ADColors.Ink, modifier = Modifier.size(22.dp))
+        }
+        Column(Modifier.padding(start = 12.dp).weight(1f)) {
+            Text("Notes", style = MaterialTheme.typography.titleMedium)
+            Text("Summaries and saved ideas", style = MaterialTheme.typography.bodySmall, color = ADColors.Muted)
+        }
+        Box(
+            modifier = Modifier.size(34.dp).background(ADColors.SurfaceSubtle, CircleShape),
+            contentAlignment = Alignment.Center,
+        ) {
+            Icon(
+                Icons.AutoMirrored.Rounded.KeyboardArrowRight,
+                contentDescription = null,
+                tint = ADColors.Ink,
+                modifier = Modifier.size(20.dp),
+            )
         }
     }
 }
