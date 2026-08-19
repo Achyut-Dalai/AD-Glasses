@@ -322,39 +322,39 @@ private fun ADSmartLensCard(onClick: () -> Unit) {
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .heightIn(min = 128.dp)
-            .background(
-                Brush.linearGradient(listOf(Color.White, ADColors.SurfaceSubtle)),
-                RoundedCornerShape(24.dp),
-            )
+            .heightIn(min = 108.dp)
+            .background(ADColors.Ink, RoundedCornerShape(26.dp))
             .clickable(onClick = onClick)
-            .padding(horizontal = 18.dp, vertical = 17.dp),
+            .padding(horizontal = 18.dp, vertical = 16.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
+        Column(Modifier.weight(1f)) {
+            Text(
+                "Lens",
+                style = MaterialTheme.typography.titleLarge,
+                fontWeight = FontWeight.SemiBold,
+                color = ADColors.Surface,
+            )
+            Spacer(Modifier.height(4.dp))
+            Text(
+                "Ask about what you’re looking at",
+                style = MaterialTheme.typography.bodyMedium,
+                color = ADColors.Surface.copy(alpha = 0.70f),
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+            )
+        }
         Box(
             modifier = Modifier
-                .size(68.dp)
-                .background(ADColors.Ink, RoundedCornerShape(22.dp)),
+                .size(64.dp)
+                .background(ADColors.Surface.copy(alpha = 0.12f), RoundedCornerShape(20.dp)),
             contentAlignment = Alignment.Center,
         ) {
             Icon(
                 Icons.Outlined.Visibility,
                 contentDescription = null,
-                tint = Color.White,
-                modifier = Modifier.size(30.dp),
-            )
-        }
-        Column(Modifier.padding(start = 17.dp).weight(1f)) {
-            Text(
-                "Smart Lens",
-                style = MaterialTheme.typography.titleLarge,
-                fontWeight = FontWeight.SemiBold,
-            )
-            Spacer(Modifier.height(5.dp))
-            Text(
-                "Ask AI about what your glasses see.",
-                style = MaterialTheme.typography.bodyMedium,
-                color = ADColors.Muted,
+                tint = ADColors.Surface,
+                modifier = Modifier.size(29.dp),
             )
         }
     }
