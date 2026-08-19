@@ -145,7 +145,8 @@ class ADProductSurfaceIsolationTest {
         assertTrue(ai.contains("title = \"Apps\""))
         assertTrue(ai.contains("onAssistantApps"))
 
-        assertTrue(library.contains("ADLibraryDestinationRow("))
+        assertTrue(library.contains("ADLibraryPrimaryDestination("))
+        assertTrue(library.contains("ADLibraryCompactDestination("))
         assertFalse(library.contains("ON THIS PHONE"))
         assertFalse(library.contains("compact = true"))
 
