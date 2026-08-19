@@ -5,7 +5,6 @@ import android.net.Uri
 import android.provider.Settings as AndroidSettings
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -16,6 +15,7 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
@@ -23,9 +23,6 @@ import androidx.compose.material.icons.automirrored.rounded.KeyboardArrowRight
 import androidx.compose.material.icons.outlined.BatteryFull
 import androidx.compose.material.icons.outlined.Bluetooth
 import androidx.compose.material.icons.outlined.Info
-import androidx.compose.material.icons.outlined.Language
-import androidx.compose.material.icons.outlined.PrivacyTip
-import androidx.compose.material.icons.outlined.Security
 import androidx.compose.material.icons.outlined.Settings
 import androidx.compose.material.icons.outlined.Storage
 import androidx.compose.material3.HorizontalDivider
@@ -43,6 +40,13 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.fersaiyan.cyanbridge.devices.DeviceProfileStore
 import com.fersaiyan.cyanbridge.shared.glasses.GlassesDashboardUiState
+
+private enum class ADSettingsArtwork {
+    PRIVACY,
+    STORAGE,
+    LANGUAGE,
+    PERMISSIONS,
+}
 
 @Composable
 internal fun ADNativeSettingsHubScreen(
@@ -72,13 +76,13 @@ internal fun ADNativeSettingsHubScreen(
             ADSettingsSectionTitle("Essentials")
             Row(horizontalArrangement = Arrangement.spacedBy(7.dp)) {
                 ADSettingsTile(
-                    icon = Icons.Outlined.PrivacyTip,
+                    artwork = ADSettingsArtwork.PRIVACY,
                     title = "Privacy",
                     modifier = Modifier.weight(1f),
                     onClick = onPrivacy,
                 )
                 ADSettingsTile(
-                    icon = Icons.Outlined.Storage,
+                    artwork = ADSettingsArtwork.STORAGE,
                     title = "Storage",
                     modifier = Modifier.weight(1f),
                     onClick = onStorage,
@@ -86,13 +90,13 @@ internal fun ADNativeSettingsHubScreen(
             }
             Row(horizontalArrangement = Arrangement.spacedBy(7.dp)) {
                 ADSettingsTile(
-                    icon = Icons.Outlined.Language,
+                    artwork = ADSettingsArtwork.LANGUAGE,
                     title = "Language",
                     modifier = Modifier.weight(1f),
                     onClick = onLanguage,
                 )
                 ADSettingsTile(
-                    icon = Icons.Outlined.Security,
+                    artwork = ADSettingsArtwork.PERMISSIONS,
                     title = "Permissions",
                     modifier = Modifier.weight(1f),
                     onClick = onPermissions,
@@ -102,12 +106,6 @@ internal fun ADNativeSettingsHubScreen(
 
         Column(verticalArrangement = Arrangement.spacedBy(7.dp)) {
             ADSettingsSectionTitle("Advanced")
-            ADSettingsWideAction(
-                icon = Icons.Outlined.Bluetooth,
-                title = "Device diagnostics",
-                subtitle = "Connection, sync, firmware and recovery tools",
-                onClick = onDevice,
-            )
             ADSettingsWideAction(
                 icon = Icons.Outlined.Settings,
                 title = "Android app settings",
@@ -293,38 +291,25 @@ private fun ADSettingsSectionTitle(title: String) {
 
 @Composable
 private fun ADSettingsTile(
-    icon: ImageVector,
+    artwork: ADSettingsArtwork,
     title: String,
     modifier: Modifier = Modifier,
     onClick: () -> Unit,
 ) {
     Surface(
         onClick = onClick,
-        modifier = modifier.heightIn(min = 92.dp),
+        modifier = modifier.heightIn(min = 96.dp),
         shape = RoundedCornerShape(20.dp),
         color = MaterialTheme.colorScheme.surface,
         border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant),
         tonalElevation = 0.dp,
     ) {
         Column(
-            modifier = Modifier.padding(horizontal = 10.dp, vertical = 12.dp),
+            modifier = Modifier.padding(horizontal = 10.dp, vertical = 11.dp),
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.Center,
         ) {
-            Surface(
-                modifier = Modifier.size(38.dp),
-                shape = RoundedCornerShape(12.dp),
-                color = MaterialTheme.colorScheme.surfaceVariant,
-            ) {
-                Box(contentAlignment = Alignment.Center) {
-                    Icon(
-                        icon,
-                        contentDescription = null,
-                        tint = ADColors.Ink,
-                        modifier = Modifier.size(19.dp),
-                    )
-                }
-            }
+            ADSettingsArtworkIcon(artwork)
             Spacer(Modifier.height(8.dp))
             Text(
                 title,
@@ -332,6 +317,85 @@ private fun ADSettingsTile(
                 fontWeight = FontWeight.Medium,
                 maxLines = 1,
             )
+        }
+    }
+}
+
+@Composable
+private fun ADSettingsArtworkIcon(artwork: ADSettingsArtwork) {
+    Box(
+        modifier = Modifier
+            .size(40.dp)
+            .background(MaterialTheme.colorScheme.surfaceVariant, RoundedCornerShape(13.dp)),
+        contentAlignment = Alignment.Center,
+    ) {
+        when (artwork) {
+            ADSettingsArtwork.PRIVACY -> Column(
+                horizontalAlignment = Alignment.CenterHorizontally,
+                verticalArrangement = Arrangement.spacedBy(2.dp),
+            ) {
+                Box(
+                    modifier = Modifier
+                        .width(19.dp)
+                        .height(16.dp)
+                        .background(ADColors.Ink, RoundedCornerShape(7.dp, 7.dp, 9.dp, 9.dp)),
+                    contentAlignment = Alignment.Center,
+                ) {
+                    Box(Modifier.size(5.dp).background(ADColors.Surface, CircleShape))
+                }
+                Box(
+                    Modifier
+                        .width(10.dp)
+                        .height(3.dp)
+                        .background(ADColors.Ink, RoundedCornerShape(2.dp)),
+                )
+            }
+
+            ADSettingsArtwork.STORAGE -> Column(verticalArrangement = Arrangement.spacedBy(3.dp)) {
+                repeat(3) { index ->
+                    Row(
+                        modifier = Modifier
+                            .width(23.dp)
+                            .height(5.dp)
+                            .background(ADColors.Ink.copy(alpha = 0.92f - index * 0.16f), RoundedCornerShape(3.dp))
+                            .padding(horizontal = 3.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
+                        Box(Modifier.size(2.dp).background(ADColors.Surface, CircleShape))
+                    }
+                }
+            }
+
+            ADSettingsArtwork.LANGUAGE -> Row(
+                horizontalArrangement = Arrangement.spacedBy(3.dp),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Text("A", style = MaterialTheme.typography.labelLarge, fontWeight = FontWeight.Bold, color = ADColors.Ink)
+                Box(
+                    Modifier
+                        .width(2.dp)
+                        .height(19.dp)
+                        .background(ADColors.Ink.copy(alpha = 0.20f), RoundedCornerShape(2.dp)),
+                )
+                Text("文", style = MaterialTheme.typography.labelMedium, fontWeight = FontWeight.Medium, color = ADColors.Ink)
+            }
+
+            ADSettingsArtwork.PERMISSIONS -> Column(verticalArrangement = Arrangement.spacedBy(3.dp)) {
+                repeat(2) { row ->
+                    Row(horizontalArrangement = Arrangement.spacedBy(3.dp)) {
+                        repeat(2) { column ->
+                            Box(
+                                Modifier
+                                    .size(9.dp)
+                                    .background(
+                                        if (row == column) ADColors.Ink else ADColors.Ink.copy(alpha = 0.20f),
+                                        RoundedCornerShape(3.dp),
+                                    ),
+                            )
+                        }
+                    }
+                }
+            }
         }
     }
 }

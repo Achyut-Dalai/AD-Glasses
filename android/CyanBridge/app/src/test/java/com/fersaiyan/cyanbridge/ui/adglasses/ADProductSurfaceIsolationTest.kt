@@ -126,6 +126,7 @@ class ADProductSurfaceIsolationTest {
         assertTrue(home.contains("AssistantCapability.TRANSLATOR"))
         assertTrue(home.contains("AssistantCapability.MEETING_NOTES"))
         assertTrue(home.contains("onClick = host.onImageQuestion"))
+        assertTrue(home.contains("ADHomeArtworkIcon("))
         assertFalse(home.contains("Smart Lens"))
         assertFalse(home.contains("Search Web"))
         assertFalse(home.contains("ADHomeLink("))
@@ -141,7 +142,8 @@ class ADProductSurfaceIsolationTest {
         assertFalse("Cron is retired", ai.contains("\"Cron\""))
         assertFalse(ai.contains("\"Capabilities\""))
         assertFalse(ai.contains("\"Modes\""))
-        assertTrue(ai.contains("\"Assistant apps\""))
+        assertTrue(ai.contains("title = \"Apps\""))
+        assertTrue(ai.contains("onAssistantApps"))
 
         assertTrue(library.contains("ADLibraryDestinationRow("))
         assertFalse(library.contains("ON THIS PHONE"))
@@ -230,8 +232,8 @@ class ADProductSurfaceIsolationTest {
         assertTrue(ai.contains("AssistantCapability.VISUAL_DIARY"))
         assertTrue(ai.contains("AssistantCapability.AUTO_DIARY"))
         assertTrue(ai.contains("AssistantCapability.LOCAL_AGENT"))
-        assertTrue(ai.contains("ADAiCapabilityCard("))
-        assertTrue(ai.contains("ADAiCapabilityRow("))
+        assertTrue(ai.contains("ADAiSkillCard("))
+        assertTrue(ai.contains("ADAutomationCard("))
         assertFalse(ai.contains("Switch("))
         assertFalse(ai.contains("ADStatusChip("))
         assertFalse(home.contains("ADStatusChip(\"OFF\""))
@@ -247,7 +249,7 @@ class ADProductSurfaceIsolationTest {
         assertTrue(welcome.contains("text = \"YOUR AI\""))
         assertTrue(welcome.contains("text = \"YOUR DATA\""))
         assertTrue(welcome.contains("R.drawable.ad_glasses_hero_v4"))
-        assertTrue(welcome.contains("RoundedCornerShape(28.dp)"))
+        assertTrue(welcome.contains("RoundedCornerShape(24.dp)"))
     }
 
     @Test
@@ -272,9 +274,15 @@ class ADProductSurfaceIsolationTest {
     }
 
     @Test
-    fun deviceCenterKeepsSyncFirmwareAndDiagnosticsAsStableDestinations() {
+    fun deviceCenterKeepsCoreToolsWithoutCircularAdvancedNavigation() {
         val deviceCenter = sourceFile(
             "src/main/java/com/fersaiyan/cyanbridge/ui/adglasses/ADGlassesDeviceCenterScreen.kt",
+        ).readText()
+        val settings = sourceFile(
+            "src/main/java/com/fersaiyan/cyanbridge/ui/adglasses/ADNativeSettingsHubScreen.kt",
+        ).readText()
+        val advanced = sourceFile(
+            "src/main/java/com/fersaiyan/cyanbridge/ui/adglasses/ADAdvancedScreen.kt",
         ).readText()
         val app = sourceFile(
             "src/main/java/com/fersaiyan/cyanbridge/ui/adglasses/ADGlassesApp.kt",
@@ -282,9 +290,14 @@ class ADProductSurfaceIsolationTest {
 
         assertTrue(deviceCenter.contains("title = \"Sync media\""))
         assertTrue(deviceCenter.contains("title = \"Firmware\""))
-        assertTrue(deviceCenter.contains("title = \"Advanced\""))
+        assertFalse(deviceCenter.contains("title = \"Advanced\""))
+        assertFalse(deviceCenter.contains("onAdvanced"))
+        assertFalse(settings.contains("title = \"Device diagnostics\""))
+        assertFalse(advanced.contains("title = \"Device diagnostics\""))
+        assertFalse(advanced.contains("onDevice"))
         assertTrue(app.contains("ADRoute.SYNC -> ADSyncScreen"))
         assertTrue(app.contains("ADRoute.FIRMWARE -> ADFirmwareScreen"))
+        assertFalse(app.contains("onAdvanced = { navigateTo(ADRoute.ADVANCED) }"))
     }
 
     @Test

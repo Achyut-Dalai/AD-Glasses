@@ -15,7 +15,6 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.BatteryFull
 import androidx.compose.material.icons.outlined.Bluetooth
-import androidx.compose.material.icons.outlined.DeveloperMode
 import androidx.compose.material.icons.outlined.Storage
 import androidx.compose.material.icons.outlined.Sync
 import androidx.compose.material.icons.outlined.SystemUpdateAlt
@@ -44,13 +43,18 @@ internal fun ADGlassesDeviceCenterScreen(
     onBack: () -> Unit,
     onSync: () -> Unit,
     onFirmware: () -> Unit,
-    onAdvanced: () -> Unit,
 ) {
     val context = LocalContext.current
     val profile = DeviceProfileStore.loadLastSelected(context)
         ?.takeIf { ADDeviceSupportPolicy.isPairable(it.selectedClass) }
     val presentation = buildADDevicePresentation(state, profile)
-    val identity = presentation.identityLabel ?: if (profile == null) "No glasses connected" else "Glasses"
+    val identity = presentation.identityLabel ?: if (profile == null) "No glasses connected" else "Your glasses"
+    val connectionDetail = when {
+        presentation.connected -> "Connected"
+        presentation.connecting -> "Connecting…"
+        profile != null -> "Ready to reconnect"
+        else -> "Connect to manage your glasses"
+    }
 
     ADPageLayout("Device Center", onBack) {
         ADCard {
@@ -74,16 +78,37 @@ internal fun ADGlassesDeviceCenterScreen(
                 Column(Modifier.padding(start = 11.dp).weight(1f)) {
                     Text(identity, style = MaterialTheme.typography.titleLarge)
                     Text(
-                        presentation.statusLabel,
+                        connectionDetail,
                         style = MaterialTheme.typography.bodySmall,
                         color = ADColors.Muted,
                     )
                 }
-                ADStatusChip(
-                    text = if (presentation.connected) "CONNECTED" else "OFFLINE",
-                    tone = if (presentation.connected) ADStatusTone.SUCCESS else ADStatusTone.NEUTRAL,
-                    showCheck = presentation.connected,
-                )
+            }
+
+            if (presentation.connected) {
+                val showBattery = state.showBattery && state.batteryPercent != null
+                val showStorage = state.showStorage && state.storageLabel != "--"
+                if (showBattery || showStorage) {
+                    Spacer(Modifier.height(10.dp))
+                    HorizontalDivider(color = ADColors.Separator)
+                    if (showBattery) {
+                        ADDeviceMetric(
+                            icon = Icons.Outlined.BatteryFull,
+                            label = "Battery",
+                            value = "${state.batteryPercent}%",
+                        )
+                    }
+                    if (showStorage) {
+                        if (showBattery) {
+                            HorizontalDivider(Modifier.padding(start = 30.dp), color = ADColors.Separator)
+                        }
+                        ADDeviceMetric(
+                            icon = Icons.Outlined.Storage,
+                            label = "Storage",
+                            value = state.storageLabel,
+                        )
+                    }
+                }
             }
 
             Spacer(Modifier.height(12.dp))
@@ -119,31 +144,6 @@ internal fun ADGlassesDeviceCenterScreen(
             }
         }
 
-        ADSectionTitle("Glasses status")
-        ADCard {
-            ADDeviceMetric(
-                icon = Icons.Outlined.Bluetooth,
-                label = "Connection",
-                value = if (presentation.connected) "Bluetooth connected" else "Not connected",
-            )
-            if (state.showBattery && state.batteryPercent != null) {
-                HorizontalDivider(Modifier.padding(start = 30.dp), color = ADColors.Separator)
-                ADDeviceMetric(
-                    icon = Icons.Outlined.BatteryFull,
-                    label = "Battery",
-                    value = "${state.batteryPercent}%",
-                )
-            }
-            if (state.showStorage && state.storageLabel != "--") {
-                HorizontalDivider(Modifier.padding(start = 30.dp), color = ADColors.Separator)
-                ADDeviceMetric(
-                    icon = Icons.Outlined.Storage,
-                    label = "Storage",
-                    value = state.storageLabel,
-                )
-            }
-        }
-
         ADSectionTitle("Capabilities")
         ADCard {
             ADDeviceCapability("Voice", "Ask and control through the glasses")
@@ -171,15 +171,6 @@ internal fun ADGlassesDeviceCenterScreen(
                 onClick = onFirmware,
                 iconTint = Color.White,
                 iconBackground = ADColors.Warning,
-            )
-            HorizontalDivider(Modifier.padding(start = 42.dp), color = ADColors.Separator)
-            ADSettingsRow(
-                icon = Icons.Outlined.DeveloperMode,
-                title = "Advanced",
-                subtitle = "Connection diagnostics and Android controls",
-                onClick = onAdvanced,
-                iconTint = Color.White,
-                iconBackground = ADColors.Muted,
             )
         }
     }
