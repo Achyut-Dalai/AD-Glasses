@@ -1,10 +1,12 @@
 package com.fersaiyan.cyanbridge.ui.adglasses
 
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
-import androidx.compose.foundation.border
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
@@ -14,10 +16,10 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.safeDrawing
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.windowInsetsPadding
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material3.Button
-import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.OutlinedButton
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
@@ -28,7 +30,6 @@ import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 import com.fersaiyan.cyanbridge.R
 
 /** First-run product surface. Display only when onboarding state asks for it. */
@@ -43,97 +44,128 @@ fun ADWelcomeScreen(
                 .fillMaxSize()
                 .background(
                     Brush.verticalGradient(
-                        listOf(
-                            Color(0xFFFAFAFB),
-                            ADColors.Background,
-                            Color(0xFFF0F0F2),
-                        ),
+                        listOf(Color(0xFFFBFBFC), ADColors.Background, Color(0xFFF0F0F2)),
                     ),
                 )
                 .windowInsetsPadding(WindowInsets.safeDrawing)
-                .padding(horizontal = 17.dp),
+                .padding(horizontal = 18.dp),
         ) {
-            Column(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(top = 22.dp),
+            Row(
+                modifier = Modifier.fillMaxWidth().padding(top = 18.dp),
+                verticalAlignment = Alignment.CenterVertically,
             ) {
+                Surface(
+                    modifier = Modifier.size(44.dp),
+                    shape = RoundedCornerShape(15.dp),
+                    color = ADColors.Surface,
+                    border = BorderStroke(1.dp, ADColors.Outline.copy(alpha = 0.45f)),
+                ) {
+                    Box(contentAlignment = Alignment.Center) {
+                        Image(
+                            painter = painterResource(R.drawable.ad_glasses_icon_source),
+                            contentDescription = "AD Glasses",
+                            modifier = Modifier.size(31.dp),
+                            contentScale = ContentScale.Fit,
+                        )
+                    }
+                }
+                Column(Modifier.padding(start = 10.dp)) {
+                    Text("AD GLASSES", style = androidx.compose.material3.MaterialTheme.typography.labelSmall, color = ADColors.Muted)
+                    Text("See more. Remember more.", style = androidx.compose.material3.MaterialTheme.typography.titleSmall)
+                }
+            }
+
+            Spacer(Modifier.size(24.dp))
+
+            Column {
                 Text(
                     text = "YOUR GLASSES",
+                    style = androidx.compose.material3.MaterialTheme.typography.displayMedium,
                     color = ADColors.Ink,
-                    fontSize = 33.sp,
-                    lineHeight = 35.sp,
-                    fontWeight = FontWeight.Medium,
-                    letterSpacing = (-0.7).sp,
                 )
                 Text(
                     text = "YOUR AI",
+                    style = androidx.compose.material3.MaterialTheme.typography.displayMedium,
                     color = ADColors.Ink,
-                    fontSize = 33.sp,
-                    lineHeight = 35.sp,
-                    fontWeight = FontWeight.Medium,
-                    letterSpacing = (-0.7).sp,
                 )
                 Text(
                     text = "YOUR DATA",
+                    style = androidx.compose.material3.MaterialTheme.typography.displayMedium,
                     color = ADColors.Ink,
-                    fontSize = 33.sp,
-                    lineHeight = 35.sp,
-                    fontWeight = FontWeight.Medium,
-                    letterSpacing = (-0.7).sp,
+                )
+                Spacer(Modifier.size(9.dp))
+                Text(
+                    "A private companion that starts with what your glasses can see and hear, then keeps the useful parts close on your phone.",
+                    style = androidx.compose.material3.MaterialTheme.typography.bodyLarge,
+                    color = ADColors.Muted,
                 )
             }
 
-            Spacer(Modifier.size(17.dp))
+            Spacer(Modifier.size(20.dp))
 
-            Box(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .weight(1f)
-                    .heightIn(min = 160.dp, max = 240.dp)
-                    .background(
-                        Brush.linearGradient(
-                            listOf(
-                                Color.White.copy(alpha = 0.94f),
-                                Color(0xFFE9E9EC),
-                            ),
-                        ),
-                        RoundedCornerShape(24.dp),
-                    )
-                    .border(
-                        width = 1.dp,
-                        color = ADColors.Outline.copy(alpha = 0.50f),
-                        shape = RoundedCornerShape(24.dp),
-                    )
-                    .padding(horizontal = 8.dp, vertical = 7.dp),
-                contentAlignment = Alignment.Center,
+            Surface(
+                modifier = Modifier.fillMaxWidth().weight(1f).heightIn(min = 190.dp, max = 300.dp),
+                shape = RoundedCornerShape(32.dp),
+                color = ADColors.Surface,
+                border = BorderStroke(1.dp, ADColors.Outline.copy(alpha = 0.42f)),
+                shadowElevation = 2.dp,
             ) {
-                Image(
-                    painter = painterResource(R.drawable.ad_glasses_hero_v4),
-                    contentDescription = "Smart glasses",
-                    modifier = Modifier.fillMaxSize(),
-                    contentScale = ContentScale.Fit,
-                )
+                Box(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .background(
+                            Brush.radialGradient(listOf(Color.White, Color(0xFFE8E9ED))),
+                        )
+                        .padding(10.dp),
+                    contentAlignment = Alignment.Center,
+                ) {
+                    Image(
+                        painter = painterResource(R.drawable.ad_glasses_hero_v4),
+                        contentDescription = "Smart glasses",
+                        modifier = Modifier.fillMaxSize(),
+                        contentScale = ContentScale.Fit,
+                    )
+                    Row(
+                        modifier = Modifier.align(Alignment.BottomCenter).padding(bottom = 13.dp),
+                        horizontalArrangement = Arrangement.spacedBy(7.dp),
+                    ) {
+                        ADWelcomeCapability(ADGlyph.ASK, "ASK")
+                        ADWelcomeCapability(ADGlyph.PHOTO, "SEE")
+                        ADWelcomeCapability(ADGlyph.AI, "REMEMBER")
+                    }
+                }
             }
 
-            Spacer(Modifier.size(16.dp))
-            Button(
-                onClick = onStartSetup,
-                modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp),
-                colors = ButtonDefaults.buttonColors(containerColor = ADColors.Ink),
-                shape = RoundedCornerShape(14.dp),
-            ) {
-                Text("Connect glasses")
-            }
-            Spacer(Modifier.size(8.dp))
+            Spacer(Modifier.size(18.dp))
+            ADPrimaryButton(text = "Connect glasses", onClick = onStartSetup)
+            Spacer(Modifier.size(9.dp))
             OutlinedButton(
                 onClick = onExplore,
-                modifier = Modifier.fillMaxWidth().heightIn(min = 46.dp),
-                shape = RoundedCornerShape(14.dp),
+                modifier = Modifier.fillMaxWidth().heightIn(min = 50.dp),
+                shape = RoundedCornerShape(18.dp),
+                border = BorderStroke(1.dp, ADColors.Outline.copy(alpha = 0.65f)),
             ) {
-                Text("Continue without glasses")
+                Text("Explore without glasses", style = androidx.compose.material3.MaterialTheme.typography.labelLarge, color = ADColors.Ink)
             }
-            Spacer(Modifier.size(15.dp))
+            Spacer(Modifier.size(16.dp))
+        }
+    }
+}
+
+@Composable
+private fun ADWelcomeCapability(glyph: ADGlyph, label: String) {
+    Surface(
+        shape = CircleShape,
+        color = ADColors.Surface.copy(alpha = 0.92f),
+        border = BorderStroke(1.dp, ADColors.Outline.copy(alpha = 0.35f)),
+    ) {
+        Row(
+            modifier = Modifier.padding(horizontal = 9.dp, vertical = 7.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(5.dp),
+        ) {
+            ADGlyphIcon(glyph, ADColors.Ink, Modifier.size(15.dp))
+            Text(label, style = androidx.compose.material3.MaterialTheme.typography.labelSmall, fontWeight = FontWeight.SemiBold)
         }
     }
 }
