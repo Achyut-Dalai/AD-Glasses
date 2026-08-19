@@ -17,9 +17,12 @@ import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.googlefonts.Font
+import androidx.compose.ui.text.googlefonts.GoogleFont
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.core.view.WindowCompat
+import com.fersaiyan.cyanbridge.R
 
 internal object ADColors {
     val Ink = Color(0xFF1D1D1F)
@@ -68,82 +71,96 @@ private val MonochromeColorScheme = lightColorScheme(
     onErrorContainer = ADColors.Error,
 )
 
+private val GoogleFontsProvider = GoogleFont.Provider(
+    providerAuthority = "com.google.android.gms.fonts",
+    providerPackage = "com.google.android.gms",
+    certificates = R.array.com_google_android_gms_fonts_certs,
+)
+
+private val Inter = GoogleFont("Inter", bestEffort = true)
+
+private val InterFontFamily = FontFamily(
+    Font(googleFont = Inter, fontProvider = GoogleFontsProvider, weight = FontWeight.Normal),
+    Font(googleFont = Inter, fontProvider = GoogleFontsProvider, weight = FontWeight.Medium),
+    Font(googleFont = Inter, fontProvider = GoogleFontsProvider, weight = FontWeight.SemiBold),
+    Font(googleFont = Inter, fontProvider = GoogleFontsProvider, weight = FontWeight.Bold),
+)
+
 private val ADTypography = Typography(
     displaySmall = TextStyle(
-        fontFamily = FontFamily.SansSerif,
-        fontSize = 34.sp,
-        lineHeight = 40.sp,
-        fontWeight = FontWeight.Bold,
-        letterSpacing = (-0.7).sp,
+        fontFamily = InterFontFamily,
+        fontSize = 31.sp,
+        lineHeight = 37.sp,
+        fontWeight = FontWeight.SemiBold,
+        letterSpacing = (-0.35).sp,
     ),
     headlineLarge = TextStyle(
-        fontFamily = FontFamily.SansSerif,
-        fontSize = 30.sp,
-        lineHeight = 36.sp,
-        fontWeight = FontWeight.Bold,
-        letterSpacing = (-0.55).sp,
+        fontFamily = InterFontFamily,
+        fontSize = 28.sp,
+        lineHeight = 34.sp,
+        fontWeight = FontWeight.SemiBold,
+        letterSpacing = (-0.3).sp,
     ),
     headlineMedium = TextStyle(
-        fontFamily = FontFamily.SansSerif,
-        fontSize = 24.sp,
-        lineHeight = 30.sp,
-        fontWeight = FontWeight.SemiBold,
-        letterSpacing = (-0.25).sp,
+        fontFamily = InterFontFamily,
+        fontSize = 22.sp,
+        lineHeight = 28.sp,
+        fontWeight = FontWeight.Medium,
+        letterSpacing = (-0.15).sp,
     ),
     headlineSmall = TextStyle(
-        fontFamily = FontFamily.SansSerif,
-        fontSize = 21.sp,
-        lineHeight = 27.sp,
-        fontWeight = FontWeight.SemiBold,
-        letterSpacing = (-0.1).sp,
-    ),
-    titleLarge = TextStyle(
-        fontFamily = FontFamily.SansSerif,
+        fontFamily = InterFontFamily,
         fontSize = 19.sp,
         lineHeight = 25.sp,
-        fontWeight = FontWeight.SemiBold,
+        fontWeight = FontWeight.Medium,
+    ),
+    titleLarge = TextStyle(
+        fontFamily = InterFontFamily,
+        fontSize = 18.sp,
+        lineHeight = 23.sp,
+        fontWeight = FontWeight.Medium,
     ),
     titleMedium = TextStyle(
-        fontFamily = FontFamily.SansSerif,
-        fontSize = 16.sp,
-        lineHeight = 22.sp,
-        fontWeight = FontWeight.SemiBold,
+        fontFamily = InterFontFamily,
+        fontSize = 15.5.sp,
+        lineHeight = 21.sp,
+        fontWeight = FontWeight.Medium,
     ),
     bodyLarge = TextStyle(
-        fontFamily = FontFamily.SansSerif,
-        fontSize = 16.sp,
-        lineHeight = 24.sp,
+        fontFamily = InterFontFamily,
+        fontSize = 15.5.sp,
+        lineHeight = 22.sp,
         fontWeight = FontWeight.Normal,
     ),
     bodyMedium = TextStyle(
-        fontFamily = FontFamily.SansSerif,
-        fontSize = 14.sp,
-        lineHeight = 20.sp,
+        fontFamily = InterFontFamily,
+        fontSize = 13.5.sp,
+        lineHeight = 19.sp,
         fontWeight = FontWeight.Normal,
     ),
     bodySmall = TextStyle(
-        fontFamily = FontFamily.SansSerif,
+        fontFamily = InterFontFamily,
         fontSize = 12.5.sp,
-        lineHeight = 18.sp,
+        lineHeight = 17.sp,
         fontWeight = FontWeight.Normal,
     ),
     labelLarge = TextStyle(
-        fontFamily = FontFamily.SansSerif,
-        fontSize = 14.sp,
+        fontFamily = InterFontFamily,
+        fontSize = 13.5.sp,
         lineHeight = 18.sp,
-        fontWeight = FontWeight.SemiBold,
+        fontWeight = FontWeight.Medium,
     ),
     labelMedium = TextStyle(
-        fontFamily = FontFamily.SansSerif,
-        fontSize = 12.sp,
-        lineHeight = 16.sp,
-        fontWeight = FontWeight.SemiBold,
+        fontFamily = InterFontFamily,
+        fontSize = 12.5.sp,
+        lineHeight = 17.sp,
+        fontWeight = FontWeight.Medium,
     ),
     labelSmall = TextStyle(
-        fontFamily = FontFamily.SansSerif,
-        fontSize = 11.sp,
-        lineHeight = 14.sp,
-        fontWeight = FontWeight.SemiBold,
+        fontFamily = InterFontFamily,
+        fontSize = 11.5.sp,
+        lineHeight = 15.sp,
+        fontWeight = FontWeight.Medium,
     ),
 )
 

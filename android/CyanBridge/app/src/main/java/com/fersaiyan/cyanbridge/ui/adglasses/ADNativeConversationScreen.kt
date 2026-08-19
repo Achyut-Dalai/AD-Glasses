@@ -223,12 +223,12 @@ internal fun ADNativeConversationScreen(
         Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(start = 18.dp, end = 14.dp, top = 16.dp, bottom = 8.dp),
+                .padding(start = 16.dp, end = 14.dp, top = 10.dp, bottom = 6.dp),
             verticalAlignment = Alignment.CenterVertically,
         ) {
             Box(
                 modifier = Modifier
-                    .size(42.dp)
+                    .size(38.dp)
                     .background(ADColors.BlueSoft, RoundedCornerShape(13.dp)),
                 contentAlignment = Alignment.Center,
             ) {
@@ -236,10 +236,10 @@ internal fun ADNativeConversationScreen(
                     Icons.Outlined.Terminal,
                     contentDescription = null,
                     tint = ADColors.Ink,
-                    modifier = Modifier.size(22.dp),
+                    modifier = Modifier.size(20.dp),
                 )
             }
-            Column(Modifier.padding(start = 12.dp).weight(1f)) {
+            Column(Modifier.padding(start = 10.dp).weight(1f)) {
                 Text("Prompt", style = MaterialTheme.typography.headlineSmall)
                 Text(
                     "Ask AI from your phone or glasses",
@@ -255,7 +255,7 @@ internal fun ADNativeConversationScreen(
                     Row(
                         modifier = Modifier
                             .clickable(enabled = !sending, onClick = ::startNewPrompt)
-                            .padding(horizontal = 11.dp, vertical = 8.dp),
+                            .padding(horizontal = 10.dp, vertical = 7.dp),
                         verticalAlignment = Alignment.CenterVertically,
                         horizontalArrangement = Arrangement.spacedBy(5.dp),
                     ) {
@@ -285,10 +285,10 @@ internal fun ADNativeConversationScreen(
             contentPadding = androidx.compose.foundation.layout.PaddingValues(
                 start = 16.dp,
                 end = 16.dp,
-                top = 10.dp,
-                bottom = 22.dp,
+                top = 7.dp,
+                bottom = 18.dp,
             ),
-            verticalArrangement = Arrangement.spacedBy(20.dp),
+            verticalArrangement = Arrangement.spacedBy(15.dp),
         ) {
             if (messages.isEmpty() && pendingPrompt == null) {
                 item(key = "empty") {
@@ -318,7 +318,7 @@ internal fun ADNativeConversationScreen(
                         modifier = Modifier
                             .fillMaxWidth()
                             .background(ADColors.ErrorSoft, RoundedCornerShape(14.dp))
-                            .padding(horizontal = 14.dp, vertical = 11.dp),
+                            .padding(horizontal = 13.dp, vertical = 10.dp),
                     ) {
                         Text(
                             text = error,
@@ -346,11 +346,11 @@ private fun ADLiveAudioState(recording: Boolean) {
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(horizontal = 18.dp, vertical = 2.dp)
+            .padding(horizontal = 16.dp, vertical = 2.dp)
             .background(ADColors.SurfaceSubtle, RoundedCornerShape(14.dp))
-            .padding(horizontal = 12.dp, vertical = 9.dp),
+            .padding(horizontal = 11.dp, vertical = 8.dp),
         verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(9.dp),
+        horizontalArrangement = Arrangement.spacedBy(8.dp),
     ) {
         ADActivityWaveform(color = ADColors.Ink, compact = true)
         Column(Modifier.weight(1f)) {
@@ -373,12 +373,12 @@ private fun ADConversationEmptyState(
     onSuggestion: (String, Boolean) -> Unit,
 ) {
     Column(
-        modifier = Modifier.fillMaxWidth().padding(top = 40.dp, bottom = 28.dp),
+        modifier = Modifier.fillMaxWidth().padding(top = 26.dp, bottom = 20.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
     ) {
         Box(
             modifier = Modifier
-                .size(64.dp)
+                .size(56.dp)
                 .background(ADColors.SurfaceSubtle, RoundedCornerShape(20.dp)),
             contentAlignment = Alignment.Center,
         ) {
@@ -386,23 +386,23 @@ private fun ADConversationEmptyState(
                 Icons.Outlined.Terminal,
                 contentDescription = null,
                 tint = ADColors.Ink,
-                modifier = Modifier.size(30.dp),
+                modifier = Modifier.size(27.dp),
             )
         }
-        Spacer(Modifier.size(18.dp))
+        Spacer(Modifier.size(14.dp))
         Text("What do you want to know?", style = MaterialTheme.typography.headlineSmall)
-        Spacer(Modifier.size(7.dp))
+        Spacer(Modifier.size(5.dp))
         Text(
             "Ask AI anything, use web search when freshness matters, or continue a request started on your glasses.",
             style = MaterialTheme.typography.bodyMedium,
             color = ADColors.Muted,
             textAlign = TextAlign.Center,
-            modifier = Modifier.padding(horizontal = 26.dp),
+            modifier = Modifier.padding(horizontal = 22.dp),
         )
-        Spacer(Modifier.size(28.dp))
+        Spacer(Modifier.size(20.dp))
         Column(
             modifier = Modifier.fillMaxWidth(),
-            verticalArrangement = Arrangement.spacedBy(9.dp),
+            verticalArrangement = Arrangement.spacedBy(8.dp),
         ) {
             ADPromptSuggestion("What did I capture today?") { onSuggestion("What did I capture today?", false) }
             ADPromptSuggestion("Search the web for something current", web = true) {
@@ -424,12 +424,12 @@ private fun ADPromptSuggestion(
             .fillMaxWidth()
             .background(ADColors.Surface, RoundedCornerShape(16.dp))
             .clickable(onClick = onClick)
-            .padding(horizontal = 14.dp, vertical = 13.dp),
+            .padding(horizontal = 13.dp, vertical = 11.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
         Box(
             modifier = Modifier
-                .size(34.dp)
+                .size(32.dp)
                 .background(ADColors.SurfaceSubtle, RoundedCornerShape(10.dp)),
             contentAlignment = Alignment.Center,
         ) {
@@ -437,15 +437,15 @@ private fun ADPromptSuggestion(
                 if (web) Icons.Outlined.Public else Icons.Outlined.Terminal,
                 contentDescription = null,
                 tint = ADColors.Ink,
-                modifier = Modifier.size(17.dp),
+                modifier = Modifier.size(16.dp),
             )
         }
         Text(
             text,
             style = MaterialTheme.typography.bodyLarge,
-            modifier = Modifier.padding(start = 11.dp).weight(1f),
+            modifier = Modifier.padding(start = 10.dp).weight(1f),
         )
-        Icon(Icons.Outlined.ArrowForward, null, tint = ADColors.Muted, modifier = Modifier.size(18.dp))
+        Icon(Icons.Outlined.ArrowForward, null, tint = ADColors.Muted, modifier = Modifier.size(17.dp))
     }
 }
 
@@ -473,7 +473,7 @@ private fun ADUserTurn(content: String) {
                         bottomEnd = 7.dp,
                     ),
                 )
-                .padding(horizontal = 15.dp, vertical = 11.dp),
+                .padding(horizontal = 14.dp, vertical = 10.dp),
         ) {
             ADConversationMessageBody(content = content, userMessage = true)
         }
@@ -485,7 +485,7 @@ private fun ADAssistantTurn(content: String) {
     Row(
         modifier = Modifier.fillMaxWidth(),
         verticalAlignment = Alignment.Top,
-        horizontalArrangement = Arrangement.spacedBy(10.dp),
+        horizontalArrangement = Arrangement.spacedBy(8.dp),
     ) {
         Box(
             modifier = Modifier.size(28.dp).background(ADColors.Surface, CircleShape),
@@ -504,7 +504,7 @@ private fun ADAssistantThinking() {
     Row(
         modifier = Modifier.fillMaxWidth(),
         verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(10.dp),
+        horizontalArrangement = Arrangement.spacedBy(8.dp),
     ) {
         Box(
             modifier = Modifier.size(28.dp).background(ADColors.Surface, CircleShape),
@@ -589,11 +589,11 @@ private fun ADConversationComposer(
         modifier = Modifier
             .fillMaxWidth()
             .background(ADColors.Background)
-            .padding(start = 12.dp, end = 12.dp, top = 7.dp, bottom = 10.dp),
+            .padding(start = 12.dp, end = 12.dp, top = 6.dp, bottom = 8.dp),
     ) {
         if (webSearch) {
             Row(
-                modifier = Modifier.padding(start = 9.dp, bottom = 7.dp),
+                modifier = Modifier.padding(start = 9.dp, bottom = 6.dp),
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.spacedBy(6.dp),
             ) {
@@ -608,7 +608,7 @@ private fun ADConversationComposer(
             shadowElevation = 2.dp,
         ) {
             Row(
-                modifier = Modifier.padding(start = 16.dp, end = 7.dp, top = 7.dp, bottom = 7.dp),
+                modifier = Modifier.padding(start = 15.dp, end = 7.dp, top = 6.dp, bottom = 6.dp),
                 verticalAlignment = Alignment.Bottom,
             ) {
                 BasicTextField(
@@ -616,9 +616,9 @@ private fun ADConversationComposer(
                     onValueChange = onMessageChange,
                     modifier = Modifier
                         .weight(1f)
-                        .heightIn(min = 40.dp, max = 128.dp)
+                        .heightIn(min = 38.dp, max = 120.dp)
                         .focusRequester(focusRequester)
-                        .padding(vertical = 8.dp),
+                        .padding(vertical = 7.dp),
                     textStyle = MaterialTheme.typography.bodyLarge.copy(color = ADColors.Ink),
                     cursorBrush = SolidColor(ADColors.Ink),
                     keyboardOptions = KeyboardOptions(imeAction = ImeAction.Send),
