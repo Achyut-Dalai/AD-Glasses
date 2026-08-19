@@ -24,14 +24,14 @@ class ADAppEntryPointTest {
     }
 
     @Test
-    fun nativeRouteRootDoesNotOpenRuntimeSettingsActivities() {
+    fun nativeRouteRootDoesNotOpenLegacyProductSettingsActivities() {
         val adApp = sourceFile(
             "src/main/java/com/fersaiyan/cyanbridge/ui/adglasses/ADGlassesApp.kt",
         ).readText()
 
         assertFalse(adApp.contains("onOpenAutomationSettings"))
         assertFalse(adApp.contains("SettingsActivity::class.java"))
-        assertFalse(adApp.contains("startActivity("))
+        assertTrue("System locale settings remain a supported Android handoff", adApp.contains("Settings.ACTION_APP_LOCALE_SETTINGS"))
     }
 
     private fun sourceFile(relativePath: String): File {
