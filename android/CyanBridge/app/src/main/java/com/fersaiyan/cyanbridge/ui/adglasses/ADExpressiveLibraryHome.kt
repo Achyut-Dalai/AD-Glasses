@@ -1,6 +1,5 @@
 package com.fersaiyan.cyanbridge.ui.adglasses
 
-import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -93,9 +92,9 @@ internal fun ADExpressiveLibraryHome(
                 Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
                     Text(
                         "Browse",
-                        style = MaterialTheme.typography.titleMedium,
+                        style = MaterialTheme.typography.titleLarge,
                         fontWeight = FontWeight.SemiBold,
-                        modifier = Modifier.padding(start = 3.dp, bottom = 1.dp),
+                        modifier = Modifier.padding(start = 2.dp, bottom = 2.dp),
                     )
                     ADLibraryDestinationRow(
                         icon = Icons.Outlined.Image,
@@ -132,8 +131,7 @@ private fun ADLibraryHero(
         modifier = Modifier.fillMaxWidth(),
         shape = RoundedCornerShape(26.dp),
         color = ADColors.Surface,
-        border = BorderStroke(1.dp, ADColors.Separator),
-        shadowElevation = 2.dp,
+        shadowElevation = 1.dp,
     ) {
         Column(Modifier.padding(18.dp)) {
             Row(verticalAlignment = Alignment.Top) {
@@ -182,14 +180,13 @@ private fun ADLibraryDestinationRow(
 ) {
     Surface(
         onClick = onClick,
-        modifier = Modifier.fillMaxWidth().heightIn(min = 112.dp),
+        modifier = Modifier.fillMaxWidth().heightIn(min = 116.dp),
         shape = RoundedCornerShape(24.dp),
         color = ADColors.Surface,
-        border = BorderStroke(1.dp, ADColors.Separator),
-        shadowElevation = 1.dp,
+        tonalElevation = 1.dp,
     ) {
         Row(
-            modifier = Modifier.padding(horizontal = 18.dp, vertical = 17.dp),
+            modifier = Modifier.padding(horizontal = 18.dp, vertical = 18.dp),
             verticalAlignment = Alignment.CenterVertically,
         ) {
             Box(
@@ -207,7 +204,7 @@ private fun ADLibraryDestinationRow(
                     fontWeight = FontWeight.SemiBold,
                     maxLines = 1,
                 )
-                Spacer(Modifier.height(4.dp))
+                Spacer(Modifier.height(5.dp))
                 Text(
                     detail,
                     style = MaterialTheme.typography.bodyMedium,

@@ -3,7 +3,6 @@ package com.fersaiyan.cyanbridge.ui.adglasses
 import android.content.Intent
 import android.provider.Settings
 import android.widget.Toast
-import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -125,14 +124,17 @@ internal fun ADNativeAiScreen(
     LazyColumn(
         modifier = Modifier.fillMaxSize(),
         contentPadding = androidx.compose.foundation.layout.PaddingValues(16.dp, 18.dp, 16.dp, 34.dp),
-        verticalArrangement = Arrangement.spacedBy(18.dp),
+        verticalArrangement = Arrangement.spacedBy(20.dp),
     ) {
         item {
-            ADAiProviderCard(
-                selectedName = selectedName,
-                selected = selected,
-                onSelect = ::select,
-            )
+            Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                ADAiSectionHeading("AI model")
+                ADAiProviderCard(
+                    selectedName = selectedName,
+                    selected = selected,
+                    onSelect = ::select,
+                )
+            }
         }
 
         item {
@@ -160,11 +162,14 @@ internal fun ADNativeAiScreen(
         }
 
         item {
-            ADAiCapabilityRow(
-                active = automationActive,
-                ready = automationReady,
-                onClick = { setCapability(AssistantCapability.LOCAL_AGENT, !automationActive) },
-            )
+            Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                ADAiSectionHeading("Phone automation")
+                ADAiCapabilityRow(
+                    active = automationActive,
+                    ready = automationReady,
+                    onClick = { setCapability(AssistantCapability.LOCAL_AGENT, !automationActive) },
+                )
+            }
         }
 
         item {
@@ -197,10 +202,9 @@ internal fun ADNativeAiScreen(
 private fun ADAiSectionHeading(title: String) {
     Text(
         title,
-        style = MaterialTheme.typography.titleMedium,
+        style = MaterialTheme.typography.titleLarge,
         fontWeight = FontWeight.SemiBold,
-        color = ADColors.Ink,
-        modifier = Modifier.padding(start = 3.dp),
+        modifier = Modifier.padding(start = 2.dp),
     )
 }
 
@@ -215,7 +219,6 @@ private fun ADAiProviderCard(
         shape = RoundedCornerShape(26.dp),
         color = ADColors.Ink,
         contentColor = ADColors.Surface,
-        shadowElevation = 2.dp,
     ) {
         Column(Modifier.padding(18.dp)) {
             Row(verticalAlignment = Alignment.CenterVertically) {
@@ -231,7 +234,7 @@ private fun ADAiProviderCard(
                 }
                 Column(Modifier.padding(start = 13.dp).weight(1f)) {
                     Text(
-                        "Default AI",
+                        "Default",
                         style = MaterialTheme.typography.labelMedium,
                         color = ADColors.Surface.copy(alpha = 0.62f),
                     )
@@ -294,8 +297,7 @@ private fun ADAiCapabilityCard(
         modifier = modifier.heightIn(min = 150.dp),
         shape = RoundedCornerShape(24.dp),
         color = if (active) ADColors.SurfaceSubtle else ADColors.Surface,
-        border = BorderStroke(1.dp, if (active) ADColors.Ink.copy(alpha = 0.18f) else ADColors.Separator),
-        shadowElevation = 1.dp,
+        tonalElevation = 1.dp,
     ) {
         Column(
             modifier = Modifier.padding(16.dp),
@@ -348,11 +350,10 @@ private fun ADAiCapabilityRow(
 ) {
     Surface(
         onClick = onClick,
-        modifier = Modifier.fillMaxWidth().heightIn(min = 152.dp),
-        shape = RoundedCornerShape(26.dp),
+        modifier = Modifier.fillMaxWidth().heightIn(min = 150.dp),
+        shape = RoundedCornerShape(24.dp),
         color = if (active) ADColors.SurfaceSubtle else ADColors.Surface,
-        border = BorderStroke(1.dp, if (active) ADColors.Ink.copy(alpha = 0.18f) else ADColors.Separator),
-        shadowElevation = 1.dp,
+        tonalElevation = 1.dp,
     ) {
         Column(
             modifier = Modifier.padding(18.dp),
@@ -361,15 +362,15 @@ private fun ADAiCapabilityRow(
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Box(
                     modifier = Modifier
-                        .size(54.dp)
-                        .background(ADColors.Ink, RoundedCornerShape(18.dp)),
+                        .size(52.dp)
+                        .background(ADColors.Ink, RoundedCornerShape(17.dp)),
                     contentAlignment = Alignment.Center,
                 ) {
                     Icon(
                         Icons.Outlined.Bolt,
                         contentDescription = null,
                         tint = ADColors.Surface,
-                        modifier = Modifier.size(27.dp),
+                        modifier = Modifier.size(26.dp),
                     )
                 }
                 Spacer(Modifier.weight(1f))
@@ -410,11 +411,10 @@ private fun ADConnectionFeatureCard(
 ) {
     Surface(
         onClick = onClick,
-        modifier = Modifier.fillMaxWidth().heightIn(min = 98.dp),
+        modifier = Modifier.fillMaxWidth().heightIn(min = 96.dp),
         shape = RoundedCornerShape(22.dp),
         color = ADColors.Surface,
-        border = BorderStroke(1.dp, ADColors.Separator),
-        shadowElevation = 1.dp,
+        tonalElevation = 1.dp,
     ) {
         Row(
             modifier = Modifier.padding(horizontal = 16.dp, vertical = 15.dp),
