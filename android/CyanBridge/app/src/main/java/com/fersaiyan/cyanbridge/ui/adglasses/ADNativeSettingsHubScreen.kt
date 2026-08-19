@@ -5,6 +5,7 @@ import android.net.Uri
 import android.provider.Settings as AndroidSettings
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -20,13 +21,9 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.rounded.KeyboardArrowRight
 import androidx.compose.material.icons.outlined.BatteryFull
-import androidx.compose.material.icons.outlined.Bluetooth
 import androidx.compose.material.icons.outlined.Info
-import androidx.compose.material.icons.outlined.Lock
-import androidx.compose.material.icons.outlined.Security
 import androidx.compose.material.icons.outlined.Settings
 import androidx.compose.material.icons.outlined.Storage
-import androidx.compose.material.icons.rounded.Translate
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
@@ -61,10 +58,10 @@ internal fun ADNativeSettingsHubScreen(
     )
 
     ADPageLayout("Settings", onBack) {
-        Text(
-            "Keep the important controls close. System-level switches stay grouped separately so the page remains easy to scan.",
-            style = MaterialTheme.typography.bodyMedium,
-            color = ADColors.Muted,
+        ADScreenIntro(
+            eyebrow = "Control room",
+            title = "Make AD Glasses yours",
+            detail = "Privacy, storage and phone access stay close. Android-level controls are kept separate so the page stays easy to scan.",
         )
 
         ADSettingsDeviceOverview(
@@ -73,34 +70,34 @@ internal fun ADNativeSettingsHubScreen(
             onClick = onDevice,
         )
 
-        Column(verticalArrangement = Arrangement.spacedBy(9.dp)) {
+        Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
             ADSectionTitle("Essentials")
-            Row(horizontalArrangement = Arrangement.spacedBy(9.dp)) {
+            Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
                 ADSettingsTile(
-                    icon = Icons.Outlined.Lock,
+                    glyph = ADGlyph.PRIVACY,
                     title = "Privacy",
                     detail = "Data & safety",
                     modifier = Modifier.weight(1f),
                     onClick = onPrivacy,
                 )
                 ADSettingsTile(
-                    icon = Icons.Outlined.Storage,
+                    glyph = ADGlyph.STORAGE,
                     title = "Storage",
                     detail = "Space on phone",
                     modifier = Modifier.weight(1f),
                     onClick = onStorage,
                 )
             }
-            Row(horizontalArrangement = Arrangement.spacedBy(9.dp)) {
+            Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
                 ADSettingsTile(
-                    icon = Icons.Rounded.Translate,
+                    glyph = ADGlyph.LANGUAGE,
                     title = "Language",
                     detail = "App language",
                     modifier = Modifier.weight(1f),
                     onClick = onLanguage,
                 )
                 ADSettingsTile(
-                    icon = Icons.Outlined.Security,
+                    glyph = ADGlyph.PERMISSIONS,
                     title = "Permissions",
                     detail = "Access & services",
                     modifier = Modifier.weight(1f),
@@ -109,7 +106,7 @@ internal fun ADNativeSettingsHubScreen(
             }
         }
 
-        Column(verticalArrangement = Arrangement.spacedBy(9.dp)) {
+        Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
             ADSectionTitle("System")
             Surface(
                 modifier = Modifier.fillMaxWidth(),
@@ -164,20 +161,20 @@ private fun ADSettingsDeviceOverview(
     Surface(
         onClick = onClick,
         modifier = Modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(28.dp),
+        shape = RoundedCornerShape(30.dp),
         color = ADColors.Ink,
         contentColor = ADColors.Surface,
     ) {
-        Column(Modifier.padding(16.dp)) {
+        Column(Modifier.padding(17.dp)) {
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Surface(
-                    modifier = Modifier.size(48.dp),
-                    shape = RoundedCornerShape(16.dp),
+                    modifier = Modifier.size(50.dp),
+                    shape = RoundedCornerShape(17.dp),
                     color = ADColors.Surface.copy(alpha = 0.13f),
                     contentColor = ADColors.Surface,
                 ) {
                     Box(contentAlignment = Alignment.Center) {
-                        Icon(Icons.Outlined.Bluetooth, contentDescription = null, modifier = Modifier.size(22.dp))
+                        ADGlyphIcon(ADGlyph.DEVICE, ADColors.Surface, Modifier.size(27.dp))
                     }
                 }
                 Column(Modifier.padding(start = 12.dp).weight(1f)) {
@@ -205,7 +202,7 @@ private fun ADSettingsDeviceOverview(
                     }
                 }
                 Surface(shape = CircleShape, color = ADColors.Surface.copy(alpha = 0.13f)) {
-                    Box(Modifier.size(36.dp), contentAlignment = Alignment.Center) {
+                    Box(Modifier.size(38.dp), contentAlignment = Alignment.Center) {
                         Icon(
                             Icons.AutoMirrored.Rounded.KeyboardArrowRight,
                             contentDescription = null,
@@ -216,7 +213,7 @@ private fun ADSettingsDeviceOverview(
             }
 
             if (showBattery || showStorage) {
-                Spacer(Modifier.height(14.dp))
+                Spacer(Modifier.height(15.dp))
                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                     if (showBattery) {
                         ADDeviceMetric(
@@ -248,24 +245,19 @@ private fun ADDeviceMetric(
     modifier: Modifier = Modifier,
 ) {
     Surface(
-        modifier = modifier.heightIn(min = 58.dp),
-        shape = RoundedCornerShape(16.dp),
+        modifier = modifier.heightIn(min = 60.dp),
+        shape = RoundedCornerShape(17.dp),
         color = ADColors.Surface.copy(alpha = 0.11f),
         contentColor = ADColors.Surface,
     ) {
         Row(
-            modifier = Modifier.padding(horizontal = 10.dp, vertical = 9.dp),
+            modifier = Modifier.padding(horizontal = 11.dp, vertical = 9.dp),
             verticalAlignment = Alignment.CenterVertically,
         ) {
             Icon(icon, contentDescription = null, modifier = Modifier.size(18.dp))
             Column(Modifier.padding(start = 8.dp).weight(1f)) {
                 Text(label, style = MaterialTheme.typography.labelSmall, color = ADColors.Surface.copy(alpha = 0.58f))
-                Text(
-                    value,
-                    style = MaterialTheme.typography.labelLarge,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis,
-                )
+                Text(value, style = MaterialTheme.typography.labelLarge, maxLines = 1, overflow = TextOverflow.Ellipsis)
             }
         }
     }
@@ -273,7 +265,7 @@ private fun ADDeviceMetric(
 
 @Composable
 private fun ADSettingsTile(
-    icon: ImageVector,
+    glyph: ADGlyph,
     title: String,
     detail: String,
     modifier: Modifier = Modifier,
@@ -281,33 +273,37 @@ private fun ADSettingsTile(
 ) {
     Surface(
         onClick = onClick,
-        modifier = modifier.heightIn(min = 132.dp),
-        shape = RoundedCornerShape(24.dp),
+        modifier = modifier.heightIn(min = 140.dp),
+        shape = RoundedCornerShape(26.dp),
         color = ADColors.Surface,
         border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant),
     ) {
         Column(
-            modifier = Modifier.padding(14.dp),
+            modifier = Modifier.padding(15.dp),
             verticalArrangement = Arrangement.SpaceBetween,
         ) {
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Box(
-                    modifier = Modifier.size(44.dp).background(ADColors.SurfaceSubtle, RoundedCornerShape(14.dp)),
+                    modifier = Modifier.size(48.dp).background(ADColors.SurfaceSubtle, RoundedCornerShape(16.dp)),
                     contentAlignment = Alignment.Center,
                 ) {
-                    Icon(icon, contentDescription = null, tint = ADColors.Ink, modifier = Modifier.size(22.dp))
+                    ADGlyphIcon(glyph, ADColors.Ink, Modifier.size(27.dp))
                 }
                 Spacer(Modifier.weight(1f))
-                Icon(
-                    Icons.AutoMirrored.Rounded.KeyboardArrowRight,
-                    contentDescription = null,
-                    tint = ADColors.Muted,
-                    modifier = Modifier.size(18.dp),
-                )
+                Surface(shape = CircleShape, color = ADColors.SurfaceSubtle) {
+                    Box(Modifier.size(30.dp), contentAlignment = Alignment.Center) {
+                        Icon(
+                            Icons.AutoMirrored.Rounded.KeyboardArrowRight,
+                            contentDescription = null,
+                            tint = ADColors.Muted,
+                            modifier = Modifier.size(17.dp),
+                        )
+                    }
+                }
             }
             Column {
                 Text(title, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold, maxLines = 1)
-                Spacer(Modifier.height(2.dp))
+                Spacer(Modifier.height(3.dp))
                 Text(detail, style = MaterialTheme.typography.bodySmall, color = ADColors.Muted, maxLines = 1)
             }
         }
@@ -324,14 +320,14 @@ private fun ADSettingsWideAction(
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .heightIn(min = 72.dp)
+            .heightIn(min = 74.dp)
             .background(ADColors.Surface, RoundedCornerShape(18.dp))
             .clickable(onClick = onClick)
             .padding(vertical = 10.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
         Box(
-            modifier = Modifier.size(40.dp).background(ADColors.SurfaceSubtle, RoundedCornerShape(13.dp)),
+            modifier = Modifier.size(42.dp).background(ADColors.SurfaceSubtle, RoundedCornerShape(14.dp)),
             contentAlignment = Alignment.Center,
         ) {
             Icon(icon, contentDescription = null, tint = ADColors.Ink, modifier = Modifier.size(20.dp))
