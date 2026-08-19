@@ -5,6 +5,7 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
@@ -43,69 +44,67 @@ fun ADWelcomeScreen(
                 .fillMaxSize()
                 .background(
                     Brush.verticalGradient(
-                        listOf(
-                            Color(0xFFFAFAFB),
-                            ADColors.Background,
-                            Color(0xFFF0F0F2),
-                        ),
+                        listOf(Color(0xFFFCFEFE), ADColors.Background, Color(0xFFF0F5F6)),
                     ),
                 )
                 .windowInsetsPadding(WindowInsets.safeDrawing)
                 .padding(horizontal = 20.dp),
         ) {
-            Column(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(top = 34.dp),
+            Row(
+                modifier = Modifier.fillMaxWidth().padding(top = 24.dp, bottom = 24.dp),
+                verticalAlignment = Alignment.CenterVertically,
             ) {
+                ADGlassesMark(Modifier.size(width = 44.dp, height = 24.dp))
+                Spacer(Modifier.size(9.dp))
+                Text(
+                    "AD GLASSES",
+                    color = ADColors.Ink,
+                    fontSize = 15.sp,
+                    fontWeight = FontWeight.Bold,
+                    letterSpacing = 2.1.sp,
+                )
+            }
+
+            Column(Modifier.fillMaxWidth()) {
                 Text(
                     text = "YOUR GLASSES",
                     color = ADColors.Ink,
-                    fontSize = 42.sp,
-                    lineHeight = 44.sp,
+                    fontSize = 39.sp,
+                    lineHeight = 41.sp,
                     fontWeight = FontWeight.Medium,
-                    letterSpacing = (-1.15).sp,
+                    letterSpacing = (-1.0).sp,
                 )
                 Text(
                     text = "YOUR AI",
                     color = ADColors.Ink,
-                    fontSize = 42.sp,
-                    lineHeight = 44.sp,
+                    fontSize = 39.sp,
+                    lineHeight = 41.sp,
                     fontWeight = FontWeight.Medium,
-                    letterSpacing = (-1.15).sp,
+                    letterSpacing = (-1.0).sp,
                 )
                 Text(
                     text = "YOUR DATA",
-                    color = ADColors.Ink,
-                    fontSize = 42.sp,
-                    lineHeight = 44.sp,
+                    color = ADColors.CyanDeep,
+                    fontSize = 39.sp,
+                    lineHeight = 41.sp,
                     fontWeight = FontWeight.Medium,
-                    letterSpacing = (-1.15).sp,
+                    letterSpacing = (-1.0).sp,
                 )
             }
 
-            Spacer(Modifier.size(24.dp))
+            Spacer(Modifier.size(22.dp))
 
             Box(
                 modifier = Modifier
                     .fillMaxWidth()
                     .weight(1f)
-                    .heightIn(min = 184.dp, max = 286.dp)
+                    .heightIn(min = 178.dp, max = 272.dp)
                     .background(
-                        Brush.linearGradient(
-                            listOf(
-                                Color.White.copy(alpha = 0.94f),
-                                Color(0xFFE9E9EC),
-                            ),
-                        ),
-                        RoundedCornerShape(28.dp),
+                        Brush.linearGradient(listOf(Color.White, ADColors.CyanMist, Color(0xFFE5ECEE))),
+                        RoundedCornerShape(24.dp),
                     )
-                    .border(
-                        width = 1.dp,
-                        color = ADColors.Outline.copy(alpha = 0.50f),
-                        shape = RoundedCornerShape(28.dp),
-                    )
-                    .padding(horizontal = 10.dp, vertical = 8.dp),
+                    .border(1.dp, ADColors.Outline, RoundedCornerShape(24.dp))
+                    .padding(horizontal = 12.dp, vertical = 10.dp),
                 contentAlignment = Alignment.Center,
             ) {
                 Image(
@@ -116,24 +115,24 @@ fun ADWelcomeScreen(
                 )
             }
 
-            Spacer(Modifier.size(22.dp))
+            Spacer(Modifier.size(20.dp))
             Button(
                 onClick = onStartSetup,
                 modifier = Modifier.fillMaxWidth().heightIn(min = 52.dp),
-                colors = ButtonDefaults.buttonColors(containerColor = ADColors.Ink),
-                shape = RoundedCornerShape(15.dp),
+                colors = ButtonDefaults.buttonColors(containerColor = ADColors.Graphite),
+                shape = RoundedCornerShape(14.dp),
             ) {
                 Text("Connect glasses")
             }
-            Spacer(Modifier.size(10.dp))
+            Spacer(Modifier.size(9.dp))
             OutlinedButton(
                 onClick = onExplore,
                 modifier = Modifier.fillMaxWidth().heightIn(min = 50.dp),
-                shape = RoundedCornerShape(15.dp),
+                shape = RoundedCornerShape(14.dp),
             ) {
                 Text("Continue without glasses")
             }
-            Spacer(Modifier.size(22.dp))
+            Spacer(Modifier.size(20.dp))
         }
     }
 }
