@@ -1,5 +1,8 @@
 package com.fersaiyan.cyanbridge.ui.adglasses
 
+import android.content.Intent
+import android.net.Uri
+import android.provider.Settings as AndroidSettings
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -19,11 +22,11 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.rounded.KeyboardArrowRight
 import androidx.compose.material.icons.outlined.BatteryFull
 import androidx.compose.material.icons.outlined.Bluetooth
-import androidx.compose.material.icons.outlined.DeveloperMode
 import androidx.compose.material.icons.outlined.Info
 import androidx.compose.material.icons.outlined.Language
 import androidx.compose.material.icons.outlined.PrivacyTip
 import androidx.compose.material.icons.outlined.Security
+import androidx.compose.material.icons.outlined.Settings
 import androidx.compose.material.icons.outlined.Storage
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
@@ -50,7 +53,6 @@ internal fun ADNativeSettingsHubScreen(
     onStorage: () -> Unit,
     onLanguage: () -> Unit,
     onPermissions: () -> Unit,
-    onAdvanced: () -> Unit,
     onAbout: () -> Unit,
 ) {
     val context = LocalContext.current
@@ -72,14 +74,12 @@ internal fun ADNativeSettingsHubScreen(
                 ADSettingsTile(
                     icon = Icons.Outlined.PrivacyTip,
                     title = "Privacy",
-                    subtitle = "Transcripts, redaction and exports",
                     modifier = Modifier.weight(1f),
                     onClick = onPrivacy,
                 )
                 ADSettingsTile(
                     icon = Icons.Outlined.Storage,
                     title = "Storage",
-                    subtitle = "App data and synced media",
                     modifier = Modifier.weight(1f),
                     onClick = onStorage,
                 )
@@ -88,14 +88,12 @@ internal fun ADNativeSettingsHubScreen(
                 ADSettingsTile(
                     icon = Icons.Outlined.Language,
                     title = "Language",
-                    subtitle = "App language and system locale",
                     modifier = Modifier.weight(1f),
                     onClick = onLanguage,
                 )
                 ADSettingsTile(
                     icon = Icons.Outlined.Security,
                     title = "Permissions",
-                    subtitle = "Camera, mic and nearby access",
                     modifier = Modifier.weight(1f),
                     onClick = onPermissions,
                 )
@@ -103,12 +101,27 @@ internal fun ADNativeSettingsHubScreen(
         }
 
         Column(verticalArrangement = Arrangement.spacedBy(7.dp)) {
-            ADSettingsSectionTitle("AD Glasses")
+            ADSettingsSectionTitle("Advanced")
             ADSettingsWideAction(
-                icon = Icons.Outlined.DeveloperMode,
-                title = "Advanced",
-                subtitle = "Diagnostics and system controls",
-                onClick = onAdvanced,
+                icon = Icons.Outlined.Bluetooth,
+                title = "Device diagnostics",
+                subtitle = "Connection, sync, firmware and recovery tools",
+                onClick = onDevice,
+            )
+            ADSettingsWideAction(
+                icon = Icons.Outlined.Settings,
+                title = "Android app settings",
+                subtitle = "Permissions, battery and system controls",
+                onClick = {
+                    runCatching {
+                        context.startActivity(
+                            Intent(
+                                AndroidSettings.ACTION_APPLICATION_DETAILS_SETTINGS,
+                                Uri.parse("package:${context.packageName}"),
+                            ),
+                        )
+                    }
+                },
             )
             ADSettingsWideAction(
                 icon = Icons.Outlined.Info,
@@ -183,23 +196,9 @@ private fun ADSettingsDeviceOverview(
                             status,
                             modifier = Modifier.padding(start = 6.dp),
                             style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.82f),
                         )
                     }
-                }
-
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    Text(
-                        "Manage",
-                        style = MaterialTheme.typography.labelLarge,
-                        color = ADColors.Ink,
-                    )
-                    Icon(
-                        Icons.AutoMirrored.Rounded.KeyboardArrowRight,
-                        contentDescription = null,
-                        modifier = Modifier.size(19.dp),
-                        tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                    )
                 }
             }
 
@@ -231,13 +230,9 @@ private fun ADSettingsDeviceOverview(
                 !presentation.connected -> {
                     Spacer(Modifier.height(8.dp))
                     Text(
-                        if (presentation.connecting) {
-                            "Live device details will appear when the connection is ready."
-                        } else {
-                            "Connect your glasses to see live battery and storage details."
-                        },
+                        "Connect your glasses to feel the power of AI.",
                         style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.78f),
                     )
                 }
             }
@@ -271,7 +266,7 @@ private fun ADDeviceMetric(
                 Text(
                     label,
                     style = MaterialTheme.typography.labelSmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.78f),
                 )
                 Text(
                     value,
@@ -300,61 +295,43 @@ private fun ADSettingsSectionTitle(title: String) {
 private fun ADSettingsTile(
     icon: ImageVector,
     title: String,
-    subtitle: String,
     modifier: Modifier = Modifier,
     onClick: () -> Unit,
 ) {
     Surface(
         onClick = onClick,
-        modifier = modifier.heightIn(min = 106.dp),
-        shape = RoundedCornerShape(18.dp),
+        modifier = modifier.heightIn(min = 92.dp),
+        shape = RoundedCornerShape(20.dp),
         color = MaterialTheme.colorScheme.surface,
         border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant),
         tonalElevation = 0.dp,
     ) {
         Column(
-            modifier = Modifier.padding(11.dp),
-            verticalArrangement = Arrangement.SpaceBetween,
+            modifier = Modifier.padding(horizontal = 10.dp, vertical = 12.dp),
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.Center,
         ) {
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                Surface(
-                    modifier = Modifier.size(36.dp),
-                    shape = RoundedCornerShape(11.dp),
-                    color = MaterialTheme.colorScheme.surfaceVariant,
-                ) {
-                    Box(contentAlignment = Alignment.Center) {
-                        Icon(
-                            icon,
-                            contentDescription = null,
-                            tint = ADColors.Ink,
-                            modifier = Modifier.size(18.dp),
-                        )
-                    }
+            Surface(
+                modifier = Modifier.size(38.dp),
+                shape = RoundedCornerShape(12.dp),
+                color = MaterialTheme.colorScheme.surfaceVariant,
+            ) {
+                Box(contentAlignment = Alignment.Center) {
+                    Icon(
+                        icon,
+                        contentDescription = null,
+                        tint = ADColors.Ink,
+                        modifier = Modifier.size(19.dp),
+                    )
                 }
-                Spacer(Modifier.weight(1f))
-                Icon(
-                    Icons.AutoMirrored.Rounded.KeyboardArrowRight,
-                    contentDescription = null,
-                    tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                    modifier = Modifier.size(18.dp),
-                )
             }
-
-            Column {
-                Text(
-                    title,
-                    style = MaterialTheme.typography.titleMedium,
-                    fontWeight = FontWeight.Medium,
-                )
-                Spacer(Modifier.height(2.dp))
-                Text(
-                    subtitle,
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    maxLines = 2,
-                    overflow = TextOverflow.Ellipsis,
-                )
-            }
+            Spacer(Modifier.height(8.dp))
+            Text(
+                title,
+                style = MaterialTheme.typography.titleMedium,
+                fontWeight = FontWeight.Medium,
+                maxLines = 1,
+            )
         }
     }
 }
@@ -375,7 +352,7 @@ private fun ADSettingsWideAction(
         tonalElevation = 0.dp,
     ) {
         Row(
-            modifier = Modifier.padding(horizontal = 12.dp, vertical = 11.dp),
+            modifier = Modifier.padding(horizontal = 12.dp, vertical = 10.dp),
             verticalAlignment = Alignment.CenterVertically,
         ) {
             Surface(
@@ -402,7 +379,7 @@ private fun ADSettingsWideAction(
                 Text(
                     subtitle,
                     style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.78f),
                     maxLines = 2,
                     overflow = TextOverflow.Ellipsis,
                 )

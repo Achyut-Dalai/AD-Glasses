@@ -1,5 +1,9 @@
 package com.fersaiyan.cyanbridge.ui.adglasses
 
+import android.content.Intent
+import android.net.Uri
+import android.os.Build
+import android.provider.Settings
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.WindowInsets
@@ -146,9 +150,22 @@ fun ADGlassesApp(
                         onDevice = { navigateTo(ADRoute.DEVICE_CENTER) },
                         onPrivacy = { navigateTo(ADRoute.PRIVACY) },
                         onStorage = { navigateTo(ADRoute.STORAGE) },
-                        onLanguage = { navigateTo(ADRoute.LANGUAGE) },
+                        onLanguage = {
+                            if (Build.VERSION.SDK_INT >= 33) {
+                                val opened = runCatching {
+                                    context.startActivity(
+                                        Intent(
+                                            Settings.ACTION_APP_LOCALE_SETTINGS,
+                                            Uri.parse("package:${context.packageName}"),
+                                        ),
+                                    )
+                                }.isSuccess
+                                if (!opened) navigateTo(ADRoute.LANGUAGE)
+                            } else {
+                                navigateTo(ADRoute.LANGUAGE)
+                            }
+                        },
                         onPermissions = { navigateTo(ADRoute.PERMISSIONS) },
-                        onAdvanced = { navigateTo(ADRoute.ADVANCED) },
                         onAbout = { navigateTo(ADRoute.ABOUT) },
                     )
                     ADRoute.AI_RELAY -> ADNativeRelaySettingsScreen(navigateBack)

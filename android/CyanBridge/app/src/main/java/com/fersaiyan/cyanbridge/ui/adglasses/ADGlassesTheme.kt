@@ -154,14 +154,14 @@ private val ADTypography = Typography(
     ),
     bodyMedium = TextStyle(
         fontFamily = InterFontFamily,
-        fontSize = 12.75.sp,
-        lineHeight = 17.5.sp,
+        fontSize = 12.25.sp,
+        lineHeight = 17.sp,
         fontWeight = FontWeight.Normal,
     ),
     bodySmall = TextStyle(
         fontFamily = InterFontFamily,
-        fontSize = 11.5.sp,
-        lineHeight = 15.5.sp,
+        fontSize = 10.75.sp,
+        lineHeight = 14.75.sp,
         fontWeight = FontWeight.Normal,
     ),
     labelLarge = TextStyle(

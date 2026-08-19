@@ -534,12 +534,6 @@ private fun ADAutomationCard(
             ) {
                 Column {
                     Text(
-                        "PHONE CONTROL",
-                        style = MaterialTheme.typography.labelSmall,
-                        color = ADColors.Muted,
-                    )
-                    Spacer(Modifier.height(3.dp))
-                    Text(
                         "Automation",
                         style = MaterialTheme.typography.titleLarge,
                         fontWeight = FontWeight.Medium,

@@ -9,7 +9,6 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
@@ -22,10 +21,8 @@ import androidx.compose.material.icons.outlined.GraphicEq
 import androidx.compose.material.icons.outlined.Image
 import androidx.compose.material.icons.outlined.Notes
 import androidx.compose.material.icons.outlined.Sync
-import androidx.compose.material.icons.outlined.VideoLibrary
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
-import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
@@ -55,42 +52,15 @@ internal fun ADExpressiveLibraryHome(
             verticalArrangement = Arrangement.spacedBy(11.dp),
         ) {
             item {
-                ADLibraryHero(
-                    title = "Everything the glasses keep",
-                    detail = "Captures, recordings, transcripts and notes live here after they reach this phone.",
-                    transferActive = transferActive,
-                    onOpenSync = onOpenSync,
-                )
-            }
-
-            if (transferActive) {
-                item {
-                    ADCard(onClick = onOpenSync) {
-                        Row(verticalAlignment = Alignment.CenterVertically) {
-                            Box(
-                                modifier = Modifier
-                                    .size(36.dp)
-                                    .background(ADColors.SurfaceSubtle, RoundedCornerShape(11.dp)),
-                                contentAlignment = Alignment.Center,
-                            ) {
-                                Icon(
-                                    Icons.Outlined.Sync,
-                                    contentDescription = null,
-                                    tint = ADColors.Ink,
-                                    modifier = Modifier.size(18.dp),
-                                )
-                            }
-                            Column(Modifier.padding(start = 9.dp).weight(1f)) {
-                                Text("New media is arriving", style = MaterialTheme.typography.titleMedium)
-                                Text(
-                                    "Open Sync for live transfer progress",
-                                    style = MaterialTheme.typography.bodySmall,
-                                    color = ADColors.Muted,
-                                )
-                            }
-                            ADStatusChip("ACTIVE", ADStatusTone.INFO)
-                        }
-                    }
+                Button(
+                    onClick = onOpenSync,
+                    modifier = Modifier.fillMaxWidth().heightIn(min = 44.dp),
+                    colors = ButtonDefaults.buttonColors(containerColor = ADColors.Ink),
+                    shape = RoundedCornerShape(15.dp),
+                ) {
+                    Icon(Icons.Outlined.Sync, contentDescription = null, modifier = Modifier.size(18.dp))
+                    Spacer(Modifier.size(7.dp))
+                    Text(if (transferActive) "View sync" else "Sync from glasses")
                 }
             }
 
@@ -134,58 +104,6 @@ internal fun ADExpressiveLibraryHome(
 }
 
 @Composable
-private fun ADLibraryHero(
-    title: String,
-    detail: String,
-    transferActive: Boolean,
-    onOpenSync: () -> Unit,
-) {
-    Surface(
-        modifier = Modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(21.dp),
-        color = ADColors.Surface,
-        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant),
-        shadowElevation = 1.dp,
-    ) {
-        Column(Modifier.padding(13.dp)) {
-            Row(verticalAlignment = Alignment.Top) {
-                Surface(
-                    modifier = Modifier.size(42.dp),
-                    shape = RoundedCornerShape(14.dp),
-                    color = ADColors.Ink,
-                    contentColor = ADColors.Surface,
-                ) {
-                    Box(contentAlignment = Alignment.Center) {
-                        Icon(Icons.Outlined.VideoLibrary, contentDescription = null, modifier = Modifier.size(20.dp))
-                    }
-                }
-                Column(Modifier.padding(start = 10.dp).weight(1f)) {
-                    Text(title, style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Medium)
-                    Spacer(Modifier.height(2.dp))
-                    Text(detail, style = MaterialTheme.typography.bodySmall, color = ADColors.Muted)
-                }
-                ADStatusChip(
-                    if (transferActive) "SYNCING" else "LOCAL",
-                    if (transferActive) ADStatusTone.INFO else ADStatusTone.NEUTRAL,
-                )
-            }
-            Spacer(Modifier.height(9.dp))
-            HorizontalDivider(color = ADColors.Separator)
-            Spacer(Modifier.height(8.dp))
-            Button(
-                onClick = onOpenSync,
-                modifier = Modifier.fillMaxWidth().heightIn(min = 44.dp),
-                colors = ButtonDefaults.buttonColors(containerColor = ADColors.Ink),
-            ) {
-                Icon(Icons.Outlined.Sync, contentDescription = null, modifier = Modifier.size(18.dp))
-                Spacer(Modifier.size(7.dp))
-                Text(if (transferActive) "View sync" else "Sync from glasses")
-            }
-        }
-    }
-}
-
-@Composable
 private fun ADLibraryPrimaryDestination(
     icon: ImageVector,
     title: String,
@@ -221,11 +139,11 @@ private fun ADLibraryPrimaryDestination(
                     fontWeight = FontWeight.Medium,
                     maxLines = 1,
                 )
-                Spacer(Modifier.height(2.dp))
+                Spacer(Modifier.size(2.dp))
                 Text(
                     detail,
                     style = MaterialTheme.typography.bodySmall,
-                    color = ADColors.Muted,
+                    color = ADColors.Muted.copy(alpha = 0.78f),
                     maxLines = 2,
                     overflow = TextOverflow.Ellipsis,
                 )
@@ -289,11 +207,11 @@ private fun ADLibraryCompactDestination(
                     fontWeight = FontWeight.Medium,
                     maxLines = 1,
                 )
-                Spacer(Modifier.height(2.dp))
+                Spacer(Modifier.size(2.dp))
                 Text(
                     detail,
                     style = MaterialTheme.typography.bodySmall,
-                    color = ADColors.Muted,
+                    color = ADColors.Muted.copy(alpha = 0.78f),
                     maxLines = 2,
                     overflow = TextOverflow.Ellipsis,
                 )
