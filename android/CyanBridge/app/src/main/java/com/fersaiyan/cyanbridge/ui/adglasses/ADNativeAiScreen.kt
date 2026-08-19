@@ -4,6 +4,8 @@ import android.content.Intent
 import android.provider.Settings
 import android.widget.Toast
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -28,6 +30,7 @@ import androidx.compose.material.icons.outlined.CheckCircle
 import androidx.compose.material.icons.outlined.Cloud
 import androidx.compose.material.icons.outlined.Computer
 import androidx.compose.material.icons.outlined.Timeline
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
@@ -40,6 +43,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
@@ -121,91 +125,85 @@ internal fun ADNativeAiScreen(
         ADAiChoice.LOCAL -> "Local AI"
     }
 
-    LazyColumn(
-        modifier = Modifier.fillMaxSize(),
-        contentPadding = androidx.compose.foundation.layout.PaddingValues(16.dp, 18.dp, 16.dp, 34.dp),
-        verticalArrangement = Arrangement.spacedBy(20.dp),
-    ) {
-        item {
-            Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
-                ADAiSectionHeading("AI model")
+    Column(Modifier.fillMaxSize()) {
+        ADTopBar(title = "AI")
+        LazyColumn(
+            modifier = Modifier.fillMaxSize(),
+            contentPadding = androidx.compose.foundation.layout.PaddingValues(16.dp, 4.dp, 16.dp, 32.dp),
+            verticalArrangement = Arrangement.spacedBy(16.dp),
+        ) {
+            item {
                 ADAiProviderCard(
                     selectedName = selectedName,
                     selected = selected,
                     onSelect = ::select,
                 )
             }
-        }
 
-        item {
-            Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
-                ADAiSectionHeading("Memory")
-                Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                    ADAiCapabilityCard(
-                        icon = Icons.Outlined.Timeline,
-                        title = "Timeline",
-                        detail = "Search moments over time",
-                        active = timelineActive,
-                        modifier = Modifier.weight(1f),
-                        onClick = { setCapability(AssistantCapability.VISUAL_DIARY, !timelineActive) },
-                    )
-                    ADAiCapabilityCard(
-                        icon = Icons.Outlined.AutoStories,
-                        title = "Diary",
-                        detail = "A private recap of your day",
-                        active = diaryActive,
-                        modifier = Modifier.weight(1f),
-                        onClick = { setCapability(AssistantCapability.AUTO_DIARY, !diaryActive) },
+            item {
+                Column(verticalArrangement = Arrangement.spacedBy(9.dp)) {
+                    ADSectionTitle("Memory")
+                    Row(horizontalArrangement = Arrangement.spacedBy(9.dp)) {
+                        ADAiCapabilityCard(
+                            icon = Icons.Outlined.Timeline,
+                            title = "Timeline",
+                            detail = "Search moments over time",
+                            active = timelineActive,
+                            modifier = Modifier.weight(1f),
+                            onClick = { setCapability(AssistantCapability.VISUAL_DIARY, !timelineActive) },
+                        )
+                        ADAiCapabilityCard(
+                            icon = Icons.Outlined.AutoStories,
+                            title = "Diary",
+                            detail = "Private daily recap",
+                            active = diaryActive,
+                            modifier = Modifier.weight(1f),
+                            onClick = { setCapability(AssistantCapability.AUTO_DIARY, !diaryActive) },
+                        )
+                    }
+                }
+            }
+
+            item {
+                Column(verticalArrangement = Arrangement.spacedBy(9.dp)) {
+                    ADSectionTitle("Phone intelligence")
+                    ADAiCapabilityRow(
+                        active = automationActive,
+                        ready = automationReady,
+                        onClick = { setCapability(AssistantCapability.LOCAL_AGENT, !automationActive) },
                     )
                 }
             }
-        }
 
-        item {
-            Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
-                ADAiSectionHeading("Phone automation")
-                ADAiCapabilityRow(
-                    active = automationActive,
-                    ready = automationReady,
-                    onClick = { setCapability(AssistantCapability.LOCAL_AGENT, !automationActive) },
-                )
-            }
-        }
-
-        item {
-            Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
-                ADAiSectionHeading("Connections")
-                ADConnectionFeatureCard(
-                    icon = Icons.Outlined.Apps,
-                    title = "Assistant apps",
-                    detail = "Gemini or ChatGPT handoff",
-                    onClick = onAssistantApps,
-                )
-                ADConnectionFeatureCard(
-                    icon = Icons.Outlined.Cloud,
-                    title = "Relay",
-                    detail = if (relayConfigured) "Remote AI and web access" else "Connect remote AI",
-                    onClick = onRelaySettings,
-                )
-                ADConnectionFeatureCard(
-                    icon = Icons.Outlined.Computer,
-                    title = "Local models",
-                    detail = "On-device and compatible AI",
-                    onClick = onLocalSettings,
-                )
+            item {
+                Column(verticalArrangement = Arrangement.spacedBy(9.dp)) {
+                    ADSectionTitle("Connections")
+                    ADCard {
+                        ADConnectionFeatureRow(
+                            icon = Icons.Outlined.Apps,
+                            title = "Assistant apps",
+                            detail = "Gemini or ChatGPT handoff",
+                            onClick = onAssistantApps,
+                        )
+                        HorizontalDivider(Modifier.padding(start = 52.dp), color = ADColors.Separator)
+                        ADConnectionFeatureRow(
+                            icon = Icons.Outlined.Cloud,
+                            title = "Relay",
+                            detail = if (relayConfigured) "Remote AI and web access" else "Connect remote AI",
+                            onClick = onRelaySettings,
+                        )
+                        HorizontalDivider(Modifier.padding(start = 52.dp), color = ADColors.Separator)
+                        ADConnectionFeatureRow(
+                            icon = Icons.Outlined.Computer,
+                            title = "Local models",
+                            detail = "On-device and compatible AI",
+                            onClick = onLocalSettings,
+                        )
+                    }
+                }
             }
         }
     }
-}
-
-@Composable
-private fun ADAiSectionHeading(title: String) {
-    Text(
-        title,
-        style = MaterialTheme.typography.titleLarge,
-        fontWeight = FontWeight.SemiBold,
-        modifier = Modifier.padding(start = 2.dp),
-    )
 }
 
 @Composable
@@ -216,27 +214,23 @@ private fun ADAiProviderCard(
 ) {
     Surface(
         modifier = Modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(26.dp),
-        color = ADColors.Ink,
-        contentColor = ADColors.Surface,
+        shape = RoundedCornerShape(20.dp),
+        color = ADColors.Graphite,
+        contentColor = Color.White,
     ) {
         Column(Modifier.padding(18.dp)) {
             Row(verticalAlignment = Alignment.CenterVertically) {
-                Surface(
-                    modifier = Modifier.size(48.dp),
-                    shape = RoundedCornerShape(16.dp),
-                    color = ADColors.Surface.copy(alpha = 0.14f),
-                    contentColor = ADColors.Surface,
+                Box(
+                    modifier = Modifier.size(46.dp).background(Color.White.copy(alpha = 0.10f), RoundedCornerShape(14.dp)),
+                    contentAlignment = Alignment.Center,
                 ) {
-                    Box(contentAlignment = Alignment.Center) {
-                        Icon(Icons.Outlined.AutoAwesome, contentDescription = null, modifier = Modifier.size(24.dp))
-                    }
+                    Icon(Icons.Outlined.AutoAwesome, contentDescription = null, modifier = Modifier.size(23.dp))
                 }
                 Column(Modifier.padding(start = 13.dp).weight(1f)) {
                     Text(
-                        "Default",
-                        style = MaterialTheme.typography.labelMedium,
-                        color = ADColors.Surface.copy(alpha = 0.62f),
+                        "ACTIVE AI",
+                        style = MaterialTheme.typography.labelSmall,
+                        color = Color.White.copy(alpha = 0.58f),
                     )
                     Text(
                         selectedName,
@@ -246,9 +240,10 @@ private fun ADAiProviderCard(
                         overflow = TextOverflow.Ellipsis,
                     )
                 }
+                Box(Modifier.size(8.dp).background(ADColors.Cyan, CircleShape))
             }
-            Spacer(Modifier.height(16.dp))
-            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            Spacer(Modifier.height(15.dp))
+            Row(horizontalArrangement = Arrangement.spacedBy(7.dp)) {
                 ADAiProviderPill("Gemini", selected == ADAiChoice.GEMINI, Modifier.weight(1f)) {
                     onSelect(ADAiChoice.GEMINI)
                 }
@@ -272,10 +267,11 @@ private fun ADAiProviderPill(
 ) {
     Surface(
         onClick = onClick,
-        modifier = modifier.heightIn(min = 44.dp),
-        shape = RoundedCornerShape(14.dp),
-        color = if (selected) ADColors.Surface else ADColors.Surface.copy(alpha = 0.12f),
-        contentColor = if (selected) ADColors.Ink else ADColors.Surface,
+        modifier = modifier.heightIn(min = 42.dp),
+        shape = RoundedCornerShape(12.dp),
+        color = if (selected) Color.White else Color.White.copy(alpha = 0.09f),
+        contentColor = if (selected) ADColors.Ink else Color.White,
+        border = if (selected) null else androidx.compose.foundation.BorderStroke(1.dp, Color.White.copy(alpha = 0.10f)),
     ) {
         Box(contentAlignment = Alignment.Center) {
             Text(title, style = MaterialTheme.typography.labelLarge, fontWeight = FontWeight.SemiBold)
@@ -292,52 +288,50 @@ private fun ADAiCapabilityCard(
     modifier: Modifier = Modifier,
     onClick: () -> Unit,
 ) {
-    Surface(
-        onClick = onClick,
-        modifier = modifier.heightIn(min = 150.dp),
-        shape = RoundedCornerShape(24.dp),
-        color = if (active) ADColors.SurfaceSubtle else ADColors.Surface,
-        tonalElevation = 1.dp,
+    val shape = RoundedCornerShape(16.dp)
+    Column(
+        modifier = modifier
+            .heightIn(min = 126.dp)
+            .background(if (active) ADColors.CyanSoft else ADColors.Surface, shape)
+            .border(1.dp, if (active) ADColors.Cyan else ADColors.Outline, shape)
+            .clickable(onClick = onClick)
+            .padding(14.dp),
+        verticalArrangement = Arrangement.SpaceBetween,
     ) {
-        Column(
-            modifier = Modifier.padding(16.dp),
-            verticalArrangement = Arrangement.SpaceBetween,
-        ) {
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                Box(
-                    modifier = Modifier
-                        .size(48.dp)
-                        .background(if (active) ADColors.Ink else ADColors.SurfaceSubtle, RoundedCornerShape(16.dp)),
-                    contentAlignment = Alignment.Center,
-                ) {
-                    Icon(
-                        icon,
-                        contentDescription = null,
-                        tint = if (active) ADColors.Surface else ADColors.Ink,
-                        modifier = Modifier.size(23.dp),
-                    )
-                }
-                Spacer(Modifier.weight(1f))
-                if (active) {
-                    Icon(
-                        Icons.Outlined.CheckCircle,
-                        contentDescription = "Enabled",
-                        tint = ADColors.Ink,
-                        modifier = Modifier.size(20.dp),
-                    )
-                }
-            }
-            Column {
-                Text(title, style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.SemiBold)
-                Spacer(Modifier.height(4.dp))
-                Text(
-                    detail,
-                    style = MaterialTheme.typography.bodySmall,
-                    color = ADColors.Muted,
-                    maxLines = 2,
-                    overflow = TextOverflow.Ellipsis,
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Box(
+                modifier = Modifier
+                    .size(40.dp)
+                    .background(if (active) ADColors.Cyan else ADColors.SurfaceSubtle, RoundedCornerShape(12.dp)),
+                contentAlignment = Alignment.Center,
+            ) {
+                Icon(
+                    icon,
+                    contentDescription = null,
+                    tint = if (active) Color.White else ADColors.Ink,
+                    modifier = Modifier.size(21.dp),
                 )
             }
+            Spacer(Modifier.weight(1f))
+            if (active) {
+                Icon(
+                    Icons.Outlined.CheckCircle,
+                    contentDescription = "Enabled",
+                    tint = ADColors.CyanDeep,
+                    modifier = Modifier.size(19.dp),
+                )
+            }
+        }
+        Column {
+            Text(title, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold)
+            Spacer(Modifier.height(2.dp))
+            Text(
+                detail,
+                style = MaterialTheme.typography.bodySmall,
+                color = ADColors.Muted,
+                maxLines = 2,
+                overflow = TextOverflow.Ellipsis,
+            )
         }
     }
 }
@@ -348,111 +342,73 @@ private fun ADAiCapabilityRow(
     ready: Boolean,
     onClick: () -> Unit,
 ) {
-    Surface(
-        onClick = onClick,
-        modifier = Modifier.fillMaxWidth().heightIn(min = 150.dp),
-        shape = RoundedCornerShape(24.dp),
-        color = if (active) ADColors.SurfaceSubtle else ADColors.Surface,
-        tonalElevation = 1.dp,
+    val shape = RoundedCornerShape(16.dp)
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .heightIn(min = 92.dp)
+            .background(if (active) ADColors.CyanSoft else ADColors.Surface, shape)
+            .border(1.dp, if (active) ADColors.Cyan else ADColors.Outline, shape)
+            .clickable(onClick = onClick)
+            .padding(14.dp),
+        verticalAlignment = Alignment.CenterVertically,
     ) {
-        Column(
-            modifier = Modifier.padding(18.dp),
-            verticalArrangement = Arrangement.SpaceBetween,
+        Box(
+            modifier = Modifier
+                .size(46.dp)
+                .background(if (active) ADColors.Cyan else ADColors.Graphite, RoundedCornerShape(14.dp)),
+            contentAlignment = Alignment.Center,
         ) {
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                Box(
-                    modifier = Modifier
-                        .size(52.dp)
-                        .background(ADColors.Ink, RoundedCornerShape(17.dp)),
-                    contentAlignment = Alignment.Center,
-                ) {
-                    Icon(
-                        Icons.Outlined.Bolt,
-                        contentDescription = null,
-                        tint = ADColors.Surface,
-                        modifier = Modifier.size(26.dp),
-                    )
-                }
-                Spacer(Modifier.weight(1f))
-                if (active) {
-                    Icon(
-                        Icons.Outlined.CheckCircle,
-                        contentDescription = "Enabled",
-                        tint = ADColors.Ink,
-                        modifier = Modifier.size(22.dp),
-                    )
-                }
-            }
-            Column {
-                Text(
-                    "Automation",
-                    style = MaterialTheme.typography.headlineSmall,
-                    fontWeight = FontWeight.SemiBold,
-                )
-                Spacer(Modifier.height(5.dp))
-                Text(
-                    if (ready) "Run phone actions from your glasses" else "Allow phone actions to get started",
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = ADColors.Muted,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis,
-                )
-            }
+            Icon(Icons.Outlined.Bolt, contentDescription = null, tint = Color.White, modifier = Modifier.size(23.dp))
         }
+        Column(Modifier.padding(start = 13.dp).weight(1f)) {
+            Text("Automation", style = MaterialTheme.typography.titleLarge)
+            Spacer(Modifier.height(2.dp))
+            Text(
+                if (ready) "Run phone actions from your glasses" else "Accessibility permission needed",
+                style = MaterialTheme.typography.bodySmall,
+                color = ADColors.Muted,
+                maxLines = 2,
+                overflow = TextOverflow.Ellipsis,
+            )
+        }
+        if (active) ADStatusChip("ON", ADStatusTone.INFO)
     }
 }
 
 @Composable
-private fun ADConnectionFeatureCard(
+private fun ADConnectionFeatureRow(
     icon: ImageVector,
     title: String,
     detail: String,
     onClick: () -> Unit,
 ) {
-    Surface(
-        onClick = onClick,
-        modifier = Modifier.fillMaxWidth().heightIn(min = 96.dp),
-        shape = RoundedCornerShape(22.dp),
-        color = ADColors.Surface,
-        tonalElevation = 1.dp,
+    Row(
+        modifier = Modifier.fillMaxWidth().clickable(onClick = onClick).padding(vertical = 11.dp),
+        verticalAlignment = Alignment.CenterVertically,
     ) {
-        Row(
-            modifier = Modifier.padding(horizontal = 16.dp, vertical = 15.dp),
-            verticalAlignment = Alignment.CenterVertically,
+        Box(
+            modifier = Modifier.size(40.dp).background(ADColors.SurfaceSubtle, RoundedCornerShape(12.dp)),
+            contentAlignment = Alignment.Center,
         ) {
-            Box(
-                modifier = Modifier
-                    .size(50.dp)
-                    .background(ADColors.SurfaceSubtle, RoundedCornerShape(16.dp)),
-                contentAlignment = Alignment.Center,
-            ) {
-                Icon(icon, contentDescription = null, tint = ADColors.Ink, modifier = Modifier.size(24.dp))
-            }
-            Column(Modifier.padding(start = 14.dp).weight(1f)) {
-                Text(title, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold)
-                Spacer(Modifier.height(3.dp))
-                Text(
-                    detail,
-                    style = MaterialTheme.typography.bodySmall,
-                    color = ADColors.Muted,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis,
-                )
-            }
-            Surface(
-                shape = CircleShape,
-                color = ADColors.SurfaceSubtle,
-            ) {
-                Box(Modifier.size(36.dp), contentAlignment = Alignment.Center) {
-                    Icon(
-                        Icons.AutoMirrored.Rounded.KeyboardArrowRight,
-                        contentDescription = null,
-                        tint = ADColors.Ink,
-                        modifier = Modifier.size(21.dp),
-                    )
-                }
-            }
+            Icon(icon, contentDescription = null, tint = ADColors.Ink, modifier = Modifier.size(20.dp))
         }
+        Column(Modifier.padding(start = 12.dp).weight(1f)) {
+            Text(title, style = MaterialTheme.typography.titleMedium)
+            Text(
+                detail,
+                style = MaterialTheme.typography.bodySmall,
+                color = ADColors.Muted,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+            )
+        }
+        Icon(
+            Icons.AutoMirrored.Rounded.KeyboardArrowRight,
+            contentDescription = null,
+            tint = ADColors.Muted,
+            modifier = Modifier.size(22.dp),
+        )
     }
 }
 
