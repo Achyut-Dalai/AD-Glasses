@@ -3,8 +3,10 @@ package com.fersaiyan.cyanbridge.ui.adglasses
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.WindowInsetsSides
 import androidx.compose.foundation.layout.consumeWindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.only
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.safeDrawing
 import androidx.compose.material3.MaterialTheme
@@ -33,6 +35,8 @@ fun ADGlassesApp(
     var routeStack by remember { mutableStateOf(listOf(ADRoute.MAIN)) }
     var conversationRequest by remember { mutableStateOf<ADNavigationRequest?>(null) }
     var onboardingComplete by remember(context) { mutableStateOf(ADWelcomePreferences.isComplete(context)) }
+    var themeStyle by remember(context) { mutableStateOf(ADThemePreferences.get(context)) }
+    var darkMode by remember(context) { mutableStateOf(ADThemePreferences.isDark(context)) }
 
     val route = routeStack.last()
     val navigateTo: (ADRoute) -> Unit = { destination ->
@@ -73,7 +77,7 @@ fun ADGlassesApp(
 
     BackHandler(enabled = onboardingComplete && route != ADRoute.MAIN) { navigateBack() }
 
-    ADGlassesTheme {
+    ADGlassesTheme(style = themeStyle, darkMode = darkMode) {
         if (!onboardingComplete) {
             ADWelcomeScreen(
                 onStartSetup = {
@@ -89,10 +93,16 @@ fun ADGlassesApp(
             return@ADGlassesTheme
         }
 
+        val contentInsets = if (route == ADRoute.MAIN) {
+            WindowInsets.safeDrawing.only(WindowInsetsSides.Horizontal + WindowInsetsSides.Top)
+        } else {
+            WindowInsets.safeDrawing
+        }
+
         Scaffold(
             modifier = Modifier.fillMaxSize(),
             containerColor = MaterialTheme.colorScheme.background,
-            contentWindowInsets = WindowInsets.safeDrawing,
+            contentWindowInsets = contentInsets,
             bottomBar = {
                 if (route == ADRoute.MAIN) ADBottomNavigation(selectedTab) { selectedTab = it }
             },
@@ -142,6 +152,16 @@ fun ADGlassesApp(
                     ADRoute.SYNC -> ADSyncScreen(dashboardState, host, navigateBack)
                     ADRoute.SETTINGS -> ADNativeSettingsHubScreen(
                         state = dashboardState,
+                        themeStyle = themeStyle,
+                        darkMode = darkMode,
+                        onThemeStyle = { style ->
+                            ADThemePreferences.set(context, style)
+                            themeStyle = style
+                        },
+                        onDarkMode = { enabled ->
+                            ADThemePreferences.setDark(context, enabled)
+                            darkMode = enabled
+                        },
                         onBack = navigateBack,
                         onDevice = { navigateTo(ADRoute.DEVICE_CENTER) },
                         onPrivacy = { navigateTo(ADRoute.PRIVACY) },
