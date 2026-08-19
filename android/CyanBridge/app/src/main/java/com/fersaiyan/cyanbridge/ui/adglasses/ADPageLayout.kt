@@ -11,7 +11,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 
-/** Shared detail-page frame for native AD Glasses surfaces. */
+/** Shared detail-page frame with a calm utility bar and a strong in-page title. */
 @Composable
 internal fun ADPageLayout(
     title: String,
@@ -19,14 +19,16 @@ internal fun ADPageLayout(
     content: @Composable ColumnScope.() -> Unit,
 ) {
     Column(Modifier.fillMaxSize()) {
-        ADTopBar(title = title, showBack = true, onBack = onBack)
+        ADTopBar(showBack = true, onBack = onBack)
         Column(
             modifier = Modifier
                 .fillMaxSize()
                 .verticalScroll(rememberScrollState())
-                .padding(start = 14.dp, end = 14.dp, top = 2.dp, bottom = 20.dp),
-            verticalArrangement = Arrangement.spacedBy(11.dp),
-            content = content,
-        )
+                .padding(start = 16.dp, end = 16.dp, top = 6.dp, bottom = 28.dp),
+            verticalArrangement = Arrangement.spacedBy(16.dp),
+        ) {
+            ADScreenIntro(title = title)
+            content()
+        }
     }
 }
