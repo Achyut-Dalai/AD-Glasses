@@ -25,7 +25,6 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.outlined.Description
 import androidx.compose.material.icons.outlined.GraphicEq
 import androidx.compose.material.icons.outlined.Image
 import androidx.compose.material.icons.outlined.Notes
@@ -55,6 +54,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.fersaiyan.cyanbridge.data.local.entity.Note
@@ -81,29 +81,31 @@ internal fun ADNativeLibraryScreen(
         LazyColumn(
             modifier = Modifier.fillMaxSize(),
             contentPadding = androidx.compose.foundation.layout.PaddingValues(16.dp),
-            verticalArrangement = Arrangement.spacedBy(16.dp),
+            verticalArrangement = Arrangement.spacedBy(14.dp),
         ) {
             if (transferActive) {
                 item {
                     ADCard(onClick = onOpenSync) {
                         Row(verticalAlignment = Alignment.CenterVertically) {
                             Box(
-                                Modifier.size(40.dp).background(ADColors.BlueSoft, CircleShape),
+                                Modifier.size(40.dp).background(ADColors.CyanSoft, RoundedCornerShape(12.dp)),
                                 contentAlignment = Alignment.Center,
-                            ) { Icon(Icons.Outlined.Sync, null, tint = ADColors.Blue) }
+                            ) { Icon(Icons.Outlined.Sync, null, tint = ADColors.CyanDeep) }
                             Column(Modifier.padding(start = 12.dp).weight(1f)) {
                                 Text("Sync in progress", style = MaterialTheme.typography.titleMedium)
-                                Text("New glasses media is being added to Library", color = ADColors.Muted)
+                                Text(
+                                    "New glasses media is being added to Library",
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = ADColors.Muted,
+                                )
                             }
-                            ADStatusChip("ACTIVE", ADStatusTone.INFO)
+                            ADStatusChip("LIVE", ADStatusTone.INFO)
                         }
                     }
                 }
             }
 
-            item {
-                Text("Saved on this phone", style = MaterialTheme.typography.titleLarge)
-            }
+            item { ADSectionTitle("Saved on this phone") }
 
             item {
                 ADCard {
@@ -134,7 +136,8 @@ internal fun ADNativeLibraryScreen(
                 Button(
                     onClick = onOpenSync,
                     modifier = Modifier.fillMaxWidth().heightIn(min = 50.dp),
-                    colors = ButtonDefaults.buttonColors(containerColor = ADColors.Ink),
+                    shape = RoundedCornerShape(14.dp),
+                    colors = ButtonDefaults.buttonColors(containerColor = ADColors.Graphite),
                 ) {
                     Icon(Icons.Outlined.Sync, null)
                     Spacer(Modifier.size(8.dp))
@@ -179,7 +182,7 @@ internal fun ADNativeCapturesScreen(
         ADTopBar(title = "Captures", showBack = true, onBack = onBack)
         LazyColumn(
             modifier = Modifier.fillMaxSize(),
-            contentPadding = androidx.compose.foundation.layout.PaddingValues(16.dp),
+            contentPadding = androidx.compose.foundation.layout.PaddingValues(16.dp, 4.dp, 16.dp, 28.dp),
             verticalArrangement = Arrangement.spacedBy(12.dp),
         ) {
             error?.let { message -> item { ADLibraryMessage(message, warning = true) } }
@@ -190,7 +193,7 @@ internal fun ADNativeCapturesScreen(
                             CircularProgressIndicator(
                                 modifier = Modifier.size(20.dp),
                                 strokeWidth = 2.dp,
-                                color = ADColors.Ink,
+                                color = ADColors.Cyan,
                             )
                             Text(
                                 "Loading captures",
@@ -211,8 +214,9 @@ internal fun ADNativeCapturesScreen(
                     item {
                         Button(
                             onClick = onOpenSync,
-                            modifier = Modifier.fillMaxWidth(),
-                            colors = ButtonDefaults.buttonColors(containerColor = ADColors.Ink),
+                            modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp),
+                            shape = RoundedCornerShape(14.dp),
+                            colors = ButtonDefaults.buttonColors(containerColor = ADColors.Graphite),
                         ) { Text("Sync from glasses") }
                     }
                 }
@@ -231,25 +235,24 @@ private fun ADCaptureCard(
 ) {
     ADCard(onClick = onClick) {
         ADCapturePreview(item)
-        Spacer(Modifier.size(11.dp))
+        Spacer(Modifier.size(10.dp))
         Row(verticalAlignment = Alignment.CenterVertically) {
             Column(Modifier.weight(1f)) {
                 Text(
-                    item.displayName,
+                    if (item.isVideo) "Video capture" else "Photo capture",
                     style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.SemiBold,
+                    maxLines = 1,
+                )
+                Text(
+                    item.displayName,
+                    style = MaterialTheme.typography.bodySmall,
+                    color = ADColors.Muted,
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis,
                 )
-                Text(
-                    if (item.isVideo) "Video from glasses" else "Photo from glasses",
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = ADColors.Muted,
-                )
             }
-            ADStatusChip(
-                if (item.isVideo) "VIDEO" else "PHOTO",
-                ADStatusTone.NEUTRAL,
-            )
+            ADStatusChip(if (item.isVideo) "VIDEO" else "PHOTO", ADStatusTone.NEUTRAL)
         }
     }
 }
@@ -263,9 +266,11 @@ private fun ADCapturePreview(item: SyncedMediaItem) {
         thumbnail = withContext(Dispatchers.IO) {
             if (Build.VERSION.SDK_INT < Build.VERSION_CODES.Q) return@withContext null
             runCatching {
+                // 960px was visibly soft on high-density 1080p/1440p devices when stretched
+                // across a full-width 16:10 card. Keep enough source pixels for crisp display.
                 context.contentResolver.loadThumbnail(
                     Uri.parse(item.contentUriString),
-                    Size(960, 600),
+                    Size(1440, 900),
                     null,
                 )
             }.getOrNull()
@@ -276,7 +281,7 @@ private fun ADCapturePreview(item: SyncedMediaItem) {
         modifier = Modifier
             .fillMaxWidth()
             .aspectRatio(16f / 10f)
-            .clip(RoundedCornerShape(16.dp))
+            .clip(RoundedCornerShape(14.dp))
             .background(ADColors.SurfaceSubtle),
         contentAlignment = Alignment.Center,
     ) {
@@ -291,21 +296,21 @@ private fun ADCapturePreview(item: SyncedMediaItem) {
             if (item.isVideo) Icons.Outlined.Videocam else Icons.Outlined.Image,
             contentDescription = null,
             tint = ADColors.Muted,
-            modifier = Modifier.size(36.dp),
+            modifier = Modifier.size(34.dp),
         )
 
         if (item.isVideo) {
             Box(
                 modifier = Modifier
-                    .size(46.dp)
-                    .background(ADColors.Ink.copy(alpha = 0.78f), CircleShape),
+                    .size(44.dp)
+                    .background(ADColors.Graphite.copy(alpha = 0.84f), CircleShape),
                 contentAlignment = Alignment.Center,
             ) {
                 Icon(
                     Icons.Outlined.PlayArrow,
                     contentDescription = "Play video",
                     tint = androidx.compose.ui.graphics.Color.White,
-                    modifier = Modifier.size(25.dp),
+                    modifier = Modifier.size(24.dp),
                 )
             }
         }
@@ -370,8 +375,8 @@ internal fun ADNativeRecordingsScreen(onBack: () -> Unit) {
         ADTopBar(title = "Recordings & transcripts", showBack = true, onBack = onBack)
         LazyColumn(
             modifier = Modifier.fillMaxSize(),
-            contentPadding = androidx.compose.foundation.layout.PaddingValues(16.dp),
-            verticalArrangement = Arrangement.spacedBy(12.dp),
+            contentPadding = androidx.compose.foundation.layout.PaddingValues(16.dp, 4.dp, 16.dp, 28.dp),
+            verticalArrangement = Arrangement.spacedBy(10.dp),
         ) {
             playbackError?.let { message -> item { ADLibraryMessage(message, warning = true) } }
             if (sessions.isEmpty()) {
@@ -384,40 +389,44 @@ internal fun ADNativeRecordingsScreen(onBack: () -> Unit) {
             } else {
                 items(sessions, key = { it.id }) { session ->
                     val transcription = transcripts[session.id]
+                    val isPlaying = playingId == session.id
                     ADCard {
                         Row(verticalAlignment = Alignment.CenterVertically) {
                             Box(
                                 modifier = Modifier
                                     .size(44.dp)
-                                    .background(ADColors.SurfaceSubtle, CircleShape)
+                                    .background(
+                                        if (isPlaying) ADColors.CyanSoft else ADColors.SurfaceSubtle,
+                                        RoundedCornerShape(13.dp),
+                                    )
                                     .clickable { togglePlayback(session.id, session.audioPath) },
                                 contentAlignment = Alignment.Center,
                             ) {
                                 Icon(
-                                    if (playingId == session.id) Icons.Outlined.Pause else Icons.Outlined.PlayArrow,
-                                    contentDescription = if (playingId == session.id) "Stop" else "Play",
-                                    tint = ADColors.Ink,
+                                    if (isPlaying) Icons.Outlined.Pause else Icons.Outlined.PlayArrow,
+                                    contentDescription = if (isPlaying) "Stop" else "Play",
+                                    tint = if (isPlaying) ADColors.CyanDeep else ADColors.Ink,
                                 )
                             }
                             Column(Modifier.padding(start = 12.dp).weight(1f)) {
                                 Text(formatDate(session.startedAt), style = MaterialTheme.typography.titleMedium)
                                 Text(
                                     "${formatDuration(session.durationSec)} · ${friendlySource(session.captureSource)}",
-                                    style = MaterialTheme.typography.bodyMedium,
+                                    style = MaterialTheme.typography.bodySmall,
                                     color = ADColors.Muted,
                                 )
                             }
                             transcription?.let {
                                 ADStatusChip(
                                     if (!it.transcriptText.isNullOrBlank()) "TEXT" else it.status.uppercase(),
-                                    if (it.error == null) ADStatusTone.SUCCESS else ADStatusTone.WARNING,
+                                    if (it.error == null) ADStatusTone.NEUTRAL else ADStatusTone.WARNING,
                                 )
                             }
                         }
                         if (transcription != null && !transcription.transcriptText.isNullOrBlank()) {
-                            Spacer(Modifier.size(12.dp))
+                            Spacer(Modifier.size(11.dp))
                             HorizontalDivider(color = ADColors.Separator)
-                            Spacer(Modifier.size(10.dp))
+                            Spacer(Modifier.size(9.dp))
                             Text(
                                 if (expandedTranscriptId == session.id) transcription.transcriptText.orEmpty()
                                 else transcription.transcriptText.orEmpty().take(220),
@@ -428,7 +437,7 @@ internal fun ADNativeRecordingsScreen(onBack: () -> Unit) {
                                 Text(
                                     if (expandedTranscriptId == session.id) "Show less" else "Show full transcript",
                                     style = MaterialTheme.typography.labelLarge,
-                                    color = ADColors.Blue,
+                                    color = ADColors.CyanDeep,
                                     modifier = Modifier
                                         .clickable {
                                             expandedTranscriptId = if (expandedTranscriptId == session.id) null else session.id
@@ -454,8 +463,8 @@ internal fun ADNativeNotesScreen(onBack: () -> Unit) {
         ADTopBar(title = "Notes & summaries", showBack = true, onBack = onBack)
         LazyColumn(
             modifier = Modifier.fillMaxSize(),
-            contentPadding = androidx.compose.foundation.layout.PaddingValues(16.dp),
-            verticalArrangement = Arrangement.spacedBy(12.dp),
+            contentPadding = androidx.compose.foundation.layout.PaddingValues(16.dp, 4.dp, 16.dp, 28.dp),
+            verticalArrangement = Arrangement.spacedBy(10.dp),
         ) {
             if (notes.isEmpty()) {
                 item {
@@ -482,27 +491,24 @@ internal fun ADNativeNotesScreen(onBack: () -> Unit) {
 @Composable
 private fun ADNativeNoteCard(note: Note, expanded: Boolean, onToggle: () -> Unit) {
     ADCard(onClick = onToggle) {
-        Row(verticalAlignment = Alignment.Top) {
-            Box(
-                Modifier.size(42.dp).background(ADColors.SurfaceSubtle, RoundedCornerShape(12.dp)),
-                contentAlignment = Alignment.Center,
-            ) { Icon(Icons.Outlined.Description, null, tint = ADColors.Ink) }
-            Column(Modifier.padding(start = 12.dp).weight(1f)) {
-                Text(note.title.ifBlank { "Untitled note" }, style = MaterialTheme.typography.titleMedium)
-                Text(formatDate(note.createdAt), style = MaterialTheme.typography.bodySmall, color = ADColors.Muted)
-            }
-        }
-        Spacer(Modifier.size(10.dp))
+        Text(
+            note.title.ifBlank { "Untitled note" },
+            style = MaterialTheme.typography.titleLarge,
+            fontWeight = FontWeight.SemiBold,
+        )
+        Spacer(Modifier.size(2.dp))
+        Text(formatDate(note.createdAt), style = MaterialTheme.typography.labelSmall, color = ADColors.Muted)
+        Spacer(Modifier.size(9.dp))
         Text(
             if (expanded) note.summary else note.summary.take(260),
             style = MaterialTheme.typography.bodyMedium,
-            color = ADColors.Muted,
+            color = ADColors.Ink,
         )
         if (!note.transcript.isNullOrBlank() && expanded) {
-            Spacer(Modifier.size(10.dp))
+            Spacer(Modifier.size(11.dp))
             HorizontalDivider(color = ADColors.Separator)
-            Spacer(Modifier.size(10.dp))
-            Text("Transcript", style = MaterialTheme.typography.labelLarge)
+            Spacer(Modifier.size(9.dp))
+            Text("Transcript", style = MaterialTheme.typography.labelLarge, color = ADColors.Muted)
             Spacer(Modifier.size(4.dp))
             Text(note.transcript.orEmpty(), style = MaterialTheme.typography.bodyMedium, color = ADColors.Muted)
         }
@@ -510,7 +516,7 @@ private fun ADNativeNoteCard(note: Note, expanded: Boolean, onToggle: () -> Unit
             Text(
                 if (expanded) "Show less" else "Open note",
                 style = MaterialTheme.typography.labelLarge,
-                color = ADColors.Blue,
+                color = ADColors.CyanDeep,
                 modifier = Modifier.padding(top = 8.dp),
             )
         }
@@ -525,18 +531,18 @@ private fun ADNativeLibraryRow(
     onClick: () -> Unit,
 ) {
     Row(
-        modifier = Modifier.fillMaxWidth().clickable(onClick = onClick).padding(vertical = 12.dp),
+        modifier = Modifier.fillMaxWidth().clickable(onClick = onClick).padding(vertical = 11.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
         Box(
-            Modifier.size(40.dp).background(ADColors.SurfaceSubtle, RoundedCornerShape(11.dp)),
+            Modifier.size(40.dp).background(ADColors.SurfaceSubtle, RoundedCornerShape(12.dp)),
             contentAlignment = Alignment.Center,
         ) { Icon(icon, null, tint = ADColors.Ink, modifier = Modifier.size(20.dp)) }
         Column(Modifier.padding(start = 12.dp).weight(1f)) {
             Text(title, style = MaterialTheme.typography.titleMedium)
-            Text(subtitle, style = MaterialTheme.typography.bodyMedium, color = ADColors.Muted)
+            Text(subtitle, style = MaterialTheme.typography.bodySmall, color = ADColors.Muted)
         }
-        Icon(Icons.Rounded.KeyboardArrowRight, null, tint = ADColors.Muted)
+        Icon(Icons.Rounded.KeyboardArrowRight, null, tint = ADColors.Muted, modifier = Modifier.size(22.dp))
     }
 }
 
@@ -544,7 +550,7 @@ private fun ADNativeLibraryRow(
 private fun ADEmptyLibraryState(title: String, detail: String) {
     ADCard {
         Text(title, style = MaterialTheme.typography.titleLarge)
-        Spacer(Modifier.size(5.dp))
+        Spacer(Modifier.size(4.dp))
         Text(detail, style = MaterialTheme.typography.bodyMedium, color = ADColors.Muted)
     }
 }
