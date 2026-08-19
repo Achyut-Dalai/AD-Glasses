@@ -4,7 +4,7 @@ import android.content.Context
 
 /** AD Glasses intentionally ships with one light product theme. */
 enum class ADThemeStyle(val label: String) {
-    OPTICAL_FROST("Optical Frost"),
+    MONOCHROME("Optical Frost"),
 }
 
 internal object ADThemePreferences {
@@ -13,13 +13,13 @@ internal object ADThemePreferences {
 
     fun get(context: Context): ADThemeStyle {
         val stored = context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
-            .getString(KEY_STYLE, ADThemeStyle.OPTICAL_FROST.name)
+            .getString(KEY_STYLE, ADThemeStyle.MONOCHROME.name)
         return when (stored) {
-            ADThemeStyle.OPTICAL_FROST.name,
-            "MONOCHROME",
+            ADThemeStyle.MONOCHROME.name,
+            "OPTICAL_FROST",
             "MONO",
-            "VIBE" -> ADThemeStyle.OPTICAL_FROST
-            else -> ADThemeStyle.OPTICAL_FROST
+            "VIBE" -> ADThemeStyle.MONOCHROME
+            else -> ADThemeStyle.MONOCHROME
         }
     }
 
