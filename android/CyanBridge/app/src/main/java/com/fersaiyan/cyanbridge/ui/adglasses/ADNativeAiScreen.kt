@@ -3,6 +3,7 @@ package com.fersaiyan.cyanbridge.ui.adglasses
 import android.content.Intent
 import android.provider.Settings
 import android.widget.Toast
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -23,10 +24,10 @@ import androidx.compose.material.icons.automirrored.rounded.KeyboardArrowRight
 import androidx.compose.material.icons.outlined.Apps
 import androidx.compose.material.icons.outlined.AutoAwesome
 import androidx.compose.material.icons.outlined.AutoStories
-import androidx.compose.material.icons.outlined.Bolt
 import androidx.compose.material.icons.outlined.CheckCircle
 import androidx.compose.material.icons.outlined.Cloud
 import androidx.compose.material.icons.outlined.Computer
+import androidx.compose.material.icons.outlined.PhoneAndroid
 import androidx.compose.material.icons.outlined.Timeline
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
@@ -124,11 +125,22 @@ internal fun ADNativeAiScreen(
     LazyColumn(
         modifier = Modifier.fillMaxSize(),
         contentPadding = androidx.compose.foundation.layout.PaddingValues(16.dp, 18.dp, 16.dp, 34.dp),
-        verticalArrangement = Arrangement.spacedBy(20.dp),
+        verticalArrangement = Arrangement.spacedBy(22.dp),
     ) {
         item {
-            Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
-                ADAiSectionHeading("AI model")
+            Column(verticalArrangement = Arrangement.spacedBy(14.dp)) {
+                Column(verticalArrangement = Arrangement.spacedBy(5.dp)) {
+                    Text(
+                        "AI",
+                        style = MaterialTheme.typography.headlineMedium,
+                        fontWeight = FontWeight.Bold,
+                    )
+                    Text(
+                        "Choose how your glasses answer, remember and act for you.",
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = ADColors.Muted,
+                    )
+                }
                 ADAiProviderCard(
                     selectedName = selectedName,
                     selected = selected,
@@ -139,7 +151,7 @@ internal fun ADNativeAiScreen(
 
         item {
             Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
-                ADAiSectionHeading("Memory")
+                ADAiSectionHeading("Capabilities")
                 Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
                     ADAiCapabilityCard(
                         icon = Icons.Outlined.Timeline,
@@ -158,13 +170,7 @@ internal fun ADNativeAiScreen(
                         onClick = { setCapability(AssistantCapability.AUTO_DIARY, !diaryActive) },
                     )
                 }
-            }
-        }
-
-        item {
-            Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
-                ADAiSectionHeading("Phone automation")
-                ADAiCapabilityRow(
+                ADAutomationCard(
                     active = automationActive,
                     ready = automationReady,
                     onClick = { setCapability(AssistantCapability.LOCAL_AGENT, !automationActive) },
@@ -174,20 +180,20 @@ internal fun ADNativeAiScreen(
 
         item {
             Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
-                ADAiSectionHeading("Connections")
-                ADConnectionFeatureCard(
+                ADAiSectionHeading("Configuration")
+                ADConfigurationCard(
                     icon = Icons.Outlined.Apps,
                     title = "Assistant apps",
                     detail = "Gemini or ChatGPT handoff",
                     onClick = onAssistantApps,
                 )
-                ADConnectionFeatureCard(
+                ADConfigurationCard(
                     icon = Icons.Outlined.Cloud,
                     title = "Relay",
                     detail = if (relayConfigured) "Remote AI and web access" else "Connect remote AI",
                     onClick = onRelaySettings,
                 )
-                ADConnectionFeatureCard(
+                ADConfigurationCard(
                     icon = Icons.Outlined.Computer,
                     title = "Local models",
                     detail = "On-device and compatible AI",
@@ -219,6 +225,7 @@ private fun ADAiProviderCard(
         shape = RoundedCornerShape(26.dp),
         color = ADColors.Ink,
         contentColor = ADColors.Surface,
+        shadowElevation = 2.dp,
     ) {
         Column(Modifier.padding(18.dp)) {
             Row(verticalAlignment = Alignment.CenterVertically) {
@@ -234,7 +241,7 @@ private fun ADAiProviderCard(
                 }
                 Column(Modifier.padding(start = 13.dp).weight(1f)) {
                     Text(
-                        "Default",
+                        "Selected model",
                         style = MaterialTheme.typography.labelMedium,
                         color = ADColors.Surface.copy(alpha = 0.62f),
                     )
@@ -292,12 +299,14 @@ private fun ADAiCapabilityCard(
     modifier: Modifier = Modifier,
     onClick: () -> Unit,
 ) {
+    val borderColor = if (active) ADColors.Ink.copy(alpha = 0.28f) else MaterialTheme.colorScheme.outlineVariant
     Surface(
         onClick = onClick,
-        modifier = modifier.heightIn(min = 150.dp),
+        modifier = modifier.heightIn(min = 156.dp),
         shape = RoundedCornerShape(24.dp),
         color = if (active) ADColors.SurfaceSubtle else ADColors.Surface,
-        tonalElevation = 1.dp,
+        border = BorderStroke(1.dp, borderColor),
+        shadowElevation = 1.dp,
     ) {
         Column(
             modifier = Modifier.padding(16.dp),
@@ -343,35 +352,38 @@ private fun ADAiCapabilityCard(
 }
 
 @Composable
-private fun ADAiCapabilityRow(
+private fun ADAutomationCard(
     active: Boolean,
     ready: Boolean,
     onClick: () -> Unit,
 ) {
+    val borderColor = if (active) ADColors.Ink.copy(alpha = 0.28f) else MaterialTheme.colorScheme.outlineVariant
     Surface(
         onClick = onClick,
-        modifier = Modifier.fillMaxWidth().heightIn(min = 150.dp),
-        shape = RoundedCornerShape(24.dp),
+        modifier = Modifier.fillMaxWidth().heightIn(min = 190.dp),
+        shape = RoundedCornerShape(28.dp),
         color = if (active) ADColors.SurfaceSubtle else ADColors.Surface,
-        tonalElevation = 1.dp,
+        border = BorderStroke(1.dp, borderColor),
+        shadowElevation = 1.dp,
     ) {
         Column(
-            modifier = Modifier.padding(18.dp),
+            modifier = Modifier.padding(19.dp),
             verticalArrangement = Arrangement.SpaceBetween,
         ) {
             Row(verticalAlignment = Alignment.CenterVertically) {
-                Box(
-                    modifier = Modifier
-                        .size(52.dp)
-                        .background(ADColors.Ink, RoundedCornerShape(17.dp)),
-                    contentAlignment = Alignment.Center,
+                Surface(
+                    modifier = Modifier.size(58.dp),
+                    shape = RoundedCornerShape(19.dp),
+                    color = ADColors.Ink,
+                    contentColor = ADColors.Surface,
                 ) {
-                    Icon(
-                        Icons.Outlined.Bolt,
-                        contentDescription = null,
-                        tint = ADColors.Surface,
-                        modifier = Modifier.size(26.dp),
-                    )
+                    Box(contentAlignment = Alignment.Center) {
+                        Icon(
+                            Icons.Outlined.PhoneAndroid,
+                            contentDescription = null,
+                            modifier = Modifier.size(29.dp),
+                        )
+                    }
                 }
                 Spacer(Modifier.weight(1f))
                 if (active) {
@@ -379,23 +391,30 @@ private fun ADAiCapabilityRow(
                         Icons.Outlined.CheckCircle,
                         contentDescription = "Enabled",
                         tint = ADColors.Ink,
-                        modifier = Modifier.size(22.dp),
+                        modifier = Modifier.size(23.dp),
                     )
                 }
             }
+
             Column {
                 Text(
                     "Automation",
                     style = MaterialTheme.typography.headlineSmall,
                     fontWeight = FontWeight.SemiBold,
                 )
-                Spacer(Modifier.height(5.dp))
+                Spacer(Modifier.height(6.dp))
                 Text(
-                    if (ready) "Run phone actions from your glasses" else "Allow phone actions to get started",
+                    "Let AI open apps, navigate screens and complete supported actions on your phone.",
                     style = MaterialTheme.typography.bodyMedium,
                     color = ADColors.Muted,
-                    maxLines = 1,
+                    maxLines = 3,
                     overflow = TextOverflow.Ellipsis,
+                )
+                Spacer(Modifier.height(11.dp))
+                Text(
+                    if (ready) "Phone access ready" else "Tap to allow phone access",
+                    style = MaterialTheme.typography.labelMedium,
+                    color = ADColors.Ink,
                 )
             }
         }
@@ -403,7 +422,7 @@ private fun ADAiCapabilityRow(
 }
 
 @Composable
-private fun ADConnectionFeatureCard(
+private fun ADConfigurationCard(
     icon: ImageVector,
     title: String,
     detail: String,
@@ -411,10 +430,11 @@ private fun ADConnectionFeatureCard(
 ) {
     Surface(
         onClick = onClick,
-        modifier = Modifier.fillMaxWidth().heightIn(min = 96.dp),
+        modifier = Modifier.fillMaxWidth().heightIn(min = 98.dp),
         shape = RoundedCornerShape(22.dp),
         color = ADColors.Surface,
-        tonalElevation = 1.dp,
+        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant),
+        shadowElevation = 1.dp,
     ) {
         Row(
             modifier = Modifier.padding(horizontal = 16.dp, vertical = 15.dp),
