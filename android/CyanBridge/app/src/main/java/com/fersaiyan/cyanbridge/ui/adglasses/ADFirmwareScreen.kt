@@ -58,51 +58,56 @@ internal fun ADFirmwareScreen(
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Box(
                     Modifier
-                        .size(48.dp)
-                        .background(ADColors.WarningSoft, RoundedCornerShape(15.dp)),
+                        .size(40.dp)
+                        .background(ADColors.WarningSoft, RoundedCornerShape(12.dp)),
                     contentAlignment = Alignment.Center,
                 ) {
-                    Icon(Icons.Outlined.SystemUpdateAlt, contentDescription = null, tint = ADColors.Warning)
+                    Icon(
+                        Icons.Outlined.SystemUpdateAlt,
+                        contentDescription = null,
+                        tint = ADColors.Warning,
+                        modifier = Modifier.size(19.dp),
+                    )
                 }
-                Column(Modifier.padding(start = 13.dp).weight(1f)) {
+                Column(Modifier.padding(start = 10.dp).weight(1f)) {
                     Text(
                         ota.stateLabel.ifBlank { "Firmware" },
                         style = MaterialTheme.typography.titleLarge,
                     )
                     Text(
                         ota.detail.ifBlank { "No firmware session is active" },
-                        style = MaterialTheme.typography.bodyMedium,
+                        style = MaterialTheme.typography.bodySmall,
                         color = ADColors.Muted,
                     )
                 }
             }
             if (otaProgress != null) {
-                Spacer(Modifier.height(14.dp))
+                Spacer(Modifier.height(10.dp))
                 LinearProgressIndicator(
                     progress = { (otaProgress / 100f).coerceIn(0f, 1f) },
-                    modifier = Modifier.fillMaxWidth().height(7.dp),
+                    modifier = Modifier.fillMaxWidth().height(5.dp),
                     color = ADColors.Warning,
                     trackColor = ADColors.WarningSoft,
                 )
-                Spacer(Modifier.height(8.dp))
-                Text("${otaProgress.coerceIn(0, 100)}%", style = MaterialTheme.typography.labelLarge)
+                Spacer(Modifier.height(6.dp))
+                Text("${otaProgress.coerceIn(0, 100)}%", style = MaterialTheme.typography.labelMedium)
             }
         }
 
         ADSectionTitle("Preflight")
         ADCard {
             ADFirmwareCheck("Firmware support", supportedProfile)
-            HorizontalDivider(Modifier.padding(start = 34.dp), color = ADColors.Separator)
+            HorizontalDivider(Modifier.padding(start = 30.dp), color = ADColors.Separator)
             ADFirmwareCheck("Bluetooth connected", bluetoothReady)
         }
 
         if (!supportedProfile) {
             ADCard {
                 Text("Firmware is not available for these glasses yet.", style = MaterialTheme.typography.titleMedium)
-                Spacer(Modifier.height(4.dp))
+                Spacer(Modifier.height(2.dp))
                 Text(
                     "Updates appear here once the connected glasses have a validated firmware path.",
-                    style = MaterialTheme.typography.bodyMedium,
+                    style = MaterialTheme.typography.bodySmall,
                     color = ADColors.Muted,
                 )
             }
@@ -119,11 +124,12 @@ internal fun ADFirmwareScreen(
                         if (riskAcknowledged) Icons.Outlined.CheckCircle else Icons.Outlined.ErrorOutline,
                         contentDescription = null,
                         tint = if (riskAcknowledged) ADColors.Success else ADColors.Warning,
+                        modifier = Modifier.size(19.dp),
                     )
                     Text(
                         "I understand firmware update risk",
-                        modifier = Modifier.padding(start = 10.dp).weight(1f),
-                        style = MaterialTheme.typography.bodyLarge,
+                        modifier = Modifier.padding(start = 8.dp).weight(1f),
+                        style = MaterialTheme.typography.bodyMedium,
                     )
                     ADStatusChip(
                         if (riskAcknowledged) "READY" else "REQUIRED",
@@ -135,11 +141,11 @@ internal fun ADFirmwareScreen(
             Button(
                 onClick = host.onChooseFirmwareFiles,
                 enabled = bluetoothReady && riskAcknowledged,
-                modifier = Modifier.fillMaxWidth().heightIn(min = 50.dp),
+                modifier = Modifier.fillMaxWidth().heightIn(min = 46.dp),
                 colors = ButtonDefaults.buttonColors(containerColor = ADColors.Warning),
             ) {
-                Icon(Icons.Outlined.SystemUpdateAlt, contentDescription = null)
-                Spacer(Modifier.width(8.dp))
+                Icon(Icons.Outlined.SystemUpdateAlt, contentDescription = null, modifier = Modifier.size(18.dp))
+                Spacer(Modifier.width(7.dp))
                 Text("Choose firmware files")
             }
         }
@@ -147,18 +153,18 @@ internal fun ADFirmwareScreen(
         if (ota.canCancel) {
             OutlinedButton(
                 onClick = host.onCancelFirmware,
-                modifier = Modifier.fillMaxWidth().heightIn(min = 50.dp),
+                modifier = Modifier.fillMaxWidth().heightIn(min = 46.dp),
                 colors = ButtonDefaults.outlinedButtonColors(contentColor = ADColors.Error),
             ) {
-                Icon(Icons.Outlined.StopCircle, contentDescription = null)
-                Spacer(Modifier.width(8.dp))
+                Icon(Icons.Outlined.StopCircle, contentDescription = null, modifier = Modifier.size(18.dp))
+                Spacer(Modifier.width(7.dp))
                 Text("Cancel update")
             }
         }
 
         Text(
             "Firmware changes affect the glasses directly. Use validated files and keep the glasses connected until the update finishes.",
-            style = MaterialTheme.typography.bodyMedium,
+            style = MaterialTheme.typography.bodySmall,
             color = ADColors.Muted,
         )
     }
@@ -166,16 +172,17 @@ internal fun ADFirmwareScreen(
 
 @Composable
 private fun ADFirmwareCheck(title: String, ready: Boolean) {
-    Row(Modifier.padding(vertical = 9.dp), verticalAlignment = Alignment.CenterVertically) {
+    Row(Modifier.padding(vertical = 7.dp), verticalAlignment = Alignment.CenterVertically) {
         Icon(
             if (ready) Icons.Outlined.CheckCircle else Icons.Outlined.ErrorOutline,
             contentDescription = null,
             tint = if (ready) ADColors.Success else ADColors.Muted,
+            modifier = Modifier.size(18.dp),
         )
         Text(
             title,
-            Modifier.padding(start = 10.dp).weight(1f),
-            style = MaterialTheme.typography.bodyLarge,
+            Modifier.padding(start = 8.dp).weight(1f),
+            style = MaterialTheme.typography.bodyMedium,
         )
         ADStatusChip(
             if (ready) "READY" else "PENDING",

@@ -127,31 +127,31 @@ internal fun ADNativeAiScreen(
     Column(
         modifier = Modifier
             .fillMaxSize()
-            .padding(horizontal = 16.dp, vertical = 12.dp),
+            .padding(horizontal = 14.dp, vertical = 8.dp),
     ) {
-        Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+        Column(verticalArrangement = Arrangement.spacedBy(3.dp)) {
             Text(
                 "AI",
                 style = MaterialTheme.typography.headlineMedium,
-                fontWeight = FontWeight.Bold,
+                fontWeight = FontWeight.Medium,
             )
             Text(
                 "Choose how your glasses answer, remember and act for you.",
-                style = MaterialTheme.typography.bodyMedium,
+                style = MaterialTheme.typography.bodySmall,
                 color = ADColors.Muted,
             )
         }
 
-        Spacer(Modifier.height(12.dp))
+        Spacer(Modifier.height(8.dp))
         ADAiProviderCard(
             selectedName = selectedName,
             selected = selected,
             onSelect = ::select,
         )
 
-        Spacer(Modifier.height(14.dp))
+        Spacer(Modifier.height(9.dp))
         ADAiSectionHeading("Skills")
-        Spacer(Modifier.height(8.dp))
+        Spacer(Modifier.height(5.dp))
 
         Column(
             modifier = Modifier
@@ -162,7 +162,7 @@ internal fun ADNativeAiScreen(
                 modifier = Modifier
                     .fillMaxWidth()
                     .weight(0.42f),
-                horizontalArrangement = Arrangement.spacedBy(10.dp),
+                horizontalArrangement = Arrangement.spacedBy(7.dp),
             ) {
                 ADAiSkillCard(
                     artwork = ADSkillArtwork.TIMELINE,
@@ -186,7 +186,7 @@ internal fun ADNativeAiScreen(
                 )
             }
 
-            Spacer(Modifier.height(10.dp))
+            Spacer(Modifier.height(7.dp))
 
             ADAutomationCard(
                 active = automationActive,
@@ -198,12 +198,12 @@ internal fun ADNativeAiScreen(
             )
         }
 
-        Spacer(Modifier.height(14.dp))
+        Spacer(Modifier.height(9.dp))
         ADAiSectionHeading("Configuration")
-        Spacer(Modifier.height(8.dp))
+        Spacer(Modifier.height(5.dp))
         Row(
             modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.spacedBy(9.dp),
+            horizontalArrangement = Arrangement.spacedBy(7.dp),
         ) {
             ADConfigurationCard(
                 icon = Icons.Outlined.Apps,
@@ -234,9 +234,9 @@ internal fun ADNativeAiScreen(
 private fun ADAiSectionHeading(title: String) {
     Text(
         title,
-        style = MaterialTheme.typography.titleLarge,
-        fontWeight = FontWeight.SemiBold,
-        modifier = Modifier.padding(start = 2.dp),
+        style = MaterialTheme.typography.titleMedium,
+        fontWeight = FontWeight.Medium,
+        modifier = Modifier.padding(start = 1.dp),
     )
 }
 
@@ -248,40 +248,40 @@ private fun ADAiProviderCard(
 ) {
     Surface(
         modifier = Modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(26.dp),
+        shape = RoundedCornerShape(22.dp),
         color = ADColors.Ink,
         contentColor = ADColors.Surface,
-        shadowElevation = 2.dp,
+        shadowElevation = 1.dp,
     ) {
-        Column(Modifier.padding(horizontal = 16.dp, vertical = 15.dp)) {
+        Column(Modifier.padding(horizontal = 13.dp, vertical = 12.dp)) {
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Surface(
-                    modifier = Modifier.size(46.dp),
-                    shape = RoundedCornerShape(15.dp),
+                    modifier = Modifier.size(40.dp),
+                    shape = RoundedCornerShape(13.dp),
                     color = ADColors.Surface.copy(alpha = 0.14f),
                     contentColor = ADColors.Surface,
                 ) {
                     Box(contentAlignment = Alignment.Center) {
-                        Icon(Icons.Outlined.AutoAwesome, contentDescription = null, modifier = Modifier.size(23.dp))
+                        Icon(Icons.Outlined.AutoAwesome, contentDescription = null, modifier = Modifier.size(20.dp))
                     }
                 }
-                Column(Modifier.padding(start = 12.dp).weight(1f)) {
+                Column(Modifier.padding(start = 10.dp).weight(1f)) {
                     Text(
                         "Selected model",
-                        style = MaterialTheme.typography.labelMedium,
+                        style = MaterialTheme.typography.labelSmall,
                         color = ADColors.Surface.copy(alpha = 0.62f),
                     )
                     Text(
                         selectedName,
-                        style = MaterialTheme.typography.headlineSmall,
-                        fontWeight = FontWeight.SemiBold,
+                        style = MaterialTheme.typography.titleLarge,
+                        fontWeight = FontWeight.Medium,
                         maxLines = 1,
                         overflow = TextOverflow.Ellipsis,
                     )
                 }
             }
-            Spacer(Modifier.height(13.dp))
-            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            Spacer(Modifier.height(9.dp))
+            Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
                 ADAiProviderPill("Gemini", selected == ADAiChoice.GEMINI, Modifier.weight(1f)) {
                     onSelect(ADAiChoice.GEMINI)
                 }
@@ -305,13 +305,13 @@ private fun ADAiProviderPill(
 ) {
     Surface(
         onClick = onClick,
-        modifier = modifier.heightIn(min = 40.dp),
-        shape = RoundedCornerShape(13.dp),
+        modifier = modifier.heightIn(min = 38.dp),
+        shape = RoundedCornerShape(12.dp),
         color = if (selected) ADColors.Surface else ADColors.Surface.copy(alpha = 0.12f),
         contentColor = if (selected) ADColors.Ink else ADColors.Surface,
     ) {
         Box(contentAlignment = Alignment.Center) {
-            Text(title, style = MaterialTheme.typography.labelLarge, fontWeight = FontWeight.SemiBold)
+            Text(title, style = MaterialTheme.typography.labelMedium, fontWeight = FontWeight.Medium)
         }
     }
 }
@@ -329,14 +329,12 @@ private fun ADAiSkillCard(
     Surface(
         onClick = onClick,
         modifier = modifier,
-        shape = RoundedCornerShape(23.dp),
+        shape = RoundedCornerShape(20.dp),
         color = if (active) ADColors.SurfaceSubtle else ADColors.Surface,
         border = BorderStroke(1.dp, borderColor),
         shadowElevation = 1.dp,
     ) {
-        Column(
-            modifier = Modifier.padding(13.dp),
-        ) {
+        Column(modifier = Modifier.padding(10.dp)) {
             Box(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -353,24 +351,24 @@ private fun ADAiSkillCard(
                         color = ADColors.Surface,
                         contentColor = ADColors.Ink,
                     ) {
-                        Box(Modifier.size(26.dp), contentAlignment = Alignment.Center) {
+                        Box(Modifier.size(24.dp), contentAlignment = Alignment.Center) {
                             Icon(
                                 Icons.Outlined.CheckCircle,
                                 contentDescription = "Enabled",
-                                modifier = Modifier.size(17.dp),
+                                modifier = Modifier.size(16.dp),
                             )
                         }
                     }
                 }
             }
 
-            Spacer(Modifier.height(9.dp))
+            Spacer(Modifier.height(6.dp))
             Text(
                 title,
                 style = MaterialTheme.typography.titleMedium,
-                fontWeight = FontWeight.SemiBold,
+                fontWeight = FontWeight.Medium,
             )
-            Spacer(Modifier.height(2.dp))
+            Spacer(Modifier.height(1.dp))
             Text(
                 detail,
                 style = MaterialTheme.typography.bodySmall,
@@ -517,7 +515,7 @@ private fun ADAutomationCard(
     Surface(
         onClick = onClick,
         modifier = modifier,
-        shape = RoundedCornerShape(28.dp),
+        shape = RoundedCornerShape(24.dp),
         color = if (active) ADColors.SurfaceSubtle else ADColors.Surface,
         border = BorderStroke(1.dp, borderColor),
         shadowElevation = 1.dp,
@@ -525,7 +523,7 @@ private fun ADAutomationCard(
         Row(
             modifier = Modifier
                 .fillMaxSize()
-                .padding(16.dp),
+                .padding(12.dp),
             verticalAlignment = Alignment.CenterVertically,
         ) {
             Column(
@@ -540,16 +538,16 @@ private fun ADAutomationCard(
                         style = MaterialTheme.typography.labelSmall,
                         color = ADColors.Muted,
                     )
-                    Spacer(Modifier.height(4.dp))
+                    Spacer(Modifier.height(3.dp))
                     Text(
                         "Automation",
-                        style = MaterialTheme.typography.headlineSmall,
-                        fontWeight = FontWeight.SemiBold,
+                        style = MaterialTheme.typography.titleLarge,
+                        fontWeight = FontWeight.Medium,
                     )
-                    Spacer(Modifier.height(5.dp))
+                    Spacer(Modifier.height(3.dp))
                     Text(
                         "Let AI open apps, navigate screens and complete supported actions on this phone.",
-                        style = MaterialTheme.typography.bodyMedium,
+                        style = MaterialTheme.typography.bodySmall,
                         color = ADColors.Muted,
                         maxLines = 3,
                         overflow = TextOverflow.Ellipsis,
@@ -557,22 +555,22 @@ private fun ADAutomationCard(
                 }
 
                 Surface(
-                    shape = RoundedCornerShape(13.dp),
+                    shape = RoundedCornerShape(11.dp),
                     color = if (active) ADColors.Ink else ADColors.SurfaceSubtle,
                     contentColor = if (active) ADColors.Surface else ADColors.Ink,
                 ) {
                     Text(
                         if (ready) "Phone access ready" else "Tap to allow phone access",
-                        modifier = Modifier.padding(horizontal = 10.dp, vertical = 7.dp),
-                        style = MaterialTheme.typography.labelMedium,
-                        fontWeight = FontWeight.SemiBold,
+                        modifier = Modifier.padding(horizontal = 8.dp, vertical = 5.dp),
+                        style = MaterialTheme.typography.labelSmall,
+                        fontWeight = FontWeight.Medium,
                         maxLines = 1,
                         overflow = TextOverflow.Ellipsis,
                     )
                 }
             }
 
-            Spacer(Modifier.width(14.dp))
+            Spacer(Modifier.width(10.dp))
 
             Box(
                 modifier = Modifier
@@ -587,11 +585,11 @@ private fun ADAutomationCard(
                         color = ADColors.Ink,
                         contentColor = ADColors.Surface,
                     ) {
-                        Box(Modifier.size(28.dp), contentAlignment = Alignment.Center) {
+                        Box(Modifier.size(26.dp), contentAlignment = Alignment.Center) {
                             Icon(
                                 Icons.Outlined.CheckCircle,
                                 contentDescription = "Enabled",
-                                modifier = Modifier.size(18.dp),
+                                modifier = Modifier.size(17.dp),
                             )
                         }
                     }
@@ -608,19 +606,19 @@ private fun ADAutomationArtwork(active: Boolean, modifier: Modifier = Modifier) 
 
     Surface(
         modifier = modifier,
-        shape = RoundedCornerShape(22.dp),
+        shape = RoundedCornerShape(20.dp),
         color = container,
     ) {
         Row(
-            modifier = Modifier.padding(11.dp),
+            modifier = Modifier.padding(10.dp),
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.Center,
         ) {
             Surface(
                 modifier = Modifier
-                    .width(54.dp)
+                    .width(50.dp)
                     .fillMaxHeight(0.84f),
-                shape = RoundedCornerShape(17.dp),
+                shape = RoundedCornerShape(16.dp),
                 color = ink,
             ) {
                 Surface(
@@ -705,7 +703,7 @@ private fun ADAutomationActionChip(label: String?, active: Boolean) {
                 Text(
                     label,
                     style = MaterialTheme.typography.labelSmall,
-                    fontWeight = FontWeight.Bold,
+                    fontWeight = FontWeight.Medium,
                     color = ADColors.Ink,
                 )
             } else {
@@ -730,34 +728,34 @@ private fun ADConfigurationCard(
 ) {
     Surface(
         onClick = onClick,
-        modifier = modifier.heightIn(min = 108.dp),
-        shape = RoundedCornerShape(20.dp),
+        modifier = modifier.heightIn(min = 92.dp),
+        shape = RoundedCornerShape(17.dp),
         color = ADColors.Surface,
         border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant),
         shadowElevation = 1.dp,
     ) {
         Column(
-            modifier = Modifier.padding(13.dp),
+            modifier = Modifier.padding(10.dp),
             verticalArrangement = Arrangement.SpaceBetween,
         ) {
             Surface(
-                modifier = Modifier.size(38.dp),
-                shape = RoundedCornerShape(12.dp),
+                modifier = Modifier.size(34.dp),
+                shape = RoundedCornerShape(10.dp),
                 color = ADColors.SurfaceSubtle,
                 contentColor = ADColors.Ink,
             ) {
                 Box(contentAlignment = Alignment.Center) {
-                    Icon(icon, contentDescription = null, modifier = Modifier.size(20.dp))
+                    Icon(icon, contentDescription = null, modifier = Modifier.size(18.dp))
                 }
             }
             Column {
                 Text(
                     title,
                     style = MaterialTheme.typography.labelLarge,
-                    fontWeight = FontWeight.SemiBold,
+                    fontWeight = FontWeight.Medium,
                     maxLines = 1,
                 )
-                Spacer(Modifier.height(2.dp))
+                Spacer(Modifier.height(1.dp))
                 Text(
                     detail,
                     style = MaterialTheme.typography.labelSmall,

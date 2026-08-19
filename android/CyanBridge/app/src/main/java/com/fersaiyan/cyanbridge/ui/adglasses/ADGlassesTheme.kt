@@ -87,89 +87,109 @@ private val InterFontFamily = FontFamily(
 )
 
 private val ADTypography = Typography(
-    displaySmall = TextStyle(
+    displayLarge = TextStyle(
+        fontFamily = InterFontFamily,
+        fontSize = 34.sp,
+        lineHeight = 40.sp,
+        fontWeight = FontWeight.SemiBold,
+        letterSpacing = (-0.35).sp,
+    ),
+    displayMedium = TextStyle(
         fontFamily = InterFontFamily,
         fontSize = 31.sp,
         lineHeight = 37.sp,
         fontWeight = FontWeight.SemiBold,
-        letterSpacing = (-0.35).sp,
+        letterSpacing = (-0.3).sp,
     ),
-    headlineLarge = TextStyle(
+    displaySmall = TextStyle(
         fontFamily = InterFontFamily,
         fontSize = 28.sp,
         lineHeight = 34.sp,
         fontWeight = FontWeight.SemiBold,
-        letterSpacing = (-0.3).sp,
+        letterSpacing = (-0.25).sp,
+    ),
+    headlineLarge = TextStyle(
+        fontFamily = InterFontFamily,
+        fontSize = 25.sp,
+        lineHeight = 31.sp,
+        fontWeight = FontWeight.SemiBold,
+        letterSpacing = (-0.2).sp,
     ),
     headlineMedium = TextStyle(
         fontFamily = InterFontFamily,
-        fontSize = 22.sp,
-        lineHeight = 28.sp,
-        fontWeight = FontWeight.Medium,
-        letterSpacing = (-0.15).sp,
-    ),
-    headlineSmall = TextStyle(
-        fontFamily = InterFontFamily,
-        fontSize = 19.sp,
+        fontSize = 20.sp,
         lineHeight = 25.sp,
         fontWeight = FontWeight.Medium,
+        letterSpacing = (-0.1).sp,
     ),
-    titleLarge = TextStyle(
+    headlineSmall = TextStyle(
         fontFamily = InterFontFamily,
         fontSize = 18.sp,
         lineHeight = 23.sp,
         fontWeight = FontWeight.Medium,
     ),
+    titleLarge = TextStyle(
+        fontFamily = InterFontFamily,
+        fontSize = 16.5.sp,
+        lineHeight = 21.5.sp,
+        fontWeight = FontWeight.Medium,
+    ),
     titleMedium = TextStyle(
         fontFamily = InterFontFamily,
-        fontSize = 15.5.sp,
-        lineHeight = 21.sp,
+        fontSize = 14.5.sp,
+        lineHeight = 19.5.sp,
+        fontWeight = FontWeight.Medium,
+    ),
+    titleSmall = TextStyle(
+        fontFamily = InterFontFamily,
+        fontSize = 13.sp,
+        lineHeight = 18.sp,
         fontWeight = FontWeight.Medium,
     ),
     bodyLarge = TextStyle(
         fontFamily = InterFontFamily,
-        fontSize = 15.5.sp,
-        lineHeight = 22.sp,
+        fontSize = 14.5.sp,
+        lineHeight = 20.5.sp,
         fontWeight = FontWeight.Normal,
     ),
     bodyMedium = TextStyle(
         fontFamily = InterFontFamily,
-        fontSize = 13.5.sp,
-        lineHeight = 19.sp,
+        fontSize = 12.75.sp,
+        lineHeight = 17.5.sp,
         fontWeight = FontWeight.Normal,
     ),
     bodySmall = TextStyle(
         fontFamily = InterFontFamily,
-        fontSize = 12.5.sp,
-        lineHeight = 17.sp,
+        fontSize = 11.5.sp,
+        lineHeight = 15.5.sp,
         fontWeight = FontWeight.Normal,
     ),
     labelLarge = TextStyle(
         fontFamily = InterFontFamily,
-        fontSize = 13.5.sp,
-        lineHeight = 18.sp,
+        fontSize = 12.5.sp,
+        lineHeight = 16.5.sp,
         fontWeight = FontWeight.Medium,
     ),
     labelMedium = TextStyle(
-        fontFamily = InterFontFamily,
-        fontSize = 12.5.sp,
-        lineHeight = 17.sp,
-        fontWeight = FontWeight.Medium,
-    ),
-    labelSmall = TextStyle(
         fontFamily = InterFontFamily,
         fontSize = 11.5.sp,
         lineHeight = 15.sp,
         fontWeight = FontWeight.Medium,
     ),
+    labelSmall = TextStyle(
+        fontFamily = InterFontFamily,
+        fontSize = 10.5.sp,
+        lineHeight = 14.sp,
+        fontWeight = FontWeight.Medium,
+    ),
 )
 
 private val MonochromeShapes = Shapes(
-    extraSmall = RoundedCornerShape(8.dp),
-    small = RoundedCornerShape(12.dp),
-    medium = RoundedCornerShape(18.dp),
-    large = RoundedCornerShape(26.dp),
-    extraLarge = RoundedCornerShape(34.dp),
+    extraSmall = RoundedCornerShape(7.dp),
+    small = RoundedCornerShape(11.dp),
+    medium = RoundedCornerShape(16.dp),
+    large = RoundedCornerShape(23.dp),
+    extraLarge = RoundedCornerShape(30.dp),
 )
 
 @Composable

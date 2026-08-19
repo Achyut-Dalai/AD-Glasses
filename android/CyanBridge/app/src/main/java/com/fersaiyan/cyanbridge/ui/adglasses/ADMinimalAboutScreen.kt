@@ -32,44 +32,44 @@ import com.fersaiyan.cyanbridge.BuildConfig
 internal fun ADMinimalAboutScreen(onBack: () -> Unit) {
     ADPageLayout("About", onBack) {
         Surface(
-            modifier = Modifier.fillMaxWidth().heightIn(min = 176.dp),
-            shape = RoundedCornerShape(30.dp),
+            modifier = Modifier.fillMaxWidth().heightIn(min = 138.dp),
+            shape = RoundedCornerShape(24.dp),
             color = ADColors.Ink,
             contentColor = ADColors.Surface,
         ) {
             Column(
-                modifier = Modifier.padding(horizontal = 22.dp, vertical = 22.dp),
+                modifier = Modifier.padding(horizontal = 18.dp, vertical = 17.dp),
                 verticalArrangement = Arrangement.SpaceBetween,
             ) {
                 Text(
                     "VERSION",
-                    style = MaterialTheme.typography.labelMedium,
+                    style = MaterialTheme.typography.labelSmall,
                     color = ADColors.Surface.copy(alpha = 0.58f),
                 )
-                Spacer(Modifier.height(30.dp))
+                Spacer(Modifier.height(18.dp))
                 Text(
                     BuildConfig.VERSION_NAME.uppercase(),
                     style = MaterialTheme.typography.displaySmall,
-                    fontWeight = FontWeight.Bold,
+                    fontWeight = FontWeight.SemiBold,
                     color = ADColors.Surface,
                 )
             }
         }
 
-        Column(verticalArrangement = Arrangement.spacedBy(7.dp)) {
+        Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
             Text(
                 "Built around the glasses",
-                style = MaterialTheme.typography.headlineSmall,
-                fontWeight = FontWeight.SemiBold,
+                style = MaterialTheme.typography.titleLarge,
+                fontWeight = FontWeight.Medium,
             )
             Text(
                 "The phone is the engine, not the destination. Voice, camera and lightweight actions stay centered on what the glasses can do naturally.",
-                style = MaterialTheme.typography.bodyLarge,
+                style = MaterialTheme.typography.bodyMedium,
                 color = ADColors.Muted,
             )
         }
 
-        Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+        Column(verticalArrangement = Arrangement.spacedBy(7.dp)) {
             ADAboutPrinciple(
                 icon = Icons.Outlined.Mic,
                 title = "Voice first",
@@ -89,13 +89,13 @@ internal fun ADMinimalAboutScreen(onBack: () -> Unit) {
 
         Surface(
             modifier = Modifier.fillMaxWidth(),
-            shape = RoundedCornerShape(20.dp),
+            shape = RoundedCornerShape(16.dp),
             color = ADColors.SurfaceSubtle,
         ) {
             Text(
                 "AD Glasses includes open-source components and device SDK integrations. Required license notices remain part of the distribution.",
-                modifier = Modifier.padding(16.dp),
-                style = MaterialTheme.typography.bodyMedium,
+                modifier = Modifier.padding(12.dp),
+                style = MaterialTheme.typography.bodySmall,
                 color = ADColors.Muted,
             )
         }
@@ -110,32 +110,32 @@ private fun ADAboutPrinciple(
 ) {
     Surface(
         modifier = Modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(22.dp),
+        shape = RoundedCornerShape(18.dp),
         color = ADColors.Surface,
         tonalElevation = 1.dp,
     ) {
         Row(
-            modifier = Modifier.padding(horizontal = 16.dp, vertical = 16.dp),
+            modifier = Modifier.padding(horizontal = 12.dp, vertical = 11.dp),
             verticalAlignment = Alignment.CenterVertically,
         ) {
             Box(
                 modifier = Modifier
-                    .size(48.dp)
-                    .background(ADColors.SurfaceSubtle, RoundedCornerShape(16.dp)),
+                    .size(38.dp)
+                    .background(ADColors.SurfaceSubtle, RoundedCornerShape(12.dp)),
                 contentAlignment = Alignment.Center,
             ) {
-                Icon(icon, contentDescription = null, tint = ADColors.Ink, modifier = Modifier.size(23.dp))
+                Icon(icon, contentDescription = null, tint = ADColors.Ink, modifier = Modifier.size(19.dp))
             }
-            Column(Modifier.padding(start = 14.dp).weight(1f)) {
+            Column(Modifier.padding(start = 10.dp).weight(1f)) {
                 Text(
                     title,
                     style = MaterialTheme.typography.titleMedium,
-                    fontWeight = FontWeight.SemiBold,
+                    fontWeight = FontWeight.Medium,
                 )
-                Spacer(Modifier.height(3.dp))
+                Spacer(Modifier.height(1.dp))
                 Text(
                     detail,
-                    style = MaterialTheme.typography.bodyMedium,
+                    style = MaterialTheme.typography.bodySmall,
                     color = ADColors.Muted,
                 )
             }
