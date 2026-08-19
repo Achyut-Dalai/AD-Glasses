@@ -8,6 +8,8 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.Bluetooth
 import androidx.compose.material.icons.outlined.Settings
 import androidx.compose.material3.HorizontalDivider
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
@@ -22,6 +24,12 @@ internal fun ADAdvancedScreen(
     val context = LocalContext.current
 
     ADPageLayout("Advanced", onBack) {
+        Text(
+            "Technical controls for connection troubleshooting and Android-level app behavior.",
+            style = MaterialTheme.typography.bodyMedium,
+            color = ADColors.Muted,
+            modifier = Modifier.padding(horizontal = 2.dp),
+        )
         ADCard {
             ADSettingsRow(
                 icon = Icons.Outlined.Bluetooth,
@@ -29,7 +37,7 @@ internal fun ADAdvancedScreen(
                 subtitle = "Connection, sync, firmware and recovery tools",
                 onClick = onDevice,
             )
-            HorizontalDivider(Modifier.padding(start = 48.dp), color = ADColors.Separator)
+            HorizontalDivider(Modifier.padding(start = 52.dp), color = ADColors.Separator)
             ADSettingsRow(
                 icon = Icons.Outlined.Settings,
                 title = "Android app settings",
