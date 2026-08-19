@@ -1,6 +1,7 @@
 package com.fersaiyan.cyanbridge.ui.adglasses
 
 import android.widget.Toast
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -31,6 +32,7 @@ import androidx.compose.material.icons.rounded.Translate
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
@@ -284,28 +286,42 @@ private fun ADHomeAction(
     val iconContainer = if (active) ADColors.Ink else ADColors.SurfaceSubtle
     val iconColor = if (active) ADColors.Surface else ADColors.Ink
 
-    Column(
-        modifier = modifier
-            .heightIn(min = 112.dp)
-            .background(container, RoundedCornerShape(22.dp))
-            .clickable(onClick = onClick)
-            .padding(horizontal = 14.dp, vertical = 15.dp),
-        horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = Arrangement.Center,
+    Surface(
+        onClick = onClick,
+        modifier = modifier.heightIn(min = 126.dp),
+        shape = RoundedCornerShape(26.dp),
+        color = container,
+        border = BorderStroke(1.dp, if (active) ADColors.Ink.copy(alpha = 0.18f) else ADColors.Separator),
+        shadowElevation = if (active) 2.dp else 1.dp,
     ) {
-        Box(
-            Modifier.size(54.dp).background(iconContainer, RoundedCornerShape(18.dp)),
-            contentAlignment = Alignment.Center,
+        Column(
+            modifier = Modifier.padding(16.dp),
+            verticalArrangement = Arrangement.SpaceBetween,
         ) {
-            Icon(icon, null, tint = iconColor, modifier = Modifier.size(26.dp))
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                verticalAlignment = Alignment.Top,
+            ) {
+                if (active) {
+                    Box(Modifier.size(8.dp).background(ADColors.Ink, CircleShape))
+                }
+                Spacer(Modifier.weight(1f))
+                Box(
+                    Modifier
+                        .size(60.dp)
+                        .background(iconContainer, RoundedCornerShape(20.dp)),
+                    contentAlignment = Alignment.Center,
+                ) {
+                    Icon(icon, null, tint = iconColor, modifier = Modifier.size(29.dp))
+                }
+            }
+            Text(
+                title,
+                style = MaterialTheme.typography.titleLarge,
+                fontWeight = FontWeight.SemiBold,
+                maxLines = 1,
+            )
         }
-        Spacer(Modifier.height(11.dp))
-        Text(
-            title,
-            style = MaterialTheme.typography.titleMedium,
-            fontWeight = FontWeight.SemiBold,
-            maxLines = 1,
-        )
     }
 }
 
