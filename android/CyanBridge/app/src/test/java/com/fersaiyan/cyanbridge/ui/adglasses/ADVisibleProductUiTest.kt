@@ -89,11 +89,14 @@ class ADVisibleProductUiTest {
     @Test
     fun aiPageKeepsOnlyPersistentCapabilitiesAndConfiguration() {
         val ai = appFile("src/main/java/com/fersaiyan/cyanbridge/ui/adglasses/ADNativeAiScreen.kt").readText()
-        assertFalse(ai.contains("Text(\"Capabilities\""))
         assertTrue(ai.contains("AssistantCapability.VISUAL_DIARY"))
         assertTrue(ai.contains("AssistantCapability.AUTO_DIARY"))
         assertTrue(ai.contains("AssistantCapability.LOCAL_AGENT"))
-        assertTrue(ai.contains("Switch("))
+        assertTrue(ai.contains("\"Timeline\""))
+        assertTrue(ai.contains("\"Diary\""))
+        assertTrue(ai.contains("ADAiProviderPill"))
+        assertFalse(ai.contains("Switch("))
+        assertFalse(ai.contains("\"DayNote\""))
         assertFalse(ai.contains("AssistantCapability.TRANSLATOR"))
         assertFalse(ai.contains("AssistantCapability.MEETING_NOTES"))
         assertFalse(ai.contains("ERRAND_BRAIN"))
@@ -109,9 +112,10 @@ class ADVisibleProductUiTest {
         assertTrue(home.contains("onClick = host.onImageQuestion"))
         assertTrue(home.contains("toggleCapability(AssistantCapability.TRANSLATOR)"))
         assertTrue(home.contains("toggleCapability(AssistantCapability.MEETING_NOTES)"))
-        listOf("Ask AI", "Photo", "Video", "Translate", "Soundbites", "Audio", "Smart Lens")
+        listOf("Ask AI", "Photo", "Video", "Translate", "Soundbites", "Audio", "Lens")
             .forEach { label -> assertTrue(home.contains("\"$label\"")) }
         assertFalse(home.contains("Search Web"))
+        assertFalse(home.contains("Smart Lens"))
     }
 
     @Test
