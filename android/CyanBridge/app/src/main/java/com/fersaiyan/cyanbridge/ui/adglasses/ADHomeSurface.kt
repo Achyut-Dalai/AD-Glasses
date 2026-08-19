@@ -5,7 +5,6 @@ import androidx.compose.animation.animateColorAsState
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -17,20 +16,14 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.BatteryFull
 import androidx.compose.material.icons.outlined.GraphicEq
-import androidx.compose.material.icons.outlined.Mic
-import androidx.compose.material.icons.outlined.PhotoCamera
 import androidx.compose.material.icons.outlined.Storage
 import androidx.compose.material.icons.outlined.Sync
-import androidx.compose.material.icons.outlined.Videocam
-import androidx.compose.material.icons.outlined.Visibility
-import androidx.compose.material.icons.rounded.Translate
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
@@ -99,7 +92,7 @@ internal fun ADHomeSurface(
                 top = 4.dp,
                 bottom = 22.dp,
             ),
-            verticalArrangement = Arrangement.spacedBy(16.dp),
+            verticalArrangement = Arrangement.spacedBy(18.dp),
         ) {
             item {
                 ADReadinessStage(
@@ -139,46 +132,46 @@ internal fun ADHomeSurface(
             }
 
             item {
-                Column(verticalArrangement = Arrangement.spacedBy(9.dp)) {
+                Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
                     ADSectionTitle("Quick actions")
-                    Row(horizontalArrangement = Arrangement.spacedBy(9.dp)) {
+                    Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
                         ADHomeAction(
                             title = "Ask AI",
                             detail = "Ask by voice",
-                            icon = Icons.Outlined.Mic,
+                            glyph = ADGlyph.ASK,
                             modifier = Modifier.weight(1f),
                             onClick = host.onVoiceQuestion,
                         )
                         ADHomeAction(
                             title = "Photo",
                             detail = "Take a photo",
-                            icon = Icons.Outlined.PhotoCamera,
+                            glyph = ADGlyph.PHOTO,
                             modifier = Modifier.weight(1f),
                             onClick = host.onCapturePhoto,
                         )
                     }
-                    Row(horizontalArrangement = Arrangement.spacedBy(9.dp)) {
+                    Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
                         ADHomeAction(
                             title = "Video",
                             detail = "Record from glasses",
-                            icon = Icons.Outlined.Videocam,
+                            glyph = ADGlyph.VIDEO,
                             modifier = Modifier.weight(1f),
                             onClick = host.onToggleVideo,
                         )
                         ADHomeAction(
                             title = "Translate",
                             detail = "Live conversation",
-                            icon = Icons.Rounded.Translate,
+                            glyph = ADGlyph.TRANSLATE,
                             active = translateActive,
                             modifier = Modifier.weight(1f),
                             onClick = { toggleCapability(AssistantCapability.TRANSLATOR) },
                         )
                     }
-                    Row(horizontalArrangement = Arrangement.spacedBy(9.dp)) {
+                    Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
                         ADHomeAction(
                             title = "Soundbites",
                             detail = "Speech into notes",
-                            icon = Icons.Outlined.GraphicEq,
+                            glyph = ADGlyph.SOUNDBITES,
                             active = soundbitesActive,
                             modifier = Modifier.weight(1f),
                             onClick = { toggleCapability(AssistantCapability.MEETING_NOTES) },
@@ -186,7 +179,7 @@ internal fun ADHomeSurface(
                         ADHomeAction(
                             title = "Audio",
                             detail = if (state.meeting.isRecording) "Stop recording" else "Start recording",
-                            icon = Icons.Outlined.GraphicEq,
+                            glyph = ADGlyph.AUDIO,
                             active = state.meeting.isRecording,
                             modifier = Modifier.weight(1f),
                             onClick = if (state.meeting.isRecording) host.onStopRecording else host.onStartRecording,
@@ -195,9 +188,7 @@ internal fun ADHomeSurface(
                 }
             }
 
-            item {
-                ADSmartLensCard(onClick = host.onImageQuestion)
-            }
+            item { ADSmartLensCard(onClick = host.onImageQuestion) }
         }
     }
 }
@@ -221,10 +212,10 @@ private fun ADReadinessStage(
             Box(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .height(176.dp)
+                    .height(180.dp)
                     .background(
                         Brush.radialGradient(
-                            colors = listOf(Color(0xFFFFFFFF), Color(0xFFE9EAEE)),
+                            colors = listOf(Color(0xFFFFFFFF), Color(0xFFE8E9ED)),
                         ),
                         RoundedCornerShape(topStart = 30.dp, topEnd = 30.dp),
                     ),
@@ -240,14 +231,14 @@ private fun ADReadinessStage(
                     contentDescription = "Glasses",
                     modifier = Modifier
                         .fillMaxWidth()
-                        .height(154.dp)
+                        .height(158.dp)
                         .align(Alignment.Center)
                         .padding(horizontal = 18.dp, vertical = 8.dp),
                     contentScale = ContentScale.Fit,
                 )
             }
 
-            Column(Modifier.padding(horizontal = 16.dp, vertical = 14.dp)) {
+            Column(Modifier.padding(horizontal = 16.dp, vertical = 15.dp)) {
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     if (device.connecting) {
                         CircularProgressIndicator(
@@ -290,7 +281,7 @@ private fun ADReadinessStage(
                             Text(
                                 "Connect",
                                 style = MaterialTheme.typography.labelMedium,
-                                modifier = Modifier.padding(horizontal = 13.dp, vertical = 8.dp),
+                                modifier = Modifier.padding(horizontal = 14.dp, vertical = 9.dp),
                             )
                         }
                     }
@@ -350,57 +341,60 @@ private fun ADHomeMetric(
 private fun ADHomeAction(
     title: String,
     detail: String,
-    icon: ImageVector,
+    glyph: ADGlyph,
     modifier: Modifier = Modifier,
     active: Boolean = false,
     onClick: () -> Unit,
 ) {
     val container by animateColorAsState(
-        targetValue = if (active) ADColors.SurfaceSubtle else ADColors.Surface,
+        targetValue = if (active) ADColors.Ink else ADColors.Surface,
         label = "home-action-container",
     )
     val iconContainer by animateColorAsState(
-        targetValue = if (active) ADColors.Ink else ADColors.SurfaceSubtle,
+        targetValue = if (active) ADColors.Surface.copy(alpha = 0.14f) else ADColors.SurfaceSubtle,
         label = "home-action-icon-container",
     )
-    val iconColor by animateColorAsState(
+    val foreground by animateColorAsState(
         targetValue = if (active) ADColors.Surface else ADColors.Ink,
-        label = "home-action-icon",
+        label = "home-action-foreground",
+    )
+    val secondary by animateColorAsState(
+        targetValue = if (active) ADColors.Surface.copy(alpha = 0.68f) else ADColors.Muted,
+        label = "home-action-secondary",
     )
 
     Surface(
         onClick = onClick,
-        modifier = modifier.heightIn(min = 112.dp),
-        shape = RoundedCornerShape(22.dp),
+        modifier = modifier.heightIn(min = 120.dp),
+        shape = RoundedCornerShape(24.dp),
         color = container,
-        border = BorderStroke(
-            1.dp,
-            if (active) ADColors.Ink.copy(alpha = 0.18f) else MaterialTheme.colorScheme.outlineVariant,
-        ),
+        contentColor = foreground,
+        border = if (active) null else BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant),
+        shadowElevation = if (active) 2.dp else 0.dp,
     ) {
         Column(
-            modifier = Modifier.padding(13.dp),
+            modifier = Modifier.padding(14.dp),
             verticalArrangement = Arrangement.SpaceBetween,
         ) {
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Box(
-                    Modifier.size(40.dp).background(iconContainer, RoundedCornerShape(13.dp)),
+                    Modifier.size(46.dp).background(iconContainer, RoundedCornerShape(15.dp)),
                     contentAlignment = Alignment.Center,
                 ) {
-                    Icon(icon, null, tint = iconColor, modifier = Modifier.size(20.dp))
+                    ADGlyphIcon(glyph, foreground, Modifier.size(25.dp))
                 }
                 Spacer(Modifier.weight(1f))
                 if (active) {
-                    Text("ON", style = MaterialTheme.typography.labelSmall, color = ADColors.Ink)
+                    Text("ACTIVE", style = MaterialTheme.typography.labelSmall, color = secondary)
                 }
             }
-            Spacer(Modifier.height(14.dp))
-            Text(title, style = MaterialTheme.typography.titleMedium, maxLines = 1)
+            Spacer(Modifier.height(17.dp))
+            Text(title, style = MaterialTheme.typography.titleMedium, color = foreground, maxLines = 1)
             Spacer(Modifier.height(2.dp))
             Text(
                 detail,
                 style = MaterialTheme.typography.bodySmall,
-                color = ADColors.Muted,
+                color = secondary,
                 maxLines = 2,
                 overflow = TextOverflow.Ellipsis,
             )
@@ -412,13 +406,13 @@ private fun ADHomeAction(
 private fun ADSmartLensCard(onClick: () -> Unit) {
     Surface(
         onClick = onClick,
-        modifier = Modifier.fillMaxWidth().heightIn(min = 104.dp),
-        shape = RoundedCornerShape(28.dp),
+        modifier = Modifier.fillMaxWidth().heightIn(min = 112.dp),
+        shape = RoundedCornerShape(30.dp),
         color = ADColors.Ink,
         contentColor = ADColors.Surface,
     ) {
         Row(
-            modifier = Modifier.padding(horizontal = 17.dp, vertical = 15.dp),
+            modifier = Modifier.padding(horizontal = 18.dp, vertical = 16.dp),
             verticalAlignment = Alignment.CenterVertically,
         ) {
             Column(Modifier.weight(1f)) {
@@ -427,14 +421,14 @@ private fun ADSmartLensCard(onClick: () -> Unit) {
                     style = MaterialTheme.typography.labelSmall,
                     color = ADColors.Surface.copy(alpha = 0.62f),
                 )
-                Spacer(Modifier.height(4.dp))
+                Spacer(Modifier.height(5.dp))
                 Text(
                     "Look at it. Ask about it.",
                     style = MaterialTheme.typography.titleLarge,
                     fontWeight = FontWeight.SemiBold,
                     color = ADColors.Surface,
                 )
-                Spacer(Modifier.height(3.dp))
+                Spacer(Modifier.height(4.dp))
                 Text(
                     "Use what your glasses see as context",
                     style = MaterialTheme.typography.bodySmall,
@@ -445,16 +439,11 @@ private fun ADSmartLensCard(onClick: () -> Unit) {
             }
             Box(
                 modifier = Modifier
-                    .size(54.dp)
-                    .background(ADColors.Surface.copy(alpha = 0.13f), RoundedCornerShape(18.dp)),
+                    .size(58.dp)
+                    .background(ADColors.Surface.copy(alpha = 0.13f), RoundedCornerShape(19.dp)),
                 contentAlignment = Alignment.Center,
             ) {
-                Icon(
-                    Icons.Outlined.Visibility,
-                    contentDescription = null,
-                    tint = ADColors.Surface,
-                    modifier = Modifier.size(25.dp),
-                )
+                ADGlyphIcon(ADGlyph.LENS, ADColors.Surface, Modifier.size(30.dp))
             }
         }
     }
@@ -470,19 +459,19 @@ private fun ADLiveRow(
     Surface(
         onClick = onClick,
         modifier = Modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(19.dp),
+        shape = RoundedCornerShape(20.dp),
         color = ADColors.Surface,
         border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant),
     ) {
         Row(
-            modifier = Modifier.padding(12.dp),
+            modifier = Modifier.padding(13.dp),
             verticalAlignment = Alignment.CenterVertically,
         ) {
             Box(
-                Modifier.size(40.dp).background(ADColors.SuccessSoft, RoundedCornerShape(13.dp)),
+                Modifier.size(40.dp).background(ADColors.Ink, RoundedCornerShape(13.dp)),
                 contentAlignment = Alignment.Center,
             ) {
-                Icon(icon, null, tint = ADColors.Success, modifier = Modifier.size(19.dp))
+                Icon(icon, null, tint = ADColors.Surface, modifier = Modifier.size(20.dp))
             }
             Column(Modifier.padding(start = 10.dp).weight(1f)) {
                 Text(title, style = MaterialTheme.typography.titleMedium)
@@ -494,6 +483,7 @@ private fun ADLiveRow(
                     overflow = TextOverflow.Ellipsis,
                 )
             }
+            Text("LIVE", style = MaterialTheme.typography.labelSmall, color = ADColors.Success)
         }
     }
 }
