@@ -25,16 +25,11 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.rounded.ArrowBack
 import androidx.compose.material.icons.automirrored.rounded.KeyboardArrowRight
-import androidx.compose.material.icons.outlined.Terminal
-import androidx.compose.material.icons.rounded.AutoAwesome
 import androidx.compose.material.icons.rounded.Check
-import androidx.compose.material.icons.rounded.Home
-import androidx.compose.material.icons.rounded.PhotoLibrary
 import androidx.compose.material.icons.rounded.Settings
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
@@ -178,25 +173,25 @@ internal fun ADBottomNavigation(selected: ADTab, onSelected: (ADTab) -> Unit) {
     ) {
         Surface(
             modifier = Modifier.fillMaxWidth(),
-            shape = RoundedCornerShape(25.dp),
+            shape = RoundedCornerShape(26.dp),
             color = ADColors.Glass,
             border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant),
-            shadowElevation = 4.dp,
+            shadowElevation = 5.dp,
         ) {
             Row(
                 modifier = Modifier.padding(horizontal = 6.dp, vertical = 5.dp),
                 horizontalArrangement = Arrangement.SpaceAround,
             ) {
                 ADTab.entries.forEach { tab ->
-                    val icon = when (tab) {
-                        ADTab.HOME -> Icons.Rounded.Home
-                        ADTab.CHATS -> Icons.Outlined.Terminal
-                        ADTab.AI -> Icons.Rounded.AutoAwesome
-                        ADTab.LIBRARY -> Icons.Rounded.PhotoLibrary
+                    val glyph = when (tab) {
+                        ADTab.HOME -> ADGlyph.HOME
+                        ADTab.CHATS -> ADGlyph.PROMPT
+                        ADTab.AI -> ADGlyph.AI
+                        ADTab.LIBRARY -> ADGlyph.LIBRARY
                     }
                     ADBottomNavigationItem(
                         tab = tab,
-                        icon = icon,
+                        glyph = glyph,
                         selected = selected == tab,
                         modifier = Modifier.weight(1f),
                     ) { onSelected(tab) }
@@ -209,13 +204,13 @@ internal fun ADBottomNavigation(selected: ADTab, onSelected: (ADTab) -> Unit) {
 @Composable
 private fun ADBottomNavigationItem(
     tab: ADTab,
-    icon: ImageVector,
+    glyph: ADGlyph,
     selected: Boolean,
     modifier: Modifier = Modifier,
     onClick: () -> Unit,
 ) {
     val indicatorWidth by animateDpAsState(
-        targetValue = if (selected) 42.dp else 32.dp,
+        targetValue = if (selected) 44.dp else 34.dp,
         label = "nav-indicator-width",
     )
     val indicatorColor by animateColorAsState(
@@ -233,7 +228,7 @@ private fun ADBottomNavigationItem(
 
     Column(
         modifier = modifier
-            .heightIn(min = 54.dp)
+            .heightIn(min = 56.dp)
             .clickable(
                 role = Role.Tab,
                 interactionSource = remember { MutableInteractionSource() },
@@ -246,11 +241,11 @@ private fun ADBottomNavigationItem(
         Box(
             modifier = Modifier
                 .width(indicatorWidth)
-                .height(28.dp)
+                .height(30.dp)
                 .background(indicatorColor, CircleShape),
             contentAlignment = Alignment.Center,
         ) {
-            Icon(icon, contentDescription = tab.label, tint = iconTint, modifier = Modifier.size(18.dp))
+            ADGlyphIcon(glyph, iconTint, Modifier.size(19.dp))
         }
         Spacer(Modifier.height(3.dp))
         Text(
@@ -285,11 +280,7 @@ internal fun ADScreenIntro(
         Text(title, style = MaterialTheme.typography.headlineLarge, color = ADColors.Ink)
         if (!detail.isNullOrBlank()) {
             Spacer(Modifier.height(5.dp))
-            Text(
-                detail,
-                style = MaterialTheme.typography.bodyMedium,
-                color = ADColors.Muted,
-            )
+            Text(detail, style = MaterialTheme.typography.bodyMedium, color = ADColors.Muted)
         }
     }
 }
