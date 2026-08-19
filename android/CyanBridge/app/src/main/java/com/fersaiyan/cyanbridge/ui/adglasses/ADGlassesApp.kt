@@ -19,7 +19,6 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
@@ -34,8 +33,8 @@ fun ADGlassesApp(
     val navigationRequests = remember(context) { ADNavigationRequestStore.observe(context) }
     val externalRequest by navigationRequests.collectAsState()
 
-    var selectedTab by rememberSaveable { mutableStateOf(ADTab.HOME) }
-    var routeStack by rememberSaveable { mutableStateOf(listOf(ADRoute.MAIN)) }
+    var selectedTab by remember { mutableStateOf(ADTab.HOME) }
+    var routeStack by remember { mutableStateOf(listOf(ADRoute.MAIN)) }
     var conversationRequest by remember { mutableStateOf<ADNavigationRequest?>(null) }
     var onboardingComplete by remember(context) { mutableStateOf(ADWelcomePreferences.isComplete(context)) }
 
@@ -142,6 +141,7 @@ fun ADGlassesApp(
                         onBack = navigateBack,
                         onSync = { navigateTo(ADRoute.SYNC) },
                         onFirmware = { navigateTo(ADRoute.FIRMWARE) },
+                        onAdvanced = { navigateTo(ADRoute.ADVANCED) },
                     )
                     ADRoute.SYNC -> ADSyncScreen(dashboardState, host, navigateBack)
                     ADRoute.SETTINGS -> ADNativeSettingsHubScreen(
@@ -171,8 +171,8 @@ fun ADGlassesApp(
                     ADRoute.AI_RELAY -> ADNativeRelaySettingsScreen(navigateBack)
                     ADRoute.AI_LOCAL -> ADNativeLocalAiSettingsScreen(navigateBack)
                     ADRoute.AI_ASSISTANT_APPS -> ADAssistantAppsScreen(navigateBack)
-                    ADRoute.PRIVACY -> ADPrivacyCenterScreenV2(navigateBack)
-                    ADRoute.STORAGE -> ADStorageScreenV2(navigateBack)
+                    ADRoute.PRIVACY -> ADPrivacyCenterScreen(navigateBack)
+                    ADRoute.STORAGE -> ADStorageScreen(navigateBack)
                     ADRoute.LANGUAGE -> ADLanguageScreen(navigateBack)
                     ADRoute.PERMISSIONS -> ADPermissionsScreen(navigateBack)
                     ADRoute.ADVANCED -> ADAdvancedScreen(

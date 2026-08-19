@@ -1,7 +1,6 @@
 package com.fersaiyan.cyanbridge.ui.adglasses
 
 import android.widget.Toast
-import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -31,7 +30,6 @@ import androidx.compose.material.icons.rounded.Translate
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
@@ -142,15 +140,14 @@ internal fun ADHomeSurface(
                             title = "Ask AI",
                             detail = "Ask by voice",
                             icon = Icons.Outlined.Mic,
-                            emphasized = true,
-                            modifier = Modifier.weight(1.15f),
+                            modifier = Modifier.weight(1f),
                             onClick = host.onVoiceQuestion,
                         )
                         ADHomeAction(
                             title = "Photo",
                             detail = "Take a photo",
                             icon = Icons.Outlined.PhotoCamera,
-                            modifier = Modifier.weight(0.85f),
+                            modifier = Modifier.weight(1f),
                             onClick = host.onCapturePhoto,
                         )
                     }
@@ -159,7 +156,7 @@ internal fun ADHomeSurface(
                             title = "Video",
                             detail = "Record from glasses",
                             icon = Icons.Outlined.Videocam,
-                            modifier = Modifier.weight(0.85f),
+                            modifier = Modifier.weight(1f),
                             onClick = host.onToggleVideo,
                         )
                         ADHomeAction(
@@ -167,8 +164,7 @@ internal fun ADHomeSurface(
                             detail = "Live conversation",
                             icon = Icons.Rounded.Translate,
                             active = translateActive,
-                            emphasized = true,
-                            modifier = Modifier.weight(1.15f),
+                            modifier = Modifier.weight(1f),
                             onClick = { toggleCapability(AssistantCapability.TRANSLATOR) },
                         )
                     }
@@ -178,7 +174,7 @@ internal fun ADHomeSurface(
                             detail = "Turn speech into notes",
                             icon = Icons.Outlined.GraphicEq,
                             active = soundbitesActive,
-                            modifier = Modifier.weight(1.12f),
+                            modifier = Modifier.weight(1f),
                             onClick = { toggleCapability(AssistantCapability.MEETING_NOTES) },
                         )
                         ADHomeAction(
@@ -186,7 +182,7 @@ internal fun ADHomeSurface(
                             detail = if (state.meeting.isRecording) "Stop recording" else "Start recording",
                             icon = Icons.Outlined.GraphicEq,
                             active = state.meeting.isRecording,
-                            modifier = Modifier.weight(0.88f),
+                            modifier = Modifier.weight(1f),
                             onClick = if (state.meeting.isRecording) host.onStopRecording else host.onStartRecording,
                         )
                     }
@@ -288,43 +284,36 @@ private fun ADHomeAction(
     icon: ImageVector,
     modifier: Modifier = Modifier,
     active: Boolean = false,
-    emphasized: Boolean = false,
     onClick: () -> Unit,
 ) {
     val container = if (active) ADColors.SurfaceSubtle else ADColors.Surface
-    val darkIcon = active || emphasized
-    val iconContainer = if (darkIcon) ADColors.Ink else ADColors.SurfaceSubtle
-    val iconColor = if (darkIcon) ADColors.Surface else ADColors.Ink
+    val iconContainer = if (active) ADColors.Ink else ADColors.SurfaceSubtle
+    val iconColor = if (active) ADColors.Surface else ADColors.Ink
 
-    Surface(
-        onClick = onClick,
-        modifier = modifier.heightIn(min = 84.dp),
-        shape = RoundedCornerShape(17.dp),
-        color = container,
-        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant),
-        shadowElevation = 0.dp,
+    Column(
+        modifier = modifier
+            .heightIn(min = 84.dp)
+            .background(container, RoundedCornerShape(16.dp))
+            .clickable(onClick = onClick)
+            .padding(10.dp),
+        verticalArrangement = Arrangement.SpaceBetween,
     ) {
-        Column(
-            modifier = Modifier.padding(10.dp),
-            verticalArrangement = Arrangement.SpaceBetween,
+        Box(
+            Modifier.size(32.dp).background(iconContainer, RoundedCornerShape(9.dp)),
+            contentAlignment = Alignment.Center,
         ) {
-            Box(
-                Modifier.size(32.dp).background(iconContainer, RoundedCornerShape(9.dp)),
-                contentAlignment = Alignment.Center,
-            ) {
-                Icon(icon, null, tint = iconColor, modifier = Modifier.size(17.dp))
-            }
-            Spacer(Modifier.height(5.dp))
-            Text(title, style = MaterialTheme.typography.titleMedium, maxLines = 1)
-            Spacer(Modifier.height(1.dp))
-            Text(
-                detail,
-                style = MaterialTheme.typography.bodySmall,
-                color = ADColors.Muted.copy(alpha = 0.78f),
-                maxLines = 2,
-                overflow = TextOverflow.Ellipsis,
-            )
+            Icon(icon, null, tint = iconColor, modifier = Modifier.size(17.dp))
         }
+        Spacer(Modifier.height(5.dp))
+        Text(title, style = MaterialTheme.typography.titleMedium, maxLines = 1)
+        Spacer(Modifier.height(1.dp))
+        Text(
+            detail,
+            style = MaterialTheme.typography.bodySmall,
+            color = ADColors.Muted,
+            maxLines = 2,
+            overflow = TextOverflow.Ellipsis,
+        )
     }
 }
 
@@ -350,7 +339,7 @@ private fun ADSmartLensCard(onClick: () -> Unit) {
             Text(
                 "Ask about what you’re looking at",
                 style = MaterialTheme.typography.bodySmall,
-                color = ADColors.Surface.copy(alpha = 0.66f),
+                color = ADColors.Surface.copy(alpha = 0.70f),
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis,
             )
