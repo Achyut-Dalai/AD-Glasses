@@ -461,7 +461,6 @@ private fun resolveAiChoice(context: android.content.Context): ADAiChoice = when
     AgentProviderType.PRO_SUBSCRIPTION -> when (AiProviderPrefs.getRelayBackend(context)) {
         CliRelayBackend.GEMINI -> ADAiChoice.GEMINI
         CliRelayBackend.CODEX -> ADAiChoice.OPENAI_CODEX
-        else -> ADAiChoice.GEMINI
     }
-    else -> ADAiChoice.GEMINI
+    AgentProviderType.TASKER -> ADAiChoice.GEMINI
 }
