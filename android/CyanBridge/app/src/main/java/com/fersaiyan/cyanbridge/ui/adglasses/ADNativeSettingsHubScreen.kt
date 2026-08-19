@@ -2,14 +2,15 @@ package com.fersaiyan.cyanbridge.ui.adglasses
 
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.CircleShape
@@ -17,11 +18,10 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.rounded.KeyboardArrowRight
 import androidx.compose.material.icons.outlined.BatteryFull
-import androidx.compose.material.icons.outlined.DarkMode
+import androidx.compose.material.icons.outlined.Bluetooth
 import androidx.compose.material.icons.outlined.DeveloperMode
 import androidx.compose.material.icons.outlined.Info
 import androidx.compose.material.icons.outlined.Language
-import androidx.compose.material.icons.outlined.Palette
 import androidx.compose.material.icons.outlined.PrivacyTip
 import androidx.compose.material.icons.outlined.Security
 import androidx.compose.material.icons.outlined.Storage
@@ -29,13 +29,13 @@ import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
-import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.fersaiyan.cyanbridge.devices.DeviceProfileStore
@@ -44,10 +44,6 @@ import com.fersaiyan.cyanbridge.shared.glasses.GlassesDashboardUiState
 @Composable
 internal fun ADNativeSettingsHubScreen(
     state: GlassesDashboardUiState,
-    themeStyle: ADThemeStyle,
-    darkMode: Boolean,
-    onThemeStyle: (ADThemeStyle) -> Unit,
-    onDarkMode: (Boolean) -> Unit,
     onBack: () -> Unit,
     onDevice: () -> Unit,
     onPrivacy: () -> Unit,
@@ -70,102 +66,54 @@ internal fun ADNativeSettingsHubScreen(
             onClick = onDevice,
         )
 
-        ADSettingsSectionTitle("Appearance")
-        Surface(
-            modifier = Modifier.fillMaxWidth(),
-            shape = RoundedCornerShape(16.dp),
-            color = MaterialTheme.colorScheme.surface,
-            border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant),
-        ) {
-            Column(Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
-                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    ADThemeChoice(
-                        label = "Color",
-                        selected = themeStyle == ADThemeStyle.COLOR,
-                        modifier = Modifier.weight(1f),
-                    ) { onThemeStyle(ADThemeStyle.COLOR) }
-                    ADThemeChoice(
-                        label = "Monochrome",
-                        selected = themeStyle == ADThemeStyle.MONOCHROME,
-                        modifier = Modifier.weight(1f),
-                    ) { onThemeStyle(ADThemeStyle.MONOCHROME) }
-                }
-                HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    verticalAlignment = Alignment.CenterVertically,
-                ) {
-                    Box(
-                        modifier = Modifier
-                            .size(34.dp)
-                            .background(MaterialTheme.colorScheme.surfaceVariant, RoundedCornerShape(10.dp)),
-                        contentAlignment = Alignment.Center,
-                    ) {
-                        Icon(Icons.Outlined.DarkMode, null, modifier = Modifier.size(18.dp))
-                    }
-                    Column(Modifier.padding(start = 10.dp).weight(1f)) {
-                        Text("Dark mode", style = MaterialTheme.typography.titleMedium)
-                        Text(
-                            "Use darker surfaces throughout the app",
-                            style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        )
-                    }
-                    Switch(checked = darkMode, onCheckedChange = onDarkMode)
-                }
+        Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+            ADSettingsSectionTitle("Essentials")
+            Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                ADSettingsTile(
+                    icon = Icons.Outlined.PrivacyTip,
+                    title = "Privacy",
+                    subtitle = "Transcripts, redaction and exports",
+                    modifier = Modifier.weight(1f),
+                    onClick = onPrivacy,
+                )
+                ADSettingsTile(
+                    icon = Icons.Outlined.Storage,
+                    title = "Storage",
+                    subtitle = "App data and synced media",
+                    modifier = Modifier.weight(1f),
+                    onClick = onStorage,
+                )
+            }
+            Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                ADSettingsTile(
+                    icon = Icons.Outlined.Language,
+                    title = "Language",
+                    subtitle = "App language and system locale",
+                    modifier = Modifier.weight(1f),
+                    onClick = onLanguage,
+                )
+                ADSettingsTile(
+                    icon = Icons.Outlined.Security,
+                    title = "Permissions",
+                    subtitle = "Camera, mic and nearby access",
+                    modifier = Modifier.weight(1f),
+                    onClick = onPermissions,
+                )
             }
         }
 
-        ADSettingsSectionTitle("Essentials")
-        ADSettingsGroupCard {
-            ADSettingsRow(
-                icon = Icons.Outlined.PrivacyTip,
-                title = "Privacy",
-                subtitle = "Transcripts, redaction and exports",
-                onClick = onPrivacy,
-            )
-            ADSettingsDivider()
-            ADSettingsRow(
-                icon = Icons.Outlined.Storage,
-                title = "Storage",
-                subtitle = "App data and synced media",
-                iconTint = MaterialTheme.colorScheme.secondary,
-                iconBackground = MaterialTheme.colorScheme.secondaryContainer,
-                onClick = onStorage,
-            )
-            ADSettingsDivider()
-            ADSettingsRow(
-                icon = Icons.Outlined.Language,
-                title = "Language",
-                subtitle = "App language and system locale",
-                iconTint = MaterialTheme.colorScheme.tertiary,
-                iconBackground = MaterialTheme.colorScheme.tertiaryContainer,
-                onClick = onLanguage,
-            )
-            ADSettingsDivider()
-            ADSettingsRow(
-                icon = Icons.Outlined.Security,
-                title = "Permissions",
-                subtitle = "Camera, microphone and nearby access",
-                onClick = onPermissions,
-            )
-        }
-
-        ADSettingsSectionTitle("AD Glasses")
-        ADSettingsGroupCard {
-            ADSettingsRow(
+        Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+            ADSettingsSectionTitle("AD Glasses")
+            ADSettingsWideAction(
                 icon = Icons.Outlined.DeveloperMode,
                 title = "Advanced",
                 subtitle = "Diagnostics and system controls",
                 onClick = onAdvanced,
             )
-            ADSettingsDivider()
-            ADSettingsRow(
+            ADSettingsWideAction(
                 icon = Icons.Outlined.Info,
-                title = "About",
-                subtitle = "Version and licenses",
-                iconTint = MaterialTheme.colorScheme.secondary,
-                iconBackground = MaterialTheme.colorScheme.secondaryContainer,
+                title = "About AD Glasses",
+                subtitle = "Version and product information",
                 onClick = onAbout,
             )
         }
@@ -183,80 +131,114 @@ private fun ADSettingsDeviceOverview(
     val status = when {
         presentation.connected -> "Connected"
         presentation.connecting -> "Connecting…"
-        else -> "Not connected"
+        presentation.shouldOpenSetup -> "Not connected"
+        else -> "Reconnect available"
     }
 
     Surface(
         onClick = onClick,
         modifier = Modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(18.dp),
-        color = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.56f),
-        contentColor = MaterialTheme.colorScheme.onPrimaryContainer,
+        shape = RoundedCornerShape(26.dp),
+        color = MaterialTheme.colorScheme.surface,
+        contentColor = MaterialTheme.colorScheme.onSurface,
+        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant),
+        tonalElevation = 0.dp,
     ) {
-        Column(Modifier.padding(horizontal = 14.dp, vertical = 12.dp)) {
+        Column(Modifier.padding(18.dp)) {
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Surface(
-                    modifier = Modifier.size(42.dp),
-                    shape = RoundedCornerShape(13.dp),
-                    color = MaterialTheme.colorScheme.surface.copy(alpha = 0.62f),
+                    modifier = Modifier.size(48.dp),
+                    shape = RoundedCornerShape(15.dp),
+                    color = ADColors.Ink,
+                    contentColor = ADColors.Surface,
                 ) {
                     Box(contentAlignment = Alignment.Center) {
-                        ADGlassesMark(Modifier.size(width = 28.dp, height = 16.dp))
+                        Icon(
+                            Icons.Outlined.Bluetooth,
+                            contentDescription = null,
+                            modifier = Modifier.size(23.dp),
+                        )
                     }
                 }
 
-                Column(Modifier.padding(start = 11.dp).weight(1f)) {
+                Column(Modifier.padding(start = 13.dp).weight(1f)) {
                     Text(
                         presentation.identityLabel ?: "Your glasses",
-                        style = MaterialTheme.typography.titleMedium,
+                        style = MaterialTheme.typography.titleLarge,
+                        fontWeight = FontWeight.SemiBold,
                         maxLines = 1,
                         overflow = TextOverflow.Ellipsis,
                     )
+                    Spacer(Modifier.height(3.dp))
                     Row(verticalAlignment = Alignment.CenterVertically) {
                         Box(
                             Modifier
-                                .size(6.dp)
+                                .size(7.dp)
                                 .background(
-                                    if (presentation.connected) ADColors.Success else MaterialTheme.colorScheme.outline,
+                                    if (presentation.connected) ADColors.Ink else MaterialTheme.colorScheme.outline,
                                     CircleShape,
                                 ),
                         )
                         Text(
                             status,
-                            modifier = Modifier.padding(start = 6.dp),
-                            style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.70f),
+                            modifier = Modifier.padding(start = 7.dp),
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
                         )
                     }
                 }
 
-                Icon(
-                    Icons.AutoMirrored.Rounded.KeyboardArrowRight,
-                    contentDescription = null,
-                    modifier = Modifier.size(20.dp),
-                    tint = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.58f),
-                )
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Text(
+                        "Manage",
+                        style = MaterialTheme.typography.labelLarge,
+                        color = ADColors.Ink,
+                    )
+                    Icon(
+                        Icons.AutoMirrored.Rounded.KeyboardArrowRight,
+                        contentDescription = null,
+                        modifier = Modifier.size(21.dp),
+                        tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                }
             }
 
-            if (showBattery || showStorage) {
-                Spacer(Modifier.height(9.dp))
-                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    if (showBattery) {
-                        ADDeviceMetric(
-                            icon = Icons.Outlined.BatteryFull,
-                            label = "Battery",
-                            value = "${state.batteryPercent}%",
-                            modifier = Modifier.weight(1f),
-                        )
+            when {
+                showBattery || showStorage -> {
+                    Spacer(Modifier.height(15.dp))
+                    HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
+                    Spacer(Modifier.height(13.dp))
+                    Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                        if (showBattery) {
+                            ADDeviceMetric(
+                                icon = Icons.Outlined.BatteryFull,
+                                label = "Battery",
+                                value = "${state.batteryPercent}%",
+                                modifier = Modifier.weight(1f),
+                            )
+                        }
+                        if (showStorage) {
+                            ADDeviceMetric(
+                                icon = Icons.Outlined.Storage,
+                                label = "Storage",
+                                value = state.storageLabel,
+                                modifier = Modifier.weight(1f),
+                            )
+                        }
                     }
-                    if (showStorage) {
-                        ADDeviceMetric(
-                            icon = Icons.Outlined.Storage,
-                            label = "Storage",
-                            value = state.storageLabel,
-                            modifier = Modifier.weight(1f),
-                        )
-                    }
+                }
+
+                !presentation.connected -> {
+                    Spacer(Modifier.height(13.dp))
+                    Text(
+                        if (presentation.connecting) {
+                            "Live device details will appear when the connection is ready."
+                        } else {
+                            "Connect your glasses to see live battery and storage details."
+                        },
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
                 }
             }
         }
@@ -271,22 +253,35 @@ private fun ADDeviceMetric(
     modifier: Modifier = Modifier,
 ) {
     Surface(
-        modifier = modifier,
-        shape = RoundedCornerShape(11.dp),
-        color = MaterialTheme.colorScheme.surface.copy(alpha = 0.60f),
+        modifier = modifier.heightIn(min = 66.dp),
+        shape = RoundedCornerShape(17.dp),
+        color = MaterialTheme.colorScheme.surfaceVariant,
     ) {
         Row(
-            modifier = Modifier.padding(horizontal = 9.dp, vertical = 7.dp),
+            modifier = Modifier.padding(horizontal = 12.dp, vertical = 11.dp),
             verticalAlignment = Alignment.CenterVertically,
         ) {
-            Icon(icon, contentDescription = null, modifier = Modifier.size(15.dp))
-            Text(
-                "$label  $value",
-                modifier = Modifier.padding(start = 5.dp),
-                style = MaterialTheme.typography.labelSmall,
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis,
+            Icon(
+                icon,
+                contentDescription = null,
+                tint = ADColors.Ink,
+                modifier = Modifier.size(20.dp),
             )
+            Column(Modifier.padding(start = 9.dp).weight(1f)) {
+                Text(
+                    label,
+                    style = MaterialTheme.typography.labelMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+                Spacer(Modifier.height(1.dp))
+                Text(
+                    value,
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.SemiBold,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                )
+            }
         }
     }
 }
@@ -296,53 +291,128 @@ private fun ADSettingsSectionTitle(title: String) {
     Text(
         title,
         style = MaterialTheme.typography.titleMedium,
-        color = MaterialTheme.colorScheme.onBackground,
+        fontWeight = FontWeight.SemiBold,
+        color = ADColors.Ink,
         modifier = Modifier.padding(start = 2.dp),
     )
 }
 
 @Composable
-private fun ADThemeChoice(
-    label: String,
-    selected: Boolean,
+private fun ADSettingsTile(
+    icon: ImageVector,
+    title: String,
+    subtitle: String,
     modifier: Modifier = Modifier,
     onClick: () -> Unit,
 ) {
     Surface(
         onClick = onClick,
-        modifier = modifier.height(42.dp),
-        shape = RoundedCornerShape(12.dp),
-        color = if (selected) MaterialTheme.colorScheme.primaryContainer else MaterialTheme.colorScheme.surfaceVariant,
-        contentColor = if (selected) MaterialTheme.colorScheme.onPrimaryContainer else MaterialTheme.colorScheme.onSurfaceVariant,
-        border = if (selected) BorderStroke(1.dp, MaterialTheme.colorScheme.primary.copy(alpha = 0.35f)) else null,
+        modifier = modifier.heightIn(min = 132.dp),
+        shape = RoundedCornerShape(22.dp),
+        color = MaterialTheme.colorScheme.surface,
+        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant),
+        tonalElevation = 0.dp,
     ) {
-        Row(
-            modifier = Modifier.padding(horizontal = 10.dp),
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.Center,
+        Column(
+            modifier = Modifier.padding(15.dp),
+            verticalArrangement = Arrangement.SpaceBetween,
         ) {
-            Icon(Icons.Outlined.Palette, null, modifier = Modifier.size(16.dp))
-            Text(label, style = MaterialTheme.typography.labelLarge, modifier = Modifier.padding(start = 6.dp))
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Surface(
+                    modifier = Modifier.size(42.dp),
+                    shape = RoundedCornerShape(13.dp),
+                    color = MaterialTheme.colorScheme.surfaceVariant,
+                ) {
+                    Box(contentAlignment = Alignment.Center) {
+                        Icon(
+                            icon,
+                            contentDescription = null,
+                            tint = ADColors.Ink,
+                            modifier = Modifier.size(21.dp),
+                        )
+                    }
+                }
+                Spacer(Modifier.weight(1f))
+                Icon(
+                    Icons.AutoMirrored.Rounded.KeyboardArrowRight,
+                    contentDescription = null,
+                    tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier.size(20.dp),
+                )
+            }
+
+            Column {
+                Text(
+                    title,
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.SemiBold,
+                )
+                Spacer(Modifier.height(3.dp))
+                Text(
+                    subtitle,
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    maxLines = 2,
+                    overflow = TextOverflow.Ellipsis,
+                )
+            }
         }
     }
 }
 
 @Composable
-private fun ADSettingsGroupCard(content: @Composable ColumnScope.() -> Unit) {
+private fun ADSettingsWideAction(
+    icon: ImageVector,
+    title: String,
+    subtitle: String,
+    onClick: () -> Unit,
+) {
     Surface(
+        onClick = onClick,
         modifier = Modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(16.dp),
+        shape = RoundedCornerShape(22.dp),
         color = MaterialTheme.colorScheme.surface,
         border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant),
+        tonalElevation = 0.dp,
     ) {
-        Column(Modifier.padding(horizontal = 12.dp), content = content)
+        Row(
+            modifier = Modifier.padding(horizontal = 15.dp, vertical = 15.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Surface(
+                modifier = Modifier.size(44.dp),
+                shape = RoundedCornerShape(14.dp),
+                color = MaterialTheme.colorScheme.surfaceVariant,
+            ) {
+                Box(contentAlignment = Alignment.Center) {
+                    Icon(
+                        icon,
+                        contentDescription = null,
+                        tint = ADColors.Ink,
+                        modifier = Modifier.size(22.dp),
+                    )
+                }
+            }
+            Column(Modifier.padding(start = 12.dp).weight(1f)) {
+                Text(
+                    title,
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.SemiBold,
+                )
+                Spacer(Modifier.height(2.dp))
+                Text(
+                    subtitle,
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    maxLines = 2,
+                    overflow = TextOverflow.Ellipsis,
+                )
+            }
+            Icon(
+                Icons.AutoMirrored.Rounded.KeyboardArrowRight,
+                contentDescription = null,
+                tint = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+        }
     }
-}
-
-@Composable
-private fun ADSettingsDivider() {
-    HorizontalDivider(
-        modifier = Modifier.padding(start = 47.dp),
-        color = MaterialTheme.colorScheme.outlineVariant,
-    )
 }

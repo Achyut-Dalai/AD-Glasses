@@ -1,6 +1,8 @@
 package com.fersaiyan.cyanbridge.ui.adglasses
 
-import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.Image
+import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
@@ -14,15 +16,20 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Button
-import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.OutlinedButton
-import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
+import com.fersaiyan.cyanbridge.R
 
 /** First-run product surface. Display only when onboarding state asks for it. */
 @Composable
@@ -30,73 +37,103 @@ fun ADWelcomeScreen(
     onStartSetup: () -> Unit,
     onExplore: () -> Unit,
 ) {
-    Column(
-        modifier = Modifier
-            .fillMaxSize()
-            .windowInsetsPadding(WindowInsets.safeDrawing)
-            .padding(horizontal = 18.dp, vertical = 18.dp),
-        verticalArrangement = Arrangement.SpaceBetween,
-    ) {
-        Column(verticalArrangement = Arrangement.spacedBy(5.dp)) {
-            Text("AD Glasses", style = MaterialTheme.typography.headlineLarge)
-            Text(
-                "Your glasses, AI and library in one place.",
-                style = MaterialTheme.typography.bodyLarge,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-            )
-        }
-
-        Surface(
-            modifier = Modifier.fillMaxWidth().heightIn(min = 190.dp, max = 260.dp),
-            shape = RoundedCornerShape(26.dp),
-            color = MaterialTheme.colorScheme.primaryContainer,
-            contentColor = MaterialTheme.colorScheme.onPrimaryContainer,
+    ADGlassesTheme {
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .background(
+                    Brush.verticalGradient(
+                        listOf(
+                            Color(0xFFFAFAFB),
+                            ADColors.Background,
+                            Color(0xFFF0F0F2),
+                        ),
+                    ),
+                )
+                .windowInsetsPadding(WindowInsets.safeDrawing)
+                .padding(horizontal = 20.dp),
         ) {
             Column(
-                modifier = Modifier.padding(22.dp),
-                horizontalAlignment = Alignment.CenterHorizontally,
-                verticalArrangement = Arrangement.Center,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(top = 34.dp),
             ) {
-                Surface(
-                    modifier = Modifier.size(110.dp),
-                    shape = RoundedCornerShape(30.dp),
-                    color = MaterialTheme.colorScheme.surface.copy(alpha = 0.62f),
-                ) {
-                    Box(contentAlignment = Alignment.Center) {
-                        ADGlassesMark(Modifier.size(width = 76.dp, height = 42.dp))
-                    }
-                }
-                Spacer(Modifier.size(18.dp))
                 Text(
-                    "Connect once. Keep the phone secondary.",
-                    style = MaterialTheme.typography.titleLarge,
-                    textAlign = TextAlign.Center,
+                    text = "YOUR GLASSES",
+                    color = ADColors.Ink,
+                    fontSize = 42.sp,
+                    lineHeight = 44.sp,
+                    fontWeight = FontWeight.Medium,
+                    letterSpacing = (-1.15).sp,
                 )
-                Spacer(Modifier.size(5.dp))
                 Text(
-                    "Capture, ask, sync and automate from a simpler companion app.",
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.72f),
-                    textAlign = TextAlign.Center,
+                    text = "YOUR AI",
+                    color = ADColors.Ink,
+                    fontSize = 42.sp,
+                    lineHeight = 44.sp,
+                    fontWeight = FontWeight.Medium,
+                    letterSpacing = (-1.15).sp,
+                )
+                Text(
+                    text = "YOUR DATA",
+                    color = ADColors.Ink,
+                    fontSize = 42.sp,
+                    lineHeight = 44.sp,
+                    fontWeight = FontWeight.Medium,
+                    letterSpacing = (-1.15).sp,
                 )
             }
-        }
 
-        Column(verticalArrangement = Arrangement.spacedBy(9.dp)) {
+            Spacer(Modifier.size(24.dp))
+
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .weight(1f)
+                    .heightIn(min = 184.dp, max = 286.dp)
+                    .background(
+                        Brush.linearGradient(
+                            listOf(
+                                Color.White.copy(alpha = 0.94f),
+                                Color(0xFFE9E9EC),
+                            ),
+                        ),
+                        RoundedCornerShape(28.dp),
+                    )
+                    .border(
+                        width = 1.dp,
+                        color = ADColors.Outline.copy(alpha = 0.50f),
+                        shape = RoundedCornerShape(28.dp),
+                    )
+                    .padding(horizontal = 10.dp, vertical = 8.dp),
+                contentAlignment = Alignment.Center,
+            ) {
+                Image(
+                    painter = painterResource(R.drawable.ad_glasses_hero_v4),
+                    contentDescription = "Smart glasses",
+                    modifier = Modifier.fillMaxSize(),
+                    contentScale = ContentScale.Fit,
+                )
+            }
+
+            Spacer(Modifier.size(22.dp))
             Button(
                 onClick = onStartSetup,
-                modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp),
-                shape = RoundedCornerShape(14.dp),
+                modifier = Modifier.fillMaxWidth().heightIn(min = 52.dp),
+                colors = ButtonDefaults.buttonColors(containerColor = ADColors.Ink),
+                shape = RoundedCornerShape(15.dp),
             ) {
                 Text("Connect glasses")
             }
+            Spacer(Modifier.size(10.dp))
             OutlinedButton(
                 onClick = onExplore,
-                modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp),
-                shape = RoundedCornerShape(14.dp),
+                modifier = Modifier.fillMaxWidth().heightIn(min = 50.dp),
+                shape = RoundedCornerShape(15.dp),
             ) {
                 Text("Continue without glasses")
             }
+            Spacer(Modifier.size(22.dp))
         }
     }
 }

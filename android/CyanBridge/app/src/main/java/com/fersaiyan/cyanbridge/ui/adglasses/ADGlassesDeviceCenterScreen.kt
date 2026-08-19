@@ -1,6 +1,5 @@
 package com.fersaiyan.cyanbridge.ui.adglasses
 
-import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -8,28 +7,30 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.BatteryFull
+import androidx.compose.material.icons.outlined.Bluetooth
 import androidx.compose.material.icons.outlined.DeveloperMode
 import androidx.compose.material.icons.outlined.Storage
 import androidx.compose.material.icons.outlined.Sync
 import androidx.compose.material.icons.outlined.SystemUpdateAlt
 import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
-import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.fersaiyan.cyanbridge.devices.ADDeviceSupportPolicy
 import com.fersaiyan.cyanbridge.devices.DeviceProfileStore
@@ -49,147 +50,170 @@ internal fun ADGlassesDeviceCenterScreen(
     val profile = DeviceProfileStore.loadLastSelected(context)
         ?.takeIf { ADDeviceSupportPolicy.isPairable(it.selectedClass) }
     val presentation = buildADDevicePresentation(state, profile)
-    val identity = presentation.identityLabel ?: "Your glasses"
+    val identity = presentation.identityLabel ?: if (profile == null) "No glasses connected" else "Glasses"
 
     ADPageLayout("Device Center", onBack) {
-        Surface(
-            modifier = Modifier.fillMaxWidth(),
-            shape = RoundedCornerShape(19.dp),
-            color = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.60f),
-            contentColor = MaterialTheme.colorScheme.onPrimaryContainer,
-        ) {
-            Column(Modifier.padding(14.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    Surface(
-                        modifier = Modifier.size(44.dp),
-                        shape = RoundedCornerShape(13.dp),
-                        color = MaterialTheme.colorScheme.surface.copy(alpha = 0.64f),
-                    ) {
-                        Box(contentAlignment = Alignment.Center) {
-                            ADGlassesMark(Modifier.size(width = 30.dp, height = 17.dp))
-                        }
-                    }
-                    Column(Modifier.padding(start = 11.dp).weight(1f)) {
-                        Text(
-                            identity,
-                            style = MaterialTheme.typography.titleLarge,
-                            maxLines = 1,
-                            overflow = TextOverflow.Ellipsis,
-                        )
-                        Row(verticalAlignment = Alignment.CenterVertically) {
-                            Box(
-                                Modifier.size(6.dp).background(
-                                    if (presentation.connected) ADColors.Success else MaterialTheme.colorScheme.outline,
-                                    CircleShape,
-                                ),
-                            )
-                            Text(
-                                when {
-                                    presentation.connected -> "Connected"
-                                    presentation.connecting -> "Connecting…"
-                                    else -> "Not connected"
-                                },
-                                style = MaterialTheme.typography.bodySmall,
-                                color = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.72f),
-                                modifier = Modifier.padding(start = 6.dp),
-                            )
-                        }
-                    }
-
-                    if (presentation.connected) {
-                        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                            if (state.showBattery && state.batteryPercent != null) {
-                                ADDeviceValue(Icons.Outlined.BatteryFull, "${state.batteryPercent}%")
-                            }
-                            if (state.showStorage && state.storageLabel != "--") {
-                                ADDeviceValue(Icons.Outlined.Storage, state.storageLabel)
-                            }
-                        }
-                    }
+        ADCard {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Box(
+                    modifier = Modifier
+                        .size(52.dp)
+                        .background(
+                            if (presentation.connected) ADColors.SuccessSoft else ADColors.SurfaceSubtle,
+                            RoundedCornerShape(15.dp),
+                        ),
+                    contentAlignment = Alignment.Center,
+                ) {
+                    Icon(
+                        Icons.Outlined.Bluetooth,
+                        contentDescription = null,
+                        tint = if (presentation.connected) ADColors.Success else ADColors.Muted,
+                    )
                 }
-
-                when {
-                    presentation.connected -> Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                        OutlinedButton(onClick = host.onDisconnect, modifier = Modifier.weight(1f)) {
-                            Text("Disconnect")
-                        }
-                        Button(onClick = host.onOpenDeviceSetup, modifier = Modifier.weight(1f)) {
-                            Text("Change glasses")
-                        }
-                    }
-                    profile != null -> Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                        Button(onClick = host.onReconnect, modifier = Modifier.weight(1f)) {
-                            Text("Reconnect")
-                        }
-                        OutlinedButton(onClick = host.onOpenDeviceSetup, modifier = Modifier.weight(1f)) {
-                            Text("Change glasses")
-                        }
-                    }
-                    else -> Button(onClick = host.onOpenDeviceSetup, modifier = Modifier.fillMaxWidth()) {
-                        Text("Connect glasses")
-                    }
+                Column(Modifier.padding(start = 14.dp).weight(1f)) {
+                    Text(identity, style = MaterialTheme.typography.titleLarge)
+                    Text(
+                        presentation.statusLabel,
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = ADColors.Muted,
+                    )
                 }
+                ADStatusChip(
+                    text = if (presentation.connected) "CONNECTED" else "OFFLINE",
+                    tone = if (presentation.connected) ADStatusTone.SUCCESS else ADStatusTone.NEUTRAL,
+                    showCheck = presentation.connected,
+                )
+            }
+
+            Spacer(Modifier.height(16.dp))
+
+            when {
+                presentation.connected -> Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                    Button(
+                        onClick = host.onDisconnect,
+                        colors = ButtonDefaults.buttonColors(containerColor = ADColors.Ink),
+                        modifier = Modifier.weight(1f),
+                    ) { Text("Disconnect") }
+                    OutlinedButton(
+                        onClick = host.onOpenDeviceSetup,
+                        modifier = Modifier.weight(1f),
+                    ) { Text("Change glasses") }
+                }
+                profile != null -> Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                    Button(
+                        onClick = host.onReconnect,
+                        colors = ButtonDefaults.buttonColors(containerColor = ADColors.Ink),
+                        modifier = Modifier.weight(1f),
+                    ) { Text("Reconnect") }
+                    OutlinedButton(
+                        onClick = host.onOpenDeviceSetup,
+                        modifier = Modifier.weight(1f),
+                    ) { Text("Change glasses") }
+                }
+                else -> Button(
+                    onClick = host.onOpenDeviceSetup,
+                    colors = ButtonDefaults.buttonColors(containerColor = ADColors.Blue),
+                    modifier = Modifier.fillMaxWidth(),
+                ) { Text("Connect glasses") }
             }
         }
 
-        ADSectionTitle("Device tools")
-        Surface(
-            modifier = Modifier.fillMaxWidth(),
-            shape = RoundedCornerShape(16.dp),
-            color = MaterialTheme.colorScheme.surface,
-            border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant),
-        ) {
-            Column(Modifier.padding(horizontal = 12.dp)) {
-                ADSettingsRow(
-                    icon = Icons.Outlined.Sync,
-                    title = "Sync media",
-                    subtitle = "Bring captures into Library",
-                    onClick = onSync,
-                )
-                HorizontalDivider(Modifier.padding(start = 47.dp), color = MaterialTheme.colorScheme.outlineVariant)
-                ADSettingsRow(
-                    icon = Icons.Outlined.SystemUpdateAlt,
-                    title = "Firmware",
-                    subtitle = "Updates and recovery",
-                    iconTint = MaterialTheme.colorScheme.tertiary,
-                    iconBackground = MaterialTheme.colorScheme.tertiaryContainer,
-                    onClick = onFirmware,
-                )
-                HorizontalDivider(Modifier.padding(start = 47.dp), color = MaterialTheme.colorScheme.outlineVariant)
-                ADSettingsRow(
-                    icon = Icons.Outlined.DeveloperMode,
-                    title = "Advanced",
-                    subtitle = "Diagnostics and Android controls",
-                    iconTint = MaterialTheme.colorScheme.secondary,
-                    iconBackground = MaterialTheme.colorScheme.secondaryContainer,
-                    onClick = onAdvanced,
+        ADSectionTitle("Glasses status")
+        ADCard {
+            ADDeviceMetric(
+                icon = Icons.Outlined.Bluetooth,
+                label = "Connection",
+                value = if (presentation.connected) "Bluetooth connected" else "Not connected",
+            )
+            if (state.showBattery && state.batteryPercent != null) {
+                HorizontalDivider(Modifier.padding(start = 34.dp), color = ADColors.Separator)
+                ADDeviceMetric(
+                    icon = Icons.Outlined.BatteryFull,
+                    label = "Battery",
+                    value = "${state.batteryPercent}%",
                 )
             }
+            if (state.showStorage && state.storageLabel != "--") {
+                HorizontalDivider(Modifier.padding(start = 34.dp), color = ADColors.Separator)
+                ADDeviceMetric(
+                    icon = Icons.Outlined.Storage,
+                    label = "Storage",
+                    value = state.storageLabel,
+                )
+            }
+        }
+
+        ADSectionTitle("Capabilities")
+        ADCard {
+            ADDeviceCapability("Voice", "Ask and control through the glasses")
+            HorizontalDivider(color = ADColors.Separator)
+            ADDeviceCapability("Camera", "See and capture through the glasses camera")
+            HorizontalDivider(color = ADColors.Separator)
+            ADDeviceCapability("Phone intelligence", "AI, web, memory, tasks and phone actions")
+        }
+
+        ADSectionTitle("Device tools")
+        ADCard {
+            ADSettingsRow(
+                icon = Icons.Outlined.Sync,
+                title = "Sync media",
+                subtitle = "Bring glasses captures into your library",
+                onClick = onSync,
+                iconTint = Color.White,
+                iconBackground = ADColors.Blue,
+            )
+            HorizontalDivider(Modifier.padding(start = 48.dp), color = ADColors.Separator)
+            ADSettingsRow(
+                icon = Icons.Outlined.SystemUpdateAlt,
+                title = "Firmware",
+                subtitle = "Updates and recovery with preflight checks",
+                onClick = onFirmware,
+                iconTint = Color.White,
+                iconBackground = ADColors.Warning,
+            )
+            HorizontalDivider(Modifier.padding(start = 48.dp), color = ADColors.Separator)
+            ADSettingsRow(
+                icon = Icons.Outlined.DeveloperMode,
+                title = "Advanced",
+                subtitle = "Connection diagnostics and Android controls",
+                onClick = onAdvanced,
+                iconTint = Color.White,
+                iconBackground = ADColors.Muted,
+            )
         }
     }
 }
 
 @Composable
-private fun ADDeviceValue(
+private fun ADDeviceMetric(
     icon: androidx.compose.ui.graphics.vector.ImageVector,
+    label: String,
     value: String,
 ) {
-    Surface(
-        shape = RoundedCornerShape(10.dp),
-        color = MaterialTheme.colorScheme.surface.copy(alpha = 0.60f),
+    Row(
+        modifier = Modifier.fillMaxWidth().padding(vertical = 11.dp),
+        verticalAlignment = Alignment.CenterVertically,
     ) {
-        Row(
-            modifier = Modifier.padding(horizontal = 7.dp, vertical = 5.dp),
-            verticalAlignment = Alignment.CenterVertically,
+        Box(
+            modifier = Modifier.size(28.dp).background(ADColors.SurfaceSubtle, CircleShape),
+            contentAlignment = Alignment.Center,
         ) {
-            Icon(icon, null, modifier = Modifier.size(14.dp))
-            Text(
-                value,
-                modifier = Modifier.padding(start = 4.dp),
-                style = MaterialTheme.typography.labelSmall,
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis,
-            )
+            Icon(icon, contentDescription = null, tint = ADColors.Muted, modifier = Modifier.size(16.dp))
         }
+        Text(
+            label,
+            modifier = Modifier.padding(start = 10.dp).weight(1f),
+            style = MaterialTheme.typography.bodyLarge,
+        )
+        Text(value, style = MaterialTheme.typography.bodyMedium, color = ADColors.Muted)
+    }
+}
+
+@Composable
+private fun ADDeviceCapability(title: String, detail: String) {
+    Column(Modifier.fillMaxWidth().padding(vertical = 11.dp)) {
+        Text(title, style = MaterialTheme.typography.titleMedium)
+        Spacer(Modifier.height(2.dp))
+        Text(detail, style = MaterialTheme.typography.bodyMedium, color = ADColors.Muted)
     }
 }
