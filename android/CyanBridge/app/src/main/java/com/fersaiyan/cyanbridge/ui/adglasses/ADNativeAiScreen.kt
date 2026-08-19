@@ -164,7 +164,7 @@ internal fun ADNativeAiScreen(
         item {
             Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
                 ADAiSectionHeading("Phone automation")
-                ADAutomationFeatureCard(
+                ADAiCapabilityRow(
                     active = automationActive,
                     ready = automationReady,
                     onClick = { setCapability(AssistantCapability.LOCAL_AGENT, !automationActive) },
@@ -343,7 +343,7 @@ private fun ADAiCapabilityCard(
 }
 
 @Composable
-private fun ADAutomationFeatureCard(
+private fun ADAiCapabilityRow(
     active: Boolean,
     ready: Boolean,
     onClick: () -> Unit,
