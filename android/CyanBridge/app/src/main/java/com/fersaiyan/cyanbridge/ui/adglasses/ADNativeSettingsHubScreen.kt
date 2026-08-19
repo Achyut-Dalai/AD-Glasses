@@ -23,6 +23,7 @@ import androidx.compose.material.icons.automirrored.rounded.KeyboardArrowRight
 import androidx.compose.material.icons.outlined.BatteryFull
 import androidx.compose.material.icons.outlined.Bluetooth
 import androidx.compose.material.icons.outlined.Info
+import androidx.compose.material.icons.outlined.Lock
 import androidx.compose.material.icons.outlined.Settings
 import androidx.compose.material.icons.outlined.Storage
 import androidx.compose.material3.HorizontalDivider
@@ -330,41 +331,19 @@ private fun ADSettingsArtworkIcon(artwork: ADSettingsArtwork) {
         contentAlignment = Alignment.Center,
     ) {
         when (artwork) {
-            ADSettingsArtwork.PRIVACY -> Column(
-                horizontalAlignment = Alignment.CenterHorizontally,
-                verticalArrangement = Arrangement.spacedBy(2.dp),
-            ) {
-                Box(
-                    modifier = Modifier
-                        .width(19.dp)
-                        .height(16.dp)
-                        .background(ADColors.Ink, RoundedCornerShape(7.dp, 7.dp, 9.dp, 9.dp)),
-                    contentAlignment = Alignment.Center,
-                ) {
-                    Box(Modifier.size(5.dp).background(ADColors.Surface, CircleShape))
-                }
-                Box(
-                    Modifier
-                        .width(10.dp)
-                        .height(3.dp)
-                        .background(ADColors.Ink, RoundedCornerShape(2.dp)),
-                )
-            }
+            ADSettingsArtwork.PRIVACY -> Icon(
+                Icons.Outlined.Lock,
+                contentDescription = null,
+                tint = ADColors.Ink,
+                modifier = Modifier.size(21.dp),
+            )
 
-            ADSettingsArtwork.STORAGE -> Column(verticalArrangement = Arrangement.spacedBy(3.dp)) {
-                repeat(3) { index ->
-                    Row(
-                        modifier = Modifier
-                            .width(23.dp)
-                            .height(5.dp)
-                            .background(ADColors.Ink.copy(alpha = 0.92f - index * 0.16f), RoundedCornerShape(3.dp))
-                            .padding(horizontal = 3.dp),
-                        verticalAlignment = Alignment.CenterVertically,
-                    ) {
-                        Box(Modifier.size(2.dp).background(ADColors.Surface, CircleShape))
-                    }
-                }
-            }
+            ADSettingsArtwork.STORAGE -> Icon(
+                Icons.Outlined.Storage,
+                contentDescription = null,
+                tint = ADColors.Ink,
+                modifier = Modifier.size(22.dp),
+            )
 
             ADSettingsArtwork.LANGUAGE -> Row(
                 horizontalArrangement = Arrangement.spacedBy(3.dp),
