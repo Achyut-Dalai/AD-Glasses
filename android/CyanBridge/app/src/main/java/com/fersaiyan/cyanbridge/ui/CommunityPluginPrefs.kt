@@ -26,25 +26,35 @@ object CommunityPluginPrefs {
     private fun nativePluginKey(pluginId: String) = "native_plugin_enabled_$pluginId"
 
     fun isNativePluginEnabled(context: Context, pluginId: String): Boolean {
+        if (pluginId == NativePluginIds.ERRAND_BRAIN) return false
         return prefs(context).getBoolean(nativePluginKey(pluginId), false)
     }
 
     fun setNativePluginEnabled(context: Context, pluginId: String, enabled: Boolean) {
-        prefs(context).edit().putBoolean(nativePluginKey(pluginId), enabled).apply()
+        val value = if (pluginId == NativePluginIds.ERRAND_BRAIN) false else enabled
+        prefs(context).edit().putBoolean(nativePluginKey(pluginId), value).apply()
     }
 
     fun getGlassesTabShortcutPluginId(context: Context): String? {
         return prefs(context)
             .getString(KEY_GLASS_TAB_SHORTCUT_PLUGIN, DEFAULT_GLASS_TAB_SHORTCUT_PLUGIN)
-            ?.takeIf { it.isNotBlank() }
+            ?.takeIf { it.isNotBlank() && it != NativePluginIds.ERRAND_BRAIN }
     }
 
     fun isGlassesTabShortcutEnabled(context: Context, pluginId: String): Boolean {
+        if (pluginId == NativePluginIds.ERRAND_BRAIN) return false
         return getGlassesTabShortcutPluginId(context) == pluginId
     }
 
     fun setGlassesTabShortcutEnabled(context: Context, pluginId: String, enabled: Boolean) {
         val editor = prefs(context).edit()
+        if (pluginId == NativePluginIds.ERRAND_BRAIN) {
+            if (getGlassesTabShortcutPluginId(context) == pluginId) {
+                editor.putString(KEY_GLASS_TAB_SHORTCUT_PLUGIN, "")
+            }
+            editor.apply()
+            return
+        }
         if (enabled) {
             editor.putString(KEY_GLASS_TAB_SHORTCUT_PLUGIN, pluginId)
         } else if (getGlassesTabShortcutPluginId(context) == pluginId) {

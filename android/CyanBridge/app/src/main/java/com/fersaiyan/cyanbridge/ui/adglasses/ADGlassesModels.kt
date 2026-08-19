@@ -22,7 +22,6 @@ enum class ADRoute {
     ADVANCED,
     ABOUT,
     FIRMWARE,
-    CAPABILITY_DETAIL,
     LIBRARY_CAPTURES,
     LIBRARY_RECORDINGS,
     LIBRARY_NOTES,
@@ -68,12 +67,18 @@ enum class ADAutomation(
         "Automatic",
         "Hands-Free Translator",
     ),
+    /**
+     * Compatibility token for the inherited MainActivity settings dispatcher only.
+     * Cron is retired from the product and cannot be enabled through AD Glasses UI or assistant commands.
+     */
+    @Deprecated("Cron is removed from the AD Glasses product")
     ERRAND_BRAIN(
-        "Cron",
-        "Turn spoken requests into scheduled tasks and reminders.",
-        "Scheduled tasks",
-        "Configured AI",
+        "Removed Cron",
+        "Removed",
+        "Removed",
+        "Removed",
         "Errand Brain",
+        false,
     ),
     AUTO_DIARY(
         "DayNote",

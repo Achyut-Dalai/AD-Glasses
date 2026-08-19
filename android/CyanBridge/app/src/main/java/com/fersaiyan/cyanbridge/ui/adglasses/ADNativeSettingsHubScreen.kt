@@ -1,6 +1,6 @@
 package com.fersaiyan.cyanbridge.ui.adglasses
 
-import androidx.compose.foundation.Image
+import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -12,6 +12,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.rounded.KeyboardArrowRight
 import androidx.compose.material.icons.outlined.DeveloperMode
@@ -29,7 +30,6 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.ImageVector
-import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
@@ -61,42 +61,67 @@ internal fun ADNativeSettingsHubScreen(
         Surface(
             modifier = Modifier.fillMaxWidth().clickable(onClick = onDevice),
             shape = MaterialTheme.shapes.large,
-            color = MaterialTheme.colorScheme.primaryContainer,
-            contentColor = MaterialTheme.colorScheme.onPrimaryContainer,
+            color = MaterialTheme.colorScheme.surface,
+            contentColor = MaterialTheme.colorScheme.onSurface,
+            tonalElevation = 1.dp,
         ) {
             Row(
-                modifier = Modifier.padding(horizontal = 18.dp, vertical = 16.dp),
+                modifier = Modifier.padding(horizontal = 17.dp, vertical = 17.dp),
                 verticalAlignment = Alignment.CenterVertically,
             ) {
                 Surface(
+                    modifier = Modifier.size(width = 78.dp, height = 56.dp),
                     shape = MaterialTheme.shapes.medium,
-                    color = MaterialTheme.colorScheme.surface,
+                    color = MaterialTheme.colorScheme.surfaceVariant,
+                    contentColor = MaterialTheme.colorScheme.onSurface,
                 ) {
-                    Image(
-                        painter = painterResource(R.drawable.ad_glasses_hero_v4),
-                        contentDescription = "Glasses",
-                        modifier = Modifier.size(width = 86.dp, height = 48.dp).padding(6.dp),
-                        contentScale = ContentScale.Fit,
-                    )
+                    Box(contentAlignment = Alignment.Center) {
+                        Icon(
+                            painter = painterResource(R.drawable.ic_device_heycyan),
+                            contentDescription = "Glasses",
+                            modifier = Modifier.size(width = 58.dp, height = 34.dp),
+                            tint = ADColors.Ink,
+                        )
+                    }
                 }
+
                 Column(Modifier.padding(start = 14.dp).weight(1f)) {
                     Text(
-                        presentation.identityLabel ?: "Glasses",
+                        presentation.identityLabel ?: "Your glasses",
                         style = MaterialTheme.typography.titleLarge,
+                        fontWeight = FontWeight.SemiBold,
                         maxLines = 1,
                         overflow = TextOverflow.Ellipsis,
                     )
-                    Spacer(Modifier.height(3.dp))
-                    Text(
-                        presentation.statusLabel,
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.72f),
-                    )
+                    Spacer(Modifier.height(5.dp))
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Box(
+                            Modifier
+                                .size(7.dp)
+                                .background(
+                                    if (presentation.connected) ADColors.Success else MaterialTheme.colorScheme.outline,
+                                    CircleShape,
+                                ),
+                        )
+                        Text(
+                            when {
+                                presentation.connected -> "Ready to use"
+                                presentation.connecting -> "Connecting to your glasses"
+                                presentation.shouldOpenSetup -> "Tap to connect your glasses"
+                                else -> "Tap to reconnect or manage"
+                            },
+                            modifier = Modifier.padding(start = 7.dp),
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis,
+                        )
+                    }
                 }
                 Icon(
                     Icons.AutoMirrored.Rounded.KeyboardArrowRight,
                     contentDescription = null,
-                    tint = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.65f),
+                    tint = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
             }
         }
