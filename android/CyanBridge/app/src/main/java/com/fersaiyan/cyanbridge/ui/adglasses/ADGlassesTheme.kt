@@ -180,8 +180,6 @@ fun ADGlassesTheme(content: @Composable () -> Unit) {
     if (!view.isInEditMode) {
         SideEffect {
             context.findActivity()?.window?.let { window ->
-                window.statusBarColor = ADColors.Background.value.toInt()
-                window.navigationBarColor = ADColors.Surface.value.toInt()
                 WindowCompat.getInsetsController(window, view).apply {
                     isAppearanceLightStatusBars = true
                     isAppearanceLightNavigationBars = true
