@@ -31,6 +31,7 @@ import androidx.compose.material.icons.rounded.Translate
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
@@ -280,32 +281,54 @@ private fun ADHomeAction(
     active: Boolean = false,
     onClick: () -> Unit,
 ) {
-    val container = if (active) ADColors.SurfaceSubtle else ADColors.Surface
-    val iconContainer = if (active) ADColors.Ink else ADColors.SurfaceSubtle
+    val cardColor = if (active) ADColors.SurfaceSubtle else ADColors.Surface
+    val iconStageColor = if (active) ADColors.Ink else MaterialTheme.colorScheme.surfaceVariant
     val iconColor = if (active) ADColors.Surface else ADColors.Ink
 
-    Column(
-        modifier = modifier
-            .heightIn(min = 112.dp)
-            .background(container, RoundedCornerShape(22.dp))
-            .clickable(onClick = onClick)
-            .padding(horizontal = 14.dp, vertical = 15.dp),
-        horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = Arrangement.Center,
+    Surface(
+        onClick = onClick,
+        modifier = modifier.heightIn(min = 126.dp),
+        shape = RoundedCornerShape(24.dp),
+        color = cardColor,
+        tonalElevation = 1.dp,
     ) {
-        Box(
-            Modifier.size(54.dp).background(iconContainer, RoundedCornerShape(18.dp)),
-            contentAlignment = Alignment.Center,
-        ) {
-            Icon(icon, null, tint = iconColor, modifier = Modifier.size(26.dp))
+        Column(Modifier.padding(8.dp)) {
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(72.dp)
+                    .background(iconStageColor, RoundedCornerShape(18.dp)),
+                contentAlignment = Alignment.Center,
+            ) {
+                Icon(
+                    icon,
+                    contentDescription = null,
+                    tint = iconColor,
+                    modifier = Modifier.size(31.dp),
+                )
+            }
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(start = 8.dp, end = 7.dp, top = 10.dp, bottom = 7.dp),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Text(
+                    title,
+                    modifier = Modifier.weight(1f),
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.SemiBold,
+                    maxLines = 1,
+                )
+                if (active) {
+                    Box(
+                        Modifier
+                            .size(7.dp)
+                            .background(ADColors.Ink, CircleShape),
+                    )
+                }
+            }
         }
-        Spacer(Modifier.height(11.dp))
-        Text(
-            title,
-            style = MaterialTheme.typography.titleMedium,
-            fontWeight = FontWeight.SemiBold,
-            maxLines = 1,
-        )
     }
 }
 
