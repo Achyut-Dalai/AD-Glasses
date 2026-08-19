@@ -1,6 +1,5 @@
 package com.fersaiyan.cyanbridge.ui.adglasses
 
-import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -11,7 +10,6 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.Mic
@@ -20,13 +18,11 @@ import androidx.compose.material.icons.outlined.Visibility
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.ImageVector
-import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.fersaiyan.cyanbridge.BuildConfig
 
@@ -34,36 +30,22 @@ import com.fersaiyan.cyanbridge.BuildConfig
 internal fun ADMinimalAboutScreen(onBack: () -> Unit) {
     ADPageLayout("About", onBack) {
         Column(
-            modifier = Modifier.fillMaxWidth().padding(horizontal = 2.dp, vertical = 2.dp),
+            modifier = Modifier.fillMaxWidth().padding(horizontal = 2.dp, vertical = 4.dp),
             verticalArrangement = Arrangement.spacedBy(12.dp),
         ) {
-            Text(
-                "AD Glasses",
-                style = MaterialTheme.typography.headlineMedium,
-                fontWeight = FontWeight.SemiBold,
-            )
-            Text(
-                "A glasses-first AI companion. The phone does the heavy work without becoming the destination.",
-                style = MaterialTheme.typography.bodyLarge,
-                color = ADColors.Muted,
-            )
-            HorizontalDivider(color = ADColors.Separator)
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Text("Version", style = MaterialTheme.typography.bodyMedium, color = ADColors.Muted)
                 Spacer(Modifier.weight(1f))
                 Text(BuildConfig.VERSION_NAME, style = MaterialTheme.typography.labelLarge)
             }
+            HorizontalDivider(color = ADColors.Separator)
         }
 
-        Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-            Text(
-                "Built around the glasses",
-                style = MaterialTheme.typography.titleLarge,
-                fontWeight = FontWeight.SemiBold,
-            )
+        Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+            Text("Built around the glasses", style = MaterialTheme.typography.headlineSmall)
             Text(
                 "Voice, vision and lightweight actions stay centered on what the glasses can do naturally. The phone remains the engine for AI, storage and integrations.",
-                style = MaterialTheme.typography.bodyMedium,
+                style = MaterialTheme.typography.bodyLarge,
                 color = ADColors.Muted,
             )
         }
@@ -98,28 +80,23 @@ private fun ADAboutPrincipleCard(
     title: String,
     detail: String,
 ) {
-    Surface(
-        modifier = Modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(20.dp),
-        color = ADColors.Surface,
-        border = BorderStroke(1.dp, ADColors.Separator),
-        shadowElevation = 1.dp,
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .background(ADColors.Surface, RoundedCornerShape(18.dp))
+            .padding(16.dp),
+        verticalAlignment = Alignment.Top,
     ) {
-        Row(
-            modifier = Modifier.padding(16.dp),
-            verticalAlignment = Alignment.Top,
+        Box(
+            modifier = Modifier.size(42.dp).background(ADColors.SurfaceSubtle, RoundedCornerShape(12.dp)),
+            contentAlignment = Alignment.Center,
         ) {
-            Box(
-                modifier = Modifier.size(44.dp).background(ADColors.SurfaceSubtle, RoundedCornerShape(14.dp)),
-                contentAlignment = Alignment.Center,
-            ) {
-                Icon(icon, contentDescription = null, tint = ADColors.Ink, modifier = Modifier.size(22.dp))
-            }
-            Column(Modifier.padding(start = 13.dp).weight(1f)) {
-                Text(title, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold)
-                Spacer(Modifier.height(3.dp))
-                Text(detail, style = MaterialTheme.typography.bodyMedium, color = ADColors.Muted)
-            }
+            Icon(icon, contentDescription = null, tint = ADColors.Ink, modifier = Modifier.size(21.dp))
+        }
+        Column(Modifier.padding(start = 13.dp).weight(1f)) {
+            Text(title, style = MaterialTheme.typography.titleMedium)
+            Spacer(Modifier.height(3.dp))
+            Text(detail, style = MaterialTheme.typography.bodyMedium, color = ADColors.Muted)
         }
     }
 }
