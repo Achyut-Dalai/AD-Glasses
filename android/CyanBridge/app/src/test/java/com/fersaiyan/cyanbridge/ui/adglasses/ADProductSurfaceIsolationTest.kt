@@ -81,6 +81,7 @@ class ADProductSurfaceIsolationTest {
         assertTrue(File(uiDir, "ADNativeConversationScreen.kt").isFile)
         assertTrue(File(uiDir, "ADNativeLibraryScreens.kt").isFile)
         assertTrue(File(uiDir, "ADExpressiveLibraryHome.kt").isFile)
+        assertTrue(File(uiDir, "ADExpressiveIcons.kt").isFile)
         assertTrue(File(uiDir, "ADNativeAiScreen.kt").isFile)
         assertTrue(File(uiDir, "ADAssistantAppsScreen.kt").isFile)
         assertTrue(File(uiDir, "ADNativeSettingsHubScreen.kt").isFile)
@@ -121,16 +122,18 @@ class ADProductSurfaceIsolationTest {
             "src/main/java/com/fersaiyan/cyanbridge/ui/adglasses/ADGlassesApp.kt",
         ).readText()
 
-        listOf("Ask AI", "Photo", "Video", "Translate", "Soundbites", "Audio", "Lens")
+        listOf("Ask AI", "Photo", "Video", "Translate", "Soundbites", "Audio", "LENS")
             .forEach { label -> assertTrue("Home should surface $label", home.contains("\"$label\"")) }
         assertTrue(home.contains("AssistantCapability.TRANSLATOR"))
         assertTrue(home.contains("AssistantCapability.MEETING_NOTES"))
         assertTrue(home.contains("onClick = host.onImageQuestion"))
-        assertTrue(home.contains("Icons.Outlined.Mic"))
-        assertTrue(home.contains("Icons.Outlined.PhotoCamera"))
-        assertTrue(home.contains("Icons.Outlined.Videocam"))
-        assertTrue(home.contains("Icons.Rounded.Translate"))
-        assertFalse(home.contains("ADHomeArtworkIcon("))
+        assertTrue(home.contains("glyph = ADGlyph.ASK"))
+        assertTrue(home.contains("glyph = ADGlyph.PHOTO"))
+        assertTrue(home.contains("glyph = ADGlyph.VIDEO"))
+        assertTrue(home.contains("glyph = ADGlyph.TRANSLATE"))
+        assertTrue(home.contains("glyph = ADGlyph.SOUNDBITES"))
+        assertTrue(home.contains("glyph = ADGlyph.AUDIO"))
+        assertTrue(home.contains("ADGlyphIcon(ADGlyph.LENS"))
         assertFalse(home.contains("Smart Lens"))
         assertFalse(home.contains("Search Web"))
         assertFalse(home.contains("ADHomeLink("))
@@ -151,6 +154,7 @@ class ADProductSurfaceIsolationTest {
 
         assertTrue(library.contains("ADLibraryPrimaryDestination("))
         assertTrue(library.contains("ADLibraryCompactDestination("))
+        assertTrue(library.contains("ADGlyph.SYNC"))
         assertFalse(library.contains("ON THIS PHONE"))
         assertFalse(library.contains("compact = true"))
 
@@ -209,11 +213,11 @@ class ADProductSurfaceIsolationTest {
             "src/main/java/com/fersaiyan/cyanbridge/ui/adglasses/ADConversationRichContent.kt",
         ).readText()
 
-        assertTrue(prompt.contains("Icons.Outlined.Terminal"))
+        assertTrue(prompt.contains("ADGlyph.PROMPT"))
         assertTrue(prompt.contains("ADColors.SurfaceSubtle"))
         assertTrue(prompt.contains("ADAssistantTurn"))
         assertTrue(prompt.contains("What do you want to know?"))
-        assertTrue(prompt.contains("Ask AI…"))
+        assertTrue(prompt.contains("Ask anything…"))
         assertTrue(prompt.contains("session.startNewConversation()"))
         assertTrue(prompt.contains("ADActivityWaveform"))
         assertTrue(prompt.contains("AudioSessionCoordinator.isBusy()"))
@@ -223,6 +227,7 @@ class ADProductSurfaceIsolationTest {
         assertTrue(rich.contains("ADConversationLinkKind.VIDEO"))
         assertTrue(rich.contains("ADConversationLinkKind.AUDIO"))
         assertTrue(rich.contains("ADConversationLinkKind.DOCUMENT"))
+        assertTrue(rich.contains("ADTechFontFamily"))
     }
 
     @Test
@@ -254,7 +259,8 @@ class ADProductSurfaceIsolationTest {
         assertTrue(welcome.contains("text = \"YOUR AI\""))
         assertTrue(welcome.contains("text = \"YOUR DATA\""))
         assertTrue(welcome.contains("R.drawable.ad_glasses_hero_v4"))
-        assertTrue(welcome.contains("RoundedCornerShape(24.dp)"))
+        assertTrue(welcome.contains("RoundedCornerShape(32.dp)"))
+        assertTrue(welcome.contains("ADWelcomeCapability("))
     }
 
     @Test
@@ -295,6 +301,7 @@ class ADProductSurfaceIsolationTest {
 
         assertTrue(deviceCenter.contains("title = \"Sync media\""))
         assertTrue(deviceCenter.contains("title = \"Firmware\""))
+        assertTrue(deviceCenter.contains("ADGlyph.DEVICE"))
         assertFalse(deviceCenter.contains("title = \"Advanced\""))
         assertFalse(deviceCenter.contains("onAdvanced"))
         assertFalse(settings.contains("title = \"Device diagnostics\""))

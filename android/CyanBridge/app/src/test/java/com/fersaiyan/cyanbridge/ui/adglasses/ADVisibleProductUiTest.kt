@@ -112,8 +112,10 @@ class ADVisibleProductUiTest {
         assertTrue(home.contains("onClick = host.onImageQuestion"))
         assertTrue(home.contains("toggleCapability(AssistantCapability.TRANSLATOR)"))
         assertTrue(home.contains("toggleCapability(AssistantCapability.MEETING_NOTES)"))
-        listOf("Ask AI", "Photo", "Video", "Translate", "Soundbites", "Audio", "Lens")
+        listOf("Ask AI", "Photo", "Video", "Translate", "Soundbites", "Audio", "LENS")
             .forEach { label -> assertTrue(home.contains("\"$label\"")) }
+        assertTrue(home.contains("glyph = ADGlyph.ASK"))
+        assertTrue(home.contains("ADGlyphIcon(ADGlyph.LENS"))
         assertFalse(home.contains("Search Web"))
         assertFalse(home.contains("Smart Lens"))
     }
