@@ -9,7 +9,6 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
@@ -18,10 +17,6 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.rounded.KeyboardArrowRight
-import androidx.compose.material.icons.outlined.GraphicEq
-import androidx.compose.material.icons.outlined.Image
-import androidx.compose.material.icons.outlined.Notes
-import androidx.compose.material.icons.outlined.Sync
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
@@ -29,7 +24,6 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -51,7 +45,7 @@ internal fun ADExpressiveLibraryHome(
             top = 16.dp,
             bottom = 24.dp,
         ),
-        verticalArrangement = Arrangement.spacedBy(16.dp),
+        verticalArrangement = Arrangement.spacedBy(18.dp),
     ) {
         item {
             ADScreenIntro(
@@ -65,22 +59,21 @@ internal fun ADExpressiveLibraryHome(
             Surface(
                 onClick = onOpenSync,
                 modifier = Modifier.fillMaxWidth(),
-                shape = RoundedCornerShape(26.dp),
+                shape = RoundedCornerShape(28.dp),
                 color = ADColors.Ink,
                 contentColor = ADColors.Surface,
             ) {
                 Row(
-                    modifier = Modifier.padding(horizontal = 16.dp, vertical = 15.dp),
+                    modifier = Modifier.padding(horizontal = 17.dp, vertical = 16.dp),
                     verticalAlignment = Alignment.CenterVertically,
                 ) {
                     Surface(
-                        modifier = Modifier.size(48.dp),
-                        shape = RoundedCornerShape(16.dp),
+                        modifier = Modifier.size(50.dp),
+                        shape = RoundedCornerShape(17.dp),
                         color = ADColors.Surface.copy(alpha = 0.13f),
-                        contentColor = ADColors.Surface,
                     ) {
                         Box(contentAlignment = Alignment.Center) {
-                            Icon(Icons.Outlined.Sync, contentDescription = null, modifier = Modifier.size(22.dp))
+                            ADGlyphIcon(ADGlyph.SYNC, ADColors.Surface, Modifier.size(27.dp))
                         }
                     }
                     Column(Modifier.padding(start = 12.dp).weight(1f)) {
@@ -89,7 +82,7 @@ internal fun ADExpressiveLibraryHome(
                             style = MaterialTheme.typography.titleLarge,
                             fontWeight = FontWeight.SemiBold,
                         )
-                        Spacer(Modifier.height(2.dp))
+                        Spacer(Modifier.size(2.dp))
                         Text(
                             if (transferActive) "Open transfer details" else "Bring new photos, videos and audio onto this phone",
                             style = MaterialTheme.typography.bodySmall,
@@ -99,7 +92,7 @@ internal fun ADExpressiveLibraryHome(
                         )
                     }
                     Surface(shape = CircleShape, color = ADColors.Surface.copy(alpha = 0.13f)) {
-                        Box(Modifier.size(36.dp), contentAlignment = Alignment.Center) {
+                        Box(Modifier.size(38.dp), contentAlignment = Alignment.Center) {
                             Icon(
                                 Icons.AutoMirrored.Rounded.KeyboardArrowRight,
                                 contentDescription = null,
@@ -112,27 +105,27 @@ internal fun ADExpressiveLibraryHome(
         }
 
         item {
-            Column(verticalArrangement = Arrangement.spacedBy(9.dp)) {
+            Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
                 ADSectionTitle("Browse")
                 ADLibraryPrimaryDestination(
-                    icon = Icons.Outlined.Image,
+                    glyph = ADGlyph.LIBRARY,
                     title = "Captures",
                     detail = "Photos and videos from your glasses",
                     onClick = onCaptures,
                 )
                 Row(
                     modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(9.dp),
+                    horizontalArrangement = Arrangement.spacedBy(10.dp),
                 ) {
                     ADLibraryCompactDestination(
-                        icon = Icons.Outlined.GraphicEq,
+                        glyph = ADGlyph.AUDIO,
                         title = "Recordings",
                         detail = "Audio and transcripts",
                         modifier = Modifier.weight(1f),
                         onClick = onRecordings,
                     )
                     ADLibraryCompactDestination(
-                        icon = Icons.Outlined.Notes,
+                        glyph = ADGlyph.PROMPT,
                         title = "Notes",
                         detail = "Saved notes and summaries",
                         modifier = Modifier.weight(1f),
@@ -146,61 +139,47 @@ internal fun ADExpressiveLibraryHome(
 
 @Composable
 private fun ADLibraryPrimaryDestination(
-    icon: ImageVector,
+    glyph: ADGlyph,
     title: String,
     detail: String,
     onClick: () -> Unit,
 ) {
     Surface(
         onClick = onClick,
-        modifier = Modifier.fillMaxWidth().heightIn(min = 148.dp),
-        shape = RoundedCornerShape(28.dp),
+        modifier = Modifier.fillMaxWidth().heightIn(min = 150.dp),
+        shape = RoundedCornerShape(30.dp),
         color = ADColors.Surface,
         border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant),
     ) {
         Row(
-            modifier = Modifier.padding(15.dp),
+            modifier = Modifier.padding(16.dp),
             verticalAlignment = Alignment.CenterVertically,
         ) {
             Box(
                 modifier = Modifier
-                    .size(width = 118.dp, height = 116.dp)
-                    .background(ADColors.SurfaceSubtle, RoundedCornerShape(22.dp)),
+                    .size(118.dp)
+                    .background(ADColors.SurfaceSubtle, RoundedCornerShape(24.dp)),
+                contentAlignment = Alignment.Center,
             ) {
-                Box(
-                    modifier = Modifier
-                        .size(width = 62.dp, height = 76.dp)
-                        .align(Alignment.CenterStart)
-                        .padding(start = 10.dp)
-                        .background(ADColors.Ink, RoundedCornerShape(17.dp)),
-                    contentAlignment = Alignment.Center,
+                Surface(
+                    modifier = Modifier.size(68.dp),
+                    shape = RoundedCornerShape(22.dp),
+                    color = ADColors.Ink,
                 ) {
-                    Icon(icon, contentDescription = null, tint = ADColors.Surface, modifier = Modifier.size(25.dp))
+                    Box(contentAlignment = Alignment.Center) {
+                        ADGlyphIcon(glyph, ADColors.Surface, Modifier.size(36.dp))
+                    }
                 }
-                Box(
-                    modifier = Modifier
-                        .size(48.dp)
-                        .align(Alignment.TopEnd)
-                        .padding(top = 10.dp, end = 8.dp)
-                        .background(ADColors.Surface, RoundedCornerShape(15.dp)),
-                )
-                Box(
-                    modifier = Modifier
-                        .size(width = 52.dp, height = 38.dp)
-                        .align(Alignment.BottomEnd)
-                        .padding(bottom = 10.dp, end = 8.dp)
-                        .background(ADColors.Surface, RoundedCornerShape(13.dp)),
-                )
             }
 
-            Column(Modifier.padding(start = 14.dp).weight(1f)) {
+            Column(Modifier.padding(start = 15.dp).weight(1f)) {
                 Text(
                     title,
                     style = MaterialTheme.typography.headlineSmall,
                     fontWeight = FontWeight.SemiBold,
                     maxLines = 1,
                 )
-                Spacer(Modifier.height(4.dp))
+                Spacer(Modifier.size(4.dp))
                 Text(
                     detail,
                     style = MaterialTheme.typography.bodySmall,
@@ -208,7 +187,7 @@ private fun ADLibraryPrimaryDestination(
                     maxLines = 3,
                     overflow = TextOverflow.Ellipsis,
                 )
-                Spacer(Modifier.height(12.dp))
+                Spacer(Modifier.size(13.dp))
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Text("Open library", style = MaterialTheme.typography.labelMedium, color = ADColors.Ink)
                     Spacer(Modifier.size(4.dp))
@@ -226,7 +205,7 @@ private fun ADLibraryPrimaryDestination(
 
 @Composable
 private fun ADLibraryCompactDestination(
-    icon: ImageVector,
+    glyph: ADGlyph,
     title: String,
     detail: String,
     modifier: Modifier = Modifier,
@@ -234,27 +213,25 @@ private fun ADLibraryCompactDestination(
 ) {
     Surface(
         onClick = onClick,
-        modifier = modifier.heightIn(min = 150.dp),
-        shape = RoundedCornerShape(23.dp),
+        modifier = modifier.heightIn(min = 156.dp),
+        shape = RoundedCornerShape(25.dp),
         color = ADColors.Surface,
         border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant),
     ) {
         Column(
-            modifier = Modifier.padding(13.dp),
+            modifier = Modifier.padding(14.dp),
             verticalArrangement = Arrangement.SpaceBetween,
         ) {
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Box(
-                    modifier = Modifier
-                        .size(44.dp)
-                        .background(ADColors.SurfaceSubtle, RoundedCornerShape(14.dp)),
+                    modifier = Modifier.size(48.dp).background(ADColors.SurfaceSubtle, RoundedCornerShape(16.dp)),
                     contentAlignment = Alignment.Center,
                 ) {
-                    Icon(icon, contentDescription = null, tint = ADColors.Ink, modifier = Modifier.size(21.dp))
+                    ADGlyphIcon(glyph, ADColors.Ink, Modifier.size(27.dp))
                 }
                 Spacer(Modifier.weight(1f))
                 Surface(shape = CircleShape, color = ADColors.SurfaceSubtle) {
-                    Box(Modifier.size(30.dp), contentAlignment = Alignment.Center) {
+                    Box(Modifier.size(31.dp), contentAlignment = Alignment.Center) {
                         Icon(
                             Icons.AutoMirrored.Rounded.KeyboardArrowRight,
                             contentDescription = null,
@@ -266,13 +243,8 @@ private fun ADLibraryCompactDestination(
             }
 
             Column {
-                Text(
-                    title,
-                    style = MaterialTheme.typography.titleMedium,
-                    fontWeight = FontWeight.SemiBold,
-                    maxLines = 1,
-                )
-                Spacer(Modifier.height(3.dp))
+                Text(title, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold, maxLines = 1)
+                Spacer(Modifier.size(3.dp))
                 Text(
                     detail,
                     style = MaterialTheme.typography.bodySmall,
