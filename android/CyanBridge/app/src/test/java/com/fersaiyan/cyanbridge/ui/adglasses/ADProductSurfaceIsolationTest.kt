@@ -114,28 +114,38 @@ class ADProductSurfaceIsolationTest {
         val ai = sourceFile(
             "src/main/java/com/fersaiyan/cyanbridge/ui/adglasses/ADNativeAiScreen.kt",
         ).readText()
+        val library = sourceFile(
+            "src/main/java/com/fersaiyan/cyanbridge/ui/adglasses/ADExpressiveLibraryHome.kt",
+        ).readText()
         val app = sourceFile(
             "src/main/java/com/fersaiyan/cyanbridge/ui/adglasses/ADGlassesApp.kt",
         ).readText()
 
-        listOf("Ask AI", "Photo", "Video", "Translate", "Soundbites", "Audio", "Smart Lens")
+        listOf("Ask AI", "Photo", "Video", "Translate", "Soundbites", "Audio", "Lens")
             .forEach { label -> assertTrue("Home should surface $label", home.contains("\"$label\"")) }
         assertTrue(home.contains("AssistantCapability.TRANSLATOR"))
         assertTrue(home.contains("AssistantCapability.MEETING_NOTES"))
         assertTrue(home.contains("onClick = host.onImageQuestion"))
+        assertFalse(home.contains("Smart Lens"))
         assertFalse(home.contains("Search Web"))
         assertFalse(home.contains("ADHomeLink("))
 
         assertTrue(ai.contains("\"Timeline\""))
-        assertTrue(ai.contains("\"DayNote\""))
+        assertTrue(ai.contains("\"Diary\""))
         assertTrue(ai.contains("\"Automation\""))
-        assertTrue(ai.contains("Switch("))
+        assertTrue(ai.contains("ADAiProviderPill"))
+        assertFalse(ai.contains("Switch("))
+        assertFalse(ai.contains("\"DayNote\""))
         assertFalse("Translate belongs on Home, not AI", ai.contains("\"Translate\""))
         assertFalse("Soundbites belongs on Home, not AI", ai.contains("\"Soundbites\""))
         assertFalse("Cron is retired", ai.contains("\"Cron\""))
         assertFalse(ai.contains("\"Capabilities\""))
         assertFalse(ai.contains("\"Modes\""))
         assertTrue(ai.contains("\"Assistant apps\""))
+
+        assertTrue(library.contains("ADLibraryDestinationRow("))
+        assertFalse(library.contains("ON THIS PHONE"))
+        assertFalse(library.contains("compact = true"))
 
         assertTrue(app.contains("ADTab.LIBRARY -> ADExpressiveLibraryHome("))
         assertTrue(app.contains("ADRoute.AI_ASSISTANT_APPS -> ADAssistantAppsScreen"))
@@ -220,7 +230,9 @@ class ADProductSurfaceIsolationTest {
         assertTrue(ai.contains("AssistantCapability.VISUAL_DIARY"))
         assertTrue(ai.contains("AssistantCapability.AUTO_DIARY"))
         assertTrue(ai.contains("AssistantCapability.LOCAL_AGENT"))
-        assertTrue(ai.contains("Switch("))
+        assertTrue(ai.contains("ADAiCapabilityCard("))
+        assertTrue(ai.contains("ADAiCapabilityRow("))
+        assertFalse(ai.contains("Switch("))
         assertFalse(ai.contains("ADStatusChip("))
         assertFalse(home.contains("ADStatusChip(\"OFF\""))
         assertFalse(home.contains("ADStatusChip(\"ON\""))
