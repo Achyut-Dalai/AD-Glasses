@@ -90,6 +90,14 @@ internal fun ADHomeSurface(
         Toast.makeText(context, result.spokenText, Toast.LENGTH_SHORT).show()
     }
 
+    fun startLiveTranslation() {
+        if (capabilityExecutor.isActive(AssistantCapability.TRANSLATOR)) return
+        val result = capabilityExecutor.execute(
+            AssistantCapabilityCommand(AssistantCapability.TRANSLATOR, AssistantCapabilityAction.START),
+        )
+        Toast.makeText(context, result.spokenText, Toast.LENGTH_SHORT).show()
+    }
+
     Column(Modifier.fillMaxSize()) {
         ADTopBar(showBrand = false, showSettings = true, onSettings = onOpenSettings)
         LazyColumn(
@@ -120,7 +128,8 @@ internal fun ADHomeSurface(
                 ADLargeGlassesHero(
                     state = state,
                     device = device,
-                    onOpenSettings = onOpenSettings,
+                    translationActive = translateActive,
+                    onLiveTranslation = ::startLiveTranslation,
                     onConnect = when {
                         device.connected -> host.onDisconnect
                         device.shouldOpenSetup -> host.onOpenDeviceSetup
@@ -355,8 +364,7 @@ private fun ADAskSkillCard(
     onClick: () -> Unit,
 ) {
     Surface(
-        onClick = onClick,
-        modifier = modifier.heightIn(min = 154.dp).semantics { contentDescription = "Assistant. Think, ask." },
+        modifier = modifier.heightIn(min = 154.dp).semantics { contentDescription = "Ask AI" },
         shape = RoundedCornerShape(17.dp),
         color = ADColors.Surface,
         contentColor = ADColors.Ink,
@@ -365,20 +373,7 @@ private fun ADAskSkillCard(
         Column(Modifier.padding(10.dp)) {
             ADAskArtwork(Modifier.fillMaxWidth().height(76.dp))
             Spacer(Modifier.height(9.dp))
-            Text(
-                "ASSISTANT",
-                style = MaterialTheme.typography.titleMedium,
-                color = ADColors.Ink,
-                fontWeight = FontWeight.SemiBold,
-            )
-            Text(
-                "THINK   ASK",
-                style = MaterialTheme.typography.labelSmall.copy(
-                    fontFamily = ADTechFontFamily,
-                    letterSpacing = 0.75.sp,
-                ),
-                color = ADColors.Muted,
-            )
+            ADHomeMiniPill("ASK AI", Modifier.fillMaxWidth(), onClick)
         }
     }
 }
@@ -407,12 +402,16 @@ private fun ADAskArtwork(modifier: Modifier = Modifier) {
 private fun ADLargeGlassesHero(
     state: GlassesDashboardUiState,
     device: ADDevicePresentation,
-    onOpenSettings: () -> Unit,
+    translationActive: Boolean,
+    onLiveTranslation: () -> Unit,
     onConnect: () -> Unit,
 ) {
     Surface(
-        onClick = onOpenSettings,
-        modifier = Modifier.fillMaxWidth(),
+        onClick = onLiveTranslation,
+        modifier = Modifier.fillMaxWidth().semantics {
+            contentDescription = "Live translation"
+            stateDescription = if (translationActive) "Active" else "Inactive"
+        },
         shape = RoundedCornerShape(19.dp),
         color = Color.Black,
         contentColor = ADColors.Ink,
@@ -458,22 +457,14 @@ private fun ADLargeGlassesHero(
                 modifier = Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 10.dp),
                 verticalAlignment = Alignment.CenterVertically,
             ) {
-                if (device.connecting) {
-                    CircularProgressIndicator(
-                        modifier = Modifier.size(13.dp),
-                        strokeWidth = 1.5.dp,
-                        color = ADColors.Ink,
-                    )
-                } else {
-                    Box(
-                        Modifier.size(6.dp).background(
-                            if (device.connected) ADColors.Success else ADColors.Red,
-                            CircleShape,
-                        ),
-                    )
-                }
+                Box(
+                    Modifier.size(6.dp).background(
+                        if (translationActive) ADColors.Success else ADColors.Red,
+                        CircleShape,
+                    ),
+                )
                 Text(
-                    device.statusLabel.uppercase(),
+                    "LIVE TRANSLATION",
                     modifier = Modifier.padding(start = 7.dp).weight(1f),
                     style = MaterialTheme.typography.labelLarge.copy(
                         fontFamily = ADTechFontFamily,

@@ -69,9 +69,8 @@ class ADVisibleProductUiTest {
     }
 
     @Test
-    fun homeKeepsSettingsThenCompactLensCaptureAndHeroOpensSettings() {
+    fun homeUsesMatchingAskPillAndLiveTranslationHero() {
         val home = appFile("src/main/java/com/fersaiyan/cyanbridge/ui/adglasses/ADHomeSurface.kt").readText()
-        val app = appFile("src/main/java/com/fersaiyan/cyanbridge/ui/adglasses/ADGlassesApp.kt").readText()
         assertTrue(home.contains("onClick = host.onVoiceQuestion"))
         assertTrue(home.contains("onPhoto = host.onCapturePhoto"))
         assertTrue(home.contains("onVideo = host.onToggleVideo"))
@@ -83,16 +82,20 @@ class ADVisibleProductUiTest {
         assertTrue(home.indexOf("ADSectionTitle(\"CAPTURE\")") < home.indexOf("ADLargeGlassesHero("))
         assertTrue(home.contains("toggleCapability(AssistantCapability.TRANSLATOR)"))
         assertTrue(home.contains("toggleCapability(AssistantCapability.MEETING_NOTES)"))
-        listOf("ASSISTANT", "THINK   ASK", "PHOTO", "VIDEO", "Translate", "Record", "Soundbites", "AUDIO", "CAPTURE")
+        listOf("ASK AI", "LIVE TRANSLATION", "PHOTO", "VIDEO", "Translate", "Record", "Soundbites", "AUDIO", "CAPTURE")
             .forEach { label -> assertTrue(home.contains("\"$label\"")) }
 
+        assertFalse(home.contains("\"ASSISTANT\""))
+        assertFalse(home.contains("\"THINK   ASK\""))
         assertFalse(home.contains("Text(\"AD GLASSES\""))
-        assertFalse(home.contains("Text(\"Ask AI\""))
-        assertFalse(home.contains("Text(\"Voice\""))
+        assertTrue(home.contains("ADHomeMiniPill(\"PHOTO\", Modifier.weight(1f), onPhoto)"))
+        assertTrue(home.contains("ADHomeMiniPill(\"VIDEO\", Modifier.weight(1f), onVideo)"))
+        assertTrue(home.contains("ADHomeMiniPill(\"ASK AI\", Modifier.fillMaxWidth(), onClick)"))
         assertTrue(home.contains("ADLargeGlassesHero("))
-        assertTrue(home.contains("onOpenSettings = onOpenSettings"))
-        assertTrue(home.contains("onClick = onOpenSettings"))
-        assertTrue(app.contains("onOpenSettings = { navigateTo(ADRoute.SETTINGS) }"))
+        assertTrue(home.contains("translationActive = translateActive"))
+        assertTrue(home.contains("onLiveTranslation = ::startLiveTranslation"))
+        assertTrue(home.contains("onClick = onLiveTranslation"))
+        assertTrue(home.contains("AssistantCapabilityCommand(AssistantCapability.TRANSLATOR, AssistantCapabilityAction.START)"))
         assertTrue(home.contains("R.drawable.ad_glasses_hero_v4"))
         assertTrue(home.contains(".height(184.dp)"))
         assertTrue(home.contains(".heightIn(min = 122.dp)"))
@@ -102,8 +105,6 @@ class ADVisibleProductUiTest {
         assertTrue(home.contains("ADCameraArtwork("))
         assertTrue(home.contains("heightIn(min = 154.dp)"))
         assertTrue(home.contains("Modifier.fillMaxWidth().height(76.dp)"))
-        assertTrue(home.contains("ADHomeMiniPill(\"PHOTO\""))
-        assertTrue(home.contains("ADHomeMiniPill(\"VIDEO\""))
         assertTrue(home.contains("fontFamily = ADTechFontFamily"))
         assertTrue(home.contains("letterSpacing = 0.75.sp"))
         assertFalse(home.contains("Icons.Outlined.CameraAlt"))
