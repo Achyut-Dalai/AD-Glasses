@@ -82,7 +82,7 @@ class ADProductSurfaceIsolationTest {
     }
 
     @Test
-    fun uploadedWallpaperOptionsAndLogoRemainAuthoritative() {
+    fun greyWallpaperAndAlternateLogoRemainAuthoritative() {
         val appearance = sourceFile("src/main/java/com/fersaiyan/cyanbridge/ui/adglasses/ADAppearance.kt").readText()
         val app = sourceFile("src/main/java/com/fersaiyan/cyanbridge/ui/adglasses/ADGlassesApp.kt").readText()
         val settings = sourceFile("src/main/java/com/fersaiyan/cyanbridge/ui/adglasses/ADNativeSettingsHubScreen.kt").readText()
@@ -95,16 +95,16 @@ class ADProductSurfaceIsolationTest {
         val logo = sourceFile("src/main/res/drawable-nodpi/ad_user_app_icon.jpg")
         val oldLogo = sourceFile("src/main/res/drawable-nodpi/ad_user_app_icon.webp")
 
-        listOf(grey, v2, abstract).forEach { wallpaper ->
-            assertTrue("Wallpaper asset must exist: ${wallpaper.name}", wallpaper.isFile && wallpaper.length() > 0L)
-        }
+        assertTrue(grey.isFile && grey.length() > 0L)
+        assertFalse(v2.exists())
+        assertFalse(abstract.exists())
         assertFalse(oldBackground.exists())
         assertTrue(logo.isFile && logo.length() > 0L)
         assertFalse(oldLogo.exists())
         assertTrue(appearance.contains("enum class ADWallpaperStyle"))
         assertTrue(appearance.contains("R.drawable.ad_wallpaper_grey"))
-        assertTrue(appearance.contains("R.drawable.ad_wallpaper_v2"))
-        assertTrue(appearance.contains("R.drawable.ad_wallpaper_abstract"))
+        assertFalse(appearance.contains("R.drawable.ad_wallpaper_v2"))
+        assertFalse(appearance.contains("R.drawable.ad_wallpaper_abstract"))
         assertTrue(appearance.contains("ADWallpaperPreferences"))
         assertTrue(appearance.contains("ContentScale.Crop"))
         assertTrue(app.contains("ADWallpaperBackground {"))
