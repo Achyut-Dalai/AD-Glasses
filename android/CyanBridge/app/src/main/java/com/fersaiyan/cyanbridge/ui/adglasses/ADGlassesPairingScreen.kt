@@ -20,7 +20,6 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.rounded.KeyboardArrowRight
 import androidx.compose.material.icons.outlined.Bluetooth
 import androidx.compose.material.icons.outlined.Close
 import androidx.compose.material.icons.outlined.Refresh
@@ -225,7 +224,7 @@ private fun ADPairingDeviceRow(device: ScannedDevice, onClick: () -> Unit) {
                 maxLines = 1,
             )
         }
-        Icon(Icons.AutoMirrored.Rounded.KeyboardArrowRight, "Connect", tint = ADColors.Muted, modifier = Modifier.size(16.dp))
+        ADGlyphIcon(ADGlyph.NEXT, ADColors.Muted, Modifier.size(16.dp))
     }
 }
 
