@@ -25,8 +25,6 @@ enum class ADWallpaperStyle(
     val drawableRes: Int,
 ) {
     GREY("Grey", R.drawable.ad_wallpaper_grey),
-    V2("V2", R.drawable.ad_wallpaper_v2),
-    ABSTRACT("Abstract", R.drawable.ad_wallpaper_abstract),
 }
 
 internal object ADWallpaperPreferences {
