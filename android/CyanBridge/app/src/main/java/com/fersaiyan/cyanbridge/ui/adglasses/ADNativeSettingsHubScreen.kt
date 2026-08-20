@@ -24,6 +24,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.rounded.KeyboardArrowRight
 import androidx.compose.material.icons.outlined.Info
+import androidx.compose.material.icons.outlined.Language
 import androidx.compose.material.icons.outlined.Settings
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
@@ -74,7 +75,7 @@ internal fun ADNativeSettingsHubScreen(
                 ADSettingsTile(ADGlyph.STORAGE, "Storage", Modifier.weight(1f), onClick = onStorage)
             }
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                ADSettingsTile(ADGlyph.LANGUAGE, "Language", Modifier.weight(1f), onClick = onLanguage)
+                ADSettingsIconTile(Icons.Outlined.Language, "Language", Modifier.weight(1f), onClick = onLanguage)
                 ADSettingsTile(ADGlyph.PERMISSIONS, "Permissions", Modifier.weight(1f), onClick = onPermissions)
             }
         }
@@ -234,6 +235,43 @@ private fun ADSettingsTile(
             Text(
                 title.uppercase(),
                 style = MaterialTheme.typography.labelLarge.copy(fontFamily = ADTechFontFamily),
+                color = ADColors.Ink,
+                maxLines = 1,
+            )
+        }
+    }
+}
+
+/** Language intentionally follows the clean icon treatment used by AI configuration cards. */
+@Composable
+private fun ADSettingsIconTile(
+    icon: ImageVector,
+    title: String,
+    modifier: Modifier = Modifier,
+    onClick: () -> Unit,
+) {
+    Surface(
+        onClick = onClick,
+        modifier = modifier.heightIn(min = 86.dp),
+        shape = RoundedCornerShape(14.dp),
+        color = ADColors.Surface,
+        contentColor = ADColors.Ink,
+        border = BorderStroke(1.dp, ADColors.Outline),
+    ) {
+        Column(Modifier.padding(12.dp), verticalArrangement = Arrangement.SpaceBetween) {
+            Surface(
+                modifier = Modifier.size(32.dp),
+                shape = RoundedCornerShape(9.dp),
+                color = ADColors.SurfaceSubtle,
+                contentColor = ADColors.Ink,
+            ) {
+                Box(contentAlignment = Alignment.Center) {
+                    Icon(icon, contentDescription = null, modifier = Modifier.size(17.dp))
+                }
+            }
+            Text(
+                title,
+                style = MaterialTheme.typography.labelLarge,
                 color = ADColors.Ink,
                 maxLines = 1,
             )

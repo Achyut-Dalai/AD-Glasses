@@ -23,7 +23,10 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.outlined.GraphicEq
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
@@ -34,6 +37,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
@@ -113,7 +117,7 @@ internal fun ADHomeSurface(
                             ADLiveTile(
                                 title = "RECORDING",
                                 detail = state.meeting.bannerLabel.ifBlank { state.meeting.sourceLabel },
-                                glyph = ADGlyph.AUDIO,
+                                icon = Icons.Outlined.GraphicEq,
                                 modifier = Modifier.weight(1f),
                                 onClick = host.onStopRecording,
                             )
@@ -131,7 +135,7 @@ internal fun ADHomeSurface(
                 }
             }
 
-            item { ADGlyphMatrixFeature() }
+            item { ADLensMatrixAction(onClick = host.onImageQuestion) }
 
             item {
                 Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -175,13 +179,12 @@ internal fun ADHomeSurface(
                         )
                         ADHomeAction(
                             title = "Audio",
-                            glyph = ADGlyph.AUDIO,
+                            icon = Icons.Outlined.GraphicEq,
                             active = state.meeting.isRecording,
                             modifier = Modifier.weight(1f),
                             onClick = if (state.meeting.isRecording) host.onStopRecording else host.onStartRecording,
                         )
                     }
-                    ADLensAction(onClick = host.onImageQuestion)
                 }
             }
         }
@@ -302,33 +305,29 @@ private fun ADHeroMetric(label: String, value: String) {
             ),
             color = ADColors.Muted,
         )
-        Text(
-            value,
-            style = MaterialTheme.typography.labelLarge,
-            color = ADColors.Ink,
-            maxLines = 1,
-        )
+        Text(value, style = MaterialTheme.typography.labelLarge, color = ADColors.Ink, maxLines = 1)
     }
 }
 
+/** Lens is the one deliberately matrix-driven Home feature. */
 @Composable
-private fun ADGlyphMatrixFeature() {
-    val phase by rememberInfiniteTransition(label = "glyph-matrix").animateFloat(
+private fun ADLensMatrixAction(onClick: () -> Unit) {
+    val phase by rememberInfiniteTransition(label = "lens-matrix").animateFloat(
         initialValue = 0f,
         targetValue = 1f,
         animationSpec = infiniteRepeatable(
             animation = tween(durationMillis = 1850),
             repeatMode = RepeatMode.Restart,
         ),
-        label = "glyph-matrix-phase",
+        label = "lens-matrix-phase",
     )
     val pattern = remember {
         listOf(
-            "10101",
             "01110",
             "11011",
-            "00100",
-            "11111",
+            "10101",
+            "11011",
+            "01110",
         )
     }
     val litCells = remember(pattern) {
@@ -344,7 +343,10 @@ private fun ADGlyphMatrixFeature() {
     val activeCell = litCells[activeIndex]
 
     Surface(
-        modifier = Modifier.fillMaxWidth(),
+        onClick = onClick,
+        modifier = Modifier
+            .fillMaxWidth()
+            .semantics { contentDescription = "Lens matrix. See, capture, ask." },
         shape = RoundedCornerShape(15.dp),
         color = ADColors.Surface,
         contentColor = ADColors.Ink,
@@ -356,7 +358,7 @@ private fun ADGlyphMatrixFeature() {
         ) {
             Column(Modifier.weight(1f)) {
                 Text(
-                    "GLYPH MATRIX / 01",
+                    "LENS MATRIX / V1",
                     style = MaterialTheme.typography.labelSmall.copy(
                         fontFamily = ADTechFontFamily,
                         letterSpacing = 1.05.sp,
@@ -365,7 +367,7 @@ private fun ADGlyphMatrixFeature() {
                 )
                 Spacer(Modifier.height(4.dp))
                 Text(
-                    "SEE  ASK  REMEMBER",
+                    "SEE   CAPTURE   ASK",
                     style = MaterialTheme.typography.titleMedium.copy(
                         fontFamily = ADTechFontFamily,
                         letterSpacing = 0.75.sp,
@@ -402,44 +404,54 @@ private fun ADGlyphMatrixFeature() {
 @Composable
 private fun ADHomeAction(
     title: String,
-    glyph: ADGlyph,
     modifier: Modifier = Modifier,
+    glyph: ADGlyph? = null,
+    icon: ImageVector? = null,
     active: Boolean = false,
     onClick: () -> Unit,
 ) {
     Surface(
         onClick = onClick,
         modifier = modifier
-            .heightIn(min = 96.dp)
+            .heightIn(min = 92.dp)
             .semantics {
                 contentDescription = title
                 if (active) stateDescription = "Active"
             },
-        shape = RoundedCornerShape(16.dp),
+        shape = RoundedCornerShape(14.dp),
         color = ADColors.Surface,
         contentColor = ADColors.Ink,
         border = BorderStroke(1.dp, if (active) ADColors.Ink.copy(alpha = 0.42f) else ADColors.Outline),
     ) {
         Column(
-            modifier = Modifier.padding(11.dp),
+            modifier = Modifier.padding(10.dp),
             verticalArrangement = Arrangement.SpaceBetween,
         ) {
             Row(verticalAlignment = Alignment.Top) {
-                ADGlyphIcon(
-                    glyph = glyph,
-                    tint = ADColors.Ink,
-                    modifier = Modifier.size(31.dp),
-                    accent = if (active) ADColors.Red else null,
-                )
+                Surface(
+                    modifier = Modifier.size(32.dp),
+                    shape = RoundedCornerShape(9.dp),
+                    color = ADColors.SurfaceSubtle,
+                    contentColor = ADColors.Ink,
+                ) {
+                    Box(contentAlignment = Alignment.Center) {
+                        when {
+                            icon != null -> Icon(icon, contentDescription = null, modifier = Modifier.size(17.dp))
+                            glyph != null -> ADGlyphIcon(
+                                glyph = glyph,
+                                tint = ADColors.Ink,
+                                modifier = Modifier.size(20.dp),
+                                accent = if (active) ADColors.Red else null,
+                            )
+                        }
+                    }
+                }
                 Spacer(Modifier.weight(1f))
                 if (active) Box(Modifier.size(5.dp).background(ADColors.Red, CircleShape))
             }
             Text(
-                title.uppercase(),
-                style = MaterialTheme.typography.labelLarge.copy(
-                    fontFamily = ADTechFontFamily,
-                    letterSpacing = 0.55.sp,
-                ),
+                title,
+                style = MaterialTheme.typography.labelLarge,
                 color = ADColors.Ink,
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis,
@@ -449,47 +461,12 @@ private fun ADHomeAction(
 }
 
 @Composable
-private fun ADLensAction(onClick: () -> Unit) {
-    Surface(
-        onClick = onClick,
-        modifier = Modifier
-            .fillMaxWidth()
-            .heightIn(min = 70.dp)
-            .semantics { contentDescription = "Lens" },
-        shape = RoundedCornerShape(16.dp),
-        color = ADColors.Surface,
-        contentColor = ADColors.Ink,
-        border = BorderStroke(1.dp, ADColors.Outline),
-    ) {
-        Row(
-            modifier = Modifier.padding(horizontal = 12.dp, vertical = 10.dp),
-            verticalAlignment = Alignment.CenterVertically,
-        ) {
-            ADGlyphIcon(
-                glyph = ADGlyph.LENS,
-                tint = ADColors.Ink,
-                modifier = Modifier.size(34.dp),
-                accent = ADColors.Red,
-            )
-            Text(
-                "LENS",
-                modifier = Modifier.padding(start = 11.dp),
-                style = MaterialTheme.typography.labelLarge.copy(
-                    fontFamily = ADTechFontFamily,
-                    letterSpacing = 0.7.sp,
-                ),
-                color = ADColors.Ink,
-            )
-        }
-    }
-}
-
-@Composable
 private fun ADLiveTile(
     title: String,
     detail: String,
-    glyph: ADGlyph,
     modifier: Modifier = Modifier,
+    glyph: ADGlyph? = null,
+    icon: ImageVector? = null,
     onClick: () -> Unit,
 ) {
     Surface(
@@ -504,7 +481,10 @@ private fun ADLiveTile(
             modifier = Modifier.padding(horizontal = 10.dp, vertical = 8.dp),
             verticalAlignment = Alignment.CenterVertically,
         ) {
-            ADGlyphIcon(glyph, ADColors.Ink, Modifier.size(17.dp), accent = ADColors.Red)
+            when {
+                icon != null -> Icon(icon, contentDescription = null, tint = ADColors.Ink, modifier = Modifier.size(17.dp))
+                glyph != null -> ADGlyphIcon(glyph, ADColors.Ink, Modifier.size(17.dp), accent = ADColors.Red)
+            }
             Text(
                 title,
                 modifier = Modifier.padding(start = 7.dp),
