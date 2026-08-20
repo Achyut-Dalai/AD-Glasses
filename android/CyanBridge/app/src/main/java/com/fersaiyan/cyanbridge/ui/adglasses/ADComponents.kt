@@ -22,6 +22,12 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.rounded.ArrowBack
+import androidx.compose.material.icons.automirrored.rounded.KeyboardArrowRight
+import androidx.compose.material.icons.outlined.AutoAwesome
+import androidx.compose.material.icons.rounded.Check
+import androidx.compose.material.icons.rounded.Settings
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Icon
@@ -43,7 +49,6 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.fersaiyan.cyanbridge.R
 
 @Composable
 internal fun ADAssetIcon(
@@ -85,33 +90,28 @@ internal fun ADTopBar(
                 border = BorderStroke(1.dp, ADColors.Outline),
             ) {
                 Box(contentAlignment = Alignment.Center) {
-                    ADGlyphIcon(
-                        ADGlyph.BACK,
+                    Icon(
+                        Icons.AutoMirrored.Rounded.ArrowBack,
+                        contentDescription = "Back",
                         tint = ADColors.Ink,
-                        modifier = Modifier.size(18.dp),
+                        modifier = Modifier.size(17.dp),
                     )
                 }
             }
         }
 
         if (showBrand) {
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                ADGlassesMark(Modifier.size(30.dp))
-                Column(Modifier.padding(start = 8.dp)) {
-                    Text(
-                        text = "AD GLASSES",
-                        style = MaterialTheme.typography.labelSmall.copy(
-                            fontFamily = ADTechFontFamily,
-                            letterSpacing = 1.1.sp,
-                        ),
-                        color = ADColors.InkSoft,
-                    )
-                    Text(
-                        text = "AI eyewear",
-                        style = MaterialTheme.typography.titleSmall,
-                        color = ADColors.Ink,
-                    )
-                }
+            Column {
+                Text(
+                    text = "AD GLASSES",
+                    style = MaterialTheme.typography.labelSmall.copy(letterSpacing = 1.1.sp),
+                    color = ADColors.InkSoft,
+                )
+                Text(
+                    text = "AI eyewear",
+                    style = MaterialTheme.typography.titleSmall,
+                    color = ADColors.Ink,
+                )
             }
         } else if (title != null) {
             Text(
@@ -135,10 +135,11 @@ internal fun ADTopBar(
                 border = BorderStroke(1.dp, ADColors.Outline),
             ) {
                 Box(contentAlignment = Alignment.Center) {
-                    ADGlyphIcon(
-                        ADGlyph.SETTINGS,
+                    Icon(
+                        Icons.Rounded.Settings,
+                        contentDescription = "Settings",
                         tint = ADColors.Ink,
-                        modifier = Modifier.size(18.dp),
+                        modifier = Modifier.size(16.dp),
                     )
                 }
             }
@@ -148,12 +149,24 @@ internal fun ADTopBar(
 
 @Composable
 internal fun ADGlassesMark(modifier: Modifier = Modifier) {
-    Image(
-        painter = painterResource(R.drawable.ad_user_app_icon),
-        contentDescription = "AD Glasses",
+    Surface(
         modifier = modifier,
-        contentScale = ContentScale.Fit,
-    )
+        shape = RoundedCornerShape(10.dp),
+        color = ADColors.Surface,
+        border = BorderStroke(1.dp, ADColors.Outline),
+    ) {
+        Box(contentAlignment = Alignment.Center) {
+            Text(
+                text = "AD",
+                style = MaterialTheme.typography.labelLarge.copy(
+                    fontFamily = ADTechFontFamily,
+                    fontWeight = FontWeight.Bold,
+                    letterSpacing = 0.8.sp,
+                ),
+                color = ADColors.Ink,
+            )
+        }
+    }
 }
 
 @Composable
@@ -161,14 +174,14 @@ internal fun ADBottomNavigation(selected: ADTab, onSelected: (ADTab) -> Unit) {
     Column(
         modifier = Modifier
             .fillMaxWidth()
-            .background(Color.Black.copy(alpha = 0.90f))
+            .background(Color.Black)
             .navigationBarsPadding()
             .padding(horizontal = 10.dp, vertical = 5.dp),
     ) {
         Surface(
             modifier = Modifier.fillMaxWidth(),
             shape = RoundedCornerShape(15.dp),
-            color = Color.Black.copy(alpha = 0.92f),
+            color = Color.Black,
             border = BorderStroke(1.dp, ADColors.Outline),
         ) {
             Row(
@@ -202,12 +215,6 @@ private fun ADBottomNavigationItem(
         targetValue = if (selected) ADColors.Ink else ADColors.Muted,
         label = "nav-label-color",
     )
-    val glyph = when (tab) {
-        ADTab.HOME -> ADGlyph.HOME
-        ADTab.CHATS -> ADGlyph.PROMPT
-        ADTab.AI -> ADGlyph.AI
-        ADTab.LIBRARY -> ADGlyph.LIBRARY
-    }
 
     Column(
         modifier = modifier
@@ -222,18 +229,40 @@ private fun ADBottomNavigationItem(
         verticalArrangement = Arrangement.Center,
     ) {
         Box(contentAlignment = Alignment.Center) {
-            ADGlyphIcon(
-                glyph = glyph,
-                tint = iconTint,
-                modifier = Modifier.size(19.dp),
-                accent = if (selected) ADColors.Red else null,
-            )
+            if (tab == ADTab.AI) {
+                Icon(
+                    imageVector = Icons.Outlined.AutoAwesome,
+                    contentDescription = "AI",
+                    tint = iconTint,
+                    modifier = Modifier.size(19.dp),
+                )
+            } else {
+                val glyph = when (tab) {
+                    ADTab.HOME -> ADGlyph.HOME
+                    ADTab.CHATS -> ADGlyph.PROMPT
+                    ADTab.AI -> ADGlyph.AI
+                    ADTab.LIBRARY -> ADGlyph.LIBRARY
+                }
+                ADGlyphIcon(
+                    glyph = glyph,
+                    tint = iconTint,
+                    modifier = Modifier.size(18.dp),
+                )
+            }
+            if (selected) {
+                Box(
+                    Modifier
+                        .align(Alignment.TopEnd)
+                        .size(3.5.dp)
+                        .background(ADColors.Red, CircleShape),
+                )
+            }
         }
         Spacer(Modifier.height(3.dp))
         Text(
             tab.label.uppercase(),
             color = labelTint,
-            style = MaterialTheme.typography.labelSmall.copy(fontFamily = ADTechFontFamily),
+            style = MaterialTheme.typography.labelSmall,
             fontWeight = if (selected) FontWeight.SemiBold else FontWeight.Normal,
             maxLines = 1,
         )
@@ -251,10 +280,7 @@ internal fun ADScreenIntro(
         if (!eyebrow.isNullOrBlank()) {
             Text(
                 eyebrow.uppercase(),
-                style = MaterialTheme.typography.labelSmall.copy(
-                    fontFamily = ADTechFontFamily,
-                    letterSpacing = 0.9.sp,
-                ),
+                style = MaterialTheme.typography.labelSmall.copy(letterSpacing = 0.9.sp),
                 color = ADColors.InkSoft,
             )
             Spacer(Modifier.height(3.dp))
@@ -275,17 +301,14 @@ internal fun ADSectionTitle(title: String, action: String? = null, onAction: () 
     ) {
         Text(
             title.uppercase(),
-            style = MaterialTheme.typography.labelSmall.copy(
-                fontFamily = ADTechFontFamily,
-                letterSpacing = 0.8.sp,
-            ),
+            style = MaterialTheme.typography.labelSmall.copy(letterSpacing = 0.8.sp),
             color = ADColors.InkSoft,
         )
         Spacer(Modifier.weight(1f))
         if (action != null) {
             Text(
                 action.uppercase(),
-                style = MaterialTheme.typography.labelSmall.copy(fontFamily = ADTechFontFamily),
+                style = MaterialTheme.typography.labelSmall,
                 color = ADColors.Ink,
                 modifier = Modifier.clickable(onClick = onAction).padding(5.dp),
             )
@@ -366,9 +389,7 @@ internal fun ADStatusChip(
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(4.dp),
     ) {
-        if (showCheck) {
-            ADGlyphIcon(ADGlyph.CHECK, foreground, Modifier.size(12.dp))
-        }
+        if (showCheck) Icon(Icons.Rounded.Check, null, tint = foreground, modifier = Modifier.size(11.dp))
         Text(text.uppercase(), color = foreground, style = MaterialTheme.typography.labelSmall)
     }
 }
@@ -407,8 +428,9 @@ internal fun ADSettingsRow(
         if (trailing != null) {
             trailing()
         } else {
-            ADGlyphIcon(
-                ADGlyph.NEXT,
+            Icon(
+                Icons.AutoMirrored.Rounded.KeyboardArrowRight,
+                null,
                 tint = ADColors.Muted,
                 modifier = Modifier.size(16.dp),
             )
