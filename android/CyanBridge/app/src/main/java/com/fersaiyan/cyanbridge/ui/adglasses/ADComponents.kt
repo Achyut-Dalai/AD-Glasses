@@ -104,18 +104,14 @@ internal fun ADTopBar(
         }
 
         if (showBrand) {
-            Column {
-                Text(
-                    text = "AD GLASSES",
-                    style = MaterialTheme.typography.labelSmall.copy(letterSpacing = 1.1.sp),
-                    color = ADColors.InkSoft,
-                )
-                Text(
-                    text = "AI eyewear",
-                    style = MaterialTheme.typography.titleSmall,
-                    color = ADColors.Ink,
-                )
-            }
+            Text(
+                text = "AD GLASSES",
+                style = MaterialTheme.typography.labelLarge.copy(
+                    fontFamily = ADTechFontFamily,
+                    letterSpacing = 0.9.sp,
+                ),
+                color = ADColors.Ink,
+            )
         } else if (title != null) {
             Text(
                 text = title,
