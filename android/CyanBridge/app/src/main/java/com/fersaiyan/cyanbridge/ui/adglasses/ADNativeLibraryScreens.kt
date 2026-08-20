@@ -24,12 +24,8 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.outlined.Pause
-import androidx.compose.material.icons.outlined.PlayArrow
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.HorizontalDivider
-import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
@@ -183,7 +179,7 @@ private fun ADCapturePreview(item: SyncedMediaItem) {
         if (item.isVideo) {
             Surface(modifier = Modifier.size(38.dp), shape = CircleShape, color = Color.Black.copy(alpha = .72f)) {
                 Box(contentAlignment = Alignment.Center) {
-                    Icon(Icons.Outlined.PlayArrow, "Play video", tint = Color.White, modifier = Modifier.size(22.dp))
+                    ADGlyphIcon(ADGlyph.PLAY, Color.White, Modifier.size(22.dp))
                 }
             }
         }
@@ -272,11 +268,11 @@ internal fun ADNativeRecordingsScreen(onBack: () -> Unit) {
                                     color = if (playingId == session.id) ADColors.Red else ADColors.SurfaceSubtle,
                                 ) {
                                     Box(contentAlignment = Alignment.Center) {
-                                        Icon(
-                                            if (playingId == session.id) Icons.Outlined.Pause else Icons.Outlined.PlayArrow,
-                                            contentDescription = if (playingId == session.id) "Stop" else "Play",
+                                        ADGlyphIcon(
+                                            if (playingId == session.id) ADGlyph.PAUSE else ADGlyph.PLAY,
                                             tint = if (playingId == session.id) Color.White else ADColors.Ink,
                                             modifier = Modifier.size(18.dp),
+                                            accent = if (playingId == session.id) Color.White else null,
                                         )
                                     }
                                 }
