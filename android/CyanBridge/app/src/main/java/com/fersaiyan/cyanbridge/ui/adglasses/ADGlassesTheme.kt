@@ -3,6 +3,7 @@ package com.fersaiyan.cyanbridge.ui.adglasses
 import android.app.Activity
 import android.content.Context
 import android.content.ContextWrapper
+import android.os.Build
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.MaterialExpressiveTheme
 import androidx.compose.material3.MotionScheme
@@ -24,38 +25,40 @@ import androidx.core.view.WindowCompat
 /**
  * AD Glasses visual system.
  *
- * The product is intentionally dark, grayscale-first and compact. Red is not an accent
- * sprayed across cards; it is a scarce signal for recording, selection and the one action
- * that deserves immediate attention. This borrows the restraint and information density
- * of Nothing OS without copying its proprietary typefaces or assets.
+ * Wallpaper/canvas can carry a little charcoal texture, but interactive cards should read
+ * as true black. Red is a scarce signal, not a large background treatment.
  */
 internal object ADColors {
-    val Ink = Color(0xFFF3F3F3)
-    val InkSoft = Color(0xFFD1D1D1)
-    val Muted = Color(0xFF929292)
+    val Ink = Color(0xFFF4F4F2)
+    val InkSoft = Color(0xFFD9D9D5)
+    val Muted = Color(0xFFB6B6B0)
 
     val Background = Color(0xFF171717)
-    val Canvas = Color(0xFF1B1B1B)
-    val Surface = Color(0xFF242424)
-    val SurfaceSubtle = Color(0xFF2B2B2B)
-    val SurfacePressed = Color(0xFF343434)
-    val Glass = Color(0xE61F1F1F)
-    val Outline = Color(0xFF3A3A3A)
-    val Separator = Color(0xFF303030)
+    val Canvas = Color(0xFF141414)
+    val Surface = Color(0xFF090909)
+    val SurfaceSubtle = Color(0xFF171717)
+    val SurfacePressed = Color(0xFF202020)
+    val Glass = Color(0xF0080808)
+    val Outline = Color(0xFF343434)
+    val Separator = Color(0xFF252525)
 
-    /** Legacy names kept while the old page implementations are reskinned. */
-    val Blue = Color(0xFF343434)
-    val BlueDeep = Color(0xFF111111)
-    val BlueSoft = Color(0xFF2C2C2C)
+    /** Legacy names retained for hardware/product screens that still reference them. */
+    val Blue = Color(0xFF202020)
+    val BlueDeep = Color(0xFF090909)
+    val BlueSoft = Color(0xFF181818)
 
-    val Red = Color(0xFFD71920)
-    val RedSoft = Color(0xFF3A1A1C)
-    val Success = Color(0xFF9FCF9D)
-    val SuccessSoft = Color(0xFF213021)
-    val Warning = Color(0xFFE3B777)
-    val WarningSoft = Color(0xFF332719)
-    val Error = Color(0xFFFF6B65)
-    val ErrorSoft = Color(0xFF3B2020)
+    /** Bright red is for tiny state signals; RedAction is deliberately quieter. */
+    val Red = Color(0xFFCA343A)
+    val RedAction = Color(0xFF8F252B)
+    val RedSoft = Color(0xFF2B1517)
+    val RedContent = Color(0xFFEADADA)
+
+    val Success = Color(0xFFA8D2A5)
+    val SuccessSoft = Color(0xFF182418)
+    val Warning = Color(0xFFE0BA7B)
+    val WarningSoft = Color(0xFF2A2116)
+    val Error = Color(0xFFE4847F)
+    val ErrorSoft = Color(0xFF2E1919)
 }
 
 private val ADColorScheme = darkColorScheme(
@@ -68,9 +71,9 @@ private val ADColorScheme = darkColorScheme(
     secondaryContainer = ADColors.SurfaceSubtle,
     onSecondaryContainer = ADColors.Ink,
     tertiary = ADColors.Red,
-    onTertiary = Color.White,
+    onTertiary = ADColors.RedContent,
     tertiaryContainer = ADColors.RedSoft,
-    onTertiaryContainer = Color.White,
+    onTertiaryContainer = ADColors.RedContent,
     background = ADColors.Background,
     onBackground = ADColors.Ink,
     surface = ADColors.Surface,
@@ -202,6 +205,15 @@ fun ADGlassesTheme(content: @Composable () -> Unit) {
     if (!view.isInEditMode) {
         SideEffect {
             context.findActivity()?.window?.let { window ->
+                // Keep the gesture / three-button navigation region dark as well as the app.
+                @Suppress("DEPRECATION")
+                run {
+                    window.navigationBarColor = android.graphics.Color.BLACK
+                    window.statusBarColor = android.graphics.Color.TRANSPARENT
+                }
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+                    window.isNavigationBarContrastEnforced = false
+                }
                 WindowCompat.getInsetsController(window, view).apply {
                     isAppearanceLightStatusBars = false
                     isAppearanceLightNavigationBars = false
