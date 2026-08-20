@@ -20,29 +20,33 @@ class ADProductSurfaceIsolationTest {
     }
 
     @Test
-    fun homeUsesAiStyleCardsMatrixGlyphsAndOnlyTheRealHeroImage() {
+    fun homeUsesLargeHeroRestrainedActionsAndAnimatedMatrixFeature() {
         val home = sourceFile("src/main/java/com/fersaiyan/cyanbridge/ui/adglasses/ADHomeSurface.kt").readText()
         val glyphs = sourceFile("src/main/java/com/fersaiyan/cyanbridge/ui/adglasses/ADExpressiveIcons.kt").readText()
 
         listOf("Ask AI", "Photo", "Video", "Translate", "Soundbites", "Audio", "Lens")
             .forEach { label -> assertTrue("Home should keep $label", home.contains("\"$label\"")) }
-        listOf("Voice question", "Capture", "Record", "Live speech", "Speech notes", "Look at it. Ask about it.")
-            .forEach { detail -> assertTrue("Home should use compact AI-style supporting copy", home.contains("\"$detail\"")) }
-        assertTrue(home.contains("ADHomeActionCard("))
-        assertTrue(home.contains("ADHeroSignalMatrix("))
-        assertTrue(home.contains("ADTechFontFamily"))
+        assertTrue(home.contains("ADLargeGlassesHero("))
+        assertTrue(home.contains(".height(184.dp)"))
         assertTrue(home.contains("R.drawable.ad_glasses_hero_v4"))
-        assertFalse(home.contains("ADGlyphMatrixCard("))
+        assertTrue(home.contains("ADGlyphMatrixFeature("))
+        assertTrue(home.contains("GLYPH MATRIX / 01"))
+        assertTrue(home.contains("SEE  ASK  REMEMBER"))
+        assertTrue(home.contains("rememberInfiniteTransition"))
+        assertTrue(home.contains("ADHomeAction("))
+        assertTrue(home.contains("ADTechFontFamily"))
+
+        listOf("Voice question", "Live speech", "Speech notes", "Look at it. Ask about it.")
+            .forEach { unwanted -> assertFalse("Home should avoid explanatory action subtext", home.contains("\"$unwanted\"")) }
         assertFalse(home.contains("R.drawable.ad_codex_ask"))
         assertFalse(home.contains("R.drawable.ad_codex_video"))
         assertFalse(home.contains("R.drawable.ad_codex_language"))
         assertFalse(home.contains("R.drawable.ad_codex_audio"))
 
-        assertTrue(glyphs.contains("7×7 matrix"))
-        assertTrue(glyphs.contains("rememberInfiniteTransition"))
-        assertTrue(glyphs.contains("ADGlyph.SETTINGS"))
-        assertTrue(glyphs.contains("ADGlyph.CHECK"))
-        assertTrue(glyphs.contains("ADGlyph.NEXT"))
+        assertTrue(glyphs.contains("compact monochrome glyph family"))
+        assertFalse(glyphs.contains("7×7 matrix"))
+        assertFalse(glyphs.contains("ADGlyph.SETTINGS"))
+        assertFalse(glyphs.contains("ADGlyph.NEXT"))
     }
 
     @Test
@@ -64,39 +68,48 @@ class ADProductSurfaceIsolationTest {
     }
 
     @Test
-    fun uploadedBackgroundReplacesGeneratedWallpaperPresets() {
+    fun uploadedBackgroundAndLogoRemainAuthoritative() {
         val appearance = sourceFile("src/main/java/com/fersaiyan/cyanbridge/ui/adglasses/ADAppearance.kt").readText()
         val app = sourceFile("src/main/java/com/fersaiyan/cyanbridge/ui/adglasses/ADGlassesApp.kt").readText()
         val settings = sourceFile("src/main/java/com/fersaiyan/cyanbridge/ui/adglasses/ADNativeSettingsHubScreen.kt").readText()
+        val pairing = sourceFile("src/main/java/com/fersaiyan/cyanbridge/ui/adglasses/ADGlassesPairingScreen.kt").readText()
+        val components = sourceFile("src/main/java/com/fersaiyan/cyanbridge/ui/adglasses/ADComponents.kt").readText()
         val background = sourceFile("src/main/res/drawable-nodpi/ad_user_background.jpeg")
+        val logo = sourceFile("src/main/res/drawable-nodpi/ad_user_app_icon.webp")
 
         assertTrue(background.isFile && background.length() > 0L)
+        assertTrue(logo.isFile && logo.length() > 0L)
         assertTrue(appearance.contains("R.drawable.ad_user_background"))
         assertTrue(appearance.contains("ContentScale.Crop"))
         assertFalse(appearance.contains("ADWallpaperStyle"))
-        assertFalse(appearance.contains("DOT_GRID"))
-        assertFalse(appearance.contains("ORBIT"))
-        assertFalse(appearance.contains("LINES"))
         assertTrue(app.contains("ADWallpaperBackground {"))
-        assertFalse(app.contains("ADAppearancePrefs"))
-        assertFalse(app.contains("var wallpaper"))
+        assertTrue(pairing.contains("ADWallpaperBackground {"))
         assertFalse(settings.contains("ADWallpaperPicker"))
-        assertFalse(settings.contains("ADSectionTitle(\"Wallpaper\")"))
+        assertTrue(components.contains("R.drawable.ad_user_app_icon"))
     }
 
     @Test
-    fun uploadedLogoOwnsBrandMarksAndMatrixNavigation() {
+    fun navigationKeepsGoodControlsInsteadOfMatrixReplacingEverything() {
         val components = sourceFile("src/main/java/com/fersaiyan/cyanbridge/ui/adglasses/ADComponents.kt").readText()
-        val logo = sourceFile("src/main/res/drawable-nodpi/ad_user_app_icon.webp")
+        val settings = sourceFile("src/main/java/com/fersaiyan/cyanbridge/ui/adglasses/ADNativeSettingsHubScreen.kt").readText()
 
-        assertTrue(logo.isFile && logo.length() > 0L)
-        assertTrue(components.contains("R.drawable.ad_user_app_icon"))
-        assertTrue(components.contains("ADGlyph.BACK"))
-        assertTrue(components.contains("ADGlyph.SETTINGS"))
-        assertTrue(components.contains("ADGlyph.AI"))
-        assertTrue(components.contains("ADGlyph.NEXT"))
-        assertFalse(components.contains("Icons.Outlined.AutoAwesome"))
-        assertFalse(components.contains("text = \"AD\""))
+        assertTrue(components.contains("Icons.AutoMirrored.Rounded.ArrowBack"))
+        assertTrue(components.contains("Icons.AutoMirrored.Rounded.KeyboardArrowRight"))
+        assertTrue(components.contains("Icons.Rounded.Settings"))
+        assertTrue(components.contains("Icons.Outlined.ChatBubbleOutline"))
+        assertTrue(components.contains("Icons.Outlined.AutoAwesome"))
+        assertFalse(components.contains("ADGlyph.BACK"))
+        assertFalse(components.contains("ADGlyph.NEXT"))
+        assertFalse(components.contains("ADGlyph.SETTINGS"))
+        assertTrue(settings.contains("ADGlyph.PRIVACY"))
+        assertTrue(settings.contains("ADGlyph.PERMISSIONS"))
+        assertFalse(settings.contains("ADGlyph.NEXT"))
+    }
+
+    @Test
+    fun pageLayoutForcesReadableDarkThemeContent() {
+        val page = sourceFile("src/main/java/com/fersaiyan/cyanbridge/ui/adglasses/ADPageLayout.kt").readText()
+        assertTrue(page.contains("LocalContentColor provides ADColors.Ink"))
     }
 
     @Test
