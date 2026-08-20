@@ -247,7 +247,10 @@ private fun ADBottomNavigationItem(
         Text(
             tab.label.uppercase(),
             color = labelTint,
-            style = MaterialTheme.typography.labelSmall,
+            style = MaterialTheme.typography.labelSmall.copy(
+                fontFamily = ADTechFontFamily,
+                letterSpacing = 0.45.sp,
+            ),
             fontWeight = if (selected) FontWeight.SemiBold else FontWeight.Normal,
             maxLines = 1,
         )
@@ -265,7 +268,10 @@ internal fun ADScreenIntro(
         if (!eyebrow.isNullOrBlank()) {
             Text(
                 eyebrow.uppercase(),
-                style = MaterialTheme.typography.labelSmall.copy(letterSpacing = 0.9.sp),
+                style = MaterialTheme.typography.labelSmall.copy(
+                    fontFamily = ADTechFontFamily,
+                    letterSpacing = 0.9.sp,
+                ),
                 color = ADColors.InkSoft,
             )
             Spacer(Modifier.height(3.dp))
@@ -286,14 +292,17 @@ internal fun ADSectionTitle(title: String, action: String? = null, onAction: () 
     ) {
         Text(
             title.uppercase(),
-            style = MaterialTheme.typography.labelSmall.copy(letterSpacing = 0.8.sp),
+            style = MaterialTheme.typography.labelSmall.copy(
+                fontFamily = ADTechFontFamily,
+                letterSpacing = 0.8.sp,
+            ),
             color = ADColors.InkSoft,
         )
         Spacer(Modifier.weight(1f))
         if (action != null) {
             Text(
                 action.uppercase(),
-                style = MaterialTheme.typography.labelSmall,
+                style = MaterialTheme.typography.labelSmall.copy(fontFamily = ADTechFontFamily),
                 color = ADColors.Ink,
                 modifier = Modifier.clickable(onClick = onAction).padding(5.dp),
             )
@@ -376,7 +385,11 @@ internal fun ADStatusChip(
         horizontalArrangement = Arrangement.spacedBy(4.dp),
     ) {
         if (showCheck) Icon(Icons.Rounded.Check, null, tint = foreground, modifier = Modifier.size(11.dp))
-        Text(text.uppercase(), color = foreground, style = MaterialTheme.typography.labelSmall)
+        Text(
+            text.uppercase(),
+            color = foreground,
+            style = MaterialTheme.typography.labelSmall.copy(fontFamily = ADTechFontFamily),
+        )
     }
 }
 
