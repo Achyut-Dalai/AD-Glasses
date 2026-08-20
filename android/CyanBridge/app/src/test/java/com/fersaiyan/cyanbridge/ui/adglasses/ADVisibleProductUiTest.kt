@@ -45,6 +45,7 @@ class ADVisibleProductUiTest {
         assertFalse(pairingActivity.contains("setContentView(R.layout.activity_device_bind)"))
         assertTrue(pairing.contains("ADWallpaperBackground {"))
         assertTrue(pairing.contains("Icons.Outlined.Bluetooth"))
+        assertTrue(pairing.contains("ADGlyph.NEXT"))
         assertFalse(pairing.contains("ADGlyph.DEVICE"))
     }
 
@@ -92,21 +93,32 @@ class ADVisibleProductUiTest {
     }
 
     @Test
-    fun preservedPromptNavigationAndSystemIconsStayOutOfTheMatrixExperiment() {
+    fun selectedPromptNavigationAndSystemIconsUseThePreservedMatrixDesigns() {
         val components = appFile("src/main/java/com/fersaiyan/cyanbridge/ui/adglasses/ADComponents.kt").readText()
+        val glyphs = appFile("src/main/java/com/fersaiyan/cyanbridge/ui/adglasses/ADExpressiveIcons.kt").readText()
         val settings = appFile("src/main/java/com/fersaiyan/cyanbridge/ui/adglasses/ADNativeSettingsHubScreen.kt").readText()
         val productSettings = appFile("src/main/java/com/fersaiyan/cyanbridge/ui/adglasses/ADProductSettingsScreens.kt").readText()
+        val firmware = appFile("src/main/java/com/fersaiyan/cyanbridge/ui/adglasses/ADFirmwareScreen.kt").readText()
+        val notes = appFile("src/main/java/com/fersaiyan/cyanbridge/ui/adglasses/ADNativeLibraryScreens.kt").readText()
+        val prompt = appFile("src/main/java/com/fersaiyan/cyanbridge/ui/adglasses/ADNativeConversationScreen.kt").readText()
 
         assertTrue(components.contains("Icons.Outlined.ChatBubbleOutline"))
-        assertTrue(components.contains("Icons.AutoMirrored.Rounded.ArrowBack"))
-        assertTrue(components.contains("Icons.AutoMirrored.Rounded.KeyboardArrowRight"))
+        assertTrue(components.contains("ADGlyph.BACK"))
+        assertTrue(components.contains("ADGlyph.NEXT"))
         assertTrue(components.contains("Icons.Rounded.Settings"))
-        assertFalse(components.contains("ADGlyph.BACK"))
-        assertFalse(components.contains("ADGlyph.NEXT"))
-        assertFalse(components.contains("ADGlyph.SETTINGS"))
+        assertFalse(components.contains("Icons.AutoMirrored.Rounded.ArrowBack"))
+        assertFalse(components.contains("Icons.AutoMirrored.Rounded.KeyboardArrowRight"))
+
+        listOf("ADGlyph.PROMPT", "ADGlyph.PRIVACY", "ADGlyph.PERMISSIONS", "ADGlyph.FIRMWARE", "ADGlyph.BACK", "ADGlyph.NEXT")
+            .forEach { selected -> assertTrue(glyphs.contains(selected)) }
+        assertTrue(glyphs.contains("selectedMatrixPattern"))
         assertTrue(settings.contains("ADGlyph.PRIVACY"))
         assertTrue(settings.contains("ADGlyph.PERMISSIONS"))
         assertTrue(productSettings.contains("ADGlyph.PERMISSIONS"))
+        assertTrue(firmware.contains("ADGlyph.FIRMWARE"))
+        assertTrue(notes.contains("ADGlyph.PROMPT"))
+        assertTrue(prompt.contains("ADGlyph.PROMPT"))
+
         assertTrue(settings.contains("Icons.Outlined.Language"))
         assertTrue(productSettings.contains("Icons.Outlined.Language"))
     }
@@ -117,7 +129,7 @@ class ADVisibleProductUiTest {
             cyanBridgeFile("package.json"),
             cyanBridgeFile("package-lock.json"),
             cyanBridgeFile("metro.config.js"),
-            appFile("src/App.tsx"),
+            cyanBridgeFile("src/App.tsx"),
             appFile("src/main/java/com/fersaiyan/cyanbridge/ui/reactnative"),
             appFile("src/main/res/layout/activity_chat_list.xml"),
             appFile("src/main/res/layout/activity_chat_thread.xml"),

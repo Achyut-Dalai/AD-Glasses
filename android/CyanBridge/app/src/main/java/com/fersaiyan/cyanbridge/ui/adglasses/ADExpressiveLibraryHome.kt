@@ -5,7 +5,6 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.heightIn
@@ -14,9 +13,6 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.rounded.KeyboardArrowRight
-import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
@@ -81,12 +77,7 @@ internal fun ADExpressiveLibraryHome(
                             Surface(modifier = Modifier.size(6.dp), shape = CircleShape, color = ADColors.Red) {}
                         }
                     } else {
-                        Icon(
-                            Icons.AutoMirrored.Rounded.KeyboardArrowRight,
-                            contentDescription = null,
-                            tint = ADColors.Muted,
-                            modifier = Modifier.size(16.dp),
-                        )
+                        ADGlyphIcon(ADGlyph.NEXT, ADColors.Muted, Modifier.size(16.dp))
                     }
                 }
             }
@@ -153,12 +144,7 @@ private fun ADLibraryPrimaryDestination(
                 color = ADColors.Ink,
                 fontWeight = FontWeight.SemiBold,
             )
-            Icon(
-                Icons.AutoMirrored.Rounded.KeyboardArrowRight,
-                contentDescription = null,
-                tint = ADColors.Muted,
-                modifier = Modifier.size(16.dp),
-            )
+            ADGlyphIcon(ADGlyph.NEXT, ADColors.Muted, Modifier.size(16.dp))
         }
     }
 }

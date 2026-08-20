@@ -23,8 +23,6 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.rounded.ArrowBack
-import androidx.compose.material.icons.automirrored.rounded.KeyboardArrowRight
 import androidx.compose.material.icons.outlined.AutoAwesome
 import androidx.compose.material.icons.outlined.ChatBubbleOutline
 import androidx.compose.material.icons.rounded.Check
@@ -93,11 +91,10 @@ internal fun ADTopBar(
                 border = BorderStroke(1.dp, ADColors.Outline),
             ) {
                 Box(contentAlignment = Alignment.Center) {
-                    Icon(
-                        Icons.AutoMirrored.Rounded.ArrowBack,
-                        contentDescription = "Back",
+                    ADGlyphIcon(
+                        ADGlyph.BACK,
                         tint = ADColors.Ink,
-                        modifier = Modifier.size(17.dp),
+                        modifier = Modifier.size(18.dp),
                     )
                 }
             }
@@ -427,9 +424,8 @@ internal fun ADSettingsRow(
         if (trailing != null) {
             trailing()
         } else {
-            Icon(
-                Icons.AutoMirrored.Rounded.KeyboardArrowRight,
-                null,
+            ADGlyphIcon(
+                ADGlyph.NEXT,
                 tint = ADColors.Muted,
                 modifier = Modifier.size(16.dp),
             )

@@ -1,7 +1,13 @@
 package com.fersaiyan.cyanbridge.ui.adglasses
 
+import androidx.compose.animation.core.RepeatMode
+import androidx.compose.animation.core.animateFloat
+import androidx.compose.animation.core.infiniteRepeatable
+import androidx.compose.animation.core.rememberInfiniteTransition
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.Canvas
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.ui.geometry.Offset
@@ -14,11 +20,11 @@ import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.graphics.drawscope.Stroke
 
 /**
- * AD's compact monochrome glyph family.
+ * AD's mixed icon family.
  *
- * The new family is intentionally flat and graphic: one stroke weight, simple geometry,
- * no glossy illustration inside action tiles, and an optional tiny red signal. The result
- * is closer to a Nothing-style instrument panel than a conventional Material icon grid.
+ * Most product actions use the restrained line treatment. The handful of matrix glyphs the
+ * product already established as signature controls are preserved exactly instead of being
+ * flattened into stock Material icons or forcing the matrix language onto every action.
  */
 internal enum class ADGlyph {
     HOME,
@@ -39,6 +45,8 @@ internal enum class ADGlyph {
     SYNC,
     FIRMWARE,
     LENS,
+    BACK,
+    NEXT,
 }
 
 @Composable
@@ -48,7 +56,28 @@ internal fun ADGlyphIcon(
     modifier: Modifier = Modifier,
     accent: Color? = null,
 ) {
+    val pulse by rememberInfiniteTransition(label = "ad-selected-glyph-pulse").animateFloat(
+        initialValue = 0.55f,
+        targetValue = 1f,
+        animationSpec = infiniteRepeatable(
+            animation = tween(durationMillis = 820),
+            repeatMode = RepeatMode.Reverse,
+        ),
+        label = "ad-selected-glyph-accent",
+    )
+
     Canvas(modifier = modifier) {
+        glyph.selectedMatrixPattern?.let { pattern ->
+            drawSelectedMatrixGlyph(
+                pattern = pattern,
+                tint = tint,
+                accent = accent,
+                accentCell = glyph.selectedMatrixAccentCell,
+                pulse = pulse,
+            )
+            return@Canvas
+        }
+
         val u = size.minDimension / 24f
         val stroke = Stroke(
             width = 1.55f * u,
@@ -74,6 +103,59 @@ internal fun ADGlyphIcon(
             ADGlyph.SYNC -> drawSync(tint, u, stroke)
             ADGlyph.FIRMWARE -> drawFirmware(tint, accent, u, stroke)
             ADGlyph.LENS -> drawLens(tint, accent, u, stroke)
+            ADGlyph.BACK, ADGlyph.NEXT -> Unit
+        }
+    }
+}
+
+private val ADGlyph.selectedMatrixPattern: List<String>?
+    get() = when (this) {
+        ADGlyph.PROMPT -> listOf("0111110", "1000001", "1010101", "1000001", "0111110", "0010000", "0100000")
+        ADGlyph.PRIVACY -> listOf("0011100", "0100010", "0100010", "1111111", "1001001", "1001001", "1111111")
+        ADGlyph.PERMISSIONS -> listOf("0011100", "0100010", "0100010", "0011100", "0111110", "1000001", "1000001")
+        ADGlyph.FIRMWARE -> listOf("0101010", "1111111", "1000001", "1011101", "1010101", "1000001", "1111111")
+        ADGlyph.BACK -> listOf("0001000", "0010000", "0100000", "1111110", "0100000", "0010000", "0001000")
+        ADGlyph.NEXT -> listOf("0010000", "0001000", "0000100", "1111110", "0000100", "0001000", "0010000")
+        else -> null
+    }
+
+private val ADGlyph.selectedMatrixAccentCell: Pair<Int, Int>?
+    get() = when (this) {
+        ADGlyph.PROMPT -> 2 to 4
+        ADGlyph.PRIVACY -> 4 to 3
+        ADGlyph.PERMISSIONS -> 0 to 3
+        ADGlyph.FIRMWARE -> 3 to 3
+        ADGlyph.BACK -> 3 to 0
+        ADGlyph.NEXT -> 3 to 5
+        else -> null
+    }
+
+private fun DrawScope.drawSelectedMatrixGlyph(
+    pattern: List<String>,
+    tint: Color,
+    accent: Color?,
+    accentCell: Pair<Int, Int>?,
+    pulse: Float,
+) {
+    val grid = 7
+    val cell = size.minDimension / 8.4f
+    val dot = cell * 0.56f
+    val matrixSize = cell * grid
+    val left = (size.width - matrixSize) / 2f + (cell - dot) / 2f
+    val top = (size.height - matrixSize) / 2f + (cell - dot) / 2f
+
+    pattern.forEachIndexed { row, line ->
+        line.forEachIndexed { column, bit ->
+            if (bit == '1') {
+                val isAccent = accent != null &&
+                    accentCell?.let { it.first == row && it.second == column } == true
+                drawRoundRect(
+                    color = if (isAccent) accent.copy(alpha = pulse) else tint,
+                    topLeft = Offset(left + column * cell, top + row * cell),
+                    size = Size(dot, dot),
+                    cornerRadius = CornerRadius(dot * 0.28f, dot * 0.28f),
+                )
+            }
         }
     }
 }
