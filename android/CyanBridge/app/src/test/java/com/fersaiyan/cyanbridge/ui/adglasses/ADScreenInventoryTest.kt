@@ -17,7 +17,7 @@ class ADScreenInventoryTest {
     fun currentRoutesRemainComplete() {
         assertEquals(
             setOf(
-                "MAIN", "DEVICE_CENTER", "SYNC", "SETTINGS", "AI_RELAY", "AI_LOCAL",
+                "MAIN", "SYNC", "SETTINGS", "AI_RELAY", "AI_LOCAL",
                 "AI_ASSISTANT_APPS", "PRIVACY", "STORAGE", "LANGUAGE", "PERMISSIONS",
                 "ADVANCED", "ABOUT", "FIRMWARE", "LIBRARY_CAPTURES", "LIBRARY_RECORDINGS",
                 "LIBRARY_NOTES",
@@ -34,7 +34,6 @@ class ADScreenInventoryTest {
             "ADTab.CHATS -> ADNativeConversationScreen(",
             "ADTab.AI -> ADNativeAiScreen(",
             "ADTab.LIBRARY -> ADExpressiveLibraryHome(",
-            "ADRoute.DEVICE_CENTER -> ADGlassesDeviceCenterScreen(",
             "ADRoute.SYNC -> ADSyncScreen(",
             "ADRoute.SETTINGS -> ADNativeSettingsHubScreen(",
             "ADRoute.AI_RELAY -> ADNativeRelaySettingsScreen(",
@@ -52,6 +51,8 @@ class ADScreenInventoryTest {
             "ADRoute.LIBRARY_NOTES -> ADNativeNotesScreen(",
         )
         requiredMappings.forEach { mapping -> assertTrue("Missing native AD route mapping: $mapping", app.contains(mapping)) }
+        assertFalse(app.contains("ADRoute.DEVICE_CENTER"))
+        assertFalse(sourceFile("src/main/java/com/fersaiyan/cyanbridge/ui/adglasses/ADGlassesDeviceCenterScreen.kt").exists())
     }
 
     @Test
