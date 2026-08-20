@@ -20,21 +20,27 @@ class ADProductSurfaceIsolationTest {
     }
 
     @Test
-    fun homeUsesLargeHeroRestrainedActionsAndAnimatedMatrixFeature() {
+    fun homeUsesLargeHeroLensMatrixAndConfigurationStyleActions() {
         val home = sourceFile("src/main/java/com/fersaiyan/cyanbridge/ui/adglasses/ADHomeSurface.kt").readText()
         val glyphs = sourceFile("src/main/java/com/fersaiyan/cyanbridge/ui/adglasses/ADExpressiveIcons.kt").readText()
 
-        listOf("Ask AI", "Photo", "Video", "Translate", "Soundbites", "Audio", "Lens")
+        listOf("Ask AI", "Photo", "Video", "Translate", "Soundbites", "Audio")
             .forEach { label -> assertTrue("Home should keep $label", home.contains("\"$label\"")) }
         assertTrue(home.contains("ADLargeGlassesHero("))
         assertTrue(home.contains(".height(184.dp)"))
         assertTrue(home.contains("R.drawable.ad_glasses_hero_v4"))
-        assertTrue(home.contains("ADGlyphMatrixFeature("))
-        assertTrue(home.contains("GLYPH MATRIX / 01"))
-        assertTrue(home.contains("SEE  ASK  REMEMBER"))
+        assertTrue(home.contains("ADLensMatrixAction("))
+        assertTrue(home.contains("LENS MATRIX / V1"))
+        assertTrue(home.contains("SEE   CAPTURE   ASK"))
         assertTrue(home.contains("rememberInfiniteTransition"))
-        assertTrue(home.contains("ADHomeAction("))
-        assertTrue(home.contains("ADTechFontFamily"))
+        assertFalse(home.contains("ADGlyphMatrixFeature("))
+        assertFalse(home.contains("GLYPH MATRIX / 01"))
+        assertFalse(home.contains("ADLensAction("))
+
+        assertTrue(home.contains("Icons.Outlined.GraphicEq"))
+        assertTrue(home.contains("shape = RoundedCornerShape(9.dp)"))
+        assertTrue(home.contains("color = ADColors.SurfaceSubtle"))
+        assertTrue(home.contains("style = MaterialTheme.typography.labelLarge"))
 
         listOf("Voice question", "Live speech", "Speech notes", "Look at it. Ask about it.")
             .forEach { unwanted -> assertFalse("Home should avoid explanatory action subtext", home.contains("\"$unwanted\"")) }
@@ -89,21 +95,29 @@ class ADProductSurfaceIsolationTest {
     }
 
     @Test
-    fun navigationKeepsGoodControlsInsteadOfMatrixReplacingEverything() {
+    fun preservedIconsStayPreservedWhileLanguageGetsItsOwnCleanTreatment() {
         val components = sourceFile("src/main/java/com/fersaiyan/cyanbridge/ui/adglasses/ADComponents.kt").readText()
         val settings = sourceFile("src/main/java/com/fersaiyan/cyanbridge/ui/adglasses/ADNativeSettingsHubScreen.kt").readText()
+        val productSettings = sourceFile("src/main/java/com/fersaiyan/cyanbridge/ui/adglasses/ADProductSettingsScreens.kt").readText()
+        val firmware = sourceFile("src/main/java/com/fersaiyan/cyanbridge/ui/adglasses/ADFirmwareScreen.kt").readText()
+        val library = sourceFile("src/main/java/com/fersaiyan/cyanbridge/ui/adglasses/ADExpressiveLibraryHome.kt").readText()
 
         assertTrue(components.contains("Icons.AutoMirrored.Rounded.ArrowBack"))
         assertTrue(components.contains("Icons.AutoMirrored.Rounded.KeyboardArrowRight"))
-        assertTrue(components.contains("Icons.Rounded.Settings"))
         assertTrue(components.contains("Icons.Outlined.ChatBubbleOutline"))
-        assertTrue(components.contains("Icons.Outlined.AutoAwesome"))
         assertFalse(components.contains("ADGlyph.BACK"))
         assertFalse(components.contains("ADGlyph.NEXT"))
-        assertFalse(components.contains("ADGlyph.SETTINGS"))
+
         assertTrue(settings.contains("ADGlyph.PRIVACY"))
         assertTrue(settings.contains("ADGlyph.PERMISSIONS"))
-        assertFalse(settings.contains("ADGlyph.NEXT"))
+        assertTrue(productSettings.contains("ADGlyph.PERMISSIONS"))
+        assertTrue(firmware.contains("Icons.Outlined"))
+        assertTrue(library.contains("title = \"Notes\""))
+
+        assertTrue(settings.contains("Icons.Outlined.Language"))
+        assertTrue(settings.contains("ADSettingsIconTile("))
+        assertTrue(productSettings.contains("Icons.Outlined.Language"))
+        assertFalse(productSettings.contains("R.drawable.ad_codex_language"))
     }
 
     @Test

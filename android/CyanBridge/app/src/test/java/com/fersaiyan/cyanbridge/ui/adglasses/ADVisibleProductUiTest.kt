@@ -67,19 +67,22 @@ class ADVisibleProductUiTest {
     }
 
     @Test
-    fun homeKeepsLargeProductHeroAndOneAnimatedMatrixMoment() {
+    fun homeKeepsLargeProductHeroAndTurnsLensIntoTheAnimatedMatrixMoment() {
         val home = appFile("src/main/java/com/fersaiyan/cyanbridge/ui/adglasses/ADHomeSurface.kt").readText()
         assertTrue(home.contains("onClick = host.onVoiceQuestion"))
         assertTrue(home.contains("onClick = host.onCapturePhoto"))
         assertTrue(home.contains("onClick = host.onToggleVideo"))
-        assertTrue(home.contains("onClick = host.onImageQuestion"))
+        assertTrue(home.contains("ADLensMatrixAction(onClick = host.onImageQuestion)"))
         assertTrue(home.contains("toggleCapability(AssistantCapability.TRANSLATOR)"))
         assertTrue(home.contains("toggleCapability(AssistantCapability.MEETING_NOTES)"))
-        listOf("Ask AI", "Photo", "Video", "Translate", "Soundbites", "Audio", "Lens")
+        listOf("Ask AI", "Photo", "Video", "Translate", "Soundbites", "Audio")
             .forEach { label -> assertTrue(home.contains("\"$label\"")) }
         assertTrue(home.contains("ADLargeGlassesHero("))
-        assertTrue(home.contains("ADGlyphMatrixFeature("))
-        assertTrue(home.contains("GLYPH MATRIX / 01"))
+        assertTrue(home.contains("LENS MATRIX / V1"))
+        assertTrue(home.contains("SEE   CAPTURE   ASK"))
+        assertTrue(home.contains("Icons.Outlined.GraphicEq"))
+        assertFalse(home.contains("ADGlyphMatrixFeature("))
+        assertFalse(home.contains("ADLensAction("))
         assertTrue(home.contains(".height(184.dp)"))
         assertTrue(home.contains("R.drawable.ad_glasses_hero_v4"))
         assertFalse(home.contains("R.drawable.ad_codex_ask"))
@@ -89,8 +92,11 @@ class ADVisibleProductUiTest {
     }
 
     @Test
-    fun navigationDoesNotTurnPromptOrSystemControlsIntoMatrixGlyphs() {
+    fun preservedPromptNavigationAndSystemIconsStayOutOfTheMatrixExperiment() {
         val components = appFile("src/main/java/com/fersaiyan/cyanbridge/ui/adglasses/ADComponents.kt").readText()
+        val settings = appFile("src/main/java/com/fersaiyan/cyanbridge/ui/adglasses/ADNativeSettingsHubScreen.kt").readText()
+        val productSettings = appFile("src/main/java/com/fersaiyan/cyanbridge/ui/adglasses/ADProductSettingsScreens.kt").readText()
+
         assertTrue(components.contains("Icons.Outlined.ChatBubbleOutline"))
         assertTrue(components.contains("Icons.AutoMirrored.Rounded.ArrowBack"))
         assertTrue(components.contains("Icons.AutoMirrored.Rounded.KeyboardArrowRight"))
@@ -98,6 +104,11 @@ class ADVisibleProductUiTest {
         assertFalse(components.contains("ADGlyph.BACK"))
         assertFalse(components.contains("ADGlyph.NEXT"))
         assertFalse(components.contains("ADGlyph.SETTINGS"))
+        assertTrue(settings.contains("ADGlyph.PRIVACY"))
+        assertTrue(settings.contains("ADGlyph.PERMISSIONS"))
+        assertTrue(productSettings.contains("ADGlyph.PERMISSIONS"))
+        assertTrue(settings.contains("Icons.Outlined.Language"))
+        assertTrue(productSettings.contains("Icons.Outlined.Language"))
     }
 
     @Test

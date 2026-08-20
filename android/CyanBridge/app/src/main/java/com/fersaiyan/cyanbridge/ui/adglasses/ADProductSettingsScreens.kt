@@ -22,6 +22,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.Bluetooth
 import androidx.compose.material.icons.outlined.CameraAlt
+import androidx.compose.material.icons.outlined.Language
 import androidx.compose.material.icons.outlined.Mic
 import androidx.compose.material.icons.outlined.Notifications
 import androidx.compose.material.icons.outlined.Wifi
@@ -38,7 +39,6 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.core.content.ContextCompat
-import com.fersaiyan.cyanbridge.R
 import java.util.Locale
 
 @Composable
@@ -57,10 +57,20 @@ internal fun ADLanguageScreen(onBack: () -> Unit) {
             modifier = Modifier.fillMaxWidth(),
             shape = RoundedCornerShape(14.dp),
             color = ADColors.Surface,
+            contentColor = ADColors.Ink,
             border = BorderStroke(1.dp, ADColors.Outline),
         ) {
             Row(Modifier.padding(11.dp), verticalAlignment = Alignment.CenterVertically) {
-                ADAssetIcon(R.drawable.ad_codex_language, Modifier.size(36.dp), "App language")
+                Surface(
+                    modifier = Modifier.size(36.dp),
+                    shape = RoundedCornerShape(10.dp),
+                    color = ADColors.SurfaceSubtle,
+                    contentColor = ADColors.Ink,
+                ) {
+                    Box(contentAlignment = Alignment.Center) {
+                        Icon(Icons.Outlined.Language, contentDescription = "App language", modifier = Modifier.size(19.dp))
+                    }
+                }
                 Column(Modifier.padding(start = 10.dp).weight(1f)) {
                     Text("APP LANGUAGE", style = MaterialTheme.typography.labelSmall, color = ADColors.InkSoft)
                     Text(
@@ -75,11 +85,11 @@ internal fun ADLanguageScreen(onBack: () -> Unit) {
 
         Text(
             if (Build.VERSION.SDK_INT >= 33) {
-                "Android can set a language for AD Glasses without changing the rest of your phone."
+                "Language for AD Glasses only."
             } else {
-                "This Android version uses the phone’s system language for AD Glasses."
+                "Uses your phone’s system language."
             },
-            style = MaterialTheme.typography.bodySmall,
+            style = MaterialTheme.typography.labelSmall,
             color = ADColors.Muted,
         )
 
