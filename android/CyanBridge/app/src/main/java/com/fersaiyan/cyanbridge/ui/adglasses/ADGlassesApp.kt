@@ -115,7 +115,7 @@ fun ADGlassesApp(
                             ADTab.HOME -> ADHomeSurface(
                                 state = dashboardState,
                                 host = host,
-                                onOpenDevice = { navigateTo(ADRoute.DEVICE_CENTER) },
+                                onOpenDevice = { navigateTo(ADRoute.SETTINGS) },
                                 onOpenSync = { navigateTo(ADRoute.SYNC) },
                                 onOpenSettings = { navigateTo(ADRoute.SETTINGS) },
                             )
@@ -138,18 +138,10 @@ fun ADGlassesApp(
                                 onNotes = { navigateTo(ADRoute.LIBRARY_NOTES) },
                             )
                         }
-                        ADRoute.DEVICE_CENTER -> ADGlassesDeviceCenterScreen(
-                            state = dashboardState,
-                            host = host,
-                            onBack = navigateBack,
-                            onSync = { navigateTo(ADRoute.SYNC) },
-                            onFirmware = { navigateTo(ADRoute.FIRMWARE) },
-                        )
                         ADRoute.SYNC -> ADSyncScreen(dashboardState, host, navigateBack)
                         ADRoute.SETTINGS -> ADNativeSettingsHubScreen(
                             state = dashboardState,
                             onBack = navigateBack,
-                            onDevice = { navigateTo(ADRoute.DEVICE_CENTER) },
                             onPrivacy = { navigateTo(ADRoute.PRIVACY) },
                             onStorage = { navigateTo(ADRoute.STORAGE) },
                             onLanguage = {
@@ -168,6 +160,7 @@ fun ADGlassesApp(
                                 }
                             },
                             onPermissions = { navigateTo(ADRoute.PERMISSIONS) },
+                            onFirmware = { navigateTo(ADRoute.FIRMWARE) },
                             onAbout = { navigateTo(ADRoute.ABOUT) },
                         )
                         ADRoute.AI_RELAY -> ADNativeRelaySettingsScreen(navigateBack)
