@@ -1,9 +1,8 @@
 <?xml version="1.0" encoding="utf-8"?>
 <layer-list xmlns:android="http://schemas.android.com/apk/res/android">
     <item
-        android:left="14dp"
-        android:top="14dp"
-        android:right="14dp"
-        android:bottom="14dp"
-        android:drawable="@drawable/ad_glasses_monogram_mark" />
+        android:width="72dp"
+        android:height="60dp"
+        android:gravity="center"
+        android:drawable="@drawable/ad_user_app_icon" />
 </layer-list>
