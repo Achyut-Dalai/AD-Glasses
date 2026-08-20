@@ -22,7 +22,6 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.rounded.KeyboardArrowRight
 import androidx.compose.material.icons.outlined.Info
 import androidx.compose.material.icons.outlined.Language
 import androidx.compose.material.icons.outlined.Settings
@@ -180,12 +179,7 @@ private fun ADSettingsDeviceOverview(
                         )
                     }
                 }
-                Icon(
-                    Icons.AutoMirrored.Rounded.KeyboardArrowRight,
-                    contentDescription = null,
-                    tint = ADColors.Muted,
-                    modifier = Modifier.size(18.dp),
-                )
+                ADGlyphIcon(ADGlyph.NEXT, ADColors.Muted, Modifier.size(18.dp))
             }
 
             if (showBattery || showStorage) {
@@ -242,7 +236,6 @@ private fun ADSettingsTile(
     }
 }
 
-/** Language intentionally follows the clean icon treatment used by AI configuration cards. */
 @Composable
 private fun ADSettingsIconTile(
     icon: ImageVector,
@@ -304,11 +297,6 @@ private fun ADSettingsWideAction(
             maxLines = 1,
             overflow = TextOverflow.Ellipsis,
         )
-        Icon(
-            Icons.AutoMirrored.Rounded.KeyboardArrowRight,
-            null,
-            tint = ADColors.Muted,
-            modifier = Modifier.size(17.dp),
-        )
+        ADGlyphIcon(ADGlyph.NEXT, ADColors.Muted, Modifier.size(17.dp))
     }
 }
