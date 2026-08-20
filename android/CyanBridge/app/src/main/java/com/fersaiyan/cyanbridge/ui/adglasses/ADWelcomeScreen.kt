@@ -1,6 +1,7 @@
 package com.fersaiyan.cyanbridge.ui.adglasses
 
 import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -25,10 +26,13 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import com.fersaiyan.cyanbridge.R
 
-/** First-run product surface; intentionally uses the same dark product language as the app. */
+/** First-run product surface using the same dark product language as the app. */
 @Composable
 fun ADWelcomeScreen(
     onStartSetup: () -> Unit,
@@ -44,13 +48,13 @@ fun ADWelcomeScreen(
             modifier = Modifier.fillMaxWidth().padding(top = 10.dp),
             verticalAlignment = Alignment.CenterVertically,
         ) {
-            ADGlassesMark(Modifier.size(32.dp))
+            ADGlassesMark(Modifier.size(34.dp))
             Column(Modifier.padding(start = 8.dp)) {
-                Text("AD GLASSES", style = MaterialTheme.typography.labelSmall, color = ADColors.Muted)
-                Text("AI eyewear", style = MaterialTheme.typography.titleSmall)
+                Text("AD GLASSES", style = MaterialTheme.typography.labelSmall, color = ADColors.InkSoft)
+                Text("AI eyewear", style = MaterialTheme.typography.titleSmall, color = ADColors.Ink)
             }
             Spacer(Modifier.weight(1f))
-            Box(Modifier.size(6.dp).background(ADColors.Red, CircleShape))
+            Box(Modifier.size(5.dp).background(ADColors.Red, CircleShape))
         }
 
         Spacer(Modifier.size(24.dp))
@@ -72,15 +76,15 @@ fun ADWelcomeScreen(
         Surface(
             modifier = Modifier.fillMaxWidth().weight(1f).heightIn(min = 160.dp, max = 250.dp),
             shape = RoundedCornerShape(18.dp),
-            color = Color.Black.copy(alpha = 0.34f),
+            color = ADColors.Surface,
             border = BorderStroke(1.dp, ADColors.Outline),
         ) {
             Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                ADGlyphIcon(
-                    glyph = ADGlyph.DEVICE,
-                    tint = ADColors.Ink,
-                    modifier = Modifier.size(112.dp),
-                    accent = ADColors.Red,
+                Image(
+                    painter = painterResource(R.drawable.ad_glasses_hero_v4),
+                    contentDescription = "AD Glasses",
+                    modifier = Modifier.fillMaxSize().padding(horizontal = 18.dp, vertical = 8.dp),
+                    contentScale = ContentScale.Fit,
                 )
                 Row(
                     modifier = Modifier.align(Alignment.BottomCenter).padding(bottom = 12.dp),
@@ -96,12 +100,18 @@ fun ADWelcomeScreen(
         Spacer(Modifier.size(14.dp))
         Surface(
             onClick = onStartSetup,
-            modifier = Modifier.fillMaxWidth().heightIn(min = 46.dp),
-            shape = RoundedCornerShape(12.dp),
-            color = ADColors.Red,
-            contentColor = Color.White,
+            modifier = Modifier.fillMaxWidth().heightIn(min = 44.dp),
+            shape = RoundedCornerShape(11.dp),
+            color = ADColors.Ink,
+            contentColor = Color.Black,
         ) {
-            Box(contentAlignment = Alignment.Center) {
+            Row(
+                modifier = Modifier.padding(horizontal = 14.dp, vertical = 10.dp),
+                horizontalArrangement = Arrangement.Center,
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Box(Modifier.size(5.dp).background(ADColors.Red, CircleShape))
+                Spacer(Modifier.size(7.dp))
                 Text("Connect glasses", style = MaterialTheme.typography.labelLarge)
             }
         }
@@ -122,7 +132,7 @@ fun ADWelcomeScreen(
 private fun ADWelcomeCapability(glyph: ADGlyph, label: String) {
     Surface(
         shape = RoundedCornerShape(8.dp),
-        color = ADColors.Surface.copy(alpha = 0.92f),
+        color = ADColors.Surface,
         border = BorderStroke(1.dp, ADColors.Outline),
     ) {
         Row(
@@ -131,7 +141,7 @@ private fun ADWelcomeCapability(glyph: ADGlyph, label: String) {
             horizontalArrangement = Arrangement.spacedBy(4.dp),
         ) {
             ADGlyphIcon(glyph, ADColors.Ink, Modifier.size(13.dp), accent = if (glyph == ADGlyph.AI) ADColors.Red else null)
-            Text(label, style = MaterialTheme.typography.labelSmall, fontWeight = FontWeight.SemiBold)
+            Text(label, style = MaterialTheme.typography.labelSmall, color = ADColors.InkSoft, fontWeight = FontWeight.SemiBold)
         }
     }
 }

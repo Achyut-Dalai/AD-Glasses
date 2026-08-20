@@ -1,7 +1,9 @@
 package com.fersaiyan.cyanbridge.ui.adglasses
 
+import androidx.annotation.DrawableRes
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
@@ -36,13 +38,33 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.alpha
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.fersaiyan.cyanbridge.R
+
+@Composable
+internal fun ADAssetIcon(
+    @DrawableRes drawable: Int,
+    modifier: Modifier = Modifier,
+    contentDescription: String? = null,
+    alpha: Float = 1f,
+) {
+    Image(
+        painter = painterResource(drawable),
+        contentDescription = contentDescription,
+        modifier = modifier.clip(RoundedCornerShape(8.dp)).alpha(alpha),
+        contentScale = ContentScale.Fit,
+    )
+}
 
 @Composable
 internal fun ADTopBar(
@@ -66,7 +88,7 @@ internal fun ADTopBar(
                     onClick = onBack,
                     modifier = Modifier.size(36.dp),
                     shape = CircleShape,
-                    color = ADColors.Surface.copy(alpha = 0.82f),
+                    color = ADColors.Surface,
                     border = BorderStroke(1.dp, ADColors.Outline),
                 ) {
                     Box(contentAlignment = Alignment.Center) {
@@ -82,14 +104,13 @@ internal fun ADTopBar(
 
             showBrand -> {
                 Box(
-                    modifier = Modifier.size(39.dp),
+                    modifier = Modifier.size(40.dp),
                     contentAlignment = Alignment.Center,
                 ) {
-                    ADGlyphIcon(
-                        glyph = ADGlyph.DEVICE,
-                        tint = ADColors.Ink,
-                        modifier = Modifier.size(34.dp),
-                        accent = ADColors.Red,
+                    ADAssetIcon(
+                        drawable = R.drawable.ad_codex_brand,
+                        modifier = Modifier.size(38.dp),
+                        contentDescription = "AD Glasses",
                     )
                 }
             }
@@ -100,7 +121,7 @@ internal fun ADTopBar(
                 Text(
                     text = "AD GLASSES",
                     style = MaterialTheme.typography.labelSmall.copy(letterSpacing = 1.1.sp),
-                    color = ADColors.Muted,
+                    color = ADColors.InkSoft,
                 )
                 Text(
                     text = "AI eyewear",
@@ -126,7 +147,7 @@ internal fun ADTopBar(
                 onClick = onSettings,
                 modifier = Modifier.size(36.dp),
                 shape = CircleShape,
-                color = ADColors.Surface.copy(alpha = 0.82f),
+                color = ADColors.Surface,
                 border = BorderStroke(1.dp, ADColors.Outline),
             ) {
                 Box(contentAlignment = Alignment.Center) {
@@ -144,11 +165,10 @@ internal fun ADTopBar(
 
 @Composable
 internal fun ADGlassesMark(modifier: Modifier = Modifier) {
-    ADGlyphIcon(
-        glyph = ADGlyph.DEVICE,
-        tint = ADColors.Ink,
+    ADAssetIcon(
+        drawable = R.drawable.ad_codex_brand,
         modifier = modifier,
-        accent = ADColors.Red,
+        contentDescription = "AD Glasses",
     )
 }
 
@@ -157,13 +177,14 @@ internal fun ADBottomNavigation(selected: ADTab, onSelected: (ADTab) -> Unit) {
     Column(
         modifier = Modifier
             .fillMaxWidth()
+            .background(Color.Black)
             .navigationBarsPadding()
             .padding(horizontal = 10.dp, vertical = 5.dp),
     ) {
         Surface(
             modifier = Modifier.fillMaxWidth(),
-            shape = RoundedCornerShape(16.dp),
-            color = ADColors.Glass,
+            shape = RoundedCornerShape(15.dp),
+            color = Color.Black,
             border = BorderStroke(1.dp, ADColors.Outline),
         ) {
             Row(
@@ -171,15 +192,8 @@ internal fun ADBottomNavigation(selected: ADTab, onSelected: (ADTab) -> Unit) {
                 horizontalArrangement = Arrangement.SpaceAround,
             ) {
                 ADTab.entries.forEach { tab ->
-                    val glyph = when (tab) {
-                        ADTab.HOME -> ADGlyph.HOME
-                        ADTab.CHATS -> ADGlyph.PROMPT
-                        ADTab.AI -> ADGlyph.AI
-                        ADTab.LIBRARY -> ADGlyph.LIBRARY
-                    }
                     ADBottomNavigationItem(
                         tab = tab,
-                        glyph = glyph,
                         selected = selected == tab,
                         modifier = Modifier.weight(1f),
                     ) { onSelected(tab) }
@@ -192,7 +206,6 @@ internal fun ADBottomNavigation(selected: ADTab, onSelected: (ADTab) -> Unit) {
 @Composable
 private fun ADBottomNavigationItem(
     tab: ADTab,
-    glyph: ADGlyph,
     selected: Boolean,
     modifier: Modifier = Modifier,
     onClick: () -> Unit,
@@ -219,12 +232,26 @@ private fun ADBottomNavigationItem(
         verticalArrangement = Arrangement.Center,
     ) {
         Box(contentAlignment = Alignment.Center) {
-            ADGlyphIcon(
-                glyph = glyph,
-                tint = iconTint,
-                modifier = Modifier.size(18.dp),
-                accent = if (selected && glyph == ADGlyph.AI) ADColors.Red else null,
-            )
+            if (tab == ADTab.AI) {
+                ADAssetIcon(
+                    drawable = R.drawable.ad_codex_ai,
+                    modifier = Modifier.size(20.dp),
+                    contentDescription = "AI",
+                    alpha = if (selected) 1f else 0.62f,
+                )
+            } else {
+                val glyph = when (tab) {
+                    ADTab.HOME -> ADGlyph.HOME
+                    ADTab.CHATS -> ADGlyph.PROMPT
+                    ADTab.AI -> ADGlyph.AI
+                    ADTab.LIBRARY -> ADGlyph.LIBRARY
+                }
+                ADGlyphIcon(
+                    glyph = glyph,
+                    tint = iconTint,
+                    modifier = Modifier.size(18.dp),
+                )
+            }
             if (selected) {
                 Box(
                     Modifier
@@ -257,7 +284,7 @@ internal fun ADScreenIntro(
             Text(
                 eyebrow.uppercase(),
                 style = MaterialTheme.typography.labelSmall.copy(letterSpacing = 0.9.sp),
-                color = ADColors.Muted,
+                color = ADColors.InkSoft,
             )
             Spacer(Modifier.height(3.dp))
         }
@@ -278,7 +305,7 @@ internal fun ADSectionTitle(title: String, action: String? = null, onAction: () 
         Text(
             title.uppercase(),
             style = MaterialTheme.typography.labelSmall.copy(letterSpacing = 0.8.sp),
-            color = ADColors.Muted,
+            color = ADColors.InkSoft,
         )
         Spacer(Modifier.weight(1f))
         if (action != null) {
@@ -303,7 +330,7 @@ internal fun ADCard(
         onClick = onClick ?: {},
         enabled = onClick != null,
         shape = RoundedCornerShape(14.dp),
-        color = ADColors.Surface.copy(alpha = 0.88f),
+        color = ADColors.Surface,
         border = BorderStroke(1.dp, ADColors.Outline),
     ) {
         Column(modifier = Modifier.padding(12.dp), content = content)
@@ -322,15 +349,15 @@ internal fun ADPrimaryButton(
     Button(
         onClick = onClick,
         enabled = enabled,
-        modifier = modifier.fillMaxWidth().heightIn(min = 46.dp),
-        shape = RoundedCornerShape(12.dp),
+        modifier = modifier.fillMaxWidth().heightIn(min = 44.dp),
+        shape = RoundedCornerShape(11.dp),
         colors = ButtonDefaults.buttonColors(
-            containerColor = if (destructive) ADColors.Red else ADColors.Ink,
-            contentColor = if (destructive) Color.White else Color.Black,
+            containerColor = if (destructive) ADColors.RedAction else ADColors.Ink,
+            contentColor = if (destructive) ADColors.RedContent else Color.Black,
             disabledContainerColor = ADColors.SurfaceSubtle,
             disabledContentColor = ADColors.Muted,
         ),
-        contentPadding = androidx.compose.foundation.layout.PaddingValues(horizontal = 14.dp, vertical = 9.dp),
+        contentPadding = androidx.compose.foundation.layout.PaddingValues(horizontal = 14.dp, vertical = 8.dp),
     ) {
         if (icon != null) {
             Icon(icon, contentDescription = null, modifier = Modifier.size(16.dp))
@@ -354,7 +381,7 @@ internal fun ADStatusChip(
         ADStatusTone.ERROR -> ADColors.ErrorSoft
     }
     val foreground = when (tone) {
-        ADStatusTone.NEUTRAL -> ADColors.Muted
+        ADStatusTone.NEUTRAL -> ADColors.InkSoft
         ADStatusTone.INFO -> ADColors.Ink
         ADStatusTone.SUCCESS -> ADColors.Success
         ADStatusTone.WARNING -> ADColors.Warning
@@ -396,7 +423,7 @@ internal fun ADSettingsRow(
             Icon(icon, null, tint = iconTint, modifier = Modifier.size(16.dp))
         }
         Column(Modifier.padding(start = 9.dp, end = 7.dp).weight(1f)) {
-            Text(title, style = MaterialTheme.typography.titleMedium)
+            Text(title, style = MaterialTheme.typography.titleMedium, color = ADColors.Ink)
             if (!subtitle.isNullOrBlank()) {
                 Text(subtitle, style = MaterialTheme.typography.bodySmall, color = ADColors.Muted, maxLines = 1, overflow = TextOverflow.Ellipsis)
             }

@@ -2,7 +2,6 @@ package com.fersaiyan.cyanbridge.ui.adglasses
 
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -18,7 +17,6 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.fersaiyan.cyanbridge.BuildConfig
@@ -29,25 +27,28 @@ internal fun ADMinimalAboutScreen(onBack: () -> Unit) {
         Surface(
             modifier = Modifier.fillMaxWidth(),
             shape = RoundedCornerShape(17.dp),
-            color = Color.Black.copy(alpha = 0.40f),
+            color = ADColors.Surface,
             border = BorderStroke(1.dp, ADColors.Outline),
         ) {
             Column(Modifier.padding(14.dp)) {
                 Row(verticalAlignment = Alignment.CenterVertically) {
-                    ADGlassesMark(Modifier.size(48.dp))
-                    Column(Modifier.padding(start = 10.dp).weight(1f)) {
-                        Text("AD GLASSES", style = MaterialTheme.typography.labelSmall, color = ADColors.Muted)
-                        Text("AI eyewear companion", style = MaterialTheme.typography.titleLarge)
+                    ADGlassesMark(Modifier.size(52.dp))
+                    Column(Modifier.padding(start = 11.dp).weight(1f)) {
+                        Text("AD GLASSES", style = MaterialTheme.typography.labelSmall, color = ADColors.InkSoft)
+                        Text("AI eyewear companion", style = MaterialTheme.typography.titleLarge, color = ADColors.Ink)
                     }
-                    Box(Modifier.size(5.dp), contentAlignment = Alignment.Center) {
-                        Surface(modifier = Modifier.size(5.dp), shape = CircleShape, color = ADColors.Red) {}
-                    }
+                    Surface(modifier = Modifier.size(5.dp), shape = CircleShape, color = ADColors.Red) {}
                 }
                 Spacer(Modifier.height(12.dp))
                 Row(verticalAlignment = Alignment.Bottom) {
                     Column(Modifier.weight(1f)) {
-                        Text("VERSION", style = MaterialTheme.typography.labelSmall, color = ADColors.Muted)
-                        Text(BuildConfig.VERSION_NAME, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold)
+                        Text("VERSION", style = MaterialTheme.typography.labelSmall, color = ADColors.InkSoft)
+                        Text(
+                            BuildConfig.VERSION_NAME,
+                            style = MaterialTheme.typography.titleMedium,
+                            color = ADColors.Ink,
+                            fontWeight = FontWeight.SemiBold,
+                        )
                     }
                     Text("DARK / MONO", style = MaterialTheme.typography.labelSmall, color = ADColors.Muted)
                 }
@@ -62,27 +63,15 @@ internal fun ADMinimalAboutScreen(onBack: () -> Unit) {
 
         Column(verticalArrangement = Arrangement.spacedBy(7.dp)) {
             ADSectionTitle("Principles")
-            ADAboutPrinciple(
-                glyph = ADGlyph.ASK,
-                title = "Voice first",
-                detail = "Ask, capture and control without living on the phone.",
-            )
-            ADAboutPrinciple(
-                glyph = ADGlyph.LENS,
-                title = "Vision when useful",
-                detail = "Bring the camera in only when seeing adds context.",
-            )
-            ADAboutPrinciple(
-                glyph = ADGlyph.AI,
-                title = "AI with boundaries",
-                detail = "Local where possible, relay only when it earns the trip.",
-            )
+            ADAboutPrinciple(ADGlyph.ASK, "Voice first", "Ask, capture and control without living on the phone.")
+            ADAboutPrinciple(ADGlyph.LENS, "Vision when useful", "Bring the camera in only when seeing adds context.")
+            ADAboutPrinciple(ADGlyph.AI, "AI with boundaries", "Local where possible, relay only when it earns the trip.")
         }
 
         Surface(
             modifier = Modifier.fillMaxWidth(),
             shape = RoundedCornerShape(12.dp),
-            color = ADColors.Surface.copy(alpha = 0.82f),
+            color = ADColors.Surface,
             border = BorderStroke(1.dp, ADColors.Outline),
         ) {
             Text(
@@ -96,15 +85,11 @@ internal fun ADMinimalAboutScreen(onBack: () -> Unit) {
 }
 
 @Composable
-private fun ADAboutPrinciple(
-    glyph: ADGlyph,
-    title: String,
-    detail: String,
-) {
+private fun ADAboutPrinciple(glyph: ADGlyph, title: String, detail: String) {
     Surface(
         modifier = Modifier.fillMaxWidth(),
         shape = RoundedCornerShape(12.dp),
-        color = ADColors.Surface.copy(alpha = 0.86f),
+        color = ADColors.Surface,
         border = BorderStroke(1.dp, ADColors.Outline),
     ) {
         Row(
@@ -118,7 +103,7 @@ private fun ADAboutPrinciple(
                 accent = if (glyph == ADGlyph.AI) ADColors.Red else null,
             )
             Column(Modifier.padding(start = 10.dp).weight(1f)) {
-                Text(title, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Medium)
+                Text(title, style = MaterialTheme.typography.titleMedium, color = ADColors.Ink, fontWeight = FontWeight.Medium)
                 Text(detail, style = MaterialTheme.typography.bodySmall, color = ADColors.Muted)
             }
         }

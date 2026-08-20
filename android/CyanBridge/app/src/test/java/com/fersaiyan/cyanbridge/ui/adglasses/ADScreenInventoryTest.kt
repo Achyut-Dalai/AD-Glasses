@@ -54,19 +54,19 @@ class ADScreenInventoryTest {
     }
 
     @Test
-    fun launcherUsesContextSafeMonochromeGlassesMark() {
+    fun launcherUsesUploadedBrandArtworkOnDarkAdaptiveBackground() {
         val drawable = sourceFile("src/main/res/drawable")
-        val logoMark = File(drawable, "ad_glasses_logo_mark.xml")
+        val drawableNoDpi = sourceFile("src/main/res/drawable-nodpi")
+        val uploadedBrand = File(drawableNoDpi, "ad_codex_brand.png")
         val adaptiveForeground = File(drawable, "ad_glasses_adaptive_foreground.xml")
         val adaptiveBackground = File(drawable, "ad_glasses_adaptive_background.xml")
         val launcher = sourceFile("src/main/res/mipmap-anydpi-v26/ic_launcher.xml")
         val roundLauncher = sourceFile("src/main/res/mipmap-anydpi-v26/ic_launcher_round.xml")
 
-        assertTrue("Monochrome glasses mark must exist", logoMark.isFile)
+        assertTrue("Uploaded AD brand artwork must exist", uploadedBrand.isFile && uploadedBrand.length() > 0L)
         assertTrue("Adaptive foreground must exist", adaptiveForeground.isFile)
         assertTrue("Adaptive background must exist", adaptiveBackground.isFile)
-        assertTrue(logoMark.readText().contains("#D71920"))
-        assertTrue(adaptiveForeground.readText().contains("@drawable/ad_glasses_logo_mark"))
+        assertTrue(adaptiveForeground.readText().contains("@drawable/ad_codex_brand"))
         assertTrue(adaptiveBackground.readText().contains("#171717"))
 
         listOf(launcher, roundLauncher).forEach { file ->
