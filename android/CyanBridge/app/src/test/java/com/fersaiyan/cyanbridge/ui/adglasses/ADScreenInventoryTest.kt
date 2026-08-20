@@ -54,20 +54,21 @@ class ADScreenInventoryTest {
     }
 
     @Test
-    fun launcherUsesCrispVectorMonogramOnDarkAdaptiveBackground() {
+    fun launcherUsesUploadedLogoOnDarkAdaptiveBackground() {
         val drawable = sourceFile("src/main/res/drawable")
-        val monogram = File(drawable, "ad_glasses_monogram_mark.xml")
+        val drawableNoDpi = sourceFile("src/main/res/drawable-nodpi")
+        val uploadedLogo = File(drawableNoDpi, "ad_user_app_icon.webp")
         val adaptiveForeground = File(drawable, "ad_glasses_adaptive_foreground.xml")
         val adaptiveBackground = File(drawable, "ad_glasses_adaptive_background.xml")
         val launcher = sourceFile("src/main/res/mipmap-anydpi-v26/ic_launcher.xml")
         val roundLauncher = sourceFile("src/main/res/mipmap-anydpi-v26/ic_launcher_round.xml")
 
-        assertTrue("AD monogram vector must exist", monogram.isFile)
-        assertTrue(monogram.readText().contains("#F3F3F3"))
-        assertTrue(monogram.readText().contains("#9B161B"))
+        assertTrue("Uploaded app icon must exist", uploadedLogo.isFile && uploadedLogo.length() > 0L)
         assertTrue("Adaptive foreground must exist", adaptiveForeground.isFile)
         assertTrue("Adaptive background must exist", adaptiveBackground.isFile)
-        assertTrue(adaptiveForeground.readText().contains("@drawable/ad_glasses_monogram_mark"))
+        assertTrue(adaptiveForeground.readText().contains("@drawable/ad_user_app_icon"))
+        assertTrue(adaptiveForeground.readText().contains("android:width=\"72dp\""))
+        assertTrue(adaptiveForeground.readText().contains("android:height=\"60dp\""))
         assertTrue(adaptiveBackground.readText().contains("#171717"))
 
         listOf(launcher, roundLauncher).forEach { file ->
@@ -75,6 +76,15 @@ class ADScreenInventoryTest {
             assertTrue(xml.contains("@drawable/ad_glasses_adaptive_background"))
             assertTrue(xml.contains("@drawable/ad_glasses_adaptive_foreground"))
         }
+    }
+
+    @Test
+    fun uploadedPortraitBackdropIsPackagedUnscaled() {
+        val background = sourceFile("src/main/res/drawable-nodpi/ad_user_background.jpeg")
+        val appearance = sourceFile("src/main/java/com/fersaiyan/cyanbridge/ui/adglasses/ADAppearance.kt").readText()
+        assertTrue(background.isFile && background.length() > 0L)
+        assertTrue(appearance.contains("R.drawable.ad_user_background"))
+        assertTrue(appearance.contains("ContentScale.Crop"))
     }
 
     private fun sourceFile(relativePath: String): File {
