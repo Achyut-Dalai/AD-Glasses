@@ -4,7 +4,6 @@ import android.content.Intent
 import android.net.Uri
 import android.provider.Settings as AndroidSettings
 import androidx.compose.foundation.BorderStroke
-import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -12,13 +11,10 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
@@ -33,15 +29,11 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
-import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
-import com.fersaiyan.cyanbridge.R
 import com.fersaiyan.cyanbridge.devices.DeviceProfileStore
 import com.fersaiyan.cyanbridge.shared.glasses.GlassesDashboardUiState
 
@@ -142,18 +134,7 @@ private fun ADSettingsDeviceOverview(
     ) {
         Column(Modifier.padding(13.dp)) {
             Row(verticalAlignment = Alignment.CenterVertically) {
-                Box(
-                    modifier = Modifier.width(86.dp).height(56.dp).background(Color.Black, RoundedCornerShape(12.dp)),
-                    contentAlignment = Alignment.Center,
-                ) {
-                    Image(
-                        painter = painterResource(R.drawable.ad_glasses_hero_v4),
-                        contentDescription = "AD Glasses",
-                        modifier = Modifier.fillMaxSize().padding(3.dp),
-                        contentScale = ContentScale.Fit,
-                    )
-                }
-                Column(Modifier.padding(start = 11.dp).weight(1f)) {
+                Column(Modifier.weight(1f)) {
                     Text(
                         presentation.identityLabel ?: "Your glasses",
                         style = MaterialTheme.typography.titleLarge,
@@ -161,7 +142,7 @@ private fun ADSettingsDeviceOverview(
                         maxLines = 1,
                         overflow = TextOverflow.Ellipsis,
                     )
-                    Spacer(Modifier.height(3.dp))
+                    Spacer(Modifier.size(3.dp))
                     Row(verticalAlignment = Alignment.CenterVertically) {
                         Box(
                             Modifier.size(6.dp).background(
@@ -185,7 +166,7 @@ private fun ADSettingsDeviceOverview(
             }
 
             if (showBattery || showStorage) {
-                Spacer(Modifier.height(10.dp))
+                Spacer(Modifier.size(10.dp))
                 Row(horizontalArrangement = Arrangement.spacedBy(7.dp)) {
                     if (showBattery) ADDeviceMetric("BATTERY", "${state.batteryPercent}%", Modifier.weight(1f))
                     if (showStorage) ADDeviceMetric("STORAGE", state.storageLabel, Modifier.weight(1f))
