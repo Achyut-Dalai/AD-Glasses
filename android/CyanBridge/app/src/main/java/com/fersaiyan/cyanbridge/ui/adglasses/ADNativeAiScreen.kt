@@ -134,9 +134,7 @@ internal fun ADNativeAiScreen(
         item {
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Box(
-                    modifier = Modifier
-                        .size(42.dp)
-                        .background(ADColors.Surface, RoundedCornerShape(12.dp)),
+                    modifier = Modifier.size(42.dp).background(ADColors.Surface, RoundedCornerShape(12.dp)),
                     contentAlignment = Alignment.Center,
                 ) {
                     ADGlyphIcon(ADGlyph.AI, ADColors.Ink, Modifier.size(25.dp), accent = ADColors.Red)
@@ -149,11 +147,7 @@ internal fun ADNativeAiScreen(
         }
 
         item {
-            ADAiProviderCard(
-                selectedName = selectedName,
-                selected = selected,
-                onSelect = ::select,
-            )
+            ADAiProviderCard(selectedName = selectedName, selected = selected, onSelect = ::select)
         }
 
         item {
@@ -190,27 +184,9 @@ internal fun ADNativeAiScreen(
             Column(verticalArrangement = Arrangement.spacedBy(7.dp)) {
                 ADSectionTitle("Configuration")
                 Row(horizontalArrangement = Arrangement.spacedBy(7.dp)) {
-                    ADConfigurationCard(
-                        icon = Icons.Outlined.Apps,
-                        title = "Apps",
-                        detail = "Gemini / ChatGPT",
-                        modifier = Modifier.weight(1f),
-                        onClick = onAssistantApps,
-                    )
-                    ADConfigurationCard(
-                        icon = Icons.Outlined.Cloud,
-                        title = "Relay",
-                        detail = if (relayConfigured) "Ready" else "Set up",
-                        modifier = Modifier.weight(1f),
-                        onClick = onRelaySettings,
-                    )
-                    ADConfigurationCard(
-                        icon = Icons.Outlined.Computer,
-                        title = "Local",
-                        detail = "On device",
-                        modifier = Modifier.weight(1f),
-                        onClick = onLocalSettings,
-                    )
+                    ADConfigurationCard(Icons.Outlined.Apps, "Apps", "Gemini / ChatGPT", Modifier.weight(1f), onAssistantApps)
+                    ADConfigurationCard(Icons.Outlined.Cloud, "Relay", if (relayConfigured) "Ready" else "Set up", Modifier.weight(1f), onRelaySettings)
+                    ADConfigurationCard(Icons.Outlined.Computer, "Local", "On device", Modifier.weight(1f), onLocalSettings)
                 }
             }
         }
@@ -221,7 +197,7 @@ internal fun ADNativeAiScreen(
 private fun ADAiProviderCard(
     selectedName: String,
     selected: ADAiChoice,
-    onSelect: (ADAIChoice) -> Unit,
+    onSelect: (ADAiChoice) -> Unit,
 ) {
     Surface(
         modifier = Modifier.fillMaxWidth(),
@@ -249,27 +225,16 @@ private fun ADAiProviderCard(
 }
 
 @Composable
-private fun ADAiProviderPill(
-    title: String,
-    selected: Boolean,
-    modifier: Modifier = Modifier,
-    onClick: () -> Unit,
-) {
-    val container by animateColorAsState(
-        targetValue = if (selected) ADColors.Ink else ADColors.SurfaceSubtle,
-        label = "provider-container",
-    )
-    val content by animateColorAsState(
-        targetValue = if (selected) Color.Black else ADColors.InkSoft,
-        label = "provider-content",
-    )
+private fun ADAiProviderPill(title: String, selected: Boolean, modifier: Modifier = Modifier, onClick: () -> Unit) {
+    val container by animateColorAsState(if (selected) ADColors.Ink else ADColors.SurfaceSubtle, label = "provider-container")
+    val content by animateColorAsState(if (selected) Color.Black else ADColors.InkSoft, label = "provider-content")
     Surface(
         onClick = onClick,
         modifier = modifier.heightIn(min = 36.dp),
         shape = RoundedCornerShape(10.dp),
         color = container,
         contentColor = content,
-        border = if (selected) BorderStroke(1.dp, ADColors.Ink) else BorderStroke(1.dp, ADColors.Outline),
+        border = BorderStroke(1.dp, if (selected) ADColors.Ink else ADColors.Outline),
     ) {
         Row(
             modifier = Modifier.padding(horizontal = 8.dp, vertical = 7.dp),
@@ -294,10 +259,7 @@ private fun ADAiSkillCard(
     modifier: Modifier = Modifier,
     onClick: () -> Unit,
 ) {
-    val cardColor by animateColorAsState(
-        targetValue = if (active) ADColors.SurfacePressed else ADColors.Surface.copy(alpha = 0.88f),
-        label = "skill-card",
-    )
+    val cardColor by animateColorAsState(if (active) ADColors.SurfacePressed else ADColors.Surface.copy(alpha = 0.88f), label = "skill-card")
     Surface(
         onClick = onClick,
         modifier = modifier.heightIn(min = 108.dp),
@@ -323,21 +285,17 @@ private fun ADAiSkillCard(
 
 @Composable
 private fun ADTimelineArtwork(active: Boolean, modifier: Modifier = Modifier) {
-    val ink = ADColors.Ink
     Surface(modifier = modifier, shape = RoundedCornerShape(9.dp), color = ADColors.SurfaceSubtle) {
-        Row(
-            modifier = Modifier.padding(horizontal = 9.dp, vertical = 7.dp),
-            verticalAlignment = Alignment.CenterVertically,
-        ) {
+        Row(modifier = Modifier.padding(horizontal = 9.dp, vertical = 7.dp), verticalAlignment = Alignment.CenterVertically) {
             Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
                 repeat(3) { index ->
-                    Box(Modifier.size(if (index == 1 && active) 5.dp else 4.dp).background(if (index == 1 && active) ADColors.Red else ink, CircleShape))
+                    Box(Modifier.size(if (index == 1 && active) 5.dp else 4.dp).background(if (index == 1 && active) ADColors.Red else ADColors.Ink, CircleShape))
                 }
             }
             Column(Modifier.padding(start = 8.dp).weight(1f), verticalArrangement = Arrangement.spacedBy(5.dp)) {
-                Box(Modifier.fillMaxWidth(.88f).height(2.dp).background(ink.copy(alpha = .75f), CircleShape))
-                Box(Modifier.fillMaxWidth(.68f).height(2.dp).background(ink.copy(alpha = .40f), CircleShape))
-                Box(Modifier.fillMaxWidth(.78f).height(2.dp).background(ink.copy(alpha = .58f), CircleShape))
+                Box(Modifier.fillMaxWidth(.88f).height(2.dp).background(ADColors.Ink.copy(alpha = .75f), CircleShape))
+                Box(Modifier.fillMaxWidth(.68f).height(2.dp).background(ADColors.Ink.copy(alpha = .40f), CircleShape))
+                Box(Modifier.fillMaxWidth(.78f).height(2.dp).background(ADColors.Ink.copy(alpha = .58f), CircleShape))
             }
         }
     }
@@ -359,12 +317,7 @@ private fun ADDiaryArtwork(active: Boolean, modifier: Modifier = Modifier) {
 }
 
 @Composable
-private fun ADAutomationCard(
-    active: Boolean,
-    ready: Boolean,
-    modifier: Modifier = Modifier,
-    onClick: () -> Unit,
-) {
+private fun ADAutomationCard(active: Boolean, ready: Boolean, modifier: Modifier = Modifier, onClick: () -> Unit) {
     Surface(
         onClick = onClick,
         modifier = modifier.heightIn(min = 76.dp),
@@ -373,10 +326,7 @@ private fun ADAutomationCard(
         border = BorderStroke(1.dp, if (active) ADColors.Ink.copy(alpha = .28f) else ADColors.Outline),
     ) {
         Row(Modifier.padding(11.dp), verticalAlignment = Alignment.CenterVertically) {
-            Box(
-                Modifier.size(40.dp).background(ADColors.SurfaceSubtle, RoundedCornerShape(11.dp)),
-                contentAlignment = Alignment.Center,
-            ) {
+            Box(Modifier.size(40.dp).background(ADColors.SurfaceSubtle, RoundedCornerShape(11.dp)), contentAlignment = Alignment.Center) {
                 ADGlyphIcon(ADGlyph.AI, ADColors.Ink, Modifier.size(22.dp), accent = if (active) ADColors.Red else null)
             }
             Column(Modifier.padding(start = 10.dp).weight(1f)) {
@@ -387,12 +337,7 @@ private fun ADAutomationCard(
                         Box(Modifier.size(5.dp).background(ADColors.Red, CircleShape))
                     }
                 }
-                Text(
-                    if (ready) "Phone access ready" else "Tap to allow phone access",
-                    style = MaterialTheme.typography.bodySmall,
-                    color = ADColors.Muted,
-                    maxLines = 1,
-                )
+                Text(if (ready) "Phone access ready" else "Tap to allow phone access", style = MaterialTheme.typography.bodySmall, color = ADColors.Muted, maxLines = 1)
             }
         }
     }
@@ -413,11 +358,8 @@ private fun ADConfigurationCard(
         color = ADColors.Surface.copy(alpha = 0.88f),
         border = BorderStroke(1.dp, ADColors.Outline),
     ) {
-        Column(
-            modifier = Modifier.padding(9.dp),
-            verticalArrangement = Arrangement.SpaceBetween,
-        ) {
-            Icon(icon, contentDescription = null, tint = ADColors.Ink, modifier = Modifier.size(17.dp))
+        Column(modifier = Modifier.padding(9.dp), verticalArrangement = Arrangement.SpaceBetween) {
+            Icon(icon, null, tint = ADColors.Ink, modifier = Modifier.size(17.dp))
             Column {
                 Text(title, style = MaterialTheme.typography.labelLarge, maxLines = 1)
                 Text(detail, style = MaterialTheme.typography.labelSmall, color = ADColors.Muted, maxLines = 1, overflow = TextOverflow.Ellipsis)
