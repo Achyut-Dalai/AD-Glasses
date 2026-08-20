@@ -26,6 +26,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.rounded.ArrowBack
 import androidx.compose.material.icons.automirrored.rounded.KeyboardArrowRight
 import androidx.compose.material.icons.outlined.AutoAwesome
+import androidx.compose.material.icons.outlined.ChatBubbleOutline
 import androidx.compose.material.icons.rounded.Check
 import androidx.compose.material.icons.rounded.Settings
 import androidx.compose.material3.Button
@@ -49,6 +50,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.fersaiyan.cyanbridge.R
 
 @Composable
 internal fun ADAssetIcon(
@@ -87,6 +89,7 @@ internal fun ADTopBar(
                 modifier = Modifier.size(36.dp),
                 shape = CircleShape,
                 color = ADColors.Surface,
+                contentColor = ADColors.Ink,
                 border = BorderStroke(1.dp, ADColors.Outline),
             ) {
                 Box(contentAlignment = Alignment.Center) {
@@ -132,6 +135,7 @@ internal fun ADTopBar(
                 modifier = Modifier.size(36.dp),
                 shape = CircleShape,
                 color = ADColors.Surface,
+                contentColor = ADColors.Ink,
                 border = BorderStroke(1.dp, ADColors.Outline),
             ) {
                 Box(contentAlignment = Alignment.Center) {
@@ -149,24 +153,12 @@ internal fun ADTopBar(
 
 @Composable
 internal fun ADGlassesMark(modifier: Modifier = Modifier) {
-    Surface(
+    Image(
+        painter = painterResource(R.drawable.ad_user_app_icon),
+        contentDescription = "AD Glasses",
         modifier = modifier,
-        shape = RoundedCornerShape(10.dp),
-        color = ADColors.Surface,
-        border = BorderStroke(1.dp, ADColors.Outline),
-    ) {
-        Box(contentAlignment = Alignment.Center) {
-            Text(
-                text = "AD",
-                style = MaterialTheme.typography.labelLarge.copy(
-                    fontFamily = ADTechFontFamily,
-                    fontWeight = FontWeight.Bold,
-                    letterSpacing = 0.8.sp,
-                ),
-                color = ADColors.Ink,
-            )
-        }
-    }
+        contentScale = ContentScale.Fit,
+    )
 }
 
 @Composable
@@ -182,6 +174,7 @@ internal fun ADBottomNavigation(selected: ADTab, onSelected: (ADTab) -> Unit) {
             modifier = Modifier.fillMaxWidth(),
             shape = RoundedCornerShape(15.dp),
             color = Color.Black,
+            contentColor = ADColors.Ink,
             border = BorderStroke(1.dp, ADColors.Outline),
         ) {
             Row(
@@ -229,25 +222,21 @@ private fun ADBottomNavigationItem(
         verticalArrangement = Arrangement.Center,
     ) {
         Box(contentAlignment = Alignment.Center) {
-            if (tab == ADTab.AI) {
-                Icon(
-                    imageVector = Icons.Outlined.AutoAwesome,
+            when (tab) {
+                ADTab.HOME -> ADGlyphIcon(ADGlyph.HOME, iconTint, Modifier.size(18.dp))
+                ADTab.CHATS -> Icon(
+                    Icons.Outlined.ChatBubbleOutline,
+                    contentDescription = "Prompt",
+                    tint = iconTint,
+                    modifier = Modifier.size(19.dp),
+                )
+                ADTab.AI -> Icon(
+                    Icons.Outlined.AutoAwesome,
                     contentDescription = "AI",
                     tint = iconTint,
                     modifier = Modifier.size(19.dp),
                 )
-            } else {
-                val glyph = when (tab) {
-                    ADTab.HOME -> ADGlyph.HOME
-                    ADTab.CHATS -> ADGlyph.PROMPT
-                    ADTab.AI -> ADGlyph.AI
-                    ADTab.LIBRARY -> ADGlyph.LIBRARY
-                }
-                ADGlyphIcon(
-                    glyph = glyph,
-                    tint = iconTint,
-                    modifier = Modifier.size(18.dp),
-                )
+                ADTab.LIBRARY -> ADGlyphIcon(ADGlyph.LIBRARY, iconTint, Modifier.size(18.dp))
             }
             if (selected) {
                 Box(
@@ -328,6 +317,7 @@ internal fun ADCard(
         enabled = onClick != null,
         shape = RoundedCornerShape(14.dp),
         color = ADColors.Surface,
+        contentColor = ADColors.Ink,
         border = BorderStroke(1.dp, ADColors.Outline),
     ) {
         Column(modifier = Modifier.padding(12.dp), content = content)
