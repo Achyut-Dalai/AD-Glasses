@@ -38,6 +38,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.core.content.ContextCompat
+import com.fersaiyan.cyanbridge.R
 import java.util.Locale
 
 @Composable
@@ -55,14 +56,19 @@ internal fun ADLanguageScreen(onBack: () -> Unit) {
         Surface(
             modifier = Modifier.fillMaxWidth(),
             shape = RoundedCornerShape(14.dp),
-            color = ADColors.Surface.copy(alpha = 0.88f),
+            color = ADColors.Surface,
             border = BorderStroke(1.dp, ADColors.Outline),
         ) {
             Row(Modifier.padding(11.dp), verticalAlignment = Alignment.CenterVertically) {
-                ADGlyphIcon(ADGlyph.LANGUAGE, ADColors.Ink, Modifier.size(22.dp))
-                Column(Modifier.padding(start = 9.dp).weight(1f)) {
-                    Text("APP LANGUAGE", style = MaterialTheme.typography.labelSmall, color = ADColors.Muted)
-                    Text(currentLanguage, style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.SemiBold)
+                ADAssetIcon(R.drawable.ad_codex_language, Modifier.size(36.dp), "App language")
+                Column(Modifier.padding(start = 10.dp).weight(1f)) {
+                    Text("APP LANGUAGE", style = MaterialTheme.typography.labelSmall, color = ADColors.InkSoft)
+                    Text(
+                        currentLanguage,
+                        style = MaterialTheme.typography.titleLarge,
+                        color = ADColors.Ink,
+                        fontWeight = FontWeight.SemiBold,
+                    )
                 }
             }
         }
@@ -109,14 +115,19 @@ internal fun ADPermissionsScreen(onBack: () -> Unit) {
         Surface(
             modifier = Modifier.fillMaxWidth(),
             shape = RoundedCornerShape(14.dp),
-            color = ADColors.Surface.copy(alpha = 0.88f),
+            color = ADColors.Surface,
             border = BorderStroke(1.dp, ADColors.Outline),
         ) {
             Row(Modifier.padding(11.dp), verticalAlignment = Alignment.CenterVertically) {
                 ADGlyphIcon(ADGlyph.PERMISSIONS, ADColors.Ink, Modifier.size(22.dp), accent = if (grantedCount < permissions.size) ADColors.Red else null)
                 Column(Modifier.padding(start = 9.dp).weight(1f)) {
-                    Text("ACCESS", style = MaterialTheme.typography.labelSmall, color = ADColors.Muted)
-                    Text("$grantedCount of ${permissions.size} ready", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.SemiBold)
+                    Text("ACCESS", style = MaterialTheme.typography.labelSmall, color = ADColors.InkSoft)
+                    Text(
+                        "$grantedCount of ${permissions.size} ready",
+                        style = MaterialTheme.typography.titleLarge,
+                        color = ADColors.Ink,
+                        fontWeight = FontWeight.SemiBold,
+                    )
                 }
             }
         }
@@ -146,7 +157,7 @@ private fun ADPermissionTile(item: ADPermissionItem, granted: Boolean, modifier:
     Surface(
         modifier = modifier.heightIn(min = 80.dp),
         shape = RoundedCornerShape(12.dp),
-        color = ADColors.Surface.copy(alpha = 0.88f),
+        color = ADColors.Surface,
         border = BorderStroke(1.dp, ADColors.Outline),
     ) {
         Column(modifier = Modifier.padding(9.dp), verticalArrangement = Arrangement.SpaceBetween) {
@@ -156,7 +167,7 @@ private fun ADPermissionTile(item: ADPermissionItem, granted: Boolean, modifier:
                 Box(Modifier.size(5.dp).background(if (granted) ADColors.Ink else ADColors.Red, CircleShape))
             }
             Column {
-                Text(item.title, style = MaterialTheme.typography.labelLarge, fontWeight = FontWeight.SemiBold, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                Text(item.title, style = MaterialTheme.typography.labelLarge, color = ADColors.Ink, fontWeight = FontWeight.SemiBold, maxLines = 1, overflow = TextOverflow.Ellipsis)
                 Text(if (granted) "Ready" else "Not granted", style = MaterialTheme.typography.labelSmall, color = ADColors.Muted)
             }
         }
