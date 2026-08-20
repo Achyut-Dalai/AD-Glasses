@@ -21,6 +21,7 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.rounded.KeyboardArrowRight
+import androidx.compose.material.icons.outlined.Bluetooth
 import androidx.compose.material.icons.outlined.Close
 import androidx.compose.material.icons.outlined.Refresh
 import androidx.compose.material3.CircularProgressIndicator
@@ -173,12 +174,18 @@ fun ADGlassesPairingScreen(
 @Composable
 private fun ADScanVisual(isScanning: Boolean, found: Boolean) {
     Box(modifier = Modifier.size(94.dp), contentAlignment = Alignment.Center) {
-        ADGlyphIcon(
-            ADGlyph.DEVICE,
-            ADColors.Ink,
-            Modifier.size(68.dp),
-            accent = if (found || isScanning) ADColors.Red else null,
-        )
+        Box(
+            Modifier
+                .size(56.dp)
+                .background(ADColors.SurfaceSubtle, CircleShape),
+            contentAlignment = Alignment.Center,
+        ) {
+            Box(
+                Modifier
+                    .size(if (found) 12.dp else 9.dp)
+                    .background(if (found) ADColors.Success else ADColors.Ink, CircleShape),
+            )
+        }
         if (isScanning) {
             CircularProgressIndicator(
                 modifier = Modifier.size(90.dp),
@@ -197,7 +204,16 @@ private fun ADPairingDeviceRow(device: ScannedDevice, onClick: () -> Unit) {
         modifier = Modifier.fillMaxWidth().clickable(onClick = onClick).padding(vertical = 9.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        ADGlyphIcon(ADGlyph.DEVICE, ADColors.Ink, Modifier.size(27.dp), accent = ADColors.Red)
+        Surface(
+            modifier = Modifier.size(30.dp),
+            shape = RoundedCornerShape(9.dp),
+            color = ADColors.SurfaceSubtle,
+            contentColor = ADColors.Ink,
+        ) {
+            Box(contentAlignment = Alignment.Center) {
+                Icon(Icons.Outlined.Bluetooth, contentDescription = null, modifier = Modifier.size(16.dp))
+            }
+        }
         Column(Modifier.padding(start = 9.dp).weight(1f)) {
             Text(
                 device.advertisedName?.takeIf { it.isNotBlank() } ?: deviceClass.displayName(),
