@@ -2,6 +2,7 @@ package com.fersaiyan.cyanbridge.ui.adglasses
 
 import java.io.File
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Test
 
@@ -57,13 +58,15 @@ class ADScreenInventoryTest {
     fun launcherUsesUploadedLogoOnDarkAdaptiveBackground() {
         val drawable = sourceFile("src/main/res/drawable")
         val drawableNoDpi = sourceFile("src/main/res/drawable-nodpi")
-        val uploadedLogo = File(drawableNoDpi, "ad_user_app_icon.webp")
+        val uploadedLogo = File(drawableNoDpi, "ad_user_app_icon.jpg")
+        val oldLogo = File(drawableNoDpi, "ad_user_app_icon.webp")
         val adaptiveForeground = File(drawable, "ad_glasses_adaptive_foreground.xml")
         val adaptiveBackground = File(drawable, "ad_glasses_adaptive_background.xml")
         val launcher = sourceFile("src/main/res/mipmap-anydpi-v26/ic_launcher.xml")
         val roundLauncher = sourceFile("src/main/res/mipmap-anydpi-v26/ic_launcher_round.xml")
 
         assertTrue("Uploaded app icon must exist", uploadedLogo.isFile && uploadedLogo.length() > 0L)
+        assertFalse("Previous app icon resource must be removed", oldLogo.exists())
         assertTrue("Adaptive foreground must exist", adaptiveForeground.isFile)
         assertTrue("Adaptive background must exist", adaptiveBackground.isFile)
         assertTrue(adaptiveForeground.readText().contains("@drawable/ad_user_app_icon"))
@@ -79,12 +82,26 @@ class ADScreenInventoryTest {
     }
 
     @Test
-    fun uploadedPortraitBackdropIsPackagedUnscaled() {
-        val background = sourceFile("src/main/res/drawable-nodpi/ad_user_background.jpeg")
+    fun uploadedWallpaperSetIsPackagedUnscaledAndSelectable() {
+        val drawableNoDpi = sourceFile("src/main/res/drawable-nodpi")
+        val wallpapers = listOf(
+            File(drawableNoDpi, "ad_wallpaper_grey.jpg"),
+            File(drawableNoDpi, "ad_wallpaper_v2.jpeg"),
+            File(drawableNoDpi, "ad_wallpaper_abstract.jpeg"),
+        )
+        val oldBackground = File(drawableNoDpi, "ad_user_background.jpeg")
         val appearance = sourceFile("src/main/java/com/fersaiyan/cyanbridge/ui/adglasses/ADAppearance.kt").readText()
-        assertTrue(background.isFile && background.length() > 0L)
-        assertTrue(appearance.contains("R.drawable.ad_user_background"))
+        val picker = sourceFile("src/main/java/com/fersaiyan/cyanbridge/ui/adglasses/ADWallpaperPicker.kt").readText()
+
+        wallpapers.forEach { wallpaper -> assertTrue(wallpaper.isFile && wallpaper.length() > 0L) }
+        assertFalse(oldBackground.exists())
+        assertTrue(appearance.contains("ADWallpaperStyle.GREY"))
+        assertTrue(appearance.contains("R.drawable.ad_wallpaper_grey"))
+        assertTrue(appearance.contains("R.drawable.ad_wallpaper_v2"))
+        assertTrue(appearance.contains("R.drawable.ad_wallpaper_abstract"))
         assertTrue(appearance.contains("ContentScale.Crop"))
+        assertTrue(picker.contains("ADWallpaperStyle.entries"))
+        assertTrue(picker.contains("ADWallpaperPreferences.set(context, style)"))
     }
 
     private fun sourceFile(relativePath: String): File {
