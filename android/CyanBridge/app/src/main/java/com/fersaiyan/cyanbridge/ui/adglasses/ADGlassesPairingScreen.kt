@@ -19,8 +19,14 @@ import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.rounded.KeyboardArrowRight
+import androidx.compose.material.icons.outlined.Bluetooth
+import androidx.compose.material.icons.outlined.Close
+import androidx.compose.material.icons.outlined.Refresh
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.HorizontalDivider
+import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Surface
@@ -61,7 +67,8 @@ fun ADGlassesPairingScreen(
                     Surface(
                         modifier = Modifier.fillMaxWidth(),
                         shape = RoundedCornerShape(16.dp),
-                        color = Color.Black.copy(alpha = 0.76f),
+                        color = ADColors.Surface.copy(alpha = 0.94f),
+                        contentColor = ADColors.Ink,
                         border = BorderStroke(1.dp, ADColors.Outline),
                     ) {
                         Column(
@@ -77,18 +84,10 @@ fun ADGlassesPairingScreen(
                                     else -> "Connect your glasses"
                                 },
                                 style = MaterialTheme.typography.titleLarge,
+                                color = ADColors.Ink,
                                 fontWeight = FontWeight.SemiBold,
                             )
-                            Text(
-                                when {
-                                    isScanning -> "Scanning for supported glasses around this phone."
-                                    devices.isNotEmpty() -> "Choose a detected pair below."
-                                    else -> "Keep them nearby and ready to pair."
-                                },
-                                style = MaterialTheme.typography.bodySmall,
-                                color = ADColors.Muted,
-                            )
-                            Spacer(Modifier.size(11.dp))
+                            Spacer(Modifier.size(10.dp))
                             if (isScanning) {
                                 OutlinedButton(
                                     onClick = onStopScan,
@@ -96,7 +95,7 @@ fun ADGlassesPairingScreen(
                                     shape = RoundedCornerShape(11.dp),
                                     border = BorderStroke(1.dp, ADColors.Outline),
                                 ) {
-                                    ADGlyphIcon(ADGlyph.CLOSE, ADColors.Ink, Modifier.size(16.dp))
+                                    Icon(Icons.Outlined.Close, null, tint = ADColors.Ink, modifier = Modifier.size(15.dp))
                                     Spacer(Modifier.size(5.dp))
                                     Text("Stop scanning", color = ADColors.Ink, style = MaterialTheme.typography.labelLarge)
                                 }
@@ -105,15 +104,15 @@ fun ADGlassesPairingScreen(
                                     onClick = onScan,
                                     modifier = Modifier.fillMaxWidth().heightIn(min = 44.dp),
                                     shape = RoundedCornerShape(11.dp),
-                                    color = ADColors.Red,
-                                    contentColor = Color.White,
+                                    color = ADColors.RedAction,
+                                    contentColor = ADColors.RedContent,
                                 ) {
                                     Row(
                                         modifier = Modifier.padding(horizontal = 12.dp, vertical = 10.dp),
                                         horizontalArrangement = Arrangement.Center,
                                         verticalAlignment = Alignment.CenterVertically,
                                     ) {
-                                        ADGlyphIcon(ADGlyph.SYNC, Color.White, Modifier.size(16.dp))
+                                        Icon(Icons.Outlined.Refresh, null, modifier = Modifier.size(15.dp))
                                         Spacer(Modifier.size(5.dp))
                                         Text(if (devices.isEmpty()) "Scan for glasses" else "Scan again", style = MaterialTheme.typography.labelLarge)
                                     }
@@ -129,7 +128,8 @@ fun ADGlassesPairingScreen(
                         Surface(
                             modifier = Modifier.fillMaxWidth(),
                             shape = RoundedCornerShape(13.dp),
-                            color = ADColors.Surface.copy(alpha = 0.92f),
+                            color = ADColors.Surface.copy(alpha = 0.94f),
+                            contentColor = ADColors.Ink,
                             border = BorderStroke(1.dp, ADColors.Outline),
                         ) {
                             Column(Modifier.padding(horizontal = 10.dp)) {
@@ -147,17 +147,17 @@ fun ADGlassesPairingScreen(
                         Surface(
                             modifier = Modifier.fillMaxWidth(),
                             shape = RoundedCornerShape(12.dp),
-                            color = ADColors.Surface.copy(alpha = 0.92f),
+                            color = ADColors.Surface.copy(alpha = 0.94f),
+                            contentColor = ADColors.Ink,
                             border = BorderStroke(1.dp, ADColors.Outline),
                         ) {
-                            Column(Modifier.padding(10.dp)) {
-                                Text("Nothing nearby yet", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Medium)
-                                Text(
-                                    "Check Bluetooth and keep the glasses close.",
-                                    style = MaterialTheme.typography.bodySmall,
-                                    color = ADColors.Muted,
-                                )
-                            }
+                            Text(
+                                "Nothing nearby yet",
+                                modifier = Modifier.padding(11.dp),
+                                style = MaterialTheme.typography.titleMedium,
+                                color = ADColors.Ink,
+                                fontWeight = FontWeight.Medium,
+                            )
                         }
                     }
                 }
@@ -175,11 +175,10 @@ private fun ADScanVisual(isScanning: Boolean, found: Boolean) {
                 .background(ADColors.SurfaceSubtle, CircleShape),
             contentAlignment = Alignment.Center,
         ) {
-            ADGlyphIcon(
-                ADGlyph.BLUETOOTH,
-                tint = ADColors.Ink,
-                modifier = Modifier.size(26.dp),
-                accent = if (found || isScanning) ADColors.Red else null,
+            Box(
+                Modifier
+                    .size(if (found) 12.dp else 9.dp)
+                    .background(if (found) ADColors.Success else ADColors.Ink, CircleShape),
             )
         }
         if (isScanning) {
@@ -207,31 +206,32 @@ private fun ADPairingDeviceRow(device: ScannedDevice, onClick: () -> Unit) {
             contentColor = ADColors.Ink,
         ) {
             Box(contentAlignment = Alignment.Center) {
-                ADGlyphIcon(ADGlyph.BLUETOOTH, ADColors.Ink, Modifier.size(17.dp))
+                Icon(Icons.Outlined.Bluetooth, contentDescription = null, modifier = Modifier.size(16.dp))
             }
         }
         Column(Modifier.padding(start = 9.dp).weight(1f)) {
             Text(
                 device.advertisedName?.takeIf { it.isNotBlank() } ?: deviceClass.displayName(),
                 style = MaterialTheme.typography.titleMedium,
+                color = ADColors.Ink,
                 fontWeight = FontWeight.Medium,
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis,
             )
             Text(
-                if (device.rssi != 0) signalLabel(device.rssi) else "Ready to connect",
-                style = MaterialTheme.typography.bodySmall,
+                if (device.rssi != 0) signalLabel(device.rssi) else "Ready",
+                style = MaterialTheme.typography.labelSmall,
                 color = ADColors.Muted,
                 maxLines = 1,
             )
         }
-        ADGlyphIcon(ADGlyph.NEXT, ADColors.Muted, Modifier.size(16.dp))
+        Icon(Icons.AutoMirrored.Rounded.KeyboardArrowRight, "Connect", tint = ADColors.Muted, modifier = Modifier.size(16.dp))
     }
 }
 
 private fun signalLabel(rssi: Int): String = when {
-    rssi >= -55 -> "Strong signal"
-    rssi >= -70 -> "Good signal"
+    rssi >= -55 -> "Strong"
+    rssi >= -70 -> "Good"
     rssi >= -82 -> "Nearby"
-    else -> "Weak signal"
+    else -> "Weak"
 }

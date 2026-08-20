@@ -37,11 +37,15 @@ class ADVisibleProductUiTest {
     }
 
     @Test
-    fun pairingScreenIsComposeOwned() {
+    fun pairingScreenIsComposeOwnedAndUsesProductBackdrop() {
         val pairingActivity = appFile("src/main/java/com/fersaiyan/cyanbridge/ui/DeviceBindActivity.kt").readText()
+        val pairing = appFile("src/main/java/com/fersaiyan/cyanbridge/ui/adglasses/ADGlassesPairingScreen.kt").readText()
         assertTrue(pairingActivity.contains("ADGlassesPairingScreen"))
         assertTrue(pairingActivity.contains("setContent"))
         assertFalse(pairingActivity.contains("setContentView(R.layout.activity_device_bind)"))
+        assertTrue(pairing.contains("ADWallpaperBackground {"))
+        assertTrue(pairing.contains("Icons.Outlined.Bluetooth"))
+        assertFalse(pairing.contains("ADGlyph.DEVICE"))
     }
 
     @Test
@@ -63,7 +67,7 @@ class ADVisibleProductUiTest {
     }
 
     @Test
-    fun homeStartsCoreActionsWithMatrixCardsAndNoGeneratedActionArt() {
+    fun homeKeepsLargeProductHeroAndOneAnimatedMatrixMoment() {
         val home = appFile("src/main/java/com/fersaiyan/cyanbridge/ui/adglasses/ADHomeSurface.kt").readText()
         assertTrue(home.contains("onClick = host.onVoiceQuestion"))
         assertTrue(home.contains("onClick = host.onCapturePhoto"))
@@ -73,15 +77,27 @@ class ADVisibleProductUiTest {
         assertTrue(home.contains("toggleCapability(AssistantCapability.MEETING_NOTES)"))
         listOf("Ask AI", "Photo", "Video", "Translate", "Soundbites", "Audio", "Lens")
             .forEach { label -> assertTrue(home.contains("\"$label\"")) }
-        assertTrue(home.contains("ADHomeActionCard("))
-        assertTrue(home.contains("ADHeroSignalMatrix("))
-        assertTrue(home.contains("ADTechFontFamily"))
+        assertTrue(home.contains("ADLargeGlassesHero("))
+        assertTrue(home.contains("ADGlyphMatrixFeature("))
+        assertTrue(home.contains("GLYPH MATRIX / 01"))
+        assertTrue(home.contains(".height(184.dp)"))
         assertTrue(home.contains("R.drawable.ad_glasses_hero_v4"))
-        assertFalse(home.contains("ADGlyphMatrixCard("))
         assertFalse(home.contains("R.drawable.ad_codex_ask"))
         assertFalse(home.contains("R.drawable.ad_codex_video"))
         assertFalse(home.contains("R.drawable.ad_codex_language"))
         assertFalse(home.contains("R.drawable.ad_codex_audio"))
+    }
+
+    @Test
+    fun navigationDoesNotTurnPromptOrSystemControlsIntoMatrixGlyphs() {
+        val components = appFile("src/main/java/com/fersaiyan/cyanbridge/ui/adglasses/ADComponents.kt").readText()
+        assertTrue(components.contains("Icons.Outlined.ChatBubbleOutline"))
+        assertTrue(components.contains("Icons.AutoMirrored.Rounded.ArrowBack"))
+        assertTrue(components.contains("Icons.AutoMirrored.Rounded.KeyboardArrowRight"))
+        assertTrue(components.contains("Icons.Rounded.Settings"))
+        assertFalse(components.contains("ADGlyph.BACK"))
+        assertFalse(components.contains("ADGlyph.NEXT"))
+        assertFalse(components.contains("ADGlyph.SETTINGS"))
     }
 
     @Test
@@ -90,7 +106,7 @@ class ADVisibleProductUiTest {
             cyanBridgeFile("package.json"),
             cyanBridgeFile("package-lock.json"),
             cyanBridgeFile("metro.config.js"),
-            cyanBridgeFile("src/App.tsx"),
+            appFile("src/App.tsx"),
             appFile("src/main/java/com/fersaiyan/cyanbridge/ui/reactnative"),
             appFile("src/main/res/layout/activity_chat_list.xml"),
             appFile("src/main/res/layout/activity_chat_thread.xml"),

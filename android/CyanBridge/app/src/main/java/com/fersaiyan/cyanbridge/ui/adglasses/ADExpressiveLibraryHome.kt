@@ -14,6 +14,9 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.rounded.KeyboardArrowRight
+import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
@@ -21,7 +24,6 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 
 @Composable
@@ -46,7 +48,6 @@ internal fun ADExpressiveLibraryHome(
             ADScreenIntro(
                 eyebrow = "LIBRARY",
                 title = "Your captures",
-                detail = "Photos, recordings and notes from your glasses.",
             )
         }
 
@@ -55,7 +56,8 @@ internal fun ADExpressiveLibraryHome(
                 onClick = onOpenSync,
                 modifier = Modifier.fillMaxWidth(),
                 shape = RoundedCornerShape(14.dp),
-                color = ADColors.Surface.copy(alpha = 0.90f),
+                color = ADColors.Surface.copy(alpha = 0.94f),
+                contentColor = ADColors.Ink,
                 border = BorderStroke(1.dp, ADColors.Outline),
             ) {
                 Row(
@@ -68,26 +70,23 @@ internal fun ADExpressiveLibraryHome(
                         modifier = Modifier.size(20.dp),
                         accent = if (transferActive) ADColors.Red else null,
                     )
-                    Column(Modifier.padding(start = 9.dp).weight(1f)) {
-                        Text(
-                            if (transferActive) "Sync in progress" else "Sync from glasses",
-                            style = MaterialTheme.typography.titleMedium,
-                            fontWeight = FontWeight.SemiBold,
-                        )
-                        Text(
-                            if (transferActive) "Open transfer details" else "Bring new media onto this phone",
-                            style = MaterialTheme.typography.bodySmall,
-                            color = ADColors.Muted,
-                            maxLines = 1,
-                            overflow = TextOverflow.Ellipsis,
-                        )
-                    }
+                    Text(
+                        if (transferActive) "SYNCING" else "SYNC FROM GLASSES",
+                        modifier = Modifier.padding(start = 9.dp).weight(1f),
+                        style = MaterialTheme.typography.labelLarge.copy(fontFamily = ADTechFontFamily),
+                        color = ADColors.Ink,
+                    )
                     if (transferActive) {
                         Box(Modifier.size(6.dp), contentAlignment = Alignment.Center) {
                             Surface(modifier = Modifier.size(6.dp), shape = CircleShape, color = ADColors.Red) {}
                         }
                     } else {
-                        ADGlyphIcon(ADGlyph.NEXT, ADColors.Muted, Modifier.size(16.dp))
+                        Icon(
+                            Icons.AutoMirrored.Rounded.KeyboardArrowRight,
+                            contentDescription = null,
+                            tint = ADColors.Muted,
+                            modifier = Modifier.size(16.dp),
+                        )
                     }
                 }
             }
@@ -99,7 +98,6 @@ internal fun ADExpressiveLibraryHome(
                 ADLibraryPrimaryDestination(
                     glyph = ADGlyph.LIBRARY,
                     title = "Captures",
-                    detail = "Photos and videos",
                     onClick = onCaptures,
                 )
                 Row(
@@ -109,14 +107,12 @@ internal fun ADExpressiveLibraryHome(
                     ADLibraryCompactDestination(
                         glyph = ADGlyph.AUDIO,
                         title = "Recordings",
-                        detail = "Audio & transcript",
                         modifier = Modifier.weight(1f),
                         onClick = onRecordings,
                     )
                     ADLibraryCompactDestination(
                         glyph = ADGlyph.PROMPT,
                         title = "Notes",
-                        detail = "Saved summaries",
                         modifier = Modifier.weight(1f),
                         onClick = onNotes,
                     )
@@ -130,14 +126,14 @@ internal fun ADExpressiveLibraryHome(
 private fun ADLibraryPrimaryDestination(
     glyph: ADGlyph,
     title: String,
-    detail: String,
     onClick: () -> Unit,
 ) {
     Surface(
         onClick = onClick,
-        modifier = Modifier.fillMaxWidth().heightIn(min = 84.dp),
+        modifier = Modifier.fillMaxWidth().heightIn(min = 78.dp),
         shape = RoundedCornerShape(14.dp),
-        color = ADColors.Surface.copy(alpha = 0.88f),
+        color = ADColors.Surface.copy(alpha = 0.94f),
+        contentColor = ADColors.Ink,
         border = BorderStroke(1.dp, ADColors.Outline),
     ) {
         Row(
@@ -150,11 +146,19 @@ private fun ADLibraryPrimaryDestination(
             ) {
                 ADGlyphIcon(glyph, ADColors.Ink, Modifier.size(28.dp))
             }
-            Column(Modifier.padding(start = 9.dp).weight(1f)) {
-                Text(title, style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.SemiBold)
-                Text(detail, style = MaterialTheme.typography.bodySmall, color = ADColors.Muted)
-            }
-            ADGlyphIcon(ADGlyph.NEXT, ADColors.Muted, Modifier.size(16.dp))
+            Text(
+                title.uppercase(),
+                modifier = Modifier.padding(start = 9.dp).weight(1f),
+                style = MaterialTheme.typography.labelLarge.copy(fontFamily = ADTechFontFamily),
+                color = ADColors.Ink,
+                fontWeight = FontWeight.SemiBold,
+            )
+            Icon(
+                Icons.AutoMirrored.Rounded.KeyboardArrowRight,
+                contentDescription = null,
+                tint = ADColors.Muted,
+                modifier = Modifier.size(16.dp),
+            )
         }
     }
 }
@@ -163,15 +167,15 @@ private fun ADLibraryPrimaryDestination(
 private fun ADLibraryCompactDestination(
     glyph: ADGlyph,
     title: String,
-    detail: String,
     modifier: Modifier = Modifier,
     onClick: () -> Unit,
 ) {
     Surface(
         onClick = onClick,
-        modifier = modifier.heightIn(min = 96.dp),
+        modifier = modifier.heightIn(min = 88.dp),
         shape = RoundedCornerShape(13.dp),
-        color = ADColors.Surface.copy(alpha = 0.88f),
+        color = ADColors.Surface.copy(alpha = 0.94f),
+        contentColor = ADColors.Ink,
         border = BorderStroke(1.dp, ADColors.Outline),
     ) {
         Column(
@@ -184,10 +188,13 @@ private fun ADLibraryCompactDestination(
                 modifier = Modifier.size(21.dp),
                 accent = if (glyph == ADGlyph.AUDIO) ADColors.Red else null,
             )
-            Column {
-                Text(title, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold, maxLines = 1)
-                Text(detail, style = MaterialTheme.typography.bodySmall, color = ADColors.Muted, maxLines = 1)
-            }
+            Text(
+                title.uppercase(),
+                style = MaterialTheme.typography.labelLarge.copy(fontFamily = ADTechFontFamily),
+                color = ADColors.Ink,
+                fontWeight = FontWeight.SemiBold,
+                maxLines = 1,
+            )
         }
     }
 }
