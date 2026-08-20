@@ -25,6 +25,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.rounded.ArrowBack
 import androidx.compose.material.icons.automirrored.rounded.KeyboardArrowRight
+import androidx.compose.material.icons.outlined.AutoAwesome
 import androidx.compose.material.icons.rounded.Check
 import androidx.compose.material.icons.rounded.Settings
 import androidx.compose.material3.Button
@@ -39,7 +40,6 @@ import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
-import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.layout.ContentScale
@@ -49,7 +49,6 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.fersaiyan.cyanbridge.R
 
 @Composable
 internal fun ADAssetIcon(
@@ -61,7 +60,7 @@ internal fun ADAssetIcon(
     Image(
         painter = painterResource(drawable),
         contentDescription = contentDescription,
-        modifier = modifier.clip(RoundedCornerShape(8.dp)).alpha(alpha),
+        modifier = modifier.alpha(alpha),
         contentScale = ContentScale.Fit,
     )
 }
@@ -82,42 +81,27 @@ internal fun ADTopBar(
             .padding(horizontal = 14.dp, vertical = 4.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        when {
-            showBack -> {
-                Surface(
-                    onClick = onBack,
-                    modifier = Modifier.size(36.dp),
-                    shape = CircleShape,
-                    color = ADColors.Surface,
-                    border = BorderStroke(1.dp, ADColors.Outline),
-                ) {
-                    Box(contentAlignment = Alignment.Center) {
-                        Icon(
-                            Icons.AutoMirrored.Rounded.ArrowBack,
-                            contentDescription = "Back",
-                            tint = ADColors.Ink,
-                            modifier = Modifier.size(17.dp),
-                        )
-                    }
-                }
-            }
-
-            showBrand -> {
-                Box(
-                    modifier = Modifier.size(40.dp),
-                    contentAlignment = Alignment.Center,
-                ) {
-                    ADAssetIcon(
-                        drawable = R.drawable.ad_codex_brand,
-                        modifier = Modifier.size(38.dp),
-                        contentDescription = "AD Glasses",
+        if (showBack) {
+            Surface(
+                onClick = onBack,
+                modifier = Modifier.size(36.dp),
+                shape = CircleShape,
+                color = ADColors.Surface,
+                border = BorderStroke(1.dp, ADColors.Outline),
+            ) {
+                Box(contentAlignment = Alignment.Center) {
+                    Icon(
+                        Icons.AutoMirrored.Rounded.ArrowBack,
+                        contentDescription = "Back",
+                        tint = ADColors.Ink,
+                        modifier = Modifier.size(17.dp),
                     )
                 }
             }
         }
 
         if (showBrand) {
-            Column(Modifier.padding(start = 8.dp)) {
+            Column {
                 Text(
                     text = "AD GLASSES",
                     style = MaterialTheme.typography.labelSmall.copy(letterSpacing = 1.1.sp),
@@ -165,11 +149,24 @@ internal fun ADTopBar(
 
 @Composable
 internal fun ADGlassesMark(modifier: Modifier = Modifier) {
-    ADAssetIcon(
-        drawable = R.drawable.ad_codex_brand,
+    Surface(
         modifier = modifier,
-        contentDescription = "AD Glasses",
-    )
+        shape = RoundedCornerShape(10.dp),
+        color = ADColors.Surface,
+        border = BorderStroke(1.dp, ADColors.Outline),
+    ) {
+        Box(contentAlignment = Alignment.Center) {
+            Text(
+                text = "AD",
+                style = MaterialTheme.typography.labelLarge.copy(
+                    fontFamily = ADTechFontFamily,
+                    fontWeight = FontWeight.Bold,
+                    letterSpacing = 0.8.sp,
+                ),
+                color = ADColors.Ink,
+            )
+        }
+    }
 }
 
 @Composable
@@ -233,11 +230,11 @@ private fun ADBottomNavigationItem(
     ) {
         Box(contentAlignment = Alignment.Center) {
             if (tab == ADTab.AI) {
-                ADAssetIcon(
-                    drawable = R.drawable.ad_codex_ai,
-                    modifier = Modifier.size(20.dp),
+                Icon(
+                    imageVector = Icons.Outlined.AutoAwesome,
                     contentDescription = "AI",
-                    alpha = if (selected) 1f else 0.62f,
+                    tint = iconTint,
+                    modifier = Modifier.size(19.dp),
                 )
             } else {
                 val glyph = when (tab) {

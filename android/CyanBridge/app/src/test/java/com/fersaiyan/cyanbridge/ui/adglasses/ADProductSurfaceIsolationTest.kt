@@ -79,24 +79,29 @@ class ADProductSurfaceIsolationTest {
     fun homeOwnsEverydayCapabilitiesWhileAiKeepsPersistentControls() {
         val home = sourceFile("src/main/java/com/fersaiyan/cyanbridge/ui/adglasses/ADHomeSurface.kt").readText()
         val ai = sourceFile("src/main/java/com/fersaiyan/cyanbridge/ui/adglasses/ADNativeAiScreen.kt").readText()
+        val components = sourceFile("src/main/java/com/fersaiyan/cyanbridge/ui/adglasses/ADComponents.kt").readText()
         val library = sourceFile("src/main/java/com/fersaiyan/cyanbridge/ui/adglasses/ADExpressiveLibraryHome.kt").readText()
         val app = sourceFile("src/main/java/com/fersaiyan/cyanbridge/ui/adglasses/ADGlassesApp.kt").readText()
 
-        listOf("Ask AI", "Photo", "Video", "Translate", "Soundbites", "Audio", "LENS")
-            .forEach { label -> assertTrue("Home should surface $label", home.contains("\"$label\"")) }
+        listOf("Ask AI", "Photo", "Video", "Translate", "Soundbites", "Audio", "Lens")
+            .forEach { label -> assertTrue("Home should keep accessible action identity for $label", home.contains("\"$label\"")) }
+        listOf("Voice question", "Capture", "Record", "Live speech", "Speech notes", "Look at it. Ask about it.")
+            .forEach { oldVisibleCopy -> assertFalse("Home action tiles should be image-only", home.contains("\"$oldVisibleCopy\"")) }
         assertTrue(home.contains("AssistantCapability.TRANSLATOR"))
         assertTrue(home.contains("AssistantCapability.MEETING_NOTES"))
         assertTrue(home.contains("onClick = host.onImageQuestion"))
         listOf("ASK", "PHOTO", "VIDEO", "TRANSLATE", "SOUNDBITES", "AUDIO")
             .forEach { glyph -> assertTrue(home.contains("glyph = ADGlyph.$glyph")) }
-        assertTrue(home.contains("ADGlyphIcon(ADGlyph.LENS"))
+        assertTrue(home.contains("glyph = ADGlyph.LENS"))
+        assertTrue(home.contains("aspectRatio(1f)"))
+        assertTrue(home.contains("contentDescription = title"))
         assertTrue(home.contains("R.drawable.ad_glasses_hero_v4"))
         assertTrue(home.contains("R.drawable.ad_codex_ask"))
         assertTrue(home.contains("R.drawable.ad_codex_video"))
+        assertTrue(home.contains("R.drawable.ad_codex_language"))
         assertTrue(home.contains("R.drawable.ad_codex_audio"))
         assertTrue(home.contains("ADGlyphMatrixCard("))
         assertTrue(home.contains("GLYPH MATRIX / 01"))
-        assertTrue(home.contains("ADColors.RedAction"))
         assertFalse(home.contains("Smart Lens"))
         assertFalse(home.contains("Search Web"))
         assertFalse(home.contains("ADHomeLink("))
@@ -104,10 +109,13 @@ class ADProductSurfaceIsolationTest {
         assertTrue(ai.contains("\"Timeline\""))
         assertTrue(ai.contains("\"Diary\""))
         assertTrue(ai.contains("\"Automation\""))
+        assertTrue(ai.contains("\"ANSWER WITH\""))
         assertTrue(ai.contains("ADAiProviderPill"))
-        assertTrue(ai.contains("R.drawable.ad_codex_ai"))
         assertTrue(ai.contains("ADAutomationArtwork("))
         assertTrue(ai.contains("ADAutomationActionChip("))
+        assertFalse(ai.contains("R.drawable.ad_codex_ai"))
+        assertFalse(ai.contains("AI that feels like yours"))
+        assertFalse(ai.contains("selectedName"))
         assertFalse(ai.contains("Switch("))
         assertFalse(ai.contains("\"DayNote\""))
         assertFalse("Translate belongs on Home, not AI", ai.contains("\"Translate\""))
@@ -117,6 +125,10 @@ class ADProductSurfaceIsolationTest {
         assertFalse(ai.contains("\"Modes\""))
         assertTrue(ai.contains("\"Apps\""))
         assertTrue(ai.contains("onAssistantApps"))
+
+        assertFalse(components.contains("R.drawable.ad_codex_brand"))
+        assertTrue(components.contains("Icons.Outlined.AutoAwesome"))
+        assertTrue(components.contains("text = \"AD\""))
 
         assertTrue(library.contains("ADLibraryPrimaryDestination("))
         assertTrue(library.contains("ADLibraryCompactDestination("))
@@ -162,7 +174,8 @@ class ADProductSurfaceIsolationTest {
         val pairing = sourceFile("src/main/java/com/fersaiyan/cyanbridge/ui/adglasses/ADGlassesPairingScreen.kt").readText()
         assertTrue(pairing.contains("Looking for nearby glasses"))
         assertTrue(pairing.contains("WindowInsets.safeDrawing"))
-        assertTrue(pairing.contains("ADGlyph.DEVICE"))
+        assertTrue(pairing.contains("Icons.Outlined.Bluetooth"))
+        assertFalse(pairing.contains("ADGlyph.DEVICE"))
         assertFalse("Pairing presentation must not hard-code current hardware", pairing.contains("HeyCyan"))
     }
 
@@ -210,11 +223,14 @@ class ADProductSurfaceIsolationTest {
     @Test
     fun welcomeRestoresProductHeroInDarkTheme() {
         val welcome = sourceFile("src/main/java/com/fersaiyan/cyanbridge/ui/adglasses/ADWelcomeScreen.kt").readText()
+        val components = sourceFile("src/main/java/com/fersaiyan/cyanbridge/ui/adglasses/ADComponents.kt").readText()
         assertTrue(welcome.contains("\"YOUR GLASSES\""))
         assertTrue(welcome.contains("\"YOUR AI\""))
         assertTrue(welcome.contains("\"YOUR DATA\""))
         assertTrue(welcome.contains("ADGlassesMark("))
         assertTrue(welcome.contains("R.drawable.ad_glasses_hero_v4"))
+        assertTrue(components.contains("text = \"AD\""))
+        assertFalse(components.contains("R.drawable.ad_codex_brand"))
         assertTrue(welcome.contains("ADColors.Red"))
         assertTrue(welcome.contains("RoundedCornerShape(18.dp)"))
         assertTrue(welcome.contains("ADWelcomeCapability("))
@@ -245,7 +261,7 @@ class ADProductSurfaceIsolationTest {
         val app = sourceFile("src/main/java/com/fersaiyan/cyanbridge/ui/adglasses/ADGlassesApp.kt").readText()
         assertTrue(deviceCenter.contains("\"Sync media\""))
         assertTrue(deviceCenter.contains("\"Firmware\""))
-        assertTrue(deviceCenter.contains("ADGlyph.DEVICE"))
+        assertFalse(deviceCenter.contains("ADGlyph.DEVICE"))
         assertFalse(deviceCenter.contains("title = \"Advanced\""))
         assertFalse(deviceCenter.contains("onAdvanced"))
         assertFalse(settings.contains("title = \"Device diagnostics\""))

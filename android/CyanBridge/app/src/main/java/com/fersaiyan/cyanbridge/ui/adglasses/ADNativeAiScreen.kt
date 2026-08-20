@@ -44,7 +44,6 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
-import com.fersaiyan.cyanbridge.R
 import com.fersaiyan.cyanbridge.agent.LocalAgentPrefs
 import com.fersaiyan.cyanbridge.ai.orchestrator.AndroidCapabilityCommandExecutor
 import com.fersaiyan.cyanbridge.ai.orchestrator.AssistantCapability
@@ -117,28 +116,13 @@ internal fun ADNativeAiScreen(
     val diaryActive = capabilityExecutor.isActive(AssistantCapability.AUTO_DIARY)
     val automationActive = capabilityExecutor.isActive(AssistantCapability.LOCAL_AGENT)
     val automationReady = hasAccessibilityServicePermission(context)
-    val selectedName = when (selected) {
-        ADAiChoice.GEMINI -> "Gemini"
-        ADAiChoice.OPENAI_CODEX -> "OpenAI / Codex"
-        ADAiChoice.LOCAL -> "Local AI"
-    }
 
     LazyColumn(
         modifier = Modifier.fillMaxSize(),
         contentPadding = androidx.compose.foundation.layout.PaddingValues(12.dp, 10.dp, 12.dp, 18.dp),
         verticalArrangement = Arrangement.spacedBy(12.dp),
     ) {
-        item {
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                ADAssetIcon(R.drawable.ad_codex_ai, Modifier.size(42.dp), "AI")
-                Column(Modifier.padding(start = 10.dp)) {
-                    Text("INTELLIGENCE", style = MaterialTheme.typography.labelSmall, color = ADColors.InkSoft)
-                    Text("AI that feels like yours", style = MaterialTheme.typography.headlineLarge, color = ADColors.Ink)
-                }
-            }
-        }
-
-        item { ADAiProviderCard(selectedName, selected, ::select) }
+        item { ADAiProviderCard(selected = selected, onSelect = ::select) }
 
         item {
             Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -184,7 +168,7 @@ internal fun ADNativeAiScreen(
 }
 
 @Composable
-private fun ADAiProviderCard(selectedName: String, selected: ADAiChoice, onSelect: (ADAiChoice) -> Unit) {
+private fun ADAiProviderCard(selected: ADAiChoice, onSelect: (ADAiChoice) -> Unit) {
     Surface(
         modifier = Modifier.fillMaxWidth(),
         shape = RoundedCornerShape(17.dp),
@@ -192,15 +176,8 @@ private fun ADAiProviderCard(selectedName: String, selected: ADAiChoice, onSelec
         border = BorderStroke(1.dp, ADColors.Outline),
     ) {
         Column(Modifier.padding(12.dp)) {
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                ADAssetIcon(R.drawable.ad_codex_ai, Modifier.size(34.dp), null)
-                Column(Modifier.padding(start = 9.dp).weight(1f)) {
-                    Text("ANSWER WITH", style = MaterialTheme.typography.labelSmall, color = ADColors.InkSoft)
-                    Text(selectedName, style = MaterialTheme.typography.titleLarge, color = ADColors.Ink, maxLines = 1, overflow = TextOverflow.Ellipsis)
-                }
-                Box(Modifier.size(5.dp).background(ADColors.Red, CircleShape))
-            }
-            Spacer(Modifier.height(10.dp))
+            Text("ANSWER WITH", style = MaterialTheme.typography.labelSmall, color = ADColors.InkSoft)
+            Spacer(Modifier.height(8.dp))
             Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
                 ADAiProviderPill("Gemini", selected == ADAiChoice.GEMINI, Modifier.weight(1f)) { onSelect(ADAiChoice.GEMINI) }
                 ADAiProviderPill("Codex", selected == ADAiChoice.OPENAI_CODEX, Modifier.weight(1f)) { onSelect(ADAiChoice.OPENAI_CODEX) }
