@@ -68,9 +68,8 @@ import com.fersaiyan.cyanbridge.shared.glasses.GlassesDashboardUiState
 internal fun ADHomeSurface(
     state: GlassesDashboardUiState,
     host: ADHostActions,
-    onOpenDevice: () -> Unit,
-    onOpenSync: () -> Unit,
     onOpenSettings: () -> Unit,
+    onOpenSync: () -> Unit,
 ) {
     val context = LocalContext.current
     val profile = DeviceProfileStore.loadLastSelected(context)
@@ -91,93 +90,90 @@ internal fun ADHomeSurface(
         Toast.makeText(context, result.spokenText, Toast.LENGTH_SHORT).show()
     }
 
-    Column(Modifier.fillMaxSize()) {
-        ADTopBar(showBrand = false, showSettings = true, onSettings = onOpenSettings)
-        LazyColumn(
-            modifier = Modifier.fillMaxSize(),
-            contentPadding = androidx.compose.foundation.layout.PaddingValues(12.dp, 3.dp, 12.dp, 18.dp),
-            verticalArrangement = Arrangement.spacedBy(12.dp),
-        ) {
-            item { ADLensCard(onClick = host.onImageQuestion) }
+    LazyColumn(
+        modifier = Modifier.fillMaxSize(),
+        contentPadding = androidx.compose.foundation.layout.PaddingValues(12.dp, 3.dp, 12.dp, 18.dp),
+        verticalArrangement = Arrangement.spacedBy(12.dp),
+    ) {
+        item { ADLensCard(onClick = host.onImageQuestion) }
 
+        item {
+            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                ADSectionTitle("Features")
+                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    ADCameraSkillCard(
+                        modifier = Modifier.weight(1f),
+                        onPhoto = host.onCapturePhoto,
+                        onVideo = host.onToggleVideo,
+                    )
+                    ADAskSkillCard(
+                        modifier = Modifier.weight(1f),
+                        onClick = host.onVoiceQuestion,
+                    )
+                }
+            }
+        }
+
+        item {
+            ADLargeGlassesHero(
+                state = state,
+                device = device,
+                onOpenSettings = onOpenSettings,
+                onConnect = when {
+                    device.connected -> host.onDisconnect
+                    device.shouldOpenSetup -> host.onOpenDeviceSetup
+                    else -> host.onReconnect
+                },
+            )
+        }
+
+        if (state.meeting.isRecording || state.transfer.isVisible) {
             item {
-                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                    ADSectionTitle("Features")
-                    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                        ADCameraSkillCard(
+                Row(horizontalArrangement = Arrangement.spacedBy(7.dp)) {
+                    if (state.meeting.isRecording) {
+                        ADLiveTile(
+                            title = "RECORDING",
+                            detail = state.meeting.bannerLabel.ifBlank { state.meeting.sourceLabel },
+                            icon = Icons.Outlined.GraphicEq,
                             modifier = Modifier.weight(1f),
-                            onPhoto = host.onCapturePhoto,
-                            onVideo = host.onToggleVideo,
+                            onClick = host.onStopRecording,
                         )
-                        ADAskSkillCard(
+                    }
+                    if (state.transfer.isVisible) {
+                        ADLiveTile(
+                            title = "SYNCING",
+                            detail = state.transfer.detail,
+                            glyph = ADGlyph.SYNC,
                             modifier = Modifier.weight(1f),
-                            onClick = host.onVoiceQuestion,
+                            onClick = onOpenSync,
                         )
                     }
                 }
             }
+        }
 
-            item {
-                ADLargeGlassesHero(
-                    state = state,
-                    device = device,
-                    onOpenDevice = onOpenDevice,
-                    onConnect = when {
-                        device.connected -> host.onDisconnect
-                        device.shouldOpenSetup -> host.onOpenDeviceSetup
-                        else -> host.onReconnect
-                    },
-                )
-            }
-
-            if (state.meeting.isRecording || state.transfer.isVisible) {
-                item {
-                    Row(horizontalArrangement = Arrangement.spacedBy(7.dp)) {
-                        if (state.meeting.isRecording) {
-                            ADLiveTile(
-                                title = "RECORDING",
-                                detail = state.meeting.bannerLabel.ifBlank { state.meeting.sourceLabel },
-                                icon = Icons.Outlined.GraphicEq,
-                                modifier = Modifier.weight(1f),
-                                onClick = host.onStopRecording,
-                            )
-                        }
-                        if (state.transfer.isVisible) {
-                            ADLiveTile(
-                                title = "SYNCING",
-                                detail = state.transfer.detail,
-                                glyph = ADGlyph.SYNC,
-                                modifier = Modifier.weight(1f),
-                                onClick = onOpenSync,
-                            )
-                        }
-                    }
-                }
-            }
-
-            item {
-                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                    ADSectionTitle("AUDIO")
-                    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                        ADAudioActionPill(
-                            title = "Translate",
-                            active = translateActive,
-                            modifier = Modifier.weight(1f),
-                            onClick = { toggleCapability(AssistantCapability.TRANSLATOR) },
-                        )
-                        ADAudioActionPill(
-                            title = "Record",
-                            active = state.meeting.isRecording,
-                            modifier = Modifier.weight(1f),
-                            onClick = if (state.meeting.isRecording) host.onStopRecording else host.onStartRecording,
-                        )
-                        ADAudioActionPill(
-                            title = "Soundbites",
-                            active = soundbitesActive,
-                            modifier = Modifier.weight(1f),
-                            onClick = { toggleCapability(AssistantCapability.MEETING_NOTES) },
-                        )
-                    }
+        item {
+            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                ADSectionTitle("AUDIO")
+                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                    ADAudioActionPill(
+                        title = "Translate",
+                        active = translateActive,
+                        modifier = Modifier.weight(1f),
+                        onClick = { toggleCapability(AssistantCapability.TRANSLATOR) },
+                    )
+                    ADAudioActionPill(
+                        title = "Record",
+                        active = state.meeting.isRecording,
+                        modifier = Modifier.weight(1f),
+                        onClick = if (state.meeting.isRecording) host.onStopRecording else host.onStartRecording,
+                    )
+                    ADAudioActionPill(
+                        title = "Soundbites",
+                        active = soundbitesActive,
+                        modifier = Modifier.weight(1f),
+                        onClick = { toggleCapability(AssistantCapability.MEETING_NOTES) },
+                    )
                 }
             }
         }
@@ -396,11 +392,11 @@ private fun ADAskArtwork(modifier: Modifier = Modifier) {
 private fun ADLargeGlassesHero(
     state: GlassesDashboardUiState,
     device: ADDevicePresentation,
-    onOpenDevice: () -> Unit,
+    onOpenSettings: () -> Unit,
     onConnect: () -> Unit,
 ) {
     Surface(
-        onClick = onOpenDevice,
+        onClick = onOpenSettings,
         modifier = Modifier.fillMaxWidth(),
         shape = RoundedCornerShape(19.dp),
         color = Color.Black,
