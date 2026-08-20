@@ -82,23 +82,23 @@ class ADScreenInventoryTest {
     }
 
     @Test
-    fun uploadedWallpaperSetIsPackagedUnscaledAndSelectable() {
+    fun greyWallpaperIsPackagedUnscaledAndPickerArchitectureRemains() {
         val drawableNoDpi = sourceFile("src/main/res/drawable-nodpi")
-        val wallpapers = listOf(
-            File(drawableNoDpi, "ad_wallpaper_grey.jpg"),
-            File(drawableNoDpi, "ad_wallpaper_v2.jpeg"),
-            File(drawableNoDpi, "ad_wallpaper_abstract.jpeg"),
-        )
+        val grey = File(drawableNoDpi, "ad_wallpaper_grey.jpg")
+        val v2 = File(drawableNoDpi, "ad_wallpaper_v2.jpeg")
+        val abstract = File(drawableNoDpi, "ad_wallpaper_abstract.jpeg")
         val oldBackground = File(drawableNoDpi, "ad_user_background.jpeg")
         val appearance = sourceFile("src/main/java/com/fersaiyan/cyanbridge/ui/adglasses/ADAppearance.kt").readText()
         val picker = sourceFile("src/main/java/com/fersaiyan/cyanbridge/ui/adglasses/ADWallpaperPicker.kt").readText()
 
-        wallpapers.forEach { wallpaper -> assertTrue(wallpaper.isFile && wallpaper.length() > 0L) }
+        assertTrue(grey.isFile && grey.length() > 0L)
+        assertFalse(v2.exists())
+        assertFalse(abstract.exists())
         assertFalse(oldBackground.exists())
         assertTrue(appearance.contains("ADWallpaperStyle.GREY"))
         assertTrue(appearance.contains("R.drawable.ad_wallpaper_grey"))
-        assertTrue(appearance.contains("R.drawable.ad_wallpaper_v2"))
-        assertTrue(appearance.contains("R.drawable.ad_wallpaper_abstract"))
+        assertFalse(appearance.contains("R.drawable.ad_wallpaper_v2"))
+        assertFalse(appearance.contains("R.drawable.ad_wallpaper_abstract"))
         assertTrue(appearance.contains("ContentScale.Crop"))
         assertTrue(picker.contains("ADWallpaperStyle.entries"))
         assertTrue(picker.contains("ADWallpaperPreferences.set(context, style)"))
