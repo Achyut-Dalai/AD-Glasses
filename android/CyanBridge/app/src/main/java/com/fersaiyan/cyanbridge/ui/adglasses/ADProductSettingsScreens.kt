@@ -19,26 +19,17 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.outlined.Bluetooth
-import androidx.compose.material.icons.outlined.CameraAlt
-import androidx.compose.material.icons.outlined.Mic
-import androidx.compose.material.icons.outlined.Notifications
-import androidx.compose.material.icons.outlined.Wifi
-import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.core.content.ContextCompat
-import com.fersaiyan.cyanbridge.R
 import java.util.Locale
 
 @Composable
@@ -60,7 +51,7 @@ internal fun ADLanguageScreen(onBack: () -> Unit) {
             border = BorderStroke(1.dp, ADColors.Outline),
         ) {
             Row(Modifier.padding(11.dp), verticalAlignment = Alignment.CenterVertically) {
-                ADAssetIcon(R.drawable.ad_codex_language, Modifier.size(36.dp), "App language")
+                ADGlyphIcon(ADGlyph.LANGUAGE, ADColors.Ink, Modifier.size(30.dp))
                 Column(Modifier.padding(start = 10.dp).weight(1f)) {
                     Text("APP LANGUAGE", style = MaterialTheme.typography.labelSmall, color = ADColors.InkSoft)
                     Text(
@@ -99,12 +90,12 @@ internal fun ADLanguageScreen(onBack: () -> Unit) {
 internal fun ADPermissionsScreen(onBack: () -> Unit) {
     val context = LocalContext.current
     val permissions = buildList {
-        add(ADPermissionItem("Microphone", Icons.Outlined.Mic, Manifest.permission.RECORD_AUDIO))
-        add(ADPermissionItem("Camera", Icons.Outlined.CameraAlt, Manifest.permission.CAMERA))
-        if (Build.VERSION.SDK_INT >= 31) add(ADPermissionItem("Bluetooth", Icons.Outlined.Bluetooth, Manifest.permission.BLUETOOTH_CONNECT))
+        add(ADPermissionItem("Microphone", ADGlyph.AUDIO, Manifest.permission.RECORD_AUDIO))
+        add(ADPermissionItem("Camera", ADGlyph.PHOTO, Manifest.permission.CAMERA))
+        if (Build.VERSION.SDK_INT >= 31) add(ADPermissionItem("Bluetooth", ADGlyph.BLUETOOTH, Manifest.permission.BLUETOOTH_CONNECT))
         if (Build.VERSION.SDK_INT >= 33) {
-            add(ADPermissionItem("Nearby devices", Icons.Outlined.Wifi, Manifest.permission.NEARBY_WIFI_DEVICES))
-            add(ADPermissionItem("Notifications", Icons.Outlined.Notifications, Manifest.permission.POST_NOTIFICATIONS))
+            add(ADPermissionItem("Nearby devices", ADGlyph.NETWORK, Manifest.permission.NEARBY_WIFI_DEVICES))
+            add(ADPermissionItem("Notifications", ADGlyph.NOTIFICATION, Manifest.permission.POST_NOTIFICATIONS))
         }
     }
     val grantedCount = permissions.count {
@@ -162,7 +153,12 @@ private fun ADPermissionTile(item: ADPermissionItem, granted: Boolean, modifier:
     ) {
         Column(modifier = Modifier.padding(9.dp), verticalArrangement = Arrangement.SpaceBetween) {
             Row(verticalAlignment = Alignment.CenterVertically) {
-                Icon(item.icon, null, tint = ADColors.Ink, modifier = Modifier.size(16.dp))
+                ADGlyphIcon(
+                    glyph = item.glyph,
+                    tint = ADColors.Ink,
+                    modifier = Modifier.size(17.dp),
+                    accent = if (!granted) ADColors.Red else null,
+                )
                 Spacer(Modifier.weight(1f))
                 Box(Modifier.size(5.dp).background(if (granted) ADColors.Ink else ADColors.Red, CircleShape))
             }
@@ -177,7 +173,7 @@ private fun ADPermissionTile(item: ADPermissionItem, granted: Boolean, modifier:
 @Composable
 internal fun ADAboutScreen(onBack: () -> Unit) = ADMinimalAboutScreen(onBack)
 
-private data class ADPermissionItem(val title: String, val icon: ImageVector, val permission: String)
+private data class ADPermissionItem(val title: String, val glyph: ADGlyph, val permission: String)
 
 private fun openAppSettings(packageName: String, start: (Intent) -> Unit) {
     val intent = Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS, Uri.parse("package:$packageName"))
