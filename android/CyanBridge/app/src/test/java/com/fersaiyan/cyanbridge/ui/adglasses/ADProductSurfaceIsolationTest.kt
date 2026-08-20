@@ -82,23 +82,34 @@ class ADProductSurfaceIsolationTest {
     }
 
     @Test
-    fun uploadedBackgroundAndLogoRemainAuthoritative() {
+    fun uploadedWallpaperOptionsAndLogoRemainAuthoritative() {
         val appearance = sourceFile("src/main/java/com/fersaiyan/cyanbridge/ui/adglasses/ADAppearance.kt").readText()
         val app = sourceFile("src/main/java/com/fersaiyan/cyanbridge/ui/adglasses/ADGlassesApp.kt").readText()
         val settings = sourceFile("src/main/java/com/fersaiyan/cyanbridge/ui/adglasses/ADNativeSettingsHubScreen.kt").readText()
         val pairing = sourceFile("src/main/java/com/fersaiyan/cyanbridge/ui/adglasses/ADGlassesPairingScreen.kt").readText()
         val components = sourceFile("src/main/java/com/fersaiyan/cyanbridge/ui/adglasses/ADComponents.kt").readText()
-        val background = sourceFile("src/main/res/drawable-nodpi/ad_user_background.jpeg")
-        val logo = sourceFile("src/main/res/drawable-nodpi/ad_user_app_icon.webp")
+        val grey = sourceFile("src/main/res/drawable-nodpi/ad_wallpaper_grey.jpg")
+        val v2 = sourceFile("src/main/res/drawable-nodpi/ad_wallpaper_v2.jpeg")
+        val abstract = sourceFile("src/main/res/drawable-nodpi/ad_wallpaper_abstract.jpeg")
+        val oldBackground = sourceFile("src/main/res/drawable-nodpi/ad_user_background.jpeg")
+        val logo = sourceFile("src/main/res/drawable-nodpi/ad_user_app_icon.jpg")
+        val oldLogo = sourceFile("src/main/res/drawable-nodpi/ad_user_app_icon.webp")
 
-        assertTrue(background.isFile && background.length() > 0L)
+        listOf(grey, v2, abstract).forEach { wallpaper ->
+            assertTrue("Wallpaper asset must exist: ${wallpaper.name}", wallpaper.isFile && wallpaper.length() > 0L)
+        }
+        assertFalse(oldBackground.exists())
         assertTrue(logo.isFile && logo.length() > 0L)
-        assertTrue(appearance.contains("R.drawable.ad_user_background"))
+        assertFalse(oldLogo.exists())
+        assertTrue(appearance.contains("enum class ADWallpaperStyle"))
+        assertTrue(appearance.contains("R.drawable.ad_wallpaper_grey"))
+        assertTrue(appearance.contains("R.drawable.ad_wallpaper_v2"))
+        assertTrue(appearance.contains("R.drawable.ad_wallpaper_abstract"))
+        assertTrue(appearance.contains("ADWallpaperPreferences"))
         assertTrue(appearance.contains("ContentScale.Crop"))
-        assertFalse(appearance.contains("ADWallpaperStyle"))
         assertTrue(app.contains("ADWallpaperBackground {"))
         assertTrue(pairing.contains("ADWallpaperBackground {"))
-        assertFalse(settings.contains("ADWallpaperPicker"))
+        assertTrue(settings.contains("ADWallpaperPicker()"))
         assertTrue(components.contains("R.drawable.ad_user_app_icon"))
     }
 
