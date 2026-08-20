@@ -22,11 +22,6 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.outlined.AutoAwesome
-import androidx.compose.material.icons.outlined.ChatBubbleOutline
-import androidx.compose.material.icons.rounded.Check
-import androidx.compose.material.icons.rounded.Settings
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Icon
@@ -77,24 +72,24 @@ internal fun ADTopBar(
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .heightIn(min = 50.dp)
-            .padding(horizontal = 14.dp, vertical = 4.dp),
+            .heightIn(min = 52.dp)
+            .padding(horizontal = 12.dp, vertical = 4.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
         if (showBack) {
             Surface(
                 onClick = onBack,
-                modifier = Modifier.size(36.dp),
+                modifier = Modifier.size(38.dp),
                 shape = CircleShape,
                 color = ADColors.Surface,
                 contentColor = ADColors.Ink,
                 border = BorderStroke(1.dp, ADColors.Outline),
             ) {
                 Box(contentAlignment = Alignment.Center) {
-                    ADGlyphIcon(
-                        ADGlyph.BACK,
+                    ADMatrixGlyphIcon(
+                        ADMatrixGlyph.BACK,
                         tint = ADColors.Ink,
-                        modifier = Modifier.size(18.dp),
+                        modifier = Modifier.size(19.dp),
                     )
                 }
             }
@@ -113,7 +108,7 @@ internal fun ADTopBar(
             Text(
                 text = title,
                 style = MaterialTheme.typography.titleLarge,
-                modifier = Modifier.padding(start = if (showBack) 10.dp else 0.dp),
+                modifier = Modifier.padding(start = if (showBack) 11.dp else 2.dp),
                 color = ADColors.Ink,
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis,
@@ -125,18 +120,17 @@ internal fun ADTopBar(
         if (showSettings) {
             Surface(
                 onClick = onSettings,
-                modifier = Modifier.size(36.dp),
+                modifier = Modifier.size(38.dp),
                 shape = CircleShape,
                 color = ADColors.Surface,
                 contentColor = ADColors.Ink,
                 border = BorderStroke(1.dp, ADColors.Outline),
             ) {
                 Box(contentAlignment = Alignment.Center) {
-                    Icon(
-                        Icons.Rounded.Settings,
-                        contentDescription = "Settings",
+                    ADMatrixGlyphIcon(
+                        ADMatrixGlyph.SETTINGS,
                         tint = ADColors.Ink,
-                        modifier = Modifier.size(16.dp),
+                        modifier = Modifier.size(19.dp),
                     )
                 }
             }
@@ -171,7 +165,7 @@ internal fun ADBottomNavigation(selected: ADTab, onSelected: (ADTab) -> Unit) {
             border = BorderStroke(1.dp, ADColors.Outline),
         ) {
             Row(
-                modifier = Modifier.padding(horizontal = 4.dp, vertical = 3.dp),
+                modifier = Modifier.padding(horizontal = 5.dp, vertical = 3.dp),
                 horizontalArrangement = Arrangement.SpaceAround,
             ) {
                 ADTab.entries.forEach { tab ->
@@ -201,10 +195,15 @@ private fun ADBottomNavigationItem(
         targetValue = if (selected) ADColors.Ink else ADColors.Muted,
         label = "nav-label-color",
     )
+    val glyph = when (tab) {
+        ADTab.HOME -> ADMatrixGlyph.HOME
+        ADTab.AI -> ADMatrixGlyph.AI
+        ADTab.LIBRARY -> ADMatrixGlyph.LIBRARY
+    }
 
     Column(
         modifier = modifier
-            .heightIn(min = 48.dp)
+            .heightIn(min = 50.dp)
             .clickable(
                 role = Role.Tab,
                 interactionSource = remember { MutableInteractionSource() },
@@ -215,23 +214,13 @@ private fun ADBottomNavigationItem(
         verticalArrangement = Arrangement.Center,
     ) {
         Box(contentAlignment = Alignment.Center) {
-            when (tab) {
-                ADTab.HOME -> ADGlyphIcon(ADGlyph.HOME, iconTint, Modifier.size(18.dp))
-                ADTab.CHATS -> Icon(
-                    Icons.Outlined.ChatBubbleOutline,
-                    contentDescription = "Prompt",
-                    tint = iconTint,
-                    modifier = Modifier.size(19.dp),
-                )
-                ADTab.AI -> Icon(
-                    Icons.Outlined.AutoAwesome,
-                    contentDescription = "AI",
-                    tint = iconTint,
-                    modifier = Modifier.size(19.dp),
-                )
-                ADTab.LIBRARY -> ADGlyphIcon(ADGlyph.LIBRARY, iconTint, Modifier.size(18.dp))
-            }
-            if (selected) {
+            ADMatrixGlyphIcon(
+                glyph = glyph,
+                tint = iconTint,
+                modifier = Modifier.size(19.dp),
+                accent = if (selected && tab == ADTab.AI) ADColors.Red else null,
+            )
+            if (selected && tab != ADTab.AI) {
                 Box(
                     Modifier
                         .align(Alignment.TopEnd)
@@ -271,11 +260,11 @@ internal fun ADScreenIntro(
                 ),
                 color = ADColors.InkSoft,
             )
-            Spacer(Modifier.height(3.dp))
+            Spacer(Modifier.height(4.dp))
         }
         Text(title, style = MaterialTheme.typography.headlineLarge, color = ADColors.Ink)
         if (!detail.isNullOrBlank()) {
-            Spacer(Modifier.height(3.dp))
+            Spacer(Modifier.height(5.dp))
             Text(detail, style = MaterialTheme.typography.bodyMedium, color = ADColors.Muted)
         }
     }
@@ -317,12 +306,12 @@ internal fun ADCard(
         modifier = modifier.fillMaxWidth(),
         onClick = onClick ?: {},
         enabled = onClick != null,
-        shape = RoundedCornerShape(14.dp),
+        shape = RoundedCornerShape(15.dp),
         color = ADColors.Surface,
         contentColor = ADColors.Ink,
         border = BorderStroke(1.dp, ADColors.Outline),
     ) {
-        Column(modifier = Modifier.padding(12.dp), content = content)
+        Column(modifier = Modifier.padding(13.dp), content = content)
     }
 }
 
@@ -338,7 +327,7 @@ internal fun ADPrimaryButton(
     Button(
         onClick = onClick,
         enabled = enabled,
-        modifier = modifier.fillMaxWidth().heightIn(min = 44.dp),
+        modifier = modifier.fillMaxWidth().heightIn(min = 46.dp),
         shape = RoundedCornerShape(11.dp),
         colors = ButtonDefaults.buttonColors(
             containerColor = if (destructive) ADColors.RedAction else ADColors.Ink,
@@ -381,7 +370,9 @@ internal fun ADStatusChip(
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(4.dp),
     ) {
-        if (showCheck) Icon(Icons.Rounded.Check, null, tint = foreground, modifier = Modifier.size(11.dp))
+        if (showCheck) {
+            ADMatrixGlyphIcon(ADMatrixGlyph.CHECK, foreground, Modifier.size(11.dp))
+        }
         Text(
             text.uppercase(),
             color = foreground,
@@ -406,7 +397,7 @@ internal fun ADSettingsRow(
         modifier = Modifier
             .fillMaxWidth()
             .clickable(onClick = onClick)
-            .padding(vertical = 8.dp),
+            .padding(vertical = 9.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
         Box(
@@ -418,14 +409,20 @@ internal fun ADSettingsRow(
         Column(Modifier.padding(start = 9.dp, end = 7.dp).weight(1f)) {
             Text(title, style = MaterialTheme.typography.titleMedium, color = ADColors.Ink)
             if (!subtitle.isNullOrBlank()) {
-                Text(subtitle, style = MaterialTheme.typography.bodySmall, color = ADColors.Muted, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                Text(
+                    subtitle,
+                    style = MaterialTheme.typography.bodySmall,
+                    color = ADColors.Muted,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                )
             }
         }
         if (trailing != null) {
             trailing()
         } else {
-            ADGlyphIcon(
-                ADGlyph.NEXT,
+            ADMatrixGlyphIcon(
+                ADMatrixGlyph.NEXT,
                 tint = ADColors.Muted,
                 modifier = Modifier.size(16.dp),
             )
