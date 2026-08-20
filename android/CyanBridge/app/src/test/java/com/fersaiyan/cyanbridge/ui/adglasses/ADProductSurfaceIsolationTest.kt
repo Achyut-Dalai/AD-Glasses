@@ -22,7 +22,6 @@ class ADProductSurfaceIsolationTest {
     @Test
     fun homeUsesLargeHeroLensMatrixAndConfigurationStyleActions() {
         val home = sourceFile("src/main/java/com/fersaiyan/cyanbridge/ui/adglasses/ADHomeSurface.kt").readText()
-        val glyphs = sourceFile("src/main/java/com/fersaiyan/cyanbridge/ui/adglasses/ADExpressiveIcons.kt").readText()
 
         listOf("Ask AI", "Photo", "Video", "Translate", "Soundbites", "Audio")
             .forEach { label -> assertTrue("Home should keep $label", home.contains("\"$label\"")) }
@@ -48,11 +47,20 @@ class ADProductSurfaceIsolationTest {
         assertFalse(home.contains("R.drawable.ad_codex_video"))
         assertFalse(home.contains("R.drawable.ad_codex_language"))
         assertFalse(home.contains("R.drawable.ad_codex_audio"))
+    }
 
-        assertTrue(glyphs.contains("compact monochrome glyph family"))
-        assertFalse(glyphs.contains("7×7 matrix"))
+    @Test
+    fun selectedMatrixGlyphsAreRestoredWithoutMakingEveryIconMatrix() {
+        val glyphs = sourceFile("src/main/java/com/fersaiyan/cyanbridge/ui/adglasses/ADExpressiveIcons.kt").readText()
+
+        listOf("ADGlyph.PROMPT", "ADGlyph.PRIVACY", "ADGlyph.PERMISSIONS", "ADGlyph.FIRMWARE", "ADGlyph.BACK", "ADGlyph.NEXT")
+            .forEach { glyph -> assertTrue("Selected matrix glyph must stay restored: $glyph", glyphs.contains(glyph)) }
+        assertTrue(glyphs.contains("selectedMatrixPattern"))
+        assertTrue(glyphs.contains("0111110\", \"1000001\", \"1010101"))
+        assertTrue(glyphs.contains("rememberInfiniteTransition"))
         assertFalse(glyphs.contains("ADGlyph.SETTINGS"))
-        assertFalse(glyphs.contains("ADGlyph.NEXT"))
+        assertFalse(glyphs.contains("ADGlyph.LANGUAGE -> listOf"))
+        assertFalse(glyphs.contains("ADGlyph.AUDIO -> listOf"))
     }
 
     @Test
@@ -95,24 +103,29 @@ class ADProductSurfaceIsolationTest {
     }
 
     @Test
-    fun preservedIconsStayPreservedWhileLanguageGetsItsOwnCleanTreatment() {
+    fun preservedIconsStayPreservedWhileLanguageAndAudioKeepTheirNewTreatment() {
         val components = sourceFile("src/main/java/com/fersaiyan/cyanbridge/ui/adglasses/ADComponents.kt").readText()
         val settings = sourceFile("src/main/java/com/fersaiyan/cyanbridge/ui/adglasses/ADNativeSettingsHubScreen.kt").readText()
         val productSettings = sourceFile("src/main/java/com/fersaiyan/cyanbridge/ui/adglasses/ADProductSettingsScreens.kt").readText()
         val firmware = sourceFile("src/main/java/com/fersaiyan/cyanbridge/ui/adglasses/ADFirmwareScreen.kt").readText()
-        val library = sourceFile("src/main/java/com/fersaiyan/cyanbridge/ui/adglasses/ADExpressiveLibraryHome.kt").readText()
+        val libraryHome = sourceFile("src/main/java/com/fersaiyan/cyanbridge/ui/adglasses/ADExpressiveLibraryHome.kt").readText()
+        val libraryScreens = sourceFile("src/main/java/com/fersaiyan/cyanbridge/ui/adglasses/ADNativeLibraryScreens.kt").readText()
+        val prompt = sourceFile("src/main/java/com/fersaiyan/cyanbridge/ui/adglasses/ADNativeConversationScreen.kt").readText()
 
-        assertTrue(components.contains("Icons.AutoMirrored.Rounded.ArrowBack"))
-        assertTrue(components.contains("Icons.AutoMirrored.Rounded.KeyboardArrowRight"))
+        assertTrue(components.contains("ADGlyph.BACK"))
+        assertTrue(components.contains("ADGlyph.NEXT"))
         assertTrue(components.contains("Icons.Outlined.ChatBubbleOutline"))
-        assertFalse(components.contains("ADGlyph.BACK"))
-        assertFalse(components.contains("ADGlyph.NEXT"))
+        assertFalse(components.contains("Icons.AutoMirrored.Rounded.ArrowBack"))
+        assertFalse(components.contains("Icons.AutoMirrored.Rounded.KeyboardArrowRight"))
 
         assertTrue(settings.contains("ADGlyph.PRIVACY"))
         assertTrue(settings.contains("ADGlyph.PERMISSIONS"))
+        assertTrue(settings.contains("ADGlyph.NEXT"))
         assertTrue(productSettings.contains("ADGlyph.PERMISSIONS"))
-        assertTrue(firmware.contains("Icons.Outlined"))
-        assertTrue(library.contains("title = \"Notes\""))
+        assertTrue(firmware.contains("ADGlyph.FIRMWARE"))
+        assertTrue(libraryHome.contains("glyph = ADGlyph.PROMPT"))
+        assertTrue(libraryScreens.contains("ADGlyph.PROMPT"))
+        assertTrue(prompt.contains("ADGlyph.PROMPT"))
 
         assertTrue(settings.contains("Icons.Outlined.Language"))
         assertTrue(settings.contains("ADSettingsIconTile("))
