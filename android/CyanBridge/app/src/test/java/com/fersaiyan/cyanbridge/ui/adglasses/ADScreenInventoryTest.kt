@@ -54,19 +54,20 @@ class ADScreenInventoryTest {
     }
 
     @Test
-    fun launcherUsesUploadedBrandArtworkOnDarkAdaptiveBackground() {
+    fun launcherUsesCrispVectorMonogramOnDarkAdaptiveBackground() {
         val drawable = sourceFile("src/main/res/drawable")
-        val drawableNoDpi = sourceFile("src/main/res/drawable-nodpi")
-        val uploadedBrand = File(drawableNoDpi, "ad_codex_brand.png")
+        val monogram = File(drawable, "ad_glasses_monogram_mark.xml")
         val adaptiveForeground = File(drawable, "ad_glasses_adaptive_foreground.xml")
         val adaptiveBackground = File(drawable, "ad_glasses_adaptive_background.xml")
         val launcher = sourceFile("src/main/res/mipmap-anydpi-v26/ic_launcher.xml")
         val roundLauncher = sourceFile("src/main/res/mipmap-anydpi-v26/ic_launcher_round.xml")
 
-        assertTrue("Uploaded AD brand artwork must exist", uploadedBrand.isFile && uploadedBrand.length() > 0L)
+        assertTrue("AD monogram vector must exist", monogram.isFile)
+        assertTrue(monogram.readText().contains("#F3F3F3"))
+        assertTrue(monogram.readText().contains("#9B161B"))
         assertTrue("Adaptive foreground must exist", adaptiveForeground.isFile)
         assertTrue("Adaptive background must exist", adaptiveBackground.isFile)
-        assertTrue(adaptiveForeground.readText().contains("@drawable/ad_codex_brand"))
+        assertTrue(adaptiveForeground.readText().contains("@drawable/ad_glasses_monogram_mark"))
         assertTrue(adaptiveBackground.readText().contains("#171717"))
 
         listOf(launcher, roundLauncher).forEach { file ->
