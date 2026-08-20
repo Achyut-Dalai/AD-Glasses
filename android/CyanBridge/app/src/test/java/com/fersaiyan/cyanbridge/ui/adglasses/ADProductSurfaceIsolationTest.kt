@@ -20,27 +20,30 @@ class ADProductSurfaceIsolationTest {
     }
 
     @Test
-    fun homeStartsWithLensFeaturesThenSettingsHeroAndAudio() {
+    fun homeKeepsSettingsThenCompactLensCaptureSettingsHeroAndAudio() {
         val home = sourceFile("src/main/java/com/fersaiyan/cyanbridge/ui/adglasses/ADHomeSurface.kt").readText()
         val app = sourceFile("src/main/java/com/fersaiyan/cyanbridge/ui/adglasses/ADGlassesApp.kt").readText()
 
-        listOf("Ask AI", "Photo", "Video", "Translate", "Record", "Soundbites", "AUDIO", "Features")
+        listOf("ASSISTANT", "THINK   ASK", "PHOTO", "VIDEO", "Translate", "Record", "Soundbites", "AUDIO", "CAPTURE")
             .forEach { label -> assertTrue("Home should keep $label", home.contains("\"$label\"")) }
-        assertFalse(home.contains("ADTopBar("))
-        assertFalse(home.contains("showSettings = true"))
+        assertTrue(home.contains("ADTopBar(showBrand = false, showSettings = true, onSettings = onOpenSettings)"))
         assertFalse(home.contains("Text(\"AD GLASSES\""))
+        assertFalse(home.contains("Text(\"Ask AI\""))
+        assertFalse(home.contains("Text(\"Voice\""))
 
+        val topBarIndex = home.indexOf("ADTopBar(showBrand = false")
         val lensIndex = home.indexOf("item { ADLensCard")
-        val featuresIndex = home.indexOf("ADSectionTitle(\"Features\")")
+        val captureIndex = home.indexOf("ADSectionTitle(\"CAPTURE\")")
         val cameraIndex = home.indexOf("ADCameraSkillCard(")
         val askIndex = home.indexOf("ADAskSkillCard(")
         val deviceIndex = home.indexOf("ADLargeGlassesHero(")
         val audioIndex = home.indexOf("ADSectionTitle(\"AUDIO\")")
-        listOf(lensIndex, featuresIndex, cameraIndex, askIndex, deviceIndex, audioIndex)
+        listOf(topBarIndex, lensIndex, captureIndex, cameraIndex, askIndex, deviceIndex, audioIndex)
             .forEach { index -> assertTrue("Home hierarchy element missing", index >= 0) }
-        assertTrue(lensIndex < featuresIndex)
-        assertTrue(featuresIndex < cameraIndex)
-        assertTrue(featuresIndex < askIndex)
+        assertTrue(topBarIndex < lensIndex)
+        assertTrue(lensIndex < captureIndex)
+        assertTrue(captureIndex < cameraIndex)
+        assertTrue(captureIndex < askIndex)
         assertTrue(cameraIndex < deviceIndex)
         assertTrue(askIndex < deviceIndex)
         assertTrue(deviceIndex < audioIndex)
@@ -50,11 +53,18 @@ class ADProductSurfaceIsolationTest {
         assertTrue(app.contains("onOpenSettings = { navigateTo(ADRoute.SETTINGS) }"))
         assertTrue(home.contains("R.drawable.ad_glasses_hero_v4"))
         assertTrue(home.contains(".height(184.dp)"))
+        assertTrue(home.contains(".heightIn(min = 122.dp)"))
+        assertTrue(home.contains("ADLensShutterArtwork(Modifier.weight(0.94f).height(96.dp))"))
+        assertTrue(home.contains("Canvas(Modifier.fillMaxSize().padding(14.dp))"))
         assertTrue(home.contains("ADLensShutterArtwork("))
         assertTrue(home.contains("lens-focus-pulse"))
         assertTrue(home.contains("ADCameraArtwork("))
         assertTrue(home.contains("Modifier.fillMaxWidth().height(76.dp)"))
         assertTrue(home.contains("heightIn(min = 154.dp)"))
+        assertTrue(home.contains("ADHomeMiniPill(\"PHOTO\""))
+        assertTrue(home.contains("ADHomeMiniPill(\"VIDEO\""))
+        assertTrue(home.contains("fontFamily = ADTechFontFamily"))
+        assertTrue(home.contains("letterSpacing = 0.75.sp"))
         assertFalse(home.contains("Icons.Outlined.CameraAlt"))
         assertFalse(home.contains("Text(\"Camera\""))
         assertFalse(home.contains("ADGlassesDeviceCard("))
