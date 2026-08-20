@@ -19,12 +19,8 @@ import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.outlined.Bluetooth
-import androidx.compose.material.icons.outlined.Close
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.HorizontalDivider
-import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Surface
@@ -100,7 +96,7 @@ fun ADGlassesPairingScreen(
                                     shape = RoundedCornerShape(11.dp),
                                     border = BorderStroke(1.dp, ADColors.Outline),
                                 ) {
-                                    Icon(Icons.Outlined.Close, null, tint = ADColors.Ink, modifier = Modifier.size(15.dp))
+                                    ADGlyphIcon(ADGlyph.CLOSE, ADColors.Ink, Modifier.size(16.dp))
                                     Spacer(Modifier.size(5.dp))
                                     Text("Stop scanning", color = ADColors.Ink, style = MaterialTheme.typography.labelLarge)
                                 }
@@ -179,10 +175,11 @@ private fun ADScanVisual(isScanning: Boolean, found: Boolean) {
                 .background(ADColors.SurfaceSubtle, CircleShape),
             contentAlignment = Alignment.Center,
         ) {
-            Box(
-                Modifier
-                    .size(if (found) 12.dp else 9.dp)
-                    .background(if (found) ADColors.Success else ADColors.Ink, CircleShape),
+            ADGlyphIcon(
+                ADGlyph.BLUETOOTH,
+                tint = ADColors.Ink,
+                modifier = Modifier.size(26.dp),
+                accent = if (found || isScanning) ADColors.Red else null,
             )
         }
         if (isScanning) {
@@ -210,7 +207,7 @@ private fun ADPairingDeviceRow(device: ScannedDevice, onClick: () -> Unit) {
             contentColor = ADColors.Ink,
         ) {
             Box(contentAlignment = Alignment.Center) {
-                Icon(Icons.Outlined.Bluetooth, contentDescription = null, modifier = Modifier.size(16.dp))
+                ADGlyphIcon(ADGlyph.BLUETOOTH, ADColors.Ink, Modifier.size(17.dp))
             }
         }
         Column(Modifier.padding(start = 9.dp).weight(1f)) {
