@@ -76,14 +76,16 @@ internal fun ADGlyphIcon(
 
         pattern.forEachIndexed { row, line ->
             line.forEachIndexed { column, bit ->
-                if (bit != '1') return@forEachIndexed
-                val isAccent = accent != null && accentCell?.first == row && accentCell.second == column
-                drawRoundRect(
-                    color = if (isAccent) accent.copy(alpha = pulse) else tint,
-                    topLeft = Offset(left + column * cell, top + row * cell),
-                    size = Size(dot, dot),
-                    cornerRadius = CornerRadius(dot * 0.28f, dot * 0.28f),
-                )
+                if (bit == '1') {
+                    val isAccent = accent != null &&
+                        accentCell?.let { it.first == row && it.second == column } == true
+                    drawRoundRect(
+                        color = if (isAccent) accent.copy(alpha = pulse) else tint,
+                        topLeft = Offset(left + column * cell, top + row * cell),
+                        size = Size(dot, dot),
+                        cornerRadius = CornerRadius(dot * 0.28f, dot * 0.28f),
+                    )
+                }
             }
         }
     }
