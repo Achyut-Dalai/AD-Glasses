@@ -79,6 +79,8 @@ internal fun ADNativeSettingsHubScreen(
             }
         }
 
+        ADWallpaperPicker()
+
         Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
             ADSectionTitle("System")
             Surface(
