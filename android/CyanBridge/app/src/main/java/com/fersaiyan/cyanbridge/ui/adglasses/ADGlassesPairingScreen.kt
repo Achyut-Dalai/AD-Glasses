@@ -19,14 +19,8 @@ import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.rounded.KeyboardArrowRight
-import androidx.compose.material.icons.outlined.Bluetooth
-import androidx.compose.material.icons.outlined.Close
-import androidx.compose.material.icons.outlined.Refresh
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.HorizontalDivider
-import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Surface
@@ -50,119 +44,120 @@ fun ADGlassesPairingScreen(
     onConnect: (ScannedDevice) -> Unit,
     onBack: () -> Unit,
 ) {
-    Column(
-        Modifier
-            .fillMaxSize()
-            .background(ADColors.Background)
-            .windowInsetsPadding(WindowInsets.safeDrawing),
-    ) {
-        ADTopBar(title = "Pairing", showBack = true, onBack = onBack)
-        LazyColumn(
-            modifier = Modifier.fillMaxSize(),
-            contentPadding = androidx.compose.foundation.layout.PaddingValues(12.dp),
-            horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.spacedBy(11.dp),
+    ADWallpaperBackground {
+        Column(
+            Modifier
+                .fillMaxSize()
+                .windowInsetsPadding(WindowInsets.safeDrawing),
         ) {
-            item(key = "scanner") {
-                Surface(
-                    modifier = Modifier.fillMaxWidth(),
-                    shape = RoundedCornerShape(16.dp),
-                    color = Color.Black.copy(alpha = 0.40f),
-                    border = BorderStroke(1.dp, ADColors.Outline),
-                ) {
-                    Column(
-                        modifier = Modifier.padding(13.dp),
-                        horizontalAlignment = Alignment.CenterHorizontally,
+            ADTopBar(title = "Pairing", showBack = true, onBack = onBack)
+            LazyColumn(
+                modifier = Modifier.fillMaxSize(),
+                contentPadding = androidx.compose.foundation.layout.PaddingValues(12.dp),
+                horizontalAlignment = Alignment.CenterHorizontally,
+                verticalArrangement = Arrangement.spacedBy(11.dp),
+            ) {
+                item(key = "scanner") {
+                    Surface(
+                        modifier = Modifier.fillMaxWidth(),
+                        shape = RoundedCornerShape(16.dp),
+                        color = Color.Black.copy(alpha = 0.76f),
+                        border = BorderStroke(1.dp, ADColors.Outline),
                     ) {
-                        ADScanVisual(isScanning = isScanning, found = devices.isNotEmpty())
-                        Spacer(Modifier.size(10.dp))
-                        Text(
-                            when {
-                                isScanning -> "Looking for nearby glasses"
-                                devices.isNotEmpty() -> "Glasses found"
-                                else -> "Connect your glasses"
-                            },
-                            style = MaterialTheme.typography.titleLarge,
-                            fontWeight = FontWeight.SemiBold,
-                        )
-                        Text(
-                            when {
-                                isScanning -> "Scanning for supported glasses around this phone."
-                                devices.isNotEmpty() -> "Choose a detected pair below."
-                                else -> "Keep them nearby and ready to pair."
-                            },
-                            style = MaterialTheme.typography.bodySmall,
-                            color = ADColors.Muted,
-                        )
-                        Spacer(Modifier.size(11.dp))
-                        if (isScanning) {
-                            OutlinedButton(
-                                onClick = onStopScan,
-                                modifier = Modifier.fillMaxWidth().heightIn(min = 42.dp),
-                                shape = RoundedCornerShape(11.dp),
-                                border = BorderStroke(1.dp, ADColors.Outline),
-                            ) {
-                                Icon(Icons.Outlined.Close, null, tint = ADColors.Ink, modifier = Modifier.size(15.dp))
-                                Spacer(Modifier.size(5.dp))
-                                Text("Stop scanning", color = ADColors.Ink, style = MaterialTheme.typography.labelLarge)
-                            }
-                        } else {
-                            Surface(
-                                onClick = onScan,
-                                modifier = Modifier.fillMaxWidth().heightIn(min = 44.dp),
-                                shape = RoundedCornerShape(11.dp),
-                                color = ADColors.Red,
-                                contentColor = Color.White,
-                            ) {
-                                Row(
-                                    modifier = Modifier.padding(horizontal = 12.dp, vertical = 10.dp),
-                                    horizontalArrangement = Arrangement.Center,
-                                    verticalAlignment = Alignment.CenterVertically,
+                        Column(
+                            modifier = Modifier.padding(13.dp),
+                            horizontalAlignment = Alignment.CenterHorizontally,
+                        ) {
+                            ADScanVisual(isScanning = isScanning, found = devices.isNotEmpty())
+                            Spacer(Modifier.size(10.dp))
+                            Text(
+                                when {
+                                    isScanning -> "Looking for nearby glasses"
+                                    devices.isNotEmpty() -> "Glasses found"
+                                    else -> "Connect your glasses"
+                                },
+                                style = MaterialTheme.typography.titleLarge,
+                                fontWeight = FontWeight.SemiBold,
+                            )
+                            Text(
+                                when {
+                                    isScanning -> "Scanning for supported glasses around this phone."
+                                    devices.isNotEmpty() -> "Choose a detected pair below."
+                                    else -> "Keep them nearby and ready to pair."
+                                },
+                                style = MaterialTheme.typography.bodySmall,
+                                color = ADColors.Muted,
+                            )
+                            Spacer(Modifier.size(11.dp))
+                            if (isScanning) {
+                                OutlinedButton(
+                                    onClick = onStopScan,
+                                    modifier = Modifier.fillMaxWidth().heightIn(min = 42.dp),
+                                    shape = RoundedCornerShape(11.dp),
+                                    border = BorderStroke(1.dp, ADColors.Outline),
                                 ) {
-                                    Icon(Icons.Outlined.Refresh, null, modifier = Modifier.size(15.dp))
+                                    ADGlyphIcon(ADGlyph.CLOSE, ADColors.Ink, Modifier.size(16.dp))
                                     Spacer(Modifier.size(5.dp))
-                                    Text(if (devices.isEmpty()) "Scan for glasses" else "Scan again", style = MaterialTheme.typography.labelLarge)
+                                    Text("Stop scanning", color = ADColors.Ink, style = MaterialTheme.typography.labelLarge)
+                                }
+                            } else {
+                                Surface(
+                                    onClick = onScan,
+                                    modifier = Modifier.fillMaxWidth().heightIn(min = 44.dp),
+                                    shape = RoundedCornerShape(11.dp),
+                                    color = ADColors.Red,
+                                    contentColor = Color.White,
+                                ) {
+                                    Row(
+                                        modifier = Modifier.padding(horizontal = 12.dp, vertical = 10.dp),
+                                        horizontalArrangement = Arrangement.Center,
+                                        verticalAlignment = Alignment.CenterVertically,
+                                    ) {
+                                        ADGlyphIcon(ADGlyph.SYNC, Color.White, Modifier.size(16.dp))
+                                        Spacer(Modifier.size(5.dp))
+                                        Text(if (devices.isEmpty()) "Scan for glasses" else "Scan again", style = MaterialTheme.typography.labelLarge)
+                                    }
                                 }
                             }
                         }
                     }
                 }
-            }
 
-            if (devices.isNotEmpty()) {
-                item(key = "nearby-title") { ADSectionTitle("Nearby") }
-                item(key = "nearby-list") {
-                    Surface(
-                        modifier = Modifier.fillMaxWidth(),
-                        shape = RoundedCornerShape(13.dp),
-                        color = ADColors.Surface.copy(alpha = 0.88f),
-                        border = BorderStroke(1.dp, ADColors.Outline),
-                    ) {
-                        Column(Modifier.padding(horizontal = 10.dp)) {
-                            devices.forEachIndexed { index, device ->
-                                ADPairingDeviceRow(device = device, onClick = { onConnect(device) })
-                                if (index != devices.lastIndex) HorizontalDivider(color = ADColors.Separator)
+                if (devices.isNotEmpty()) {
+                    item(key = "nearby-title") { ADSectionTitle("Nearby") }
+                    item(key = "nearby-list") {
+                        Surface(
+                            modifier = Modifier.fillMaxWidth(),
+                            shape = RoundedCornerShape(13.dp),
+                            color = ADColors.Surface.copy(alpha = 0.92f),
+                            border = BorderStroke(1.dp, ADColors.Outline),
+                        ) {
+                            Column(Modifier.padding(horizontal = 10.dp)) {
+                                devices.forEachIndexed { index, device ->
+                                    ADPairingDeviceRow(device = device, onClick = { onConnect(device) })
+                                    if (index != devices.lastIndex) HorizontalDivider(color = ADColors.Separator)
+                                }
                             }
                         }
                     }
                 }
-            }
 
-            if (!isScanning && devices.isEmpty()) {
-                item(key = "empty") {
-                    Surface(
-                        modifier = Modifier.fillMaxWidth(),
-                        shape = RoundedCornerShape(12.dp),
-                        color = ADColors.Surface.copy(alpha = 0.88f),
-                        border = BorderStroke(1.dp, ADColors.Outline),
-                    ) {
-                        Column(Modifier.padding(10.dp)) {
-                            Text("Nothing nearby yet", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Medium)
-                            Text(
-                                "Check Bluetooth and keep the glasses close.",
-                                style = MaterialTheme.typography.bodySmall,
-                                color = ADColors.Muted,
-                            )
+                if (!isScanning && devices.isEmpty()) {
+                    item(key = "empty") {
+                        Surface(
+                            modifier = Modifier.fillMaxWidth(),
+                            shape = RoundedCornerShape(12.dp),
+                            color = ADColors.Surface.copy(alpha = 0.92f),
+                            border = BorderStroke(1.dp, ADColors.Outline),
+                        ) {
+                            Column(Modifier.padding(10.dp)) {
+                                Text("Nothing nearby yet", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Medium)
+                                Text(
+                                    "Check Bluetooth and keep the glasses close.",
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = ADColors.Muted,
+                                )
+                            }
                         }
                     }
                 }
@@ -180,10 +175,11 @@ private fun ADScanVisual(isScanning: Boolean, found: Boolean) {
                 .background(ADColors.SurfaceSubtle, CircleShape),
             contentAlignment = Alignment.Center,
         ) {
-            Box(
-                Modifier
-                    .size(if (found) 12.dp else 9.dp)
-                    .background(if (found) ADColors.Success else ADColors.Ink, CircleShape),
+            ADGlyphIcon(
+                ADGlyph.BLUETOOTH,
+                tint = ADColors.Ink,
+                modifier = Modifier.size(26.dp),
+                accent = if (found || isScanning) ADColors.Red else null,
             )
         }
         if (isScanning) {
@@ -211,7 +207,7 @@ private fun ADPairingDeviceRow(device: ScannedDevice, onClick: () -> Unit) {
             contentColor = ADColors.Ink,
         ) {
             Box(contentAlignment = Alignment.Center) {
-                Icon(Icons.Outlined.Bluetooth, contentDescription = null, modifier = Modifier.size(16.dp))
+                ADGlyphIcon(ADGlyph.BLUETOOTH, ADColors.Ink, Modifier.size(17.dp))
             }
         }
         Column(Modifier.padding(start = 9.dp).weight(1f)) {
@@ -229,7 +225,7 @@ private fun ADPairingDeviceRow(device: ScannedDevice, onClick: () -> Unit) {
                 maxLines = 1,
             )
         }
-        Icon(Icons.AutoMirrored.Rounded.KeyboardArrowRight, "Connect", tint = ADColors.Muted, modifier = Modifier.size(16.dp))
+        ADGlyphIcon(ADGlyph.NEXT, ADColors.Muted, Modifier.size(16.dp))
     }
 }
 

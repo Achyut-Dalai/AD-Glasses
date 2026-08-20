@@ -37,7 +37,6 @@ fun ADGlassesApp(
     var routeStack by remember { mutableStateOf(listOf(ADRoute.MAIN)) }
     var conversationRequest by remember { mutableStateOf<ADNavigationRequest?>(null) }
     var onboardingComplete by remember(context) { mutableStateOf(ADWelcomePreferences.isComplete(context)) }
-    var wallpaper by remember(context) { mutableStateOf(ADAppearancePrefs.wallpaper(context)) }
 
     val route = routeStack.last()
     val navigateTo: (ADRoute) -> Unit = { destination ->
@@ -80,7 +79,7 @@ fun ADGlassesApp(
 
     ADGlassesTheme {
         if (!onboardingComplete) {
-            ADWallpaperBackground(wallpaper) {
+            ADWallpaperBackground {
                 ADWelcomeScreen(
                     onStartSetup = {
                         ADWelcomePreferences.markComplete(context)
@@ -96,7 +95,7 @@ fun ADGlassesApp(
             return@ADGlassesTheme
         }
 
-        ADWallpaperBackground(wallpaper) {
+        ADWallpaperBackground {
             Scaffold(
                 modifier = Modifier.fillMaxSize(),
                 containerColor = Color.Transparent,
@@ -149,11 +148,6 @@ fun ADGlassesApp(
                         ADRoute.SYNC -> ADSyncScreen(dashboardState, host, navigateBack)
                         ADRoute.SETTINGS -> ADNativeSettingsHubScreen(
                             state = dashboardState,
-                            wallpaper = wallpaper,
-                            onWallpaperChange = { style ->
-                                ADAppearancePrefs.setWallpaper(context, style)
-                                wallpaper = style
-                            },
                             onBack = navigateBack,
                             onDevice = { navigateTo(ADRoute.DEVICE_CENTER) },
                             onPrivacy = { navigateTo(ADRoute.PRIVACY) },

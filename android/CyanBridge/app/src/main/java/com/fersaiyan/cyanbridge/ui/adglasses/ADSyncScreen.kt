@@ -14,12 +14,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.outlined.Bluetooth
-import androidx.compose.material.icons.outlined.Storage
-import androidx.compose.material.icons.outlined.Wifi
 import androidx.compose.material3.CircularProgressIndicator
-import androidx.compose.material3.Icon
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
@@ -28,7 +23,6 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
@@ -134,13 +128,13 @@ internal fun ADSyncScreen(
         Column(verticalArrangement = Arrangement.spacedBy(7.dp)) {
             ADSectionTitle("Transfer details")
             ADSyncInfoRow(
-                icon = Icons.Outlined.Bluetooth,
+                glyph = ADGlyph.BLUETOOTH,
                 label = "Connection",
                 value = if (presentation.connected) presentation.identityLabel ?: "Connected" else presentation.statusLabel,
             )
-            ADSyncInfoRow(icon = Icons.Outlined.Wifi, label = "Transport", value = flow)
+            ADSyncInfoRow(glyph = ADGlyph.NETWORK, label = "Transport", value = flow)
             ADSyncInfoRow(
-                icon = Icons.Outlined.Storage,
+                glyph = ADGlyph.STORAGE,
                 label = "Media",
                 value = knownCounts ?: "Scanned when sync starts",
             )
@@ -164,7 +158,7 @@ internal fun ADSyncScreen(
 
 @Composable
 private fun ADSyncInfoRow(
-    icon: ImageVector,
+    glyph: ADGlyph,
     label: String,
     value: String,
 ) {
@@ -182,7 +176,7 @@ private fun ADSyncInfoRow(
                 Modifier.size(30.dp).background(ADColors.SurfaceSubtle, RoundedCornerShape(8.dp)),
                 contentAlignment = Alignment.Center,
             ) {
-                Icon(icon, contentDescription = null, tint = ADColors.Ink, modifier = Modifier.size(15.dp))
+                ADGlyphIcon(glyph, ADColors.Ink, Modifier.size(16.dp))
             }
             Column(Modifier.padding(start = 9.dp).weight(1f)) {
                 Text(label.uppercase(), style = MaterialTheme.typography.labelSmall, color = ADColors.Muted)

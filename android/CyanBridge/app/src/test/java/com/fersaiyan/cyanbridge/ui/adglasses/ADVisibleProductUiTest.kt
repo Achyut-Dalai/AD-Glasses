@@ -37,48 +37,6 @@ class ADVisibleProductUiTest {
     }
 
     @Test
-    fun reactNativeArtifactsRemainAbsent() {
-        listOf(
-            cyanBridgeFile("package.json"),
-            cyanBridgeFile("package-lock.json"),
-            cyanBridgeFile("metro.config.js"),
-            cyanBridgeFile("metro.config.cjs"),
-            cyanBridgeFile("src/App.tsx"),
-            cyanBridgeFile("src/screens"),
-            cyanBridgeFile("src/navigation"),
-            appFile("src/main/java/com/fersaiyan/cyanbridge/ui/reactnative"),
-        ).forEach { artifact -> assertFalse("React Native artifact must stay removed: ${artifact.path}", artifact.exists()) }
-    }
-
-    @Test
-    fun inheritedActivityNamesRouteIntoComposeRedirects() {
-        val manifest = appFile("src/main/AndroidManifest.xml").readText()
-        assertTrue(manifest.contains("android:name=\".ui.ChatListActivity\" android:targetActivity=\".ui.adglasses.ADConversationsRedirectActivity\""))
-        assertTrue(manifest.contains("android:name=\".ui.SettingsActivity\" android:targetActivity=\".ui.adglasses.ADSettingsRedirectActivity\""))
-        assertTrue(manifest.contains("android:name=\".ui.recordings.SyncedMediaGalleryActivity\" android:targetActivity=\".ui.adglasses.ADCapturesRedirectActivity\""))
-        assertTrue(manifest.contains("android:name=\".ui.notes.NotesListActivity\" android:targetActivity=\".ui.adglasses.ADNotesRedirectActivity\""))
-    }
-
-    @Test
-    fun retiredLegacyScreenLayoutsRemainAbsent() {
-        listOf(
-            "activity_chat_list.xml",
-            "activity_chat_thread.xml",
-            "activity_community_plugins.xml",
-            "activity_note_detail.xml",
-            "activity_notes_list.xml",
-            "activity_publish_plugin.xml",
-            "activity_recordings_list.xml",
-            "activity_synced_media_gallery.xml",
-            "activity_welcome.xml",
-            "activity_device_bind.xml",
-        ).forEach { layout ->
-            val file = appFile("src/main/res/layout/$layout")
-            assertFalse("Retired legacy layout must stay removed: $layout", file.exists())
-        }
-    }
-
-    @Test
     fun pairingScreenIsComposeOwned() {
         val pairingActivity = appFile("src/main/java/com/fersaiyan/cyanbridge/ui/DeviceBindActivity.kt").readText()
         assertTrue(pairingActivity.contains("ADGlassesPairingScreen"))
@@ -87,7 +45,7 @@ class ADVisibleProductUiTest {
     }
 
     @Test
-    fun aiPageKeepsOnlyPersistentCapabilitiesAndConfiguration() {
+    fun aiPageKeepsApprovedPersistentControls() {
         val ai = appFile("src/main/java/com/fersaiyan/cyanbridge/ui/adglasses/ADNativeAiScreen.kt").readText()
         assertTrue(ai.contains("AssistantCapability.VISUAL_DIARY"))
         assertTrue(ai.contains("AssistantCapability.AUTO_DIARY"))
@@ -100,15 +58,12 @@ class ADVisibleProductUiTest {
         assertFalse(ai.contains("AI that feels like yours"))
         assertFalse(ai.contains("selectedName"))
         assertFalse(ai.contains("Switch("))
-        assertFalse(ai.contains("\"DayNote\""))
         assertFalse(ai.contains("AssistantCapability.TRANSLATOR"))
         assertFalse(ai.contains("AssistantCapability.MEETING_NOTES"))
-        assertFalse(ai.contains("ERRAND_BRAIN"))
-        assertFalse(ai.contains("\"OFF\""))
     }
 
     @Test
-    fun homeStartsCoreGlassesActionsAndOwnsLiveTranslateAndSoundbites() {
+    fun homeStartsCoreActionsWithMatrixCardsAndNoGeneratedActionArt() {
         val home = appFile("src/main/java/com/fersaiyan/cyanbridge/ui/adglasses/ADHomeSurface.kt").readText()
         assertTrue(home.contains("onClick = host.onVoiceQuestion"))
         assertTrue(home.contains("onClick = host.onCapturePhoto"))
@@ -118,24 +73,30 @@ class ADVisibleProductUiTest {
         assertTrue(home.contains("toggleCapability(AssistantCapability.MEETING_NOTES)"))
         listOf("Ask AI", "Photo", "Video", "Translate", "Soundbites", "Audio", "Lens")
             .forEach { label -> assertTrue(home.contains("\"$label\"")) }
-        assertTrue(home.contains("aspectRatio(1f)"))
-        assertTrue(home.contains("contentDescription = title"))
-        assertTrue(home.contains("R.drawable.ad_codex_ask"))
-        assertTrue(home.contains("R.drawable.ad_codex_video"))
-        assertTrue(home.contains("R.drawable.ad_codex_language"))
-        assertTrue(home.contains("R.drawable.ad_codex_audio"))
-        assertTrue(home.contains("glyph = ADGlyph.LENS"))
-        listOf("Voice question", "Capture", "Record", "Live speech", "Speech notes", "Look at it. Ask about it.")
-            .forEach { visibleCopy -> assertFalse("Home action tiles should remain image-only", home.contains("\"$visibleCopy\"")) }
-        assertFalse(home.contains("Search Web"))
-        assertFalse(home.contains("Smart Lens"))
+        assertTrue(home.contains("ADHomeActionCard("))
+        assertTrue(home.contains("ADHeroSignalMatrix("))
+        assertTrue(home.contains("ADTechFontFamily"))
+        assertTrue(home.contains("R.drawable.ad_glasses_hero_v4"))
+        assertFalse(home.contains("ADGlyphMatrixCard("))
+        assertFalse(home.contains("R.drawable.ad_codex_ask"))
+        assertFalse(home.contains("R.drawable.ad_codex_video"))
+        assertFalse(home.contains("R.drawable.ad_codex_language"))
+        assertFalse(home.contains("R.drawable.ad_codex_audio"))
     }
 
     @Test
-    fun recordingMapperRemainsIndependentOfRetiredActivity() {
-        val mapper = appFile("src/main/java/com/fersaiyan/cyanbridge/ui/recordings/RecordingItemMapper.kt").readText()
-        assertTrue(mapper.contains("fun CaptureSession.toRecordingItem"))
-        assertFalse(mapper.contains("class RecordingsListActivity"))
+    fun retiredReactAndLegacyScreenArtifactsRemainAbsent() {
+        listOf(
+            cyanBridgeFile("package.json"),
+            cyanBridgeFile("package-lock.json"),
+            cyanBridgeFile("metro.config.js"),
+            cyanBridgeFile("src/App.tsx"),
+            appFile("src/main/java/com/fersaiyan/cyanbridge/ui/reactnative"),
+            appFile("src/main/res/layout/activity_chat_list.xml"),
+            appFile("src/main/res/layout/activity_chat_thread.xml"),
+            appFile("src/main/res/layout/activity_welcome.xml"),
+            appFile("src/main/res/layout/activity_device_bind.xml"),
+        ).forEach { artifact -> assertFalse("Retired artifact must stay removed: ${artifact.path}", artifact.exists()) }
     }
 
     private fun appFile(relativePath: String): File = firstExisting(

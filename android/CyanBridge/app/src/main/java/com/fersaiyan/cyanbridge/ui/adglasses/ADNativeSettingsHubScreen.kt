@@ -3,7 +3,6 @@ package com.fersaiyan.cyanbridge.ui.adglasses
 import android.content.Intent
 import android.net.Uri
 import android.provider.Settings as AndroidSettings
-import androidx.annotation.DrawableRes
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
@@ -22,19 +21,13 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.rounded.KeyboardArrowRight
-import androidx.compose.material.icons.outlined.Info
-import androidx.compose.material.icons.outlined.Settings
 import androidx.compose.material3.HorizontalDivider
-import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
@@ -49,8 +42,6 @@ import com.fersaiyan.cyanbridge.shared.glasses.GlassesDashboardUiState
 @Composable
 internal fun ADNativeSettingsHubScreen(
     state: GlassesDashboardUiState,
-    wallpaper: ADWallpaperStyle,
-    onWallpaperChange: (ADWallpaperStyle) -> Unit,
     onBack: () -> Unit,
     onDevice: () -> Unit,
     onPrivacy: () -> Unit,
@@ -69,15 +60,10 @@ internal fun ADNativeSettingsHubScreen(
         ADScreenIntro(
             eyebrow = "SYSTEM",
             title = "Settings",
-            detail = "Glasses, privacy, storage and appearance.",
+            detail = "Glasses, privacy, storage and system controls.",
         )
 
         ADSettingsDeviceOverview(state, presentation, onDevice)
-
-        Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-            ADSectionTitle("Wallpaper")
-            ADWallpaperPicker(wallpaper, onWallpaperChange)
-        }
 
         Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
             ADSectionTitle("Essentials")
@@ -86,14 +72,7 @@ internal fun ADNativeSettingsHubScreen(
                 ADSettingsTile(ADGlyph.STORAGE, "Storage", "Phone space", Modifier.weight(1f), onClick = onStorage)
             }
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                ADSettingsTile(
-                    glyph = ADGlyph.LANGUAGE,
-                    title = "Language",
-                    detail = "App language",
-                    modifier = Modifier.weight(1f),
-                    artwork = R.drawable.ad_codex_language,
-                    onClick = onLanguage,
-                )
+                ADSettingsTile(ADGlyph.LANGUAGE, "Language", "App language", Modifier.weight(1f), onClick = onLanguage)
                 ADSettingsTile(ADGlyph.PERMISSIONS, "Permissions", "Access", Modifier.weight(1f), onClick = onPermissions)
             }
         }
@@ -108,7 +87,7 @@ internal fun ADNativeSettingsHubScreen(
             ) {
                 Column(Modifier.padding(horizontal = 12.dp)) {
                     ADSettingsWideAction(
-                        icon = Icons.Outlined.Settings,
+                        glyph = ADGlyph.SETTINGS,
                         title = "Android app settings",
                         subtitle = "Battery, permissions and system controls",
                         onClick = {
@@ -124,7 +103,7 @@ internal fun ADNativeSettingsHubScreen(
                     )
                     HorizontalDivider(color = ADColors.Separator)
                     ADSettingsWideAction(
-                        icon = Icons.Outlined.Info,
+                        glyph = ADGlyph.INFO,
                         title = "About AD Glasses",
                         subtitle = "Version and product information",
                         onClick = onAbout,
@@ -199,7 +178,7 @@ private fun ADSettingsDeviceOverview(
                         )
                     }
                 }
-                Icon(Icons.AutoMirrored.Rounded.KeyboardArrowRight, null, tint = ADColors.Muted, modifier = Modifier.size(18.dp))
+                ADGlyphIcon(ADGlyph.NEXT, ADColors.Muted, Modifier.size(18.dp))
             }
 
             if (showBattery || showStorage) {
@@ -229,39 +208,11 @@ private fun ADDeviceMetric(label: String, value: String, modifier: Modifier = Mo
 }
 
 @Composable
-private fun ADWallpaperPicker(selected: ADWallpaperStyle, onSelected: (ADWallpaperStyle) -> Unit) {
-    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(7.dp)) {
-        ADWallpaperStyle.entries.forEach { style ->
-            Column(
-                modifier = Modifier.weight(1f).clickable { onSelected(style) },
-                horizontalAlignment = Alignment.CenterHorizontally,
-            ) {
-                Box(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .height(54.dp)
-                        .clip(RoundedCornerShape(11.dp))
-                        .background(Color.Black),
-                ) {
-                    ADWallpaperCanvas(style, Modifier.fillMaxSize())
-                    if (selected == style) {
-                        Box(Modifier.align(Alignment.TopEnd).padding(6.dp).size(6.dp).background(ADColors.Red, CircleShape))
-                    }
-                }
-                Spacer(Modifier.height(4.dp))
-                Text(style.label, style = MaterialTheme.typography.labelSmall, color = if (selected == style) ADColors.Ink else ADColors.Muted)
-            }
-        }
-    }
-}
-
-@Composable
 private fun ADSettingsTile(
     glyph: ADGlyph,
     title: String,
     detail: String,
     modifier: Modifier = Modifier,
-    @DrawableRes artwork: Int? = null,
     onClick: () -> Unit,
 ) {
     Surface(
@@ -272,11 +223,7 @@ private fun ADSettingsTile(
         border = BorderStroke(1.dp, ADColors.Outline),
     ) {
         Column(Modifier.padding(12.dp), verticalArrangement = Arrangement.SpaceBetween) {
-            if (artwork != null) {
-                ADAssetIcon(artwork, Modifier.size(28.dp), title)
-            } else {
-                ADGlyphIcon(glyph, ADColors.Ink, Modifier.size(23.dp))
-            }
+            ADGlyphIcon(glyph, ADColors.Ink, Modifier.size(25.dp))
             Column {
                 Text(title, style = MaterialTheme.typography.titleMedium, color = ADColors.Ink, maxLines = 1)
                 Text(detail, style = MaterialTheme.typography.bodySmall, color = ADColors.Muted, maxLines = 1)
@@ -287,7 +234,7 @@ private fun ADSettingsTile(
 
 @Composable
 private fun ADSettingsWideAction(
-    icon: androidx.compose.ui.graphics.vector.ImageVector,
+    glyph: ADGlyph,
     title: String,
     subtitle: String,
     onClick: () -> Unit,
@@ -297,12 +244,12 @@ private fun ADSettingsWideAction(
         verticalAlignment = Alignment.CenterVertically,
     ) {
         Box(Modifier.size(34.dp).background(ADColors.SurfaceSubtle, RoundedCornerShape(10.dp)), contentAlignment = Alignment.Center) {
-            Icon(icon, null, tint = ADColors.Ink, modifier = Modifier.size(17.dp))
+            ADGlyphIcon(glyph, ADColors.Ink, Modifier.size(18.dp))
         }
         Column(Modifier.padding(start = 10.dp).weight(1f)) {
             Text(title, style = MaterialTheme.typography.titleMedium, color = ADColors.Ink, fontWeight = FontWeight.Medium)
             Text(subtitle, style = MaterialTheme.typography.bodySmall, color = ADColors.Muted, maxLines = 1, overflow = TextOverflow.Ellipsis)
         }
-        Icon(Icons.AutoMirrored.Rounded.KeyboardArrowRight, null, tint = ADColors.Muted, modifier = Modifier.size(17.dp))
+        ADGlyphIcon(ADGlyph.NEXT, ADColors.Muted, Modifier.size(17.dp))
     }
 }
