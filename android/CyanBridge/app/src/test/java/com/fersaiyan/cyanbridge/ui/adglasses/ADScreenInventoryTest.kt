@@ -55,18 +55,20 @@ class ADScreenInventoryTest {
     }
 
     @Test
-    fun launcherUsesUploadedLogoOnDarkAdaptiveBackground() {
+    fun launcherUsesFinalUploadedIconOnDarkAdaptiveBackground() {
         val drawable = sourceFile("src/main/res/drawable")
         val drawableNoDpi = sourceFile("src/main/res/drawable-nodpi")
-        val uploadedLogo = File(drawableNoDpi, "ad_user_app_icon.jpg")
-        val oldLogo = File(drawableNoDpi, "ad_user_app_icon.webp")
+        val finalIcon = File(drawableNoDpi, "ad_user_app_icon.png")
+        val oldJpgIcon = File(drawableNoDpi, "ad_user_app_icon.jpg")
+        val oldWebpIcon = File(drawableNoDpi, "ad_user_app_icon.webp")
         val adaptiveForeground = File(drawable, "ad_glasses_adaptive_foreground.xml")
         val adaptiveBackground = File(drawable, "ad_glasses_adaptive_background.xml")
         val launcher = sourceFile("src/main/res/mipmap-anydpi-v26/ic_launcher.xml")
         val roundLauncher = sourceFile("src/main/res/mipmap-anydpi-v26/ic_launcher_round.xml")
 
-        assertTrue("Uploaded app icon must exist", uploadedLogo.isFile && uploadedLogo.length() > 0L)
-        assertFalse("Previous app icon resource must be removed", oldLogo.exists())
+        assertTrue("Final uploaded app icon must exist", finalIcon.isFile && finalIcon.length() > 0L)
+        assertFalse("Previous JPG app icon resource must be removed", oldJpgIcon.exists())
+        assertFalse("Previous WebP app icon resource must be removed", oldWebpIcon.exists())
         assertTrue("Adaptive foreground must exist", adaptiveForeground.isFile)
         assertTrue("Adaptive background must exist", adaptiveBackground.isFile)
         assertTrue(adaptiveForeground.readText().contains("@drawable/ad_user_app_icon"))

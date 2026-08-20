@@ -20,26 +20,28 @@ class ADProductSurfaceIsolationTest {
     }
 
     @Test
-    fun homeUsesLargeHeroLensMatrixAndConfigurationStyleActions() {
+    fun homeUsesAiCardGeometryWithShutterLensAndCompactActions() {
         val home = sourceFile("src/main/java/com/fersaiyan/cyanbridge/ui/adglasses/ADHomeSurface.kt").readText()
 
-        listOf("Ask AI", "Photo", "Video", "Translate", "Soundbites", "Audio")
+        listOf("Ask AI", "Photo", "Video", "Translate", "Record", "Soundbites", "AUDIO")
             .forEach { label -> assertTrue("Home should keep $label", home.contains("\"$label\"")) }
-        assertTrue(home.contains("ADLargeGlassesHero("))
-        assertTrue(home.contains(".height(184.dp)"))
+        assertTrue(home.contains("ADTopBar(showBrand = false"))
+        assertTrue(home.contains("ADGlassesDeviceCard("))
+        assertTrue(home.contains("modifier = Modifier.fillMaxWidth().heightIn(min = 138.dp)"))
         assertTrue(home.contains("R.drawable.ad_glasses_hero_v4"))
-        assertTrue(home.contains("ADLensMatrixAction("))
-        assertTrue(home.contains("LENS MATRIX / V1"))
-        assertTrue(home.contains("SEE   CAPTURE   ASK"))
-        assertTrue(home.contains("rememberInfiniteTransition"))
-        assertFalse(home.contains("ADGlyphMatrixFeature("))
-        assertFalse(home.contains("GLYPH MATRIX / 01"))
-        assertFalse(home.contains("ADLensAction("))
-
-        assertTrue(home.contains("Icons.Outlined.GraphicEq"))
-        assertTrue(home.contains("shape = RoundedCornerShape(9.dp)"))
-        assertTrue(home.contains("color = ADColors.SurfaceSubtle"))
-        assertTrue(home.contains("style = MaterialTheme.typography.labelLarge"))
+        assertTrue(home.contains("ADLensCard("))
+        assertTrue(home.contains("ADLensShutterArtwork("))
+        assertTrue(home.contains("lens-focus-pulse"))
+        assertTrue(home.contains("ADCameraSkillCard("))
+        assertTrue(home.contains("ADAskSkillCard("))
+        assertTrue(home.contains("Modifier.fillMaxWidth().height(76.dp)"))
+        assertTrue(home.contains("heightIn(min = 174.dp)"))
+        assertFalse(home.contains("ADLensMatrixAction("))
+        assertFalse(home.contains("LENS MATRIX / V1"))
+        assertFalse(home.contains("SEE   CAPTURE   ASK"))
+        assertFalse(home.contains("\"01110\""))
+        assertFalse(home.contains("activeCell"))
+        assertFalse(home.contains("ADLargeGlassesHero("))
 
         listOf("Voice question", "Live speech", "Speech notes", "Look at it. Ask about it.")
             .forEach { unwanted -> assertFalse("Home should avoid explanatory action subtext", home.contains("\"$unwanted\"")) }
@@ -82,35 +84,54 @@ class ADProductSurfaceIsolationTest {
     }
 
     @Test
-    fun greyWallpaperAndAlternateLogoRemainAuthoritative() {
+    fun greyWallpaperLastIconAndLeanArtworkSetRemainAuthoritative() {
         val appearance = sourceFile("src/main/java/com/fersaiyan/cyanbridge/ui/adglasses/ADAppearance.kt").readText()
         val app = sourceFile("src/main/java/com/fersaiyan/cyanbridge/ui/adglasses/ADGlassesApp.kt").readText()
         val settings = sourceFile("src/main/java/com/fersaiyan/cyanbridge/ui/adglasses/ADNativeSettingsHubScreen.kt").readText()
         val pairing = sourceFile("src/main/java/com/fersaiyan/cyanbridge/ui/adglasses/ADGlassesPairingScreen.kt").readText()
         val components = sourceFile("src/main/java/com/fersaiyan/cyanbridge/ui/adglasses/ADComponents.kt").readText()
-        val grey = sourceFile("src/main/res/drawable-nodpi/ad_wallpaper_grey.jpg")
-        val v2 = sourceFile("src/main/res/drawable-nodpi/ad_wallpaper_v2.jpeg")
-        val abstract = sourceFile("src/main/res/drawable-nodpi/ad_wallpaper_abstract.jpeg")
-        val oldBackground = sourceFile("src/main/res/drawable-nodpi/ad_user_background.jpeg")
-        val logo = sourceFile("src/main/res/drawable-nodpi/ad_user_app_icon.jpg")
-        val oldLogo = sourceFile("src/main/res/drawable-nodpi/ad_user_app_icon.webp")
+        val home = sourceFile("src/main/java/com/fersaiyan/cyanbridge/ui/adglasses/ADHomeSurface.kt").readText()
+        val welcome = sourceFile("src/main/java/com/fersaiyan/cyanbridge/ui/adglasses/ADWelcomeScreen.kt").readText()
+        val drawableNoDpi = sourceFile("src/main/res/drawable-nodpi")
+        val grey = File(drawableNoDpi, "ad_wallpaper_grey.jpg")
+        val v2 = File(drawableNoDpi, "ad_wallpaper_v2.jpeg")
+        val abstract = File(drawableNoDpi, "ad_wallpaper_abstract.jpeg")
+        val lastIcon = File(drawableNoDpi, "ad_user_app_icon.png")
+        val oldJpgIcon = File(drawableNoDpi, "ad_user_app_icon.jpg")
+        val oldWebpIcon = File(drawableNoDpi, "ad_user_app_icon.webp")
+        val heroV2 = File(drawableNoDpi, "ad_glasses_hero_v2.png")
+        val heroV3 = File(drawableNoDpi, "ad_glasses_hero_v3.png")
+        val heroV4 = File(drawableNoDpi, "ad_glasses_hero_v4.png")
+        val iconSource = File(drawableNoDpi, "ad_glasses_icon_source.png")
 
         assertTrue(grey.isFile && grey.length() > 0L)
         assertFalse(v2.exists())
         assertFalse(abstract.exists())
-        assertFalse(oldBackground.exists())
-        assertTrue(logo.isFile && logo.length() > 0L)
-        assertFalse(oldLogo.exists())
+        assertTrue(lastIcon.isFile && lastIcon.length() > 0L)
+        assertFalse(oldJpgIcon.exists())
+        assertFalse(oldWebpIcon.exists())
+        assertFalse(heroV2.exists())
+        assertFalse(heroV3.exists())
+        assertTrue(heroV4.isFile && heroV4.length() > 0L)
+        assertFalse(iconSource.exists())
+        listOf(
+            "ad_codex_ai.png", "ad_codex_ask.png", "ad_codex_audio.png", "ad_codex_automation.png",
+            "ad_codex_brand.png", "ad_codex_language.png", "ad_codex_video.png",
+        ).forEach { name -> assertFalse("Unused generated artwork must be removed: $name", File(drawableNoDpi, name).exists()) }
+
         assertTrue(appearance.contains("enum class ADWallpaperStyle"))
         assertTrue(appearance.contains("R.drawable.ad_wallpaper_grey"))
         assertFalse(appearance.contains("R.drawable.ad_wallpaper_v2"))
         assertFalse(appearance.contains("R.drawable.ad_wallpaper_abstract"))
         assertTrue(appearance.contains("ADWallpaperPreferences"))
-        assertTrue(appearance.contains("ContentScale.Crop"))
         assertTrue(app.contains("ADWallpaperBackground {"))
         assertTrue(pairing.contains("ADWallpaperBackground {"))
         assertTrue(settings.contains("ADWallpaperPicker()"))
         assertTrue(components.contains("R.drawable.ad_user_app_icon"))
+        assertTrue(home.contains("R.drawable.ad_glasses_hero_v4"))
+        assertTrue(welcome.contains("R.drawable.ad_glasses_hero_v4"))
+        assertFalse(settings.contains("R.drawable.ad_glasses_hero_v4"))
+        assertFalse(settings.contains("painterResource"))
     }
 
     @Test

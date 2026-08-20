@@ -7,6 +7,7 @@ import androidx.compose.animation.core.infiniteRepeatable
 import androidx.compose.animation.core.rememberInfiniteTransition
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
@@ -20,10 +21,12 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.outlined.CameraAlt
 import androidx.compose.material.icons.outlined.GraphicEq
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
@@ -36,7 +39,10 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.StrokeCap
+import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
@@ -86,19 +92,14 @@ internal fun ADHomeSurface(
     }
 
     Column(Modifier.fillMaxSize()) {
-        ADTopBar(showBrand = true, showSettings = true, onSettings = onOpenSettings)
+        ADTopBar(showBrand = false, showSettings = true, onSettings = onOpenSettings)
         LazyColumn(
             modifier = Modifier.fillMaxSize(),
-            contentPadding = androidx.compose.foundation.layout.PaddingValues(
-                start = 12.dp,
-                end = 12.dp,
-                top = 3.dp,
-                bottom = 18.dp,
-            ),
-            verticalArrangement = Arrangement.spacedBy(11.dp),
+            contentPadding = androidx.compose.foundation.layout.PaddingValues(12.dp, 3.dp, 12.dp, 18.dp),
+            verticalArrangement = Arrangement.spacedBy(12.dp),
         ) {
             item {
-                ADLargeGlassesHero(
+                ADGlassesDeviceCard(
                     state = state,
                     device = device,
                     onOpenDevice = onOpenDevice,
@@ -135,54 +136,43 @@ internal fun ADHomeSurface(
                 }
             }
 
-            item { ADLensMatrixAction(onClick = host.onImageQuestion) }
+            item { ADLensCard(onClick = host.onImageQuestion) }
+
+            item {
+                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    ADCameraSkillCard(
+                        modifier = Modifier.weight(1f),
+                        onPhoto = host.onCapturePhoto,
+                        onVideo = host.onToggleVideo,
+                    )
+                    ADAskSkillCard(
+                        modifier = Modifier.weight(1f),
+                        onClick = host.onVoiceQuestion,
+                    )
+                }
+            }
 
             item {
                 Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                    ADSectionTitle("Actions")
-                    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                        ADHomeAction(
-                            title = "Ask AI",
-                            glyph = ADGlyph.ASK,
-                            modifier = Modifier.weight(1f),
-                            onClick = host.onVoiceQuestion,
-                        )
-                        ADHomeAction(
-                            title = "Photo",
-                            glyph = ADGlyph.PHOTO,
-                            modifier = Modifier.weight(1f),
-                            onClick = host.onCapturePhoto,
-                        )
-                    }
-                    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                        ADHomeAction(
-                            title = "Video",
-                            glyph = ADGlyph.VIDEO,
-                            modifier = Modifier.weight(1f),
-                            onClick = host.onToggleVideo,
-                        )
-                        ADHomeAction(
+                    ADSectionTitle("AUDIO")
+                    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                        ADAudioActionPill(
                             title = "Translate",
-                            glyph = ADGlyph.TRANSLATE,
                             active = translateActive,
                             modifier = Modifier.weight(1f),
                             onClick = { toggleCapability(AssistantCapability.TRANSLATOR) },
                         )
-                    }
-                    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                        ADHomeAction(
-                            title = "Soundbites",
-                            glyph = ADGlyph.SOUNDBITES,
-                            active = soundbitesActive,
-                            modifier = Modifier.weight(1f),
-                            onClick = { toggleCapability(AssistantCapability.MEETING_NOTES) },
-                        )
-                        ADHomeAction(
-                            title = "Audio",
-                            icon = Icons.Outlined.GraphicEq,
+                        ADAudioActionPill(
+                            title = "Record",
                             active = state.meeting.isRecording,
                             modifier = Modifier.weight(1f),
                             onClick = if (state.meeting.isRecording) host.onStopRecording else host.onStartRecording,
+                        )
+                        ADAudioActionPill(
+                            title = "Soundbites",
+                            active = soundbitesActive,
+                            modifier = Modifier.weight(1f),
+                            onClick = { toggleCapability(AssistantCapability.MEETING_NOTES) },
                         )
                     }
                 }
@@ -192,7 +182,7 @@ internal fun ADHomeSurface(
 }
 
 @Composable
-private fun ADLargeGlassesHero(
+private fun ADGlassesDeviceCard(
     state: GlassesDashboardUiState,
     device: ADDevicePresentation,
     onOpenDevice: () -> Unit,
@@ -200,259 +190,361 @@ private fun ADLargeGlassesHero(
 ) {
     Surface(
         onClick = onOpenDevice,
-        modifier = Modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(19.dp),
-        color = Color.Black,
-        contentColor = ADColors.Ink,
-        border = BorderStroke(1.dp, ADColors.Outline),
-    ) {
-        Column {
-            Box(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(184.dp)
-                    .background(Color.Black),
-                contentAlignment = Alignment.Center,
-            ) {
-                Image(
-                    painter = painterResource(R.drawable.ad_glasses_hero_v4),
-                    contentDescription = "AD Glasses",
-                    modifier = Modifier.fillMaxSize().padding(horizontal = 12.dp, vertical = 8.dp),
-                    contentScale = ContentScale.Fit,
-                )
-
-                if (!device.connected && !device.connecting) {
-                    Surface(
-                        onClick = onConnect,
-                        modifier = Modifier.align(Alignment.TopEnd).padding(10.dp),
-                        shape = RoundedCornerShape(9.dp),
-                        color = ADColors.Ink,
-                        contentColor = Color.Black,
-                    ) {
-                        Text(
-                            "CONNECT",
-                            style = MaterialTheme.typography.labelSmall.copy(
-                                fontFamily = ADTechFontFamily,
-                                fontWeight = FontWeight.SemiBold,
-                                letterSpacing = 0.7.sp,
-                            ),
-                            modifier = Modifier.padding(horizontal = 9.dp, vertical = 6.dp),
-                        )
-                    }
-                }
-            }
-
-            Row(
-                modifier = Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 10.dp),
-                verticalAlignment = Alignment.CenterVertically,
-            ) {
-                if (device.connecting) {
-                    CircularProgressIndicator(
-                        modifier = Modifier.size(13.dp),
-                        strokeWidth = 1.5.dp,
-                        color = ADColors.Ink,
-                    )
-                } else {
-                    Box(
-                        Modifier.size(6.dp).background(
-                            if (device.connected) ADColors.Success else ADColors.Red,
-                            CircleShape,
-                        ),
-                    )
-                }
-                Column(Modifier.padding(start = 7.dp).weight(1f)) {
-                    Text(
-                        device.statusLabel.uppercase(),
-                        style = MaterialTheme.typography.labelLarge.copy(
-                            fontFamily = ADTechFontFamily,
-                            letterSpacing = 0.55.sp,
-                        ),
-                        color = ADColors.Ink,
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis,
-                    )
-                    device.identityLabel?.takeIf { it.isNotBlank() }?.let { identity ->
-                        Text(
-                            identity,
-                            style = MaterialTheme.typography.labelSmall,
-                            color = ADColors.Muted,
-                            maxLines = 1,
-                            overflow = TextOverflow.Ellipsis,
-                        )
-                    }
-                }
-
-                if (device.connected && state.showBattery && state.batteryPercent != null) {
-                    ADHeroMetric("BAT", "${state.batteryPercent}%")
-                }
-                if (device.connected && state.showStorage && state.storageLabel != "--") {
-                    Spacer(Modifier.size(9.dp))
-                    ADHeroMetric("MEM", state.storageLabel)
-                }
-            }
-        }
-    }
-}
-
-@Composable
-private fun ADHeroMetric(label: String, value: String) {
-    Column(horizontalAlignment = Alignment.End) {
-        Text(
-            label,
-            style = MaterialTheme.typography.labelSmall.copy(
-                fontFamily = ADTechFontFamily,
-                letterSpacing = 0.65.sp,
-            ),
-            color = ADColors.Muted,
-        )
-        Text(value, style = MaterialTheme.typography.labelLarge, color = ADColors.Ink, maxLines = 1)
-    }
-}
-
-/** Lens is the one deliberately matrix-driven Home feature. */
-@Composable
-private fun ADLensMatrixAction(onClick: () -> Unit) {
-    val phase by rememberInfiniteTransition(label = "lens-matrix").animateFloat(
-        initialValue = 0f,
-        targetValue = 1f,
-        animationSpec = infiniteRepeatable(
-            animation = tween(durationMillis = 1850),
-            repeatMode = RepeatMode.Restart,
-        ),
-        label = "lens-matrix-phase",
-    )
-    val pattern = remember {
-        listOf(
-            "01110",
-            "11011",
-            "10101",
-            "11011",
-            "01110",
-        )
-    }
-    val litCells = remember(pattern) {
-        buildList {
-            pattern.forEachIndexed { row, line ->
-                line.forEachIndexed { column, value ->
-                    if (value == '1') add(row to column)
-                }
-            }
-        }
-    }
-    val activeIndex = ((phase * litCells.size).toInt()).coerceIn(0, litCells.lastIndex)
-    val activeCell = litCells[activeIndex]
-
-    Surface(
-        onClick = onClick,
-        modifier = Modifier
-            .fillMaxWidth()
-            .semantics { contentDescription = "Lens matrix. See, capture, ask." },
-        shape = RoundedCornerShape(15.dp),
+        modifier = Modifier.fillMaxWidth().heightIn(min = 138.dp),
+        shape = RoundedCornerShape(18.dp),
         color = ADColors.Surface,
         contentColor = ADColors.Ink,
         border = BorderStroke(1.dp, ADColors.Outline),
     ) {
         Row(
-            modifier = Modifier.padding(horizontal = 13.dp, vertical = 12.dp),
+            modifier = Modifier.padding(12.dp),
             verticalAlignment = Alignment.CenterVertically,
         ) {
-            Column(Modifier.weight(1f)) {
+            Column(Modifier.weight(1.06f)) {
                 Text(
-                    "LENS MATRIX / V1",
-                    style = MaterialTheme.typography.labelSmall.copy(
-                        fontFamily = ADTechFontFamily,
-                        letterSpacing = 1.05.sp,
-                    ),
-                    color = ADColors.InkSoft,
-                )
-                Spacer(Modifier.height(4.dp))
-                Text(
-                    "SEE   CAPTURE   ASK",
-                    style = MaterialTheme.typography.titleMedium.copy(
-                        fontFamily = ADTechFontFamily,
-                        letterSpacing = 0.75.sp,
-                    ),
+                    "AD GLASSES",
+                    style = MaterialTheme.typography.titleLarge,
                     color = ADColors.Ink,
+                    fontWeight = FontWeight.SemiBold,
                 )
-            }
+                Spacer(Modifier.height(5.dp))
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    if (device.connecting) {
+                        CircularProgressIndicator(
+                            modifier = Modifier.size(11.dp),
+                            strokeWidth = 1.4.dp,
+                            color = ADColors.Ink,
+                        )
+                    } else {
+                        Box(
+                            Modifier.size(6.dp).background(
+                                if (device.connected) ADColors.Success else ADColors.Red,
+                                CircleShape,
+                            ),
+                        )
+                    }
+                    Text(
+                        device.statusLabel,
+                        modifier = Modifier.padding(start = 6.dp),
+                        style = MaterialTheme.typography.bodySmall,
+                        color = ADColors.Muted,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
+                    )
+                }
 
-            Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                pattern.forEachIndexed { row, line ->
-                    Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
-                        line.forEachIndexed { column, value ->
-                            val isActive = activeCell.first == row && activeCell.second == column
-                            Box(
-                                Modifier
-                                    .size(5.dp)
-                                    .background(
-                                        when {
-                                            isActive -> ADColors.Red
-                                            value == '1' -> ADColors.Ink.copy(alpha = 0.72f)
-                                            else -> ADColors.Outline.copy(alpha = 0.58f)
-                                        },
-                                        RoundedCornerShape(1.3.dp),
-                                    ),
-                            )
+                if (device.connected && ((state.showBattery && state.batteryPercent != null) || (state.showStorage && state.storageLabel != "--"))) {
+                    Spacer(Modifier.height(8.dp))
+                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        if (state.showBattery && state.batteryPercent != null) {
+                            ADDeviceInlineMetric("BAT", "${state.batteryPercent}%")
+                        }
+                        if (state.showStorage && state.storageLabel != "--") {
+                            ADDeviceInlineMetric("MEM", state.storageLabel)
                         }
                     }
                 }
+
+                Spacer(Modifier.height(9.dp))
+                if (device.connecting) {
+                    Surface(
+                        shape = RoundedCornerShape(8.dp),
+                        color = ADColors.SurfaceSubtle,
+                        border = BorderStroke(1.dp, ADColors.Outline),
+                    ) {
+                        Text(
+                            "CONNECTING",
+                            modifier = Modifier.padding(horizontal = 9.dp, vertical = 5.dp),
+                            style = MaterialTheme.typography.labelSmall,
+                            color = ADColors.InkSoft,
+                        )
+                    }
+                } else {
+                    Surface(
+                        onClick = onConnect,
+                        shape = RoundedCornerShape(8.dp),
+                        color = ADColors.SurfaceSubtle,
+                        contentColor = ADColors.Ink,
+                        border = BorderStroke(1.dp, ADColors.Outline),
+                    ) {
+                        Text(
+                            when {
+                                device.connected -> "DISCONNECT"
+                                device.shouldOpenSetup -> "CONNECT"
+                                else -> "RECONNECT"
+                            },
+                            modifier = Modifier.padding(horizontal = 9.dp, vertical = 5.dp),
+                            style = MaterialTheme.typography.labelSmall.copy(
+                                fontFamily = ADTechFontFamily,
+                                letterSpacing = 0.65.sp,
+                            ),
+                            color = ADColors.Ink,
+                        )
+                    }
+                }
+            }
+
+            Spacer(Modifier.width(10.dp))
+            Surface(
+                modifier = Modifier.weight(0.94f).height(112.dp),
+                shape = RoundedCornerShape(15.dp),
+                color = Color.Black,
+                border = BorderStroke(1.dp, ADColors.Outline),
+            ) {
+                Image(
+                    painter = painterResource(R.drawable.ad_glasses_hero_v4),
+                    contentDescription = "AD Glasses",
+                    modifier = Modifier.fillMaxSize().padding(horizontal = 8.dp, vertical = 6.dp),
+                    contentScale = ContentScale.Fit,
+                )
             }
         }
     }
 }
 
 @Composable
-private fun ADHomeAction(
-    title: String,
-    modifier: Modifier = Modifier,
-    glyph: ADGlyph? = null,
-    icon: ImageVector? = null,
-    active: Boolean = false,
-    onClick: () -> Unit,
-) {
+private fun ADDeviceInlineMetric(label: String, value: String) {
+    Column {
+        Text(label, style = MaterialTheme.typography.labelSmall, color = ADColors.Muted)
+        Text(value, style = MaterialTheme.typography.labelMedium, color = ADColors.Ink, maxLines = 1)
+    }
+}
+
+@Composable
+private fun ADLensCard(onClick: () -> Unit) {
     Surface(
         onClick = onClick,
-        modifier = modifier
-            .heightIn(min = 92.dp)
-            .semantics {
-                contentDescription = title
-                if (active) stateDescription = "Active"
-            },
-        shape = RoundedCornerShape(14.dp),
+        modifier = Modifier
+            .fillMaxWidth()
+            .heightIn(min = 138.dp)
+            .semantics { contentDescription = "Lens. See, capture, ask." },
+        shape = RoundedCornerShape(18.dp),
         color = ADColors.Surface,
         contentColor = ADColors.Ink,
-        border = BorderStroke(1.dp, if (active) ADColors.Ink.copy(alpha = 0.42f) else ADColors.Outline),
+        border = BorderStroke(1.dp, ADColors.Outline),
     ) {
-        Column(
-            modifier = Modifier.padding(10.dp),
-            verticalArrangement = Arrangement.SpaceBetween,
+        Row(
+            modifier = Modifier.padding(12.dp),
+            verticalAlignment = Alignment.CenterVertically,
         ) {
-            Row(verticalAlignment = Alignment.Top) {
-                Surface(
-                    modifier = Modifier.size(32.dp),
-                    shape = RoundedCornerShape(9.dp),
-                    color = ADColors.SurfaceSubtle,
-                    contentColor = ADColors.Ink,
-                ) {
-                    Box(contentAlignment = Alignment.Center) {
-                        when {
-                            icon != null -> Icon(icon, contentDescription = null, modifier = Modifier.size(17.dp))
-                            glyph != null -> ADGlyphIcon(
-                                glyph = glyph,
+            Column(Modifier.weight(1.06f)) {
+                Text(
+                    "LENS",
+                    style = MaterialTheme.typography.titleLarge,
+                    color = ADColors.Ink,
+                    fontWeight = FontWeight.SemiBold,
+                )
+                Spacer(Modifier.height(5.dp))
+                Text(
+                    "SEE · CAPTURE · ASK",
+                    style = MaterialTheme.typography.labelSmall.copy(
+                        fontFamily = ADTechFontFamily,
+                        letterSpacing = 0.75.sp,
+                    ),
+                    color = ADColors.Muted,
+                )
+            }
+            Spacer(Modifier.width(10.dp))
+            ADLensShutterArtwork(Modifier.weight(0.94f).height(112.dp))
+        }
+    }
+}
+
+@Composable
+private fun ADLensShutterArtwork(modifier: Modifier = Modifier) {
+    val pulse by rememberInfiniteTransition(label = "lens-focus").animateFloat(
+        initialValue = 0.72f,
+        targetValue = 1f,
+        animationSpec = infiniteRepeatable(
+            animation = tween(durationMillis = 1450),
+            repeatMode = RepeatMode.Reverse,
+        ),
+        label = "lens-focus-pulse",
+    )
+    Surface(
+        modifier = modifier,
+        shape = RoundedCornerShape(15.dp),
+        color = ADColors.SurfaceSubtle,
+        border = BorderStroke(1.dp, ADColors.Outline),
+    ) {
+        Canvas(Modifier.fillMaxSize().padding(17.dp)) {
+            val stroke = 2.dp.toPx()
+            val arm = size.minDimension * 0.22f
+            val inset = stroke
+            val right = size.width - inset
+            val bottom = size.height - inset
+            val ink = ADColors.Ink
+
+            drawLine(ink, Offset(inset, inset + arm), Offset(inset, inset), stroke, StrokeCap.Round)
+            drawLine(ink, Offset(inset, inset), Offset(inset + arm, inset), stroke, StrokeCap.Round)
+            drawLine(ink, Offset(right - arm, inset), Offset(right, inset), stroke, StrokeCap.Round)
+            drawLine(ink, Offset(right, inset), Offset(right, inset + arm), stroke, StrokeCap.Round)
+            drawLine(ink, Offset(inset, bottom - arm), Offset(inset, bottom), stroke, StrokeCap.Round)
+            drawLine(ink, Offset(inset, bottom), Offset(inset + arm, bottom), stroke, StrokeCap.Round)
+            drawLine(ink, Offset(right - arm, bottom), Offset(right, bottom), stroke, StrokeCap.Round)
+            drawLine(ink, Offset(right, bottom - arm), Offset(right, bottom), stroke, StrokeCap.Round)
+
+            val center = Offset(size.width / 2f, size.height / 2f)
+            val lensRadius = size.minDimension * 0.20f
+            drawCircle(
+                color = ink.copy(alpha = 0.22f + pulse * 0.14f),
+                radius = lensRadius * 1.55f,
+                center = center,
+                style = Stroke(width = stroke),
+            )
+            drawCircle(
+                color = ink,
+                radius = lensRadius,
+                center = center,
+                style = Stroke(width = stroke),
+            )
+            drawCircle(
+                color = ADColors.Red.copy(alpha = 0.70f + pulse * 0.30f),
+                radius = 2.4.dp.toPx(),
+                center = center,
+            )
+        }
+    }
+}
+
+@Composable
+private fun ADCameraSkillCard(
+    modifier: Modifier = Modifier,
+    onPhoto: () -> Unit,
+    onVideo: () -> Unit,
+) {
+    Surface(
+        modifier = modifier.heightIn(min = 174.dp),
+        shape = RoundedCornerShape(17.dp),
+        color = ADColors.Surface,
+        contentColor = ADColors.Ink,
+        border = BorderStroke(1.dp, ADColors.Outline),
+    ) {
+        Column(Modifier.padding(10.dp)) {
+            Surface(
+                modifier = Modifier.fillMaxWidth().height(76.dp),
+                shape = RoundedCornerShape(13.dp),
+                color = ADColors.SurfaceSubtle,
+            ) {
+                Box(contentAlignment = Alignment.Center) {
+                    Surface(
+                        modifier = Modifier.size(46.dp),
+                        shape = RoundedCornerShape(13.dp),
+                        color = ADColors.Surface,
+                        border = BorderStroke(1.dp, ADColors.Outline),
+                    ) {
+                        Box(contentAlignment = Alignment.Center) {
+                            Icon(
+                                Icons.Outlined.CameraAlt,
+                                contentDescription = null,
                                 tint = ADColors.Ink,
-                                modifier = Modifier.size(20.dp),
-                                accent = if (active) ADColors.Red else null,
+                                modifier = Modifier.size(24.dp),
                             )
                         }
                     }
                 }
-                Spacer(Modifier.weight(1f))
-                if (active) Box(Modifier.size(5.dp).background(ADColors.Red, CircleShape))
+            }
+            Spacer(Modifier.height(9.dp))
+            Text("Camera", style = MaterialTheme.typography.titleMedium, color = ADColors.Ink, fontWeight = FontWeight.SemiBold)
+            Spacer(Modifier.height(7.dp))
+            Row(horizontalArrangement = Arrangement.spacedBy(5.dp)) {
+                ADHomeMiniPill("Photo", Modifier.weight(1f), onPhoto)
+                ADHomeMiniPill("Video", Modifier.weight(1f), onVideo)
+            }
+        }
+    }
+}
+
+@Composable
+private fun ADAskSkillCard(
+    modifier: Modifier = Modifier,
+    onClick: () -> Unit,
+) {
+    Surface(
+        onClick = onClick,
+        modifier = modifier.heightIn(min = 174.dp).semantics { contentDescription = "Ask AI" },
+        shape = RoundedCornerShape(17.dp),
+        color = ADColors.Surface,
+        contentColor = ADColors.Ink,
+        border = BorderStroke(1.dp, ADColors.Outline),
+    ) {
+        Column(Modifier.padding(10.dp)) {
+            Surface(
+                modifier = Modifier.fillMaxWidth().height(76.dp),
+                shape = RoundedCornerShape(13.dp),
+                color = ADColors.SurfaceSubtle,
+            ) {
+                Box(contentAlignment = Alignment.Center) {
+                    Surface(
+                        modifier = Modifier.size(46.dp),
+                        shape = RoundedCornerShape(13.dp),
+                        color = ADColors.Surface,
+                        border = BorderStroke(1.dp, ADColors.Outline),
+                    ) {
+                        Box(contentAlignment = Alignment.Center) {
+                            ADGlyphIcon(ADGlyph.ASK, ADColors.Ink, Modifier.size(25.dp))
+                        }
+                    }
+                }
+            }
+            Spacer(Modifier.height(9.dp))
+            Text("Ask AI", style = MaterialTheme.typography.titleMedium, color = ADColors.Ink, fontWeight = FontWeight.SemiBold)
+            Text("Voice", style = MaterialTheme.typography.bodySmall, color = ADColors.Muted)
+        }
+    }
+}
+
+@Composable
+private fun ADHomeMiniPill(
+    title: String,
+    modifier: Modifier = Modifier,
+    onClick: () -> Unit,
+) {
+    Surface(
+        onClick = onClick,
+        modifier = modifier.heightIn(min = 36.dp),
+        shape = RoundedCornerShape(10.dp),
+        color = ADColors.SurfaceSubtle,
+        contentColor = ADColors.Ink,
+        border = BorderStroke(1.dp, ADColors.Outline),
+    ) {
+        Box(Modifier.padding(horizontal = 7.dp, vertical = 7.dp), contentAlignment = Alignment.Center) {
+            Text(title, style = MaterialTheme.typography.labelMedium, fontWeight = FontWeight.SemiBold)
+        }
+    }
+}
+
+@Composable
+private fun ADAudioActionPill(
+    title: String,
+    active: Boolean,
+    modifier: Modifier = Modifier,
+    onClick: () -> Unit,
+) {
+    Surface(
+        onClick = onClick,
+        modifier = modifier.heightIn(min = 42.dp).semantics {
+            contentDescription = title
+            if (active) stateDescription = "Active"
+        },
+        shape = RoundedCornerShape(10.dp),
+        color = if (active) ADColors.SurfacePressed else ADColors.SurfaceSubtle,
+        contentColor = ADColors.Ink,
+        border = BorderStroke(1.dp, if (active) ADColors.Ink.copy(alpha = 0.42f) else ADColors.Outline),
+    ) {
+        Row(
+            modifier = Modifier.padding(horizontal = 7.dp, vertical = 8.dp),
+            horizontalArrangement = Arrangement.Center,
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            if (active) {
+                Box(Modifier.size(4.dp).background(ADColors.Red, CircleShape))
+                Spacer(Modifier.width(5.dp))
             }
             Text(
                 title,
-                style = MaterialTheme.typography.labelLarge,
-                color = ADColors.Ink,
+                style = MaterialTheme.typography.labelMedium,
+                fontWeight = FontWeight.SemiBold,
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis,
             )
@@ -478,25 +570,17 @@ private fun ADLiveTile(
         border = BorderStroke(1.dp, ADColors.Outline),
     ) {
         Row(
-            modifier = Modifier.padding(horizontal = 10.dp, vertical = 8.dp),
+            modifier = Modifier.padding(horizontal = 10.dp, vertical = 9.dp),
             verticalAlignment = Alignment.CenterVertically,
         ) {
             when {
-                icon != null -> Icon(icon, contentDescription = null, tint = ADColors.Ink, modifier = Modifier.size(17.dp))
-                glyph != null -> ADGlyphIcon(glyph, ADColors.Ink, Modifier.size(17.dp), accent = ADColors.Red)
+                icon != null -> Icon(icon, contentDescription = null, modifier = Modifier.size(16.dp))
+                glyph != null -> ADGlyphIcon(glyph, ADColors.Ink, Modifier.size(17.dp))
             }
-            Text(
-                title,
-                modifier = Modifier.padding(start = 7.dp),
-                style = MaterialTheme.typography.labelSmall.copy(
-                    fontFamily = ADTechFontFamily,
-                    letterSpacing = 0.65.sp,
-                ),
-                color = ADColors.Ink,
-                maxLines = 1,
-            )
-            Spacer(Modifier.weight(1f))
-            Box(Modifier.size(5.dp).background(ADColors.Red, CircleShape))
+            Column(Modifier.padding(start = 7.dp).weight(1f)) {
+                Text(title, style = MaterialTheme.typography.labelSmall, color = ADColors.InkSoft)
+                Text(detail, style = MaterialTheme.typography.labelMedium, color = ADColors.Ink, maxLines = 1, overflow = TextOverflow.Ellipsis)
+            }
         }
     }
 }
