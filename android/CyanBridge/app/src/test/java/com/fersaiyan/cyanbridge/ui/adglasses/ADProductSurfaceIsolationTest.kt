@@ -90,7 +90,13 @@ class ADProductSurfaceIsolationTest {
         listOf("ASK", "PHOTO", "VIDEO", "TRANSLATE", "SOUNDBITES", "AUDIO")
             .forEach { glyph -> assertTrue(home.contains("glyph = ADGlyph.$glyph")) }
         assertTrue(home.contains("ADGlyphIcon(ADGlyph.LENS"))
-        assertTrue(home.contains("ADColors.Red"))
+        assertTrue(home.contains("R.drawable.ad_glasses_hero_v4"))
+        assertTrue(home.contains("R.drawable.ad_codex_ask"))
+        assertTrue(home.contains("R.drawable.ad_codex_video"))
+        assertTrue(home.contains("R.drawable.ad_codex_audio"))
+        assertTrue(home.contains("ADGlyphMatrixCard("))
+        assertTrue(home.contains("GLYPH MATRIX / 01"))
+        assertTrue(home.contains("ADColors.RedAction"))
         assertFalse(home.contains("Smart Lens"))
         assertFalse(home.contains("Search Web"))
         assertFalse(home.contains("ADHomeLink("))
@@ -99,6 +105,9 @@ class ADProductSurfaceIsolationTest {
         assertTrue(ai.contains("\"Diary\""))
         assertTrue(ai.contains("\"Automation\""))
         assertTrue(ai.contains("ADAiProviderPill"))
+        assertTrue(ai.contains("R.drawable.ad_codex_ai"))
+        assertTrue(ai.contains("ADAutomationArtwork("))
+        assertTrue(ai.contains("ADAutomationActionChip("))
         assertFalse(ai.contains("Switch("))
         assertFalse(ai.contains("\"DayNote\""))
         assertFalse("Translate belongs on Home, not AI", ai.contains("\"Translate\""))
@@ -108,7 +117,6 @@ class ADProductSurfaceIsolationTest {
         assertFalse(ai.contains("\"Modes\""))
         assertTrue(ai.contains("\"Apps\""))
         assertTrue(ai.contains("onAssistantApps"))
-        assertTrue(ai.contains("ADGlyph.AI"))
 
         assertTrue(library.contains("ADLibraryPrimaryDestination("))
         assertTrue(library.contains("ADLibraryCompactDestination("))
@@ -200,16 +208,17 @@ class ADProductSurfaceIsolationTest {
     }
 
     @Test
-    fun welcomeUsesDarkProductStatementAndVectorStage() {
+    fun welcomeRestoresProductHeroInDarkTheme() {
         val welcome = sourceFile("src/main/java/com/fersaiyan/cyanbridge/ui/adglasses/ADWelcomeScreen.kt").readText()
         assertTrue(welcome.contains("\"YOUR GLASSES\""))
         assertTrue(welcome.contains("\"YOUR AI\""))
         assertTrue(welcome.contains("\"YOUR DATA\""))
-        assertTrue(welcome.contains("ADGlyph.DEVICE"))
+        assertTrue(welcome.contains("ADGlassesMark("))
+        assertTrue(welcome.contains("R.drawable.ad_glasses_hero_v4"))
         assertTrue(welcome.contains("ADColors.Red"))
         assertTrue(welcome.contains("RoundedCornerShape(18.dp)"))
         assertTrue(welcome.contains("ADWelcomeCapability("))
-        assertFalse(welcome.contains("R.drawable.ad_glasses_hero_v4"))
+        assertFalse(welcome.contains("color = ADColors.Red,\n            contentColor = Color.White"))
     }
 
     @Test
