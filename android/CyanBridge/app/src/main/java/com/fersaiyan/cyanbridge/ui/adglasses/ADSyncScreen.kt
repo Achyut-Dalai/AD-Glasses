@@ -12,6 +12,7 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.Bluetooth
@@ -26,10 +27,10 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.fersaiyan.cyanbridge.devices.ADDeviceSupportPolicy
@@ -54,81 +55,75 @@ internal fun ADSyncScreen(
     val flow = transfer.flowLabel.takeUnless { it.isBlank() || it == "--" } ?: "Local Wi-Fi"
 
     ADPageLayout("Sync", onBack) {
-        Text(
-            "Bring captures from the glasses onto this phone. Transfer state stays visible without turning the page into a diagnostics panel.",
-            style = MaterialTheme.typography.bodyMedium,
-            color = ADColors.Muted,
-        )
-
         Surface(
             modifier = Modifier.fillMaxWidth(),
-            shape = RoundedCornerShape(30.dp),
-            color = ADColors.Ink,
-            contentColor = ADColors.Surface,
+            shape = RoundedCornerShape(14.dp),
+            color = Color.Black.copy(alpha = 0.40f),
+            border = BorderStroke(1.dp, ADColors.Outline),
         ) {
-            Column(Modifier.padding(18.dp)) {
+            Column(Modifier.padding(12.dp)) {
                 Row(verticalAlignment = Alignment.CenterVertically) {
-                    Surface(
-                        modifier = Modifier.size(54.dp),
-                        shape = RoundedCornerShape(18.dp),
-                        color = ADColors.Surface.copy(alpha = 0.13f),
-                    ) {
-                        Box(contentAlignment = Alignment.Center) {
-                            ADGlyphIcon(ADGlyph.SYNC, ADColors.Surface, Modifier.size(30.dp))
-                        }
-                    }
-                    Column(Modifier.padding(start = 13.dp).weight(1f)) {
+                    ADGlyphIcon(
+                        glyph = ADGlyph.SYNC,
+                        tint = ADColors.Ink,
+                        modifier = Modifier.size(22.dp),
+                        accent = if (transfer.isVisible) ADColors.Red else null,
+                    )
+                    Column(Modifier.padding(start = 9.dp).weight(1f)) {
+                        Text("TRANSFER", style = MaterialTheme.typography.labelSmall, color = ADColors.Muted)
                         Text(
                             when {
-                                transfer.isVisible -> "Transfer in progress"
+                                transfer.isVisible -> "Sync in progress"
                                 presentation.connected -> "Ready to sync"
                                 else -> "Connect your glasses"
                             },
-                            style = MaterialTheme.typography.headlineSmall,
+                            style = MaterialTheme.typography.titleLarge,
                             fontWeight = FontWeight.SemiBold,
                         )
-                        Spacer(Modifier.height(3.dp))
-                        Text(
-                            when {
-                                transfer.isVisible -> transfer.detail
-                                presentation.connected -> "New captures will be copied into your Library"
-                                else -> "A glasses connection is required before transfer"
-                            },
-                            style = MaterialTheme.typography.bodySmall,
-                            color = ADColors.Surface.copy(alpha = 0.68f),
-                            maxLines = 2,
-                            overflow = TextOverflow.Ellipsis,
-                        )
                     }
+                    if (transfer.isVisible) Box(Modifier.size(6.dp).background(ADColors.Red, CircleShape))
                 }
 
+                Text(
+                    when {
+                        transfer.isVisible -> transfer.detail
+                        presentation.connected -> "Copy new glasses media into your Library."
+                        else -> "A glasses connection is required before transfer."
+                    },
+                    modifier = Modifier.padding(top = 6.dp),
+                    style = MaterialTheme.typography.bodySmall,
+                    color = ADColors.Muted,
+                    maxLines = 2,
+                    overflow = TextOverflow.Ellipsis,
+                )
+
                 if (transfer.isVisible) {
-                    Spacer(Modifier.height(17.dp))
+                    Spacer(Modifier.height(10.dp))
                     if (transferProgress != null) {
                         LinearProgressIndicator(
                             progress = { transferProgress.coerceIn(0f, 1f) },
-                            modifier = Modifier.fillMaxWidth().height(7.dp),
-                            color = ADColors.Surface,
-                            trackColor = ADColors.Surface.copy(alpha = 0.16f),
+                            modifier = Modifier.fillMaxWidth().height(5.dp),
+                            color = ADColors.Red,
+                            trackColor = ADColors.SurfaceSubtle,
                         )
-                        Spacer(Modifier.height(8.dp))
+                        Spacer(Modifier.height(5.dp))
                         Text(
-                            "${(transferProgress * 100).toInt()}% complete",
+                            "${(transferProgress * 100).toInt()}%",
                             style = MaterialTheme.typography.labelSmall,
-                            color = ADColors.Surface.copy(alpha = 0.68f),
+                            color = ADColors.Muted,
                         )
                     } else {
                         Row(verticalAlignment = Alignment.CenterVertically) {
                             CircularProgressIndicator(
-                                color = ADColors.Surface,
-                                modifier = Modifier.size(22.dp),
-                                strokeWidth = 2.dp,
+                                color = ADColors.Red,
+                                modifier = Modifier.size(16.dp),
+                                strokeWidth = 1.5.dp,
                             )
                             Text(
                                 "Preparing transfer…",
+                                modifier = Modifier.padding(start = 7.dp),
                                 style = MaterialTheme.typography.bodySmall,
-                                color = ADColors.Surface.copy(alpha = 0.68f),
-                                modifier = Modifier.padding(start = 9.dp),
+                                color = ADColors.Muted,
                             )
                         }
                     }
@@ -136,28 +131,18 @@ internal fun ADSyncScreen(
             }
         }
 
-        Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+        Column(verticalArrangement = Arrangement.spacedBy(7.dp)) {
             ADSectionTitle("Transfer details")
-            Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                ADSyncMetricCard(
-                    icon = Icons.Outlined.Bluetooth,
-                    label = "Connection",
-                    value = if (presentation.connected) presentation.identityLabel ?: "Connected" else presentation.statusLabel,
-                    modifier = Modifier.weight(1f),
-                )
-                ADSyncMetricCard(
-                    icon = Icons.Outlined.Wifi,
-                    label = "Transport",
-                    value = flow,
-                    modifier = Modifier.weight(1f),
-                )
-            }
-            ADSyncMetricCard(
+            ADSyncInfoRow(
+                icon = Icons.Outlined.Bluetooth,
+                label = "Connection",
+                value = if (presentation.connected) presentation.identityLabel ?: "Connected" else presentation.statusLabel,
+            )
+            ADSyncInfoRow(icon = Icons.Outlined.Wifi, label = "Transport", value = flow)
+            ADSyncInfoRow(
                 icon = Icons.Outlined.Storage,
                 label = "Media",
                 value = knownCounts ?: "Scanned when sync starts",
-                modifier = Modifier.fillMaxWidth(),
-                horizontal = true,
             )
         }
 
@@ -178,58 +163,30 @@ internal fun ADSyncScreen(
 }
 
 @Composable
-private fun ADSyncMetricCard(
+private fun ADSyncInfoRow(
     icon: ImageVector,
     label: String,
     value: String,
-    modifier: Modifier = Modifier,
-    horizontal: Boolean = false,
 ) {
     Surface(
-        modifier = modifier.heightIn(min = if (horizontal) 76.dp else 112.dp),
-        shape = RoundedCornerShape(22.dp),
-        color = ADColors.Surface,
-        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant),
+        modifier = Modifier.fillMaxWidth().heightIn(min = 56.dp),
+        shape = RoundedCornerShape(12.dp),
+        color = ADColors.Surface.copy(alpha = 0.88f),
+        border = BorderStroke(1.dp, ADColors.Outline),
     ) {
-        if (horizontal) {
-            Row(
-                modifier = Modifier.padding(14.dp),
-                verticalAlignment = Alignment.CenterVertically,
+        Row(
+            modifier = Modifier.padding(horizontal = 10.dp, vertical = 8.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Box(
+                Modifier.size(30.dp).background(ADColors.SurfaceSubtle, RoundedCornerShape(8.dp)),
+                contentAlignment = Alignment.Center,
             ) {
-                Box(
-                    Modifier.size(42.dp).background(ADColors.SurfaceSubtle, RoundedCornerShape(14.dp)),
-                    contentAlignment = Alignment.Center,
-                ) {
-                    Icon(icon, contentDescription = null, tint = ADColors.Ink, modifier = Modifier.size(20.dp))
-                }
-                Column(Modifier.padding(start = 11.dp).weight(1f)) {
-                    Text(label, style = MaterialTheme.typography.labelSmall, color = ADColors.Muted)
-                    Text(value, style = MaterialTheme.typography.bodyMedium, maxLines = 2, overflow = TextOverflow.Ellipsis)
-                }
+                Icon(icon, contentDescription = null, tint = ADColors.Ink, modifier = Modifier.size(15.dp))
             }
-        } else {
-            Column(
-                modifier = Modifier.padding(14.dp),
-                verticalArrangement = Arrangement.SpaceBetween,
-            ) {
-                Box(
-                    Modifier.size(42.dp).background(ADColors.SurfaceSubtle, RoundedCornerShape(14.dp)),
-                    contentAlignment = Alignment.Center,
-                ) {
-                    Icon(icon, contentDescription = null, tint = ADColors.Ink, modifier = Modifier.size(20.dp))
-                }
-                Column {
-                    Text(label, style = MaterialTheme.typography.labelSmall, color = ADColors.Muted)
-                    Spacer(Modifier.height(3.dp))
-                    Text(
-                        value,
-                        style = MaterialTheme.typography.bodyMedium,
-                        fontWeight = FontWeight.Medium,
-                        textAlign = TextAlign.Start,
-                        maxLines = 2,
-                        overflow = TextOverflow.Ellipsis,
-                    )
-                }
+            Column(Modifier.padding(start = 9.dp).weight(1f)) {
+                Text(label.uppercase(), style = MaterialTheme.typography.labelSmall, color = ADColors.Muted)
+                Text(value, style = MaterialTheme.typography.bodyMedium, maxLines = 1, overflow = TextOverflow.Ellipsis)
             }
         }
     }
