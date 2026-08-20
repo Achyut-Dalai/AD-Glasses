@@ -9,7 +9,6 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
@@ -17,8 +16,6 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.rounded.KeyboardArrowRight
-import androidx.compose.material.icons.outlined.BatteryFull
-import androidx.compose.material.icons.outlined.Storage
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
@@ -27,7 +24,7 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
@@ -36,7 +33,6 @@ import com.fersaiyan.cyanbridge.devices.ADDeviceSupportPolicy
 import com.fersaiyan.cyanbridge.devices.DeviceProfileStore
 import com.fersaiyan.cyanbridge.shared.glasses.GlassesDashboardUiState
 
-/** Product-facing device center. Vendor-specific details stay behind capability/runtime layers. */
 @Composable
 internal fun ADGlassesDeviceCenterScreen(
     state: GlassesDashboardUiState,
@@ -58,51 +54,39 @@ internal fun ADGlassesDeviceCenterScreen(
     }
 
     ADPageLayout("Device Center", onBack) {
-        ADScreenIntro(
-            eyebrow = "Hardware",
-            title = "Your glasses, at a glance",
-            detail = "Connection, device health and the tools that belong to the glasses—kept separate from app settings.",
-        )
-
         Surface(
             modifier = Modifier.fillMaxWidth(),
-            shape = RoundedCornerShape(30.dp),
-            color = ADColors.Ink,
-            contentColor = ADColors.Surface,
+            shape = RoundedCornerShape(17.dp),
+            color = Color.Black.copy(alpha = 0.40f),
+            border = BorderStroke(1.dp, ADColors.Outline),
         ) {
-            Column(Modifier.padding(18.dp)) {
+            Column(Modifier.padding(13.dp)) {
                 Row(verticalAlignment = Alignment.CenterVertically) {
-                    Surface(
-                        modifier = Modifier.size(54.dp),
-                        shape = RoundedCornerShape(18.dp),
-                        color = ADColors.Surface.copy(alpha = 0.13f),
+                    Box(
+                        modifier = Modifier.size(58.dp).background(ADColors.SurfaceSubtle, RoundedCornerShape(14.dp)),
+                        contentAlignment = Alignment.Center,
                     ) {
-                        Box(contentAlignment = Alignment.Center) {
-                            ADGlyphIcon(ADGlyph.DEVICE, ADColors.Surface, Modifier.size(30.dp))
-                        }
-                    }
-                    Column(Modifier.padding(start = 13.dp).weight(1f)) {
-                        Text(
-                            identity,
-                            style = MaterialTheme.typography.headlineSmall,
-                            fontWeight = FontWeight.SemiBold,
-                            maxLines = 1,
-                            overflow = TextOverflow.Ellipsis,
+                        ADGlyphIcon(
+                            ADGlyph.DEVICE,
+                            ADColors.Ink,
+                            Modifier.size(42.dp),
+                            accent = ADColors.Red,
                         )
-                        Spacer(Modifier.height(3.dp))
+                    }
+                    Column(Modifier.padding(start = 10.dp).weight(1f)) {
+                        Text(identity, style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.SemiBold, maxLines = 1, overflow = TextOverflow.Ellipsis)
                         Row(verticalAlignment = Alignment.CenterVertically) {
                             Box(
-                                Modifier.size(8.dp).background(
-                                    if (presentation.connected) ADColors.Success else ADColors.Surface.copy(alpha = 0.42f),
+                                Modifier.size(6.dp).background(
+                                    when {
+                                        presentation.connected -> ADColors.Success
+                                        presentation.connecting -> ADColors.Warning
+                                        else -> ADColors.Red
+                                    },
                                     CircleShape,
                                 ),
                             )
-                            Text(
-                                connectionDetail,
-                                modifier = Modifier.padding(start = 7.dp),
-                                style = MaterialTheme.typography.bodySmall,
-                                color = ADColors.Surface.copy(alpha = 0.68f),
-                            )
+                            Text(connectionDetail, modifier = Modifier.padding(start = 6.dp), style = MaterialTheme.typography.bodySmall, color = ADColors.Muted)
                         }
                     }
                 }
@@ -111,38 +95,24 @@ internal fun ADGlassesDeviceCenterScreen(
                     val showBattery = state.showBattery && state.batteryPercent != null
                     val showStorage = state.showStorage && state.storageLabel != "--"
                     if (showBattery || showStorage) {
-                        Spacer(Modifier.height(16.dp))
-                        Row(horizontalArrangement = Arrangement.spacedBy(9.dp)) {
-                            if (showBattery) {
-                                ADDeviceMetric(
-                                    icon = Icons.Outlined.BatteryFull,
-                                    label = "Battery",
-                                    value = "${state.batteryPercent}%",
-                                    modifier = Modifier.weight(1f),
-                                )
-                            }
-                            if (showStorage) {
-                                ADDeviceMetric(
-                                    icon = Icons.Outlined.Storage,
-                                    label = "Storage",
-                                    value = state.storageLabel,
-                                    modifier = Modifier.weight(1f),
-                                )
-                            }
+                        Spacer(Modifier.size(9.dp))
+                        Row(horizontalArrangement = Arrangement.spacedBy(7.dp)) {
+                            if (showBattery) ADDeviceMetric("BATTERY", "${state.batteryPercent}%", Modifier.weight(1f))
+                            if (showStorage) ADDeviceMetric("STORAGE", state.storageLabel, Modifier.weight(1f))
                         }
                     }
                 }
 
-                Spacer(Modifier.height(16.dp))
+                Spacer(Modifier.size(10.dp))
                 when {
                     presentation.connected -> {
                         ADPrimaryButton(text = "Disconnect", onClick = host.onDisconnect)
-                        Spacer(Modifier.height(8.dp))
+                        Spacer(Modifier.size(6.dp))
                         ADDeviceSecondaryAction("Change glasses", host.onOpenDeviceSetup)
                     }
                     profile != null -> {
                         ADPrimaryButton(text = "Reconnect", onClick = host.onReconnect)
-                        Spacer(Modifier.height(8.dp))
+                        Spacer(Modifier.size(6.dp))
                         ADDeviceSecondaryAction("Change glasses", host.onOpenDeviceSetup)
                     }
                     else -> ADPrimaryButton(text = "Connect glasses", onClick = host.onOpenDeviceSetup)
@@ -150,51 +120,26 @@ internal fun ADGlassesDeviceCenterScreen(
             }
         }
 
-        Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+        Column(verticalArrangement = Arrangement.spacedBy(7.dp)) {
             ADSectionTitle("Capabilities")
-            Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                ADDeviceCapability(
-                    glyph = ADGlyph.ASK,
-                    title = "Voice",
-                    detail = "Ask and control",
-                    modifier = Modifier.weight(1f),
-                )
-                ADDeviceCapability(
-                    glyph = ADGlyph.PHOTO,
-                    title = "Camera",
-                    detail = "See and capture",
-                    modifier = Modifier.weight(1f),
-                )
-                ADDeviceCapability(
-                    glyph = ADGlyph.AI,
-                    title = "AI",
-                    detail = "Phone intelligence",
-                    modifier = Modifier.weight(1f),
-                )
+            Row(horizontalArrangement = Arrangement.spacedBy(7.dp)) {
+                ADDeviceCapability(ADGlyph.ASK, "Voice", "Ask & control", Modifier.weight(1f))
+                ADDeviceCapability(ADGlyph.PHOTO, "Camera", "See & capture", Modifier.weight(1f))
+                ADDeviceCapability(ADGlyph.AI, "AI", "Phone intelligence", Modifier.weight(1f))
             }
         }
 
-        Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+        Column(verticalArrangement = Arrangement.spacedBy(7.dp)) {
             ADSectionTitle("Device tools")
             Surface(
                 modifier = Modifier.fillMaxWidth(),
-                shape = RoundedCornerShape(26.dp),
-                color = ADColors.Surface,
-                border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant),
+                shape = RoundedCornerShape(14.dp),
+                color = ADColors.Surface.copy(alpha = 0.88f),
+                border = BorderStroke(1.dp, ADColors.Outline),
             ) {
-                Column(Modifier.padding(7.dp)) {
-                    ADDeviceTool(
-                        glyph = ADGlyph.SYNC,
-                        title = "Sync media",
-                        detail = "Bring glasses captures into your library",
-                        onClick = onSync,
-                    )
-                    ADDeviceTool(
-                        glyph = ADGlyph.FIRMWARE,
-                        title = "Firmware",
-                        detail = "Updates and recovery with preflight checks",
-                        onClick = onFirmware,
-                    )
+                Column(Modifier.padding(horizontal = 8.dp)) {
+                    ADDeviceTool(ADGlyph.SYNC, "Sync media", "Bring captures into your library", onSync)
+                    ADDeviceTool(ADGlyph.FIRMWARE, "Firmware", "Updates and recovery", onFirmware)
                 }
             }
         }
@@ -205,36 +150,24 @@ internal fun ADGlassesDeviceCenterScreen(
 private fun ADDeviceSecondaryAction(text: String, onClick: () -> Unit) {
     OutlinedButton(
         onClick = onClick,
-        modifier = Modifier.fillMaxWidth().heightIn(min = 50.dp),
-        shape = RoundedCornerShape(18.dp),
-        border = BorderStroke(1.dp, ADColors.Surface.copy(alpha = 0.28f)),
+        modifier = Modifier.fillMaxWidth().heightIn(min = 42.dp),
+        shape = RoundedCornerShape(11.dp),
+        border = BorderStroke(1.dp, ADColors.Outline),
     ) {
-        Text(text, color = ADColors.Surface, style = MaterialTheme.typography.labelLarge)
+        Text(text, color = ADColors.Ink, style = MaterialTheme.typography.labelLarge)
     }
 }
 
 @Composable
-private fun ADDeviceMetric(
-    icon: ImageVector,
-    label: String,
-    value: String,
-    modifier: Modifier = Modifier,
-) {
+private fun ADDeviceMetric(label: String, value: String, modifier: Modifier = Modifier) {
     Surface(
-        modifier = modifier.heightIn(min = 64.dp),
-        shape = RoundedCornerShape(18.dp),
-        color = ADColors.Surface.copy(alpha = 0.11f),
-        contentColor = ADColors.Surface,
+        modifier = modifier.heightIn(min = 44.dp),
+        shape = RoundedCornerShape(10.dp),
+        color = ADColors.SurfaceSubtle,
     ) {
-        Row(
-            modifier = Modifier.padding(horizontal = 11.dp, vertical = 10.dp),
-            verticalAlignment = Alignment.CenterVertically,
-        ) {
-            Icon(icon, contentDescription = null, modifier = Modifier.size(18.dp))
-            Column(Modifier.padding(start = 8.dp).weight(1f)) {
-                Text(label, style = MaterialTheme.typography.labelSmall, color = ADColors.Surface.copy(alpha = 0.55f))
-                Text(value, style = MaterialTheme.typography.labelLarge, maxLines = 1, overflow = TextOverflow.Ellipsis)
-            }
+        Column(Modifier.padding(horizontal = 9.dp, vertical = 7.dp)) {
+            Text(label, style = MaterialTheme.typography.labelSmall, color = ADColors.Muted)
+            Text(value, style = MaterialTheme.typography.labelLarge, maxLines = 1, overflow = TextOverflow.Ellipsis)
         }
     }
 }
@@ -247,24 +180,21 @@ private fun ADDeviceCapability(
     modifier: Modifier = Modifier,
 ) {
     Surface(
-        modifier = modifier.heightIn(min = 116.dp),
-        shape = RoundedCornerShape(22.dp),
-        color = ADColors.Surface,
-        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant),
+        modifier = modifier.heightIn(min = 82.dp),
+        shape = RoundedCornerShape(12.dp),
+        color = ADColors.Surface.copy(alpha = 0.88f),
+        border = BorderStroke(1.dp, ADColors.Outline),
     ) {
-        Column(
-            modifier = Modifier.padding(13.dp),
-            verticalArrangement = Arrangement.SpaceBetween,
-        ) {
-            Box(
-                Modifier.size(42.dp).background(ADColors.SurfaceSubtle, RoundedCornerShape(14.dp)),
-                contentAlignment = Alignment.Center,
-            ) {
-                ADGlyphIcon(glyph, ADColors.Ink, Modifier.size(23.dp))
-            }
+        Column(modifier = Modifier.padding(9.dp), verticalArrangement = Arrangement.SpaceBetween) {
+            ADGlyphIcon(
+                glyph,
+                ADColors.Ink,
+                Modifier.size(20.dp),
+                accent = if (glyph == ADGlyph.AI) ADColors.Red else null,
+            )
             Column {
                 Text(title, style = MaterialTheme.typography.labelLarge, fontWeight = FontWeight.SemiBold)
-                Text(detail, style = MaterialTheme.typography.labelSmall, color = ADColors.Muted, maxLines = 2)
+                Text(detail, style = MaterialTheme.typography.labelSmall, color = ADColors.Muted, maxLines = 1)
             }
         }
     }
@@ -278,31 +208,19 @@ private fun ADDeviceTool(
     onClick: () -> Unit,
 ) {
     Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .clickable(onClick = onClick)
-            .padding(horizontal = 8.dp, vertical = 10.dp),
+        modifier = Modifier.fillMaxWidth().clickable(onClick = onClick).padding(vertical = 9.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        Box(
-            Modifier.size(46.dp).background(ADColors.SurfaceSubtle, RoundedCornerShape(15.dp)),
-            contentAlignment = Alignment.Center,
-        ) {
-            ADGlyphIcon(glyph, ADColors.Ink, Modifier.size(25.dp))
-        }
-        Column(Modifier.padding(start = 12.dp).weight(1f)) {
+        ADGlyphIcon(
+            glyph,
+            ADColors.Ink,
+            Modifier.size(20.dp),
+            accent = if (glyph == ADGlyph.FIRMWARE) ADColors.Red else null,
+        )
+        Column(Modifier.padding(start = 9.dp).weight(1f)) {
             Text(title, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Medium)
-            Text(detail, style = MaterialTheme.typography.bodySmall, color = ADColors.Muted, maxLines = 2)
+            Text(detail, style = MaterialTheme.typography.bodySmall, color = ADColors.Muted, maxLines = 1)
         }
-        Surface(shape = CircleShape, color = ADColors.SurfaceSubtle) {
-            Box(Modifier.size(32.dp), contentAlignment = Alignment.Center) {
-                Icon(
-                    Icons.AutoMirrored.Rounded.KeyboardArrowRight,
-                    contentDescription = null,
-                    tint = ADColors.Muted,
-                    modifier = Modifier.size(18.dp),
-                )
-            }
-        }
+        Icon(Icons.AutoMirrored.Rounded.KeyboardArrowRight, null, tint = ADColors.Muted, modifier = Modifier.size(16.dp))
     }
 }
