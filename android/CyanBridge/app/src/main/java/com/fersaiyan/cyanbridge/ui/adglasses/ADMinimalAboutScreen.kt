@@ -34,8 +34,8 @@ internal fun ADMinimalAboutScreen(onBack: () -> Unit) {
         ) {
             Column(Modifier.padding(14.dp)) {
                 Row(verticalAlignment = Alignment.CenterVertically) {
-                    ADGlassesMark(Modifier.size(width = 72.dp, height = 38.dp))
-                    Column(Modifier.padding(start = 12.dp).weight(1f)) {
+                    ADGlassesMark(Modifier.size(48.dp))
+                    Column(Modifier.padding(start = 10.dp).weight(1f)) {
                         Text("AD GLASSES", style = MaterialTheme.typography.labelSmall, color = ADColors.Muted)
                         Text("AI eyewear companion", style = MaterialTheme.typography.titleLarge)
                     }
