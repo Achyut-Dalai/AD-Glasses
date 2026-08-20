@@ -53,44 +53,24 @@ import java.io.File
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 
-/**
- * Small presentation model for rich conversation output.
- *
- * AD Glasses deliberately does not auto-download arbitrary remote media embedded in an
- * AI response. A result may present a photo/video/audio/link card, and the user chooses
- * whether to open it. Media already on this phone may be previewed inline.
- */
 internal sealed interface ADConversationBlock {
     data class TextBlock(val text: String) : ADConversationBlock
     data class CodeBlock(val language: String?, val code: String) : ADConversationBlock
-    data class LinkBlock(
-        val label: String,
-        val target: String,
-        val kind: ADConversationLinkKind,
-    ) : ADConversationBlock
+    data class LinkBlock(val label: String, val target: String, val kind: ADConversationLinkKind) : ADConversationBlock
 }
 
-internal enum class ADConversationLinkKind {
-    IMAGE,
-    VIDEO,
-    AUDIO,
-    DOCUMENT,
-    LINK,
-}
+internal enum class ADConversationLinkKind { IMAGE, VIDEO, AUDIO, DOCUMENT, LINK }
 
 @Composable
-internal fun ADConversationMessageBody(
-    content: String,
-    userMessage: Boolean,
-) {
+internal fun ADConversationMessageBody(content: String, userMessage: Boolean) {
     val blocks = parseADConversationBlocks(content)
-    Column(verticalArrangement = Arrangement.spacedBy(11.dp)) {
+    Column(verticalArrangement = Arrangement.spacedBy(7.dp)) {
         blocks.forEach { block ->
             when (block) {
                 is ADConversationBlock.TextBlock -> Text(
                     text = block.text,
                     style = MaterialTheme.typography.bodyLarge,
-                    color = if (userMessage) ADColors.Surface else ADColors.Ink,
+                    color = if (userMessage) Color.Black else ADColors.Ink,
                 )
                 is ADConversationBlock.CodeBlock -> ADConversationCodeBlock(block)
                 is ADConversationBlock.LinkBlock -> ADConversationLinkCard(block, userMessage)
@@ -104,20 +84,15 @@ private fun ADConversationCodeBlock(block: ADConversationBlock.CodeBlock) {
     Column(
         modifier = Modifier
             .fillMaxWidth()
-            .background(ADColors.SurfaceSubtle, RoundedCornerShape(18.dp))
-            .padding(14.dp),
-        verticalArrangement = Arrangement.spacedBy(8.dp),
+            .background(ADColors.SurfaceSubtle, RoundedCornerShape(10.dp))
+            .padding(9.dp),
+        verticalArrangement = Arrangement.spacedBy(5.dp),
     ) {
         Row(verticalAlignment = Alignment.CenterVertically) {
-            Icon(
-                Icons.Outlined.Code,
-                contentDescription = null,
-                tint = ADColors.Muted,
-                modifier = Modifier.size(17.dp),
-            )
+            Icon(Icons.Outlined.Code, null, tint = ADColors.Muted, modifier = Modifier.size(14.dp))
             Text(
                 block.language?.takeIf { it.isNotBlank() } ?: "Code",
-                modifier = Modifier.padding(start = 7.dp),
+                modifier = Modifier.padding(start = 5.dp),
                 style = MaterialTheme.typography.labelSmall,
                 color = ADColors.Muted,
             )
@@ -131,10 +106,7 @@ private fun ADConversationCodeBlock(block: ADConversationBlock.CodeBlock) {
 }
 
 @Composable
-private fun ADConversationLinkCard(
-    block: ADConversationBlock.LinkBlock,
-    userMessage: Boolean,
-) {
+private fun ADConversationLinkCard(block: ADConversationBlock.LinkBlock, userMessage: Boolean) {
     val context = LocalContext.current
     val uri = remember(block.target) { runCatching { Uri.parse(block.target) }.getOrNull() }
     val icon = block.kind.icon()
@@ -147,8 +119,8 @@ private fun ADConversationLinkCard(
         modifier = Modifier
             .fillMaxWidth()
             .background(
-                if (userMessage) ADColors.Surface.copy(alpha = 0.96f) else ADColors.Surface,
-                RoundedCornerShape(18.dp),
+                if (userMessage) Color.Black.copy(alpha = .08f) else ADColors.Surface,
+                RoundedCornerShape(10.dp),
             )
             .clickable {
                 val targetUri = uri ?: return@clickable
@@ -157,58 +129,47 @@ private fun ADConversationLinkCard(
                 }
                 runCatching { context.startActivity(intent) }
             }
-            .padding(13.dp),
-        verticalArrangement = Arrangement.spacedBy(if (localPreview) 11.dp else 0.dp),
+            .padding(8.dp),
+        verticalArrangement = Arrangement.spacedBy(if (localPreview) 7.dp else 0.dp),
     ) {
         if (localPreview && uri != null) {
             ADConversationLocalMediaPreview(
                 uri = uri,
                 video = block.kind == ADConversationLinkKind.VIDEO,
-                userMessage = userMessage,
             )
         }
 
         Row(verticalAlignment = Alignment.CenterVertically) {
-            Box(
-                modifier = Modifier
-                    .size(40.dp)
-                    .background(ADColors.SurfaceSubtle, RoundedCornerShape(13.dp)),
-                contentAlignment = Alignment.Center,
-            ) {
-                Icon(icon, contentDescription = null, tint = ADColors.Ink, modifier = Modifier.size(20.dp))
-            }
-            Column(Modifier.padding(start = 11.dp).weight(1f)) {
+            Icon(icon, null, tint = if (userMessage) Color.Black else ADColors.Ink, modifier = Modifier.size(16.dp))
+            Column(Modifier.padding(start = 7.dp).weight(1f)) {
                 Text(
                     block.label.ifBlank { kindLabel },
                     style = MaterialTheme.typography.titleSmall,
-                    color = ADColors.Ink,
+                    color = if (userMessage) Color.Black else ADColors.Ink,
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis,
                 )
                 Text(
                     "$kindLabel · $detail",
                     style = MaterialTheme.typography.bodySmall,
-                    color = ADColors.Muted,
+                    color = if (userMessage) Color.Black.copy(alpha = .58f) else ADColors.Muted,
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis,
                 )
             }
-            Spacer(Modifier.size(6.dp))
+            Spacer(Modifier.size(4.dp))
             Icon(
                 Icons.AutoMirrored.Rounded.KeyboardArrowRight,
-                contentDescription = "Open",
-                tint = ADColors.Muted,
+                "Open",
+                tint = if (userMessage) Color.Black.copy(alpha = .55f) else ADColors.Muted,
+                modifier = Modifier.size(14.dp),
             )
         }
     }
 }
 
 @Composable
-private fun ADConversationLocalMediaPreview(
-    uri: Uri,
-    video: Boolean,
-    userMessage: Boolean,
-) {
+private fun ADConversationLocalMediaPreview(uri: Uri, video: Boolean) {
     val context = LocalContext.current
     var thumbnail by remember(uri.toString()) { mutableStateOf<Bitmap?>(null) }
 
@@ -216,19 +177,14 @@ private fun ADConversationLocalMediaPreview(
         thumbnail = withContext(Dispatchers.IO) {
             if (Build.VERSION.SDK_INT < Build.VERSION_CODES.Q) return@withContext null
             when (uri.scheme) {
-                "content" -> runCatching {
-                    context.contentResolver.loadThumbnail(uri, Size(960, 600), null)
-                }.getOrNull()
+                "content" -> runCatching { context.contentResolver.loadThumbnail(uri, Size(960, 600), null) }.getOrNull()
                 "file" -> {
                     val path = uri.path ?: return@withContext null
                     val file = File(path)
                     if (!file.isFile) return@withContext null
                     runCatching {
-                        if (video) {
-                            ThumbnailUtils.createVideoThumbnail(file, Size(960, 600), null)
-                        } else {
-                            ThumbnailUtils.createImageThumbnail(file, Size(960, 600), null)
-                        }
+                        if (video) ThumbnailUtils.createVideoThumbnail(file, Size(960, 600), null)
+                        else ThumbnailUtils.createImageThumbnail(file, Size(960, 600), null)
                     }.getOrNull()
                 }
                 else -> null
@@ -240,37 +196,25 @@ private fun ADConversationLocalMediaPreview(
         modifier = Modifier
             .fillMaxWidth()
             .aspectRatio(16f / 10f)
-            .clip(RoundedCornerShape(15.dp))
+            .clip(RoundedCornerShape(8.dp))
             .background(ADColors.SurfaceSubtle),
         contentAlignment = Alignment.Center,
     ) {
         thumbnail?.let {
-            Image(
-                bitmap = it.asImageBitmap(),
-                contentDescription = null,
-                modifier = Modifier.fillMaxSize(),
-                contentScale = ContentScale.Crop,
-            )
+            Image(bitmap = it.asImageBitmap(), contentDescription = null, modifier = Modifier.fillMaxSize(), contentScale = ContentScale.Crop)
         } ?: Icon(
             if (video) Icons.Outlined.Videocam else Icons.Outlined.Image,
-            contentDescription = null,
+            null,
             tint = ADColors.Muted,
-            modifier = Modifier.size(34.dp),
+            modifier = Modifier.size(28.dp),
         )
 
         if (video) {
             Box(
-                modifier = Modifier
-                    .size(46.dp)
-                    .background(ADColors.Ink.copy(alpha = 0.82f), CircleShape),
+                modifier = Modifier.size(34.dp).background(ADColors.Red, CircleShape),
                 contentAlignment = Alignment.Center,
             ) {
-                Icon(
-                    Icons.Outlined.PlayArrow,
-                    contentDescription = "Play video",
-                    tint = Color.White,
-                    modifier = Modifier.size(25.dp),
-                )
+                Icon(Icons.Outlined.PlayArrow, "Play video", tint = Color.White, modifier = Modifier.size(20.dp))
             }
         }
     }
@@ -312,16 +256,12 @@ internal fun parseADConversationBlocks(content: String): List<ADConversationBloc
             }
             return@forEach
         }
-
         if (inCode) {
             codeBuffer += line
             return@forEach
         }
-
         val inline = parseInlineLinks(line)
-        if (inline == null) {
-            textBuffer += line
-        } else {
+        if (inline == null) textBuffer += line else {
             flushText()
             blocks += inline
         }
@@ -343,16 +283,11 @@ private fun parseInlineLinks(line: String): List<ADConversationBlock>? {
             ADConversationBlock.LinkBlock(label, target, inferLinkKind(target, imageHint))
         }
     }
-
     val rawMatches = RAW_URL.findAll(line).toList()
     if (rawMatches.isEmpty()) return null
     return buildInlineBlocks(line, rawMatches) { match ->
         val target = match.value.trimEnd('.', ',', ';')
-        ADConversationBlock.LinkBlock(
-            label = displayTarget(target),
-            target = target,
-            kind = inferLinkKind(target),
-        )
+        ADConversationBlock.LinkBlock(displayTarget(target), target, inferLinkKind(target))
     }
 }
 
@@ -363,14 +298,10 @@ private fun buildInlineBlocks(
 ): List<ADConversationBlock> {
     val blocks = mutableListOf<ADConversationBlock>()
     var cursor = 0
-
     fun addText(fragment: String) {
         val text = fragment.trim()
-        if (text.isNotEmpty() && !PUNCTUATION_ONLY.matches(text)) {
-            blocks += ADConversationBlock.TextBlock(text)
-        }
+        if (text.isNotEmpty() && !PUNCTUATION_ONLY.matches(text)) blocks += ADConversationBlock.TextBlock(text)
     }
-
     matches.forEach { match ->
         if (match.range.first > cursor) addText(line.substring(cursor, match.range.first))
         blocks += linkFor(match)
@@ -384,14 +315,10 @@ private fun inferLinkKind(target: String, imageHint: Boolean = false): ADConvers
     if (imageHint) return ADConversationLinkKind.IMAGE
     val clean = target.substringBefore('?').substringBefore('#').lowercase()
     return when {
-        clean.endsWith(".jpg") || clean.endsWith(".jpeg") || clean.endsWith(".png") ||
-            clean.endsWith(".webp") || clean.endsWith(".gif") -> ADConversationLinkKind.IMAGE
-        clean.endsWith(".mp4") || clean.endsWith(".mov") || clean.endsWith(".m4v") ||
-            clean.endsWith(".webm") -> ADConversationLinkKind.VIDEO
-        clean.endsWith(".mp3") || clean.endsWith(".wav") || clean.endsWith(".m4a") ||
-            clean.endsWith(".aac") || clean.endsWith(".ogg") -> ADConversationLinkKind.AUDIO
-        clean.endsWith(".pdf") || clean.endsWith(".doc") || clean.endsWith(".docx") ||
-            clean.endsWith(".txt") || clean.endsWith(".csv") || clean.endsWith(".json") -> ADConversationLinkKind.DOCUMENT
+        clean.endsWith(".jpg") || clean.endsWith(".jpeg") || clean.endsWith(".png") || clean.endsWith(".webp") || clean.endsWith(".gif") -> ADConversationLinkKind.IMAGE
+        clean.endsWith(".mp4") || clean.endsWith(".mov") || clean.endsWith(".m4v") || clean.endsWith(".webm") -> ADConversationLinkKind.VIDEO
+        clean.endsWith(".mp3") || clean.endsWith(".wav") || clean.endsWith(".m4a") || clean.endsWith(".aac") || clean.endsWith(".ogg") -> ADConversationLinkKind.AUDIO
+        clean.endsWith(".pdf") || clean.endsWith(".doc") || clean.endsWith(".docx") || clean.endsWith(".txt") || clean.endsWith(".csv") || clean.endsWith(".json") -> ADConversationLinkKind.DOCUMENT
         else -> ADConversationLinkKind.LINK
     }
 }

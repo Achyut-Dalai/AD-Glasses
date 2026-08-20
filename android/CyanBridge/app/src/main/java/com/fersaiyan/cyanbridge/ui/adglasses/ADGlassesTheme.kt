@@ -8,7 +8,7 @@ import androidx.compose.material3.MaterialExpressiveTheme
 import androidx.compose.material3.MotionScheme
 import androidx.compose.material3.Shapes
 import androidx.compose.material3.Typography
-import androidx.compose.material3.lightColorScheme
+import androidx.compose.material3.darkColorScheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.SideEffect
 import androidx.compose.ui.graphics.Color
@@ -17,200 +17,181 @@ import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.googlefonts.Font
-import androidx.compose.ui.text.googlefonts.GoogleFont
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.core.view.WindowCompat
-import com.fersaiyan.cyanbridge.R
 
 /**
- * AD Glasses stays intentionally monochrome. Hierarchy comes from scale, weight, shape,
- * motion and contrast rather than assigning a different accent color to every feature.
+ * AD Glasses visual system.
+ *
+ * The product is intentionally dark, grayscale-first and compact. Red is not an accent
+ * sprayed across cards; it is a scarce signal for recording, selection and the one action
+ * that deserves immediate attention. This borrows the restraint and information density
+ * of Nothing OS without copying its proprietary typefaces or assets.
  */
 internal object ADColors {
-    val Ink = Color(0xFF1D1D1F)
-    val InkSoft = Color(0xFF343438)
-    val Muted = Color(0xFF6E6E73)
-    val Blue = Color(0xFF2C2C2E)
-    val BlueDeep = Color(0xFF111113)
-    val BlueSoft = Color(0xFFEAEAED)
-    val Background = Color(0xFFF5F5F7)
-    val Canvas = Color(0xFFF8F8FA)
-    val Surface = Color(0xFFFFFFFF)
-    val SurfaceSubtle = Color(0xFFEDEDEF)
-    val SurfacePressed = Color(0xFFE5E5E8)
-    val Glass = Color(0xF7FFFFFF)
-    val Outline = Color(0xFFC6C6C8)
-    val Separator = Color(0x3C3C434A)
-    val Success = Color(0xFF248A3D)
-    val SuccessSoft = Color(0xFFEAF7ED)
-    val Warning = Color(0xFFC93400)
-    val WarningSoft = Color(0xFFFFF3E8)
-    val Error = Color(0xFFFF3B30)
-    val ErrorSoft = Color(0xFFFFEBEA)
+    val Ink = Color(0xFFF3F3F3)
+    val InkSoft = Color(0xFFD1D1D1)
+    val Muted = Color(0xFF929292)
+
+    val Background = Color(0xFF171717)
+    val Canvas = Color(0xFF1B1B1B)
+    val Surface = Color(0xFF242424)
+    val SurfaceSubtle = Color(0xFF2B2B2B)
+    val SurfacePressed = Color(0xFF343434)
+    val Glass = Color(0xE61F1F1F)
+    val Outline = Color(0xFF3A3A3A)
+    val Separator = Color(0xFF303030)
+
+    /** Legacy names kept while the old page implementations are reskinned. */
+    val Blue = Color(0xFF343434)
+    val BlueDeep = Color(0xFF111111)
+    val BlueSoft = Color(0xFF2C2C2C)
+
+    val Red = Color(0xFFD71920)
+    val RedSoft = Color(0xFF3A1A1C)
+    val Success = Color(0xFF9FCF9D)
+    val SuccessSoft = Color(0xFF213021)
+    val Warning = Color(0xFFE3B777)
+    val WarningSoft = Color(0xFF332719)
+    val Error = Color(0xFFFF6B65)
+    val ErrorSoft = Color(0xFF3B2020)
 }
 
-private val MonochromeColorScheme = lightColorScheme(
+private val ADColorScheme = darkColorScheme(
     primary = ADColors.Ink,
-    onPrimary = Color.White,
+    onPrimary = Color.Black,
     primaryContainer = ADColors.SurfaceSubtle,
     onPrimaryContainer = ADColors.Ink,
     secondary = ADColors.InkSoft,
-    onSecondary = Color.White,
-    secondaryContainer = Color(0xFFF0F0F2),
+    onSecondary = Color.Black,
+    secondaryContainer = ADColors.SurfaceSubtle,
     onSecondaryContainer = ADColors.Ink,
-    tertiary = Color(0xFF55565A),
+    tertiary = ADColors.Red,
     onTertiary = Color.White,
-    tertiaryContainer = Color(0xFFF2F2F4),
-    onTertiaryContainer = ADColors.Ink,
+    tertiaryContainer = ADColors.RedSoft,
+    onTertiaryContainer = Color.White,
     background = ADColors.Background,
     onBackground = ADColors.Ink,
     surface = ADColors.Surface,
     onSurface = ADColors.Ink,
     surfaceVariant = ADColors.SurfaceSubtle,
-    onSurfaceVariant = Color(0xFF626368),
+    onSurfaceVariant = ADColors.InkSoft,
     outline = ADColors.Outline,
-    outlineVariant = Color(0xFFE2E2E5),
+    outlineVariant = ADColors.Separator,
     error = ADColors.Error,
-    onError = Color.White,
+    onError = Color.Black,
     errorContainer = ADColors.ErrorSoft,
     onErrorContainer = ADColors.Error,
 )
 
-private val GoogleFontsProvider = GoogleFont.Provider(
-    providerAuthority = "com.google.android.gms.fonts",
-    providerPackage = "com.google.android.gms",
-    certificates = R.array.com_google_android_gms_fonts_certs,
-)
-
-/*
- * Ubuntu Sans is the proportional UI family selected from the Nerd Fonts catalogue.
- * JetBrains Mono is reserved for concise technical/status text. Using the upstream Google
- * Fonts builds keeps the APK lean while preserving the type families and their metrics.
- */
-private val UbuntuSans = GoogleFont("Ubuntu Sans", bestEffort = true)
-private val JetBrainsMono = GoogleFont("JetBrains Mono", bestEffort = true)
-
-internal val ADPrimaryFontFamily = FontFamily(
-    Font(googleFont = UbuntuSans, fontProvider = GoogleFontsProvider, weight = FontWeight.Normal),
-    Font(googleFont = UbuntuSans, fontProvider = GoogleFontsProvider, weight = FontWeight.Medium),
-    Font(googleFont = UbuntuSans, fontProvider = GoogleFontsProvider, weight = FontWeight.SemiBold),
-    Font(googleFont = UbuntuSans, fontProvider = GoogleFontsProvider, weight = FontWeight.Bold),
-)
-
-internal val ADTechFontFamily = FontFamily(
-    Font(googleFont = JetBrainsMono, fontProvider = GoogleFontsProvider, weight = FontWeight.Normal),
-    Font(googleFont = JetBrainsMono, fontProvider = GoogleFontsProvider, weight = FontWeight.Medium),
-    Font(googleFont = JetBrainsMono, fontProvider = GoogleFontsProvider, weight = FontWeight.SemiBold),
-)
+internal val ADPrimaryFontFamily = FontFamily.SansSerif
+internal val ADTechFontFamily = FontFamily.Monospace
 
 private val ADTypography = Typography(
     displayLarge = TextStyle(
         fontFamily = ADPrimaryFontFamily,
-        fontSize = 40.sp,
-        lineHeight = 44.sp,
+        fontSize = 32.sp,
+        lineHeight = 36.sp,
         fontWeight = FontWeight.SemiBold,
-        letterSpacing = (-0.70).sp,
+        letterSpacing = (-0.45).sp,
     ),
     displayMedium = TextStyle(
         fontFamily = ADPrimaryFontFamily,
-        fontSize = 34.sp,
-        lineHeight = 39.sp,
+        fontSize = 28.sp,
+        lineHeight = 32.sp,
         fontWeight = FontWeight.SemiBold,
-        letterSpacing = (-0.55).sp,
+        letterSpacing = (-0.35).sp,
     ),
     displaySmall = TextStyle(
         fontFamily = ADPrimaryFontFamily,
-        fontSize = 30.sp,
-        lineHeight = 35.sp,
+        fontSize = 25.sp,
+        lineHeight = 29.sp,
         fontWeight = FontWeight.SemiBold,
-        letterSpacing = (-0.42).sp,
+        letterSpacing = (-0.25).sp,
     ),
     headlineLarge = TextStyle(
         fontFamily = ADPrimaryFontFamily,
-        fontSize = 27.sp,
-        lineHeight = 33.sp,
-        fontWeight = FontWeight.SemiBold,
-        letterSpacing = (-0.30).sp,
-    ),
-    headlineMedium = TextStyle(
-        fontFamily = ADPrimaryFontFamily,
-        fontSize = 23.sp,
-        lineHeight = 29.sp,
+        fontSize = 22.sp,
+        lineHeight = 27.sp,
         fontWeight = FontWeight.SemiBold,
         letterSpacing = (-0.20).sp,
     ),
+    headlineMedium = TextStyle(
+        fontFamily = ADPrimaryFontFamily,
+        fontSize = 19.sp,
+        lineHeight = 24.sp,
+        fontWeight = FontWeight.SemiBold,
+    ),
     headlineSmall = TextStyle(
         fontFamily = ADPrimaryFontFamily,
-        fontSize = 20.sp,
-        lineHeight = 26.sp,
+        fontSize = 17.sp,
+        lineHeight = 22.sp,
         fontWeight = FontWeight.Medium,
-        letterSpacing = (-0.10).sp,
     ),
     titleLarge = TextStyle(
         fontFamily = ADPrimaryFontFamily,
-        fontSize = 18.sp,
-        lineHeight = 24.sp,
+        fontSize = 16.sp,
+        lineHeight = 21.sp,
         fontWeight = FontWeight.SemiBold,
     ),
     titleMedium = TextStyle(
         fontFamily = ADPrimaryFontFamily,
-        fontSize = 16.sp,
-        lineHeight = 22.sp,
+        fontSize = 14.sp,
+        lineHeight = 19.sp,
         fontWeight = FontWeight.Medium,
     ),
     titleSmall = TextStyle(
         fontFamily = ADPrimaryFontFamily,
-        fontSize = 14.sp,
-        lineHeight = 20.sp,
+        fontSize = 12.5.sp,
+        lineHeight = 17.sp,
         fontWeight = FontWeight.Medium,
     ),
     bodyLarge = TextStyle(
         fontFamily = ADPrimaryFontFamily,
-        fontSize = 16.sp,
-        lineHeight = 24.sp,
+        fontSize = 14.sp,
+        lineHeight = 20.sp,
         fontWeight = FontWeight.Normal,
     ),
     bodyMedium = TextStyle(
-        fontFamily = ADPrimaryFontFamily,
-        fontSize = 14.sp,
-        lineHeight = 21.sp,
-        fontWeight = FontWeight.Normal,
-    ),
-    bodySmall = TextStyle(
         fontFamily = ADPrimaryFontFamily,
         fontSize = 12.5.sp,
         lineHeight = 18.sp,
         fontWeight = FontWeight.Normal,
     ),
+    bodySmall = TextStyle(
+        fontFamily = ADPrimaryFontFamily,
+        fontSize = 11.sp,
+        lineHeight = 16.sp,
+        fontWeight = FontWeight.Normal,
+    ),
     labelLarge = TextStyle(
         fontFamily = ADPrimaryFontFamily,
-        fontSize = 14.sp,
-        lineHeight = 19.sp,
+        fontSize = 12.sp,
+        lineHeight = 16.sp,
         fontWeight = FontWeight.SemiBold,
     ),
     labelMedium = TextStyle(
         fontFamily = ADPrimaryFontFamily,
-        fontSize = 12.sp,
-        lineHeight = 17.sp,
+        fontSize = 10.5.sp,
+        lineHeight = 15.sp,
         fontWeight = FontWeight.Medium,
     ),
     labelSmall = TextStyle(
         fontFamily = ADTechFontFamily,
-        fontSize = 10.5.sp,
-        lineHeight = 15.sp,
+        fontSize = 9.5.sp,
+        lineHeight = 13.sp,
         fontWeight = FontWeight.Medium,
-        letterSpacing = 0.20.sp,
+        letterSpacing = 0.55.sp,
     ),
 )
 
-private val ExpressiveShapes = Shapes(
-    extraSmall = RoundedCornerShape(10.dp),
-    small = RoundedCornerShape(14.dp),
-    medium = RoundedCornerShape(20.dp),
-    large = RoundedCornerShape(28.dp),
-    extraLarge = RoundedCornerShape(36.dp),
+private val ADShapes = Shapes(
+    extraSmall = RoundedCornerShape(6.dp),
+    small = RoundedCornerShape(9.dp),
+    medium = RoundedCornerShape(13.dp),
+    large = RoundedCornerShape(18.dp),
+    extraLarge = RoundedCornerShape(24.dp),
 )
 
 @Composable
@@ -222,17 +203,17 @@ fun ADGlassesTheme(content: @Composable () -> Unit) {
         SideEffect {
             context.findActivity()?.window?.let { window ->
                 WindowCompat.getInsetsController(window, view).apply {
-                    isAppearanceLightStatusBars = true
-                    isAppearanceLightNavigationBars = true
+                    isAppearanceLightStatusBars = false
+                    isAppearanceLightNavigationBars = false
                 }
             }
         }
     }
 
     MaterialExpressiveTheme(
-        colorScheme = MonochromeColorScheme,
+        colorScheme = ADColorScheme,
         motionScheme = MotionScheme.expressive(),
-        shapes = ExpressiveShapes,
+        shapes = ADShapes,
         typography = ADTypography,
         content = content,
     )

@@ -11,7 +11,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 
-/** Shared detail-page frame with a calm utility bar and a strong in-page title. */
+/** Compact detail-page frame. The top bar owns the page title; content owns any optional hero. */
 @Composable
 internal fun ADPageLayout(
     title: String,
@@ -19,15 +19,14 @@ internal fun ADPageLayout(
     content: @Composable ColumnScope.() -> Unit,
 ) {
     Column(Modifier.fillMaxSize()) {
-        ADTopBar(showBack = true, onBack = onBack)
+        ADTopBar(title = title, showBack = true, onBack = onBack)
         Column(
             modifier = Modifier
                 .fillMaxSize()
                 .verticalScroll(rememberScrollState())
-                .padding(start = 16.dp, end = 16.dp, top = 6.dp, bottom = 28.dp),
-            verticalArrangement = Arrangement.spacedBy(16.dp),
+                .padding(start = 12.dp, end = 12.dp, top = 6.dp, bottom = 20.dp),
+            verticalArrangement = Arrangement.spacedBy(11.dp),
         ) {
-            ADScreenIntro(title = title)
             content()
         }
     }

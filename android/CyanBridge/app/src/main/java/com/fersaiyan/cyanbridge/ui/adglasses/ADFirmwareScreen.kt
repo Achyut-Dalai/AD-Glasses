@@ -32,14 +32,12 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.fersaiyan.cyanbridge.shared.glasses.GlassesDashboardUiState
 
-/**
- * Product-facing firmware surface. The current OTA backend is HeyCyan-specific,
- * but the UI remains glasses-generic so another hardware adapter can reuse it later.
- */
+/** Device-level firmware surface; backend behavior is unchanged. */
 @Composable
 internal fun ADFirmwareScreen(
     state: GlassesDashboardUiState,
@@ -49,97 +47,77 @@ internal fun ADFirmwareScreen(
     val ota = state.ota
     val otaProgress = ota.progress
     val supportedProfile = state.showHeyCyanControls
-    val bluetoothReady = supportedProfile &&
-        state.connectionLabel.startsWith("Connected", ignoreCase = true)
+    val bluetoothReady = supportedProfile && state.connectionLabel.startsWith("Connected", ignoreCase = true)
     var riskAcknowledged by remember { mutableStateOf(false) }
 
     ADPageLayout("Firmware", onBack) {
-        Text(
-            "Firmware is a device-level operation, so this screen stays deliberate: check readiness first, then update.",
-            style = MaterialTheme.typography.bodyMedium,
-            color = ADColors.Muted,
-        )
-
         Surface(
             modifier = Modifier.fillMaxWidth(),
-            shape = RoundedCornerShape(30.dp),
-            color = ADColors.Ink,
-            contentColor = ADColors.Surface,
+            shape = RoundedCornerShape(14.dp),
+            color = Color.Black.copy(alpha = 0.40f),
+            border = BorderStroke(1.dp, ADColors.Outline),
         ) {
-            Column(Modifier.padding(18.dp)) {
+            Column(Modifier.padding(12.dp)) {
                 Row(verticalAlignment = Alignment.CenterVertically) {
-                    Surface(
-                        modifier = Modifier.size(54.dp),
-                        shape = RoundedCornerShape(18.dp),
-                        color = ADColors.Surface.copy(alpha = 0.13f),
-                    ) {
-                        Box(contentAlignment = Alignment.Center) {
-                            ADGlyphIcon(ADGlyph.FIRMWARE, ADColors.Surface, Modifier.size(30.dp))
-                        }
-                    }
-                    Column(Modifier.padding(start = 13.dp).weight(1f)) {
+                    ADGlyphIcon(
+                        ADGlyph.FIRMWARE,
+                        ADColors.Ink,
+                        Modifier.size(22.dp),
+                        accent = if (otaProgress != null) ADColors.Red else null,
+                    )
+                    Column(Modifier.padding(start = 9.dp).weight(1f)) {
+                        Text("FIRMWARE", style = MaterialTheme.typography.labelSmall, color = ADColors.Muted)
                         Text(
-                            ota.stateLabel.ifBlank { "Firmware ready" },
-                            style = MaterialTheme.typography.headlineSmall,
+                            ota.stateLabel.ifBlank { "Ready" },
+                            style = MaterialTheme.typography.titleLarge,
                             fontWeight = FontWeight.SemiBold,
                         )
-                        Spacer(Modifier.height(3.dp))
-                        Text(
-                            ota.detail.ifBlank { "No firmware session is active" },
-                            style = MaterialTheme.typography.bodySmall,
-                            color = ADColors.Surface.copy(alpha = 0.68f),
-                        )
                     }
+                    if (otaProgress != null) Box(Modifier.size(6.dp).background(ADColors.Red, CircleShape))
                 }
-
+                Text(
+                    ota.detail.ifBlank { "No firmware session is active." },
+                    modifier = Modifier.padding(top = 5.dp),
+                    style = MaterialTheme.typography.bodySmall,
+                    color = ADColors.Muted,
+                )
                 if (otaProgress != null) {
-                    Spacer(Modifier.height(17.dp))
+                    Spacer(Modifier.height(9.dp))
                     LinearProgressIndicator(
                         progress = { (otaProgress / 100f).coerceIn(0f, 1f) },
-                        modifier = Modifier.fillMaxWidth().height(7.dp),
-                        color = ADColors.Surface,
-                        trackColor = ADColors.Surface.copy(alpha = 0.16f),
+                        modifier = Modifier.fillMaxWidth().height(5.dp),
+                        color = ADColors.Red,
+                        trackColor = ADColors.SurfaceSubtle,
                     )
-                    Spacer(Modifier.height(8.dp))
                     Text(
-                        "${otaProgress.coerceIn(0, 100)}% complete",
+                        "${otaProgress.coerceIn(0, 100)}%",
+                        modifier = Modifier.padding(top = 4.dp),
                         style = MaterialTheme.typography.labelSmall,
-                        color = ADColors.Surface.copy(alpha = 0.68f),
+                        color = ADColors.Muted,
                     )
                 }
             }
         }
 
-        Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+        Column(verticalArrangement = Arrangement.spacedBy(7.dp)) {
             ADSectionTitle("Preflight")
-            Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                ADFirmwareCheckCard(
-                    title = "Support",
-                    detail = "Validated firmware path",
-                    ready = supportedProfile,
-                    modifier = Modifier.weight(1f),
-                )
-                ADFirmwareCheckCard(
-                    title = "Bluetooth",
-                    detail = "Glasses connected",
-                    ready = bluetoothReady,
-                    modifier = Modifier.weight(1f),
-                )
+            Row(horizontalArrangement = Arrangement.spacedBy(7.dp)) {
+                ADFirmwareCheckCard("Support", "Validated path", supportedProfile, Modifier.weight(1f))
+                ADFirmwareCheckCard("Bluetooth", "Glasses connected", bluetoothReady, Modifier.weight(1f))
             }
         }
 
         if (!supportedProfile) {
             Surface(
                 modifier = Modifier.fillMaxWidth(),
-                shape = RoundedCornerShape(22.dp),
-                color = ADColors.Surface,
-                border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant),
+                shape = RoundedCornerShape(12.dp),
+                color = ADColors.Surface.copy(alpha = 0.88f),
+                border = BorderStroke(1.dp, ADColors.Outline),
             ) {
-                Column(Modifier.padding(15.dp)) {
+                Column(Modifier.padding(10.dp)) {
                     Text("Firmware isn’t available for these glasses yet.", style = MaterialTheme.typography.titleMedium)
-                    Spacer(Modifier.height(3.dp))
                     Text(
-                        "Updates appear here once the connected glasses have a validated firmware path.",
+                        "Updates appear once this hardware has a validated firmware path.",
                         style = MaterialTheme.typography.bodySmall,
                         color = ADColors.Muted,
                     )
@@ -149,71 +127,60 @@ internal fun ADFirmwareScreen(
 
         if (ota.canStart && supportedProfile) {
             Surface(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .clickable { riskAcknowledged = !riskAcknowledged },
-                shape = RoundedCornerShape(22.dp),
-                color = if (riskAcknowledged) ADColors.SurfaceSubtle else ADColors.Surface,
-                border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant),
+                modifier = Modifier.fillMaxWidth().clickable { riskAcknowledged = !riskAcknowledged },
+                shape = RoundedCornerShape(12.dp),
+                color = ADColors.Surface.copy(alpha = 0.88f),
+                border = BorderStroke(1.dp, if (riskAcknowledged) ADColors.Ink.copy(alpha = .28f) else ADColors.Outline),
             ) {
-                Row(
-                    modifier = Modifier.padding(14.dp),
-                    verticalAlignment = Alignment.CenterVertically,
-                ) {
-                    Surface(
-                        modifier = Modifier.size(42.dp),
-                        shape = RoundedCornerShape(14.dp),
-                        color = if (riskAcknowledged) ADColors.Ink else ADColors.WarningSoft,
+                Row(modifier = Modifier.padding(10.dp), verticalAlignment = Alignment.CenterVertically) {
+                    Box(
+                        modifier = Modifier.size(30.dp).background(ADColors.SurfaceSubtle, RoundedCornerShape(8.dp)),
+                        contentAlignment = Alignment.Center,
                     ) {
-                        Box(contentAlignment = Alignment.Center) {
-                            Icon(
-                                if (riskAcknowledged) Icons.Outlined.CheckCircle else Icons.Outlined.ErrorOutline,
-                                contentDescription = null,
-                                tint = if (riskAcknowledged) ADColors.Surface else ADColors.Warning,
-                                modifier = Modifier.size(21.dp),
-                            )
-                        }
-                    }
-                    Column(Modifier.padding(start = 11.dp).weight(1f)) {
-                        Text(
-                            "I understand the update risk",
-                            style = MaterialTheme.typography.titleMedium,
-                            fontWeight = FontWeight.Medium,
-                        )
-                        Text(
-                            "Keep the glasses connected until the update finishes",
-                            style = MaterialTheme.typography.bodySmall,
-                            color = ADColors.Muted,
+                        Icon(
+                            if (riskAcknowledged) Icons.Outlined.CheckCircle else Icons.Outlined.ErrorOutline,
+                            null,
+                            tint = if (riskAcknowledged) ADColors.Ink else ADColors.Warning,
+                            modifier = Modifier.size(16.dp),
                         )
                     }
-                    ADStatusChip(
-                        if (riskAcknowledged) "READY" else "REQUIRED",
-                        if (riskAcknowledged) ADStatusTone.SUCCESS else ADStatusTone.WARNING,
-                    )
+                    Column(Modifier.padding(start = 9.dp).weight(1f)) {
+                        Text("I understand the update risk", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Medium)
+                        Text("Keep glasses connected until complete", style = MaterialTheme.typography.bodySmall, color = ADColors.Muted)
+                    }
+                    Box(Modifier.size(5.dp).background(if (riskAcknowledged) ADColors.Red else ADColors.Warning, CircleShape))
                 }
             }
 
-            ADPrimaryButton(
-                text = "Choose firmware files",
+            Surface(
                 onClick = host.onChooseFirmwareFiles,
                 enabled = bluetoothReady && riskAcknowledged,
-            )
+                modifier = Modifier.fillMaxWidth().heightIn(min = 46.dp),
+                shape = RoundedCornerShape(12.dp),
+                color = if (bluetoothReady && riskAcknowledged) ADColors.Red else ADColors.SurfaceSubtle,
+                contentColor = if (bluetoothReady && riskAcknowledged) Color.White else ADColors.Muted,
+            ) {
+                Box(contentAlignment = Alignment.Center) {
+                    Text("Choose firmware files", style = MaterialTheme.typography.labelLarge)
+                }
+            }
         }
 
         if (ota.canCancel) {
             OutlinedButton(
                 onClick = host.onCancelFirmware,
-                modifier = Modifier.fillMaxWidth().heightIn(min = 50.dp),
-                shape = RoundedCornerShape(18.dp),
+                modifier = Modifier.fillMaxWidth().heightIn(min = 44.dp),
+                shape = RoundedCornerShape(11.dp),
+                border = BorderStroke(1.dp, ADColors.Red.copy(alpha = .55f)),
             ) {
-                Icon(Icons.Outlined.StopCircle, contentDescription = null, tint = ADColors.Error, modifier = Modifier.size(18.dp))
-                Spacer(Modifier.size(7.dp))
-                Text("Cancel update", color = ADColors.Error, style = MaterialTheme.typography.labelLarge)
+                Icon(Icons.Outlined.StopCircle, null, tint = ADColors.Red, modifier = Modifier.size(16.dp))
+                Spacer(Modifier.size(6.dp))
+                Text("Cancel update", color = ADColors.Red, style = MaterialTheme.typography.labelLarge)
             }
         }
 
         Text(
-            "Use validated files only. Firmware changes affect the glasses directly and should never be interrupted mid-update.",
+            "Use validated files only. Never interrupt the glasses during an update.",
             style = MaterialTheme.typography.bodySmall,
             color = ADColors.Muted,
         )
@@ -228,32 +195,27 @@ private fun ADFirmwareCheckCard(
     modifier: Modifier = Modifier,
 ) {
     Surface(
-        modifier = modifier.heightIn(min = 118.dp),
-        shape = RoundedCornerShape(22.dp),
-        color = ADColors.Surface,
-        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant),
+        modifier = modifier.heightIn(min = 76.dp),
+        shape = RoundedCornerShape(12.dp),
+        color = ADColors.Surface.copy(alpha = 0.88f),
+        border = BorderStroke(1.dp, ADColors.Outline),
     ) {
-        Column(
-            modifier = Modifier.padding(13.dp),
-            verticalArrangement = Arrangement.SpaceBetween,
-        ) {
-            Surface(
-                modifier = Modifier.size(42.dp),
-                shape = RoundedCornerShape(14.dp),
-                color = if (ready) ADColors.Ink else ADColors.SurfaceSubtle,
-            ) {
-                Box(contentAlignment = Alignment.Center) {
-                    Icon(
-                        if (ready) Icons.Outlined.CheckCircle else Icons.Outlined.ErrorOutline,
-                        contentDescription = null,
-                        tint = if (ready) ADColors.Surface else ADColors.Muted,
-                        modifier = Modifier.size(21.dp),
-                    )
+        Column(modifier = Modifier.padding(9.dp), verticalArrangement = Arrangement.SpaceBetween) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Icon(
+                    if (ready) Icons.Outlined.CheckCircle else Icons.Outlined.ErrorOutline,
+                    null,
+                    tint = if (ready) ADColors.Ink else ADColors.Muted,
+                    modifier = Modifier.size(16.dp),
+                )
+                if (!ready) {
+                    Spacer(Modifier.weight(1f))
+                    Box(Modifier.size(4.dp).background(ADColors.Red, CircleShape))
                 }
             }
             Column {
                 Text(title, style = MaterialTheme.typography.labelLarge, fontWeight = FontWeight.SemiBold)
-                Text(detail, style = MaterialTheme.typography.labelSmall, color = ADColors.Muted)
+                Text(detail, style = MaterialTheme.typography.labelSmall, color = ADColors.Muted, maxLines = 1)
             }
         }
     }

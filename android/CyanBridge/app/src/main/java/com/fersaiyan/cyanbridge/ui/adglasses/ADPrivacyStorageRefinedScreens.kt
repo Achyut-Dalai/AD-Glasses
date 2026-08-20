@@ -25,6 +25,7 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Switch
+import androidx.compose.material3.SwitchDefaults
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -57,77 +58,39 @@ internal fun ADPrivacyCenterScreenRefined(onBack: () -> Unit) {
     var confirmations by remember { mutableStateOf(LocalAgentPrefs.isRequireConfirmationEnabled(context)) }
 
     ADPageLayout("Privacy", onBack) {
-        Text(
-            "Privacy controls should read like choices, not legal settings. Everything here describes what is saved and when AD Glasses asks before acting.",
-            style = MaterialTheme.typography.bodyMedium,
-            color = ADColors.Muted,
+        ADCompactInfoHeader(
+            glyph = ADGlyph.PRIVACY,
+            title = "Your data, your rules",
+            detail = "Local by default. Remote only when a configured capability needs it.",
         )
 
-        Surface(
-            modifier = Modifier.fillMaxWidth(),
-            shape = RoundedCornerShape(30.dp),
-            color = ADColors.Ink,
-            contentColor = ADColors.Surface,
-        ) {
-            Row(
-                modifier = Modifier.padding(18.dp),
-                verticalAlignment = Alignment.CenterVertically,
-            ) {
-                Surface(
-                    modifier = Modifier.size(56.dp),
-                    shape = RoundedCornerShape(19.dp),
-                    color = ADColors.Surface.copy(alpha = 0.13f),
-                ) {
-                    Box(contentAlignment = Alignment.Center) {
-                        ADGlyphIcon(ADGlyph.PRIVACY, ADColors.Surface, Modifier.size(31.dp))
-                    }
-                }
-                Column(Modifier.padding(start = 13.dp).weight(1f)) {
-                    Text(
-                        "Your data, your rules",
-                        style = MaterialTheme.typography.headlineSmall,
-                        fontWeight = FontWeight.SemiBold,
-                    )
-                    Spacer(Modifier.height(3.dp))
-                    Text(
-                        "Saved locally unless a capability you configure needs a remote service.",
-                        style = MaterialTheme.typography.bodySmall,
-                        color = ADColors.Surface.copy(alpha = 0.68f),
-                    )
-                }
-            }
-        }
-
-        ADPrivacyControlGroup(
-            title = "Conversation data",
-            detail = "What gets kept on this phone.",
-        ) {
+        ADPrivacyControlGroup("Conversation data", "What stays on this phone.") {
             ADPrivacyControlRow(
                 icon = Icons.Outlined.Description,
                 title = "Save transcripts",
-                detail = "Keep supported transcripts on this phone",
+                detail = "Keep supported transcripts locally",
                 checked = storeTranscripts,
                 onCheckedChange = {
                     storeTranscripts = it
                     PrivacyPrefs.setTranscriptStorageEnabled(context, it)
                 },
             )
-            HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
+            HorizontalDivider(color = ADColors.Separator)
             ADPrivacyControlRow(
                 glyph = ADGlyph.PRIVACY,
                 title = "Redact names",
-                detail = "Best-effort name redaction in saved text",
+                detail = "Best-effort redaction in saved text",
                 checked = redactNames,
                 onCheckedChange = {
                     redactNames = it
                     PrivacyPrefs.setRedactNamesEnabled(context, it)
                 },
             )
-            HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
+            HorizontalDivider(color = ADColors.Separator)
             ADPrivacyControlRow(
                 icon = Icons.Outlined.Description,
                 title = "Full transcript in exports",
-                detail = "Include complete transcription when exporting",
+                detail = "Include complete transcription in exports",
                 checked = fullExports,
                 onCheckedChange = {
                     fullExports = it
@@ -136,14 +99,11 @@ internal fun ADPrivacyCenterScreenRefined(onBack: () -> Unit) {
             )
         }
 
-        ADPrivacyControlGroup(
-            title = "Automation safety",
-            detail = "Protection for actions that can affect other apps or services.",
-        ) {
+        ADPrivacyControlGroup("Automation safety", "Protection for actions that affect other apps.") {
             ADPrivacyControlRow(
                 icon = Icons.Outlined.Security,
                 title = "Confirm sensitive actions",
-                detail = "Ask before protected automation actions run",
+                detail = "Ask before protected automation runs",
                 checked = confirmations,
                 onCheckedChange = {
                     confirmations = it
@@ -155,26 +115,39 @@ internal fun ADPrivacyCenterScreenRefined(onBack: () -> Unit) {
 }
 
 @Composable
+private fun ADCompactInfoHeader(glyph: ADGlyph, title: String, detail: String) {
+    Surface(
+        modifier = Modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(14.dp),
+        color = ADColors.Surface.copy(alpha = 0.88f),
+        border = BorderStroke(1.dp, ADColors.Outline),
+    ) {
+        Row(Modifier.padding(11.dp), verticalAlignment = Alignment.CenterVertically) {
+            ADGlyphIcon(glyph, ADColors.Ink, Modifier.size(22.dp))
+            Column(Modifier.padding(start = 10.dp).weight(1f)) {
+                Text(title, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold)
+                Text(detail, style = MaterialTheme.typography.bodySmall, color = ADColors.Muted)
+            }
+        }
+    }
+}
+
+@Composable
 private fun ADPrivacyControlGroup(
     title: String,
     detail: String,
     content: @Composable () -> Unit,
 ) {
-    Column(verticalArrangement = Arrangement.spacedBy(9.dp)) {
+    Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
         ADSectionTitle(title)
-        Text(
-            detail,
-            style = MaterialTheme.typography.bodySmall,
-            color = ADColors.Muted,
-            modifier = Modifier.padding(horizontal = 2.dp),
-        )
+        Text(detail, style = MaterialTheme.typography.bodySmall, color = ADColors.Muted)
         Surface(
             modifier = Modifier.fillMaxWidth(),
-            shape = RoundedCornerShape(24.dp),
-            color = ADColors.Surface,
-            border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant),
+            shape = RoundedCornerShape(13.dp),
+            color = ADColors.Surface.copy(alpha = 0.88f),
+            border = BorderStroke(1.dp, ADColors.Outline),
         ) {
-            Column(Modifier.padding(horizontal = 14.dp, vertical = 4.dp)) { content() }
+            Column(Modifier.padding(horizontal = 11.dp, vertical = 2.dp)) { content() }
         }
     }
 }
@@ -189,52 +162,34 @@ private fun ADPrivacyControlRow(
     onCheckedChange: (Boolean) -> Unit,
 ) {
     Row(
-        modifier = Modifier.fillMaxWidth().padding(vertical = 11.dp),
+        modifier = Modifier.fillMaxWidth().padding(vertical = 8.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        Surface(
-            modifier = Modifier.size(42.dp),
-            shape = RoundedCornerShape(14.dp),
-            color = if (checked) ADColors.Ink else ADColors.SurfaceSubtle,
+        Box(
+            modifier = Modifier.size(30.dp).background(ADColors.SurfaceSubtle, RoundedCornerShape(8.dp)),
+            contentAlignment = Alignment.Center,
         ) {
-            Box(contentAlignment = Alignment.Center) {
-                if (glyph != null) {
-                    ADGlyphIcon(
-                        glyph,
-                        if (checked) ADColors.Surface else ADColors.Ink,
-                        Modifier.size(22.dp),
-                    )
-                } else if (icon != null) {
-                    Icon(
-                        icon,
-                        contentDescription = null,
-                        tint = if (checked) ADColors.Surface else ADColors.Ink,
-                        modifier = Modifier.size(20.dp),
-                    )
-                }
+            if (glyph != null) {
+                ADGlyphIcon(glyph, ADColors.Ink, Modifier.size(16.dp), accent = if (checked) ADColors.Red else null)
+            } else if (icon != null) {
+                Icon(icon, null, tint = ADColors.Ink, modifier = Modifier.size(15.dp))
             }
         }
-        Column(Modifier.padding(start = 11.dp).weight(1f)) {
-            Text(
-                title,
-                style = MaterialTheme.typography.titleMedium,
-                fontWeight = FontWeight.Medium,
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis,
-            )
-            Spacer(Modifier.height(2.dp))
-            Text(
-                detail,
-                style = MaterialTheme.typography.bodySmall,
-                color = ADColors.Muted,
-                maxLines = 2,
-                overflow = TextOverflow.Ellipsis,
-            )
+        Column(Modifier.padding(start = 9.dp).weight(1f)) {
+            Text(title, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Medium, maxLines = 1, overflow = TextOverflow.Ellipsis)
+            Text(detail, style = MaterialTheme.typography.bodySmall, color = ADColors.Muted, maxLines = 1, overflow = TextOverflow.Ellipsis)
         }
         Switch(
             checked = checked,
             onCheckedChange = onCheckedChange,
-            modifier = Modifier.padding(start = 8.dp),
+            modifier = Modifier.padding(start = 7.dp),
+            colors = SwitchDefaults.colors(
+                checkedThumbColor = Color.White,
+                checkedTrackColor = ADColors.Red,
+                uncheckedThumbColor = ADColors.Muted,
+                uncheckedTrackColor = ADColors.SurfaceSubtle,
+                uncheckedBorderColor = ADColors.Outline,
+            ),
         )
     }
 }
@@ -262,120 +217,64 @@ internal fun ADStorageScreenRefined(onBack: () -> Unit) {
     val totalBytes = if (cacheBytes != null && filesBytes != null) cacheBytes!! + filesBytes!! else null
     val dataFraction = if (totalBytes != null && totalBytes > 0L) {
         ((filesBytes ?: 0L).toDouble() / totalBytes.toDouble()).toFloat().coerceIn(0.05f, 0.95f)
-    } else {
-        0.5f
-    }
+    } else 0.5f
     val cacheFraction = 1f - dataFraction
 
     ADPageLayout("Storage", onBack) {
-        Text(
-            "See what AD Glasses keeps on this phone, what came from your glasses, and what you can safely clear.",
-            style = MaterialTheme.typography.bodyMedium,
-            color = ADColors.Muted,
-        )
-
         Surface(
             modifier = Modifier.fillMaxWidth(),
-            shape = RoundedCornerShape(30.dp),
-            color = ADColors.Ink,
-            contentColor = ADColors.Surface,
+            shape = RoundedCornerShape(14.dp),
+            color = ADColors.Surface.copy(alpha = 0.88f),
+            border = BorderStroke(1.dp, ADColors.Outline),
         ) {
-            Column(Modifier.padding(18.dp)) {
+            Column(Modifier.padding(11.dp)) {
                 Row(verticalAlignment = Alignment.CenterVertically) {
-                    Surface(
-                        modifier = Modifier.size(56.dp),
-                        shape = RoundedCornerShape(19.dp),
-                        color = ADColors.Surface.copy(alpha = 0.13f),
-                    ) {
-                        Box(contentAlignment = Alignment.Center) {
-                            ADGlyphIcon(ADGlyph.STORAGE, ADColors.Surface, Modifier.size(31.dp))
-                        }
-                    }
-                    Column(Modifier.padding(start = 13.dp).weight(1f)) {
-                        Text(
-                            totalBytes?.let(::adRefinedFormatBytes) ?: "Reading…",
-                            style = MaterialTheme.typography.headlineMedium,
-                            fontWeight = FontWeight.SemiBold,
-                        )
-                        Text(
-                            "Used by AD Glasses on this phone",
-                            style = MaterialTheme.typography.bodySmall,
-                            color = ADColors.Surface.copy(alpha = 0.68f),
-                        )
+                    ADGlyphIcon(ADGlyph.STORAGE, ADColors.Ink, Modifier.size(22.dp))
+                    Column(Modifier.padding(start = 9.dp).weight(1f)) {
+                        Text("LOCAL STORAGE", style = MaterialTheme.typography.labelSmall, color = ADColors.Muted)
+                        Text(totalBytes?.let(::adRefinedFormatBytes) ?: "Reading…", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.SemiBold)
                     }
                 }
-
-                Spacer(Modifier.height(17.dp))
+                Spacer(Modifier.height(9.dp))
                 Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .height(9.dp)
-                        .background(ADColors.Surface.copy(alpha = 0.16f), RoundedCornerShape(5.dp)),
+                    modifier = Modifier.fillMaxWidth().height(6.dp).background(ADColors.SurfaceSubtle, CircleShape),
                 ) {
-                    Box(
-                        Modifier
-                            .weight(dataFraction)
-                            .height(9.dp)
-                            .background(ADColors.Surface, RoundedCornerShape(topStart = 5.dp, bottomStart = 5.dp)),
-                    )
-                    Box(
-                        Modifier
-                            .weight(cacheFraction)
-                            .height(9.dp)
-                            .background(ADColors.Surface.copy(alpha = 0.30f), RoundedCornerShape(topEnd = 5.dp, bottomEnd = 5.dp)),
-                    )
+                    Box(Modifier.weight(dataFraction).height(6.dp).background(ADColors.Ink, CircleShape))
+                    Box(Modifier.weight(cacheFraction).height(6.dp).background(ADColors.Red.copy(alpha = 0.75f), CircleShape))
                 }
-                Spacer(Modifier.height(10.dp))
+                Spacer(Modifier.height(6.dp))
                 Row(verticalAlignment = Alignment.CenterVertically) {
-                    ADStorageLegendDot(ADColors.Surface)
-                    Text("App data", style = MaterialTheme.typography.labelSmall, color = ADColors.Surface.copy(alpha = 0.68f))
+                    ADStorageLegendDot(ADColors.Ink)
+                    Text("App data", style = MaterialTheme.typography.labelSmall, color = ADColors.Muted)
                     Spacer(Modifier.weight(1f))
-                    ADStorageLegendDot(ADColors.Surface.copy(alpha = 0.30f))
-                    Text("Cache", style = MaterialTheme.typography.labelSmall, color = ADColors.Surface.copy(alpha = 0.68f))
+                    ADStorageLegendDot(ADColors.Red)
+                    Text("Cache", style = MaterialTheme.typography.labelSmall, color = ADColors.Muted)
                 }
             }
         }
 
-        Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+        Column(verticalArrangement = Arrangement.spacedBy(7.dp)) {
             ADSectionTitle("Breakdown")
-            Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                ADStorageBreakdownCard(
-                    label = "App data",
-                    detail = "Files and local state",
-                    value = filesBytes?.let(::adRefinedFormatBytes) ?: "…",
-                    modifier = Modifier.weight(1f),
-                )
-                ADStorageBreakdownCard(
-                    label = "Cache",
-                    detail = "Safe to clear",
-                    value = cacheBytes?.let(::adRefinedFormatBytes) ?: "…",
-                    modifier = Modifier.weight(1f),
-                )
+            Row(horizontalArrangement = Arrangement.spacedBy(7.dp)) {
+                ADStorageBreakdownCard("App data", "Files & state", filesBytes?.let(::adRefinedFormatBytes) ?: "…", Modifier.weight(1f))
+                ADStorageBreakdownCard("Cache", "Safe to clear", cacheBytes?.let(::adRefinedFormatBytes) ?: "…", Modifier.weight(1f))
             }
         }
 
         val media = synced
         Surface(
             modifier = Modifier.fillMaxWidth(),
-            shape = RoundedCornerShape(24.dp),
-            color = ADColors.Surface,
-            border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant),
+            shape = RoundedCornerShape(13.dp),
+            color = ADColors.Surface.copy(alpha = 0.88f),
+            border = BorderStroke(1.dp, ADColors.Outline),
         ) {
-            Row(
-                modifier = Modifier.padding(14.dp),
-                verticalAlignment = Alignment.CenterVertically,
-            ) {
-                Box(
-                    modifier = Modifier.size(48.dp).background(ADColors.SurfaceSubtle, RoundedCornerShape(16.dp)),
-                    contentAlignment = Alignment.Center,
-                ) {
-                    ADGlyphIcon(ADGlyph.LIBRARY, ADColors.Ink, Modifier.size(27.dp))
-                }
-                Column(Modifier.padding(start = 12.dp).weight(1f)) {
+            Row(modifier = Modifier.padding(10.dp), verticalAlignment = Alignment.CenterVertically) {
+                ADGlyphIcon(ADGlyph.LIBRARY, ADColors.Ink, Modifier.size(20.dp))
+                Column(Modifier.padding(start = 9.dp).weight(1f)) {
                     Text("Glasses media", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Medium)
                     Text(
                         when {
-                            media == null -> "Reading Library…"
+                            media == null -> "Reading library…"
                             media.count == 0 -> "No synced media yet"
                             else -> "${media.count} synced items"
                         },
@@ -389,8 +288,7 @@ internal fun ADStorageScreenRefined(onBack: () -> Unit) {
                         media.count == 0 -> "0 B"
                         else -> adRefinedFormatBytes(media.bytes)
                     },
-                    style = MaterialTheme.typography.titleMedium,
-                    fontWeight = FontWeight.SemiBold,
+                    style = MaterialTheme.typography.labelLarge,
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis,
                 )
@@ -418,22 +316,13 @@ private fun ADStorageBreakdownCard(
     modifier: Modifier = Modifier,
 ) {
     Surface(
-        modifier = modifier.heightIn(min = 116.dp),
-        shape = RoundedCornerShape(22.dp),
-        color = ADColors.Surface,
-        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant),
+        modifier = modifier.heightIn(min = 76.dp),
+        shape = RoundedCornerShape(12.dp),
+        color = ADColors.Surface.copy(alpha = 0.88f),
+        border = BorderStroke(1.dp, ADColors.Outline),
     ) {
-        Column(
-            modifier = Modifier.padding(14.dp),
-            verticalArrangement = Arrangement.SpaceBetween,
-        ) {
-            Text(
-                value,
-                style = MaterialTheme.typography.headlineSmall,
-                fontWeight = FontWeight.SemiBold,
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis,
-            )
+        Column(modifier = Modifier.padding(10.dp), verticalArrangement = Arrangement.SpaceBetween) {
+            Text(value, style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.SemiBold, maxLines = 1, overflow = TextOverflow.Ellipsis)
             Column {
                 Text(label, style = MaterialTheme.typography.labelLarge)
                 Text(detail, style = MaterialTheme.typography.labelSmall, color = ADColors.Muted)
@@ -444,8 +333,8 @@ private fun ADStorageBreakdownCard(
 
 @Composable
 private fun ADStorageLegendDot(color: Color) {
-    Box(Modifier.size(6.dp).background(color, CircleShape))
-    Spacer(Modifier.size(5.dp))
+    Box(Modifier.size(5.dp).background(color, CircleShape))
+    Spacer(Modifier.size(4.dp))
 }
 
 private data class ADStorageMediaStatsRefined(val count: Int, val bytes: Long)
