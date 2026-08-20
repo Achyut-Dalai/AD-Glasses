@@ -381,7 +381,7 @@ internal fun ADMatrixGlyphIcon(
                 if (bit == '1') {
                     val isAccent = accent != null && glyph.accentCell == (row to column)
                     drawRoundRect(
-                        color = if (isAccent) accent else tint,
+                        color = if (isAccent) accent ?: tint else tint,
                         topLeft = Offset(left + column * cell, top + row * cell),
                         size = Size(dot, dot),
                         cornerRadius = CornerRadius(dot * 0.30f, dot * 0.30f),
