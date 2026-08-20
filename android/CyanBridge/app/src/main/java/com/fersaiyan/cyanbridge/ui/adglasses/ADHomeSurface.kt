@@ -2,7 +2,6 @@ package com.fersaiyan.cyanbridge.ui.adglasses
 
 import android.widget.Toast
 import androidx.annotation.DrawableRes
-import androidx.compose.animation.animateColorAsState
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
@@ -11,6 +10,7 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -38,7 +38,9 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
-import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.semantics.stateDescription
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -135,7 +137,6 @@ internal fun ADHomeSurface(
                     Row(horizontalArrangement = Arrangement.spacedBy(7.dp)) {
                         ADHomeAction(
                             title = "Ask AI",
-                            detail = "Voice question",
                             glyph = ADGlyph.ASK,
                             artwork = R.drawable.ad_codex_ask,
                             modifier = Modifier.weight(1f),
@@ -143,7 +144,6 @@ internal fun ADHomeSurface(
                         )
                         ADHomeAction(
                             title = "Photo",
-                            detail = "Capture",
                             glyph = ADGlyph.PHOTO,
                             modifier = Modifier.weight(1f),
                             onClick = host.onCapturePhoto,
@@ -152,7 +152,6 @@ internal fun ADHomeSurface(
                     Row(horizontalArrangement = Arrangement.spacedBy(7.dp)) {
                         ADHomeAction(
                             title = "Video",
-                            detail = "Record",
                             glyph = ADGlyph.VIDEO,
                             artwork = R.drawable.ad_codex_video,
                             modifier = Modifier.weight(1f),
@@ -160,8 +159,8 @@ internal fun ADHomeSurface(
                         )
                         ADHomeAction(
                             title = "Translate",
-                            detail = "Live speech",
                             glyph = ADGlyph.TRANSLATE,
+                            artwork = R.drawable.ad_codex_language,
                             active = translateActive,
                             modifier = Modifier.weight(1f),
                             onClick = { toggleCapability(AssistantCapability.TRANSLATOR) },
@@ -170,7 +169,6 @@ internal fun ADHomeSurface(
                     Row(horizontalArrangement = Arrangement.spacedBy(7.dp)) {
                         ADHomeAction(
                             title = "Soundbites",
-                            detail = "Speech notes",
                             glyph = ADGlyph.SOUNDBITES,
                             active = soundbitesActive,
                             modifier = Modifier.weight(1f),
@@ -178,7 +176,6 @@ internal fun ADHomeSurface(
                         )
                         ADHomeAction(
                             title = "Audio",
-                            detail = if (state.meeting.isRecording) "Stop recording" else "Start recording",
                             glyph = ADGlyph.AUDIO,
                             artwork = R.drawable.ad_codex_audio,
                             active = state.meeting.isRecording,
@@ -186,11 +183,11 @@ internal fun ADHomeSurface(
                             onClick = if (state.meeting.isRecording) host.onStopRecording else host.onStartRecording,
                         )
                     }
+                    ADSmartLensCard(onClick = host.onImageQuestion)
                 }
             }
 
             item { ADGlyphMatrixCard() }
-            item { ADSmartLensCard(onClick = host.onImageQuestion) }
         }
     }
 }
@@ -308,50 +305,72 @@ private fun ADHomeMetric(label: String, value: String, modifier: Modifier = Modi
 @Composable
 private fun ADHomeAction(
     title: String,
-    detail: String,
     glyph: ADGlyph,
     modifier: Modifier = Modifier,
     @DrawableRes artwork: Int? = null,
     active: Boolean = false,
     onClick: () -> Unit,
 ) {
-    val container by animateColorAsState(
-        targetValue = if (active) ADColors.SurfacePressed else ADColors.Surface,
-        label = "home-action-container",
-    )
-
     Surface(
         onClick = onClick,
-        modifier = modifier.heightIn(min = 88.dp),
-        shape = RoundedCornerShape(14.dp),
-        color = container,
-        border = BorderStroke(1.dp, if (active) ADColors.Ink.copy(alpha = 0.34f) else ADColors.Outline),
+        modifier = modifier
+            .aspectRatio(1f)
+            .semantics {
+                contentDescription = title
+                if (active) stateDescription = "Active"
+            },
+        shape = RoundedCornerShape(16.dp),
+        color = Color.Black,
+        border = BorderStroke(1.dp, if (active) ADColors.Ink.copy(alpha = 0.48f) else ADColors.Outline),
     ) {
-        Column(
-            modifier = Modifier.padding(11.dp),
-            verticalArrangement = Arrangement.SpaceBetween,
-        ) {
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                if (artwork != null) {
-                    ADAssetIcon(
-                        drawable = artwork,
-                        modifier = Modifier.size(27.dp),
-                        contentDescription = title,
-                    )
-                } else {
-                    ADGlyphIcon(
-                        glyph = glyph,
-                        tint = ADColors.Ink,
-                        modifier = Modifier.size(22.dp),
-                    )
-                }
-                Spacer(Modifier.weight(1f))
-                if (active) Box(Modifier.size(5.dp).background(ADColors.Red, CircleShape))
+        Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+            if (artwork != null) {
+                Image(
+                    painter = painterResource(artwork),
+                    contentDescription = null,
+                    modifier = Modifier.fillMaxSize(),
+                    contentScale = ContentScale.Fit,
+                )
+            } else {
+                ADGlyphIcon(
+                    glyph = glyph,
+                    tint = ADColors.Ink,
+                    modifier = Modifier.size(62.dp),
+                    accent = if (active) ADColors.Red else null,
+                )
             }
-            Column {
-                Text(title, style = MaterialTheme.typography.titleMedium, color = ADColors.Ink, maxLines = 1)
-                Text(detail, style = MaterialTheme.typography.bodySmall, color = ADColors.Muted, maxLines = 1)
+            if (active) {
+                Box(
+                    Modifier
+                        .align(Alignment.TopEnd)
+                        .padding(10.dp)
+                        .size(7.dp)
+                        .background(ADColors.Red, CircleShape),
+                )
             }
+        }
+    }
+}
+
+@Composable
+private fun ADSmartLensCard(onClick: () -> Unit) {
+    Surface(
+        onClick = onClick,
+        modifier = Modifier
+            .fillMaxWidth()
+            .heightIn(min = 104.dp)
+            .semantics { contentDescription = "Lens" },
+        shape = RoundedCornerShape(16.dp),
+        color = Color.Black,
+        border = BorderStroke(1.dp, ADColors.Outline),
+    ) {
+        Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+            ADGlyphIcon(
+                glyph = ADGlyph.LENS,
+                tint = ADColors.Ink,
+                modifier = Modifier.size(72.dp),
+                accent = ADColors.Red,
+            )
         }
     }
 }
@@ -397,42 +416,6 @@ private fun ADGlyphMatrixCard() {
                         }
                     }
                 }
-            }
-        }
-    }
-}
-
-@Composable
-private fun ADSmartLensCard(onClick: () -> Unit) {
-    Surface(
-        onClick = onClick,
-        modifier = Modifier.fillMaxWidth().heightIn(min = 58.dp),
-        shape = RoundedCornerShape(13.dp),
-        color = ADColors.Surface,
-        border = BorderStroke(1.dp, ADColors.Outline),
-    ) {
-        Row(
-            modifier = Modifier.padding(horizontal = 11.dp, vertical = 9.dp),
-            verticalAlignment = Alignment.CenterVertically,
-        ) {
-            Surface(
-                modifier = Modifier.size(34.dp),
-                shape = RoundedCornerShape(9.dp),
-                color = ADColors.RedAction,
-                contentColor = ADColors.RedContent,
-            ) {
-                Box(contentAlignment = Alignment.Center) {
-                    ADGlyphIcon(ADGlyph.LENS, ADColors.RedContent, Modifier.size(19.dp))
-                }
-            }
-            Column(Modifier.padding(start = 10.dp).weight(1f)) {
-                Text("LENS", style = MaterialTheme.typography.labelSmall, color = ADColors.InkSoft)
-                Text(
-                    "Look at it. Ask about it.",
-                    style = MaterialTheme.typography.titleMedium,
-                    color = ADColors.Ink,
-                    fontWeight = FontWeight.SemiBold,
-                )
             }
         }
     }
