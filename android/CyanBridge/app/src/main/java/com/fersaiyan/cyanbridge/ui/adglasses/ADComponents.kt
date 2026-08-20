@@ -326,7 +326,7 @@ internal fun ADPrimaryButton(
         shape = RoundedCornerShape(12.dp),
         colors = ButtonDefaults.buttonColors(
             containerColor = if (destructive) ADColors.Red else ADColors.Ink,
-            contentColor = Color.Black,
+            contentColor = if (destructive) Color.White else Color.Black,
             disabledContainerColor = ADColors.SurfaceSubtle,
             disabledContentColor = ADColors.Muted,
         ),
