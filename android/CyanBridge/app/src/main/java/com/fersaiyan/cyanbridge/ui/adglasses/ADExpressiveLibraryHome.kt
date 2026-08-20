@@ -14,6 +14,9 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.rounded.KeyboardArrowRight
+import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
@@ -83,11 +86,16 @@ internal fun ADExpressiveLibraryHome(
                         )
                     }
                     if (transferActive) {
-                        Box(Modifier.size(6.dp), contentAlignment = Alignment.Center) {
+                        Box(Modifier.size(6.dp).then(Modifier), contentAlignment = Alignment.Center) {
                             Surface(modifier = Modifier.size(6.dp), shape = CircleShape, color = ADColors.Red) {}
                         }
                     } else {
-                        ADGlyphIcon(ADGlyph.NEXT, ADColors.Muted, Modifier.size(16.dp))
+                        Icon(
+                            Icons.AutoMirrored.Rounded.KeyboardArrowRight,
+                            contentDescription = null,
+                            tint = ADColors.Muted,
+                            modifier = Modifier.size(16.dp),
+                        )
                     }
                 }
             }
@@ -154,7 +162,12 @@ private fun ADLibraryPrimaryDestination(
                 Text(title, style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.SemiBold)
                 Text(detail, style = MaterialTheme.typography.bodySmall, color = ADColors.Muted)
             }
-            ADGlyphIcon(ADGlyph.NEXT, ADColors.Muted, Modifier.size(16.dp))
+            Icon(
+                Icons.AutoMirrored.Rounded.KeyboardArrowRight,
+                contentDescription = null,
+                tint = ADColors.Muted,
+                modifier = Modifier.size(16.dp),
+            )
         }
     }
 }

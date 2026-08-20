@@ -15,6 +15,11 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.outlined.CheckCircle
+import androidx.compose.material.icons.outlined.ErrorOutline
+import androidx.compose.material.icons.outlined.StopCircle
+import androidx.compose.material3.Icon
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
@@ -132,11 +137,11 @@ internal fun ADFirmwareScreen(
                         modifier = Modifier.size(30.dp).background(ADColors.SurfaceSubtle, RoundedCornerShape(8.dp)),
                         contentAlignment = Alignment.Center,
                     ) {
-                        ADGlyphIcon(
-                            if (riskAcknowledged) ADGlyph.CHECK else ADGlyph.ALERT,
+                        Icon(
+                            if (riskAcknowledged) Icons.Outlined.CheckCircle else Icons.Outlined.ErrorOutline,
+                            null,
                             tint = if (riskAcknowledged) ADColors.Ink else ADColors.Warning,
-                            modifier = Modifier.size(17.dp),
-                            accent = if (!riskAcknowledged) ADColors.Red else null,
+                            modifier = Modifier.size(16.dp),
                         )
                     }
                     Column(Modifier.padding(start = 9.dp).weight(1f)) {
@@ -168,7 +173,7 @@ internal fun ADFirmwareScreen(
                 shape = RoundedCornerShape(11.dp),
                 border = BorderStroke(1.dp, ADColors.Red.copy(alpha = .55f)),
             ) {
-                ADGlyphIcon(ADGlyph.STOP, ADColors.Red, Modifier.size(17.dp), accent = ADColors.Red)
+                Icon(Icons.Outlined.StopCircle, null, tint = ADColors.Red, modifier = Modifier.size(16.dp))
                 Spacer(Modifier.size(6.dp))
                 Text("Cancel update", color = ADColors.Red, style = MaterialTheme.typography.labelLarge)
             }
@@ -197,11 +202,11 @@ private fun ADFirmwareCheckCard(
     ) {
         Column(modifier = Modifier.padding(9.dp), verticalArrangement = Arrangement.SpaceBetween) {
             Row(verticalAlignment = Alignment.CenterVertically) {
-                ADGlyphIcon(
-                    if (ready) ADGlyph.CHECK else ADGlyph.ALERT,
+                Icon(
+                    if (ready) Icons.Outlined.CheckCircle else Icons.Outlined.ErrorOutline,
+                    null,
                     tint = if (ready) ADColors.Ink else ADColors.Muted,
-                    modifier = Modifier.size(17.dp),
-                    accent = if (!ready) ADColors.Red else null,
+                    modifier = Modifier.size(16.dp),
                 )
                 if (!ready) {
                     Spacer(Modifier.weight(1f))
