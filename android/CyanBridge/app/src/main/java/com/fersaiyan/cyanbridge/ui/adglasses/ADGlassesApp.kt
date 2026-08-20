@@ -35,7 +35,6 @@ fun ADGlassesApp(
 
     var selectedTab by remember { mutableStateOf(ADTab.HOME) }
     var routeStack by remember { mutableStateOf(listOf(ADRoute.MAIN)) }
-    var conversationRequest by remember { mutableStateOf<ADNavigationRequest?>(null) }
     var onboardingComplete by remember(context) { mutableStateOf(ADWelcomePreferences.isComplete(context)) }
 
     val route = routeStack.last()
@@ -49,10 +48,11 @@ fun ADGlassesApp(
     LaunchedEffect(externalRequest?.id) {
         val request = externalRequest ?: return@LaunchedEffect
         when (request.destination) {
+            // Conversation/session backend remains available, but the product no longer exposes
+            // a phone text-chat surface. Requests that previously opened Prompt land on AI instead.
             ADExternalDestination.CONVERSATIONS -> {
                 routeStack = listOf(ADRoute.MAIN)
-                selectedTab = ADTab.CHATS
-                conversationRequest = request
+                selectedTab = ADTab.AI
             }
             ADExternalDestination.SETTINGS -> routeStack = listOf(ADRoute.MAIN, ADRoute.SETTINGS)
             ADExternalDestination.AI -> {
@@ -117,12 +117,6 @@ fun ADGlassesApp(
                                 host = host,
                                 onOpenSettings = { navigateTo(ADRoute.SETTINGS) },
                                 onOpenSync = { navigateTo(ADRoute.SYNC) },
-                            )
-                            ADTab.CHATS -> ADNativeConversationScreen(
-                                navigationRequest = conversationRequest,
-                                onNavigationRequestApplied = { requestId ->
-                                    if (conversationRequest?.id == requestId) conversationRequest = null
-                                },
                             )
                             ADTab.AI -> ADNativeAiScreen(
                                 onRelaySettings = { navigateTo(ADRoute.AI_RELAY) },
