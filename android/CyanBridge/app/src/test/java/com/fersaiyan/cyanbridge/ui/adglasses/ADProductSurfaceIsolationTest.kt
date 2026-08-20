@@ -20,28 +20,44 @@ class ADProductSurfaceIsolationTest {
     }
 
     @Test
-    fun homeUsesAiCardGeometryWithShutterLensAndCompactActions() {
+    fun homeUsesLensFeaturesOldDeviceCardThenAudio() {
         val home = sourceFile("src/main/java/com/fersaiyan/cyanbridge/ui/adglasses/ADHomeSurface.kt").readText()
 
-        listOf("Ask AI", "Photo", "Video", "Translate", "Record", "Soundbites", "AUDIO")
+        listOf("Ask AI", "Photo", "Video", "Translate", "Record", "Soundbites", "AUDIO", "Features")
             .forEach { label -> assertTrue("Home should keep $label", home.contains("\"$label\"")) }
         assertTrue(home.contains("ADTopBar(showBrand = false"))
-        assertTrue(home.contains("ADGlassesDeviceCard("))
-        assertTrue(home.contains("modifier = Modifier.fillMaxWidth().heightIn(min = 138.dp)"))
+        assertFalse(home.contains("Text(\"AD GLASSES\""))
+
+        val lensIndex = home.indexOf("item { ADLensCard")
+        val featuresIndex = home.indexOf("ADSectionTitle(\"Features\")")
+        val cameraIndex = home.indexOf("ADCameraSkillCard(")
+        val askIndex = home.indexOf("ADAskSkillCard(")
+        val deviceIndex = home.indexOf("ADLargeGlassesHero(")
+        val audioIndex = home.indexOf("ADSectionTitle(\"AUDIO\")")
+        listOf(lensIndex, featuresIndex, cameraIndex, askIndex, deviceIndex, audioIndex)
+            .forEach { index -> assertTrue("Home hierarchy element missing", index >= 0) }
+        assertTrue(lensIndex < featuresIndex)
+        assertTrue(featuresIndex < cameraIndex)
+        assertTrue(featuresIndex < askIndex)
+        assertTrue(cameraIndex < deviceIndex)
+        assertTrue(askIndex < deviceIndex)
+        assertTrue(deviceIndex < audioIndex)
+
         assertTrue(home.contains("R.drawable.ad_glasses_hero_v4"))
-        assertTrue(home.contains("ADLensCard("))
+        assertTrue(home.contains(".height(184.dp)"))
         assertTrue(home.contains("ADLensShutterArtwork("))
         assertTrue(home.contains("lens-focus-pulse"))
-        assertTrue(home.contains("ADCameraSkillCard("))
-        assertTrue(home.contains("ADAskSkillCard("))
+        assertTrue(home.contains("ADCameraArtwork("))
         assertTrue(home.contains("Modifier.fillMaxWidth().height(76.dp)"))
-        assertTrue(home.contains("heightIn(min = 174.dp)"))
+        assertTrue(home.contains("heightIn(min = 154.dp)"))
+        assertFalse(home.contains("Icons.Outlined.CameraAlt"))
+        assertFalse(home.contains("Text(\"Camera\""))
+        assertFalse(home.contains("ADGlassesDeviceCard("))
         assertFalse(home.contains("ADLensMatrixAction("))
         assertFalse(home.contains("LENS MATRIX / V1"))
         assertFalse(home.contains("SEE   CAPTURE   ASK"))
         assertFalse(home.contains("\"01110\""))
         assertFalse(home.contains("activeCell"))
-        assertFalse(home.contains("ADLargeGlassesHero("))
 
         listOf("Voice question", "Live speech", "Speech notes", "Look at it. Ask about it.")
             .forEach { unwanted -> assertFalse("Home should avoid explanatory action subtext", home.contains("\"$unwanted\"")) }

@@ -68,7 +68,7 @@ class ADVisibleProductUiTest {
     }
 
     @Test
-    fun homeUsesDeviceLensCameraAskAndAudioCardHierarchy() {
+    fun homeUsesLensFeaturesRestoredDeviceAndAudioHierarchy() {
         val home = appFile("src/main/java/com/fersaiyan/cyanbridge/ui/adglasses/ADHomeSurface.kt").readText()
         assertTrue(home.contains("onClick = host.onVoiceQuestion"))
         assertTrue(home.contains("onPhoto = host.onCapturePhoto"))
@@ -76,21 +76,26 @@ class ADVisibleProductUiTest {
         assertTrue(home.contains("ADLensCard(onClick = host.onImageQuestion)"))
         assertTrue(home.contains("toggleCapability(AssistantCapability.TRANSLATOR)"))
         assertTrue(home.contains("toggleCapability(AssistantCapability.MEETING_NOTES)"))
-        listOf("Ask AI", "Photo", "Video", "Translate", "Record", "Soundbites", "AUDIO")
+        listOf("Ask AI", "Photo", "Video", "Translate", "Record", "Soundbites", "AUDIO", "Features")
             .forEach { label -> assertTrue(home.contains("\"$label\"")) }
+
         assertTrue(home.contains("ADTopBar(showBrand = false"))
-        assertTrue(home.contains("ADGlassesDeviceCard("))
+        assertFalse(home.contains("Text(\"AD GLASSES\""))
+        assertTrue(home.contains("ADLargeGlassesHero("))
         assertTrue(home.contains("R.drawable.ad_glasses_hero_v4"))
+        assertTrue(home.contains(".height(184.dp)"))
         assertTrue(home.contains("ADLensShutterArtwork("))
-        assertTrue(home.contains("Icons.Outlined.CameraAlt"))
-        assertTrue(home.contains("heightIn(min = 174.dp)"))
+        assertTrue(home.contains("ADCameraArtwork("))
+        assertTrue(home.contains("heightIn(min = 154.dp)"))
         assertTrue(home.contains("Modifier.fillMaxWidth().height(76.dp)"))
+        assertFalse(home.contains("Icons.Outlined.CameraAlt"))
+        assertFalse(home.contains("Text(\"Camera\""))
+        assertFalse(home.contains("ADGlassesDeviceCard("))
         assertFalse(home.contains("ADLensMatrixAction("))
         assertFalse(home.contains("LENS MATRIX / V1"))
         assertFalse(home.contains("SEE   CAPTURE   ASK"))
         assertFalse(home.contains("\"01110\""))
         assertFalse(home.contains("activeCell"))
-        assertFalse(home.contains("ADLargeGlassesHero("))
         assertFalse(home.contains("R.drawable.ad_codex_ask"))
         assertFalse(home.contains("R.drawable.ad_codex_video"))
         assertFalse(home.contains("R.drawable.ad_codex_language"))
