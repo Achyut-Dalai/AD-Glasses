@@ -115,9 +115,8 @@ fun ADGlassesApp(
                             ADTab.HOME -> ADHomeSurface(
                                 state = dashboardState,
                                 host = host,
-                                onOpenDevice = { navigateTo(ADRoute.SETTINGS) },
-                                onOpenSync = { navigateTo(ADRoute.SYNC) },
                                 onOpenSettings = { navigateTo(ADRoute.SETTINGS) },
+                                onOpenSync = { navigateTo(ADRoute.SYNC) },
                             )
                             ADTab.CHATS -> ADNativeConversationScreen(
                                 navigationRequest = conversationRequest,
