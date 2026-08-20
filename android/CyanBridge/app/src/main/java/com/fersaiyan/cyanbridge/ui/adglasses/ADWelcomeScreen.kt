@@ -79,7 +79,7 @@ fun ADWelcomeScreen(
                 ADGlyphIcon(
                     glyph = ADGlyph.DEVICE,
                     tint = ADColors.Ink,
-                    modifier = Modifier.fillMaxWidth().padding(horizontal = 42.dp),
+                    modifier = Modifier.size(width = 250.dp, height = 105.dp),
                     accent = ADColors.Red,
                 )
                 Row(
