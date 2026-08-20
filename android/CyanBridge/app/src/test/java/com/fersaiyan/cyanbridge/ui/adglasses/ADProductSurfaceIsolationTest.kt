@@ -20,12 +20,14 @@ class ADProductSurfaceIsolationTest {
     }
 
     @Test
-    fun homeUsesLensFeaturesOldDeviceCardThenAudio() {
+    fun homeStartsWithLensFeaturesThenSettingsHeroAndAudio() {
         val home = sourceFile("src/main/java/com/fersaiyan/cyanbridge/ui/adglasses/ADHomeSurface.kt").readText()
+        val app = sourceFile("src/main/java/com/fersaiyan/cyanbridge/ui/adglasses/ADGlassesApp.kt").readText()
 
         listOf("Ask AI", "Photo", "Video", "Translate", "Record", "Soundbites", "AUDIO", "Features")
             .forEach { label -> assertTrue("Home should keep $label", home.contains("\"$label\"")) }
-        assertTrue(home.contains("ADTopBar(showBrand = false"))
+        assertFalse(home.contains("ADTopBar("))
+        assertFalse(home.contains("showSettings = true"))
         assertFalse(home.contains("Text(\"AD GLASSES\""))
 
         val lensIndex = home.indexOf("item { ADLensCard")
@@ -43,6 +45,9 @@ class ADProductSurfaceIsolationTest {
         assertTrue(askIndex < deviceIndex)
         assertTrue(deviceIndex < audioIndex)
 
+        assertTrue(home.contains("onOpenSettings = onOpenSettings"))
+        assertTrue(home.contains("onClick = onOpenSettings"))
+        assertTrue(app.contains("onOpenSettings = { navigateTo(ADRoute.SETTINGS) }"))
         assertTrue(home.contains("R.drawable.ad_glasses_hero_v4"))
         assertTrue(home.contains(".height(184.dp)"))
         assertTrue(home.contains("ADLensShutterArtwork("))
@@ -65,6 +70,26 @@ class ADProductSurfaceIsolationTest {
         assertFalse(home.contains("R.drawable.ad_codex_video"))
         assertFalse(home.contains("R.drawable.ad_codex_language"))
         assertFalse(home.contains("R.drawable.ad_codex_audio"))
+    }
+
+    @Test
+    fun settingsOwnsFirmwareAndDeviceCenterIsGone() {
+        val models = sourceFile("src/main/java/com/fersaiyan/cyanbridge/ui/adglasses/ADGlassesModels.kt").readText()
+        val app = sourceFile("src/main/java/com/fersaiyan/cyanbridge/ui/adglasses/ADGlassesApp.kt").readText()
+        val settings = sourceFile("src/main/java/com/fersaiyan/cyanbridge/ui/adglasses/ADNativeSettingsHubScreen.kt").readText()
+        val deviceCenter = sourceFile("src/main/java/com/fersaiyan/cyanbridge/ui/adglasses/ADGlassesDeviceCenterScreen.kt")
+
+        assertFalse(models.contains("DEVICE_CENTER"))
+        assertFalse(app.contains("ADRoute.DEVICE_CENTER"))
+        assertFalse(app.contains("ADGlassesDeviceCenterScreen("))
+        assertFalse(deviceCenter.exists())
+        assertTrue(settings.contains("ADPageLayout(onBack = onBack)"))
+        assertFalse(settings.contains("ADScreenIntro(eyebrow = \"SYSTEM\", title = \"Settings\")"))
+        assertTrue(settings.contains("ADSectionTitle(\"System\")"))
+        assertTrue(settings.contains("ADGlyph.FIRMWARE"))
+        assertTrue(settings.contains("title = \"Firmware\""))
+        assertTrue(app.contains("onFirmware = { navigateTo(ADRoute.FIRMWARE) }"))
+        assertFalse(settings.contains("onDevice:"))
     }
 
     @Test
@@ -168,6 +193,7 @@ class ADProductSurfaceIsolationTest {
 
         assertTrue(settings.contains("ADGlyph.PRIVACY"))
         assertTrue(settings.contains("ADGlyph.PERMISSIONS"))
+        assertTrue(settings.contains("ADGlyph.FIRMWARE"))
         assertTrue(settings.contains("ADGlyph.NEXT"))
         assertTrue(productSettings.contains("ADGlyph.PERMISSIONS"))
         assertTrue(firmware.contains("ADGlyph.FIRMWARE"))
@@ -185,22 +211,19 @@ class ADProductSurfaceIsolationTest {
     fun pageLayoutForcesReadableDarkThemeContent() {
         val page = sourceFile("src/main/java/com/fersaiyan/cyanbridge/ui/adglasses/ADPageLayout.kt").readText()
         assertTrue(page.contains("LocalContentColor provides ADColors.Ink"))
+        assertTrue(page.contains("title: String? = null"))
     }
 
     @Test
     fun promptBehaviorAndDeviceGlyphRemovalStayProtected() {
         val prompt = sourceFile("src/main/java/com/fersaiyan/cyanbridge/ui/adglasses/ADNativeConversationScreen.kt").readText()
         val pairing = sourceFile("src/main/java/com/fersaiyan/cyanbridge/ui/adglasses/ADGlassesPairingScreen.kt").readText()
-        val deviceCenter = sourceFile("src/main/java/com/fersaiyan/cyanbridge/ui/adglasses/ADGlassesDeviceCenterScreen.kt").readText()
 
         assertTrue(prompt.contains("What do you want to know?"))
         assertTrue(prompt.contains("Ask anything…"))
         assertTrue(prompt.contains("session.startNewConversation()"))
         assertTrue(prompt.contains("ADActivityWaveform"))
         assertFalse(pairing.contains("ADGlyph.DEVICE"))
-        assertFalse(deviceCenter.contains("ADGlyph.DEVICE"))
-        assertTrue(deviceCenter.contains("\"Sync media\""))
-        assertTrue(deviceCenter.contains("\"Firmware\""))
     }
 
     @Test
