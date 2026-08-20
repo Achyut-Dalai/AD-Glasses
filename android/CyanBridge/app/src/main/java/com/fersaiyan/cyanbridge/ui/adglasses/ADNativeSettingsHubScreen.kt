@@ -21,7 +21,12 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.rounded.KeyboardArrowRight
+import androidx.compose.material.icons.outlined.Info
+import androidx.compose.material.icons.outlined.Settings
 import androidx.compose.material3.HorizontalDivider
+import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
@@ -29,6 +34,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
@@ -57,23 +63,19 @@ internal fun ADNativeSettingsHubScreen(
     )
 
     ADPageLayout("Settings", onBack) {
-        ADScreenIntro(
-            eyebrow = "SYSTEM",
-            title = "Settings",
-            detail = "Glasses, privacy, storage and system controls.",
-        )
+        ADScreenIntro(eyebrow = "SYSTEM", title = "Settings")
 
         ADSettingsDeviceOverview(state, presentation, onDevice)
 
         Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
             ADSectionTitle("Essentials")
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                ADSettingsTile(ADGlyph.PRIVACY, "Privacy", "Data & safety", Modifier.weight(1f), onClick = onPrivacy)
-                ADSettingsTile(ADGlyph.STORAGE, "Storage", "Phone space", Modifier.weight(1f), onClick = onStorage)
+                ADSettingsTile(ADGlyph.PRIVACY, "Privacy", Modifier.weight(1f), onClick = onPrivacy)
+                ADSettingsTile(ADGlyph.STORAGE, "Storage", Modifier.weight(1f), onClick = onStorage)
             }
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                ADSettingsTile(ADGlyph.LANGUAGE, "Language", "App language", Modifier.weight(1f), onClick = onLanguage)
-                ADSettingsTile(ADGlyph.PERMISSIONS, "Permissions", "Access", Modifier.weight(1f), onClick = onPermissions)
+                ADSettingsTile(ADGlyph.LANGUAGE, "Language", Modifier.weight(1f), onClick = onLanguage)
+                ADSettingsTile(ADGlyph.PERMISSIONS, "Permissions", Modifier.weight(1f), onClick = onPermissions)
             }
         }
 
@@ -83,13 +85,13 @@ internal fun ADNativeSettingsHubScreen(
                 modifier = Modifier.fillMaxWidth(),
                 shape = RoundedCornerShape(14.dp),
                 color = ADColors.Surface,
+                contentColor = ADColors.Ink,
                 border = BorderStroke(1.dp, ADColors.Outline),
             ) {
                 Column(Modifier.padding(horizontal = 12.dp)) {
                     ADSettingsWideAction(
-                        glyph = ADGlyph.SETTINGS,
+                        icon = Icons.Outlined.Settings,
                         title = "Android app settings",
-                        subtitle = "Battery, permissions and system controls",
                         onClick = {
                             runCatching {
                                 context.startActivity(
@@ -103,9 +105,8 @@ internal fun ADNativeSettingsHubScreen(
                     )
                     HorizontalDivider(color = ADColors.Separator)
                     ADSettingsWideAction(
-                        glyph = ADGlyph.INFO,
+                        icon = Icons.Outlined.Info,
                         title = "About AD Glasses",
-                        subtitle = "Version and product information",
                         onClick = onAbout,
                     )
                 }
@@ -126,7 +127,7 @@ private fun ADSettingsDeviceOverview(
         presentation.connected -> "Connected"
         presentation.connecting -> "Connecting…"
         presentation.shouldOpenSetup -> "Not connected"
-        else -> "Ready to reconnect"
+        else -> "Ready"
     }
 
     Surface(
@@ -173,12 +174,17 @@ private fun ADSettingsDeviceOverview(
                         Text(
                             status,
                             modifier = Modifier.padding(start = 6.dp),
-                            style = MaterialTheme.typography.bodySmall,
+                            style = MaterialTheme.typography.labelSmall,
                             color = ADColors.Muted,
                         )
                     }
                 }
-                ADGlyphIcon(ADGlyph.NEXT, ADColors.Muted, Modifier.size(18.dp))
+                Icon(
+                    Icons.AutoMirrored.Rounded.KeyboardArrowRight,
+                    contentDescription = null,
+                    tint = ADColors.Muted,
+                    modifier = Modifier.size(18.dp),
+                )
             }
 
             if (showBattery || showStorage) {
@@ -198,6 +204,7 @@ private fun ADDeviceMetric(label: String, value: String, modifier: Modifier = Mo
         modifier = modifier.heightIn(min = 45.dp),
         shape = RoundedCornerShape(11.dp),
         color = ADColors.SurfaceSubtle,
+        contentColor = ADColors.Ink,
         border = BorderStroke(1.dp, ADColors.Separator),
     ) {
         Column(Modifier.padding(horizontal = 10.dp, vertical = 7.dp)) {
@@ -211,45 +218,59 @@ private fun ADDeviceMetric(label: String, value: String, modifier: Modifier = Mo
 private fun ADSettingsTile(
     glyph: ADGlyph,
     title: String,
-    detail: String,
     modifier: Modifier = Modifier,
     onClick: () -> Unit,
 ) {
     Surface(
         onClick = onClick,
-        modifier = modifier.heightIn(min = 94.dp),
+        modifier = modifier.heightIn(min = 86.dp),
         shape = RoundedCornerShape(14.dp),
         color = ADColors.Surface,
+        contentColor = ADColors.Ink,
         border = BorderStroke(1.dp, ADColors.Outline),
     ) {
         Column(Modifier.padding(12.dp), verticalArrangement = Arrangement.SpaceBetween) {
-            ADGlyphIcon(glyph, ADColors.Ink, Modifier.size(25.dp))
-            Column {
-                Text(title, style = MaterialTheme.typography.titleMedium, color = ADColors.Ink, maxLines = 1)
-                Text(detail, style = MaterialTheme.typography.bodySmall, color = ADColors.Muted, maxLines = 1)
-            }
+            ADGlyphIcon(glyph, ADColors.Ink, Modifier.size(24.dp))
+            Text(
+                title.uppercase(),
+                style = MaterialTheme.typography.labelLarge.copy(fontFamily = ADTechFontFamily),
+                color = ADColors.Ink,
+                maxLines = 1,
+            )
         }
     }
 }
 
 @Composable
 private fun ADSettingsWideAction(
-    glyph: ADGlyph,
+    icon: ImageVector,
     title: String,
-    subtitle: String,
     onClick: () -> Unit,
 ) {
     Row(
-        modifier = Modifier.fillMaxWidth().heightIn(min = 60.dp).clickable(onClick = onClick).padding(vertical = 9.dp),
+        modifier = Modifier.fillMaxWidth().heightIn(min = 54.dp).clickable(onClick = onClick).padding(vertical = 8.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        Box(Modifier.size(34.dp).background(ADColors.SurfaceSubtle, RoundedCornerShape(10.dp)), contentAlignment = Alignment.Center) {
-            ADGlyphIcon(glyph, ADColors.Ink, Modifier.size(18.dp))
+        Box(
+            Modifier.size(32.dp).background(ADColors.SurfaceSubtle, RoundedCornerShape(9.dp)),
+            contentAlignment = Alignment.Center,
+        ) {
+            Icon(icon, null, tint = ADColors.Ink, modifier = Modifier.size(16.dp))
         }
-        Column(Modifier.padding(start = 10.dp).weight(1f)) {
-            Text(title, style = MaterialTheme.typography.titleMedium, color = ADColors.Ink, fontWeight = FontWeight.Medium)
-            Text(subtitle, style = MaterialTheme.typography.bodySmall, color = ADColors.Muted, maxLines = 1, overflow = TextOverflow.Ellipsis)
-        }
-        ADGlyphIcon(ADGlyph.NEXT, ADColors.Muted, Modifier.size(17.dp))
+        Text(
+            title,
+            modifier = Modifier.padding(start = 10.dp).weight(1f),
+            style = MaterialTheme.typography.titleMedium,
+            color = ADColors.Ink,
+            fontWeight = FontWeight.Medium,
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis,
+        )
+        Icon(
+            Icons.AutoMirrored.Rounded.KeyboardArrowRight,
+            null,
+            tint = ADColors.Muted,
+            modifier = Modifier.size(17.dp),
+        )
     }
 }
