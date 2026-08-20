@@ -62,11 +62,11 @@ private fun ADWallpaperOption(
 ) {
     Surface(
         onClick = onClick,
-        modifier = modifier.height(108.dp),
-        shape = RoundedCornerShape(14.dp),
+        modifier = modifier.height(112.dp),
+        shape = RoundedCornerShape(15.dp),
         color = ADColors.Surface,
         contentColor = Color.White,
-        border = BorderStroke(if (selected) 2.dp else 1.dp, if (selected) ADColors.Red else ADColors.Outline),
+        border = BorderStroke(1.dp, if (selected) ADColors.Ink.copy(alpha = .54f) else ADColors.Outline),
     ) {
         Box {
             Image(
@@ -75,22 +75,32 @@ private fun ADWallpaperOption(
                 modifier = Modifier.fillMaxSize(),
                 contentScale = ContentScale.Crop,
             )
-            Box(Modifier.fillMaxSize().background(Color.Black.copy(alpha = 0.24f)))
-            Text(
-                style.label,
-                modifier = Modifier.align(Alignment.BottomStart).padding(9.dp),
-                style = MaterialTheme.typography.labelLarge,
-                color = Color.White,
-                fontWeight = FontWeight.SemiBold,
-            )
-            if (selected) {
-                Box(
-                    Modifier
-                        .align(Alignment.TopEnd)
-                        .padding(9.dp)
-                        .size(9.dp)
-                        .background(ADColors.Red, CircleShape),
+            Box(Modifier.fillMaxSize().background(Color.Black.copy(alpha = 0.30f)))
+            Surface(
+                modifier = Modifier.align(Alignment.BottomStart).padding(8.dp),
+                shape = RoundedCornerShape(8.dp),
+                color = Color.Black.copy(alpha = .72f),
+                border = BorderStroke(1.dp, Color.White.copy(alpha = .12f)),
+            ) {
+                Text(
+                    style.label,
+                    modifier = Modifier.padding(horizontal = 7.dp, vertical = 4.dp),
+                    style = MaterialTheme.typography.labelLarge,
+                    color = Color.White,
+                    fontWeight = FontWeight.SemiBold,
                 )
+            }
+            if (selected) {
+                Surface(
+                    modifier = Modifier.align(Alignment.TopEnd).padding(8.dp).size(23.dp),
+                    shape = CircleShape,
+                    color = ADColors.Surface.copy(alpha = .90f),
+                    border = BorderStroke(1.dp, ADColors.Outline),
+                ) {
+                    Box(contentAlignment = Alignment.Center) {
+                        ADMatrixGlyphIcon(ADMatrixGlyph.CHECK, ADColors.Ink, Modifier.size(13.dp))
+                    }
+                }
             }
         }
     }
