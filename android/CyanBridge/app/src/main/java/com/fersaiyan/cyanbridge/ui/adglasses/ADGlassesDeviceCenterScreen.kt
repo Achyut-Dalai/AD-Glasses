@@ -61,34 +61,34 @@ internal fun ADGlassesDeviceCenterScreen(
             border = BorderStroke(1.dp, ADColors.Outline),
         ) {
             Column(Modifier.padding(13.dp)) {
+                Text("DEVICE", style = MaterialTheme.typography.labelSmall, color = ADColors.InkSoft)
+                Spacer(Modifier.size(3.dp))
+                Text(
+                    identity,
+                    style = MaterialTheme.typography.titleLarge,
+                    color = ADColors.Ink,
+                    fontWeight = FontWeight.SemiBold,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                )
+                Spacer(Modifier.size(4.dp))
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Box(
-                        modifier = Modifier.size(58.dp).background(ADColors.SurfaceSubtle, RoundedCornerShape(14.dp)),
-                        contentAlignment = Alignment.Center,
-                    ) {
-                        ADGlyphIcon(
-                            ADGlyph.DEVICE,
-                            ADColors.Ink,
-                            Modifier.size(42.dp),
-                            accent = ADColors.Red,
-                        )
-                    }
-                    Column(Modifier.padding(start = 10.dp).weight(1f)) {
-                        Text(identity, style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.SemiBold, maxLines = 1, overflow = TextOverflow.Ellipsis)
-                        Row(verticalAlignment = Alignment.CenterVertically) {
-                            Box(
-                                Modifier.size(6.dp).background(
-                                    when {
-                                        presentation.connected -> ADColors.Success
-                                        presentation.connecting -> ADColors.Warning
-                                        else -> ADColors.Red
-                                    },
-                                    CircleShape,
-                                ),
-                            )
-                            Text(connectionDetail, modifier = Modifier.padding(start = 6.dp), style = MaterialTheme.typography.bodySmall, color = ADColors.Muted)
-                        }
-                    }
+                        Modifier.size(6.dp).background(
+                            when {
+                                presentation.connected -> ADColors.Success
+                                presentation.connecting -> ADColors.Warning
+                                else -> ADColors.Red
+                            },
+                            CircleShape,
+                        ),
+                    )
+                    Text(
+                        connectionDetail,
+                        modifier = Modifier.padding(start = 6.dp),
+                        style = MaterialTheme.typography.bodySmall,
+                        color = ADColors.Muted,
+                    )
                 }
 
                 if (presentation.connected) {
