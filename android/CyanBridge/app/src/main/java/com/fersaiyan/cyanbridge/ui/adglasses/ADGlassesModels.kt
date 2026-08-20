@@ -9,7 +9,6 @@ enum class ADTab(val label: String) {
 
 enum class ADRoute {
     MAIN,
-    DEVICE_CENTER,
     SYNC,
     SETTINGS,
     AI_RELAY,

@@ -13,10 +13,10 @@ import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 
-/** Compact detail-page frame. The top bar owns the page title; content owns any optional hero. */
+/** Compact detail-page frame. The top bar can carry only navigation when a title is unnecessary. */
 @Composable
 internal fun ADPageLayout(
-    title: String,
+    title: String? = null,
     onBack: () -> Unit,
     content: @Composable ColumnScope.() -> Unit,
 ) {

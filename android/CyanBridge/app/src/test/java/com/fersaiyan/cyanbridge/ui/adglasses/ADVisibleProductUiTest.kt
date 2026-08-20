@@ -18,12 +18,13 @@ class ADVisibleProductUiTest {
             "ADNativeAiScreen(",
             "ADExpressiveLibraryHome(",
             "ADNativeSettingsHubScreen(",
-            "ADGlassesDeviceCenterScreen(",
             "ADNativeCapturesScreen(",
             "ADNativeRecordingsScreen(",
             "ADNativeNotesScreen(",
         ).forEach { screen -> assertTrue("Compose shell must render $screen", app.contains(screen)) }
+        assertFalse(app.contains("ADGlassesDeviceCenterScreen("))
         assertFalse(app.contains("ADNativeCapabilityDetailScreen("))
+        assertFalse(appFile("src/main/java/com/fersaiyan/cyanbridge/ui/adglasses/ADGlassesDeviceCenterScreen.kt").exists())
     }
 
     @Test
@@ -68,20 +69,28 @@ class ADVisibleProductUiTest {
     }
 
     @Test
-    fun homeUsesLensFeaturesRestoredDeviceAndAudioHierarchy() {
+    fun homeStartsWithLensThenFeaturesAndHeroOpensSettings() {
         val home = appFile("src/main/java/com/fersaiyan/cyanbridge/ui/adglasses/ADHomeSurface.kt").readText()
+        val app = appFile("src/main/java/com/fersaiyan/cyanbridge/ui/adglasses/ADGlassesApp.kt").readText()
         assertTrue(home.contains("onClick = host.onVoiceQuestion"))
         assertTrue(home.contains("onPhoto = host.onCapturePhoto"))
         assertTrue(home.contains("onVideo = host.onToggleVideo"))
-        assertTrue(home.contains("ADLensCard(onClick = host.onImageQuestion)"))
+        assertTrue(home.contains("item { ADLensCard(onClick = host.onImageQuestion) }"))
+        assertTrue(home.contains("ADSectionTitle(\"Features\")"))
+        assertTrue(home.indexOf("ADLensCard(onClick = host.onImageQuestion)") < home.indexOf("ADSectionTitle(\"Features\")"))
+        assertTrue(home.indexOf("ADSectionTitle(\"Features\")") < home.indexOf("ADLargeGlassesHero("))
         assertTrue(home.contains("toggleCapability(AssistantCapability.TRANSLATOR)"))
         assertTrue(home.contains("toggleCapability(AssistantCapability.MEETING_NOTES)"))
         listOf("Ask AI", "Photo", "Video", "Translate", "Record", "Soundbites", "AUDIO", "Features")
             .forEach { label -> assertTrue(home.contains("\"$label\"")) }
 
-        assertTrue(home.contains("ADTopBar(showBrand = false"))
+        assertFalse(home.contains("ADTopBar("))
+        assertFalse(home.contains("showSettings = true"))
         assertFalse(home.contains("Text(\"AD GLASSES\""))
         assertTrue(home.contains("ADLargeGlassesHero("))
+        assertTrue(home.contains("onOpenSettings = onOpenSettings"))
+        assertTrue(home.contains("onClick = onOpenSettings"))
+        assertTrue(app.contains("onOpenSettings = { navigateTo(ADRoute.SETTINGS) }"))
         assertTrue(home.contains("R.drawable.ad_glasses_hero_v4"))
         assertTrue(home.contains(".height(184.dp)"))
         assertTrue(home.contains("ADLensShutterArtwork("))
@@ -100,6 +109,19 @@ class ADVisibleProductUiTest {
         assertFalse(home.contains("R.drawable.ad_codex_video"))
         assertFalse(home.contains("R.drawable.ad_codex_language"))
         assertFalse(home.contains("R.drawable.ad_codex_audio"))
+    }
+
+    @Test
+    fun settingsOwnsFirmwareAndDropsRedundantHeaderText() {
+        val settings = appFile("src/main/java/com/fersaiyan/cyanbridge/ui/adglasses/ADNativeSettingsHubScreen.kt").readText()
+        val app = appFile("src/main/java/com/fersaiyan/cyanbridge/ui/adglasses/ADGlassesApp.kt").readText()
+        assertTrue(settings.contains("ADPageLayout(onBack = onBack)"))
+        assertFalse(settings.contains("ADScreenIntro(eyebrow = \"SYSTEM\", title = \"Settings\")"))
+        assertTrue(settings.contains("ADSectionTitle(\"System\")"))
+        assertTrue(settings.contains("glyph = ADGlyph.FIRMWARE"))
+        assertTrue(settings.contains("title = \"Firmware\""))
+        assertTrue(app.contains("onFirmware = { navigateTo(ADRoute.FIRMWARE) }"))
+        assertFalse(settings.contains("onDevice:"))
     }
 
     @Test
@@ -124,6 +146,7 @@ class ADVisibleProductUiTest {
         assertTrue(glyphs.contains("selectedMatrixPattern"))
         assertTrue(settings.contains("ADGlyph.PRIVACY"))
         assertTrue(settings.contains("ADGlyph.PERMISSIONS"))
+        assertTrue(settings.contains("ADGlyph.FIRMWARE"))
         assertTrue(productSettings.contains("ADGlyph.PERMISSIONS"))
         assertTrue(firmware.contains("ADGlyph.FIRMWARE"))
         assertTrue(notes.contains("ADGlyph.PROMPT"))
