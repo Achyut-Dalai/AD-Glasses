@@ -90,102 +90,90 @@ internal fun ADHomeSurface(
         Toast.makeText(context, result.spokenText, Toast.LENGTH_SHORT).show()
     }
 
-    fun startLiveTranslation() {
-        if (capabilityExecutor.isActive(AssistantCapability.TRANSLATOR)) return
-        val result = capabilityExecutor.execute(
-            AssistantCapabilityCommand(AssistantCapability.TRANSLATOR, AssistantCapabilityAction.START),
-        )
-        Toast.makeText(context, result.spokenText, Toast.LENGTH_SHORT).show()
-    }
+    LazyColumn(
+        modifier = Modifier.fillMaxSize(),
+        contentPadding = androidx.compose.foundation.layout.PaddingValues(12.dp, 3.dp, 12.dp, 18.dp),
+        verticalArrangement = Arrangement.spacedBy(12.dp),
+    ) {
+        item { ADLensCard(onClick = host.onImageQuestion) }
 
-    Column(Modifier.fillMaxSize()) {
-        ADTopBar(showBrand = false, showSettings = true, onSettings = onOpenSettings)
-        LazyColumn(
-            modifier = Modifier.fillMaxSize(),
-            contentPadding = androidx.compose.foundation.layout.PaddingValues(12.dp, 3.dp, 12.dp, 18.dp),
-            verticalArrangement = Arrangement.spacedBy(12.dp),
-        ) {
-            item { ADLensCard(onClick = host.onImageQuestion) }
+        item {
+            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                ADSectionTitle("Features")
+                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    ADCameraSkillCard(
+                        modifier = Modifier.weight(1f),
+                        onPhoto = host.onCapturePhoto,
+                        onVideo = host.onToggleVideo,
+                    )
+                    ADAskSkillCard(
+                        modifier = Modifier.weight(1f),
+                        onClick = host.onVoiceQuestion,
+                    )
+                }
+            }
+        }
 
+        item {
+            ADLargeGlassesHero(
+                state = state,
+                device = device,
+                onOpenSettings = onOpenSettings,
+                onConnect = when {
+                    device.connected -> host.onDisconnect
+                    device.shouldOpenSetup -> host.onOpenDeviceSetup
+                    else -> host.onReconnect
+                },
+            )
+        }
+
+        if (state.meeting.isRecording || state.transfer.isVisible) {
             item {
-                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                    ADSectionTitle("CAPTURE")
-                    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                        ADCameraSkillCard(
+                Row(horizontalArrangement = Arrangement.spacedBy(7.dp)) {
+                    if (state.meeting.isRecording) {
+                        ADLiveTile(
+                            title = "RECORDING",
+                            detail = state.meeting.bannerLabel.ifBlank { state.meeting.sourceLabel },
+                            icon = Icons.Outlined.GraphicEq,
                             modifier = Modifier.weight(1f),
-                            onPhoto = host.onCapturePhoto,
-                            onVideo = host.onToggleVideo,
+                            onClick = host.onStopRecording,
                         )
-                        ADAskSkillCard(
+                    }
+                    if (state.transfer.isVisible) {
+                        ADLiveTile(
+                            title = "SYNCING",
+                            detail = state.transfer.detail,
+                            glyph = ADGlyph.SYNC,
                             modifier = Modifier.weight(1f),
-                            onClick = host.onVoiceQuestion,
+                            onClick = onOpenSync,
                         )
                     }
                 }
             }
+        }
 
-            item {
-                ADLargeGlassesHero(
-                    state = state,
-                    device = device,
-                    translationActive = translateActive,
-                    onLiveTranslation = ::startLiveTranslation,
-                    onConnect = when {
-                        device.connected -> host.onDisconnect
-                        device.shouldOpenSetup -> host.onOpenDeviceSetup
-                        else -> host.onReconnect
-                    },
-                )
-            }
-
-            if (state.meeting.isRecording || state.transfer.isVisible) {
-                item {
-                    Row(horizontalArrangement = Arrangement.spacedBy(7.dp)) {
-                        if (state.meeting.isRecording) {
-                            ADLiveTile(
-                                title = "RECORDING",
-                                detail = state.meeting.bannerLabel.ifBlank { state.meeting.sourceLabel },
-                                icon = Icons.Outlined.GraphicEq,
-                                modifier = Modifier.weight(1f),
-                                onClick = host.onStopRecording,
-                            )
-                        }
-                        if (state.transfer.isVisible) {
-                            ADLiveTile(
-                                title = "SYNCING",
-                                detail = state.transfer.detail,
-                                glyph = ADGlyph.SYNC,
-                                modifier = Modifier.weight(1f),
-                                onClick = onOpenSync,
-                            )
-                        }
-                    }
-                }
-            }
-
-            item {
-                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                    ADSectionTitle("AUDIO")
-                    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                        ADAudioActionPill(
-                            title = "Translate",
-                            active = translateActive,
-                            modifier = Modifier.weight(1f),
-                            onClick = { toggleCapability(AssistantCapability.TRANSLATOR) },
-                        )
-                        ADAudioActionPill(
-                            title = "Record",
-                            active = state.meeting.isRecording,
-                            modifier = Modifier.weight(1f),
-                            onClick = if (state.meeting.isRecording) host.onStopRecording else host.onStartRecording,
-                        )
-                        ADAudioActionPill(
-                            title = "Soundbites",
-                            active = soundbitesActive,
-                            modifier = Modifier.weight(1f),
-                            onClick = { toggleCapability(AssistantCapability.MEETING_NOTES) },
-                        )
-                    }
+        item {
+            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                ADSectionTitle("AUDIO")
+                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                    ADAudioActionPill(
+                        title = "Translate",
+                        active = translateActive,
+                        modifier = Modifier.weight(1f),
+                        onClick = { toggleCapability(AssistantCapability.TRANSLATOR) },
+                    )
+                    ADAudioActionPill(
+                        title = "Record",
+                        active = state.meeting.isRecording,
+                        modifier = Modifier.weight(1f),
+                        onClick = if (state.meeting.isRecording) host.onStopRecording else host.onStartRecording,
+                    )
+                    ADAudioActionPill(
+                        title = "Soundbites",
+                        active = soundbitesActive,
+                        modifier = Modifier.weight(1f),
+                        onClick = { toggleCapability(AssistantCapability.MEETING_NOTES) },
+                    )
                 }
             }
         }
@@ -198,36 +186,36 @@ private fun ADLensCard(onClick: () -> Unit) {
         onClick = onClick,
         modifier = Modifier
             .fillMaxWidth()
-            .heightIn(min = 122.dp)
+            .heightIn(min = 104.dp)
             .semantics { contentDescription = "Lens. See, capture, ask." },
-        shape = RoundedCornerShape(18.dp),
+        shape = RoundedCornerShape(16.dp),
         color = ADColors.Surface,
         contentColor = ADColors.Ink,
         border = BorderStroke(1.dp, ADColors.Outline),
     ) {
         Row(
-            modifier = Modifier.padding(10.dp),
+            modifier = Modifier.padding(8.dp),
             verticalAlignment = Alignment.CenterVertically,
         ) {
-            Column(Modifier.weight(1.06f)) {
+            Column(Modifier.weight(1.08f)) {
                 Text(
                     "LENS",
-                    style = MaterialTheme.typography.titleLarge,
+                    style = MaterialTheme.typography.titleMedium,
                     color = ADColors.Ink,
                     fontWeight = FontWeight.SemiBold,
                 )
-                Spacer(Modifier.height(5.dp))
+                Spacer(Modifier.height(3.dp))
                 Text(
                     "SEE · CAPTURE · ASK",
                     style = MaterialTheme.typography.labelSmall.copy(
                         fontFamily = ADTechFontFamily,
-                        letterSpacing = 0.75.sp,
+                        letterSpacing = 0.65.sp,
                     ),
                     color = ADColors.Muted,
                 )
             }
             Spacer(Modifier.width(8.dp))
-            ADLensShutterArtwork(Modifier.weight(0.94f).height(96.dp))
+            ADLensShutterArtwork(Modifier.weight(0.92f).height(78.dp))
         }
     }
 }
@@ -245,11 +233,11 @@ private fun ADLensShutterArtwork(modifier: Modifier = Modifier) {
     )
     Surface(
         modifier = modifier,
-        shape = RoundedCornerShape(15.dp),
+        shape = RoundedCornerShape(13.dp),
         color = ADColors.SurfaceSubtle,
         border = BorderStroke(1.dp, ADColors.Outline),
     ) {
-        Canvas(Modifier.fillMaxSize().padding(14.dp)) {
+        Canvas(Modifier.fillMaxSize().padding(12.dp)) {
             val stroke = 2.dp.toPx()
             val arm = size.minDimension * 0.22f
             val inset = stroke
@@ -402,17 +390,13 @@ private fun ADAskArtwork(modifier: Modifier = Modifier) {
 private fun ADLargeGlassesHero(
     state: GlassesDashboardUiState,
     device: ADDevicePresentation,
-    translationActive: Boolean,
-    onLiveTranslation: () -> Unit,
+    onOpenSettings: () -> Unit,
     onConnect: () -> Unit,
 ) {
     Surface(
-        onClick = onLiveTranslation,
-        modifier = Modifier.fillMaxWidth().semantics {
-            contentDescription = "Live translation"
-            stateDescription = if (translationActive) "Active" else "Inactive"
-        },
-        shape = RoundedCornerShape(19.dp),
+        onClick = onOpenSettings,
+        modifier = Modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(18.dp),
         color = Color.Black,
         contentColor = ADColors.Ink,
         border = BorderStroke(1.dp, ADColors.Outline),
@@ -421,21 +405,21 @@ private fun ADLargeGlassesHero(
             Box(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .height(184.dp)
+                    .height(160.dp)
                     .background(Color.Black),
                 contentAlignment = Alignment.Center,
             ) {
                 Image(
                     painter = painterResource(R.drawable.ad_glasses_hero_v4),
                     contentDescription = "Glasses",
-                    modifier = Modifier.fillMaxSize().padding(horizontal = 12.dp, vertical = 8.dp),
+                    modifier = Modifier.fillMaxSize().padding(horizontal = 10.dp, vertical = 6.dp),
                     contentScale = ContentScale.Fit,
                 )
 
                 if (!device.connected && !device.connecting) {
                     Surface(
                         onClick = onConnect,
-                        modifier = Modifier.align(Alignment.TopEnd).padding(10.dp),
+                        modifier = Modifier.align(Alignment.TopEnd).padding(9.dp),
                         shape = RoundedCornerShape(9.dp),
                         color = ADColors.Ink,
                         contentColor = Color.Black,
@@ -454,21 +438,29 @@ private fun ADLargeGlassesHero(
             }
 
             Row(
-                modifier = Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 10.dp),
+                modifier = Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 8.dp),
                 verticalAlignment = Alignment.CenterVertically,
             ) {
-                Box(
-                    Modifier.size(6.dp).background(
-                        if (translationActive) ADColors.Success else ADColors.Red,
-                        CircleShape,
-                    ),
-                )
+                if (device.connecting) {
+                    CircularProgressIndicator(
+                        modifier = Modifier.size(12.dp),
+                        strokeWidth = 1.4.dp,
+                        color = ADColors.Ink,
+                    )
+                } else {
+                    Box(
+                        Modifier.size(6.dp).background(
+                            if (device.connected) ADColors.Success else ADColors.Red,
+                            CircleShape,
+                        ),
+                    )
+                }
                 Text(
-                    "LIVE TRANSLATION",
+                    device.statusLabel.uppercase(),
                     modifier = Modifier.padding(start = 7.dp).weight(1f),
-                    style = MaterialTheme.typography.labelLarge.copy(
+                    style = MaterialTheme.typography.labelMedium.copy(
                         fontFamily = ADTechFontFamily,
-                        letterSpacing = 0.55.sp,
+                        letterSpacing = 0.45.sp,
                     ),
                     color = ADColors.Ink,
                     maxLines = 1,
@@ -512,9 +504,9 @@ private fun ADHomeMiniPill(
         onClick = onClick,
         modifier = modifier.heightIn(min = 36.dp),
         shape = RoundedCornerShape(10.dp),
-        color = ADColors.SurfaceSubtle,
-        contentColor = ADColors.Ink,
-        border = BorderStroke(1.dp, ADColors.Outline),
+        color = Color.Black.copy(alpha = 0.82f),
+        contentColor = Color.White.copy(alpha = 0.94f),
+        border = BorderStroke(1.dp, Color.White.copy(alpha = 0.16f)),
     ) {
         Box(Modifier.padding(horizontal = 7.dp, vertical = 7.dp), contentAlignment = Alignment.Center) {
             Text(
