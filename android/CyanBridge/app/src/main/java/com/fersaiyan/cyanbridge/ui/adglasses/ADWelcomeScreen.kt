@@ -44,7 +44,7 @@ fun ADWelcomeScreen(
             modifier = Modifier.fillMaxWidth().padding(top = 10.dp),
             verticalAlignment = Alignment.CenterVertically,
         ) {
-            ADGlassesMark(Modifier.size(width = 52.dp, height = 28.dp))
+            ADGlassesMark(Modifier.size(32.dp))
             Column(Modifier.padding(start = 8.dp)) {
                 Text("AD GLASSES", style = MaterialTheme.typography.labelSmall, color = ADColors.Muted)
                 Text("AI eyewear", style = MaterialTheme.typography.titleSmall)
@@ -79,7 +79,7 @@ fun ADWelcomeScreen(
                 ADGlyphIcon(
                     glyph = ADGlyph.DEVICE,
                     tint = ADColors.Ink,
-                    modifier = Modifier.size(width = 250.dp, height = 105.dp),
+                    modifier = Modifier.size(112.dp),
                     accent = ADColors.Red,
                 )
                 Row(
