@@ -17,7 +17,15 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicTextField
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.outlined.Add
+import androidx.compose.material.icons.outlined.AutoAwesome
+import androidx.compose.material.icons.outlined.CheckCircle
+import androidx.compose.material.icons.outlined.Cloud
+import androidx.compose.material.icons.outlined.Computer
+import androidx.compose.material.icons.outlined.Storage
 import androidx.compose.material3.HorizontalDivider
+import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Switch
@@ -33,6 +41,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.SolidColor
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.PasswordVisualTransformation
@@ -63,7 +72,7 @@ internal fun ADNativeRelaySettingsScreen(onBack: () -> Unit) {
         )
 
         ADAiConfigSummary(
-            glyph = ADMatrixGlyph.RELAY,
+            icon = Icons.Outlined.Cloud,
             label = "RELAY",
             title = if (relayUrl.isBlank()) "Not configured" else "Endpoint ready",
             detail = if (relayUrl.isBlank()) "Add a server address below" else relayUrl,
@@ -174,7 +183,7 @@ internal fun ADNativeLocalAiSettingsScreen(onBack: () -> Unit) {
         )
 
         ADAiConfigSummary(
-            glyph = ADMatrixGlyph.LOCAL,
+            icon = Icons.Outlined.Computer,
             label = "LOCAL ROUTE",
             title = when {
                 selectedId != null -> "On-device model selected"
@@ -204,7 +213,7 @@ internal fun ADNativeLocalAiSettingsScreen(onBack: () -> Unit) {
                                 modifier = Modifier.size(34.dp).background(ADColors.SurfaceSubtle, RoundedCornerShape(10.dp)),
                                 contentAlignment = Alignment.Center,
                             ) {
-                                ADMatrixGlyphIcon(ADMatrixGlyph.LOCAL, ADColors.Muted, Modifier.size(19.dp))
+                                Icon(Icons.Outlined.Computer, contentDescription = null, tint = ADColors.Muted, modifier = Modifier.size(19.dp))
                             }
                             Column(Modifier.padding(start = 9.dp).weight(1f)) {
                                 Text("No model installed", style = MaterialTheme.typography.titleMedium, color = ADColors.Ink)
@@ -237,7 +246,7 @@ internal fun ADNativeLocalAiSettingsScreen(onBack: () -> Unit) {
                             verticalAlignment = Alignment.CenterVertically,
                             horizontalArrangement = Arrangement.Center,
                         ) {
-                            ADMatrixGlyphIcon(ADMatrixGlyph.ADD, ADColors.Ink, Modifier.size(16.dp))
+                            Icon(Icons.Outlined.Add, contentDescription = null, tint = ADColors.Ink, modifier = Modifier.size(17.dp))
                             Spacer(Modifier.size(6.dp))
                             Text("Import model file", style = MaterialTheme.typography.labelLarge, color = ADColors.Ink)
                         }
@@ -263,11 +272,11 @@ internal fun ADNativeLocalAiSettingsScreen(onBack: () -> Unit) {
                             modifier = Modifier.size(34.dp).background(ADColors.SurfaceSubtle, RoundedCornerShape(10.dp)),
                             contentAlignment = Alignment.Center,
                         ) {
-                            ADMatrixGlyphIcon(
-                                ADMatrixGlyph.RELAY,
-                                ADColors.Ink,
-                                Modifier.size(19.dp),
-                                accent = if (remoteEnabled) ADColors.Red else null,
+                            Icon(
+                                Icons.Outlined.Cloud,
+                                contentDescription = null,
+                                tint = ADColors.Ink,
+                                modifier = Modifier.size(19.dp),
                             )
                         }
                         Column(Modifier.padding(start = 9.dp).weight(1f)) {
@@ -320,7 +329,7 @@ internal fun ADNativeLocalAiSettingsScreen(onBack: () -> Unit) {
 
 @Composable
 private fun ADAiConfigSummary(
-    glyph: ADMatrixGlyph,
+    icon: ImageVector,
     label: String,
     title: String,
     detail: String,
@@ -337,12 +346,7 @@ private fun ADAiConfigSummary(
                 modifier = Modifier.size(44.dp).background(ADColors.SurfaceSubtle, RoundedCornerShape(12.dp)),
                 contentAlignment = Alignment.Center,
             ) {
-                ADMatrixGlyphIcon(
-                    glyph,
-                    ADColors.Ink,
-                    Modifier.size(25.dp),
-                    accent = if (active) ADColors.Red else null,
-                )
+                Icon(icon, contentDescription = null, tint = ADColors.Ink, modifier = Modifier.size(25.dp))
             }
             Column(Modifier.padding(start = 10.dp).weight(1f)) {
                 Text(label, style = ADMetaTextStyle, color = ADColors.Muted)
@@ -371,14 +375,9 @@ private fun ADAiBackendChoice(
     ) {
         Column(Modifier.padding(10.dp), verticalArrangement = Arrangement.SpaceBetween) {
             Row(verticalAlignment = Alignment.CenterVertically) {
-                ADMatrixGlyphIcon(
-                    ADMatrixGlyph.AI,
-                    ADColors.Ink,
-                    Modifier.size(19.dp),
-                    accent = if (selected) ADColors.Red else null,
-                )
+                Icon(Icons.Outlined.AutoAwesome, contentDescription = null, tint = ADColors.Ink, modifier = Modifier.size(19.dp))
                 Spacer(Modifier.weight(1f))
-                if (selected) ADMatrixGlyphIcon(ADMatrixGlyph.CHECK, ADColors.Success, Modifier.size(15.dp))
+                if (selected) Icon(Icons.Outlined.CheckCircle, contentDescription = null, tint = ADColors.Success, modifier = Modifier.size(16.dp))
             }
             Column {
                 Text(title, style = MaterialTheme.typography.labelLarge, color = ADColors.Ink, fontWeight = FontWeight.SemiBold)
@@ -398,14 +397,14 @@ private fun ADInstalledModelRow(model: InstalledLocalModel, selected: Boolean, o
             modifier = Modifier.size(32.dp).background(ADColors.SurfaceSubtle, RoundedCornerShape(9.dp)),
             contentAlignment = Alignment.Center,
         ) {
-            ADMatrixGlyphIcon(ADMatrixGlyph.LOCAL, ADColors.Ink, Modifier.size(18.dp))
+            Icon(Icons.Outlined.Storage, contentDescription = null, tint = ADColors.Ink, modifier = Modifier.size(18.dp))
         }
         Column(Modifier.padding(start = 8.dp).weight(1f)) {
             Text(model.displayName, style = MaterialTheme.typography.titleMedium, color = ADColors.Ink, fontWeight = FontWeight.Medium)
             Text(formatAiBytes(model.sizeBytes), style = MaterialTheme.typography.bodySmall, color = ADColors.Muted)
         }
         if (selected) {
-            ADMatrixGlyphIcon(ADMatrixGlyph.CHECK, ADColors.Success, Modifier.size(16.dp))
+            Icon(Icons.Outlined.CheckCircle, contentDescription = null, tint = ADColors.Success, modifier = Modifier.size(16.dp))
         }
     }
 }

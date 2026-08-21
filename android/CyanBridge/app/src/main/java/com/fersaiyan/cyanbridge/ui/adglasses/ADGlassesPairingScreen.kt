@@ -19,14 +19,23 @@ import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.outlined.Bluetooth
+import androidx.compose.material.icons.outlined.CheckCircle
+import androidx.compose.material.icons.outlined.Close
+import androidx.compose.material.icons.outlined.Info
+import androidx.compose.material.icons.outlined.Search
+import androidx.compose.material.icons.rounded.ChevronRight
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.HorizontalDivider
+import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -96,7 +105,7 @@ fun ADGlassesPairingScreen(
                                 modifier = Modifier.fillMaxWidth().heightIn(min = 44.dp),
                                 shape = RoundedCornerShape(11.dp),
                                 color = if (isScanning) ADColors.SurfaceSubtle else ADColors.Ink,
-                                contentColor = if (isScanning) ADColors.Ink else androidx.compose.ui.graphics.Color.Black,
+                                contentColor = if (isScanning) ADColors.Ink else Color.Black,
                                 border = if (isScanning) BorderStroke(1.dp, ADColors.Outline) else null,
                             ) {
                                 Row(
@@ -104,10 +113,11 @@ fun ADGlassesPairingScreen(
                                     horizontalArrangement = Arrangement.Center,
                                     verticalAlignment = Alignment.CenterVertically,
                                 ) {
-                                    ADMatrixGlyphIcon(
-                                        if (isScanning) ADMatrixGlyph.CLOSE else ADMatrixGlyph.SEARCH,
-                                        if (isScanning) ADColors.Ink else androidx.compose.ui.graphics.Color.Black,
-                                        Modifier.size(16.dp),
+                                    Icon(
+                                        imageVector = if (isScanning) Icons.Outlined.Close else Icons.Outlined.Search,
+                                        contentDescription = null,
+                                        tint = if (isScanning) ADColors.Ink else Color.Black,
+                                        modifier = Modifier.size(17.dp),
                                     )
                                     Spacer(Modifier.size(6.dp))
                                     Text(
@@ -150,7 +160,7 @@ fun ADGlassesPairingScreen(
                             border = BorderStroke(1.dp, ADColors.Outline),
                         ) {
                             Row(Modifier.padding(11.dp), verticalAlignment = Alignment.CenterVertically) {
-                                ADMatrixGlyphIcon(ADMatrixGlyph.INFO, ADColors.Muted, Modifier.size(18.dp))
+                                Icon(Icons.Outlined.Info, contentDescription = null, tint = ADColors.Muted, modifier = Modifier.size(18.dp))
                                 Column(Modifier.padding(start = 9.dp)) {
                                     Text("Nothing nearby yet", style = MaterialTheme.typography.titleMedium, color = ADColors.Ink)
                                     Text("Wake the glasses and try scanning again.", style = MaterialTheme.typography.bodySmall, color = ADColors.Muted)
@@ -174,11 +184,11 @@ private fun ADScanVisual(isScanning: Boolean, found: Boolean) {
             border = BorderStroke(1.dp, ADColors.Outline),
         ) {
             Box(contentAlignment = Alignment.Center) {
-                ADMatrixGlyphIcon(
-                    ADMatrixGlyph.LENS,
-                    ADColors.Ink,
-                    Modifier.size(36.dp),
-                    accent = if (found || isScanning) ADColors.Red else null,
+                Icon(
+                    imageVector = Icons.Outlined.Bluetooth,
+                    contentDescription = null,
+                    tint = ADColors.Ink,
+                    modifier = Modifier.size(34.dp),
                 )
             }
         }
@@ -194,11 +204,11 @@ private fun ADScanVisual(isScanning: Boolean, found: Boolean) {
             Box(
                 Modifier
                     .align(Alignment.BottomEnd)
-                    .size(18.dp)
+                    .size(20.dp)
                     .background(ADColors.SuccessSoft, CircleShape),
                 contentAlignment = Alignment.Center,
             ) {
-                ADMatrixGlyphIcon(ADMatrixGlyph.CHECK, ADColors.Success, Modifier.size(11.dp))
+                Icon(Icons.Outlined.CheckCircle, contentDescription = null, tint = ADColors.Success, modifier = Modifier.size(14.dp))
             }
         }
     }
@@ -215,7 +225,7 @@ private fun ADPairingDeviceRow(device: ScannedDevice, onClick: () -> Unit) {
             modifier = Modifier.size(34.dp).background(ADColors.SurfaceSubtle, RoundedCornerShape(10.dp)),
             contentAlignment = Alignment.Center,
         ) {
-            ADMatrixGlyphIcon(ADMatrixGlyph.RELAY, ADColors.Ink, Modifier.size(19.dp))
+            Icon(Icons.Outlined.Bluetooth, contentDescription = null, tint = ADColors.Ink, modifier = Modifier.size(19.dp))
         }
         Column(Modifier.padding(start = 9.dp).weight(1f)) {
             Text(
@@ -233,7 +243,7 @@ private fun ADPairingDeviceRow(device: ScannedDevice, onClick: () -> Unit) {
                 maxLines = 1,
             )
         }
-        ADMatrixGlyphIcon(ADMatrixGlyph.NEXT, ADColors.Muted, Modifier.size(16.dp))
+        Icon(Icons.Rounded.ChevronRight, contentDescription = null, tint = ADColors.Muted, modifier = Modifier.size(17.dp))
     }
 }
 

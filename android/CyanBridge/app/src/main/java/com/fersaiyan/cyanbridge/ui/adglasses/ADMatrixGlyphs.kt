@@ -9,23 +9,14 @@ import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
 
 /**
- * Static 7x7 dot-matrix icon family for AD Glasses product chrome.
+ * Small, deliberate 7x7 dot-matrix family.
  *
- * These glyphs deliberately do not animate. Motion belongs to real camera, audio and AI states;
- * navigation and settings icons should remain calm and immediately recognizable.
+ * Matrix glyphs are reserved for the AD settings language plus the signature Home/AI glyphs
+ * that will later carry real Lens/assistant state. General navigation, media, Bluetooth and
+ * Android concepts use conventional icons instead.
  */
 internal enum class ADMatrixGlyph(val pattern: List<String>, val accentCell: Pair<Int, Int>? = null) {
-    HOME(
-        listOf(
-            "0001000",
-            "0011100",
-            "0111110",
-            "1101011",
-            "1101011",
-            "1100011",
-            "1111111",
-        ),
-    ),
+    // Reserved signature glyphs for the future Home / AI interaction work.
     AI(
         listOf(
             "0001000",
@@ -37,50 +28,6 @@ internal enum class ADMatrixGlyph(val pattern: List<String>, val accentCell: Pai
             "0001000",
         ),
         3 to 3,
-    ),
-    LIBRARY(
-        listOf(
-            "1110111",
-            "1010101",
-            "1110111",
-            "0000000",
-            "1111111",
-            "1000001",
-            "1111111",
-        ),
-    ),
-    BACK(
-        listOf(
-            "0001000",
-            "0010000",
-            "0100000",
-            "1111110",
-            "0100000",
-            "0010000",
-            "0001000",
-        ),
-    ),
-    NEXT(
-        listOf(
-            "0010000",
-            "0001000",
-            "0000100",
-            "1111110",
-            "0000100",
-            "0001000",
-            "0010000",
-        ),
-    ),
-    SETTINGS(
-        listOf(
-            "0101010",
-            "0011100",
-            "1111111",
-            "0110110",
-            "1111111",
-            "0011100",
-            "0101010",
-        ),
     ),
     LENS(
         listOf(
@@ -106,52 +53,8 @@ internal enum class ADMatrixGlyph(val pattern: List<String>, val accentCell: Pai
         ),
         6 to 3,
     ),
-    MIC(
-        listOf(
-            "0011100",
-            "0100010",
-            "0100010",
-            "0100010",
-            "0011100",
-            "0010000",
-            "0111110",
-        ),
-        0 to 3,
-    ),
-    WEB(
-        listOf(
-            "0011100",
-            "0101010",
-            "1010101",
-            "1111111",
-            "1010101",
-            "0101010",
-            "0011100",
-        ),
-    ),
-    SEARCH(
-        listOf(
-            "0011100",
-            "0100010",
-            "1000001",
-            "1000001",
-            "0100010",
-            "0011110",
-            "0000011",
-        ),
-    ),
-    SYNC(
-        listOf(
-            "0011100",
-            "0100010",
-            "1000000",
-            "1001110",
-            "0000001",
-            "0100010",
-            "0011100",
-        ),
-        3 to 3,
-    ),
+
+    // Settings / device-management glyphs that remain intentionally approved.
     PRIVACY(
         listOf(
             "0011100",
@@ -172,17 +75,6 @@ internal enum class ADMatrixGlyph(val pattern: List<String>, val accentCell: Pai
             "1011101",
             "1000001",
             "0111110",
-        ),
-    ),
-    LANGUAGE(
-        listOf(
-            "1000001",
-            "0100010",
-            "0010100",
-            "1111111",
-            "0010100",
-            "0100010",
-            "1000001",
         ),
     ),
     PERMISSIONS(
@@ -219,18 +111,6 @@ internal enum class ADMatrixGlyph(val pattern: List<String>, val accentCell: Pai
             "0001000",
         ),
     ),
-    LOCAL(
-        listOf(
-            "1111111",
-            "1000001",
-            "1011101",
-            "1010101",
-            "1011101",
-            "1000001",
-            "1111111",
-        ),
-        3 to 3,
-    ),
     RELAY(
         listOf(
             "0011100",
@@ -255,18 +135,6 @@ internal enum class ADMatrixGlyph(val pattern: List<String>, val accentCell: Pai
         ),
         3 to 3,
     ),
-    TIMELINE(
-        listOf(
-            "0010000",
-            "0011100",
-            "0010000",
-            "0011110",
-            "0010000",
-            "0011100",
-            "0010000",
-        ),
-        3 to 3,
-    ),
     DIARY(
         listOf(
             "1111110",
@@ -278,41 +146,16 @@ internal enum class ADMatrixGlyph(val pattern: List<String>, val accentCell: Pai
             "1111110",
         ),
     ),
-    PHOTO(
+    LIBRARY(
         listOf(
-            "0000000",
-            "0011100",
-            "0111110",
-            "1101011",
-            "1101011",
-            "0111110",
-            "0000000",
-        ),
-        4 to 3,
-    ),
-    VIDEO(
-        listOf(
-            "0000000",
-            "1111000",
-            "1001100",
-            "1011110",
-            "1001100",
-            "1111000",
-            "0000000",
-        ),
-        3 to 3,
-    ),
-    AUDIO(
-        listOf(
-            "0010000",
+            "1110111",
             "1010101",
-            "1010101",
+            "1110111",
+            "0000000",
             "1111111",
-            "1010101",
-            "1010101",
-            "0010000",
+            "1000001",
+            "1111111",
         ),
-        3 to 3,
     ),
     CHECK(
         listOf(
@@ -335,29 +178,6 @@ internal enum class ADMatrixGlyph(val pattern: List<String>, val accentCell: Pai
             "0100010",
             "1000001",
         ),
-    ),
-    ADD(
-        listOf(
-            "0001000",
-            "0001000",
-            "0001000",
-            "1111111",
-            "0001000",
-            "0001000",
-            "0001000",
-        ),
-    ),
-    SEND(
-        listOf(
-            "1000000",
-            "1100000",
-            "1010000",
-            "1001000",
-            "1010000",
-            "1100000",
-            "1000000",
-        ),
-        3 to 3,
     ),
 }
 

@@ -19,12 +19,23 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.outlined.Bluetooth
+import androidx.compose.material.icons.outlined.CameraAlt
+import androidx.compose.material.icons.outlined.CheckCircle
+import androidx.compose.material.icons.outlined.Mic
+import androidx.compose.material.icons.outlined.Notifications
+import androidx.compose.material.icons.outlined.Security
+import androidx.compose.material.icons.outlined.Translate
+import androidx.compose.material.icons.outlined.Wifi
+import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
@@ -66,7 +77,7 @@ internal fun ADLanguageScreen(onBack: () -> Unit) {
                     modifier = Modifier.size(44.dp).background(ADColors.SurfaceSubtle, RoundedCornerShape(12.dp)),
                     contentAlignment = Alignment.Center,
                 ) {
-                    ADMatrixGlyphIcon(ADMatrixGlyph.LANGUAGE, ADColors.Ink, Modifier.size(25.dp))
+                    Icon(Icons.Outlined.Translate, contentDescription = null, tint = ADColors.Ink, modifier = Modifier.size(24.dp))
                 }
                 Column(Modifier.padding(start = 10.dp).weight(1f)) {
                     Text("CURRENT", style = ADMetaTextStyle, color = ADColors.InkSoft)
@@ -78,7 +89,7 @@ internal fun ADLanguageScreen(onBack: () -> Unit) {
                         fontWeight = FontWeight.SemiBold,
                     )
                 }
-                ADMatrixGlyphIcon(ADMatrixGlyph.CHECK, ADColors.Success, Modifier.size(18.dp))
+                Icon(Icons.Outlined.CheckCircle, contentDescription = null, tint = ADColors.Success, modifier = Modifier.size(19.dp))
             }
         }
 
@@ -98,14 +109,14 @@ internal fun ADLanguageScreen(onBack: () -> Unit) {
 internal fun ADPermissionsScreen(onBack: () -> Unit) {
     val context = LocalContext.current
     val permissions = buildList {
-        add(ADPermissionItem("Microphone", ADMatrixGlyph.MIC, Manifest.permission.RECORD_AUDIO, "Voice and audio features"))
-        add(ADPermissionItem("Camera", ADMatrixGlyph.LENS, Manifest.permission.CAMERA, "Capture and visual questions"))
+        add(ADPermissionItem("Microphone", Icons.Outlined.Mic, Manifest.permission.RECORD_AUDIO, "Voice and audio features"))
+        add(ADPermissionItem("Camera", Icons.Outlined.CameraAlt, Manifest.permission.CAMERA, "Capture and visual questions"))
         if (Build.VERSION.SDK_INT >= 31) {
-            add(ADPermissionItem("Bluetooth", ADMatrixGlyph.RELAY, Manifest.permission.BLUETOOTH_CONNECT, "Glasses connection"))
+            add(ADPermissionItem("Bluetooth", Icons.Outlined.Bluetooth, Manifest.permission.BLUETOOTH_CONNECT, "Glasses connection"))
         }
         if (Build.VERSION.SDK_INT >= 33) {
-            add(ADPermissionItem("Nearby devices", ADMatrixGlyph.WEB, Manifest.permission.NEARBY_WIFI_DEVICES, "Local media transfer"))
-            add(ADPermissionItem("Notifications", ADMatrixGlyph.INFO, Manifest.permission.POST_NOTIFICATIONS, "Background activity status"))
+            add(ADPermissionItem("Nearby devices", Icons.Outlined.Wifi, Manifest.permission.NEARBY_WIFI_DEVICES, "Local media transfer"))
+            add(ADPermissionItem("Notifications", Icons.Outlined.Notifications, Manifest.permission.POST_NOTIFICATIONS, "Background activity status"))
         }
     }
     val grantedCount = permissions.count {
@@ -131,11 +142,11 @@ internal fun ADPermissionsScreen(onBack: () -> Unit) {
                     modifier = Modifier.size(44.dp).background(ADColors.SurfaceSubtle, RoundedCornerShape(12.dp)),
                     contentAlignment = Alignment.Center,
                 ) {
-                    ADMatrixGlyphIcon(
-                        ADMatrixGlyph.PERMISSIONS,
-                        ADColors.Ink,
-                        Modifier.size(25.dp),
-                        accent = if (!allReady) ADColors.Red else null,
+                    Icon(
+                        imageVector = Icons.Outlined.Security,
+                        contentDescription = null,
+                        tint = ADColors.Ink,
+                        modifier = Modifier.size(24.dp),
                     )
                 }
                 Column(Modifier.padding(start = 10.dp).weight(1f)) {
@@ -185,7 +196,7 @@ private fun ADPermissionTile(item: ADPermissionItem, granted: Boolean, modifier:
                     modifier = Modifier.size(32.dp).background(ADColors.SurfaceSubtle, RoundedCornerShape(9.dp)),
                     contentAlignment = Alignment.Center,
                 ) {
-                    ADMatrixGlyphIcon(item.glyph, ADColors.Ink, Modifier.size(18.dp))
+                    Icon(item.icon, contentDescription = null, tint = ADColors.Ink, modifier = Modifier.size(18.dp))
                 }
                 Spacer(Modifier.weight(1f))
                 Box(Modifier.size(6.dp).background(if (granted) ADColors.Success else ADColors.Red, CircleShape))
@@ -216,7 +227,7 @@ internal fun ADAboutScreen(onBack: () -> Unit) = ADMinimalAboutScreen(onBack)
 
 private data class ADPermissionItem(
     val title: String,
-    val glyph: ADMatrixGlyph,
+    val icon: ImageVector,
     val permission: String,
     val detail: String,
 )

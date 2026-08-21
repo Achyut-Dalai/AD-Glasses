@@ -13,6 +13,10 @@ import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.outlined.Android
+import androidx.compose.material.icons.rounded.ChevronRight
+import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
@@ -63,7 +67,7 @@ internal fun ADAdvancedScreen(onBack: () -> Unit) {
                     color = ADColors.SurfaceSubtle,
                 ) {
                     Box(contentAlignment = Alignment.Center) {
-                        ADMatrixGlyphIcon(ADMatrixGlyph.SETTINGS, ADColors.Ink, Modifier.size(19.dp))
+                        Icon(Icons.Outlined.Android, contentDescription = null, tint = ADColors.Ink, modifier = Modifier.size(19.dp))
                     }
                 }
                 Column(Modifier.padding(start = 10.dp).weight(1f)) {
@@ -74,7 +78,7 @@ internal fun ADAdvancedScreen(onBack: () -> Unit) {
                         color = ADColors.Muted,
                     )
                 }
-                ADMatrixGlyphIcon(ADMatrixGlyph.NEXT, ADColors.Muted, Modifier.size(16.dp))
+                Icon(Icons.Rounded.ChevronRight, contentDescription = null, tint = ADColors.Muted, modifier = Modifier.size(17.dp))
             }
         }
 

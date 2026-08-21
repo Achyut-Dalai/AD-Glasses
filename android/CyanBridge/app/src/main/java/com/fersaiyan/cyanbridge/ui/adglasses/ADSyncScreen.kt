@@ -14,7 +14,12 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.outlined.Bluetooth
+import androidx.compose.material.icons.outlined.PhotoLibrary
+import androidx.compose.material.icons.outlined.Wifi
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.Icon
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
@@ -22,6 +27,7 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
@@ -74,11 +80,11 @@ internal fun ADSyncScreen(
                         modifier = Modifier.size(46.dp).background(ADColors.SurfaceSubtle, RoundedCornerShape(13.dp)),
                         contentAlignment = Alignment.Center,
                     ) {
-                        ADMatrixGlyphIcon(
-                            glyph = ADMatrixGlyph.SYNC,
+                        Icon(
+                            imageVector = Icons.Outlined.Bluetooth,
+                            contentDescription = null,
                             tint = ADColors.Ink,
                             modifier = Modifier.size(27.dp),
-                            accent = if (transfer.isVisible) ADColors.Red else null,
                         )
                     }
                     Column(Modifier.padding(start = 11.dp).weight(1f)) {
@@ -155,20 +161,20 @@ internal fun ADSyncScreen(
             ADSectionTitle("Transfer details")
             Row(horizontalArrangement = Arrangement.spacedBy(7.dp)) {
                 ADSyncMetric(
-                    glyph = ADMatrixGlyph.LENS,
+                    icon = Icons.Outlined.Bluetooth,
                     label = "Connection",
                     value = if (presentation.connected) presentation.identityLabel ?: "Connected" else presentation.statusLabel,
                     modifier = Modifier.weight(1f),
                 )
                 ADSyncMetric(
-                    glyph = ADMatrixGlyph.RELAY,
+                    icon = Icons.Outlined.Wifi,
                     label = "Transport",
                     value = flow,
                     modifier = Modifier.weight(1f),
                 )
             }
             ADSyncMetric(
-                glyph = ADMatrixGlyph.STORAGE,
+                icon = Icons.Outlined.PhotoLibrary,
                 label = "Media",
                 value = knownCounts ?: "Scanned when sync starts",
                 modifier = Modifier.fillMaxWidth(),
@@ -193,7 +199,7 @@ internal fun ADSyncScreen(
 
 @Composable
 private fun ADSyncMetric(
-    glyph: ADMatrixGlyph,
+    icon: ImageVector,
     label: String,
     value: String,
     modifier: Modifier = Modifier,
@@ -212,7 +218,7 @@ private fun ADSyncMetric(
                 Modifier.size(32.dp).background(ADColors.SurfaceSubtle, RoundedCornerShape(9.dp)),
                 contentAlignment = Alignment.Center,
             ) {
-                ADMatrixGlyphIcon(glyph, ADColors.Ink, Modifier.size(18.dp))
+                Icon(icon, contentDescription = null, tint = ADColors.Ink, modifier = Modifier.size(18.dp))
             }
             Column(Modifier.padding(start = 9.dp).weight(1f)) {
                 Text(label.uppercase(), style = ADMetaTextStyle, color = ADColors.Muted)

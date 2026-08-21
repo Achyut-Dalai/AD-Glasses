@@ -22,6 +22,14 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.outlined.AutoAwesome
+import androidx.compose.material.icons.outlined.Home
+import androidx.compose.material.icons.outlined.PhotoLibrary
+import androidx.compose.material.icons.rounded.ArrowBack
+import androidx.compose.material.icons.rounded.Check
+import androidx.compose.material.icons.rounded.ChevronRight
+import androidx.compose.material.icons.rounded.Settings
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Icon
@@ -86,8 +94,9 @@ internal fun ADTopBar(
                 border = BorderStroke(1.dp, ADColors.Outline),
             ) {
                 Box(contentAlignment = Alignment.Center) {
-                    ADMatrixGlyphIcon(
-                        ADMatrixGlyph.BACK,
+                    Icon(
+                        imageVector = Icons.Rounded.ArrowBack,
+                        contentDescription = "Back",
                         tint = ADColors.Ink,
                         modifier = Modifier.size(19.dp),
                     )
@@ -127,8 +136,9 @@ internal fun ADTopBar(
                 border = BorderStroke(1.dp, ADColors.Outline),
             ) {
                 Box(contentAlignment = Alignment.Center) {
-                    ADMatrixGlyphIcon(
-                        ADMatrixGlyph.SETTINGS,
+                    Icon(
+                        imageVector = Icons.Rounded.Settings,
+                        contentDescription = "Settings",
                         tint = ADColors.Ink,
                         modifier = Modifier.size(19.dp),
                     )
@@ -195,10 +205,10 @@ private fun ADBottomNavigationItem(
         targetValue = if (selected) ADColors.Ink else ADColors.Muted,
         label = "nav-label-color",
     )
-    val glyph = when (tab) {
-        ADTab.HOME -> ADMatrixGlyph.HOME
-        ADTab.AI -> ADMatrixGlyph.AI
-        ADTab.LIBRARY -> ADMatrixGlyph.LIBRARY
+    val icon = when (tab) {
+        ADTab.HOME -> Icons.Outlined.Home
+        ADTab.AI -> Icons.Outlined.AutoAwesome
+        ADTab.LIBRARY -> Icons.Outlined.PhotoLibrary
     }
 
     Column(
@@ -214,13 +224,13 @@ private fun ADBottomNavigationItem(
         verticalArrangement = Arrangement.Center,
     ) {
         Box(contentAlignment = Alignment.Center) {
-            ADMatrixGlyphIcon(
-                glyph = glyph,
+            Icon(
+                imageVector = icon,
+                contentDescription = tab.label,
                 tint = iconTint,
                 modifier = Modifier.size(19.dp),
-                accent = if (selected && tab == ADTab.AI) ADColors.Red else null,
             )
-            if (selected && tab != ADTab.AI) {
+            if (selected) {
                 Box(
                     Modifier
                         .align(Alignment.TopEnd)
@@ -371,7 +381,7 @@ internal fun ADStatusChip(
         horizontalArrangement = Arrangement.spacedBy(4.dp),
     ) {
         if (showCheck) {
-            ADMatrixGlyphIcon(ADMatrixGlyph.CHECK, foreground, Modifier.size(11.dp))
+            Icon(Icons.Rounded.Check, contentDescription = null, tint = foreground, modifier = Modifier.size(11.dp))
         }
         Text(
             text.uppercase(),
@@ -421,10 +431,11 @@ internal fun ADSettingsRow(
         if (trailing != null) {
             trailing()
         } else {
-            ADMatrixGlyphIcon(
-                ADMatrixGlyph.NEXT,
+            Icon(
+                imageVector = Icons.Rounded.ChevronRight,
+                contentDescription = null,
                 tint = ADColors.Muted,
-                modifier = Modifier.size(16.dp),
+                modifier = Modifier.size(17.dp),
             )
         }
     }
