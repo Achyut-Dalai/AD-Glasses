@@ -18,6 +18,12 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.outlined.AutoAwesome
+import androidx.compose.material.icons.outlined.Bluetooth
+import androidx.compose.material.icons.outlined.CameraAlt
+import androidx.compose.material.icons.outlined.Mic
+import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Surface
@@ -26,6 +32,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
@@ -90,9 +97,9 @@ fun ADWelcomeScreen(
                     modifier = Modifier.align(Alignment.BottomCenter).padding(bottom = 12.dp),
                     horizontalArrangement = Arrangement.spacedBy(6.dp),
                 ) {
-                    ADWelcomeCapability(ADMatrixGlyph.MIC, "ASK")
-                    ADWelcomeCapability(ADMatrixGlyph.LENS, "SEE")
-                    ADWelcomeCapability(ADMatrixGlyph.AI, "REMEMBER")
+                    ADWelcomeCapability(Icons.Outlined.Mic, "ASK")
+                    ADWelcomeCapability(Icons.Outlined.CameraAlt, "SEE")
+                    ADWelcomeCapability(Icons.Outlined.AutoAwesome, "REMEMBER")
                 }
             }
         }
@@ -110,7 +117,7 @@ fun ADWelcomeScreen(
                 horizontalArrangement = Arrangement.Center,
                 verticalAlignment = Alignment.CenterVertically,
             ) {
-                ADMatrixGlyphIcon(ADMatrixGlyph.LENS, Color.Black, Modifier.size(17.dp), accent = ADColors.Red)
+                Icon(Icons.Outlined.Bluetooth, contentDescription = null, tint = Color.Black, modifier = Modifier.size(17.dp))
                 Spacer(Modifier.size(7.dp))
                 Text("Connect glasses", style = MaterialTheme.typography.labelLarge)
             }
@@ -129,7 +136,7 @@ fun ADWelcomeScreen(
 }
 
 @Composable
-private fun ADWelcomeCapability(glyph: ADMatrixGlyph, label: String) {
+private fun ADWelcomeCapability(icon: ImageVector, label: String) {
     Surface(
         shape = RoundedCornerShape(8.dp),
         color = ADColors.Surface,
@@ -140,12 +147,7 @@ private fun ADWelcomeCapability(glyph: ADMatrixGlyph, label: String) {
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(4.dp),
         ) {
-            ADMatrixGlyphIcon(
-                glyph = glyph,
-                tint = ADColors.Ink,
-                modifier = Modifier.size(13.dp),
-                accent = if (glyph == ADMatrixGlyph.AI) ADColors.Red else null,
-            )
+            Icon(icon, contentDescription = null, tint = ADColors.Ink, modifier = Modifier.size(13.dp))
             Text(label, style = ADMetaTextStyle, color = ADColors.InkSoft, fontWeight = FontWeight.SemiBold)
         }
     }
