@@ -15,6 +15,13 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.outlined.Bluetooth
+import androidx.compose.material.icons.outlined.CheckCircle
+import androidx.compose.material.icons.outlined.Close
+import androidx.compose.material.icons.outlined.Info
+import androidx.compose.material.icons.outlined.SystemUpdate
+import androidx.compose.material3.Icon
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
@@ -27,6 +34,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.fersaiyan.cyanbridge.shared.glasses.GlassesDashboardUiState
@@ -63,11 +71,11 @@ internal fun ADFirmwareScreen(
                         modifier = Modifier.size(46.dp).background(ADColors.SurfaceSubtle, RoundedCornerShape(13.dp)),
                         contentAlignment = Alignment.Center,
                     ) {
-                        ADMatrixGlyphIcon(
-                            ADMatrixGlyph.FIRMWARE,
-                            ADColors.Ink,
-                            Modifier.size(27.dp),
-                            accent = if (otaProgress != null) ADColors.Red else null,
+                        Icon(
+                            Icons.Outlined.SystemUpdate,
+                            contentDescription = null,
+                            tint = if (otaProgress != null) ADColors.Red else ADColors.Ink,
+                            modifier = Modifier.size(26.dp),
                         )
                     }
                     Column(Modifier.padding(start = 11.dp).weight(1f)) {
@@ -126,14 +134,14 @@ internal fun ADFirmwareScreen(
             ADSectionTitle("Preflight")
             Row(horizontalArrangement = Arrangement.spacedBy(7.dp)) {
                 ADFirmwareCheckCard(
-                    glyph = ADMatrixGlyph.FIRMWARE,
+                    icon = Icons.Outlined.SystemUpdate,
                     title = "Hardware",
                     detail = if (supportedProfile) "Validated path" else "Not supported yet",
                     ready = supportedProfile,
                     modifier = Modifier.weight(1f),
                 )
                 ADFirmwareCheckCard(
-                    glyph = ADMatrixGlyph.RELAY,
+                    icon = Icons.Outlined.Bluetooth,
                     title = "Connection",
                     detail = if (bluetoothReady) "Glasses connected" else "Connection required",
                     ready = bluetoothReady,
@@ -150,7 +158,7 @@ internal fun ADFirmwareScreen(
                 border = BorderStroke(1.dp, ADColors.Outline),
             ) {
                 Row(Modifier.padding(11.dp), verticalAlignment = Alignment.Top) {
-                    ADMatrixGlyphIcon(ADMatrixGlyph.INFO, ADColors.Muted, Modifier.size(18.dp))
+                    Icon(Icons.Outlined.Info, contentDescription = null, tint = ADColors.Muted, modifier = Modifier.size(18.dp))
                     Column(Modifier.padding(start = 9.dp).weight(1f)) {
                         Text("Firmware is not available for these glasses yet", style = MaterialTheme.typography.titleMedium, color = ADColors.Ink)
                         Text(
@@ -175,10 +183,11 @@ internal fun ADFirmwareScreen(
                         modifier = Modifier.size(32.dp).background(ADColors.SurfaceSubtle, RoundedCornerShape(9.dp)),
                         contentAlignment = Alignment.Center,
                     ) {
-                        ADMatrixGlyphIcon(
-                            if (riskAcknowledged) ADMatrixGlyph.CHECK else ADMatrixGlyph.INFO,
-                            if (riskAcknowledged) ADColors.Success else ADColors.Warning,
-                            Modifier.size(18.dp),
+                        Icon(
+                            imageVector = if (riskAcknowledged) Icons.Outlined.CheckCircle else Icons.Outlined.Info,
+                            contentDescription = null,
+                            tint = if (riskAcknowledged) ADColors.Success else ADColors.Warning,
+                            modifier = Modifier.size(18.dp),
                         )
                     }
                     Column(Modifier.padding(start = 9.dp).weight(1f)) {
@@ -215,7 +224,7 @@ internal fun ADFirmwareScreen(
                     verticalAlignment = Alignment.CenterVertically,
                     horizontalArrangement = Arrangement.Center,
                 ) {
-                    ADMatrixGlyphIcon(ADMatrixGlyph.CLOSE, ADColors.Red, Modifier.size(16.dp))
+                    Icon(Icons.Outlined.Close, contentDescription = null, tint = ADColors.Red, modifier = Modifier.size(16.dp))
                     Spacer(Modifier.size(6.dp))
                     Text("Cancel update", color = ADColors.Red, style = MaterialTheme.typography.labelLarge)
                 }
@@ -232,7 +241,7 @@ internal fun ADFirmwareScreen(
 
 @Composable
 private fun ADFirmwareCheckCard(
-    glyph: ADMatrixGlyph,
+    icon: ImageVector,
     title: String,
     detail: String,
     ready: Boolean,
@@ -250,13 +259,14 @@ private fun ADFirmwareCheckCard(
                     modifier = Modifier.size(31.dp).background(ADColors.SurfaceSubtle, RoundedCornerShape(9.dp)),
                     contentAlignment = Alignment.Center,
                 ) {
-                    ADMatrixGlyphIcon(glyph, ADColors.Ink, Modifier.size(18.dp))
+                    Icon(icon, contentDescription = null, tint = ADColors.Ink, modifier = Modifier.size(18.dp))
                 }
                 Spacer(Modifier.weight(1f))
-                ADMatrixGlyphIcon(
-                    if (ready) ADMatrixGlyph.CHECK else ADMatrixGlyph.CLOSE,
-                    if (ready) ADColors.Success else ADColors.Muted,
-                    Modifier.size(15.dp),
+                Icon(
+                    imageVector = if (ready) Icons.Outlined.CheckCircle else Icons.Outlined.Close,
+                    contentDescription = null,
+                    tint = if (ready) ADColors.Success else ADColors.Muted,
+                    modifier = Modifier.size(16.dp),
                 )
             }
             Column {
