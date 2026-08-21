@@ -17,7 +17,17 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.outlined.Android
+import androidx.compose.material.icons.outlined.AutoAwesome
+import androidx.compose.material.icons.outlined.CameraAlt
+import androidx.compose.material.icons.outlined.CheckCircle
+import androidx.compose.material.icons.outlined.ErrorOutline
+import androidx.compose.material.icons.outlined.Mic
+import androidx.compose.material.icons.outlined.Settings
+import androidx.compose.material.icons.rounded.ChevronRight
 import androidx.compose.material3.HorizontalDivider
+import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
@@ -30,6 +40,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
@@ -152,7 +163,7 @@ internal fun ADAssistantAppsScreen(onBack: () -> Unit) {
             ADSectionTitle("Readiness")
             Row(horizontalArrangement = Arrangement.spacedBy(7.dp)) {
                 ADAssistantReadinessCard(
-                    glyph = ADMatrixGlyph.AI,
+                    icon = Icons.Outlined.AutoAwesome,
                     title = "Assistant",
                     detail = targetName,
                     ready = capability.target != ImageAutomationTarget.NONE && capability.targetPackage != null,
@@ -160,14 +171,14 @@ internal fun ADAssistantAppsScreen(onBack: () -> Unit) {
                     onClick = ::chooseDefaultAssistant,
                 )
                 ADAssistantReadinessCard(
-                    glyph = ADMatrixGlyph.MIC,
+                    icon = Icons.Outlined.Mic,
                     title = "Voice",
                     detail = if (voiceReady) "Ready" else "Setup",
                     ready = voiceReady,
                     modifier = Modifier.weight(1f),
                 )
                 ADAssistantReadinessCard(
-                    glyph = ADMatrixGlyph.LENS,
+                    icon = Icons.Outlined.CameraAlt,
                     title = "Vision",
                     detail = if (imageReady) "Ready" else "Setup",
                     ready = imageReady,
@@ -205,7 +216,7 @@ internal fun ADAssistantAppsScreen(onBack: () -> Unit) {
                             horizontalArrangement = Arrangement.Center,
                             verticalAlignment = Alignment.CenterVertically,
                         ) {
-                            ADMatrixGlyphIcon(ADMatrixGlyph.LOCAL, ADColors.Ink, Modifier.size(16.dp))
+                            Icon(Icons.Outlined.AutoAwesome, contentDescription = null, tint = ADColors.Ink, modifier = Modifier.size(16.dp))
                             Spacer(Modifier.size(6.dp))
                             Text("Use AD Glasses AI", style = MaterialTheme.typography.labelLarge, color = ADColors.Ink)
                         }
@@ -230,10 +241,11 @@ internal fun ADAssistantAppsScreen(onBack: () -> Unit) {
                             horizontalArrangement = Arrangement.Center,
                             verticalAlignment = Alignment.CenterVertically,
                         ) {
-                            ADMatrixGlyphIcon(
-                                ADMatrixGlyph.AI,
-                                if (voiceReady) Color.Black else ADColors.Muted,
-                                Modifier.size(16.dp),
+                            Icon(
+                                Icons.Outlined.Android,
+                                contentDescription = null,
+                                tint = if (voiceReady) Color.Black else ADColors.Muted,
+                                modifier = Modifier.size(16.dp),
                             )
                             Spacer(Modifier.size(6.dp))
                             Text("Use assistant app", style = MaterialTheme.typography.labelLarge)
@@ -253,27 +265,27 @@ internal fun ADAssistantAppsScreen(onBack: () -> Unit) {
             ) {
                 Column(Modifier.padding(horizontal = 10.dp)) {
                     ADAssistantSetupAction(
-                        glyph = ADMatrixGlyph.AI,
+                        icon = Icons.Outlined.Android,
                         title = "Choose Android assistant",
                         detail = "Select Gemini or ChatGPT",
                         onClick = ::chooseDefaultAssistant,
                     )
                     HorizontalDivider(color = ADColors.Separator)
                     ADAssistantSetupAction(
-                        glyph = ADMatrixGlyph.AUTOMATION,
+                        icon = Icons.Outlined.Settings,
                         title = "Import automation bridge",
                         detail = if (capability.profileCompatible) "Profile verified" else "Import matching profile",
                         onClick = ::importProfile,
                     )
                     HorizontalDivider(color = ADColors.Separator)
                     ADAssistantSetupAction(
-                        glyph = ADMatrixGlyph.CHECK,
+                        icon = Icons.Outlined.CheckCircle,
                         title = if (verifying) "Verifying…" else "Verify automation bridge",
                         detail = if (capability.profileCompatible) "Verified" else "Check bridge response",
                     ) { if (!verifying) verifyProfile() }
                     HorizontalDivider(color = ADColors.Separator)
                     ADAssistantSetupAction(
-                        glyph = ADMatrixGlyph.PERMISSIONS,
+                        icon = Icons.Outlined.Settings,
                         title = "Accessibility",
                         detail = if (capability.autoInputAccessibilityEnabled) "Image handoff enabled" else "Only needed for external image automation",
                     ) {
@@ -298,12 +310,7 @@ private fun ADAssistantRouteSummary(targetName: String, appMode: Boolean, ready:
                 modifier = Modifier.size(44.dp).background(ADColors.SurfaceSubtle, RoundedCornerShape(12.dp)),
                 contentAlignment = Alignment.Center,
             ) {
-                ADMatrixGlyphIcon(
-                    ADMatrixGlyph.AI,
-                    ADColors.Ink,
-                    Modifier.size(25.dp),
-                    accent = if (appMode) ADColors.Red else null,
-                )
+                Icon(Icons.Outlined.AutoAwesome, contentDescription = null, tint = ADColors.Ink, modifier = Modifier.size(25.dp))
             }
             Column(Modifier.padding(start = 10.dp).weight(1f)) {
                 Text("ACTIVE ROUTE", style = ADMetaTextStyle, color = ADColors.Muted)
@@ -326,7 +333,7 @@ private fun ADAssistantRouteSummary(targetName: String, appMode: Boolean, ready:
 
 @Composable
 private fun ADAssistantReadinessCard(
-    glyph: ADMatrixGlyph,
+    icon: ImageVector,
     title: String,
     detail: String,
     ready: Boolean,
@@ -346,13 +353,14 @@ private fun ADAssistantReadinessCard(
                     modifier = Modifier.size(30.dp).background(ADColors.SurfaceSubtle, RoundedCornerShape(9.dp)),
                     contentAlignment = Alignment.Center,
                 ) {
-                    ADMatrixGlyphIcon(glyph, ADColors.Ink, Modifier.size(17.dp))
+                    Icon(icon, contentDescription = null, tint = ADColors.Ink, modifier = Modifier.size(17.dp))
                 }
                 Spacer(Modifier.weight(1f))
-                ADMatrixGlyphIcon(
-                    if (ready) ADMatrixGlyph.CHECK else ADMatrixGlyph.CLOSE,
-                    if (ready) ADColors.Success else ADColors.Muted,
-                    Modifier.size(14.dp),
+                Icon(
+                    imageVector = if (ready) Icons.Outlined.CheckCircle else Icons.Outlined.ErrorOutline,
+                    contentDescription = null,
+                    tint = if (ready) ADColors.Success else ADColors.Muted,
+                    modifier = Modifier.size(15.dp),
                 )
             }
             Column {
@@ -365,7 +373,7 @@ private fun ADAssistantReadinessCard(
 
 @Composable
 private fun ADAssistantSetupAction(
-    glyph: ADMatrixGlyph,
+    icon: ImageVector,
     title: String,
     detail: String,
     onClick: () -> Unit,
@@ -378,12 +386,12 @@ private fun ADAssistantSetupAction(
             modifier = Modifier.size(32.dp).background(ADColors.SurfaceSubtle, RoundedCornerShape(9.dp)),
             contentAlignment = Alignment.Center,
         ) {
-            ADMatrixGlyphIcon(glyph, ADColors.Ink, Modifier.size(18.dp))
+            Icon(icon, contentDescription = null, tint = ADColors.Ink, modifier = Modifier.size(18.dp))
         }
         Column(Modifier.padding(start = 9.dp).weight(1f)) {
             Text(title, style = MaterialTheme.typography.titleMedium, color = ADColors.Ink, fontWeight = FontWeight.Medium)
             Text(detail, style = MaterialTheme.typography.bodySmall, color = ADColors.Muted, maxLines = 1, overflow = TextOverflow.Ellipsis)
         }
-        ADMatrixGlyphIcon(ADMatrixGlyph.NEXT, ADColors.Muted, Modifier.size(16.dp))
+        Icon(Icons.Rounded.ChevronRight, contentDescription = null, tint = ADColors.Muted, modifier = Modifier.size(17.dp))
     }
 }
