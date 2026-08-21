@@ -19,21 +19,12 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.outlined.Bluetooth
-import androidx.compose.material.icons.outlined.CameraAlt
-import androidx.compose.material.icons.outlined.Language
-import androidx.compose.material.icons.outlined.Mic
-import androidx.compose.material.icons.outlined.Notifications
-import androidx.compose.material.icons.outlined.Wifi
-import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
@@ -53,26 +44,33 @@ internal fun ADLanguageScreen(onBack: () -> Unit) {
     val currentLanguage = Locale.getDefault().displayLanguage
 
     ADPageLayout("Language", onBack) {
+        ADScreenIntro(
+            eyebrow = "App language",
+            title = currentLanguage,
+            detail = if (Build.VERSION.SDK_INT >= 33) {
+                "Choose a language for AD Glasses without changing the rest of your phone."
+            } else {
+                "AD Glasses follows your phone's system language on this Android version."
+            },
+        )
+
         Surface(
             modifier = Modifier.fillMaxWidth(),
-            shape = RoundedCornerShape(14.dp),
+            shape = RoundedCornerShape(17.dp),
             color = ADColors.Surface,
             contentColor = ADColors.Ink,
             border = BorderStroke(1.dp, ADColors.Outline),
         ) {
-            Row(Modifier.padding(11.dp), verticalAlignment = Alignment.CenterVertically) {
-                Surface(
-                    modifier = Modifier.size(36.dp),
-                    shape = RoundedCornerShape(10.dp),
-                    color = ADColors.SurfaceSubtle,
-                    contentColor = ADColors.Ink,
+            Row(Modifier.padding(13.dp), verticalAlignment = Alignment.CenterVertically) {
+                Box(
+                    modifier = Modifier.size(44.dp).background(ADColors.SurfaceSubtle, RoundedCornerShape(12.dp)),
+                    contentAlignment = Alignment.Center,
                 ) {
-                    Box(contentAlignment = Alignment.Center) {
-                        Icon(Icons.Outlined.Language, contentDescription = "App language", modifier = Modifier.size(19.dp))
-                    }
+                    ADMatrixGlyphIcon(ADMatrixGlyph.LANGUAGE, ADColors.Ink, Modifier.size(25.dp))
                 }
                 Column(Modifier.padding(start = 10.dp).weight(1f)) {
-                    Text("APP LANGUAGE", style = MaterialTheme.typography.labelSmall, color = ADColors.InkSoft)
+                    Text("CURRENT", style = ADMetaTextStyle, color = ADColors.InkSoft)
+                    Spacer(Modifier.size(2.dp))
                     Text(
                         currentLanguage,
                         style = MaterialTheme.typography.titleLarge,
@@ -80,21 +78,12 @@ internal fun ADLanguageScreen(onBack: () -> Unit) {
                         fontWeight = FontWeight.SemiBold,
                     )
                 }
+                ADMatrixGlyphIcon(ADMatrixGlyph.CHECK, ADColors.Success, Modifier.size(18.dp))
             }
         }
 
-        Text(
-            if (Build.VERSION.SDK_INT >= 33) {
-                "Language for AD Glasses only."
-            } else {
-                "Uses your phone’s system language."
-            },
-            style = MaterialTheme.typography.labelSmall,
-            color = ADColors.Muted,
-        )
-
         ADPrimaryButton(
-            text = if (Build.VERSION.SDK_INT >= 33) "Open app languages" else "Open language settings",
+            text = if (Build.VERSION.SDK_INT >= 33) "Choose app language" else "Open language settings",
             onClick = {
                 val intent = if (Build.VERSION.SDK_INT >= 33) {
                     Intent(Settings.ACTION_APP_LOCALE_SETTINGS, Uri.parse("package:${context.packageName}"))
@@ -109,36 +98,56 @@ internal fun ADLanguageScreen(onBack: () -> Unit) {
 internal fun ADPermissionsScreen(onBack: () -> Unit) {
     val context = LocalContext.current
     val permissions = buildList {
-        add(ADPermissionItem("Microphone", Icons.Outlined.Mic, Manifest.permission.RECORD_AUDIO))
-        add(ADPermissionItem("Camera", Icons.Outlined.CameraAlt, Manifest.permission.CAMERA))
-        if (Build.VERSION.SDK_INT >= 31) add(ADPermissionItem("Bluetooth", Icons.Outlined.Bluetooth, Manifest.permission.BLUETOOTH_CONNECT))
+        add(ADPermissionItem("Microphone", ADMatrixGlyph.MIC, Manifest.permission.RECORD_AUDIO, "Voice and audio features"))
+        add(ADPermissionItem("Camera", ADMatrixGlyph.LENS, Manifest.permission.CAMERA, "Capture and visual questions"))
+        if (Build.VERSION.SDK_INT >= 31) {
+            add(ADPermissionItem("Bluetooth", ADMatrixGlyph.RELAY, Manifest.permission.BLUETOOTH_CONNECT, "Glasses connection"))
+        }
         if (Build.VERSION.SDK_INT >= 33) {
-            add(ADPermissionItem("Nearby devices", Icons.Outlined.Wifi, Manifest.permission.NEARBY_WIFI_DEVICES))
-            add(ADPermissionItem("Notifications", Icons.Outlined.Notifications, Manifest.permission.POST_NOTIFICATIONS))
+            add(ADPermissionItem("Nearby devices", ADMatrixGlyph.WEB, Manifest.permission.NEARBY_WIFI_DEVICES, "Local media transfer"))
+            add(ADPermissionItem("Notifications", ADMatrixGlyph.INFO, Manifest.permission.POST_NOTIFICATIONS, "Background activity status"))
         }
     }
     val grantedCount = permissions.count {
         ContextCompat.checkSelfPermission(context, it.permission) == PackageManager.PERMISSION_GRANTED
     }
+    val allReady = grantedCount == permissions.size
 
     ADPageLayout("Permissions", onBack) {
+        ADScreenIntro(
+            eyebrow = "Access",
+            title = if (allReady) "Everything is ready" else "$grantedCount of ${permissions.size} ready",
+            detail = "Permissions are requested only for features that need hardware, audio or background access.",
+        )
+
         Surface(
             modifier = Modifier.fillMaxWidth(),
-            shape = RoundedCornerShape(14.dp),
+            shape = RoundedCornerShape(17.dp),
             color = ADColors.Surface,
             border = BorderStroke(1.dp, ADColors.Outline),
         ) {
-            Row(Modifier.padding(11.dp), verticalAlignment = Alignment.CenterVertically) {
-                ADGlyphIcon(ADGlyph.PERMISSIONS, ADColors.Ink, Modifier.size(22.dp), accent = if (grantedCount < permissions.size) ADColors.Red else null)
-                Column(Modifier.padding(start = 9.dp).weight(1f)) {
-                    Text("ACCESS", style = MaterialTheme.typography.labelSmall, color = ADColors.InkSoft)
+            Row(Modifier.padding(13.dp), verticalAlignment = Alignment.CenterVertically) {
+                Box(
+                    modifier = Modifier.size(44.dp).background(ADColors.SurfaceSubtle, RoundedCornerShape(12.dp)),
+                    contentAlignment = Alignment.Center,
+                ) {
+                    ADMatrixGlyphIcon(
+                        ADMatrixGlyph.PERMISSIONS,
+                        ADColors.Ink,
+                        Modifier.size(25.dp),
+                        accent = if (!allReady) ADColors.Red else null,
+                    )
+                }
+                Column(Modifier.padding(start = 10.dp).weight(1f)) {
+                    Text("FEATURE ACCESS", style = ADMetaTextStyle, color = ADColors.InkSoft)
                     Text(
-                        "$grantedCount of ${permissions.size} ready",
-                        style = MaterialTheme.typography.titleLarge,
+                        if (allReady) "Ready for supported features" else "Some features need access",
+                        style = MaterialTheme.typography.titleMedium,
                         color = ADColors.Ink,
                         fontWeight = FontWeight.SemiBold,
                     )
                 }
+                Box(Modifier.size(7.dp).background(if (allReady) ADColors.Success else ADColors.Red, CircleShape))
             }
         }
 
@@ -165,20 +174,38 @@ internal fun ADPermissionsScreen(onBack: () -> Unit) {
 @Composable
 private fun ADPermissionTile(item: ADPermissionItem, granted: Boolean, modifier: Modifier = Modifier) {
     Surface(
-        modifier = modifier.heightIn(min = 80.dp),
-        shape = RoundedCornerShape(12.dp),
+        modifier = modifier.heightIn(min = 104.dp),
+        shape = RoundedCornerShape(13.dp),
         color = ADColors.Surface,
         border = BorderStroke(1.dp, ADColors.Outline),
     ) {
-        Column(modifier = Modifier.padding(9.dp), verticalArrangement = Arrangement.SpaceBetween) {
+        Column(modifier = Modifier.padding(10.dp), verticalArrangement = Arrangement.SpaceBetween) {
             Row(verticalAlignment = Alignment.CenterVertically) {
-                Icon(item.icon, null, tint = ADColors.Ink, modifier = Modifier.size(16.dp))
+                Box(
+                    modifier = Modifier.size(32.dp).background(ADColors.SurfaceSubtle, RoundedCornerShape(9.dp)),
+                    contentAlignment = Alignment.Center,
+                ) {
+                    ADMatrixGlyphIcon(item.glyph, ADColors.Ink, Modifier.size(18.dp))
+                }
                 Spacer(Modifier.weight(1f))
-                Box(Modifier.size(5.dp).background(if (granted) ADColors.Ink else ADColors.Red, CircleShape))
+                Box(Modifier.size(6.dp).background(if (granted) ADColors.Success else ADColors.Red, CircleShape))
             }
             Column {
-                Text(item.title, style = MaterialTheme.typography.labelLarge, color = ADColors.Ink, fontWeight = FontWeight.SemiBold, maxLines = 1, overflow = TextOverflow.Ellipsis)
-                Text(if (granted) "Ready" else "Not granted", style = MaterialTheme.typography.labelSmall, color = ADColors.Muted)
+                Text(
+                    item.title,
+                    style = MaterialTheme.typography.labelLarge,
+                    color = ADColors.Ink,
+                    fontWeight = FontWeight.SemiBold,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                )
+                Text(
+                    item.detail,
+                    style = MaterialTheme.typography.bodySmall,
+                    color = ADColors.Muted,
+                    maxLines = 2,
+                    overflow = TextOverflow.Ellipsis,
+                )
             }
         }
     }
@@ -187,7 +214,12 @@ private fun ADPermissionTile(item: ADPermissionItem, granted: Boolean, modifier:
 @Composable
 internal fun ADAboutScreen(onBack: () -> Unit) = ADMinimalAboutScreen(onBack)
 
-private data class ADPermissionItem(val title: String, val icon: ImageVector, val permission: String)
+private data class ADPermissionItem(
+    val title: String,
+    val glyph: ADMatrixGlyph,
+    val permission: String,
+    val detail: String,
+)
 
 private fun openAppSettings(packageName: String, start: (Intent) -> Unit) {
     val intent = Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS, Uri.parse("package:$packageName"))

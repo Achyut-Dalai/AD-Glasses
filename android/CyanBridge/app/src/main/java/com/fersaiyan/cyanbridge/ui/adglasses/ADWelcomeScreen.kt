@@ -50,7 +50,7 @@ fun ADWelcomeScreen(
         ) {
             ADGlassesMark(Modifier.size(34.dp))
             Column(Modifier.padding(start = 8.dp)) {
-                Text("AD GLASSES", style = MaterialTheme.typography.labelSmall, color = ADColors.InkSoft)
+                Text("AD GLASSES", style = ADMetaTextStyle, color = ADColors.InkSoft)
                 Text("AI eyewear", style = MaterialTheme.typography.titleSmall, color = ADColors.Ink)
             }
             Spacer(Modifier.weight(1f))
@@ -63,9 +63,9 @@ fun ADWelcomeScreen(
             Text("YOUR GLASSES", style = MaterialTheme.typography.displaySmall, color = ADColors.Ink)
             Text("YOUR AI", style = MaterialTheme.typography.displaySmall, color = ADColors.Ink)
             Text("YOUR DATA", style = MaterialTheme.typography.displaySmall, color = ADColors.Ink)
-            Spacer(Modifier.size(8.dp))
+            Spacer(Modifier.size(9.dp))
             Text(
-                "See, ask and remember without turning your phone into the main interface.",
+                "See, ask and remember while the phone stays quietly in the background.",
                 style = MaterialTheme.typography.bodyLarge,
                 color = ADColors.Muted,
             )
@@ -74,8 +74,8 @@ fun ADWelcomeScreen(
         Spacer(Modifier.size(18.dp))
 
         Surface(
-            modifier = Modifier.fillMaxWidth().weight(1f).heightIn(min = 160.dp, max = 250.dp),
-            shape = RoundedCornerShape(18.dp),
+            modifier = Modifier.fillMaxWidth().weight(1f).heightIn(min = 165.dp, max = 255.dp),
+            shape = RoundedCornerShape(19.dp),
             color = ADColors.Surface,
             border = BorderStroke(1.dp, ADColors.Outline),
         ) {
@@ -90,9 +90,9 @@ fun ADWelcomeScreen(
                     modifier = Modifier.align(Alignment.BottomCenter).padding(bottom = 12.dp),
                     horizontalArrangement = Arrangement.spacedBy(6.dp),
                 ) {
-                    ADWelcomeCapability(ADGlyph.ASK, "ASK")
-                    ADWelcomeCapability(ADGlyph.PHOTO, "SEE")
-                    ADWelcomeCapability(ADGlyph.AI, "REMEMBER")
+                    ADWelcomeCapability(ADMatrixGlyph.MIC, "ASK")
+                    ADWelcomeCapability(ADMatrixGlyph.LENS, "SEE")
+                    ADWelcomeCapability(ADMatrixGlyph.AI, "REMEMBER")
                 }
             }
         }
@@ -100,7 +100,7 @@ fun ADWelcomeScreen(
         Spacer(Modifier.size(14.dp))
         Surface(
             onClick = onStartSetup,
-            modifier = Modifier.fillMaxWidth().heightIn(min = 44.dp),
+            modifier = Modifier.fillMaxWidth().heightIn(min = 46.dp),
             shape = RoundedCornerShape(11.dp),
             color = ADColors.Ink,
             contentColor = Color.Black,
@@ -110,7 +110,7 @@ fun ADWelcomeScreen(
                 horizontalArrangement = Arrangement.Center,
                 verticalAlignment = Alignment.CenterVertically,
             ) {
-                Box(Modifier.size(5.dp).background(ADColors.Red, CircleShape))
+                ADMatrixGlyphIcon(ADMatrixGlyph.LENS, Color.Black, Modifier.size(17.dp), accent = ADColors.Red)
                 Spacer(Modifier.size(7.dp))
                 Text("Connect glasses", style = MaterialTheme.typography.labelLarge)
             }
@@ -122,14 +122,14 @@ fun ADWelcomeScreen(
             shape = RoundedCornerShape(11.dp),
             border = BorderStroke(1.dp, ADColors.Outline),
         ) {
-            Text("Explore without glasses", style = MaterialTheme.typography.labelLarge, color = ADColors.Ink)
+            Text("Explore the app", style = MaterialTheme.typography.labelLarge, color = ADColors.Ink)
         }
         Spacer(Modifier.size(12.dp))
     }
 }
 
 @Composable
-private fun ADWelcomeCapability(glyph: ADGlyph, label: String) {
+private fun ADWelcomeCapability(glyph: ADMatrixGlyph, label: String) {
     Surface(
         shape = RoundedCornerShape(8.dp),
         color = ADColors.Surface,
@@ -140,8 +140,13 @@ private fun ADWelcomeCapability(glyph: ADGlyph, label: String) {
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(4.dp),
         ) {
-            ADGlyphIcon(glyph, ADColors.Ink, Modifier.size(13.dp), accent = if (glyph == ADGlyph.AI) ADColors.Red else null)
-            Text(label, style = MaterialTheme.typography.labelSmall, color = ADColors.InkSoft, fontWeight = FontWeight.SemiBold)
+            ADMatrixGlyphIcon(
+                glyph = glyph,
+                tint = ADColors.Ink,
+                modifier = Modifier.size(13.dp),
+                accent = if (glyph == ADMatrixGlyph.AI) ADColors.Red else null,
+            )
+            Text(label, style = ADMetaTextStyle, color = ADColors.InkSoft, fontWeight = FontWeight.SemiBold)
         }
     }
 }

@@ -91,6 +91,15 @@ private val ADColorScheme = darkColorScheme(
 internal val ADPrimaryFontFamily = FontFamily.SansSerif
 internal val ADTechFontFamily = FontFamily.Monospace
 
+/** Explicit metadata style. Monospace is opt-in instead of leaking through generic labels. */
+internal val ADMetaTextStyle = TextStyle(
+    fontFamily = ADTechFontFamily,
+    fontSize = 9.5.sp,
+    lineHeight = 13.sp,
+    fontWeight = FontWeight.Medium,
+    letterSpacing = 0.55.sp,
+)
+
 private val ADTypography = Typography(
     displayLarge = TextStyle(
         fontFamily = ADPrimaryFontFamily,
@@ -181,11 +190,11 @@ private val ADTypography = Typography(
         fontWeight = FontWeight.Medium,
     ),
     labelSmall = TextStyle(
-        fontFamily = ADTechFontFamily,
+        fontFamily = ADPrimaryFontFamily,
         fontSize = 9.5.sp,
         lineHeight = 13.sp,
         fontWeight = FontWeight.Medium,
-        letterSpacing = 0.55.sp,
+        letterSpacing = 0.15.sp,
     ),
 )
 
@@ -205,7 +214,6 @@ fun ADGlassesTheme(content: @Composable () -> Unit) {
     if (!view.isInEditMode) {
         SideEffect {
             context.findActivity()?.window?.let { window ->
-                // Keep the gesture / three-button navigation region dark as well as the app.
                 @Suppress("DEPRECATION")
                 run {
                     window.navigationBarColor = android.graphics.Color.BLACK

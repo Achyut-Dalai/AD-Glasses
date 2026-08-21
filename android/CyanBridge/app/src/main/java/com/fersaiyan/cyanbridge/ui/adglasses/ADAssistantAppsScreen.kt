@@ -17,17 +17,8 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.rounded.KeyboardArrowRight
-import androidx.compose.material.icons.outlined.Android
-import androidx.compose.material.icons.outlined.Apps
-import androidx.compose.material.icons.outlined.CheckCircle
-import androidx.compose.material.icons.outlined.PhoneAndroid
-import androidx.compose.material.icons.outlined.Settings
 import androidx.compose.material3.HorizontalDivider
-import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -41,6 +32,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.core.content.FileProvider
 import com.fersaiyan.cyanbridge.agent.LocalAgentPrefs
@@ -144,53 +136,80 @@ internal fun ADAssistantAppsScreen(onBack: () -> Unit) {
     val appMode = selectedMode == GlassesAssistantMode.PHONE_ASSISTANT
 
     ADPageLayout("Assistant apps", onBack) {
-        Surface(
-            modifier = Modifier.fillMaxWidth(),
-            shape = RoundedCornerShape(14.dp),
-            color = Color.Black.copy(alpha = 0.40f),
-            border = BorderStroke(1.dp, ADColors.Outline),
-        ) {
-            Row(Modifier.padding(11.dp), verticalAlignment = Alignment.CenterVertically) {
-                ADGlyphIcon(ADGlyph.AI, ADColors.Ink, Modifier.size(22.dp), accent = if (appMode) ADColors.Red else null)
-                Column(Modifier.padding(start = 9.dp).weight(1f)) {
-                    Text("ROUTE", style = MaterialTheme.typography.labelSmall, color = ADColors.Muted)
-                    Text(if (appMode) targetName else "AD Glasses AI", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.SemiBold)
-                }
-                Box(Modifier.size(6.dp).background(if (appMode) ADColors.Red else ADColors.Ink, CircleShape))
-            }
-        }
+        ADScreenIntro(
+            eyebrow = "External assistant",
+            title = "Assistant apps",
+            detail = "Hand supported glasses requests to the Android assistant you already use, without turning AD Glasses into a chat client.",
+        )
+
+        ADAssistantRouteSummary(
+            targetName = targetName,
+            appMode = appMode,
+            ready = voiceReady,
+        )
 
         Column(verticalArrangement = Arrangement.spacedBy(7.dp)) {
             ADSectionTitle("Readiness")
             Row(horizontalArrangement = Arrangement.spacedBy(7.dp)) {
-                ADAssistantReadinessCard(Icons.Outlined.Android, "Assistant", targetName, capability.target != ImageAutomationTarget.NONE && capability.targetPackage != null, Modifier.weight(1f), ::chooseDefaultAssistant)
-                ADAssistantReadinessCard(Icons.Outlined.PhoneAndroid, "Voice", if (voiceReady) "Ready" else "Setup", voiceReady, Modifier.weight(1f))
-                ADAssistantReadinessCard(Icons.Outlined.Apps, "Images", if (imageReady) "Ready" else "Setup", imageReady, Modifier.weight(1f))
+                ADAssistantReadinessCard(
+                    glyph = ADMatrixGlyph.AI,
+                    title = "Assistant",
+                    detail = targetName,
+                    ready = capability.target != ImageAutomationTarget.NONE && capability.targetPackage != null,
+                    modifier = Modifier.weight(1f),
+                    onClick = ::chooseDefaultAssistant,
+                )
+                ADAssistantReadinessCard(
+                    glyph = ADMatrixGlyph.MIC,
+                    title = "Voice",
+                    detail = if (voiceReady) "Ready" else "Setup",
+                    ready = voiceReady,
+                    modifier = Modifier.weight(1f),
+                )
+                ADAssistantReadinessCard(
+                    glyph = ADMatrixGlyph.LENS,
+                    title = "Vision",
+                    detail = if (imageReady) "Ready" else "Setup",
+                    ready = imageReady,
+                    modifier = Modifier.weight(1f),
+                )
             }
         }
 
         Surface(
             modifier = Modifier.fillMaxWidth(),
-            shape = RoundedCornerShape(12.dp),
-            color = ADColors.Surface.copy(alpha = 0.88f),
+            shape = RoundedCornerShape(14.dp),
+            color = ADColors.Surface,
             border = BorderStroke(1.dp, ADColors.Outline),
         ) {
-            Column(Modifier.padding(10.dp)) {
+            Column(Modifier.padding(11.dp)) {
                 Text(
-                    if (appMode) "$targetName receives supported assistant-app requests." else "Glasses questions use your configured AD AI.",
+                    if (appMode) "$targetName receives supported assistant-app requests." else "Supported requests stay on your configured AD AI route.",
                     style = MaterialTheme.typography.bodyMedium,
+                    color = ADColors.InkSoft,
                 )
-                Spacer(Modifier.size(8.dp))
+                Spacer(Modifier.size(9.dp))
                 if (appMode) {
-                    OutlinedButton(
+                    Surface(
                         onClick = {
                             LocalAgentPrefs.setGlassesAssistantMode(context, GlassesAssistantMode.CUSTOM_AI_PROVIDER)
                             refresh()
                         },
-                        modifier = Modifier.fillMaxWidth().heightIn(min = 42.dp),
+                        modifier = Modifier.fillMaxWidth().heightIn(min = 44.dp),
                         shape = RoundedCornerShape(10.dp),
+                        color = ADColors.SurfaceSubtle,
                         border = BorderStroke(1.dp, ADColors.Outline),
-                    ) { Text("Use AD Glasses AI", style = MaterialTheme.typography.labelLarge, color = ADColors.Ink) }
+                    ) {
+                        Row(
+                            modifier = Modifier.padding(horizontal = 11.dp, vertical = 9.dp),
+                            horizontalArrangement = Arrangement.Center,
+                            verticalAlignment = Alignment.CenterVertically,
+                        ) {
+                            ADMatrixGlyphIcon(ADMatrixGlyph.LOCAL, ADColors.Ink, Modifier.size(16.dp))
+                            Spacer(Modifier.size(6.dp))
+                            Text("Use AD Glasses AI", style = MaterialTheme.typography.labelLarge, color = ADColors.Ink)
+                        }
+                    }
                 } else {
                     Surface(
                         onClick = {
@@ -202,11 +221,23 @@ internal fun ADAssistantAppsScreen(onBack: () -> Unit) {
                             }
                         },
                         modifier = Modifier.fillMaxWidth().heightIn(min = 44.dp),
-                        shape = RoundedCornerShape(11.dp),
-                        color = ADColors.Red,
-                        contentColor = Color.White,
+                        shape = RoundedCornerShape(10.dp),
+                        color = if (voiceReady) ADColors.Ink else ADColors.SurfaceSubtle,
+                        contentColor = if (voiceReady) Color.Black else ADColors.Muted,
                     ) {
-                        Box(contentAlignment = Alignment.Center) { Text("Use assistant app", style = MaterialTheme.typography.labelLarge) }
+                        Row(
+                            modifier = Modifier.padding(horizontal = 11.dp, vertical = 9.dp),
+                            horizontalArrangement = Arrangement.Center,
+                            verticalAlignment = Alignment.CenterVertically,
+                        ) {
+                            ADMatrixGlyphIcon(
+                                ADMatrixGlyph.AI,
+                                if (voiceReady) Color.Black else ADColors.Muted,
+                                Modifier.size(16.dp),
+                            )
+                            Spacer(Modifier.size(6.dp))
+                            Text("Use assistant app", style = MaterialTheme.typography.labelLarge)
+                        }
                     }
                 }
             }
@@ -216,18 +247,36 @@ internal fun ADAssistantAppsScreen(onBack: () -> Unit) {
             ADSectionTitle("Advanced setup")
             Surface(
                 modifier = Modifier.fillMaxWidth(),
-                shape = RoundedCornerShape(13.dp),
-                color = ADColors.Surface.copy(alpha = 0.88f),
+                shape = RoundedCornerShape(14.dp),
+                color = ADColors.Surface,
                 border = BorderStroke(1.dp, ADColors.Outline),
             ) {
                 Column(Modifier.padding(horizontal = 10.dp)) {
-                    ADAssistantSetupAction("Choose Android assistant", "Select Gemini or ChatGPT", ::chooseDefaultAssistant)
+                    ADAssistantSetupAction(
+                        glyph = ADMatrixGlyph.AI,
+                        title = "Choose Android assistant",
+                        detail = "Select Gemini or ChatGPT",
+                        onClick = ::chooseDefaultAssistant,
+                    )
                     HorizontalDivider(color = ADColors.Separator)
-                    ADAssistantSetupAction("Import automation bridge", if (capability.profileCompatible) "Profile verified" else "Import matching profile", ::importProfile)
+                    ADAssistantSetupAction(
+                        glyph = ADMatrixGlyph.AUTOMATION,
+                        title = "Import automation bridge",
+                        detail = if (capability.profileCompatible) "Profile verified" else "Import matching profile",
+                        onClick = ::importProfile,
+                    )
                     HorizontalDivider(color = ADColors.Separator)
-                    ADAssistantSetupAction(if (verifying) "Verifying…" else "Verify automation bridge", if (capability.profileCompatible) "Verified" else "Check bridge response") { if (!verifying) verifyProfile() }
+                    ADAssistantSetupAction(
+                        glyph = ADMatrixGlyph.CHECK,
+                        title = if (verifying) "Verifying…" else "Verify automation bridge",
+                        detail = if (capability.profileCompatible) "Verified" else "Check bridge response",
+                    ) { if (!verifying) verifyProfile() }
                     HorizontalDivider(color = ADColors.Separator)
-                    ADAssistantSetupAction("Accessibility", if (capability.autoInputAccessibilityEnabled) "Image handoff enabled" else "Only needed for external image automation") {
+                    ADAssistantSetupAction(
+                        glyph = ADMatrixGlyph.PERMISSIONS,
+                        title = "Accessibility",
+                        detail = if (capability.autoInputAccessibilityEnabled) "Image handoff enabled" else "Only needed for external image automation",
+                    ) {
                         context.startActivity(Intent(Settings.ACTION_ACCESSIBILITY_SETTINGS))
                     }
                 }
@@ -237,8 +286,47 @@ internal fun ADAssistantAppsScreen(onBack: () -> Unit) {
 }
 
 @Composable
+private fun ADAssistantRouteSummary(targetName: String, appMode: Boolean, ready: Boolean) {
+    Surface(
+        modifier = Modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(17.dp),
+        color = ADColors.Surface,
+        border = BorderStroke(1.dp, ADColors.Outline),
+    ) {
+        Row(Modifier.padding(13.dp), verticalAlignment = Alignment.CenterVertically) {
+            Box(
+                modifier = Modifier.size(44.dp).background(ADColors.SurfaceSubtle, RoundedCornerShape(12.dp)),
+                contentAlignment = Alignment.Center,
+            ) {
+                ADMatrixGlyphIcon(
+                    ADMatrixGlyph.AI,
+                    ADColors.Ink,
+                    Modifier.size(25.dp),
+                    accent = if (appMode) ADColors.Red else null,
+                )
+            }
+            Column(Modifier.padding(start = 10.dp).weight(1f)) {
+                Text("ACTIVE ROUTE", style = ADMetaTextStyle, color = ADColors.Muted)
+                Text(
+                    if (appMode) targetName else "AD Glasses AI",
+                    style = MaterialTheme.typography.titleLarge,
+                    color = ADColors.Ink,
+                    fontWeight = FontWeight.SemiBold,
+                )
+                Text(
+                    if (appMode && ready) "Android assistant handoff is ready" else if (appMode) "Setup still needs attention" else "Uses your configured provider",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = ADColors.Muted,
+                )
+            }
+            Box(Modifier.size(6.dp).background(if (ready || !appMode) ADColors.Success else ADColors.Red, CircleShape))
+        }
+    }
+}
+
+@Composable
 private fun ADAssistantReadinessCard(
-    icon: androidx.compose.ui.graphics.vector.ImageVector,
+    glyph: ADMatrixGlyph,
     title: String,
     detail: String,
     ready: Boolean,
@@ -247,37 +335,55 @@ private fun ADAssistantReadinessCard(
 ) {
     val clickModifier = if (onClick != null) Modifier.clickable(onClick = onClick) else Modifier
     Surface(
-        modifier = modifier.heightIn(min = 80.dp).then(clickModifier),
-        shape = RoundedCornerShape(12.dp),
-        color = ADColors.Surface.copy(alpha = 0.88f),
+        modifier = modifier.heightIn(min = 94.dp).then(clickModifier),
+        shape = RoundedCornerShape(13.dp),
+        color = ADColors.Surface,
         border = BorderStroke(1.dp, ADColors.Outline),
     ) {
         Column(modifier = Modifier.padding(9.dp), verticalArrangement = Arrangement.SpaceBetween) {
             Row(verticalAlignment = Alignment.CenterVertically) {
-                Icon(icon, null, tint = ADColors.Ink, modifier = Modifier.size(16.dp))
+                Box(
+                    modifier = Modifier.size(30.dp).background(ADColors.SurfaceSubtle, RoundedCornerShape(9.dp)),
+                    contentAlignment = Alignment.Center,
+                ) {
+                    ADMatrixGlyphIcon(glyph, ADColors.Ink, Modifier.size(17.dp))
+                }
                 Spacer(Modifier.weight(1f))
-                if (ready) Icon(Icons.Outlined.CheckCircle, "Ready", tint = ADColors.Ink, modifier = Modifier.size(14.dp))
-                else Box(Modifier.size(4.dp).background(ADColors.Red, CircleShape))
+                ADMatrixGlyphIcon(
+                    if (ready) ADMatrixGlyph.CHECK else ADMatrixGlyph.CLOSE,
+                    if (ready) ADColors.Success else ADColors.Muted,
+                    Modifier.size(14.dp),
+                )
             }
             Column {
-                Text(title, style = MaterialTheme.typography.labelLarge, fontWeight = FontWeight.SemiBold)
-                Text(detail, style = MaterialTheme.typography.labelSmall, color = ADColors.Muted, maxLines = 1)
+                Text(title, style = MaterialTheme.typography.labelLarge, color = ADColors.Ink, fontWeight = FontWeight.SemiBold)
+                Text(detail, style = MaterialTheme.typography.bodySmall, color = ADColors.Muted, maxLines = 1, overflow = TextOverflow.Ellipsis)
             }
         }
     }
 }
 
 @Composable
-private fun ADAssistantSetupAction(title: String, detail: String, onClick: () -> Unit) {
+private fun ADAssistantSetupAction(
+    glyph: ADMatrixGlyph,
+    title: String,
+    detail: String,
+    onClick: () -> Unit,
+) {
     Row(
-        modifier = Modifier.fillMaxWidth().clickable(onClick = onClick).padding(vertical = 9.dp),
+        modifier = Modifier.fillMaxWidth().clickable(onClick = onClick).padding(vertical = 10.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        Icon(Icons.Outlined.Settings, null, tint = ADColors.Ink, modifier = Modifier.size(16.dp))
-        Column(Modifier.padding(start = 9.dp).weight(1f)) {
-            Text(title, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Medium)
-            Text(detail, style = MaterialTheme.typography.bodySmall, color = ADColors.Muted, maxLines = 1)
+        Box(
+            modifier = Modifier.size(32.dp).background(ADColors.SurfaceSubtle, RoundedCornerShape(9.dp)),
+            contentAlignment = Alignment.Center,
+        ) {
+            ADMatrixGlyphIcon(glyph, ADColors.Ink, Modifier.size(18.dp))
         }
-        Icon(Icons.AutoMirrored.Rounded.KeyboardArrowRight, null, tint = ADColors.Muted, modifier = Modifier.size(15.dp))
+        Column(Modifier.padding(start = 9.dp).weight(1f)) {
+            Text(title, style = MaterialTheme.typography.titleMedium, color = ADColors.Ink, fontWeight = FontWeight.Medium)
+            Text(detail, style = MaterialTheme.typography.bodySmall, color = ADColors.Muted, maxLines = 1, overflow = TextOverflow.Ellipsis)
+        }
+        ADMatrixGlyphIcon(ADMatrixGlyph.NEXT, ADColors.Muted, Modifier.size(16.dp))
     }
 }

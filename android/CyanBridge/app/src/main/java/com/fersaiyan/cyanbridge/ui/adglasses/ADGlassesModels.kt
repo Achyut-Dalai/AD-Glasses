@@ -2,7 +2,6 @@ package com.fersaiyan.cyanbridge.ui.adglasses
 
 enum class ADTab(val label: String) {
     HOME("Home"),
-    CHATS("Prompt"),
     AI("AI"),
     LIBRARY("Library"),
 }
