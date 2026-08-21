@@ -25,40 +25,41 @@ import androidx.core.view.WindowCompat
 /**
  * AD Glasses visual system.
  *
- * Wallpaper/canvas can carry a little charcoal texture, but interactive cards should read
- * as true black. Red is a scarce signal, not a large background treatment.
+ * The canvas is true black. Controls sit above it in neutral charcoal with white type, while
+ * red is reserved for active, destructive and live state. This keeps the hierarchy graphic
+ * and high-contrast without relying on decorative wallpaper artwork.
  */
 internal object ADColors {
-    val Ink = Color(0xFFF4F4F2)
-    val InkSoft = Color(0xFFD9D9D5)
-    val Muted = Color(0xFFB6B6B0)
+    val Ink = Color(0xFFF5F5F3)
+    val InkSoft = Color(0xFFD8D8D4)
+    val Muted = Color(0xFFA6A6A1)
 
-    val Background = Color(0xFF171717)
-    val Canvas = Color(0xFF141414)
-    val Surface = Color(0xFF090909)
-    val SurfaceSubtle = Color(0xFF171717)
-    val SurfacePressed = Color(0xFF202020)
-    val Glass = Color(0xF0080808)
-    val Outline = Color(0xFF343434)
-    val Separator = Color(0xFF252525)
+    val Background = Color.Black
+    val Canvas = Color.Black
+    val Surface = Color(0xFF202020)
+    val SurfaceSubtle = Color(0xFF2B2B2B)
+    val SurfacePressed = Color(0xFF363636)
+    val Glass = Color(0xF0202020)
+    val Outline = Color(0xFF3B3B3B)
+    val Separator = Color(0xFF303030)
 
     /** Legacy names retained for hardware/product screens that still reference them. */
-    val Blue = Color(0xFF202020)
-    val BlueDeep = Color(0xFF090909)
-    val BlueSoft = Color(0xFF181818)
+    val Blue = Color(0xFF2B2B2B)
+    val BlueDeep = Color(0xFF202020)
+    val BlueSoft = Color(0xFF303030)
 
-    /** Bright red is for tiny state signals; RedAction is deliberately quieter. */
+    /** Red is deliberately scarce: live state, selected state and destructive action. */
     val Red = Color(0xFFCA343A)
-    val RedAction = Color(0xFF8F252B)
-    val RedSoft = Color(0xFF2B1517)
-    val RedContent = Color(0xFFEADADA)
+    val RedAction = Color(0xFFA92B31)
+    val RedSoft = Color(0xFF35171A)
+    val RedContent = Color(0xFFF0DEDF)
 
     val Success = Color(0xFFA8D2A5)
-    val SuccessSoft = Color(0xFF182418)
+    val SuccessSoft = Color(0xFF203020)
     val Warning = Color(0xFFE0BA7B)
-    val WarningSoft = Color(0xFF2A2116)
+    val WarningSoft = Color(0xFF352A1D)
     val Error = Color(0xFFE4847F)
-    val ErrorSoft = Color(0xFF2E1919)
+    val ErrorSoft = Color(0xFF3A2020)
 }
 
 private val ADColorScheme = darkColorScheme(
