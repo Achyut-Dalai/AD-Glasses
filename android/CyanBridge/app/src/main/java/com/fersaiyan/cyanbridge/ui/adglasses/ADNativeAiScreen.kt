@@ -176,33 +176,8 @@ private fun ADAiProviderCard(selected: ADAiChoice, onSelect: (ADAiChoice) -> Uni
         border = BorderStroke(1.dp, ADColors.Outline),
     ) {
         Column(Modifier.padding(12.dp)) {
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                Surface(
-                    modifier = Modifier.size(42.dp),
-                    shape = RoundedCornerShape(12.dp),
-                    color = ADColors.SurfaceSubtle,
-                    border = BorderStroke(1.dp, ADColors.Separator),
-                ) {
-                    Box(contentAlignment = Alignment.Center) {
-                        ADMatrixGlyphIcon(
-                            glyph = ADMatrixGlyph.AI,
-                            tint = ADColors.Ink,
-                            modifier = Modifier.size(27.dp),
-                            accent = ADColors.Red,
-                        )
-                    }
-                }
-                Column(Modifier.padding(start = 10.dp)) {
-                    Text(
-                        "AI",
-                        style = MaterialTheme.typography.titleMedium,
-                        color = ADColors.Ink,
-                        fontWeight = FontWeight.SemiBold,
-                    )
-                    Text("ANSWER WITH", style = ADMetaTextStyle, color = ADColors.InkSoft)
-                }
-            }
-            Spacer(Modifier.height(10.dp))
+            Text("ANSWER WITH", style = MaterialTheme.typography.labelSmall, color = ADColors.InkSoft)
+            Spacer(Modifier.height(8.dp))
             Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
                 ADAiProviderPill("Gemini", selected == ADAiChoice.GEMINI, Modifier.weight(1f)) { onSelect(ADAiChoice.GEMINI) }
                 ADAiProviderPill("Codex", selected == ADAiChoice.OPENAI_CODEX, Modifier.weight(1f)) { onSelect(ADAiChoice.OPENAI_CODEX) }

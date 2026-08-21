@@ -11,11 +11,12 @@ import androidx.compose.ui.graphics.Color
 /**
  * Small, deliberate 7x7 dot-matrix family.
  *
- * Matrix glyphs are reserved for the AD settings language plus the signature Home/AI glyphs.
- * General navigation, media, Bluetooth and Android concepts use conventional icons instead.
+ * Matrix glyphs are reserved for the AD settings language plus the signature Home/AI glyphs
+ * that will later carry real Lens/assistant state. General navigation, media, Bluetooth and
+ * Android concepts use conventional icons instead.
  */
 internal enum class ADMatrixGlyph(val pattern: List<String>, val accentCell: Pair<Int, Int>? = null) {
-    // Signature product glyphs used on Home and AI.
+    // Reserved signature glyphs for the future Home / AI interaction work.
     AI(
         listOf(
             "0001000",

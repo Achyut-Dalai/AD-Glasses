@@ -1,6 +1,11 @@
 package com.fersaiyan.cyanbridge.ui.adglasses
 
 import android.widget.Toast
+import androidx.compose.animation.core.RepeatMode
+import androidx.compose.animation.core.animateFloat
+import androidx.compose.animation.core.infiniteRepeatable
+import androidx.compose.animation.core.rememberInfiniteTransition
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.Image
@@ -37,6 +42,7 @@ import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.StrokeCap
+import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
@@ -216,35 +222,56 @@ private fun ADLensCard(onClick: () -> Unit) {
 
 @Composable
 private fun ADLensShutterArtwork(modifier: Modifier = Modifier) {
+    val pulse by rememberInfiniteTransition(label = "lens-focus").animateFloat(
+        initialValue = 0.82f,
+        targetValue = 1f,
+        animationSpec = infiniteRepeatable(
+            animation = tween(durationMillis = 1900),
+            repeatMode = RepeatMode.Reverse,
+        ),
+        label = "lens-focus-pulse",
+    )
     Surface(
         modifier = modifier,
         shape = RoundedCornerShape(13.dp),
         color = ADColors.SurfaceSubtle,
         border = BorderStroke(1.dp, ADColors.Outline),
     ) {
-        Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-            Canvas(Modifier.fillMaxSize().padding(12.dp)) {
-                val stroke = 2.dp.toPx()
-                val arm = size.minDimension * 0.22f
-                val inset = stroke
-                val right = size.width - inset
-                val bottom = size.height - inset
-                val ink = ADColors.Ink
+        Canvas(Modifier.fillMaxSize().padding(12.dp)) {
+            val stroke = 2.dp.toPx()
+            val arm = size.minDimension * 0.22f
+            val inset = stroke
+            val right = size.width - inset
+            val bottom = size.height - inset
+            val ink = ADColors.Ink
 
-                drawLine(ink, Offset(inset, inset + arm), Offset(inset, inset), stroke, StrokeCap.Round)
-                drawLine(ink, Offset(inset, inset), Offset(inset + arm, inset), stroke, StrokeCap.Round)
-                drawLine(ink, Offset(right - arm, inset), Offset(right, inset), stroke, StrokeCap.Round)
-                drawLine(ink, Offset(right, inset), Offset(right, inset + arm), stroke, StrokeCap.Round)
-                drawLine(ink, Offset(inset, bottom - arm), Offset(inset, bottom), stroke, StrokeCap.Round)
-                drawLine(ink, Offset(inset, bottom), Offset(inset + arm, bottom), stroke, StrokeCap.Round)
-                drawLine(ink, Offset(right - arm, bottom), Offset(right, bottom), stroke, StrokeCap.Round)
-                drawLine(ink, Offset(right, bottom - arm), Offset(right, bottom), stroke, StrokeCap.Round)
-            }
-            ADMatrixGlyphIcon(
-                glyph = ADMatrixGlyph.LENS,
-                tint = ADColors.Ink,
-                modifier = Modifier.size(43.dp),
-                accent = ADColors.Red,
+            drawLine(ink, Offset(inset, inset + arm), Offset(inset, inset), stroke, StrokeCap.Round)
+            drawLine(ink, Offset(inset, inset), Offset(inset + arm, inset), stroke, StrokeCap.Round)
+            drawLine(ink, Offset(right - arm, inset), Offset(right, inset), stroke, StrokeCap.Round)
+            drawLine(ink, Offset(right, inset), Offset(right, inset + arm), stroke, StrokeCap.Round)
+            drawLine(ink, Offset(inset, bottom - arm), Offset(inset, bottom), stroke, StrokeCap.Round)
+            drawLine(ink, Offset(inset, bottom), Offset(inset + arm, bottom), stroke, StrokeCap.Round)
+            drawLine(ink, Offset(right - arm, bottom), Offset(right, bottom), stroke, StrokeCap.Round)
+            drawLine(ink, Offset(right, bottom - arm), Offset(right, bottom), stroke, StrokeCap.Round)
+
+            val center = Offset(size.width / 2f, size.height / 2f)
+            val lensRadius = size.minDimension * 0.20f
+            drawCircle(
+                color = ink.copy(alpha = 0.24f + pulse * 0.08f),
+                radius = lensRadius * 1.55f,
+                center = center,
+                style = Stroke(width = stroke),
+            )
+            drawCircle(
+                color = ink,
+                radius = lensRadius,
+                center = center,
+                style = Stroke(width = stroke),
+            )
+            drawCircle(
+                color = ADColors.Red.copy(alpha = 0.76f + pulse * 0.18f),
+                radius = 2.2.dp.toPx(),
+                center = center,
             )
         }
     }
@@ -341,18 +368,20 @@ private fun ADAskSkillCard(
 
 @Composable
 private fun ADAskArtwork(modifier: Modifier = Modifier) {
-    Surface(
-        modifier = modifier,
-        shape = RoundedCornerShape(13.dp),
-        color = ADColors.SurfaceSubtle,
-    ) {
-        Box(contentAlignment = Alignment.Center) {
-            ADMatrixGlyphIcon(
-                glyph = ADMatrixGlyph.ASK,
-                tint = ADColors.Ink,
-                modifier = Modifier.size(44.dp),
-                accent = ADColors.Red,
-            )
+    Surface(modifier = modifier, shape = RoundedCornerShape(13.dp), color = ADColors.SurfaceSubtle) {
+        Row(
+            modifier = Modifier.padding(horizontal = 11.dp, vertical = 10.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            ADGlyphIcon(ADGlyph.ASK, ADColors.Ink, Modifier.size(24.dp))
+            Column(
+                modifier = Modifier.padding(start = 10.dp).weight(1f),
+                verticalArrangement = Arrangement.spacedBy(5.dp),
+            ) {
+                Box(Modifier.fillMaxWidth(0.88f).height(3.dp).background(ADColors.Ink, RoundedCornerShape(3.dp)))
+                Box(Modifier.fillMaxWidth(0.68f).height(3.dp).background(ADColors.InkSoft.copy(alpha = 0.36f), RoundedCornerShape(3.dp)))
+                Box(Modifier.fillMaxWidth(0.78f).height(3.dp).background(ADColors.InkSoft.copy(alpha = 0.24f), RoundedCornerShape(3.dp)))
+            }
         }
     }
 }
