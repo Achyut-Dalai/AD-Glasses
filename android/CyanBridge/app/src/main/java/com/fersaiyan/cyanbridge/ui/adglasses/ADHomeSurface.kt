@@ -198,17 +198,14 @@ internal fun ADHomeSurface(
                     )
                 }
 
-                ADHomeControlRow {
-                    ADHomeControlTile(
-                        icon = Icons.Outlined.Sync,
-                        title = "Sync",
-                        detail = syncDetail,
-                        active = state.transfer.isVisible,
-                        modifier = Modifier.weight(1f),
-                        onClick = onOpenSync,
-                    )
-                    Spacer(Modifier.weight(1f))
-                }
+                ADHomeControlTile(
+                    icon = Icons.Outlined.Sync,
+                    title = "Sync",
+                    detail = syncDetail,
+                    active = state.transfer.isVisible,
+                    modifier = Modifier.fillMaxWidth(),
+                    onClick = onOpenSync,
+                )
             }
         }
     }
