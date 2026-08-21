@@ -19,7 +19,6 @@ enum class ADRoute {
     STORAGE,
     LANGUAGE,
     PERMISSIONS,
-    ADVANCED,
     ABOUT,
     FIRMWARE,
     LIBRARY_CAPTURES,
