@@ -170,7 +170,7 @@ internal fun ADBottomNavigation(selected: ADTab, onSelected: (ADTab) -> Unit) {
         Surface(
             modifier = Modifier.fillMaxWidth(),
             shape = RoundedCornerShape(15.dp),
-            color = Color.Black,
+            color = ADColors.Surface,
             contentColor = ADColors.Ink,
             border = BorderStroke(1.dp, ADColors.Outline),
         ) {
@@ -198,7 +198,7 @@ private fun ADBottomNavigationItem(
     onClick: () -> Unit,
 ) {
     val iconTint by animateColorAsState(
-        targetValue = if (selected) ADColors.Ink else ADColors.Muted,
+        targetValue = if (selected) ADColors.Red else ADColors.Muted,
         label = "nav-icon-color",
     )
     val labelTint by animateColorAsState(
@@ -223,22 +223,12 @@ private fun ADBottomNavigationItem(
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.Center,
     ) {
-        Box(contentAlignment = Alignment.Center) {
-            Icon(
-                imageVector = icon,
-                contentDescription = tab.label,
-                tint = iconTint,
-                modifier = Modifier.size(19.dp),
-            )
-            if (selected) {
-                Box(
-                    Modifier
-                        .align(Alignment.TopEnd)
-                        .size(3.5.dp)
-                        .background(ADColors.Red, CircleShape),
-                )
-            }
-        }
+        Icon(
+            imageVector = icon,
+            contentDescription = tab.label,
+            tint = iconTint,
+            modifier = Modifier.size(19.dp),
+        )
         Spacer(Modifier.height(3.dp))
         Text(
             tab.label.uppercase(),
