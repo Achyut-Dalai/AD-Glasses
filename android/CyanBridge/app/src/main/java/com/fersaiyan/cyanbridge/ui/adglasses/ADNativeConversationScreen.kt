@@ -31,6 +31,10 @@ import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.ArrowForward
+import androidx.compose.material.icons.outlined.AutoAwesome
+import androidx.compose.material.icons.outlined.ChatBubbleOutline
+import androidx.compose.material.icons.outlined.Lightbulb
+import androidx.compose.material.icons.outlined.PhotoLibrary
 import androidx.compose.material.icons.outlined.Public
 import androidx.compose.material.icons.rounded.Add
 import androidx.compose.material.icons.rounded.ArrowUpward
@@ -52,6 +56,7 @@ import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.SolidColor
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.text.input.ImeAction
@@ -288,7 +293,12 @@ private fun ADPromptHeader(
             modifier = Modifier.size(36.dp).background(ADColors.Surface, RoundedCornerShape(10.dp)),
             contentAlignment = Alignment.Center,
         ) {
-            ADGlyphIcon(ADGlyph.PROMPT, ADColors.Ink, Modifier.size(20.dp))
+            Icon(
+                Icons.Outlined.ChatBubbleOutline,
+                contentDescription = null,
+                tint = ADColors.Ink,
+                modifier = Modifier.size(20.dp),
+            )
         }
         Column(Modifier.padding(start = 9.dp).weight(1f)) {
             Text("PROMPT", style = MaterialTheme.typography.labelSmall, color = ADColors.Muted)
@@ -348,7 +358,12 @@ private fun ADConversationEmptyState(onSuggestion: (String, Boolean) -> Unit) {
             modifier = Modifier.size(48.dp).background(ADColors.Surface, RoundedCornerShape(13.dp)),
             contentAlignment = Alignment.Center,
         ) {
-            ADGlyphIcon(ADGlyph.AI, ADColors.Ink, Modifier.size(27.dp), accent = ADColors.Red)
+            Icon(
+                Icons.Outlined.AutoAwesome,
+                contentDescription = null,
+                tint = ADColors.Red,
+                modifier = Modifier.size(27.dp),
+            )
         }
         Spacer(Modifier.size(12.dp))
         Text("What do you want to know?", style = MaterialTheme.typography.headlineMedium, textAlign = TextAlign.Center)
@@ -362,9 +377,18 @@ private fun ADConversationEmptyState(onSuggestion: (String, Boolean) -> Unit) {
         )
         Spacer(Modifier.size(14.dp))
         Column(modifier = Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(6.dp)) {
-            ADPromptSuggestion("What did I capture today?", ADGlyph.LIBRARY) { onSuggestion("What did I capture today?", false) }
-            ADPromptSuggestion("Search the web for something current", ADGlyph.AI, web = true) { onSuggestion("Search the web for ", true) }
-            ADPromptSuggestion("Help me plan something", ADGlyph.PROMPT) { onSuggestion("Help me plan ", false) }
+            ADPromptSuggestion(
+                text = "What did I capture today?",
+                icon = Icons.Outlined.PhotoLibrary,
+            ) { onSuggestion("What did I capture today?", false) }
+            ADPromptSuggestion(
+                text = "Search the web for something current",
+                icon = Icons.Outlined.Public,
+            ) { onSuggestion("Search the web for ", true) }
+            ADPromptSuggestion(
+                text = "Help me plan something",
+                icon = Icons.Outlined.Lightbulb,
+            ) { onSuggestion("Help me plan ", false) }
         }
     }
 }
@@ -372,8 +396,7 @@ private fun ADConversationEmptyState(onSuggestion: (String, Boolean) -> Unit) {
 @Composable
 private fun ADPromptSuggestion(
     text: String,
-    glyph: ADGlyph,
-    web: Boolean = false,
+    icon: ImageVector,
     onClick: () -> Unit,
 ) {
     Surface(
@@ -387,11 +410,7 @@ private fun ADPromptSuggestion(
             modifier = Modifier.padding(horizontal = 10.dp, vertical = 9.dp),
             verticalAlignment = Alignment.CenterVertically,
         ) {
-            if (web) {
-                Icon(Icons.Outlined.Public, null, tint = ADColors.Ink, modifier = Modifier.size(16.dp))
-            } else {
-                ADGlyphIcon(glyph, ADColors.Ink, Modifier.size(17.dp), accent = if (glyph == ADGlyph.AI) ADColors.Red else null)
-            }
+            Icon(icon, null, tint = ADColors.Ink, modifier = Modifier.size(16.dp))
             Text(text, style = MaterialTheme.typography.bodyMedium, modifier = Modifier.padding(start = 9.dp).weight(1f))
             Icon(Icons.Outlined.ArrowForward, null, tint = ADColors.Muted, modifier = Modifier.size(14.dp))
         }
