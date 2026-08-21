@@ -141,7 +141,6 @@ internal fun ADHomeSurface(
                             title = "Ask AI",
                             detail = "Ask by voice",
                             icon = Icons.Outlined.Mic,
-                            containerColor = ADHomeTileColors.AskAi,
                             modifier = Modifier.weight(1f),
                             onClick = host.onVoiceQuestion,
                         )
@@ -149,7 +148,6 @@ internal fun ADHomeSurface(
                             title = "Photo",
                             detail = "Take a photo",
                             icon = Icons.Outlined.PhotoCamera,
-                            containerColor = ADHomeTileColors.Photo,
                             modifier = Modifier.weight(1f),
                             onClick = host.onCapturePhoto,
                         )
@@ -159,7 +157,6 @@ internal fun ADHomeSurface(
                             title = "Video",
                             detail = "Record from glasses",
                             icon = Icons.Outlined.Videocam,
-                            containerColor = ADHomeTileColors.Video,
                             modifier = Modifier.weight(1f),
                             onClick = host.onToggleVideo,
                         )
@@ -167,7 +164,6 @@ internal fun ADHomeSurface(
                             title = "Translate",
                             detail = "Live conversation",
                             icon = Icons.Rounded.Translate,
-                            containerColor = ADHomeTileColors.Translate,
                             active = translateActive,
                             modifier = Modifier.weight(1f),
                             onClick = { toggleCapability(AssistantCapability.TRANSLATOR) },
@@ -178,7 +174,6 @@ internal fun ADHomeSurface(
                             title = "Soundbites",
                             detail = "Turn speech into notes",
                             icon = Icons.Outlined.GraphicEq,
-                            containerColor = ADHomeTileColors.Soundbites,
                             active = soundbitesActive,
                             modifier = Modifier.weight(1f),
                             onClick = { toggleCapability(AssistantCapability.MEETING_NOTES) },
@@ -187,7 +182,6 @@ internal fun ADHomeSurface(
                             title = "Audio",
                             detail = if (state.meeting.isRecording) "Stop recording" else "Start recording",
                             icon = Icons.Outlined.RadioButtonChecked,
-                            containerColor = ADHomeTileColors.Audio,
                             active = state.meeting.isRecording,
                             modifier = Modifier.weight(1f),
                             onClick = if (state.meeting.isRecording) host.onStopRecording else host.onStartRecording,
@@ -289,18 +283,18 @@ private fun ADHomeAction(
     title: String,
     detail: String,
     icon: ImageVector,
-    containerColor: Color,
     modifier: Modifier = Modifier,
     active: Boolean = false,
     onClick: () -> Unit,
 ) {
-    val iconContainer = if (active) ADColors.Ink else Color.White.copy(alpha = 0.70f)
-    val iconColor = if (active) Color.White else ADColors.Ink
+    val container = if (active) ADColors.SurfaceSubtle else ADColors.Surface
+    val iconContainer = if (active) ADColors.Ink else ADColors.SurfaceSubtle
+    val iconColor = if (active) ADColors.Surface else ADColors.Ink
 
     Column(
         modifier = modifier
             .heightIn(min = 84.dp)
-            .background(containerColor, RoundedCornerShape(16.dp))
+            .background(container, RoundedCornerShape(16.dp))
             .clickable(onClick = onClick)
             .padding(10.dp),
         verticalArrangement = Arrangement.SpaceBetween,
@@ -312,17 +306,12 @@ private fun ADHomeAction(
             Icon(icon, null, tint = iconColor, modifier = Modifier.size(17.dp))
         }
         Spacer(Modifier.height(5.dp))
-        Text(
-            title,
-            style = MaterialTheme.typography.titleMedium,
-            color = ADColors.Ink,
-            maxLines = 1,
-        )
+        Text(title, style = MaterialTheme.typography.titleMedium, maxLines = 1)
         Spacer(Modifier.height(1.dp))
         Text(
             detail,
             style = MaterialTheme.typography.bodySmall,
-            color = ADColors.Ink.copy(alpha = 0.62f),
+            color = ADColors.Muted,
             maxLines = 2,
             overflow = TextOverflow.Ellipsis,
         )
@@ -396,13 +385,4 @@ private fun ADLiveRow(
             Text(detail, style = MaterialTheme.typography.bodySmall, color = ADColors.Muted, maxLines = 1)
         }
     }
-}
-
-private object ADHomeTileColors {
-    val AskAi = Color(0xFFE9E1FF)
-    val Photo = Color(0xFFDFF5E8)
-    val Video = Color(0xFFFFE5D6)
-    val Translate = Color(0xFFDDEBFF)
-    val Soundbites = Color(0xFFFFF0BE)
-    val Audio = Color(0xFFFFDEE6)
 }
