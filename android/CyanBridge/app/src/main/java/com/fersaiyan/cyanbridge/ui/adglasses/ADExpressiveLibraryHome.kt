@@ -16,12 +16,21 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.outlined.Description
+import androidx.compose.material.icons.outlined.Mic
+import androidx.compose.material.icons.outlined.PhotoLibrary
+import androidx.compose.material.icons.outlined.Sync
+import androidx.compose.material.icons.outlined.Videocam
+import androidx.compose.material.icons.rounded.ChevronRight
+import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -60,7 +69,6 @@ internal fun ADExpressiveLibraryHome(
             Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                 ADSectionTitle("Collections")
                 ADLibraryFeatureCollection(
-                    glyph = ADMatrixGlyph.PHOTO,
                     title = "Captures",
                     detail = "Photos and video from your glasses",
                     onClick = onCaptures,
@@ -70,14 +78,14 @@ internal fun ADExpressiveLibraryHome(
                     horizontalArrangement = Arrangement.spacedBy(8.dp),
                 ) {
                     ADLibraryCollection(
-                        glyph = ADMatrixGlyph.AUDIO,
+                        icon = Icons.Outlined.Mic,
                         title = "Recordings",
                         detail = "Audio + transcripts",
                         modifier = Modifier.weight(1f),
                         onClick = onRecordings,
                     )
                     ADLibraryCollection(
-                        glyph = ADMatrixGlyph.DIARY,
+                        icon = Icons.Outlined.Description,
                         title = "Notes",
                         detail = "Summaries + ideas",
                         modifier = Modifier.weight(1f),
@@ -107,11 +115,11 @@ private fun ADLibrarySyncCard(transferActive: Boolean, onClick: () -> Unit) {
                 modifier = Modifier.size(36.dp).background(ADColors.SurfaceSubtle, RoundedCornerShape(10.dp)),
                 contentAlignment = Alignment.Center,
             ) {
-                ADMatrixGlyphIcon(
-                    glyph = ADMatrixGlyph.SYNC,
+                Icon(
+                    imageVector = Icons.Outlined.Sync,
+                    contentDescription = null,
                     tint = ADColors.Ink,
                     modifier = Modifier.size(21.dp),
-                    accent = if (transferActive) ADColors.Red else null,
                 )
             }
             Column(Modifier.padding(start = 10.dp).weight(1f)) {
@@ -132,7 +140,7 @@ private fun ADLibrarySyncCard(transferActive: Boolean, onClick: () -> Unit) {
             if (transferActive) {
                 Box(Modifier.size(6.dp).background(ADColors.Red, CircleShape))
             } else {
-                ADMatrixGlyphIcon(ADMatrixGlyph.NEXT, ADColors.Muted, Modifier.size(16.dp))
+                Icon(Icons.Rounded.ChevronRight, contentDescription = null, tint = ADColors.Muted, modifier = Modifier.size(17.dp))
             }
         }
     }
@@ -140,7 +148,6 @@ private fun ADLibrarySyncCard(transferActive: Boolean, onClick: () -> Unit) {
 
 @Composable
 private fun ADLibraryFeatureCollection(
-    glyph: ADMatrixGlyph,
     title: String,
     detail: String,
     onClick: () -> Unit,
@@ -157,7 +164,7 @@ private fun ADLibraryFeatureCollection(
             modifier = Modifier.padding(12.dp),
             verticalAlignment = Alignment.CenterVertically,
         ) {
-            ADLibraryPreviewStage(glyph = glyph, modifier = Modifier.weight(.92f).height(98.dp))
+            ADLibraryPreviewStage(modifier = Modifier.weight(.92f).height(98.dp))
             Column(Modifier.padding(start = 12.dp).weight(1.08f)) {
                 Text(title, style = MaterialTheme.typography.titleLarge, color = ADColors.Ink)
                 Spacer(Modifier.height(5.dp))
@@ -166,7 +173,7 @@ private fun ADLibraryFeatureCollection(
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Text("Open collection", style = MaterialTheme.typography.labelMedium, color = ADColors.InkSoft)
                     Spacer(Modifier.weight(1f))
-                    ADMatrixGlyphIcon(ADMatrixGlyph.NEXT, ADColors.Muted, Modifier.size(16.dp))
+                    Icon(Icons.Rounded.ChevronRight, contentDescription = null, tint = ADColors.Muted, modifier = Modifier.size(17.dp))
                 }
             }
         }
@@ -175,7 +182,7 @@ private fun ADLibraryFeatureCollection(
 
 @Composable
 private fun ADLibraryCollection(
-    glyph: ADMatrixGlyph,
+    icon: ImageVector,
     title: String,
     detail: String,
     modifier: Modifier = Modifier,
@@ -197,12 +204,7 @@ private fun ADLibraryCollection(
                 modifier = Modifier.size(38.dp).background(ADColors.SurfaceSubtle, RoundedCornerShape(11.dp)),
                 contentAlignment = Alignment.Center,
             ) {
-                ADMatrixGlyphIcon(
-                    glyph = glyph,
-                    tint = ADColors.Ink,
-                    modifier = Modifier.size(22.dp),
-                    accent = if (glyph == ADMatrixGlyph.AUDIO) ADColors.Red else null,
-                )
+                Icon(icon, contentDescription = null, tint = ADColors.Ink, modifier = Modifier.size(22.dp))
             }
             Column {
                 Text(title, style = MaterialTheme.typography.titleMedium, color = ADColors.Ink, fontWeight = FontWeight.SemiBold)
@@ -213,7 +215,7 @@ private fun ADLibraryCollection(
 }
 
 @Composable
-private fun ADLibraryPreviewStage(glyph: ADMatrixGlyph, modifier: Modifier = Modifier) {
+private fun ADLibraryPreviewStage(modifier: Modifier = Modifier) {
     Surface(
         modifier = modifier,
         shape = RoundedCornerShape(13.dp),
@@ -221,27 +223,26 @@ private fun ADLibraryPreviewStage(glyph: ADMatrixGlyph, modifier: Modifier = Mod
         border = BorderStroke(1.dp, ADColors.Separator),
     ) {
         Box(contentAlignment = Alignment.Center) {
-            Column(
-                modifier = Modifier.fillMaxWidth().padding(10.dp),
-                verticalArrangement = Arrangement.spacedBy(5.dp),
-            ) {
-                repeat(3) { index ->
-                    Box(
-                        Modifier
-                            .fillMaxWidth(if (index == 1) .76f else if (index == 2) .58f else .90f)
-                            .height(3.dp)
-                            .background(ADColors.InkSoft.copy(alpha = .20f), RoundedCornerShape(3.dp)),
-                    )
+            Row(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
+                Surface(
+                    modifier = Modifier.size(44.dp),
+                    shape = RoundedCornerShape(12.dp),
+                    color = ADColors.Surface,
+                    border = BorderStroke(1.dp, ADColors.Outline),
+                ) {
+                    Box(contentAlignment = Alignment.Center) {
+                        Icon(Icons.Outlined.PhotoLibrary, contentDescription = null, tint = ADColors.Ink, modifier = Modifier.size(24.dp))
+                    }
                 }
-            }
-            Surface(
-                modifier = Modifier.size(42.dp),
-                shape = RoundedCornerShape(12.dp),
-                color = ADColors.Surface,
-                border = BorderStroke(1.dp, ADColors.Outline),
-            ) {
-                Box(contentAlignment = Alignment.Center) {
-                    ADMatrixGlyphIcon(glyph, ADColors.Ink, Modifier.size(25.dp), accent = ADColors.Red)
+                Surface(
+                    modifier = Modifier.size(44.dp),
+                    shape = RoundedCornerShape(12.dp),
+                    color = ADColors.Surface,
+                    border = BorderStroke(1.dp, ADColors.Outline),
+                ) {
+                    Box(contentAlignment = Alignment.Center) {
+                        Icon(Icons.Outlined.Videocam, contentDescription = null, tint = ADColors.Ink, modifier = Modifier.size(24.dp))
+                    }
                 }
             }
         }
