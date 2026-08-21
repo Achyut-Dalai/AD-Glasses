@@ -22,6 +22,7 @@ import androidx.compose.material.icons.outlined.BatteryFull
 import androidx.compose.material.icons.outlined.GraphicEq
 import androidx.compose.material.icons.outlined.Mic
 import androidx.compose.material.icons.outlined.PhotoCamera
+import androidx.compose.material.icons.outlined.RadioButtonChecked
 import androidx.compose.material.icons.outlined.Storage
 import androidx.compose.material.icons.outlined.Sync
 import androidx.compose.material.icons.outlined.Videocam
@@ -115,7 +116,7 @@ internal fun ADHomeSurface(
                         Text("Active", style = MaterialTheme.typography.titleMedium)
                         if (state.meeting.isRecording) {
                             ADLiveRow(
-                                icon = Icons.Outlined.GraphicEq,
+                                icon = Icons.Outlined.RadioButtonChecked,
                                 title = "Audio recording",
                                 detail = state.meeting.bannerLabel.ifBlank { state.meeting.sourceLabel },
                                 onClick = host.onStopRecording,
@@ -180,7 +181,7 @@ internal fun ADHomeSurface(
                         ADHomeAction(
                             title = "Audio",
                             detail = if (state.meeting.isRecording) "Stop recording" else "Start recording",
-                            icon = Icons.Outlined.GraphicEq,
+                            icon = Icons.Outlined.RadioButtonChecked,
                             active = state.meeting.isRecording,
                             modifier = Modifier.weight(1f),
                             onClick = if (state.meeting.isRecording) host.onStopRecording else host.onStartRecording,
