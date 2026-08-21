@@ -29,13 +29,13 @@
     <color name="text_secondary">#8B949E</color>
     <color name="danger">#FF5252</color>
 
-    <!-- AD Glasses application shell. Mirrors the active Compose product palette. -->
-    <color name="ad_background">#FF171717</color>
-    <color name="ad_surface">#FF090909</color>
-    <color name="ad_surface_subtle">#FF202020</color>
-    <color name="ad_blue">#FF202020</color>
-    <color name="ad_ink">#FFF4F4F2</color>
-    <color name="ad_muted">#FFB6B6B0</color>
-    <color name="ad_outline">#FF343434</color>
+    <!-- AD Glasses shell: true-black canvas with charcoal controls. -->
+    <color name="ad_background">#FF000000</color>
+    <color name="ad_surface">#FF202020</color>
+    <color name="ad_surface_subtle">#FF2B2B2B</color>
+    <color name="ad_blue">#FF2B2B2B</color>
+    <color name="ad_ink">#FFF5F5F3</color>
+    <color name="ad_muted">#FFA6A6A1</color>
+    <color name="ad_outline">#FF3B3B3B</color>
     <color name="ad_red">#FFCA343A</color>
 </resources>
