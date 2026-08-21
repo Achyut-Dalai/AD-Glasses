@@ -27,8 +27,14 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.outlined.Description
+import androidx.compose.material.icons.outlined.Mic
 import androidx.compose.material.icons.outlined.Pause
+import androidx.compose.material.icons.outlined.PhotoLibrary
 import androidx.compose.material.icons.outlined.PlayArrow
+import androidx.compose.material.icons.outlined.Videocam
+import androidx.compose.material.icons.rounded.KeyboardArrowDown
+import androidx.compose.material.icons.rounded.KeyboardArrowUp
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
@@ -48,6 +54,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.asImageBitmap
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
@@ -110,7 +117,7 @@ internal fun ADNativeCapturesScreen(onBack: () -> Unit, onOpenSync: () -> Unit) 
                 ADLibraryDetailHeader(
                     title = "Captures",
                     detail = "Photos and video copied from your glasses.",
-                    glyph = ADMatrixGlyph.PHOTO,
+                    icon = Icons.Outlined.PhotoLibrary,
                     meta = if (loading) "READING" else "${media.size} ITEMS",
                 )
             }
@@ -120,7 +127,7 @@ internal fun ADNativeCapturesScreen(onBack: () -> Unit, onOpenSync: () -> Unit) 
                 media.isEmpty() -> {
                     item {
                         ADEmptyLibraryState(
-                            ADMatrixGlyph.PHOTO,
+                            Icons.Outlined.PhotoLibrary,
                             "No captures yet",
                             "Sync photos and video from the glasses when you’re ready.",
                         )
@@ -154,11 +161,11 @@ private fun ADCaptureCard(item: SyncedMediaItem, onClick: () -> Unit) {
                     modifier = Modifier.size(31.dp).background(ADColors.SurfaceSubtle, RoundedCornerShape(9.dp)),
                     contentAlignment = Alignment.Center,
                 ) {
-                    ADMatrixGlyphIcon(
-                        if (item.isVideo) ADMatrixGlyph.VIDEO else ADMatrixGlyph.PHOTO,
-                        ADColors.Ink,
-                        Modifier.size(18.dp),
-                        accent = if (item.isVideo) ADColors.Red else null,
+                    Icon(
+                        imageVector = if (item.isVideo) Icons.Outlined.Videocam else Icons.Outlined.PhotoLibrary,
+                        contentDescription = null,
+                        tint = ADColors.Ink,
+                        modifier = Modifier.size(18.dp),
                     )
                 }
                 Column(Modifier.padding(start = 8.dp).weight(1f)) {
@@ -213,10 +220,11 @@ private fun ADCapturePreview(item: SyncedMediaItem) {
                 modifier = Modifier.fillMaxSize(),
                 contentScale = ContentScale.Crop,
             )
-        } ?: ADMatrixGlyphIcon(
-            if (item.isVideo) ADMatrixGlyph.VIDEO else ADMatrixGlyph.PHOTO,
-            ADColors.Muted,
-            Modifier.size(32.dp),
+        } ?: Icon(
+            imageVector = if (item.isVideo) Icons.Outlined.Videocam else Icons.Outlined.PhotoLibrary,
+            contentDescription = null,
+            tint = ADColors.Muted,
+            modifier = Modifier.size(34.dp),
         )
 
         if (item.isVideo) {
@@ -298,7 +306,7 @@ internal fun ADNativeRecordingsScreen(onBack: () -> Unit) {
                 ADLibraryDetailHeader(
                     title = "Recordings",
                     detail = "Audio sessions with transcript context when available.",
-                    glyph = ADMatrixGlyph.AUDIO,
+                    icon = Icons.Outlined.Mic,
                     meta = "${sessions.size} SESSIONS",
                 )
             }
@@ -306,7 +314,7 @@ internal fun ADNativeRecordingsScreen(onBack: () -> Unit) {
             if (sessions.isEmpty()) {
                 item {
                     ADEmptyLibraryState(
-                        ADMatrixGlyph.AUDIO,
+                        Icons.Outlined.Mic,
                         "No recordings yet",
                         "Record from Home or start Soundbites through the glasses.",
                     )
@@ -352,10 +360,11 @@ internal fun ADNativeRecordingsScreen(onBack: () -> Unit) {
                                     )
                                 }
                                 if (transcription != null) {
-                                    ADMatrixGlyphIcon(
-                                        if (!transcription.transcriptText.isNullOrBlank()) ADMatrixGlyph.DIARY else ADMatrixGlyph.AUDIO,
-                                        if (transcription.error == null) ADColors.InkSoft else ADColors.Warning,
-                                        Modifier.size(17.dp),
+                                    Icon(
+                                        imageVector = if (!transcription.transcriptText.isNullOrBlank()) Icons.Outlined.Description else Icons.Outlined.Mic,
+                                        contentDescription = null,
+                                        tint = if (transcription.error == null) ADColors.InkSoft else ADColors.Warning,
+                                        modifier = Modifier.size(18.dp),
                                     )
                                 }
                             }
@@ -444,14 +453,14 @@ internal fun ADNativeNotesScreen(onBack: () -> Unit) {
                 ADLibraryDetailHeader(
                     title = "Notes",
                     detail = "Summaries and transcript-derived memory you can revisit.",
-                    glyph = ADMatrixGlyph.DIARY,
+                    icon = Icons.Outlined.Description,
                     meta = "${notes.size} NOTES",
                 )
             }
             if (notes.isEmpty()) {
                 item {
                     ADEmptyLibraryState(
-                        ADMatrixGlyph.DIARY,
+                        Icons.Outlined.Description,
                         "No notes yet",
                         "Meeting summaries and transcript-derived notes will appear here.",
                     )
@@ -482,7 +491,7 @@ private fun ADNativeNoteCard(note: Note, expanded: Boolean, onToggle: () -> Unit
                     modifier = Modifier.size(34.dp).background(ADColors.SurfaceSubtle, RoundedCornerShape(10.dp)),
                     contentAlignment = Alignment.Center,
                 ) {
-                    ADMatrixGlyphIcon(ADMatrixGlyph.DIARY, ADColors.Ink, Modifier.size(19.dp))
+                    Icon(Icons.Outlined.Description, contentDescription = null, tint = ADColors.Ink, modifier = Modifier.size(19.dp))
                 }
                 Column(Modifier.padding(start = 9.dp).weight(1f)) {
                     Text(
@@ -493,10 +502,11 @@ private fun ADNativeNoteCard(note: Note, expanded: Boolean, onToggle: () -> Unit
                     )
                     Text(formatDate(note.createdAt), style = MaterialTheme.typography.bodySmall, color = ADColors.Muted)
                 }
-                ADMatrixGlyphIcon(
-                    if (expanded) ADMatrixGlyph.BACK else ADMatrixGlyph.NEXT,
-                    ADColors.Muted,
-                    Modifier.size(15.dp),
+                Icon(
+                    imageVector = if (expanded) Icons.Rounded.KeyboardArrowUp else Icons.Rounded.KeyboardArrowDown,
+                    contentDescription = null,
+                    tint = ADColors.Muted,
+                    modifier = Modifier.size(18.dp),
                 )
             }
             Spacer(Modifier.size(9.dp))
@@ -529,7 +539,7 @@ private fun ADNativeNoteCard(note: Note, expanded: Boolean, onToggle: () -> Unit
 private fun ADLibraryDetailHeader(
     title: String,
     detail: String,
-    glyph: ADMatrixGlyph,
+    icon: ImageVector,
     meta: String,
 ) {
     Surface(
@@ -543,12 +553,7 @@ private fun ADLibraryDetailHeader(
                 modifier = Modifier.size(44.dp).background(ADColors.SurfaceSubtle, RoundedCornerShape(12.dp)),
                 contentAlignment = Alignment.Center,
             ) {
-                ADMatrixGlyphIcon(
-                    glyph,
-                    ADColors.Ink,
-                    Modifier.size(25.dp),
-                    accent = if (glyph == ADMatrixGlyph.AUDIO) ADColors.Red else null,
-                )
+                Icon(icon, contentDescription = null, tint = ADColors.Ink, modifier = Modifier.size(25.dp))
             }
             Column(Modifier.padding(start = 10.dp).weight(1f)) {
                 Text("LIBRARY · $meta", style = ADMetaTextStyle, color = ADColors.Muted)
@@ -560,7 +565,7 @@ private fun ADLibraryDetailHeader(
 }
 
 @Composable
-private fun ADEmptyLibraryState(glyph: ADMatrixGlyph, title: String, detail: String) {
+private fun ADEmptyLibraryState(icon: ImageVector, title: String, detail: String) {
     Surface(
         modifier = Modifier.fillMaxWidth(),
         shape = RoundedCornerShape(14.dp),
@@ -572,12 +577,7 @@ private fun ADEmptyLibraryState(glyph: ADMatrixGlyph, title: String, detail: Str
                 modifier = Modifier.size(40.dp).background(ADColors.SurfaceSubtle, RoundedCornerShape(11.dp)),
                 contentAlignment = Alignment.Center,
             ) {
-                ADMatrixGlyphIcon(
-                    glyph,
-                    ADColors.InkSoft,
-                    Modifier.size(23.dp),
-                    accent = if (glyph == ADMatrixGlyph.AUDIO) ADColors.Red else null,
-                )
+                Icon(icon, contentDescription = null, tint = ADColors.InkSoft, modifier = Modifier.size(23.dp))
             }
             Column(Modifier.padding(start = 10.dp).weight(1f)) {
                 Text(title, style = MaterialTheme.typography.titleMedium, color = ADColors.Ink, fontWeight = FontWeight.Medium)
