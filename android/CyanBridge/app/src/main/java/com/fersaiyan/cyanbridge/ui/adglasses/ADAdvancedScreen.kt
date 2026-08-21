@@ -5,8 +5,8 @@ import android.net.Uri
 import android.provider.Settings as AndroidSettings
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.outlined.Bluetooth
-import androidx.compose.material.icons.outlined.Settings
+import androidx.compose.material.icons.outlined.Android
+import androidx.compose.material.icons.outlined.Build
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
@@ -24,14 +24,14 @@ internal fun ADAdvancedScreen(
     ADPageLayout("Advanced", onBack) {
         ADCard {
             ADSettingsRow(
-                icon = Icons.Outlined.Bluetooth,
+                icon = Icons.Outlined.Build,
                 title = "Device diagnostics",
                 subtitle = "Connection, sync, firmware and recovery tools",
                 onClick = onDevice,
             )
             HorizontalDivider(Modifier.padding(start = 42.dp), color = ADColors.Separator)
             ADSettingsRow(
-                icon = Icons.Outlined.Settings,
+                icon = Icons.Outlined.Android,
                 title = "Android app settings",
                 subtitle = "Permissions, battery and system controls",
                 onClick = {
