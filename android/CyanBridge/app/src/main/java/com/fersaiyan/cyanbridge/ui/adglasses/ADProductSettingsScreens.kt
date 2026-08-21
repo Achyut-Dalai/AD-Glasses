@@ -21,17 +21,20 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.Bluetooth
+import androidx.compose.material.icons.outlined.Cached
 import androidx.compose.material.icons.outlined.CameraAlt
-import androidx.compose.material.icons.outlined.Description
-import androidx.compose.material.icons.outlined.Language
-import androidx.compose.material.icons.outlined.Lock
+import androidx.compose.material.icons.outlined.DevicesOther
+import androidx.compose.material.icons.outlined.Folder
 import androidx.compose.material.icons.outlined.Mic
 import androidx.compose.material.icons.outlined.Notifications
+import androidx.compose.material.icons.outlined.PersonOff
+import androidx.compose.material.icons.outlined.PhotoLibrary
 import androidx.compose.material.icons.outlined.Public
-import androidx.compose.material.icons.outlined.Security
-import androidx.compose.material.icons.outlined.Storage
+import androidx.compose.material.icons.outlined.Share
+import androidx.compose.material.icons.outlined.TextSnippet
+import androidx.compose.material.icons.outlined.Translate
+import androidx.compose.material.icons.outlined.VerifiedUser
 import androidx.compose.material.icons.outlined.Visibility
-import androidx.compose.material.icons.outlined.Wifi
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.HorizontalDivider
@@ -74,23 +77,23 @@ internal fun ADPrivacyCenterScreen(onBack: () -> Unit) {
 
     ADPageLayout("Privacy", onBack) {
         ADSettingsDetailGroup("Conversation data") {
-            ADToggleRow(Icons.Outlined.Description, "Save transcripts", "Keep supported transcripts on the phone", storeTranscripts) {
+            ADToggleRow(Icons.Outlined.TextSnippet, "Save transcripts", "Keep supported transcripts on the phone", storeTranscripts) {
                 storeTranscripts = it
                 PrivacyPrefs.setTranscriptStorageEnabled(context, it)
             }
             ADSettingsDetailDivider()
-            ADToggleRow(Icons.Outlined.Lock, "Redact names", "Best-effort name redaction in saved text", redactNames) {
+            ADToggleRow(Icons.Outlined.PersonOff, "Redact names", "Best-effort name redaction in saved text", redactNames) {
                 redactNames = it
                 PrivacyPrefs.setRedactNamesEnabled(context, it)
             }
             ADSettingsDetailDivider()
-            ADToggleRow(Icons.Outlined.Description, "Full transcript in exports", "Include complete transcription when exporting", fullExports) {
+            ADToggleRow(Icons.Outlined.Share, "Full transcript in exports", "Include complete transcription when exporting", fullExports) {
                 fullExports = it
                 PrivacyPrefs.setIncludeFullTranscriptionInExportsEnabled(context, it)
             }
         }
         ADSettingsDetailGroup("Automation") {
-            ADToggleRow(Icons.Outlined.Security, "Confirm sensitive actions", "Ask before protected automation actions run", confirmations) {
+            ADToggleRow(Icons.Outlined.VerifiedUser, "Confirm sensitive actions", "Ask before protected automation actions run", confirmations) {
                 confirmations = it
                 LocalAgentPrefs.setRequireConfirmationEnabled(context, it)
             }
@@ -126,13 +129,13 @@ internal fun ADStorageScreen(onBack: () -> Unit) {
     ADPageLayout("Storage", onBack) {
         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
             ADStorageStatTile(
-                icon = Icons.Outlined.Storage,
+                icon = Icons.Outlined.Folder,
                 label = "App data",
                 value = filesBytes?.let(::formatBytes) ?: "…",
                 modifier = Modifier.weight(1f),
             )
             ADStorageStatTile(
-                icon = Icons.Outlined.Storage,
+                icon = Icons.Outlined.Cached,
                 label = "Cache",
                 value = cacheBytes?.let(::formatBytes) ?: "…",
                 modifier = Modifier.weight(1f),
@@ -157,7 +160,7 @@ internal fun ADStorageScreen(onBack: () -> Unit) {
                 ) {
                     Box(contentAlignment = Alignment.Center) {
                         Icon(
-                            Icons.Outlined.CameraAlt,
+                            Icons.Outlined.PhotoLibrary,
                             contentDescription = null,
                             tint = ADColors.Ink,
                             modifier = Modifier.size(19.dp),
@@ -269,7 +272,7 @@ internal fun ADLanguageScreen(onBack: () -> Unit) {
                     color = MaterialTheme.colorScheme.surfaceVariant,
                 ) {
                     Box(contentAlignment = Alignment.Center) {
-                        Icon(Icons.Outlined.Language, contentDescription = null, tint = ADColors.Ink)
+                        Icon(Icons.Outlined.Translate, contentDescription = null, tint = ADColors.Ink)
                     }
                 }
                 Column(Modifier.padding(start = 10.dp).weight(1f)) {
@@ -310,7 +313,7 @@ internal fun ADPermissionsScreen(onBack: () -> Unit) {
             add(ADPermissionItem("Bluetooth", Icons.Outlined.Bluetooth, Manifest.permission.BLUETOOTH_CONNECT))
         }
         if (Build.VERSION.SDK_INT >= 33) {
-            add(ADPermissionItem("Nearby devices", Icons.Outlined.Wifi, Manifest.permission.NEARBY_WIFI_DEVICES))
+            add(ADPermissionItem("Nearby devices", Icons.Outlined.DevicesOther, Manifest.permission.NEARBY_WIFI_DEVICES))
             add(ADPermissionItem("Notifications", Icons.Outlined.Notifications, Manifest.permission.POST_NOTIFICATIONS))
         }
     }

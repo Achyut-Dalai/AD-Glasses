@@ -20,14 +20,15 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.rounded.KeyboardArrowRight
+import androidx.compose.material.icons.outlined.AdminPanelSettings
+import androidx.compose.material.icons.outlined.Android
 import androidx.compose.material.icons.outlined.BatteryFull
 import androidx.compose.material.icons.outlined.Bluetooth
+import androidx.compose.material.icons.outlined.Build
 import androidx.compose.material.icons.outlined.Info
-import androidx.compose.material.icons.outlined.Language
 import androidx.compose.material.icons.outlined.PrivacyTip
-import androidx.compose.material.icons.outlined.Security
-import androidx.compose.material.icons.outlined.Settings
 import androidx.compose.material.icons.outlined.Storage
+import androidx.compose.material.icons.outlined.Translate
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
@@ -86,13 +87,13 @@ internal fun ADNativeSettingsHubScreen(
             }
             Row(horizontalArrangement = Arrangement.spacedBy(7.dp)) {
                 ADSettingsTile(
-                    icon = Icons.Outlined.Language,
+                    icon = Icons.Outlined.Translate,
                     title = "Language",
                     modifier = Modifier.weight(1f),
                     onClick = onLanguage,
                 )
                 ADSettingsTile(
-                    icon = Icons.Outlined.Security,
+                    icon = Icons.Outlined.AdminPanelSettings,
                     title = "Permissions",
                     modifier = Modifier.weight(1f),
                     onClick = onPermissions,
@@ -103,13 +104,13 @@ internal fun ADNativeSettingsHubScreen(
         Column(verticalArrangement = Arrangement.spacedBy(7.dp)) {
             ADSettingsSectionTitle("Advanced")
             ADSettingsWideAction(
-                icon = Icons.Outlined.Bluetooth,
+                icon = Icons.Outlined.Build,
                 title = "Device diagnostics",
                 subtitle = "Connection, sync, firmware and recovery tools",
                 onClick = onDevice,
             )
             ADSettingsWideAction(
-                icon = Icons.Outlined.Settings,
+                icon = Icons.Outlined.Android,
                 title = "Android app settings",
                 subtitle = "Permissions, battery and system controls",
                 onClick = {

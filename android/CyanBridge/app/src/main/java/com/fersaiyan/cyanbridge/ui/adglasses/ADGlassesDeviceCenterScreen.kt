@@ -15,10 +15,10 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.BatteryFull
 import androidx.compose.material.icons.outlined.Bluetooth
-import androidx.compose.material.icons.outlined.DeveloperMode
 import androidx.compose.material.icons.outlined.Storage
 import androidx.compose.material.icons.outlined.Sync
 import androidx.compose.material.icons.outlined.SystemUpdateAlt
+import androidx.compose.material.icons.outlined.Tune
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.HorizontalDivider
@@ -174,7 +174,7 @@ internal fun ADGlassesDeviceCenterScreen(
             )
             HorizontalDivider(Modifier.padding(start = 42.dp), color = ADColors.Separator)
             ADSettingsRow(
-                icon = Icons.Outlined.DeveloperMode,
+                icon = Icons.Outlined.Tune,
                 title = "Advanced",
                 subtitle = "Connection diagnostics and Android controls",
                 onClick = onAdvanced,
