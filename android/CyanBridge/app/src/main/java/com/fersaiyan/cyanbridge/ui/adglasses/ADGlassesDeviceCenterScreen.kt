@@ -10,15 +10,11 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.outlined.BatteryFull
 import androidx.compose.material.icons.outlined.Bluetooth
-import androidx.compose.material.icons.outlined.Storage
 import androidx.compose.material.icons.outlined.Sync
 import androidx.compose.material.icons.outlined.SystemUpdateAlt
-import androidx.compose.material.icons.outlined.Tune
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.HorizontalDivider
@@ -44,7 +40,6 @@ internal fun ADGlassesDeviceCenterScreen(
     onBack: () -> Unit,
     onSync: () -> Unit,
     onFirmware: () -> Unit,
-    onAdvanced: () -> Unit,
 ) {
     val context = LocalContext.current
     val profile = DeviceProfileStore.loadLastSelected(context)
@@ -119,31 +114,6 @@ internal fun ADGlassesDeviceCenterScreen(
             }
         }
 
-        ADSectionTitle("Glasses status")
-        ADCard {
-            ADDeviceMetric(
-                icon = Icons.Outlined.Bluetooth,
-                label = "Connection",
-                value = if (presentation.connected) "Bluetooth connected" else "Not connected",
-            )
-            if (state.showBattery && state.batteryPercent != null) {
-                HorizontalDivider(Modifier.padding(start = 30.dp), color = ADColors.Separator)
-                ADDeviceMetric(
-                    icon = Icons.Outlined.BatteryFull,
-                    label = "Battery",
-                    value = "${state.batteryPercent}%",
-                )
-            }
-            if (state.showStorage && state.storageLabel != "--") {
-                HorizontalDivider(Modifier.padding(start = 30.dp), color = ADColors.Separator)
-                ADDeviceMetric(
-                    icon = Icons.Outlined.Storage,
-                    label = "Storage",
-                    value = state.storageLabel,
-                )
-            }
-        }
-
         ADSectionTitle("Capabilities")
         ADCard {
             ADDeviceCapability("Voice", "Ask and control through the glasses")
@@ -172,41 +142,7 @@ internal fun ADGlassesDeviceCenterScreen(
                 iconTint = Color.White,
                 iconBackground = ADColors.Warning,
             )
-            HorizontalDivider(Modifier.padding(start = 42.dp), color = ADColors.Separator)
-            ADSettingsRow(
-                icon = Icons.Outlined.Tune,
-                title = "Advanced",
-                subtitle = "Connection diagnostics and Android controls",
-                onClick = onAdvanced,
-                iconTint = Color.White,
-                iconBackground = ADColors.Muted,
-            )
         }
-    }
-}
-
-@Composable
-private fun ADDeviceMetric(
-    icon: androidx.compose.ui.graphics.vector.ImageVector,
-    label: String,
-    value: String,
-) {
-    Row(
-        modifier = Modifier.fillMaxWidth().padding(vertical = 8.dp),
-        verticalAlignment = Alignment.CenterVertically,
-    ) {
-        Box(
-            modifier = Modifier.size(26.dp).background(ADColors.SurfaceSubtle, CircleShape),
-            contentAlignment = Alignment.Center,
-        ) {
-            Icon(icon, contentDescription = null, tint = ADColors.Muted, modifier = Modifier.size(15.dp))
-        }
-        Text(
-            label,
-            modifier = Modifier.padding(start = 8.dp).weight(1f),
-            style = MaterialTheme.typography.bodyMedium,
-        )
-        Text(value, style = MaterialTheme.typography.bodySmall, color = ADColors.Muted)
     }
 }
 
