@@ -21,6 +21,10 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.Android
 import androidx.compose.material.icons.outlined.Bluetooth
 import androidx.compose.material.icons.outlined.Info
+import androidx.compose.material.icons.outlined.Lock
+import androidx.compose.material.icons.outlined.Security
+import androidx.compose.material.icons.outlined.Storage
+import androidx.compose.material.icons.outlined.SystemUpdate
 import androidx.compose.material.icons.outlined.Translate
 import androidx.compose.material.icons.rounded.ChevronRight
 import androidx.compose.material3.HorizontalDivider
@@ -68,16 +72,14 @@ internal fun ADNativeSettingsHubScreen(
         Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
             ADSectionTitle("Essentials")
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                ADSettingsTile(ADMatrixGlyph.PRIVACY, "Privacy", Modifier.weight(1f), onClick = onPrivacy)
-                ADSettingsTile(ADMatrixGlyph.STORAGE, "Storage", Modifier.weight(1f), onClick = onStorage)
+                ADSettingsTile(Icons.Outlined.Lock, "Privacy", Modifier.weight(1f), onClick = onPrivacy)
+                ADSettingsTile(Icons.Outlined.Storage, "Storage", Modifier.weight(1f), onClick = onStorage)
             }
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                ADSettingsIconTile(Icons.Outlined.Translate, "Language", Modifier.weight(1f), onClick = onLanguage)
-                ADSettingsTile(ADMatrixGlyph.PERMISSIONS, "Permissions", Modifier.weight(1f), onClick = onPermissions)
+                ADSettingsTile(Icons.Outlined.Translate, "Language", Modifier.weight(1f), onClick = onLanguage)
+                ADSettingsTile(Icons.Outlined.Security, "Permissions", Modifier.weight(1f), onClick = onPermissions)
             }
         }
-
-        ADWallpaperPicker()
 
         Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
             ADSectionTitle("System")
@@ -89,14 +91,14 @@ internal fun ADNativeSettingsHubScreen(
                 border = BorderStroke(1.dp, ADColors.Outline),
             ) {
                 Column(Modifier.padding(horizontal = 12.dp)) {
-                    ADSettingsWideGlyphAction(
-                        glyph = ADMatrixGlyph.FIRMWARE,
+                    ADSettingsWideAction(
+                        icon = Icons.Outlined.SystemUpdate,
                         title = "Firmware",
                         detail = "Updates and recovery",
                         onClick = onFirmware,
                     )
                     HorizontalDivider(color = ADColors.Separator)
-                    ADSettingsWideIconAction(
+                    ADSettingsWideAction(
                         icon = Icons.Outlined.Android,
                         title = "Android app settings",
                         detail = "Notifications, permissions and system controls",
@@ -112,7 +114,7 @@ internal fun ADNativeSettingsHubScreen(
                         },
                     )
                     HorizontalDivider(color = ADColors.Separator)
-                    ADSettingsWideIconAction(
+                    ADSettingsWideAction(
                         icon = Icons.Outlined.Info,
                         title = "About",
                         detail = "Product identity and version",
@@ -222,34 +224,10 @@ private fun ADDeviceMetric(label: String, value: String, modifier: Modifier = Mo
 
 @Composable
 private fun ADSettingsTile(
-    glyph: ADMatrixGlyph,
-    title: String,
-    modifier: Modifier = Modifier,
-    onClick: () -> Unit,
-) {
-    ADSettingsTileFrame(title = title, modifier = modifier, onClick = onClick) {
-        ADMatrixGlyphIcon(glyph, ADColors.Ink, Modifier.size(20.dp))
-    }
-}
-
-@Composable
-private fun ADSettingsIconTile(
     icon: ImageVector,
     title: String,
     modifier: Modifier = Modifier,
     onClick: () -> Unit,
-) {
-    ADSettingsTileFrame(title = title, modifier = modifier, onClick = onClick) {
-        Icon(icon, contentDescription = null, tint = ADColors.Ink, modifier = Modifier.size(20.dp))
-    }
-}
-
-@Composable
-private fun ADSettingsTileFrame(
-    title: String,
-    modifier: Modifier = Modifier,
-    onClick: () -> Unit,
-    icon: @Composable () -> Unit,
 ) {
     Surface(
         onClick = onClick,
@@ -264,9 +242,11 @@ private fun ADSettingsTileFrame(
             verticalArrangement = Arrangement.SpaceBetween,
         ) {
             Box(
-                modifier = Modifier.size(34.dp).background(ADColors.SurfaceSubtle, RoundedCornerShape(10.dp)),
+                modifier = Modifier.size(36.dp).background(ADColors.SurfaceSubtle, RoundedCornerShape(11.dp)),
                 contentAlignment = Alignment.Center,
-            ) { icon() }
+            ) {
+                Icon(icon, contentDescription = null, tint = ADColors.Ink, modifier = Modifier.size(20.dp))
+            }
             Text(
                 title,
                 style = MaterialTheme.typography.labelLarge,
@@ -278,35 +258,11 @@ private fun ADSettingsTileFrame(
 }
 
 @Composable
-private fun ADSettingsWideGlyphAction(
-    glyph: ADMatrixGlyph,
-    title: String,
-    detail: String,
-    onClick: () -> Unit,
-) {
-    ADSettingsWideActionFrame(title, detail, onClick) {
-        ADMatrixGlyphIcon(glyph, ADColors.Ink, Modifier.size(19.dp))
-    }
-}
-
-@Composable
-private fun ADSettingsWideIconAction(
+private fun ADSettingsWideAction(
     icon: ImageVector,
     title: String,
     detail: String,
     onClick: () -> Unit,
-) {
-    ADSettingsWideActionFrame(title, detail, onClick) {
-        Icon(icon, contentDescription = null, tint = ADColors.Ink, modifier = Modifier.size(19.dp))
-    }
-}
-
-@Composable
-private fun ADSettingsWideActionFrame(
-    title: String,
-    detail: String,
-    onClick: () -> Unit,
-    icon: @Composable () -> Unit,
 ) {
     Row(
         modifier = Modifier
@@ -317,9 +273,11 @@ private fun ADSettingsWideActionFrame(
         verticalAlignment = Alignment.CenterVertically,
     ) {
         Box(
-            Modifier.size(34.dp).background(ADColors.SurfaceSubtle, RoundedCornerShape(10.dp)),
+            Modifier.size(36.dp).background(ADColors.SurfaceSubtle, RoundedCornerShape(11.dp)),
             contentAlignment = Alignment.Center,
-        ) { icon() }
+        ) {
+            Icon(icon, contentDescription = null, tint = ADColors.Ink, modifier = Modifier.size(19.dp))
+        }
         Column(Modifier.padding(start = 10.dp).weight(1f)) {
             Text(
                 title,
