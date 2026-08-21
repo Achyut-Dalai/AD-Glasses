@@ -17,13 +17,21 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.outlined.Android
+import androidx.compose.material.icons.outlined.Bluetooth
+import androidx.compose.material.icons.outlined.Info
+import androidx.compose.material.icons.outlined.Translate
+import androidx.compose.material.icons.rounded.ChevronRight
 import androidx.compose.material3.HorizontalDivider
+import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
@@ -64,7 +72,7 @@ internal fun ADNativeSettingsHubScreen(
                 ADSettingsTile(ADMatrixGlyph.STORAGE, "Storage", Modifier.weight(1f), onClick = onStorage)
             }
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                ADSettingsTile(ADMatrixGlyph.LANGUAGE, "Language", Modifier.weight(1f), onClick = onLanguage)
+                ADSettingsIconTile(Icons.Outlined.Translate, "Language", Modifier.weight(1f), onClick = onLanguage)
                 ADSettingsTile(ADMatrixGlyph.PERMISSIONS, "Permissions", Modifier.weight(1f), onClick = onPermissions)
             }
         }
@@ -81,15 +89,15 @@ internal fun ADNativeSettingsHubScreen(
                 border = BorderStroke(1.dp, ADColors.Outline),
             ) {
                 Column(Modifier.padding(horizontal = 12.dp)) {
-                    ADSettingsWideAction(
+                    ADSettingsWideGlyphAction(
                         glyph = ADMatrixGlyph.FIRMWARE,
                         title = "Firmware",
                         detail = "Updates and recovery",
                         onClick = onFirmware,
                     )
                     HorizontalDivider(color = ADColors.Separator)
-                    ADSettingsWideAction(
-                        glyph = ADMatrixGlyph.SETTINGS,
+                    ADSettingsWideIconAction(
+                        icon = Icons.Outlined.Android,
                         title = "Android app settings",
                         detail = "Notifications, permissions and system controls",
                         onClick = {
@@ -104,10 +112,10 @@ internal fun ADNativeSettingsHubScreen(
                         },
                     )
                     HorizontalDivider(color = ADColors.Separator)
-                    ADSettingsWideAction(
-                        glyph = ADMatrixGlyph.INFO,
-                        title = "About AD Glasses",
-                        detail = "Version, product and open-source information",
+                    ADSettingsWideIconAction(
+                        icon = Icons.Outlined.Info,
+                        title = "About",
+                        detail = "Product identity and version",
                         onClick = onAbout,
                     )
                 }
@@ -150,11 +158,11 @@ private fun ADSettingsDeviceOverview(
                         .background(ADColors.SurfaceSubtle, RoundedCornerShape(12.dp)),
                     contentAlignment = Alignment.Center,
                 ) {
-                    ADMatrixGlyphIcon(
-                        ADMatrixGlyph.LENS,
-                        ADColors.Ink,
-                        Modifier.size(23.dp),
-                        accent = if (presentation.connected) ADColors.Red else null,
+                    Icon(
+                        imageVector = Icons.Outlined.Bluetooth,
+                        contentDescription = null,
+                        tint = ADColors.Ink,
+                        modifier = Modifier.size(23.dp),
                     )
                 }
                 Column(Modifier.padding(start = 11.dp).weight(1f)) {
@@ -219,6 +227,30 @@ private fun ADSettingsTile(
     modifier: Modifier = Modifier,
     onClick: () -> Unit,
 ) {
+    ADSettingsTileFrame(title = title, modifier = modifier, onClick = onClick) {
+        ADMatrixGlyphIcon(glyph, ADColors.Ink, Modifier.size(20.dp))
+    }
+}
+
+@Composable
+private fun ADSettingsIconTile(
+    icon: ImageVector,
+    title: String,
+    modifier: Modifier = Modifier,
+    onClick: () -> Unit,
+) {
+    ADSettingsTileFrame(title = title, modifier = modifier, onClick = onClick) {
+        Icon(icon, contentDescription = null, tint = ADColors.Ink, modifier = Modifier.size(20.dp))
+    }
+}
+
+@Composable
+private fun ADSettingsTileFrame(
+    title: String,
+    modifier: Modifier = Modifier,
+    onClick: () -> Unit,
+    icon: @Composable () -> Unit,
+) {
     Surface(
         onClick = onClick,
         modifier = modifier.heightIn(min = 92.dp),
@@ -234,9 +266,7 @@ private fun ADSettingsTile(
             Box(
                 modifier = Modifier.size(34.dp).background(ADColors.SurfaceSubtle, RoundedCornerShape(10.dp)),
                 contentAlignment = Alignment.Center,
-            ) {
-                ADMatrixGlyphIcon(glyph, ADColors.Ink, Modifier.size(20.dp))
-            }
+            ) { icon() }
             Text(
                 title,
                 style = MaterialTheme.typography.labelLarge,
@@ -248,11 +278,35 @@ private fun ADSettingsTile(
 }
 
 @Composable
-private fun ADSettingsWideAction(
+private fun ADSettingsWideGlyphAction(
     glyph: ADMatrixGlyph,
     title: String,
     detail: String,
     onClick: () -> Unit,
+) {
+    ADSettingsWideActionFrame(title, detail, onClick) {
+        ADMatrixGlyphIcon(glyph, ADColors.Ink, Modifier.size(19.dp))
+    }
+}
+
+@Composable
+private fun ADSettingsWideIconAction(
+    icon: ImageVector,
+    title: String,
+    detail: String,
+    onClick: () -> Unit,
+) {
+    ADSettingsWideActionFrame(title, detail, onClick) {
+        Icon(icon, contentDescription = null, tint = ADColors.Ink, modifier = Modifier.size(19.dp))
+    }
+}
+
+@Composable
+private fun ADSettingsWideActionFrame(
+    title: String,
+    detail: String,
+    onClick: () -> Unit,
+    icon: @Composable () -> Unit,
 ) {
     Row(
         modifier = Modifier
@@ -265,9 +319,7 @@ private fun ADSettingsWideAction(
         Box(
             Modifier.size(34.dp).background(ADColors.SurfaceSubtle, RoundedCornerShape(10.dp)),
             contentAlignment = Alignment.Center,
-        ) {
-            ADMatrixGlyphIcon(glyph, ADColors.Ink, Modifier.size(19.dp))
-        }
+        ) { icon() }
         Column(Modifier.padding(start = 10.dp).weight(1f)) {
             Text(
                 title,
@@ -285,6 +337,11 @@ private fun ADSettingsWideAction(
                 overflow = TextOverflow.Ellipsis,
             )
         }
-        ADMatrixGlyphIcon(ADMatrixGlyph.NEXT, ADColors.Muted, Modifier.size(17.dp))
+        Icon(
+            imageVector = Icons.Rounded.ChevronRight,
+            contentDescription = null,
+            tint = ADColors.Muted,
+            modifier = Modifier.size(17.dp),
+        )
     }
 }
