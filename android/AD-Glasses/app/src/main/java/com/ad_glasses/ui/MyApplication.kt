@@ -22,10 +22,7 @@ import com.ad_glasses.media.autocapture.AutoAudioCapturePrefs
 import com.ad_glasses.media.autocapture.AutoAudioCaptureService
 import com.ad_glasses.memoryvault.MemoryVaultBootstrap
 import com.ad_glasses.plugins.PluginVoicePermissions
-import com.ad_glasses.plugins.autodiary.AutoDiaryService
 import com.ad_glasses.plugins.localagent.LocalAgentPlugin
-import com.ad_glasses.plugins.visualdiary.VisualDiaryPreferences
-import com.ad_glasses.plugins.visualdiary.VisualDiaryService
 import com.ad_glasses.shared.platform.ADGlassesServices
 import com.ad_glasses.shared.platform.initPlatformPreferences
 import com.ad_glasses.studiobridge.StudioApprovalHandler
@@ -89,14 +86,6 @@ class MyApplication : Application() {
             runCatching {
                 AssistantConversationSession.get(this@MyApplication).pruneExpiredConversations()
             }
-        }
-
-        if (AutoDiaryService.isEnabled(this) && !AutoDiaryService.isRunning()) {
-            AutoDiaryService.startIfEnabled(this)
-        }
-
-        if (VisualDiaryPreferences.isEnabled(this) && !VisualDiaryService.isRunning()) {
-            VisualDiaryService.startIfEnabled(this)
         }
 
         maybePreloadLocalModel()
