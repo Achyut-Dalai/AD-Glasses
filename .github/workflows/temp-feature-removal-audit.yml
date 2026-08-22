@@ -1,16 +1,15 @@
 name: Temporary feature removal audit
 
 on:
-  pull_request:
+  push:
     branches:
-      - main
+      - fix/post-merge-cleanup
 
 permissions:
-  contents: write
+  contents: read
 
 jobs:
-  cleanup:
-    if: github.actor != 'github-actions[bot]'
+  audit:
     runs-on: ubuntu-latest
     steps:
       - name: Check out consolidation branch
@@ -18,20 +17,34 @@ jobs:
         with:
           ref: fix/post-merge-cleanup
           fetch-depth: 1
-      - name: Apply complete feature cleanup
+      - name: Audit removed features and AI navigation
         shell: bash
         run: |
           set -euo pipefail
-          python3 tools/temp_remove_diary_timeline.py
-          git diff --check
-          echo '===== REMAINING LIVE FEATURE TOKENS ====='
-          git grep -n -i -E 'daynote|day note|autodiary|auto diary|visualdiary|visual diary|visual_diary' -- \
+          echo '===== REMOVED DIARY/TIMELINE FEATURE TOKENS ====='
+          if git grep -n -i -E 'daynote|day note|autodiary|auto diary|visualdiary|visual diary|visual_diary' -- \
             android/AD-Glasses/app/src/main \
-            android/AD-Glasses/shared/src/commonMain || true
-          git config user.name github-actions[bot]
-          git config user.email 41898282+github-actions[bot]@users.noreply.github.com
-          git add -A
-          if ! git diff --cached --quiet; then
-            git commit -m 'Remove Timeline and Diary features completely'
-            git push origin HEAD:fix/post-merge-cleanup
+            android/AD-Glasses/shared/src/commonMain; then
+            echo 'Removed Diary/Timeline feature residue remains' >&2
+            exit 1
           fi
+          echo '===== RETIRED AI TAB REFERENCES ====='
+          if git grep -n -E 'ADTab\.AI|ADNativeAiScreen\(' -- android/AD-Glasses/app/src/main; then
+            echo 'AI tab/standalone screen residue remains' >&2
+            exit 1
+          fi
+          echo '===== DEVICE CENTER AI EMBED ====='
+          git grep -n -E 'ADSectionTitle\("AI"\)|ADDeviceAiSection\(' -- \
+            android/AD-Glasses/app/src/main/java/com/ad_glasses/ui/adglasses/ADGlassesDeviceCenterScreen.kt
+          echo '===== DEVICE CENTER CAPABILITIES ====='
+          if git grep -n -E 'ADSectionTitle\("Capabilities"\)|ADDeviceCapability\(' -- \
+            android/AD-Glasses/app/src/main/java/com/ad_glasses/ui/adglasses/ADGlassesDeviceCenterScreen.kt; then
+            echo 'Retired Device Center capabilities section remains' >&2
+            exit 1
+          fi
+          echo '===== BOTTOM TABS ====='
+          git grep -n -A5 'enum class ADTab' -- \
+            android/AD-Glasses/app/src/main/java/com/ad_glasses/ui/adglasses/ADGlassesModels.kt
+          echo '===== EXTERNAL AI ROUTE ====='
+          git grep -n -A2 'ADExternalDestination.AI' -- \
+            android/AD-Glasses/app/src/main/java/com/ad_glasses/ui/adglasses/ADGlassesApp.kt
