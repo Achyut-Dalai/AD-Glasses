@@ -72,14 +72,14 @@ SK/AP and other/P2P flow:
 
 The APK uses port 80 for the HTTP control request and VLC RTSP playback options including TCP transport, network caching, live caching, and late-frame dropping.
 
-## CyanBridge Integration Requirements
+## AD Glasses Integration Requirements
 
 - Add an explicit `EYEVUE` device class and display label to the Scan device-type choices alongside Meta, HeyCyan, Meizu/audio-only, and existing choices.
 - Detect EYEVUE advertisements without stealing existing HeyCyan or Meta classifications. Keep manual selection and per-MAC persistence working.
 - Route selected EYEVUE devices through an Eyevue-specific BLE/network adapter rather than assuming the Oudmon HeyCyan protocol.
 - Keep the Glasses tab/dashboard layout and core button behavior equivalent to HeyCyan where the hardware supports it: connection, battery/status, photo, video, audio, media count, Wi-Fi sync, and live preview.
 - Wire every dashboard action to an implementation or an explicit capability-safe disabled state. Do not leave Eyevue buttons as silent no-ops.
-- For live preview, use the actual `0x67` command and the returned SSID/AP or P2P model flow. The existing CyanBridge passive RTSP probe must not be treated as the production Eyevue path.
+- For live preview, use the actual `0x67` command and the returned SSID/AP or P2P model flow. The existing AD Glasses passive RTSP probe must not be treated as the production Eyevue path.
 - Correct the existing `EyevueProtocol.kt` length calculation to match the vendor (`payload.size + 2`) before using it for live or cleanup commands.
 - Preserve exclusive BLE/P2P session ownership and cleanup after live preview, including the vendor cleanup frame and Wi-Fi/P2P teardown.
 

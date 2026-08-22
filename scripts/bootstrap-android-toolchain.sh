@@ -37,7 +37,7 @@ case "$MODE" in
       "platform-tools"
     git -C "$ROOT" submodule update --init --recursive
     echo "Local Android toolchain matches the repository pins."
-    echo "Gradle is provided by android/CyanBridge/gradlew; no global Gradle install is required."
+    echo "Gradle is provided by android/AD-Glasses/gradlew; no global Gradle install is required."
     ;;
   --latest)
     "$SDKMANAGER" --install "cmdline-tools;latest" --channel=0

@@ -526,10 +526,10 @@ module_teleprompter/
 
 ---
 
-## 13. Implications for CyanBridge Bridge
+## 13. Implications for AD Glasses Bridge
 
 ### What we can implement now (from Java layer)
-1. **BLE scanning** — `flutter_blue_plus` is a standard BLE plugin; CyanBridge can use Android BLE APIs directly
+1. **BLE scanning** — `flutter_blue_plus` is a standard BLE plugin; AD Glasses can use Android BLE APIs directly
 2. **BLE connection** — connect to device, discover services, subscribe to 0x2002 notifications
 3. **SPP fallback** — RFCOMM connection via 0x1101 UUID
 4. **PCM playback** — `PcmPlayer` architecture is reusable
@@ -543,7 +543,7 @@ module_teleprompter/
 6. **Opus audio streaming** — how audio frames are packetized over BLE
 7. **WQ Record Protocol V2** — magic bytes, frame count, data format
 
-### Recommended approach for CyanBridge MemoMind adapter
+### Recommended approach for AD Glasses MemoMind adapter
 1. **Phase 1**: Connect via BLE, discover services (0x2001/0x2002 for commands, 0x2020-0x2026 for recording, 0x7033 for OTA)
 2. **Phase 2**: Sniff BLE traffic between official app and glasses using nRF Connect or similar
 3. **Phase 3**: Map command bytes by observing patterns (start with simple commands like notification push)
@@ -1475,7 +1475,7 @@ This gives Even Hub and MentraOS a practical near-term target without waiting fo
 
 ### 23.9 Frida Script Repository
 The working Frida script is maintained at:
-- `android/CyanBridge/app/src/main/java/com/fersaiyan/cyanbridge/bridge/devices/memomind/FRIDA_CAPTURE_GUIDE.md`
+- `android/AD-Glasses/app/src/main/java/com/ad_glasses/bridge/devices/memomind/FRIDA_CAPTURE_GUIDE.md`
 
 The latest logger output from the clean session is at:
 - `/tmp/opencode/memomind_bt_frida.log` (on the development PC)
@@ -1710,10 +1710,10 @@ From UI strings:
 
 ### 26.1 Concept
 
-Since we cannot hook the MemoMind draw command opcodes (they're Dart object-pool constants in `libapp.so`), we need to **repurpose existing MemoMind screens** to display content from third-party apps (Even Hub, MentraOS, Tasker).
+Since we cannot hook the MemoMind draw command opcodes (they're Dart object-pool constants in `libapp.so`), we need to **repurpose existing MemoMind screens** to display content from third-party apps (Even Hub, MentraOS, external automation).
 
 The **Universal Patcher** lets users:
-1. Select an Even Hub / Mentra / Tasker app
+1. Select an Even Hub / Mentra / external automation app
 2. Select which MemoMind screen to repurpose (translation card, notification, stock, news, schedule, calendar, ASR, recorder)
 3. Configure field mappings (which app data fields map to which screen fields)
 4. Test the patch live
@@ -1744,7 +1744,7 @@ The **Translation Card** is the most versatile — it accepts continuous scrolli
 │  Plugin Source   │────▶│  PatchEngine │────▶│  MemoMind       │
 │  (Even Hub /    │     │  (field      │     │  GlassesBridge  │
 │   Mentra /      │     │   mapping +  │     │  (RFCOMM →      │
-│   Tasker)       │     │   routing)   │     │   glasses)      │
+│   external automation)       │     │   routing)   │     │   glasses)      │
 └─────────────────┘     └──────────────┘     └─────────────────┘
         ▲
         │
@@ -1761,7 +1761,7 @@ The **Translation Card** is the most versatile — it accepts continuous scrolli
 
 | File | Purpose |
 |------|---------|
-| `ui/plugins/PluginDataSource.kt` | `PluginCardData` model, `PluginSource` enum, `PluginLaunchType` enum, `PluginDataSource` interface, `EvenHubPluginSource`, `MentraPluginSource`, `TaskerPluginSource` |
+| `ui/plugins/PluginDataSource.kt` | `PluginCardData` model, `PluginSource` enum, `PluginLaunchType` enum, `PluginDataSource` interface, `EvenHubPluginSource`, `MentraPluginSource`, `external automationPluginSource` |
 | `ui/plugins/PluginsViewModel.kt` | Multi-source loading, source filtering, `launchPlugin()` routing |
 | `ui/plugins/PluginsScreen.kt` | Source filter chips, period filters, platform login cards, plugin cards with source badges |
 | `ui/plugins/patcher/PatchConfig.kt` | `PatchSource`, `TargetScreen`, `FieldMapping`, `PatchConfig` with JSON serialization |
@@ -1775,9 +1775,9 @@ The **Translation Card** is the most versatile — it accepts continuous scrolli
 
 ### 26.5 How to Use the Patcher
 
-1. **Open Apps & Plugins** in CyanBridge
+1. **Open Apps & Plugins** in AD Glasses
 2. **Log in** to Even Hub and/or Mentra using the "Login" buttons in the Platform Accounts card
-3. **Browse apps** using the source filter chips (All / Even Hub / Mentra / Tasker)
+3. **Browse apps** using the source filter chips (All / Even Hub / Mentra / external automation)
 4. **Tap a plugin card** → launches through the appropriate runtime
 5. **Tap "Patches"** in the top bar → opens the patch list
 6. **Tap "+"** → opens the patch editor
@@ -2215,7 +2215,7 @@ Key packages found:
    - Use `GET /api/store/published-apps` (public, no auth needed)
    - Parse response and map to `PluginCardData`
 5. **Test WebView auth capture**:
-   - Open CyanBridge → Apps & Plugins → Login
+   - Open AD Glasses → Apps & Plugins → Login
    - Verify cookies/tokens are captured correctly
 
 ### 30.2 Short-term

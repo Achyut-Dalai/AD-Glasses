@@ -27,8 +27,8 @@
 		BB9E74E1FE /* MediaGalleryViewController.m in Sources */ = {isa = PBXBuildFile; fileRef = BB48D45A88 /* MediaGalleryViewController.m */; };
 		AA7777032E99ABCD00B03938 /* SceneDelegate.m in Sources */ = {isa = PBXBuildFile; fileRef = AA7777022E99ABCD00B03938 /* SceneDelegate.m */; };
 		AA7777042E99ACCC00B03938 /* CoreLocation.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = AA7777052E99ACCC00B03938 /* CoreLocation.framework */; };
-		CB2000012F00000100CB0001 /* CyanBridgeKMPHostApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = CB2000022F00000100CB0001 /* CyanBridgeKMPHostApp.swift */; };
-		CT3000012F00000100CT0001 /* CyanBridgeKMPHostTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = CT3000022F00000100CT0001 /* CyanBridgeKMPHostTests.swift */; };
+		CB2000012F00000100CB0001 /* AD GlassesKMPHostApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = CB2000022F00000100CB0001 /* AD GlassesKMPHostApp.swift */; };
+		CT3000012F00000100CT0001 /* AD GlassesKMPHostTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = CT3000022F00000100CT0001 /* AD GlassesKMPHostTests.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -62,11 +62,11 @@
 		AA7777052E99ACCC00B03938 /* CoreLocation.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = CoreLocation.framework; path = System/Library/Frameworks/CoreLocation.framework; sourceTree = SDKROOT; };
 		BB48D45A88 /* MediaGalleryViewController.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = MediaGalleryViewController.m; sourceTree = "<group>"; };
 		BBEA4D0FAD /* MediaGalleryViewController.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = MediaGalleryViewController.h; sourceTree = "<group>"; };
-		CB2000022F00000100CB0001 /* CyanBridgeKMPHostApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CyanBridgeKMPHostApp.swift; sourceTree = "<group>"; };
-		CB2000032F00000100CB0001 /* CyanBridgeKMPHost.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = CyanBridgeKMPHost.app; sourceTree = BUILT_PRODUCTS_DIR; };
-		CB20000D2F00000100CB0001 /* CyanBridgeKMPHost.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = CyanBridgeKMPHost.entitlements; sourceTree = "<group>"; };
-		CT3000022F00000100CT0001 /* CyanBridgeKMPHostTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CyanBridgeKMPHostTests.swift; sourceTree = "<group>"; };
-		CT3000032F00000100CT0001 /* CyanBridgeKMPHostTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.unit-test; includeInIndex = 0; path = CyanBridgeKMPHostTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
+		CB2000022F00000100CB0001 /* AD GlassesKMPHostApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AD GlassesKMPHostApp.swift; sourceTree = "<group>"; };
+		CB2000032F00000100CB0001 /* AD GlassesKMPHost.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = AD GlassesKMPHost.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		CB20000D2F00000100CB0001 /* AD GlassesKMPHost.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = AD GlassesKMPHost.entitlements; sourceTree = "<group>"; };
+		CT3000022F00000100CT0001 /* AD GlassesKMPHostTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AD GlassesKMPHostTests.swift; sourceTree = "<group>"; };
+		CT3000032F00000100CT0001 /* AD GlassesKMPHostTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.unit-test; includeInIndex = 0; path = AD GlassesKMPHostTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 /* End PBXFileReference section */
 
 /* Begin PBXFileSystemSynchronizedBuildFileExceptionSet section */
@@ -128,8 +128,8 @@
 			isa = PBXGroup;
 			children = (
 				AA1313842E2F904500B03938 /* QCSDKDemo */,
-				CB2000042F00000100CB0001 /* CyanBridgeKMPHost */,
-				CT3000042F00000100CT0001 /* CyanBridgeKMPHostTests */,
+				CB2000042F00000100CB0001 /* AD GlassesKMPHost */,
+				CT3000042F00000100CT0001 /* AD GlassesKMPHostTests */,
 				AA13138D2E2F915600B03938 /* Frameworks */,
 				AA1313582E2F903500B03938 /* Products */,
 			);
@@ -139,8 +139,8 @@
 			isa = PBXGroup;
 			children = (
 				AA1313572E2F903500B03938 /* QCSDKDemo.app */,
-				CB2000032F00000100CB0001 /* CyanBridgeKMPHost.app */,
-				CT3000032F00000100CT0001 /* CyanBridgeKMPHostTests.xctest */,
+				CB2000032F00000100CB0001 /* AD GlassesKMPHost.app */,
+				CT3000032F00000100CT0001 /* AD GlassesKMPHostTests.xctest */,
 			);
 			name = Products;
 			sourceTree = "<group>";
@@ -181,21 +181,21 @@
 			path = QCSDKDemo;
 			sourceTree = "<group>";
 		};
-		CB2000042F00000100CB0001 /* CyanBridgeKMPHost */ = {
+		CB2000042F00000100CB0001 /* AD GlassesKMPHost */ = {
 			isa = PBXGroup;
 			children = (
-				CB2000022F00000100CB0001 /* CyanBridgeKMPHostApp.swift */,
-				CB20000D2F00000100CB0001 /* CyanBridgeKMPHost.entitlements */,
+				CB2000022F00000100CB0001 /* AD GlassesKMPHostApp.swift */,
+				CB20000D2F00000100CB0001 /* AD GlassesKMPHost.entitlements */,
 			);
-			path = CyanBridgeKMPHost;
+			path = AD GlassesKMPHost;
 			sourceTree = "<group>";
 		};
-		CT3000042F00000100CT0001 /* CyanBridgeKMPHostTests */ = {
+		CT3000042F00000100CT0001 /* AD GlassesKMPHostTests */ = {
 			isa = PBXGroup;
 			children = (
-				CT3000022F00000100CT0001 /* CyanBridgeKMPHostTests.swift */,
+				CT3000022F00000100CT0001 /* AD GlassesKMPHostTests.swift */,
 			);
-			path = CyanBridgeKMPHostTests;
+			path = AD GlassesKMPHostTests;
 			sourceTree = "<group>";
 		};
 		AA13138D2E2F915600B03938 /* Frameworks */ = {
@@ -246,11 +246,11 @@
 			productReference = AA1313572E2F903500B03938 /* QCSDKDemo.app */;
 			productType = "com.apple.product-type.application";
 		};
-		CB2000092F00000100CB0001 /* CyanBridgeKMPHost */ = {
+		CB2000092F00000100CB0001 /* AD GlassesKMPHost */ = {
 			isa = PBXNativeTarget;
-			buildConfigurationList = CB20000C2F00000100CB0001 /* Build configuration list for PBXNativeTarget "CyanBridgeKMPHost" */;
+			buildConfigurationList = CB20000C2F00000100CB0001 /* Build configuration list for PBXNativeTarget "AD GlassesKMPHost" */;
 			buildPhases = (
-				CB2000082F00000100CB0001 /* Build CyanBridgeShared */,
+				CB2000082F00000100CB0001 /* Build AD GlassesShared */,
 				CB2000052F00000100CB0001 /* Sources */,
 				CB2000062F00000100CB0001 /* Frameworks */,
 				CB2000072F00000100CB0001 /* Resources */,
@@ -259,16 +259,16 @@
 			);
 			dependencies = (
 			);
-			name = CyanBridgeKMPHost;
-			productName = CyanBridgeKMPHost;
-			productReference = CB2000032F00000100CB0001 /* CyanBridgeKMPHost.app */;
+			name = AD GlassesKMPHost;
+			productName = AD GlassesKMPHost;
+			productReference = CB2000032F00000100CB0001 /* AD GlassesKMPHost.app */;
 			productType = "com.apple.product-type.application";
 		};
-		CT3000092F00000100CT0001 /* CyanBridgeKMPHostTests */ = {
+		CT3000092F00000100CT0001 /* AD GlassesKMPHostTests */ = {
 			isa = PBXNativeTarget;
-			buildConfigurationList = CT30000C2F00000100CT0001 /* Build configuration list for PBXNativeTarget "CyanBridgeKMPHostTests" */;
+			buildConfigurationList = CT30000C2F00000100CT0001 /* Build configuration list for PBXNativeTarget "AD GlassesKMPHostTests" */;
 			buildPhases = (
-				CT3000082F00000100CT0001 /* Build CyanBridgeShared */,
+				CT3000082F00000100CT0001 /* Build AD GlassesShared */,
 				CT3000052F00000100CT0001 /* Sources */,
 				CT3000062F00000100CT0001 /* Frameworks */,
 				CT3000072F00000100CT0001 /* Resources */,
@@ -278,9 +278,9 @@
 			dependencies = (
 				CT30000D2F00000100CT0001 /* PBXTargetDependency */,
 			);
-			name = CyanBridgeKMPHostTests;
-			productName = CyanBridgeKMPHostTests;
-			productReference = CT3000032F00000100CT0001 /* CyanBridgeKMPHostTests.xctest */;
+			name = AD GlassesKMPHostTests;
+			productName = AD GlassesKMPHostTests;
+			productReference = CT3000032F00000100CT0001 /* AD GlassesKMPHostTests.xctest */;
 			productType = "com.apple.product-type.bundle.unit-test";
 		};
 /* End PBXNativeTarget section */
@@ -319,8 +319,8 @@
 			projectRoot = "";
 			targets = (
 				AA1313562E2F903500B03938 /* QCSDKDemo */,
-				CB2000092F00000100CB0001 /* CyanBridgeKMPHost */,
-				CT3000092F00000100CT0001 /* CyanBridgeKMPHostTests */,
+				CB2000092F00000100CB0001 /* AD GlassesKMPHost */,
+				CT3000092F00000100CT0001 /* AD GlassesKMPHostTests */,
 			);
 		};
 /* End PBXProject section */
@@ -374,7 +374,7 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
-				CB2000012F00000100CB0001 /* CyanBridgeKMPHostApp.swift in Sources */,
+				CB2000012F00000100CB0001 /* AD GlassesKMPHostApp.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -382,14 +382,14 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
-				CT3000012F00000100CT0001 /* CyanBridgeKMPHostTests.swift in Sources */,
+				CT3000012F00000100CT0001 /* AD GlassesKMPHostTests.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
 /* End PBXSourcesBuildPhase section */
 
 /* Begin PBXShellScriptBuildPhase section */
-		CB2000082F00000100CB0001 /* Build CyanBridgeShared */ = {
+		CB2000082F00000100CB0001 /* Build AD GlassesShared */ = {
 			isa = PBXShellScriptBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
@@ -398,16 +398,16 @@
 			);
 			inputPaths = (
 			);
-			name = "Build CyanBridgeShared";
+			name = "Build AD GlassesShared";
 			outputFileListPaths = (
 			);
 			outputPaths = (
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 			shellPath = /bin/sh;
-			shellScript = "set -e\nif [ -z \"${JAVA_HOME:-}\" ]; then\n  export JAVA_HOME=\"$(/usr/libexec/java_home -v 17)\"\nfi\ncd \"$SRCROOT/../android/CyanBridge\"\n./gradlew -PenableAppleTargets=true :shared:embedAndSignAppleFrameworkForXcode\n";
+			shellScript = "set -e\nif [ -z \"${JAVA_HOME:-}\" ]; then\n  export JAVA_HOME=\"$(/usr/libexec/java_home -v 17)\"\nfi\ncd \"$SRCROOT/../android/AD-Glasses\"\n./gradlew -PenableAppleTargets=true :shared:embedAndSignAppleFrameworkForXcode\n";
 		};
-		CT3000082F00000100CT0001 /* Build CyanBridgeShared */ = {
+		CT3000082F00000100CT0001 /* Build AD GlassesShared */ = {
 			isa = PBXShellScriptBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
@@ -416,21 +416,21 @@
 			);
 			inputPaths = (
 			);
-			name = "Build CyanBridgeShared";
+			name = "Build AD GlassesShared";
 			outputFileListPaths = (
 			);
 			outputPaths = (
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 			shellPath = /bin/sh;
-			shellScript = "set -e\nif [ -z \"${JAVA_HOME:-}\" ]; then\n  export JAVA_HOME=\"$(/usr/libexec/java_home -v 17)\"\nfi\ncd \"$SRCROOT/../android/CyanBridge\"\n./gradlew -PenableAppleTargets=true :shared:embedAndSignAppleFrameworkForXcode\n";
+			shellScript = "set -e\nif [ -z \"${JAVA_HOME:-}\" ]; then\n  export JAVA_HOME=\"$(/usr/libexec/java_home -v 17)\"\nfi\ncd \"$SRCROOT/../android/AD-Glasses\"\n./gradlew -PenableAppleTargets=true :shared:embedAndSignAppleFrameworkForXcode\n";
 		};
 /* End PBXShellScriptBuildPhase section */
 
 /* Begin PBXTargetDependency section */
 		CT30000D2F00000100CT0001 /* PBXTargetDependency */ = {
 			isa = PBXTargetDependency;
-			target = CB2000092F00000100CB0001 /* CyanBridgeKMPHost */;
+			target = CB2000092F00000100CB0001 /* AD GlassesKMPHost */;
 			targetProxy = CT30000E2F00000100CT0001 /* PBXContainerItemProxy */;
 		};
 /* End PBXTargetDependency section */
@@ -441,7 +441,7 @@
 			containerPortal = AA13134F2E2F903500B03938 /* Project object */;
 			proxyType = 1;
 			remoteGlobalIDString = CB2000092F00000100CB0001;
-			remoteInfo = CyanBridgeKMPHost;
+			remoteInfo = AD GlassesKMPHost;
 		};
 /* End PBXContainerItemProxy section */
 
@@ -562,18 +562,18 @@
 		CB20000A2F00000100CB0001 /* Debug */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
-				CODE_SIGN_ENTITLEMENTS = CyanBridgeKMPHost/CyanBridgeKMPHost.entitlements;
+				CODE_SIGN_ENTITLEMENTS = AD GlassesKMPHost/AD-GlassesKMPHost.entitlements;
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
 				DEFINES_MODULE = YES;
 				FRAMEWORK_SEARCH_PATHS = (
 					"$(inherited)",
-					"$(SRCROOT)/../android/CyanBridge/shared/build/xcode-frameworks/$(CONFIGURATION)/$(SDK_NAME)",
+					"$(SRCROOT)/../android/AD-Glasses/shared/build/xcode-frameworks/$(CONFIGURATION)/$(SDK_NAME)",
 				);
 				GENERATE_INFOPLIST_FILE = YES;
-				INFOPLIST_KEY_NSBluetoothAlwaysUsageDescription = "CyanBridge uses Bluetooth to find and communicate with your glasses.";
-				INFOPLIST_KEY_NSLocalNetworkUsageDescription = "CyanBridge connects to your glasses over their local Wi-Fi transfer network.";
-				INFOPLIST_KEY_NSLocationWhenInUseUsageDescription = "Location access lets CyanBridge verify the glasses Wi-Fi connection.";
+				INFOPLIST_KEY_NSBluetoothAlwaysUsageDescription = "AD Glasses uses Bluetooth to find and communicate with your glasses.";
+				INFOPLIST_KEY_NSLocalNetworkUsageDescription = "AD Glasses connects to your glasses over their local Wi-Fi transfer network.";
+				INFOPLIST_KEY_NSLocationWhenInUseUsageDescription = "Location access lets AD Glasses verify the glasses Wi-Fi connection.";
 				IPHONEOS_DEPLOYMENT_TARGET = 15.0;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
@@ -584,13 +584,13 @@
 					"$(inherited)",
 					"-ObjC",
 					"-framework",
-					CyanBridgeShared,
+					AD GlassesShared,
 					"-framework",
 					CoreBluetooth,
 					"-framework",
 					NetworkExtension,
 				);
-				PRODUCT_BUNDLE_IDENTIFIER = com.fersaiyan.CyanBridgeKMPHost;
+				PRODUCT_BUNDLE_IDENTIFIER = com.ad_glasses.AD GlassesKMPHost;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SWIFT_VERSION = 5.0;
 				TARGETED_DEVICE_FAMILY = "1,2";
@@ -600,18 +600,18 @@
 		CB20000B2F00000100CB0001 /* Release */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
-				CODE_SIGN_ENTITLEMENTS = CyanBridgeKMPHost/CyanBridgeKMPHost.entitlements;
+				CODE_SIGN_ENTITLEMENTS = AD GlassesKMPHost/AD-GlassesKMPHost.entitlements;
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
 				DEFINES_MODULE = YES;
 				FRAMEWORK_SEARCH_PATHS = (
 					"$(inherited)",
-					"$(SRCROOT)/../android/CyanBridge/shared/build/xcode-frameworks/$(CONFIGURATION)/$(SDK_NAME)",
+					"$(SRCROOT)/../android/AD-Glasses/shared/build/xcode-frameworks/$(CONFIGURATION)/$(SDK_NAME)",
 				);
 				GENERATE_INFOPLIST_FILE = YES;
-				INFOPLIST_KEY_NSBluetoothAlwaysUsageDescription = "CyanBridge uses Bluetooth to find and communicate with your glasses.";
-				INFOPLIST_KEY_NSLocalNetworkUsageDescription = "CyanBridge connects to your glasses over their local Wi-Fi transfer network.";
-				INFOPLIST_KEY_NSLocationWhenInUseUsageDescription = "Location access lets CyanBridge verify the glasses Wi-Fi connection.";
+				INFOPLIST_KEY_NSBluetoothAlwaysUsageDescription = "AD Glasses uses Bluetooth to find and communicate with your glasses.";
+				INFOPLIST_KEY_NSLocalNetworkUsageDescription = "AD Glasses connects to your glasses over their local Wi-Fi transfer network.";
+				INFOPLIST_KEY_NSLocationWhenInUseUsageDescription = "Location access lets AD Glasses verify the glasses Wi-Fi connection.";
 				IPHONEOS_DEPLOYMENT_TARGET = 15.0;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
@@ -622,13 +622,13 @@
 					"$(inherited)",
 					"-ObjC",
 					"-framework",
-					CyanBridgeShared,
+					AD GlassesShared,
 					"-framework",
 					CoreBluetooth,
 					"-framework",
 					NetworkExtension,
 				);
-				PRODUCT_BUNDLE_IDENTIFIER = com.fersaiyan.CyanBridgeKMPHost;
+				PRODUCT_BUNDLE_IDENTIFIER = com.ad_glasses.AD GlassesKMPHost;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SWIFT_VERSION = 5.0;
 				TARGETED_DEVICE_FAMILY = "1,2";
@@ -642,7 +642,7 @@
 				CURRENT_PROJECT_VERSION = 1;
 				FRAMEWORK_SEARCH_PATHS = (
 					"$(inherited)",
-					"$(SRCROOT)/../android/CyanBridge/shared/build/xcode-frameworks/$(CONFIGURATION)/$(SDK_NAME)",
+					"$(SRCROOT)/../android/AD-Glasses/shared/build/xcode-frameworks/$(CONFIGURATION)/$(SDK_NAME)",
 				);
 				GENERATE_INFOPLIST_FILE = YES;
 				IPHONEOS_DEPLOYMENT_TARGET = 15.0;
@@ -655,13 +655,13 @@
 					"$(inherited)",
 					"-ObjC",
 					"-framework",
-					CyanBridgeShared,
+					AD GlassesShared,
 				);
-				PRODUCT_BUNDLE_IDENTIFIER = com.fersaiyan.CyanBridgeKMPHostTests;
+				PRODUCT_BUNDLE_IDENTIFIER = com.ad_glasses.AD GlassesKMPHostTests;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SWIFT_VERSION = 5.0;
 				TARGETED_DEVICE_FAMILY = "1,2";
-				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/CyanBridgeKMPHost.app/CyanBridgeKMPHost";
+				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/AD-GlassesKMPHost.app/AD-GlassesKMPHost";
 			};
 			name = Debug;
 		};
@@ -672,7 +672,7 @@
 				CURRENT_PROJECT_VERSION = 1;
 				FRAMEWORK_SEARCH_PATHS = (
 					"$(inherited)",
-					"$(SRCROOT)/../android/CyanBridge/shared/build/xcode-frameworks/$(CONFIGURATION)/$(SDK_NAME)",
+					"$(SRCROOT)/../android/AD-Glasses/shared/build/xcode-frameworks/$(CONFIGURATION)/$(SDK_NAME)",
 				);
 				GENERATE_INFOPLIST_FILE = YES;
 				IPHONEOS_DEPLOYMENT_TARGET = 15.0;
@@ -685,13 +685,13 @@
 					"$(inherited)",
 					"-ObjC",
 					"-framework",
-					CyanBridgeShared,
+					AD GlassesShared,
 				);
-				PRODUCT_BUNDLE_IDENTIFIER = com.fersaiyan.CyanBridgeKMPHostTests;
+				PRODUCT_BUNDLE_IDENTIFIER = com.ad_glasses.AD GlassesKMPHostTests;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SWIFT_VERSION = 5.0;
 				TARGETED_DEVICE_FAMILY = "1,2";
-				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/CyanBridgeKMPHost.app/CyanBridgeKMPHost";
+				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/AD-GlassesKMPHost.app/AD-GlassesKMPHost";
 			};
 			name = Release;
 		};
@@ -832,7 +832,7 @@
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Release;
 		};
-		CB20000C2F00000100CB0001 /* Build configuration list for PBXNativeTarget "CyanBridgeKMPHost" */ = {
+		CB20000C2F00000100CB0001 /* Build configuration list for PBXNativeTarget "AD GlassesKMPHost" */ = {
 			isa = XCConfigurationList;
 			buildConfigurations = (
 				CB20000A2F00000100CB0001 /* Debug */,
@@ -841,7 +841,7 @@
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Release;
 		};
-		CT30000C2F00000100CT0001 /* Build configuration list for PBXNativeTarget "CyanBridgeKMPHostTests" */ = {
+		CT30000C2F00000100CT0001 /* Build configuration list for PBXNativeTarget "AD GlassesKMPHostTests" */ = {
 			isa = XCConfigurationList;
 			buildConfigurations = (
 				CT30000A2F00000100CT0001 /* Debug */,

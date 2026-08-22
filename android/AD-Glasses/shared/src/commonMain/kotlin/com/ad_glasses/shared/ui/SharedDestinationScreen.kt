@@ -1,0 +1,525 @@
+package com.ad_glasses.shared.ui
+
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.setValue
+import com.ad_glasses.shared.ai.ChatMessage as AiChatMessage
+import com.ad_glasses.shared.chat.ChatMessage
+import com.ad_glasses.shared.chat.ChatRole
+import com.ad_glasses.shared.chat.ChatThread
+import com.ad_glasses.shared.chat.ChatThreadSummary
+import com.ad_glasses.shared.chat.ChatThreadUiState
+import com.ad_glasses.shared.chat.ChatAttachmentsUiState
+import com.ad_glasses.shared.chat.ChatComposerUiState
+import com.ad_glasses.shared.navigation.AppDestination
+import com.ad_glasses.shared.persistence.ChatEntity
+import com.ad_glasses.shared.persistence.ChatMessageEntity
+import com.ad_glasses.shared.plugins.NativePluginCardData
+import com.ad_glasses.shared.plugins.NativePluginIds
+import com.ad_glasses.shared.plugins.PluginTimeWindow
+import com.ad_glasses.shared.recordings.MeetingRecordingUiState
+import com.ad_glasses.shared.recordings.RecordingItem
+import com.ad_glasses.shared.recordings.SyncedMediaItem
+import com.ad_glasses.shared.recordings.TranscriptionEngine
+import com.ad_glasses.shared.settings.AgentProviderType
+import com.ad_glasses.shared.settings.SettingsSection
+import com.ad_glasses.shared.settings.MemoryPrivacyMode
+import com.ad_glasses.shared.settings.MemorySourceType
+import com.ad_glasses.shared.platform.ADGlassesServices
+import com.ad_glasses.shared.platform.PlatformPreferences
+import com.ad_glasses.shared.platform.createPlatformPreferences
+import com.ad_glasses.shared.platform.platformCurrentTimeMillis
+import com.ad_glasses.shared.ui.chat.ChatListScreen
+import com.ad_glasses.shared.ui.chat.ChatThreadScreen
+import com.ad_glasses.shared.ui.plugins.CommunityPluginsScreen
+import com.ad_glasses.shared.ui.recordings.RecordingsScreen
+import com.ad_glasses.shared.ui.recordings.SyncedMediaGalleryScreen
+import com.ad_glasses.shared.ui.settings.SettingsScreenActions
+import com.ad_glasses.shared.ui.settings.SettingsUiState
+import com.ad_glasses.shared.ui.settings.SettingsScreen
+import kotlinx.coroutines.launch
+import com.ad_glasses.shared.generated.resources.*
+import org.jetbrains.compose.resources.ExperimentalResourceApi
+import org.jetbrains.compose.resources.stringResource
+
+/**
+ * Shared top-level destinations used by the iOS KMP host.
+ *
+ * Android keeps its mature Activity presenters for now. The iOS host uses this
+ * route so the shared screens are real destinations rather than placeholders.
+ * Platform repositories and AI services remain behind ADGlassesServices.
+ */
+@Composable
+fun SharedDestinationScreen(
+    destination: AppDestination,
+    onDestinationSelected: (AppDestination) -> Unit,
+    onOpenAppearance: () -> Unit = {},
+) {
+    when (destination) {
+        AppDestination.CHATS -> SharedChatsDestination(onDestinationSelected)
+        AppDestination.MEDIA -> SharedMediaDestination(onDestinationSelected)
+        AppDestination.PLUGINS -> SharedPluginsDestination(onDestinationSelected)
+        AppDestination.SETTINGS -> SharedSettingsDestination(
+            onDestinationSelected = onDestinationSelected,
+            onOpenAppearance = onOpenAppearance,
+        )
+        AppDestination.GLASSES -> Unit
+    }
+}
+
+@OptIn(ExperimentalResourceApi::class)
+@Composable
+private fun SharedChatsDestination(onDestinationSelected: (AppDestination) -> Unit) {
+    val scope = rememberCoroutineScope()
+    val newChatTitle = stringResource(Res.string.action_new_chat)
+    val formatTimestamp = sharedTimestampFormatter()
+    var threads by remember { mutableStateOf<List<ChatThreadSummary>>(emptyList()) }
+    var pendingDelete by remember { mutableStateOf<ChatThreadSummary?>(null) }
+    var selectedThreadId by remember { mutableStateOf<String?>(null) }
+
+    fun refresh() {
+        scope.launch {
+            if (ADGlassesServices.isInitialized()) {
+                threads = ADGlassesServices.chatRepository.getAllChats()
+                    .map { ChatThreadSummary(it.id, it.title, it.updatedAt) }
+                    .sortedByDescending { it.updatedAtEpochMillis }
+            }
+        }
+    }
+
+    LaunchedEffect(Unit) { refresh() }
+
+    val selectedThread = threads.firstOrNull { it.id == selectedThreadId }
+    if (selectedThread != null) {
+        SharedChatThreadDestination(
+            threadSummary = selectedThread,
+            onBack = { selectedThreadId = null },
+            onDestinationSelected = onDestinationSelected,
+        )
+        return
+    }
+
+    ChatListScreen(
+        threads = threads,
+        pendingDelete = pendingDelete,
+         formatTimestamp = formatTimestamp,
+        onOpenThread = { selectedThreadId = it.id },
+        onRequestDelete = { pendingDelete = it },
+        onConfirmDelete = {
+            val thread = pendingDelete
+            pendingDelete = null
+            if (thread != null) {
+                scope.launch {
+                    if (ADGlassesServices.isInitialized()) {
+                        ADGlassesServices.chatRepository.deleteChat(thread.id)
+                        refresh()
+                    }
+                }
+            }
+        },
+        onDismissDelete = { pendingDelete = null },
+        onNewChat = {
+            val now = sharedNowMillis()
+            val id = "ios-$now"
+            scope.launch {
+                if (ADGlassesServices.isInitialized()) {
+                    ADGlassesServices.chatRepository.insertChat(
+                        ChatEntity(
+                            id = id,
+                             title = newChatTitle,
+                            createdAt = now,
+                            updatedAt = now,
+                        ),
+                    )
+                    refresh()
+                    selectedThreadId = id
+                }
+            }
+        },
+        onChatAppearance = {},
+        onDestinationSelected = onDestinationSelected,
+    )
+}
+
+@OptIn(ExperimentalResourceApi::class)
+@Composable
+private fun SharedChatThreadDestination(
+    threadSummary: ChatThreadSummary,
+    onBack: () -> Unit,
+    onDestinationSelected: (AppDestination) -> Unit,
+) {
+    val scope = rememberCoroutineScope()
+    var messages by remember(threadSummary.id) { mutableStateOf<List<ChatMessage>>(emptyList()) }
+    var composerText by remember(threadSummary.id) { mutableStateOf("") }
+    var isThinking by remember(threadSummary.id) { mutableStateOf(false) }
+    var statusText by remember(threadSummary.id) { mutableStateOf<String?>(null) }
+    val chatRequestFailed = stringResource(Res.string.chat_request_failed)
+
+    fun reloadMessages() {
+        scope.launch {
+            if (ADGlassesServices.isInitialized()) {
+                messages = ADGlassesServices.chatRepository.getMessages(threadSummary.id)
+                    .map(ChatMessageEntity::toSharedMessage)
+            }
+        }
+    }
+
+    LaunchedEffect(threadSummary.id) { reloadMessages() }
+
+    ChatThreadScreen(
+        state = ChatThreadUiState(
+            thread = ChatThread(
+                id = threadSummary.id,
+                title = threadSummary.title,
+                createdAt = 0L,
+                updatedAt = threadSummary.updatedAtEpochMillis,
+            ),
+            messages = messages,
+            composerText = composerText,
+            isGenerating = isThinking,
+            statusText = statusText,
+        ),
+        messages = messages,
+        composer = ChatComposerUiState(isMediaEnabled = false),
+        attachments = ChatAttachmentsUiState(),
+        modelBadge = if (ADGlassesServices.isInitialized()) {
+            ADGlassesServices.aiModelRegistry.getDefaultModelId()
+        } else {
+            null
+        },
+        dailySummaryProgress = null,
+        dailyReviewQueueStatus = statusText,
+        userBubbleColor = null,
+        assistantBubbleColor = null,
+        wallpaper = null,
+        isThinking = isThinking,
+        onOpenChatList = onBack,
+        onChatAppearance = {},
+        onComposerTextChanged = { composerText = it },
+        onPrimaryAction = {
+            val text = composerText.trim()
+            if (text.isNotEmpty() && !isThinking) {
+                composerText = ""
+                scope.launch {
+                    if (!ADGlassesServices.isInitialized()) return@launch
+                    val now = sharedNowMillis()
+                    isThinking = true
+                    statusText = null
+                    ADGlassesServices.chatRepository.insertMessage(
+                        ChatMessageEntity(
+                            id = "user-$now",
+                            chatId = threadSummary.id,
+                            role = "user",
+                            content = text,
+                            timestamp = now,
+                        ),
+                    )
+                    val history = ADGlassesServices.chatRepository.getMessages(threadSummary.id)
+                        .map { AiChatMessage(it.role, it.content) }
+                    runCatching {
+                        ADGlassesServices.chatAiService.chat(history).message
+                    }.onSuccess { response ->
+                        ADGlassesServices.chatRepository.insertMessage(
+                            ChatMessageEntity(
+                                id = "assistant-${sharedNowMillis()}",
+                                chatId = threadSummary.id,
+                                role = "assistant",
+                                content = response.content,
+                                timestamp = sharedNowMillis(),
+                            ),
+                        )
+                    }.onFailure { error ->
+                         statusText = error.message ?: chatRequestFailed
+                    }
+                    reloadMessages()
+                    isThinking = false
+                }
+            }
+        },
+        onAttachImage = {},
+        onRecordAudio = {},
+        onClearAttachments = {},
+        onDestinationSelected = { destination ->
+            if (destination == AppDestination.CHATS) onBack() else onDestinationSelected(destination)
+        },
+    )
+}
+
+@OptIn(ExperimentalResourceApi::class)
+@Composable
+private fun SharedMediaDestination(onDestinationSelected: (AppDestination) -> Unit) {
+    val scope = rememberCoroutineScope()
+    val formatTimestamp = sharedTimestampFormatter()
+    var mediaItems by remember { mutableStateOf<List<SyncedMediaItem>>(emptyList()) }
+    var showGallery by remember { mutableStateOf(false) }
+
+    fun refresh() {
+        scope.launch {
+            if (ADGlassesServices.isInitialized()) {
+                mediaItems = ADGlassesServices.mediaRecordRepository.getAll().map { record ->
+                    SyncedMediaItem(
+                        id = record.id.hashCode().toLong(),
+                        displayName = record.filename,
+                        contentUriString = record.filePath,
+                        isVideo = record.mimeType.startsWith("video/"),
+                    )
+                }
+            }
+        }
+    }
+
+    LaunchedEffect(Unit) { refresh() }
+
+    if (showGallery) {
+        SyncedMediaGalleryScreen(
+            mediaItems = mediaItems,
+            isLoading = false,
+             folderHint = stringResource(Res.string.media_folder_hint),
+            loadThumbnail = { _: String -> null },
+            onNavigateBack = { showGallery = false },
+            onRefresh = ::refresh,
+            onOpenMedia = {},
+            onShareItems = {},
+            onDeleteItems = {},
+        )
+    } else {
+        RecordingsScreen(
+            sessions = emptyList<RecordingItem>(),
+            isLoading = false,
+            recentSyncedMedia = mediaItems.take(4),
+            playingSessionId = null,
+            transcribingSessionId = null,
+            meetingRecording = MeetingRecordingUiState(),
+            showEngineChooser = false,
+            selectedEngine = TranscriptionEngine.MOONSHINE,
+            transcriptionProgress = null,
+            transcriptDialog = null,
+             formatTimestamp = formatTimestamp,
+            loadThumbnail = { _: String -> null },
+            onOpenSyncedMedia = { showGallery = true },
+            onOpenSyncedMediaItem = { showGallery = true },
+            onPlay = {},
+            onTranscribe = {},
+            onViewTranscript = {},
+            onStopMeetingCapture = {},
+            onEngineSelected = {},
+            onConfirmEngine = {},
+            onDismissEngineChooser = {},
+            onDismissTranscript = {},
+            onDestinationSelected = onDestinationSelected,
+        )
+    }
+}
+
+@OptIn(ExperimentalResourceApi::class)
+@Composable
+private fun SharedPluginsDestination(onDestinationSelected: (AppDestination) -> Unit) {
+    val nativePlugins = listOf(
+        NativePluginCardData(
+            id = NativePluginIds.LOCAL_AGENT,
+             title = stringResource(Res.string.native_local_agent_title),
+             description = stringResource(Res.string.native_local_agent_description),
+             badge = stringResource(Res.string.native_android_only),
+            enabled = false,
+            hasSettings = false,
+            isAvailable = false,
+        ),
+        NativePluginCardData(
+            id = NativePluginIds.AUTO_DIARY,
+             title = stringResource(Res.string.native_auto_diary_title),
+             description = stringResource(Res.string.native_auto_diary_description),
+             badge = stringResource(Res.string.native_ios_pending),
+            enabled = false,
+            hasSettings = false,
+            isAvailable = false,
+        ),
+        NativePluginCardData(
+            id = NativePluginIds.AUTO_AUDIO,
+            title = stringResource(Res.string.native_auto_audio_title),
+            description = stringResource(Res.string.native_auto_audio_description),
+            badge = stringResource(Res.string.native_ios_pending),
+            enabled = false,
+            hasSettings = false,
+            isAvailable = false,
+        ),
+        NativePluginCardData(
+            id = NativePluginIds.VISUAL_DIARY,
+            title = stringResource(Res.string.native_visual_diary_title),
+            description = stringResource(Res.string.native_visual_diary_description),
+            badge = stringResource(Res.string.native_ios_pending),
+            enabled = false,
+            hasSettings = false,
+            isAvailable = false,
+        ),
+    )
+
+    CommunityPluginsScreen(
+        plugins = emptyList(),
+        selectedWindow = PluginTimeWindow.ALL_TIME,
+        isRefreshing = false,
+        onWindowSelected = {},
+        onRefresh = {},
+        onPublishPlugin = {},
+        onDestinationSelected = onDestinationSelected,
+        nativePlugins = nativePlugins,
+        onToggleNativePlugin = { _, _ -> },
+    )
+}
+
+@Composable
+private fun SharedSettingsDestination(
+    onDestinationSelected: (AppDestination) -> Unit,
+    onOpenAppearance: () -> Unit,
+) {
+    var expandedSections by remember { mutableStateOf<Set<SettingsSection>>(emptySet()) }
+    val preferences = remember { createPlatformPreferences(SHARED_SETTINGS_PREFS) }
+    var settingsState by remember {
+        mutableStateOf(loadSharedSettings(preferences))
+    }
+    val actions = remember(onDestinationSelected, onOpenAppearance) {
+        SharedSettingsScreenActions(
+            onDestinationSelected = onDestinationSelected,
+            onOpenAppearance = onOpenAppearance,
+            currentState = { settingsState },
+            updateState = { next ->
+                settingsState = next
+                saveSharedSettings(preferences, next)
+            },
+        )
+    }
+
+    SettingsScreen(
+        state = settingsState,
+        expandedSections = expandedSections,
+        onToggleSection = { section ->
+            expandedSections = if (section in expandedSections) {
+                expandedSections - section
+            } else {
+                expandedSections + section
+            }
+        },
+        actions = actions,
+    )
+}
+
+private class SharedSettingsScreenActions(
+    private val onDestinationSelected: (AppDestination) -> Unit,
+    private val onOpenAppearance: () -> Unit,
+    private val currentState: () -> SettingsUiState,
+    private val updateState: (SettingsUiState) -> Unit,
+) : SettingsScreenActions {
+    private fun update(transform: (SettingsUiState) -> SettingsUiState) {
+        updateState(transform(currentState()))
+    }
+
+    override fun onDestinationSelected(destination: AppDestination) = onDestinationSelected.invoke(destination)
+    override fun openAppearance() = onOpenAppearance.invoke()
+    override fun openAppLanguageSelection() = Unit
+    override fun openCloudAi() = Unit
+    override fun setDefaultImageQuestion(question: String) = update { it.copy(defaultImageQuestion = question) }
+    override fun resetDefaultImageQuestion() = update {
+        it.copy(defaultImageQuestion = SettingsUiState().defaultImageQuestion)
+    }
+    override fun setMemoryMode(mode: MemoryPrivacyMode) = update { it.copy(memoryMode = mode) }
+    override fun setMemorySync(source: MemorySourceType, enabled: Boolean) = update { state ->
+        when (source) {
+            MemorySourceType.EXPLICIT_USER_FACT -> state.copy(syncExplicit = enabled)
+            MemorySourceType.AUTO_DAILY_FACT -> state.copy(syncDaily = enabled)
+            MemorySourceType.SCREEN_OCR -> state.copy(syncOcr = enabled)
+            MemorySourceType.DERIVED_SUMMARY -> state.copy(syncDerived = enabled)
+            else -> state
+        }
+    }
+    override fun setOcrRetentionDays(value: Int) = update { it.copy(ocrRetentionDays = value.coerceIn(1, 3650)) }
+    override fun deletePassiveCapture() = Unit
+    override fun lockVault() = update { it.copy(vaultLocked = true) }
+    override fun unlockVault() = update { it.copy(vaultLocked = false) }
+    override fun setVaultPassphrase() = Unit
+    override fun clearVaultPassphrase() = Unit
+    override fun resetVault() = update { it.copy(vaultLocked = false, vaultRequiresPassphrase = false) }
+    override fun setTranscriptStorageEnabled(enabled: Boolean) = update { it.copy(transcriptStorageEnabled = enabled) }
+    override fun setRedactNamesEnabled(enabled: Boolean) = update { it.copy(redactNamesEnabled = enabled) }
+    override fun setIncludeFullTranscriptionEnabled(enabled: Boolean) = update { it.copy(includeFullTranscriptionInExports = enabled) }
+    override fun exportLocalData() = Unit
+    override fun importLocalData() = Unit
+    override fun clearLocalData() = Unit
+    override fun sendDebugLogs() = Unit
+    override fun stopMeetingCapture() = Unit
+    override fun setProviderType(type: AgentProviderType) = update { it.copy(providerType = type) }
+    override fun openLocalModels() = Unit
+}
+
+private const val SHARED_SETTINGS_PREFS = "ADGlasses_shared_settings"
+
+private fun loadSharedSettings(preferences: PlatformPreferences): SettingsUiState = SettingsUiState(
+    providerType = AgentProviderType.valueOf(preferences.getString("provider_type", AgentProviderType.CLOUD_AI.name)),
+    memoryMode = MemoryPrivacyMode.fromRaw(preferences.getString("memory_mode", MemoryPrivacyMode.PRIVATE_LOCAL.name)),
+    syncExplicit = preferences.getBoolean("sync_explicit", true),
+    syncDaily = preferences.getBoolean("sync_daily", true),
+    syncOcr = preferences.getBoolean("sync_ocr", false),
+    syncDerived = preferences.getBoolean("sync_derived", false),
+    ocrRetentionDays = preferences.getInt("ocr_retention_days", 7),
+    vaultLocked = preferences.getBoolean("vault_locked", false),
+    transcriptStorageEnabled = preferences.getBoolean("transcript_storage", false),
+    redactNamesEnabled = preferences.getBoolean("redact_names", true),
+    includeFullTranscriptionInExports = preferences.getBoolean("full_transcript_exports", false),
+)
+
+private fun saveSharedSettings(preferences: PlatformPreferences, state: SettingsUiState) {
+    preferences.putString("provider_type", state.providerType.name)
+    preferences.putString("memory_mode", state.memoryMode.name)
+    preferences.putBoolean("sync_explicit", state.syncExplicit)
+    preferences.putBoolean("sync_daily", state.syncDaily)
+    preferences.putBoolean("sync_ocr", state.syncOcr)
+    preferences.putBoolean("sync_derived", state.syncDerived)
+    preferences.putInt("ocr_retention_days", state.ocrRetentionDays)
+    preferences.putBoolean("vault_locked", state.vaultLocked)
+    preferences.putBoolean("transcript_storage", state.transcriptStorageEnabled)
+    preferences.putBoolean("redact_names", state.redactNamesEnabled)
+    preferences.putBoolean("full_transcript_exports", state.includeFullTranscriptionInExports)
+}
+
+private fun ChatMessageEntity.toSharedMessage(): ChatMessage = ChatMessage(
+    id = id,
+    chatId = chatId,
+    role = if (role.equals("user", ignoreCase = true)) ChatRole.USER else ChatRole.ASSISTANT,
+    content = content,
+    createdAt = timestamp,
+)
+
+@OptIn(ExperimentalResourceApi::class)
+@Composable
+private fun sharedTimestampFormatter(): (Long) -> String {
+    val unknown = stringResource(Res.string.time_unknown)
+    val justNow = stringResource(Res.string.time_just_now)
+    val minutesAgo = stringResource(Res.string.time_minutes_ago)
+    val hoursAgo = stringResource(Res.string.time_hours_ago)
+    val daysAgo = stringResource(Res.string.time_days_ago)
+    return { timestamp ->
+        formatSharedTimestamp(timestamp, unknown, justNow, minutesAgo, hoursAgo, daysAgo)
+    }
+}
+
+private fun formatSharedTimestamp(
+    timestamp: Long,
+    unknown: String,
+    justNow: String,
+    minutesAgo: String,
+    hoursAgo: String,
+    daysAgo: String,
+): String {
+    if (timestamp <= 0L) return unknown
+    val ageSeconds = ((platformCurrentTimeMillis() - timestamp) / 1000L).coerceAtLeast(0L)
+    return when {
+        ageSeconds < 60L -> justNow
+        ageSeconds < 60L * 60L -> minutesAgo.replace("%1\$d", (ageSeconds / 60L).toString())
+        ageSeconds < 24L * 60L * 60L -> hoursAgo.replace("%1\$d", (ageSeconds / (60L * 60L)).toString())
+        else -> daysAgo.replace("%1\$d", (ageSeconds / (24L * 60L * 60L)).toString())
+    }
+}
+
+private fun sharedNowMillis(): Long = platformCurrentTimeMillis()

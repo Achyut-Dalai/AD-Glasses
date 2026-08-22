@@ -36,7 +36,7 @@ firmware_dump/
 !ios/QCSDKDemo.xcodeproj/
 !ios/QCSDKDemo.xcodeproj/xcshareddata/
 !ios/QCSDKDemo.xcodeproj/xcshareddata/xcschemes/
-!ios/QCSDKDemo.xcodeproj/xcshareddata/xcschemes/CyanBridgeKMPHost.xcscheme
+!ios/QCSDKDemo.xcodeproj/xcshareddata/xcschemes/AD-GlassesKMPHost.xcscheme
 DerivedData/
 Pods/
 QCSDK.framework/
@@ -54,7 +54,7 @@ Android_SDK_Development_Guide_CN.pdf
 node_modules/
 
 # Keep sibling website repos out of the SDK worktree if copied here by mistake
-Cyanbridge_website/
+AD Glasses_website/
 Carelens_website/
 
 # Local side projects and analysis notes
@@ -78,4 +78,4 @@ graphify-out/
 
 # Local recovery/export snapshots
 backups/
-android/CyanBridge/_local_termux_server_phone_current/
+android/AD-Glasses/_local_termux_server_phone_current/

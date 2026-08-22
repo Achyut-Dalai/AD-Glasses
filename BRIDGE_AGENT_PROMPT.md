@@ -1,21 +1,21 @@
-# Agent Implementation Prompt: CyanBridge MemoMind ↔ Even Hub / MentraOS Compatibility Bridge
+# Agent Implementation Prompt: AD Glasses MemoMind ↔ Even Hub / MentraOS Compatibility Bridge
 
 ## Mission
 
-You are implementing a new compatibility layer inside **CyanBridge**, an Android app that already works as an alternative app/SDK for HeyCyan-compatible smart glasses and currently supports BLE device management, media sync, assistant routing, Tasker integration, and privacy-focused local handling.
+You are implementing a new compatibility layer inside **AD Glasses**, an Android app that already works as an alternative app/SDK for HeyCyan-compatible smart glasses and currently supports BLE device management, media sync, assistant routing, external automation integration, and privacy-focused local handling.
 
 The new goal is:
 
-> Pair CyanBridge with **MemoMind One** glasses and make them usable as a display/input backend for apps originally written for **Even Hub** and **MentraOS**.
+> Pair AD Glasses with **MemoMind One** glasses and make them usable as a display/input backend for apps originally written for **Even Hub** and **MentraOS**.
 
 The first deliverable is **not** the Claude/Codex/OpenCode terminal app itself. The first deliverable is the bridge/runtime that makes other apps possible. The terminal HUD should later become just one compatible app running on top of the bridge.
 
-Design the implementation so CyanBridge can eventually support:
+Design the implementation so AD Glasses can eventually support:
 
 ```text
-Even Hub app → CyanBridge EvenHubRuntime → CyanBridge GlassesBridge → MemoMind glasses
-MentraOS app → CyanBridge MentraRuntime/Relay → CyanBridge GlassesBridge → MemoMind glasses
-CyanBridge native app → CyanBridge GlassesBridge → MemoMind glasses
+Even Hub app → AD Glasses EvenHubRuntime → AD Glasses GlassesBridge → MemoMind glasses
+MentraOS app → AD Glasses MentraRuntime/Relay → AD Glasses GlassesBridge → MemoMind glasses
+AD Glasses native app → AD Glasses GlassesBridge → MemoMind glasses
 ```
 
 Do not hard-code the terminal app into the glasses driver. Build a reusable compatibility platform.
@@ -51,21 +51,21 @@ Do not hard-code the terminal app into the glasses driver. Build a reusable comp
 
 ## Current external facts to ground implementation
 
-### CyanBridge current state to inspect
+### AD Glasses current state to inspect
 
-CyanBridge appears in the existing repo as an alternative Android app/SDK for HeyCyan-compatible glasses. The repo root includes `android/`, `examples/`, `heycyan-core/`, `ios/`, `third_party/`, `AGENTS.md`, `README.md`, and `WIFI_TRANSFER_ARCHITECTURE.md`. The README describes BLE scanning/connection, photo/video/audio controls, battery/device information, and Android-only Gemini/ChatGPT assistant routing through Tasker automation.
+AD Glasses appears in the existing repo as an alternative Android app/SDK for HeyCyan-compatible glasses. The repo root includes `android/`, `examples/`, `heycyan-core/`, `ios/`, `third_party/`, `AGENTS.md`, `README.md`, and `WIFI_TRANSFER_ARCHITECTURE.md`. The README describes BLE scanning/connection, photo/video/audio controls, battery/device information, and Android-only Gemini/ChatGPT assistant routing through external automation automation.
 
 Primary repo to inspect:
 
-- `https://github.com/FerSaiyan/Alternative-HeyCyan-App-and-SDK`
+- `https://github.com/AD-Glasses/Alternative-HeyCyan-App-and-SDK`
 
-Specific CyanBridge areas to inspect first:
+Specific AD Glasses areas to inspect first:
 
 ```text
-android/CyanBridge/
-android/CyanBridge/app/src/main/AndroidManifest.xml
-android/CyanBridge/app/src/main/java/**
-android/CyanBridge/tasker/Tasker_AI.xml
+android/AD-Glasses/
+android/AD-Glasses/app/src/main/AndroidManifest.xml
+android/AD-Glasses/app/src/main/java/**
+android/AD-Glasses/external automation/external automation_AI.xml
 heycyan-core/**
 README.md
 AGENTS.md
@@ -82,8 +82,8 @@ Characteristic
 scan
 connect
 battery
-Tasker
-ACTION_TASKER_COMMAND
+external automation
+ACTION_external automation_COMMAND
 AI_EVENT
 MediaStore
 WiFi
@@ -200,10 +200,10 @@ Ask MemoMind for:
 
 ## Recommended high-level architecture
 
-Add a new compatibility subsystem to CyanBridge:
+Add a new compatibility subsystem to AD Glasses:
 
 ```text
-CyanBridge Android app
+AD Glasses Android app
 ├── Existing HeyCyan features
 ├── GlassesBridge core
 │   ├── GlassesDeviceAdapter interface
@@ -220,7 +220,7 @@ CyanBridge Android app
 ├── App compatibility runtimes
 │   ├── EvenHubRuntime          WebView + JS shim + bridge
 │   ├── MentraRuntime           local SDK/relay compatibility
-│   └── CyanBridgeNativeRuntime native apps such as terminal HUD
+│   └── AD GlassesNativeRuntime native apps such as terminal HUD
 ├── Bridge UI
 │   ├── Pairing screen
 │   ├── Installed compatible apps screen
@@ -250,12 +250,12 @@ TerminalHUD → MemoMind BLE directly
 
 ---
 
-## Proposed package structure inside CyanBridge
+## Proposed package structure inside AD Glasses
 
-Adjust package names to the repo’s existing style. If the app currently uses `com.fersaiyan.cyanbridge`, place new code under that namespace.
+Adjust package names to the repo’s existing style. If the app currently uses `com.ad_glasses`, place new code under that namespace.
 
 ```text
-android/CyanBridge/app/src/main/java/com/fersaiyan/cyanbridge/
+android/AD-Glasses/app/src/main/java/com/ad_glasses/
 ├── bridge/
 │   ├── core/
 │   │   ├── GlassesDeviceAdapter.kt
@@ -476,8 +476,8 @@ MemoMindDeviceAdapter.kt
 Acceptance test:
 
 ```text
-- CyanBridge can scan and list MemoMind devices.
-- CyanBridge can connect/disconnect without crashing.
+- AD Glasses can scan and list MemoMind devices.
+- AD Glasses can connect/disconnect without crashing.
 - Debug screen shows services/characteristics discovered.
 - No display writes yet unless packet format is verified.
 ```
@@ -489,7 +489,7 @@ Implement only after display characteristic and text packet format are verified.
 Acceptance test:
 
 ```text
-- From CyanBridge debug UI, tap "Show hello".
+- From AD Glasses debug UI, tap "Show hello".
 - MemoMind display shows a short message.
 - Tap "Clear".
 - MemoMind display clears.
@@ -504,7 +504,7 @@ Acceptance test:
 
 ```text
 - Trigger known MemoMind input gesture.
-- CyanBridge logs typed InputEvent.
+- AD Glasses logs typed InputEvent.
 - Mock app can react by changing displayed text/page.
 ```
 
@@ -525,7 +525,7 @@ This mode runs an Even Hub Vite app from a URL and injects a compatibility shim.
 ```text
 Even Hub dev app at http://laptop-ip:5173
         ↓
-CyanBridge WebView
+AD Glasses WebView
         ↓ JS bridge/shim
 EvenHubRuntime
         ↓ Kotlin calls
@@ -550,7 +550,7 @@ The WebView should:
 ```text
 - Load an app URL entered by the user.
 - Inject `evenhub-compat-shim.js` before/at document start if possible.
-- Expose `CyanBridgeEvenHubBridge` via Android JavascriptInterface.
+- Expose `AD GlassesEvenHubBridge` via Android JavascriptInterface.
 - Receive display requests from JS and map them to DisplayCommand.
 - Send input events from glasses back into the JS runtime.
 ```
@@ -563,7 +563,7 @@ Acceptance criteria for not doing `.ehpk` in v1:
 
 ```text
 - A developer can run `npm run dev` in an Even Hub app.
-- CyanBridge loads the dev URL.
+- AD Glasses loads the dev URL.
 - The app displays on MemoMind through the compatibility shim.
 ```
 
@@ -646,7 +646,7 @@ Manual tests:
 
 ```text
 - Run Even Hub minimal template on laptop.
-- In CyanBridge, open Even Hub Runtime and enter URL.
+- In AD Glasses, open Even Hub Runtime and enter URL.
 - MemoMind shows "Hello" style text.
 - Run text-heavy template.
 - MemoMind shows paginated text.
@@ -663,14 +663,14 @@ Do **not** try to fully replace MentraOS cloud in v1.
 
 Implement two tracks:
 
-### Track 1: CyanBridge local Mentra-compatible runtime for simple apps
+### Track 1: AD Glasses local Mentra-compatible runtime for simple apps
 
-Goal: let simple Mentra display apps run against a local CyanBridge relay during development.
+Goal: let simple Mentra display apps run against a local AD Glasses relay during development.
 
 ```text
 MentraOS display app server
         ↓ WebSocket/webhook compatible subset
-CyanBridge MentraLocalRelay
+AD Glasses MentraLocalRelay
         ↓ normalized messages
 GlassesBridge
         ↓
@@ -702,7 +702,7 @@ If the official Mentra SDK requires cloud API keys or a specific relay handshake
 
 ### Track 2: Upstream MemoMind support in MentraOS
 
-This is separate from CyanBridge runtime work.
+This is separate from AD Glasses runtime work.
 
 Goal: add MemoMind as a supported glasses backend in MentraOS itself.
 
@@ -741,7 +741,7 @@ Before PR:
 
 ```text
 - Run MentraOS-Display-Example-App locally.
-- CyanBridge Mentra runtime establishes a session or documented compatible shim route.
+- AD Glasses Mentra runtime establishes a session or documented compatible shim route.
 - App sends display text.
 - MemoMind shows display text.
 - Gesture/button on MemoMind or phone fallback sends event to app.
@@ -751,7 +751,7 @@ Before PR:
 
 ## Developer UI requirements
 
-Add a new “Bridge Lab” area in CyanBridge.
+Add a new “Bridge Lab” area in AD Glasses.
 
 Screens:
 
@@ -818,7 +818,7 @@ Native Runtime
 
 ### 5. Simulated Glasses Preview
 
-Always show what CyanBridge thinks it sent to the glasses. This is essential for debugging when the physical display fails.
+Always show what AD Glasses thinks it sent to the glasses. This is essential for debugging when the physical display fails.
 
 ---
 
@@ -847,7 +847,7 @@ Device adapters should consume `DisplayCommand` and publish `InputEvent`.
 
 ## Data model for compatibility apps
 
-Create an app manifest model independent of Even/Mentra/CyanBridge native apps.
+Create an app manifest model independent of Even/Mentra/AD-Glasses native apps.
 
 ```kotlin
 data class CompatibleAppManifest(
@@ -864,7 +864,7 @@ enum class RuntimeType {
     EVEN_HUB_URL,
     EVEN_HUB_PACKAGE,
     MENTRA_LOCAL,
-    CYANBRIDGE_NATIVE
+    AD Glasses_NATIVE
 }
 ```
 
@@ -923,7 +923,7 @@ Deliverables:
 Acceptance:
 
 ```text
-- CyanBridge can connect to MemoMind and list discovered services.
+- AD Glasses can connect to MemoMind and list discovered services.
 ```
 
 ### Milestone 3: MemoMind minimal display
@@ -957,7 +957,7 @@ Deliverables:
 Acceptance:
 
 ```text
-- EvenHub minimal template running on laptop displays text on MemoMind through CyanBridge.
+- EvenHub minimal template running on laptop displays text on MemoMind through AD Glasses.
 ```
 
 ### Milestone 5: EvenHubRuntime text-heavy/pagination
@@ -1019,7 +1019,7 @@ After the bridge works, implement the terminal app as one compatible app:
 ```text
 Claude/Codex/OpenCode agent hub on laptop
         ↓ WebSocket
-CyanBridge native TerminalHUD runtime or EvenHub/Mentra app
+AD Glasses native TerminalHUD runtime or EvenHub/Mentra app
         ↓
 GlassesBridge
         ↓
@@ -1043,14 +1043,14 @@ Do not implement this until at least one generic runtime can display text.
 
 Before coding, inspect these files/pages and write a short `BRIDGE_RESEARCH_NOTES.md`:
 
-### CyanBridge
+### AD Glasses
 
 ```text
-https://github.com/FerSaiyan/Alternative-HeyCyan-App-and-SDK
+https://github.com/AD-Glasses/Alternative-HeyCyan-App-and-SDK
 README.md
 AGENTS.md
 WIFI_TRANSFER_ARCHITECTURE.md
-android/CyanBridge/**
+android/AD-Glasses/**
 heycyan-core/**
 ```
 
@@ -1061,7 +1061,7 @@ Questions to answer:
 - Is the UI Compose, XML, or mixed?
 - Where is BLE scan/connect implemented?
 - Where are permissions requested?
-- Where are Tasker intents implemented?
+- Where are external automation intents implemented?
 - Is there already a WebSocket/HTTP/WebView component?
 - Where should Bridge Lab UI live?
 ```
@@ -1231,7 +1231,7 @@ docs/MEMOMIND_CAPABILITY_MATRIX.md
 Start with this:
 
 ```text
-1. Clone/read the CyanBridge repo.
+1. Clone/read the AD Glasses repo.
 2. Create BRIDGE_RESEARCH_NOTES.md.
 3. Identify current package name, UI style, BLE architecture, Gradle modules, and where new code should live.
 4. Add bridge/core interfaces and mock adapter only.
@@ -1245,7 +1245,7 @@ Definition of done for first task:
 ```text
 - App builds.
 - Existing HeyCyan features are untouched.
-- A developer can open a debug screen and send "Hello from CyanBridge Bridge" to the simulated glasses preview.
+- A developer can open a debug screen and send "Hello from AD Glasses Bridge" to the simulated glasses preview.
 - Core interfaces compile and are ready for MemoMindAdapter.
 - Research notes list next files to modify for MemoMind scanning.
 ```
@@ -1311,7 +1311,7 @@ The first milestone is done. All items below are implemented and the app builds 
 
 - ✅ App builds (`BUILD SUCCESSFUL`)
 - ✅ Existing HeyCyan features are untouched
-- ✅ A developer can open Glasses tab, see "Bridge Lab" when MemoMind is selected, and send "Hello from CyanBridge Bridge" to the simulated glasses preview
+- ✅ A developer can open Glasses tab, see "Bridge Lab" when MemoMind is selected, and send "Hello from AD Glasses Bridge" to the simulated glasses preview
 - ✅ Core interfaces compile and are ready for `MemoMindDeviceAdapter`
 - ✅ `BRIDGE_RESEARCH_NOTES.md` documents the MemoMind protocol findings
 
@@ -1379,7 +1379,7 @@ The first milestone is done. All items below are implemented and the app builds 
 1. User enters an EvenHub app URL (e.g. `http://10.0.2.2:5173` for emulator)
 2. WebView loads the URL and injects `evenhub-compat-shim.js`
 3. The shim replaces `EvenAppBridge` singleton — intercepts all SDK calls
-4. `createStartUpPageContainer`, `textContainerUpgrade`, `rebuildPageContainer`, `shutDownPageContainer` → forwarded to `CyanBridgeEvenHubBridge` (Android `@JavascriptInterface`)
+4. `createStartUpPageContainer`, `textContainerUpgrade`, `rebuildPageContainer`, `shutDownPageContainer` → forwarded to `AD GlassesEvenHubBridge` (Android `@JavascriptInterface`)
 5. `EvenHubJsBridge` parses container JSON, extracts text, maps to `DisplayCommand.Text/Lines/Card`
 6. `GlassesBridge` routes to the active adapter (MockDisplayAdapter or MemoMindDeviceAdapter)
 
@@ -1401,7 +1401,7 @@ The first milestone is done. All items below are implemented and the app builds 
 
 **Acceptance:**
 - Run `npm run dev` in an Even Hub minimal template on laptop
-- In CyanBridge, open EvenHub Runtime, enter the dev URL
+- In AD Glasses, open EvenHub Runtime, enter the dev URL
 - MemoMind glasses (or mock preview) show "Hello" from the Even Hub app
 
 **What needs BLE sniffing:**
@@ -1538,7 +1538,7 @@ What to capture:
 4. A clear display command
 5. Battery request/response
 
-Save captures to `android/CyanBridge/bridge/devices/memomind/captures/` (gitignored).
+Save captures to `android/AD-Glasses/bridge/devices/memomind/captures/` (gitignored).
 
 ### Step 2: MemoMind BLE adapter (after capture)
 
@@ -1568,7 +1568,7 @@ Reference:
 
 Acceptance:
 - Run `npm run dev` in an Even Hub minimal template on laptop
-- In CyanBridge, enter the dev URL in the EvenHub runtime
+- In AD Glasses, enter the dev URL in the EvenHub runtime
 - MemoMind glasses (or mock preview) shows "Hello" from the Even Hub app
 
 ### Step 4: MentraOS local relay
@@ -1602,7 +1602,7 @@ After at least one runtime (EvenHub or MentraOS) can display text on real glasse
 
 ## Later note for Claude/Codex/OpenCode terminal HUD
 
-When ready, implement it as a CyanBridge native runtime first. Later optionally expose it as an Even Hub app and/or MentraOS app.
+When ready, implement it as a AD Glasses native runtime first. Later optionally expose it as an Even Hub app and/or MentraOS app.
 
 Suggested display state:
 
@@ -1619,7 +1619,7 @@ data class TerminalHudState(
 Suggested rendering:
 
 ```text
-CLAUDE · CyanBridge
+CLAUDE · AD Glasses
 Permission needed
 Edit MemoMindAdapter.kt
 [ALLOW] [DENY]

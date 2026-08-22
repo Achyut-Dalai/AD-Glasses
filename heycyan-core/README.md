@@ -14,7 +14,7 @@ This directory contains the core libraries for HeyCyan Smart Glasses functionali
 
 ## Building
 
-These modules are included as a Gradle composite build. When you build CyanBridge, these modules are automatically compiled and included.
+These modules are included as a Gradle composite build. When you build AD Glasses, these modules are automatically compiled and included.
 
 ## Version History
 

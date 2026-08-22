@@ -1,0 +1,27 @@
+<resources>
+    <string name="app_name">AD Glasses</string>
+    <string name="language_system_default">Paramètre système</string>
+    <string name="language_selection_title">Choisir la langue de l\'application</string>
+    <string name="action_cancel">Annuler</string>
+    <string name="action_save">Enregistrer</string>
+    <string name="vision_profile_selection_title">Choisir le profil de vision</string>
+    <string name="vision_profile_walking">Marche</string>
+    <string name="vision_profile_detailed">Détaillé</string>
+    <string name="vision_custom_instructions_title">Instructions visuelles supplémentaires</string>
+    <string name="vision_custom_instructions_hint">Instructions facultatives utilisées pour chaque description d\'image</string>
+    <string name="onboarding_glasses_connection_title">Connecter vos lunettes</string>
+    <string name="onboarding_glasses_connection_desc">Autorisez AD Glasses à trouver et connecter vos lunettes à proximité.</string>
+    <string name="onboarding_glasses_connection_details">L\'autorisation Bluetooth sert uniquement à détecter, associer et communiquer avec vos lunettes. Vous pouvez continuer sans l\'autoriser maintenant et l\'accorder plus tard lors de la connexion d\'un appareil.</string>
+    <string name="onboarding_optional_features_title">Fonctions facultatives, votre choix</string>
+    <string name="onboarding_optional_features_desc">AutoDiary, Auto Audio, Local Agent, and Cloud AI are optional and configured from Plugins or Settings.</string>
+    <string name="onboarding_optional_features_details">Commencez par connecter vos lunettes, puis explorez les plugins quand vous le souhaitez. Chaque plugin explique sa fonction et ne demande que les autorisations nécessaires à son activation. Vous pouvez revoir ou désactiver les fonctions à tout moment.</string>
+    <string name="onboarding_open_source_title">Développé ouvertement</string>
+    <string name="onboarding_open_source_desc">Consultez le code, signalez les problèmes et aidez à améliorer AD Glasses pour tous.</string>
+    <string name="onboarding_open_source_details">AD Glasses est open source. Consultez le code pour comprendre son comportement, signalez les bugs ou problèmes de sécurité, proposez des améliorations ou contribuez via GitHub.</string>
+    <string name="onboarding_skip_all">Tout ignorer</string>
+    <string name="onboarding_back">Retour</string>
+    <string name="onboarding_next">Suivant</string>
+    <string name="onboarding_get_started">Commencer</string>
+    <string name="meta_diagnostics_title">Diagnostics Meta Ray-Ban</string>
+    <string name="meta_diagnostics_description">AD Glasses recueillera l\'état récent de Meta DAT, les erreurs, les détails de l\'appareil et les entrées logcat filtrées afin d\'analyser le problème.</string>
+</resources>
