@@ -4177,6 +4177,12 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
                 usesPhoneMicrophone = pendingImageQuestionOfferSpokenQuestion &&
                     ContextCompat.checkSelfPermission(this, Manifest.permission.RECORD_AUDIO) == PackageManager.PERMISSION_GRANTED,
             )
+            prepareAiQuestionForLockScreen()
+            beginAiQuestionForegroundWork(
+                "Capturing image from Meta glasses",
+                usesPhoneMicrophone = pendingImageQuestionOfferSpokenQuestion &&
+                    ContextCompat.checkSelfPermission(this, Manifest.permission.RECORD_AUDIO) == PackageManager.PERMISSION_GRANTED,
+            )
             val manager = getOrCreateMetaRaybanManager()
             lifecycleScope.launch(Dispatchers.IO) {
                 runCatching {
