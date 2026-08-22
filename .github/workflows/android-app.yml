@@ -22,7 +22,7 @@ on:
       - third_party/moonshine/**
 
 permissions:
-  contents: write
+  contents: read
   packages: read
 
 concurrency:
@@ -42,7 +42,6 @@ jobs:
       - name: Check out source
         uses: actions/checkout@v7
         with:
-          ref: fix/android-resource-repair
           submodules: recursive
           lfs: true
           fetch-depth: 0
@@ -52,87 +51,6 @@ jobs:
         run: |
           git lfs install --local
           git submodule foreach --recursive 'git lfs install --local && git lfs pull'
-
-      - name: Migrate retired assistant dashboard UI
-        if: github.event.pull_request.head.ref == 'fix/android-resource-repair' || github.ref == 'refs/heads/fix/android-resource-repair'
-        shell: bash
-        run: |
-          python3 - <<'PY'
-          from pathlib import Path
-          import re
-
-          root = Path('android/AD-Glasses')
-          screen = root / 'shared/src/commonMain/kotlin/com/ad_glasses/shared/ui/glasses/GlassesDashboardScreen.kt'
-          strings = root / 'shared/src/commonMain/composeResources/values/strings_extra.xml'
-
-          text = screen.read_text(encoding='utf-8')
-          text = text.replace('import com.ad_glasses.shared.glasses.GlassesAssistantMode\n', '')
-
-          controls = text.index('private fun GlassesAssistantControls(')
-          row_marker = '        Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {'
-          row_start = text.index(row_marker, controls)
-          action_start = text.index('        ActionRow(', row_start)
-          text = text[:row_start] + text[action_start:]
-
-          controls = text.index('private fun GlassesAssistantControls(')
-          diagnostics_marker = '        OutlinedButton(\n            onClick = { onAction(GlassesDashboardAction.OpenExternalImageAutomationDiagnostics) },'
-          diagnostics_start = text.index(diagnostics_marker, controls)
-          next_function_marker = '@Composable\nprivate fun AiWakeWordRouteControls('
-          next_function = text.index(next_function_marker, diagnostics_start)
-          controls_tail = text.rfind('    }\n}\n\n', diagnostics_start, next_function)
-          if controls_tail < 0:
-              raise SystemExit('Could not locate assistant controls closing braces')
-          text = text[:diagnostics_start] + text[controls_tail:]
-
-          helper_start = text.index('@Composable\nprivate fun AssistantModeChip(')
-          meta_start = text.index('@Composable\nprivate fun MetaRaybanControls(', helper_start)
-          text = text[:helper_start] + text[meta_start:]
-
-          retired = (
-              'GlassesAssistantMode',
-              'assistantMode',
-              'OpenExternalImageAutomationDiagnostics',
-              'SelectAssistantMode',
-              'dashboard_gemini_chatgpt_setup',
-              'dashboard_phone_assistant',
-              'dashboard_custom_provider',
-          )
-          remaining = [token for token in retired if token in text]
-          if remaining:
-              raise SystemExit('Retired assistant dashboard references remain: ' + ', '.join(remaining))
-          screen.write_text(text, encoding='utf-8')
-
-          string_text = strings.read_text(encoding='utf-8')
-          for name in (
-              'dashboard_phone_assistant',
-              'dashboard_custom_provider',
-              'dashboard_gemini_chatgpt_setup',
-          ):
-              string_text = re.sub(
-                  rf'^\s*<string name="{name}">.*?</string>\n?',
-                  '',
-                  string_text,
-                  count=1,
-                  flags=re.MULTILINE,
-              )
-          strings.write_text(string_text, encoding='utf-8')
-          PY
-          git diff --check
-          git status --short -- android/AD-Glasses
-
-      - name: Commit forward-only dashboard migration
-        if: github.event.pull_request.head.ref == 'fix/android-resource-repair' || github.ref == 'refs/heads/fix/android-resource-repair'
-        shell: bash
-        run: |
-          git add -- android/AD-Glasses/shared/src/commonMain/kotlin/com/ad_glasses/shared/ui/glasses/GlassesDashboardScreen.kt \
-                     android/AD-Glasses/shared/src/commonMain/composeResources/values/strings_extra.xml
-          git diff --cached --check
-          if ! git diff --cached --quiet; then
-            git config user.name 'github-actions[bot]'
-            git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
-            git commit -m 'fix: remove retired assistant-mode dashboard UI'
-            git push origin HEAD:fix/android-resource-repair
-          fi
 
       - name: Set up Java 17
         uses: actions/setup-java@v5
