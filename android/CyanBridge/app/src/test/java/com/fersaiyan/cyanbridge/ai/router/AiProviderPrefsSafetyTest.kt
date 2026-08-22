@@ -24,8 +24,23 @@ class AiProviderPrefsSafetyTest {
     }
 
     @Test
-    fun freshInstallDefaultsToApiTokenAndOpenAiProvider() {
+    fun freshInstallDefaultsToCloudAndOpenAiProvider() {
         assertEquals(AiProviderType.API_TOKEN, AiProviderPrefs.getProvider(context))
         assertEquals(ApiProvider.OPENAI, AiProviderPrefs.getApiProvider(context))
+    }
+
+    @Test
+    fun retiredRemoteProviderWiresMigrateToCloud() {
+        listOf("cli_relay", "company_backend", "mock", "gemini", "chatgpt", "phone_assistant")
+            .forEach { legacy ->
+                assertEquals(AiProviderType.API_TOKEN, AiProviderType.fromWire(legacy))
+            }
+    }
+
+    @Test
+    fun retiredAuthorRelayUrlsAreNeverSilentlyRestored() {
+        val prefs = context.getSharedPreferences("ai_provider_prefs", Context.MODE_PRIVATE)
+        prefs.edit().putString("relay_base_url", "https://cyanbridge.vercel.app").commit()
+        assertEquals("", AiProviderPrefs.getRelayBaseUrl(context))
     }
 }
