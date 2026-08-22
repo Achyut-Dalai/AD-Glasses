@@ -42,6 +42,7 @@ jobs:
       - name: Check out source
         uses: actions/checkout@v7
         with:
+          ref: fix/android-resource-repair
           submodules: recursive
           lfs: true
           fetch-depth: 0
@@ -53,6 +54,7 @@ jobs:
           git submodule foreach --recursive 'git lfs install --local && git lfs pull'
 
       - name: Migrate retired assistant dashboard UI
+        if: github.event.pull_request.head.ref == 'fix/android-resource-repair' || github.ref == 'refs/heads/fix/android-resource-repair'
         shell: bash
         run: |
           python3 - <<'PY'
@@ -66,52 +68,25 @@ jobs:
           text = screen.read_text(encoding='utf-8')
           text = text.replace('import com.ad_glasses.shared.glasses.GlassesAssistantMode\n', '')
 
-          mode_row = '''        Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-              AssistantModeChip(
-                  label = stringResource(Res.string.dashboard_phone_assistant),
-                  mode = GlassesAssistantMode.PHONE_ASSISTANT,
-                  selectedMode = state.assistantMode,
-                  onAction = onAction,
-                  modifier = Modifier.weight(1f),
-              )
-              AssistantModeChip(
-                  label = stringResource(Res.string.dashboard_custom_provider),
-                  mode = GlassesAssistantMode.CUSTOM_AI_PROVIDER,
-                  selectedMode = state.assistantMode,
-                  onAction = onAction,
-                  modifier = Modifier.weight(1f),
-              )
-          }
-'''.replace('              ', '            ').replace('          }\n', '        }\n')
-          text = text.replace(mode_row, '')
+          controls = text.index('private fun GlassesAssistantControls(')
+          row_marker = '        Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {'
+          row_start = text.index(row_marker, controls)
+          action_start = text.index('        ActionRow(', row_start)
+          text = text[:row_start] + text[action_start:]
 
-          diagnostics = '''        OutlinedButton(
-              onClick = { onAction(GlassesDashboardAction.OpenExternalImageAutomationDiagnostics) },
-              modifier = Modifier.fillMaxWidth(),
-          ) {
-              Text(stringResource(Res.string.dashboard_gemini_chatgpt_setup))
-          }
-'''.replace('              ', '            ').replace('          ) {\n', '        ) {\n').replace('          }\n', '        }\n')
-          text = text.replace(diagnostics, '')
+          controls = text.index('private fun GlassesAssistantControls(')
+          diagnostics_marker = '        OutlinedButton(\n            onClick = { onAction(GlassesDashboardAction.OpenExternalImageAutomationDiagnostics) },'
+          diagnostics_start = text.index(diagnostics_marker, controls)
+          next_function_marker = '@Composable\nprivate fun AiWakeWordRouteControls('
+          next_function = text.index(next_function_marker, diagnostics_start)
+          controls_tail = text.rfind('    }\n}\n\n', diagnostics_start, next_function)
+          if controls_tail < 0:
+              raise SystemExit('Could not locate assistant controls closing braces')
+          text = text[:diagnostics_start] + text[controls_tail:]
 
-          helper = '''@Composable
-private fun AssistantModeChip(
-    label: String,
-    mode: GlassesAssistantMode,
-    selectedMode: GlassesAssistantMode,
-    onAction: (GlassesDashboardAction) -> Unit,
-    modifier: Modifier,
-) {
-    FilterChip(
-        selected = selectedMode == mode,
-        onClick = { onAction(GlassesDashboardAction.SelectAssistantMode(mode)) },
-        label = { Text(label) },
-        modifier = modifier,
-    )
-}
-
-'''
-          text = text.replace(helper, '')
+          helper_start = text.index('@Composable\nprivate fun AssistantModeChip(')
+          meta_start = text.index('@Composable\nprivate fun MetaRaybanControls(', helper_start)
+          text = text[:helper_start] + text[meta_start:]
 
           retired = (
               'GlassesAssistantMode',
@@ -146,7 +121,7 @@ private fun AssistantModeChip(
           git status --short -- android/AD-Glasses
 
       - name: Commit forward-only dashboard migration
-        if: github.event_name == 'push' && github.ref == 'refs/heads/fix/android-resource-repair'
+        if: github.event.pull_request.head.ref == 'fix/android-resource-repair' || github.ref == 'refs/heads/fix/android-resource-repair'
         shell: bash
         run: |
           git add -- android/AD-Glasses/shared/src/commonMain/kotlin/com/ad_glasses/shared/ui/glasses/GlassesDashboardScreen.kt \
