@@ -22,7 +22,7 @@ on:
       - third_party/moonshine/**
 
 permissions:
-  contents: read
+  contents: write
   packages: read
 
 concurrency:
@@ -51,6 +51,113 @@ jobs:
         run: |
           git lfs install --local
           git submodule foreach --recursive 'git lfs install --local && git lfs pull'
+
+      - name: Migrate retired assistant dashboard UI
+        shell: bash
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          import re
+
+          root = Path('android/AD-Glasses')
+          screen = root / 'shared/src/commonMain/kotlin/com/ad_glasses/shared/ui/glasses/GlassesDashboardScreen.kt'
+          strings = root / 'shared/src/commonMain/composeResources/values/strings_extra.xml'
+
+          text = screen.read_text(encoding='utf-8')
+          text = text.replace('import com.ad_glasses.shared.glasses.GlassesAssistantMode\n', '')
+
+          mode_row = '''        Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+              AssistantModeChip(
+                  label = stringResource(Res.string.dashboard_phone_assistant),
+                  mode = GlassesAssistantMode.PHONE_ASSISTANT,
+                  selectedMode = state.assistantMode,
+                  onAction = onAction,
+                  modifier = Modifier.weight(1f),
+              )
+              AssistantModeChip(
+                  label = stringResource(Res.string.dashboard_custom_provider),
+                  mode = GlassesAssistantMode.CUSTOM_AI_PROVIDER,
+                  selectedMode = state.assistantMode,
+                  onAction = onAction,
+                  modifier = Modifier.weight(1f),
+              )
+          }
+'''.replace('              ', '            ').replace('          }\n', '        }\n')
+          text = text.replace(mode_row, '')
+
+          diagnostics = '''        OutlinedButton(
+              onClick = { onAction(GlassesDashboardAction.OpenExternalImageAutomationDiagnostics) },
+              modifier = Modifier.fillMaxWidth(),
+          ) {
+              Text(stringResource(Res.string.dashboard_gemini_chatgpt_setup))
+          }
+'''.replace('              ', '            ').replace('          ) {\n', '        ) {\n').replace('          }\n', '        }\n')
+          text = text.replace(diagnostics, '')
+
+          helper = '''@Composable
+private fun AssistantModeChip(
+    label: String,
+    mode: GlassesAssistantMode,
+    selectedMode: GlassesAssistantMode,
+    onAction: (GlassesDashboardAction) -> Unit,
+    modifier: Modifier,
+) {
+    FilterChip(
+        selected = selectedMode == mode,
+        onClick = { onAction(GlassesDashboardAction.SelectAssistantMode(mode)) },
+        label = { Text(label) },
+        modifier = modifier,
+    )
+}
+
+'''
+          text = text.replace(helper, '')
+
+          retired = (
+              'GlassesAssistantMode',
+              'assistantMode',
+              'OpenExternalImageAutomationDiagnostics',
+              'SelectAssistantMode',
+              'dashboard_gemini_chatgpt_setup',
+              'dashboard_phone_assistant',
+              'dashboard_custom_provider',
+          )
+          remaining = [token for token in retired if token in text]
+          if remaining:
+              raise SystemExit('Retired assistant dashboard references remain: ' + ', '.join(remaining))
+          screen.write_text(text, encoding='utf-8')
+
+          string_text = strings.read_text(encoding='utf-8')
+          for name in (
+              'dashboard_phone_assistant',
+              'dashboard_custom_provider',
+              'dashboard_gemini_chatgpt_setup',
+          ):
+              string_text = re.sub(
+                  rf'^\s*<string name="{name}">.*?</string>\n?',
+                  '',
+                  string_text,
+                  count=1,
+                  flags=re.MULTILINE,
+              )
+          strings.write_text(string_text, encoding='utf-8')
+          PY
+          git diff --check
+          git status --short -- android/AD-Glasses
+
+      - name: Commit forward-only dashboard migration
+        if: github.event_name == 'push' && github.ref == 'refs/heads/fix/android-resource-repair'
+        shell: bash
+        run: |
+          git add -- android/AD-Glasses/shared/src/commonMain/kotlin/com/ad_glasses/shared/ui/glasses/GlassesDashboardScreen.kt \
+                     android/AD-Glasses/shared/src/commonMain/composeResources/values/strings_extra.xml
+          git diff --cached --check
+          if ! git diff --cached --quiet; then
+            git config user.name 'github-actions[bot]'
+            git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+            git commit -m 'fix: remove retired assistant-mode dashboard UI'
+            git push origin HEAD:fix/android-resource-repair
+          fi
 
       - name: Set up Java 17
         uses: actions/setup-java@v5
