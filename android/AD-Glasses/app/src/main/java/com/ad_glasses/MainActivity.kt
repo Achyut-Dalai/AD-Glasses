@@ -173,7 +173,6 @@ import java.util.Locale
 import java.security.SecureRandom
 import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.atomic.AtomicBoolean
-import androidx.core.content.FileProvider
 import kotlinx.coroutines.withContext
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.CompletableDeferred
@@ -200,7 +199,6 @@ import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
-import com.ad_glasses.agent.CloudAiPrefs
 import com.ad_glasses.agent.CloudServerPrefs
 import com.ad_glasses.ai.router.AssistantIntent
 import com.ad_glasses.ai.router.AssistantRequest
@@ -213,7 +211,7 @@ import com.ad_glasses.ai.orchestrator.AssistantOrchestrator
 import com.ad_glasses.ai.orchestrator.AssistantTurn
 import com.ad_glasses.ai.router.GlassesAssistantRoute
 import com.ad_glasses.ai.router.GlassesAssistantRoutingPolicy
-import com.ad_glasses.ai.router.CliRelayClient
+import com.ad_glasses.ai.router.ApiTokenClient
 import com.ad_glasses.ai.vision.ImageQuestionPreferences
 import com.ad_glasses.ai.vision.ImageQuestionDefaults
 import com.ad_glasses.ai.vision.ImageQuestionPromptResolver
@@ -1332,10 +1330,8 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
                 GlassesDashboardAction.StartMeetingCapture,
                 GlassesDashboardAction.StopMeetingCapture,
                 is GlassesDashboardAction.RunNativePluginShortcut,
-                is GlassesDashboardAction.SelectAssistantMode,
                 GlassesDashboardAction.TestVoiceQuestion,
                 GlassesDashboardAction.TestImageQuestion,
-                GlassesDashboardAction.OpenExternalImageAutomationDiagnostics,
                 GlassesDashboardAction.StartAgent,
                 GlassesDashboardAction.StopAgent,
                 GlassesDashboardAction.RunAgentDemo,
@@ -2033,11 +2029,7 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
                         return@setOnClickListener
                     }
 
-                    if (maybeShowGeminiChatGptImageRequirementsWarning()) {
-                        return@setOnClickListener
-                    }
-
-                    triggerCliRelayImageCaptureAndQuery()
+                    triggerImageCaptureAndQuery()
                 }
 
 
@@ -3557,18 +3549,11 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
         batteryPollJob = null
     }
 
-    private fun resolveEffectiveAiAssistantMode(): String = AutomationPrefs.getProviderType(this).name
-
-
-    private fun isCustomAiProviderMode(): Boolean = aiAssistantMode == AI_MODE_CUSTOM_AI_PROVIDER
+    private fun resolveEffectiveAiAssistantMode(): String =
+        AutomationPrefs.getProviderType(this).name
 
     private fun currentAssistantRoute(): GlassesAssistantRoute =
         GlassesAssistantRoutingPolicy.resolve(AutomationPrefs.getProviderType(this))
- else {
-                GlassesAssistantMode.PHONE_ASSISTANT
-            },
-            customProvider = AutomationPrefs.getProviderType(this),
-        )
 
     private fun imageQueryUnsupportedReasonForCurrentSelection(): String? {
         if (currentAssistantRoute() != GlassesAssistantRoute.LOCAL) return null
@@ -3590,39 +3575,8 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
 
 
 
-    private fun externalImageAutomationUnsupportedReason(): String? {
-        if (!usesExternalAssistantUi()) return null
-        return ExternalAssistantAutomationPolicy.imageBlockingReason(
-            ExternalAssistantAutomationInspector.inspect(this),
-        )
-    }
-
-    private fun maybeShowGeminiChatGptImageRequirementsWarning(): Boolean {
-        if (!usesExternalAssistantUi()) return false
-
-        val capability = ExternalAssistantAutomationInspector.inspect(this)
-        val msg = ExternalAssistantAutomationPolicy.imageBlockingReason(capability) ?: return false
-        if (capability.phoneLocked) {
-            Toast.makeText(this, msg, Toast.LENGTH_LONG).show()
-            speak(msg)
-            return true
-        }
-
-        AlertDialog.Builder(this)
-            .setTitle("AI image setup required")
-            .setMessage(msg)
-            .setNegativeButton("Not now", null)
-            .setPositiveButton("Open setup") { _, _ ->
-                startActivity(Intent(Settings.ACTION_ACCESSIBILITY_SETTINGS))
-            }
-            .show()
-
-        return true
-    }
-
     private fun refreshAiQueryButtonsState() {
         val unsupportedReason = imageQueryUnsupportedReasonForCurrentSelection()
-            ?: externalImageAutomationUnsupportedReason()
         val imageSupported = unsupportedReason == null
         binding.btnTestHijackImage.isEnabled = imageSupported
         binding.btnTestHijackImage.alpha = if (imageSupported) 1f else 0.45f
@@ -3816,14 +3770,13 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
 
         return when (providerType) {
             AgentProviderType.CLOUD_AI -> {
-                CliRelayClient.chat(
+                ApiTokenClient.chat(
                     context = this,
-                    chatId = "glasses_${System.currentTimeMillis()}",
-                    prompt = userPrompt,
                     messages = messages,
-                    modelOverride = CloudAiPrefs.getRequestsModel(this),
+                    imagePaths = imagePaths,
+                    audioPath = audioPath,
                 ).getOrElse {
-                    "Pro endpoint error: ${it.message ?: "unknown error"}"
+                    "Cloud AI unavailable (${it.message ?: it::class.java.simpleName})."
                 }
             }
 
@@ -3897,9 +3850,9 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
             try {
                 val routePrompt = resolvedPrompt.forRoute(
                     if (providerType == AgentProviderType.LOCAL_AGENT) {
-                        ImageQuestionRoute.LOCAL_GEMMA
+                        ImageQuestionRoute.LOCAL_MODEL
                     } else {
-                        ImageQuestionRoute.PRO_RELAY
+                        ImageQuestionRoute.CLOUD_API
                     },
                 )
                 val systemContext = buildCompactMemoryAwareSystemPrompt(
@@ -3988,7 +3941,7 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
                 .ifBlank { Locale.getDefault().toLanguageTag() }
         }
 
-    private fun triggerCliRelayImageCaptureAndQuery() {
+    private fun triggerImageCaptureAndQuery() {
         handleGlassesImageButtonPressed(
             triggerCapture = true,
             sourceTag = "test_button",
@@ -4464,7 +4417,6 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
             } else {
                 cancelParallelAudioQuestion()
             }
-            val externalAutomation = usesExternalImageAutomation()
             fun offerFollowUp() {
                 lifecycleScope.launch {
                     delay(500L)
@@ -4485,12 +4437,9 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
                 imagePath = imagePath,
                 userQuestion = initialQuestion,
                 source = source,
-                onReplySpoken = if (externalAutomation) null else ::offerFollowUp,
+                onReplySpoken = ::offerFollowUp,
             )
 
-            // The default assistant owns external response playback; ADGlasses follow-ups are
-            // only offered for Local and Pro responses that ADGlasses itself speaks.
-            if (externalAutomation) return@launch
         }
     }
 
@@ -5086,7 +5035,6 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
                 triggerInternalVoiceQuery(AgentProviderType.CLOUD_AI)
             }
 
-            GlassesAssistantRoute.PHONE_ASSISTANT -> launchPhoneAssistant()
         }
     }
 
@@ -5116,82 +5064,6 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
 
 
 
-    private fun canStartExternalImageShare(packageName: String): Boolean {
-        val intent = Intent(Intent.ACTION_SEND).apply {
-            type = "image/jpeg"
-            setPackage(packageName)
-        }
-        return intent.resolveActivity(packageManager) != null
-    }
-
-
-
-
-    private fun handOffImageToExternalAssistant(
-        imagePath: String,
-        userQuestion: String?,
-        source: ImageQuestionSource,
-    ) {
-        val capability = ExternalAssistantAutomationInspector.inspect(this)
-        ExternalAssistantAutomationPolicy.imageBlockingReason(capability)?.let { reason ->
-            Toast.makeText(this, reason, Toast.LENGTH_LONG).show()
-            speak(reason)
-            return
-        }
-        val stagedFile = stageImageForExternalShare(File(imagePath))
-        if (stagedFile == null) {
-            Log.e("ImageQuestion", "External handoff image is unavailable: $imagePath")
-            Toast.makeText(this, "The image file is unavailable for the phone assistant.", Toast.LENGTH_LONG).show()
-            return
-        }
-        val imageUri = runCatching {
-            FileProvider.getUriForFile(this, "$packageName.fileprovider", stagedFile)
-        }.getOrElse { error ->
-            Log.e("ImageQuestion", "Could not create image content URI", error)
-            Toast.makeText(this, "Could not share the image with the phone assistant.", Toast.LENGTH_LONG).show()
-            return
-        }
-        val question = externalImageQuestion(userQuestion)
-        ExternalImageAutomationStore.begin(
-            context = this,
-            imagePath = stagedFile.absolutePath,
-            imageUri = imageUri.toString(),
-            question = question,
-            source = source,
-        )
-        val targetPackage = capability.targetPackage ?: return
-        if (!startExternalImageShare(targetPackage, imageUri, question)) {
-            val error = "Could not share the image with ${capability.target.label}."
-            ExternalImageAutomationStore.recordLocalStage(this, ExternalImageAutomationStage.FAILED, error)
-            Toast.makeText(this, error, Toast.LENGTH_LONG).show()
-            return
-        }
-
-        ExternalImageAutomationStore.recordLocalStage(this, ExternalImageAutomationStage.IMAGE_ATTACHED)
-        lifecycleScope.launch {
-            ExternalAssistantAccessibilityAutomation.fillAndSend(
-                target = capability.target,
-                targetPackage = targetPackage,
-                question = question,
-            ).onSuccess {
-                ExternalImageAutomationStore.recordLocalStage(
-                    this@MainActivity,
-                    ExternalImageAutomationStage.PROMPT_SENT,
-                )
-                Log.i("ImageQuestion", "AD Glasses submitted an image question to $targetPackage")
-            }.onFailure { failure ->
-                val error = failure.message ?: "Assistant automation failed"
-                ExternalImageAutomationStore.recordLocalStage(
-                    this@MainActivity,
-                    ExternalImageAutomationStage.FAILED,
-                    error,
-                )
-                Toast.makeText(this@MainActivity, error, Toast.LENGTH_LONG).show()
-                Log.w("ImageQuestion", error, failure)
-            }
-        }
-    }
-
     private fun triggerAssistantImageQuery(
         imagePath: String,
         userQuestion: String? = null,
@@ -5217,47 +5089,16 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
         lastImageQueryAtMs = now
         val resolvedPrompt = resolveImageQuestionPrompt(userQuestion)
 
-        val externalReason = externalImageAutomationUnsupportedReason()
-        if (externalReason != null) {
-            Toast.makeText(this, externalReason, Toast.LENGTH_LONG).show()
-            if (usesExternalAssistantUi() && ExternalAssistantAutomationInspector.inspect(this).phoneLocked) {
-                speak(externalReason)
-            }
-            imageQueryInProgress.set(false)
-            finishAiQuestionForegroundWork()
-            return
-        }
-        
-        val internalProvider = when (currentAssistantRoute()) {
+        val providerType = when (currentAssistantRoute()) {
             GlassesAssistantRoute.LOCAL -> AgentProviderType.LOCAL_AGENT
             GlassesAssistantRoute.CLOUD -> AgentProviderType.CLOUD_AI
-            GlassesAssistantRoute.PHONE_ASSISTANT -> null
         }
-        if (internalProvider != null) {
-            triggerMemoryAwareImageQuery(
-                imagePath = imagePath,
-                providerType = internalProvider,
-                resolvedPrompt = resolvedPrompt,
-                onReplySpoken = onReplySpoken,
-            )
-            return
-        }
-
-        Log.i("AIHijack", "Handing image query to external assistant: $imagePath")
-        try {
-            stopGlassesAiAudio("image-query command")
-            handOffImageToExternalAssistant(
-                imagePath = imagePath,
-                userQuestion = userQuestion,
-                source = source,
-            )
-        } catch (error: Exception) {
-            Log.e("AIHijack", "Failed to hand image to external assistant: ${error.message}", error)
-            Toast.makeText(this, "Could not start the phone-assistant image question.", Toast.LENGTH_LONG).show()
-        } finally {
-            imageQueryInProgress.set(false)
-            finishAiQuestionForegroundWork()
-        }
+        triggerMemoryAwareImageQuery(
+            imagePath = imagePath,
+            providerType = providerType,
+            resolvedPrompt = resolvedPrompt,
+            onReplySpoken = onReplySpoken,
+        )
     }
 
     private fun analyzeSyncedCapture(contentUriString: String) {
@@ -9684,11 +9525,6 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
                                 pendingImageCaptureSourceTag = null
                                 Toast.makeText(this@MainActivity, unsupportedReason, Toast.LENGTH_SHORT).show()
                                 speak(unsupportedReason)
-                                return@runOnUiThread
-                            }
-                            if (maybeShowGeminiChatGptImageRequirementsWarning()) {
-                                imageCaptureAwaitingNotification.set(false)
-                                pendingImageCaptureSourceTag = null
                                 return@runOnUiThread
                             }
                             imageCaptureAwaitingNotification.set(false)
