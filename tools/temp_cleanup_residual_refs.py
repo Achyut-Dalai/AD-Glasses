@@ -25,8 +25,8 @@ update('android/AD-Glasses/LOCAL_AGENT_MVP_PLAN.md', [
 ])
 
 # These IDs are live generic external-plugin-source UI. Keep the IDs but correct old
-# translations that still named the retired automation product. Also remove the dead
-# localized dashboard_phone_assistant resource, which has no callers and no base value.
+# translations that still named the retired automation product. Remove the dead localized
+# assistant-mode/setup strings, which have no callers and no base value.
 locale_replacements = {
     'values-de': (
         'In external automation öffnen', 'Externe Quelle öffnen',
@@ -78,7 +78,15 @@ for locale, values in locale_replacements.items():
     text = text.replace(old_open, new_open)
     text = text.replace(old_link, new_link)
     text = text.replace(old_hint, new_hint)
-    text = re.sub(r'^\s*<string name="dashboard_phone_assistant">.*?</string>\s*\n?', '', text, flags=re.MULTILINE)
+    for resource_name in ('dashboard_phone_assistant', 'dashboard_gemini_chatgpt_setup'):
+        text = re.sub(
+            rf'^[ \t]*<string name="{resource_name}">.*?</string>[ \t]*\r?\n?',
+            '',
+            text,
+            flags=re.MULTILINE,
+        )
+    # Repair indentation if the earlier cleanup removed leading spaces from the next resource.
+    text = re.sub(r'(?m)^<string name="dashboard_custom_provider">', '    <string name="dashboard_custom_provider">', text)
     path.write_text(text, encoding='utf-8')
 
 print('residual legacy-reference cleanup applied')
