@@ -377,9 +377,22 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
             // Android does not guarantee an UtteranceProgressListener error callback when
             // speak() itself rejects the request (or the engine is unavailable). Complete the
             // registered callback here so Bluetooth/audio-session cleanup cannot get stranded.
-            ttsDoneCallbacks.remove(id)?.invoke()
+            completeTtsUtterance(id)
         }
     }
+    private fun completeTtsUtterance(utteranceId: String?) {
+        utteranceId?.let { id -> ttsDoneCallbacks.remove(id)?.invoke() }
+    }
+
+    private fun discardTtsUtterance(utteranceId: String?) {
+        utteranceId?.let(ttsDoneCallbacks::remove)
+    }
+
+    private fun resetTtsAudioState() {
+        ttsDoneCallbacks.clear()
+        AudioSessionCoordinator.markIdle()
+    }
+
     companion object {
         private const val TAG = "MainActivity"
         private var loggedLargeDataHandlerMethods = false
@@ -459,7 +472,6 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
 
     // AI Hijack settings
     private var isAiHijackEnabled = true // Default to enabled
-    private var isImageAssistantMode = true // Use assistant vs share intent
     private var wakeWordConfiguredForConnection = false
 
     // State used by the BLE+WiFi P2P data-download flow
@@ -515,7 +527,6 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
     private var pendingImageCaptureStartedAtMs: Long = 0L
     private var mediaDownloadPurpose = MediaDownloadPurpose.FULL_SYNC
     private var highQualityImageRequest: HighQualityImageRequest? = null
-    private var lastImageQueryAtMs: Long = 0L
     private var activeParallelAudioQuestionDeferred: kotlinx.coroutines.CompletableDeferred<String?>? = null
     private var activeParallelAudioQuestionJob: Job? = null
 
@@ -678,20 +689,26 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
                 if (utteranceId?.startsWith("image_question_cue_") == true) {
                     Log.i("ImageQuestionAudio", "TTS cue completed id=$utteranceId")
                 }
-                utteranceId?.let { ttsDoneCallbacks.remove(it)?.invoke() }
+                completeTtsUtterance(utteranceId)
             }
 
             @Deprecated("Deprecated in Java")
             override fun onError(utteranceId: String?) {
                 localSpeechSessionManager.speechQueueController.onUtteranceError(utteranceId)
                 Log.w("ImageQuestionAudio", "TTS failed id=$utteranceId")
-                utteranceId?.let { ttsDoneCallbacks.remove(it)?.invoke() }
+                completeTtsUtterance(utteranceId)
             }
 
             override fun onError(utteranceId: String?, errorCode: Int) {
                 localSpeechSessionManager.speechQueueController.onUtteranceError(utteranceId, errorCode)
                 Log.w("ImageQuestionAudio", "TTS failed id=$utteranceId errorCode=$errorCode")
-                utteranceId?.let { ttsDoneCallbacks.remove(it)?.invoke() }
+                completeTtsUtterance(utteranceId)
+            }
+
+            override fun onStop(utteranceId: String?, interrupted: Boolean) {
+                localSpeechSessionManager.speechQueueController.onUtteranceError(utteranceId)
+                Log.i("ImageQuestionAudio", "TTS stopped id=$utteranceId interrupted=$interrupted")
+                discardTtsUtterance(utteranceId)
             }
         })
 
@@ -786,9 +803,14 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
         } catch (e: Exception) {
             Log.w("DeviceNotify", "Failed to unregister SDK callbacks", e)
         }
+        cancelParallelAudioQuestion()
+        finishAiQuestionForegroundWork()
+        runCatching { tts?.stop() }
+        runCatching { tts?.shutdown() }
+        tts = null
+        ttsReady = false
+        resetTtsAudioState()
         super.onDestroy()
-        tts?.stop()
-        tts?.shutdown()
     }
     inner class PermissionCallback : OnPermissionCallback {
         override fun onGranted(permissions: MutableList<String>, all: Boolean) {
@@ -967,7 +989,7 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
     }
 
     private fun handleMetaRegistrationIntent(callbackIntent: Intent): Boolean {
-        if (!callbackIntent.data?.scheme.equals("ADGlasses", ignoreCase = true)) return false
+        if (!callbackIntent.data?.scheme.equals("ad-glasses", ignoreCase = true)) return false
         val manager = getOrCreateMetaRaybanManager()
         return manager.handleRegistrationCallback(callbackIntent)
     }
@@ -2259,15 +2281,6 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
             Toast.makeText(this, "Hijack ${if (isChecked) "Enabled" else "Disabled"}", Toast.LENGTH_SHORT).show()
         }
 
-        binding.cbImageAsAssistant.isChecked = isImageAssistantMode
-        binding.cbImageAsAssistant.text = if (isImageAssistantMode) "Direct Assistant" else "App Sharing"
-        
-        binding.cbImageAsAssistant.setOnCheckedChangeListener { _, isChecked ->
-            isImageAssistantMode = isChecked
-            val modeName = if (isChecked) "Direct Assistant" else "App Sharing"
-            binding.cbImageAsAssistant.text = modeName
-            Toast.makeText(this, "Image Hijack: $modeName", Toast.LENGTH_SHORT).show()
-        }
     }
 
     private fun requestAiOverlayPermissionIfNeeded() {
@@ -3473,10 +3486,13 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
     }
 
     private fun stopGlassesAiAudio(source: String) {
-        if (isMetaRaybanSelected()) {
-            // Meta audio is managed by DAT/Android audio routing; never send Oudmon
-            // command bytes to a Meta wearable.
-            Log.d("AIHijack", "Skipping HeyCyan AI-audio stop for Meta ($source)")
+        if (isEyevueSelected()) {
+            getOrCreateEyevueManager().stopVoiceRecognition()
+            Log.d("AIHijack", "Stopped Eyevue voice recognition for $source")
+            return
+        }
+        if (isMetaRaybanSelected() || isMeizuMyvuSelected()) {
+            Log.d("AIHijack", "Skipping HeyCyan AI-audio stop for the selected non-HeyCyan device ($source)")
             return
         }
         if (isGlassesCommandBlocked(source)) return
@@ -3532,7 +3548,7 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
         if (batteryPollJob?.isActive == true) {
             return
         }
-        batteryPollJob = CoroutineScope(Dispatchers.Main).launch {
+        batteryPollJob = lifecycleScope.launch(Dispatchers.Main) {
             while (isActive) {
                 if (BleOperateManager.getInstance().isConnected) {
                     requestBatteryStatus(showToast = false)
@@ -3556,6 +3572,9 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
         GlassesAssistantRoutingPolicy.resolve(AutomationPrefs.getProviderType(this))
 
     private fun imageQueryUnsupportedReasonForCurrentSelection(): String? {
+        if (isMeizuMyvuSelected()) {
+            return "Image questions are unavailable for MYVU because its current transport does not expose camera capture."
+        }
         if (currentAssistantRoute() != GlassesAssistantRoute.LOCAL) return null
 
         val selected = LocalModelStorageRepository.resolveSelectedModel(this)
@@ -3846,7 +3865,7 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
             null
         }
 
-        val queryJob = CoroutineScope(Dispatchers.IO).launch {
+        val queryJob = lifecycleScope.launch(Dispatchers.IO) {
             try {
                 val routePrompt = resolvedPrompt.forRoute(
                     if (providerType == AgentProviderType.LOCAL_AGENT) {
@@ -3927,8 +3946,11 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
         }
     }
 
-    private fun beginAiQuestionForegroundWork(status: String) {
-        AiQuestionForegroundService.start(this, status)
+    private fun beginAiQuestionForegroundWork(
+        status: String,
+        usesPhoneMicrophone: Boolean = false,
+    ) {
+        AiQuestionForegroundService.start(this, status, usesPhoneMicrophone = usesPhoneMicrophone)
     }
 
     private fun finishAiQuestionForegroundWork() {
@@ -4041,7 +4063,7 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
             pendingImageCaptureSourceTag = sourceTag
             pendingImageCapturePermit.set(permit)
             Toast.makeText(this, "Triggering glasses camera…", Toast.LENGTH_SHORT).show()
-            CoroutineScope(Dispatchers.IO).launch {
+            lifecycleScope.launch(Dispatchers.IO) {
                 try {
                     val thumbnailSize = pendingImageThumbnailQuality.sdkValue.toByte()
                     Log.i(
@@ -4214,7 +4236,7 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
             "[$sourceTag] Starting thumbnail transfer file=${file.absolutePath} " +
                 "quality=${pendingImageThumbnailQuality.label}/${pendingImageThumbnailQuality.sdkValue}",
         )
-        CoroutineScope(Dispatchers.IO).launch {
+        lifecycleScope.launch(Dispatchers.IO) {
             var thumbnailTransferStarted = false
             try {
                 runCatching {
@@ -4390,7 +4412,7 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
             Toast.makeText(this, transferSummary, Toast.LENGTH_LONG).show()
         }
 
-        CoroutineScope(Dispatchers.IO).launch {
+        lifecycleScope.launch(Dispatchers.IO) {
             var initialQuestion = pendingVoiceImageQuestion
             pendingVoiceImageQuestion = null
             if (initialQuestion.isNullOrBlank()) {
@@ -4838,7 +4860,7 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
             return
         }
         prepareAiQuestionForLockScreen()
-        beginAiQuestionForegroundWork("Listening for glasses voice question")
+        beginAiQuestionForegroundWork("Listening for glasses voice question", usesPhoneMicrophone = true)
         // Wake up screen if locked
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O_MR1) {
             setShowWhenLocked(true)
@@ -4911,7 +4933,7 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
 
                 Toast.makeText(this@MainActivity, "Asking: $prompt", Toast.LENGTH_SHORT).show()
 
-                CoroutineScope(Dispatchers.IO).launch {
+                lifecycleScope.launch(Dispatchers.IO) {
                     val selectedProvider = chosenProviderType
                     val routing = assistantRequestRouter.route(
                         context = this@MainActivity,
@@ -4955,7 +4977,7 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
                         AssistantIntent.EXECUTE_UI_TASK -> runOnUiThread {
                             stopSco()
                             if (!AutomationPrefs.isLocalAgentAutomationEnabled(this@MainActivity)) {
-                                speak("Enable Local Agent phone control in ADGlasses settings first.")
+                                speak("Enable Local Agent phone control in AD Glasses settings first.")
                                 return@runOnUiThread
                             }
                             if (isDeviceLockedForAutomation()) {
@@ -4963,7 +4985,7 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
                                 return@runOnUiThread
                             }
                             if (!LocalAgentAccessibilityBridge.isConnected()) {
-                                speak("Please enable ADGlasses accessibility control first.")
+                                speak("Please enable AD Glasses accessibility control first.")
                                 return@runOnUiThread
                             }
 
@@ -5070,35 +5092,41 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
         source: ImageQuestionSource = ImageQuestionSourcePolicy.defaultSource(),
         onReplySpoken: (() -> Unit)? = null,
     ) {
-        // Debounce: prevent duplicate requests within 5 seconds
-        val now = System.currentTimeMillis()
-        if (now - lastImageQueryAtMs < 5000) {
-            Log.w("AIHijack", "Image query debounced (last was ${now - lastImageQueryAtMs}ms ago)")
-            return
-        }
-        
-        // Guard against concurrent requests
         if (!imageQueryInProgress.compareAndSet(false, true)) {
-            Log.w("AIHijack", "Image query already in progress; treating duplicate action as barge-in")
-            cancelLocalStreamingSpeech("duplicate image-query action")
-            imageQueryInProgress.set(false)
+            Log.w("AIHijack", "Image query already in progress; ignoring duplicate request")
             return
         }
-        beginAiQuestionForegroundWork("Analyzing glasses image")
-        
-        lastImageQueryAtMs = now
-        val resolvedPrompt = resolveImageQuestionPrompt(userQuestion)
 
-        val providerType = when (currentAssistantRoute()) {
-            GlassesAssistantRoute.LOCAL -> AgentProviderType.LOCAL_AGENT
-            GlassesAssistantRoute.CLOUD -> AgentProviderType.CLOUD_AI
-        }
-        triggerMemoryAwareImageQuery(
-            imagePath = imagePath,
-            providerType = providerType,
-            resolvedPrompt = resolvedPrompt,
-            onReplySpoken = onReplySpoken,
+        val usesPhoneMicrophone = onReplySpoken != null &&
+            ContextCompat.checkSelfPermission(this, Manifest.permission.RECORD_AUDIO) == PackageManager.PERMISSION_GRANTED
+        beginAiQuestionForegroundWork(
+            "Analyzing glasses image",
+            usesPhoneMicrophone = usesPhoneMicrophone,
         )
+
+        try {
+            val resolvedPrompt = resolveImageQuestionPrompt(userQuestion)
+            val providerType = when (currentAssistantRoute()) {
+                GlassesAssistantRoute.LOCAL -> AgentProviderType.LOCAL_AGENT
+                GlassesAssistantRoute.CLOUD -> AgentProviderType.CLOUD_AI
+            }
+            Log.i("AIHijack", "Starting image query source=${source.wireName} provider=$providerType")
+            triggerMemoryAwareImageQuery(
+                imagePath = imagePath,
+                providerType = providerType,
+                resolvedPrompt = resolvedPrompt,
+                onReplySpoken = onReplySpoken,
+            )
+        } catch (error: Exception) {
+            imageQueryInProgress.set(false)
+            finishAiQuestionForegroundWork()
+            Log.e("AIHijack", "Could not start image query", error)
+            Toast.makeText(
+                this,
+                "Could not start image analysis: ${error.message ?: "unknown error"}",
+                Toast.LENGTH_LONG,
+            ).show()
+        }
     }
 
     private fun analyzeSyncedCapture(contentUriString: String) {
@@ -6939,7 +6967,7 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
 
             setTransferDetail("Sync is taking longer than expected")
             maybeShowP2pSyncLogHelp(
-                reason = "ADGlasses got stuck before media transfer started. The sync button was pressed ${waitedSeconds}s ago and the transfer counters never advanced.",
+                reason = "AD Glasses got stuck before media transfer started. The sync button was pressed ${waitedSeconds}s ago and the transfer counters never advanced.",
             )
         }
     }
@@ -7031,9 +7059,9 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
         downloadSupportDialogShown = true
 
         val reason = buildString {
-            appendLine("ADGlasses found other Wi‑Fi Direct devices but could not find the glasses ($pairedDevice) among them.")
+            appendLine("AD Glasses found other Wi‑Fi Direct devices but could not find the glasses ($pairedDevice) among them.")
             appendLine()
-            appendLine("IMPORTANT: If the official HeyCyan app is installed, force-stop it now (Settings → Apps → HeyCyan → Force Stop). It may be holding the P2P connection and preventing ADGlasses from discovering the glasses.")
+            appendLine("IMPORTANT: If the official HeyCyan app is installed, force-stop it now (Settings → Apps → HeyCyan → Force Stop). It may be holding the P2P connection and preventing AD Glasses from discovering the glasses.")
             appendLine()
             appendLine("Also try turning OFF the following devices or moving away from them, then tap Try Again:")
             appendLine()
@@ -7041,7 +7069,7 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
                 appendLine("  • $peer")
             }
             appendLine()
-            appendLine("If the problem persists, send the logs to the ADGlasses server.")
+            appendLine("If the problem persists, send the logs to the AD Glasses server.")
         }
 
         AlertDialog.Builder(this)
@@ -7460,7 +7488,7 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
         )
         AlertDialog.Builder(this)
             .setTitle("High-quality image unavailable")
-            .setMessage("$reason\n\nADGlasses has not sent a preview automatically.")
+            .setMessage("$reason\n\nAD Glasses has not sent a preview automatically.")
             .setPositiveButton("Retry high quality") { _, _ ->
                 when (ImageQuestionSourcePolicy.resolveHighQualityFailure(HighQualityFailureChoice.RETRY_HIGH_QUALITY)) {
                     com.ad_glasses.ai.image.ImageSourceResolution.HIGH_QUALITY -> {
@@ -9489,21 +9517,30 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
 
         @RequiresApi(Build.VERSION_CODES.O)
         override fun parseData(cmdType: Int, response: GlassesDeviceNotifyRsp) {
+            val load = response.loadData
             Log.i(
                 "DeviceNotify",
-                "cmdType=$cmdType, loadData=${response.loadData.joinToString(separator = ",") { it.toInt().toString() }}"
+                "cmdType=$cmdType, loadData=${load.joinToString(separator = ",") { it.toInt().toString() }}"
             )
+            if (load.size < 7) {
+                Log.w("DeviceNotify", "Ignoring short device notification: cmdType=$cmdType size=${load.size}")
+                return
+            }
             if (otaManager.isActive) {
                 Log.d("DeviceNotify", "Skipping general device-notify handling during OTA")
                 return
             }
-            when (response.loadData[6].toInt()) {
+            when (load[6].toInt()) {
                 //Glasses battery report
                 0x05 -> {
+                    if (load.size < 9) {
+                        Log.w("DeviceNotify", "Ignoring short battery notification: size=${load.size}")
+                        return
+                    }
                     //Current battery
-                    val battery = response.loadData[7].toInt()
+                    val battery = load[7].toInt()
                     //Is it charging
-                    val changing = response.loadData[8].toInt()
+                    val changing = load[8].toInt()
                     handleBatteryReport(battery, changing == 1)
                 }
                 //Glasses pass quick recognition / AI Photo
@@ -9549,7 +9586,7 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
                 //Glasses activate microphone / AI button
                 0x03 -> {
                     if (response.loadData.size > 7 && response.loadData[7].toInt() == 1) {
-                        Log.i("DeviceNotify", "AI Button Pressed - Hijacking to Phone Assistant")
+                        Log.i("DeviceNotify", "AI Button Pressed - routing to AD assistant")
                         if (isAiHijackEnabled) {
                             handleAiWakeWordActivation("heycyan")
                         } else {
@@ -9578,14 +9615,14 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
 
                 0x0c -> {
                     //The glasses trigger a pause event, voice broadcast
-                    if (response.loadData[7].toInt() == 1) {
+                    if (load.size > 7 && load[7].toInt() == 1) {
                         //to do
                     }
                 }
 
                 0x0d -> {
                     //Unbind APP event
-                    if (response.loadData[7].toInt() == 1) {
+                    if (load.size > 7 && load[7].toInt() == 1) {
                         //to do
                     }
                 }
@@ -9599,6 +9636,10 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
                 }
                 //Glasses volume change event
                 0x12 -> {
+                    if (load.size < 20) {
+                        Log.w("DeviceNotify", "Ignoring short volume notification: size=${load.size}")
+                        return
+                    }
                     //Music volume
                     //Minimum volume
                     response.loadData[8].toInt()
