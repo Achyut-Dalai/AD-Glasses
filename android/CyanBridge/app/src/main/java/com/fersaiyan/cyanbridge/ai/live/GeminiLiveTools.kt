@@ -1,8 +1,8 @@
 package com.fersaiyan.cyanbridge.ai.live
 
 import android.content.Context
-import com.fersaiyan.cyanbridge.automation.AutomationEventBroadcaster
 import com.fersaiyan.cyanbridge.glasses.runtime.ADGlassesCommandGateway
+import com.fersaiyan.cyanbridge.localagent.LocalAgentController
 import com.fersaiyan.cyanbridge.shared.glasses.GlassesDashboardAction
 import org.json.JSONObject
 
@@ -52,12 +52,13 @@ class ADGeminiLiveToolExecutor(context: Context) : GeminiLiveToolExecutor {
                 .put("goal", goal)
         }
 
-        // Tasker is a true background contract and must not depend on any Activity being alive.
-        AutomationEventBroadcaster.sendPhoneAction(appContext, goal)
+        val result = LocalAgentController.start(appContext, goal)
         return JSONObject()
-            .put("ok", true)
-            .put("executed_in_background", true)
+            .put("ok", result.ok)
+            .put("executed_in_background", false)
             .put("goal", goal)
+            .put("message", result.userMessage)
+            .apply { result.error?.let { put("error", it) } }
     }
 
     private fun dispatch(action: GlassesDashboardAction, message: String): JSONObject {

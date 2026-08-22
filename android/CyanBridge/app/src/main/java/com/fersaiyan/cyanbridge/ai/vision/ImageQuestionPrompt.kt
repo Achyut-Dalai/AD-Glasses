@@ -11,7 +11,7 @@ data class ImageQuestionSettings(
 enum class ImageQuestionRoute {
     PRO_RELAY,
     LOCAL_GEMMA,
-    TASKER_GEMINI,
+    EXTERNAL_ASSISTANT,
 }
 
 /** A single resolved prompt is deliberately shared by every image-question route. */
@@ -21,7 +21,7 @@ data class ResolvedImageQuestionPrompt(
     fun forRoute(route: ImageQuestionRoute): String = when (route) {
         ImageQuestionRoute.PRO_RELAY,
         ImageQuestionRoute.LOCAL_GEMMA,
-        ImageQuestionRoute.TASKER_GEMINI
+        ImageQuestionRoute.EXTERNAL_ASSISTANT
         -> text
     }
 }

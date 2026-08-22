@@ -136,6 +136,7 @@ internal class PluginVoiceRecognizer(
     private val audioManager = appContext.getSystemService(Context.AUDIO_SERVICE) as AudioManager
     private var speechRecognizer: SpeechRecognizer? = null
     private var running = false
+    private var paused = false
     private var usingCommunicationDevice = false
 
     private val restartRunnable = Runnable { startListening() }
@@ -149,6 +150,7 @@ internal class PluginVoiceRecognizer(
         if (running) return true
         activeRecognizer.set(this)
         running = true
+        paused = false
         handler.post {
             if (!SpeechRecognizer.isRecognitionAvailable(appContext)) {
                 failAndStop("Speech recognition is unavailable on this phone")
@@ -165,6 +167,7 @@ internal class PluginVoiceRecognizer(
 
     fun stop() {
         running = false
+        paused = false
         activeRecognizer.compareAndSet(this, null)
         handler.post {
             handler.removeCallbacks(restartRunnable)
@@ -175,8 +178,24 @@ internal class PluginVoiceRecognizer(
         }
     }
 
+    /** Temporarily stop recognition without surrendering the glasses communication route. */
+    fun pause() {
+        if (!running || paused) return
+        paused = true
+        handler.post {
+            handler.removeCallbacks(restartRunnable)
+            runCatching { speechRecognizer?.cancel() }
+        }
+    }
+
+    fun resume() {
+        if (!running || !paused) return
+        paused = false
+        handler.postDelayed(restartRunnable, RESTART_DELAY_MS)
+    }
+
     private fun startListening() {
-        if (!running) return
+        if (!running || paused) return
         val recognizer = speechRecognizer ?: run {
             failAndStop("Speech recognizer was not initialized")
             return
@@ -210,7 +229,7 @@ internal class PluginVoiceRecognizer(
         override fun onEndOfSpeech() = Unit
 
         override fun onError(error: Int) {
-            if (!running) return
+            if (!running || paused) return
             if (error !in TRANSIENT_ERRORS) {
                 onError("Speech recognition error: $error")
             }
@@ -218,6 +237,7 @@ internal class PluginVoiceRecognizer(
         }
 
         override fun onResults(results: android.os.Bundle?) {
+            if (paused) return
             results.bestRecognition()?.let(onFinalText)
             scheduleRestart(RESTART_DELAY_MS)
         }
@@ -230,7 +250,7 @@ internal class PluginVoiceRecognizer(
     }
 
     private fun scheduleRestart(delayMs: Long) {
-        if (!running) return
+        if (!running || paused) return
         handler.removeCallbacks(restartRunnable)
         handler.postDelayed(restartRunnable, delayMs)
     }

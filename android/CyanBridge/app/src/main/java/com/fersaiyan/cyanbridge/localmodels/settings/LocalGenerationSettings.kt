@@ -41,6 +41,8 @@ data class LocalGenerationSettings(
         const val MIN_MAX_TOKENS = 32
         const val MAX_MAX_TOKENS = 8192
         const val DEFAULT_MAX_OUTPUT_TOKENS = 4096
+        const val FAST_MAX_OUTPUT_TOKENS = 512
+        const val BALANCED_MAX_OUTPUT_TOKENS = 2048
         const val MIN_CONTEXT_SIZE = 1024
         const val MAX_CONTEXT_SIZE = 32768
 
@@ -63,7 +65,7 @@ data class LocalGenerationSettings(
                     temperature = 0.6,
                     topP = 0.9,
                     topK = 24,
-                    maxTokens = DEFAULT_MAX_OUTPUT_TOKENS,
+                    maxTokens = FAST_MAX_OUTPUT_TOKENS,
                     repetitionPenalty = 1.05,
                     contextSize = (baseCtx / 2).coerceAtLeast(2048),
                     seed = -1,
@@ -81,7 +83,7 @@ data class LocalGenerationSettings(
                     temperature = 0.7,
                     topP = 0.92,
                     topK = 40,
-                    maxTokens = DEFAULT_MAX_OUTPUT_TOKENS,
+                    maxTokens = BALANCED_MAX_OUTPUT_TOKENS,
                     repetitionPenalty = 1.1,
                     contextSize = baseCtx,
                     seed = -1,

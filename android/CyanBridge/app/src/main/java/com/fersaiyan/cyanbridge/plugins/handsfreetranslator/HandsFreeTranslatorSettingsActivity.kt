@@ -82,7 +82,6 @@ fun HandsFreeTranslatorSettingsScreen(
     var autoDetect by remember { mutableStateOf(HandsFreeTranslatorPreferences.isAutoDetect(context)) }
     var speakTranslation by remember { mutableStateOf(HandsFreeTranslatorPreferences.isSpeakTranslation(context)) }
     var maxHistory by remember { mutableIntStateOf(HandsFreeTranslatorPreferences.getMaxHistory(context)) }
-    var customPrompt by remember { mutableStateOf(HandsFreeTranslatorPreferences.getCustomPrompt(context)) }
 
     val languageOptions = listOf("en", "es", "fr", "de", "it", "pt", "zh", "ja", "ko")
 
@@ -244,32 +243,22 @@ fun HandsFreeTranslatorSettingsScreen(
                 }
             }
 
-            SectionTitle(stringResource(R.string.compose_custom_instructions))
+            SectionTitle("How live translation works")
             Card(
                 modifier = Modifier.fillMaxWidth(),
                 colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant),
             ) {
                 Column(modifier = Modifier.padding(16.dp)) {
                     Text(
-                        stringResource(R.string.compose_translation_instructions_description),
+                        "Speech is recognized in short phrases, translated on this phone, then spoken through the active communication device. Listening pauses briefly while AD speaks to avoid translating its own voice.",
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                     )
-                    Spacer(modifier = Modifier.height(8.dp))
-                    TextField(
-                        value = customPrompt,
-                        onValueChange = { newValue ->
-                            if (newValue.length <= 1000) {
-                                customPrompt = newValue
-                                HandsFreeTranslatorPreferences.setCustomPrompt(context, newValue)
-                            }
-                        },
-                        modifier = Modifier.fillMaxWidth(),
-                        label = { Text(stringResource(R.string.compose_translation_instructions)) },
-                        placeholder = { Text(stringResource(R.string.compose_translation_hint)) },
-                        minLines = 2,
-                        maxLines = 4,
-                        supportingText = { Text("${customPrompt.length}/1000") },
+                    Spacer(modifier = Modifier.height(6.dp))
+                    Text(
+                        "Offline language packs are downloaded over Wi‑Fi when first needed. Translations are powered by Google Translate and are automatically cleared after 24 hours.",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
                     )
                 }
             }

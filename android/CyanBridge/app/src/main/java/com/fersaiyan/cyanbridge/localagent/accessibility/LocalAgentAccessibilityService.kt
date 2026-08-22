@@ -427,6 +427,14 @@ class LocalAgentAccessibilityService : AccessibilityService() {
         return performClickBestEffort(target)
     }
 
+    /** Click an exact resource id exposed by another app's accessibility tree. */
+    fun clickByViewId(viewId: String): Boolean {
+        val root = rootInActiveWindow ?: return false
+        val matches = runCatching { root.findAccessibilityNodeInfosByViewId(viewId) }
+            .getOrDefault(emptyList())
+        return matches.any(::performClickBestEffort)
+    }
+
     /**
      * Helper for ACTION_SET_TEXT.
      *

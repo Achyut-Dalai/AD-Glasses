@@ -34,7 +34,7 @@
     <string name="settings_bluetooth_mic">Bluetooth 마이크</string>
     <string name="settings_phone_mic">휴대전화 마이크</string>
     <string name="settings_detecting_audio_source">오디오 소스 감지 중</string>
-    <string name="settings_provider_description">Choose between Tasker, on-device models, or your configured Cloud AI relay.</string>
+    <string name="settings_provider_description">Choose on-device Local AI or an explicitly configured Cloud AI route.</string>
     <string name="settings_configure_local_models">로컬 모델 구성</string>
     <string name="settings_current_mode">현재 모드: %1$s</string>
     <string name="settings_sync_eligibility">동기화 대상</string>
@@ -353,7 +353,7 @@
     <string name="dashboard_limits_unavailable">설정을 로드하여 이 안경이 지원하는 제한을 확인하세요.</string>
     <string name="dashboard_ai_assistant">AI 어시스턴트</string>
     <string name="dashboard_phone_assistant">휴대전화 어시스턴트</string>
-    <string name="dashboard_custom_provider">Local / Cloud AI / Tasker</string>
+    <string name="dashboard_custom_provider">AD Local / Cloud AI</string>
     <string name="dashboard_test_voice">음성 테스트</string>
     <string name="dashboard_gemini_chatgpt_setup">Gemini / ChatGPT 자동화 설정</string>
     <string name="dashboard_meizu_title">Meizu MYVU / Star Air</string>
@@ -415,7 +415,6 @@
     <string name="dashboard_ota_idle">유휴</string>
     <string name="dashboard_ota_complete">완료됨</string>
 
-    <string name="provider_tasker">Tasker</string>
     <string name="provider_local">로컬</string>
     <string name="provider_pro">Cloud AI</string>
     <string name="memory_private_local">비공개 로컬</string>

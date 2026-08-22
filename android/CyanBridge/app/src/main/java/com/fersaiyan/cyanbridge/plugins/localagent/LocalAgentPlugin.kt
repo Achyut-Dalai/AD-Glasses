@@ -75,7 +75,6 @@ object LocalAgentPlugin {
             when (type) {
                 AgentProviderType.PRO_SUBSCRIPTION -> AiProviderType.CLI_RELAY
                 AgentProviderType.LOCAL_AGENT -> AiProviderType.LOCAL_MODELS
-                AgentProviderType.TASKER -> AiProviderType.MOCK
             },
         )
     }

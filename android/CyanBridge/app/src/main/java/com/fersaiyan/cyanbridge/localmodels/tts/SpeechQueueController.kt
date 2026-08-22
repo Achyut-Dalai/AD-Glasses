@@ -60,6 +60,7 @@ class SpeechQueueController(
     private val audioManager = context.getSystemService(Context.AUDIO_SERVICE) as AudioManager
     private var audioFocusRequest: AudioFocusRequest? = null
     private var hasAudioFocus = false
+    private var ownsCommunicationRoute = false
     private var completionNotifiedSessionId = 0L
 
     @Volatile
@@ -262,6 +263,7 @@ class SpeechQueueController(
 
     private fun requestAudioFocus() {
         if (hasAudioFocus) return
+        selectGlassesCommunicationRoute()
         val result = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
             val request = AudioFocusRequest.Builder(AudioManager.AUDIOFOCUS_GAIN_TRANSIENT)
                 .setAudioAttributes(
@@ -282,14 +284,73 @@ class SpeechQueueController(
     }
 
     private fun abandonAudioFocus() {
-        if (!hasAudioFocus) return
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-            audioFocusRequest?.let(audioManager::abandonAudioFocusRequest)
-        } else {
-            @Suppress("DEPRECATION")
-            audioManager.abandonAudioFocus(null)
+        if (hasAudioFocus) {
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                audioFocusRequest?.let(audioManager::abandonAudioFocusRequest)
+            } else {
+                @Suppress("DEPRECATION")
+                audioManager.abandonAudioFocus(null)
+            }
         }
         audioFocusRequest = null
         hasAudioFocus = false
+        releaseOwnedCommunicationRoute()
     }
+
+    /**
+     * TTS audio attributes alone do not guarantee the glasses are the active communication
+     * device. Select a connected Bluetooth headset for the duration of AD-owned speech.
+     */
+    private fun selectGlassesCommunicationRoute() {
+        runCatching {
+            audioManager.mode = AudioManager.MODE_IN_COMMUNICATION
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+                val existing = audioManager.communicationDevice
+                if (existing == null || existing.type !in BLUETOOTH_COMMUNICATION_DEVICE_TYPES) {
+                    val headset = audioManager
+                        .getDevices(AudioManager.GET_DEVICES_OUTPUTS)
+                        .firstOrNull { it.type in BLUETOOTH_COMMUNICATION_DEVICE_TYPES }
+                    if (headset != null && audioManager.setCommunicationDevice(headset)) {
+                        ownsCommunicationRoute = true
+                        Log.i(TAG, "Selected Bluetooth communication output: ${headset.productName}")
+                    }
+                }
+            } else {
+                @Suppress("DEPRECATION")
+                audioManager.startBluetoothSco()
+                @Suppress("DEPRECATION")
+                audioManager.isBluetoothScoOn = true
+                ownsCommunicationRoute = true
+            }
+        }.onFailure { error ->
+            Log.w(TAG, "Could not select the glasses communication output; Android will route TTS", error)
+        }
+    }
+
+    private fun releaseOwnedCommunicationRoute() {
+        if (!ownsCommunicationRoute) return
+        runCatching {
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+                audioManager.clearCommunicationDevice()
+            } else {
+                @Suppress("DEPRECATION")
+                audioManager.isBluetoothScoOn = false
+                @Suppress("DEPRECATION")
+                audioManager.stopBluetoothSco()
+            }
+            audioManager.mode = AudioManager.MODE_NORMAL
+        }.onFailure { error ->
+            Log.w(TAG, "Could not release AD's communication output route", error)
+        }
+        ownsCommunicationRoute = false
+    }
+
+    private val BLUETOOTH_COMMUNICATION_DEVICE_TYPES: Set<Int>
+        get() = buildSet {
+            add(android.media.AudioDeviceInfo.TYPE_BLUETOOTH_SCO)
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+                add(android.media.AudioDeviceInfo.TYPE_BLE_HEADSET)
+                add(android.media.AudioDeviceInfo.TYPE_BLE_SPEAKER)
+            }
+        }
 }

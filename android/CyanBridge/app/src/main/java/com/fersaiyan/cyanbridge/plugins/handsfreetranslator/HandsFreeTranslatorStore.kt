@@ -18,6 +18,7 @@ class HandsFreeTranslatorStore {
 
     fun addTranslation(translation: TranslationEntry, maxHistory: Int) {
         synchronized(lock) {
+            pruneExpiredLocked(translation.timestampMs)
             translations.add(translation)
             val overflow = translations.size - maxHistory.coerceAtLeast(50)
             if (overflow > 0) {
@@ -120,6 +121,8 @@ class HandsFreeTranslatorStore {
                         translations.add(translation)
                     }
                 }
+                val beforePrune = translations.size
+                pruneExpiredLocked(System.currentTimeMillis())
 
                 // Load presets
                 val presetsRaw = prefs(context).getString(KEY_PRESETS, "[]") ?: "[]"
@@ -143,6 +146,7 @@ class HandsFreeTranslatorStore {
                 }
 
                 Log.i(TAG, "Loaded ${translations.size} translations and ${presets.size} presets")
+                if (translations.size != beforePrune) persistInternal(context, 500)
             } catch (e: Exception) {
                 Log.e(TAG, "Failed to load translations", e)
             }
@@ -151,4 +155,13 @@ class HandsFreeTranslatorStore {
 
     private fun prefs(context: Context) =
         context.applicationContext.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
+
+    private fun pruneExpiredLocked(nowMs: Long) {
+        val cutoff = nowMs - TRANSLATION_RETENTION_MS
+        translations.removeAll { it.timestampMs <= 0L || it.timestampMs < cutoff }
+    }
+
+    private companion object {
+        const val TRANSLATION_RETENTION_MS = 24L * 60L * 60L * 1_000L
+    }
 }

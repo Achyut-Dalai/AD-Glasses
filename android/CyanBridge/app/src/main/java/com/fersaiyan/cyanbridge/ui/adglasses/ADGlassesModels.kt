@@ -2,7 +2,7 @@ package com.fersaiyan.cyanbridge.ui.adglasses
 
 enum class ADTab(val label: String) {
     HOME("Home"),
-    CHATS("Prompt"),
+    CHATS("Chats"),
     AI("AI"),
     LIBRARY("Library"),
 }
@@ -122,6 +122,7 @@ data class ADHostActions(
     val onImageQuestion: () -> Unit,
     val onOpenChat: () -> Unit,
     val onOpenChatWithPrompt: (String) -> Unit,
+    val onAnalyzeMedia: (String) -> Unit,
     val onOpenPhotos: () -> Unit,
     val onOpenMedia: () -> Unit,
     val onOpenNotes: () -> Unit,

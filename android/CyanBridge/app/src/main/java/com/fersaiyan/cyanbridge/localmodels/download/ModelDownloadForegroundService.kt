@@ -7,12 +7,15 @@ import android.app.Service
 import android.content.Context
 import android.content.Intent
 import android.os.Build
+import android.os.Handler
 import android.os.IBinder
+import android.os.Looper
 import android.util.Log
 import androidx.core.app.NotificationCompat
 import com.fersaiyan.cyanbridge.agent.LocalModelsConfigureActivity
 import com.fersaiyan.cyanbridge.localmodels.catalog.LocalModelCatalogRepository
 import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.CoroutineStart
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
@@ -41,27 +44,42 @@ class ModelDownloadForegroundService : Service() {
         const val EXTRA_PERCENT = "percent"
         const val EXTRA_DOWNLOADED_BYTES = "downloaded_bytes"
         const val EXTRA_TOTAL_BYTES = "total_bytes"
+        const val EXTRA_PHASE = "phase"
+        const val EXTRA_STATUS_MESSAGE = "status_message"
 
+        private val downloadSlot = LocalModelDownloadSlot()
+
+        @Volatile
         private var _lastResult: DownloadResult? = null
         val lastResult: DownloadResult? get() = _lastResult
 
+        @Volatile
         private var _isDownloading: Boolean = false
         val isDownloading: Boolean get() = _isDownloading
 
+        @Volatile
         private var _downloadingModelId: String? = null
         val downloadingModelId: String? get() = _downloadingModelId
 
+        @Volatile
         private var _lastPercent: Int? = null
         val lastPercent: Int? get() = _lastPercent
 
+        @Volatile
         private var _lastDownloadedBytes: Long? = null
         val lastDownloadedBytes: Long? get() = _lastDownloadedBytes
 
+        @Volatile
         private var _lastTotalBytes: Long? = null
         val lastTotalBytes: Long? get() = _lastTotalBytes
 
+        @Volatile
         private var _lastStatusMessage: String? = null
         val lastStatusMessage: String? get() = _lastStatusMessage
+
+        @Volatile
+        private var _lastPhase: LocalModelDownloadPhase? = null
+        val lastPhase: LocalModelDownloadPhase? get() = _lastPhase
 
         data class DownloadResult(
             val success: Boolean,
@@ -87,11 +105,18 @@ class ModelDownloadForegroundService : Service() {
     }
 
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
-    private val cancelled = AtomicBoolean(false)
-    private var downloadJob: Job? = null
     private val downloadManager = LocalModelDownloadManager()
-    private var currentModelId: String? = null
+    private val mainHandler = Handler(Looper.getMainLooper())
+    @Volatile
+    private var activeRun: DownloadRun? = null
     private var lastProgressUpdateMs = 0L
+
+    private class DownloadRun(
+        val modelId: String,
+        val cancelled: AtomicBoolean = AtomicBoolean(false),
+        val terminalDelivered: AtomicBoolean = AtomicBoolean(false),
+        @Volatile var job: Job? = null,
+    )
 
     override fun onCreate() {
         super.onCreate()
@@ -101,35 +126,33 @@ class ModelDownloadForegroundService : Service() {
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
         when (intent?.action) {
             ACTION_CANCEL -> {
-                Log.i(TAG, "Cancelling download via notification action")
-                cancelled.set(true)
-                downloadJob?.cancel()
-                _isDownloading = false
-                _downloadingModelId = null
-                _lastPercent = null
-                _lastDownloadedBytes = null
-                _lastTotalBytes = null
-                _lastStatusMessage = null
-                currentModelId?.let { modelId ->
-                    _lastResult = DownloadResult(success = false, modelId = modelId, error = "cancelled")
-                    sendFinishedBroadcast(success = false, error = "cancelled")
-                }
-                stopForeground(STOP_FOREGROUND_REMOVE)
-                stopSelf()
+                requestCancellation()
             }
-            else -> {
-                val modelId = intent?.getStringExtra(EXTRA_MODEL_ID) ?: run {
+            ACTION_DOWNLOAD -> {
+                val modelId = intent.getStringExtra(EXTRA_MODEL_ID) ?: run {
                     stopSelf()
                     return START_NOT_STICKY
                 }
-                currentModelId = modelId
+                if (!downloadSlot.tryAcquire(modelId)) {
+                    Log.i(
+                        TAG,
+                        "Ignoring duplicate download start for $modelId; " +
+                            "${downloadSlot.currentModelId()} is already active",
+                    )
+                    return START_NOT_STICKY
+                }
+
+                val run = DownloadRun(modelId)
+                activeRun = run
                 _isDownloading = true
                 _downloadingModelId = modelId
                 _lastPercent = null
                 _lastDownloadedBytes = null
                 _lastTotalBytes = null
                 _lastStatusMessage = "Starting download..."
-                cancelled.set(false)
+                _lastPhase = LocalModelDownloadPhase.DOWNLOADING
+                _lastResult = null
+                lastProgressUpdateMs = 0L
                 Log.i(TAG, "Starting download for model: $modelId")
 
                 try {
@@ -139,24 +162,29 @@ class ModelDownloadForegroundService : Service() {
                     Log.e(TAG, "Failed to start foreground service", e)
                 }
 
-                downloadJob = scope.launch {
-                    performDownload(modelId, intent.getStringExtra(EXTRA_HF_TOKEN))
+                val job = scope.launch(start = CoroutineStart.LAZY) {
+                    performDownload(run, intent.getStringExtra(EXTRA_HF_TOKEN))
                 }
+                run.job = job
+                job.invokeOnCompletion { cause ->
+                    if (cause is CancellationException) {
+                        finishDownload(run, success = false, error = "cancelled")
+                    }
+                }
+                job.start()
+            }
+            else -> {
+                stopSelf()
             }
         }
         return START_NOT_STICKY
     }
 
-    private suspend fun performDownload(modelId: String, hfToken: String?) {
+    private suspend fun performDownload(run: DownloadRun, hfToken: String?) {
+        val modelId = run.modelId
         val entry = LocalModelCatalogRepository.findById(modelId) ?: run {
             Log.w(TAG, "Model $modelId not found in catalog")
-            _lastResult = DownloadResult(false, modelId, "Model not found in catalog")
-            _isDownloading = false
-            _downloadingModelId = null
-            sendFinishedBroadcast(success = false, error = "Model not found")
-            delay(2000)
-            stopForeground(STOP_FOREGROUND_REMOVE)
-            stopSelf()
+            finishDownload(run, success = false, error = "Model not found in catalog")
             return
         }
 
@@ -165,8 +193,9 @@ class ModelDownloadForegroundService : Service() {
                 context = this@ModelDownloadForegroundService,
                 entry = entry,
                 authToken = hfToken,
-                cancelled = cancelled,
+                cancelled = run.cancelled,
                 onProgress = { progress ->
+                    if (activeRun !== run || run.terminalDelivered.get()) return@downloadCatalogModel
                     val now = System.currentTimeMillis()
                     if (now - lastProgressUpdateMs >= 500L || progress.percent >= 100) {
                         lastProgressUpdateMs = now
@@ -188,42 +217,128 @@ class ModelDownloadForegroundService : Service() {
                         )
                     }
                 },
+                onStatus = { status -> publishStatus(run, status) },
             )
 
             Log.i(TAG, "Download complete: ${model.displayName}")
-            _lastResult = DownloadResult(success = true, modelId = modelId, error = null)
-            val notification = buildNotification(
-                text = "Download complete: ${model.displayName}",
-                progress = 100,
-                ongoing = false,
+            finishDownload(
+                run = run,
+                success = true,
+                error = null,
+                successMessage = "Download complete: ${model.displayName}",
             )
-            val nm = getSystemService(NOTIFICATION_SERVICE) as NotificationManager
-            nm.notify(NOTIFICATION_ID, notification)
-            sendFinishedBroadcast(success = true, error = null)
         } catch (err: Throwable) {
-            if (err is CancellationException || cancelled.get()) {
+            if (err is CancellationException || run.cancelled.get()) {
                 Log.i(TAG, "Download cancelled")
-                _lastResult = DownloadResult(success = false, modelId = modelId, error = "cancelled")
+                finishDownload(run, success = false, error = "cancelled")
             } else {
                 Log.e(TAG, "Download failed: ${err.message}", err)
-                _lastResult = DownloadResult(success = false, modelId = modelId, error = err.message)
-                val notification = buildNotification(
-                    text = "Download failed: ${err.message}",
-                    progress = 0,
-                    ongoing = false,
-                )
-                val nm = getSystemService(NOTIFICATION_SERVICE) as NotificationManager
-                nm.notify(NOTIFICATION_ID, notification)
-                sendFinishedBroadcast(success = false, error = err.message)
+                finishDownload(run, success = false, error = err.message ?: "unknown error")
             }
         }
+    }
 
+    private fun requestCancellation() {
+        val run = activeRun
+        if (run == null || run.terminalDelivered.get()) {
+            Log.i(TAG, "Cancel requested with no active model download")
+            if (!_isDownloading) stopSelf()
+            return
+        }
+
+        Log.i(TAG, "Cancelling download for ${run.modelId}")
+        run.cancelled.set(true)
+        _lastStatusMessage = "Cancelling download…"
+        runCatching {
+            val nm = getSystemService(NOTIFICATION_SERVICE) as NotificationManager
+            nm.notify(
+                NOTIFICATION_ID,
+                buildNotification(
+                    text = "Cancelling download…",
+                    progress = _lastPercent ?: 0,
+                    ongoing = true,
+                ),
+            )
+        }
+        val job = run.job
+        if (job == null) {
+            finishDownload(run, success = false, error = "cancelled")
+        } else {
+            job.cancel(CancellationException("Download cancelled"))
+        }
+    }
+
+    private fun publishStatus(run: DownloadRun, status: LocalModelDownloadStatus) {
+        if (activeRun !== run || run.terminalDelivered.get()) return
+        _lastPhase = status.phase
+        _lastStatusMessage = status.message
+        runCatching {
+            val nm = getSystemService(NOTIFICATION_SERVICE) as NotificationManager
+            nm.notify(
+                NOTIFICATION_ID,
+                buildNotification(
+                    text = status.message,
+                    progress = _lastPercent ?: 0,
+                    ongoing = true,
+                ),
+            )
+        }
+        sendStatusBroadcast(status)
+    }
+
+    private fun finishDownload(
+        run: DownloadRun,
+        success: Boolean,
+        error: String?,
+        successMessage: String? = null,
+    ) {
+        if (!run.terminalDelivered.compareAndSet(false, true)) return
+
+        val terminalError = if (success) null else error ?: "unknown error"
+        _lastResult = DownloadResult(success = success, modelId = run.modelId, error = terminalError)
+        _lastStatusMessage = when {
+            success -> successMessage ?: "Download complete"
+            terminalError == "cancelled" -> "Download cancelled"
+            else -> "Download failed: $terminalError"
+        }
+        if (success) {
+            _lastPercent = 100
+            _lastPhase = LocalModelDownloadPhase.INSTALLING
+        }
+
+        if (activeRun === run) activeRun = null
+        downloadSlot.release(run.modelId)
         _isDownloading = false
         _downloadingModelId = null
 
-        delay(3000)
-        stopForeground(STOP_FOREGROUND_REMOVE)
-        stopSelf()
+        if (terminalError != "cancelled") {
+            runCatching {
+                val nm = getSystemService(NOTIFICATION_SERVICE) as NotificationManager
+                nm.notify(
+                    NOTIFICATION_ID,
+                    buildNotification(
+                        text = _lastStatusMessage.orEmpty(),
+                        progress = if (success) 100 else 0,
+                        ongoing = false,
+                    ),
+                )
+            }
+        }
+        sendFinishedBroadcast(modelId = run.modelId, success = success, error = terminalError)
+        scheduleServiceStop(removeImmediately = terminalError == "cancelled")
+    }
+
+    private fun scheduleServiceStop(removeImmediately: Boolean) {
+        mainHandler.postDelayed(
+            {
+                // A new run may have started while the completion message was visible.
+                if (activeRun == null && downloadSlot.currentModelId() == null) {
+                    stopForeground(STOP_FOREGROUND_REMOVE)
+                    stopSelf()
+                }
+            },
+            if (removeImmediately) 0L else 3_000L,
+        )
     }
 
     private fun buildNotification(text: String, progress: Int, ongoing: Boolean): android.app.Notification {
@@ -252,7 +367,11 @@ class ModelDownloadForegroundService : Service() {
             .setOngoing(ongoing)
             .setProgress(100, progress, progress == 0 && ongoing)
             .setContentIntent(tapIntent)
-            .addAction(android.R.drawable.ic_menu_close_clear_cancel, "Cancel", cancelIntent)
+            .apply {
+                if (ongoing) {
+                    addAction(android.R.drawable.ic_menu_close_clear_cancel, "Cancel", cancelIntent)
+                }
+            }
             .build()
     }
 
@@ -288,11 +407,24 @@ class ModelDownloadForegroundService : Service() {
         sendBroadcast(intent)
     }
 
-    private fun sendFinishedBroadcast(success: Boolean, error: String?) {
+    private fun sendStatusBroadcast(status: LocalModelDownloadStatus) {
+        val intent = Intent(BROADCAST_PROGRESS).apply {
+            `package` = packageName
+            putExtra(EXTRA_MODEL_ID, status.modelId)
+            putExtra(EXTRA_PERCENT, _lastPercent ?: 0)
+            putExtra(EXTRA_DOWNLOADED_BYTES, _lastDownloadedBytes ?: 0L)
+            putExtra(EXTRA_TOTAL_BYTES, _lastTotalBytes ?: 0L)
+            putExtra(EXTRA_PHASE, status.phase.name)
+            putExtra(EXTRA_STATUS_MESSAGE, status.message)
+        }
+        sendBroadcast(intent)
+    }
+
+    private fun sendFinishedBroadcast(modelId: String, success: Boolean, error: String?) {
         val intent = Intent(BROADCAST_DOWNLOAD_FINISHED).apply {
             `package` = packageName
             putExtra(EXTRA_SUCCESS, success)
-            currentModelId?.let { putExtra(EXTRA_MODEL_ID, it) }
+            putExtra(EXTRA_MODEL_ID, modelId)
             error?.let { putExtra(EXTRA_ERROR, it) }
         }
         sendBroadcast(intent)
@@ -301,8 +433,18 @@ class ModelDownloadForegroundService : Service() {
     override fun onBind(intent: Intent?): IBinder? = null
 
     override fun onDestroy() {
-        cancelled.set(true)
-        downloadJob?.cancel()
+        mainHandler.removeCallbacksAndMessages(null)
+        activeRun?.let { run ->
+            run.cancelled.set(true)
+            run.job?.cancel(CancellationException("Download service stopped"))
+            if (run.terminalDelivered.compareAndSet(false, true)) {
+                downloadSlot.release(run.modelId)
+                _lastResult = DownloadResult(false, run.modelId, "cancelled")
+                _lastStatusMessage = "Download cancelled"
+                sendFinishedBroadcast(run.modelId, success = false, error = "cancelled")
+            }
+        }
+        activeRun = null
         _isDownloading = false
         _downloadingModelId = null
         scope.cancel()

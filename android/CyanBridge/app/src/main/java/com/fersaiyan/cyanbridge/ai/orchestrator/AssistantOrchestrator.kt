@@ -33,6 +33,8 @@ data class AssistantExecutionContext(
     val threadId: String,
     val history: List<ChatMessage>,
     val useWeb: Boolean,
+    /** Immutable provider selected when the turn was accepted; executors must not reread prefs. */
+    val providerType: AgentProviderType,
     val surface: AssistantInputSurface,
     val artifactContext: String? = null,
 )
@@ -74,9 +76,10 @@ interface AssistantCapabilityExecutor {
 /**
  * Single control plane for glasses voice, glasses vision and phone continuation.
  *
- * Every accepted user turn is persisted exactly as spoken/typed. Hidden artifact context is
- * carried separately so a photo transcript/note can inform the model without masquerading as
- * something the user said.
+ * Every accepted user turn is persisted exactly as spoken/typed, except explicit conversation
+ * controls such as "new topic" and "forget this conversation". Those controls are handled
+ * before persistence or model routing. Hidden artifact context is carried separately so a photo
+ * transcript/note can inform the model without masquerading as something the user said.
  */
 class AssistantOrchestrator(
     context: Context,
@@ -93,9 +96,42 @@ class AssistantOrchestrator(
         val prompt = turn.text.trim()
         require(prompt.isNotBlank()) { "Assistant turn cannot be blank" }
 
-        session.addUserTurn(prompt)
-        val threadId = session.activeThreadId()
-        val history = session.messages()
+        AssistantConversationPolicy.parseCommand(prompt)?.let { command ->
+            return when (command) {
+                AssistantConversationCommand.START_FRESH -> {
+                    session.startNewConversation()
+                    AssistantResult(spokenText = "Started a new conversation.")
+                }
+                AssistantConversationCommand.FORGET_CURRENT -> {
+                    session.forgetCurrentConversation()
+                    AssistantResult(spokenText = "Forgot that conversation. We can start fresh.")
+                }
+            }
+        }
+
+        // Capture the topic at acceptance, then serialize its normal turns. A second question
+        // waits for the first answer so history remains user→assistant→user→assistant. Explicit
+        // new/forget controls above stay immediate and are never trapped behind inference.
+        val acceptedThreadId = session.activeThreadId()
+        return AssistantTurnCoordinator.withThread(acceptedThreadId) {
+            handleQueuedTurn(turn, providerType, prompt, acceptedThreadId)
+        }
+    }
+
+    private suspend fun handleQueuedTurn(
+        turn: AssistantTurn,
+        providerType: AgentProviderType,
+        prompt: String,
+        acceptedThreadId: String,
+    ): AssistantResult {
+
+        // The message's chatId is the atomic turn capture. A user may start/forget another
+        // conversation while inference is suspended; this result must never leak into it.
+        val userMessage = session.addUserTurn(acceptedThreadId, prompt) ?: return AssistantResult(
+            spokenText = "That conversation was cleared before I could start. Please ask again.",
+        )
+        val threadId = userMessage.chatId
+        val history = session.messages(threadId)
         val useWeb = AssistantWebPolicy.shouldUseWeb(
             text = prompt,
             requested = turn.webRequested,
@@ -105,6 +141,7 @@ class AssistantOrchestrator(
             threadId = threadId,
             history = history,
             useWeb = useWeb,
+            providerType = providerType,
             surface = turn.surface,
             artifactContext = turn.contextText?.trim()?.takeIf { it.isNotBlank() },
         )
@@ -143,7 +180,7 @@ class AssistantOrchestrator(
         }
 
         val persisted = result.richText.trim().ifBlank { result.spokenText.trim() }
-        if (persisted.isNotBlank()) session.addAssistantTurn(persisted)
+        if (persisted.isNotBlank()) session.addAssistantTurn(threadId, persisted)
         return result
     }
 

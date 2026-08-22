@@ -7,7 +7,6 @@ enum class GlassesAssistantRoute {
     PHONE_ASSISTANT,
     LOCAL,
     PRO,
-    TASKER_EXTERNAL_UI,
 }
 
 object GlassesAssistantRoutingPolicy {
@@ -21,7 +20,6 @@ object GlassesAssistantRoutingPolicy {
         return when (customProvider) {
             AgentProviderType.LOCAL_AGENT -> GlassesAssistantRoute.LOCAL
             AgentProviderType.PRO_SUBSCRIPTION -> GlassesAssistantRoute.PRO
-            AgentProviderType.TASKER -> GlassesAssistantRoute.TASKER_EXTERNAL_UI
         }
     }
 }

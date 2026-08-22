@@ -7,7 +7,6 @@ import android.content.IntentFilter
 import android.net.Uri
 import android.os.Build
 import android.os.Bundle
-import android.provider.OpenableColumns
 import android.speech.SpeechRecognizer
 import android.util.Log
 import android.widget.Toast
@@ -31,9 +30,9 @@ import com.fersaiyan.cyanbridge.localmodels.settings.LocalComputeBackend
 import com.fersaiyan.cyanbridge.localmodels.settings.LocalGenerationSettings
 import com.fersaiyan.cyanbridge.localmodels.settings.LocalModelPerformanceProfile
 import com.fersaiyan.cyanbridge.localmodels.settings.LocalModelRuntime
+import com.fersaiyan.cyanbridge.localmodels.settings.LocalModelRuntimeCompatibility
 import com.fersaiyan.cyanbridge.localmodels.settings.LocalModelSettingsRepository
 import com.fersaiyan.cyanbridge.localmodels.storage.InstalledLocalModel
-import com.fersaiyan.cyanbridge.localmodels.storage.LocalModelFileUtils
 import com.fersaiyan.cyanbridge.localmodels.storage.LocalModelStorageRepository
 import com.fersaiyan.cyanbridge.localmodels.templates.PromptTemplateRegistry
 import com.fersaiyan.cyanbridge.plugins.PluginVoicePermissions
@@ -49,10 +48,11 @@ import com.fersaiyan.cyanbridge.shared.localmodels.LocalModelsConfigureUiState
 import com.fersaiyan.cyanbridge.shared.localmodels.LocalModelsSection
 import com.fersaiyan.cyanbridge.shared.localmodels.RemoteInferenceUiState
 import com.fersaiyan.cyanbridge.shared.localmodels.StudioBridgeUiState
-import com.fersaiyan.cyanbridge.shared.ui.localmodels.LocalModelsConfigureScreen
 import com.fersaiyan.cyanbridge.ui.MyApplication
 import com.fersaiyan.cyanbridge.ui.debug.DebugLogSupport
-import com.fersaiyan.cyanbridge.ui.setThemedComposeContent
+import androidx.activity.compose.setContent
+import com.fersaiyan.cyanbridge.ui.adglasses.ADGlassesTheme
+import com.fersaiyan.cyanbridge.ui.adglasses.ADLocalModelsConfigureScreen
 import java.io.File
 import java.util.Locale
 import kotlinx.coroutines.CancellationException
@@ -88,11 +88,13 @@ class LocalModelsConfigureActivity : AppCompatActivity() {
             },
         )
         refreshAllUi(markSaved = true)
-        setThemedComposeContent {
-            LocalModelsConfigureScreen(
-                state = uiState,
-                onAction = ::handleAction,
-            )
+        setContent {
+            ADGlassesTheme {
+                ADLocalModelsConfigureScreen(
+                    state = uiState,
+                    onAction = ::handleAction,
+                )
+            }
         }
         registerDownloadReceiver()
     }
@@ -353,16 +355,32 @@ class LocalModelsConfigureActivity : AppCompatActivity() {
                 val selected = selectedModel()
                 val catalog = selected?.catalogId?.let(LocalModelCatalogRepository::findById)
                 val defaults = LocalGenerationSettings.defaultsFor(catalog, profile)
-                generation = generationUi(
+                val compatibleDefaults = selected?.let { model ->
                     defaults.copy(
+                        modelRuntime = LocalModelRuntimeCompatibility.enforce(model.format, defaults.modelRuntime),
+                    )
+                } ?: defaults
+                generation = generationUi(
+                    compatibleDefaults.copy(
                         computeBackend = selectedBackend(generation),
-                        cpuThreads = parseCpuThreads(generation.cpuThreads, defaults.cpuThreads),
-                        gpuLayers = parseGpuLayers(generation.gpuLayers, defaults.gpuLayers),
+                        cpuThreads = parseCpuThreads(generation.cpuThreads, compatibleDefaults.cpuThreads),
+                        gpuLayers = parseGpuLayers(generation.gpuLayers, compatibleDefaults.gpuLayers),
                     ),
                 ).copy(huggingFaceToken = generation.huggingFaceToken)
             }
             LocalModelOptionField.RUNTIME -> {
                 val runtime = LocalModelRuntime.entries.getOrNull(requestedIndex) ?: return
+                val model = selectedModel()
+                if (model != null && !LocalModelRuntimeCompatibility.isCompatible(model.format, runtime)) {
+                    val required = LocalModelRuntimeCompatibility.requiredRuntime(model.format)
+                    Toast.makeText(
+                        this,
+                        required?.let { "${model.fileName} requires the ${it.label} runtime" }
+                            ?: "The model format could not be verified. Re-import the model.",
+                        Toast.LENGTH_LONG,
+                    ).show()
+                    return
+                }
                 generation = generation.copy(
                     runtimeIndex = requestedIndex,
                     runtimeNote = runtimeNote(runtime),
@@ -430,6 +448,17 @@ class LocalModelsConfigureActivity : AppCompatActivity() {
         }
 
         val existing = LocalModelSettingsRepository.getForModel(this, model.id)
+        val requestedRuntime = selectedRuntime(generation)
+        if (!LocalModelRuntimeCompatibility.isCompatible(model.format, requestedRuntime)) {
+            val required = LocalModelRuntimeCompatibility.requiredRuntime(model.format)
+            Toast.makeText(
+                this,
+                required?.let { "${model.fileName} can only use the ${it.label} runtime" }
+                    ?: "The model format could not be verified. Re-import the model.",
+                Toast.LENGTH_LONG,
+            ).show()
+            return
+        }
         val settings = LocalGenerationSettings(
             profile = LocalModelPerformanceProfile.entries.getOrElse(generation.profileIndex) { existing.profile },
             temperature = generation.temperature.toDoubleOrNull()?.coerceIn(0.0, 2.0) ?: existing.temperature,
@@ -445,7 +474,7 @@ class LocalModelsConfigureActivity : AppCompatActivity() {
             systemPromptOverride = generation.systemPrompt.trim(),
             templateOverrideId = selectedTemplateId(generation),
             experimentalStructuredJson = generation.experimentalStructuredJson,
-            modelRuntime = selectedRuntime(generation),
+            modelRuntime = requestedRuntime,
             computeBackend = selectedBackend(generation),
             cpuThreads = parseCpuThreads(generation.cpuThreads, existing.cpuThreads),
             gpuLayers = parseGpuLayers(generation.gpuLayers, existing.gpuLayers),
@@ -652,7 +681,8 @@ class LocalModelsConfigureActivity : AppCompatActivity() {
                         val pct = intent.getIntExtra(ModelDownloadForegroundService.EXTRA_PERCENT, 0)
                         val downloaded = intent.getLongExtra(ModelDownloadForegroundService.EXTRA_DOWNLOADED_BYTES, 0L)
                         val total = intent.getLongExtra(ModelDownloadForegroundService.EXTRA_TOTAL_BYTES, 0L)
-                        val message = "Downloading: $pct% (${humanSize(downloaded)} / ${if (total > 0L) humanSize(total) else "?"})"
+                        val statusMessage = intent.getStringExtra(ModelDownloadForegroundService.EXTRA_STATUS_MESSAGE)
+                        val message = statusMessage ?: "Downloading: $pct% (${humanSize(downloaded)} / ${if (total > 0L) humanSize(total) else "?"})"
                         uiState = uiState.copy(download = LocalModelDownloadUiState(true, message, pct.takeIf { it > 0 }))
                     }
                     ModelDownloadForegroundService.BROADCAST_DOWNLOAD_FINISHED -> {
@@ -693,22 +723,16 @@ class LocalModelsConfigureActivity : AppCompatActivity() {
         lifecycleScope.launch {
             val result = withContext(Dispatchers.IO) {
                 runCatching {
-                    val name = guessDisplayName(uri)
-                    val file = LocalModelStorageRepository.copyUriToManagedModelFile(this@LocalModelsConfigureActivity, uri, name)
-                    if (!LocalModelFileUtils.isSupportedModelFile(file)) {
-                        file.delete()
-                        error("Imported file must be GGUF or LiteRT (.litertlm/.task)")
-                    }
-                    LocalModelStorageRepository.registerImportedModel(
+                    LocalModelStorageRepository.importModelFromUri(
                         context = this@LocalModelsConfigureActivity,
-                        displayName = file.nameWithoutExtension,
-                        file = file,
+                        uri = uri,
                     )
                 }
             }
             result.onSuccess { model ->
                 refreshAllUi(markSaved = false)
                 uiState = uiState.copy(download = LocalModelDownloadUiState(message = "Import complete: ${model.displayName}"))
+                setResult(RESULT_OK)
                 Toast.makeText(this@LocalModelsConfigureActivity, "Imported ${model.displayName}", Toast.LENGTH_SHORT).show()
             }.onFailure { error ->
                 uiState = uiState.copy(download = LocalModelDownloadUiState(message = "Import failed: ${error.message}"))
@@ -736,10 +760,39 @@ class LocalModelsConfigureActivity : AppCompatActivity() {
             .setMessage("Delete ${selected.displayName} from local storage?")
             .setNegativeButton("Cancel", null)
             .setPositiveButton("Remove") { _, _ ->
-                LocalModelStorageRepository.removeInstalled(this, selected.id)
-                LocalModelSettingsRepository.clearForModel(this, selected.id)
-                lifecycleScope.launch { runCatching { LocalChatSessionManager.unload() } }
-                refreshAllUi(markSaved = true)
+                lifecycleScope.launch {
+                    val result = runCatching {
+                        LocalChatSessionManager.removeInstalledModel(
+                            context = this@LocalModelsConfigureActivity,
+                            modelId = selected.id,
+                        )
+                    }
+                    result.fold(
+                        onSuccess = { removed ->
+                            if (removed) {
+                                Toast.makeText(
+                                    this@LocalModelsConfigureActivity,
+                                    "Removed ${selected.displayName}",
+                                    Toast.LENGTH_SHORT,
+                                ).show()
+                            } else {
+                                Toast.makeText(
+                                    this@LocalModelsConfigureActivity,
+                                    "Model was already removed",
+                                    Toast.LENGTH_SHORT,
+                                ).show()
+                            }
+                        },
+                        onFailure = { error ->
+                            Toast.makeText(
+                                this@LocalModelsConfigureActivity,
+                                error.message ?: "Could not remove the model",
+                                Toast.LENGTH_LONG,
+                            ).show()
+                        },
+                    )
+                    refreshAllUi(markSaved = true)
+                }
             }
             .show()
     }
@@ -1028,17 +1081,6 @@ class LocalModelsConfigureActivity : AppCompatActivity() {
         return cleaned.toIntOrNull()?.coerceIn(min, max)
     }
 
-    private fun guessDisplayName(uri: Uri): String {
-        if (uri.scheme == "file") return File(uri.path.orEmpty()).name.ifBlank { DEFAULT_IMPORT_NAME }
-        contentResolver.query(uri, arrayOf(OpenableColumns.DISPLAY_NAME), null, null, null)?.use { cursor ->
-            if (cursor.moveToFirst()) {
-                val index = cursor.getColumnIndex(OpenableColumns.DISPLAY_NAME)
-                if (index >= 0) cursor.getString(index)?.takeIf { it.isNotBlank() }?.let { return it }
-            }
-        }
-        return DEFAULT_IMPORT_NAME
-    }
-
     private fun currentSettingsSnapshot(): SettingsSnapshot = SettingsSnapshot(
         selectedModelId = selectedModel()?.id,
         generation = generationInput(uiState.generation),
@@ -1162,7 +1204,6 @@ class LocalModelsConfigureActivity : AppCompatActivity() {
     private companion object {
         const val TAG = "LocalModelsConfigure"
         const val SECTION_PREFS = "local_models_sections"
-        const val DEFAULT_IMPORT_NAME = "imported-model.gguf"
         const val GIB = 1024.0 * 1024.0 * 1024.0
     }
 }

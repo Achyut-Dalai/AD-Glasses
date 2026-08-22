@@ -1,7 +1,9 @@
 package com.fersaiyan.cyanbridge.localmodels.settings
 
 import android.content.Context
+import com.fersaiyan.cyanbridge.localmodels.catalog.LocalModelCatalogEntry
 import com.fersaiyan.cyanbridge.localmodels.catalog.LocalModelCatalogRepository
+import com.fersaiyan.cyanbridge.localmodels.storage.LocalModelStorageRepository
 import org.json.JSONObject
 
 object LocalModelSettingsRepository {
@@ -26,13 +28,27 @@ object LocalModelSettingsRepository {
         val all = readAllSettings(context)
         val existing = all.optJSONObject(modelId)
         val entry = LocalModelCatalogRepository.findById(modelId)
+        val installed = LocalModelStorageRepository.getInstalled(context, modelId)
 
         val profile = runCatching {
             LocalModelPerformanceProfile.valueOf(existing?.optString("profile").orEmpty())
         }.getOrElse { LocalModelPerformanceProfile.BALANCED }
 
         val defaults = LocalGenerationSettings.defaultsFor(entry, profile)
-        if (existing == null) return defaults
+        if (existing == null) {
+            return installed?.let { model ->
+                defaults.copy(
+                    modelRuntime = LocalModelRuntimeCompatibility.enforce(model.format, defaults.modelRuntime),
+                )
+            } ?: defaults
+        }
+
+        val requestedRuntime = runCatching {
+            LocalModelRuntime.valueOf(existing.optString("model_runtime", defaults.modelRuntime.name))
+        }.getOrElse { defaults.modelRuntime }
+        val compatibleRuntime = installed?.let { model ->
+            LocalModelRuntimeCompatibility.enforce(model.format, requestedRuntime)
+        } ?: requestedRuntime
 
         return LocalGenerationSettings(
             profile = profile,
@@ -70,32 +86,55 @@ object LocalModelSettingsRepository {
                 .coerceIn(1, 16),
             gpuLayers = existing.optInt("gpu_layers", defaults.gpuLayers)
                 .coerceIn(-1, 999),
-            modelRuntime = runCatching {
-                LocalModelRuntime.valueOf(existing.optString("model_runtime", defaults.modelRuntime.name))
-            }.getOrElse { defaults.modelRuntime },
+            modelRuntime = compatibleRuntime,
         )
     }
 
+    fun hasSavedSettings(context: Context, modelId: String): Boolean {
+        return readAllSettings(context).has(modelId)
+    }
+
+    /** Persists the device recommendation once, without overwriting later user customization. */
+    @Synchronized
+    fun initializeCatalogDefaultsIfMissing(
+        context: Context,
+        entry: LocalModelCatalogEntry,
+        profile: LocalModelPerformanceProfile,
+    ): LocalGenerationSettings {
+        if (hasSavedSettings(context, entry.id)) {
+            return getForModel(context, entry.id)
+        }
+        val defaults = LocalGenerationSettings.defaultsFor(entry, profile)
+        saveForModel(context, entry.id, defaults)
+        return defaults
+    }
+
     fun saveForModel(context: Context, modelId: String, settings: LocalGenerationSettings) {
+        val installed = LocalModelStorageRepository.getInstalled(context, modelId)
+        val safeSettings = installed?.let { model ->
+            settings.copy(
+                modelRuntime = LocalModelRuntimeCompatibility.enforce(model.format, settings.modelRuntime),
+            )
+        } ?: settings
         val all = readAllSettings(context)
         all.put(
             modelId,
             JSONObject()
-                .put("profile", settings.profile.name)
-                .put("temperature", settings.temperature)
-                .put("top_p", settings.topP)
-                .put("top_k", settings.topK)
-                .put("max_tokens", settings.maxTokens)
-                .put("repetition_penalty", settings.repetitionPenalty)
-                .put("context_size", settings.contextSize)
-                .put("seed", settings.seed)
-                .put("system_prompt_override", settings.systemPromptOverride)
-                .put("template_override", settings.templateOverrideId.orEmpty())
-                .put("experimental_structured_json", settings.experimentalStructuredJson)
-                .put("compute_backend", settings.computeBackend.name)
-                .put("cpu_threads", settings.cpuThreads)
-                .put("gpu_layers", settings.gpuLayers)
-                .put("model_runtime", settings.modelRuntime.name),
+                .put("profile", safeSettings.profile.name)
+                .put("temperature", safeSettings.temperature)
+                .put("top_p", safeSettings.topP)
+                .put("top_k", safeSettings.topK)
+                .put("max_tokens", safeSettings.maxTokens)
+                .put("repetition_penalty", safeSettings.repetitionPenalty)
+                .put("context_size", safeSettings.contextSize)
+                .put("seed", safeSettings.seed)
+                .put("system_prompt_override", safeSettings.systemPromptOverride)
+                .put("template_override", safeSettings.templateOverrideId.orEmpty())
+                .put("experimental_structured_json", safeSettings.experimentalStructuredJson)
+                .put("compute_backend", safeSettings.computeBackend.name)
+                .put("cpu_threads", safeSettings.cpuThreads)
+                .put("gpu_layers", safeSettings.gpuLayers)
+                .put("model_runtime", safeSettings.modelRuntime.name),
         )
         prefs(context).edit().putString(KEY_SETTINGS_BY_MODEL, all.toString()).apply()
     }

@@ -36,7 +36,7 @@ class SettingsScreenTest {
         val types = AgentProviderType.entries
         assertTrue(types.contains(AgentProviderType.PRO_SUBSCRIPTION))
         assertTrue(types.contains(AgentProviderType.LOCAL_AGENT))
-        assertTrue(types.contains(AgentProviderType.TASKER))
+        assertEquals(2, types.size)
     }
 
     @Test

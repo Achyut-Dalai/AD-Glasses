@@ -256,6 +256,35 @@ object ChatStore {
         return true
     }
 
+    /** Mark an existing thread as recently used without adding a synthetic message. */
+    @Synchronized
+    fun touchThread(chatId: String, nowMs: Long = System.currentTimeMillis()): Boolean {
+        ensureLoaded()
+
+        val threadIndex = threads.indexOfFirst { it.id == chatId }
+        if (threadIndex < 0) return false
+        val thread = threads[threadIndex]
+        if (nowMs <= thread.updatedAt) return false
+
+        val updatedThread = thread.copy(updatedAt = nowMs)
+        threads[threadIndex] = updatedThread
+
+        val repository = repositoryOrNull()
+        if (repository != null) {
+            runBlocking(Dispatchers.IO) {
+                repository.insertChat(
+                    ChatEntity(
+                        id = updatedThread.id,
+                        title = updatedThread.title,
+                        createdAt = updatedThread.createdAt,
+                        updatedAt = updatedThread.updatedAt,
+                    )
+                )
+            }
+        }
+        return true
+    }
+
     @Synchronized
     fun deleteThread(chatId: String) {
         ensureLoaded()

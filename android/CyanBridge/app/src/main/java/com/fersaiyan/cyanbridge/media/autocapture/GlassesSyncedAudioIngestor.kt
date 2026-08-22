@@ -152,8 +152,7 @@ object GlassesSyncedAudioIngestor {
                 chunkDurationSec = 45L,
             )
 
-            AgentProviderType.PRO_SUBSCRIPTION,
-            AgentProviderType.TASKER -> moonshineEngineOrFallback(context)
+            AgentProviderType.PRO_SUBSCRIPTION -> moonshineEngineOrFallback(context)
         }
     }
 

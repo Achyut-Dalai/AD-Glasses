@@ -26,6 +26,7 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.Description
+import androidx.compose.material.icons.outlined.AutoAwesome
 import androidx.compose.material.icons.outlined.GraphicEq
 import androidx.compose.material.icons.outlined.Image
 import androidx.compose.material.icons.outlined.Notes
@@ -153,6 +154,7 @@ internal fun ADNativeLibraryScreen(
 internal fun ADNativeCapturesScreen(
     onBack: () -> Unit,
     onOpenSync: () -> Unit,
+    onAnalyzeMedia: (String) -> Unit,
 ) {
     val context = LocalContext.current
     var media by remember { mutableStateOf<List<SyncedMediaItem>>(emptyList()) }
@@ -221,7 +223,13 @@ internal fun ADNativeCapturesScreen(
                     }
                 }
                 else -> items(media, key = { "${it.id}-${it.isVideo}" }) { item ->
-                    ADCaptureCard(item = item, onClick = { open(item) })
+                    ADCaptureCard(
+                        item = item,
+                        onClick = { open(item) },
+                        onAnalyze = if (item.isVideo) null else {
+                            { onAnalyzeMedia(item.contentUriString) }
+                        },
+                    )
                 }
             }
         }
@@ -232,6 +240,7 @@ internal fun ADNativeCapturesScreen(
 private fun ADCaptureCard(
     item: SyncedMediaItem,
     onClick: () -> Unit,
+    onAnalyze: (() -> Unit)?,
 ) {
     ADCard(onClick = onClick) {
         ADCapturePreview(item)
@@ -254,6 +263,18 @@ private fun ADCaptureCard(
                 if (item.isVideo) "VIDEO" else "PHOTO",
                 ADStatusTone.NEUTRAL,
             )
+        }
+        if (onAnalyze != null) {
+            Spacer(Modifier.size(8.dp))
+            Button(
+                onClick = onAnalyze,
+                modifier = Modifier.fillMaxWidth().heightIn(min = 42.dp),
+                colors = ButtonDefaults.buttonColors(containerColor = ADColors.Ink),
+            ) {
+                Icon(Icons.Outlined.AutoAwesome, null, modifier = Modifier.size(17.dp))
+                Spacer(Modifier.size(7.dp))
+                Text("Ask AI about this photo")
+            }
         }
     }
 }

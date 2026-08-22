@@ -34,7 +34,7 @@
     <string name="settings_bluetooth_mic">Microfono Bluetooth</string>
     <string name="settings_phone_mic">Microfono del telefono</string>
     <string name="settings_detecting_audio_source">Detectando fuente de audio</string>
-    <string name="settings_provider_description">Choose between Tasker, on-device models, or your configured Cloud AI relay.</string>
+    <string name="settings_provider_description">Choose on-device Local AI or an explicitly configured Cloud AI route.</string>
     <string name="settings_configure_local_models">Configurar modelos locales</string>
     <string name="settings_current_mode">Modo actual: %1$s</string>
     <string name="settings_sync_eligibility">Elegibilidad de sincronizacion</string>
@@ -353,7 +353,7 @@
     <string name="dashboard_limits_unavailable">Carga los ajustes para ver los limites compatibles con estas gafas.</string>
     <string name="dashboard_ai_assistant">Asistente de IA</string>
     <string name="dashboard_phone_assistant">Asistente del telefono</string>
-    <string name="dashboard_custom_provider">Local / Cloud AI / Tasker</string>
+    <string name="dashboard_custom_provider">AD Local / Cloud AI</string>
     <string name="dashboard_test_voice">Probar voz</string>
     <string name="dashboard_gemini_chatgpt_setup">Configuracion de automatizacion Gemini / ChatGPT</string>
     <string name="dashboard_meizu_title">Meizu MYVU / Star Air</string>
@@ -415,7 +415,6 @@
     <string name="dashboard_ota_idle">Inactivo</string>
     <string name="dashboard_ota_complete">Completado</string>
 
-    <string name="provider_tasker">Tasker</string>
     <string name="provider_local">Local</string>
     <string name="provider_pro">Cloud AI</string>
     <string name="memory_private_local">Privada local</string>

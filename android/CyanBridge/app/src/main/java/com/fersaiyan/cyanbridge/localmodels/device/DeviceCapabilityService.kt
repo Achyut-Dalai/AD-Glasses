@@ -99,4 +99,12 @@ object DeviceCapabilityService {
             else -> LocalModelPerformanceProfile.HIGH_QUALITY
         }
     }
+
+    /** Conservative load-time RAM floor for a custom/imported quantized model. */
+    fun recommendedMinRamGbForModelBytes(sizeBytes: Long): Double = when {
+        sizeBytes <= 650L * 1024L * 1024L -> 3.0
+        sizeBytes <= 1_500L * 1024L * 1024L -> 4.0
+        sizeBytes <= 2_500L * 1024L * 1024L -> 6.0
+        else -> 8.0
+    }
 }

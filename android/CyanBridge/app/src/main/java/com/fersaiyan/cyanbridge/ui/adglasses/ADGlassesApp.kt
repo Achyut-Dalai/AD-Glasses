@@ -179,6 +179,7 @@ fun ADGlassesApp(
                     ADRoute.LIBRARY_CAPTURES -> ADNativeCapturesScreen(
                         onBack = navigateBack,
                         onOpenSync = { navigateTo(ADRoute.SYNC) },
+                        onAnalyzeMedia = host.onAnalyzeMedia,
                     )
                     ADRoute.LIBRARY_RECORDINGS -> ADNativeRecordingsScreen(navigateBack)
                     ADRoute.LIBRARY_NOTES -> ADNativeNotesScreen(navigateBack)

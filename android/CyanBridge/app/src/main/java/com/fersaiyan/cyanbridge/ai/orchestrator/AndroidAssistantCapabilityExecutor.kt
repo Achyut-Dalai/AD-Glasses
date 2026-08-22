@@ -1,16 +1,16 @@
 package com.fersaiyan.cyanbridge.ai.orchestrator
 
 import android.content.Context
+import com.fersaiyan.cyanbridge.ai.router.AiProviderPrefs
 import com.fersaiyan.cyanbridge.ai.router.AgentInferencePurpose
 import com.fersaiyan.cyanbridge.ai.router.AgentInferenceRouter
-import com.fersaiyan.cyanbridge.automation.AutomationEventBroadcaster
-import com.fersaiyan.cyanbridge.automation.AutomationExecutor
-import com.fersaiyan.cyanbridge.automation.AutomationRoutePrefs
 import com.fersaiyan.cyanbridge.localagent.LocalAgentController
+import com.fersaiyan.cyanbridge.shared.settings.AgentProviderType
 
 /** Android execution bridge for AD decisions. */
 class AndroidAssistantCapabilityExecutor(
     context: Context,
+    private val onToken: ((String) -> Unit)? = null,
 ) : AssistantCapabilityExecutor {
     private val appContext = context.applicationContext
     private val capabilities = AndroidCapabilityCommandExecutor(context)
@@ -19,7 +19,17 @@ class AndroidAssistantCapabilityExecutor(
         prompt: String,
         context: AssistantExecutionContext,
     ): AssistantResult {
-        val reply = if (context.useWeb) {
+        val reply = if (context.useWeb && context.providerType != AgentProviderType.PRO_SUBSCRIPTION) {
+            return AssistantResult(
+                spokenText = "Web search is off for Local AI.",
+                richText = "This turn stayed on-device. Select an explicitly configured cloud route before using web search.",
+            )
+        } else if (context.useWeb && !AiProviderPrefs.isRelayConfigured(appContext)) {
+            return AssistantResult(
+                spokenText = "Cloud web search is not configured.",
+                richText = "Web search was requested, but no cloud endpoint is configured. Nothing was sent.",
+            )
+        } else if (context.useWeb) {
             RelayWebSearchClient.chat(
                 context = appContext,
                 threadId = context.threadId,
@@ -38,6 +48,8 @@ class AndroidAssistantCapabilityExecutor(
                 sessionId = context.threadId,
                 systemPrompt = conversationSystemPrompt(context),
                 userPrompt = prompt,
+                providerType = context.providerType,
+                onToken = onToken,
             )
         }
         return reply.toDisplaylessResult()
@@ -61,7 +73,11 @@ class AndroidAssistantCapabilityExecutor(
             systemPrompt = conversationSystemPrompt(context),
             userPrompt = prompt,
             imagePath = imagePath,
-            allowRemoteImageUpload = true,
+            allowRemoteImageUpload = context.providerType == AgentProviderType.PRO_SUBSCRIPTION &&
+                com.fersaiyan.cyanbridge.localagent.LocalAgentPrefs
+                    .isRemoteScreenshotUploadEnabled(appContext),
+            providerType = context.providerType,
+            onToken = onToken,
         )
         return result.content.toDisplaylessResult()
     }
@@ -69,26 +85,16 @@ class AndroidAssistantCapabilityExecutor(
     override suspend fun executePhoneAction(
         goal: String,
         context: AssistantExecutionContext,
-    ): AssistantResult = when (AutomationRoutePrefs.getExecutor(appContext)) {
-        AutomationExecutor.TASKER -> {
-            AutomationEventBroadcaster.sendPhoneAction(appContext, goal)
-            AssistantResult(
-                spokenText = "Done. I sent that to background automation.",
-                richText = "Background automation requested: $goal",
-            )
-        }
-
-        AutomationExecutor.ACCESSIBILITY -> {
-            val result = LocalAgentController.start(appContext, goal)
-            AssistantResult(
-                spokenText = result.userMessage,
-                richText = if (result.ok) {
-                    "Visible Android fallback requested: $goal\n${result.userMessage}"
-                } else {
-                    "Visible Android fallback could not start: $goal\n${result.userMessage}${result.error?.let { "\n$it" }.orEmpty()}"
-                },
-            )
-        }
+    ): AssistantResult {
+        val result = LocalAgentController.start(appContext, goal)
+        return AssistantResult(
+            spokenText = result.userMessage,
+            richText = if (result.ok) {
+                "AD Android action requested: $goal\n${result.userMessage}"
+            } else {
+                "AD Android action could not start: $goal\n${result.userMessage}${result.error?.let { "\n$it" }.orEmpty()}"
+            },
+        )
     }
 
     override suspend fun executeCapabilityCommand(
@@ -130,9 +136,9 @@ class AndroidAssistantCapabilityExecutor(
     private fun String.toDisplaylessResult(): AssistantResult {
         val rich = trim()
         if (rich.isBlank()) return AssistantResult("I didn’t get a usable answer.")
-        val spoken = rich
-            .replace(Regex("\\s+"), " ")
-            .let { text -> if (text.length <= 420) text else text.take(417).trimEnd() + "…" }
-        return AssistantResult(spokenText = spoken, richText = rich)
+        return AssistantResult(
+            spokenText = AssistantSpokenResponsePolicy.forGlasses(rich),
+            richText = rich,
+        )
     }
 }

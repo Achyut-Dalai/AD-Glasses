@@ -28,27 +28,6 @@ class ImageQuestionContractsTest {
     }
 
     @Test
-    fun payloadPreservesImageQuestionAndCallbackBinding() {
-        val extras = ImageQuestionBroadcast.Payload(
-            type = ImageQuestionBroadcast.TYPE_IMAGE,
-            imagePath = "/data/user/0/com.fersaiyan.cyanbridge/files/image.jpg",
-            imageUri = "content://com.fersaiyan.cyanbridge.fileprovider/external_files/image.jpg",
-            question = "What does the label say?",
-            assistant = "Gemini",
-            source = ImageQuestionSource.HIGH_QUALITY,
-            handoffMode = ImageQuestionBroadcast.HANDOFF_DIRECT_SHARE,
-            callbackAction = "com.fersaiyan.cyanbridge.AI_IMAGE_STATUS",
-            callbackSession = "session-1",
-            callbackToken = "token-1",
-        ).extras()
-
-        assertEquals("What does the label say?", extras[ImageQuestionBroadcast.EXTRA_QUESTION])
-        assertEquals("content://com.fersaiyan.cyanbridge.fileprovider/external_files/image.jpg", extras[ImageQuestionBroadcast.EXTRA_IMAGE_URI])
-        assertEquals("session-1", extras[ImageQuestionBroadcast.EXTRA_CALLBACK_SESSION])
-        assertEquals("token-1", extras[ImageQuestionBroadcast.EXTRA_CALLBACK_TOKEN])
-    }
-
-    @Test
     fun automationCallbacksMustArriveInOrderBeforeAnswerIsReady() {
         val idle = ExternalImageAutomationState()
         val started = ExternalImageAutomationStateMachine.transition(

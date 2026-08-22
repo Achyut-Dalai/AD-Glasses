@@ -148,7 +148,7 @@ fun LocalModelsConfigureScreen(
                             style = MaterialTheme.typography.bodySmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
                         )
-                        state.catalog.firstOrNull { it.id == "gemma4-e2b-it-litert" }?.let { starter ->
+                        state.catalog.firstOrNull { it.id == "qwen2.5-0.5b-instruct-q4" }?.let { starter ->
                             FilledTonalButton(
                                 onClick = { onAction(LocalModelsAction.DownloadCatalogModel(starter.id)) },
                                 enabled = starter.canDownload,

@@ -23,30 +23,30 @@ class LocalAgentPrefsProductMigrationTest {
     }
 
     @Test
-    fun unsetProductDefaultsUseInternalRelayAndConfiguredAiMode() {
-        assertEquals(AgentProviderType.PRO_SUBSCRIPTION, LocalAgentPrefs.getProviderType(context))
-        assertEquals(GlassesAssistantMode.CUSTOM_AI_PROVIDER, LocalAgentPrefs.getGlassesAssistantMode(context))
-    }
-
-    @Test
-    fun explicitTaskerProviderAndPhoneAssistantSelectionsRemainAvailable() {
-        context.getSharedPreferences("local_agent_prefs", Context.MODE_PRIVATE)
-            .edit()
-            .putString("provider_type", AgentProviderType.TASKER.name)
-            .putString("glasses_assistant_mode", GlassesAssistantMode.PHONE_ASSISTANT.name)
-            .commit()
-
-        assertEquals(AgentProviderType.TASKER, LocalAgentPrefs.getProviderType(context))
+    fun unsetProductDefaultsUsePhoneAssistantAndNoCloudProvider() {
+        assertEquals(AgentProviderType.LOCAL_AGENT, LocalAgentPrefs.getProviderType(context))
         assertEquals(GlassesAssistantMode.PHONE_ASSISTANT, LocalAgentPrefs.getGlassesAssistantMode(context))
     }
 
     @Test
-    fun oldNamedAssistantValuesDoNotBecomeImplicitPhoneAutomation() {
+    fun oldTaskerProviderMigratesToNativeLocalProvider() {
+        context.getSharedPreferences("local_agent_prefs", Context.MODE_PRIVATE)
+            .edit()
+            .putString("provider_type", "TASKER")
+            .putString("glasses_assistant_mode", GlassesAssistantMode.PHONE_ASSISTANT.name)
+            .commit()
+
+        assertEquals(AgentProviderType.LOCAL_AGENT, LocalAgentPrefs.getProviderType(context))
+        assertEquals(GlassesAssistantMode.PHONE_ASSISTANT, LocalAgentPrefs.getGlassesAssistantMode(context))
+    }
+
+    @Test
+    fun oldNamedAssistantValuesMigrateToExplicitPhoneAssistantMode() {
         context.getSharedPreferences("local_agent_prefs", Context.MODE_PRIVATE)
             .edit()
             .putString("glasses_assistant_mode", "CHAT_GPT")
             .commit()
 
-        assertEquals(GlassesAssistantMode.CUSTOM_AI_PROVIDER, LocalAgentPrefs.getGlassesAssistantMode(context))
+        assertEquals(GlassesAssistantMode.PHONE_ASSISTANT, LocalAgentPrefs.getGlassesAssistantMode(context))
     }
 }

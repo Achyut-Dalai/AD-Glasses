@@ -23,12 +23,11 @@ class ImageAutomationTargetTest {
     }
 
     @Test
-    fun defaultChatGptHasItsOwnSupportedProfile() {
+    fun defaultChatGptSupportsDirectAutomation() {
         val target = ImageAutomationTarget.forDefaultAssistant(ExternalImageAutomationIntents.CHATGPT_PACKAGE)
 
         assertEquals(ImageAutomationTarget.CHATGPT, target)
         assertTrue(target.imageAutomationSupported)
-        assertTrue(TaskerImageProfileCompatibility.supports(target, "chatgpt", "chatgpt-v1"))
     }
 
     @Test

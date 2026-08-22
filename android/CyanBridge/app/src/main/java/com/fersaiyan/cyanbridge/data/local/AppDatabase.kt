@@ -178,50 +178,7 @@ abstract class AppDatabase : RoomDatabase() {
                 db.execSQL("CREATE INDEX IF NOT EXISTS index_memory_chunks_source ON memory_chunks(source)")
                 db.execSQL("CREATE INDEX IF NOT EXISTS index_memory_chunks_tsMs ON memory_chunks(tsMs)")
 
-                // External-content FTS5 table. We keep canonical text in memory_chunks and
-                // let triggers sync the FTS index.
-                db.execSQL(
-                    """
-                    CREATE VIRTUAL TABLE IF NOT EXISTS memory_chunks_fts
-                    USING fts5(text, content='memory_chunks', content_rowid='id')
-                    """.trimIndent()
-                )
-
-                // Triggers to keep the FTS index in sync.
-                db.execSQL(
-                    """
-                    CREATE TRIGGER IF NOT EXISTS memory_chunks_ai
-                    AFTER INSERT ON memory_chunks
-                    BEGIN
-                        INSERT INTO memory_chunks_fts(rowid, text)
-                        VALUES (new.id, new.text);
-                    END
-                    """.trimIndent()
-                )
-
-                db.execSQL(
-                    """
-                    CREATE TRIGGER IF NOT EXISTS memory_chunks_ad
-                    AFTER DELETE ON memory_chunks
-                    BEGIN
-                        INSERT INTO memory_chunks_fts(memory_chunks_fts, rowid, text)
-                        VALUES('delete', old.id, old.text);
-                    END
-                    """.trimIndent()
-                )
-
-                db.execSQL(
-                    """
-                    CREATE TRIGGER IF NOT EXISTS memory_chunks_au
-                    AFTER UPDATE ON memory_chunks
-                    BEGIN
-                        INSERT INTO memory_chunks_fts(memory_chunks_fts, rowid, text)
-                        VALUES('delete', old.id, old.text);
-                        INSERT INTO memory_chunks_fts(rowid, text)
-                        VALUES (new.id, new.text);
-                    END
-                    """.trimIndent()
-                )
+                ensureMemorySearchIndex(db)
             }
         }
 
@@ -399,6 +356,84 @@ abstract class AppDatabase : RoomDatabase() {
                     """.trimIndent()
                 )
             }
+        }
+
+        /** Android builds are not required to include FTS5. Fall back to ubiquitous FTS4. */
+        @Synchronized
+        fun ensureMemorySearchIndex(db: SupportSQLiteDatabase) {
+            val alreadyPresent = db.query(
+                "SELECT 1 FROM sqlite_master WHERE type = 'table' AND name = 'memory_chunks_fts' LIMIT 1",
+            ).use { it.moveToFirst() }
+            if (alreadyPresent) return
+
+            val supportsFts5 = db.query("SELECT sqlite_compileoption_used('ENABLE_FTS5')").use {
+                it.moveToFirst() && it.getInt(0) == 1
+            }
+            val usesFts5 = supportsFts5 && runCatching {
+                db.execSQL(
+                    """
+                    CREATE VIRTUAL TABLE memory_chunks_fts
+                    USING fts5(text, content='memory_chunks', content_rowid='id')
+                    """.trimIndent(),
+                )
+            }.isSuccess
+
+            if (!usesFts5) {
+                db.execSQL(
+                    """
+                    CREATE VIRTUAL TABLE memory_chunks_fts
+                    USING fts4(text, content='memory_chunks')
+                    """.trimIndent(),
+                )
+            }
+
+            db.execSQL(
+                """
+                CREATE TRIGGER IF NOT EXISTS memory_chunks_ai
+                AFTER INSERT ON memory_chunks BEGIN
+                    INSERT INTO memory_chunks_fts(rowid, text) VALUES (new.id, new.text);
+                END
+                """.trimIndent(),
+            )
+            db.execSQL(
+                if (usesFts5) {
+                    """
+                    CREATE TRIGGER IF NOT EXISTS memory_chunks_ad
+                    AFTER DELETE ON memory_chunks BEGIN
+                        INSERT INTO memory_chunks_fts(memory_chunks_fts, rowid, text)
+                        VALUES('delete', old.id, old.text);
+                    END
+                    """.trimIndent()
+                } else {
+                    """
+                    CREATE TRIGGER IF NOT EXISTS memory_chunks_ad
+                    AFTER DELETE ON memory_chunks BEGIN
+                        DELETE FROM memory_chunks_fts WHERE docid = old.id;
+                    END
+                    """.trimIndent()
+                },
+            )
+            db.execSQL(
+                if (usesFts5) {
+                    """
+                    CREATE TRIGGER IF NOT EXISTS memory_chunks_au
+                    AFTER UPDATE ON memory_chunks BEGIN
+                        INSERT INTO memory_chunks_fts(memory_chunks_fts, rowid, text)
+                        VALUES('delete', old.id, old.text);
+                        INSERT INTO memory_chunks_fts(rowid, text) VALUES (new.id, new.text);
+                    END
+                    """.trimIndent()
+                } else {
+                    """
+                    CREATE TRIGGER IF NOT EXISTS memory_chunks_au
+                    AFTER UPDATE ON memory_chunks BEGIN
+                        DELETE FROM memory_chunks_fts WHERE docid = old.id;
+                        INSERT INTO memory_chunks_fts(rowid, text) VALUES (new.id, new.text);
+                    END
+                    """.trimIndent()
+                },
+            )
+            db.execSQL("INSERT INTO memory_chunks_fts(memory_chunks_fts) VALUES('rebuild')")
         }
     }
 }

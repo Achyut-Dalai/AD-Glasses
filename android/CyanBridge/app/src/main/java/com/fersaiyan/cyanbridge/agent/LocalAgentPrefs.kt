@@ -26,11 +26,10 @@ object LocalAgentPrefs {
         val provider = when (raw) {
             AgentProviderType.LOCAL_AGENT.name -> AgentProviderType.LOCAL_AGENT
             "API_MODELS", AgentProviderType.PRO_SUBSCRIPTION.name -> AgentProviderType.PRO_SUBSCRIPTION
-            // TASKER is an explicit background handoff route. Never migrate it away once a
-            // user deliberately selects it; no external assistant UI is implied by this value.
-            AgentProviderType.TASKER.name -> AgentProviderType.TASKER
-            null, "" -> AgentProviderType.PRO_SUBSCRIPTION
-            else -> AgentProviderType.PRO_SUBSCRIPTION
+            // Tasker is no longer an execution dependency. Migrate its historical value to the
+            // native on-device route instead of broadcasting to an app that may not exist.
+            "TASKER", null, "" -> AgentProviderType.LOCAL_AGENT
+            else -> AgentProviderType.LOCAL_AGENT
         }
         if (raw != provider.name) preferences.edit().putString(KEY_PROVIDER_TYPE, provider.name).apply()
         return provider
@@ -46,8 +45,9 @@ object LocalAgentPrefs {
         val mode = when (stored) {
             GlassesAssistantMode.PHONE_ASSISTANT.name -> GlassesAssistantMode.PHONE_ASSISTANT
             GlassesAssistantMode.CUSTOM_AI_PROVIDER.name,
-            "CHOSEN_PROVIDER", "GEMINI", "CHAT_GPT", "PHONE_DEFAULT", null, "" -> GlassesAssistantMode.CUSTOM_AI_PROVIDER
-            else -> GlassesAssistantMode.CUSTOM_AI_PROVIDER
+            "CHOSEN_PROVIDER" -> GlassesAssistantMode.CUSTOM_AI_PROVIDER
+            "GEMINI", "CHAT_GPT", "PHONE_DEFAULT", null, "" -> GlassesAssistantMode.PHONE_ASSISTANT
+            else -> GlassesAssistantMode.PHONE_ASSISTANT
         }
         if (stored != mode.name) preferences.edit().putString(KEY_GLASSES_ASSISTANT_MODE, mode.name).apply()
         return mode

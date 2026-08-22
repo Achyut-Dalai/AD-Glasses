@@ -658,7 +658,6 @@ object AiAssistantRouter {
         val providerType = when (AutomationPrefs.getProviderType(context)) {
             AgentProviderType.PRO_SUBSCRIPTION -> AiProviderType.CLI_RELAY
             AgentProviderType.LOCAL_AGENT -> AiProviderType.LOCAL_MODELS
-            AgentProviderType.TASKER -> AiProviderPrefs.getProvider(context)
         }
 
         return when (providerType) {

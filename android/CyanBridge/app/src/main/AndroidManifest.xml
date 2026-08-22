@@ -108,7 +108,6 @@
 
         <service android:name=".devices.meizumyvu.MeizuMyvuConnectionService" android:exported="false" android:foregroundServiceType="connectedDevice" />
 
-        <activity android:name=".ai.image.ExternalAssistantAutomationSetupActivity" android:exported="false" android:label="Assistant automation setup" />
         <activity android:name=".plugins.meetingsparknotes.MeetingSparkNotesSettingsActivity" android:exported="false" android:label="Soundbites settings" />
         <activity android:name=".plugins.livecaptionrelay.LiveCaptionRelaySettingsActivity" android:exported="false" android:label="Live Captions settings" />
         <activity android:name=".plugins.handsfreetranslator.HandsFreeTranslatorSettingsActivity" android:exported="false" android:label="Translator settings" />
@@ -149,13 +148,6 @@
         <service android:name=".plugins.visualdiary.VisualDiaryService" android:exported="false" android:foregroundServiceType="dataSync" />
 
         <receiver android:name=".plugins.errandbrain.ErrandBrainReminderReceiver" android:exported="false" />
-        <receiver android:name=".ai.image.ImageAutomationStatusReceiver" android:exported="true">
-            <intent-filter>
-                <action android:name="com.fersaiyan.cyanbridge.AI_IMAGE_STATUS" />
-                <action android:name="com.fersaiyan.cyanbridge.AI_IMAGE_PROFILE" />
-            </intent-filter>
-        </receiver>
-
         <service android:name=".audio.MeetingCaptureService" android:exported="false" android:foregroundServiceType="microphone" />
         <service android:name=".localagent.LocalAgentService" android:exported="false" android:foregroundServiceType="dataSync" />
         <service android:name=".localagent.LocalAgentTelegramService" android:exported="false" android:foregroundServiceType="dataSync" />

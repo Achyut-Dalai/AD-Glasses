@@ -13,10 +13,10 @@ enum class AiProviderType(
     /** Local/on-device LLM runtime (no cloud by default). */
     LOCAL_AGENT(wireName = "local_agent", label = "Local Agent (on-device)"),
 
-    // Existing/legacy modes (not fully routed in the current app).
+    // External-app identities retained for old serialized UI state. They are not internal
+    // inference backends and cannot return a response to AD.
     GEMINI(wireName = "gemini", label = "Gemini"),
     CHATGPT(wireName = "chatgpt", label = "ChatGPT"),
-    TASKER(wireName = "tasker", label = "Tasker"),
     ;
 
     companion object {

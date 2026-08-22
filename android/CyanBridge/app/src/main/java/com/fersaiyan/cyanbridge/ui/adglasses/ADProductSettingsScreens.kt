@@ -24,6 +24,7 @@ import androidx.compose.material.icons.outlined.Bluetooth
 import androidx.compose.material.icons.outlined.Cached
 import androidx.compose.material.icons.outlined.CameraAlt
 import androidx.compose.material.icons.outlined.DevicesOther
+import androidx.compose.material.icons.outlined.DeleteForever
 import androidx.compose.material.icons.outlined.Folder
 import androidx.compose.material.icons.outlined.Mic
 import androidx.compose.material.icons.outlined.Notifications
@@ -37,6 +38,7 @@ import androidx.compose.material.icons.outlined.VerifiedUser
 import androidx.compose.material.icons.outlined.Visibility
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
@@ -44,11 +46,13 @@ import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -60,11 +64,13 @@ import androidx.compose.ui.unit.dp
 import androidx.core.content.ContextCompat
 import com.fersaiyan.cyanbridge.BuildConfig
 import com.fersaiyan.cyanbridge.agent.LocalAgentPrefs
+import com.fersaiyan.cyanbridge.ai.orchestrator.AssistantConversationSession
 import com.fersaiyan.cyanbridge.media.SyncedMediaFolder
 import com.fersaiyan.cyanbridge.privacy.PrivacyPrefs
 import java.io.File
 import java.util.Locale
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 
 @Composable
@@ -74,6 +80,9 @@ internal fun ADPrivacyCenterScreen(onBack: () -> Unit) {
     var redactNames by remember { mutableStateOf(PrivacyPrefs.isRedactNamesEnabled(context)) }
     var fullExports by remember { mutableStateOf(PrivacyPrefs.isIncludeFullTranscriptionInExportsEnabled(context)) }
     var confirmations by remember { mutableStateOf(LocalAgentPrefs.isRequireConfirmationEnabled(context)) }
+    var showClearChatsDialog by remember { mutableStateOf(false) }
+    var chatClearResult by remember { mutableStateOf<String?>(null) }
+    val scope = rememberCoroutineScope()
 
     ADPageLayout("Privacy", onBack) {
         ADSettingsDetailGroup("Conversation data") {
@@ -98,10 +107,51 @@ internal fun ADPrivacyCenterScreen(onBack: () -> Unit) {
                 LocalAgentPrefs.setRequireConfirmationEnabled(context, it)
             }
         }
+        ADSettingsDetailGroup("AD Chats") {
+            ADSettingsRow(
+                icon = Icons.Outlined.DeleteForever,
+                title = "Clear all AD Chats",
+                subtitle = "Deletes Local AI and configured API conversations from this phone",
+                iconTint = ADColors.Error,
+                iconBackground = ADColors.Error.copy(alpha = 0.10f),
+                onClick = { showClearChatsDialog = true },
+            )
+            chatClearResult?.let {
+                Text(it, style = MaterialTheme.typography.bodySmall, color = ADColors.Muted)
+            }
+        }
         Text(
             "The glasses are the interface. Data stays on the phone unless a configured capability needs a remote service.",
             style = MaterialTheme.typography.bodySmall,
             color = ADColors.Muted.copy(alpha = 0.80f),
+        )
+    }
+
+    if (showClearChatsDialog) {
+        AlertDialog(
+            onDismissRequest = { showClearChatsDialog = false },
+            title = { Text("Clear all AD Chats?") },
+            text = {
+                Text("This permanently deletes every AD-owned Local AI and configured API conversation. Gemini and ChatGPT app history is managed inside those apps.")
+            },
+            dismissButton = {
+                TextButton(onClick = { showClearChatsDialog = false }) { Text("Cancel") }
+            },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        showClearChatsDialog = false
+                        scope.launch {
+                            val deleted = withContext(Dispatchers.IO) {
+                                AssistantConversationSession.get(context).clearAllConversations()
+                            }
+                            chatClearResult = if (deleted == 0) "No AD Chats to clear" else {
+                                "Cleared $deleted AD ${if (deleted == 1) "conversation" else "conversations"}"
+                            }
+                        }
+                    },
+                ) { Text("Clear", color = ADColors.Error) }
+            },
         )
     }
 }

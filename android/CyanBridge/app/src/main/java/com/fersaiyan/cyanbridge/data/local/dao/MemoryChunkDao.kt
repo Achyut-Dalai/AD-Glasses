@@ -37,7 +37,7 @@ interface MemoryChunkDao {
     @Query("SELECT id, source, sourceId, packageName, tsMs FROM memory_chunks")
     suspend fun listChunkRefs(): List<ChunkRef>
 
-    // --- FTS search (FTS5 virtual table created via SQL migration/callback) ---
+    // --- FTS search (FTS5 when available, otherwise Android's FTS4) ---
 
     data class SearchHit(
         val id: Long,
@@ -64,7 +64,7 @@ interface MemoryChunkDao {
             FROM memory_chunks mc
             JOIN memory_chunks_fts ON mc.id = memory_chunks_fts.rowid
             WHERE memory_chunks_fts MATCH ?
-            ORDER BY bm25(memory_chunks_fts)
+            ORDER BY mc.tsMs DESC
             LIMIT ?
         """.trimIndent()
 
@@ -75,12 +75,12 @@ interface MemoryChunkDao {
         val sql = """
             SELECT 
                 mc.*, 
-                snippet(memory_chunks_fts, 0, '[', ']', '…', 12) AS snippet,
-                bm25(memory_chunks_fts) AS rank
+                mc.text AS snippet,
+                0.0 AS rank
             FROM memory_chunks mc
             JOIN memory_chunks_fts ON mc.id = memory_chunks_fts.rowid
             WHERE memory_chunks_fts MATCH ?
-            ORDER BY rank
+            ORDER BY mc.tsMs DESC
             LIMIT ?
         """.trimIndent()
 

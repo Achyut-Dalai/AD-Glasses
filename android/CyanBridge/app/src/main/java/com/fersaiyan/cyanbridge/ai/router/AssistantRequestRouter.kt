@@ -41,6 +41,16 @@ class AssistantRequestRouter {
     ): AssistantRoutingDecision {
         classifyHeuristically(request)?.let { return it }
 
+        // A small on-device model should not spend a second generation classifying ordinary
+        // conversation. Explicit image/action forms above remain deterministic; everything else
+        // is treated as a question instead of risking an unintended phone action.
+        if (providerType == AgentProviderType.LOCAL_AGENT) {
+            return AssistantRoutingDecision(
+                intent = AssistantIntent.ANSWER_QUESTION,
+                confidence = 0.9,
+            )
+        }
+
         return runCatching {
             val raw = AgentInferenceRouter.complete(
                 context = context,

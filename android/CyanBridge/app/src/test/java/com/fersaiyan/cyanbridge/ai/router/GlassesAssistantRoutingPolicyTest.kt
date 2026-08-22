@@ -32,12 +32,5 @@ class GlassesAssistantRoutingPolicyTest {
                 AgentProviderType.PRO_SUBSCRIPTION,
             ),
         )
-        assertEquals(
-            GlassesAssistantRoute.TASKER_EXTERNAL_UI,
-            GlassesAssistantRoutingPolicy.resolve(
-                GlassesAssistantMode.CUSTOM_AI_PROVIDER,
-                AgentProviderType.TASKER,
-            ),
-        )
     }
 }

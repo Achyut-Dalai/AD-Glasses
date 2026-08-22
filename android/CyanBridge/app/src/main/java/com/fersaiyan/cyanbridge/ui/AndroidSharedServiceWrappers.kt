@@ -1,5 +1,10 @@
 package com.fersaiyan.cyanbridge.ui
 
+import android.content.Context
+import com.fersaiyan.cyanbridge.agent.LocalAgentPrefs
+import com.fersaiyan.cyanbridge.ai.router.CliRelayClient
+import com.fersaiyan.cyanbridge.localmodels.provider.LocalModelsProvider
+import com.fersaiyan.cyanbridge.shared.settings.AgentProviderType
 import com.fersaiyan.cyanbridge.shared.ai.AiModel
 import com.fersaiyan.cyanbridge.shared.ai.AiModelRegistry
 import com.fersaiyan.cyanbridge.shared.ai.ChatAiService
@@ -27,6 +32,7 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.flow
+import java.util.UUID
 
 // ── Wi-Fi P2P Manager wrapper ──
 
@@ -142,35 +148,58 @@ class AndroidMediaRecordRepositoryWrapper : MediaRecordRepository {
 
 // ── AI Services wrappers ──
 
-class AndroidChatAiService : ChatAiService {
+class AndroidChatAiService(context: Context) : ChatAiService {
+    private val appContext = context.applicationContext
+    private val localProvider = LocalModelsProvider()
+
     override suspend fun chat(messages: List<ChatMessage>, model: String?): ChatResponse {
-        // TODO: Delegate to CliRelayClient or DirectApiClient
+        val cleanMessages = messages.mapNotNull { message ->
+            val role = message.role.trim().lowercase()
+            val content = message.content.trim()
+            if (role.isBlank() || content.isBlank()) null else mapOf("role" to role, "content" to content)
+        }
+        require(cleanMessages.isNotEmpty()) { "A non-empty AI message is required" }
+        val userPrompt = cleanMessages.lastOrNull { it["role"] == "user" }?.get("content")
+            ?: error("A user message is required")
+        val reply = when (LocalAgentPrefs.getProviderType(appContext)) {
+            AgentProviderType.LOCAL_AGENT -> localProvider.streamChat(
+                context = appContext,
+                messages = cleanMessages,
+            )
+            AgentProviderType.PRO_SUBSCRIPTION -> CliRelayClient.chat(
+                context = appContext,
+                chatId = "shared_${UUID.randomUUID()}",
+                prompt = userPrompt,
+                messages = cleanMessages,
+                modelOverride = model,
+            ).getOrThrow()
+        }
         return ChatResponse(
-            message = ChatMessage("assistant", "Android AI service - connect to relay or local model."),
+            message = ChatMessage("assistant", reply),
         )
     }
 }
 
 class AndroidVoiceAiService : VoiceAiService {
     override suspend fun transcribe(audioData: ByteArray, mimeType: String): String {
-        // TODO: Delegate to TranscriptionService
-        return ""
+        throw UnsupportedOperationException(
+            "Shared voice transcription has no implicit provider. Use Moonshine or Android speech recognition explicitly.",
+        )
     }
 }
 
 class AndroidImageAiService : ImageAiService {
     override suspend fun analyzeImage(imageData: ByteArray, prompt: String, mimeType: String): String {
-        // TODO: Delegate to CliRelayClient.imageQuery()
-        return "Android image analysis - connect to relay."
+        throw UnsupportedOperationException(
+            "Shared image analysis has no implicit upload route. Use the explicit Local or Cloud media pipeline.",
+        )
     }
 }
 
 class AndroidAiModelRegistry : AiModelRegistry {
     override suspend fun listModels(): List<AiModel> = listOf(
-        AiModel("relay-chat", "Relay Chat", "cyanbridge"),
-        AiModel("relay-vision", "Relay Vision", "cyanbridge"),
         AiModel("local-llama", "Local llama.cpp", "local", isLocal = true),
     )
 
-    override fun getDefaultModelId(): String = "relay-chat"
+    override fun getDefaultModelId(): String = "local-llama"
 }

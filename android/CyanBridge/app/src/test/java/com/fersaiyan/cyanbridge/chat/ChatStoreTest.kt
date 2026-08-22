@@ -44,4 +44,14 @@ class ChatStoreTest {
         assertEquals("a", msgs[0].content)
         assertEquals("b", msgs[1].content)
     }
+
+    @Test
+    fun touchThread_updatesActivityWithoutAddingAMessage() {
+        val t = ChatStore.createThread(title = "X", nowMs = 1_000L)
+
+        assertTrue(ChatStore.touchThread(t.id, nowMs = 2_000L))
+
+        assertEquals(2_000L, ChatStore.getThread(t.id)?.updatedAt)
+        assertTrue(ChatStore.listMessages(t.id).isEmpty())
+    }
 }

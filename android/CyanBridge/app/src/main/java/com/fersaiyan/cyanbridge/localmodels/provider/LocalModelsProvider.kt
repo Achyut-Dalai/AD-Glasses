@@ -9,8 +9,6 @@ import com.fersaiyan.cyanbridge.localmodels.storage.LocalModelStorageRepository
 import com.fersaiyan.cyanbridge.localmodels.templates.PromptMessage
 import com.fersaiyan.cyanbridge.localmodels.templates.PromptTemplateRegistry
 import com.fersaiyan.cyanbridge.localmodels.settings.LocalComputeBackend
-import com.fersaiyan.cyanbridge.localmodels.remote.RemoteOpenAiClient
-import com.fersaiyan.cyanbridge.localmodels.remote.RemoteOpenAiPrefs
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 
@@ -63,19 +61,6 @@ class LocalModelsProvider {
         maxTokens: Int? = null,
     ): String {
         return withContext(Dispatchers.IO) {
-            // Check if remote OpenAI server is enabled.
-            if (RemoteOpenAiPrefs.isEnabled(context) && RemoteOpenAiPrefs.isConfigured(context)) {
-                return@withContext streamChatRemote(
-                    context = context,
-                    messages = messages,
-                    onStatus = onStatus,
-                    onToken = onToken,
-                    imagePaths = imagePaths,
-                    audioPath = audioPath,
-                    maxTokens = maxTokens,
-                )
-            }
-
             LocalModelStorageRepository.cleanupMissingModels(context)
             val selected = LocalModelStorageRepository.resolveSelectedModel(context)
                 ?: throw IllegalStateException(
@@ -194,37 +179,6 @@ val retryReply = LocalChatSessionManager.streamGenerate(
             } else {
                 "I couldn't generate a reply yet. The local model was reloaded, please try once more."
             }
-        }
-    }
-
-    /**
-     * Routes the request to a remote OpenAI-compatible server (Ollama, llama.cpp, vLLM, etc.).
-     */
-    private suspend fun streamChatRemote(
-        context: Context,
-        messages: List<Map<String, String>>,
-        onStatus: ((String) -> Unit)?,
-        onToken: ((String) -> Unit)?,
-        imagePaths: List<String>,
-        audioPath: String?,
-        maxTokens: Int?,
-    ): String {
-        val model = RemoteOpenAiPrefs.getModel(context)
-        val baseUrl = RemoteOpenAiPrefs.getBaseUrl(context)
-        onStatus?.invoke("Remote: $model @ ${baseUrl.substringBefore("/v1")}")
-
-        return try {
-            RemoteOpenAiClient.chatCompletionStreaming(
-                context = context,
-                messages = messages,
-                maxTokens = maxTokens ?: 2048,
-                onToken = onToken,
-                imagePaths = imagePaths,
-                audioPath = audioPath,
-            )
-        } catch (e: Exception) {
-            onStatus?.invoke("Remote error: ${e.message}")
-            throw e
         }
     }
 

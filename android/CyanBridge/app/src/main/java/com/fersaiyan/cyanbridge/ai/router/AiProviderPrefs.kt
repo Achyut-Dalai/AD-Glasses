@@ -40,7 +40,7 @@ object AiProviderPrefs {
     private fun prefs(context: Context) = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
 
     fun getProvider(context: Context): AiProviderType =
-        AiProviderType.fromWire(prefs(context).getString(KEY_PROVIDER, AiProviderType.CLI_RELAY.wire))
+        AiProviderType.fromWire(prefs(context).getString(KEY_PROVIDER, AiProviderType.LOCAL_MODELS.wire))
 
     fun setProvider(context: Context, provider: AiProviderType) {
         prefs(context).edit().putString(KEY_PROVIDER, provider.wire).apply()

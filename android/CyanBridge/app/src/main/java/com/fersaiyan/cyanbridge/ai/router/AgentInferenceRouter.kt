@@ -5,7 +5,6 @@ import com.fersaiyan.cyanbridge.shared.settings.AgentProviderType
 import com.fersaiyan.cyanbridge.agent.LocalAgentPrefs as AutomationPrefs
 import com.fersaiyan.cyanbridge.agent.CloudAiPrefs
 import com.fersaiyan.cyanbridge.localmodels.provider.LocalModelsProvider
-import com.fersaiyan.cyanbridge.localmodels.remote.RemoteOpenAiPrefs
 import kotlinx.coroutines.CancellationException
 import java.io.File
 
@@ -31,6 +30,7 @@ object AgentInferenceRouter {
         systemPrompt: String,
         userPrompt: String,
         providerType: AgentProviderType = AutomationPrefs.getProviderType(context),
+        onToken: ((String) -> Unit)? = null,
     ): String {
         return completeText(
             context = context,
@@ -39,6 +39,7 @@ object AgentInferenceRouter {
             systemPrompt = systemPrompt,
             userPrompt = userPrompt,
             providerType = providerType,
+            onToken = onToken,
         )
     }
 
@@ -54,8 +55,12 @@ object AgentInferenceRouter {
         imagePath: String?,
         allowRemoteImageUpload: Boolean,
         providerType: AgentProviderType = AutomationPrefs.getProviderType(context),
+        onToken: ((String) -> Unit)? = null,
     ): AgentInferenceResult {
         val usableImagePath = imagePath?.trim()?.takeIf { File(it).isFile }
+        if (!imagePath.isNullOrBlank() && usableImagePath == null) {
+            throw IllegalStateException("The requested image file is missing. AD did not fall back to a text-only answer.")
+        }
         if (usableImagePath == null) {
             return AgentInferenceResult(
                 content = completeText(
@@ -65,23 +70,15 @@ object AgentInferenceRouter {
                     systemPrompt,
                     userPrompt,
                     providerType,
+                    onToken,
                 ),
                 usedImage = false,
                 mediaStatus = "Text-only planning",
             )
         }
         if (isRemotePlanner(context, providerType) && !allowRemoteImageUpload) {
-            return AgentInferenceResult(
-                content = completeText(
-                    context,
-                    AgentInferencePurpose.UI_PLANNING,
-                    sessionId,
-                    systemPrompt,
-                    userPrompt,
-                    providerType,
-                ),
-                usedImage = false,
-                mediaStatus = "Remote screenshot upload is off; used text-only planning.",
+            throw IllegalStateException(
+                "Remote image upload is off. The image was not sent and AD did not silently retry without it.",
             )
         }
 
@@ -92,6 +89,7 @@ object AgentInferenceRouter {
                     messages = messages(systemPrompt, userPrompt),
                     imagePaths = listOf(usableImagePath),
                     maxTokens = UI_PLANNING_MAX_TOKENS,
+                    onToken = onToken,
                 )
 
                 AgentProviderType.PRO_SUBSCRIPTION -> CliRelayClient.imageQuery(
@@ -101,51 +99,21 @@ object AgentInferenceRouter {
                     modelOverride = CloudAiPrefs.getTasksModel(context),
                 ).getOrThrow()
 
-                AgentProviderType.TASKER -> when (AiProviderPrefs.getProvider(context)) {
-                    AiProviderType.CLI_RELAY -> CliRelayClient.imageQuery(
-                        context = context,
-                        imagePath = usableImagePath,
-                        prompt = multimodalPrompt(systemPrompt, userPrompt),
-                    ).getOrThrow()
-
-                    AiProviderType.LOCAL_MODELS -> localModelsProvider.streamChat(
-                        context = context,
-                        messages = messages(systemPrompt, userPrompt),
-                        imagePaths = listOf(usableImagePath),
-                        maxTokens = UI_PLANNING_MAX_TOKENS,
-                    )
-
-                    AiProviderType.MOCK,
-                    AiProviderType.COMPANY_BACKEND -> throw UnsupportedOperationException("planner_has_no_image_capability")
-                }
             }
         } catch (error: CancellationException) {
             throw error
-        } catch (_: Exception) {
-            null
-        }
-
-        if (imageContent != null) {
-            return AgentInferenceResult(
-                content = imageContent,
-                usedImage = true,
-                mediaStatus = "Screenshot attached to the planner for this step.",
+        } catch (error: Exception) {
+            throw IllegalStateException(
+                "The selected ${providerType.label} route could not analyze this image. Nothing was silently retried without it: " +
+                    (error.message ?: error::class.java.simpleName),
+                error,
             )
         }
 
-        // A provider may advertise a vision endpoint but reject the selected model. Fall back to
-        // the same structured text planner rather than claiming vision succeeded.
         return AgentInferenceResult(
-            content = completeText(
-                context,
-                AgentInferencePurpose.UI_PLANNING,
-                sessionId,
-                systemPrompt,
-                userPrompt,
-                providerType,
-            ),
-            usedImage = false,
-            mediaStatus = "Multimodal planning was unavailable; used text-only planning.",
+            content = imageContent,
+            usedImage = true,
+            mediaStatus = "Image attached to the selected planner for this step.",
         )
     }
 
@@ -155,13 +123,7 @@ object AgentInferenceRouter {
     ): Boolean {
         return when (providerType) {
             AgentProviderType.PRO_SUBSCRIPTION -> true
-            AgentProviderType.LOCAL_AGENT -> isRemoteLocalModelsPlanner(context)
-            AgentProviderType.TASKER -> when (AiProviderPrefs.getProvider(context)) {
-                AiProviderType.CLI_RELAY -> true
-                AiProviderType.LOCAL_MODELS -> isRemoteLocalModelsPlanner(context)
-                AiProviderType.MOCK,
-                AiProviderType.COMPANY_BACKEND -> false
-            }
+            AgentProviderType.LOCAL_AGENT -> false
         }
     }
 
@@ -172,6 +134,7 @@ object AgentInferenceRouter {
         systemPrompt: String,
         userPrompt: String,
         providerType: AgentProviderType,
+        onToken: ((String) -> Unit)?,
     ): String {
         val messages = messages(systemPrompt, userPrompt)
 
@@ -180,6 +143,7 @@ object AgentInferenceRouter {
                 context = context,
                 messages = messages,
                 maxTokens = if (purpose == AgentInferencePurpose.CLASSIFICATION) 256 else 512,
+                onToken = onToken,
             )
 
             AgentProviderType.PRO_SUBSCRIPTION -> CliRelayClient.chat(
@@ -190,13 +154,6 @@ object AgentInferenceRouter {
                 modelOverride = CloudAiPrefs.getTasksModel(context),
             ).getOrThrow()
 
-            AgentProviderType.TASKER -> completeUsingAiProviderPrefs(
-                context = context,
-                purpose = purpose,
-                sessionId = sessionId,
-                userPrompt = userPrompt,
-                messages = messages,
-            )
         }
     }
 
@@ -211,35 +168,6 @@ object AgentInferenceRouter {
         appendLine()
         appendLine("Planning request:")
         append(userPrompt)
-    }
-
-    private fun isRemoteLocalModelsPlanner(context: Context): Boolean =
-        RemoteOpenAiPrefs.isEnabled(context) && RemoteOpenAiPrefs.isConfigured(context)
-
-    private suspend fun completeUsingAiProviderPrefs(
-        context: Context,
-        purpose: AgentInferencePurpose,
-        sessionId: String,
-        userPrompt: String,
-        messages: List<Map<String, String>>,
-    ): String {
-        return when (AiProviderPrefs.getProvider(context)) {
-            AiProviderType.CLI_RELAY -> CliRelayClient.chat(
-                context = context,
-                chatId = sessionId,
-                prompt = userPrompt,
-                messages = messages,
-            ).getOrThrow()
-
-            AiProviderType.LOCAL_MODELS -> localModelsProvider.streamChat(
-                context = context,
-                messages = messages,
-                maxTokens = if (purpose == AgentInferencePurpose.CLASSIFICATION) 256 else 512,
-            )
-
-            AiProviderType.MOCK -> throw IllegalStateException("Mock provider cannot classify or plan agent tasks")
-            AiProviderType.COMPANY_BACKEND -> throw IllegalStateException("Company backend is not configured for agent tasks")
-        }
     }
 
     private const val UI_PLANNING_MAX_TOKENS = 512

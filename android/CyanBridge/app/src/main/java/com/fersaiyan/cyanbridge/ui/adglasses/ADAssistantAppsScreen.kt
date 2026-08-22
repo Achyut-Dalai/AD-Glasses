@@ -32,108 +32,34 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
-import androidx.core.content.FileProvider
 import com.fersaiyan.cyanbridge.agent.LocalAgentPrefs
 import com.fersaiyan.cyanbridge.ai.image.ExternalAssistantAutomationInspector
 import com.fersaiyan.cyanbridge.ai.image.ExternalAssistantAutomationPolicy
-import com.fersaiyan.cyanbridge.ai.image.ExternalImageAutomationIntents
 import com.fersaiyan.cyanbridge.ai.image.ImageAutomationTarget
-import com.fersaiyan.cyanbridge.ai.image.ImageQuestionBroadcast
-import com.fersaiyan.cyanbridge.ai.image.TaskerImageProfileStore
 import com.fersaiyan.cyanbridge.shared.glasses.GlassesAssistantMode
-import java.io.File
-import kotlinx.coroutines.delay
-import kotlinx.coroutines.launch
 
-/** Optional handoff to installed Gemini / ChatGPT apps. Configured AI remains the default path. */
+/** Direct handoff to the phone's selected Gemini or ChatGPT assistant. */
 @Composable
 internal fun ADAssistantAppsScreen(onBack: () -> Unit) {
     val context = LocalContext.current
-    val scope = rememberCoroutineScope()
     var capability by remember { mutableStateOf(ExternalAssistantAutomationInspector.inspect(context)) }
     var selectedMode by remember { mutableStateOf(LocalAgentPrefs.getGlassesAssistantMode(context)) }
-    var verifying by remember { mutableStateOf(false) }
 
     fun refresh() {
         capability = ExternalAssistantAutomationInspector.inspect(context)
         selectedMode = LocalAgentPrefs.getGlassesAssistantMode(context)
     }
 
-    fun show(message: String) {
-        Toast.makeText(context, message, Toast.LENGTH_LONG).show()
-    }
+    fun show(message: String) = Toast.makeText(context, message, Toast.LENGTH_LONG).show()
 
     fun chooseDefaultAssistant() {
         runCatching { context.startActivity(Intent(Settings.ACTION_VOICE_INPUT_SETTINGS)) }
             .onFailure { context.startActivity(Intent(Settings.ACTION_SETTINGS)) }
-    }
-
-    fun importProfile() {
-        val current = ExternalAssistantAutomationInspector.inspect(context)
-        val assetName = when (current.target) {
-            ImageAutomationTarget.GEMINI -> "tasker/CyanBridge_Gemini.xml"
-            ImageAutomationTarget.CHATGPT -> "tasker/CyanBridge_ChatGPT.xml"
-            ImageAutomationTarget.NONE -> {
-                show("Choose Gemini or ChatGPT as Android's assistant first.")
-                return
-            }
-        }
-        if (!current.taskerInstalled) {
-            show("The advanced assistant-app bridge is not installed on this phone.")
-            return
-        }
-
-        val profileFile = File(context.cacheDir, assetName.substringAfterLast('/'))
-        runCatching {
-            context.assets.open(assetName).use { input ->
-                profileFile.outputStream().use(input::copyTo)
-            }
-            val uri = FileProvider.getUriForFile(context, "${context.packageName}.fileprovider", profileFile)
-            val viewIntent = Intent(Intent.ACTION_VIEW).apply {
-                setDataAndType(uri, "application/xml")
-                setPackage(ExternalImageAutomationIntents.TASKER_PACKAGE)
-                addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
-            }
-            val sendIntent = Intent(Intent.ACTION_SEND).apply {
-                type = "application/xml"
-                setPackage(ExternalImageAutomationIntents.TASKER_PACKAGE)
-                putExtra(Intent.EXTRA_STREAM, uri)
-                addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
-            }
-            val intent = listOf(viewIntent, sendIntent).firstOrNull {
-                it.resolveActivity(context.packageManager) != null
-            } ?: error("No profile import target is available")
-            context.startActivity(intent)
-        }.onFailure { show("Could not open the automation profile: ${it.message}") }
-    }
-
-    fun verifyProfile() {
-        val current = ExternalAssistantAutomationInspector.inspect(context)
-        if (current.target == ImageAutomationTarget.NONE || !current.taskerInstalled) {
-            show("Choose a supported assistant and finish the advanced bridge setup first.")
-            return
-        }
-        verifying = true
-        val token = TaskerImageProfileStore.beginVerification(context)
-        context.sendBroadcast(Intent(ExternalImageAutomationIntents.assistantEventAction(context.packageName)).apply {
-            setPackage(ExternalImageAutomationIntents.TASKER_PACKAGE)
-            putExtra(ImageQuestionBroadcast.EXTRA_TYPE, "profile_check")
-            putExtra(ImageQuestionBroadcast.EXTRA_ASSISTANT, current.target.label)
-            putExtra(ExternalImageAutomationIntents.EXTRA_PROFILE_TOKEN, token)
-            addFlags(Intent.FLAG_INCLUDE_STOPPED_PACKAGES)
-        })
-        scope.launch {
-            delay(1_500L)
-            verifying = false
-            refresh()
-            show(if (capability.profileCompatible) "Assistant-app bridge verified." else "No verified bridge response received.")
-        }
     }
 
     val voiceReady = ExternalAssistantAutomationPolicy.voiceBlockingReason(capability) == null
@@ -150,10 +76,10 @@ internal fun ADAssistantAppsScreen(onBack: () -> Unit) {
                     Icon(Icons.Outlined.Apps, contentDescription = null, tint = ADColors.Ink, modifier = Modifier.size(19.dp))
                 }
                 Column(Modifier.padding(start = 10.dp).weight(1f)) {
-                    Text("Optional app handoff", style = MaterialTheme.typography.titleLarge)
+                    Text("Direct assistant handoff", style = MaterialTheme.typography.titleLarge)
                     Spacer(Modifier.size(2.dp))
                     Text(
-                        "Use an installed Gemini or ChatGPT app for selected glasses requests. Your configured AI stays the normal route unless you turn this on.",
+                        "Gemini is recommended for direct handoff. Gemini or ChatGPT owns the answer, voice and conversation; AD only launches it.",
                         style = MaterialTheme.typography.bodySmall,
                         color = ADColors.Muted,
                     )
@@ -174,14 +100,14 @@ internal fun ADAssistantAppsScreen(onBack: () -> Unit) {
             ADAssistantAppStatusRow(
                 icon = Icons.Outlined.PhoneAndroid,
                 title = "Voice handoff",
-                detail = if (voiceReady) "Ready" else "Advanced bridge setup needed",
+                detail = if (voiceReady) "Ready" else "Choose an installed assistant",
                 ready = voiceReady,
             )
             HorizontalDivider(Modifier.padding(start = 43.dp), color = ADColors.Separator)
             ADAssistantAppStatusRow(
                 icon = Icons.Outlined.Apps,
                 title = "Image handoff",
-                detail = if (imageReady) "Ready" else "Advanced bridge and accessibility setup needed",
+                detail = if (imageReady) "Ready" else "AD Glasses accessibility access needed",
                 ready = imageReady,
             )
         }
@@ -190,9 +116,9 @@ internal fun ADAssistantAppsScreen(onBack: () -> Unit) {
         ADCard {
             Text(
                 if (selectedMode == GlassesAssistantMode.PHONE_ASSISTANT) {
-                    "$targetName is currently the assistant-app route."
+                    "$targetName is currently the glasses handoff app. It speaks its own replies."
                 } else {
-                    "Glasses questions currently use your configured AI."
+                    "Glasses questions currently use the selected local or cloud AI."
                 },
                 style = MaterialTheme.typography.bodyMedium,
             )
@@ -204,46 +130,33 @@ internal fun ADAssistantAppsScreen(onBack: () -> Unit) {
                         refresh()
                     },
                     modifier = Modifier.fillMaxWidth().heightIn(min = 46.dp),
-                ) { Text("Use AI") }
+                ) { Text("Use local or cloud AI") }
             } else {
                 Button(
                     onClick = {
-                        if (!voiceReady) {
-                            show(ExternalAssistantAutomationPolicy.voiceBlockingReason(capability) ?: "Assistant app handoff is not ready.")
-                        } else {
+                        val reason = ExternalAssistantAutomationPolicy.voiceBlockingReason(capability)
+                        if (reason != null) show(reason) else {
                             LocalAgentPrefs.setGlassesAssistantMode(context, GlassesAssistantMode.PHONE_ASSISTANT)
                             refresh()
                         }
                     },
                     modifier = Modifier.fillMaxWidth().heightIn(min = 46.dp),
                     colors = ButtonDefaults.buttonColors(containerColor = ADColors.Ink),
-                ) { Text("Use assistant app") }
+                ) { Text("Use Gemini / phone assistant") }
             }
         }
 
-        ADSectionTitle("Advanced handoff setup")
+        ADSectionTitle("Handoff setup")
         ADCard {
             ADAssistantSetupAction(
                 title = "Choose Android assistant",
-                detail = "Select Gemini or ChatGPT as the phone assistant",
+                detail = "Gemini is recommended; either app speaks its own replies",
                 onClick = ::chooseDefaultAssistant,
             )
             HorizontalDivider(color = ADColors.Separator)
             ADAssistantSetupAction(
-                title = "Import automation bridge",
-                detail = if (capability.profileCompatible) "Profile already verified" else "Import the matching profile for the selected assistant",
-                onClick = ::importProfile,
-            )
-            HorizontalDivider(color = ADColors.Separator)
-            ADAssistantSetupAction(
-                title = if (verifying) "Verifying…" else "Verify automation bridge",
-                detail = if (capability.profileCompatible) "Verified" else "Confirm the imported profile responds to AD Glasses",
-                onClick = { if (!verifying) verifyProfile() },
-            )
-            HorizontalDivider(color = ADColors.Separator)
-            ADAssistantSetupAction(
-                title = "Accessibility",
-                detail = if (capability.autoInputAccessibilityEnabled) "Image handoff access is enabled" else "Required only for external image-prompt automation",
+                title = "AD Glasses accessibility",
+                detail = if (capability.adAccessibilityConnected) "Enabled for image handoff" else "Enable it to submit image questions",
                 onClick = { context.startActivity(Intent(Settings.ACTION_ACCESSIBILITY_SETTINGS)) },
             )
         }
@@ -281,11 +194,7 @@ private fun ADAssistantAppStatusRow(
 }
 
 @Composable
-private fun ADAssistantSetupAction(
-    title: String,
-    detail: String,
-    onClick: () -> Unit,
-) {
+private fun ADAssistantSetupAction(title: String, detail: String, onClick: () -> Unit) {
     Row(
         modifier = Modifier.fillMaxWidth().clickable(onClick = onClick).padding(vertical = 9.dp),
         verticalAlignment = Alignment.CenterVertically,
@@ -300,11 +209,6 @@ private fun ADAssistantSetupAction(
             Text(title, style = MaterialTheme.typography.titleMedium)
             Text(detail, style = MaterialTheme.typography.bodySmall, color = ADColors.Muted)
         }
-        Icon(
-            Icons.AutoMirrored.Rounded.KeyboardArrowRight,
-            contentDescription = null,
-            tint = ADColors.Muted,
-            modifier = Modifier.size(19.dp),
-        )
+        Icon(Icons.AutoMirrored.Rounded.KeyboardArrowRight, contentDescription = null, tint = ADColors.Muted, modifier = Modifier.size(19.dp))
     }
 }

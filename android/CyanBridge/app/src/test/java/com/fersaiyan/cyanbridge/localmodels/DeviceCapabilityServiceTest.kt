@@ -6,6 +6,7 @@ import com.fersaiyan.cyanbridge.localmodels.device.DeviceSnapshot
 import com.fersaiyan.cyanbridge.localmodels.settings.LocalModelPerformanceProfile
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
+import org.junit.Assert.assertEquals
 import org.junit.Test
 
 class DeviceCapabilityServiceTest {
@@ -70,5 +71,20 @@ class DeviceCapabilityServiceTest {
 
         val profile = DeviceCapabilityService.recommendProfile(snapshot, entry)
         assertTrue(profile == LocalModelPerformanceProfile.FAST)
+    }
+
+    @Test
+    fun qwen_half_billion_is_allowed_on_three_gib_phone() {
+        val entry = LocalModelCatalogRepository.findById("qwen2.5-0.5b-instruct-q4")!!
+        val snapshot = DeviceSnapshot(
+            primaryAbi = "arm64-v8a",
+            supportedAbis = listOf("arm64-v8a"),
+            totalRamBytes = 3L * 1024L * 1024L * 1024L,
+            freeStorageBytes = 4L * 1024L * 1024L * 1024L,
+            cpuCoreCount = 8,
+        )
+
+        assertTrue(DeviceCapabilityService.assess(snapshot, entry, requireDownloadHeadroom = true).supported)
+        assertEquals(3.0, DeviceCapabilityService.recommendedMinRamGbForModelBytes(420_000_000L), 0.0)
     }
 }

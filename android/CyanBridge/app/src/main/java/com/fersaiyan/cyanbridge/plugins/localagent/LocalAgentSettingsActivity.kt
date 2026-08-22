@@ -756,7 +756,7 @@ class LocalAgentSettingsActivity : AppCompatActivity() {
 
 private data class LocalAgentSettingsUiState(
     val enabled: Boolean = false,
-    val providerType: AgentProviderType = AgentProviderType.TASKER,
+    val providerType: AgentProviderType = AgentProviderType.LOCAL_AGENT,
     val accessibilityEnabled: Boolean = false,
     val maxSteps: Int = 8,
     val requireActionConfirmation: Boolean = true,
@@ -797,7 +797,6 @@ private fun ProviderOption(
         Text(
             stringResource(
                 when (type) {
-                    AgentProviderType.TASKER -> R.string.compose_provider_tasker
                     AgentProviderType.LOCAL_AGENT -> R.string.compose_provider_local
                     AgentProviderType.PRO_SUBSCRIPTION -> R.string.compose_provider_pro
                 },

@@ -1,6 +1,7 @@
 package com.fersaiyan.cyanbridge.ui.adglasses
 
 import android.widget.Toast
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -26,11 +27,11 @@ import androidx.compose.material.icons.outlined.RadioButtonChecked
 import androidx.compose.material.icons.outlined.Storage
 import androidx.compose.material.icons.outlined.Sync
 import androidx.compose.material.icons.outlined.Videocam
-import androidx.compose.material.icons.outlined.Visibility
 import androidx.compose.material.icons.rounded.Translate
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
@@ -320,43 +321,46 @@ private fun ADHomeAction(
 
 @Composable
 private fun ADSmartLensCard(onClick: () -> Unit) {
-    Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .heightIn(min = 78.dp)
-            .background(ADColors.Ink, RoundedCornerShape(21.dp))
-            .clickable(onClick = onClick)
-            .padding(horizontal = 13.dp, vertical = 10.dp),
-        verticalAlignment = Alignment.CenterVertically,
+    Surface(
+        onClick = onClick,
+        modifier = Modifier.fillMaxWidth().heightIn(min = 78.dp),
+        shape = RoundedCornerShape(21.dp),
+        color = ADColors.Surface,
+        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant),
+        shadowElevation = 1.dp,
     ) {
-        Column(Modifier.weight(1f)) {
-            Text(
-                "Lens",
-                style = MaterialTheme.typography.titleLarge,
-                fontWeight = FontWeight.Medium,
-                color = ADColors.Surface,
-            )
-            Spacer(Modifier.height(2.dp))
-            Text(
-                "Ask about what you’re looking at",
-                style = MaterialTheme.typography.bodySmall,
-                color = ADColors.Surface.copy(alpha = 0.70f),
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis,
-            )
-        }
-        Box(
-            modifier = Modifier
-                .size(46.dp)
-                .background(ADColors.Surface.copy(alpha = 0.12f), RoundedCornerShape(15.dp)),
-            contentAlignment = Alignment.Center,
+        Row(
+            modifier = Modifier.padding(horizontal = 13.dp, vertical = 10.dp),
+            verticalAlignment = Alignment.CenterVertically,
         ) {
-            Icon(
-                Icons.Outlined.Visibility,
-                contentDescription = null,
-                tint = ADColors.Surface,
-                modifier = Modifier.size(22.dp),
-            )
+            Column(Modifier.weight(1f)) {
+                Text(
+                    "Lens",
+                    style = MaterialTheme.typography.titleLarge,
+                    fontWeight = FontWeight.Medium,
+                )
+                Spacer(Modifier.height(2.dp))
+                Text(
+                    "Ask about what you’re looking at",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = ADColors.Muted,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                )
+            }
+            Box(
+                modifier = Modifier
+                    .size(52.dp)
+                    .background(ADColors.SurfaceSubtle, RoundedCornerShape(16.dp)),
+                contentAlignment = Alignment.Center,
+            ) {
+                Image(
+                    painter = painterResource(R.drawable.ad_lens_shutter),
+                    contentDescription = null,
+                    modifier = Modifier.size(34.dp),
+                    contentScale = ContentScale.Fit,
+                )
+            }
         }
     }
 }

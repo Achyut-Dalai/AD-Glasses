@@ -63,6 +63,32 @@ object LocalAgentAccessibilityBridge {
             .getOrNull()
     }
 
+    fun typeText(text: CharSequence, fieldHint: String? = null): Boolean {
+        val svc = LocalAgentAccessibilityService.instance ?: return false
+        return runCatching { svc.typeTextBestEffort(text, fieldHint) }
+            .onFailure { Log.w(TAG, "typeText failed: ${it.message}") }
+            .getOrDefault(false)
+    }
+
+    fun clickByViewId(viewId: String): Boolean {
+        val svc = LocalAgentAccessibilityService.instance ?: return false
+        return runCatching { svc.clickByViewId(viewId) }
+            .onFailure { Log.w(TAG, "clickByViewId failed: ${it.message}") }
+            .getOrDefault(false)
+    }
+
+    fun clickByText(text: String): Boolean {
+        val svc = LocalAgentAccessibilityService.instance ?: return false
+        return runCatching { svc.clickByTextOrDesc(text) }
+            .onFailure { Log.w(TAG, "clickByText failed: ${it.message}") }
+            .getOrDefault(false)
+    }
+
+    fun pressEnter(): Boolean {
+        val svc = LocalAgentAccessibilityService.instance ?: return false
+        return runCatching { svc.pressEnter() }.getOrDefault(false)
+    }
+
     suspend fun captureScreenshot(): LocalAgentScreenshotResult {
         val svc = LocalAgentAccessibilityService.instance
             ?: return LocalAgentScreenshotResult(error = "accessibility_not_connected")

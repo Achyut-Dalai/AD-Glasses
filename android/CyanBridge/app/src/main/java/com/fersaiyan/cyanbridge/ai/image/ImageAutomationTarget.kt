@@ -9,7 +9,6 @@ enum class ImageAutomationTarget(
     val wireName: String,
     val label: String,
     val packageNames: List<String>,
-    val requiredProfileVersion: String?,
     val imageAutomationSupported: Boolean,
 ) {
     GEMINI(
@@ -19,21 +18,18 @@ enum class ImageAutomationTarget(
             ExternalImageAutomationIntents.GEMINI_PACKAGE,
             ExternalImageAutomationIntents.GEMINI_ALTERNATE_PACKAGE,
         ),
-        requiredProfileVersion = TaskerImageProfileCompatibility.GEMINI_PROFILE_VERSION,
         imageAutomationSupported = true,
     ),
     CHATGPT(
         wireName = "chatgpt",
         label = "ChatGPT",
         packageNames = listOf(ExternalImageAutomationIntents.CHATGPT_PACKAGE),
-        requiredProfileVersion = TaskerImageProfileCompatibility.CHATGPT_PROFILE_VERSION,
         imageAutomationSupported = true,
     ),
     NONE(
         wireName = "none",
         label = "Voice only",
         packageNames = emptyList(),
-        requiredProfileVersion = null,
         imageAutomationSupported = false,
     ),
     ;
@@ -44,16 +40,5 @@ enum class ImageAutomationTarget(
             defaultAssistantPackage in CHATGPT.packageNames -> CHATGPT
             else -> NONE
         }
-    }
-}
-
-object TaskerImageProfileCompatibility {
-    const val GEMINI_PROFILE_VERSION = "gemini-v3"
-    const val CHATGPT_PROFILE_VERSION = "chatgpt-v1"
-
-    fun supports(target: ImageAutomationTarget, importedTarget: String?, importedVersion: String?): Boolean {
-        return target.imageAutomationSupported &&
-            importedTarget == target.wireName &&
-            importedVersion == target.requiredProfileVersion
     }
 }

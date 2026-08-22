@@ -15,22 +15,10 @@ data class ExternalImageAutomationSession(
 )
 
 object ExternalImageAutomationIntents {
-    const val TASKER_PACKAGE = "net.dinglisch.android.taskerm"
-    const val AUTO_INPUT_PACKAGE = "com.joaomgcd.autoinput"
     const val GEMINI_PACKAGE = "com.google.android.googlequicksearchbox"
     const val GEMINI_ALTERNATE_PACKAGE = "com.google.android.apps.bard"
     const val CHATGPT_PACKAGE = "com.openai.chatgpt"
 
-    const val EXTRA_STATUS = "status"
-    const val EXTRA_ERROR = "error"
-    const val EXTRA_PROFILE_TARGET = "profile_target"
-    const val EXTRA_PROFILE_VERSION = "profile_version"
-    const val EXTRA_PROFILE_TOKEN = "profile_token"
-
-    fun assistantEventAction(packageName: String): String = "$packageName.AI_EVENT"
-    fun statusAction(packageName: String): String = "$packageName.AI_IMAGE_STATUS"
-    fun profileAction(packageName: String): String = "$packageName.AI_IMAGE_PROFILE"
-    fun internalStatusAction(packageName: String): String = "$packageName.AI_IMAGE_STATUS_UPDATED"
 }
 
 /** Persists enough state to diagnose callbacks after Gemini has taken the foreground. */

@@ -32,7 +32,7 @@ class ExternalAssistantAutomationPolicyTest {
     }
 
     @Test
-    fun lockedPhoneStillAllowsBackgroundVoiceTaskerHandoff() {
+    fun lockedPhoneStillAllowsVoiceHandoff() {
         val capability = readyCapability(ImageAutomationTarget.GEMINI).copy(phoneLocked = true)
 
         assertNull(ExternalAssistantAutomationPolicy.voiceBlockingReason(capability))
@@ -43,26 +43,17 @@ class ExternalAssistantAutomationPolicyTest {
     }
 
     @Test
-    fun imageRequiresAutoInputButVoiceDoesNot() {
-        val capability = readyCapability(ImageAutomationTarget.GEMINI).copy(
-            autoInputInstalled = false,
-            autoInputAccessibilityEnabled = false,
-        )
+    fun imageUsesAdAccessibility() {
+        val capability = readyCapability(ImageAutomationTarget.GEMINI)
 
         assertNull(ExternalAssistantAutomationPolicy.voiceBlockingReason(capability))
-        assertEquals(
-            "Install AutoInput and complete Gemini / ChatGPT automation setup first.",
-            ExternalAssistantAutomationPolicy.imageBlockingReason(capability),
-        )
+        assertNull(ExternalAssistantAutomationPolicy.imageBlockingReason(capability))
     }
 
     private fun readyCapability(target: ImageAutomationTarget) = ExternalAssistantAutomationCapability(
         target = target,
         targetPackage = target.packageNames.firstOrNull(),
-        taskerInstalled = true,
-        autoInputInstalled = true,
-        autoInputAccessibilityEnabled = true,
-        profileCompatible = true,
+        adAccessibilityConnected = true,
         imageShareAvailable = true,
         phoneLocked = false,
     )

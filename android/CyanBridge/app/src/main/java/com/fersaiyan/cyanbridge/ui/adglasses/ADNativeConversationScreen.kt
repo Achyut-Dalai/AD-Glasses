@@ -1,5 +1,7 @@
 package com.fersaiyan.cyanbridge.ui.adglasses
 
+import android.content.Context
+import android.content.Intent
 import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.RepeatMode
 import androidx.compose.animation.core.animateFloat
@@ -31,6 +33,7 @@ import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.ArrowForward
+import androidx.compose.material.icons.outlined.ChatBubbleOutline
 import androidx.compose.material.icons.outlined.Public
 import androidx.compose.material.icons.outlined.Terminal
 import androidx.compose.material.icons.rounded.Add
@@ -64,11 +67,16 @@ import com.fersaiyan.cyanbridge.ai.orchestrator.AssistantConversationSession
 import com.fersaiyan.cyanbridge.ai.orchestrator.AssistantInputSurface
 import com.fersaiyan.cyanbridge.ai.orchestrator.AssistantOrchestrator
 import com.fersaiyan.cyanbridge.ai.orchestrator.AssistantTurn
+import com.fersaiyan.cyanbridge.ai.image.DefaultAssistantResolver
+import com.fersaiyan.cyanbridge.ai.image.ExternalAssistantAccessibilityAutomation
+import com.fersaiyan.cyanbridge.ai.image.ExternalAssistantAutomationInspector
+import com.fersaiyan.cyanbridge.ai.image.ImageAutomationTarget
 import com.fersaiyan.cyanbridge.audio.MeetingCapturePrefs
 import com.fersaiyan.cyanbridge.chat.ChatStore
 import com.fersaiyan.cyanbridge.localagent.AudioSessionCoordinator
 import com.fersaiyan.cyanbridge.shared.chat.ChatMessage
 import com.fersaiyan.cyanbridge.shared.chat.ChatRole
+import com.fersaiyan.cyanbridge.shared.glasses.GlassesAssistantMode
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
@@ -85,6 +93,14 @@ internal fun ADNativeConversationScreen(
     val composerFocusRequester = remember { FocusRequester() }
     val keyboardController = LocalSoftwareKeyboardController.current
     val session = remember(context) { AssistantConversationSession.get(context) }
+    val phoneAssistantMode = LocalAgentPrefs.getGlassesAssistantMode(context) ==
+        GlassesAssistantMode.PHONE_ASSISTANT
+    val externalTarget = if (phoneAssistantMode) {
+        ImageAutomationTarget.forDefaultAssistant(DefaultAssistantResolver.packageName(context))
+    } else {
+        ImageAutomationTarget.NONE
+    }
+    val internalProvider = LocalAgentPrefs.getProviderType(context)
     val orchestrator = remember(context) {
         AssistantOrchestrator(
             context = context,
@@ -99,6 +115,7 @@ internal fun ADNativeConversationScreen(
     var sending by remember { mutableStateOf(false) }
     var pendingPrompt by remember { mutableStateOf<String?>(null) }
     var errorText by remember { mutableStateOf<String?>(null) }
+    var lastFailedPrompt by remember { mutableStateOf<String?>(null) }
     var aiAudioActive by remember { mutableStateOf(AudioSessionCoordinator.isBusy()) }
     var recordingActive by remember { mutableStateOf(MeetingCapturePrefs.getState(context).isRecording) }
 
@@ -133,6 +150,7 @@ internal fun ADNativeConversationScreen(
         webSearch = false
         pendingPrompt = null
         errorText = null
+        lastFailedPrompt = null
         scope.launch {
             delay(80)
             focusComposer()
@@ -142,24 +160,42 @@ internal fun ADNativeConversationScreen(
     fun send() {
         val prompt = message.trim()
         if (prompt.isEmpty() || sending) return
+        if (phoneAssistantMode) {
+            message = ""
+            webSearch = false
+            sending = true
+            errorText = null
+            lastFailedPrompt = null
+            scope.launch {
+                handOffTextToPhoneAssistant(context, prompt).onFailure { error ->
+                    errorText = error.message ?: "Couldn’t send that prompt to the assistant app."
+                    lastFailedPrompt = prompt
+                    message = prompt
+                }
+                sending = false
+            }
+            return
+        }
         val useWeb = webSearch
         message = ""
         webSearch = false
         pendingPrompt = prompt
         sending = true
         errorText = null
+        lastFailedPrompt = null
         scope.launch {
             runCatching {
                 orchestrator.handle(
                     turn = AssistantTurn(
                         text = prompt,
                         surface = AssistantInputSurface.PHONE_TEXT,
-                        webRequested = if (useWeb) true else null,
+                        webRequested = useWeb,
                     ),
-                    providerType = LocalAgentPrefs.getProviderType(context),
+                    providerType = internalProvider,
                 )
             }.onFailure { error ->
                 errorText = error.message ?: "Couldn’t finish that request."
+                lastFailedPrompt = prompt
             }
             pendingPrompt = null
             sending = false
@@ -233,21 +269,25 @@ internal fun ADNativeConversationScreen(
                 contentAlignment = Alignment.Center,
             ) {
                 Icon(
-                    Icons.Outlined.Terminal,
+                    Icons.Outlined.ChatBubbleOutline,
                     contentDescription = null,
                     tint = ADColors.Ink,
                     modifier = Modifier.size(18.dp),
                 )
             }
             Column(Modifier.padding(start = 9.dp).weight(1f)) {
-                Text("Prompt", style = MaterialTheme.typography.titleLarge)
+                Text("Chats", style = MaterialTheme.typography.titleLarge)
                 Text(
-                    "Ask AI from your phone or glasses",
+                    if (phoneAssistantMode) {
+                        "Opens ${externalTarget.label}; that app owns the reply"
+                    } else {
+                        "AD-owned ${internalProvider.label} conversation"
+                    },
                     style = MaterialTheme.typography.bodySmall,
                     color = ADColors.Muted,
                 )
             }
-            if (messages.isNotEmpty() || pendingPrompt != null) {
+            if (!phoneAssistantMode && (messages.isNotEmpty() || pendingPrompt != null)) {
                 Surface(color = ADColors.SurfaceSubtle, shape = RoundedCornerShape(12.dp)) {
                     Row(
                         modifier = Modifier
@@ -276,6 +316,12 @@ internal fun ADNativeConversationScreen(
             ADLiveAudioState(recording = recordingActive)
         }
 
+        ADConversationRouteDisclosure(
+            phoneAssistantMode = phoneAssistantMode,
+            externalTarget = externalTarget,
+            internalProviderName = internalProvider.label,
+        )
+
         LazyColumn(
             state = listState,
             modifier = Modifier.weight(1f).fillMaxWidth(),
@@ -287,34 +333,46 @@ internal fun ADNativeConversationScreen(
             ),
             verticalArrangement = Arrangement.spacedBy(12.dp),
         ) {
-            if (messages.isEmpty() && pendingPrompt == null) {
+            if ((phoneAssistantMode || messages.isEmpty()) && pendingPrompt == null) {
                 item(key = "empty") {
-                    ADConversationEmptyState(onSuggestion = ::useSuggestion)
+                    ADConversationEmptyState(
+                        externalAppName = externalTarget.label.takeIf { phoneAssistantMode },
+                        onSuggestion = ::useSuggestion,
+                    )
                 }
             }
 
-            items(messages, key = { it.id }) { chatMessage ->
-                ADConversationTurn(chatMessage)
-            }
-
-            pendingPrompt?.takeUnless { pendingAlreadyPersisted }?.let { prompt ->
-                item(key = "pending-user") {
-                    ADUserTurn(prompt)
+            if (!phoneAssistantMode) {
+                items(messages, key = { it.id }) { chatMessage ->
+                    ADConversationTurn(chatMessage)
                 }
-            }
 
-            if (pendingPrompt != null) {
-                item(key = "pending-reply") {
-                    ADAssistantThinking()
+                pendingPrompt?.takeUnless { pendingAlreadyPersisted }?.let { prompt ->
+                    item(key = "pending-user") {
+                        ADUserTurn(prompt)
+                    }
+                }
+
+                if (pendingPrompt != null) {
+                    item(key = "pending-reply") {
+                        ADAssistantThinking()
+                    }
                 }
             }
 
             errorText?.let { error ->
                 item(key = "error") {
-                    Box(
+                    Column(
                         modifier = Modifier
                             .fillMaxWidth()
                             .background(ADColors.ErrorSoft, RoundedCornerShape(12.dp))
+                            .clickable(enabled = lastFailedPrompt != null) {
+                                lastFailedPrompt?.let { failed ->
+                                    message = failed
+                                    errorText = null
+                                    focusComposer()
+                                }
+                            }
                             .padding(horizontal = 12.dp, vertical = 8.dp),
                     ) {
                         Text(
@@ -322,6 +380,13 @@ internal fun ADNativeConversationScreen(
                             style = MaterialTheme.typography.bodyMedium,
                             color = ADColors.Error,
                         )
+                        if (lastFailedPrompt != null) {
+                            Text(
+                                "Tap to put the same request back in the composer. AD never switches providers automatically.",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = ADColors.Error,
+                            )
+                        }
                     }
                 }
             }
@@ -331,10 +396,40 @@ internal fun ADNativeConversationScreen(
             message = message,
             onMessageChange = { message = it },
             webSearch = webSearch,
+            phoneAssistantMode = phoneAssistantMode,
+            externalAppName = externalTarget.label,
             sending = sending,
             focusRequester = composerFocusRequester,
             onSend = ::send,
         )
+    }
+}
+
+@Composable
+private fun ADConversationRouteDisclosure(
+    phoneAssistantMode: Boolean,
+    externalTarget: ImageAutomationTarget,
+    internalProviderName: String,
+) {
+    val title = if (phoneAssistantMode) {
+        "${externalTarget.label} app handoff"
+    } else {
+        "$internalProviderName · AD-owned reply"
+    }
+    val detail = if (phoneAssistantMode) {
+        "The assistant app keeps context and speaks. AD does not receive or save its answer."
+    } else {
+        "AD receives the text, speaks it through Android TTS, and removes this conversation after 7 days."
+    }
+    Surface(
+        modifier = Modifier.fillMaxWidth().padding(horizontal = 14.dp, vertical = 3.dp),
+        shape = RoundedCornerShape(13.dp),
+        color = if (phoneAssistantMode) ADColors.SurfaceSubtle else ADColors.BlueSoft,
+    ) {
+        Column(Modifier.padding(horizontal = 11.dp, vertical = 8.dp)) {
+            Text(title, style = MaterialTheme.typography.labelLarge, color = ADColors.Ink)
+            Text(detail, style = MaterialTheme.typography.bodySmall, color = ADColors.Muted)
+        }
     }
 }
 
@@ -367,6 +462,7 @@ private fun ADLiveAudioState(recording: Boolean) {
 
 @Composable
 private fun ADConversationEmptyState(
+    externalAppName: String? = null,
     onSuggestion: (String, Boolean) -> Unit,
 ) {
     Column(
@@ -380,17 +476,24 @@ private fun ADConversationEmptyState(
             contentAlignment = Alignment.Center,
         ) {
             Icon(
-                Icons.Outlined.Terminal,
+                Icons.Outlined.ChatBubbleOutline,
                 contentDescription = null,
                 tint = ADColors.Ink,
                 modifier = Modifier.size(24.dp),
             )
         }
         Spacer(Modifier.size(10.dp))
-        Text("What do you want to know?", style = MaterialTheme.typography.titleLarge)
+        Text(
+            if (externalAppName != null) "Continue in $externalAppName" else "What do you want to know?",
+            style = MaterialTheme.typography.titleLarge,
+        )
         Spacer(Modifier.size(4.dp))
         Text(
-            "Ask AI anything, use web search when freshness matters, or continue a request started on your glasses.",
+            if (externalAppName != null) {
+                "Sending opens the assistant app. Its reply, voice and conversation stay there."
+            } else {
+                "Ask AD anything, explicitly request web only when using a configured cloud route, or continue a glasses request."
+            },
             style = MaterialTheme.typography.bodySmall,
             color = ADColors.Muted,
             textAlign = TextAlign.Center,
@@ -402,8 +505,11 @@ private fun ADConversationEmptyState(
             verticalArrangement = Arrangement.spacedBy(7.dp),
         ) {
             ADPromptSuggestion("What did I capture today?") { onSuggestion("What did I capture today?", false) }
-            ADPromptSuggestion("Search the web for something current", web = true) {
-                onSuggestion("Search the web for ", true)
+            ADPromptSuggestion(
+                if (externalAppName != null) "Ask about something current" else "Search the web for something current",
+                web = externalAppName == null,
+            ) {
+                onSuggestion(if (externalAppName != null) "What's current about " else "Search the web for ", externalAppName == null)
             }
             ADPromptSuggestion("Help me plan something") { onSuggestion("Help me plan ", false) }
         }
@@ -431,7 +537,7 @@ private fun ADPromptSuggestion(
             contentAlignment = Alignment.Center,
         ) {
             Icon(
-                if (web) Icons.Outlined.Public else Icons.Outlined.Terminal,
+                if (web) Icons.Outlined.Public else Icons.Outlined.ChatBubbleOutline,
                 contentDescription = null,
                 tint = ADColors.Ink,
                 modifier = Modifier.size(15.dp),
@@ -578,6 +684,8 @@ private fun ADConversationComposer(
     message: String,
     onMessageChange: (String) -> Unit,
     webSearch: Boolean,
+    phoneAssistantMode: Boolean,
+    externalAppName: String,
     sending: Boolean,
     focusRequester: FocusRequester,
     onSend: () -> Unit,
@@ -625,7 +733,11 @@ private fun ADConversationComposer(
                         Box(contentAlignment = Alignment.CenterStart) {
                             if (message.isBlank()) {
                                 Text(
-                                    if (webSearch) "Search the web" else "Ask AI…",
+                                    when {
+                                        phoneAssistantMode -> "Open $externalAppName with a prompt…"
+                                        webSearch -> "Search the web"
+                                        else -> "Ask AD…"
+                                    },
                                     style = MaterialTheme.typography.bodyMedium,
                                     color = ADColors.Muted,
                                 )
@@ -653,6 +765,31 @@ private fun ADConversationComposer(
             }
         }
     }
+}
+
+private suspend fun handOffTextToPhoneAssistant(context: Context, prompt: String): Result<Unit> = runCatching {
+    val capability = ExternalAssistantAutomationInspector.inspect(context)
+    val targetPackage = capability.targetPackage
+        ?: error("Set an installed Gemini or ChatGPT app as Android's default assistant first.")
+    check(capability.target != ImageAutomationTarget.NONE) {
+        "Set Gemini or ChatGPT as Android's default assistant first."
+    }
+    check(capability.adAccessibilityConnected) {
+        "Enable AD Glasses accessibility access to submit typed prompts to ${capability.target.label}."
+    }
+    val intent = Intent(Intent.ACTION_ASSIST).apply {
+        setPackage(targetPackage)
+        addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+    }
+    check(intent.resolveActivity(context.packageManager) != null) {
+        "${capability.target.label} cannot open its assistant screen on this phone."
+    }
+    context.startActivity(intent)
+    ExternalAssistantAccessibilityAutomation.fillAndSend(
+        target = capability.target,
+        targetPackage = targetPackage,
+        question = prompt,
+    ).getOrThrow()
 }
 
 private const val CONVERSATION_REFRESH_MS = 1_250L

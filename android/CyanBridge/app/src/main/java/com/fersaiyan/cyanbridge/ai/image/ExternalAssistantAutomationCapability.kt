@@ -1,31 +1,23 @@
 package com.fersaiyan.cyanbridge.ai.image
 
 import android.app.KeyguardManager
-import android.content.ComponentName
 import android.content.Context
 import android.content.Intent
 import android.os.Build
-import android.provider.Settings
 
 data class ExternalAssistantAutomationCapability(
     val target: ImageAutomationTarget,
     val targetPackage: String?,
-    val taskerInstalled: Boolean,
-    val autoInputInstalled: Boolean,
-    val autoInputAccessibilityEnabled: Boolean,
-    val profileCompatible: Boolean,
+    val adAccessibilityConnected: Boolean,
     val imageShareAvailable: Boolean,
     val phoneLocked: Boolean,
 )
 
 object ExternalAssistantAutomationPolicy {
-    /**
-     * Voice Tasker handoff is a background broadcast path. Any Tasker profile can
-     * listen for the AD Glasses event directly, so there is no assistant-app,
-     * imported-profile, AutoInput, share-target, screen or unlock dependency.
-     */
     fun voiceBlockingReason(capability: ExternalAssistantAutomationCapability): String? = when {
-        !capability.taskerInstalled -> "Install Tasker to use the background Tasker route."
+        capability.target == ImageAutomationTarget.NONE ->
+            "Set Gemini or ChatGPT as your phone's default assistant first."
+        capability.targetPackage == null -> "Install or update ${capability.target.label} first."
         else -> null
     }
 
@@ -34,16 +26,10 @@ object ExternalAssistantAutomationPolicy {
             "Set Gemini or ChatGPT as your phone's default assistant first."
         capability.targetPackage == null ->
             "Install or update ${capability.target.label} first."
-        !capability.taskerInstalled ->
-            "Install Tasker and complete Gemini / ChatGPT automation setup first."
-        !capability.profileCompatible ->
-            "Import and verify the ${capability.target.label} CyanBridge Tasker profile first."
         capability.phoneLocked ->
             "Unlock your phone before using external image automation."
-        !capability.autoInputInstalled ->
-            "Install AutoInput and complete Gemini / ChatGPT automation setup first."
-        !capability.autoInputAccessibilityEnabled ->
-            "Enable AutoInput accessibility before using external image questions."
+        !capability.adAccessibilityConnected ->
+            "Enable AD Glasses accessibility access for assistant image handoff."
         !capability.imageShareAvailable ->
             "${capability.target.label} cannot receive image shares on this phone."
         else -> null
@@ -57,14 +43,7 @@ object ExternalAssistantAutomationInspector {
         return ExternalAssistantAutomationCapability(
             target = target,
             targetPackage = targetPackage,
-            taskerInstalled = isPackageInstalled(context, ExternalImageAutomationIntents.TASKER_PACKAGE),
-            autoInputInstalled = isPackageInstalled(context, ExternalImageAutomationIntents.AUTO_INPUT_PACKAGE),
-            autoInputAccessibilityEnabled = isAutoInputAccessibilityEnabled(context),
-            profileCompatible = TaskerImageProfileCompatibility.supports(
-                target = target,
-                importedTarget = TaskerImageProfileStore.target(context),
-                importedVersion = TaskerImageProfileStore.version(context),
-            ),
+            adAccessibilityConnected = com.fersaiyan.cyanbridge.localagent.LocalAgentAccessibilityBridge.isConnected(),
             imageShareAvailable = targetPackage?.let { canResolveImageShare(context, it) } == true,
             phoneLocked = isDeviceLocked(context),
         )
@@ -79,12 +58,6 @@ object ExternalAssistantAutomationInspector {
     private fun canResolveImageShare(context: Context, packageName: String): Boolean {
         val intent = Intent(Intent.ACTION_SEND).apply { type = "image/jpeg"; setPackage(packageName) }
         return intent.resolveActivity(context.packageManager) != null
-    }
-
-    private fun isAutoInputAccessibilityEnabled(context: Context): Boolean {
-        if (Settings.Secure.getInt(context.contentResolver, Settings.Secure.ACCESSIBILITY_ENABLED, 0) != 1) return false
-        val enabled = Settings.Secure.getString(context.contentResolver, Settings.Secure.ENABLED_ACCESSIBILITY_SERVICES).orEmpty()
-        return enabled.split(':').mapNotNull(ComponentName::unflattenFromString).any { it.packageName == ExternalImageAutomationIntents.AUTO_INPUT_PACKAGE }
     }
 
     private fun isDeviceLocked(context: Context): Boolean {

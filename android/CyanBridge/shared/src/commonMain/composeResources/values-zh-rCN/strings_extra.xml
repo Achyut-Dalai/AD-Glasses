@@ -34,7 +34,7 @@
     <string name="settings_bluetooth_mic">蓝牙麦克风</string>
     <string name="settings_phone_mic">手机麦克风</string>
     <string name="settings_detecting_audio_source">正在检测音频来源</string>
-    <string name="settings_provider_description">Choose between Tasker, on-device models, or your configured Cloud AI relay.</string>
+    <string name="settings_provider_description">Choose on-device Local AI or an explicitly configured Cloud AI route.</string>
     <string name="settings_configure_local_models">配置本地模型</string>
     <string name="settings_current_mode">当前模式：%1$s</string>
     <string name="settings_sync_eligibility">同步内容</string>
@@ -353,7 +353,7 @@
     <string name="dashboard_limits_unavailable">加载设置以查看这些眼镜支持的限制。</string>
     <string name="dashboard_ai_assistant">AI 助手</string>
     <string name="dashboard_phone_assistant">手机助手</string>
-    <string name="dashboard_custom_provider">Local / Cloud AI / Tasker</string>
+    <string name="dashboard_custom_provider">AD Local / Cloud AI</string>
     <string name="dashboard_test_voice">测试语音</string>
     <string name="dashboard_gemini_chatgpt_setup">Gemini / ChatGPT 自动化设置</string>
     <string name="dashboard_meizu_title">Meizu MYVU / Star Air</string>
@@ -415,7 +415,6 @@
     <string name="dashboard_ota_idle">空闲</string>
     <string name="dashboard_ota_complete">已完成</string>
 
-    <string name="provider_tasker">Tasker</string>
     <string name="provider_local">本地</string>
     <string name="provider_pro">Cloud AI</string>
     <string name="memory_private_local">本地私密</string>

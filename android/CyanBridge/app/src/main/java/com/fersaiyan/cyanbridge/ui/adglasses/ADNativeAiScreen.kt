@@ -31,6 +31,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -40,6 +41,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalLifecycleOwner
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -49,14 +51,18 @@ import com.fersaiyan.cyanbridge.ai.orchestrator.AssistantCapability
 import com.fersaiyan.cyanbridge.ai.orchestrator.AssistantCapabilityAction
 import com.fersaiyan.cyanbridge.ai.orchestrator.AssistantCapabilityCommand
 import com.fersaiyan.cyanbridge.ai.orchestrator.AssistantCapabilityRuntimeEvents
+import com.fersaiyan.cyanbridge.ai.orchestrator.AssistantConversationSession
+import com.fersaiyan.cyanbridge.ai.image.DefaultAssistantResolver
+import com.fersaiyan.cyanbridge.ai.image.ImageAutomationTarget
 import com.fersaiyan.cyanbridge.ai.router.AiProviderPrefs
 import com.fersaiyan.cyanbridge.ai.router.AiProviderType
-import com.fersaiyan.cyanbridge.ai.router.CliRelayBackend
 import com.fersaiyan.cyanbridge.shared.glasses.GlassesAssistantMode
 import com.fersaiyan.cyanbridge.shared.settings.AgentProviderType
 import com.fersaiyan.cyanbridge.ui.hasAccessibilityServicePermission
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.LifecycleEventObserver
 
-enum class ADAiChoice { GEMINI, OPENAI_CODEX, LOCAL }
+enum class ADAiChoice { GEMINI_APP, CHATGPT_APP, LOCAL, CLOUD }
 
 private enum class ADSkillArtwork {
     TIMELINE,
@@ -70,28 +76,64 @@ internal fun ADNativeAiScreen(
     onAssistantApps: () -> Unit,
 ) {
     val context = LocalContext.current
+    val lifecycleOwner = LocalLifecycleOwner.current
     val runtimeVersion by AssistantCapabilityRuntimeEvents.version.collectAsState()
     val capabilityExecutor = remember(context, runtimeVersion) { AndroidCapabilityCommandExecutor(context) }
     var selected by remember { mutableStateOf(resolveAiChoice(context)) }
 
+    DisposableEffect(lifecycleOwner, context) {
+        val observer = LifecycleEventObserver { _, event ->
+            if (event == Lifecycle.Event.ON_RESUME) selected = resolveAiChoice(context)
+        }
+        lifecycleOwner.lifecycle.addObserver(observer)
+        onDispose { lifecycleOwner.lifecycle.removeObserver(observer) }
+    }
+
     fun select(choice: ADAiChoice) {
+        val previousMode = LocalAgentPrefs.getGlassesAssistantMode(context)
+        val previousProvider = LocalAgentPrefs.getProviderType(context)
+        var routeApplied = true
         selected = choice
         LocalAgentPrefs.setGlassesAssistantMode(context, GlassesAssistantMode.CUSTOM_AI_PROVIDER)
         when (choice) {
-            ADAiChoice.GEMINI -> {
-                LocalAgentPrefs.setProviderType(context, AgentProviderType.PRO_SUBSCRIPTION)
-                AiProviderPrefs.setProvider(context, AiProviderType.CLI_RELAY)
-                AiProviderPrefs.setRelayBackend(context, CliRelayBackend.GEMINI)
+            ADAiChoice.GEMINI_APP -> {
+                LocalAgentPrefs.setGlassesAssistantMode(context, GlassesAssistantMode.PHONE_ASSISTANT)
+                if (ImageAutomationTarget.forDefaultAssistant(DefaultAssistantResolver.packageName(context)) !=
+                    ImageAutomationTarget.GEMINI
+                ) {
+                    Toast.makeText(context, "Choose Gemini as the Android assistant", Toast.LENGTH_SHORT).show()
+                    runCatching { context.startActivity(Intent(Settings.ACTION_VOICE_INPUT_SETTINGS)) }
+                        .onFailure { context.startActivity(Intent(Settings.ACTION_SETTINGS)) }
+                }
             }
-            ADAiChoice.OPENAI_CODEX -> {
-                LocalAgentPrefs.setProviderType(context, AgentProviderType.PRO_SUBSCRIPTION)
-                AiProviderPrefs.setProvider(context, AiProviderType.CLI_RELAY)
-                AiProviderPrefs.setRelayBackend(context, CliRelayBackend.CODEX)
+            ADAiChoice.CHATGPT_APP -> {
+                LocalAgentPrefs.setGlassesAssistantMode(context, GlassesAssistantMode.PHONE_ASSISTANT)
+                Toast.makeText(context, "Choose ChatGPT as the Android assistant", Toast.LENGTH_SHORT).show()
+                runCatching { context.startActivity(Intent(Settings.ACTION_VOICE_INPUT_SETTINGS)) }
+                    .onFailure { context.startActivity(Intent(Settings.ACTION_SETTINGS)) }
             }
             ADAiChoice.LOCAL -> {
                 LocalAgentPrefs.setProviderType(context, AgentProviderType.LOCAL_AGENT)
                 AiProviderPrefs.setProvider(context, AiProviderType.LOCAL_MODELS)
             }
+            ADAiChoice.CLOUD -> {
+                if (!AiProviderPrefs.isRelayConfigured(context)) {
+                    routeApplied = false
+                    Toast.makeText(context, "Configure your cloud route first", Toast.LENGTH_SHORT).show()
+                    onRelaySettings()
+                } else {
+                    LocalAgentPrefs.setProviderType(context, AgentProviderType.PRO_SUBSCRIPTION)
+                    LocalAgentPrefs.setGlassesAssistantMode(context, GlassesAssistantMode.CUSTOM_AI_PROVIDER)
+                    AiProviderPrefs.setProvider(context, AiProviderType.CLI_RELAY)
+                }
+            }
+        }
+        if (routeApplied && (
+                previousMode != LocalAgentPrefs.getGlassesAssistantMode(context) ||
+                    previousProvider != LocalAgentPrefs.getProviderType(context)
+                )
+        ) {
+            AssistantConversationSession.get(context).startNewConversation()
         }
     }
 
@@ -119,9 +161,10 @@ internal fun ADNativeAiScreen(
     val automationActive = capabilityExecutor.isActive(AssistantCapability.LOCAL_AGENT)
     val automationReady = hasAccessibilityServicePermission(context)
     val selectedName = when (selected) {
-        ADAiChoice.GEMINI -> "Gemini"
-        ADAiChoice.OPENAI_CODEX -> "OpenAI / Codex"
-        ADAiChoice.LOCAL -> "Local AI"
+        ADAiChoice.GEMINI_APP -> "Gemini app · Gemini speaks"
+        ADAiChoice.CHATGPT_APP -> "ChatGPT app · ChatGPT speaks"
+        ADAiChoice.LOCAL -> "Local AI · AD speaks"
+        ADAiChoice.CLOUD -> "${AiProviderPrefs.getRelayBackend(context).label} cloud · AD speaks"
     }
 
     Column(
@@ -267,7 +310,7 @@ private fun ADAiProviderCard(
                 }
                 Column(Modifier.padding(start = 10.dp).weight(1f)) {
                     Text(
-                        "Selected model",
+                        "Selected route",
                         style = MaterialTheme.typography.labelSmall,
                         color = ADColors.Surface.copy(alpha = 0.62f),
                     )
@@ -282,14 +325,17 @@ private fun ADAiProviderCard(
             }
             Spacer(Modifier.height(9.dp))
             Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                ADAiProviderPill("Gemini", selected == ADAiChoice.GEMINI, Modifier.weight(1f)) {
-                    onSelect(ADAiChoice.GEMINI)
+                ADAiProviderPill("Gemini", selected == ADAiChoice.GEMINI_APP, Modifier.weight(1f)) {
+                    onSelect(ADAiChoice.GEMINI_APP)
                 }
-                ADAiProviderPill("Codex", selected == ADAiChoice.OPENAI_CODEX, Modifier.weight(1f)) {
-                    onSelect(ADAiChoice.OPENAI_CODEX)
+                ADAiProviderPill("ChatGPT", selected == ADAiChoice.CHATGPT_APP, Modifier.weight(1f)) {
+                    onSelect(ADAiChoice.CHATGPT_APP)
                 }
                 ADAiProviderPill("Local", selected == ADAiChoice.LOCAL, Modifier.weight(1f)) {
                     onSelect(ADAiChoice.LOCAL)
+                }
+                ADAiProviderPill("Cloud", selected == ADAiChoice.CLOUD, Modifier.weight(1f)) {
+                    onSelect(ADAiChoice.CLOUD)
                 }
             }
         }
@@ -762,11 +808,16 @@ private fun ADConfigurationCard(
     }
 }
 
-private fun resolveAiChoice(context: android.content.Context): ADAiChoice = when (LocalAgentPrefs.getProviderType(context)) {
-    AgentProviderType.LOCAL_AGENT -> ADAiChoice.LOCAL
-    AgentProviderType.PRO_SUBSCRIPTION -> when (AiProviderPrefs.getRelayBackend(context)) {
-        CliRelayBackend.GEMINI -> ADAiChoice.GEMINI
-        CliRelayBackend.CODEX -> ADAiChoice.OPENAI_CODEX
+private fun resolveAiChoice(context: android.content.Context): ADAiChoice {
+    if (LocalAgentPrefs.getGlassesAssistantMode(context) == GlassesAssistantMode.PHONE_ASSISTANT) {
+        return when (ImageAutomationTarget.forDefaultAssistant(DefaultAssistantResolver.packageName(context))) {
+            ImageAutomationTarget.GEMINI -> ADAiChoice.GEMINI_APP
+            ImageAutomationTarget.CHATGPT -> ADAiChoice.CHATGPT_APP
+            ImageAutomationTarget.NONE -> ADAiChoice.GEMINI_APP
+        }
     }
-    AgentProviderType.TASKER -> ADAiChoice.GEMINI
+    return when (LocalAgentPrefs.getProviderType(context)) {
+        AgentProviderType.LOCAL_AGENT -> ADAiChoice.LOCAL
+        AgentProviderType.PRO_SUBSCRIPTION -> ADAiChoice.CLOUD
+    }
 }

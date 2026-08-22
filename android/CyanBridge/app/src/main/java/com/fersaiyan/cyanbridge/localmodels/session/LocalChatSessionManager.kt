@@ -13,6 +13,7 @@ import com.fersaiyan.cyanbridge.localmodels.engine.LocalInferenceEngine
 import com.fersaiyan.cyanbridge.localmodels.settings.LocalComputeBackend
 import com.fersaiyan.cyanbridge.localmodels.settings.LocalGenerationSettings
 import com.fersaiyan.cyanbridge.localmodels.settings.LocalModelRuntime
+import com.fersaiyan.cyanbridge.localmodels.settings.LocalModelSettingsRepository
 import com.fersaiyan.cyanbridge.localmodels.provider.LocalModelRequestPriority
 import com.fersaiyan.cyanbridge.localmodels.storage.InstalledLocalModel
 import com.fersaiyan.cyanbridge.localmodels.storage.LocalModelStorageRepository
@@ -64,7 +65,7 @@ object LocalChatSessionManager {
     private const val TOKEN_GUARD_SAFETY_MARGIN = 1
 
     private val mutex = Mutex()
-    private val generationMutex = Mutex()
+    private val operationGate = LocalModelOperationGate()
 
     private var engine: LocalInferenceEngine? = null
     private var loadedModelId: String? = null
@@ -96,7 +97,8 @@ object LocalChatSessionManager {
         catalogEntry: LocalModelCatalogEntry?,
         settings: LocalGenerationSettings,
     ): LocalModelLoadDetails {
-        return mutex.withLock {
+        return operationGate.withExclusiveOperation {
+            mutex.withLock {
             Log.i(
                 TAG,
                 "ensureModelLoaded model=${model.displayName} runtime=${settings.modelRuntime} backend=${settings.computeBackend} context=${settings.contextSize} gpuLayers=${settings.gpuLayers}",
@@ -120,7 +122,7 @@ object LocalChatSessionManager {
                 quantization = model.quantization ?: "unknown",
                 contextSizeDefault = settings.contextSize,
                 promptTemplateId = model.promptTemplateId ?: "generic_chatml",
-                minRamGb = 4.0,
+                minRamGb = DeviceCapabilityService.recommendedMinRamGbForModelBytes(model.sizeBytes),
                 minStorageGb = 1.0,
                 shortDescription = "Imported GGUF model",
                 tags = listOf("offline"),
@@ -199,15 +201,16 @@ object LocalChatSessionManager {
             loadedConfig = loadConfig
             state = LocalSessionState.Ready(model.id)
 
-            return@withLock LocalModelLoadDetails(
-                activeBackend = activeBackend ?: settings.computeBackend,
-                activeGpuLayers = if (activeBackend == LocalComputeBackend.GPU || activeBackend == LocalComputeBackend.NPU_EXPERIMENTAL) {
-                    activeGpuLayers
-                } else {
-                    0
-                },
-                fallbackReason = gpuFallbackMessage,
-            )
+                return@withLock LocalModelLoadDetails(
+                    activeBackend = activeBackend ?: settings.computeBackend,
+                    activeGpuLayers = if (activeBackend == LocalComputeBackend.GPU || activeBackend == LocalComputeBackend.NPU_EXPERIMENTAL) {
+                        activeGpuLayers
+                    } else {
+                        0
+                    },
+                    fallbackReason = gpuFallbackMessage,
+                )
+            }
         }
     }
 
@@ -247,8 +250,6 @@ object LocalChatSessionManager {
         maxTokensOverride: Int? = null,
     ): GenerationResult {
         val reqId = UUID.randomUUID().toString()
-        val llm: LocalInferenceEngine
-        val modelId: String
 
         Log.i(
             TAG,
@@ -261,32 +262,54 @@ object LocalChatSessionManager {
             }
         }
 
-        mutex.withLock {
-            llm = engine ?: throw IllegalStateException("Local engine not initialized")
-            modelId = loadedModelId ?: throw IllegalStateException("No local model loaded")
-        }
-
         if (requestPriority == LocalModelRequestPriority.LOW) {
             waitForHighPriorityRequestsToDrain()
         }
 
         var highPendingConsumed = false
         try {
-            return generationMutex.withLock {
-                mutex.withLock {
+            return operationGate.withExclusiveOperation {
+                val (llm, modelId, contextTokens) = mutex.withLock {
                     if (requestPriority == LocalModelRequestPriority.HIGH) {
                         pendingHighPriorityRequests = (pendingHighPriorityRequests - 1).coerceAtLeast(0)
                         highPendingConsumed = true
                     }
+                    val currentEngine = engine
+                        ?: throw IllegalStateException("Local engine not initialized")
+                    val currentModelId = loadedModelId
+                        ?: throw IllegalStateException("No local model loaded")
                     lastGenerationCappedByMaxTokens = false
                     activeRequestId = reqId
                     activeRequestPriority = requestPriority
-                    state = LocalSessionState.Generating(modelId, reqId)
+                    state = LocalSessionState.Generating(currentModelId, reqId)
+                    Triple(
+                        currentEngine,
+                        currentModelId,
+                        loadedConfig?.contextSize ?: settings.contextSize,
+                    )
                 }
 
                 val result = runCatching {
                     withContext(Dispatchers.IO) {
-                        val maxTokens = (maxTokensOverride ?: settings.maxTokens).coerceAtLeast(1)
+                        val requestedMaxTokens = (maxTokensOverride ?: settings.maxTokens).coerceAtLeast(1)
+                        val promptTokens = runCatching {
+                            llm.tokenizeCount(prompt).coerceAtLeast(1)
+                        }.getOrElse {
+                            Log.w(TAG, "Tokenizer count failed; using conservative estimate", it)
+                            estimateApproxTokens(prompt).coerceAtLeast(1)
+                        }
+                        val budget = LocalContextBudgetPolicy.resolve(
+                            contextTokens = contextTokens.coerceAtLeast(1),
+                            promptTokens = promptTokens,
+                            requestedOutputTokens = requestedMaxTokens,
+                        )
+                        val maxTokens = budget.effectiveOutputTokens
+                        if (budget.wasOutputClamped) {
+                            Log.i(
+                                TAG,
+                                "Clamped local output requestId=$reqId requested=${budget.requestedOutputTokens} effective=$maxTokens prompt=${budget.promptTokens} context=${budget.contextTokens} reserved=${budget.reservedHeadroomTokens}",
+                            )
+                        }
                         val streamedText = StringBuilder()
                         var approxGeneratedTokens = 0
                         var guardTriggered = false
@@ -398,24 +421,57 @@ object LocalChatSessionManager {
     }
 
     suspend fun cancelActiveGeneration() {
-        val llm = mutex.withLock { engine } ?: return
+        val llm = mutex.withLock {
+            if (activeRequestId == null) null else engine
+        } ?: return
         Log.i(TAG, "Cancelling active local generation")
         runCatching { llm.cancelGeneration() }
     }
 
     suspend fun unload() {
-        mutex.withLock {
-            Log.i(TAG, "Unloading local chat session modelId=${loadedModelId.orEmpty()}")
-            runCatching { engine?.unloadModel() }
-            loadedModelId = null
-            loadedModelPath = null
-            loadedConfig = null
-            activeBackend = null
-            activeGpuLayers = 0
-            gpuFallbackMessage = null
-            activeRequestId = null
-            state = LocalSessionState.ModelNotLoaded
+        operationGate.withExclusiveOperation {
+            mutex.withLock {
+                Log.i(TAG, "Unloading local chat session modelId=${loadedModelId.orEmpty()}")
+                unloadEngineAndClearStateLocked()
+            }
         }
+    }
+
+    /**
+     * Removes an installed model only after any active native-engine operation has finished.
+     * Callers should use this instead of deleting model files through the storage repository.
+     */
+    suspend fun removeInstalledModel(context: Context, modelId: String): Boolean {
+        return operationGate.withExclusiveOperation {
+            mutex.withLock {
+                if (loadedModelId == modelId) {
+                    Log.i(TAG, "Unloading local model before removal modelId=$modelId")
+                    unloadEngineAndClearStateLocked()
+                }
+            }
+            val removed = withContext(Dispatchers.IO) {
+                LocalModelStorageRepository.removeInstalled(context, modelId)
+            }
+            if (removed) {
+                LocalModelSettingsRepository.clearForModel(context, modelId)
+            }
+            removed
+        }
+    }
+
+    private suspend fun unloadEngineAndClearStateLocked() {
+        runCatching { engine?.unloadModel() }
+            .onFailure { Log.w(TAG, "Local engine unload failed", it) }
+        loadedModelId = null
+        loadedModelPath = null
+        loadedConfig = null
+        activeBackend = null
+        activeGpuLayers = 0
+        gpuFallbackMessage = null
+        activeRequestId = null
+        activeRequestPriority = null
+        lastGenerationCappedByMaxTokens = false
+        state = LocalSessionState.ModelNotLoaded
     }
 
     suspend fun runWarmupProbe(
@@ -429,12 +485,7 @@ object LocalChatSessionManager {
         if (skipGenerationForStability) {
             val benchmarkPrompt = "Reply with only: OK"
             val start = System.currentTimeMillis()
-            val llm = mutex.withLock { engine }
-            val promptTokens = try {
-                llm?.tokenizeCount(benchmarkPrompt)?.coerceAtLeast(1) ?: 1
-            } catch (_: Throwable) {
-                1
-            }
+            val promptTokens = tokenizeWithLoadedModel(benchmarkPrompt)?.coerceAtLeast(1) ?: 1
             val elapsed = (System.currentTimeMillis() - start).coerceAtLeast(1L)
             val fallback = mutex.withLock { gpuFallbackMessage }
             val stabilityNote = "Qwen3.5 warm-up generation skipped due upstream llama.cpp instability"
@@ -478,17 +529,8 @@ object LocalChatSessionManager {
         )
         val elapsed = (System.currentTimeMillis() - start).coerceAtLeast(1L)
 
-        val llm = mutex.withLock { engine }
-        val promptTokens = try {
-            llm?.tokenizeCount(benchmarkPrompt)?.coerceAtLeast(1) ?: 1
-        } catch (_: Throwable) {
-            1
-        }
-        val generatedTokens = try {
-            llm?.tokenizeCount(result.text)?.coerceAtLeast(1)
-        } catch (_: Throwable) {
-            null
-        }
+        val promptTokens = tokenizeWithLoadedModel(benchmarkPrompt)?.coerceAtLeast(1) ?: 1
+        val generatedTokens = tokenizeWithLoadedModel(result.text)?.coerceAtLeast(1)
             ?: result.tokenCount.coerceAtLeast(1)
 
         val fallback = mutex.withLock { gpuFallbackMessage }
@@ -500,6 +542,15 @@ object LocalChatSessionManager {
             backend = backend,
             fallbackReason = fallback,
         )
+    }
+
+    private suspend fun tokenizeWithLoadedModel(text: String): Int? {
+        return operationGate.withExclusiveOperation {
+            val llm = mutex.withLock { engine } ?: return@withExclusiveOperation null
+            runCatching { llm.tokenizeCount(text) }
+                .onFailure { Log.w(TAG, "Local token count failed", it) }
+                .getOrNull()
+        }
     }
 
     private fun isEngineCompatibleWithRuntime(runtime: LocalModelRuntime): Boolean {

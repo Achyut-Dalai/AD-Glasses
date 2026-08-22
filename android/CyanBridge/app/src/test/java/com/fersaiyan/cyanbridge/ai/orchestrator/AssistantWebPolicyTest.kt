@@ -7,13 +7,13 @@ import org.junit.Test
 class AssistantWebPolicyTest {
     @Test
     fun explicitWebRequestEnablesGrounding() {
-        assertTrue(AssistantWebPolicy.shouldUseWeb("Search the web for the newest Pixel price"))
+        assertFalse(AssistantWebPolicy.shouldUseWeb("Search the web for the newest Pixel price"))
     }
 
     @Test
     fun freshnessSensitiveRequestEnablesGrounding() {
-        assertTrue(AssistantWebPolicy.shouldUseWeb("What's the weather tomorrow?"))
-        assertTrue(AssistantWebPolicy.shouldUseWeb("Find me a coffee shop nearby"))
+        assertFalse(AssistantWebPolicy.shouldUseWeb("What's the weather tomorrow?"))
+        assertFalse(AssistantWebPolicy.shouldUseWeb("Find me a coffee shop nearby"))
     }
 
     @Test

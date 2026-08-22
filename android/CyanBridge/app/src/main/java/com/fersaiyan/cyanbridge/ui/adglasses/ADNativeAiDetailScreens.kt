@@ -1,5 +1,6 @@
 package com.fersaiyan.cyanbridge.ui.adglasses
 
+import android.content.Intent
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
@@ -17,16 +18,14 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.CheckCircle
-import androidx.compose.material.icons.outlined.Cloud
-import androidx.compose.material.icons.outlined.Download
 import androidx.compose.material.icons.outlined.Memory
+import androidx.compose.material.icons.outlined.Mic
 import androidx.compose.material.icons.outlined.Storage
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -39,14 +38,19 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.unit.dp
 import com.fersaiyan.cyanbridge.ai.router.AiProviderPrefs
 import com.fersaiyan.cyanbridge.ai.router.AiProviderType
 import com.fersaiyan.cyanbridge.ai.router.CliRelayBackend
+import com.fersaiyan.cyanbridge.agent.LocalAgentPrefs
+import com.fersaiyan.cyanbridge.ai.orchestrator.AssistantConversationSession
+import com.fersaiyan.cyanbridge.ai.transcription.moonshine.MoonshineModelManager
+import com.fersaiyan.cyanbridge.agent.LocalModelsConfigureActivity
 import com.fersaiyan.cyanbridge.localmodels.remote.RemoteOpenAiPrefs
 import com.fersaiyan.cyanbridge.localmodels.storage.InstalledLocalModel
 import com.fersaiyan.cyanbridge.localmodels.storage.LocalModelStorageRepository
+import com.fersaiyan.cyanbridge.shared.glasses.GlassesAssistantMode
+import com.fersaiyan.cyanbridge.shared.settings.AgentProviderType
 import java.util.Locale
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
@@ -58,6 +62,7 @@ internal fun ADNativeRelaySettingsScreen(onBack: () -> Unit) {
     var relayUrl by remember { mutableStateOf(AiProviderPrefs.getRelayBaseUrl(context)) }
     var backend by remember { mutableStateOf(AiProviderPrefs.getRelayBackend(context)) }
     var saved by remember { mutableStateOf(false) }
+    val relayUrlAllowed = RemoteOpenAiPrefs.isCredentialTransportAllowed(relayUrl)
 
     ADPageLayout("Relay", onBack) {
         ADCard {
@@ -94,22 +99,36 @@ internal fun ADNativeRelaySettingsScreen(onBack: () -> Unit) {
 
         Button(
             onClick = {
+                val routeChanged = LocalAgentPrefs.getGlassesAssistantMode(context) !=
+                    GlassesAssistantMode.CUSTOM_AI_PROVIDER ||
+                    LocalAgentPrefs.getProviderType(context) != AgentProviderType.PRO_SUBSCRIPTION
                 AiProviderPrefs.setRelayBaseUrl(context, relayUrl)
                 AiProviderPrefs.setRelayBackend(context, backend)
                 AiProviderPrefs.setProvider(context, AiProviderType.CLI_RELAY)
+                LocalAgentPrefs.setProviderType(context, AgentProviderType.PRO_SUBSCRIPTION)
+                LocalAgentPrefs.setGlassesAssistantMode(context, GlassesAssistantMode.CUSTOM_AI_PROVIDER)
+                if (routeChanged) AssistantConversationSession.get(context).startNewConversation()
                 saved = true
             },
+            enabled = relayUrlAllowed,
             modifier = Modifier.fillMaxWidth().heightIn(min = 46.dp),
             colors = ButtonDefaults.buttonColors(containerColor = ADColors.Ink),
         ) {
-            Text(if (saved) "Saved" else "Save relay")
+            Text(if (saved) "Cloud AI selected" else "Save and use Cloud AI")
         }
 
         Text(
-            "Web Search and remote vision use this relay when those capabilities are requested.",
+            "This is the explicit AD-owned cloud route: the provider returns text to AD, then AD speaks it. Saving never tests or contacts the server.",
             style = MaterialTheme.typography.bodySmall,
             color = ADColors.Muted,
         )
+        if (relayUrl.isNotBlank() && !relayUrlAllowed) {
+            Text(
+                "Use HTTPS, or HTTP only for loopback, LAN, or Tailscale addresses.",
+                style = MaterialTheme.typography.bodySmall,
+                color = ADColors.Error,
+            )
+        }
     }
 }
 
@@ -119,44 +138,14 @@ internal fun ADNativeLocalAiSettingsScreen(onBack: () -> Unit) {
     val scope = rememberCoroutineScope()
     var installed by remember { mutableStateOf(LocalModelStorageRepository.listInstalled(context)) }
     var selectedId by remember { mutableStateOf(LocalModelStorageRepository.getSelectedModelId(context)) }
-    var importStatus by remember { mutableStateOf<String?>(null) }
+    val moonshineKind = remember { MoonshineModelManager.chooseDefault() }
+    var moonshineInstalled by remember { mutableStateOf(MoonshineModelManager.isInstalled(context, moonshineKind)) }
+    var moonshineStatus by remember { mutableStateOf<String?>(null) }
+    var moonshineInstalling by remember { mutableStateOf(false) }
 
-    var remoteEnabled by remember { mutableStateOf(RemoteOpenAiPrefs.isEnabled(context)) }
-    var remoteUrl by remember { mutableStateOf(RemoteOpenAiPrefs.getBaseUrl(context)) }
-    var remoteModel by remember { mutableStateOf(RemoteOpenAiPrefs.getModel(context)) }
-    var remoteApiKey by remember { mutableStateOf(RemoteOpenAiPrefs.getApiKey(context)) }
-    var remoteSaved by remember { mutableStateOf(false) }
-
-    val importLauncher = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) { uri ->
-        if (uri == null) return@rememberLauncherForActivityResult
-        importStatus = "Importing…"
-        scope.launch {
-            val result = runCatching {
-                withContext(Dispatchers.IO) {
-                    val sourceName = uri.lastPathSegment
-                        ?.substringAfterLast('/')
-                        ?.takeIf { it.isNotBlank() }
-                        ?: "local-model.bin"
-                    val managedFile = LocalModelStorageRepository.copyUriToManagedModelFile(
-                        context = context,
-                        uri = uri,
-                        preferredName = sourceName,
-                    )
-                    LocalModelStorageRepository.registerImportedModel(
-                        context = context,
-                        displayName = sourceName.substringBeforeLast('.').ifBlank { sourceName },
-                        file = managedFile,
-                    )
-                }
-            }
-            result.onSuccess { model ->
-                installed = LocalModelStorageRepository.listInstalled(context)
-                selectedId = model.id
-                importStatus = "${model.displayName} is ready"
-            }.onFailure { error ->
-                importStatus = error.message ?: "Couldn’t import that model"
-            }
-        }
+    val configureLauncher = rememberLauncherForActivityResult(ActivityResultContracts.StartActivityForResult()) {
+        installed = LocalModelStorageRepository.listInstalled(context)
+        selectedId = LocalModelStorageRepository.getSelectedModelId(context)
     }
 
     ADPageLayout("Local AI", onBack) {
@@ -170,7 +159,7 @@ internal fun ADNativeLocalAiSettingsScreen(onBack: () -> Unit) {
                 Text("No local model installed", style = MaterialTheme.typography.bodyMedium)
                 Spacer(Modifier.size(2.dp))
                 Text(
-                    "Import a compatible model file to use on-device AI.",
+                    "Download a recommended model or import a compatible GGUF/LiteRT file.",
                     style = MaterialTheme.typography.bodySmall,
                     color = ADColors.Muted,
                 )
@@ -189,76 +178,71 @@ internal fun ADNativeLocalAiSettingsScreen(onBack: () -> Unit) {
             }
             Spacer(Modifier.size(8.dp))
             Button(
-                onClick = { importLauncher.launch(arrayOf("*/*")) },
+                onClick = {
+                    configureLauncher.launch(Intent(context, LocalModelsConfigureActivity::class.java))
+                },
                 modifier = Modifier.fillMaxWidth().heightIn(min = 46.dp),
                 colors = ButtonDefaults.buttonColors(containerColor = ADColors.Ink),
             ) {
-                Icon(Icons.Outlined.Download, null, modifier = Modifier.size(18.dp))
-                Spacer(Modifier.size(7.dp))
-                Text("Import model file")
-            }
-            importStatus?.let {
-                Spacer(Modifier.size(5.dp))
-                Text(it, style = MaterialTheme.typography.bodySmall, color = ADColors.Muted)
+                Text("Manage local models")
             }
         }
 
         ADCard {
             Row(verticalAlignment = Alignment.CenterVertically) {
-                Icon(Icons.Outlined.Cloud, null, tint = ADColors.Blue, modifier = Modifier.size(19.dp))
+                Icon(Icons.Outlined.Mic, null, tint = ADColors.Blue, modifier = Modifier.size(19.dp))
                 Column(Modifier.padding(start = 7.dp).weight(1f)) {
-                    Text("OpenAI-compatible server", style = MaterialTheme.typography.titleMedium)
+                    Text("Offline English transcription", style = MaterialTheme.typography.titleMedium)
                     Text(
-                        "Ollama, llama.cpp, vLLM or another compatible endpoint",
+                        if (moonshineInstalled) {
+                            "Ready · English model stored on this phone"
+                        } else {
+                            "Moonshine engine included · download its English model once"
+                        },
                         style = MaterialTheme.typography.bodySmall,
                         color = ADColors.Muted,
                     )
                 }
-                Switch(
-                    checked = remoteEnabled,
-                    onCheckedChange = {
-                        remoteEnabled = it
-                        RemoteOpenAiPrefs.setEnabled(context, it)
-                    },
-                )
             }
-            Spacer(Modifier.size(9.dp))
-            Text("Server address", style = MaterialTheme.typography.labelMedium, color = ADColors.Muted)
-            Spacer(Modifier.size(4.dp))
-            ADAiTextField(
-                value = remoteUrl,
-                onValueChange = { remoteUrl = it; remoteSaved = false },
-                placeholder = "http://192.168.1.50:11434/v1",
+            if (!moonshineInstalled) {
+                Spacer(Modifier.size(9.dp))
+                Button(
+                    enabled = !moonshineInstalling,
+                    onClick = {
+                        moonshineInstalling = true
+                        moonshineStatus = "Starting download…"
+                        scope.launch {
+                            runCatching {
+                                withContext(Dispatchers.IO) {
+                                    MoonshineModelManager.installIfNeeded(context, moonshineKind) { progress ->
+                                        scope.launch {
+                                            moonshineStatus = "${progress.percent}% — ${progress.message}"
+                                        }
+                                    }
+                                }
+                            }.onSuccess {
+                                moonshineInstalled = true
+                                moonshineStatus = "Moonshine is ready for English voice input"
+                            }.onFailure { error ->
+                                moonshineStatus = error.message ?: "Moonshine installation failed"
+                            }
+                            moonshineInstalling = false
+                        }
+                    },
+                    modifier = Modifier.fillMaxWidth().heightIn(min = 46.dp),
+                    colors = ButtonDefaults.buttonColors(containerColor = ADColors.Ink),
+                ) { Text(if (moonshineInstalling) "Downloading…" else "Download English model") }
+            }
+            moonshineStatus?.let {
+                Spacer(Modifier.size(5.dp))
+                Text(it, style = MaterialTheme.typography.bodySmall, color = ADColors.Muted)
+            }
+            Spacer(Modifier.size(6.dp))
+            Text(
+                "Moonshine converts English speech to text. It is not AD’s response voice; AD uses Android text-to-speech for replies.",
+                style = MaterialTheme.typography.bodySmall,
+                color = ADColors.Muted,
             )
-            Spacer(Modifier.size(8.dp))
-            Text("Model", style = MaterialTheme.typography.labelMedium, color = ADColors.Muted)
-            Spacer(Modifier.size(4.dp))
-            ADAiTextField(
-                value = remoteModel,
-                onValueChange = { remoteModel = it; remoteSaved = false },
-                placeholder = "model name",
-            )
-            Spacer(Modifier.size(8.dp))
-            Text("API key", style = MaterialTheme.typography.labelMedium, color = ADColors.Muted)
-            Spacer(Modifier.size(4.dp))
-            ADAiTextField(
-                value = remoteApiKey,
-                onValueChange = { remoteApiKey = it; remoteSaved = false },
-                placeholder = "Optional",
-                password = true,
-            )
-            Spacer(Modifier.size(9.dp))
-            Button(
-                onClick = {
-                    RemoteOpenAiPrefs.setBaseUrl(context, remoteUrl)
-                    RemoteOpenAiPrefs.setModel(context, remoteModel)
-                    RemoteOpenAiPrefs.setApiKey(context, remoteApiKey)
-                    RemoteOpenAiPrefs.setEnabled(context, remoteEnabled)
-                    remoteSaved = true
-                },
-                modifier = Modifier.fillMaxWidth().heightIn(min = 46.dp),
-                colors = ButtonDefaults.buttonColors(containerColor = ADColors.Ink),
-            ) { Text(if (remoteSaved) "Saved" else "Save server") }
         }
     }
 }
@@ -325,7 +309,6 @@ private fun ADAiTextField(
     value: String,
     onValueChange: (String) -> Unit,
     placeholder: String,
-    password: Boolean = false,
 ) {
     BasicTextField(
         value = value,
@@ -337,7 +320,6 @@ private fun ADAiTextField(
         singleLine = true,
         textStyle = MaterialTheme.typography.bodyMedium.copy(color = ADColors.Ink),
         cursorBrush = SolidColor(ADColors.Ink),
-        visualTransformation = if (password) PasswordVisualTransformation() else androidx.compose.ui.text.input.VisualTransformation.None,
         decorationBox = { field ->
             Box(contentAlignment = Alignment.CenterStart) {
                 if (value.isBlank()) {

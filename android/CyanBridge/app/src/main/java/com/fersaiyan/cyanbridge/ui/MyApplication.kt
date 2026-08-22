@@ -10,6 +10,7 @@ import android.os.Build
 import androidx.core.content.ContextCompat
 import androidx.localbroadcastmanager.content.LocalBroadcastManager
 import com.fersaiyan.cyanbridge.agent.LocalAgentPrefs
+import com.fersaiyan.cyanbridge.ai.orchestrator.AssistantConversationSession
 import com.fersaiyan.cyanbridge.ai.router.AiProviderPrefs
 import com.fersaiyan.cyanbridge.ai.router.AiProviderType
 import com.fersaiyan.cyanbridge.devices.DeviceProfileStore
@@ -81,6 +82,14 @@ class MyApplication : Application() {
         }
 
         runCatching { MemoryVaultBootstrap.ensureInitialized(this) }
+
+        // AD conversations are intentionally ephemeral. Clean expired threads off the main
+        // thread at startup; creating the session also installs the periodic retention backstop.
+        appScope.launch {
+            runCatching {
+                AssistantConversationSession.get(this@MyApplication).pruneExpiredConversations()
+            }
+        }
 
         if (AutoDiaryService.isEnabled(this) && !AutoDiaryService.isRunning()) {
             AutoDiaryService.startIfEnabled(this)
@@ -155,7 +164,7 @@ class MyApplication : Application() {
         val deviceRepo = AndroidDeviceProfileRepositoryWrapper()
         val vaultRepo = AndroidMemoryVaultRepositoryWrapper()
         val mediaRepo = AndroidMediaRecordRepositoryWrapper()
-        val chatAi = AndroidChatAiService()
+        val chatAi = AndroidChatAiService(this)
         val voiceAi = AndroidVoiceAiService()
         val imageAi = AndroidImageAiService()
         val modelRegistry = AndroidAiModelRegistry()
@@ -258,6 +267,11 @@ class MyApplication : Application() {
                                 com.fersaiyan.cyanbridge.data.local.AppDatabase.MIGRATION_5_6.migrate(db)
                                 com.fersaiyan.cyanbridge.data.local.AppDatabase.MIGRATION_6_7.migrate(db)
                             }
+                        }
+
+                        override fun onOpen(db: androidx.sqlite.db.SupportSQLiteDatabase) {
+                            super.onOpen(db)
+                            com.fersaiyan.cyanbridge.data.local.AppDatabase.ensureMemorySearchIndex(db)
                         }
                     },
                 )

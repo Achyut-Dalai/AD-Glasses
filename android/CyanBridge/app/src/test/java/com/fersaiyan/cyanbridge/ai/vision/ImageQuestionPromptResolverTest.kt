@@ -1,6 +1,5 @@
 package com.fersaiyan.cyanbridge.ai.vision
 
-import com.fersaiyan.cyanbridge.ai.image.ImageQuestionBroadcast
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
@@ -97,14 +96,11 @@ class ImageQuestionPromptResolverTest {
 
         val relayPrompt = resolved.forRoute(ImageQuestionRoute.PRO_RELAY)
         val localPrompt = resolved.forRoute(ImageQuestionRoute.LOCAL_GEMMA)
-        val taskerPrompt = ImageQuestionBroadcast.Payload(
-            type = ImageQuestionBroadcast.TYPE_IMAGE,
-            question = resolved.forRoute(ImageQuestionRoute.TASKER_GEMINI),
-        ).extras()[ImageQuestionBroadcast.EXTRA_QUESTION]
+        val externalPrompt = resolved.forRoute(ImageQuestionRoute.EXTERNAL_ASSISTANT)
 
         assertEquals(resolved.text, relayPrompt)
         assertEquals(relayPrompt, localPrompt)
-        assertEquals(relayPrompt, taskerPrompt)
+        assertEquals(relayPrompt, externalPrompt)
     }
 
     private fun builtInSettings(languageTag: String) = ImageQuestionSettings(

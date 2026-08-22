@@ -9,8 +9,6 @@ import java.io.File
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
-import com.fersaiyan.cyanbridge.ai.router.AiAssistantRouter
-import com.fersaiyan.cyanbridge.ai.router.AiProviderPrefs
 import com.fersaiyan.cyanbridge.ai.router.CliRelayClient
 import com.fersaiyan.cyanbridge.localmodels.provider.LocalModelRequestPriority
 import com.fersaiyan.cyanbridge.localmodels.provider.LocalModelsProvider
@@ -66,7 +64,6 @@ object DailySummaryGenerator {
         return when (AutomationPrefs.getProviderType(context)) {
             AgentProviderType.LOCAL_AGENT -> "local_models"
             AgentProviderType.PRO_SUBSCRIPTION -> "cli_relay"
-            AgentProviderType.TASKER -> if (AiProviderPrefs.isRelayConfigured(context)) "cli_relay" else "ai_router"
         }
     }
 
@@ -663,29 +660,13 @@ Remember: You MUST output a valid summary. Do not refuse.
 
     private suspend fun generateSummary(context: Context, prompt: String): ProviderResponse {
         val agentType = AutomationPrefs.getProviderType(context)
-        val relayConfigured = AiProviderPrefs.isRelayConfigured(context)
-
         return when (agentType) {
-            AgentProviderType.LOCAL_AGENT -> {
-                runCatching { runLocalModels(context, prompt) }
-                    .recoverCatching { localErr ->
-                        if (!relayConfigured) {
-                            throw IllegalStateException("Local model unavailable (${localErr.message}).")
-                        }
-                        runRelay(context, prompt)
-                    }
-                    .getOrThrow()
-            }
+            AgentProviderType.LOCAL_AGENT -> runCatching { runLocalModels(context, prompt) }
+                .getOrElse { localErr ->
+                    throw IllegalStateException("Local model unavailable (${localErr.message}).")
+                }
 
             AgentProviderType.PRO_SUBSCRIPTION -> runRelay(context, prompt)
-
-            AgentProviderType.TASKER -> {
-                if (relayConfigured) {
-                    runRelay(context, prompt)
-                } else {
-                    runRouterFallback(context, prompt)
-                }
-            }
         }
     }
 
@@ -756,35 +737,6 @@ Remember: You MUST output a valid summary. Do not refuse.
             text = reply,
             metrics = DailySummaryRunHistory.RunMetrics(
                 provider = "local_models",
-                inputTokens = inputTokens,
-                outputTokens = outputTokens,
-                promptTokensPerSec = inputTokens / (promptMs / 1000.0),
-                generationTokensPerSec = outputTokens / (generationMs / 1000.0),
-                totalMs = totalMs,
-            ),
-        )
-    }
-
-    private suspend fun runRouterFallback(context: Context, prompt: String): ProviderResponse {
-        val inputTokens = DailySummaryRunHistory.estimateTokenCount(prompt)
-        val started = System.currentTimeMillis()
-        val reply = AiAssistantRouter.textReply(context, prompt).trim()
-        val totalMs = (System.currentTimeMillis() - started).coerceAtLeast(1L)
-
-        if (!isUsableSummaryReply(reply)) {
-            throw IllegalStateException(
-                "AI provider returned a placeholder reply. Choose Pro Subscription or Local Models in Settings.",
-            )
-        }
-
-        val outputTokens = DailySummaryRunHistory.estimateTokenCount(reply)
-        val promptMs = (totalMs * 0.35).toLong().coerceAtLeast(1L)
-        val generationMs = (totalMs - promptMs).coerceAtLeast(1L)
-
-        return ProviderResponse(
-            text = reply,
-            metrics = DailySummaryRunHistory.RunMetrics(
-                provider = "ai_router",
                 inputTokens = inputTokens,
                 outputTokens = outputTokens,
                 promptTokensPerSec = inputTokens / (promptMs / 1000.0),

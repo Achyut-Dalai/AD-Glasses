@@ -20,7 +20,7 @@ import kotlinx.coroutines.launch
  *
  * This complements the JSONL file store in [LocalAgentMemoryStore].
  * - Files remain the simple source-of-truth for inspection/export.
- * - Room FTS5 provides fast lookup for agent retrieval.
+ * - Room FTS5/FTS4 provides fast lookup for agent retrieval.
  */
 object LocalAgentMemoryRoomIndex {
     private const val TAG = "LocalAgentMemoryIdx"

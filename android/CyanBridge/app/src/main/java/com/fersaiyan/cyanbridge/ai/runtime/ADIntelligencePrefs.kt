@@ -20,7 +20,6 @@ enum class ADSpeechEngine {
     AUTO,
     GEMINI_NATIVE_AUDIO,
     MOONSHINE,
-    VOSK,
 }
 
 enum class ADVisionEngine {

@@ -57,51 +57,6 @@ object ImageQuestionSourcePolicy {
     }
 }
 
-/** Values sent in the public CyanBridge -> Tasker broadcast. */
-object ImageQuestionBroadcast {
-    const val EXTRA_TYPE = "type"
-    const val EXTRA_PATH = "path"
-    const val EXTRA_IMAGE_URI = "image_uri"
-    const val EXTRA_QUESTION = "question"
-    const val EXTRA_ASSISTANT = "assistant"
-    const val EXTRA_SOURCE = "image_source"
-    const val EXTRA_HANDOFF_MODE = "handoff_mode"
-    const val EXTRA_CALLBACK_ACTION = "callback_action"
-    const val EXTRA_CALLBACK_SESSION = "callback_session"
-    const val EXTRA_CALLBACK_TOKEN = "callback_token"
-
-    const val TYPE_IMAGE = "image"
-    const val HANDOFF_DIRECT_SHARE = "direct_share"
-    const val HANDOFF_AUTOINPUT_FALLBACK = "autoinput_fallback"
-
-    data class Payload(
-        val type: String,
-        val imagePath: String? = null,
-        val imageUri: String? = null,
-        val question: String? = null,
-        val assistant: String? = null,
-        val source: ImageQuestionSource? = null,
-        val handoffMode: String? = null,
-        val callbackAction: String? = null,
-        val callbackSession: String? = null,
-        val callbackToken: String? = null,
-    ) {
-        fun extras(): Map<String, String> = buildMap {
-            put(EXTRA_TYPE, type)
-            imagePath?.let { put(EXTRA_PATH, it) }
-            imageUri?.let { put(EXTRA_IMAGE_URI, it) }
-            // Keep the resolved prompt byte-for-byte intact for Tasker/Gemini.
-            question?.let { put(EXTRA_QUESTION, it) }
-            assistant?.let { put(EXTRA_ASSISTANT, it) }
-            source?.let { put(EXTRA_SOURCE, it.wireName) }
-            handoffMode?.let { put(EXTRA_HANDOFF_MODE, it) }
-            callbackAction?.let { put(EXTRA_CALLBACK_ACTION, it) }
-            callbackSession?.let { put(EXTRA_CALLBACK_SESSION, it) }
-            callbackToken?.let { put(EXTRA_CALLBACK_TOKEN, it) }
-        }
-    }
-}
-
 enum class ExternalImageAutomationStage(val wireName: String) {
     IDLE("idle"),
     IMAGE_STARTED("image_started"),
