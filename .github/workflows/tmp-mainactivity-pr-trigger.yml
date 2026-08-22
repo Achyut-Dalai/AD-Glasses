@@ -19,11 +19,10 @@ jobs:
           ref: fix/mainactivity-full-audit
           fetch-depth: 0
 
-      - name: Apply audited source repair
+      - name: Apply final audited source repair
         shell: bash
         run: |
-          python3 tools/tmp_mainactivity_audit.py
-          python3 tools/tmp_mainactivity_audit_phase2_runner.py
+          python3 tools/tmp_mainactivity_audit_phase3.py
           git diff --check
           git diff --stat
 
@@ -37,5 +36,5 @@ jobs:
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git add android/AD-Glasses/app/src/main/java/com/ad_glasses/MainActivity.kt
-          git commit -m "fix: complete MainActivity lifecycle audit"
+          git commit -m "fix: finalize MainActivity voice lifecycle"
           git push origin HEAD:fix/mainactivity-full-audit
