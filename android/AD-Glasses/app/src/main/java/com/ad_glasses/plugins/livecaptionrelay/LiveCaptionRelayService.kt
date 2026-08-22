@@ -5,7 +5,7 @@ import android.content.Context
 import android.content.Intent
 import android.os.IBinder
 import android.util.Log
-import com.ad_glasses.ai.router.CliRelayClient
+import com.ad_glasses.ai.router.ApiTokenClient
 import com.ad_glasses.bridge.core.DisplayCommand
 import com.ad_glasses.bridge.core.GlassesBridge
 import com.ad_glasses.plugins.PluginVoiceRecognizer
@@ -190,12 +190,10 @@ class LiveCaptionRelayService : Service() {
             append("Return only the translated caption. Caption: \"$text\". ")
             if (customPrompt.isNotBlank()) append("Additional instructions: $customPrompt")
         }
-        return CliRelayClient.chat(
+        return ApiTokenClient.chat(
             context = this,
-            chatId = "live_caption_${System.currentTimeMillis()}",
-            prompt = prompt,
             messages = listOf(mapOf("role" to "user", "content" to prompt)),
-            modelOverride = LiveCaptionRelayPreferences.getCloudModelId(this),
+            maxTokens = 512,
         ).fold(
             onSuccess = { it.trim().takeIf(String::isNotBlank) },
             onFailure = { error ->

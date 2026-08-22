@@ -2,7 +2,6 @@ package com.ad_glasses.agent
 
 import android.content.Context
 import androidx.test.core.app.ApplicationProvider
-import com.ad_glasses.shared.glasses.GlassesAssistantMode
 import com.ad_glasses.shared.settings.AgentProviderType
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
@@ -32,14 +31,16 @@ class LocalAgentPrefsMigrationTest {
     fun retiredProviderValueMigratesToCloud() {
         context.getSharedPreferences("local_agent_prefs", Context.MODE_PRIVATE)
             .edit().putString("provider_type", "LEGACY_PROVIDER").commit()
+
         assertEquals(AgentProviderType.CLOUD_AI, LocalAgentPrefs.getProviderType(context))
     }
 
     @Test
-    fun legacyPhoneAssistantModeMigratesToAdOwnedInference() {
+    fun legacyPhoneAssistantPreferenceDoesNotChangeAdOwnedInferenceRoute() {
         context.getSharedPreferences("local_agent_prefs", Context.MODE_PRIVATE)
             .edit().putString("glasses_assistant_mode", "PHONE_ASSISTANT").commit()
-        assertEquals(GlassesAssistantMode.CUSTOM_AI_PROVIDER, LocalAgentPrefs.getGlassesAssistantMode(context))
+
+        assertEquals(AgentProviderType.CLOUD_AI, LocalAgentPrefs.getProviderType(context))
     }
 
     @Test

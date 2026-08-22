@@ -2,7 +2,7 @@ package com.ad_glasses.ui
 
 import android.content.Context
 import com.ad_glasses.agent.LocalAgentPrefs
-import com.ad_glasses.ai.router.CliRelayClient
+import com.ad_glasses.ai.router.ApiTokenClient
 import com.ad_glasses.localmodels.provider.LocalModelsProvider
 import com.ad_glasses.shared.settings.AgentProviderType
 import com.ad_glasses.shared.ai.AiModel
@@ -32,7 +32,6 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.flow
-import java.util.UUID
 
 // ── Wi-Fi P2P Manager wrapper ──
 
@@ -159,19 +158,15 @@ class AndroidChatAiService(context: Context) : ChatAiService {
             if (role.isBlank() || content.isBlank()) null else mapOf("role" to role, "content" to content)
         }
         require(cleanMessages.isNotEmpty()) { "A non-empty AI message is required" }
-        val userPrompt = cleanMessages.lastOrNull { it["role"] == "user" }?.get("content")
-            ?: error("A user message is required")
+        require(cleanMessages.any { it["role"] == "user" }) { "A user message is required" }
         val reply = when (LocalAgentPrefs.getProviderType(appContext)) {
             AgentProviderType.LOCAL_AGENT -> localProvider.streamChat(
                 context = appContext,
                 messages = cleanMessages,
             )
-            AgentProviderType.CLOUD_AI -> CliRelayClient.chat(
+            AgentProviderType.CLOUD_AI -> ApiTokenClient.chat(
                 context = appContext,
-                chatId = "shared_${UUID.randomUUID()}",
-                prompt = userPrompt,
                 messages = cleanMessages,
-                modelOverride = model,
             ).getOrThrow()
         }
         return ChatResponse(

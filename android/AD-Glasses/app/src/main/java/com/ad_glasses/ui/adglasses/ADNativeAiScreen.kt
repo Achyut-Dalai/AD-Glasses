@@ -49,7 +49,6 @@ import com.ad_glasses.ai.orchestrator.AssistantCapabilityRuntimeEvents
 import com.ad_glasses.ai.orchestrator.AssistantConversationSession
 import com.ad_glasses.ai.router.AiProviderPrefs
 import com.ad_glasses.ai.router.AiProviderType
-import com.ad_glasses.shared.glasses.GlassesAssistantMode
 import com.ad_glasses.shared.settings.AgentProviderType
 
 enum class ADAiChoice { CLOUD, LOCAL }
@@ -81,7 +80,6 @@ internal fun ADNativeAiScreen(
                 LocalAgentPrefs.setProviderType(context, AgentProviderType.LOCAL_AGENT)
             }
         }
-        LocalAgentPrefs.setGlassesAssistantMode(context, GlassesAssistantMode.CUSTOM_AI_PROVIDER)
         selected = choice
         if (previous != choice) AssistantConversationSession.get(context).startNewConversation()
     }

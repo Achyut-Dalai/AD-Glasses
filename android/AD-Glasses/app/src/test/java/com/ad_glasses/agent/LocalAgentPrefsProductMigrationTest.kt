@@ -2,7 +2,6 @@ package com.ad_glasses.agent
 
 import android.content.Context
 import androidx.test.core.app.ApplicationProvider
-import com.ad_glasses.shared.glasses.GlassesAssistantMode
 import com.ad_glasses.shared.settings.AgentProviderType
 import org.junit.Assert.assertEquals
 import org.junit.Before
@@ -23,30 +22,31 @@ class LocalAgentPrefsProductMigrationTest {
     }
 
     @Test
-    fun unsetProductDefaultsUsePhoneAssistantAndNoCloudProvider() {
-        assertEquals(AgentProviderType.LOCAL_AGENT, LocalAgentPrefs.getProviderType(context))
-        assertEquals(GlassesAssistantMode.PHONE_ASSISTANT, LocalAgentPrefs.getGlassesAssistantMode(context))
+    fun unsetProductDefaultsUseCloudProvider() {
+        assertEquals(AgentProviderType.CLOUD_AI, LocalAgentPrefs.getProviderType(context))
     }
 
     @Test
-    fun oldProviderValueMigratesToNativeLocalProvider() {
+    fun oldProviderAndAssistantValuesResolveToCloud() {
         context.getSharedPreferences("local_agent_prefs", Context.MODE_PRIVATE)
             .edit()
             .putString("provider_type", "LEGACY_PROVIDER")
-            .putString("glasses_assistant_mode", GlassesAssistantMode.PHONE_ASSISTANT.name)
+            .putString("glasses_assistant_mode", "PHONE_ASSISTANT")
             .commit()
 
-        assertEquals(AgentProviderType.LOCAL_AGENT, LocalAgentPrefs.getProviderType(context))
-        assertEquals(GlassesAssistantMode.PHONE_ASSISTANT, LocalAgentPrefs.getGlassesAssistantMode(context))
+        assertEquals(AgentProviderType.CLOUD_AI, LocalAgentPrefs.getProviderType(context))
     }
 
     @Test
-    fun oldNamedAssistantValuesMigrateToExplicitPhoneAssistantMode() {
-        context.getSharedPreferences("local_agent_prefs", Context.MODE_PRIVATE)
-            .edit()
-            .putString("glasses_assistant_mode", "CHAT_GPT")
-            .commit()
+    fun legacyNamedAssistantValuesDoNotOverrideExplicitLocalProvider() {
+        val prefs = context.getSharedPreferences("local_agent_prefs", Context.MODE_PRIVATE)
+        listOf("GEMINI", "CHAT_GPT", "PHONE_DEFAULT", "CHOSEN_PROVIDER").forEach { legacy ->
+            prefs.edit()
+                .putString("provider_type", AgentProviderType.LOCAL_AGENT.name)
+                .putString("glasses_assistant_mode", legacy)
+                .commit()
 
-        assertEquals(GlassesAssistantMode.PHONE_ASSISTANT, LocalAgentPrefs.getGlassesAssistantMode(context))
+            assertEquals(AgentProviderType.LOCAL_AGENT, LocalAgentPrefs.getProviderType(context))
+        }
     }
 }
