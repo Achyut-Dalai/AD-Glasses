@@ -18,10 +18,10 @@ jobs:
           ref: fix/mainactivity-full-audit
           fetch-depth: 0
 
-      - name: Apply forward-only compile cleanup
+      - name: Align migrated Cloud API calls
         shell: bash
         run: |
-          python3 tools/tmp_compile_cleanup_round2.py
+          python3 tools/tmp_compile_cleanup_round2b.py
           git diff --check
           git diff --stat
 
@@ -35,5 +35,5 @@ jobs:
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git add android/AD-Glasses/app/src/main/java/com/ad_glasses
-          git commit -m "fix: migrate remaining app compile paths to Cloud API"
+          git commit -m "fix: use selected Cloud API model across app features"
           git push origin HEAD:fix/mainactivity-full-audit
