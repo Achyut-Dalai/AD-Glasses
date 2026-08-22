@@ -6,7 +6,7 @@ Updated: 2026-08-21
 
 - Chats stays. It is the durable companion surface for exact details, links, silent use, copy/share, and continuing interactions that began by voice or media.
 - AD-managed Chats use a **7-day inactivity retention window**. `New topic` starts a clean thread. `Forget this conversation` deletes the current thread immediately.
-- Never silently switch providers, send a local request to a remote server, drop an image, invoke Tasker, or perform relay/web traffic. A fallback must be explicitly configured or approved by the user at the time of failure.
+- Never silently switch providers, send a local request to a remote server, drop an image, invoke external automation, or perform relay/web traffic. A fallback must be explicitly configured or approved by the user at the time of failure.
 - “Gemini app” and “ChatGPT app” are external app handoffs. The external app owns the answer, voice, and context; AD cannot capture that answer in Chats through Android's assistant intent.
 - Local AI and a future explicit cloud text API are AD-owned routes: AD receives full text, saves it in Chats, and speaks a concise version using Android TTS. Moonshine is English speech-to-text (input), not the response voice.
 - Offline fallback should be Local AI. ChatGPT and Gemini app handoffs are not offline fallbacks.
@@ -25,7 +25,7 @@ Updated: 2026-08-21
 
 ## Implemented in the current worktree
 
-- Tasker assets, routing defaults, and Tasker execution paths removed.
+- external automation assets, routing defaults, and external automation execution paths removed.
 - Explicit Local / Gemini app / ChatGPT app / cloud route presentation; unsafe fresh-install relay defaults removed.
 - Local never silently becomes an OpenAI-compatible remote route.
 - Local runtime operations serialized; unload/remove cannot close the engine during generation.
@@ -116,7 +116,7 @@ Updated: 2026-08-21
 ## Commands
 
 ```bash
-cd android/CyanBridge
+cd android/AD-Glasses
 JAVA_HOME=$(/usr/libexec/java_home -v 17) ./gradlew :app:testDebugUnitTest :app:assembleDebug
 adb -s R9ZY302QCQF install -r app/build/outputs/apk/debug/AD-Glasses.apk
 zipalign -c -P 16 -v 4 app/build/outputs/apk/debug/AD-Glasses.apk
@@ -126,5 +126,5 @@ zipalign -c -P 16 -v 4 app/build/outputs/apk/debug/AD-Glasses.apk
 
 - Preserve the user's unrelated dirty-worktree changes.
 - Do not contact or probe a relay server unless the user explicitly asks.
-- Do not reintroduce Tasker, silent provider fallback, or “success” results without confirmed execution.
+- Do not reintroduce external automation, silent provider fallback, or “success” results without confirmed execution.
 - External assistant handoff cannot provide AD-owned voice or Chats continuity. Keep that limitation explicit in UI and tests.

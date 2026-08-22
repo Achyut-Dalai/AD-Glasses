@@ -7,12 +7,12 @@ import sys
 
 ROOT = Path(__file__).resolve().parents[2]
 PROJECT = ROOT / "ios" / "QCSDKDemo.xcodeproj" / "project.pbxproj"
-HOST = ROOT / "ios" / "CyanBridgeKMPHost" / "CyanBridgeKMPHostApp.swift"
-HOST_ENTITLEMENTS = ROOT / "ios" / "CyanBridgeKMPHost" / "CyanBridgeKMPHost.entitlements"
+HOST = ROOT / "ios" / "AD GlassesKMPHost" / "AD GlassesKMPHostApp.swift"
+HOST_ENTITLEMENTS = ROOT / "ios" / "AD GlassesKMPHost" / "AD GlassesKMPHost.entitlements"
 DEMO_APP_DELEGATE = ROOT / "ios" / "QCSDKDemo" / "AppDelegate.m"
-SCHEME = ROOT / "ios" / "QCSDKDemo.xcodeproj" / "xcshareddata" / "xcschemes" / "CyanBridgeKMPHost.xcscheme"
+SCHEME = ROOT / "ios" / "QCSDKDemo.xcodeproj" / "xcshareddata" / "xcschemes" / "AD GlassesKMPHost.xcscheme"
 DEMO_SCHEME = ROOT / "ios" / "QCSDKDemo.xcodeproj" / "xcshareddata" / "xcschemes" / "QCSDKDemo.xcscheme"
-MAIN_VIEW_CONTROLLER = ROOT / "android" / "CyanBridge" / "shared" / "src" / "iosMain" / "kotlin" / "com" / "fersaiyan" / "cyanbridge" / "shared" / "platform" / "MainViewController.kt"
+MAIN_VIEW_CONTROLLER = ROOT / "android" / "AD Glasses" / "shared" / "src" / "iosMain" / "kotlin" / "com" / "AD Glasses" / "AD Glasses" / "shared" / "platform" / "MainViewController.kt"
 
 
 def require(condition: bool, message: str) -> None:
@@ -37,7 +37,7 @@ def main() -> int:
     demo_scheme = DEMO_SCHEME.read_text(encoding="utf-8")
 
     # CMP entry point checks
-    require("import CyanBridgeShared" in host, "The KMP host must import CyanBridgeShared.")
+    require("import AD GlassesShared" in host, "The KMP host must import AD GlassesShared.")
     require(
         "MainViewControllerKt" in host,
         "The KMP host must call MainViewControllerKt.MainViewController() for CMP rendering.",
@@ -48,7 +48,7 @@ def main() -> int:
     )
     require(
         'BlueprintIdentifier = "CB2000092F00000100CB0001"' in scheme,
-        "The shared Xcode scheme must build CyanBridgeKMPHost.",
+        "The shared Xcode scheme must build AD GlassesKMPHost.",
     )
     for forbidden in ("QCSDK", "CoreBluetooth", "NetworkExtension"):
         require(forbidden not in host, f"The KMP host must not import vendor transport: {forbidden}")
@@ -64,27 +64,27 @@ def main() -> int:
         "MainViewController must use ComposeUIViewController for CMP rendering.",
     )
     require(
-        "CyanBridgeApp" in main_vc,
-        "MainViewController must render the shared CyanBridgeApp composable.",
+        "AD GlassesApp" in main_vc,
+        "MainViewController must render the shared AD GlassesApp composable.",
     )
     require(
         "MainViewControllerForDestination" in main_vc,
         "The screenshot harness must expose a destination-specific CMP entry point.",
     )
     require(
-        "CYANBRIDGE_SCREENSHOT_DESTINATION" in host,
+        "AD Glasses_SCREENSHOT_DESTINATION" in host,
         "The Swift host must honor the screenshot-harness destination environment variable.",
     )
 
-    host_target = block(project, 'CB2000092F00000100CB0001 /* CyanBridgeKMPHost */ = {')
-    require("Build CyanBridgeShared" in host_target, "The KMP host must build the shared framework.")
+    host_target = block(project, 'CB2000092F00000100CB0001 /* AD GlassesKMPHost */ = {')
+    require("Build AD GlassesShared" in host_target, "The KMP host must build the shared framework.")
     host_debug = block(project, 'CB20000A2F00000100CB0001 /* Debug */ = {')
     host_release = block(project, 'CB20000B2F00000100CB0001 /* Release */ = {')
     for configuration in (host_debug, host_release):
-        require("CyanBridgeShared" in configuration, "The KMP host must link the shared framework.")
+        require("AD GlassesShared" in configuration, "The KMP host must link the shared framework.")
         require("xcode-frameworks" in configuration, "The KMP host must search Gradle framework output.")
         require(
-            "CODE_SIGN_ENTITLEMENTS = CyanBridgeKMPHost/CyanBridgeKMPHost.entitlements" in configuration,
+            "CODE_SIGN_ENTITLEMENTS = AD GlassesKMPHost/AD-GlassesKMPHost.entitlements" in configuration,
             "The KMP host must enable hotspot configuration and Wi-Fi information entitlements.",
         )
         require("CoreBluetooth" in configuration, "The KMP host must link CoreBluetooth for the iOS BLE adapter.")
@@ -102,13 +102,13 @@ def main() -> int:
     demo_debug = block(project, 'AA1313702E2F903600B03938 /* Debug */ = {')
     demo_release = block(project, 'AA1313712E2F903600B03938 /* Release */ = {')
     for section in (demo_target, demo_debug, demo_release, demo_app_delegate):
-        require("CyanBridgeShared" not in section, "QCSDKDemo must not reference CyanBridgeShared.")
+        require("AD GlassesShared" not in section, "QCSDKDemo must not reference AD GlassesShared.")
     require(
         "Embed Frameworks" not in demo_target,
         "QCSDKDemo must link, not embed, the static QCSDK.framework archive.",
     )
     require(
-        "CyanBridgeSharedIntegration" not in project,
+        "AD GlassesSharedIntegration" not in project,
         "The legacy QCSDKDemo KMP smoke wrapper must not remain in the project.",
     )
     require(

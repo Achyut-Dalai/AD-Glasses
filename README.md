@@ -1,10 +1,10 @@
 # Alternative HeyCyan App and SDK
 
-This repository is the source workspace for CyanBridge's Android companion,
+This repository is the source workspace for AD Glasses's Android companion,
 HeyCyan vendor integration, and smart-glasses interoperability research.
 
 It is not a finished, drop-in SDK for every pair of glasses. The active product
-path is the Android app in [`android/CyanBridge`](android/CyanBridge). The rest
+path is the Android app in [`android/AD-Glasses`](android/AD-Glasses). The rest
 of the repository includes vendor references, reusable modules, prototypes, and
 research needed to support more devices without hiding their limitations.
 
@@ -12,13 +12,13 @@ research needed to support more devices without hiding their limitations.
 
 | If you want to... | Start with... |
 | --- | --- |
-| Build or use the Android companion | [`android/CyanBridge/README.md`](android/CyanBridge/README.md) |
+| Build or use the Android companion | [`android/AD-Glasses/README.md`](android/AD-Glasses/README.md) |
 | Connect and sync media from HeyCyan glasses | [`android/AGENTS.md`](android/AGENTS.md) |
 | Work on shared Android modules | [`heycyan-core/README.md`](heycyan-core/README.md) |
 | Build the iOS shell or inspect the vendor demo | [`ios/README.md`](ios/README.md) |
 | Investigate MemoMind/XGIMI protocol support | [`BRIDGE_RESEARCH_NOTES.md`](BRIDGE_RESEARCH_NOTES.md) |
 
-## What CyanBridge does today
+## What AD Glasses does today
 
 ### Android companion
 
@@ -33,7 +33,7 @@ includes:
   OpenAI-compatible remote inference.
 - Meeting capture, transcription and summarization plumbing, notes, privacy
   settings, data backup/export, and local-data cleanup controls.
-- A CyanBridge Model Studio bridge that can announce Studio session events and
+- A AD Glasses Model Studio bridge that can announce Studio session events and
   handle its internal approval requests through TTS, speech recognition, and a
   fail-closed allow/deny response.
 
@@ -46,8 +46,8 @@ considered reliable.
 | --- | --- | --- |
 | HeyCyan Android path | Active | BLE connection and the BLE plus Wi-Fi Direct media-transfer flow are the primary supported path. |
 | HeyCyan vendor controls | Device-dependent | The bundled vendor AAR exposes camera, recording, device-info, and media commands. Validate each command on physical hardware. |
-| CyanBridge local and remote chat | Included | The app contains local runtime support and an OpenAI-compatible remote-server option. Model availability depends on the phone and configuration. |
-| CyanBridge Model Studio bridge | Experimental | Relays Studio events and approval requests over an authenticated WebSocket. It is not a substitute for reviewing desktop work. |
+| AD Glasses local and remote chat | Included | The app contains local runtime support and an OpenAI-compatible remote-server option. Model availability depends on the phone and configuration. |
+| AD Glasses Model Studio bridge | Experimental | Relays Studio events and approval requests over an authenticated WebSocket. It is not a substitute for reviewing desktop work. |
 | MemoMind/XGIMI | Experimental research | RFCOMM framing, device info, battery, cards, notifications, and selected settings are mapped. The adapter still needs sustained physical-device validation. |
 | Meta Ray-Ban | Partial setup only | Optional registration plumbing exists when the Meta DAT SDK is available. Sessions, camera streaming, photo capture, and display rendering are explicitly not implemented. |
 | Even/Mentra runtimes | Prototype | Adapter and runtime experiments are present, not a supported consumer device path. |
@@ -58,7 +58,7 @@ considered reliable.
 Use Android Studio's bundled JDK or another Java 17+ JDK:
 
 ```bash
-cd android/CyanBridge
+cd android/AD-Glasses
 JAVA_HOME=/opt/android-studio/jbr ./gradlew assembleDebug
 ```
 
@@ -91,18 +91,18 @@ phone's Wi-Fi Direct group-owner address for the glasses address.
 
 | Path | Purpose |
 | --- | --- |
-| `android/CyanBridge/` | CyanBridge Android app and the primary development target. |
+| `android/AD-Glasses/` | AD Glasses Android app and the primary development target. |
 | `android/glasses_sdk_20250723_v01.aar` | Vendor Android SDK artifact used by the HeyCyan path. |
 | `android/HeyCyanOfficialApp/` | Decompiled vendor app used as protocol reference. |
 | `heycyan-core/` | Shared Android modules for BLE, connectivity, data, audio, and API boundaries. |
-| `ios/CyanBridgeKMPHost/` | Simulator-capable SwiftUI host for the shared KMP framework. |
+| `ios/AD-GlassesKMPHost/` | Simulator-capable SwiftUI host for the shared KMP framework. |
 | `ios/QCSDKDemo/` | Vendor iOS demo and device-only protocol reference. |
 | `BRIDGE_RESEARCH_NOTES.md` | Detailed MemoMind/XGIMI transport and protocol findings. |
 | `WIFI_TRANSFER_ARCHITECTURE.md` | Historical technical background for the HeyCyan transfer design. |
 
 ## Upstream projects and acknowledgements
 
-CyanBridge is made possible by the work of other open-source developers. Please
+AD Glasses is made possible by the work of other open-source developers. Please
 visit these projects, star the repositories, follow their maintainers, and
 consider donating or sponsoring them through any support links in their
 repositories or profiles:
@@ -111,7 +111,7 @@ repositories or profiles:
 | --- | --- |
 | [Meizu MYVU Client](https://github.com/Panny777/Meizu-Myvu-Client) by [Panny777](https://github.com/Panny777) | Hardware-verified MYVU / Star Air protocol client. Its BLE, ECDH, RFCOMM relay, heartbeat, and display transport are used by the native MYVU integration. |
 | [OpenVision](https://github.com/rayl15/OpenVision) by [rayl15](https://github.com/rayl15) | Important reference for the Meta Ray-Ban integration direction, wearable connection architecture, and glasses-based AI workflows. |
-| [private-agent](https://github.com/orailnoor/private-agent) by [orailnoor](https://github.com/orailnoor) | Inspiration for CyanBridge's local-agent architecture, especially the Accessibility-based observe, decide, execute, and observe loop. |
+| [private-agent](https://github.com/orailnoor/private-agent) by [orailnoor](https://github.com/orailnoor) | Inspiration for AD Glasses's local-agent architecture, especially the Accessibility-based observe, decide, execute, and observe loop. |
 
 These projects remain independent works with their own licenses and
 maintainers. See each repository for its licensing, contribution, and support
@@ -138,3 +138,17 @@ open source or redistributable. Review the relevant vendor terms and applicable
 law before distributing, modifying, or using them outside personal research and
 development. This repository does not currently provide a single project-wide
 license for all included material.
+
+## Current AD Glasses AI architecture
+
+The Android app is owned under `com.ad_glasses` and the Android project lives at
+`android/AD-Glasses`.
+
+The supported assistant stack is intentionally limited to:
+- Cloud REST requests for conventional cloud inference.
+- Cloud Realtime / Gemini Live API for low-latency conversational sessions.
+- Local LLM fallback for offline/on-device inference when cloud execution is unavailable or undesired.
+- Android TTS for speech output.
+- The AD default-assistant implementation for Android assistant-role integration.
+
+The canonical deep-link scheme is `ad-glasses://`.

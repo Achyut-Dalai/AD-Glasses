@@ -25,7 +25,7 @@ Non-negotiable rules:
 
 - no Walking Aid, hazard detection, route safety, or mobility-assistance flow;
 - no AD Glasses subscription, premium tier, billing, checkout, donation, trial, quota, rewards, or upgrade screen;
-- no CyanBridge branding or dependency on the original author's server;
+- no AD Glasses branding or dependency on the original author's server;
 - no dark mode, theme picker, accent profiles, wallpaper, or chat-skin system;
 - no invented hardware controls, protocol commands, device facts, firmware claims, metadata, encryption, or authentication;
 - third-party AI services may have their own API limits or costs, but that is disclosed as external provider usage—not an AD Glasses plan;
@@ -362,7 +362,7 @@ This area is visually secondary.
 - capability/app/device/provider/transcription summaries;
 - redacted logs and diagnostic bundle preview/export;
 - HeyCyan preview probes, OTA/version logs, owner-service patch request, pull mode, Wi-Fi ADB warning, listeners/scans and raw P2P details;
-- default-assistant/Tasker/AutoInput/Accessibility readiness and voice/image tests;
+- default-assistant/external automation/AutoInput/Accessibility readiness and voice/image tests;
 - GlassesBridge, EvenHub WebView, Mentra relay, Terminal HUD and notification forwarding, labeled Prototype/Research;
 - confirmations for connectivity, debug exposure, firmware, export, or other risky actions;
 - redact credentials, transcript content and unnecessary identifiers by default.

@@ -2,7 +2,7 @@ version: 2
 
 updates:
   - package-ecosystem: "gradle"
-    directory: "/android/CyanBridge"
+    directory: "/android/AD-Glasses"
     schedule:
       interval: "weekly"
       day: "monday"

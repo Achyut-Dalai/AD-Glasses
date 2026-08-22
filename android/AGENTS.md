@@ -1,13 +1,13 @@
 # HeyCyan Smart Glasses (Android) - Data Transfer Notes
 
-This file is the living reference for how CyanBridge transfers media from the glasses to the phone.
+This file is the living reference for how AD Glasses transfers media from the glasses to the phone.
 It replaces older/incorrect assumptions from the initial reverse-engineering phase.
 
 ## Repository layout
 
-- `android/CyanBridge/` - Android app (CyanBridge) we modify and ship.
+- `android/AD-Glasses/` - Android app (AD Glasses) we modify and ship.
 - `android/HeyCyanOfficialApp/` - Decompiled sources from the official app, used as a protocol reference.
-- `android/CyanBridge/app/libs/glasses_sdk_*.aar` - Vendor SDK used by both apps.
+- `android/AD-Glasses/app/libs/glasses_sdk_*.aar` - Vendor SDK used by both apps.
 
 ## Working media transfer (BLE + Wi-Fi Direct HTTP)
 
@@ -18,9 +18,9 @@ The glasses expose an HTTP server during transfer mode. The phone uses BLE to tr
 - `http://<glasses-ip>/files/media.config` - plaintext file listing filenames (one per line).
 - `http://<glasses-ip>/files/<filename>` - binary media payload.
 
-### Trigger sequence (CyanBridge)
+### Trigger sequence (AD Glasses)
 
-Code lives in `android/CyanBridge/app/src/main/java/com/fersaiyan/cyanbridge/MainActivity.kt`.
+Code lives in `android/AD-Glasses/app/src/main/java/com/ad_glasses/MainActivity.kt`.
 
 1. Ensure BLE is connected.
 2. Start Wi-Fi P2P discovery/connection.
@@ -49,12 +49,12 @@ The `media.config` list can include images, video, and audio.
 ### JPG/JPEG
 
 - Downloaded over HTTP and inserted into `MediaStore.Images`.
-- Saved under `DCIM/CyanBridge` via `RELATIVE_PATH` (Android 10+) so they always appear in Gallery.
+- Saved under `DCIM/AD-Glasses` via `RELATIVE_PATH` (Android 10+) so they always appear in Gallery.
 
 ### MP4
 
 - Downloaded over HTTP and inserted into `MediaStore.Video`.
-- Saved under `DCIM/CyanBridge`.
+- Saved under `DCIM/AD-Glasses`.
 - Uses longer HTTP read timeouts.
 
 ### OPUS recordings
@@ -70,7 +70,7 @@ What we do:
   - Length-prefixed packets (u16 LE/BE or u8).
   - Fixed packet size (includes 40 bytes; the official app uses `packetSize=40`).
 - Write the resulting bytes into `MediaStore.Audio` with `MIME_TYPE=audio/ogg`.
-- Save under `DCIM/CyanBridge` (same folder preference as images/videos).
+- Save under `DCIM/AD-Glasses` (same folder preference as images/videos).
 
 This makes the recordings playable in common players (e.g., VLC) when wrapping succeeds.
 
@@ -80,7 +80,7 @@ This makes the recordings playable in common players (e.g., VLC) when wrapping s
 
 The transfer server is HTTP (not HTTPS), so Android may block it unless configured.
 
-- `android/CyanBridge/app/src/main/res/xml/network_security_config.xml` permits cleartext so `http://192.168.49.x/...` works.
+- `android/AD-Glasses/app/src/main/res/xml/network_security_config.xml` permits cleartext so `http://192.168.49.x/...` works.
 
 ### Bind network for correct routing
 
@@ -100,23 +100,23 @@ Use `ContextCompat.registerReceiver()`.
 ## Error handling notes
 
 - `loadData[6] == 0x09` with error 255 is common and not necessarily fatal.
-- Resetting P2P while an HTTP transfer is active can drop the connection; CyanBridge suppresses aggressive resets during active transfer.
+- Resetting P2P while an HTTP transfer is active can drop the connection; AD Glasses suppresses aggressive resets during active transfer.
 - Disconnect/retry logic is split between:
   - Wi-Fi P2P state machine (`WifiP2pManagerSingleton`).
   - Higher-level resolver in `MainActivity` that waits for a real glasses IP and a reachable `media.config`.
 
-## Code references (CyanBridge)
+## Code references (AD Glasses)
 
-- Main flow: `android/CyanBridge/app/src/main/java/com/fersaiyan/cyanbridge/MainActivity.kt`
+- Main flow: `android/AD-Glasses/app/src/main/java/com/ad_glasses/MainActivity.kt`
   - `startDataDownload()`: orchestrates BLE + P2P.
   - HTTP + parsing: downloads `media.config`, then downloads JPG/MP4/OPUS.
-  - MediaStore saves: images/videos/audio saved to `DCIM/CyanBridge`.
+  - MediaStore saves: images/videos/audio saved to `DCIM/AD-Glasses`.
 
-- P2P controller: `android/CyanBridge/app/src/main/java/com/fersaiyan/cyanbridge/ui/wifi/p2p/WifiP2pManagerSingleton.kt`
+- P2P controller: `android/AD-Glasses/app/src/main/java/com/ad_glasses/ui/wifi/p2p/WifiP2pManagerSingleton.kt`
   - Includes discovery/connect timeouts and uses WPS PBC.
   - `resetDeviceP2p()` sends `glassesControl([0x02,0x01,0x0F])`.
 
-- Network policy: `android/CyanBridge/app/src/main/res/xml/network_security_config.xml`
+- Network policy: `android/AD-Glasses/app/src/main/res/xml/network_security_config.xml`
 
 ## How the official app differs (relevant parts)
 
@@ -181,7 +181,7 @@ JAVA_HOME=/opt/android-studio/jbr ./gradlew :app:assembleDebug
 
 ### iOS Host Architecture
 
-The iOS host (`CyanBridgeKMPHost`) embeds a `ComposeUIViewController` via `UIViewControllerRepresentable`. The `MainViewController()` function is exported from the Kotlin/Native framework. Both platforms call the same shared composables from `shared/commonMain`.
+The iOS host (`AD GlassesKMPHost`) embeds a `ComposeUIViewController` via `UIViewControllerRepresentable`. The `MainViewController()` function is exported from the Kotlin/Native framework. Both platforms call the same shared composables from `shared/commonMain`.
 
 ### Kotlin Upgrade (Completed)
 
@@ -448,16 +448,16 @@ If the cloud OTA API continues to return “No upgraded version” for a long ti
   - Then compare **state machines** (when they retry, when they reset, when they treat an error as fatal).
 - Always capture and reason from **logcat** before changing code; use the tag set above and keep logs alongside any code changes you make for traceability.
 
-## CyanBridge Vercel Relay Server (cyanbridge.vercel.app)
+## AD Glasses Vercel Relay Server (AD Glasses.vercel.app)
 
-The CyanBridge app uses a **Vercel-hosted Next.js server** instead of the Termux phone server for:
+The AD Glasses app uses a **Vercel-hosted Next.js server** instead of the Termux phone server for:
 - Subscription management (Asaas recurring credit card)
 - AI model proxying (OpenRouter)
 - User authentication and quota tracking
 
 ### Server URL
 
-`https://cyanbridge.vercel.app` — hardcoded in `AiProviderPrefs.kt` as `DEFAULT_PUBLIC_RELAY_URL`.
+`https://AD Glasses.vercel.app` — hardcoded in `AiProviderPrefs.kt` as `DEFAULT_PUBLIC_RELAY_URL`.
 
 ### Endpoints the app calls
 
@@ -552,10 +552,10 @@ git status --short
 
 Look for untracked directories such as:
 
-- `android/CyanBridge/app/src/main/java/com/fersaiyan/cyanbridge/ui/components/`
-- `android/CyanBridge/app/src/main/java/com/fersaiyan/cyanbridge/ui/glasses/`
-- `android/CyanBridge/app/src/main/java/com/fersaiyan/cyanbridge/ui/onboarding/`
-- `android/CyanBridge/app/src/main/java/com/fersaiyan/cyanbridge/ui/plugins/`
+- `android/AD-Glasses/app/src/main/java/com/ad_glasses/ui/components/`
+- `android/AD-Glasses/app/src/main/java/com/ad_glasses/ui/glasses/`
+- `android/AD-Glasses/app/src/main/java/com/ad_glasses/ui/onboarding/`
+- `android/AD-Glasses/app/src/main/java/com/ad_glasses/ui/plugins/`
 
 If they are marked with `??` and are not part of the current branch, treat them as suspect.
 
@@ -615,5 +615,5 @@ When the Material 3 migration becomes the active priority again:
 2. If image sync works, fold changes back onto `compose-material3-kmp-v2` via `git rebase --onto` or cherry‑pick of the cleaned diff.
 3. Then add Eyevue protocol back → locate the break.
 4. Then add TTS streaming back.
-5. Deploy `/.well-known/assetlinks.json` to cyanbridge.vercel.app.
+5. Deploy `/.well-known/assetlinks.json` to AD Glasses.vercel.app.
 6. Confirm PRO_* Gradle properties for signed release build.

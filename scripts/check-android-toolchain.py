@@ -13,10 +13,10 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[1]
 
 ANDROID_GRADLE_FILES = [
-    ROOT / "android/CyanBridge/app/build.gradle",
-    ROOT / "android/CyanBridge/shared/build.gradle.kts",
-    ROOT / "android/CyanBridge/assistant-role/build.gradle.kts",
-    ROOT / "android/CyanBridge/moonshine-voice/build.gradle",
+    ROOT / "android/AD-Glasses/app/build.gradle",
+    ROOT / "android/AD-Glasses/shared/build.gradle.kts",
+    ROOT / "android/AD-Glasses/assistant-role/build.gradle.kts",
+    ROOT / "android/AD-Glasses/moonshine-voice/build.gradle",
     ROOT / "heycyan-core/core-connectivity/build.gradle.kts",
     ROOT / "heycyan-core/core-ble/build.gradle.kts",
     ROOT / "heycyan-core/core-audio/build.gradle.kts",

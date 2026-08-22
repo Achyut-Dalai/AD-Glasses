@@ -1,5 +1,5 @@
-[submodule "android/CyanBridge/app/src/main/myvu-upstream"]
-	path = android/CyanBridge/app/src/main/myvu-upstream
+[submodule "android/AD-Glasses/app/src/main/myvu-upstream"]
+	path = android/AD-Glasses/app/src/main/myvu-upstream
 	url = https://github.com/Panny777/Meizu-Myvu-Client.git
 [submodule "third_party/moonshine"]
 	path = third_party/moonshine
