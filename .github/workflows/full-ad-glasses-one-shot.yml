@@ -61,7 +61,11 @@ jobs:
             echo "Forbidden legacy term remains in a tracked path." >&2
             exit 1
           fi
-          if git grep -nEi 'cyanbridge|fersaiyan|tasker' -- ':!third_party/**' ':!**/build/**'; then
+          if git grep -nEi 'cyanbridge|fersaiyan|tasker' -- \
+            ':!third_party/**' \
+            ':!**/build/**' \
+            ':!tools/full_ad_glasses_one_shot.py' \
+            ':!.github/workflows/full-ad-glasses-one-shot.yml'; then
             echo "Forbidden legacy term remains in tracked text." >&2
             exit 1
           fi
@@ -136,6 +140,7 @@ jobs:
       - name: Create one atomic transformation commit
         shell: bash
         run: |
+          starting_tip="$(git rev-parse HEAD)"
           rm -f tools/full_ad_glasses_one_shot.py
           rm -f .github/workflows/full-ad-glasses-one-shot.yml
 
@@ -154,12 +159,12 @@ jobs:
           final_sha="$(
             printf '%s\n\n%s\n' \
               'refactor: complete AD Glasses one-shot rebrand' \
-              'Rename packages, paths, Android project, URI scheme, branding, CI/docs; remove Tasker and stale cleanup artifacts while preserving cloud/local assistant paths.' \
+              'Rename packages, paths, Android project, URI scheme, branding, CI/docs; remove the legacy automation integration and stale cleanup artifacts while preserving cloud/local assistant paths.' \
             | git commit-tree "$tree_sha" -p "$BASE_SHA"
           )"
 
           git push \
-            --force-with-lease="refs/heads/${TARGET_BRANCH}:${GITHUB_SHA}" \
+            --force-with-lease="refs/heads/${TARGET_BRANCH}:${starting_tip}" \
             origin "${final_sha}:refs/heads/${TARGET_BRANCH}"
 
           echo "FINAL_SHA=${final_sha}" >> "$GITHUB_ENV"
