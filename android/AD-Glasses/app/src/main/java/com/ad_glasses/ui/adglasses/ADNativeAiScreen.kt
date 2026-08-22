@@ -7,11 +7,9 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
-import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
@@ -43,8 +41,9 @@ import com.ad_glasses.shared.settings.AgentProviderType
 
 enum class ADAiChoice { CLOUD, LOCAL }
 
+/** AI routing and configuration embedded directly in Device Center. */
 @Composable
-internal fun ADNativeAiScreen(
+internal fun ADDeviceAiSection(
     onCloudSettings: () -> Unit,
     onLocalSettings: () -> Unit,
 ) {
@@ -77,18 +76,12 @@ internal fun ADNativeAiScreen(
         ADAiChoice.LOCAL -> "Local AI"
     }
 
-    Column(
-        modifier = Modifier
-            .fillMaxSize()
-            .padding(horizontal = 14.dp, vertical = 8.dp),
-    ) {
-        Text("AI", style = MaterialTheme.typography.headlineMedium, fontWeight = FontWeight.Medium)
+    Column(modifier = Modifier.fillMaxWidth()) {
         Text(
             "Cloud AI for REST/Realtime sessions, with Local AI as the offline fallback.",
             style = MaterialTheme.typography.bodySmall,
             color = ADColors.Muted,
         )
-
         Spacer(Modifier.height(8.dp))
         ADAiProviderCard(selectedName, selected, ::select)
 
