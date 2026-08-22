@@ -2,13 +2,13 @@ package com.fersaiyan.cyanbridge.shared.settings
 
 enum class AgentProviderType {
     LOCAL_AGENT,
-    /** Legacy enum name retained for persisted settings compatibility; now means direct API token. */
+    /** Persisted legacy enum token retained for migration compatibility; functionally this is AD Cloud AI. */
     PRO_SUBSCRIPTION;
 
     val label: String
         get() = when (this) {
             LOCAL_AGENT -> "Local AI"
-            PRO_SUBSCRIPTION -> "API token"
+            PRO_SUBSCRIPTION -> "Cloud AI"
         }
 }
 
