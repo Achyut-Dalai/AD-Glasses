@@ -27,6 +27,7 @@ import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -40,8 +41,11 @@ import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.unit.dp
+import com.fersaiyan.cyanbridge.agent.CloudServerPrefs
+import com.fersaiyan.cyanbridge.agent.CloudSettingsActivity
 import com.fersaiyan.cyanbridge.agent.LocalAgentPrefs
 import com.fersaiyan.cyanbridge.agent.LocalModelsConfigureActivity
+import com.fersaiyan.cyanbridge.ai.live.GeminiLiveActivity
 import com.fersaiyan.cyanbridge.ai.orchestrator.AssistantConversationSession
 import com.fersaiyan.cyanbridge.ai.router.AiProviderPrefs
 import com.fersaiyan.cyanbridge.ai.router.AiProviderType
@@ -57,21 +61,23 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 
 @Composable
-internal fun ADNativeApiSettingsScreen(onBack: () -> Unit) {
+internal fun ADNativeCloudAiSettingsScreen(onBack: () -> Unit) {
     val context = LocalContext.current
     var provider by remember { mutableStateOf(AiProviderPrefs.getApiProvider(context)) }
     var apiKey by remember(provider) { mutableStateOf(AiProviderPrefs.getApiKey(context, provider)) }
     var model by remember(provider) { mutableStateOf(AiProviderPrefs.getModel(context, provider)) }
     var saved by remember { mutableStateOf(false) }
+    val realtimeReady = AiProviderPrefs.isRelayConfigured(context) &&
+        CloudServerPrefs.getApiToken(context).isNotBlank()
 
-    ADPageLayout("API", onBack) {
+    ADPageLayout("Cloud AI", onBack) {
         ADCard {
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Icon(Icons.Outlined.Key, null, tint = ADColors.Blue, modifier = Modifier.size(19.dp))
                 Column(Modifier.padding(start = 8.dp)) {
-                    Text("Direct provider API", style = MaterialTheme.typography.titleMedium)
+                    Text("Standard REST", style = MaterialTheme.typography.titleMedium)
                     Text(
-                        "No relay and no consumer app handoff",
+                        "AD receives the response text, keeps the conversation, and speaks it with Android TTS.",
                         style = MaterialTheme.typography.bodySmall,
                         color = ADColors.Muted,
                     )
@@ -137,8 +143,47 @@ internal fun ADNativeApiSettingsScreen(onBack: () -> Unit) {
             Text(if (saved) "${provider.label} selected" else "Save and use ${provider.label}")
         }
 
+        ADCard {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Icon(Icons.Outlined.Mic, null, tint = ADColors.Blue, modifier = Modifier.size(19.dp))
+                Column(Modifier.padding(start = 8.dp).weight(1f)) {
+                    Text("Realtime", style = MaterialTheme.typography.titleMedium)
+                    Text(
+                        if (realtimeReady) "Gemini Live ready through AD's short-lived-token relay"
+                        else "Configure the relay used to mint short-lived Gemini Live sessions",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = ADColors.Muted,
+                    )
+                }
+            }
+            Spacer(Modifier.size(8.dp))
+            Text(
+                "Realtime is AD's own WebSocket audio path. It does not launch or control the Gemini app. " +
+                    "OpenAI Realtime can live in this same Cloud layer when its client is added.",
+                style = MaterialTheme.typography.bodySmall,
+                color = ADColors.Muted,
+            )
+            Spacer(Modifier.size(9.dp))
+            Button(
+                onClick = { context.startActivity(Intent(context, CloudSettingsActivity::class.java)) },
+                modifier = Modifier.fillMaxWidth().heightIn(min = 44.dp),
+                colors = ButtonDefaults.buttonColors(containerColor = ADColors.Ink),
+            ) {
+                Text("Configure Realtime relay")
+            }
+            Spacer(Modifier.size(6.dp))
+            OutlinedButton(
+                onClick = { context.startActivity(Intent(context, GeminiLiveActivity::class.java)) },
+                enabled = realtimeReady,
+                modifier = Modifier.fillMaxWidth().heightIn(min = 44.dp),
+            ) {
+                Text("Open Gemini Live preview")
+            }
+        }
+
         Text(
-            "Keys are stored in Android encrypted preferences on this phone. AD sends requests directly to the selected provider endpoint.",
+            "Provider API keys and relay tokens are stored with Android Keystore-backed encrypted preferences. " +
+                "Standard REST talks directly to the selected provider; the relay is optional and scoped to AD-owned cloud infrastructure such as Realtime token issuance.",
             style = MaterialTheme.typography.bodySmall,
             color = ADColors.Muted,
         )
@@ -270,7 +315,7 @@ internal fun ADNativeLocalAiSettingsScreen(onBack: () -> Unit) {
             }
             Spacer(Modifier.size(6.dp))
             Text(
-                "Moonshine converts English speech to text. AD uses Android text-to-speech for replies.",
+                "Moonshine converts English speech to text. Standard Cloud REST replies use Android text-to-speech; Realtime cloud sessions return their own audio stream.",
                 style = MaterialTheme.typography.bodySmall,
                 color = ADColors.Muted,
             )
