@@ -4,9 +4,6 @@ on:
   pull_request:
     branches:
       - main
-  push:
-    branches:
-      - cleanup/full-ad-glasses-one-shot
 
 permissions:
   contents: write
@@ -14,7 +11,7 @@ permissions:
 
 concurrency:
   group: full-ad-glasses-one-shot
-  cancel-in-progress: false
+  cancel-in-progress: true
 
 jobs:
   transform-build-and-commit:
