@@ -69,7 +69,7 @@ class RemoteUiControlLocalAgentBrain : LocalAgentBrain {
 
         val screenshot = when {
             LocalAgentPrefs.isScreenshotPlanningEnabled(context) &&
-                AgentInferenceRouter.isRemotePlanner(context) &&
+                AgentInferenceRouter.isRemotePlanner(LocalAgentPrefs.getProviderType(context)) &&
                 !LocalAgentPrefs.isRemoteScreenshotUploadEnabled(context) -> {
                 LocalAgentPrefs.setScreenshotStatus(
                     context,

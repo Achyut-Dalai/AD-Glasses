@@ -131,7 +131,7 @@ class GeminiLiveActivity : AppCompatActivity(), GeminiLiveClient.Listener {
         val defaultImageQuestion = ImageQuestionPromptResolver.resolve(
             settings = ImageQuestionPreferences.get(this),
             userQuestion = null,
-        ).forRoute(ImageQuestionRoute.PRO_RELAY)
+        ).forRoute(ImageQuestionRoute.CLOUD_API)
         client.start(language, defaultImageQuestion)
     }
 

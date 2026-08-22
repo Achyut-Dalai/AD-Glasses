@@ -3,13 +3,12 @@ package com.ad_glasses.localagent.dailysummary
 import android.content.Context
 import com.ad_glasses.shared.settings.AgentProviderType
 import com.ad_glasses.agent.LocalAgentPrefs as AutomationPrefs
-import com.ad_glasses.agent.CloudAiPrefs
 import org.json.JSONObject
 import java.io.File
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
-import com.ad_glasses.ai.router.CliRelayClient
+import com.ad_glasses.ai.router.ApiTokenClient
 import com.ad_glasses.localmodels.provider.LocalModelRequestPriority
 import com.ad_glasses.localmodels.provider.LocalModelsProvider
 import com.ad_glasses.localagent.memory.LocalAgentMemoryStore
@@ -666,37 +665,38 @@ Remember: You MUST output a valid summary. Do not refuse.
                     throw IllegalStateException("Local model unavailable (${localErr.message}).")
                 }
 
-            AgentProviderType.CLOUD_AI -> runRelay(context, prompt)
+            AgentProviderType.CLOUD_AI -> runCloudApi(context, prompt)
         }
     }
 
-    private suspend fun runRelay(context: Context, prompt: String): ProviderResponse {
-        val modelOverride = CloudAiPrefs.getTasksModel(context)
-            .trim()
-            .takeIf { it.isNotBlank() }
-
-        val details = CliRelayClient.voiceQueryDetailed(
+    private suspend fun runCloudApi(context: Context, prompt: String): ProviderResponse {
+        val inputTokens = DailySummaryRunHistory.estimateTokenCount(prompt)
+        val started = System.currentTimeMillis()
+        val reply = ApiTokenClient.chat(
             context = context,
-            prompt = prompt,
-            modelOverride = modelOverride,
+            messages = listOf(mapOf("role" to "user", "content" to prompt)),
+            maxTokens = 1200,
         ).getOrElse { err ->
-            throw IllegalStateException("Pro relay unavailable (${err.message}).")
-        }
+            throw IllegalStateException("Cloud AI unavailable (${err.message}).", err)
+        }.trim()
+        val totalMs = (System.currentTimeMillis() - started).coerceAtLeast(1L)
 
-        val reply = details.reply.trim()
         if (!isUsableSummaryReply(reply)) {
-            throw IllegalStateException("Unable to generate daily summary from active provider.")
+            throw IllegalStateException("Unable to generate daily summary from active cloud provider.")
         }
 
+        val outputTokens = DailySummaryRunHistory.estimateTokenCount(reply)
+        val promptMs = (totalMs * 0.35).toLong().coerceAtLeast(1L)
+        val generationMs = (totalMs - promptMs).coerceAtLeast(1L)
         return ProviderResponse(
             text = reply,
             metrics = DailySummaryRunHistory.RunMetrics(
-                provider = "cli_relay",
-                inputTokens = details.telemetry.inputTokens,
-                outputTokens = details.telemetry.outputTokens,
-                promptTokensPerSec = details.telemetry.promptTokensPerSec,
-                generationTokensPerSec = details.telemetry.generationTokensPerSec,
-                totalMs = details.telemetry.totalMs,
+                provider = "cloud_api",
+                inputTokens = inputTokens,
+                outputTokens = outputTokens,
+                promptTokensPerSec = inputTokens / (promptMs / 1000.0),
+                generationTokensPerSec = outputTokens / (generationMs / 1000.0),
+                totalMs = totalMs,
             ),
         )
     }
@@ -751,7 +751,7 @@ Remember: You MUST output a valid summary. Do not refuse.
         val lower = s.lowercase(Locale.US)
         if (s.isBlank()) return false
         if (s.startsWith("Demo mode reply:", ignoreCase = true)) return false
-        if (s.startsWith("Relay unavailable (", ignoreCase = true)) return false
+        if (s.startsWith("Cloud AI unavailable (", ignoreCase = true)) return false
         if (s.startsWith("Company backend is not configured", ignoreCase = true)) return false
         if (s.startsWith("I couldn't generate a reply yet.", ignoreCase = true)) return false
         if (s.startsWith("No local model is installed.", ignoreCase = true)) return false
@@ -779,7 +779,7 @@ Remember: You MUST output a valid summary. Do not refuse.
         val msg = error.message?.lowercase().orEmpty()
         return msg.contains("timed out") ||
             msg.contains("timeout") ||
-            msg.contains("relay unavailable") ||
+            msg.contains("cloud ai unavailable") ||
             msg.contains("http 5") ||
             msg.contains("unusable response") ||
             msg.contains("couldn't generate")

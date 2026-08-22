@@ -1,7 +1,6 @@
 package com.ad_glasses.ai.transcription
 
 import android.content.Context
-import com.ad_glasses.BuildConfig
 import java.io.File
 
 /**
@@ -24,8 +23,7 @@ class MoonshotTranscriptionProvider(
 
         val apiKey = TranscriptionEndpointPrefs.getApiKey(context)
             ?.trim()
-            ?.takeIf { it.isNotBlank() }
-            ?: BuildConfig.OPENAI_API_KEY.trim()
+            .orEmpty()
 
         if (apiKey.isBlank()) {
             throw IllegalStateException(

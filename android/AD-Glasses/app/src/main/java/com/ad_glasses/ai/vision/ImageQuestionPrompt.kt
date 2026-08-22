@@ -9,9 +9,8 @@ data class ImageQuestionSettings(
 )
 
 enum class ImageQuestionRoute {
-    PRO_RELAY,
-    LOCAL_GEMMA,
-    EXTERNAL_ASSISTANT,
+    CLOUD_API,
+    LOCAL_MODEL,
 }
 
 /** A single resolved prompt is deliberately shared by every image-question route. */
@@ -19,10 +18,8 @@ data class ResolvedImageQuestionPrompt(
     val text: String,
 ) {
     fun forRoute(route: ImageQuestionRoute): String = when (route) {
-        ImageQuestionRoute.PRO_RELAY,
-        ImageQuestionRoute.LOCAL_GEMMA,
-        ImageQuestionRoute.EXTERNAL_ASSISTANT
-        -> text
+        ImageQuestionRoute.CLOUD_API,
+        ImageQuestionRoute.LOCAL_MODEL -> text
     }
 }
 
