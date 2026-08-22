@@ -40,6 +40,8 @@ internal fun ADGlassesDeviceCenterScreen(
     onBack: () -> Unit,
     onSync: () -> Unit,
     onFirmware: () -> Unit,
+    onCloudSettings: () -> Unit,
+    onLocalSettings: () -> Unit,
 ) {
     val context = LocalContext.current
     val profile = DeviceProfileStore.loadLastSelected(context)
@@ -114,14 +116,11 @@ internal fun ADGlassesDeviceCenterScreen(
             }
         }
 
-        ADSectionTitle("Capabilities")
-        ADCard {
-            ADDeviceCapability("Voice", "Ask and control through the glasses")
-            HorizontalDivider(color = ADColors.Separator)
-            ADDeviceCapability("Camera", "See and capture through the glasses camera")
-            HorizontalDivider(color = ADColors.Separator)
-            ADDeviceCapability("Phone intelligence", "AI, web, memory, tasks and phone actions")
-        }
+        ADSectionTitle("AI")
+        ADDeviceAiSection(
+            onCloudSettings = onCloudSettings,
+            onLocalSettings = onLocalSettings,
+        )
 
         ADSectionTitle("Device tools")
         ADCard {
@@ -143,14 +142,5 @@ internal fun ADGlassesDeviceCenterScreen(
                 iconBackground = ADColors.Warning,
             )
         }
-    }
-}
-
-@Composable
-private fun ADDeviceCapability(title: String, detail: String) {
-    Column(Modifier.fillMaxWidth().padding(vertical = 8.dp)) {
-        Text(title, style = MaterialTheme.typography.titleMedium)
-        Spacer(Modifier.height(1.dp))
-        Text(detail, style = MaterialTheme.typography.bodySmall, color = ADColors.Muted)
     }
 }
