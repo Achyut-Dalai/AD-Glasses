@@ -6,18 +6,14 @@ import androidx.security.crypto.EncryptedSharedPreferences
 import androidx.security.crypto.MasterKey
 
 enum class AiProviderType(val wire: String, val label: String) {
-    /** AD-owned cloud inference. Standard REST is the default request path. */
-    API_TOKEN("api_token", "Cloud AI"),
-    /** On-device LLM fallback. */
+    /** AD-owned cloud inference. */
+    CLOUD_API("cloud_api", "Cloud AI"),
+    /** On-device model. */
     LOCAL_MODELS("local_models", "Local AI");
 
     companion object {
-        fun fromWire(value: String?): AiProviderType = when (value?.trim()?.lowercase()) {
-            LOCAL_MODELS.wire -> LOCAL_MODELS
-            // One-way migration from every retired remote/demo route. Consumer apps are never restored.
-            "cli_relay", "company_backend", "mock", API_TOKEN.wire -> API_TOKEN
-            else -> API_TOKEN
-        }
+        fun fromWire(value: String?): AiProviderType =
+            entries.firstOrNull { it.wire == value?.trim()?.lowercase() } ?: CLOUD_API
     }
 }
 
@@ -39,25 +35,13 @@ enum class ApiProvider(
     }
 }
 
-/**
- * Cloud/local AI preferences owned by AD Glasses.
- *
- * Provider API keys are encrypted with Android Keystore-backed preferences. The relay URL is not a
- * secret and exists only for AD-owned cloud infrastructure such as short-lived Realtime session
- * tokens; it is not a consumer-assistant or CLI invocation route.
- */
+/** Cloud/local AI preferences owned by AD Glasses. */
 object AiProviderPrefs {
     private const val PREFS_NAME = "ai_provider_prefs"
     private const val SECRET_PREFS_NAME = "ai_api_secrets"
     private const val KEY_PROVIDER = "provider"
     private const val KEY_API_PROVIDER = "api_provider"
     private const val KEY_RELAY_BASE_URL = "relay_base_url"
-
-    // Never silently restore old author/demo infrastructure on an installed app.
-    private val RETIRED_DEFAULT_RELAY_URLS = setOf(
-        "https://carelens-wine.vercel.app",
-        "https://cyanbridge.vercel.app",
-    )
 
     private fun prefs(context: Context) =
         context.applicationContext.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
@@ -77,7 +61,7 @@ object AiProviderPrefs {
     }
 
     fun getProvider(context: Context): AiProviderType =
-        AiProviderType.fromWire(prefs(context).getString(KEY_PROVIDER, AiProviderType.API_TOKEN.wire))
+        AiProviderType.fromWire(prefs(context).getString(KEY_PROVIDER, AiProviderType.CLOUD_API.wire))
 
     fun setProvider(context: Context, provider: AiProviderType) {
         prefs(context).edit().putString(KEY_PROVIDER, provider.wire).apply()
@@ -111,13 +95,9 @@ object AiProviderPrefs {
     fun isApiConfigured(context: Context, provider: ApiProvider = getApiProvider(context)): Boolean =
         getApiKey(context, provider).isNotBlank() && getModel(context, provider).isNotBlank()
 
-    /** Optional AD-owned relay used for secure/ephemeral cloud transport such as Gemini Live tokens. */
+    /** Optional AD-owned relay for short-lived realtime session credentials such as Gemini Live. */
     fun getRelayBaseUrl(context: Context): String =
-        prefs(context).getString(KEY_RELAY_BASE_URL, "")
-            ?.trim()
-            .orEmpty()
-            .trimEnd('/')
-            .let { current -> if (current in RETIRED_DEFAULT_RELAY_URLS) "" else current }
+        prefs(context).getString(KEY_RELAY_BASE_URL, "")?.trim().orEmpty().trimEnd('/')
 
     fun setRelayBaseUrl(context: Context, value: String) {
         prefs(context).edit().putString(KEY_RELAY_BASE_URL, value.trim().trimEnd('/')).apply()
