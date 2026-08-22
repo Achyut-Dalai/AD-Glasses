@@ -18,7 +18,7 @@ data class AgentInferenceResult(
     val mediaStatus: String,
 )
 
-/** Inference boundary with only two transports: encrypted API token or on-device local model. */
+/** Inference boundary with only two transports: encrypted cloud API or on-device local model. */
 object AgentInferenceRouter {
     private val localModelsProvider = LocalModelsProvider()
 
@@ -73,6 +73,13 @@ object AgentInferenceRouter {
 
         val imageContent = try {
             when (providerType) {
+                AgentProviderType.CLOUD_AI -> ApiTokenClient.image(
+                    context = context,
+                    systemPrompt = systemPrompt,
+                    userPrompt = userPrompt,
+                    imagePath = usableImagePath,
+                    maxTokens = UI_PLANNING_MAX_TOKENS,
+                ).getOrThrow()
                 AgentProviderType.LOCAL_AGENT -> localModelsProvider.streamChat(
                     context = context,
                     messages = messages(systemPrompt, userPrompt),
@@ -80,13 +87,6 @@ object AgentInferenceRouter {
                     maxTokens = UI_PLANNING_MAX_TOKENS,
                     onToken = onToken,
                 )
-                AgentProviderType.PRO_SUBSCRIPTION -> ApiTokenClient.image(
-                    context = context,
-                    systemPrompt = systemPrompt,
-                    userPrompt = userPrompt,
-                    imagePath = usableImagePath,
-                    maxTokens = UI_PLANNING_MAX_TOKENS,
-                ).getOrThrow()
             }
         } catch (error: CancellationException) {
             throw error
@@ -105,9 +105,8 @@ object AgentInferenceRouter {
         )
     }
 
-    fun isRemotePlanner(
-        providerType: AgentProviderType,
-    ): Boolean = providerType == AgentProviderType.PRO_SUBSCRIPTION
+    fun isRemotePlanner(providerType: AgentProviderType): Boolean =
+        providerType == AgentProviderType.CLOUD_AI
 
     private suspend fun completeText(
         context: Context,
@@ -120,17 +119,17 @@ object AgentInferenceRouter {
         val messages = messages(systemPrompt, userPrompt)
         val maxTokens = if (purpose == AgentInferencePurpose.CLASSIFICATION) 256 else 512
         return when (providerType) {
+            AgentProviderType.CLOUD_AI -> ApiTokenClient.chat(
+                context = context,
+                messages = messages,
+                maxTokens = maxTokens,
+            ).getOrThrow()
             AgentProviderType.LOCAL_AGENT -> localModelsProvider.streamChat(
                 context = context,
                 messages = messages,
                 maxTokens = maxTokens,
                 onToken = onToken,
             )
-            AgentProviderType.PRO_SUBSCRIPTION -> ApiTokenClient.chat(
-                context = context,
-                messages = messages,
-                maxTokens = maxTokens,
-            ).getOrThrow()
         }
     }
 
