@@ -7,6 +7,9 @@ enum class AssistantIntent {
     ANSWER_QUESTION,
     ANALYZE_IMAGE,
     CLARIFY,
+    /** Compatibility token for inherited host code. AssistantRequestRouter never emits it. */
+    @Deprecated("Phone UI automation is retired")
+    EXECUTE_UI_TASK,
 }
 
 enum class AssistantRequestSource {
