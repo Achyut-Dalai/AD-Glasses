@@ -4,8 +4,6 @@ enum class AssistantCapability {
     TRANSLATOR,
     MEETING_NOTES,
     LIVE_CAPTIONS,
-    AUTO_DIARY,
-    VISUAL_DIARY,
     LOCAL_AGENT,
 }
 
@@ -34,8 +32,6 @@ object AssistantCapabilityCommandRouter {
         val capability = when {
             TRANSLATOR.containsMatchIn(normalized) -> AssistantCapability.TRANSLATOR
             MEETING.containsMatchIn(normalized) -> AssistantCapability.MEETING_NOTES
-            AUTO_DIARY.containsMatchIn(normalized) -> AssistantCapability.AUTO_DIARY
-            VISUAL_DIARY.containsMatchIn(normalized) -> AssistantCapability.VISUAL_DIARY
             LOCAL_AGENT.containsMatchIn(normalized) -> AssistantCapability.LOCAL_AGENT
             else -> return null
         }
@@ -49,7 +45,5 @@ object AssistantCapabilityCommandRouter {
     private val TRANSLATOR = Regex("\\b(translat(?:e|or|ion)|interpreter)\\b")
     // Older spoken names remain accepted as input compatibility, but are not product/UI labels.
     private val MEETING = Regex("\\b(soundbites?|meeting notes?|meeting mode|spark notes?|take notes?)\\b")
-    private val AUTO_DIARY = Regex("\\b(daynote|auto diary|automatic diary|diary mode)\\b")
-    private val VISUAL_DIARY = Regex("\\b(timeline|visual diary|visual memory|visual timeline)\\b")
     private val LOCAL_AGENT = Regex("\\b(automation|local agent|phone agent|phone control)\\b")
 }
