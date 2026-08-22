@@ -1,6 +1,9 @@
 name: One-shot post-cleanup repair
 
 on:
+  pull_request:
+    branches:
+      - main
   push:
     branches:
       - fix/post-cleanup-build
@@ -115,6 +118,7 @@ jobs:
       - name: Commit repaired source and remove harness
         shell: bash
         run: |
+          git checkout origin/main -- .github/workflows/android-app.yml
           rm -f tools/post_cleanup_repair.py .github/workflows/post-cleanup-repair.yml
           git add -A
           git diff --cached --check
