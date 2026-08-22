@@ -352,9 +352,8 @@
     <string name="dashboard_load_settings">안경에서 설정 로드</string>
     <string name="dashboard_limits_unavailable">설정을 로드하여 이 안경이 지원하는 제한을 확인하세요.</string>
     <string name="dashboard_ai_assistant">AI 어시스턴트</string>
-<string name="dashboard_custom_provider">AD Local / Cloud AI</string>
+    <string name="dashboard_custom_provider">AD Local / Cloud AI</string>
     <string name="dashboard_test_voice">음성 테스트</string>
-    <string name="dashboard_gemini_chatgpt_setup">Gemini / ChatGPT 자동화 설정</string>
     <string name="dashboard_meizu_title">Meizu MYVU / Star Air</string>
     <string name="dashboard_protocol">프로토콜: %1$s</string>
     <string name="dashboard_device">기기: %1$s</string>

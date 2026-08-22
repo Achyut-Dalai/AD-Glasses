@@ -352,9 +352,8 @@
     <string name="dashboard_load_settings">从眼镜加载设置</string>
     <string name="dashboard_limits_unavailable">加载设置以查看这些眼镜支持的限制。</string>
     <string name="dashboard_ai_assistant">AI 助手</string>
-<string name="dashboard_custom_provider">AD Local / Cloud AI</string>
+    <string name="dashboard_custom_provider">AD Local / Cloud AI</string>
     <string name="dashboard_test_voice">测试语音</string>
-    <string name="dashboard_gemini_chatgpt_setup">Gemini / ChatGPT 自动化设置</string>
     <string name="dashboard_meizu_title">Meizu MYVU / Star Air</string>
     <string name="dashboard_protocol">协议：%1$s</string>
     <string name="dashboard_device">设备：%1$s</string>

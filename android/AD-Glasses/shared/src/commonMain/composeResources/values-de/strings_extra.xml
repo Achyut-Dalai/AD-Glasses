@@ -366,9 +366,8 @@
     <string name="dashboard_load_settings">Einstellungen von der Brille laden</string>
     <string name="dashboard_limits_unavailable">Laden Sie die Einstellungen, um die von dieser Brille unterstützten Grenzen zu sehen.</string>
     <string name="dashboard_ai_assistant">KI-Assistent</string>
-<string name="dashboard_custom_provider">AD Local / Cloud AI</string>
+    <string name="dashboard_custom_provider">AD Local / Cloud AI</string>
     <string name="dashboard_test_voice">Sprache testen</string>
-    <string name="dashboard_gemini_chatgpt_setup">Gemini-/ChatGPT-Automatisierung einrichten</string>
     <string name="dashboard_meizu_title">Meizu MYVU / Star Air</string>
     <string name="dashboard_protocol">Protokoll: %1$s</string>
     <string name="dashboard_device">Gerät: %1$s</string>

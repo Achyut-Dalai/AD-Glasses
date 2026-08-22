@@ -352,9 +352,8 @@
     <string name="dashboard_load_settings">Charger les parametres depuis les lunettes</string>
     <string name="dashboard_limits_unavailable">Chargez les parametres pour voir les limites prises en charge par ces lunettes.</string>
     <string name="dashboard_ai_assistant">Assistant IA</string>
-<string name="dashboard_custom_provider">AD Local / Cloud AI</string>
+    <string name="dashboard_custom_provider">AD Local / Cloud AI</string>
     <string name="dashboard_test_voice">Tester la voix</string>
-    <string name="dashboard_gemini_chatgpt_setup">Configuration de l'automatisation Gemini / ChatGPT</string>
     <string name="dashboard_meizu_title">Meizu MYVU / Star Air</string>
     <string name="dashboard_protocol">Protocole : %1$s</string>
     <string name="dashboard_device">Appareil : %1$s</string>

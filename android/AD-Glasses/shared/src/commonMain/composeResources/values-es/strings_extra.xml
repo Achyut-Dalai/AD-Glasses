@@ -352,9 +352,8 @@
     <string name="dashboard_load_settings">Cargar ajustes desde las gafas</string>
     <string name="dashboard_limits_unavailable">Carga los ajustes para ver los limites compatibles con estas gafas.</string>
     <string name="dashboard_ai_assistant">Asistente de IA</string>
-<string name="dashboard_custom_provider">AD Local / Cloud AI</string>
+    <string name="dashboard_custom_provider">AD Local / Cloud AI</string>
     <string name="dashboard_test_voice">Probar voz</string>
-    <string name="dashboard_gemini_chatgpt_setup">Configuracion de automatizacion Gemini / ChatGPT</string>
     <string name="dashboard_meizu_title">Meizu MYVU / Star Air</string>
     <string name="dashboard_protocol">Protocolo: %1$s</string>
     <string name="dashboard_device">Dispositivo: %1$s</string>
