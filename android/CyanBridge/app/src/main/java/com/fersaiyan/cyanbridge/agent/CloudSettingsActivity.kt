@@ -37,14 +37,10 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 
-/** Configuration for infrastructure owned by the AD Glasses user. */
+/** Optional AD-owned relay configuration for short-lived Realtime credentials. */
 class CloudSettingsActivity : AppCompatActivity() {
     private var relayUrl by mutableStateOf("")
-    private var apiToken by mutableStateOf("")
-    private var accountEmail by mutableStateOf("")
-    private var requestsModel by mutableStateOf("")
-    private var questionsModel by mutableStateOf("")
-    private var tasksModel by mutableStateOf("")
+    private var relayToken by mutableStateOf("")
     private var status by mutableStateOf("")
     private var relayUrlError by mutableStateOf<String?>(null)
     private var testing by mutableStateOf(false)
@@ -52,25 +48,17 @@ class CloudSettingsActivity : AppCompatActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         relayUrl = AiProviderPrefs.getRelayBaseUrl(this)
-        apiToken = CloudServerPrefs.getApiToken(this)
-        accountEmail = CloudServerPrefs.getAccountEmail(this)
-        requestsModel = CloudAiPrefs.getRequestsModel(this)
-        questionsModel = CloudAiPrefs.getQuestionsModel(this)
-        tasksModel = CloudAiPrefs.getTasksModel(this)
+        relayToken = CloudServerPrefs.getApiToken(this)
         status = if (AiProviderPrefs.isRelayConfigured(this)) {
-            "Cloud relay configured"
+            "Realtime relay configured"
         } else {
-            "Cloud relay is not configured"
+            "Realtime relay is not configured"
         }
 
         setThemedComposeContent {
-            CloudSettingsScreen(
+            CloudRelaySettingsScreen(
                 relayUrl = relayUrl,
-                apiToken = apiToken,
-                accountEmail = accountEmail,
-                requestsModel = requestsModel,
-                questionsModel = questionsModel,
-                tasksModel = tasksModel,
+                relayToken = relayToken,
                 status = status,
                 relayUrlError = relayUrlError,
                 testing = testing,
@@ -79,11 +67,7 @@ class CloudSettingsActivity : AppCompatActivity() {
                     relayUrl = it
                     relayUrlError = null
                 },
-                onApiTokenChange = { apiToken = it },
-                onAccountEmailChange = { accountEmail = it },
-                onRequestsModelChange = { requestsModel = it },
-                onQuestionsModelChange = { questionsModel = it },
-                onTasksModelChange = { tasksModel = it },
+                onRelayTokenChange = { relayToken = it },
                 onSave = { save(showConfirmation = true) },
                 onTest = ::testConnection,
             )
@@ -99,13 +83,9 @@ class CloudSettingsActivity : AppCompatActivity() {
         relayUrl = url
         relayUrlError = null
         AiProviderPrefs.setRelayBaseUrl(this, url)
-        CloudServerPrefs.setApiToken(this, apiToken)
-        CloudServerPrefs.setAccountEmail(this, accountEmail)
-        CloudAiPrefs.setRequestsModel(this, requestsModel)
-        CloudAiPrefs.setQuestionsModel(this, questionsModel)
-        CloudAiPrefs.setTasksModel(this, tasksModel)
-        status = if (url.isBlank()) "Cloud relay is not configured" else "Cloud relay configured"
-        if (showConfirmation) Toast.makeText(this, "Cloud configuration saved", Toast.LENGTH_SHORT).show()
+        CloudServerPrefs.setApiToken(this, relayToken)
+        status = if (url.isBlank()) "Realtime relay is not configured" else "Realtime relay configured"
+        if (showConfirmation) Toast.makeText(this, "Realtime relay saved", Toast.LENGTH_SHORT).show()
         return true
     }
 
@@ -119,8 +99,8 @@ class CloudSettingsActivity : AppCompatActivity() {
             }
             testing = false
             status = result.fold(
-                onSuccess = { models -> "Connected. ${models.size} model(s) available." },
-                onFailure = { error -> error.message ?: "Connection failed" },
+                onSuccess = { models -> "Connected. ${models.size} model(s) reported by relay." },
+                onFailure = { error -> CloudRelayClient.relayUnavailableHint(error) ?: error.message ?: "Connection failed" },
             )
         }
     }
@@ -128,30 +108,22 @@ class CloudSettingsActivity : AppCompatActivity() {
 
 @OptIn(ExperimentalMaterial3Api::class)
 @androidx.compose.runtime.Composable
-private fun CloudSettingsScreen(
+private fun CloudRelaySettingsScreen(
     relayUrl: String,
-    apiToken: String,
-    accountEmail: String,
-    requestsModel: String,
-    questionsModel: String,
-    tasksModel: String,
+    relayToken: String,
     status: String,
     relayUrlError: String?,
     testing: Boolean,
     onBack: () -> Unit,
     onRelayUrlChange: (String) -> Unit,
-    onApiTokenChange: (String) -> Unit,
-    onAccountEmailChange: (String) -> Unit,
-    onRequestsModelChange: (String) -> Unit,
-    onQuestionsModelChange: (String) -> Unit,
-    onTasksModelChange: (String) -> Unit,
+    onRelayTokenChange: (String) -> Unit,
     onSave: () -> Unit,
     onTest: () -> Unit,
 ) {
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text("Cloud AI") },
+                title = { Text("Realtime relay") },
                 navigationIcon = {
                     IconButton(onClick = onBack) {
                         Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
@@ -169,7 +141,8 @@ private fun CloudSettingsScreen(
             verticalArrangement = Arrangement.spacedBy(12.dp),
         ) {
             Text(
-                "Connect AD Glasses to infrastructure you control. No subscription or author account is required.",
+                "This relay is optional. AD uses it for short-lived Realtime session credentials such as Gemini Live. " +
+                    "Standard REST provider API keys are stored separately and are never entered here.",
                 style = MaterialTheme.typography.bodyMedium,
             )
             OutlinedTextField(
@@ -184,44 +157,20 @@ private fun CloudSettingsScreen(
                 keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Uri),
             )
             OutlinedTextField(
-                value = apiToken,
-                onValueChange = onApiTokenChange,
+                value = relayToken,
+                onValueChange = onRelayTokenChange,
                 modifier = Modifier.fillMaxWidth(),
-                label = { Text("API token (optional)") },
+                label = { Text("Relay access token") },
                 singleLine = true,
                 visualTransformation = PasswordVisualTransformation(),
             )
-            OutlinedTextField(
-                value = accountEmail,
-                onValueChange = onAccountEmailChange,
-                modifier = Modifier.fillMaxWidth(),
-                label = { Text("Account email (optional)") },
-                singleLine = true,
-                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Email),
-            )
-            OutlinedTextField(
-                value = requestsModel,
-                onValueChange = onRequestsModelChange,
-                modifier = Modifier.fillMaxWidth(),
-                label = { Text("Chat/request model") },
-                singleLine = true,
-            )
-            OutlinedTextField(
-                value = questionsModel,
-                onValueChange = onQuestionsModelChange,
-                modifier = Modifier.fillMaxWidth(),
-                label = { Text("Image/question model") },
-                singleLine = true,
-            )
-            OutlinedTextField(
-                value = tasksModel,
-                onValueChange = onTasksModelChange,
-                modifier = Modifier.fillMaxWidth(),
-                label = { Text("Automation/task model") },
-                singleLine = true,
+            Text(
+                "The relay token is stored in Android Keystore-backed encrypted preferences.",
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
             Button(onClick = onSave, modifier = Modifier.fillMaxWidth()) {
-                Text("Save configuration")
+                Text("Save relay")
             }
             OutlinedButton(onClick = onTest, enabled = !testing, modifier = Modifier.fillMaxWidth()) {
                 Text(if (testing) "Testing…" else "Save and test connection")
