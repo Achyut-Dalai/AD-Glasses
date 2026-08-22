@@ -1,74 +1,61 @@
-name: Temporary repo reference audit
+name: Temporary repo reference cleanup
 
 on:
-  pull_request:
+  push:
     branches:
-      - main
+      - fix/repo-wide-legacy-reference-cleanup
 
 permissions:
-  contents: read
+  contents: write
 
 jobs:
-  audit:
+  cleanup:
     runs-on: ubuntu-latest
     steps:
-      - name: Check out source
+      - name: Check out cleanup branch
         uses: actions/checkout@v4
         with:
+          ref: fix/repo-wide-legacy-reference-cleanup
           submodules: false
-          fetch-depth: 1
+          fetch-depth: 0
 
-      - name: Audit legacy brand and companion-app references
-        shell: bash
-        run: |
-          set -u
-          EXCLUDE=':(exclude).github/workflows/temp-repo-reference-audit.yml'
-
-          echo '===== LEGACY PATH NAMES ====='
-          git ls-files | grep -ni -E 'cyan[ _-]?bridge|cyanbridge|fersaiyan|tasker|chatgpt|gemini' || true
-
-          echo '===== CYANBRIDGE / FERSAIYAN / TASKER CONTENT ====='
-          git grep -n -i -E 'cyan[ _-]?bridge|cyanbridge|fersaiyan|tasker' -- . "$EXCLUDE" || true
-
-          echo '===== RETIRED AI ROUTE SYMBOLS ====='
-          git grep -n -E 'CliRelayClient|CloudAiPrefs|GlassesAssistantMode|PHONE_ASSISTANT|CUSTOM_AI_PROVIDER|EXTERNAL_ASSISTANT|PRO_RELAY|CLI_RELAY|LOCAL_GEMMA' -- . "$EXCLUDE" || true
-
-          echo '===== CONSUMER ASSISTANT APP / HANDOFF REFERENCES ====='
-          git grep -n -i -E 'com\.openai\.chatgpt|com\.google\.android\.googlequicksearchbox|com\.google\.android\.apps\.bard|chatgpt app|gemini app|phone assistant|external assistant|consumer assistant|companion app|default assistant|assistant handoff|app handoff' -- . "$EXCLUDE" || true
-
-          echo '===== OLD AUTOMATION / ACCESSIBILITY HANDOFF REFERENCES ====='
-          git grep -n -i -E 'AutoInput|automation profile|external automation|accessibility submission|assistant intent|choose default phone assistant' -- . "$EXCLUDE" || true
-
-          echo '===== STALE BINDING / RESOURCE IDENTIFIERS ====='
-          git grep -n -E 'cbImageAsAssistant|btnModeGemini|btnModeChatgpt|btnModeInternal|compose_external_' -- . "$EXCLUDE" || true
-
-          echo '===== URI / PACKAGE LEGACY FORMS ====='
-          git grep -n -i -E 'cyanbridge://|cyan-bridge://|com\.fersaiyan|com/fersaiyan|android/CyanBridge|CyanBridge' -- . "$EXCLUDE" || true
-
-      - name: Generate precise cleanup files
+      - name: Apply deterministic reviewed cleanup
         shell: bash
         run: |
           set -euo pipefail
           python3 tools/temp_cleanup_legacy_refs.py
           python3 tools/temp_cleanup_locale_refs.py
           git diff --check
-          git diff -- . \
-            ':(exclude).github/workflows/temp-repo-reference-audit.yml' \
-            ':(exclude)tools/temp_cleanup_legacy_refs.py' \
-            ':(exclude)tools/temp_cleanup_locale_refs.py' > legacy-reference-cleanup.patch
-          git diff --name-only -- . \
-            ':(exclude).github/workflows/temp-repo-reference-audit.yml' \
-            ':(exclude)tools/temp_cleanup_legacy_refs.py' \
-            ':(exclude)tools/temp_cleanup_locale_refs.py' > legacy-reference-cleanup-files.txt
-          tar -czf legacy-reference-cleanup-files.tar.gz -T legacy-reference-cleanup-files.txt
 
-      - name: Upload reviewed cleanup files
-        uses: actions/upload-artifact@v4
-        with:
-          name: legacy-reference-cleanup-files
-          path: |
-            legacy-reference-cleanup.patch
-            legacy-reference-cleanup-files.txt
-            legacy-reference-cleanup-files.tar.gz
-          if-no-files-found: error
-          retention-days: 1
+          echo '===== STRICT RESIDUAL CHECK ====='
+          if git grep -n -i -E 'cyan[ _-]?bridge|cyanbridge|fersaiyan|tasker' -- . \
+            ':(exclude).github/workflows/temp-repo-reference-audit.yml' \
+            ':(exclude)tools/temp_cleanup_legacy_refs.py' \
+            ':(exclude)tools/temp_cleanup_locale_refs.py'; then
+            echo 'Strict legacy brand/package reference remains.' >&2
+            exit 1
+          fi
+          if git grep -n -E 'CliRelayClient|CloudAiPrefs|GlassesAssistantMode|EXTERNAL_ASSISTANT|PRO_RELAY|CLI_RELAY|cbImageAsAssistant|btnModeGemini|btnModeChatgpt|btnModeInternal|compose_external_' -- . \
+            ':(exclude).github/workflows/temp-repo-reference-audit.yml' \
+            ':(exclude)tools/temp_cleanup_legacy_refs.py' \
+            ':(exclude)tools/temp_cleanup_locale_refs.py'; then
+            echo 'Retired assistant/relay implementation reference remains.' >&2
+            exit 1
+          fi
+
+          git diff --name-only > /tmp/changed-files.txt
+          cat /tmp/changed-files.txt
+          test -s /tmp/changed-files.txt
+
+      - name: Commit reviewed cleanup only
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add -A
+          git reset -- .github/workflows/temp-repo-reference-audit.yml tools/temp_cleanup_legacy_refs.py tools/temp_cleanup_locale_refs.py
+          git diff --cached --check
+          test -n "$(git diff --cached --name-only)"
+          git commit -m 'chore: remove remaining legacy assistant and CyanBridge references'
+          git push origin HEAD:fix/repo-wide-legacy-reference-cleanup
