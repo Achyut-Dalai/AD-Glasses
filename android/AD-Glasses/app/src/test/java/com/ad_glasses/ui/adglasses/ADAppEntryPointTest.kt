@@ -8,28 +8,26 @@ import java.io.File
 class ADAppEntryPointTest {
 
     @Test
-    fun mainActivityRendersAdGlassesShellNotInheritedProductShell() {
+    fun mainActivityRendersAdGlassesComposeShell() {
         val mainActivity = sourceFile(
             "src/main/java/com/ad_glasses/MainActivity.kt",
         ).readText()
 
-        assertTrue(
-            "MainActivity must render the AD Glasses product shell",
-            mainActivity.contains("ADGlassesApp("),
-        )
-        assertFalse(
-            "The inherited ADGlasses product shell must not be rendered",
-            mainActivity.contains("ADGlassesApp("),
-        )
+        assertTrue(mainActivity.contains("setContent {"))
+        assertTrue(mainActivity.contains("ADGlassesApp("))
+        assertFalse(mainActivity.contains("ReactActivity"))
+        assertFalse(mainActivity.contains("ReactRootView"))
     }
 
     @Test
-    fun nativeRouteRootDoesNotOpenRuntimeSettingsActivities() {
+    fun nativeRouteRootOwnsNavigationWithoutLaunchingLegacyActivities() {
         val adApp = sourceFile(
             "src/main/java/com/ad_glasses/ui/adglasses/ADGlassesApp.kt",
         ).readText()
 
-        assertFalse(adApp.contains("onOpenAutomationSettings"))
+        assertTrue(adApp.contains("ADRoute.DEVICE_CENTER -> ADGlassesDeviceCenterScreen("))
+        assertTrue(adApp.contains("ADExternalDestination.AI -> routeStack = listOf(ADRoute.MAIN, ADRoute.DEVICE_CENTER)"))
+        assertFalse(adApp.contains("ADTab.AI"))
         assertFalse(adApp.contains("SettingsActivity::class.java"))
         assertFalse(adApp.contains("startActivity("))
     }
