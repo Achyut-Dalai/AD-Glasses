@@ -18,7 +18,6 @@ data class GlassesDashboardUiState(
     val transfer: GlassesTransferUiState = GlassesTransferUiState(),
     val meeting: GlassesMeetingUiState = GlassesMeetingUiState(),
     val nativePluginShortcut: NativePluginShortcutUiState? = null,
-    val assistantMode: GlassesAssistantMode = GlassesAssistantMode.PHONE_ASSISTANT,
     val aiWakeWordRoute: AiWakeWordRoute = AiWakeWordRoute.VOICE_QUESTION,
     val imageQueryEnabled: Boolean = true,
     val imageQueryLabel: String = "Test image AI description",
@@ -77,11 +76,6 @@ data class GlassesMeetingUiState(
     val timerIndex: Int = 0,
     val bannerLabel: String = "",
 )
-
-enum class GlassesAssistantMode {
-    PHONE_ASSISTANT,
-    CUSTOM_AI_PROVIDER,
-}
 
 enum class AiWakeWordRoute {
     VOICE_QUESTION,
@@ -203,7 +197,6 @@ sealed interface GlassesDashboardAction {
     data object StartMeetingCapture : GlassesDashboardAction
     data object StopMeetingCapture : GlassesDashboardAction
     data class RunNativePluginShortcut(val action: NativePluginShortcutAction) : GlassesDashboardAction
-    data class SelectAssistantMode(val mode: GlassesAssistantMode) : GlassesDashboardAction
     data class SetAiWakeWordRoute(val route: AiWakeWordRoute) : GlassesDashboardAction
     data class SelectImageThumbnailQuality(val sdkValue: Int) : GlassesDashboardAction
     data object RefreshRecordingSettings : GlassesDashboardAction
@@ -212,7 +205,6 @@ sealed interface GlassesDashboardAction {
     data class SetAudioRecordingDuration(val seconds: Int) : GlassesDashboardAction
     data object TestVoiceQuestion : GlassesDashboardAction
     data object TestImageQuestion : GlassesDashboardAction
-    data object OpenExternalImageAutomationDiagnostics : GlassesDashboardAction
     data object CapturePhoto : GlassesDashboardAction
     data object ToggleVideo : GlassesDashboardAction
     data object StartAudioRecording : GlassesDashboardAction
