@@ -138,6 +138,7 @@ import com.ad_glasses.ui.wifi.p2p.WifiP2pManagerSingleton
 import android.net.wifi.p2p.WifiP2pDevice
 import android.net.wifi.p2p.WifiP2pInfo
 import android.net.ConnectivityManager
+import android.media.MediaScannerConnection
 import android.net.Network
 import android.provider.MediaStore
 import android.provider.OpenableColumns

@@ -5,7 +5,7 @@ import android.content.Context
 import android.content.Intent
 import android.os.IBinder
 import android.util.Log
-import com.ad_glasses.ai.router.CliRelayClient
+import com.ad_glasses.ai.router.ApiTokenClient
 import com.ad_glasses.bridge.core.DisplayCommand
 import com.ad_glasses.bridge.core.GlassesBridge
 import com.ad_glasses.plugins.PluginVoiceRecognizer
@@ -171,11 +171,10 @@ class MeetingSparkNotesService : Service() {
             if (customPrompt.isNotBlank()) append("Additional instructions: $customPrompt\n")
             append("Transcript:\n$transcript")
         }
-        val result = CliRelayClient.chat(
+        val result = ApiTokenClient.chat(
             context = this,
-            chatId = "meeting_spark_notes_${System.currentTimeMillis()}",
-            prompt = prompt,
             messages = listOf(mapOf("role" to "user", "content" to prompt)),
+            maxTokens = 2048,
             modelOverride = MeetingSparkNotesPreferences.getCloudModelId(this),
         )
         return result.fold(

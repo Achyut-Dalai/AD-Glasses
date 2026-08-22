@@ -29,11 +29,13 @@ object ApiTokenClient {
         imagePaths: List<String> = emptyList(),
         audioPath: String? = null,
         maxTokens: Int = 2048,
+        modelOverride: String? = null,
     ): Result<String> = runCatching {
         val provider = AiProviderPrefs.getApiProvider(context)
         val apiKey = AiProviderPrefs.getApiKey(context, provider)
         require(apiKey.isNotBlank()) { "${provider.label} API key is not configured" }
-        val model = AiProviderPrefs.getModel(context, provider)
+        val model = modelOverride?.trim()?.takeIf { it.isNotBlank() }
+            ?: AiProviderPrefs.getModel(context, provider)
         require(model.isNotBlank()) { "${provider.label} model is not configured" }
 
         val payloadMessages = JSONArray()

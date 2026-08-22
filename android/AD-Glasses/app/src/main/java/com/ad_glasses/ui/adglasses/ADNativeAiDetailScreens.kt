@@ -53,7 +53,6 @@ import com.ad_glasses.ai.router.ApiProvider
 import com.ad_glasses.ai.transcription.moonshine.MoonshineModelManager
 import com.ad_glasses.localmodels.storage.InstalledLocalModel
 import com.ad_glasses.localmodels.storage.LocalModelStorageRepository
-import com.ad_glasses.shared.glasses.GlassesAssistantMode
 import com.ad_glasses.shared.settings.AgentProviderType
 import java.util.Locale
 import kotlinx.coroutines.Dispatchers
@@ -132,7 +131,6 @@ internal fun ADNativeCloudAiSettingsScreen(onBack: () -> Unit) {
                 AiProviderPrefs.setModel(context, provider, model)
                 AiProviderPrefs.setProvider(context, AiProviderType.CLOUD_API)
                 LocalAgentPrefs.setProviderType(context, AgentProviderType.CLOUD_AI)
-                LocalAgentPrefs.setGlassesAssistantMode(context, GlassesAssistantMode.CUSTOM_AI_PROVIDER)
                 if (routeChanged) AssistantConversationSession.get(context).startNewConversation()
                 saved = true
             },
