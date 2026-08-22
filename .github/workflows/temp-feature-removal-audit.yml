@@ -4,30 +4,39 @@ on:
   push:
     branches:
       - fix/post-merge-cleanup
-  pull_request:
-    branches:
-      - main
 
 permissions:
-  contents: read
+  contents: write
 
 jobs:
   audit:
+    if: github.actor != 'github-actions[bot]'
     runs-on: ubuntu-latest
     steps:
       - name: Check out branch
         uses: actions/checkout@v7
         with:
+          ref: fix/post-merge-cleanup
           fetch-depth: 1
-      - name: Audit Timeline Diary DayNote and chat routes
+      - name: Materialize feature audit
         shell: bash
         run: |
-          set -u
-          echo '===== TIMELINE / VISUAL DIARY ====='
-          git grep -n -i -E 'timeline|visualdiary|visual diary' -- . ':!third_party/**' ':!android/AD-Glasses/app/src/main/myvu-upstream/**' || true
-          echo '===== DIARY / DAYNOTE / AUTO DIARY ====='
-          git grep -n -i -E 'daynote|day note|autodiary|auto diary|diary' -- . ':!third_party/**' ':!android/AD-Glasses/app/src/main/myvu-upstream/**' || true
-          echo '===== CHAT ROUTES / CLEAR CHAT ====='
-          git grep -n -E 'ChatListActivity|ChatThreadActivity|ADConversationsRedirectActivity|clear.*chat|Clear.*chat|conversation.*clear|clear.*conversation|CONVERSATIONS|Conversations' -- android/AD-Glasses || true
-          echo '===== AI CLOUD LOCAL ICONS ====='
-          git grep -n -E 'Cloud AI|Local models|CLOUD_AI|LOCAL_AGENT|Cloud|Local' -- android/AD-Glasses/app/src/main/java/com/ad_glasses/ui/adglasses || true
+          set -euo pipefail
+          mkdir -p tools
+          {
+            echo '===== TIMELINE / VISUAL DIARY ====='
+            git grep -n -i -E 'timeline|visualdiary|visual diary' -- . ':!third_party/**' ':!android/AD-Glasses/app/src/main/myvu-upstream/**' ':!.github/workflows/temp-feature-removal-audit.yml' || true
+            echo '===== DIARY / DAYNOTE / AUTO DIARY ====='
+            git grep -n -i -E 'daynote|day note|autodiary|auto diary|diary' -- . ':!third_party/**' ':!android/AD-Glasses/app/src/main/myvu-upstream/**' ':!.github/workflows/temp-feature-removal-audit.yml' || true
+            echo '===== CHAT ROUTES / CLEAR CHAT ====='
+            git grep -n -E 'ChatListActivity|ChatThreadActivity|ADConversationsRedirectActivity|clear.*chat|Clear.*chat|conversation.*clear|clear.*conversation|CONVERSATIONS|Conversations' -- android/AD-Glasses || true
+            echo '===== AI CLOUD LOCAL ICONS ====='
+            git grep -n -E 'Cloud AI|Local models|CLOUD_AI|LOCAL_AGENT|Cloud|Local' -- android/AD-Glasses/app/src/main/java/com/ad_glasses/ui/adglasses || true
+          } > tools/feature_audit_report.txt
+          git config user.name github-actions[bot]
+          git config user.email 41898282+github-actions[bot]@users.noreply.github.com
+          git add tools/feature_audit_report.txt
+          if ! git diff --cached --quiet; then
+            git commit -m 'Materialize feature removal audit'
+            git push origin HEAD:fix/post-merge-cleanup
+          fi
