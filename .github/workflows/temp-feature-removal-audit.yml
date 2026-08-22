@@ -1,42 +1,36 @@
 name: Temporary feature removal audit
 
 on:
-  push:
+  pull_request:
     branches:
-      - fix/post-merge-cleanup
+      - main
 
 permissions:
-  contents: write
+  contents: read
 
 jobs:
   audit:
-    if: github.actor != 'github-actions[bot]'
     runs-on: ubuntu-latest
     steps:
       - name: Check out branch
         uses: actions/checkout@v7
         with:
-          ref: fix/post-merge-cleanup
           fetch-depth: 1
-      - name: Materialize feature audit
+      - name: Audit removed features and chat routes
         shell: bash
         run: |
-          set -euo pipefail
-          mkdir -p tools
-          {
-            echo '===== TIMELINE / VISUAL DIARY ====='
-            git grep -n -i -E 'timeline|visualdiary|visual diary' -- . ':!third_party/**' ':!android/AD-Glasses/app/src/main/myvu-upstream/**' ':!.github/workflows/temp-feature-removal-audit.yml' || true
-            echo '===== DIARY / DAYNOTE / AUTO DIARY ====='
-            git grep -n -i -E 'daynote|day note|autodiary|auto diary|diary' -- . ':!third_party/**' ':!android/AD-Glasses/app/src/main/myvu-upstream/**' ':!.github/workflows/temp-feature-removal-audit.yml' || true
-            echo '===== CHAT ROUTES / CLEAR CHAT ====='
-            git grep -n -E 'ChatListActivity|ChatThreadActivity|ADConversationsRedirectActivity|clear.*chat|Clear.*chat|conversation.*clear|clear.*conversation|CONVERSATIONS|Conversations' -- android/AD-Glasses || true
-            echo '===== AI CLOUD LOCAL ICONS ====='
-            git grep -n -E 'Cloud AI|Local models|CLOUD_AI|LOCAL_AGENT|Cloud|Local' -- android/AD-Glasses/app/src/main/java/com/ad_glasses/ui/adglasses || true
-          } > tools/feature_audit_report.txt
-          git config user.name github-actions[bot]
-          git config user.email 41898282+github-actions[bot]@users.noreply.github.com
-          git add tools/feature_audit_report.txt
-          if ! git diff --cached --quiet; then
-            git commit -m 'Materialize feature removal audit'
-            git push origin HEAD:fix/post-merge-cleanup
-          fi
+          set -u
+          echo '===== LIVE TIMELINE / DIARY RESIDUE ====='
+          git grep -n -i -E 'daynote|day note|autodiary|auto diary|visualdiary|visual diary|timeline|diary' -- \
+            android/AD-Glasses/app/src/main \
+            android/AD-Glasses/shared/src \
+            ':!android/AD-Glasses/app/src/main/myvu-upstream/**' || true
+          echo '===== WHOLE-REPO TIMELINE / DIARY RESIDUE ====='
+          git grep -n -i -E 'daynote|day note|autodiary|auto diary|visualdiary|visual diary|timeline|diary' -- . \
+            ':!third_party/**' \
+            ':!android/AD-Glasses/app/src/main/myvu-upstream/**' \
+            ':!.github/workflows/temp-feature-removal-audit.yml' || true
+          echo '===== CHAT ROUTES / CLEAR CHAT ====='
+          git grep -n -E 'ChatListActivity|ChatThreadActivity|ADConversationsRedirectActivity|clear.*chat|Clear.*chat|conversation.*clear|clear.*conversation|CONVERSATIONS|Conversations' -- android/AD-Glasses || true
+          echo '===== REMOVED FEATURE SOURCE PATHS ====='
+          find android/AD-Glasses/app/src/main -type f \( -iname '*diary*' -o -iname '*timeline*' -o -iname '*daynote*' \) -print || true
