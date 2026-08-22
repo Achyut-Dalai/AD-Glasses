@@ -29,7 +29,9 @@ class ADAppEntryPointTest {
         assertTrue(adApp.contains("ADExternalDestination.AI -> routeStack = listOf(ADRoute.MAIN, ADRoute.DEVICE_CENTER)"))
         assertFalse(adApp.contains("ADTab.AI"))
         assertFalse(adApp.contains("SettingsActivity::class.java"))
-        assertFalse(adApp.contains("startActivity("))
+        assertFalse(adApp.contains("ChatListActivity::class.java"))
+        assertFalse(adApp.contains("ChatThreadActivity::class.java"))
+        assertFalse(adApp.contains("CommunityPluginsActivity::class.java"))
     }
 
     private fun sourceFile(relativePath: String): File {
