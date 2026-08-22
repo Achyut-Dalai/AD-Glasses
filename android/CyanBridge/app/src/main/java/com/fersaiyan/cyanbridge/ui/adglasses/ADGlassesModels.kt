@@ -12,7 +12,7 @@ enum class ADRoute {
     DEVICE_CENTER,
     SYNC,
     SETTINGS,
-    AI_API,
+    AI_CLOUD,
     AI_LOCAL,
     PRIVACY,
     STORAGE,
