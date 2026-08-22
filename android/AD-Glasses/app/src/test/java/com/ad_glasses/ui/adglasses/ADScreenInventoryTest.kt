@@ -95,6 +95,7 @@ class ADScreenInventoryTest {
         val drawableNoDpi = sourceFile("src/main/res/drawable-nodpi")
         val drawable = sourceFile("src/main/res/drawable")
         val icon = File(drawableNoDpi, "ad_glasses_icon_source.png")
+        val adaptiveForegroundImage = File(drawableNoDpi, "ad_glasses_adaptive_foreground_v2.png")
         val hero = File(drawableNoDpi, "ad_glasses_hero_v4.png")
         val adaptiveForeground = File(drawable, "ad_glasses_adaptive_foreground.xml")
         val adaptiveBackground = File(drawable, "ad_glasses_adaptive_background.xml")
@@ -102,12 +103,13 @@ class ADScreenInventoryTest {
         val roundLauncher = sourceFile("src/main/res/mipmap-anydpi-v26/ic_launcher_round.xml")
 
         assertTrue("AD Glasses icon source must exist", icon.isFile && icon.length() > 0L)
+        assertTrue("AD Glasses adaptive foreground image must exist", adaptiveForegroundImage.isFile && adaptiveForegroundImage.length() > 0L)
         assertTrue("AD Glasses current hero art must exist", hero.isFile && hero.length() > 0L)
-        assertTrue("Adaptive foreground must exist", adaptiveForeground.isFile)
+        assertTrue("Adaptive foreground wrapper must exist", adaptiveForeground.isFile)
         assertTrue("Adaptive background must exist", adaptiveBackground.isFile)
 
         val foregroundXml = adaptiveForeground.readText()
-        assertTrue(foregroundXml.contains("@drawable/ad_glasses_icon_source"))
+        assertTrue(foregroundXml.contains("@drawable/ad_glasses_adaptive_foreground_v2"))
 
         listOf(launcher, roundLauncher).forEach { file ->
             val xml = file.readText()
