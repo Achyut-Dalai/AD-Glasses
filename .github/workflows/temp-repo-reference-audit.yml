@@ -40,7 +40,30 @@ jobs:
           git grep -n -i -E 'AutoInput|automation profile|external automation|accessibility submission|assistant intent|choose default phone assistant' -- . "$EXCLUDE" || true
 
           echo '===== STALE BINDING / RESOURCE IDENTIFIERS ====='
-          git grep -n -E 'btnModeGemini|btnModeChatgpt|compose_external_description|compose_external_choose_assistant' -- . "$EXCLUDE" || true
+          git grep -n -E 'cbImageAsAssistant|btnModeGemini|btnModeChatgpt|btnModeInternal|compose_external_' -- . "$EXCLUDE" || true
 
           echo '===== URI / PACKAGE LEGACY FORMS ====='
           git grep -n -i -E 'cyanbridge://|cyan-bridge://|com\.fersaiyan|com/fersaiyan|android/CyanBridge|CyanBridge' -- . "$EXCLUDE" || true
+
+      - name: Generate precise cleanup patch
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 tools/temp_cleanup_legacy_refs.py
+          git diff --check
+          git diff -- . \
+            ':(exclude).github/workflows/temp-repo-reference-audit.yml' \
+            ':(exclude)tools/temp_cleanup_legacy_refs.py' > legacy-reference-cleanup.patch
+          git diff --name-only -- . \
+            ':(exclude).github/workflows/temp-repo-reference-audit.yml' \
+            ':(exclude)tools/temp_cleanup_legacy_refs.py' > legacy-reference-cleanup-files.txt
+
+      - name: Upload reviewed cleanup patch
+        uses: actions/upload-artifact@v4
+        with:
+          name: legacy-reference-cleanup-patch
+          path: |
+            legacy-reference-cleanup.patch
+            legacy-reference-cleanup-files.txt
+          if-no-files-found: error
+          retention-days: 1
