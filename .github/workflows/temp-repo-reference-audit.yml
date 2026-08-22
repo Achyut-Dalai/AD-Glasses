@@ -22,14 +22,25 @@ jobs:
         shell: bash
         run: |
           set -u
-          echo '===== CYANBRIDGE / FERSAIYAN / TASKER ====='
-          git grep -n -i -E 'cyan[ _-]?bridge|cyanbridge|fersaiyan|tasker' -- . ':(exclude).github/workflows/temp-repo-reference-audit.yml' || true
+          EXCLUDE=':(exclude).github/workflows/temp-repo-reference-audit.yml'
+
+          echo '===== LEGACY PATH NAMES ====='
+          git ls-files | grep -ni -E 'cyan[ _-]?bridge|cyanbridge|fersaiyan|tasker|chatgpt|gemini' || true
+
+          echo '===== CYANBRIDGE / FERSAIYAN / TASKER CONTENT ====='
+          git grep -n -i -E 'cyan[ _-]?bridge|cyanbridge|fersaiyan|tasker' -- . "$EXCLUDE" || true
 
           echo '===== RETIRED AI ROUTE SYMBOLS ====='
-          git grep -n -E 'CliRelayClient|CloudAiPrefs|GlassesAssistantMode|PHONE_ASSISTANT|CUSTOM_AI_PROVIDER|EXTERNAL_ASSISTANT|PRO_RELAY|CLI_RELAY|LOCAL_GEMMA' -- . ':(exclude).github/workflows/temp-repo-reference-audit.yml' || true
+          git grep -n -E 'CliRelayClient|CloudAiPrefs|GlassesAssistantMode|PHONE_ASSISTANT|CUSTOM_AI_PROVIDER|EXTERNAL_ASSISTANT|PRO_RELAY|CLI_RELAY|LOCAL_GEMMA' -- . "$EXCLUDE" || true
 
           echo '===== CONSUMER ASSISTANT APP / HANDOFF REFERENCES ====='
-          git grep -n -i -E 'com\.openai\.chatgpt|com\.google\.android\.googlequicksearchbox|com\.google\.android\.apps\.bard|chatgpt app|gemini app|phone assistant|external assistant|consumer assistant|companion app|default assistant|assistant handoff|app handoff' -- . ':(exclude).github/workflows/temp-repo-reference-audit.yml' || true
+          git grep -n -i -E 'com\.openai\.chatgpt|com\.google\.android\.googlequicksearchbox|com\.google\.android\.apps\.bard|chatgpt app|gemini app|phone assistant|external assistant|consumer assistant|companion app|default assistant|assistant handoff|app handoff' -- . "$EXCLUDE" || true
+
+          echo '===== OLD AUTOMATION / ACCESSIBILITY HANDOFF REFERENCES ====='
+          git grep -n -i -E 'AutoInput|automation profile|external automation|accessibility submission|assistant intent|choose default phone assistant' -- . "$EXCLUDE" || true
+
+          echo '===== STALE BINDING / RESOURCE IDENTIFIERS ====='
+          git grep -n -E 'btnModeGemini|btnModeChatgpt|compose_external_description|compose_external_choose_assistant' -- . "$EXCLUDE" || true
 
           echo '===== URI / PACKAGE LEGACY FORMS ====='
-          git grep -n -i -E 'cyanbridge://|cyan-bridge://|com\.fersaiyan|com/fersaiyan|android/CyanBridge|CyanBridge' -- . ':(exclude).github/workflows/temp-repo-reference-audit.yml' || true
+          git grep -n -i -E 'cyanbridge://|cyan-bridge://|com\.fersaiyan|com/fersaiyan|android/CyanBridge|CyanBridge' -- . "$EXCLUDE" || true
