@@ -24,6 +24,16 @@ enum class ImageAutomationTarget(
     }
 }
 
+/** Legacy callback token retained only so inherited MainActivity dead code still compiles. */
+@Deprecated("Consumer assistant app integration is removed")
+enum class ExternalImageAutomationStage {
+    IMAGE_STARTED,
+    IMAGE_ATTACHED,
+    PROMPT_SENT,
+    ANSWER_READY,
+    FAILED,
+}
+
 @Deprecated("Consumer assistant app integration is removed")
 object DefaultAssistantResolver {
     fun packageName(context: Context): String? = null
@@ -46,7 +56,7 @@ object ExternalAssistantAutomationInspector {
 
 @Deprecated("Consumer assistant app integration is removed")
 object ExternalAssistantAutomationPolicy {
-    private const val REMOVED = "Consumer assistant app integration has been removed. Use Cloud API or Local AI."
+    private const val REMOVED = "Consumer assistant app integration has been removed. Use Cloud AI or Local AI."
 
     fun voiceBlockingReason(capability: ExternalAssistantAutomationCapability): String? = REMOVED
     fun imageBlockingReason(capability: ExternalAssistantAutomationCapability): String? = REMOVED
