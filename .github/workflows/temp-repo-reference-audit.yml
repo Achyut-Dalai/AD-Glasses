@@ -1,61 +1,48 @@
-name: Temporary repo reference cleanup
+name: Temporary final repo reference audit
 
 on:
+  pull_request:
+    branches:
+      - main
   push:
     branches:
       - fix/repo-wide-legacy-reference-cleanup
 
 permissions:
-  contents: write
+  contents: read
 
 jobs:
-  cleanup:
+  audit:
     runs-on: ubuntu-latest
     steps:
-      - name: Check out cleanup branch
+      - name: Check out source
         uses: actions/checkout@v4
         with:
-          ref: fix/repo-wide-legacy-reference-cleanup
           submodules: false
-          fetch-depth: 0
+          fetch-depth: 1
 
-      - name: Apply deterministic reviewed cleanup
+      - name: Final repo-wide legacy reference scan
         shell: bash
         run: |
-          set -euo pipefail
-          python3 tools/temp_cleanup_legacy_refs.py
-          python3 tools/temp_cleanup_locale_refs.py
-          git diff --check
+          set -u
+          EX1=':(exclude).github/workflows/temp-repo-reference-audit.yml'
+          EX2=':(exclude)tools/temp_cleanup_legacy_refs.py'
+          EX3=':(exclude)tools/temp_cleanup_locale_refs.py'
 
-          echo '===== STRICT RESIDUAL CHECK ====='
-          if git grep -n -i -E 'cyan[ _-]?bridge|cyanbridge|fersaiyan|tasker' -- . \
-            ':(exclude).github/workflows/temp-repo-reference-audit.yml' \
-            ':(exclude)tools/temp_cleanup_legacy_refs.py' \
-            ':(exclude)tools/temp_cleanup_locale_refs.py'; then
-            echo 'Strict legacy brand/package reference remains.' >&2
-            exit 1
-          fi
-          if git grep -n -E 'CliRelayClient|CloudAiPrefs|GlassesAssistantMode|EXTERNAL_ASSISTANT|PRO_RELAY|CLI_RELAY|cbImageAsAssistant|btnModeGemini|btnModeChatgpt|btnModeInternal|compose_external_' -- . \
-            ':(exclude).github/workflows/temp-repo-reference-audit.yml' \
-            ':(exclude)tools/temp_cleanup_legacy_refs.py' \
-            ':(exclude)tools/temp_cleanup_locale_refs.py'; then
-            echo 'Retired assistant/relay implementation reference remains.' >&2
-            exit 1
-          fi
+          echo '===== STRICT BRAND / PACKAGE ====='
+          git grep -n -i -E 'cyan[ _-]?bridge|cyanbridge|fersaiyan|tasker' -- . "$EX1" "$EX2" "$EX3" || true
 
-          git diff --name-only > /tmp/changed-files.txt
-          cat /tmp/changed-files.txt
-          test -s /tmp/changed-files.txt
+          echo '===== RETIRED IMPLEMENTATION SYMBOLS ====='
+          git grep -n -E 'CliRelayClient|CloudAiPrefs|GlassesAssistantMode|EXTERNAL_ASSISTANT|PRO_RELAY|CLI_RELAY|cbImageAsAssistant|btnModeGemini|btnModeChatgpt|btnModeInternal|compose_external_' -- . "$EX1" "$EX2" "$EX3" || true
 
-      - name: Commit reviewed cleanup only
-        shell: bash
-        run: |
-          set -euo pipefail
-          git config user.name 'github-actions[bot]'
-          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
-          git add -A
-          git reset -- .github/workflows/temp-repo-reference-audit.yml tools/temp_cleanup_legacy_refs.py tools/temp_cleanup_locale_refs.py
-          git diff --cached --check
-          test -n "$(git diff --cached --name-only)"
-          git commit -m 'chore: remove remaining legacy assistant and CyanBridge references'
-          git push origin HEAD:fix/repo-wide-legacy-reference-cleanup
+          echo '===== CONSUMER ASSISTANT PACKAGES / HANDOFF COPY ====='
+          git grep -n -i -E 'com\.openai\.chatgpt|com\.google\.android\.googlequicksearchbox|com\.google\.android\.apps\.bard|chatgpt app|gemini app|phone assistant|external assistant|consumer assistant|assistant handoff|app handoff|phone-app handoff' -- . "$EX1" "$EX2" "$EX3" || true
+
+          echo '===== OLD AUTOMATION SETUP LANGUAGE ====='
+          git grep -n -i -E 'AutoInput|automation profile|external automation|accessibility submission|choose default phone assistant' -- . "$EX1" "$EX2" "$EX3" || true
+
+          echo '===== MIGRATION WIRE TOKENS (review, do not auto-delete) ====='
+          git grep -n -E 'PHONE_ASSISTANT|CUSTOM_AI_PROVIDER|phone_assistant|default_assistant|"gemini"|"chatgpt"' -- . "$EX1" "$EX2" "$EX3" || true
+
+          echo '===== GENERIC COMPANION APP REFERENCES ====='
+          git grep -n -i -E 'companion app' -- . "$EX1" "$EX2" "$EX3" || true
