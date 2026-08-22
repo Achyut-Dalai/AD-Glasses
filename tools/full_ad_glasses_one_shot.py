@@ -47,8 +47,9 @@ for stale in [
 ]:
     git_rm(stale)
 
-# Remove obsolete provider tests that exist only to exercise the already-removed
-# Tasker LLM provider. Keeping them would preserve a dead integration contract.
+# Remove obsolete shared-provider tests that exist only to exercise an already-removed
+# provider enum. Android preference migration tests are retained below with neutral
+# legacy fixtures so fallback behavior is still covered.
 for rel in list(tracked()):
     if Path(rel).name not in {"ProviderMigrationTest.kt", "ProviderPersistenceTest.kt"}:
         continue
@@ -89,11 +90,22 @@ exact_replacements = [
     ("cyanbridge://", "ad-glasses://"),
     ('android:scheme="cyanbridge"', 'android:scheme="ad-glasses"'),
     ("CyanBridgeManagerApp", "AD-Glasses"),
-    # Preserve marketplace/community publishing while removing its vendor-specific field.
+    # Keep plugin publishing/community links, but make the field vendor-neutral.
     ("taskerNetLink", "externalSourceLink"),
     ("TaskerNetLink", "ExternalSourceLink"),
     ("community_source_tasker", "community_source_external"),
+    ("plugins_open_tasker", "plugins_open_external"),
     ("publish_tasker_label", "publish_external_source_label"),
+    ("publish_taskernet_link", "publish_external_source_link"),
+    ("publish_taskernet_hint", "publish_external_source_hint"),
+    ("rendersServerTaskerPluginAndRoutesItsInstallAction", "rendersServerExternalPluginAndRoutesItsInstallAction"),
+    ("taskerActions", "externalActions"),
+    ("retiredTaskerProviderMigratesToCloud", "retiredProviderValueMigratesToCloud"),
+    ("oldTaskerProviderMigratesToNativeLocalProvider", "oldProviderValueMigratesToNativeLocalProvider"),
+    ('"TASKER"', '"LEGACY_PROVIDER"'),
+    ("Open in Tasker", "Open external source"),
+    ("TaskerNet link *", "External source link *"),
+    ("Enter the TaskerNet URL for your profile.", "Enter the external source URL for your plugin."),
     ("https://tasker.dev", "https://example.com/external-source"),
     ("https://taskernet.com/...", "https://example.com/external-source"),
     ("https://taskernet.com", "https://example.com/external-source"),
@@ -112,14 +124,15 @@ for rel in tracked():
     for old, repl in exact_replacements:
         new = new.replace(old, repl)
 
-    # Catch every remaining casing variant without making source identifiers invalid.
+    # Catch every remaining brand casing variant without making source identifiers invalid.
     if path.suffix.lower() in code_exts:
         new = re.sub(r"cyanbridge", "AD_GLASSES", new, flags=re.I)
         new = re.sub(r"fersaiyan", "ad_glasses", new, flags=re.I)
     else:
         new = re.sub(r"cyanbridge", "AD Glasses", new, flags=re.I)
         new = re.sub(r"fersaiyan", "AD Glasses", new, flags=re.I)
-        # Historical prose/resource labels are no longer vendor-specific.
+        # Remaining prose labels become vendor-neutral. Known XML resource identifiers
+        # are renamed above before this prose pass, so their names remain valid.
         new = re.sub(r"tasker", "external automation", new, flags=re.I)
 
     # Canonical technical spellings after the broad prose pass.
