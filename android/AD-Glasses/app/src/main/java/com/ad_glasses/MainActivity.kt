@@ -869,7 +869,6 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
         refreshAiQueryButtonsState()
         refreshNativePluginShortcutState()
         ensureEnabledBackgroundFeaturePermissions()
-        ensureEnabledMetaCameraFeature()
     }
 
     private fun ensureEnabledBackgroundFeaturePermissions() {
