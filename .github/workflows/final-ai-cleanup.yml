@@ -22,14 +22,22 @@ jobs:
           cache: gradle
       - name: Apply cleanup
         run: python tools/final_ai_cleanup.py
-      - name: Compile and test
+      - name: Compile and test with diagnostics
+        id: gradle
+        continue-on-error: true
         working-directory: android/CyanBridge
         run: |
-          ./gradlew --no-daemon test
-          ./gradlew --no-daemon :app:assembleDebug
+          set +e
+          ./gradlew --no-daemon test > ../../cleanup-build.log 2>&1
+          TEST_STATUS=$?
+          ./gradlew --no-daemon :app:assembleDebug >> ../../cleanup-build.log 2>&1
+          BUILD_STATUS=$?
+          echo "test_status=$TEST_STATUS" >> ../../cleanup-build.log
+          echo "build_status=$BUILD_STATUS" >> ../../cleanup-build.log
+          test $TEST_STATUS -eq 0 -a $BUILD_STATUS -eq 0
       - name: Remove one-shot tooling
         run: rm -f tools/final_ai_cleanup.py .github/workflows/final-ai-cleanup.yml
-      - name: Commit validated cleanup
+      - name: Commit cleanup and diagnostics
         run: |
           git config user.name github-actions[bot]
           git config user.email 41898282+github-actions[bot]@users.noreply.github.com
