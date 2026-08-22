@@ -167,7 +167,6 @@ class AndroidChatAiService(context: Context) : ChatAiService {
             AgentProviderType.CLOUD_AI -> ApiTokenClient.chat(
                 context = appContext,
                 messages = cleanMessages,
-                modelOverride = model,
             ).getOrThrow()
         }
         return ChatResponse(

@@ -194,7 +194,6 @@ class LiveCaptionRelayService : Service() {
             context = this,
             messages = listOf(mapOf("role" to "user", "content" to prompt)),
             maxTokens = 512,
-            modelOverride = LiveCaptionRelayPreferences.getCloudModelId(this),
         ).fold(
             onSuccess = { it.trim().takeIf(String::isNotBlank) },
             onFailure = { error ->

@@ -175,7 +175,6 @@ class MeetingSparkNotesService : Service() {
             context = this,
             messages = listOf(mapOf("role" to "user", "content" to prompt)),
             maxTokens = 2048,
-            modelOverride = MeetingSparkNotesPreferences.getCloudModelId(this),
         )
         return result.fold(
             onSuccess = { response ->
