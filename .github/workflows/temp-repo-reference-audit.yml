@@ -38,22 +38,20 @@ jobs:
           echo '===== OLD AUTOMATION SETUP LANGUAGE ====='
           git grep -n -i -E 'AutoInput|automation profile|external automation|accessibility submission|choose default phone assistant' -- . "$EX1" "$EX2" "$EX3" || true
 
-          echo '===== SUSPECT SHARED RESOURCE IDS ====='
-          git grep -n -E 'plugins_open_external|publish_external_source_link|publish_external_source_hint|dashboard_phone_assistant' -- . "$EX1" "$EX2" "$EX3" || true
-
-          echo '===== SUSPECT IDS OUTSIDE TRANSLATION DEFINITIONS ====='
-          git grep -n -E 'plugins_open_external|publish_external_source_link|publish_external_source_hint|dashboard_phone_assistant' -- . "$EX1" "$EX2" "$EX3" \
-            ':(exclude)android/AD-Glasses/shared/src/commonMain/composeResources/values-de/strings_extra.xml' \
-            ':(exclude)android/AD-Glasses/shared/src/commonMain/composeResources/values-es/strings_extra.xml' \
-            ':(exclude)android/AD-Glasses/shared/src/commonMain/composeResources/values-fr/strings_extra.xml' \
-            ':(exclude)android/AD-Glasses/shared/src/commonMain/composeResources/values-it/strings_extra.xml' \
-            ':(exclude)android/AD-Glasses/shared/src/commonMain/composeResources/values-ko/strings_extra.xml' \
-            ':(exclude)android/AD-Glasses/shared/src/commonMain/composeResources/values-pt-rBR/strings_extra.xml' \
-            ':(exclude)android/AD-Glasses/shared/src/commonMain/composeResources/values-ru/strings_extra.xml' \
-            ':(exclude)android/AD-Glasses/shared/src/commonMain/composeResources/values-zh-rCN/strings_extra.xml' || true
-
           echo '===== MIGRATION WIRE TOKENS (review, do not auto-delete) ====='
           git grep -n -E 'PHONE_ASSISTANT|CUSTOM_AI_PROVIDER|phone_assistant|default_assistant|"gemini"|"chatgpt"' -- . "$EX1" "$EX2" "$EX3" || true
 
           echo '===== GENERIC COMPANION APP REFERENCES ====='
           git grep -n -i -E 'companion app' -- . "$EX1" "$EX2" "$EX3" || true
+
+          echo '===== DIRECT META DAT SDK IMPORTS ====='
+          git grep -n -E 'com\.meta\.wearable|Wearables\.|PermissionStatus|Permission\.CAMERA' -- android/AD-Glasses/app/src/main || true
+
+          echo '===== META MANAGER CONSUMERS ====='
+          git grep -n -E 'MetaRaybanManager|CapturedPhoto|RegistrationState|DeviceSessionState|StreamState' -- android/AD-Glasses/app/src/main ':!android/AD-Glasses/app/src/main/java/com/ad_glasses/devices/metarayban/MetaRaybanManager.kt' || true
+
+          echo '===== DIRECT MYVU IMPORTS ====='
+          git grep -n -E 'com\.myvu\.|ConnectionManager|ConnectionState' -- android/AD-Glasses/app/src/main ':!android/AD-Glasses/app/src/main/myvu-upstream' || true
+
+          echo '===== MYVU SUBMODULE STATUS ====='
+          git submodule status android/AD-Glasses/app/src/main/myvu-upstream || true
