@@ -1,12 +1,11 @@
 package com.fersaiyan.cyanbridge.ai.router
 
 import android.content.Context
-import com.fersaiyan.cyanbridge.shared.settings.AgentProviderType
-import com.fersaiyan.cyanbridge.agent.LocalAgentPrefs as AutomationPrefs
-import com.fersaiyan.cyanbridge.agent.CloudAiPrefs
+import com.fersaiyan.cyanbridge.agent.LocalAgentPrefs as InferencePrefs
 import com.fersaiyan.cyanbridge.localmodels.provider.LocalModelsProvider
-import kotlinx.coroutines.CancellationException
+import com.fersaiyan.cyanbridge.shared.settings.AgentProviderType
 import java.io.File
+import kotlinx.coroutines.CancellationException
 
 enum class AgentInferencePurpose {
     CLASSIFICATION,
@@ -19,7 +18,7 @@ data class AgentInferenceResult(
     val mediaStatus: String,
 )
 
-/** Resolves the two existing provider preference layers into one agent inference path. */
+/** Inference boundary with only two transports: encrypted API token or on-device local model. */
 object AgentInferenceRouter {
     private val localModelsProvider = LocalModelsProvider()
 
@@ -29,24 +28,17 @@ object AgentInferenceRouter {
         sessionId: String,
         systemPrompt: String,
         userPrompt: String,
-        providerType: AgentProviderType = AutomationPrefs.getProviderType(context),
+        providerType: AgentProviderType = InferencePrefs.getProviderType(context),
         onToken: ((String) -> Unit)? = null,
-    ): String {
-        return completeText(
-            context = context,
-            purpose = purpose,
-            sessionId = sessionId,
-            systemPrompt = systemPrompt,
-            userPrompt = userPrompt,
-            providerType = providerType,
-            onToken = onToken,
-        )
-    }
+    ): String = completeText(
+        context = context,
+        purpose = purpose,
+        systemPrompt = systemPrompt,
+        userPrompt = userPrompt,
+        providerType = providerType,
+        onToken = onToken,
+    )
 
-    /**
-     * Plans with an image only when the caller supplied one. Remote image transport is explicitly
-     * guarded here as a defense in depth measure even if the caller already checked its setting.
-     */
     suspend fun completeUiPlanning(
         context: Context,
         sessionId: String,
@@ -54,7 +46,7 @@ object AgentInferenceRouter {
         userPrompt: String,
         imagePath: String?,
         allowRemoteImageUpload: Boolean,
-        providerType: AgentProviderType = AutomationPrefs.getProviderType(context),
+        providerType: AgentProviderType = InferencePrefs.getProviderType(context),
         onToken: ((String) -> Unit)? = null,
     ): AgentInferenceResult {
         val usableImagePath = imagePath?.trim()?.takeIf { File(it).isFile }
@@ -66,20 +58,17 @@ object AgentInferenceRouter {
                 content = completeText(
                     context,
                     AgentInferencePurpose.UI_PLANNING,
-                    sessionId,
                     systemPrompt,
                     userPrompt,
                     providerType,
                     onToken,
                 ),
                 usedImage = false,
-                mediaStatus = "Text-only planning",
+                mediaStatus = "Text-only inference",
             )
         }
-        if (isRemotePlanner(context, providerType) && !allowRemoteImageUpload) {
-            throw IllegalStateException(
-                "Remote image upload is off. The image was not sent and AD did not silently retry without it.",
-            )
+        if (isRemotePlanner(providerType) && !allowRemoteImageUpload) {
+            throw IllegalStateException("Remote image upload is off. The image was not sent.")
         }
 
         val imageContent = try {
@@ -91,20 +80,19 @@ object AgentInferenceRouter {
                     maxTokens = UI_PLANNING_MAX_TOKENS,
                     onToken = onToken,
                 )
-
-                AgentProviderType.PRO_SUBSCRIPTION -> CliRelayClient.imageQuery(
+                AgentProviderType.PRO_SUBSCRIPTION -> ApiTokenClient.image(
                     context = context,
+                    systemPrompt = systemPrompt,
+                    userPrompt = userPrompt,
                     imagePath = usableImagePath,
-                    prompt = multimodalPrompt(systemPrompt, userPrompt),
-                    modelOverride = CloudAiPrefs.getTasksModel(context),
+                    maxTokens = UI_PLANNING_MAX_TOKENS,
                 ).getOrThrow()
-
             }
         } catch (error: CancellationException) {
             throw error
         } catch (error: Exception) {
             throw IllegalStateException(
-                "The selected ${providerType.label} route could not analyze this image. Nothing was silently retried without it: " +
+                "The selected ${providerType.label} route could not analyze this image: " +
                     (error.message ?: error::class.java.simpleName),
                 error,
             )
@@ -113,47 +101,36 @@ object AgentInferenceRouter {
         return AgentInferenceResult(
             content = imageContent,
             usedImage = true,
-            mediaStatus = "Image attached to the selected planner for this step.",
+            mediaStatus = "Image attached to the selected inference route.",
         )
     }
 
     fun isRemotePlanner(
-        context: Context,
-        providerType: AgentProviderType = AutomationPrefs.getProviderType(context),
-    ): Boolean {
-        return when (providerType) {
-            AgentProviderType.PRO_SUBSCRIPTION -> true
-            AgentProviderType.LOCAL_AGENT -> false
-        }
-    }
+        providerType: AgentProviderType,
+    ): Boolean = providerType == AgentProviderType.PRO_SUBSCRIPTION
 
     private suspend fun completeText(
         context: Context,
         purpose: AgentInferencePurpose,
-        sessionId: String,
         systemPrompt: String,
         userPrompt: String,
         providerType: AgentProviderType,
         onToken: ((String) -> Unit)?,
     ): String {
         val messages = messages(systemPrompt, userPrompt)
-
+        val maxTokens = if (purpose == AgentInferencePurpose.CLASSIFICATION) 256 else 512
         return when (providerType) {
             AgentProviderType.LOCAL_AGENT -> localModelsProvider.streamChat(
                 context = context,
                 messages = messages,
-                maxTokens = if (purpose == AgentInferencePurpose.CLASSIFICATION) 256 else 512,
+                maxTokens = maxTokens,
                 onToken = onToken,
             )
-
-            AgentProviderType.PRO_SUBSCRIPTION -> CliRelayClient.chat(
+            AgentProviderType.PRO_SUBSCRIPTION -> ApiTokenClient.chat(
                 context = context,
-                chatId = sessionId,
-                prompt = userPrompt,
                 messages = messages,
-                modelOverride = CloudAiPrefs.getTasksModel(context),
+                maxTokens = maxTokens,
             ).getOrThrow()
-
         }
     }
 
@@ -161,14 +138,6 @@ object AgentInferenceRouter {
         mapOf("role" to "system", "content" to systemPrompt),
         mapOf("role" to "user", "content" to userPrompt),
     )
-
-    private fun multimodalPrompt(systemPrompt: String, userPrompt: String): String = buildString {
-        appendLine("System instructions:")
-        appendLine(systemPrompt)
-        appendLine()
-        appendLine("Planning request:")
-        append(userPrompt)
-    }
 
     private const val UI_PLANNING_MAX_TOKENS = 512
 }
