@@ -123,7 +123,8 @@ jobs:
           new_when = '''    fun forRoute(route: ImageQuestionRoute): String = when (route) {\n        ImageQuestionRoute.CLOUD_API,\n        ImageQuestionRoute.LOCAL_MODEL -> text\n    }\n'''
           if old_when not in prompt:
               raise SystemExit('Missing legacy ImageQuestionRoute mapping')
-          prompt_path.write_text(prompt.replace(old_when, new_when), encoding='utf-8')
+          prompt = prompt.replace(old_when, new_when)
+          prompt_path.write_text(prompt, encoding='utf-8')
 
           forbidden = [
               'CloudAiPrefs', 'CliRelayClient', 'SelectAssistantMode',
