@@ -3,6 +3,8 @@ package com.ad_glasses.ai.router
 import android.content.Context
 import androidx.test.core.app.ApplicationProvider
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
+import org.junit.Assert.assertTrue
 import org.junit.Before
 import org.junit.Test
 import org.junit.runner.RunWith
@@ -27,6 +29,7 @@ class AiProviderPrefsSafetyTest {
     fun freshInstallDefaultsToCloudAndOpenAiProvider() {
         assertEquals(AiProviderType.CLOUD_API, AiProviderPrefs.getProvider(context))
         assertEquals(ApiProvider.OPENAI, AiProviderPrefs.getApiProvider(context))
+        assertFalse(AiProviderPrefs.isRelayConfigured(context))
     }
 
     @Test
@@ -38,9 +41,12 @@ class AiProviderPrefsSafetyTest {
     }
 
     @Test
-    fun retiredAuthorRelayUrlsAreNeverSilentlyRestored() {
-        val prefs = context.getSharedPreferences("ai_provider_prefs", Context.MODE_PRIVATE)
-        prefs.edit().putString("relay_base_url", "https://ADGlasses.vercel.app").commit()
+    fun realtimeRelayIsOptInAndNeverRestoredByDefault() {
         assertEquals("", AiProviderPrefs.getRelayBaseUrl(context))
+
+        AiProviderPrefs.setRelayBaseUrl(context, "https://relay.example.test/")
+
+        assertEquals("https://relay.example.test", AiProviderPrefs.getRelayBaseUrl(context))
+        assertTrue(AiProviderPrefs.isRelayConfigured(context))
     }
 }
