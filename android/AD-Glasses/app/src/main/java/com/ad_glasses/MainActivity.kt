@@ -379,7 +379,7 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
         }
     }
     private fun completeTtsUtterance(utteranceId: String?) {
-        utteranceId?.let { id -> completeTtsUtterance(id) }
+        utteranceId?.let { id -> ttsDoneCallbacks.remove(id)?.invoke() }
     }
 
     private fun discardTtsUtterance(utteranceId: String?) {
@@ -4178,12 +4178,6 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
                 usesPhoneMicrophone = pendingImageQuestionOfferSpokenQuestion &&
                     ContextCompat.checkSelfPermission(this, Manifest.permission.RECORD_AUDIO) == PackageManager.PERMISSION_GRANTED,
             )
-            prepareAiQuestionForLockScreen()
-            beginAiQuestionForegroundWork(
-                "Capturing image from Meta glasses",
-                usesPhoneMicrophone = pendingImageQuestionOfferSpokenQuestion &&
-                    ContextCompat.checkSelfPermission(this, Manifest.permission.RECORD_AUDIO) == PackageManager.PERMISSION_GRANTED,
-            )
             val manager = getOrCreateMetaRaybanManager()
             lifecycleScope.launch(Dispatchers.IO) {
                 runCatching {
@@ -4638,11 +4632,14 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
                 var finished = false
                 var heardSpeech = false
 
+                var cleanupDone = false
                 fun cleanup() {
+                    if (cleanupDone) return
+                    cleanupDone = true
                     runCatching { recognizer?.cancel() }
                     runCatching { recognizer?.destroy() }
                     recognizer = null
-                    runCatching { clearVoiceAudioRoute(audioManager) }
+                    clearVoiceAudioRoute(audioManager)
                     Log.i(
                         "ImageQuestionAudio",
                         "Image-question microphone route cleared: ${audioRouteSummary(audioManager)}",
@@ -4663,12 +4660,13 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
                         cleanup()
                         return
                     }
-                    lifecycleScope.launch {
-                        try {
-                            if (playCompletionTone) {
-                                playImageQuestionTone(android.media.ToneGenerator.TONE_PROP_BEEP2)
-                            }
-                        } finally {
+                    val completionJob = lifecycleScope.launch {
+                        if (playCompletionTone) {
+                            playImageQuestionTone(android.media.ToneGenerator.TONE_PROP_BEEP2)
+                        }
+                    }
+                    completionJob.invokeOnCompletion {
+                        runOnUiThread {
                             cleanup()
                             if (cont.isActive) cont.resume(cleaned)
                         }
@@ -4888,7 +4886,6 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
     private fun destroyActiveVoiceRecognizer(recognizer: SpeechRecognizer? = activeVoiceRecognizer) {
         if (recognizer == null) return
         if (activeVoiceRecognizer === recognizer) activeVoiceRecognizer = null
-        runCatching { recognizer.cancel() }
         runCatching { recognizer.destroy() }
     }
 
