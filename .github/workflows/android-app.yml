@@ -1,168 +1,154 @@
 name: Android app
 
 on:
-  workflow_dispatch:
-  pull_request:
-    paths:
-      - .github/workflows/android-app.yml
-      - android/AD-Glasses/**
-      - heycyan-core/**
-      - third_party/moonshine/**
   push:
     branches:
-      - main
-      - "agent/**"
-      - "ui/**"
-      - "codex/**"
-      - "fix/**"
-    paths:
-      - .github/workflows/android-app.yml
-      - android/AD-Glasses/**
-      - heycyan-core/**
-      - third_party/moonshine/**
+      - fix/app-kotlin-forward-ai-cleanup
 
 permissions:
-  contents: read
-  packages: read
-
-concurrency:
-  group: android-app-${{ github.ref }}
-  cancel-in-progress: true
+  contents: write
 
 jobs:
-  build-and-test:
-    name: Build and test AD Glasses
+  repair:
     runs-on: ubuntu-latest
-    timeout-minutes: 45
-    env:
-      GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-      GITHUB_ACTOR: ${{ github.actor }}
-
+    timeout-minutes: 15
     steps:
-      - name: Check out source
+      - name: Check out repair branch
         uses: actions/checkout@v7
         with:
-          submodules: recursive
-          lfs: true
+          ref: fix/app-kotlin-forward-ai-cleanup
           fetch-depth: 0
+          submodules: false
 
-      - name: Materialize submodule LFS files
+      - name: Remove retired companion-era app wiring
         shell: bash
         run: |
-          git lfs install --local
-          git submodule foreach --recursive 'git lfs install --local && git lfs pull'
+          python3 - <<'PY'
+          from pathlib import Path
 
-      - name: Set up Java 17
-        uses: actions/setup-java@v5
-        with:
-          distribution: temurin
-          java-version: "17"
-          cache: gradle
-          cache-dependency-path: |
-            android/AD-Glasses/**/*.gradle*
-            android/AD-Glasses/gradle/libs.versions.toml
-            heycyan-core/**/*.gradle*
+          main_path = Path('android/AD-Glasses/app/src/main/java/com/ad_glasses/MainActivity.kt')
+          prompt_path = Path('android/AD-Glasses/app/src/main/java/com/ad_glasses/ai/vision/ImageQuestionPrompt.kt')
+          text = main_path.read_text(encoding='utf-8')
 
-      - name: Install current Android CLI
+          def require_replace(old: str, new: str, label: str) -> None:
+              global text
+              if old not in text:
+                  raise SystemExit(f'Missing expected block: {label}')
+              text = text.replace(old, new)
+
+          require_replace('import com.ad_glasses.agent.CloudAiPrefs\n', '', 'CloudAiPrefs import')
+          require_replace('import com.ad_glasses.ai.router.CliRelayClient\n', 'import com.ad_glasses.ai.router.ApiTokenClient\n', 'CliRelayClient import')
+          text = text.replace('import androidx.core.content.FileProvider\n', '')
+          text = text.replace('                is GlassesDashboardAction.SelectAssistantMode,\n', '')
+          text = text.replace('                GlassesDashboardAction.OpenExternalImageAutomationDiagnostics,\n', '')
+
+          start = '    private fun resolveEffectiveAiAssistantMode(): String ='
+          end = '    private fun imageQueryUnsupportedReasonForCurrentSelection(): String? {'
+          i = text.find(start)
+          j = text.find(end, i)
+          if i < 0 or j < 0:
+              raise SystemExit('Could not locate assistant route helper block')
+          clean_helpers = '''    private fun resolveEffectiveAiAssistantMode(): String =\n        AutomationPrefs.getProviderType(this).name\n\n    private fun currentAssistantRoute(): GlassesAssistantRoute =\n        GlassesAssistantRoutingPolicy.resolve(AutomationPrefs.getProviderType(this))\n\n'''
+          text = text[:i] + clean_helpers + text[j:]
+
+          ext_start = '    private fun externalImageAutomationUnsupportedReason(): String? {'
+          refresh_marker = '    private fun refreshAiQueryButtonsState() {'
+          i = text.find(ext_start)
+          j = text.find(refresh_marker, i)
+          if i < 0 or j < 0:
+              raise SystemExit('Could not locate retired external image capability block')
+          text = text[:i] + text[j:]
+          text = text.replace(
+              '        val unsupportedReason = imageQueryUnsupportedReasonForCurrentSelection()\n            ?: externalImageAutomationUnsupportedReason()\n',
+              '        val unsupportedReason = imageQueryUnsupportedReasonForCurrentSelection()\n',
+          )
+
+          text = text.replace(
+              '''                    if (maybeShowGeminiChatGptImageRequirementsWarning()) {\n                        return@setOnClickListener\n                    }\n\n''',
+              '',
+          )
+          text = text.replace(
+              '''                            if (maybeShowGeminiChatGptImageRequirementsWarning()) {\n                                imageCaptureAwaitingNotification.set(false)\n                                pendingImageCaptureSourceTag = null\n                                return@runOnUiThread\n                            }\n''',
+              '',
+          )
+
+          old_cloud = '''            AgentProviderType.CLOUD_AI -> {\n                CliRelayClient.chat(\n                    context = this,\n                    chatId = "glasses_${System.currentTimeMillis()}",\n                    prompt = userPrompt,\n                    messages = messages,\n                    modelOverride = CloudAiPrefs.getRequestsModel(this),\n                ).getOrElse {\n                    "Pro endpoint error: ${it.message ?: "unknown error"}"\n                }\n            }\n'''
+          new_cloud = '''            AgentProviderType.CLOUD_AI -> {\n                ApiTokenClient.chat(\n                    context = this,\n                    messages = messages,\n                    imagePaths = imagePaths,\n                    audioPath = audioPath,\n                ).getOrElse {\n                    "Cloud AI unavailable (${it.message ?: it::class.java.simpleName})."\n                }\n            }\n'''
+          require_replace(old_cloud, new_cloud, 'legacy cloud relay branch')
+
+          text = text.replace('ImageQuestionRoute.LOCAL_GEMMA', 'ImageQuestionRoute.LOCAL_MODEL')
+          text = text.replace('ImageQuestionRoute.PRO_RELAY', 'ImageQuestionRoute.CLOUD_API')
+          text = text.replace('triggerCliRelayImageCaptureAndQuery', 'triggerImageCaptureAndQuery')
+          text = text.replace('            GlassesAssistantRoute.PHONE_ASSISTANT -> launchPhoneAssistant()\n', '')
+
+          external_share_start = '    private fun canStartExternalImageShare(packageName: String): Boolean {'
+          trigger_marker = '    private fun triggerAssistantImageQuery('
+          i = text.find(external_share_start)
+          j = text.find(trigger_marker, i)
+          if i < 0 or j < 0:
+              raise SystemExit('Could not locate retired external image-sharing block')
+          text = text[:i] + text[j:]
+
+          route_start = '        val externalReason = externalImageAutomationUnsupportedReason()'
+          analyze_marker = '    private fun analyzeSyncedCapture(contentUriString: String) {'
+          i = text.find(route_start)
+          j = text.find(analyze_marker, i)
+          if i < 0 or j < 0:
+              raise SystemExit('Could not locate retired image handoff route')
+          current_route = '''        val providerType = when (currentAssistantRoute()) {\n            GlassesAssistantRoute.LOCAL -> AgentProviderType.LOCAL_AGENT\n            GlassesAssistantRoute.CLOUD -> AgentProviderType.CLOUD_AI\n        }\n        triggerMemoryAwareImageQuery(\n            imagePath = imagePath,\n            providerType = providerType,\n            resolvedPrompt = resolvedPrompt,\n            onReplySpoken = onReplySpoken,\n        )\n    }\n\n'''
+          text = text[:i] + current_route + text[j:]
+
+          text = text.replace('            val externalAutomation = usesExternalImageAutomation()\n', '')
+          text = text.replace(
+              '                onReplySpoken = if (externalAutomation) null else ::offerFollowUp,\n',
+              '                onReplySpoken = ::offerFollowUp,\n',
+          )
+          text = text.replace(
+              '''\n            // The default assistant owns external response playback; ADGlasses follow-ups are\n            // only offered for Local and Pro responses that ADGlasses itself speaks.\n            if (externalAutomation) return@launch\n''',
+              '\n',
+          )
+          text = text.replace('            GlassesAssistantRoute.PHONE_ASSISTANT -> null\n', '')
+          main_path.write_text(text, encoding='utf-8')
+
+          prompt = prompt_path.read_text(encoding='utf-8')
+          old_enum = '''enum class ImageQuestionRoute {\n    PRO_RELAY,\n    LOCAL_GEMMA,\n    EXTERNAL_ASSISTANT,\n}\n'''
+          new_enum = '''enum class ImageQuestionRoute {\n    CLOUD_API,\n    LOCAL_MODEL,\n}\n'''
+          if old_enum not in prompt:
+              raise SystemExit('Missing legacy ImageQuestionRoute enum')
+          prompt = prompt.replace(old_enum, new_enum)
+          old_when = '''    fun forRoute(route: ImageQuestionRoute): String = when (route) {\n        ImageQuestionRoute.PRO_RELAY,\n        ImageQuestionRoute.LOCAL_GEMMA,\n        ImageQuestionRoute.EXTERNAL_ASSISTANT\n        -> text\n    }\n'''
+          new_when = '''    fun forRoute(route: ImageQuestionRoute): String = when (route) {\n        ImageQuestionRoute.CLOUD_API,\n        ImageQuestionRoute.LOCAL_MODEL -> text\n    }\n'''
+          if old_when not in prompt:
+              raise SystemExit('Missing legacy ImageQuestionRoute mapping')
+          prompt_path.write_text(prompt.replace(old_when, new_when), encoding='utf-8')
+
+          forbidden = [
+              'CloudAiPrefs', 'CliRelayClient', 'SelectAssistantMode',
+              'OpenExternalImageAutomationDiagnostics', 'aiAssistantMode',
+              'AI_MODE_CUSTOM_AI_PROVIDER', 'GlassesAssistantMode',
+              'GlassesAssistantRoute.PHONE_ASSISTANT', 'usesExternalAssistantUi',
+              'usesExternalImageAutomation', 'ExternalAssistantAutomation',
+              'ExternalImageAutomation', 'handOffImageToExternalAssistant',
+              'maybeShowGeminiChatGptImageRequirementsWarning',
+              'triggerCliRelayImageCaptureAndQuery',
+          ]
+          remaining = [token for token in forbidden if token in text]
+          if remaining:
+              raise SystemExit('Retired MainActivity symbols remain: ' + ', '.join(remaining))
+          if any(token in prompt for token in ('PRO_RELAY', 'LOCAL_GEMMA', 'EXTERNAL_ASSISTANT')):
+              raise SystemExit('Retired image route names remain')
+          PY
+
+          git diff --check
+          git diff --stat
+
+      - name: Commit source repair
         shell: bash
         run: |
-          sudo mkdir -p /etc/apt/keyrings
-          curl -fsSL https://dl.google.com/linux/linux_signing_key.pub \
-            | sudo tee /etc/apt/keyrings/google.asc >/dev/null
-          echo "deb [arch=amd64 signed-by=/etc/apt/keyrings/google.asc] http://dl.google.com/android/cli/latest/debian/ stable main" \
-            | sudo tee /etc/apt/sources.list.d/android-cli.list >/dev/null
-          sudo apt-get update
-          sudo apt-get install -y android-cli
-          android update
-          android --version
-
-      - name: Install Android SDK components
-        shell: bash
-        run: |
-          SDK_ROOT="$HOME/android-sdk"
-          mkdir -p "$SDK_ROOT"
-          echo "ANDROID_HOME=$SDK_ROOT" >> "$GITHUB_ENV"
-          echo "ANDROID_SDK_ROOT=$SDK_ROOT" >> "$GITHUB_ENV"
-          echo "$SDK_ROOT/platform-tools" >> "$GITHUB_PATH"
-          android --sdk="$SDK_ROOT" sdk install \
-            platforms/android-37 \
-            build-tools/36.0.0 \
-            cmake/3.22.1 \
-            ndk/29.0.14206865 \
-            platform-tools
-          android --sdk="$SDK_ROOT" sdk list '^(platforms/android-37|build-tools/36\.0\.0|cmake/3\.22\.1|ndk/29\.0\.14206865|platform-tools)$' --all-versions
-
-      - name: Compile shared Android source
-        working-directory: android/AD-Glasses
-        shell: bash
-        run: ./gradlew --no-daemon --warning-mode=all :shared:compileAndroidMain --stacktrace
-
-      - name: Run app unit tests
-        working-directory: android/AD-Glasses
-        shell: bash
-        run: |
-          set +e
-          mkdir -p build/ci
-          ./gradlew --no-daemon --warning-mode=all :app:testDebugUnitTest --stacktrace 2>&1 | tee /tmp/ad-gradle-unit.log
-          status=${PIPESTATUS[0]}
-          grep -Ei '(^e:|^w:|warning:|deprecated|deprecation)' /tmp/ad-gradle-unit.log \
-            | grep -vE '/third_party/|/myvu-upstream/' \
-            | tail -600 > build/ci/gradle-owned-warnings.txt || true
-          if [ "$status" -ne 0 ]; then
-            grep -Ei '(^e:|^w:|FAILURE:|What went wrong:|Could not |deprecated|deprecation|error:|Unresolved reference|Compilation error|Caused by:|> .* FAILED$|tests completed)' /tmp/ad-gradle-unit.log \
-              | tail -500 > build/ci/gradle-unit-summary.txt || true
-            echo "::group::Compact Gradle failure summary"
-            cat build/ci/gradle-unit-summary.txt || true
-            echo "::endgroup::"
-          fi
-          exit "$status"
-
-      - name: Upload unit-test diagnostics
-        if: always()
-        uses: actions/upload-artifact@v7
-        with:
-          name: gradle-unit-diagnostics
-          path: |
-            android/AD-Glasses/build/ci/gradle-unit-summary.txt
-            android/AD-Glasses/build/ci/gradle-owned-warnings.txt
-            android/AD-Glasses/app/build/test-results/testDebugUnitTest/**/*.xml
-            android/AD-Glasses/app/build/reports/tests/testDebugUnitTest/**
-          if-no-files-found: ignore
-          retention-days: 2
-
-      - name: Assemble AD Glasses debug APK
-        working-directory: android/AD-Glasses
-        shell: bash
-        run: |
-          set +e
-          mkdir -p build/ci
-          ./gradlew --no-daemon --warning-mode=all :app:assembleDebug --stacktrace 2>&1 | tee /tmp/ad-gradle-assemble.log
-          status=${PIPESTATUS[0]}
-          if [ "$status" -ne 0 ]; then
-            grep -Ei '(^e:|^w:|FAILURE:|What went wrong:|Could not |deprecated|deprecation|error:|Unresolved reference|Compilation error|Caused by:)' /tmp/ad-gradle-assemble.log \
-              | tail -400 > build/ci/gradle-assemble-summary.txt || true
-            echo "::group::Compact Gradle failure summary"
-            cat build/ci/gradle-assemble-summary.txt || true
-            echo "::endgroup::"
-          fi
-          exit "$status"
-
-      - name: Upload assemble failure diagnostics
-        if: failure()
-        uses: actions/upload-artifact@v7
-        with:
-          name: gradle-assemble-failure-summary
-          path: android/AD-Glasses/build/ci/gradle-assemble-summary.txt
-          if-no-files-found: ignore
-          retention-days: 2
-
-      - name: Verify branded APK output
-        run: test -f android/AD-Glasses/app/build/outputs/apk/debug/AD-Glasses.apk
-
-      - name: Upload AD Glasses APK
-        uses: actions/upload-artifact@v7
-        with:
-          name: AD-Glasses-debug
-          path: android/AD-Glasses/app/build/outputs/apk/debug/AD-Glasses.apk
-          if-no-files-found: error
-          retention-days: 7
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add -- android/AD-Glasses/app/src/main/java/com/ad_glasses/MainActivity.kt \
+            android/AD-Glasses/app/src/main/java/com/ad_glasses/ai/vision/ImageQuestionPrompt.kt
+          git diff --cached --check
+          git commit -m 'fix: complete forward AI app Kotlin cleanup'
+          git push origin HEAD:fix/app-kotlin-forward-ai-cleanup
