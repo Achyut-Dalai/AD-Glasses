@@ -1,6 +1,9 @@
 name: Full AD Glasses one-shot rebrand
 
 on:
+  pull_request:
+    branches:
+      - main
   push:
     branches:
       - cleanup/full-ad-glasses-one-shot
