@@ -24,8 +24,8 @@ class AiProviderPrefsSafetyTest {
     }
 
     @Test
-    fun freshInstallDefaultsToLocalAndHasNoRelayAddress() {
-        assertEquals(AiProviderType.LOCAL_MODELS, AiProviderPrefs.getProvider(context))
-        assertEquals("", AiProviderPrefs.getRelayBaseUrl(context))
+    fun freshInstallDefaultsToApiTokenAndOpenAiProvider() {
+        assertEquals(AiProviderType.API_TOKEN, AiProviderPrefs.getProvider(context))
+        assertEquals(ApiProvider.OPENAI, AiProviderPrefs.getApiProvider(context))
     }
 }
