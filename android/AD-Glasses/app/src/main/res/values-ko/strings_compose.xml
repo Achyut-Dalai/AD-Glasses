@@ -93,7 +93,7 @@
     <string name="compose_status_value">상태: %1$s</string>
     <string name="compose_last_error_value">마지막 오류: %1$s</string>
     <string name="compose_range_error">%1$d에서 %2$d 사이를 사용하세요</string>
-    <string name="compose_provider_external automation">external automation</string>
+    <string name="compose_provider_cloud_api">Cloud API</string>
     <string name="compose_provider_local">로컬</string>
     <string name="compose_provider_pro">Cloud AI</string>
     <string name="compose_not_now">나중에</string>

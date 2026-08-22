@@ -15,7 +15,7 @@
     </style>
 
     <!-- Compatibility name retained only for inherited manifest/resource references. -->
-    <style name="Theme.AD GlassesManager" parent="Theme.ADGlasses" />
+    <style name="Theme.ADGlassesManager" parent="Theme.ADGlasses" />
 
     <!-- Invisible hand-off used only by compatibility activity aliases. -->
     <style name="Theme.ADGlasses.Redirect" parent="@android:style/Theme.Translucent.NoTitleBar">
