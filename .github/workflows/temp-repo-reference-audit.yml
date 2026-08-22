@@ -42,17 +42,6 @@ jobs:
           echo '===== OLD AUTOMATION SETUP LANGUAGE ====='
           git grep -n -i -E 'AutoInput|automation profile|external automation|accessibility submission|choose default phone assistant' -- . "$EX1" "$EX2" "$EX3" "$EX4" || true
 
-          echo '===== COMBINED SETUP IDS OUTSIDE TRANSLATION DEFINITIONS ====='
-          git grep -n -E 'dashboard_gemini_chatgpt_setup|dashboard_phone_assistant' -- . "$EX1" "$EX2" "$EX3" "$EX4" \
-            ':(exclude)android/AD-Glasses/shared/src/commonMain/composeResources/values-de/strings_extra.xml' \
-            ':(exclude)android/AD-Glasses/shared/src/commonMain/composeResources/values-es/strings_extra.xml' \
-            ':(exclude)android/AD-Glasses/shared/src/commonMain/composeResources/values-fr/strings_extra.xml' \
-            ':(exclude)android/AD-Glasses/shared/src/commonMain/composeResources/values-it/strings_extra.xml' \
-            ':(exclude)android/AD-Glasses/shared/src/commonMain/composeResources/values-ko/strings_extra.xml' \
-            ':(exclude)android/AD-Glasses/shared/src/commonMain/composeResources/values-pt-rBR/strings_extra.xml' \
-            ':(exclude)android/AD-Glasses/shared/src/commonMain/composeResources/values-ru/strings_extra.xml' \
-            ':(exclude)android/AD-Glasses/shared/src/commonMain/composeResources/values-zh-rCN/strings_extra.xml' || true
-
           echo '===== INTENTIONAL MIGRATION WIRE TOKENS ====='
           git grep -n -E 'PHONE_ASSISTANT|CUSTOM_AI_PROVIDER|phone_assistant|default_assistant|"gemini"|"chatgpt"' -- . "$EX1" "$EX2" "$EX3" "$EX4" || true
 
@@ -62,11 +51,79 @@ jobs:
           echo '===== DIRECT META DAT SDK IMPORTS ====='
           git grep -n -E 'com\.meta\.wearable|Wearables\.|PermissionStatus|Permission\.CAMERA' -- android/AD-Glasses/app/src/main || true
 
-          echo '===== META MANAGER CONSUMERS ====='
-          git grep -n -E 'MetaRaybanManager|CapturedPhoto|RegistrationState|DeviceSessionState|StreamState' -- android/AD-Glasses/app/src/main ':!android/AD-Glasses/app/src/main/java/com/ad_glasses/devices/metarayban/MetaRaybanManager.kt' || true
-
           echo '===== DIRECT MYVU IMPORTS ====='
           git grep -n -E 'com\.myvu\.|ConnectionManager|ConnectionState' -- android/AD-Glasses/app/src/main ':!android/AD-Glasses/app/src/main/myvu-upstream' || true
 
           echo '===== MYVU SUBMODULE STATUS ====='
           git submodule status android/AD-Glasses/app/src/main/myvu-upstream || true
+
+  optional-device-fallback-compile:
+    name: Compile without Meta credentials or MYVU checkout
+    runs-on: ubuntu-latest
+    timeout-minutes: 35
+    steps:
+      - name: Check out all required sources
+        uses: actions/checkout@v7
+        with:
+          submodules: recursive
+          lfs: true
+          fetch-depth: 1
+
+      - name: Materialize submodule LFS files
+        shell: bash
+        run: |
+          git lfs install --local
+          git submodule foreach --recursive 'git lfs install --local && git lfs pull'
+
+      - name: Simulate a post-merge checkout without MYVU initialization
+        shell: bash
+        run: |
+          rm -rf android/AD-Glasses/app/src/main/myvu-upstream
+          mkdir -p android/AD-Glasses/app/src/main/myvu-upstream
+          test ! -f android/AD-Glasses/app/src/main/myvu-upstream/android/app/src/main/java/com/myvu/client/service/ConnectionManager.java
+
+      - name: Set up Java 17
+        uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: "17"
+          cache: gradle
+          cache-dependency-path: |
+            android/AD-Glasses/**/*.gradle*
+            android/AD-Glasses/gradle/libs.versions.toml
+            heycyan-core/**/*.gradle*
+
+      - name: Install current Android CLI
+        shell: bash
+        run: |
+          sudo mkdir -p /etc/apt/keyrings
+          curl -fsSL https://dl.google.com/linux/linux_signing_key.pub \
+            | sudo tee /etc/apt/keyrings/google.asc >/dev/null
+          echo "deb [arch=amd64 signed-by=/etc/apt/keyrings/google.asc] http://dl.google.com/android/cli/latest/debian/ stable main" \
+            | sudo tee /etc/apt/sources.list.d/android-cli.list >/dev/null
+          sudo apt-get update
+          sudo apt-get install -y android-cli
+          android update
+
+      - name: Install Android SDK components
+        shell: bash
+        run: |
+          SDK_ROOT="$HOME/android-sdk"
+          mkdir -p "$SDK_ROOT"
+          echo "ANDROID_HOME=$SDK_ROOT" >> "$GITHUB_ENV"
+          echo "ANDROID_SDK_ROOT=$SDK_ROOT" >> "$GITHUB_ENV"
+          echo "$SDK_ROOT/platform-tools" >> "$GITHUB_PATH"
+          android --sdk="$SDK_ROOT" sdk install \
+            platforms/android-37 \
+            build-tools/36.0.0 \
+            cmake/3.22.1 \
+            ndk/29.0.14206865 \
+            platform-tools
+
+      - name: Compile app with both optional device SDKs unavailable
+        working-directory: android/AD-Glasses
+        shell: bash
+        env:
+          GITHUB_TOKEN: ""
+          GITHUB_ACTOR: ""
+        run: ./gradlew --no-daemon --warning-mode=all :app:compileDebugKotlin --stacktrace
