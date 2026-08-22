@@ -116,7 +116,7 @@ fun ADGlassesApp(
                             },
                         )
                         ADTab.AI -> ADNativeAiScreen(
-                            onApiSettings = { navigateTo(ADRoute.AI_API) },
+                            onCloudSettings = { navigateTo(ADRoute.AI_CLOUD) },
                             onLocalSettings = { navigateTo(ADRoute.AI_LOCAL) },
                         )
                         ADTab.LIBRARY -> ADExpressiveLibraryHome(
@@ -154,7 +154,7 @@ fun ADGlassesApp(
                         onPermissions = { navigateTo(ADRoute.PERMISSIONS) },
                         onAbout = { navigateTo(ADRoute.ABOUT) },
                     )
-                    ADRoute.AI_API -> ADNativeApiSettingsScreen(navigateBack)
+                    ADRoute.AI_CLOUD -> ADNativeCloudAiSettingsScreen(navigateBack)
                     ADRoute.AI_LOCAL -> ADNativeLocalAiSettingsScreen(navigateBack)
                     ADRoute.PRIVACY -> ADPrivacyCenterScreen(navigateBack)
                     ADRoute.STORAGE -> ADStorageScreen(navigateBack)
