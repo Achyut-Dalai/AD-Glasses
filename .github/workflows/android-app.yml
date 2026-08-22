@@ -14,14 +14,16 @@ on:
       - "agent/**"
       - "ui/**"
       - "codex/**"
+      - "fix/**"
     paths:
       - .github/workflows/android-app.yml
       - android/CyanBridge/**
       - heycyan-core/**
       - third_party/moonshine/**
+      - tools/post_cleanup_repair.py
 
 permissions:
-  contents: read
+  contents: write
   packages: read
 
 concurrency:
@@ -43,12 +45,34 @@ jobs:
         with:
           submodules: recursive
           lfs: true
+          fetch-depth: 0
 
       - name: Materialize submodule LFS files
         shell: bash
         run: |
           git lfs install --local
           git submodule foreach --recursive 'git lfs install --local && git lfs pull'
+
+      - name: Apply one-shot post-cleanup repair
+        if: github.ref == 'refs/heads/fix/post-cleanup-build'
+        run: python3 tools/post_cleanup_repair.py
+
+      - name: Validate repair diff and audit legacy terms
+        if: github.ref == 'refs/heads/fix/post-cleanup-build'
+        shell: bash
+        run: |
+          git diff --check
+          git status --short
+          echo '== forbidden legacy identifiers =='
+          git grep -nEi 'PRO_SUBSCRIPTION|pro_subscription|PRO_RELAY|CliRelayClient|CloudAiPrefs|GlassesAssistantMode|PHONE_ASSISTANT|OpenExternalImageAutomationDiagnostics|SelectAssistantMode|usesExternalAssistantUi|usesExternalImageAutomation|ExternalAssistantAutomation|ExternalImageAutomation|phone assistant|Pro endpoint' -- \
+            'android/CyanBridge/app/src/**' \
+            'android/CyanBridge/shared/src/**' \
+            ':!**/build/**' || true
+          echo '== broad subscription references =='
+          git grep -nEi 'subscription' -- \
+            'android/CyanBridge/app/src/**' \
+            'android/CyanBridge/shared/src/**' \
+            ':!**/build/**' || true
 
       - name: Set up Java 17
         uses: actions/setup-java@v5
@@ -89,6 +113,11 @@ jobs:
             ndk/29.0.14206865 \
             platform-tools
           android --sdk="$SDK_ROOT" sdk list '^(platforms/android-37|build-tools/36\.0\.0|cmake/3\.22\.1|ndk/29\.0\.14206865|platform-tools)$' --all-versions
+
+      - name: Compile shared Android source
+        working-directory: android/CyanBridge
+        shell: bash
+        run: ./gradlew --no-daemon --warning-mode=all :shared:compileAndroidMain --stacktrace
 
       - name: Run app unit tests
         working-directory: android/CyanBridge
@@ -151,6 +180,31 @@ jobs:
 
       - name: Verify branded APK output
         run: test -f android/CyanBridge/app/build/outputs/apk/debug/AD-Glasses.apk
+
+      - name: Enforce post-cleanup architecture gate
+        if: github.ref == 'refs/heads/fix/post-cleanup-build'
+        shell: bash
+        run: |
+          if git grep -nEi 'PRO_SUBSCRIPTION|pro_subscription|PRO_RELAY|CliRelayClient|CloudAiPrefs|GlassesAssistantMode|PHONE_ASSISTANT|OpenExternalImageAutomationDiagnostics|SelectAssistantMode|usesExternalAssistantUi|usesExternalImageAutomation|ExternalAssistantAutomation|ExternalImageAutomation|phone assistant|Pro endpoint' -- \
+            'android/CyanBridge/app/src/**' \
+            'android/CyanBridge/shared/src/**' \
+            ':!**/build/**'; then
+            echo 'Legacy subscription/consumer-assistant identifiers remain.' >&2
+            exit 1
+          fi
+
+      - name: Commit repaired source and remove harness
+        if: github.ref == 'refs/heads/fix/post-cleanup-build'
+        shell: bash
+        run: |
+          git checkout origin/main -- .github/workflows/android-app.yml
+          rm -f tools/post_cleanup_repair.py .github/workflows/post-cleanup-repair.yml
+          git add -A
+          git diff --cached --check
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git commit -m 'fix: complete AI architecture cleanup and restore build'
+          git push origin HEAD:fix/post-cleanup-build
 
       - name: Upload AD Glasses APK
         uses: actions/upload-artifact@v7
