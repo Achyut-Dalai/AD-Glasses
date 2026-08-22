@@ -1,23 +1,16 @@
 package com.fersaiyan.cyanbridge.ai.router
 
-import com.fersaiyan.cyanbridge.shared.glasses.GlassesAssistantMode
 import com.fersaiyan.cyanbridge.shared.settings.AgentProviderType
 
 enum class GlassesAssistantRoute {
-    /** Compatibility token for inherited host code only. Resolution never returns this route. */
-    @Deprecated("Consumer assistant handoff is retired")
-    PHONE_ASSISTANT,
+    CLOUD,
     LOCAL,
-    PRO,
 }
 
-/** Assistant invocation is always AD-owned: direct API token or local model. */
+/** Assistant invocation is always AD-owned: direct cloud API or on-device local model. */
 object GlassesAssistantRoutingPolicy {
-    fun resolve(
-        mode: GlassesAssistantMode,
-        customProvider: AgentProviderType,
-    ): GlassesAssistantRoute = when (customProvider) {
+    fun resolve(provider: AgentProviderType): GlassesAssistantRoute = when (provider) {
+        AgentProviderType.CLOUD_AI -> GlassesAssistantRoute.CLOUD
         AgentProviderType.LOCAL_AGENT -> GlassesAssistantRoute.LOCAL
-        AgentProviderType.PRO_SUBSCRIPTION -> GlassesAssistantRoute.PRO
     }
 }
