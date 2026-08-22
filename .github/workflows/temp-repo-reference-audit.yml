@@ -1,0 +1,35 @@
+name: Temporary repo reference audit
+
+on:
+  pull_request:
+    branches:
+      - main
+
+permissions:
+  contents: read
+
+jobs:
+  audit:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out source
+        uses: actions/checkout@v4
+        with:
+          submodules: false
+          fetch-depth: 1
+
+      - name: Audit legacy brand and companion-app references
+        shell: bash
+        run: |
+          set -u
+          echo '===== CYANBRIDGE / FERSAIYAN / TASKER ====='
+          git grep -n -i -E 'cyan[ _-]?bridge|cyanbridge|fersaiyan|tasker' -- . ':(exclude).github/workflows/temp-repo-reference-audit.yml' || true
+
+          echo '===== RETIRED AI ROUTE SYMBOLS ====='
+          git grep -n -E 'CliRelayClient|CloudAiPrefs|GlassesAssistantMode|PHONE_ASSISTANT|CUSTOM_AI_PROVIDER|EXTERNAL_ASSISTANT|PRO_RELAY|CLI_RELAY|LOCAL_GEMMA' -- . ':(exclude).github/workflows/temp-repo-reference-audit.yml' || true
+
+          echo '===== CONSUMER ASSISTANT APP / HANDOFF REFERENCES ====='
+          git grep -n -i -E 'com\.openai\.chatgpt|com\.google\.android\.googlequicksearchbox|com\.google\.android\.apps\.bard|chatgpt app|gemini app|phone assistant|external assistant|consumer assistant|companion app|default assistant|assistant handoff|app handoff' -- . ':(exclude).github/workflows/temp-repo-reference-audit.yml' || true
+
+          echo '===== URI / PACKAGE LEGACY FORMS ====='
+          git grep -n -i -E 'cyanbridge://|cyan-bridge://|com\.fersaiyan|com/fersaiyan|android/CyanBridge|CyanBridge' -- . ':(exclude).github/workflows/temp-repo-reference-audit.yml' || true
