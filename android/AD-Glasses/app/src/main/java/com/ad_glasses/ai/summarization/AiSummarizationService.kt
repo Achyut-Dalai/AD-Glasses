@@ -1,14 +1,14 @@
 package com.ad_glasses.ai.summarization
 
 import android.content.Context
-import com.ad_glasses.ai.router.CliRelayClient
+import com.ad_glasses.ai.router.AiAssistantRouter
 import com.ad_glasses.shared.notes.StructuredSummary
 import com.ad_glasses.shared.notes.SummarizationRequest
 import com.ad_glasses.shared.notes.SummarizationService
 
 /**
  * AI-powered summarization service that delegates to local or cloud LLM models
- * via CliRelayClient based on user preferences.
+ * through the selected AD Glasses Cloud API or Local AI route.
  */
 class AiSummarizationService(
     private val context: Context,
@@ -38,12 +38,7 @@ class AiSummarizationService(
             append("Transcript:\n$transcript")
         }
 
-        val response = CliRelayClient.chat(
-            context = context,
-            chatId = "ai-summarization",
-            prompt = prompt,
-            messages = listOf(mapOf("role" to "user", "content" to prompt)),
-        ).getOrDefault("")
+        val response = AiAssistantRouter.textReply(context, prompt)
         return parseResponse(response, request.hintTitle, transcript)
     }
 
