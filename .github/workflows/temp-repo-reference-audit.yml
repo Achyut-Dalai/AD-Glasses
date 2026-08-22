@@ -1,0 +1,105 @@
+name: Temporary final repo reference audit
+
+on:
+  pull_request:
+    branches:
+      - main
+
+permissions:
+  contents: read
+
+jobs:
+  audit:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out source
+        uses: actions/checkout@v4
+        with:
+          submodules: false
+          fetch-depth: 1
+
+      - name: Verify repo-wide legacy cleanup
+        shell: bash
+        run: |
+          set -euo pipefail
+          ! git grep -n -i -E 'cyan[ _-]?bridge|cyanbridge|fersaiyan|tasker' -- . \
+            ':(exclude).github/workflows/temp-repo-reference-audit.yml' \
+            ':(exclude)tools/temp_cleanup_legacy_refs.py' \
+            ':(exclude)tools/temp_cleanup_locale_refs.py' \
+            ':(exclude)tools/temp_cleanup_residual_refs.py'
+          ! git grep -n -E 'CliRelayClient|CloudAiPrefs|GlassesAssistantMode|EXTERNAL_ASSISTANT|PRO_RELAY|CLI_RELAY|cbImageAsAssistant|btnModeGemini|btnModeChatgpt|btnModeInternal|compose_external_|dashboard_phone_assistant|dashboard_gemini_chatgpt_setup' -- . \
+            ':(exclude).github/workflows/temp-repo-reference-audit.yml' \
+            ':(exclude)tools/temp_cleanup_legacy_refs.py' \
+            ':(exclude)tools/temp_cleanup_locale_refs.py' \
+            ':(exclude)tools/temp_cleanup_residual_refs.py'
+
+  optional-device-fallback-compile:
+    name: Compile without Meta credentials or MYVU checkout
+    runs-on: ubuntu-latest
+    timeout-minutes: 35
+    steps:
+      - name: Check out all required sources
+        uses: actions/checkout@v7
+        with:
+          submodules: recursive
+          lfs: true
+          fetch-depth: 1
+
+      - name: Materialize submodule LFS files
+        shell: bash
+        run: |
+          git lfs install --local
+          git submodule foreach --recursive 'git lfs install --local && git lfs pull'
+
+      - name: Simulate checkout without MYVU initialization
+        shell: bash
+        run: |
+          rm -rf android/AD-Glasses/app/src/main/myvu-upstream
+          mkdir -p android/AD-Glasses/app/src/main/myvu-upstream
+          test ! -f android/AD-Glasses/app/src/main/myvu-upstream/android/app/src/main/java/com/myvu/client/service/ConnectionManager.java
+
+      - name: Set up Java 17
+        uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: "17"
+          cache: gradle
+          cache-dependency-path: |
+            android/AD-Glasses/**/*.gradle*
+            android/AD-Glasses/gradle/libs.versions.toml
+            heycyan-core/**/*.gradle*
+
+      - name: Install current Android CLI
+        shell: bash
+        run: |
+          sudo mkdir -p /etc/apt/keyrings
+          curl -fsSL https://dl.google.com/linux/linux_signing_key.pub \
+            | sudo tee /etc/apt/keyrings/google.asc >/dev/null
+          echo "deb [arch=amd64 signed-by=/etc/apt/keyrings/google.asc] http://dl.google.com/android/cli/latest/debian/ stable main" \
+            | sudo tee /etc/apt/sources.list.d/android-cli.list >/dev/null
+          sudo apt-get update
+          sudo apt-get install -y android-cli
+          android update
+
+      - name: Install Android SDK components
+        shell: bash
+        run: |
+          SDK_ROOT="$HOME/android-sdk"
+          mkdir -p "$SDK_ROOT"
+          echo "ANDROID_HOME=$SDK_ROOT" >> "$GITHUB_ENV"
+          echo "ANDROID_SDK_ROOT=$SDK_ROOT" >> "$GITHUB_ENV"
+          echo "$SDK_ROOT/platform-tools" >> "$GITHUB_PATH"
+          android --sdk="$SDK_ROOT" sdk install \
+            platforms/android-37 \
+            build-tools/36.0.0 \
+            cmake/3.22.1 \
+            ndk/29.0.14206865 \
+            platform-tools
+
+      - name: Compile app with both optional device SDKs unavailable
+        working-directory: android/AD-Glasses
+        shell: bash
+        env:
+          GITHUB_TOKEN: ""
+          GITHUB_ACTOR: ""
+        run: ./gradlew --no-daemon --warning-mode=all :app:compileDebugKotlin --stacktrace

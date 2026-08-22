@@ -58,10 +58,6 @@ class AcitivytMainBinding private constructor() {
 
     val layoutHeycyanExtras = ControlSlot()
     val cbHijackEnabled = CheckSlot(text = "Enable Hijack", initialChecked = true)
-    val cbImageAsAssistant = CheckSlot(text = "Direct Assistant", initialChecked = true)
-    val btnModeGemini = ControlSlot(text = "Phone Assistant")
-    val btnModeChatgpt = ControlSlot(text = "Phone Assistant", visibility = View.GONE)
-    val btnModeInternal = ControlSlot(text = "AD Local / Cloud")
     val btnTestHijackVoice = ControlSlot(text = "Test AI Voice Question")
     val btnTestHijackImage = ControlSlot(text = "Test Image AI description")
 

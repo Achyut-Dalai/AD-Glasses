@@ -187,7 +187,7 @@
     <string name="plugins_downloads">%1$s Downloads</string>
     <string name="plugins_votes">%1$s Stimmen</string>
     <string name="plugins_trend">%1$s-Trend %2$d</string>
-    <string name="plugins_open_external">In external automation öffnen</string>
+    <string name="plugins_open_external">Externe Quelle öffnen</string>
     <string name="plugins_download">Plugin herunterladen</string>
     <string name="plugins_settings_content_description">%1$s-Einstellungen</string>
     <string name="plugins_all_time">Gesamter Zeitraum</string>
@@ -212,8 +212,8 @@
     <string name="publish_description_hint">Beschreiben Sie Funktion, Einrichtungsschritte und Beispiel-Sprachbefehle Ihres Plugins.</string>
     <string name="publish_category">Kategorie</string>
     <string name="publish_download_link">Download-Link</string>
-    <string name="publish_external_source_link">external automationNet-Link *</string>
-    <string name="publish_external_source_hint">Geben Sie die external automationNet-URL Ihres Profils ein.</string>
+    <string name="publish_external_source_link">Link zur externen Quelle *</string>
+    <string name="publish_external_source_hint">Geben Sie die URL der externen Quelle für Ihr Plugin ein.</string>
     <string name="publish_how_it_works">So funktioniert die Veröffentlichung</string>
     <string name="publish_steps">1. Your submission is reviewed.
 
@@ -366,10 +366,8 @@
     <string name="dashboard_load_settings">Einstellungen von der Brille laden</string>
     <string name="dashboard_limits_unavailable">Laden Sie die Einstellungen, um die von dieser Brille unterstützten Grenzen zu sehen.</string>
     <string name="dashboard_ai_assistant">KI-Assistent</string>
-    <string name="dashboard_phone_assistant">Telefonassistent</string>
     <string name="dashboard_custom_provider">AD Local / Cloud AI</string>
     <string name="dashboard_test_voice">Sprache testen</string>
-    <string name="dashboard_gemini_chatgpt_setup">Gemini-/ChatGPT-Automatisierung einrichten</string>
     <string name="dashboard_meizu_title">Meizu MYVU / Star Air</string>
     <string name="dashboard_protocol">Protokoll: %1$s</string>
     <string name="dashboard_device">Gerät: %1$s</string>

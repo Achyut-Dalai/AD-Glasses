@@ -8,7 +8,7 @@ AD Glasses is a displayless glasses assistant. The phone is its compute, memory 
 
 A visible phone UI is an explicit fallback for an action Android cannot complete safely or legally in the background. The user should hear that a visible step is required before AD attempts it.
 
-The React Native app has three jobs:
+The Android app has three jobs:
 
 1. operate and configure the glasses;
 2. configure the intelligence and permissions behind AD;
@@ -26,9 +26,9 @@ The assistant itself does not live in a chat screen.
 - Moonshine/local speech is the private/offline transcription lane and is also useful for recordings and recovery.
 - Local AI is the private/offline reasoning lane when a model is configured.
 - OpenAI/Codex remains an advanced alternate provider, not a dependency of the core glasses experience.
-- external automation is a background Android execution backend, not an AI provider.
+- Local Agent and supported Android APIs provide AD-owned phone-side actions; Accessibility is used only where current policy permits it.
 - Accessibility automation is an explicit last-resort visible fallback.
-- Gemini/ChatGPT mobile-app UI handoff is optional compatibility behavior, never the core runtime.
+- Consumer assistant-app handoff is retired; Cloud REST and Cloud Realtime stay inside AD Glasses.
 
 ## Normal wake-word path
 
@@ -53,7 +53,7 @@ AD glasses connection runtime
                                     ▼
                               AD tool router
                          │          │          │
-                    direct/native  external automation   visible fallback
+                    direct/native   Local Agent      visible fallback
                          │          │          │
                          └──────┬───┴──────────┘
                                 ▼
@@ -64,7 +64,7 @@ The phone display stays off throughout the normal path.
 
 ## Use-case routing
 
-The product chooses a route from intent and available capabilities; the user should not have to choose “Gemini vs external automation vs local AI” for every request.
+The product chooses a route from intent and available capabilities; the user should not have to choose implementation plumbing for every request.
 
 | User says / does | Primary route | Phone display |
 |---|---|---|
@@ -78,10 +78,10 @@ The product chooses a route from intent and available capabilities; the user sho
 | “Record this” | direct glasses audio capture | Off |
 | “Summarize that recording” | stored artifact → Moonshine/local transcript → configured reasoning engine | Off while processing; phone UI only if user opens the result |
 | “What did I see yesterday?” | AD memory/index → relevant captures → configured reasoning engine | Off |
-| “Call Alex” | contact resolution → background/system/external automation executor → spoken confirmation before external communication | Off when Android permits; system confirmation only if required |
+| “Call Alex” | contact resolution → supported Android/Local Agent executor → spoken confirmation before external communication | Off when Android permits; system confirmation only if required |
 | “Text Alex I’m late” | resolve contact + compose action → spoken confirmation → background executor | Off when destination contract permits |
-| “Turn volume down / pause music” | direct Android/media API where available, otherwise external automation | Off |
-| “Open X and do Y” | direct app contract/AppFunction when authorized → external automation → Accessibility fallback | Off unless only visible automation can finish it |
+| “Turn volume down / pause music” | direct Android/media API where available, otherwise the supported AD action executor | Off |
+| “Open X and do Y” | direct app contract/AppFunction when authorized → AD action executor → Accessibility fallback | Off unless only visible automation can finish it |
 | “Remind me every weekday…” | AD Cron/scheduler | Off |
 | No internet / private request | Moonshine + local model when configured | Off |
 | User opens a saved photo/recording/note | artifact detail surface with optional voice/text follow-up scoped to that artifact | On by user choice, not required for assistant operation |
@@ -139,11 +139,11 @@ AD chooses the least-visible capable route.
 
 1. **Direct app/native API** — use APIs owned by AD or a target app when a supported contract exists.
 2. **Structured Android agent/app functions** — feature-gated on Android versions/devices where the API and permission model are actually available. Do not make the product depend on this preview-era path.
-3. **external automation background broadcast** — broad screen-off Android automation through the stable `com.ad_glasses.AUTOMATION_EVENT` contract.
+3. **AD-owned action executor / Local Agent** — use only capabilities implemented and permissioned by the current app.
 4. **System assistant privilege/fallback** — use system assistant capabilities only when they provide a supported locked-screen operation that AD cannot execute itself.
 5. **Accessibility / visible app automation** — last resort. The user must be told that the phone may need to wake/unlock.
 
-external automation and provider selection are independent. A Gemini request can execute through external automation; a local-model request can execute through external automation; changing AI must never break automation profiles.
+Action execution and inference-provider selection are independent. Changing Cloud/Local inference must not change the permissions or safety policy of AD-owned phone actions.
 
 ## Confirmation policy
 
@@ -180,7 +180,7 @@ In those cases AD asks first. It never silently wakes the screen merely because 
 - AI configures AD's engines, runtime and execution policy.
 - Library is the durable artifact/memory plane.
 - Contextual conversation may exist inside a photo, recording, note or other artifact detail when it materially helps the user inspect that artifact.
-- Assistant-app handoff and Accessibility belong under advanced/fallback configuration, not the primary product story.
+- Accessibility belongs under advanced/fallback configuration, not the primary product story.
 
 ## Implementation status
 
@@ -188,8 +188,7 @@ Already present in this branch:
 
 - glasses-first React Native navigation;
 - direct native bridge into the existing glasses runtime;
-- direct external automation background broadcast contract;
-- external automation-vs-Accessibility executor preference independent of AI provider;
+- AD-owned action routing remains independent of AI provider selection;
 - Gemini as the recommended/default cloud provider in product settings;
 - direct Gemini Live WebSocket client with native audio output, image injection and session resumption;
 - Gemini Live glasses-PCM input mode that avoids opening a second phone microphone path;
@@ -206,7 +205,7 @@ Remaining runtime work:
 - feed camera frames into the same active Live session for natural “what am I looking at?” follow-ups;
 - add the local/Moonshine fallback policy at the session router rather than only at separate one-shot/transcription paths;
 - replace polling UI state with native events;
-- keep visible assistant-app / Accessibility paths only as explicit fallbacks.
+- keep Accessibility-only paths as explicit, permissioned fallbacks.
 
 ## Current AD Glasses AI architecture
 

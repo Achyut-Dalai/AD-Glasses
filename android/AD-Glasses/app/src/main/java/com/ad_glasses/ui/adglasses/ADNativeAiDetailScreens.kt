@@ -147,8 +147,8 @@ internal fun ADNativeCloudAiSettingsScreen(onBack: () -> Unit) {
                 Column(Modifier.padding(start = 8.dp).weight(1f)) {
                     Text("Realtime", style = MaterialTheme.typography.titleMedium)
                     Text(
-                        if (realtimeReady) "Gemini Live ready through AD's short-lived-token relay"
-                        else "Configure the relay used to mint short-lived Gemini Live sessions",
+                        if (realtimeReady) "Gemini Live ready through AD's authenticated Realtime session service"
+                        else "Configure the service used to authorize short-lived Gemini Live sessions",
                         style = MaterialTheme.typography.bodySmall,
                         color = ADColors.Muted,
                     )
@@ -156,7 +156,7 @@ internal fun ADNativeCloudAiSettingsScreen(onBack: () -> Unit) {
             }
             Spacer(Modifier.size(8.dp))
             Text(
-                "Realtime is AD's own WebSocket audio path. It does not launch or control the Gemini app. " +
+                "Realtime is AD's own WebSocket audio path and stays inside AD Glasses. " +
                     "OpenAI Realtime can live in this same Cloud layer when its client is added.",
                 style = MaterialTheme.typography.bodySmall,
                 color = ADColors.Muted,
@@ -167,7 +167,7 @@ internal fun ADNativeCloudAiSettingsScreen(onBack: () -> Unit) {
                 modifier = Modifier.fillMaxWidth().heightIn(min = 44.dp),
                 colors = ButtonDefaults.buttonColors(containerColor = ADColors.Ink),
             ) {
-                Text("Configure Realtime relay")
+                Text("Configure Realtime service")
             }
             Spacer(Modifier.size(6.dp))
             OutlinedButton(
@@ -180,8 +180,8 @@ internal fun ADNativeCloudAiSettingsScreen(onBack: () -> Unit) {
         }
 
         Text(
-            "Provider API keys and relay tokens are stored with Android Keystore-backed encrypted preferences. " +
-                "Standard REST talks directly to the selected provider; the relay is optional and scoped to AD-owned cloud infrastructure such as Realtime token issuance.",
+            "Provider API keys and Realtime session credentials are stored with Android Keystore-backed encrypted preferences. " +
+                "Standard REST talks directly to the selected provider; the authenticated Realtime service is scoped to AD-owned session authorization.",
             style = MaterialTheme.typography.bodySmall,
             color = ADColors.Muted,
         )

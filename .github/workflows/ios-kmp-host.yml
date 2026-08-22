@@ -8,14 +8,14 @@ on:
       - main
     paths:
       - .github/workflows/ios-kmp-host.yml
-      - android/CyanBridge/shared/**
-      - android/CyanBridge/app/**
-      - android/CyanBridge/settings.gradle.kts
-      - android/CyanBridge/build.gradle.kts
-      - android/CyanBridge/gradle/**
-      - android/CyanBridge/gradle.properties
-      - ios/CyanBridgeKMPHost/**
-      - ios/CyanBridgeKMPHostTests/**
+      - android/AD-Glasses/shared/**
+      - android/AD-Glasses/app/**
+      - android/AD-Glasses/settings.gradle.kts
+      - android/AD-Glasses/build.gradle.kts
+      - android/AD-Glasses/gradle/**
+      - android/AD-Glasses/gradle.properties
+      - ios/AD-GlassesKMPHost/**
+      - ios/AD-GlassesKMPHostTests/**
       - ios/QCSDKDemo/**
       - ios/QCSDK.framework/**
       - ios/QCSDKDemo.xcodeproj/**
@@ -49,13 +49,13 @@ jobs:
           distribution: temurin
           java-version: "17"
           cache: gradle
-          cache-dependency-path: android/CyanBridge/**/*.gradle*
+          cache-dependency-path: android/AD-Glasses/**/*.gradle*
 
       - name: Verify the isolated iOS host structure
         run: python3 ios/scripts/verify_kmp_host.py
 
       - name: Link the Apple-Silicon simulator framework
-        working-directory: android/CyanBridge
+        working-directory: android/AD-Glasses
         run: ./gradlew --no-daemon -PenableAppleTargets=true :shared:linkDebugFrameworkIosSimulatorArm64
 
       - name: Build the device-only QCSDK demo
@@ -77,11 +77,11 @@ jobs:
         run: >-
           xcodebuild
           -project ios/QCSDKDemo.xcodeproj
-          -scheme CyanBridgeKMPHost
+          -scheme AD-GlassesKMPHost
           -configuration Debug
           -sdk iphonesimulator
           -destination 'platform=iOS Simulator,name=iPhone 16,OS=18.2'
-          -derivedDataPath "$RUNNER_TEMP/CyanBridgeDerivedData"
+          -derivedDataPath "$RUNNER_TEMP/AD-GlassesDerivedData"
           CODE_SIGNING_ALLOWED=NO
           ENABLE_USER_SCRIPT_SANDBOXING=NO
           build
@@ -92,7 +92,7 @@ jobs:
         with:
           name: ios-kmp-host-build-logs
           path: |
-            ${{ runner.temp }}/CyanBridgeDerivedData/Logs
+            ${{ runner.temp }}/AD-GlassesDerivedData/Logs
             ${{ runner.temp }}/QCSDKDemoDerivedData/Logs
           if-no-files-found: warn
           retention-days: 7

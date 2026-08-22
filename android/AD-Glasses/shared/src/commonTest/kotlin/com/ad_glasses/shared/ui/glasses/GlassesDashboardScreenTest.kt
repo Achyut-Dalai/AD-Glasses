@@ -1,6 +1,5 @@
 package com.ad_glasses.shared.ui.glasses
 
-import com.ad_glasses.shared.glasses.GlassesAssistantMode
 import com.ad_glasses.shared.glasses.GlassesDashboardAction
 import com.ad_glasses.shared.glasses.GlassesDashboardUiState
 import com.ad_glasses.shared.glasses.GlassesSyncFlow
@@ -28,10 +27,10 @@ class GlassesDashboardScreenTest {
     @Test
     fun connectedStatePreservesLabels() {
         val state = GlassesDashboardUiState(
-            connectionLabel = "Connected: ADGlasses V2",
+            connectionLabel = "Connected: AD Glasses V2",
             deviceClassLabel = "HeyCyan Smart Glasses",
         )
-        assertEquals("Connected: ADGlasses V2", state.connectionLabel)
+        assertEquals("Connected: AD Glasses V2", state.connectionLabel)
         assertEquals("HeyCyan Smart Glasses", state.deviceClassLabel)
     }
 
@@ -59,14 +58,5 @@ class GlassesDashboardScreenTest {
     fun syncFlowLabelsDistinguishProtocols() {
         assertEquals("HeyCyan app flow", GlassesSyncFlow.OFFICIAL_HEYCYAN.label)
         assertEquals("Custom flow", GlassesSyncFlow.CUSTOM.label)
-    }
-
-    @Test
-    fun assistantModesExposeOnlyPhoneAndCustomAi() {
-        val modes = GlassesAssistantMode.entries
-        assertEquals(
-            listOf(GlassesAssistantMode.PHONE_ASSISTANT, GlassesAssistantMode.CUSTOM_AI_PROVIDER),
-            modes,
-        )
     }
 }

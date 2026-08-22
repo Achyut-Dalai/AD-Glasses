@@ -37,7 +37,7 @@ This is not a collection of static screenshots. Buttons, navigation, sheets, dia
 Do not implement or request real:
 
 - Bluetooth/BLE discovery, binding, vendor SDK calls, or device commands;
-- Wi-Fi Direct, HTTP media transfer, camera/microphone recording, Accessibility automation, external automation/AutoInput, notification forwarding, or ADB;
+- Wi-Fi Direct, HTTP media transfer, camera/microphone recording, Accessibility automation, notification forwarding, or ADB;
 - file deletion outside prototype fixture storage;
 - Gemini, Google Search, Maps, owner-relay, Firebase, authentication, or other network calls;
 - API keys, tokens, secrets, accounts, payments, subscription, billing, donation, or author-server access;

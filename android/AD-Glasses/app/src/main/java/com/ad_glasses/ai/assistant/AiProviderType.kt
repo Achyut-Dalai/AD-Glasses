@@ -3,8 +3,8 @@ package com.ad_glasses.ai.assistant
 /**
  * Legacy assistant-package provider token kept small and AD-owned.
  *
- * Consumer Gemini/ChatGPT app identities are retired. Old serialized values migrate to CLOUD so
- * they cannot recreate an external-app handoff after upgrade.
+ * Legacy external-assistant provider tokens are retired. Old serialized values migrate to CLOUD
+ * so upgrades remain on the AD-owned Cloud/Local routing architecture.
  */
 enum class AiProviderType(
     val wireName: String,
