@@ -112,7 +112,7 @@ fun localizedDeviceClass(deviceClass: DeviceClass): String = stringResource(
 fun localizedProviderLabel(provider: AgentProviderType): String = stringResource(
     when (provider) {
         AgentProviderType.LOCAL_AGENT -> Res.string.provider_local
-        AgentProviderType.PRO_SUBSCRIPTION -> Res.string.provider_pro
+        AgentProviderType.CLOUD_AI -> Res.string.provider_pro
     },
 )
 

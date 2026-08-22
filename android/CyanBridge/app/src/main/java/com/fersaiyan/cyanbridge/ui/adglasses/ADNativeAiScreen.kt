@@ -73,8 +73,8 @@ internal fun ADNativeAiScreen(
                     onCloudSettings()
                     return
                 }
-                AiProviderPrefs.setProvider(context, AiProviderType.API_TOKEN)
-                LocalAgentPrefs.setProviderType(context, AgentProviderType.PRO_SUBSCRIPTION)
+                AiProviderPrefs.setProvider(context, AiProviderType.CLOUD_API)
+                LocalAgentPrefs.setProviderType(context, AgentProviderType.CLOUD_AI)
             }
             ADAiChoice.LOCAL -> {
                 AiProviderPrefs.setProvider(context, AiProviderType.LOCAL_MODELS)

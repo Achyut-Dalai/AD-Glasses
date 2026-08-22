@@ -25,7 +25,7 @@ class AiProviderPrefsSafetyTest {
 
     @Test
     fun freshInstallDefaultsToCloudAndOpenAiProvider() {
-        assertEquals(AiProviderType.API_TOKEN, AiProviderPrefs.getProvider(context))
+        assertEquals(AiProviderType.CLOUD_API, AiProviderPrefs.getProvider(context))
         assertEquals(ApiProvider.OPENAI, AiProviderPrefs.getApiProvider(context))
     }
 
@@ -33,7 +33,7 @@ class AiProviderPrefsSafetyTest {
     fun retiredRemoteProviderWiresMigrateToCloud() {
         listOf("cli_relay", "company_backend", "mock", "gemini", "chatgpt", "phone_assistant")
             .forEach { legacy ->
-                assertEquals(AiProviderType.API_TOKEN, AiProviderType.fromWire(legacy))
+                assertEquals(AiProviderType.CLOUD_API, AiProviderType.fromWire(legacy))
             }
     }
 

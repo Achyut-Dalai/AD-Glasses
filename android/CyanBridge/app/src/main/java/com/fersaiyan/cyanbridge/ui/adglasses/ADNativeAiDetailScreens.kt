@@ -125,13 +125,13 @@ internal fun ADNativeCloudAiSettingsScreen(onBack: () -> Unit) {
 
         Button(
             onClick = {
-                val routeChanged = AiProviderPrefs.getProvider(context) != AiProviderType.API_TOKEN ||
+                val routeChanged = AiProviderPrefs.getProvider(context) != AiProviderType.CLOUD_API ||
                     AiProviderPrefs.getApiProvider(context) != provider
                 AiProviderPrefs.setApiProvider(context, provider)
                 AiProviderPrefs.setApiKey(context, provider, apiKey)
                 AiProviderPrefs.setModel(context, provider, model)
-                AiProviderPrefs.setProvider(context, AiProviderType.API_TOKEN)
-                LocalAgentPrefs.setProviderType(context, AgentProviderType.PRO_SUBSCRIPTION)
+                AiProviderPrefs.setProvider(context, AiProviderType.CLOUD_API)
+                LocalAgentPrefs.setProviderType(context, AgentProviderType.CLOUD_AI)
                 LocalAgentPrefs.setGlassesAssistantMode(context, GlassesAssistantMode.CUSTOM_AI_PROVIDER)
                 if (routeChanged) AssistantConversationSession.get(context).startNewConversation()
                 saved = true

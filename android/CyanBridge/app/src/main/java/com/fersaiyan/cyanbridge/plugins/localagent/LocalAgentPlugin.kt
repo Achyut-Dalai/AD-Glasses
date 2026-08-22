@@ -73,7 +73,7 @@ object LocalAgentPlugin {
         AiProviderPrefs.setProvider(
             context,
             when (type) {
-                AgentProviderType.PRO_SUBSCRIPTION -> AiProviderType.CLI_RELAY
+                AgentProviderType.CLOUD_AI -> AiProviderType.CLI_RELAY
                 AgentProviderType.LOCAL_AGENT -> AiProviderType.LOCAL_MODELS
             },
         )

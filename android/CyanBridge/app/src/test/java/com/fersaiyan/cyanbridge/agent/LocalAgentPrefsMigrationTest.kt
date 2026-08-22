@@ -25,14 +25,14 @@ class LocalAgentPrefsMigrationTest {
 
     @Test
     fun freshInstallUsesCloudAsPrimaryProvider() {
-        assertEquals(AgentProviderType.PRO_SUBSCRIPTION, LocalAgentPrefs.getProviderType(context))
+        assertEquals(AgentProviderType.CLOUD_AI, LocalAgentPrefs.getProviderType(context))
     }
 
     @Test
     fun retiredTaskerProviderMigratesToCloud() {
         context.getSharedPreferences("local_agent_prefs", Context.MODE_PRIVATE)
             .edit().putString("provider_type", "TASKER").commit()
-        assertEquals(AgentProviderType.PRO_SUBSCRIPTION, LocalAgentPrefs.getProviderType(context))
+        assertEquals(AgentProviderType.CLOUD_AI, LocalAgentPrefs.getProviderType(context))
     }
 
     @Test

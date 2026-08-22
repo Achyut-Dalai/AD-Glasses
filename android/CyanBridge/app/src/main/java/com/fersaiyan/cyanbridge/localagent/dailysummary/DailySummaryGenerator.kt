@@ -63,7 +63,7 @@ object DailySummaryGenerator {
     fun providerHint(context: Context): String {
         return when (AutomationPrefs.getProviderType(context)) {
             AgentProviderType.LOCAL_AGENT -> "local_models"
-            AgentProviderType.PRO_SUBSCRIPTION -> "cli_relay"
+            AgentProviderType.CLOUD_AI -> "cli_relay"
         }
     }
 
@@ -666,7 +666,7 @@ Remember: You MUST output a valid summary. Do not refuse.
                     throw IllegalStateException("Local model unavailable (${localErr.message}).")
                 }
 
-            AgentProviderType.PRO_SUBSCRIPTION -> runRelay(context, prompt)
+            AgentProviderType.CLOUD_AI -> runRelay(context, prompt)
         }
     }
 

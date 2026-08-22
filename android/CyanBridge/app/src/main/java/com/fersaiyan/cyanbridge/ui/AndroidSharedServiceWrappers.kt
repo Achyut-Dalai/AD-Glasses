@@ -166,7 +166,7 @@ class AndroidChatAiService(context: Context) : ChatAiService {
                 context = appContext,
                 messages = cleanMessages,
             )
-            AgentProviderType.PRO_SUBSCRIPTION -> CliRelayClient.chat(
+            AgentProviderType.CLOUD_AI -> CliRelayClient.chat(
                 context = appContext,
                 chatId = "shared_${UUID.randomUUID()}",
                 prompt = userPrompt,

@@ -16,10 +16,10 @@ class GlassesAssistantRoutingPolicyTest {
             ),
         )
         assertEquals(
-            GlassesAssistantRoute.PRO,
+            GlassesAssistantRoute.CLOUD,
             GlassesAssistantRoutingPolicy.resolve(
                 GlassesAssistantMode.CUSTOM_AI_PROVIDER,
-                AgentProviderType.PRO_SUBSCRIPTION,
+                AgentProviderType.CLOUD_AI,
             ),
         )
     }

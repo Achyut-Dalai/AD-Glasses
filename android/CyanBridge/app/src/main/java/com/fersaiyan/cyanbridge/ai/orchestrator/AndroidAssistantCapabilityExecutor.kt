@@ -48,7 +48,7 @@ class AndroidAssistantCapabilityExecutor(
             systemPrompt = conversationSystemPrompt(context),
             userPrompt = prompt,
             imagePath = imagePath,
-            allowRemoteImageUpload = context.providerType == AgentProviderType.PRO_SUBSCRIPTION &&
+            allowRemoteImageUpload = context.providerType == AgentProviderType.CLOUD_AI &&
                 com.fersaiyan.cyanbridge.localagent.LocalAgentPrefs
                     .isRemoteScreenshotUploadEnabled(appContext),
             providerType = context.providerType,

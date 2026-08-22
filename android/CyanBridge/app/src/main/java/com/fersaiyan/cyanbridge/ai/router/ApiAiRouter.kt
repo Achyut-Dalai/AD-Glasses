@@ -206,7 +206,7 @@ object AiAssistantRouter {
         callbacks: ChatStreamCallbacks?,
     ): String {
         return when (AiProviderPrefs.getProvider(context)) {
-            AiProviderType.API_TOKEN -> {
+            AiProviderType.CLOUD_API -> {
                 if (shouldUseOfflineTextFallback(context, imagePaths, audioPath)) {
                     callbacks?.onStatus("Offline — using Local AI")
                     localModelsProvider.streamChat(
@@ -236,7 +236,7 @@ object AiAssistantRouter {
     suspend fun textReply(context: Context, prompt: String): String {
         val messages = listOf(mapOf("role" to "user", "content" to prompt))
         return when (AiProviderPrefs.getProvider(context)) {
-            AiProviderType.API_TOKEN -> {
+            AiProviderType.CLOUD_API -> {
                 if (shouldUseOfflineTextFallback(context, emptyList(), null)) {
                     localModelsProvider.streamChat(context = context, messages = messages)
                 } else {

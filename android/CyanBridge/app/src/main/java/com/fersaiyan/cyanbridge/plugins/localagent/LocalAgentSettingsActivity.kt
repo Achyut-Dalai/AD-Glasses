@@ -798,7 +798,7 @@ private fun ProviderOption(
             stringResource(
                 when (type) {
                     AgentProviderType.LOCAL_AGENT -> R.string.compose_provider_local
-                    AgentProviderType.PRO_SUBSCRIPTION -> R.string.compose_provider_pro
+                    AgentProviderType.CLOUD_AI -> R.string.compose_provider_pro
                 },
             ),
             style = MaterialTheme.typography.bodyMedium,
