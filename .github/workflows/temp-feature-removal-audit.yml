@@ -6,31 +6,32 @@ on:
       - main
 
 permissions:
-  contents: read
+  contents: write
 
 jobs:
-  audit:
+  cleanup:
+    if: github.actor != 'github-actions[bot]'
     runs-on: ubuntu-latest
     steps:
-      - name: Check out branch
+      - name: Check out consolidation branch
         uses: actions/checkout@v7
         with:
+          ref: fix/post-merge-cleanup
           fetch-depth: 1
-      - name: Audit removed features and chat routes
+      - name: Apply complete feature cleanup
         shell: bash
         run: |
-          set -u
-          echo '===== LIVE TIMELINE / DIARY RESIDUE ====='
-          git grep -n -i -E 'daynote|day note|autodiary|auto diary|visualdiary|visual diary|timeline|diary' -- \
+          set -euo pipefail
+          python3 tools/temp_remove_diary_timeline.py
+          git diff --check
+          echo '===== REMAINING LIVE FEATURE TOKENS ====='
+          git grep -n -i -E 'daynote|day note|autodiary|auto diary|visualdiary|visual diary|visual_diary' -- \
             android/AD-Glasses/app/src/main \
-            android/AD-Glasses/shared/src \
-            ':!android/AD-Glasses/app/src/main/myvu-upstream/**' || true
-          echo '===== WHOLE-REPO TIMELINE / DIARY RESIDUE ====='
-          git grep -n -i -E 'daynote|day note|autodiary|auto diary|visualdiary|visual diary|timeline|diary' -- . \
-            ':!third_party/**' \
-            ':!android/AD-Glasses/app/src/main/myvu-upstream/**' \
-            ':!.github/workflows/temp-feature-removal-audit.yml' || true
-          echo '===== CHAT ROUTES / CLEAR CHAT ====='
-          git grep -n -E 'ChatListActivity|ChatThreadActivity|ADConversationsRedirectActivity|clear.*chat|Clear.*chat|conversation.*clear|clear.*conversation|CONVERSATIONS|Conversations' -- android/AD-Glasses || true
-          echo '===== REMOVED FEATURE SOURCE PATHS ====='
-          find android/AD-Glasses/app/src/main -type f \( -iname '*diary*' -o -iname '*timeline*' -o -iname '*daynote*' \) -print || true
+            android/AD-Glasses/shared/src/commonMain || true
+          git config user.name github-actions[bot]
+          git config user.email 41898282+github-actions[bot]@users.noreply.github.com
+          git add -A
+          if ! git diff --cached --quiet; then
+            git commit -m 'Remove Timeline and Diary features completely'
+            git push origin HEAD:fix/post-merge-cleanup
+          fi
