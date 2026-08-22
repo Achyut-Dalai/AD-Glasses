@@ -47,17 +47,13 @@ for path in sorted(tracked(), key=lambda p: (p.count("/"), len(p)), reverse=True
     if re.search(r"tasker", path, flags=re.I):
         git_rm(path)
 
-# Rename all tracked legacy brand paths, deepest first.
+# Rename all tracked legacy brand paths, deepest first. Collapse the old Java/Kotlin
+# package path as a unit so com/fersaiyan/cyanbridge becomes exactly com/ad_glasses.
 def renamed_path(path: str) -> str:
-    parts = path.split("/")
-    out = []
-    for part in parts:
-        part = part.replace("CyanBridge", "AD-Glasses")
-        part = part.replace("cyanbridge", "ad_glasses")
-        part = part.replace("Fersaiyan", "AD-Glasses")
-        part = part.replace("fersaiyan", "ad_glasses")
-        out.append(part)
-    return "/".join(out)
+    new = re.sub(r"com/fersaiyan/cyanbridge", "com/ad_glasses", path, flags=re.I)
+    new = re.sub(r"cyanbridge", "AD-Glasses", new, flags=re.I)
+    new = re.sub(r"fersaiyan", "ad_glasses", new, flags=re.I)
+    return new
 
 
 for old in sorted(tracked(), key=lambda p: (p.count("/"), len(p)), reverse=True):
@@ -66,8 +62,8 @@ for old in sorted(tracked(), key=lambda p: (p.count("/"), len(p)), reverse=True)
         Path(new).parent.mkdir(parents=True, exist_ok=True)
         subprocess.run(["git", "mv", "-f", "--", old, new], check=True)
 
-# Text replacements: exact technical identifiers first, then remaining brand prose.
-replacements = [
+# Text replacements: exact technical identifiers first.
+exact_replacements = [
     ("com.fersaiyan.cyanbridge", "com.ad_glasses"),
     ("com/fersaiyan/cyanbridge", "com/ad_glasses"),
     ("com.fersaiyan", "com.ad_glasses"),
@@ -79,10 +75,9 @@ replacements = [
     ("cyanbridge://", "ad-glasses://"),
     ('android:scheme="cyanbridge"', 'android:scheme="ad-glasses"'),
     ("CyanBridgeManagerApp", "AD-Glasses"),
-    ("CyanBridge", "AD Glasses"),
-    ("cyanbridge", "ad_glasses"),
-    ("fersaiyan", "ad_glasses"),
 ]
+
+code_exts = {".kt", ".java", ".gradle", ".kts", ".aidl", ".groovy"}
 
 for rel in tracked():
     path = ROOT / rel
@@ -90,11 +85,26 @@ for rel in tracked():
         continue
     text = path.read_text(encoding="utf-8")
     new = text
-    for old, repl in replacements:
+    for old, repl in exact_replacements:
         new = new.replace(old, repl)
+
+    # Catch every remaining casing variant without making source identifiers invalid.
+    if path.suffix.lower() in code_exts:
+        new = re.sub(r"cyanbridge", "AD_GLASSES", new, flags=re.I)
+        new = re.sub(r"fersaiyan", "ad_glasses", new, flags=re.I)
+    else:
+        new = re.sub(r"cyanbridge", "AD Glasses", new, flags=re.I)
+        new = re.sub(r"fersaiyan", "AD Glasses", new, flags=re.I)
+
+    # Canonical technical spellings after the broad prose pass.
     new = new.replace("ad_glasses://", "ad-glasses://")
+    new = new.replace("AD Glasses://", "ad-glasses://")
+    new = new.replace('android:scheme="AD Glasses"', 'android:scheme="ad-glasses"')
     new = new.replace('rootProject.name = "AD GlassesManagerApp"', 'rootProject.name = "AD-Glasses"')
     new = new.replace('rootProject.name = "AD Glasses"', 'rootProject.name = "AD-Glasses"')
+    new = new.replace("android/AD Glasses", "android/AD-Glasses")
+    new = new.replace("AD Glasses/", "AD-Glasses/")
+
     if new != text:
         path.write_text(new, encoding="utf-8")
 
@@ -128,7 +138,7 @@ for rel in [
         text = text.split(marker, 1)[0].rstrip() + "\n\n"
     path.write_text(text.rstrip() + "\n\n" + architecture_note, encoding="utf-8")
 
-# Remove Tasker prose lines from documentation/config only; code references are audited and fail below.
+# Remove Tasker prose lines from documentation/config only; code references are audited below.
 doc_exts = {".md", ".txt", ".yml", ".yaml", ".json", ".xml", ".properties"}
 for rel in tracked():
     path = ROOT / rel
