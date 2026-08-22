@@ -10,6 +10,11 @@ import sys
 ROOT = Path(__file__).resolve().parents[1]
 os.chdir(ROOT)
 
+HARNESS = {
+    "tools/full_ad_glasses_one_shot.py",
+    ".github/workflows/full-ad-glasses-one-shot.yml",
+}
+
 
 def tracked() -> list[str]:
     out = subprocess.check_output(["git", "ls-files", "-z"])
@@ -41,6 +46,15 @@ for stale in [
     "tools/post_cleanup_repair.py",
 ]:
     git_rm(stale)
+
+# Remove obsolete provider tests that exist only to exercise the already-removed
+# Tasker LLM provider. Keeping them would preserve a dead integration contract.
+for rel in list(tracked()):
+    if Path(rel).name not in {"ProviderMigrationTest.kt", "ProviderPersistenceTest.kt"}:
+        continue
+    path = ROOT / rel
+    if path.exists() and is_text(path) and re.search(r"tasker", path.read_text(encoding="utf-8"), flags=re.I):
+        git_rm(rel)
 
 # Remove any tracked file or folder whose path itself is Tasker-specific.
 for path in sorted(tracked(), key=lambda p: (p.count("/"), len(p)), reverse=True):
@@ -75,11 +89,21 @@ exact_replacements = [
     ("cyanbridge://", "ad-glasses://"),
     ('android:scheme="cyanbridge"', 'android:scheme="ad-glasses"'),
     ("CyanBridgeManagerApp", "AD-Glasses"),
+    # Preserve marketplace/community publishing while removing its vendor-specific field.
+    ("taskerNetLink", "externalSourceLink"),
+    ("TaskerNetLink", "ExternalSourceLink"),
+    ("community_source_tasker", "community_source_external"),
+    ("publish_tasker_label", "publish_external_source_label"),
+    ("https://tasker.dev", "https://example.com/external-source"),
+    ("https://taskernet.com/...", "https://example.com/external-source"),
+    ("https://taskernet.com", "https://example.com/external-source"),
 ]
 
 code_exts = {".kt", ".java", ".gradle", ".kts", ".aidl", ".groovy"}
 
 for rel in tracked():
+    if rel in HARNESS:
+        continue
     path = ROOT / rel
     if not path.exists() or not path.is_file() or not is_text(path):
         continue
@@ -95,6 +119,8 @@ for rel in tracked():
     else:
         new = re.sub(r"cyanbridge", "AD Glasses", new, flags=re.I)
         new = re.sub(r"fersaiyan", "AD Glasses", new, flags=re.I)
+        # Historical prose/resource labels are no longer vendor-specific.
+        new = re.sub(r"tasker", "external automation", new, flags=re.I)
 
     # Canonical technical spellings after the broad prose pass.
     new = new.replace("ad_glasses://", "ad-glasses://")
@@ -138,17 +164,6 @@ for rel in [
         text = text.split(marker, 1)[0].rstrip() + "\n\n"
     path.write_text(text.rstrip() + "\n\n" + architecture_note, encoding="utf-8")
 
-# Remove Tasker prose lines from documentation/config only; code references are audited below.
-doc_exts = {".md", ".txt", ".yml", ".yaml", ".json", ".xml", ".properties"}
-for rel in tracked():
-    path = ROOT / rel
-    if not path.exists() or not path.is_file() or path.suffix.lower() not in doc_exts or not is_text(path):
-        continue
-    text = path.read_text(encoding="utf-8")
-    if re.search(r"tasker", text, flags=re.I):
-        kept = [line for line in text.splitlines() if not re.search(r"tasker", line, flags=re.I)]
-        path.write_text("\n".join(kept).rstrip() + "\n", encoding="utf-8")
-
 bad_paths = [p for p in tracked() if re.search(r"cyanbridge|fersaiyan|tasker", p, flags=re.I)]
 if bad_paths:
     print("Forbidden legacy terms remain in tracked paths:", file=sys.stderr)
@@ -158,6 +173,8 @@ if bad_paths:
 
 bad_text = []
 for rel in tracked():
+    if rel in HARNESS:
+        continue
     path = ROOT / rel
     if not path.exists() or not path.is_file() or not is_text(path):
         continue
