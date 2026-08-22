@@ -47,7 +47,6 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
-import com.ad_glasses.shared.glasses.GlassesAssistantMode
 import com.ad_glasses.shared.glasses.AiWakeWordRoute
 import com.ad_glasses.shared.glasses.GlassesDashboardAction
 import com.ad_glasses.shared.glasses.GlassesDashboardUiState
@@ -730,22 +729,6 @@ private fun GlassesAssistantControls(
         verticalArrangement = Arrangement.spacedBy(8.dp),
     ) {
         SectionTitle(stringResource(Res.string.dashboard_ai_assistant), accented = true)
-        Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-            AssistantModeChip(
-                label = stringResource(Res.string.dashboard_phone_assistant),
-                mode = GlassesAssistantMode.PHONE_ASSISTANT,
-                selectedMode = state.assistantMode,
-                onAction = onAction,
-                modifier = Modifier.weight(1f),
-            )
-            AssistantModeChip(
-                label = stringResource(Res.string.dashboard_custom_provider),
-                mode = GlassesAssistantMode.CUSTOM_AI_PROVIDER,
-                selectedMode = state.assistantMode,
-                onAction = onAction,
-                modifier = Modifier.weight(1f),
-            )
-        }
         ActionRow(
             primaryLabel = stringResource(Res.string.dashboard_test_voice),
             onPrimary = { onAction(GlassesDashboardAction.TestVoiceQuestion) },
@@ -761,12 +744,6 @@ private fun GlassesAssistantControls(
         )
         if (state.showHeyCyanControls || state.showEyevueControls) {
             AiWakeWordRouteControls(state, onAction)
-        }
-        OutlinedButton(
-            onClick = { onAction(GlassesDashboardAction.OpenExternalImageAutomationDiagnostics) },
-            modifier = Modifier.fillMaxWidth(),
-        ) {
-            Text(stringResource(Res.string.dashboard_gemini_chatgpt_setup))
         }
     }
 }
@@ -867,22 +844,6 @@ private fun AiWakeWordRouteControls(
             )
         }
     }
-}
-
-@Composable
-private fun AssistantModeChip(
-    label: String,
-    mode: GlassesAssistantMode,
-    selectedMode: GlassesAssistantMode,
-    onAction: (GlassesDashboardAction) -> Unit,
-    modifier: Modifier,
-) {
-    FilterChip(
-        selected = selectedMode == mode,
-        onClick = { onAction(GlassesDashboardAction.SelectAssistantMode(mode)) },
-        label = { Text(label) },
-        modifier = modifier,
-    )
 }
 
 @Composable
