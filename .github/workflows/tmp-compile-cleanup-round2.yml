@@ -1,0 +1,39 @@
+name: Temporary compile cleanup round 2
+
+on:
+  push:
+    branches:
+      - fix/mainactivity-full-audit
+
+permissions:
+  contents: write
+
+jobs:
+  repair:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out repair branch
+        uses: actions/checkout@v7
+        with:
+          ref: fix/mainactivity-full-audit
+          fetch-depth: 0
+
+      - name: Apply forward-only compile cleanup
+        shell: bash
+        run: |
+          python3 tools/tmp_compile_cleanup_round2.py
+          git diff --check
+          git diff --stat
+
+      - name: Commit source cleanup
+        shell: bash
+        run: |
+          if git diff --quiet -- android/AD-Glasses/app/src/main/java/com/ad_glasses; then
+            echo "No source changes to commit"
+            exit 0
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add android/AD-Glasses/app/src/main/java/com/ad_glasses
+          git commit -m "fix: migrate remaining app compile paths to Cloud API"
+          git push origin HEAD:fix/mainactivity-full-audit
