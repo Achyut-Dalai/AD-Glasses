@@ -4,7 +4,6 @@ import android.content.Context
 import android.content.SharedPreferences
 import androidx.security.crypto.EncryptedSharedPreferences
 import androidx.security.crypto.MasterKey
-import com.fersaiyan.cyanbridge.BuildConfig
 
 enum class AiProviderType(val wire: String, val label: String) {
     API_TOKEN("api_token", "API token"),
@@ -75,11 +74,8 @@ object AiProviderPrefs {
         prefs(context).edit().putString(KEY_API_PROVIDER, provider.wire).apply()
     }
 
-    fun getApiKey(context: Context, provider: ApiProvider = getApiProvider(context)): String {
-        val stored = secretPrefs(context).getString(apiKeyKey(provider), "")?.trim().orEmpty()
-        if (stored.isNotBlank()) return stored
-        return if (provider == ApiProvider.OPENAI) BuildConfig.OPENAI_API_KEY.trim() else ""
-    }
+    fun getApiKey(context: Context, provider: ApiProvider = getApiProvider(context)): String =
+        secretPrefs(context).getString(apiKeyKey(provider), "")?.trim().orEmpty()
 
     fun setApiKey(context: Context, provider: ApiProvider, value: String) {
         secretPrefs(context).edit().putString(apiKeyKey(provider), value.trim()).apply()
