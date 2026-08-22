@@ -89,14 +89,14 @@ android {
                 java.exclude("com/myvu/client/service/MyvuService.java")
                 java.exclude("com/myvu/client/service/MirrorNotificationListener.java")
             } else {
-                java.srcDir("src/myvu-stub/java")
+                kotlin.srcDir("src/myvu-stub/java")
             }
 
             if (!metaDatEnabled) {
                 // The real manager directly references the private Meta DAT SDK. Exclude only that
                 // implementation and compile an explicit unavailable backend when credentials are absent.
-                java.exclude("com/ad_glasses/devices/metarayban/MetaRaybanManager.kt")
-                java.srcDir("src/meta-stub/java")
+                kotlin.exclude("com/ad_glasses/devices/metarayban/MetaRaybanManager.kt")
+                kotlin.srcDir("src/meta-stub/java")
             }
 
             assets.srcDir("build/generated/sharedComposeResourcesAssets")
