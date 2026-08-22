@@ -381,7 +381,7 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
         }
     }
     private fun completeTtsUtterance(utteranceId: String?) {
-        utteranceId?.let { id -> ttsDoneCallbacks.remove(id)?.invoke() }
+        utteranceId?.let { id -> completeTtsUtterance(id) }
     }
 
     private fun discardTtsUtterance(utteranceId: String?) {
