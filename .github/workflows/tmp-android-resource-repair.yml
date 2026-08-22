@@ -4,6 +4,9 @@ on:
   push:
     branches:
       - fix/android-resource-repair
+  pull_request:
+    branches:
+      - main
 
 permissions:
   contents: write
@@ -33,8 +36,6 @@ jobs:
           project = Path('android/AD-Glasses')
           res = project / 'app/src/main/res'
 
-          # Exact fallout from the mechanical rename. Keep technical Android
-          # identifiers compiler-safe while preserving human-facing AD Glasses.
           replacements = {
               'compose_provider_external automation': 'compose_provider_cloud_api',
               'compose_provider_external_automation': 'compose_provider_cloud_api',
@@ -72,9 +73,6 @@ jobs:
               else:
                   old_logo.rename(new_logo)
 
-          # The provider label is no longer an old companion/automation route.
-          # Use a neutral current-architecture label in every locale while
-          # keeping translations for the rest of each file intact.
           for p in res.glob('values*/strings_compose.xml'):
               text = p.read_text(encoding='utf-8')
               text = re.sub(
@@ -84,7 +82,6 @@ jobs:
               )
               p.write_text(text, encoding='utf-8')
 
-          # Fail early if any value resource name still contains whitespace.
           bad_names = []
           name_re = re.compile(r'\bname="([^"]+)"')
           for p in res.glob('values*/*.xml'):
@@ -96,7 +93,6 @@ jobs:
           if bad_names:
               raise SystemExit('Invalid Android resource names remain:\n' + '\n'.join(bad_names))
 
-          # Catch file-based resource names that AAPT will reject.
           bad_files = []
           for folder in res.iterdir():
               if not folder.is_dir() or folder.name.startswith('values'):
@@ -119,6 +115,7 @@ jobs:
           git status --short
 
       - name: Commit repaired resources
+        if: github.event_name == 'push'
         shell: bash
         run: |
           git config user.name 'github-actions[bot]'
