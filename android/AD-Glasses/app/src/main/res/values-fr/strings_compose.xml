@@ -93,7 +93,7 @@ Derniere version : %2$s</string>
     <string name="compose_status_value">Etat : %1$s</string>
     <string name="compose_last_error_value">Derniere erreur : %1$s</string>
     <string name="compose_range_error">Utilisez %1$d a %2$d</string>
-    <string name="compose_provider_external automation">external automation</string>
+    <string name="compose_provider_cloud_api">Cloud API</string>
     <string name="compose_provider_local">Local</string>
     <string name="compose_provider_pro">Cloud AI</string>
     <string name="compose_not_now">Pas maintenant</string>
