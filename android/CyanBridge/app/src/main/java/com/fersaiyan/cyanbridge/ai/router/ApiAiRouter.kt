@@ -1,8 +1,11 @@
 package com.fersaiyan.cyanbridge.ai.router
 
 import android.content.Context
+import android.net.ConnectivityManager
+import android.net.NetworkCapabilities
 import android.util.Base64
 import com.fersaiyan.cyanbridge.localmodels.provider.LocalModelsProvider
+import com.fersaiyan.cyanbridge.localmodels.storage.LocalModelStorageRepository
 import kotlinx.coroutines.delay
 import org.json.JSONArray
 import org.json.JSONObject
@@ -177,7 +180,7 @@ object ApiTokenClient {
     }
 }
 
-/** Chat/voice/Lens inference now has exactly two routes: direct API token or local model. */
+/** Chat/voice/Lens inference has only AD-owned Cloud or Local routes. */
 object AiAssistantRouter {
     interface ChatStreamCallbacks {
         fun onStatus(status: String) {}
@@ -204,9 +207,19 @@ object AiAssistantRouter {
     ): String {
         return when (AiProviderPrefs.getProvider(context)) {
             AiProviderType.API_TOKEN -> {
-                callbacks?.onStatus("Using ${AiProviderPrefs.getApiProvider(context).label} API")
-                ApiTokenClient.chat(context, messages, imagePaths, audioPath).getOrElse {
-                    "API unavailable (${it.message ?: it::class.java.simpleName})."
+                if (shouldUseOfflineTextFallback(context, imagePaths, audioPath)) {
+                    callbacks?.onStatus("Offline — using Local AI")
+                    localModelsProvider.streamChat(
+                        context = context,
+                        messages = messages,
+                        onStatus = { callbacks?.onStatus(it) },
+                        onToken = { callbacks?.onToken(it) },
+                    )
+                } else {
+                    callbacks?.onStatus("Using ${AiProviderPrefs.getApiProvider(context).label} Cloud API")
+                    ApiTokenClient.chat(context, messages, imagePaths, audioPath).getOrElse {
+                        "Cloud AI unavailable (${it.message ?: it::class.java.simpleName})."
+                    }
                 }
             }
             AiProviderType.LOCAL_MODELS -> localModelsProvider.streamChat(
@@ -223,16 +236,46 @@ object AiAssistantRouter {
     suspend fun textReply(context: Context, prompt: String): String {
         val messages = listOf(mapOf("role" to "user", "content" to prompt))
         return when (AiProviderPrefs.getProvider(context)) {
-            AiProviderType.API_TOKEN -> ApiTokenClient.chat(context, messages).getOrElse {
-                "API unavailable (${it.message ?: it::class.java.simpleName})."
+            AiProviderType.API_TOKEN -> {
+                if (shouldUseOfflineTextFallback(context, emptyList(), null)) {
+                    localModelsProvider.streamChat(context = context, messages = messages)
+                } else {
+                    ApiTokenClient.chat(context, messages).getOrElse {
+                        "Cloud AI unavailable (${it.message ?: it::class.java.simpleName})."
+                    }
+                }
             }
             AiProviderType.LOCAL_MODELS -> localModelsProvider.streamChat(context = context, messages = messages)
         }
     }
 
     suspend fun cancelCurrentGeneration(context: Context) {
-        if (AiProviderPrefs.getProvider(context) == AiProviderType.LOCAL_MODELS) {
+        if (AiProviderPrefs.getProvider(context) == AiProviderType.LOCAL_MODELS || !hasValidatedInternet(context)) {
             localModelsProvider.cancelGeneration()
         }
+    }
+
+    /**
+     * Local is an automatic fallback only for confirmed-offline text turns. Provider/auth/server
+     * failures do not silently change routes, and media turns remain on their selected modality path.
+     */
+    private fun shouldUseOfflineTextFallback(
+        context: Context,
+        imagePaths: List<String>,
+        audioPath: String?,
+    ): Boolean {
+        if (imagePaths.isNotEmpty() || !audioPath.isNullOrBlank()) return false
+        if (hasValidatedInternet(context)) return false
+        return LocalModelStorageRepository.resolveSelectedModel(context) != null
+    }
+
+    private fun hasValidatedInternet(context: Context): Boolean {
+        val connectivity = context.applicationContext
+            .getSystemService(Context.CONNECTIVITY_SERVICE) as? ConnectivityManager
+            ?: return false
+        val network = connectivity.activeNetwork ?: return false
+        val capabilities = connectivity.getNetworkCapabilities(network) ?: return false
+        return capabilities.hasCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET) &&
+            capabilities.hasCapability(NetworkCapabilities.NET_CAPABILITY_VALIDATED)
     }
 }
