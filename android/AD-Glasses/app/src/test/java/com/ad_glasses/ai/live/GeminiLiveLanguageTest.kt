@@ -9,7 +9,7 @@ import org.junit.Test
 
 class GeminiLiveLanguageTest {
     @Test
-    fun `Korean default image question remains available to Gemini Live`() {
+    fun `Korean default image question remains available to cloud image route`() {
         val prompt = ImageQuestionPromptResolver.resolve(
             ImageQuestionSettings(
                 appLanguageTag = "ko",
@@ -17,7 +17,7 @@ class GeminiLiveLanguageTest {
                 usesBuiltInDefault = true,
             ),
             userQuestion = null,
-        ).forRoute(ImageQuestionRoute.PRO_RELAY)
+        ).forRoute(ImageQuestionRoute.CLOUD_API)
 
         assertTrue(prompt.contains("(ko)"))
         assertTrue(prompt.contains("이미지를 간단히 설명해 주세요"))
