@@ -6,10 +6,11 @@ on:
       - fix/post-merge-cleanup
 
 permissions:
-  contents: read
+  contents: write
 
 jobs:
-  audit:
+  repair-and-audit:
+    if: github.actor != 'github-actions[bot]'
     runs-on: ubuntu-latest
     steps:
       - name: Check out consolidation branch
@@ -17,34 +18,47 @@ jobs:
         with:
           ref: fix/post-merge-cleanup
           fetch-depth: 1
-      - name: Audit removed features and AI navigation
+      - name: Remove stale Meta diary startup hook and audit
         shell: bash
         run: |
           set -euo pipefail
-          echo '===== REMOVED DIARY/TIMELINE FEATURE TOKENS ====='
+          python3 - <<'PY'
+          from pathlib import Path
+          path = Path('android/AD-Glasses/app/src/main/java/com/ad_glasses/MainActivity.kt')
+          text = path.read_text()
+          stale = '        ensureEnabledMetaCameraFeature()\n'
+          count = text.count(stale)
+          if count > 1:
+              raise SystemExit(f'unexpected ensureEnabledMetaCameraFeature count: {count}')
+          if count == 1:
+              path.write_text(text.replace(stale, '', 1))
+          PY
+          git diff --check
+          if git grep -n 'ensureEnabledMetaCameraFeature' -- android/AD-Glasses/app/src/main; then
+            echo 'Stale Meta diary startup hook remains' >&2
+            exit 1
+          fi
           if git grep -n -i -E 'daynote|day note|autodiary|auto diary|visualdiary|visual diary|visual_diary' -- \
             android/AD-Glasses/app/src/main \
             android/AD-Glasses/shared/src/commonMain; then
             echo 'Removed Diary/Timeline feature residue remains' >&2
             exit 1
           fi
-          echo '===== RETIRED AI TAB REFERENCES ====='
           if git grep -n -E 'ADTab\.AI|ADNativeAiScreen\(' -- android/AD-Glasses/app/src/main; then
             echo 'AI tab/standalone screen residue remains' >&2
             exit 1
           fi
-          echo '===== DEVICE CENTER AI EMBED ====='
           git grep -n -E 'ADSectionTitle\("AI"\)|ADDeviceAiSection\(' -- \
             android/AD-Glasses/app/src/main/java/com/ad_glasses/ui/adglasses/ADGlassesDeviceCenterScreen.kt
-          echo '===== DEVICE CENTER CAPABILITIES ====='
           if git grep -n -E 'ADSectionTitle\("Capabilities"\)|ADDeviceCapability\(' -- \
             android/AD-Glasses/app/src/main/java/com/ad_glasses/ui/adglasses/ADGlassesDeviceCenterScreen.kt; then
             echo 'Retired Device Center capabilities section remains' >&2
             exit 1
           fi
-          echo '===== BOTTOM TABS ====='
-          git grep -n -A5 'enum class ADTab' -- \
-            android/AD-Glasses/app/src/main/java/com/ad_glasses/ui/adglasses/ADGlassesModels.kt
-          echo '===== EXTERNAL AI ROUTE ====='
-          git grep -n -A2 'ADExternalDestination.AI' -- \
-            android/AD-Glasses/app/src/main/java/com/ad_glasses/ui/adglasses/ADGlassesApp.kt
+          git config user.name github-actions[bot]
+          git config user.email 41898282+github-actions[bot]@users.noreply.github.com
+          git add android/AD-Glasses/app/src/main/java/com/ad_glasses/MainActivity.kt
+          if ! git diff --cached --quiet; then
+            git commit -m 'Remove stale Meta diary startup hook'
+            git push origin HEAD:fix/post-merge-cleanup
+          fi
