@@ -11,8 +11,6 @@ object LocalAgentPrefs {
     private const val KEY_REQUIRE_CONFIRMATION = "require_confirmation"
     private const val KEY_MAX_STEPS = "max_steps"
     private const val KEY_AUTOMATION_ENABLED = "automation_enabled"
-
-    // Screen content capture / memory
     private const val KEY_AUTO_CAPTURE_ENABLED = "auto_capture_enabled"
     private const val KEY_CAPTURE_INTERVAL_MIN = "capture_interval_min"
     private const val KEY_CAPTURE_BLACKLIST = "capture_blacklist"
@@ -26,8 +24,6 @@ object LocalAgentPrefs {
         val provider = when (raw) {
             AgentProviderType.LOCAL_AGENT.name -> AgentProviderType.LOCAL_AGENT
             "API_MODELS", AgentProviderType.PRO_SUBSCRIPTION.name -> AgentProviderType.PRO_SUBSCRIPTION
-            // Tasker is no longer an execution dependency. Migrate its historical value to the
-            // native on-device route instead of broadcasting to an app that may not exist.
             "TASKER", null, "" -> AgentProviderType.LOCAL_AGENT
             else -> AgentProviderType.LOCAL_AGENT
         }
@@ -36,32 +32,37 @@ object LocalAgentPrefs {
     }
 
     fun setProviderType(context: Context, type: AgentProviderType) {
-        context.getSharedPreferences(PREFS, Context.MODE_PRIVATE).edit().putString(KEY_PROVIDER_TYPE, type.name).apply()
+        context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
+            .edit().putString(KEY_PROVIDER_TYPE, type.name).apply()
     }
 
+    /** Consumer assistant handoff was retired. Every stored legacy mode migrates to AD-owned API/local inference. */
     fun getGlassesAssistantMode(context: Context): GlassesAssistantMode {
         val preferences = context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
-        val stored = preferences.getString(KEY_GLASSES_ASSISTANT_MODE, null)?.trim()?.uppercase()
-        val mode = when (stored) {
-            GlassesAssistantMode.PHONE_ASSISTANT.name -> GlassesAssistantMode.PHONE_ASSISTANT
-            GlassesAssistantMode.CUSTOM_AI_PROVIDER.name,
-            "CHOSEN_PROVIDER" -> GlassesAssistantMode.CUSTOM_AI_PROVIDER
-            "GEMINI", "CHAT_GPT", "PHONE_DEFAULT", null, "" -> GlassesAssistantMode.PHONE_ASSISTANT
-            else -> GlassesAssistantMode.PHONE_ASSISTANT
+        val mode = GlassesAssistantMode.CUSTOM_AI_PROVIDER
+        if (preferences.getString(KEY_GLASSES_ASSISTANT_MODE, null) != mode.name) {
+            preferences.edit().putString(KEY_GLASSES_ASSISTANT_MODE, mode.name).apply()
         }
-        if (stored != mode.name) preferences.edit().putString(KEY_GLASSES_ASSISTANT_MODE, mode.name).apply()
         return mode
     }
 
     fun setGlassesAssistantMode(context: Context, mode: GlassesAssistantMode) {
-        context.getSharedPreferences(PREFS, Context.MODE_PRIVATE).edit().putString(KEY_GLASSES_ASSISTANT_MODE, mode.name).apply()
+        context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
+            .edit().putString(KEY_GLASSES_ASSISTANT_MODE, GlassesAssistantMode.CUSTOM_AI_PROVIDER.name).apply()
     }
 
-    fun isLocalAgentAutomationEnabled(context: Context): Boolean =
-        context.getSharedPreferences(PREFS, Context.MODE_PRIVATE).getBoolean(KEY_AUTOMATION_ENABLED, false)
+    /** Accessibility/UI automation is no longer an AI invocation method. */
+    fun isLocalAgentAutomationEnabled(context: Context): Boolean {
+        val preferences = context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
+        if (preferences.getBoolean(KEY_AUTOMATION_ENABLED, false)) {
+            preferences.edit().putBoolean(KEY_AUTOMATION_ENABLED, false).apply()
+        }
+        return false
+    }
 
     fun setLocalAgentAutomationEnabled(context: Context, enabled: Boolean) {
-        context.getSharedPreferences(PREFS, Context.MODE_PRIVATE).edit().putBoolean(KEY_AUTOMATION_ENABLED, enabled).apply()
+        context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
+            .edit().putBoolean(KEY_AUTOMATION_ENABLED, false).apply()
     }
 
     fun isRequireConfirmationEnabled(context: Context): Boolean =
