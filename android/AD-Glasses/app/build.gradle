@@ -20,6 +20,9 @@ def metaGithubToken = System.getenv("GITHUB_TOKEN")
         ?: localProperties.getProperty("github_token")
         ?: localProperties.getProperty("meta_token")
 def metaDatEnabled = metaGithubToken != null && !metaGithubToken.trim().isEmpty()
+def myvuJavaSourceDir = file("src/main/myvu-upstream/android/app/src/main/java")
+def myvuAssetsSourceDir = file("src/main/myvu-upstream/android/app/src/main/assets")
+def myvuEnabled = new File(myvuJavaSourceDir, "com/myvu/client/service/ConnectionManager.java").exists()
 
 android {
     namespace = "com.ad_glasses"
@@ -34,6 +37,8 @@ android {
         versionCode = 14
         versionName = "alpha"
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
+        buildConfigField "boolean", "META_DAT_AVAILABLE", metaDatEnabled.toString()
+        buildConfigField "boolean", "MYVU_SDK_AVAILABLE", myvuEnabled.toString()
 
         vectorDrawables {
             useSupportLibrary = true
@@ -77,11 +82,23 @@ android {
 
     sourceSets {
         main {
-            java.srcDir("src/main/myvu-upstream/android/app/src/main/java")
-            assets.srcDir("src/main/myvu-upstream/android/app/src/main/assets")
-            java.exclude("com/myvu/client/ui/**")
-            java.exclude("com/myvu/client/service/MyvuService.java")
-            java.exclude("com/myvu/client/service/MirrorNotificationListener.java")
+            if (myvuEnabled) {
+                java.srcDir(myvuJavaSourceDir)
+                assets.srcDir(myvuAssetsSourceDir)
+                java.exclude("com/myvu/client/ui/**")
+                java.exclude("com/myvu/client/service/MyvuService.java")
+                java.exclude("com/myvu/client/service/MirrorNotificationListener.java")
+            } else {
+                java.srcDir("src/myvu-stub/java")
+            }
+
+            if (!metaDatEnabled) {
+                // The real manager directly references the private Meta DAT SDK. Exclude only that
+                // implementation and compile an explicit unavailable backend when credentials are absent.
+                java.exclude("com/ad_glasses/devices/metarayban/MetaRaybanManager.kt")
+                java.srcDir("src/meta-stub/java")
+            }
+
             assets.srcDir("build/generated/sharedComposeResourcesAssets")
         }
     }
@@ -91,6 +108,10 @@ android {
             includeAndroidResources = true
         }
     }
+}
+
+if (!myvuEnabled) {
+    logger.warn("MYVU upstream sources are not initialized - compiling the unavailable MYVU transport shim. Run 'git submodule update --init --recursive' to enable MYVU hardware support.")
 }
 
 def syncSharedComposeResources = tasks.register("syncSharedComposeResources", Sync) {
@@ -187,7 +208,7 @@ dependencies {
         implementation("com.meta.wearable:mwdat-display:${metaDatVersion}")
         implementation("com.meta.wearable:mwdat-mockdevice:${metaDatVersion}")
     } else {
-        logger.warn("No GitHub package token configured - Meta Wearables DAT SDK dependencies will be skipped.")
+        logger.warn("No GitHub package token configured - compiling the unavailable Meta DAT backend instead of the private SDK implementation.")
     }
 
     androidTestImplementation 'androidx.test:core-ktx:1.7.0'
