@@ -17,15 +17,11 @@ enum class AssistantInputSurface {
     AUTOMATION,
 }
 
-/** A normalized turn before routing/execution. */
 data class AssistantTurn(
     val text: String,
     val surface: AssistantInputSurface,
-    /** Concrete local image produced by the existing glasses/phone capture pipeline. */
     val imagePath: String? = null,
-    /** Hidden artifact description supplied to the model but not persisted as the user's words. */
     val contextText: String? = null,
-    /** null = automatic, true/false = explicit user/UI preference. */
     val webRequested: Boolean? = null,
 )
 
@@ -33,37 +29,23 @@ data class AssistantExecutionContext(
     val threadId: String,
     val history: List<ChatMessage>,
     val useWeb: Boolean,
-    /** Immutable provider selected when the turn was accepted; executors must not reread prefs. */
     val providerType: AgentProviderType,
     val surface: AssistantInputSurface,
     val artifactContext: String? = null,
 )
 
 data class AssistantResult(
-    /** Concise response suitable for spoken delivery on displayless glasses. */
     val spokenText: String,
-    /** Richer/full text persisted for phone review. */
     val richText: String = spokenText,
 )
 
-/**
- * Execution boundary around capabilities that already exist in MainActivity/services.
- * The orchestrator decides; existing BLE/Wi-Fi/media/Automation subsystems execute.
- */
+/** Execution boundary for answer, vision and explicit AD capability commands only. */
 interface AssistantCapabilityExecutor {
-    suspend fun answer(
-        prompt: String,
-        context: AssistantExecutionContext,
-    ): AssistantResult
+    suspend fun answer(prompt: String, context: AssistantExecutionContext): AssistantResult
 
     suspend fun analyzeImage(
         prompt: String,
         imagePath: String?,
-        context: AssistantExecutionContext,
-    ): AssistantResult
-
-    suspend fun executePhoneAction(
-        goal: String,
         context: AssistantExecutionContext,
     ): AssistantResult
 
@@ -73,14 +55,7 @@ interface AssistantCapabilityExecutor {
     ): AssistantResult
 }
 
-/**
- * Single control plane for glasses voice, glasses vision and phone continuation.
- *
- * Every accepted user turn is persisted exactly as spoken/typed, except explicit conversation
- * controls such as "new topic" and "forget this conversation". Those controls are handled
- * before persistence or model routing. Hidden artifact context is carried separately so a photo
- * transcript/note can inform the model without masquerading as something the user said.
- */
+/** Single control plane for glasses voice, glasses vision and phone continuation. */
 class AssistantOrchestrator(
     context: Context,
     private val executor: AssistantCapabilityExecutor,
@@ -89,10 +64,7 @@ class AssistantOrchestrator(
     private val appContext = context.applicationContext
     private val session = AssistantConversationSession.get(appContext)
 
-    suspend fun handle(
-        turn: AssistantTurn,
-        providerType: AgentProviderType,
-    ): AssistantResult {
+    suspend fun handle(turn: AssistantTurn, providerType: AgentProviderType): AssistantResult {
         val prompt = turn.text.trim()
         require(prompt.isNotBlank()) { "Assistant turn cannot be blank" }
 
@@ -109,9 +81,6 @@ class AssistantOrchestrator(
             }
         }
 
-        // Capture the topic at acceptance, then serialize its normal turns. A second question
-        // waits for the first answer so history remains user→assistant→user→assistant. Explicit
-        // new/forget controls above stay immediate and are never trapped behind inference.
         val acceptedThreadId = session.activeThreadId()
         return AssistantTurnCoordinator.withThread(acceptedThreadId) {
             handleQueuedTurn(turn, providerType, prompt, acceptedThreadId)
@@ -124,9 +93,6 @@ class AssistantOrchestrator(
         prompt: String,
         acceptedThreadId: String,
     ): AssistantResult {
-
-        // The message's chatId is the atomic turn capture. A user may start/forget another
-        // conversation while inference is suspended; this result must never leak into it.
         val userMessage = session.addUserTurn(acceptedThreadId, prompt) ?: return AssistantResult(
             spokenText = "That conversation was cleared before I could start. Please ask again.",
         )
@@ -146,7 +112,6 @@ class AssistantOrchestrator(
             artifactContext = turn.contextText?.trim()?.takeIf { it.isNotBlank() },
         )
 
-        // Obvious capability commands are deterministic and should not pay an LLM routing cost.
         val capabilityCommand = AssistantCapabilityCommandRouter.parse(prompt)
         val result = if (capabilityCommand != null) {
             executor.executeCapabilityCommand(capabilityCommand, executionContext)
@@ -169,12 +134,8 @@ class AssistantOrchestrator(
                     imagePath = turn.imagePath,
                     context = executionContext,
                 )
-                AssistantIntent.EXECUTE_UI_TASK -> executor.executePhoneAction(
-                    decision.normalizedGoal ?: prompt,
-                    executionContext,
-                )
                 AssistantIntent.CLARIFY -> AssistantResult(
-                    spokenText = decision.clarification ?: "What would you like me to do?",
+                    spokenText = decision.clarification ?: "What would you like to ask?",
                 )
             }
         }
