@@ -6,55 +6,39 @@ on:
       - main
 
 permissions:
-  contents: read
+  contents: write
 
 jobs:
-  audit-and-materialize:
+  apply-final-locale-cleanup:
+    if: github.event.pull_request.head.repo.full_name == github.repository
     runs-on: ubuntu-latest
     steps:
-      - name: Check out source
+      - name: Check out PR branch
         uses: actions/checkout@v4
         with:
+          ref: ${{ github.event.pull_request.head.ref }}
           submodules: false
-          fetch-depth: 1
+          fetch-depth: 0
 
-      - name: Apply final residual cleanup
+      - name: Apply reviewed residual cleanup
         shell: bash
         run: |
           set -euo pipefail
           python3 tools/temp_cleanup_residual_refs.py
           git diff --check
-
-      - name: Verify strict legacy references are gone
-        shell: bash
-        run: |
-          set -u
-          echo '===== STRICT BRAND / PACKAGE ====='
-          git grep -n -i -E 'cyan[ _-]?bridge|cyanbridge|fersaiyan|tasker' -- . \
-            ':(exclude).github/workflows/temp-repo-reference-audit.yml' \
-            ':(exclude)tools/temp_cleanup_legacy_refs.py' \
-            ':(exclude)tools/temp_cleanup_locale_refs.py' \
-            ':(exclude)tools/temp_cleanup_residual_refs.py' || true
-
-          echo '===== RETIRED LIVE UI / IMPLEMENTATION ====='
-          git grep -n -E 'CliRelayClient|CloudAiPrefs|GlassesAssistantMode|EXTERNAL_ASSISTANT|PRO_RELAY|CLI_RELAY|cbImageAsAssistant|btnModeGemini|btnModeChatgpt|btnModeInternal|compose_external_|dashboard_phone_assistant|dashboard_gemini_chatgpt_setup' -- . \
-            ':(exclude).github/workflows/temp-repo-reference-audit.yml' \
-            ':(exclude)tools/temp_cleanup_legacy_refs.py' \
-            ':(exclude)tools/temp_cleanup_locale_refs.py' \
-            ':(exclude)tools/temp_cleanup_residual_refs.py' || true
-
-      - name: Upload corrected locale resources
-        uses: actions/upload-artifact@v4
-        with:
-          name: final-locale-cleanup
-          path: |
-            android/AD-Glasses/shared/src/commonMain/composeResources/values-de/strings_extra.xml
-            android/AD-Glasses/shared/src/commonMain/composeResources/values-es/strings_extra.xml
-            android/AD-Glasses/shared/src/commonMain/composeResources/values-fr/strings_extra.xml
-            android/AD-Glasses/shared/src/commonMain/composeResources/values-it/strings_extra.xml
-            android/AD-Glasses/shared/src/commonMain/composeResources/values-ko/strings_extra.xml
-            android/AD-Glasses/shared/src/commonMain/composeResources/values-pt-rBR/strings_extra.xml
-            android/AD-Glasses/shared/src/commonMain/composeResources/values-ru/strings_extra.xml
-            android/AD-Glasses/shared/src/commonMain/composeResources/values-zh-rCN/strings_extra.xml
-          if-no-files-found: error
-          retention-days: 1
+          git diff --exit-code --quiet && exit 0
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add \
+            android/AD-Glasses/shared/src/commonMain/composeResources/values-de/strings_extra.xml \
+            android/AD-Glasses/shared/src/commonMain/composeResources/values-es/strings_extra.xml \
+            android/AD-Glasses/shared/src/commonMain/composeResources/values-fr/strings_extra.xml \
+            android/AD-Glasses/shared/src/commonMain/composeResources/values-it/strings_extra.xml \
+            android/AD-Glasses/shared/src/commonMain/composeResources/values-ko/strings_extra.xml \
+            android/AD-Glasses/shared/src/commonMain/composeResources/values-pt-rBR/strings_extra.xml \
+            android/AD-Glasses/shared/src/commonMain/composeResources/values-ru/strings_extra.xml \
+            android/AD-Glasses/shared/src/commonMain/composeResources/values-zh-rCN/strings_extra.xml \
+            BRIDGE_RESEARCH_NOTES.md \
+            android/AD-Glasses/LOCAL_AGENT_MVP_PLAN.md
+          git commit -m "Remove final retired assistant setup references"
+          git push origin HEAD:${{ github.event.pull_request.head.ref }}
