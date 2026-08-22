@@ -1710,10 +1710,10 @@ From UI strings:
 
 ### 26.1 Concept
 
-Since we cannot hook the MemoMind draw command opcodes (they're Dart object-pool constants in `libapp.so`), we need to **repurpose existing MemoMind screens** to display content from third-party apps (Even Hub, MentraOS, external automation).
+Since we cannot hook the MemoMind draw command opcodes (they're Dart object-pool constants in `libapp.so`), we need to **repurpose existing MemoMind screens** to display content from third-party app runtimes (Even Hub and MentraOS).
 
 The **Universal Patcher** lets users:
-1. Select an Even Hub / Mentra / external automation app
+1. Select an Even Hub or Mentra app
 2. Select which MemoMind screen to repurpose (translation card, notification, stock, news, schedule, calendar, ASR, recorder)
 3. Configure field mappings (which app data fields map to which screen fields)
 4. Test the patch live
@@ -1743,8 +1743,8 @@ The **Translation Card** is the most versatile — it accepts continuous scrolli
 ┌─────────────────┐     ┌──────────────┐     ┌─────────────────┐
 │  Plugin Source   │────▶│  PatchEngine │────▶│  MemoMind       │
 │  (Even Hub /    │     │  (field      │     │  GlassesBridge  │
-│   Mentra /      │     │   mapping +  │     │  (RFCOMM →      │
-│   external automation)       │     │   routing)   │     │   glasses)      │
+│   Mentra)       │     │   mapping +  │     │  (RFCOMM →      │
+│                 │     │   routing)   │     │   glasses)      │
 └─────────────────┘     └──────────────┘     └─────────────────┘
         ▲
         │
@@ -1761,7 +1761,7 @@ The **Translation Card** is the most versatile — it accepts continuous scrolli
 
 | File | Purpose |
 |------|---------|
-| `ui/plugins/PluginDataSource.kt` | `PluginCardData` model, `PluginSource` enum, `PluginLaunchType` enum, `PluginDataSource` interface, `EvenHubPluginSource`, `MentraPluginSource`, `external automationPluginSource` |
+| `ui/plugins/PluginDataSource.kt` | `PluginCardData` model, `PluginSource` enum, `PluginLaunchType` enum, `PluginDataSource` interface, `EvenHubPluginSource`, `MentraPluginSource` |
 | `ui/plugins/PluginsViewModel.kt` | Multi-source loading, source filtering, `launchPlugin()` routing |
 | `ui/plugins/PluginsScreen.kt` | Source filter chips, period filters, platform login cards, plugin cards with source badges |
 | `ui/plugins/patcher/PatchConfig.kt` | `PatchSource`, `TargetScreen`, `FieldMapping`, `PatchConfig` with JSON serialization |
@@ -1777,7 +1777,7 @@ The **Translation Card** is the most versatile — it accepts continuous scrolli
 
 1. **Open Apps & Plugins** in AD Glasses
 2. **Log in** to Even Hub and/or Mentra using the "Login" buttons in the Platform Accounts card
-3. **Browse apps** using the source filter chips (All / Even Hub / Mentra / external automation)
+3. **Browse apps** using the source filter chips (All / Even Hub / Mentra)
 4. **Tap a plugin card** → launches through the appropriate runtime
 5. **Tap "Patches"** in the top bar → opens the patch list
 6. **Tap "+"** → opens the patch editor

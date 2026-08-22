@@ -173,7 +173,7 @@
     <string name="plugins_downloads">%1$s downloads</string>
     <string name="plugins_votes">%1$s votos</string>
     <string name="plugins_trend">Tendencia %1$s %2$d</string>
-    <string name="plugins_open_external">Abrir no external automation</string>
+    <string name="plugins_open_external">Abrir fonte externa</string>
     <string name="plugins_download">Baixar plugin</string>
     <string name="plugins_settings_content_description">Configuracoes de %1$s</string>
     <string name="native_local_agent_title">Local Agent</string>
@@ -198,8 +198,8 @@
     <string name="publish_description_hint">Descreva o que seu plugin faz, os passos de configuracao e exemplos de comandos de voz.</string>
     <string name="publish_category">Categoria</string>
     <string name="publish_download_link">Link de download</string>
-    <string name="publish_external_source_link">Link do external automationNet *</string>
-    <string name="publish_external_source_hint">Digite a URL do external automationNet para seu perfil.</string>
+    <string name="publish_external_source_link">Link da fonte externa *</string>
+    <string name="publish_external_source_hint">Digite a URL da fonte externa do seu plugin.</string>
     <string name="publish_how_it_works">Como funciona a publicacao</string>
     <string name="publish_steps">1. Your submission is reviewed.
 
@@ -352,8 +352,7 @@
     <string name="dashboard_load_settings">Carregar configuracoes dos oculos</string>
     <string name="dashboard_limits_unavailable">Carregue as configuracoes para ver os limites suportados por estes oculos.</string>
     <string name="dashboard_ai_assistant">Assistente de IA</string>
-    <string name="dashboard_phone_assistant">Assistente do telefone</string>
-    <string name="dashboard_custom_provider">AD Local / Cloud AI</string>
+<string name="dashboard_custom_provider">AD Local / Cloud AI</string>
     <string name="dashboard_test_voice">Testar voz</string>
     <string name="dashboard_gemini_chatgpt_setup">Configuracao de automacao Gemini / ChatGPT</string>
     <string name="dashboard_meizu_title">Meizu MYVU / Star Air</string>

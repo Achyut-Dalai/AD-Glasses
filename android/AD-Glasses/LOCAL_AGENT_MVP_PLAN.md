@@ -463,7 +463,7 @@ The MVP is successful when all of the following are true:
 - The agent can recover from at least simple UI changes by re-reading the screen.
 - The user can see what the agent is doing and stop it.
 - Risky actions require approval.
-- The feature works without external automation or AutoInput.
+- The feature is implemented within AD Glasses and requires no third-party automation bridge.
 - The implementation stays compatible with AD Glasses's privacy-first local-memory direction.
 
 ## Summary Recommendation

@@ -173,7 +173,7 @@
     <string name="plugins_downloads">%1$s회 다운로드</string>
     <string name="plugins_votes">%1$s표</string>
     <string name="plugins_trend">추세 %1$s %2$d</string>
-    <string name="plugins_open_external">external automation에서 열기</string>
+    <string name="plugins_open_external">외부 소스 열기</string>
     <string name="plugins_download">플러그인 다운로드</string>
     <string name="plugins_settings_content_description">%1$s 설정</string>
     <string name="native_local_agent_title">Local Agent</string>
@@ -198,8 +198,8 @@
     <string name="publish_description_hint">플러그인의 기능, 설정 단계 및 음성 명령 예시를 설명하세요.</string>
     <string name="publish_category">카테고리</string>
     <string name="publish_download_link">다운로드 링크</string>
-    <string name="publish_external_source_link">external automationNet 링크 *</string>
-    <string name="publish_external_source_hint">프로필의 external automationNet URL을 입력하세요.</string>
+    <string name="publish_external_source_link">외부 소스 링크 *</string>
+    <string name="publish_external_source_hint">플러그인의 외부 소스 URL을 입력하세요.</string>
     <string name="publish_how_it_works">게시 방식</string>
     <string name="publish_steps">1. Your submission is reviewed.
 
@@ -352,8 +352,7 @@
     <string name="dashboard_load_settings">안경에서 설정 로드</string>
     <string name="dashboard_limits_unavailable">설정을 로드하여 이 안경이 지원하는 제한을 확인하세요.</string>
     <string name="dashboard_ai_assistant">AI 어시스턴트</string>
-    <string name="dashboard_phone_assistant">휴대전화 어시스턴트</string>
-    <string name="dashboard_custom_provider">AD Local / Cloud AI</string>
+<string name="dashboard_custom_provider">AD Local / Cloud AI</string>
     <string name="dashboard_test_voice">음성 테스트</string>
     <string name="dashboard_gemini_chatgpt_setup">Gemini / ChatGPT 자동화 설정</string>
     <string name="dashboard_meizu_title">Meizu MYVU / Star Air</string>
