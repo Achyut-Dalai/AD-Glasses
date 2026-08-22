@@ -1,0 +1,144 @@
+name: Temporary Android resource repair
+
+on:
+  push:
+    branches:
+      - fix/android-resource-repair
+
+permissions:
+  contents: write
+  packages: read
+
+jobs:
+  repair-and-build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+
+    steps:
+      - name: Check out repair branch
+        uses: actions/checkout@v4
+        with:
+          ref: fix/android-resource-repair
+          fetch-depth: 0
+          submodules: false
+
+      - name: Repair invalid Android resource identifiers
+        shell: bash
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          import re
+          import subprocess
+
+          project = Path('android/AD-Glasses')
+          res = project / 'app/src/main/res'
+
+          # Exact fallout from the mechanical rename. Keep technical Android
+          # identifiers compiler-safe while preserving human-facing AD Glasses.
+          replacements = {
+              'compose_provider_external automation': 'compose_provider_cloud_api',
+              'compose_provider_external_automation': 'compose_provider_cloud_api',
+              'Theme.AD GlassesManager': 'Theme.ADGlassesManager',
+              'logo_AD-Glasses': 'logo_ad_glasses',
+          }
+
+          text_suffixes = {
+              '.xml', '.kt', '.java', '.gradle', '.kts', '.properties', '.md',
+              '.txt', '.json', '.yaml', '.yml', '.aidl', '.pro', '.toml'
+          }
+
+          tracked = subprocess.check_output(['git', 'ls-files', '-z']).split(b'\0')
+          for raw in tracked:
+              if not raw:
+                  continue
+              p = Path(raw.decode('utf-8', 'surrogateescape'))
+              if not p.is_file() or p.suffix.lower() not in text_suffixes:
+                  continue
+              try:
+                  text = p.read_text(encoding='utf-8')
+              except (UnicodeDecodeError, OSError):
+                  continue
+              new = text
+              for old, value in replacements.items():
+                  new = new.replace(old, value)
+              if new != text:
+                  p.write_text(new, encoding='utf-8')
+
+          old_logo = res / 'drawable/logo_AD-Glasses.png'
+          new_logo = res / 'drawable/logo_ad_glasses.png'
+          if old_logo.exists():
+              if new_logo.exists():
+                  old_logo.unlink()
+              else:
+                  old_logo.rename(new_logo)
+
+          # The provider label is no longer an old companion/automation route.
+          # Use a neutral current-architecture label in every locale while
+          # keeping translations for the rest of each file intact.
+          for p in res.glob('values*/strings_compose.xml'):
+              text = p.read_text(encoding='utf-8')
+              text = re.sub(
+                  r'(<string\s+name="compose_provider_cloud_api">)(.*?)(</string>)',
+                  r'\1Cloud API\3',
+                  text,
+              )
+              p.write_text(text, encoding='utf-8')
+
+          # Fail early if any value resource name still contains whitespace.
+          bad_names = []
+          name_re = re.compile(r'\bname="([^"]+)"')
+          for p in res.glob('values*/*.xml'):
+              text = p.read_text(encoding='utf-8')
+              for match in name_re.finditer(text):
+                  name = match.group(1)
+                  if any(ch.isspace() for ch in name):
+                      bad_names.append(f'{p}: {name!r}')
+          if bad_names:
+              raise SystemExit('Invalid Android resource names remain:\n' + '\n'.join(bad_names))
+
+          # Catch file-based resource names that AAPT will reject.
+          bad_files = []
+          for folder in res.iterdir():
+              if not folder.is_dir() or folder.name.startswith('values'):
+                  continue
+              for p in folder.iterdir():
+                  if not p.is_file() or p.name.startswith('.'):
+                      continue
+                  base = p.name
+                  if base.endswith('.9.png'):
+                      stem = base[:-6]
+                  else:
+                      stem = p.stem
+                  if not re.fullmatch(r'[a-z0-9_]+', stem):
+                      bad_files.append(str(p))
+          if bad_files:
+              raise SystemExit('Invalid file-based Android resource names remain:\n' + '\n'.join(bad_files))
+          PY
+
+          git diff --check
+          git status --short
+
+      - name: Commit repaired resources
+        shell: bash
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add -A -- android/AD-Glasses
+          git diff --cached --check
+          if ! git diff --cached --quiet; then
+            git commit -m 'fix: repair Android resource identifiers'
+            git push origin HEAD:fix/android-resource-repair
+          fi
+
+      - name: Set up Java 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - name: Assemble debug APK
+        working-directory: android/AD-Glasses
+        shell: bash
+        run: |
+          chmod +x gradlew
+          ./gradlew --no-daemon --console=plain :app:assembleDebug --stacktrace
