@@ -1,4 +1,4 @@
-name: Full AD Glasses one-shot rebrand
+name: Complete AD Glasses rebrand
 
 on:
   pull_request:
@@ -8,26 +8,28 @@ on:
 permissions:
   contents: write
   packages: read
+  issues: write
+  pull-requests: write
 
 concurrency:
-  group: full-ad-glasses-one-shot
+  group: complete-ad-glasses-rebrand
   cancel-in-progress: true
 
 jobs:
-  transform-build-and-commit:
+  transform-build-and-finalize:
     runs-on: ubuntu-latest
     timeout-minutes: 60
     env:
       GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-      GITHUB_ACTOR: ${{ github.actor }}
-      BASE_SHA: 96b02aa50c303f59ac53b3d580da319ef16547df
-      TARGET_BRANCH: cleanup/full-ad-glasses-one-shot
+      BASE_SHA: bac316924bfaba3eb9e09c07c111eae82e7e003b
+      TARGET_BRANCH: fix/complete-ad-glasses-rebrand
+      PR_NUMBER: ${{ github.event.pull_request.number }}
 
     steps:
       - name: Check out exact branch
         uses: actions/checkout@v7
         with:
-          ref: cleanup/full-ad-glasses-one-shot
+          ref: fix/complete-ad-glasses-rebrand
           submodules: recursive
           lfs: true
           fetch-depth: 0
@@ -51,9 +53,6 @@ jobs:
         shell: bash
         run: |
           git diff --check
-          echo "== changed tree =="
-          git status --short
-          echo "== forbidden legacy terms =="
           if git ls-files -z | grep -ziaE 'cyanbridge|fersaiyan|tasker'; then
             echo "Forbidden legacy term remains in a tracked path." >&2
             exit 1
@@ -68,10 +67,23 @@ jobs:
           fi
           test -d android/AD-Glasses/app
           test -d android/AD-Glasses/shared
+          test ! -e android/CyanBridge
           grep -R --line-number --fixed-strings 'com.ad_glasses' \
             android/AD-Glasses/app/build.gradle \
             android/AD-Glasses/app/src \
             android/AD-Glasses/shared/src >/dev/null
+
+      - name: Publish transformed tree to branch
+        shell: bash
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add -A
+          git diff --cached --check
+          if ! git diff --cached --quiet; then
+            git commit -m 'refactor: materialize AD Glasses repository rename [skip ci]'
+            git push origin "HEAD:${TARGET_BRANCH}"
+          fi
 
       - name: Set up Java 17
         uses: actions/setup-java@v5
@@ -120,17 +132,19 @@ jobs:
           set -o pipefail
           ./gradlew --no-daemon --warning-mode=all :shared:compileAndroidMain --stacktrace 2>&1 | tee /tmp/shared-compile.log
 
-      - name: Publish shared compile failure diagnostics
+      - name: Publish shared compile failure
         if: steps.shared_compile.outcome == 'failure'
         shell: bash
         run: |
           {
             echo '### Shared compile failure'
             echo '```text'
-            tail -n 180 /tmp/shared-compile.log
+            grep -nE '(^e: | error: |Compilation error|FAILED|Exception)' /tmp/shared-compile.log | tail -n 120 || true
+            echo
+            tail -n 120 /tmp/shared-compile.log
             echo '```'
           } > /tmp/shared-compile-tail.md
-          GH_TOKEN="$GITHUB_TOKEN" gh pr comment 114 --repo "$GITHUB_REPOSITORY" --body-file /tmp/shared-compile-tail.md
+          gh pr comment "$PR_NUMBER" --repo "$GITHUB_REPOSITORY" --body-file /tmp/shared-compile-tail.md
           exit 1
 
       - name: Run app unit tests
@@ -142,7 +156,7 @@ jobs:
           set -o pipefail
           ./gradlew --no-daemon --warning-mode=all :app:testDebugUnitTest --stacktrace 2>&1 | tee /tmp/app-tests.log
 
-      - name: Publish unit-test failure diagnostics
+      - name: Publish unit-test failure
         if: steps.app_tests.outcome == 'failure'
         shell: bash
         run: |
@@ -152,7 +166,7 @@ jobs:
             tail -n 180 /tmp/app-tests.log
             echo '```'
           } > /tmp/app-tests-tail.md
-          GH_TOKEN="$GITHUB_TOKEN" gh pr comment 114 --repo "$GITHUB_REPOSITORY" --body-file /tmp/app-tests-tail.md
+          gh pr comment "$PR_NUMBER" --repo "$GITHUB_REPOSITORY" --body-file /tmp/app-tests-tail.md
           exit 1
 
       - name: Assemble debug APK
@@ -164,7 +178,7 @@ jobs:
           set -o pipefail
           ./gradlew --no-daemon --warning-mode=all :app:assembleDebug --stacktrace 2>&1 | tee /tmp/assemble-debug.log
 
-      - name: Publish APK-build failure diagnostics
+      - name: Publish APK-build failure
         if: steps.assemble_debug.outcome == 'failure'
         shell: bash
         run: |
@@ -174,7 +188,7 @@ jobs:
             tail -n 180 /tmp/assemble-debug.log
             echo '```'
           } > /tmp/assemble-debug-tail.md
-          GH_TOKEN="$GITHUB_TOKEN" gh pr comment 114 --repo "$GITHUB_REPOSITORY" --body-file /tmp/assemble-debug-tail.md
+          gh pr comment "$PR_NUMBER" --repo "$GITHUB_REPOSITORY" --body-file /tmp/assemble-debug-tail.md
           exit 1
 
       - name: Verify branded APK
@@ -188,40 +202,26 @@ jobs:
           if-no-files-found: error
           retention-days: 7
 
-      - name: Create one atomic transformation commit
+      - name: Replace branch with one final atomic commit
         shell: bash
         run: |
           starting_tip="$(git rev-parse HEAD)"
           rm -f tools/full_ad_glasses_one_shot.py
           rm -f .github/workflows/full-ad-glasses-one-shot.yml
-
           git add -A
           git diff --cached --check
-
-          if git diff --cached --quiet; then
-            echo "Transformation produced no changes." >&2
-            exit 1
-          fi
-
           git config user.name 'github-actions[bot]'
           git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
-
           tree_sha="$(git write-tree)"
-          final_sha="$(
-            printf '%s\n\n%s\n' \
-              'refactor: complete AD Glasses one-shot rebrand' \
-              'Rename packages, paths, Android project, URI scheme, branding, CI/docs; remove the legacy automation integration and stale cleanup artifacts while preserving cloud/local assistant paths.' \
-            | git commit-tree "$tree_sha" -p "$BASE_SHA"
-          )"
-
-          git push \
-            --force-with-lease="refs/heads/${TARGET_BRANCH}:${starting_tip}" \
+          final_sha="$(printf '%s\n\n%s\n' \
+            'refactor: complete AD Glasses one-shot rebrand' \
+            'Rename package ownership, source paths, Android project, URI scheme, branding, CI and docs; remove legacy automation integration and stale cleanup artifacts while preserving cloud/local assistant paths.' \
+            | git commit-tree "$tree_sha" -p "$BASE_SHA")"
+          git push --force-with-lease="refs/heads/${TARGET_BRANCH}:${starting_tip}" \
             origin "${final_sha}:refs/heads/${TARGET_BRANCH}"
-
           echo "FINAL_SHA=${final_sha}" >> "$GITHUB_ENV"
-          echo "Committed atomic transformation: ${final_sha}"
 
-      - name: Confirm branch points at atomic commit
+      - name: Confirm final branch shape
         shell: bash
         run: |
           git fetch origin "${TARGET_BRANCH}"
