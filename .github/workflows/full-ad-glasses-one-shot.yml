@@ -1,0 +1,170 @@
+name: Full AD Glasses one-shot rebrand
+
+on:
+  push:
+    branches:
+      - cleanup/full-ad-glasses-one-shot
+
+permissions:
+  contents: write
+  packages: read
+
+concurrency:
+  group: full-ad-glasses-one-shot
+  cancel-in-progress: false
+
+jobs:
+  transform-build-and-commit:
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    env:
+      GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      GITHUB_ACTOR: ${{ github.actor }}
+      BASE_SHA: 96b02aa50c303f59ac53b3d580da319ef16547df
+      TARGET_BRANCH: cleanup/full-ad-glasses-one-shot
+
+    steps:
+      - name: Check out exact branch
+        uses: actions/checkout@v7
+        with:
+          ref: cleanup/full-ad-glasses-one-shot
+          submodules: recursive
+          lfs: true
+          fetch-depth: 0
+
+      - name: Materialize submodule LFS files
+        shell: bash
+        run: |
+          git lfs install --local
+          git submodule foreach --recursive 'git lfs install --local && git lfs pull'
+
+      - name: Verify starting base
+        shell: bash
+        run: |
+          git cat-file -e "${BASE_SHA}^{commit}"
+          test "$(git merge-base "${BASE_SHA}" HEAD)" = "${BASE_SHA}"
+
+      - name: Apply full repository transformation
+        run: python3 tools/full_ad_glasses_one_shot.py
+
+      - name: Validate transformed tree
+        shell: bash
+        run: |
+          git diff --check
+          echo "== changed tree =="
+          git status --short
+          echo "== forbidden legacy terms =="
+          if git ls-files -z | grep -ziaE 'cyanbridge|fersaiyan|tasker'; then
+            echo "Forbidden legacy term remains in a tracked path." >&2
+            exit 1
+          fi
+          if git grep -nEi 'cyanbridge|fersaiyan|tasker' -- ':!third_party/**' ':!**/build/**'; then
+            echo "Forbidden legacy term remains in tracked text." >&2
+            exit 1
+          fi
+          test -d android/AD-Glasses/app
+          test -d android/AD-Glasses/shared
+          grep -R --line-number --fixed-strings 'com.ad_glasses' \
+            android/AD-Glasses/app/build.gradle \
+            android/AD-Glasses/app/src \
+            android/AD-Glasses/shared/src >/dev/null
+
+      - name: Set up Java 17
+        uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: "17"
+          cache: gradle
+          cache-dependency-path: |
+            android/AD-Glasses/**/*.gradle*
+            android/AD-Glasses/gradle/libs.versions.toml
+            heycyan-core/**/*.gradle*
+
+      - name: Install current Android CLI
+        shell: bash
+        run: |
+          sudo mkdir -p /etc/apt/keyrings
+          curl -fsSL https://dl.google.com/linux/linux_signing_key.pub \
+            | sudo tee /etc/apt/keyrings/google.asc >/dev/null
+          echo "deb [arch=amd64 signed-by=/etc/apt/keyrings/google.asc] http://dl.google.com/android/cli/latest/debian/ stable main" \
+            | sudo tee /etc/apt/sources.list.d/android-cli.list >/dev/null
+          sudo apt-get update
+          sudo apt-get install -y android-cli
+          android update
+
+      - name: Install Android SDK components
+        shell: bash
+        run: |
+          SDK_ROOT="$HOME/android-sdk"
+          mkdir -p "$SDK_ROOT"
+          echo "ANDROID_HOME=$SDK_ROOT" >> "$GITHUB_ENV"
+          echo "ANDROID_SDK_ROOT=$SDK_ROOT" >> "$GITHUB_ENV"
+          echo "$SDK_ROOT/platform-tools" >> "$GITHUB_PATH"
+          android --sdk="$SDK_ROOT" sdk install \
+            platforms/android-37 \
+            build-tools/36.0.0 \
+            cmake/3.22.1 \
+            ndk/29.0.14206865 \
+            platform-tools
+
+      - name: Compile shared Android source
+        working-directory: android/AD-Glasses
+        run: ./gradlew --no-daemon --warning-mode=all :shared:compileAndroidMain --stacktrace
+
+      - name: Run app unit tests
+        working-directory: android/AD-Glasses
+        run: ./gradlew --no-daemon --warning-mode=all :app:testDebugUnitTest --stacktrace
+
+      - name: Assemble debug APK
+        working-directory: android/AD-Glasses
+        run: ./gradlew --no-daemon --warning-mode=all :app:assembleDebug --stacktrace
+
+      - name: Verify branded APK
+        run: test -f android/AD-Glasses/app/build/outputs/apk/debug/AD-Glasses.apk
+
+      - name: Upload verified APK
+        uses: actions/upload-artifact@v7
+        with:
+          name: AD-Glasses-debug
+          path: android/AD-Glasses/app/build/outputs/apk/debug/AD-Glasses.apk
+          if-no-files-found: error
+          retention-days: 7
+
+      - name: Create one atomic transformation commit
+        shell: bash
+        run: |
+          rm -f tools/full_ad_glasses_one_shot.py
+          rm -f .github/workflows/full-ad-glasses-one-shot.yml
+
+          git add -A
+          git diff --cached --check
+
+          if git diff --cached --quiet; then
+            echo "Transformation produced no changes." >&2
+            exit 1
+          fi
+
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+
+          tree_sha="$(git write-tree)"
+          final_sha="$(
+            printf '%s\n\n%s\n' \
+              'refactor: complete AD Glasses one-shot rebrand' \
+              'Rename packages, paths, Android project, URI scheme, branding, CI/docs; remove Tasker and stale cleanup artifacts while preserving cloud/local assistant paths.' \
+            | git commit-tree "$tree_sha" -p "$BASE_SHA"
+          )"
+
+          git push \
+            --force-with-lease="refs/heads/${TARGET_BRANCH}:${GITHUB_SHA}" \
+            origin "${final_sha}:refs/heads/${TARGET_BRANCH}"
+
+          echo "FINAL_SHA=${final_sha}" >> "$GITHUB_ENV"
+          echo "Committed atomic transformation: ${final_sha}"
+
+      - name: Confirm branch points at atomic commit
+        shell: bash
+        run: |
+          git fetch origin "${TARGET_BRANCH}"
+          test "$(git rev-parse FETCH_HEAD)" = "${FINAL_SHA}"
+          test "$(git rev-parse "${FINAL_SHA}^")" = "${BASE_SHA}"
