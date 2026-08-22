@@ -1,0 +1,40 @@
+name: Temporary UI forward cleanup 1471
+
+on:
+  push:
+    branches:
+      - fix/mainactivity-full-audit
+
+permissions:
+  contents: write
+
+jobs:
+  repair:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out repair branch
+        uses: actions/checkout@v7
+        with:
+          ref: fix/mainactivity-full-audit
+          fetch-depth: 0
+
+      - name: Apply forward-only UI cleanup
+        shell: bash
+        run: |
+          python3 tools/tmp_ui_forward_cleanup_1471.py
+          git diff --check
+          git diff --stat
+
+      - name: Commit source cleanup
+        shell: bash
+        run: |
+          if git diff --quiet -- android/AD-Glasses/app/src/main/java/com/ad_glasses/ui/adglasses; then
+            echo "No source changes to commit"
+            exit 0
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add android/AD-Glasses/app/src/main/java/com/ad_glasses/ui/adglasses
+          git commit -m "fix: remove retired assistant handoff UI paths"
+          git push origin HEAD:fix/mainactivity-full-audit
