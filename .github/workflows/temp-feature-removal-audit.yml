@@ -1,0 +1,30 @@
+name: Temporary feature removal audit
+
+on:
+  push:
+    branches:
+      - fix/post-merge-cleanup
+
+permissions:
+  contents: read
+
+jobs:
+  audit:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out branch
+        uses: actions/checkout@v7
+        with:
+          fetch-depth: 1
+      - name: Audit Timeline Diary DayNote and chat routes
+        shell: bash
+        run: |
+          set -u
+          echo '===== TIMELINE / VISUAL DIARY ====='
+          git grep -n -i -E 'timeline|visualdiary|visual diary' -- . ':!third_party/**' ':!android/AD-Glasses/app/src/main/myvu-upstream/**' || true
+          echo '===== DIARY / DAYNOTE / AUTO DIARY ====='
+          git grep -n -i -E 'daynote|day note|autodiary|auto diary|diary' -- . ':!third_party/**' ':!android/AD-Glasses/app/src/main/myvu-upstream/**' || true
+          echo '===== CHAT ROUTES / CLEAR CHAT ====='
+          git grep -n -E 'ChatListActivity|ChatThreadActivity|ADConversationsRedirectActivity|clear.*chat|Clear.*chat|conversation.*clear|clear.*conversation|CONVERSATIONS|Conversations' -- android/AD-Glasses || true
+          echo '===== AI CLOUD LOCAL ICONS ====='
+          git grep -n -E 'Cloud AI|Local models|CLOUD_AI|LOCAL_AGENT|Cloud|Local' -- android/AD-Glasses/app/src/main/java/com/ad_glasses/ui/adglasses || true
