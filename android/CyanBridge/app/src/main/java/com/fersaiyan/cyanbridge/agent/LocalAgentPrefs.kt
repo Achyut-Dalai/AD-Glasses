@@ -1,13 +1,11 @@
 package com.fersaiyan.cyanbridge.agent
 
 import android.content.Context
-import com.fersaiyan.cyanbridge.shared.glasses.GlassesAssistantMode
 import com.fersaiyan.cyanbridge.shared.settings.AgentProviderType
 
 object LocalAgentPrefs {
     private const val PREFS = "local_agent_prefs"
     private const val KEY_PROVIDER_TYPE = "provider_type"
-    private const val KEY_GLASSES_ASSISTANT_MODE = "glasses_assistant_mode"
     private const val KEY_REQUIRE_CONFIRMATION = "require_confirmation"
     private const val KEY_MAX_STEPS = "max_steps"
     private const val KEY_AUTOMATION_ENABLED = "automation_enabled"
@@ -19,18 +17,15 @@ object LocalAgentPrefs {
     private const val KEY_DAILY_SUMMARY_AUTO_REFRESH_HOURS = "daily_summary_auto_refresh_hours"
 
     fun getProviderType(context: Context): AgentProviderType {
-        val preferences = context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
-        val raw = preferences.getString(KEY_PROVIDER_TYPE, null)?.trim()?.uppercase()
-        val provider = when (raw) {
-            AgentProviderType.LOCAL_AGENT.name -> AgentProviderType.LOCAL_AGENT
-            // PRO_SUBSCRIPTION is only the persisted legacy token for the Cloud AI choice.
-            "API_MODELS", AgentProviderType.PRO_SUBSCRIPTION.name -> AgentProviderType.PRO_SUBSCRIPTION
-            // Retired automation/unknown/fresh-install values migrate to Cloud, never a consumer app.
-            "TASKER", null, "" -> AgentProviderType.PRO_SUBSCRIPTION
-            else -> AgentProviderType.PRO_SUBSCRIPTION
+        val raw = context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
+            .getString(KEY_PROVIDER_TYPE, null)
+            ?.trim()
+            ?.uppercase()
+        return if (raw == AgentProviderType.LOCAL_AGENT.name) {
+            AgentProviderType.LOCAL_AGENT
+        } else {
+            AgentProviderType.CLOUD_AI
         }
-        if (raw != provider.name) preferences.edit().putString(KEY_PROVIDER_TYPE, provider.name).apply()
-        return provider
     }
 
     fun setProviderType(context: Context, type: AgentProviderType) {
@@ -38,33 +33,14 @@ object LocalAgentPrefs {
             .edit().putString(KEY_PROVIDER_TYPE, type.name).apply()
     }
 
-    /** Consumer assistant handoff was retired. Every stored legacy mode migrates to AD-owned Cloud/Local inference. */
-    fun getGlassesAssistantMode(context: Context): GlassesAssistantMode {
-        val preferences = context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
-        val mode = GlassesAssistantMode.CUSTOM_AI_PROVIDER
-        if (preferences.getString(KEY_GLASSES_ASSISTANT_MODE, null) != mode.name) {
-            preferences.edit().putString(KEY_GLASSES_ASSISTANT_MODE, mode.name).apply()
-        }
-        return mode
-    }
-
-    fun setGlassesAssistantMode(context: Context, mode: GlassesAssistantMode) {
-        context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
-            .edit().putString(KEY_GLASSES_ASSISTANT_MODE, GlassesAssistantMode.CUSTOM_AI_PROVIDER.name).apply()
-    }
-
-    /** Accessibility/UI automation is no longer an AI invocation method. */
-    fun isLocalAgentAutomationEnabled(context: Context): Boolean {
-        val preferences = context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
-        if (preferences.getBoolean(KEY_AUTOMATION_ENABLED, false)) {
-            preferences.edit().putBoolean(KEY_AUTOMATION_ENABLED, false).apply()
-        }
-        return false
-    }
+    /** Accessibility/UI automation is not an AI invocation method. */
+    fun isLocalAgentAutomationEnabled(context: Context): Boolean = false
 
     fun setLocalAgentAutomationEnabled(context: Context, enabled: Boolean) {
-        context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
-            .edit().putBoolean(KEY_AUTOMATION_ENABLED, false).apply()
+        if (enabled) {
+            context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
+                .edit().remove(KEY_AUTOMATION_ENABLED).apply()
+        }
     }
 
     fun isRequireConfirmationEnabled(context: Context): Boolean =
