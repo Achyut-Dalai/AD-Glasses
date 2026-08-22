@@ -88,19 +88,15 @@ class ImageQuestionPromptResolverTest {
     }
 
     @Test
-    fun everyImageRouteReceivesTheSameResolvedPrompt() {
+    fun everySupportedImageRouteReceivesTheSameResolvedPrompt() {
         val resolved = ImageQuestionPromptResolver.resolve(
             settings = builtInSettings("de"),
             userQuestion = "What is blocking the doorway?",
         )
 
-        val relayPrompt = resolved.forRoute(ImageQuestionRoute.PRO_RELAY)
-        val localPrompt = resolved.forRoute(ImageQuestionRoute.LOCAL_GEMMA)
-        val externalPrompt = resolved.forRoute(ImageQuestionRoute.EXTERNAL_ASSISTANT)
-
-        assertEquals(resolved.text, relayPrompt)
-        assertEquals(relayPrompt, localPrompt)
-        assertEquals(relayPrompt, externalPrompt)
+        ImageQuestionRoute.entries.forEach { route ->
+            assertEquals(resolved.text, resolved.forRoute(route))
+        }
     }
 
     private fun builtInSettings(languageTag: String) = ImageQuestionSettings(
