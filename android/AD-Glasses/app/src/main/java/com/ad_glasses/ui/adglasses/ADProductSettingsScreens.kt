@@ -132,7 +132,7 @@ internal fun ADPrivacyCenterScreen(onBack: () -> Unit) {
             onDismissRequest = { showClearChatsDialog = false },
             title = { Text("Clear all AD Chats?") },
             text = {
-                Text("This permanently deletes every AD-owned Local AI and configured API conversation. Gemini and ChatGPT app history is managed inside those apps.")
+                Text("This permanently deletes every conversation stored by AD Glasses for Local AI and configured API providers on this phone. It does not delete provider-side account data.")
             },
             dismissButton = {
                 TextButton(onClick = { showClearChatsDialog = false }) { Text("Cancel") }

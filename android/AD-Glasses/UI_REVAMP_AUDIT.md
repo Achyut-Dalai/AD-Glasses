@@ -479,7 +479,7 @@ Current page exposes too much bridge/automation implementation detail at the sam
 Needs revamp:
 - top of page should answer only: current assistant app, whether handoff is available, and whether it is selected;
 - route selection should be the main control;
-- move external automation/bridge verification/accessibility into a clearly secondary Advanced setup section;
+- move Local Agent/accessibility verification into a clearly secondary Advanced setup section;
 - collapse or de-emphasize advanced setup until needed;
 - reduce repeated settings rows and technical text.
 

@@ -151,7 +151,7 @@ The redesign keeps every implemented owner-facing capability except Walking Aid 
 | Community plugins | Catalog, plugin opening, publish flow | Trust metadata, declared permissions/data access, compatibility, version/source information, disable/report controls | Kept as a secondary area inside Automations, not the main product hierarchy |
 | Local AI | Local models, local agent, Moonshine/Gemma-related processing | Capability and storage checks, model readiness, download/configuration clarity, health test, graceful fallback | On-device provider card in AI Services with honest ready/not-ready states |
 | Owner cloud | Relay URL, secure optional token, optional email, separate model choices, connection test | Provider health, discovered-model picker, timeout/auth diagnostics, per-task routing, no secrets in logs | “Your cloud” is a first-class provider with a visible privacy boundary |
-| External assistant automation | Android default assistant, external automation profile import/verification, AutoInput/accessibility checks, voice/image tests | Present as an optional advanced provider with a step-by-step readiness checklist and explicit phone-unlocked limitation | AI Services owns configuration; everyday Assistant UI only shows it when ready |
+| AD-owned action fallback | Supported Android APIs, Local Agent permissions, and Accessibility checks where required | Present as an advanced capability with explicit permission and phone-unlocked limitations | AI Services owns configuration; everyday Assistant UI stays provider-agnostic |
 | Memory & privacy | Local memory, planned backend modes, source eligibility, vault, OCR/transcript controls, export/import/clear | Data inventory, per-source retention, provenance, pause passive collection, clearer unfinished-backend state | Dedicated Privacy & Data page rather than scattered settings cards |
 | Device-specific tools | HeyCyan controls; experimental Eyevue, Meta, and Meizu controls; research display adapters | Capability-led modules, maturity-aware availability, consistent state language, safe error recovery | Family-specific Device Center examples never present unavailable controls as working |
 | HeyCyan firmware | Existing combined V821 Wi-Fi `.swu` then JieLi BLE `.bin` OTA research, exact-base catalog checks, local pair picker, exclusive session, and post-stage readiness checks | Dedicated HeyCyan-only lab flow, owner-controlled sources, enforceable preflight, state-aware cancellation, partial-update recovery, persisted status, and verified before/after versions | Firmware Update is a separate Device Center page; debug probes stay in Advanced |
@@ -790,7 +790,7 @@ This map prevents the visual redesign from accidentally deleting a capability me
 | Existing appearance settings | Removed from redesigned navigation; AD Glasses uses one light appearance |
 | Cloud settings | AI Services & Models → Your cloud |
 | Local model configuration | AI Services & Models → On device |
-| External assistant/external automation setup | AI Services & Models → External assistant (advanced) |
+| AD-owned action fallback setup | AI Services & Models → Advanced action permissions |
 | Transcription debug | Advanced & Diagnostics |
 | HeyCyan combined OTA and firmware compatibility/patch request | Dedicated HeyCyan Firmware Update page; raw probes/logs remain in Advanced |
 | Live preview and Wi-Fi ADB | Advanced & Diagnostics, linked from Device Center |

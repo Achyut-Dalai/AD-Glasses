@@ -49,7 +49,7 @@ The complete UI uses these 12 screen families:
 | 9 | AI Services | On-device model, owner cloud, web grounding, routing and tests |
 | 10 | Privacy and Data | Memory, inventory, retention, vault, export/import/delete |
 | 11 | HeyCyan Firmware Lab | Compatibility, preflight, paired update, progress and recovery |
-| 12 | Advanced and Diagnostics | Logs, external automation, device labs and prototype runtimes |
+| 12 | Advanced and Diagnostics | Logs, device labs, action permissions and prototype runtimes |
 
 Only Home, Assistant, Library, and Automations appear in bottom navigation. Focused flows may hide it.
 
@@ -362,7 +362,7 @@ This area is visually secondary.
 - capability/app/device/provider/transcription summaries;
 - redacted logs and diagnostic bundle preview/export;
 - HeyCyan preview probes, OTA/version logs, owner-service patch request, pull mode, Wi-Fi ADB warning, listeners/scans and raw P2P details;
-- default-assistant/external automation/AutoInput/Accessibility readiness and voice/image tests;
+- AD Assistant-role, Local Agent, Accessibility readiness, and voice/image tests;
 - GlassesBridge, EvenHub WebView, Mentra relay, Terminal HUD and notification forwarding, labeled Prototype/Research;
 - confirmations for connectivity, debug exposure, firmware, export, or other risky actions;
 - redact credentials, transcript content and unnecessary identifiers by default.

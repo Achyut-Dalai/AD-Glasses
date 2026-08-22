@@ -3,7 +3,7 @@
 ## Stack detection
 
 - Project type: native Android/Kotlin (Gradle app module, XML layouts, Activities, no React Native runtime).
-- Existing provider architecture: external automation / API models / Pro subscription routing via `AiProviderPrefs` and `AiAssistantRouter`.
+- Current provider architecture: configured Cloud API models plus Local fallback via the current provider preferences/router.
 
 ## Chosen backend
 

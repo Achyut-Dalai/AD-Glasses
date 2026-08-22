@@ -15,8 +15,8 @@ import android.speech.SpeechRecognizer
  * System-role integration for AD Glasses.
  *
  * The glasses wake word remains the product's primary entry point. The Android Assistant role
- * gives AD a first-class, screen-off system integration point without handing requests to a
- * consumer assistant app.
+ * gives AD a first-class, screen-off system integration point while keeping the assistant
+ * session owned by AD Glasses.
  */
 object ADAssistantRole {
     data class State(

@@ -2,7 +2,7 @@
 
 ## Mission
 
-You are implementing a new compatibility layer inside **AD Glasses**, an Android app that already works as an alternative app/SDK for HeyCyan-compatible smart glasses and currently supports BLE device management, media sync, assistant routing, external automation integration, and privacy-focused local handling.
+You are implementing a new compatibility layer inside **AD Glasses**, an Android app that already works as an alternative app/SDK for HeyCyan-compatible smart glasses and currently supports BLE device management, media sync, AD-owned Cloud/Local assistant routing, and privacy-focused local handling.
 
 The new goal is:
 
@@ -53,7 +53,7 @@ Do not hard-code the terminal app into the glasses driver. Build a reusable comp
 
 ### AD Glasses current state to inspect
 
-AD Glasses appears in the existing repo as an alternative Android app/SDK for HeyCyan-compatible glasses. The repo root includes `android/`, `examples/`, `heycyan-core/`, `ios/`, `third_party/`, `AGENTS.md`, `README.md`, and `WIFI_TRANSFER_ARCHITECTURE.md`. The README describes BLE scanning/connection, photo/video/audio controls, battery/device information, and Android-only Gemini/ChatGPT assistant routing through external automation automation.
+AD Glasses appears in the existing repo as an alternative Android app/SDK for HeyCyan-compatible glasses. The repo root includes `android/`, `examples/`, `heycyan-core/`, `ios/`, `third_party/`, `AGENTS.md`, `README.md`, and `WIFI_TRANSFER_ARCHITECTURE.md`. The README describes BLE scanning/connection, photo/video/audio controls, battery/device information, and Android-owned Cloud REST, Gemini Live, and Local fallback assistant routing.
 
 Primary repo to inspect:
 
@@ -65,7 +65,6 @@ Specific AD Glasses areas to inspect first:
 android/AD-Glasses/
 android/AD-Glasses/app/src/main/AndroidManifest.xml
 android/AD-Glasses/app/src/main/java/**
-android/AD-Glasses/external automation/external automation_AI.xml
 heycyan-core/**
 README.md
 AGENTS.md
@@ -82,8 +81,6 @@ Characteristic
 scan
 connect
 battery
-external automation
-ACTION_external automation_COMMAND
 AI_EVENT
 MediaStore
 WiFi
@@ -1061,7 +1058,7 @@ Questions to answer:
 - Is the UI Compose, XML, or mixed?
 - Where is BLE scan/connect implemented?
 - Where are permissions requested?
-- Where are external automation intents implemented?
+- Where are AD-owned phone action/executor boundaries implemented?
 - Is there already a WebSocket/HTTP/WebView component?
 - Where should Bridge Lab UI live?
 ```

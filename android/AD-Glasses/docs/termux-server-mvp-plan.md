@@ -1,84 +1,19 @@
-# Termux Server MVP Plan
+# Retired Termux Server MVP Design
 
-## Current app server dependencies (inspected)
+This document is retained only to record a superseded experiment. The old general-purpose phone/CLI relay design is **not** part of the current AD Glasses runtime and must not be used as an implementation guide.
 
-1. **AI relay endpoints (runtime app features)**
-   - Used by `CliRelayClient` in `app/src/main/java/com/ad_glasses/ai/router/CliRelayRouter.kt`.
-   - Expected endpoints:
-     - `POST /health`
-     - `POST /chat`
-     - `POST /voice-query`
-     - `POST /image-query`
+## Current AI architecture
 
-2. **OpenAI-compatible API model path (runtime app features)**
-   - Used by `DirectApiClient` in `app/src/main/java/com/ad_glasses/ai/router/CliRelayRouter.kt`.
-   - Expected endpoints:
-     - `GET /models` (connection test UI)
-     - `POST /chat/completions` (or `/v1/chat/completions`, depending on configured base URL)
+AD Glasses supports three inference lanes:
 
-3. **Pro subscription verification (runtime app feature, optional)**
-   - Used by `ProSubscriptionVerifier` in `app/src/main/java/com/ad_glasses/agent/ProSubscriptionVerifier.kt`.
-   - Expected endpoint:
-     - `POST /pro/verify` (or configured override URL)
-   - Existing behavior already falls back to local status when verifier is unavailable.
+1. **Cloud REST** — authenticated requests go directly through the configured API provider and model.
+2. **Cloud Realtime / Gemini Live** — bounded AD-owned realtime sessions use the Gemini Live API and the dedicated session-authorization plumbing required for short-lived credentials.
+3. **Local fallback** — an installed on-device model may be used when the user selects Local AI or when the configured fallback policy allows it.
 
-4. **HTTP transcription backend (debug/manual flow)**
-   - Used by `HttpTranscriptionBackend` and `TranscriptionDebugActivity`.
-   - Expected endpoint:
-     - `POST /transcribe` (multipart upload)
+Standard text responses remain AD-owned and are spoken with Android TTS. Android Assistant-role integration is also AD-owned; it is not a handoff to another assistant application.
 
-5. **Not currently wired to real backend calls**
-   - Memory vault cloud sync/search/enrollment contracts exist as stubs in
-     `app/src/main/java/com/ad_glasses/memoryvault/contracts/FutureBackendContracts.kt`.
-   - These are intentionally not connected to network transport yet.
+## What was retired
 
-## MVP support decision
+The earlier Termux prototype exposed a broad set of chat, voice, image, capability, entitlement, and transcription endpoints. Those endpoints and their former client/router classes are no longer the canonical application contract. Do not restore them to make old documentation or tests compile.
 
-### Implemented in Termux MVP server
-
-- `GET /health` + `POST /health`
-- `GET /capabilities`
-- `POST /chat`
-- `POST /voice-query`
-- `POST /image-query`
-- `GET /models` and `GET /v1/models`
-- `POST /v1/chat/completions`
-- `POST /pro/verify`
-- `POST /transcribe`
-
-### Deliberately unsupported in MVP (capability=false)
-
-- Cloud memory sync API
-- Cloud memory search API
-- Device enrollment API
-- Web checkout backend orchestration
-
-## Chosen stack
-
-- **Python + FastAPI + Uvicorn + SQLite**
-- Why:
-  - Runs directly in Termux without Docker.
-  - Small dependency footprint.
-  - Easy endpoint parity with existing app contracts.
-  - SQLite is sufficient for local MVP entitlement persistence.
-
-## Deployment model on Termux
-
-- Bundle in `_local_termux_server/` (kept git-untracked via `.git/info/exclude`).
-- Shell scripts for install/start/stop/restart/status/logs/backup/restore/update.
-- Optional Termux:Boot script to auto-start service on phone boot.
-
-## Capability negotiation and honest fallback
-
-1. Server exposes `GET /capabilities` with explicit booleans.
-2. App now probes relay capabilities (`RelayServerCapabilitiesClient`) before chat/voice/image calls.
-3. If capability is missing, app surfaces an explicit unavailable error instead of pretending success.
-4. Pro verification now checks capabilities and falls back to local status with clear message.
-
-## App wiring done for Termux profile
-
-- Runtime relay settings support:
-  - Relay base URL
-  - Pro verify endpoint override
-  - HTTP transcription endpoint
-  - Optional shared token
+If a future self-hosted service is added, it should be introduced as a new explicit provider with a documented API and privacy boundary rather than reviving the retired relay architecture.

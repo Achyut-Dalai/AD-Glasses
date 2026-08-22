@@ -47,7 +47,7 @@ Implemented on 2026-07-14 in the current working migration:
 - Meeting-summary request/response contracts, deterministic Markdown formatting, and the offline rule-based summarizer now compile from `commonMain`. Android retains Room persistence and its test-only fake summarizer.
 - Common tests lock down appearance defaults, stable accent IDs, fallback behavior, and destination identifiers.
 - The P2P sync-flow picker and chat appearance overflow menu now render as Compose dialogs. The Android Activities still own their BLE/P2P, preference, picker, and external-app callbacks.
-- Community Plugin cards now render server-provided community metadata, including the ChatGPT/Gemini external automation assistant as a normal plugin card rather than a special banner. The recordings screen renders its four recent synced photos as one full-width weighted row, and the publish-plugin action uses a semantic add icon.
+- Community Plugin cards now render server-provided community metadata, including cloud/local AI capabilities as normal product surfaces rather than special external-assistant banners. The recordings screen renders its four recent synced photos as one full-width weighted row, and the publish-plugin action uses a semantic add icon.
 - Automated migration verification currently passes `:shared:portabilityTest`, debug/release unit tests, debug/release lint, release assembly, and 19/19 Android instrumentation tests on an SM-F956B.
 
 Still pending:
@@ -259,7 +259,7 @@ Keep out of portable presentation code:
 
 - `android.*`, Android `Context`, Activities, Services, Intents, or `R` references.
 - Direct `SharedPreferences` access.
-- Android BLE, Wi-Fi P2P, MediaStore, Accessibility, external automation, Play Billing, or Meta DAT calls.
+- Android BLE, Wi-Fi P2P, MediaStore, Accessibility, Play Billing, or Meta DAT calls.
 - Global service creation, internally owned application coroutine scopes, and direct singleton mutation from composables.
 
 Use constructor/callback interfaces for platform actions. Decide whether any small primitives justify `expect`/`actual` only when a second native platform requires them.
@@ -689,7 +689,7 @@ Current route and capability inventory:
 | Appearance | compose | Persisted modes, curated accents, dynamic color, high contrast, reset, preview |
 | Settings | compose | Compose sections preserve automation, privacy, vault, data, support, agent, and Android permission/service operations |
 | Recordings and synced media | compose | Compose list and gallery preserve playback, transcription, active-recording visibility, MediaStore queries, and external viewer actions |
-| Community and publish plugins | compose | Compose browser and publishing form preserve server refresh, external automation setup, form validation, and submission behavior |
+| Community and publish plugins | compose | Compose browser and publishing form preserve server refresh, form validation, and submission behavior |
 | Notes list and detail | compose | Material 3 list, transcript note creation, copy, and share; Room repository remains Activity-owned |
 | Pro subscription and callback | hybrid | Material 3 subscription and settings screens with existing billing/checkout handlers retained behind adapters; callback remains android-platform |
 | Local models configuration | compose | Material 3 configuration screen; runtime, download, storage, encrypted credentials, and Studio Bridge behavior remain Activity-owned through typed presentation actions |
