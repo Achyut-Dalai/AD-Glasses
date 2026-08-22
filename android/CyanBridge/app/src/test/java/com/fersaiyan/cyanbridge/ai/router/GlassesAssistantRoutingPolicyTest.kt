@@ -7,13 +7,21 @@ import org.junit.Test
 
 class GlassesAssistantRoutingPolicyTest {
     @Test
-    fun phoneAssistantIgnoresCustomProviderSetting() {
-        AgentProviderType.entries.forEach { provider ->
-            assertEquals(
-                GlassesAssistantRoute.PHONE_ASSISTANT,
-                GlassesAssistantRoutingPolicy.resolve(GlassesAssistantMode.PHONE_ASSISTANT, provider),
-            )
-        }
+    fun legacyPhoneAssistantModeStillRoutesToAdOwnedProviders() {
+        assertEquals(
+            GlassesAssistantRoute.LOCAL,
+            GlassesAssistantRoutingPolicy.resolve(
+                GlassesAssistantMode.PHONE_ASSISTANT,
+                AgentProviderType.LOCAL_AGENT,
+            ),
+        )
+        assertEquals(
+            GlassesAssistantRoute.PRO,
+            GlassesAssistantRoutingPolicy.resolve(
+                GlassesAssistantMode.PHONE_ASSISTANT,
+                AgentProviderType.PRO_SUBSCRIPTION,
+            ),
+        )
     }
 
     @Test
