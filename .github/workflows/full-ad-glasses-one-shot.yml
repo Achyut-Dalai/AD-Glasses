@@ -108,6 +108,9 @@ jobs:
         run: |
           git config user.name 'github-actions[bot]'
           git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          # GitHub's Actions token cannot create/update/delete workflow files.
+          # Keep workflows unchanged in this checkpoint; they are cleaned after build validation.
+          git restore --source=HEAD --staged --worktree -- .github/workflows
           git add -A
           git diff --cached --check
           if ! git diff --cached --quiet; then
@@ -232,28 +235,7 @@ jobs:
           if-no-files-found: error
           retention-days: 7
 
-      - name: Replace branch with one final atomic commit
+      - name: Mark source validation complete
         shell: bash
         run: |
-          starting_tip="$(git rev-parse HEAD)"
-          rm -f tools/full_ad_glasses_one_shot.py
-          rm -f .github/workflows/full-ad-glasses-one-shot.yml
-          git add -A
-          git diff --cached --check
-          git config user.name 'github-actions[bot]'
-          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
-          tree_sha="$(git write-tree)"
-          final_sha="$(printf '%s\n\n%s\n' \
-            'refactor: complete AD Glasses one-shot rebrand' \
-            'Rename package ownership, source paths, Android project, URI scheme, branding, CI and docs; remove legacy automation integration and stale cleanup artifacts while preserving cloud/local assistant paths.' \
-            | git commit-tree "$tree_sha" -p "$BASE_SHA")"
-          git push --force-with-lease="refs/heads/${TARGET_BRANCH}:${starting_tip}" \
-            origin "${final_sha}:refs/heads/${TARGET_BRANCH}"
-          echo "FINAL_SHA=${final_sha}" >> "$GITHUB_ENV"
-
-      - name: Confirm final branch shape
-        shell: bash
-        run: |
-          git fetch origin "${TARGET_BRANCH}"
-          test "$(git rev-parse FETCH_HEAD)" = "${FINAL_SHA}"
-          test "$(git rev-parse "${FINAL_SHA}^")" = "${BASE_SHA}"
+          echo 'Shared compile, app unit tests, and debug APK assembly all passed for the materialized renamed tree.'
