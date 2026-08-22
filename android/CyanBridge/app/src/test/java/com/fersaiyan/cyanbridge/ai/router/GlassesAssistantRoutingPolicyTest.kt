@@ -7,25 +7,7 @@ import org.junit.Test
 
 class GlassesAssistantRoutingPolicyTest {
     @Test
-    fun legacyPhoneAssistantModeStillRoutesToAdOwnedProviders() {
-        assertEquals(
-            GlassesAssistantRoute.LOCAL,
-            GlassesAssistantRoutingPolicy.resolve(
-                GlassesAssistantMode.PHONE_ASSISTANT,
-                AgentProviderType.LOCAL_AGENT,
-            ),
-        )
-        assertEquals(
-            GlassesAssistantRoute.PRO,
-            GlassesAssistantRoutingPolicy.resolve(
-                GlassesAssistantMode.PHONE_ASSISTANT,
-                AgentProviderType.PRO_SUBSCRIPTION,
-            ),
-        )
-    }
-
-    @Test
-    fun customModeRoutesEachSettingsChoiceExplicitly() {
+    fun adOwnedModeRoutesOnlyToCloudOrLocalInference() {
         assertEquals(
             GlassesAssistantRoute.LOCAL,
             GlassesAssistantRoutingPolicy.resolve(
