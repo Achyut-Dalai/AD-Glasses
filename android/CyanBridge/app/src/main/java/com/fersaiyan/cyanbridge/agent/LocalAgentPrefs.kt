@@ -23,9 +23,11 @@ object LocalAgentPrefs {
         val raw = preferences.getString(KEY_PROVIDER_TYPE, null)?.trim()?.uppercase()
         val provider = when (raw) {
             AgentProviderType.LOCAL_AGENT.name -> AgentProviderType.LOCAL_AGENT
+            // PRO_SUBSCRIPTION is only the persisted legacy token for the Cloud AI choice.
             "API_MODELS", AgentProviderType.PRO_SUBSCRIPTION.name -> AgentProviderType.PRO_SUBSCRIPTION
-            "TASKER", null, "" -> AgentProviderType.LOCAL_AGENT
-            else -> AgentProviderType.LOCAL_AGENT
+            // Retired automation/unknown/fresh-install values migrate to Cloud, never a consumer app.
+            "TASKER", null, "" -> AgentProviderType.PRO_SUBSCRIPTION
+            else -> AgentProviderType.PRO_SUBSCRIPTION
         }
         if (raw != provider.name) preferences.edit().putString(KEY_PROVIDER_TYPE, provider.name).apply()
         return provider
@@ -36,7 +38,7 @@ object LocalAgentPrefs {
             .edit().putString(KEY_PROVIDER_TYPE, type.name).apply()
     }
 
-    /** Consumer assistant handoff was retired. Every stored legacy mode migrates to AD-owned API/local inference. */
+    /** Consumer assistant handoff was retired. Every stored legacy mode migrates to AD-owned Cloud/Local inference. */
     fun getGlassesAssistantMode(context: Context): GlassesAssistantMode {
         val preferences = context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
         val mode = GlassesAssistantMode.CUSTOM_AI_PROVIDER
