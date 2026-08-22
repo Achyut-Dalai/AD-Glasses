@@ -112,16 +112,70 @@ jobs:
             platform-tools
 
       - name: Compile shared Android source
+        id: shared_compile
+        continue-on-error: true
         working-directory: android/AD-Glasses
-        run: ./gradlew --no-daemon --warning-mode=all :shared:compileAndroidMain --stacktrace
+        shell: bash
+        run: |
+          set -o pipefail
+          ./gradlew --no-daemon --warning-mode=all :shared:compileAndroidMain --stacktrace 2>&1 | tee /tmp/shared-compile.log
+
+      - name: Publish shared compile failure diagnostics
+        if: steps.shared_compile.outcome == 'failure'
+        shell: bash
+        run: |
+          {
+            echo '### Shared compile failure'
+            echo '```text'
+            tail -n 180 /tmp/shared-compile.log
+            echo '```'
+          } > /tmp/shared-compile-tail.md
+          GH_TOKEN="$GITHUB_TOKEN" gh pr comment 114 --repo "$GITHUB_REPOSITORY" --body-file /tmp/shared-compile-tail.md
+          exit 1
 
       - name: Run app unit tests
+        id: app_tests
+        continue-on-error: true
         working-directory: android/AD-Glasses
-        run: ./gradlew --no-daemon --warning-mode=all :app:testDebugUnitTest --stacktrace
+        shell: bash
+        run: |
+          set -o pipefail
+          ./gradlew --no-daemon --warning-mode=all :app:testDebugUnitTest --stacktrace 2>&1 | tee /tmp/app-tests.log
+
+      - name: Publish unit-test failure diagnostics
+        if: steps.app_tests.outcome == 'failure'
+        shell: bash
+        run: |
+          {
+            echo '### App unit-test failure'
+            echo '```text'
+            tail -n 180 /tmp/app-tests.log
+            echo '```'
+          } > /tmp/app-tests-tail.md
+          GH_TOKEN="$GITHUB_TOKEN" gh pr comment 114 --repo "$GITHUB_REPOSITORY" --body-file /tmp/app-tests-tail.md
+          exit 1
 
       - name: Assemble debug APK
+        id: assemble_debug
+        continue-on-error: true
         working-directory: android/AD-Glasses
-        run: ./gradlew --no-daemon --warning-mode=all :app:assembleDebug --stacktrace
+        shell: bash
+        run: |
+          set -o pipefail
+          ./gradlew --no-daemon --warning-mode=all :app:assembleDebug --stacktrace 2>&1 | tee /tmp/assemble-debug.log
+
+      - name: Publish APK-build failure diagnostics
+        if: steps.assemble_debug.outcome == 'failure'
+        shell: bash
+        run: |
+          {
+            echo '### Debug APK build failure'
+            echo '```text'
+            tail -n 180 /tmp/assemble-debug.log
+            echo '```'
+          } > /tmp/assemble-debug-tail.md
+          GH_TOKEN="$GITHUB_TOKEN" gh pr comment 114 --repo "$GITHUB_REPOSITORY" --body-file /tmp/assemble-debug-tail.md
+          exit 1
 
       - name: Verify branded APK
         run: test -f android/AD-Glasses/app/build/outputs/apk/debug/AD-Glasses.apk
