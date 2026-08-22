@@ -6,13 +6,15 @@ import androidx.security.crypto.EncryptedSharedPreferences
 import androidx.security.crypto.MasterKey
 
 enum class AiProviderType(val wire: String, val label: String) {
-    API_TOKEN("api_token", "API token"),
+    /** AD-owned cloud inference. Standard REST is the default request path. */
+    API_TOKEN("api_token", "Cloud AI"),
+    /** On-device LLM fallback. */
     LOCAL_MODELS("local_models", "Local AI");
 
     companion object {
         fun fromWire(value: String?): AiProviderType = when (value?.trim()?.lowercase()) {
             LOCAL_MODELS.wire -> LOCAL_MODELS
-            // One-way migration from every retired remote/demo route. They are no longer callable.
+            // One-way migration from every retired remote/demo route. Consumer apps are never restored.
             "cli_relay", "company_backend", "mock", API_TOKEN.wire -> API_TOKEN
             else -> API_TOKEN
         }
@@ -24,11 +26,12 @@ enum class ApiProvider(
     val label: String,
     val baseUrl: String,
     val defaultModel: String,
+    val realtimeCapable: Boolean,
 ) {
-    OPENAI("openai", "OpenAI", "https://api.openai.com/v1", "gpt-5"),
-    GOOGLE("google", "Google Gemini", "https://generativelanguage.googleapis.com/v1beta/openai", "gemini-3.7-flash"),
-    DEEPSEEK("deepseek", "DeepSeek", "https://api.deepseek.com", "deepseek-v4-flash"),
-    OPENROUTER("openrouter", "OpenRouter", "https://openrouter.ai/api/v1", "openai/gpt-5.3-chat");
+    OPENAI("openai", "OpenAI", "https://api.openai.com/v1", "gpt-5", true),
+    GOOGLE("google", "Google Gemini", "https://generativelanguage.googleapis.com/v1beta/openai", "gemini-3.7-flash", true),
+    DEEPSEEK("deepseek", "DeepSeek", "https://api.deepseek.com", "deepseek-v4-flash", false),
+    OPENROUTER("openrouter", "OpenRouter", "https://openrouter.ai/api/v1", "openai/gpt-5.3-chat", false);
 
     companion object {
         fun fromWire(value: String?): ApiProvider =
@@ -36,12 +39,25 @@ enum class ApiProvider(
     }
 }
 
-/** The only remote AI configuration: direct provider API keys plus a selected model. */
+/**
+ * Cloud/local AI preferences owned by AD Glasses.
+ *
+ * Provider API keys are encrypted with Android Keystore-backed preferences. The relay URL is not a
+ * secret and exists only for AD-owned cloud infrastructure such as short-lived Realtime session
+ * tokens; it is not a consumer-assistant or CLI invocation route.
+ */
 object AiProviderPrefs {
     private const val PREFS_NAME = "ai_provider_prefs"
     private const val SECRET_PREFS_NAME = "ai_api_secrets"
     private const val KEY_PROVIDER = "provider"
     private const val KEY_API_PROVIDER = "api_provider"
+    private const val KEY_RELAY_BASE_URL = "relay_base_url"
+
+    // Never silently restore old author/demo infrastructure on an installed app.
+    private val RETIRED_DEFAULT_RELAY_URLS = setOf(
+        "https://carelens-wine.vercel.app",
+        "https://cyanbridge.vercel.app",
+    )
 
     private fun prefs(context: Context) =
         context.applicationContext.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
@@ -78,7 +94,10 @@ object AiProviderPrefs {
         secretPrefs(context).getString(apiKeyKey(provider), "")?.trim().orEmpty()
 
     fun setApiKey(context: Context, provider: ApiProvider, value: String) {
-        secretPrefs(context).edit().putString(apiKeyKey(provider), value.trim()).apply()
+        val clean = value.trim()
+        secretPrefs(context).edit().apply {
+            if (clean.isBlank()) remove(apiKeyKey(provider)) else putString(apiKeyKey(provider), clean)
+        }.apply()
     }
 
     fun getModel(context: Context, provider: ApiProvider = getApiProvider(context)): String =
@@ -91,6 +110,20 @@ object AiProviderPrefs {
 
     fun isApiConfigured(context: Context, provider: ApiProvider = getApiProvider(context)): Boolean =
         getApiKey(context, provider).isNotBlank() && getModel(context, provider).isNotBlank()
+
+    /** Optional AD-owned relay used for secure/ephemeral cloud transport such as Gemini Live tokens. */
+    fun getRelayBaseUrl(context: Context): String =
+        prefs(context).getString(KEY_RELAY_BASE_URL, "")
+            ?.trim()
+            .orEmpty()
+            .trimEnd('/')
+            .let { current -> if (current in RETIRED_DEFAULT_RELAY_URLS) "" else current }
+
+    fun setRelayBaseUrl(context: Context, value: String) {
+        prefs(context).edit().putString(KEY_RELAY_BASE_URL, value.trim().trimEnd('/')).apply()
+    }
+
+    fun isRelayConfigured(context: Context): Boolean = getRelayBaseUrl(context).isNotBlank()
 
     private fun apiKeyKey(provider: ApiProvider) = "api_key_${provider.wire}"
     private fun modelKey(provider: ApiProvider) = "model_${provider.wire}"
