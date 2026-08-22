@@ -15,14 +15,13 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.AutoAwesome
 import androidx.compose.material.icons.outlined.CheckCircle
+import androidx.compose.material.icons.outlined.Cloud
 import androidx.compose.material.icons.outlined.Computer
 import androidx.compose.material.icons.outlined.History
-import androidx.compose.material.icons.outlined.Key
 import androidx.compose.material.icons.outlined.MenuBook
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
@@ -53,11 +52,11 @@ import com.fersaiyan.cyanbridge.ai.router.AiProviderType
 import com.fersaiyan.cyanbridge.shared.glasses.GlassesAssistantMode
 import com.fersaiyan.cyanbridge.shared.settings.AgentProviderType
 
-enum class ADAiChoice { API, LOCAL }
+enum class ADAiChoice { CLOUD, LOCAL }
 
 @Composable
 internal fun ADNativeAiScreen(
-    onApiSettings: () -> Unit,
+    onCloudSettings: () -> Unit,
     onLocalSettings: () -> Unit,
 ) {
     val context = LocalContext.current
@@ -68,10 +67,10 @@ internal fun ADNativeAiScreen(
     fun select(choice: ADAiChoice) {
         val previous = resolveAiChoice(context)
         when (choice) {
-            ADAiChoice.API -> {
+            ADAiChoice.CLOUD -> {
                 if (!AiProviderPrefs.isApiConfigured(context)) {
-                    Toast.makeText(context, "Add an API key first", Toast.LENGTH_SHORT).show()
-                    onApiSettings()
+                    Toast.makeText(context, "Add a Cloud API key first", Toast.LENGTH_SHORT).show()
+                    onCloudSettings()
                     return
                 }
                 AiProviderPrefs.setProvider(context, AiProviderType.API_TOKEN)
@@ -104,7 +103,7 @@ internal fun ADNativeAiScreen(
     val timelineActive = capabilityExecutor.isActive(AssistantCapability.VISUAL_DIARY)
     val diaryActive = capabilityExecutor.isActive(AssistantCapability.AUTO_DIARY)
     val selectedName = when (selected) {
-        ADAiChoice.API -> "${AiProviderPrefs.getApiProvider(context).label} API"
+        ADAiChoice.CLOUD -> "Cloud · ${AiProviderPrefs.getApiProvider(context).label}"
         ADAiChoice.LOCAL -> "Local AI"
     }
 
@@ -115,7 +114,7 @@ internal fun ADNativeAiScreen(
     ) {
         Text("AI", style = MaterialTheme.typography.headlineMedium, fontWeight = FontWeight.Medium)
         Text(
-            "One direct API route, or a model running on this phone.",
+            "Cloud AI for REST/Realtime sessions, with Local AI as the offline fallback.",
             style = MaterialTheme.typography.bodySmall,
             color = ADColors.Muted,
         )
@@ -151,20 +150,20 @@ internal fun ADNativeAiScreen(
         Spacer(Modifier.height(5.dp))
         Row(horizontalArrangement = Arrangement.spacedBy(7.dp)) {
             ADConfigurationCard(
-                icon = Icons.Outlined.Key,
-                title = "API",
+                icon = Icons.Outlined.Cloud,
+                title = "Cloud",
                 detail = if (AiProviderPrefs.isApiConfigured(context)) {
                     AiProviderPrefs.getApiProvider(context).label
                 } else {
-                    "Add provider key"
+                    "REST + Realtime"
                 },
                 modifier = Modifier.weight(1f),
-                onClick = onApiSettings,
+                onClick = onCloudSettings,
             )
             ADConfigurationCard(
                 icon = Icons.Outlined.Computer,
                 title = "Local",
-                detail = "On-device models",
+                detail = "Offline models",
                 modifier = Modifier.weight(1f),
                 onClick = onLocalSettings,
             )
@@ -209,7 +208,7 @@ private fun ADAiProviderCard(
             }
             Spacer(Modifier.height(9.dp))
             Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                ADAiProviderPill("API", selected == ADAiChoice.API, Modifier.weight(1f)) { onSelect(ADAiChoice.API) }
+                ADAiProviderPill("Cloud", selected == ADAiChoice.CLOUD, Modifier.weight(1f)) { onSelect(ADAiChoice.CLOUD) }
                 ADAiProviderPill("Local", selected == ADAiChoice.LOCAL, Modifier.weight(1f)) { onSelect(ADAiChoice.LOCAL) }
             }
         }
@@ -326,5 +325,5 @@ private fun resolveAiChoice(context: android.content.Context): ADAiChoice =
     ) {
         ADAiChoice.LOCAL
     } else {
-        ADAiChoice.API
+        ADAiChoice.CLOUD
     }
