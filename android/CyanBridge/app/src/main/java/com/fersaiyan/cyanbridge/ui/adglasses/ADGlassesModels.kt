@@ -12,9 +12,8 @@ enum class ADRoute {
     DEVICE_CENTER,
     SYNC,
     SETTINGS,
-    AI_RELAY,
+    AI_CLOUD,
     AI_LOCAL,
-    AI_ASSISTANT_APPS,
     PRIVACY,
     STORAGE,
     LANGUAGE,
@@ -31,16 +30,15 @@ enum class ADAutomation(
     val summary: String,
     val outcome: String,
     val boundary: String,
-    /** Existing service/plugin title used only to reconcile runtime state. */
     val runtimeTitle: String = title,
-    /** Product capability visibility on the primary AI surface. */
     val visibleInAi: Boolean = true,
 ) {
+    /** Legacy runtime token only; phone UI automation is no longer exposed as an AI invocation route. */
     LOCAL_AGENT(
         "Automation",
-        "Open apps, navigate and complete supported Android actions from the glasses.",
+        "Retired from AI invocation.",
         "Android actions",
-        "On device",
+        "Not exposed",
         "Local Agent",
         false,
     ),
@@ -66,19 +64,8 @@ enum class ADAutomation(
         "Automatic",
         "Hands-Free Translator",
     ),
-    /**
-     * Compatibility token for the inherited MainActivity settings dispatcher only.
-     * Cron is retired from the product and cannot be enabled through AD Glasses UI or assistant commands.
-     */
     @Deprecated("Cron is removed from the AD Glasses product")
-    ERRAND_BRAIN(
-        "Removed Cron",
-        "Removed",
-        "Removed",
-        "Removed",
-        "Errand Brain",
-        false,
-    ),
+    ERRAND_BRAIN("Removed Cron", "Removed", "Removed", "Removed", "Errand Brain", false),
     AUTO_DIARY(
         "DayNote",
         "Distill the moments that matter into a private note for each day.",
@@ -86,19 +73,8 @@ enum class ADAutomation(
         "On device",
         "Auto Diary",
     ),
-    /**
-     * Not a product capability. Kept temporarily so the inherited MainActivity host can compile
-     * until its old audio-capture switch is removed; it is never shown on the AD Glasses AI UI.
-     */
     @Deprecated("Background audio auto-capture is removed from the AD Glasses product")
-    AUTO_AUDIO(
-        "Removed audio capture",
-        "Removed",
-        "Removed",
-        "Removed",
-        "Auto Audio",
-        false,
-    ),
+    AUTO_AUDIO("Removed audio capture", "Removed", "Removed", "Removed", "Auto Audio", false),
     VISUAL_DIARY(
         "Timeline",
         "Turn visual captures into a searchable timeline you can revisit by moment.",

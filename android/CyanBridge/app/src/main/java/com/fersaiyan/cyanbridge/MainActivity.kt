@@ -219,19 +219,11 @@ import com.fersaiyan.cyanbridge.ai.vision.ImageQuestionDefaults
 import com.fersaiyan.cyanbridge.ai.vision.ImageQuestionPromptResolver
 import com.fersaiyan.cyanbridge.ai.vision.ImageQuestionRoute
 import com.fersaiyan.cyanbridge.ai.vision.ResolvedImageQuestionPrompt
-import com.fersaiyan.cyanbridge.ai.image.DefaultAssistantResolver
-import com.fersaiyan.cyanbridge.ai.image.ExternalAssistantAutomationInspector
-import com.fersaiyan.cyanbridge.ai.image.ExternalAssistantAutomationPolicy
-import com.fersaiyan.cyanbridge.ai.image.ExternalAssistantAccessibilityAutomation
-import com.fersaiyan.cyanbridge.ai.image.ExternalImageAutomationStage
-import com.fersaiyan.cyanbridge.ai.image.ExternalImageAutomationStore
-import com.fersaiyan.cyanbridge.ai.image.ImageAutomationTarget
 import com.fersaiyan.cyanbridge.ai.image.ImageQuestionSource
 import com.fersaiyan.cyanbridge.ai.image.ImageQuestionSourcePolicy
 import com.fersaiyan.cyanbridge.ai.image.ImageThumbnailQuality
 import com.fersaiyan.cyanbridge.ai.AiQuestionForegroundService
 import com.fersaiyan.cyanbridge.ai.image.HighQualityFailureChoice
-import com.fersaiyan.cyanbridge.shared.glasses.GlassesAssistantMode
 import com.fersaiyan.cyanbridge.shared.glasses.AiWakeWordRoute
 import com.fersaiyan.cyanbridge.shared.glasses.GlassesDashboardAction
 import com.fersaiyan.cyanbridge.shared.glasses.GlassesDashboardUiState
@@ -393,8 +385,6 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
     companion object {
         private const val TAG = "MainActivity"
         private var loggedLargeDataHandlerMethods = false
-        private const val AI_MODE_PHONE_ASSISTANT = "PhoneAssistant"
-        private const val AI_MODE_CUSTOM_AI_PROVIDER = "CustomAiProvider"
         private const val QUERY_MAX_AGENT_PERSONA_CHARS = 1200
         private const val QUERY_MAX_USER_FACTS_CHARS = 1400
         private const val QUERY_MAX_CONFIRMED_FACTS_CHARS = 1800
@@ -472,7 +462,6 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
     // AI Hijack settings
     private var isAiHijackEnabled = true // Default to enabled
     private var isImageAssistantMode = true // Use assistant vs share intent
-    private var aiAssistantMode = AI_MODE_PHONE_ASSISTANT
     private var wakeWordConfiguredForConnection = false
 
     // State used by the BLE+WiFi P2P data-download flow
@@ -618,10 +607,6 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         binding = AcitivytMainBinding.inflate(layoutInflater)
-        aiAssistantMode = when (AutomationPrefs.getGlassesAssistantMode(this)) {
-            GlassesAssistantMode.PHONE_ASSISTANT -> AI_MODE_PHONE_ASSISTANT
-            GlassesAssistantMode.CUSTOM_AI_PROVIDER -> AI_MODE_CUSTOM_AI_PROVIDER
-        }
         initView()
         refreshImageThumbnailQuality()
         setupMeetingCaptureUi()
@@ -1438,10 +1423,7 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
             is GlassesDashboardAction.RunNativePluginShortcut -> {
                 runNativePluginShortcut(action.action)
             }
-            is GlassesDashboardAction.SelectAssistantMode -> when (action.mode) {
-                GlassesAssistantMode.PHONE_ASSISTANT -> selectPhoneAssistant()
-                GlassesAssistantMode.CUSTOM_AI_PROVIDER -> selectCustomAiProvider()
-            }
+
             is GlassesDashboardAction.SetAiWakeWordRoute -> {
                 if (isHeyCyanOrEyevueSelected()) {
                     AiWakeWordPreferences.setRoute(this, action.route)
@@ -1460,9 +1442,7 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
             }
             GlassesDashboardAction.TestVoiceQuestion -> binding.btnTestHijackVoice.performClick()
             GlassesDashboardAction.TestImageQuestion -> binding.btnTestHijackImage.performClick()
-            GlassesDashboardAction.OpenExternalImageAutomationDiagnostics -> {
-                startActivity(Intent(Settings.ACTION_ACCESSIBILITY_SETTINGS))
-            }
+
             GlassesDashboardAction.CapturePhoto -> if (isEyevueSelected()) {
                 getOrCreateEyevueManager().takePhoto()
             } else {
@@ -1939,10 +1919,7 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
             binding.btnDataDownload,
             binding.btnOtaInfo,
             binding.btnPullOtaTest,
-            binding.btnModeGemini,
-            binding.btnModeChatgpt,
-            binding.btnModeInternal,
-            binding.btnTestHijackVoice,
+                                                binding.btnTestHijackVoice,
             binding.btnTestHijackImage,
             binding.btnToggleAdvanced,
             // binding.btnNotes,
@@ -2063,17 +2040,11 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
                     triggerCliRelayImageCaptureAndQuery()
                 }
 
-                binding.btnModeGemini -> {
-                    selectPhoneAssistant()
-                }
 
-                binding.btnModeChatgpt -> {
-                    selectPhoneAssistant()
-                }
 
-                binding.btnModeInternal -> {
-                    selectCustomAiProvider()
-                }
+
+
+
 
                 // Notes & Summaries entry removed (moved to Transcriptions & recordings section)
 
@@ -3586,21 +3557,14 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
         batteryPollJob = null
     }
 
-    private fun resolveEffectiveAiAssistantMode(): String {
-        return when (currentAssistantRoute()) {
-            GlassesAssistantRoute.PHONE_ASSISTANT -> AI_MODE_PHONE_ASSISTANT
-            GlassesAssistantRoute.LOCAL,
-            GlassesAssistantRoute.PRO -> AI_MODE_CUSTOM_AI_PROVIDER
-        }
-    }
+    private fun resolveEffectiveAiAssistantMode(): String = AutomationPrefs.getProviderType(this).name
+
 
     private fun isCustomAiProviderMode(): Boolean = aiAssistantMode == AI_MODE_CUSTOM_AI_PROVIDER
 
     private fun currentAssistantRoute(): GlassesAssistantRoute =
-        GlassesAssistantRoutingPolicy.resolve(
-            mode = if (isCustomAiProviderMode()) {
-                GlassesAssistantMode.CUSTOM_AI_PROVIDER
-            } else {
+        GlassesAssistantRoutingPolicy.resolve(AutomationPrefs.getProviderType(this))
+ else {
                 GlassesAssistantMode.PHONE_ASSISTANT
             },
             customProvider = AutomationPrefs.getProviderType(this),
@@ -3623,15 +3587,8 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
         return null
     }
 
-    private fun usesExternalAssistantUi(): Boolean = when (currentAssistantRoute()) {
-        GlassesAssistantRoute.PHONE_ASSISTANT -> true
-        GlassesAssistantRoute.LOCAL,
-        GlassesAssistantRoute.PRO -> false
-    }
 
-    private fun selectedImageAutomationTarget(): ImageAutomationTarget {
-        return ImageAutomationTarget.forDefaultAssistant(DefaultAssistantResolver.packageName(this))
-    }
+
 
     private fun externalImageAutomationUnsupportedReason(): String? {
         if (!usesExternalAssistantUi()) return null
@@ -3695,48 +3652,11 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
     }
 
     private fun refreshAiModeButtons() {
-        val activeColor = ContextCompat.getColor(this, R.color.cyan_accent)
-        val inactiveColor = ContextCompat.getColor(this, R.color.text_secondary)
-
-        val phoneAssistantSelected = aiAssistantMode == AI_MODE_PHONE_ASSISTANT
-        binding.btnModeGemini.setTextColor(if (phoneAssistantSelected) activeColor else inactiveColor)
-        binding.btnModeChatgpt.setTextColor(if (phoneAssistantSelected) activeColor else inactiveColor)
-        binding.btnModeInternal.setTextColor(if (!phoneAssistantSelected) activeColor else inactiveColor)
-        updateDashboardState { state ->
-            state.copy(
-                assistantMode = when (aiAssistantMode) {
-                    AI_MODE_CUSTOM_AI_PROVIDER -> GlassesAssistantMode.CUSTOM_AI_PROVIDER
-                    else -> GlassesAssistantMode.PHONE_ASSISTANT
-                },
-            )
-        }
         refreshAiQueryButtonsState()
     }
 
-    private fun selectPhoneAssistant() {
-        aiAssistantMode = AI_MODE_PHONE_ASSISTANT
-        AutomationPrefs.setGlassesAssistantMode(this, GlassesAssistantMode.PHONE_ASSISTANT)
-        refreshAiModeButtons()
-        val assistantPackage = DefaultAssistantResolver.packageName(this)
-        val result = when (selectedImageAutomationTarget()) {
-            ImageAutomationTarget.GEMINI -> "Gemini external image automation"
-            ImageAutomationTarget.CHATGPT -> "ChatGPT external image automation"
-            ImageAutomationTarget.NONE -> "voice only; external image automation unavailable"
-        }
-        Toast.makeText(
-            this,
-            "Phone Assistant: ${assistantPackage ?: "not detected"}. $result",
-            Toast.LENGTH_LONG,
-        ).show()
-    }
 
-    private fun selectCustomAiProvider() {
-        aiAssistantMode = AI_MODE_CUSTOM_AI_PROVIDER
-        AutomationPrefs.setGlassesAssistantMode(this, GlassesAssistantMode.CUSTOM_AI_PROVIDER)
-        refreshAiModeButtons()
-        val provider = AutomationPrefs.getProviderType(this).label
-        Toast.makeText(this, "AD-owned response: $provider", Toast.LENGTH_SHORT).show()
-    }
+
 
     private fun todayDateString(tsMs: Long = System.currentTimeMillis()): String {
         val fmt = SimpleDateFormat("yyyy-MM-dd", Locale.US)
@@ -3895,7 +3815,7 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
         }
 
         return when (providerType) {
-            AgentProviderType.PRO_SUBSCRIPTION -> {
+            AgentProviderType.CLOUD_AI -> {
                 CliRelayClient.chat(
                     context = this,
                     chatId = "glasses_${System.currentTimeMillis()}",
@@ -5162,8 +5082,8 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
                 triggerInternalVoiceQuery(AgentProviderType.LOCAL_AGENT)
             }
 
-            GlassesAssistantRoute.PRO -> {
-                triggerInternalVoiceQuery(AgentProviderType.PRO_SUBSCRIPTION)
+            GlassesAssistantRoute.CLOUD -> {
+                triggerInternalVoiceQuery(AgentProviderType.CLOUD_AI)
             }
 
             GlassesAssistantRoute.PHONE_ASSISTANT -> launchPhoneAssistant()
@@ -5193,52 +5113,8 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
         }
     }
 
-    private fun launchPhoneAssistant() {
-        // Keep the display and keyguard exactly as the user left them. Android's hands-free
-        // VOICE_COMMAND route can start the selected assistant while the device is already
-        // dozing; waking/dismissing here makes pocket use less safe and pressing Power during
-        // an active assistant session causes Gemini to pause that session.
-        stopGlassesAiAudio("phone-assistant voice command")
 
-        try {
-            startActivity(Intent(Intent.ACTION_VOICE_COMMAND).apply {
-                flags = Intent.FLAG_ACTIVITY_NEW_TASK
-            })
-        } catch (e: Exception) {
-            Log.e("AIHijack", "Failed to trigger phone assistant: ${e.message}")
-            runOnUiThread {
-                Toast.makeText(this, "No phone assistant is configured", Toast.LENGTH_SHORT).show()
-            }
-        }
-    }
 
-    private fun usesExternalImageAutomation(): Boolean {
-        return usesExternalAssistantUi()
-    }
-
-    private fun externalImageQuestion(userQuestion: String?): String {
-        return resolveImageQuestionPrompt(userQuestion)
-            .forRoute(ImageQuestionRoute.EXTERNAL_ASSISTANT)
-    }
-
-    private fun stageImageForExternalShare(source: File): File? {
-        if (!source.isFile || source.length() <= 0L) return null
-        val authority = "$packageName.fileprovider"
-        if (runCatching { FileProvider.getUriForFile(this, authority, source) }.isSuccess) {
-            return source
-        }
-
-        return runCatching {
-            val dir = (getExternalFilesDir("image-questions") ?: File(filesDir, "image-questions"))
-                .apply { mkdirs() }
-            val extension = source.extension.ifBlank { "jpg" }
-            File(dir, "AI_Share_${System.currentTimeMillis()}.$extension").also { target ->
-                source.copyTo(target, overwrite = true)
-            }
-        }.onFailure { error ->
-            Log.e("ImageQuestion", "Could not stage image for FileProvider sharing", error)
-        }.getOrNull()
-    }
 
     private fun canStartExternalImageShare(packageName: String): Boolean {
         val intent = Intent(Intent.ACTION_SEND).apply {
@@ -5248,27 +5124,8 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
         return intent.resolveActivity(packageManager) != null
     }
 
-    private fun startExternalImageShare(
-        targetPackage: String,
-        imageUri: Uri,
-        question: String,
-    ): Boolean {
-        val shareIntent = Intent(Intent.ACTION_SEND).apply {
-            type = "image/jpeg"
-            setPackage(targetPackage)
-            putExtra(Intent.EXTRA_STREAM, imageUri)
-            putExtra(Intent.EXTRA_TEXT, question)
-            clipData = ClipData.newRawUri("CyanBridge image", imageUri)
-            addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
-        }
-        return runCatching {
-            grantUriPermission(targetPackage, imageUri, Intent.FLAG_GRANT_READ_URI_PERMISSION)
-            startActivity(shareIntent)
-            true
-        }.onFailure { error ->
-            Log.w("ImageQuestion", "Direct image share failed for $targetPackage", error)
-        }.getOrDefault(false)
-    }
+
+
 
     private fun handOffImageToExternalAssistant(
         imagePath: String,
@@ -5373,7 +5230,7 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
         
         val internalProvider = when (currentAssistantRoute()) {
             GlassesAssistantRoute.LOCAL -> AgentProviderType.LOCAL_AGENT
-            GlassesAssistantRoute.PRO -> AgentProviderType.PRO_SUBSCRIPTION
+            GlassesAssistantRoute.CLOUD -> AgentProviderType.CLOUD_AI
             GlassesAssistantRoute.PHONE_ASSISTANT -> null
         }
         if (internalProvider != null) {

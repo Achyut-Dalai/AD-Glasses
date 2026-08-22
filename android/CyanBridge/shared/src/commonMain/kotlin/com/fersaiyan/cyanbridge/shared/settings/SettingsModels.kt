@@ -1,13 +1,13 @@
 package com.fersaiyan.cyanbridge.shared.settings
 
 enum class AgentProviderType {
-    LOCAL_AGENT,
-    PRO_SUBSCRIPTION;
+    CLOUD_AI,
+    LOCAL_AGENT;
 
     val label: String
         get() = when (this) {
-            LOCAL_AGENT -> "Local"
-            PRO_SUBSCRIPTION -> "Cloud AI"
+            CLOUD_AI -> "Cloud AI"
+            LOCAL_AGENT -> "Local AI"
         }
 }
 

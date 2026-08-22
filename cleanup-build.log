@@ -1,0 +1,447 @@
+Downloading https://services.gradle.org/distributions/gradle-9.5.0-bin.zip
+.............10%.............20%..............30%.............40%.............50%..............60%.............70%..............80%.............90%.............100%
+
+Welcome to Gradle 9.5.0!
+
+Here are the highlights of this release:
+ - Task provenance in reports and failure messages
+ - Type-safe accessors for precompiled Kotlin Settings plugins
+
+For more details see https://docs.gradle.org/9.5.0/release-notes.html
+
+To honour the JVM settings for this build a single-use Daemon process will be forked. For more on this, please refer to https://docs.gradle.org/9.5.0/userguide/gradle_daemon.html#sec:disabling_the_daemon in the Gradle documentation.
+Daemon will be stopped at the end of the build 
+
+> Configure project :app
+No GitHub package token configured - Meta Wearables DAT SDK dependencies will be skipped.
+
+> Task :heycyan-core:core-connectivity:preBuild UP-TO-DATE
+> Task :heycyan-core:core-connectivity:preDebugBuild UP-TO-DATE
+> Task :heycyan-core:core-connectivity:processDebugNavigationResources
+> Task :heycyan-core:core-connectivity:generateDebugResources
+> Task :shared:convertXmlValueResourcesForCommonMain
+> Task :heycyan-core:core-connectivity:packageDebugResources
+> Task :shared:copyNonXmlValueResourcesForCommonMain NO-SOURCE
+> Task :shared:prepareComposeResourcesTaskForCommonMain
+> Task :app:syncSharedComposeResources
+> Task :app:preBuild
+> Task :app:preDebugBuild
+> Task :heycyan-core:core-connectivity:parseDebugLocalResources
+> Task :heycyan-core:core-connectivity:javaPreCompileDebug
+> Task :heycyan-core:core-connectivity:writeDebugAarMetadata
+> Task :heycyan-core:core-connectivity:extractDeepLinksDebug
+> Task :heycyan-core:core-connectivity:mapDebugSourceSetPaths
+> Task :heycyan-core:core-connectivity:processDebugManifest
+> Task :heycyan-core:core-connectivity:generateDebugAssets UP-TO-DATE
+> Task :heycyan-core:core-connectivity:compileDebugLibraryResources
+> Task :heycyan-core:core-connectivity:mergeDebugAssets
+> Task :heycyan-core:core-connectivity:generateDebugRFile
+> Task :heycyan-core:core-connectivity:compileDebugKotlin NO-SOURCE
+> Task :app:generateDebugBuildConfig
+> Task :app:generateDebugResources
+> Task :app:packageDebugResources
+> Task :assistant-role:preBuild UP-TO-DATE
+> Task :assistant-role:preDebugBuild UP-TO-DATE
+> Task :assistant-role:processDebugNavigationResources
+> Task :moonshine-voice:preBuild UP-TO-DATE
+> Task :moonshine-voice:preDebugBuild UP-TO-DATE
+> Task :moonshine-voice:processDebugNavigationResources
+> Task :shared:androidPreBuild UP-TO-DATE
+> Task :shared:preAndroidMainBuild UP-TO-DATE
+> Task :shared:generateAndroidMainEmptyResourceFiles
+> Task :app:compileDebugAidl
+
+> Task :heycyan-core:core-connectivity:compileDebugJavaWithJavac
+/home/runner/work/AD-Glasses/AD-Glasses/heycyan-core/core-connectivity/src/main/java/com/glasssutdio/wear/wifi/LocationUtils.java:35: warning: [unchecked] unchecked method invocation: method next in class Elvis is applied to given types
+        return Elvis.m176of(locationManager).next(new Function() {
+                                                 ^
+  required: Function<? super T,? extends S>
+  found:    <anonymous Function>
+  where T,S are type-variables:
+    T extends Object declared in class Elvis
+    S extends Object declared in method <S>next(Function<? super T,? extends S>)
+/home/runner/work/AD-Glasses/AD-Glasses/heycyan-core/core-connectivity/src/main/java/com/glasssutdio/wear/wifi/LocationUtils.java:35: warning: [unchecked] unchecked conversion
+        return Elvis.m176of(locationManager).next(new Function() {
+                                                  ^
+  required: Function<? super T,? extends S>
+  found:    <anonymous Function>
+  where T,S are type-variables:
+    T extends Object declared in class Elvis
+    S extends Object declared in method <S>next(Function<? super T,? extends S>)
+/home/runner/work/AD-Glasses/AD-Glasses/heycyan-core/core-connectivity/src/main/java/com/glasssutdio/wear/wifi/LocationUtils.java:40: warning: [unchecked] unchecked method invocation: method next in class Elvis is applied to given types
+        }).getBoolean() || Elvis.m176of(locationManager).next(new Function() {
+                                                             ^
+  required: Function<? super T,? extends S>
+  found:    <anonymous Function>
+  where T,S are type-variables:
+    T extends Object declared in class Elvis
+    S extends Object declared in method <S>next(Function<? super T,? extends S>)
+/home/runner/work/AD-Glasses/AD-Glasses/heycyan-core/core-connectivity/src/main/java/com/glasssutdio/wear/wifi/LocationUtils.java:40: warning: [unchecked] unchecked conversion
+        }).getBoolean() || Elvis.m176of(locationManager).next(new Function() {
+                                                              ^
+  required: Function<? super T,? extends S>
+  found:    <anonymous Function>
+  where T,S are type-variables:
+    T extends Object declared in class Elvis
+    S extends Object declared in method <S>next(Function<? super T,? extends S>)
+/home/runner/work/AD-Glasses/AD-Glasses/heycyan-core/core-connectivity/src/main/java/com/glasssutdio/wear/wifi/WeakHandler.java:27: warning: [unchecked] unchecked call to WeakReference(T) as a member of the raw type WeakReference
+        this.mExec = new ExecHandler((WeakReference<Handler.Callback>) new WeakReference(callback));
+                                                                       ^
+  where T is a type-variable:
+    T extends Object declared in class WeakReference
+/home/runner/work/AD-Glasses/AD-Glasses/heycyan-core/core-connectivity/src/main/java/com/glasssutdio/wear/wifi/WeakHandler.java:27: warning: [unchecked] unchecked cast
+        this.mExec = new ExecHandler((WeakReference<Handler.Callback>) new WeakReference(callback));
+                                                                       ^
+  required: WeakReference<Callback>
+  found:    WeakReference
+/home/runner/work/AD-Glasses/AD-Glasses/heycyan-core/core-connectivity/src/main/java/com/glasssutdio/wear/wifi/WeakHandler.java:41: warning: [unchecked] unchecked call to WeakReference(T) as a member of the raw type WeakReference
+        this.mExec = new ExecHandler(looper, new WeakReference(callback));
+                                             ^
+  where T is a type-variable:
+    T extends Object declared in class WeakReference
+/home/runner/work/AD-Glasses/AD-Glasses/heycyan-core/core-connectivity/src/main/java/com/glasssutdio/wear/wifi/WeakHandler.java:41: warning: [unchecked] unchecked method invocation: constructor <init> in class ExecHandler is applied to given types
+        this.mExec = new ExecHandler(looper, new WeakReference(callback));
+                     ^
+  required: Looper,WeakReference<Callback>
+  found:    Looper,WeakReference
+/home/runner/work/AD-Glasses/AD-Glasses/heycyan-core/core-connectivity/src/main/java/com/glasssutdio/wear/wifi/WeakHandler.java:41: warning: [unchecked] unchecked conversion
+        this.mExec = new ExecHandler(looper, new WeakReference(callback));
+                                             ^
+  required: WeakReference<Callback>
+  found:    WeakReference
+/home/runner/work/AD-Glasses/AD-Glasses/heycyan-core/core-connectivity/src/main/java/com/glasssutdio/wear/wifi/WeakHandler.java:142: warning: [deprecation] Handler() in Handler has been deprecated
+        ExecHandler() {
+                      ^
+/home/runner/work/AD-Glasses/AD-Glasses/heycyan-core/core-connectivity/src/main/java/com/glasssutdio/wear/wifi/WeakHandler.java:146: warning: [deprecation] Handler() in Handler has been deprecated
+        ExecHandler(WeakReference<Handler.Callback> callback) {
+                                                              ^
+/home/runner/work/AD-Glasses/AD-Glasses/heycyan-core/core-connectivity/src/main/java/com/glasssutdio/wear/wifi/WeakHandler.java:203: warning: [unchecked] unchecked call to WeakReference(T) as a member of the raw type WeakReference
+            this.wrapper = new WeakRunnable(new WeakReference(r), new WeakReference(this));
+                                            ^
+  where T is a type-variable:
+    T extends Object declared in class WeakReference
+/home/runner/work/AD-Glasses/AD-Glasses/heycyan-core/core-connectivity/src/main/java/com/glasssutdio/wear/wifi/WeakHandler.java:203: warning: [unchecked] unchecked call to WeakReference(T) as a member of the raw type WeakReference
+            this.wrapper = new WeakRunnable(new WeakReference(r), new WeakReference(this));
+                                                                  ^
+  where T is a type-variable:
+    T extends Object declared in class WeakReference
+/home/runner/work/AD-Glasses/AD-Glasses/heycyan-core/core-connectivity/src/main/java/com/glasssutdio/wear/wifi/WeakHandler.java:203: warning: [unchecked] unchecked method invocation: constructor <init> in class WeakRunnable is applied to given types
+            this.wrapper = new WeakRunnable(new WeakReference(r), new WeakReference(this));
+                           ^
+  required: WeakReference<Runnable>,WeakReference<ChainedRef>
+  found:    WeakReference,WeakReference
+/home/runner/work/AD-Glasses/AD-Glasses/heycyan-core/core-connectivity/src/main/java/com/glasssutdio/wear/wifi/WeakHandler.java:203: warning: [unchecked] unchecked conversion
+            this.wrapper = new WeakRunnable(new WeakReference(r), new WeakReference(this));
+                                            ^
+  required: WeakReference<Runnable>
+  found:    WeakReference
+/home/runner/work/AD-Glasses/AD-Glasses/heycyan-core/core-connectivity/src/main/java/com/glasssutdio/wear/wifi/WeakHandler.java:203: warning: [unchecked] unchecked conversion
+            this.wrapper = new WeakRunnable(new WeakReference(r), new WeakReference(this));
+                                                                  ^
+  required: WeakReference<ChainedRef>
+  found:    WeakReference
+
+> Task :app:processDebugNavigationResources
+> Task :assistant-role:generateDebugResources
+> Task :assistant-role:packageDebugResources
+> Task :app:parseDebugLocalResources
+> Task :assistant-role:parseDebugLocalResources
+> Task :assistant-role:javaPreCompileDebug
+> Task :moonshine-voice:generateDebugResources
+> Task :moonshine-voice:packageDebugResources
+> Task :assistant-role:generateDebugRFile
+> Task :app:generateDebugRFile
+> Task :moonshine-voice:parseDebugLocalResources
+
+> Task :heycyan-core:core-connectivity:compileDebugJavaWithJavac
+/home/runner/work/AD-Glasses/AD-Glasses/heycyan-core/core-connectivity/src/main/java/com/heycyan/core/connectivity/p2p/CoreWifiP2pBroadcastReceiver.java:43: warning: [deprecation] NetworkInfo in android.net has been deprecated
+            NetworkInfo networkInfo = getNetworkInfo(intent);
+            ^
+/home/runner/work/AD-Glasses/AD-Glasses/heycyan-core/core-connectivity/src/main/java/com/heycyan/core/connectivity/p2p/CoreWifiP2pBroadcastReceiver.java:44: warning: [deprecation] isConnected() in NetworkInfo has been deprecated
+            boolean connected = networkInfo != null && networkInfo.isConnected();
+                                                                  ^
+18 warnings
+
+> Task :heycyan-core:core-connectivity:processDebugJavaRes NO-SOURCE
+> Task :heycyan-core:core-connectivity:bundleLibRuntimeToJarDebug
+> Task :heycyan-core:core-connectivity:bundleLibCompileToJarDebug
+> Task :moonshine-voice:javaPreCompileDebug
+> Task :moonshine-voice:generateDebugRFile
+> Task :shared:kmpPartiallyResolvedDependenciesChecker
+> Task :moonshine-voice:compileDebugJavaWithJavac NO-SOURCE
+> Task :shared:checkKotlinGradlePluginConfigurationErrors SKIPPED
+> Task :shared:convertXmlValueResourcesForAndroidMain NO-SOURCE
+> Task :shared:copyNonXmlValueResourcesForAndroidMain NO-SOURCE
+> Task :shared:prepareComposeResourcesTaskForAndroidMain NO-SOURCE
+> Task :shared:generateResourceAccessorsForAndroidMain NO-SOURCE
+> Task :moonshine-voice:bundleLibCompileToJarDebug
+> Task :shared:generateResourceAccessorsForCommonMain
+> Task :shared:generateActualResourceCollectorsForAndroidMain
+> Task :shared:generateComposeResClass
+> Task :shared:generateExpectResourceCollectorsForCommonMain
+> Task :assistant-role:compileDebugKotlin
+> Task :assistant-role:compileDebugJavaWithJavac NO-SOURCE
+> Task :assistant-role:bundleLibCompileToJarDebug
+> Task :app:javaPreCompileDebug
+> Task :assistant-role:writeDebugAarMetadata
+> Task :moonshine-voice:writeDebugAarMetadata
+> Task :shared:writeAndroidMainAarMetadata
+> Task :app:mapDebugSourceSetPaths
+> Task :app:checkDebugAarMetadata
+> Task :app:compileDebugNavigationResources
+> Task :app:createDebugCompatibleScreenManifests
+> Task :app:extractDeepLinksDebug
+> Task :assistant-role:extractDeepLinksDebug
+> Task :moonshine-voice:extractDeepLinksDebug
+> Task :assistant-role:processDebugManifest
+> Task :moonshine-voice:processDebugManifest
+> Task :shared:processAndroidMainManifest
+> Task :assistant-role:mapDebugSourceSetPaths
+> Task :app:mergeDebugResources
+> Task :app:processDebugMainManifest
+> Task :app:processDebugManifest
+> Task :assistant-role:compileDebugLibraryResources
+> Task :moonshine-voice:mapDebugSourceSetPaths
+> Task :moonshine-voice:compileDebugLibraryResources
+> Task :app:processDebugManifestForPackage
+> Task :app:preDebugUnitTestBuild
+> Task :app:generateDebugAssets UP-TO-DATE
+> Task :assistant-role:generateDebugAssets UP-TO-DATE
+> Task :app:javaPreCompileDebugUnitTest
+> Task :assistant-role:mergeDebugAssets
+> Task :moonshine-voice:generateDebugAssets UP-TO-DATE
+> Task :moonshine-voice:mergeDebugAssets
+> Task :app:mergeDebugAssets
+> Task :app:mergeDebugUnitTestManifest
+> Task :app:processDebugUnitTestManifest
+> Task :assistant-role:bundleLibRuntimeToJarDebug
+> Task :assistant-role:processDebugJavaRes
+> Task :moonshine-voice:processDebugJavaRes NO-SOURCE
+> Task :assistant-role:preDebugUnitTestBuild UP-TO-DATE
+> Task :moonshine-voice:bundleLibRuntimeToJarDebug
+> Task :assistant-role:javaPreCompileDebugUnitTest
+> Task :moonshine-voice:preDebugUnitTestBuild UP-TO-DATE
+> Task :assistant-role:generateDebugUnitTestStubRFile
+> Task :app:processDebugResources
+> Task :moonshine-voice:generateDebugUnitTestStubRFile
+> Task :app:packageDebugUnitTestForUnitTest
+> Task :assistant-role:compileDebugUnitTestKotlin NO-SOURCE
+> Task :app:generateDebugUnitTestConfig
+> Task :assistant-role:compileDebugUnitTestJavaWithJavac NO-SOURCE
+> Task :assistant-role:processDebugUnitTestJavaRes NO-SOURCE
+> Task :assistant-role:testDebugUnitTest NO-SOURCE
+> Task :assistant-role:test UP-TO-DATE
+> Task :moonshine-voice:javaPreCompileDebugUnitTest
+> Task :moonshine-voice:processDebugUnitTestJavaRes NO-SOURCE
+> Task :moonshine-voice:compileDebugUnitTestJavaWithJavac NO-SOURCE
+> Task :moonshine-voice:testDebugUnitTest NO-SOURCE
+> Task :moonshine-voice:test UP-TO-DATE
+
+> Task :shared:compileAndroidMain FAILED
+e: file:///home/runner/work/AD-Glasses/AD-Glasses/android/CyanBridge/shared/src/commonMain/kotlin/com/fersaiyan/cyanbridge/shared/ui/glasses/GlassesDashboardScreen.kt:50:48 Unresolved reference 'GlassesAssistantMode'.
+e: file:///home/runner/work/AD-Glasses/AD-Glasses/android/CyanBridge/shared/src/commonMain/kotlin/com/fersaiyan/cyanbridge/shared/ui/glasses/GlassesDashboardScreen.kt:736:24 Unresolved reference 'GlassesAssistantMode'.
+e: file:///home/runner/work/AD-Glasses/AD-Glasses/android/CyanBridge/shared/src/commonMain/kotlin/com/fersaiyan/cyanbridge/shared/ui/glasses/GlassesDashboardScreen.kt:737:38 Unresolved reference 'assistantMode'.
+e: file:///home/runner/work/AD-Glasses/AD-Glasses/android/CyanBridge/shared/src/commonMain/kotlin/com/fersaiyan/cyanbridge/shared/ui/glasses/GlassesDashboardScreen.kt:743:24 Unresolved reference 'GlassesAssistantMode'.
+e: file:///home/runner/work/AD-Glasses/AD-Glasses/android/CyanBridge/shared/src/commonMain/kotlin/com/fersaiyan/cyanbridge/shared/ui/glasses/GlassesDashboardScreen.kt:744:38 Unresolved reference 'assistantMode'.
+e: file:///home/runner/work/AD-Glasses/AD-Glasses/android/CyanBridge/shared/src/commonMain/kotlin/com/fersaiyan/cyanbridge/shared/ui/glasses/GlassesDashboardScreen.kt:766:57 Unresolved reference 'OpenExternalImageAutomationDiagnostics'.
+e: file:///home/runner/work/AD-Glasses/AD-Glasses/android/CyanBridge/shared/src/commonMain/kotlin/com/fersaiyan/cyanbridge/shared/ui/glasses/GlassesDashboardScreen.kt:875:11 Unresolved reference 'GlassesAssistantMode'.
+e: file:///home/runner/work/AD-Glasses/AD-Glasses/android/CyanBridge/shared/src/commonMain/kotlin/com/fersaiyan/cyanbridge/shared/ui/glasses/GlassesDashboardScreen.kt:876:19 Unresolved reference 'GlassesAssistantMode'.
+e: file:///home/runner/work/AD-Glasses/AD-Glasses/android/CyanBridge/shared/src/commonMain/kotlin/com/fersaiyan/cyanbridge/shared/ui/glasses/GlassesDashboardScreen.kt:882:53 Unresolved reference 'SelectAssistantMode'.
+
+[Incubating] Problems report is available at: file:///home/runner/work/AD-Glasses/AD-Glasses/android/CyanBridge/build/reports/problems/problems-report.html
+
+FAILURE: Build failed with an exception.
+
+* What went wrong:
+Execution failed for task ':shared:compileAndroidMain' (registered by plugin 'com.android.internal.kotlin.multiplatform.library').
+> A failure occurred while executing org.jetbrains.kotlin.compilerRunner.btapi.BuildToolsApiCompilationWork
+   > Compilation error. See log for more details
+
+* Try:
+> Run with --stacktrace option to get the stack trace.
+> Run with --info or --debug option to get more log output.
+> Run with --scan to get full insights from a Build Scan (powered by Develocity).
+> Get more help at https://help.gradle.org.
+
+BUILD FAILED in 2m 52s
+85 actionable tasks: 85 executed
+To honour the JVM settings for this build a single-use Daemon process will be forked. For more on this, please refer to https://docs.gradle.org/9.5.0/userguide/gradle_daemon.html#sec:disabling_the_daemon in the Gradle documentation.
+Daemon will be stopped at the end of the build 
+
+> Configure project :app
+No GitHub package token configured - Meta Wearables DAT SDK dependencies will be skipped.
+
+> Task :heycyan-core:core-connectivity:preBuild UP-TO-DATE
+> Task :heycyan-core:core-connectivity:preDebugBuild UP-TO-DATE
+> Task :shared:convertXmlValueResourcesForCommonMain UP-TO-DATE
+> Task :heycyan-core:core-connectivity:processDebugNavigationResources UP-TO-DATE
+> Task :heycyan-core:core-connectivity:generateDebugResources UP-TO-DATE
+> Task :shared:copyNonXmlValueResourcesForCommonMain NO-SOURCE
+> Task :heycyan-core:core-connectivity:packageDebugResources UP-TO-DATE
+> Task :shared:prepareComposeResourcesTaskForCommonMain UP-TO-DATE
+> Task :heycyan-core:core-connectivity:parseDebugLocalResources UP-TO-DATE
+> Task :app:syncSharedComposeResources UP-TO-DATE
+> Task :app:preBuild UP-TO-DATE
+> Task :app:preDebugBuild UP-TO-DATE
+> Task :app:mergeDebugNativeDebugMetadata NO-SOURCE
+> Task :heycyan-core:core-connectivity:generateDebugRFile UP-TO-DATE
+> Task :heycyan-core:core-connectivity:compileDebugKotlin NO-SOURCE
+> Task :heycyan-core:core-connectivity:javaPreCompileDebug UP-TO-DATE
+> Task :heycyan-core:core-connectivity:compileDebugJavaWithJavac UP-TO-DATE
+> Task :heycyan-core:core-connectivity:bundleLibCompileToJarDebug UP-TO-DATE
+> Task :heycyan-core:core-connectivity:generateDebugAssets UP-TO-DATE
+> Task :heycyan-core:core-connectivity:mergeDebugAssets UP-TO-DATE
+> Task :heycyan-core:core-connectivity:processDebugJavaRes NO-SOURCE
+> Task :heycyan-core:core-connectivity:writeDebugAarMetadata UP-TO-DATE
+> Task :heycyan-core:core-connectivity:extractDeepLinksDebug UP-TO-DATE
+> Task :heycyan-core:core-connectivity:processDebugManifest UP-TO-DATE
+> Task :heycyan-core:core-connectivity:mapDebugSourceSetPaths UP-TO-DATE
+> Task :heycyan-core:core-connectivity:compileDebugLibraryResources UP-TO-DATE
+> Task :heycyan-core:core-connectivity:bundleLibRuntimeToDirDebug
+> Task :heycyan-core:core-connectivity:mergeDebugJniLibFolders
+> Task :heycyan-core:core-connectivity:mergeDebugNativeLibs NO-SOURCE
+> Task :heycyan-core:core-connectivity:copyDebugJniLibsProjectOnly
+> Task :app:compileDebugAidl UP-TO-DATE
+> Task :app:generateDebugBuildConfig UP-TO-DATE
+> Task :app:generateDebugResources UP-TO-DATE
+> Task :app:packageDebugResources UP-TO-DATE
+> Task :assistant-role:preBuild UP-TO-DATE
+> Task :assistant-role:preDebugBuild UP-TO-DATE
+> Task :assistant-role:processDebugNavigationResources UP-TO-DATE
+> Task :moonshine-voice:preBuild UP-TO-DATE
+> Task :moonshine-voice:preDebugBuild UP-TO-DATE
+> Task :moonshine-voice:processDebugNavigationResources UP-TO-DATE
+> Task :shared:androidPreBuild UP-TO-DATE
+> Task :shared:preAndroidMainBuild UP-TO-DATE
+> Task :shared:generateAndroidMainEmptyResourceFiles UP-TO-DATE
+> Task :app:processDebugNavigationResources UP-TO-DATE
+> Task :app:parseDebugLocalResources UP-TO-DATE
+> Task :app:generateDebugRFile UP-TO-DATE
+> Task :assistant-role:generateDebugResources UP-TO-DATE
+> Task :assistant-role:packageDebugResources UP-TO-DATE
+> Task :assistant-role:parseDebugLocalResources UP-TO-DATE
+> Task :assistant-role:generateDebugRFile UP-TO-DATE
+> Task :assistant-role:compileDebugKotlin UP-TO-DATE
+> Task :assistant-role:javaPreCompileDebug UP-TO-DATE
+> Task :assistant-role:compileDebugJavaWithJavac NO-SOURCE
+> Task :assistant-role:bundleLibCompileToJarDebug UP-TO-DATE
+> Task :moonshine-voice:generateDebugResources UP-TO-DATE
+> Task :moonshine-voice:packageDebugResources UP-TO-DATE
+> Task :moonshine-voice:parseDebugLocalResources UP-TO-DATE
+> Task :moonshine-voice:generateDebugRFile UP-TO-DATE
+> Task :moonshine-voice:javaPreCompileDebug UP-TO-DATE
+> Task :moonshine-voice:compileDebugJavaWithJavac NO-SOURCE
+> Task :moonshine-voice:bundleLibCompileToJarDebug UP-TO-DATE
+> Task :shared:kmpPartiallyResolvedDependenciesChecker
+> Task :shared:checkKotlinGradlePluginConfigurationErrors SKIPPED
+> Task :shared:convertXmlValueResourcesForAndroidMain NO-SOURCE
+> Task :shared:copyNonXmlValueResourcesForAndroidMain NO-SOURCE
+> Task :shared:prepareComposeResourcesTaskForAndroidMain NO-SOURCE
+> Task :shared:generateResourceAccessorsForAndroidMain NO-SOURCE
+> Task :shared:generateResourceAccessorsForCommonMain UP-TO-DATE
+> Task :shared:generateActualResourceCollectorsForAndroidMain UP-TO-DATE
+> Task :shared:generateComposeResClass UP-TO-DATE
+> Task :shared:generateExpectResourceCollectorsForCommonMain UP-TO-DATE
+> Task :app:javaPreCompileDebug UP-TO-DATE
+> Task :app:generateDebugAssets UP-TO-DATE
+> Task :assistant-role:generateDebugAssets UP-TO-DATE
+> Task :assistant-role:mergeDebugAssets UP-TO-DATE
+> Task :moonshine-voice:generateDebugAssets UP-TO-DATE
+> Task :moonshine-voice:mergeDebugAssets UP-TO-DATE
+> Task :app:mergeDebugAssets UP-TO-DATE
+> Task :app:compressDebugAssets
+> Task :app:generateDebugGlobalSynthetics
+> Task :assistant-role:processDebugJavaRes UP-TO-DATE
+> Task :moonshine-voice:processDebugJavaRes NO-SOURCE
+> Task :assistant-role:bundleLibRuntimeToDirDebug
+> Task :app:checkDebugDuplicateClasses
+> Task :moonshine-voice:bundleLibRuntimeToDirDebug
+> Task :assistant-role:writeDebugAarMetadata UP-TO-DATE
+> Task :moonshine-voice:writeDebugAarMetadata UP-TO-DATE
+> Task :shared:writeAndroidMainAarMetadata UP-TO-DATE
+> Task :app:checkDebugAarMetadata UP-TO-DATE
+> Task :app:mapDebugSourceSetPaths UP-TO-DATE
+> Task :app:compileDebugNavigationResources UP-TO-DATE
+> Task :app:mergeDebugResources UP-TO-DATE
+> Task :app:createDebugCompatibleScreenManifests UP-TO-DATE
+> Task :app:extractDeepLinksDebug UP-TO-DATE
+> Task :assistant-role:extractDeepLinksDebug UP-TO-DATE
+> Task :assistant-role:processDebugManifest UP-TO-DATE
+> Task :moonshine-voice:extractDeepLinksDebug UP-TO-DATE
+> Task :moonshine-voice:processDebugManifest UP-TO-DATE
+> Task :shared:processAndroidMainManifest UP-TO-DATE
+> Task :app:processDebugMainManifest UP-TO-DATE
+> Task :app:processDebugManifest UP-TO-DATE
+> Task :app:processDebugManifestForPackage UP-TO-DATE
+> Task :assistant-role:mapDebugSourceSetPaths UP-TO-DATE
+> Task :assistant-role:compileDebugLibraryResources UP-TO-DATE
+> Task :moonshine-voice:mapDebugSourceSetPaths UP-TO-DATE
+> Task :moonshine-voice:compileDebugLibraryResources UP-TO-DATE
+> Task :app:processDebugResources UP-TO-DATE
+> Task :app:mergeDebugJniLibFolders
+> Task :assistant-role:mergeDebugJniLibFolders
+> Task :assistant-role:mergeDebugNativeLibs NO-SOURCE
+> Task :assistant-role:copyDebugJniLibsProjectOnly
+
+> Task :moonshine-voice:configureCMakeDebug[arm64-v8a]
+Checking the license for package CMake 3.22.1 in /usr/local/lib/android/sdk/licenses
+License for package CMake 3.22.1 accepted.
+Preparing "Install CMake 3.22.1 v.3.22.1".
+
+> Task :app:desugarDebugFileDependencies
+
+> Task :moonshine-voice:configureCMakeDebug[arm64-v8a]
+"Install CMake 3.22.1 v.3.22.1" ready.
+Installing CMake 3.22.1 in /usr/local/lib/android/sdk/cmake/3.22.1
+"Install CMake 3.22.1 v.3.22.1" complete.
+"Install CMake 3.22.1 v.3.22.1" finished.
+
+> Task :moonshine-voice:configureCMakeDebug[arm64-v8a] FAILED
+> Task :shared:compileAndroidMain
+e: file:///home/runner/work/AD-Glasses/AD-Glasses/android/CyanBridge/shared/src/commonMain/kotlin/com/fersaiyan/cyanbridge/shared/ui/glasses/GlassesDashboardScreen.kt:50:48 Unresolved reference 'GlassesAssistantMode'.
+e: file:///home/runner/work/AD-Glasses/AD-Glasses/android/CyanBridge/shared/src/commonMain/kotlin/com/fersaiyan/cyanbridge/shared/ui/glasses/GlassesDashboardScreen.kt:736:24 Unresolved reference 'GlassesAssistantMode'.
+e: file:///home/runner/work/AD-Glasses/AD-Glasses/android/CyanBridge/shared/src/commonMain/kotlin/com/fersaiyan/cyanbridge/shared/ui/glasses/GlassesDashboardScreen.kt:737:38 Unresolved reference 'assistantMode'.
+e: file:///home/runner/work/AD-Glasses/AD-Glasses/android/CyanBridge/shared/src/commonMain/kotlin/com/fersaiyan/cyanbridge/shared/ui/glasses/GlassesDashboardScreen.kt:743:24 Unresolved reference 'GlassesAssistantMode'.
+e: file:///home/runner/work/AD-Glasses/AD-Glasses/android/CyanBridge/shared/src/commonMain/kotlin/com/fersaiyan/cyanbridge/shared/ui/glasses/GlassesDashboardScreen.kt:744:38 Unresolved reference 'assistantMode'.
+e: file:///home/runner/work/AD-Glasses/AD-Glasses/android/CyanBridge/shared/src/commonMain/kotlin/com/fersaiyan/cyanbridge/shared/ui/glasses/GlassesDashboardScreen.kt:766:57 Unresolved reference 'OpenExternalImageAutomationDiagnostics'.
+e: file:///home/runner/work/AD-Glasses/AD-Glasses/android/CyanBridge/shared/src/commonMain/kotlin/com/fersaiyan/cyanbridge/shared/ui/glasses/GlassesDashboardScreen.kt:875:11 Unresolved reference 'GlassesAssistantMode'.
+e: file:///home/runner/work/AD-Glasses/AD-Glasses/android/CyanBridge/shared/src/commonMain/kotlin/com/fersaiyan/cyanbridge/shared/ui/glasses/GlassesDashboardScreen.kt:876:19 Unresolved reference 'GlassesAssistantMode'.
+e: file:///home/runner/work/AD-Glasses/AD-Glasses/android/CyanBridge/shared/src/commonMain/kotlin/com/fersaiyan/cyanbridge/shared/ui/glasses/GlassesDashboardScreen.kt:882:53 Unresolved reference 'SelectAssistantMode'.
+
+> Task :shared:compileAndroidMain FAILED
+
+[Incubating] Problems report is available at: file:///home/runner/work/AD-Glasses/AD-Glasses/android/CyanBridge/build/reports/problems/problems-report.html
+
+FAILURE: Build completed with 2 failures.
+
+1: Task failed with an exception.
+-----------
+* What went wrong:
+Execution failed for task ':moonshine-voice:configureCMakeDebug[arm64-v8a]' (registered by plugin 'com.android.internal.library').
+> [CXX1400] Gradle project cmake.path is /home/runner/work/AD-Glasses/AD-Glasses/third_party/moonshine/core/CMakeLists.txt but that file doesn't exist
+
+* Try:
+> Run with --stacktrace option to get the stack trace.
+> Run with --info or --debug option to get more log output.
+> Run with --scan to get full insights from a Build Scan (powered by Develocity).
+> Get more help at https://help.gradle.org.
+==============================================================================
+
+2: Task failed with an exception.
+-----------
+* What went wrong:
+Execution failed for task ':shared:compileAndroidMain' (registered by plugin 'com.android.internal.kotlin.multiplatform.library').
+> A failure occurred while executing org.jetbrains.kotlin.compilerRunner.btapi.BuildToolsApiCompilationWork
+   > Compilation error. See log for more details
+
+* Try:
+> Run with --stacktrace option to get the stack trace.
+> Run with --info or --debug option to get more log output.
+> Run with --scan to get full insights from a Build Scan (powered by Develocity).
+> Get more help at https://help.gradle.org.
+==============================================================================
+
+BUILD FAILED in 49s
+86 actionable tasks: 15 executed, 71 up-to-date
+test_status=1
+build_status=1

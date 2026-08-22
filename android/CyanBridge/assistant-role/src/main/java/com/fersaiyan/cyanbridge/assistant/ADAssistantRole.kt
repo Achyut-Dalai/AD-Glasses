@@ -15,8 +15,8 @@ import android.speech.SpeechRecognizer
  * System-role integration for AD Glasses.
  *
  * The glasses wake word remains the product's primary entry point. The Android Assistant role
- * gives AD a first-class, screen-off system integration point instead of making the product
- * launch Gemini/ChatGPT activities in the background.
+ * gives AD a first-class, screen-off system integration point without handing requests to a
+ * consumer assistant app.
  */
 object ADAssistantRole {
     data class State(
@@ -77,8 +77,8 @@ class ADVoiceInteractionSession(context: Context) : VoiceInteractionSession(cont
  * Required recognition endpoint for the Assistant role metadata.
  *
  * Glasses audio does not enter through Android SpeechRecognizer, so this endpoint deliberately
- * refuses microphone recognition for now instead of opening a second phone-microphone pipeline.
- * Moonshine/local recognition can be delegated here later for phone-initiated AD sessions.
+ * refuses phone-microphone recognition for now instead of opening a second microphone pipeline.
+ * A bounded AD recognizer can be connected here later without changing inference providers.
  */
 class ADRecognitionService : RecognitionService() {
     override fun onStartListening(recognizerIntent: Intent, listener: Callback) {

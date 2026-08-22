@@ -42,9 +42,7 @@ fun ADGlassesApp(
     val navigateTo: (ADRoute) -> Unit = { destination ->
         if (destination != routeStack.last()) routeStack = routeStack + destination
     }
-    val navigateBack = {
-        if (routeStack.size > 1) routeStack = routeStack.dropLast(1)
-    }
+    val navigateBack = { if (routeStack.size > 1) routeStack = routeStack.dropLast(1) }
 
     LaunchedEffect(externalRequest?.id) {
         val request = externalRequest ?: return@LaunchedEffect
@@ -97,15 +95,10 @@ fun ADGlassesApp(
             modifier = Modifier.fillMaxSize(),
             containerColor = MaterialTheme.colorScheme.background,
             contentWindowInsets = WindowInsets.safeDrawing,
-            bottomBar = {
-                if (route == ADRoute.MAIN) ADBottomNavigation(selectedTab) { selectedTab = it }
-            },
+            bottomBar = { if (route == ADRoute.MAIN) ADBottomNavigation(selectedTab) { selectedTab = it } },
         ) { innerPadding ->
             Box(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .padding(innerPadding)
-                    .consumeWindowInsets(innerPadding),
+                modifier = Modifier.fillMaxSize().padding(innerPadding).consumeWindowInsets(innerPadding),
             ) {
                 when (route) {
                     ADRoute.MAIN -> when (selectedTab) {
@@ -123,9 +116,8 @@ fun ADGlassesApp(
                             },
                         )
                         ADTab.AI -> ADNativeAiScreen(
-                            onRelaySettings = { navigateTo(ADRoute.AI_RELAY) },
+                            onCloudSettings = { navigateTo(ADRoute.AI_CLOUD) },
                             onLocalSettings = { navigateTo(ADRoute.AI_LOCAL) },
-                            onAssistantApps = { navigateTo(ADRoute.AI_ASSISTANT_APPS) },
                         )
                         ADTab.LIBRARY -> ADExpressiveLibraryHome(
                             transferActive = dashboardState.transfer.isVisible,
@@ -153,23 +145,17 @@ fun ADGlassesApp(
                             if (Build.VERSION.SDK_INT >= 33) {
                                 val opened = runCatching {
                                     context.startActivity(
-                                        Intent(
-                                            Settings.ACTION_APP_LOCALE_SETTINGS,
-                                            Uri.parse("package:${context.packageName}"),
-                                        ),
+                                        Intent(Settings.ACTION_APP_LOCALE_SETTINGS, Uri.parse("package:${context.packageName}")),
                                     )
                                 }.isSuccess
                                 if (!opened) navigateTo(ADRoute.LANGUAGE)
-                            } else {
-                                navigateTo(ADRoute.LANGUAGE)
-                            }
+                            } else navigateTo(ADRoute.LANGUAGE)
                         },
                         onPermissions = { navigateTo(ADRoute.PERMISSIONS) },
                         onAbout = { navigateTo(ADRoute.ABOUT) },
                     )
-                    ADRoute.AI_RELAY -> ADNativeRelaySettingsScreen(navigateBack)
+                    ADRoute.AI_CLOUD -> ADNativeCloudAiSettingsScreen(navigateBack)
                     ADRoute.AI_LOCAL -> ADNativeLocalAiSettingsScreen(navigateBack)
-                    ADRoute.AI_ASSISTANT_APPS -> ADAssistantAppsScreen(navigateBack)
                     ADRoute.PRIVACY -> ADPrivacyCenterScreen(navigateBack)
                     ADRoute.STORAGE -> ADStorageScreen(navigateBack)
                     ADRoute.LANGUAGE -> ADLanguageScreen(navigateBack)

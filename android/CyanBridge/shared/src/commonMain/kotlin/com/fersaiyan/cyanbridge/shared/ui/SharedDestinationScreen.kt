@@ -456,7 +456,7 @@ private class SharedSettingsScreenActions(
 private const val SHARED_SETTINGS_PREFS = "cyanbridge_shared_settings"
 
 private fun loadSharedSettings(preferences: PlatformPreferences): SettingsUiState = SettingsUiState(
-    providerType = AgentProviderType.valueOf(preferences.getString("provider_type", AgentProviderType.PRO_SUBSCRIPTION.name)),
+    providerType = AgentProviderType.valueOf(preferences.getString("provider_type", AgentProviderType.CLOUD_AI.name)),
     memoryMode = MemoryPrivacyMode.fromRaw(preferences.getString("memory_mode", MemoryPrivacyMode.PRIVATE_LOCAL.name)),
     syncExplicit = preferences.getBoolean("sync_explicit", true),
     syncDaily = preferences.getBoolean("sync_daily", true),

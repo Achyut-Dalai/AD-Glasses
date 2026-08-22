@@ -13,31 +13,27 @@ class AssistantRequestRouterTest {
     private val router = AssistantRequestRouter()
 
     @Test
-    fun `imperative request routes to UI task`() {
+    fun `imperative phone request is not classified as UI automation`() {
         val decision = router.classifyHeuristically(
             AssistantRequest("Open Spotify and play my liked songs", AssistantRequestSource.GLASSES_VOICE)
         )
-
-        assertEquals(AssistantIntent.EXECUTE_UI_TASK, decision?.intent)
-        assertEquals("Open Spotify and play my liked songs", decision?.normalizedGoal)
+        assertNull(decision)
     }
 
     @Test
-    fun `courteous command routes to UI task`() {
+    fun `courteous phone command is not classified as UI automation`() {
         val decision = router.classifyHeuristically(
             AssistantRequest("Can you open Settings for me?", AssistantRequestSource.GLASSES_VOICE)
         )
-
-        assertEquals(AssistantIntent.EXECUTE_UI_TASK, decision?.intent)
+        assertNull(decision)
     }
 
     @Test
-    fun `read current app request routes to UI task`() {
+    fun `read app request is not classified as UI automation`() {
         val decision = router.classifyHeuristically(
             AssistantRequest("Read my WhatsApp messages", AssistantRequestSource.GLASSES_VOICE)
         )
-
-        assertEquals(AssistantIntent.EXECUTE_UI_TASK, decision?.intent)
+        assertNull(decision)
     }
 
     @Test
@@ -45,7 +41,6 @@ class AssistantRequestRouterTest {
         val decision = router.classifyHeuristically(
             AssistantRequest("How do I open Bluetooth settings?", AssistantRequestSource.GLASSES_VOICE)
         )
-
         assertEquals(AssistantIntent.ANSWER_QUESTION, decision?.intent)
     }
 
@@ -54,31 +49,14 @@ class AssistantRequestRouterTest {
         val decision = router.classifyHeuristically(
             AssistantRequest("What am I looking at?", AssistantRequestSource.GLASSES_VOICE)
         )
-
         assertEquals(AssistantIntent.ANALYZE_IMAGE, decision?.intent)
     }
 
     @Test
-    fun `ambiguous request defers to model classifier`() {
+    fun `ambiguous request defers to normal answer path`() {
         val decision = router.classifyHeuristically(
             AssistantRequest("I need some help with Spotify", AssistantRequestSource.GLASSES_VOICE)
         )
-
         assertNull(decision)
-    }
-
-    @Test
-    fun `parses fenced classifier response`() {
-        val decision = router.parseDecision(
-            """
-                ```json
-                {"intent":"EXECUTE_UI_TASK","confidence":0.94,"goal":"Open Spotify","clarification":null}
-                ```
-            """.trimIndent()
-        )
-
-        assertEquals(AssistantIntent.EXECUTE_UI_TASK, decision.intent)
-        assertEquals(0.94, decision.confidence, 0.001)
-        assertEquals("Open Spotify", decision.normalizedGoal)
     }
 }

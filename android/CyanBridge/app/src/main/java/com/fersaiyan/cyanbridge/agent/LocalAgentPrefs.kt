@@ -1,18 +1,14 @@
 package com.fersaiyan.cyanbridge.agent
 
 import android.content.Context
-import com.fersaiyan.cyanbridge.shared.glasses.GlassesAssistantMode
 import com.fersaiyan.cyanbridge.shared.settings.AgentProviderType
 
 object LocalAgentPrefs {
     private const val PREFS = "local_agent_prefs"
     private const val KEY_PROVIDER_TYPE = "provider_type"
-    private const val KEY_GLASSES_ASSISTANT_MODE = "glasses_assistant_mode"
     private const val KEY_REQUIRE_CONFIRMATION = "require_confirmation"
     private const val KEY_MAX_STEPS = "max_steps"
     private const val KEY_AUTOMATION_ENABLED = "automation_enabled"
-
-    // Screen content capture / memory
     private const val KEY_AUTO_CAPTURE_ENABLED = "auto_capture_enabled"
     private const val KEY_CAPTURE_INTERVAL_MIN = "capture_interval_min"
     private const val KEY_CAPTURE_BLACKLIST = "capture_blacklist"
@@ -21,47 +17,30 @@ object LocalAgentPrefs {
     private const val KEY_DAILY_SUMMARY_AUTO_REFRESH_HOURS = "daily_summary_auto_refresh_hours"
 
     fun getProviderType(context: Context): AgentProviderType {
-        val preferences = context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
-        val raw = preferences.getString(KEY_PROVIDER_TYPE, null)?.trim()?.uppercase()
-        val provider = when (raw) {
-            AgentProviderType.LOCAL_AGENT.name -> AgentProviderType.LOCAL_AGENT
-            "API_MODELS", AgentProviderType.PRO_SUBSCRIPTION.name -> AgentProviderType.PRO_SUBSCRIPTION
-            // Tasker is no longer an execution dependency. Migrate its historical value to the
-            // native on-device route instead of broadcasting to an app that may not exist.
-            "TASKER", null, "" -> AgentProviderType.LOCAL_AGENT
-            else -> AgentProviderType.LOCAL_AGENT
+        val raw = context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
+            .getString(KEY_PROVIDER_TYPE, null)
+            ?.trim()
+            ?.uppercase()
+        return if (raw == AgentProviderType.LOCAL_AGENT.name) {
+            AgentProviderType.LOCAL_AGENT
+        } else {
+            AgentProviderType.CLOUD_AI
         }
-        if (raw != provider.name) preferences.edit().putString(KEY_PROVIDER_TYPE, provider.name).apply()
-        return provider
     }
 
     fun setProviderType(context: Context, type: AgentProviderType) {
-        context.getSharedPreferences(PREFS, Context.MODE_PRIVATE).edit().putString(KEY_PROVIDER_TYPE, type.name).apply()
+        context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
+            .edit().putString(KEY_PROVIDER_TYPE, type.name).apply()
     }
 
-    fun getGlassesAssistantMode(context: Context): GlassesAssistantMode {
-        val preferences = context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
-        val stored = preferences.getString(KEY_GLASSES_ASSISTANT_MODE, null)?.trim()?.uppercase()
-        val mode = when (stored) {
-            GlassesAssistantMode.PHONE_ASSISTANT.name -> GlassesAssistantMode.PHONE_ASSISTANT
-            GlassesAssistantMode.CUSTOM_AI_PROVIDER.name,
-            "CHOSEN_PROVIDER" -> GlassesAssistantMode.CUSTOM_AI_PROVIDER
-            "GEMINI", "CHAT_GPT", "PHONE_DEFAULT", null, "" -> GlassesAssistantMode.PHONE_ASSISTANT
-            else -> GlassesAssistantMode.PHONE_ASSISTANT
-        }
-        if (stored != mode.name) preferences.edit().putString(KEY_GLASSES_ASSISTANT_MODE, mode.name).apply()
-        return mode
-    }
-
-    fun setGlassesAssistantMode(context: Context, mode: GlassesAssistantMode) {
-        context.getSharedPreferences(PREFS, Context.MODE_PRIVATE).edit().putString(KEY_GLASSES_ASSISTANT_MODE, mode.name).apply()
-    }
-
-    fun isLocalAgentAutomationEnabled(context: Context): Boolean =
-        context.getSharedPreferences(PREFS, Context.MODE_PRIVATE).getBoolean(KEY_AUTOMATION_ENABLED, false)
+    /** Accessibility/UI automation is not an AI invocation method. */
+    fun isLocalAgentAutomationEnabled(context: Context): Boolean = false
 
     fun setLocalAgentAutomationEnabled(context: Context, enabled: Boolean) {
-        context.getSharedPreferences(PREFS, Context.MODE_PRIVATE).edit().putBoolean(KEY_AUTOMATION_ENABLED, enabled).apply()
+        if (enabled) {
+            context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
+                .edit().remove(KEY_AUTOMATION_ENABLED).apply()
+        }
     }
 
     fun isRequireConfirmationEnabled(context: Context): Boolean =

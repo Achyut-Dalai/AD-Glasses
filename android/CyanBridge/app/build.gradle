@@ -35,10 +35,6 @@ android {
         versionName = "alpha"
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
 
-        // Chapter 6: optional transcription API key (do not commit secrets).
-        def openAiKey = project.findProperty("OPENAI_API_KEY") ?: ""
-        buildConfigField "String", "OPENAI_API_KEY", "\"${openAiKey}\""
-
         vectorDrawables {
             useSupportLibrary = true
         }

@@ -68,7 +68,7 @@ data class SettingsUiState(
     val cloudConfigured: Boolean = false,
     val cloudSummary: String = "Add your relay URL and optional token",
     val appLanguageLabel: String = "System default",
-    val providerType: AgentProviderType = AgentProviderType.PRO_SUBSCRIPTION,
+    val providerType: AgentProviderType = AgentProviderType.CLOUD_AI,
     val defaultImageQuestion: String = "Give me a concise description of the image",
     val memoryMode: MemoryPrivacyMode = MemoryPrivacyMode.PRIVATE_LOCAL,
     val memoryModeAvailability: String = "",

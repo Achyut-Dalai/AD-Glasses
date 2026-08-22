@@ -18,6 +18,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.CheckCircle
+import androidx.compose.material.icons.outlined.Key
 import androidx.compose.material.icons.outlined.Memory
 import androidx.compose.material.icons.outlined.Mic
 import androidx.compose.material.icons.outlined.Storage
@@ -26,6 +27,7 @@ import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -35,18 +37,20 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.unit.dp
+import com.fersaiyan.cyanbridge.agent.CloudServerPrefs
+import com.fersaiyan.cyanbridge.agent.CloudSettingsActivity
+import com.fersaiyan.cyanbridge.agent.LocalAgentPrefs
+import com.fersaiyan.cyanbridge.agent.LocalModelsConfigureActivity
+import com.fersaiyan.cyanbridge.ai.live.GeminiLiveActivity
+import com.fersaiyan.cyanbridge.ai.orchestrator.AssistantConversationSession
 import com.fersaiyan.cyanbridge.ai.router.AiProviderPrefs
 import com.fersaiyan.cyanbridge.ai.router.AiProviderType
-import com.fersaiyan.cyanbridge.ai.router.CliRelayBackend
-import com.fersaiyan.cyanbridge.agent.LocalAgentPrefs
-import com.fersaiyan.cyanbridge.ai.orchestrator.AssistantConversationSession
+import com.fersaiyan.cyanbridge.ai.router.ApiProvider
 import com.fersaiyan.cyanbridge.ai.transcription.moonshine.MoonshineModelManager
-import com.fersaiyan.cyanbridge.agent.LocalModelsConfigureActivity
-import com.fersaiyan.cyanbridge.localmodels.remote.RemoteOpenAiPrefs
 import com.fersaiyan.cyanbridge.localmodels.storage.InstalledLocalModel
 import com.fersaiyan.cyanbridge.localmodels.storage.LocalModelStorageRepository
 import com.fersaiyan.cyanbridge.shared.glasses.GlassesAssistantMode
@@ -57,80 +61,161 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 
 @Composable
-internal fun ADNativeRelaySettingsScreen(onBack: () -> Unit) {
+internal fun ADNativeCloudAiSettingsScreen(onBack: () -> Unit) {
     val context = LocalContext.current
-    var relayUrl by remember { mutableStateOf(AiProviderPrefs.getRelayBaseUrl(context)) }
-    var backend by remember { mutableStateOf(AiProviderPrefs.getRelayBackend(context)) }
+    var provider by remember { mutableStateOf(AiProviderPrefs.getApiProvider(context)) }
+    var apiKey by remember(provider) { mutableStateOf(AiProviderPrefs.getApiKey(context, provider)) }
+    var model by remember(provider) { mutableStateOf(AiProviderPrefs.getModel(context, provider)) }
     var saved by remember { mutableStateOf(false) }
-    val relayUrlAllowed = RemoteOpenAiPrefs.isCredentialTransportAllowed(relayUrl)
+    val realtimeReady = AiProviderPrefs.isRelayConfigured(context) &&
+        CloudServerPrefs.getApiToken(context).isNotBlank()
 
-    ADPageLayout("Relay", onBack) {
+    ADPageLayout("Cloud AI", onBack) {
         ADCard {
-            Text("Server", style = MaterialTheme.typography.titleMedium)
-            Spacer(Modifier.size(6.dp))
-            ADAiTextField(
-                value = relayUrl,
-                onValueChange = { relayUrl = it; saved = false },
-                placeholder = "https://your-relay.example",
-            )
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Icon(Icons.Outlined.Key, null, tint = ADColors.Blue, modifier = Modifier.size(19.dp))
+                Column(Modifier.padding(start = 8.dp)) {
+                    Text("Standard REST", style = MaterialTheme.typography.titleMedium)
+                    Text(
+                        "AD receives the response text, keeps the conversation, and speaks it with Android TTS.",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = ADColors.Muted,
+                    )
+                }
+            }
         }
 
         ADCard {
-            Text("Backend", style = MaterialTheme.typography.titleMedium)
+            Text("Provider", style = MaterialTheme.typography.titleMedium)
             Spacer(Modifier.size(5.dp))
-            ADAiBackendRow(
-                title = "Gemini",
-                detail = "Gemini CLI through your relay",
-                selected = backend == CliRelayBackend.GEMINI,
-            ) {
-                backend = CliRelayBackend.GEMINI
-                saved = false
+            ApiProvider.entries.forEachIndexed { index, item ->
+                ADApiProviderRow(
+                    provider = item,
+                    selected = provider == item,
+                    configured = AiProviderPrefs.isApiConfigured(context, item),
+                    onClick = {
+                        provider = item
+                        apiKey = AiProviderPrefs.getApiKey(context, item)
+                        model = AiProviderPrefs.getModel(context, item)
+                        saved = false
+                    },
+                )
+                if (index != ApiProvider.entries.lastIndex) HorizontalDivider(color = ADColors.Separator)
             }
-            HorizontalDivider(color = ADColors.Separator)
-            ADAiBackendRow(
-                title = "OpenAI / Codex",
-                detail = "Codex CLI through your relay",
-                selected = backend == CliRelayBackend.CODEX,
-            ) {
-                backend = CliRelayBackend.CODEX
-                saved = false
-            }
+        }
+
+        ADCard {
+            Text("${provider.label} API key", style = MaterialTheme.typography.titleMedium)
+            Spacer(Modifier.size(6.dp))
+            ADAiTextField(
+                value = apiKey,
+                onValueChange = { apiKey = it; saved = false },
+                placeholder = "Paste API key",
+                secret = true,
+            )
+            Spacer(Modifier.size(10.dp))
+            Text("Model", style = MaterialTheme.typography.titleMedium)
+            Spacer(Modifier.size(6.dp))
+            ADAiTextField(
+                value = model,
+                onValueChange = { model = it; saved = false },
+                placeholder = provider.defaultModel,
+            )
         }
 
         Button(
             onClick = {
-                val routeChanged = LocalAgentPrefs.getGlassesAssistantMode(context) !=
-                    GlassesAssistantMode.CUSTOM_AI_PROVIDER ||
-                    LocalAgentPrefs.getProviderType(context) != AgentProviderType.PRO_SUBSCRIPTION
-                AiProviderPrefs.setRelayBaseUrl(context, relayUrl)
-                AiProviderPrefs.setRelayBackend(context, backend)
-                AiProviderPrefs.setProvider(context, AiProviderType.CLI_RELAY)
-                LocalAgentPrefs.setProviderType(context, AgentProviderType.PRO_SUBSCRIPTION)
+                val routeChanged = AiProviderPrefs.getProvider(context) != AiProviderType.CLOUD_API ||
+                    AiProviderPrefs.getApiProvider(context) != provider
+                AiProviderPrefs.setApiProvider(context, provider)
+                AiProviderPrefs.setApiKey(context, provider, apiKey)
+                AiProviderPrefs.setModel(context, provider, model)
+                AiProviderPrefs.setProvider(context, AiProviderType.CLOUD_API)
+                LocalAgentPrefs.setProviderType(context, AgentProviderType.CLOUD_AI)
                 LocalAgentPrefs.setGlassesAssistantMode(context, GlassesAssistantMode.CUSTOM_AI_PROVIDER)
                 if (routeChanged) AssistantConversationSession.get(context).startNewConversation()
                 saved = true
             },
-            enabled = relayUrlAllowed,
+            enabled = apiKey.isNotBlank() && model.isNotBlank(),
             modifier = Modifier.fillMaxWidth().heightIn(min = 46.dp),
             colors = ButtonDefaults.buttonColors(containerColor = ADColors.Ink),
         ) {
-            Text(if (saved) "Cloud AI selected" else "Save and use Cloud AI")
+            Text(if (saved) "${provider.label} selected" else "Save and use ${provider.label}")
+        }
+
+        ADCard {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Icon(Icons.Outlined.Mic, null, tint = ADColors.Blue, modifier = Modifier.size(19.dp))
+                Column(Modifier.padding(start = 8.dp).weight(1f)) {
+                    Text("Realtime", style = MaterialTheme.typography.titleMedium)
+                    Text(
+                        if (realtimeReady) "Gemini Live ready through AD's short-lived-token relay"
+                        else "Configure the relay used to mint short-lived Gemini Live sessions",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = ADColors.Muted,
+                    )
+                }
+            }
+            Spacer(Modifier.size(8.dp))
+            Text(
+                "Realtime is AD's own WebSocket audio path. It does not launch or control the Gemini app. " +
+                    "OpenAI Realtime can live in this same Cloud layer when its client is added.",
+                style = MaterialTheme.typography.bodySmall,
+                color = ADColors.Muted,
+            )
+            Spacer(Modifier.size(9.dp))
+            Button(
+                onClick = { context.startActivity(Intent(context, CloudSettingsActivity::class.java)) },
+                modifier = Modifier.fillMaxWidth().heightIn(min = 44.dp),
+                colors = ButtonDefaults.buttonColors(containerColor = ADColors.Ink),
+            ) {
+                Text("Configure Realtime relay")
+            }
+            Spacer(Modifier.size(6.dp))
+            OutlinedButton(
+                onClick = { context.startActivity(Intent(context, GeminiLiveActivity::class.java)) },
+                enabled = realtimeReady,
+                modifier = Modifier.fillMaxWidth().heightIn(min = 44.dp),
+            ) {
+                Text("Open Gemini Live preview")
+            }
         }
 
         Text(
-            "This is the explicit AD-owned cloud route: the provider returns text to AD, then AD speaks it. Saving never tests or contacts the server.",
+            "Provider API keys and relay tokens are stored with Android Keystore-backed encrypted preferences. " +
+                "Standard REST talks directly to the selected provider; the relay is optional and scoped to AD-owned cloud infrastructure such as Realtime token issuance.",
             style = MaterialTheme.typography.bodySmall,
             color = ADColors.Muted,
         )
-        if (relayUrl.isNotBlank() && !relayUrlAllowed) {
+    }
+}
+
+@Composable
+private fun ADApiProviderRow(
+    provider: ApiProvider,
+    selected: Boolean,
+    configured: Boolean,
+    onClick: () -> Unit,
+) {
+    Row(
+        modifier = Modifier.fillMaxWidth().clickable(onClick = onClick).padding(vertical = 8.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Column(Modifier.weight(1f)) {
+            Text(provider.label, style = MaterialTheme.typography.titleMedium)
             Text(
-                "Use HTTPS, or HTTP only for loopback, LAN, or Tailscale addresses.",
+                if (configured) "Key saved · ${AiProviderLabelModel(provider)}" else "Add your API key",
                 style = MaterialTheme.typography.bodySmall,
-                color = ADColors.Error,
+                color = ADColors.Muted,
             )
+        }
+        if (selected) {
+            Icon(Icons.Outlined.CheckCircle, "Selected", tint = ADColors.Blue, modifier = Modifier.size(19.dp))
         }
     }
 }
+
+private fun AiProviderLabelModel(provider: ApiProvider): String = provider.defaultModel
 
 @Composable
 internal fun ADNativeLocalAiSettingsScreen(onBack: () -> Unit) {
@@ -164,13 +249,13 @@ internal fun ADNativeLocalAiSettingsScreen(onBack: () -> Unit) {
                     color = ADColors.Muted,
                 )
             } else {
-                installed.forEachIndexed { index, model ->
+                installed.forEachIndexed { index, item ->
                     ADInstalledModelRow(
-                        model = model,
-                        selected = selectedId == model.id,
+                        model = item,
+                        selected = selectedId == item.id,
                         onClick = {
-                            LocalModelStorageRepository.setSelectedModelId(context, model.id)
-                            selectedId = model.id
+                            LocalModelStorageRepository.setSelectedModelId(context, item.id)
+                            selectedId = item.id
                         },
                     )
                     if (index != installed.lastIndex) HorizontalDivider(color = ADColors.Separator)
@@ -178,14 +263,10 @@ internal fun ADNativeLocalAiSettingsScreen(onBack: () -> Unit) {
             }
             Spacer(Modifier.size(8.dp))
             Button(
-                onClick = {
-                    configureLauncher.launch(Intent(context, LocalModelsConfigureActivity::class.java))
-                },
+                onClick = { configureLauncher.launch(Intent(context, LocalModelsConfigureActivity::class.java)) },
                 modifier = Modifier.fillMaxWidth().heightIn(min = 46.dp),
                 colors = ButtonDefaults.buttonColors(containerColor = ADColors.Ink),
-            ) {
-                Text("Manage local models")
-            }
+            ) { Text("Manage local models") }
         }
 
         ADCard {
@@ -194,11 +275,8 @@ internal fun ADNativeLocalAiSettingsScreen(onBack: () -> Unit) {
                 Column(Modifier.padding(start = 7.dp).weight(1f)) {
                     Text("Offline English transcription", style = MaterialTheme.typography.titleMedium)
                     Text(
-                        if (moonshineInstalled) {
-                            "Ready · English model stored on this phone"
-                        } else {
-                            "Moonshine engine included · download its English model once"
-                        },
+                        if (moonshineInstalled) "Ready · English model stored on this phone"
+                        else "Moonshine engine included · download its English model once",
                         style = MaterialTheme.typography.bodySmall,
                         color = ADColors.Muted,
                     )
@@ -215,9 +293,7 @@ internal fun ADNativeLocalAiSettingsScreen(onBack: () -> Unit) {
                             runCatching {
                                 withContext(Dispatchers.IO) {
                                     MoonshineModelManager.installIfNeeded(context, moonshineKind) { progress ->
-                                        scope.launch {
-                                            moonshineStatus = "${progress.percent}% — ${progress.message}"
-                                        }
+                                        scope.launch { moonshineStatus = "${progress.percent}% — ${progress.message}" }
                                     }
                                 }
                             }.onSuccess {
@@ -239,35 +315,9 @@ internal fun ADNativeLocalAiSettingsScreen(onBack: () -> Unit) {
             }
             Spacer(Modifier.size(6.dp))
             Text(
-                "Moonshine converts English speech to text. It is not AD’s response voice; AD uses Android text-to-speech for replies.",
+                "Moonshine converts English speech to text. Standard Cloud REST replies use Android text-to-speech; Realtime cloud sessions return their own audio stream.",
                 style = MaterialTheme.typography.bodySmall,
                 color = ADColors.Muted,
-            )
-        }
-    }
-}
-
-@Composable
-private fun ADAiBackendRow(
-    title: String,
-    detail: String,
-    selected: Boolean,
-    onClick: () -> Unit,
-) {
-    Row(
-        modifier = Modifier.fillMaxWidth().clickable(onClick = onClick).padding(vertical = 8.dp),
-        verticalAlignment = Alignment.CenterVertically,
-    ) {
-        Column(Modifier.weight(1f)) {
-            Text(title, style = MaterialTheme.typography.titleMedium)
-            Text(detail, style = MaterialTheme.typography.bodySmall, color = ADColors.Muted)
-        }
-        if (selected) {
-            Icon(
-                Icons.Outlined.CheckCircle,
-                "Selected",
-                tint = ADColors.Blue,
-                modifier = Modifier.size(19.dp),
             )
         }
     }
@@ -294,12 +344,7 @@ private fun ADInstalledModelRow(
             Text(formatAiBytes(model.sizeBytes), style = MaterialTheme.typography.bodySmall, color = ADColors.Muted)
         }
         if (selected) {
-            Icon(
-                Icons.Outlined.CheckCircle,
-                "Selected",
-                tint = ADColors.Blue,
-                modifier = Modifier.size(19.dp),
-            )
+            Icon(Icons.Outlined.CheckCircle, "Selected", tint = ADColors.Blue, modifier = Modifier.size(19.dp))
         }
     }
 }
@@ -309,6 +354,7 @@ private fun ADAiTextField(
     value: String,
     onValueChange: (String) -> Unit,
     placeholder: String,
+    secret: Boolean = false,
 ) {
     BasicTextField(
         value = value,
@@ -318,13 +364,12 @@ private fun ADAiTextField(
             .background(ADColors.SurfaceSubtle, RoundedCornerShape(11.dp))
             .padding(horizontal = 11.dp, vertical = 10.dp),
         singleLine = true,
+        visualTransformation = if (secret) PasswordVisualTransformation() else androidx.compose.ui.text.input.VisualTransformation.None,
         textStyle = MaterialTheme.typography.bodyMedium.copy(color = ADColors.Ink),
         cursorBrush = SolidColor(ADColors.Ink),
         decorationBox = { field ->
             Box(contentAlignment = Alignment.CenterStart) {
-                if (value.isBlank()) {
-                    Text(placeholder, color = ADColors.Muted, style = MaterialTheme.typography.bodyMedium)
-                }
+                if (value.isBlank()) Text(placeholder, color = ADColors.Muted, style = MaterialTheme.typography.bodyMedium)
                 field()
             }
         },
