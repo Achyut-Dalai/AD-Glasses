@@ -163,7 +163,7 @@ jobs:
         shell: bash
         run: |
           set -o pipefail
-          ./gradlew --no-daemon --warning-mode=all :shared:compileAndroidMain --stacktrace 2>&1 | tee /tmp/shared-compile.log
+          ./gradlew --no-daemon --warning-mode=all --console=plain :shared:compileAndroidMain --stacktrace --info 2>&1 | tee /tmp/shared-compile.log
 
       - name: Publish shared compile failure
         if: steps.shared_compile.outcome == 'failure'
@@ -172,11 +172,25 @@ jobs:
           {
             echo '### Shared compile failure'
             echo '```text'
-            grep -nE '(^e: | error: |Compilation error|FAILED|Exception)' /tmp/shared-compile.log | tail -n 140 || true
+            echo '=== compiler diagnostics ==='
+            grep -nEi '(^e:|^w:|error|unresolved|expecting|cannot|redeclaration|conflicting|type mismatch|file:///|\.kt:[0-9]+|\.java:[0-9]+|ADGlasses|com\.ad_glasses)' /tmp/shared-compile.log | tail -n 350 || true
             echo
-            tail -n 140 /tmp/shared-compile.log
+            echo '=== final 320 log lines ==='
+            tail -n 320 /tmp/shared-compile.log
             echo '```'
           } > /tmp/shared-compile-tail.md
+          # Keep the PR comment under GitHub's body size limit even when --info is noisy.
+          python3 - <<'PY'
+          from pathlib import Path
+          p = Path('/tmp/shared-compile-tail.md')
+          text = p.read_text(encoding='utf-8', errors='replace')
+          limit = 60000
+          if len(text) > limit:
+              text = '### Shared compile failure\n\n_Output trimmed to the final diagnostics._\n\n```text\n' + text[-(limit - 100):]
+              if not text.endswith('\n```\n'):
+                  text += '\n```\n'
+              p.write_text(text, encoding='utf-8')
+          PY
           gh pr comment "$PR_NUMBER" --repo "$GITHUB_REPOSITORY" --body-file /tmp/shared-compile-tail.md
           exit 1
 
