@@ -50,13 +50,16 @@ jobs:
         run: |
           set -euo pipefail
           python3 tools/temp_cleanup_legacy_refs.py
+          python3 tools/temp_cleanup_locale_refs.py
           git diff --check
           git diff -- . \
             ':(exclude).github/workflows/temp-repo-reference-audit.yml' \
-            ':(exclude)tools/temp_cleanup_legacy_refs.py' > legacy-reference-cleanup.patch
+            ':(exclude)tools/temp_cleanup_legacy_refs.py' \
+            ':(exclude)tools/temp_cleanup_locale_refs.py' > legacy-reference-cleanup.patch
           git diff --name-only -- . \
             ':(exclude).github/workflows/temp-repo-reference-audit.yml' \
-            ':(exclude)tools/temp_cleanup_legacy_refs.py' > legacy-reference-cleanup-files.txt
+            ':(exclude)tools/temp_cleanup_legacy_refs.py' \
+            ':(exclude)tools/temp_cleanup_locale_refs.py' > legacy-reference-cleanup-files.txt
           tar -czf legacy-reference-cleanup-files.tar.gz -T legacy-reference-cleanup-files.txt
 
       - name: Upload reviewed cleanup files
