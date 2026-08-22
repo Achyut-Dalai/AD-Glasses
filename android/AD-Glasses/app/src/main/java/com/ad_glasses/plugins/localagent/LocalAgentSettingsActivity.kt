@@ -63,7 +63,6 @@ import com.ad_glasses.localagent.LocalAgentTelegramProtocol
 import com.ad_glasses.localagent.accessibility.LocalAgentAccessibilityService
 import com.ad_glasses.localagent.memory.LocalAgentMemoryStore
 import com.ad_glasses.localmodels.session.LocalChatSessionManager
-import com.ad_glasses.plugins.autodiary.AutoDiarySettingsActivity
 import com.ad_glasses.shared.plugins.NativePluginIds
 import com.ad_glasses.shared.settings.AgentProviderType
 import com.ad_glasses.ui.NativePluginShortcutPreference
@@ -708,14 +707,6 @@ class LocalAgentSettingsActivity : AppCompatActivity() {
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
-                OutlinedButton(
-                    onClick = {
-                        startActivity(Intent(this@LocalAgentSettingsActivity, AutoDiarySettingsActivity::class.java))
-                    },
-                    modifier = Modifier.fillMaxWidth(),
-                ) {
-                    Text(stringResource(R.string.compose_open_autodiary_settings))
-                }
 
                 SectionTitle(stringResource(R.string.compose_local_agent_personalization))
                 OutlinedButton(

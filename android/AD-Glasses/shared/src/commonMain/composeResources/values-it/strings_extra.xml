@@ -179,12 +179,8 @@
     <string name="native_local_agent_title">Local Agent</string>
     <string name="native_local_agent_description">L'automazione di accessibilita del telefono richiede il runtime Android Local Agent.</string>
     <string name="native_android_only">Solo Android</string>
-    <string name="native_auto_diary_title">AutoDiary</string>
-    <string name="native_auto_diary_description">L'acquisizione dello schermo e l'automazione della memoria giornaliera non sono ancora disponibili su iOS.</string>
     <string name="native_auto_audio_title">Auto Audio</string>
     <string name="native_auto_audio_description">L'acquisizione audio in background dagli occhiali richiede un adattatore audio/BLE iOS.</string>
-    <string name="native_visual_diary_title">Visual Diary</string>
-    <string name="native_visual_diary_description">Le note visive periodiche richiedono il trasferimento media iOS e la pianificazione in background.</string>
     <string name="native_ios_pending">iOS in attesa</string>
     <string name="plugins_all_time">Sempre</string>
     <string name="plugins_weekly">Settimanale</string>
@@ -358,7 +354,6 @@
     <string name="dashboard_protocol">Protocollo: %1$s</string>
     <string name="dashboard_device">Dispositivo: %1$s</string>
     <string name="dashboard_meizu_description">MYVU usa il proprio scambio chiavi BLE e un relay RFCOMM. Mantieni disconnessa l'app ufficiale MYVU durante la connessione.</string>
-    <string name="dashboard_meizu_unsupported">Dopo la connessione i plugin vocali usano il percorso microfono HFP di MYVU. Acquisizione fotocamera, sincronizzazione media e Visual Diary non sono supportati perche MYVU non ha fotocamera ne archivio media.</string>
     <string name="dashboard_connect">Connetti</string>
     <string name="dashboard_test_notification">Prova notifica</string>
     <string name="dashboard_show_text">Mostra testo</string>

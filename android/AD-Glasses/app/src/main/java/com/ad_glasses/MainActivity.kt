@@ -72,10 +72,7 @@ import com.ad_glasses.ui.CommunityPluginPrefs
 import com.ad_glasses.ui.CommunityPluginsActivity
 import com.ad_glasses.ui.SettingsActivity
 import com.ad_glasses.plugins.PluginVoicePermissions
-import com.ad_glasses.plugins.autodiary.AutoDiaryService
 import com.ad_glasses.plugins.localagent.LocalAgentPlugin
-import com.ad_glasses.plugins.visualdiary.VisualDiaryPreferences
-import com.ad_glasses.plugins.visualdiary.VisualDiaryService
 import com.ad_glasses.plugins.errandbrain.ErrandBrainPreferences
 import com.ad_glasses.plugins.errandbrain.ErrandBrainService
 import com.ad_glasses.plugins.handsfreetranslator.HandsFreeTranslatorPreferences
@@ -85,13 +82,11 @@ import com.ad_glasses.plugins.livecaptionrelay.LiveCaptionRelayService
 import com.ad_glasses.plugins.meetingsparknotes.MeetingSparkNotesPreferences
 import com.ad_glasses.plugins.meetingsparknotes.MeetingSparkNotesService
 import com.ad_glasses.plugins.autoaudio.AutoAudioSettingsActivity
-import com.ad_glasses.plugins.autodiary.AutoDiarySettingsActivity
 import com.ad_glasses.plugins.errandbrain.ErrandBrainSettingsActivity
 import com.ad_glasses.plugins.handsfreetranslator.HandsFreeTranslatorSettingsActivity
 import com.ad_glasses.plugins.livecaptionrelay.LiveCaptionRelaySettingsActivity
 import com.ad_glasses.plugins.localagent.LocalAgentSettingsActivity
 import com.ad_glasses.plugins.meetingsparknotes.MeetingSparkNotesSettingsActivity
-import com.ad_glasses.plugins.visualdiary.VisualDiarySettingsActivity
 import com.ad_glasses.ui.notes.NotesListActivity
 import com.ad_glasses.ui.recordings.RecordingsListActivity
 import com.ad_glasses.ui.recordings.SyncedMediaGalleryActivity
@@ -907,9 +902,7 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
         }
 
         val notificationFeatureEnabled =
-            AutoDiaryService.isEnabled(this) ||
-                VisualDiaryPreferences.isEnabled(this) ||
-                LocalAgentPlugin.isEnabled(this) ||
+            LocalAgentPlugin.isEnabled(this) ||
                 isMeizuMyvuSelected()
         if (notificationFeatureEnabled && !hasNotificationPermission(this)) {
             enabledFeaturePermissionRequestActive = true
@@ -920,7 +913,7 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
             return
         }
 
-        val needsAccessibility = AutoDiaryService.isEnabled(this) || LocalAgentPlugin.isEnabled(this)
+        val needsAccessibility = LocalAgentPlugin.isEnabled(this)
         if (!needsAccessibility || hasAccessibilityServicePermission(this)) {
             enabledAccessibilityPromptShown = false
         } else if (!enabledAccessibilityPromptShown) {
@@ -932,8 +925,6 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
 
     private fun restartEnabledBackgroundFeatures() {
         if (AutoAudioCapturePrefs.isEnabled(this)) AutoAudioCaptureService.start(this)
-        if (AutoDiaryService.isEnabled(this)) AutoDiaryService.startIfEnabled(this)
-        startEnabledCameraFeatures()
         if (LocalAgentPlugin.isEnabled(this)) {
             LocalAgentController.requestStatus(this)
         }
@@ -958,28 +949,6 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
         if (com.ad_glasses.localmodels.remote.RemoteOpenAiPrefs.isBridgeConfigured(this)) {
             (application as? MyApplication)?.startStudioBridge()
         }
-    }
-
-    private fun ensureEnabledMetaCameraFeature() {
-        if (!isMetaRaybanSelected() || !hasNotificationPermission(this)) return
-        if (!VisualDiaryPreferences.isEnabled(this)) return
-        if (enabledMetaCameraCheckActive) return
-
-        enabledMetaCameraCheckActive = true
-        ensureMetaCameraReady {
-            enabledMetaCameraCheckActive = false
-            if (VisualDiaryPreferences.isEnabled(this)) VisualDiaryService.startIfEnabled(this)
-        }
-    }
-
-    private fun startEnabledCameraFeatures() {
-        if (isMetaRaybanSelected()) {
-            if (VisualDiaryPreferences.isEnabled(this)) {
-                ensureEnabledMetaCameraFeature()
-            }
-            return
-        }
-        if (VisualDiaryPreferences.isEnabled(this)) VisualDiaryService.startIfEnabled(this)
     }
 
     override fun onNewIntent(intent: Intent) {
@@ -1643,18 +1612,8 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
         LocalAgentPlugin.syncNativePluginState(this)
         CommunityPluginPrefs.setNativePluginEnabled(
             this,
-            NativePluginIds.AUTO_DIARY,
-            AutoDiaryService.isEnabled(this),
-        )
-        CommunityPluginPrefs.setNativePluginEnabled(
-            this,
             NativePluginIds.AUTO_AUDIO,
             AutoAudioCapturePrefs.isEnabled(this),
-        )
-        CommunityPluginPrefs.setNativePluginEnabled(
-            this,
-            NativePluginIds.VISUAL_DIARY,
-            VisualDiaryPreferences.isEnabled(this),
         )
     }
 
@@ -1712,17 +1671,6 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
                     NativePluginShortcutButton(NativePluginShortcutAction.STOP, "Stop listening"),
                 ),
             )
-            NativePluginIds.AUTO_DIARY -> NativePluginShortcutUiState(
-                id = id,
-                title = "AutoDiary",
-                description = "Collect screen context and turn it into daily facts, bullets, and summaries.",
-                isEnabled = CommunityPluginPrefs.isNativePluginEnabled(this, id),
-                buttons = listOf(
-                    NativePluginShortcutButton(NativePluginShortcutAction.START, "Start diary"),
-                    NativePluginShortcutButton(NativePluginShortcutAction.STOP, "Stop diary"),
-                    NativePluginShortcutButton(NativePluginShortcutAction.SUMMARIZE, "Summarize today"),
-                ),
-            )
             NativePluginIds.AUTO_AUDIO -> NativePluginShortcutUiState(
                 id = id,
                 title = "Auto Audio",
@@ -1732,17 +1680,6 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
                     NativePluginShortcutButton(NativePluginShortcutAction.START, "Start audio loop"),
                     NativePluginShortcutButton(NativePluginShortcutAction.STOP, "Stop audio loop"),
                     NativePluginShortcutButton(NativePluginShortcutAction.SYNC, "Sync now"),
-                ),
-            )
-            NativePluginIds.VISUAL_DIARY -> NativePluginShortcutUiState(
-                id = id,
-                title = "Visual Diary",
-                description = "Capture a glasses scene and append a Gemma-generated diary note.",
-                isEnabled = CommunityPluginPrefs.isNativePluginEnabled(this, id),
-                buttons = listOf(
-                    NativePluginShortcutButton(NativePluginShortcutAction.START, "Start visual diary"),
-                    NativePluginShortcutButton(NativePluginShortcutAction.STOP, "Stop visual diary"),
-                    NativePluginShortcutButton(NativePluginShortcutAction.CAPTURE, "Capture scene"),
                 ),
             )
             else -> null
@@ -1755,29 +1692,22 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
         when (action) {
             NativePluginShortcutAction.START -> startNativePlugin(pluginId)
             NativePluginShortcutAction.STOP -> stopNativePlugin(pluginId)
-            NativePluginShortcutAction.CAPTURE -> if (pluginId == NativePluginIds.VISUAL_DIARY) {
-                VisualDiaryService.captureNow(this)
-            }
+            NativePluginShortcutAction.CAPTURE -> Unit
             NativePluginShortcutAction.SYNC -> if (pluginId == NativePluginIds.AUTO_AUDIO) {
                 binding.btnDataDownload.performClick()
             }
-            NativePluginShortcutAction.SUMMARIZE -> when (pluginId) {
-                NativePluginIds.MEETING_SPARK_NOTES -> MeetingSparkNotesService.summarize(this)
-                NativePluginIds.AUTO_DIARY -> AutoDiaryService.summarize(this)
+            NativePluginShortcutAction.SUMMARIZE -> if (pluginId == NativePluginIds.MEETING_SPARK_NOTES) {
+                MeetingSparkNotesService.summarize(this)
             }
         }
         refreshNativePluginShortcutState()
     }
 
     private fun startNativePlugin(pluginId: String) {
-        if (isMeizuMyvuSelected() && pluginId in setOf(
-                NativePluginIds.AUTO_AUDIO,
-                NativePluginIds.VISUAL_DIARY,
-            )
-        ) {
+        if (isMeizuMyvuSelected() && pluginId == NativePluginIds.AUTO_AUDIO) {
             Toast.makeText(
                 this,
-                "This plugin requires a camera or HeyCyan onboard media. MYVU supports display and microphone plugins only.",
+                "Auto Audio requires HeyCyan onboard media and is unavailable for MYVU.",
                 Toast.LENGTH_LONG,
             ).show()
             return
@@ -1790,58 +1720,34 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
             ).show()
             return
         }
+
         val start = {
+            CommunityPluginPrefs.setNativePluginEnabled(this, pluginId, true)
             when (pluginId) {
-                NativePluginIds.AUTO_DIARY -> AutoDiaryService.enable(this)
-                NativePluginIds.VISUAL_DIARY -> VisualDiaryService.enable(this)
-                else -> {
-                    CommunityPluginPrefs.setNativePluginEnabled(this, pluginId, true)
-                    when (pluginId) {
-                        NativePluginIds.LOCAL_AGENT -> LocalAgentPlugin.start(this)
-                        NativePluginIds.MEETING_SPARK_NOTES -> {
-                            MeetingSparkNotesPreferences.setEnabled(this, true)
-                            MeetingSparkNotesService.start(this)
-                        }
-                        NativePluginIds.LIVE_CAPTION_RELAY -> {
-                            LiveCaptionRelayPreferences.setEnabled(this, true)
-                            LiveCaptionRelayService.start(this)
-                        }
-                        NativePluginIds.HANDS_FREE_TRANSLATOR -> {
-                            HandsFreeTranslatorPreferences.setEnabled(this, true)
-                            HandsFreeTranslatorService.start(this)
-                        }
-                        NativePluginIds.ERRAND_BRAIN -> {
-                            ErrandBrainPreferences.setEnabled(this, true)
-                            ErrandBrainService.start(this)
-                        }
-                        NativePluginIds.AUTO_AUDIO -> AutoAudioCaptureService.start(this)
-                    }
+                NativePluginIds.LOCAL_AGENT -> LocalAgentPlugin.start(this)
+                NativePluginIds.MEETING_SPARK_NOTES -> {
+                    MeetingSparkNotesPreferences.setEnabled(this, true)
+                    MeetingSparkNotesService.start(this)
                 }
+                NativePluginIds.LIVE_CAPTION_RELAY -> {
+                    LiveCaptionRelayPreferences.setEnabled(this, true)
+                    LiveCaptionRelayService.start(this)
+                }
+                NativePluginIds.HANDS_FREE_TRANSLATOR -> {
+                    HandsFreeTranslatorPreferences.setEnabled(this, true)
+                    HandsFreeTranslatorService.start(this)
+                }
+                NativePluginIds.ERRAND_BRAIN -> {
+                    ErrandBrainPreferences.setEnabled(this, true)
+                    ErrandBrainService.start(this)
+                }
+                NativePluginIds.AUTO_AUDIO -> AutoAudioCaptureService.start(this)
+                else -> Unit
             }
             refreshNativePluginShortcutState()
         }
 
-        if (isMetaRaybanSelected() && pluginId == NativePluginIds.VISUAL_DIARY) {
-            val manager = getOrCreateMetaRaybanManager()
-            if (!manager.isInitialized.value) manager.initialize()
-            lifecycleScope.launch {
-                if (!manager.awaitCameraReady()) {
-                    Toast.makeText(
-                        this@MainActivity,
-                        "Register and connect a Meta camera before starting this plugin.",
-                        Toast.LENGTH_LONG,
-                    ).show()
-                    return@launch
-                }
-                ensureMetaCameraReady(start)
-            }
-            return
-        }
-
-        if (pluginId == NativePluginIds.LOCAL_AGENT ||
-            pluginId == NativePluginIds.AUTO_DIARY ||
-            pluginId == NativePluginIds.VISUAL_DIARY
-        ) {
+        if (pluginId == NativePluginIds.LOCAL_AGENT) {
             start()
         } else {
             PluginVoicePermissions.ensure(this, onGranted = start)
@@ -1849,33 +1755,29 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
     }
 
     private fun stopNativePlugin(pluginId: String) {
+        CommunityPluginPrefs.setNativePluginEnabled(this, pluginId, false)
         when (pluginId) {
-            NativePluginIds.AUTO_DIARY -> AutoDiaryService.disable(this)
-            NativePluginIds.VISUAL_DIARY -> VisualDiaryService.disable(this)
-            else -> {
-                CommunityPluginPrefs.setNativePluginEnabled(this, pluginId, false)
-                when (pluginId) {
-                    NativePluginIds.LOCAL_AGENT -> LocalAgentPlugin.stop(this)
-                    NativePluginIds.MEETING_SPARK_NOTES -> {
-                        MeetingSparkNotesPreferences.setEnabled(this, false)
-                        MeetingSparkNotesService.stop(this)
-                    }
-                    NativePluginIds.LIVE_CAPTION_RELAY -> {
-                        LiveCaptionRelayPreferences.setEnabled(this, false)
-                        LiveCaptionRelayService.stop(this)
-                    }
-                    NativePluginIds.HANDS_FREE_TRANSLATOR -> {
-                        HandsFreeTranslatorPreferences.setEnabled(this, false)
-                        HandsFreeTranslatorService.stop(this)
-                    }
-                    NativePluginIds.ERRAND_BRAIN -> {
-                        ErrandBrainPreferences.setEnabled(this, false)
-                        ErrandBrainService.stop(this)
-                    }
-                    NativePluginIds.AUTO_AUDIO -> AutoAudioCaptureService.stop(this)
-                }
+            NativePluginIds.LOCAL_AGENT -> LocalAgentPlugin.stop(this)
+            NativePluginIds.MEETING_SPARK_NOTES -> {
+                MeetingSparkNotesPreferences.setEnabled(this, false)
+                MeetingSparkNotesService.stop(this)
             }
+            NativePluginIds.LIVE_CAPTION_RELAY -> {
+                LiveCaptionRelayPreferences.setEnabled(this, false)
+                LiveCaptionRelayService.stop(this)
+            }
+            NativePluginIds.HANDS_FREE_TRANSLATOR -> {
+                HandsFreeTranslatorPreferences.setEnabled(this, false)
+                HandsFreeTranslatorService.stop(this)
+            }
+            NativePluginIds.ERRAND_BRAIN -> {
+                ErrandBrainPreferences.setEnabled(this, false)
+                ErrandBrainService.stop(this)
+            }
+            NativePluginIds.AUTO_AUDIO -> AutoAudioCaptureService.stop(this)
+            else -> Unit
         }
+        refreshNativePluginShortcutState()
     }
 
     private fun navigateToDestination(destination: AppDestination) {
@@ -1914,9 +1816,7 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
             ADAutomation.LIVE_CAPTIONS -> LiveCaptionRelaySettingsActivity::class.java
             ADAutomation.TRANSLATOR -> HandsFreeTranslatorSettingsActivity::class.java
             ADAutomation.ERRAND_BRAIN -> ErrandBrainSettingsActivity::class.java
-            ADAutomation.AUTO_DIARY -> AutoDiarySettingsActivity::class.java
             ADAutomation.AUTO_AUDIO -> AutoAudioSettingsActivity::class.java
-            ADAutomation.VISUAL_DIARY -> VisualDiarySettingsActivity::class.java
         }
         startActivity(Intent(this, target))
     }

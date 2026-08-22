@@ -179,12 +179,8 @@
     <string name="native_local_agent_title">Local Agent</string>
     <string name="native_local_agent_description">Для автоматизации доступности телефона требуется среда Android Local Agent.</string>
     <string name="native_android_only">Только Android</string>
-    <string name="native_auto_diary_title">AutoDiary</string>
-    <string name="native_auto_diary_description">Снимок экрана и автоматизация ежедневной памяти пока недоступны на iOS.</string>
     <string name="native_auto_audio_title">Auto Audio</string>
     <string name="native_auto_audio_description">Для фоновой записи аудио с очков требуется аудио/BLE-адаптер iOS.</string>
-    <string name="native_visual_diary_title">Visual Diary</string>
-    <string name="native_visual_diary_description">Для периодических визуальных заметок нужны передача медиа iOS и фоновое планирование.</string>
     <string name="native_ios_pending">Ожидает iOS</string>
     <string name="plugins_all_time">За все время</string>
     <string name="plugins_weekly">За неделю</string>
@@ -358,7 +354,6 @@
     <string name="dashboard_protocol">Протокол: %1$s</string>
     <string name="dashboard_device">Устройство: %1$s</string>
     <string name="dashboard_meizu_description">MYVU использует собственный обмен ключами BLE и ретранслятор RFCOMM. Отключите официальное приложение MYVU на время подключения.</string>
-    <string name="dashboard_meizu_unsupported">После подключения голосовые плагины используют микрофонный маршрут HFP MYVU. Съемка камерой, синхронизация медиа и Visual Diary не поддерживаются, так как у MYVU нет камеры и хранилища медиа.</string>
     <string name="dashboard_connect">Подключить</string>
     <string name="dashboard_test_notification">Проверить уведомление</string>
     <string name="dashboard_show_text">Показать текст</string>

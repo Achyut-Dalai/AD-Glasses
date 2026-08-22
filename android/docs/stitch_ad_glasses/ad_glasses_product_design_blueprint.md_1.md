@@ -59,7 +59,6 @@ AD Glasses is device-extensible but **HeyCyan-first**. The owner currently has H
 |---|---|---|
 | HeyCyan-compatible | **Primary** | Pairing, BLE control, device state, supported capture/recording commands, and local Wi-Fi media sync; individual vendor commands still require physical validation |
 | Eyevue | **Experimental device integration** | Device-specific BLE/Wi-Fi code exists; show experimental status and never imply reliability until tested on physical Eyevue hardware |
-| Meizu MYVU / Star Air | **Experimental device integration** | Device-specific BLE/RFCOMM and display/audio-oriented controls exist; no camera capture, onboard media sync, or Visual Diary capability |
 | Meta Ray-Ban | **Partial setup** | Selection and optional Meta DAT registration plumbing when its SDK is available; session, camera stream, photo capture, and display rendering must say Not implemented rather than appearing operational |
 | Generic audio glasses/headsets | **Limited** | Android audio/microphone routing only; no camera, onboard storage, media sync, or glasses display promises |
 | Unknown device | **Safe fallback** | Identification and generic Bluetooth information only; do not send HeyCyan or other vendor commands until a compatible adapter is deliberately selected |
@@ -152,7 +151,6 @@ The redesign keeps every implemented owner-facing capability except Walking Aid 
 | Media transfer | BLE trigger, Wi-Fi Direct/local HTTP transfer, photo/video/audio import | One recommended flow, resumable checkpointing where protocol permits, duplicate detection, per-file retry, background/foreground-service reliability, partial-success summary | Sync Center explains stages and recovery without exposing protocol jargon by default |
 | Assistant | Text chat, glasses voice questions, image questions, local and cloud routing, Gemini Live | Action-first hub, explicit context sources, provider health, safe local/cloud fallback, response saving and source links | Assistant replaces Chats and starts with a composer rather than history alone |
 | Library | Recordings, synced gallery, transcripts, notes, summaries, screen captures, daily facts | Unified searchable timeline, collections, provenance, linked media/transcript/summary objects, retention controls | One Library destination with adaptable detail pages |
-| Automations | Local Agent, Meeting Spark Notes, Live Caption Relay, Hands-Free Translator, Errand Brain, Auto Diary, Auto Audio, Visual Diary | Compatibility declarations, permission/data manifests, test-before-enable, run history, global pause, conflict handling for camera/mic sessions | Plugins become outcome-oriented Automations with a consistent detail template |
 | Community plugins | Catalog, plugin opening, publish flow | Trust metadata, declared permissions/data access, compatibility, version/source information, disable/report controls | Kept as a secondary area inside Automations, not the main product hierarchy |
 | Local AI | Local models, local agent, Moonshine/Gemma-related processing | Capability and storage checks, model readiness, download/configuration clarity, health test, graceful fallback | On-device provider card in AI Services with honest ready/not-ready states |
 | Owner cloud | Relay URL, secure optional token, optional email, separate model choices, connection test | Provider health, discovered-model picker, timeout/auth diagnostics, per-task routing, no secrets in logs | “Your cloud” is a first-class provider with a visible privacy boundary |
@@ -170,7 +168,6 @@ These improve the app without changing the glasses protocol:
 
 1. **Device capability registry.** Every feature asks a single source of truth whether the selected device supports camera, display, onboard storage, Wi-Fi sync, audio files, or a particular control. This prevents contradictory controls across screens.
 2. **One global activity model.** Capture, recording, transfer, live translation/captioning, OTA, and live AI share explicit states and conflict rules. The owner can always see what owns the camera/microphone/network session and stop it.
-3. **Global pause for passive automations.** One privacy action pauses Auto Diary, Auto Audio, Visual Diary, screen context, and other passive collection without losing configuration.
 4. **Provenance everywhere.** Library items and AI responses record source device, capture time, automation, model/provider, and whether processing occurred locally or through Your cloud.
 5. **Safe sync ledger.** Track discovered, transferred, verified, skipped duplicate, and failed items. Never imply success for a partially imported batch, and never delete glasses media automatically unless a future verified-delete flow is deliberately designed.
 6. **Provider health.** On-device and cloud providers have clear Ready, Needs setup, Testing, Offline, Authentication failed, and Model unavailable states. The Assistant can offer an allowed fallback rather than simply failing.
@@ -270,7 +267,6 @@ Motion should make the light interface feel polished and responsive, not busy:
 
 ### Persistent activity banner
 
-Place a compact banner just above bottom navigation when a long-running activity exists. It can represent one primary active session at a time: media sync, meeting recording, live translation, live captions, visual diary capture, or AI processing. Tapping it opens the corresponding detail page. Never use an activity banner as an advertisement.
 
 ## 7. Page specifications
 
@@ -397,7 +393,6 @@ Goal: make everything captured or created easy to find in one place.
 - Search with filter chips: All, Photos, Videos, Audio, Notes, and Memories.
 - Toggle between Timeline and Collections; do not build separate top-level pages for every media type.
 - Timeline groups content by day with clear source badges: Glasses, Phone, Meeting, Automation, or Imported.
-- Collections include Recordings, Meeting notes, Daily summaries, Visual diary, and Saved AI answers.
 - Show the transfer activity banner during sync.
 - Multi-select enables share, export, and delete; destructive actions require confirmation.
 
@@ -423,7 +418,6 @@ Goal: turn the existing plugin list into a coherent capability catalog.
 - Group built-ins by outcome:
   - Personal AI: Local Agent.
   - Meetings & communication: Meeting Spark Notes, Live Caption Relay, Hands-Free Translator.
-  - Capture & memory: Auto Diary, Auto Audio, Visual Diary.
   - Productivity: Errand Brain.
 - Each card shows name, one-sentence outcome, availability, active state, and settings action.
 - A first enable opens Automation detail for permissions and data review; later toggles may be direct.
@@ -788,9 +782,7 @@ This map prevents the visual redesign from accidentally deleting a capability me
 | Live Caption Relay settings | Automation detail; live Activity Banner; Library transcript output |
 | Hands-Free Translator settings | Automation detail; live Activity Banner; optional Library output |
 | Errand Brain settings | Automation detail; Library/notification outputs |
-| Auto Diary settings | Automation detail; Library Daily summaries collection |
 | Auto Audio settings | Automation detail; Library Recordings collection |
-| Visual Diary settings | Automation detail; Library Visual diary collection |
 | Settings expandable cards | Settings; AI Services; Privacy & Data; Advanced |
 | Existing appearance settings | Removed from redesigned navigation; AD Glasses uses one light appearance |
 | Cloud settings | AI Services & Models → Your cloud |

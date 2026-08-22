@@ -71,8 +71,6 @@ Derniere version : %2$s</string>
     <string name="compose_action_demo">Demo</string>
     <string name="compose_demo_message">Demo : Local Agent lira l ecran actuel dans 5 secondes.</string>
     <string name="compose_local_agent_shared_memory">Memoire partagee</string>
-    <string name="compose_local_agent_shared_memory_description">AutoDiary gere la capture passive de l ecran, les faits quotidiens, les puces et les resumes. Visual Diary ajoute aussi de courtes notes de scene a cette memoire locale partagee.</string>
-    <string name="compose_open_autodiary_settings">Ouvrir les parametres AutoDiary</string>
     <string name="compose_local_agent_personalization">Personnalisation et debogage</string>
     <string name="compose_agent_personality">Personnalite de l agent</string>
     <string name="compose_edit_agent_personality">Modifier la personnalite de l agent</string>

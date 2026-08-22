@@ -66,22 +66,8 @@ enum class ADAutomation(
     ),
     @Deprecated("Cron is removed from the AD Glasses product")
     ERRAND_BRAIN("Removed Cron", "Removed", "Removed", "Removed", "Errand Brain", false),
-    AUTO_DIARY(
-        "DayNote",
-        "Distill the moments that matter into a private note for each day.",
-        "Daily memory",
-        "On device",
-        "Auto Diary",
-    ),
     @Deprecated("Background audio auto-capture is removed from the AD Glasses product")
     AUTO_AUDIO("Removed audio capture", "Removed", "Removed", "Removed", "Auto Audio", false),
-    VISUAL_DIARY(
-        "Timeline",
-        "Turn visual captures into a searchable timeline you can revisit by moment.",
-        "Visual memory",
-        "Automatic",
-        "Visual Diary",
-    ),
 }
 
 data class ADHostActions(

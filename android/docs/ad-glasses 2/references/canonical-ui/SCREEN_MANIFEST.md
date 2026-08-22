@@ -68,9 +68,7 @@ Do not create eight unrelated visual systems.
 | Live Caption Relay | `translator-detail` | Input/language, phone caption fallback, compatible display output, text behavior and retention |
 | Hands-Free Translator | `translator-detail` | Source/target language, input, spoken/display output, retention and test phrase |
 | Errand Brain | `automation-detail` | Voice input, extracted list, destination, explicit item/time confirmation and preview |
-| Auto Diary | `capture-detail` | Selected screen context, Accessibility, interval/pause, privacy list, redaction and no-store preview |
 | Auto Audio | `automation-detail` | HeyCyan onboard-audio compatibility, schedule/duration/power/storage, Sync and visible test |
-| Visual Diary | `capture-detail` | Compatible camera, explicit interval/pause, processing, retention and visible test capture |
 
 ## State variants generated from the same layouts
 

@@ -79,7 +79,6 @@ Use one native Android component system:
 - destructive confirmation dialog;
 - focused live-session controls.
 
-The Activity Banner is the single cross-app representation of recording, sync, live translation, captions, Visual Diary, live AI, firmware, or automation attention. Show the highest-priority activity and an additional-count indicator if compatible tasks coexist. Tap opens the owning flow. Firmware and recording have priority.
 
 ## 5. Family requirements
 
@@ -181,7 +180,6 @@ LIBRARY
 
 - one destination for Photos, Videos, Audio, Notes and Memories;
 - search, filters, Timeline/Collections, day groups, source badges and processing state;
-- collections: Recordings, Meeting notes, Daily summaries, Visual diary, Saved AI answers;
 - active Sync banner;
 - multi-select Share, Export, Add to collection and confirmed Delete;
 - empty state with Capture, Sync and Create note.
@@ -216,9 +214,7 @@ The eight built-ins are:
 3. Live Caption Relay
 4. Hands-Free Translator
 5. Errand Brain
-6. Auto Diary
 7. Auto Audio
-8. Visual Diary
 
 SHARED DETAIL TEMPLATE
 
@@ -236,9 +232,7 @@ Specific controls:
 - Live Caption Relay: input/language, phone captions, compatible glasses display, text behavior, transcript retention, test;
 - Hands-Free Translator: source/target language, input, spoken/compatible display output, retention, test phrase;
 - Errand Brain: input/language, extracted list and reminder destination, confirm item/time/destination, notification/memory boundary, preview test;
-- Auto Diary: screen context, Accessibility, interval/pause, app privacy list, OCR/name redaction, retention, facts review and safe no-store preview;
 - Auto Audio: HeyCyan onboard-audio requirement, schedule/duration/power/storage/pause, sync/transcription/retention, visible test recording and unsupported explanation;
-- Visual Diary: camera source compatibility, interval/pause, local/cloud analysis, retention and capture test.
 
 COMMUNITY
 

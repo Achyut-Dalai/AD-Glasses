@@ -71,8 +71,6 @@
     <string name="compose_action_demo">演示</string>
     <string name="compose_demo_message">演示：Local Agent 将在 5 秒后读取当前屏幕。</string>
     <string name="compose_local_agent_shared_memory">共享记忆</string>
-    <string name="compose_local_agent_shared_memory_description">AutoDiary 管理被动屏幕捕获、每日事实、项目符号和摘要。Visual Diary 也会将简短场景笔记写入此共享本地记忆。</string>
-    <string name="compose_open_autodiary_settings">打开 AutoDiary 设置</string>
     <string name="compose_local_agent_personalization">个性化和调试</string>
     <string name="compose_agent_personality">代理性格</string>
     <string name="compose_edit_agent_personality">编辑代理性格</string>

@@ -60,22 +60,18 @@
     <!-- Legacy/compat key retained for code paths that still reference it. -->
     <string name="local_agent_accessibility_description">Glasses automation accessibility service</string>
 
-    <!-- Onboarding: DayNote -->
     <string name="onboarding_glasses_connection_title">Connect Your Glasses</string>
     <string name="onboarding_glasses_connection_desc">Allow AD Glasses to find and connect to nearby supported glasses.</string>
     <string name="onboarding_glasses_connection_details">Bluetooth permission is used to discover, connect to, and communicate with your glasses. You can continue without it and grant access later when you connect glasses.</string>
 
     <string name="onboarding_optional_features_title">Optional Features</string>
-    <string name="onboarding_optional_features_desc">Modes, automation, local models, and cloud AI are optional and can be configured later.</string>
+    <string name="onboarding_optional_features_desc">Auto Audio, Automation, and Cloud AI are optional and configured from Settings.</string>
     <string name="onboarding_optional_features_details">Start with the glasses connection, then enable only the modes and services you want. Each capability can request its own Android permission when it needs one.</string>
 
     <string name="onboarding_open_source_title">Open-source foundation</string>
     <string name="onboarding_open_source_desc">AD Glasses is built on open-source components and smart-glasses SDK integrations.</string>
     <string name="onboarding_open_source_details">Required license notices remain part of the app distribution. The AD Glasses product UI is separate from the upstream compatibility code it builds on.</string>
 
-    <string name="onboarding_daily_facts_title">DayNote</string>
-    <string name="onboarding_daily_facts_desc">DayNote can turn selected phone context into a private note that helps you remember your day.</string>
-    <string name="onboarding_daily_facts_details">Enable DayNote only if you want it. Its saved context and reminder behavior can be reviewed or disabled later.</string>
 
     <!-- Onboarding: Screen Capture -->
     <string name="onboarding_screen_capture_title">Screen Memory</string>
