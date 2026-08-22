@@ -1,18 +1,14 @@
-<?xml version="1.0" encoding="utf-8"?><!--
-   Sample backup rules file; uncomment and customize as necessary.
-   See https://developer.android.com/guide/topics/data/autobackup
-   for details.
-   Note: This file is ignored for devices older that API 31
-   See https://developer.android.com/about/versions/12/backup-restore
--->
+<?xml version="1.0" encoding="utf-8"?>
 <full-backup-content>
     <exclude domain="database" path="cyanbridge-db"/>
     <exclude domain="database" path="cyanbridge-db-shm"/>
     <exclude domain="database" path="cyanbridge-db-wal"/>
     <exclude domain="file" path="local_models/"/>
+    <exclude domain="sharedpref" path="ai_api_secrets.xml"/>
     <exclude domain="sharedpref" path="remote_openai_secrets.xml"/>
     <exclude domain="sharedpref" path="cloud_server_prefs.xml"/>
     <exclude domain="sharedpref" path="cloud_server_secrets.xml"/>
+    <!-- Legacy encrypted filename retained only so upgrades cannot back it up. -->
     <exclude domain="sharedpref" path="pro_subscription_server_secrets.xml"/>
     <exclude domain="sharedpref" path="local_agent_secrets.xml"/>
     <exclude domain="sharedpref" path="pending_legacy_checkout_prefs.xml"/>
