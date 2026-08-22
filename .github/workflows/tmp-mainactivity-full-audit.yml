@@ -1,0 +1,849 @@
+name: Temporary MainActivity audit repair
+
+on:
+  push:
+    branches:
+      - fix/mainactivity-full-audit
+
+permissions:
+  contents: write
+
+jobs:
+  repair:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out repair branch
+        uses: actions/checkout@v7
+        with:
+          ref: fix/mainactivity-full-audit
+          fetch-depth: 0
+
+      - name: Apply audited MainActivity fixes
+        shell: bash
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          import re
+
+          path = Path('android/AD-Glasses/app/src/main/java/com/ad_glasses/MainActivity.kt')
+          text = path.read_text(encoding='utf-8')
+          if 'private fun discardTtsUtterance' in text:
+              print('MainActivity audit repair already applied')
+              raise SystemExit(0)
+
+          def replace_once(old: str, new: str, label: str) -> None:
+              global text
+              count = text.count(old)
+              if count != 1:
+                  raise SystemExit(f'{label}: expected exactly one match, found {count}')
+              text = text.replace(old, new, 1)
+
+          def regex_once(pattern: str, replacement: str, label: str) -> None:
+              global text
+              text, count = re.subn(pattern, replacement, text, count=1, flags=re.S)
+              if count != 1:
+                  raise SystemExit(f'{label}: expected exactly one regex match, found {count}')
+
+          replace_once('import android.os.Environment\n', '', 'remove dead Environment import')
+          replace_once('    private var isImageAssistantMode = true // Use assistant vs share intent\n', '', 'remove retired image assistant mode')
+          replace_once('    private var lastImageQueryAtMs: Long = 0L\n', '', 'remove timestamp debounce state')
+          replace_once(
+              '        if (!callbackIntent.data?.scheme.equals("ADGlasses", ignoreCase = true)) return false',
+              '        if (!callbackIntent.data?.scheme.equals("ad-glasses", ignoreCase = true)) return false',
+              'fix Meta callback URI scheme',
+          )
+
+          # Retired consumer-assistant UI state had no effect on routing after the Cloud/Local migration.
+          regex_once(
+              r'\n        binding\.cbImageAsAssistant\.isChecked = isImageAssistantMode\n'
+              r'        binding\.cbImageAsAssistant\.text = if \(isImageAssistantMode\) "Direct Assistant" else "App Sharing"\n'
+              r'\s*\n'
+              r'        binding\.cbImageAsAssistant\.setOnCheckedChangeListener \{ _, isChecked ->\n'
+              r'            isImageAssistantMode = isChecked\n'
+              r'            val modeName = if \(isChecked\) "Direct Assistant" else "App Sharing"\n'
+              r'            binding\.cbImageAsAssistant\.text = modeName\n'
+              r'            Toast\.makeText\(this, "Image Hijack: \$modeName", Toast\.LENGTH_SHORT\)\.show\(\)\n'
+              r'        \}\n',
+              '\n',
+              'remove retired Direct Assistant/App Sharing listener',
+          )
+
+          # Route all TTS completion through one once-only callback remover and explicitly discard
+          # interrupted callbacks so QUEUE_FLUSH cannot leave stale follow-up closures behind.
+          text = text.replace('utteranceId?.let { ttsDoneCallbacks.remove(it)?.invoke() }', 'completeTtsUtterance(utteranceId)')
+          replace_once(
+              '''            override fun onError(utteranceId: String?, errorCode: Int) {
+                localSpeechSessionManager.speechQueueController.onUtteranceError(utteranceId, errorCode)
+                Log.w("ImageQuestionAudio", "TTS failed id=$utteranceId errorCode=$errorCode")
+                completeTtsUtterance(utteranceId)
+            }
+''',
+              '''            override fun onError(utteranceId: String?, errorCode: Int) {
+                localSpeechSessionManager.speechQueueController.onUtteranceError(utteranceId, errorCode)
+                Log.w("ImageQuestionAudio", "TTS failed id=$utteranceId errorCode=$errorCode")
+                completeTtsUtterance(utteranceId)
+            }
+
+            override fun onStop(utteranceId: String?, interrupted: Boolean) {
+                localSpeechSessionManager.speechQueueController.onUtteranceError(utteranceId)
+                Log.i("ImageQuestionAudio", "TTS stopped id=$utteranceId interrupted=$interrupted")
+                discardTtsUtterance(utteranceId)
+            }
+''',
+              'add TTS stop cleanup',
+          )
+          replace_once(
+              '''        if (result != TextToSpeech.SUCCESS) {
+            Log.w("ImageQuestionAudio", "TTS enqueue failed id=$id result=$result")
+            // Android does not guarantee an UtteranceProgressListener error callback when
+            // speak() itself rejects the request (or the engine is unavailable). Complete the
+            // registered callback here so Bluetooth/audio-session cleanup cannot get stranded.
+            ttsDoneCallbacks.remove(id)?.invoke()
+        }
+    }
+    companion object {
+''',
+              '''        if (result != TextToSpeech.SUCCESS) {
+            Log.w("ImageQuestionAudio", "TTS enqueue failed id=$id result=$result")
+            // Android does not guarantee an UtteranceProgressListener error callback when
+            // speak() itself rejects the request (or the engine is unavailable). Complete the
+            // registered callback here so Bluetooth/audio-session cleanup cannot get stranded.
+            completeTtsUtterance(id)
+        }
+    }
+
+    private fun completeTtsUtterance(utteranceId: String?) {
+        utteranceId?.let { id -> ttsDoneCallbacks.remove(id)?.invoke() }
+    }
+
+    private fun discardTtsUtterance(utteranceId: String?) {
+        utteranceId?.let(ttsDoneCallbacks::remove)
+    }
+
+    private fun resetTtsAudioState() {
+        ttsDoneCallbacks.clear()
+        AudioSessionCoordinator.markIdle()
+    }
+
+    companion object {
+''',
+              'add TTS callback helpers',
+          )
+
+          replace_once(
+              '''        super.onDestroy()
+        tts?.stop()
+        tts?.shutdown()
+    }
+''',
+              '''        cancelParallelAudioQuestion()
+        finishAiQuestionForegroundWork()
+        runCatching { tts?.stop() }
+        runCatching { tts?.shutdown() }
+        tts = null
+        ttsReady = false
+        resetTtsAudioState()
+        super.onDestroy()
+    }
+''',
+              'harden Activity destruction cleanup',
+          )
+
+          # Use Activity lifecycle for UI-owned jobs instead of detached scopes.
+          replace_once('        batteryPollJob = CoroutineScope(Dispatchers.Main).launch {', '        batteryPollJob = lifecycleScope.launch(Dispatchers.Main) {', 'battery poll lifecycle')
+          replace_once('        val queryJob = CoroutineScope(Dispatchers.IO).launch {', '        val queryJob = lifecycleScope.launch(Dispatchers.IO) {', 'image query lifecycle')
+          replace_once('            CoroutineScope(Dispatchers.IO).launch {\n                try {\n                    val thumbnailSize', '            lifecycleScope.launch(Dispatchers.IO) {\n                try {\n                    val thumbnailSize', 'capture command lifecycle')
+          replace_once('        CoroutineScope(Dispatchers.IO).launch {\n            var thumbnailTransferStarted', '        lifecycleScope.launch(Dispatchers.IO) {\n            var thumbnailTransferStarted', 'thumbnail lifecycle')
+          replace_once('        CoroutineScope(Dispatchers.IO).launch {\n            var initialQuestion', '        lifecycleScope.launch(Dispatchers.IO) {\n            var initialQuestion', 'image-ready lifecycle')
+          replace_once('                CoroutineScope(Dispatchers.IO).launch {\n                    val selectedProvider = chosenProviderType', '                lifecycleScope.launch(Dispatchers.IO) {\n                    try {\n                        val selectedProvider = chosenProviderType', 'voice inference lifecycle/try')
+
+          # Close the try/catch introduced around the recognized voice request.
+          replace_once(
+              '''                        AssistantIntent.CLARIFY -> runOnUiThread {
+                            stopSco()
+                            speak(
+                                AssistantSpeechPolicy.clarification(routing.clarification)
+                            )
+                        }
+                    }
+                }
+
+                recognizer.destroy()
+''',
+              '''                        AssistantIntent.CLARIFY -> runOnUiThread {
+                            stopSco()
+                            speakVision(AssistantSpeechPolicy.clarification(routing.clarification)) {
+                                finishAiQuestionForegroundWork()
+                            }
+                        }
+                    }
+                    } catch (error: CancellationException) {
+                        finishAiQuestionForegroundWork()
+                        throw error
+                    } catch (error: Exception) {
+                        Log.e("AIHijack", "Voice request failed", error)
+                        runOnUiThread {
+                            stopSco()
+                            speakVision("I couldn't complete that request with the selected AI route.") {
+                                finishAiQuestionForegroundWork()
+                            }
+                        }
+                    }
+                }
+
+                recognizer.destroy()
+''',
+              'voice inference exception cleanup',
+          )
+
+          # Terminal voice-routing branches must end bounded AI foreground work after speech.
+          replace_once(
+              '''                            if (unsupportedReason != null) {
+                                speak(unsupportedReason)
+                                return@runOnUiThread
+                            }
+''',
+              '''                            if (unsupportedReason != null) {
+                                speakVision(unsupportedReason) { finishAiQuestionForegroundWork() }
+                                return@runOnUiThread
+                            }
+''',
+              'voice image unsupported cleanup',
+          )
+          replace_once(
+              '''                            if (!AutomationPrefs.isLocalAgentAutomationEnabled(this@MainActivity)) {
+                                speak("Enable Local Agent phone control in ADGlasses settings first.")
+                                return@runOnUiThread
+                            }
+                            if (isDeviceLockedForAutomation()) {
+                                speak("Unlock your phone before I control it.")
+                                return@runOnUiThread
+                            }
+                            if (!LocalAgentAccessibilityBridge.isConnected()) {
+                                speak("Please enable ADGlasses accessibility control first.")
+                                return@runOnUiThread
+                            }
+
+                            val goal = routing.normalizedGoal ?: prompt
+                            val result = LocalAgentController.start(this@MainActivity, goal)
+                            if (result.ok) {
+                                speak("Okay. I'll do that.")
+                            } else {
+                                speak("I couldn't start phone control.")
+                            }
+''',
+              '''                            if (!AutomationPrefs.isLocalAgentAutomationEnabled(this@MainActivity)) {
+                                speakVision("Enable Local Agent phone control in AD Glasses settings first.") {
+                                    finishAiQuestionForegroundWork()
+                                }
+                                return@runOnUiThread
+                            }
+                            if (isDeviceLockedForAutomation()) {
+                                speakVision("Unlock your phone before I control it.") {
+                                    finishAiQuestionForegroundWork()
+                                }
+                                return@runOnUiThread
+                            }
+                            if (!LocalAgentAccessibilityBridge.isConnected()) {
+                                speakVision("Please enable AD Glasses accessibility control first.") {
+                                    finishAiQuestionForegroundWork()
+                                }
+                                return@runOnUiThread
+                            }
+
+                            val goal = routing.normalizedGoal ?: prompt
+                            val result = LocalAgentController.start(this@MainActivity, goal)
+                            speakVision(
+                                if (result.ok) "Okay. I'll do that." else "I couldn't start phone control.",
+                            ) {
+                                finishAiQuestionForegroundWork()
+                            }
+''',
+              'voice UI-task cleanup',
+          )
+
+          # The foreground service supports microphone typing; MainActivity must opt into it for
+          # voice turns and image flows that offer spoken questions/follow-ups.
+          replace_once(
+              '''    private fun beginAiQuestionForegroundWork(status: String) {
+        AiQuestionForegroundService.start(this, status)
+    }
+''',
+              '''    private fun beginAiQuestionForegroundWork(
+        status: String,
+        usesPhoneMicrophone: Boolean = false,
+    ) {
+        AiQuestionForegroundService.start(this, status, usesPhoneMicrophone = usesPhoneMicrophone)
+    }
+''',
+              'foreground microphone typing helper',
+          )
+          replace_once('        beginAiQuestionForegroundWork("Listening for glasses voice question")', '        beginAiQuestionForegroundWork("Listening for glasses voice question", usesPhoneMicrophone = true)', 'voice foreground microphone type')
+
+          # Never send Oudmon/HeyCyan command bytes to another glasses backend.
+          replace_once(
+              '''    private fun stopGlassesAiAudio(source: String) {
+        if (isMetaRaybanSelected()) {
+            // Meta audio is managed by DAT/Android audio routing; never send Oudmon
+            // command bytes to a Meta wearable.
+            Log.d("AIHijack", "Skipping HeyCyan AI-audio stop for Meta ($source)")
+            return
+        }
+''',
+              '''    private fun stopGlassesAiAudio(source: String) {
+        if (isEyevueSelected()) {
+            getOrCreateEyevueManager().stopVoiceRecognition()
+            Log.d("AIHijack", "Stopped Eyevue voice recognition for $source")
+            return
+        }
+        if (isMetaRaybanSelected() || isMeizuMyvuSelected()) {
+            // Meta and MYVU own different transports; never send Oudmon command bytes to them.
+            Log.d("AIHijack", "Skipping HeyCyan AI-audio stop for the selected non-HeyCyan device ($source)")
+            return
+        }
+''',
+              'device-specific AI audio stop',
+          )
+          replace_once(
+              '''        runOnUiThread {
+            if (source == "eyevue") {
+                getOrCreateEyevueManager().stopVoiceRecognition()
+            } else {
+                stopGlassesAiAudio("$source wake-word route")
+            }
+            when (route) {
+                AiWakeWordRoute.VOICE_QUESTION -> triggerAssistantVoiceQuery()
+                AiWakeWordRoute.IMAGE_QUESTION -> handleGlassesImageButtonPressed(
+                    triggerCapture = true,
+                    sourceTag = "${source}_wake_word",
+                    source = ImageQuestionSourcePolicy.defaultSource(),
+                    thumbnailQuality = ImageQuestionSourcePolicy.defaultThumbnailQuality(),
+                    offerSpokenQuestion = true,
+                )
+            }
+        }
+''',
+              '''        runOnUiThread {
+            when (route) {
+                AiWakeWordRoute.VOICE_QUESTION -> triggerAssistantVoiceQuery()
+                AiWakeWordRoute.IMAGE_QUESTION -> {
+                    stopGlassesAiAudio("$source wake-word image route")
+                    handleGlassesImageButtonPressed(
+                        triggerCapture = true,
+                        sourceTag = "${source}_wake_word",
+                        source = ImageQuestionSourcePolicy.defaultSource(),
+                        thumbnailQuality = ImageQuestionSourcePolicy.defaultThumbnailQuality(),
+                        offerSpokenQuestion = true,
+                    )
+                }
+            }
+        }
+''',
+              'avoid duplicate wake-word stop command',
+          )
+
+          # MYVU exposes microphone/speaker/display but no camera transport in its adapter.
+          replace_once(
+              '''    private fun imageQueryUnsupportedReasonForCurrentSelection(): String? {
+        if (currentAssistantRoute() != GlassesAssistantRoute.LOCAL) return null
+''',
+              '''    private fun imageQueryUnsupportedReasonForCurrentSelection(): String? {
+        if (isMeizuMyvuSelected()) {
+            return "Image questions are unavailable for MYVU because its current transport does not expose camera capture."
+        }
+        if (currentAssistantRoute() != GlassesAssistantRoute.LOCAL) return null
+''',
+              'gate MYVU image capture',
+          )
+
+          # Start HeyCyan image foreground work only after we own the vendor command slot.
+          replace_once(
+              '''        prepareAiQuestionForLockScreen()
+        beginAiQuestionForegroundWork("Capturing image from glasses")
+
+        if (triggerCapture) {
+            val permit = acquireBackgroundGlassesCommand("AI image capture") ?: return
+            if (imageThumbnailRequestInProgress.get() ||
+                !imageCaptureAwaitingNotification.compareAndSet(false, true)
+            ) {
+                GlassesSessionCoordinator.releaseBackgroundCommand(permit)
+                Log.i("AIHijack", "[$sourceTag] Image capture already in progress")
+                return
+            }
+
+            pendingImageCaptureSourceTag = sourceTag
+''',
+              '''        if (triggerCapture) {
+            val permit = acquireBackgroundGlassesCommand("AI image capture") ?: run {
+                clearPendingVoiceImageQuestion(sourceTag)
+                finishAiQuestionForegroundWork()
+                return
+            }
+            if (imageThumbnailRequestInProgress.get() ||
+                !imageCaptureAwaitingNotification.compareAndSet(false, true)
+            ) {
+                GlassesSessionCoordinator.releaseBackgroundCommand(permit)
+                Log.i("AIHijack", "[$sourceTag] Image capture already in progress")
+                return
+            }
+
+            prepareAiQuestionForLockScreen()
+            beginAiQuestionForegroundWork(
+                "Capturing image from glasses",
+                usesPhoneMicrophone = offerSpokenQuestion &&
+                    ContextCompat.checkSelfPermission(this, Manifest.permission.RECORD_AUDIO) == PackageManager.PERMISSION_GRANTED,
+            )
+            pendingImageCaptureSourceTag = sourceTag
+''',
+              'image capture foreground ownership',
+          )
+          replace_once(
+              '''        } else {
+            requestSelectedImageSourceForQuestion(sourceTag)
+        }
+    }
+''',
+              '''        } else {
+            prepareAiQuestionForLockScreen()
+            beginAiQuestionForegroundWork(
+                "Receiving image from glasses",
+                usesPhoneMicrophone = offerSpokenQuestion &&
+                    ContextCompat.checkSelfPermission(this, Manifest.permission.RECORD_AUDIO) == PackageManager.PERMISSION_GRANTED,
+            )
+            requestSelectedImageSourceForQuestion(sourceTag)
+        }
+    }
+''',
+              'hardware image foreground ownership',
+          )
+          replace_once(
+              '''        if (isGlassesCommandBlocked("AI image capture")) {
+            clearPendingVoiceImageQuestion(sourceTag)
+            return
+        }
+''',
+              '''        if (isGlassesCommandBlocked("AI image capture")) {
+            clearPendingVoiceImageQuestion(sourceTag)
+            finishAiQuestionForegroundWork()
+            return
+        }
+''',
+              'blocked image capture cleanup',
+          )
+          replace_once(
+              '''        if (!BleOperateManager.getInstance().isConnected) {
+            clearPendingVoiceImageQuestion(sourceTag)
+            runOnUiThread {
+''',
+              '''        if (!BleOperateManager.getInstance().isConnected) {
+            clearPendingVoiceImageQuestion(sourceTag)
+            finishAiQuestionForegroundWork()
+            runOnUiThread {
+''',
+              'disconnected image cleanup',
+          )
+          replace_once(
+              '''        beginAiQuestionForegroundWork("Capturing image from Eyevue glasses")
+''',
+              '''        beginAiQuestionForegroundWork(
+            "Capturing image from Eyevue glasses",
+            usesPhoneMicrophone = offerSpokenQuestion &&
+                ContextCompat.checkSelfPermission(this, Manifest.permission.RECORD_AUDIO) == PackageManager.PERMISSION_GRANTED,
+        )
+''',
+              'Eyevue image foreground microphone type',
+          )
+          replace_once(
+              '''                }.onFailure { error ->
+                    clearPendingVoiceImageQuestion(sourceTag)
+                    withContext(Dispatchers.Main) {
+                        showMetaError(
+''',
+              '''                }.onFailure { error ->
+                    clearPendingVoiceImageQuestion(sourceTag)
+                    finishAiQuestionForegroundWork()
+                    withContext(Dispatchers.Main) {
+                        showMetaError(
+''',
+              'Meta image failure cleanup',
+          )
+
+          # Thumbnail acquisition must not strand the bounded question service or a command permit.
+          replace_once(
+              '''    private fun requestImageThumbnailForQuestion(sourceTag: String) {
+        if (isGlassesCommandBlocked("AI thumbnail request")) return
+        val permit = pendingImageCapturePermit.getAndSet(null)
+            ?: acquireBackgroundGlassesCommand("AI thumbnail request")
+            ?: return
+''',
+              '''    private fun requestImageThumbnailForQuestion(sourceTag: String) {
+        if (isGlassesCommandBlocked("AI thumbnail request")) {
+            clearPendingVoiceImageQuestion(sourceTag)
+            finishAiQuestionForegroundWork()
+            return
+        }
+        val permit = pendingImageCapturePermit.getAndSet(null)
+            ?: acquireBackgroundGlassesCommand("AI thumbnail request")
+            ?: run {
+                clearPendingVoiceImageQuestion(sourceTag)
+                finishAiQuestionForegroundWork()
+                return
+            }
+''',
+              'thumbnail early-return cleanup',
+          )
+          replace_once(
+              '        if (isGlassesCommandBlocked("AI thumbnail request")) return false\n        try {',
+              '        if (isGlassesCommandBlocked("AI thumbnail request")) {\n            GlassesSessionCoordinator.releaseBackgroundCommand(permit)\n            return false\n        }\n        try {',
+              'thumbnail permit release on late block',
+          )
+
+          # Invalid/stale files must terminate the capture turn and its optional microphone job.
+          replace_once(
+              '''        if (metrics == null) {
+            pendingVoiceImageQuestion = null
+            Log.e("AIHijack", "Image file is missing or invalid: $imagePath (${imageFile.length()} bytes)")
+''',
+              '''        if (metrics == null) {
+            clearPendingVoiceImageQuestion("invalid_image")
+            finishAiQuestionForegroundWork()
+            Log.e("AIHijack", "Image file is missing or invalid: $imagePath (${imageFile.length()} bytes)")
+''',
+              'invalid image cleanup',
+          )
+          replace_once(
+              '''        if (ageMs > IMAGE_QUESTION_MAX_IMAGE_AGE_MS || ageMs < 0) {
+            pendingVoiceImageQuestion = null
+            Log.w("AIHijack", "Image too old: age=${ageMs / 1000}s, path=$imagePath")
+''',
+              '''        if (ageMs > IMAGE_QUESTION_MAX_IMAGE_AGE_MS || ageMs < 0) {
+            clearPendingVoiceImageQuestion("stale_image")
+            finishAiQuestionForegroundWork()
+            Log.w("AIHijack", "Image too old: age=${ageMs / 1000}s, path=$imagePath")
+''',
+              'stale image cleanup',
+          )
+
+          # A duplicate must never clear the guard owned by the original request. Timestamp debounce
+          # also dropped legitimate rapid captures and could leave foreground work active.
+          regex_once(
+              r'    private fun triggerAssistantImageQuery\(\n'
+              r'        imagePath: String,\n'
+              r'        userQuestion: String\? = null,\n'
+              r'        source: ImageQuestionSource = ImageQuestionSourcePolicy\.defaultSource\(\),\n'
+              r'        onReplySpoken: \(\(\) -> Unit\)\? = null,\n'
+              r'    \) \{.*?\n    \}\n\n    private fun analyzeSyncedCapture',
+              '''    private fun triggerAssistantImageQuery(
+        imagePath: String,
+        userQuestion: String? = null,
+        source: ImageQuestionSource = ImageQuestionSourcePolicy.defaultSource(),
+        onReplySpoken: (() -> Unit)? = null,
+    ) {
+        if (!imageQueryInProgress.compareAndSet(false, true)) {
+            Log.w("AIHijack", "Image query already in progress; ignoring duplicate request")
+            return
+        }
+
+        val usesPhoneMicrophone = onReplySpoken != null &&
+            ContextCompat.checkSelfPermission(this, Manifest.permission.RECORD_AUDIO) == PackageManager.PERMISSION_GRANTED
+        beginAiQuestionForegroundWork(
+            "Analyzing glasses image",
+            usesPhoneMicrophone = usesPhoneMicrophone,
+        )
+
+        try {
+            val resolvedPrompt = resolveImageQuestionPrompt(userQuestion)
+            val providerType = when (currentAssistantRoute()) {
+                GlassesAssistantRoute.LOCAL -> AgentProviderType.LOCAL_AGENT
+                GlassesAssistantRoute.CLOUD -> AgentProviderType.CLOUD_AI
+            }
+            Log.i("AIHijack", "Starting image query source=${source.wireName} provider=$providerType")
+            triggerMemoryAwareImageQuery(
+                imagePath = imagePath,
+                providerType = providerType,
+                resolvedPrompt = resolvedPrompt,
+                onReplySpoken = onReplySpoken,
+            )
+        } catch (error: Exception) {
+            imageQueryInProgress.set(false)
+            finishAiQuestionForegroundWork()
+            Log.e("AIHijack", "Could not start image query", error)
+            Toast.makeText(
+                this,
+                "Could not start image analysis: ${error.message ?: "unknown error"}",
+                Toast.LENGTH_LONG,
+            ).show()
+        }
+    }
+
+    private fun analyzeSyncedCapture''',
+              'replace image query guard',
+          )
+
+          # Preserve coroutine cancellation instead of converting it into a spoken provider error.
+          replace_once(
+              '''                val outcome = runCatching {
+                    AssistantOrchestrator(
+                        context = this@MainActivity,
+                        executor = AndroidAssistantCapabilityExecutor(this@MainActivity),
+                    ).handle(
+                        turn = AssistantTurn(
+                            text = routePrompt,
+                            surface = AssistantInputSurface.GLASSES_VISION,
+                            imagePath = imagePath,
+                            contextText = systemContext,
+                            webRequested = false,
+                        ),
+                        providerType = providerType,
+                    )
+                }
+                val finalReply = outcome.fold(
+                    onSuccess = { it.spokenText.trim().ifBlank { it.richText.trim() } },
+                    onFailure = { error ->
+                        Log.e("AIHijack", "Image query failed without provider fallback", error)
+                        runOnUiThread {
+                            Toast.makeText(
+                                this@MainActivity,
+                                "Vision error: ${(error.message ?: "unknown error").take(100)}",
+                                Toast.LENGTH_LONG,
+                            ).show()
+                        }
+                        "I couldn't analyze that image with the selected route. I did not send it to another provider."
+                    },
+                )
+''',
+              '''                val finalReply = try {
+                    AssistantOrchestrator(
+                        context = this@MainActivity,
+                        executor = AndroidAssistantCapabilityExecutor(this@MainActivity),
+                    ).handle(
+                        turn = AssistantTurn(
+                            text = routePrompt,
+                            surface = AssistantInputSurface.GLASSES_VISION,
+                            imagePath = imagePath,
+                            contextText = systemContext,
+                            webRequested = false,
+                        ),
+                        providerType = providerType,
+                    ).let { result -> result.spokenText.trim().ifBlank { result.richText.trim() } }
+                } catch (error: CancellationException) {
+                    throw error
+                } catch (error: Exception) {
+                    Log.e("AIHijack", "Image query failed without provider fallback", error)
+                    runOnUiThread {
+                        Toast.makeText(
+                            this@MainActivity,
+                            "Vision error: ${(error.message ?: "unknown error").take(100)}",
+                            Toast.LENGTH_LONG,
+                        ).show()
+                    }
+                    "I couldn't analyze that image with the selected route. I did not send it to another provider."
+                }
+''',
+              'preserve image coroutine cancellation',
+          )
+          replace_once(
+              '''            } finally {
+                imageQueryInProgress.set(false)
+            }
+''',
+              '''            } catch (error: CancellationException) {
+                finishAiQuestionForegroundWork()
+                throw error
+            } catch (error: Exception) {
+                Log.e("AIHijack", "Image query pipeline failed", error)
+                finishAiQuestionForegroundWork()
+                runOnUiThread {
+                    Toast.makeText(
+                        this@MainActivity,
+                        "Image question failed: ${error.message ?: "unknown error"}",
+                        Toast.LENGTH_LONG,
+                    ).show()
+                }
+            } finally {
+                imageQueryInProgress.set(false)
+            }
+''',
+              'image pipeline terminal cleanup',
+          )
+
+          # If a cue callback never arrives, stop that cue and remove its callback before opening mic.
+          replace_once(
+              '''            lifecycleScope.launch {
+                delay(2_000L)
+                complete("2s fallback")
+            }
+''',
+              '''            lifecycleScope.launch {
+                delay(2_000L)
+                if (!completed.get()) {
+                    discardTtsUtterance(utteranceId)
+                    runCatching { tts?.stop() }
+                    AudioSessionCoordinator.markIdle()
+                }
+                complete("2s fallback")
+            }
+''',
+              'image cue fallback cleanup',
+          )
+          replace_once(
+              '''            delay(VOICE_CUE_CALLBACK_TIMEOUT_MS)
+            startListeningAfterCue("tts callback timeout")
+''',
+              '''            delay(VOICE_CUE_CALLBACK_TIMEOUT_MS)
+            if (!listeningStarted.get()) {
+                discardTtsUtterance(cueUtteranceId)
+                runCatching { tts?.stop() }
+                AudioSessionCoordinator.markIdle()
+            }
+            startListeningAfterCue("tts callback timeout")
+''',
+              'voice cue fallback cleanup',
+          )
+
+          # High-quality transfer cancellation is a terminal image turn.
+          replace_once(
+              '''    private fun showHighQualityImageFailureDialog(
+        request: HighQualityImageRequest,
+        reason: String,
+    ) {
+        if (isFinishing || isDestroyed) return
+''',
+              '''    private fun showHighQualityImageFailureDialog(
+        request: HighQualityImageRequest,
+        reason: String,
+    ) {
+        if (isFinishing || isDestroyed) {
+            highQualityImageRequest = null
+            clearPendingVoiceImageQuestion(request.sourceTag)
+            finishAiQuestionForegroundWork()
+            return
+        }
+''',
+              'high-quality destroyed cleanup',
+          )
+          replace_once(
+              '''                    highQualityImageRequest = null
+                    clearPendingVoiceImageQuestion(request.sourceTag)
+                }
+            }
+            .show()
+''',
+              '''                    highQualityImageRequest = null
+                    clearPendingVoiceImageQuestion(request.sourceTag)
+                    finishAiQuestionForegroundWork()
+                }
+            }
+            .setCancelable(false)
+            .show()
+''',
+              'high-quality cancel cleanup',
+          )
+
+          # Defensive parsing: general device notifications are not guaranteed to contain index 6.
+          replace_once(
+              '''        override fun parseData(cmdType: Int, response: GlassesDeviceNotifyRsp) {
+            Log.i(
+                "DeviceNotify",
+                "cmdType=$cmdType, loadData=${response.loadData.joinToString(separator = ",") { it.toInt().toString() }}"
+            )
+            if (otaManager.isActive) {
+''',
+              '''        override fun parseData(cmdType: Int, response: GlassesDeviceNotifyRsp) {
+            val load = response.loadData
+            Log.i(
+                "DeviceNotify",
+                "cmdType=$cmdType, loadData=${load.joinToString(separator = ",") { it.toInt().toString() }}"
+            )
+            if (load.size < 7) {
+                Log.w("DeviceNotify", "Ignoring short device notification: cmdType=$cmdType size=${load.size}")
+                return
+            }
+            if (otaManager.isActive) {
+''',
+              'device notify base payload guard',
+          )
+          replace_once('            when (response.loadData[6].toInt()) {', '            when (load[6].toInt()) {', 'use guarded notify payload')
+          # Protect the cases that read deeper indexes.
+          replace_once(
+              '''                0x05 -> {
+                    //Current battery
+                    val battery = response.loadData[7].toInt()
+                    //Is it charging
+                    val changing = response.loadData[8].toInt()
+''',
+              '''                0x05 -> {
+                    if (load.size < 9) {
+                        Log.w("DeviceNotify", "Ignoring short battery notification: size=${load.size}")
+                        return
+                    }
+                    //Current battery
+                    val battery = load[7].toInt()
+                    //Is it charging
+                    val changing = load[8].toInt()
+''',
+              'battery payload guard',
+          )
+          replace_once(
+              '''                0x12 -> {
+                    //Music volume
+''',
+              '''                0x12 -> {
+                    if (load.size < 20) {
+                        Log.w("DeviceNotify", "Ignoring short volume notification: size=${load.size}")
+                        return
+                    }
+                    //Music volume
+''',
+              'volume payload guard',
+          )
+          replace_once('                        Log.i("DeviceNotify", "AI Button Pressed - Hijacking to Phone Assistant")', '                        Log.i("DeviceNotify", "AI Button Pressed - routing to AD assistant")', 'remove retired phone-assistant log')
+
+          # Old helper functions for public external-assistant sharing and redundant device-info
+          # timeouts are unreachable after the forward AI/OTA migrations; remove them from this
+          # critical Activity so future edits cannot accidentally revive those paths.
+          regex_once(
+              r'\n    /\*\*\n     \* Copy an image file to DCIM/Camera/ with the Glasses_AI_ naming convention\..*?\n    private fun looksLikeVisionFailed\(reply: String\): Boolean \{.*?\n    \}\n',
+              '\n',
+              'remove retired external-image helpers',
+          )
+          regex_once(
+              r'\n    /\*\*\n     \* Get the glasses\' Wi-Fi hardware version via BLE syncDeviceInfo\..*?\n    private suspend fun getGlassesWifiFirmwareVersion\(\): String \{.*?\n    \}\n',
+              '\n',
+              'remove redundant Wi-Fi version timeout helpers',
+          )
+
+          # MainActivity-visible product wording uses spaced branding; code identifiers remain ADGlasses.
+          text = text.replace('ADGlasses got stuck before media transfer started.', 'AD Glasses got stuck before media transfer started.')
+          text = text.replace('ADGlasses found other Wi‑Fi Direct devices', 'AD Glasses found other Wi‑Fi Direct devices')
+          text = text.replace('preventing ADGlasses from discovering the glasses', 'preventing AD Glasses from discovering the glasses')
+          text = text.replace('send the logs to the ADGlasses server', 'send the logs to the AD Glasses server')
+          text = text.replace('ADGlasses has not sent a preview automatically.', 'AD Glasses has not sent a preview automatically.')
+
+          path.write_text(text, encoding='utf-8')
+          PY
+
+          git diff --check
+          # Forward architecture and crucial state-machine audit.
+          ! grep -q 'ImageQuestionRoute.PRO_RELAY' android/AD-Glasses/app/src/main/java/com/ad_glasses/MainActivity.kt
+          ! grep -q 'CliRelayClient' android/AD-Glasses/app/src/main/java/com/ad_glasses/MainActivity.kt
+          ! grep -q 'CloudAiPrefs' android/AD-Glasses/app/src/main/java/com/ad_glasses/MainActivity.kt
+          ! grep -q 'PHONE_ASSISTANT' android/AD-Glasses/app/src/main/java/com/ad_glasses/MainActivity.kt
+          ! grep -q 'isImageAssistantMode' android/AD-Glasses/app/src/main/java/com/ad_glasses/MainActivity.kt
+          ! grep -q 'lastImageQueryAtMs' android/AD-Glasses/app/src/main/java/com/ad_glasses/MainActivity.kt
+          grep -q 'scheme.equals("ad-glasses"' android/AD-Glasses/app/src/main/java/com/ad_glasses/MainActivity.kt
+          grep -q 'usesPhoneMicrophone = true' android/AD-Glasses/app/src/main/java/com/ad_glasses/MainActivity.kt
+          git diff --stat
+
+      - name: Commit audited MainActivity
+        shell: bash
+        run: |
+          if git diff --quiet -- android/AD-Glasses/app/src/main/java/com/ad_glasses/MainActivity.kt; then
+            echo "No MainActivity changes to commit"
+            exit 0
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add android/AD-Glasses/app/src/main/java/com/ad_glasses/MainActivity.kt
+          git commit -m "fix: harden MainActivity assistant lifecycle"
+          git push origin HEAD:fix/mainactivity-full-audit
