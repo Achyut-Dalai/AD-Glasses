@@ -45,7 +45,7 @@ jobs:
           echo '===== URI / PACKAGE LEGACY FORMS ====='
           git grep -n -i -E 'cyanbridge://|cyan-bridge://|com\.fersaiyan|com/fersaiyan|android/CyanBridge|CyanBridge' -- . "$EXCLUDE" || true
 
-      - name: Generate precise cleanup patch
+      - name: Generate precise cleanup files
         shell: bash
         run: |
           set -euo pipefail
@@ -57,13 +57,15 @@ jobs:
           git diff --name-only -- . \
             ':(exclude).github/workflows/temp-repo-reference-audit.yml' \
             ':(exclude)tools/temp_cleanup_legacy_refs.py' > legacy-reference-cleanup-files.txt
+          tar -czf legacy-reference-cleanup-files.tar.gz -T legacy-reference-cleanup-files.txt
 
-      - name: Upload reviewed cleanup patch
+      - name: Upload reviewed cleanup files
         uses: actions/upload-artifact@v4
         with:
-          name: legacy-reference-cleanup-patch
+          name: legacy-reference-cleanup-files
           path: |
             legacy-reference-cleanup.patch
             legacy-reference-cleanup-files.txt
+            legacy-reference-cleanup-files.tar.gz
           if-no-files-found: error
           retention-days: 1
