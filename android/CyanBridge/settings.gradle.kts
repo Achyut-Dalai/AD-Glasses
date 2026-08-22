@@ -44,6 +44,7 @@ dependencyResolutionManagement {
 rootProject.name = "CyanBridgeManagerApp"
 include(":app")
 include(":shared")
+include(":assistant-role")
 
 // Moonshine Voice (local wrapper module that builds vendored native sources)
 include(":moonshine-voice")
