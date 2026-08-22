@@ -23,7 +23,7 @@ jobs:
         shell: bash
         run: |
           python3 tools/tmp_mainactivity_audit.py
-          python3 tools/tmp_mainactivity_audit_phase2.py
+          python3 tools/tmp_mainactivity_audit_phase2_runner.py
           git diff --check
           git diff --stat
 
