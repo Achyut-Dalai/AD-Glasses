@@ -44,8 +44,8 @@ internal fun geminiAudioMimeType(extension: String): String = when (extension.tr
 object ApiTokenClient {
     private const val CONNECT_TIMEOUT_MS = 10_000
     private const val READ_TIMEOUT_MS = 120_000
-    private const val MAX_RETRIES = 3
-    private const val BASE_DELAY_MS = 1_000L
+    private const val MAX_SERVER_ATTEMPTS = 2
+    private const val SERVER_RETRY_DELAY_MS = 500L
 
     suspend fun chat(
         context: Context,
@@ -63,7 +63,7 @@ object ApiTokenClient {
         val useNativeWeb = webRequested && profile.webAvailable && imagePaths.isEmpty() && audioPath.isNullOrBlank()
         val text = when {
             profile.provider == ApiProvider.GOOGLE ->
-                retry {
+                retryTransientServerFailure {
                     postGeminiGenerateContent(
                         profile = profile,
                         apiKey = apiKey,
@@ -75,7 +75,7 @@ object ApiTokenClient {
                     )
                 }.let(::extractGeminiText)
             useNativeWeb && profile.provider == ApiProvider.OPENAI ->
-                retry { postOpenAiResponses(profile, apiKey, messages, maxTokens) }
+                retryTransientServerFailure { postOpenAiResponses(profile, apiKey, messages, maxTokens) }
                     .let(::extractOpenAiResponseText)
             else -> {
                 val payloadMessages = buildOpenAiMessages(messages, imagePaths, audioPath)
@@ -89,9 +89,9 @@ object ApiTokenClient {
                         JSONArray().put(JSONObject().put("type", "openrouter:web_search")),
                     )
                 }
-                retry {
+                retryTransientServerFailure {
                     postJson(
-                        url = "$baseUrl/chat/completions",
+                        url = OpenAiCompatibleEndpoint.chatCompletionsUrl(baseUrl),
                         apiKey = apiKey,
                         payload = payload,
                     )
@@ -142,7 +142,7 @@ object ApiTokenClient {
                 extraHeaders = mapOf("x-goog-api-key" to key),
             )
         } else {
-            getJson("$cleanBase/models", apiKey = key)
+            getJson(OpenAiCompatibleEndpoint.modelsUrl(cleanBase), apiKey = key)
         }
 
         val models = selectableModelIds(response)
@@ -362,9 +362,9 @@ object ApiTokenClient {
         return content
     }
 
-    private suspend fun retry(block: () -> JSONObject): JSONObject {
+    private suspend fun retryTransientServerFailure(block: () -> JSONObject): JSONObject {
         var last: Throwable? = null
-        repeat(MAX_RETRIES) { attempt ->
+        repeat(MAX_SERVER_ATTEMPTS) { attempt ->
             try {
                 // HttpURLConnection is blocking. Make the actual socket section interruptible so
                 // cancellation of a chat/turn can stop occupying its worker instead of lingering
@@ -374,10 +374,15 @@ object ApiTokenClient {
                 throw error
             } catch (error: Throwable) {
                 last = error
-                val text = error.message.orEmpty()
-                val retryable = text.contains("HTTP 429") || Regex("HTTP 5\\d\\d").containsMatchIn(text)
-                if (!retryable || attempt == MAX_RETRIES - 1) throw error
-                delay(BASE_DELAY_MS * (1L shl attempt))
+                val detail = generateSequence(error) { it.cause }
+                    .joinToString(" ") { it.message.orEmpty() }
+                // Quota/rate-limit failures are not improved by immediately replaying the exact
+                // wearable request. Fail 429 fast so voice can speak the provider status instead
+                // of adding seconds of silence. Give only transient server faults one short retry.
+                val serverFailure = Regex("(?:API )?HTTP 5\\d\\d", RegexOption.IGNORE_CASE)
+                    .containsMatchIn(detail)
+                if (!serverFailure || attempt == MAX_SERVER_ATTEMPTS - 1) throw error
+                delay(SERVER_RETRY_DELAY_MS)
             }
         }
         throw last ?: IllegalStateException("API request failed")
@@ -409,7 +414,12 @@ object ApiTokenClient {
             conn.connectTimeout = CONNECT_TIMEOUT_MS
             conn.readTimeout = READ_TIMEOUT_MS
             conn.setRequestProperty("Accept", "application/json")
-            if (!apiKey.isNullOrBlank()) conn.setRequestProperty("Authorization", "Bearer $apiKey")
+            if (!apiKey.isNullOrBlank()) {
+                conn.setRequestProperty(
+                    "Authorization",
+                    OpenAiCompatibleEndpoint.authorizationHeader(apiKey),
+                )
+            }
             extraHeaders.forEach { (name, value) -> conn.setRequestProperty(name, value) }
             if (payload != null) {
                 conn.doOutput = true
