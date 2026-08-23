@@ -280,6 +280,9 @@ Remember: You MUST output a valid summary. Do not refuse.
 """.trim()
     }
 
+    private fun buildPrompt(input: Input): String =
+        if (input.isIncremental) buildIncrementalPrompt(input) else buildFullPrompt(input)
+
     suspend fun generateAndStore(
         context: Context,
         date: String = todayString(),
