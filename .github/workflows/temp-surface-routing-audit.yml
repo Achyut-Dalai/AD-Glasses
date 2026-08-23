@@ -1,18 +1,16 @@
-name: Temporary surface routing audit
+name: Temporary surface routing cleanup
 
 on:
   push:
     branches:
       - fix/post-merge-surface-routing-cleanup
-  pull_request:
-    branches:
-      - main
 
 permissions:
-  contents: read
+  contents: write
 
 jobs:
-  audit:
+  cleanup:
+    if: github.actor != 'github-actions[bot]'
     runs-on: ubuntu-latest
     steps:
       - name: Check out cleanup branch
@@ -20,58 +18,36 @@ jobs:
         with:
           ref: fix/post-merge-surface-routing-cleanup
           fetch-depth: 1
-      - name: Audit UI residue routes keywords and assets
+      - name: Apply surface cleanup
         shell: bash
         run: |
           set -euo pipefail
-          echo '===== HOME / SUGGESTION RESIDUE ====='
-          git grep -n -i -E 'suggest|suggestion|try asking|quick prompt|starter prompt|prompt chip|smart lens|search web|browse web' -- \
-            android/AD-Glasses/app/src/main/java/com/ad_glasses/ui/adglasses \
-            android/AD-Glasses/app/src/main/res || true
+          python3 tools/temp_surface_cleanup.py
+          git diff --check
 
-          echo '===== ORPHAN UI / RUNTIME SYMBOLS ====='
-          for symbol in ADNativeAiScreen ADAiCapabilityCard ADAiCapabilityRow ADIntelligencePrefs ADGroundingPolicy ADConversationEngine ADVisionEngine ADFileEngine ADSpeechEngine; do
-            echo "--- $symbol"
-            git grep -n -F "$symbol" -- android/AD-Glasses/app ':!android/AD-Glasses/app/src/main/myvu-upstream/**' || true
-          done
+          echo '===== RETIRED SOURCES / INTENTS ====='
+          test ! -e android/AD-Glasses/app/src/main/java/com/ad_glasses/ui/adglasses/ADNativeAiScreen.kt
+          test ! -e android/AD-Glasses/app/src/main/java/com/ad_glasses/ai/runtime/ADIntelligencePrefs.kt
+          if git grep -n -F 'AssistantIntent.EXECUTE_UI_TASK' -- android/AD-Glasses/app/src/main; then
+            echo 'retired EXECUTE_UI_TASK still present' >&2
+            exit 1
+          fi
 
-          echo '===== WEB / FRESHNESS / SEARCH ROUTING TOKENS ====='
-          git grep -n -i -E '\b(web|internet|browse|search|grounding|grounded|latest|current|today|tonight|news|recent|online)\b' -- \
-            android/AD-Glasses/app/src/main/java/com/ad_glasses/ai \
-            android/AD-Glasses/app/src/main/java/com/ad_glasses/ui/adglasses \
-            android/AD-Glasses/shared/src/commonMain || true
+          echo '===== HOME SUGGESTION RESIDUE ====='
+          if git grep -n -i -E 'try asking|starter prompt|prompt chip|quick prompt' -- android/AD-Glasses/app/src/main android/AD-Glasses/app/src/main/res; then
+            echo 'removed Home suggestion residue remains' >&2
+            exit 1
+          fi
 
-          echo '===== ROUTE / DESTINATION / CAPABILITY DEFINITIONS ====='
-          git grep -n -E 'enum class ADRoute|enum class ADExternalDestination|enum class AssistantIntent|enum class AssistantCapability|ADRoute\.|ADExternalDestination\.|AssistantIntent\.|AssistantCapability\.' -- \
-            android/AD-Glasses/app/src/main/java/com/ad_glasses \
-            android/AD-Glasses/shared/src/commonMain || true
+          echo '===== CURRENT VISUAL ASSETS ====='
+          test -s android/AD-Glasses/app/src/main/res/drawable-nodpi/ad_glasses_hero_v4.png
+          test -s android/AD-Glasses/app/src/main/res/drawable-nodpi/ad_glasses_icon_source.png
+          test -s android/AD-Glasses/app/src/main/res/drawable-nodpi/ad_lens_shutter.png
 
-          echo '===== SPOKEN / KEYWORD ROUTERS ====='
-          git grep -n -E 'Regex\(|containsMatchIn|normalized|lowercase\(\)|START|STOP|keyword|phrase' -- \
-            android/AD-Glasses/app/src/main/java/com/ad_glasses/ai/orchestrator \
-            android/AD-Glasses/app/src/main/java/com/ad_glasses/ai/router || true
-
-          echo '===== IMAGE / ICON RESOURCE REFERENCE AUDIT ====='
-          python3 - <<'PY'
-          from pathlib import Path
-          import subprocess
-          root = Path('android/AD-Glasses/app/src/main/res')
-          exts = {'.png', '.webp', '.jpg', '.jpeg', '.gif', '.xml'}
-          for p in sorted(root.rglob('*')):
-              if not p.is_file() or p.suffix.lower() not in exts:
-                  continue
-              if not (p.parent.name.startswith('drawable') or p.parent.name.startswith('mipmap')):
-                  continue
-              name = p.stem
-              proc = subprocess.run(
-                  ['git','grep','-l','-F',name,'--','android/AD-Glasses',':!android/AD-Glasses/app/src/main/myvu-upstream/**'],
-                  text=True, capture_output=True,
-              )
-              refs = [line for line in proc.stdout.splitlines() if line and line != p.as_posix()]
-              if name.startswith('ad_') or name.startswith('ic_ad') or len(refs) == 0:
-                  print(f'{len(refs):02d} refs | {p.as_posix()}')
-                  for ref in refs[:8]: print(f'    {ref}')
-          PY
-
-          echo '===== AD UI FILE INVENTORY ====='
-          find android/AD-Glasses/app/src/main/java/com/ad_glasses/ui/adglasses -maxdepth 1 -type f -printf '%f\n' | sort
+          git config user.name github-actions[bot]
+          git config user.email 41898282+github-actions[bot]@users.noreply.github.com
+          git add -A
+          if ! git diff --cached --quiet; then
+            git commit -m 'Clean removed UI assets and stale routes'
+            git push origin HEAD:fix/post-merge-surface-routing-cleanup
+          fi
