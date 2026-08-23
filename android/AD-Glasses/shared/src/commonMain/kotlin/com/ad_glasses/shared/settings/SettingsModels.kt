@@ -1,14 +1,10 @@
 package com.ad_glasses.shared.settings
 
 enum class AgentProviderType {
-    CLOUD_AI,
-    LOCAL_AGENT;
+    CLOUD_AI;
 
     val label: String
-        get() = when (this) {
-            CLOUD_AI -> "Cloud AI"
-            LOCAL_AGENT -> "Local AI"
-        }
+        get() = "Cloud AI"
 }
 
 enum class CaptureSource {
