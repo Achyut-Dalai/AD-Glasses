@@ -38,30 +38,31 @@ class ADProductSurfaceIsolationTest {
     @Test
     fun primaryTabsAreExactlyHomeAiLibrary() {
         assertEquals(listOf("Home", "AI", "Library"), ADTab.entries.map { it.label })
-        assertTrue(ADTab.entries.any { it.name == "AI" })
     }
 
     @Test
-    fun aiConversationTabCoexistsWithDeviceCenterProviderConfiguration() {
+    fun aiConversationTabAndProviderConfigurationUseDistinctCurrentRoutes() {
         val app = sourceFile("src/main/java/com/ad_glasses/ui/adglasses/ADGlassesApp.kt").readText()
         val deviceCenter = sourceFile(
             "src/main/java/com/ad_glasses/ui/adglasses/ADGlassesDeviceCenterScreen.kt",
         ).readText()
-        val ai = sourceFile("src/main/java/com/ad_glasses/ui/adglasses/ADNativeAiScreen.kt").readText()
+        val aiSection = sourceFile(
+            "src/main/java/com/ad_glasses/ui/adglasses/ADDeviceAiSection.kt",
+        ).readText()
 
+        assertTrue(app.contains("ADTab.AI -> ADNativeConversationScreen("))
         assertTrue(app.contains("ADExternalDestination.AI -> {"))
-        assertTrue(app.contains("selectedTab = ADTab.AI"))
+        assertTrue(app.contains("routeStack = listOf(ADRoute.MAIN, ADRoute.DEVICE_CENTER)"))
         assertTrue(deviceCenter.contains("ADSectionTitle(\"AI\")"))
         assertTrue(deviceCenter.contains("ADDeviceAiSection("))
         assertFalse(deviceCenter.contains("ADSectionTitle(\"Capabilities\")"))
-        assertFalse(deviceCenter.contains("ADDeviceCapability("))
-        assertTrue(ai.contains("internal fun ADDeviceAiSection("))
-        assertFalse(ai.contains("internal fun ADNativeAiScreen("))
+        assertTrue(aiSection.contains("internal fun ADDeviceAiSection("))
+        assertFalse(sourceFile("src/main/java/com/ad_glasses/ui/adglasses/ADNativeAiScreen.kt").exists())
     }
 
     @Test
-    fun aiSurfaceKeepsOnlyCloudAndLocalRouting() {
-        val ai = sourceFile("src/main/java/com/ad_glasses/ui/adglasses/ADNativeAiScreen.kt").readText()
+    fun deviceCenterAiSectionKeepsOnlyCloudAndLocalRouting() {
+        val ai = sourceFile("src/main/java/com/ad_glasses/ui/adglasses/ADDeviceAiSection.kt").readText()
 
         assertTrue(ai.contains("AiProviderType.CLOUD_API"))
         assertTrue(ai.contains("AiProviderType.LOCAL_MODELS"))
@@ -99,25 +100,28 @@ class ADProductSurfaceIsolationTest {
             "VisualDiarySettingsActivity",
             "NativePluginIds.AUTO_DIARY",
             "NativePluginIds.VISUAL_DIARY",
+            "AssistantIntent.EXECUTE_UI_TASK",
         ).forEach { removed -> assertFalse("MainActivity must not reference $removed", main.contains(removed)) }
         assertTrue(main.contains("val needsAccessibility = LocalAgentPlugin.isEnabled(this)"))
     }
 
     @Test
-    fun capabilityCommandArchitectureDoesNotExposeRemovedDiaryOrTimeline() {
+    fun capabilityCommandArchitectureDoesNotExposeRemovedDiaryTimelineOrUiTaskIntent() {
         val orchestratorDir = sourceFile("src/main/java/com/ad_glasses/ai/orchestrator")
         val router = File(orchestratorDir, "AssistantCapabilityCommandRouter.kt").readText()
         val executor = File(orchestratorDir, "AndroidCapabilityCommandExecutor.kt").readText()
+        val requestRouter = sourceFile("src/main/java/com/ad_glasses/ai/router/AssistantRequestRouter.kt").readText()
 
         listOf("AUTO_DIARY", "VISUAL_DIARY", "DayNote", "Visual Diary")
             .forEach { removed ->
                 assertFalse(router.contains(removed))
                 assertFalse(executor.contains(removed))
             }
+        assertFalse(requestRouter.contains("EXECUTE_UI_TASK"))
     }
 
     @Test
-    fun homeKeepsEverydayCaptureTranslateAndSoundbiteActions() {
+    fun homeKeepsCurrentActionsWithoutRemovedSuggestionCards() {
         val home = sourceFile("src/main/java/com/ad_glasses/ui/adglasses/ADHomeSurface.kt").readText()
 
         listOf("Ask AI", "Photo", "Video", "Translate", "Soundbites", "Audio", "Lens")
@@ -125,6 +129,30 @@ class ADProductSurfaceIsolationTest {
         assertTrue(home.contains("AssistantCapability.TRANSLATOR"))
         assertTrue(home.contains("AssistantCapability.MEETING_NOTES"))
         assertTrue(home.contains("onClick = host.onImageQuestion"))
+        listOf("ADPromptSuggestion(", "starter prompt", "quick prompt", "Try asking")
+            .forEach { removed -> assertFalse(home.contains(removed, ignoreCase = true)) }
+    }
+
+    @Test
+    fun removedGeneratedAndLegacyUiAssetsStayDeleted() {
+        val drawable = sourceFile("src/main/res/drawable")
+        val noDpi = sourceFile("src/main/res/drawable-nodpi")
+        val removed = listOf(
+            File(noDpi, "ad_glasses_hero_v2.png"),
+            File(noDpi, "ad_glasses_hero_v3.png"),
+            File(drawable, "bg_bubble_assistant.xml"),
+            File(drawable, "bg_bubble_received.xml"),
+            File(drawable, "bg_bubble_sent.xml"),
+            File(drawable, "bg_bubble_user.xml"),
+            File(drawable, "bg_circle_send.xml"),
+            File(drawable, "bg_community_hero.xml"),
+            File(drawable, "bg_logo_slot_placeholder.xml"),
+            File(drawable, "ic_launcher_foreground.xml"),
+            File(drawable, "ic_launcher_background.xml"),
+            File(drawable, "logo_ad_glasses.png"),
+        )
+        removed.forEach { file -> assertFalse("Unused UI asset must stay deleted: ${file.name}", file.exists()) }
+        assertFalse(sourceFile("src/main/java/com/ad_glasses/ai/runtime/ADIntelligencePrefs.kt").exists())
     }
 
     @Test
