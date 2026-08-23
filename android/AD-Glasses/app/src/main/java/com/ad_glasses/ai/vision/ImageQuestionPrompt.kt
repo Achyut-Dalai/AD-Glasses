@@ -10,16 +10,14 @@ data class ImageQuestionSettings(
 
 enum class ImageQuestionRoute {
     CLOUD_API,
-    LOCAL_MODEL,
 }
 
-/** A single resolved prompt is deliberately shared by every image-question route. */
+/** A single resolved prompt is deliberately shared by every Cloud image-question entry point. */
 data class ResolvedImageQuestionPrompt(
     val text: String,
 ) {
     fun forRoute(route: ImageQuestionRoute): String = when (route) {
-        ImageQuestionRoute.CLOUD_API,
-        ImageQuestionRoute.LOCAL_MODEL -> text
+        ImageQuestionRoute.CLOUD_API -> text
     }
 }
 
