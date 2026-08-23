@@ -30,8 +30,12 @@ jobs:
                   android/AD-Glasses/app/src/main/java/com/ad_glasses/ui/adglasses/ADComponents.kt \
                   android/AD-Glasses/app/src/main/java/com/ad_glasses/ui/adglasses/ADGlassesApp.kt \
                   android/AD-Glasses/app/src/main/java/com/ad_glasses/ui/adglasses/ADNativeConversationScreen.kt \
-                  android/AD-Glasses/app/src/main/java/com/ad_glasses/ai/orchestrator/AssistantConversationSession.kt
+                  android/AD-Glasses/app/src/main/java/com/ad_glasses/ui/adglasses/ADProductSettingsScreens.kt \
+                  android/AD-Glasses/app/src/main/java/com/ad_glasses/ai/orchestrator/AssistantConversationSession.kt \
+                  android/AD-Glasses/app/src/test/java/com/ad_glasses/ui/adglasses/ADScreenInventoryTest.kt \
+                  android/AD-Glasses/app/src/test/java/com/ad_glasses/ui/adglasses/ADVisibleProductUiTest.kt \
+                  android/AD-Glasses/app/src/test/java/com/ad_glasses/ui/adglasses/ADProductSurfaceIsolationTest.kt
           if ! git diff --cached --quiet; then
-            git commit -m 'Redesign AI conversations hub'
+            git commit -m 'Finish AI conversation management surface'
             git push origin HEAD:fix/ai-conversations-hub
           fi
