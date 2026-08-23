@@ -12,63 +12,25 @@ def write(path: str, text: str) -> None:
     (ROOT / path).write_text(text, encoding='utf-8')
 
 
-def replace_once(text: str, old: str, new: str, label: str) -> str:
-    count = text.count(old)
-    if count != 1:
-        raise RuntimeError(f'{label}: expected exactly one match, found {count}')
-    return text.replace(old, new, 1)
-
-
-# Shared chat no longer has a local-model configuration state.
+# Shared chat: remove the retired local-model composer state if still present.
 path = 'android/AD-Glasses/shared/src/commonMain/kotlin/com/ad_glasses/shared/ui/chat/ChatThreadScreen.kt'
 text = read(path)
-text = replace_once(
-    text,
+text = text.replace(
     '''    val inputLabel = if (composer.primaryAction == ChatComposerPrimaryAction.CONFIGURE_LOCAL_MODEL) {\n         stringResource(Res.string.chat_local_model_required)\n    } else {\n         stringResource(Res.string.chat_message)\n    }\n''',
     '''    val inputLabel = stringResource(Res.string.chat_message)\n''',
-    'chat composer local-model label',
 )
 text = text.replace('''                            ChatComposerPrimaryAction.CONFIGURE_LOCAL_MODEL -> AppIcon.Model.imageVector()\n''', '')
 text = text.replace('''                             ChatComposerPrimaryAction.CONFIGURE_LOCAL_MODEL -> stringResource(Res.string.chat_configure_local_model)\n''', '')
 write(path, text)
 
-# The settings section disclosure strings were generic but had stale local-model resource names.
+# Settings disclosure labels were generic UI state with stale local-model resource names.
 path = 'android/AD-Glasses/shared/src/commonMain/kotlin/com/ad_glasses/shared/ui/settings/SettingsScreen.kt'
 text = read(path)
 text = text.replace('Res.string.local_models_collapse', 'Res.string.settings_section_collapse')
 text = text.replace('Res.string.local_models_expand', 'Res.string.settings_section_expand')
 write(path, text)
 
-# Cloud profiles have one web capability flag derived from provider support; per-turn Ask controls web use.
-path = 'android/AD-Glasses/app/src/main/java/com/ad_glasses/ai/router/AiProviderPrefs.kt'
-text = read(path)
-text, count = re.subn(
-    r'''enum class CloudWebMode\(val wire: String, val label: String\) \{.*?\n\}\n\n(?=enum class ApiProvider)''',
-    '',
-    text,
-    count=1,
-    flags=re.S,
-)
-if count != 1:
-    raise RuntimeError(f'CloudWebMode enum: expected one block, found {count}')
-text = replace_once(
-    text,
-    '''data class CloudAiProfile(\n    val id: String,\n    val name: String,\n    val provider: ApiProvider,\n    val baseUrl: String,\n    val model: String,\n    val webMode: CloudWebMode = CloudWebMode.OFF,\n) {\n    val webAvailable: Boolean\n        get() = provider.nativeWebCapable && webMode == CloudWebMode.AUTO\n}\n''',
-    '''data class CloudAiProfile(\n    val id: String,\n    val name: String,\n    val provider: ApiProvider,\n    val baseUrl: String,\n    val model: String,\n) {\n    val webAvailable: Boolean\n        get() = provider.nativeWebCapable\n}\n''',
-    'CloudAiProfile web mode',
-)
-text = text.replace('''        model = provider.defaultModel,\n        webMode = if (provider.nativeWebCapable) CloudWebMode.AUTO else CloudWebMode.OFF,\n''', '''        model = provider.defaultModel,\n''')
-start = text.find('    // Forward-compatible wrappers for callers being migrated away from the former single-provider model.\n')
-end = text.find('    @Synchronized\n    private fun ensureLegacyMigrated', start)
-if start < 0 or end < 0:
-    raise RuntimeError('AiProviderPrefs compatibility wrapper block not found')
-text = text[:start] + text[end:]
-text = text.replace('''        model = profile.model.trim(),\n        webMode = if (profile.provider.nativeWebCapable) CloudWebMode.AUTO else CloudWebMode.OFF,\n''', '''        model = profile.model.trim(),\n''')
-text = text.replace('''                    model = json.optString("model"),\n                    webMode = CloudWebMode.fromWire(json.optString("web_mode")),\n''', '''                    model = json.optString("model"),\n''')
-text = text.replace('''        .put("model", profile.model)\n        .put("web_mode", profile.webMode.wire)\n''', '''        .put("model", profile.model)\n''')
-write(path, text)
-
-# Provider-aware model discovery: compatible /models first, with native Gemini fallback.
+# Provider-aware model discovery: compatible /models first, then native Gemini as a fallback.
 path = 'android/AD-Glasses/app/src/main/java/com/ad_glasses/ai/router/ApiAiRouter.kt'
 text = read(path)
 start = text.find('    /** Fetch models without ever returning the API key to UI state. */\n')
@@ -79,12 +41,12 @@ new_block = '''    /** Fetch models without ever returning the API key to UI sta
 text = text[:start] + new_block + text[end:]
 write(path, text)
 
-# Android Cloud settings no longer imports the removed persisted web mode.
+# Cloud settings no longer imports the removed profile-level web mode.
 path = 'android/AD-Glasses/app/src/main/java/com/ad_glasses/ui/adglasses/ADNativeAiDetailScreens.kt'
 text = read(path).replace('import com.ad_glasses.ai.router.CloudWebMode\n', '')
 write(path, text)
 
-# Local Agent copy points users to Cloud AI profiles, not a removed local model screen.
+# Local Agent text points to Cloud profile configuration.
 path = 'android/AD-Glasses/app/src/main/res/values/strings_compose.xml'
 text = read(path)
 text = text.replace(
@@ -93,19 +55,19 @@ text = text.replace(
 )
 write(path, text)
 
-# Shared resources: preserve translated generic expand/collapse strings, remove the retired Local Models section and stale chat/setup copy.
+# Shared resources: keep translated accordion labels, remove the retired Local Models surface.
 resources_root = ROOT / 'android/AD-Glasses/shared/src/commonMain/composeResources'
 for file in sorted(resources_root.glob('values*/strings_extra.xml')):
     text = file.read_text(encoding='utf-8')
     is_base = file.parent.name == 'values'
 
-    collapse_match = re.search(r'^\s*<string name="local_models_collapse">.*?</string>\s*$', text, flags=re.M)
-    expand_match = re.search(r'^\s*<string name="local_models_expand">.*?</string>\s*$', text, flags=re.M)
+    collapse = re.search(r'^\s*<string name="local_models_collapse">.*?</string>\s*$', text, flags=re.M)
+    expand = re.search(r'^\s*<string name="local_models_expand">.*?</string>\s*$', text, flags=re.M)
     generic_lines = []
-    if collapse_match:
-        generic_lines.append(collapse_match.group(0).replace('local_models_collapse', 'settings_section_collapse').strip())
-    if expand_match:
-        generic_lines.append(expand_match.group(0).replace('local_models_expand', 'settings_section_expand').strip())
+    if collapse:
+        generic_lines.append(collapse.group(0).replace('local_models_collapse', 'settings_section_collapse').strip())
+    if expand:
+        generic_lines.append(expand.group(0).replace('local_models_expand', 'settings_section_expand').strip())
 
     text, block_count = re.subn(
         r'\n\s*<!-- Local models -->.*?(?=\n\s*<!-- Local agent and utility screens -->)',
@@ -115,31 +77,25 @@ for file in sorted(resources_root.glob('values*/strings_extra.xml')):
         flags=re.S,
     )
     if block_count == 0:
-        # Some translated resources do not keep the section comment; remove all local_models_* lines instead.
         text = re.sub(r'^\s*<string name="local_models_[^"]+">.*?</string>\s*\n?', '', text, flags=re.M)
 
-    for name_pattern in (
-        r'settings_configure_local_models',
-        r'settings_faq_local_models_question',
-        r'settings_faq_local_models_answer',
-        r'chat_local_model_required',
-        r'chat_configure_local_model',
+    for name in (
+        'settings_configure_local_models',
+        'settings_faq_local_models_question',
+        'settings_faq_local_models_answer',
+        'chat_local_model_required',
+        'chat_configure_local_model',
     ):
-        text = re.sub(rf'^\s*<string name="{name_pattern}">.*?</string>\s*\n?', '', text, flags=re.M)
+        text = re.sub(rf'^\s*<string name="{name}">.*?</string>\s*\n?', '', text, flags=re.M)
 
-    if generic_lines:
+    if generic_lines and 'settings_section_collapse' not in text:
         marker = '<!-- Local agent and utility screens -->'
+        if marker not in text:
+            raise RuntimeError(f'{file}: Local Agent resource marker missing')
         insertion = ''.join(f'    {line}\n' for line in generic_lines) + '\n    '
-        if marker in text:
-            text = text.replace(marker, insertion + marker, 1)
-        else:
-            raise RuntimeError(f'{file}: local agent section marker missing')
+        text = text.replace(marker, insertion + marker, 1)
 
-    # Remove stale localized text for Cloud-owned chat/provider behavior so non-English builds fall back to the corrected base text.
-    if not is_base:
-        for name in ('settings_provider_description', 'chat_empty_body', 'dashboard_ai_wake_word_image_warning_body'):
-            text = re.sub(rf'^\s*<string name="{name}">.*?</string>\s*\n?', '', text, flags=re.M)
-    else:
+    if is_base:
         text = re.sub(
             r'<string name="settings_provider_description">.*?</string>',
             '<string name="settings_provider_description">Cloud AI uses the active encrypted provider profile configured on this device.</string>',
@@ -155,32 +111,14 @@ for file in sorted(resources_root.glob('values*/strings_extra.xml')):
             '<string name="dashboard_ai_wake_word_image_warning_body">The HeyCyan SDK does not expose separate events for the AI voice wake word and the hardware AI audio-question button. If you choose AI image questions, pressing the hardware button for an AI voice question will also start an image question. Simple questions can ignore the captured image when they do not ask about it, but image requests can take longer because the captured frame must be uploaded and analyzed by the active Cloud AI profile.</string>',
             text,
         )
+    else:
+        # Fall back to corrected base copy rather than preserve translated descriptions of a removed local LLM.
+        for name in ('settings_provider_description', 'chat_empty_body', 'dashboard_ai_wake_word_image_warning_body'):
+            text = re.sub(rf'^\s*<string name="{name}">.*?</string>\s*\n?', '', text, flags=re.M)
 
     file.write_text(text, encoding='utf-8')
 
-# Dedicated Local LLM documentation/runtime helper is obsolete.
-for relative in (
-    'android/AD-Glasses/docs/local-models-plan.md',
-    'android/AD-Glasses/docs/local-models.md',
-    'android/AD-Glasses/docs/localmodels-vulkan-runtime-integration.md',
-    'android/AD-Glasses/scripts/localmodels/use_local_llama_runtime.sh',
-):
-    target = ROOT / relative
-    if target.exists():
-        target.unlink()
-
-# Remove local-text-model artifact rules while keeping all secret/build ignores.
-path = 'android/AD-Glasses/.gitignore'
-text = read(path)
-text = re.sub(
-    r'\n# Local model artifacts \(never commit weights\)\n\*\.gguf\n\*\.gguf\.part\n\*\.bin\n\*\.safetensors\napp/src/main/assets/models/\napp/src/main/ml/\n',
-    '\n',
-    text,
-    count=1,
-)
-write(path, text)
-
-# Guard against the main live text-LLM symbols returning in product source.
+# Guard the live product source. Moonshine/Gemma transcription strings are intentionally not banned.
 for root in (
     ROOT / 'android/AD-Glasses/app/src/main',
     ROOT / 'android/AD-Glasses/shared/src/commonMain',
@@ -189,7 +127,7 @@ for root in (
         if not file.is_file() or file.suffix.lower() not in {'.kt', '.xml', '.java'}:
             continue
         payload = file.read_text(encoding='utf-8', errors='ignore')
-        forbidden = [
+        forbidden = (
             'LOCAL_MODEL',
             'LOCAL_MODELS',
             'LocalModelsProvider',
@@ -197,7 +135,8 @@ for root in (
             'chat_local_model_required',
             'chat_configure_local_model',
             'local_models_title',
-        ]
+            'CloudWebMode',
+        )
         hits = [token for token in forbidden if token in payload]
         if hits:
-            raise RuntimeError(f'{file}: remaining local text-LLM tokens: {hits}')
+            raise RuntimeError(f'{file}: remaining retired AI tokens: {hits}')
