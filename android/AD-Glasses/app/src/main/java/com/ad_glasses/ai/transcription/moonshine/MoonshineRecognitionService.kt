@@ -1,7 +1,10 @@
 package com.ad_glasses.ai.transcription.moonshine
 
 import ai.moonshine.voice.MicTranscriber
+import android.content.Context
 import android.content.Intent
+import android.media.AudioManager
+import android.os.Build
 import android.os.Bundle
 import android.speech.RecognitionService
 import android.speech.RecognizerIntent
@@ -157,6 +160,10 @@ class MoonshineRecognitionService : RecognitionService() {
         if (!shouldDeliver) return
 
         if (session.beganSpeech) session.callback.endOfSpeech()
+        // The input communication route belongs only to recognition. Tear it down before the result
+        // callback can start memory lookup / Cloud AI work; TTS re-opens an output route only when
+        // there is actually speech to play.
+        releaseInputAudioRoute()
         session.callback.results(resultBundle(clean))
         Log.i(TAG, "stage=asr_final engine=moonshine chars=${clean.length}")
         complete(session)
@@ -178,6 +185,7 @@ class MoonshineRecognitionService : RecognitionService() {
         }
         if (!shouldDeliver) return
         logLine?.let { Log.i(TAG, it) }
+        releaseInputAudioRoute()
         session.callback.error(errorCode)
         complete(session)
     }
@@ -193,6 +201,28 @@ class MoonshineRecognitionService : RecognitionService() {
             session.transcriber = null
             runCatching { transcriber.stop() }
             runCatching { transcriber.close() }
+        }
+    }
+
+    /**
+     * MainActivity opens a Bluetooth communication route before recognition so Moonshine records the
+     * glasses microphone. Keeping that route alive during inference holds SCO/mic focus for seconds
+     * and can delay or misroute the eventual TTS reply, so final/error recognition owns the teardown.
+     */
+    @Suppress("DEPRECATION")
+    private fun releaseInputAudioRoute() {
+        val audioManager = getSystemService(Context.AUDIO_SERVICE) as? AudioManager ?: return
+        runCatching {
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+                audioManager.clearCommunicationDevice()
+            } else {
+                audioManager.isBluetoothScoOn = false
+                audioManager.stopBluetoothSco()
+            }
+            audioManager.mode = AudioManager.MODE_NORMAL
+            Log.i(TAG, "stage=asr_input_route_released engine=moonshine")
+        }.onFailure { error ->
+            Log.w(TAG, "stage=asr_input_route_release_failed engine=moonshine", error)
         }
     }
 
