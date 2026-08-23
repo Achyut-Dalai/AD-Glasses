@@ -42,7 +42,7 @@ import com.ad_glasses.shared.settings.AgentProviderType
 
 enum class ADAiChoice { CLOUD, LOCAL }
 
-/** AI routing and configuration embedded directly in Device Center. */
+/** Cloud/Local routing and configuration embedded directly in Device Center. */
 @Composable
 internal fun ADDeviceAiSection(
     onCloudSettings: () -> Unit,

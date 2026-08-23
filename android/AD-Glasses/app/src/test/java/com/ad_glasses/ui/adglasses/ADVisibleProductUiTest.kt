@@ -27,7 +27,7 @@ class ADVisibleProductUiTest {
     }
 
     @Test
-    fun aiConversationHubIsMinimalAndManageable() {
+    fun aiConversationHubIsMinimalAndKeepsRealPageStates() {
         val screen = appFile("src/main/java/com/ad_glasses/ui/adglasses/ADNativeConversationScreen.kt").readText()
         val components = appFile("src/main/java/com/ad_glasses/ui/adglasses/ADComponents.kt").readText()
 
@@ -45,7 +45,8 @@ class ADVisibleProductUiTest {
         assertTrue(screen.contains("onWebSearchChange = { webSearch = it }"))
         assertTrue(screen.contains("Enable web search"))
         assertTrue(screen.contains("if (messages.isEmpty() && pendingPrompt == null)"))
-        assertFalse(screen.contains("AD-owned "))
+        assertTrue(screen.contains("if (isRunning)"))
+        assertTrue(screen.contains("pendingPrompt"))
         assertTrue(components.contains("ADTab.AI -> Icons.Rounded.AutoAwesome"))
         assertFalse(components.contains("Icons.Outlined.Terminal"))
     }
@@ -77,10 +78,14 @@ class ADVisibleProductUiTest {
     @Test
     fun inheritedActivityNamesRouteIntoComposeRedirects() {
         val manifest = appFile("src/main/AndroidManifest.xml").readText()
+        val app = appFile("src/main/java/com/ad_glasses/ui/adglasses/ADGlassesApp.kt").readText()
         assertTrue(manifest.contains("android:name=\".ui.ChatListActivity\" android:targetActivity=\".ui.adglasses.ADConversationsRedirectActivity\""))
         assertTrue(manifest.contains("android:name=\".ui.SettingsActivity\" android:targetActivity=\".ui.adglasses.ADSettingsRedirectActivity\""))
+        assertTrue(manifest.contains("android:name=\".ui.CommunityPluginsActivity\" android:targetActivity=\".ui.adglasses.ADAiRedirectActivity\""))
         assertTrue(manifest.contains("android:name=\".ui.recordings.SyncedMediaGalleryActivity\" android:targetActivity=\".ui.adglasses.ADCapturesRedirectActivity\""))
         assertTrue(manifest.contains("android:name=\".ui.notes.NotesListActivity\" android:targetActivity=\".ui.adglasses.ADNotesRedirectActivity\""))
+        assertTrue(app.contains("ADExternalDestination.AI -> {"))
+        assertTrue(app.contains("routeStack = listOf(ADRoute.MAIN, ADRoute.DEVICE_CENTER)"))
     }
 
     @Test
@@ -113,7 +118,7 @@ class ADVisibleProductUiTest {
     @Test
     fun deviceCenterOwnsCloudAndLocalAiConfiguration() {
         val deviceCenter = appFile("src/main/java/com/ad_glasses/ui/adglasses/ADGlassesDeviceCenterScreen.kt").readText()
-        val ai = appFile("src/main/java/com/ad_glasses/ui/adglasses/ADNativeAiScreen.kt").readText()
+        val ai = appFile("src/main/java/com/ad_glasses/ui/adglasses/ADDeviceAiSection.kt").readText()
 
         assertTrue(deviceCenter.contains("ADSectionTitle(\"AI\")"))
         assertTrue(deviceCenter.contains("ADDeviceAiSection("))
@@ -126,10 +131,11 @@ class ADVisibleProductUiTest {
         assertFalse(ai.contains("DayNote"))
         assertFalse(ai.contains("Visual Diary"))
         assertFalse(ai.contains("Timeline"))
+        assertFalse(appFile("src/main/java/com/ad_glasses/ui/adglasses/ADNativeAiScreen.kt").exists())
     }
 
     @Test
-    fun homeStartsCoreGlassesActionsAndOwnsLiveTranslateAndSoundbites() {
+    fun homeStartsCoreGlassesActionsWithoutRemovedSuggestions() {
         val home = appFile("src/main/java/com/ad_glasses/ui/adglasses/ADHomeSurface.kt").readText()
         assertTrue(home.contains("onClick = host.onVoiceQuestion"))
         assertTrue(home.contains("onClick = host.onCapturePhoto"))
@@ -139,6 +145,7 @@ class ADVisibleProductUiTest {
         assertTrue(home.contains("toggleCapability(AssistantCapability.MEETING_NOTES)"))
         listOf("Ask AI", "Photo", "Video", "Translate", "Soundbites", "Audio", "Lens")
             .forEach { label -> assertTrue(home.contains("\"$label\"")) }
+        assertFalse(home.contains("ADPromptSuggestion("))
         assertFalse(home.contains("Search Web"))
         assertFalse(home.contains("Smart Lens"))
     }

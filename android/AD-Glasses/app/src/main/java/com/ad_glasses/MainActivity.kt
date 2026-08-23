@@ -4948,36 +4948,6 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
                                 )
                             }
 
-                            AssistantIntent.EXECUTE_UI_TASK -> runOnUiThread {
-                                stopSco()
-                                if (!AutomationPrefs.isLocalAgentAutomationEnabled(this@MainActivity)) {
-                                    speakVision("Enable Local Agent phone control in AD Glasses settings first.") {
-                                        finishAiQuestionForegroundWork()
-                                    }
-                                    return@runOnUiThread
-                                }
-                                if (isDeviceLockedForAutomation()) {
-                                    speakVision("Unlock your phone before I control it.") {
-                                        finishAiQuestionForegroundWork()
-                                    }
-                                    return@runOnUiThread
-                                }
-                                if (!LocalAgentAccessibilityBridge.isConnected()) {
-                                    speakVision("Please enable AD Glasses accessibility control first.") {
-                                        finishAiQuestionForegroundWork()
-                                    }
-                                    return@runOnUiThread
-                                }
-
-                                val goal = routing.normalizedGoal ?: prompt
-                                val result = LocalAgentController.start(this@MainActivity, goal)
-                                speakVision(
-                                    if (result.ok) "Okay. I'll do that." else "I couldn't start phone control.",
-                                ) {
-                                    finishAiQuestionForegroundWork()
-                                }
-                            }
-
                             AssistantIntent.CLARIFY -> runOnUiThread {
                                 stopSco()
                                 speakVision(AssistantSpeechPolicy.clarification(routing.clarification)) {

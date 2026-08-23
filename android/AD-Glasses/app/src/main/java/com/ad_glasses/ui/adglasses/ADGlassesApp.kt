@@ -54,8 +54,7 @@ fun ADGlassesApp(
             }
             ADExternalDestination.SETTINGS -> routeStack = listOf(ADRoute.MAIN, ADRoute.SETTINGS)
             ADExternalDestination.AI -> {
-                routeStack = listOf(ADRoute.MAIN)
-                selectedTab = ADTab.AI
+                routeStack = listOf(ADRoute.MAIN, ADRoute.DEVICE_CENTER)
             }
             ADExternalDestination.LIBRARY_CAPTURES -> {
                 selectedTab = ADTab.LIBRARY
