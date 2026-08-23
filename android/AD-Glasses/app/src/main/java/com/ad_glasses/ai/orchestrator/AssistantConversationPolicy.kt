@@ -1,21 +1,16 @@
 package com.ad_glasses.ai.orchestrator
 
-import com.ad_glasses.shared.chat.ChatThread
 import java.util.Locale
 
-/** Commands that change AD's conversation context without becoming chat messages themselves. */
+/** Commands that change AD's durable conversation without becoming chat messages themselves. */
 internal enum class AssistantConversationCommand {
     START_FRESH,
     FORGET_CURRENT,
 }
 
-/**
- * Pure policy for ephemeral AD conversations. Keeping parsing and expiry selection free of
- * Android dependencies makes the safety-sensitive rules straightforward to unit test.
- */
+/** Pure parsing policy for explicit conversation controls. */
 internal object AssistantConversationPolicy {
     const val THREAD_TITLE = "AD conversation"
-    const val RETENTION_MS = 7L * 24L * 60L * 60L * 1_000L
 
     private val startFreshPhrases = setOf(
         "new topic",
@@ -48,22 +43,6 @@ internal object AssistantConversationPolicy {
             in forgetPhrases -> AssistantConversationCommand.FORGET_CURRENT
             else -> null
         }
-    }
-
-    fun expiredThreadIds(
-        threads: List<ChatThread>,
-        managedThreadIds: Set<String>,
-        nowMs: Long,
-        retentionMs: Long = RETENTION_MS,
-    ): Set<String> {
-        require(retentionMs > 0L) { "retentionMs must be positive" }
-        return threads
-            .asSequence()
-            .filter { it.id in managedThreadIds || it.title == THREAD_TITLE }
-            .filter { thread ->
-                nowMs >= thread.updatedAt && nowMs - thread.updatedAt >= retentionMs
-            }
-            .mapTo(linkedSetOf()) { it.id }
     }
 
     private val NON_WORD = Regex("[^\\p{L}\\p{N}]+")
