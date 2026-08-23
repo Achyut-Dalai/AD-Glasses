@@ -9,12 +9,12 @@ import org.junit.Test
 class ADScreenInventoryTest {
 
     @Test
-    fun primaryTabsAreHomeChatsAndLibrary() {
+    fun primaryTabsAreHomeAiAndLibrary() {
         assertEquals(
-            listOf("Home", "Chats", "Library"),
+            listOf("Home", "AI", "Library"),
             ADTab.entries.map { it.label },
         )
-        assertFalse(ADTab.entries.any { it.name == "AI" })
+        assertTrue(ADTab.entries.any { it.name == "AI" })
     }
 
     @Test
@@ -49,7 +49,7 @@ class ADScreenInventoryTest {
 
         val requiredMappings = listOf(
             "ADTab.HOME -> ADHomeSurface(",
-            "ADTab.CHATS -> ADNativeConversationScreen(",
+            "ADTab.AI -> ADNativeConversationScreen(",
             "ADTab.LIBRARY -> ADExpressiveLibraryHome(",
             "ADRoute.DEVICE_CENTER -> ADGlassesDeviceCenterScreen(",
             "ADRoute.SYNC -> ADSyncScreen(",
@@ -70,7 +70,7 @@ class ADScreenInventoryTest {
         requiredMappings.forEach { mapping ->
             assertTrue("Missing native AD route mapping: $mapping", app.contains(mapping))
         }
-        assertFalse(app.contains("ADTab.AI"))
+        assertTrue(app.contains("ADTab.AI"))
     }
 
     @Test

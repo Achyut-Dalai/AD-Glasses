@@ -107,10 +107,10 @@ internal fun ADPrivacyCenterScreen(onBack: () -> Unit) {
                 LocalAgentPrefs.setRequireConfirmationEnabled(context, it)
             }
         }
-        ADSettingsDetailGroup("AD Chats") {
+        ADSettingsDetailGroup("AI conversations") {
             ADSettingsRow(
                 icon = Icons.Outlined.DeleteForever,
-                title = "Clear all AD Chats",
+                title = "Clear AI conversations",
                 subtitle = "Deletes Local AI and configured API conversations from this phone",
                 iconTint = ADColors.Error,
                 iconBackground = ADColors.Error.copy(alpha = 0.10f),
@@ -130,7 +130,7 @@ internal fun ADPrivacyCenterScreen(onBack: () -> Unit) {
     if (showClearChatsDialog) {
         AlertDialog(
             onDismissRequest = { showClearChatsDialog = false },
-            title = { Text("Clear all AD Chats?") },
+            title = { Text("Clear AI conversations?") },
             text = {
                 Text("This permanently deletes every conversation stored by AD Glasses for Local AI and configured API providers on this phone. It does not delete provider-side account data.")
             },
@@ -145,7 +145,7 @@ internal fun ADPrivacyCenterScreen(onBack: () -> Unit) {
                             val deleted = withContext(Dispatchers.IO) {
                                 AssistantConversationSession.get(context).clearAllConversations()
                             }
-                            chatClearResult = if (deleted == 0) "No AD Chats to clear" else {
+                            chatClearResult = if (deleted == 0) "No AI conversations to clear" else {
                                 "Cleared $deleted AD ${if (deleted == 1) "conversation" else "conversations"}"
                             }
                         }

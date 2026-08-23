@@ -22,8 +22,27 @@ class ADVisibleProductUiTest {
             "ADNativeRecordingsScreen(",
             "ADNativeNotesScreen(",
         ).forEach { screen -> assertTrue("Compose shell must render $screen", app.contains(screen)) }
-        assertFalse(app.contains("ADTab.AI"))
+        assertTrue(app.contains("ADTab.AI"))
         assertFalse(app.contains("ADNativeAiScreen("))
+    }
+
+    @Test
+    fun aiConversationHubIsMinimalAndManageable() {
+        val screen = appFile("src/main/java/com/ad_glasses/ui/adglasses/ADNativeConversationScreen.kt").readText()
+        val components = appFile("src/main/java/com/ad_glasses/ui/adglasses/ADComponents.kt").readText()
+
+        assertTrue(screen.contains("Text("AI""))
+        assertTrue(screen.contains("ADConversationHistory("))
+        assertTrue(screen.contains("Rename conversation"))
+        assertTrue(screen.contains("Delete conversation?"))
+        assertTrue(screen.contains("Clear AI conversations?"))
+        assertTrue(screen.contains("session.startNewConversation()"))
+        assertFalse(screen.contains("ADConversationRouteDisclosure("))
+        assertFalse(screen.contains("ADPromptSuggestion("))
+        assertFalse(screen.contains("What did I capture today?"))
+        assertFalse(screen.contains("AD-owned ${internalProvider.label} conversation"))
+        assertTrue(components.contains("ADTab.AI -> Icons.Rounded.AutoAwesome"))
+        assertFalse(components.contains("Icons.Outlined.Terminal"))
     }
 
     @Test
