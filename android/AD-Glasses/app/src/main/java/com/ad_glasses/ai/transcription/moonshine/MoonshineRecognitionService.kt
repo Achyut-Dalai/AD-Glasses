@@ -80,6 +80,10 @@ class MoonshineRecognitionService : RecognitionService() {
                     return@execute
                 }
 
+                // RecognitionListener clients expect readyForSpeech before beginningOfSpeech or
+                // partial results. MicTranscriber starts capture immediately and invokes callbacks
+                // off the main thread here, so publish readiness before opening the microphone.
+                listener.readyForSpeech(Bundle.EMPTY)
                 transcriber.start()
                 if (!isCurrent(session)) {
                     closeAsync(session)
@@ -89,7 +93,6 @@ class MoonshineRecognitionService : RecognitionService() {
                     TAG,
                     "stage=asr_ready engine=moonshine language=${model.languageCode} requestedLanguage=$requestedLanguageTag model=${model.id}",
                 )
-                listener.readyForSpeech(Bundle.EMPTY)
             } catch (error: Throwable) {
                 fail(session, error)
             }
