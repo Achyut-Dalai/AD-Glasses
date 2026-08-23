@@ -58,6 +58,14 @@ enum class ApiProvider(
         false,
         true,
     ),
+    GROQ(
+        "groq",
+        "Groq",
+        "https://api.groq.com/openai/v1",
+        "llama-3.3-70b-versatile",
+        false,
+        false,
+    ),
     CUSTOM(
         "custom",
         "OpenAI-compatible",
@@ -72,7 +80,8 @@ enum class ApiProvider(
         get() = this != CUSTOM
 
     fun resolveBaseUrl(configuredBaseUrl: String): String =
-        if (endpointManagedByApp) defaultBaseUrl else configuredBaseUrl.trim().trimEnd('/')
+        if (endpointManagedByApp) defaultBaseUrl
+        else OpenAiCompatibleEndpoint.normalizeBaseUrl(configuredBaseUrl)
 
     /** Gemini model list responses may return `models/foo`; tolerate a pasted native endpoint too. */
     fun normalizeModelId(value: String): String {
@@ -191,7 +200,7 @@ object AiProviderPrefs {
         require(saved.model.isNotBlank()) { "Model is required." }
 
         val existing = readProfile(prefs, saved.id)
-        val replacement = apiKeyReplacement?.trim().orEmpty()
+        val replacement = OpenAiCompatibleEndpoint.normalizeBearerCredential(apiKeyReplacement.orEmpty())
         if (existing == null && replacement.isBlank()) {
             require(hasApiKeyInternal(prefs, saved.id)) { "API key is required for a new profile." }
         }
@@ -277,7 +286,9 @@ object AiProviderPrefs {
 
     /** Network-layer secret accessor. Never bind this return value into product UI state. */
     internal fun apiKeyForRequest(context: Context, profileId: String): String =
-        secure(context).getString(secretKey(profileId), "")?.trim().orEmpty()
+        OpenAiCompatibleEndpoint.normalizeBearerCredential(
+            secure(context).getString(secretKey(profileId), "").orEmpty(),
+        )
 
     /** Resolve one exact account/profile pair for a request. */
     internal fun activeProfileWithKey(context: Context): Pair<CloudAiProfile, String> {
@@ -309,7 +320,9 @@ object AiProviderPrefs {
             val model = old.getString("model_${provider.wire}", provider.defaultModel)?.trim().orEmpty()
                 .ifBlank { provider.defaultModel }
             val oldSecretPrefs = runCatching { encryptedPrefs(context, LEGACY_SECRET_PREFS_NAME) }.getOrNull()
-            val oldKey = oldSecretPrefs?.getString("api_key_${provider.wire}", "")?.trim().orEmpty()
+            val oldKey = OpenAiCompatibleEndpoint.normalizeBearerCredential(
+                oldSecretPrefs?.getString("api_key_${provider.wire}", "").orEmpty(),
+            )
             if (oldKey.isNotBlank()) {
                 val migrated = normalizeProfile(
                     newProfile(provider).copy(
