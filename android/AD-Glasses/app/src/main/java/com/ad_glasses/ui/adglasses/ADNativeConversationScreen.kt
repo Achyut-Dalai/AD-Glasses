@@ -185,7 +185,10 @@ internal fun ADNativeConversationScreen(
 
     fun send() {
         val prompt = message.trim()
-        if (prompt.isEmpty() || sending) return
+        if (prompt.isEmpty()) return
+        // Phone text follows the same latest-turn-wins rule as glasses voice. A new send should
+        // supersede a slow pending generation instead of making the user press Stop first.
+        if (sending) stopSending()
         val useWeb = webSearch && webAvailable
         message = ""
         webSearch = false
@@ -835,7 +838,7 @@ private fun ADConversationComposer(
                         }
                     },
                 )
-                val sendEnabled = message.isNotBlank() && !sending
+                val sendEnabled = message.isNotBlank()
                 IconButton(
                     onClick = onSend,
                     enabled = sendEnabled,
