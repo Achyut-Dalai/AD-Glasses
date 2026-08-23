@@ -12,6 +12,32 @@ import java.io.OutputStreamWriter
 import java.net.HttpURLConnection
 import java.net.URL
 
+internal fun geminiModelsUrl(baseUrl: String): String =
+    "${baseUrl.trim().trimEnd('/')}/models?pageSize=1000"
+
+internal fun geminiGenerateContentUrl(baseUrl: String, model: String): String =
+    "${baseUrl.trim().trimEnd('/')}/models/${ApiProvider.GOOGLE.normalizeModelId(model)}:generateContent"
+
+internal fun geminiImageMimeType(extension: String): String = when (extension.trim().trimStart('.').lowercase()) {
+    "png" -> "image/png"
+    "webp" -> "image/webp"
+    "gif" -> "image/gif"
+    "heic" -> "image/heic"
+    "heif" -> "image/heif"
+    "avif" -> "image/avif"
+    else -> "image/jpeg"
+}
+
+internal fun geminiAudioMimeType(extension: String): String = when (extension.trim().trimStart('.').lowercase()) {
+    "mp3", "mpeg" -> "audio/mpeg"
+    "m4a", "mp4" -> "audio/mp4"
+    "ogg", "opus" -> "audio/ogg"
+    "webm" -> "audio/webm"
+    "flac" -> "audio/flac"
+    "aac" -> "audio/aac"
+    else -> "audio/wav"
+}
+
 /** Direct Cloud AI transport resolved through the active encrypted profile. */
 object ApiTokenClient {
     private const val CONNECT_TIMEOUT_MS = 10_000
@@ -109,7 +135,7 @@ object ApiTokenClient {
 
         val response = if (provider == ApiProvider.GOOGLE) {
             getJson(
-                "$cleanBase/models",
+                geminiModelsUrl(cleanBase),
                 apiKey = null,
                 extraHeaders = mapOf("x-goog-api-key" to key),
             )
@@ -239,6 +265,7 @@ object ApiTokenClient {
                 }
             }
         }
+        require(contents.length() > 0) { "Gemini request has no user/model content." }
 
         val payload = JSONObject()
             .put("contents", contents)
@@ -254,8 +281,7 @@ object ApiTokenClient {
         }
 
         val baseUrl = profile.provider.resolveBaseUrl(profile.baseUrl)
-        val model = profile.provider.normalizeModelId(profile.model)
-        val endpoint = "$baseUrl/models/$model:generateContent"
+        val endpoint = geminiGenerateContentUrl(baseUrl, profile.model)
         return postJson(
             endpoint,
             apiKey = null,
@@ -272,12 +298,7 @@ object ApiTokenClient {
         imagePaths.forEach { path ->
             val file = File(path)
             require(file.isFile) { "Image file not found: $path" }
-            val mime = when (file.extension.lowercase()) {
-                "png" -> "image/png"
-                "webp" -> "image/webp"
-                "gif" -> "image/gif"
-                else -> "image/jpeg"
-            }
+            val mime = geminiImageMimeType(file.extension)
             val data = Base64.encodeToString(file.readBytes(), Base64.NO_WRAP)
             parts.put(
                 JSONObject().put(
@@ -291,13 +312,7 @@ object ApiTokenClient {
         audioPath?.takeIf { it.isNotBlank() }?.let { path ->
             val file = File(path)
             require(file.isFile) { "Audio file not found: $path" }
-            val mime = when (file.extension.lowercase()) {
-                "mp3", "mpeg" -> "audio/mpeg"
-                "m4a", "mp4" -> "audio/mp4"
-                "ogg", "opus" -> "audio/ogg"
-                "webm" -> "audio/webm"
-                else -> "audio/wav"
-            }
+            val mime = geminiAudioMimeType(file.extension)
             val data = Base64.encodeToString(file.readBytes(), Base64.NO_WRAP)
             parts.put(
                 JSONObject().put(
