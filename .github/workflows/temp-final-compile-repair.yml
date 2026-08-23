@@ -1,0 +1,92 @@
+name: Temporary final compile repair
+
+on:
+  push:
+    branches:
+      - cleanup/ad-glasses-cloud-rebrand
+    paths:
+      - .github/workflows/temp-final-compile-repair.yml
+
+permissions:
+  contents: write
+
+jobs:
+  patch-retained-code:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: cleanup/ad-glasses-cloud-rebrand
+          fetch-depth: 0
+
+      - name: Repair retained helper and brand references
+        shell: bash
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+
+          components = Path('android/AD-Glasses/app/src/main/java/com/ad_glasses/ui/adglasses/ADComponents.kt')
+          text = components.read_text(encoding='utf-8')
+          old_icon = 'R.drawable.ad_glasses_icon_source'
+          new_icon = 'R.drawable.ad_glasses_adaptive_foreground_v2'
+          if text.count(old_icon) != 2:
+              raise SystemExit(f'Expected 2 stale icon references, found {text.count(old_icon)}')
+          text = text.replace(old_icon, new_icon)
+          if old_icon in text:
+              raise SystemExit('Stale deleted brand icon reference remains')
+          components.write_text(text, encoding='utf-8')
+
+          summary = Path('android/AD-Glasses/app/src/main/java/com/ad_glasses/localagent/dailysummary/DailySummaryGenerator.kt')
+          text = summary.read_text(encoding='utf-8')
+          call = '            if (!looksLikeUsefulCapture(text)) continue\n'
+          if text.count(call) != 1:
+              raise SystemExit(f'Expected one OCR usefulness-filter call, found {text.count(call)}')
+          if 'private fun looksLikeUsefulCapture(text: String): Boolean' in text:
+              raise SystemExit('OCR usefulness helper already exists unexpectedly')
+
+          marker = '    private suspend fun prepareInputForGeneration(\n'
+          if text.count(marker) != 1:
+              raise SystemExit(f'Expected one insertion marker, found {text.count(marker)}')
+          helper = '''    private fun looksLikeUsefulCapture(text: String): Boolean {
+              val clean = text.trim()
+              if (clean.length < 12) return false
+
+              val alphaNum = clean.count { it.isLetterOrDigit() }
+              if (alphaNum < 8) return false
+
+              val symbolRatio = 1.0 - (alphaNum.toDouble() / clean.length.toDouble())
+              if (symbolRatio > 0.60) return false
+
+              return true
+          }
+
+'''
+          text = text.replace(marker, helper + marker, 1)
+
+          forbidden = [
+              'LocalModelsProvider',
+              'localModelsProvider',
+              'runLocalModels',
+              'AgentProviderType.LOCAL_AGENT',
+              'StreamingSpeechSessionManager',
+          ]
+          introduced = [needle for needle in forbidden if needle in text]
+          if introduced:
+              raise SystemExit(f'Local-LLM symbol present after repair: {introduced}')
+          summary.write_text(text, encoding='utf-8')
+          PY
+
+          git diff --check
+          git diff -- android/AD-Glasses/app/src/main/java/com/ad_glasses/ui/adglasses/ADComponents.kt \
+            android/AD-Glasses/app/src/main/java/com/ad_glasses/localagent/dailysummary/DailySummaryGenerator.kt
+
+      - name: Commit compile repair
+        shell: bash
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add android/AD-Glasses/app/src/main/java/com/ad_glasses/ui/adglasses/ADComponents.kt \
+            android/AD-Glasses/app/src/main/java/com/ad_glasses/localagent/dailysummary/DailySummaryGenerator.kt
+          git diff --cached --check
+          git commit -m "Repair retained summary filter and brand references"
+          git push origin HEAD:cleanup/ad-glasses-cloud-rebrand
