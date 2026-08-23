@@ -36,21 +36,21 @@ class ADProductSurfaceIsolationTest {
     }
 
     @Test
-    fun primaryTabsAreExactlyHomeChatsLibrary() {
-        assertEquals(listOf("Home", "Chats", "Library"), ADTab.entries.map { it.label })
-        assertFalse(ADTab.entries.any { it.name == "AI" })
+    fun primaryTabsAreExactlyHomeAiLibrary() {
+        assertEquals(listOf("Home", "AI", "Library"), ADTab.entries.map { it.label })
+        assertTrue(ADTab.entries.any { it.name == "AI" })
     }
 
     @Test
-    fun aiLivesInsideDeviceCenterAndExternalAiRoutesThere() {
+    fun aiConversationTabCoexistsWithDeviceCenterProviderConfiguration() {
         val app = sourceFile("src/main/java/com/ad_glasses/ui/adglasses/ADGlassesApp.kt").readText()
         val deviceCenter = sourceFile(
             "src/main/java/com/ad_glasses/ui/adglasses/ADGlassesDeviceCenterScreen.kt",
         ).readText()
         val ai = sourceFile("src/main/java/com/ad_glasses/ui/adglasses/ADNativeAiScreen.kt").readText()
 
-        assertTrue(app.contains("ADExternalDestination.AI -> routeStack = listOf(ADRoute.MAIN, ADRoute.DEVICE_CENTER)"))
-        assertFalse(app.contains("ADTab.AI"))
+        assertTrue(app.contains("ADExternalDestination.AI -> {"))
+        assertTrue(app.contains("selectedTab = ADTab.AI"))
         assertTrue(deviceCenter.contains("ADSectionTitle(\"AI\")"))
         assertTrue(deviceCenter.contains("ADDeviceAiSection("))
         assertFalse(deviceCenter.contains("ADSectionTitle(\"Capabilities\")"))

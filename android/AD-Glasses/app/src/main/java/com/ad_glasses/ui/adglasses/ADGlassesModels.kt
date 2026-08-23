@@ -2,7 +2,7 @@ package com.ad_glasses.ui.adglasses
 
 enum class ADTab(val label: String) {
     HOME("Home"),
-    CHATS("Chats"),
+    AI("AI"),
     LIBRARY("Library"),
 }
 

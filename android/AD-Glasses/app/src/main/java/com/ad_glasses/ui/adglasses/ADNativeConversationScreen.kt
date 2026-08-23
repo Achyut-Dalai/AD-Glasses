@@ -1,6 +1,5 @@
 package com.ad_glasses.ui.adglasses
 
-import android.content.Context
 import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.RepeatMode
 import androidx.compose.animation.core.animateFloat
@@ -31,17 +30,20 @@ import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.outlined.ArrowForward
-import androidx.compose.material.icons.outlined.ChatBubbleOutline
 import androidx.compose.material.icons.outlined.Public
-import androidx.compose.material.icons.outlined.Terminal
 import androidx.compose.material.icons.rounded.Add
+import androidx.compose.material.icons.rounded.Delete
+import androidx.compose.material.icons.rounded.Edit
+import androidx.compose.material.icons.rounded.History
 import androidx.compose.material.icons.rounded.ArrowUpward
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -58,7 +60,6 @@ import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.text.input.ImeAction
-import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import com.ad_glasses.agent.LocalAgentPrefs
 import com.ad_glasses.ai.orchestrator.AndroidAssistantCapabilityExecutor
@@ -70,10 +71,14 @@ import com.ad_glasses.audio.MeetingCapturePrefs
 import com.ad_glasses.chat.ChatStore
 import com.ad_glasses.localagent.AudioSessionCoordinator
 import com.ad_glasses.shared.chat.ChatMessage
+import com.ad_glasses.shared.chat.ChatThread
 import com.ad_glasses.shared.chat.ChatRole
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
+import java.text.SimpleDateFormat
+import java.util.Date
+import java.util.Locale
 
 /** Native phone continuation for the same durable assistant session used by the glasses. */
 @Composable
@@ -103,6 +108,12 @@ internal fun ADNativeConversationScreen(
     var pendingPrompt by remember { mutableStateOf<String?>(null) }
     var errorText by remember { mutableStateOf<String?>(null) }
     var lastFailedPrompt by remember { mutableStateOf<String?>(null) }
+    var showConversationHistory by remember { mutableStateOf(false) }
+    var conversations by remember { mutableStateOf(session.conversations()) }
+    var renameTarget by remember { mutableStateOf<ChatThread?>(null) }
+    var renameText by remember { mutableStateOf("") }
+    var deleteTarget by remember { mutableStateOf<ChatThread?>(null) }
+    var clearAllRequested by remember { mutableStateOf(false) }
     var aiAudioActive by remember { mutableStateOf(AudioSessionCoordinator.isBusy()) }
     var recordingActive by remember { mutableStateOf(MeetingCapturePrefs.getState(context).isRecording) }
 
@@ -115,6 +126,11 @@ internal fun ADNativeConversationScreen(
 
     fun refresh() {
         messages = ChatStore.listMessages(threadId)
+        conversations = session.conversations()
+    }
+
+    fun refreshConversations() {
+        conversations = session.conversations()
     }
 
     fun focusComposer() {
@@ -122,14 +138,21 @@ internal fun ADNativeConversationScreen(
         keyboardController?.show()
     }
 
-    fun useSuggestion(prompt: String, requestWeb: Boolean = false) {
-        message = prompt
-        webSearch = requestWeb
-        focusComposer()
-    }
 
     fun startNewPrompt() {
         if (sending) return
+        if (messages.isEmpty() && pendingPrompt == null) {
+            message = ""
+            webSearch = false
+            errorText = null
+            lastFailedPrompt = null
+            showConversationHistory = false
+            scope.launch {
+                delay(80)
+                focusComposer()
+            }
+            return
+        }
         val newThreadId = session.startNewConversation()
         threadId = newThreadId
         messages = emptyList()
@@ -138,6 +161,8 @@ internal fun ADNativeConversationScreen(
         pendingPrompt = null
         errorText = null
         lastFailedPrompt = null
+        showConversationHistory = false
+        refreshConversations()
         scope.launch {
             delay(80)
             focusComposer()
@@ -230,160 +255,218 @@ internal fun ADNativeConversationScreen(
         Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(start = 14.dp, end = 12.dp, top = 7.dp, bottom = 4.dp),
+                .padding(start = 16.dp, end = 12.dp, top = 8.dp, bottom = 6.dp),
             verticalAlignment = Alignment.CenterVertically,
         ) {
-            Box(
-                modifier = Modifier
-                    .size(34.dp)
-                    .background(ADColors.BlueSoft, RoundedCornerShape(11.dp)),
-                contentAlignment = Alignment.Center,
+            Text(
+                "AI",
+                style = MaterialTheme.typography.headlineSmall,
+                modifier = Modifier.weight(1f),
+            )
+            if (showConversationHistory) {
+                TextButton(onClick = { showConversationHistory = false }) {
+                    Text("Done")
+                }
+            } else {
+                TextButton(
+                    onClick = {
+                        refreshConversations()
+                        showConversationHistory = true
+                    },
+                ) {
+                    Icon(
+                        Icons.Rounded.History,
+                        contentDescription = null,
+                        modifier = Modifier.size(17.dp),
+                    )
+                    Spacer(Modifier.width(5.dp))
+                    Text("History")
+                }
+            }
+            TextButton(
+                onClick = ::startNewPrompt,
+                enabled = !sending,
             ) {
                 Icon(
-                    Icons.Outlined.ChatBubbleOutline,
+                    Icons.Rounded.Add,
                     contentDescription = null,
-                    tint = ADColors.Ink,
                     modifier = Modifier.size(18.dp),
                 )
+                Spacer(Modifier.width(3.dp))
+                Text("New")
             }
-            Column(Modifier.padding(start = 9.dp).weight(1f)) {
-                Text("Chats", style = MaterialTheme.typography.titleLarge)
-                Text(
-                    "AD-owned ${internalProvider.label} conversation",
-                    style = MaterialTheme.typography.bodySmall,
-                    color = ADColors.Muted,
-                )
+        }
+
+        if (showConversationHistory) {
+            ADConversationHistory(
+                conversations = conversations,
+                activeThreadId = threadId,
+                onOpen = { selected ->
+                    if (session.selectThread(selected.id)) {
+                        threadId = session.activeThreadId()
+                        refresh()
+                        showConversationHistory = false
+                    }
+                },
+                onRename = { target ->
+                    renameTarget = target
+                    renameText = target.title
+                },
+                onDelete = { target -> deleteTarget = target },
+                onClearAll = { clearAllRequested = true },
+            )
+        } else {
+            if (recordingActive || aiAudioActive) {
+                ADLiveAudioState(recording = recordingActive)
             }
-            if (messages.isNotEmpty() || pendingPrompt != null) {
-                Surface(color = ADColors.SurfaceSubtle, shape = RoundedCornerShape(12.dp)) {
-                    Row(
-                        modifier = Modifier
-                            .clickable(enabled = !sending, onClick = ::startNewPrompt)
-                            .padding(horizontal = 9.dp, vertical = 6.dp),
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(4.dp),
-                    ) {
-                        Icon(
-                            Icons.Rounded.Add,
-                            contentDescription = null,
-                            tint = if (sending) ADColors.Muted else ADColors.Ink,
-                            modifier = Modifier.size(16.dp),
-                        )
-                        Text(
-                            "New",
-                            style = MaterialTheme.typography.labelLarge,
-                            color = if (sending) ADColors.Muted else ADColors.Ink,
-                        )
+
+            LazyColumn(
+                state = listState,
+                modifier = Modifier.weight(1f).fillMaxWidth(),
+                contentPadding = androidx.compose.foundation.layout.PaddingValues(
+                    start = 14.dp,
+                    end = 14.dp,
+                    top = 8.dp,
+                    bottom = 14.dp,
+                ),
+                verticalArrangement = Arrangement.spacedBy(12.dp),
+            ) {
+                if (messages.isEmpty() && pendingPrompt == null) {
+                    item(key = "empty") {
+                        ADConversationEmptyState()
                     }
                 }
-            }
-        }
 
-        if (recordingActive || aiAudioActive) {
-            ADLiveAudioState(recording = recordingActive)
-        }
-
-        ADConversationRouteDisclosure(
-            internalProviderName = internalProvider.label,
-        )
-
-        LazyColumn(
-            state = listState,
-            modifier = Modifier.weight(1f).fillMaxWidth(),
-            contentPadding = androidx.compose.foundation.layout.PaddingValues(
-                start = 14.dp,
-                end = 14.dp,
-                top = 4.dp,
-                bottom = 14.dp,
-            ),
-            verticalArrangement = Arrangement.spacedBy(12.dp),
-        ) {
-            if (messages.isEmpty() && pendingPrompt == null) {
-                item(key = "empty") {
-                    ADConversationEmptyState(onSuggestion = ::useSuggestion)
+                items(messages, key = { it.id }) { chatMessage ->
+                    ADConversationTurn(chatMessage)
                 }
-            }
 
-            items(messages, key = { it.id }) { chatMessage ->
-                ADConversationTurn(chatMessage)
-            }
-
-            pendingPrompt?.takeUnless { pendingAlreadyPersisted }?.let { prompt ->
-                item(key = "pending-user") {
-                    ADUserTurn(prompt)
+                pendingPrompt?.takeUnless { pendingAlreadyPersisted }?.let { prompt ->
+                    item(key = "pending-user") {
+                        ADUserTurn(prompt)
+                    }
                 }
-            }
 
-            if (pendingPrompt != null) {
-                item(key = "pending-reply") {
-                    ADAssistantThinking()
+                if (pendingPrompt != null) {
+                    item(key = "pending-reply") {
+                        ADAssistantThinking()
+                    }
                 }
-            }
 
-            errorText?.let { error ->
-                item(key = "error") {
-                    Column(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .background(ADColors.ErrorSoft, RoundedCornerShape(12.dp))
-                            .clickable(enabled = lastFailedPrompt != null) {
-                                lastFailedPrompt?.let { failed ->
-                                    message = failed
-                                    errorText = null
-                                    focusComposer()
+                errorText?.let { error ->
+                    item(key = "error") {
+                        Column(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .background(ADColors.ErrorSoft, RoundedCornerShape(12.dp))
+                                .clickable(enabled = lastFailedPrompt != null) {
+                                    lastFailedPrompt?.let { failed ->
+                                        message = failed
+                                        errorText = null
+                                        focusComposer()
+                                    }
                                 }
-                            }
-                            .padding(horizontal = 12.dp, vertical = 8.dp),
-                    ) {
-                        Text(
-                            text = error,
-                            style = MaterialTheme.typography.bodyMedium,
-                            color = ADColors.Error,
-                        )
-                        if (lastFailedPrompt != null) {
+                                .padding(horizontal = 12.dp, vertical = 8.dp),
+                        ) {
                             Text(
-                                "Tap to put the same request back in the composer. AD never switches providers automatically.",
-                                style = MaterialTheme.typography.bodySmall,
+                                text = error,
+                                style = MaterialTheme.typography.bodyMedium,
                                 color = ADColors.Error,
                             )
+                            if (lastFailedPrompt != null) {
+                                Text(
+                                    "Tap to put the same request back in the composer. AD never switches providers automatically.",
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = ADColors.Error,
+                                )
+                            }
                         }
                     }
                 }
             }
-        }
 
-        ADConversationComposer(
-            message = message,
-            onMessageChange = { message = it },
-            webSearch = webSearch,
-            sending = sending,
-            focusRequester = composerFocusRequester,
-            onSend = ::send,
+            ADConversationComposer(
+                message = message,
+                onMessageChange = { message = it },
+                webSearch = webSearch,
+                onWebSearchChange = { webSearch = it },
+                sending = sending,
+                focusRequester = composerFocusRequester,
+                onSend = ::send,
+            )
+        }
+    }
+
+    renameTarget?.let { target ->
+        AlertDialog(
+            onDismissRequest = { renameTarget = null },
+            title = { Text("Rename conversation") },
+            text = {
+                OutlinedTextField(
+                    value = renameText,
+                    onValueChange = { renameText = it.take(80) },
+                    singleLine = true,
+                    label = { Text("Name") },
+                )
+            },
+            confirmButton = {
+                TextButton(
+                    enabled = renameText.trim().isNotEmpty(),
+                    onClick = {
+                        session.renameConversation(target.id, renameText)
+                        renameTarget = null
+                        refreshConversations()
+                    },
+                ) { Text("Save") }
+            },
+            dismissButton = {
+                TextButton(onClick = { renameTarget = null }) { Text("Cancel") }
+            },
         )
     }
-}
 
-@Composable
-private fun ADConversationRouteDisclosure(
-    internalProviderName: String,
-) {
-    Surface(
-        modifier = Modifier.fillMaxWidth().padding(horizontal = 14.dp, vertical = 3.dp),
-        shape = RoundedCornerShape(13.dp),
-        color = ADColors.BlueSoft,
-    ) {
-        Column(Modifier.padding(horizontal = 11.dp, vertical = 8.dp)) {
-            Text(
-                "$internalProviderName · AD-owned reply",
-                style = MaterialTheme.typography.labelLarge,
-                color = ADColors.Ink,
-            )
-            Text(
-                "AD receives the text, speaks it through Android TTS, and removes this conversation after 7 days.",
-                style = MaterialTheme.typography.bodySmall,
-                color = ADColors.Muted,
-            )
-        }
+    deleteTarget?.let { target ->
+        AlertDialog(
+            onDismissRequest = { deleteTarget = null },
+            title = { Text("Delete conversation?") },
+            text = { Text("This removes the conversation and its messages from AD Glasses.") },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        threadId = session.deleteConversation(target.id)
+                        messages = ChatStore.listMessages(threadId)
+                        deleteTarget = null
+                        refreshConversations()
+                    },
+                ) { Text("Delete", color = ADColors.Error) }
+            },
+            dismissButton = {
+                TextButton(onClick = { deleteTarget = null }) { Text("Cancel") }
+            },
+        )
+    }
+
+    if (clearAllRequested) {
+        AlertDialog(
+            onDismissRequest = { clearAllRequested = false },
+            title = { Text("Clear AI conversations?") },
+            text = { Text("All AD-owned conversation history will be removed. This cannot be undone.") },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        session.clearAllConversations()
+                        threadId = session.startNewConversation()
+                        messages = emptyList()
+                        clearAllRequested = false
+                        refreshConversations()
+                        showConversationHistory = false
+                    },
+                ) { Text("Clear all", color = ADColors.Error) }
+            },
+            dismissButton = {
+                TextButton(onClick = { clearAllRequested = false }) { Text("Cancel") }
+            },
+        )
     }
 }
 
@@ -415,91 +498,115 @@ private fun ADLiveAudioState(recording: Boolean) {
 }
 
 @Composable
-private fun ADConversationEmptyState(
-    onSuggestion: (String, Boolean) -> Unit,
-) {
-    Column(
-        modifier = Modifier.fillMaxWidth().padding(top = 18.dp, bottom = 14.dp),
-        horizontalAlignment = Alignment.CenterHorizontally,
+private fun ADConversationEmptyState() {
+    Box(
+        modifier = Modifier.fillMaxWidth().padding(top = 92.dp),
+        contentAlignment = Alignment.Center,
     ) {
-        Box(
-            modifier = Modifier
-                .size(48.dp)
-                .background(ADColors.SurfaceSubtle, RoundedCornerShape(16.dp)),
-            contentAlignment = Alignment.Center,
-        ) {
-            Icon(
-                Icons.Outlined.ChatBubbleOutline,
-                contentDescription = null,
-                tint = ADColors.Ink,
-                modifier = Modifier.size(24.dp),
-            )
-        }
-        Spacer(Modifier.size(10.dp))
-        Text(
-            "What do you want to know?",
-            style = MaterialTheme.typography.titleLarge,
-        )
-        Spacer(Modifier.size(4.dp))
-        Text(
-            "Ask AD anything, explicitly request web only when using a configured cloud route, or continue a glasses request.",
-            style = MaterialTheme.typography.bodySmall,
-            color = ADColors.Muted,
-            textAlign = TextAlign.Center,
-            modifier = Modifier.padding(horizontal = 18.dp),
-        )
-        Spacer(Modifier.size(14.dp))
-        Column(
-            modifier = Modifier.fillMaxWidth(),
-            verticalArrangement = Arrangement.spacedBy(7.dp),
-        ) {
-            ADPromptSuggestion("What did I capture today?") { onSuggestion("What did I capture today?", false) }
-            ADPromptSuggestion(
-                "Search the web for something current",
-                web = true,
-            ) {
-                onSuggestion("Search the web for ", true)
-            }
-            ADPromptSuggestion("Help me plan something") { onSuggestion("Help me plan ", false) }
+        Column(horizontalAlignment = Alignment.CenterHorizontally) {
+            ADGlassesMark(Modifier.size(38.dp))
+            Spacer(Modifier.height(10.dp))
+            Text("Start a conversation", style = MaterialTheme.typography.titleMedium)
         }
     }
 }
 
 @Composable
-private fun ADPromptSuggestion(
-    text: String,
-    web: Boolean = false,
-    onClick: () -> Unit,
+private fun ADConversationHistory(
+    conversations: List<ChatThread>,
+    activeThreadId: String,
+    onOpen: (ChatThread) -> Unit,
+    onRename: (ChatThread) -> Unit,
+    onDelete: (ChatThread) -> Unit,
+    onClearAll: () -> Unit,
 ) {
-    Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .background(ADColors.Surface, RoundedCornerShape(14.dp))
-            .clickable(onClick = onClick)
-            .padding(horizontal = 11.dp, vertical = 9.dp),
-        verticalAlignment = Alignment.CenterVertically,
-    ) {
-        Box(
-            modifier = Modifier
-                .size(30.dp)
-                .background(ADColors.SurfaceSubtle, RoundedCornerShape(9.dp)),
-            contentAlignment = Alignment.Center,
-        ) {
-            Icon(
-                if (web) Icons.Outlined.Public else Icons.Outlined.ChatBubbleOutline,
-                contentDescription = null,
-                tint = ADColors.Ink,
-                modifier = Modifier.size(15.dp),
-            )
+    Column(modifier = Modifier.fillMaxSize()) {
+        if (conversations.isEmpty()) {
+            Box(modifier = Modifier.weight(1f).fillMaxWidth(), contentAlignment = Alignment.Center) {
+                Text("No conversations yet", color = ADColors.Muted)
+            }
+            return@Column
         }
-        Text(
-            text,
-            style = MaterialTheme.typography.bodyMedium,
-            modifier = Modifier.padding(start = 9.dp).weight(1f),
-        )
-        Icon(Icons.Outlined.ArrowForward, null, tint = ADColors.Muted, modifier = Modifier.size(16.dp))
+        LazyColumn(
+            modifier = Modifier.weight(1f).fillMaxWidth(),
+            contentPadding = androidx.compose.foundation.layout.PaddingValues(
+                start = 14.dp,
+                end = 14.dp,
+                top = 8.dp,
+                bottom = 10.dp,
+            ),
+            verticalArrangement = Arrangement.spacedBy(8.dp),
+        ) {
+            items(conversations, key = { it.id }) { conversation ->
+                val preview = ChatStore.listMessages(conversation.id)
+                    .lastOrNull()
+                    ?.content
+                    ?.replace("\n", " ")
+                    ?.trim()
+                    .orEmpty()
+                Surface(
+                    modifier = Modifier.fillMaxWidth(),
+                    color = if (conversation.id == activeThreadId) ADColors.BlueSoft else ADColors.Surface,
+                    shape = RoundedCornerShape(16.dp),
+                ) {
+                    Row(
+                        modifier = Modifier
+                            .clickable { onOpen(conversation) }
+                            .padding(start = 13.dp, top = 11.dp, bottom = 11.dp, end = 4.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
+                        Column(Modifier.weight(1f)) {
+                            Text(
+                                conversation.title,
+                                style = MaterialTheme.typography.titleSmall,
+                                color = ADColors.Ink,
+                                maxLines = 1,
+                            )
+                            if (preview.isNotBlank()) {
+                                Text(
+                                    preview,
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = ADColors.Muted,
+                                    maxLines = 1,
+                                )
+                            }
+                            Text(
+                                formatConversationTime(conversation.updatedAt),
+                                style = MaterialTheme.typography.labelSmall,
+                                color = ADColors.Muted,
+                            )
+                        }
+                        IconButton(onClick = { onRename(conversation) }) {
+                            Icon(
+                                Icons.Rounded.Edit,
+                                contentDescription = "Rename ${conversation.title}",
+                                tint = ADColors.Muted,
+                                modifier = Modifier.size(18.dp),
+                            )
+                        }
+                        IconButton(onClick = { onDelete(conversation) }) {
+                            Icon(
+                                Icons.Rounded.Delete,
+                                contentDescription = "Delete ${conversation.title}",
+                                tint = ADColors.Muted,
+                                modifier = Modifier.size(18.dp),
+                            )
+                        }
+                    }
+                }
+            }
+        }
+        TextButton(
+            onClick = onClearAll,
+            modifier = Modifier.align(Alignment.CenterHorizontally).padding(bottom = 4.dp),
+        ) {
+            Text("Clear all conversations", color = ADColors.Error)
+        }
     }
 }
+
+private fun formatConversationTime(timestamp: Long): String =
+    SimpleDateFormat("MMM d · h:mm a", Locale.getDefault()).format(Date(timestamp))
 
 @Composable
 private fun ADConversationTurn(message: ChatMessage) {
@@ -633,6 +740,7 @@ private fun ADConversationComposer(
     message: String,
     onMessageChange: (String) -> Unit,
     webSearch: Boolean,
+    onWebSearchChange: (Boolean) -> Unit,
     sending: Boolean,
     focusRequester: FocusRequester,
     onSend: () -> Unit,
@@ -643,16 +751,6 @@ private fun ADConversationComposer(
             .background(ADColors.Background)
             .padding(start = 10.dp, end = 10.dp, top = 5.dp, bottom = 6.dp),
     ) {
-        if (webSearch) {
-            Row(
-                modifier = Modifier.padding(start = 8.dp, bottom = 5.dp),
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(5.dp),
-            ) {
-                Icon(Icons.Outlined.Public, null, tint = ADColors.Ink, modifier = Modifier.size(14.dp))
-                Text("Web search", style = MaterialTheme.typography.labelMedium, color = ADColors.Ink)
-            }
-        }
         Surface(
             modifier = Modifier.fillMaxWidth(),
             color = ADColors.Surface,
@@ -660,9 +758,21 @@ private fun ADConversationComposer(
             shadowElevation = 1.dp,
         ) {
             Row(
-                modifier = Modifier.padding(start = 13.dp, end = 6.dp, top = 5.dp, bottom = 5.dp),
+                modifier = Modifier.padding(start = 5.dp, end = 6.dp, top = 5.dp, bottom = 5.dp),
                 verticalAlignment = Alignment.Bottom,
             ) {
+                IconButton(
+                    onClick = { onWebSearchChange(!webSearch) },
+                    enabled = !sending,
+                    modifier = Modifier.size(38.dp),
+                ) {
+                    Icon(
+                        Icons.Outlined.Public,
+                        contentDescription = if (webSearch) "Disable web search" else "Enable web search",
+                        tint = if (webSearch) ADColors.Blue else ADColors.Muted,
+                        modifier = Modifier.size(18.dp),
+                    )
+                }
                 BasicTextField(
                     value = message,
                     onValueChange = onMessageChange,

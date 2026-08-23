@@ -49,11 +49,14 @@ fun ADGlassesApp(
         when (request.destination) {
             ADExternalDestination.CONVERSATIONS -> {
                 routeStack = listOf(ADRoute.MAIN)
-                selectedTab = ADTab.CHATS
+                selectedTab = ADTab.AI
                 conversationRequest = request
             }
             ADExternalDestination.SETTINGS -> routeStack = listOf(ADRoute.MAIN, ADRoute.SETTINGS)
-            ADExternalDestination.AI -> routeStack = listOf(ADRoute.MAIN, ADRoute.DEVICE_CENTER)
+            ADExternalDestination.AI -> {
+                routeStack = listOf(ADRoute.MAIN)
+                selectedTab = ADTab.AI
+            }
             ADExternalDestination.LIBRARY_CAPTURES -> {
                 selectedTab = ADTab.LIBRARY
                 routeStack = listOf(ADRoute.MAIN, ADRoute.LIBRARY_CAPTURES)
@@ -106,7 +109,7 @@ fun ADGlassesApp(
                             onOpenSync = { navigateTo(ADRoute.SYNC) },
                             onOpenSettings = { navigateTo(ADRoute.SETTINGS) },
                         )
-                        ADTab.CHATS -> ADNativeConversationScreen(
+                        ADTab.AI -> ADNativeConversationScreen(
                             navigationRequest = conversationRequest,
                             onNavigationRequestApplied = { requestId ->
                                 if (conversationRequest?.id == requestId) conversationRequest = null
