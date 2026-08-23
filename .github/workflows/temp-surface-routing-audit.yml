@@ -29,6 +29,12 @@ jobs:
             android/AD-Glasses/app/src/main/java/com/ad_glasses/ui/adglasses \
             android/AD-Glasses/app/src/main/res || true
 
+          echo '===== ORPHAN UI / RUNTIME SYMBOLS ====='
+          for symbol in ADNativeAiScreen ADAiCapabilityCard ADAiCapabilityRow ADIntelligencePrefs ADGroundingPolicy ADConversationEngine ADVisionEngine ADFileEngine ADSpeechEngine; do
+            echo "--- $symbol"
+            git grep -n -F "$symbol" -- android/AD-Glasses/app ':!android/AD-Glasses/app/src/main/myvu-upstream/**' || true
+          done
+
           echo '===== WEB / FRESHNESS / SEARCH ROUTING TOKENS ====='
           git grep -n -i -E '\b(web|internet|browse|search|grounding|grounded|latest|current|today|tonight|news|recent|online)\b' -- \
             android/AD-Glasses/app/src/main/java/com/ad_glasses/ai \
@@ -51,14 +57,11 @@ jobs:
           import subprocess
           root = Path('android/AD-Glasses/app/src/main/res')
           exts = {'.png', '.webp', '.jpg', '.jpeg', '.gif', '.xml'}
-          candidates = []
-          for p in root.rglob('*'):
+          for p in sorted(root.rglob('*')):
               if not p.is_file() or p.suffix.lower() not in exts:
                   continue
               if not (p.parent.name.startswith('drawable') or p.parent.name.startswith('mipmap')):
                   continue
-              candidates.append(p)
-          for p in sorted(candidates):
               name = p.stem
               proc = subprocess.run(
                   ['git','grep','-l','-F',name,'--','android/AD-Glasses',':!android/AD-Glasses/app/src/main/myvu-upstream/**'],
@@ -67,8 +70,7 @@ jobs:
               refs = [line for line in proc.stdout.splitlines() if line and line != p.as_posix()]
               if name.startswith('ad_') or name.startswith('ic_ad') or len(refs) == 0:
                   print(f'{len(refs):02d} refs | {p.as_posix()}')
-                  for ref in refs[:8]:
-                      print(f'    {ref}')
+                  for ref in refs[:8]: print(f'    {ref}')
           PY
 
           echo '===== AD UI FILE INVENTORY ====='
