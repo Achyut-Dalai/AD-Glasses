@@ -2,8 +2,10 @@ package com.ad_glasses.ai.orchestrator
 
 import java.util.Collections
 import kotlinx.coroutines.CompletableDeferred
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.async
+import kotlinx.coroutines.awaitAll
 import kotlinx.coroutines.runBlocking
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
@@ -77,5 +79,29 @@ class AssistantTurnCoordinatorTest {
         assertTrue(AssistantTurnCoordinator.isCurrent(secondLease))
         AssistantTurnCoordinator.finishInteractiveTurn(secondLease)
         secondJob.cancel()
+    }
+
+    @Test
+    fun concurrent_interactive_registrations_leave_exactly_one_current_turn() = runBlocking {
+        val threadId = "thread-race"
+        val start = CompletableDeferred<Unit>()
+        val leases = Collections.synchronizedList(
+            mutableListOf<AssistantTurnCoordinator.InteractiveLease>(),
+        )
+
+        (0 until 32).map {
+            async(Dispatchers.Default) {
+                val job = Job()
+                start.await()
+                leases += AssistantTurnCoordinator.beginInteractiveTurn(threadId, job)
+            }
+        }.also { workers ->
+            start.complete(Unit)
+            workers.awaitAll()
+        }
+
+        assertEquals(1, leases.count(AssistantTurnCoordinator::isCurrent))
+        AssistantTurnCoordinator.cancelActive(threadId, "test cleanup")
+        leases.forEach { it.job.cancel() }
     }
 }
