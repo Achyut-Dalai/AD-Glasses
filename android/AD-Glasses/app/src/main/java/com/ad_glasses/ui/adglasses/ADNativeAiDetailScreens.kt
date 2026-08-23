@@ -438,7 +438,7 @@ private fun MoonshineVoiceInputCard() {
                 Text("Offline English voice input", style = MaterialTheme.typography.titleMedium)
                 Text(
                     if (installed) "Moonshine speech-to-text is ready"
-                    else "Optional speech-to-text model; this is not a Local LLM",
+                    else "Optional offline speech-to-text model",
                     style = MaterialTheme.typography.bodySmall,
                     color = ADColors.Muted,
                 )
