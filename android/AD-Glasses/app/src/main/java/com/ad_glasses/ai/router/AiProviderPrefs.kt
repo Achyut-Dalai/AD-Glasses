@@ -175,6 +175,11 @@ object AiProviderPrefs {
         if (existing == null && replacement.isBlank()) {
             require(hasApiKeyInternal(prefs, saved.id)) { "API key is required for a new profile." }
         }
+        if (existing != null && replacement.isBlank()) {
+            require(existing.provider == saved.provider && existing.baseUrl == saved.baseUrl) {
+                "Enter a new API key after changing the provider or API base URL."
+            }
+        }
 
         val ids = profileIds(prefs).toMutableList()
         if (saved.id !in ids) ids += saved.id
