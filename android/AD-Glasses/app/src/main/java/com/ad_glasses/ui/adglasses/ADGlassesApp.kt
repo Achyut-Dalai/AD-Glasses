@@ -53,9 +53,7 @@ fun ADGlassesApp(
                 conversationRequest = request
             }
             ADExternalDestination.SETTINGS -> routeStack = listOf(ADRoute.MAIN, ADRoute.SETTINGS)
-            ADExternalDestination.AI -> {
-                routeStack = listOf(ADRoute.MAIN, ADRoute.DEVICE_CENTER)
-            }
+            ADExternalDestination.AI -> routeStack = listOf(ADRoute.MAIN, ADRoute.DEVICE_CENTER)
             ADExternalDestination.LIBRARY_CAPTURES -> {
                 selectedTab = ADTab.LIBRARY
                 routeStack = listOf(ADRoute.MAIN, ADRoute.LIBRARY_CAPTURES)
@@ -129,7 +127,6 @@ fun ADGlassesApp(
                         onSync = { navigateTo(ADRoute.SYNC) },
                         onFirmware = { navigateTo(ADRoute.FIRMWARE) },
                         onCloudSettings = { navigateTo(ADRoute.AI_CLOUD) },
-                        onLocalSettings = { navigateTo(ADRoute.AI_LOCAL) },
                     )
                     ADRoute.SYNC -> ADSyncScreen(dashboardState, host, navigateBack)
                     ADRoute.SETTINGS -> ADNativeSettingsHubScreen(
@@ -152,7 +149,6 @@ fun ADGlassesApp(
                         onAbout = { navigateTo(ADRoute.ABOUT) },
                     )
                     ADRoute.AI_CLOUD -> ADNativeCloudAiSettingsScreen(navigateBack)
-                    ADRoute.AI_LOCAL -> ADNativeLocalAiSettingsScreen(navigateBack)
                     ADRoute.PRIVACY -> ADPrivacyCenterScreen(navigateBack)
                     ADRoute.STORAGE -> ADStorageScreen(navigateBack)
                     ADRoute.LANGUAGE -> ADLanguageScreen(navigateBack)
