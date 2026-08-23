@@ -1,0 +1,51 @@
+name: Temporary cloud AI audit
+
+on:
+  push:
+    branches:
+      - cleanup/ad-glasses-cloud-rebrand
+
+permissions:
+  contents: write
+
+jobs:
+  audit:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out branch
+        uses: actions/checkout@v7
+        with:
+          ref: cleanup/ad-glasses-cloud-rebrand
+          fetch-depth: 1
+          submodules: false
+      - name: Materialize cloud/local audit
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p tools
+          {
+            echo '===== LOCAL LLM / LOCAL MODEL REFERENCES ====='
+            git grep -n -i -E 'localmodels|local_models|local model|local ai|local llm|gguf|litert|gemma|llama|offline fallback|on-device model|on device model' -- . \
+              ':!third_party/**' ':!android/AD-Glasses/app/src/main/myvu-upstream/**' ':!.github/workflows/temp-cloud-ai-audit.yml' || true
+            echo '===== PROVIDER ROUTING / PREFS ====='
+            git grep -n -E 'AiProviderType|AgentProviderType|AiProviderPrefs|ApiProvider|ApiTokenClient|getApiKey|getApiProvider|getModel|setModel|relay_base_url|baseUrl' -- android/AD-Glasses \
+              ':!android/AD-Glasses/app/src/main/myvu-upstream/**' || true
+            echo '===== WEB / SEARCH / BROWSE ROUTING ====='
+            git grep -n -i -E 'search web|web search|browse web|browse the web|internet search|grounding|google_search|web_search|search_web|browse' -- android/AD-Glasses \
+              ':!android/AD-Glasses/app/src/main/myvu-upstream/**' || true
+            echo '===== LOCAL MODEL PATHS ====='
+            find android/AD-Glasses -type f \( -path '*localmodels*' -o -iname '*localmodel*' -o -iname '*gguf*' -o -iname '*litert*' \) -print | sort || true
+            echo '===== SUSPICIOUS SECRET-BEARING TRACKED FILE PATHS ONLY ====='
+            git grep -Il -E 'AIza[0-9A-Za-z_-]{20,}|sk-[A-Za-z0-9_-]{20,}' -- . ':!third_party/**' ':!android/AD-Glasses/app/src/main/myvu-upstream/**' || true
+            echo '===== GITIGNORE ====='
+            cat .gitignore 2>/dev/null || true
+            cat android/AD-Glasses/.gitignore 2>/dev/null || true
+          } > tools/cloud_ai_audit_report.txt
+          git config user.name github-actions[bot]
+          git config user.email 41898282+github-actions[bot]@users.noreply.github.com
+          git add tools/cloud_ai_audit_report.txt
+          if ! git diff --cached --quiet; then
+            git commit -m 'Materialize temporary cloud AI audit'
+            git push origin HEAD:cleanup/ad-glasses-cloud-rebrand
+          fi
