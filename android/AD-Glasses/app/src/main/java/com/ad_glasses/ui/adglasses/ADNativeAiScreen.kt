@@ -2,14 +2,11 @@ package com.ad_glasses.ui.adglasses
 
 import android.widget.Toast
 import androidx.compose.foundation.BorderStroke
-import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.fillMaxHeight
-import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
@@ -18,34 +15,26 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.AutoAwesome
-import androidx.compose.material.icons.outlined.CheckCircle
 import androidx.compose.material.icons.outlined.Cloud
 import androidx.compose.material.icons.outlined.Computer
-import androidx.compose.material.icons.outlined.History
-import androidx.compose.material.icons.outlined.MenuBook
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.ad_glasses.agent.LocalAgentPrefs
-import com.ad_glasses.ai.orchestrator.AndroidCapabilityCommandExecutor
-import com.ad_glasses.ai.orchestrator.AssistantCapability
-import com.ad_glasses.ai.orchestrator.AssistantCapabilityAction
-import com.ad_glasses.ai.orchestrator.AssistantCapabilityCommand
-import com.ad_glasses.ai.orchestrator.AssistantCapabilityRuntimeEvents
 import com.ad_glasses.ai.orchestrator.AssistantConversationSession
 import com.ad_glasses.ai.router.AiProviderPrefs
 import com.ad_glasses.ai.router.AiProviderType
@@ -53,14 +42,13 @@ import com.ad_glasses.shared.settings.AgentProviderType
 
 enum class ADAiChoice { CLOUD, LOCAL }
 
+/** AI routing and configuration embedded directly in Device Center. */
 @Composable
-internal fun ADNativeAiScreen(
+internal fun ADDeviceAiSection(
     onCloudSettings: () -> Unit,
     onLocalSettings: () -> Unit,
 ) {
     val context = LocalContext.current
-    val runtimeVersion by AssistantCapabilityRuntimeEvents.version.collectAsState()
-    val capabilityExecutor = remember(context, runtimeVersion) { AndroidCapabilityCommandExecutor(context) }
     var selected by remember { mutableStateOf(resolveAiChoice(context)) }
 
     fun select(choice: ADAiChoice) {
@@ -84,66 +72,21 @@ internal fun ADNativeAiScreen(
         if (previous != choice) AssistantConversationSession.get(context).startNewConversation()
     }
 
-    fun setCapability(capability: AssistantCapability, enabled: Boolean) {
-        val result = capabilityExecutor.execute(
-            AssistantCapabilityCommand(
-                capability = capability,
-                action = if (enabled) AssistantCapabilityAction.START else AssistantCapabilityAction.STOP,
-            ),
-        )
-        if (result.spokenText.contains("needs", ignoreCase = true) ||
-            result.spokenText.contains("couldn’t", ignoreCase = true)
-        ) {
-            Toast.makeText(context, result.spokenText, Toast.LENGTH_SHORT).show()
-        }
-    }
-
-    val timelineActive = capabilityExecutor.isActive(AssistantCapability.VISUAL_DIARY)
-    val diaryActive = capabilityExecutor.isActive(AssistantCapability.AUTO_DIARY)
     val selectedName = when (selected) {
         ADAiChoice.CLOUD -> "Cloud · ${AiProviderPrefs.getApiProvider(context).label}"
         ADAiChoice.LOCAL -> "Local AI"
     }
 
-    Column(
-        modifier = Modifier
-            .fillMaxSize()
-            .padding(horizontal = 14.dp, vertical = 8.dp),
-    ) {
-        Text("AI", style = MaterialTheme.typography.headlineMedium, fontWeight = FontWeight.Medium)
+    Column(modifier = Modifier.fillMaxWidth()) {
         Text(
             "Cloud AI for REST/Realtime sessions, with Local AI as the offline fallback.",
             style = MaterialTheme.typography.bodySmall,
             color = ADColors.Muted,
         )
-
         Spacer(Modifier.height(8.dp))
         ADAiProviderCard(selectedName, selected, ::select)
 
-        Spacer(Modifier.height(10.dp))
-        Text("Skills", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Medium)
-        Spacer(Modifier.height(5.dp))
-        Row(
-            modifier = Modifier.fillMaxWidth().weight(1f),
-            horizontalArrangement = Arrangement.spacedBy(7.dp),
-        ) {
-            ADAiSkillCard(
-                icon = Icons.Outlined.History,
-                title = "Timeline",
-                detail = "Search moments over time",
-                active = timelineActive,
-                modifier = Modifier.weight(1f).fillMaxHeight(),
-            ) { setCapability(AssistantCapability.VISUAL_DIARY, !timelineActive) }
-            ADAiSkillCard(
-                icon = Icons.Outlined.MenuBook,
-                title = "Diary",
-                detail = "A private recap of your day",
-                active = diaryActive,
-                modifier = Modifier.weight(1f).fillMaxHeight(),
-            ) { setCapability(AssistantCapability.AUTO_DIARY, !diaryActive) }
-        }
-
-        Spacer(Modifier.height(10.dp))
+        Spacer(Modifier.height(12.dp))
         Text("Configuration", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Medium)
         Spacer(Modifier.height(5.dp))
         Row(horizontalArrangement = Arrangement.spacedBy(7.dp)) {
@@ -234,57 +177,6 @@ private fun ADAiProviderPill(
 }
 
 @Composable
-private fun ADAiSkillCard(
-    icon: ImageVector,
-    title: String,
-    detail: String,
-    active: Boolean,
-    modifier: Modifier = Modifier,
-    onClick: () -> Unit,
-) {
-    Surface(
-        onClick = onClick,
-        modifier = modifier,
-        shape = RoundedCornerShape(20.dp),
-        color = if (active) ADColors.SurfaceSubtle else ADColors.Surface,
-        border = BorderStroke(
-            1.dp,
-            if (active) ADColors.Ink.copy(alpha = 0.30f) else MaterialTheme.colorScheme.outlineVariant,
-        ),
-        shadowElevation = 1.dp,
-    ) {
-        Column(
-            modifier = Modifier.padding(11.dp),
-            verticalArrangement = Arrangement.SpaceBetween,
-        ) {
-            Box(Modifier.fillMaxWidth()) {
-                Surface(
-                    modifier = Modifier.size(46.dp),
-                    shape = RoundedCornerShape(15.dp),
-                    color = if (active) ADColors.Ink else ADColors.SurfaceSubtle,
-                    contentColor = if (active) ADColors.Surface else ADColors.Ink,
-                ) {
-                    Box(contentAlignment = Alignment.Center) { Icon(icon, null, modifier = Modifier.size(22.dp)) }
-                }
-                if (active) {
-                    Icon(
-                        Icons.Outlined.CheckCircle,
-                        "Enabled",
-                        modifier = Modifier.align(Alignment.TopEnd).size(20.dp),
-                        tint = ADColors.Ink,
-                    )
-                }
-            }
-            Column {
-                Text(title, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Medium)
-                Spacer(Modifier.height(2.dp))
-                Text(detail, style = MaterialTheme.typography.bodySmall, color = ADColors.Muted, maxLines = 2)
-            }
-        }
-    }
-}
-
-@Composable
 private fun ADConfigurationCard(
     icon: ImageVector,
     title: String,
@@ -305,9 +197,10 @@ private fun ADConfigurationCard(
                 modifier = Modifier.size(34.dp),
                 shape = RoundedCornerShape(10.dp),
                 color = ADColors.SurfaceSubtle,
-                contentColor = ADColors.Ink,
             ) {
-                Box(contentAlignment = Alignment.Center) { Icon(icon, null, modifier = Modifier.size(18.dp)) }
+                Box(contentAlignment = Alignment.Center) {
+                    Icon(icon, null, tint = Color.Black, modifier = Modifier.size(18.dp))
+                }
             }
             Column {
                 Text(title, style = MaterialTheme.typography.labelLarge, fontWeight = FontWeight.Medium)

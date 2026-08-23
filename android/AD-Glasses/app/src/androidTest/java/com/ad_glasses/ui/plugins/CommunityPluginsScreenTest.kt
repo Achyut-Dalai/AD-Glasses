@@ -1,15 +1,15 @@
 package com.ad_glasses.ui.plugins
 
-import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.getValue
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.test.assertCountEquals
 import androidx.compose.ui.test.hasText
+import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithTag
-import androidx.compose.ui.test.junit4.createComposeRule
-import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.onNodeWithText
+import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performScrollToNode
 import com.ad_glasses.shared.plugins.CommunityPluginCardData
@@ -81,12 +81,11 @@ class CommunityPluginsScreenTest {
     @Test
     fun nativePluginCardsRenderWithSettingsButton() {
         var settingsOpened = false
-        var toggledValue: Boolean? = null
         val nativePlugin = NativePluginCardData(
-            id = "visual_diary",
-            title = "Visual Diary",
-            description = "Capture moments for a private daily diary.",
-            badge = "Memory",
+            id = "meeting_spark_notes",
+            title = "Meeting Spark Notes",
+            description = "Capture live speech and prepare concise notes.",
+            badge = "Productivity",
             enabled = false,
             hasSettings = true,
         )
@@ -98,7 +97,7 @@ class CommunityPluginsScreenTest {
                     isRefreshing = false,
                     nativePlugins = listOf(nativePlugin),
                     onOpenNativePluginSettings = { settingsOpened = true },
-                    onToggleNativePlugin = { _, enabled -> toggledValue = enabled },
+                    onToggleNativePlugin = { _, _ -> },
                     onWindowSelected = {},
                     onRefresh = {},
                     onPublishPlugin = {},
@@ -106,9 +105,9 @@ class CommunityPluginsScreenTest {
                 )
             }
         }
-        composeRule.onNodeWithTag("native_plugin_card_visual_diary").assertExists()
-        composeRule.onNodeWithText("Visual Diary").assertExists()
-        composeRule.onNodeWithContentDescription("Visual Diary settings").performClick()
+        composeRule.onNodeWithTag("native_plugin_card_meeting_spark_notes").assertExists()
+        composeRule.onNodeWithText("Meeting Spark Notes").assertExists()
+        composeRule.onNodeWithContentDescription("Meeting Spark Notes settings").performClick()
         composeRule.runOnIdle {
             assertEquals(true, settingsOpened)
         }

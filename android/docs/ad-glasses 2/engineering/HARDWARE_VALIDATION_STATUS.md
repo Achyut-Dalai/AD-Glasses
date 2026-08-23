@@ -19,7 +19,6 @@ When the glasses arrive, validate in this order:
 3. manual photo, video and onboard audio commands;
 4. BLE-triggered Wi-Fi Direct media listing/download and duplicate handling;
 5. voice/image question triggers and audio routing;
-6. Meeting, captions, translation, Auto Audio and Visual Diary one at a time;
 7. long-running conflicts, interruption and recovery;
 8. firmware read-only version/compatibility probes;
 9. firmware flashing only after the separate preflight/recovery safety gate.

@@ -12,18 +12,12 @@ import kotlinx.coroutines.runBlocking
 import java.util.UUID
 
 /**
- * In-process chat store used by Activities for quick synchronous access.
+ * In-process chat store used by Activities and Compose for quick synchronous access.
  *
- * This keeps a small memory cache (`threads` + `messagesByChatId`) and mirrors writes to
- * Room through [MyApplication.repository].
- *
- * Why this shape:
- * - Existing UI code expects simple blocking reads.
- * - MVP scope favors deterministic behavior over reactive streams in every screen.
- *
- * Tradeoff:
- * - We intentionally use `runBlocking(Dispatchers.IO)` in a few places to keep call sites
- *   synchronous and avoid rewriting the UI layer around coroutines.
+ * The in-memory cache is authoritative for the active process. Room is a durability layer when
+ * available. A damaged or incompatible on-device database must never make Chats or Privacy crash;
+ * if a Room operation fails, persistence is disabled for the rest of this process and the cache
+ * continues to operate normally. A later app process can try Room again after migration/repair.
  */
 object ChatStore {
 
@@ -32,12 +26,33 @@ object ChatStore {
     @Volatile
     private var loaded = false
 
+    @Volatile
+    private var persistenceAvailable = true
+
     private val threads = mutableListOf<ChatThread>()
     private val messagesByChatId = linkedMapOf<String, MutableList<ChatMessage>>()
 
     private fun repositoryOrNull(): ADGlassesRepository? {
+        if (!persistenceAvailable) return null
         // Local JVM unit tests do not initialize MyApplication/Room.
-        return runCatching { MyApplication.repository }.getOrNull()
+        return runCatching { MyApplication.repository }
+            .onFailure { persistenceAvailable = false }
+            .getOrNull()
+    }
+
+    /**
+     * Execute one Room operation behind a process-safe failure boundary.
+     *
+     * Room can throw while opening the database, validating a migrated schema, creating an index,
+     * or executing a DAO method. Those are persistence failures, not reasons to terminate the UI.
+     */
+    private fun <T> withRepository(block: suspend (ADGlassesRepository) -> T): T? {
+        val repository = repositoryOrNull() ?: return null
+        return runCatching {
+            runBlocking(Dispatchers.IO) { block(repository) }
+        }.onFailure {
+            persistenceAvailable = false
+        }.getOrNull()
     }
 
     private fun ensureLoaded() {
@@ -45,25 +60,20 @@ object ChatStore {
         synchronized(lock) {
             if (loaded) return
 
-            val repository = repositoryOrNull()
-
-            // First access hydrates in-memory thread cache from Room when available.
-            if (repository != null) {
-                runBlocking(Dispatchers.IO) {
-                    val chats = repository.getAllChatsOnce()
-                    threads.clear()
-                    threads.addAll(
-                        chats.map {
-                            ChatThread(
-                                id = it.id,
-                                title = it.title,
-                                createdAt = it.createdAt,
-                                updatedAt = it.updatedAt,
-                            )
-                        }
-                    )
-                    messagesByChatId.clear()
-                }
+            val chats = withRepository { it.getAllChatsOnce() }
+            if (chats != null) {
+                threads.clear()
+                threads.addAll(
+                    chats.map {
+                        ChatThread(
+                            id = it.id,
+                            title = it.title,
+                            createdAt = it.createdAt,
+                            updatedAt = it.updatedAt,
+                        )
+                    }
+                )
+                messagesByChatId.clear()
             }
 
             loaded = true
@@ -77,22 +87,21 @@ object ChatStore {
         synchronized(lock) {
             if (messagesByChatId.containsKey(chatId)) return
 
-            val repository = repositoryOrNull()
-            if (repository != null) {
-                runBlocking(Dispatchers.IO) {
-                    val msgs = repository.getMessagesForChatOnce(chatId)
-                    messagesByChatId[chatId] = msgs.mapNotNull { e ->
-                        // Be tolerant to historical role casing/whitespace mismatches.
-                        val role = runCatching { ChatRole.valueOf(e.role.trim().uppercase()) }.getOrNull() ?: return@mapNotNull null
-                        ChatMessage(
-                            id = e.id,
-                            chatId = e.chatId,
-                            role = role,
-                            content = e.content,
-                            createdAt = e.createdAt,
-                        )
-                    }.toMutableList()
-                }
+            val msgs = withRepository { it.getMessagesForChatOnce(chatId) }
+            if (msgs != null) {
+                messagesByChatId[chatId] = msgs.mapNotNull { entity ->
+                    // Be tolerant to historical role casing/whitespace mismatches.
+                    val role = runCatching { ChatRole.valueOf(entity.role.trim().uppercase()) }
+                        .getOrNull()
+                        ?: return@mapNotNull null
+                    ChatMessage(
+                        id = entity.id,
+                        chatId = entity.chatId,
+                        role = role,
+                        content = entity.content,
+                        createdAt = entity.createdAt,
+                    )
+                }.toMutableList()
             } else {
                 messagesByChatId.putIfAbsent(chatId, mutableListOf())
             }
@@ -126,31 +135,28 @@ object ChatStore {
         ensureLoaded()
 
         val id = UUID.randomUUID().toString()
-        val t = ChatThread(
+        val thread = ChatThread(
             id = id,
             title = title?.takeIf { it.isNotBlank() } ?: "New chat",
             createdAt = nowMs,
             updatedAt = nowMs,
         )
 
-        threads.add(t)
+        threads.add(thread)
         messagesByChatId[id] = mutableListOf()
 
-        val repository = repositoryOrNull()
-        if (repository != null) {
-            runBlocking(Dispatchers.IO) {
-                repository.insertChat(
-                    ChatEntity(
-                        id = t.id,
-                        title = t.title,
-                        createdAt = t.createdAt,
-                        updatedAt = t.updatedAt,
-                    )
+        withRepository<Unit> { repository ->
+            repository.insertChat(
+                ChatEntity(
+                    id = thread.id,
+                    title = thread.title,
+                    createdAt = thread.createdAt,
+                    updatedAt = thread.updatedAt,
                 )
-            }
+            )
         }
 
-        return t
+        return thread
     }
 
     @Synchronized
@@ -173,7 +179,7 @@ object ChatStore {
         if (threadIndex < 0) error("Unknown chatId=$chatId")
         val thread = threads[threadIndex]
 
-        val msg = ChatMessage(
+        val message = ChatMessage(
             id = UUID.randomUUID().toString(),
             chatId = chatId,
             role = role,
@@ -182,7 +188,7 @@ object ChatStore {
         )
 
         val list = messagesByChatId.getOrPut(chatId) { mutableListOf() }
-        list.add(msg)
+        list.add(message)
 
         val updatedThread = thread.copy(
             title = if (thread.title == "New chat" && role == ChatRole.USER) {
@@ -194,33 +200,27 @@ object ChatStore {
         )
         threads[threadIndex] = updatedThread
 
-        val repository = repositoryOrNull()
-        if (repository != null) {
-            runBlocking(Dispatchers.IO) {
-                // Upsert message
-                repository.insertMessage(
-                    MessageEntity(
-                        id = msg.id,
-                        chatId = msg.chatId,
-                        role = msg.role.name,
-                        content = msg.content,
-                        createdAt = msg.createdAt,
-                    )
+        withRepository<Unit> { repository ->
+            repository.insertMessage(
+                MessageEntity(
+                    id = message.id,
+                    chatId = message.chatId,
+                    role = message.role.name,
+                    content = message.content,
+                    createdAt = message.createdAt,
                 )
-
-                // Update chat title + updatedAt
-                repository.insertChat(
-                    ChatEntity(
-                        id = updatedThread.id,
-                        title = updatedThread.title,
-                        createdAt = updatedThread.createdAt,
-                        updatedAt = updatedThread.updatedAt,
-                    )
+            )
+            repository.insertChat(
+                ChatEntity(
+                    id = updatedThread.id,
+                    title = updatedThread.title,
+                    createdAt = updatedThread.createdAt,
+                    updatedAt = updatedThread.updatedAt,
                 )
-            }
+            )
         }
 
-        return msg
+        return message
     }
 
     @Synchronized
@@ -240,18 +240,15 @@ object ChatStore {
         )
         threads[threadIndex] = updatedThread
 
-        val repository = repositoryOrNull()
-        if (repository != null) {
-            runBlocking(Dispatchers.IO) {
-                repository.insertChat(
-                    ChatEntity(
-                        id = updatedThread.id,
-                        title = updatedThread.title,
-                        createdAt = updatedThread.createdAt,
-                        updatedAt = updatedThread.updatedAt,
-                    )
+        withRepository<Unit> { repository ->
+            repository.insertChat(
+                ChatEntity(
+                    id = updatedThread.id,
+                    title = updatedThread.title,
+                    createdAt = updatedThread.createdAt,
+                    updatedAt = updatedThread.updatedAt,
                 )
-            }
+            )
         }
         return true
     }
@@ -269,18 +266,15 @@ object ChatStore {
         val updatedThread = thread.copy(updatedAt = nowMs)
         threads[threadIndex] = updatedThread
 
-        val repository = repositoryOrNull()
-        if (repository != null) {
-            runBlocking(Dispatchers.IO) {
-                repository.insertChat(
-                    ChatEntity(
-                        id = updatedThread.id,
-                        title = updatedThread.title,
-                        createdAt = updatedThread.createdAt,
-                        updatedAt = updatedThread.updatedAt,
-                    )
+        withRepository<Unit> { repository ->
+            repository.insertChat(
+                ChatEntity(
+                    id = updatedThread.id,
+                    title = updatedThread.title,
+                    createdAt = updatedThread.createdAt,
+                    updatedAt = updatedThread.updatedAt,
                 )
-            }
+            )
         }
         return true
     }
@@ -288,12 +282,9 @@ object ChatStore {
     @Synchronized
     fun deleteThread(chatId: String) {
         ensureLoaded()
-        val repository = repositoryOrNull()
-        if (repository != null) {
-            runBlocking(Dispatchers.IO) {
-                repository.deleteMessagesForChat(chatId)
-                repository.deleteChatById(chatId)
-            }
+        withRepository<Unit> { repository ->
+            repository.deleteMessagesForChat(chatId)
+            repository.deleteChatById(chatId)
         }
         threads.removeAll { it.id == chatId }
         messagesByChatId.remove(chatId)
@@ -301,14 +292,10 @@ object ChatStore {
 
     @Synchronized
     fun clearAll() {
-        val repository = repositoryOrNull()
-        if (repository != null) {
-            // Clear DB first, then local cache.
-            runBlocking(Dispatchers.IO) {
-                // Messages first, then chats.
-                repository.deleteAllMessages()
-                repository.deleteAllChats()
-            }
+        withRepository<Unit> { repository ->
+            // Messages first, then chats.
+            repository.deleteAllMessages()
+            repository.deleteAllChats()
         }
 
         threads.clear()

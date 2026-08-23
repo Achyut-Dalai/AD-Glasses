@@ -71,8 +71,6 @@
     <string name="compose_action_demo">데모</string>
     <string name="compose_demo_message">데모: Local Agent가 5초 후 현재 화면을 읽습니다.</string>
     <string name="compose_local_agent_shared_memory">공유 메모리</string>
-    <string name="compose_local_agent_shared_memory_description">AutoDiary는 수동 화면 캡처, 일일 사실, 글머리 기호 및 요약을 관리합니다. Visual Diary도 이 공유 로컬 메모리에 간결한 장면 메모를 기록합니다.</string>
-    <string name="compose_open_autodiary_settings">AutoDiary 설정 열기</string>
     <string name="compose_local_agent_personalization">개인 설정 및 디버그</string>
     <string name="compose_agent_personality">에이전트 성격</string>
     <string name="compose_edit_agent_personality">에이전트 성격 편집</string>

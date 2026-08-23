@@ -15,7 +15,6 @@ class ADVisibleProductUiTest {
         listOf(
             "ADHomeSurface(",
             "ADNativeConversationScreen(",
-            "ADNativeAiScreen(",
             "ADExpressiveLibraryHome(",
             "ADNativeSettingsHubScreen(",
             "ADGlassesDeviceCenterScreen(",
@@ -23,7 +22,8 @@ class ADVisibleProductUiTest {
             "ADNativeRecordingsScreen(",
             "ADNativeNotesScreen(",
         ).forEach { screen -> assertTrue("Compose shell must render $screen", app.contains(screen)) }
-        assertFalse(app.contains("ADNativeCapabilityDetailScreen("))
+        assertFalse(app.contains("ADTab.AI"))
+        assertFalse(app.contains("ADNativeAiScreen("))
     }
 
     @Test
@@ -87,20 +87,21 @@ class ADVisibleProductUiTest {
     }
 
     @Test
-    fun aiPageKeepsOnlyPersistentCapabilitiesAndConfiguration() {
+    fun deviceCenterOwnsCloudAndLocalAiConfiguration() {
+        val deviceCenter = appFile("src/main/java/com/ad_glasses/ui/adglasses/ADGlassesDeviceCenterScreen.kt").readText()
         val ai = appFile("src/main/java/com/ad_glasses/ui/adglasses/ADNativeAiScreen.kt").readText()
-        assertTrue(ai.contains("AssistantCapability.VISUAL_DIARY"))
-        assertTrue(ai.contains("AssistantCapability.AUTO_DIARY"))
-        assertTrue(ai.contains("AssistantCapability.LOCAL_AGENT"))
-        assertTrue(ai.contains("\"Timeline\""))
-        assertTrue(ai.contains("\"Diary\""))
-        assertTrue(ai.contains("ADAiProviderPill"))
-        assertFalse(ai.contains("Switch("))
-        assertFalse(ai.contains("\"DayNote\""))
-        assertFalse(ai.contains("AssistantCapability.TRANSLATOR"))
-        assertFalse(ai.contains("AssistantCapability.MEETING_NOTES"))
-        assertFalse(ai.contains("ERRAND_BRAIN"))
-        assertFalse(ai.contains("\"OFF\""))
+
+        assertTrue(deviceCenter.contains("ADSectionTitle(\"AI\")"))
+        assertTrue(deviceCenter.contains("ADDeviceAiSection("))
+        assertFalse(deviceCenter.contains("ADSectionTitle(\"Capabilities\")"))
+        assertTrue(ai.contains("ADAiProviderPill(\"Cloud\""))
+        assertTrue(ai.contains("ADAiProviderPill(\"Local\""))
+        assertTrue(ai.contains("title = \"Cloud\""))
+        assertTrue(ai.contains("title = \"Local\""))
+        assertTrue(ai.contains("tint = Color.Black"))
+        assertFalse(ai.contains("DayNote"))
+        assertFalse(ai.contains("Visual Diary"))
+        assertFalse(ai.contains("Timeline"))
     }
 
     @Test

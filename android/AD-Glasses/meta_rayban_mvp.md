@@ -37,7 +37,6 @@ The Android Phase 1 adapter is now implemented in `MetaRaybanManager.kt`:
 - DAT photos are persisted to `DCIM/AD-Glasses`, and raw I420 frames are converted to Android `Bitmap` callbacks.
 - Android and DAT camera permissions are requested through Activity Result APIs.
 - Meta camera ownership is represented by the existing exclusive glasses-session coordinator.
-- Visual Diary and Walking Aid use the one-shot DAT photo path for Meta; HeyCyan retains its existing thumbnail path.
 - HeyCyan onboard audio-file capture is disabled for Meta devices.
 
 This progress has compile/unit-test coverage only. It has not been validated against a physical Meta wearable.
@@ -105,7 +104,6 @@ The current iOS controller uses `IosBleManager` and sends HeyCyan command bytes 
 
 This is not a valid Meta integration. The iOS controller currently sets HeyCyan controls visible for any connected device at `MainViewController.kt:233-245`, and unhandled Meta actions fall through to the generic error path at `:266-281`.
 
-The current iOS plugin catalog marks AutoDiary, Auto Audio, and Visual Diary as unavailable in `shared/src/commonMain/kotlin/com/ad_glasses/shared/ui/SharedDestinationScreen.kt:303-331`.
 
 The iOS implementation should use the Swift DAT framework, not generic CoreBluetooth. Since MWDAT is a Swift package, the likely integration is a native Swift Meta controller in the iOS host with an Objective-C-compatible or callback bridge to shared Kotlin state. MWDAT types should not be placed directly in `commonMain`.
 
@@ -148,9 +146,7 @@ These paths depend on HeyCyan `LargeDataHandler`, BLE notify slots, Wi-Fi Direct
 
 | Feature | Meta Ray-Ban status | Required treatment |
 | --- | --- | --- |
-| AutoDiary | Android screen/accessibility capture only | Keep Android-only. It is not glasses-camera capture and cannot be duplicated with iOS Accessibility APIs. |
 | Auto Audio | HeyCyan `LargeDataHandler` recording commands | Do not run for Meta. Define a separate live microphone capture mode if desired; do not promise onboard 15-minute media files. |
-| Visual Diary | HeyCyan thumbnail protocol | Replace with DAT fresh video frames or DAT photo capture. |
 | Walking Aid | HeyCyan thumbnail protocol at `WalkingAidService.kt:274-331` | Replace the thumbnail source with the shared Meta camera capability. |
 | Meeting Spark Notes | Android SpeechRecognizer plus Bluetooth audio | Potentially usable with Meta HFP audio; coordinate with active DAT camera sessions. |
 | Live Caption Relay | Android SpeechRecognizer plus Bluetooth audio | Potentially usable with Meta HFP audio; provide phone-microphone fallback. |
@@ -163,11 +159,9 @@ These paths depend on HeyCyan `LargeDataHandler`, BLE notify slots, Wi-Fi Direct
 | Wi-Fi ADB/live preview | HeyCyan-specific | Hide for Meta. |
 | Display | Only Meta Ray-Ban Display hardware | Gate by DAT display capability, not by name. |
 
-The current Android plugin catalog in `CommunityPluginsActivity.kt:67-131` still does not gate every plugin card by device class. The service layer now blocks HeyCyan onboard audio-file capture for Meta and routes Visual Diary and Walking Aid one-shot images through the shared Android DAT manager, but plugin-card gating and the remaining audio policy work are still pending.
 
 The voice plugin routing implementation is in `plugins/PluginVoiceSupport.kt:103-262`. It uses Android communication-device/SCO routing. This is a reasonable fallback for Meta audio, but the code needs a shared rule that switches to the phone microphone while the DAT camera stream is active if the Bluetooth audio route becomes unavailable.
 
-The existing Auto Audio implementation explicitly sends HeyCyan commands at `media/autocapture/AutoAudioCaptureService.kt:40-45` and `:301-306`. The Visual Diary implementation obtains HeyCyan thumbnails through `AutoLoopVisualNoteGenerator.kt:203-212`. Neither path can be adapted by changing only the device name.
 
 ## Meta Ray-Ban MVP Scope
 
@@ -181,7 +175,6 @@ The first MVP should support:
 6. Fresh frame delivery to the dashboard and AI services.
 7. Photo capture with typed errors and MediaStore/Photos persistence.
 8. AI image questions from a captured Meta frame/photo.
-9. Walking Aid and Visual Diary using the shared Meta camera source.
 10. Correct device and capability gating for HeyCyan-only features.
 
 The following should remain outside the first Meta MVP:
@@ -189,7 +182,6 @@ The following should remain outside the first Meta MVP:
 - HeyCyan onboard audio-file recording semantics.
 - HeyCyan `media.config` and Wi-Fi Direct media sync.
 - HeyCyan OTA and Wi-Fi ADB.
-- iOS AutoDiary parity with Android AccessibilityService.
 - Meta Ray-Ban Display content, unless display hardware is available for testing.
 
 ## Implementation Steps
@@ -238,12 +230,10 @@ The following should remain outside the first Meta MVP:
 
 ### Phase 4: Plugin migration
 
-1. Migrate Visual Diary from `getPictureThumbnails()` to the shared camera source.
 2. Migrate Walking Aid from its HeyCyan thumbnail method to DAT frames/photos.
 3. Add a fresh-frame timeout and a clear user-facing error when no frame arrives.
 4. Keep Meeting Spark Notes, Live Caption Relay, Hands-Free Translator, and Errand Brain on the audio abstraction, with phone fallback.
 5. Add an audio-route policy that prevents a plugin from repeatedly renegotiating HFP while DAT camera streaming is active.
-6. Keep AutoDiary explicitly Android-only.
 7. Do not expose Auto Audio as existing glasses-recording functionality on Meta until a supported public DAT audio/file API exists.
 
 ### Phase 5: Capability gating
@@ -322,7 +312,6 @@ The two transports must not share raw command bytes or generic writable BLE-char
 - `app/src/main/java/com/ad_glasses/plugins/handsfreetranslator/HandsFreeTranslatorService.kt`
 - `app/src/main/java/com/ad_glasses/media/autocapture/AutoAudioCaptureService.kt`
 - `app/src/main/java/com/ad_glasses/media/autocapture/AutoLoopVisualNoteGenerator.kt`
-- `app/src/main/java/com/ad_glasses/plugins/autodiary/AutoDiaryService.kt`
 - `app/src/main/java/com/ad_glasses/ui/CommunityPluginsActivity.kt`
 
 ### External implementation references
@@ -346,7 +335,6 @@ The two transports must not share raw command bytes or generic writable BLE-char
 - Stream reaches `STREAMING` before frames/photos are used.
 - Pause, disconnect, hinge-close, thermal, battery, and terminal states clean up correctly.
 - Photo data reaches the gallery/media repository.
-- Visual Diary and Walking Aid use DAT frame/photo sources on Meta.
 - Voice plugins fall back to the phone microphone when HFP is unavailable.
 - HeyCyan P2P/OTA/live-preview controls are absent for Meta profiles.
 - Display controls appear only for display-capable Meta hardware.

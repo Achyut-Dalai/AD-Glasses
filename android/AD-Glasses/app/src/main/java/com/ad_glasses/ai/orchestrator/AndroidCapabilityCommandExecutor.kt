@@ -2,7 +2,6 @@ package com.ad_glasses.ai.orchestrator
 
 import android.content.Context
 import com.ad_glasses.plugins.PluginVoicePermissions
-import com.ad_glasses.plugins.autodiary.AutoDiaryService
 import com.ad_glasses.plugins.handsfreetranslator.HandsFreeTranslatorPreferences
 import com.ad_glasses.plugins.handsfreetranslator.HandsFreeTranslatorService
 import com.ad_glasses.plugins.livecaptionrelay.LiveCaptionRelayPreferences
@@ -10,8 +9,6 @@ import com.ad_glasses.plugins.livecaptionrelay.LiveCaptionRelayService
 import com.ad_glasses.plugins.localagent.LocalAgentPlugin
 import com.ad_glasses.plugins.meetingsparknotes.MeetingSparkNotesPreferences
 import com.ad_glasses.plugins.meetingsparknotes.MeetingSparkNotesService
-import com.ad_glasses.plugins.visualdiary.VisualDiaryPreferences
-import com.ad_glasses.plugins.visualdiary.VisualDiaryService
 
 /** Native start/stop bridge for capabilities that AD can control without UI automation. */
 class AndroidCapabilityCommandExecutor(
@@ -22,8 +19,6 @@ class AndroidCapabilityCommandExecutor(
         AssistantCapability.TRANSLATOR -> HandsFreeTranslatorPreferences.isEnabled(context)
         AssistantCapability.MEETING_NOTES -> MeetingSparkNotesPreferences.isEnabled(context)
         AssistantCapability.LIVE_CAPTIONS -> LiveCaptionRelayPreferences.isEnabled(context)
-        AssistantCapability.AUTO_DIARY -> AutoDiaryService.isEnabled(context)
-        AssistantCapability.VISUAL_DIARY -> VisualDiaryPreferences.isEnabled(context)
         AssistantCapability.LOCAL_AGENT -> LocalAgentPlugin.isEnabled(context)
     }
 
@@ -40,8 +35,6 @@ class AndroidCapabilityCommandExecutor(
         AssistantCapability.TRANSLATOR -> "Translate"
         AssistantCapability.MEETING_NOTES -> "Soundbites"
         AssistantCapability.LIVE_CAPTIONS -> "Live Captions"
-        AssistantCapability.AUTO_DIARY -> "DayNote"
-        AssistantCapability.VISUAL_DIARY -> "Timeline"
         AssistantCapability.LOCAL_AGENT -> "Automation"
     }
 
@@ -71,32 +64,6 @@ class AndroidCapabilityCommandExecutor(
                     started = "Live Captions started.",
                     stopped = "Live Captions stopped.",
                 )
-
-                AssistantCapability.AUTO_DIARY -> when (command.action) {
-                    AssistantCapabilityAction.START -> {
-                        val enabled = AutoDiaryService.enable(context)
-                        AssistantResult(
-                            spokenText = if (enabled) "DayNote started." else "DayNote needs permission setup on your phone.",
-                        )
-                    }
-                    AssistantCapabilityAction.STOP -> {
-                        AutoDiaryService.disable(context)
-                        AssistantResult("DayNote stopped.")
-                    }
-                }
-
-                AssistantCapability.VISUAL_DIARY -> when (command.action) {
-                    AssistantCapabilityAction.START -> {
-                        val enabled = VisualDiaryService.enable(context)
-                        AssistantResult(
-                            spokenText = if (enabled) "Timeline started." else "Timeline needs permission setup on your phone.",
-                        )
-                    }
-                    AssistantCapabilityAction.STOP -> {
-                        VisualDiaryService.disable(context)
-                        AssistantResult("Timeline stopped.")
-                    }
-                }
 
                 AssistantCapability.LOCAL_AGENT -> when (command.action) {
                     AssistantCapabilityAction.START -> {

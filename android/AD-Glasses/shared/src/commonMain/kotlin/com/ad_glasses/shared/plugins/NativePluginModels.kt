@@ -37,7 +37,5 @@ object NativePluginIds {
     const val LIVE_CAPTION_RELAY = "live_caption_relay"
     const val HANDS_FREE_TRANSLATOR = "hands_free_translator"
     const val ERRAND_BRAIN = "errand_brain"
-    const val AUTO_DIARY = "auto_diary"
     const val AUTO_AUDIO = "auto_audio"
-    const val VISUAL_DIARY = "visual_diary"
 }

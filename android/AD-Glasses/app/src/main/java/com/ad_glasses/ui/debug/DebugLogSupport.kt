@@ -50,7 +50,6 @@ object DebugLogSupport {
         "LocalAgent",
         "MainActivity",
         "MetaRaybanManager",
-        "VisualDiaryService",
         "CommunityPluginsActivity",
         "ChatThreadActivity",
         "SettingsActivity",

@@ -71,8 +71,6 @@ Ultima versione: %2$s</string>
     <string name="compose_action_demo">Demo</string>
     <string name="compose_demo_message">Demo: Local Agent leggera lo schermo corrente tra 5 secondi.</string>
     <string name="compose_local_agent_shared_memory">Memoria condivisa</string>
-    <string name="compose_local_agent_shared_memory_description">AutoDiary gestisce acquisizione passiva dello schermo, fatti giornalieri, punti elenco e riepiloghi. Visual Diary scrive anche brevi note delle scene in questa memoria locale condivisa.</string>
-    <string name="compose_open_autodiary_settings">Apri impostazioni AutoDiary</string>
     <string name="compose_local_agent_personalization">Personalizzazione e debug</string>
     <string name="compose_agent_personality">Personalita dell agente</string>
     <string name="compose_edit_agent_personality">Modifica personalita dell agente</string>

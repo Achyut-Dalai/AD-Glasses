@@ -71,8 +71,7 @@ Latest version: %2$s</string>
     <string name="compose_action_demo">Demo</string>
     <string name="compose_demo_message">Demo: Local Agent will read the current screen in 5 seconds.</string>
     <string name="compose_local_agent_shared_memory">Shared Memory</string>
-    <string name="compose_local_agent_shared_memory_description">AutoDiary owns passive screen capture, daily facts, bullets, and summaries. Visual Diary also writes concise scene notes into this shared local memory.</string>
-    <string name="compose_open_autodiary_settings">Open AutoDiary settings</string>
+    <string name="compose_local_agent_shared_memory_description">Automation memory and approved context stay in local storage and remain under your privacy controls.</string>
     <string name="compose_local_agent_personalization">Personalization and Debug</string>
     <string name="compose_agent_personality">Agent personality</string>
     <string name="compose_edit_agent_personality">Edit agent personality</string>

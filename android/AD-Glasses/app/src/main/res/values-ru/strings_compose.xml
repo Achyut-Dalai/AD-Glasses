@@ -71,8 +71,6 @@
     <string name="compose_action_demo">Демонстрация</string>
     <string name="compose_demo_message">Демонстрация: Local Agent прочитает текущий экран через 5 секунд.</string>
     <string name="compose_local_agent_shared_memory">Общая память</string>
-    <string name="compose_local_agent_shared_memory_description">AutoDiary управляет пассивными снимками экрана, ежедневными фактами, списками и сводками. Visual Diary также записывает краткие заметки о сценах в эту общую локальную память.</string>
-    <string name="compose_open_autodiary_settings">Открыть настройки AutoDiary</string>
     <string name="compose_local_agent_personalization">Персонализация и отладка</string>
     <string name="compose_agent_personality">Характер агента</string>
     <string name="compose_edit_agent_personality">Изменить характер агента</string>

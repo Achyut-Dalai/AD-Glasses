@@ -121,9 +121,7 @@
         <activity android:name=".agent.CloudSettingsActivity" android:exported="false" android:label="Cloud AI" />
         <activity android:name=".ai.live.GeminiLiveActivity" android:exported="false" android:label="Live AI preview" />
         <activity android:name=".agent.LocalModelsConfigureActivity" android:exported="false" android:label="Local models" android:configChanges="orientation|screenSize|screenLayout|keyboardHidden" />
-        <activity android:name=".plugins.autodiary.AutoDiarySettingsActivity" android:exported="false" android:label="DayNote settings" />
         <activity android:name=".plugins.localagent.LocalAgentSettingsActivity" android:exported="false" android:label="Automation settings" />
-        <activity android:name=".plugins.visualdiary.VisualDiarySettingsActivity" android:exported="false" android:label="Timeline settings" />
         <activity android:name=".bridge.runtimes.evenhub.EvenHubRuntimeActivity" android:exported="false" />
 
         <service android:name=".localmodels.download.ModelDownloadForegroundService" android:exported="false" android:foregroundServiceType="dataSync" />
@@ -144,8 +142,6 @@
         <service android:name=".plugins.livecaptionrelay.LiveCaptionRelayService" android:exported="false" android:foregroundServiceType="microphone" />
         <service android:name=".plugins.handsfreetranslator.HandsFreeTranslatorService" android:exported="false" android:foregroundServiceType="microphone" />
         <service android:name=".plugins.errandbrain.ErrandBrainService" android:exported="false" android:foregroundServiceType="microphone" />
-        <service android:name=".plugins.autodiary.AutoDiaryService" android:exported="false" android:foregroundServiceType="dataSync" />
-        <service android:name=".plugins.visualdiary.VisualDiaryService" android:exported="false" android:foregroundServiceType="dataSync" />
 
         <receiver android:name=".plugins.errandbrain.ErrandBrainReminderReceiver" android:exported="false" />
         <service android:name=".audio.MeetingCaptureService" android:exported="false" android:foregroundServiceType="microphone" />

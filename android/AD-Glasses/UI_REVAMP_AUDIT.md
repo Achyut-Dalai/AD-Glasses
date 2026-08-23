@@ -278,7 +278,6 @@ Needs revamp:
 
 Priority: **high**.
 
-### Capability detail (Translate, Soundbites, Timeline, DayNote, Cron, Automation)
 
 Strengths:
 - description now has full width;
@@ -585,7 +584,6 @@ These pages currently create most of the feeling that the app loses polish once 
 Before changing Priority 1 pages again, create a compact Figma sheet containing:
 
 - AI landing
-- one capability detail (use DayNote or Cron)
 - Library landing
 - Local AI
 - Assistant apps

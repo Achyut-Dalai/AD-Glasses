@@ -13,7 +13,6 @@
     <string name="onboarding_glasses_connection_desc">Autorisez AD Glasses à trouver et connecter vos lunettes à proximité.</string>
     <string name="onboarding_glasses_connection_details">L\'autorisation Bluetooth sert uniquement à détecter, associer et communiquer avec vos lunettes. Vous pouvez continuer sans l\'autoriser maintenant et l\'accorder plus tard lors de la connexion d\'un appareil.</string>
     <string name="onboarding_optional_features_title">Fonctions facultatives, votre choix</string>
-    <string name="onboarding_optional_features_desc">AutoDiary, Auto Audio, Local Agent, and Cloud AI are optional and configured from Plugins or Settings.</string>
     <string name="onboarding_optional_features_details">Commencez par connecter vos lunettes, puis explorez les plugins quand vous le souhaitez. Chaque plugin explique sa fonction et ne demande que les autorisations nécessaires à son activation. Vous pouvez revoir ou désactiver les fonctions à tout moment.</string>
     <string name="onboarding_open_source_title">Développé ouvertement</string>
     <string name="onboarding_open_source_desc">Consultez le code, signalez les problèmes et aidez à améliorer AD Glasses pour tous.</string>
