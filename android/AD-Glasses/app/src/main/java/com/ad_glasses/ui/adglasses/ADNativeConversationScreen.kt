@@ -1,6 +1,5 @@
 package com.ad_glasses.ui.adglasses
 
-import android.content.Context
 import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.RepeatMode
 import androidx.compose.animation.core.animateFloat
@@ -61,7 +60,6 @@ import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.text.input.ImeAction
-import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import com.ad_glasses.agent.LocalAgentPrefs
 import com.ad_glasses.ai.orchestrator.AndroidAssistantCapabilityExecutor
@@ -457,7 +455,8 @@ internal fun ADNativeConversationScreen(
             },
         )
     }
-
+    }
+}
 
 @Composable
 private fun ADLiveAudioState(recording: Boolean) {

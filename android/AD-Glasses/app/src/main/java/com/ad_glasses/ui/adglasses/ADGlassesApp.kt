@@ -53,7 +53,10 @@ fun ADGlassesApp(
                 conversationRequest = request
             }
             ADExternalDestination.SETTINGS -> routeStack = listOf(ADRoute.MAIN, ADRoute.SETTINGS)
-            ADExternalDestination.AI -> routeStack = listOf(ADRoute.MAIN, ADRoute.DEVICE_CENTER)
+            ADExternalDestination.AI -> {
+                routeStack = listOf(ADRoute.MAIN)
+                selectedTab = ADTab.AI
+            }
             ADExternalDestination.LIBRARY_CAPTURES -> {
                 selectedTab = ADTab.LIBRARY
                 routeStack = listOf(ADRoute.MAIN, ADRoute.LIBRARY_CAPTURES)

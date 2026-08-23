@@ -198,7 +198,7 @@ class AssistantConversationSession private constructor(
 
     private fun createAndActivate(nowMs: Long = System.currentTimeMillis()): String {
         val created = ChatStore.createThread(
-            title = AssistantConversationPolicy.THREAD_TITLE,
+            title = "New chat",
             nowMs = nowMs,
         )
         trackManagedThread(created.id)
