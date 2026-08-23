@@ -14,12 +14,24 @@ def write(path: str, text: str) -> None:
 
 path = 'android/AD-Glasses/shared/src/commonMain/kotlin/com/ad_glasses/shared/ui/chat/ChatThreadScreen.kt'
 text = read(path)
-text = text.replace(
-    '''    val inputLabel = if (composer.primaryAction == ChatComposerPrimaryAction.CONFIGURE_LOCAL_MODEL) {\n         stringResource(Res.string.chat_local_model_required)\n    } else {\n         stringResource(Res.string.chat_message)\n    }\n''',
-    '''    val inputLabel = stringResource(Res.string.chat_message)\n''',
+text, _ = re.subn(
+    r'''\s*val inputLabel = if \(composer\.primaryAction == ChatComposerPrimaryAction\.CONFIGURE_LOCAL_MODEL\) \{\s*stringResource\(Res\.string\.chat_local_model_required\)\s*\} else \{\s*stringResource\(Res\.string\.chat_message\)\s*\}\s*''',
+    '\n    val inputLabel = stringResource(Res.string.chat_message)\n',
+    text,
+    count=1,
 )
-text = text.replace('''                            ChatComposerPrimaryAction.CONFIGURE_LOCAL_MODEL -> AppIcon.Model.imageVector()\n''', '')
-text = text.replace('''                             ChatComposerPrimaryAction.CONFIGURE_LOCAL_MODEL -> stringResource(Res.string.chat_configure_local_model)\n''', '')
+text = re.sub(
+    r'^\s*ChatComposerPrimaryAction\.CONFIGURE_LOCAL_MODEL -> AppIcon\.Model\.imageVector\(\)\s*\n',
+    '',
+    text,
+    flags=re.M,
+)
+text = re.sub(
+    r'^\s*ChatComposerPrimaryAction\.CONFIGURE_LOCAL_MODEL -> stringResource\(Res\.string\.chat_configure_local_model\)\s*\n',
+    '',
+    text,
+    flags=re.M,
+)
 write(path, text)
 
 path = 'android/AD-Glasses/shared/src/commonMain/kotlin/com/ad_glasses/shared/ui/settings/SettingsScreen.kt'
