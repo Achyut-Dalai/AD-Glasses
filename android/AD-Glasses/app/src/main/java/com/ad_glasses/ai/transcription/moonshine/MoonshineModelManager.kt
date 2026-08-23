@@ -1,26 +1,24 @@
 package com.ad_glasses.ai.transcription.moonshine
 
+import ai.moonshine.voice.AssetDownloader
 import ai.moonshine.voice.JNI
 import ai.moonshine.voice.ModelCache
 import ai.moonshine.voice.ModelSpec
 import android.content.Context
 import android.util.Log
-import okhttp3.OkHttpClient
-import okhttp3.Request
 import java.io.File
-import java.io.FileOutputStream
+import kotlin.math.roundToInt
 
 /**
  * Downloads + installs the Moonshine Voice model used by Ask AI.
  *
- * NOTE: Moonshine's published Maven artifact currently declares minSdk=35.
- * In this app we vendor Moonshine and build JNI locally (see :moonshine-voice module),
- * so we can keep app minSdk=24.
+ * NOTE: Moonshine's published Maven artifact currently declares minSdk=35. AD Glasses vendors the
+ * pinned Moonshine source and builds JNI locally (see :moonshine-voice), so the app can keep its
+ * lower minSdk while using the exact model catalog compiled into that native library.
  *
- * Model files are stored in the same cache layout Moonshine's MicTranscriber resolves when a
- * custom models root is supplied. Older AD Glasses builds used `moonshine/<kind.id>` directly;
- * runtime preparation moves those files into the compatible directory in place so an
- * already-downloaded model is reused instead of silently downloading a second copy.
+ * The app intentionally does not hard-code Moonshine CDN URLs. [AssetDownloader] resolves the
+ * manifest from the pinned native catalog, which prevents a library/model mismatch when Moonshine
+ * moves a quantized release to a new versioned directory.
  */
 object MoonshineModelManager {
     private const val TAG = "MoonshineModel"
@@ -33,16 +31,15 @@ object MoonshineModelManager {
     enum class ModelKind(
         val id: String,
         val languageCode: String,
-        val baseUrl: String,
         val modelArch: Int,
         val components: List<String>,
     ) {
-        // Ask AI intentionally has one production STT model: Small Streaming English.
-        SMALL_STREAMING_EN(
-            id = "small-streaming-en",
+        // One production Ask AI STT model. Medium Streaming is Moonshine's default English model
+        // and its accuracy target against Whisper Large v3. There is no automatic smaller fallback.
+        MEDIUM_STREAMING_EN(
+            id = "medium-streaming-en",
             languageCode = "en",
-            baseUrl = "https://download.moonshine.ai/model/small-streaming-en/quantized",
-            modelArch = JNI.MOONSHINE_MODEL_ARCH_SMALL_STREAMING,
+            modelArch = JNI.MOONSHINE_MODEL_ARCH_MEDIUM_STREAMING,
             components = listOf(
                 "adapter.ort",
                 "cross_kv.ort",
@@ -56,14 +53,15 @@ object MoonshineModelManager {
     }
 
     fun chooseDefault(languageHint: String? = null): ModelKind {
-        // Only the English model is shipped today. Do not switch engines for other device locales.
-        return ModelKind.SMALL_STREAMING_EN
+        // Only English is supported by Ask voice today. A different device locale never causes an
+        // engine/model fallback; the required Moonshine English model remains explicit.
+        return ModelKind.MEDIUM_STREAMING_EN
     }
 
-    /** Root passed to Moonshine's `modelsFrom(...)`; the runtime appends its ModelSpec cache key. */
+    /** App-owned root for Moonshine model caches. */
     fun modelRoot(context: Context): File = File(context.filesDir, "moonshine").apply { mkdirs() }
 
-    /** Exact directory Moonshine resolves for [kind] below [modelRoot]. */
+    /** Exact ModelSpec cache directory for [kind] below [modelRoot]. */
     fun modelDir(context: Context, kind: ModelKind): File =
         ModelCache.directoryFor(context.applicationContext, modelSpec(kind), modelRoot(context))
 
@@ -75,8 +73,8 @@ object MoonshineModelManager {
 
     /**
      * Fast readiness check safe for UI. A model split across the legacy/new directories after an
-     * interrupted migration still counts as installed because background runtime preparation can
-     * finish the move without downloading it again.
+     * interrupted migration still counts as installed because runtime preparation can finish the
+     * move without a second download.
      */
     fun isInstalled(context: Context, kind: ModelKind): Boolean {
         val destination = modelDir(context, kind)
@@ -87,15 +85,14 @@ object MoonshineModelManager {
     }
 
     /**
-     * Prepare the exact directory MicTranscriber will resolve. Call off the main thread because an
-     * old installation may need a one-time component copy when an atomic directory move is not
-     * available on the device filesystem.
+     * Prepare the exact directory the Moonshine [ai.moonshine.voice.Transcriber] will load. Call
+     * off the main thread because an older AD layout may need a one-time component move/copy.
      */
     fun prepareForRuntime(context: Context, kind: ModelKind): File {
         migrateLegacyModelIfNeeded(context, kind)
         val dir = modelDir(context, kind)
         check(validateDir(dir, kind).ok) {
-            "Moonshine ${kind.id} is not installed. Install the Moonshine voice model in Cloud AI settings."
+            "Moonshine ${kind.id} is not installed. Install the Moonshine Medium Streaming model in Cloud AI settings."
         }
         return dir
     }
@@ -119,12 +116,9 @@ object MoonshineModelManager {
             return Validation(ok = false, problems = problems, topLevel = topLevel)
         }
 
-        for (component in kind.components) {
-            if (!validComponent(File(dir, component))) {
-                problems += "missing:$component"
-            }
+        kind.components.forEach { component ->
+            if (!validComponent(File(dir, component))) problems += "missing:$component"
         }
-
         return Validation(ok = problems.isEmpty(), problems = problems, topLevel = topLevel)
     }
 
@@ -135,50 +129,56 @@ object MoonshineModelManager {
     ): File {
         migrateLegacyModelIfNeeded(context, kind)
         val dir = modelDir(context, kind)
-        if (validateDir(dir, kind).ok) return dir
+        if (validateDir(dir, kind).ok) {
+            removeRetiredSmallModel(context)
+            return dir
+        }
 
         dir.mkdirs()
-
-        val total = kind.components.size.coerceAtLeast(1)
-        val client = OkHttpClient.Builder().build()
-
-        for ((idx, component) in kind.components.withIndex()) {
-            val url = "${kind.baseUrl}/$component"
-            val out = File(dir, component)
-            if (validComponent(out)) continue
-
-            val basePct = (idx * 100) / total
-            val maxSpan = (100 / total).coerceAtLeast(1)
-
-            onProgress(Progress(basePct.coerceIn(0, 99), "Downloading $component…"))
-
-            downloadToFile(client, url, out) { bytesRead, contentLen ->
-                val filePct = if (contentLen > 0L) {
-                    ((bytesRead * 100L) / contentLen).toInt().coerceIn(0, 100)
-                } else {
-                    0
-                }
-                val pct = (basePct + (filePct * maxSpan / 100)).coerceIn(0, 99)
-                onProgress(Progress(pct, "Downloading $component… ${filePct}%"))
-            }
+        // AssetDownloader treats an existing path as present, so remove only zero-length/corrupt
+        // placeholders first. Valid existing components are retained and resumable .part files are
+        // left for Moonshine's downloader to continue.
+        kind.components.forEach { component ->
+            File(dir, component).takeIf { it.exists() && !validComponent(it) }?.delete()
         }
+
+        val downloader = AssetDownloader()
+        val spec = modelSpec(kind)
+        onProgress(Progress(0, "Preparing Moonshine Medium Streaming…"))
+        downloader.ensureModelPresent(
+            dir,
+            spec,
+            AssetDownloader.ProgressListener { relativePath, fileIndex, totalFiles, bytesDownloaded, bytesTotal ->
+                val withinFile = if (bytesTotal > 0L) {
+                    (bytesDownloaded.toDouble() / bytesTotal.toDouble()).coerceIn(0.0, 1.0)
+                } else {
+                    0.0
+                }
+                val denominator = totalFiles.coerceAtLeast(1)
+                val overall = ((fileIndex - 1).coerceAtLeast(0) + withinFile) / denominator.toDouble()
+                val percent = (overall * 100.0).roundToInt().coerceIn(0, 99)
+                val fileName = relativePath.substringAfterLast('/').ifBlank { "model data" }
+                onProgress(Progress(percent, "Downloading $fileName…"))
+            },
+        )
 
         val validation = validateDir(dir, kind)
         if (!validation.ok) {
-            val msg = "Moonshine model install failed: ${validation.problems.joinToString()} | ${validationReport(dir, kind)}"
-            Log.e(TAG, msg)
-            throw IllegalStateException(msg)
+            val message = "Moonshine model install failed: ${validation.problems.joinToString()} | ${validationReport(dir, kind)}"
+            Log.e(TAG, message)
+            throw IllegalStateException(message)
         }
 
-        Log.i(TAG, "Installed Moonshine model ${kind.id} to ${dir.absolutePath}")
-        onProgress(Progress(100, "Model installed"))
+        removeRetiredSmallModel(context)
+        Log.i(TAG, "Installed Moonshine model ${kind.id} from pinned native catalog to ${dir.absolutePath}")
+        onProgress(Progress(100, "Moonshine Medium Streaming installed"))
         return dir
     }
 
     /**
-     * Moves models installed by the previous AD layout into Moonshine's own ModelSpec cache layout.
-     * The whole directory is renamed first when possible. Component-by-component recovery then
-     * tolerates an interrupted prior attempt and avoids a second large model download.
+     * Moves models installed by the previous AD layout into Moonshine's ModelSpec cache layout.
+     * Component-by-component recovery tolerates interrupted migration and never downloads while
+     * this method runs.
      */
     @Synchronized
     private fun migrateLegacyModelIfNeeded(context: Context, kind: ModelKind) {
@@ -221,6 +221,23 @@ object MoonshineModelManager {
         }
     }
 
+    /** Small Streaming was the short-lived Ask model. Delete it only after Medium is ready. */
+    private fun removeRetiredSmallModel(context: Context) {
+        val root = modelRoot(context)
+        val smallSpec = ModelSpec.stt("en", JNI.MOONSHINE_MODEL_ARCH_SMALL_STREAMING, false)
+        val smallCache = ModelCache.directoryFor(context.applicationContext, smallSpec, root)
+        val smallLegacy = File(root, "small-streaming-en")
+        listOf(smallCache, smallLegacy).distinctBy { it.absolutePath }.forEach { dir ->
+            if (dir.exists()) {
+                runCatching { dir.deleteRecursively() }
+                    .onSuccess { deleted ->
+                        if (deleted) Log.i(TAG, "Removed retired Moonshine Small Streaming cache ${dir.absolutePath}")
+                    }
+                    .onFailure { Log.w(TAG, "Could not remove retired Moonshine Small cache", it) }
+            }
+        }
+    }
+
     private fun validComponent(file: File): Boolean = file.isFile && file.length() > 0L
 
     private fun legacyModelDir(context: Context, kind: ModelKind): File =
@@ -228,52 +245,4 @@ object MoonshineModelManager {
 
     private fun modelSpec(kind: ModelKind): ModelSpec =
         ModelSpec.stt(kind.languageCode, kind.modelArch, false)
-
-    private fun downloadToFile(
-        client: OkHttpClient,
-        url: String,
-        out: File,
-        onProgress: (bytesRead: Long, contentLength: Long) -> Unit,
-    ) {
-        val req = Request.Builder().url(url).build()
-        client.newCall(req).execute().use { resp ->
-            if (!resp.isSuccessful) {
-                throw IllegalStateException("Failed to download: HTTP ${resp.code} url=$url")
-            }
-            val body = resp.body ?: throw IllegalStateException("Empty response body: $url")
-            val contentLen = body.contentLength()
-
-            val parent = out.parentFile ?: throw IllegalStateException("Invalid output path: ${out.absolutePath}")
-            parent.mkdirs()
-
-            val tmp = File(parent, out.name + ".part")
-            if (tmp.exists()) tmp.delete()
-
-            FileOutputStream(tmp).use { fos ->
-                val buf = ByteArray(256 * 1024)
-                var readTotal = 0L
-                body.byteStream().use { input ->
-                    while (true) {
-                        val n = input.read(buf)
-                        if (n <= 0) break
-                        fos.write(buf, 0, n)
-                        readTotal += n
-                        onProgress(readTotal, contentLen)
-                    }
-                }
-                fos.flush()
-
-                if (contentLen > 0L && readTotal != contentLen) {
-                    runCatching { tmp.delete() }
-                    throw IllegalStateException("Download incomplete: got=${readTotal}B expected=${contentLen}B url=$url")
-                }
-            }
-
-            if (out.exists()) out.delete()
-            if (!tmp.renameTo(out)) {
-                tmp.copyTo(out, overwrite = true)
-                runCatching { tmp.delete() }
-            }
-        }
-    }
 }
