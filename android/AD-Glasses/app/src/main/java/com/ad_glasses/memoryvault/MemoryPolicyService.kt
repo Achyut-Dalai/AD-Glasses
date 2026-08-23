@@ -8,9 +8,12 @@ import com.ad_glasses.ui.MyApplication
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.withContext
+import kotlinx.coroutines.withTimeoutOrNull
 import java.util.Locale
 
 object MemoryPolicyService {
+    private const val SEARCH_POLICY_LOOKUP_TIMEOUT_MS = 250L
+
     private val secretRegexes = listOf(
         Regex("(?i)password\\s*[:=]"),
         Regex("(?i)api[_-]?key\\s*[:=]"),
@@ -135,7 +138,16 @@ object MemoryPolicyService {
 
     fun isMemoryRefSearchEligible(context: Context, memoryRef: String): Boolean {
         val mode = MemoryModeManager.getSelectedMode(context)
-        val policy = getPolicyBlocking(memoryRef)
+        // This method is used on the latency-sensitive assistant enrichment path. Policy
+        // metadata is useful but optional for retrieval, so never let a blocked Room read hold
+        // an Ask turn indefinitely. On timeout we fall back to a conservative classification.
+        val policy = runCatching {
+            runBlocking(Dispatchers.IO) {
+                withTimeoutOrNull(SEARCH_POLICY_LOOKUP_TIMEOUT_MS) {
+                    MyApplication.database.memoryVaultDao().getPolicy(memoryRef)?.toModel()
+                }
+            }
+        }.getOrNull()
             ?: classifyForMemoryRef(context, memoryRef, text = "")
         return isEligibleForRetrieval(mode, policy)
     }
@@ -186,7 +198,7 @@ object MemoryPolicyService {
             memoryRef = memoryRef,
             sourceType = sourceType.name.lowercase(Locale.US),
             sensitivityLevel = sensitivityLevel.name.lowercase(Locale.US),
-            syncEligibility = syncEligibility.name.lowercase(Locale.US),
+            syncEligibility = syncEligibility,
             retentionPolicy = retentionPolicy,
             derivedFromIdsCsv = derivedFromIds.joinToString(","),
             provenance = provenance,
