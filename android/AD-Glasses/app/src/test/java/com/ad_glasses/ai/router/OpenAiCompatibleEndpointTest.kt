@@ -61,4 +61,18 @@ class OpenAiCompatibleEndpointTest {
         assertEquals("https://api.groq.com/openai/v1", ApiProvider.GROQ.defaultBaseUrl)
         assertEquals("https://api.groq.com/openai/v1", ApiProvider.GROQ.resolveBaseUrl("https://wrong.example/v1"))
     }
+
+    @Test
+    fun openrouter_provider_defaults_to_requested_free_gemma_model() {
+        assertEquals("https://openrouter.ai/api/v1", ApiProvider.OPENROUTER.defaultBaseUrl)
+        assertEquals("google/gemma-4-26b-a4b-it:free", ApiProvider.OPENROUTER.defaultModel)
+        assertEquals(
+            "https://openrouter.ai/api/v1",
+            ApiProvider.OPENROUTER.resolveBaseUrl("https://wrong.example/v1"),
+        )
+        assertEquals(
+            "https://openrouter.ai/api/v1/chat/completions",
+            OpenAiCompatibleEndpoint.chatCompletionsUrl(ApiProvider.OPENROUTER.defaultBaseUrl),
+        )
+    }
 }
