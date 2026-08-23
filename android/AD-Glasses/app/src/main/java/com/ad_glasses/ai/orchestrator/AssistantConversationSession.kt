@@ -197,7 +197,13 @@ class AssistantConversationSession private constructor(
         private var instance: AssistantConversationSession? = null
 
         fun get(context: Context): AssistantConversationSession = instance ?: synchronized(this) {
-            instance ?: AssistantConversationSession(context.applicationContext).also { instance = it }
+            instance ?: AssistantConversationSession(context.applicationContext).also { created ->
+                // Older app versions may have persisted the former seven-day cleanup job. Cancel
+                // it once the durable-history session is initialized; the worker class itself is
+                // retained as a no-op so upgrades remain safe even if WorkManager starts it first.
+                AssistantConversationRetentionWorker.cancelLegacySchedule(context.applicationContext)
+                instance = created
+            }
         }
     }
 }
