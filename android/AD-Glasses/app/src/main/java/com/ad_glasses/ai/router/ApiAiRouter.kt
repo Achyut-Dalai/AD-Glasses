@@ -2,7 +2,9 @@ package com.ad_glasses.ai.router
 
 import android.content.Context
 import android.util.Base64
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.runInterruptible
 import org.json.JSONArray
 import org.json.JSONObject
 import java.io.BufferedReader
@@ -364,7 +366,12 @@ object ApiTokenClient {
         var last: Throwable? = null
         repeat(MAX_RETRIES) { attempt ->
             try {
-                return block()
+                // HttpURLConnection is blocking. Make the actual socket section interruptible so
+                // cancellation of a chat/turn can stop occupying its worker instead of lingering
+                // until the long read timeout and finishing as a stale request later.
+                return runInterruptible { block() }
+            } catch (error: CancellationException) {
+                throw error
             } catch (error: Throwable) {
                 last = error
                 val text = error.message.orEmpty()
