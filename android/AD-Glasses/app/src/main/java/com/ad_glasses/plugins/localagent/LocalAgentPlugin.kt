@@ -3,8 +3,6 @@ package com.ad_glasses.plugins.localagent
 import android.content.Context
 import com.ad_glasses.agent.LocalAgentPrefs as AutomationPrefs
 import com.ad_glasses.ai.orchestrator.AssistantCapabilityRuntimeEvents
-import com.ad_glasses.ai.router.AiProviderPrefs
-import com.ad_glasses.ai.router.AiProviderType
 import com.ad_glasses.localagent.LocalAgentController
 import com.ad_glasses.localagent.LocalAgentNotificationSpeaker
 import com.ad_glasses.localagent.LocalAgentPrefs as RuntimePrefs
@@ -13,17 +11,9 @@ import com.ad_glasses.shared.plugins.NativePluginIds
 import com.ad_glasses.shared.settings.AgentProviderType
 import com.ad_glasses.ui.CommunityPluginPrefs
 
-/**
- * Native-plugin facade for the existing Local Agent runtime.
- *
- * The automation preference remains the source of truth so upgrading users keep
- * their existing phone-control setting. The native-plugin flag mirrors it for
- * the plugin registry and shortcut surfaces.
- */
+/** Native-plugin facade for phone automation. Planning is Cloud AI only. */
 object LocalAgentPlugin {
-
-    fun isEnabled(context: Context): Boolean =
-        AutomationPrefs.isLocalAgentAutomationEnabled(context)
+    fun isEnabled(context: Context): Boolean = AutomationPrefs.isLocalAgentAutomationEnabled(context)
 
     fun setEnabled(context: Context, enabled: Boolean) {
         val changed = isEnabled(context) != enabled
@@ -34,8 +24,6 @@ object LocalAgentPlugin {
             LocalAgentTelegramService.stop(context)
             LocalAgentNotificationSpeaker.stop()
         } else if (RuntimePrefs.isTelegramRemoteControlEnabled(context)) {
-            // Remote control was explicitly configured earlier; restoring phone control can
-            // resume only that already allowlisted Telegram listener.
             LocalAgentTelegramService.start(context)
         }
         if (changed) AssistantCapabilityRuntimeEvents.notifyChanged()
@@ -50,9 +38,7 @@ object LocalAgentPlugin {
                 error = "missing_goal",
             )
         }
-        if (!isEnabled(context)) {
-            setEnabled(context, true)
-        }
+        if (!isEnabled(context)) setEnabled(context, true)
         return LocalAgentController.start(context, trimmedGoal)
     }
 
@@ -68,14 +54,8 @@ object LocalAgentPlugin {
         )
     }
 
+    /** Compatibility setter for old callers; there is no longer a Local LLM option. */
     fun setPlanningProvider(context: Context, type: AgentProviderType) {
-        AutomationPrefs.setProviderType(context, type)
-        AiProviderPrefs.setProvider(
-            context,
-            when (type) {
-                AgentProviderType.CLOUD_AI -> AiProviderType.CLOUD_API
-                AgentProviderType.LOCAL_AGENT -> AiProviderType.LOCAL_MODELS
-            },
-        )
+        AutomationPrefs.setProviderType(context, AgentProviderType.CLOUD_AI)
     }
 }
