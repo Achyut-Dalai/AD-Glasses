@@ -30,6 +30,7 @@ import androidx.compose.ui.unit.dp
 import com.ad_glasses.ai.AndroidAssistantVoiceIo
 import com.ad_glasses.ai.orchestrator.AssistantInferenceContextPolicy
 import com.ad_glasses.ai.router.AiProviderPrefs
+import com.ad_glasses.ai.transcription.moonshine.MoonshineModelManager
 
 /** AI and voice overview embedded directly in Device Center. */
 @Composable
@@ -39,10 +40,12 @@ internal fun ADDeviceAiSection(
     val context = LocalContext.current
     val active = AiProviderPrefs.getActiveProfile(context)
     val configured = AiProviderPrefs.isApiConfigured(context)
+    val moonshineModel = MoonshineModelManager.chooseDefault()
+    val moonshineInstalled = MoonshineModelManager.isInstalled(context, moonshineModel)
 
     Column(modifier = Modifier.fillMaxWidth()) {
         Text(
-            "Cloud AI handles reasoning. Ask AI, Chats, and Lens share the same assistant conversation core; voice adds speech I/O and Lens adds current image context.",
+            "Cloud AI handles reasoning. Ask AI, Chats, and Lens share the same assistant conversation core; voice adds Moonshine speech input and Android TTS while Lens adds current image context.",
             style = MaterialTheme.typography.bodySmall,
             color = ADColors.Muted,
         )
@@ -101,14 +104,18 @@ internal fun ADDeviceAiSection(
         Spacer(Modifier.height(8.dp))
         Surface(
             onClick = {
-                runCatching {
-                    context.startActivity(AndroidAssistantVoiceIo.installVoiceDataIntent())
-                }.onFailure {
-                    Toast.makeText(
-                        context,
-                        "Open Android Text-to-Speech settings to install an offline voice.",
-                        Toast.LENGTH_LONG,
-                    ).show()
+                if (!moonshineInstalled) {
+                    onCloudSettings()
+                } else {
+                    runCatching {
+                        context.startActivity(AndroidAssistantVoiceIo.installVoiceDataIntent())
+                    }.onFailure {
+                        Toast.makeText(
+                            context,
+                            "Open Android Text-to-Speech settings to install an offline voice.",
+                            Toast.LENGTH_LONG,
+                        ).show()
+                    }
                 }
             },
             modifier = Modifier.fillMaxWidth(),
@@ -127,20 +134,24 @@ internal fun ADDeviceAiSection(
                         color = ADColors.Ink,
                     )
                     Text(
-                        "On-device ASR when available · Android TTS · ${AssistantInferenceContextPolicy.INACTIVITY_TTL_MS / 1_000}s AI context",
+                        "Moonshine on-device ASR · Android TTS · ${AssistantInferenceContextPolicy.INACTIVITY_TTL_MS / 1_000}s AI context",
                         style = MaterialTheme.typography.bodySmall,
                         color = ADColors.Muted,
                     )
                     Text(
-                        "Chats stay until you delete them · tap for offline TTS voice data",
+                        if (moonshineInstalled) {
+                            "Chats stay until you delete them · tap for offline TTS voice data"
+                        } else {
+                            "Moonshine model required · tap to open Cloud AI setup"
+                        },
                         style = MaterialTheme.typography.labelSmall,
-                        color = ADColors.Blue,
+                        color = if (moonshineInstalled) ADColors.Blue else ADColors.Error,
                     )
                 }
                 ADStatusChip(
-                    text = "VOICE",
-                    tone = ADStatusTone.NEUTRAL,
-                    showCheck = false,
+                    text = if (moonshineInstalled) "READY" else "SETUP",
+                    tone = if (moonshineInstalled) ADStatusTone.SUCCESS else ADStatusTone.NEUTRAL,
+                    showCheck = moonshineInstalled,
                 )
             }
         }
