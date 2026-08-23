@@ -25,6 +25,7 @@ import androidx.compose.material.icons.outlined.Android
 import androidx.compose.material.icons.outlined.BatteryFull
 import androidx.compose.material.icons.outlined.Bluetooth
 import androidx.compose.material.icons.outlined.Build
+import androidx.compose.material.icons.outlined.Cloud
 import androidx.compose.material.icons.outlined.Info
 import androidx.compose.material.icons.outlined.PrivacyTip
 import androidx.compose.material.icons.outlined.Storage
@@ -50,6 +51,7 @@ internal fun ADNativeSettingsHubScreen(
     state: GlassesDashboardUiState,
     onBack: () -> Unit,
     onDevice: () -> Unit,
+    onCloudAi: () -> Unit,
     onPrivacy: () -> Unit,
     onStorage: () -> Unit,
     onLanguage: () -> Unit,
@@ -71,6 +73,12 @@ internal fun ADNativeSettingsHubScreen(
 
         Column(verticalArrangement = Arrangement.spacedBy(7.dp)) {
             ADSettingsSectionTitle("Essentials")
+            ADSettingsWideAction(
+                icon = Icons.Outlined.Cloud,
+                title = "Cloud AI",
+                subtitle = "Providers, API keys, endpoints and models",
+                onClick = onCloudAi,
+            )
             Row(horizontalArrangement = Arrangement.spacedBy(7.dp)) {
                 ADSettingsTile(
                     icon = Icons.Outlined.PrivacyTip,
