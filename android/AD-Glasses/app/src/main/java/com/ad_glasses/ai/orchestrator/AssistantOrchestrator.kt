@@ -1,6 +1,8 @@
 package com.ad_glasses.ai.orchestrator
 
 import android.content.Context
+import android.os.SystemClock
+import android.util.Log
 import com.ad_glasses.ai.router.AssistantIntent
 import com.ad_glasses.ai.router.AssistantRequest
 import com.ad_glasses.ai.router.AssistantRequestRouter
@@ -81,9 +83,31 @@ class AssistantOrchestrator(
             }
         }
 
+        val turnStartedAt = SystemClock.elapsedRealtime()
         val acceptedThreadId = session.activeThreadId()
-        return AssistantTurnCoordinator.withThread(acceptedThreadId) {
-            handleQueuedTurn(turn, providerType, prompt, acceptedThreadId)
+        return try {
+            AssistantTurnCoordinator.withThread(acceptedThreadId) {
+                val queueWaitMs = SystemClock.elapsedRealtime() - turnStartedAt
+                Log.i(
+                    TIMING_TAG,
+                    "queue_acquired surface=${turn.surface} waitMs=$queueWaitMs",
+                )
+                handleQueuedTurn(
+                    turn = turn,
+                    providerType = providerType,
+                    prompt = prompt,
+                    acceptedThreadId = acceptedThreadId,
+                    turnStartedAt = turnStartedAt,
+                )
+            }
+        } catch (error: Throwable) {
+            val totalMs = SystemClock.elapsedRealtime() - turnStartedAt
+            Log.e(
+                TIMING_TAG,
+                "turn_failed surface=${turn.surface} totalMs=$totalMs error=${error.javaClass.simpleName}",
+                error,
+            )
+            throw error
         }
     }
 
@@ -92,12 +116,24 @@ class AssistantOrchestrator(
         providerType: AgentProviderType,
         prompt: String,
         acceptedThreadId: String,
+        turnStartedAt: Long,
     ): AssistantResult {
+        val persistUserStartedAt = SystemClock.elapsedRealtime()
         val userMessage = session.addUserTurn(acceptedThreadId, prompt) ?: return AssistantResult(
             spokenText = "That conversation was cleared before I could start. Please ask again.",
         )
+        Log.i(
+            TIMING_TAG,
+            "user_persisted surface=${turn.surface} stageMs=${SystemClock.elapsedRealtime() - persistUserStartedAt}",
+        )
+
         val threadId = userMessage.chatId
+        val historyStartedAt = SystemClock.elapsedRealtime()
         val history = session.messages(threadId)
+        Log.i(
+            TIMING_TAG,
+            "history_loaded surface=${turn.surface} messages=${history.size} stageMs=${SystemClock.elapsedRealtime() - historyStartedAt}",
+        )
         val useWeb = AssistantWebPolicy.shouldUseWeb(
             text = prompt,
             requested = turn.webRequested,
@@ -112,6 +148,8 @@ class AssistantOrchestrator(
             artifactContext = turn.contextText?.trim()?.takeIf { it.isNotBlank() },
         )
 
+        val inferenceStartedAt = SystemClock.elapsedRealtime()
+        Log.i(TIMING_TAG, "inference_start surface=${turn.surface} provider=$providerType")
         val capabilityCommand = AssistantCapabilityCommandRouter.parse(prompt)
         val result = if (capabilityCommand != null) {
             executor.executeCapabilityCommand(capabilityCommand, executionContext)
@@ -139,9 +177,24 @@ class AssistantOrchestrator(
                 )
             }
         }
+        Log.i(
+            TIMING_TAG,
+            "inference_done surface=${turn.surface} stageMs=${SystemClock.elapsedRealtime() - inferenceStartedAt}",
+        )
 
         val persisted = result.richText.trim().ifBlank { result.spokenText.trim() }
-        if (persisted.isNotBlank()) session.addAssistantTurn(threadId, persisted)
+        if (persisted.isNotBlank()) {
+            val persistAssistantStartedAt = SystemClock.elapsedRealtime()
+            session.addAssistantTurn(threadId, persisted)
+            Log.i(
+                TIMING_TAG,
+                "assistant_persisted surface=${turn.surface} stageMs=${SystemClock.elapsedRealtime() - persistAssistantStartedAt}",
+            )
+        }
+        Log.i(
+            TIMING_TAG,
+            "turn_done surface=${turn.surface} totalMs=${SystemClock.elapsedRealtime() - turnStartedAt}",
+        )
         return result
     }
 
@@ -155,5 +208,9 @@ class AssistantOrchestrator(
         AssistantInputSurface.PHONE_TEXT -> AssistantRequestSource.CHAT
         AssistantInputSurface.PHONE_VOICE,
         AssistantInputSurface.AUTOMATION -> AssistantRequestSource.APP_UI
+    }
+
+    private companion object {
+        const val TIMING_TAG = "AssistantTiming"
     }
 }
