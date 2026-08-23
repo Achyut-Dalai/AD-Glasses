@@ -1,8 +1,6 @@
 package com.ad_glasses.ui.adglasses
 
 import android.content.Intent
-import androidx.activity.compose.rememberLauncherForActivityResult
-import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -17,18 +15,24 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.outlined.Add
 import androidx.compose.material.icons.outlined.CheckCircle
+import androidx.compose.material.icons.outlined.Cloud
+import androidx.compose.material.icons.outlined.Delete
 import androidx.compose.material.icons.outlined.Key
-import androidx.compose.material.icons.outlined.Memory
 import androidx.compose.material.icons.outlined.Mic
-import androidx.compose.material.icons.outlined.Storage
+import androidx.compose.material.icons.outlined.Refresh
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -37,23 +41,20 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.unit.dp
 import com.ad_glasses.agent.CloudServerPrefs
 import com.ad_glasses.agent.CloudSettingsActivity
-import com.ad_glasses.agent.LocalAgentPrefs
-import com.ad_glasses.agent.LocalModelsConfigureActivity
 import com.ad_glasses.ai.live.GeminiLiveActivity
-import com.ad_glasses.ai.orchestrator.AssistantConversationSession
 import com.ad_glasses.ai.router.AiProviderPrefs
-import com.ad_glasses.ai.router.AiProviderType
 import com.ad_glasses.ai.router.ApiProvider
+import com.ad_glasses.ai.router.ApiTokenClient
+import com.ad_glasses.ai.router.CloudAiProfile
+import com.ad_glasses.ai.router.CloudWebMode
 import com.ad_glasses.ai.transcription.moonshine.MoonshineModelManager
-import com.ad_glasses.localmodels.storage.InstalledLocalModel
-import com.ad_glasses.localmodels.storage.LocalModelStorageRepository
-import com.ad_glasses.shared.settings.AgentProviderType
 import java.util.Locale
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
@@ -62,21 +63,29 @@ import kotlinx.coroutines.withContext
 @Composable
 internal fun ADNativeCloudAiSettingsScreen(onBack: () -> Unit) {
     val context = LocalContext.current
-    var provider by remember { mutableStateOf(AiProviderPrefs.getApiProvider(context)) }
-    var apiKey by remember(provider) { mutableStateOf(AiProviderPrefs.getApiKey(context, provider)) }
-    var model by remember(provider) { mutableStateOf(AiProviderPrefs.getModel(context, provider)) }
-    var saved by remember { mutableStateOf(false) }
+    val scope = rememberCoroutineScope()
+    var profiles by remember { mutableStateOf(AiProviderPrefs.listProfiles(context)) }
+    var activeId by remember { mutableStateOf(AiProviderPrefs.getActiveProfile(context)?.id) }
+    var editing by remember { mutableStateOf<CloudAiProfile?>(null) }
+    var deleteTarget by remember { mutableStateOf<CloudAiProfile?>(null) }
+    var status by remember { mutableStateOf<String?>(null) }
+
     val realtimeReady = AiProviderPrefs.isRelayConfigured(context) &&
         CloudServerPrefs.getApiToken(context).isNotBlank()
+
+    fun refreshProfiles() {
+        profiles = AiProviderPrefs.listProfiles(context)
+        activeId = AiProviderPrefs.getActiveProfile(context)?.id
+    }
 
     ADPageLayout("Cloud AI", onBack) {
         ADCard {
             Row(verticalAlignment = Alignment.CenterVertically) {
-                Icon(Icons.Outlined.Key, null, tint = ADColors.Blue, modifier = Modifier.size(19.dp))
-                Column(Modifier.padding(start = 8.dp)) {
-                    Text("Standard REST", style = MaterialTheme.typography.titleMedium)
+                Icon(Icons.Outlined.Cloud, null, tint = Color.Black, modifier = Modifier.size(20.dp))
+                Column(Modifier.padding(start = 9.dp).weight(1f)) {
+                    Text("Cloud profiles", style = MaterialTheme.typography.titleMedium)
                     Text(
-                        "AD receives the response text, keeps the conversation, and speaks it with Android TTS.",
+                        "Keep separate accounts, endpoints and models. You can add more than one profile for the same provider.",
                         style = MaterialTheme.typography.bodySmall,
                         color = ADColors.Muted,
                     )
@@ -85,69 +94,59 @@ internal fun ADNativeCloudAiSettingsScreen(onBack: () -> Unit) {
         }
 
         ADCard {
-            Text("Provider", style = MaterialTheme.typography.titleMedium)
-            Spacer(Modifier.size(5.dp))
-            ApiProvider.entries.forEachIndexed { index, item ->
-                ADApiProviderRow(
-                    provider = item,
-                    selected = provider == item,
-                    configured = AiProviderPrefs.isApiConfigured(context, item),
-                    onClick = {
-                        provider = item
-                        apiKey = AiProviderPrefs.getApiKey(context, item)
-                        model = AiProviderPrefs.getModel(context, item)
-                        saved = false
-                    },
+            if (profiles.isEmpty()) {
+                Text("No Cloud AI profile yet", style = MaterialTheme.typography.titleMedium)
+                Spacer(Modifier.size(4.dp))
+                Text(
+                    "Add a profile to use Ask, image questions, and Cloud-powered automation planning.",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = ADColors.Muted,
                 )
-                if (index != ApiProvider.entries.lastIndex) HorizontalDivider(color = ADColors.Separator)
+            } else {
+                profiles.forEachIndexed { index, profile ->
+                    ADCloudProfileRow(
+                        profile = profile,
+                        active = profile.id == activeId,
+                        configured = AiProviderPrefs.hasApiKey(context, profile.id),
+                        onOpen = { editing = profile },
+                        onSelect = {
+                            AiProviderPrefs.setActiveProfile(context, profile.id)
+                            activeId = profile.id
+                            status = "${profile.name} is now active"
+                        },
+                        onDelete = { deleteTarget = profile },
+                    )
+                    if (index != profiles.lastIndex) HorizontalDivider(color = ADColors.Separator)
+                }
+            }
+            Spacer(Modifier.size(9.dp))
+            OutlinedButton(
+                onClick = {
+                    val provider = ApiProvider.GOOGLE
+                    editing = AiProviderPrefs.newProfile(
+                        provider = provider,
+                        existingCount = profiles.count { it.provider == provider },
+                    )
+                },
+                modifier = Modifier.fillMaxWidth().heightIn(min = 44.dp),
+            ) {
+                Icon(Icons.Outlined.Add, null, tint = Color.Black, modifier = Modifier.size(18.dp))
+                Spacer(Modifier.size(6.dp))
+                Text("Add Cloud profile")
             }
         }
 
-        ADCard {
-            Text("${provider.label} API key", style = MaterialTheme.typography.titleMedium)
-            Spacer(Modifier.size(6.dp))
-            ADAiTextField(
-                value = apiKey,
-                onValueChange = { apiKey = it; saved = false },
-                placeholder = "Paste API key",
-                secret = true,
-            )
-            Spacer(Modifier.size(10.dp))
-            Text("Model", style = MaterialTheme.typography.titleMedium)
-            Spacer(Modifier.size(6.dp))
-            ADAiTextField(
-                value = model,
-                onValueChange = { model = it; saved = false },
-                placeholder = provider.defaultModel,
-            )
-        }
-
-        Button(
-            onClick = {
-                val routeChanged = AiProviderPrefs.getProvider(context) != AiProviderType.CLOUD_API ||
-                    AiProviderPrefs.getApiProvider(context) != provider
-                AiProviderPrefs.setApiProvider(context, provider)
-                AiProviderPrefs.setApiKey(context, provider, apiKey)
-                AiProviderPrefs.setModel(context, provider, model)
-                AiProviderPrefs.setProvider(context, AiProviderType.CLOUD_API)
-                LocalAgentPrefs.setProviderType(context, AgentProviderType.CLOUD_AI)
-                if (routeChanged) AssistantConversationSession.get(context).startNewConversation()
-                saved = true
-            },
-            enabled = apiKey.isNotBlank() && model.isNotBlank(),
-            modifier = Modifier.fillMaxWidth().heightIn(min = 46.dp),
-            colors = ButtonDefaults.buttonColors(containerColor = ADColors.Ink),
-        ) {
-            Text(if (saved) "${provider.label} selected" else "Save and use ${provider.label}")
+        status?.let {
+            Text(it, style = MaterialTheme.typography.bodySmall, color = ADColors.Muted)
         }
 
         ADCard {
             Row(verticalAlignment = Alignment.CenterVertically) {
-                Icon(Icons.Outlined.Mic, null, tint = ADColors.Blue, modifier = Modifier.size(19.dp))
+                Icon(Icons.Outlined.Mic, null, tint = Color.Black, modifier = Modifier.size(19.dp))
                 Column(Modifier.padding(start = 8.dp).weight(1f)) {
                     Text("Realtime", style = MaterialTheme.typography.titleMedium)
                     Text(
-                        if (realtimeReady) "Gemini Live ready through AD's authenticated Realtime session service"
+                        if (realtimeReady) "Gemini Live session authorization is ready"
                         else "Configure the service used to authorize short-lived Gemini Live sessions",
                         style = MaterialTheme.typography.bodySmall,
                         color = ADColors.Muted,
@@ -156,8 +155,7 @@ internal fun ADNativeCloudAiSettingsScreen(onBack: () -> Unit) {
             }
             Spacer(Modifier.size(8.dp))
             Text(
-                "Realtime is AD's own WebSocket audio path and stays inside AD Glasses. " +
-                    "OpenAI Realtime can live in this same Cloud layer when its client is added.",
+                "Realtime is separate from REST profiles. API profile secrets never leave encrypted app storage except in requests to that profile's endpoint.",
                 style = MaterialTheme.typography.bodySmall,
                 color = ADColors.Muted,
             )
@@ -166,189 +164,346 @@ internal fun ADNativeCloudAiSettingsScreen(onBack: () -> Unit) {
                 onClick = { context.startActivity(Intent(context, CloudSettingsActivity::class.java)) },
                 modifier = Modifier.fillMaxWidth().heightIn(min = 44.dp),
                 colors = ButtonDefaults.buttonColors(containerColor = ADColors.Ink),
-            ) {
-                Text("Configure Realtime service")
-            }
+            ) { Text("Configure Realtime service") }
             Spacer(Modifier.size(6.dp))
             OutlinedButton(
                 onClick = { context.startActivity(Intent(context, GeminiLiveActivity::class.java)) },
                 enabled = realtimeReady,
                 modifier = Modifier.fillMaxWidth().heightIn(min = 44.dp),
-            ) {
-                Text("Open Gemini Live preview")
-            }
+            ) { Text("Open Gemini Live preview") }
         }
 
+        MoonshineVoiceInputCard()
+
         Text(
-            "Provider API keys and Realtime session credentials are stored with Android Keystore-backed encrypted preferences. " +
-                "Standard REST talks directly to the selected provider; the authenticated Realtime service is scoped to AD-owned session authorization.",
+            "Profile metadata and API keys are stored in Android Keystore-backed encrypted preferences and excluded from Android backup/device transfer. Saved keys are never displayed again; enter a new key only when replacing one.",
             style = MaterialTheme.typography.bodySmall,
             color = ADColors.Muted,
+        )
+    }
+
+    editing?.let { initial ->
+        ADCloudProfileEditor(
+            initial = initial,
+            hasSavedKey = AiProviderPrefs.hasApiKey(context, initial.id),
+            onDismiss = { editing = null },
+            onSave = { draft, replacement ->
+                runCatching {
+                    AiProviderPrefs.saveProfile(
+                        context = context,
+                        profile = draft,
+                        apiKeyReplacement = replacement.takeIf { it.isNotBlank() },
+                        makeActive = profiles.isEmpty(),
+                    )
+                }.onSuccess { saved ->
+                    editing = null
+                    status = "${saved.name} saved"
+                    refreshProfiles()
+                }.onFailure { error ->
+                    status = error.message ?: "Could not save profile"
+                }
+            },
+            onDiscoverModels = { draft, replacement, onResult ->
+                scope.launch {
+                    val result = withContext(Dispatchers.IO) {
+                        ApiTokenClient.discoverModels(
+                            context = context,
+                            provider = draft.provider,
+                            baseUrl = draft.baseUrl,
+                            profileId = draft.id,
+                            apiKeyReplacement = replacement.takeIf { it.isNotBlank() },
+                        )
+                    }
+                    onResult(result)
+                }
+            },
+        )
+    }
+
+    deleteTarget?.let { profile ->
+        AlertDialog(
+            onDismissRequest = { deleteTarget = null },
+            title = { Text("Delete ${profile.name}?") },
+            text = {
+                Text("The profile and its encrypted API key will be permanently removed from this device.")
+            },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        AiProviderPrefs.deleteProfile(context, profile.id)
+                        deleteTarget = null
+                        status = "${profile.name} deleted"
+                        refreshProfiles()
+                    },
+                ) { Text("Delete", color = ADColors.Error) }
+            },
+            dismissButton = { TextButton(onClick = { deleteTarget = null }) { Text("Cancel") } },
         )
     }
 }
 
 @Composable
-private fun ADApiProviderRow(
-    provider: ApiProvider,
-    selected: Boolean,
+private fun ADCloudProfileRow(
+    profile: CloudAiProfile,
+    active: Boolean,
     configured: Boolean,
-    onClick: () -> Unit,
+    onOpen: () -> Unit,
+    onSelect: () -> Unit,
+    onDelete: () -> Unit,
 ) {
     Row(
-        modifier = Modifier.fillMaxWidth().clickable(onClick = onClick).padding(vertical = 8.dp),
+        modifier = Modifier.fillMaxWidth().clickable(onClick = onOpen).padding(vertical = 9.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
         Column(Modifier.weight(1f)) {
-            Text(provider.label, style = MaterialTheme.typography.titleMedium)
+            Text(profile.name, style = MaterialTheme.typography.titleMedium)
             Text(
-                if (configured) "Key saved · ${AiProviderLabelModel(provider)}" else "Add your API key",
+                buildString {
+                    append(profile.provider.label)
+                    if (profile.model.isNotBlank()) append(" · ${profile.model}")
+                    if (!configured) append(" · key needed")
+                },
                 style = MaterialTheme.typography.bodySmall,
                 color = ADColors.Muted,
+                maxLines = 2,
             )
         }
-        if (selected) {
-            Icon(Icons.Outlined.CheckCircle, "Selected", tint = ADColors.Blue, modifier = Modifier.size(19.dp))
+        if (!active && configured) {
+            TextButton(onClick = onSelect) { Text("Use") }
+        }
+        if (active) {
+            Icon(Icons.Outlined.CheckCircle, "Active profile", tint = ADColors.Blue, modifier = Modifier.size(19.dp))
+            Spacer(Modifier.size(4.dp))
+        }
+        androidx.compose.material3.IconButton(onClick = onDelete) {
+            Icon(Icons.Outlined.Delete, "Delete ${profile.name}", tint = ADColors.Muted, modifier = Modifier.size(18.dp))
         }
     }
 }
 
-private fun AiProviderLabelModel(provider: ApiProvider): String = provider.defaultModel
-
 @Composable
-internal fun ADNativeLocalAiSettingsScreen(onBack: () -> Unit) {
-    val context = LocalContext.current
-    val scope = rememberCoroutineScope()
-    var installed by remember { mutableStateOf(LocalModelStorageRepository.listInstalled(context)) }
-    var selectedId by remember { mutableStateOf(LocalModelStorageRepository.getSelectedModelId(context)) }
-    val moonshineKind = remember { MoonshineModelManager.chooseDefault() }
-    var moonshineInstalled by remember { mutableStateOf(MoonshineModelManager.isInstalled(context, moonshineKind)) }
-    var moonshineStatus by remember { mutableStateOf<String?>(null) }
-    var moonshineInstalling by remember { mutableStateOf(false) }
+private fun ADCloudProfileEditor(
+    initial: CloudAiProfile,
+    hasSavedKey: Boolean,
+    onDismiss: () -> Unit,
+    onSave: (CloudAiProfile, String) -> Unit,
+    onDiscoverModels: (CloudAiProfile, String, (Result<List<String>>) -> Unit) -> Unit,
+) {
+    var provider by remember(initial.id) { mutableStateOf(initial.provider) }
+    var name by remember(initial.id) { mutableStateOf(initial.name) }
+    var baseUrl by remember(initial.id) { mutableStateOf(initial.baseUrl) }
+    var model by remember(initial.id) { mutableStateOf(initial.model) }
+    var webMode by remember(initial.id) { mutableStateOf(initial.webMode) }
+    var replacementKey by remember(initial.id) { mutableStateOf("") }
+    var discoveredModels by remember(initial.id) { mutableStateOf<List<String>>(emptyList()) }
+    var modelMenuOpen by remember(initial.id) { mutableStateOf(false) }
+    var discoveryRunning by remember(initial.id) { mutableStateOf(false) }
+    var discoveryError by remember(initial.id) { mutableStateOf<String?>(null) }
 
-    val configureLauncher = rememberLauncherForActivityResult(ActivityResultContracts.StartActivityForResult()) {
-        installed = LocalModelStorageRepository.listInstalled(context)
-        selectedId = LocalModelStorageRepository.getSelectedModelId(context)
-    }
+    fun draft(): CloudAiProfile = initial.copy(
+        name = name,
+        provider = provider,
+        baseUrl = baseUrl,
+        model = model,
+        webMode = webMode,
+    )
 
-    ADPageLayout("Local AI", onBack) {
-        ADCard {
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                Icon(Icons.Outlined.Memory, null, tint = ADColors.Blue, modifier = Modifier.size(19.dp))
-                Text("On this phone", style = MaterialTheme.typography.titleMedium, modifier = Modifier.padding(start = 7.dp))
-            }
-            Spacer(Modifier.size(7.dp))
-            if (installed.isEmpty()) {
-                Text("No local model installed", style = MaterialTheme.typography.bodyMedium)
-                Spacer(Modifier.size(2.dp))
-                Text(
-                    "Download a recommended model or import a compatible GGUF/LiteRT file.",
-                    style = MaterialTheme.typography.bodySmall,
-                    color = ADColors.Muted,
-                )
-            } else {
-                installed.forEachIndexed { index, item ->
-                    ADInstalledModelRow(
-                        model = item,
-                        selected = selectedId == item.id,
-                        onClick = {
-                            LocalModelStorageRepository.setSelectedModelId(context, item.id)
-                            selectedId = item.id
-                        },
-                    )
-                    if (index != installed.lastIndex) HorizontalDivider(color = ADColors.Separator)
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text(if (hasSavedKey) "Edit Cloud profile" else "Add Cloud profile") },
+        text = {
+            Column(verticalArrangement = Arrangement.spacedBy(9.dp)) {
+                Text("Provider", style = MaterialTheme.typography.labelLarge)
+                ApiProvider.entries.forEach { item ->
+                    Row(
+                        modifier = Modifier.fillMaxWidth().clickable {
+                            if (provider != item) {
+                                provider = item
+                                baseUrl = item.defaultBaseUrl
+                                model = item.defaultModel
+                                webMode = CloudWebMode.OFF
+                                discoveredModels = emptyList()
+                                discoveryError = null
+                                if (name.isBlank() || name == initial.provider.label) name = item.label
+                            }
+                        }.padding(vertical = 4.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
+                        Text(item.label, modifier = Modifier.weight(1f))
+                        if (provider == item) Icon(Icons.Outlined.CheckCircle, null, tint = ADColors.Blue, modifier = Modifier.size(17.dp))
+                    }
                 }
-            }
-            Spacer(Modifier.size(8.dp))
-            Button(
-                onClick = { configureLauncher.launch(Intent(context, LocalModelsConfigureActivity::class.java)) },
-                modifier = Modifier.fillMaxWidth().heightIn(min = 46.dp),
-                colors = ButtonDefaults.buttonColors(containerColor = ADColors.Ink),
-            ) { Text("Manage local models") }
-        }
 
-        ADCard {
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                Icon(Icons.Outlined.Mic, null, tint = ADColors.Blue, modifier = Modifier.size(19.dp))
-                Column(Modifier.padding(start = 7.dp).weight(1f)) {
-                    Text("Offline English transcription", style = MaterialTheme.typography.titleMedium)
+                ADCloudTextField(name, { name = it }, "Profile name")
+                ADCloudTextField(baseUrl, { baseUrl = it }, "API base URL")
+
+                Column {
+                    ADCloudTextField(
+                        value = replacementKey,
+                        onValueChange = { replacementKey = it },
+                        placeholder = if (hasSavedKey) "API key saved · enter only to replace" else "API key",
+                        secret = true,
+                    )
                     Text(
-                        if (moonshineInstalled) "Ready · English model stored on this phone"
-                        else "Moonshine engine included · download its English model once",
-                        style = MaterialTheme.typography.bodySmall,
+                        if (hasSavedKey) "The saved key cannot be revealed in AD Glasses." else "The key is encrypted before it is stored.",
+                        style = MaterialTheme.typography.labelSmall,
+                        color = ADColors.Muted,
+                    )
+                }
+
+                Row(horizontalArrangement = Arrangement.spacedBy(7.dp), verticalAlignment = Alignment.CenterVertically) {
+                    OutlinedButton(
+                        enabled = !discoveryRunning && baseUrl.isNotBlank() && (hasSavedKey || replacementKey.isNotBlank()),
+                        onClick = {
+                            discoveryRunning = true
+                            discoveryError = null
+                            onDiscoverModels(draft(), replacementKey) { result ->
+                                result.onSuccess { models ->
+                                    discoveredModels = models
+                                    if (model.isBlank() && models.isNotEmpty()) model = models.first()
+                                    modelMenuOpen = models.isNotEmpty()
+                                }.onFailure { error ->
+                                    discoveryError = error.message ?: "Could not fetch models"
+                                }
+                                discoveryRunning = false
+                            }
+                        },
+                    ) {
+                        Icon(Icons.Outlined.Refresh, null, tint = Color.Black, modifier = Modifier.size(16.dp))
+                        Spacer(Modifier.size(5.dp))
+                        Text(if (discoveryRunning) "Fetching…" else "Fetch models")
+                    }
+                    Box(Modifier.weight(1f)) {
+                        OutlinedButton(
+                            onClick = { modelMenuOpen = true },
+                            enabled = discoveredModels.isNotEmpty(),
+                            modifier = Modifier.fillMaxWidth(),
+                        ) { Text(if (discoveredModels.isEmpty()) "Model list" else "Choose model") }
+                        DropdownMenu(
+                            expanded = modelMenuOpen,
+                            onDismissRequest = { modelMenuOpen = false },
+                        ) {
+                            discoveredModels.forEach { item ->
+                                DropdownMenuItem(
+                                    text = { Text(item) },
+                                    onClick = {
+                                        model = item
+                                        modelMenuOpen = false
+                                    },
+                                )
+                            }
+                        }
+                    }
+                }
+                discoveryError?.let { Text(it, color = ADColors.Error, style = MaterialTheme.typography.bodySmall) }
+                ADCloudTextField(model, { model = it }, provider.defaultModel.ifBlank { "Model ID" })
+
+                if (provider.nativeWebCapable) {
+                    Text("Web access", style = MaterialTheme.typography.labelLarge)
+                    Row(horizontalArrangement = Arrangement.spacedBy(7.dp)) {
+                        ADWebModePill("Off", webMode == CloudWebMode.OFF, Modifier.weight(1f)) { webMode = CloudWebMode.OFF }
+                        ADWebModePill("Auto", webMode == CloudWebMode.AUTO, Modifier.weight(1f)) { webMode = CloudWebMode.AUTO }
+                    }
+                    Text(
+                        "Auto permits the provider's native web tool. The globe control in Ask still decides whether a specific turn may use it.",
+                        style = MaterialTheme.typography.labelSmall,
+                        color = ADColors.Muted,
+                    )
+                } else {
+                    Text(
+                        "This provider profile has no AD-integrated native web tool. Ask still works normally without live web grounding.",
+                        style = MaterialTheme.typography.labelSmall,
                         color = ADColors.Muted,
                     )
                 }
             }
-            if (!moonshineInstalled) {
-                Spacer(Modifier.size(9.dp))
-                Button(
-                    enabled = !moonshineInstalling,
-                    onClick = {
-                        moonshineInstalling = true
-                        moonshineStatus = "Starting download…"
-                        scope.launch {
-                            runCatching {
-                                withContext(Dispatchers.IO) {
-                                    MoonshineModelManager.installIfNeeded(context, moonshineKind) { progress ->
-                                        scope.launch { moonshineStatus = "${progress.percent}% — ${progress.message}" }
-                                    }
-                                }
-                            }.onSuccess {
-                                moonshineInstalled = true
-                                moonshineStatus = "Moonshine is ready for English voice input"
-                            }.onFailure { error ->
-                                moonshineStatus = error.message ?: "Moonshine installation failed"
-                            }
-                            moonshineInstalling = false
-                        }
-                    },
-                    modifier = Modifier.fillMaxWidth().heightIn(min = 46.dp),
-                    colors = ButtonDefaults.buttonColors(containerColor = ADColors.Ink),
-                ) { Text(if (moonshineInstalling) "Downloading…" else "Download English model") }
-            }
-            moonshineStatus?.let {
-                Spacer(Modifier.size(5.dp))
-                Text(it, style = MaterialTheme.typography.bodySmall, color = ADColors.Muted)
-            }
-            Spacer(Modifier.size(6.dp))
-            Text(
-                "Moonshine converts English speech to text. Standard Cloud REST replies use Android text-to-speech; Realtime cloud sessions return their own audio stream.",
-                style = MaterialTheme.typography.bodySmall,
-                color = ADColors.Muted,
-            )
-        }
-    }
+        },
+        confirmButton = {
+            TextButton(
+                enabled = name.isNotBlank() && baseUrl.isNotBlank() && model.isNotBlank() && (hasSavedKey || replacementKey.isNotBlank()),
+                onClick = { onSave(draft(), replacementKey) },
+            ) { Text("Save") }
+        },
+        dismissButton = { TextButton(onClick = onDismiss) { Text("Cancel") } },
+    )
 }
 
 @Composable
-private fun ADInstalledModelRow(
-    model: InstalledLocalModel,
+private fun ADWebModePill(
+    label: String,
     selected: Boolean,
+    modifier: Modifier = Modifier,
     onClick: () -> Unit,
 ) {
-    Row(
-        modifier = Modifier.fillMaxWidth().clickable(onClick = onClick).padding(vertical = 8.dp),
-        verticalAlignment = Alignment.CenterVertically,
+    androidx.compose.material3.Surface(
+        onClick = onClick,
+        modifier = modifier.heightIn(min = 38.dp),
+        shape = RoundedCornerShape(11.dp),
+        color = if (selected) ADColors.Ink else ADColors.SurfaceSubtle,
+        contentColor = if (selected) Color.White else ADColors.Ink,
     ) {
-        Box(
-            Modifier.size(34.dp).background(ADColors.SurfaceSubtle, RoundedCornerShape(9.dp)),
-            contentAlignment = Alignment.Center,
-        ) {
-            Icon(Icons.Outlined.Storage, null, tint = ADColors.Ink, modifier = Modifier.size(18.dp))
+        Box(contentAlignment = Alignment.Center) { Text(label, style = MaterialTheme.typography.labelMedium) }
+    }
+}
+
+@Composable
+private fun MoonshineVoiceInputCard() {
+    val context = LocalContext.current
+    val scope = rememberCoroutineScope()
+    val modelKind = remember { MoonshineModelManager.chooseDefault() }
+    var installed by remember { mutableStateOf(MoonshineModelManager.isInstalled(context, modelKind)) }
+    var status by remember { mutableStateOf<String?>(null) }
+    var installing by remember { mutableStateOf(false) }
+
+    ADCard {
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Icon(Icons.Outlined.Mic, null, tint = Color.Black, modifier = Modifier.size(19.dp))
+            Column(Modifier.padding(start = 7.dp).weight(1f)) {
+                Text("Offline English voice input", style = MaterialTheme.typography.titleMedium)
+                Text(
+                    if (installed) "Moonshine speech-to-text is ready"
+                    else "Optional speech-to-text model; this is not a Local LLM",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = ADColors.Muted,
+                )
+            }
         }
-        Column(Modifier.padding(start = 8.dp).weight(1f)) {
-            Text(model.displayName, style = MaterialTheme.typography.titleMedium)
-            Text(formatAiBytes(model.sizeBytes), style = MaterialTheme.typography.bodySmall, color = ADColors.Muted)
+        if (!installed) {
+            Spacer(Modifier.size(9.dp))
+            Button(
+                enabled = !installing,
+                onClick = {
+                    installing = true
+                    status = "Starting download…"
+                    scope.launch {
+                        runCatching {
+                            withContext(Dispatchers.IO) {
+                                MoonshineModelManager.installIfNeeded(context, modelKind) { progress ->
+                                    scope.launch { status = "${progress.percent}% — ${progress.message}" }
+                                }
+                            }
+                        }.onSuccess {
+                            installed = true
+                            status = "Moonshine is ready"
+                        }.onFailure { error ->
+                            status = error.message ?: "Moonshine installation failed"
+                        }
+                        installing = false
+                    }
+                },
+                modifier = Modifier.fillMaxWidth().heightIn(min = 44.dp),
+                colors = ButtonDefaults.buttonColors(containerColor = ADColors.Ink),
+            ) { Text(if (installing) "Downloading…" else "Download voice model") }
         }
-        if (selected) {
-            Icon(Icons.Outlined.CheckCircle, "Selected", tint = ADColors.Blue, modifier = Modifier.size(19.dp))
+        status?.let {
+            Spacer(Modifier.size(5.dp))
+            Text(it, style = MaterialTheme.typography.bodySmall, color = ADColors.Muted)
         }
     }
 }
 
 @Composable
-private fun ADAiTextField(
+private fun ADCloudTextField(
     value: String,
     onValueChange: (String) -> Unit,
     placeholder: String,
