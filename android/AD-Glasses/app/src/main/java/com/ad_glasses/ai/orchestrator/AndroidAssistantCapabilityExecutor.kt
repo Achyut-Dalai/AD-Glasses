@@ -1,6 +1,10 @@
 package com.ad_glasses.ai.orchestrator
 
 import android.content.Context
+import android.media.AudioDeviceInfo
+import android.media.AudioManager
+import android.os.Build
+import android.util.Log
 import com.ad_glasses.ai.router.AgentInferencePurpose
 import com.ad_glasses.ai.router.AgentInferenceRouter
 
@@ -16,6 +20,9 @@ class AndroidAssistantCapabilityExecutor(
         prompt: String,
         context: AssistantExecutionContext,
     ): AssistantResult {
+        if (context.surface == AssistantInputSurface.GLASSES_VOICE) {
+            clearStaleVoiceRouteWhenHeadsetMissing()
+        }
         val reply = AgentInferenceRouter.complete(
             context = appContext,
             purpose = AgentInferencePurpose.UI_PLANNING,
@@ -60,6 +67,46 @@ class AndroidAssistantCapabilityExecutor(
         command: AssistantCapabilityCommand,
         context: AssistantExecutionContext,
     ): AssistantResult = capabilities.execute(command)
+
+    /**
+     * Home voice capture asks MainActivity for a Bluetooth communication route before Android
+     * SpeechRecognizer starts. On a disconnected/no-headset device the legacy SCO request can
+     * leave MODE_IN_COMMUNICATION active without a real endpoint. TTS then uses
+     * USAGE_VOICE_COMMUNICATION and may become effectively silent even though the text answer was
+     * already persisted. Preserve a real glasses/headset route, but fail back to normal phone
+     * audio when there is no actual Bluetooth communication device.
+     */
+    private fun clearStaleVoiceRouteWhenHeadsetMissing() {
+        val audioManager = appContext.getSystemService(Context.AUDIO_SERVICE) as? AudioManager ?: return
+        val hasBluetoothCommunicationDevice = runCatching {
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+                audioManager.availableCommunicationDevices.any { device ->
+                    device.type == AudioDeviceInfo.TYPE_BLUETOOTH_SCO ||
+                        device.type == AudioDeviceInfo.TYPE_BLE_HEADSET
+                }
+            } else {
+                @Suppress("DEPRECATION")
+                audioManager.getDevices(AudioManager.GET_DEVICES_OUTPUTS).any { device ->
+                    device.type == AudioDeviceInfo.TYPE_BLUETOOTH_SCO
+                }
+            }
+        }.getOrDefault(false)
+        if (hasBluetoothCommunicationDevice) return
+
+        runCatching {
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+                audioManager.clearCommunicationDevice()
+            }
+            @Suppress("DEPRECATION")
+            audioManager.isBluetoothScoOn = false
+            @Suppress("DEPRECATION")
+            audioManager.stopBluetoothSco()
+            audioManager.mode = AudioManager.MODE_NORMAL
+            Log.i("ImageQuestionAudio", "No Bluetooth communication headset; restored phone audio route before Cloud generation")
+        }.onFailure { error ->
+            Log.w("ImageQuestionAudio", "Could not restore phone audio route", error)
+        }
+    }
 
     private fun conversationSystemPrompt(context: AssistantExecutionContext): String = buildString {
         appendLine("You are AD, the conversational assistant for displayless smart glasses.")
