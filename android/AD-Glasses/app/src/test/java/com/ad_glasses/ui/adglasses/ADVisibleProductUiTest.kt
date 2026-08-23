@@ -31,7 +31,7 @@ class ADVisibleProductUiTest {
         val screen = appFile("src/main/java/com/ad_glasses/ui/adglasses/ADNativeConversationScreen.kt").readText()
         val components = appFile("src/main/java/com/ad_glasses/ui/adglasses/ADComponents.kt").readText()
 
-        assertTrue(screen.contains("Text("AI""))
+        assertTrue(screen.contains("Text(\"AI\""))
         assertTrue(screen.contains("ADConversationHistory("))
         assertTrue(screen.contains("Rename conversation"))
         assertTrue(screen.contains("Delete conversation?"))
@@ -40,7 +40,7 @@ class ADVisibleProductUiTest {
         assertFalse(screen.contains("ADConversationRouteDisclosure("))
         assertFalse(screen.contains("ADPromptSuggestion("))
         assertFalse(screen.contains("What did I capture today?"))
-        assertFalse(screen.contains("AD-owned ${internalProvider.label} conversation"))
+        assertFalse(screen.contains("AD-owned "))
         assertTrue(components.contains("ADTab.AI -> Icons.Rounded.AutoAwesome"))
         assertFalse(components.contains("Icons.Outlined.Terminal"))
     }
