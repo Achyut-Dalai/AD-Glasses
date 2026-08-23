@@ -197,36 +197,7 @@
 3. Users remain in control of every plugin they enable.</string>
     <string name="publish_submitting">Invio...</string>
     <string name="publish_submit">Invia plugin</string>
-<string name="local_models_runtime">Runtime sul dispositivo</string>
-<string name="local_models_refresh">Aggiorna</string>
-<string name="local_models_installed">Modelli installati</string>
-<string name="local_models_selected">Modello selezionato</string>
-<string name="local_models_info">Informazioni modello</string>
-<string name="local_models_remove_selected">Rimuovi modello selezionato</string>
-<string name="local_models_catalog_description">Alcune famiglie di modelli richiedono l'accettazione dei termini o un token Hugging Face.</string>
-<string name="local_models_remote_description">Connettiti a un server compatibile con OpenAI sulla LAN o Tailnet. Deve esporre /v1/chat/completions; le immagini usano URL dati image_url e l'audio usa input_audio base64 (WAV/MP3).</string>
-<string name="local_models_base_url">URL di base</string>
-<string name="local_models_api_key_optional">Chiave API (opzionale per server locali)</string>
-<string name="local_models_save">Salva</string>
-<string name="local_models_studio_description">Ricevi richieste di approvazione di AD Glasses Model Studio tramite Tailscale e rispondi a voce.</string>
-<string name="local_models_api_key_remote">Chiave API (uguale al Server remoto)</string>
-<string name="local_models_api_key_help">Guida alla chiave API</string>
-<string name="local_models_performance_profile">Profilo prestazioni</string>
-<string name="local_models_compute_backend">Backend di calcolo</string>
-<string name="local_models_gpu_layers">Livelli GPU (-1 a 999)</string>
-<string name="local_models_top_p">Top-p (0-1)</string>
-<string name="local_models_max_tokens">Token di output massimi (32-8192)</string>
-<string name="local_models_context_size">Dimensione contesto (1024-32768)</string>
-<string name="local_models_template_override">Override modello prompt</string>
-<string name="local_models_system_prompt">Override prompt di sistema (opzionale)</string>
-<string name="local_models_diagnostics">Diagnostica</string>
-<string name="local_models_close">Chiudi</string>
-<string name="local_models_unsaved_message">Le impostazioni del modello locale sono cambiate. Uscire senza salvare?</string>
-<string name="local_models_discard">Scarta</string>
-<string name="local_models_cancel_download">Annulla download</string>
-<string name="local_models_expand">Espandi %1$s</string>
-
-    <string name="local_agent_pending_actions">Azioni in attesa</string>
+<string name="local_agent_pending_actions">Azioni in attesa</string>
     <string name="local_agent_pending_count">In attesa: %1$d</string>
     <string name="local_agent_reject">Rifiuta</string>
     <string name="local_agent_approve">Approva</string>

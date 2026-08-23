@@ -197,36 +197,7 @@
 3. Users remain in control of every plugin they enable.</string>
     <string name="publish_submitting">Отправка...</string>
     <string name="publish_submit">Отправить плагин</string>
-<string name="local_models_runtime">Среда на устройстве</string>
-<string name="local_models_refresh">Обновить</string>
-<string name="local_models_installed">Установленные модели</string>
-<string name="local_models_selected">Выбранная модель</string>
-<string name="local_models_info">Сведения о модели</string>
-<string name="local_models_remove_selected">Удалить выбранную модель</string>
-<string name="local_models_catalog_description">Для некоторых семейств моделей нужно принять условия или указать токен Hugging Face.</string>
-<string name="local_models_remote_description">Подключитесь к совместимому с OpenAI серверу в LAN или Tailnet. Он должен предоставлять /v1/chat/completions; изображения используют data URL image_url, а аудио — input_audio в base64 (WAV/MP3).</string>
-<string name="local_models_base_url">Базовый URL</string>
-<string name="local_models_api_key_optional">Ключ API (необязательно для локальных серверов)</string>
-<string name="local_models_save">Сохранить</string>
-<string name="local_models_studio_description">Получайте запросы на подтверждение AD Glasses Model Studio через Tailscale и отвечайте голосом.</string>
-<string name="local_models_api_key_remote">Ключ API (как у удаленного сервера)</string>
-<string name="local_models_api_key_help">Справка по ключу API</string>
-<string name="local_models_performance_profile">Профиль производительности</string>
-<string name="local_models_compute_backend">Вычислительный бэкенд</string>
-<string name="local_models_gpu_layers">Слои GPU (-1–999)</string>
-<string name="local_models_top_p">Top-p (0–1)</string>
-<string name="local_models_max_tokens">Максимум выходных токенов (32–8192)</string>
-<string name="local_models_context_size">Размер контекста (1024–32768)</string>
-<string name="local_models_template_override">Переопределение шаблона запроса</string>
-<string name="local_models_system_prompt">Переопределение системного запроса (необязательно)</string>
-<string name="local_models_diagnostics">Диагностика</string>
-<string name="local_models_close">Закрыть</string>
-<string name="local_models_unsaved_message">Настройки локальной модели изменились. Выйти без сохранения?</string>
-<string name="local_models_discard">Отменить изменения</string>
-<string name="local_models_cancel_download">Отменить скачивание</string>
-<string name="local_models_expand">Развернуть: %1$s</string>
-
-    <string name="local_agent_pending_actions">Ожидающие действия</string>
+<string name="local_agent_pending_actions">Ожидающие действия</string>
     <string name="local_agent_pending_count">Ожидает: %1$d</string>
     <string name="local_agent_reject">Отклонить</string>
     <string name="local_agent_approve">Разрешить</string>

@@ -197,36 +197,7 @@
 3. Users remain in control of every plugin they enable.</string>
     <string name="publish_submitting">제출 중...</string>
     <string name="publish_submit">플러그인 제출</string>
-<string name="local_models_runtime">기기 내 런타임</string>
-<string name="local_models_refresh">새로고침</string>
-<string name="local_models_installed">설치된 모델</string>
-<string name="local_models_selected">선택한 모델</string>
-<string name="local_models_info">모델 정보</string>
-<string name="local_models_remove_selected">선택한 모델 삭제</string>
-<string name="local_models_catalog_description">일부 모델 계열은 약관 동의 또는 Hugging Face 토큰이 필요합니다.</string>
-<string name="local_models_remote_description">LAN 또는 Tailnet의 OpenAI 호환 서버에 연결합니다. /v1/chat/completions를 제공해야 하며, 이미지는 image_url 데이터 URL을, 오디오는 base64 input_audio(WAV/MP3)를 사용합니다.</string>
-<string name="local_models_base_url">기본 URL</string>
-<string name="local_models_api_key_optional">API 키(로컬 서버에서는 선택 사항)</string>
-<string name="local_models_save">저장</string>
-<string name="local_models_studio_description">Tailscale을 통해 AD Glasses Model Studio 승인 요청을 받고 음성으로 응답합니다.</string>
-<string name="local_models_api_key_remote">API 키(원격 서버와 동일)</string>
-<string name="local_models_api_key_help">API 키 도움말</string>
-<string name="local_models_performance_profile">성능 프로필</string>
-<string name="local_models_compute_backend">컴퓨팅 백엔드</string>
-<string name="local_models_gpu_layers">GPU 레이어(-1~999)</string>
-<string name="local_models_top_p">Top-p(0-1)</string>
-<string name="local_models_max_tokens">최대 출력 토큰(32-8192)</string>
-<string name="local_models_context_size">컨텍스트 크기(1024-32768)</string>
-<string name="local_models_template_override">프롬프트 템플릿 재정의</string>
-<string name="local_models_system_prompt">시스템 프롬프트 재정의(선택 사항)</string>
-<string name="local_models_diagnostics">진단</string>
-<string name="local_models_close">닫기</string>
-<string name="local_models_unsaved_message">로컬 모델 설정이 변경되었습니다. 저장하지 않고 나가시겠습니까?</string>
-<string name="local_models_discard">삭제</string>
-<string name="local_models_cancel_download">다운로드 취소</string>
-<string name="local_models_expand">%1$s 펼치기</string>
-
-    <string name="local_agent_pending_actions">대기 중인 작업</string>
+<string name="local_agent_pending_actions">대기 중인 작업</string>
     <string name="local_agent_pending_count">대기 중: %1$d</string>
     <string name="local_agent_reject">거부</string>
     <string name="local_agent_approve">승인</string>

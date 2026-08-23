@@ -197,36 +197,7 @@
 3. Users remain in control of every plugin they enable.</string>
     <string name="publish_submitting">正在提交...</string>
     <string name="publish_submit">提交插件</string>
-<string name="local_models_runtime">设备端运行时</string>
-<string name="local_models_refresh">刷新</string>
-<string name="local_models_installed">已安装模型</string>
-<string name="local_models_selected">已选模型</string>
-<string name="local_models_info">模型信息</string>
-<string name="local_models_remove_selected">移除已选模型</string>
-<string name="local_models_catalog_description">部分模型系列需要接受条款或提供 Hugging Face 令牌。</string>
-<string name="local_models_remote_description">连接 LAN 或 Tailnet 上兼容 OpenAI 的服务器。它必须提供 /v1/chat/completions；图片使用 image_url 数据 URL，音频使用 base64 编码的 input_audio（WAV/MP3）。</string>
-<string name="local_models_base_url">基础 URL</string>
-<string name="local_models_api_key_optional">API 密钥（本地服务器可选）</string>
-<string name="local_models_save">保存</string>
-<string name="local_models_studio_description">通过 Tailscale 接收 AD Glasses Model Studio 的批准请求并用语音回应。</string>
-<string name="local_models_api_key_remote">API 密钥（与远程服务器相同）</string>
-<string name="local_models_api_key_help">API 密钥帮助</string>
-<string name="local_models_performance_profile">性能配置</string>
-<string name="local_models_compute_backend">计算后端</string>
-<string name="local_models_gpu_layers">GPU 层数（-1 至 999）</string>
-<string name="local_models_top_p">Top-p（0-1）</string>
-<string name="local_models_max_tokens">最大输出令牌数（32-8192）</string>
-<string name="local_models_context_size">上下文大小（1024-32768）</string>
-<string name="local_models_template_override">提示词模板覆盖</string>
-<string name="local_models_system_prompt">系统提示词覆盖（可选）</string>
-<string name="local_models_diagnostics">诊断</string>
-<string name="local_models_close">关闭</string>
-<string name="local_models_unsaved_message">本地模型设置已更改。要不保存就离开吗？</string>
-<string name="local_models_discard">放弃</string>
-<string name="local_models_cancel_download">取消下载</string>
-<string name="local_models_expand">展开 %1$s</string>
-
-    <string name="local_agent_pending_actions">待处理操作</string>
+<string name="local_agent_pending_actions">待处理操作</string>
     <string name="local_agent_pending_count">待处理：%1$d</string>
     <string name="local_agent_reject">拒绝</string>
     <string name="local_agent_approve">批准</string>

@@ -211,36 +211,7 @@
 3. Users remain in control of every plugin they enable.</string>
     <string name="publish_submitting">Wird eingereicht...</string>
     <string name="publish_submit">Plugin einreichen</string>
-<string name="local_models_runtime">Gerätelaufzeit</string>
-<string name="local_models_refresh">Aktualisieren</string>
-<string name="local_models_installed">Installierte Modelle</string>
-<string name="local_models_selected">Ausgewähltes Modell</string>
-<string name="local_models_info">Modellinfo</string>
-<string name="local_models_remove_selected">Ausgewähltes Modell entfernen</string>
-<string name="local_models_catalog_description">Für einige Modellfamilien müssen Bedingungen akzeptiert oder ein Hugging-Face-Token angegeben werden.</string>
-<string name="local_models_remote_description">Mit einem OpenAI-kompatiblen Server in Ihrem LAN oder Tailnet verbinden. Er muss /v1/chat/completions bereitstellen; Bilder verwenden image_url-Daten-URLs und Audio input_audio-Base64 (WAV/MP3).</string>
-<string name="local_models_base_url">Basis-URL</string>
-<string name="local_models_api_key_optional">API-Schlüssel (optional für lokale Server)</string>
-<string name="local_models_save">Speichern</string>
-<string name="local_models_studio_description">AD Glasses-Model-Studio-Genehmigungsanfragen über Tailscale empfangen und per Sprache beantworten.</string>
-<string name="local_models_api_key_remote">API-Schlüssel (wie beim Remoteserver)</string>
-<string name="local_models_api_key_help">Hilfe zum API-Schlüssel</string>
-<string name="local_models_performance_profile">Leistungsprofil</string>
-<string name="local_models_compute_backend">Berechnungs-Backend</string>
-<string name="local_models_gpu_layers">GPU-Ebenen (-1 bis 999)</string>
-<string name="local_models_top_p">Top-p (0-1)</string>
-<string name="local_models_max_tokens">Maximale Ausgabetoken (32-8192)</string>
-<string name="local_models_context_size">Kontextgröße (1024-32768)</string>
-<string name="local_models_template_override">Überschreibung der Promptvorlage</string>
-<string name="local_models_system_prompt">Überschreibung des System-Prompts (optional)</string>
-<string name="local_models_diagnostics">Diagnose</string>
-<string name="local_models_close">Schließen</string>
-<string name="local_models_unsaved_message">Die Einstellungen für lokale Modelle wurden geändert. Ohne Speichern verlassen?</string>
-<string name="local_models_discard">Verwerfen</string>
-<string name="local_models_cancel_download">Download abbrechen</string>
-<string name="local_models_expand">%1$s ausklappen</string>
-
-    <string name="local_agent_pending_actions">Ausstehende Aktionen</string>
+<string name="local_agent_pending_actions">Ausstehende Aktionen</string>
     <string name="local_agent_pending_count">Ausstehend: %1$d</string>
     <string name="local_agent_reject">Ablehnen</string>
     <string name="local_agent_approve">Genehmigen</string>

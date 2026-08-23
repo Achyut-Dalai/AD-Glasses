@@ -197,36 +197,7 @@
 3. Users remain in control of every plugin they enable.</string>
     <string name="publish_submitting">Enviando...</string>
     <string name="publish_submit">Enviar plugin</string>
-<string name="local_models_runtime">Runtime en el dispositivo</string>
-<string name="local_models_refresh">Actualizar</string>
-<string name="local_models_installed">Modelos instalados</string>
-<string name="local_models_selected">Modelo seleccionado</string>
-<string name="local_models_info">Informacion del modelo</string>
-<string name="local_models_remove_selected">Eliminar modelo seleccionado</string>
-<string name="local_models_catalog_description">Algunas familias de modelos requieren aceptar condiciones o un token de Hugging Face.</string>
-<string name="local_models_remote_description">Conecta con un servidor compatible con OpenAI en tu LAN o Tailnet. Debe exponer /v1/chat/completions; las imagenes usan URL de datos image_url y el audio usa input_audio en base64 (WAV/MP3).</string>
-<string name="local_models_base_url">URL base</string>
-<string name="local_models_api_key_optional">Clave API (opcional para servidores locales)</string>
-<string name="local_models_save">Guardar</string>
-<string name="local_models_studio_description">Recibe solicitudes de aprobacion de AD Glasses Model Studio mediante Tailscale y responde por voz.</string>
-<string name="local_models_api_key_remote">Clave API (igual que en Servidor remoto)</string>
-<string name="local_models_api_key_help">Ayuda sobre la clave API</string>
-<string name="local_models_performance_profile">Perfil de rendimiento</string>
-<string name="local_models_compute_backend">Backend de computacion</string>
-<string name="local_models_gpu_layers">Capas de GPU (-1 a 999)</string>
-<string name="local_models_top_p">Top-p (0-1)</string>
-<string name="local_models_max_tokens">Tokens maximos de salida (32-8192)</string>
-<string name="local_models_context_size">Tamano de contexto (1024-32768)</string>
-<string name="local_models_template_override">Reemplazo de plantilla de prompt</string>
-<string name="local_models_system_prompt">Reemplazo del prompt del sistema (opcional)</string>
-<string name="local_models_diagnostics">Diagnosticos</string>
-<string name="local_models_close">Cerrar</string>
-<string name="local_models_unsaved_message">Los ajustes del modelo local han cambiado. Salir sin guardar?</string>
-<string name="local_models_discard">Descartar</string>
-<string name="local_models_cancel_download">Cancelar descarga</string>
-<string name="local_models_expand">Expandir %1$s</string>
-
-    <string name="local_agent_pending_actions">Acciones pendientes</string>
+<string name="local_agent_pending_actions">Acciones pendientes</string>
     <string name="local_agent_pending_count">Pendientes: %1$d</string>
     <string name="local_agent_reject">Rechazar</string>
     <string name="local_agent_approve">Aprobar</string>
