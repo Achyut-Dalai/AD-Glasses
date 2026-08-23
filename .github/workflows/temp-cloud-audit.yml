@@ -1,9 +1,9 @@
 name: Temporary cloud architecture audit
 
 on:
-  push:
+  pull_request:
     branches:
-      - cleanup/ad-glasses-cloud-rebrand
+      - main
 
 permissions:
   contents: write
@@ -13,7 +13,7 @@ jobs:
     if: github.actor != 'github-actions[bot]'
     runs-on: ubuntu-latest
     steps:
-      - name: Check out branch
+      - name: Check out consolidation branch
         uses: actions/checkout@v7
         with:
           ref: cleanup/ad-glasses-cloud-rebrand
