@@ -12,7 +12,7 @@ import kotlinx.coroutines.withTimeoutOrNull
 import java.util.Locale
 
 object MemoryPolicyService {
-    private const val SEARCH_POLICY_LOOKUP_TIMEOUT_MS = 250L
+    private const val SEARCH_POLICY_LOOKUP_TIMEOUT_MS = 100L
 
     private val secretRegexes = listOf(
         Regex("(?i)password\\s*[:=]"),
