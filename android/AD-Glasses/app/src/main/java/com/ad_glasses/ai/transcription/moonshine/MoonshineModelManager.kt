@@ -17,10 +17,10 @@ import java.io.FileOutputStream
  * In this app we vendor Moonshine and build JNI locally (see :moonshine-voice module),
  * so we can keep app minSdk=24.
  *
- * Model files are stored in the same cache layout Moonshine's [MicTranscriber] resolves when a
+ * Model files are stored in the same cache layout Moonshine's MicTranscriber resolves when a
  * custom models root is supplied. Older AD Glasses builds used `moonshine/<kind.id>` directly;
- * [migrateLegacyModelIfNeeded] moves those files into the runtime-compatible directory in place so
- * an already-downloaded model is reused instead of silently downloading a second copy.
+ * runtime preparation moves those files into the compatible directory in place so an
+ * already-downloaded model is reused instead of silently downloading a second copy.
  */
 object MoonshineModelManager {
     private const val TAG = "MoonshineModel"
@@ -73,9 +73,22 @@ object MoonshineModelManager {
         val topLevel: List<String>,
     )
 
-    fun isInstalled(context: Context, kind: ModelKind): Boolean {
+    /** Fast readiness check safe for UI: accept either the new runtime layout or the legacy layout. */
+    fun isInstalled(context: Context, kind: ModelKind): Boolean =
+        validateDir(modelDir(context, kind), kind).ok || validateDir(legacyModelDir(context, kind), kind).ok
+
+    /**
+     * Prepare the exact directory MicTranscriber will resolve. Call off the main thread because an
+     * old installation may need a one-time component copy when an atomic directory move is not
+     * available on the device filesystem.
+     */
+    fun prepareForRuntime(context: Context, kind: ModelKind): File {
         migrateLegacyModelIfNeeded(context, kind)
-        return validateDir(modelDir(context, kind), kind).ok
+        val dir = modelDir(context, kind)
+        check(validateDir(dir, kind).ok) {
+            "Moonshine ${kind.id} is not installed. Install the Moonshine voice model in Cloud AI settings."
+        }
+        return dir
     }
 
     fun validationReport(dir: File, kind: ModelKind): String {
@@ -164,7 +177,7 @@ object MoonshineModelManager {
         val destination = modelDir(context, kind)
         if (validateDir(destination, kind).ok) return
 
-        val legacy = File(modelRoot(context), kind.id)
+        val legacy = legacyModelDir(context, kind)
         if (!validateDir(legacy, kind).ok || legacy.canonicalPath == destination.canonicalPath) return
 
         destination.mkdirs()
@@ -192,6 +205,9 @@ object MoonshineModelManager {
             Log.w(TAG, "Moonshine model migration was incomplete; existing files were preserved", error)
         }
     }
+
+    private fun legacyModelDir(context: Context, kind: ModelKind): File =
+        File(modelRoot(context), kind.id)
 
     private fun modelSpec(kind: ModelKind): ModelSpec =
         ModelSpec.stt(kind.languageCode, kind.modelArch, false)
