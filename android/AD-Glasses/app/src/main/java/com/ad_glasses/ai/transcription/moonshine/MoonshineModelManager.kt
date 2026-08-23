@@ -73,9 +73,18 @@ object MoonshineModelManager {
         val topLevel: List<String>,
     )
 
-    /** Fast readiness check safe for UI: accept either the new runtime layout or the legacy layout. */
-    fun isInstalled(context: Context, kind: ModelKind): Boolean =
-        validateDir(modelDir(context, kind), kind).ok || validateDir(legacyModelDir(context, kind), kind).ok
+    /**
+     * Fast readiness check safe for UI. A model split across the legacy/new directories after an
+     * interrupted migration still counts as installed because background runtime preparation can
+     * finish the move without downloading it again.
+     */
+    fun isInstalled(context: Context, kind: ModelKind): Boolean {
+        val destination = modelDir(context, kind)
+        val legacy = legacyModelDir(context, kind)
+        return kind.components.all { component ->
+            validComponent(File(destination, component)) || validComponent(File(legacy, component))
+        }
+    }
 
     /**
      * Prepare the exact directory MicTranscriber will resolve. Call off the main thread because an
@@ -111,8 +120,7 @@ object MoonshineModelManager {
         }
 
         for (component in kind.components) {
-            val file = File(dir, component)
-            if (!file.exists() || file.length() <= 0L) {
+            if (!validComponent(File(dir, component))) {
                 problems += "missing:$component"
             }
         }
@@ -137,7 +145,7 @@ object MoonshineModelManager {
         for ((idx, component) in kind.components.withIndex()) {
             val url = "${kind.baseUrl}/$component"
             val out = File(dir, component)
-            if (out.isFile && out.length() > 0L) continue
+            if (validComponent(out)) continue
 
             val basePct = (idx * 100) / total
             val maxSpan = (100 / total).coerceAtLeast(1)
@@ -169,8 +177,8 @@ object MoonshineModelManager {
 
     /**
      * Moves models installed by the previous AD layout into Moonshine's own ModelSpec cache layout.
-     * Component-by-component migration tolerates an interrupted prior attempt and avoids a second
-     * large model download. Source files are deleted only after the destination validates.
+     * The whole directory is renamed first when possible. Component-by-component recovery then
+     * tolerates an interrupted prior attempt and avoids a second large model download.
      */
     @Synchronized
     private fun migrateLegacyModelIfNeeded(context: Context, kind: ModelKind) {
@@ -178,15 +186,22 @@ object MoonshineModelManager {
         if (validateDir(destination, kind).ok) return
 
         val legacy = legacyModelDir(context, kind)
-        if (!validateDir(legacy, kind).ok || legacy.canonicalPath == destination.canonicalPath) return
+        if (!legacy.isDirectory || legacy.canonicalPath == destination.canonicalPath) return
 
-        destination.mkdirs()
         try {
+            if (destination.listFiles().isNullOrEmpty()) {
+                runCatching { destination.delete() }
+                if (legacy.renameTo(destination) && validateDir(destination, kind).ok) {
+                    Log.i(TAG, "Migrated Moonshine ${kind.id} model to ${destination.absolutePath}")
+                    return
+                }
+            }
+
+            destination.mkdirs()
             kind.components.forEach { component ->
                 val source = File(legacy, component)
                 val target = File(destination, component)
-                if (target.isFile && target.length() > 0L) return@forEach
-                if (!source.isFile || source.length() <= 0L) return@forEach
+                if (validComponent(target) || !validComponent(source)) return@forEach
 
                 if (target.exists()) target.delete()
                 if (!source.renameTo(target)) {
@@ -205,6 +220,8 @@ object MoonshineModelManager {
             Log.w(TAG, "Moonshine model migration was incomplete; existing files were preserved", error)
         }
     }
+
+    private fun validComponent(file: File): Boolean = file.isFile && file.length() > 0L
 
     private fun legacyModelDir(context: Context, kind: ModelKind): File =
         File(modelRoot(context), kind.id)
