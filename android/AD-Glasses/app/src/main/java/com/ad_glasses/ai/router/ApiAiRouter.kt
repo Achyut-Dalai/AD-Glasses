@@ -12,6 +12,34 @@ import java.io.OutputStreamWriter
 import java.net.HttpURLConnection
 import java.net.URL
 
+internal fun normalizeProviderBaseUrl(provider: ApiProvider, rawBaseUrl: String): String {
+    var clean = rawBaseUrl.trim().trimEnd('/')
+    if (provider != ApiProvider.GOOGLE) return clean
+
+    val modelsIndex = clean.indexOf("/models/")
+    if (modelsIndex >= 0) clean = clean.substring(0, modelsIndex)
+
+    val openAiIndex = clean.indexOf("/openai")
+    if (openAiIndex >= 0) clean = clean.substring(0, openAiIndex)
+
+    if (clean == "https://generativelanguage.googleapis.com") {
+        clean += "/v1beta"
+    }
+    return clean.trimEnd('/')
+}
+
+internal fun normalizeGeminiModel(model: String): String =
+    model.trim()
+        .removePrefix("models/")
+        .removeSuffix(":generateContent")
+        .trim()
+
+internal fun geminiGenerateContentUrl(baseUrl: String, model: String): String =
+    "${normalizeProviderBaseUrl(ApiProvider.GOOGLE, baseUrl)}/models/${normalizeGeminiModel(model)}:generateContent"
+
+internal fun geminiModelsUrl(baseUrl: String): String =
+    "${normalizeProviderBaseUrl(ApiProvider.GOOGLE, baseUrl)}/models?pageSize=1000"
+
 /** Direct Cloud AI transport resolved through the active encrypted profile. */
 object ApiTokenClient {
     private const val CONNECT_TIMEOUT_MS = 10_000
@@ -31,14 +59,29 @@ object ApiTokenClient {
         require(profile.model.isNotBlank()) { "${profile.name} does not have a model selected." }
         require(profile.baseUrl.isNotBlank()) { "${profile.name} does not have an API base URL." }
 
-        val useNativeWeb = webRequested && profile.webAvailable && imagePaths.isEmpty() && audioPath.isNullOrBlank()
+        val useNativeWeb = webRequested &&
+            profile.webAvailable &&
+            imagePaths.isEmpty() &&
+            audioPath.isNullOrBlank()
+
         val text = when {
-            useNativeWeb && profile.provider == ApiProvider.GOOGLE ->
-                retry { postGeminiGrounded(profile, apiKey, messages, maxTokens) }
-                    .let(::extractGeminiText)
+            profile.provider == ApiProvider.GOOGLE ->
+                retry {
+                    postGeminiGenerateContent(
+                        profile = profile,
+                        apiKey = apiKey,
+                        messages = messages,
+                        imagePaths = imagePaths,
+                        audioPath = audioPath,
+                        maxTokens = maxTokens,
+                        enableGoogleSearch = useNativeWeb,
+                    )
+                }.let(::extractGeminiText)
+
             useNativeWeb && profile.provider == ApiProvider.OPENAI ->
                 retry { postOpenAiResponses(profile, apiKey, messages, maxTokens) }
                     .let(::extractOpenAiResponseText)
+
             else -> {
                 val payloadMessages = buildOpenAiMessages(messages, imagePaths, audioPath)
                 val payload = JSONObject()
@@ -94,21 +137,16 @@ object ApiTokenClient {
             profileId?.let { AiProviderPrefs.apiKeyForRequest(context, it) }.orEmpty()
         }
         require(key.isNotBlank()) { "Enter an API key or use a profile that already has one saved." }
-        val cleanBase = baseUrl.trim().trimEnd('/')
+
+        val cleanBase = normalizeProviderBaseUrl(provider, baseUrl)
         require(cleanBase.startsWith("https://")) { "API base URL must use HTTPS." }
 
         val response = if (provider == ApiProvider.GOOGLE) {
-            runCatching { getJson("$cleanBase/models", apiKey = key) }
-                .getOrElse { compatibleError ->
-                    val nativeBase = cleanBase.substringBeforeLast("/openai", cleanBase).trimEnd('/')
-                    runCatching {
-                        getJson(
-                            "$nativeBase/models",
-                            apiKey = null,
-                            extraHeaders = mapOf("x-goog-api-key" to key),
-                        )
-                    }.getOrElse { throw compatibleError }
-                }
+            getJson(
+                geminiModelsUrl(cleanBase),
+                apiKey = null,
+                extraHeaders = mapOf("x-goog-api-key" to key),
+            )
         } else {
             getJson("$cleanBase/models", apiKey = key)
         }
@@ -198,42 +236,122 @@ object ApiTokenClient {
         return postJson(profile.baseUrl.trimEnd('/') + "/responses", apiKey, payload)
     }
 
-    private fun postGeminiGrounded(
+    private fun postGeminiGenerateContent(
         profile: CloudAiProfile,
         apiKey: String,
         messages: List<Map<String, String>>,
+        imagePaths: List<String>,
+        audioPath: String?,
         maxTokens: Int,
+        enableGoogleSearch: Boolean,
     ): JSONObject {
         val systemParts = JSONArray()
         val contents = JSONArray()
-        messages.forEach { message ->
+
+        messages.forEachIndexed { index, message ->
             val role = message["role"]?.trim()?.lowercase().orEmpty()
             val text = message["content"].orEmpty()
             if (role == "system") {
-                if (text.isNotBlank()) systemParts.put(JSONObject().put("text", text))
-            } else {
+                if (text.isNotBlank()) {
+                    systemParts.put(JSONObject().put("text", text))
+                }
+                return@forEachIndexed
+            }
+
+            val parts = JSONArray()
+            if (text.isNotBlank() || (imagePaths.isEmpty() && audioPath.isNullOrBlank())) {
+                parts.put(JSONObject().put("text", text))
+            }
+
+            val isLastUser = index == messages.lastIndex && role != "assistant"
+            if (isLastUser) {
+                appendGeminiMediaParts(parts, imagePaths, audioPath)
+            }
+
+            if (parts.length() > 0) {
                 contents.put(
                     JSONObject()
                         .put("role", if (role == "assistant") "model" else "user")
-                        .put("parts", JSONArray().put(JSONObject().put("text", text))),
+                        .put("parts", parts),
                 )
             }
         }
+
+        require(contents.length() > 0) { "Gemini request has no user/model content." }
+
         val payload = JSONObject()
             .put("contents", contents)
-            .put("tools", JSONArray().put(JSONObject().put("google_search", JSONObject())))
             .put("generationConfig", JSONObject().put("maxOutputTokens", maxTokens))
+
         if (systemParts.length() > 0) {
             payload.put("systemInstruction", JSONObject().put("parts", systemParts))
         }
-        val nativeBase = profile.baseUrl.trimEnd('/').substringBeforeLast("/openai", profile.baseUrl.trimEnd('/'))
-        val endpoint = "$nativeBase/models/${profile.model}:generateContent"
+        if (enableGoogleSearch) {
+            payload.put(
+                "tools",
+                JSONArray().put(JSONObject().put("google_search", JSONObject())),
+            )
+        }
+
         return postJson(
-            endpoint,
+            url = geminiGenerateContentUrl(profile.baseUrl, profile.model),
             apiKey = null,
             payload = payload,
             extraHeaders = mapOf("x-goog-api-key" to apiKey),
         )
+    }
+
+    private fun appendGeminiMediaParts(
+        parts: JSONArray,
+        imagePaths: List<String>,
+        audioPath: String?,
+    ) {
+        imagePaths.forEach { path ->
+            val file = File(path)
+            require(file.isFile) { "Image file not found: $path" }
+            val data = Base64.encodeToString(file.readBytes(), Base64.NO_WRAP)
+            parts.put(
+                JSONObject().put(
+                    "inlineData",
+                    JSONObject()
+                        .put("mimeType", imageMimeType(file))
+                        .put("data", data),
+                ),
+            )
+        }
+
+        audioPath?.takeIf { it.isNotBlank() }?.let { path ->
+            val file = File(path)
+            require(file.isFile) { "Audio file not found: $path" }
+            val data = Base64.encodeToString(file.readBytes(), Base64.NO_WRAP)
+            parts.put(
+                JSONObject().put(
+                    "inlineData",
+                    JSONObject()
+                        .put("mimeType", audioMimeType(file))
+                        .put("data", data),
+                ),
+            )
+        }
+    }
+
+    private fun imageMimeType(file: File): String = when (file.extension.lowercase()) {
+        "png" -> "image/png"
+        "webp" -> "image/webp"
+        "gif" -> "image/gif"
+        "heic" -> "image/heic"
+        "heif" -> "image/heif"
+        "avif" -> "image/avif"
+        else -> "image/jpeg"
+    }
+
+    private fun audioMimeType(file: File): String = when (file.extension.lowercase()) {
+        "mp3", "mpeg" -> "audio/mpeg"
+        "m4a", "mp4" -> "audio/mp4"
+        "ogg", "opus" -> "audio/ogg"
+        "flac" -> "audio/flac"
+        "aac" -> "audio/aac"
+        else -> "audio/wav"
     }
 
     private fun mediaContent(text: String, imagePaths: List<String>, audioPath: String?): JSONArray {
@@ -242,16 +360,14 @@ object ApiTokenClient {
         imagePaths.forEach { path ->
             val file = File(path)
             require(file.isFile) { "Image file not found: $path" }
-            val mime = when (file.extension.lowercase()) {
-                "png" -> "image/png"
-                "webp" -> "image/webp"
-                else -> "image/jpeg"
-            }
             val data = Base64.encodeToString(file.readBytes(), Base64.NO_WRAP)
             content.put(
                 JSONObject()
                     .put("type", "image_url")
-                    .put("image_url", JSONObject().put("url", "data:$mime;base64,$data")),
+                    .put(
+                        "image_url",
+                        JSONObject().put("url", "data:${imageMimeType(file)};base64,$data"),
+                    ),
             )
         }
         audioPath?.takeIf { it.isNotBlank() }?.let { path ->
