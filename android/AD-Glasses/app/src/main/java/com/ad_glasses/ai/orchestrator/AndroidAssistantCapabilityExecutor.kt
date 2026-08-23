@@ -5,6 +5,7 @@ import android.media.AudioDeviceInfo
 import android.media.AudioManager
 import android.os.Build
 import android.util.Log
+import com.ad_glasses.ai.AndroidAssistantVoiceIo
 import com.ad_glasses.ai.router.AgentInferencePurpose
 import com.ad_glasses.ai.router.AgentInferenceRouter
 import kotlinx.coroutines.CancellationException
@@ -24,7 +25,7 @@ class AndroidAssistantCapabilityExecutor(
         if (context.surface == AssistantInputSurface.GLASSES_VOICE) {
             clearStaleVoiceRouteWhenHeadsetMissing()
         }
-        val reply = try {
+        val result = try {
             AgentInferenceRouter.complete(
                 context = appContext,
                 purpose = AgentInferencePurpose.UI_PLANNING,
@@ -35,7 +36,7 @@ class AndroidAssistantCapabilityExecutor(
                 onToken = onToken,
                 webRequested = context.useWeb,
                 maxTokens = outputTokenLimit(context.surface),
-            )
+            ).toDisplaylessResult()
         } catch (error: CancellationException) {
             // Latest-turn-wins cancellation must never turn into a spoken/persisted failure from an
             // obsolete request.
@@ -46,9 +47,10 @@ class AndroidAssistantCapabilityExecutor(
                 "stage=assistant_provider_failure surface=${context.surface} type=${error::class.java.simpleName}",
                 error,
             )
-            return providerFailureResult(error)
+            providerFailureResult(error)
         }
-        return reply.toDisplaylessResult()
+        prepareSpeechOutputRouteIfNeeded(context)
+        return result
     }
 
     override suspend fun analyzeImage(
@@ -57,10 +59,12 @@ class AndroidAssistantCapabilityExecutor(
         context: AssistantExecutionContext,
     ): AssistantResult {
         if (imagePath.isNullOrBlank()) {
-            return AssistantResult(
+            val result = AssistantResult(
                 spokenText = "I don’t have a usable frame for that yet.",
                 richText = "This visual request has context, but no image frame was supplied to the selected vision engine.",
             )
+            prepareSpeechOutputRouteIfNeeded(context)
+            return result
         }
 
         val result = AgentInferenceRouter.completeUiPlanning(
@@ -75,8 +79,9 @@ class AndroidAssistantCapabilityExecutor(
             onToken = onToken,
             webRequested = false,
             maxTokens = outputTokenLimit(context.surface),
-        )
-        return result.content.toDisplaylessResult()
+        ).content.toDisplaylessResult()
+        prepareSpeechOutputRouteIfNeeded(context)
+        return result
     }
 
     override suspend fun executeCapabilityCommand(
@@ -119,6 +124,15 @@ class AndroidAssistantCapabilityExecutor(
             Log.i("ImageQuestionAudio", "No Bluetooth communication headset; restored phone audio route before Cloud generation")
         }.onFailure { error ->
             Log.w("ImageQuestionAudio", "Could not restore phone audio route", error)
+        }
+    }
+
+    /** Re-open the glasses communication output only after inference, immediately before TTS. */
+    private fun prepareSpeechOutputRouteIfNeeded(context: AssistantExecutionContext) {
+        if (context.surface == AssistantInputSurface.GLASSES_VOICE ||
+            context.surface == AssistantInputSurface.GLASSES_VISION
+        ) {
+            AndroidAssistantVoiceIo.prepareSpeechOutputRoute(appContext)
         }
     }
 
