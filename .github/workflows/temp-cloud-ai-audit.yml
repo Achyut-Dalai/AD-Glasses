@@ -44,6 +44,30 @@ jobs:
             exit "$status"
           fi
 
+          rm -f android/AD-Glasses/app/src/main/java/com/ad_glasses/agent/LocalModelsPrefs.kt
+          rm -f android/AD-Glasses/app/src/main/java/com/ad_glasses/ui/adglasses/ADLocalModelsConfigureScreen.kt
+          rm -rf android/AD-Glasses/shared/src/commonMain/kotlin/com/ad_glasses/localmodels
+          python3 - <<'PY'
+          from pathlib import Path
+          import re
+          path = Path('android/AD-Glasses/app/src/main/java/com/ad_glasses/ui/debug/DebugLogSupport.kt')
+          value = path.read_text()
+          value = value.replace('import com.ad_glasses.localmodels.settings.LocalModelSettingsRepository\n', '')
+          value = value.replace('import com.ad_glasses.localmodels.storage.LocalModelStorageRepository\n', '')
+          for tag in [
+              '        "LocalModelsConfigureActivity",\n',
+              '        "LocalModelsProvider",\n',
+              '        "LocalChatSession",\n',
+              '        "LiteRtLocalEngine",\n',
+              '        "LlamaCppLocalEngine",\n',
+              '        "GemmaLiteRtTranscribe",\n',
+          ]:
+              value = value.replace(tag, '')
+          value = re.sub(r'\n    fun isLocalRuntimeIssue\([\s\S]*?\n    \}\n\n    fun collectLogcat', '\n    fun collectLogcat', value)
+          value = re.sub(r'\n            val selectedModel = runCatching \{[\s\S]*?\n            \}\n\n            if \(extraInfo\.isNotEmpty\(\)\)', '\n\n            if (extraInfo.isNotEmpty())', value)
+          path.write_text(value)
+          PY
+
           rm -f tools/cloud_cleanup_diagnostics.txt
           rm -f tools/cloud_ai_audit_report.txt
           rm -f .github/cloud-cleanup-trigger.txt
