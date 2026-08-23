@@ -25,6 +25,11 @@ jobs:
         run: |
           set -u
           mkdir -p tools
+          python3 - <<'PY'
+          from pathlib import Path
+          path = Path('.github/temp_cloud_cleanup.py')
+          path.write_text(path.read_text().replace('.exists():', '.exists()):'))
+          PY
           status=0
           python3 .github/temp_cloud_cleanup.py > tools/cloud_cleanup_diagnostics.txt 2>&1 || status=$?
           if [ "$status" -ne 0 ]; then
