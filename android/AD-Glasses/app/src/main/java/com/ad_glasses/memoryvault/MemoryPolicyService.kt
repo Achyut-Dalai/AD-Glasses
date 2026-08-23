@@ -198,7 +198,7 @@ object MemoryPolicyService {
             memoryRef = memoryRef,
             sourceType = sourceType.name.lowercase(Locale.US),
             sensitivityLevel = sensitivityLevel.name.lowercase(Locale.US),
-            syncEligibility = syncEligibility,
+            syncEligibility = syncEligibility.name.lowercase(Locale.US),
             retentionPolicy = retentionPolicy,
             derivedFromIdsCsv = derivedFromIds.joinToString(","),
             provenance = provenance,
