@@ -34,6 +34,7 @@ object AgentInferenceRouter {
         providerType: AgentProviderType = AutomationPrefs.getProviderType(context),
         onToken: ((String) -> Unit)? = null,
         webRequested: Boolean = false,
+        maxTokens: Int? = null,
     ): String = completeText(
         context = context,
         purpose = purpose,
@@ -41,6 +42,7 @@ object AgentInferenceRouter {
         systemPrompt = systemPrompt,
         userPrompt = userPrompt,
         webRequested = webRequested,
+        maxTokensOverride = maxTokens,
     )
 
     suspend fun completeUiPlanning(
@@ -53,6 +55,7 @@ object AgentInferenceRouter {
         providerType: AgentProviderType = AutomationPrefs.getProviderType(context),
         onToken: ((String) -> Unit)? = null,
         webRequested: Boolean = false,
+        maxTokens: Int = UI_PLANNING_MAX_TOKENS,
     ): AgentInferenceResult {
         val usableImagePath = imagePath?.trim()?.takeIf { File(it).isFile }
         if (!imagePath.isNullOrBlank() && usableImagePath == null) {
@@ -67,6 +70,7 @@ object AgentInferenceRouter {
                     systemPrompt = systemPrompt,
                     userPrompt = userPrompt,
                     webRequested = webRequested,
+                    maxTokensOverride = maxTokens,
                 ),
                 usedImage = false,
                 mediaStatus = "Cloud text inference",
@@ -86,7 +90,7 @@ object AgentInferenceRouter {
                     systemPrompt = systemPrompt,
                     userPrompt = userPrompt,
                     imagePath = usableImagePath,
-                    maxTokens = UI_PLANNING_MAX_TOKENS,
+                    maxTokens = maxTokens,
                 ).getOrThrow()
             }
         } catch (error: CancellationException) {
@@ -127,11 +131,17 @@ object AgentInferenceRouter {
         systemPrompt: String,
         userPrompt: String,
         webRequested: Boolean,
+        maxTokensOverride: Int?,
     ): String {
-        val maxTokens = if (purpose == AgentInferencePurpose.CLASSIFICATION) 256 else 512
+        val maxTokens = maxTokensOverride
+            ?.coerceIn(32, 2_048)
+            ?: if (purpose == AgentInferencePurpose.CLASSIFICATION) 256 else 512
         val startedAt = SystemClock.elapsedRealtime()
         val sessionLabel = sessionId.takeLast(8)
-        Log.i(TIMING_TAG, "stage=cloud_text_start thread=$sessionLabel purpose=$purpose")
+        Log.i(
+            TIMING_TAG,
+            "stage=cloud_text_start thread=$sessionLabel purpose=$purpose maxTokens=$maxTokens",
+        )
         return try {
             withContext(Dispatchers.IO) {
                 ApiTokenClient.chat(
