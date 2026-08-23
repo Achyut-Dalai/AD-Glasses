@@ -5,8 +5,10 @@ import android.media.AudioDeviceInfo
 import android.media.AudioManager
 import android.os.Build
 import android.util.Log
+import com.ad_glasses.ai.AndroidAssistantVoiceIo
 import com.ad_glasses.ai.router.AgentInferencePurpose
 import com.ad_glasses.ai.router.AgentInferenceRouter
+import kotlinx.coroutines.CancellationException
 
 /** Android execution bridge for conversational, vision and explicit AD capability requests. */
 class AndroidAssistantCapabilityExecutor(
@@ -23,18 +25,32 @@ class AndroidAssistantCapabilityExecutor(
         if (context.surface == AssistantInputSurface.GLASSES_VOICE) {
             clearStaleVoiceRouteWhenHeadsetMissing()
         }
-        val reply = AgentInferenceRouter.complete(
-            context = appContext,
-            purpose = AgentInferencePurpose.UI_PLANNING,
-            sessionId = context.threadId,
-            systemPrompt = conversationSystemPrompt(context),
-            userPrompt = prompt,
-            providerType = context.providerType,
-            onToken = onToken,
-            webRequested = context.useWeb,
-            maxTokens = outputTokenLimit(context.surface),
-        )
-        return reply.toDisplaylessResult()
+        val result = try {
+            AgentInferenceRouter.complete(
+                context = appContext,
+                purpose = AgentInferencePurpose.UI_PLANNING,
+                sessionId = context.threadId,
+                systemPrompt = conversationSystemPrompt(context),
+                userPrompt = prompt,
+                providerType = context.providerType,
+                onToken = onToken,
+                webRequested = context.useWeb,
+                maxTokens = outputTokenLimit(context.surface),
+            ).toDisplaylessResult()
+        } catch (error: CancellationException) {
+            // Latest-turn-wins cancellation must never turn into a spoken/persisted failure from an
+            // obsolete request.
+            throw error
+        } catch (error: Exception) {
+            Log.w(
+                "AssistantTiming",
+                "stage=assistant_provider_failure surface=${context.surface} type=${error::class.java.simpleName}",
+                error,
+            )
+            providerFailureResult(error)
+        }
+        prepareSpeechOutputRouteIfNeeded(context)
+        return result
     }
 
     override suspend fun analyzeImage(
@@ -43,26 +59,40 @@ class AndroidAssistantCapabilityExecutor(
         context: AssistantExecutionContext,
     ): AssistantResult {
         if (imagePath.isNullOrBlank()) {
-            return AssistantResult(
+            val result = AssistantResult(
                 spokenText = "I don’t have a usable frame for that yet.",
                 richText = "This visual request has context, but no image frame was supplied to the selected vision engine.",
             )
+            prepareSpeechOutputRouteIfNeeded(context)
+            return result
         }
 
-        val result = AgentInferenceRouter.completeUiPlanning(
-            context = appContext,
-            sessionId = context.threadId,
-            systemPrompt = conversationSystemPrompt(context),
-            userPrompt = prompt,
-            imagePath = imagePath,
-            allowRemoteImageUpload = com.ad_glasses.localagent.LocalAgentPrefs
-                .isRemoteScreenshotUploadEnabled(appContext),
-            providerType = context.providerType,
-            onToken = onToken,
-            webRequested = false,
-            maxTokens = outputTokenLimit(context.surface),
-        )
-        return result.content.toDisplaylessResult()
+        val result = try {
+            AgentInferenceRouter.completeUiPlanning(
+                context = appContext,
+                sessionId = context.threadId,
+                systemPrompt = conversationSystemPrompt(context),
+                userPrompt = prompt,
+                imagePath = imagePath,
+                allowRemoteImageUpload = com.ad_glasses.localagent.LocalAgentPrefs
+                    .isRemoteScreenshotUploadEnabled(appContext),
+                providerType = context.providerType,
+                onToken = onToken,
+                webRequested = false,
+                maxTokens = outputTokenLimit(context.surface),
+            ).content.toDisplaylessResult()
+        } catch (error: CancellationException) {
+            throw error
+        } catch (error: Exception) {
+            Log.w(
+                "AssistantTiming",
+                "stage=assistant_provider_failure surface=${context.surface} type=${error::class.java.simpleName}",
+                error,
+            )
+            providerFailureResult(error)
+        }
+        prepareSpeechOutputRouteIfNeeded(context)
+        return result
     }
 
     override suspend fun executeCapabilityCommand(
@@ -71,12 +101,10 @@ class AndroidAssistantCapabilityExecutor(
     ): AssistantResult = capabilities.execute(command)
 
     /**
-     * Home voice capture asks MainActivity for a Bluetooth communication route before Android
-     * SpeechRecognizer starts. On a disconnected/no-headset device the legacy SCO request can
-     * leave MODE_IN_COMMUNICATION active without a real endpoint. TTS then uses
-     * USAGE_VOICE_COMMUNICATION and may become effectively silent even though the text answer was
-     * already persisted. Preserve a real glasses/headset route, but fail back to normal phone
-     * audio when there is no actual Bluetooth communication device.
+     * Home voice capture asks MainActivity for a Bluetooth communication route before Moonshine
+     * starts. Moonshine now releases that input route as soon as it has a final transcript. This is
+     * an additional safety net for a disconnected/no-headset device where a legacy SCO request may
+     * otherwise leave MODE_IN_COMMUNICATION active and make TTS effectively silent.
      */
     private fun clearStaleVoiceRouteWhenHeadsetMissing() {
         val audioManager = appContext.getSystemService(Context.AUDIO_SERVICE) as? AudioManager ?: return
@@ -108,6 +136,36 @@ class AndroidAssistantCapabilityExecutor(
         }.onFailure { error ->
             Log.w("ImageQuestionAudio", "Could not restore phone audio route", error)
         }
+    }
+
+    /** Re-open the glasses communication output only after inference, immediately before TTS. */
+    private fun prepareSpeechOutputRouteIfNeeded(context: AssistantExecutionContext) {
+        if (context.surface == AssistantInputSurface.GLASSES_VOICE ||
+            context.surface == AssistantInputSurface.GLASSES_VISION
+        ) {
+            AndroidAssistantVoiceIo.prepareSpeechOutputRoute(appContext)
+        }
+    }
+
+    /**
+     * Convert provider/network failures into a normal assistant result. The orchestrator can then
+     * persist the failure beside the user's question and voice can speak it through the same
+     * latest-turn guarded path as every successful answer, instead of falling into MainActivity's
+     * delayed generic "selected route" exception speech.
+     */
+    private fun providerFailureResult(error: Throwable): AssistantResult {
+        val detail = generateSequence(error) { it.cause }
+            .joinToString(" ") { it.message.orEmpty() }
+        val spoken = when {
+            Regex("(?:API )?HTTP 401", RegexOption.IGNORE_CASE).containsMatchIn(detail) ->
+                "Cloud AI authentication failed. Check the API key."
+            Regex("(?:API )?HTTP 429", RegexOption.IGNORE_CASE).containsMatchIn(detail) ->
+                "Cloud AI is rate limited right now. Try again shortly."
+            Regex("(?:API )?HTTP 5\\d\\d", RegexOption.IGNORE_CASE).containsMatchIn(detail) ->
+                "Cloud AI is temporarily unavailable. Try again."
+            else -> "I couldn't get an answer. Try again."
+        }
+        return AssistantResult(spokenText = spoken, richText = spoken)
     }
 
     private fun conversationSystemPrompt(context: AssistantExecutionContext): String = buildString {

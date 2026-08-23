@@ -60,6 +60,7 @@ class AssistantTurnCoordinatorTest {
         releaseFirst.complete(Unit)
         first.await()
         other.await()
+        Unit
     }
 
     @Test

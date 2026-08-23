@@ -121,7 +121,7 @@ internal fun ADNativeCloudAiSettingsScreen(onBack: () -> Unit) {
             Spacer(Modifier.size(9.dp))
             OutlinedButton(
                 onClick = {
-                    val provider = ApiProvider.GOOGLE
+                    val provider = ApiProvider.OPENROUTER
                     editing = AiProviderPrefs.newProfile(
                         provider = provider,
                         existingCount = profiles.count { it.provider == provider },
@@ -457,10 +457,10 @@ private fun MoonshineVoiceInputCard() {
         Row(verticalAlignment = Alignment.CenterVertically) {
             Icon(Icons.Outlined.Mic, null, tint = Color.Black, modifier = Modifier.size(19.dp))
             Column(Modifier.padding(start = 7.dp).weight(1f)) {
-                Text("Offline English voice input", style = MaterialTheme.typography.titleMedium)
+                Text("Ask AI voice input", style = MaterialTheme.typography.titleMedium)
                 Text(
                     if (installed) "Moonshine speech-to-text is ready"
-                    else "Optional offline speech-to-text model",
+                    else "Moonshine is required for Ask AI voice input",
                     style = MaterialTheme.typography.bodySmall,
                     color = ADColors.Muted,
                 )
@@ -491,7 +491,7 @@ private fun MoonshineVoiceInputCard() {
                 },
                 modifier = Modifier.fillMaxWidth().heightIn(min = 44.dp),
                 colors = ButtonDefaults.buttonColors(containerColor = ADColors.Ink),
-            ) { Text(if (installing) "Downloading…" else "Download voice model") }
+            ) { Text(if (installing) "Downloading…" else "Download Moonshine speech model") }
         }
         status?.let {
             Spacer(Modifier.size(5.dp))
