@@ -26,9 +26,10 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import com.ad_glasses.ai.orchestrator.AssistantInferenceContextPolicy
 import com.ad_glasses.ai.router.AiProviderPrefs
 
-/** Cloud AI configuration embedded directly in Device Center. */
+/** AI and voice overview embedded directly in Device Center. */
 @Composable
 internal fun ADDeviceAiSection(
     onCloudSettings: () -> Unit,
@@ -39,7 +40,7 @@ internal fun ADDeviceAiSection(
 
     Column(modifier = Modifier.fillMaxWidth()) {
         Text(
-            "AD uses your selected Cloud AI profile for Ask, vision, and automation planning.",
+            "Cloud AI handles reasoning. Voice capture/playback stay on Android, while model context is kept short without deleting your Chat history.",
             style = MaterialTheme.typography.bodySmall,
             color = ADColors.Muted,
         )
@@ -91,6 +92,37 @@ internal fun ADDeviceAiSection(
                     text = if (configured) "READY" else "SETUP",
                     tone = if (configured) ADStatusTone.SUCCESS else ADStatusTone.NEUTRAL,
                     showCheck = configured,
+                )
+            }
+        }
+
+        Spacer(Modifier.height(8.dp))
+        Surface(
+            modifier = Modifier.fillMaxWidth(),
+            shape = RoundedCornerShape(16.dp),
+            color = ADColors.SurfaceSubtle,
+        ) {
+            Row(
+                modifier = Modifier.padding(horizontal = 12.dp, vertical = 10.dp),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(10.dp),
+            ) {
+                Column(Modifier.weight(1f)) {
+                    Text(
+                        "Voice & conversation",
+                        style = MaterialTheme.typography.titleSmall,
+                        color = ADColors.Ink,
+                    )
+                    Text(
+                        "Android speech + TTS · ${AssistantInferenceContextPolicy.INACTIVITY_TTL_MS / 1_000}s active context · full history kept",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = ADColors.Muted,
+                    )
+                }
+                ADStatusChip(
+                    text = "BOUNDED",
+                    tone = ADStatusTone.NEUTRAL,
+                    showCheck = false,
                 )
             }
         }
