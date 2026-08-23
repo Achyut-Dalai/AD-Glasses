@@ -300,7 +300,6 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
                 Log.w("ImageQuestionAudio", "Could not configure TTS communication audio", error)
             }
         }
-        localSpeechSessionManager.attachTtsEngine(tts, ttsReady)
     }
 
     private fun speak(text: String) {
@@ -665,14 +664,12 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
         tts = TextToSpeech(this, this)
         tts?.setOnUtteranceProgressListener(object : UtteranceProgressListener() {
             override fun onStart(utteranceId: String?) {
-                localSpeechSessionManager.speechQueueController.onUtteranceStart(utteranceId)
                 if (utteranceId?.startsWith("image_question_cue_") == true) {
                     Log.i("ImageQuestionAudio", "TTS cue started id=$utteranceId")
                 }
             }
 
             override fun onDone(utteranceId: String?) {
-                localSpeechSessionManager.speechQueueController.onUtteranceDone(utteranceId)
                 if (utteranceId?.startsWith("image_question_cue_") == true) {
                     Log.i("ImageQuestionAudio", "TTS cue completed id=$utteranceId")
                 }
@@ -681,19 +678,16 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
 
             @Deprecated("Deprecated in Java")
             override fun onError(utteranceId: String?) {
-                localSpeechSessionManager.speechQueueController.onUtteranceError(utteranceId)
                 Log.w("ImageQuestionAudio", "TTS failed id=$utteranceId")
                 completeTtsUtterance(utteranceId)
             }
 
             override fun onError(utteranceId: String?, errorCode: Int) {
-                localSpeechSessionManager.speechQueueController.onUtteranceError(utteranceId, errorCode)
                 Log.w("ImageQuestionAudio", "TTS failed id=$utteranceId errorCode=$errorCode")
                 completeTtsUtterance(utteranceId)
             }
 
             override fun onStop(utteranceId: String?, interrupted: Boolean) {
-                localSpeechSessionManager.speechQueueController.onUtteranceError(utteranceId)
                 Log.i("ImageQuestionAudio", "TTS stopped id=$utteranceId interrupted=$interrupted")
                 discardTtsUtterance(utteranceId)
             }
@@ -751,7 +745,6 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
     }
 
     override fun onDestroy() {
-        cancelLocalStreamingSpeech("activity destroyed")
         if (BuildConfig.DEBUG) wifiAdbDebugController.release()
         livePreviewDialog?.dismiss()
         livePreviewDialog = null
@@ -3625,9 +3618,7 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
         val languageTag = recognitionLanguageTag()
         val systemPrompt = buildString {
             append(buildCompactMemoryAwareSystemPrompt(queryText = userPrompt, date = date))
-            append("
-
-")
+            append("\n\n")
             append(ImageQuestionDefaults.responseLanguageInstruction(languageTag))
         }
 
