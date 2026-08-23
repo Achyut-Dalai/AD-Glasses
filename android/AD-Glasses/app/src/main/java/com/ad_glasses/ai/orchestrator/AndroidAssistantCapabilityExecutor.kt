@@ -32,6 +32,7 @@ class AndroidAssistantCapabilityExecutor(
             providerType = context.providerType,
             onToken = onToken,
             webRequested = context.useWeb,
+            maxTokens = outputTokenLimit(context.surface),
         )
         return reply.toDisplaylessResult()
     }
@@ -59,6 +60,7 @@ class AndroidAssistantCapabilityExecutor(
             providerType = context.providerType,
             onToken = onToken,
             webRequested = false,
+            maxTokens = outputTokenLimit(context.surface),
         )
         return result.content.toDisplaylessResult()
     }
@@ -110,8 +112,22 @@ class AndroidAssistantCapabilityExecutor(
 
     private fun conversationSystemPrompt(context: AssistantExecutionContext): String = buildString {
         appendLine("You are AD, the conversational assistant for displayless smart glasses.")
-        appendLine("Answer naturally and directly. Lead with the useful spoken answer and avoid giant tables.")
-        appendLine("Maintain context across turns. The phone can hold richer detail, but do not ask the user to operate it unless genuinely needed.")
+        appendLine("Answer naturally and directly. Lead with the useful answer and avoid giant tables.")
+        when (context.surface) {
+            AssistantInputSurface.GLASSES_VOICE,
+            AssistantInputSurface.GLASSES_VISION,
+            AssistantInputSurface.PHONE_VOICE -> {
+                appendLine("This answer will be spoken. Default to one short sentence, usually under 30 words.")
+                appendLine("Use a few short sentences only when safety, ambiguity, or an explicitly requested explanation requires it.")
+                appendLine("Do not use introductions, filler, markdown, repeated conclusions, or tell the user to check the phone for the basic answer.")
+            }
+            AssistantInputSurface.PHONE_TEXT,
+            AssistantInputSurface.AUTOMATION -> {
+                appendLine("The phone may show richer detail when it is useful, but stay concise unless the request calls for depth.")
+            }
+        }
+        appendLine("Maintain context only from the recent conversation supplied below; do not assume older omitted turns are still active.")
+        appendLine("Do not ask the user to operate the phone unless genuinely needed.")
         appendLine("Do not claim to open apps, tap controls, change Android settings, or operate the phone UI. AD no longer exposes UI automation as an AI invocation method.")
         if (context.useWeb) {
             appendLine("Web access was explicitly enabled for this turn. Use the active provider's native search tool when available and ground current claims in those results.")
@@ -119,18 +135,26 @@ class AndroidAssistantCapabilityExecutor(
         context.artifactContext?.takeIf { it.isNotBlank() }?.let {
             appendLine()
             appendLine("Current artifact context (trusted app context, not a user quote):")
-            appendLine(it.take(16_000))
+            appendLine(it.take(AssistantInferenceContextPolicy.artifactLimit(context.surface)))
         }
-        val prior = context.history.dropLast(1).takeLast(8)
+        val prior = AssistantInferenceContextPolicy.priorMessages(context.history)
         if (prior.isNotEmpty()) {
             appendLine()
             appendLine("Recent conversation:")
             prior.forEach { message ->
                 append(message.role.name.lowercase())
                 append(": ")
-                appendLine(message.content.take(1_200))
+                appendLine(message.content.take(AssistantInferenceContextPolicy.MAX_MESSAGE_CHARS))
             }
         }
+    }
+
+    private fun outputTokenLimit(surface: AssistantInputSurface): Int = when (surface) {
+        AssistantInputSurface.GLASSES_VOICE -> 160
+        AssistantInputSurface.GLASSES_VISION -> 192
+        AssistantInputSurface.PHONE_VOICE -> 192
+        AssistantInputSurface.PHONE_TEXT -> 512
+        AssistantInputSurface.AUTOMATION -> 384
     }
 
     private fun String.toDisplaylessResult(): AssistantResult {
