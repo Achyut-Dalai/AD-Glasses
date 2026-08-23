@@ -16,13 +16,12 @@ class AndroidAssistantCapabilityExecutor(
         prompt: String,
         context: AssistantExecutionContext,
     ): AssistantResult {
-        val effectivePrompt = buildPromptWithArtifact(prompt, context)
         val reply = AgentInferenceRouter.complete(
             context = appContext,
             purpose = AgentInferencePurpose.UI_PLANNING,
             sessionId = context.threadId,
             systemPrompt = conversationSystemPrompt(context),
-            userPrompt = effectivePrompt,
+            userPrompt = prompt,
             providerType = context.providerType,
             onToken = onToken,
             webRequested = context.useWeb,
@@ -85,15 +84,6 @@ class AndroidAssistantCapabilityExecutor(
                 appendLine(message.content.take(1_200))
             }
         }
-    }
-
-    private fun buildPromptWithArtifact(prompt: String, context: AssistantExecutionContext): String = buildString {
-        context.artifactContext?.takeIf { it.isNotBlank() }?.let {
-            appendLine("Current artifact context:")
-            appendLine(it.take(16_000))
-            appendLine()
-        }
-        append(prompt)
     }
 
     private fun String.toDisplaylessResult(): AssistantResult {
