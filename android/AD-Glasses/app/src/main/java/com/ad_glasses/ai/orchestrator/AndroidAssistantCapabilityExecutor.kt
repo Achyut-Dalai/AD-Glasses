@@ -67,19 +67,30 @@ class AndroidAssistantCapabilityExecutor(
             return result
         }
 
-        val result = AgentInferenceRouter.completeUiPlanning(
-            context = appContext,
-            sessionId = context.threadId,
-            systemPrompt = conversationSystemPrompt(context),
-            userPrompt = prompt,
-            imagePath = imagePath,
-            allowRemoteImageUpload = com.ad_glasses.localagent.LocalAgentPrefs
-                .isRemoteScreenshotUploadEnabled(appContext),
-            providerType = context.providerType,
-            onToken = onToken,
-            webRequested = false,
-            maxTokens = outputTokenLimit(context.surface),
-        ).content.toDisplaylessResult()
+        val result = try {
+            AgentInferenceRouter.completeUiPlanning(
+                context = appContext,
+                sessionId = context.threadId,
+                systemPrompt = conversationSystemPrompt(context),
+                userPrompt = prompt,
+                imagePath = imagePath,
+                allowRemoteImageUpload = com.ad_glasses.localagent.LocalAgentPrefs
+                    .isRemoteScreenshotUploadEnabled(appContext),
+                providerType = context.providerType,
+                onToken = onToken,
+                webRequested = false,
+                maxTokens = outputTokenLimit(context.surface),
+            ).content.toDisplaylessResult()
+        } catch (error: CancellationException) {
+            throw error
+        } catch (error: Exception) {
+            Log.w(
+                "AssistantTiming",
+                "stage=assistant_provider_failure surface=${context.surface} type=${error::class.java.simpleName}",
+                error,
+            )
+            providerFailureResult(error)
+        }
         prepareSpeechOutputRouteIfNeeded(context)
         return result
     }
