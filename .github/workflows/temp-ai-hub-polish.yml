@@ -1,0 +1,34 @@
+name: Temporary AI hub polish
+
+on:
+  push:
+    branches:
+      - fix/ai-conversations-hub
+
+permissions:
+  contents: write
+
+jobs:
+  apply:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out branch
+        uses: actions/checkout@v7
+        with:
+          ref: fix/ai-conversations-hub
+          fetch-depth: 1
+      - name: Apply AI hub polish
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 tools/temp_ai_hub_polish.py
+          git diff --check
+          git config user.name github-actions[bot]
+          git config user.email 41898282+github-actions[bot]@users.noreply.github.com
+          git add android/AD-Glasses/app/src/main/java/com/ad_glasses/ui/adglasses/ADNativeConversationScreen.kt \
+                  android/AD-Glasses/app/src/test/java/com/ad_glasses/ui/adglasses/ADVisibleProductUiTest.kt
+          if ! git diff --cached --quiet; then
+            git commit -m 'Polish AI conversation creation and web search'
+            git push origin HEAD:fix/ai-conversations-hub
+          fi
