@@ -29,13 +29,5 @@ keystore.properties
 build/
 moonshine-voice/build/
 
-# Local model artifacts (never commit weights)
-*.gguf
-*.gguf.part
-*.bin
-*.safetensors
-app/src/main/assets/models/
-app/src/main/ml/
-
 # Termux server docs (local only)
 TERMUX_SSH_TAILSCALE_RUNBOOK.md
