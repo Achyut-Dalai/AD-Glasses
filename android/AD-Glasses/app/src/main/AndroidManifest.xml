@@ -48,10 +48,13 @@
     <uses-permission android:name="android.permission.KILL_BACKGROUND_PROCESSES" />
     <uses-permission android:name="android.permission.SYSTEM_ALERT_WINDOW" />
 
-    <!-- Android 11+ package visibility for installed TextToSpeech engines. -->
+    <!-- Android 11+ package visibility for installed speech/TTS services. -->
     <queries>
         <intent>
             <action android:name="android.intent.action.TTS_SERVICE" />
+        </intent>
+        <intent>
+            <action android:name="android.speech.RecognitionService" />
         </intent>
     </queries>
 
@@ -129,6 +132,11 @@
         <activity android:name=".bridge.runtimes.evenhub.EvenHubRuntimeActivity" android:exported="false" />
 
         <service android:name=".ai.AiQuestionForegroundService" android:exported="false" android:foregroundServiceType="connectedDevice|dataSync|microphone" />
+        <service android:name=".ai.transcription.moonshine.MoonshineRecognitionService" android:exported="false">
+            <intent-filter>
+                <action android:name="android.speech.RecognitionService" />
+            </intent-filter>
+        </service>
 
         <service
             android:name=".localagent.accessibility.LocalAgentAccessibilityService"
