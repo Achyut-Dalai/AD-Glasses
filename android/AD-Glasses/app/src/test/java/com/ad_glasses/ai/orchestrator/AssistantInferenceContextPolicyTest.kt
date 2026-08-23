@@ -24,7 +24,7 @@ class AssistantInferenceContextPolicyTest {
     }
 
     @Test
-    fun inactivity_expires_model_context_without_touching_history() {
+    fun user_inactivity_expires_model_context_without_touching_history() {
         val now = 100_000L
         val history = listOf(
             message("old-user", ChatRole.USER, now - 60_000L),
@@ -37,7 +37,7 @@ class AssistantInferenceContextPolicyTest {
     }
 
     @Test
-    fun a_large_gap_inside_recent_history_stops_context_at_the_gap() {
+    fun user_pause_inside_history_stops_context_at_that_turn_boundary() {
         val now = 100_000L
         val history = listOf(
             message("old", ChatRole.ASSISTANT, now - 80_000L),
@@ -48,6 +48,21 @@ class AssistantInferenceContextPolicyTest {
 
         assertEquals(
             listOf("recent-user", "recent-answer"),
+            AssistantInferenceContextPolicy.priorMessages(history, nowMs = now).map { it.id },
+        )
+    }
+
+    @Test
+    fun slow_assistant_response_does_not_expire_the_completed_exchange() {
+        val now = 100_000L
+        val history = listOf(
+            message("previous-user", ChatRole.USER, now - 80_000L),
+            message("slow-answer", ChatRole.ASSISTANT, now - 15_000L),
+            message("current", ChatRole.USER, now),
+        )
+
+        assertEquals(
+            listOf("previous-user", "slow-answer"),
             AssistantInferenceContextPolicy.priorMessages(history, nowMs = now).map { it.id },
         )
     }
