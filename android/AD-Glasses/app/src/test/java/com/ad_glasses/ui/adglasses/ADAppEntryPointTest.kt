@@ -26,8 +26,9 @@ class ADAppEntryPointTest {
         ).readText()
 
         assertTrue(adApp.contains("ADRoute.DEVICE_CENTER -> ADGlassesDeviceCenterScreen("))
-        assertTrue(adApp.contains("ADExternalDestination.AI -> routeStack = listOf(ADRoute.MAIN, ADRoute.DEVICE_CENTER)"))
-        assertFalse(adApp.contains("ADTab.AI"))
+        assertTrue(adApp.contains("ADExternalDestination.AI -> {"))
+        assertTrue(adApp.contains("selectedTab = ADTab.AI"))
+        assertTrue(adApp.contains("ADTab.AI -> ADNativeConversationScreen("))
         assertFalse(adApp.contains("SettingsActivity::class.java"))
         assertFalse(adApp.contains("ChatListActivity::class.java"))
         assertFalse(adApp.contains("ChatThreadActivity::class.java"))
