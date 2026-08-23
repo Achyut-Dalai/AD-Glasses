@@ -1,53 +1,35 @@
 from pathlib import Path
+import re
 
 ROOT = Path('.')
 
+prefs_path = ROOT / 'android/AD-Glasses/app/src/main/java/com/ad_glasses/ai/router/AiProviderPrefs.kt'
+prefs = prefs_path.read_text(encoding='utf-8')
 
-def read(path: str) -> str:
-    return (ROOT / path).read_text(encoding='utf-8')
-
-
-def write(path: str, text: str) -> None:
-    (ROOT / path).write_text(text, encoding='utf-8')
-
-
-# Final credential hardening: a saved secret belongs to the provider + endpoint it was
-# originally created for. Never silently reuse it after either identity changes.
-prefs_path = 'android/AD-Glasses/app/src/main/java/com/ad_glasses/ai/router/AiProviderPrefs.kt'
-prefs = read(prefs_path)
-old = '''        val existing = readProfile(prefs, saved.id)\n        val replacement = apiKeyReplacement?.trim().orEmpty()\n        if (existing == null && replacement.isBlank()) {\n            require(hasApiKeyInternal(prefs, saved.id)) { "API key is required for a new profile." }\n        }\n'''
-new = '''        val existing = readProfile(prefs, saved.id)\n        val replacement = apiKeyReplacement?.trim().orEmpty()\n        if (existing == null && replacement.isBlank()) {\n            require(hasApiKeyInternal(prefs, saved.id)) { "API key is required for a new profile." }\n        }\n        if (existing != null && replacement.isBlank()) {\n            require(existing.provider == saved.provider && existing.baseUrl == saved.baseUrl) {\n                "Enter a new API key after changing the provider or API base URL."\n            }\n        }\n'''
-if old in prefs:
-    prefs = prefs.replace(old, new, 1)
-elif 'Enter a new API key after changing the provider or API base URL.' not in prefs:
-    raise RuntimeError('Cloud profile credential guard insertion point not found')
-write(prefs_path, prefs)
-
-ui_path = 'android/AD-Glasses/app/src/main/java/com/ad_glasses/ui/adglasses/ADNativeAiDetailScreens.kt'
-ui = read(ui_path)
-anchor = '''    var discoveryRunning by remember(initial.id) { mutableStateOf(false) }\n    var discoveryError by remember(initial.id) { mutableStateOf<String?>(null) }\n\n    fun draft(): CloudAiProfile = initial.copy(\n'''
-replacement = '''    var discoveryRunning by remember(initial.id) { mutableStateOf(false) }\n    var discoveryError by remember(initial.id) { mutableStateOf<String?>(null) }\n    val savedKeyUsable = hasSavedKey &&\n        provider == initial.provider &&\n        baseUrl.trim().trimEnd('/') == initial.baseUrl.trim().trimEnd('/')\n\n    fun draft(): CloudAiProfile = initial.copy(\n'''
-if anchor in ui:
-    ui = ui.replace(anchor, replacement, 1)
-elif 'val savedKeyUsable = hasSavedKey' not in ui:
-    raise RuntimeError('Cloud profile editor saved-key guard insertion point not found')
-
-ui = ui.replace(
-    'placeholder = if (hasSavedKey) "API key saved · enter only to replace" else "API key",',
-    'placeholder = if (savedKeyUsable) "API key saved · enter only to replace" else "API key",',
+guard = '''        if (existing != null && replacement.isBlank()) {\n            require(existing.provider == saved.provider && existing.baseUrl == saved.baseUrl) {\n                "Enter a new API key after changing the provider or API base URL."\n            }\n        }\n'''
+pattern = re.compile(
+    r'(?:        if \(existing != null && replacement\.isBlank\(\)\) \{\n'
+    r'            require\(existing\.provider == saved\.provider && existing\.baseUrl == saved\.baseUrl\) \{\n'
+    r'                "Enter a new API key after changing the provider or API base URL\."\n'
+    r'            \}\n'
+    r'        \}\n)+'
 )
-ui = ui.replace(
-    'if (hasSavedKey) "The saved key cannot be revealed in AD Glasses." else "The key is encrypted before it is stored.",',
-    'when {\n                            savedKeyUsable -> "The saved key cannot be revealed in AD Glasses."\n                            hasSavedKey -> "Enter a new API key after changing the provider or API base URL; the saved key will not be reused."\n                            else -> "The key is encrypted before it is stored."\n                        },',
-)
-ui = ui.replace(
-    '(hasSavedKey || replacementKey.isNotBlank())',
-    '(savedKeyUsable || replacementKey.isNotBlank())',
-)
-write(ui_path, ui)
+if not pattern.search(prefs):
+    insertion = '''        if (existing == null && replacement.isBlank()) {\n            require(hasApiKeyInternal(prefs, saved.id)) { "API key is required for a new profile." }\n        }\n'''
+    if insertion not in prefs:
+        raise RuntimeError('Cloud profile credential guard insertion point not found')
+    prefs = prefs.replace(insertion, insertion + guard, 1)
+else:
+    prefs = pattern.sub(guard, prefs, count=1)
+prefs_path.write_text(prefs, encoding='utf-8')
 
-# Guard the retired assistant-model surface after the final hardening pass. Moonshine and
-# LocalAgent are intentionally excluded: they are speech input and automation, not text LLMs.
+ui_path = ROOT / 'android/AD-Glasses/app/src/main/java/com/ad_glasses/ui/adglasses/ADNativeAiDetailScreens.kt'
+ui = ui_path.read_text(encoding='utf-8')
+if 'val savedKeyUsable = hasSavedKey' not in ui:
+    raise RuntimeError('Cloud profile editor credential guard is missing')
+if '(hasSavedKey || replacementKey.isNotBlank())' in ui:
+    raise RuntimeError('Cloud profile editor can still reuse a saved key after endpoint changes')
+
 for root in (
     ROOT / 'android/AD-Glasses/app/src/main',
     ROOT / 'android/AD-Glasses/shared/src/commonMain',
