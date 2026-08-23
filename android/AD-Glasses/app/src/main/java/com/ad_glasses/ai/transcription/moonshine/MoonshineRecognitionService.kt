@@ -51,9 +51,7 @@ class MoonshineRecognitionService : RecognitionService() {
                     .orEmpty()
                     .ifBlank { Locale.getDefault().toLanguageTag() }
                 val model = MoonshineModelManager.chooseDefault(requestedLanguageTag)
-                check(MoonshineModelManager.isInstalled(applicationContext, model)) {
-                    "Moonshine ${model.id} is not installed. Install the Moonshine voice model in Cloud AI settings."
-                }
+                MoonshineModelManager.prepareForRuntime(applicationContext, model)
 
                 // The installed model is explicitly English. The device/recognizer locale is only
                 // a request hint; passing a different language into MicTranscriber changes the
