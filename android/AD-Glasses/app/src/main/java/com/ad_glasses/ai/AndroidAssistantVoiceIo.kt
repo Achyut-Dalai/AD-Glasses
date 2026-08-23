@@ -46,6 +46,10 @@ object AndroidAssistantVoiceIo {
         putExtra(RecognizerIntent.EXTRA_MAX_RESULTS, 1)
         putExtra(RecognizerIntent.EXTRA_LANGUAGE, languageTag)
         putExtra(RecognizerIntent.EXTRA_LANGUAGE_PREFERENCE, languageTag)
+        // Explicit on-device recognizers are used when Android exposes one. On the fallback system
+        // recognizer this is still only a preference (some engines may ignore it), but it avoids
+        // needlessly choosing a network recognizer when an offline path is available.
+        putExtra(RecognizerIntent.EXTRA_PREFER_OFFLINE, true)
         putExtra(RecognizerIntent.EXTRA_SPEECH_INPUT_COMPLETE_SILENCE_LENGTH_MILLIS, COMPLETE_SILENCE_MS)
         putExtra(
             RecognizerIntent.EXTRA_SPEECH_INPUT_POSSIBLY_COMPLETE_SILENCE_LENGTH_MILLIS,
