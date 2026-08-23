@@ -14,6 +14,8 @@ def write(path: str, text: str) -> None:
 
 path = 'android/AD-Glasses/shared/src/commonMain/kotlin/com/ad_glasses/shared/ui/chat/ChatThreadScreen.kt'
 text = read(path)
+text = text.replace('import com.ad_glasses.shared.generated.resources.chat_configure_local_model\n', '')
+text = text.replace('import com.ad_glasses.shared.generated.resources.chat_local_model_required\n', '')
 text, _ = re.subn(
     r'''\s*val inputLabel = if \(composer\.primaryAction == ChatComposerPrimaryAction\.CONFIGURE_LOCAL_MODEL\) \{\s*stringResource\(Res\.string\.chat_local_model_required\)\s*\} else \{\s*stringResource\(Res\.string\.chat_message\)\s*\}\s*''',
     '\n    val inputLabel = stringResource(Res.string.chat_message)\n',
@@ -46,7 +48,77 @@ start = text.find('    /** Fetch models without ever returning the API key to UI
 end = text.find('    private fun buildOpenAiMessages(', start)
 if start < 0 or end < 0:
     raise RuntimeError('discoverModels block not found')
-new_block = '''    /** Fetch models without ever returning the API key to UI state. */\n    suspend fun discoverModels(\n        context: Context,\n        provider: ApiProvider,\n        baseUrl: String,\n        profileId: String? = null,\n        apiKeyReplacement: String? = null,\n    ): Result<List<String>> = runCatching {\n        val key = apiKeyReplacement?.trim().orEmpty().ifBlank {\n            profileId?.let { AiProviderPrefs.apiKeyForRequest(context, it) }.orEmpty()\n        }\n        require(key.isNotBlank()) { "Enter an API key or use a profile that already has one saved." }\n        val cleanBase = baseUrl.trim().trimEnd('/')\n        require(cleanBase.startsWith("https://")) { "API base URL must use HTTPS." }\n\n        val response = if (provider == ApiProvider.GOOGLE) {\n            runCatching { getJson("$cleanBase/models", apiKey = key) }\n                .getOrElse { compatibleError ->\n                    val nativeBase = cleanBase.substringBeforeLast("/openai", cleanBase).trimEnd('/')\n                    runCatching {\n                        getJson(\n                            "$nativeBase/models",\n                            apiKey = null,\n                            extraHeaders = mapOf("x-goog-api-key" to key),\n                        )\n                    }.getOrElse { throw compatibleError }\n                }\n        } else {\n            getJson("$cleanBase/models", apiKey = key)\n        }\n\n        val models = selectableModelIds(response)\n        if (models.isEmpty()) throw IllegalStateException("The provider returned no selectable generation models.")\n        models.sortedWith(\n            compareBy<String> { it != provider.defaultModel }\n                .thenBy { !it.contains("flash", ignoreCase = true) }\n                .thenBy { it.lowercase() },\n        )\n    }\n\n    private fun selectableModelIds(response: JSONObject): Set<String> {\n        val models = linkedSetOf<String>()\n        response.optJSONArray("data")?.let { data ->\n            for (index in 0 until data.length()) {\n                data.optJSONObject(index)?.optString("id")?.trim()?.takeIf { it.isNotBlank() }?.let(models::add)\n            }\n        }\n        response.optJSONArray("models")?.let { data ->\n            for (index in 0 until data.length()) {\n                val item = data.optJSONObject(index) ?: continue\n                val methods = item.optJSONArray("supportedGenerationMethods")\n                if (methods != null) {\n                    var canGenerate = false\n                    for (methodIndex in 0 until methods.length()) {\n                        if (methods.optString(methodIndex) == "generateContent") {\n                            canGenerate = true\n                            break\n                        }\n                    }\n                    if (!canGenerate) continue\n                }\n                val id = item.optString("id").trim().ifBlank {\n                    item.optString("name").trim().removePrefix("models/")\n                }\n                if (id.isNotBlank()) models += id\n            }\n        }\n        return models\n    }\n\n'''
+new_block = '''    /** Fetch models without ever returning the API key to UI state. */
+    suspend fun discoverModels(
+        context: Context,
+        provider: ApiProvider,
+        baseUrl: String,
+        profileId: String? = null,
+        apiKeyReplacement: String? = null,
+    ): Result<List<String>> = runCatching {
+        val key = apiKeyReplacement?.trim().orEmpty().ifBlank {
+            profileId?.let { AiProviderPrefs.apiKeyForRequest(context, it) }.orEmpty()
+        }
+        require(key.isNotBlank()) { "Enter an API key or use a profile that already has one saved." }
+        val cleanBase = baseUrl.trim().trimEnd('/')
+        require(cleanBase.startsWith("https://")) { "API base URL must use HTTPS." }
+
+        val response = if (provider == ApiProvider.GOOGLE) {
+            runCatching { getJson("$cleanBase/models", apiKey = key) }
+                .getOrElse { compatibleError ->
+                    val nativeBase = cleanBase.substringBeforeLast("/openai", cleanBase).trimEnd('/')
+                    runCatching {
+                        getJson(
+                            "$nativeBase/models",
+                            apiKey = null,
+                            extraHeaders = mapOf("x-goog-api-key" to key),
+                        )
+                    }.getOrElse { throw compatibleError }
+                }
+        } else {
+            getJson("$cleanBase/models", apiKey = key)
+        }
+
+        val models = selectableModelIds(response)
+        if (models.isEmpty()) throw IllegalStateException("The provider returned no selectable generation models.")
+        models.sortedWith(
+            compareBy<String> { it != provider.defaultModel }
+                .thenBy { !it.contains("flash", ignoreCase = true) }
+                .thenBy { it.lowercase() },
+        )
+    }
+
+    private fun selectableModelIds(response: JSONObject): Set<String> {
+        val models = linkedSetOf<String>()
+        response.optJSONArray("data")?.let { data ->
+            for (index in 0 until data.length()) {
+                data.optJSONObject(index)?.optString("id")?.trim()?.takeIf { it.isNotBlank() }?.let(models::add)
+            }
+        }
+        response.optJSONArray("models")?.let { data ->
+            for (index in 0 until data.length()) {
+                val item = data.optJSONObject(index) ?: continue
+                val methods = item.optJSONArray("supportedGenerationMethods")
+                if (methods != null) {
+                    var canGenerate = false
+                    for (methodIndex in 0 until methods.length()) {
+                        if (methods.optString(methodIndex) == "generateContent") {
+                            canGenerate = true
+                            break
+                        }
+                    }
+                    if (!canGenerate) continue
+                }
+                val id = item.optString("id").trim().ifBlank {
+                    item.optString("name").trim().removePrefix("models/")
+                }
+                if (id.isNotBlank()) models += id
+            }
+        }
+        return models
+    }
+
+'''
 text = text[:start] + new_block + text[end:]
 write(path, text)
 
