@@ -3252,8 +3252,6 @@ android/AD-Glasses/app/src/main/java/com/ad_glasses/ai/assistant/LocalAgentRoute
 android/AD-Glasses/app/src/main/java/com/ad_glasses/ai/live/GeminiLiveClient.kt:20:import com.ad_glasses.ai.router.AiProviderPrefs
 android/AD-Glasses/app/src/main/java/com/ad_glasses/ai/live/GeminiLiveClient.kt:208:        val base = AiProviderPrefs.getRelayBaseUrl(appContext).trim().trimEnd('/')
 android/AD-Glasses/app/src/main/java/com/ad_glasses/ai/live/GeminiLiveClient.kt:244:        val base = AiProviderPrefs.getRelayBaseUrl(appContext).trim().trimEnd('/')
-android/AD-Glasses/app/src/main/java/com/ad_glasses/ai/orchestrator/AndroidAssistantCapabilityExecutor.kt:6:import com.ad_glasses.shared.settings.AgentProviderType
-android/AD-Glasses/app/src/main/java/com/ad_glasses/ai/orchestrator/AndroidAssistantCapabilityExecutor.kt:51:            allowRemoteImageUpload = context.providerType == AgentProviderType.CLOUD_AI &&
 android/AD-Glasses/app/src/main/java/com/ad_glasses/ai/orchestrator/AssistantOrchestrator.kt:9:import com.ad_glasses.shared.settings.AgentProviderType
 android/AD-Glasses/app/src/main/java/com/ad_glasses/ai/orchestrator/AssistantOrchestrator.kt:32:    val providerType: AgentProviderType,
 android/AD-Glasses/app/src/main/java/com/ad_glasses/ai/orchestrator/AssistantOrchestrator.kt:67:    suspend fun handle(turn: AssistantTurn, providerType: AgentProviderType): AssistantResult {
