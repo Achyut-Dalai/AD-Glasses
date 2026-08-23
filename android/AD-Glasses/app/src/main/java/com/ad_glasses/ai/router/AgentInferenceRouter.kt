@@ -5,6 +5,8 @@ import com.ad_glasses.agent.LocalAgentPrefs as AutomationPrefs
 import com.ad_glasses.shared.settings.AgentProviderType
 import java.io.File
 import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 
 enum class AgentInferencePurpose {
     CLASSIFICATION,
@@ -69,13 +71,15 @@ object AgentInferenceRouter {
         }
 
         val imageContent = try {
-            ApiTokenClient.image(
-                context = context,
-                systemPrompt = systemPrompt,
-                userPrompt = userPrompt,
-                imagePath = usableImagePath,
-                maxTokens = UI_PLANNING_MAX_TOKENS,
-            ).getOrThrow()
+            withContext(Dispatchers.IO) {
+                ApiTokenClient.image(
+                    context = context,
+                    systemPrompt = systemPrompt,
+                    userPrompt = userPrompt,
+                    imagePath = usableImagePath,
+                    maxTokens = UI_PLANNING_MAX_TOKENS,
+                ).getOrThrow()
+            }
         } catch (error: CancellationException) {
             throw error
         } catch (error: Exception) {
@@ -103,12 +107,14 @@ object AgentInferenceRouter {
         webRequested: Boolean,
     ): String {
         val maxTokens = if (purpose == AgentInferencePurpose.CLASSIFICATION) 256 else 512
-        return ApiTokenClient.chat(
-            context = context,
-            messages = messages(systemPrompt, userPrompt),
-            maxTokens = maxTokens,
-            webRequested = webRequested,
-        ).getOrThrow()
+        return withContext(Dispatchers.IO) {
+            ApiTokenClient.chat(
+                context = context,
+                messages = messages(systemPrompt, userPrompt),
+                maxTokens = maxTokens,
+                webRequested = webRequested,
+            ).getOrThrow()
+        }
     }
 
     private fun messages(systemPrompt: String, userPrompt: String): List<Map<String, String>> = listOf(
