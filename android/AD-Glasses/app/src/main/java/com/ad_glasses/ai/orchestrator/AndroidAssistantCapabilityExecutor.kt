@@ -3,7 +3,6 @@ package com.ad_glasses.ai.orchestrator
 import android.content.Context
 import com.ad_glasses.ai.router.AgentInferencePurpose
 import com.ad_glasses.ai.router.AgentInferenceRouter
-import com.ad_glasses.shared.settings.AgentProviderType
 
 /** Android execution bridge for conversational, vision and explicit AD capability requests. */
 class AndroidAssistantCapabilityExecutor(
@@ -26,6 +25,7 @@ class AndroidAssistantCapabilityExecutor(
             userPrompt = effectivePrompt,
             providerType = context.providerType,
             onToken = onToken,
+            webRequested = context.useWeb,
         )
         return reply.toDisplaylessResult()
     }
@@ -48,11 +48,11 @@ class AndroidAssistantCapabilityExecutor(
             systemPrompt = conversationSystemPrompt(context),
             userPrompt = prompt,
             imagePath = imagePath,
-            allowRemoteImageUpload = context.providerType == AgentProviderType.CLOUD_AI &&
-                com.ad_glasses.localagent.LocalAgentPrefs
-                    .isRemoteScreenshotUploadEnabled(appContext),
+            allowRemoteImageUpload = com.ad_glasses.localagent.LocalAgentPrefs
+                .isRemoteScreenshotUploadEnabled(appContext),
             providerType = context.providerType,
             onToken = onToken,
+            webRequested = false,
         )
         return result.content.toDisplaylessResult()
     }
@@ -68,7 +68,7 @@ class AndroidAssistantCapabilityExecutor(
         appendLine("Maintain context across turns. The phone can hold richer detail, but do not ask the user to operate it unless genuinely needed.")
         appendLine("Do not claim to open apps, tap controls, change Android settings, or operate the phone UI. AD no longer exposes UI automation as an AI invocation method.")
         if (context.useWeb) {
-            appendLine("The user asked for current information. Be explicit if your selected API/model cannot verify live information.")
+            appendLine("Web access was explicitly enabled for this turn. Use the active provider's native search tool when available and ground current claims in those results.")
         }
         context.artifactContext?.takeIf { it.isNotBlank() }?.let {
             appendLine()
