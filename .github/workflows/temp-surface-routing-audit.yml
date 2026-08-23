@@ -1,0 +1,72 @@
+name: Temporary surface routing audit
+
+on:
+  push:
+    branches:
+      - fix/post-merge-surface-routing-cleanup
+
+permissions:
+  contents: read
+
+jobs:
+  audit:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out cleanup branch
+        uses: actions/checkout@v7
+        with:
+          ref: fix/post-merge-surface-routing-cleanup
+          fetch-depth: 1
+      - name: Audit UI residue routes keywords and assets
+        shell: bash
+        run: |
+          set -euo pipefail
+          echo '===== HOME / SUGGESTION RESIDUE ====='
+          git grep -n -i -E 'suggest|suggestion|try asking|quick prompt|starter prompt|prompt chip|smart lens|search web|browse web' -- \
+            android/AD-Glasses/app/src/main/java/com/ad_glasses/ui/adglasses \
+            android/AD-Glasses/app/src/main/res || true
+
+          echo '===== WEB / FRESHNESS / SEARCH ROUTING TOKENS ====='
+          git grep -n -i -E '\b(web|internet|browse|search|grounding|grounded|latest|current|today|tonight|news|recent|online)\b' -- \
+            android/AD-Glasses/app/src/main/java/com/ad_glasses/ai \
+            android/AD-Glasses/app/src/main/java/com/ad_glasses/ui/adglasses \
+            android/AD-Glasses/shared/src/commonMain || true
+
+          echo '===== ROUTE / DESTINATION / CAPABILITY DEFINITIONS ====='
+          git grep -n -E 'enum class ADRoute|enum class ADExternalDestination|enum class AssistantIntent|enum class AssistantCapability|ADRoute\.|ADExternalDestination\.|AssistantIntent\.|AssistantCapability\.' -- \
+            android/AD-Glasses/app/src/main/java/com/ad_glasses \
+            android/AD-Glasses/shared/src/commonMain || true
+
+          echo '===== SPOKEN / KEYWORD ROUTERS ====='
+          git grep -n -E 'Regex\(|containsMatchIn|normalized|lowercase\(\)|START|STOP|keyword|phrase' -- \
+            android/AD-Glasses/app/src/main/java/com/ad_glasses/ai/orchestrator \
+            android/AD-Glasses/app/src/main/java/com/ad_glasses/ai/router || true
+
+          echo '===== IMAGE / ICON RESOURCE REFERENCE AUDIT ====='
+          python3 - <<'PY'
+          from pathlib import Path
+          import subprocess
+          root = Path('android/AD-Glasses/app/src/main/res')
+          exts = {'.png', '.webp', '.jpg', '.jpeg', '.gif', '.xml'}
+          candidates = []
+          for p in root.rglob('*'):
+              if not p.is_file() or p.suffix.lower() not in exts:
+                  continue
+              if not (p.parent.name.startswith('drawable') or p.parent.name.startswith('mipmap')):
+                  continue
+              candidates.append(p)
+          for p in sorted(candidates):
+              name = p.stem
+              proc = subprocess.run(
+                  ['git','grep','-l','-F',name,'--','android/AD-Glasses',':!android/AD-Glasses/app/src/main/myvu-upstream/**'],
+                  text=True, capture_output=True,
+              )
+              refs = [line for line in proc.stdout.splitlines() if line and line != p.as_posix()]
+              if name.startswith('ad_') or name.startswith('ic_ad') or len(refs) == 0:
+                  print(f'{len(refs):02d} refs | {p.as_posix()}')
+                  for ref in refs[:8]:
+                      print(f'    {ref}')
+          PY
+
+          echo '===== AD UI FILE INVENTORY ====='
+          find android/AD-Glasses/app/src/main/java/com/ad_glasses/ui/adglasses -maxdepth 1 -type f -printf '%f\n' | sort
