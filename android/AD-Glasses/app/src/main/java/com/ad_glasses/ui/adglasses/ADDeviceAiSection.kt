@@ -42,7 +42,7 @@ internal fun ADDeviceAiSection(
 
     Column(modifier = Modifier.fillMaxWidth()) {
         Text(
-            "Cloud AI handles reasoning. Voice capture/playback stay on Android, while model context is kept short without deleting your Chat history.",
+            "Cloud AI handles reasoning. Ask AI, Chats, and Lens share the same assistant conversation core; voice adds speech I/O and Lens adds current image context.",
             style = MaterialTheme.typography.bodySmall,
             color = ADColors.Muted,
         )
@@ -122,17 +122,17 @@ internal fun ADDeviceAiSection(
             ) {
                 Column(Modifier.weight(1f)) {
                     Text(
-                        "Voice & conversation",
+                        "Voice & context",
                         style = MaterialTheme.typography.titleSmall,
                         color = ADColors.Ink,
                     )
                     Text(
-                        "Android ASR + TTS · ${AssistantInferenceContextPolicy.INACTIVITY_TTL_MS / 1_000}s active context · full history kept",
+                        "On-device ASR when available · Android TTS · ${AssistantInferenceContextPolicy.INACTIVITY_TTL_MS / 1_000}s AI context",
                         style = MaterialTheme.typography.bodySmall,
                         color = ADColors.Muted,
                     )
                     Text(
-                        "Tap to install or check offline TTS voice data",
+                        "Chats stay until you delete them · tap for offline TTS voice data",
                         style = MaterialTheme.typography.labelSmall,
                         color = ADColors.Blue,
                     )
