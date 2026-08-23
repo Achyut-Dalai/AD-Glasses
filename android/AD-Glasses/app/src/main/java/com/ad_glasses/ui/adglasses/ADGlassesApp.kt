@@ -133,6 +133,7 @@ fun ADGlassesApp(
                         state = dashboardState,
                         onBack = navigateBack,
                         onDevice = { navigateTo(ADRoute.DEVICE_CENTER) },
+                        onCloudAi = { navigateTo(ADRoute.AI_CLOUD) },
                         onPrivacy = { navigateTo(ADRoute.PRIVACY) },
                         onStorage = { navigateTo(ADRoute.STORAGE) },
                         onLanguage = {
