@@ -455,7 +455,6 @@ internal fun ADNativeConversationScreen(
             },
         )
     }
-    }
 }
 
 @Composable
