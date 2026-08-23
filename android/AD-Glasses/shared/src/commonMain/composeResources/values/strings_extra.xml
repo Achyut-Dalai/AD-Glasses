@@ -36,9 +36,8 @@
     <string name="settings_bluetooth_mic">Bluetooth mic</string>
     <string name="settings_phone_mic">Phone mic</string>
     <string name="settings_detecting_audio_source">Detecting audio source</string>
-    <string name="settings_provider_description">Choose on-device Local AI or an explicitly configured Cloud AI route.</string>
-    <string name="settings_configure_local_models">Configure local models</string>
-    <string name="settings_current_mode">Current mode: %1$s</string>
+    <string name="settings_provider_description">Cloud AI uses the active encrypted provider profile configured on this device.</string>
+<string name="settings_current_mode">Current mode: %1$s</string>
     <string name="settings_sync_eligibility">Sync eligibility</string>
     <string name="settings_explicit_facts">Explicit facts</string>
     <string name="settings_daily_facts">Daily facts</string>
@@ -64,9 +63,7 @@
     <string name="settings_clear_local_data">Clear local data</string>
     <string name="settings_support_description">Send an issue description with diagnostic logs to help investigate Bluetooth, sync, voice, or app failures.</string>
     <string name="settings_send_debug_logs">Send debug logs</string>
-    <string name="settings_faq_local_models_question">How do I set up Local Models?</string>
-    <string name="settings_faq_local_models_answer">Open Local Agent from Native Plugins, then configure a model on this device.</string>
-    <string name="settings_faq_data_question">How is data handled?</string>
+<string name="settings_faq_data_question">How is data handled?</string>
     <string name="settings_faq_data_answer">Data stays on this phone by default. You can export, import, or clear it from Data.</string>
     <string name="settings_faq_source_question">Can I review the source?</string>
     <string name="settings_faq_source_answer">Yes. AD Glasses is open source and its behavior can be reviewed in the project repository.</string>
@@ -103,17 +100,15 @@
     <string name="chat_delete_content_description">Delete %1$s</string>
     <string name="chat_list">Chats list</string>
     <string name="chat_empty_title">Start a conversation</string>
-    <string name="chat_empty_body">Ask a question or attach media for a local model.</string>
+    <string name="chat_empty_body">Ask a question or attach media using your active Cloud AI profile.</string>
     <string name="chat_thinking">Thinking</string>
-    <string name="chat_local_model_required">Local model required</string>
-    <string name="chat_message">Message</string>
+<string name="chat_message">Message</string>
     <string name="chat_clear_attachments">Clear attachments</string>
     <string name="chat_attach_image">Attach image</string>
     <string name="chat_stop_audio_recording">Stop audio recording</string>
     <string name="chat_record_audio">Record audio</string>
     <string name="chat_stop_generation">Stop generation</string>
-    <string name="chat_configure_local_model">Configure local model</string>
-    <string name="chat_request_failed">Chat request failed</string>
+<string name="chat_request_failed">Chat request failed</string>
     <string name="chat_change_user_bubble">Change user bubble color</string>
     <string name="chat_change_assistant_bubble">Change assistant bubble color</string>
     <string name="chat_choose_wallpaper">Choose wallpaper from gallery</string>
@@ -208,63 +203,9 @@
 
     <!-- Pro subscription -->
 
-    <!-- Local models -->
-    <string name="local_models_title">Local models</string>
-    <string name="local_models_runtime">On-device runtime</string>
-    <string name="local_models_import">Import model file</string>
-    <string name="local_models_refresh">Refresh</string>
-    <string name="local_models_download_starter">Download starter model</string>
-    <string name="local_models_installed">Installed models</string>
-    <string name="local_models_none_installed">No local model is installed. Import a GGUF/LiteRT file or download a catalog model.</string>
-    <string name="local_models_selected">Selected model</string>
-    <string name="local_models_select">Select model</string>
-    <string name="local_models_info">Model info</string>
-    <string name="local_models_unload">Unload</string>
-    <string name="local_models_remove_selected">Remove selected model</string>
-    <string name="local_models_catalog">Curated catalog</string>
-    <string name="local_models_catalog_description">Some model families require accepted terms or a Hugging Face token.</string>
-    <string name="local_models_remote_server">Remote server</string>
-    <string name="local_models_remote_description">Connect to an OpenAI-compatible server on your LAN or Tailnet. It must expose /v1/chat/completions; images use image_url data URLs and audio uses input_audio base64 (WAV/MP3).</string>
-    <string name="local_models_use_remote">Use remote server instead of on-device model</string>
-    <string name="local_models_base_url">Base URL</string>
-    <string name="local_models_model_name">Model name</string>
-    <string name="local_models_api_key_optional">API key (optional for local servers)</string>
-    <string name="local_models_test_connection">Test connection</string>
-    <string name="local_models_save">Save</string>
-    <string name="local_models_studio_bridge">Studio Bridge</string>
-    <string name="local_models_studio_description">Receive AD Glasses Model Studio approval prompts over Tailscale and respond by voice.</string>
-    <string name="local_models_enable_studio">Enable Studio Bridge</string>
-    <string name="local_models_api_key_remote">API key (same as Remote Server)</string>
-    <string name="local_models_save_connect">Save and connect</string>
-    <string name="local_models_api_key_help">API key help</string>
-    <string name="local_models_generation">Generation settings</string>
-    <string name="local_models_performance_profile">Performance profile</string>
-    <string name="local_models_runtime_label">Model runtime</string>
-    <string name="local_models_compute_backend">Compute backend</string>
-    <string name="local_models_cpu_threads">CPU threads (1-16)</string>
-    <string name="local_models_gpu_layers">GPU layers (-1 to 999)</string>
-    <string name="local_models_temperature">Temperature (0-2)</string>
-    <string name="local_models_top_p">Top-p (0-1)</string>
-    <string name="local_models_top_k">Top-k</string>
-    <string name="local_models_max_tokens">Max output tokens (32-8192)</string>
-    <string name="local_models_repetition_penalty">Repetition penalty</string>
-    <string name="local_models_context_size">Context size (1024-32768)</string>
-    <string name="local_models_seed">Seed (-1 is random)</string>
-    <string name="local_models_template_override">Prompt template override</string>
-    <string name="local_models_structured_json">Experimental structured JSON mode</string>
-    <string name="local_models_system_prompt">System prompt override (optional)</string>
-    <string name="local_models_huggingface_token">Hugging Face token (for gated sources)</string>
-    <string name="local_models_diagnostics">Diagnostics</string>
-    <string name="local_models_warmup">Run warm-up probe</string>
-    <string name="local_models_close">Close</string>
-    <string name="local_models_unsaved_title">Unsaved changes</string>
-    <string name="local_models_unsaved_message">Your local-model settings have changed. Leave without saving?</string>
-    <string name="local_models_keep_editing">Keep editing</string>
-    <string name="local_models_discard">Discard</string>
-    <string name="local_models_download_progress">Download progress</string>
-    <string name="local_models_cancel_download">Cancel download</string>
-    <string name="local_models_collapse">Collapse %1$s</string>
-    <string name="local_models_expand">Expand %1$s</string>
+
+        <string name="settings_section_collapse">Collapse %1$s</string>
+    <string name="settings_section_expand">Expand %1$s</string>
 
     <!-- Local agent and utility screens -->
     <string name="local_agent_pending_actions">Pending actions</string>
@@ -386,7 +327,7 @@
     <string name="dashboard_ai_wake_word_voice">Voice question</string>
     <string name="dashboard_ai_wake_word_image">Image question</string>
     <string name="dashboard_ai_wake_word_image_warning_title">Use image questions for HeyCyan?</string>
-    <string name="dashboard_ai_wake_word_image_warning_body">The HeyCyan SDK does not expose separate events for the AI voice wake word and the hardware AI audio-question button. If you choose AI image questions, pressing the hardware button for an AI voice question will also start an image question. Simple questions can ignore the captured image when they do not ask about it, but responses will take longer, especially with local models.</string>
+    <string name="dashboard_ai_wake_word_image_warning_body">The HeyCyan SDK does not expose separate events for the AI voice wake word and the hardware AI audio-question button. If you choose AI image questions, pressing the hardware button for an AI voice question will also start an image question. Simple questions can ignore the captured image when they do not ask about it, but image requests can take longer because the captured frame must be uploaded and analyzed by the active Cloud AI profile.</string>
     <string name="dashboard_ai_wake_word_image_warning_confirm">Use image questions</string>
     <string name="dashboard_image_query_unavailable">Image query unavailable</string>
     <string name="dashboard_register_listener">Register device listener</string>

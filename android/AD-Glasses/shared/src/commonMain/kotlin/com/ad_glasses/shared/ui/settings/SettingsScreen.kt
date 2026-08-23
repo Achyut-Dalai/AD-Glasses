@@ -454,9 +454,9 @@ private fun SettingsSectionCard(
                 Icon(
                     imageVector = if (expanded) AppIcon.ExpandLess.imageVector() else AppIcon.ExpandMore.imageVector(),
                     contentDescription = if (expanded) {
-                        stringResource(Res.string.local_models_collapse, title)
+                        stringResource(Res.string.settings_section_collapse, title)
                     } else {
-                        stringResource(Res.string.local_models_expand, title)
+                        stringResource(Res.string.settings_section_expand, title)
                     },
                 )
             }

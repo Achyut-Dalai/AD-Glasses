@@ -53,7 +53,6 @@ import com.ad_glasses.ai.router.AiProviderPrefs
 import com.ad_glasses.ai.router.ApiProvider
 import com.ad_glasses.ai.router.ApiTokenClient
 import com.ad_glasses.ai.router.CloudAiProfile
-import com.ad_glasses.ai.router.CloudWebMode
 import com.ad_glasses.ai.transcription.moonshine.MoonshineModelManager
 import java.util.Locale
 import kotlinx.coroutines.Dispatchers
@@ -304,7 +303,6 @@ private fun ADCloudProfileEditor(
         provider = provider,
         baseUrl = baseUrl,
         model = model,
-        webMode = if (provider.nativeWebCapable) CloudWebMode.AUTO else CloudWebMode.OFF,
     )
 
     AlertDialog(

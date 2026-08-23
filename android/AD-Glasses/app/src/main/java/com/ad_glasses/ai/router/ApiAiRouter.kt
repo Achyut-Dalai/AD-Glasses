@@ -97,8 +97,32 @@ object ApiTokenClient {
         val cleanBase = baseUrl.trim().trimEnd('/')
         require(cleanBase.startsWith("https://")) { "API base URL must use HTTPS." }
 
-        val response = getJson("$cleanBase/models", apiKey = key)
+        val response = if (provider == ApiProvider.GOOGLE) {
+            runCatching { getJson("$cleanBase/models", apiKey = key) }
+                .getOrElse { compatibleError ->
+                    val nativeBase = cleanBase.substringBeforeLast("/openai", cleanBase).trimEnd('/')
+                    runCatching {
+                        getJson(
+                            "$nativeBase/models",
+                            apiKey = null,
+                            extraHeaders = mapOf("x-goog-api-key" to key),
+                        )
+                    }.getOrElse { throw compatibleError }
+                }
+        } else {
+            getJson("$cleanBase/models", apiKey = key)
+        }
 
+        val models = selectableModelIds(response)
+        if (models.isEmpty()) throw IllegalStateException("The provider returned no selectable generation models.")
+        models.sortedWith(
+            compareBy<String> { it != provider.defaultModel }
+                .thenBy { !it.contains("flash", ignoreCase = true) }
+                .thenBy { it.lowercase() },
+        )
+    }
+
+    private fun selectableModelIds(response: JSONObject): Set<String> {
         val models = linkedSetOf<String>()
         response.optJSONArray("data")?.let { data ->
             for (index in 0 until data.length()) {
@@ -108,12 +132,24 @@ object ApiTokenClient {
         response.optJSONArray("models")?.let { data ->
             for (index in 0 until data.length()) {
                 val item = data.optJSONObject(index) ?: continue
-                val raw = item.optString("name").trim().removePrefix("models/")
-                if (raw.isNotBlank()) models += raw
+                val methods = item.optJSONArray("supportedGenerationMethods")
+                if (methods != null) {
+                    var canGenerate = false
+                    for (methodIndex in 0 until methods.length()) {
+                        if (methods.optString(methodIndex) == "generateContent") {
+                            canGenerate = true
+                            break
+                        }
+                    }
+                    if (!canGenerate) continue
+                }
+                val id = item.optString("id").trim().ifBlank {
+                    item.optString("name").trim().removePrefix("models/")
+                }
+                if (id.isNotBlank()) models += id
             }
         }
-        if (models.isEmpty()) throw IllegalStateException("The provider returned no selectable models.")
-        models.sortedWith(compareBy<String> { !it.contains("flash", ignoreCase = true) }.thenBy { it.lowercase() })
+        return models
     }
 
     private fun buildOpenAiMessages(
