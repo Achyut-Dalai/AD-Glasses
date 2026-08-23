@@ -124,7 +124,7 @@ class MoonshineRecognitionService : RecognitionService() {
                 session.inputSampleRate = capture.sampleRate
 
                 // AudioRecord is fully constructed before we tell SpeechRecognizer clients that we
-                // are ready. From this point every start/read/stop failure is caught by AD code.
+                // are ready. From this point every start/read/stop/release failure is caught by AD.
                 capture.record.startRecording()
                 check(capture.record.recordingState == AudioRecord.RECORDSTATE_RECORDING) {
                     "Moonshine microphone did not enter the recording state."
@@ -148,9 +148,7 @@ class MoonshineRecognitionService : RecognitionService() {
         val session = activeSession?.takeIf { it.callback === listener } ?: return
         if (session.terminalDelivered.get()) return
         stopCapture(session)
-        worker.execute {
-            flushAndFinish(session)
-        }
+        worker.execute { flushAndFinish(session) }
     }
 
     override fun onCancel(listener: Callback) {
@@ -188,8 +186,8 @@ class MoonshineRecognitionService : RecognitionService() {
                     read > 0 -> {
                         val audio = pcm16ToTargetRate(buffer, read, sampleRate)
                         if (audio.isNotEmpty() && !session.audioQueue.offer(audio)) {
-                            // Keeping AudioRecord draining is more important than blocking capture.
-                            // Drop the oldest queued chunk, then keep the newest speech.
+                            // Keep AudioRecord draining rather than block the capture thread behind
+                            // native inference. Prefer the newest speech if the queue ever backs up.
                             session.audioQueue.poll()
                             session.audioQueue.offer(audio)
                             Log.w(TAG, "stage=asr_audio_queue_overflow engine=moonshine")
@@ -206,7 +204,7 @@ class MoonshineRecognitionService : RecognitionService() {
             }
         } finally {
             session.captureEnded.set(true)
-            safeStopAndReleaseRecord(session)
+            releaseRecord(session)
         }
     }
 
@@ -272,9 +270,9 @@ class MoonshineRecognitionService : RecognitionService() {
         if (clean.isBlank()) return
         if (!isCurrent(session) || !session.terminalDelivered.compareAndSet(false, true)) return
 
-        // Stop the microphone first. Only after AudioRecord has been told to stop do we release the
-        // Bluetooth communication route. This ordering avoids the route-teardown race that could
-        // crash inside Moonshine's upstream microphone wrapper.
+        // Stop capture completely before releasing the Bluetooth communication route. This makes
+        // the input lifecycle independent of Cloud AI latency and avoids tearing a route away from
+        // a live AudioRecord.
         session.abortRequested.set(true)
         session.audioQueue.clear()
         stopCapture(session)
@@ -331,25 +329,45 @@ class MoonshineRecognitionService : RecognitionService() {
         scheduleCleanup(session)
     }
 
+    /**
+     * AudioRecord teardown is intentionally ordered: stop it first so a blocking read can return,
+     * join the capture thread, and release only after that thread is out of read(). If a vendor
+     * audio stack refuses to unblock promptly, leave release to captureLoop.finally rather than
+     * racing release against an active native read.
+     */
     private fun stopCapture(session: Session) {
         session.captureEnded.set(true)
-        safeStopAndReleaseRecord(session)
+        requestRecordStop(session)
+
         val captureThread = session.captureThread
-        if (captureThread != null && captureThread !== Thread.currentThread()) {
-            captureThread.interrupt()
-            joinThread(captureThread, CAPTURE_JOIN_MS)
+        if (captureThread == null) {
+            releaseRecord(session)
+            return
+        }
+        if (captureThread === Thread.currentThread()) return
+
+        captureThread.interrupt()
+        joinThread(captureThread, CAPTURE_JOIN_MS)
+        if (!captureThread.isAlive) {
+            releaseRecord(session)
+        } else {
+            Log.w(TAG, "stage=asr_capture_join_timeout engine=moonshine; capture thread will release AudioRecord")
         }
     }
 
-    private fun safeStopAndReleaseRecord(session: Session) {
+    private fun requestRecordStop(session: Session) {
+        val record = synchronized(session) { session.audioRecord } ?: return
+        runCatching {
+            if (record.recordingState == AudioRecord.RECORDSTATE_RECORDING) record.stop()
+        }.onFailure { Log.w(TAG, "stage=asr_audio_stop_failed engine=moonshine", it) }
+    }
+
+    private fun releaseRecord(session: Session) {
         val record = synchronized(session) {
             val current = session.audioRecord ?: return
             session.audioRecord = null
             current
         }
-        runCatching {
-            if (record.recordingState == AudioRecord.RECORDSTATE_RECORDING) record.stop()
-        }.onFailure { Log.w(TAG, "stage=asr_audio_stop_failed engine=moonshine", it) }
         runCatching { record.release() }
             .onFailure { Log.w(TAG, "stage=asr_audio_release_failed engine=moonshine", it) }
     }
@@ -371,6 +389,7 @@ class MoonshineRecognitionService : RecognitionService() {
         session.processingThread?.interrupt()
         joinThread(session.captureThread, CAPTURE_JOIN_MS)
         joinThread(session.processingThread, PROCESS_JOIN_MS)
+        if (session.captureThread?.isAlive != true) releaseRecord(session)
 
         val transcriber = session.transcriber
         val listener = session.transcriptListener
