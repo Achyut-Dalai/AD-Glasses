@@ -7,12 +7,13 @@ import com.ad_glasses.shared.chat.ChatThread
 import com.ad_glasses.shared.chat.ChatRole
 
 /**
- * Keeps glasses and phone turns in one short-lived ChatStore thread.
+ * Keeps glasses and phone turns in the same durable ChatStore conversation.
  *
- * A session is intentionally explicit instead of being tied to an Activity lifecycle: the
- * glasses may initiate a turn while the phone UI is not visible, and the phone may later
- * reopen the same thread for review/continuation. AD-owned threads expire after seven days of
- * inactivity; unrelated ChatStore threads are never selected for retention cleanup.
+ * The active inference context is intentionally short-lived and is handled separately by
+ * [AssistantInferenceContextPolicy]. Chat history is not an inference cache: it remains available
+ * until the user explicitly starts managing it with Delete, Clear all, or a forget command.
+ * Keeping the active thread independent of an Activity lifecycle also lets glasses-originated turns
+ * appear on the phone later without creating a second conversation system.
  */
 class AssistantConversationSession private constructor(
     private val context: Context,
@@ -21,7 +22,6 @@ class AssistantConversationSession private constructor(
 
     @Synchronized
     fun activeThreadId(): String {
-        pruneExpiredConversations()
         val saved = prefs.getString(KEY_ACTIVE_THREAD_ID, null)
         if (!saved.isNullOrBlank() && ChatStore.getThread(saved) != null) return saved
 
@@ -29,15 +29,11 @@ class AssistantConversationSession private constructor(
     }
 
     @Synchronized
-    fun startNewConversation(): String {
-        pruneExpiredConversations()
-        return createAndActivate()
-    }
+    fun startNewConversation(): String = createAndActivate()
 
     /** List only conversations owned by the AD assistant, newest first. */
     @Synchronized
     fun conversations(): List<ChatThread> {
-        pruneExpiredConversations()
         val managed = managedThreadIds()
         val conversations = ChatStore.listThreads()
             .filter { it.id in managed || it.title == AssistantConversationPolicy.THREAD_TITLE }
@@ -91,7 +87,6 @@ class AssistantConversationSession private constructor(
     /** Delete the current AD thread immediately, then activate a clean empty one. */
     @Synchronized
     fun forgetCurrentConversation(): String {
-        pruneExpiredConversations()
         val current = prefs.getString(KEY_ACTIVE_THREAD_ID, null)
             ?.takeIf { ChatStore.getThread(it) != null }
         if (current != null) {
@@ -126,11 +121,8 @@ class AssistantConversationSession private constructor(
      */
     @Synchronized
     fun selectThread(threadId: String?): Boolean {
-        pruneExpiredConversations()
         val candidate = threadId?.trim().orEmpty()
         if (candidate.isBlank() || ChatStore.getThread(candidate) == null) return false
-        // Selecting a thread is an explicit continuation, so its seven-day inactivity window
-        // starts again now. It is also now owned by the AD assistant retention policy.
         ChatStore.touchThread(candidate)
         trackManagedThread(candidate)
         prefs.edit().putString(KEY_ACTIVE_THREAD_ID, candidate).apply()
@@ -174,34 +166,6 @@ class AssistantConversationSession private constructor(
         )
     }
 
-    /** Enforce AD-only seven-day retention immediately; returns the number of deleted threads. */
-    @Synchronized
-    fun pruneExpiredConversations(nowMs: Long = System.currentTimeMillis()): Int {
-        val threads = ChatStore.listThreads()
-        val previouslyManaged = managedThreadIds()
-        val legacyAdThreadIds = threads
-            .asSequence()
-            .filter { it.title == AssistantConversationPolicy.THREAD_TITLE }
-            .mapTo(linkedSetOf()) { it.id }
-        val allManaged = previouslyManaged + legacyAdThreadIds
-        val expiredIds = AssistantConversationPolicy.expiredThreadIds(
-            threads = threads,
-            managedThreadIds = allManaged,
-            nowMs = nowMs,
-        )
-
-        expiredIds.forEach(ChatStore::deleteThread)
-
-        val existingThreadIds = threads.asSequence().mapTo(hashSetOf()) { it.id }
-        val survivingManaged = (allManaged - expiredIds).intersect(existingThreadIds)
-        saveManagedThreadIds(survivingManaged)
-        val active = prefs.getString(KEY_ACTIVE_THREAD_ID, null)
-        if (active != null && (active in expiredIds || ChatStore.getThread(active) == null)) {
-            prefs.edit().remove(KEY_ACTIVE_THREAD_ID).apply()
-        }
-        return expiredIds.size
-    }
-
     private fun createAndActivate(nowMs: Long = System.currentTimeMillis()): String {
         val created = ChatStore.createThread(
             title = "New chat",
@@ -234,8 +198,11 @@ class AssistantConversationSession private constructor(
 
         fun get(context: Context): AssistantConversationSession = instance ?: synchronized(this) {
             instance ?: AssistantConversationSession(context.applicationContext).also { created ->
+                // Older app versions may have persisted the former seven-day cleanup job. Cancel
+                // it once the durable-history session is initialized; the worker class itself is
+                // retained as a no-op so upgrades remain safe even if WorkManager starts it first.
+                AssistantConversationRetentionWorker.cancelLegacySchedule(context.applicationContext)
                 instance = created
-                runCatching { AssistantConversationRetentionWorker.schedule(context.applicationContext) }
             }
         }
     }

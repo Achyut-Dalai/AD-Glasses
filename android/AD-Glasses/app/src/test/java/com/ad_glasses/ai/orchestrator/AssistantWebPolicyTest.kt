@@ -6,9 +6,9 @@ import org.junit.Test
 
 class AssistantWebPolicyTest {
     @Test
-    fun webPhrasesAloneDoNotEnableNetworkUse() {
-        assertFalse(AssistantWebPolicy.shouldUseWeb("Search the web for the newest Pixel price"))
-        assertFalse(AssistantWebPolicy.shouldUseWeb("Browse the web for this"))
+    fun explicitWebPhrasesEnableNetworkUse() {
+        assertTrue(AssistantWebPolicy.shouldUseWeb("Search the web for the newest Pixel price"))
+        assertTrue(AssistantWebPolicy.shouldUseWeb("Browse the web for this"))
         assertFalse(AssistantWebPolicy.shouldUseWeb("Check online"))
     }
 
@@ -25,7 +25,7 @@ class AssistantWebPolicyTest {
     }
 
     @Test
-    fun explicitPerTurnStateIsTheOnlyStandardChatOptIn() {
+    fun explicitPerTurnStateEnablesStandardChatWebUse() {
         assertFalse(AssistantWebPolicy.shouldUseWeb("What's the latest news?", requested = false))
         assertTrue(AssistantWebPolicy.shouldUseWeb("Explain aperture", requested = true))
         assertTrue(AssistantWebPolicy.shouldUseWeb("Search the web", requested = true))

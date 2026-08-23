@@ -25,7 +25,6 @@ class ADScreenInventoryTest {
                 "SYNC",
                 "SETTINGS",
                 "AI_CLOUD",
-                "AI_LOCAL",
                 "PRIVACY",
                 "STORAGE",
                 "LANGUAGE",
@@ -54,7 +53,6 @@ class ADScreenInventoryTest {
             "ADRoute.SYNC -> ADSyncScreen(",
             "ADRoute.SETTINGS -> ADNativeSettingsHubScreen(",
             "ADRoute.AI_CLOUD -> ADNativeCloudAiSettingsScreen(",
-            "ADRoute.AI_LOCAL -> ADNativeLocalAiSettingsScreen(",
             "ADRoute.PRIVACY -> ADPrivacyCenterScreen(",
             "ADRoute.STORAGE -> ADStorageScreen(",
             "ADRoute.LANGUAGE -> ADLanguageScreen(",
@@ -69,11 +67,11 @@ class ADScreenInventoryTest {
         requiredMappings.forEach { mapping ->
             assertTrue("Missing native AD route mapping: $mapping", app.contains(mapping))
         }
-        assertTrue(app.contains("routeStack = listOf(ADRoute.MAIN, ADRoute.DEVICE_CENTER)"))
+        assertTrue(app.contains("ADExternalDestination.AI -> routeStack = listOf(ADRoute.MAIN, ADRoute.DEVICE_CENTER)"))
     }
 
     @Test
-    fun deviceCenterOwnsAiConfigurationWithoutASeparateAiSettingsPage() {
+    fun deviceCenterOwnsCloudAiConfigurationWithoutASeparateAiSettingsPage() {
         val deviceCenter = sourceFile(
             "src/main/java/com/ad_glasses/ui/adglasses/ADGlassesDeviceCenterScreen.kt",
         ).readText()
@@ -87,9 +85,14 @@ class ADScreenInventoryTest {
         assertFalse(deviceCenter.contains("ADSectionTitle(\"Capabilities\")"))
         assertTrue(aiSectionFile.isFile)
         assertTrue(aiSection.contains("internal fun ADDeviceAiSection("))
-        assertTrue(aiSection.contains("title = \"Cloud\""))
-        assertTrue(aiSection.contains("title = \"Local\""))
+        assertTrue(aiSection.contains("AiProviderPrefs.getActiveProfile(context)"))
+        assertTrue(aiSection.contains("Cloud AI profiles"))
+        assertTrue(aiSection.contains("Add an API profile"))
+        assertTrue(aiSection.contains("Icons.Outlined.Cloud"))
         assertTrue(aiSection.contains("tint = Color.Black"))
+        assertFalse(aiSection.contains("LOCAL_MODELS"))
+        assertFalse(aiSection.contains("LOCAL_AGENT"))
+        assertFalse(aiSection.contains("title = \"Local\""))
         assertFalse(sourceFile("src/main/java/com/ad_glasses/ui/adglasses/ADNativeAiScreen.kt").exists())
     }
 
@@ -97,7 +100,7 @@ class ADScreenInventoryTest {
     fun currentLauncherHeroAndLensAssetsExistWhileSupersededGenerationsDoNot() {
         val drawableNoDpi = sourceFile("src/main/res/drawable-nodpi")
         val drawable = sourceFile("src/main/res/drawable")
-        val icon = File(drawableNoDpi, "ad_glasses_icon_source.png")
+        val retiredIconSource = File(drawableNoDpi, "ad_glasses_icon_source.png")
         val adaptiveForegroundImage = File(drawableNoDpi, "ad_glasses_adaptive_foreground_v2.png")
         val hero = File(drawableNoDpi, "ad_glasses_hero_v4.png")
         val lens = File(drawableNoDpi, "ad_lens_shutter.png")
@@ -106,7 +109,7 @@ class ADScreenInventoryTest {
         val launcher = sourceFile("src/main/res/mipmap-anydpi-v26/ic_launcher.xml")
         val roundLauncher = sourceFile("src/main/res/mipmap-anydpi-v26/ic_launcher_round.xml")
 
-        assertTrue("AD Glasses icon source must exist", icon.isFile && icon.length() > 0L)
+        assertFalse("Retired AD Glasses icon source must stay removed", retiredIconSource.exists())
         assertTrue("AD Glasses adaptive foreground image must exist", adaptiveForegroundImage.isFile && adaptiveForegroundImage.length() > 0L)
         assertTrue("AD Glasses current hero art must exist", hero.isFile && hero.length() > 0L)
         assertTrue("Lens image must exist", lens.isFile && lens.length() > 0L)

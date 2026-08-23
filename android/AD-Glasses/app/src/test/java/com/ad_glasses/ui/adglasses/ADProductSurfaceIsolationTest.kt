@@ -51,7 +51,7 @@ class ADProductSurfaceIsolationTest {
         ).readText()
 
         assertTrue(app.contains("ADTab.AI -> ADNativeConversationScreen("))
-        assertTrue(app.contains("ADExternalDestination.AI -> {"))
+        assertTrue(app.contains("ADExternalDestination.AI -> routeStack = listOf(ADRoute.MAIN, ADRoute.DEVICE_CENTER)"))
         assertTrue(app.contains("routeStack = listOf(ADRoute.MAIN, ADRoute.DEVICE_CENTER)"))
         assertTrue(deviceCenter.contains("ADSectionTitle(\"AI\")"))
         assertTrue(deviceCenter.contains("ADDeviceAiSection("))
@@ -61,18 +61,27 @@ class ADProductSurfaceIsolationTest {
     }
 
     @Test
-    fun deviceCenterAiSectionKeepsOnlyCloudAndLocalRouting() {
+    fun deviceCenterAiSectionKeepsCloudInferenceConfigurationOnly() {
         val ai = sourceFile("src/main/java/com/ad_glasses/ui/adglasses/ADDeviceAiSection.kt").readText()
 
-        assertTrue(ai.contains("AiProviderType.CLOUD_API"))
-        assertTrue(ai.contains("AiProviderType.LOCAL_MODELS"))
-        assertTrue(ai.contains("AgentProviderType.CLOUD_AI"))
-        assertTrue(ai.contains("AgentProviderType.LOCAL_AGENT"))
-        assertTrue(ai.contains("ADAiProviderPill(\"Cloud\""))
-        assertTrue(ai.contains("ADAiProviderPill(\"Local\""))
+        assertTrue(ai.contains("AiProviderPrefs.getActiveProfile(context)"))
+        assertTrue(ai.contains("AiProviderPrefs.isApiConfigured(context)"))
+        assertTrue(ai.contains("Cloud AI profiles"))
+        assertTrue(ai.contains("Add an API profile"))
+        assertTrue(ai.contains("Icons.Outlined.Cloud"))
         assertTrue(ai.contains("tint = Color.Black"))
-        listOf("DayNote", "AutoDiary", "Visual Diary", "Timeline", "ChatGPT app", "Gemini app")
-            .forEach { removed -> assertFalse("Removed AI surface must not contain $removed", ai.contains(removed)) }
+        listOf(
+            "LOCAL_MODELS",
+            "LOCAL_AGENT",
+            "ADAiProviderPill(",
+            "title = \"Local\"",
+            "DayNote",
+            "AutoDiary",
+            "Visual Diary",
+            "Timeline",
+            "ChatGPT app",
+            "Gemini app",
+        ).forEach { removed -> assertFalse("Removed AI surface must not contain $removed", ai.contains(removed)) }
     }
 
     @Test

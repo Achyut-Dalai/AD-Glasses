@@ -42,10 +42,10 @@ class ADVisibleProductUiTest {
         assertFalse(screen.contains("ADConversationRouteDisclosure("))
         assertFalse(screen.contains("ADPromptSuggestion("))
         assertFalse(screen.contains("What did I capture today?"))
-        assertTrue(screen.contains("onWebSearchChange = { webSearch = it }"))
+        assertTrue(screen.contains("onWebSearchChange = { webSearch = it && webAvailable }"))
         assertTrue(screen.contains("Enable web search"))
         assertTrue(screen.contains("if (messages.isEmpty() && pendingPrompt == null)"))
-        assertTrue(screen.contains("if (isRunning)"))
+        assertTrue(screen.contains("if (pendingPrompt != null)"))
         assertTrue(screen.contains("pendingPrompt"))
         assertTrue(components.contains("ADTab.AI -> Icons.Rounded.AutoAwesome"))
         assertFalse(components.contains("Icons.Outlined.Terminal"))
@@ -84,7 +84,7 @@ class ADVisibleProductUiTest {
         assertTrue(manifest.contains("android:name=\".ui.CommunityPluginsActivity\" android:targetActivity=\".ui.adglasses.ADAiRedirectActivity\""))
         assertTrue(manifest.contains("android:name=\".ui.recordings.SyncedMediaGalleryActivity\" android:targetActivity=\".ui.adglasses.ADCapturesRedirectActivity\""))
         assertTrue(manifest.contains("android:name=\".ui.notes.NotesListActivity\" android:targetActivity=\".ui.adglasses.ADNotesRedirectActivity\""))
-        assertTrue(app.contains("ADExternalDestination.AI -> {"))
+        assertTrue(app.contains("ADExternalDestination.AI -> routeStack = listOf(ADRoute.MAIN, ADRoute.DEVICE_CENTER)"))
         assertTrue(app.contains("routeStack = listOf(ADRoute.MAIN, ADRoute.DEVICE_CENTER)"))
     }
 
@@ -116,18 +116,23 @@ class ADVisibleProductUiTest {
     }
 
     @Test
-    fun deviceCenterOwnsCloudAndLocalAiConfiguration() {
+    fun deviceCenterOwnsCloudAiConfiguration() {
         val deviceCenter = appFile("src/main/java/com/ad_glasses/ui/adglasses/ADGlassesDeviceCenterScreen.kt").readText()
         val ai = appFile("src/main/java/com/ad_glasses/ui/adglasses/ADDeviceAiSection.kt").readText()
 
         assertTrue(deviceCenter.contains("ADSectionTitle(\"AI\")"))
         assertTrue(deviceCenter.contains("ADDeviceAiSection("))
         assertFalse(deviceCenter.contains("ADSectionTitle(\"Capabilities\")"))
-        assertTrue(ai.contains("ADAiProviderPill(\"Cloud\""))
-        assertTrue(ai.contains("ADAiProviderPill(\"Local\""))
-        assertTrue(ai.contains("title = \"Cloud\""))
-        assertTrue(ai.contains("title = \"Local\""))
+        assertTrue(ai.contains("AiProviderPrefs.getActiveProfile(context)"))
+        assertTrue(ai.contains("AiProviderPrefs.isApiConfigured(context)"))
+        assertTrue(ai.contains("Cloud AI profiles"))
+        assertTrue(ai.contains("Add an API profile"))
+        assertTrue(ai.contains("Icons.Outlined.Cloud"))
         assertTrue(ai.contains("tint = Color.Black"))
+        assertFalse(ai.contains("LOCAL_MODELS"))
+        assertFalse(ai.contains("LOCAL_AGENT"))
+        assertFalse(ai.contains("ADAiProviderPill("))
+        assertFalse(ai.contains("title = \"Local\""))
         assertFalse(ai.contains("DayNote"))
         assertFalse(ai.contains("Visual Diary"))
         assertFalse(ai.contains("Timeline"))

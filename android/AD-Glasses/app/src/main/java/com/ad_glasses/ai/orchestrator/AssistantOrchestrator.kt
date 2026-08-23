@@ -1,12 +1,18 @@
 package com.ad_glasses.ai.orchestrator
 
 import android.content.Context
+import android.os.SystemClock
+import android.util.Log
 import com.ad_glasses.ai.router.AssistantIntent
 import com.ad_glasses.ai.router.AssistantRequest
 import com.ad_glasses.ai.router.AssistantRequestRouter
 import com.ad_glasses.ai.router.AssistantRequestSource
 import com.ad_glasses.shared.chat.ChatMessage
 import com.ad_glasses.shared.settings.AgentProviderType
+import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.currentCoroutineContext
+import kotlinx.coroutines.ensureActive
 
 /** Where a turn entered AD from. */
 enum class AssistantInputSurface {
@@ -69,6 +75,8 @@ class AssistantOrchestrator(
         require(prompt.isNotBlank()) { "Assistant turn cannot be blank" }
 
         AssistantConversationPolicy.parseCommand(prompt)?.let { command ->
+            val currentThreadId = session.activeThreadId()
+            AssistantTurnCoordinator.cancelActive(currentThreadId, "Conversation command received")
             return when (command) {
                 AssistantConversationCommand.START_FRESH -> {
                     session.startNewConversation()
@@ -81,37 +89,95 @@ class AssistantOrchestrator(
             }
         }
 
+        val turnStartedAt = SystemClock.elapsedRealtime()
         val acceptedThreadId = session.activeThreadId()
-        return AssistantTurnCoordinator.withThread(acceptedThreadId) {
-            handleQueuedTurn(turn, providerType, prompt, acceptedThreadId)
+        val lease = if (turn.surface.isInteractive()) {
+            currentCoroutineContext()[Job]?.let { job ->
+                AssistantTurnCoordinator.beginInteractiveTurn(acceptedThreadId, job)
+            }
+        } else {
+            null
+        }
+
+        return try {
+            handleTurn(
+                turn = turn,
+                providerType = providerType,
+                prompt = prompt,
+                acceptedThreadId = acceptedThreadId,
+                turnStartedAt = turnStartedAt,
+                lease = lease,
+            )
+        } catch (cancelled: CancellationException) {
+            Log.i(
+                TIMING_TAG,
+                "turn_cancelled surface=${turn.surface} totalMs=${SystemClock.elapsedRealtime() - turnStartedAt}",
+            )
+            throw cancelled
+        } catch (error: Throwable) {
+            val totalMs = SystemClock.elapsedRealtime() - turnStartedAt
+            Log.e(
+                TIMING_TAG,
+                "turn_failed surface=${turn.surface} totalMs=$totalMs error=${error.javaClass.simpleName}",
+                error,
+            )
+            throw error
+        } finally {
+            lease?.let(AssistantTurnCoordinator::finishInteractiveTurn)
         }
     }
 
-    private suspend fun handleQueuedTurn(
+    private suspend fun handleTurn(
         turn: AssistantTurn,
         providerType: AgentProviderType,
         prompt: String,
         acceptedThreadId: String,
+        turnStartedAt: Long,
+        lease: AssistantTurnCoordinator.InteractiveLease?,
     ): AssistantResult {
-        val userMessage = session.addUserTurn(acceptedThreadId, prompt) ?: return AssistantResult(
+        val stateStartedAt = SystemClock.elapsedRealtime()
+        val accepted = AssistantTurnCoordinator.withThreadState(acceptedThreadId) {
+            val persistUserStartedAt = SystemClock.elapsedRealtime()
+            val userMessage = session.addUserTurn(acceptedThreadId, prompt) ?: return@withThreadState null
+            Log.i(
+                TIMING_TAG,
+                "user_persisted surface=${turn.surface} stageMs=${SystemClock.elapsedRealtime() - persistUserStartedAt}",
+            )
+
+            val historyStartedAt = SystemClock.elapsedRealtime()
+            val history = session.messages(userMessage.chatId)
+            Log.i(
+                TIMING_TAG,
+                "history_loaded surface=${turn.surface} messages=${history.size} stageMs=${SystemClock.elapsedRealtime() - historyStartedAt}",
+            )
+            AcceptedTurn(userMessage.chatId, history)
+        } ?: return AssistantResult(
             spokenText = "That conversation was cleared before I could start. Please ask again.",
         )
-        val threadId = userMessage.chatId
-        val history = session.messages(threadId)
+        Log.i(
+            TIMING_TAG,
+            "state_ready surface=${turn.surface} stageMs=${SystemClock.elapsedRealtime() - stateStartedAt}",
+        )
+
+        currentCoroutineContext().ensureActive()
+        ensureCurrent(lease)
+
         val useWeb = AssistantWebPolicy.shouldUseWeb(
             text = prompt,
             requested = turn.webRequested,
-            history = history,
+            history = accepted.history,
         )
         val executionContext = AssistantExecutionContext(
-            threadId = threadId,
-            history = history,
+            threadId = accepted.threadId,
+            history = accepted.history,
             useWeb = useWeb,
             providerType = providerType,
             surface = turn.surface,
             artifactContext = turn.contextText?.trim()?.takeIf { it.isNotBlank() },
         )
 
+        val inferenceStartedAt = SystemClock.elapsedRealtime()
+        Log.i(TIMING_TAG, "inference_start surface=${turn.surface} provider=$providerType")
         val capabilityCommand = AssistantCapabilityCommandRouter.parse(prompt)
         val result = if (capabilityCommand != null) {
             executor.executeCapabilityCommand(capabilityCommand, executionContext)
@@ -139,15 +205,51 @@ class AssistantOrchestrator(
                 )
             }
         }
+        Log.i(
+            TIMING_TAG,
+            "inference_done surface=${turn.surface} stageMs=${SystemClock.elapsedRealtime() - inferenceStartedAt}",
+        )
+
+        currentCoroutineContext().ensureActive()
+        ensureCurrent(lease)
 
         val persisted = result.richText.trim().ifBlank { result.spokenText.trim() }
-        if (persisted.isNotBlank()) session.addAssistantTurn(threadId, persisted)
+        if (persisted.isNotBlank()) {
+            val persistAssistantStartedAt = SystemClock.elapsedRealtime()
+            AssistantTurnCoordinator.withThreadState(accepted.threadId) {
+                ensureCurrent(lease)
+                session.addAssistantTurn(accepted.threadId, persisted)
+            }
+            Log.i(
+                TIMING_TAG,
+                "assistant_persisted surface=${turn.surface} stageMs=${SystemClock.elapsedRealtime() - persistAssistantStartedAt}",
+            )
+        }
+        Log.i(
+            TIMING_TAG,
+            "turn_done surface=${turn.surface} totalMs=${SystemClock.elapsedRealtime() - turnStartedAt}",
+        )
         return result
     }
 
     fun activeThreadId(): String = session.activeThreadId()
 
-    fun startNewConversation(): String = session.startNewConversation()
+    fun startNewConversation(): String {
+        AssistantTurnCoordinator.cancelActive(session.activeThreadId(), "New conversation started")
+        return session.startNewConversation()
+    }
+
+    fun cancelActiveTurn(threadId: String = session.activeThreadId()) {
+        AssistantTurnCoordinator.cancelActive(threadId, "Stopped by user")
+    }
+
+    private fun ensureCurrent(lease: AssistantTurnCoordinator.InteractiveLease?) {
+        if (lease != null && !AssistantTurnCoordinator.isCurrent(lease)) {
+            throw CancellationException("Assistant turn was superseded")
+        }
+    }
+
+    private fun AssistantInputSurface.isInteractive(): Boolean = this != AssistantInputSurface.AUTOMATION
 
     private fun AssistantInputSurface.toRouterSource(): AssistantRequestSource = when (this) {
         AssistantInputSurface.GLASSES_VOICE -> AssistantRequestSource.GLASSES_VOICE
@@ -155,5 +257,14 @@ class AssistantOrchestrator(
         AssistantInputSurface.PHONE_TEXT -> AssistantRequestSource.CHAT
         AssistantInputSurface.PHONE_VOICE,
         AssistantInputSurface.AUTOMATION -> AssistantRequestSource.APP_UI
+    }
+
+    private data class AcceptedTurn(
+        val threadId: String,
+        val history: List<ChatMessage>,
+    )
+
+    private companion object {
+        const val TIMING_TAG = "AssistantTiming"
     }
 }

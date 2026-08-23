@@ -74,6 +74,8 @@ import com.ad_glasses.localagent.AudioSessionCoordinator
 import com.ad_glasses.shared.chat.ChatMessage
 import com.ad_glasses.shared.chat.ChatThread
 import com.ad_glasses.shared.chat.ChatRole
+import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
@@ -107,6 +109,7 @@ internal fun ADNativeConversationScreen(
     var webSearch by remember { mutableStateOf(false) }
     val webAvailable = AiProviderPrefs.getActiveProfile(context)?.webAvailable == true
     var sending by remember { mutableStateOf(false) }
+    var sendJob by remember { mutableStateOf<Job?>(null) }
     var pendingPrompt by remember { mutableStateOf<String?>(null) }
     var errorText by remember { mutableStateOf<String?>(null) }
     var lastFailedPrompt by remember { mutableStateOf<String?>(null) }
@@ -140,9 +143,18 @@ internal fun ADNativeConversationScreen(
         keyboardController?.show()
     }
 
+    fun stopSending() {
+        if (!sending) return
+        orchestrator.cancelActiveTurn(threadId)
+        sendJob?.cancel(CancellationException("Stopped by user"))
+        sendJob = null
+        pendingPrompt = null
+        sending = false
+        refresh()
+    }
 
     fun startNewPrompt() {
-        if (sending) return
+        if (sending) stopSending()
         if (messages.isEmpty() && pendingPrompt == null) {
             message = ""
             webSearch = false
@@ -155,7 +167,7 @@ internal fun ADNativeConversationScreen(
             }
             return
         }
-        val newThreadId = session.startNewConversation()
+        val newThreadId = orchestrator.startNewConversation()
         threadId = newThreadId
         messages = emptyList()
         message = ""
@@ -173,7 +185,10 @@ internal fun ADNativeConversationScreen(
 
     fun send() {
         val prompt = message.trim()
-        if (prompt.isEmpty() || sending) return
+        if (prompt.isEmpty()) return
+        // Phone text follows the same latest-turn-wins rule as glasses voice. A new send should
+        // supersede a slow pending generation instead of making the user press Stop first.
+        if (sending) stopSending()
         val useWeb = webSearch && webAvailable
         message = ""
         webSearch = false
@@ -181,8 +196,9 @@ internal fun ADNativeConversationScreen(
         sending = true
         errorText = null
         lastFailedPrompt = null
-        scope.launch {
-            runCatching {
+        var launchedJob: Job? = null
+        launchedJob = scope.launch {
+            try {
                 orchestrator.handle(
                     turn = AssistantTurn(
                         text = prompt,
@@ -191,15 +207,25 @@ internal fun ADNativeConversationScreen(
                     ),
                     providerType = internalProvider,
                 )
-            }.onFailure { error ->
-                errorText = error.message ?: "Couldn’t finish that request."
-                lastFailedPrompt = prompt
+            } catch (cancelled: CancellationException) {
+                // Stopping, replacing, or leaving the screen is control flow, not a provider error.
+                throw cancelled
+            } catch (error: Exception) {
+                if (sendJob === launchedJob) {
+                    errorText = error.message ?: "Couldn’t finish that request."
+                    lastFailedPrompt = prompt
+                }
+            } finally {
+                if (sendJob === launchedJob) {
+                    sendJob = null
+                    pendingPrompt = null
+                    sending = false
+                    threadId = session.activeThreadId()
+                    refresh()
+                }
             }
-            pendingPrompt = null
-            sending = false
-            threadId = session.activeThreadId()
-            refresh()
         }
+        sendJob = launchedJob
     }
 
     LaunchedEffect(navigationRequest?.id) {
@@ -265,6 +291,11 @@ internal fun ADNativeConversationScreen(
                 style = MaterialTheme.typography.headlineSmall,
                 modifier = Modifier.weight(1f),
             )
+            if (sending && !showConversationHistory) {
+                TextButton(onClick = ::stopSending) {
+                    Text("Stop")
+                }
+            }
             if (showConversationHistory) {
                 TextButton(onClick = { showConversationHistory = false }) {
                     Text("Done")
@@ -285,10 +316,7 @@ internal fun ADNativeConversationScreen(
                     Text("History")
                 }
             }
-            TextButton(
-                onClick = ::startNewPrompt,
-                enabled = !sending,
-            ) {
+            TextButton(onClick = ::startNewPrompt) {
                 Icon(
                     Icons.Rounded.Add,
                     contentDescription = null,
@@ -304,6 +332,7 @@ internal fun ADNativeConversationScreen(
                 conversations = conversations,
                 activeThreadId = threadId,
                 onOpen = { selected ->
+                    if (sending) stopSending()
                     if (session.selectThread(selected.id)) {
                         threadId = session.activeThreadId()
                         refresh()
@@ -436,6 +465,7 @@ internal fun ADNativeConversationScreen(
             confirmButton = {
                 TextButton(
                     onClick = {
+                        if (sending && target.id == threadId) stopSending()
                         threadId = session.deleteConversation(target.id)
                         messages = ChatStore.listMessages(threadId)
                         deleteTarget = null
@@ -457,6 +487,7 @@ internal fun ADNativeConversationScreen(
             confirmButton = {
                 TextButton(
                     onClick = {
+                        if (sending) stopSending()
                         session.clearAllConversations()
                         threadId = session.startNewConversation()
                         messages = emptyList()
@@ -807,7 +838,7 @@ private fun ADConversationComposer(
                         }
                     },
                 )
-                val sendEnabled = message.isNotBlank() && !sending
+                val sendEnabled = message.isNotBlank()
                 IconButton(
                     onClick = onSend,
                     enabled = sendEnabled,

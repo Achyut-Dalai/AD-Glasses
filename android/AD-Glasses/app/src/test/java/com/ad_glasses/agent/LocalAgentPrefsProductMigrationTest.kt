@@ -4,6 +4,7 @@ import android.content.Context
 import androidx.test.core.app.ApplicationProvider
 import com.ad_glasses.shared.settings.AgentProviderType
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
 import org.junit.Before
 import org.junit.Test
 import org.junit.runner.RunWith
@@ -27,26 +28,13 @@ class LocalAgentPrefsProductMigrationTest {
     }
 
     @Test
-    fun oldProviderAndAssistantValuesResolveToCloud() {
-        context.getSharedPreferences("local_agent_prefs", Context.MODE_PRIVATE)
-            .edit()
-            .putString("provider_type", "LEGACY_PROVIDER")
-            .putString("glasses_assistant_mode", "PHONE_ASSISTANT")
-            .commit()
-
-        assertEquals(AgentProviderType.CLOUD_AI, LocalAgentPrefs.getProviderType(context))
-    }
-
-    @Test
-    fun legacyNamedAssistantValuesDoNotOverrideExplicitLocalProvider() {
+    fun retiredProviderValuesMigrateToCloudAndAreCleared() {
         val prefs = context.getSharedPreferences("local_agent_prefs", Context.MODE_PRIVATE)
-        listOf("GEMINI", "CHAT_GPT", "PHONE_DEFAULT", "CHOSEN_PROVIDER").forEach { legacy ->
-            prefs.edit()
-                .putString("provider_type", AgentProviderType.LOCAL_AGENT.name)
-                .putString("glasses_assistant_mode", legacy)
-                .commit()
+        listOf("LOCAL_AGENT", "LOCAL", "LEGACY_PROVIDER", "GEMINI", "CHAT_GPT").forEach { legacy ->
+            prefs.edit().putString("provider_type", legacy).commit()
 
-            assertEquals(AgentProviderType.LOCAL_AGENT, LocalAgentPrefs.getProviderType(context))
+            assertEquals(AgentProviderType.CLOUD_AI, LocalAgentPrefs.getProviderType(context))
+            assertFalse(prefs.contains("provider_type"))
         }
     }
 }

@@ -1,5 +1,6 @@
 package com.ad_glasses.ui.adglasses
 
+import android.widget.Toast
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -26,9 +27,11 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import com.ad_glasses.ai.AndroidAssistantVoiceIo
+import com.ad_glasses.ai.orchestrator.AssistantInferenceContextPolicy
 import com.ad_glasses.ai.router.AiProviderPrefs
 
-/** Cloud AI configuration embedded directly in Device Center. */
+/** AI and voice overview embedded directly in Device Center. */
 @Composable
 internal fun ADDeviceAiSection(
     onCloudSettings: () -> Unit,
@@ -39,7 +42,7 @@ internal fun ADDeviceAiSection(
 
     Column(modifier = Modifier.fillMaxWidth()) {
         Text(
-            "AD uses your selected Cloud AI profile for Ask, vision, and automation planning.",
+            "Cloud AI handles reasoning. Ask AI, Chats, and Lens share the same assistant conversation core; voice adds speech I/O and Lens adds current image context.",
             style = MaterialTheme.typography.bodySmall,
             color = ADColors.Muted,
         )
@@ -91,6 +94,53 @@ internal fun ADDeviceAiSection(
                     text = if (configured) "READY" else "SETUP",
                     tone = if (configured) ADStatusTone.SUCCESS else ADStatusTone.NEUTRAL,
                     showCheck = configured,
+                )
+            }
+        }
+
+        Spacer(Modifier.height(8.dp))
+        Surface(
+            onClick = {
+                runCatching {
+                    context.startActivity(AndroidAssistantVoiceIo.installVoiceDataIntent())
+                }.onFailure {
+                    Toast.makeText(
+                        context,
+                        "Open Android Text-to-Speech settings to install an offline voice.",
+                        Toast.LENGTH_LONG,
+                    ).show()
+                }
+            },
+            modifier = Modifier.fillMaxWidth(),
+            shape = RoundedCornerShape(16.dp),
+            color = ADColors.SurfaceSubtle,
+        ) {
+            Row(
+                modifier = Modifier.padding(horizontal = 12.dp, vertical = 10.dp),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(10.dp),
+            ) {
+                Column(Modifier.weight(1f)) {
+                    Text(
+                        "Voice & context",
+                        style = MaterialTheme.typography.titleSmall,
+                        color = ADColors.Ink,
+                    )
+                    Text(
+                        "On-device ASR when available · Android TTS · ${AssistantInferenceContextPolicy.INACTIVITY_TTL_MS / 1_000}s AI context",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = ADColors.Muted,
+                    )
+                    Text(
+                        "Chats stay until you delete them · tap for offline TTS voice data",
+                        style = MaterialTheme.typography.labelSmall,
+                        color = ADColors.Blue,
+                    )
+                }
+                ADStatusChip(
+                    text = "VOICE",
+                    tone = ADStatusTone.NEUTRAL,
+                    showCheck = false,
                 )
             }
         }

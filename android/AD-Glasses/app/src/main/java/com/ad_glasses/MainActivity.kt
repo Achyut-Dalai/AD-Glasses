@@ -14,6 +14,7 @@ import android.widget.ArrayAdapter
 import androidx.localbroadcastmanager.content.LocalBroadcastManager
 import com.ad_glasses.shared.settings.AgentProviderType
 import com.ad_glasses.ai.AiWakeWordPreferences
+import com.ad_glasses.ai.AndroidAssistantVoiceIo
 import com.ad_glasses.agent.LocalAgentPrefs as AutomationPrefs
 import com.ad_glasses.ui.VersionUpdateChecker
 import com.ad_glasses.localagent.AudioSessionCoordinator
@@ -161,6 +162,7 @@ import java.net.URL
 import java.net.InetSocketAddress
 import java.net.Socket
 import java.util.concurrent.atomic.AtomicReference
+import java.util.concurrent.atomic.AtomicLong
 import javax.net.SocketFactory
 import java.text.SimpleDateFormat
 import java.util.Locale
@@ -200,9 +202,11 @@ import com.ad_glasses.ai.router.AssistantRequestRouter
 import com.ad_glasses.ai.router.AssistantRequestSource
 import com.ad_glasses.ai.router.AssistantSpeechPolicy
 import com.ad_glasses.ai.orchestrator.AndroidAssistantCapabilityExecutor
+import com.ad_glasses.ai.orchestrator.AssistantConversationSession
 import com.ad_glasses.ai.orchestrator.AssistantInputSurface
 import com.ad_glasses.ai.orchestrator.AssistantOrchestrator
 import com.ad_glasses.ai.orchestrator.AssistantTurn
+import com.ad_glasses.ai.orchestrator.AssistantTurnCoordinator
 import com.ad_glasses.ai.router.GlassesAssistantRoute
 import com.ad_glasses.ai.router.GlassesAssistantRoutingPolicy
 import com.ad_glasses.ai.router.ApiTokenClient
@@ -255,6 +259,8 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
     private var tts: TextToSpeech? = null
     private var ttsReady = false
     private val ttsDoneCallbacks = ConcurrentHashMap<String, () -> Unit>()
+    private val ttsEnqueuedAtMs = ConcurrentHashMap<String, Long>()
+    private val lastAssistantSpeechEndAtMs = AtomicLong(0L)
     private val assistantRequestRouter = AssistantRequestRouter()
     private var pendingVoiceImageQuestion: String? = null
     private var pendingImageQuestionOfferSpokenQuestion = false
@@ -288,7 +294,7 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
         ttsReady = status == TextToSpeech.SUCCESS
         Log.i("ImageQuestionAudio", "TTS initialization status=$status ready=$ttsReady")
         if (status == TextToSpeech.SUCCESS) {
-            tts?.language = Locale.getDefault()
+            tts?.let { AndroidAssistantVoiceIo.preferOfflineVoice(it, Locale.getDefault()) }
             runCatching {
                 tts?.setAudioAttributes(
                     android.media.AudioAttributes.Builder()
@@ -325,11 +331,12 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
     ) {
         val engine = tts
         languageTag?.takeIf { it.isNotBlank() }?.let { tag ->
-            val result = engine?.setLanguage(Locale.forLanguageTag(tag))
-            if (result == TextToSpeech.LANG_MISSING_DATA || result == TextToSpeech.LANG_NOT_SUPPORTED) {
-                Log.w(TAG, "Text-to-speech voice unavailable for $tag")
-            }
-            Log.i("ImageQuestionAudio", "TTS language tag=$tag result=$result")
+            val locale = Locale.forLanguageTag(tag)
+            val offlineVoice = engine?.let { AndroidAssistantVoiceIo.preferOfflineVoice(it, locale) }
+            Log.i(
+                "ImageQuestionAudio",
+                "TTS language tag=$tag offlineVoice=${offlineVoice?.name ?: "fallback"}",
+            )
         }
         val id = utteranceId ?: "utt_${System.currentTimeMillis()}"
         val wrappedOnDone: () -> Unit = {
@@ -347,6 +354,8 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
         }
 
         AudioSessionCoordinator.markBusy()
+        ttsEnqueuedAtMs[id] = android.os.SystemClock.elapsedRealtime()
+        Log.i("AssistantTiming", "stage=tts_enqueued id=$id chars=${text.length}")
         val result = runCatching {
             engine?.speak(text, TextToSpeech.QUEUE_FLUSH, bundle, id)
         }.onFailure { error ->
@@ -365,16 +374,43 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
         }
     }
     private fun completeTtsUtterance(utteranceId: String?) {
-        utteranceId?.let { id -> ttsDoneCallbacks.remove(id)?.invoke() }
+        utteranceId?.let { id ->
+            ttsEnqueuedAtMs.remove(id)
+            ttsDoneCallbacks.remove(id)?.invoke()
+        }
     }
 
     private fun discardTtsUtterance(utteranceId: String?) {
-        utteranceId?.let(ttsDoneCallbacks::remove)
+        utteranceId?.let { id ->
+            ttsEnqueuedAtMs.remove(id)
+            ttsDoneCallbacks.remove(id)
+        }
     }
 
     private fun resetTtsAudioState() {
         ttsDoneCallbacks.clear()
+        ttsEnqueuedAtMs.clear()
         AudioSessionCoordinator.markIdle()
+    }
+
+    private fun interruptAssistantPlayback(reason: String) {
+        val wasActive = tts?.isSpeaking == true || AudioSessionCoordinator.isBusy()
+        if (!wasActive) return
+        runCatching { tts?.stop() }
+            .onFailure { error -> Log.w("ImageQuestionAudio", "Could not interrupt TTS", error) }
+        resetTtsAudioState()
+        Log.i("AssistantTiming", "stage=tts_interrupted reason=$reason")
+    }
+
+    private fun cancelActiveAssistantTurnForVoice(reason: String) {
+        runCatching {
+            AssistantTurnCoordinator.cancelActive(
+                AssistantConversationSession.get(this).activeThreadId(),
+                reason,
+            )
+        }.onFailure { error ->
+            Log.w("AssistantTiming", "Could not cancel active assistant turn", error)
+        }
     }
 
     companion object {
@@ -386,7 +422,7 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
         private const val QUERY_MAX_DAILY_SUMMARY_CHARS = 2200
         private const val QUERY_MAX_TOTAL_CONTEXT_CHARS = 6500
 
-        private const val IMAGE_QUESTION_MAX_IMAGE_AGE_MS = 3L * 60L * 1000L
+        private const val IMAGE_QUESTION_MAX_IMAGE_AGE_MS = 45_000L
         private const val MAX_STAGED_ANALYSIS_IMAGE_BYTES = 32L * 1024L * 1024L
         private const val MAX_GLASSES_MEDIA_MANIFEST_BYTES = 1L * 1024L * 1024L
         private const val P2P_GROUP_REMOVAL_RETRY_MS = 1_000L
@@ -396,9 +432,9 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
         private const val PULL_OTA_TEST_LEASE_MS = 10_000L
         private const val ONE_SHOT_BLE_COMMAND_TIMEOUT_MS = 6_000L
         private const val IMAGE_THUMBNAIL_TRANSFER_TIMEOUT_MS = 20_000L
-        private const val VOICE_CUE_ROUTE_SETTLE_MS = 500L
+        private const val VOICE_CUE_ROUTE_SETTLE_MS = 250L
         private const val VOICE_CUE_BLUETOOTH_TAIL_MS = 50L
-        private const val VOICE_CUE_CALLBACK_TIMEOUT_MS = 3_000L
+        private const val VOICE_CUE_CALLBACK_TIMEOUT_MS = 2_000L
         private const val IMAGE_QUESTION_CUE_BLUETOOTH_TAIL_MS = 50L
         private const val IMAGE_QUESTION_INITIAL_LISTENING_TIMEOUT_MS = 3_300L
         private val DEFAULT_VIDEO_DURATION_OPTIONS_SECONDS = listOf(15, 30, 60, 180, 540, 720)
@@ -664,12 +700,29 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
         tts = TextToSpeech(this, this)
         tts?.setOnUtteranceProgressListener(object : UtteranceProgressListener() {
             override fun onStart(utteranceId: String?) {
+                val now = android.os.SystemClock.elapsedRealtime()
+                val queuedAt = utteranceId?.let(ttsEnqueuedAtMs::get)
+                val isListeningCue = utteranceId?.startsWith("voice_listening_") == true ||
+                    utteranceId?.startsWith("image_question_cue_") == true
+                val speechEndedAt = lastAssistantSpeechEndAtMs.get()
+                val speechEndToStartMs = if (!isListeningCue && speechEndedAt > 0L) now - speechEndedAt else -1L
+                Log.i(
+                    "AssistantTiming",
+                    "stage=tts_start id=$utteranceId enqueueToStartMs=${queuedAt?.let { now - it } ?: -1} speechEndToTtsStartMs=$speechEndToStartMs",
+                )
+                if (speechEndToStartMs >= 0L) lastAssistantSpeechEndAtMs.compareAndSet(speechEndedAt, 0L)
                 if (utteranceId?.startsWith("image_question_cue_") == true) {
                     Log.i("ImageQuestionAudio", "TTS cue started id=$utteranceId")
                 }
             }
 
             override fun onDone(utteranceId: String?) {
+                val now = android.os.SystemClock.elapsedRealtime()
+                val queuedAt = utteranceId?.let(ttsEnqueuedAtMs::get)
+                Log.i(
+                    "AssistantTiming",
+                    "stage=tts_done id=$utteranceId totalMs=${queuedAt?.let { now - it } ?: -1}",
+                )
                 if (utteranceId?.startsWith("image_question_cue_") == true) {
                     Log.i("ImageQuestionAudio", "TTS cue completed id=$utteranceId")
                 }
@@ -784,6 +837,7 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
             Log.w("DeviceNotify", "Failed to unregister SDK callbacks", e)
         }
         cancelParallelAudioQuestion()
+        cancelActiveAssistantTurnForVoice("Activity destroyed")
         releaseActiveVoiceRecognition("activity destroyed")
         finishAiQuestionForegroundWork()
         runCatching { tts?.stop() }
@@ -4211,7 +4265,7 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
             runOnUiThread {
                 Toast.makeText(
                     this,
-                    "Image is ${ageMs / 60000} min old — too old to use.",
+                    "That view is ${ageMs / 1000}s old, so I won’t use it as current visual context.",
                     Toast.LENGTH_LONG,
                 ).show()
             }
@@ -4353,6 +4407,8 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
             pendingVoiceImageQuestion.isNullOrBlank() &&
             ContextCompat.checkSelfPermission(this, Manifest.permission.RECORD_AUDIO) == PackageManager.PERMISSION_GRANTED
         ) {
+            cancelActiveAssistantTurnForVoice("New visual voice input started")
+            interruptAssistantPlayback("visual voice input")
             val deferred = kotlinx.coroutines.CompletableDeferred<String?>()
             activeParallelAudioQuestionDeferred = deferred
             activeParallelAudioQuestionJob = lifecycleScope.launch(Dispatchers.Main) {
@@ -4444,19 +4500,18 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
                         if (finished || !cont.isActive) return@launch
 
                         Log.i("ImageQuestionAudio", "Cue complete; creating speech recognizer")
-                        recognizer = SpeechRecognizer.createSpeechRecognizer(this@MainActivity)
-                        val intent = Intent(RecognizerIntent.ACTION_RECOGNIZE_SPEECH).apply {
-                            putExtra(RecognizerIntent.EXTRA_LANGUAGE_MODEL, RecognizerIntent.LANGUAGE_MODEL_FREE_FORM)
-                            putExtra(RecognizerIntent.EXTRA_MAX_RESULTS, 1)
-                            putExtra(RecognizerIntent.EXTRA_LANGUAGE, recognitionLanguageTag())
-                            putExtra(RecognizerIntent.EXTRA_LANGUAGE_PREFERENCE, recognitionLanguageTag())
-                            putExtra(RecognizerIntent.EXTRA_SPEECH_INPUT_COMPLETE_SILENCE_LENGTH_MILLIS, 2_000L)
-                            putExtra(RecognizerIntent.EXTRA_SPEECH_INPUT_POSSIBLY_COMPLETE_SILENCE_LENGTH_MILLIS, 2_000L)
-                            putExtra(RecognizerIntent.EXTRA_SPEECH_INPUT_MINIMUM_LENGTH_MILLIS, 500L)
-                        }
+                        val recognitionRequestedAtMs = android.os.SystemClock.elapsedRealtime()
+                        lastAssistantSpeechEndAtMs.set(0L)
+                        var speechEndedAtMs = 0L
+                        recognizer = AndroidAssistantVoiceIo.createRecognizer(this@MainActivity)
+                        val intent = AndroidAssistantVoiceIo.recognitionIntent(recognitionLanguageTag())
 
                         recognizer?.setRecognitionListener(object : RecognitionListener {
                             override fun onReadyForSpeech(params: Bundle?) {
+                                Log.i(
+                                    "AssistantTiming",
+                                    "stage=asr_ready surface=image_question elapsedMs=${android.os.SystemClock.elapsedRealtime() - recognitionRequestedAtMs}",
+                                )
                                 Log.i("ImageQuestionAudio", "Image-question recognizer ready")
                             }
                             override fun onBeginningOfSpeech() {
@@ -4467,7 +4522,11 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
                             }
                             override fun onRmsChanged(rmsdB: Float) {}
                             override fun onBufferReceived(buffer: ByteArray?) {}
-                            override fun onEndOfSpeech() {}
+                            override fun onEndOfSpeech() {
+                                speechEndedAtMs = android.os.SystemClock.elapsedRealtime()
+                                lastAssistantSpeechEndAtMs.set(speechEndedAtMs)
+                                Log.i("AssistantTiming", "stage=asr_speech_end surface=image_question")
+                            }
 
                             override fun onError(error: Int) {
                                 Log.i("AIHijack", "Image question listener ended with error code=$error")
@@ -4476,6 +4535,11 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
 
                             override fun onResults(results: Bundle?) {
                                 val matches = results?.getStringArrayList(SpeechRecognizer.RESULTS_RECOGNITION)
+                                val finalAtMs = android.os.SystemClock.elapsedRealtime()
+                                Log.i(
+                                    "AssistantTiming",
+                                    "stage=asr_final surface=image_question afterEndMs=${if (speechEndedAtMs > 0L) finalAtMs - speechEndedAtMs else -1} totalMs=${finalAtMs - recognitionRequestedAtMs}",
+                                )
                                 Log.i("ImageQuestionAudio", "Image-question recognizer resultCount=${matches?.size ?: 0}")
                                 finish(matches?.firstOrNull())
                             }
@@ -4696,6 +4760,8 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
                 })
             return
         }
+        cancelActiveAssistantTurnForVoice("New voice input started")
+        interruptAssistantPlayback("new voice input")
         releaseActiveVoiceRecognition("new voice query")
         prepareAiQuestionForLockScreen()
         beginAiQuestionForegroundWork("Listening for glasses voice question", usesPhoneMicrophone = true)
@@ -4721,24 +4787,32 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
 
         Toast.makeText(this, "Listening for voice query…", Toast.LENGTH_SHORT).show()
 
-        val recognizer = SpeechRecognizer.createSpeechRecognizer(this)
+        val recognitionRequestedAtMs = android.os.SystemClock.elapsedRealtime()
+        lastAssistantSpeechEndAtMs.set(0L)
+        var speechEndedAtMs = 0L
+        val recognizer = AndroidAssistantVoiceIo.createRecognizer(this)
         activeVoiceRecognizer = recognizer
-        val intent = Intent(RecognizerIntent.ACTION_RECOGNIZE_SPEECH).apply {
-            putExtra(RecognizerIntent.EXTRA_LANGUAGE_MODEL, RecognizerIntent.LANGUAGE_MODEL_FREE_FORM)
-            putExtra(RecognizerIntent.EXTRA_MAX_RESULTS, 1)
-            putExtra(RecognizerIntent.EXTRA_LANGUAGE, recognitionLanguageTag())
-            putExtra(RecognizerIntent.EXTRA_LANGUAGE_PREFERENCE, recognitionLanguageTag())
-        }
+        val intent = AndroidAssistantVoiceIo.recognitionIntent(recognitionLanguageTag())
 
         recognizer.setRecognitionListener(object : RecognitionListener {
             override fun onReadyForSpeech(params: Bundle?) {
+                Log.i(
+                    "AssistantTiming",
+                    "stage=asr_ready surface=voice_query elapsedMs=${android.os.SystemClock.elapsedRealtime() - recognitionRequestedAtMs}",
+                )
                 Log.i("ImageQuestionAudio", "Voice-query recognizer ready after listening cue")
             }
 
-            override fun onBeginningOfSpeech() {}
+            override fun onBeginningOfSpeech() {
+                Log.i("AssistantTiming", "stage=asr_speech_begin surface=voice_query")
+            }
             override fun onRmsChanged(rmsdB: Float) {}
             override fun onBufferReceived(buffer: ByteArray?) {}
-            override fun onEndOfSpeech() {}
+            override fun onEndOfSpeech() {
+                speechEndedAtMs = android.os.SystemClock.elapsedRealtime()
+                lastAssistantSpeechEndAtMs.set(speechEndedAtMs)
+                Log.i("AssistantTiming", "stage=asr_speech_end surface=voice_query")
+            }
 
             override fun onError(error: Int) {
                 val message = if (error == SpeechRecognizer.ERROR_INSUFFICIENT_PERMISSIONS) {
@@ -4756,6 +4830,11 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
             override fun onResults(results: Bundle?) {
                 val matches = results?.getStringArrayList(SpeechRecognizer.RESULTS_RECOGNITION)
                 val prompt = matches?.firstOrNull()?.trim().orEmpty()
+                val finalAtMs = android.os.SystemClock.elapsedRealtime()
+                Log.i(
+                    "AssistantTiming",
+                    "stage=asr_final surface=voice_query afterEndMs=${if (speechEndedAtMs > 0L) finalAtMs - speechEndedAtMs else -1} totalMs=${finalAtMs - recognitionRequestedAtMs}",
+                )
 
                 if (prompt.isBlank()) {
                     destroyActiveVoiceRecognizer(recognizer)
