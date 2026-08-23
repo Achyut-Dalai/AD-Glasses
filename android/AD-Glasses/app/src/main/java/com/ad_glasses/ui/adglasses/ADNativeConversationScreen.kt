@@ -75,6 +75,7 @@ import com.ad_glasses.shared.chat.ChatMessage
 import com.ad_glasses.shared.chat.ChatThread
 import com.ad_glasses.shared.chat.ChatRole
 import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
@@ -108,6 +109,7 @@ internal fun ADNativeConversationScreen(
     var webSearch by remember { mutableStateOf(false) }
     val webAvailable = AiProviderPrefs.getActiveProfile(context)?.webAvailable == true
     var sending by remember { mutableStateOf(false) }
+    var sendJob by remember { mutableStateOf<Job?>(null) }
     var pendingPrompt by remember { mutableStateOf<String?>(null) }
     var errorText by remember { mutableStateOf<String?>(null) }
     var lastFailedPrompt by remember { mutableStateOf<String?>(null) }
@@ -141,9 +143,18 @@ internal fun ADNativeConversationScreen(
         keyboardController?.show()
     }
 
+    fun stopSending() {
+        if (!sending) return
+        orchestrator.cancelActiveTurn(threadId)
+        sendJob?.cancel(CancellationException("Stopped by user"))
+        sendJob = null
+        pendingPrompt = null
+        sending = false
+        refresh()
+    }
 
     fun startNewPrompt() {
-        if (sending) return
+        if (sending) stopSending()
         if (messages.isEmpty() && pendingPrompt == null) {
             message = ""
             webSearch = false
@@ -156,7 +167,7 @@ internal fun ADNativeConversationScreen(
             }
             return
         }
-        val newThreadId = session.startNewConversation()
+        val newThreadId = orchestrator.startNewConversation()
         threadId = newThreadId
         messages = emptyList()
         message = ""
@@ -182,7 +193,8 @@ internal fun ADNativeConversationScreen(
         sending = true
         errorText = null
         lastFailedPrompt = null
-        scope.launch {
+        var launchedJob: Job? = null
+        launchedJob = scope.launch {
             try {
                 orchestrator.handle(
                     turn = AssistantTurn(
@@ -193,19 +205,24 @@ internal fun ADNativeConversationScreen(
                     providerType = internalProvider,
                 )
             } catch (cancelled: CancellationException) {
-                // Leaving/replacing this Compose scope is control flow, not a provider failure.
-                // Propagate it so a cancelled stale turn cannot render the generic retry card.
+                // Stopping, replacing, or leaving the screen is control flow, not a provider error.
                 throw cancelled
             } catch (error: Exception) {
-                errorText = error.message ?: "Couldn’t finish that request."
-                lastFailedPrompt = prompt
+                if (sendJob === launchedJob) {
+                    errorText = error.message ?: "Couldn’t finish that request."
+                    lastFailedPrompt = prompt
+                }
             } finally {
-                pendingPrompt = null
-                sending = false
-                threadId = session.activeThreadId()
-                refresh()
+                if (sendJob === launchedJob) {
+                    sendJob = null
+                    pendingPrompt = null
+                    sending = false
+                    threadId = session.activeThreadId()
+                    refresh()
+                }
             }
         }
+        sendJob = launchedJob
     }
 
     LaunchedEffect(navigationRequest?.id) {
@@ -271,6 +288,11 @@ internal fun ADNativeConversationScreen(
                 style = MaterialTheme.typography.headlineSmall,
                 modifier = Modifier.weight(1f),
             )
+            if (sending && !showConversationHistory) {
+                TextButton(onClick = ::stopSending) {
+                    Text("Stop")
+                }
+            }
             if (showConversationHistory) {
                 TextButton(onClick = { showConversationHistory = false }) {
                     Text("Done")
@@ -291,10 +313,7 @@ internal fun ADNativeConversationScreen(
                     Text("History")
                 }
             }
-            TextButton(
-                onClick = ::startNewPrompt,
-                enabled = !sending,
-            ) {
+            TextButton(onClick = ::startNewPrompt) {
                 Icon(
                     Icons.Rounded.Add,
                     contentDescription = null,
@@ -310,6 +329,7 @@ internal fun ADNativeConversationScreen(
                 conversations = conversations,
                 activeThreadId = threadId,
                 onOpen = { selected ->
+                    if (sending) stopSending()
                     if (session.selectThread(selected.id)) {
                         threadId = session.activeThreadId()
                         refresh()
@@ -442,6 +462,7 @@ internal fun ADNativeConversationScreen(
             confirmButton = {
                 TextButton(
                     onClick = {
+                        if (sending && target.id == threadId) stopSending()
                         threadId = session.deleteConversation(target.id)
                         messages = ChatStore.listMessages(threadId)
                         deleteTarget = null
@@ -463,6 +484,7 @@ internal fun ADNativeConversationScreen(
             confirmButton = {
                 TextButton(
                     onClick = {
+                        if (sending) stopSending()
                         session.clearAllConversations()
                         threadId = session.startNewConversation()
                         messages = emptyList()
