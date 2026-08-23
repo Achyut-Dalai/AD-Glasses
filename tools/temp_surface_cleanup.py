@@ -67,7 +67,7 @@ replace_once(
 # Remove the retired phone-UI intent from the request router. Explicit background Automation remains a capability.
 replace_once(
     'android/AD-Glasses/app/src/main/java/com/ad_glasses/ai/router/AssistantRequestRouter.kt',
-    '''    /** Deprecated compatibility token; route() never emits this. */\n    EXECUTE_UI_TASK,\n''',
+    '''    /** Compatibility token for inherited host code. AssistantRequestRouter never emits it. */\n    @Deprecated("Phone UI automation is retired")\n    EXECUTE_UI_TASK,\n''',
     '',
 )
 
@@ -87,7 +87,6 @@ pattern = re.compile(
 main, count = pattern.subn('\n', main, count=1)
 if count != 1:
     raise SystemExit(f'{main_path}: expected one retired EXECUTE_UI_TASK branch, found {count}')
-# Drop the now-unused alias import only if nothing else references it.
 if main.count('AutomationPrefs') == 1:
     main = main.replace('import com.ad_glasses.agent.LocalAgentPrefs as AutomationPrefs\n', '')
 write(main_path, main)
