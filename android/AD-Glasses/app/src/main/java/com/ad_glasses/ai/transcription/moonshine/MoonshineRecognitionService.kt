@@ -45,22 +45,23 @@ class MoonshineRecognitionService : RecognitionService() {
             try {
                 if (!isCurrent(session)) return@execute
 
-                val languageTag = recognizerIntent
+                val requestedLanguageTag = recognizerIntent
                     .getStringExtra(RecognizerIntent.EXTRA_LANGUAGE)
                     ?.trim()
                     .orEmpty()
                     .ifBlank { Locale.getDefault().toLanguageTag() }
-                val language = Locale.forLanguageTag(languageTag).language.ifBlank { "en" }
-                val model = MoonshineModelManager.chooseDefault(languageTag)
-                val modelDir = MoonshineModelManager.modelDir(applicationContext, model)
+                val model = MoonshineModelManager.chooseDefault(requestedLanguageTag)
                 check(MoonshineModelManager.isInstalled(applicationContext, model)) {
                     "Moonshine ${model.id} is not installed. Install the Moonshine voice model in Cloud AI settings."
                 }
 
+                // The installed model is explicitly English. The device/recognizer locale is only
+                // a request hint; passing a different language into MicTranscriber changes the
+                // ModelSpec cache key and would make Moonshine look for a model we do not ship.
                 val transcriber = MicTranscriber(applicationContext)
-                    .language(language)
+                    .language(model.languageCode)
                     .modelArch(model.modelArch)
-                    .modelsFrom(modelDir)
+                    .modelsFrom(MoonshineModelManager.modelRoot(applicationContext))
                     .callbacksOnMainThread(false)
                     .onText { text -> onPartial(session, text.orEmpty()) }
                     .onLine { line -> onFinal(session, line.text.orEmpty()) }
@@ -69,7 +70,10 @@ class MoonshineRecognitionService : RecognitionService() {
 
                 val loadStarted = System.currentTimeMillis()
                 transcriber.load()
-                Log.i(TAG, "stage=asr_model_loaded engine=moonshine elapsedMs=${System.currentTimeMillis() - loadStarted} model=${model.id}")
+                Log.i(
+                    TAG,
+                    "stage=asr_model_loaded engine=moonshine elapsedMs=${System.currentTimeMillis() - loadStarted} model=${model.id}",
+                )
                 if (!isCurrent(session)) {
                     closeAsync(session)
                     return@execute
@@ -80,7 +84,10 @@ class MoonshineRecognitionService : RecognitionService() {
                     closeAsync(session)
                     return@execute
                 }
-                Log.i(TAG, "stage=asr_ready engine=moonshine language=$language model=${model.id}")
+                Log.i(
+                    TAG,
+                    "stage=asr_ready engine=moonshine language=${model.languageCode} requestedLanguage=$requestedLanguageTag model=${model.id}",
+                )
                 listener.readyForSpeech(Bundle.EMPTY)
             } catch (error: Throwable) {
                 fail(session, error)
