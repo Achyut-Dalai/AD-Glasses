@@ -37,8 +37,8 @@ enum class ApiProvider(
     GOOGLE(
         "google",
         "Google Gemini",
-        "https://generativelanguage.googleapis.com/v1beta/openai",
-        "gemini-3.7-flash",
+        "https://generativelanguage.googleapis.com/v1beta",
+        "gemini-flash-latest",
         true,
         true,
     ),
