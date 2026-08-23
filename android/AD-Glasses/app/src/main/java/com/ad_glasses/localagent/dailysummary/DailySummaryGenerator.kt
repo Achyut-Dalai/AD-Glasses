@@ -1,7 +1,6 @@
 package com.ad_glasses.localagent.dailysummary
 
 import android.content.Context
-import com.ad_glasses.agent.LocalAgentPrefs as AutomationPrefs
 import org.json.JSONObject
 import java.io.File
 import java.text.SimpleDateFormat
@@ -10,12 +9,8 @@ import java.util.Locale
 import com.ad_glasses.ai.router.ApiTokenClient
 import com.ad_glasses.ai.router.AiProviderPrefs
 import com.ad_glasses.localagent.memory.LocalAgentMemoryStore
-import com.ad_glasses.localagent.dailyfacts.DailyBulletsSettings
 
 object DailySummaryGenerator {
-    private const val MAX_LOCAL_EVENT_BULLETS_RENDERED = 220
-    private const val MAX_LOCAL_EVENT_BULLETS_CHARS = 52_000
-    private const val MAX_INCREMENTAL_APPEND_BULLETS = 20
     private const val DEDUPE_EVENT_WINDOW_MS = 8 * 60 * 1000L
 
     private data class ProviderResponse(
@@ -27,12 +22,6 @@ object DailySummaryGenerator {
         val tsMs: Long,
         val packageName: String,
         val text: String,
-    )
-
-    private data class EventBullet(
-        val tsMs: Long,
-        val packageName: String,
-        val bullet: String,
     )
 
     data class BulletProgress(
@@ -95,7 +84,7 @@ object DailySummaryGenerator {
 
         val lastProcessedAtMs = DailySummaryPrefs.getLastCaptureProcessedAtMs(context, date)
         val hasExistingSummary = DailySummaryPrefs.getLastGeneratedAtMs(context, date) > 0L
-        
+
         val previousSummary = if (hasExistingSummary && !forceFullRebuild) {
             val summaryFile = LocalAgentMemoryStore.dailySummaryFileForDate(context, date)
             val existing = LocalAgentMemoryStore.readText(summaryFile).trim()
@@ -218,6 +207,19 @@ object DailySummaryGenerator {
         }
     }
 
+    private fun looksLikeUsefulCapture(text: String): Boolean {
+        val clean = text.trim()
+        if (clean.length < 12) return false
+
+        val alphaNum = clean.count { it.isLetterOrDigit() }
+        if (alphaNum < 8) return false
+
+        val symbolRatio = 1.0 - (alphaNum.toDouble() / clean.length.toDouble())
+        if (symbolRatio > 0.60) return false
+
+        return true
+    }
+
     private suspend fun prepareInputForGeneration(
         context: Context,
         input: Input,
@@ -269,7 +271,7 @@ ${input.newScreenSnippets.ifBlank { "(no new captures since last summary)" }}
 
 OUTPUT INSTRUCTIONS:
 - Output Markdown
-- Keep the "# Daily Summary (YYYY-MM-DD)" header  
+- Keep the "# Daily Summary (YYYY-MM-DD)" header
 - Keep existing narrative and bullets
 - ADD new events from the new captures above
 - If new captures contain nothing useful, just return the original summary unchanged
