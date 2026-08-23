@@ -16,21 +16,15 @@ object LocalAgentPrefs {
     private const val KEY_DAILY_FACTS_REMINDER_ENABLED = "daily_facts_reminder_enabled"
     private const val KEY_DAILY_SUMMARY_AUTO_REFRESH_HOURS = "daily_summary_auto_refresh_hours"
 
+    /** Any retired local-model planning value migrates forward to Cloud AI. */
     fun getProviderType(context: Context): AgentProviderType {
-        val raw = context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
-            .getString(KEY_PROVIDER_TYPE, null)
-            ?.trim()
-            ?.uppercase()
-        return if (raw == AgentProviderType.LOCAL_AGENT.name) {
-            AgentProviderType.LOCAL_AGENT
-        } else {
-            AgentProviderType.CLOUD_AI
-        }
+        val prefs = context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
+        if (prefs.contains(KEY_PROVIDER_TYPE)) prefs.edit().remove(KEY_PROVIDER_TYPE).apply()
+        return AgentProviderType.CLOUD_AI
     }
 
     fun setProviderType(context: Context, type: AgentProviderType) {
-        context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
-            .edit().putString(KEY_PROVIDER_TYPE, type.name).apply()
+        context.getSharedPreferences(PREFS, Context.MODE_PRIVATE).edit().remove(KEY_PROVIDER_TYPE).apply()
     }
 
     /** Accessibility/UI automation is not an AI invocation method. */
