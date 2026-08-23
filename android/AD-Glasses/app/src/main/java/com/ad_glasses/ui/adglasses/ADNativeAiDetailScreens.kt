@@ -53,7 +53,6 @@ import com.ad_glasses.ai.router.AiProviderPrefs
 import com.ad_glasses.ai.router.ApiProvider
 import com.ad_glasses.ai.router.ApiTokenClient
 import com.ad_glasses.ai.router.CloudAiProfile
-import com.ad_glasses.ai.router.CloudWebMode
 import com.ad_glasses.ai.transcription.moonshine.MoonshineModelManager
 import java.util.Locale
 import kotlinx.coroutines.Dispatchers
@@ -298,13 +297,15 @@ private fun ADCloudProfileEditor(
     var modelMenuOpen by remember(initial.id) { mutableStateOf(false) }
     var discoveryRunning by remember(initial.id) { mutableStateOf(false) }
     var discoveryError by remember(initial.id) { mutableStateOf<String?>(null) }
+    val savedKeyUsable = hasSavedKey &&
+        provider == initial.provider &&
+        baseUrl.trim().trimEnd('/') == initial.baseUrl.trim().trimEnd('/')
 
     fun draft(): CloudAiProfile = initial.copy(
         name = name,
         provider = provider,
         baseUrl = baseUrl,
         model = model,
-        webMode = if (provider.nativeWebCapable) CloudWebMode.AUTO else CloudWebMode.OFF,
     )
 
     AlertDialog(
@@ -339,11 +340,15 @@ private fun ADCloudProfileEditor(
                     ADCloudTextField(
                         value = replacementKey,
                         onValueChange = { replacementKey = it },
-                        placeholder = if (hasSavedKey) "API key saved · enter only to replace" else "API key",
+                        placeholder = if (savedKeyUsable) "API key saved · enter only to replace" else "API key",
                         secret = true,
                     )
                     Text(
-                        if (hasSavedKey) "The saved key cannot be revealed in AD Glasses." else "The key is encrypted before it is stored.",
+                        when {
+                            savedKeyUsable -> "The saved key cannot be revealed in AD Glasses."
+                            hasSavedKey -> "Enter a new API key after changing the provider or API base URL; the saved key will not be reused."
+                            else -> "The key is encrypted before it is stored."
+                        },
                         style = MaterialTheme.typography.labelSmall,
                         color = ADColors.Muted,
                     )
@@ -351,7 +356,7 @@ private fun ADCloudProfileEditor(
 
                 Row(horizontalArrangement = Arrangement.spacedBy(7.dp), verticalAlignment = Alignment.CenterVertically) {
                     OutlinedButton(
-                        enabled = !discoveryRunning && baseUrl.isNotBlank() && (hasSavedKey || replacementKey.isNotBlank()),
+                        enabled = !discoveryRunning && baseUrl.isNotBlank() && (savedKeyUsable || replacementKey.isNotBlank()),
                         onClick = {
                             discoveryRunning = true
                             discoveryError = null
@@ -409,7 +414,7 @@ private fun ADCloudProfileEditor(
         },
         confirmButton = {
             TextButton(
-                enabled = name.isNotBlank() && baseUrl.isNotBlank() && model.isNotBlank() && (hasSavedKey || replacementKey.isNotBlank()),
+                enabled = name.isNotBlank() && baseUrl.isNotBlank() && model.isNotBlank() && (savedKeyUsable || replacementKey.isNotBlank()),
                 onClick = { onSave(draft(), replacementKey) },
             ) { Text("Save") }
         },
@@ -433,7 +438,7 @@ private fun MoonshineVoiceInputCard() {
                 Text("Offline English voice input", style = MaterialTheme.typography.titleMedium)
                 Text(
                     if (installed) "Moonshine speech-to-text is ready"
-                    else "Optional speech-to-text model; this is not a Local LLM",
+                    else "Optional offline speech-to-text model",
                     style = MaterialTheme.typography.bodySmall,
                     color = ADColors.Muted,
                 )

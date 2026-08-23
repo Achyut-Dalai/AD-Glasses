@@ -71,10 +71,8 @@ import com.ad_glasses.shared.generated.resources.action_new_chat
 import com.ad_glasses.shared.generated.resources.chat_appearance
 import com.ad_glasses.shared.generated.resources.chat_attach_image
 import com.ad_glasses.shared.generated.resources.chat_clear_attachments
-import com.ad_glasses.shared.generated.resources.chat_configure_local_model
 import com.ad_glasses.shared.generated.resources.chat_empty_body
 import com.ad_glasses.shared.generated.resources.chat_empty_title
-import com.ad_glasses.shared.generated.resources.chat_local_model_required
 import com.ad_glasses.shared.generated.resources.chat_list
 import com.ad_glasses.shared.generated.resources.chat_message
 import com.ad_glasses.shared.generated.resources.chat_record_audio
@@ -418,12 +416,8 @@ private fun ChatComposer(
     onClearAttachments: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    val inputLabel = if (composer.primaryAction == ChatComposerPrimaryAction.CONFIGURE_LOCAL_MODEL) {
-         stringResource(Res.string.chat_local_model_required)
-    } else {
-         stringResource(Res.string.chat_message)
-    }
-    Surface(
+    val inputLabel = stringResource(Res.string.chat_message)
+Surface(
         modifier = modifier.fillMaxWidth(),
         tonalElevation = 3.dp,
     ) {
@@ -515,12 +509,10 @@ private fun ChatComposer(
                         imageVector = when (composer.primaryAction) {
                             ChatComposerPrimaryAction.SEND -> AppIcon.Send.imageVector()
                             ChatComposerPrimaryAction.STOP_GENERATION -> AppIcon.Stop.imageVector()
-                            ChatComposerPrimaryAction.CONFIGURE_LOCAL_MODEL -> AppIcon.Model.imageVector()
                         },
                         contentDescription = when (composer.primaryAction) {
                              ChatComposerPrimaryAction.SEND -> stringResource(Res.string.action_send)
                              ChatComposerPrimaryAction.STOP_GENERATION -> stringResource(Res.string.chat_stop_generation)
-                             ChatComposerPrimaryAction.CONFIGURE_LOCAL_MODEL -> stringResource(Res.string.chat_configure_local_model)
                         },
                     )
                 }

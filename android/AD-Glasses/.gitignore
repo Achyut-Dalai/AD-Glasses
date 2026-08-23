@@ -15,6 +15,17 @@
 .cxx
 local.properties
 
+# Local environment / Cloud AI credentials (never commit secrets)
+.env
+.env.*
+secrets.properties
+cloud-secrets.properties
+cloud_ai_secrets.properties
+*.jks
+*.keystore
+*.p12
+*.pem
+
 # CLI relay server scratch
 /tools/_relay_tmp/
 
@@ -28,14 +39,6 @@ keystore.properties
 */build/
 build/
 moonshine-voice/build/
-
-# Local model artifacts (never commit weights)
-*.gguf
-*.gguf.part
-*.bin
-*.safetensors
-app/src/main/assets/models/
-app/src/main/ml/
 
 # Termux server docs (local only)
 TERMUX_SSH_TAILSCALE_RUNBOOK.md

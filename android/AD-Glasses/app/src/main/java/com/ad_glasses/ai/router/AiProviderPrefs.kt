@@ -18,16 +18,6 @@ enum class AiProviderType(val wire: String, val label: String) {
     }
 }
 
-enum class CloudWebMode(val wire: String, val label: String) {
-    OFF("off", "Off"),
-    AUTO("auto", "Auto");
-
-    companion object {
-        fun fromWire(value: String?): CloudWebMode =
-            entries.firstOrNull { it.wire == value?.trim()?.lowercase() } ?: OFF
-    }
-}
-
 enum class ApiProvider(
     val wire: String,
     val label: String,
@@ -89,10 +79,10 @@ data class CloudAiProfile(
     val provider: ApiProvider,
     val baseUrl: String,
     val model: String,
-    val webMode: CloudWebMode = CloudWebMode.OFF,
 ) {
+    /** Web search is a per-turn Ask choice; this only says whether the provider has a wired web tool. */
     val webAvailable: Boolean
-        get() = provider.nativeWebCapable && webMode == CloudWebMode.AUTO
+        get() = provider.nativeWebCapable
 }
 
 /**
@@ -101,6 +91,10 @@ data class CloudAiProfile(
  * Profile metadata and API keys live in EncryptedSharedPreferences. The network layer can obtain
  * a secret for a concrete profile, but product UI is intentionally given only [hasApiKey]. A
  * saved key is therefore never pre-filled back into a text field.
+ *
+ * Multiple profiles may use the same provider. Every inference request resolves the exact active
+ * profile id and then reads only that profile's encrypted secret; provider type is never used as
+ * an account selector.
  */
 object AiProviderPrefs {
     private const val LEGACY_PREFS_NAME = "ai_provider_prefs"
@@ -156,6 +150,7 @@ object AiProviderPrefs {
         val activeId = prefs.getString(KEY_ACTIVE_PROFILE_ID, null)
         val active = readProfile(prefs, activeId.orEmpty())
         if (active != null) return active
+
         val first = profileIds(prefs).firstNotNullOfOrNull { readProfile(prefs, it) }
         if (first != null) prefs.edit().putString(KEY_ACTIVE_PROFILE_ID, first.id).commit()
         return first
@@ -180,19 +175,25 @@ object AiProviderPrefs {
         if (existing == null && replacement.isBlank()) {
             require(hasApiKeyInternal(prefs, saved.id)) { "API key is required for a new profile." }
         }
+        if (existing != null && replacement.isBlank()) {
+            require(existing.provider == saved.provider && existing.baseUrl == saved.baseUrl) {
+                "Enter a new API key after changing the provider or API base URL."
+            }
+        }
 
         val ids = profileIds(prefs).toMutableList()
         if (saved.id !in ids) ids += saved.id
-        prefs.edit()
+        val committed = prefs.edit()
             .putString(profileKey(saved.id), profileToJson(saved).toString())
             .putString(KEY_PROFILE_IDS, JSONArray(ids).toString())
             .apply {
                 if (replacement.isNotBlank()) putString(secretKey(saved.id), replacement)
-                if (makeActive || getString(KEY_ACTIVE_PROFILE_ID, null).isNullOrBlank()) {
+                if (makeActive || prefs.getString(KEY_ACTIVE_PROFILE_ID, null).isNullOrBlank()) {
                     putString(KEY_ACTIVE_PROFILE_ID, saved.id)
                 }
             }
             .commit()
+        check(committed) { "Unable to securely save the Cloud AI profile." }
         return saved
     }
 
@@ -202,7 +203,6 @@ object AiProviderPrefs {
         provider = provider,
         baseUrl = provider.defaultBaseUrl,
         model = provider.defaultModel,
-        webMode = if (provider.nativeWebCapable) CloudWebMode.AUTO else CloudWebMode.OFF,
     )
 
     @Synchronized
@@ -210,7 +210,9 @@ object AiProviderPrefs {
         ensureLegacyMigrated(context)
         val prefs = secure(context)
         require(readProfile(prefs, profileId) != null) { "Unknown Cloud AI profile." }
-        prefs.edit().putString(KEY_ACTIVE_PROFILE_ID, profileId).commit()
+        check(prefs.edit().putString(KEY_ACTIVE_PROFILE_ID, profileId).commit()) {
+            "Unable to switch the active Cloud AI profile."
+        }
     }
 
     @Synchronized
@@ -220,7 +222,7 @@ object AiProviderPrefs {
         if (readProfile(prefs, profileId) == null) return false
         val remaining = profileIds(prefs).filterNot { it == profileId }
         val current = prefs.getString(KEY_ACTIVE_PROFILE_ID, null)
-        prefs.edit()
+        val committed = prefs.edit()
             .remove(profileKey(profileId))
             .remove(secretKey(profileId))
             .putString(KEY_PROFILE_IDS, JSONArray(remaining).toString())
@@ -231,6 +233,7 @@ object AiProviderPrefs {
                 }
             }
             .commit()
+        check(committed) { "Unable to securely delete the Cloud AI profile." }
         return true
     }
 
@@ -253,6 +256,7 @@ object AiProviderPrefs {
     internal fun apiKeyForRequest(context: Context, profileId: String): String =
         secure(context).getString(secretKey(profileId), "")?.trim().orEmpty()
 
+    /** Resolve one exact account/profile pair for a request. */
     internal fun activeProfileWithKey(context: Context): Pair<CloudAiProfile, String> {
         val profile = getActiveProfile(context)
             ?: throw IllegalStateException("No Cloud AI profile is configured.")
@@ -270,29 +274,6 @@ object AiProviderPrefs {
     }
 
     fun isRelayConfigured(context: Context): Boolean = getRelayBaseUrl(context).isNotBlank()
-
-    // Forward-compatible wrappers for callers being migrated away from the former single-provider model.
-    fun getProvider(context: Context): AiProviderType = AiProviderType.CLOUD_API
-    fun setProvider(context: Context, provider: AiProviderType) = Unit
-    fun getApiProvider(context: Context): ApiProvider = getActiveProfile(context)?.provider ?: ApiProvider.OPENAI
-    fun setApiProvider(context: Context, provider: ApiProvider) {
-        val matching = listProfiles(context).firstOrNull { it.provider == provider }
-        if (matching != null) setActiveProfile(context, matching.id)
-    }
-    internal fun getApiKey(context: Context, provider: ApiProvider = getApiProvider(context)): String =
-        listProfiles(context).firstOrNull { it.provider == provider }?.let { apiKeyForRequest(context, it.id) }.orEmpty()
-    internal fun setApiKey(context: Context, provider: ApiProvider, value: String) {
-        val current = listProfiles(context).firstOrNull { it.provider == provider }
-            ?: newProfile(provider, listProfiles(context).count { it.provider == provider })
-        saveProfile(context, current, apiKeyReplacement = value, makeActive = true)
-    }
-    fun getModel(context: Context, provider: ApiProvider = getApiProvider(context)): String =
-        listProfiles(context).firstOrNull { it.provider == provider }?.model
-            ?: provider.defaultModel
-    fun setModel(context: Context, provider: ApiProvider, value: String) {
-        val current = listProfiles(context).firstOrNull { it.provider == provider } ?: return
-        saveProfile(context, current.copy(model = value.trim()))
-    }
 
     @Synchronized
     private fun ensureLegacyMigrated(context: Context) {
@@ -313,13 +294,15 @@ object AiProviderPrefs {
                         model = model,
                     ),
                 )
-                target.edit()
-                    .putString(KEY_PROFILE_IDS, JSONArray(listOf(migrated.id)).toString())
-                    .putString(KEY_ACTIVE_PROFILE_ID, migrated.id)
-                    .putString(profileKey(migrated.id), profileToJson(migrated).toString())
-                    .putString(secretKey(migrated.id), oldKey)
-                    .commit()
-                oldSecretPrefs.edit().remove("api_key_${provider.wire}").commit()
+                check(
+                    target.edit()
+                        .putString(KEY_PROFILE_IDS, JSONArray(listOf(migrated.id)).toString())
+                        .putString(KEY_ACTIVE_PROFILE_ID, migrated.id)
+                        .putString(profileKey(migrated.id), profileToJson(migrated).toString())
+                        .putString(secretKey(migrated.id), oldKey)
+                        .commit(),
+                ) { "Unable to migrate the existing Cloud AI credential." }
+                oldSecretPrefs?.edit()?.remove("api_key_${provider.wire}")?.commit()
             }
         }
         target.edit().putBoolean(KEY_LEGACY_MIGRATED, true).commit()
@@ -330,7 +313,6 @@ object AiProviderPrefs {
         name = profile.name.trim(),
         baseUrl = profile.baseUrl.trim().trimEnd('/'),
         model = profile.model.trim(),
-        webMode = if (profile.provider.nativeWebCapable) CloudWebMode.AUTO else CloudWebMode.OFF,
     )
 
     private fun profileIds(prefs: SharedPreferences): List<String> = runCatching {
@@ -354,7 +336,6 @@ object AiProviderPrefs {
                     provider = ApiProvider.fromWire(json.optString("provider")),
                     baseUrl = json.optString("base_url"),
                     model = json.optString("model"),
-                    webMode = CloudWebMode.fromWire(json.optString("web_mode")),
                 ),
             )
         }.getOrNull()
@@ -365,7 +346,6 @@ object AiProviderPrefs {
         .put("provider", profile.provider.wire)
         .put("base_url", profile.baseUrl)
         .put("model", profile.model)
-        .put("web_mode", profile.webMode.wire)
 
     private fun hasApiKeyInternal(prefs: SharedPreferences, profileId: String): Boolean =
         prefs.getString(secretKey(profileId), "")?.trim().isNullOrBlank().not()
