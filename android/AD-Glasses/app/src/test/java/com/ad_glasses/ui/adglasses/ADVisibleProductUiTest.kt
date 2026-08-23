@@ -31,7 +31,9 @@ class ADVisibleProductUiTest {
         val screen = appFile("src/main/java/com/ad_glasses/ui/adglasses/ADNativeConversationScreen.kt").readText()
         val components = appFile("src/main/java/com/ad_glasses/ui/adglasses/ADComponents.kt").readText()
 
-        assertTrue(screen.contains("Text(\"AI\""))
+        assertTrue(screen.contains("\"AI\","))
+        assertTrue(screen.contains("style = MaterialTheme.typography.headlineSmall"))
+        assertFalse(screen.contains("\"Chats\""))
         assertTrue(screen.contains("ADConversationHistory("))
         assertTrue(screen.contains("Rename conversation"))
         assertTrue(screen.contains("Delete conversation?"))
