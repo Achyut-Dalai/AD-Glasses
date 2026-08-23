@@ -41,7 +41,6 @@ internal fun ADGlassesDeviceCenterScreen(
     onSync: () -> Unit,
     onFirmware: () -> Unit,
     onCloudSettings: () -> Unit,
-    onLocalSettings: () -> Unit,
 ) {
     val context = LocalContext.current
     val profile = DeviceProfileStore.loadLastSelected(context)
@@ -117,10 +116,7 @@ internal fun ADGlassesDeviceCenterScreen(
         }
 
         ADSectionTitle("AI")
-        ADDeviceAiSection(
-            onCloudSettings = onCloudSettings,
-            onLocalSettings = onLocalSettings,
-        )
+        ADDeviceAiSection(onCloudSettings = onCloudSettings)
 
         ADSectionTitle("Device tools")
         ADCard {

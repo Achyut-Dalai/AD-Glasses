@@ -10,6 +10,14 @@ build/
 */build/
 local.properties
 
+# Developer-local secrets. Runtime Cloud AI keys live in Android Keystore-backed storage instead.
+.env
+.env.*
+!.env.example
+**/secrets.properties
+**/keystore.properties
+**/cloud-ai-secrets.properties
+
 # Android
 captures/
 .externalNativeBuild/

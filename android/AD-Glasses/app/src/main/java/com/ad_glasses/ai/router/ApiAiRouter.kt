@@ -1,11 +1,7 @@
 package com.ad_glasses.ai.router
 
 import android.content.Context
-import android.net.ConnectivityManager
-import android.net.NetworkCapabilities
 import android.util.Base64
-import com.ad_glasses.localmodels.provider.LocalModelsProvider
-import com.ad_glasses.localmodels.storage.LocalModelStorageRepository
 import kotlinx.coroutines.delay
 import org.json.JSONArray
 import org.json.JSONObject
@@ -16,7 +12,7 @@ import java.io.OutputStreamWriter
 import java.net.HttpURLConnection
 import java.net.URL
 
-/** One direct HTTP implementation for OpenAI-compatible provider APIs. */
+/** Direct Cloud AI transport resolved through the active encrypted profile. */
 object ApiTokenClient {
     private const val CONNECT_TIMEOUT_MS = 10_000
     private const val READ_TIMEOUT_MS = 120_000
@@ -29,38 +25,42 @@ object ApiTokenClient {
         imagePaths: List<String> = emptyList(),
         audioPath: String? = null,
         maxTokens: Int = 2048,
+        webRequested: Boolean = false,
     ): Result<String> = runCatching {
-        val provider = AiProviderPrefs.getApiProvider(context)
-        val apiKey = AiProviderPrefs.getApiKey(context, provider)
-        require(apiKey.isNotBlank()) { "${provider.label} API key is not configured" }
-        val model = AiProviderPrefs.getModel(context, provider)
-        require(model.isNotBlank()) { "${provider.label} model is not configured" }
+        val (profile, apiKey) = AiProviderPrefs.activeProfileWithKey(context)
+        require(profile.model.isNotBlank()) { "${profile.name} does not have a model selected." }
+        require(profile.baseUrl.isNotBlank()) { "${profile.name} does not have an API base URL." }
 
-        val payloadMessages = JSONArray()
-        messages.forEachIndexed { index, message ->
-            val role = message["role"]?.trim()?.lowercase().orEmpty().ifBlank { "user" }
-            val text = message["content"].orEmpty()
-            val isLastUser = index == messages.lastIndex && role == "user"
-            if (isLastUser && (imagePaths.isNotEmpty() || !audioPath.isNullOrBlank())) {
-                payloadMessages.put(
-                    JSONObject()
-                        .put("role", role)
-                        .put("content", mediaContent(text, imagePaths, audioPath)),
-                )
-            } else {
-                payloadMessages.put(JSONObject().put("role", role).put("content", text))
+        val useNativeWeb = webRequested && profile.webAvailable && imagePaths.isEmpty() && audioPath.isNullOrBlank()
+        val text = when {
+            useNativeWeb && profile.provider == ApiProvider.GOOGLE ->
+                retry { postGeminiGrounded(profile, apiKey, messages, maxTokens) }
+                    .let(::extractGeminiText)
+            useNativeWeb && profile.provider == ApiProvider.OPENAI ->
+                retry { postOpenAiResponses(profile, apiKey, messages, maxTokens) }
+                    .let(::extractOpenAiResponseText)
+            else -> {
+                val payloadMessages = buildOpenAiMessages(messages, imagePaths, audioPath)
+                val payload = JSONObject()
+                    .put("model", profile.model)
+                    .put("messages", payloadMessages)
+                    .put("max_tokens", maxTokens)
+                if (useNativeWeb && profile.provider == ApiProvider.OPENROUTER) {
+                    payload.put(
+                        "tools",
+                        JSONArray().put(JSONObject().put("type", "openrouter:web_search")),
+                    )
+                }
+                retry {
+                    postJson(
+                        url = profile.baseUrl.trimEnd('/') + "/chat/completions",
+                        apiKey = apiKey,
+                        payload = payload,
+                    )
+                }.let(::extractChatCompletionText)
             }
         }
-
-        val payload = JSONObject()
-            .put("model", model)
-            .put("messages", payloadMessages)
-            .put("max_tokens", maxTokens)
-
-        val endpoint = provider.baseUrl.trimEnd('/') + "/chat/completions"
-        retry { postJson(endpoint, apiKey, payload) }
-            .let(::extractText)
-            .ifBlank { throw IllegalStateException("${provider.label} returned an empty response") }
+        text.ifBlank { throw IllegalStateException("${profile.name} returned an empty response") }
     }
 
     suspend fun image(
@@ -79,6 +79,124 @@ object ApiTokenClient {
             messages = messages,
             imagePaths = listOf(imagePath),
             maxTokens = maxTokens,
+        )
+    }
+
+    /** Fetch models without ever returning the API key to UI state. */
+    suspend fun discoverModels(
+        context: Context,
+        provider: ApiProvider,
+        baseUrl: String,
+        profileId: String? = null,
+        apiKeyReplacement: String? = null,
+    ): Result<List<String>> = runCatching {
+        val key = apiKeyReplacement?.trim().orEmpty().ifBlank {
+            profileId?.let { AiProviderPrefs.apiKeyForRequest(context, it) }.orEmpty()
+        }
+        require(key.isNotBlank()) { "Enter an API key or use a profile that already has one saved." }
+        val cleanBase = baseUrl.trim().trimEnd('/')
+        require(cleanBase.startsWith("https://")) { "API base URL must use HTTPS." }
+
+        val response = getJson("$cleanBase/models", apiKey = key)
+
+        val models = linkedSetOf<String>()
+        response.optJSONArray("data")?.let { data ->
+            for (index in 0 until data.length()) {
+                data.optJSONObject(index)?.optString("id")?.trim()?.takeIf { it.isNotBlank() }?.let(models::add)
+            }
+        }
+        response.optJSONArray("models")?.let { data ->
+            for (index in 0 until data.length()) {
+                val item = data.optJSONObject(index) ?: continue
+                val raw = item.optString("name").trim().removePrefix("models/")
+                if (raw.isNotBlank()) models += raw
+            }
+        }
+        if (models.isEmpty()) throw IllegalStateException("The provider returned no selectable models.")
+        models.sortedWith(compareBy<String> { !it.contains("flash", ignoreCase = true) }.thenBy { it.lowercase() })
+    }
+
+    private fun buildOpenAiMessages(
+        messages: List<Map<String, String>>,
+        imagePaths: List<String>,
+        audioPath: String?,
+    ): JSONArray {
+        val payloadMessages = JSONArray()
+        messages.forEachIndexed { index, message ->
+            val role = message["role"]?.trim()?.lowercase().orEmpty().ifBlank { "user" }
+            val text = message["content"].orEmpty()
+            val isLastUser = index == messages.lastIndex && role == "user"
+            if (isLastUser && (imagePaths.isNotEmpty() || !audioPath.isNullOrBlank())) {
+                payloadMessages.put(
+                    JSONObject()
+                        .put("role", role)
+                        .put("content", mediaContent(text, imagePaths, audioPath)),
+                )
+            } else {
+                payloadMessages.put(JSONObject().put("role", role).put("content", text))
+            }
+        }
+        return payloadMessages
+    }
+
+    private fun postOpenAiResponses(
+        profile: CloudAiProfile,
+        apiKey: String,
+        messages: List<Map<String, String>>,
+        maxTokens: Int,
+    ): JSONObject {
+        val input = JSONArray()
+        messages.forEach { message ->
+            val role = message["role"]?.trim()?.lowercase().orEmpty().ifBlank { "user" }
+            input.put(
+                JSONObject()
+                    .put("role", if (role == "assistant") "assistant" else if (role == "system") "system" else "user")
+                    .put("content", message["content"].orEmpty()),
+            )
+        }
+        val payload = JSONObject()
+            .put("model", profile.model)
+            .put("input", input)
+            .put("max_output_tokens", maxTokens)
+            .put("tools", JSONArray().put(JSONObject().put("type", "web_search")))
+        return postJson(profile.baseUrl.trimEnd('/') + "/responses", apiKey, payload)
+    }
+
+    private fun postGeminiGrounded(
+        profile: CloudAiProfile,
+        apiKey: String,
+        messages: List<Map<String, String>>,
+        maxTokens: Int,
+    ): JSONObject {
+        val systemParts = JSONArray()
+        val contents = JSONArray()
+        messages.forEach { message ->
+            val role = message["role"]?.trim()?.lowercase().orEmpty()
+            val text = message["content"].orEmpty()
+            if (role == "system") {
+                if (text.isNotBlank()) systemParts.put(JSONObject().put("text", text))
+            } else {
+                contents.put(
+                    JSONObject()
+                        .put("role", if (role == "assistant") "model" else "user")
+                        .put("parts", JSONArray().put(JSONObject().put("text", text))),
+                )
+            }
+        }
+        val payload = JSONObject()
+            .put("contents", contents)
+            .put("tools", JSONArray().put(JSONObject().put("google_search", JSONObject())))
+            .put("generationConfig", JSONObject().put("maxOutputTokens", maxTokens))
+        if (systemParts.length() > 0) {
+            payload.put("systemInstruction", JSONObject().put("parts", systemParts))
+        }
+        val nativeBase = profile.baseUrl.trimEnd('/').substringBeforeLast("/openai", profile.baseUrl.trimEnd('/'))
+        val endpoint = "$nativeBase/models/${profile.model}:generateContent"
+        return postJson(
+            endpoint,
+            apiKey = null,
+            payload = payload,
+            extraHeaders = mapOf("x-goog-api-key" to apiKey),
         )
     }
 
@@ -133,16 +251,39 @@ object ApiTokenClient {
         throw last ?: IllegalStateException("API request failed")
     }
 
-    private fun postJson(url: String, apiKey: String, payload: JSONObject): JSONObject {
+    private fun postJson(
+        url: String,
+        apiKey: String?,
+        payload: JSONObject,
+        extraHeaders: Map<String, String> = emptyMap(),
+    ): JSONObject = requestJson("POST", url, apiKey, payload, extraHeaders)
+
+    private fun getJson(
+        url: String,
+        apiKey: String?,
+        extraHeaders: Map<String, String> = emptyMap(),
+    ): JSONObject = requestJson("GET", url, apiKey, null, extraHeaders)
+
+    private fun requestJson(
+        method: String,
+        url: String,
+        apiKey: String?,
+        payload: JSONObject?,
+        extraHeaders: Map<String, String> = emptyMap(),
+    ): JSONObject {
         val conn = URL(url).openConnection() as HttpURLConnection
         try {
-            conn.requestMethod = "POST"
+            conn.requestMethod = method
             conn.connectTimeout = CONNECT_TIMEOUT_MS
             conn.readTimeout = READ_TIMEOUT_MS
-            conn.doOutput = true
-            conn.setRequestProperty("Content-Type", "application/json; charset=utf-8")
-            conn.setRequestProperty("Authorization", "Bearer $apiKey")
-            OutputStreamWriter(conn.outputStream, Charsets.UTF_8).use { it.write(payload.toString()) }
+            conn.setRequestProperty("Accept", "application/json")
+            if (!apiKey.isNullOrBlank()) conn.setRequestProperty("Authorization", "Bearer $apiKey")
+            extraHeaders.forEach { (name, value) -> conn.setRequestProperty(name, value) }
+            if (payload != null) {
+                conn.doOutput = true
+                conn.setRequestProperty("Content-Type", "application/json; charset=utf-8")
+                OutputStreamWriter(conn.outputStream, Charsets.UTF_8).use { it.write(payload.toString()) }
+            }
             val code = conn.responseCode
             val stream = if (code in 200..299) conn.inputStream else conn.errorStream
             val body = BufferedReader(InputStreamReader(stream ?: conn.inputStream)).use { it.readText() }
@@ -153,7 +294,7 @@ object ApiTokenClient {
         }
     }
 
-    private fun extractText(response: JSONObject): String {
+    private fun extractChatCompletionText(response: JSONObject): String {
         val message = response.optJSONArray("choices")
             ?.optJSONObject(0)
             ?.optJSONObject("message")
@@ -162,8 +303,8 @@ object ApiTokenClient {
         if (raw is String) return raw.trim()
         if (raw is JSONArray) {
             return buildString {
-                for (i in 0 until raw.length()) {
-                    val part = raw.opt(i)
+                for (index in 0 until raw.length()) {
+                    val part = raw.opt(index)
                     val text = when (part) {
                         is String -> part
                         is JSONObject -> part.optString("text")
@@ -178,16 +319,50 @@ object ApiTokenClient {
         }
         return raw.toString().trim()
     }
+
+    private fun extractOpenAiResponseText(response: JSONObject): String {
+        response.optString("output_text").trim().takeIf { it.isNotBlank() }?.let { return it }
+        val output = response.optJSONArray("output") ?: return ""
+        return buildString {
+            for (index in 0 until output.length()) {
+                val item = output.optJSONObject(index) ?: continue
+                val content = item.optJSONArray("content") ?: continue
+                for (partIndex in 0 until content.length()) {
+                    val part = content.optJSONObject(partIndex) ?: continue
+                    val text = part.optString("text").trim()
+                    if (text.isNotBlank()) {
+                        if (isNotEmpty()) append('\n')
+                        append(text)
+                    }
+                }
+            }
+        }.trim()
+    }
+
+    private fun extractGeminiText(response: JSONObject): String {
+        val parts = response.optJSONArray("candidates")
+            ?.optJSONObject(0)
+            ?.optJSONObject("content")
+            ?.optJSONArray("parts")
+            ?: return ""
+        return buildString {
+            for (index in 0 until parts.length()) {
+                val text = parts.optJSONObject(index)?.optString("text")?.trim().orEmpty()
+                if (text.isNotBlank()) {
+                    if (isNotEmpty()) append('\n')
+                    append(text)
+                }
+            }
+        }.trim()
+    }
 }
 
-/** Chat/voice/Lens inference has only AD-owned Cloud or Local routes. */
+/** Chat/voice/Lens inference is Cloud-only. Provider failures never silently switch engines. */
 object AiAssistantRouter {
     interface ChatStreamCallbacks {
         fun onStatus(status: String) {}
         fun onToken(token: String) {}
     }
-
-    private val localModelsProvider = LocalModelsProvider()
 
     suspend fun chatReply(
         context: Context,
@@ -204,78 +379,28 @@ object AiAssistantRouter {
         imagePaths: List<String>,
         audioPath: String?,
         callbacks: ChatStreamCallbacks?,
+        webRequested: Boolean = false,
     ): String {
-        return when (AiProviderPrefs.getProvider(context)) {
-            AiProviderType.CLOUD_API -> {
-                if (shouldUseOfflineTextFallback(context, imagePaths, audioPath)) {
-                    callbacks?.onStatus("Offline — using Local AI")
-                    localModelsProvider.streamChat(
-                        context = context,
-                        messages = messages,
-                        onStatus = { callbacks?.onStatus(it) },
-                        onToken = { callbacks?.onToken(it) },
-                    )
-                } else {
-                    callbacks?.onStatus("Using ${AiProviderPrefs.getApiProvider(context).label} Cloud API")
-                    ApiTokenClient.chat(context, messages, imagePaths, audioPath).getOrElse {
-                        "Cloud AI unavailable (${it.message ?: it::class.java.simpleName})."
-                    }
-                }
-            }
-            AiProviderType.LOCAL_MODELS -> localModelsProvider.streamChat(
-                context = context,
-                messages = messages,
-                onStatus = { callbacks?.onStatus(it) },
-                onToken = { callbacks?.onToken(it) },
-                imagePaths = imagePaths,
-                audioPath = audioPath,
-            )
+        val profile = AiProviderPrefs.getActiveProfile(context)
+            ?: return "Cloud AI is not configured. Add a provider profile in Device Center."
+        callbacks?.onStatus("Using ${profile.name} · ${profile.model}")
+        return ApiTokenClient.chat(
+            context = context,
+            messages = messages,
+            imagePaths = imagePaths,
+            audioPath = audioPath,
+            webRequested = webRequested,
+        ).getOrElse {
+            "Cloud AI unavailable (${it.message ?: it::class.java.simpleName})."
         }
     }
 
-    suspend fun textReply(context: Context, prompt: String): String {
+    suspend fun textReply(context: Context, prompt: String, webRequested: Boolean = false): String {
         val messages = listOf(mapOf("role" to "user", "content" to prompt))
-        return when (AiProviderPrefs.getProvider(context)) {
-            AiProviderType.CLOUD_API -> {
-                if (shouldUseOfflineTextFallback(context, emptyList(), null)) {
-                    localModelsProvider.streamChat(context = context, messages = messages)
-                } else {
-                    ApiTokenClient.chat(context, messages).getOrElse {
-                        "Cloud AI unavailable (${it.message ?: it::class.java.simpleName})."
-                    }
-                }
-            }
-            AiProviderType.LOCAL_MODELS -> localModelsProvider.streamChat(context = context, messages = messages)
+        return ApiTokenClient.chat(context, messages, webRequested = webRequested).getOrElse {
+            "Cloud AI unavailable (${it.message ?: it::class.java.simpleName})."
         }
     }
 
-    suspend fun cancelCurrentGeneration(context: Context) {
-        if (AiProviderPrefs.getProvider(context) == AiProviderType.LOCAL_MODELS || !hasValidatedInternet(context)) {
-            localModelsProvider.cancelGeneration()
-        }
-    }
-
-    /**
-     * Local is an automatic fallback only for confirmed-offline text turns. Provider/auth/server
-     * failures do not silently change routes, and media turns remain on their selected modality path.
-     */
-    private fun shouldUseOfflineTextFallback(
-        context: Context,
-        imagePaths: List<String>,
-        audioPath: String?,
-    ): Boolean {
-        if (imagePaths.isNotEmpty() || !audioPath.isNullOrBlank()) return false
-        if (hasValidatedInternet(context)) return false
-        return LocalModelStorageRepository.resolveSelectedModel(context) != null
-    }
-
-    private fun hasValidatedInternet(context: Context): Boolean {
-        val connectivity = context.applicationContext
-            .getSystemService(Context.CONNECTIVITY_SERVICE) as? ConnectivityManager
-            ?: return false
-        val network = connectivity.activeNetwork ?: return false
-        val capabilities = connectivity.getNetworkCapabilities(network) ?: return false
-        return capabilities.hasCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET) &&
-            capabilities.hasCapability(NetworkCapabilities.NET_CAPABILITY_VALIDATED)
-    }
+    suspend fun cancelCurrentGeneration(context: Context) = Unit
 }

@@ -8,7 +8,7 @@ import com.ad_glasses.shared.notes.SummarizationService
 
 /**
  * AI-powered summarization service that delegates to local or cloud LLM models
- * through the selected AD Glasses Cloud API or Local AI route.
+ * through the active AD Glasses Cloud AI profile.
  */
 class AiSummarizationService(
     private val context: Context,

@@ -12,7 +12,6 @@ enum class ADRoute {
     SYNC,
     SETTINGS,
     AI_CLOUD,
-    AI_LOCAL,
     PRIVACY,
     STORAGE,
     LANGUAGE,

@@ -111,7 +111,7 @@ internal fun ADPrivacyCenterScreen(onBack: () -> Unit) {
             ADSettingsRow(
                 icon = Icons.Outlined.DeleteForever,
                 title = "Clear AI conversations",
-                subtitle = "Deletes Local AI and configured API conversations from this phone",
+                subtitle = "Deletes Cloud AI conversations from this phone",
                 iconTint = ADColors.Error,
                 iconBackground = ADColors.Error.copy(alpha = 0.10f),
                 onClick = { showClearChatsDialog = true },
@@ -132,7 +132,7 @@ internal fun ADPrivacyCenterScreen(onBack: () -> Unit) {
             onDismissRequest = { showClearChatsDialog = false },
             title = { Text("Clear AI conversations?") },
             text = {
-                Text("This permanently deletes every conversation stored by AD Glasses for Local AI and configured API providers on this phone. It does not delete provider-side account data.")
+                Text("This permanently deletes every conversation stored by AD Glasses for Cloud AI providers on this phone. It does not delete provider-side account data.")
             },
             dismissButton = {
                 TextButton(onClick = { showClearChatsDialog = false }) { Text("Cancel") }

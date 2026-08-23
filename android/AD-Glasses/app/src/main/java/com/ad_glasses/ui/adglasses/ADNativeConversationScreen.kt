@@ -67,6 +67,7 @@ import com.ad_glasses.ai.orchestrator.AssistantConversationSession
 import com.ad_glasses.ai.orchestrator.AssistantInputSurface
 import com.ad_glasses.ai.orchestrator.AssistantOrchestrator
 import com.ad_glasses.ai.orchestrator.AssistantTurn
+import com.ad_glasses.ai.router.AiProviderPrefs
 import com.ad_glasses.audio.MeetingCapturePrefs
 import com.ad_glasses.chat.ChatStore
 import com.ad_glasses.localagent.AudioSessionCoordinator
@@ -104,6 +105,7 @@ internal fun ADNativeConversationScreen(
     var messages by remember(threadId) { mutableStateOf(ChatStore.listMessages(threadId)) }
     var message by remember { mutableStateOf("") }
     var webSearch by remember { mutableStateOf(false) }
+    val webAvailable = AiProviderPrefs.getActiveProfile(context)?.webAvailable == true
     var sending by remember { mutableStateOf(false) }
     var pendingPrompt by remember { mutableStateOf<String?>(null) }
     var errorText by remember { mutableStateOf<String?>(null) }
@@ -172,7 +174,7 @@ internal fun ADNativeConversationScreen(
     fun send() {
         val prompt = message.trim()
         if (prompt.isEmpty() || sending) return
-        val useWeb = webSearch
+        val useWeb = webSearch && webAvailable
         message = ""
         webSearch = false
         pendingPrompt = prompt
@@ -207,7 +209,7 @@ internal fun ADNativeConversationScreen(
         threadId = requestedThreadId
         messages = ChatStore.listMessages(requestedThreadId)
         request.prefill?.takeIf { it.isNotBlank() }?.let { message = it }
-        webSearch = request.webSearchRequested
+        webSearch = request.webSearchRequested && webAvailable
         errorText = null
         onNavigationRequestApplied(request.id)
         if (!request.prefill.isNullOrBlank() || request.webSearchRequested) {
@@ -389,7 +391,8 @@ internal fun ADNativeConversationScreen(
                 message = message,
                 onMessageChange = { message = it },
                 webSearch = webSearch,
-                onWebSearchChange = { webSearch = it },
+                webAvailable = webAvailable,
+                onWebSearchChange = { webSearch = it && webAvailable },
                 sending = sending,
                 focusRequester = composerFocusRequester,
                 onSend = ::send,
@@ -740,6 +743,7 @@ private fun ADConversationComposer(
     message: String,
     onMessageChange: (String) -> Unit,
     webSearch: Boolean,
+    webAvailable: Boolean,
     onWebSearchChange: (Boolean) -> Unit,
     sending: Boolean,
     focusRequester: FocusRequester,
@@ -763,13 +767,17 @@ private fun ADConversationComposer(
             ) {
                 IconButton(
                     onClick = { onWebSearchChange(!webSearch) },
-                    enabled = !sending,
+                    enabled = !sending && webAvailable,
                     modifier = Modifier.size(38.dp),
                 ) {
                     Icon(
                         Icons.Outlined.Public,
-                        contentDescription = if (webSearch) "Disable web search" else "Enable web search",
-                        tint = if (webSearch) ADColors.Blue else ADColors.Muted,
+                        contentDescription = when {
+                            !webAvailable -> "Web search unavailable for active profile"
+                            webSearch -> "Disable web search"
+                            else -> "Enable web search"
+                        },
+                        tint = if (webSearch && webAvailable) ADColors.Blue else ADColors.Muted,
                         modifier = Modifier.size(18.dp),
                     )
                 }

@@ -1,10 +1,7 @@
 package com.ad_glasses.ui
 
 import android.content.Context
-import com.ad_glasses.agent.LocalAgentPrefs
 import com.ad_glasses.ai.router.ApiTokenClient
-import com.ad_glasses.localmodels.provider.LocalModelsProvider
-import com.ad_glasses.shared.settings.AgentProviderType
 import com.ad_glasses.shared.ai.AiModel
 import com.ad_glasses.shared.ai.AiModelRegistry
 import com.ad_glasses.shared.ai.ChatAiService
@@ -149,8 +146,6 @@ class AndroidMediaRecordRepositoryWrapper : MediaRecordRepository {
 
 class AndroidChatAiService(context: Context) : ChatAiService {
     private val appContext = context.applicationContext
-    private val localProvider = LocalModelsProvider()
-
     override suspend fun chat(messages: List<ChatMessage>, model: String?): ChatResponse {
         val cleanMessages = messages.mapNotNull { message ->
             val role = message.role.trim().lowercase()
@@ -159,16 +154,10 @@ class AndroidChatAiService(context: Context) : ChatAiService {
         }
         require(cleanMessages.isNotEmpty()) { "A non-empty AI message is required" }
         require(cleanMessages.any { it["role"] == "user" }) { "A user message is required" }
-        val reply = when (LocalAgentPrefs.getProviderType(appContext)) {
-            AgentProviderType.LOCAL_AGENT -> localProvider.streamChat(
-                context = appContext,
-                messages = cleanMessages,
-            )
-            AgentProviderType.CLOUD_AI -> ApiTokenClient.chat(
-                context = appContext,
-                messages = cleanMessages,
-            ).getOrThrow()
-        }
+        val reply = ApiTokenClient.chat(
+            context = appContext,
+            messages = cleanMessages,
+        ).getOrThrow()
         return ChatResponse(
             message = ChatMessage("assistant", reply),
         )
@@ -186,15 +175,15 @@ class AndroidVoiceAiService : VoiceAiService {
 class AndroidImageAiService : ImageAiService {
     override suspend fun analyzeImage(imageData: ByteArray, prompt: String, mimeType: String): String {
         throw UnsupportedOperationException(
-            "Shared image analysis has no implicit upload route. Use the explicit Local or Cloud media pipeline.",
+            "Shared image analysis has no implicit upload route. Use the explicit Cloud media pipeline.",
         )
     }
 }
 
 class AndroidAiModelRegistry : AiModelRegistry {
     override suspend fun listModels(): List<AiModel> = listOf(
-        AiModel("local-llama", "Local llama.cpp", "local", isLocal = true),
+        AiModel("cloud-active", "Configured Cloud AI", "cloud", isLocal = false),
     )
 
-    override fun getDefaultModelId(): String = "local-llama"
+    override fun getDefaultModelId(): String = "cloud-active"
 }

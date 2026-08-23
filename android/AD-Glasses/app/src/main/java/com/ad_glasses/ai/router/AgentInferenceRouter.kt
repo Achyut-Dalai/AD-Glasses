@@ -1,8 +1,7 @@
 package com.ad_glasses.ai.router
 
 import android.content.Context
-import com.ad_glasses.agent.LocalAgentPrefs as InferencePrefs
-import com.ad_glasses.localmodels.provider.LocalModelsProvider
+import com.ad_glasses.agent.LocalAgentPrefs as AutomationPrefs
 import com.ad_glasses.shared.settings.AgentProviderType
 import java.io.File
 import kotlinx.coroutines.CancellationException
@@ -18,25 +17,23 @@ data class AgentInferenceResult(
     val mediaStatus: String,
 )
 
-/** Inference boundary with only two transports: encrypted cloud API or on-device local model. */
+/** Cloud-only inference boundary. Local Agent remains an automation capability, not an LLM. */
 object AgentInferenceRouter {
-    private val localModelsProvider = LocalModelsProvider()
-
     suspend fun complete(
         context: Context,
         purpose: AgentInferencePurpose,
         sessionId: String,
         systemPrompt: String,
         userPrompt: String,
-        providerType: AgentProviderType = InferencePrefs.getProviderType(context),
+        providerType: AgentProviderType = AutomationPrefs.getProviderType(context),
         onToken: ((String) -> Unit)? = null,
+        webRequested: Boolean = false,
     ): String = completeText(
         context = context,
         purpose = purpose,
         systemPrompt = systemPrompt,
         userPrompt = userPrompt,
-        providerType = providerType,
-        onToken = onToken,
+        webRequested = webRequested,
     )
 
     suspend fun completeUiPlanning(
@@ -46,8 +43,9 @@ object AgentInferenceRouter {
         userPrompt: String,
         imagePath: String?,
         allowRemoteImageUpload: Boolean,
-        providerType: AgentProviderType = InferencePrefs.getProviderType(context),
+        providerType: AgentProviderType = AutomationPrefs.getProviderType(context),
         onToken: ((String) -> Unit)? = null,
+        webRequested: Boolean = false,
     ): AgentInferenceResult {
         val usableImagePath = imagePath?.trim()?.takeIf { File(it).isFile }
         if (!imagePath.isNullOrBlank() && usableImagePath == null) {
@@ -56,43 +54,33 @@ object AgentInferenceRouter {
         if (usableImagePath == null) {
             return AgentInferenceResult(
                 content = completeText(
-                    context,
-                    AgentInferencePurpose.UI_PLANNING,
-                    systemPrompt,
-                    userPrompt,
-                    providerType,
-                    onToken,
+                    context = context,
+                    purpose = AgentInferencePurpose.UI_PLANNING,
+                    systemPrompt = systemPrompt,
+                    userPrompt = userPrompt,
+                    webRequested = webRequested,
                 ),
                 usedImage = false,
-                mediaStatus = "Text-only inference",
+                mediaStatus = "Cloud text inference",
             )
         }
-        if (isRemotePlanner(providerType) && !allowRemoteImageUpload) {
+        if (!allowRemoteImageUpload) {
             throw IllegalStateException("Remote image upload is off. The image was not sent.")
         }
 
         val imageContent = try {
-            when (providerType) {
-                AgentProviderType.CLOUD_AI -> ApiTokenClient.image(
-                    context = context,
-                    systemPrompt = systemPrompt,
-                    userPrompt = userPrompt,
-                    imagePath = usableImagePath,
-                    maxTokens = UI_PLANNING_MAX_TOKENS,
-                ).getOrThrow()
-                AgentProviderType.LOCAL_AGENT -> localModelsProvider.streamChat(
-                    context = context,
-                    messages = messages(systemPrompt, userPrompt),
-                    imagePaths = listOf(usableImagePath),
-                    maxTokens = UI_PLANNING_MAX_TOKENS,
-                    onToken = onToken,
-                )
-            }
+            ApiTokenClient.image(
+                context = context,
+                systemPrompt = systemPrompt,
+                userPrompt = userPrompt,
+                imagePath = usableImagePath,
+                maxTokens = UI_PLANNING_MAX_TOKENS,
+            ).getOrThrow()
         } catch (error: CancellationException) {
             throw error
         } catch (error: Exception) {
             throw IllegalStateException(
-                "The selected ${providerType.label} route could not analyze this image: " +
+                "The active Cloud AI profile could not analyze this image: " +
                     (error.message ?: error::class.java.simpleName),
                 error,
             )
@@ -101,36 +89,26 @@ object AgentInferenceRouter {
         return AgentInferenceResult(
             content = imageContent,
             usedImage = true,
-            mediaStatus = "Image attached to the selected inference route.",
+            mediaStatus = "Image attached to the active Cloud AI profile.",
         )
     }
 
-    fun isRemotePlanner(providerType: AgentProviderType): Boolean =
-        providerType == AgentProviderType.CLOUD_AI
+    fun isRemotePlanner(providerType: AgentProviderType): Boolean = true
 
     private suspend fun completeText(
         context: Context,
         purpose: AgentInferencePurpose,
         systemPrompt: String,
         userPrompt: String,
-        providerType: AgentProviderType,
-        onToken: ((String) -> Unit)?,
+        webRequested: Boolean,
     ): String {
-        val messages = messages(systemPrompt, userPrompt)
         val maxTokens = if (purpose == AgentInferencePurpose.CLASSIFICATION) 256 else 512
-        return when (providerType) {
-            AgentProviderType.CLOUD_AI -> ApiTokenClient.chat(
-                context = context,
-                messages = messages,
-                maxTokens = maxTokens,
-            ).getOrThrow()
-            AgentProviderType.LOCAL_AGENT -> localModelsProvider.streamChat(
-                context = context,
-                messages = messages,
-                maxTokens = maxTokens,
-                onToken = onToken,
-            )
-        }
+        return ApiTokenClient.chat(
+            context = context,
+            messages = messages(systemPrompt, userPrompt),
+            maxTokens = maxTokens,
+            webRequested = webRequested,
+        ).getOrThrow()
     }
 
     private fun messages(systemPrompt: String, userPrompt: String): List<Map<String, String>> = listOf(

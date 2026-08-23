@@ -237,12 +237,6 @@ import com.ad_glasses.localagent.dailyfacts.DailyFactsStorage
 import com.ad_glasses.localagent.memory.LocalAgentMemorySearch
 import com.ad_glasses.localagent.memory.LocalAgentMemoryStore
 import com.ad_glasses.localagent.userfacts.CandidateUserFactsStorage
-import com.ad_glasses.localmodels.provider.LocalModelsProvider
-import com.ad_glasses.localmodels.provider.localModelRequestCompatibilityIssue
-import com.ad_glasses.localmodels.tts.StreamingSpeechSessionManager
-import com.ad_glasses.localmodels.settings.LocalModelRuntime
-import com.ad_glasses.localmodels.settings.LocalModelSettingsRepository
-import com.ad_glasses.localmodels.storage.LocalModelStorageRepository
 import com.ad_glasses.memoryvault.MemoryPolicyService
 import com.ad_glasses.ui.appearance.AppearancePreferences
 import com.ad_glasses.ui.appearance.rememberAppearanceSettings
@@ -260,9 +254,6 @@ import kotlinx.coroutines.flow.merge
 class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
     private var tts: TextToSpeech? = null
     private var ttsReady = false
-    private val localSpeechSessionManager by lazy {
-        StreamingSpeechSessionManager.getInstance(applicationContext)
-    }
     private val ttsDoneCallbacks = ConcurrentHashMap<String, () -> Unit>()
     private val assistantRequestRouter = AssistantRequestRouter()
     private var pendingVoiceImageQuestion: String? = null
@@ -835,13 +826,6 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
 
     override fun onResume() {
         super.onResume()
-        if (
-            com.ad_glasses.localmodels.remote.RemoteOpenAiPrefs.isBridgeConfigured(this) &&
-            !com.ad_glasses.studiobridge.StudioBridgeClient.isRunning() &&
-            com.ad_glasses.studiobridge.StudioApprovalHandler.canCaptureVoice(this)
-        ) {
-            (application as? com.ad_glasses.ui.MyApplication)?.startStudioBridge()
-        }
         try {
                 if (!BluetoothUtils.isEnabledBluetooth(this)) {
                     val intent = Intent(BluetoothAdapter.ACTION_REQUEST_ENABLE)
@@ -875,8 +859,7 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
         if (enabledFeaturePermissionRequestActive) return
 
         val voicePluginEnabled =
-            com.ad_glasses.localmodels.remote.RemoteOpenAiPrefs.isBridgeConfigured(this) ||
-                AutoAudioCapturePrefs.isEnabled(this) ||
+            AutoAudioCapturePrefs.isEnabled(this) ||
                 setOf(
                     NativePluginIds.MEETING_SPARK_NOTES,
                     NativePluginIds.LIVE_CAPTION_RELAY,
@@ -944,9 +927,6 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
         }
         if (CommunityPluginPrefs.isNativePluginEnabled(this, NativePluginIds.ERRAND_BRAIN)) {
             ErrandBrainService.start(this)
-        }
-        if (com.ad_glasses.localmodels.remote.RemoteOpenAiPrefs.isBridgeConfigured(this)) {
-            (application as? MyApplication)?.startStudioBridge()
         }
     }
 
@@ -3476,24 +3456,8 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
         if (isMeizuMyvuSelected()) {
             return "Image questions are unavailable for MYVU because its current transport does not expose camera capture."
         }
-        if (currentAssistantRoute() != GlassesAssistantRoute.LOCAL) return null
-
-        val selected = LocalModelStorageRepository.resolveSelectedModel(this)
-            ?: return "No local model selected. Install/select Gemma 4 LiteRT first."
-        val settings = LocalModelSettingsRepository.getForModel(this, selected.id)
-        if (settings.modelRuntime != LocalModelRuntime.LITERT) {
-            return "Image questions require Local Runtime = LiteRT for the selected model."
-        }
-
-        val modelHint = "${selected.displayName} ${selected.catalogId.orEmpty()} ${selected.fileName}".lowercase(Locale.US)
-        if (!modelHint.contains("gemma")) {
-            return "Select a Gemma LiteRT model for local image questions."
-        }
         return null
     }
-
-
-
 
     private fun refreshAiQueryButtonsState() {
         val unsupportedReason = imageQueryUnsupportedReasonForCurrentSelection()
@@ -3661,17 +3625,12 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
         val languageTag = recognitionLanguageTag()
         val systemPrompt = buildString {
             append(buildCompactMemoryAwareSystemPrompt(queryText = userPrompt, date = date))
-            append("\n\n")
+            append("
+
+")
             append(ImageQuestionDefaults.responseLanguageInstruction(languageTag))
         }
 
-        val messages = listOf(
-            mapOf("role" to "System", "content" to systemPrompt),
-            mapOf("role" to "User", "content" to userPrompt),
-        )
-
-        // Text voice turns share the same short-lived conversation as the Prompt debug screen.
-        // Capture the provider once and keep web disabled unless a visible flow explicitly asks.
         if (imagePaths.isEmpty() && audioPath.isNullOrBlank()) {
             val result = AssistantOrchestrator(
                 context = this,
@@ -3681,61 +3640,25 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
                     text = userPrompt,
                     surface = AssistantInputSurface.GLASSES_VOICE,
                     contextText = systemPrompt,
-                    webRequested = false,
+                    webRequested = null,
                 ),
-                providerType = providerType,
+                providerType = AgentProviderType.CLOUD_AI,
             )
             return result.spokenText.trim().ifBlank { result.richText.trim() }
         }
 
-        return when (providerType) {
-            AgentProviderType.CLOUD_AI -> {
-                ApiTokenClient.chat(
-                    context = this,
-                    messages = messages,
-                    imagePaths = imagePaths,
-                    audioPath = audioPath,
-                ).getOrElse {
-                    "Cloud AI unavailable (${it.message ?: it::class.java.simpleName})."
-                }
-            }
-
-            AgentProviderType.LOCAL_AGENT ->
-                runCatching {
-                    val modelIssue = validateSelectedLocalModelForChosenProvider(
-                        imageRequested = imagePaths.isNotEmpty(),
-                    )
-                    if (modelIssue != null) {
-                        return@runCatching modelIssue
-                    }
-                    LocalModelsProvider().streamChat(
-                        context = this,
-                        messages = messages,
-                        imagePaths = imagePaths,
-                        audioPath = audioPath,
-                        onToken = onToken,
-                    )
-                }.getOrElse {
-                    "Local Models error: ${it.message ?: "unknown error"}"
-                }
-
-        }.trim()
-    }
-
-    private fun validateSelectedLocalModelForChosenProvider(imageRequested: Boolean): String? {
-        val selected = LocalModelStorageRepository.resolveSelectedModel(this)
-            ?: return if (imageRequested) {
-                "No local model selected. Install/select Gemma 4 LiteRT in Settings."
-            } else {
-                "No local model selected. Install/select a local GGUF or LiteRT model in Settings."
-            }
-        val settings = LocalModelSettingsRepository.getForModel(this, selected.id)
-        val modelHint = "${selected.displayName} ${selected.catalogId.orEmpty()} ${selected.fileName}".lowercase(Locale.US)
-        return localModelRequestCompatibilityIssue(
-            modelRuntime = settings.modelRuntime,
-            modelDescriptor = modelHint,
-            imageRequested = imageRequested,
+        val messages = listOf(
+            mapOf("role" to "system", "content" to systemPrompt),
+            mapOf("role" to "user", "content" to userPrompt),
         )
+        return ApiTokenClient.chat(
+            context = this,
+            messages = messages,
+            imagePaths = imagePaths,
+            audioPath = audioPath,
+        ).getOrElse {
+            "Cloud AI unavailable (${it.message ?: it::class.java.simpleName})."
+        }.trim()
     }
 
     private fun resolveImageQuestionPrompt(userQuestion: String?): ResolvedImageQuestionPrompt {
@@ -3751,30 +3674,14 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
         resolvedPrompt: ResolvedImageQuestionPrompt,
         onReplySpoken: (() -> Unit)? = null,
     ) {
-        Log.i("AIHijack", "Running memory-aware image query for chosen provider $providerType: $imagePath")
-
+        Log.i("AIHijack", "Running Cloud image query: $imagePath")
         val onSpeechCompleted: () -> Unit = {
             finishAiQuestionForegroundWork()
             onReplySpoken?.invoke()
         }
-        val localSpeechSessionId = if (providerType == AgentProviderType.LOCAL_AGENT) {
-            localSpeechSessionManager.startNewSession(
-                languageTag = ImageQuestionPreferences.get(this).appLanguageTag,
-                onSpeechCompleted = onSpeechCompleted,
-            )
-        } else {
-            null
-        }
-
-        val queryJob = lifecycleScope.launch(Dispatchers.IO) {
+        lifecycleScope.launch(Dispatchers.IO) {
             try {
-                val routePrompt = resolvedPrompt.forRoute(
-                    if (providerType == AgentProviderType.LOCAL_AGENT) {
-                        ImageQuestionRoute.LOCAL_MODEL
-                    } else {
-                        ImageQuestionRoute.CLOUD_API
-                    },
-                )
+                val routePrompt = resolvedPrompt.forRoute(ImageQuestionRoute.CLOUD_API)
                 val systemContext = buildCompactMemoryAwareSystemPrompt(
                     queryText = routePrompt,
                     date = todayDateString(),
@@ -3791,42 +3698,18 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
                             contextText = systemContext,
                             webRequested = false,
                         ),
-                        providerType = providerType,
+                        providerType = AgentProviderType.CLOUD_AI,
                     ).let { result -> result.spokenText.trim().ifBlank { result.richText.trim() } }
                 } catch (error: CancellationException) {
                     throw error
                 } catch (error: Exception) {
-                    Log.e("AIHijack", "Image query failed without provider fallback", error)
-                    runOnUiThread {
-                        Toast.makeText(
-                            this@MainActivity,
-                            "Vision error: ${(error.message ?: "unknown error").take(100)}",
-                            Toast.LENGTH_LONG,
-                        ).show()
-                    }
-                    "I couldn't analyze that image with the selected route. I did not send it to another provider."
+                    Log.e("AIHijack", "Cloud image query failed", error)
+                    "I couldn't analyze that image with the active Cloud AI profile."
                 }
-
-                if (providerType == AgentProviderType.LOCAL_AGENT) {
-                    localSpeechSessionId?.let { sessionId ->
-                        localSpeechSessionManager.onModelTokenDelta(finalReply, sessionId)
-                    }
-                }
-
                 val replyToSpeak = finalReply.ifBlank {
                     "I couldn't generate an answer for that image. Please try again."
                 }
-                Log.i(
-                    "AIHijack",
-                    "Image query completed provider=$providerType replyLength=${replyToSpeak.length}",
-                )
-                runOnUiThread {
-                    if (providerType == AgentProviderType.LOCAL_AGENT) {
-                        localSpeechSessionId?.let(localSpeechSessionManager::onModelGenerationCompleted)
-                    } else {
-                        speakVision(replyToSpeak, onDone = onSpeechCompleted)
-                    }
-                }
+                runOnUiThread { speakVision(replyToSpeak, onDone = onSpeechCompleted) }
             } catch (error: CancellationException) {
                 finishAiQuestionForegroundWork()
                 throw error
@@ -3843,18 +3726,6 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
             } finally {
                 imageQueryInProgress.set(false)
             }
-        }
-        localSpeechSessionId?.let { sessionId ->
-            localSpeechSessionManager.attachGenerationJob(sessionId, queryJob)
-        }
-    }
-
-    private fun cancelLocalStreamingSpeech(reason: String) {
-        if (localSpeechSessionManager.activeSessionId == 0L) return
-        Log.i("AIHijack", "Cancelling local streaming speech: $reason")
-        localSpeechSessionManager.cancelActiveStreamingResponse()
-        CoroutineScope(Dispatchers.IO).launch {
-            LocalModelsProvider().cancelGeneration()
         }
     }
 
@@ -4804,7 +4675,6 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
 
     private fun triggerInternalVoiceQuery(chosenProviderType: AgentProviderType) {
         if (isGlassesCommandBlocked("voice-query command")) return
-        cancelLocalStreamingSpeech("new voice query")
         if (ContextCompat.checkSelfPermission(this, Manifest.permission.RECORD_AUDIO) != PackageManager.PERMISSION_GRANTED) {
             XXPermissions.with(this)
                 .permission(Manifest.permission.RECORD_AUDIO)
@@ -5019,19 +4889,8 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
 
     private fun triggerAssistantVoiceQuery() {
         if (isGlassesCommandBlocked("voice-query command")) return
-        val effectiveMode = resolveEffectiveAiAssistantMode()
-        Log.i("AIHijack", "Triggering Voice Query for $effectiveMode")
-
-        when (currentAssistantRoute()) {
-            GlassesAssistantRoute.LOCAL -> {
-                triggerInternalVoiceQuery(AgentProviderType.LOCAL_AGENT)
-            }
-
-            GlassesAssistantRoute.CLOUD -> {
-                triggerInternalVoiceQuery(AgentProviderType.CLOUD_AI)
-            }
-
-        }
+        Log.i("AIHijack", "Triggering Cloud voice query")
+        triggerInternalVoiceQuery(AgentProviderType.CLOUD_AI)
     }
 
     private fun handleAiWakeWordActivation(source: String) {
@@ -5078,10 +4937,7 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
 
         try {
             val resolvedPrompt = resolveImageQuestionPrompt(userQuestion)
-            val providerType = when (currentAssistantRoute()) {
-                GlassesAssistantRoute.LOCAL -> AgentProviderType.LOCAL_AGENT
-                GlassesAssistantRoute.CLOUD -> AgentProviderType.CLOUD_AI
-            }
+            val providerType = AgentProviderType.CLOUD_AI
             Log.i("AIHijack", "Starting image query source=${source.wireName} provider=$providerType")
             triggerMemoryAwareImageQuery(
                 imagePath = imagePath,

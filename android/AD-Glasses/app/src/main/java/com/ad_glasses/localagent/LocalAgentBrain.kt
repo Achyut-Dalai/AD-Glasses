@@ -6,7 +6,7 @@ import com.ad_glasses.ai.router.AgentInferenceRouter
 /**
  * "Brain" interface: takes an observation and returns a JSON plan.
  *
- * Keep it pluggable so we can later route to a local LLM, remote endpoint,
+ * Keep it pluggable so we can later route to a Cloud AI endpoint,
  * or a scripted policy.
  */
 interface LocalAgentBrain {
