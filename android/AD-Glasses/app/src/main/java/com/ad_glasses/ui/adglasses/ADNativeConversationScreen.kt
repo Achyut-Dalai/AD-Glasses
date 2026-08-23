@@ -141,6 +141,18 @@ internal fun ADNativeConversationScreen(
 
     fun startNewPrompt() {
         if (sending) return
+        if (messages.isEmpty() && pendingPrompt == null) {
+            message = ""
+            webSearch = false
+            errorText = null
+            lastFailedPrompt = null
+            showConversationHistory = false
+            scope.launch {
+                delay(80)
+                focusComposer()
+            }
+            return
+        }
         val newThreadId = session.startNewConversation()
         threadId = newThreadId
         messages = emptyList()
@@ -377,6 +389,7 @@ internal fun ADNativeConversationScreen(
                 message = message,
                 onMessageChange = { message = it },
                 webSearch = webSearch,
+                onWebSearchChange = { webSearch = it },
                 sending = sending,
                 focusRequester = composerFocusRequester,
                 onSend = ::send,
@@ -727,6 +740,7 @@ private fun ADConversationComposer(
     message: String,
     onMessageChange: (String) -> Unit,
     webSearch: Boolean,
+    onWebSearchChange: (Boolean) -> Unit,
     sending: Boolean,
     focusRequester: FocusRequester,
     onSend: () -> Unit,
@@ -737,16 +751,6 @@ private fun ADConversationComposer(
             .background(ADColors.Background)
             .padding(start = 10.dp, end = 10.dp, top = 5.dp, bottom = 6.dp),
     ) {
-        if (webSearch) {
-            Row(
-                modifier = Modifier.padding(start = 8.dp, bottom = 5.dp),
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(5.dp),
-            ) {
-                Icon(Icons.Outlined.Public, null, tint = ADColors.Ink, modifier = Modifier.size(14.dp))
-                Text("Web search", style = MaterialTheme.typography.labelMedium, color = ADColors.Ink)
-            }
-        }
         Surface(
             modifier = Modifier.fillMaxWidth(),
             color = ADColors.Surface,
@@ -754,9 +758,21 @@ private fun ADConversationComposer(
             shadowElevation = 1.dp,
         ) {
             Row(
-                modifier = Modifier.padding(start = 13.dp, end = 6.dp, top = 5.dp, bottom = 5.dp),
+                modifier = Modifier.padding(start = 5.dp, end = 6.dp, top = 5.dp, bottom = 5.dp),
                 verticalAlignment = Alignment.Bottom,
             ) {
+                IconButton(
+                    onClick = { onWebSearchChange(!webSearch) },
+                    enabled = !sending,
+                    modifier = Modifier.size(38.dp),
+                ) {
+                    Icon(
+                        Icons.Outlined.Public,
+                        contentDescription = if (webSearch) "Disable web search" else "Enable web search",
+                        tint = if (webSearch) ADColors.Blue else ADColors.Muted,
+                        modifier = Modifier.size(18.dp),
+                    )
+                }
                 BasicTextField(
                     value = message,
                     onValueChange = onMessageChange,
