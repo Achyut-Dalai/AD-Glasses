@@ -12,7 +12,6 @@ def write(path: str, text: str) -> None:
     (ROOT / path).write_text(text, encoding='utf-8')
 
 
-# Shared chat: remove the retired local-model composer state if still present.
 path = 'android/AD-Glasses/shared/src/commonMain/kotlin/com/ad_glasses/shared/ui/chat/ChatThreadScreen.kt'
 text = read(path)
 text = text.replace(
@@ -23,14 +22,12 @@ text = text.replace('''                            ChatComposerPrimaryAction.CON
 text = text.replace('''                             ChatComposerPrimaryAction.CONFIGURE_LOCAL_MODEL -> stringResource(Res.string.chat_configure_local_model)\n''', '')
 write(path, text)
 
-# Settings disclosure labels were generic UI state with stale local-model resource names.
 path = 'android/AD-Glasses/shared/src/commonMain/kotlin/com/ad_glasses/shared/ui/settings/SettingsScreen.kt'
 text = read(path)
 text = text.replace('Res.string.local_models_collapse', 'Res.string.settings_section_collapse')
 text = text.replace('Res.string.local_models_expand', 'Res.string.settings_section_expand')
 write(path, text)
 
-# Provider-aware model discovery: compatible /models first, then native Gemini as a fallback.
 path = 'android/AD-Glasses/app/src/main/java/com/ad_glasses/ai/router/ApiAiRouter.kt'
 text = read(path)
 start = text.find('    /** Fetch models without ever returning the API key to UI state. */\n')
@@ -41,12 +38,10 @@ new_block = '''    /** Fetch models without ever returning the API key to UI sta
 text = text[:start] + new_block + text[end:]
 write(path, text)
 
-# Cloud settings no longer imports the removed profile-level web mode.
 path = 'android/AD-Glasses/app/src/main/java/com/ad_glasses/ui/adglasses/ADNativeAiDetailScreens.kt'
 text = read(path).replace('import com.ad_glasses.ai.router.CloudWebMode\n', '')
 write(path, text)
 
-# Local Agent text points to Cloud profile configuration.
 path = 'android/AD-Glasses/app/src/main/res/values/strings_compose.xml'
 text = read(path)
 text = text.replace(
@@ -55,7 +50,6 @@ text = text.replace(
 )
 write(path, text)
 
-# Shared resources: keep translated accordion labels, remove the retired Local Models surface.
 resources_root = ROOT / 'android/AD-Glasses/shared/src/commonMain/composeResources'
 for file in sorted(resources_root.glob('values*/strings_extra.xml')):
     text = file.read_text(encoding='utf-8')
@@ -89,11 +83,14 @@ for file in sorted(resources_root.glob('values*/strings_extra.xml')):
         text = re.sub(rf'^\s*<string name="{name}">.*?</string>\s*\n?', '', text, flags=re.M)
 
     if generic_lines and 'settings_section_collapse' not in text:
+        insertion = ''.join(f'    {line}\n' for line in generic_lines)
         marker = '<!-- Local agent and utility screens -->'
-        if marker not in text:
-            raise RuntimeError(f'{file}: Local Agent resource marker missing')
-        insertion = ''.join(f'    {line}\n' for line in generic_lines) + '\n    '
-        text = text.replace(marker, insertion + marker, 1)
+        if marker in text:
+            text = text.replace(marker, insertion + '\n    ' + marker, 1)
+        elif '</resources>' in text:
+            text = text.replace('</resources>', '\n' + insertion + '</resources>', 1)
+        else:
+            raise RuntimeError(f'{file}: resources closing tag missing')
 
     if is_base:
         text = re.sub(
@@ -112,13 +109,11 @@ for file in sorted(resources_root.glob('values*/strings_extra.xml')):
             text,
         )
     else:
-        # Fall back to corrected base copy rather than preserve translated descriptions of a removed local LLM.
         for name in ('settings_provider_description', 'chat_empty_body', 'dashboard_ai_wake_word_image_warning_body'):
             text = re.sub(rf'^\s*<string name="{name}">.*?</string>\s*\n?', '', text, flags=re.M)
 
     file.write_text(text, encoding='utf-8')
 
-# Guard the live product source. Moonshine/Gemma transcription strings are intentionally not banned.
 for root in (
     ROOT / 'android/AD-Glasses/app/src/main',
     ROOT / 'android/AD-Glasses/shared/src/commonMain',
