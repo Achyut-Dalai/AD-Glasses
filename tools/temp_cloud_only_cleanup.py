@@ -40,6 +40,10 @@ write(path, text)
 
 path = 'android/AD-Glasses/app/src/main/java/com/ad_glasses/ui/adglasses/ADNativeAiDetailScreens.kt'
 text = read(path).replace('import com.ad_glasses.ai.router.CloudWebMode\n', '')
+text = text.replace(
+    '''        model = model,\n        webMode = if (provider.nativeWebCapable) CloudWebMode.AUTO else CloudWebMode.OFF,\n''',
+    '''        model = model,\n''',
+)
 write(path, text)
 
 path = 'android/AD-Glasses/app/src/main/res/values/strings_compose.xml'
