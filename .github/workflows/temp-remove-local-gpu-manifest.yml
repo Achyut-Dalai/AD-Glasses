@@ -1,0 +1,48 @@
+name: Temporary remove local GPU manifest residue
+
+on:
+  push:
+    branches:
+      - cleanup/ad-glasses-cloud-rebrand
+    paths:
+      - .github/workflows/temp-remove-local-gpu-manifest.yml
+
+permissions:
+  contents: write
+
+jobs:
+  patch-manifest:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: cleanup/ad-glasses-cloud-rebrand
+          fetch-depth: 0
+      - name: Remove retired local-LLM GPU libraries
+        shell: bash
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          path = Path('android/AD-Glasses/app/src/main/AndroidManifest.xml')
+          text = path.read_text(encoding='utf-8')
+          needles = [
+              '        <uses-native-library android:name="libvulkan.so" android:required="false" />\n',
+              '        <uses-native-library android:name="libOpenCL.so" android:required="false" />\n',
+          ]
+          for needle in needles:
+              if text.count(needle) != 1:
+                  raise SystemExit(f'Expected exactly one manifest line: {needle.strip()}')
+              text = text.replace(needle, '')
+          path.write_text(text, encoding='utf-8')
+          PY
+          git diff --check
+          git diff -- android/AD-Glasses/app/src/main/AndroidManifest.xml
+      - name: Commit manifest cleanup
+        shell: bash
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add android/AD-Glasses/app/src/main/AndroidManifest.xml
+          git diff --cached --check
+          git commit -m "Remove retired local LLM GPU manifest hooks"
+          git push origin HEAD:cleanup/ad-glasses-cloud-rebrand
