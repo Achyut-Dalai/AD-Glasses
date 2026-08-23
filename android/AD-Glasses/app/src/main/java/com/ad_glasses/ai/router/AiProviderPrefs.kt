@@ -172,7 +172,7 @@ object AiProviderPrefs {
         val prefs = secure(context)
         val saved = normalizeProfile(profile)
         require(saved.name.isNotBlank()) { "Profile name is required." }
-        require(saved.baseUrl.isNotBlank()) { "API base URL is required." }
+        require(saved.baseUrl.startsWith("https://")) { "API base URL must use HTTPS." }
         require(saved.model.isNotBlank()) { "Model is required." }
 
         val existing = readProfile(prefs, saved.id)
@@ -202,7 +202,7 @@ object AiProviderPrefs {
         provider = provider,
         baseUrl = provider.defaultBaseUrl,
         model = provider.defaultModel,
-        webMode = CloudWebMode.OFF,
+        webMode = if (provider.nativeWebCapable) CloudWebMode.AUTO else CloudWebMode.OFF,
     )
 
     @Synchronized
@@ -330,7 +330,7 @@ object AiProviderPrefs {
         name = profile.name.trim(),
         baseUrl = profile.baseUrl.trim().trimEnd('/'),
         model = profile.model.trim(),
-        webMode = if (profile.provider.nativeWebCapable) profile.webMode else CloudWebMode.OFF,
+        webMode = if (profile.provider.nativeWebCapable) CloudWebMode.AUTO else CloudWebMode.OFF,
     )
 
     private fun profileIds(prefs: SharedPreferences): List<String> = runCatching {

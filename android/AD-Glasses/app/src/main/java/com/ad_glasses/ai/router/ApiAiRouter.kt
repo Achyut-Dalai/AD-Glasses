@@ -10,7 +10,6 @@ import java.io.File
 import java.io.InputStreamReader
 import java.io.OutputStreamWriter
 import java.net.HttpURLConnection
-import java.net.URLEncoder
 import java.net.URL
 
 /** Direct Cloud AI transport resolved through the active encrypted profile. */
@@ -96,16 +95,9 @@ object ApiTokenClient {
         }
         require(key.isNotBlank()) { "Enter an API key or use a profile that already has one saved." }
         val cleanBase = baseUrl.trim().trimEnd('/')
-        require(cleanBase.startsWith("https://") || cleanBase.startsWith("http://")) {
-            "API base URL must start with http:// or https://"
-        }
+        require(cleanBase.startsWith("https://")) { "API base URL must use HTTPS." }
 
-        val response = if (provider == ApiProvider.GOOGLE) {
-            val nativeBase = cleanBase.substringBeforeLast("/openai", cleanBase)
-            getJson("$nativeBase/models?key=${URLEncoder.encode(key, "UTF-8")}", apiKey = null)
-        } else {
-            getJson("$cleanBase/models", apiKey = key)
-        }
+        val response = getJson("$cleanBase/models", apiKey = key)
 
         val models = linkedSetOf<String>()
         response.optJSONArray("data")?.let { data ->
@@ -199,8 +191,13 @@ object ApiTokenClient {
             payload.put("systemInstruction", JSONObject().put("parts", systemParts))
         }
         val nativeBase = profile.baseUrl.trimEnd('/').substringBeforeLast("/openai", profile.baseUrl.trimEnd('/'))
-        val endpoint = "$nativeBase/models/${URLEncoder.encode(profile.model, "UTF-8")}:generateContent?key=${URLEncoder.encode(apiKey, "UTF-8")}"
-        return postJson(endpoint, apiKey = null, payload = payload)
+        val endpoint = "$nativeBase/models/${profile.model}:generateContent"
+        return postJson(
+            endpoint,
+            apiKey = null,
+            payload = payload,
+            extraHeaders = mapOf("x-goog-api-key" to apiKey),
+        )
     }
 
     private fun mediaContent(text: String, imagePaths: List<String>, audioPath: String?): JSONArray {
@@ -258,15 +255,21 @@ object ApiTokenClient {
         url: String,
         apiKey: String?,
         payload: JSONObject,
-    ): JSONObject = requestJson("POST", url, apiKey, payload)
+        extraHeaders: Map<String, String> = emptyMap(),
+    ): JSONObject = requestJson("POST", url, apiKey, payload, extraHeaders)
 
-    private fun getJson(url: String, apiKey: String?): JSONObject = requestJson("GET", url, apiKey, null)
+    private fun getJson(
+        url: String,
+        apiKey: String?,
+        extraHeaders: Map<String, String> = emptyMap(),
+    ): JSONObject = requestJson("GET", url, apiKey, null, extraHeaders)
 
     private fun requestJson(
         method: String,
         url: String,
         apiKey: String?,
         payload: JSONObject?,
+        extraHeaders: Map<String, String> = emptyMap(),
     ): JSONObject {
         val conn = URL(url).openConnection() as HttpURLConnection
         try {
@@ -275,6 +278,7 @@ object ApiTokenClient {
             conn.readTimeout = READ_TIMEOUT_MS
             conn.setRequestProperty("Accept", "application/json")
             if (!apiKey.isNullOrBlank()) conn.setRequestProperty("Authorization", "Bearer $apiKey")
+            extraHeaders.forEach { (name, value) -> conn.setRequestProperty(name, value) }
             if (payload != null) {
                 conn.doOutput = true
                 conn.setRequestProperty("Content-Type", "application/json; charset=utf-8")

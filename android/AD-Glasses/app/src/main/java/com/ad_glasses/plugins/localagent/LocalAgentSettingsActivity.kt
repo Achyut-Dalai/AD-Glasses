@@ -31,7 +31,6 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
-import androidx.compose.material3.RadioButton
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
@@ -51,7 +50,6 @@ import androidx.lifecycle.lifecycleScope
 import androidx.localbroadcastmanager.content.LocalBroadcastManager
 import com.ad_glasses.R
 import com.ad_glasses.agent.LocalAgentPrefs as AutomationPrefs
-import com.ad_glasses.agent.LocalModelsConfigureActivity
 import com.ad_glasses.bridge.notifications.NotificationForwarderService
 import com.ad_glasses.localagent.LocalAgentController
 import com.ad_glasses.localagent.LocalAgentIntents
@@ -62,9 +60,7 @@ import com.ad_glasses.localagent.LocalAgentTelegramService
 import com.ad_glasses.localagent.LocalAgentTelegramProtocol
 import com.ad_glasses.localagent.accessibility.LocalAgentAccessibilityService
 import com.ad_glasses.localagent.memory.LocalAgentMemoryStore
-import com.ad_glasses.localmodels.session.LocalChatSessionManager
 import com.ad_glasses.shared.plugins.NativePluginIds
-import com.ad_glasses.shared.settings.AgentProviderType
 import com.ad_glasses.ui.NativePluginShortcutPreference
 import com.ad_glasses.ui.hasNotificationPermission
 import com.ad_glasses.ui.localagent.PendingActionsActivity
@@ -138,7 +134,6 @@ class LocalAgentSettingsActivity : AppCompatActivity() {
         LocalAgentPlugin.syncNativePluginState(this)
         uiState = LocalAgentSettingsUiState(
             enabled = LocalAgentPlugin.isEnabled(this),
-            providerType = AutomationPrefs.getProviderType(this),
             accessibilityEnabled = isAccessibilityServiceEnabled(),
             maxSteps = AutomationPrefs.getMaxSteps(this),
             requireActionConfirmation = RuntimePrefs.isRequireActionConfirmationEnabled(this),
@@ -166,15 +161,6 @@ class LocalAgentSettingsActivity : AppCompatActivity() {
         refreshUi()
     }
 
-    private fun setPlanningProvider(type: AgentProviderType) {
-        LocalAgentPlugin.setPlanningProvider(this, type)
-        if (type != AgentProviderType.LOCAL_AGENT) {
-            lifecycleScope.launch(Dispatchers.IO) {
-                runCatching { LocalChatSessionManager.unload() }
-            }
-        }
-        refreshUi()
-    }
 
     private fun setRequireActionConfirmation(enabled: Boolean) {
         // Keep the old automation preference aligned with the runtime policy.
@@ -747,7 +733,6 @@ class LocalAgentSettingsActivity : AppCompatActivity() {
 
 private data class LocalAgentSettingsUiState(
     val enabled: Boolean = false,
-    val providerType: AgentProviderType = AgentProviderType.LOCAL_AGENT,
     val accessibilityEnabled: Boolean = false,
     val maxSteps: Int = 8,
     val requireActionConfirmation: Boolean = true,
@@ -772,29 +757,6 @@ private data class LocalAgentSettingsUiState(
 @Composable
 private fun SectionTitle(text: String) {
     Text(text, style = MaterialTheme.typography.titleMedium)
-}
-
-@Composable
-private fun ProviderOption(
-    type: AgentProviderType,
-    selected: Boolean,
-    onSelected: () -> Unit,
-) {
-    Row(
-        modifier = Modifier.fillMaxWidth(),
-        verticalAlignment = Alignment.CenterVertically,
-    ) {
-        RadioButton(selected = selected, onClick = onSelected)
-        Text(
-            stringResource(
-                when (type) {
-                    AgentProviderType.LOCAL_AGENT -> R.string.compose_provider_local
-                    AgentProviderType.CLOUD_AI -> R.string.compose_provider_pro
-                },
-            ),
-            style = MaterialTheme.typography.bodyMedium,
-        )
-    }
 }
 
 @Composable

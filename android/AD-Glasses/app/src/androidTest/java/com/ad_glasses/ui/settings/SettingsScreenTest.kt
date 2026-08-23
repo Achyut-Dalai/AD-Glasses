@@ -57,7 +57,7 @@ class SettingsScreenTest {
 
         composeRule.onNodeWithTag("settings_appearance").performClick()
         composeRule.onNodeWithTag("settings_section_AI").performClick()
-        composeRule.onNodeWithText("Configure Local Agent planning, phone-control safety, and local models from its Native Plugins card.")
+        composeRule.onNodeWithText("Configure Cloud AI separately from Local Agent phone-control safety.")
             .assertTextContains("Native Plugins")
 
         composeRule.runOnIdle {

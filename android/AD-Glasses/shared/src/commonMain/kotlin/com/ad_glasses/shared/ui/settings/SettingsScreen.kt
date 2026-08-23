@@ -95,7 +95,6 @@ interface SettingsScreenActions {
     fun openAppLanguageSelection()
     fun openCloudAi()
     fun setProviderType(type: AgentProviderType)
-    fun openLocalModels()
     fun setDefaultImageQuestion(question: String)
     fun resetDefaultImageQuestion()
     fun setMemoryMode(mode: MemoryPrivacyMode)
@@ -493,12 +492,6 @@ private fun AiAutomationContent(state: SettingsUiState, actions: SettingsScreenA
             Text(localizedProviderLabel(type), style = MaterialTheme.typography.bodyMedium)
         }
     }
-    OutlinedButton(
-        onClick = actions::openLocalModels,
-        modifier = Modifier.fillMaxWidth(),
-    ) {
-        Text(stringResource(Res.string.settings_configure_local_models))
-    }
     Text(
         text = stringResource(Res.string.image_questions_title),
         style = MaterialTheme.typography.titleSmall,
@@ -664,7 +657,6 @@ private fun SupportContent(actions: SettingsScreenActions) {
 @Composable
 private fun FaqContent() {
     val items = listOf(
-        stringResource(Res.string.settings_faq_local_models_question) to stringResource(Res.string.settings_faq_local_models_answer),
         stringResource(Res.string.settings_faq_data_question) to stringResource(Res.string.settings_faq_data_answer),
         stringResource(Res.string.settings_faq_source_question) to stringResource(Res.string.settings_faq_source_answer),
     )

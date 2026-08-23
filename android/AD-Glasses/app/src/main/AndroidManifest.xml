@@ -120,11 +120,9 @@
         <activity android:name=".ui.debug.TranscriptionDebugActivity" android:exported="false" android:label="Transcription diagnostics" />
         <activity android:name=".agent.CloudSettingsActivity" android:exported="false" android:label="Cloud AI" />
         <activity android:name=".ai.live.GeminiLiveActivity" android:exported="false" android:label="Live AI preview" />
-        <activity android:name=".agent.LocalModelsConfigureActivity" android:exported="false" android:label="Local models" android:configChanges="orientation|screenSize|screenLayout|keyboardHidden" />
         <activity android:name=".plugins.localagent.LocalAgentSettingsActivity" android:exported="false" android:label="Automation settings" />
         <activity android:name=".bridge.runtimes.evenhub.EvenHubRuntimeActivity" android:exported="false" />
 
-        <service android:name=".localmodels.download.ModelDownloadForegroundService" android:exported="false" android:foregroundServiceType="dataSync" />
         <service android:name=".ai.AiQuestionForegroundService" android:exported="false" android:foregroundServiceType="connectedDevice|dataSync|microphone" />
 
         <service
@@ -156,7 +154,6 @@
             android:multiprocess="false"
             android:permission="android.permission.INTERACT_ACROSS_USERS_FULL" />
 
-        <service android:name=".studiobridge.StudioBridgeForegroundService" android:exported="false" android:foregroundServiceType="microphone" />
 
         <service
             android:name=".bridge.notifications.NotificationForwarderService"

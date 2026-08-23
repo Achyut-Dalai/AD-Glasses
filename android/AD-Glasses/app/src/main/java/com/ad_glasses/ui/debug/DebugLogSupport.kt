@@ -12,8 +12,6 @@ import com.ad_glasses.agent.CloudServerPrefs
 import com.ad_glasses.ai.router.AiProviderPrefs
 import com.ad_glasses.devices.DeviceProfileStore
 import com.ad_glasses.devices.metarayban.MetaRaybanManager
-import com.ad_glasses.localmodels.settings.LocalModelSettingsRepository
-import com.ad_glasses.localmodels.storage.LocalModelStorageRepository
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
@@ -53,13 +51,7 @@ object DebugLogSupport {
         "CommunityPluginsActivity",
         "ChatThreadActivity",
         "SettingsActivity",
-        "LocalModelsConfigureActivity",
         "RecordingsListActivity",
-        "LocalModelsProvider",
-        "LocalChatSession",
-        "LiteRtLocalEngine",
-        "LlamaCppLocalEngine",
-        "GemmaLiteRtTranscribe",
     )
 
     data class DebugReport(
@@ -123,36 +115,6 @@ object DebugLogSupport {
             .show()
     }
 
-    fun isLocalRuntimeIssue(message: String?, throwable: Throwable? = null): Boolean {
-        val haystack = buildString {
-            if (!message.isNullOrBlank()) append(message)
-            if (throwable != null) {
-                if (isNotBlank()) append(' ')
-                append(throwable::class.java.name)
-                if (!throwable.message.isNullOrBlank()) {
-                    append(' ')
-                    append(throwable.message)
-                }
-            }
-        }.lowercase(Locale.US)
-
-        if (haystack.isBlank()) return false
-
-        return listOf(
-            "litert",
-            "vulkan",
-            "opencl",
-            "gpu",
-            "llama",
-            "gguf",
-            "n_gpu_layers",
-            "local model runtime",
-            "failed to initialize local llama context",
-            "inference engine",
-            "gemma transcription requires local runtime",
-        ).any { haystack.contains(it) }
-    }
-
     fun collectLogcat(): String {
         return try {
             val filter = LOG_TAGS.joinToString(" ") { "$it:*" }
@@ -181,24 +143,6 @@ object DebugLogSupport {
                 append("\n")
             }
 
-            val selectedModel = runCatching {
-                LocalModelStorageRepository.resolveSelectedModel(context)
-            }.getOrNull()
-            if (selectedModel != null) {
-                append("Local model: ${selectedModel.displayName}\n")
-                append("Local model path: ${selectedModel.absolutePath}\n")
-                val settings = runCatching {
-                    LocalModelSettingsRepository.getForModel(context, selectedModel.id)
-                }.getOrNull()
-                if (settings != null) {
-                    append("Local runtime: ${settings.modelRuntime}\n")
-                    append("Local backend: ${settings.computeBackend}\n")
-                    append("CPU threads: ${settings.cpuThreads}\n")
-                    append("GPU layers: ${settings.gpuLayers}\n")
-                    append("Context size: ${settings.contextSize}\n")
-                    append("Max tokens: ${settings.maxTokens}\n")
-                }
-            }
 
             if (extraInfo.isNotEmpty()) {
                 append("Extra info:\n")

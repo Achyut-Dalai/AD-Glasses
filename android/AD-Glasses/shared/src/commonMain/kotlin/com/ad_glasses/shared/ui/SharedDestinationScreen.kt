@@ -432,7 +432,6 @@ private class SharedSettingsScreenActions(
     override fun sendDebugLogs() = Unit
     override fun stopMeetingCapture() = Unit
     override fun setProviderType(type: AgentProviderType) = update { it.copy(providerType = type) }
-    override fun openLocalModels() = Unit
 }
 
 private const val SHARED_SETTINGS_PREFS = "ADGlasses_shared_settings"

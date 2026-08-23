@@ -7,27 +7,18 @@ import android.content.Context
 import android.content.Intent
 import android.content.IntentFilter
 import android.os.Build
-import androidx.core.content.ContextCompat
 import androidx.localbroadcastmanager.content.LocalBroadcastManager
 import com.ad_glasses.agent.LocalAgentPrefs
 import com.ad_glasses.ai.orchestrator.AssistantConversationSession
-import com.ad_glasses.ai.router.AiProviderPrefs
-import com.ad_glasses.ai.router.AiProviderType
 import com.ad_glasses.devices.DeviceProfileStore
 import com.ad_glasses.glasses.runtime.ADActivityRuntimeRegistry
 import com.ad_glasses.localagent.daily.DailyFactsReminderScheduler
-import com.ad_glasses.localmodels.remote.RemoteOpenAiPrefs
-import com.ad_glasses.localmodels.storage.LocalModelStorageRepository
 import com.ad_glasses.media.autocapture.AutoAudioCapturePrefs
 import com.ad_glasses.media.autocapture.AutoAudioCaptureService
 import com.ad_glasses.memoryvault.MemoryVaultBootstrap
-import com.ad_glasses.plugins.PluginVoicePermissions
 import com.ad_glasses.plugins.localagent.LocalAgentPlugin
 import com.ad_glasses.shared.platform.ADGlassesServices
 import com.ad_glasses.shared.platform.initPlatformPreferences
-import com.ad_glasses.studiobridge.StudioApprovalHandler
-import com.ad_glasses.studiobridge.StudioBridgeClient
-import com.ad_glasses.studiobridge.StudioBridgeForegroundService
 import com.ad_glasses.ui.localization.AppLanguagePreferences
 import com.oudmon.ble.base.bluetooth.BleAction
 import com.oudmon.ble.base.bluetooth.BleBaseControl
@@ -43,7 +34,6 @@ import kotlinx.coroutines.launch
 class MyApplication : Application() {
 
     private val appScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
-    private var studioApprovalHandler: StudioApprovalHandler? = null
 
     var hardwareVersion: String = ""
     var firmwareVersion: String = ""
@@ -88,54 +78,9 @@ class MyApplication : Application() {
             }
         }
 
-        maybePreloadLocalModel()
-
         // Initialize KMP shared services
         runCatching { initPlatformPreferences(this) }
         runCatching { initSharedServices() }
-    }
-
-    /** Start the Studio Bridge WebSocket connection for approval notifications. */
-    fun startStudioBridge(): Boolean {
-        if (!RemoteOpenAiPrefs.isBridgeConfigured(this)) return false
-        if (!PluginVoicePermissions.hasRequiredPermissions(this)) return false
-
-        // A settings refresh replaces both the socket and its TTS resources.
-        stopStudioBridge()
-        val handler = StudioApprovalHandler(applicationContext)
-        handler.initialize()
-        studioApprovalHandler = handler
-        val foregroundStarted = runCatching {
-            ContextCompat.startForegroundService(
-                this,
-                Intent(this, StudioBridgeForegroundService::class.java),
-            )
-        }.isSuccess
-        if (!foregroundStarted) {
-            handler.shutdown()
-            studioApprovalHandler = null
-            return false
-        }
-        StudioBridgeClient.start(applicationContext, handler)
-        return true
-    }
-
-    /** Stop the Studio Bridge WebSocket connection. */
-    fun stopStudioBridge() {
-        StudioBridgeClient.stop()
-        stopService(Intent(this, StudioBridgeForegroundService::class.java))
-        studioApprovalHandler?.shutdown()
-        studioApprovalHandler = null
-    }
-
-    private fun maybePreloadLocalModel() {
-        if (AiProviderPrefs.getProvider(this) != AiProviderType.LOCAL_MODELS) return
-
-        appScope.launch {
-            runCatching {
-                LocalModelStorageRepository.cleanupMissingModels(this@MyApplication)
-            }
-        }
     }
 
     /** Initialize KMP shared services with Android implementations. */

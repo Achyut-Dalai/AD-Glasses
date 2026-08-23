@@ -293,7 +293,6 @@ private fun ADCloudProfileEditor(
     var name by remember(initial.id) { mutableStateOf(initial.name) }
     var baseUrl by remember(initial.id) { mutableStateOf(initial.baseUrl) }
     var model by remember(initial.id) { mutableStateOf(initial.model) }
-    var webMode by remember(initial.id) { mutableStateOf(initial.webMode) }
     var replacementKey by remember(initial.id) { mutableStateOf("") }
     var discoveredModels by remember(initial.id) { mutableStateOf<List<String>>(emptyList()) }
     var modelMenuOpen by remember(initial.id) { mutableStateOf(false) }
@@ -305,7 +304,7 @@ private fun ADCloudProfileEditor(
         provider = provider,
         baseUrl = baseUrl,
         model = model,
-        webMode = webMode,
+        webMode = if (provider.nativeWebCapable) CloudWebMode.AUTO else CloudWebMode.OFF,
     )
 
     AlertDialog(
@@ -321,7 +320,6 @@ private fun ADCloudProfileEditor(
                                 provider = item
                                 baseUrl = item.defaultBaseUrl
                                 model = item.defaultModel
-                                webMode = CloudWebMode.OFF
                                 discoveredModels = emptyList()
                                 discoveryError = null
                                 if (name.isBlank() || name == initial.provider.label) name = item.label
@@ -398,24 +396,15 @@ private fun ADCloudProfileEditor(
                 discoveryError?.let { Text(it, color = ADColors.Error, style = MaterialTheme.typography.bodySmall) }
                 ADCloudTextField(model, { model = it }, provider.defaultModel.ifBlank { "Model ID" })
 
-                if (provider.nativeWebCapable) {
-                    Text("Web access", style = MaterialTheme.typography.labelLarge)
-                    Row(horizontalArrangement = Arrangement.spacedBy(7.dp)) {
-                        ADWebModePill("Off", webMode == CloudWebMode.OFF, Modifier.weight(1f)) { webMode = CloudWebMode.OFF }
-                        ADWebModePill("Auto", webMode == CloudWebMode.AUTO, Modifier.weight(1f)) { webMode = CloudWebMode.AUTO }
-                    }
-                    Text(
-                        "Auto permits the provider's native web tool. The globe control in Ask still decides whether a specific turn may use it.",
-                        style = MaterialTheme.typography.labelSmall,
-                        color = ADColors.Muted,
-                    )
-                } else {
-                    Text(
-                        "This provider profile has no AD-integrated native web tool. Ask still works normally without live web grounding.",
-                        style = MaterialTheme.typography.labelSmall,
-                        color = ADColors.Muted,
-                    )
-                }
+                Text(
+                    if (provider.nativeWebCapable) {
+                        "Web search is available for this provider. Use the globe in Ask to enable it for a specific turn."
+                    } else {
+                        "This provider has no AD-integrated native web-search tool; Ask still works normally."
+                    },
+                    style = MaterialTheme.typography.labelSmall,
+                    color = ADColors.Muted,
+                )
             }
         },
         confirmButton = {
@@ -426,24 +415,6 @@ private fun ADCloudProfileEditor(
         },
         dismissButton = { TextButton(onClick = onDismiss) { Text("Cancel") } },
     )
-}
-
-@Composable
-private fun ADWebModePill(
-    label: String,
-    selected: Boolean,
-    modifier: Modifier = Modifier,
-    onClick: () -> Unit,
-) {
-    androidx.compose.material3.Surface(
-        onClick = onClick,
-        modifier = modifier.heightIn(min = 38.dp),
-        shape = RoundedCornerShape(11.dp),
-        color = if (selected) ADColors.Ink else ADColors.SurfaceSubtle,
-        contentColor = if (selected) Color.White else ADColors.Ink,
-    ) {
-        Box(contentAlignment = Alignment.Center) { Text(label, style = MaterialTheme.typography.labelMedium) }
-    }
 }
 
 @Composable
