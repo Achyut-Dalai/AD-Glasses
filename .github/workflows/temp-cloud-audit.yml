@@ -23,6 +23,8 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
+          CHAT_SCREEN='android/AD-Glasses/shared/src/commonMain/kotlin/com/ad_glasses/shared/ui/chat/ChatThreadScreen.kt'
+          sed -i '/generated.resources.chat_configure_local_model/d; /generated.resources.chat_local_model_required/d' "$CHAT_SCREEN"
           python3 tools/temp_cloud_only_cleanup.py
           git diff --check
           echo '===== REMAINING LIVE LOCAL TEXT-LLM TOKENS ====='
