@@ -18,8 +18,8 @@ import android.speech.SpeechRecognizer
 import android.util.Log
 import java.io.IOException
 import java.util.Locale
-import java.util.concurrent.LinkedBlockingQueue
 import java.util.concurrent.Executors
+import java.util.concurrent.LinkedBlockingQueue
 import java.util.concurrent.atomic.AtomicBoolean
 import java.util.concurrent.atomic.AtomicLong
 import java.util.function.Consumer
@@ -73,10 +73,12 @@ class MoonshineRecognitionService : RecognitionService() {
     )
 
     override fun onStartListening(recognizerIntent: Intent, listener: Callback) {
+        // Cancel and queue cleanup for an older recognizer before assigning the new generation.
+        // Doing this in the opposite order increments the generation while the new session is
+        // already active and makes the new Ask look stale before its model can even load.
+        activeSession?.let { cancelSession(it, "superseded") }
         val session = Session(generation.incrementAndGet(), listener)
-        val previous = activeSession
         activeSession = session
-        previous?.let { cancelSession(it, "superseded") }
 
         worker.execute {
             try {
@@ -157,10 +159,7 @@ class MoonshineRecognitionService : RecognitionService() {
     }
 
     override fun onDestroy() {
-        val session = activeSession
-        activeSession = null
-        generation.incrementAndGet()
-        if (session != null) cancelSession(session, "service_destroy")
+        activeSession?.let { cancelSession(it, "service_destroy") }
         worker.shutdown()
         super.onDestroy()
     }
@@ -320,12 +319,15 @@ class MoonshineRecognitionService : RecognitionService() {
     }
 
     private fun cancelSession(session: Session, reason: String) {
-        if (activeSession === session) activeSession = null
-        generation.incrementAndGet()
+        val wasActive = activeSession === session
+        if (wasActive) {
+            activeSession = null
+            generation.incrementAndGet()
+        }
         session.abortRequested.set(true)
         session.audioQueue.clear()
         stopCapture(session)
-        Log.i(TAG, "stage=asr_cancelled engine=moonshine reason=$reason")
+        Log.i(TAG, "stage=asr_cancelled engine=moonshine reason=$reason active=$wasActive")
         scheduleCleanup(session)
     }
 
@@ -340,8 +342,11 @@ class MoonshineRecognitionService : RecognitionService() {
     }
 
     private fun safeStopAndReleaseRecord(session: Session) {
-        val record = session.audioRecord ?: return
-        session.audioRecord = null
+        val record = synchronized(session) {
+            val current = session.audioRecord ?: return
+            session.audioRecord = null
+            current
+        }
         runCatching {
             if (record.recordingState == AudioRecord.RECORDSTATE_RECORDING) record.stop()
         }.onFailure { Log.w(TAG, "stage=asr_audio_stop_failed engine=moonshine", it) }
@@ -351,7 +356,11 @@ class MoonshineRecognitionService : RecognitionService() {
 
     private fun scheduleCleanup(session: Session) {
         if (!session.cleanupScheduled.compareAndSet(false, true)) return
-        worker.execute {
+        runCatching {
+            worker.execute { cleanupSession(session) }
+        }.onFailure {
+            // Service teardown can reject late cleanup work. Never let executor shutdown surface as
+            // an uncaught recognition-thread failure; do the idempotent cleanup synchronously.
             cleanupSession(session)
         }
     }
