@@ -84,7 +84,7 @@ internal fun ADNativeCloudAiSettingsScreen(onBack: () -> Unit) {
                 Column(Modifier.padding(start = 9.dp).weight(1f)) {
                     Text("Cloud profiles", style = MaterialTheme.typography.titleMedium)
                     Text(
-                        "Keep separate accounts, endpoints and models. You can add more than one profile for the same provider.",
+                        "Keep separate accounts and models. AD Glasses manages official provider endpoints; Custom profiles can use their own OpenAI-compatible base URL.",
                         style = MaterialTheme.typography.bodySmall,
                         color = ADColors.Muted,
                     )
@@ -297,9 +297,10 @@ private fun ADCloudProfileEditor(
     var modelMenuOpen by remember(initial.id) { mutableStateOf(false) }
     var discoveryRunning by remember(initial.id) { mutableStateOf(false) }
     var discoveryError by remember(initial.id) { mutableStateOf<String?>(null) }
+    val endpointReady = provider.endpointManagedByApp || baseUrl.isNotBlank()
     val savedKeyUsable = hasSavedKey &&
         provider == initial.provider &&
-        baseUrl.trim().trimEnd('/') == initial.baseUrl.trim().trimEnd('/')
+        (provider.endpointManagedByApp || baseUrl.trim().trimEnd('/') == initial.baseUrl.trim().trimEnd('/'))
 
     fun draft(): CloudAiProfile = initial.copy(
         name = name,
@@ -334,7 +335,18 @@ private fun ADCloudProfileEditor(
                 }
 
                 ADCloudTextField(name, { name = it }, "Profile name")
-                ADCloudTextField(baseUrl, { baseUrl = it }, "API base URL")
+                if (provider.endpointManagedByApp) {
+                    Column {
+                        Text("API endpoint", style = MaterialTheme.typography.labelLarge)
+                        Text(
+                            "Managed by AD Glasses · ${provider.defaultBaseUrl}",
+                            style = MaterialTheme.typography.labelSmall,
+                            color = ADColors.Muted,
+                        )
+                    }
+                } else {
+                    ADCloudTextField(baseUrl, { baseUrl = it }, "Custom HTTPS base URL")
+                }
 
                 Column {
                     ADCloudTextField(
@@ -346,7 +358,8 @@ private fun ADCloudProfileEditor(
                     Text(
                         when {
                             savedKeyUsable -> "The saved key cannot be revealed in AD Glasses."
-                            hasSavedKey -> "Enter a new API key after changing the provider or API base URL; the saved key will not be reused."
+                            hasSavedKey && provider == initial.provider -> "Enter a new API key after changing the custom base URL; the saved key will not be reused."
+                            hasSavedKey -> "Enter a new API key after changing the provider; the saved key will not be reused."
                             else -> "The key is encrypted before it is stored."
                         },
                         style = MaterialTheme.typography.labelSmall,
@@ -356,7 +369,7 @@ private fun ADCloudProfileEditor(
 
                 Row(horizontalArrangement = Arrangement.spacedBy(7.dp), verticalAlignment = Alignment.CenterVertically) {
                     OutlinedButton(
-                        enabled = !discoveryRunning && baseUrl.isNotBlank() && (savedKeyUsable || replacementKey.isNotBlank()),
+                        enabled = !discoveryRunning && endpointReady && (savedKeyUsable || replacementKey.isNotBlank()),
                         onClick = {
                             discoveryRunning = true
                             discoveryError = null
@@ -400,6 +413,15 @@ private fun ADCloudProfileEditor(
                 }
                 discoveryError?.let { Text(it, color = ADColors.Error, style = MaterialTheme.typography.bodySmall) }
                 ADCloudTextField(model, { model = it }, provider.defaultModel.ifBlank { "Model ID" })
+                Text(
+                    if (provider == ApiProvider.GOOGLE) {
+                        "The selected Gemini model is inserted into the native models/{model}:generateContent endpoint automatically."
+                    } else {
+                        "Select a fetched model or enter a model ID directly."
+                    },
+                    style = MaterialTheme.typography.labelSmall,
+                    color = ADColors.Muted,
+                )
 
                 Text(
                     if (provider.nativeWebCapable) {
@@ -414,7 +436,7 @@ private fun ADCloudProfileEditor(
         },
         confirmButton = {
             TextButton(
-                enabled = name.isNotBlank() && baseUrl.isNotBlank() && model.isNotBlank() && (savedKeyUsable || replacementKey.isNotBlank()),
+                enabled = name.isNotBlank() && endpointReady && model.isNotBlank() && (savedKeyUsable || replacementKey.isNotBlank()),
                 onClick = { onSave(draft(), replacementKey) },
             ) { Text("Save") }
         },

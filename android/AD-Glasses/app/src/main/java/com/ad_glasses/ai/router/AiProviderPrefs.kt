@@ -37,7 +37,7 @@ enum class ApiProvider(
     GOOGLE(
         "google",
         "Google Gemini",
-        "https://generativelanguage.googleapis.com/v1beta/openai",
+        "https://generativelanguage.googleapis.com/v1beta",
         "gemini-3.7-flash",
         true,
         true,
@@ -66,6 +66,24 @@ enum class ApiProvider(
         false,
         false,
     );
+
+    /** Built-in providers use endpoints owned by AD Glasses. Only Custom accepts a user base URL. */
+    val endpointManagedByApp: Boolean
+        get() = this != CUSTOM
+
+    fun resolveBaseUrl(configuredBaseUrl: String): String =
+        if (endpointManagedByApp) defaultBaseUrl else configuredBaseUrl.trim().trimEnd('/')
+
+    /** Gemini model list responses may return `models/foo`; tolerate a pasted native endpoint too. */
+    fun normalizeModelId(value: String): String {
+        val clean = value.trim()
+        if (this != GOOGLE) return clean
+        return clean
+            .substringAfterLast("/models/", clean)
+            .removePrefix("models/")
+            .substringBefore(":generateContent")
+            .trim()
+    }
 
     companion object {
         fun fromWire(value: String?): ApiProvider =
@@ -167,7 +185,9 @@ object AiProviderPrefs {
         val prefs = secure(context)
         val saved = normalizeProfile(profile)
         require(saved.name.isNotBlank()) { "Profile name is required." }
-        require(saved.baseUrl.startsWith("https://")) { "API base URL must use HTTPS." }
+        if (!saved.provider.endpointManagedByApp) {
+            require(saved.baseUrl.startsWith("https://")) { "Custom API base URL must use HTTPS." }
+        }
         require(saved.model.isNotBlank()) { "Model is required." }
 
         val existing = readProfile(prefs, saved.id)
@@ -176,8 +196,10 @@ object AiProviderPrefs {
             require(hasApiKeyInternal(prefs, saved.id)) { "API key is required for a new profile." }
         }
         if (existing != null && replacement.isBlank()) {
-            require(existing.provider == saved.provider && existing.baseUrl == saved.baseUrl) {
-                "Enter a new API key after changing the provider or API base URL."
+            val credentialScopeChanged = existing.provider != saved.provider ||
+                (!saved.provider.endpointManagedByApp && existing.baseUrl != saved.baseUrl)
+            require(!credentialScopeChanged) {
+                "Enter a new API key after changing the provider or custom API base URL."
             }
         }
 
@@ -244,7 +266,8 @@ object AiProviderPrefs {
 
     fun isApiConfigured(context: Context): Boolean =
         getActiveProfile(context)?.let { profile ->
-            profile.model.isNotBlank() && profile.baseUrl.isNotBlank() && hasApiKey(context, profile.id)
+            val endpointReady = profile.provider.endpointManagedByApp || profile.baseUrl.isNotBlank()
+            profile.model.isNotBlank() && endpointReady && hasApiKey(context, profile.id)
         } == true
 
     fun isApiConfigured(context: Context, provider: ApiProvider): Boolean =
@@ -308,12 +331,15 @@ object AiProviderPrefs {
         target.edit().putBoolean(KEY_LEGACY_MIGRATED, true).commit()
     }
 
-    private fun normalizeProfile(profile: CloudAiProfile): CloudAiProfile = profile.copy(
-        id = profile.id.trim().ifBlank { UUID.randomUUID().toString() },
-        name = profile.name.trim(),
-        baseUrl = profile.baseUrl.trim().trimEnd('/'),
-        model = profile.model.trim(),
-    )
+    private fun normalizeProfile(profile: CloudAiProfile): CloudAiProfile {
+        val provider = profile.provider
+        return profile.copy(
+            id = profile.id.trim().ifBlank { UUID.randomUUID().toString() },
+            name = profile.name.trim(),
+            baseUrl = provider.resolveBaseUrl(profile.baseUrl),
+            model = provider.normalizeModelId(profile.model),
+        )
+    }
 
     private fun profileIds(prefs: SharedPreferences): List<String> = runCatching {
         val array = JSONArray(prefs.getString(KEY_PROFILE_IDS, "[]") ?: "[]")

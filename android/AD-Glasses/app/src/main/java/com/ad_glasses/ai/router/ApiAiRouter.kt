@@ -12,6 +12,32 @@ import java.io.OutputStreamWriter
 import java.net.HttpURLConnection
 import java.net.URL
 
+internal fun geminiModelsUrl(baseUrl: String): String =
+    "${baseUrl.trim().trimEnd('/')}/models?pageSize=1000"
+
+internal fun geminiGenerateContentUrl(baseUrl: String, model: String): String =
+    "${baseUrl.trim().trimEnd('/')}/models/${ApiProvider.GOOGLE.normalizeModelId(model)}:generateContent"
+
+internal fun geminiImageMimeType(extension: String): String = when (extension.trim().trimStart('.').lowercase()) {
+    "png" -> "image/png"
+    "webp" -> "image/webp"
+    "gif" -> "image/gif"
+    "heic" -> "image/heic"
+    "heif" -> "image/heif"
+    "avif" -> "image/avif"
+    else -> "image/jpeg"
+}
+
+internal fun geminiAudioMimeType(extension: String): String = when (extension.trim().trimStart('.').lowercase()) {
+    "mp3", "mpeg" -> "audio/mpeg"
+    "m4a", "mp4" -> "audio/mp4"
+    "ogg", "opus" -> "audio/ogg"
+    "webm" -> "audio/webm"
+    "flac" -> "audio/flac"
+    "aac" -> "audio/aac"
+    else -> "audio/wav"
+}
+
 /** Direct Cloud AI transport resolved through the active encrypted profile. */
 object ApiTokenClient {
     private const val CONNECT_TIMEOUT_MS = 10_000
@@ -29,13 +55,23 @@ object ApiTokenClient {
     ): Result<String> = runCatching {
         val (profile, apiKey) = AiProviderPrefs.activeProfileWithKey(context)
         require(profile.model.isNotBlank()) { "${profile.name} does not have a model selected." }
-        require(profile.baseUrl.isNotBlank()) { "${profile.name} does not have an API base URL." }
+        val baseUrl = profile.provider.resolveBaseUrl(profile.baseUrl)
+        require(baseUrl.startsWith("https://")) { "${profile.name} does not have a valid HTTPS API base URL." }
 
         val useNativeWeb = webRequested && profile.webAvailable && imagePaths.isEmpty() && audioPath.isNullOrBlank()
         val text = when {
-            useNativeWeb && profile.provider == ApiProvider.GOOGLE ->
-                retry { postGeminiGrounded(profile, apiKey, messages, maxTokens) }
-                    .let(::extractGeminiText)
+            profile.provider == ApiProvider.GOOGLE ->
+                retry {
+                    postGeminiGenerateContent(
+                        profile = profile,
+                        apiKey = apiKey,
+                        messages = messages,
+                        imagePaths = imagePaths,
+                        audioPath = audioPath,
+                        maxTokens = maxTokens,
+                        webRequested = useNativeWeb,
+                    )
+                }.let(::extractGeminiText)
             useNativeWeb && profile.provider == ApiProvider.OPENAI ->
                 retry { postOpenAiResponses(profile, apiKey, messages, maxTokens) }
                     .let(::extractOpenAiResponseText)
@@ -53,7 +89,7 @@ object ApiTokenClient {
                 }
                 retry {
                     postJson(
-                        url = profile.baseUrl.trimEnd('/') + "/chat/completions",
+                        url = "$baseUrl/chat/completions",
                         apiKey = apiKey,
                         payload = payload,
                     )
@@ -94,21 +130,15 @@ object ApiTokenClient {
             profileId?.let { AiProviderPrefs.apiKeyForRequest(context, it) }.orEmpty()
         }
         require(key.isNotBlank()) { "Enter an API key or use a profile that already has one saved." }
-        val cleanBase = baseUrl.trim().trimEnd('/')
+        val cleanBase = provider.resolveBaseUrl(baseUrl)
         require(cleanBase.startsWith("https://")) { "API base URL must use HTTPS." }
 
         val response = if (provider == ApiProvider.GOOGLE) {
-            runCatching { getJson("$cleanBase/models", apiKey = key) }
-                .getOrElse { compatibleError ->
-                    val nativeBase = cleanBase.substringBeforeLast("/openai", cleanBase).trimEnd('/')
-                    runCatching {
-                        getJson(
-                            "$nativeBase/models",
-                            apiKey = null,
-                            extraHeaders = mapOf("x-goog-api-key" to key),
-                        )
-                    }.getOrElse { throw compatibleError }
-                }
+            getJson(
+                geminiModelsUrl(cleanBase),
+                apiKey = null,
+                extraHeaders = mapOf("x-goog-api-key" to key),
+            )
         } else {
             getJson("$cleanBase/models", apiKey = key)
         }
@@ -195,45 +225,104 @@ object ApiTokenClient {
             .put("input", input)
             .put("max_output_tokens", maxTokens)
             .put("tools", JSONArray().put(JSONObject().put("type", "web_search")))
-        return postJson(profile.baseUrl.trimEnd('/') + "/responses", apiKey, payload)
+        val baseUrl = profile.provider.resolveBaseUrl(profile.baseUrl)
+        return postJson("$baseUrl/responses", apiKey, payload)
     }
 
-    private fun postGeminiGrounded(
+    /** Native Gemini REST request for text, images, audio, and optional Google Search grounding. */
+    private fun postGeminiGenerateContent(
         profile: CloudAiProfile,
         apiKey: String,
         messages: List<Map<String, String>>,
+        imagePaths: List<String>,
+        audioPath: String?,
         maxTokens: Int,
+        webRequested: Boolean,
     ): JSONObject {
         val systemParts = JSONArray()
         val contents = JSONArray()
-        messages.forEach { message ->
-            val role = message["role"]?.trim()?.lowercase().orEmpty()
+        val lastUserIndex = messages.indexOfLast { message ->
+            message["role"]?.trim()?.lowercase().orEmpty().ifBlank { "user" } == "user"
+        }
+
+        messages.forEachIndexed { index, message ->
+            val role = message["role"]?.trim()?.lowercase().orEmpty().ifBlank { "user" }
             val text = message["content"].orEmpty()
             if (role == "system") {
                 if (text.isNotBlank()) systemParts.put(JSONObject().put("text", text))
             } else {
-                contents.put(
-                    JSONObject()
-                        .put("role", if (role == "assistant") "model" else "user")
-                        .put("parts", JSONArray().put(JSONObject().put("text", text))),
-                )
+                val parts = JSONArray()
+                if (text.isNotBlank()) parts.put(JSONObject().put("text", text))
+                if (index == lastUserIndex) {
+                    appendGeminiMediaParts(parts, imagePaths, audioPath)
+                }
+                if (parts.length() > 0) {
+                    contents.put(
+                        JSONObject()
+                            .put("role", if (role == "assistant") "model" else "user")
+                            .put("parts", parts),
+                    )
+                }
             }
         }
+        require(contents.length() > 0) { "Gemini request has no user/model content." }
+
         val payload = JSONObject()
             .put("contents", contents)
-            .put("tools", JSONArray().put(JSONObject().put("google_search", JSONObject())))
             .put("generationConfig", JSONObject().put("maxOutputTokens", maxTokens))
         if (systemParts.length() > 0) {
             payload.put("systemInstruction", JSONObject().put("parts", systemParts))
         }
-        val nativeBase = profile.baseUrl.trimEnd('/').substringBeforeLast("/openai", profile.baseUrl.trimEnd('/'))
-        val endpoint = "$nativeBase/models/${profile.model}:generateContent"
+        if (webRequested) {
+            payload.put(
+                "tools",
+                JSONArray().put(JSONObject().put("google_search", JSONObject())),
+            )
+        }
+
+        val baseUrl = profile.provider.resolveBaseUrl(profile.baseUrl)
+        val endpoint = geminiGenerateContentUrl(baseUrl, profile.model)
         return postJson(
             endpoint,
             apiKey = null,
             payload = payload,
             extraHeaders = mapOf("x-goog-api-key" to apiKey),
         )
+    }
+
+    private fun appendGeminiMediaParts(
+        parts: JSONArray,
+        imagePaths: List<String>,
+        audioPath: String?,
+    ) {
+        imagePaths.forEach { path ->
+            val file = File(path)
+            require(file.isFile) { "Image file not found: $path" }
+            val mime = geminiImageMimeType(file.extension)
+            val data = Base64.encodeToString(file.readBytes(), Base64.NO_WRAP)
+            parts.put(
+                JSONObject().put(
+                    "inline_data",
+                    JSONObject()
+                        .put("mime_type", mime)
+                        .put("data", data),
+                ),
+            )
+        }
+        audioPath?.takeIf { it.isNotBlank() }?.let { path ->
+            val file = File(path)
+            require(file.isFile) { "Audio file not found: $path" }
+            val mime = geminiAudioMimeType(file.extension)
+            val data = Base64.encodeToString(file.readBytes(), Base64.NO_WRAP)
+            parts.put(
+                JSONObject().put(
+                    "inline_data",
+                    JSONObject()
+                        .put("mime_type", mime)
+                        .put("data", data),
+                ),
+            )
+        }
     }
 
     private fun mediaContent(text: String, imagePaths: List<String>, audioPath: String?): JSONArray {
