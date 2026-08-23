@@ -36,5 +36,4 @@ data class TranscriptDialogUiState(
 
 enum class TranscriptionEngine {
     MOONSHINE,
-    GEMMA,
 }
