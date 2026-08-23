@@ -62,7 +62,7 @@ internal fun ADTopBar(
             modifier = Modifier.fillMaxWidth().heightIn(min = 50.dp).padding(horizontal = 15.dp),
         ) {
             Image(
-                painter = painterResource(R.drawable.ad_glasses_icon_source),
+                painter = painterResource(R.drawable.ad_glasses_adaptive_foreground_v2),
                 contentDescription = "AD Glasses",
                 modifier = Modifier.size(32.dp).align(Alignment.CenterStart),
                 contentScale = ContentScale.Fit,
@@ -141,7 +141,7 @@ internal fun ADTopBar(
 @Composable
 internal fun ADGlassesMark(modifier: Modifier = Modifier) {
     Image(
-        painter = painterResource(R.drawable.ad_glasses_icon_source),
+        painter = painterResource(R.drawable.ad_glasses_adaptive_foreground_v2),
         contentDescription = null,
         modifier = modifier,
         contentScale = ContentScale.Fit,
