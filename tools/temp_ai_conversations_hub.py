@@ -1,23 +1,11 @@
 from pathlib import Path
 
-screen = Path('android/AD-Glasses/app/src/main/java/com/ad_glasses/ui/adglasses/ADNativeConversationScreen.kt')
-text = screen.read_text()
-old = '''    }
-    }
-}
+test = Path('android/AD-Glasses/app/src/test/java/com/ad_glasses/ui/adglasses/ADVisibleProductUiTest.kt')
+text = test.read_text()
+text = text.replace('assertTrue(screen.contains("Text("AI""))', 'assertTrue(screen.contains("Text(\\\"AI\\\""))')
+text = text.replace('assertFalse(screen.contains("AD-owned ${internalProvider.label} conversation"))', 'assertFalse(screen.contains("AD-owned "))')
+test.write_text(text)
 
-@Composable
-private fun ADLiveAudioState'''
-new = '''    }
-}
-
-@Composable
-private fun ADLiveAudioState'''
-if old in text:
-    text = text.replace(old, new, 1)
-    screen.write_text(text)
-    print('repaired ADNativeConversationScreen function boundary')
-elif new not in text:
-    raise SystemExit('unexpected ADNativeConversationScreen boundary')
-else:
-    print('function boundary already repaired')
+if 'Text("AI""' in text or '${internalProvider.label}' in text:
+    raise SystemExit('AI hub test quoting repair did not complete')
+print('repaired AI hub test quoting')
