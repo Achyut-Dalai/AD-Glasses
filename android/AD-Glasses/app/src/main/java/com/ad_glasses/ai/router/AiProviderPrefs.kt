@@ -54,7 +54,7 @@ enum class ApiProvider(
         "openrouter",
         "OpenRouter",
         "https://openrouter.ai/api/v1",
-        "openai/gpt-5.3-chat",
+        "google/gemma-4-26b-a4b-it:free",
         false,
         true,
     ),
