@@ -1,5 +1,6 @@
 package com.ad_glasses.ui.adglasses
 
+import android.widget.Toast
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -26,6 +27,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import com.ad_glasses.ai.AndroidAssistantVoiceIo
 import com.ad_glasses.ai.orchestrator.AssistantInferenceContextPolicy
 import com.ad_glasses.ai.router.AiProviderPrefs
 
@@ -98,6 +100,17 @@ internal fun ADDeviceAiSection(
 
         Spacer(Modifier.height(8.dp))
         Surface(
+            onClick = {
+                runCatching {
+                    context.startActivity(AndroidAssistantVoiceIo.installVoiceDataIntent())
+                }.onFailure {
+                    Toast.makeText(
+                        context,
+                        "Open Android Text-to-Speech settings to install an offline voice.",
+                        Toast.LENGTH_LONG,
+                    ).show()
+                }
+            },
             modifier = Modifier.fillMaxWidth(),
             shape = RoundedCornerShape(16.dp),
             color = ADColors.SurfaceSubtle,
@@ -114,13 +127,18 @@ internal fun ADDeviceAiSection(
                         color = ADColors.Ink,
                     )
                     Text(
-                        "Android speech + TTS · ${AssistantInferenceContextPolicy.INACTIVITY_TTL_MS / 1_000}s active context · full history kept",
+                        "Android ASR + TTS · ${AssistantInferenceContextPolicy.INACTIVITY_TTL_MS / 1_000}s active context · full history kept",
                         style = MaterialTheme.typography.bodySmall,
                         color = ADColors.Muted,
                     )
+                    Text(
+                        "Tap to install or check offline TTS voice data",
+                        style = MaterialTheme.typography.labelSmall,
+                        color = ADColors.Blue,
+                    )
                 }
                 ADStatusChip(
-                    text = "BOUNDED",
+                    text = "VOICE",
                     tone = ADStatusTone.NEUTRAL,
                     showCheck = false,
                 )
