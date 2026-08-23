@@ -52,7 +52,6 @@ import com.ad_glasses.shared.generated.resources.plugin_category_operations
 import com.ad_glasses.shared.generated.resources.plugin_category_other
 import com.ad_glasses.shared.generated.resources.plugin_category_planner
 import com.ad_glasses.shared.generated.resources.plugin_category_productivity
-import com.ad_glasses.shared.generated.resources.provider_local
 import com.ad_glasses.shared.generated.resources.provider_pro
 import com.ad_glasses.shared.generated.resources.sync_flow_custom_description
 import com.ad_glasses.shared.generated.resources.sync_flow_custom_title
@@ -109,12 +108,8 @@ fun localizedDeviceClass(deviceClass: DeviceClass): String = stringResource(
 
 @OptIn(ExperimentalResourceApi::class)
 @Composable
-fun localizedProviderLabel(provider: AgentProviderType): String = stringResource(
-    when (provider) {
-        AgentProviderType.LOCAL_AGENT -> Res.string.provider_local
-        AgentProviderType.CLOUD_AI -> Res.string.provider_pro
-    },
-)
+fun localizedProviderLabel(provider: AgentProviderType): String =
+    stringResource(Res.string.provider_pro)
 
 @OptIn(ExperimentalResourceApi::class)
 @Composable
