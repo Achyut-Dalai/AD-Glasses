@@ -1,0 +1,96 @@
+name: Temporary MainActivity cloud cleanup
+
+on:
+  push:
+    branches:
+      - cleanup/ad-glasses-cloud-rebrand
+    paths:
+      - .github/workflows/temp-mainactivity-cloud-cleanup.yml
+
+permissions:
+  contents: write
+
+jobs:
+  patch-mainactivity:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: cleanup/ad-glasses-cloud-rebrand
+          fetch-depth: 0
+
+      - name: Apply narrow Cloud-only cleanup
+        shell: bash
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+
+          path = Path('android/AD-Glasses/app/src/main/java/com/ad_glasses/MainActivity.kt')
+          text = path.read_text(encoding='utf-8')
+
+          exact_lines = [
+              '        localSpeechSessionManager.attachTtsEngine(tts, ttsReady)\n',
+              '                localSpeechSessionManager.speechQueueController.onUtteranceStart(utteranceId)\n',
+              '                localSpeechSessionManager.speechQueueController.onUtteranceDone(utteranceId)\n',
+              '                localSpeechSessionManager.speechQueueController.onUtteranceError(utteranceId)\n',
+              '                localSpeechSessionManager.speechQueueController.onUtteranceError(utteranceId, errorCode)\n',
+              '                localSpeechSessionManager.speechQueueController.onUtteranceError(utteranceId)\n',
+              '        cancelLocalStreamingSpeech("activity destroyed")\n',
+          ]
+
+          # onError(...) and onStop(...) intentionally share the same one-argument line.
+          expected_counts = {
+              exact_lines[0]: 1,
+              exact_lines[1]: 1,
+              exact_lines[2]: 1,
+              exact_lines[3]: 2,
+              exact_lines[4]: 1,
+              exact_lines[6]: 1,
+          }
+          for needle, expected in expected_counts.items():
+              actual = text.count(needle)
+              if actual != expected:
+                  raise SystemExit(f'Unexpected count for {needle.strip()!r}: expected {expected}, got {actual}')
+
+          for needle in dict.fromkeys(exact_lines):
+              text = text.replace(needle, '')
+
+          malformed = '            append("\n\n")\n'
+          fixed = '            append("\\n\\n")\n'
+          if text.count(malformed) != 1:
+              raise SystemExit(f'Expected exactly one malformed prompt separator, found {text.count(malformed)}')
+          text = text.replace(malformed, fixed, 1)
+
+          required_retained = [
+              'class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener',
+              'private var tts: TextToSpeech? = null',
+              'tts = TextToSpeech(this, this)',
+              'tts?.setOnUtteranceProgressListener(object : UtteranceProgressListener()',
+              'override fun onStart(utteranceId: String?)',
+              'override fun onDone(utteranceId: String?)',
+              'completeTtsUtterance(utteranceId)',
+              'discardTtsUtterance(utteranceId)',
+              'runCatching { tts?.stop() }',
+              'runCatching { tts?.shutdown() }',
+          ]
+          missing = [needle for needle in required_retained if needle not in text]
+          if missing:
+              raise SystemExit(f'Android TTS retention assertion failed: {missing}')
+          if 'localSpeechSessionManager' in text or 'cancelLocalStreamingSpeech' in text:
+              raise SystemExit('Stale local streaming speech reference remains')
+
+          path.write_text(text, encoding='utf-8')
+          PY
+
+          git diff --check
+          git diff -- android/AD-Glasses/app/src/main/java/com/ad_glasses/MainActivity.kt
+
+      - name: Commit MainActivity repair
+        shell: bash
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add android/AD-Glasses/app/src/main/java/com/ad_glasses/MainActivity.kt
+          git diff --cached --check
+          git commit -m "Remove stale local LLM speech hooks"
+          git push origin HEAD:cleanup/ad-glasses-cloud-rebrand
