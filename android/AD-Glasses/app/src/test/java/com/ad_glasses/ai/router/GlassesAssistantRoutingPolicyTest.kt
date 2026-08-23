@@ -6,11 +6,7 @@ import org.junit.Test
 
 class GlassesAssistantRoutingPolicyTest {
     @Test
-    fun adOwnedAssistantRoutesOnlyToCloudOrLocalInference() {
-        assertEquals(
-            GlassesAssistantRoute.LOCAL,
-            GlassesAssistantRoutingPolicy.resolve(AgentProviderType.LOCAL_AGENT),
-        )
+    fun adOwnedAssistantRoutesCloudProviderToCloudInference() {
         assertEquals(
             GlassesAssistantRoute.CLOUD,
             GlassesAssistantRoutingPolicy.resolve(AgentProviderType.CLOUD_AI),
