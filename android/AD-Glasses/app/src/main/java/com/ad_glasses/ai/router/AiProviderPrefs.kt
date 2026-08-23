@@ -311,7 +311,7 @@ object AiProviderPrefs {
     private fun normalizeProfile(profile: CloudAiProfile): CloudAiProfile = profile.copy(
         id = profile.id.trim().ifBlank { UUID.randomUUID().toString() },
         name = profile.name.trim(),
-        baseUrl = profile.baseUrl.trim().trimEnd('/'),
+        baseUrl = normalizeProviderBaseUrl(profile.provider, profile.baseUrl),
         model = profile.model.trim(),
     )
 
