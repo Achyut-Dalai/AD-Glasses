@@ -3,6 +3,9 @@ package com.ad_glasses.ai
 import android.content.ComponentName
 import android.content.Context
 import android.content.Intent
+import android.media.AudioDeviceInfo
+import android.media.AudioManager
+import android.os.Build
 import android.speech.RecognizerIntent
 import android.speech.SpeechRecognizer
 import android.speech.tts.TextToSpeech
@@ -21,7 +24,11 @@ import java.util.Locale
 object AndroidAssistantVoiceIo {
     private const val TAG = "AssistantTiming"
 
+    @Volatile
+    private var appContext: Context? = null
+
     fun createRecognizer(context: Context): SpeechRecognizer {
+        appContext = context.applicationContext
         val component = ComponentName(context, MoonshineRecognitionService::class.java)
         Log.i(TAG, "stage=asr_engine engine=moonshine component=${component.flattenToShortString()}")
         return SpeechRecognizer.createSpeechRecognizer(context, component)
@@ -37,6 +44,8 @@ object AndroidAssistantVoiceIo {
 
     /** Prefer a downloaded/embedded voice for [locale]. Falls back to the engine's locale handling. */
     fun preferOfflineVoice(tts: TextToSpeech, locale: Locale): Voice? {
+        prepareSpeechOutputRoute()
+
         val voices = runCatching { tts.voices.orEmpty() }.getOrDefault(emptySet<Voice>())
         val offline = voices.filter { !it.isNetworkConnectionRequired }
         val selected = offline.firstOrNull { it.locale.toLanguageTag() == locale.toLanguageTag() }
@@ -57,6 +66,45 @@ object AndroidAssistantVoiceIo {
             "stage=tts_voice offline=false locale=${locale.toLanguageTag()} languageResult=$languageResult",
         )
         return null
+    }
+
+    /**
+     * Recognition deliberately releases the Bluetooth communication route as soon as Moonshine has
+     * a final transcript. Re-establish it only when there is actually speech to play so Cloud AI
+     * latency never keeps the microphone/SCO path open.
+     */
+    @Suppress("DEPRECATION")
+    private fun prepareSpeechOutputRoute() {
+        val context = appContext ?: return
+        val audioManager = context.getSystemService(Context.AUDIO_SERVICE) as? AudioManager ?: return
+
+        runCatching {
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+                val device = audioManager.availableCommunicationDevices.firstOrNull { candidate ->
+                    candidate.type == AudioDeviceInfo.TYPE_BLUETOOTH_SCO ||
+                        candidate.type == AudioDeviceInfo.TYPE_BLE_HEADSET
+                }
+                if (device == null) {
+                    Log.i(TAG, "stage=tts_route bluetooth=false sdk=${Build.VERSION.SDK_INT}")
+                    return@runCatching
+                }
+                audioManager.mode = AudioManager.MODE_IN_COMMUNICATION
+                val selected = audioManager.setCommunicationDevice(device)
+                Log.i(
+                    TAG,
+                    "stage=tts_route bluetooth=true sdk=${Build.VERSION.SDK_INT} selected=$selected type=${device.type}",
+                )
+            } else if (audioManager.isBluetoothScoAvailableOffCall) {
+                audioManager.mode = AudioManager.MODE_IN_COMMUNICATION
+                audioManager.startBluetoothSco()
+                audioManager.isBluetoothScoOn = true
+                Log.i(TAG, "stage=tts_route bluetooth=true sdk=${Build.VERSION.SDK_INT} legacySco=true")
+            } else {
+                Log.i(TAG, "stage=tts_route bluetooth=false sdk=${Build.VERSION.SDK_INT}")
+            }
+        }.onFailure { error ->
+            Log.w(TAG, "stage=tts_route_failed", error)
+        }
     }
 
     fun installVoiceDataIntent(): Intent = Intent(TextToSpeech.Engine.ACTION_INSTALL_TTS_DATA)
