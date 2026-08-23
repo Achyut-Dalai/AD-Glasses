@@ -188,7 +188,7 @@ object AiProviderPrefs {
             .putString(KEY_PROFILE_IDS, JSONArray(ids).toString())
             .apply {
                 if (replacement.isNotBlank()) putString(secretKey(saved.id), replacement)
-                if (makeActive || getString(KEY_ACTIVE_PROFILE_ID, null).isNullOrBlank()) {
+                if (makeActive || prefs.getString(KEY_ACTIVE_PROFILE_ID, null).isNullOrBlank()) {
                     putString(KEY_ACTIVE_PROFILE_ID, saved.id)
                 }
             }
@@ -302,7 +302,7 @@ object AiProviderPrefs {
                         .putString(secretKey(migrated.id), oldKey)
                         .commit(),
                 ) { "Unable to migrate the existing Cloud AI credential." }
-                oldSecretPrefs.edit().remove("api_key_${provider.wire}").commit()
+                oldSecretPrefs?.edit()?.remove("api_key_${provider.wire}")?.commit()
             }
         }
         target.edit().putBoolean(KEY_LEGACY_MIGRATED, true).commit()
