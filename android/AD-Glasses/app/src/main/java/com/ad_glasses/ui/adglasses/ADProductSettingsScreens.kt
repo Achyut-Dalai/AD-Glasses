@@ -513,7 +513,7 @@ internal fun ADAboutScreen(onBack: () -> Unit) {
         ADAboutPrinciple(
             icon = Icons.Outlined.Public,
             title = "Current when needed",
-            detail = "Fresh information can use Web Search through the relay you choose; local features stay local where possible.",
+            detail = "Gemini Live can ground current questions with Google Search. Standard Cloud chat does not browse unless its selected provider route explicitly supports web search.",
             containerColor = MaterialTheme.colorScheme.surfaceVariant,
             contentColor = MaterialTheme.colorScheme.onSurfaceVariant,
         )

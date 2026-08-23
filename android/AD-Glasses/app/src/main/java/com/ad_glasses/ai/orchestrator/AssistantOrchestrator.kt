@@ -137,9 +137,6 @@ class AssistantOrchestrator(
                 AssistantIntent.CLARIFY -> AssistantResult(
                     spokenText = decision.clarification ?: "What would you like to ask?",
                 )
-                AssistantIntent.EXECUTE_UI_TASK -> AssistantResult(
-                    spokenText = "Phone UI automation is no longer available as an AI invocation method.",
-                )
             }
         }
 
