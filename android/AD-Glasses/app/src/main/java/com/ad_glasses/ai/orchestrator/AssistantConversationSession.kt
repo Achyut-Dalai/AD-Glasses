@@ -60,20 +60,26 @@ class AssistantConversationSession private constructor(
         return ChatStore.updateThreadTitle(thread.id, title)
     }
 
-    /** Delete one AD-owned conversation and return the conversation that should become active. */
+    /** Delete one AD-owned conversation and return the conversation that should remain active. */
     @Synchronized
     fun deleteConversation(threadId: String): String {
         val thread = ChatStore.getThread(threadId)
         val managed = managedThreadIds()
         val owned = thread != null &&
             (thread.id in managed || thread.title == AssistantConversationPolicy.THREAD_TITLE)
-        if (owned) {
-            ChatStore.deleteThread(threadId)
-            saveManagedThreadIds(managed - threadId)
+        if (!owned) return activeThreadId()
+
+        val activeBeforeDelete = prefs.getString(KEY_ACTIVE_THREAD_ID, null)
+            ?.takeIf { ChatStore.getThread(it) != null }
+
+        ChatStore.deleteThread(threadId)
+        saveManagedThreadIds(managed - threadId)
+
+        if (activeBeforeDelete != null && activeBeforeDelete != threadId) {
+            return activeBeforeDelete
         }
-        if (prefs.getString(KEY_ACTIVE_THREAD_ID, null) == threadId) {
-            prefs.edit().remove(KEY_ACTIVE_THREAD_ID).apply()
-        }
+
+        prefs.edit().remove(KEY_ACTIVE_THREAD_ID).apply()
         val next = conversations().firstOrNull()?.id
         if (next != null) {
             prefs.edit().putString(KEY_ACTIVE_THREAD_ID, next).apply()
