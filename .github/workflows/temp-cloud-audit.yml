@@ -1,0 +1,38 @@
+name: Temporary cloud architecture audit
+
+on:
+  push:
+    branches:
+      - cleanup/ad-glasses-cloud-rebrand
+
+permissions:
+  contents: read
+
+jobs:
+  audit:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out branch
+        uses: actions/checkout@v7
+        with:
+          ref: cleanup/ad-glasses-cloud-rebrand
+          fetch-depth: 0
+          submodules: false
+      - name: Audit cloud-only architecture
+        shell: bash
+        run: |
+          set -euo pipefail
+          echo '===== LOCAL TEXT-LLM / RETIRED PROVIDER REFERENCES ====='
+          git grep -n -i -E 'local[ _-]?(llm|model|models)|localmodels|LOCAL_MODELS|LocalModelsProvider|Gemma|gemma|llama|mistral|qwen|onnx.*llm|mediapipe.*llm' -- . \
+            ':!third_party/**' ':!android/AD-Glasses/app/src/main/myvu-upstream/**' ':!.github/workflows/temp-cloud-audit.yml' || true
+          echo '===== CLOUD PROFILE COMPATIBILITY HELPERS / CALLERS ====='
+          git grep -n -E 'getApiKey\(|setApiKey\(|getModel\(|setModel\(|setApiProvider\(|getApiProvider\(|AiProviderType|AgentProviderType' -- android/AD-Glasses/app/src android/AD-Glasses/shared/src || true
+          echo '===== WEB ROUTING / KEYWORDS ====='
+          git grep -n -i -E 'webRequested|webSearch|web search|search the web|browse the web|latest|current|internet' -- android/AD-Glasses/app/src/main android/AD-Glasses/shared/src/commonMain || true
+          echo '===== CLOUD PROFILE / URL / MODEL UI ====='
+          git grep -n -E 'CloudAiProfile|API base URL|Fetch models|discoverModels|activeProfile|profileId|Delete .*profile|Add Cloud profile' -- android/AD-Glasses/app/src/main || true
+          echo '===== POSSIBLE CURRENT-TREE SECRETS: FILENAMES ONLY ====='
+          git grep -Il -E '(AIza[0-9A-Za-z_-]{30,}|sk-[0-9A-Za-z_-]{20,}|sk-proj-[0-9A-Za-z_-]{20,}|gsk_[0-9A-Za-z_-]{20,}|xox[baprs]-[0-9A-Za-z-]{20,}|gh[pousr]_[0-9A-Za-z]{20,})' -- . ':!third_party/**' ':!android/AD-Glasses/app/src/main/myvu-upstream/**' || true
+          echo '===== POSSIBLE SECRET HISTORY COMMITS: NAMES ONLY ====='
+          git log --all -G'(AIza[0-9A-Za-z_-]{30,}|sk-[0-9A-Za-z_-]{20,}|sk-proj-[0-9A-Za-z_-]{20,}|gsk_[0-9A-Za-z_-]{20,}|xox[baprs]-[0-9A-Za-z-]{20,}|gh[pousr]_[0-9A-Za-z]{20,})' --pretty='format:%H' --name-only -- . ':!third_party/**' ':!android/AD-Glasses/app/src/main/myvu-upstream/**' | sed '/^$/d' | sort -u || true
