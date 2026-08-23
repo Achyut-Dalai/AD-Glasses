@@ -3,6 +3,7 @@ package com.ad_glasses.ai.orchestrator
 import android.content.Context
 import com.ad_glasses.chat.ChatStore
 import com.ad_glasses.shared.chat.ChatMessage
+import com.ad_glasses.shared.chat.ChatThread
 import com.ad_glasses.shared.chat.ChatRole
 
 /**
@@ -30,6 +31,54 @@ class AssistantConversationSession private constructor(
     @Synchronized
     fun startNewConversation(): String {
         pruneExpiredConversations()
+        return createAndActivate()
+    }
+
+    /** List only conversations owned by the AD assistant, newest first. */
+    @Synchronized
+    fun conversations(): List<ChatThread> {
+        pruneExpiredConversations()
+        val managed = managedThreadIds()
+        val conversations = ChatStore.listThreads()
+            .filter { it.id in managed || it.title == AssistantConversationPolicy.THREAD_TITLE }
+            .sortedByDescending { it.updatedAt }
+        val legacyIds = conversations
+            .asSequence()
+            .filter { it.title == AssistantConversationPolicy.THREAD_TITLE }
+            .mapTo(linkedSetOf()) { it.id }
+        if (!managed.containsAll(legacyIds)) saveManagedThreadIds(managed + legacyIds)
+        return conversations
+    }
+
+    /** Rename an AD-owned conversation without allowing unrelated ChatStore data to be claimed. */
+    @Synchronized
+    fun renameConversation(threadId: String, title: String): Boolean {
+        val thread = ChatStore.getThread(threadId) ?: return false
+        val managed = managedThreadIds()
+        if (thread.id !in managed && thread.title != AssistantConversationPolicy.THREAD_TITLE) return false
+        trackManagedThread(thread.id)
+        return ChatStore.updateThreadTitle(thread.id, title)
+    }
+
+    /** Delete one AD-owned conversation and return the conversation that should become active. */
+    @Synchronized
+    fun deleteConversation(threadId: String): String {
+        val thread = ChatStore.getThread(threadId)
+        val managed = managedThreadIds()
+        val owned = thread != null &&
+            (thread.id in managed || thread.title == AssistantConversationPolicy.THREAD_TITLE)
+        if (owned) {
+            ChatStore.deleteThread(threadId)
+            saveManagedThreadIds(managed - threadId)
+        }
+        if (prefs.getString(KEY_ACTIVE_THREAD_ID, null) == threadId) {
+            prefs.edit().remove(KEY_ACTIVE_THREAD_ID).apply()
+        }
+        val next = conversations().firstOrNull()?.id
+        if (next != null) {
+            prefs.edit().putString(KEY_ACTIVE_THREAD_ID, next).apply()
+            return next
+        }
         return createAndActivate()
     }
 
