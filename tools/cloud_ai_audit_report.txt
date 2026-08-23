@@ -3177,11 +3177,9 @@ android/AD-Glasses/app/src/main/java/com/ad_glasses/agent/CloudSettingsActivity.
 android/AD-Glasses/app/src/main/java/com/ad_glasses/agent/CloudSettingsActivity.kt:52:        status = if (AiProviderPrefs.isRelayConfigured(this)) {
 android/AD-Glasses/app/src/main/java/com/ad_glasses/agent/CloudSettingsActivity.kt:85:        AiProviderPrefs.setRelayBaseUrl(this, url)
 android/AD-Glasses/app/src/main/java/com/ad_glasses/agent/LocalAgentPrefs.kt:4:import com.ad_glasses.shared.settings.AgentProviderType
-android/AD-Glasses/app/src/main/java/com/ad_glasses/agent/LocalAgentPrefs.kt:19:    fun getProviderType(context: Context): AgentProviderType {
-android/AD-Glasses/app/src/main/java/com/ad_glasses/agent/LocalAgentPrefs.kt:24:        return if (raw == AgentProviderType.LOCAL_AGENT.name) {
-android/AD-Glasses/app/src/main/java/com/ad_glasses/agent/LocalAgentPrefs.kt:25:            AgentProviderType.LOCAL_AGENT
-android/AD-Glasses/app/src/main/java/com/ad_glasses/agent/LocalAgentPrefs.kt:27:            AgentProviderType.CLOUD_AI
-android/AD-Glasses/app/src/main/java/com/ad_glasses/agent/LocalAgentPrefs.kt:31:    fun setProviderType(context: Context, type: AgentProviderType) {
+android/AD-Glasses/app/src/main/java/com/ad_glasses/agent/LocalAgentPrefs.kt:20:    fun getProviderType(context: Context): AgentProviderType {
+android/AD-Glasses/app/src/main/java/com/ad_glasses/agent/LocalAgentPrefs.kt:23:        return AgentProviderType.CLOUD_AI
+android/AD-Glasses/app/src/main/java/com/ad_glasses/agent/LocalAgentPrefs.kt:26:    fun setProviderType(context: Context, type: AgentProviderType) {
 android/AD-Glasses/app/src/main/java/com/ad_glasses/agent/LocalModelsConfigureActivity.kt:256:            baseUrl = RemoteOpenAiPrefs.getBaseUrl(this),
 android/AD-Glasses/app/src/main/java/com/ad_glasses/agent/LocalModelsConfigureActivity.kt:257:            modelName = RemoteOpenAiPrefs.getModel(this),
 android/AD-Glasses/app/src/main/java/com/ad_glasses/agent/LocalModelsConfigureActivity.kt:258:            apiKey = RemoteOpenAiPrefs.getApiKey(this),
