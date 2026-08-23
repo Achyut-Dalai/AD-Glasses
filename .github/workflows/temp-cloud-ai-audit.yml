@@ -28,7 +28,10 @@ jobs:
           python3 - <<'PY'
           from pathlib import Path
           path = Path('.github/temp_cloud_cleanup.py')
-          path.write_text(path.read_text().replace('.exists():', '.exists()):'))
+          value = path.read_text()
+          value = value.replace('if (ROOT.joinpath(daily).exists():', 'if ROOT.joinpath(daily).exists():')
+          value = value.replace('if (ROOT.joinpath(wrappers).exists():', 'if ROOT.joinpath(wrappers).exists():')
+          path.write_text(value)
           PY
           status=0
           python3 .github/temp_cloud_cleanup.py > tools/cloud_cleanup_diagnostics.txt 2>&1 || status=$?
