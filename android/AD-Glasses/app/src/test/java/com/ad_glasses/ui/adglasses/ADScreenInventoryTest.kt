@@ -14,7 +14,6 @@ class ADScreenInventoryTest {
             listOf("Home", "AI", "Library"),
             ADTab.entries.map { it.label },
         )
-        assertTrue(ADTab.entries.any { it.name == "AI" })
     }
 
     @Test
@@ -70,33 +69,38 @@ class ADScreenInventoryTest {
         requiredMappings.forEach { mapping ->
             assertTrue("Missing native AD route mapping: $mapping", app.contains(mapping))
         }
-        assertTrue(app.contains("ADTab.AI"))
+        assertTrue(app.contains("routeStack = listOf(ADRoute.MAIN, ADRoute.DEVICE_CENTER)"))
     }
 
     @Test
-    fun deviceCenterOwnsAiConfigurationInsteadOfCapabilitiesList() {
+    fun deviceCenterOwnsAiConfigurationWithoutASeparateAiSettingsPage() {
         val deviceCenter = sourceFile(
             "src/main/java/com/ad_glasses/ui/adglasses/ADGlassesDeviceCenterScreen.kt",
         ).readText()
-        val ai = sourceFile(
-            "src/main/java/com/ad_glasses/ui/adglasses/ADNativeAiScreen.kt",
-        ).readText()
+        val aiSectionFile = sourceFile(
+            "src/main/java/com/ad_glasses/ui/adglasses/ADDeviceAiSection.kt",
+        )
+        val aiSection = aiSectionFile.readText()
 
         assertTrue(deviceCenter.contains("ADSectionTitle(\"AI\")"))
         assertTrue(deviceCenter.contains("ADDeviceAiSection("))
         assertFalse(deviceCenter.contains("ADSectionTitle(\"Capabilities\")"))
-        assertFalse(deviceCenter.contains("ADDeviceCapability("))
-        assertTrue(ai.contains("internal fun ADDeviceAiSection("))
-        assertFalse(ai.contains("internal fun ADNativeAiScreen("))
+        assertTrue(aiSectionFile.isFile)
+        assertTrue(aiSection.contains("internal fun ADDeviceAiSection("))
+        assertTrue(aiSection.contains("title = \"Cloud\""))
+        assertTrue(aiSection.contains("title = \"Local\""))
+        assertTrue(aiSection.contains("tint = Color.Black"))
+        assertFalse(sourceFile("src/main/java/com/ad_glasses/ui/adglasses/ADNativeAiScreen.kt").exists())
     }
 
     @Test
-    fun adLauncherAndHeroAssetsExistAndAdaptiveIconsUseThem() {
+    fun currentLauncherHeroAndLensAssetsExistWhileSupersededGenerationsDoNot() {
         val drawableNoDpi = sourceFile("src/main/res/drawable-nodpi")
         val drawable = sourceFile("src/main/res/drawable")
         val icon = File(drawableNoDpi, "ad_glasses_icon_source.png")
         val adaptiveForegroundImage = File(drawableNoDpi, "ad_glasses_adaptive_foreground_v2.png")
         val hero = File(drawableNoDpi, "ad_glasses_hero_v4.png")
+        val lens = File(drawableNoDpi, "ad_lens_shutter.png")
         val adaptiveForeground = File(drawable, "ad_glasses_adaptive_foreground.xml")
         val adaptiveBackground = File(drawable, "ad_glasses_adaptive_background.xml")
         val launcher = sourceFile("src/main/res/mipmap-anydpi-v26/ic_launcher.xml")
@@ -105,6 +109,9 @@ class ADScreenInventoryTest {
         assertTrue("AD Glasses icon source must exist", icon.isFile && icon.length() > 0L)
         assertTrue("AD Glasses adaptive foreground image must exist", adaptiveForegroundImage.isFile && adaptiveForegroundImage.length() > 0L)
         assertTrue("AD Glasses current hero art must exist", hero.isFile && hero.length() > 0L)
+        assertTrue("Lens image must exist", lens.isFile && lens.length() > 0L)
+        assertFalse(File(drawableNoDpi, "ad_glasses_hero_v2.png").exists())
+        assertFalse(File(drawableNoDpi, "ad_glasses_hero_v3.png").exists())
         assertTrue("Adaptive foreground wrapper must exist", adaptiveForeground.isFile)
         assertTrue("Adaptive background must exist", adaptiveBackground.isFile)
 
@@ -116,6 +123,11 @@ class ADScreenInventoryTest {
             assertTrue(xml.contains("@drawable/ad_glasses_adaptive_background"))
             assertTrue(xml.contains("@drawable/ad_glasses_adaptive_foreground"))
         }
+
+        listOf("mipmap-mdpi", "mipmap-hdpi", "mipmap-xhdpi", "mipmap-xxhdpi", "mipmap-xxxhdpi")
+            .forEach { folder ->
+                assertFalse(sourceFile("src/main/res/$folder/ic_launcher_foreground.png").exists())
+            }
     }
 
     private fun sourceFile(relativePath: String): File {
