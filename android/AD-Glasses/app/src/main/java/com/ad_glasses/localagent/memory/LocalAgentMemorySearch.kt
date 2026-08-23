@@ -4,6 +4,7 @@ import android.content.Context
 import com.ad_glasses.memoryvault.MemorySearchOrchestrator
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.runBlocking
+import kotlinx.coroutines.withTimeoutOrNull
 
 /**
  * Backward-compatible entry point for local memory retrieval.
@@ -15,6 +16,7 @@ object LocalAgentMemorySearch {
     private const val DEFAULT_FACT_LOOKBACK_DAYS: Int = 7
     private const val DEFAULT_TOP_FACTS: Int = 6
     private const val DEFAULT_TOP_SUMMARY_LINES: Int = 5
+    private const val ASSISTANT_MEMORY_SEARCH_TIMEOUT_MS: Long = 900L
 
     fun buildRelevantMemoryBlock(
         context: Context,
@@ -27,18 +29,22 @@ object LocalAgentMemorySearch {
     ): String {
         return runCatching {
             runBlocking(Dispatchers.IO) {
-                MemorySearchOrchestrator.buildRelevantMemoryBlock(
-                    context = context,
-                    queryText = queryText,
-                    date = date,
-                    params = MemorySearchOrchestrator.SearchParams(
-                        lookbackDaysFacts = lookbackDaysFacts,
-                        topFacts = topFacts,
-                        topSummaryLines = topSummaryLines,
-                        topScreenHits = 3,
-                        maxChars = maxChars,
-                    ),
-                )
+                // Personal memory is optional enrichment. A slow Room/FTS/policy lookup must
+                // never hold an interactive Ask turn hostage; fail open and answer without it.
+                withTimeoutOrNull(ASSISTANT_MEMORY_SEARCH_TIMEOUT_MS) {
+                    MemorySearchOrchestrator.buildRelevantMemoryBlock(
+                        context = context,
+                        queryText = queryText,
+                        date = date,
+                        params = MemorySearchOrchestrator.SearchParams(
+                            lookbackDaysFacts = lookbackDaysFacts,
+                            topFacts = topFacts,
+                            topSummaryLines = topSummaryLines,
+                            topScreenHits = 3,
+                            maxChars = maxChars,
+                        ),
+                    )
+                }.orEmpty()
             }
         }.getOrDefault("")
     }
