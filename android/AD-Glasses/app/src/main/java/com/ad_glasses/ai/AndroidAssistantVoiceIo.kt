@@ -44,8 +44,6 @@ object AndroidAssistantVoiceIo {
 
     /** Prefer a downloaded/embedded voice for [locale]. Falls back to the engine's locale handling. */
     fun preferOfflineVoice(tts: TextToSpeech, locale: Locale): Voice? {
-        prepareSpeechOutputRoute()
-
         val voices = runCatching { tts.voices.orEmpty() }.getOrDefault(emptySet<Voice>())
         val offline = voices.filter { !it.isNetworkConnectionRequired }
         val selected = offline.firstOrNull { it.locale.toLanguageTag() == locale.toLanguageTag() }
@@ -70,12 +68,12 @@ object AndroidAssistantVoiceIo {
 
     /**
      * Recognition deliberately releases the Bluetooth communication route as soon as Moonshine has
-     * a final transcript. Re-establish it only when there is actually speech to play so Cloud AI
-     * latency never keeps the microphone/SCO path open.
+     * a final transcript. Re-establish it only after inference, immediately before the caller hands
+     * the response to Android TTS, so Cloud AI latency never keeps the microphone/SCO path open.
      */
     @Suppress("DEPRECATION")
-    private fun prepareSpeechOutputRoute() {
-        val context = appContext ?: return
+    fun prepareSpeechOutputRoute(context: Context) {
+        appContext = context.applicationContext
         val audioManager = context.getSystemService(Context.AUDIO_SERVICE) as? AudioManager ?: return
 
         runCatching {
