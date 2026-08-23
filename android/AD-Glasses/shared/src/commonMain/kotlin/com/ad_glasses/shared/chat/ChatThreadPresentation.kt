@@ -43,7 +43,6 @@ data class ChatThreadUiState(
 enum class ChatComposerPrimaryAction {
     SEND,
     STOP_GENERATION,
-    CONFIGURE_LOCAL_MODEL,
 }
 
 data class ChatComposerUiState(
