@@ -1,6 +1,8 @@
 package com.ad_glasses.ai.router
 
 import android.content.Context
+import android.os.SystemClock
+import android.util.Log
 import com.ad_glasses.agent.LocalAgentPrefs as AutomationPrefs
 import com.ad_glasses.shared.settings.AgentProviderType
 import java.io.File
@@ -21,6 +23,8 @@ data class AgentInferenceResult(
 
 /** Cloud-only inference boundary. Local Agent remains an automation capability, not an LLM. */
 object AgentInferenceRouter {
+    private const val TIMING_TAG = "AssistantTiming"
+
     suspend fun complete(
         context: Context,
         purpose: AgentInferencePurpose,
@@ -33,6 +37,7 @@ object AgentInferenceRouter {
     ): String = completeText(
         context = context,
         purpose = purpose,
+        sessionId = sessionId,
         systemPrompt = systemPrompt,
         userPrompt = userPrompt,
         webRequested = webRequested,
@@ -58,6 +63,7 @@ object AgentInferenceRouter {
                 content = completeText(
                     context = context,
                     purpose = AgentInferencePurpose.UI_PLANNING,
+                    sessionId = sessionId,
                     systemPrompt = systemPrompt,
                     userPrompt = userPrompt,
                     webRequested = webRequested,
@@ -70,6 +76,9 @@ object AgentInferenceRouter {
             throw IllegalStateException("Remote image upload is off. The image was not sent.")
         }
 
+        val startedAt = SystemClock.elapsedRealtime()
+        val sessionLabel = sessionId.takeLast(8)
+        Log.i(TIMING_TAG, "stage=cloud_image_start thread=$sessionLabel")
         val imageContent = try {
             withContext(Dispatchers.IO) {
                 ApiTokenClient.image(
@@ -81,14 +90,26 @@ object AgentInferenceRouter {
                 ).getOrThrow()
             }
         } catch (error: CancellationException) {
+            Log.i(
+                TIMING_TAG,
+                "stage=cloud_image_cancelled thread=$sessionLabel elapsedMs=${SystemClock.elapsedRealtime() - startedAt}",
+            )
             throw error
         } catch (error: Exception) {
+            Log.w(
+                TIMING_TAG,
+                "stage=cloud_image_failed thread=$sessionLabel elapsedMs=${SystemClock.elapsedRealtime() - startedAt} type=${error::class.java.simpleName}",
+            )
             throw IllegalStateException(
                 "The active Cloud AI profile could not analyze this image: " +
                     (error.message ?: error::class.java.simpleName),
                 error,
             )
         }
+        Log.i(
+            TIMING_TAG,
+            "stage=cloud_image_done thread=$sessionLabel elapsedMs=${SystemClock.elapsedRealtime() - startedAt}",
+        )
 
         return AgentInferenceResult(
             content = imageContent,
@@ -102,18 +123,41 @@ object AgentInferenceRouter {
     private suspend fun completeText(
         context: Context,
         purpose: AgentInferencePurpose,
+        sessionId: String,
         systemPrompt: String,
         userPrompt: String,
         webRequested: Boolean,
     ): String {
         val maxTokens = if (purpose == AgentInferencePurpose.CLASSIFICATION) 256 else 512
-        return withContext(Dispatchers.IO) {
-            ApiTokenClient.chat(
-                context = context,
-                messages = messages(systemPrompt, userPrompt),
-                maxTokens = maxTokens,
-                webRequested = webRequested,
-            ).getOrThrow()
+        val startedAt = SystemClock.elapsedRealtime()
+        val sessionLabel = sessionId.takeLast(8)
+        Log.i(TIMING_TAG, "stage=cloud_text_start thread=$sessionLabel purpose=$purpose")
+        return try {
+            withContext(Dispatchers.IO) {
+                ApiTokenClient.chat(
+                    context = context,
+                    messages = messages(systemPrompt, userPrompt),
+                    maxTokens = maxTokens,
+                    webRequested = webRequested,
+                ).getOrThrow()
+            }.also {
+                Log.i(
+                    TIMING_TAG,
+                    "stage=cloud_text_done thread=$sessionLabel purpose=$purpose elapsedMs=${SystemClock.elapsedRealtime() - startedAt}",
+                )
+            }
+        } catch (error: CancellationException) {
+            Log.i(
+                TIMING_TAG,
+                "stage=cloud_text_cancelled thread=$sessionLabel purpose=$purpose elapsedMs=${SystemClock.elapsedRealtime() - startedAt}",
+            )
+            throw error
+        } catch (error: Exception) {
+            Log.w(
+                TIMING_TAG,
+                "stage=cloud_text_failed thread=$sessionLabel purpose=$purpose elapsedMs=${SystemClock.elapsedRealtime() - startedAt} type=${error::class.java.simpleName}",
+            )
+            throw error
         }
     }
 
