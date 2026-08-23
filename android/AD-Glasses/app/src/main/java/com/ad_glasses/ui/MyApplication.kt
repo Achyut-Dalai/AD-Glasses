@@ -25,15 +25,9 @@ import com.oudmon.ble.base.bluetooth.BleBaseControl
 import com.oudmon.ble.base.bluetooth.BleOperateManager
 import com.oudmon.ble.base.communication.LargeDataHandler
 import java.io.File
-import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.SupervisorJob
-import kotlinx.coroutines.launch
 
 /** Application process owner for native services, device transport and the Compose product UI. */
 class MyApplication : Application() {
-
-    private val appScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
 
     var hardwareVersion: String = ""
     var firmwareVersion: String = ""
@@ -70,13 +64,9 @@ class MyApplication : Application() {
 
         runCatching { MemoryVaultBootstrap.ensureInitialized(this) }
 
-        // AD conversations are intentionally ephemeral. Clean expired threads off the main
-        // thread at startup; creating the session also installs the periodic retention backstop.
-        appScope.launch {
-            runCatching {
-                AssistantConversationSession.get(this@MyApplication).pruneExpiredConversations()
-            }
-        }
+        // Chat history is durable and user-managed. Initializing the session only restores the
+        // active conversation and cancels any legacy seven-day cleanup work left by older builds.
+        runCatching { AssistantConversationSession.get(this) }
 
         // Initialize KMP shared services
         runCatching { initPlatformPreferences(this) }
