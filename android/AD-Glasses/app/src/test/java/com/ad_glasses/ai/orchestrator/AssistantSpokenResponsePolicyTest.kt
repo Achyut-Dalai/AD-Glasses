@@ -22,8 +22,9 @@ class AssistantSpokenResponsePolicyTest {
 
         val spoken = AssistantSpokenResponsePolicy.forGlasses(rich)
 
-        assertTrue(spoken.endsWith("Full details are in Chats."))
+        assertTrue(spoken.endsWith("More detail is in Chats."))
         assertTrue(spoken.length < rich.length)
+        assertTrue(spoken.length <= 230)
         assertFalse(spoken.contains("```"))
     }
 }
