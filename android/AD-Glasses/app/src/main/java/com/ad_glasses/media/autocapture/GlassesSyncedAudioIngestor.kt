@@ -3,12 +3,8 @@ package com.ad_glasses.media.autocapture
 import android.content.Context
 import android.media.MediaMetadataRetriever
 import android.util.Log
-import com.ad_glasses.shared.settings.AgentProviderType
-import com.ad_glasses.agent.LocalAgentPrefs as AutomationPrefs
 import com.ad_glasses.ai.transcription.AudioChunker
 import com.ad_glasses.ai.transcription.DefaultTranscriptionService
-import com.ad_glasses.ai.transcription.GemmaLiteRtTranscriptionProvider
-import com.ad_glasses.ai.transcription.Mp4AudioChunker
 import com.ad_glasses.ai.transcription.NoOpAudioChunker
 import com.ad_glasses.ai.transcription.RetryPolicy
 import com.ad_glasses.ai.transcription.RetryingTranscriptionProvider
@@ -20,14 +16,14 @@ import com.ad_glasses.ai.transcription.moonshine.MoonshineTranscriptionProvider
 import com.ad_glasses.data.local.entity.CaptureSession
 import com.ad_glasses.localagent.userfacts.TranscriptCandidateFactsAppender
 import com.ad_glasses.ui.MyApplication
-import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.SupervisorJob
-import kotlinx.coroutines.launch
 import java.io.File
 import java.io.FileOutputStream
 import java.util.Locale
 import java.util.concurrent.ConcurrentHashMap
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.launch
 
 object GlassesSyncedAudioIngestor {
     private const val TAG = "GlassesAudioIngest"
@@ -90,12 +86,13 @@ object GlassesSyncedAudioIngestor {
         scope.launch {
             try {
                 val existing = MyApplication.repository.getTranscriptionByCaptureSessionId(session.id)
-                if (existing != null && existing.status.equals("SUCCEEDED", ignoreCase = true)) {
+                if (existing != null && existing.status.equals("SUCCEEDED", ignoreCase = true)) return@launch
+
+                val engine = moonshineEngine(context)
+                if (engine == null) {
+                    Log.i(TAG, "Moonshine is not installed; leaving session=${session.id} untranscribed")
                     return@launch
                 }
-
-                val providerType = AutomationPrefs.getProviderType(context)
-                val engine = buildTranscriptionEngine(context, providerType)
                 val service = DefaultTranscriptionService(
                     context = context,
                     repository = MyApplication.repository,
@@ -122,7 +119,6 @@ object GlassesSyncedAudioIngestor {
                         }
                         Log.i(TAG, "Auto transcription completed for session=${session.id} provider=${result.provider}")
                     }
-
                     is TranscriptionResult.Failure -> {
                         Log.w(TAG, "Auto transcription failed for session=${session.id}: ${result.message}")
                     }
@@ -141,57 +137,28 @@ object GlassesSyncedAudioIngestor {
         val chunkDurationSec: Long,
     )
 
-    private fun buildTranscriptionEngine(context: Context, providerType: AgentProviderType): EngineSelection {
-        return when (providerType) {
-            AgentProviderType.LOCAL_AGENT -> EngineSelection(
-                provider = RetryingTranscriptionProvider(
-                    GemmaLiteRtTranscriptionProvider(context),
-                    policy = RetryPolicy(maxAttempts = 1),
-                ),
-                chunker = Mp4AudioChunker(context),
-                chunkDurationSec = 45L,
-            )
-
-            AgentProviderType.CLOUD_AI -> moonshineEngineOrFallback(context)
-        }
-    }
-
-    private fun moonshineEngineOrFallback(context: Context): EngineSelection {
+    private fun moonshineEngine(context: Context): EngineSelection? {
         val kind = MoonshineModelManager.chooseDefault(languageHint = null)
-        val modelDir = MoonshineModelManager.modelDir(context, kind)
-        if (MoonshineModelManager.isInstalled(context, kind)) {
-            return EngineSelection(
-                provider = RetryingTranscriptionProvider(
-                    MoonshineTranscriptionProvider(
-                        context = context,
-                        modelDir = modelDir,
-                        modelArch = kind.modelArch,
-                    ),
-                    policy = RetryPolicy(maxAttempts = 1),
-                ),
-                chunker = NoOpAudioChunker(),
-                chunkDurationSec = 60L,
-            )
-        }
-
-        Log.w(TAG, "Moonshine model not installed; falling back to Gemma LiteRT for auto-synced audio transcription")
+        if (!MoonshineModelManager.isInstalled(context, kind)) return null
         return EngineSelection(
             provider = RetryingTranscriptionProvider(
-                GemmaLiteRtTranscriptionProvider(context),
+                MoonshineTranscriptionProvider(
+                    context = context,
+                    modelDir = MoonshineModelManager.modelDir(context, kind),
+                    modelArch = kind.modelArch,
+                ),
                 policy = RetryPolicy(maxAttempts = 1),
             ),
-            chunker = Mp4AudioChunker(context),
-            chunkDurationSec = 45L,
+            chunker = NoOpAudioChunker(),
+            chunkDurationSec = 60L,
         )
     }
 
-    private fun mimeTypeForPath(path: String): String {
-        return when (File(path).extension.lowercase(Locale.US)) {
-            "ogg", "opus" -> "audio/ogg"
-            "wav" -> "audio/wav"
-            "mp3" -> "audio/mpeg"
-            else -> "audio/mp4"
-        }
+    private fun mimeTypeForPath(path: String): String = when (File(path).extension.lowercase(Locale.US)) {
+        "ogg", "opus" -> "audio/ogg"
+        "wav" -> "audio/wav"
+        "mp3" -> "audio/mpeg"
+        else -> "audio/mp4"
     }
 
     private fun estimateAudioDurationSec(file: File): Long {
