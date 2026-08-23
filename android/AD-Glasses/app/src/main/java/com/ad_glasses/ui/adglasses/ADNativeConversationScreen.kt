@@ -74,6 +74,7 @@ import com.ad_glasses.localagent.AudioSessionCoordinator
 import com.ad_glasses.shared.chat.ChatMessage
 import com.ad_glasses.shared.chat.ChatThread
 import com.ad_glasses.shared.chat.ChatRole
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
@@ -182,7 +183,7 @@ internal fun ADNativeConversationScreen(
         errorText = null
         lastFailedPrompt = null
         scope.launch {
-            runCatching {
+            try {
                 orchestrator.handle(
                     turn = AssistantTurn(
                         text = prompt,
@@ -191,14 +192,19 @@ internal fun ADNativeConversationScreen(
                     ),
                     providerType = internalProvider,
                 )
-            }.onFailure { error ->
+            } catch (cancelled: CancellationException) {
+                // Leaving/replacing this Compose scope is control flow, not a provider failure.
+                // Propagate it so a cancelled stale turn cannot render the generic retry card.
+                throw cancelled
+            } catch (error: Exception) {
                 errorText = error.message ?: "Couldn’t finish that request."
                 lastFailedPrompt = prompt
+            } finally {
+                pendingPrompt = null
+                sending = false
+                threadId = session.activeThreadId()
+                refresh()
             }
-            pendingPrompt = null
-            sending = false
-            threadId = session.activeThreadId()
-            refresh()
         }
     }
 
