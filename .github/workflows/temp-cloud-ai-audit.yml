@@ -26,6 +26,7 @@ jobs:
           set -euo pipefail
           python3 .github/temp_cloud_cleanup.py
           rm -f tools/cloud_ai_audit_report.txt
+          rm -f .github/cloud-cleanup-trigger.txt
           rm -f .github/temp_cloud_cleanup.py
           rm -f .github/workflows/temp-cloud-ai-audit.yml
           git diff --check
