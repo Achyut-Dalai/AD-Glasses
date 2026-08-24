@@ -20,6 +20,9 @@ internal fun geminiModelsUrl(baseUrl: String): String =
 internal fun geminiGenerateContentUrl(baseUrl: String, model: String): String =
     "${baseUrl.trim().trimEnd('/')}/models/${ApiProvider.GOOGLE.normalizeModelId(model)}:generateContent"
 
+internal fun geminiStreamGenerateContentUrl(baseUrl: String, model: String): String =
+    "${baseUrl.trim().trimEnd('/')}/models/${ApiProvider.GOOGLE.normalizeModelId(model)}:streamGenerateContent?alt=sse"
+
 internal fun geminiImageMimeType(extension: String): String = when (extension.trim().trimStart('.').lowercase()) {
     "png" -> "image/png"
     "webp" -> "image/webp"
@@ -99,6 +102,100 @@ object ApiTokenClient {
             }
         }
         text.ifBlank { throw IllegalStateException("${profile.name} returned an empty response") }
+    }
+
+    /**
+     * Stream user-visible text as it is generated while also returning the complete completion.
+     * Structured reasoning fields are intentionally ignored; only provider answer text is emitted.
+     */
+    suspend fun chatStreaming(
+        context: Context,
+        messages: List<Map<String, String>>,
+        imagePaths: List<String> = emptyList(),
+        audioPath: String? = null,
+        maxTokens: Int = 2048,
+        webRequested: Boolean = false,
+        onToken: (String) -> Unit,
+    ): Result<String> = runCatching {
+        val (profile, apiKey) = AiProviderPrefs.activeProfileWithKey(context)
+        require(profile.model.isNotBlank()) { "${profile.name} does not have a model selected." }
+        val baseUrl = profile.provider.resolveBaseUrl(profile.baseUrl)
+        require(baseUrl.startsWith("https://")) { "${profile.name} does not have a valid HTTPS API base URL." }
+
+        val useNativeWeb = webRequested && profile.webAvailable && imagePaths.isEmpty() && audioPath.isNullOrBlank()
+        val full = StringBuilder()
+        fun emit(delta: String) {
+            if (delta.isEmpty()) return
+            full.append(delta)
+            onToken(delta)
+        }
+
+        runInterruptible {
+            when {
+                profile.provider == ApiProvider.GOOGLE -> {
+                    val payload = buildGeminiGeneratePayload(
+                        messages = messages,
+                        imagePaths = imagePaths,
+                        audioPath = audioPath,
+                        maxTokens = maxTokens,
+                        webRequested = useNativeWeb,
+                    )
+                    requestSse(
+                        url = geminiStreamGenerateContentUrl(baseUrl, profile.model),
+                        apiKey = null,
+                        payload = payload,
+                        extraHeaders = mapOf("x-goog-api-key" to apiKey),
+                    ) { data ->
+                        if (data == "[DONE]") return@requestSse
+                        val delta = runCatching { extractGeminiDeltaText(JSONObject(data)) }.getOrDefault("")
+                        emit(delta)
+                    }
+                }
+
+                useNativeWeb && profile.provider == ApiProvider.OPENAI -> {
+                    val payload = buildOpenAiResponsesPayload(profile, messages, maxTokens)
+                        .put("stream", true)
+                    requestSse(
+                        url = "$baseUrl/responses",
+                        apiKey = apiKey,
+                        payload = payload,
+                    ) { data ->
+                        if (data == "[DONE]") return@requestSse
+                        val event = runCatching { JSONObject(data) }.getOrNull() ?: return@requestSse
+                        if (event.optString("type") == "response.output_text.delta") {
+                            emit(event.optString("delta"))
+                        }
+                    }
+                }
+
+                else -> {
+                    val payload = JSONObject()
+                        .put("model", profile.model)
+                        .put("messages", buildOpenAiMessages(messages, imagePaths, audioPath))
+                        .put("max_tokens", maxTokens)
+                        .put("stream", true)
+                    if (useNativeWeb && profile.provider == ApiProvider.OPENROUTER) {
+                        payload.put(
+                            "tools",
+                            JSONArray().put(JSONObject().put("type", "openrouter:web_search")),
+                        )
+                    }
+                    requestSse(
+                        url = OpenAiCompatibleEndpoint.chatCompletionsUrl(baseUrl),
+                        apiKey = apiKey,
+                        payload = payload,
+                    ) { data ->
+                        if (data == "[DONE]") return@requestSse
+                        val event = runCatching { JSONObject(data) }.getOrNull() ?: return@requestSse
+                        emit(extractChatCompletionDelta(event))
+                    }
+                }
+            }
+        }
+
+        full.toString().trim().ifBlank {
+            throw IllegalStateException("${profile.name} returned an empty streamed response")
+        }
     }
 
     suspend fun image(
@@ -207,9 +304,8 @@ object ApiTokenClient {
         return payloadMessages
     }
 
-    private fun postOpenAiResponses(
+    private fun buildOpenAiResponsesPayload(
         profile: CloudAiProfile,
-        apiKey: String,
         messages: List<Map<String, String>>,
         maxTokens: Int,
     ): JSONObject {
@@ -222,19 +318,54 @@ object ApiTokenClient {
                     .put("content", message["content"].orEmpty()),
             )
         }
-        val payload = JSONObject()
+        return JSONObject()
             .put("model", profile.model)
             .put("input", input)
             .put("max_output_tokens", maxTokens)
             .put("tools", JSONArray().put(JSONObject().put("type", "web_search")))
+    }
+
+    private fun postOpenAiResponses(
+        profile: CloudAiProfile,
+        apiKey: String,
+        messages: List<Map<String, String>>,
+        maxTokens: Int,
+    ): JSONObject {
         val baseUrl = profile.provider.resolveBaseUrl(profile.baseUrl)
-        return postJson("$baseUrl/responses", apiKey, payload)
+        return postJson(
+            "$baseUrl/responses",
+            apiKey,
+            buildOpenAiResponsesPayload(profile, messages, maxTokens),
+        )
     }
 
     /** Native Gemini REST request for text, images, audio, and optional Google Search grounding. */
     private fun postGeminiGenerateContent(
         profile: CloudAiProfile,
         apiKey: String,
+        messages: List<Map<String, String>>,
+        imagePaths: List<String>,
+        audioPath: String?,
+        maxTokens: Int,
+        webRequested: Boolean,
+    ): JSONObject {
+        val baseUrl = profile.provider.resolveBaseUrl(profile.baseUrl)
+        val endpoint = geminiGenerateContentUrl(baseUrl, profile.model)
+        return postJson(
+            endpoint,
+            apiKey = null,
+            payload = buildGeminiGeneratePayload(
+                messages = messages,
+                imagePaths = imagePaths,
+                audioPath = audioPath,
+                maxTokens = maxTokens,
+                webRequested = webRequested,
+            ),
+            extraHeaders = mapOf("x-goog-api-key" to apiKey),
+        )
+    }
+
+    private fun buildGeminiGeneratePayload(
         messages: List<Map<String, String>>,
         imagePaths: List<String>,
         audioPath: String?,
@@ -281,15 +412,7 @@ object ApiTokenClient {
                 JSONArray().put(JSONObject().put("google_search", JSONObject())),
             )
         }
-
-        val baseUrl = profile.provider.resolveBaseUrl(profile.baseUrl)
-        val endpoint = geminiGenerateContentUrl(baseUrl, profile.model)
-        return postJson(
-            endpoint,
-            apiKey = null,
-            payload = payload,
-            extraHeaders = mapOf("x-goog-api-key" to apiKey),
-        )
+        return payload
     }
 
     private fun appendGeminiMediaParts(
@@ -436,30 +559,92 @@ object ApiTokenClient {
         }
     }
 
+    private fun requestSse(
+        url: String,
+        apiKey: String?,
+        payload: JSONObject,
+        extraHeaders: Map<String, String> = emptyMap(),
+        onData: (String) -> Unit,
+    ) {
+        val conn = URL(url).openConnection() as HttpURLConnection
+        try {
+            conn.requestMethod = "POST"
+            conn.connectTimeout = CONNECT_TIMEOUT_MS
+            conn.readTimeout = READ_TIMEOUT_MS
+            conn.setRequestProperty("Accept", "text/event-stream")
+            if (!apiKey.isNullOrBlank()) {
+                conn.setRequestProperty(
+                    "Authorization",
+                    OpenAiCompatibleEndpoint.authorizationHeader(apiKey),
+                )
+            }
+            extraHeaders.forEach { (name, value) -> conn.setRequestProperty(name, value) }
+            conn.doOutput = true
+            conn.setRequestProperty("Content-Type", "application/json; charset=utf-8")
+            OutputStreamWriter(conn.outputStream, Charsets.UTF_8).use { it.write(payload.toString()) }
+
+            val code = conn.responseCode
+            if (code !in 200..299) {
+                val body = BufferedReader(InputStreamReader(conn.errorStream ?: conn.inputStream)).use { it.readText() }
+                throw IllegalStateException("API HTTP $code: $body")
+            }
+
+            BufferedReader(InputStreamReader(conn.inputStream, Charsets.UTF_8)).use { reader ->
+                val dataLines = mutableListOf<String>()
+                fun flushEvent() {
+                    if (dataLines.isEmpty()) return
+                    onData(dataLines.joinToString("\n"))
+                    dataLines.clear()
+                }
+
+                while (true) {
+                    val line = reader.readLine() ?: break
+                    if (line.isEmpty()) {
+                        flushEvent()
+                        continue
+                    }
+                    if (line.startsWith("data:")) {
+                        dataLines += line.substring(5).trimStart()
+                    }
+                }
+                flushEvent()
+            }
+        } finally {
+            conn.disconnect()
+        }
+    }
+
     private fun extractChatCompletionText(response: JSONObject): String {
         val message = response.optJSONArray("choices")
             ?.optJSONObject(0)
             ?.optJSONObject("message")
             ?: return ""
-        val raw = message.opt("content") ?: return ""
-        if (raw is String) return raw.trim()
+        return extractTextValue(message.opt("content")).trim()
+    }
+
+    private fun extractChatCompletionDelta(response: JSONObject): String {
+        val delta = response.optJSONArray("choices")
+            ?.optJSONObject(0)
+            ?.optJSONObject("delta")
+            ?: return ""
+        return extractTextValue(delta.opt("content"))
+    }
+
+    private fun extractTextValue(raw: Any?): String {
+        if (raw == null || raw === JSONObject.NULL) return ""
+        if (raw is String) return raw
         if (raw is JSONArray) {
             return buildString {
                 for (index in 0 until raw.length()) {
                     val part = raw.opt(index)
-                    val text = when (part) {
-                        is String -> part
-                        is JSONObject -> part.optString("text")
-                        else -> ""
-                    }.trim()
-                    if (text.isNotBlank()) {
-                        if (isNotEmpty()) append('\n')
-                        append(text)
+                    when (part) {
+                        is String -> append(part)
+                        is JSONObject -> append(part.optString("text"))
                     }
                 }
-            }.trim()
+            }
         }
-        return raw.toString().trim()
+        return raw.toString()
     }
 
     private fun extractOpenAiResponseText(response: JSONObject): String {
@@ -497,6 +682,19 @@ object ApiTokenClient {
             }
         }.trim()
     }
+
+    private fun extractGeminiDeltaText(response: JSONObject): String {
+        val parts = response.optJSONArray("candidates")
+            ?.optJSONObject(0)
+            ?.optJSONObject("content")
+            ?.optJSONArray("parts")
+            ?: return ""
+        return buildString {
+            for (index in 0 until parts.length()) {
+                append(parts.optJSONObject(index)?.optString("text").orEmpty())
+            }
+        }
+    }
 }
 
 /** Chat/voice/Lens inference is Cloud-only. Provider failures never silently switch engines. */
@@ -526,13 +724,25 @@ object AiAssistantRouter {
         val profile = AiProviderPrefs.getActiveProfile(context)
             ?: return "Cloud AI is not configured. Add a provider profile in Device Center."
         callbacks?.onStatus("Using ${profile.name} · ${profile.model}")
-        return ApiTokenClient.chat(
-            context = context,
-            messages = messages,
-            imagePaths = imagePaths,
-            audioPath = audioPath,
-            webRequested = webRequested,
-        ).getOrElse {
+        val request = if (callbacks != null) {
+            ApiTokenClient.chatStreaming(
+                context = context,
+                messages = messages,
+                imagePaths = imagePaths,
+                audioPath = audioPath,
+                webRequested = webRequested,
+                onToken = callbacks::onToken,
+            )
+        } else {
+            ApiTokenClient.chat(
+                context = context,
+                messages = messages,
+                imagePaths = imagePaths,
+                audioPath = audioPath,
+                webRequested = webRequested,
+            )
+        }
+        return request.getOrElse {
             "Cloud AI unavailable (${it.message ?: it::class.java.simpleName})."
         }
     }

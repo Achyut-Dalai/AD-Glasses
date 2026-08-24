@@ -19,7 +19,17 @@ object AssistantCompletionSanitizer {
         "(?is)^\\s*(?:<think>|<analysis>|<reasoning>|```(?:analysis|reasoning|thinking)\\b)",
     )
     private val reasoningLabel = Regex("(?i)^\\s*(?:reasoning|analysis|thinking)\\s*:\\s*")
-    private val finalAnswerLabel = Regex("(?im)^\\s*(?:final answer|final response)\\s*:\\s*")
+    private val finalAnswerLabel = Regex(
+        "(?i)(?:^|\\s)(?:final answer|final response)\\s*:\\s*",
+    )
+    private val reasoningWrapperOpeners = listOf(
+        "<think>",
+        "<analysis>",
+        "<reasoning>",
+        "```analysis",
+        "```reasoning",
+        "```thinking",
+    )
 
     private val systemPromptFingerprints = listOf(
         "You are AD. Answer directly and concisely.",
@@ -52,6 +62,45 @@ object AssistantCompletionSanitizer {
         if (unfinishedReasoningPrefix.containsMatchIn(text)) return ""
         if (looksLikeSystemPromptEcho(text)) return ""
         return text.trim()
+    }
+
+    /**
+     * Streaming is stricter than final cleanup because an unfinished prefix can later reveal itself
+     * to be hidden reasoning or a system-prompt echo. Return only text that is safe to speak before
+     * the provider has finished the whole completion.
+     */
+    fun cleanForStreaming(raw: String): String {
+        val trimmed = raw.trim()
+        if (trimmed.isBlank()) return ""
+
+        // A reasoning label is not safe until the provider explicitly crosses into its final answer.
+        if (reasoningLabel.containsMatchIn(trimmed) && finalAnswerLabel.find(trimmed) == null) {
+            return ""
+        }
+
+        // Avoid exposing a reasoning wrapper while its opening marker itself is only partially
+        // streamed (for example, "<thi" before "<think>"). Once complete, clean() below handles
+        // both unfinished and fully-closed wrappers correctly.
+        if (reasoningWrapperOpeners.any { opener ->
+                trimmed.length < opener.length && opener.startsWith(trimmed, ignoreCase = true)
+            }
+        ) {
+            return ""
+        }
+
+        val clean = clean(raw)
+        if (clean.isBlank()) return ""
+
+        // Do not speak the beginning of a system-prompt echo before enough characters have arrived
+        // for the normal fingerprint detector to reject the completed sentence. Check the cleaned
+        // text because a provider may place a closed reasoning block before an echoed prompt.
+        val firstFingerprint = systemPromptFingerprints.first()
+        if (firstFingerprint.startsWith(clean, ignoreCase = true) &&
+            !clean.equals(firstFingerprint, ignoreCase = true)
+        ) {
+            return ""
+        }
+        return clean
     }
 
     fun looksLikeSystemPromptEcho(text: String): Boolean {

@@ -43,6 +43,8 @@ data class AssistantExecutionContext(
 data class AssistantResult(
     val spokenText: String,
     val richText: String = spokenText,
+    /** False for transient/provider failures that should be spoken but never become chat context. */
+    val persist: Boolean = true,
 )
 
 /** Execution boundary for answer, vision and explicit AD capability commands only. */
@@ -153,6 +155,7 @@ class AssistantOrchestrator(
             AcceptedTurn(userMessage.chatId, history)
         } ?: return AssistantResult(
             spokenText = "That conversation was cleared before I could start. Please ask again.",
+            persist = false,
         )
         Log.i(
             TIMING_TAG,
@@ -213,17 +216,21 @@ class AssistantOrchestrator(
         currentCoroutineContext().ensureActive()
         ensureCurrent(lease)
 
-        val persisted = result.richText.trim().ifBlank { result.spokenText.trim() }
-        if (persisted.isNotBlank()) {
-            val persistAssistantStartedAt = SystemClock.elapsedRealtime()
-            AssistantTurnCoordinator.withThreadState(accepted.threadId) {
-                ensureCurrent(lease)
-                session.addAssistantTurn(accepted.threadId, persisted)
+        if (result.persist) {
+            val persisted = result.richText.trim().ifBlank { result.spokenText.trim() }
+            if (persisted.isNotBlank()) {
+                val persistAssistantStartedAt = SystemClock.elapsedRealtime()
+                AssistantTurnCoordinator.withThreadState(accepted.threadId) {
+                    ensureCurrent(lease)
+                    session.addAssistantTurn(accepted.threadId, persisted)
+                }
+                Log.i(
+                    TIMING_TAG,
+                    "assistant_persisted surface=${turn.surface} stageMs=${SystemClock.elapsedRealtime() - persistAssistantStartedAt}",
+                )
             }
-            Log.i(
-                TIMING_TAG,
-                "assistant_persisted surface=${turn.surface} stageMs=${SystemClock.elapsedRealtime() - persistAssistantStartedAt}",
-            )
+        } else {
+            Log.i(TIMING_TAG, "assistant_not_persisted surface=${turn.surface}")
         }
         Log.i(
             TIMING_TAG,

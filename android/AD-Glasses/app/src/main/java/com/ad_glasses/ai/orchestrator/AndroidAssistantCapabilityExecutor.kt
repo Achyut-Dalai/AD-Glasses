@@ -50,7 +50,14 @@ class AndroidAssistantCapabilityExecutor(
             )
             providerFailureResult(error)
         }
-        prepareSpeechOutputRouteIfNeeded(context)
+
+        // MainActivity keeps the live communication route open and queues streamed TTS while the
+        // provider is still generating. Re-preparing the route after generation would add latency
+        // after speech may already have started. Non-streaming surfaces keep the existing behavior.
+        val streamingGlassesVoice = context.surface == AssistantInputSurface.GLASSES_VOICE && onToken != null
+        if (!streamingGlassesVoice) {
+            prepareSpeechOutputRouteIfNeeded(context)
+        }
         return result
     }
 
@@ -63,6 +70,7 @@ class AndroidAssistantCapabilityExecutor(
             val result = AssistantResult(
                 spokenText = "I don’t have a usable frame for that yet.",
                 richText = "This visual request has context, but no image frame was supplied to the selected vision engine.",
+                persist = false,
             )
             prepareSpeechOutputRouteIfNeeded(context)
             return result
@@ -166,7 +174,7 @@ class AndroidAssistantCapabilityExecutor(
                 "Cloud AI is temporarily unavailable. Try again."
             else -> "I couldn't get an answer. Try again."
         }
-        return AssistantResult(spokenText = spoken, richText = spoken)
+        return AssistantResult(spokenText = spoken, richText = spoken, persist = false)
     }
 
     /** Native chat roles are the multi-turn context. No conversation text is duplicated in system. */
@@ -192,8 +200,10 @@ class AndroidAssistantCapabilityExecutor(
         }
 
     /**
-     * Keep the repeated system instruction deliberately tiny. Extra context is attached only when
-     * the current turn actually supplies an artifact or explicitly requests provider web search.
+     * Keep the repeated system instruction deliberately tiny. Legacy Local Agent memory context is
+     * deliberately ignored for normal glasses voice Ask: multi-turn context is the native last-three
+     * message list, not a second generated memory prompt. Other surfaces may still attach explicit
+     * artifact/image context when that turn requires it.
      */
     private fun conversationSystemPrompt(context: AssistantExecutionContext): String = buildString {
         append("You are AD. Answer directly and concisely. Return only the final answer; do not output internal reasoning.")
@@ -207,9 +217,16 @@ class AndroidAssistantCapabilityExecutor(
         if (context.useWeb) {
             append(" Use web search for this turn when needed.")
         }
-        context.artifactContext?.trim()?.takeIf { it.isNotBlank() }?.let { artifact ->
-            append("\nContext:\n")
-            append(artifact.take(AssistantInferenceContextPolicy.artifactLimit(context.surface)))
+        if (context.surface != AssistantInputSurface.GLASSES_VOICE) {
+            context.artifactContext?.trim()?.takeIf { it.isNotBlank() }?.let { artifact ->
+                append("\nContext:\n")
+                append(artifact.take(AssistantInferenceContextPolicy.artifactLimit(context.surface)))
+            }
+        } else if (!context.artifactContext.isNullOrBlank()) {
+            Log.i(
+                "AssistantTiming",
+                "stage=legacy_voice_context_ignored chars=${context.artifactContext.length}",
+            )
         }
     }
 
@@ -231,6 +248,7 @@ class AndroidAssistantCapabilityExecutor(
             return AssistantResult(
                 spokenText = "I didn’t get a usable answer. Please try again.",
                 richText = "I didn’t get a usable answer. Please try again.",
+                persist = false,
             )
         }
         return AssistantResult(
