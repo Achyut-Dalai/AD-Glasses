@@ -160,9 +160,8 @@ object AgentInferenceRouter {
             onToken != null &&
             maxTokens <= LOW_LATENCY_VOICE_TOKEN_CEILING
 
-        // The voice system prompt on current main is already small. Keep a hard ceiling anyway so a
-        // future caller cannot accidentally put multi-kilobyte memory/persona context back on the
-        // wearable hot path. Native chat roles carry only a tiny recent continuation below.
+        // Ask voice should never inherit a large persona/memory prompt. The dedicated caller uses a
+        // ~234-character system instruction; this ceiling is defense in depth for future callers.
         val effectiveSystemPrompt = if (lowLatencyVoiceRequest) {
             systemPrompt.take(LOW_LATENCY_SYSTEM_PROMPT_CHARS).trim()
         } else {
@@ -393,9 +392,9 @@ object AgentInferenceRouter {
 
     private const val UI_PLANNING_MAX_TOKENS = 512
     private const val LOW_LATENCY_VOICE_TOKEN_CEILING = 256
-    private const val LOW_LATENCY_SYSTEM_PROMPT_CHARS = 700
+    private const val LOW_LATENCY_SYSTEM_PROMPT_CHARS = 320
     private const val LOW_LATENCY_PRIOR_MESSAGES = 2
     private const val LOW_LATENCY_MESSAGE_CHARS = 360
-    private const val LOW_LATENCY_FIRST_DELTA_TIMEOUT_MS = 4_500L
-    private const val LOW_LATENCY_TOTAL_TIMEOUT_MS = 8_000L
+    private const val LOW_LATENCY_FIRST_DELTA_TIMEOUT_MS = 4_000L
+    private const val LOW_LATENCY_TOTAL_TIMEOUT_MS = 6_000L
 }
