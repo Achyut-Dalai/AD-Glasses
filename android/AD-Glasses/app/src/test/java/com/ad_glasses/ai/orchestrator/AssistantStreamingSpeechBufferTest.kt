@@ -49,6 +49,23 @@ class AssistantStreamingSpeechBufferTest {
     }
 
     @Test
+    fun runaway_stream_never_exceeds_fifty_spoken_words() {
+        val buffer = AssistantStreamingSpeechBuffer()
+        val words = (1..90).map { "word$it" }
+        val raw = words.joinToString(" ")
+        val spokenSegments = mutableListOf<String>()
+
+        words.chunked(12).forEach { chunk ->
+            spokenSegments += buffer.accept(chunk.joinToString(" ", postfix = " "))
+        }
+        spokenSegments += buffer.finish(raw)
+
+        val spoken = spokenSegments.joinToString(" ").trim()
+        assertTrue(spoken.split(Regex("\\s+")).size <= 50)
+        assertTrue(spoken.endsWith("More detail is in Chats."))
+    }
+
+    @Test
     fun never_emits_unfinished_reasoning_block() {
         val buffer = AssistantStreamingSpeechBuffer()
 
