@@ -18,7 +18,7 @@ class AssistantCompletionSanitizerTest {
     }
 
     @Test
-    fun complete_reasoning_block_without_final_answer_is_rejected_for_recovery() {
+    fun complete_reasoning_block_without_final_answer_is_rejected() {
         val raw = """
             <think>
             The model spent its entire output budget reasoning.
