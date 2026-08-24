@@ -373,6 +373,42 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
             completeTtsUtterance(id)
         }
     }
+    private fun enqueueStreamingTts(
+        text: String,
+        utteranceId: String,
+        onDone: () -> Unit,
+    ) {
+        val clean = text.trim()
+        if (clean.isBlank()) {
+            onDone()
+            return
+        }
+        val engine = tts
+        val languageTag = recognitionLanguageTag()
+        val locale = Locale.forLanguageTag(languageTag)
+        engine?.let { AndroidAssistantVoiceIo.preferOfflineVoice(it, locale) }
+        ttsDoneCallbacks[utteranceId] = onDone
+
+        val bundle = Bundle().apply {
+            putString(TextToSpeech.Engine.KEY_PARAM_UTTERANCE_ID, utteranceId)
+        }
+        AudioSessionCoordinator.markBusy()
+        ttsEnqueuedAtMs[utteranceId] = android.os.SystemClock.elapsedRealtime()
+        Log.i(
+            "AssistantTiming",
+            "stage=tts_stream_enqueued id=$utteranceId chars=${clean.length}",
+        )
+        val result = runCatching {
+            engine?.speak(clean, TextToSpeech.QUEUE_ADD, bundle, utteranceId)
+        }.onFailure { error ->
+            Log.e("ImageQuestionAudio", "Streaming TTS enqueue threw id=$utteranceId", error)
+        }.getOrNull()
+        if (result != TextToSpeech.SUCCESS) {
+            Log.w("ImageQuestionAudio", "Streaming TTS enqueue failed id=$utteranceId result=$result")
+            completeTtsUtterance(utteranceId)
+        }
+    }
+
     private fun completeTtsUtterance(utteranceId: String?) {
         utteranceId?.let { id ->
             ttsEnqueuedAtMs.remove(id)
@@ -3668,14 +3704,9 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
         audioPath: String? = null,
         onToken: ((String) -> Unit)? = null,
     ): String {
-        val date = todayDateString()
-        val languageTag = recognitionLanguageTag()
-        val systemPrompt = buildString {
-            append(buildCompactMemoryAwareSystemPrompt(queryText = userPrompt, date = date))
-            append("\n\n")
-            append(ImageQuestionDefaults.responseLanguageInstruction(languageTag))
-        }
-
+        // Normal glasses Ask is transcript-first: once Moonshine finalizes text, go straight into
+        // the orchestrator. Personal-memory/artifact construction is deliberately not on this
+        // latency-critical path; the executor already supplies the bounded native chat history.
         if (imagePaths.isEmpty() && audioPath.isNullOrBlank()) {
             val result = AssistantOrchestrator(
                 context = this,
@@ -3684,14 +3715,28 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
                 turn = AssistantTurn(
                     text = userPrompt,
                     surface = AssistantInputSurface.GLASSES_VOICE,
-                    contextText = systemPrompt,
+                    contextText = null,
                     webRequested = null,
                 ),
-                providerType = AgentProviderType.CLOUD_AI,
+                providerType = providerType,
             )
-            return result.spokenText.trim().ifBlank { result.richText.trim() }
+            return if (onToken != null) {
+                // Streaming speech consumes the provider deltas, but finalization still needs the
+                // complete rich answer so the buffer can safely flush its remaining spoken tail.
+                result.richText.trim().ifBlank { result.spokenText.trim() }
+            } else {
+                result.spokenText.trim().ifBlank { result.richText.trim() }
+            }
         }
 
+        // Media requests keep their explicit context path. Normal voice never reaches here.
+        val date = todayDateString()
+        val languageTag = recognitionLanguageTag()
+        val systemPrompt = buildString {
+            append(buildCompactMemoryAwareSystemPrompt(queryText = userPrompt, date = date))
+            append("\n\n")
+            append(ImageQuestionDefaults.responseLanguageInstruction(languageTag))
+        }
         val messages = listOf(
             mapOf("role" to "system", "content" to systemPrompt),
             mapOf("role" to "user", "content" to userPrompt),
@@ -4846,6 +4891,12 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
                 Toast.makeText(this@MainActivity, "Asking: $prompt", Toast.LENGTH_SHORT).show()
 
                 destroyActiveVoiceRecognizer(recognizer)
+                val streamingRouteSelected = AndroidAssistantVoiceIo.prepareSpeechOutputRoute(this@MainActivity)
+                Log.i(
+                    "AssistantTiming",
+                    "stage=voice_transcript_dispatch delayMs=${android.os.SystemClock.elapsedRealtime() - finalAtMs} " +
+                        "ttsRouteBluetooth=$streamingRouteSelected",
+                )
                 lifecycleScope.launch(Dispatchers.IO) {
                     try {
                         val selectedProvider = chosenProviderType
@@ -4860,17 +4911,50 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
 
                         when (routing.intent) {
                             AssistantIntent.ANSWER_QUESTION -> {
-                                val reply = runMemoryAwareChosenProviderQuery(
-                                    userPrompt = prompt,
-                                    providerType = selectedProvider,
-                                )
+                                val speechBuffer = com.ad_glasses.ai.orchestrator.AssistantStreamingSpeechBuffer()
+                                val pendingSpeech = java.util.concurrent.atomic.AtomicInteger(0)
+                                val generationFinished = AtomicBoolean(false)
+                                val cleanupFinished = AtomicBoolean(false)
+                                val segmentCounter = java.util.concurrent.atomic.AtomicInteger(0)
 
-                                runOnUiThread {
-                                    speakVision(reply) {
+                                fun finishWhenDrained() {
+                                    if (!generationFinished.get() || pendingSpeech.get() != 0) return
+                                    if (!cleanupFinished.compareAndSet(false, true)) return
+                                    runOnUiThread {
+                                        AudioSessionCoordinator.markIdle()
                                         stopSco()
                                         finishAiQuestionForegroundWork()
                                     }
                                 }
+
+                                fun enqueueSegments(segments: List<String>) {
+                                    segments.forEach { segment ->
+                                        val number = segmentCounter.incrementAndGet()
+                                        pendingSpeech.incrementAndGet()
+                                        val id = "voice_stream_${System.nanoTime()}_$number"
+                                        runOnUiThread {
+                                            enqueueStreamingTts(
+                                                text = segment,
+                                                utteranceId = id,
+                                                onDone = {
+                                                    pendingSpeech.decrementAndGet()
+                                                    finishWhenDrained()
+                                                },
+                                            )
+                                        }
+                                    }
+                                }
+
+                                val reply = runMemoryAwareChosenProviderQuery(
+                                    userPrompt = prompt,
+                                    providerType = selectedProvider,
+                                    onToken = { delta ->
+                                        enqueueSegments(speechBuffer.accept(delta))
+                                    },
+                                )
+                                enqueueSegments(speechBuffer.finish(reply))
+                                generationFinished.set(true)
+                                finishWhenDrained()
                             }
 
                             AssistantIntent.ANALYZE_IMAGE -> runOnUiThread {
