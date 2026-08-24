@@ -1,5 +1,7 @@
 package com.ad_glasses.ai.router
 
+import org.json.JSONArray
+import org.json.JSONObject
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
@@ -42,5 +44,33 @@ class GeminiNativeRoutingTest {
         assertEquals("audio/webm", geminiAudioMimeType("webm"))
         assertEquals("audio/flac", geminiAudioMimeType("FLAC"))
         assertEquals("audio/aac", geminiAudioMimeType(".aac"))
+    }
+
+    @Test
+    fun nativeGeminiVisibleTextDropsStructuredThoughtParts() {
+        val parts = JSONArray()
+            .put(
+                JSONObject()
+                    .put("text", "I should reason through this first.")
+                    .put("thought", true),
+            )
+            .put(JSONObject().put("text", "The final answer is 42."))
+
+        assertEquals(
+            "The final answer is 42.",
+            geminiVisibleText(parts, preserveWhitespace = false),
+        )
+    }
+
+    @Test
+    fun nativeGeminiStreamingDropsThoughtDeltasWithoutLosingAnswerWhitespace() {
+        val parts = JSONArray()
+            .put(JSONObject().put("text", "hidden thought ").put("thought", true))
+            .put(JSONObject().put("text", " visible answer"))
+
+        assertEquals(
+            " visible answer",
+            geminiVisibleText(parts, preserveWhitespace = true),
+        )
     }
 }
