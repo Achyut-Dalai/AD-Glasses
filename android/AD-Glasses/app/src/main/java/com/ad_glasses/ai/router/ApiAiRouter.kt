@@ -43,6 +43,34 @@ internal fun geminiAudioMimeType(extension: String): String = when (extension.tr
     else -> "audio/wav"
 }
 
+/**
+ * Return only user-visible Gemini text parts. `Part.thought=true` is structured reasoning metadata,
+ * never assistant answer text, so it must be discarded before streaming, persistence, or TTS.
+ */
+internal fun geminiVisibleText(parts: JSONArray, preserveWhitespace: Boolean): String {
+    if (preserveWhitespace) {
+        return buildString {
+            for (index in 0 until parts.length()) {
+                val part = parts.optJSONObject(index) ?: continue
+                if (part.optBoolean("thought", false)) continue
+                append(part.optString("text"))
+            }
+        }
+    }
+
+    return buildString {
+        for (index in 0 until parts.length()) {
+            val part = parts.optJSONObject(index) ?: continue
+            if (part.optBoolean("thought", false)) continue
+            val text = part.optString("text").trim()
+            if (text.isNotBlank()) {
+                if (isNotEmpty()) append('\n')
+                append(text)
+            }
+        }
+    }.trim()
+}
+
 /** Direct Cloud AI transport resolved through the active encrypted profile. */
 object ApiTokenClient {
     private const val CONNECT_TIMEOUT_MS = 10_000
@@ -672,15 +700,7 @@ object ApiTokenClient {
             ?.optJSONObject("content")
             ?.optJSONArray("parts")
             ?: return ""
-        return buildString {
-            for (index in 0 until parts.length()) {
-                val text = parts.optJSONObject(index)?.optString("text")?.trim().orEmpty()
-                if (text.isNotBlank()) {
-                    if (isNotEmpty()) append('\n')
-                    append(text)
-                }
-            }
-        }.trim()
+        return geminiVisibleText(parts, preserveWhitespace = false)
     }
 
     private fun extractGeminiDeltaText(response: JSONObject): String {
@@ -689,11 +709,7 @@ object ApiTokenClient {
             ?.optJSONObject("content")
             ?.optJSONArray("parts")
             ?: return ""
-        return buildString {
-            for (index in 0 until parts.length()) {
-                append(parts.optJSONObject(index)?.optString("text").orEmpty())
-            }
-        }
+        return geminiVisibleText(parts, preserveWhitespace = true)
     }
 }
 
