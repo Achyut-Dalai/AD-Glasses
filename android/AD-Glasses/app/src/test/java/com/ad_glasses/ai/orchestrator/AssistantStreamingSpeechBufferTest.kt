@@ -37,6 +37,17 @@ class AssistantStreamingSpeechBufferTest {
     }
 
     @Test
+    fun streamed_markdown_markers_never_reach_tts() {
+        val buffer = AssistantStreamingSpeechBuffer()
+
+        assertTrue(buffer.accept("******************************** **Paris** is the").isEmpty())
+        assertEquals(
+            listOf("Paris is the capital of France."),
+            buffer.accept(" capital of **France**."),
+        )
+    }
+
+    @Test
     fun never_emits_unfinished_reasoning_block() {
         val buffer = AssistantStreamingSpeechBuffer()
 
