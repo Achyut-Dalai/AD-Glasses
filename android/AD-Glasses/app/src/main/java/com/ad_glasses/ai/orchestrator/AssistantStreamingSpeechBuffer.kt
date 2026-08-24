@@ -137,6 +137,16 @@ class AssistantStreamingSpeechBuffer(
                 return index + 1
             }
         }
+
+        // Prefer ending the first audible chunk before a conjunction/transition instead of
+        // producing an awkward utterance such as "...screen and". This is deliberately simple and
+        // language-agnostic enough to fall back to whitespace for other languages.
+        val lower = text.lowercase()
+        for (separator in NATURAL_PHRASE_SEPARATORS) {
+            val index = lower.lastIndexOf(separator, startIndex = hardEnd - 1)
+            if (index >= minEnd && index < hardEnd) return index
+        }
+
         for (index in hardEnd - 1 downTo minEnd) {
             if (text[index].isWhitespace()) return index
         }
@@ -171,5 +181,14 @@ class AssistantStreamingSpeechBuffer(
         const val DEFAULT_FORCED_SPLIT_CHARS = 140
         const val DEFAULT_MIN_FORCED_SPLIT_CHARS = 80
         const val DEFAULT_FINAL_SEGMENT_CHARS = 180
+        val NATURAL_PHRASE_SEPARATORS = listOf(
+            " and ",
+            " but ",
+            " while ",
+            " because ",
+            " so ",
+            " then ",
+            " which ",
+        )
     }
 }
