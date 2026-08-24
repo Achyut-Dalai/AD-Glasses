@@ -140,12 +140,20 @@ class AssistantStreamingSpeechBuffer(
 
         // Prefer ending the first audible chunk before a conjunction/transition instead of
         // producing an awkward utterance such as "...screen and". This is deliberately simple and
-        // language-agnostic enough to fall back to whitespace for other languages.
+        // still falls back to ordinary whitespace for languages where these separators do not fit.
         val lower = text.lowercase()
+        var phraseBoundary = -1
         for (separator in NATURAL_PHRASE_SEPARATORS) {
             val index = lower.lastIndexOf(separator, startIndex = hardEnd - 1)
-            if (index >= minEnd && index < hardEnd) return index
+            if (
+                index >= minEnd &&
+                index + separator.length <= hardEnd &&
+                index > phraseBoundary
+            ) {
+                phraseBoundary = index
+            }
         }
+        if (phraseBoundary >= minEnd) return phraseBoundary
 
         for (index in hardEnd - 1 downTo minEnd) {
             if (text[index].isWhitespace()) return index
