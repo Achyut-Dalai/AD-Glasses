@@ -26,10 +26,10 @@ class AssistantStreamingSpeechBuffer(
 
         val clean = AssistantCompletionSanitizer.cleanForStreaming(raw.toString())
         if (clean.isBlank()) return emptyList()
-        val normalized = AssistantSpokenResponsePolicy.normalizeForSpeech(clean)
-        if (normalized.isBlank()) return emptyList()
+        val streamingTarget = AssistantSpokenResponsePolicy.streamingPrefixForGlasses(clean)
+        if (streamingTarget.isBlank()) return emptyList()
 
-        return drainStreamingPrefix(normalized)
+        return drainStreamingPrefix(streamingTarget)
     }
 
     /**
