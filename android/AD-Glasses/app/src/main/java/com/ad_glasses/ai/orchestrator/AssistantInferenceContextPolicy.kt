@@ -10,7 +10,7 @@ import com.ad_glasses.shared.chat.ChatRole
  */
 object AssistantInferenceContextPolicy {
     const val INACTIVITY_TTL_MS = 45_000L
-    const val MAX_PRIOR_MESSAGES = 4
+    const val MAX_PRIOR_MESSAGES = 3
     const val MAX_MESSAGE_CHARS = 900
     const val MAX_ARTIFACT_CHARS = 6_000
     const val MAX_GLASS_ARTIFACT_CHARS = 3_000

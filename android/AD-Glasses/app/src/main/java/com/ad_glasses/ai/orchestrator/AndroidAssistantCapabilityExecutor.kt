@@ -9,6 +9,7 @@ import com.ad_glasses.ai.AndroidAssistantVoiceIo
 import com.ad_glasses.ai.router.AgentInferencePurpose
 import com.ad_glasses.ai.router.AgentInferenceRouter
 import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.delay
 
 /** Android execution bridge for conversational, vision and explicit AD capability requests. */
 class AndroidAssistantCapabilityExecutor(
@@ -103,8 +104,8 @@ class AndroidAssistantCapabilityExecutor(
 
     /**
      * Home voice capture asks MainActivity for a Bluetooth communication route before Moonshine
-     * starts. Moonshine now releases that input route as soon as it has a final transcript. This is
-     * an additional safety net for a disconnected/no-headset device where a legacy SCO request may
+     * starts. Moonshine releases that input route as soon as it has a final transcript. This is an
+     * additional safety net for a disconnected/no-headset device where a legacy SCO request may
      * otherwise leave MODE_IN_COMMUNICATION active and make TTS effectively silent.
      */
     private fun clearStaleVoiceRouteWhenHeadsetMissing() {
@@ -140,11 +141,18 @@ class AndroidAssistantCapabilityExecutor(
     }
 
     /** Re-open the glasses communication output only after inference, immediately before TTS. */
-    private fun prepareSpeechOutputRouteIfNeeded(context: AssistantExecutionContext) {
+    private suspend fun prepareSpeechOutputRouteIfNeeded(context: AssistantExecutionContext) {
         if (context.surface == AssistantInputSurface.GLASSES_VOICE ||
             context.surface == AssistantInputSurface.GLASSES_VISION
         ) {
-            AndroidAssistantVoiceIo.prepareSpeechOutputRoute(appContext)
+            val bluetoothSelected = AndroidAssistantVoiceIo.prepareSpeechOutputRoute(appContext)
+            if (bluetoothSelected) {
+                // setCommunicationDevice/startBluetoothSco can precede the physical route by a
+                // fraction of a second. Keep this delay out of Cloud inference and pay it only when
+                // a glasses route was actually selected, immediately before speech is enqueued.
+                delay(TTS_BLUETOOTH_ROUTE_SETTLE_MS)
+                Log.i("AssistantTiming", "stage=tts_route_settled delayMs=$TTS_BLUETOOTH_ROUTE_SETTLE_MS")
+            }
         }
     }
 
@@ -245,5 +253,9 @@ class AndroidAssistantCapabilityExecutor(
             spokenText = AssistantSpokenResponsePolicy.forGlasses(rich),
             richText = rich,
         )
+    }
+
+    private companion object {
+        const val TTS_BLUETOOTH_ROUTE_SETTLE_MS = 180L
     }
 }

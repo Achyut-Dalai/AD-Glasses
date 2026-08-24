@@ -17,6 +17,18 @@ class OpenAiCompatibleEndpointTest {
     }
 
     @Test
+    fun openrouter_uses_its_openai_compatible_chat_endpoint() {
+        assertEquals(
+            "https://openrouter.ai/api/v1/chat/completions",
+            OpenAiCompatibleEndpoint.chatCompletionsUrl("https://openrouter.ai/api/v1"),
+        )
+        assertEquals(
+            "Bearer sk-or-v1-example",
+            OpenAiCompatibleEndpoint.authorizationHeader("sk-or-v1-example"),
+        )
+    }
+
+    @Test
     fun pasted_resource_urls_are_reduced_to_the_provider_base() {
         assertEquals(
             "https://api.groq.com/openai/v1",
@@ -41,10 +53,14 @@ class OpenAiCompatibleEndpointTest {
     }
 
     @Test
-    fun bearer_prefix_is_stored_and_sent_only_once() {
+    fun bearer_prefix_header_and_quotes_are_normalized_once() {
         assertEquals(
             "gsk_example",
             OpenAiCompatibleEndpoint.normalizeBearerCredential("Bearer gsk_example"),
+        )
+        assertEquals(
+            "gsk_example",
+            OpenAiCompatibleEndpoint.normalizeBearerCredential("Authorization: Bearer \"gsk_example\""),
         )
         assertEquals(
             "Bearer gsk_example",
@@ -60,6 +76,22 @@ class OpenAiCompatibleEndpointTest {
     fun groq_provider_uses_official_managed_endpoint() {
         assertEquals("https://api.groq.com/openai/v1", ApiProvider.GROQ.defaultBaseUrl)
         assertEquals("https://api.groq.com/openai/v1", ApiProvider.GROQ.resolveBaseUrl("https://wrong.example/v1"))
+        assertEquals(
+            "https://api.groq.com/openai/v1/chat/completions",
+            OpenAiCompatibleEndpoint.chatCompletionsUrl(ApiProvider.GROQ.defaultBaseUrl),
+        )
+    }
+
+    @Test
+    fun custom_profile_keeps_a_groq_or_openrouter_base_url() {
+        assertEquals(
+            "https://api.groq.com/openai/v1",
+            ApiProvider.CUSTOM.resolveBaseUrl("https://api.groq.com/openai/v1/"),
+        )
+        assertEquals(
+            "https://openrouter.ai/api/v1",
+            ApiProvider.CUSTOM.resolveBaseUrl("https://openrouter.ai/api/v1/chat/completions"),
+        )
     }
 
     @Test
