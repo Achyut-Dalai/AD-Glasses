@@ -54,6 +54,31 @@ object AssistantCompletionSanitizer {
         return text.trim()
     }
 
+    /**
+     * Streaming is stricter than final cleanup because an unfinished prefix can later reveal itself
+     * to be hidden reasoning or a system-prompt echo. Return only text that is safe to speak before
+     * the provider has finished the whole completion.
+     */
+    fun cleanForStreaming(raw: String): String {
+        val trimmed = raw.trim()
+        if (trimmed.isBlank()) return ""
+
+        if (reasoningLabel.containsMatchIn(trimmed) && finalAnswerLabel.find(trimmed) == null) {
+            return ""
+        }
+        if (unfinishedReasoningPrefix.containsMatchIn(trimmed)) return ""
+
+        // Do not speak the beginning of a system-prompt echo before enough characters have arrived
+        // for the normal fingerprint detector to reject the completed sentence.
+        val firstFingerprint = systemPromptFingerprints.first()
+        if (firstFingerprint.startsWith(trimmed, ignoreCase = true) &&
+            !trimmed.equals(firstFingerprint, ignoreCase = true)
+        ) {
+            return ""
+        }
+        return clean(raw)
+    }
+
     fun looksLikeSystemPromptEcho(text: String): Boolean {
         val clean = text.trim()
         if (clean.startsWith(systemPromptFingerprints.first(), ignoreCase = true)) return true
