@@ -1,6 +1,7 @@
 package com.ad_glasses.ai.orchestrator
 
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Test
 
@@ -34,6 +35,17 @@ class AssistantStreamingSpeechBufferTest {
             listOf("and choose your preferred provider while keeping the app connected."),
             buffer.accept(" your preferred provider while keeping the app connected."),
         )
+    }
+
+    @Test
+    fun streamed_markdown_symbols_never_reach_tts_segments() {
+        val buffer = AssistantStreamingSpeechBuffer()
+
+        assertTrue(buffer.accept("**Paris** is *the* capital").isEmpty())
+        val spoken = buffer.accept(" of France. ****************************************")
+
+        assertEquals(listOf("Paris is the capital of France."), spoken)
+        assertFalse(spoken.joinToString(" ").contains('*'))
     }
 
     @Test
