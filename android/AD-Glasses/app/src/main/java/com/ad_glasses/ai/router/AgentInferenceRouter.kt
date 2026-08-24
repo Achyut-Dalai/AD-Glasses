@@ -31,6 +31,7 @@ object AgentInferenceRouter {
         sessionId: String,
         systemPrompt: String,
         userPrompt: String,
+        conversationMessages: List<Map<String, String>> = emptyList(),
         providerType: AgentProviderType = AutomationPrefs.getProviderType(context),
         onToken: ((String) -> Unit)? = null,
         webRequested: Boolean = false,
@@ -41,6 +42,7 @@ object AgentInferenceRouter {
         sessionId = sessionId,
         systemPrompt = systemPrompt,
         userPrompt = userPrompt,
+        conversationMessages = conversationMessages,
         webRequested = webRequested,
         maxTokensOverride = maxTokens,
     )
@@ -130,6 +132,7 @@ object AgentInferenceRouter {
         sessionId: String,
         systemPrompt: String,
         userPrompt: String,
+        conversationMessages: List<Map<String, String>> = emptyList(),
         webRequested: Boolean,
         maxTokensOverride: Int?,
     ): String {
@@ -146,7 +149,7 @@ object AgentInferenceRouter {
             withContext(Dispatchers.IO) {
                 ApiTokenClient.chat(
                     context = context,
-                    messages = messages(systemPrompt, userPrompt),
+                    messages = messages(systemPrompt, conversationMessages, userPrompt),
                     maxTokens = maxTokens,
                     webRequested = webRequested,
                 ).getOrThrow()
@@ -171,10 +174,23 @@ object AgentInferenceRouter {
         }
     }
 
-    private fun messages(systemPrompt: String, userPrompt: String): List<Map<String, String>> = listOf(
-        mapOf("role" to "system", "content" to systemPrompt),
-        mapOf("role" to "user", "content" to userPrompt),
-    )
+    private fun messages(
+        systemPrompt: String,
+        conversationMessages: List<Map<String, String>>,
+        userPrompt: String,
+    ): List<Map<String, String>> = buildList {
+        if (systemPrompt.isNotBlank()) {
+            add(mapOf("role" to "system", "content" to systemPrompt))
+        }
+        conversationMessages.forEach { message ->
+            val role = message["role"]?.trim()?.lowercase().orEmpty()
+            val content = message["content"]?.trim().orEmpty()
+            if ((role == "user" || role == "assistant") && content.isNotBlank()) {
+                add(mapOf("role" to role, "content" to content))
+            }
+        }
+        add(mapOf("role" to "user", "content" to userPrompt))
+    }
 
     private const val UI_PLANNING_MAX_TOKENS = 512
 }
