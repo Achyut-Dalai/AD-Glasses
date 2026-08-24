@@ -38,7 +38,7 @@ class AndroidAssistantCapabilityExecutor(
                 onToken = onToken,
                 webRequested = context.useWeb,
                 maxTokens = outputTokenLimit(context.surface),
-            ).toDisplaylessResult()
+            ).toDisplaylessResult(context.surface)
         } catch (error: CancellationException) {
             // Latest-turn-wins cancellation must never turn into a spoken/persisted failure from an
             // obsolete request.
@@ -82,7 +82,7 @@ class AndroidAssistantCapabilityExecutor(
                 onToken = onToken,
                 webRequested = false,
                 maxTokens = outputTokenLimit(context.surface),
-            ).content.toDisplaylessResult()
+            ).content.toDisplaylessResult(context.surface)
         } catch (error: CancellationException) {
             throw error
         } catch (error: Exception) {
@@ -180,10 +180,15 @@ class AndroidAssistantCapabilityExecutor(
     private fun recentConversationMessages(
         context: AssistantExecutionContext,
     ): List<Map<String, String>> = AssistantInferenceContextPolicy
-        .priorMessages(context.history)
+        .priorMessages(context.history, surface = context.surface)
         .mapNotNull { message ->
             val role = message.role.name.lowercase()
-            val content = message.content
+            val source = if (role == "assistant") {
+                AssistantCompletionSanitizer.clean(message.content)
+            } else {
+                message.content.trim()
+            }
+            val content = source
                 .take(AssistantInferenceContextPolicy.MAX_MESSAGE_CHARS)
                 .trim()
             if ((role == "user" || role == "assistant") && content.isNotBlank()) {
@@ -225,14 +230,25 @@ class AndroidAssistantCapabilityExecutor(
             appendLine(it.take(AssistantInferenceContextPolicy.artifactLimit(context.surface)))
         }
         if (includeRecentConversation) {
-            val prior = AssistantInferenceContextPolicy.priorMessages(context.history)
+            val prior = AssistantInferenceContextPolicy.priorMessages(
+                context.history,
+                surface = context.surface,
+            )
             if (prior.isNotEmpty()) {
                 appendLine()
                 appendLine("Recent conversation:")
                 prior.forEach { message ->
-                    append(message.role.name.lowercase())
-                    append(": ")
-                    appendLine(message.content.take(AssistantInferenceContextPolicy.MAX_MESSAGE_CHARS))
+                    val role = message.role.name.lowercase()
+                    val content = if (role == "assistant") {
+                        AssistantCompletionSanitizer.clean(message.content)
+                    } else {
+                        message.content.trim()
+                    }
+                    if (content.isNotBlank()) {
+                        append(role)
+                        append(": ")
+                        appendLine(content.take(AssistantInferenceContextPolicy.MAX_MESSAGE_CHARS))
+                    }
                 }
             }
         }
@@ -246,9 +262,18 @@ class AndroidAssistantCapabilityExecutor(
         AssistantInputSurface.AUTOMATION -> 384
     }
 
-    private fun String.toDisplaylessResult(): AssistantResult {
-        val rich = trim()
-        if (rich.isBlank()) return AssistantResult("I didn’t get a usable answer.")
+    private fun String.toDisplaylessResult(surface: AssistantInputSurface): AssistantResult {
+        val rich = AssistantCompletionSanitizer.clean(this)
+        if (rich.isBlank()) {
+            Log.w(
+                "AssistantTiming",
+                "stage=assistant_output_rejected surface=$surface rawChars=${length}",
+            )
+            return AssistantResult(
+                spokenText = "I didn’t get a usable answer. Please try again.",
+                richText = "I didn’t get a usable answer. Please try again.",
+            )
+        }
         return AssistantResult(
             spokenText = AssistantSpokenResponsePolicy.forGlasses(rich),
             richText = rich,
