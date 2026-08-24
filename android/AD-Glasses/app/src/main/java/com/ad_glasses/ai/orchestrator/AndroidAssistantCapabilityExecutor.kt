@@ -200,17 +200,18 @@ class AndroidAssistantCapabilityExecutor(
         }
 
     /**
-     * Keep the repeated system instruction deliberately tiny. Legacy Local Agent memory context is
-     * deliberately ignored for normal glasses voice Ask: multi-turn context is the native last-three
-     * message list, not a second generated memory prompt. Other surfaces may still attach explicit
-     * artifact/image context when that turn requires it.
+     * Keep the repeated system instruction small and wearable-specific. Native chat roles carry
+     * multi-turn context; this prompt controls answer shape only. Legacy Local Agent memory context
+     * remains off the latency-critical glasses voice path.
      */
     private fun conversationSystemPrompt(context: AssistantExecutionContext): String = buildString {
         append("You are AD. Answer directly and concisely. Return only the final answer; do not output internal reasoning.")
         when (context.surface) {
             AssistantInputSurface.GLASSES_VOICE,
             AssistantInputSurface.GLASSES_VISION,
-            AssistantInputSurface.PHONE_VOICE -> append(" Keep spoken answers short and natural.")
+            AssistantInputSurface.PHONE_VOICE -> append(
+                " This answer will be spoken aloud. Use plain text only, 1 to 3 short sentences, normally no more than 50 words; use fewer when enough. Never restate or acknowledge the question. Do not use Markdown, lists, headings, asterisks, hashes, backticks, underscores, or conversational filler.",
+            )
             AssistantInputSurface.PHONE_TEXT,
             AssistantInputSurface.AUTOMATION -> Unit
         }
@@ -230,10 +231,15 @@ class AndroidAssistantCapabilityExecutor(
         }
     }
 
+    /**
+     * Voice gets a smaller runaway ceiling, but not the 80-100 token cap often recommended for
+     * non-reasoning models. Some selected provider models spend part of this budget on reasoning;
+     * an overly small cap can consume the whole allowance before any final answer is emitted.
+     */
     private fun outputTokenLimit(surface: AssistantInputSurface): Int = when (surface) {
-        AssistantInputSurface.GLASSES_VOICE -> 512
+        AssistantInputSurface.GLASSES_VOICE -> 256
         AssistantInputSurface.GLASSES_VISION -> 512
-        AssistantInputSurface.PHONE_VOICE -> 512
+        AssistantInputSurface.PHONE_VOICE -> 256
         AssistantInputSurface.PHONE_TEXT -> 512
         AssistantInputSurface.AUTOMATION -> 384
     }
