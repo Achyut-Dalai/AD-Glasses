@@ -27,14 +27,16 @@ object AssistantSpokenResponsePolicy {
             .replace(Regex("(?m)^\\s*\\d+[.)]\\s+"), "")
             .replace(Regex("(?m)^\\s*(?:[-*_]\\s*){3,}$"), "")
 
-        // Keep simple spoken math understandable before removing remaining emphasis markers.
+        // Keep simple spoken math/programming notation understandable before stripping markup.
         text = text
             .replace(Regex("(?<=\\d)\\s*\\*\\s*(?=\\d)"), " times ")
+            .replace(Regex("\\b([A-Ga-g])#(?=\\s|[.,!?;:]|$)"), "$1 sharp")
+            .replace(Regex("https?://\\S+", RegexOption.IGNORE_CASE), "link")
             .replace(Regex("[*~]+"), "")
+            .replace(Regex("#+"), "")
             .replace('_', ' ')
             .replace(Regex("(?m)\\|+"), ", ")
             .replace(Regex("\\[(?:\\d{1,3}|[A-Za-z]{1,4}\\d{0,3})]"), "")
-            .replace(Regex("https?://\\S+", RegexOption.IGNORE_CASE), "link")
             .replace(Regex("<[^>]+>"), "")
             .replace("&amp;", " and ", ignoreCase = true)
             .replace("&lt;", " less than ", ignoreCase = true)
