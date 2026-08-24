@@ -249,11 +249,13 @@ class AndroidAssistantCapabilityExecutor(
     }
 
     private fun String.toDisplaylessResult(surface: AssistantInputSurface): AssistantResult {
-        val rich = AssistantCompletionSanitizer.clean(this)
+        val sanitized = AssistantCompletionSanitizer.inspect(this)
+        val rich = sanitized.text
         if (rich.isBlank()) {
             Log.w(
                 "AssistantTiming",
-                "stage=assistant_output_rejected surface=$surface rawChars=${length}",
+                "stage=assistant_output_rejected surface=$surface " +
+                    "reason=${sanitized.rejectionReason?.wire ?: "unknown"} rawChars=${length}",
             )
             return AssistantResult(
                 spokenText = "I didn’t get a usable answer. Please try again.",
