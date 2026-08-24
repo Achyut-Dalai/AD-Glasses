@@ -102,13 +102,12 @@ class MoonshineRecognitionService : RecognitionService() {
                     .orEmpty()
                     .ifBlank { Locale.getDefault().toLanguageTag() }
                 val model = MoonshineModelManager.chooseDefault(requestedLanguageTag)
-                val modelDir = MoonshineModelManager.prepareForRuntime(applicationContext, model)
 
-                // Start the microphone before a cold native model load. Medium Streaming can take
-                // long enough to initialize that an utterance spoken immediately after the listening
-                // cue used to happen before AudioRecord existed and was therefore lost completely.
-                // Capture into the bounded queue while Moonshine warms; the engine drains it once the
-                // native model is ready.
+                // Capture must be live before *any* potentially cold model preparation. A first-run
+                // prepareForRuntime() may copy/check model files before native load begins, and that
+                // old pre-capture window could clip the first one or two words spoken immediately
+                // after the listening cue. Queue all microphone audio from this point onward; the
+                // Moonshine engine will drain it once preparation and native loading complete.
                 val capture = createAudioRecord()
                 session.audioRecord = capture.record
                 capture.record.startRecording()
@@ -122,14 +121,24 @@ class MoonshineRecognitionService : RecognitionService() {
                     return@execute
                 }
 
-                listener.readyForSpeech(Bundle.EMPTY)
-                startCapture(session)
                 val captureReadyAtMs = SystemClock.elapsedRealtime()
+                startCapture(session)
+                listener.readyForSpeech(Bundle.EMPTY)
                 Log.i(
                     TAG,
                     "stage=asr_capture_ready engine=moonshine model=${model.id} requestedLanguage=$requestedLanguageTag " +
                         "inputRate=$TARGET_SAMPLE_RATE preferredInput=${capture.preferredInput?.type ?: -1}",
                 )
+
+                val prepareStarted = SystemClock.elapsedRealtime()
+                val modelDir = MoonshineModelManager.prepareForRuntime(applicationContext, model)
+                val modelPrepareMs = SystemClock.elapsedRealtime() - prepareStarted
+
+                if (!isCurrent(session) || session.cancelled.get()) {
+                    stopCapture(session)
+                    session.engineDone.countDown()
+                    return@execute
+                }
 
                 val loadStarted = SystemClock.elapsedRealtime()
                 val transcriber = MoonshineRuntime.acquire(model.id) {
@@ -150,6 +159,7 @@ class MoonshineRecognitionService : RecognitionService() {
                 Log.i(
                     TAG,
                     "stage=asr_engine_start engine=moonshine model=${model.id} " +
+                        "modelPrepareMs=$modelPrepareMs " +
                         "modelReadyMs=${SystemClock.elapsedRealtime() - loadStarted} " +
                         "captureToEngineMs=${SystemClock.elapsedRealtime() - captureReadyAtMs} bufferedMs=$bufferedMs",
                 )
