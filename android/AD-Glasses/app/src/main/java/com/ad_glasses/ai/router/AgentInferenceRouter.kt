@@ -4,6 +4,7 @@ import android.content.Context
 import android.os.SystemClock
 import android.util.Log
 import com.ad_glasses.agent.LocalAgentPrefs as AutomationPrefs
+import com.ad_glasses.ai.orchestrator.AssistantCompletionSanitizer
 import com.ad_glasses.shared.settings.AgentProviderType
 import java.io.File
 import java.util.concurrent.atomic.AtomicBoolean
@@ -28,6 +29,22 @@ data class AgentInferenceResult(
     val usedImage: Boolean,
     val mediaStatus: String,
 )
+
+/**
+ * Tracks the post-user-echo stream and exposes only text that the completion sanitizer considers
+ * safe to surface. Reasoning/prompt-leak deltas therefore never satisfy the wearable first-answer
+ * deadline just because the provider happened to emit bytes quickly.
+ */
+internal class SafeFirstAnswerGate {
+    private val raw = StringBuilder()
+
+    @Synchronized
+    fun accept(delta: String): String {
+        if (delta.isEmpty()) return ""
+        raw.append(delta)
+        return AssistantCompletionSanitizer.cleanForStreaming(raw.toString())
+    }
+}
 
 /** Cloud-only inference boundary. Local Agent remains an automation capability, not an LLM. */
 object AgentInferenceRouter {
@@ -201,19 +218,31 @@ object AgentInferenceRouter {
             val firstUsefulDelta = CompletableDeferred<Unit>()
             val firstDeltaLogged = AtomicBoolean(false)
             val echoGate = UserPromptEchoGate(userPrompt)
+            val safeFirstAnswerGate = SafeFirstAnswerGate()
             val streamingCallback = onToken?.let { downstream ->
                 { delta: String ->
                     if (acceptingStreaming.get()) {
                         val safeDelta = if (lowLatencyVoiceRequest) echoGate.accept(delta) else delta
                         if (safeDelta.isNotEmpty() && acceptingStreaming.get()) {
-                            if (firstDeltaLogged.compareAndSet(false, true)) {
-                                Log.i(
-                                    TIMING_TAG,
-                                    "stage=cloud_text_first_delta thread=$sessionLabel purpose=$purpose " +
-                                        "elapsedMs=${SystemClock.elapsedRealtime() - startedAt} chars=${safeDelta.length}",
-                                )
+                            val visibleAnswer = if (lowLatencyVoiceRequest) {
+                                safeFirstAnswerGate.accept(safeDelta)
+                            } else {
+                                safeDelta
                             }
-                            if (!firstUsefulDelta.isCompleted) firstUsefulDelta.complete(Unit)
+                            if (visibleAnswer.isNotBlank()) {
+                                if (firstDeltaLogged.compareAndSet(false, true)) {
+                                    Log.i(
+                                        TIMING_TAG,
+                                        "stage=cloud_text_first_delta thread=$sessionLabel purpose=$purpose " +
+                                            "elapsedMs=${SystemClock.elapsedRealtime() - startedAt} " +
+                                            "chars=${visibleAnswer.length} sanitized=$lowLatencyVoiceRequest",
+                                    )
+                                }
+                                if (!firstUsefulDelta.isCompleted) firstUsefulDelta.complete(Unit)
+                            }
+                            // Downstream speech buffering independently sanitizes the cumulative raw
+                            // answer before TTS. Keep forwarding post-user-echo deltas so it can emit
+                            // the final answer immediately when a reasoning wrapper closes.
                             downstream(safeDelta)
                         }
                     }
@@ -257,13 +286,13 @@ object AgentInferenceRouter {
                     acceptingStreaming.set(false)
                     Log.w(
                         TIMING_TAG,
-                        "stage=cloud_text_timeout thread=$sessionLabel purpose=$purpose phase=first_delta " +
+                        "stage=cloud_text_timeout thread=$sessionLabel purpose=$purpose phase=first_safe_delta " +
                             "elapsedMs=${SystemClock.elapsedRealtime() - startedAt} " +
                             "budgetMs=$LOW_LATENCY_FIRST_DELTA_TIMEOUT_MS",
                     )
-                    inFlight.cancel(CancellationException("Wearable first-answer deadline expired"))
+                    inFlight.cancel(CancellationException("Wearable first safe-answer deadline expired"))
                     throw IllegalStateException(
-                        "Cloud AI did not start answering within ${LOW_LATENCY_FIRST_DELTA_TIMEOUT_MS}ms",
+                        "Cloud AI did not produce a usable answer within ${LOW_LATENCY_FIRST_DELTA_TIMEOUT_MS}ms",
                     )
                 }
 
@@ -395,6 +424,6 @@ object AgentInferenceRouter {
     private const val LOW_LATENCY_SYSTEM_PROMPT_CHARS = 320
     private const val LOW_LATENCY_PRIOR_MESSAGES = 2
     private const val LOW_LATENCY_MESSAGE_CHARS = 360
-    private const val LOW_LATENCY_FIRST_DELTA_TIMEOUT_MS = 4_000L
-    private const val LOW_LATENCY_TOTAL_TIMEOUT_MS = 6_000L
+    private const val LOW_LATENCY_FIRST_DELTA_TIMEOUT_MS = 6_000L
+    private const val LOW_LATENCY_TOTAL_TIMEOUT_MS = 8_000L
 }
