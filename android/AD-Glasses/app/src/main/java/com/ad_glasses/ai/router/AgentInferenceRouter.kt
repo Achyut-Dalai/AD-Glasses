@@ -8,8 +8,15 @@ import com.ad_glasses.shared.settings.AgentProviderType
 import java.io.File
 import java.util.concurrent.atomic.AtomicBoolean
 import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.TimeoutCancellationException
+import kotlinx.coroutines.async
+import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.withContext
+import kotlinx.coroutines.withTimeout
+import kotlinx.coroutines.withTimeoutOrNull
+import kotlinx.coroutines.selects.select
 
 enum class AgentInferencePurpose {
     CLASSIFICATION,
@@ -143,45 +150,144 @@ object AgentInferenceRouter {
         val maxTokens = maxTokensOverride
             ?.coerceIn(32, 2_048)
             ?: if (purpose == AgentInferencePurpose.CLASSIFICATION) 256 else 512
+        val lowLatencyVoiceRequest = purpose == AgentInferencePurpose.UI_PLANNING &&
+            onToken != null &&
+            maxTokens <= LOW_LATENCY_VOICE_TOKEN_CEILING
+
+        // The voice system prompt on current main is already small. Keep a hard ceiling anyway so a
+        // future caller cannot accidentally put multi-kilobyte memory/persona context back on the
+        // wearable hot path. Native chat roles carry only a tiny recent continuation below.
+        val effectiveSystemPrompt = if (lowLatencyVoiceRequest) {
+            systemPrompt.take(LOW_LATENCY_SYSTEM_PROMPT_CHARS).trim()
+        } else {
+            systemPrompt
+        }
+        val effectiveConversationMessages = if (lowLatencyVoiceRequest) {
+            conversationMessages
+                .takeLast(LOW_LATENCY_PRIOR_MESSAGES)
+                .mapNotNull { message ->
+                    val role = message["role"]?.trim()?.lowercase().orEmpty()
+                    val content = message["content"]
+                        ?.trim()
+                        .orEmpty()
+                        .take(LOW_LATENCY_MESSAGE_CHARS)
+                        .trim()
+                    if ((role == "user" || role == "assistant") && content.isNotBlank()) {
+                        mapOf("role" to role, "content" to content)
+                    } else {
+                        null
+                    }
+                }
+        } else {
+            conversationMessages
+        }
+
         val startedAt = SystemClock.elapsedRealtime()
         val sessionLabel = sessionId.takeLast(8)
         Log.i(
             TIMING_TAG,
-            "stage=cloud_text_start thread=$sessionLabel purpose=$purpose maxTokens=$maxTokens streaming=${onToken != null}",
+            "stage=cloud_text_start thread=$sessionLabel purpose=$purpose maxTokens=$maxTokens streaming=${onToken != null} " +
+                "lowLatency=$lowLatencyVoiceRequest systemChars=${effectiveSystemPrompt.length} " +
+                "historyMessages=${effectiveConversationMessages.size}",
         )
         return try {
+            val firstUsefulDelta = CompletableDeferred<Unit>()
             val firstDeltaLogged = AtomicBoolean(false)
+            val echoGate = UserPromptEchoGate(userPrompt)
             val streamingCallback = onToken?.let { downstream ->
                 { delta: String ->
-                    if (delta.isNotEmpty() && firstDeltaLogged.compareAndSet(false, true)) {
-                        Log.i(
-                            TIMING_TAG,
-                            "stage=cloud_text_first_delta thread=$sessionLabel purpose=$purpose elapsedMs=${SystemClock.elapsedRealtime() - startedAt} chars=${delta.length}",
-                        )
+                    val safeDelta = if (lowLatencyVoiceRequest) echoGate.accept(delta) else delta
+                    if (safeDelta.isNotEmpty()) {
+                        if (firstDeltaLogged.compareAndSet(false, true)) {
+                            Log.i(
+                                TIMING_TAG,
+                                "stage=cloud_text_first_delta thread=$sessionLabel purpose=$purpose " +
+                                    "elapsedMs=${SystemClock.elapsedRealtime() - startedAt} chars=${safeDelta.length}",
+                            )
+                        }
+                        if (!firstUsefulDelta.isCompleted) firstUsefulDelta.complete(Unit)
+                        downstream(safeDelta)
                     }
-                    downstream(delta)
                 }
             }
 
-            withContext(Dispatchers.IO) {
-                val request = if (streamingCallback != null) {
-                    ApiTokenClient.chatStreaming(
-                        context = context,
-                        messages = messages(systemPrompt, conversationMessages, userPrompt),
-                        maxTokens = maxTokens,
-                        webRequested = webRequested,
-                        onToken = streamingCallback,
-                    )
-                } else {
-                    ApiTokenClient.chat(
-                        context = context,
-                        messages = messages(systemPrompt, conversationMessages, userPrompt),
-                        maxTokens = maxTokens,
-                        webRequested = webRequested,
-                    )
+            val request: suspend () -> String = {
+                withContext(Dispatchers.IO) {
+                    val result = if (streamingCallback != null) {
+                        ApiTokenClient.chatStreaming(
+                            context = context,
+                            messages = messages(effectiveSystemPrompt, effectiveConversationMessages, userPrompt),
+                            maxTokens = maxTokens,
+                            webRequested = webRequested,
+                            onToken = streamingCallback,
+                        )
+                    } else {
+                        ApiTokenClient.chat(
+                            context = context,
+                            messages = messages(effectiveSystemPrompt, effectiveConversationMessages, userPrompt),
+                            maxTokens = maxTokens,
+                            webRequested = webRequested,
+                        )
+                    }
+                    result.getOrThrow()
                 }
-                request.getOrThrow()
-            }.also {
+            }
+
+            val raw = if (lowLatencyVoiceRequest && streamingCallback != null) {
+                coroutineScope {
+                    val inFlight = async { request() }
+                    val startedBeforeDeadline = withTimeoutOrNull(LOW_LATENCY_FIRST_DELTA_TIMEOUT_MS) {
+                        select<Unit> {
+                            firstUsefulDelta.onAwait { Unit }
+                            inFlight.onAwait { Unit }
+                        }
+                        true
+                    } ?: false
+
+                    if (!startedBeforeDeadline) {
+                        Log.w(
+                            TIMING_TAG,
+                            "stage=cloud_text_timeout thread=$sessionLabel purpose=$purpose phase=first_delta " +
+                                "elapsedMs=${SystemClock.elapsedRealtime() - startedAt} " +
+                                "budgetMs=$LOW_LATENCY_FIRST_DELTA_TIMEOUT_MS",
+                        )
+                        inFlight.cancel()
+                        throw IllegalStateException(
+                            "Cloud AI did not start answering within ${LOW_LATENCY_FIRST_DELTA_TIMEOUT_MS}ms",
+                        )
+                    }
+
+                    val elapsedMs = SystemClock.elapsedRealtime() - startedAt
+                    val remainingMs = (LOW_LATENCY_TOTAL_TIMEOUT_MS - elapsedMs).coerceAtLeast(1L)
+                    try {
+                        withTimeout(remainingMs) { inFlight.await() }
+                    } catch (error: TimeoutCancellationException) {
+                        Log.w(
+                            TIMING_TAG,
+                            "stage=cloud_text_timeout thread=$sessionLabel purpose=$purpose phase=total " +
+                                "elapsedMs=${SystemClock.elapsedRealtime() - startedAt} " +
+                                "budgetMs=$LOW_LATENCY_TOTAL_TIMEOUT_MS",
+                        )
+                        inFlight.cancel()
+                        throw IllegalStateException(
+                            "Cloud AI exceeded the ${LOW_LATENCY_TOTAL_TIMEOUT_MS}ms wearable generation budget",
+                            error,
+                        )
+                    }
+                }
+            } else {
+                request()
+            }
+
+            val cleaned = if (lowLatencyVoiceRequest) {
+                echoGate.finish(raw)
+            } else {
+                raw.trim()
+            }
+            if (cleaned.isBlank()) {
+                throw IllegalStateException("The provider returned only a prompt echo or an empty answer")
+            }
+            cleaned.also {
                 Log.i(
                     TIMING_TAG,
                     "stage=cloud_text_done thread=$sessionLabel purpose=$purpose elapsedMs=${SystemClock.elapsedRealtime() - startedAt}",
@@ -200,6 +306,56 @@ object AgentInferenceRouter {
             )
             throw error
         }
+    }
+
+    /** Hold an answer only while it still looks like the provider may be echoing the user question. */
+    private class UserPromptEchoGate(userPrompt: String) {
+        private val prompt = userPrompt.trim()
+        private val raw = StringBuilder()
+        private var emitted = ""
+
+        @Synchronized
+        fun accept(delta: String): String {
+            if (delta.isEmpty()) return ""
+            raw.append(delta)
+            val safe = stripUserPromptEcho(raw.toString(), prompt, final = false) ?: return ""
+            if (!safe.startsWith(emitted)) return ""
+            val fresh = safe.substring(emitted.length)
+            emitted = safe
+            return fresh
+        }
+
+        @Synchronized
+        fun finish(finalRaw: String): String =
+            stripUserPromptEcho(finalRaw, prompt, final = true).orEmpty().trim()
+    }
+
+    private fun stripUserPromptEcho(raw: String, prompt: String, final: Boolean): String? {
+        val text = raw.trimStart()
+        if (text.isBlank() || prompt.isBlank()) return text
+
+        val candidates = buildList {
+            add("User: $prompt")
+            add("Question: $prompt")
+            val wordCount = prompt.split(Regex("\\s+")).count { it.isNotBlank() }
+            if (prompt.length >= 16 || wordCount >= 3 || prompt.endsWith('?')) {
+                add(prompt)
+            }
+        }
+
+        for (candidate in candidates) {
+            if (!final && candidate.startsWith(text, ignoreCase = true) && text.length < candidate.length) {
+                return null
+            }
+            if (text.equals(candidate, ignoreCase = true)) {
+                return if (final) "" else null
+            }
+            if (text.startsWith(candidate, ignoreCase = true)) {
+                return text.substring(candidate.length)
+                    .trimStart(' ', '\t', '\r', '\n', ':', '-', '–', '—')
+            }
+        }
+        return text
     }
 
     private fun messages(
@@ -221,4 +377,10 @@ object AgentInferenceRouter {
     }
 
     private const val UI_PLANNING_MAX_TOKENS = 512
+    private const val LOW_LATENCY_VOICE_TOKEN_CEILING = 256
+    private const val LOW_LATENCY_SYSTEM_PROMPT_CHARS = 700
+    private const val LOW_LATENCY_PRIOR_MESSAGES = 2
+    private const val LOW_LATENCY_MESSAGE_CHARS = 360
+    private const val LOW_LATENCY_FIRST_DELTA_TIMEOUT_MS = 4_500L
+    private const val LOW_LATENCY_TOTAL_TIMEOUT_MS = 8_000L
 }
