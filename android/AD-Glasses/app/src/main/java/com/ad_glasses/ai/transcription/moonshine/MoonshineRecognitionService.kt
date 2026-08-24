@@ -9,8 +9,6 @@ import android.media.AudioFormat
 import android.media.AudioManager
 import android.media.AudioRecord
 import android.media.MediaRecorder
-import android.media.audiofx.AutomaticGainControl
-import android.media.audiofx.NoiseSuppressor
 import android.os.Build
 import android.os.Bundle
 import android.os.SystemClock
@@ -65,9 +63,6 @@ class MoonshineRecognitionService : RecognitionService() {
         @Volatile var transcriptListener: Consumer<TranscriptEvent>? = null
         @Volatile var streamHandle: Int = -1
         @Volatile var audioRecord: AudioRecord? = null
-        @Volatile var automaticGainControl: AutomaticGainControl? = null
-        @Volatile var noiseSuppressor: NoiseSuppressor? = null
-        @Volatile var softwareGain: Float = 1.0f
         @Volatile var captureThread: Thread? = null
         @Volatile var engineThread: Thread? = null
         @Volatile var engineReadyAtMs: Long = 0L
@@ -80,8 +75,6 @@ class MoonshineRecognitionService : RecognitionService() {
     private data class CaptureDevice(
         val record: AudioRecord,
         val preferredInput: AudioDeviceInfo?,
-        val audioSource: Int,
-        val bluetoothCommunicationRoute: Boolean,
     )
 
     override fun onStartListening(recognizerIntent: Intent, listener: Callback) {
@@ -117,11 +110,6 @@ class MoonshineRecognitionService : RecognitionService() {
                 // Moonshine engine will drain it once preparation and native loading complete.
                 val capture = createAudioRecord()
                 session.audioRecord = capture.record
-                configureInputProcessing(
-                    session = session,
-                    record = capture.record,
-                    bluetoothRoute = capture.bluetoothCommunicationRoute || capture.preferredInput != null,
-                )
                 capture.record.startRecording()
                 check(capture.record.recordingState == AudioRecord.RECORDSTATE_RECORDING) {
                     "Moonshine microphone did not enter the recording state"
@@ -139,9 +127,7 @@ class MoonshineRecognitionService : RecognitionService() {
                 Log.i(
                     TAG,
                     "stage=asr_capture_ready engine=moonshine model=${model.id} requestedLanguage=$requestedLanguageTag " +
-                        "inputRate=$TARGET_SAMPLE_RATE preferredInput=${capture.preferredInput?.type ?: -1} " +
-                        "source=${capture.audioSource} bluetoothRoute=${capture.bluetoothCommunicationRoute} " +
-                        "softwareGain=${session.softwareGain}",
+                        "inputRate=$TARGET_SAMPLE_RATE preferredInput=${capture.preferredInput?.type ?: -1}",
                 )
 
                 val prepareStarted = SystemClock.elapsedRealtime()
@@ -214,6 +200,11 @@ class MoonshineRecognitionService : RecognitionService() {
         thread.start()
     }
 
+    /**
+     * Keep input identical to Moonshine's Android microphone path: mono PCM16 at 16 kHz from MIC.
+     * Android's audio stack is allowed to satisfy that format internally; AD does not run a
+     * chunk-resetting resampler in front of the model anymore.
+     */
     private fun captureLoop(session: Session) {
         val record = session.audioRecord ?: return
         val buffer = ShortArray(READ_SAMPLES)
@@ -223,10 +214,7 @@ class MoonshineRecognitionService : RecognitionService() {
                 when {
                     read > 0 -> {
                         session.capturedSamples += read
-                        val gain = session.softwareGain
-                        val audio = FloatArray(read) { index ->
-                            ((buffer[index] / 32768.0f) * gain).coerceIn(-1.0f, 1.0f)
-                        }
+                        val audio = FloatArray(read) { index -> buffer[index] / 32768.0f }
                         if (!session.audioQueue.offer(audio)) {
                             val error = IllegalStateException("Moonshine audio processing could not keep up with the microphone")
                             session.failure.compareAndSet(null, error)
@@ -294,8 +282,10 @@ class MoonshineRecognitionService : RecognitionService() {
                         TAG,
                         "stage=asr_silence_timeout engine=moonshine idleMs=$idleMs capturedMs=$capturedMs",
                     )
-                    // Stop only microphone capture here. The engine thread remains the sole owner of
-                    // the native stream and drains queued audio before stopStream() forces the final.
+                    // Do not wait for a second utterance to make Moonshine close the first line.
+                    // Stop only microphone capture here; the engine thread remains the sole owner of
+                    // the native stream and will drain queued audio before stopStream() forces the
+                    // trailing LineCompleted event.
                     stopCapture(session)
                     break
                 }
@@ -503,22 +493,6 @@ class MoonshineRecognitionService : RecognitionService() {
     }
 
     private fun releaseRecord(session: Session) {
-        val agc = synchronized(session) {
-            val current = session.automaticGainControl
-            session.automaticGainControl = null
-            current
-        }
-        runCatching { agc?.release() }
-            .onFailure { Log.w(TAG, "stage=asr_agc_release_failed engine=moonshine", it) }
-
-        val ns = synchronized(session) {
-            val current = session.noiseSuppressor
-            session.noiseSuppressor = null
-            current
-        }
-        runCatching { ns?.release() }
-            .onFailure { Log.w(TAG, "stage=asr_ns_release_failed engine=moonshine", it) }
-
         val record = synchronized(session) {
             val current = session.audioRecord ?: return
             session.audioRecord = null
@@ -526,56 +500,6 @@ class MoonshineRecognitionService : RecognitionService() {
         }
         runCatching { record.release() }
             .onFailure { Log.w(TAG, "stage=asr_audio_release_failed engine=moonshine", it) }
-    }
-
-    private fun configureInputProcessing(
-        session: Session,
-        record: AudioRecord,
-        bluetoothRoute: Boolean,
-    ) {
-        val agc = if (AutomaticGainControl.isAvailable()) {
-            runCatching { AutomaticGainControl.create(record.audioSessionId) }.getOrNull()
-        } else {
-            null
-        }
-        val agcEnabled = if (agc != null) {
-            runCatching {
-                agc.enabled = true
-                agc.enabled
-            }.getOrDefault(false)
-        } else {
-            false
-        }
-        session.automaticGainControl = agc
-
-        val ns = if (NoiseSuppressor.isAvailable()) {
-            runCatching { NoiseSuppressor.create(record.audioSessionId) }.getOrNull()
-        } else {
-            null
-        }
-        val nsEnabled = if (ns != null) {
-            runCatching {
-                ns.enabled = true
-                ns.enabled
-            }.getOrDefault(false)
-        } else {
-            false
-        }
-        session.noiseSuppressor = ns
-
-        session.softwareGain = when {
-            bluetoothRoute && agcEnabled -> BLUETOOTH_GAIN_WITH_AGC
-            bluetoothRoute -> BLUETOOTH_GAIN_FALLBACK
-            agcEnabled -> DEFAULT_INPUT_GAIN_WITH_AGC
-            else -> DEFAULT_INPUT_GAIN_FALLBACK
-        }
-        Log.i(
-            TAG,
-            "stage=asr_input_processing engine=moonshine bluetoothRoute=$bluetoothRoute " +
-                "agcAvailable=${AutomaticGainControl.isAvailable()} agcEnabled=$agcEnabled " +
-                "nsAvailable=${NoiseSuppressor.isAvailable()} nsEnabled=$nsEnabled " +
-                "softwareGain=${session.softwareGain}",
-        )
     }
 
     private fun createAudioRecord(): CaptureDevice {
@@ -587,89 +511,33 @@ class MoonshineRecognitionService : RecognitionService() {
         check(minBuffer > 0) { "16 kHz microphone input is unavailable for Moonshine" }
 
         val audioManager = getSystemService(Context.AUDIO_SERVICE) as? AudioManager
-        val inputDevices = audioManager?.getDevices(AudioManager.GET_DEVICES_INPUTS).orEmpty()
-        val preferredInput = inputDevices.firstOrNull(::isBluetoothInput)
-        val bluetoothCommunicationRoute = runCatching {
-            when {
-                audioManager == null -> false
-                Build.VERSION.SDK_INT >= Build.VERSION_CODES.S ->
-                    audioManager.communicationDevice?.let(::isBluetoothInput) == true
-                else -> {
-                    @Suppress("DEPRECATION")
-                    audioManager.isBluetoothScoOn
-                }
-            }
-        }.getOrDefault(false)
+        val preferredInput = audioManager?.getDevices(AudioManager.GET_DEVICES_INPUTS)
+            ?.firstOrNull(::isBluetoothInput)
 
         val format = AudioFormat.Builder()
             .setEncoding(AudioFormat.ENCODING_PCM_16BIT)
             .setSampleRate(TARGET_SAMPLE_RATE)
             .setChannelMask(AudioFormat.CHANNEL_IN_MONO)
             .build()
-        val bufferBytes = max(minBuffer * 4, TARGET_SAMPLE_RATE * 2)
-
-        fun build(source: Int): AudioRecord = AudioRecord.Builder()
-            .setAudioSource(source)
+        val record = AudioRecord.Builder()
+            .setAudioSource(MediaRecorder.AudioSource.MIC)
             .setAudioFormat(format)
-            .setBufferSizeInBytes(bufferBytes)
+            .setBufferSizeInBytes(max(minBuffer * 4, TARGET_SAMPLE_RATE * 2))
             .build()
-
-        val sourceCandidates = if (preferredInput != null || bluetoothCommunicationRoute) {
-            intArrayOf(
-                MediaRecorder.AudioSource.VOICE_COMMUNICATION,
-                MediaRecorder.AudioSource.VOICE_RECOGNITION,
-                MediaRecorder.AudioSource.MIC,
-            )
-        } else {
-            intArrayOf(
-                MediaRecorder.AudioSource.VOICE_RECOGNITION,
-                MediaRecorder.AudioSource.MIC,
-            )
+        check(record.state == AudioRecord.STATE_INITIALIZED) {
+            "Moonshine 16 kHz microphone failed to initialize"
         }
-
-        var selectedSource = MediaRecorder.AudioSource.MIC
-        var record: AudioRecord? = null
-        var lastError: Throwable? = null
-        for (source in sourceCandidates) {
-            val candidate = try {
-                build(source)
-            } catch (error: Throwable) {
-                lastError = error
-                null
-            } ?: continue
-            if (candidate.state == AudioRecord.STATE_INITIALIZED) {
-                selectedSource = source
-                record = candidate
-                break
-            }
-            runCatching { candidate.release() }
-        }
-        val usableRecord = record ?: throw IllegalStateException(
-            "Moonshine 16 kHz microphone failed to initialize",
-            lastError,
-        )
 
         if (preferredInput != null) {
-            val preferred = runCatching { usableRecord.setPreferredDevice(preferredInput) }.getOrDefault(false)
+            val preferred = runCatching { record.setPreferredDevice(preferredInput) }.getOrDefault(false)
             Log.i(
                 TAG,
-                "stage=asr_input_device engine=moonshine type=${preferredInput.type} preferred=$preferred " +
-                    "source=$selectedSource bluetoothRoute=$bluetoothCommunicationRoute rate=$TARGET_SAMPLE_RATE",
+                "stage=asr_input_device engine=moonshine type=${preferredInput.type} preferred=$preferred rate=$TARGET_SAMPLE_RATE",
             )
         } else {
-            val inputs = inputDevices.joinToString(separator = ",") { "${it.type}:${it.productName}" }
-            Log.i(
-                TAG,
-                "stage=asr_input_device engine=moonshine type=default source=$selectedSource " +
-                    "bluetoothRoute=$bluetoothCommunicationRoute rate=$TARGET_SAMPLE_RATE inputs=[$inputs]",
-            )
+            Log.i(TAG, "stage=asr_input_device engine=moonshine type=default rate=$TARGET_SAMPLE_RATE")
         }
-        return CaptureDevice(
-            record = usableRecord,
-            preferredInput = preferredInput,
-            audioSource = selectedSource,
-            bluetoothCommunicationRoute = bluetoothCommunicationRoute,
-        )
+        return CaptureDevice(record, preferredInput)
     }
 
     private fun isBluetoothInput(device: AudioDeviceInfo): Boolean =
@@ -738,14 +606,9 @@ class MoonshineRecognitionService : RecognitionService() {
         const val READ_SAMPLES = 800 // 50 ms at 16 kHz.
         const val MAX_QUEUED_CHUNKS = 600 // 30 seconds; overflow fails rather than corrupting speech.
         const val ENGINE_POLL_MS = 40L
-        const val TRANSCRIPT_SILENCE_FINALIZE_MS = 950L
+        const val TRANSCRIPT_SILENCE_FINALIZE_MS = 1_200L
         const val INITIAL_NO_SPEECH_TIMEOUT_MS = 6_000L
         const val CAPTURE_JOIN_MS = 750L
         const val PREVIOUS_ENGINE_WAIT_MS = 2_500L
-
-        const val BLUETOOTH_GAIN_WITH_AGC = 1.15f
-        const val BLUETOOTH_GAIN_FALLBACK = 1.65f
-        const val DEFAULT_INPUT_GAIN_WITH_AGC = 1.6f
-        const val DEFAULT_INPUT_GAIN_FALLBACK = 2.4f
     }
 }
