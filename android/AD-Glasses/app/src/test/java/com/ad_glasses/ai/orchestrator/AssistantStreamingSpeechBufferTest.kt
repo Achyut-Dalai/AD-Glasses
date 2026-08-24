@@ -27,8 +27,12 @@ class AssistantStreamingSpeechBufferTest {
         assertEquals(
             listOf("The fastest way to get started is to open the settings screen"),
             buffer.accept(
-                "The fastest way to get started is to open the settings screen and choose your preferred provider while keeping the app connected.",
+                "The fastest way to get started is to open the settings screen and choose",
             ),
+        )
+        assertEquals(
+            listOf("and choose your preferred provider while keeping the app connected."),
+            buffer.accept(" your preferred provider while keeping the app connected."),
         )
     }
 
