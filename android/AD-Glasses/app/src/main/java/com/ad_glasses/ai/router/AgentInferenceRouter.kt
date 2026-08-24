@@ -9,12 +9,12 @@ import java.io.File
 import java.util.concurrent.atomic.AtomicBoolean
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CompletableDeferred
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Deferred
 import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.TimeoutCancellationException
+import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.async
-import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.withContext
-import kotlinx.coroutines.withTimeout
 import kotlinx.coroutines.withTimeoutOrNull
 import kotlinx.coroutines.selects.select
 
@@ -32,6 +32,13 @@ data class AgentInferenceResult(
 /** Cloud-only inference boundary. Local Agent remains an automation capability, not an LLM. */
 object AgentInferenceRouter {
     private const val TIMING_TAG = "AssistantTiming"
+
+    // HttpURLConnection's blocking SSE read is not reliably interruptible on every Android build.
+    // Keep the wearable user-facing deadline independent from that socket worker: after the voice
+    // deadline expires we stop accepting its deltas and return immediately, even if Android takes
+    // longer to unwind the underlying connection. A transport-level short read timeout remains a
+    // desirable follow-up, but must never be required for the glasses UX deadline to work.
+    private val lowLatencyNetworkScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
 
     suspend fun complete(
         context: Context,
@@ -184,6 +191,8 @@ object AgentInferenceRouter {
 
         val startedAt = SystemClock.elapsedRealtime()
         val sessionLabel = sessionId.takeLast(8)
+        val acceptingStreaming = AtomicBoolean(true)
+        var lowLatencyInFlight: Deferred<String>? = null
         Log.i(
             TIMING_TAG,
             "stage=cloud_text_start thread=$sessionLabel purpose=$purpose maxTokens=$maxTokens streaming=${onToken != null} " +
@@ -196,8 +205,9 @@ object AgentInferenceRouter {
             val echoGate = UserPromptEchoGate(userPrompt)
             val streamingCallback = onToken?.let { downstream ->
                 { delta: String ->
+                    if (!acceptingStreaming.get()) return@let
                     val safeDelta = if (lowLatencyVoiceRequest) echoGate.accept(delta) else delta
-                    if (safeDelta.isNotEmpty()) {
+                    if (safeDelta.isNotEmpty() && acceptingStreaming.get()) {
                         if (firstDeltaLogged.compareAndSet(false, true)) {
                             Log.i(
                                 TIMING_TAG,
@@ -234,51 +244,52 @@ object AgentInferenceRouter {
             }
 
             val raw = if (lowLatencyVoiceRequest && streamingCallback != null) {
-                coroutineScope {
-                    val inFlight = async { request() }
-                    val startedBeforeDeadline = withTimeoutOrNull(LOW_LATENCY_FIRST_DELTA_TIMEOUT_MS) {
-                        select<Unit> {
-                            firstUsefulDelta.onAwait { Unit }
-                            inFlight.onAwait { Unit }
-                        }
-                        true
-                    } ?: false
-
-                    if (!startedBeforeDeadline) {
-                        Log.w(
-                            TIMING_TAG,
-                            "stage=cloud_text_timeout thread=$sessionLabel purpose=$purpose phase=first_delta " +
-                                "elapsedMs=${SystemClock.elapsedRealtime() - startedAt} " +
-                                "budgetMs=$LOW_LATENCY_FIRST_DELTA_TIMEOUT_MS",
-                        )
-                        inFlight.cancel()
-                        throw IllegalStateException(
-                            "Cloud AI did not start answering within ${LOW_LATENCY_FIRST_DELTA_TIMEOUT_MS}ms",
-                        )
+                val inFlight = lowLatencyNetworkScope.async { request() }
+                lowLatencyInFlight = inFlight
+                val startedBeforeDeadline = withTimeoutOrNull(LOW_LATENCY_FIRST_DELTA_TIMEOUT_MS) {
+                    select<Unit> {
+                        firstUsefulDelta.onAwait { Unit }
+                        inFlight.onAwait { Unit }
                     }
+                    true
+                } ?: false
 
-                    val elapsedMs = SystemClock.elapsedRealtime() - startedAt
-                    val remainingMs = (LOW_LATENCY_TOTAL_TIMEOUT_MS - elapsedMs).coerceAtLeast(1L)
-                    try {
-                        withTimeout(remainingMs) { inFlight.await() }
-                    } catch (error: TimeoutCancellationException) {
-                        Log.w(
-                            TIMING_TAG,
-                            "stage=cloud_text_timeout thread=$sessionLabel purpose=$purpose phase=total " +
-                                "elapsedMs=${SystemClock.elapsedRealtime() - startedAt} " +
-                                "budgetMs=$LOW_LATENCY_TOTAL_TIMEOUT_MS",
-                        )
-                        inFlight.cancel()
-                        throw IllegalStateException(
-                            "Cloud AI exceeded the ${LOW_LATENCY_TOTAL_TIMEOUT_MS}ms wearable generation budget",
-                            error,
-                        )
-                    }
+                if (!startedBeforeDeadline) {
+                    acceptingStreaming.set(false)
+                    Log.w(
+                        TIMING_TAG,
+                        "stage=cloud_text_timeout thread=$sessionLabel purpose=$purpose phase=first_delta " +
+                            "elapsedMs=${SystemClock.elapsedRealtime() - startedAt} " +
+                            "budgetMs=$LOW_LATENCY_FIRST_DELTA_TIMEOUT_MS",
+                    )
+                    inFlight.cancel(CancellationException("Wearable first-answer deadline expired"))
+                    throw IllegalStateException(
+                        "Cloud AI did not start answering within ${LOW_LATENCY_FIRST_DELTA_TIMEOUT_MS}ms",
+                    )
                 }
+
+                val elapsedMs = SystemClock.elapsedRealtime() - startedAt
+                val remainingMs = (LOW_LATENCY_TOTAL_TIMEOUT_MS - elapsedMs).coerceAtLeast(1L)
+                val completed = withTimeoutOrNull(remainingMs) { inFlight.await() }
+                if (completed == null) {
+                    acceptingStreaming.set(false)
+                    Log.w(
+                        TIMING_TAG,
+                        "stage=cloud_text_timeout thread=$sessionLabel purpose=$purpose phase=total " +
+                            "elapsedMs=${SystemClock.elapsedRealtime() - startedAt} " +
+                            "budgetMs=$LOW_LATENCY_TOTAL_TIMEOUT_MS",
+                    )
+                    inFlight.cancel(CancellationException("Wearable total-generation deadline expired"))
+                    throw IllegalStateException(
+                        "Cloud AI exceeded the ${LOW_LATENCY_TOTAL_TIMEOUT_MS}ms wearable generation budget",
+                    )
+                }
+                completed
             } else {
                 request()
             }
 
+            acceptingStreaming.set(false)
             val cleaned = if (lowLatencyVoiceRequest) {
                 echoGate.finish(raw)
             } else {
@@ -294,12 +305,16 @@ object AgentInferenceRouter {
                 )
             }
         } catch (error: CancellationException) {
+            acceptingStreaming.set(false)
+            lowLatencyInFlight?.cancel(error)
             Log.i(
                 TIMING_TAG,
                 "stage=cloud_text_cancelled thread=$sessionLabel purpose=$purpose elapsedMs=${SystemClock.elapsedRealtime() - startedAt}",
             )
             throw error
         } catch (error: Exception) {
+            acceptingStreaming.set(false)
+            lowLatencyInFlight?.cancel(CancellationException("Wearable request failed", error))
             Log.w(
                 TIMING_TAG,
                 "stage=cloud_text_failed thread=$sessionLabel purpose=$purpose elapsedMs=${SystemClock.elapsedRealtime() - startedAt} type=${error::class.java.simpleName}",
