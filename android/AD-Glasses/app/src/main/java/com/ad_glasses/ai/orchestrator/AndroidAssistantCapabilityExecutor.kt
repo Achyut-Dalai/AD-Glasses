@@ -48,7 +48,7 @@ class AndroidAssistantCapabilityExecutor(
                 "stage=assistant_provider_failure surface=${context.surface} type=${error::class.java.simpleName}",
                 error,
             )
-            providerFailureResult(error)
+            providerFailureResult(error, context.surface)
         }
 
         // MainActivity keeps the live communication route open and queues streamed TTS while the
@@ -98,7 +98,7 @@ class AndroidAssistantCapabilityExecutor(
                 "stage=assistant_provider_failure surface=${context.surface} type=${error::class.java.simpleName}",
                 error,
             )
-            providerFailureResult(error)
+            providerFailureResult(error, context.surface)
         }
         prepareSpeechOutputRouteIfNeeded(context)
         return result
@@ -162,7 +162,7 @@ class AndroidAssistantCapabilityExecutor(
     }
 
     /** Convert provider/network failures into the same normal result path used by successful turns. */
-    private fun providerFailureResult(error: Throwable): AssistantResult {
+    private fun providerFailureResult(error: Throwable, surface: AssistantInputSurface): AssistantResult {
         val detail = generateSequence(error) { it.cause }
             .joinToString(" ") { it.message.orEmpty() }
         val spoken = when {
@@ -174,7 +174,14 @@ class AndroidAssistantCapabilityExecutor(
                 "Cloud AI is temporarily unavailable. Try again."
             else -> "I couldn't get an answer. Try again."
         }
-        return AssistantResult(spokenText = spoken, richText = spoken, persist = false)
+        return AssistantResult(
+            spokenText = spoken,
+            richText = spoken,
+            // Phone text currently renders from durable ChatStore. Keep the failure visible there,
+            // while AssistantInferenceContextPolicy explicitly excludes these transient messages
+            // from future model context. Voice keeps the existing non-persistent behavior.
+            persist = surface == AssistantInputSurface.PHONE_TEXT,
+        )
     }
 
     /** Native chat roles are the multi-turn context. No conversation text is duplicated in system. */
@@ -236,14 +243,14 @@ class AndroidAssistantCapabilityExecutor(
     }
 
     /**
-     * Voice gets a smaller runaway ceiling, but not the 80-100 token cap often recommended for
-     * non-reasoning models. Some selected provider models spend part of this budget on reasoning;
-     * an overly small cap can consume the whole allowance before any final answer is emitted.
+     * Generated tokens and spoken tokens are deliberately separate. Reasoning-capable providers may
+     * need generation headroom to reach their final answer; the wearable speech policy still caps
+     * what the user actually hears to a short response.
      */
     private fun outputTokenLimit(surface: AssistantInputSurface): Int = when (surface) {
-        AssistantInputSurface.GLASSES_VOICE -> 256
+        AssistantInputSurface.GLASSES_VOICE -> 512
         AssistantInputSurface.GLASSES_VISION -> 512
-        AssistantInputSurface.PHONE_VOICE -> 256
+        AssistantInputSurface.PHONE_VOICE -> 512
         AssistantInputSurface.PHONE_TEXT -> 512
         AssistantInputSurface.AUTOMATION -> 384
     }
@@ -252,15 +259,25 @@ class AndroidAssistantCapabilityExecutor(
         val sanitized = AssistantCompletionSanitizer.inspect(this)
         val rich = sanitized.text
         if (rich.isBlank()) {
+            val failure = when (sanitized.rejectionReason) {
+                AssistantCompletionSanitizer.RejectionReason.REASONING_ONLY,
+                AssistantCompletionSanitizer.RejectionReason.UNFINISHED_REASONING ->
+                    "The AI didn’t produce a final answer. Please try again."
+                AssistantCompletionSanitizer.RejectionReason.SYSTEM_PROMPT_ECHO ->
+                    "The AI returned an invalid response. Please try again."
+                AssistantCompletionSanitizer.RejectionReason.EMPTY ->
+                    "The AI returned an empty answer. Please try again."
+                null -> "I didn’t get a usable answer. Please try again."
+            }
             Log.w(
                 "AssistantTiming",
                 "stage=assistant_output_rejected surface=$surface " +
                     "reason=${sanitized.rejectionReason?.wire ?: "unknown"} rawChars=${length}",
             )
             return AssistantResult(
-                spokenText = "I didn’t get a usable answer. Please try again.",
-                richText = "I didn’t get a usable answer. Please try again.",
-                persist = false,
+                spokenText = failure,
+                richText = failure,
+                persist = surface == AssistantInputSurface.PHONE_TEXT,
             )
         }
         return AssistantResult(
