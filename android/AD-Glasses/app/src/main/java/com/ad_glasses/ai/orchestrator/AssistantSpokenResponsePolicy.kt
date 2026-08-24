@@ -6,12 +6,14 @@ object AssistantSpokenResponsePolicy {
     private const val SUMMARY_TARGET_CHARS = 200
     private const val CHAT_POINTER = " More detail is in Chats."
 
+    fun normalizeForSpeech(richText: String): String = richText
+        .replace(Regex("```[A-Za-z0-9_-]*"), "")
+        .replace("```", "")
+        .replace(Regex("\\s+"), " ")
+        .trim()
+
     fun forGlasses(richText: String): String {
-        val normalized = richText
-            .replace(Regex("```[A-Za-z0-9_-]*"), "")
-            .replace("```", "")
-            .replace(Regex("\\s+"), " ")
-            .trim()
+        val normalized = normalizeForSpeech(richText)
         if (normalized.isBlank()) return "I didn’t get a usable answer."
         if (normalized.length <= MAX_DIRECT_CHARS) return normalized
 
