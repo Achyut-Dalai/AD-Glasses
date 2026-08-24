@@ -39,4 +39,14 @@ class SafeFirstAnswerGateTest {
         assertTrue(gate.accept("You are AD, a voice assistant").isBlank())
         assertTrue(gate.accept(" for smart glasses.").isBlank())
     }
+
+    @Test
+    fun current_visible_preserves_safe_partial_answer_for_runaway_cap() {
+        val gate = SafeFirstAnswerGate()
+
+        gate.accept("<think>internal work</think>")
+        gate.accept("Java is faster for many workloads")
+
+        assertEquals("Java is faster for many workloads", gate.currentVisible())
+    }
 }
