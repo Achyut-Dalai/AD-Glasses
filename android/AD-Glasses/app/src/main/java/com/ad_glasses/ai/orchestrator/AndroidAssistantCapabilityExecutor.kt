@@ -193,8 +193,10 @@ class AndroidAssistantCapabilityExecutor(
         }
 
     /**
-     * Keep the repeated system instruction deliberately tiny. Extra context is attached only when
-     * the current turn actually supplies an artifact or explicitly requests provider web search.
+     * Keep the repeated system instruction deliberately tiny. Legacy Local Agent memory context is
+     * deliberately ignored for normal glasses voice Ask: multi-turn context is the native last-three
+     * message list, not a second generated memory prompt. Other surfaces may still attach explicit
+     * artifact/image context when that turn requires it.
      */
     private fun conversationSystemPrompt(context: AssistantExecutionContext): String = buildString {
         append("You are AD. Answer directly and concisely. Return only the final answer; do not output internal reasoning.")
@@ -208,9 +210,16 @@ class AndroidAssistantCapabilityExecutor(
         if (context.useWeb) {
             append(" Use web search for this turn when needed.")
         }
-        context.artifactContext?.trim()?.takeIf { it.isNotBlank() }?.let { artifact ->
-            append("\nContext:\n")
-            append(artifact.take(AssistantInferenceContextPolicy.artifactLimit(context.surface)))
+        if (context.surface != AssistantInputSurface.GLASSES_VOICE) {
+            context.artifactContext?.trim()?.takeIf { it.isNotBlank() }?.let { artifact ->
+                append("\nContext:\n")
+                append(artifact.take(AssistantInferenceContextPolicy.artifactLimit(context.surface)))
+            }
+        } else if (!context.artifactContext.isNullOrBlank()) {
+            Log.i(
+                "AssistantTiming",
+                "stage=legacy_voice_context_ignored chars=${context.artifactContext.length}",
+            )
         }
     }
 
