@@ -46,6 +46,20 @@ object AssistantSpokenResponsePolicy {
     }
 
     /**
+     * Safe prefix for live TTS. Keep streamed speech to the first 45 content words and three
+     * sentences so finalization can still append either the last few words of a compliant answer or
+     * the five-word Chats pointer without ever crossing the 50-word wearable ceiling.
+     */
+    fun streamingPrefixForGlasses(richText: String): String {
+        val normalized = normalizeForSpeech(richText)
+        if (normalized.isBlank()) return ""
+        return takeWords(
+            takeSentences(normalized, MAX_SPOKEN_SENTENCES),
+            MAX_CONTENT_WORDS_WHEN_TRUNCATED,
+        )
+    }
+
+    /**
      * Provider-side prompting and max-output tokens are the primary length controls. This local
      * limit is the final wearable guard if a provider ignores them: at most three sentences and
      * fifty spoken words, including the Chats pointer when truncation was necessary.
