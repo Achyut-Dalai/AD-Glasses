@@ -9,6 +9,7 @@ import android.media.AudioFormat
 import android.media.AudioManager
 import android.media.AudioRecord
 import android.media.MediaRecorder
+import android.media.audiofx.AutomaticGainControl
 import android.os.Build
 import android.os.Bundle
 import android.os.SystemClock
@@ -26,16 +27,16 @@ import java.util.concurrent.atomic.AtomicBoolean
 import java.util.concurrent.atomic.AtomicLong
 import java.util.concurrent.atomic.AtomicReference
 import java.util.function.Consumer
+import kotlin.math.log10
 import kotlin.math.max
+import kotlin.math.sqrt
 
 /**
  * SpeechRecognizer-compatible bridge backed exclusively by the vendored Moonshine runtime.
  *
- * There is deliberately no Android/system ASR fallback. AD owns microphone routing/capture so a
- * device audio failure becomes a normal recognition error, while Moonshine owns transcription.
- * The critical invariant is that one engine thread owns every native stream operation for a
- * request (create/start/add/stop/free). Recognition callbacks are delivered only after that native
- * stream has been stopped and freed, so destroying SpeechRecognizer cannot race Moonshine JNI.
+ * Microphone capture starts before a cold Moonshine model load. This guarantees that the first Ask
+ * utterance is buffered instead of disappearing while the model is warming. One engine thread still
+ * owns every native stream operation (create/start/add/stop/free).
  */
 class MoonshineRecognitionService : RecognitionService() {
     private val setupWorker = Executors.newSingleThreadExecutor { runnable ->
@@ -63,10 +64,16 @@ class MoonshineRecognitionService : RecognitionService() {
         @Volatile var transcriptListener: Consumer<TranscriptEvent>? = null
         @Volatile var streamHandle: Int = -1
         @Volatile var audioRecord: AudioRecord? = null
+        @Volatile var automaticGainControl: AutomaticGainControl? = null
+        @Volatile var softwareGain: Float = 1.0f
         @Volatile var captureThread: Thread? = null
         @Volatile var engineThread: Thread? = null
         @Volatile var beganSpeech: Boolean = false
-        @Volatile var lastTranscriptChangeAtMs: Long = 0L
+        @Volatile var captureStartedAtMs: Long = 0L
+        @Volatile var lastVoiceAtMs: Long = 0L
+        @Volatile var noiseFloorDb: Float = INITIAL_NOISE_FLOOR_DBFS
+        @Volatile var maxRmsDb: Float = -120f
+        @Volatile var consecutiveVoiceFrames: Int = 0
         @Volatile var capturedSamples: Long = 0L
         @Volatile var maxQueueDepth: Int = 0
     }
@@ -74,6 +81,7 @@ class MoonshineRecognitionService : RecognitionService() {
     private data class CaptureDevice(
         val record: AudioRecord,
         val preferredInput: AudioDeviceInfo?,
+        val audioSource: Int,
     )
 
     override fun onStartListening(recognizerIntent: Intent, listener: Callback) {
@@ -85,8 +93,6 @@ class MoonshineRecognitionService : RecognitionService() {
 
         setupWorker.execute {
             try {
-                // A process-wide Transcriber is cached for latency, so never hand it to a new Ask
-                // until the previous request's native stream owner has definitely exited.
                 if (previous != null && !previous.engineDone.await(PREVIOUS_ENGINE_WAIT_MS, TimeUnit.MILLISECONDS)) {
                     throw IllegalStateException("Moonshine is still stopping the previous voice request")
                 }
@@ -100,23 +106,41 @@ class MoonshineRecognitionService : RecognitionService() {
                     ?.trim()
                     .orEmpty()
                     .ifBlank { Locale.getDefault().toLanguageTag() }
-                val model = MoonshineModelManager.chooseDefault(requestedLanguageTag)
-                val modelDir = MoonshineModelManager.prepareForRuntime(applicationContext, model)
 
-                val loadStarted = SystemClock.elapsedRealtime()
+                // Capture first. A cold model can take noticeable time to load, but the user's first
+                // utterance must already be in the queue while that happens.
+                val capture = createAudioRecord()
+                session.audioRecord = capture.record
+                configureInputGain(session, capture.record)
+                capture.record.startRecording()
+                check(capture.record.recordingState == AudioRecord.RECORDSTATE_RECORDING) {
+                    "Moonshine microphone did not enter the recording state"
+                }
+                session.captureStartedAtMs = SystemClock.elapsedRealtime()
+                listener.readyForSpeech(Bundle.EMPTY)
+                startCapture(session)
+                Log.i(
+                    TAG,
+                    "stage=asr_ready engine=moonshine inputRate=$TARGET_SAMPLE_RATE " +
+                        "source=${capture.audioSource} preferredInput=${capture.preferredInput?.type ?: -1} " +
+                        "softwareGain=${session.softwareGain}",
+                )
+
+                val model = MoonshineModelManager.chooseDefault(requestedLanguageTag)
+                val modelLoadStartedAt = SystemClock.elapsedRealtime()
+                val modelDir = MoonshineModelManager.prepareForRuntime(applicationContext, model)
                 val transcriber = MoonshineRuntime.acquire(model.id) {
                     Transcriber().apply {
                         loadFromFiles(modelDir.absolutePath, model.modelArch)
                     }
                 }
                 session.transcriber = transcriber
-
-                val capture = createAudioRecord()
-                session.audioRecord = capture.record
-                capture.record.startRecording()
-                check(capture.record.recordingState == AudioRecord.RECORDSTATE_RECORDING) {
-                    "Moonshine microphone did not enter the recording state"
-                }
+                Log.i(
+                    TAG,
+                    "stage=asr_model_ready engine=moonshine model=${model.id} " +
+                        "loadMs=${SystemClock.elapsedRealtime() - modelLoadStartedAt} " +
+                        "bufferedMs=${session.capturedSamples * 1000L / TARGET_SAMPLE_RATE}",
+                )
 
                 if (!isCurrent(session) || session.cancelled.get()) {
                     stopCapture(session)
@@ -125,15 +149,6 @@ class MoonshineRecognitionService : RecognitionService() {
                 }
 
                 startEngine(session)
-                listener.readyForSpeech(Bundle.EMPTY)
-                startCapture(session)
-
-                Log.i(
-                    TAG,
-                    "stage=asr_ready engine=moonshine model=${model.id} requestedLanguage=$requestedLanguageTag " +
-                        "inputRate=$TARGET_SAMPLE_RATE preferredInput=${capture.preferredInput?.type ?: -1} " +
-                        "modelReadyMs=${SystemClock.elapsedRealtime() - loadStarted}",
-                )
             } catch (error: Throwable) {
                 failBeforeEngine(session, error)
             }
@@ -144,8 +159,6 @@ class MoonshineRecognitionService : RecognitionService() {
         val session = activeSession?.takeIf { it.callback === listener } ?: return
         if (session.callbackDelivered.get() || session.cancelled.get()) return
         stopCapture(session)
-        // The engine drains already-captured speech, then stopStream() forces Moonshine's trailing
-        // transcript. No second thread is allowed to touch the native stream.
     }
 
     override fun onCancel(listener: Callback) {
@@ -171,11 +184,6 @@ class MoonshineRecognitionService : RecognitionService() {
         thread.start()
     }
 
-    /**
-     * Keep input identical to Moonshine's Android microphone path: mono PCM16 at 16 kHz from MIC.
-     * Android's audio stack is allowed to satisfy that format internally; AD does not run a
-     * chunk-resetting resampler in front of the model anymore.
-     */
     private fun captureLoop(session: Session) {
         val record = session.audioRecord ?: return
         val buffer = ShortArray(READ_SAMPLES)
@@ -185,7 +193,14 @@ class MoonshineRecognitionService : RecognitionService() {
                 when {
                     read > 0 -> {
                         session.capturedSamples += read
-                        val audio = FloatArray(read) { index -> buffer[index] / 32768.0f }
+                        val gain = session.softwareGain
+                        val audio = FloatArray(read) { index ->
+                            ((buffer[index] / 32768.0f) * gain).coerceIn(-1.0f, 1.0f)
+                        }
+                        val rmsDb = rmsDb(audio)
+                        session.maxRmsDb = max(session.maxRmsDb, rmsDb)
+                        runCatching { session.callback.rmsChanged(rmsDb) }
+
                         if (!session.audioQueue.offer(audio)) {
                             val error = IllegalStateException("Moonshine audio processing could not keep up with the microphone")
                             session.failure.compareAndSet(null, error)
@@ -195,6 +210,10 @@ class MoonshineRecognitionService : RecognitionService() {
                             break
                         }
                         session.maxQueueDepth = max(session.maxQueueDepth, session.audioQueue.size)
+
+                        if (shouldEndCapture(session, rmsDb, SystemClock.elapsedRealtime())) {
+                            break
+                        }
                     }
                     read == 0 -> Unit
                     session.cancelled.get() || session.captureEnded.get() || session.terminalRequested.get() -> Unit
@@ -211,6 +230,94 @@ class MoonshineRecognitionService : RecognitionService() {
             session.captureEnded.set(true)
             releaseRecord(session)
         }
+    }
+
+    /**
+     * Audio-level endpointing is independent from Moonshine transcript churn. It therefore closes
+     * the mic when the person actually stops talking, even if background noise keeps changing the
+     * partial transcript.
+     */
+    private fun shouldEndCapture(session: Session, rmsDb: Float, nowMs: Long): Boolean {
+        val startedAt = session.captureStartedAtMs
+        if (startedAt <= 0L) return false
+        val elapsedMs = nowMs - startedAt
+        val startThreshold = max(VAD_ABSOLUTE_MIN_DBFS, session.noiseFloorDb + VAD_NOISE_MARGIN_DB)
+
+        if (!session.beganSpeech) {
+            if (rmsDb >= startThreshold) {
+                session.consecutiveVoiceFrames += 1
+                if (session.consecutiveVoiceFrames >= VAD_START_FRAMES) {
+                    markSpeechStarted(session, nowMs, "audio")
+                }
+            } else {
+                session.consecutiveVoiceFrames = 0
+                if (elapsedMs <= NOISE_CALIBRATION_MS || rmsDb < startThreshold - 2f) {
+                    session.noiseFloorDb =
+                        (session.noiseFloorDb * 0.88f + rmsDb * 0.12f).coerceIn(-90f, -20f)
+                }
+            }
+
+            if (!session.beganSpeech && elapsedMs >= NO_SPEECH_TIMEOUT_MS) {
+                Log.i(
+                    TAG,
+                    "stage=asr_no_speech_timeout engine=moonshine elapsedMs=$elapsedMs " +
+                        "noiseFloorDb=${session.noiseFloorDb} maxRmsDb=${session.maxRmsDb}",
+                )
+                return true
+            }
+            return false
+        }
+
+        val continueThreshold = startThreshold - VAD_HYSTERESIS_DB
+        if (rmsDb >= continueThreshold) {
+            session.lastVoiceAtMs = nowMs
+        }
+
+        if (elapsedMs >= MAX_UTTERANCE_MS) {
+            Log.i(TAG, "stage=asr_max_utterance engine=moonshine elapsedMs=$elapsedMs")
+            return true
+        }
+
+        val lastVoiceAt = session.lastVoiceAtMs
+        if (lastVoiceAt > 0L && nowMs - lastVoiceAt >= END_SILENCE_MS) {
+            Log.i(
+                TAG,
+                "stage=asr_audio_silence_end engine=moonshine silenceMs=${nowMs - lastVoiceAt} " +
+                    "noiseFloorDb=${session.noiseFloorDb} maxRmsDb=${session.maxRmsDb}",
+            )
+            return true
+        }
+        return false
+    }
+
+    private fun markSpeechStarted(session: Session, nowMs: Long, source: String) {
+        if (!session.beganSpeech) {
+            synchronized(session) {
+                if (!session.beganSpeech && !session.cancelled.get()) {
+                    session.beganSpeech = true
+                    session.lastVoiceAtMs = nowMs
+                    runCatching { session.callback.beginningOfSpeech() }
+                    Log.i(
+                        TAG,
+                        "stage=asr_speech_started engine=moonshine source=$source " +
+                            "noiseFloorDb=${session.noiseFloorDb} maxRmsDb=${session.maxRmsDb}",
+                    )
+                }
+            }
+        } else if (session.lastVoiceAtMs <= 0L) {
+            session.lastVoiceAtMs = nowMs
+        }
+    }
+
+    private fun rmsDb(audio: FloatArray): Float {
+        if (audio.isEmpty()) return -120f
+        var sumSquares = 0.0
+        for (sample in audio) {
+            val value = sample.toDouble()
+            sumSquares += value * value
+        }
+        val rms = sqrt(sumSquares / audio.size.toDouble()).coerceAtLeast(RMS_FLOOR)
+        return (20.0 * log10(rms)).toFloat()
     }
 
     /** One thread owns all Moonshine stream/JNI operations for the request. */
@@ -240,27 +347,9 @@ class MoonshineRecognitionService : RecognitionService() {
                 if (chunk != null) {
                     transcriber.addAudioToStream(streamHandle, chunk, TARGET_SAMPLE_RATE)
                 }
-                if (shouldFinalizeAfterTranscriptSilence(session)) {
-                    val now = SystemClock.elapsedRealtime()
-                    val idleMs = now - session.lastTranscriptChangeAtMs
-                    val capturedMs = session.capturedSamples * 1000L / TARGET_SAMPLE_RATE
-                    Log.i(
-                        TAG,
-                        "stage=asr_silence_timeout engine=moonshine idleMs=$idleMs capturedMs=$capturedMs",
-                    )
-                    // Do not wait for a second utterance to make Moonshine close the first line.
-                    // Stop only microphone capture here; the engine thread remains the sole owner of
-                    // the native stream and will drain queued audio before stopStream() forces the
-                    // trailing LineCompleted event.
-                    stopCapture(session)
-                    break
-                }
                 if (session.captureEnded.get() && session.audioQueue.isEmpty()) break
             }
 
-            // A normal client stop or transcript-silence timeout can arrive before Moonshine emitted
-            // a completed line. Drain the queue first, then keep the listener attached while
-            // stopStream forces the trailing text.
             if (!session.cancelled.get() && !session.terminalRequested.get()) {
                 while (true) {
                     val chunk = session.audioQueue.poll() ?: break
@@ -270,28 +359,23 @@ class MoonshineRecognitionService : RecognitionService() {
             }
         } catch (interrupted: InterruptedException) {
             Thread.currentThread().interrupt()
-            if (!session.cancelled.get()) {
-                session.failure.compareAndSet(null, interrupted)
-            }
+            if (!session.cancelled.get()) session.failure.compareAndSet(null, interrupted)
         } catch (error: Throwable) {
             if (!session.cancelled.get()) {
                 session.failure.compareAndSet(null, error)
                 Log.e(TAG, "stage=asr_engine_failed engine=moonshine message=${error.message}", error)
             }
         } finally {
-            // Stop capture before final native flush so no producer can keep extending the request.
             stopCapture(session)
 
             if (streamStarted && streamHandle >= 0) {
                 try {
-                    // If a line already completed, detach before the forced flush to avoid duplicate
-                    // terminal callbacks. Otherwise retain the listener so stopStream can supply the
-                    // final trailing line for onStopListening or transcript-silence finalization.
                     if (session.finalText.get() != null || session.cancelled.get() || session.failure.get() != null) {
                         listener?.let { transcriber.removeListener(it) }
                         session.transcriptListener = null
                         listener = null
                     }
+                    // Forced flush produces a trailing LineCompleted after VAD/client stop.
                     transcriber.stopStream(streamHandle)
                 } catch (error: Throwable) {
                     if (!session.cancelled.get()) session.failure.compareAndSet(null, error)
@@ -312,12 +396,6 @@ class MoonshineRecognitionService : RecognitionService() {
             session.engineDone.countDown()
             finishSession(session)
         }
-    }
-
-    private fun shouldFinalizeAfterTranscriptSilence(session: Session): Boolean {
-        val lastChangeAt = session.lastTranscriptChangeAtMs
-        if (!session.beganSpeech || lastChangeAt <= 0L || session.captureEnded.get()) return false
-        return SystemClock.elapsedRealtime() - lastChangeAt >= TRANSCRIPT_SILENCE_FINALIZE_MS
     }
 
     private fun onTranscriptEvent(session: Session, event: TranscriptEvent) {
@@ -353,20 +431,10 @@ class MoonshineRecognitionService : RecognitionService() {
     private fun onPartial(session: Session, text: String) {
         val clean = text.trim()
         if (clean.isBlank() || session.cancelled.get() || session.callbackDelivered.get()) return
-        session.lastTranscriptChangeAtMs = SystemClock.elapsedRealtime()
-        if (!session.beganSpeech) {
-            synchronized(session) {
-                if (!session.beganSpeech && !session.cancelled.get()) {
-                    session.beganSpeech = true
-                    runCatching { session.callback.beginningOfSpeech() }
-                    Log.i(TAG, "stage=asr_speech_started engine=moonshine")
-                }
-            }
-        }
+        markSpeechStarted(session, SystemClock.elapsedRealtime(), "transcript")
         runCatching { session.callback.partialResults(resultBundle(clean)) }
     }
 
-    /** Deliver terminal callbacks only after native stream stop/free has completed. */
     private fun finishSession(session: Session) {
         stopCapture(session)
         releaseInputAudioRoute()
@@ -386,12 +454,16 @@ class MoonshineRecognitionService : RecognitionService() {
                 if (session.beganSpeech) runCatching { session.callback.endOfSpeech() }
                 Log.i(
                     TAG,
-                    "stage=asr_final engine=moonshine chars=${text.length} capturedMs=$elapsedAudioMs maxQueue=${session.maxQueueDepth}",
+                    "stage=asr_final engine=moonshine chars=${text.length} capturedMs=$elapsedAudioMs " +
+                        "maxQueue=${session.maxQueueDepth} maxRmsDb=${session.maxRmsDb}",
                 )
                 runCatching { session.callback.results(resultBundle(text)) }
             }
             else -> {
-                Log.i(TAG, "stage=asr_no_match engine=moonshine capturedMs=$elapsedAudioMs")
+                Log.i(
+                    TAG,
+                    "stage=asr_no_match engine=moonshine capturedMs=$elapsedAudioMs maxRmsDb=${session.maxRmsDb}",
+                )
                 runCatching { session.callback.error(SpeechRecognizer.ERROR_NO_MATCH) }
             }
         }
@@ -411,11 +483,8 @@ class MoonshineRecognitionService : RecognitionService() {
         session.engineThread?.interrupt()
         if (activeSession === session) activeSession = null
         Log.i(TAG, "stage=asr_cancelled engine=moonshine reason=$reason")
-        // engineLoop owns native teardown. If setup never started an engine, its queued setup task
-        // will observe cancellation and count down engineDone without touching Moonshine JNI.
     }
 
-    /** Stop AudioRecord before release; never race release against a blocking native read. */
     private fun stopCapture(session: Session) {
         session.captureEnded.set(true)
         requestRecordStop(session)
@@ -443,6 +512,14 @@ class MoonshineRecognitionService : RecognitionService() {
     }
 
     private fun releaseRecord(session: Session) {
+        val agc = synchronized(session) {
+            val current = session.automaticGainControl
+            session.automaticGainControl = null
+            current
+        }
+        runCatching { agc?.release() }
+            .onFailure { Log.w(TAG, "stage=asr_agc_release_failed engine=moonshine", it) }
+
         val record = synchronized(session) {
             val current = session.audioRecord ?: return
             session.audioRecord = null
@@ -450,6 +527,29 @@ class MoonshineRecognitionService : RecognitionService() {
         }
         runCatching { record.release() }
             .onFailure { Log.w(TAG, "stage=asr_audio_release_failed engine=moonshine", it) }
+    }
+
+    private fun configureInputGain(session: Session, record: AudioRecord) {
+        val agc = if (AutomaticGainControl.isAvailable()) {
+            runCatching { AutomaticGainControl.create(record.audioSessionId) }.getOrNull()
+        } else {
+            null
+        }
+        val agcEnabled = if (agc != null) {
+            runCatching {
+                agc.enabled = true
+                agc.enabled
+            }.getOrDefault(false)
+        } else {
+            false
+        }
+        session.automaticGainControl = agc
+        session.softwareGain = if (agcEnabled) 1.0f else SOFTWARE_GAIN_FALLBACK
+        Log.i(
+            TAG,
+            "stage=asr_input_gain engine=moonshine agcAvailable=${AutomaticGainControl.isAvailable()} " +
+                "agcEnabled=$agcEnabled softwareGain=${session.softwareGain}",
+        )
     }
 
     private fun createAudioRecord(): CaptureDevice {
@@ -469,11 +569,20 @@ class MoonshineRecognitionService : RecognitionService() {
             .setSampleRate(TARGET_SAMPLE_RATE)
             .setChannelMask(AudioFormat.CHANNEL_IN_MONO)
             .build()
-        val record = AudioRecord.Builder()
-            .setAudioSource(MediaRecorder.AudioSource.MIC)
+        val bufferBytes = max(minBuffer * 4, TARGET_SAMPLE_RATE * 2)
+
+        fun build(source: Int): AudioRecord = AudioRecord.Builder()
+            .setAudioSource(source)
             .setAudioFormat(format)
-            .setBufferSizeInBytes(max(minBuffer * 4, TARGET_SAMPLE_RATE * 2))
+            .setBufferSizeInBytes(bufferBytes)
             .build()
+
+        var source = MediaRecorder.AudioSource.VOICE_RECOGNITION
+        val record = runCatching { build(source) }.getOrElse { voiceError ->
+            Log.w(TAG, "VOICE_RECOGNITION source failed; falling back to MIC", voiceError)
+            source = MediaRecorder.AudioSource.MIC
+            build(source)
+        }
         check(record.state == AudioRecord.STATE_INITIALIZED) {
             "Moonshine 16 kHz microphone failed to initialize"
         }
@@ -482,19 +591,19 @@ class MoonshineRecognitionService : RecognitionService() {
             val preferred = runCatching { record.setPreferredDevice(preferredInput) }.getOrDefault(false)
             Log.i(
                 TAG,
-                "stage=asr_input_device engine=moonshine type=${preferredInput.type} preferred=$preferred rate=$TARGET_SAMPLE_RATE",
+                "stage=asr_input_device engine=moonshine type=${preferredInput.type} preferred=$preferred " +
+                    "source=$source rate=$TARGET_SAMPLE_RATE",
             )
         } else {
-            Log.i(TAG, "stage=asr_input_device engine=moonshine type=default rate=$TARGET_SAMPLE_RATE")
+            Log.i(TAG, "stage=asr_input_device engine=moonshine type=default source=$source rate=$TARGET_SAMPLE_RATE")
         }
-        return CaptureDevice(record, preferredInput)
+        return CaptureDevice(record, preferredInput, source)
     }
 
     private fun isBluetoothInput(device: AudioDeviceInfo): Boolean =
         device.type == AudioDeviceInfo.TYPE_BLUETOOTH_SCO ||
             (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S && device.type == AudioDeviceInfo.TYPE_BLE_HEADSET)
 
-    /** Release the input communication route only after AudioRecord and Moonshine stream teardown. */
     @Suppress("DEPRECATION")
     private fun releaseInputAudioRoute() {
         val audioManager = getSystemService(Context.AUDIO_SERVICE) as? AudioManager ?: return
@@ -532,7 +641,6 @@ class MoonshineRecognitionService : RecognitionService() {
         }
     }
 
-    /** Process-wide native model cache. Streams remain strictly one-shot and single-owner. */
     private object MoonshineRuntime {
         private val lock = Any()
         private var loadedModelId: String? = null
@@ -554,10 +662,21 @@ class MoonshineRecognitionService : RecognitionService() {
         const val TAG = "AssistantTiming"
         const val TARGET_SAMPLE_RATE = 16_000
         const val READ_SAMPLES = 800 // 50 ms at 16 kHz.
-        const val MAX_QUEUED_CHUNKS = 600 // 30 seconds; overflow fails rather than corrupting speech.
+        const val MAX_QUEUED_CHUNKS = 600 // 30 seconds, enough to cover a cold model load.
         const val ENGINE_POLL_MS = 40L
-        const val TRANSCRIPT_SILENCE_FINALIZE_MS = 1_200L
         const val CAPTURE_JOIN_MS = 750L
         const val PREVIOUS_ENGINE_WAIT_MS = 2_500L
+
+        const val INITIAL_NOISE_FLOOR_DBFS = -72f
+        const val VAD_ABSOLUTE_MIN_DBFS = -62f
+        const val VAD_NOISE_MARGIN_DB = 7f
+        const val VAD_HYSTERESIS_DB = 3f
+        const val VAD_START_FRAMES = 2
+        const val NOISE_CALIBRATION_MS = 500L
+        const val END_SILENCE_MS = 900L
+        const val NO_SPEECH_TIMEOUT_MS = 6_000L
+        const val MAX_UTTERANCE_MS = 15_000L
+        const val SOFTWARE_GAIN_FALLBACK = 2.0f
+        const val RMS_FLOOR = 1e-6
     }
 }
