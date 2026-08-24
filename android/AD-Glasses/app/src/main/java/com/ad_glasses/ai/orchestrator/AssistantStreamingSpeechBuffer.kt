@@ -135,9 +135,11 @@ class AssistantStreamingSpeechBuffer(
 
             val hardEnd = minOf(cursor + DEFAULT_FINAL_SEGMENT_CHARS, text.length)
             val sentenceEnd = findSentenceBoundary(text, cursor, hardEnd)
-            val cut = sentenceEnd
-                ?: if (hardEnd < text.length) findForcedBoundary(text, cursor, hardEnd) else text.length
-                ?: text.length
+            val cut: Int = sentenceEnd ?: if (hardEnd < text.length) {
+                findForcedBoundary(text, cursor, hardEnd) ?: hardEnd
+            } else {
+                text.length
+            }
             val segment = text.substring(cursor, cut).trim()
             if (segment.isNotBlank()) segments += segment
             cursor = cut
