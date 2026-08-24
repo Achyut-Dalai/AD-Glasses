@@ -24,11 +24,7 @@ import java.util.Locale
 object AndroidAssistantVoiceIo {
     private const val TAG = "AssistantTiming"
 
-    @Volatile
-    private var appContext: Context? = null
-
     fun createRecognizer(context: Context): SpeechRecognizer {
-        appContext = context.applicationContext
         val component = ComponentName(context, MoonshineRecognitionService::class.java)
         Log.i(TAG, "stage=asr_engine engine=moonshine component=${component.flattenToShortString()}")
         return SpeechRecognizer.createSpeechRecognizer(context, component)
@@ -70,13 +66,13 @@ object AndroidAssistantVoiceIo {
      * Recognition deliberately releases the Bluetooth communication route as soon as Moonshine has
      * a final transcript. Re-establish it only after inference, immediately before the caller hands
      * the response to Android TTS, so Cloud AI latency never keeps the microphone/SCO path open.
+     * Returns true only when a Bluetooth communication route was actually requested successfully.
      */
     @Suppress("DEPRECATION")
-    fun prepareSpeechOutputRoute(context: Context) {
-        appContext = context.applicationContext
-        val audioManager = context.getSystemService(Context.AUDIO_SERVICE) as? AudioManager ?: return
+    fun prepareSpeechOutputRoute(context: Context): Boolean {
+        val audioManager = context.getSystemService(Context.AUDIO_SERVICE) as? AudioManager ?: return false
 
-        runCatching {
+        return runCatching {
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
                 val device = audioManager.availableCommunicationDevices.firstOrNull { candidate ->
                     candidate.type == AudioDeviceInfo.TYPE_BLUETOOTH_SCO ||
@@ -84,25 +80,29 @@ object AndroidAssistantVoiceIo {
                 }
                 if (device == null) {
                     Log.i(TAG, "stage=tts_route bluetooth=false sdk=${Build.VERSION.SDK_INT}")
-                    return@runCatching
+                    false
+                } else {
+                    audioManager.mode = AudioManager.MODE_IN_COMMUNICATION
+                    val selected = audioManager.setCommunicationDevice(device)
+                    Log.i(
+                        TAG,
+                        "stage=tts_route bluetooth=true sdk=${Build.VERSION.SDK_INT} selected=$selected type=${device.type}",
+                    )
+                    selected
                 }
-                audioManager.mode = AudioManager.MODE_IN_COMMUNICATION
-                val selected = audioManager.setCommunicationDevice(device)
-                Log.i(
-                    TAG,
-                    "stage=tts_route bluetooth=true sdk=${Build.VERSION.SDK_INT} selected=$selected type=${device.type}",
-                )
             } else if (audioManager.isBluetoothScoAvailableOffCall) {
                 audioManager.mode = AudioManager.MODE_IN_COMMUNICATION
                 audioManager.startBluetoothSco()
                 audioManager.isBluetoothScoOn = true
                 Log.i(TAG, "stage=tts_route bluetooth=true sdk=${Build.VERSION.SDK_INT} legacySco=true")
+                true
             } else {
                 Log.i(TAG, "stage=tts_route bluetooth=false sdk=${Build.VERSION.SDK_INT}")
+                false
             }
         }.onFailure { error ->
             Log.w(TAG, "stage=tts_route_failed", error)
-        }
+        }.getOrDefault(false)
     }
 
     fun installVoiceDataIntent(): Intent = Intent(TextToSpeech.Engine.ACTION_INSTALL_TTS_DATA)
