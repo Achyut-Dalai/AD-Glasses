@@ -50,7 +50,14 @@ class AndroidAssistantCapabilityExecutor(
             )
             providerFailureResult(error)
         }
-        prepareSpeechOutputRouteIfNeeded(context)
+
+        // MainActivity keeps the live communication route open and queues streamed TTS while the
+        // provider is still generating. Re-preparing the route after generation would add latency
+        // after speech may already have started. Non-streaming surfaces keep the existing behavior.
+        val streamingGlassesVoice = context.surface == AssistantInputSurface.GLASSES_VOICE && onToken != null
+        if (!streamingGlassesVoice) {
+            prepareSpeechOutputRouteIfNeeded(context)
+        }
         return result
     }
 
