@@ -50,6 +50,24 @@ class AssistantSpokenResponsePolicyTest {
     }
 
     @Test
+    fun raw_url_with_underscores_is_removed_before_underscore_cleanup() {
+        assertEquals(
+            "Open link for details.",
+            AssistantSpokenResponsePolicy.normalizeForSpeech(
+                "Open https://example.com/some_long_path for details.",
+            ),
+        )
+    }
+
+    @Test
+    fun programming_sharp_name_is_preserved_but_stray_hashes_are_removed() {
+        assertEquals(
+            "C sharp works well. Important",
+            AssistantSpokenResponsePolicy.normalizeForSpeech("C# works well. ###Important###"),
+        )
+    }
+
+    @Test
     fun runaway_answer_is_bounded_to_fifty_spoken_words() {
         val rich = (1..90).joinToString(" ") { "word$it" }
 
