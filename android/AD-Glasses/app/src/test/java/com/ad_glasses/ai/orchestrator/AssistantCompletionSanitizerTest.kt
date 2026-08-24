@@ -47,7 +47,22 @@ class AssistantCompletionSanitizerTest {
     }
 
     @Test
-    fun rejects_compact_system_prompt_echo() {
+    fun rejects_current_wearable_system_prompt_echo() {
+        val raw = """
+            You are AD. Return only the final answer. Audio-only wearable reply: plain text, 1-3 sentences, 10-50 words.
+            Start with the answer. Never restate or acknowledge the user's question.
+        """.trimIndent()
+
+        assertTrue(AssistantCompletionSanitizer.clean(raw).isBlank())
+    }
+
+    @Test
+    fun streaming_waits_on_partial_current_system_prompt_echo() {
+        assertTrue(AssistantCompletionSanitizer.cleanForStreaming("You are AD. Return only").isBlank())
+    }
+
+    @Test
+    fun rejects_previous_compact_system_prompt_echo() {
         val raw = "You are AD. Answer directly and concisely. Return only the final answer."
         assertTrue(AssistantCompletionSanitizer.clean(raw).isBlank())
     }

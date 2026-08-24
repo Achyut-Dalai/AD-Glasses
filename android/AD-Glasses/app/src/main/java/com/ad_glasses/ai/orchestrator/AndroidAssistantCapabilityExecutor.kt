@@ -200,19 +200,25 @@ class AndroidAssistantCapabilityExecutor(
         }
 
     /**
-     * Keep the repeated system instruction deliberately tiny. Legacy Local Agent memory context is
-     * deliberately ignored for normal glasses voice Ask: multi-turn context is the native last-three
-     * message list, not a second generated memory prompt. Other surfaces may still attach explicit
-     * artifact/image context when that turn requires it.
+     * Keep the repeated system instruction compact. Spoken surfaces are intentionally optimized for
+     * an audio-only wearable: short, direct, plain text that is cheap to generate and safe to speak.
+     * Legacy Local Agent memory context remains ignored for normal glasses voice Ask; native chat
+     * messages are the conversational context.
      */
     private fun conversationSystemPrompt(context: AssistantExecutionContext): String = buildString {
-        append("You are AD. Answer directly and concisely. Return only the final answer; do not output internal reasoning.")
         when (context.surface) {
             AssistantInputSurface.GLASSES_VOICE,
             AssistantInputSurface.GLASSES_VISION,
-            AssistantInputSurface.PHONE_VOICE -> append(" Keep spoken answers short and natural.")
+            AssistantInputSurface.PHONE_VOICE -> append(
+                "You are AD. Return only the final answer. " +
+                    "Audio-only wearable reply: plain text, 1-3 sentences, 10-50 words. " +
+                    "Start with the answer. Never restate or acknowledge the user's question. " +
+                    "No filler, Markdown, lists, asterisks, hashes, backticks, underscores, or internal reasoning.",
+            )
             AssistantInputSurface.PHONE_TEXT,
-            AssistantInputSurface.AUTOMATION -> Unit
+            AssistantInputSurface.AUTOMATION -> append(
+                "You are AD. Answer directly and concisely. Return only the final answer; do not output internal reasoning.",
+            )
         }
         if (context.useWeb) {
             append(" Use web search for this turn when needed.")
@@ -230,10 +236,21 @@ class AndroidAssistantCapabilityExecutor(
         }
     }
 
+    /**
+     * The prompt should make the model finish naturally; this is the hard cost/runaway guard.
+     * 96 tokens is enough for the requested 10-50 word wearable answer while cutting the previous
+     * 512-token ceiling by more than 80 percent.
+     *
+     * FUTURE PROVIDER/MODEL-AWARE THINKING POLICY — intentionally disabled for now:
+     * Gemini 2.5 Flash/Flash-Lite can use generationConfig.thinkingConfig.thinkingBudget = 0 for
+     * fast text-only turns. Newer Gemini 3 models prefer thinkingLevel and some cannot fully disable
+     * thinking. Never send either field globally: unsupported models can reject the request. Once AD
+     * standardizes on an allowlisted provider/model pair, wire the matching control in ApiAiRouter.
+     */
     private fun outputTokenLimit(surface: AssistantInputSurface): Int = when (surface) {
-        AssistantInputSurface.GLASSES_VOICE -> 512
-        AssistantInputSurface.GLASSES_VISION -> 512
-        AssistantInputSurface.PHONE_VOICE -> 512
+        AssistantInputSurface.GLASSES_VOICE -> 96
+        AssistantInputSurface.GLASSES_VISION -> 96
+        AssistantInputSurface.PHONE_VOICE -> 96
         AssistantInputSurface.PHONE_TEXT -> 512
         AssistantInputSurface.AUTOMATION -> 384
     }
