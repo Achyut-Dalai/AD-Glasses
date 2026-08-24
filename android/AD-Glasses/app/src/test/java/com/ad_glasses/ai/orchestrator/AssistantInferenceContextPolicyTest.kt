@@ -7,7 +7,7 @@ import org.junit.Test
 
 class AssistantInferenceContextPolicyTest {
     @Test
-    fun voice_keeps_only_last_three_prior_messages() {
+    fun voice_keeps_only_last_three_prior_messages_during_follow_up_window() {
         val now = 100_000L
         val history = (0 until 6).map { index ->
             message(
@@ -27,7 +27,7 @@ class AssistantInferenceContextPolicyTest {
     }
 
     @Test
-    fun long_pause_does_not_discard_last_three_messages() {
+    fun long_pause_discards_spoken_inference_context_but_not_history() {
         val now = 1_000_000L
         val history = listOf(
             message("old-user", ChatRole.USER, 10_000L),
@@ -43,14 +43,49 @@ class AssistantInferenceContextPolicyTest {
             nowMs = now,
         )
 
-        assertEquals(
-            listOf("old-answer", "follow-up", "follow-up-answer"),
-            prior.map { it.id },
-        )
+        assertEquals(emptyList<String>(), prior.map { it.id })
+        assertEquals(5, history.size)
     }
 
     @Test
-    fun phone_text_uses_same_last_three_message_rule() {
+    fun spoken_context_is_kept_at_exact_follow_up_boundary() {
+        val now = 100_000L
+        val previousAt = now - AssistantInferenceContextPolicy.SPOKEN_FOLLOW_UP_TTL_MS
+        val history = listOf(
+            message("previous-user", ChatRole.USER, previousAt - 1_000L),
+            message("previous-answer", ChatRole.ASSISTANT, previousAt),
+            message("current", ChatRole.USER, now),
+        )
+
+        val prior = AssistantInferenceContextPolicy.priorMessages(
+            history,
+            surface = AssistantInputSurface.GLASSES_VOICE,
+            nowMs = now,
+        )
+
+        assertEquals(listOf("previous-user", "previous-answer"), prior.map { it.id })
+    }
+
+    @Test
+    fun phone_voice_uses_same_time_gated_follow_up_rule() {
+        val now = 500_000L
+        val history = listOf(
+            message("previous-user", ChatRole.USER, 100_000L),
+            message("previous-answer", ChatRole.ASSISTANT, 110_000L),
+            message("current", ChatRole.USER, now),
+        )
+
+        val prior = AssistantInferenceContextPolicy.priorMessages(
+            history,
+            surface = AssistantInputSurface.PHONE_VOICE,
+            nowMs = now,
+        )
+
+        assertEquals(emptyList<String>(), prior.map { it.id })
+    }
+
+    @Test
+    fun phone_text_keeps_last_three_messages_even_after_long_gap() {
         val now = 500_000L
         val history = (0 until 10).map { index ->
             message(
