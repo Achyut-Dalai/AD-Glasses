@@ -66,6 +66,7 @@ class MoonshineRecognitionService : RecognitionService() {
         @Volatile var captureThread: Thread? = null
         @Volatile var engineThread: Thread? = null
         @Volatile var beganSpeech: Boolean = false
+        @Volatile var lastTranscriptChangeAtMs: Long = 0L
         @Volatile var capturedSamples: Long = 0L
         @Volatile var maxQueueDepth: Int = 0
     }
@@ -239,11 +240,27 @@ class MoonshineRecognitionService : RecognitionService() {
                 if (chunk != null) {
                     transcriber.addAudioToStream(streamHandle, chunk, TARGET_SAMPLE_RATE)
                 }
+                if (shouldFinalizeAfterTranscriptSilence(session)) {
+                    val now = SystemClock.elapsedRealtime()
+                    val idleMs = now - session.lastTranscriptChangeAtMs
+                    val capturedMs = session.capturedSamples * 1000L / TARGET_SAMPLE_RATE
+                    Log.i(
+                        TAG,
+                        "stage=asr_silence_timeout engine=moonshine idleMs=$idleMs capturedMs=$capturedMs",
+                    )
+                    // Do not wait for a second utterance to make Moonshine close the first line.
+                    // Stop only microphone capture here; the engine thread remains the sole owner of
+                    // the native stream and will drain queued audio before stopStream() forces the
+                    // trailing LineCompleted event.
+                    stopCapture(session)
+                    break
+                }
                 if (session.captureEnded.get() && session.audioQueue.isEmpty()) break
             }
 
-            // A normal client stop can arrive before Moonshine emitted a completed line. Drain the
-            // queue first, then keep the listener attached while stopStream forces the trailing text.
+            // A normal client stop or transcript-silence timeout can arrive before Moonshine emitted
+            // a completed line. Drain the queue first, then keep the listener attached while
+            // stopStream forces the trailing text.
             if (!session.cancelled.get() && !session.terminalRequested.get()) {
                 while (true) {
                     val chunk = session.audioQueue.poll() ?: break
@@ -269,7 +286,7 @@ class MoonshineRecognitionService : RecognitionService() {
                 try {
                     // If a line already completed, detach before the forced flush to avoid duplicate
                     // terminal callbacks. Otherwise retain the listener so stopStream can supply the
-                    // final trailing line for onStopListening.
+                    // final trailing line for onStopListening or transcript-silence finalization.
                     if (session.finalText.get() != null || session.cancelled.get() || session.failure.get() != null) {
                         listener?.let { transcriber.removeListener(it) }
                         session.transcriptListener = null
@@ -295,6 +312,12 @@ class MoonshineRecognitionService : RecognitionService() {
             session.engineDone.countDown()
             finishSession(session)
         }
+    }
+
+    private fun shouldFinalizeAfterTranscriptSilence(session: Session): Boolean {
+        val lastChangeAt = session.lastTranscriptChangeAtMs
+        if (!session.beganSpeech || lastChangeAt <= 0L || session.captureEnded.get()) return false
+        return SystemClock.elapsedRealtime() - lastChangeAt >= TRANSCRIPT_SILENCE_FINALIZE_MS
     }
 
     private fun onTranscriptEvent(session: Session, event: TranscriptEvent) {
@@ -330,6 +353,7 @@ class MoonshineRecognitionService : RecognitionService() {
     private fun onPartial(session: Session, text: String) {
         val clean = text.trim()
         if (clean.isBlank() || session.cancelled.get() || session.callbackDelivered.get()) return
+        session.lastTranscriptChangeAtMs = SystemClock.elapsedRealtime()
         if (!session.beganSpeech) {
             synchronized(session) {
                 if (!session.beganSpeech && !session.cancelled.get()) {
@@ -532,6 +556,7 @@ class MoonshineRecognitionService : RecognitionService() {
         const val READ_SAMPLES = 800 // 50 ms at 16 kHz.
         const val MAX_QUEUED_CHUNKS = 600 // 30 seconds; overflow fails rather than corrupting speech.
         const val ENGINE_POLL_MS = 40L
+        const val TRANSCRIPT_SILENCE_FINALIZE_MS = 1_200L
         const val CAPTURE_JOIN_MS = 750L
         const val PREVIOUS_ENGINE_WAIT_MS = 2_500L
     }
