@@ -36,8 +36,7 @@ object AgentInferenceRouter {
     // HttpURLConnection's blocking SSE read is not reliably interruptible on every Android build.
     // Keep the wearable user-facing deadline independent from that socket worker: after the voice
     // deadline expires we stop accepting its deltas and return immediately, even if Android takes
-    // longer to unwind the underlying connection. A transport-level short read timeout remains a
-    // desirable follow-up, but must never be required for the glasses UX deadline to work.
+    // longer to unwind the underlying connection.
     private val lowLatencyNetworkScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
 
     suspend fun complete(
@@ -205,18 +204,19 @@ object AgentInferenceRouter {
             val echoGate = UserPromptEchoGate(userPrompt)
             val streamingCallback = onToken?.let { downstream ->
                 { delta: String ->
-                    if (!acceptingStreaming.get()) return@let
-                    val safeDelta = if (lowLatencyVoiceRequest) echoGate.accept(delta) else delta
-                    if (safeDelta.isNotEmpty() && acceptingStreaming.get()) {
-                        if (firstDeltaLogged.compareAndSet(false, true)) {
-                            Log.i(
-                                TIMING_TAG,
-                                "stage=cloud_text_first_delta thread=$sessionLabel purpose=$purpose " +
-                                    "elapsedMs=${SystemClock.elapsedRealtime() - startedAt} chars=${safeDelta.length}",
-                            )
+                    if (acceptingStreaming.get()) {
+                        val safeDelta = if (lowLatencyVoiceRequest) echoGate.accept(delta) else delta
+                        if (safeDelta.isNotEmpty() && acceptingStreaming.get()) {
+                            if (firstDeltaLogged.compareAndSet(false, true)) {
+                                Log.i(
+                                    TIMING_TAG,
+                                    "stage=cloud_text_first_delta thread=$sessionLabel purpose=$purpose " +
+                                        "elapsedMs=${SystemClock.elapsedRealtime() - startedAt} chars=${safeDelta.length}",
+                                )
+                            }
+                            if (!firstUsefulDelta.isCompleted) firstUsefulDelta.complete(Unit)
+                            downstream(safeDelta)
                         }
-                        if (!firstUsefulDelta.isCompleted) firstUsefulDelta.complete(Unit)
-                        downstream(safeDelta)
                     }
                 }
             }
@@ -314,7 +314,7 @@ object AgentInferenceRouter {
             throw error
         } catch (error: Exception) {
             acceptingStreaming.set(false)
-            lowLatencyInFlight?.cancel(CancellationException("Wearable request failed", error))
+            lowLatencyInFlight?.cancel(CancellationException("Wearable request failed"))
             Log.w(
                 TIMING_TAG,
                 "stage=cloud_text_failed thread=$sessionLabel purpose=$purpose elapsedMs=${SystemClock.elapsedRealtime() - startedAt} type=${error::class.java.simpleName}",
