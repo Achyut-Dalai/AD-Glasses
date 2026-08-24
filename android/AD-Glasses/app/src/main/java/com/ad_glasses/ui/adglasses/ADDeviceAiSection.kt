@@ -134,7 +134,7 @@ internal fun ADDeviceAiSection(
                         color = ADColors.Ink,
                     )
                     Text(
-                        "Moonshine Medium Streaming · on-device ASR · Android TTS · last ${AssistantInferenceContextPolicy.MAX_PRIOR_MESSAGES} messages AI context",
+                        "Moonshine Medium Streaming · on-device ASR · Android TTS · last ${AssistantInferenceContextPolicy.MAX_PRIOR_MESSAGES} messages as AI context",
                         style = MaterialTheme.typography.bodySmall,
                         color = ADColors.Muted,
                     )
