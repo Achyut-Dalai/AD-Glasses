@@ -10,6 +10,8 @@ package com.ad_glasses.ai.orchestrator
  */
 class AssistantStreamingSpeechBuffer(
     private val streamingPrefixBudgetChars: Int = DEFAULT_STREAMING_PREFIX_BUDGET_CHARS,
+    private val firstForcedSplitChars: Int = DEFAULT_FIRST_FORCED_SPLIT_CHARS,
+    private val firstMinForcedSplitChars: Int = DEFAULT_FIRST_MIN_FORCED_SPLIT_CHARS,
     private val forcedSplitChars: Int = DEFAULT_FORCED_SPLIT_CHARS,
     private val minForcedSplitChars: Int = DEFAULT_MIN_FORCED_SPLIT_CHARS,
 ) {
@@ -76,11 +78,21 @@ class AssistantStreamingSpeechBuffer(
 
         val segments = mutableListOf<String>()
         while (cursor < maxExclusive) {
+            val isFirstAudibleSegment = consumedPrefix.isEmpty() && segments.isEmpty()
+            val splitChars = if (isFirstAudibleSegment) firstForcedSplitChars else forcedSplitChars
+            val minSplitChars = if (isFirstAudibleSegment) firstMinForcedSplitChars else minForcedSplitChars
             val sentenceEnd = findSentenceBoundary(normalized, cursor, maxExclusive)
+            val sentenceFitsEarlyWindow = sentenceEnd != null && sentenceEnd - cursor <= splitChars
             val cut = when {
+                sentenceFitsEarlyWindow -> sentenceEnd
+                maxExclusive - cursor >= splitChars ->
+                    findForcedBoundary(
+                        text = normalized,
+                        start = cursor,
+                        hardEnd = minOf(cursor + splitChars, maxExclusive),
+                        minSplitChars = minSplitChars,
+                    ) ?: sentenceEnd
                 sentenceEnd != null -> sentenceEnd
-                maxExclusive - cursor >= forcedSplitChars ->
-                    findForcedBoundary(normalized, cursor, minOf(cursor + forcedSplitChars, maxExclusive))
                 else -> null
             } ?: break
 
@@ -110,9 +122,14 @@ class AssistantStreamingSpeechBuffer(
         return null
     }
 
-    private fun findForcedBoundary(text: String, start: Int, hardEnd: Int): Int? {
-        if (hardEnd - start < minForcedSplitChars) return null
-        val minEnd = start + minForcedSplitChars
+    private fun findForcedBoundary(
+        text: String,
+        start: Int,
+        hardEnd: Int,
+        minSplitChars: Int = minForcedSplitChars,
+    ): Int? {
+        if (hardEnd - start < minSplitChars) return null
+        val minEnd = start + minSplitChars
         for (index in hardEnd - 1 downTo minEnd) {
             if (text[index] == ',' || text[index] == ';' || text[index] == ':' ||
                 text[index] == '—' || text[index] == '–'
@@ -149,6 +166,8 @@ class AssistantStreamingSpeechBuffer(
 
     private companion object {
         const val DEFAULT_STREAMING_PREFIX_BUDGET_CHARS = 180
+        const val DEFAULT_FIRST_FORCED_SPLIT_CHARS = 72
+        const val DEFAULT_FIRST_MIN_FORCED_SPLIT_CHARS = 48
         const val DEFAULT_FORCED_SPLIT_CHARS = 140
         const val DEFAULT_MIN_FORCED_SPLIT_CHARS = 80
         const val DEFAULT_FINAL_SEGMENT_CHARS = 180
