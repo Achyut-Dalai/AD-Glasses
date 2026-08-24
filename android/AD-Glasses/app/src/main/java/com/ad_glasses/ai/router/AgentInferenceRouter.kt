@@ -189,24 +189,11 @@ object AgentInferenceRouter {
             systemPrompt
         }
         val effectiveConversationMessages = if (lowLatencyVoiceRequest) {
-            conversationMessages
-                .takeLast(LOW_LATENCY_PRIOR_MESSAGES)
-                .mapNotNull { message ->
-                    val role = message["role"]?.trim()?.lowercase().orEmpty()
-                    val content = message["content"]
-                        ?.trim()
-                        .orEmpty()
-                        .take(LOW_LATENCY_MESSAGE_CHARS)
-                        .trim()
-                    if ((role == "user" || role == "assistant") && content.isNotBlank()) {
-                        mapOf("role" to role, "content" to content)
-                    } else {
-                        null
-                    }
-                }
+            boundedLowLatencyHistory(conversationMessages)
         } else {
             conversationMessages
         }
+        val effectiveHistoryChars = effectiveConversationMessages.sumOf { it["content"].orEmpty().length }
 
         val startedAt = SystemClock.elapsedRealtime()
         val sessionLabel = sessionId.takeLast(8)
@@ -216,7 +203,7 @@ object AgentInferenceRouter {
             TIMING_TAG,
             "stage=cloud_text_start thread=$sessionLabel purpose=$purpose maxTokens=$maxTokens streaming=${onToken != null} " +
                 "lowLatency=$lowLatencyVoiceRequest systemChars=${effectiveSystemPrompt.length} " +
-                "historyMessages=${effectiveConversationMessages.size}",
+                "historyMessages=${effectiveConversationMessages.size} historyChars=$effectiveHistoryChars",
         )
         return try {
             val firstUsefulDelta = CompletableDeferred<Unit>()
@@ -364,6 +351,27 @@ object AgentInferenceRouter {
         }
     }
 
+    /** Keep the old ~720-character low-latency history ceiling, but allow many short turns. */
+    private fun boundedLowLatencyHistory(
+        conversationMessages: List<Map<String, String>>,
+    ): List<Map<String, String>> {
+        val selectedNewestFirst = mutableListOf<Map<String, String>>()
+        var usedChars = 0
+        conversationMessages.asReversed().forEach { message ->
+            val role = message["role"]?.trim()?.lowercase().orEmpty()
+            val content = message["content"]
+                ?.trim()
+                .orEmpty()
+                .take(LOW_LATENCY_MESSAGE_CHARS)
+                .trim()
+            if ((role != "user" && role != "assistant") || content.isBlank()) return@forEach
+            if (usedChars + content.length > LOW_LATENCY_HISTORY_CHARS) return@forEach
+            selectedNewestFirst += mapOf("role" to role, "content" to content)
+            usedChars += content.length
+        }
+        return selectedNewestFirst.asReversed()
+    }
+
     /** Hold an answer only while it still looks like the provider may be echoing the user question. */
     private class UserPromptEchoGate(userPrompt: String) {
         private val prompt = userPrompt.trim()
@@ -433,10 +441,10 @@ object AgentInferenceRouter {
     }
 
     private const val UI_PLANNING_MAX_TOKENS = 512
-    private const val LOW_LATENCY_VOICE_TOKEN_CEILING = 256
+    private const val LOW_LATENCY_VOICE_TOKEN_CEILING = 512
     private const val LOW_LATENCY_SYSTEM_PROMPT_CHARS = 320
-    private const val LOW_LATENCY_PRIOR_MESSAGES = 2
     private const val LOW_LATENCY_MESSAGE_CHARS = 360
+    private const val LOW_LATENCY_HISTORY_CHARS = 720
     private const val LOW_LATENCY_FIRST_DELTA_TIMEOUT_MS = 6_000L
     private const val LOW_LATENCY_TOTAL_TIMEOUT_MS = 30_000L
 }
