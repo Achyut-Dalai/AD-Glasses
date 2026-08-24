@@ -1,7 +1,7 @@
 import org.gradle.api.tasks.compile.JavaCompile
 
 plugins {
-    id("com.android.library") version "9.3.1" apply false
+    id("com.android.library") version "9.3.2" apply false
 }
 
 val coreVersion = providers.gradleProperty("version").orNull ?: "0.2.0"
