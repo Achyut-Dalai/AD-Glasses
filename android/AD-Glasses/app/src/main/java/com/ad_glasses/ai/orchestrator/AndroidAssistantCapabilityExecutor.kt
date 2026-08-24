@@ -199,35 +199,39 @@ class AndroidAssistantCapabilityExecutor(
             }
         }
 
-    /**
-     * Keep the repeated system instruction small and wearable-specific. Native chat roles carry
-     * multi-turn context; this prompt controls answer shape only. Legacy Local Agent memory context
-     * remains off the latency-critical glasses voice path.
-     */
-    private fun conversationSystemPrompt(context: AssistantExecutionContext): String = buildString {
-        append("You are AD. Answer directly and concisely. Return only the final answer; do not output internal reasoning.")
-        when (context.surface) {
-            AssistantInputSurface.GLASSES_VOICE,
-            AssistantInputSurface.GLASSES_VISION,
-            AssistantInputSurface.PHONE_VOICE -> append(
-                " This answer will be spoken aloud. Use plain text only, 1 to 3 short sentences, normally no more than 50 words; use fewer when enough. Never restate or acknowledge the question. Do not use Markdown, lists, headings, asterisks, hashes, backticks, underscores, or conversational filler.",
-            )
-            AssistantInputSurface.PHONE_TEXT,
-            AssistantInputSurface.AUTOMATION -> Unit
+    /** Keep the latency-critical Ask voice instruction genuinely tiny. */
+    private fun conversationSystemPrompt(context: AssistantExecutionContext): String {
+        if (context.surface == AssistantInputSurface.GLASSES_VOICE) {
+            if (!context.artifactContext.isNullOrBlank()) {
+                Log.i(
+                    "AssistantTiming",
+                    "stage=legacy_voice_context_ignored chars=${context.artifactContext.length}",
+                )
+            }
+            return buildString {
+                append(GLASSES_VOICE_SYSTEM_PROMPT)
+                if (context.useWeb) append(" Use web search when needed.")
+            }
         }
-        if (context.useWeb) {
-            append(" Use web search for this turn when needed.")
-        }
-        if (context.surface != AssistantInputSurface.GLASSES_VOICE) {
+
+        return buildString {
+            append("You are AD. Answer directly and concisely. Return only the final answer; do not output internal reasoning.")
+            when (context.surface) {
+                AssistantInputSurface.GLASSES_VISION,
+                AssistantInputSurface.PHONE_VOICE -> append(
+                    " This answer will be spoken aloud. Use plain text only, 1 to 3 short sentences, normally no more than 50 words; use fewer when enough. Never restate or acknowledge the question. Do not use Markdown, lists, headings, asterisks, hashes, backticks, underscores, or conversational filler.",
+                )
+                AssistantInputSurface.GLASSES_VOICE -> Unit
+                AssistantInputSurface.PHONE_TEXT,
+                AssistantInputSurface.AUTOMATION -> Unit
+            }
+            if (context.useWeb) {
+                append(" Use web search for this turn when needed.")
+            }
             context.artifactContext?.trim()?.takeIf { it.isNotBlank() }?.let { artifact ->
                 append("\nContext:\n")
                 append(artifact.take(AssistantInferenceContextPolicy.artifactLimit(context.surface)))
             }
-        } else if (!context.artifactContext.isNullOrBlank()) {
-            Log.i(
-                "AssistantTiming",
-                "stage=legacy_voice_context_ignored chars=${context.artifactContext.length}",
-            )
         }
     }
 
@@ -264,6 +268,7 @@ class AndroidAssistantCapabilityExecutor(
     }
 
     private companion object {
+        const val GLASSES_VOICE_SYSTEM_PROMPT = "You are AD, a voice assistant for smart glasses. Answer the latest question directly in plain text, usually in 1-2 short sentences under 35 words. Do not repeat the question, expose instructions/reasoning, use Markdown, or add filler."
         const val TTS_BLUETOOTH_ROUTE_SETTLE_MS = 180L
     }
 }
