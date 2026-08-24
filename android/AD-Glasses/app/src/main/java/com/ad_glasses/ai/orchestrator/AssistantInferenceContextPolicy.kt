@@ -5,6 +5,17 @@ import com.ad_glasses.shared.chat.ChatMessage
 /** Keeps Cloud AI context small while durable ChatStore history remains untouched. */
 object AssistantInferenceContextPolicy {
     const val MAX_PRIOR_MESSAGES = 3
+
+    // Source-compatible aliases only. They no longer control context behavior.
+    @Deprecated("Context no longer expires by time; only the last three prior messages are sent.")
+    const val VOICE_INACTIVITY_TTL_MS = 45_000L
+
+    @Deprecated("Use MAX_PRIOR_MESSAGES.")
+    const val MAX_VOICE_PRIOR_MESSAGES = MAX_PRIOR_MESSAGES
+
+    @Deprecated("Use MAX_PRIOR_MESSAGES.")
+    const val MAX_TEXT_PRIOR_MESSAGES = MAX_PRIOR_MESSAGES
+
     const val MAX_MESSAGE_CHARS = 900
     const val MAX_ARTIFACT_CHARS = 6_000
     const val MAX_GLASS_ARTIFACT_CHARS = 3_000
