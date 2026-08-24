@@ -1,0 +1,253 @@
+name: Apply voice streaming Activity integration
+
+on:
+  push:
+    branches:
+      - fix/voice-ask-critical-path
+
+permissions:
+  contents: write
+
+jobs:
+  patch-main-activity:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: fix/voice-ask-critical-path
+          fetch-depth: 0
+
+      - name: Patch MainActivity voice path
+        shell: bash
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+
+          path = Path('android/AD-Glasses/app/src/main/java/com/ad_glasses/MainActivity.kt')
+          text = path.read_text()
+
+          old = '''    private suspend fun runMemoryAwareChosenProviderQuery(
+              userPrompt: String,
+              providerType: AgentProviderType,
+              imagePaths: List<String> = emptyList(),
+              audioPath: String? = null,
+              onToken: ((String) -> Unit)? = null,
+          ): String {
+              val date = todayDateString()
+              val languageTag = recognitionLanguageTag()
+              val systemPrompt = buildString {
+                  append(buildCompactMemoryAwareSystemPrompt(queryText = userPrompt, date = date))
+                  append("\\n\\n")
+                  append(ImageQuestionDefaults.responseLanguageInstruction(languageTag))
+              }
+
+              if (imagePaths.isEmpty() && audioPath.isNullOrBlank()) {
+                  val result = AssistantOrchestrator(
+                      context = this,
+                      executor = AndroidAssistantCapabilityExecutor(this, onToken = onToken),
+                  ).handle(
+                      turn = AssistantTurn(
+                          text = userPrompt,
+                          surface = AssistantInputSurface.GLASSES_VOICE,
+                          contextText = systemPrompt,
+                          webRequested = null,
+                      ),
+                      providerType = AgentProviderType.CLOUD_AI,
+                  )
+                  return result.spokenText.trim().ifBlank { result.richText.trim() }
+              }
+
+              val messages = listOf(
+                  mapOf("role" to "system", "content" to systemPrompt),
+                  mapOf("role" to "user", "content" to userPrompt),
+              )
+          '''
+          new = '''    private suspend fun runMemoryAwareChosenProviderQuery(
+              userPrompt: String,
+              providerType: AgentProviderType,
+              imagePaths: List<String> = emptyList(),
+              audioPath: String? = null,
+              onToken: ((String) -> Unit)? = null,
+          ): String {
+              // Normal glasses Ask is transcript-first: once Moonshine finalizes text, go straight
+              // into the orchestrator. Personal-memory/artifact construction is not part of this
+              // critical path; the executor already supplies the bounded native chat history.
+              if (imagePaths.isEmpty() && audioPath.isNullOrBlank()) {
+                  val result = AssistantOrchestrator(
+                      context = this,
+                      executor = AndroidAssistantCapabilityExecutor(this, onToken = onToken),
+                  ).handle(
+                      turn = AssistantTurn(
+                          text = userPrompt,
+                          surface = AssistantInputSurface.GLASSES_VOICE,
+                          contextText = null,
+                          webRequested = null,
+                      ),
+                      providerType = providerType,
+                  )
+                  return if (onToken != null) {
+                      result.richText.trim().ifBlank { result.spokenText.trim() }
+                  } else {
+                      result.spokenText.trim().ifBlank { result.richText.trim() }
+                  }
+              }
+
+              // Media requests keep their explicit context path. Normal voice never reaches here.
+              val date = todayDateString()
+              val languageTag = recognitionLanguageTag()
+              val systemPrompt = buildString {
+                  append(buildCompactMemoryAwareSystemPrompt(queryText = userPrompt, date = date))
+                  append("\\n\\n")
+                  append(ImageQuestionDefaults.responseLanguageInstruction(languageTag))
+              }
+              val messages = listOf(
+                  mapOf("role" to "system", "content" to systemPrompt),
+                  mapOf("role" to "user", "content" to userPrompt),
+              )
+          '''
+          if old not in text:
+              raise SystemExit('runMemoryAwareChosenProviderQuery anchor not found')
+          text = text.replace(old, new, 1)
+
+          anchor = '''    private fun completeTtsUtterance(utteranceId: String?) {
+          '''
+          helper = '''    private fun enqueueStreamingTts(
+              text: String,
+              utteranceId: String,
+              onDone: () -> Unit,
+          ) {
+              val clean = text.trim()
+              if (clean.isBlank()) {
+                  onDone()
+                  return
+              }
+              val engine = tts
+              val languageTag = recognitionLanguageTag()
+              val locale = Locale.forLanguageTag(languageTag)
+              engine?.let { AndroidAssistantVoiceIo.preferOfflineVoice(it, locale) }
+              ttsDoneCallbacks[utteranceId] = onDone
+              val bundle = Bundle().apply {
+                  putString(TextToSpeech.Engine.KEY_PARAM_UTTERANCE_ID, utteranceId)
+              }
+              AudioSessionCoordinator.markBusy()
+              ttsEnqueuedAtMs[utteranceId] = android.os.SystemClock.elapsedRealtime()
+              Log.i(
+                  "AssistantTiming",
+                  "stage=tts_stream_enqueued id=$utteranceId chars=${clean.length}",
+              )
+              val result = runCatching {
+                  engine?.speak(clean, TextToSpeech.QUEUE_ADD, bundle, utteranceId)
+              }.onFailure { error ->
+                  Log.e("ImageQuestionAudio", "Streaming TTS enqueue threw id=$utteranceId", error)
+              }.getOrNull()
+              if (result != TextToSpeech.SUCCESS) {
+                  Log.w("ImageQuestionAudio", "Streaming TTS enqueue failed id=$utteranceId result=$result")
+                  completeTtsUtterance(utteranceId)
+              }
+          }
+
+          '''
+          if anchor not in text:
+              raise SystemExit('TTS helper anchor not found')
+          text = text.replace(anchor, helper + anchor, 1)
+
+          old = '''                        when (routing.intent) {
+                              AssistantIntent.ANSWER_QUESTION -> {
+                                  val reply = runMemoryAwareChosenProviderQuery(
+                                      userPrompt = prompt,
+                                      providerType = selectedProvider,
+                                  )
+
+                                  runOnUiThread {
+                                      speakVision(reply) {
+                                          stopSco()
+                                          finishAiQuestionForegroundWork()
+                                      }
+                                  }
+                              }
+          '''
+          new = '''                        when (routing.intent) {
+                              AssistantIntent.ANSWER_QUESTION -> {
+                                  val speechBuffer = com.ad_glasses.ai.orchestrator.AssistantStreamingSpeechBuffer()
+                                  val pendingSpeech = java.util.concurrent.atomic.AtomicInteger(0)
+                                  val generationFinished = AtomicBoolean(false)
+                                  val cleanupFinished = AtomicBoolean(false)
+                                  val segmentCounter = java.util.concurrent.atomic.AtomicInteger(0)
+
+                                  fun finishWhenDrained() {
+                                      if (!generationFinished.get() || pendingSpeech.get() != 0) return
+                                      if (!cleanupFinished.compareAndSet(false, true)) return
+                                      runOnUiThread {
+                                          AudioSessionCoordinator.markIdle()
+                                          stopSco()
+                                          finishAiQuestionForegroundWork()
+                                      }
+                                  }
+
+                                  fun enqueueSegments(segments: List<String>) {
+                                      segments.forEach { segment ->
+                                          val number = segmentCounter.incrementAndGet()
+                                          pendingSpeech.incrementAndGet()
+                                          val id = "voice_stream_${System.nanoTime()}_$number"
+                                          runOnUiThread {
+                                              enqueueStreamingTts(
+                                                  text = segment,
+                                                  utteranceId = id,
+                                                  onDone = {
+                                                      pendingSpeech.decrementAndGet()
+                                                      finishWhenDrained()
+                                                  },
+                                              )
+                                          }
+                                      }
+                                  }
+
+                                  val reply = runMemoryAwareChosenProviderQuery(
+                                      userPrompt = prompt,
+                                      providerType = selectedProvider,
+                                      onToken = { delta ->
+                                          enqueueSegments(speechBuffer.accept(delta))
+                                      },
+                                  )
+                                  enqueueSegments(speechBuffer.finish(reply))
+                                  generationFinished.set(true)
+                                  finishWhenDrained()
+                              }
+          '''
+          if old not in text:
+              raise SystemExit('ANSWER_QUESTION anchor not found')
+          text = text.replace(old, new, 1)
+
+          old = '''                destroyActiveVoiceRecognizer(recognizer)
+                  lifecycleScope.launch(Dispatchers.IO) {
+          '''
+          new = '''                destroyActiveVoiceRecognizer(recognizer)
+                  Log.i(
+                      "AssistantTiming",
+                      "stage=voice_transcript_dispatch delayMs=${android.os.SystemClock.elapsedRealtime() - finalAtMs}",
+                  )
+                  lifecycleScope.launch(Dispatchers.IO) {
+          '''
+          if old not in text:
+              raise SystemExit('voice dispatch anchor not found')
+          text = text.replace(old, new, 1)
+
+          path.write_text(text)
+          PY
+
+          git diff --check
+          git diff -- android/AD-Glasses/app/src/main/java/com/ad_glasses/MainActivity.kt
+
+      - name: Commit Activity integration
+        shell: bash
+        run: |
+          if git diff --quiet; then
+            echo "No Activity patch needed"
+            exit 0
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add android/AD-Glasses/app/src/main/java/com/ad_glasses/MainActivity.kt
+          git commit -m "Stream voice replies while cloud generation continues"
+          git push origin HEAD:fix/voice-ask-critical-path
