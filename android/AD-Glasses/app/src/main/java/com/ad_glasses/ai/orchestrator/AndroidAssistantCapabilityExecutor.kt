@@ -63,6 +63,7 @@ class AndroidAssistantCapabilityExecutor(
             val result = AssistantResult(
                 spokenText = "I don’t have a usable frame for that yet.",
                 richText = "This visual request has context, but no image frame was supplied to the selected vision engine.",
+                persist = false,
             )
             prepareSpeechOutputRouteIfNeeded(context)
             return result
@@ -166,7 +167,7 @@ class AndroidAssistantCapabilityExecutor(
                 "Cloud AI is temporarily unavailable. Try again."
             else -> "I couldn't get an answer. Try again."
         }
-        return AssistantResult(spokenText = spoken, richText = spoken)
+        return AssistantResult(spokenText = spoken, richText = spoken, persist = false)
     }
 
     /** Native chat roles are the multi-turn context. No conversation text is duplicated in system. */
@@ -231,6 +232,7 @@ class AndroidAssistantCapabilityExecutor(
             return AssistantResult(
                 spokenText = "I didn’t get a usable answer. Please try again.",
                 richText = "I didn’t get a usable answer. Please try again.",
+                persist = false,
             )
         }
         return AssistantResult(
