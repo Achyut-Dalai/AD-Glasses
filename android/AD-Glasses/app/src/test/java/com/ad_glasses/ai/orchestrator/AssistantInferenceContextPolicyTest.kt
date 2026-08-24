@@ -8,7 +8,7 @@ import org.junit.Test
 
 class AssistantInferenceContextPolicyTest {
     @Test
-    fun active_micro_session_keeps_only_the_last_four_prior_messages() {
+    fun active_micro_session_keeps_only_the_last_three_prior_messages() {
         val now = 100_000L
         val history = (0 until 6).map { index ->
             message(
@@ -20,7 +20,7 @@ class AssistantInferenceContextPolicyTest {
 
         val prior = AssistantInferenceContextPolicy.priorMessages(history, nowMs = now)
 
-        assertEquals(listOf("m2", "m3", "m4", "m5"), prior.map { it.id })
+        assertEquals(listOf("m3", "m4", "m5"), prior.map { it.id })
     }
 
     @Test
