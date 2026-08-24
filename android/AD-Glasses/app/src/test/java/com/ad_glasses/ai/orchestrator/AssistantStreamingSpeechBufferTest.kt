@@ -21,6 +21,18 @@ class AssistantStreamingSpeechBufferTest {
     }
 
     @Test
+    fun emits_first_long_sentence_at_earlier_natural_phrase_boundary() {
+        val buffer = AssistantStreamingSpeechBuffer()
+
+        assertEquals(
+            listOf("The fastest way to get started is to open the settings screen and choose"),
+            buffer.accept(
+                "The fastest way to get started is to open the settings screen and choose your preferred provider while keeping the app connected.",
+            ),
+        )
+    }
+
+    @Test
     fun never_emits_unfinished_reasoning_block() {
         val buffer = AssistantStreamingSpeechBuffer()
 
