@@ -91,6 +91,7 @@ class AssistantStreamingSpeechBuffer(
                         start = cursor,
                         hardEnd = minOf(cursor + splitChars, maxExclusive),
                         minSplitChars = minSplitChars,
+                        preferPhraseBoundary = isFirstAudibleSegment,
                     ) ?: sentenceEnd
                 sentenceEnd != null -> sentenceEnd
                 else -> null
@@ -127,6 +128,7 @@ class AssistantStreamingSpeechBuffer(
         start: Int,
         hardEnd: Int,
         minSplitChars: Int = minForcedSplitChars,
+        preferPhraseBoundary: Boolean = false,
     ): Int? {
         if (hardEnd - start < minSplitChars) return null
         val minEnd = start + minSplitChars
@@ -138,22 +140,23 @@ class AssistantStreamingSpeechBuffer(
             }
         }
 
-        // Prefer ending the first audible chunk before a conjunction/transition instead of
-        // producing an awkward utterance such as "...screen and". This is deliberately simple and
-        // still falls back to ordinary whitespace for languages where these separators do not fit.
-        val lower = text.lowercase()
-        var phraseBoundary = -1
-        for (separator in NATURAL_PHRASE_SEPARATORS) {
-            val index = lower.lastIndexOf(separator, startIndex = hardEnd - 1)
-            if (
-                index >= minEnd &&
-                index + separator.length <= hardEnd &&
-                index > phraseBoundary
-            ) {
-                phraseBoundary = index
+        if (preferPhraseBoundary) {
+            // End the first audible chunk before a conjunction/transition instead of producing an
+            // awkward utterance such as "...screen and". Later chunks retain the old segmentation.
+            val lower = text.lowercase()
+            var phraseBoundary = -1
+            for (separator in NATURAL_PHRASE_SEPARATORS) {
+                val index = lower.lastIndexOf(separator, startIndex = hardEnd - 1)
+                if (
+                    index >= minEnd &&
+                    index + separator.length <= hardEnd &&
+                    index > phraseBoundary
+                ) {
+                    phraseBoundary = index
+                }
             }
+            if (phraseBoundary >= minEnd) return phraseBoundary
         }
-        if (phraseBoundary >= minEnd) return phraseBoundary
 
         for (index in hardEnd - 1 downTo minEnd) {
             if (text[index].isWhitespace()) return index
