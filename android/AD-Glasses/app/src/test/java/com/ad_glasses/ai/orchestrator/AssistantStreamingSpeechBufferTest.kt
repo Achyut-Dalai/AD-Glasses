@@ -80,6 +80,17 @@ class AssistantStreamingSpeechBufferTest {
     }
 
     @Test
+    fun quoted_math_answer_is_not_dropped_by_speech_cleanup() {
+        val buffer = AssistantStreamingSpeechBuffer()
+
+        assertTrue(buffer.accept("The answer is").isEmpty())
+        assertEquals(
+            listOf("The answer is \"36\"."),
+            buffer.finish("The answer is \"36\"."),
+        )
+    }
+
+    @Test
     fun partial_compact_system_prompt_echo_is_not_spoken() {
         val buffer = AssistantStreamingSpeechBuffer()
 
