@@ -42,8 +42,12 @@ internal class SafeFirstAnswerGate {
     fun accept(delta: String): String {
         if (delta.isEmpty()) return ""
         raw.append(delta)
-        return AssistantCompletionSanitizer.cleanForStreaming(raw.toString())
+        return currentVisible()
     }
+
+    @Synchronized
+    fun currentVisible(): String =
+        AssistantCompletionSanitizer.cleanForStreaming(raw.toString()).trim()
 }
 
 /** Cloud-only inference boundary. Local Agent remains an automation capability, not an LLM. */
@@ -296,23 +300,32 @@ object AgentInferenceRouter {
                     )
                 }
 
+                // Once safe speech has started, generation may continue while local TTS is already
+                // playing. Do not turn a useful streamed answer into an error merely because the
+                // provider is still finishing its tail. Keep a generous runaway cap and, if that cap
+                // is ever reached, return the safe partial answer instead of speaking a fallback.
                 val elapsedMs = SystemClock.elapsedRealtime() - startedAt
                 val remainingMs = (LOW_LATENCY_TOTAL_TIMEOUT_MS - elapsedMs).coerceAtLeast(1L)
                 val completed = withTimeoutOrNull(remainingMs) { inFlight.await() }
                 if (completed == null) {
                     acceptingStreaming.set(false)
+                    val partial = safeFirstAnswerGate.currentVisible()
                     Log.w(
                         TIMING_TAG,
-                        "stage=cloud_text_timeout thread=$sessionLabel purpose=$purpose phase=total " +
+                        "stage=cloud_text_timeout thread=$sessionLabel purpose=$purpose phase=total_partial " +
                             "elapsedMs=${SystemClock.elapsedRealtime() - startedAt} " +
-                            "budgetMs=$LOW_LATENCY_TOTAL_TIMEOUT_MS",
+                            "budgetMs=$LOW_LATENCY_TOTAL_TIMEOUT_MS partialChars=${partial.length}",
                     )
-                    inFlight.cancel(CancellationException("Wearable total-generation deadline expired"))
-                    throw IllegalStateException(
-                        "Cloud AI exceeded the ${LOW_LATENCY_TOTAL_TIMEOUT_MS}ms wearable generation budget",
-                    )
+                    inFlight.cancel(CancellationException("Wearable generation runaway cap expired"))
+                    if (partial.isBlank()) {
+                        throw IllegalStateException(
+                            "Cloud AI exceeded the ${LOW_LATENCY_TOTAL_TIMEOUT_MS}ms wearable generation cap without a usable partial answer",
+                        )
+                    }
+                    partial
+                } else {
+                    completed
                 }
-                completed
             } else {
                 request()
             }
@@ -425,5 +438,5 @@ object AgentInferenceRouter {
     private const val LOW_LATENCY_PRIOR_MESSAGES = 2
     private const val LOW_LATENCY_MESSAGE_CHARS = 360
     private const val LOW_LATENCY_FIRST_DELTA_TIMEOUT_MS = 6_000L
-    private const val LOW_LATENCY_TOTAL_TIMEOUT_MS = 8_000L
+    private const val LOW_LATENCY_TOTAL_TIMEOUT_MS = 30_000L
 }
