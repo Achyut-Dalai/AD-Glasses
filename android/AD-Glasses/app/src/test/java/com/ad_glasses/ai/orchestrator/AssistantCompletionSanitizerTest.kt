@@ -18,6 +18,17 @@ class AssistantCompletionSanitizerTest {
     }
 
     @Test
+    fun complete_reasoning_block_without_final_answer_is_rejected_for_recovery() {
+        val raw = """
+            <think>
+            The model spent its entire output budget reasoning.
+            </think>
+        """.trimIndent()
+
+        assertTrue(AssistantCompletionSanitizer.clean(raw).isBlank())
+    }
+
+    @Test
     fun keeps_only_final_answer_after_reasoning_label() {
         val raw = """
             Reasoning: work through several possibilities first.
