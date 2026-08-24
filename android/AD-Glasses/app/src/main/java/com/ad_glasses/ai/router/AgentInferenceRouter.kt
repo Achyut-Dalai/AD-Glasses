@@ -6,6 +6,7 @@ import android.util.Log
 import com.ad_glasses.agent.LocalAgentPrefs as AutomationPrefs
 import com.ad_glasses.shared.settings.AgentProviderType
 import java.io.File
+import java.util.concurrent.atomic.AtomicBoolean
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
@@ -43,6 +44,7 @@ object AgentInferenceRouter {
         systemPrompt = systemPrompt,
         userPrompt = userPrompt,
         conversationMessages = conversationMessages,
+        onToken = onToken,
         webRequested = webRequested,
         maxTokensOverride = maxTokens,
     )
@@ -71,6 +73,7 @@ object AgentInferenceRouter {
                     sessionId = sessionId,
                     systemPrompt = systemPrompt,
                     userPrompt = userPrompt,
+                    onToken = onToken,
                     webRequested = webRequested,
                     maxTokensOverride = maxTokens,
                 ),
@@ -133,6 +136,7 @@ object AgentInferenceRouter {
         systemPrompt: String,
         userPrompt: String,
         conversationMessages: List<Map<String, String>> = emptyList(),
+        onToken: ((String) -> Unit)?,
         webRequested: Boolean,
         maxTokensOverride: Int?,
     ): String {
@@ -143,16 +147,40 @@ object AgentInferenceRouter {
         val sessionLabel = sessionId.takeLast(8)
         Log.i(
             TIMING_TAG,
-            "stage=cloud_text_start thread=$sessionLabel purpose=$purpose maxTokens=$maxTokens",
+            "stage=cloud_text_start thread=$sessionLabel purpose=$purpose maxTokens=$maxTokens streaming=${onToken != null}",
         )
         return try {
+            val firstDeltaLogged = AtomicBoolean(false)
+            val streamingCallback = onToken?.let { downstream ->
+                { delta: String ->
+                    if (delta.isNotEmpty() && firstDeltaLogged.compareAndSet(false, true)) {
+                        Log.i(
+                            TIMING_TAG,
+                            "stage=cloud_text_first_delta thread=$sessionLabel purpose=$purpose elapsedMs=${SystemClock.elapsedRealtime() - startedAt} chars=${delta.length}",
+                        )
+                    }
+                    downstream(delta)
+                }
+            }
+
             withContext(Dispatchers.IO) {
-                ApiTokenClient.chat(
-                    context = context,
-                    messages = messages(systemPrompt, conversationMessages, userPrompt),
-                    maxTokens = maxTokens,
-                    webRequested = webRequested,
-                ).getOrThrow()
+                val request = if (streamingCallback != null) {
+                    ApiTokenClient.chatStreaming(
+                        context = context,
+                        messages = messages(systemPrompt, conversationMessages, userPrompt),
+                        maxTokens = maxTokens,
+                        webRequested = webRequested,
+                        onToken = streamingCallback,
+                    )
+                } else {
+                    ApiTokenClient.chat(
+                        context = context,
+                        messages = messages(systemPrompt, conversationMessages, userPrompt),
+                        maxTokens = maxTokens,
+                        webRequested = webRequested,
+                    )
+                }
+                request.getOrThrow()
             }.also {
                 Log.i(
                     TIMING_TAG,
