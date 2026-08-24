@@ -25,7 +25,12 @@ class AssistantCompletionSanitizerTest {
             </think>
         """.trimIndent()
 
-        assertTrue(AssistantCompletionSanitizer.clean(raw).isBlank())
+        val sanitized = AssistantCompletionSanitizer.inspect(raw)
+        assertTrue(sanitized.text.isBlank())
+        assertEquals(
+            AssistantCompletionSanitizer.RejectionReason.REASONING_ONLY,
+            sanitized.rejectionReason,
+        )
     }
 
     @Test
@@ -40,16 +45,53 @@ class AssistantCompletionSanitizerTest {
     }
 
     @Test
+    fun reasoning_label_without_final_answer_is_rejected() {
+        val sanitized = AssistantCompletionSanitizer.inspect(
+            "Reasoning: option one looks plausible, but I should keep checking.",
+        )
+
+        assertTrue(sanitized.text.isBlank())
+        assertEquals(
+            AssistantCompletionSanitizer.RejectionReason.REASONING_ONLY,
+            sanitized.rejectionReason,
+        )
+    }
+
+    @Test
     fun rejects_unclosed_reasoning_wrapper() {
-        assertTrue(
-            AssistantCompletionSanitizer.clean("<think>still reasoning without a final answer").isBlank(),
+        val sanitized = AssistantCompletionSanitizer.inspect(
+            "<think>still reasoning without a final answer",
+        )
+
+        assertTrue(sanitized.text.isBlank())
+        assertEquals(
+            AssistantCompletionSanitizer.RejectionReason.UNFINISHED_REASONING,
+            sanitized.rejectionReason,
         )
     }
 
     @Test
     fun rejects_compact_system_prompt_echo() {
         val raw = "You are AD. Answer directly and concisely. Return only the final answer."
-        assertTrue(AssistantCompletionSanitizer.clean(raw).isBlank())
+        val sanitized = AssistantCompletionSanitizer.inspect(raw)
+
+        assertTrue(sanitized.text.isBlank())
+        assertEquals(
+            AssistantCompletionSanitizer.RejectionReason.SYSTEM_PROMPT_ECHO,
+            sanitized.rejectionReason,
+        )
+    }
+
+    @Test
+    fun rejects_current_voice_system_prompt_echo() {
+        val raw = "You are AD, a voice assistant for smart glasses. Answer the latest question directly."
+        val sanitized = AssistantCompletionSanitizer.inspect(raw)
+
+        assertTrue(sanitized.text.isBlank())
+        assertEquals(
+            AssistantCompletionSanitizer.RejectionReason.SYSTEM_PROMPT_ECHO,
+            sanitized.rejectionReason,
+        )
     }
 
     @Test
