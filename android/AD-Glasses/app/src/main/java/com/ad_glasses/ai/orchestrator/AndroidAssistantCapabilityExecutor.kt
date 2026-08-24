@@ -40,6 +40,7 @@ class AndroidAssistantCapabilityExecutor(
                 maxTokens = outputTokenLimit(context.surface),
             ).toDisplaylessResult(context.surface)
         } catch (error: CancellationException) {
+            // Latest-turn-wins cancellation must never become a spoken/persisted stale answer.
             throw error
         } catch (error: Exception) {
             Log.w(
@@ -145,12 +146,14 @@ class AndroidAssistantCapabilityExecutor(
         ) {
             val bluetoothSelected = AndroidAssistantVoiceIo.prepareSpeechOutputRoute(appContext)
             if (bluetoothSelected) {
+                // Keep route settle outside Cloud inference and pay it only before speech playback.
                 delay(TTS_BLUETOOTH_ROUTE_SETTLE_MS)
                 Log.i("AssistantTiming", "stage=tts_route_settled delayMs=$TTS_BLUETOOTH_ROUTE_SETTLE_MS")
             }
         }
     }
 
+    /** Convert provider/network failures into the same normal result path used by successful turns. */
     private fun providerFailureResult(error: Throwable): AssistantResult {
         val detail = generateSequence(error) { it.cause }
             .joinToString(" ") { it.message.orEmpty() }
