@@ -1,6 +1,7 @@
 package com.ad_glasses.ai.orchestrator
 
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Test
 
@@ -34,6 +35,23 @@ class AssistantStreamingSpeechBufferTest {
             listOf("and choose your preferred provider while keeping the app connected."),
             buffer.accept(" your preferred provider while keeping the app connected."),
         )
+    }
+
+    @Test
+    fun streamed_answer_is_hard_stopped_at_three_sentences_before_tts() {
+        val buffer = AssistantStreamingSpeechBuffer(
+            streamingPrefixBudgetChars = 1_000,
+            firstForcedSplitChars = 1_000,
+            firstMinForcedSplitChars = 1,
+            forcedSplitChars = 1_000,
+            minForcedSplitChars = 1,
+        )
+
+        val spoken = buffer.accept("One. Two. Three. Four. Five.").joinToString(" ")
+
+        assertEquals("One. Two. Three.", spoken)
+        assertFalse(spoken.contains("Four"))
+        assertTrue(buffer.finish("One. Two. Three. Four. Five.").isEmpty())
     }
 
     @Test
