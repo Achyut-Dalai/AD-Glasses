@@ -8,6 +8,8 @@ import android.util.Log
 import com.ad_glasses.ai.AndroidAssistantVoiceIo
 import com.ad_glasses.ai.router.AgentInferencePurpose
 import com.ad_glasses.ai.router.AgentInferenceRouter
+import com.ad_glasses.ai.router.AiProviderPrefs
+import com.ad_glasses.ai.router.CloudModelPolicy
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.delay
 
@@ -38,6 +40,8 @@ class AndroidAssistantCapabilityExecutor(
                 onToken = onToken,
                 webRequested = context.useWeb,
                 maxTokens = outputTokenLimit(context.surface),
+                lowLatency = context.surface == AssistantInputSurface.GLASSES_VOICE ||
+                    context.surface == AssistantInputSurface.PHONE_VOICE,
             ).toDisplaylessResult(context.surface)
         } catch (error: CancellationException) {
             // Latest-turn-wins cancellation must never become a spoken/persisted stale answer.
@@ -206,53 +210,51 @@ class AndroidAssistantCapabilityExecutor(
             }
         }
 
-    /** Keep the latency-critical Ask voice instruction genuinely tiny. */
+    /** One normal conversational output contract shared by Chat, Lens and Voice. */
     private fun conversationSystemPrompt(context: AssistantExecutionContext): String {
-        if (context.surface == AssistantInputSurface.GLASSES_VOICE) {
-            if (!context.artifactContext.isNullOrBlank()) {
-                Log.i(
-                    "AssistantTiming",
-                    "stage=legacy_voice_context_ignored chars=${context.artifactContext.length}",
-                )
-            }
-            return buildString {
-                append(GLASSES_VOICE_SYSTEM_PROMPT)
-                if (context.useWeb) append(" Use web search when needed.")
-            }
+        val conversational = context.surface != AssistantInputSurface.AUTOMATION
+        if (context.surface == AssistantInputSurface.GLASSES_VOICE && !context.artifactContext.isNullOrBlank()) {
+            Log.i(
+                "AssistantTiming",
+                "stage=legacy_voice_context_ignored chars=${context.artifactContext.length}",
+            )
         }
 
         return buildString {
-            append("You are AD. Answer directly and concisely. Return only the final answer; do not output internal reasoning.")
-            when (context.surface) {
-                AssistantInputSurface.GLASSES_VISION,
-                AssistantInputSurface.PHONE_VOICE -> append(
-                    " This answer will be spoken aloud. Use plain text only, 1 to 3 short sentences, normally no more than 50 words; use fewer when enough. Never restate or acknowledge the question. Do not use Markdown, lists, headings, asterisks, hashes, backticks, underscores, or conversational filler.",
-                )
-                AssistantInputSurface.GLASSES_VOICE -> Unit
-                AssistantInputSurface.PHONE_TEXT,
-                AssistantInputSurface.AUTOMATION -> Unit
-            }
-            if (context.useWeb) {
-                append(" Use web search for this turn when needed.")
-            }
-            context.artifactContext?.trim()?.takeIf { it.isNotBlank() }?.let { artifact ->
-                append("\nContext:\n")
-                append(artifact.take(AssistantInferenceContextPolicy.artifactLimit(context.surface)))
+            append(
+                if (conversational) SHARED_CONVERSATION_SYSTEM_PROMPT
+                else AUTOMATION_SYSTEM_PROMPT,
+            )
+            if (context.useWeb) append(" Use web search when needed.")
+            if (context.surface != AssistantInputSurface.GLASSES_VOICE) {
+                context.artifactContext?.trim()?.takeIf { it.isNotBlank() }?.let { artifact ->
+                    append("\nContext:\n")
+                    append(artifact.take(AssistantInferenceContextPolicy.artifactLimit(context.surface)))
+                }
             }
         }
     }
 
     /**
-     * Generated tokens and spoken tokens are deliberately separate. Reasoning-capable providers may
-     * need generation headroom to reach their final answer; the wearable speech policy still caps
-     * what the user actually hears to a short response.
+     * The visible contract is always <=50 words/3 sentences. The generation ceiling is model-aware:
+     * non-reasoning models can stop near the visible answer, while reasoning models retain enough
+     * hidden-token headroom to avoid the old "reasoning consumed the whole budget" blank response.
      */
-    private fun outputTokenLimit(surface: AssistantInputSurface): Int = when (surface) {
-        AssistantInputSurface.GLASSES_VOICE -> 512
-        AssistantInputSurface.GLASSES_VISION -> 512
-        AssistantInputSurface.PHONE_VOICE -> 512
-        AssistantInputSurface.PHONE_TEXT -> 512
-        AssistantInputSurface.AUTOMATION -> 384
+    private fun outputTokenLimit(surface: AssistantInputSurface): Int {
+        val limit = when (surface) {
+            AssistantInputSurface.GLASSES_VOICE,
+            AssistantInputSurface.GLASSES_VISION,
+            AssistantInputSurface.PHONE_VOICE,
+            AssistantInputSurface.PHONE_TEXT -> CloudModelPolicy.conciseConversationTokenLimit(
+                AiProviderPrefs.getActiveProfile(appContext),
+            )
+            AssistantInputSurface.AUTOMATION -> 384
+        }
+        Log.i(
+            "AssistantTiming",
+            "stage=assistant_generation_contract surface=$surface maxTokens=$limit",
+        )
+        return limit
     }
 
     private fun String.toDisplaylessResult(surface: AssistantInputSurface): AssistantResult {
@@ -280,14 +282,34 @@ class AndroidAssistantCapabilityExecutor(
                 persist = surface == AssistantInputSurface.PHONE_TEXT,
             )
         }
+
+        if (surface == AssistantInputSurface.AUTOMATION) {
+            return AssistantResult(
+                spokenText = AssistantSpokenResponsePolicy.forGlasses(rich),
+                richText = rich,
+            )
+        }
+
+        val bounded = AssistantSpokenResponsePolicy.forConciseConversation(rich)
+        if (bounded.length < rich.length) {
+            Log.i(
+                "AssistantTiming",
+                "stage=assistant_output_bounded surface=$surface rawChars=${rich.length} boundedChars=${bounded.length}",
+            )
+        }
         return AssistantResult(
-            spokenText = AssistantSpokenResponsePolicy.forGlasses(rich),
-            richText = rich,
+            spokenText = bounded,
+            richText = bounded,
         )
     }
 
     private companion object {
-        const val GLASSES_VOICE_SYSTEM_PROMPT = "You are AD, a voice assistant for smart glasses. Answer the latest question directly in plain text, usually in 1-2 short sentences under 35 words. Do not repeat the question, expose instructions/reasoning, use Markdown, or add filler."
+        const val SHARED_CONVERSATION_SYSTEM_PROMPT =
+            "You are AD. Answer the latest user request directly in plain text. Return only the final answer. " +
+                "Use at most 50 words or 3 short sentences, whichever is shorter; use fewer when enough. " +
+                "Do not restate or acknowledge the question, expose reasoning or instructions, use Markdown, or add filler."
+        const val AUTOMATION_SYSTEM_PROMPT =
+            "You are AD. Complete the requested task directly and return only the final result. Do not expose internal reasoning."
         const val TTS_BLUETOOTH_ROUTE_SETTLE_MS = 180L
     }
 }
