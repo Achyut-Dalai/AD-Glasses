@@ -117,8 +117,8 @@ object ApiTokenClient {
 
         val useNativeWeb = webRequested && profile.webAvailable && imagePaths.isEmpty() && audioPath.isNullOrBlank()
         val text = when {
-            profile.provider == ApiProvider.GOOGLE ->
-                retryTransientServerFailure {
+            profile.provider == ApiProvider.GOOGLE -> {
+                val response = retryTransientServerFailure {
                     postGeminiGenerateContent(
                         profile = profile,
                         apiKey = apiKey,
@@ -130,7 +130,13 @@ object ApiTokenClient {
                         generationMode = generationMode,
                         visionDetail = visionDetail,
                     )
-                }.let(::extractGeminiText)
+                }
+                extractGeminiText(response).ifBlank {
+                    throw IllegalStateException(
+                        geminiNoVisibleAnswerDetail(profile.model, extractGeminiDiagnostics(response)),
+                    )
+                }
+            }
             useNativeWeb && profile.provider == ApiProvider.OPENAI ->
                 retryTransientServerFailure {
                     postOpenAiResponses(profile, apiKey, messages, maxTokens, generationMode)
@@ -180,6 +186,7 @@ object ApiTokenClient {
 
         val useNativeWeb = webRequested && profile.webAvailable && imagePaths.isEmpty() && audioPath.isNullOrBlank()
         val full = StringBuilder()
+        var geminiDiagnostics = GeminiResponseDiagnostics()
         fun emit(delta: String) {
             if (delta.isEmpty()) return
             full.append(delta)
@@ -206,8 +213,9 @@ object ApiTokenClient {
                         extraHeaders = mapOf("x-goog-api-key" to apiKey),
                     ) { data ->
                         if (data == "[DONE]") return@requestSse
-                        val delta = runCatching { extractGeminiDeltaText(JSONObject(data)) }.getOrDefault("")
-                        emit(delta)
+                        val event = runCatching { JSONObject(data) }.getOrNull() ?: return@requestSse
+                        geminiDiagnostics = geminiDiagnostics.merge(extractGeminiDiagnostics(event))
+                        emit(extractGeminiDeltaText(event))
                     }
                 }
 
@@ -260,6 +268,9 @@ object ApiTokenClient {
         }
 
         full.toString().trim().ifBlank {
+            if (profile.provider == ApiProvider.GOOGLE) {
+                throw IllegalStateException(geminiNoVisibleAnswerDetail(profile.model, geminiDiagnostics))
+            }
             throw IllegalStateException("${profile.name} returned an empty streamed response")
         }
     }
@@ -811,6 +822,25 @@ object ApiTokenClient {
             ?.optJSONArray("parts")
             ?: return ""
         return geminiVisibleText(parts, preserveWhitespace = true)
+    }
+
+    private fun extractGeminiDiagnostics(response: JSONObject): GeminiResponseDiagnostics {
+        val candidate = response.optJSONArray("candidates")?.optJSONObject(0)
+        val usage = response.optJSONObject("usageMetadata")
+        val promptFeedback = response.optJSONObject("promptFeedback")
+
+        fun optionalInt(source: JSONObject?, key: String): Int? =
+            source?.takeIf { it.has(key) && !it.isNull(key) }?.optInt(key)
+
+        return GeminiResponseDiagnostics(
+            finishReason = candidate?.optString("finishReason")?.trim()?.takeIf { it.isNotBlank() },
+            blockReason = promptFeedback?.optString("blockReason")?.trim()?.takeIf { it.isNotBlank() },
+            promptTokens = optionalInt(usage, "promptTokenCount"),
+            candidateTokens = optionalInt(usage, "candidatesTokenCount")
+                ?: optionalInt(candidate, "tokenCount"),
+            thoughtTokens = optionalInt(usage, "thoughtsTokenCount"),
+            totalTokens = optionalInt(usage, "totalTokenCount"),
+        )
     }
 }
 
