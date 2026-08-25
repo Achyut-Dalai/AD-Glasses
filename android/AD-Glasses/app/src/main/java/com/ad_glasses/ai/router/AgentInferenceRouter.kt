@@ -33,6 +33,8 @@ data class AgentInferenceResult(
 
 internal data class WearableGenerationTimeouts(
     val firstSafeAnswerMs: Long,
+    val activeTransportAnswerMs: Long,
+    val activeReasoningAnswerMs: Long,
     val totalGenerationMs: Long,
 )
 
@@ -205,14 +207,35 @@ object AgentInferenceRouter {
         if (generationMode == CloudGenerationMode.REASONED_CONVERSATION) {
             WearableGenerationTimeouts(
                 firstSafeAnswerMs = REASONED_FIRST_SAFE_ANSWER_TIMEOUT_MS,
+                activeTransportAnswerMs = REASONED_ACTIVE_TRANSPORT_TIMEOUT_MS,
+                activeReasoningAnswerMs = REASONED_ACTIVE_REASONING_TIMEOUT_MS,
                 totalGenerationMs = REASONED_TOTAL_GENERATION_TIMEOUT_MS,
             )
         } else {
             WearableGenerationTimeouts(
                 firstSafeAnswerMs = CONCISE_FIRST_SAFE_ANSWER_TIMEOUT_MS,
+                activeTransportAnswerMs = CONCISE_ACTIVE_TRANSPORT_TIMEOUT_MS,
+                activeReasoningAnswerMs = CONCISE_ACTIVE_REASONING_TIMEOUT_MS,
                 totalGenerationMs = CONCISE_TOTAL_GENERATION_TIMEOUT_MS,
             )
         }
+
+    /**
+     * Decide whether a first-answer deadline may be extended after its current budget expires.
+     * Activity extends to a fixed ceiling; it never resets a rolling timer indefinitely.
+     */
+    internal fun nextFirstAnswerDeadline(
+        currentDeadlineMs: Long,
+        timeouts: WearableGenerationTimeouts,
+        providerActivitySeen: Boolean,
+        reasoningActivitySeen: Boolean,
+    ): Long? = when {
+        reasoningActivitySeen && currentDeadlineMs < timeouts.activeReasoningAnswerMs ->
+            timeouts.activeReasoningAnswerMs
+        providerActivitySeen && currentDeadlineMs < timeouts.activeTransportAnswerMs ->
+            timeouts.activeTransportAnswerMs
+        else -> null
+    }
 
     private suspend fun completeText(
         context: Context,
@@ -266,6 +289,8 @@ object AgentInferenceRouter {
         return try {
             val firstUsefulDelta = CompletableDeferred<Unit>()
             val firstDeltaLogged = AtomicBoolean(false)
+            val providerActivitySeen = AtomicBoolean(false)
+            val reasoningActivitySeen = AtomicBoolean(false)
             val echoGate = UserPromptEchoGate(userPrompt)
             val safeFirstAnswerGate = SafeFirstAnswerGate()
             val streamingCallback = onToken?.let { downstream ->
@@ -297,6 +322,35 @@ object AgentInferenceRouter {
                     }
                 }
             }
+            val activityCallback: ((CloudStreamActivity) -> Unit)? = if (lowLatencyVoiceRequest) {
+                { activity ->
+                    if (acceptingStreaming.get()) {
+                        when (activity) {
+                            CloudStreamActivity.PROVIDER_DATA -> {
+                                if (providerActivitySeen.compareAndSet(false, true)) {
+                                    Log.i(
+                                        TIMING_TAG,
+                                        "stage=cloud_text_provider_active thread=$sessionLabel purpose=$purpose " +
+                                            "mode=$generationMode elapsedMs=${SystemClock.elapsedRealtime() - startedAt}",
+                                    )
+                                }
+                            }
+                            CloudStreamActivity.REASONING -> {
+                                providerActivitySeen.set(true)
+                                if (reasoningActivitySeen.compareAndSet(false, true)) {
+                                    Log.i(
+                                        TIMING_TAG,
+                                        "stage=cloud_text_reasoning_active thread=$sessionLabel purpose=$purpose " +
+                                            "mode=$generationMode elapsedMs=${SystemClock.elapsedRealtime() - startedAt}",
+                                    )
+                                }
+                            }
+                        }
+                    }
+                }
+            } else {
+                null
+            }
 
             val request: suspend () -> String = {
                 withContext(Dispatchers.IO) {
@@ -308,6 +362,7 @@ object AgentInferenceRouter {
                             webRequested = webRequested,
                             generationMode = generationMode,
                             onToken = streamingCallback,
+                            onActivity = activityCallback,
                         )
                     } else {
                         ApiTokenClient.chat(
@@ -325,13 +380,39 @@ object AgentInferenceRouter {
             val raw = if (lowLatencyVoiceRequest && streamingCallback != null) {
                 val inFlight = lowLatencyNetworkScope.async { request() }
                 lowLatencyInFlight = inFlight
-                val startedBeforeDeadline = withTimeoutOrNull(wearableTimeouts.firstSafeAnswerMs) {
-                    select<Unit> {
-                        firstUsefulDelta.onAwait { Unit }
-                        inFlight.onAwait { Unit }
+                var firstAnswerDeadlineMs = wearableTimeouts.firstSafeAnswerMs
+                var startedBeforeDeadline = false
+
+                while (!startedBeforeDeadline) {
+                    val elapsedMs = SystemClock.elapsedRealtime() - startedAt
+                    val remainingMs = (firstAnswerDeadlineMs - elapsedMs).coerceAtLeast(1L)
+                    startedBeforeDeadline = withTimeoutOrNull(remainingMs) {
+                        select<Unit> {
+                            firstUsefulDelta.onAwait { Unit }
+                            inFlight.onAwait { Unit }
+                        }
+                        true
+                    } ?: false
+                    if (startedBeforeDeadline) break
+
+                    val nextDeadline = nextFirstAnswerDeadline(
+                        currentDeadlineMs = firstAnswerDeadlineMs,
+                        timeouts = wearableTimeouts,
+                        providerActivitySeen = providerActivitySeen.get(),
+                        reasoningActivitySeen = reasoningActivitySeen.get(),
+                    ) ?: break
+                    val extensionReason = if (reasoningActivitySeen.get()) {
+                        "reasoning_activity"
+                    } else {
+                        "provider_activity"
                     }
-                    true
-                } ?: false
+                    firstAnswerDeadlineMs = nextDeadline
+                    Log.i(
+                        TIMING_TAG,
+                        "stage=cloud_text_wait_extended thread=$sessionLabel purpose=$purpose mode=$generationMode " +
+                            "reason=$extensionReason budgetMs=$firstAnswerDeadlineMs",
+                    )
+                }
 
                 if (!startedBeforeDeadline) {
                     acceptingStreaming.set(false)
@@ -339,11 +420,12 @@ object AgentInferenceRouter {
                         TIMING_TAG,
                         "stage=cloud_text_timeout thread=$sessionLabel purpose=$purpose mode=$generationMode " +
                             "phase=first_safe_delta elapsedMs=${SystemClock.elapsedRealtime() - startedAt} " +
-                            "budgetMs=${wearableTimeouts.firstSafeAnswerMs}",
+                            "budgetMs=$firstAnswerDeadlineMs providerActive=${providerActivitySeen.get()} " +
+                            "reasoningActive=${reasoningActivitySeen.get()}",
                     )
                     inFlight.cancel(CancellationException("Wearable first safe-answer deadline expired"))
                     throw IllegalStateException(
-                        "Cloud AI did not produce a usable answer within ${wearableTimeouts.firstSafeAnswerMs}ms",
+                        "Cloud AI did not produce a usable answer within ${firstAnswerDeadlineMs}ms",
                     )
                 }
 
@@ -507,7 +589,11 @@ object AgentInferenceRouter {
     private const val LOW_LATENCY_MESSAGE_CHARS = 360
     private const val LOW_LATENCY_HISTORY_CHARS = 720
     private const val CONCISE_FIRST_SAFE_ANSWER_TIMEOUT_MS = 6_000L
+    private const val CONCISE_ACTIVE_TRANSPORT_TIMEOUT_MS = 10_000L
+    private const val CONCISE_ACTIVE_REASONING_TIMEOUT_MS = 15_000L
     private const val CONCISE_TOTAL_GENERATION_TIMEOUT_MS = 30_000L
     private const val REASONED_FIRST_SAFE_ANSWER_TIMEOUT_MS = 15_000L
+    private const val REASONED_ACTIVE_TRANSPORT_TIMEOUT_MS = 20_000L
+    private const val REASONED_ACTIVE_REASONING_TIMEOUT_MS = 30_000L
     private const val REASONED_TOTAL_GENERATION_TIMEOUT_MS = 45_000L
 }
