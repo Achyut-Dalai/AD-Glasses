@@ -9,7 +9,10 @@ import com.ad_glasses.ai.AndroidAssistantVoiceIo
 import com.ad_glasses.ai.router.AgentInferencePurpose
 import com.ad_glasses.ai.router.AgentInferenceRouter
 import com.ad_glasses.ai.router.AiProviderPrefs
+import com.ad_glasses.ai.router.CloudGenerationMode
 import com.ad_glasses.ai.router.CloudModelPolicy
+import com.ad_glasses.shared.ai.AiReasoningMode
+import com.ad_glasses.shared.ai.AiTurnPolicy
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.delay
 
@@ -28,6 +31,7 @@ class AndroidAssistantCapabilityExecutor(
         if (context.surface == AssistantInputSurface.GLASSES_VOICE) {
             clearStaleVoiceRouteWhenHeadsetMissing()
         }
+        val generationMode = generationMode(prompt)
         val result = try {
             AgentInferenceRouter.complete(
                 context = appContext,
@@ -39,9 +43,10 @@ class AndroidAssistantCapabilityExecutor(
                 providerType = context.providerType,
                 onToken = onToken,
                 webRequested = context.useWeb,
-                maxTokens = outputTokenLimit(context.surface),
+                maxTokens = outputTokenLimit(context.surface, generationMode),
                 lowLatency = context.surface == AssistantInputSurface.GLASSES_VOICE ||
                     context.surface == AssistantInputSurface.PHONE_VOICE,
+                generationMode = generationMode,
             ).toDisplaylessResult(context.surface)
         } catch (error: CancellationException) {
             // Latest-turn-wins cancellation must never become a spoken/persisted stale answer.
@@ -80,6 +85,7 @@ class AndroidAssistantCapabilityExecutor(
             return result
         }
 
+        val generationMode = generationMode(prompt)
         val result = try {
             AgentInferenceRouter.completeUiPlanning(
                 context = appContext,
@@ -92,7 +98,9 @@ class AndroidAssistantCapabilityExecutor(
                 providerType = context.providerType,
                 onToken = onToken,
                 webRequested = false,
-                maxTokens = outputTokenLimit(context.surface),
+                maxTokens = outputTokenLimit(context.surface, generationMode),
+                generationMode = generationMode,
+                visionDetail = AiTurnPolicy.visionDetail(prompt),
             ).content.toDisplaylessResult(context.surface)
         } catch (error: CancellationException) {
             throw error
@@ -235,24 +243,32 @@ class AndroidAssistantCapabilityExecutor(
         }
     }
 
+    private fun generationMode(prompt: String): CloudGenerationMode = when (AiTurnPolicy.reasoningMode(prompt)) {
+        AiReasoningMode.CONCISE -> CloudGenerationMode.CONCISE_CONVERSATION
+        AiReasoningMode.REASONED -> CloudGenerationMode.REASONED_CONVERSATION
+    }
+
     /**
-     * The visible contract is always <=50 words/3 sentences. The generation ceiling is model-aware:
-     * non-reasoning models can stop near the visible answer, while reasoning models retain enough
-     * hidden-token headroom to avoid the old "reasoning consumed the whole budget" blank response.
+     * The user-visible contract remains <=50 words/3 sentences. Provider generation headroom is
+     * selected from explicit turn intent plus model capabilities, not from the input surface.
      */
-    private fun outputTokenLimit(surface: AssistantInputSurface): Int {
+    private fun outputTokenLimit(
+        surface: AssistantInputSurface,
+        generationMode: CloudGenerationMode,
+    ): Int {
         val limit = when (surface) {
             AssistantInputSurface.GLASSES_VOICE,
             AssistantInputSurface.GLASSES_VISION,
             AssistantInputSurface.PHONE_VOICE,
-            AssistantInputSurface.PHONE_TEXT -> CloudModelPolicy.conciseConversationTokenLimit(
+            AssistantInputSurface.PHONE_TEXT -> CloudModelPolicy.generationTokenLimit(
                 AiProviderPrefs.getActiveProfile(appContext),
+                generationMode,
             )
             AssistantInputSurface.AUTOMATION -> 384
         }
         Log.i(
             "AssistantTiming",
-            "stage=assistant_generation_contract surface=$surface maxTokens=$limit",
+            "stage=assistant_generation_contract surface=$surface mode=$generationMode maxTokens=$limit",
         )
         return limit
     }
