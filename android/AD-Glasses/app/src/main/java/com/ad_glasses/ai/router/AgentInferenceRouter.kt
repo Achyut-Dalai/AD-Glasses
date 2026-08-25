@@ -5,6 +5,7 @@ import android.os.SystemClock
 import android.util.Log
 import com.ad_glasses.agent.LocalAgentPrefs as AutomationPrefs
 import com.ad_glasses.ai.orchestrator.AssistantCompletionSanitizer
+import com.ad_glasses.shared.ai.AiVisionDetail
 import com.ad_glasses.shared.settings.AgentProviderType
 import java.io.File
 import java.util.concurrent.atomic.AtomicBoolean
@@ -15,9 +16,9 @@ import kotlinx.coroutines.Deferred
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.async
+import kotlinx.coroutines.selects.select
 import kotlinx.coroutines.withContext
 import kotlinx.coroutines.withTimeoutOrNull
-import kotlinx.coroutines.selects.select
 
 enum class AgentInferencePurpose {
     CLASSIFICATION,
@@ -28,6 +29,11 @@ data class AgentInferenceResult(
     val content: String,
     val usedImage: Boolean,
     val mediaStatus: String,
+)
+
+internal data class WearableGenerationTimeouts(
+    val firstSafeAnswerMs: Long,
+    val totalGenerationMs: Long,
 )
 
 /**
@@ -72,6 +78,7 @@ object AgentInferenceRouter {
         webRequested: Boolean = false,
         maxTokens: Int? = null,
         lowLatency: Boolean = false,
+        generationMode: CloudGenerationMode = CloudGenerationMode.DEFAULT,
     ): String = completeText(
         context = context,
         purpose = purpose,
@@ -83,6 +90,7 @@ object AgentInferenceRouter {
         webRequested = webRequested,
         maxTokensOverride = maxTokens,
         lowLatencyRequest = lowLatency,
+        generationMode = generationMode,
     )
 
     suspend fun completeUiPlanning(
@@ -97,6 +105,8 @@ object AgentInferenceRouter {
         webRequested: Boolean = false,
         maxTokens: Int = UI_PLANNING_MAX_TOKENS,
         lowLatency: Boolean = false,
+        generationMode: CloudGenerationMode = CloudGenerationMode.DEFAULT,
+        visionDetail: AiVisionDetail = AiVisionDetail.STANDARD,
     ): AgentInferenceResult {
         val usableImagePath = imagePath?.trim()?.takeIf { File(it).isFile }
         if (!imagePath.isNullOrBlank() && usableImagePath == null) {
@@ -114,6 +124,7 @@ object AgentInferenceRouter {
                     webRequested = webRequested,
                     maxTokensOverride = maxTokens,
                     lowLatencyRequest = lowLatency,
+                    generationMode = generationMode,
                 ),
                 usedImage = false,
                 mediaStatus = "Cloud text inference",
@@ -125,15 +136,36 @@ object AgentInferenceRouter {
 
         val startedAt = SystemClock.elapsedRealtime()
         val sessionLabel = sessionId.takeLast(8)
-        Log.i(TIMING_TAG, "stage=cloud_image_start thread=$sessionLabel")
+        Log.i(
+            TIMING_TAG,
+            "stage=cloud_image_start thread=$sessionLabel mode=$generationMode detail=$visionDetail",
+        )
+        val prepared = try {
+            CloudVisionImagePreprocessor.prepare(
+                context = context,
+                sourcePath = usableImagePath,
+                detail = visionDetail,
+            )
+        } catch (error: CancellationException) {
+            throw error
+        } catch (error: Exception) {
+            Log.w(
+                TIMING_TAG,
+                "stage=vision_preprocess_failed thread=$sessionLabel type=${error::class.java.simpleName}",
+            )
+            throw IllegalStateException("The image could not be prepared safely for cloud analysis.", error)
+        }
+
         val imageContent = try {
             withContext(Dispatchers.IO) {
                 ApiTokenClient.image(
                     context = context,
                     systemPrompt = systemPrompt,
                     userPrompt = userPrompt,
-                    imagePath = usableImagePath,
+                    imagePath = prepared.path,
                     maxTokens = maxTokens,
+                    generationMode = generationMode,
+                    visionDetail = visionDetail,
                 ).getOrThrow()
             }
         } catch (error: CancellationException) {
@@ -152,6 +184,8 @@ object AgentInferenceRouter {
                     (error.message ?: error::class.java.simpleName),
                 error,
             )
+        } finally {
+            prepared.cleanup()
         }
         Log.i(
             TIMING_TAG,
@@ -167,6 +201,19 @@ object AgentInferenceRouter {
 
     fun isRemotePlanner(providerType: AgentProviderType): Boolean = true
 
+    internal fun wearableTimeouts(generationMode: CloudGenerationMode): WearableGenerationTimeouts =
+        if (generationMode == CloudGenerationMode.REASONED_CONVERSATION) {
+            WearableGenerationTimeouts(
+                firstSafeAnswerMs = REASONED_FIRST_SAFE_ANSWER_TIMEOUT_MS,
+                totalGenerationMs = REASONED_TOTAL_GENERATION_TIMEOUT_MS,
+            )
+        } else {
+            WearableGenerationTimeouts(
+                firstSafeAnswerMs = CONCISE_FIRST_SAFE_ANSWER_TIMEOUT_MS,
+                totalGenerationMs = CONCISE_TOTAL_GENERATION_TIMEOUT_MS,
+            )
+        }
+
     private suspend fun completeText(
         context: Context,
         purpose: AgentInferencePurpose,
@@ -178,16 +225,18 @@ object AgentInferenceRouter {
         webRequested: Boolean,
         maxTokensOverride: Int?,
         lowLatencyRequest: Boolean,
+        generationMode: CloudGenerationMode,
     ): String {
         val maxTokens = maxTokensOverride
             ?.coerceIn(32, 2_048)
             ?: if (purpose == AgentInferencePurpose.CLASSIFICATION) 256 else 512
         // Latency behavior is a product/surface decision, not a side effect of the generation
-        // ceiling. A fast non-reasoning Chat model may legitimately use only 128 tokens without
+        // ceiling. A fast non-reasoning Chat model may legitimately use only 96 tokens without
         // inheriting voice's short history, prompt ceiling, echo gate, or wearable timeouts.
         val lowLatencyVoiceRequest = lowLatencyRequest &&
             purpose == AgentInferencePurpose.UI_PLANNING &&
             onToken != null
+        val wearableTimeouts = wearableTimeouts(generationMode)
 
         // Ask voice should never inherit a large persona/memory prompt. The dedicated caller uses a
         // compact system instruction; this ceiling is defense in depth for future callers.
@@ -209,9 +258,10 @@ object AgentInferenceRouter {
         var lowLatencyInFlight: Deferred<String>? = null
         Log.i(
             TIMING_TAG,
-            "stage=cloud_text_start thread=$sessionLabel purpose=$purpose maxTokens=$maxTokens streaming=${onToken != null} " +
-                "lowLatency=$lowLatencyVoiceRequest systemChars=${effectiveSystemPrompt.length} " +
-                "historyMessages=${effectiveConversationMessages.size} historyChars=$effectiveHistoryChars",
+            "stage=cloud_text_start thread=$sessionLabel purpose=$purpose mode=$generationMode " +
+                "maxTokens=$maxTokens streaming=${onToken != null} lowLatency=$lowLatencyVoiceRequest " +
+                "systemChars=${effectiveSystemPrompt.length} historyMessages=${effectiveConversationMessages.size} " +
+                "historyChars=$effectiveHistoryChars",
         )
         return try {
             val firstUsefulDelta = CompletableDeferred<Unit>()
@@ -232,7 +282,7 @@ object AgentInferenceRouter {
                                 if (firstDeltaLogged.compareAndSet(false, true)) {
                                     Log.i(
                                         TIMING_TAG,
-                                        "stage=cloud_text_first_delta thread=$sessionLabel purpose=$purpose " +
+                                        "stage=cloud_text_first_delta thread=$sessionLabel purpose=$purpose mode=$generationMode " +
                                             "elapsedMs=${SystemClock.elapsedRealtime() - startedAt} " +
                                             "chars=${visibleAnswer.length} sanitized=$lowLatencyVoiceRequest",
                                     )
@@ -256,6 +306,7 @@ object AgentInferenceRouter {
                             messages = messages(effectiveSystemPrompt, effectiveConversationMessages, userPrompt),
                             maxTokens = maxTokens,
                             webRequested = webRequested,
+                            generationMode = generationMode,
                             onToken = streamingCallback,
                         )
                     } else {
@@ -264,6 +315,7 @@ object AgentInferenceRouter {
                             messages = messages(effectiveSystemPrompt, effectiveConversationMessages, userPrompt),
                             maxTokens = maxTokens,
                             webRequested = webRequested,
+                            generationMode = generationMode,
                         )
                     }
                     result.getOrThrow()
@@ -273,7 +325,7 @@ object AgentInferenceRouter {
             val raw = if (lowLatencyVoiceRequest && streamingCallback != null) {
                 val inFlight = lowLatencyNetworkScope.async { request() }
                 lowLatencyInFlight = inFlight
-                val startedBeforeDeadline = withTimeoutOrNull(LOW_LATENCY_FIRST_DELTA_TIMEOUT_MS) {
+                val startedBeforeDeadline = withTimeoutOrNull(wearableTimeouts.firstSafeAnswerMs) {
                     select<Unit> {
                         firstUsefulDelta.onAwait { Unit }
                         inFlight.onAwait { Unit }
@@ -285,36 +337,35 @@ object AgentInferenceRouter {
                     acceptingStreaming.set(false)
                     Log.w(
                         TIMING_TAG,
-                        "stage=cloud_text_timeout thread=$sessionLabel purpose=$purpose phase=first_safe_delta " +
-                            "elapsedMs=${SystemClock.elapsedRealtime() - startedAt} " +
-                            "budgetMs=$LOW_LATENCY_FIRST_DELTA_TIMEOUT_MS",
+                        "stage=cloud_text_timeout thread=$sessionLabel purpose=$purpose mode=$generationMode " +
+                            "phase=first_safe_delta elapsedMs=${SystemClock.elapsedRealtime() - startedAt} " +
+                            "budgetMs=${wearableTimeouts.firstSafeAnswerMs}",
                     )
                     inFlight.cancel(CancellationException("Wearable first safe-answer deadline expired"))
                     throw IllegalStateException(
-                        "Cloud AI did not produce a usable answer within ${LOW_LATENCY_FIRST_DELTA_TIMEOUT_MS}ms",
+                        "Cloud AI did not produce a usable answer within ${wearableTimeouts.firstSafeAnswerMs}ms",
                     )
                 }
 
                 // Once safe speech has started, generation may continue while local TTS is already
-                // playing. Do not turn a useful streamed answer into an error merely because the
-                // provider is still finishing its tail. Keep a generous runaway cap and, if that cap
-                // is ever reached, return the safe partial answer instead of speaking a fallback.
+                // playing. Reasoned turns deliberately get a longer runway, but neither mode can
+                // leave a dead provider socket running indefinitely.
                 val elapsedMs = SystemClock.elapsedRealtime() - startedAt
-                val remainingMs = (LOW_LATENCY_TOTAL_TIMEOUT_MS - elapsedMs).coerceAtLeast(1L)
+                val remainingMs = (wearableTimeouts.totalGenerationMs - elapsedMs).coerceAtLeast(1L)
                 val completed = withTimeoutOrNull(remainingMs) { inFlight.await() }
                 if (completed == null) {
                     acceptingStreaming.set(false)
                     val partial = safeFirstAnswerGate.currentVisible()
                     Log.w(
                         TIMING_TAG,
-                        "stage=cloud_text_timeout thread=$sessionLabel purpose=$purpose phase=total_partial " +
-                            "elapsedMs=${SystemClock.elapsedRealtime() - startedAt} " +
-                            "budgetMs=$LOW_LATENCY_TOTAL_TIMEOUT_MS partialChars=${partial.length}",
+                        "stage=cloud_text_timeout thread=$sessionLabel purpose=$purpose mode=$generationMode " +
+                            "phase=total_partial elapsedMs=${SystemClock.elapsedRealtime() - startedAt} " +
+                            "budgetMs=${wearableTimeouts.totalGenerationMs} partialChars=${partial.length}",
                     )
                     inFlight.cancel(CancellationException("Wearable generation runaway cap expired"))
                     if (partial.isBlank()) {
                         throw IllegalStateException(
-                            "Cloud AI exceeded the ${LOW_LATENCY_TOTAL_TIMEOUT_MS}ms wearable generation cap without a usable partial answer",
+                            "Cloud AI exceeded the ${wearableTimeouts.totalGenerationMs}ms wearable generation cap without a usable partial answer",
                         )
                     }
                     partial
@@ -337,7 +388,8 @@ object AgentInferenceRouter {
             cleaned.also {
                 Log.i(
                     TIMING_TAG,
-                    "stage=cloud_text_done thread=$sessionLabel purpose=$purpose elapsedMs=${SystemClock.elapsedRealtime() - startedAt}",
+                    "stage=cloud_text_done thread=$sessionLabel purpose=$purpose mode=$generationMode " +
+                        "elapsedMs=${SystemClock.elapsedRealtime() - startedAt}",
                 )
             }
         } catch (error: CancellationException) {
@@ -345,7 +397,8 @@ object AgentInferenceRouter {
             lowLatencyInFlight?.cancel(error)
             Log.i(
                 TIMING_TAG,
-                "stage=cloud_text_cancelled thread=$sessionLabel purpose=$purpose elapsedMs=${SystemClock.elapsedRealtime() - startedAt}",
+                "stage=cloud_text_cancelled thread=$sessionLabel purpose=$purpose mode=$generationMode " +
+                    "elapsedMs=${SystemClock.elapsedRealtime() - startedAt}",
             )
             throw error
         } catch (error: Exception) {
@@ -353,7 +406,8 @@ object AgentInferenceRouter {
             lowLatencyInFlight?.cancel(CancellationException("Wearable request failed"))
             Log.w(
                 TIMING_TAG,
-                "stage=cloud_text_failed thread=$sessionLabel purpose=$purpose elapsedMs=${SystemClock.elapsedRealtime() - startedAt} type=${error::class.java.simpleName}",
+                "stage=cloud_text_failed thread=$sessionLabel purpose=$purpose mode=$generationMode " +
+                    "elapsedMs=${SystemClock.elapsedRealtime() - startedAt} type=${error::class.java.simpleName}",
             )
             throw error
         }
@@ -452,6 +506,8 @@ object AgentInferenceRouter {
     private const val LOW_LATENCY_SYSTEM_PROMPT_CHARS = 320
     private const val LOW_LATENCY_MESSAGE_CHARS = 360
     private const val LOW_LATENCY_HISTORY_CHARS = 720
-    private const val LOW_LATENCY_FIRST_DELTA_TIMEOUT_MS = 6_000L
-    private const val LOW_LATENCY_TOTAL_TIMEOUT_MS = 30_000L
+    private const val CONCISE_FIRST_SAFE_ANSWER_TIMEOUT_MS = 6_000L
+    private const val CONCISE_TOTAL_GENERATION_TIMEOUT_MS = 30_000L
+    private const val REASONED_FIRST_SAFE_ANSWER_TIMEOUT_MS = 15_000L
+    private const val REASONED_TOTAL_GENERATION_TIMEOUT_MS = 45_000L
 }
