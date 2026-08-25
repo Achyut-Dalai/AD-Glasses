@@ -85,6 +85,20 @@ internal object CloudModelPolicy {
         }
     }
 
+    /**
+     * Compatibility bridge for transports not yet carrying the explicit generation mode. Keep the
+     * old <=512 interpretation only while those call sites migrate; product latency mode is already
+     * explicit and no longer depends on this value.
+     */
+    fun requestTuning(profile: CloudAiProfile, maxTokens: Int): RequestTuning = requestTuning(
+        profile = profile,
+        mode = if (maxTokens <= CONCISE_REASONING_TOKENS) {
+            CloudGenerationMode.CONCISE_CONVERSATION
+        } else {
+            CloudGenerationMode.DEFAULT
+        },
+    )
+
     /** Native request controls. Unsupported controls are deliberately omitted rather than guessed. */
     fun requestTuning(
         profile: CloudAiProfile,
