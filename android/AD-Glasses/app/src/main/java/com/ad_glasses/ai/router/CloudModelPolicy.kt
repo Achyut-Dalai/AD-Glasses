@@ -1,7 +1,7 @@
 package com.ad_glasses.ai.router
 
 /** Explicit generation intent; never infer product behavior from a token count or model name alone. */
-internal enum class CloudGenerationMode {
+enum class CloudGenerationMode {
     DEFAULT,
     CONCISE_CONVERSATION,
     REASONED_CONVERSATION,
