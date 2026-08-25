@@ -142,10 +142,10 @@ class CloudModelPolicyTest {
     }
 
     @Test
-    fun openrouter_default_gemma_gets_extra_concise_completion_headroom_without_reasoning() {
+    fun openrouter_default_gemma_stays_cheap_and_non_reasoning() {
         val profile = profile(ApiProvider.OPENROUTER, "google/gemma-4-26b-a4b-it:free")
 
-        assertEquals(192, CloudModelPolicy.generationTokenLimit(profile, concise))
+        assertEquals(96, CloudModelPolicy.generationTokenLimit(profile, concise))
         val tuning = CloudModelPolicy.requestTuning(profile, concise)
         assertNull(tuning.openRouterReasoningEffort)
         assertFalse(tuning.excludeReasoning)
@@ -162,10 +162,10 @@ class CloudModelPolicyTest {
     }
 
     @Test
-    fun openrouter_newer_gpt5_disables_reasoning_and_gets_concise_headroom() {
+    fun openrouter_newer_gpt5_disables_reasoning_for_normal_chat() {
         val profile = profile(ApiProvider.OPENROUTER, "openai/gpt-5.6-terra")
 
-        assertEquals(192, CloudModelPolicy.generationTokenLimit(profile, concise))
+        assertEquals(96, CloudModelPolicy.generationTokenLimit(profile, concise))
         val tuning = CloudModelPolicy.requestTuning(profile, concise)
         assertEquals("none", tuning.openRouterReasoningEffort)
         assertTrue(tuning.excludeReasoning)
