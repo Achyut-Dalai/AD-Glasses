@@ -2,6 +2,7 @@ package com.ad_glasses.ai.router
 
 import android.content.Context
 import android.util.Base64
+import com.ad_glasses.shared.ai.AiVisionDetail
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.runInterruptible
@@ -106,6 +107,8 @@ object ApiTokenClient {
         audioPath: String? = null,
         maxTokens: Int = 2048,
         webRequested: Boolean = false,
+        generationMode: CloudGenerationMode = CloudGenerationMode.DEFAULT,
+        visionDetail: AiVisionDetail = AiVisionDetail.STANDARD,
     ): Result<String> = runCatching {
         val (profile, apiKey) = AiProviderPrefs.activeProfileWithKey(context)
         require(profile.model.isNotBlank()) { "${profile.name} does not have a model selected." }
@@ -124,16 +127,19 @@ object ApiTokenClient {
                         audioPath = audioPath,
                         maxTokens = maxTokens,
                         webRequested = useNativeWeb,
+                        generationMode = generationMode,
+                        visionDetail = visionDetail,
                     )
                 }.let(::extractGeminiText)
             useNativeWeb && profile.provider == ApiProvider.OPENAI ->
-                retryTransientServerFailure { postOpenAiResponses(profile, apiKey, messages, maxTokens) }
-                    .let(::extractOpenAiResponseText)
+                retryTransientServerFailure {
+                    postOpenAiResponses(profile, apiKey, messages, maxTokens, generationMode)
+                }.let(::extractOpenAiResponseText)
             else -> {
                 val payload = JSONObject()
                     .put("model", profile.model)
                     .put("messages", buildOpenAiMessages(messages, imagePaths, audioPath))
-                applyOpenAiCompatibleTuning(payload, profile, maxTokens)
+                applyOpenAiCompatibleTuning(payload, profile, maxTokens, generationMode)
                 if (useNativeWeb && profile.provider == ApiProvider.OPENROUTER) {
                     payload.put(
                         "tools",
@@ -163,6 +169,8 @@ object ApiTokenClient {
         audioPath: String? = null,
         maxTokens: Int = 2048,
         webRequested: Boolean = false,
+        generationMode: CloudGenerationMode = CloudGenerationMode.DEFAULT,
+        visionDetail: AiVisionDetail = AiVisionDetail.STANDARD,
         onToken: (String) -> Unit,
     ): Result<String> = runCatching {
         val (profile, apiKey) = AiProviderPrefs.activeProfileWithKey(context)
@@ -188,6 +196,8 @@ object ApiTokenClient {
                         audioPath = audioPath,
                         maxTokens = maxTokens,
                         webRequested = useNativeWeb,
+                        generationMode = generationMode,
+                        visionDetail = visionDetail,
                     )
                     requestSse(
                         url = geminiStreamGenerateContentUrl(baseUrl, profile.model),
@@ -202,8 +212,12 @@ object ApiTokenClient {
                 }
 
                 useNativeWeb && profile.provider == ApiProvider.OPENAI -> {
-                    val payload = buildOpenAiResponsesPayload(profile, messages, maxTokens)
-                        .put("stream", true)
+                    val payload = buildOpenAiResponsesPayload(
+                        profile = profile,
+                        messages = messages,
+                        maxTokens = maxTokens,
+                        generationMode = generationMode,
+                    ).put("stream", true)
                     requestSse(
                         url = "$baseUrl/responses",
                         apiKey = apiKey,
@@ -222,7 +236,7 @@ object ApiTokenClient {
                         .put("model", profile.model)
                         .put("messages", buildOpenAiMessages(messages, imagePaths, audioPath))
                         .put("stream", true)
-                    applyOpenAiCompatibleTuning(payload, profile, maxTokens)
+                    applyOpenAiCompatibleTuning(payload, profile, maxTokens, generationMode)
                     if (useNativeWeb && profile.provider == ApiProvider.OPENROUTER) {
                         payload.put(
                             "tools",
@@ -236,6 +250,9 @@ object ApiTokenClient {
                     ) { data ->
                         if (data == "[DONE]") return@requestSse
                         val event = runCatching { JSONObject(data) }.getOrNull() ?: return@requestSse
+                        // DeepSeek/OpenRouter/Groq may return reasoning_content alongside content.
+                        // extractChatCompletionDelta intentionally reads only content, so hidden
+                        // thoughts never enter the sanitizer/TTS pipeline through structured fields.
                         emit(extractChatCompletionDelta(event))
                     }
                 }
@@ -253,6 +270,8 @@ object ApiTokenClient {
         userPrompt: String,
         imagePath: String,
         maxTokens: Int = 1200,
+        generationMode: CloudGenerationMode = CloudGenerationMode.DEFAULT,
+        visionDetail: AiVisionDetail = AiVisionDetail.STANDARD,
     ): Result<String> {
         val messages = buildList {
             if (systemPrompt.isNotBlank()) add(mapOf("role" to "system", "content" to systemPrompt))
@@ -263,6 +282,8 @@ object ApiTokenClient {
             messages = messages,
             imagePaths = listOf(imagePath),
             maxTokens = maxTokens,
+            generationMode = generationMode,
+            visionDetail = visionDetail,
         )
     }
 
@@ -357,9 +378,13 @@ object ApiTokenClient {
         payload: JSONObject,
         profile: CloudAiProfile,
         maxTokens: Int,
+        generationMode: CloudGenerationMode,
     ) {
-        val tuning = CloudModelPolicy.requestTuning(profile, maxTokens)
+        val tuning = CloudModelPolicy.requestTuning(profile, generationMode)
         payload.put(tuning.completionTokenField, maxTokens)
+        tuning.deepSeekThinkingType?.let { type ->
+            payload.put("thinking", JSONObject().put("type", type))
+        }
         tuning.reasoningEffort?.let { payload.put("reasoning_effort", it) }
         tuning.reasoningFormat?.let { payload.put("reasoning_format", it) }
         tuning.openRouterReasoningEffort?.let { effort ->
@@ -376,6 +401,7 @@ object ApiTokenClient {
         profile: CloudAiProfile,
         messages: List<Map<String, String>>,
         maxTokens: Int,
+        generationMode: CloudGenerationMode,
     ): JSONObject {
         val input = JSONArray()
         messages.forEach { message ->
@@ -391,7 +417,7 @@ object ApiTokenClient {
             .put("input", input)
             .put("max_output_tokens", maxTokens)
             .put("tools", JSONArray().put(JSONObject().put("type", "web_search")))
-        val tuning = CloudModelPolicy.requestTuning(profile, maxTokens)
+        val tuning = CloudModelPolicy.requestTuning(profile, generationMode)
         tuning.reasoningEffort?.let { effort ->
             payload.put("reasoning", JSONObject().put("effort", effort))
         }
@@ -406,12 +432,13 @@ object ApiTokenClient {
         apiKey: String,
         messages: List<Map<String, String>>,
         maxTokens: Int,
+        generationMode: CloudGenerationMode,
     ): JSONObject {
         val baseUrl = profile.provider.resolveBaseUrl(profile.baseUrl)
         return postJson(
             "$baseUrl/responses",
             apiKey,
-            buildOpenAiResponsesPayload(profile, messages, maxTokens),
+            buildOpenAiResponsesPayload(profile, messages, maxTokens, generationMode),
         )
     }
 
@@ -424,6 +451,8 @@ object ApiTokenClient {
         audioPath: String?,
         maxTokens: Int,
         webRequested: Boolean,
+        generationMode: CloudGenerationMode,
+        visionDetail: AiVisionDetail,
     ): JSONObject {
         val baseUrl = profile.provider.resolveBaseUrl(profile.baseUrl)
         val endpoint = geminiGenerateContentUrl(baseUrl, profile.model)
@@ -437,6 +466,8 @@ object ApiTokenClient {
                 audioPath = audioPath,
                 maxTokens = maxTokens,
                 webRequested = webRequested,
+                generationMode = generationMode,
+                visionDetail = visionDetail,
             ),
             extraHeaders = mapOf("x-goog-api-key" to apiKey),
         )
@@ -449,6 +480,8 @@ object ApiTokenClient {
         audioPath: String?,
         maxTokens: Int,
         webRequested: Boolean,
+        generationMode: CloudGenerationMode,
+        visionDetail: AiVisionDetail,
     ): JSONObject {
         val systemParts = JSONArray()
         val contents = JSONArray()
@@ -479,17 +512,20 @@ object ApiTokenClient {
         require(contents.length() > 0) { "Gemini request has no user/model content." }
 
         val generationConfig = JSONObject().put("maxOutputTokens", maxTokens)
-        val tuning = CloudModelPolicy.requestTuning(profile, maxTokens)
-        tuning.geminiThinkingLevel?.let { level ->
-            generationConfig.put(
-                "thinkingConfig",
-                JSONObject().put("thinkingLevel", level),
-            )
+        val tuning = CloudModelPolicy.requestTuning(profile, generationMode)
+        if (tuning.geminiThinkingLevel != null || tuning.geminiThinkingBudget != null) {
+            val thinkingConfig = JSONObject().put("includeThoughts", false)
+            tuning.geminiThinkingLevel?.let { level -> thinkingConfig.put("thinkingLevel", level) }
+            tuning.geminiThinkingBudget?.let { budget -> thinkingConfig.put("thinkingBudget", budget) }
+            generationConfig.put("thinkingConfig", thinkingConfig)
         }
-        tuning.geminiThinkingBudget?.let { budget ->
+        if (imagePaths.isNotEmpty() && profile.model.trim().lowercase().startsWith("gemini-3")) {
             generationConfig.put(
-                "thinkingConfig",
-                JSONObject().put("thinkingBudget", budget),
+                "mediaResolution",
+                when (visionDetail) {
+                    AiVisionDetail.STANDARD -> "MEDIA_RESOLUTION_MEDIUM"
+                    AiVisionDetail.TEXT_DETAIL -> "MEDIA_RESOLUTION_HIGH"
+                },
             )
         }
 
