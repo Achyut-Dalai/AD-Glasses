@@ -76,6 +76,7 @@ class MoonshineRecognitionService : RecognitionService() {
         @Volatile var queueDepthAtLineCompleted: Int = -1
         @Volatile var partialUpdateCount: Int = 0
         @Volatile var lineCompletedCount: Int = 0
+        @Volatile var maxTranscriptionLatencyMs: Int = 0
         @Volatile var routedInputType: Int = -1
     }
 
@@ -319,9 +320,9 @@ class MoonshineRecognitionService : RecognitionService() {
                 if (session.captureEnded.get() && session.audioQueue.isEmpty()) break
             }
 
-            // A normal client stop or either silence timeout can arrive before Moonshine emitted a
-            // completed line. Drain the queue first, then keep the listener attached while
-            // stopStream forces the trailing text.
+            // A normal client stop, Moonshine line completion, or silence timeout can arrive while
+            // captured PCM is still queued. Drain every already-captured chunk before the native
+            // forced flush; only cancellation/real terminal errors are allowed to abandon it.
             if (!session.cancelled.get() && !session.terminalRequested.get()) {
                 while (true) {
                     val chunk = session.audioQueue.poll() ?: break
@@ -347,10 +348,10 @@ class MoonshineRecognitionService : RecognitionService() {
 
             if (streamStarted && streamHandle >= 0) {
                 try {
-                    // If a line already completed, detach before the forced flush to avoid duplicate
-                    // terminal callbacks. Otherwise retain the listener so stopStream can supply the
-                    // final trailing line for onStopListening or silence finalization.
-                    if (session.finalText.get() != null || session.cancelled.get() || session.failure.get() != null) {
+                    // Keep the listener attached through stopStream's forced update on successful
+                    // requests. Upstream deduplicates completed line IDs, while a genuinely trailing
+                    // line must still be observed and appended to the final utterance.
+                    if (session.cancelled.get() || session.failure.get() != null) {
                         listener?.let { transcriber.removeListener(it) }
                         session.transcriptListener = null
                         listener = null
@@ -405,15 +406,28 @@ class MoonshineRecognitionService : RecognitionService() {
         if (eventStream != session.streamHandle) return
 
         when (event) {
-            is TranscriptEvent.LineTextChanged -> onPartial(session, event.line.text.orEmpty())
+            is TranscriptEvent.LineStarted -> noteTranscriptionLatency(session, event.line.lastTranscriptionLatencyMs)
+            is TranscriptEvent.LineUpdated -> noteTranscriptionLatency(session, event.line.lastTranscriptionLatencyMs)
+            is TranscriptEvent.LineTextChanged -> {
+                noteTranscriptionLatency(session, event.line.lastTranscriptionLatencyMs)
+                onPartial(session, event.line.text.orEmpty())
+            }
+            is TranscriptEvent.LineSpeakersChanged ->
+                noteTranscriptionLatency(session, event.line.lastTranscriptionLatencyMs)
             is TranscriptEvent.LineCompleted -> {
+                noteTranscriptionLatency(session, event.line.lastTranscriptionLatencyMs)
                 session.lineCompletedCount++
-                session.queueDepthAtLineCompleted = session.audioQueue.size
+                session.queueDepthAtLineCompleted = max(session.queueDepthAtLineCompleted, session.audioQueue.size)
                 val clean = event.line.text.orEmpty().trim()
-                if (clean.isNotBlank() && session.finalText.compareAndSet(null, clean)) {
-                    session.terminalReason.compareAndSet(null, "moonshine_line_completed")
-                    session.terminalRequested.set(true)
-                    requestRecordStop(session)
+                if (clean.isNotBlank()) {
+                    val firstCompletedText = appendCompletedLine(session, clean)
+                    if (firstCompletedText) {
+                        session.terminalReason.compareAndSet(null, "moonshine_line_completed")
+                        // End microphone capture at Moonshine's first completed line, but do not mark
+                        // the engine terminal: it still owns and must drain PCM captured before this
+                        // callback, then observe stopStream's forced trailing completion.
+                        stopCapture(session)
+                    }
                 }
             }
             is TranscriptEvent.Error -> {
@@ -422,6 +436,20 @@ class MoonshineRecognitionService : RecognitionService() {
                 session.terminalRequested.set(true)
                 requestRecordStop(session)
             }
+        }
+    }
+
+    private fun appendCompletedLine(session: Session, clean: String): Boolean {
+        while (true) {
+            val previous = session.finalText.get()
+            val combined = if (previous.isNullOrBlank()) clean else "$previous $clean"
+            if (session.finalText.compareAndSet(previous, combined)) return previous.isNullOrBlank()
+        }
+    }
+
+    private fun noteTranscriptionLatency(session: Session, latencyMs: Int) {
+        if (latencyMs > 0) {
+            session.maxTranscriptionLatencyMs = max(session.maxTranscriptionLatencyMs, latencyMs)
         }
     }
 
@@ -474,6 +502,7 @@ class MoonshineRecognitionService : RecognitionService() {
                 "clippingPpm=${audio.clippingPpm} maxBufferedMs=$maxBufferedMs " +
                 "queueAtLineMs=$queueAtLineMs partials=${session.partialUpdateCount} " +
                 "lines=${session.lineCompletedCount} firstPartialMs=$firstPartialMs " +
+                "maxTranscriptionLatencyMs=${session.maxTranscriptionLatencyMs} " +
                 "reason=${session.terminalReason.get() ?: "unknown"}",
         )
 
