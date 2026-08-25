@@ -71,6 +71,30 @@ class AssistantCompletionSanitizerTest {
     }
 
     @Test
+    fun rejects_current_shared_conversation_prompt_echo() {
+        val raw = "You are AD. Answer the latest user request directly in plain text. Return only the final answer."
+        val sanitized = AssistantCompletionSanitizer.inspect(raw)
+
+        assertTrue(sanitized.text.isBlank())
+        assertEquals(
+            AssistantCompletionSanitizer.RejectionReason.SYSTEM_PROMPT_ECHO,
+            sanitized.rejectionReason,
+        )
+    }
+
+    @Test
+    fun rejects_current_automation_prompt_echo() {
+        val raw = "You are AD. Complete the requested task directly and return only the final result."
+        val sanitized = AssistantCompletionSanitizer.inspect(raw)
+
+        assertTrue(sanitized.text.isBlank())
+        assertEquals(
+            AssistantCompletionSanitizer.RejectionReason.SYSTEM_PROMPT_ECHO,
+            sanitized.rejectionReason,
+        )
+    }
+
+    @Test
     fun rejects_compact_system_prompt_echo() {
         val raw = "You are AD. Answer directly and concisely. Return only the final answer."
         val sanitized = AssistantCompletionSanitizer.inspect(raw)
@@ -83,7 +107,7 @@ class AssistantCompletionSanitizerTest {
     }
 
     @Test
-    fun rejects_current_voice_system_prompt_echo() {
+    fun rejects_historical_voice_system_prompt_echo() {
         val raw = "You are AD, a voice assistant for smart glasses. Answer the latest question directly."
         val sanitized = AssistantCompletionSanitizer.inspect(raw)
 
