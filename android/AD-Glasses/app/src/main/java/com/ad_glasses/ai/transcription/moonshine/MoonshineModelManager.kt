@@ -92,7 +92,7 @@ object MoonshineModelManager {
         migrateLegacyModelIfNeeded(context, kind)
         val dir = modelDir(context, kind)
         check(validateDir(dir, kind).ok) {
-            "Moonshine ${kind.id} is not installed. Install the Moonshine Small Streaming model in Cloud AI settings."
+            "Moonshine is not installed. Install Moonshine in Cloud AI settings."
         }
         return dir
     }
@@ -144,7 +144,7 @@ object MoonshineModelManager {
 
         val downloader = AssetDownloader()
         val spec = modelSpec(kind)
-        onProgress(Progress(0, "Preparing Moonshine Small Streaming…"))
+        onProgress(Progress(0, "Preparing Moonshine…"))
         downloader.ensureModelPresent(
             dir,
             spec,
@@ -173,7 +173,7 @@ object MoonshineModelManager {
         // only wastes mobile storage and could accidentally hide a rollback/fallback in future code.
         removeRetiredMediumModel(context)
         Log.i(TAG, "Installed Moonshine model ${kind.id} from pinned native catalog to ${dir.absolutePath}")
-        onProgress(Progress(100, "Moonshine Small Streaming installed"))
+        onProgress(Progress(100, "Moonshine installed"))
         return dir
     }
 
