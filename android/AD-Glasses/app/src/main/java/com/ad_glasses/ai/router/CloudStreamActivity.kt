@@ -7,7 +7,7 @@ package com.ad_glasses.ai.router
  * provider adapter solely to establish liveness, but it is discarded before this signal leaves
  * the transport layer.
  */
-internal enum class CloudStreamActivity {
+enum class CloudStreamActivity {
     PROVIDER_DATA,
     REASONING,
 }
