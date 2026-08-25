@@ -6,6 +6,7 @@ import android.media.AudioManager
 import android.os.Build
 import android.util.Log
 import com.ad_glasses.ai.AndroidAssistantVoiceIo
+import com.ad_glasses.ai.AssistantTextFingerprint
 import com.ad_glasses.ai.router.AgentInferencePurpose
 import com.ad_glasses.ai.router.AgentInferenceRouter
 import com.ad_glasses.ai.router.AiProviderPrefs
@@ -34,6 +35,12 @@ class AndroidAssistantCapabilityExecutor(
         }
         val generationMode = generationMode(prompt)
         val responseMode = AiResponseMode.CONCISE
+        val providerPromptHash = AssistantTextFingerprint.of(prompt)
+        Log.i(
+            "AssistantTiming",
+            "stage=assistant_provider_prompt surface=${context.surface} provider=${context.providerType} " +
+                "chars=${prompt.length} textHash=$providerPromptHash",
+        )
         val result = try {
             AgentInferenceRouter.complete(
                 context = appContext,
