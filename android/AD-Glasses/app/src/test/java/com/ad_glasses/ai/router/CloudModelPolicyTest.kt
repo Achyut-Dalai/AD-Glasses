@@ -124,7 +124,7 @@ class CloudModelPolicyTest {
     }
 
     @Test
-    fun gemini31_flash_lite_image_uses_supported_minimal() {
+    fun gemini31_flash_lite_uses_supported_minimal() {
         val profile = profile(ApiProvider.GOOGLE, "gemini-3.1-flash-lite-image")
 
         assertEquals("minimal", CloudModelPolicy.requestTuning(profile, concise).geminiThinkingLevel)
@@ -169,6 +169,16 @@ class CloudModelPolicyTest {
         assertNull(tuning.reasoningEffort)
         assertNull(tuning.responseVerbosity)
         assertEquals("max_completion_tokens", tuning.completionTokenField)
+    }
+
+    @Test
+    fun legacy_automation_ceiling_does_not_inherit_conversation_reasoning_policy() {
+        val profile = profile(ApiProvider.OPENAI, "gpt-5")
+
+        val tuning = CloudModelPolicy.requestTuning(profile, 384)
+
+        assertNull(tuning.reasoningEffort)
+        assertNull(tuning.responseVerbosity)
     }
 
     private fun profile(provider: ApiProvider, model: String): CloudAiProfile = CloudAiProfile(
