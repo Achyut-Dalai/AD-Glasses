@@ -72,4 +72,43 @@ class GeminiNativeRoutingTest {
             geminiVisibleText(parts, preserveWhitespace = true),
         )
     }
+
+    @Test
+    fun geminiDiagnosticsMergeFinishAndUsageWithoutResponseContent() {
+        val finish = GeminiResponseDiagnostics(finishReason = "MAX_TOKENS")
+        val usage = GeminiResponseDiagnostics(
+            promptTokens = 41,
+            candidateTokens = 0,
+            thoughtTokens = 217,
+            totalTokens = 258,
+        )
+
+        assertEquals(
+            GeminiResponseDiagnostics(
+                finishReason = "MAX_TOKENS",
+                promptTokens = 41,
+                candidateTokens = 0,
+                thoughtTokens = 217,
+                totalTokens = 258,
+            ),
+            finish.merge(usage),
+        )
+    }
+
+    @Test
+    fun geminiNoVisibleAnswerDetailExplainsBudgetFailureWithoutThoughtText() {
+        val detail = geminiNoVisibleAnswerDetail(
+            model = "gemini-3.7-flash",
+            diagnostics = GeminiResponseDiagnostics(
+                finishReason = "MAX_TOKENS",
+                candidateTokens = 0,
+                thoughtTokens = 96,
+                totalTokens = 140,
+            ),
+        )
+
+        assertTrue(detail.contains("finishReason=MAX_TOKENS"))
+        assertTrue(detail.contains("thoughtTokens=96"))
+        assertFalse(detail.contains("reasoning_content"))
+    }
 }
