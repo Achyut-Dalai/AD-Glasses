@@ -8,27 +8,25 @@ enum class CloudGenerationMode {
 }
 
 /**
- * Provider/model-aware transport policy.
+ * Provider-aware request-shape policy with provider-neutral product budgets.
  *
- * Normal Chat/Lens/Voice uses [CloudGenerationMode.CONCISE_CONVERSATION]: hidden reasoning is
- * disabled where the provider supports it and the provider ceiling stays near the visible answer.
- * A larger ceiling is reserved for [CloudGenerationMode.REASONED_CONVERSATION] only on APIs where
- * reasoning consumes the same generation allowance as visible output. Gemini reports/throttles
- * thinking separately, so its visible answer stays at the concise ceiling even for reasoned turns.
+ * Product intent decides how much generation room a turn gets. The selected provider or model must
+ * never silently make the product more or less capable by changing that ceiling. Provider/model
+ * checks below exist only to map the same intent onto supported wire fields and reasoning controls.
  */
 internal object CloudModelPolicy {
-    /** Roughly enough for the shared <=50 word / <=3 sentence final-answer contract. */
-    const val CONCISE_OUTPUT_TOKENS = 96
+    /**
+     * Normal conversation still asks for a short final answer, but 256 tokens leaves enough room
+     * for providers whose reasoning shares the completion allowance and avoids cutting off a final
+     * answer merely to save a few dozen tokens. Visible speech is bounded separately by the app.
+     */
+    const val CONCISE_OUTPUT_TOKENS = 256
 
-    /** Headroom for APIs where unavoidable hidden reasoning shares the completion-token ceiling. */
-    const val CONCISE_MANDATORY_REASONING_TOKENS = 256
+    /** Explicit deep-reasoning turns may intentionally spend more generation budget. */
+    const val REASONED_OUTPUT_TOKENS = 2_048
 
-    /** Pro-style models cannot be made cheap; keep them functional without making this the default. */
-    const val CONCISE_FORCED_REASONING_TOKENS = 512
-
-    /** Explicit deep-reasoning turns may intentionally spend more shared generation budget. */
-    const val REASONED_OUTPUT_TOKENS = 1_024
-    const val REASONED_FORCED_REASONING_TOKENS = 2_048
+    /** Generic/internal callers that did not select a conversation mode. */
+    const val DEFAULT_OUTPUT_TOKENS = 512
 
     internal data class RequestTuning(
         /** OpenAI-compatible token field. Native Gemini uses maxOutputTokens separately. */
@@ -52,58 +50,20 @@ internal object CloudModelPolicy {
         val geminiThinkingBudget: Int? = null,
     )
 
+    /** Product budget depends only on requested generation mode, never provider/model identity. */
+    @Suppress("UNUSED_PARAMETER")
     fun generationTokenLimit(
         profile: CloudAiProfile?,
         mode: CloudGenerationMode,
     ): Int = when (mode) {
-        CloudGenerationMode.DEFAULT -> 512
-        CloudGenerationMode.REASONED_CONVERSATION -> when {
-            // Gemini's maxOutputTokens bounds candidate output; thinking is controlled/reported
-            // separately. Keep the final answer short even when the requested thinking level rises.
-            profile?.provider == ApiProvider.GOOGLE -> CONCISE_OUTPUT_TOKENS
-            profile?.let(::isForcedReasoningProfile) == true -> REASONED_FORCED_REASONING_TOKENS
-            else -> REASONED_OUTPUT_TOKENS
-        }
-        CloudGenerationMode.CONCISE_CONVERSATION -> conciseTokenLimit(profile)
+        CloudGenerationMode.DEFAULT -> DEFAULT_OUTPUT_TOKENS
+        CloudGenerationMode.CONCISE_CONVERSATION -> CONCISE_OUTPUT_TOKENS
+        CloudGenerationMode.REASONED_CONVERSATION -> REASONED_OUTPUT_TOKENS
     }
 
     /** Source-compatible helper used by existing callers/tests while the explicit mode is adopted. */
     fun conciseConversationTokenLimit(profile: CloudAiProfile?): Int =
         generationTokenLimit(profile, CloudGenerationMode.CONCISE_CONVERSATION)
-
-    private fun conciseTokenLimit(profile: CloudAiProfile?): Int {
-        if (profile == null) return CONCISE_MANDATORY_REASONING_TOKENS
-        val model = normalizedModel(profile.model)
-        return when (profile.provider) {
-            ApiProvider.OPENAI -> when {
-                isOpenAiForcedReasoningModel(model) -> CONCISE_FORCED_REASONING_TOKENS
-                openAiCanDisableReasoning(model) || !isOpenAiReasoningModel(model) -> CONCISE_OUTPUT_TOKENS
-                else -> CONCISE_MANDATORY_REASONING_TOKENS
-            }
-
-            // Gemini candidate output and thinking are independently controlled. Never inflate the
-            // visible answer ceiling merely because a Gemini family has mandatory thinking.
-            ApiProvider.GOOGLE -> CONCISE_OUTPUT_TOKENS
-
-            ApiProvider.GROQ -> when {
-                isGroqQwen36(model) -> CONCISE_OUTPUT_TOKENS
-                isGroqGptOss(model) -> CONCISE_MANDATORY_REASONING_TOKENS
-                else -> CONCISE_OUTPUT_TOKENS
-            }
-
-            ApiProvider.DEEPSEEK -> CONCISE_OUTPUT_TOKENS // v4 supports thinking.type=disabled.
-
-            ApiProvider.OPENROUTER -> when {
-                isOpenRouterForcedReasoningModel(model) -> CONCISE_FORCED_REASONING_TOKENS
-                openRouterCanDisableReasoning(model) || !isLikelyReasoningModel(model) -> CONCISE_OUTPUT_TOKENS
-                else -> CONCISE_MANDATORY_REASONING_TOKENS
-            }
-
-            // A custom endpoint may map any slug to any implementation. Do not invent provider
-            // reasoning controls; 128 keeps the default modest while leaving a little compatibility room.
-            ApiProvider.CUSTOM -> 128
-        }
-    }
 
     /**
      * Compatibility bridge for older transport call sites. New inference code passes [mode]
@@ -112,15 +72,17 @@ internal object CloudModelPolicy {
     fun requestTuning(profile: CloudAiProfile, maxTokens: Int): RequestTuning = requestTuning(
         profile = profile,
         mode = when (maxTokens) {
-            conciseTokenLimit(profile) -> CloudGenerationMode.CONCISE_CONVERSATION
-            REASONED_OUTPUT_TOKENS,
-            REASONED_FORCED_REASONING_TOKENS -> CloudGenerationMode.REASONED_CONVERSATION
+            CONCISE_OUTPUT_TOKENS -> CloudGenerationMode.CONCISE_CONVERSATION
+            REASONED_OUTPUT_TOKENS -> CloudGenerationMode.REASONED_CONVERSATION
             else -> CloudGenerationMode.DEFAULT
         },
     )
 
     /**
      * Native request controls. Unsupported controls are deliberately omitted rather than guessed.
+     *
+     * These branches are transport/capability mappings, not provider-specific token policy. Every
+     * provider receives the same generation budget for the same [mode].
      *
      * [includeReasoningActivity] is used only by the adaptive wearable stream watchdog. Providers
      * may return structured reasoning metadata so the app can know a request is alive; the transport
@@ -234,15 +196,6 @@ internal object CloudModelPolicy {
             }
 
             ApiProvider.CUSTOM -> RequestTuning(completionTokenField = tokenField)
-        }
-    }
-
-    private fun isForcedReasoningProfile(profile: CloudAiProfile): Boolean {
-        val model = normalizedModel(profile.model)
-        return when (profile.provider) {
-            ApiProvider.OPENAI -> isOpenAiForcedReasoningModel(model)
-            ApiProvider.OPENROUTER -> isOpenRouterForcedReasoningModel(model)
-            else -> false
         }
     }
 
