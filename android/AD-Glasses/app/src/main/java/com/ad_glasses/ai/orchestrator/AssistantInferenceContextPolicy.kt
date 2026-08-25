@@ -32,9 +32,10 @@ object AssistantInferenceContextPolicy {
     /**
      * [history] includes the user message for the turn currently being handled.
      *
-     * Select newest prior messages until the fixed character budget is full. This keeps the same
-     * upper bound as the previous three-message policy while allowing many short turns to survive.
-     * Transient assistant failures may be visible in Chats, but never consume inference context.
+     * Select the newest contiguous prior suffix until the fixed character budget is full. This
+     * keeps the previous worst-case upper bound while allowing many short turns to survive. Once a
+     * real message would exceed the budget, stop rather than skipping it and resurrecting older
+     * context. Transient assistant failures may be visible in Chats but never consume the budget.
      */
     @Suppress("UNUSED_PARAMETER")
     fun priorMessages(
@@ -46,12 +47,11 @@ object AssistantInferenceContextPolicy {
 
         val selectedNewestFirst = mutableListOf<ChatMessage>()
         var usedChars = 0
-        history.dropLast(1).asReversed().forEach { message ->
-            if (!isInferenceEligible(message)) return@forEach
+        for (message in history.dropLast(1).asReversed()) {
+            if (!isInferenceEligible(message)) continue
             val contentChars = message.content.trim().take(MAX_MESSAGE_CHARS).length
-            if (contentChars == 0 || usedChars + contentChars > MAX_PRIOR_CONTEXT_CHARS) {
-                return@forEach
-            }
+            if (contentChars == 0) continue
+            if (usedChars + contentChars > MAX_PRIOR_CONTEXT_CHARS) break
             selectedNewestFirst += message
             usedChars += contentChars
         }
