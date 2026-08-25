@@ -9,7 +9,9 @@ object AssistantSpokenResponsePolicy {
     private const val CHAT_POINTER = "More detail is in Chats."
 
     private val wordPattern = Regex("\\S+")
-    private val sentenceEndPattern = Regex("[.!?](?=\\s|$)")
+    // Latin sentence punctuation is boundary-safe only before whitespace/end; CJK full-width
+    // terminators are sentence boundaries without requiring spaces between sentences.
+    private val sentenceEndPattern = Regex("(?:[.!?](?=\\s|$)|[。！？])")
 
     /**
      * Convert rich model text into speech-safe plain text.
@@ -197,7 +199,7 @@ object AssistantSpokenResponsePolicy {
     private fun finishTruncated(text: String): String {
         var body = text.trimEnd(' ', ',', ';', ':', '-', '–', '—')
         if (body.isBlank()) return ""
-        if (body.last() !in charArrayOf('.', '!', '?')) body += "."
+        if (body.last() !in SENTENCE_TERMINATORS) body += "."
         return body
     }
 
@@ -268,7 +270,7 @@ object AssistantSpokenResponsePolicy {
         while (target.isNotEmpty() && target.last() in TRAILING_BREAK_PUNCTUATION) {
             target.deleteCharAt(target.lastIndex)
         }
-        if (target.isNotEmpty() && target.last() !in charArrayOf('.', '!', '?')) target.append('.')
+        if (target.isNotEmpty() && target.last() !in SENTENCE_TERMINATORS) target.append('.')
         appendSpace(target)
     }
 
@@ -297,7 +299,8 @@ object AssistantSpokenResponsePolicy {
         ?.last
         ?.plus(1)
 
+    private val SENTENCE_TERMINATORS = setOf('.', '!', '?', '。', '！', '？')
     private val MARKDOWN_ESCAPABLE = setOf('*', '_', '#', '`', '~', '[', ']', '(', ')')
-    private val SPEECH_PUNCTUATION = setOf(',', '.', ';', ':', '!', '?')
-    private val TRAILING_BREAK_PUNCTUATION = setOf(',', ';', ':', '-', '–', '—')
+    private val SPEECH_PUNCTUATION = setOf(',', '.', ';', ':', '!', '?', '，', '。', '；', '：', '！', '？')
+    private val TRAILING_BREAK_PUNCTUATION = setOf(',', ';', ':', '-', '–', '—', '，', '；', '：')
 }
