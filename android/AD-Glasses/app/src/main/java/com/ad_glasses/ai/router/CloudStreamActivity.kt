@@ -8,7 +8,13 @@ package com.ad_glasses.ai.router
  * the transport layer.
  */
 enum class CloudStreamActivity {
+    /** HTTP request was accepted and response headers are available. */
+    HTTP_READY,
+
+    /** At least one non-terminal SSE data event arrived from the provider. */
     PROVIDER_DATA,
+
+    /** Structured/inline reasoning activity was observed; the reasoning text itself is discarded. */
     REASONING,
 }
 
