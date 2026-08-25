@@ -160,6 +160,11 @@ internal object CloudModelPolicy {
                     completionTokenField = tokenField,
                     geminiThinkingLevel = if (reasoned) "medium" else "low",
                 )
+                model.startsWith("gemini-3.1-flash-lite-image") -> RequestTuning(
+                    completionTokenField = tokenField,
+                    // This image model exposes only minimal/high, unlike the general Flash family.
+                    geminiThinkingLevel = if (reasoned) "high" else "minimal",
+                )
                 isGeminiMinimalThinkingModel(model) -> RequestTuning(
                     completionTokenField = tokenField,
                     geminiThinkingLevel = if (reasoned) "medium" else "minimal",
