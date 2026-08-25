@@ -44,6 +44,10 @@ object AssistantCompletionSanitizer {
     )
 
     private val strongSystemPromptPrefixes = listOf(
+        // Current shared Chat/Lens/Voice and automation contracts.
+        "You are AD. Answer the latest user request directly in plain text.",
+        "You are AD. Complete the requested task directly and return only the final result.",
+        // Historical prompts remain blocked so old provider/context echoes cannot re-enter Chats.
         "You are AD. Answer directly and concisely.",
         "You are AD, a voice assistant for smart glasses.",
     )
