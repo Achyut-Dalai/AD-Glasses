@@ -39,25 +39,6 @@ internal fun shouldRequestReasoningHeartbeat(
     return tuning.geminiThinkingLevel != null || (tuning.geminiThinkingBudget ?: 0) > 0
 }
 
-/**
- * A concise OpenRouter request may route to a model that unexpectedly spends the shared completion
- * allowance on reasoning before emitting answer text. Retry exactly once with the existing
- * mandatory-reasoning ceiling only after the failed stream proves that this happened. Normal
- * OpenRouter/Groq/Gemini/OpenAI/DeepSeek turns keep their original budgets and never enter here.
- */
-internal fun shouldRetryOpenRouterReasoningOnly(
-    provider: ApiProvider,
-    mode: CloudGenerationMode,
-    requestedTokens: Int,
-    reasoningSeen: Boolean,
-    visibleText: String,
-): Boolean =
-    provider == ApiProvider.OPENROUTER &&
-        mode == CloudGenerationMode.CONCISE_CONVERSATION &&
-        requestedTokens < CloudModelPolicy.CONCISE_MANDATORY_REASONING_TOKENS &&
-        reasoningSeen &&
-        visibleText.isBlank()
-
 internal fun openAiCompatibleHasReasoningActivity(
     reasoningContent: String?,
     reasoning: String?,
