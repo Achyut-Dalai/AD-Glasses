@@ -318,7 +318,7 @@ class AndroidAssistantCapabilityExecutor(
             AssistantInputSurface.GLASSES_VISION,
             AssistantInputSurface.PHONE_VOICE,
             AssistantInputSurface.PHONE_TEXT -> {
-                val productLimit = CloudModelPolicy.generationTokenLimit(null, generationMode)
+                val productLimit = CloudModelPolicy.generationTokenLimit(generationMode)
                 if (responseMode == AiResponseMode.TEXT_EXTRACTION) {
                     maxOf(productLimit, TEXT_EXTRACTION_MAX_TOKENS)
                 } else {
