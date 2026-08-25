@@ -167,6 +167,7 @@ object ApiTokenClient {
     /**
      * Stream user-visible text as it is generated while also returning the complete completion.
      * Structured reasoning fields are intentionally ignored; only provider answer text is emitted.
+     * [onActivity] receives content-free liveness signals for the wearable watchdog.
      */
     suspend fun chatStreaming(
         context: Context,
@@ -178,6 +179,7 @@ object ApiTokenClient {
         generationMode: CloudGenerationMode = CloudGenerationMode.DEFAULT,
         visionDetail: AiVisionDetail = AiVisionDetail.STANDARD,
         onToken: (String) -> Unit,
+        onActivity: ((CloudStreamActivity) -> Unit)? = null,
     ): Result<String> = runCatching {
         val (profile, apiKey) = AiProviderPrefs.activeProfileWithKey(context)
         require(profile.model.isNotBlank()) { "${profile.name} does not have a model selected." }
@@ -185,6 +187,8 @@ object ApiTokenClient {
         require(baseUrl.startsWith("https://")) { "${profile.name} does not have a valid HTTPS API base URL." }
 
         val useNativeWeb = webRequested && profile.webAvailable && imagePaths.isEmpty() && audioPath.isNullOrBlank()
+        val includeReasoningActivity =
+            onActivity != null && generationMode == CloudGenerationMode.REASONED_CONVERSATION
         val full = StringBuilder()
         var geminiDiagnostics = GeminiResponseDiagnostics()
         fun emit(delta: String) {
@@ -205,12 +209,14 @@ object ApiTokenClient {
                         webRequested = useNativeWeb,
                         generationMode = generationMode,
                         visionDetail = visionDetail,
+                        includeThoughts = includeReasoningActivity,
                     )
                     requestSse(
                         url = geminiStreamGenerateContentUrl(baseUrl, profile.model),
                         apiKey = null,
                         payload = payload,
                         extraHeaders = mapOf("x-goog-api-key" to apiKey),
+                        onActivity = onActivity,
                     ) { data ->
                         if (data == "[DONE]") return@requestSse
                         val event = runCatching { JSONObject(data) }.getOrNull() ?: return@requestSse
@@ -230,6 +236,7 @@ object ApiTokenClient {
                         url = "$baseUrl/responses",
                         apiKey = apiKey,
                         payload = payload,
+                        onActivity = onActivity,
                     ) { data ->
                         if (data == "[DONE]") return@requestSse
                         val event = runCatching { JSONObject(data) }.getOrNull() ?: return@requestSse
@@ -244,7 +251,13 @@ object ApiTokenClient {
                         .put("model", profile.model)
                         .put("messages", buildOpenAiMessages(messages, imagePaths, audioPath))
                         .put("stream", true)
-                    applyOpenAiCompatibleTuning(payload, profile, maxTokens, generationMode)
+                    applyOpenAiCompatibleTuning(
+                        payload = payload,
+                        profile = profile,
+                        maxTokens = maxTokens,
+                        generationMode = generationMode,
+                        includeReasoningActivity = includeReasoningActivity,
+                    )
                     if (useNativeWeb && profile.provider == ApiProvider.OPENROUTER) {
                         payload.put(
                             "tools",
@@ -255,12 +268,13 @@ object ApiTokenClient {
                         url = OpenAiCompatibleEndpoint.chatCompletionsUrl(baseUrl),
                         apiKey = apiKey,
                         payload = payload,
+                        onActivity = onActivity,
                     ) { data ->
                         if (data == "[DONE]") return@requestSse
                         val event = runCatching { JSONObject(data) }.getOrNull() ?: return@requestSse
-                        // DeepSeek/OpenRouter/Groq may return reasoning_content alongside content.
-                        // extractChatCompletionDelta intentionally reads only content, so hidden
-                        // thoughts never enter the sanitizer/TTS pipeline through structured fields.
+                        // DeepSeek/OpenRouter/Groq may return reasoning alongside content. The SSE
+                        // watchdog observes only a content-free REASONING signal; this extractor
+                        // still reads only content, so thoughts never enter persistence or TTS.
                         emit(extractChatCompletionDelta(event))
                     }
                 }
@@ -390,8 +404,13 @@ object ApiTokenClient {
         profile: CloudAiProfile,
         maxTokens: Int,
         generationMode: CloudGenerationMode,
+        includeReasoningActivity: Boolean = false,
     ) {
-        val tuning = CloudModelPolicy.requestTuning(profile, generationMode)
+        val tuning = CloudModelPolicy.requestTuning(
+            profile = profile,
+            mode = generationMode,
+            includeReasoningActivity = includeReasoningActivity,
+        )
         payload.put(tuning.completionTokenField, maxTokens)
         tuning.deepSeekThinkingType?.let { type ->
             payload.put("thinking", JSONObject().put("type", type))
@@ -494,6 +513,7 @@ object ApiTokenClient {
         webRequested: Boolean,
         generationMode: CloudGenerationMode,
         visionDetail: AiVisionDetail,
+        includeThoughts: Boolean = false,
     ): JSONObject {
         val systemParts = JSONArray()
         val contents = JSONArray()
@@ -526,7 +546,7 @@ object ApiTokenClient {
         val generationConfig = JSONObject().put("maxOutputTokens", maxTokens)
         val tuning = CloudModelPolicy.requestTuning(profile, generationMode)
         if (tuning.geminiThinkingLevel != null || tuning.geminiThinkingBudget != null) {
-            val thinkingConfig = JSONObject().put("includeThoughts", false)
+            val thinkingConfig = JSONObject().put("includeThoughts", includeThoughts)
             tuning.geminiThinkingLevel?.let { level -> thinkingConfig.put("thinkingLevel", level) }
             tuning.geminiThinkingBudget?.let { budget -> thinkingConfig.put("thinkingBudget", budget) }
             generationConfig.put("thinkingConfig", thinkingConfig)
@@ -705,6 +725,7 @@ object ApiTokenClient {
         apiKey: String?,
         payload: JSONObject,
         extraHeaders: Map<String, String> = emptyMap(),
+        onActivity: ((CloudStreamActivity) -> Unit)? = null,
         onData: (String) -> Unit,
     ) {
         val conn = URL(url).openConnection() as HttpURLConnection
@@ -734,8 +755,15 @@ object ApiTokenClient {
                 val dataLines = mutableListOf<String>()
                 fun flushEvent() {
                     if (dataLines.isEmpty()) return
-                    onData(dataLines.joinToString("\n"))
+                    val data = dataLines.joinToString("\n")
                     dataLines.clear()
+                    if (data != "[DONE]") {
+                        onActivity?.invoke(CloudStreamActivity.PROVIDER_DATA)
+                        if (ssePayloadHasReasoningActivity(data)) {
+                            onActivity?.invoke(CloudStreamActivity.REASONING)
+                        }
+                    }
+                    onData(data)
                 }
 
                 while (true) {
@@ -753,6 +781,42 @@ object ApiTokenClient {
         } finally {
             conn.disconnect()
         }
+    }
+
+    private fun ssePayloadHasReasoningActivity(data: String): Boolean {
+        val event = runCatching { JSONObject(data) }.getOrNull() ?: return containsInlineReasoningTag(data)
+
+        val candidateParts = event.optJSONArray("candidates")
+            ?.optJSONObject(0)
+            ?.optJSONObject("content")
+            ?.optJSONArray("parts")
+        if (candidateParts != null) {
+            for (index in 0 until candidateParts.length()) {
+                if (candidateParts.optJSONObject(index)?.optBoolean("thought", false) == true) return true
+            }
+        }
+
+        val delta = event.optJSONArray("choices")
+            ?.optJSONObject(0)
+            ?.optJSONObject("delta")
+        if (delta != null) {
+            val visibleContent = extractTextValue(delta.opt("content"))
+            if (
+                openAiCompatibleHasReasoningActivity(
+                    reasoningContent = delta.optString("reasoning_content").takeIf { it.isNotBlank() },
+                    reasoning = delta.optString("reasoning").takeIf { it.isNotBlank() },
+                    reasoningDetailsCount = delta.optJSONArray("reasoning_details")?.length() ?: 0,
+                    visibleContent = visibleContent,
+                )
+            ) {
+                return true
+            }
+        }
+
+        return openAiResponsesHasReasoningActivity(
+            eventType = event.optString("type").takeIf { it.isNotBlank() },
+            outputItemType = event.optJSONObject("item")?.optString("type")?.takeIf { it.isNotBlank() },
+        )
     }
 
     private fun extractChatCompletionText(response: JSONObject): String {
