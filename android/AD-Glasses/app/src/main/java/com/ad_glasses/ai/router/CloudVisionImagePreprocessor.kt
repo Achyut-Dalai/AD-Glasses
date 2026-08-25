@@ -47,6 +47,7 @@ internal object CloudVisionImagePreprocessor {
     // Unsupported local formats have to bypass BitmapFactory and are Base64-loaded by the provider
     // adapter. Bound that compatibility path so one opaque file cannot become a huge heap/string copy.
     private const val MAX_UNPROCESSED_UPLOAD_BYTES = 12L * 1024L * 1024L
+    private val DIRECT_TRANSPORT_EXTENSIONS = setOf("jpg", "jpeg", "png", "webp")
 
     suspend fun prepare(
         context: Context,
@@ -55,6 +56,7 @@ internal object CloudVisionImagePreprocessor {
     ): PreparedCloudImage = withContext(Dispatchers.Default) {
         val source = File(sourcePath)
         require(source.isFile) { "Image file not found" }
+        val directTransportFormat = source.extension.lowercase() in DIRECT_TRANSPORT_EXTENSIONS
 
         val bounds = BitmapFactory.Options().apply { inJustDecodeBounds = true }
         BitmapFactory.decodeFile(source.absolutePath, bounds)
@@ -62,10 +64,10 @@ internal object CloudVisionImagePreprocessor {
         val height = bounds.outHeight
         if (width <= 0 || height <= 0) {
             // Some provider-supported formats may not be decodable by BitmapFactory on every API
-            // level. Preserve compatibility for normal-sized files without permitting an unbounded
-            // readBytes()+Base64 fallback later in the transport.
-            require(source.length() <= MAX_UNPROCESSED_UPLOAD_BYTES) {
-                "This image format cannot be resized on this Android version and the file is too large to upload safely."
+            // level. Only bypass preprocessing when the current transport can label the bytes
+            // correctly; otherwise fail rather than sending HEIC/AVIF/GIF bytes as image/jpeg.
+            require(directTransportFormat && source.length() <= MAX_UNPROCESSED_UPLOAD_BYTES) {
+                "This image format cannot be converted safely on this Android version."
             }
             return@withContext original(source)
         }
@@ -74,7 +76,7 @@ internal object CloudVisionImagePreprocessor {
             AiVisionDetail.STANDARD -> STANDARD_MAX_DIMENSION
             AiVisionDetail.TEXT_DETAIL -> TEXT_DETAIL_MAX_DIMENSION
         }
-        if (maxOf(width, height) <= maxDimension) {
+        if (maxOf(width, height) <= maxDimension && directTransportFormat) {
             return@withContext original(source, width, height)
         }
 
@@ -83,7 +85,7 @@ internal object CloudVisionImagePreprocessor {
             inJustDecodeBounds = false
         }
         val decoded = BitmapFactory.decodeFile(source.absolutePath, options)
-            ?: return@withContext original(source, width, height)
+            ?: throw IllegalArgumentException("This image format could not be decoded safely")
         var oriented: Bitmap? = null
         var scaled: Bitmap? = null
         var output: File? = null
@@ -109,7 +111,8 @@ internal object CloudVisionImagePreprocessor {
                 TAG,
                 "stage=vision_preprocess detail=$detail input=${width}x$height " +
                     "output=${outputBitmap.width}x${outputBitmap.height} " +
-                    "inputBytes=${source.length()} outputBytes=${output.length()}",
+                    "inputBytes=${source.length()} outputBytes=${output.length()} " +
+                    "reencoded=${!directTransportFormat}",
             )
             PreparedCloudImage(
                 path = output.absolutePath,

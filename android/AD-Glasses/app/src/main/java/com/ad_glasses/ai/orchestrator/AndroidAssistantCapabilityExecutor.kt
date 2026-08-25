@@ -6,6 +6,7 @@ import android.media.AudioManager
 import android.os.Build
 import android.util.Log
 import com.ad_glasses.ai.AndroidAssistantVoiceIo
+import com.ad_glasses.ai.AssistantTextFingerprint
 import com.ad_glasses.ai.router.AgentInferencePurpose
 import com.ad_glasses.ai.router.AgentInferenceRouter
 import com.ad_glasses.ai.router.AiProviderPrefs
@@ -34,6 +35,12 @@ class AndroidAssistantCapabilityExecutor(
         }
         val generationMode = generationMode(prompt)
         val responseMode = AiResponseMode.CONCISE
+        val providerPromptHash = AssistantTextFingerprint.of(prompt)
+        Log.i(
+            "AssistantTiming",
+            "stage=assistant_provider_prompt surface=${context.surface} provider=${context.providerType} " +
+                "chars=${prompt.length} textHash=$providerPromptHash",
+        )
         val result = try {
             AgentInferenceRouter.complete(
                 context = appContext,
@@ -89,11 +96,24 @@ class AndroidAssistantCapabilityExecutor(
 
         val generationMode = generationMode(prompt)
         val responseMode = AiTurnPolicy.responseMode(prompt, hasImage = true)
+        val rememberScene = responseMode != AiResponseMode.TEXT_EXTRACTION
+        val baseMaxTokens = outputTokenLimit(context.surface, generationMode, responseMode)
+        val imageMaxTokens = if (rememberScene) maxOf(baseMaxTokens, VISUAL_MEMORY_MIN_TOKENS) else baseMaxTokens
+        val systemPrompt = buildString {
+            append(conversationSystemPrompt(context, responseMode))
+            if (rememberScene) append(AssistantVisualContextCodec.modelInstruction)
+        }
+        val providerPromptHash = AssistantTextFingerprint.of(prompt)
+        Log.i(
+            "AssistantTiming",
+            "stage=assistant_provider_prompt surface=${context.surface} provider=${context.providerType} " +
+                "chars=${prompt.length} textHash=$providerPromptHash image=true",
+        )
         val result = try {
-            AgentInferenceRouter.completeUiPlanning(
+            val inference = AgentInferenceRouter.completeUiPlanning(
                 context = appContext,
                 sessionId = context.threadId,
-                systemPrompt = conversationSystemPrompt(context, responseMode),
+                systemPrompt = systemPrompt,
                 userPrompt = prompt,
                 imagePath = imagePath,
                 allowRemoteImageUpload = com.ad_glasses.localagent.LocalAgentPrefs
@@ -101,10 +121,26 @@ class AndroidAssistantCapabilityExecutor(
                 providerType = context.providerType,
                 onToken = onToken,
                 webRequested = false,
-                maxTokens = outputTokenLimit(context.surface, generationMode, responseMode),
+                maxTokens = imageMaxTokens,
                 generationMode = generationMode,
                 visionDetail = AiTurnPolicy.visionDetail(prompt),
-            ).content.toDisplaylessResult(context.surface, responseMode)
+            )
+            val parsed = if (rememberScene) {
+                AssistantVisualContextCodec.parse(inference.content)
+            } else {
+                ParsedVisualResponse(answer = inference.content, summary = null)
+            }
+            val visible = parsed.answer.toDisplaylessResult(context.surface, responseMode)
+            if (visible.persist) {
+                parsed.summary?.let { summary ->
+                    AssistantVisualContextStore.put(appContext, context.threadId, summary)
+                    Log.i(
+                        "AssistantTiming",
+                        "stage=visual_context_saved thread=${context.threadId.takeLast(8)} chars=${summary.length}",
+                    )
+                }
+            }
+            visible
         } catch (error: CancellationException) {
             throw error
         } catch (error: Exception) {
@@ -243,6 +279,11 @@ class AndroidAssistantCapabilityExecutor(
                 },
             )
             if (context.useWeb) append(" Use web search when needed.")
+            AssistantVisualContextStore.get(appContext, context.threadId)?.let { visualContext ->
+                append("\nPrior image memory: ")
+                append(visualContext)
+                append(" Use this only if the latest request refers to that prior image; otherwise ignore it. Do not invent missing visual details.")
+            }
             if (context.surface != AssistantInputSurface.GLASSES_VOICE) {
                 context.artifactContext?.trim()?.takeIf { it.isNotBlank() }?.let { artifact ->
                     append("\nContext:\n")
@@ -260,7 +301,8 @@ class AndroidAssistantCapabilityExecutor(
     /**
      * Reasoning budget and visible-output budget are orthogonal. Normal conversation stays around
      * 96 tokens where possible; explicit OCR/transcription can return more visible text without
-     * silently enabling reasoning.
+     * silently enabling reasoning. One-shot vision may use a little extra ceiling for its compact
+     * machine-only visual memory while keeping the user-facing answer under the normal AD limit.
      */
     private fun outputTokenLimit(
         surface: AssistantInputSurface,
@@ -374,6 +416,7 @@ class AndroidAssistantCapabilityExecutor(
         const val AUTOMATION_SYSTEM_PROMPT =
             "You are AD. Complete the requested task directly and return only the final result. Do not expose internal reasoning."
         const val TEXT_EXTRACTION_MAX_TOKENS = 1_024
+        const val VISUAL_MEMORY_MIN_TOKENS = 192
         const val TTS_BLUETOOTH_ROUTE_SETTLE_MS = 180L
     }
 }

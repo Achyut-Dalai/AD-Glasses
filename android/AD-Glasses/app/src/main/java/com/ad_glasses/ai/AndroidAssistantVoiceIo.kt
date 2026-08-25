@@ -39,6 +39,10 @@ object AndroidAssistantVoiceIo {
     )
 
     fun createRecognizer(context: Context): SpeechRecognizer {
+        // MainActivity creates the recognizer before it plays the local listening earcon. Start the
+        // one-time native model warm-up here so cold ONNX/model loading overlaps that cue instead of
+        // building a large PCM backlog after the user has already been invited to speak.
+        MoonshineRecognitionService.prewarm(context.applicationContext)
         val component = ComponentName(context, MoonshineRecognitionService::class.java)
         Log.i(TAG, "stage=asr_engine engine=moonshine component=${component.flattenToShortString()}")
         return SpeechRecognizer.createSpeechRecognizer(context, component)

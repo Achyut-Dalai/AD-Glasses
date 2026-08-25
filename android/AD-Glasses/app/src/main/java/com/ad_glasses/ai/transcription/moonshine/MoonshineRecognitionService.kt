@@ -16,6 +16,7 @@ import android.speech.RecognitionService
 import android.speech.RecognizerIntent
 import android.speech.SpeechRecognizer
 import android.util.Log
+import com.ad_glasses.ai.AssistantTextFingerprint
 import java.io.IOException
 import java.util.Locale
 import java.util.concurrent.CountDownLatch
@@ -515,7 +516,8 @@ class MoonshineRecognitionService : RecognitionService() {
                 if (session.beganSpeech) runCatching { session.callback.endOfSpeech() }
                 Log.i(
                     TAG,
-                    "stage=asr_final engine=moonshine chars=${text.length} capturedMs=$elapsedAudioMs maxQueue=${session.maxQueueDepth}",
+                    "stage=asr_final engine=moonshine chars=${text.length} textHash=${AssistantTextFingerprint.of(text)} " +
+                        "capturedMs=$elapsedAudioMs maxQueue=${session.maxQueueDepth}",
                 )
                 runCatching { session.callback.results(resultBundle(text)) }
             }
@@ -671,6 +673,10 @@ class MoonshineRecognitionService : RecognitionService() {
         private var loadedModelId: String? = null
         private var transcriber: Transcriber? = null
 
+        fun isLoaded(modelId: String): Boolean = synchronized(lock) {
+            transcriber?.isLoaded == true && loadedModelId == modelId
+        }
+
         fun acquire(modelId: String, loader: () -> Transcriber): Transcriber = synchronized(lock) {
             val existing = transcriber
             if (existing != null && loadedModelId == modelId && existing.isLoaded) return@synchronized existing
@@ -683,15 +689,54 @@ class MoonshineRecognitionService : RecognitionService() {
         }
     }
 
-    private companion object {
-        const val TAG = "AssistantTiming"
-        const val TARGET_SAMPLE_RATE = 16_000
-        const val READ_SAMPLES = 800 // 50 ms at 16 kHz.
-        const val MAX_QUEUED_CHUNKS = 600 // 30 seconds; overflow fails rather than corrupting speech.
-        const val ENGINE_POLL_MS = 40L
-        const val TRANSCRIPT_SILENCE_FINALIZE_MS = 1_200L
-        const val INITIAL_NO_SPEECH_TIMEOUT_MS = 6_000L
-        const val CAPTURE_JOIN_MS = 750L
-        const val PREVIOUS_ENGINE_WAIT_MS = 2_500L
+    companion object {
+        private const val TAG = "AssistantTiming"
+        private const val TARGET_SAMPLE_RATE = 16_000
+        private const val READ_SAMPLES = 800 // 50 ms at 16 kHz.
+        private const val MAX_QUEUED_CHUNKS = 600 // 30 seconds; overflow fails rather than corrupting speech.
+        private const val ENGINE_POLL_MS = 40L
+        private const val TRANSCRIPT_SILENCE_FINALIZE_MS = 1_200L
+        private const val INITIAL_NO_SPEECH_TIMEOUT_MS = 6_000L
+        private const val CAPTURE_JOIN_MS = 750L
+        private const val PREVIOUS_ENGINE_WAIT_MS = 2_500L
+        private val prewarmInFlight = AtomicBoolean(false)
+        private val prewarmWorker = Executors.newSingleThreadExecutor { runnable ->
+            Thread(runnable, "moonshine-model-prewarm").apply { isDaemon = true }
+        }
+
+        /**
+         * Warm the exact process-wide Transcriber used by recognition. Callers invoke this while the
+         * listening cue is playing so a first voice turn does not pay native model load after capture.
+         */
+        internal fun prewarm(context: Context) {
+            val appContext = context.applicationContext
+            val model = MoonshineModelManager.chooseDefault()
+            if (MoonshineRuntime.isLoaded(model.id)) return
+            if (!prewarmInFlight.compareAndSet(false, true)) return
+
+            prewarmWorker.execute {
+                val startedAtMs = SystemClock.elapsedRealtime()
+                try {
+                    val modelDir = MoonshineModelManager.prepareForRuntime(appContext, model)
+                    MoonshineRuntime.acquire(model.id) {
+                        Transcriber().apply {
+                            loadFromFiles(modelDir.absolutePath, model.modelArch)
+                        }
+                    }
+                    Log.i(
+                        TAG,
+                        "stage=asr_model_prewarm model=${model.id} elapsedMs=${SystemClock.elapsedRealtime() - startedAtMs}",
+                    )
+                } catch (error: Throwable) {
+                    Log.w(
+                        TAG,
+                        "stage=asr_model_prewarm_failed model=${model.id} message=${error.message}",
+                        error,
+                    )
+                } finally {
+                    prewarmInFlight.set(false)
+                }
+            }
+        }
     }
 }

@@ -3,6 +3,7 @@ package com.ad_glasses.ai.orchestrator
 import android.content.Context
 import android.os.SystemClock
 import android.util.Log
+import com.ad_glasses.ai.AssistantTextFingerprint
 import com.ad_glasses.ai.router.AssistantIntent
 import com.ad_glasses.ai.router.AssistantRequest
 import com.ad_glasses.ai.router.AssistantRequestRouter
@@ -75,6 +76,11 @@ class AssistantOrchestrator(
     suspend fun handle(turn: AssistantTurn, providerType: AgentProviderType): AssistantResult {
         val prompt = turn.text.trim()
         require(prompt.isNotBlank()) { "Assistant turn cannot be blank" }
+        val inputHash = AssistantTextFingerprint.of(prompt)
+        Log.i(
+            TIMING_TAG,
+            "stage=assistant_input surface=${turn.surface} chars=${prompt.length} textHash=$inputHash",
+        )
 
         AssistantConversationPolicy.parseCommand(prompt)?.let { command ->
             val currentThreadId = session.activeThreadId()
@@ -106,6 +112,7 @@ class AssistantOrchestrator(
                 turn = turn,
                 providerType = providerType,
                 prompt = prompt,
+                inputHash = inputHash,
                 acceptedThreadId = acceptedThreadId,
                 turnStartedAt = turnStartedAt,
                 lease = lease,
@@ -133,6 +140,7 @@ class AssistantOrchestrator(
         turn: AssistantTurn,
         providerType: AgentProviderType,
         prompt: String,
+        inputHash: String,
         acceptedThreadId: String,
         turnStartedAt: Long,
         lease: AssistantTurnCoordinator.InteractiveLease?,
@@ -143,7 +151,7 @@ class AssistantOrchestrator(
             val userMessage = session.addUserTurn(acceptedThreadId, prompt) ?: return@withThreadState null
             Log.i(
                 TIMING_TAG,
-                "user_persisted surface=${turn.surface} stageMs=${SystemClock.elapsedRealtime() - persistUserStartedAt}",
+                "user_persisted surface=${turn.surface} textHash=$inputHash stageMs=${SystemClock.elapsedRealtime() - persistUserStartedAt}",
             )
 
             val historyStartedAt = SystemClock.elapsedRealtime()
@@ -180,7 +188,10 @@ class AssistantOrchestrator(
         )
 
         val inferenceStartedAt = SystemClock.elapsedRealtime()
-        Log.i(TIMING_TAG, "inference_start surface=${turn.surface} provider=$providerType")
+        Log.i(
+            TIMING_TAG,
+            "inference_start surface=${turn.surface} provider=$providerType textHash=$inputHash",
+        )
         val capabilityCommand = AssistantCapabilityCommandRouter.parse(prompt)
         val result = if (capabilityCommand != null) {
             executor.executeCapabilityCommand(capabilityCommand, executionContext)
