@@ -85,6 +85,20 @@ class CloudModelPolicyTest {
     }
 
     @Test
+    fun groq_qwen36_reasoned_stream_can_return_parsed_reasoning_only_for_heartbeat() {
+        val profile = profile(ApiProvider.GROQ, "qwen/qwen3.6-27b")
+
+        val tuning = CloudModelPolicy.requestTuning(
+            profile = profile,
+            mode = reasoned,
+            includeReasoningActivity = true,
+        )
+
+        assertEquals("default", tuning.reasoningEffort)
+        assertEquals("parsed", tuning.reasoningFormat)
+    }
+
+    @Test
     fun groq_gpt_oss_uses_include_reasoning_instead_of_unsupported_reasoning_format() {
         val profile = profile(ApiProvider.GROQ, "openai/gpt-oss-20b")
 
@@ -97,6 +111,20 @@ class CloudModelPolicyTest {
         assertNull(deep.reasoningFormat)
         assertEquals(false, normal.includeReasoning)
         assertEquals(false, deep.includeReasoning)
+    }
+
+    @Test
+    fun groq_gpt_oss_stream_exposes_reasoning_only_to_activity_watchdog() {
+        val profile = profile(ApiProvider.GROQ, "openai/gpt-oss-20b")
+
+        val tuning = CloudModelPolicy.requestTuning(
+            profile = profile,
+            mode = concise,
+            includeReasoningActivity = true,
+        )
+
+        assertNull(tuning.reasoningFormat)
+        assertEquals(true, tuning.includeReasoning)
     }
 
     @Test
@@ -124,6 +152,16 @@ class CloudModelPolicyTest {
     }
 
     @Test
+    fun openrouter_non_reasoning_model_is_not_forced_into_reasoning_on_deep_request() {
+        val profile = profile(ApiProvider.OPENROUTER, "google/gemma-4-26b-a4b-it:free")
+
+        val tuning = CloudModelPolicy.requestTuning(profile, reasoned)
+
+        assertNull(tuning.openRouterReasoningEffort)
+        assertFalse(tuning.excludeReasoning)
+    }
+
+    @Test
     fun openrouter_newer_gpt5_disables_reasoning_for_normal_chat() {
         val profile = profile(ApiProvider.OPENROUTER, "openai/gpt-5.6-terra")
 
@@ -131,6 +169,20 @@ class CloudModelPolicyTest {
         val tuning = CloudModelPolicy.requestTuning(profile, concise)
         assertEquals("none", tuning.openRouterReasoningEffort)
         assertTrue(tuning.excludeReasoning)
+    }
+
+    @Test
+    fun openrouter_reasoning_stream_can_return_structured_reasoning_for_heartbeat() {
+        val profile = profile(ApiProvider.OPENROUTER, "openai/gpt-5.6-terra")
+
+        val tuning = CloudModelPolicy.requestTuning(
+            profile = profile,
+            mode = reasoned,
+            includeReasoningActivity = true,
+        )
+
+        assertEquals("medium", tuning.openRouterReasoningEffort)
+        assertFalse(tuning.excludeReasoning)
     }
 
     @Test
