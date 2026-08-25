@@ -60,6 +60,22 @@ class SafeFirstAnswerGateTest {
     }
 
     @Test
+    fun concise_voice_keeps_fast_first_answer_deadline() {
+        val timeouts = AgentInferenceRouter.wearableTimeouts(CloudGenerationMode.CONCISE_CONVERSATION)
+
+        assertEquals(6_000L, timeouts.firstSafeAnswerMs)
+        assertEquals(30_000L, timeouts.totalGenerationMs)
+    }
+
+    @Test
+    fun explicit_reasoning_voice_gets_longer_thinking_runway() {
+        val timeouts = AgentInferenceRouter.wearableTimeouts(CloudGenerationMode.REASONED_CONVERSATION)
+
+        assertEquals(15_000L, timeouts.firstSafeAnswerMs)
+        assertEquals(45_000L, timeouts.totalGenerationMs)
+    }
+
+    @Test
     fun low_latency_history_stops_at_budget_boundary_instead_of_resurrecting_older_turns() {
         val messages = listOf(
             mapOf("role" to "user", "content" to "old"),
