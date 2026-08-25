@@ -1,5 +1,6 @@
 package com.ad_glasses.ai.vision
 
+import com.ad_glasses.ai.AndroidAssistantVoiceIo
 import java.util.Locale
 
 data class ImageQuestionSettings(
@@ -22,19 +23,10 @@ data class ResolvedImageQuestionPrompt(
 }
 
 object ImageQuestionDefaults {
-    fun listeningCueForLanguage(languageTag: String): String = when (
-        Locale.forLanguageTag(languageTag).language.lowercase(Locale.ROOT)
-    ) {
-        "pt" -> "Estou ouvindo."
-        "es" -> "Te escucho."
-        "de" -> "Ich höre zu."
-        "fr" -> "Je vous écoute."
-        "it" -> "Ti ascolto."
-        "zh" -> "我在听。"
-        "ko" -> "듣고 있습니다."
-        "ru" -> "Я слушаю."
-        else -> "I am listening."
-    }
+    /** Non-verbal and language-neutral; AndroidAssistantVoiceIo maps this token to a local earcon. */
+    @Suppress("UNUSED_PARAMETER")
+    fun listeningCueForLanguage(languageTag: String): String =
+        AndroidAssistantVoiceIo.LISTENING_EARCON_TOKEN
 
     fun questionCueForLanguage(languageTag: String): String = when (
         Locale.forLanguageTag(languageTag).language.lowercase(Locale.ROOT)
