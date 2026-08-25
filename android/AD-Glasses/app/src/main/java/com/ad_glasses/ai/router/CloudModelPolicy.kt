@@ -50,19 +50,11 @@ internal object CloudModelPolicy {
     )
 
     /** Product budget depends only on requested generation mode, never provider/model identity. */
-    @Suppress("UNUSED_PARAMETER")
-    fun generationTokenLimit(
-        profile: CloudAiProfile?,
-        mode: CloudGenerationMode,
-    ): Int = when (mode) {
+    fun generationTokenLimit(mode: CloudGenerationMode): Int = when (mode) {
         CloudGenerationMode.DEFAULT -> DEFAULT_OUTPUT_TOKENS
         CloudGenerationMode.CONCISE_CONVERSATION -> CONCISE_OUTPUT_TOKENS
         CloudGenerationMode.REASONED_CONVERSATION -> REASONED_OUTPUT_TOKENS
     }
-
-    /** Source-compatible helper used by existing callers/tests while the explicit mode is adopted. */
-    fun conciseConversationTokenLimit(profile: CloudAiProfile?): Int =
-        generationTokenLimit(profile, CloudGenerationMode.CONCISE_CONVERSATION)
 
     /** Compatibility bridge for older transport call sites. */
     fun requestTuning(profile: CloudAiProfile, maxTokens: Int): RequestTuning = requestTuning(
