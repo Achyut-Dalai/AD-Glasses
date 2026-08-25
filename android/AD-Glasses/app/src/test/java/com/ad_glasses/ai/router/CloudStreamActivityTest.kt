@@ -46,6 +46,54 @@ class CloudStreamActivityTest {
     }
 
     @Test
+    fun openrouter_reasoning_only_concise_failure_gets_one_bounded_recovery() {
+        assertTrue(
+            shouldRetryOpenRouterReasoningOnly(
+                provider = ApiProvider.OPENROUTER,
+                mode = CloudGenerationMode.CONCISE_CONVERSATION,
+                requestedTokens = 96,
+                reasoningSeen = true,
+                visibleText = "",
+            ),
+        )
+    }
+
+    @Test
+    fun openrouter_recovery_never_retries_after_mandatory_reasoning_ceiling() {
+        assertFalse(
+            shouldRetryOpenRouterReasoningOnly(
+                provider = ApiProvider.OPENROUTER,
+                mode = CloudGenerationMode.CONCISE_CONVERSATION,
+                requestedTokens = CloudModelPolicy.CONCISE_MANDATORY_REASONING_TOKENS,
+                reasoningSeen = true,
+                visibleText = "",
+            ),
+        )
+    }
+
+    @Test
+    fun reasoning_only_recovery_does_not_affect_other_providers_or_successful_answers() {
+        assertFalse(
+            shouldRetryOpenRouterReasoningOnly(
+                provider = ApiProvider.GROQ,
+                mode = CloudGenerationMode.CONCISE_CONVERSATION,
+                requestedTokens = 96,
+                reasoningSeen = true,
+                visibleText = "",
+            ),
+        )
+        assertFalse(
+            shouldRetryOpenRouterReasoningOnly(
+                provider = ApiProvider.OPENROUTER,
+                mode = CloudGenerationMode.CONCISE_CONVERSATION,
+                requestedTokens = 96,
+                reasoningSeen = true,
+                visibleText = "Paris.",
+            ),
+        )
+    }
+
+    @Test
     fun deepseek_reasoning_content_counts_as_reasoning_activity() {
         assertTrue(
             openAiCompatibleHasReasoningActivity(
