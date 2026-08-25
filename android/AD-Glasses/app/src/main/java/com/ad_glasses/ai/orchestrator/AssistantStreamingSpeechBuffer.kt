@@ -4,9 +4,9 @@ package com.ad_glasses.ai.orchestrator
  * Turns a streamed provider completion into safe, natural TTS segments.
  *
  * Raw provider deltas are never spoken directly. We repeatedly sanitize the cumulative completion,
- * wait for a stable sentence/phrase boundary, and only expose text that is a prefix of the final
- * glasses speech target. This keeps leading reasoning blocks and prompt echoes out of TTS while
- * still allowing the first useful sentence to start before generation is finished.
+ * apply the same hard concise-conversation bound used for final Chat/Lens/Voice output, wait for a
+ * stable sentence/phrase boundary, and only expose text that is a prefix of that final target.
+ * This keeps reasoning/prompt echoes and provider verbosity out of TTS even before generation ends.
  */
 class AssistantStreamingSpeechBuffer(
     private val streamingPrefixBudgetChars: Int = DEFAULT_STREAMING_PREFIX_BUDGET_CHARS,
@@ -26,15 +26,15 @@ class AssistantStreamingSpeechBuffer(
 
         val clean = AssistantCompletionSanitizer.cleanForStreaming(raw.toString())
         if (clean.isBlank()) return emptyList()
-        val normalized = AssistantSpokenResponsePolicy.normalizeForSpeech(clean)
-        if (normalized.isBlank()) return emptyList()
+        val bounded = AssistantSpokenResponsePolicy.forConciseConversation(clean)
+        if (bounded.isBlank()) return emptyList()
 
-        return drainStreamingPrefix(normalized)
+        return drainStreamingPrefix(bounded)
     }
 
     /**
      * Finalize with the provider's complete raw answer and return whatever remains to be spoken.
-     * The final tail is constrained by the normal glasses speech policy.
+     * The final tail uses the exact same concise-conversation policy as non-streaming output.
      */
     fun finish(finalRaw: String): List<String> {
         if (finished) return emptyList()
@@ -42,7 +42,7 @@ class AssistantStreamingSpeechBuffer(
 
         val clean = AssistantCompletionSanitizer.clean(finalRaw)
         if (clean.isBlank()) return emptyList()
-        val finalTarget = AssistantSpokenResponsePolicy.forGlasses(clean)
+        val finalTarget = AssistantSpokenResponsePolicy.forConciseConversation(clean)
         if (finalTarget.isBlank()) return emptyList()
 
         if (consumedPrefix.isNotEmpty() && !finalTarget.startsWith(consumedPrefix)) {
