@@ -58,6 +58,8 @@ class MoonshineRecognitionService : RecognitionService() {
         val audioQueue = LinkedBlockingQueue<FloatArray>(MAX_QUEUED_CHUNKS)
         val finalText = AtomicReference<String?>(null)
         val failure = AtomicReference<Throwable?>(null)
+        val terminalReason = AtomicReference<String?>(null)
+        val audioDiagnostics = MoonshineAudioDiagnostics()
 
         @Volatile var transcriber: Transcriber? = null
         @Volatile var transcriptListener: Consumer<TranscriptEvent>? = null
@@ -68,8 +70,13 @@ class MoonshineRecognitionService : RecognitionService() {
         @Volatile var engineReadyAtMs: Long = 0L
         @Volatile var beganSpeech: Boolean = false
         @Volatile var lastTranscriptChangeAtMs: Long = 0L
+        @Volatile var firstPartialAtMs: Long = 0L
         @Volatile var capturedSamples: Long = 0L
         @Volatile var maxQueueDepth: Int = 0
+        @Volatile var queueDepthAtLineCompleted: Int = -1
+        @Volatile var partialUpdateCount: Int = 0
+        @Volatile var lineCompletedCount: Int = 0
+        @Volatile var routedInputType: Int = -1
     }
 
     private data class CaptureDevice(
@@ -114,6 +121,7 @@ class MoonshineRecognitionService : RecognitionService() {
                 check(capture.record.recordingState == AudioRecord.RECORDSTATE_RECORDING) {
                     "Moonshine microphone did not enter the recording state"
                 }
+                session.routedInputType = runCatching { capture.record.routedDevice?.type ?: -1 }.getOrDefault(-1)
 
                 if (!isCurrent(session) || session.cancelled.get()) {
                     stopCapture(session)
@@ -127,7 +135,8 @@ class MoonshineRecognitionService : RecognitionService() {
                 Log.i(
                     TAG,
                     "stage=asr_capture_ready engine=moonshine model=${model.id} requestedLanguage=$requestedLanguageTag " +
-                        "inputRate=$TARGET_SAMPLE_RATE preferredInput=${capture.preferredInput?.type ?: -1}",
+                        "inputRate=$TARGET_SAMPLE_RATE preferredInput=${capture.preferredInput?.type ?: -1} " +
+                        "routedInput=${session.routedInputType}",
                 )
 
                 val prepareStarted = SystemClock.elapsedRealtime()
@@ -164,6 +173,7 @@ class MoonshineRecognitionService : RecognitionService() {
                         "captureToEngineMs=${SystemClock.elapsedRealtime() - captureReadyAtMs} bufferedMs=$bufferedMs",
                 )
             } catch (error: Throwable) {
+                session.terminalReason.compareAndSet(null, "setup_error")
                 failBeforeEngine(session, error)
             }
         }
@@ -172,6 +182,7 @@ class MoonshineRecognitionService : RecognitionService() {
     override fun onStopListening(listener: Callback) {
         val session = activeSession?.takeIf { it.callback === listener } ?: return
         if (session.callbackDelivered.get() || session.cancelled.get()) return
+        session.terminalReason.compareAndSet(null, "client_stop")
         stopCapture(session)
         // The engine drains already-captured speech, then stopStream() forces Moonshine's trailing
         // transcript. No second thread is allowed to touch the native stream.
@@ -214,10 +225,12 @@ class MoonshineRecognitionService : RecognitionService() {
                 when {
                     read > 0 -> {
                         session.capturedSamples += read
+                        session.audioDiagnostics.add(buffer, read)
                         val audio = FloatArray(read) { index -> buffer[index] / 32768.0f }
                         if (!session.audioQueue.offer(audio)) {
                             val error = IllegalStateException("Moonshine audio processing could not keep up with the microphone")
                             session.failure.compareAndSet(null, error)
+                            session.terminalReason.compareAndSet(null, "audio_overrun")
                             session.terminalRequested.set(true)
                             Log.e(TAG, "stage=asr_audio_overrun engine=moonshine queue=${session.audioQueue.size}")
                             requestRecordStop(session)
@@ -233,6 +246,7 @@ class MoonshineRecognitionService : RecognitionService() {
         } catch (error: Throwable) {
             if (!session.cancelled.get() && !session.callbackDelivered.get()) {
                 session.failure.compareAndSet(null, error)
+                session.terminalReason.compareAndSet(null, "capture_error")
                 session.terminalRequested.set(true)
                 Log.e(TAG, "stage=asr_capture_failed engine=moonshine message=${error.message}", error)
             }
@@ -247,6 +261,7 @@ class MoonshineRecognitionService : RecognitionService() {
         val transcriber = session.transcriber
         if (transcriber == null) {
             session.failure.compareAndSet(null, IllegalStateException("Moonshine transcriber is unavailable"))
+            session.terminalReason.compareAndSet(null, "engine_unavailable")
             session.engineDone.countDown()
             finishSession(session)
             return
@@ -278,6 +293,7 @@ class MoonshineRecognitionService : RecognitionService() {
                     val now = SystemClock.elapsedRealtime()
                     val idleMs = now - session.lastTranscriptChangeAtMs
                     val capturedMs = session.capturedSamples * 1000L / TARGET_SAMPLE_RATE
+                    session.terminalReason.compareAndSet(null, "transcript_silence")
                     Log.i(
                         TAG,
                         "stage=asr_silence_timeout engine=moonshine idleMs=$idleMs capturedMs=$capturedMs",
@@ -292,6 +308,7 @@ class MoonshineRecognitionService : RecognitionService() {
                 if (shouldFinalizeWithoutSpeech(session)) {
                     val readyMs = SystemClock.elapsedRealtime() - session.engineReadyAtMs
                     val capturedMs = session.capturedSamples * 1000L / TARGET_SAMPLE_RATE
+                    session.terminalReason.compareAndSet(null, "initial_silence")
                     Log.i(
                         TAG,
                         "stage=asr_initial_silence_timeout engine=moonshine readyMs=$readyMs capturedMs=$capturedMs",
@@ -316,10 +333,12 @@ class MoonshineRecognitionService : RecognitionService() {
             Thread.currentThread().interrupt()
             if (!session.cancelled.get()) {
                 session.failure.compareAndSet(null, interrupted)
+                session.terminalReason.compareAndSet(null, "engine_interrupted")
             }
         } catch (error: Throwable) {
             if (!session.cancelled.get()) {
                 session.failure.compareAndSet(null, error)
+                session.terminalReason.compareAndSet(null, "engine_error")
                 Log.e(TAG, "stage=asr_engine_failed engine=moonshine message=${error.message}", error)
             }
         } finally {
@@ -339,6 +358,7 @@ class MoonshineRecognitionService : RecognitionService() {
                     transcriber.stopStream(streamHandle)
                 } catch (error: Throwable) {
                     if (!session.cancelled.get()) session.failure.compareAndSet(null, error)
+                    session.terminalReason.compareAndSet(null, "stream_stop_error")
                     Log.w(TAG, "stage=asr_stream_stop_failed engine=moonshine", error)
                 }
 
@@ -348,6 +368,7 @@ class MoonshineRecognitionService : RecognitionService() {
                     transcriber.freeStream(streamHandle)
                 } catch (error: Throwable) {
                     if (!session.cancelled.get()) session.failure.compareAndSet(null, error)
+                    session.terminalReason.compareAndSet(null, "stream_free_error")
                     Log.w(TAG, "stage=asr_stream_free_failed engine=moonshine", error)
                 }
             }
@@ -386,14 +407,18 @@ class MoonshineRecognitionService : RecognitionService() {
         when (event) {
             is TranscriptEvent.LineTextChanged -> onPartial(session, event.line.text.orEmpty())
             is TranscriptEvent.LineCompleted -> {
+                session.lineCompletedCount++
+                session.queueDepthAtLineCompleted = session.audioQueue.size
                 val clean = event.line.text.orEmpty().trim()
                 if (clean.isNotBlank() && session.finalText.compareAndSet(null, clean)) {
+                    session.terminalReason.compareAndSet(null, "moonshine_line_completed")
                     session.terminalRequested.set(true)
                     requestRecordStop(session)
                 }
             }
             is TranscriptEvent.Error -> {
                 session.failure.compareAndSet(null, event.cause)
+                session.terminalReason.compareAndSet(null, "moonshine_error")
                 session.terminalRequested.set(true)
                 requestRecordStop(session)
             }
@@ -403,7 +428,10 @@ class MoonshineRecognitionService : RecognitionService() {
     private fun onPartial(session: Session, text: String) {
         val clean = text.trim()
         if (clean.isBlank() || session.cancelled.get() || session.callbackDelivered.get()) return
-        session.lastTranscriptChangeAtMs = SystemClock.elapsedRealtime()
+        val now = SystemClock.elapsedRealtime()
+        session.partialUpdateCount++
+        if (session.firstPartialAtMs <= 0L) session.firstPartialAtMs = now
+        session.lastTranscriptChangeAtMs = now
         if (!session.beganSpeech) {
             synchronized(session) {
                 if (!session.beganSpeech && !session.cancelled.get()) {
@@ -427,6 +455,28 @@ class MoonshineRecognitionService : RecognitionService() {
         val elapsedAudioMs = session.capturedSamples * 1000L / TARGET_SAMPLE_RATE
         val error = session.failure.get()
         val text = session.finalText.get()?.trim().orEmpty()
+        val audio = session.audioDiagnostics.snapshot()
+        val maxBufferedMs = session.maxQueueDepth * READ_SAMPLES * 1000L / TARGET_SAMPLE_RATE
+        val queueAtLineMs = if (session.queueDepthAtLineCompleted >= 0) {
+            session.queueDepthAtLineCompleted * READ_SAMPLES * 1000L / TARGET_SAMPLE_RATE
+        } else {
+            -1L
+        }
+        val firstPartialMs = if (session.firstPartialAtMs > 0L && session.engineReadyAtMs > 0L) {
+            session.firstPartialAtMs - session.engineReadyAtMs
+        } else {
+            -1L
+        }
+        Log.i(
+            TAG,
+            "stage=asr_audio_quality engine=moonshine routedInput=${session.routedInputType} " +
+                "rmsDbfs=${formatDb(audio.rmsDbfs)} peakDbfs=${formatDb(audio.peakDbfs)} " +
+                "clippingPpm=${audio.clippingPpm} maxBufferedMs=$maxBufferedMs " +
+                "queueAtLineMs=$queueAtLineMs partials=${session.partialUpdateCount} " +
+                "lines=${session.lineCompletedCount} firstPartialMs=$firstPartialMs " +
+                "reason=${session.terminalReason.get() ?: "unknown"}",
+        )
+
         when {
             error != null -> {
                 Log.e(TAG, "stage=asr_failed engine=moonshine capturedMs=$elapsedAudioMs message=${error.message}", error)
@@ -449,6 +499,7 @@ class MoonshineRecognitionService : RecognitionService() {
 
     private fun failBeforeEngine(session: Session, error: Throwable) {
         session.failure.compareAndSet(null, error)
+        session.terminalReason.compareAndSet(null, "setup_error")
         stopCapture(session)
         if (session.engineThread == null) session.engineDone.countDown()
         finishSession(session)
@@ -456,6 +507,7 @@ class MoonshineRecognitionService : RecognitionService() {
 
     private fun cancelSession(session: Session, reason: String) {
         if (!session.cancelled.compareAndSet(false, true)) return
+        session.terminalReason.compareAndSet(null, reason)
         session.terminalRequested.set(true)
         stopCapture(session)
         session.engineThread?.interrupt()
@@ -568,6 +620,8 @@ class MoonshineRecognitionService : RecognitionService() {
     private fun resultBundle(text: String): Bundle = Bundle().apply {
         putStringArrayList(SpeechRecognizer.RESULTS_RECOGNITION, arrayListOf(text))
     }
+
+    private fun formatDb(value: Double): String = String.format(Locale.US, "%.1f", value)
 
     private fun mapError(error: Throwable): Int {
         val message = generateSequence(error) { it.cause }
