@@ -130,6 +130,14 @@ class CloudModelPolicyTest {
     }
 
     @Test
+    fun gemini31_flash_lite_image_never_receives_unsupported_medium_thinking() {
+        val profile = profile(ApiProvider.GOOGLE, "gemini-3.1-flash-lite-image")
+
+        assertEquals("minimal", CloudModelPolicy.requestTuning(profile, concise).geminiThinkingLevel)
+        assertEquals("high", CloudModelPolicy.requestTuning(profile, reasoned).geminiThinkingLevel)
+    }
+
+    @Test
     fun gemini25_flash_disables_thinking_and_uses_96_tokens_normally() {
         val profile = profile(ApiProvider.GOOGLE, "gemini-2.5-flash")
 
