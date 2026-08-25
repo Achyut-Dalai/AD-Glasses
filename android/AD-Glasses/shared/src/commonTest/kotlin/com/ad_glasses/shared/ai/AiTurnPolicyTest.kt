@@ -10,6 +10,7 @@ class AiTurnPolicyTest {
         assertEquals(AiReasoningMode.CONCISE, AiTurnPolicy.reasoningMode("What is a computer?"))
         assertEquals(AiReasoningMode.CONCISE, AiTurnPolicy.reasoningMode("12 times 3"))
         assertEquals(AiReasoningMode.CONCISE, AiTurnPolicy.reasoningMode("Compare Java and Python for beginners"))
+        assertEquals(AiResponseMode.CONCISE, AiTurnPolicy.responseMode("Java vs Python"))
     }
 
     @Test
@@ -29,6 +30,24 @@ class AiTurnPolicyTest {
     }
 
     @Test
+    fun explicit_full_text_extraction_is_separate_from_reasoning() {
+        val prompt = "Read all the text on this receipt"
+
+        assertEquals(AiResponseMode.TEXT_EXTRACTION, AiTurnPolicy.responseMode(prompt, hasImage = true))
+        assertEquals(AiReasoningMode.CONCISE, AiTurnPolicy.reasoningMode(prompt))
+        assertEquals(AiResponseMode.CONCISE, AiTurnPolicy.responseMode(prompt, hasImage = false))
+    }
+
+    @Test
+    fun short_visual_reading_stays_concise() {
+        assertEquals(
+            AiResponseMode.CONCISE,
+            AiTurnPolicy.responseMode("What does this sign say?", hasImage = true),
+        )
+        assertEquals(AiVisionDetail.TEXT_DETAIL, AiTurnPolicy.visionDetail("What does this sign say?"))
+    }
+
+    @Test
     fun normal_lens_questions_use_standard_detail() {
         assertEquals(AiVisionDetail.STANDARD, AiTurnPolicy.visionDetail("What am I looking at?"))
         assertEquals(AiVisionDetail.STANDARD, AiTurnPolicy.visionDetail("What color is this object?"))
@@ -39,5 +58,6 @@ class AiTurnPolicyTest {
         assertEquals(AiVisionDetail.TEXT_DETAIL, AiTurnPolicy.visionDetail("Read all the text on this menu"))
         assertEquals(AiVisionDetail.TEXT_DETAIL, AiTurnPolicy.visionDetail("What does this screen say?"))
         assertEquals(AiVisionDetail.TEXT_DETAIL, AiTurnPolicy.visionDetail("Extract text from this receipt"))
+        assertEquals(AiVisionDetail.TEXT_DETAIL, AiTurnPolicy.visionDetail("Describe every detail in this diagram"))
     }
 }
