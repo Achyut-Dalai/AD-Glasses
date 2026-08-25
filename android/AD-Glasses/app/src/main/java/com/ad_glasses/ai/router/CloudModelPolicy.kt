@@ -35,8 +35,10 @@ internal object CloudModelPolicy {
         val completionTokenField: String = "max_tokens",
         /** OpenAI/Groq/DeepSeek Chat Completions reasoning control. */
         val reasoningEffort: String? = null,
-        /** Groq reasoning presentation control. */
+        /** Groq Qwen reasoning presentation control. */
         val reasoningFormat: String? = null,
+        /** Groq GPT-OSS reasoning visibility control; mutually exclusive with reasoningFormat. */
+        val includeReasoning: Boolean? = null,
         /** OpenRouter normalized reasoning control. */
         val openRouterReasoningEffort: String? = null,
         val excludeReasoning: Boolean = false,
@@ -190,7 +192,9 @@ internal object CloudModelPolicy {
                 isGroqGptOss(model) -> RequestTuning(
                     completionTokenField = tokenField,
                     reasoningEffort = if (reasoned) "medium" else "low",
-                    reasoningFormat = "hidden",
+                    // GPT-OSS does not support reasoning_format. Suppress reasoning from returned
+                    // output with Groq's dedicated include_reasoning switch instead.
+                    includeReasoning = false,
                 )
                 else -> RequestTuning(completionTokenField = tokenField)
             }
