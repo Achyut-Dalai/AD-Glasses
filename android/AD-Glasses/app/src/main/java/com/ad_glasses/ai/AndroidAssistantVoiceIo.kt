@@ -11,8 +11,12 @@ import android.speech.SpeechRecognizer
 import android.speech.tts.TextToSpeech
 import android.speech.tts.Voice
 import android.util.Log
+import com.ad_glasses.BuildConfig
+import com.ad_glasses.R
 import com.ad_glasses.ai.transcription.moonshine.MoonshineRecognitionService
+import java.util.Collections
 import java.util.Locale
+import java.util.WeakHashMap
 
 /**
  * Assistant speech I/O policy.
@@ -23,6 +27,16 @@ import java.util.Locale
  */
 object AndroidAssistantVoiceIo {
     private const val TAG = "AssistantTiming"
+
+    /**
+     * Stable token mapped to a packaged local earcon. Existing TTS completion callbacks can therefore
+     * gate microphone startup without synthesizing a spoken "I am listening" prompt.
+     */
+    const val LISTENING_EARCON_TOKEN = "__ad_listening_earcon__"
+
+    private val listeningEarconInstalledFor = Collections.synchronizedSet(
+        Collections.newSetFromMap(WeakHashMap<TextToSpeech, Boolean>()),
+    )
 
     fun createRecognizer(context: Context): SpeechRecognizer {
         val component = ComponentName(context, MoonshineRecognitionService::class.java)
@@ -40,6 +54,8 @@ object AndroidAssistantVoiceIo {
 
     /** Prefer a downloaded/embedded voice for [locale]. Falls back to the engine's locale handling. */
     fun preferOfflineVoice(tts: TextToSpeech, locale: Locale): Voice? {
+        ensureListeningEarcon(tts)
+
         val voices = runCatching { tts.voices.orEmpty() }.getOrDefault(emptySet<Voice>())
         val offline = voices.filter { !it.isNetworkConnectionRequired }
         val selected = offline.firstOrNull { it.locale.toLanguageTag() == locale.toLanguageTag() }
@@ -60,6 +76,29 @@ object AndroidAssistantVoiceIo {
             "stage=tts_voice offline=false locale=${locale.toLanguageTag()} languageResult=$languageResult",
         )
         return null
+    }
+
+    private fun ensureListeningEarcon(tts: TextToSpeech) {
+        if (listeningEarconInstalledFor.contains(tts)) return
+
+        val result = runCatching {
+            // addSpeech keeps the existing TextToSpeech queue + UtteranceProgressListener contract,
+            // but plays this local resource instead of asking the engine to synthesize the token.
+            tts.addSpeech(
+                LISTENING_EARCON_TOKEN,
+                BuildConfig.APPLICATION_ID,
+                R.raw.ad_listening_cue,
+            )
+        }.onFailure { error ->
+            Log.w(TAG, "stage=tts_listening_earcon_failed", error)
+        }.getOrDefault(TextToSpeech.ERROR)
+
+        if (result == TextToSpeech.SUCCESS) {
+            listeningEarconInstalledFor.add(tts)
+            Log.i(TAG, "stage=tts_listening_earcon_ready")
+        } else {
+            Log.w(TAG, "stage=tts_listening_earcon_failed result=$result")
+        }
     }
 
     /**
