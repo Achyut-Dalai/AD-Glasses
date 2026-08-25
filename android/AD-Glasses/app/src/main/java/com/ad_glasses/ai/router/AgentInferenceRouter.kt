@@ -71,6 +71,7 @@ object AgentInferenceRouter {
         onToken: ((String) -> Unit)? = null,
         webRequested: Boolean = false,
         maxTokens: Int? = null,
+        lowLatency: Boolean = false,
     ): String = completeText(
         context = context,
         purpose = purpose,
@@ -81,6 +82,7 @@ object AgentInferenceRouter {
         onToken = onToken,
         webRequested = webRequested,
         maxTokensOverride = maxTokens,
+        lowLatencyRequest = lowLatency,
     )
 
     suspend fun completeUiPlanning(
@@ -94,6 +96,7 @@ object AgentInferenceRouter {
         onToken: ((String) -> Unit)? = null,
         webRequested: Boolean = false,
         maxTokens: Int = UI_PLANNING_MAX_TOKENS,
+        lowLatency: Boolean = false,
     ): AgentInferenceResult {
         val usableImagePath = imagePath?.trim()?.takeIf { File(it).isFile }
         if (!imagePath.isNullOrBlank() && usableImagePath == null) {
@@ -110,6 +113,7 @@ object AgentInferenceRouter {
                     onToken = onToken,
                     webRequested = webRequested,
                     maxTokensOverride = maxTokens,
+                    lowLatencyRequest = lowLatency,
                 ),
                 usedImage = false,
                 mediaStatus = "Cloud text inference",
@@ -173,16 +177,20 @@ object AgentInferenceRouter {
         onToken: ((String) -> Unit)?,
         webRequested: Boolean,
         maxTokensOverride: Int?,
+        lowLatencyRequest: Boolean,
     ): String {
         val maxTokens = maxTokensOverride
             ?.coerceIn(32, 2_048)
             ?: if (purpose == AgentInferencePurpose.CLASSIFICATION) 256 else 512
-        val lowLatencyVoiceRequest = purpose == AgentInferencePurpose.UI_PLANNING &&
-            onToken != null &&
-            maxTokens <= LOW_LATENCY_VOICE_TOKEN_CEILING
+        // Latency behavior is a product/surface decision, not a side effect of the generation
+        // ceiling. A fast non-reasoning Chat model may legitimately use only 128 tokens without
+        // inheriting voice's short history, prompt ceiling, echo gate, or wearable timeouts.
+        val lowLatencyVoiceRequest = lowLatencyRequest &&
+            purpose == AgentInferencePurpose.UI_PLANNING &&
+            onToken != null
 
         // Ask voice should never inherit a large persona/memory prompt. The dedicated caller uses a
-        // ~234-character system instruction; this ceiling is defense in depth for future callers.
+        // compact system instruction; this ceiling is defense in depth for future callers.
         val effectiveSystemPrompt = if (lowLatencyVoiceRequest) {
             systemPrompt.take(LOW_LATENCY_SYSTEM_PROMPT_CHARS).trim()
         } else {
@@ -441,7 +449,6 @@ object AgentInferenceRouter {
     }
 
     private const val UI_PLANNING_MAX_TOKENS = 512
-    private const val LOW_LATENCY_VOICE_TOKEN_CEILING = 512
     private const val LOW_LATENCY_SYSTEM_PROMPT_CHARS = 320
     private const val LOW_LATENCY_MESSAGE_CHARS = 360
     private const val LOW_LATENCY_HISTORY_CHARS = 720
