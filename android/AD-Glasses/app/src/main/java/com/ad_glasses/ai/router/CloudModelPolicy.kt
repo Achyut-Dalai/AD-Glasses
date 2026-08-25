@@ -16,10 +16,11 @@ enum class CloudGenerationMode {
  */
 internal object CloudModelPolicy {
     /**
-     * Normal conversation still asks for a compact answer, but 256 tokens leaves enough generation
-     * room for light reasoning plus a complete final answer. Visible speech is bounded separately.
+     * Normal conversation asks for a compact final answer, but 512 tokens leaves room for light
+     * reasoning on APIs where reasoning shares the completion allowance. This is a ceiling, not a
+     * target; spoken output is independently bounded by the app.
      */
-    const val CONCISE_OUTPUT_TOKENS = 256
+    const val CONCISE_OUTPUT_TOKENS = 512
 
     /** Explicit deep-reasoning turns may intentionally spend more generation budget. */
     const val REASONED_OUTPUT_TOKENS = 2_048
