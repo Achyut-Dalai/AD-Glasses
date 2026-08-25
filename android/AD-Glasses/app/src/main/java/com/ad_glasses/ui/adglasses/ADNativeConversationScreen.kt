@@ -1,5 +1,7 @@
 package com.ad_glasses.ui.adglasses
 
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.RepeatMode
 import androidx.compose.animation.core.animateFloat
@@ -75,10 +77,12 @@ import com.ad_glasses.shared.chat.ChatMessage
 import com.ad_glasses.shared.chat.ChatThread
 import com.ad_glasses.shared.chat.ChatRole
 import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
@@ -111,6 +115,7 @@ internal fun ADNativeConversationScreen(
     var sending by remember { mutableStateOf(false) }
     var sendJob by remember { mutableStateOf<Job?>(null) }
     var pendingPrompt by remember { mutableStateOf<String?>(null) }
+    var selectedImagePath by remember { mutableStateOf<String?>(null) }
     var errorText by remember { mutableStateOf<String?>(null) }
     var lastFailedPrompt by remember { mutableStateOf<String?>(null) }
     var showConversationHistory by remember { mutableStateOf(false) }
@@ -121,6 +126,28 @@ internal fun ADNativeConversationScreen(
     var clearAllRequested by remember { mutableStateOf(false) }
     var aiAudioActive by remember { mutableStateOf(AudioSessionCoordinator.isBusy()) }
     var recordingActive by remember { mutableStateOf(MeetingCapturePrefs.getState(context).isRecording) }
+
+    val imagePicker = rememberLauncherForActivityResult(ActivityResultContracts.GetContent()) { uri ->
+        if (uri == null || sending) return@rememberLauncherForActivityResult
+        scope.launch {
+            try {
+                val staged = withContext(Dispatchers.IO) {
+                    ADChatImageAttachmentStore.stage(context, uri)
+                }
+                val previous = selectedImagePath
+                selectedImagePath = staged
+                webSearch = false
+                errorText = null
+                lastFailedPrompt = null
+                withContext(Dispatchers.IO) {
+                    ADChatImageAttachmentStore.delete(previous)
+                }
+            } catch (error: Exception) {
+                errorText = error.message ?: "Couldn’t attach that image."
+                lastFailedPrompt = null
+            }
+        }
+    }
 
     val pendingAlreadyPersisted = pendingPrompt?.let { prompt ->
         messages.asReversed()
@@ -143,6 +170,12 @@ internal fun ADNativeConversationScreen(
         keyboardController?.show()
     }
 
+    fun clearSelectedImage() {
+        val path = selectedImagePath
+        selectedImagePath = null
+        scope.launch(Dispatchers.IO) { ADChatImageAttachmentStore.delete(path) }
+    }
+
     fun stopSending() {
         if (!sending) return
         orchestrator.cancelActiveTurn(threadId)
@@ -155,6 +188,7 @@ internal fun ADNativeConversationScreen(
 
     fun startNewPrompt() {
         if (sending) stopSending()
+        clearSelectedImage()
         if (messages.isEmpty() && pendingPrompt == null) {
             message = ""
             webSearch = false
@@ -184,14 +218,17 @@ internal fun ADNativeConversationScreen(
     }
 
     fun send() {
-        val prompt = message.trim()
-        if (prompt.isEmpty()) return
+        val imagePathForTurn = selectedImagePath
+        val typedPrompt = message.trim()
+        if (typedPrompt.isEmpty() && imagePathForTurn == null) return
+        val prompt = typedPrompt.ifBlank { DEFAULT_IMAGE_PROMPT }
         // Phone text follows the same latest-turn-wins rule as glasses voice. A new send should
         // supersede a slow pending generation instead of making the user press Stop first.
         if (sending) stopSending()
-        val useWeb = webSearch && webAvailable
+        val useWeb = webSearch && webAvailable && imagePathForTurn == null
         message = ""
         webSearch = false
+        selectedImagePath = null
         pendingPrompt = prompt
         sending = true
         errorText = null
@@ -203,6 +240,7 @@ internal fun ADNativeConversationScreen(
                     turn = AssistantTurn(
                         text = prompt,
                         surface = AssistantInputSurface.PHONE_TEXT,
+                        imagePath = imagePathForTurn,
                         webRequested = useWeb,
                     ),
                     providerType = internalProvider,
@@ -213,9 +251,14 @@ internal fun ADNativeConversationScreen(
             } catch (error: Exception) {
                 if (sendJob === launchedJob) {
                     errorText = error.message ?: "Couldn’t finish that request."
-                    lastFailedPrompt = prompt
+                    // A text-only request can be restored with one tap. Image sources are one-shot
+                    // and deliberately deleted after the attempt, so never imply the image can retry.
+                    lastFailedPrompt = prompt.takeIf { imagePathForTurn == null }
                 }
             } finally {
+                withContext(Dispatchers.IO) {
+                    ADChatImageAttachmentStore.delete(imagePathForTurn)
+                }
                 if (sendJob === launchedJob) {
                     sendJob = null
                     pendingPrompt = null
@@ -333,6 +376,7 @@ internal fun ADNativeConversationScreen(
                 activeThreadId = threadId,
                 onOpen = { selected ->
                     if (sending) stopSending()
+                    clearSelectedImage()
                     if (session.selectThread(selected.id)) {
                         threadId = session.activeThreadId()
                         refresh()
@@ -419,9 +463,12 @@ internal fun ADNativeConversationScreen(
             ADConversationComposer(
                 message = message,
                 onMessageChange = { message = it },
+                imageAttached = selectedImagePath != null,
+                onAddImage = { imagePicker.launch("image/*") },
+                onRemoveImage = ::clearSelectedImage,
                 webSearch = webSearch,
                 webAvailable = webAvailable,
-                onWebSearchChange = { webSearch = it && webAvailable },
+                onWebSearchChange = { webSearch = it && webAvailable && selectedImagePath == null },
                 sending = sending,
                 focusRequester = composerFocusRequester,
                 onSend = ::send,
@@ -466,6 +513,7 @@ internal fun ADNativeConversationScreen(
                 TextButton(
                     onClick = {
                         if (sending && target.id == threadId) stopSending()
+                        if (target.id == threadId) clearSelectedImage()
                         threadId = session.deleteConversation(target.id)
                         messages = ChatStore.listMessages(threadId)
                         deleteTarget = null
@@ -488,6 +536,7 @@ internal fun ADNativeConversationScreen(
                 TextButton(
                     onClick = {
                         if (sending) stopSending()
+                        clearSelectedImage()
                         session.clearAllConversations()
                         threadId = session.startNewConversation()
                         messages = emptyList()
@@ -773,6 +822,9 @@ private fun ADActivityWaveform(
 private fun ADConversationComposer(
     message: String,
     onMessageChange: (String) -> Unit,
+    imageAttached: Boolean,
+    onAddImage: () -> Unit,
+    onRemoveImage: () -> Unit,
     webSearch: Boolean,
     webAvailable: Boolean,
     onWebSearchChange: (Boolean) -> Unit,
@@ -786,6 +838,24 @@ private fun ADConversationComposer(
             .background(ADColors.Background)
             .padding(start = 10.dp, end = 10.dp, top = 5.dp, bottom = 6.dp),
     ) {
+        if (imageAttached) {
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 6.dp, vertical = 2.dp),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Text(
+                    "Image attached · sent once",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = ADColors.Muted,
+                    modifier = Modifier.weight(1f),
+                )
+                TextButton(onClick = onRemoveImage, enabled = !sending) {
+                    Text("Remove")
+                }
+            }
+        }
         Surface(
             modifier = Modifier.fillMaxWidth(),
             color = ADColors.Surface,
@@ -796,19 +866,27 @@ private fun ADConversationComposer(
                 modifier = Modifier.padding(start = 5.dp, end = 6.dp, top = 5.dp, bottom = 5.dp),
                 verticalAlignment = Alignment.Bottom,
             ) {
+                TextButton(
+                    onClick = onAddImage,
+                    enabled = !sending,
+                    modifier = Modifier.height(38.dp),
+                ) {
+                    Text(if (imageAttached) "Image ✓" else "Image")
+                }
                 IconButton(
                     onClick = { onWebSearchChange(!webSearch) },
-                    enabled = !sending && webAvailable,
+                    enabled = !sending && webAvailable && !imageAttached,
                     modifier = Modifier.size(38.dp),
                 ) {
                     Icon(
                         Icons.Outlined.Public,
                         contentDescription = when {
+                            imageAttached -> "Web search is unavailable with an image attachment"
                             !webAvailable -> "Web search unavailable for active profile"
                             webSearch -> "Disable web search"
                             else -> "Enable web search"
                         },
-                        tint = if (webSearch && webAvailable) ADColors.Blue else ADColors.Muted,
+                        tint = if (webSearch && webAvailable && !imageAttached) ADColors.Blue else ADColors.Muted,
                         modifier = Modifier.size(18.dp),
                     )
                 }
@@ -829,7 +907,11 @@ private fun ADConversationComposer(
                         Box(contentAlignment = Alignment.CenterStart) {
                             if (message.isBlank()) {
                                 Text(
-                                    if (webSearch) "Search the web" else "Ask AD…",
+                                    when {
+                                        imageAttached -> "Ask about this image…"
+                                        webSearch -> "Search the web"
+                                        else -> "Ask AD…"
+                                    },
                                     style = MaterialTheme.typography.bodyMedium,
                                     color = ADColors.Muted,
                                 )
@@ -838,7 +920,7 @@ private fun ADConversationComposer(
                         }
                     },
                 )
-                val sendEnabled = message.isNotBlank()
+                val sendEnabled = message.isNotBlank() || imageAttached
                 IconButton(
                     onClick = onSend,
                     enabled = sendEnabled,
@@ -859,5 +941,6 @@ private fun ADConversationComposer(
     }
 }
 
+private const val DEFAULT_IMAGE_PROMPT = "What is in this image?"
 private const val CONVERSATION_REFRESH_MS = 1_250L
 private const val ACTIVITY_REFRESH_MS = 350L
