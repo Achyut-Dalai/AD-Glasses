@@ -52,6 +52,24 @@ class AssistantInferenceContextPolicyTest {
     }
 
     @Test
+    fun budget_boundary_never_skips_recent_message_to_resurrect_older_context() {
+        val now = 600_000L
+        val history = listOf(
+            message("older-short", ChatRole.USER, now - 6_000L, "old".repeat(10)),
+            message("boundary", ChatRole.ASSISTANT, now - 5_000L, "b".repeat(200)),
+            message("recent-1", ChatRole.USER, now - 4_000L, "a".repeat(800)),
+            message("recent-2", ChatRole.ASSISTANT, now - 3_000L, "b".repeat(900)),
+            message("recent-3", ChatRole.USER, now - 2_000L, "c".repeat(900)),
+            message("current", ChatRole.USER, now, "continue"),
+        )
+
+        val prior = AssistantInferenceContextPolicy.priorMessages(history, nowMs = now)
+
+        assertEquals(listOf("recent-1", "recent-2", "recent-3"), prior.map { it.id })
+        assertFalse(prior.any { it.id == "older-short" })
+    }
+
+    @Test
     fun long_pause_does_not_discard_bounded_history() {
         val now = 1_000_000L
         val history = listOf(
