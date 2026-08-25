@@ -86,13 +86,16 @@ internal object CloudModelPolicy {
     }
 
     /**
-     * Compatibility bridge for transports not yet carrying the explicit generation mode. Keep the
-     * old <=512 interpretation only while those call sites migrate; product latency mode is already
-     * explicit and no longer depends on this value.
+     * Compatibility bridge for transports not yet carrying the explicit generation mode. Only the
+     * two normal conversational ceilings map to concise tuning. Automation currently uses 384 and
+     * therefore keeps provider-default reasoning rather than inheriting Chat/Voice behavior.
      */
     fun requestTuning(profile: CloudAiProfile, maxTokens: Int): RequestTuning = requestTuning(
         profile = profile,
-        mode = if (maxTokens <= CONCISE_REASONING_TOKENS) {
+        mode = if (
+            maxTokens == CONCISE_NON_REASONING_TOKENS ||
+            maxTokens == CONCISE_REASONING_TOKENS
+        ) {
             CloudGenerationMode.CONCISE_CONVERSATION
         } else {
             CloudGenerationMode.DEFAULT
@@ -152,8 +155,8 @@ internal object CloudModelPolicy {
                     completionTokenField = tokenField,
                     geminiThinkingLevel = "low",
                 )
-                // Flash-Lite Image and Gemini 3 Flash support minimal.
-                model.startsWith("gemini-3.1-flash-lite-image") ||
+                // Gemini 3.1 Flash-Lite and Gemini 3 Flash support minimal.
+                model.startsWith("gemini-3.1-flash-lite") ||
                     model.startsWith("gemini-3-flash") -> RequestTuning(
                     completionTokenField = tokenField,
                     geminiThinkingLevel = "minimal",
