@@ -57,16 +57,6 @@ internal object CloudModelPolicy {
         CloudGenerationMode.REASONED_CONVERSATION -> REASONED_OUTPUT_TOKENS
     }
 
-    /** Compatibility bridge for older transport call sites. */
-    fun requestTuning(profile: CloudAiProfile, maxTokens: Int): RequestTuning = requestTuning(
-        profile = profile,
-        mode = when (maxTokens) {
-            CONCISE_OUTPUT_TOKENS -> CloudGenerationMode.CONCISE_CONVERSATION
-            REASONED_OUTPUT_TOKENS -> CloudGenerationMode.REASONED_CONVERSATION
-            else -> CloudGenerationMode.DEFAULT
-        },
-    )
-
     /**
      * Map one provider-neutral product intent onto each API's supported wire controls.
      *
