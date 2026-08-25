@@ -12,12 +12,9 @@ class CloudModelPolicyTest {
 
     @Test
     fun generation_budget_depends_only_on_product_intent() {
-        assertEquals(256, CloudModelPolicy.generationTokenLimit(concise))
+        assertEquals(512, CloudModelPolicy.generationTokenLimit(concise))
         assertEquals(2_048, CloudModelPolicy.generationTokenLimit(reasoned))
-        assertEquals(
-            512,
-            CloudModelPolicy.generationTokenLimit(CloudGenerationMode.DEFAULT),
-        )
+        assertEquals(512, CloudModelPolicy.generationTokenLimit(CloudGenerationMode.DEFAULT))
     }
 
     @Test
@@ -98,7 +95,7 @@ class CloudModelPolicyTest {
     fun gemini3_reasoning_controls_change_without_changing_generation_budget() {
         val profile = profile(ApiProvider.GOOGLE, "gemini-3.7-flash")
 
-        assertEquals(256, CloudModelPolicy.generationTokenLimit(concise))
+        assertEquals(512, CloudModelPolicy.generationTokenLimit(concise))
         assertEquals(2_048, CloudModelPolicy.generationTokenLimit(reasoned))
         assertEquals("low", CloudModelPolicy.requestTuning(profile, concise).geminiThinkingLevel)
         assertEquals("medium", CloudModelPolicy.requestTuning(profile, reasoned).geminiThinkingLevel)
