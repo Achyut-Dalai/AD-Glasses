@@ -79,7 +79,10 @@
         <meta-data android:name="com.meta.wearable.mwdat.CLIENT_TOKEN" android:value="AR|1057183300587462|77e92a3d9f02778279c80f220a2d81a2" />
         <meta-data android:name="com.meta.wearable.mwdat.DAM_ENABLED" android:value="true" />
 
-        <activity android:name=".ui.WelcomeActivity" android:exported="true">
+        <activity
+            android:name=".ui.WelcomeActivity"
+            android:exported="true"
+            android:screenOrientation="portrait">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
                 <category android:name="android.intent.category.LAUNCHER" />
@@ -92,16 +95,16 @@
             </intent-filter>
         </activity>
 
-        <activity android:name=".MainActivity" android:exported="false" android:label="@string/app_name" />
-        <activity android:name=".ui.DeviceBindActivity" android:exported="false" android:label="Connect glasses" />
+        <activity android:name=".MainActivity" android:exported="false" android:label="@string/app_name" android:screenOrientation="portrait" />
+        <activity android:name=".ui.DeviceBindActivity" android:exported="false" android:label="Connect glasses" android:screenOrientation="portrait" />
 
         <!-- Compatibility aliases preserve inherited native intents while Compose owns presentation. -->
-        <activity android:name=".ui.adglasses.ADConversationsRedirectActivity" android:exported="false" android:noHistory="true" android:excludeFromRecents="true" android:theme="@style/Theme.ADGlasses.Redirect" />
-        <activity android:name=".ui.adglasses.ADSettingsRedirectActivity" android:exported="false" android:noHistory="true" android:excludeFromRecents="true" android:theme="@style/Theme.ADGlasses.Redirect" />
-        <activity android:name=".ui.adglasses.ADAiRedirectActivity" android:exported="false" android:noHistory="true" android:excludeFromRecents="true" android:theme="@style/Theme.ADGlasses.Redirect" />
-        <activity android:name=".ui.adglasses.ADCapturesRedirectActivity" android:exported="false" android:noHistory="true" android:excludeFromRecents="true" android:theme="@style/Theme.ADGlasses.Redirect" />
-        <activity android:name=".ui.adglasses.ADRecordingsRedirectActivity" android:exported="false" android:noHistory="true" android:excludeFromRecents="true" android:theme="@style/Theme.ADGlasses.Redirect" />
-        <activity android:name=".ui.adglasses.ADNotesRedirectActivity" android:exported="false" android:noHistory="true" android:excludeFromRecents="true" android:theme="@style/Theme.ADGlasses.Redirect" />
+        <activity android:name=".ui.adglasses.ADConversationsRedirectActivity" android:exported="false" android:noHistory="true" android:excludeFromRecents="true" android:theme="@style/Theme.ADGlasses.Redirect" android:screenOrientation="portrait" />
+        <activity android:name=".ui.adglasses.ADSettingsRedirectActivity" android:exported="false" android:noHistory="true" android:excludeFromRecents="true" android:theme="@style/Theme.ADGlasses.Redirect" android:screenOrientation="portrait" />
+        <activity android:name=".ui.adglasses.ADAiRedirectActivity" android:exported="false" android:noHistory="true" android:excludeFromRecents="true" android:theme="@style/Theme.ADGlasses.Redirect" android:screenOrientation="portrait" />
+        <activity android:name=".ui.adglasses.ADCapturesRedirectActivity" android:exported="false" android:noHistory="true" android:excludeFromRecents="true" android:theme="@style/Theme.ADGlasses.Redirect" android:screenOrientation="portrait" />
+        <activity android:name=".ui.adglasses.ADRecordingsRedirectActivity" android:exported="false" android:noHistory="true" android:excludeFromRecents="true" android:theme="@style/Theme.ADGlasses.Redirect" android:screenOrientation="portrait" />
+        <activity android:name=".ui.adglasses.ADNotesRedirectActivity" android:exported="false" android:noHistory="true" android:excludeFromRecents="true" android:theme="@style/Theme.ADGlasses.Redirect" android:screenOrientation="portrait" />
 
         <activity-alias android:name=".ui.ChatListActivity" android:targetActivity=".ui.adglasses.ADConversationsRedirectActivity" android:exported="false" />
         <activity-alias android:name=".ui.ChatThreadActivity" android:targetActivity=".ui.adglasses.ADConversationsRedirectActivity" android:exported="false" />
@@ -116,20 +119,20 @@
 
         <service android:name=".devices.meizumyvu.MeizuMyvuConnectionService" android:exported="false" android:foregroundServiceType="connectedDevice" />
 
-        <activity android:name=".plugins.meetingsparknotes.MeetingSparkNotesSettingsActivity" android:exported="false" android:label="Soundbites settings" />
-        <activity android:name=".plugins.livecaptionrelay.LiveCaptionRelaySettingsActivity" android:exported="false" android:label="Live Captions settings" />
-        <activity android:name=".plugins.handsfreetranslator.HandsFreeTranslatorSettingsActivity" android:exported="false" android:label="Translator settings" />
-        <activity android:name=".plugins.errandbrain.ErrandBrainSettingsActivity" android:exported="false" android:label="Cron settings" />
-        <activity android:name=".ui.localagent.PendingActionsActivity" android:exported="false" android:label="Pending actions" />
-        <activity android:name=".ui.localagent.AppBlacklistActivity" android:exported="false" android:label="Blacklist apps" />
-        <activity android:name=".ui.localagent.DailyFactsActivity" android:exported="false" android:label="Daily facts" />
-        <activity android:name=".ui.localagent.ScreenCapturesActivity" android:exported="false" android:label="Screen captures" />
-        <activity android:name=".ui.localagent.DailySummaryActivity" android:exported="false" android:label="Daily summary" />
-        <activity android:name=".ui.debug.TranscriptionDebugActivity" android:exported="false" android:label="Transcription diagnostics" />
-        <activity android:name=".agent.CloudSettingsActivity" android:exported="false" android:label="Cloud AI" />
-        <activity android:name=".ai.live.GeminiLiveActivity" android:exported="false" android:label="Live AI preview" />
-        <activity android:name=".plugins.localagent.LocalAgentSettingsActivity" android:exported="false" android:label="Automation settings" />
-        <activity android:name=".bridge.runtimes.evenhub.EvenHubRuntimeActivity" android:exported="false" />
+        <activity android:name=".plugins.meetingsparknotes.MeetingSparkNotesSettingsActivity" android:exported="false" android:label="Soundbites settings" android:screenOrientation="portrait" />
+        <activity android:name=".plugins.livecaptionrelay.LiveCaptionRelaySettingsActivity" android:exported="false" android:label="Live Captions settings" android:screenOrientation="portrait" />
+        <activity android:name=".plugins.handsfreetranslator.HandsFreeTranslatorSettingsActivity" android:exported="false" android:label="Translator settings" android:screenOrientation="portrait" />
+        <activity android:name=".plugins.errandbrain.ErrandBrainSettingsActivity" android:exported="false" android:label="Cron settings" android:screenOrientation="portrait" />
+        <activity android:name=".ui.localagent.PendingActionsActivity" android:exported="false" android:label="Pending actions" android:screenOrientation="portrait" />
+        <activity android:name=".ui.localagent.AppBlacklistActivity" android:exported="false" android:label="Blacklist apps" android:screenOrientation="portrait" />
+        <activity android:name=".ui.localagent.DailyFactsActivity" android:exported="false" android:label="Daily facts" android:screenOrientation="portrait" />
+        <activity android:name=".ui.localagent.ScreenCapturesActivity" android:exported="false" android:label="Screen captures" android:screenOrientation="portrait" />
+        <activity android:name=".ui.localagent.DailySummaryActivity" android:exported="false" android:label="Daily summary" android:screenOrientation="portrait" />
+        <activity android:name=".ui.debug.TranscriptionDebugActivity" android:exported="false" android:label="Transcription diagnostics" android:screenOrientation="portrait" />
+        <activity android:name=".agent.CloudSettingsActivity" android:exported="false" android:label="Cloud AI" android:screenOrientation="portrait" />
+        <activity android:name=".ai.live.GeminiLiveActivity" android:exported="false" android:label="Live AI preview" android:screenOrientation="portrait" />
+        <activity android:name=".plugins.localagent.LocalAgentSettingsActivity" android:exported="false" android:label="Automation settings" android:screenOrientation="portrait" />
+        <activity android:name=".bridge.runtimes.evenhub.EvenHubRuntimeActivity" android:exported="false" android:screenOrientation="portrait" />
 
         <service android:name=".ai.AiQuestionForegroundService" android:exported="false" android:foregroundServiceType="connectedDevice|dataSync|microphone" />
         <service android:name=".ai.transcription.moonshine.MoonshineRecognitionService" android:exported="false">
