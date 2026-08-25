@@ -24,6 +24,15 @@ class SafeFirstAnswerGateTest {
     }
 
     @Test
+    fun analysis_wrapper_is_never_treated_as_a_safe_tts_answer() {
+        val gate = SafeFirstAnswerGate()
+
+        assertTrue(gate.accept("<analysis>Private chain of thought").isBlank())
+        assertTrue(gate.accept(" stays hidden.</analysis>").isBlank())
+        assertEquals("The final answer is safe.", gate.accept("The final answer is safe."))
+    }
+
+    @Test
     fun reasoning_label_waits_for_explicit_final_answer() {
         val gate = SafeFirstAnswerGate()
 
@@ -141,18 +150,20 @@ class SafeFirstAnswerGateTest {
     }
 
     @Test
-    fun low_latency_history_stops_at_budget_boundary_instead_of_resurrecting_older_turns() {
+    fun low_latency_history_uses_1500_char_budget_but_caps_each_message_at_360() {
         val messages = listOf(
             mapOf("role" to "user", "content" to "old"),
-            mapOf("role" to "assistant", "content" to "b".repeat(50)),
-            mapOf("role" to "user", "content" to "c".repeat(100)),
-            mapOf("role" to "assistant", "content" to "d".repeat(300)),
-            mapOf("role" to "user", "content" to "e".repeat(300)),
+            mapOf("role" to "assistant", "content" to "a".repeat(500)),
+            mapOf("role" to "user", "content" to "b".repeat(500)),
+            mapOf("role" to "assistant", "content" to "c".repeat(500)),
+            mapOf("role" to "user", "content" to "d".repeat(500)),
         )
 
         val bounded = AgentInferenceRouter.boundedLowLatencyHistory(messages)
 
-        assertEquals(listOf(100, 300, 300), bounded.map { it["content"].orEmpty().length })
+        // Four newest messages are individually capped to 360 = 1,440 chars total. The next real
+        // message would exceed 1,500, so older context is not resurrected around the boundary.
+        assertEquals(listOf(360, 360, 360, 360), bounded.map { it["content"].orEmpty().length })
         assertFalse(bounded.any { it["content"] == "old" })
     }
 }
