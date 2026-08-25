@@ -28,11 +28,11 @@ import java.util.WeakHashMap
 object AndroidAssistantVoiceIo {
     private const val TAG = "AssistantTiming"
 
-    /**
-     * Stable token mapped to a packaged local earcon. Existing TTS completion callbacks can therefore
-     * gate microphone startup without synthesizing a spoken "I am listening" prompt.
-     */
+    /** Quiet listening cue retained for real glasses output until hardware testing says otherwise. */
     const val LISTENING_EARCON_TOKEN = "__ad_listening_earcon__"
+
+    /** Slightly louder local-phone cue; never selected while the glasses BLE link is active. */
+    const val PHONE_LISTENING_EARCON_TOKEN = "__ad_listening_earcon_phone__"
 
     private val listeningEarconInstalledFor = Collections.synchronizedSet(
         Collections.newSetFromMap(WeakHashMap<TextToSpeech, Boolean>()),
@@ -58,7 +58,7 @@ object AndroidAssistantVoiceIo {
 
     /** Prefer a downloaded/embedded voice for [locale]. Falls back to the engine's locale handling. */
     fun preferOfflineVoice(tts: TextToSpeech, locale: Locale): Voice? {
-        ensureListeningEarcon(tts)
+        ensureListeningEarcons(tts)
 
         val voices = runCatching { tts.voices.orEmpty() }.getOrDefault(emptySet<Voice>())
         val offline = voices.filter { !it.isNetworkConnectionRequired }
@@ -82,28 +82,45 @@ object AndroidAssistantVoiceIo {
         return null
     }
 
-    private fun ensureListeningEarcon(tts: TextToSpeech) {
+    private fun ensureListeningEarcons(tts: TextToSpeech) {
         if (listeningEarconInstalledFor.contains(tts)) return
 
-        val result = runCatching {
-            // addSpeech keeps the existing TextToSpeech queue + UtteranceProgressListener contract,
-            // but plays this local resource instead of asking the engine to synthesize the token.
-            tts.addSpeech(
-                LISTENING_EARCON_TOKEN,
-                BuildConfig.APPLICATION_ID,
-                R.raw.ad_listening_cue,
-            )
-        }.onFailure { error ->
-            Log.w(TAG, "stage=tts_listening_earcon_failed", error)
-        }.getOrDefault(TextToSpeech.ERROR)
+        val glassesResult = addEarcon(
+            tts = tts,
+            token = LISTENING_EARCON_TOKEN,
+            resourceId = R.raw.ad_listening_cue,
+            route = "glasses",
+        )
+        val phoneResult = addEarcon(
+            tts = tts,
+            token = PHONE_LISTENING_EARCON_TOKEN,
+            resourceId = R.raw.ad_listening_cue_phone,
+            route = "phone",
+        )
 
-        if (result == TextToSpeech.SUCCESS) {
+        if (glassesResult == TextToSpeech.SUCCESS && phoneResult == TextToSpeech.SUCCESS) {
             listeningEarconInstalledFor.add(tts)
-            Log.i(TAG, "stage=tts_listening_earcon_ready")
+            Log.i(TAG, "stage=tts_listening_earcon_ready routes=glasses,phone")
         } else {
-            Log.w(TAG, "stage=tts_listening_earcon_failed result=$result")
+            Log.w(
+                TAG,
+                "stage=tts_listening_earcon_failed glassesResult=$glassesResult phoneResult=$phoneResult",
+            )
         }
     }
+
+    private fun addEarcon(
+        tts: TextToSpeech,
+        token: String,
+        resourceId: Int,
+        route: String,
+    ): Int = runCatching {
+        // addSpeech keeps the existing TextToSpeech queue + UtteranceProgressListener contract,
+        // but plays the packaged resource instead of asking the engine to synthesize the token.
+        tts.addSpeech(token, BuildConfig.APPLICATION_ID, resourceId)
+    }.onFailure { error ->
+        Log.w(TAG, "stage=tts_listening_earcon_failed route=$route", error)
+    }.getOrDefault(TextToSpeech.ERROR)
 
     /**
      * Recognition deliberately releases the Bluetooth communication route as soon as Moonshine has
