@@ -41,7 +41,15 @@ class CloudModelPolicyTest {
     }
 
     @Test
-    fun explicit_reasoning_raises_budget_and_effort_for_gpt5() {
+    fun openai_chat_model_does_not_receive_reasoning_parameter() {
+        val profile = profile(ApiProvider.OPENAI, "gpt-5-chat-latest")
+
+        assertEquals(96, CloudModelPolicy.generationTokenLimit(profile, concise))
+        assertNull(CloudModelPolicy.requestTuning(profile, concise).reasoningEffort)
+    }
+
+    @Test
+    fun explicit_reasoning_raises_shared_budget_and_effort_for_gpt5() {
         val profile = profile(ApiProvider.OPENAI, "gpt-5.6-terra")
 
         assertEquals(1_024, CloudModelPolicy.generationTokenLimit(profile, reasoned))
@@ -113,19 +121,21 @@ class CloudModelPolicyTest {
     }
 
     @Test
-    fun gemini37_uses_low_mandatory_thinking_for_concise_and_medium_for_reasoned() {
+    fun gemini37_keeps_96_visible_tokens_while_thinking_level_changes() {
         val profile = profile(ApiProvider.GOOGLE, "gemini-3.7-flash")
 
-        assertEquals(256, CloudModelPolicy.generationTokenLimit(profile, concise))
+        assertEquals(96, CloudModelPolicy.generationTokenLimit(profile, concise))
+        assertEquals(96, CloudModelPolicy.generationTokenLimit(profile, reasoned))
         assertEquals("low", CloudModelPolicy.requestTuning(profile, concise).geminiThinkingLevel)
         assertEquals("medium", CloudModelPolicy.requestTuning(profile, reasoned).geminiThinkingLevel)
     }
 
     @Test
-    fun gemini36_uses_minimal_for_latency_sensitive_conversation() {
+    fun gemini36_uses_minimal_but_keeps_same_visible_output_ceiling() {
         val profile = profile(ApiProvider.GOOGLE, "gemini-3.6-flash")
 
-        assertEquals(128, CloudModelPolicy.generationTokenLimit(profile, concise))
+        assertEquals(96, CloudModelPolicy.generationTokenLimit(profile, concise))
+        assertEquals(96, CloudModelPolicy.generationTokenLimit(profile, reasoned))
         assertEquals("minimal", CloudModelPolicy.requestTuning(profile, concise).geminiThinkingLevel)
     }
 
@@ -133,24 +143,27 @@ class CloudModelPolicyTest {
     fun gemini31_flash_lite_image_never_receives_unsupported_medium_thinking() {
         val profile = profile(ApiProvider.GOOGLE, "gemini-3.1-flash-lite-image")
 
+        assertEquals(96, CloudModelPolicy.generationTokenLimit(profile, concise))
         assertEquals("minimal", CloudModelPolicy.requestTuning(profile, concise).geminiThinkingLevel)
         assertEquals("high", CloudModelPolicy.requestTuning(profile, reasoned).geminiThinkingLevel)
     }
 
     @Test
-    fun gemini25_flash_disables_thinking_and_uses_96_tokens_normally() {
+    fun gemini25_flash_disables_thinking_and_keeps_96_visible_tokens() {
         val profile = profile(ApiProvider.GOOGLE, "gemini-2.5-flash")
 
         assertEquals(96, CloudModelPolicy.generationTokenLimit(profile, concise))
+        assertEquals(96, CloudModelPolicy.generationTokenLimit(profile, reasoned))
         assertEquals(0, CloudModelPolicy.requestTuning(profile, concise).geminiThinkingBudget)
         assertEquals(1_024, CloudModelPolicy.requestTuning(profile, reasoned).geminiThinkingBudget)
     }
 
     @Test
-    fun gemini25_pro_uses_documented_minimum_when_concise() {
+    fun gemini25_pro_keeps_96_visible_tokens_and_separate_minimum_thinking_budget() {
         val profile = profile(ApiProvider.GOOGLE, "gemini-2.5-pro")
 
-        assertEquals(256, CloudModelPolicy.generationTokenLimit(profile, concise))
+        assertEquals(96, CloudModelPolicy.generationTokenLimit(profile, concise))
+        assertEquals(96, CloudModelPolicy.generationTokenLimit(profile, reasoned))
         assertEquals(128, CloudModelPolicy.requestTuning(profile, concise).geminiThinkingBudget)
     }
 
