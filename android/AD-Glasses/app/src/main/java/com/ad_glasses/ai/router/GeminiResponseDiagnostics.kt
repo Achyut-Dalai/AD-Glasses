@@ -6,6 +6,7 @@ package com.ad_glasses.ai.router
  */
 internal data class GeminiResponseDiagnostics(
     val finishReason: String? = null,
+    val blockReason: String? = null,
     val promptTokens: Int? = null,
     val candidateTokens: Int? = null,
     val thoughtTokens: Int? = null,
@@ -13,6 +14,7 @@ internal data class GeminiResponseDiagnostics(
 ) {
     fun hasSignal(): Boolean =
         !finishReason.isNullOrBlank() ||
+            !blockReason.isNullOrBlank() ||
             promptTokens != null ||
             candidateTokens != null ||
             thoughtTokens != null ||
@@ -20,6 +22,7 @@ internal data class GeminiResponseDiagnostics(
 
     fun merge(newer: GeminiResponseDiagnostics): GeminiResponseDiagnostics = GeminiResponseDiagnostics(
         finishReason = newer.finishReason ?: finishReason,
+        blockReason = newer.blockReason ?: blockReason,
         promptTokens = newer.promptTokens ?: promptTokens,
         candidateTokens = newer.candidateTokens ?: candidateTokens,
         thoughtTokens = newer.thoughtTokens ?: thoughtTokens,
@@ -37,6 +40,10 @@ internal fun geminiNoVisibleAnswerDetail(
     append(" returned no visible answer")
     diagnostics.finishReason?.takeIf { it.isNotBlank() }?.let {
         append("; finishReason=")
+        append(it)
+    }
+    diagnostics.blockReason?.takeIf { it.isNotBlank() }?.let {
+        append("; blockReason=")
         append(it)
     }
     diagnostics.candidateTokens?.let {
