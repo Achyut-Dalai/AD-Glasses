@@ -1,5 +1,11 @@
 package com.ad_glasses.ai.router
 
+/** Explicit generation intent; never infer product behavior from a token count. */
+internal enum class CloudGenerationMode {
+    DEFAULT,
+    CONCISE_CONVERSATION,
+}
+
 /**
  * Provider/model-aware generation policy for AD's latency-sensitive conversational paths.
  *
@@ -12,6 +18,7 @@ package com.ad_glasses.ai.router
 internal object CloudModelPolicy {
     const val CONCISE_NON_REASONING_TOKENS = 128
     const val CONCISE_REASONING_TOKENS = 512
+    const val CONCISE_FORCED_HIGH_REASONING_TOKENS = 2_048
 
     internal data class RequestTuning(
         /** OpenAI-compatible token field. Native Gemini uses maxOutputTokens separately. */
@@ -41,10 +48,10 @@ internal object CloudModelPolicy {
         if (profile == null) return CONCISE_REASONING_TOKENS
         val model = normalizedModel(profile.model)
         return when (profile.provider) {
-            ApiProvider.OPENAI -> if (isOpenAiReasoningModel(model)) {
-                CONCISE_REASONING_TOKENS
-            } else {
-                CONCISE_NON_REASONING_TOKENS
+            ApiProvider.OPENAI -> when {
+                isOpenAiForcedHighReasoningModel(model) -> CONCISE_FORCED_HIGH_REASONING_TOKENS
+                isOpenAiReasoningModel(model) -> CONCISE_REASONING_TOKENS
+                else -> CONCISE_NON_REASONING_TOKENS
             }
 
             ApiProvider.GOOGLE -> when {
@@ -79,29 +86,63 @@ internal object CloudModelPolicy {
     }
 
     /** Native request controls. Unsupported controls are deliberately omitted rather than guessed. */
-    fun requestTuning(profile: CloudAiProfile, maxTokens: Int): RequestTuning {
+    fun requestTuning(
+        profile: CloudAiProfile,
+        mode: CloudGenerationMode,
+    ): RequestTuning {
         val model = normalizedModel(profile.model)
-        val concise = maxTokens <= CONCISE_REASONING_TOKENS
         val tokenField = when (profile.provider) {
-            // `max_completion_tokens` is the current field for reasoning-capable OpenAI Chat
-            // Completions and is also the preferred Groq field. Other compatible providers keep
-            // the broadly-supported `max_tokens` field.
+            // `max_completion_tokens` is the current field for OpenAI Chat Completions and is also
+            // the preferred Groq field. Other compatible providers keep broad `max_tokens` support.
             ApiProvider.OPENAI, ApiProvider.GROQ -> "max_completion_tokens"
             else -> "max_tokens"
         }
-        if (!concise) return RequestTuning(completionTokenField = tokenField)
+        if (mode != CloudGenerationMode.CONCISE_CONVERSATION) {
+            return RequestTuning(completionTokenField = tokenField)
+        }
 
         return when (profile.provider) {
-            ApiProvider.OPENAI -> RequestTuning(
-                completionTokenField = tokenField,
-                reasoningEffort = if (isOpenAiReasoningModel(model)) "low" else null,
-                responseVerbosity = if (model.startsWith("gpt-5")) "low" else null,
-            )
+            ApiProvider.OPENAI -> {
+                val reasoningEffort = when {
+                    // GPT-5 Pro only supports high reasoning. Asking it for low would be an API
+                    // error, so leave its fixed reasoning policy alone and give it extra headroom.
+                    isOpenAiForcedHighReasoningModel(model) -> null
+                    // GPT-5.1 supports none and defaults to none. For normal AD conversation there
+                    // is no benefit in turning hidden reasoning back on.
+                    model.startsWith("gpt-5.1") && !model.contains("chat-latest") -> "none"
+                    isOpenAiReasoningModel(model) -> "low"
+                    else -> null
+                }
+                RequestTuning(
+                    completionTokenField = tokenField,
+                    reasoningEffort = reasoningEffort,
+                    responseVerbosity = if (model.startsWith("gpt-5")) "low" else null,
+                )
+            }
 
             ApiProvider.GOOGLE -> when {
+                // 3.7 rejects `minimal`; `low` is its lowest supported level.
                 model.startsWith("gemini-3.7-") -> RequestTuning(
                     completionTokenField = tokenField,
                     geminiThinkingLevel = "low",
+                )
+                // 3.6/3.5 Flash and 3.5 Flash-Lite support minimal for latency-sensitive chat.
+                model.startsWith("gemini-3.6-") ||
+                    model.startsWith("gemini-3.5-flash") -> RequestTuning(
+                    completionTokenField = tokenField,
+                    geminiThinkingLevel = "minimal",
+                )
+                // Pro variants cannot disable thinking; low is the safe supported floor.
+                model.startsWith("gemini-3.1-pro") ||
+                    model.startsWith("gemini-3-pro") -> RequestTuning(
+                    completionTokenField = tokenField,
+                    geminiThinkingLevel = "low",
+                )
+                // Flash-Lite Image and Gemini 3 Flash support minimal.
+                model.startsWith("gemini-3.1-flash-lite-image") ||
+                    model.startsWith("gemini-3-flash") -> RequestTuning(
+                    completionTokenField = tokenField,
+                    geminiThinkingLevel = "minimal",
                 )
                 isGemini25Flash(model) -> RequestTuning(
                     completionTokenField = tokenField,
@@ -150,11 +191,18 @@ internal object CloudModelPolicy {
 
     private fun normalizedModel(model: String): String = model.trim().lowercase()
 
-    private fun isOpenAiReasoningModel(model: String): Boolean =
-        model.startsWith("gpt-5") ||
+    private fun isOpenAiForcedHighReasoningModel(model: String): Boolean =
+        model.startsWith("gpt-5-pro") ||
+            model.startsWith("o1-pro") ||
+            model.startsWith("o3-pro")
+
+    private fun isOpenAiReasoningModel(model: String): Boolean {
+        if (model.contains("chat-latest")) return false
+        return model.startsWith("gpt-5") ||
             model.startsWith("o1") ||
             model.startsWith("o3") ||
             model.startsWith("o4")
+    }
 
     private fun isGroqQwen36(model: String): Boolean =
         model.contains("qwen3.6") || model.contains("qwen-3.6")
