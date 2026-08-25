@@ -2,10 +2,7 @@ package com.ad_glasses.ai.router
 
 import android.content.Context
 import android.util.Base64
-import android.util.Log
 import com.ad_glasses.shared.ai.AiVisionDetail
-import kotlinx.coroutines.CancellationException
-import kotlinx.coroutines.delay
 import kotlinx.coroutines.runInterruptible
 import org.json.JSONArray
 import org.json.JSONObject
@@ -98,9 +95,6 @@ internal fun geminiVisibleText(parts: JSONArray, preserveWhitespace: Boolean): S
 object ApiTokenClient {
     private const val CONNECT_TIMEOUT_MS = 10_000
     private const val READ_TIMEOUT_MS = 120_000
-    private const val MAX_SERVER_ATTEMPTS = 2
-    private const val SERVER_RETRY_DELAY_MS = 500L
-    private const val TIMING_TAG = "AssistantTiming"
 
     suspend fun chat(
         context: Context,
@@ -120,7 +114,7 @@ object ApiTokenClient {
         val useNativeWeb = webRequested && profile.webAvailable && imagePaths.isEmpty() && audioPath.isNullOrBlank()
         val text = when {
             profile.provider == ApiProvider.GOOGLE -> {
-                val response = retryTransientServerFailure {
+                val response = runInterruptible {
                     postGeminiGenerateContent(
                         profile = profile,
                         apiKey = apiKey,
@@ -140,7 +134,7 @@ object ApiTokenClient {
                 }
             }
             useNativeWeb && profile.provider == ApiProvider.OPENAI ->
-                retryTransientServerFailure {
+                runInterruptible {
                     postOpenAiResponses(profile, apiKey, messages, maxTokens, generationMode)
                 }.let(::extractOpenAiResponseText)
             else -> {
@@ -154,7 +148,7 @@ object ApiTokenClient {
                         JSONArray().put(JSONObject().put("type", "openrouter:web_search")),
                     )
                 }
-                retryTransientServerFailure {
+                runInterruptible {
                     postJson(
                         url = OpenAiCompatibleEndpoint.chatCompletionsUrl(baseUrl),
                         apiKey = apiKey,
@@ -193,16 +187,7 @@ object ApiTokenClient {
             onActivity != null && shouldRequestReasoningHeartbeat(profile, generationMode)
         val full = StringBuilder()
         var geminiDiagnostics = GeminiResponseDiagnostics()
-        var reasoningSeenInStream = false
-        val activitySink: ((CloudStreamActivity) -> Unit)? =
-            if (onActivity != null || profile.provider == ApiProvider.OPENROUTER) {
-                { activity ->
-                    if (activity == CloudStreamActivity.REASONING) reasoningSeenInStream = true
-                    onActivity?.invoke(activity)
-                }
-            } else {
-                null
-            }
+        val activitySink = onActivity
 
         fun emit(delta: String) {
             if (delta.isEmpty()) return
@@ -295,34 +280,6 @@ object ApiTokenClient {
         }
 
         val visible = full.toString().trim()
-        if (
-            shouldRetryOpenRouterReasoningOnly(
-                provider = profile.provider,
-                mode = generationMode,
-                requestedTokens = maxTokens,
-                reasoningSeen = reasoningSeenInStream,
-                visibleText = visible,
-            )
-        ) {
-            val retryTokens = CloudModelPolicy.CONCISE_MANDATORY_REASONING_TOKENS
-            Log.i(
-                TIMING_TAG,
-                "stage=cloud_reasoning_budget_retry provider=OPENROUTER fromTokens=$maxTokens toTokens=$retryTokens",
-            )
-            return@runCatching chatStreaming(
-                context = context,
-                messages = messages,
-                imagePaths = imagePaths,
-                audioPath = audioPath,
-                maxTokens = retryTokens,
-                webRequested = webRequested,
-                generationMode = generationMode,
-                visionDetail = visionDetail,
-                onToken = onToken,
-                onActivity = onActivity,
-            ).getOrThrow()
-        }
-
         visible.ifBlank {
             if (profile.provider == ApiProvider.GOOGLE) {
                 throw IllegalStateException(geminiNoVisibleAnswerDetail(profile.model, geminiDiagnostics))
@@ -686,32 +643,6 @@ object ApiTokenClient {
             )
         }
         return content
-    }
-
-    private suspend fun retryTransientServerFailure(block: () -> JSONObject): JSONObject {
-        var last: Throwable? = null
-        repeat(MAX_SERVER_ATTEMPTS) { attempt ->
-            try {
-                // HttpURLConnection is blocking. Make the actual socket section interruptible so
-                // cancellation of a chat/turn can stop occupying its worker instead of lingering
-                // until the long read timeout and finishing as a stale request later.
-                return runInterruptible { block() }
-            } catch (error: CancellationException) {
-                throw error
-            } catch (error: Throwable) {
-                last = error
-                val detail = generateSequence(error) { it.cause }
-                    .joinToString(" ") { it.message.orEmpty() }
-                // Quota/rate-limit failures are not improved by immediately replaying the exact
-                // wearable request. Fail 429 fast so voice can speak the provider status instead
-                // of adding seconds of silence. Give only transient server faults one short retry.
-                val serverFailure = Regex("(?:API )?HTTP 5\\d\\d", RegexOption.IGNORE_CASE)
-                    .containsMatchIn(detail)
-                if (!serverFailure || attempt == MAX_SERVER_ATTEMPTS - 1) throw error
-                delay(SERVER_RETRY_DELAY_MS)
-            }
-        }
-        throw last ?: IllegalStateException("API request failed")
     }
 
     private fun postJson(
