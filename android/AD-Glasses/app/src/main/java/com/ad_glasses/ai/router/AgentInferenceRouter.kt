@@ -359,21 +359,21 @@ object AgentInferenceRouter {
         }
     }
 
-    /** Keep the old ~720-character low-latency history ceiling, but allow many short turns. */
-    private fun boundedLowLatencyHistory(
+    /** Keep the old ~720-character low-latency history ceiling as a contiguous recent suffix. */
+    internal fun boundedLowLatencyHistory(
         conversationMessages: List<Map<String, String>>,
     ): List<Map<String, String>> {
         val selectedNewestFirst = mutableListOf<Map<String, String>>()
         var usedChars = 0
-        conversationMessages.asReversed().forEach { message ->
+        for (message in conversationMessages.asReversed()) {
             val role = message["role"]?.trim()?.lowercase().orEmpty()
             val content = message["content"]
                 ?.trim()
                 .orEmpty()
                 .take(LOW_LATENCY_MESSAGE_CHARS)
                 .trim()
-            if ((role != "user" && role != "assistant") || content.isBlank()) return@forEach
-            if (usedChars + content.length > LOW_LATENCY_HISTORY_CHARS) return@forEach
+            if ((role != "user" && role != "assistant") || content.isBlank()) continue
+            if (usedChars + content.length > LOW_LATENCY_HISTORY_CHARS) break
             selectedNewestFirst += mapOf("role" to role, "content" to content)
             usedChars += content.length
         }
