@@ -106,9 +106,8 @@ internal object CloudModelPolicy {
                 )
                 isGemini25Model(model) -> RequestTuning(
                     completionTokenField = tokenField,
-                    // Gemini 2.5 uses numeric budgets. Keep ordinary turns at roughly "low"
-                    // reasoning rather than disabling thinking; explicit reasoning gets more room.
-                    geminiThinkingBudget = if (reasoned) 4_096 else 1_024,
+                    // Gemini 2.5 maps low to 1,024 and medium to 8,192 thinking tokens.
+                    geminiThinkingBudget = if (reasoned) 8_192 else 1_024,
                 )
                 else -> RequestTuning(completionTokenField = tokenField)
             }
@@ -116,8 +115,9 @@ internal object CloudModelPolicy {
             ApiProvider.GROQ -> when {
                 isGroqQwen36(model) -> RequestTuning(
                     completionTokenField = tokenField,
-                    // Qwen exposes only none/default. Default lets the model decide when to think.
-                    reasoningEffort = "default",
+                    // Qwen exposes none/default: use efficient dialogue normally, thinking only
+                    // when product intent explicitly asks for deeper reasoning.
+                    reasoningEffort = if (reasoned) "default" else "none",
                     reasoningFormat = if (includeReasoningActivity) "parsed" else "hidden",
                 )
                 isGroqGptOss(model) -> RequestTuning(
