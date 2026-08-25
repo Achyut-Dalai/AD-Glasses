@@ -398,6 +398,7 @@ object ApiTokenClient {
         }
         tuning.reasoningEffort?.let { payload.put("reasoning_effort", it) }
         tuning.reasoningFormat?.let { payload.put("reasoning_format", it) }
+        tuning.includeReasoning?.let { payload.put("include_reasoning", it) }
         tuning.openRouterReasoningEffort?.let { effort ->
             payload.put(
                 "reasoning",
