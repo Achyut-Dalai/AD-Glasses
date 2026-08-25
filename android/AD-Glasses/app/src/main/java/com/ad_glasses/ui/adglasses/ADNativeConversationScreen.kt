@@ -79,6 +79,7 @@ import com.ad_glasses.shared.chat.ChatRole
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
+import kotlinx.coroutines.NonCancellable
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
@@ -256,7 +257,7 @@ internal fun ADNativeConversationScreen(
                     lastFailedPrompt = prompt.takeIf { imagePathForTurn == null }
                 }
             } finally {
-                withContext(Dispatchers.IO) {
+                withContext(NonCancellable + Dispatchers.IO) {
                     ADChatImageAttachmentStore.delete(imagePathForTurn)
                 }
                 if (sendJob === launchedJob) {
