@@ -290,6 +290,8 @@ object AgentInferenceRouter {
             val firstUsefulDelta = CompletableDeferred<Unit>()
             val firstDeltaLogged = AtomicBoolean(false)
             val providerActivitySeen = AtomicBoolean(false)
+            val httpReadySeen = AtomicBoolean(false)
+            val providerDataSeen = AtomicBoolean(false)
             val reasoningActivitySeen = AtomicBoolean(false)
             val echoGate = UserPromptEchoGate(userPrompt)
             val safeFirstAnswerGate = SafeFirstAnswerGate()
@@ -326,8 +328,19 @@ object AgentInferenceRouter {
                 { activity ->
                     if (acceptingStreaming.get()) {
                         when (activity) {
+                            CloudStreamActivity.HTTP_READY -> {
+                                providerActivitySeen.set(true)
+                                if (httpReadySeen.compareAndSet(false, true)) {
+                                    Log.i(
+                                        TIMING_TAG,
+                                        "stage=cloud_text_http_ready thread=$sessionLabel purpose=$purpose " +
+                                            "mode=$generationMode elapsedMs=${SystemClock.elapsedRealtime() - startedAt}",
+                                    )
+                                }
+                            }
                             CloudStreamActivity.PROVIDER_DATA -> {
-                                if (providerActivitySeen.compareAndSet(false, true)) {
+                                providerActivitySeen.set(true)
+                                if (providerDataSeen.compareAndSet(false, true)) {
                                     Log.i(
                                         TIMING_TAG,
                                         "stage=cloud_text_provider_active thread=$sessionLabel purpose=$purpose " +
@@ -420,8 +433,8 @@ object AgentInferenceRouter {
                         TIMING_TAG,
                         "stage=cloud_text_timeout thread=$sessionLabel purpose=$purpose mode=$generationMode " +
                             "phase=first_safe_delta elapsedMs=${SystemClock.elapsedRealtime() - startedAt} " +
-                            "budgetMs=$firstAnswerDeadlineMs providerActive=${providerActivitySeen.get()} " +
-                            "reasoningActive=${reasoningActivitySeen.get()}",
+                            "budgetMs=$firstAnswerDeadlineMs httpReady=${httpReadySeen.get()} " +
+                            "providerData=${providerDataSeen.get()} reasoningActive=${reasoningActivitySeen.get()}",
                     )
                     inFlight.cancel(CancellationException("Wearable first safe-answer deadline expired"))
                     throw IllegalStateException(

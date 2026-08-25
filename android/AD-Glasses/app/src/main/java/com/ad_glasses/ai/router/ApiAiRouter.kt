@@ -2,6 +2,7 @@ package com.ad_glasses.ai.router
 
 import android.content.Context
 import android.util.Base64
+import android.util.Log
 import com.ad_glasses.shared.ai.AiVisionDetail
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.delay
@@ -99,6 +100,7 @@ object ApiTokenClient {
     private const val READ_TIMEOUT_MS = 120_000
     private const val MAX_SERVER_ATTEMPTS = 2
     private const val SERVER_RETRY_DELAY_MS = 500L
+    private const val TIMING_TAG = "AssistantTiming"
 
     suspend fun chat(
         context: Context,
@@ -188,9 +190,20 @@ object ApiTokenClient {
 
         val useNativeWeb = webRequested && profile.webAvailable && imagePaths.isEmpty() && audioPath.isNullOrBlank()
         val includeReasoningActivity =
-            onActivity != null && generationMode == CloudGenerationMode.REASONED_CONVERSATION
+            onActivity != null && shouldRequestReasoningHeartbeat(profile, generationMode)
         val full = StringBuilder()
         var geminiDiagnostics = GeminiResponseDiagnostics()
+        var reasoningSeenInStream = false
+        val activitySink: ((CloudStreamActivity) -> Unit)? =
+            if (onActivity != null || profile.provider == ApiProvider.OPENROUTER) {
+                { activity ->
+                    if (activity == CloudStreamActivity.REASONING) reasoningSeenInStream = true
+                    onActivity?.invoke(activity)
+                }
+            } else {
+                null
+            }
+
         fun emit(delta: String) {
             if (delta.isEmpty()) return
             full.append(delta)
@@ -216,7 +229,7 @@ object ApiTokenClient {
                         apiKey = null,
                         payload = payload,
                         extraHeaders = mapOf("x-goog-api-key" to apiKey),
-                        onActivity = onActivity,
+                        onActivity = activitySink,
                     ) { data ->
                         if (data == "[DONE]") return@requestSse
                         val event = runCatching { JSONObject(data) }.getOrNull() ?: return@requestSse
@@ -236,7 +249,7 @@ object ApiTokenClient {
                         url = "$baseUrl/responses",
                         apiKey = apiKey,
                         payload = payload,
-                        onActivity = onActivity,
+                        onActivity = activitySink,
                     ) { data ->
                         if (data == "[DONE]") return@requestSse
                         val event = runCatching { JSONObject(data) }.getOrNull() ?: return@requestSse
@@ -268,7 +281,7 @@ object ApiTokenClient {
                         url = OpenAiCompatibleEndpoint.chatCompletionsUrl(baseUrl),
                         apiKey = apiKey,
                         payload = payload,
-                        onActivity = onActivity,
+                        onActivity = activitySink,
                     ) { data ->
                         if (data == "[DONE]") return@requestSse
                         val event = runCatching { JSONObject(data) }.getOrNull() ?: return@requestSse
@@ -281,7 +294,36 @@ object ApiTokenClient {
             }
         }
 
-        full.toString().trim().ifBlank {
+        val visible = full.toString().trim()
+        if (
+            shouldRetryOpenRouterReasoningOnly(
+                provider = profile.provider,
+                mode = generationMode,
+                requestedTokens = maxTokens,
+                reasoningSeen = reasoningSeenInStream,
+                visibleText = visible,
+            )
+        ) {
+            val retryTokens = CloudModelPolicy.CONCISE_MANDATORY_REASONING_TOKENS
+            Log.i(
+                TIMING_TAG,
+                "stage=cloud_reasoning_budget_retry provider=OPENROUTER fromTokens=$maxTokens toTokens=$retryTokens",
+            )
+            return@runCatching chatStreaming(
+                context = context,
+                messages = messages,
+                imagePaths = imagePaths,
+                audioPath = audioPath,
+                maxTokens = retryTokens,
+                webRequested = webRequested,
+                generationMode = generationMode,
+                visionDetail = visionDetail,
+                onToken = onToken,
+                onActivity = onActivity,
+            ).getOrThrow()
+        }
+
+        visible.ifBlank {
             if (profile.provider == ApiProvider.GOOGLE) {
                 throw IllegalStateException(geminiNoVisibleAnswerDetail(profile.model, geminiDiagnostics))
             }
@@ -750,6 +792,7 @@ object ApiTokenClient {
                 val body = BufferedReader(InputStreamReader(conn.errorStream ?: conn.inputStream)).use { it.readText() }
                 throw IllegalStateException("API HTTP $code: $body")
             }
+            onActivity?.invoke(CloudStreamActivity.HTTP_READY)
 
             BufferedReader(InputStreamReader(conn.inputStream, Charsets.UTF_8)).use { reader ->
                 val dataLines = mutableListOf<String>()
