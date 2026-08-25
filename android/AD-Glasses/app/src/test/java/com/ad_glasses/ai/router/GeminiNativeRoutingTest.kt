@@ -1,7 +1,5 @@
 package com.ad_glasses.ai.router
 
-import org.json.JSONArray
-import org.json.JSONObject
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
@@ -48,13 +46,13 @@ class GeminiNativeRoutingTest {
 
     @Test
     fun nativeGeminiVisibleTextDropsStructuredThoughtParts() {
-        val parts = JSONArray()
-            .put(
-                JSONObject()
-                    .put("text", "I should reason through this first.")
-                    .put("thought", true),
-            )
-            .put(JSONObject().put("text", "The final answer is 42."))
+        val parts = listOf(
+            GeminiVisibleTextPart(
+                text = "I should reason through this first.",
+                thought = true,
+            ),
+            GeminiVisibleTextPart(text = "The final answer is 42."),
+        )
 
         assertEquals(
             "The final answer is 42.",
@@ -64,9 +62,10 @@ class GeminiNativeRoutingTest {
 
     @Test
     fun nativeGeminiStreamingDropsThoughtDeltasWithoutLosingAnswerWhitespace() {
-        val parts = JSONArray()
-            .put(JSONObject().put("text", "hidden thought ").put("thought", true))
-            .put(JSONObject().put("text", " visible answer"))
+        val parts = listOf(
+            GeminiVisibleTextPart(text = "hidden thought ", thought = true),
+            GeminiVisibleTextPart(text = " visible answer"),
+        )
 
         assertEquals(
             " visible answer",

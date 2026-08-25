@@ -1,6 +1,7 @@
 package com.ad_glasses.ai.router
 
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Test
 
@@ -33,7 +34,15 @@ class SafeFirstAnswerGateTest {
     }
 
     @Test
-    fun current_system_prompt_prefix_never_counts_as_safe_answer() {
+    fun current_shared_system_prompt_prefix_never_counts_as_safe_answer() {
+        val gate = SafeFirstAnswerGate()
+
+        assertTrue(gate.accept("You are AD. Answer the latest user request").isBlank())
+        assertTrue(gate.accept(" directly in plain text.").isBlank())
+    }
+
+    @Test
+    fun historical_voice_system_prompt_prefix_remains_blocked() {
         val gate = SafeFirstAnswerGate()
 
         assertTrue(gate.accept("You are AD, a voice assistant").isBlank())
@@ -48,5 +57,21 @@ class SafeFirstAnswerGateTest {
         gate.accept("Java is faster for many workloads")
 
         assertEquals("Java is faster for many workloads", gate.currentVisible())
+    }
+
+    @Test
+    fun low_latency_history_stops_at_budget_boundary_instead_of_resurrecting_older_turns() {
+        val messages = listOf(
+            mapOf("role" to "user", "content" to "old"),
+            mapOf("role" to "assistant", "content" to "b".repeat(50)),
+            mapOf("role" to "user", "content" to "c".repeat(100)),
+            mapOf("role" to "assistant", "content" to "d".repeat(300)),
+            mapOf("role" to "user", "content" to "e".repeat(300)),
+        )
+
+        val bounded = AgentInferenceRouter.boundedLowLatencyHistory(messages)
+
+        assertEquals(listOf(100, 300, 300), bounded.map { it["content"].orEmpty().length })
+        assertFalse(bounded.any { it["content"] == "old" })
     }
 }
