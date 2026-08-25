@@ -44,6 +44,9 @@ internal object CloudVisionImagePreprocessor {
     private const val TEXT_DETAIL_MAX_DIMENSION = 1_600
     private const val STANDARD_JPEG_QUALITY = 82
     private const val TEXT_DETAIL_JPEG_QUALITY = 88
+    // Unsupported local formats have to bypass BitmapFactory and are Base64-loaded by the provider
+    // adapter. Bound that compatibility path so one opaque file cannot become a huge heap/string copy.
+    private const val MAX_UNPROCESSED_UPLOAD_BYTES = 12L * 1024L * 1024L
 
     suspend fun prepare(
         context: Context,
@@ -59,7 +62,11 @@ internal object CloudVisionImagePreprocessor {
         val height = bounds.outHeight
         if (width <= 0 || height <= 0) {
             // Some provider-supported formats may not be decodable by BitmapFactory on every API
-            // level. Preserve compatibility by uploading the original rather than failing Lens.
+            // level. Preserve compatibility for normal-sized files without permitting an unbounded
+            // readBytes()+Base64 fallback later in the transport.
+            require(source.length() <= MAX_UNPROCESSED_UPLOAD_BYTES) {
+                "This image format cannot be resized on this Android version and the file is too large to upload safely."
+            }
             return@withContext original(source)
         }
 
@@ -75,10 +82,11 @@ internal object CloudVisionImagePreprocessor {
             inSampleSize = calculateInSampleSize(width, height, maxDimension)
             inJustDecodeBounds = false
         }
-        var decoded = BitmapFactory.decodeFile(source.absolutePath, options)
+        val decoded = BitmapFactory.decodeFile(source.absolutePath, options)
             ?: return@withContext original(source, width, height)
         var oriented: Bitmap? = null
         var scaled: Bitmap? = null
+        var output: File? = null
         try {
             oriented = applyExifOrientation(decoded, source.absolutePath)
             val orientedBitmap = oriented ?: decoded
@@ -86,7 +94,7 @@ internal object CloudVisionImagePreprocessor {
             val outputBitmap = scaled ?: orientedBitmap
 
             val cacheDir = File(context.cacheDir, "cloud-vision").apply { mkdirs() }
-            val output = File(cacheDir, "vision-${UUID.randomUUID()}.jpg")
+            output = File(cacheDir, "vision-${UUID.randomUUID()}.jpg")
             val quality = when (detail) {
                 AiVisionDetail.STANDARD -> STANDARD_JPEG_QUALITY
                 AiVisionDetail.TEXT_DETAIL -> TEXT_DETAIL_JPEG_QUALITY
@@ -113,6 +121,9 @@ internal object CloudVisionImagePreprocessor {
                 outputBytes = output.length(),
                 temporary = true,
             )
+        } catch (error: Throwable) {
+            output?.let { runCatching { it.delete() } }
+            throw error
         } finally {
             // These bitmaps are private to this one-shot preprocessing operation. Releasing them
             // promptly reduces peak memory during repeated Lens captures; correctness does not rely
