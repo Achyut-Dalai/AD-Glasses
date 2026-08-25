@@ -12,21 +12,21 @@ enum class CloudGenerationMode {
  *
  * Normal Chat/Lens/Voice uses [CloudGenerationMode.CONCISE_CONVERSATION]: hidden reasoning is
  * disabled where the provider supports it and the provider ceiling stays near the visible answer.
- * A larger ceiling is reserved for [CloudGenerationMode.REASONED_CONVERSATION], selected only by
- * explicit product/user intent. Models that cannot turn reasoning off receive small unavoidable
- * headroom so their hidden tokens do not consume the entire final-answer allowance.
+ * A larger ceiling is reserved for [CloudGenerationMode.REASONED_CONVERSATION] only on APIs where
+ * reasoning consumes the same generation allowance as visible output. Gemini reports/throttles
+ * thinking separately, so its visible answer stays at the concise ceiling even for reasoned turns.
  */
 internal object CloudModelPolicy {
     /** Roughly enough for the shared <=50 word / <=3 sentence final-answer contract. */
     const val CONCISE_OUTPUT_TOKENS = 96
 
-    /** Small headroom for models whose minimum supported mode still spends hidden reasoning tokens. */
+    /** Headroom for APIs where unavoidable hidden reasoning shares the completion-token ceiling. */
     const val CONCISE_MANDATORY_REASONING_TOKENS = 256
 
     /** Pro-style models cannot be made cheap; keep them functional without making this the default. */
     const val CONCISE_FORCED_REASONING_TOKENS = 512
 
-    /** Explicit deep-reasoning turns may intentionally spend more compute before the same short final answer. */
+    /** Explicit deep-reasoning turns may intentionally spend more shared generation budget. */
     const val REASONED_OUTPUT_TOKENS = 1_024
     const val REASONED_FORCED_REASONING_TOKENS = 2_048
 
@@ -55,12 +55,12 @@ internal object CloudModelPolicy {
         mode: CloudGenerationMode,
     ): Int = when (mode) {
         CloudGenerationMode.DEFAULT -> 512
-        CloudGenerationMode.REASONED_CONVERSATION -> {
-            if (profile?.let(::isForcedReasoningProfile) == true) {
-                REASONED_FORCED_REASONING_TOKENS
-            } else {
-                REASONED_OUTPUT_TOKENS
-            }
+        CloudGenerationMode.REASONED_CONVERSATION -> when {
+            // Gemini's maxOutputTokens bounds candidate output; thinking is controlled/reported
+            // separately. Keep the final answer short even when the requested thinking level rises.
+            profile?.provider == ApiProvider.GOOGLE -> CONCISE_OUTPUT_TOKENS
+            profile?.let(::isForcedReasoningProfile) == true -> REASONED_FORCED_REASONING_TOKENS
+            else -> REASONED_OUTPUT_TOKENS
         }
         CloudGenerationMode.CONCISE_CONVERSATION -> conciseTokenLimit(profile)
     }
@@ -79,12 +79,9 @@ internal object CloudModelPolicy {
                 else -> CONCISE_MANDATORY_REASONING_TOKENS
             }
 
-            ApiProvider.GOOGLE -> when {
-                isGemini25Flash(model) -> CONCISE_OUTPUT_TOKENS
-                isGeminiMinimalThinkingModel(model) -> 128
-                isGeminiMandatoryThinkingModel(model) -> CONCISE_MANDATORY_REASONING_TOKENS
-                else -> 128
-            }
+            // Gemini candidate output and thinking are independently controlled. Never inflate the
+            // visible answer ceiling merely because a Gemini family has mandatory thinking.
+            ApiProvider.GOOGLE -> CONCISE_OUTPUT_TOKENS
 
             ApiProvider.GROQ -> when {
                 isGroqQwen36(model) -> CONCISE_OUTPUT_TOKENS
@@ -142,7 +139,7 @@ internal object CloudModelPolicy {
                     reasoned && isOpenAiReasoningModel(model) -> "medium"
                     reasoned -> null
                     openAiCanDisableReasoning(model) -> "none"
-                    model == "gpt-5" || model.startsWith("gpt-5-") -> "minimal"
+                    isOpenAiBaseGpt5(model) -> "minimal"
                     isOpenAiReasoningModel(model) -> "low"
                     else -> null
                 }
@@ -241,7 +238,8 @@ internal object CloudModelPolicy {
             model.startsWith("o3-pro")
 
     private fun isOpenAiBaseGpt5(model: String): Boolean =
-        model == "gpt-5" || model.startsWith("gpt-5-") && !model.contains("chat-latest")
+        model == "gpt-5" ||
+            (model.startsWith("gpt-5-") && !model.contains("chat-latest"))
 
     private fun openAiCanDisableReasoning(model: String): Boolean {
         if (!model.startsWith("gpt-5") || model.contains("-pro") || model.contains("chat-latest")) return false
@@ -269,12 +267,6 @@ internal object CloudModelPolicy {
             model.startsWith("gemini-3.5-flash") ||
             model.startsWith("gemini-3.1-flash-lite") ||
             model.startsWith("gemini-3-flash")
-
-    private fun isGeminiMandatoryThinkingModel(model: String): Boolean =
-        model.startsWith("gemini-3.7-") ||
-            model.startsWith("gemini-3.1-pro") ||
-            model.startsWith("gemini-3-pro") ||
-            model.startsWith("gemini-2.5-pro")
 
     private fun openRouterCanDisableReasoning(model: String): Boolean {
         val leaf = model.substringAfterLast('/')
