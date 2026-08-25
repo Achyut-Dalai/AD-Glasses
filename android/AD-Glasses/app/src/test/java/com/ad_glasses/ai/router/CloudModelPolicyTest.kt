@@ -11,60 +11,13 @@ class CloudModelPolicyTest {
     private val reasoned = CloudGenerationMode.REASONED_CONVERSATION
 
     @Test
-    fun concise_budget_is_provider_and_model_neutral() {
-        val profiles = listOf(
-            profile(ApiProvider.OPENAI, "gpt-5"),
-            profile(ApiProvider.OPENAI, "gpt-5.4-pro"),
-            profile(ApiProvider.GOOGLE, "gemini-3.7-flash"),
-            profile(ApiProvider.GROQ, "llama-3.3-70b-versatile"),
-            profile(ApiProvider.GROQ, "openai/gpt-oss-20b"),
-            profile(ApiProvider.DEEPSEEK, "deepseek-v4-flash"),
-            profile(ApiProvider.OPENROUTER, "openai/gpt-5.6-terra"),
-            profile(ApiProvider.CUSTOM, "my-private-model"),
+    fun generation_budget_depends_only_on_product_intent() {
+        assertEquals(256, CloudModelPolicy.generationTokenLimit(concise))
+        assertEquals(2_048, CloudModelPolicy.generationTokenLimit(reasoned))
+        assertEquals(
+            512,
+            CloudModelPolicy.generationTokenLimit(CloudGenerationMode.DEFAULT),
         )
-
-        profiles.forEach { candidate ->
-            assertEquals(
-                "${candidate.provider}/${candidate.model}",
-                CloudModelPolicy.CONCISE_OUTPUT_TOKENS,
-                CloudModelPolicy.generationTokenLimit(candidate, concise),
-            )
-        }
-        assertEquals(256, CloudModelPolicy.generationTokenLimit(null, concise))
-    }
-
-    @Test
-    fun reasoned_budget_is_provider_and_model_neutral() {
-        val profiles = listOf(
-            profile(ApiProvider.OPENAI, "gpt-5.4-pro"),
-            profile(ApiProvider.GOOGLE, "gemini-3.7-flash"),
-            profile(ApiProvider.GROQ, "openai/gpt-oss-120b"),
-            profile(ApiProvider.OPENROUTER, "deepseek/deepseek-r1"),
-            profile(ApiProvider.CUSTOM, "reasoning-model"),
-        )
-
-        profiles.forEach { candidate ->
-            assertEquals(
-                "${candidate.provider}/${candidate.model}",
-                CloudModelPolicy.REASONED_OUTPUT_TOKENS,
-                CloudModelPolicy.generationTokenLimit(candidate, reasoned),
-            )
-        }
-        assertEquals(2_048, CloudModelPolicy.generationTokenLimit(null, reasoned))
-    }
-
-    @Test
-    fun default_budget_is_provider_neutral() {
-        ApiProvider.entries.forEach { provider ->
-            assertEquals(
-                CloudModelPolicy.DEFAULT_OUTPUT_TOKENS,
-                CloudModelPolicy.generationTokenLimit(
-                    profile(provider, provider.defaultModel),
-                    CloudGenerationMode.DEFAULT,
-                ),
-            )
-        }
-        assertEquals(512, CloudModelPolicy.generationTokenLimit(null, CloudGenerationMode.DEFAULT))
     }
 
     @Test
@@ -145,8 +98,8 @@ class CloudModelPolicyTest {
     fun gemini3_reasoning_controls_change_without_changing_generation_budget() {
         val profile = profile(ApiProvider.GOOGLE, "gemini-3.7-flash")
 
-        assertEquals(256, CloudModelPolicy.generationTokenLimit(profile, concise))
-        assertEquals(2_048, CloudModelPolicy.generationTokenLimit(profile, reasoned))
+        assertEquals(256, CloudModelPolicy.generationTokenLimit(concise))
+        assertEquals(2_048, CloudModelPolicy.generationTokenLimit(reasoned))
         assertEquals("low", CloudModelPolicy.requestTuning(profile, concise).geminiThinkingLevel)
         assertEquals("medium", CloudModelPolicy.requestTuning(profile, reasoned).geminiThinkingLevel)
     }
