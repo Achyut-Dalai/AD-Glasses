@@ -1,6 +1,6 @@
 package com.ad_glasses.ai.orchestrator
 
-/** Keeps glasses playback useful while preserving the complete answer in Chats. */
+/** Keeps conversational output short and TTS-safe even when a provider ignores prompt limits. */
 object AssistantSpokenResponsePolicy {
     private const val MAX_DIRECT_WORDS = 50
     private const val MAX_DIRECT_SENTENCES = 3
@@ -147,7 +147,32 @@ object AssistantSpokenResponsePolicy {
         return spoken.toString().trim()
     }
 
-    /** Hard speech guardrail: never make a wearable user listen to an accidental essay. */
+    /**
+     * Shared Chat/Lens/Voice correctness guardrail.
+     *
+     * Prompt word limits are advisory and API token limits are provider-generation limits, not
+     * visible-word guarantees. This final local boundary makes the product contract deterministic:
+     * normal conversational answers cannot exceed 50 words or 3 sentences even if a model ignores
+     * both the prompt and its preferred verbosity setting.
+     */
+    fun forConciseConversation(richText: String): String {
+        val normalized = normalizeForSpeech(richText)
+        if (normalized.isBlank()) return "I didn’t get a usable answer."
+        if (wordCount(normalized) <= MAX_DIRECT_WORDS && sentenceCount(normalized) <= MAX_DIRECT_SENTENCES) {
+            return normalized
+        }
+
+        val wordCut = endAfterWord(normalized, MAX_DIRECT_WORDS)
+        val sentenceCut = sentenceEndPattern.findAll(normalized)
+            .map { match -> match.range.last + 1 }
+            .take(MAX_DIRECT_SENTENCES)
+            .toList()
+            .getOrNull(MAX_DIRECT_SENTENCES - 1)
+        val cutAt = listOfNotNull(wordCut, sentenceCut).minOrNull() ?: normalized.length
+        return finishTruncated(normalized.take(cutAt))
+    }
+
+    /** Hard speech guardrail retained for callers that intentionally keep a longer rich answer. */
     fun forGlasses(richText: String): String {
         val normalized = normalizeForSpeech(richText)
         if (normalized.isBlank()) return "I didn’t get a usable answer."
@@ -164,11 +189,16 @@ object AssistantSpokenResponsePolicy {
             .getOrNull(TRUNCATED_BODY_SENTENCES - 1)
         val cutAt = listOfNotNull(wordCut, secondSentenceCut).minOrNull() ?: normalized.length
 
-        var body = normalized.take(cutAt)
-            .trimEnd(' ', ',', ';', ':', '-', '–', '—')
+        val body = finishTruncated(normalized.take(cutAt))
         if (body.isBlank()) return CHAT_POINTER
-        if (body.last() !in charArrayOf('.', '!', '?')) body += "."
         return "$body $CHAT_POINTER"
+    }
+
+    private fun finishTruncated(text: String): String {
+        var body = text.trimEnd(' ', ',', ';', ':', '-', '–', '—')
+        if (body.isBlank()) return ""
+        if (body.last() !in charArrayOf('.', '!', '?')) body += "."
+        return body
     }
 
     private fun isListMarker(text: String, index: Int): Boolean {
