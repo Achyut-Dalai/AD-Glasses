@@ -34,12 +34,12 @@ object MoonshineModelManager {
         val modelArch: Int,
         val components: List<String>,
     ) {
-        // One production Ask AI STT model. Medium Streaming is Moonshine's default English model
-        // and its accuracy target against Whisper Large v3. There is no automatic smaller fallback.
-        MEDIUM_STREAMING_EN(
-            id = "medium-streaming-en",
+        // One production Ask AI STT model. Small Streaming keeps the streaming architecture while
+        // reducing sustained mobile CPU/RAM pressure compared with Medium Streaming.
+        SMALL_STREAMING_EN(
+            id = "small-streaming-en",
             languageCode = "en",
-            modelArch = JNI.MOONSHINE_MODEL_ARCH_MEDIUM_STREAMING,
+            modelArch = JNI.MOONSHINE_MODEL_ARCH_SMALL_STREAMING,
             components = listOf(
                 "adapter.ort",
                 "cross_kv.ort",
@@ -55,7 +55,7 @@ object MoonshineModelManager {
     fun chooseDefault(languageHint: String? = null): ModelKind {
         // Only English is supported by Ask voice today. A different device locale never causes an
         // engine/model fallback; the required Moonshine English model remains explicit.
-        return ModelKind.MEDIUM_STREAMING_EN
+        return ModelKind.SMALL_STREAMING_EN
     }
 
     /** App-owned root for Moonshine model caches. */
@@ -92,7 +92,7 @@ object MoonshineModelManager {
         migrateLegacyModelIfNeeded(context, kind)
         val dir = modelDir(context, kind)
         check(validateDir(dir, kind).ok) {
-            "Moonshine ${kind.id} is not installed. Install the Moonshine Medium Streaming model in Cloud AI settings."
+            "Moonshine ${kind.id} is not installed. Install the Moonshine Small Streaming model in Cloud AI settings."
         }
         return dir
     }
@@ -130,7 +130,7 @@ object MoonshineModelManager {
         migrateLegacyModelIfNeeded(context, kind)
         val dir = modelDir(context, kind)
         if (validateDir(dir, kind).ok) {
-            removeRetiredSmallModel(context)
+            removeRetiredMediumModel(context)
             return dir
         }
 
@@ -144,7 +144,7 @@ object MoonshineModelManager {
 
         val downloader = AssetDownloader()
         val spec = modelSpec(kind)
-        onProgress(Progress(0, "Preparing Moonshine Medium Streaming…"))
+        onProgress(Progress(0, "Preparing Moonshine Small Streaming…"))
         downloader.ensureModelPresent(
             dir,
             spec,
@@ -169,9 +169,11 @@ object MoonshineModelManager {
             throw IllegalStateException(message)
         }
 
-        removeRetiredSmallModel(context)
+        // Keep the old Medium cache until Small is fully present and validated. After that point it
+        // only wastes mobile storage and could accidentally hide a rollback/fallback in future code.
+        removeRetiredMediumModel(context)
         Log.i(TAG, "Installed Moonshine model ${kind.id} from pinned native catalog to ${dir.absolutePath}")
-        onProgress(Progress(100, "Moonshine Medium Streaming installed"))
+        onProgress(Progress(100, "Moonshine Small Streaming installed"))
         return dir
     }
 
@@ -221,19 +223,19 @@ object MoonshineModelManager {
         }
     }
 
-    /** Small Streaming was the short-lived Ask model. Delete it only after Medium is ready. */
-    private fun removeRetiredSmallModel(context: Context) {
+    /** Medium Streaming is retired only after the Small Streaming replacement is ready. */
+    private fun removeRetiredMediumModel(context: Context) {
         val root = modelRoot(context)
-        val smallSpec = ModelSpec.stt("en", JNI.MOONSHINE_MODEL_ARCH_SMALL_STREAMING, false)
-        val smallCache = ModelCache.directoryFor(context.applicationContext, smallSpec, root)
-        val smallLegacy = File(root, "small-streaming-en")
-        listOf(smallCache, smallLegacy).distinctBy { it.absolutePath }.forEach { dir ->
+        val mediumSpec = ModelSpec.stt("en", JNI.MOONSHINE_MODEL_ARCH_MEDIUM_STREAMING, false)
+        val mediumCache = ModelCache.directoryFor(context.applicationContext, mediumSpec, root)
+        val mediumLegacy = File(root, "medium-streaming-en")
+        listOf(mediumCache, mediumLegacy).distinctBy { it.absolutePath }.forEach { dir ->
             if (dir.exists()) {
                 runCatching { dir.deleteRecursively() }
                     .onSuccess { deleted ->
-                        if (deleted) Log.i(TAG, "Removed retired Moonshine Small Streaming cache ${dir.absolutePath}")
+                        if (deleted) Log.i(TAG, "Removed retired Moonshine Medium Streaming cache ${dir.absolutePath}")
                     }
-                    .onFailure { Log.w(TAG, "Could not remove retired Moonshine Small cache", it) }
+                    .onFailure { Log.w(TAG, "Could not remove retired Moonshine Medium cache", it) }
             }
         }
     }
