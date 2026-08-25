@@ -20,6 +20,13 @@ internal object CloudModelPolicy {
     /** Roughly enough for the shared <=50 word / <=3 sentence final-answer contract. */
     const val CONCISE_OUTPUT_TOKENS = 96
 
+    /**
+     * OpenRouter fronts heterogeneous models/providers. Keep the same concise answer contract, but
+     * leave enough transport headroom that provider-side tokenization/hidden work cannot sever a
+     * short final sentence at the old 96-token ceiling.
+     */
+    const val OPENROUTER_CONCISE_OUTPUT_TOKENS = 192
+
     /** Headroom for APIs where unavoidable hidden reasoning shares the completion-token ceiling. */
     const val CONCISE_MANDATORY_REASONING_TOKENS = 256
 
@@ -95,7 +102,7 @@ internal object CloudModelPolicy {
 
             ApiProvider.OPENROUTER -> when {
                 isOpenRouterForcedReasoningModel(model) -> CONCISE_FORCED_REASONING_TOKENS
-                openRouterCanDisableReasoning(model) || !isLikelyReasoningModel(model) -> CONCISE_OUTPUT_TOKENS
+                openRouterCanDisableReasoning(model) || !isLikelyReasoningModel(model) -> OPENROUTER_CONCISE_OUTPUT_TOKENS
                 else -> CONCISE_MANDATORY_REASONING_TOKENS
             }
 
