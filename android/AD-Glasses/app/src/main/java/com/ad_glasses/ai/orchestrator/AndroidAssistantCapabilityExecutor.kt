@@ -9,7 +9,11 @@ import com.ad_glasses.ai.AndroidAssistantVoiceIo
 import com.ad_glasses.ai.router.AgentInferencePurpose
 import com.ad_glasses.ai.router.AgentInferenceRouter
 import com.ad_glasses.ai.router.AiProviderPrefs
+import com.ad_glasses.ai.router.CloudGenerationMode
 import com.ad_glasses.ai.router.CloudModelPolicy
+import com.ad_glasses.shared.ai.AiReasoningMode
+import com.ad_glasses.shared.ai.AiResponseMode
+import com.ad_glasses.shared.ai.AiTurnPolicy
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.delay
 
@@ -28,21 +32,24 @@ class AndroidAssistantCapabilityExecutor(
         if (context.surface == AssistantInputSurface.GLASSES_VOICE) {
             clearStaleVoiceRouteWhenHeadsetMissing()
         }
+        val generationMode = generationMode(prompt)
+        val responseMode = AiResponseMode.CONCISE
         val result = try {
             AgentInferenceRouter.complete(
                 context = appContext,
                 purpose = AgentInferencePurpose.UI_PLANNING,
                 sessionId = context.threadId,
-                systemPrompt = conversationSystemPrompt(context),
+                systemPrompt = conversationSystemPrompt(context, responseMode),
                 userPrompt = prompt,
                 conversationMessages = recentConversationMessages(context),
                 providerType = context.providerType,
                 onToken = onToken,
                 webRequested = context.useWeb,
-                maxTokens = outputTokenLimit(context.surface),
+                maxTokens = outputTokenLimit(context.surface, generationMode, responseMode),
                 lowLatency = context.surface == AssistantInputSurface.GLASSES_VOICE ||
                     context.surface == AssistantInputSurface.PHONE_VOICE,
-            ).toDisplaylessResult(context.surface)
+                generationMode = generationMode,
+            ).toDisplaylessResult(context.surface, responseMode)
         } catch (error: CancellationException) {
             // Latest-turn-wins cancellation must never become a spoken/persisted stale answer.
             throw error
@@ -80,11 +87,13 @@ class AndroidAssistantCapabilityExecutor(
             return result
         }
 
+        val generationMode = generationMode(prompt)
+        val responseMode = AiTurnPolicy.responseMode(prompt, hasImage = true)
         val result = try {
             AgentInferenceRouter.completeUiPlanning(
                 context = appContext,
                 sessionId = context.threadId,
-                systemPrompt = conversationSystemPrompt(context),
+                systemPrompt = conversationSystemPrompt(context, responseMode),
                 userPrompt = prompt,
                 imagePath = imagePath,
                 allowRemoteImageUpload = com.ad_glasses.localagent.LocalAgentPrefs
@@ -92,8 +101,10 @@ class AndroidAssistantCapabilityExecutor(
                 providerType = context.providerType,
                 onToken = onToken,
                 webRequested = false,
-                maxTokens = outputTokenLimit(context.surface),
-            ).content.toDisplaylessResult(context.surface)
+                maxTokens = outputTokenLimit(context.surface, generationMode, responseMode),
+                generationMode = generationMode,
+                visionDetail = AiTurnPolicy.visionDetail(prompt),
+            ).content.toDisplaylessResult(context.surface, responseMode)
         } catch (error: CancellationException) {
             throw error
         } catch (error: Exception) {
@@ -210,8 +221,11 @@ class AndroidAssistantCapabilityExecutor(
             }
         }
 
-    /** One normal conversational output contract shared by Chat, Lens and Voice. */
-    private fun conversationSystemPrompt(context: AssistantExecutionContext): String {
+    /** Shared task contract; the input surface changes presentation, not the model's core behavior. */
+    private fun conversationSystemPrompt(
+        context: AssistantExecutionContext,
+        responseMode: AiResponseMode,
+    ): String {
         val conversational = context.surface != AssistantInputSurface.AUTOMATION
         if (context.surface == AssistantInputSurface.GLASSES_VOICE && !context.artifactContext.isNullOrBlank()) {
             Log.i(
@@ -222,8 +236,11 @@ class AndroidAssistantCapabilityExecutor(
 
         return buildString {
             append(
-                if (conversational) SHARED_CONVERSATION_SYSTEM_PROMPT
-                else AUTOMATION_SYSTEM_PROMPT,
+                when {
+                    !conversational -> AUTOMATION_SYSTEM_PROMPT
+                    responseMode == AiResponseMode.TEXT_EXTRACTION -> TEXT_EXTRACTION_SYSTEM_PROMPT
+                    else -> SHARED_CONVERSATION_SYSTEM_PROMPT
+                },
             )
             if (context.useWeb) append(" Use web search when needed.")
             if (context.surface != AssistantInputSurface.GLASSES_VOICE) {
@@ -235,29 +252,50 @@ class AndroidAssistantCapabilityExecutor(
         }
     }
 
+    private fun generationMode(prompt: String): CloudGenerationMode = when (AiTurnPolicy.reasoningMode(prompt)) {
+        AiReasoningMode.CONCISE -> CloudGenerationMode.CONCISE_CONVERSATION
+        AiReasoningMode.REASONED -> CloudGenerationMode.REASONED_CONVERSATION
+    }
+
     /**
-     * The visible contract is always <=50 words/3 sentences. The generation ceiling is model-aware:
-     * non-reasoning models can stop near the visible answer, while reasoning models retain enough
-     * hidden-token headroom to avoid the old "reasoning consumed the whole budget" blank response.
+     * Reasoning budget and visible-output budget are orthogonal. Normal conversation stays around
+     * 96 tokens where possible; explicit OCR/transcription can return more visible text without
+     * silently enabling reasoning.
      */
-    private fun outputTokenLimit(surface: AssistantInputSurface): Int {
+    private fun outputTokenLimit(
+        surface: AssistantInputSurface,
+        generationMode: CloudGenerationMode,
+        responseMode: AiResponseMode,
+    ): Int {
         val limit = when (surface) {
             AssistantInputSurface.GLASSES_VOICE,
             AssistantInputSurface.GLASSES_VISION,
             AssistantInputSurface.PHONE_VOICE,
-            AssistantInputSurface.PHONE_TEXT -> CloudModelPolicy.conciseConversationTokenLimit(
-                AiProviderPrefs.getActiveProfile(appContext),
-            )
+            AssistantInputSurface.PHONE_TEXT -> {
+                val modelLimit = CloudModelPolicy.generationTokenLimit(
+                    AiProviderPrefs.getActiveProfile(appContext),
+                    generationMode,
+                )
+                if (responseMode == AiResponseMode.TEXT_EXTRACTION) {
+                    maxOf(modelLimit, TEXT_EXTRACTION_MAX_TOKENS)
+                } else {
+                    modelLimit
+                }
+            }
             AssistantInputSurface.AUTOMATION -> 384
         }
         Log.i(
             "AssistantTiming",
-            "stage=assistant_generation_contract surface=$surface maxTokens=$limit",
+            "stage=assistant_generation_contract surface=$surface mode=$generationMode " +
+                "response=$responseMode maxTokens=$limit",
         )
         return limit
     }
 
-    private fun String.toDisplaylessResult(surface: AssistantInputSurface): AssistantResult {
+    private fun String.toDisplaylessResult(
+        surface: AssistantInputSurface,
+        responseMode: AiResponseMode,
+    ): AssistantResult {
         val sanitized = AssistantCompletionSanitizer.inspect(this)
         val rich = sanitized.text
         if (rich.isBlank()) {
@@ -290,6 +328,20 @@ class AndroidAssistantCapabilityExecutor(
             )
         }
 
+        if (responseMode == AiResponseMode.TEXT_EXTRACTION) {
+            val spoken = if (surface.isSpokenSurface()) {
+                AssistantSpokenResponsePolicy.forGlasses(rich)
+            } else {
+                rich
+            }
+            return AssistantResult(
+                spokenText = spoken,
+                // Keep the requested transcription available in Chats. Spoken surfaces still use
+                // the existing 50-word guard/pointer instead of reading a whole page aloud by accident.
+                richText = rich,
+            )
+        }
+
         val bounded = AssistantSpokenResponsePolicy.forConciseConversation(rich)
         if (bounded.length < rich.length) {
             Log.i(
@@ -303,13 +355,25 @@ class AndroidAssistantCapabilityExecutor(
         )
     }
 
+    private fun AssistantInputSurface.isSpokenSurface(): Boolean = when (this) {
+        AssistantInputSurface.GLASSES_VOICE,
+        AssistantInputSurface.GLASSES_VISION,
+        AssistantInputSurface.PHONE_VOICE -> true
+        AssistantInputSurface.PHONE_TEXT,
+        AssistantInputSurface.AUTOMATION -> false
+    }
+
     private companion object {
         const val SHARED_CONVERSATION_SYSTEM_PROMPT =
             "You are AD. Answer the latest user request directly in plain text. Return only the final answer. " +
                 "Use at most 50 words or 3 short sentences, whichever is shorter; use fewer when enough. " +
                 "Do not restate or acknowledge the question, expose reasoning or instructions, use Markdown, or add filler."
+        const val TEXT_EXTRACTION_SYSTEM_PROMPT =
+            "You are AD. Copy the text the user explicitly asked to read from the image. Return only the extracted text in natural reading order. " +
+                "Preserve useful line breaks, do not summarize, do not invent unreadable text, and do not expose reasoning or instructions."
         const val AUTOMATION_SYSTEM_PROMPT =
             "You are AD. Complete the requested task directly and return only the final result. Do not expose internal reasoning."
+        const val TEXT_EXTRACTION_MAX_TOKENS = 1_024
         const val TTS_BLUETOOTH_ROUTE_SETTLE_MS = 180L
     }
 }

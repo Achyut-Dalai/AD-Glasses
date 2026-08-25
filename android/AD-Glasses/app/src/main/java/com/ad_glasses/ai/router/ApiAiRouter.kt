@@ -2,6 +2,7 @@ package com.ad_glasses.ai.router
 
 import android.content.Context
 import android.util.Base64
+import com.ad_glasses.shared.ai.AiVisionDetail
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.runInterruptible
@@ -106,6 +107,8 @@ object ApiTokenClient {
         audioPath: String? = null,
         maxTokens: Int = 2048,
         webRequested: Boolean = false,
+        generationMode: CloudGenerationMode = CloudGenerationMode.DEFAULT,
+        visionDetail: AiVisionDetail = AiVisionDetail.STANDARD,
     ): Result<String> = runCatching {
         val (profile, apiKey) = AiProviderPrefs.activeProfileWithKey(context)
         require(profile.model.isNotBlank()) { "${profile.name} does not have a model selected." }
@@ -114,8 +117,8 @@ object ApiTokenClient {
 
         val useNativeWeb = webRequested && profile.webAvailable && imagePaths.isEmpty() && audioPath.isNullOrBlank()
         val text = when {
-            profile.provider == ApiProvider.GOOGLE ->
-                retryTransientServerFailure {
+            profile.provider == ApiProvider.GOOGLE -> {
+                val response = retryTransientServerFailure {
                     postGeminiGenerateContent(
                         profile = profile,
                         apiKey = apiKey,
@@ -124,16 +127,25 @@ object ApiTokenClient {
                         audioPath = audioPath,
                         maxTokens = maxTokens,
                         webRequested = useNativeWeb,
+                        generationMode = generationMode,
+                        visionDetail = visionDetail,
                     )
-                }.let(::extractGeminiText)
+                }
+                extractGeminiText(response).ifBlank {
+                    throw IllegalStateException(
+                        geminiNoVisibleAnswerDetail(profile.model, extractGeminiDiagnostics(response)),
+                    )
+                }
+            }
             useNativeWeb && profile.provider == ApiProvider.OPENAI ->
-                retryTransientServerFailure { postOpenAiResponses(profile, apiKey, messages, maxTokens) }
-                    .let(::extractOpenAiResponseText)
+                retryTransientServerFailure {
+                    postOpenAiResponses(profile, apiKey, messages, maxTokens, generationMode)
+                }.let(::extractOpenAiResponseText)
             else -> {
                 val payload = JSONObject()
                     .put("model", profile.model)
                     .put("messages", buildOpenAiMessages(messages, imagePaths, audioPath))
-                applyOpenAiCompatibleTuning(payload, profile, maxTokens)
+                applyOpenAiCompatibleTuning(payload, profile, maxTokens, generationMode)
                 if (useNativeWeb && profile.provider == ApiProvider.OPENROUTER) {
                     payload.put(
                         "tools",
@@ -155,6 +167,7 @@ object ApiTokenClient {
     /**
      * Stream user-visible text as it is generated while also returning the complete completion.
      * Structured reasoning fields are intentionally ignored; only provider answer text is emitted.
+     * [onActivity] receives content-free liveness signals for the wearable watchdog.
      */
     suspend fun chatStreaming(
         context: Context,
@@ -163,7 +176,10 @@ object ApiTokenClient {
         audioPath: String? = null,
         maxTokens: Int = 2048,
         webRequested: Boolean = false,
+        generationMode: CloudGenerationMode = CloudGenerationMode.DEFAULT,
+        visionDetail: AiVisionDetail = AiVisionDetail.STANDARD,
         onToken: (String) -> Unit,
+        onActivity: ((CloudStreamActivity) -> Unit)? = null,
     ): Result<String> = runCatching {
         val (profile, apiKey) = AiProviderPrefs.activeProfileWithKey(context)
         require(profile.model.isNotBlank()) { "${profile.name} does not have a model selected." }
@@ -171,7 +187,10 @@ object ApiTokenClient {
         require(baseUrl.startsWith("https://")) { "${profile.name} does not have a valid HTTPS API base URL." }
 
         val useNativeWeb = webRequested && profile.webAvailable && imagePaths.isEmpty() && audioPath.isNullOrBlank()
+        val includeReasoningActivity =
+            onActivity != null && generationMode == CloudGenerationMode.REASONED_CONVERSATION
         val full = StringBuilder()
+        var geminiDiagnostics = GeminiResponseDiagnostics()
         fun emit(delta: String) {
             if (delta.isEmpty()) return
             full.append(delta)
@@ -188,26 +207,36 @@ object ApiTokenClient {
                         audioPath = audioPath,
                         maxTokens = maxTokens,
                         webRequested = useNativeWeb,
+                        generationMode = generationMode,
+                        visionDetail = visionDetail,
+                        includeThoughts = includeReasoningActivity,
                     )
                     requestSse(
                         url = geminiStreamGenerateContentUrl(baseUrl, profile.model),
                         apiKey = null,
                         payload = payload,
                         extraHeaders = mapOf("x-goog-api-key" to apiKey),
+                        onActivity = onActivity,
                     ) { data ->
                         if (data == "[DONE]") return@requestSse
-                        val delta = runCatching { extractGeminiDeltaText(JSONObject(data)) }.getOrDefault("")
-                        emit(delta)
+                        val event = runCatching { JSONObject(data) }.getOrNull() ?: return@requestSse
+                        geminiDiagnostics = geminiDiagnostics.merge(extractGeminiDiagnostics(event))
+                        emit(extractGeminiDeltaText(event))
                     }
                 }
 
                 useNativeWeb && profile.provider == ApiProvider.OPENAI -> {
-                    val payload = buildOpenAiResponsesPayload(profile, messages, maxTokens)
-                        .put("stream", true)
+                    val payload = buildOpenAiResponsesPayload(
+                        profile = profile,
+                        messages = messages,
+                        maxTokens = maxTokens,
+                        generationMode = generationMode,
+                    ).put("stream", true)
                     requestSse(
                         url = "$baseUrl/responses",
                         apiKey = apiKey,
                         payload = payload,
+                        onActivity = onActivity,
                     ) { data ->
                         if (data == "[DONE]") return@requestSse
                         val event = runCatching { JSONObject(data) }.getOrNull() ?: return@requestSse
@@ -222,7 +251,13 @@ object ApiTokenClient {
                         .put("model", profile.model)
                         .put("messages", buildOpenAiMessages(messages, imagePaths, audioPath))
                         .put("stream", true)
-                    applyOpenAiCompatibleTuning(payload, profile, maxTokens)
+                    applyOpenAiCompatibleTuning(
+                        payload = payload,
+                        profile = profile,
+                        maxTokens = maxTokens,
+                        generationMode = generationMode,
+                        includeReasoningActivity = includeReasoningActivity,
+                    )
                     if (useNativeWeb && profile.provider == ApiProvider.OPENROUTER) {
                         payload.put(
                             "tools",
@@ -233,9 +268,13 @@ object ApiTokenClient {
                         url = OpenAiCompatibleEndpoint.chatCompletionsUrl(baseUrl),
                         apiKey = apiKey,
                         payload = payload,
+                        onActivity = onActivity,
                     ) { data ->
                         if (data == "[DONE]") return@requestSse
                         val event = runCatching { JSONObject(data) }.getOrNull() ?: return@requestSse
+                        // DeepSeek/OpenRouter/Groq may return reasoning alongside content. The SSE
+                        // watchdog observes only a content-free REASONING signal; this extractor
+                        // still reads only content, so thoughts never enter persistence or TTS.
                         emit(extractChatCompletionDelta(event))
                     }
                 }
@@ -243,6 +282,9 @@ object ApiTokenClient {
         }
 
         full.toString().trim().ifBlank {
+            if (profile.provider == ApiProvider.GOOGLE) {
+                throw IllegalStateException(geminiNoVisibleAnswerDetail(profile.model, geminiDiagnostics))
+            }
             throw IllegalStateException("${profile.name} returned an empty streamed response")
         }
     }
@@ -253,6 +295,8 @@ object ApiTokenClient {
         userPrompt: String,
         imagePath: String,
         maxTokens: Int = 1200,
+        generationMode: CloudGenerationMode = CloudGenerationMode.DEFAULT,
+        visionDetail: AiVisionDetail = AiVisionDetail.STANDARD,
     ): Result<String> {
         val messages = buildList {
             if (systemPrompt.isNotBlank()) add(mapOf("role" to "system", "content" to systemPrompt))
@@ -263,6 +307,8 @@ object ApiTokenClient {
             messages = messages,
             imagePaths = listOf(imagePath),
             maxTokens = maxTokens,
+            generationMode = generationMode,
+            visionDetail = visionDetail,
         )
     }
 
@@ -357,11 +403,21 @@ object ApiTokenClient {
         payload: JSONObject,
         profile: CloudAiProfile,
         maxTokens: Int,
+        generationMode: CloudGenerationMode,
+        includeReasoningActivity: Boolean = false,
     ) {
-        val tuning = CloudModelPolicy.requestTuning(profile, maxTokens)
+        val tuning = CloudModelPolicy.requestTuning(
+            profile = profile,
+            mode = generationMode,
+            includeReasoningActivity = includeReasoningActivity,
+        )
         payload.put(tuning.completionTokenField, maxTokens)
+        tuning.deepSeekThinkingType?.let { type ->
+            payload.put("thinking", JSONObject().put("type", type))
+        }
         tuning.reasoningEffort?.let { payload.put("reasoning_effort", it) }
         tuning.reasoningFormat?.let { payload.put("reasoning_format", it) }
+        tuning.includeReasoning?.let { payload.put("include_reasoning", it) }
         tuning.openRouterReasoningEffort?.let { effort ->
             payload.put(
                 "reasoning",
@@ -376,6 +432,7 @@ object ApiTokenClient {
         profile: CloudAiProfile,
         messages: List<Map<String, String>>,
         maxTokens: Int,
+        generationMode: CloudGenerationMode,
     ): JSONObject {
         val input = JSONArray()
         messages.forEach { message ->
@@ -391,7 +448,7 @@ object ApiTokenClient {
             .put("input", input)
             .put("max_output_tokens", maxTokens)
             .put("tools", JSONArray().put(JSONObject().put("type", "web_search")))
-        val tuning = CloudModelPolicy.requestTuning(profile, maxTokens)
+        val tuning = CloudModelPolicy.requestTuning(profile, generationMode)
         tuning.reasoningEffort?.let { effort ->
             payload.put("reasoning", JSONObject().put("effort", effort))
         }
@@ -406,12 +463,13 @@ object ApiTokenClient {
         apiKey: String,
         messages: List<Map<String, String>>,
         maxTokens: Int,
+        generationMode: CloudGenerationMode,
     ): JSONObject {
         val baseUrl = profile.provider.resolveBaseUrl(profile.baseUrl)
         return postJson(
             "$baseUrl/responses",
             apiKey,
-            buildOpenAiResponsesPayload(profile, messages, maxTokens),
+            buildOpenAiResponsesPayload(profile, messages, maxTokens, generationMode),
         )
     }
 
@@ -424,6 +482,8 @@ object ApiTokenClient {
         audioPath: String?,
         maxTokens: Int,
         webRequested: Boolean,
+        generationMode: CloudGenerationMode,
+        visionDetail: AiVisionDetail,
     ): JSONObject {
         val baseUrl = profile.provider.resolveBaseUrl(profile.baseUrl)
         val endpoint = geminiGenerateContentUrl(baseUrl, profile.model)
@@ -437,6 +497,8 @@ object ApiTokenClient {
                 audioPath = audioPath,
                 maxTokens = maxTokens,
                 webRequested = webRequested,
+                generationMode = generationMode,
+                visionDetail = visionDetail,
             ),
             extraHeaders = mapOf("x-goog-api-key" to apiKey),
         )
@@ -449,6 +511,9 @@ object ApiTokenClient {
         audioPath: String?,
         maxTokens: Int,
         webRequested: Boolean,
+        generationMode: CloudGenerationMode,
+        visionDetail: AiVisionDetail,
+        includeThoughts: Boolean = false,
     ): JSONObject {
         val systemParts = JSONArray()
         val contents = JSONArray()
@@ -479,17 +544,20 @@ object ApiTokenClient {
         require(contents.length() > 0) { "Gemini request has no user/model content." }
 
         val generationConfig = JSONObject().put("maxOutputTokens", maxTokens)
-        val tuning = CloudModelPolicy.requestTuning(profile, maxTokens)
-        tuning.geminiThinkingLevel?.let { level ->
-            generationConfig.put(
-                "thinkingConfig",
-                JSONObject().put("thinkingLevel", level),
-            )
+        val tuning = CloudModelPolicy.requestTuning(profile, generationMode)
+        if (tuning.geminiThinkingLevel != null || tuning.geminiThinkingBudget != null) {
+            val thinkingConfig = JSONObject().put("includeThoughts", includeThoughts)
+            tuning.geminiThinkingLevel?.let { level -> thinkingConfig.put("thinkingLevel", level) }
+            tuning.geminiThinkingBudget?.let { budget -> thinkingConfig.put("thinkingBudget", budget) }
+            generationConfig.put("thinkingConfig", thinkingConfig)
         }
-        tuning.geminiThinkingBudget?.let { budget ->
+        if (imagePaths.isNotEmpty() && profile.model.trim().lowercase().startsWith("gemini-3")) {
             generationConfig.put(
-                "thinkingConfig",
-                JSONObject().put("thinkingBudget", budget),
+                "mediaResolution",
+                when (visionDetail) {
+                    AiVisionDetail.STANDARD -> "MEDIA_RESOLUTION_MEDIUM"
+                    AiVisionDetail.TEXT_DETAIL -> "MEDIA_RESOLUTION_HIGH"
+                },
             )
         }
 
@@ -657,6 +725,7 @@ object ApiTokenClient {
         apiKey: String?,
         payload: JSONObject,
         extraHeaders: Map<String, String> = emptyMap(),
+        onActivity: ((CloudStreamActivity) -> Unit)? = null,
         onData: (String) -> Unit,
     ) {
         val conn = URL(url).openConnection() as HttpURLConnection
@@ -686,8 +755,15 @@ object ApiTokenClient {
                 val dataLines = mutableListOf<String>()
                 fun flushEvent() {
                     if (dataLines.isEmpty()) return
-                    onData(dataLines.joinToString("\n"))
+                    val data = dataLines.joinToString("\n")
                     dataLines.clear()
+                    if (data != "[DONE]") {
+                        onActivity?.invoke(CloudStreamActivity.PROVIDER_DATA)
+                        if (ssePayloadHasReasoningActivity(data)) {
+                            onActivity?.invoke(CloudStreamActivity.REASONING)
+                        }
+                    }
+                    onData(data)
                 }
 
                 while (true) {
@@ -705,6 +781,42 @@ object ApiTokenClient {
         } finally {
             conn.disconnect()
         }
+    }
+
+    private fun ssePayloadHasReasoningActivity(data: String): Boolean {
+        val event = runCatching { JSONObject(data) }.getOrNull() ?: return containsInlineReasoningTag(data)
+
+        val candidateParts = event.optJSONArray("candidates")
+            ?.optJSONObject(0)
+            ?.optJSONObject("content")
+            ?.optJSONArray("parts")
+        if (candidateParts != null) {
+            for (index in 0 until candidateParts.length()) {
+                if (candidateParts.optJSONObject(index)?.optBoolean("thought", false) == true) return true
+            }
+        }
+
+        val delta = event.optJSONArray("choices")
+            ?.optJSONObject(0)
+            ?.optJSONObject("delta")
+        if (delta != null) {
+            val visibleContent = extractTextValue(delta.opt("content"))
+            if (
+                openAiCompatibleHasReasoningActivity(
+                    reasoningContent = delta.optString("reasoning_content").takeIf { it.isNotBlank() },
+                    reasoning = delta.optString("reasoning").takeIf { it.isNotBlank() },
+                    reasoningDetailsCount = delta.optJSONArray("reasoning_details")?.length() ?: 0,
+                    visibleContent = visibleContent,
+                )
+            ) {
+                return true
+            }
+        }
+
+        return openAiResponsesHasReasoningActivity(
+            eventType = event.optString("type").takeIf { it.isNotBlank() },
+            outputItemType = event.optJSONObject("item")?.optString("type")?.takeIf { it.isNotBlank() },
+        )
     }
 
     private fun extractChatCompletionText(response: JSONObject): String {
@@ -775,6 +887,25 @@ object ApiTokenClient {
             ?.optJSONArray("parts")
             ?: return ""
         return geminiVisibleText(parts, preserveWhitespace = true)
+    }
+
+    private fun extractGeminiDiagnostics(response: JSONObject): GeminiResponseDiagnostics {
+        val candidate = response.optJSONArray("candidates")?.optJSONObject(0)
+        val usage = response.optJSONObject("usageMetadata")
+        val promptFeedback = response.optJSONObject("promptFeedback")
+
+        fun optionalInt(source: JSONObject?, key: String): Int? =
+            source?.takeIf { it.has(key) && !it.isNull(key) }?.optInt(key)
+
+        return GeminiResponseDiagnostics(
+            finishReason = candidate?.optString("finishReason")?.trim()?.takeIf { it.isNotBlank() },
+            blockReason = promptFeedback?.optString("blockReason")?.trim()?.takeIf { it.isNotBlank() },
+            promptTokens = optionalInt(usage, "promptTokenCount"),
+            candidateTokens = optionalInt(usage, "candidatesTokenCount")
+                ?: optionalInt(candidate, "tokenCount"),
+            thoughtTokens = optionalInt(usage, "thoughtsTokenCount"),
+            totalTokens = optionalInt(usage, "totalTokenCount"),
+        )
     }
 }
 
