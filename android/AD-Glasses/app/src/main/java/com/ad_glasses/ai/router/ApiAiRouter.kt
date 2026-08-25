@@ -43,32 +43,53 @@ internal fun geminiAudioMimeType(extension: String): String = when (extension.tr
     else -> "audio/wav"
 }
 
-/**
- * Return only user-visible Gemini text parts. `Part.thought=true` is structured reasoning metadata,
- * never assistant answer text, so it must be discarded before streaming, persistence, or TTS.
- */
-internal fun geminiVisibleText(parts: JSONArray, preserveWhitespace: Boolean): String {
+internal data class GeminiVisibleTextPart(
+    val text: String,
+    val thought: Boolean = false,
+)
+
+/** Pure helper so reasoning-filter behavior is testable without Android's org.json JVM stubs. */
+internal fun geminiVisibleText(
+    parts: List<GeminiVisibleTextPart>,
+    preserveWhitespace: Boolean,
+): String {
     if (preserveWhitespace) {
         return buildString {
-            for (index in 0 until parts.length()) {
-                val part = parts.optJSONObject(index) ?: continue
-                if (part.optBoolean("thought", false)) continue
-                append(part.optString("text"))
+            parts.forEach { part ->
+                if (!part.thought) append(part.text)
             }
         }
     }
 
     return buildString {
-        for (index in 0 until parts.length()) {
-            val part = parts.optJSONObject(index) ?: continue
-            if (part.optBoolean("thought", false)) continue
-            val text = part.optString("text").trim()
+        parts.forEach { part ->
+            if (part.thought) return@forEach
+            val text = part.text.trim()
             if (text.isNotBlank()) {
                 if (isNotEmpty()) append('\n')
                 append(text)
             }
         }
     }.trim()
+}
+
+/**
+ * Return only user-visible Gemini text parts. `Part.thought=true` is structured reasoning metadata,
+ * never assistant answer text, so it must be discarded before streaming, persistence, or TTS.
+ */
+internal fun geminiVisibleText(parts: JSONArray, preserveWhitespace: Boolean): String {
+    val values = buildList {
+        for (index in 0 until parts.length()) {
+            val part = parts.optJSONObject(index) ?: continue
+            add(
+                GeminiVisibleTextPart(
+                    text = part.optString("text"),
+                    thought = part.optBoolean("thought", false),
+                ),
+            )
+        }
+    }
+    return geminiVisibleText(values, preserveWhitespace)
 }
 
 /** Direct Cloud AI transport resolved through the active encrypted profile. */
@@ -109,11 +130,10 @@ object ApiTokenClient {
                 retryTransientServerFailure { postOpenAiResponses(profile, apiKey, messages, maxTokens) }
                     .let(::extractOpenAiResponseText)
             else -> {
-                val payloadMessages = buildOpenAiMessages(messages, imagePaths, audioPath)
                 val payload = JSONObject()
                     .put("model", profile.model)
-                    .put("messages", payloadMessages)
-                    .put("max_tokens", maxTokens)
+                    .put("messages", buildOpenAiMessages(messages, imagePaths, audioPath))
+                applyOpenAiCompatibleTuning(payload, profile, maxTokens)
                 if (useNativeWeb && profile.provider == ApiProvider.OPENROUTER) {
                     payload.put(
                         "tools",
@@ -162,6 +182,7 @@ object ApiTokenClient {
             when {
                 profile.provider == ApiProvider.GOOGLE -> {
                     val payload = buildGeminiGeneratePayload(
+                        profile = profile,
                         messages = messages,
                         imagePaths = imagePaths,
                         audioPath = audioPath,
@@ -200,8 +221,8 @@ object ApiTokenClient {
                     val payload = JSONObject()
                         .put("model", profile.model)
                         .put("messages", buildOpenAiMessages(messages, imagePaths, audioPath))
-                        .put("max_tokens", maxTokens)
                         .put("stream", true)
+                    applyOpenAiCompatibleTuning(payload, profile, maxTokens)
                     if (useNativeWeb && profile.provider == ApiProvider.OPENROUTER) {
                         payload.put(
                             "tools",
@@ -332,6 +353,25 @@ object ApiTokenClient {
         return payloadMessages
     }
 
+    private fun applyOpenAiCompatibleTuning(
+        payload: JSONObject,
+        profile: CloudAiProfile,
+        maxTokens: Int,
+    ) {
+        val tuning = CloudModelPolicy.requestTuning(profile, maxTokens)
+        payload.put(tuning.completionTokenField, maxTokens)
+        tuning.reasoningEffort?.let { payload.put("reasoning_effort", it) }
+        tuning.reasoningFormat?.let { payload.put("reasoning_format", it) }
+        tuning.openRouterReasoningEffort?.let { effort ->
+            payload.put(
+                "reasoning",
+                JSONObject()
+                    .put("effort", effort)
+                    .put("exclude", tuning.excludeReasoning),
+            )
+        }
+    }
+
     private fun buildOpenAiResponsesPayload(
         profile: CloudAiProfile,
         messages: List<Map<String, String>>,
@@ -346,11 +386,19 @@ object ApiTokenClient {
                     .put("content", message["content"].orEmpty()),
             )
         }
-        return JSONObject()
+        val payload = JSONObject()
             .put("model", profile.model)
             .put("input", input)
             .put("max_output_tokens", maxTokens)
             .put("tools", JSONArray().put(JSONObject().put("type", "web_search")))
+        val tuning = CloudModelPolicy.requestTuning(profile, maxTokens)
+        tuning.reasoningEffort?.let { effort ->
+            payload.put("reasoning", JSONObject().put("effort", effort))
+        }
+        tuning.responseVerbosity?.let { verbosity ->
+            payload.put("text", JSONObject().put("verbosity", verbosity))
+        }
+        return payload
     }
 
     private fun postOpenAiResponses(
@@ -383,6 +431,7 @@ object ApiTokenClient {
             endpoint,
             apiKey = null,
             payload = buildGeminiGeneratePayload(
+                profile = profile,
                 messages = messages,
                 imagePaths = imagePaths,
                 audioPath = audioPath,
@@ -394,6 +443,7 @@ object ApiTokenClient {
     }
 
     private fun buildGeminiGeneratePayload(
+        profile: CloudAiProfile,
         messages: List<Map<String, String>>,
         imagePaths: List<String>,
         audioPath: String?,
@@ -428,9 +478,24 @@ object ApiTokenClient {
         }
         require(contents.length() > 0) { "Gemini request has no user/model content." }
 
+        val generationConfig = JSONObject().put("maxOutputTokens", maxTokens)
+        val tuning = CloudModelPolicy.requestTuning(profile, maxTokens)
+        tuning.geminiThinkingLevel?.let { level ->
+            generationConfig.put(
+                "thinkingConfig",
+                JSONObject().put("thinkingLevel", level),
+            )
+        }
+        tuning.geminiThinkingBudget?.let { budget ->
+            generationConfig.put(
+                "thinkingConfig",
+                JSONObject().put("thinkingBudget", budget),
+            )
+        }
+
         val payload = JSONObject()
             .put("contents", contents)
-            .put("generationConfig", JSONObject().put("maxOutputTokens", maxTokens))
+            .put("generationConfig", generationConfig)
         if (systemParts.length() > 0) {
             payload.put("systemInstruction", JSONObject().put("parts", systemParts))
         }
