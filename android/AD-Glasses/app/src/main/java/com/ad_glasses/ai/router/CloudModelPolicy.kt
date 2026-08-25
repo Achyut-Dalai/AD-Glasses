@@ -119,10 +119,17 @@ internal object CloudModelPolicy {
         },
     )
 
-    /** Native request controls. Unsupported controls are deliberately omitted rather than guessed. */
+    /**
+     * Native request controls. Unsupported controls are deliberately omitted rather than guessed.
+     *
+     * [includeReasoningActivity] is used only by the adaptive wearable stream watchdog. Providers
+     * may return structured reasoning metadata so the app can know a request is alive; the transport
+     * still discards that content before persistence, display, or TTS.
+     */
     fun requestTuning(
         profile: CloudAiProfile,
         mode: CloudGenerationMode,
+        includeReasoningActivity: Boolean = false,
     ): RequestTuning {
         val model = normalizedModel(profile.model)
         val tokenField = when (profile.provider) {
@@ -187,14 +194,16 @@ internal object CloudModelPolicy {
                 isGroqQwen36(model) -> RequestTuning(
                     completionTokenField = tokenField,
                     reasoningEffort = if (reasoned) "default" else "none",
-                    reasoningFormat = "hidden",
+                    // Parsed mode is requested only when a reasoning turn needs a heartbeat. The
+                    // parser still drops the reasoning field before the answer reaches the app.
+                    reasoningFormat = if (reasoned && includeReasoningActivity) "parsed" else "hidden",
                 )
                 isGroqGptOss(model) -> RequestTuning(
                     completionTokenField = tokenField,
                     reasoningEffort = if (reasoned) "medium" else "low",
-                    // GPT-OSS does not support reasoning_format. Suppress reasoning from returned
-                    // output with Groq's dedicated include_reasoning switch instead.
-                    includeReasoning = false,
+                    // GPT-OSS does not support reasoning_format. Include its dedicated reasoning
+                    // field only when the watchdog needs activity; it is never surfaced to users.
+                    includeReasoning = includeReasoningActivity,
                 )
                 else -> RequestTuning(completionTokenField = tokenField)
             }
@@ -207,7 +216,8 @@ internal object CloudModelPolicy {
 
             ApiProvider.OPENROUTER -> {
                 val effort = when {
-                    reasoned -> "medium"
+                    reasoned && isLikelyReasoningModel(model) -> "medium"
+                    reasoned -> null
                     openRouterCanDisableReasoning(model) -> "none"
                     isOpenRouterForcedReasoningModel(model) -> null
                     model.substringAfterLast('/').let(::isOpenAiBaseGpt5) -> "minimal"
@@ -217,7 +227,9 @@ internal object CloudModelPolicy {
                 RequestTuning(
                     completionTokenField = tokenField,
                     openRouterReasoningEffort = effort,
-                    excludeReasoning = effort != null,
+                    // For wearable streaming we may temporarily receive structured reasoning as a
+                    // heartbeat, but ApiTokenClient filters it before any user-visible pipeline.
+                    excludeReasoning = effort != null && !includeReasoningActivity,
                 )
             }
 
