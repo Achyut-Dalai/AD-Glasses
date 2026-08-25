@@ -134,7 +134,7 @@ internal fun ADDeviceAiSection(
                         color = ADColors.Ink,
                     )
                     Text(
-                        "Moonshine Medium Streaming · on-device ASR · Android TTS · last ${AssistantInferenceContextPolicy.MAX_PRIOR_MESSAGES} messages as AI context",
+                        "Moonshine · on-device ASR · Android TTS · last ${AssistantInferenceContextPolicy.MAX_PRIOR_MESSAGES} messages as AI context",
                         style = MaterialTheme.typography.bodySmall,
                         color = ADColors.Muted,
                     )
@@ -142,7 +142,7 @@ internal fun ADDeviceAiSection(
                         if (moonshineInstalled) {
                             "Chats stay until you delete them · tap for offline TTS voice data"
                         } else {
-                            "Moonshine Medium model required · tap to open Cloud AI setup"
+                            "Moonshine required · tap to open Cloud AI setup"
                         },
                         style = MaterialTheme.typography.labelSmall,
                         color = if (moonshineInstalled) ADColors.Blue else ADColors.Error,
