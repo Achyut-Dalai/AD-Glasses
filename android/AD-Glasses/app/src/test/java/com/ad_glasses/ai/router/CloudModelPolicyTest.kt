@@ -18,6 +18,8 @@ class CloudModelPolicyTest {
         val tuning = CloudModelPolicy.requestTuning(profile, concise)
         assertEquals("max_completion_tokens", tuning.completionTokenField)
         assertNull(tuning.reasoningEffort)
+        assertNull(tuning.reasoningFormat)
+        assertNull(tuning.includeReasoning)
     }
 
     @Test
@@ -72,18 +74,29 @@ class CloudModelPolicyTest {
         val profile = profile(ApiProvider.GROQ, "qwen/qwen3.6-27b")
 
         assertEquals(96, CloudModelPolicy.generationTokenLimit(profile, concise))
-        assertEquals("none", CloudModelPolicy.requestTuning(profile, concise).reasoningEffort)
-        assertEquals("default", CloudModelPolicy.requestTuning(profile, reasoned).reasoningEffort)
-        assertEquals("hidden", CloudModelPolicy.requestTuning(profile, reasoned).reasoningFormat)
+        val normal = CloudModelPolicy.requestTuning(profile, concise)
+        val deep = CloudModelPolicy.requestTuning(profile, reasoned)
+        assertEquals("none", normal.reasoningEffort)
+        assertEquals("default", deep.reasoningEffort)
+        assertEquals("hidden", normal.reasoningFormat)
+        assertEquals("hidden", deep.reasoningFormat)
+        assertNull(normal.includeReasoning)
+        assertNull(deep.includeReasoning)
     }
 
     @Test
-    fun groq_gpt_oss_keeps_small_mandatory_reasoning_headroom() {
+    fun groq_gpt_oss_uses_include_reasoning_instead_of_unsupported_reasoning_format() {
         val profile = profile(ApiProvider.GROQ, "openai/gpt-oss-20b")
 
         assertEquals(256, CloudModelPolicy.generationTokenLimit(profile, concise))
-        assertEquals("low", CloudModelPolicy.requestTuning(profile, concise).reasoningEffort)
-        assertEquals("medium", CloudModelPolicy.requestTuning(profile, reasoned).reasoningEffort)
+        val normal = CloudModelPolicy.requestTuning(profile, concise)
+        val deep = CloudModelPolicy.requestTuning(profile, reasoned)
+        assertEquals("low", normal.reasoningEffort)
+        assertEquals("medium", deep.reasoningEffort)
+        assertNull(normal.reasoningFormat)
+        assertNull(deep.reasoningFormat)
+        assertEquals(false, normal.includeReasoning)
+        assertEquals(false, deep.includeReasoning)
     }
 
     @Test
@@ -175,6 +188,8 @@ class CloudModelPolicyTest {
         val tuning = CloudModelPolicy.requestTuning(profile, concise)
         assertEquals("max_tokens", tuning.completionTokenField)
         assertNull(tuning.reasoningEffort)
+        assertNull(tuning.reasoningFormat)
+        assertNull(tuning.includeReasoning)
         assertNull(tuning.openRouterReasoningEffort)
         assertNull(tuning.deepSeekThinkingType)
     }
