@@ -73,4 +73,32 @@ class AssistantSpokenResponsePolicyTest {
 
         assertEquals("One. Two. More detail is in Chats.", spoken)
     }
+
+    @Test
+    fun concise_conversation_hard_caps_provider_that_ignores_word_instruction() {
+        val runaway = (1..90).joinToString(" ") { "word$it" }
+
+        val bounded = AssistantSpokenResponsePolicy.forConciseConversation(runaway)
+
+        assertEquals(50, bounded.trimEnd('.').split(Regex("\\s+")).size)
+        assertTrue(bounded.endsWith('.'))
+        assertFalse(bounded.contains("More detail is in Chats."))
+    }
+
+    @Test
+    fun concise_conversation_hard_caps_provider_that_ignores_sentence_instruction() {
+        val bounded = AssistantSpokenResponsePolicy.forConciseConversation(
+            "First answer. Second answer. Third answer. Fourth answer. Fifth answer.",
+        )
+
+        assertEquals("First answer. Second answer. Third answer.", bounded)
+    }
+
+    @Test
+    fun concise_conversation_preserves_quoted_math_answer() {
+        assertEquals(
+            "The answer is \"36\".",
+            AssistantSpokenResponsePolicy.forConciseConversation("The answer is \"36\"."),
+        )
+    }
 }
