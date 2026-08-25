@@ -2,6 +2,7 @@ package com.ad_glasses.ai.router
 
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
+import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
 
@@ -60,19 +61,83 @@ class SafeFirstAnswerGateTest {
     }
 
     @Test
-    fun concise_voice_keeps_fast_first_answer_deadline() {
+    fun concise_voice_uses_bounded_activity_extensions() {
         val timeouts = AgentInferenceRouter.wearableTimeouts(CloudGenerationMode.CONCISE_CONVERSATION)
 
         assertEquals(6_000L, timeouts.firstSafeAnswerMs)
+        assertEquals(10_000L, timeouts.activeTransportAnswerMs)
+        assertEquals(15_000L, timeouts.activeReasoningAnswerMs)
         assertEquals(30_000L, timeouts.totalGenerationMs)
     }
 
     @Test
-    fun explicit_reasoning_voice_gets_longer_thinking_runway() {
+    fun explicit_reasoning_voice_gets_longer_bounded_runway() {
         val timeouts = AgentInferenceRouter.wearableTimeouts(CloudGenerationMode.REASONED_CONVERSATION)
 
         assertEquals(15_000L, timeouts.firstSafeAnswerMs)
+        assertEquals(20_000L, timeouts.activeTransportAnswerMs)
+        assertEquals(30_000L, timeouts.activeReasoningAnswerMs)
         assertEquals(45_000L, timeouts.totalGenerationMs)
+    }
+
+    @Test
+    fun dead_provider_does_not_extend_first_answer_deadline() {
+        val timeouts = AgentInferenceRouter.wearableTimeouts(CloudGenerationMode.CONCISE_CONVERSATION)
+
+        assertNull(
+            AgentInferenceRouter.nextFirstAnswerDeadline(
+                currentDeadlineMs = timeouts.firstSafeAnswerMs,
+                timeouts = timeouts,
+                providerActivitySeen = false,
+                reasoningActivitySeen = false,
+            ),
+        )
+    }
+
+    @Test
+    fun active_transport_extends_only_to_transport_ceiling() {
+        val timeouts = AgentInferenceRouter.wearableTimeouts(CloudGenerationMode.CONCISE_CONVERSATION)
+
+        assertEquals(
+            10_000L,
+            AgentInferenceRouter.nextFirstAnswerDeadline(
+                currentDeadlineMs = 6_000L,
+                timeouts = timeouts,
+                providerActivitySeen = true,
+                reasoningActivitySeen = false,
+            ),
+        )
+        assertNull(
+            AgentInferenceRouter.nextFirstAnswerDeadline(
+                currentDeadlineMs = 10_000L,
+                timeouts = timeouts,
+                providerActivitySeen = true,
+                reasoningActivitySeen = false,
+            ),
+        )
+    }
+
+    @Test
+    fun observed_reasoning_can_extend_from_transport_to_reasoning_ceiling() {
+        val timeouts = AgentInferenceRouter.wearableTimeouts(CloudGenerationMode.CONCISE_CONVERSATION)
+
+        assertEquals(
+            15_000L,
+            AgentInferenceRouter.nextFirstAnswerDeadline(
+                currentDeadlineMs = 10_000L,
+                timeouts = timeouts,
+                providerActivitySeen = true,
+                reasoningActivitySeen = true,
+            ),
+        )
+        assertNull(
+            AgentInferenceRouter.nextFirstAnswerDeadline(
+                currentDeadlineMs = 15_000L,
+                timeouts = timeouts,
+                providerActivitySeen = true,
+                reasoningActivitySeen = true,
+            ),
+        )
     }
 
     @Test
