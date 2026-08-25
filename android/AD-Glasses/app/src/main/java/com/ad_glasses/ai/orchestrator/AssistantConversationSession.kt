@@ -69,6 +69,7 @@ class AssistantConversationSession private constructor(
             ?.takeIf { ChatStore.getThread(it) != null }
 
         ChatStore.deleteThread(threadId)
+        AssistantVisualContextStore.clear(context, threadId)
         saveManagedThreadIds(managed - threadId)
 
         if (activeBeforeDelete != null && activeBeforeDelete != threadId) {
@@ -91,6 +92,7 @@ class AssistantConversationSession private constructor(
             ?.takeIf { ChatStore.getThread(it) != null }
         if (current != null) {
             ChatStore.deleteThread(current)
+            AssistantVisualContextStore.clear(context, current)
             saveManagedThreadIds(managedThreadIds() - current)
         }
         prefs.edit().remove(KEY_ACTIVE_THREAD_ID).apply()
@@ -108,6 +110,7 @@ class AssistantConversationSession private constructor(
             .mapTo(linkedSetOf()) { it.id }
 
         adThreadIds.forEach(ChatStore::deleteThread)
+        AssistantVisualContextStore.clearAll(context)
         prefs.edit()
             .remove(KEY_ACTIVE_THREAD_ID)
             .remove(KEY_MANAGED_THREAD_IDS)
