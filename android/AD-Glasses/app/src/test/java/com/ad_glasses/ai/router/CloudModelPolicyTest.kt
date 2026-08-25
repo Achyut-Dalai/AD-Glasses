@@ -58,7 +58,10 @@ class CloudModelPolicyTest {
         ApiProvider.entries.forEach { provider ->
             assertEquals(
                 CloudModelPolicy.DEFAULT_OUTPUT_TOKENS,
-                CloudModelPolicy.generationTokenLimit(profile(provider, provider.defaultModel), CloudGenerationMode.DEFAULT),
+                CloudModelPolicy.generationTokenLimit(
+                    profile(provider, provider.defaultModel),
+                    CloudGenerationMode.DEFAULT,
+                ),
             )
         }
         assertEquals(512, CloudModelPolicy.generationTokenLimit(null, CloudGenerationMode.DEFAULT))
@@ -84,25 +87,43 @@ class CloudModelPolicyTest {
     }
 
     @Test
-    fun groq_qwen36_still_maps_product_intent_to_supported_reasoning_controls() {
+    fun openai_reasoning_model_gets_light_normal_reasoning_without_forced_verbosity() {
+        val profile = profile(ApiProvider.OPENAI, "gpt-5.6-terra")
+
+        val normal = CloudModelPolicy.requestTuning(profile, concise)
+        val deep = CloudModelPolicy.requestTuning(profile, reasoned)
+
+        assertEquals("low", normal.reasoningEffort)
+        assertEquals("medium", deep.reasoningEffort)
+        assertNull(normal.responseVerbosity)
+        assertNull(deep.responseVerbosity)
+    }
+
+    @Test
+    fun groq_qwen36_keeps_reasoning_hidden_while_allowing_model_default_thinking() {
         val profile = profile(ApiProvider.GROQ, "qwen/qwen3.6-27b")
 
         val normal = CloudModelPolicy.requestTuning(profile, concise)
         val deep = CloudModelPolicy.requestTuning(profile, reasoned)
-        assertEquals("none", normal.reasoningEffort)
+        assertEquals("default", normal.reasoningEffort)
         assertEquals("default", deep.reasoningEffort)
         assertEquals("hidden", normal.reasoningFormat)
         assertEquals("hidden", deep.reasoningFormat)
         assertNull(normal.includeReasoning)
         assertNull(deep.includeReasoning)
+
+        val heartbeat = CloudModelPolicy.requestTuning(
+            profile = profile,
+            mode = concise,
+            includeReasoningActivity = true,
+        )
+        assertEquals("parsed", heartbeat.reasoningFormat)
     }
 
     @Test
-    fun groq_gpt_oss_keeps_reasoning_capability_mapping_without_special_token_budget() {
+    fun groq_gpt_oss_uses_light_normal_and_medium_explicit_reasoning() {
         val profile = profile(ApiProvider.GROQ, "openai/gpt-oss-20b")
 
-        assertEquals(256, CloudModelPolicy.generationTokenLimit(profile, concise))
-        assertEquals(2_048, CloudModelPolicy.generationTokenLimit(profile, reasoned))
         val normal = CloudModelPolicy.requestTuning(profile, concise)
         val deep = CloudModelPolicy.requestTuning(profile, reasoned)
         assertEquals("low", normal.reasoningEffort)
@@ -111,16 +132,46 @@ class CloudModelPolicyTest {
         assertNull(deep.reasoningFormat)
         assertEquals(false, normal.includeReasoning)
         assertEquals(false, deep.includeReasoning)
+
+        val heartbeat = CloudModelPolicy.requestTuning(
+            profile = profile,
+            mode = concise,
+            includeReasoningActivity = true,
+        )
+        assertEquals(true, heartbeat.includeReasoning)
     }
 
     @Test
-    fun gemini_reasoning_controls_change_without_changing_generation_budget() {
+    fun gemini3_reasoning_controls_change_without_changing_generation_budget() {
         val profile = profile(ApiProvider.GOOGLE, "gemini-3.7-flash")
 
         assertEquals(256, CloudModelPolicy.generationTokenLimit(profile, concise))
         assertEquals(2_048, CloudModelPolicy.generationTokenLimit(profile, reasoned))
         assertEquals("low", CloudModelPolicy.requestTuning(profile, concise).geminiThinkingLevel)
         assertEquals("medium", CloudModelPolicy.requestTuning(profile, reasoned).geminiThinkingLevel)
+    }
+
+    @Test
+    fun gemini25_keeps_light_thinking_on_for_normal_turns() {
+        val flash = profile(ApiProvider.GOOGLE, "gemini-2.5-flash")
+        val pro = profile(ApiProvider.GOOGLE, "gemini-2.5-pro")
+
+        listOf(flash, pro).forEach { candidate ->
+            assertEquals(1_024, CloudModelPolicy.requestTuning(candidate, concise).geminiThinkingBudget)
+            assertEquals(4_096, CloudModelPolicy.requestTuning(candidate, reasoned).geminiThinkingBudget)
+        }
+    }
+
+    @Test
+    fun deepseek_keeps_thinking_on_but_changes_effort_by_product_intent() {
+        val profile = profile(ApiProvider.DEEPSEEK, "deepseek-v4-flash")
+
+        val normal = CloudModelPolicy.requestTuning(profile, concise)
+        val deep = CloudModelPolicy.requestTuning(profile, reasoned)
+        assertEquals("enabled", normal.deepSeekThinkingType)
+        assertEquals("low", normal.reasoningEffort)
+        assertEquals("enabled", deep.deepSeekThinkingType)
+        assertEquals("high", deep.reasoningEffort)
     }
 
     @Test
@@ -133,7 +184,7 @@ class CloudModelPolicyTest {
             mode = reasoned,
             includeReasoningActivity = true,
         )
-        assertEquals("none", normal.openRouterReasoningEffort)
+        assertEquals("low", normal.openRouterReasoningEffort)
         assertTrue(normal.excludeReasoning)
         assertEquals("medium", deep.openRouterReasoningEffort)
         assertFalse(deep.excludeReasoning)
