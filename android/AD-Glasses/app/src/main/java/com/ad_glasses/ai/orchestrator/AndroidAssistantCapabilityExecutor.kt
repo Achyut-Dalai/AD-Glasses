@@ -109,6 +109,13 @@ class AndroidAssistantCapabilityExecutor(
             "stage=assistant_provider_prompt surface=${context.surface} provider=${context.providerType} " +
                 "chars=${prompt.length} textHash=$providerPromptHash image=true",
         )
+        val explicitPhoneAttachment = context.surface == AssistantInputSurface.PHONE_TEXT
+        val remoteUploadAllowed = explicitPhoneAttachment ||
+            com.ad_glasses.localagent.LocalAgentPrefs.isRemoteScreenshotUploadEnabled(appContext)
+        Log.i(
+            "AssistantTiming",
+            "stage=image_upload_policy surface=${context.surface} explicit=$explicitPhoneAttachment allowed=$remoteUploadAllowed",
+        )
         val result = try {
             val inference = AgentInferenceRouter.completeUiPlanning(
                 context = appContext,
@@ -116,8 +123,7 @@ class AndroidAssistantCapabilityExecutor(
                 systemPrompt = systemPrompt,
                 userPrompt = prompt,
                 imagePath = imagePath,
-                allowRemoteImageUpload = com.ad_glasses.localagent.LocalAgentPrefs
-                    .isRemoteScreenshotUploadEnabled(appContext),
+                allowRemoteImageUpload = remoteUploadAllowed,
                 providerType = context.providerType,
                 onToken = onToken,
                 webRequested = false,
