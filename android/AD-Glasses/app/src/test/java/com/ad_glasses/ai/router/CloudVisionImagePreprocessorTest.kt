@@ -18,11 +18,13 @@ class CloudVisionImagePreprocessorTest {
 
     @Test
     fun text_detail_keeps_more_source_pixels_than_standard_scene_mode() {
-        val standard = CloudVisionImagePreprocessor.calculateInSampleSize(4_000, 3_000, 1_024)
-        val textDetail = CloudVisionImagePreprocessor.calculateInSampleSize(4_000, 3_000, 1_600)
+        // Use a large enough frame that the power-of-two decoder sampling itself differs. A
+        // 4000x3000 frame happens to decode at 1/2 for both targets and differs only in exact scale.
+        val standard = CloudVisionImagePreprocessor.calculateInSampleSize(5_000, 4_000, 1_024)
+        val textDetail = CloudVisionImagePreprocessor.calculateInSampleSize(5_000, 4_000, 1_600)
 
-        assertEquals(2, standard)
-        assertEquals(1, textDetail)
+        assertEquals(4, standard)
+        assertEquals(2, textDetail)
     }
 
     @Test
