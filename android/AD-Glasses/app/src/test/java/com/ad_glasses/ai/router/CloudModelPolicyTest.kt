@@ -50,12 +50,12 @@ class CloudModelPolicyTest {
     }
 
     @Test
-    fun groq_qwen36_keeps_reasoning_hidden_while_allowing_model_default_thinking() {
+    fun groq_qwen36_stays_non_reasoning_normally_and_hides_reasoning_when_requested() {
         val profile = profile(ApiProvider.GROQ, "qwen/qwen3.6-27b")
 
         val normal = CloudModelPolicy.requestTuning(profile, concise)
         val deep = CloudModelPolicy.requestTuning(profile, reasoned)
-        assertEquals("default", normal.reasoningEffort)
+        assertEquals("none", normal.reasoningEffort)
         assertEquals("default", deep.reasoningEffort)
         assertEquals("hidden", normal.reasoningFormat)
         assertEquals("hidden", deep.reasoningFormat)
@@ -64,7 +64,7 @@ class CloudModelPolicyTest {
 
         val heartbeat = CloudModelPolicy.requestTuning(
             profile = profile,
-            mode = concise,
+            mode = reasoned,
             includeReasoningActivity = true,
         )
         assertEquals("parsed", heartbeat.reasoningFormat)
@@ -108,7 +108,7 @@ class CloudModelPolicyTest {
 
         listOf(flash, pro).forEach { candidate ->
             assertEquals(1_024, CloudModelPolicy.requestTuning(candidate, concise).geminiThinkingBudget)
-            assertEquals(4_096, CloudModelPolicy.requestTuning(candidate, reasoned).geminiThinkingBudget)
+            assertEquals(8_192, CloudModelPolicy.requestTuning(candidate, reasoned).geminiThinkingBudget)
         }
     }
 
