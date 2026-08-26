@@ -5,6 +5,8 @@ import android.os.SystemClock
 import android.util.Log
 import java.io.IOException
 import java.util.concurrent.TimeUnit
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 import okhttp3.MediaType.Companion.toMediaType
 import okhttp3.OkHttpClient
 import okhttp3.Request
@@ -40,43 +42,49 @@ class TavilySearchClient(
         return config.tavilyEnabled && GroundingPrefs.hasTavilyApiKey(appContext)
     }
 
-    fun search(
+    suspend fun search(
         query: String,
         depth: TavilySearchDepth = TavilySearchDepth.BASIC,
         maxResults: Int = 5,
-    ): Result<TavilySearchResponse> = runCatching {
-        val config = GroundingPrefs.getConfig(appContext)
-        check(config.tavilyEnabled) { "Tavily search is disabled." }
-        val key = GroundingPrefs.getTavilyApiKey(appContext)
-        check(key.isNotBlank()) { "Tavily API key is not configured." }
+    ): Result<TavilySearchResponse> = withContext(Dispatchers.IO) {
+        runCatching {
+            val config = GroundingPrefs.getConfig(appContext)
+            check(config.tavilyEnabled) { "Tavily search is disabled." }
+            val key = GroundingPrefs.getTavilyApiKey(appContext)
+            check(key.isNotBlank()) { "Tavily API key is not configured." }
 
-        val cleanQuery = query.replace(Regex("\\s+"), " ").trim().take(MAX_QUERY_CHARS)
-        require(cleanQuery.isNotBlank()) { "Tavily query cannot be blank." }
-        val body = JSONObject()
-            .put("query", cleanQuery)
-            .put("search_depth", depth.wire)
-            .put("include_answer", true)
-            .put("include_raw_content", false)
-            .put("max_results", maxResults.coerceIn(1, MAX_RESULTS))
-            .toString()
-            .toRequestBody(JSON)
+            val cleanQuery = query.replace(Regex("\\s+"), " ").trim().take(MAX_QUERY_CHARS)
+            require(cleanQuery.isNotBlank()) { "Tavily query cannot be blank." }
+            val body = JSONObject()
+                .put("query", cleanQuery)
+                .put("search_depth", depth.wire)
+                .put("include_answer", true)
+                .put("include_raw_content", false)
+                .put("max_results", maxResults.coerceIn(1, MAX_RESULTS))
+                .toString()
+                .toRequestBody(JSON)
 
-        val request = Request.Builder()
-            .url(SEARCH_URL)
-            .header("Authorization", "Bearer $key")
-            .header("Accept", "application/json")
-            .header("User-Agent", USER_AGENT)
-            .post(body)
-            .build()
+            val request = Request.Builder()
+                .url(SEARCH_URL)
+                .header("Authorization", "Bearer $key")
+                .header("Accept", "application/json")
+                .header("User-Agent", USER_AGENT)
+                .post(body)
+                .build()
 
-        val startedAt = SystemClock.elapsedRealtime()
-        client.newCall(request).execute().use { response ->
-            val payload = response.body?.string().orEmpty()
-            if (!response.isSuccessful) {
-                throw IOException("Tavily HTTP ${response.code}: ${safeError(payload)}")
+            val startedAt = SystemClock.elapsedRealtime()
+            client.newCall(request).execute().use { response ->
+                val payload = response.body?.string().orEmpty()
+                if (!response.isSuccessful) {
+                    throw IOException("Tavily HTTP ${response.code}: ${safeError(payload)}")
+                }
+                val parsed = parse(payload)
+                Log.i(
+                    TAG,
+                    "search_done depth=${depth.wire} results=${parsed.results.size} elapsedMs=${SystemClock.elapsedRealtime() - startedAt}",
+                )
+                parsed
             }
-            Log.i(TAG, "search_done depth=${depth.wire} results=$maxResults elapsedMs=${SystemClock.elapsedRealtime() - startedAt}")
-            parse(payload)
         }
     }
 
