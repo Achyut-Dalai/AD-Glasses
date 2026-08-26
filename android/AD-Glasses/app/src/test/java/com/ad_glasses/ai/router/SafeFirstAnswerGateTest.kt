@@ -150,7 +150,7 @@ class SafeFirstAnswerGateTest {
     }
 
     @Test
-    fun low_latency_history_uses_1500_char_budget_but_caps_each_message_at_360() {
+    fun low_latency_history_uses_1500_char_budget_caps_each_message_and_keeps_short_older_context() {
         val messages = listOf(
             mapOf("role" to "user", "content" to "old"),
             mapOf("role" to "assistant", "content" to "a".repeat(500)),
@@ -161,9 +161,10 @@ class SafeFirstAnswerGateTest {
 
         val bounded = AgentInferenceRouter.boundedLowLatencyHistory(messages)
 
-        // Four newest messages are individually capped to 360 = 1,440 chars total. The next real
-        // message would exceed 1,500, so older context is not resurrected around the boundary.
-        assertEquals(listOf(360, 360, 360, 360), bounded.map { it["content"].orEmpty().length })
-        assertFalse(bounded.any { it["content"] == "old" })
+        // Four newest messages are individually capped to 360 = 1,440 chars total. The older
+        // three-character turn still fits inside the 1,500-character contiguous history budget.
+        assertEquals(listOf(3, 360, 360, 360, 360), bounded.map { it["content"].orEmpty().length })
+        assertTrue(bounded.first()["content"] == "old")
+        assertFalse(bounded.sumOf { it["content"].orEmpty().length } > 1_500)
     }
 }
