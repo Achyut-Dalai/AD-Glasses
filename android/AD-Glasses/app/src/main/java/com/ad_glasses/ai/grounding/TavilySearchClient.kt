@@ -73,7 +73,12 @@ class TavilySearchClient(
                 .build()
 
             val startedAt = SystemClock.elapsedRealtime()
-            client.newCall(request).execute().use { response ->
+            val call = client.newCall(request)
+            call.timeout().timeout(
+                if (depth == TavilySearchDepth.ADVANCED) ADVANCED_CALL_TIMEOUT_SECONDS else BASIC_CALL_TIMEOUT_SECONDS,
+                TimeUnit.SECONDS,
+            )
+            call.execute().use { response ->
                 val payload = response.body?.string().orEmpty()
                 if (!response.isSuccessful) {
                     throw IOException("Tavily HTTP ${response.code}: ${safeError(payload)}")
@@ -128,12 +133,14 @@ class TavilySearchClient(
         private const val MAX_RESULTS = 8
         private const val MAX_SNIPPET_CHARS = 1_200
         private const val MAX_ANSWER_CHARS = 1_500
+        private const val BASIC_CALL_TIMEOUT_SECONDS = 8L
+        private const val ADVANCED_CALL_TIMEOUT_SECONDS = 13L
         private val JSON = "application/json; charset=utf-8".toMediaType()
 
         private fun defaultClient(): OkHttpClient = OkHttpClient.Builder()
-            .connectTimeout(5, TimeUnit.SECONDS)
-            .readTimeout(12, TimeUnit.SECONDS)
-            .writeTimeout(5, TimeUnit.SECONDS)
+            .connectTimeout(4, TimeUnit.SECONDS)
+            .readTimeout(13, TimeUnit.SECONDS)
+            .writeTimeout(4, TimeUnit.SECONDS)
             .callTimeout(15, TimeUnit.SECONDS)
             .build()
     }
