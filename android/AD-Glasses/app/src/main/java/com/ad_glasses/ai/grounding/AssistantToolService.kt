@@ -107,11 +107,11 @@ class AssistantToolService(context: Context) {
         Result.failure(error)
     }
 
-    private suspend fun executeSpatial(route: GroundingRoute): SpatialExecution =
-        when (route.spatialAction ?: error("Spatial action is missing.")) {
-            SpatialAction.LOCATION -> currentLocation(route)
-            SpatialAction.NEARBY -> nearby(route)
-            SpatialAction.ROUTE -> route(route)
+    private suspend fun executeSpatial(plan: GroundingRoute): SpatialExecution =
+        when (plan.spatialAction ?: error("Spatial action is missing.")) {
+            SpatialAction.LOCATION -> currentLocation(plan)
+            SpatialAction.NEARBY -> nearby(plan)
+            SpatialAction.ROUTE -> executeRoute(plan)
         }
 
     private suspend fun currentLocation(plan: GroundingRoute): SpatialExecution {
@@ -163,7 +163,7 @@ class AssistantToolService(context: Context) {
         return SpatialExecution(answer = answer, context = context, coarseArea = area)
     }
 
-    private suspend fun route(plan: GroundingRoute): SpatialExecution {
+    private suspend fun executeRoute(plan: GroundingRoute): SpatialExecution {
         val originPoint: GeoPoint
         val originLabel: String
         val explicitOrigin = plan.routeOrigin?.trim().orEmpty()
