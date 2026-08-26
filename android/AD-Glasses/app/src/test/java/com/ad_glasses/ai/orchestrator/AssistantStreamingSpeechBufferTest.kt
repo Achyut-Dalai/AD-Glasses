@@ -64,6 +64,18 @@ class AssistantStreamingSpeechBufferTest {
     }
 
     @Test
+    fun streamed_source_appendix_never_reaches_tts() {
+        val buffer = AssistantStreamingSpeechBuffer()
+        val answer = "Bitcoin is trading higher today."
+
+        assertEquals(listOf(answer), buffer.accept(answer))
+        assertTrue(buffer.accept("\n\nSources:\n[1] Exchange — https://example.com/market").isEmpty())
+        assertTrue(
+            buffer.finish("$answer\n\nSources:\n[1] Exchange — https://example.com/market").isEmpty(),
+        )
+    }
+
+    @Test
     fun never_emits_unfinished_reasoning_block() {
         val buffer = AssistantStreamingSpeechBuffer()
 
