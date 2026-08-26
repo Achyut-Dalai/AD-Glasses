@@ -5,6 +5,7 @@ import android.os.SystemClock
 import android.util.Log
 import java.io.IOException
 import java.util.concurrent.TimeUnit
+import kotlin.coroutines.resumeWithException
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.suspendCancellableCoroutine
 import okhttp3.Call
@@ -160,16 +161,12 @@ class TavilySearchClient(
             continuation.invokeOnCancellation { cancel() }
             enqueue(object : Callback {
                 override fun onFailure(call: Call, error: IOException) {
-                    val token = continuation.tryResumeWithException(error)
-                    if (token != null) continuation.completeResume(token)
+                    continuation.resumeWithException(error)
                 }
 
                 override fun onResponse(call: Call, response: Response) {
-                    val token = continuation.tryResume(response)
-                    if (token != null) {
-                        continuation.completeResume(token)
-                    } else {
-                        response.close()
+                    continuation.resume(response) { _, resource, _ ->
+                        resource.close()
                     }
                 }
             })

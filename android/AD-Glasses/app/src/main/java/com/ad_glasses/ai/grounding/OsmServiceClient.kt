@@ -4,6 +4,7 @@ import android.os.SystemClock
 import java.io.IOException
 import java.util.Locale
 import java.util.concurrent.TimeUnit
+import kotlin.coroutines.resumeWithException
 import kotlin.math.asin
 import kotlin.math.cos
 import kotlin.math.pow
@@ -75,6 +76,11 @@ class OsmServiceClient(
     private val configProvider: () -> GroundingServiceConfig,
     private val client: OkHttpClient = defaultClient(),
 ) {
+    constructor(configProvider: () -> GroundingServiceConfig) : this(
+        configProvider = configProvider,
+        client = defaultClient(),
+    )
+
     suspend fun reverse(point: GeoPoint): Result<OsmAddress> = try {
         val cacheKey = "${roundCoordinate(point.latitude)},${roundCoordinate(point.longitude)}"
         val cached = synchronized(reverseCache) { reverseCache[cacheKey] }
@@ -434,16 +440,12 @@ class OsmServiceClient(
             continuation.invokeOnCancellation { cancel() }
             enqueue(object : Callback {
                 override fun onFailure(call: Call, error: IOException) {
-                    val token = continuation.tryResumeWithException(error)
-                    if (token != null) continuation.completeResume(token)
+                    continuation.resumeWithException(error)
                 }
 
                 override fun onResponse(call: Call, response: Response) {
-                    val token = continuation.tryResume(response)
-                    if (token != null) {
-                        continuation.completeResume(token)
-                    } else {
-                        response.close()
+                    continuation.resume(response) { _, resource, _ ->
+                        resource.close()
                     }
                 }
             })
