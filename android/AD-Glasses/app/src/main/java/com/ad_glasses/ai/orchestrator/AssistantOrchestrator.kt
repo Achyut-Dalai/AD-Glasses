@@ -40,6 +40,8 @@ data class AssistantExecutionContext(
     val useWeb: Boolean,
     val providerType: AgentProviderType,
     val surface: AssistantInputSurface,
+    /** Raw per-turn preference; null means automatic policy, false means inferred web must stay off. */
+    val webRequested: Boolean? = null,
     val artifactContext: String? = null,
 )
 
@@ -188,6 +190,7 @@ class AssistantOrchestrator(
             useWeb = useWeb,
             providerType = providerType,
             surface = turn.surface,
+            webRequested = turn.webRequested,
             artifactContext = turn.contextText?.trim()?.takeIf { it.isNotBlank() },
         )
 
@@ -277,7 +280,15 @@ class AssistantOrchestrator(
         imagePath: String?,
         context: AssistantExecutionContext,
     ): AssistantResult {
-        if (!grounding.shouldUseVisualPipeline(prompt, context.useWeb)) {
+        // A spoken/UI "search web" in the current utterance can override an older surface toggle,
+        // but otherwise explicit false must suppress both Tavily and provider-native web fallback.
+        val inferredWebExplicitlyDisabled = context.webRequested == false && !context.useWeb
+        if (!grounding.shouldUseVisualPipeline(
+                prompt = prompt,
+                useWeb = context.useWeb,
+                webExplicitlyDisabled = inferredWebExplicitlyDisabled,
+            )
+        ) {
             return executor.analyzeImage(
                 prompt = prompt,
                 imagePath = imagePath,
@@ -306,10 +317,12 @@ class AssistantOrchestrator(
 
         currentCoroutineContext().ensureActive()
         val startedAt = SystemClock.elapsedRealtime()
+        val automaticVisualWebAllowed = context.useWeb || context.webRequested != false
         val evidence = grounding.groundVisual(
             prompt = prompt,
             visualDescription = observation.text,
             useWeb = context.useWeb,
+            allowAutomaticVisualWeb = automaticVisualWebAllowed,
         )
         Log.i(
             TIMING_TAG,
@@ -329,10 +342,12 @@ class AssistantOrchestrator(
                 appendLine("No Tavily/OSM evidence was available. If native web search is unavailable too, answer only from directly visible evidence and clearly express uncertainty.")
             }
         }
-        // Visual identification is an externally-grounded intent. If Tavily did not supply web
-        // evidence, allow the selected provider's native web tool as the final fallback. Tavily
-        // success disables native web to avoid duplicate retrieval and duplicate answers.
-        val synthesisContext = context.copy(useWeb = !evidence.tavilyUsed)
+        // Tavily success disables native web to avoid duplicate retrieval. If Tavily was unavailable,
+        // native web is allowed only when this turn requested/inferred web or automatic visual web was
+        // not explicitly disabled. An explicit false therefore survives the entire camera pipeline.
+        val synthesisContext = context.copy(
+            useWeb = !evidence.tavilyUsed && automaticVisualWebAllowed,
+        )
         return executor.answer(synthesisPrompt, synthesisContext).withGrounding(evidence)
     }
 
