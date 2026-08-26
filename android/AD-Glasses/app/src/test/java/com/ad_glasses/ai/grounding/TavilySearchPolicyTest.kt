@@ -21,6 +21,15 @@ class TavilySearchPolicyTest {
     }
 
     @Test
+    fun naturalBitcoinPriceQueryIsLiveEvenWithoutSayingCurrent() {
+        val plan = TavilySearchPolicy.plan("Bitcoin price", today)
+
+        assertEquals(TavilySearchTopic.FINANCE, plan.topic)
+        assertEquals(TavilyTimeRange.DAY, plan.timeRange)
+        assertTrue(plan.query.contains("Current date: 2026-08-26"))
+    }
+
+    @Test
     fun historicalBitcoinQuestionKeepsRequestedYearInsteadOfCurrentFreshness() {
         val plan = TavilySearchPolicy.plan("What was the Bitcoin price in 2025?", today)
 
