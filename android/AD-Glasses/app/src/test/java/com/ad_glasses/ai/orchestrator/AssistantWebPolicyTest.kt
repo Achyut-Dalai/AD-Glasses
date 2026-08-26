@@ -34,10 +34,16 @@ class AssistantWebPolicyTest {
             "What's the final match score?",
             "Who won the match?",
             "Who is winning the race?",
+            "When is the next match?",
             "What is the latest Android version?",
             "Any recent developments in quantum computing?",
-            "What are the current flight status updates?",
+            "Who is the president of France?",
+            "Who is the CEO of OpenAI?",
+            "Who won the election?",
             "What are today's election results?",
+            "What is the current flight status?",
+            "Is flight AI302 delayed?",
+            "What is the service status?",
         ).forEach { text ->
             assertTrue(text, AssistantWebPolicy.shouldUseWeb(text))
         }
@@ -64,6 +70,9 @@ class AssistantWebPolicyTest {
             "Forecast sales for next quarter",
             "What makes a good headline?",
             "What is a stock variable in programming?",
+            "Who is a president?",
+            "Explain what a CEO does",
+            "What is service status in a state machine?",
         ).forEach { text ->
             assertFalse(text, AssistantWebPolicy.shouldUseWeb(text))
         }
@@ -105,7 +114,6 @@ class AssistantWebPolicyTest {
         )
         assertFalse(AssistantWebPolicy.shouldUseWeb("And tomorrow?", history = offlineHistory))
 
-        // Assistant text must never create inherited web intent by itself.
         val assistantOnlyFreshness = listOf(
             user("Tell me a joke", 1),
             assistant("Tomorrow's weather might be sunny.", 2),
