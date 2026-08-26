@@ -30,19 +30,19 @@ class TavilySearchPolicyTest {
     }
 
     @Test
-    fun historicalBitcoinQuestionKeepsRequestedYearInsteadOfCurrentFreshness() {
+    fun historicalBitcoinQuestionKeepsRequestedYearWithoutMisusingSourceDateFilters() {
         val plan = TavilySearchPolicy.plan("What was the Bitcoin price in 2025?", today)
 
         assertEquals(TavilySearchTopic.FINANCE, plan.topic)
         assertNull(plan.timeRange)
-        assertEquals("2024-12-31", plan.startDate)
-        assertEquals("2026-01-01", plan.endDate)
+        assertNull(plan.startDate)
+        assertNull(plan.endDate)
         assertTrue(plan.query.contains("historical period 2025"))
         assertTrue(plan.query.contains("do not substitute current data"))
     }
 
     @Test
-    fun explicitHistoricalDateGetsTightDateWindow() {
+    fun explicitHistoricalEventGetsTightPublicationDateWindow() {
         val plan = TavilySearchPolicy.plan("What happened on 2025-05-10?", today)
 
         assertNull(plan.timeRange)
