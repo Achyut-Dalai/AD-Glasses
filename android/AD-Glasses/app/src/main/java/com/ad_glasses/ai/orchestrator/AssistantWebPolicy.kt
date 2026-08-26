@@ -13,7 +13,8 @@ object AssistantWebPolicy {
         if (requested == true) return true
         if (EXPLICIT_WEB.containsMatchIn(clean)) return true
         // A visible per-turn "off" remains authoritative. Automatic freshness only applies when
-        // the surface did not supply a preference at all.
+        // the surface did not supply a preference at all. Bare "current" is deliberately not a
+        // trigger so "what is my current location?" stays on the OSM-only privacy path.
         return requested == null && LIVE_FACT.containsMatchIn(clean)
     }
 
@@ -24,9 +25,10 @@ object AssistantWebPolicy {
     )
 
     private val LIVE_FACT = Regex(
-        pattern = "\\b(latest|newest|current|currently|today|tonight|tomorrow|right now|breaking|news|" +
+        pattern = "\\b(latest|newest|currently|today|tonight|tomorrow|right now|breaking|news|" +
             "weather|forecast|temperature|price|prices|pricing|stock price|exchange rate|score|scores|" +
-            "open now|closed now|opening hours|business hours|operating hours|operational status|availability)\\b",
+            "open now|closed now|opening hours|business hours|operating hours|operational status|availability|" +
+            "current (?:news|events?|weather|forecast|temperature|price|prices|pricing|score|scores|status|availability|version))\\b",
         option = RegexOption.IGNORE_CASE,
     )
 }
