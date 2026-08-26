@@ -160,6 +160,20 @@ class AssistantCompletionSanitizerTest {
     }
 
     @Test
+    fun strips_route_diagnostic_from_future_model_context() {
+        val raw = """
+            India are 245 for 4 in the current Test innings.
+
+            Route: SEARCH · TAVILY · NEWS · DAY
+        """.trimIndent()
+
+        assertEquals(
+            "India are 245 for 4 in the current Test innings.",
+            AssistantCompletionSanitizer.clean(raw),
+        )
+    }
+
+    @Test
     fun leaves_normal_answer_unchanged() {
         val raw = "Linked lists store elements in nodes connected by references."
         assertEquals(raw, AssistantCompletionSanitizer.clean(raw))
