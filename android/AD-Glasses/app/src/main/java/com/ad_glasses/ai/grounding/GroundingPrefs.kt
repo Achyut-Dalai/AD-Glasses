@@ -16,7 +16,8 @@ data class GroundingServiceConfig(
 object GroundingPrefs {
     const val DEFAULT_NOMINATIM_BASE_URL = "https://nominatim.openstreetmap.org"
     const val DEFAULT_OVERPASS_ENDPOINT = "https://overpass-api.de/api/interpreter"
-    const val DEFAULT_OSRM_BASE_URL = "https://router.project-osrm.org"
+    // This root exposes separate /routed-car, /routed-foot and /routed-bike OSRM instances.
+    const val DEFAULT_OSRM_BASE_URL = "https://routing.openstreetmap.de"
 
     private const val PREFS = "assistant_grounding_secure"
     private const val KEY_TAVILY_API_KEY = "tavily_api_key"
