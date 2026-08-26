@@ -224,8 +224,6 @@ class AndroidAssistantCapabilityExecutor(
         val spoken = when {
             Regex("(?:API )?HTTP 401", RegexOption.IGNORE_CASE).containsMatchIn(detail) ->
                 "Cloud AI authentication failed. Check the API key."
-            Regex("(?:API )?HTTP 404", RegexOption.IGNORE_CASE).containsMatchIn(detail) ->
-                "Cloud AI could not find that model or endpoint. Re-select the model in Cloud AI settings."
             Regex("(?:API )?HTTP 429", RegexOption.IGNORE_CASE).containsMatchIn(detail) ->
                 "Cloud AI is rate limited right now. Try again shortly."
             Regex("(?:API )?HTTP 5\\d\\d", RegexOption.IGNORE_CASE).containsMatchIn(detail) ->
