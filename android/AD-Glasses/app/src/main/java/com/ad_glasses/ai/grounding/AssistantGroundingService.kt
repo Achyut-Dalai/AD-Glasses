@@ -71,7 +71,9 @@ internal data class SpatialIntent(
 /** Pure intent policy so network and location use are deterministic and unit-testable. */
 internal object AssistantGroundingPolicy {
     private val SELF_LOCATION = Regex(
-        "\\b(where am i|what(?:'s| is) my (?:current )?location|my current location|what area am i in|which area am i in)\\b",
+        "\\b(where am i|what(?:'s| is) my (?:current )?(?:location|address|street|road|neighbou?rhood|city|town)|" +
+            "my current location|what (?:street|road) am i on|which (?:street|road) am i on|" +
+            "what (?:neighbou?rhood|city|town|area) am i in|which (?:neighbou?rhood|city|town|area) am i in)\\b",
         RegexOption.IGNORE_CASE,
     )
     private val CURRENT_LOCATION_CUE = Regex(
@@ -79,28 +81,66 @@ internal object AssistantGroundingPolicy {
             "local weather|local news|weather here|weather near me|forecast here|forecast near me)\\b",
         RegexOption.IGNORE_CASE,
     )
+    private val DEICTIC_AREA = Regex(
+        "\\b(?:in|around|within) (?:this|the) area\\b",
+        RegexOption.IGNORE_CASE,
+    )
+    private val META_SPATIAL_LANGUAGE = Regex(
+        "\\b(?:what does|what do|define|definition of|meaning of|explain (?:the )?(?:phrase|term|words?)?|" +
+            "why do apps?|how does)\\b.{0,80}\\b(?:near me|nearby|route|routing|directions?|gps|location services?)\\b",
+        setOf(RegexOption.IGNORE_CASE, RegexOption.DOT_MATCHES_ALL),
+    )
+    private val NON_SPATIAL_DEICTIC_CONTEXT = Regex(
+        "\\b(?:in|inside|within) (?:this|the) (?:code|function|method|class|file|document|paragraph|sentence|problem|diagram|layout|ui)\\b",
+        RegexOption.IGNORE_CASE,
+    )
+    private val ROUTE_LANGUAGE = Regex(
+        "\\b(?:route|routing|directions?|navigate|navigation|walk|drive|cycle|bike|get from)\\b",
+        RegexOption.IGNORE_CASE,
+    )
+    private val NON_SPATIAL_ROUTE_CONTEXT = Regex(
+        "\\b(?:api gateway|load balancer|reverse proxy|proxy server|web server|server|microservice|service mesh|network|" +
+            "packets?|http|https|dns|tcp|udp|kubernetes|containers?|database|message queue|function|method|class|" +
+            "source code|codebase|graph|graph node|tree node|array|requests?)\\b",
+        RegexOption.IGNORE_CASE,
+    )
+    private val NON_SPATIAL_ROUTE_ACTION = Regex(
+        "(?:\\b(?:route|routing)\\b.{0,80}\\b(?:requests?|packets?|messages?|calls?|data|api traffic|network traffic)\\b|" +
+            "\\b(?:requests?|packets?|messages?|calls?|data|api traffic|network traffic)\\b.{0,80}\\b(?:route|routing)\\b)",
+        setOf(RegexOption.IGNORE_CASE, RegexOption.DOT_MATCHES_ALL),
+    )
+    private val AMBIGUOUS_PERSONAL_ANCHOR = Regex(
+        "(?:\\b(?:near|around|close to)\\s+(?:my|our)\\s+(?:home|house|office|work|workplace|hotel|school|college|university)\\b|" +
+            "\\b(?:nearest|closest)\\b.{0,50}\\bto\\s+(?:(?:my|our)\\s+)?(?:home|work|office|hotel|school|college|university)\\b)",
+        setOf(RegexOption.IGNORE_CASE, RegexOption.DOT_MATCHES_ALL),
+    )
     private val NEAREST_OR_CLOSEST = Regex("\\b(nearest|closest)\\b", RegexOption.IGNORE_CASE)
     private val GENERAL_NEARBY = Regex(
-        "\\b(what(?:'s| is) (?:nearby|near me|around me|around here)|what can i (?:do|see) nearby|" +
-            "places near me|things to do near me|somewhere near me|what(?:'s| is) (?:near|around|close to) .+)$",
+        "\\b(what(?:'s| is) (?:nearby|near me|around me|around here)|" +
+            "what can i (?:do|see) (?:nearby|near me|around me|around here)|" +
+            "(?:places|things to do) (?:nearby|near me|around me|around here)|" +
+            "(?:anything|somewhere) (?:nearby|near me|around me|around here)|" +
+            "show me what(?:'s| is) (?:nearby|around me|around here)|" +
+            "what(?:'s| is) (?:near|around|close to) .+)$",
         RegexOption.IGNORE_CASE,
     )
     private val VISUAL_GROUNDING = Regex(
         "\\b(identify (?:this|that|the)|what is this|what(?:'s| is) that|what am i looking at|" +
             "what (?:landmark|building|monument|plant|flower|tree|product|model|brand|device|vehicle|species) is this|" +
             "which (?:landmark|building|monument|plant|flower|tree|product|model|brand|device|vehicle|species)|" +
-            "how much is this|what is this worth|what(?:'s| is) this worth|identify the (?:landmark|building|plant|product|brand))\\b",
+            "what is this worth|what(?:'s| is) this worth|identify the (?:landmark|building|plant|product|brand))\\b",
         RegexOption.IGNORE_CASE,
     )
     private val VISUAL_LOCAL_ONLY = Regex(
-        "\\b(read|transcribe|translate|extract text|what is this (?:text|word|number|code|qr code|price)|" +
-            "what does (?:this|the) (?:sign|page|label|screen|menu) say|what language is this|" +
-            "what colou?r|summari[sz]e (?:this|the) (?:page|document|screen)|describe (?:this|the) image|" +
-            "price (?:shown|listed|printed)|total (?:shown|listed|on)|receipt|menu text)\\b",
-        RegexOption.IGNORE_CASE,
+        "(?:\\b(read|transcribe|translate|extract text|identify (?:this|the) (?:text|word|number|code|qr code|language)|" +
+            "what is this (?:text|word|number|code|qr code|price)|what does (?:this|the) (?:sign|page|label|screen|menu) say|" +
+            "what language is this|what colou?r|summari[sz]e (?:this|the) (?:page|document|screen)|describe (?:this|the) image|" +
+            "price (?:shown|listed|printed)|total (?:shown|listed|on)|receipt|menu text)\\b|" +
+            "\\bhow much is (?:this|that)\\s*\\??$)",
+        setOf(RegexOption.IGNORE_CASE, RegexOption.DOT_MATCHES_ALL),
     )
     private val VISUAL_STRONG_EXTERNAL = Regex(
-        "\\b(identify|what is this worth|what(?:'s| is) this worth|how much is this worth|search|look up|verify)\\b",
+        "\\b(what is this worth|what(?:'s| is) this worth|how much is this worth|search|look up|verify)\\b",
         RegexOption.IGNORE_CASE,
     )
     private val LANDMARK = Regex(
@@ -142,6 +182,12 @@ internal object AssistantGroundingPolicy {
             listOf(OverpassTagFilter("shop", "supermarket")),
         Regex("\\b(convenience stores?)\\b", RegexOption.IGNORE_CASE) to
             listOf(OverpassTagFilter("shop", "convenience")),
+        Regex("\\b(bakeries?|bakery)\\b", RegexOption.IGNORE_CASE) to
+            listOf(OverpassTagFilter("shop", "bakery")),
+        Regex("\\b(electronics stores?|electronics shops?)\\b", RegexOption.IGNORE_CASE) to
+            listOf(OverpassTagFilter("shop", "electronics")),
+        Regex("\\b(clothing stores?|clothes shops?)\\b", RegexOption.IGNORE_CASE) to
+            listOf(OverpassTagFilter("shop", "clothes")),
         Regex("\\b(gas stations?|petrol stations?|fuel stations?)\\b", RegexOption.IGNORE_CASE) to
             listOf(OverpassTagFilter("amenity", "fuel")),
         Regex("\\b(ev chargers?|ev charging|charging stations?)\\b", RegexOption.IGNORE_CASE) to
@@ -160,6 +206,8 @@ internal object AssistantGroundingPolicy {
             listOf(OverpassTagFilter("amenity", "parking")),
         Regex("\\b(bus stops?)\\b", RegexOption.IGNORE_CASE) to
             listOf(OverpassTagFilter("highway", "bus_stop")),
+        Regex("\\b(bus stations?|bus terminals?)\\b", RegexOption.IGNORE_CASE) to
+            listOf(OverpassTagFilter("amenity", "bus_station")),
         Regex("\\b(train stations?|railway stations?)\\b", RegexOption.IGNORE_CASE) to
             listOf(OverpassTagFilter("railway", "station")),
         Regex("\\b(subway entrances?|metro entrances?)\\b", RegexOption.IGNORE_CASE) to
@@ -168,12 +216,26 @@ internal object AssistantGroundingPolicy {
             listOf(OverpassTagFilter("aeroway", "aerodrome")),
         Regex("\\b(hotels?|lodging)\\b", RegexOption.IGNORE_CASE) to
             listOf(OverpassTagFilter("tourism", "hotel")),
-        Regex("\\b(public parks?|city parks?|parks|a park|the park|park(?=\\s+(?:near|nearby|around|within|close))|playgrounds?)\\b", RegexOption.IGNORE_CASE) to
+        Regex("\\b(museums?)\\b", RegexOption.IGNORE_CASE) to
+            listOf(OverpassTagFilter("tourism", "museum")),
+        Regex("\\b(cinemas?|movie theaters?|movie theatres?)\\b", RegexOption.IGNORE_CASE) to
+            listOf(OverpassTagFilter("amenity", "cinema")),
+        Regex("\\b(theaters?|theatres?)\\b", RegexOption.IGNORE_CASE) to
+            listOf(OverpassTagFilter("amenity", "theatre")),
+        Regex("\\b(public parks?|city parks?|parks|a park|the park|park(?=\\s+(?:near|nearby|around|within|close)))\\b", RegexOption.IGNORE_CASE) to
             listOf(OverpassTagFilter("leisure", "park")),
+        Regex("\\b(playgrounds?)\\b", RegexOption.IGNORE_CASE) to
+            listOf(OverpassTagFilter("leisure", "playground")),
         Regex("\\b(libraries?|library)\\b", RegexOption.IGNORE_CASE) to
             listOf(OverpassTagFilter("amenity", "library")),
         Regex("\\b(gyms?|fitness centers?|fitness centres?)\\b", RegexOption.IGNORE_CASE) to
             listOf(OverpassTagFilter("leisure", "fitness_centre")),
+        Regex("\\b(schools?)\\b", RegexOption.IGNORE_CASE) to
+            listOf(OverpassTagFilter("amenity", "school")),
+        Regex("\\b(universities?|colleges?)\\b", RegexOption.IGNORE_CASE) to
+            listOf(OverpassTagFilter("amenity", "university"), OverpassTagFilter("amenity", "college")),
+        Regex("\\b(taxi ranks?|taxi stands?)\\b", RegexOption.IGNORE_CASE) to
+            listOf(OverpassTagFilter("amenity", "taxi")),
         Regex("\\b(laundromats?|laundrettes?|laundry)\\b", RegexOption.IGNORE_CASE) to
             listOf(OverpassTagFilter("shop", "laundry")),
         Regex("\\b(bike rentals?|bicycle rentals?)\\b", RegexOption.IGNORE_CASE) to
@@ -190,12 +252,19 @@ internal object AssistantGroundingPolicy {
 
     fun spatialIntent(text: String, visual: Boolean = false): SpatialIntent {
         val clean = text.trim()
+        if (clean.isBlank() || META_SPATIAL_LANGUAGE.containsMatchIn(clean)) {
+            return SpatialIntent(needsLocation = false)
+        }
+
+        val routeSuppressed = shouldSuppressRoute(clean)
         val locationOnly = SELF_LOCATION.containsMatchIn(clean)
-        val currentLocationCue = CURRENT_LOCATION_CUE.containsMatchIn(clean)
+        val currentLocationCue = CURRENT_LOCATION_CUE.containsMatchIn(clean) &&
+            !NON_SPATIAL_DEICTIC_CONTEXT.containsMatchIn(clean)
         val radiusSpecified = RADIUS.containsMatchIn(clean)
-        val routePair = parseRoutePair(clean)
-        val parsedRouteDestination = if (routePair == null) parseDestination(clean) else routePair.second
-        val referencePlace = parseReferencePlace(clean)
+        val ambiguousPersonalAnchor = AMBIGUOUS_PERSONAL_ANCHOR.containsMatchIn(clean)
+        val routePair = if (routeSuppressed) null else parseRoutePair(clean)
+        val parsedRouteDestination = if (routePair == null && !routeSuppressed) parseDestination(clean) else routePair?.second
+        val referencePlace = if (ambiguousPersonalAnchor) null else parseReferencePlace(clean)
 
         var categoryFilters = CATEGORY_FILTERS
             .filter { (pattern, _) -> pattern.containsMatchIn(clean) }
@@ -206,20 +275,22 @@ internal object AssistantGroundingPolicy {
             categoryFilters = categoryFilters.filterNot { it == OverpassTagFilter("amenity", "bank") }
         }
 
-        val routeToCategory = categoryFilters.isNotEmpty() && routeActionTargetsCategory(clean)
+        val routeToCategory = categoryFilters.isNotEmpty() && !routeSuppressed &&
+            (routeActionTargetsNearbyCategory(clean) || isGenericCategoryDestination(parsedRouteDestination))
         val routeDestination = if (routeToCategory && routePair == null) null else parsedRouteDestination
-        val routeRequested = routePair != null || routeDestination != null || routeToCategory
+        val routeRequested = !routeSuppressed && (routePair != null || routeDestination != null || routeToCategory)
         val nearestCategoryCue = categoryFilters.isNotEmpty() &&
-            NEAREST_OR_CLOSEST.containsMatchIn(clean) && referencePlace == null
-        val categoryHasSpatialAnchor = currentLocationCue || radiusSpecified || referencePlace != null ||
-            nearestCategoryCue || routeToCategory
+            NEAREST_OR_CLOSEST.containsMatchIn(clean) && referencePlace == null && !ambiguousPersonalAnchor
+        val deicticAreaCue = categoryFilters.isNotEmpty() && DEICTIC_AREA.containsMatchIn(clean)
+        val categoryHasSpatialAnchor = !ambiguousPersonalAnchor &&
+            (currentLocationCue || deicticAreaCue || radiusSpecified || referencePlace != null || nearestCategoryCue || routeToCategory)
         val filters = when {
             categoryFilters.isNotEmpty() && categoryHasSpatialAnchor -> categoryFilters
             GENERAL_NEARBY.containsMatchIn(clean) -> GENERAL_NEARBY_FILTERS
             else -> emptyList()
         }
         val landmark = visual && LANDMARK.containsMatchIn(clean)
-        val needsCurrentLocation = locationOnly || currentLocationCue || nearestCategoryCue || landmark ||
+        val needsCurrentLocation = locationOnly || currentLocationCue || deicticAreaCue || nearestCategoryCue || landmark ||
             (filters.isNotEmpty() && referencePlace == null) ||
             (routeRequested && routePair == null)
 
@@ -268,6 +339,10 @@ internal object AssistantGroundingPolicy {
             Regex("\\bhow (?:do|can) i get to\\s+(.+)$", RegexOption.IGNORE_CASE),
             Regex("\\b(?:walk|drive|cycle|bike)\\s+(?:me\\s+)?to\\s+(.+)$", RegexOption.IGNORE_CASE),
             Regex("\\bnavigate\\s+(.+)$", RegexOption.IGNORE_CASE),
+            Regex("\\b(?:show me )?the way to\\s+(.+)$", RegexOption.IGNORE_CASE),
+            Regex("\\bwhat(?:'s| is) the best way to get to\\s+(.+)$", RegexOption.IGNORE_CASE),
+            Regex("\\bhow far (?:away )?is\\s+(.+?)\\s+from\\s+(?:me|here)\\s*[?.!]*$", RegexOption.IGNORE_CASE),
+            Regex("\\bdistance from (?:me|here) to\\s+(.+)$", RegexOption.IGNORE_CASE),
         )
         return patterns.asSequence()
             .mapNotNull { it.find(text)?.groupValues?.getOrNull(1) }
@@ -302,10 +377,42 @@ internal object AssistantGroundingPolicy {
             .firstOrNull()
     }
 
-    private fun routeActionTargetsCategory(text: String): Boolean = Regex(
-        "\\b(?:navigate|route|take me|walk|drive|cycle|bike|directions?)\\b.{0,32}\\b(?:nearest|closest|nearby|to the|to a|to an)\\b",
-        setOf(RegexOption.IGNORE_CASE, RegexOption.DOT_MATCHES_ALL),
-    ).containsMatchIn(text)
+    private fun shouldSuppressRoute(text: String): Boolean {
+        if (!ROUTE_LANGUAGE.containsMatchIn(text)) return false
+        return NON_SPATIAL_ROUTE_CONTEXT.containsMatchIn(text) || NON_SPATIAL_ROUTE_ACTION.containsMatchIn(text)
+    }
+
+    private fun routeActionTargetsNearbyCategory(text: String): Boolean =
+        Regex(
+            "\\b(?:navigate|route|take me|walk|drive|cycle|bike|directions?)\\b.{0,60}\\b(?:nearest|closest|nearby)\\b",
+            setOf(RegexOption.IGNORE_CASE, RegexOption.DOT_MATCHES_ALL),
+        ).containsMatchIn(text) ||
+            Regex(
+                "\\b(?:nearest|closest|nearby)\\b.{0,60}\\b(?:navigate|route|directions?|walk|drive|cycle|bike)\\b",
+                setOf(RegexOption.IGNORE_CASE, RegexOption.DOT_MATCHES_ALL),
+            ).containsMatchIn(text)
+
+    private fun isGenericCategoryDestination(destination: String?): Boolean {
+        if (destination.isNullOrBlank()) return false
+        val normalized = destination.lowercase(Locale.US)
+            .replace(Regex("^(?:the\\s+)?(?:nearest|closest|nearby)\\s+"), "")
+            .replace(Regex("^(?:a|an|the)\\s+"), "")
+            .trim()
+        return GENERIC_CATEGORY_DESTINATION.matches(normalized)
+    }
+
+    private val GENERIC_CATEGORY_DESTINATION = Regex(
+        "^(?:coffee shops?|caf[eé]s?|pharmac(?:y|ies)|chemists?|drugstores?|restaurants?|places? to eat|fast food|" +
+            "bars?|pubs?|hospitals?|emergency rooms?|clinics?|doctors?|dentists?|vets?|atms?|cash machines?|banks?|" +
+            "supermarkets?|grocery stores?|convenience stores?|bakeries?|bakery|electronics stores?|clothing stores?|" +
+            "gas stations?|petrol stations?|fuel stations?|ev chargers?|charging stations?|restrooms?|bathrooms?|toilets?|" +
+            "washrooms?|water fountains?|police stations?|fire stations?|post offices?|parking|parking lots?|car parks?|" +
+            "bus stops?|bus stations?|bus terminals?|train stations?|railway stations?|subway entrances?|metro entrances?|" +
+            "airports?|aerodromes?|hotels?|museums?|cinemas?|movie theaters?|movie theatres?|theaters?|theatres?|parks?|" +
+            "playgrounds?|libraries?|gyms?|fitness centers?|fitness centres?|schools?|universities?|colleges?|taxi ranks?|" +
+            "taxi stands?|laundromats?|laundrettes?|bike rentals?|bicycle rentals?|car rentals?)$",
+        RegexOption.IGNORE_CASE,
+    )
 
     private fun cleanReferencePlace(raw: String): String? {
         val clean = cleanDestination(raw) ?: return null
@@ -324,7 +431,12 @@ internal object AssistantGroundingPolicy {
             .take(220)
         if (clean.length < 2) return null
         if (NON_PLACE_DESTINATION.containsMatchIn(clean)) return null
-        if (Regex("^(?:home|work|there|my house|my home|my office|settings|the settings|this screen|this page)$", RegexOption.IGNORE_CASE).matches(clean)) return null
+        if (Regex(
+                "^(?:home|work|there|my house|my home|my office|my hotel|my school|my college|my university|" +
+                    "settings|the settings|this screen|this page)$",
+                RegexOption.IGNORE_CASE,
+            ).matches(clean)
+        ) return null
         return clean
     }
 
@@ -469,7 +581,7 @@ class AssistantGroundingService(context: Context) {
         val tavilyDeferred: Deferred<Result<TavilySearchResponse>>? =
             if (effectiveUseWeb && tavily.isConfigured() && deadlineAt - SystemClock.elapsedRealtime() > MIN_STAGE_REMAINDER_MS) {
                 val query = buildSearchQuery(prompt, visualDescription, resolvedAddress)
-                val depth = if (advancedSearch) TavilySearchDepth.ADVANCED else TavilySearchDepth.BASIC
+                val depth = if (advancedSearch) TavilySearchDepth.ADVANCED else TavilySearchDepth.FAST
                 async {
                     tavily.search(query, depth = depth, maxResults = 5)
                         .onFailure {
@@ -638,7 +750,7 @@ class AssistantGroundingService(context: Context) {
 
     private fun buildSearchQuery(prompt: String, visualDescription: String?, address: OsmAddress?): String = buildString {
         append(prompt.trim())
-        visualDescription?.replace(Regex("\\s+"), " ")?.trim()?.takeIf { it.isNotBlank() }?.let {
+        visualDescription?.let(::sanitizeVisualSearchEvidence)?.takeIf { it.isNotBlank() }?.let {
             append(". Visual evidence: ")
             append(it.take(700))
         }
@@ -649,6 +761,14 @@ class AssistantGroundingService(context: Context) {
             append(it)
         }
     }.take(1_400)
+
+    private fun sanitizeVisualSearchEvidence(value: String): String {
+        var clean = value.replace(Regex("\\s+"), " ").trim()
+        clean = EMAIL_LIKE.replace(clean, "[redacted email]")
+        clean = PHONE_LIKE.replace(clean, "[redacted phone]")
+        clean = LONG_NUMBER.replace(clean, "[redacted number]")
+        return clean.take(700)
+    }
 
     private fun coarseAddress(address: OsmAddress?): String? {
         if (address == null) return null
@@ -718,5 +838,8 @@ class AssistantGroundingService(context: Context) {
         const val MIN_GROUNDING_BUDGET_MS = 1_500L
         const val MAX_GROUNDING_BUDGET_MS = 15_000L
         const val MIN_STAGE_REMAINDER_MS = 150L
+        val EMAIL_LIKE = Regex("[A-Z0-9._%+-]+@[A-Z0-9.-]+\\.[A-Z]{2,}", RegexOption.IGNORE_CASE)
+        val PHONE_LIKE = Regex("(?<!\\w)(?:\\+?\\d[\\d .()-]{6,}\\d)(?!\\w)")
+        val LONG_NUMBER = Regex("(?<![A-Za-z0-9])\\d{6,}(?![A-Za-z0-9])")
     }
 }
