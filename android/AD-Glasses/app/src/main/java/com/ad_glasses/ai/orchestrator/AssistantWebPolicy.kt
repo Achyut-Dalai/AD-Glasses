@@ -31,7 +31,7 @@ object AssistantWebPolicy {
 
         // These concepts are time-varying by definition when asked as facts.
         if (NEWS.containsMatchIn(clean)) return true
-        if (WEATHER.containsMatchIn(clean)) return true
+        if (WEATHER_QUERY.containsMatchIn(clean)) return true
         if (MARKETS.containsMatchIn(clean)) return true
         if (BUSINESS_LIVE.containsMatchIn(clean)) return true
         if (SPORTS_LIVE.containsMatchIn(clean)) return true
@@ -53,8 +53,11 @@ object AssistantWebPolicy {
         "\\b(?:breaking news|latest news|news (?:about|on|for)|headlines?|news today)\\b",
         RegexOption.IGNORE_CASE,
     )
-    private val WEATHER = Regex(
-        "\\b(?:weather|weather forecast|forecast|temperature)\\b(?:.{0,40}\\b(?:today|tonight|tomorrow|now|this (?:morning|afternoon|evening|weekend))\\b)?",
+    private val WEATHER_QUERY = Regex(
+        "\\b(?:what(?:'s| is) the weather|how(?:'s| is) the weather|" +
+            "weather (?:in|for|at|near|here|today|tonight|tomorrow|now|this (?:morning|afternoon|evening|weekend))|" +
+            "forecast (?:for|in|at|near|here|today|tonight|tomorrow|now)|" +
+            "what(?:'s| is) the temperature|temperature (?:here|today|tonight|tomorrow|now))\\b",
         RegexOption.IGNORE_CASE,
     )
     private val MARKETS = Regex(
