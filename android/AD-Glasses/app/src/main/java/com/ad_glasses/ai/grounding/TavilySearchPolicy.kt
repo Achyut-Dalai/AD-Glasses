@@ -1,6 +1,9 @@
 package com.ad_glasses.ai.grounding
 
-import java.time.LocalDate
+import java.util.Calendar
+import java.util.GregorianCalendar
+import java.util.Locale
+import java.util.TimeZone
 
 enum class TavilySearchTopic(val wire: String) {
     GENERAL("general"),
@@ -22,6 +25,58 @@ internal data class TavilySearchPlan(
     val startDate: String? = null,
     val endDate: String? = null,
 )
+
+/** API-24-safe calendar date used only for deterministic search planning. */
+internal data class TavilySearchDate(
+    val year: Int,
+    val month: Int,
+    val day: Int,
+) : Comparable<TavilySearchDate> {
+    override fun compareTo(other: TavilySearchDate): Int = when {
+        year != other.year -> year.compareTo(other.year)
+        month != other.month -> month.compareTo(other.month)
+        else -> day.compareTo(other.day)
+    }
+
+    fun plusDays(days: Int): TavilySearchDate {
+        val calendar = utcCalendar(year, month, day) ?: return this
+        calendar.add(Calendar.DAY_OF_MONTH, days)
+        return fromCalendar(calendar)
+    }
+
+    override fun toString(): String = String.format(Locale.US, "%04d-%02d-%02d", year, month, day)
+
+    companion object {
+        fun today(): TavilySearchDate = fromCalendar(Calendar.getInstance())
+
+        fun parseIso(value: String): TavilySearchDate? {
+            val parts = value.split('-')
+            if (parts.size != 3) return null
+            val year = parts[0].toIntOrNull() ?: return null
+            val month = parts[1].toIntOrNull() ?: return null
+            val day = parts[2].toIntOrNull() ?: return null
+            return if (utcCalendar(year, month, day) != null) TavilySearchDate(year, month, day) else null
+        }
+
+        private fun fromCalendar(calendar: Calendar): TavilySearchDate = TavilySearchDate(
+            year = calendar.get(Calendar.YEAR),
+            month = calendar.get(Calendar.MONTH) + 1,
+            day = calendar.get(Calendar.DAY_OF_MONTH),
+        )
+
+        private fun utcCalendar(year: Int, month: Int, day: Int): Calendar? = runCatching {
+            GregorianCalendar(TimeZone.getTimeZone("UTC"), Locale.US).apply {
+                isLenient = false
+                clear()
+                set(Calendar.YEAR, year)
+                set(Calendar.MONTH, month - 1)
+                set(Calendar.DAY_OF_MONTH, day)
+                // Force validation while lenient=false.
+                timeInMillis
+            }
+        }.getOrNull()
+    }
+}
 
 /**
  * Converts the user's temporal intent into Tavily-native search constraints.
@@ -63,7 +118,7 @@ internal object TavilySearchPolicy {
         RegexOption.IGNORE_CASE,
     )
 
-    fun plan(rawQuery: String, today: LocalDate = LocalDate.now()): TavilySearchPlan {
+    fun plan(rawQuery: String, today: TavilySearchDate = TavilySearchDate.today()): TavilySearchPlan {
         val clean = rawQuery.replace(Regex("\\s+"), " ").trim()
         val topic = when {
             FINANCE.containsMatchIn(clean) -> TavilySearchTopic.FINANCE
@@ -105,15 +160,15 @@ internal object TavilySearchPolicy {
         )
     }
 
-    private fun explicitDateWindow(text: String, today: LocalDate): DateWindow? {
+    private fun explicitDateWindow(text: String, today: TavilySearchDate): DateWindow? {
         val parsedDates = ISO_DATE.findAll(text)
-            .mapNotNull { match -> runCatching { LocalDate.parse(match.value) }.getOrNull() }
+            .mapNotNull { match -> TavilySearchDate.parseIso(match.value) }
             .toList()
         if (parsedDates.isNotEmpty()) {
             val earliest = parsedDates.minOrNull() ?: return null
             val latest = parsedDates.maxOrNull() ?: return null
             return DateWindow(
-                start = earliest.minusDays(1),
+                start = earliest.plusDays(-1),
                 end = latest.plusDays(1),
                 label = if (earliest == latest) earliest.toString() else "$earliest to $latest",
             )
@@ -127,8 +182,8 @@ internal object TavilySearchPolicy {
 
         val firstYear = years.minOrNull() ?: return null
         val lastYear = years.maxOrNull() ?: return null
-        val requestedStart = LocalDate.of(firstYear, 1, 1).minusDays(1)
-        val requestedEnd = LocalDate.of(lastYear + 1, 1, 1)
+        val requestedStart = TavilySearchDate(firstYear, 1, 1).plusDays(-1)
+        val requestedEnd = TavilySearchDate(lastYear + 1, 1, 1)
         val boundedEnd = minOf(requestedEnd, today.plusDays(1))
         return DateWindow(
             start = requestedStart,
@@ -138,8 +193,8 @@ internal object TavilySearchPolicy {
     }
 
     private data class DateWindow(
-        val start: LocalDate,
-        val end: LocalDate,
+        val start: TavilySearchDate,
+        val end: TavilySearchDate,
         val label: String,
     )
 }
