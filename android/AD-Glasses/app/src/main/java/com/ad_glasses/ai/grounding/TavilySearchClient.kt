@@ -67,18 +67,14 @@ class TavilySearchClient(
         val key = GroundingPrefs.getTavilyApiKey(appContext)
         check(key.isNotBlank()) { "Tavily API key is not configured." }
 
-        val cleanQuery = query.replace(Regex("\\s+"), " ").trim().take(MAX_USER_QUERY_CHARS)
-        require(cleanQuery.isNotBlank()) { "Tavily query cannot be blank." }
-        val payload = JSONObject()
-            .put("query", cleanQuery.take(MAX_QUERY_CHARS))
-            .put("search_depth", depth.wire)
-            .put("chunks_per_source", CHUNKS_PER_SOURCE)
-            .put("topic", topic.wire)
-            .put("include_answer", if (includeAnswer) "basic" else false)
-            .put("include_raw_content", false)
-            .put("max_results", maxResults.coerceIn(1, MAX_RESULTS))
-        timeRange?.let { payload.put("time_range", it.wire) }
-
+        val payload = buildPayload(
+            query = query,
+            depth = depth,
+            maxResults = maxResults,
+            topic = topic,
+            timeRange = timeRange,
+            includeAnswer = includeAnswer,
+        )
         val body = payload.toString().toRequestBody(JSON)
         val request = Request.Builder()
             .url(SEARCH_URL)
@@ -112,6 +108,27 @@ class TavilySearchClient(
         throw cancelled
     } catch (error: Throwable) {
         Result.failure(error)
+    }
+
+    internal fun buildPayload(
+        query: String,
+        depth: TavilySearchDepth,
+        maxResults: Int,
+        topic: TavilySearchTopic,
+        timeRange: TavilyTimeRange?,
+        includeAnswer: Boolean,
+    ): JSONObject {
+        val cleanQuery = query.replace(Regex("\\s+"), " ").trim().take(MAX_USER_QUERY_CHARS)
+        require(cleanQuery.isNotBlank()) { "Tavily query cannot be blank." }
+        return JSONObject()
+            .put("query", cleanQuery.take(MAX_QUERY_CHARS))
+            .put("search_depth", depth.wire)
+            .put("chunks_per_source", CHUNKS_PER_SOURCE)
+            .put("topic", topic.wire)
+            .put("include_answer", if (includeAnswer) "basic" else false)
+            .put("include_raw_content", false)
+            .put("max_results", maxResults.coerceIn(1, MAX_RESULTS))
+            .also { payload -> timeRange?.let { payload.put("time_range", it.wire) } }
     }
 
     internal fun parse(payload: String): TavilySearchResponse {
