@@ -224,6 +224,8 @@ class AndroidAssistantCapabilityExecutor(
         val spoken = when {
             Regex("(?:API )?HTTP 401", RegexOption.IGNORE_CASE).containsMatchIn(detail) ->
                 "Cloud AI authentication failed. Check the API key."
+            Regex("(?:API )?HTTP 404", RegexOption.IGNORE_CASE).containsMatchIn(detail) ->
+                "Cloud AI could not find that model or endpoint. Re-select the model in Cloud AI settings."
             Regex("(?:API )?HTTP 429", RegexOption.IGNORE_CASE).containsMatchIn(detail) ->
                 "Cloud AI is rate limited right now. Try again shortly."
             Regex("(?:API )?HTTP 5\\d\\d", RegexOption.IGNORE_CASE).containsMatchIn(detail) ->
@@ -305,8 +307,8 @@ class AndroidAssistantCapabilityExecutor(
 
     /**
      * Generation room is selected only from product intent. Provider/model identity may change the
-     * wire fields used to express that intent, but never this budget. Spoken output has its own hard
-     * local boundary; phone Chat is concise by instruction rather than destructively truncated.
+     * wire fields used to express that intent, but never this budget. Speech presentation remains
+     * concise, but a longer clean provider answer is retained rather than discarded after generation.
      */
     private fun outputTokenLimit(
         surface: AssistantInputSurface,
@@ -387,20 +389,21 @@ class AndroidAssistantCapabilityExecutor(
 
         if (surface == AssistantInputSurface.PHONE_TEXT) {
             // Phone Chat has a visible screen and can use the complete concise provider answer.
-            // Do not apply the wearable 50-word truncator after generation.
             return AssistantResult(spokenText = rich, richText = rich)
         }
 
-        val bounded = AssistantSpokenResponsePolicy.forConciseConversation(rich)
-        if (bounded.length < rich.length) {
+        val spoken = AssistantSpokenResponsePolicy.forConciseConversation(rich)
+        if (spoken.length < AssistantSpokenResponsePolicy.normalizeForSpeech(rich).length) {
             Log.i(
                 "AssistantTiming",
-                "stage=assistant_output_bounded surface=$surface rawChars=${rich.length} boundedChars=${bounded.length}",
+                "stage=assistant_speech_bounded surface=$surface answerChars=${rich.length} spokenChars=${spoken.length}",
             )
         }
         return AssistantResult(
-            spokenText = bounded,
-            richText = bounded,
+            // The spoken projection remains bounded for wearable/voice UX, but the paid-for clean
+            // final answer is retained in richText for Chats/history instead of being thrown away.
+            spokenText = spoken,
+            richText = rich,
         )
     }
 
