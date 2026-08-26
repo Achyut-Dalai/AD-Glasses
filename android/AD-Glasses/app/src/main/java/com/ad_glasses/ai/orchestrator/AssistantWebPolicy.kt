@@ -21,11 +21,7 @@ object AssistantWebPolicy {
         if (clean.isBlank()) return requested == true
         if (requested == true) return true
 
-        // Explicit language in the user's utterance is stronger than a stale/off UI default. This
-        // means a user can say "search the web" even if an earlier surface toggle was off.
         if (isExplicitWebRequest(clean)) return true
-
-        // A visible per-turn "off" is authoritative for inferred freshness and inherited context.
         if (requested == false) return false
         if (isInherentlyFresh(clean)) return true
 
@@ -47,16 +43,16 @@ object AssistantWebPolicy {
         val clean = text.trim()
         if (clean.isBlank()) return false
 
-        // These concepts are time-varying by definition when asked as facts.
         if (NEWS.containsMatchIn(clean)) return true
         if (WEATHER_QUERY.containsMatchIn(clean)) return true
         if (MARKETS.containsMatchIn(clean)) return true
         if (BUSINESS_LIVE.containsMatchIn(clean)) return true
         if (SPORTS_LIVE.containsMatchIn(clean)) return true
+        if (PUBLIC_OFFICE_LIVE.containsMatchIn(clean)) return true
+        if (ELECTION_LIVE.containsMatchIn(clean)) return true
+        if (FLIGHT_LIVE.containsMatchIn(clean)) return true
+        if (SERVICE_STATUS.containsMatchIn(clean)) return true
 
-        // Relative recency words only activate retrieval when paired with a fact family that can
-        // materially change. This keeps phrases such as "my current location", "current in a wire",
-        // "newest recipe ideas", and "next prime number" on the normal assistant path.
         return FRESHNESS.containsMatchIn(clean) && FRESH_TARGET.containsMatchIn(clean)
     }
 
@@ -83,8 +79,6 @@ object AssistantWebPolicy {
             "verify .{0,80} (?:online|on the web|with (?:web )?sources))\\b",
         option = RegexOption.IGNORE_CASE,
     )
-    // "Look up" is itself a compound retrieval directive in ordinary speech. This is intentionally
-    // different from bare "find"/"search", which are common in local reasoning and code tasks.
     private val LOOK_UP = Regex("\\blook up\\b", RegexOption.IGNORE_CASE)
     private val SEARCH_EXTERNAL = Regex(
         "\\bsearch for\\b.{0,100}\\b(?:latest|most recent|today|tonight|tomorrow|news|weather|forecast|" +
@@ -124,7 +118,30 @@ object AssistantWebPolicy {
     private val SPORTS_LIVE = Regex(
         "(?:\\b(?:live score|final score|match score|game score|sports? scores?|league standings?|match results?|game results?)\\b|" +
             "\\bwho won (?:the )?(?:match|game|race|final|tournament|championship|fight|bout)\\b|" +
-            "\\bwho is winning (?:the )?(?:match|game|race|final|tournament|championship|fight|bout)\\b)",
+            "\\bwho is winning (?:the )?(?:match|game|race|final|tournament|championship|fight|bout)\\b|" +
+            "\\b(?:when is|what time is) (?:the )?next (?:game|match|race|fixture|fight|bout)\\b|" +
+            "\\bnext (?:game|match|race|fixture|fight|bout) (?:time|date|schedule)\\b)",
+        RegexOption.IGNORE_CASE,
+    )
+    private val PUBLIC_OFFICE_LIVE = Regex(
+        "(?:\\bwho (?:is|'s) (?:the )?(?:president|prime minister|chief minister|governor|mayor|" +
+            "ceo|chief executive|chairperson|chairman|chairwoman) (?:of|at|for)\\b|" +
+            "\\bwho (?:runs|leads|heads) (?:the )?.{1,80}\\b(?:company|government|administration|organization|organisation)\\b)",
+        RegexOption.IGNORE_CASE,
+    )
+    private val ELECTION_LIVE = Regex(
+        "\\b(?:who won (?:the )?(?:election|primary|referendum)|(?:election|primary|referendum) results?|" +
+            "election outcome|vote count)\\b",
+        RegexOption.IGNORE_CASE,
+    )
+    private val FLIGHT_LIVE = Regex(
+        "(?:\\bflight\\s+[A-Z0-9-]{2,10}\\b.{0,50}\\b(?:status|on time|delayed|cancelled|canceled|departed|landed)\\b|" +
+            "\\b(?:status of|track) flight\\s+[A-Z0-9-]{2,10}\\b)",
+        setOf(RegexOption.IGNORE_CASE, RegexOption.DOT_MATCHES_ALL),
+    )
+    private val SERVICE_STATUS = Regex(
+        "(?:\\b(?:service|website|site|api|platform|network) (?:status|outage)\\b|" +
+            "\\b(?:status|outage) (?:for|of) (?:the )?(?:service|website|site|api|platform|network)\\b)",
         RegexOption.IGNORE_CASE,
     )
     private val FRESHNESS = Regex(
