@@ -42,7 +42,7 @@ class ADVisibleProductUiTest {
         assertFalse(screen.contains("ADConversationRouteDisclosure("))
         assertFalse(screen.contains("ADPromptSuggestion("))
         assertFalse(screen.contains("What did I capture today?"))
-        assertTrue(screen.contains("onWebSearchChange = { webSearch = it && webAvailable }"))
+        assertTrue(screen.contains("onWebSearchChange = { webSearch = it && webAvailable && selectedImagePath == null }"))
         assertTrue(screen.contains("Enable web search"))
         assertTrue(screen.contains("if (messages.isEmpty() && pendingPrompt == null)"))
         assertTrue(screen.contains("if (pendingPrompt != null)"))
