@@ -39,7 +39,9 @@ class AssistantRequestRouter {
         context: Context,
         request: AssistantRequest,
         providerType: AgentProviderType,
-    ): AssistantRoutingDecision {
+    ): AssistantRoutingDecision = classifyStructurally(request)
+
+    internal fun classifyStructurally(request: AssistantRequest): AssistantRoutingDecision {
         val text = request.text.trim()
         if (text.isBlank()) {
             return AssistantRoutingDecision(
