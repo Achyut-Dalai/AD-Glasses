@@ -155,6 +155,7 @@ class AssistantGroundingPolicyTest {
         assertTrue(museum.filters.contains(OverpassTagFilter("tourism", "museum")))
 
         assertFalse(AssistantGroundingPolicy.spatialIntent("Explain recursion in this area of computer science").needsLocation)
+        assertFalse(AssistantGroundingPolicy.spatialIntent("Find a museum in this area of the code").needsLocation)
     }
 
     @Test
@@ -177,12 +178,19 @@ class AssistantGroundingPolicyTest {
     }
 
     @Test
-    fun metaSpatialLanguageDoesNotActivateLocation() {
+    fun metaSpatialAndTechnicalProximityLanguageDoesNotActivateLocation() {
         listOf(
             "What does 'near me' mean in search?",
             "Explain the phrase nearby",
             "How does GPS location work?",
             "What is around here in this code?",
+            "Where am I in this code?",
+            "Where am I in this proof?",
+            "Explain local news as a media concept",
+            "What is local weather?",
+            "Find the nearest node in this graph",
+            "Which value is closest in this array?",
+            "What's nearby in this data structure?",
         ).forEach { text ->
             assertFalse(text, AssistantGroundingPolicy.spatialIntent(text).needsLocation)
         }
