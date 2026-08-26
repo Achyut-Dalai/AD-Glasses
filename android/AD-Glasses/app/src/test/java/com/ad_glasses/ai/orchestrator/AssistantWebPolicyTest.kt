@@ -13,9 +13,10 @@ class AssistantWebPolicyTest {
     }
 
     @Test
-    fun freshnessAndLocationLanguageDoNotImplicitlyEnableNetworkUse() {
-        assertFalse(AssistantWebPolicy.shouldUseWeb("What's the weather tomorrow?"))
-        assertFalse(AssistantWebPolicy.shouldUseWeb("What's the latest news?"))
+    fun inherentlyFreshQuestionsEnableNetworkWhenNoPerTurnChoiceWasSupplied() {
+        assertTrue(AssistantWebPolicy.shouldUseWeb("What's the weather tomorrow?"))
+        assertTrue(AssistantWebPolicy.shouldUseWeb("What's the latest news?"))
+        assertTrue(AssistantWebPolicy.shouldUseWeb("Is this store open now?"))
         assertFalse(AssistantWebPolicy.shouldUseWeb("Find me a coffee shop nearby"))
     }
 
@@ -25,9 +26,9 @@ class AssistantWebPolicyTest {
     }
 
     @Test
-    fun explicitPerTurnStateEnablesStandardChatWebUse() {
+    fun explicitPerTurnStateControlsAutomaticFreshness() {
         assertFalse(AssistantWebPolicy.shouldUseWeb("What's the latest news?", requested = false))
         assertTrue(AssistantWebPolicy.shouldUseWeb("Explain aperture", requested = true))
-        assertTrue(AssistantWebPolicy.shouldUseWeb("Search the web", requested = true))
+        assertTrue(AssistantWebPolicy.shouldUseWeb("Search the web", requested = false))
     }
 }
