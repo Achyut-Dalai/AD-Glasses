@@ -15,9 +15,10 @@ import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withContext
 import okhttp3.FormBody
+import okhttp3.HttpUrl
+import okhttp3.HttpUrl.Companion.toHttpUrl
 import okhttp3.OkHttpClient
 import okhttp3.Request
-import okhttp3.HttpUrl.Companion.toHttpUrl
 import org.json.JSONObject
 
 data class GeoPoint(val latitude: Double, val longitude: Double)
@@ -63,8 +64,9 @@ data class OverpassTagFilter(val key: String, val value: String?)
  * User-triggered OSM-family client.
  *
  * Public Nominatim calls are globally serialized, cached, and kept at <= 1 request/sec. Overpass
- * calls are also serialized. All endpoints are runtime-configurable so production can move to a
- * proxy/self-hosted service without an app release.
+ * calls are also serialized. The default FOSSGIS OSRM service is rate-limited to <= 1 request/sec.
+ * All endpoints are runtime-configurable so production can move to a proxy/self-hosted service
+ * without an app release.
  */
 class OsmServiceClient(
     private val configProvider: () -> GroundingServiceConfig,
@@ -151,15 +153,17 @@ class OsmServiceClient(
             filter.value?.let { require(SAFE_TAG_VALUE.matches(it)) { "Unsupported OSM tag value." } }
         }
         val radius = radiusMeters.coerceIn(50, 5_000)
+        val outputLimit = limit.coerceIn(1, 20)
         val query = buildString {
-            append("[out:json][timeout:10];(")
+            append("[out:json][timeout:8];(")
             filters.forEach { filter ->
                 append("nwr(around:$radius,${origin.latitude},${origin.longitude})")
                 if (filter.value == null) append("[\"${filter.key}\"]")
                 else append("[\"${filter.key}\"=\"${filter.value}\"]")
                 append(';')
             }
-            append(");out center tags ${limit.coerceIn(1, 20)};")
+            // body keeps node lat/lon; center adds a usable point for ways and relations.
+            append(");out body center $outputLimit;")
         }
         overpassMutex.withLock {
             withContext(Dispatchers.IO) {
@@ -170,10 +174,12 @@ class OsmServiceClient(
                     .header("Accept", "application/json")
                     .post(FormBody.Builder().add("data", query).build())
                     .build()
-                client.newCall(request).execute().use { response ->
+                val call = client.newCall(request)
+                call.timeout().timeout(OVERPASS_CALL_TIMEOUT_SECONDS, TimeUnit.SECONDS)
+                call.execute().use { response ->
                     val payload = response.body?.string().orEmpty()
                     if (!response.isSuccessful) throw IOException("Overpass HTTP ${response.code}")
-                    parseOverpass(payload, origin, limit)
+                    parseOverpass(payload, origin, outputLimit)
                 }
             }
         }
@@ -185,24 +191,41 @@ class OsmServiceClient(
         mode: RouteMode = RouteMode.DRIVING,
     ): Result<OsmRoute> = runCatching {
         val config = configProvider()
+        val endpoint = routingEndpoint(config.osrmBaseUrl, mode)
         val coordinates = "${origin.longitude},${origin.latitude};${destination.longitude},${destination.latitude}"
-        val url = (config.osrmBaseUrl + "/route/v1/${mode.profile}/$coordinates").toHttpUrl().newBuilder()
+        val url = (endpoint.baseUrl + "/route/v1/${endpoint.profile}/$coordinates").toHttpUrl().newBuilder()
             .addQueryParameter("overview", "false")
             .addQueryParameter("steps", "true")
             .addQueryParameter("alternatives", "false")
+            .addQueryParameter("generate_hints", "false")
             .build()
-        withContext(Dispatchers.IO) {
-            val request = Request.Builder()
-                .url(url)
-                .header("User-Agent", USER_AGENT)
-                .header("Accept", "application/json")
-                .get()
-                .build()
-            client.newCall(request).execute().use { response ->
-                val payload = response.body?.string().orEmpty()
-                if (!response.isSuccessful) throw IOException("OSRM HTTP ${response.code}")
-                parseRoute(payload)
+        val requestBlock: suspend () -> OsmRoute = {
+            withContext(Dispatchers.IO) {
+                val request = Request.Builder()
+                    .url(url)
+                    .header("User-Agent", USER_AGENT)
+                    .header("Accept", "application/json")
+                    .get()
+                    .build()
+                val call = client.newCall(request)
+                call.timeout().timeout(OSRM_CALL_TIMEOUT_SECONDS, TimeUnit.SECONDS)
+                call.execute().use { response ->
+                    val payload = response.body?.string().orEmpty()
+                    if (!response.isSuccessful) throw IOException("OSRM HTTP ${response.code}")
+                    parseRoute(payload)
+                }
             }
+        }
+        if (endpoint.publicFossgis) {
+            osrmMutex.withLock {
+                val now = SystemClock.elapsedRealtime()
+                val remaining = PUBLIC_OSRM_MIN_INTERVAL_MS - (now - lastOsrmRequestAtMs)
+                if (remaining > 0) delay(remaining)
+                lastOsrmRequestAtMs = SystemClock.elapsedRealtime()
+                requestBlock()
+            }
+        } else {
+            requestBlock()
         }
     }
 
@@ -210,6 +233,7 @@ class OsmServiceClient(
         val now = SystemClock.elapsedRealtime()
         val remaining = NOMINATIM_MIN_INTERVAL_MS - (now - lastNominatimRequestAtMs)
         if (remaining > 0) delay(remaining)
+        lastNominatimRequestAtMs = SystemClock.elapsedRealtime()
         withContext(Dispatchers.IO) {
             val request = Request.Builder()
                 .url(url)
@@ -218,8 +242,9 @@ class OsmServiceClient(
                 .header("Accept-Language", Locale.getDefault().toLanguageTag())
                 .get()
                 .build()
-            lastNominatimRequestAtMs = SystemClock.elapsedRealtime()
-            client.newCall(request).execute().use { response ->
+            val call = client.newCall(request)
+            call.timeout().timeout(NOMINATIM_CALL_TIMEOUT_SECONDS, TimeUnit.SECONDS)
+            call.execute().use { response ->
                 val payload = response.body?.string().orEmpty()
                 if (!response.isSuccessful) throw IOException("Nominatim HTTP ${response.code}")
                 payload
@@ -250,7 +275,9 @@ class OsmServiceClient(
                     ),
                 )
             }
-        }.sortedBy { it.distanceMeters }.distinctBy { it.name.lowercase() to it.point }.take(limit.coerceIn(1, 20))
+        }.sortedBy { it.distanceMeters }
+            .distinctBy { it.name.lowercase(Locale.US) to it.point }
+            .take(limit.coerceIn(1, 20))
     }
 
     internal fun parseRoute(payload: String): OsmRoute {
@@ -318,23 +345,61 @@ class OsmServiceClient(
         .map { json.optString(it).trim() }
         .firstOrNull { it.isNotBlank() }
 
+    private data class RoutingEndpoint(
+        val baseUrl: String,
+        val profile: String,
+        val publicFossgis: Boolean,
+    )
+
+    private fun routingEndpoint(configuredBaseUrl: String, mode: RouteMode): RoutingEndpoint {
+        val base = configuredBaseUrl.toHttpUrl()
+        val isFossgisRoot = base.host == FOSSGIS_ROUTING_HOST && base.encodedPath.trim('/') == ""
+        if (!isFossgisRoot) {
+            return RoutingEndpoint(
+                baseUrl = configuredBaseUrl.trimEnd('/'),
+                profile = mode.profile,
+                publicFossgis = false,
+            )
+        }
+        val prefix = when (mode) {
+            RouteMode.DRIVING -> "routed-car"
+            RouteMode.WALKING -> "routed-foot"
+            RouteMode.CYCLING -> "routed-bike"
+        }
+        // FOSSGIS runs one statically prepared OSRM graph per prefix; its path profile remains
+        // `driving` even for the foot/bike instances.
+        return RoutingEndpoint(
+            baseUrl = configuredBaseUrl.trimEnd('/') + "/$prefix",
+            profile = "driving",
+            publicFossgis = true,
+        )
+    }
+
     companion object {
-        const val OSM_ATTRIBUTION = "Map data © OpenStreetMap contributors"
+        const val OSM_ATTRIBUTION =
+            "Map data © OpenStreetMap contributors · Routing by OSRM"
         private const val USER_AGENT = "AD-Glasses/alpha (https://github.com/Achyut-Dalai/AD-Glasses)"
+        private const val FOSSGIS_ROUTING_HOST = "routing.openstreetmap.de"
         private const val NOMINATIM_MIN_INTERVAL_MS = 1_050L
+        private const val PUBLIC_OSRM_MIN_INTERVAL_MS = 1_050L
+        private const val NOMINATIM_CALL_TIMEOUT_SECONDS = 8L
+        private const val OVERPASS_CALL_TIMEOUT_SECONDS = 11L
+        private const val OSRM_CALL_TIMEOUT_SECONDS = 9L
         private const val CACHE_LIMIT = 96
         private val SAFE_TAG = Regex("[a-zA-Z0-9_:.-]{1,64}")
         private val SAFE_TAG_VALUE = Regex("[a-zA-Z0-9_ :.'()-]{1,96}")
         private val nominatimMutex = Mutex()
         private val overpassMutex = Mutex()
+        private val osrmMutex = Mutex()
         @Volatile private var lastNominatimRequestAtMs: Long = 0L
+        @Volatile private var lastOsrmRequestAtMs: Long = 0L
         private val reverseCache = LinkedHashMap<String, OsmAddress>()
 
         private fun defaultClient(): OkHttpClient = OkHttpClient.Builder()
-            .connectTimeout(5, TimeUnit.SECONDS)
-            .readTimeout(15, TimeUnit.SECONDS)
-            .writeTimeout(5, TimeUnit.SECONDS)
-            .callTimeout(18, TimeUnit.SECONDS)
+            .connectTimeout(4, TimeUnit.SECONDS)
+            .readTimeout(12, TimeUnit.SECONDS)
+            .writeTimeout(4, TimeUnit.SECONDS)
+            .callTimeout(15, TimeUnit.SECONDS)
             .build()
 
         private fun roundCoordinate(value: Double): String = String.format(Locale.US, "%.5f", value)
