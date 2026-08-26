@@ -102,13 +102,13 @@ class CloudModelPolicyTest {
     }
 
     @Test
-    fun gemini25_keeps_light_thinking_on_for_normal_turns() {
+    fun gemini25_keeps_reasoning_bounded_by_product_intent() {
         val flash = profile(ApiProvider.GOOGLE, "gemini-2.5-flash")
         val pro = profile(ApiProvider.GOOGLE, "gemini-2.5-pro")
 
         listOf(flash, pro).forEach { candidate ->
             assertEquals(1_024, CloudModelPolicy.requestTuning(candidate, concise).geminiThinkingBudget)
-            assertEquals(8_192, CloudModelPolicy.requestTuning(candidate, reasoned).geminiThinkingBudget)
+            assertEquals(4_096, CloudModelPolicy.requestTuning(candidate, reasoned).geminiThinkingBudget)
         }
     }
 
