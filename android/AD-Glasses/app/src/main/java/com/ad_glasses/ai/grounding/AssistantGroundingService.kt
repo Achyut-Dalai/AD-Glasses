@@ -86,13 +86,26 @@ internal object AssistantGroundingPolicy {
         RegexOption.IGNORE_CASE,
     )
     private val META_SPATIAL_LANGUAGE = Regex(
-        "\\b(?:what does|what do|define|definition of|meaning of|explain (?:the )?(?:phrase|term|words?)?|" +
-            "why do apps?|how does)\\b.{0,80}\\b(?:near me|nearby|route|routing|directions?|gps|location services?)\\b",
+        "\\b(?:what(?:'s| is| does| do)|define|definition of|meaning of|explain (?:the )?(?:phrase|term|words?)?|" +
+            "why do apps?|how does)\\b.{0,80}\\b(?:near me|nearby|route|routing|directions?|gps|location services?|" +
+            "local weather|local news)\\b",
         setOf(RegexOption.IGNORE_CASE, RegexOption.DOT_MATCHES_ALL),
     )
     private val NON_SPATIAL_DEICTIC_CONTEXT = Regex(
-        "\\b(?:in|inside|within) (?:this|the) (?:code|function|method|class|file|document|paragraph|sentence|problem|diagram|layout|ui)\\b",
+        "(?:\\b(?:in|inside|within) (?:this|the) (?:code|function|method|class|file|document|paragraph|sentence|problem|" +
+            "proof|story|book|chapter|process|workflow|game|argument|discussion|conversation|diagram|layout|ui)\\b|" +
+            "\\b(?:in|inside|within) (?:this|the) area of (?:the )?(?:code|function|method|class|file|document|problem|" +
+            "proof|story|book|process|workflow|game|argument|discussion|conversation|computer science|mathematics)\\b)",
         RegexOption.IGNORE_CASE,
+    )
+    private val NON_SPATIAL_PROXIMITY_CONTEXT = Regex(
+        "(?:\\b(?:nearby|nearest|closest|near me|around here|close by)\\b.{0,80}\\b(?:node|element|value|record|object|" +
+            "pixel|word|number|vector|cluster|server|process|thread|function|method|class|file|code|graph|tree|array|" +
+            "list|database|cache|data structure)\\b|" +
+            "\\b(?:node|element|value|record|object|pixel|word|number|vector|cluster|server|process|thread|function|" +
+            "method|class|file|code|graph|tree|array|list|database|cache|data structure)\\b.{0,80}\\b" +
+            "(?:nearby|nearest|closest|around here|close by)\\b)",
+        setOf(RegexOption.IGNORE_CASE, RegexOption.DOT_MATCHES_ALL),
     )
     private val ROUTE_LANGUAGE = Regex(
         "\\b(?:route|routing|directions?|navigate|navigation|walk|drive|cycle|bike|get from)\\b",
@@ -253,14 +266,15 @@ internal object AssistantGroundingPolicy {
     fun spatialIntent(text: String, visual: Boolean = false): SpatialIntent {
         val clean = text.trim()
         val technicalDeicticContext = NON_SPATIAL_DEICTIC_CONTEXT.containsMatchIn(clean)
+        val technicalProximityContext = NON_SPATIAL_PROXIMITY_CONTEXT.containsMatchIn(clean)
         val technicalDeicticPhrase = technicalDeicticContext &&
-            (CURRENT_LOCATION_CUE.containsMatchIn(clean) || GENERAL_NEARBY.containsMatchIn(clean))
-        if (clean.isBlank() || META_SPATIAL_LANGUAGE.containsMatchIn(clean) || technicalDeicticPhrase) {
+            (CURRENT_LOCATION_CUE.containsMatchIn(clean) || GENERAL_NEARBY.containsMatchIn(clean) || SELF_LOCATION.containsMatchIn(clean))
+        if (clean.isBlank() || META_SPATIAL_LANGUAGE.containsMatchIn(clean) || technicalDeicticPhrase || technicalProximityContext) {
             return SpatialIntent(needsLocation = false)
         }
 
         val routeSuppressed = shouldSuppressRoute(clean)
-        val locationOnly = SELF_LOCATION.containsMatchIn(clean)
+        val locationOnly = SELF_LOCATION.containsMatchIn(clean) && !technicalDeicticContext
         val currentLocationCue = CURRENT_LOCATION_CUE.containsMatchIn(clean) && !technicalDeicticContext
         val radiusSpecified = RADIUS.containsMatchIn(clean)
         val ambiguousPersonalAnchor = AMBIGUOUS_PERSONAL_ANCHOR.containsMatchIn(clean)
@@ -283,7 +297,7 @@ internal object AssistantGroundingPolicy {
         val routeRequested = !routeSuppressed && (routePair != null || routeDestination != null || routeToCategory)
         val nearestCategoryCue = categoryFilters.isNotEmpty() &&
             NEAREST_OR_CLOSEST.containsMatchIn(clean) && referencePlace == null && !ambiguousPersonalAnchor
-        val deicticAreaCue = categoryFilters.isNotEmpty() && DEICTIC_AREA.containsMatchIn(clean)
+        val deicticAreaCue = categoryFilters.isNotEmpty() && DEICTIC_AREA.containsMatchIn(clean) && !technicalDeicticContext
         val categoryHasSpatialAnchor = !ambiguousPersonalAnchor &&
             (currentLocationCue || deicticAreaCue || radiusSpecified || referencePlace != null || nearestCategoryCue || routeToCategory)
         val filters = when {
@@ -514,17 +528,15 @@ class AssistantGroundingService(context: Context) {
         budgetMs: Long,
     ): GroundingBundle = coroutineScope {
         val startedAt = SystemClock.elapsedRealtime()
+        val spatial = AssistantGroundingPolicy.spatialIntent(prompt, visual = visual)
         val advancedSearch = AssistantGroundingPolicy.useAdvancedSearch(prompt)
         val effectiveUseWeb = useWeb ||
             (visual && allowAutomaticVisualWeb && AssistantGroundingPolicy.shouldGroundVisual(prompt))
-        val requestedBudget = if (effectiveUseWeb && advancedSearch) {
-            maxOf(budgetMs, ADVANCED_GROUNDING_BUDGET_MS)
-        } else {
-            budgetMs
-        }
+        var requestedBudget = budgetMs
+        if (effectiveUseWeb && advancedSearch) requestedBudget = maxOf(requestedBudget, ADVANCED_GROUNDING_BUDGET_MS)
+        if (spatial.routeRequested) requestedBudget = maxOf(requestedBudget, ROUTE_GROUNDING_BUDGET_MS)
         val effectiveBudget = requestedBudget.coerceIn(MIN_GROUNDING_BUDGET_MS, MAX_GROUNDING_BUDGET_MS)
         val deadlineAt = startedAt + effectiveBudget
-        val spatial = AssistantGroundingPolicy.spatialIntent(prompt, visual = visual)
         val sections = mutableListOf<String>()
         val sources = mutableListOf<GroundingSource>()
         var osmUsed = false
@@ -571,7 +583,7 @@ class AssistantGroundingService(context: Context) {
                 val address = resolvedAddress
                 if (address != null) {
                     osmUsed = true
-                    sections += buildLocationSection(currentFix, address)
+                    sections += buildLocationSection(currentFix, address, precise = spatial.locationOnly)
                 } else if (spatial.locationOnly || spatial.landmarkLookup) {
                     sections += "Current GPS coordinates: ${formatPoint(currentFix.point)}. Reverse geocoding was unavailable."
                 }
@@ -774,18 +786,24 @@ class AssistantGroundingService(context: Context) {
         return parts.takeIf { it.isNotEmpty() }?.joinToString(", ")?.take(250)
     }
 
-    private fun buildLocationSection(fix: GeoFix, address: OsmAddress): String = buildString {
-        append("Current location (OpenStreetMap/Nominatim): ")
-        append(address.displayName.ifBlank { formatPoint(fix.point) })
-        fix.accuracyMeters?.let { append("; GPS accuracy about ${it.roundToInt()} m") }
-        fix.bearingDegrees?.let { append("; movement bearing about ${it.roundToInt()}°") }
+    private fun buildLocationSection(fix: GeoFix, address: OsmAddress, precise: Boolean): String = buildString {
+        if (precise) {
+            append("Current location (OpenStreetMap/Nominatim): ")
+            append(address.displayName.ifBlank { formatPoint(fix.point) })
+            fix.accuracyMeters?.let { append("; GPS accuracy about ${it.roundToInt()} m") }
+            fix.bearingDegrees?.let { append("; movement bearing about ${it.roundToInt()}°") }
+        } else {
+            append("Approximate current area (OpenStreetMap/Nominatim): ")
+            append(coarseAddress(address) ?: address.country ?: "area unavailable")
+            append(". Exact street/address coordinates are intentionally omitted from non-location answers")
+        }
         append('.')
     }
 
     private fun buildNearbySection(places: List<OsmPlace>, radiusMeters: Int): String = buildString {
         appendLine("Nearby OpenStreetMap POIs within about $radiusMeters m:")
         places.take(8).forEachIndexed { index, place ->
-            appendLine("- ${index + 1}. ${place.name} (${place.category}), about ${place.distanceMeters} m away; ${formatPoint(place.point)}")
+            appendLine("- ${index + 1}. ${place.name} (${place.category}), about ${place.distanceMeters} m away")
         }
     }.trim()
 
@@ -831,6 +849,7 @@ class AssistantGroundingService(context: Context) {
         const val TEXT_GROUNDING_BUDGET_MS = 8_000L
         const val VISUAL_GROUNDING_BUDGET_MS = 9_500L
         const val ADVANCED_GROUNDING_BUDGET_MS = 10_500L
+        const val ROUTE_GROUNDING_BUDGET_MS = 11_500L
         const val MIN_GROUNDING_BUDGET_MS = 1_500L
         const val MAX_GROUNDING_BUDGET_MS = 15_000L
         const val MIN_STAGE_REMAINDER_MS = 150L
