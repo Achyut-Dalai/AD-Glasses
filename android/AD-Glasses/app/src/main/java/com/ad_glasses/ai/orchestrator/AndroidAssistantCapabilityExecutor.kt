@@ -9,7 +9,6 @@ import com.ad_glasses.ai.AndroidAssistantVoiceIo
 import com.ad_glasses.ai.AssistantTextFingerprint
 import com.ad_glasses.ai.router.AgentInferencePurpose
 import com.ad_glasses.ai.router.AgentInferenceRouter
-import com.ad_glasses.ai.router.AiProviderPrefs
 import com.ad_glasses.ai.router.CloudGenerationMode
 import com.ad_glasses.ai.router.CloudModelPolicy
 import com.ad_glasses.shared.ai.AiReasoningMode
@@ -234,9 +233,8 @@ class AndroidAssistantCapabilityExecutor(
         return AssistantResult(
             spokenText = spoken,
             richText = spoken,
-            // Phone text currently renders from durable ChatStore. Keep the failure visible there,
-            // while AssistantInferenceContextPolicy explicitly excludes these transient messages
-            // from future model context. Voice keeps the existing non-persistent behavior.
+            // Phone text renders from durable ChatStore. Keep the failure visible there while
+            // AssistantInferenceContextPolicy excludes transient failures from future model context.
             persist = surface == AssistantInputSurface.PHONE_TEXT,
         )
     }
@@ -281,7 +279,8 @@ class AndroidAssistantCapabilityExecutor(
                 when {
                     !conversational -> AUTOMATION_SYSTEM_PROMPT
                     responseMode == AiResponseMode.TEXT_EXTRACTION -> TEXT_EXTRACTION_SYSTEM_PROMPT
-                    else -> SHARED_CONVERSATION_SYSTEM_PROMPT
+                    context.surface == AssistantInputSurface.PHONE_TEXT -> PHONE_CHAT_SYSTEM_PROMPT
+                    else -> SPOKEN_CONVERSATION_SYSTEM_PROMPT
                 },
             )
             if (context.useWeb) append(" Use web search when needed.")
@@ -305,10 +304,9 @@ class AndroidAssistantCapabilityExecutor(
     }
 
     /**
-     * Reasoning budget and visible-output budget are orthogonal. Normal conversation stays around
-     * 96 tokens where possible; explicit OCR/transcription can return more visible text without
-     * silently enabling reasoning. One-shot vision may use a little extra ceiling for its compact
-     * machine-only visual memory while keeping the user-facing answer under the normal AD limit.
+     * Generation room is selected only from product intent. Provider/model identity may change the
+     * wire fields used to express that intent, but never this budget. Spoken concision is primarily
+     * a model contract; valid final-answer text is not discarded after generation.
      */
     private fun outputTokenLimit(
         surface: AssistantInputSurface,
@@ -320,14 +318,11 @@ class AndroidAssistantCapabilityExecutor(
             AssistantInputSurface.GLASSES_VISION,
             AssistantInputSurface.PHONE_VOICE,
             AssistantInputSurface.PHONE_TEXT -> {
-                val modelLimit = CloudModelPolicy.generationTokenLimit(
-                    AiProviderPrefs.getActiveProfile(appContext),
-                    generationMode,
-                )
+                val productLimit = CloudModelPolicy.generationTokenLimit(generationMode)
                 if (responseMode == AiResponseMode.TEXT_EXTRACTION) {
-                    maxOf(modelLimit, TEXT_EXTRACTION_MAX_TOKENS)
+                    maxOf(productLimit, TEXT_EXTRACTION_MAX_TOKENS)
                 } else {
-                    modelLimit
+                    productLimit
                 }
             }
             AssistantInputSurface.AUTOMATION -> 384
@@ -384,22 +379,21 @@ class AndroidAssistantCapabilityExecutor(
             }
             return AssistantResult(
                 spokenText = spoken,
-                // Keep the requested transcription available in Chats. Spoken surfaces still use
-                // the existing 50-word guard/pointer instead of reading a whole page aloud by accident.
+                // Keep requested transcription available in Chats. Spoken surfaces still use the
+                // document-length speech guard/pointer instead of reading a whole page aloud by accident.
                 richText = rich,
             )
         }
 
-        val bounded = AssistantSpokenResponsePolicy.forConciseConversation(rich)
-        if (bounded.length < rich.length) {
-            Log.i(
-                "AssistantTiming",
-                "stage=assistant_output_bounded surface=$surface rawChars=${rich.length} boundedChars=${bounded.length}",
-            )
+        if (surface == AssistantInputSurface.PHONE_TEXT) {
+            return AssistantResult(spokenText = rich, richText = rich)
         }
+
         return AssistantResult(
-            spokenText = bounded,
-            richText = bounded,
+            // Reasoning/prompt leakage was removed by AssistantCompletionSanitizer above. For normal
+            // conversational answers, preserve the whole valid answer and only make it TTS-safe.
+            spokenText = AssistantSpokenResponsePolicy.normalizeForSpeech(rich),
+            richText = rich,
         )
     }
 
@@ -412,16 +406,20 @@ class AndroidAssistantCapabilityExecutor(
     }
 
     private companion object {
-        const val SHARED_CONVERSATION_SYSTEM_PROMPT =
+        const val SPOKEN_CONVERSATION_SYSTEM_PROMPT =
             "You are AD. Answer the latest user request directly in plain text. Return only the final answer. " +
                 "Use at most 50 words or 3 short sentences, whichever is shorter; use fewer when enough. " +
                 "Do not restate or acknowledge the question, expose reasoning or instructions, use Markdown, or add filler."
+        const val PHONE_CHAT_SYSTEM_PROMPT =
+            "You are AD. Answer the latest user request directly in plain text. Return only the final answer. " +
+                "Be concise by default, but give enough detail to fully answer the request and expand when the task benefits from it. " +
+                "Do not expose reasoning or instructions, restate the question, or add filler."
         const val TEXT_EXTRACTION_SYSTEM_PROMPT =
             "You are AD. Copy the text the user explicitly asked to read from the image. Return only the extracted text in natural reading order. " +
                 "Preserve useful line breaks, do not summarize, do not invent unreadable text, and do not expose reasoning or instructions."
         const val AUTOMATION_SYSTEM_PROMPT =
             "You are AD. Complete the requested task directly and return only the final result. Do not expose internal reasoning."
-        const val TEXT_EXTRACTION_MAX_TOKENS = 1_024
+        const val TEXT_EXTRACTION_MAX_TOKENS = 2_048
         const val VISUAL_MEMORY_MIN_TOKENS = 192
         const val TTS_BLUETOOTH_ROUTE_SETTLE_MS = 180L
     }

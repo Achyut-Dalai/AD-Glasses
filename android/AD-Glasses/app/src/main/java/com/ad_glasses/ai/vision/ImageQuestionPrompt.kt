@@ -1,6 +1,7 @@
 package com.ad_glasses.ai.vision
 
 import com.ad_glasses.ai.AndroidAssistantVoiceIo
+import com.oudmon.ble.base.bluetooth.BleOperateManager
 import java.util.Locale
 
 data class ImageQuestionSettings(
@@ -23,10 +24,19 @@ data class ResolvedImageQuestionPrompt(
 }
 
 object ImageQuestionDefaults {
-    /** Non-verbal and language-neutral; AndroidAssistantVoiceIo maps this token to a local earcon. */
+    /**
+     * Non-verbal and language-neutral. Keep the existing quiet asset whenever the glasses BLE link
+     * is active; only phone-local listening uses the slightly louder packaged variant.
+     */
     @Suppress("UNUSED_PARAMETER")
-    fun listeningCueForLanguage(languageTag: String): String =
-        AndroidAssistantVoiceIo.LISTENING_EARCON_TOKEN
+    fun listeningCueForLanguage(languageTag: String): String {
+        val glassesConnected = runCatching { BleOperateManager.getInstance().isConnected }.getOrDefault(false)
+        return if (glassesConnected) {
+            AndroidAssistantVoiceIo.LISTENING_EARCON_TOKEN
+        } else {
+            AndroidAssistantVoiceIo.PHONE_LISTENING_EARCON_TOKEN
+        }
+    }
 
     fun questionCueForLanguage(languageTag: String): String = when (
         Locale.forLanguageTag(languageTag).language.lowercase(Locale.ROOT)

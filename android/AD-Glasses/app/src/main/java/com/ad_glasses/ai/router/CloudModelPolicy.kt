@@ -8,27 +8,25 @@ enum class CloudGenerationMode {
 }
 
 /**
- * Provider/model-aware transport policy.
+ * Provider-aware request-shape policy with provider-neutral product budgets.
  *
- * Normal Chat/Lens/Voice uses [CloudGenerationMode.CONCISE_CONVERSATION]: hidden reasoning is
- * disabled where the provider supports it and the provider ceiling stays near the visible answer.
- * A larger ceiling is reserved for [CloudGenerationMode.REASONED_CONVERSATION] only on APIs where
- * reasoning consumes the same generation allowance as visible output. Gemini reports/throttles
- * thinking separately, so its visible answer stays at the concise ceiling even for reasoned turns.
+ * Product intent decides how much generation room a turn gets. The selected provider or model must
+ * never silently make the product more or less capable by changing that ceiling. Provider/model
+ * checks below exist only to map the same intent onto supported wire fields and reasoning controls.
  */
 internal object CloudModelPolicy {
-    /** Roughly enough for the shared <=50 word / <=3 sentence final-answer contract. */
-    const val CONCISE_OUTPUT_TOKENS = 96
+    /**
+     * Normal conversation asks for a compact final answer, but 512 tokens leaves room for light
+     * reasoning on APIs where reasoning shares the completion allowance. This is a ceiling, not a
+     * target; spoken output is independently bounded by the app.
+     */
+    const val CONCISE_OUTPUT_TOKENS = 512
 
-    /** Headroom for APIs where unavoidable hidden reasoning shares the completion-token ceiling. */
-    const val CONCISE_MANDATORY_REASONING_TOKENS = 256
+    /** Explicit deep-reasoning turns may intentionally spend more generation budget. */
+    const val REASONED_OUTPUT_TOKENS = 2_048
 
-    /** Pro-style models cannot be made cheap; keep them functional without making this the default. */
-    const val CONCISE_FORCED_REASONING_TOKENS = 512
-
-    /** Explicit deep-reasoning turns may intentionally spend more shared generation budget. */
-    const val REASONED_OUTPUT_TOKENS = 1_024
-    const val REASONED_FORCED_REASONING_TOKENS = 2_048
+    /** Generic/internal callers that did not select a conversation mode. */
+    const val DEFAULT_OUTPUT_TOKENS = 512
 
     internal data class RequestTuning(
         /** OpenAI-compatible token field. Native Gemini uses maxOutputTokens separately. */
@@ -44,7 +42,7 @@ internal object CloudModelPolicy {
         val excludeReasoning: Boolean = false,
         /** DeepSeek thinking switch; reasoning content remains separate from visible content. */
         val deepSeekThinkingType: String? = null,
-        /** OpenAI Responses API text verbosity control. */
+        /** Retained for transport compatibility; AD no longer forces provider-specific verbosity. */
         val responseVerbosity: String? = null,
         /** Native Gemini 3.x thinking control. */
         val geminiThinkingLevel: String? = null,
@@ -52,79 +50,20 @@ internal object CloudModelPolicy {
         val geminiThinkingBudget: Int? = null,
     )
 
-    fun generationTokenLimit(
-        profile: CloudAiProfile?,
-        mode: CloudGenerationMode,
-    ): Int = when (mode) {
-        CloudGenerationMode.DEFAULT -> 512
-        CloudGenerationMode.REASONED_CONVERSATION -> when {
-            // Gemini's maxOutputTokens bounds candidate output; thinking is controlled/reported
-            // separately. Keep the final answer short even when the requested thinking level rises.
-            profile?.provider == ApiProvider.GOOGLE -> CONCISE_OUTPUT_TOKENS
-            profile?.let(::isForcedReasoningProfile) == true -> REASONED_FORCED_REASONING_TOKENS
-            else -> REASONED_OUTPUT_TOKENS
-        }
-        CloudGenerationMode.CONCISE_CONVERSATION -> conciseTokenLimit(profile)
-    }
-
-    /** Source-compatible helper used by existing callers/tests while the explicit mode is adopted. */
-    fun conciseConversationTokenLimit(profile: CloudAiProfile?): Int =
-        generationTokenLimit(profile, CloudGenerationMode.CONCISE_CONVERSATION)
-
-    private fun conciseTokenLimit(profile: CloudAiProfile?): Int {
-        if (profile == null) return CONCISE_MANDATORY_REASONING_TOKENS
-        val model = normalizedModel(profile.model)
-        return when (profile.provider) {
-            ApiProvider.OPENAI -> when {
-                isOpenAiForcedReasoningModel(model) -> CONCISE_FORCED_REASONING_TOKENS
-                openAiCanDisableReasoning(model) || !isOpenAiReasoningModel(model) -> CONCISE_OUTPUT_TOKENS
-                else -> CONCISE_MANDATORY_REASONING_TOKENS
-            }
-
-            // Gemini candidate output and thinking are independently controlled. Never inflate the
-            // visible answer ceiling merely because a Gemini family has mandatory thinking.
-            ApiProvider.GOOGLE -> CONCISE_OUTPUT_TOKENS
-
-            ApiProvider.GROQ -> when {
-                isGroqQwen36(model) -> CONCISE_OUTPUT_TOKENS
-                isGroqGptOss(model) -> CONCISE_MANDATORY_REASONING_TOKENS
-                else -> CONCISE_OUTPUT_TOKENS
-            }
-
-            ApiProvider.DEEPSEEK -> CONCISE_OUTPUT_TOKENS // v4 supports thinking.type=disabled.
-
-            ApiProvider.OPENROUTER -> when {
-                isOpenRouterForcedReasoningModel(model) -> CONCISE_FORCED_REASONING_TOKENS
-                openRouterCanDisableReasoning(model) || !isLikelyReasoningModel(model) -> CONCISE_OUTPUT_TOKENS
-                else -> CONCISE_MANDATORY_REASONING_TOKENS
-            }
-
-            // A custom endpoint may map any slug to any implementation. Do not invent provider
-            // reasoning controls; 128 keeps the default modest while leaving a little compatibility room.
-            ApiProvider.CUSTOM -> 128
-        }
+    /** Product budget depends only on requested generation mode, never provider/model identity. */
+    fun generationTokenLimit(mode: CloudGenerationMode): Int = when (mode) {
+        CloudGenerationMode.DEFAULT -> DEFAULT_OUTPUT_TOKENS
+        CloudGenerationMode.CONCISE_CONVERSATION -> CONCISE_OUTPUT_TOKENS
+        CloudGenerationMode.REASONED_CONVERSATION -> REASONED_OUTPUT_TOKENS
     }
 
     /**
-     * Compatibility bridge for older transport call sites. New inference code passes [mode]
-     * explicitly so a coincidental token value can never switch reasoning policy.
-     */
-    fun requestTuning(profile: CloudAiProfile, maxTokens: Int): RequestTuning = requestTuning(
-        profile = profile,
-        mode = when (maxTokens) {
-            conciseTokenLimit(profile) -> CloudGenerationMode.CONCISE_CONVERSATION
-            REASONED_OUTPUT_TOKENS,
-            REASONED_FORCED_REASONING_TOKENS -> CloudGenerationMode.REASONED_CONVERSATION
-            else -> CloudGenerationMode.DEFAULT
-        },
-    )
-
-    /**
-     * Native request controls. Unsupported controls are deliberately omitted rather than guessed.
+     * Map one provider-neutral product intent onto each API's supported wire controls.
      *
-     * [includeReasoningActivity] is used only by the adaptive wearable stream watchdog. Providers
-     * may return structured reasoning metadata so the app can know a request is alive; the transport
-     * still discards that content before persistence, display, or TTS.
+     * Normal conversation uses light reasoning where the selected model exposes a safe control.
+     * Explicit reasoned turns raise that control. Structured reasoning may be requested only as a
+     * content-free liveness heartbeat for wearable streaming; transport parsers still discard it
+     * before persistence, display, or TTS.
      */
     fun requestTuning(
         profile: CloudAiProfile,
@@ -142,50 +81,34 @@ internal object CloudModelPolicy {
         val reasoned = mode == CloudGenerationMode.REASONED_CONVERSATION
 
         return when (profile.provider) {
-            ApiProvider.OPENAI -> {
-                val effort = when {
-                    isOpenAiForcedReasoningModel(model) -> null // fixed model policy; avoid unsupported values.
-                    reasoned && isOpenAiReasoningModel(model) -> "medium"
-                    reasoned -> null
-                    openAiCanDisableReasoning(model) -> "none"
-                    isOpenAiBaseGpt5(model) -> "minimal"
-                    isOpenAiReasoningModel(model) -> "low"
+            ApiProvider.OPENAI -> RequestTuning(
+                completionTokenField = tokenField,
+                reasoningEffort = when {
+                    isOpenAiForcedReasoningModel(model) -> null
+                    isOpenAiReasoningModel(model) -> if (reasoned) "medium" else "low"
                     else -> null
-                }
-                RequestTuning(
-                    completionTokenField = tokenField,
-                    reasoningEffort = effort,
-                    // Reasoning depth and final-answer verbosity are independent. Even a reasoned
-                    // wearable turn should end with the shared short final answer.
-                    responseVerbosity = if (model.startsWith("gpt-5")) "low" else null,
-                )
-            }
+                },
+            )
 
             ApiProvider.GOOGLE -> when {
-                model.startsWith("gemini-3.7-") -> RequestTuning(
-                    completionTokenField = tokenField,
-                    geminiThinkingLevel = if (reasoned) "medium" else "low",
-                )
                 model.startsWith("gemini-3.1-flash-lite-image") -> RequestTuning(
                     completionTokenField = tokenField,
-                    // This image model exposes only minimal/high, unlike the general Flash family.
+                    // This image model exposes only minimal/high.
                     geminiThinkingLevel = if (reasoned) "high" else "minimal",
-                )
-                isGeminiMinimalThinkingModel(model) -> RequestTuning(
-                    completionTokenField = tokenField,
-                    geminiThinkingLevel = if (reasoned) "medium" else "minimal",
                 )
                 model.startsWith("gemini-3.1-pro") || model.startsWith("gemini-3-pro") -> RequestTuning(
                     completionTokenField = tokenField,
                     geminiThinkingLevel = if (reasoned) "high" else "low",
                 )
-                isGemini25Flash(model) -> RequestTuning(
+                isGemini3Model(model) -> RequestTuning(
                     completionTokenField = tokenField,
-                    geminiThinkingBudget = if (reasoned) 1_024 else 0,
+                    geminiThinkingLevel = if (reasoned) "medium" else "low",
                 )
-                model.startsWith("gemini-2.5-pro") -> RequestTuning(
+                isGemini25Model(model) -> RequestTuning(
                     completionTokenField = tokenField,
-                    geminiThinkingBudget = if (reasoned) 1_024 else 128,
+                    // Numeric budgets let AD keep ordinary reasoning light and explicit reasoning
+                    // useful without jumping all the way to the provider's large named-tier budget.
+                    geminiThinkingBudget = if (reasoned) 4_096 else 1_024,
                 )
                 else -> RequestTuning(completionTokenField = tokenField)
             }
@@ -193,16 +116,15 @@ internal object CloudModelPolicy {
             ApiProvider.GROQ -> when {
                 isGroqQwen36(model) -> RequestTuning(
                     completionTokenField = tokenField,
+                    // Qwen exposes none/default: use efficient dialogue normally, thinking only
+                    // when product intent explicitly asks for deeper reasoning.
                     reasoningEffort = if (reasoned) "default" else "none",
-                    // Parsed mode is requested only when a reasoning turn needs a heartbeat. The
-                    // parser still drops the reasoning field before the answer reaches the app.
-                    reasoningFormat = if (reasoned && includeReasoningActivity) "parsed" else "hidden",
+                    reasoningFormat = if (includeReasoningActivity) "parsed" else "hidden",
                 )
                 isGroqGptOss(model) -> RequestTuning(
                     completionTokenField = tokenField,
                     reasoningEffort = if (reasoned) "medium" else "low",
-                    // GPT-OSS does not support reasoning_format. Include its dedicated reasoning
-                    // field only when the watchdog needs activity; it is never surfaced to users.
+                    // GPT-OSS has a dedicated reasoning field; it never enters answer content.
                     includeReasoning = includeReasoningActivity,
                 )
                 else -> RequestTuning(completionTokenField = tokenField)
@@ -210,39 +132,26 @@ internal object CloudModelPolicy {
 
             ApiProvider.DEEPSEEK -> RequestTuning(
                 completionTokenField = tokenField,
-                deepSeekThinkingType = if (reasoned) "enabled" else "disabled",
-                reasoningEffort = if (reasoned) "high" else null,
+                deepSeekThinkingType = "enabled",
+                reasoningEffort = if (reasoned) "high" else "low",
             )
 
             ApiProvider.OPENROUTER -> {
                 val effort = when {
-                    reasoned && isLikelyReasoningModel(model) -> "medium"
-                    reasoned -> null
-                    openRouterCanDisableReasoning(model) -> "none"
                     isOpenRouterForcedReasoningModel(model) -> null
-                    model.substringAfterLast('/').let(::isOpenAiBaseGpt5) -> "minimal"
-                    isLikelyReasoningModel(model) -> "low"
+                    isLikelyReasoningModel(model) -> if (reasoned) "medium" else "low"
                     else -> null
                 }
                 RequestTuning(
                     completionTokenField = tokenField,
                     openRouterReasoningEffort = effort,
-                    // For wearable streaming we may temporarily receive structured reasoning as a
-                    // heartbeat, but ApiTokenClient filters it before any user-visible pipeline.
+                    // Reasoning metadata is excluded unless the wearable watchdog explicitly needs
+                    // a heartbeat. ApiTokenClient still emits only answer content either way.
                     excludeReasoning = effort != null && !includeReasoningActivity,
                 )
             }
 
             ApiProvider.CUSTOM -> RequestTuning(completionTokenField = tokenField)
-        }
-    }
-
-    private fun isForcedReasoningProfile(profile: CloudAiProfile): Boolean {
-        val model = normalizedModel(profile.model)
-        return when (profile.provider) {
-            ApiProvider.OPENAI -> isOpenAiForcedReasoningModel(model)
-            ApiProvider.OPENROUTER -> isOpenRouterForcedReasoningModel(model)
-            else -> false
         }
     }
 
@@ -252,15 +161,6 @@ internal object CloudModelPolicy {
         (model.startsWith("gpt-5") && model.contains("-pro")) ||
             model.startsWith("o1-pro") ||
             model.startsWith("o3-pro")
-
-    private fun isOpenAiBaseGpt5(model: String): Boolean =
-        model == "gpt-5" ||
-            (model.startsWith("gpt-5-") && !model.contains("chat-latest"))
-
-    private fun openAiCanDisableReasoning(model: String): Boolean {
-        if (!model.startsWith("gpt-5") || model.contains("-pro") || model.contains("chat-latest")) return false
-        return Regex("^gpt-5\\.(?:[1-9]|[1-9][0-9])(?:$|[-.])").containsMatchIn(model)
-    }
 
     private fun isOpenAiReasoningModel(model: String): Boolean {
         if (model.contains("chat-latest")) return false
@@ -275,27 +175,12 @@ internal object CloudModelPolicy {
 
     private fun isGroqGptOss(model: String): Boolean = model.contains("gpt-oss")
 
-    private fun isGemini25Flash(model: String): Boolean =
-        model.startsWith("gemini-2.5-flash") || model.startsWith("gemini-2.5-flash-lite")
+    private fun isGemini3Model(model: String): Boolean = model.startsWith("gemini-3")
 
-    private fun isGeminiMinimalThinkingModel(model: String): Boolean =
-        model.startsWith("gemini-3.6-") ||
-            model.startsWith("gemini-3.5-flash") ||
-            model.startsWith("gemini-3.1-flash-lite") ||
-            model.startsWith("gemini-3-flash")
+    private fun isGemini25Model(model: String): Boolean = model.startsWith("gemini-2.5")
 
-    private fun openRouterCanDisableReasoning(model: String): Boolean {
-        val leaf = model.substringAfterLast('/')
-        return leaf.contains("qwen3.6") ||
-            leaf.contains("qwen-3.6") ||
-            leaf.startsWith("gemini-2.5-flash") ||
-            (leaf.startsWith("gpt-5.") && !leaf.contains("-pro"))
-    }
-
-    private fun isOpenRouterForcedReasoningModel(model: String): Boolean {
-        val leaf = model.substringAfterLast('/')
-        return isOpenAiForcedReasoningModel(leaf)
-    }
+    private fun isOpenRouterForcedReasoningModel(model: String): Boolean =
+        isOpenAiForcedReasoningModel(model.substringAfterLast('/'))
 
     private fun isLikelyReasoningModel(model: String): Boolean {
         val leaf = model.substringAfterLast('/')

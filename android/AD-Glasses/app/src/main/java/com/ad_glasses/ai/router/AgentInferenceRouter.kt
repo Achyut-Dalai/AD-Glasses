@@ -254,15 +254,15 @@ object AgentInferenceRouter {
             ?.coerceIn(32, 2_048)
             ?: if (purpose == AgentInferencePurpose.CLASSIFICATION) 256 else 512
         // Latency behavior is a product/surface decision, not a side effect of the generation
-        // ceiling. A fast non-reasoning Chat model may legitimately use only 96 tokens without
-        // inheriting voice's short history, prompt ceiling, echo gate, or wearable timeouts.
+        // ceiling. A fast non-reasoning Chat model can use a modest product budget without
+        // inheriting voice's context ceiling, echo gate, or wearable timeouts.
         val lowLatencyVoiceRequest = lowLatencyRequest &&
             purpose == AgentInferencePurpose.UI_PLANNING &&
             onToken != null
         val wearableTimeouts = wearableTimeouts(generationMode)
 
-        // Ask voice should never inherit a large persona/memory prompt. The dedicated caller uses a
-        // compact system instruction; this ceiling is defense in depth for future callers.
+        // Keep voice prompts compact, but leave enough space for the full spoken contract plus the
+        // bounded prior-image memory. The old 320-char ceiling could silently cut visual memory.
         val effectiveSystemPrompt = if (lowLatencyVoiceRequest) {
             systemPrompt.take(LOW_LATENCY_SYSTEM_PROMPT_CHARS).trim()
         } else {
@@ -316,9 +316,9 @@ object AgentInferenceRouter {
                                 }
                                 if (!firstUsefulDelta.isCompleted) firstUsefulDelta.complete(Unit)
                             }
-                            // Downstream speech buffering independently sanitizes the cumulative raw
-                            // answer before TTS. Keep forwarding post-user-echo deltas so it can emit
-                            // the final answer immediately when a reasoning wrapper closes.
+                            // Raw answer deltas may still contain provider wrappers, so downstream
+                            // speech always passes through AssistantStreamingSpeechBuffer's cumulative
+                            // sanitizer before any segment reaches Android TTS.
                             downstream(safeDelta)
                         }
                     }
@@ -508,7 +508,12 @@ object AgentInferenceRouter {
         }
     }
 
-    /** Keep the old ~720-character low-latency history ceiling as a contiguous recent suffix. */
+    /**
+     * Keep a contiguous recent voice suffix within 1,500 characters. Each individual message is
+     * still capped at 360 characters so one garbled Moonshine turn cannot dominate the larger
+     * context window. Once a real recent message would exceed the budget, stop rather than skipping
+     * it and resurrecting older context.
+     */
     internal fun boundedLowLatencyHistory(
         conversationMessages: List<Map<String, String>>,
     ): List<Map<String, String>> {
@@ -598,9 +603,9 @@ object AgentInferenceRouter {
     }
 
     private const val UI_PLANNING_MAX_TOKENS = 512
-    private const val LOW_LATENCY_SYSTEM_PROMPT_CHARS = 320
+    private const val LOW_LATENCY_SYSTEM_PROMPT_CHARS = 900
     private const val LOW_LATENCY_MESSAGE_CHARS = 360
-    private const val LOW_LATENCY_HISTORY_CHARS = 720
+    private const val LOW_LATENCY_HISTORY_CHARS = 1_500
     private const val CONCISE_FIRST_SAFE_ANSWER_TIMEOUT_MS = 6_000L
     private const val CONCISE_ACTIVE_TRANSPORT_TIMEOUT_MS = 10_000L
     private const val CONCISE_ACTIVE_REASONING_TIMEOUT_MS = 15_000L

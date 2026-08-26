@@ -91,6 +91,49 @@ internal fun geminiVisibleText(parts: JSONArray, preserveWhitespace: Boolean): S
     return geminiVisibleText(values, preserveWhitespace)
 }
 
+/**
+ * Gemini's maxOutputTokens is a transport budget shared by hidden thinking and visible output.
+ * Keep the product's answer budget provider-neutral, then add bounded Gemini-only wire headroom so
+ * thinking cannot consume the whole request before a final answer is produced. These are ceilings,
+ * not targets; normal Gemini 3 turns also request `thinkingLevel=low` and the spoken prompt asks for
+ * a short final answer.
+ */
+internal fun geminiWireMaxOutputTokens(
+    profile: CloudAiProfile,
+    generationMode: CloudGenerationMode,
+    visibleOutputTokens: Int,
+): Int {
+    val visible = visibleOutputTokens.coerceAtLeast(1)
+    val model = ApiProvider.GOOGLE.normalizeModelId(profile.model).lowercase()
+    val tuning = CloudModelPolicy.requestTuning(profile, generationMode)
+    val thinkingBudget = tuning.geminiThinkingBudget
+
+    val wireBudget = when {
+        thinkingBudget != null ->
+            visible + thinkingBudget + maxOf(GEMINI_WIRE_SAFETY_TOKENS, visible / 2)
+        tuning.geminiThinkingLevel != null ->
+            maxOf(
+                visible,
+                if (generationMode == CloudGenerationMode.REASONED_CONVERSATION) {
+                    GEMINI_REASONED_WIRE_MIN_TOKENS
+                } else {
+                    GEMINI_NORMAL_WIRE_MIN_TOKENS
+                },
+            )
+        // DEFAULT mode intentionally does not force a thinking control, but current Gemini 2.5/3.x
+        // models can still think by default. Give those model families the same bounded normal floor.
+        model.startsWith("gemini-2.5") || model.startsWith("gemini-3") ->
+            maxOf(visible, GEMINI_NORMAL_WIRE_MIN_TOKENS)
+        else -> visible
+    }
+    return wireBudget.coerceAtMost(GEMINI_WIRE_MAX_TOKENS)
+}
+
+private const val GEMINI_WIRE_SAFETY_TOKENS = 512
+private const val GEMINI_NORMAL_WIRE_MIN_TOKENS = 4_096
+private const val GEMINI_REASONED_WIRE_MIN_TOKENS = 8_192
+private const val GEMINI_WIRE_MAX_TOKENS = 16_384
+
 /** Direct Cloud AI transport resolved through the active encrypted profile. */
 object ApiTokenClient {
     private const val CONNECT_TIMEOUT_MS = 10_000
@@ -542,8 +585,11 @@ object ApiTokenClient {
         }
         require(contents.length() > 0) { "Gemini request has no user/model content." }
 
-        val generationConfig = JSONObject().put("maxOutputTokens", maxTokens)
         val tuning = CloudModelPolicy.requestTuning(profile, generationMode)
+        val generationConfig = JSONObject().put(
+            "maxOutputTokens",
+            geminiWireMaxOutputTokens(profile, generationMode, maxTokens),
+        )
         if (tuning.geminiThinkingLevel != null || tuning.geminiThinkingBudget != null) {
             val thinkingConfig = JSONObject().put("includeThoughts", includeThoughts)
             tuning.geminiThinkingLevel?.let { level -> thinkingConfig.put("thinkingLevel", level) }
