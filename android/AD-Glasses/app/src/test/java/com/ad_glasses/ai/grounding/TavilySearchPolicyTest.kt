@@ -1,13 +1,12 @@
 package com.ad_glasses.ai.grounding
 
-import java.time.LocalDate
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
 
 class TavilySearchPolicyTest {
-    private val today = LocalDate.of(2026, 8, 26)
+    private val today = TavilySearchDate(2026, 8, 26)
 
     @Test
     fun currentBitcoinPriceUsesFinanceAndDayFreshness() {
@@ -48,6 +47,14 @@ class TavilySearchPolicyTest {
         assertNull(plan.timeRange)
         assertEquals("2025-05-09", plan.startDate)
         assertEquals("2025-05-11", plan.endDate)
+    }
+
+    @Test
+    fun invalidCalendarDateIsNotTurnedIntoAFilter() {
+        val plan = TavilySearchPolicy.plan("What happened on 2025-02-31?", today)
+
+        assertNull(plan.startDate)
+        assertNull(plan.endDate)
     }
 
     @Test
