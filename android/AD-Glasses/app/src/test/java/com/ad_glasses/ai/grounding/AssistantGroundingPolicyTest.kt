@@ -112,9 +112,9 @@ class AssistantGroundingPolicyTest {
     @Test
     fun generalNearbyDiscoveryUsesBoundedUsefulPoiSet() {
         listOf(
-            "What's nearby?",
+            "What's nearby",
             "Things to do nearby",
-            "What can I see around here?",
+            "What can I see around here",
         ).forEach { text ->
             val intent = AssistantGroundingPolicy.spatialIntent(text)
             assertTrue(text, intent.needsLocation)
