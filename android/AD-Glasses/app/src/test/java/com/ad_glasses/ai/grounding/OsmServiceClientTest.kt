@@ -41,12 +41,12 @@ class OsmServiceClientTest {
         assertTrue(
             client.routeRequestUrl(origin, destination, RouteMode.WALKING).toString(),
             client.routeRequestUrl(origin, destination, RouteMode.WALKING).toString()
-                .contains("router.example.com/route/v1/walking/"),
+                .contains("router.example.com/route/v1/foot/"),
         )
         assertTrue(
             client.routeRequestUrl(origin, destination, RouteMode.CYCLING).toString(),
             client.routeRequestUrl(origin, destination, RouteMode.CYCLING).toString()
-                .contains("router.example.com/route/v1/cycling/"),
+                .contains("router.example.com/route/v1/bike/"),
         )
     }
 
@@ -104,7 +104,7 @@ class OsmServiceClientTest {
         assertTrue(place.category.contains("cafe"))
         assertTrue(place.category.contains("hours"))
         assertTrue(place.category.contains("Market Road"))
-        assertTrue(place.category.contains("coffee shop"))
+        assertTrue(place.category.contains("coffee_shop"))
         assertTrue(place.category.contains("phone"))
         assertTrue(place.category.contains("website"))
         assertTrue(place.category.contains("wheelchair"))
@@ -134,11 +134,11 @@ class OsmServiceClientTest {
         val route = client().parseRoute(payload)
 
         assertEquals(2150, route.distanceMeters)
-        assertEquals(403, route.durationSeconds)
+        assertEquals(402, route.durationSeconds)
         assertEquals(3, route.steps.size)
         assertTrue(route.steps[0].instruction.contains("Main Road"))
         assertTrue(route.steps[1].instruction.contains("right", ignoreCase = true))
-        assertTrue(route.steps[2].instruction.contains("Destination Road"))
+        assertTrue(route.steps[2].instruction.contains("Arrive at the destination", ignoreCase = true))
     }
 
     private fun client(osrmBaseUrl: String = GroundingPrefs.DEFAULT_OSRM_BASE_URL): OsmServiceClient =
