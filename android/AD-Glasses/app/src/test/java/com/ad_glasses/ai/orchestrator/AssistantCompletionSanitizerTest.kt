@@ -130,6 +130,36 @@ class AssistantCompletionSanitizerTest {
     }
 
     @Test
+    fun strips_sources_appendix_from_future_model_context() {
+        val raw = """
+            India are 245 for 4 in the current Test innings.
+
+            Sources:
+            [1] Live score — https://example.com/live
+            [2] Match report — https://example.com/report
+        """.trimIndent()
+
+        assertEquals(
+            "India are 245 for 4 in the current Test innings.",
+            AssistantCompletionSanitizer.clean(raw),
+        )
+    }
+
+    @Test
+    fun strips_osm_attribution_from_future_model_context() {
+        val raw = """
+            KFC is about 1.2 km from your current location.
+
+            Map data © OpenStreetMap contributors · Routing by OSRM · Fix the map: https://www.openstreetmap.org/fixthemap
+        """.trimIndent()
+
+        assertEquals(
+            "KFC is about 1.2 km from your current location.",
+            AssistantCompletionSanitizer.clean(raw),
+        )
+    }
+
+    @Test
     fun leaves_normal_answer_unchanged() {
         val raw = "Linked lists store elements in nodes connected by references."
         assertEquals(raw, AssistantCompletionSanitizer.clean(raw))

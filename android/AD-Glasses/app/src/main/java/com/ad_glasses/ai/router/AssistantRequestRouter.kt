@@ -30,21 +30,18 @@ data class AssistantRoutingDecision(
 )
 
 /**
- * Routes conversational and vision requests only. Phone Accessibility/UI automation is deliberately
- * not an assistant invocation target anymore; explicit capability commands are handled separately.
+ * Structural entry router only. Natural-language Search/Maps intent belongs to
+ * GroundingIntentRouter; this boundary uses no phrase/keyword classifier.
  */
 class AssistantRequestRouter {
+    @Suppress("UNUSED_PARAMETER")
     suspend fun route(
         context: Context,
         request: AssistantRequest,
         providerType: AgentProviderType,
-    ): AssistantRoutingDecision = classifyHeuristically(request)
-        ?: AssistantRoutingDecision(
-            intent = AssistantIntent.ANSWER_QUESTION,
-            confidence = 0.9,
-        )
+    ): AssistantRoutingDecision = classifyStructurally(request)
 
-    internal fun classifyHeuristically(request: AssistantRequest): AssistantRoutingDecision? {
+    internal fun classifyStructurally(request: AssistantRequest): AssistantRoutingDecision {
         val text = request.text.trim()
         if (text.isBlank()) {
             return AssistantRoutingDecision(
@@ -53,33 +50,17 @@ class AssistantRequestRouter {
                 clarification = "What would you like to ask?",
             )
         }
-
-        if (request.imageAttached || IMAGE_REQUEST_REGEX.containsMatchIn(text)) {
-            return AssistantRoutingDecision(
+        return if (request.imageAttached) {
+            AssistantRoutingDecision(
                 intent = AssistantIntent.ANALYZE_IMAGE,
                 confidence = 1.0,
                 normalizedGoal = text,
             )
-        }
-
-        if (INFORMATIONAL_QUESTION_REGEX.containsMatchIn(text)) {
-            return AssistantRoutingDecision(
+        } else {
+            AssistantRoutingDecision(
                 intent = AssistantIntent.ANSWER_QUESTION,
-                confidence = 0.95,
+                confidence = 1.0,
             )
         }
-
-        return null
-    }
-
-    private companion object {
-        private val INFORMATIONAL_QUESTION_REGEX = Regex(
-            "^(?:what|who|when|where|why|how|explain|describe|define|tell me|is|are|do|does|did)\\b",
-            RegexOption.IGNORE_CASE,
-        )
-        private val IMAGE_REQUEST_REGEX = Regex(
-            "\\b(?:what (?:am i|are we) looking at|what do you see|analy[sz]e (?:this )?(?:image|picture|photo)|describe (?:this )?(?:image|picture|photo)|read (?:this )?(?:image|picture|photo))\\b",
-            RegexOption.IGNORE_CASE,
-        )
     }
 }

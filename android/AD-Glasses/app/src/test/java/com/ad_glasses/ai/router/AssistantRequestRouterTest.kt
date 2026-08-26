@@ -1,62 +1,47 @@
 package com.ad_glasses.ai.router
 
 import org.junit.Assert.assertEquals
-import org.junit.Assert.assertNull
 import org.junit.Test
-import org.junit.runner.RunWith
-import org.robolectric.RobolectricTestRunner
-import org.robolectric.annotation.Config
 
-@RunWith(RobolectricTestRunner::class)
-@Config(sdk = [34])
 class AssistantRequestRouterTest {
     private val router = AssistantRequestRouter()
 
     @Test
-    fun `imperative phone request is not classified as UI automation`() {
-        val decision = router.classifyHeuristically(
-            AssistantRequest("Open Spotify and play my liked songs", AssistantRequestSource.GLASSES_VOICE)
-        )
-        assertNull(decision)
+    fun textMeaningNeverChangesTheStructuralAnswerRoute() {
+        listOf(
+            "Search the web for today's cricket score",
+            "Find KFC near me",
+            "Open Spotify and play my liked songs",
+            "How do I open Bluetooth settings?",
+            "What am I looking at?",
+        ).forEach { text ->
+            val decision = router.classifyStructurally(
+                AssistantRequest(text, AssistantRequestSource.GLASSES_VOICE, imageAttached = false),
+            )
+            assertEquals(text, AssistantIntent.ANSWER_QUESTION, decision.intent)
+        }
     }
 
     @Test
-    fun `courteous phone command is not classified as UI automation`() {
-        val decision = router.classifyHeuristically(
-            AssistantRequest("Can you open Settings for me?", AssistantRequestSource.GLASSES_VOICE)
+    fun actualAttachedImageUsesVisionPathWithoutPhraseMatching() {
+        val decision = router.classifyStructurally(
+            AssistantRequest(
+                text = "Please help with this",
+                source = AssistantRequestSource.GLASSES_IMAGE,
+                imageAttached = true,
+            ),
         )
-        assertNull(decision)
+
+        assertEquals(AssistantIntent.ANALYZE_IMAGE, decision.intent)
+        assertEquals("Please help with this", decision.normalizedGoal)
     }
 
     @Test
-    fun `read app request is not classified as UI automation`() {
-        val decision = router.classifyHeuristically(
-            AssistantRequest("Read my WhatsApp messages", AssistantRequestSource.GLASSES_VOICE)
+    fun blankRequestClarifies() {
+        val decision = router.classifyStructurally(
+            AssistantRequest("   ", AssistantRequestSource.CHAT),
         )
-        assertNull(decision)
-    }
 
-    @Test
-    fun `informational how question stays a normal question`() {
-        val decision = router.classifyHeuristically(
-            AssistantRequest("How do I open Bluetooth settings?", AssistantRequestSource.GLASSES_VOICE)
-        )
-        assertEquals(AssistantIntent.ANSWER_QUESTION, decision?.intent)
-    }
-
-    @Test
-    fun `visual question requests image analysis`() {
-        val decision = router.classifyHeuristically(
-            AssistantRequest("What am I looking at?", AssistantRequestSource.GLASSES_VOICE)
-        )
-        assertEquals(AssistantIntent.ANALYZE_IMAGE, decision?.intent)
-    }
-
-    @Test
-    fun `ambiguous request defers to normal answer path`() {
-        val decision = router.classifyHeuristically(
-            AssistantRequest("I need some help with Spotify", AssistantRequestSource.GLASSES_VOICE)
-        )
-        assertNull(decision)
+        assertEquals(AssistantIntent.CLARIFY, decision.intent)
     }
 }
