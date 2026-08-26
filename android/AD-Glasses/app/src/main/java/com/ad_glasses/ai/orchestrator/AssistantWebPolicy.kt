@@ -39,7 +39,7 @@ object AssistantWebPolicy {
         val clean = text.trim()
         if (clean.isBlank()) return false
         return EXPLICIT_WEB.containsMatchIn(clean) ||
-            LOOKUP_EXTERNAL.containsMatchIn(clean) ||
+            LOOK_UP.containsMatchIn(clean) ||
             SEARCH_EXTERNAL.containsMatchIn(clean)
     }
 
@@ -83,11 +83,9 @@ object AssistantWebPolicy {
             "verify .{0,80} (?:online|on the web|with (?:web )?sources))\\b",
         option = RegexOption.IGNORE_CASE,
     )
-    private val LOOKUP_EXTERNAL = Regex(
-        "\\blook up\\b.{0,100}\\b(?:opening hours?|closing time|open now|price|stock|score|news|weather|forecast|" +
-            "release date|latest version|specs?|specifications?|recall|schedule|flight status|service status|website)\\b",
-        setOf(RegexOption.IGNORE_CASE, RegexOption.DOT_MATCHES_ALL),
-    )
+    // "Look up" is itself a compound retrieval directive in ordinary speech. This is intentionally
+    // different from bare "find"/"search", which are common in local reasoning and code tasks.
+    private val LOOK_UP = Regex("\\blook up\\b", RegexOption.IGNORE_CASE)
     private val SEARCH_EXTERNAL = Regex(
         "\\bsearch for\\b.{0,100}\\b(?:latest|most recent|today|tonight|tomorrow|news|weather|forecast|" +
             "current price|stock price|exchange rate|score|opening hours?|release date|specs?|specifications?|recall)\\b",
