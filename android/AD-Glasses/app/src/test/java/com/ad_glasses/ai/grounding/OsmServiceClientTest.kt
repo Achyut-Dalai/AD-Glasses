@@ -62,7 +62,7 @@ class OsmServiceClientTest {
             }
         """.trimIndent()
 
-        val places = client().parseNearby(payload, origin, 8)
+        val places = client().parseOverpass(payload, origin, 8)
 
         assertEquals(3, places.size)
         assertEquals("Node Cafe", places[0].name)
@@ -99,7 +99,7 @@ class OsmServiceClientTest {
             }
         """.trimIndent()
 
-        val place = client().parseNearby(payload, origin, 8).single()
+        val place = client().parseOverpass(payload, origin, 8).single()
 
         assertTrue(place.category.contains("cafe"))
         assertTrue(place.category.contains("opening hours"))
