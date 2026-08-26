@@ -2,6 +2,7 @@ package com.ad_glasses.ai.grounding
 
 import androidx.test.core.app.ApplicationProvider
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
@@ -10,7 +11,7 @@ import org.robolectric.RobolectricTestRunner
 import org.robolectric.annotation.Config
 
 @RunWith(RobolectricTestRunner::class)
-@Config(sdk = [35])
+@Config(sdk = [34])
 class GroundingIntentRouterTest {
     private val router = GroundingIntentRouter(ApplicationProvider.getApplicationContext())
 
@@ -84,7 +85,7 @@ class GroundingIntentRouterTest {
     @Test
     fun bothCanFindNearbyPlacesThenAskTavilyToEnrichThoseCandidates() {
         val route = router.parse(
-            raw = """{"intent":"BOTH","external_tool":"tavily","search_query":"official menu prices and opening information","topic":"general","spatial_action":"nearby","spatial_query":"KFC","osm_filters":[{"key":"brand","value":"KFC"}],"radius_meters":3000,"use_current_location":true}""",
+            raw = """{"intent":"BOTH","external_tool":"tavily","search_query":"KFC official menu prices and opening information","topic":"general","spatial_action":"nearby","spatial_query":"KFC","osm_filters":[{"key":"brand","value":"KFC"}],"radius_meters":3000,"use_current_location":true}""",
             originalPrompt = "find kfc within three kilometres and check their websites for menu prices",
         )!!
 
@@ -103,6 +104,19 @@ class GroundingIntentRouterTest {
         )!!
 
         assertEquals(listOf("www.espn.in", "espn.in"), route.sourceDomains)
+    }
+
+    @Test
+    fun currentVisualEvidenceCanHelpRoutingWithoutConversationHistory() {
+        val input = router.buildRouterInput(
+            prompt = "what is the current price of this",
+            currentTurnEvidence = "Blue cotton bedsheet package. Brand label reads Example Home. Size label reads queen.",
+        )
+
+        assertTrue(input.contains("User utterance: what is the current price of this"))
+        assertTrue(input.contains("Current-turn visual observation"))
+        assertTrue(input.contains("Example Home"))
+        assertFalse(input.contains("previous", ignoreCase = true))
     }
 
     @Test
