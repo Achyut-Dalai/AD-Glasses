@@ -35,7 +35,7 @@ private data class SpatialExecution(
     val context: String,
     val point: GeoPoint? = null,
     val coarseArea: String? = null,
-    /** Public place names only; never coordinates. Safe to use as Tavily query hints for BOTH. */
+    /** Public place names only; never coordinates. Safe as external-search hints for BOTH. */
     val searchHints: List<String> = emptyList(),
 )
 
@@ -45,14 +45,21 @@ private data class ExternalExecution(
     val sources: List<GroundingSource>,
     val tavilyUsed: Boolean = false,
     val weatherUsed: Boolean = false,
+    /** If true and this is a plain SEARCH, skip the second AD synthesis call. */
+    val directPreferred: Boolean = false,
 )
 
-/** Executes the small, validated plan produced by [GroundingIntentRouter]. */
+/** Executes the validated semantic plan produced by [GroundingIntentRouter]. */
 class AssistantToolService(context: Context) {
     private val appContext = context.applicationContext
     private val locationProvider = AndroidLocationProvider(appContext)
     private val tavily = TavilySearchClient(appContext)
     private val weather = OpenMeteoWeatherClient()
+    private val wikipedia = WikipediaKnowledgeClient()
+    private val dictionary = FreeDictionaryClient()
+    private val currency = FrankfurterCurrencyClient()
+    private val books = OpenLibraryKnowledgeClient()
+    private val translation = LocalTranslationClient()
     private val osm = OsmServiceClient { GroundingPrefs.getConfig(appContext) }
 
     suspend fun execute(route: GroundingRoute): Result<GroundingToolResult> = try {
@@ -60,8 +67,8 @@ class AssistantToolService(context: Context) {
         val needsSpatial = route.intent == GroundingIntent.SPATIAL || route.intent == GroundingIntent.BOTH
         val needsExternal = route.intent == GroundingIntent.SEARCH || route.intent == GroundingIntent.BOTH
 
-        // BOTH is intentionally ordered. Spatial resolution happens first so Tavily can receive
-        // public candidate names and at most a coarse area label, never GPS coordinates or a street.
+        // BOTH is ordered deliberately: spatial resolution comes first so a later web lookup can use
+        // public candidate names/coarse area while exact coordinates and street address remain local.
         var spatialError: Throwable? = null
         val spatial = if (needsSpatial) {
             try {
@@ -79,10 +86,7 @@ class AssistantToolService(context: Context) {
         var externalError: Throwable? = null
         val external = if (needsExternal) {
             try {
-                when (route.externalTool) {
-                    ExternalTool.TAVILY -> executeTavily(route, spatial)
-                    ExternalTool.WEATHER -> executeWeather(route, spatial)
-                }
+                executeExternal(route, spatial)
             } catch (cancelled: CancellationException) {
                 throw cancelled
             } catch (error: Throwable) {
@@ -104,21 +108,20 @@ class AssistantToolService(context: Context) {
             GroundingIntent.DIRECT -> Unit
         }
 
-        // For a plain Tavily SEARCH, Tavily's own LLM answer is the preferred answer. Do not send it
-        // through AD again. If Tavily has only evidence but no answer, keep context so AD can rescue it.
-        val directTavilySearch = route.intent == GroundingIntent.SEARCH &&
-            external?.tavilyUsed == true &&
+        val directExternalSearch = route.intent == GroundingIntent.SEARCH &&
+            !route.synthesize &&
+            external?.directPreferred == true &&
             !external.answer.isNullOrBlank()
 
         val partialContext = buildString {
             if (route.intent == GroundingIntent.BOTH && spatialError != null) {
-                appendLine("Spatial lookup failed. Do not claim that nearby/location/routing data was retrieved.")
+                appendLine("Spatial lookup failed. Do not claim nearby/location/routing data was retrieved.")
             }
             if (route.intent == GroundingIntent.BOTH && externalError != null) {
-                appendLine("External lookup failed. Do not claim that current web/weather data was retrieved.")
+                appendLine("External lookup failed. Do not claim current web/public-data facts were retrieved.")
             }
         }.trim()
-        val baseContext = if (directTavilySearch) "" else buildSynthesisContext(external, spatial)
+        val baseContext = if (directExternalSearch) "" else buildSynthesisContext(external, spatial)
         val contextText = listOf(baseContext, partialContext)
             .filter(String::isNotBlank)
             .joinToString("\n")
@@ -127,25 +130,21 @@ class AssistantToolService(context: Context) {
         val partialFallback = when {
             route.intent != GroundingIntent.BOTH -> null
             spatialError != null && external != null -> "I couldn't complete the requested location lookup."
-            externalError != null && spatial != null -> "I couldn't fetch the requested current external details."
+            externalError != null && spatial != null -> "I couldn't fetch the requested external details."
             else -> null
         }
-        val fallbackAnswer = if (directTavilySearch) {
-            external?.answer?.trim()?.take(MAX_FALLBACK_ANSWER_CHARS)
-        } else {
-            listOfNotNull(
-                external?.answer?.trim()?.takeIf(String::isNotBlank),
-                spatial?.answer?.trim()?.takeIf(String::isNotBlank),
-                partialFallback,
-            ).joinToString(" ").trim().takeIf(String::isNotBlank)?.take(MAX_FALLBACK_ANSWER_CHARS)
-        }
+        val fallbackAnswer = listOfNotNull(
+            external?.answer?.trim()?.takeIf(String::isNotBlank),
+            spatial?.answer?.trim()?.takeIf(String::isNotBlank),
+            partialFallback,
+        ).joinToString(" ").trim().takeIf(String::isNotBlank)?.take(MAX_FALLBACK_ANSWER_CHARS)
 
         Log.i(
             TAG,
             "tools_done intent=${route.intent.name.lowercase()} external=${route.externalTool.name.lowercase()} " +
                 "tavily=${external?.tavilyUsed == true} weather=${external?.weatherUsed == true} osm=${spatial != null} " +
                 "spatialFailed=${spatialError != null} externalFailed=${externalError != null} " +
-                "directTavily=$directTavilySearch contextChars=${contextText.length} " +
+                "directExternal=$directExternalSearch contextChars=${contextText.length} " +
                 "elapsedMs=${SystemClock.elapsedRealtime() - startedAt}",
         )
         Result.success(
@@ -163,6 +162,19 @@ class AssistantToolService(context: Context) {
     } catch (error: Throwable) {
         Log.w(TAG, "tools_failed type=${error::class.java.simpleName}")
         Result.failure(error)
+    }
+
+    private suspend fun executeExternal(
+        route: GroundingRoute,
+        spatial: SpatialExecution?,
+    ): ExternalExecution = when (route.externalTool) {
+        ExternalTool.TAVILY -> executeTavily(route, spatial)
+        ExternalTool.WEATHER -> executeWeather(route, spatial)
+        ExternalTool.WIKIPEDIA -> executeWikipedia(route, spatial)
+        ExternalTool.DICTIONARY -> executeDictionary(route, spatial)
+        ExternalTool.CURRENCY -> executeCurrency(route, spatial)
+        ExternalTool.BOOKS -> executeBooks(route, spatial)
+        ExternalTool.TRANSLATION -> executeTranslation(route)
     }
 
     private suspend fun executeTavily(
@@ -193,9 +205,8 @@ class AssistantToolService(context: Context) {
             includeDomains = route.sourceDomains,
         ).getOrThrow()
 
-        // A blank Tavily answer is not a reason to spend another credit if retrieval succeeded: AD
-        // can synthesize from the already-returned focused chunks. Retry once only when retrieval is
-        // empty, widening NEWS/FINANCE to GENERAL while preserving user domain/freshness constraints.
+        // Do not spend a second credit merely because Tavily's answer is blank: useful focused
+        // chunks already let AD rescue the turn. Retry once only when retrieval itself is empty.
         val chosen = if (first.results.isEmpty()) {
             tavily.search(
                 query = query,
@@ -209,7 +220,6 @@ class AssistantToolService(context: Context) {
         } else {
             first
         }
-
         if (chosen.results.isEmpty()) {
             throw IllegalStateException("Tavily returned no supporting search results after the bounded retry.")
         }
@@ -230,12 +240,13 @@ class AssistantToolService(context: Context) {
                 if (item.content.isNotBlank()) append(": ${item.content.take(snippetBudget)}")
                 appendLine()
             }
-        }.trim()
+        }.trim().take(MAX_EXTERNAL_CONTEXT_CHARS)
         return ExternalExecution(
             answer = chosen.answer,
             context = context,
             sources = sources,
             tavilyUsed = true,
+            directPreferred = !chosen.answer.isNullOrBlank(),
         )
     }
 
@@ -265,14 +276,12 @@ class AssistantToolService(context: Context) {
                 context = buildString {
                     label?.let { appendLine("Weather location: $it.") }
                     append(snapshot.contextText(route.weatherHorizon))
-                }.take(MAX_WEATHER_CONTEXT_CHARS),
+                }.take(MAX_EXTERNAL_CONTEXT_CHARS),
                 sources = listOf(GroundingSource("Weather data by Open-Meteo", OpenMeteoWeatherClient.SOURCE_URL)),
                 weatherUsed = true,
             )
         }
 
-        // Open-Meteo is a specialized fast path, not a single point of failure. If it is unavailable,
-        // Tavily can still answer weather using only a coarse resolved area; exact GPS never leaves AD.
         val failure = weatherResult.exceptionOrNull() ?: IllegalStateException("Open-Meteo weather request failed.")
         if (!tavily.isConfigured()) throw failure
         val fallbackQuery = buildString {
@@ -290,6 +299,95 @@ class AssistantToolService(context: Context) {
             spatial = null,
         )
     }
+
+    private suspend fun executeWikipedia(route: GroundingRoute, spatial: SpatialExecution?): ExternalExecution {
+        val query = route.searchQuery?.trim().orEmpty()
+        val result = wikipedia.lookup(query, route.sourceLanguage ?: "en").getOrNull()
+        if (result != null) return result.toExternalExecution()
+        return fallbackStructuredToTavily(
+            route = route,
+            spatial = spatial,
+            query = query,
+            topic = TavilySearchTopic.GENERAL,
+            label = "wikipedia",
+        )
+    }
+
+    private suspend fun executeDictionary(route: GroundingRoute, spatial: SpatialExecution?): ExternalExecution {
+        val query = route.searchQuery?.trim().orEmpty()
+        val result = dictionary.lookup(query, route.sourceLanguage ?: "en").getOrNull()
+        if (result != null) return result.toExternalExecution()
+        return fallbackStructuredToTavily(
+            route = route,
+            spatial = spatial,
+            query = "$query definition pronunciation",
+            topic = TavilySearchTopic.GENERAL,
+            label = "dictionary",
+        )
+    }
+
+    private suspend fun executeCurrency(route: GroundingRoute, spatial: SpatialExecution?): ExternalExecution {
+        val amount = route.currencyAmount ?: error("Currency amount is missing.")
+        val base = route.baseCurrency ?: error("Currency base is missing.")
+        val quote = route.quoteCurrency ?: error("Currency quote is missing.")
+        val result = currency.convert(amount, base, quote).getOrNull()
+        if (result != null) return result.toExternalExecution()
+        return fallbackStructuredToTavily(
+            route = route,
+            spatial = spatial,
+            query = "$amount $base to $quote current exchange rate",
+            topic = TavilySearchTopic.FINANCE,
+            label = "currency",
+        )
+    }
+
+    private suspend fun executeBooks(route: GroundingRoute, spatial: SpatialExecution?): ExternalExecution {
+        val query = route.searchQuery?.trim().orEmpty()
+        val result = books.lookup(query).getOrNull()
+        if (result != null) return result.toExternalExecution()
+        return fallbackStructuredToTavily(
+            route = route,
+            spatial = spatial,
+            query = query,
+            topic = TavilySearchTopic.GENERAL,
+            label = "books",
+        )
+    }
+
+    private suspend fun executeTranslation(route: GroundingRoute): ExternalExecution {
+        val text = route.translationText ?: error("Translation text is missing.")
+        val target = route.targetLanguage ?: error("Translation target language is missing.")
+        val result = translation.translate(text, route.sourceLanguage, target).getOrThrow()
+        return result.toExternalExecution(directPreferred = true)
+    }
+
+    private suspend fun fallbackStructuredToTavily(
+        route: GroundingRoute,
+        spatial: SpatialExecution?,
+        query: String,
+        topic: TavilySearchTopic,
+        label: String,
+    ): ExternalExecution {
+        check(tavily.isConfigured()) { "$label lookup failed and Tavily fallback is unavailable." }
+        Log.w(TAG, "${label}_fallback_to_tavily")
+        return executeTavily(
+            route.copy(
+                externalTool = ExternalTool.TAVILY,
+                searchQuery = query,
+                tavilyTopic = topic,
+                sourceDomains = emptyList(),
+            ),
+            spatial,
+        )
+    }
+
+    private fun StructuredKnowledgeResult.toExternalExecution(directPreferred: Boolean = false): ExternalExecution =
+        ExternalExecution(
+            answer = answer,
+            context = context.take(MAX_EXTERNAL_CONTEXT_CHARS),
+            sources = sources,
+            directPreferred = directPreferred,
+        )
 
     private suspend fun resolveWeatherPoint(
         route: GroundingRoute,
@@ -521,9 +619,9 @@ class AssistantToolService(context: Context) {
         const val TAVILY_ANSWER_CONTEXT_CHARS = 1_000
         const val TAVILY_SNIPPET_CONTEXT_CHARS = 320
         const val TAVILY_RESCUE_SNIPPET_CONTEXT_CHARS = 850
-        const val MAX_WEATHER_CONTEXT_CHARS = 1_500
+        const val MAX_EXTERNAL_CONTEXT_CHARS = 1_700
         const val MAX_SPATIAL_CONTEXT_CHARS = 1_200
-        const val MAX_SYNTHESIS_CONTEXT_CHARS = 2_800
+        const val MAX_SYNTHESIS_CONTEXT_CHARS = 3_000
         const val MIN_ABSOLUTE_RESULT_SCORE = 0.15
         const val RELATIVE_RESULT_SCORE_RATIO = 0.55
     }
