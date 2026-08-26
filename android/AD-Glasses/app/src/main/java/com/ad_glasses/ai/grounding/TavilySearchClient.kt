@@ -42,7 +42,8 @@ data class TavilySearchResponse(
  *
  * The semantic router chooses topic/freshness and may carry an explicit user-requested domain
  * constraint. The assistant path stays FAST and never asks Tavily for raw page bodies. Tavily's own
- * basic LLM answer is requested, while AD may still phrase or reason over the bounded result later.
+ * basic LLM answer is requested. One bounded source chunk is retained only as fallback evidence when
+ * Tavily cannot produce a usable answer or when AD must combine Tavily with another tool.
  */
 class TavilySearchClient(
     context: Context,
@@ -127,14 +128,12 @@ class TavilySearchClient(
         return JSONObject()
             .put("query", cleanQuery.take(MAX_QUERY_CHARS))
             .put("search_depth", depth.wire)
+            .put("chunks_per_source", CHUNKS_PER_SOURCE)
             .put("topic", topic.wire)
             .put("include_answer", if (includeAnswer) "basic" else false)
             .put("include_raw_content", false)
             .put("max_results", maxResults.coerceIn(1, MAX_RESULTS))
             .also { payload ->
-                // Tavily documents chunks_per_source as an advanced-depth control. FAST requests do
-                // not send it, avoiding reliance on contradictory examples in older docs.
-                if (depth == TavilySearchDepth.ADVANCED) payload.put("chunks_per_source", ADVANCED_CHUNKS_PER_SOURCE)
                 timeRange?.let { payload.put("time_range", it.wire) }
                 val domains = includeDomains.map(String::trim).filter(String::isNotBlank).distinct().take(MAX_DOMAINS)
                 if (domains.isNotEmpty()) payload.put("include_domains", JSONArray(domains))
@@ -189,7 +188,7 @@ class TavilySearchClient(
         private const val MAX_URL_CHARS = 1_000
         private const val MAX_SNIPPET_CHARS = 520
         private const val MAX_ANSWER_CHARS = 2_000
-        private const val ADVANCED_CHUNKS_PER_SOURCE = 2
+        private const val CHUNKS_PER_SOURCE = 1
         private const val STANDARD_CALL_TIMEOUT_SECONDS = 6L
         private const val ADVANCED_CALL_TIMEOUT_SECONDS = 8L
         private val JSON = "application/json; charset=utf-8".toMediaType()
