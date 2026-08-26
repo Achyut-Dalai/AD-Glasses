@@ -1,6 +1,7 @@
 package com.ad_glasses.ai.transcription.moonshine
 
 import ai.moonshine.voice.Transcriber
+import ai.moonshine.voice.TranscriberOption
 import ai.moonshine.voice.TranscriptEvent
 import android.content.Context
 import android.content.Intent
@@ -153,7 +154,10 @@ class MoonshineRecognitionService : RecognitionService() {
 
                 val loadStarted = SystemClock.elapsedRealtime()
                 val transcriber = MoonshineRuntime.acquire(model.id) {
-                    Transcriber().apply {
+                    // Ask only consumes text. Moonshine's Android binding keeps completed lines on
+                    // the long-lived Transcriber, so returning each line's raw PCM would retain
+                    // previous utterance audio across turns for no product benefit.
+                    Transcriber(listOf(TranscriberOption("return_audio_data", "false"))).apply {
                         loadFromFiles(modelDir.absolutePath, model.modelArch)
                     }
                 }
@@ -719,7 +723,9 @@ class MoonshineRecognitionService : RecognitionService() {
                 try {
                     val modelDir = MoonshineModelManager.prepareForRuntime(appContext, model)
                     MoonshineRuntime.acquire(model.id) {
-                        Transcriber().apply {
+                        // Prewarm must build the same no-audio-retention Transcriber later reused by
+                        // recognition; otherwise the first warm instance would keep the old default.
+                        Transcriber(listOf(TranscriberOption("return_audio_data", "false"))).apply {
                             loadFromFiles(modelDir.absolutePath, model.modelArch)
                         }
                     }
