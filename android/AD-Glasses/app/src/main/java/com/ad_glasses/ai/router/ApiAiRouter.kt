@@ -120,6 +120,8 @@ internal fun geminiWireMaxOutputTokens(
                     GEMINI_NORMAL_WIRE_MIN_TOKENS
                 },
             )
+        // DEFAULT mode intentionally does not force a thinking control, but current Gemini 2.5/3.x
+        // models can still think by default. Give those model families the same bounded normal floor.
         model.startsWith("gemini-2.5") || model.startsWith("gemini-3") ->
             maxOf(visible, GEMINI_NORMAL_WIRE_MIN_TOKENS)
         else -> visible
@@ -301,7 +303,7 @@ object ApiTokenClient {
                         payload.put(
                             "tools",
                             JSONArray().put(JSONObject().put("type", "openrouter:web_search")),
-                    )
+                        )
                     }
                     requestSse(
                         url = OpenAiCompatibleEndpoint.chatCompletionsUrl(baseUrl),
@@ -311,6 +313,9 @@ object ApiTokenClient {
                     ) { data ->
                         if (data == "[DONE]") return@requestSse
                         val event = runCatching { JSONObject(data) }.getOrNull() ?: return@requestSse
+                        // DeepSeek/OpenRouter/Groq may return reasoning alongside content. The SSE
+                        // watchdog observes only a content-free REASONING signal; this extractor
+                        // still reads only content, so thoughts never enter persistence or TTS.
                         emit(extractChatCompletionDelta(event))
                     }
                 }
@@ -349,6 +354,7 @@ object ApiTokenClient {
         )
     }
 
+    /** Fetch models without ever returning the API key to UI state. */
     suspend fun discoverModels(
         context: Context,
         provider: ApiProvider,
@@ -448,12 +454,19 @@ object ApiTokenClient {
             includeReasoningActivity = includeReasoningActivity,
         )
         payload.put(tuning.completionTokenField, maxTokens)
-        tuning.deepSeekThinkingType?.let { type -> payload.put("thinking", JSONObject().put("type", type)) }
+        tuning.deepSeekThinkingType?.let { type ->
+            payload.put("thinking", JSONObject().put("type", type))
+        }
         tuning.reasoningEffort?.let { payload.put("reasoning_effort", it) }
         tuning.reasoningFormat?.let { payload.put("reasoning_format", it) }
         tuning.includeReasoning?.let { payload.put("include_reasoning", it) }
         tuning.openRouterReasoningEffort?.let { effort ->
-            payload.put("reasoning", JSONObject().put("effort", effort).put("exclude", tuning.excludeReasoning))
+            payload.put(
+                "reasoning",
+                JSONObject()
+                    .put("effort", effort)
+                    .put("exclude", tuning.excludeReasoning),
+            )
         }
     }
 
@@ -478,8 +491,12 @@ object ApiTokenClient {
             .put("max_output_tokens", maxTokens)
             .put("tools", JSONArray().put(JSONObject().put("type", "web_search")))
         val tuning = CloudModelPolicy.requestTuning(profile, generationMode)
-        tuning.reasoningEffort?.let { effort -> payload.put("reasoning", JSONObject().put("effort", effort)) }
-        tuning.responseVerbosity?.let { verbosity -> payload.put("text", JSONObject().put("verbosity", verbosity)) }
+        tuning.reasoningEffort?.let { effort ->
+            payload.put("reasoning", JSONObject().put("effort", effort))
+        }
+        tuning.responseVerbosity?.let { verbosity ->
+            payload.put("text", JSONObject().put("verbosity", verbosity))
+        }
         return payload
     }
 
@@ -498,6 +515,7 @@ object ApiTokenClient {
         )
     }
 
+    /** Native Gemini REST request for text, images, audio, and optional Google Search grounding. */
     private fun postGeminiGenerateContent(
         profile: CloudAiProfile,
         apiKey: String,
@@ -553,7 +571,9 @@ object ApiTokenClient {
             } else {
                 val parts = JSONArray()
                 if (text.isNotBlank()) parts.put(JSONObject().put("text", text))
-                if (index == lastUserIndex) appendGeminiMediaParts(parts, imagePaths, audioPath)
+                if (index == lastUserIndex) {
+                    appendGeminiMediaParts(parts, imagePaths, audioPath)
+                }
                 if (parts.length() > 0) {
                     contents.put(
                         JSONObject()
@@ -593,12 +613,19 @@ object ApiTokenClient {
             payload.put("systemInstruction", JSONObject().put("parts", systemParts))
         }
         if (webRequested) {
-            payload.put("tools", JSONArray().put(JSONObject().put("google_search", JSONObject())))
+            payload.put(
+                "tools",
+                JSONArray().put(JSONObject().put("google_search", JSONObject())),
+            )
         }
         return payload
     }
 
-    private fun appendGeminiMediaParts(parts: JSONArray, imagePaths: List<String>, audioPath: String?) {
+    private fun appendGeminiMediaParts(
+        parts: JSONArray,
+        imagePaths: List<String>,
+        audioPath: String?,
+    ) {
         imagePaths.forEach { path ->
             val file = File(path)
             require(file.isFile) { "Image file not found: $path" }
@@ -607,7 +634,9 @@ object ApiTokenClient {
             parts.put(
                 JSONObject().put(
                     "inline_data",
-                    JSONObject().put("mime_type", mime).put("data", data),
+                    JSONObject()
+                        .put("mime_type", mime)
+                        .put("data", data),
                 ),
             )
         }
@@ -619,7 +648,9 @@ object ApiTokenClient {
             parts.put(
                 JSONObject().put(
                     "inline_data",
-                    JSONObject().put("mime_type", mime).put("data", data),
+                    JSONObject()
+                        .put("mime_type", mime)
+                        .put("data", data),
                 ),
             )
         }
@@ -687,7 +718,10 @@ object ApiTokenClient {
             conn.readTimeout = READ_TIMEOUT_MS
             conn.setRequestProperty("Accept", "application/json")
             if (!apiKey.isNullOrBlank()) {
-                conn.setRequestProperty("Authorization", OpenAiCompatibleEndpoint.authorizationHeader(apiKey))
+                conn.setRequestProperty(
+                    "Authorization",
+                    OpenAiCompatibleEndpoint.authorizationHeader(apiKey),
+                )
             }
             extraHeaders.forEach { (name, value) -> conn.setRequestProperty(name, value) }
             if (payload != null) {
@@ -720,7 +754,10 @@ object ApiTokenClient {
             conn.readTimeout = READ_TIMEOUT_MS
             conn.setRequestProperty("Accept", "text/event-stream")
             if (!apiKey.isNullOrBlank()) {
-                conn.setRequestProperty("Authorization", OpenAiCompatibleEndpoint.authorizationHeader(apiKey))
+                conn.setRequestProperty(
+                    "Authorization",
+                    OpenAiCompatibleEndpoint.authorizationHeader(apiKey),
+                )
             }
             extraHeaders.forEach { (name, value) -> conn.setRequestProperty(name, value) }
             conn.doOutput = true
@@ -742,7 +779,9 @@ object ApiTokenClient {
                     dataLines.clear()
                     if (data != "[DONE]") {
                         onActivity?.invoke(CloudStreamActivity.PROVIDER_DATA)
-                        if (ssePayloadHasReasoningActivity(data)) onActivity?.invoke(CloudStreamActivity.REASONING)
+                        if (ssePayloadHasReasoningActivity(data)) {
+                            onActivity?.invoke(CloudStreamActivity.REASONING)
+                        }
                     }
                     onData(data)
                 }
@@ -753,7 +792,9 @@ object ApiTokenClient {
                         flushEvent()
                         continue
                     }
-                    if (line.startsWith("data:")) dataLines += line.substring(5).trimStart()
+                    if (line.startsWith("data:")) {
+                        dataLines += line.substring(5).trimStart()
+                    }
                 }
                 flushEvent()
             }
@@ -787,7 +828,9 @@ object ApiTokenClient {
                     reasoningDetailsCount = delta.optJSONArray("reasoning_details")?.length() ?: 0,
                     visibleContent = visibleContent,
                 )
-            ) return true
+            ) {
+                return true
+            }
         }
 
         return openAiResponsesHasReasoningActivity(
@@ -797,12 +840,18 @@ object ApiTokenClient {
     }
 
     private fun extractChatCompletionText(response: JSONObject): String {
-        val message = response.optJSONArray("choices")?.optJSONObject(0)?.optJSONObject("message") ?: return ""
+        val message = response.optJSONArray("choices")
+            ?.optJSONObject(0)
+            ?.optJSONObject("message")
+            ?: return ""
         return extractTextValue(message.opt("content")).trim()
     }
 
     private fun extractChatCompletionDelta(response: JSONObject): String {
-        val delta = response.optJSONArray("choices")?.optJSONObject(0)?.optJSONObject("delta") ?: return ""
+        val delta = response.optJSONArray("choices")
+            ?.optJSONObject(0)
+            ?.optJSONObject("delta")
+            ?: return ""
         return extractTextValue(delta.opt("content"))
     }
 
@@ -812,7 +861,8 @@ object ApiTokenClient {
         if (raw is JSONArray) {
             return buildString {
                 for (index in 0 until raw.length()) {
-                    when (val part = raw.opt(index)) {
+                    val part = raw.opt(index)
+                    when (part) {
                         is String -> append(part)
                         is JSONObject -> append(part.optString("text"))
                     }
@@ -871,13 +921,15 @@ object ApiTokenClient {
             finishReason = candidate?.optString("finishReason")?.trim()?.takeIf { it.isNotBlank() },
             blockReason = promptFeedback?.optString("blockReason")?.trim()?.takeIf { it.isNotBlank() },
             promptTokens = optionalInt(usage, "promptTokenCount"),
-            candidateTokens = optionalInt(usage, "candidatesTokenCount") ?: optionalInt(candidate, "tokenCount"),
+            candidateTokens = optionalInt(usage, "candidatesTokenCount")
+                ?: optionalInt(candidate, "tokenCount"),
             thoughtTokens = optionalInt(usage, "thoughtsTokenCount"),
             totalTokens = optionalInt(usage, "totalTokenCount"),
         )
     }
 }
 
+/** Chat/voice/Lens inference is Cloud-only. Provider failures never silently switch engines. */
 object AiAssistantRouter {
     interface ChatStreamCallbacks {
         fun onStatus(status: String) {}
@@ -922,7 +974,9 @@ object AiAssistantRouter {
                 webRequested = webRequested,
             )
         }
-        return request.getOrElse { "Cloud AI unavailable (${it.message ?: it::class.java.simpleName})." }
+        return request.getOrElse {
+            "Cloud AI unavailable (${it.message ?: it::class.java.simpleName})."
+        }
     }
 
     suspend fun textReply(context: Context, prompt: String, webRequested: Boolean = false): String {
