@@ -5,12 +5,15 @@ import android.os.SystemClock
 import android.util.Log
 import java.io.IOException
 import java.util.concurrent.TimeUnit
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.withContext
+import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.suspendCancellableCoroutine
+import okhttp3.Call
+import okhttp3.Callback
 import okhttp3.MediaType.Companion.toMediaType
 import okhttp3.OkHttpClient
 import okhttp3.Request
 import okhttp3.RequestBody.Companion.toRequestBody
+import okhttp3.Response
 import org.json.JSONObject
 
 enum class TavilySearchDepth(val wire: String) {
@@ -46,51 +49,53 @@ class TavilySearchClient(
         query: String,
         depth: TavilySearchDepth = TavilySearchDepth.BASIC,
         maxResults: Int = 5,
-    ): Result<TavilySearchResponse> = withContext(Dispatchers.IO) {
-        runCatching {
-            val config = GroundingPrefs.getConfig(appContext)
-            check(config.tavilyEnabled) { "Tavily search is disabled." }
-            val key = GroundingPrefs.getTavilyApiKey(appContext)
-            check(key.isNotBlank()) { "Tavily API key is not configured." }
+    ): Result<TavilySearchResponse> = try {
+        val config = GroundingPrefs.getConfig(appContext)
+        check(config.tavilyEnabled) { "Tavily search is disabled." }
+        val key = GroundingPrefs.getTavilyApiKey(appContext)
+        check(key.isNotBlank()) { "Tavily API key is not configured." }
 
-            val cleanQuery = query.replace(Regex("\\s+"), " ").trim().take(MAX_QUERY_CHARS)
-            require(cleanQuery.isNotBlank()) { "Tavily query cannot be blank." }
-            val body = JSONObject()
-                .put("query", cleanQuery)
-                .put("search_depth", depth.wire)
-                .put("include_answer", true)
-                .put("include_raw_content", false)
-                .put("max_results", maxResults.coerceIn(1, MAX_RESULTS))
-                .toString()
-                .toRequestBody(JSON)
+        val cleanQuery = query.replace(Regex("\\s+"), " ").trim().take(MAX_QUERY_CHARS)
+        require(cleanQuery.isNotBlank()) { "Tavily query cannot be blank." }
+        val body = JSONObject()
+            .put("query", cleanQuery)
+            .put("search_depth", depth.wire)
+            .put("include_answer", true)
+            .put("include_raw_content", false)
+            .put("max_results", maxResults.coerceIn(1, MAX_RESULTS))
+            .toString()
+            .toRequestBody(JSON)
 
-            val request = Request.Builder()
-                .url(SEARCH_URL)
-                .header("Authorization", "Bearer $key")
-                .header("Accept", "application/json")
-                .header("User-Agent", USER_AGENT)
-                .post(body)
-                .build()
+        val request = Request.Builder()
+            .url(SEARCH_URL)
+            .header("Authorization", "Bearer $key")
+            .header("Accept", "application/json")
+            .header("User-Agent", USER_AGENT)
+            .post(body)
+            .build()
 
-            val startedAt = SystemClock.elapsedRealtime()
-            val call = client.newCall(request)
-            call.timeout().timeout(
-                if (depth == TavilySearchDepth.ADVANCED) ADVANCED_CALL_TIMEOUT_SECONDS else BASIC_CALL_TIMEOUT_SECONDS,
-                TimeUnit.SECONDS,
-            )
-            call.execute().use { response ->
-                val payload = response.body?.string().orEmpty()
-                if (!response.isSuccessful) {
-                    throw IOException("Tavily HTTP ${response.code}: ${safeError(payload)}")
-                }
-                val parsed = parse(payload)
-                Log.i(
-                    TAG,
-                    "search_done depth=${depth.wire} results=${parsed.results.size} elapsedMs=${SystemClock.elapsedRealtime() - startedAt}",
-                )
-                parsed
+        val startedAt = SystemClock.elapsedRealtime()
+        val call = client.newCall(request)
+        call.timeout().timeout(
+            if (depth == TavilySearchDepth.ADVANCED) ADVANCED_CALL_TIMEOUT_SECONDS else BASIC_CALL_TIMEOUT_SECONDS,
+            TimeUnit.SECONDS,
+        )
+        val parsed = call.awaitResponse().use { response ->
+            val payload = response.body?.string().orEmpty()
+            if (!response.isSuccessful) {
+                throw IOException("Tavily HTTP ${response.code}: ${safeError(payload)}")
             }
+            parse(payload)
         }
+        Log.i(
+            TAG,
+            "search_done depth=${depth.wire} results=${parsed.results.size} elapsedMs=${SystemClock.elapsedRealtime() - startedAt}",
+        )
+        Result.success(parsed)
+    } catch (cancelled: CancellationException) {
+        throw cancelled
+    } catch (error: Throwable) {
+        Result.failure(error)
     }
 
     internal fun parse(payload: String): TavilySearchResponse {
@@ -133,15 +138,34 @@ class TavilySearchClient(
         private const val MAX_RESULTS = 8
         private const val MAX_SNIPPET_CHARS = 1_200
         private const val MAX_ANSWER_CHARS = 1_500
-        private const val BASIC_CALL_TIMEOUT_SECONDS = 8L
-        private const val ADVANCED_CALL_TIMEOUT_SECONDS = 13L
+        private const val BASIC_CALL_TIMEOUT_SECONDS = 6L
+        private const val ADVANCED_CALL_TIMEOUT_SECONDS = 8L
         private val JSON = "application/json; charset=utf-8".toMediaType()
 
         private fun defaultClient(): OkHttpClient = OkHttpClient.Builder()
-            .connectTimeout(4, TimeUnit.SECONDS)
-            .readTimeout(13, TimeUnit.SECONDS)
-            .writeTimeout(4, TimeUnit.SECONDS)
-            .callTimeout(15, TimeUnit.SECONDS)
+            .connectTimeout(3, TimeUnit.SECONDS)
+            .readTimeout(8, TimeUnit.SECONDS)
+            .writeTimeout(3, TimeUnit.SECONDS)
+            .callTimeout(9, TimeUnit.SECONDS)
             .build()
+
+        private suspend fun Call.awaitResponse(): Response = suspendCancellableCoroutine { continuation ->
+            continuation.invokeOnCancellation { cancel() }
+            enqueue(object : Callback {
+                override fun onFailure(call: Call, error: IOException) {
+                    val token = continuation.tryResumeWithException(error)
+                    if (token != null) continuation.completeResume(token)
+                }
+
+                override fun onResponse(call: Call, response: Response) {
+                    val token = continuation.tryResume(response)
+                    if (token != null) {
+                        continuation.completeResume(token)
+                    } else {
+                        response.close()
+                    }
+                }
+            })
+        }
     }
 }
