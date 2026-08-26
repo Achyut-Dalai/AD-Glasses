@@ -68,6 +68,9 @@ class AndroidAssistantCapabilityExecutor(
             providerFailureResult(error, context.surface)
         }
 
+        // MainActivity keeps the live communication route open and queues streamed TTS while the
+        // provider is still generating. Re-preparing the route after generation would add latency
+        // after speech may already have started. Non-streaming surfaces keep the existing behavior.
         val streamingGlassesVoice = context.surface == AssistantInputSurface.GLASSES_VOICE && onToken != null
         if (!streamingGlassesVoice) {
             prepareSpeechOutputRouteIfNeeded(context)
@@ -162,6 +165,12 @@ class AndroidAssistantCapabilityExecutor(
         context: AssistantExecutionContext,
     ): AssistantResult = capabilities.execute(command)
 
+    /**
+     * Home voice capture asks MainActivity for a Bluetooth communication route before Moonshine
+     * starts. Moonshine releases that input route as soon as it has a final transcript. This is an
+     * additional safety net for a disconnected/no-headset device where a legacy SCO request may
+     * otherwise leave MODE_IN_COMMUNICATION active and make TTS effectively silent.
+     */
     private fun clearStaleVoiceRouteWhenHeadsetMissing() {
         val audioManager = appContext.getSystemService(Context.AUDIO_SERVICE) as? AudioManager ?: return
         val hasBluetoothCommunicationDevice = runCatching {
@@ -194,18 +203,21 @@ class AndroidAssistantCapabilityExecutor(
         }
     }
 
+    /** Re-open the glasses communication output only after inference, immediately before TTS. */
     private suspend fun prepareSpeechOutputRouteIfNeeded(context: AssistantExecutionContext) {
         if (context.surface == AssistantInputSurface.GLASSES_VOICE ||
             context.surface == AssistantInputSurface.GLASSES_VISION
         ) {
             val bluetoothSelected = AndroidAssistantVoiceIo.prepareSpeechOutputRoute(appContext)
             if (bluetoothSelected) {
+                // Keep route settle outside Cloud inference and pay it only before speech playback.
                 delay(TTS_BLUETOOTH_ROUTE_SETTLE_MS)
                 Log.i("AssistantTiming", "stage=tts_route_settled delayMs=$TTS_BLUETOOTH_ROUTE_SETTLE_MS")
             }
         }
     }
 
+    /** Convert provider/network failures into the same normal result path used by successful turns. */
     private fun providerFailureResult(error: Throwable, surface: AssistantInputSurface): AssistantResult {
         val detail = generateSequence(error) { it.cause }
             .joinToString(" ") { it.message.orEmpty() }
@@ -221,10 +233,13 @@ class AndroidAssistantCapabilityExecutor(
         return AssistantResult(
             spokenText = spoken,
             richText = spoken,
+            // Phone text renders from durable ChatStore. Keep the failure visible there while
+            // AssistantInferenceContextPolicy excludes transient failures from future model context.
             persist = surface == AssistantInputSurface.PHONE_TEXT,
         )
     }
 
+    /** Native chat roles are the multi-turn context. No conversation text is duplicated in system. */
     private fun recentConversationMessages(
         context: AssistantExecutionContext,
     ): List<Map<String, String>> = AssistantInferenceContextPolicy
@@ -246,6 +261,7 @@ class AndroidAssistantCapabilityExecutor(
             }
         }
 
+    /** Shared task contract; the input surface changes presentation, not the model's core behavior. */
     private fun conversationSystemPrompt(
         context: AssistantExecutionContext,
         responseMode: AiResponseMode,
@@ -287,6 +303,11 @@ class AndroidAssistantCapabilityExecutor(
         AiReasoningMode.REASONED -> CloudGenerationMode.REASONED_CONVERSATION
     }
 
+    /**
+     * Generation room is selected only from product intent. Provider/model identity may change the
+     * wire fields used to express that intent, but never this budget. Spoken concision is primarily
+     * a model contract; valid final-answer text is not discarded after generation.
+     */
     private fun outputTokenLimit(
         surface: AssistantInputSurface,
         generationMode: CloudGenerationMode,
@@ -331,6 +352,11 @@ class AndroidAssistantCapabilityExecutor(
                     "The AI returned an empty answer. Please try again."
                 null -> "I didn’t get a usable answer. Please try again."
             }
+            Log.w(
+                "AssistantTiming",
+                "stage=assistant_output_rejected surface=$surface " +
+                    "reason=${sanitized.rejectionReason?.wire ?: "unknown"} rawChars=${length}",
+            )
             return AssistantResult(
                 spokenText = failure,
                 richText = failure,
@@ -351,7 +377,12 @@ class AndroidAssistantCapabilityExecutor(
             } else {
                 rich
             }
-            return AssistantResult(spokenText = spoken, richText = rich)
+            return AssistantResult(
+                spokenText = spoken,
+                // Keep requested transcription available in Chats. Spoken surfaces still use the
+                // document-length speech guard/pointer instead of reading a whole page aloud by accident.
+                richText = rich,
+            )
         }
 
         if (surface == AssistantInputSurface.PHONE_TEXT) {
@@ -359,6 +390,8 @@ class AndroidAssistantCapabilityExecutor(
         }
 
         return AssistantResult(
+            // Reasoning/prompt leakage was removed by AssistantCompletionSanitizer above. For normal
+            // conversational answers, preserve the whole valid answer and only make it TTS-safe.
             spokenText = AssistantSpokenResponsePolicy.normalizeForSpeech(rich),
             richText = rich,
         )
