@@ -58,14 +58,16 @@ data class WeatherSnapshot(
 
     private fun currentAnswer(): String = buildString {
         val temperature = currentTemperatureC
+        val apparent = apparentTemperatureC
         if (temperature != null) {
             append("It's ${formatNumber(temperature)}°C")
         } else {
             append("Current weather is available")
         }
         currentWeatherCode?.let { append(" and ${weatherDescription(it)}") }
-        apparentTemperatureC?.takeIf { currentTemperatureC == null || kotlin.math.abs(it - currentTemperatureC) >= 1.0 }
-            ?.let { append(", feels like ${formatNumber(it)}°C") }
+        if (apparent != null && (temperature == null || kotlin.math.abs(apparent - temperature) >= 1.0)) {
+            append(", feels like ${formatNumber(apparent)}°C")
+        }
         humidityPercent?.let { append(", humidity $it%") }
         windSpeedKmh?.let { append(", wind ${formatNumber(it)} km/h") }
         append('.')
@@ -157,7 +159,7 @@ class OpenMeteoWeatherClient(
         val minTemps = daily.optJSONArray("temperature_2m_min")
         val precip = daily.optJSONArray("precipitation_probability_max")
         val dayCount = listOfNotNull(dates, codes, maxTemps, minTemps, precip)
-            .maxOfOrNull(JSONArray::length)
+            .maxOfOrNull { it.length() }
             ?.coerceAtMost(7)
             ?: 0
         val days = buildList {
