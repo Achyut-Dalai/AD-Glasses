@@ -4,9 +4,9 @@ package com.ad_glasses.ai.orchestrator
  * Turns a streamed provider completion into safe, natural TTS segments.
  *
  * Raw provider deltas are never spoken directly. We repeatedly sanitize the cumulative completion,
- * apply the same hard concise-conversation bound used for final Chat/Lens/Voice output, wait for a
- * stable sentence/phrase boundary, and only expose text that is a prefix of that final target.
- * This keeps reasoning/prompt echoes and provider verbosity out of TTS even before generation ends.
+ * remove speech-hostile formatting, wait for a stable sentence/phrase boundary, and only expose
+ * text that is a prefix of the final sanitized answer. Concision is requested from the model; this
+ * layer does not discard valid final-answer text merely because the provider exceeded that request.
  */
 class AssistantStreamingSpeechBuffer(
     private val streamingPrefixBudgetChars: Int = DEFAULT_STREAMING_PREFIX_BUDGET_CHARS,
@@ -26,23 +26,20 @@ class AssistantStreamingSpeechBuffer(
 
         val clean = AssistantCompletionSanitizer.cleanForStreaming(raw.toString())
         if (clean.isBlank()) return emptyList()
-        val bounded = AssistantSpokenResponsePolicy.forConciseConversation(clean)
-        if (bounded.isBlank()) return emptyList()
+        val speakable = AssistantSpokenResponsePolicy.normalizeForSpeech(clean)
+        if (speakable.isBlank()) return emptyList()
 
-        return drainStreamingPrefix(bounded)
+        return drainStreamingPrefix(speakable)
     }
 
-    /**
-     * Finalize with the provider's complete raw answer and return whatever remains to be spoken.
-     * The final tail uses the exact same concise-conversation policy as non-streaming output.
-     */
+    /** Finalize with the complete provider answer and speak every remaining sanitized answer segment. */
     fun finish(finalRaw: String): List<String> {
         if (finished) return emptyList()
         finished = true
 
         val clean = AssistantCompletionSanitizer.clean(finalRaw)
         if (clean.isBlank()) return emptyList()
-        val finalTarget = AssistantSpokenResponsePolicy.forConciseConversation(clean)
+        val finalTarget = AssistantSpokenResponsePolicy.normalizeForSpeech(clean)
         if (finalTarget.isBlank()) return emptyList()
 
         if (consumedPrefix.isNotEmpty() && !finalTarget.startsWith(consumedPrefix)) {
@@ -73,6 +70,8 @@ class AssistantStreamingSpeechBuffer(
             return emptyList()
         }
 
+        // This limits how far ahead streaming TTS may speak before the provider finishes; it is not
+        // a final-answer length limit. finish() flushes every remaining sanitized answer segment.
         val maxExclusive = minOf(normalized.length, streamingPrefixBudgetChars)
         if (cursor >= maxExclusive) return emptyList()
 
