@@ -35,6 +35,8 @@ private data class SpatialExecution(
     val context: String,
     val point: GeoPoint? = null,
     val coarseArea: String? = null,
+    /** Public place names only; never coordinates. Safe to use as Tavily query hints for BOTH. */
+    val searchHints: List<String> = emptyList(),
 )
 
 private data class ExternalExecution(
@@ -58,8 +60,8 @@ class AssistantToolService(context: Context) {
         val needsSpatial = route.intent == GroundingIntent.SPATIAL || route.intent == GroundingIntent.BOTH
         val needsExternal = route.intent == GroundingIntent.SEARCH || route.intent == GroundingIntent.BOTH
 
-        // BOTH is intentionally ordered. Spatial resolution happens first so Tavily can receive at
-        // most a coarse area label rather than GPS coordinates or a precise street address.
+        // BOTH is intentionally ordered. Spatial resolution happens first so Tavily can receive
+        // public candidate names and at most a coarse area label, never GPS coordinates or a street.
         val spatial = if (needsSpatial) executeSpatial(route) else null
         val external = if (needsExternal) {
             when (route.externalTool) {
@@ -70,16 +72,27 @@ class AssistantToolService(context: Context) {
             null
         }
 
-        val contextText = buildSynthesisContext(external, spatial)
-        val fallbackAnswer = listOfNotNull(
-            external?.answer?.trim()?.takeIf(String::isNotBlank),
-            spatial?.answer?.trim()?.takeIf(String::isNotBlank),
-        ).joinToString(" ").trim().takeIf(String::isNotBlank)?.take(MAX_FALLBACK_ANSWER_CHARS)
+        // For a plain Tavily SEARCH, Tavily's own LLM answer is the preferred answer. Do not send it
+        // through AD again. If Tavily has only evidence but no answer, keep context so AD can rescue it.
+        val directTavilySearch = route.intent == GroundingIntent.SEARCH &&
+            external?.tavilyUsed == true &&
+            !external.answer.isNullOrBlank()
+        val contextText = if (directTavilySearch) "" else buildSynthesisContext(external, spatial)
+        val fallbackAnswer = if (directTavilySearch) {
+            external?.answer?.trim()?.take(MAX_FALLBACK_ANSWER_CHARS)
+        } else {
+            listOfNotNull(
+                external?.answer?.trim()?.takeIf(String::isNotBlank),
+                spatial?.answer?.trim()?.takeIf(String::isNotBlank),
+            ).joinToString(" ").trim().takeIf(String::isNotBlank)?.take(MAX_FALLBACK_ANSWER_CHARS)
+        }
+
         Log.i(
             TAG,
             "tools_done intent=${route.intent.name.lowercase()} external=${route.externalTool.name.lowercase()} " +
                 "tavily=${external?.tavilyUsed == true} weather=${external?.weatherUsed == true} osm=${spatial != null} " +
-                "contextChars=${contextText.length} elapsedMs=${SystemClock.elapsedRealtime() - startedAt}",
+                "directTavily=$directTavilySearch contextChars=${contextText.length} " +
+                "elapsedMs=${SystemClock.elapsedRealtime() - startedAt}",
         )
         Result.success(
             GroundingToolResult(
@@ -105,7 +118,16 @@ class AssistantToolService(context: Context) {
         check(tavily.isConfigured()) { "Tavily search is disabled or has no API key." }
         val baseQuery = route.searchQuery?.trim().orEmpty()
         require(baseQuery.isNotBlank()) { "The routed Tavily query is blank." }
-        val query = spatial?.coarseArea?.let { area -> "$baseQuery. User area: $area" } ?: baseQuery
+        val query = buildString {
+            append(baseQuery)
+            spatial?.searchHints?.take(MAX_SPATIAL_SEARCH_HINTS)?.takeIf { it.isNotEmpty() }?.let { hints ->
+                append(". Relevant OpenStreetMap candidates: ")
+                append(hints.joinToString("; "))
+            }
+            spatial?.coarseArea?.takeIf { it.isNotBlank() }?.let { area ->
+                append(". User area: $area")
+            }
+        }.take(MAX_TAVILY_QUERY_CHARS)
 
         val first = tavily.search(
             query = query,
@@ -117,17 +139,18 @@ class AssistantToolService(context: Context) {
             includeDomains = route.sourceDomains,
         ).getOrThrow()
 
+        // One bounded retry only. It can widen NEWS/FINANCE to GENERAL or ask for more results, but
+        // preserves any user-requested domain restriction and never upgrades search depth.
         val chosen = if (first.answer.isNullOrBlank() || first.results.isEmpty()) {
-            val retryTopic = if (route.tavilyTopic == TavilySearchTopic.GENERAL) {
-                TavilySearchTopic.GENERAL
-            } else {
-                TavilySearchTopic.GENERAL
-            }
             val retry = tavily.search(
                 query = query,
                 depth = TavilySearchDepth.FAST,
                 maxResults = FALLBACK_TAVILY_RESULTS,
-                topic = retryTopic,
+                topic = if (route.tavilyTopic == TavilySearchTopic.GENERAL) {
+                    TavilySearchTopic.GENERAL
+                } else {
+                    TavilySearchTopic.GENERAL
+                },
                 timeRange = route.tavilyTimeRange,
                 includeAnswer = true,
                 includeDomains = route.sourceDomains,
@@ -145,11 +168,14 @@ class AssistantToolService(context: Context) {
         if (chosen.results.isEmpty()) {
             throw IllegalStateException("Tavily returned no supporting search results after the bounded retry.")
         }
-        val sources = chosen.results.take(MAX_SOURCES).map { GroundingSource(it.title, it.url) }
+        val relevant = selectRelevantResults(chosen.results)
+        val sources = relevant.map { GroundingSource(it.title, it.url) }
         val context = buildString {
-            chosen.answer?.takeIf { it.isNotBlank() }?.let { appendLine("Tavily LLM answer: ${it.take(TAVILY_ANSWER_CONTEXT_CHARS)}") }
+            chosen.answer?.takeIf { it.isNotBlank() }?.let {
+                appendLine("Tavily LLM answer: ${it.take(TAVILY_ANSWER_CONTEXT_CHARS)}")
+            }
             appendLine("Tavily supporting evidence:")
-            chosen.results.take(MAX_SOURCES).forEachIndexed { index, item ->
+            relevant.forEachIndexed { index, item ->
                 append("[${index + 1}] ${item.title.take(160)}")
                 if (item.content.isNotBlank()) append(": ${item.content.take(TAVILY_SNIPPET_CONTEXT_CHARS)}")
                 appendLine()
@@ -163,24 +189,55 @@ class AssistantToolService(context: Context) {
         )
     }
 
+    private fun selectRelevantResults(results: List<TavilySearchResult>): List<TavilySearchResult> {
+        val ranked = results.sortedByDescending(TavilySearchResult::score)
+        if (ranked.isEmpty()) return emptyList()
+        val bestScore = ranked.first().score
+        if (bestScore <= 0.0) return ranked.take(MAX_SOURCES)
+        val cutoff = maxOf(MIN_ABSOLUTE_RESULT_SCORE, bestScore * RELATIVE_RESULT_SCORE_RATIO)
+        return ranked.filter { it.score >= cutoff }.take(MAX_SOURCES).ifEmpty { ranked.take(1) }
+    }
+
     private suspend fun executeWeather(
         route: GroundingRoute,
         spatial: SpatialExecution?,
     ): ExternalExecution {
         val (point, label) = resolveWeatherPoint(route, spatial)
-        val snapshot = weather.forecast(point).getOrThrow()
-        val fallback = buildString {
-            append(snapshot.fallbackAnswer(route.weatherHorizon))
-            label?.takeIf { it.isNotBlank() }?.let { append(" For $it.") }
-        }.trim()
-        return ExternalExecution(
-            answer = fallback,
-            context = buildString {
-                label?.let { appendLine("Weather location: $it.") }
-                append(snapshot.contextText(route.weatherHorizon))
-            }.take(MAX_WEATHER_CONTEXT_CHARS),
-            sources = listOf(GroundingSource("Open-Meteo weather", OpenMeteoWeatherClient.SOURCE_URL)),
-            weatherUsed = true,
+        val weatherResult = weather.forecast(point)
+        val snapshot = weatherResult.getOrNull()
+        if (snapshot != null) {
+            val fallback = buildString {
+                append(snapshot.fallbackAnswer(route.weatherHorizon))
+                label?.takeIf { it.isNotBlank() }?.let { append(" For $it.") }
+            }.trim()
+            return ExternalExecution(
+                answer = fallback,
+                context = buildString {
+                    label?.let { appendLine("Weather location: $it.") }
+                    append(snapshot.contextText(route.weatherHorizon))
+                }.take(MAX_WEATHER_CONTEXT_CHARS),
+                sources = listOf(GroundingSource("Weather data by Open-Meteo", OpenMeteoWeatherClient.SOURCE_URL)),
+                weatherUsed = true,
+            )
+        }
+
+        // Open-Meteo is a specialized fast path, not a single point of failure. If it is unavailable,
+        // Tavily can still answer weather using only a coarse resolved area; exact GPS never leaves AD.
+        val failure = weatherResult.exceptionOrNull() ?: IllegalStateException("Open-Meteo weather request failed.")
+        if (!tavily.isConfigured()) throw failure
+        val fallbackQuery = buildString {
+            append(route.searchQuery?.trim()?.takeIf { it.isNotBlank() } ?: "weather forecast")
+            label?.takeIf { it.isNotBlank() }?.let { append(". Location: $it") }
+        }.take(MAX_TAVILY_QUERY_CHARS)
+        Log.w(TAG, "weather_fallback_to_tavily type=${failure::class.java.simpleName}")
+        return executeTavily(
+            route.copy(
+                externalTool = ExternalTool.TAVILY,
+                searchQuery = fallbackQuery,
+                tavilyTopic = TavilySearchTopic.GENERAL,
+                tavilyTimeRange = route.tavilyTimeRange ?: TavilyTimeRange.DAY,
+            ),
+            spatial = null,
         )
     }
 
@@ -217,6 +274,7 @@ class AssistantToolService(context: Context) {
                 context = "OpenStreetMap resolved location: ${place.name}; ${place.category}.",
                 point = place.point,
                 coarseArea = plan.referencePlace,
+                searchHints = listOf(place.name),
             )
         }
 
@@ -247,25 +305,65 @@ class AssistantToolService(context: Context) {
         val radius = (plan.radiusMeters ?: DEFAULT_NEARBY_RADIUS_METERS).coerceIn(50, 5_000)
         val center = resolveNearbyCenter(plan)
         val query = plan.spatialQuery?.trim().orEmpty()
-        require(query.isNotBlank()) { "Nearby-place query is blank." }
-        val place = osm.geocode(query, center.first).getOrThrow()
-        val match = place?.takeIf { it.distanceMeters <= radius }
-        val answer = if (match != null) {
-            "${match.name} is about ${formatDistance(match.distanceMeters)} from ${center.second}."
+
+        val overpassPlaces = if (plan.osmFilters.isNotEmpty()) {
+            osm.nearby(
+                origin = center.first,
+                filters = plan.osmFilters,
+                radiusMeters = radius,
+                limit = MAX_NEARBY_RESULTS,
+            ).getOrNull().orEmpty()
         } else {
-            "I couldn't find a matching $query within about ${formatDistance(radius)} of ${center.second}."
+            emptyList()
         }
-        val context = if (match != null) {
-            "OpenStreetMap nearby match: ${match.name}; ${match.category}; about ${match.distanceMeters} m from ${center.second}."
+        val places = if (overpassPlaces.isNotEmpty()) {
+            overpassPlaces
+        } else if (query.isNotBlank()) {
+            val fallback = osm.geocode(query, center.first).getOrNull()
+            listOfNotNull(fallback?.takeIf { it.distanceMeters <= radius })
         } else {
-            "OpenStreetMap returned no matching '$query' within $radius m of ${center.second}. Do not invent a nearby match."
+            emptyList()
+        }
+
+        val target = query.ifBlank { "matching places" }
+        val answer = if (places.isNotEmpty()) {
+            buildString {
+                append("I found ${places.size} $target match")
+                if (places.size != 1) append("es")
+                append(" within about ${formatDistance(radius)}")
+                append(": ")
+                append(
+                    places.take(MAX_SPOKEN_NEARBY_RESULTS).joinToString("; ") { place ->
+                        "${place.name}, about ${formatDistance(place.distanceMeters)} away"
+                    },
+                )
+                append('.')
+            }
+        } else {
+            "I couldn't find a matching $target within about ${formatDistance(radius)} of ${center.second}."
+        }
+        val context = if (places.isNotEmpty()) {
+            buildString {
+                appendLine("OpenStreetMap nearby matches within $radius m of ${center.second}:")
+                places.take(MAX_NEARBY_RESULTS).forEachIndexed { index, place ->
+                    appendLine("[${index + 1}] ${place.name}; ${place.category}; ${place.distanceMeters} m away.")
+                }
+            }.trim().take(MAX_SPATIAL_CONTEXT_CHARS)
+        } else {
+            "OpenStreetMap returned no matching '$target' within $radius m of ${center.second}. Do not invent a nearby match."
         }
         val area = if (plan.useCurrentLocation) {
             osm.reverse(center.first).getOrNull()?.let(::coarseArea)
         } else {
             plan.referencePlace
         }
-        return SpatialExecution(answer = answer, context = context, point = match?.point ?: center.first, coarseArea = area)
+        return SpatialExecution(
+            answer = answer,
+            context = context,
+            point = places.firstOrNull()?.point ?: center.first,
+            coarseArea = area,
+            searchHints = places.map(OsmPlace::name).distinct().take(MAX_SPATIAL_SEARCH_HINTS),
+        )
     }
 
     private suspend fun executeRoute(plan: GroundingRoute): SpatialExecution {
@@ -305,7 +403,13 @@ class AssistantToolService(context: Context) {
             }
         }.take(MAX_SPATIAL_CONTEXT_CHARS)
         val area = if (originUsesCurrent) osm.reverse(originPoint).getOrNull()?.let(::coarseArea) else null
-        return SpatialExecution(answer = answer, context = context, point = destination.point, coarseArea = area)
+        return SpatialExecution(
+            answer = answer,
+            context = context,
+            point = destination.point,
+            coarseArea = area,
+            searchHints = listOf(destination.name),
+        )
     }
 
     private suspend fun resolveNearbyCenter(plan: GroundingRoute): Pair<GeoPoint, String> {
@@ -327,9 +431,7 @@ class AssistantToolService(context: Context) {
         external: ExternalExecution?,
         spatial: SpatialExecution?,
     ): String = buildString {
-        external?.context?.takeIf { it.isNotBlank() }?.let {
-            appendLine(it)
-        }
+        external?.context?.takeIf { it.isNotBlank() }?.let { appendLine(it) }
         spatial?.let {
             appendLine("OpenStreetMap/OSRM facts: ${it.context.take(MAX_SPATIAL_CONTEXT_CHARS)}")
         }
@@ -361,11 +463,17 @@ class AssistantToolService(context: Context) {
         const val PRIMARY_TAVILY_RESULTS = 3
         const val FALLBACK_TAVILY_RESULTS = 5
         const val MAX_SOURCES = 4
+        const val MAX_NEARBY_RESULTS = 6
+        const val MAX_SPOKEN_NEARBY_RESULTS = 3
+        const val MAX_SPATIAL_SEARCH_HINTS = 4
         const val MAX_FALLBACK_ANSWER_CHARS = 2_200
+        const val MAX_TAVILY_QUERY_CHARS = 1_200
         const val TAVILY_ANSWER_CONTEXT_CHARS = 1_000
         const val TAVILY_SNIPPET_CONTEXT_CHARS = 320
         const val MAX_WEATHER_CONTEXT_CHARS = 1_500
         const val MAX_SPATIAL_CONTEXT_CHARS = 1_200
         const val MAX_SYNTHESIS_CONTEXT_CHARS = 2_800
+        const val MIN_ABSOLUTE_RESULT_SCORE = 0.15
+        const val RELATIVE_RESULT_SCORE_RATIO = 0.55
     }
 }
