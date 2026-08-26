@@ -36,7 +36,7 @@ data class TavilySearchResponse(
     val results: List<TavilySearchResult>,
 )
 
-/** Small Android-native Tavily client; raw page bodies are intentionally never requested. */
+/** Small Android-native Tavily retrieval client; raw page bodies are intentionally never requested. */
 class TavilySearchClient(
     context: Context,
     private val client: OkHttpClient = defaultClient(),
@@ -58,14 +58,24 @@ class TavilySearchClient(
         val key = GroundingPrefs.getTavilyApiKey(appContext)
         check(key.isNotBlank()) { "Tavily API key is not configured." }
 
-        val cleanQuery = query.replace(Regex("\\s+"), " ").trim().take(MAX_QUERY_CHARS)
+        val cleanQuery = query.replace(Regex("\\s+"), " ").trim().take(MAX_USER_QUERY_CHARS)
         require(cleanQuery.isNotBlank()) { "Tavily query cannot be blank." }
-        val body = JSONObject()
-            .put("query", cleanQuery)
+        val plan = TavilySearchPolicy.plan(cleanQuery)
+        val payload = JSONObject()
+            .put("query", plan.query.take(MAX_QUERY_CHARS))
             .put("search_depth", depth.wire)
-            .put("include_answer", true)
+            .put("chunks_per_source", CHUNKS_PER_SOURCE)
+            .put("topic", plan.topic.wire)
+            // AD's configured assistant is the answer engine. Tavily is retrieval only so we do not
+            // summarize an LLM-generated Tavily answer with a second LLM.
+            .put("include_answer", false)
             .put("include_raw_content", false)
             .put("max_results", maxResults.coerceIn(1, MAX_RESULTS))
+        plan.timeRange?.let { payload.put("time_range", it.wire) }
+        plan.startDate?.let { payload.put("start_date", it) }
+        plan.endDate?.let { payload.put("end_date", it) }
+
+        val body = payload
             .toString()
             .toRequestBody(JSON)
 
@@ -84,15 +94,16 @@ class TavilySearchClient(
             TimeUnit.SECONDS,
         )
         val parsed = call.awaitResponse().use { response ->
-            val payload = response.body?.string().orEmpty()
+            val responseBody = response.body?.string().orEmpty()
             if (!response.isSuccessful) {
-                throw IOException("Tavily HTTP ${response.code}: ${safeError(payload)}")
+                throw IOException("Tavily HTTP ${response.code}: ${safeError(responseBody)}")
             }
-            parse(payload)
+            parse(responseBody)
         }
         Log.i(
             TAG,
-            "search_done depth=${depth.wire} results=${parsed.results.size} elapsedMs=${SystemClock.elapsedRealtime() - startedAt}",
+            "search_done depth=${depth.wire} topic=${plan.topic.wire} freshness=${plan.timeRange?.wire ?: "bounded_or_none"} " +
+                "results=${parsed.results.size} elapsedMs=${SystemClock.elapsedRealtime() - startedAt}",
         )
         Result.success(parsed)
     } catch (cancelled: CancellationException) {
@@ -103,6 +114,8 @@ class TavilySearchClient(
 
     internal fun parse(payload: String): TavilySearchResponse {
         val root = JSONObject(payload)
+        // Kept for backwards-compatible parsing of mocked/older payloads. Production requests set
+        // include_answer=false, so answer is normally absent and AD synthesizes from result evidence.
         val answer = root.optString("answer").trim().takeIf { it.isNotBlank() }
         val items = root.optJSONArray("results")
         val results = buildList {
@@ -141,11 +154,13 @@ class TavilySearchClient(
         private const val TAG = "AssistantGrounding"
         private const val SEARCH_URL = "https://api.tavily.com/search"
         private const val USER_AGENT = "AD-Glasses Android Tavily client"
+        private const val MAX_USER_QUERY_CHARS = 1_300
         private const val MAX_QUERY_CHARS = 1_500
         private const val MAX_RESULTS = 8
         private const val MAX_URL_CHARS = 1_000
         private const val MAX_SNIPPET_CHARS = 1_200
         private const val MAX_ANSWER_CHARS = 1_500
+        private const val CHUNKS_PER_SOURCE = 2
         private const val STANDARD_CALL_TIMEOUT_SECONDS = 6L
         private const val ADVANCED_CALL_TIMEOUT_SECONDS = 8L
         private val JSON = "application/json; charset=utf-8".toMediaType()

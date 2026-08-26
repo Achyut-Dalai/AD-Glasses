@@ -25,6 +25,35 @@ class AssistantSpokenResponsePolicyTest {
     }
 
     @Test
+    fun raw_urls_are_visual_only_and_never_spoken_as_link_tokens() {
+        val rich = "The current price is about 100 dollars. https://example.com/markets"
+
+        val spoken = AssistantSpokenResponsePolicy.normalizeForSpeech(rich)
+
+        assertEquals("The current price is about 100 dollars.", spoken)
+        assertFalse(spoken.contains("example.com"))
+        assertFalse(spoken.contains("link", ignoreCase = true))
+    }
+
+    @Test
+    fun numeric_citations_are_not_read_aloud() {
+        assertEquals(
+            "Bitcoin is trading higher today.",
+            AssistantSpokenResponsePolicy.normalizeForSpeech("Bitcoin is trading higher today [1, 2]."),
+        )
+    }
+
+    @Test
+    fun source_appendix_is_kept_out_of_tts() {
+        val rich = "Bitcoin is trading higher today.\n\nSources:\n[1] Market source — https://example.com\n[2] Exchange — https://exchange.example"
+
+        assertEquals(
+            "Bitcoin is trading higher today.",
+            AssistantSpokenResponsePolicy.normalizeForSpeech(rich),
+        )
+    }
+
+    @Test
     fun large_asterisk_runs_are_never_spoken() {
         val rich = "Answer *************************************** complete."
 

@@ -1,9 +1,15 @@
 package com.ad_glasses.ai.grounding
 
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Test
+import org.junit.runner.RunWith
+import org.robolectric.RobolectricTestRunner
+import org.robolectric.annotation.Config
 
+@RunWith(RobolectricTestRunner::class)
+@Config(sdk = [35])
 class OsmServiceClientTest {
     private val origin = GeoPoint(latitude = 12.9716, longitude = 77.5946)
     private val destination = GeoPoint(latitude = 12.9763, longitude = 77.5929)
@@ -79,6 +85,46 @@ class OsmServiceClientTest {
         assertEquals(setOf("Node Cafe", "Way Pharmacy", "Relation Museum"), places.map { it.name }.toSet())
         assertTrue(places.all { it.distanceMeters >= 0 })
         assertTrue(places.zipWithNext().all { (a, b) -> a.distanceMeters <= b.distanceMeters })
+    }
+
+    @Test
+    fun overpassParserKeepsOnlyUsefulReturnedPoiMetadata() {
+        val client = client(GroundingPrefs.DEFAULT_OSRM_BASE_URL)
+        val payload = """
+            {
+              "elements": [{
+                "type": "node",
+                "id": 10,
+                "lat": 12.9717,
+                "lon": 77.5947,
+                "tags": {
+                  "amenity": "cafe",
+                  "name": "Example Coffee",
+                  "opening_hours": "Mo-Su 08:00-22:00",
+                  "addr:housenumber": "12",
+                  "addr:street": "MG Road",
+                  "addr:city": "Bengaluru",
+                  "cuisine": "coffee_shop;bakery",
+                  "contact:phone": "+91 80000 00000",
+                  "website": "https://example.cafe/menu",
+                  "wheelchair": "yes",
+                  "description": "This field should not be copied into grounding"
+                }
+              }]
+            }
+        """.trimIndent()
+
+        val place = client.parseOverpass(payload, origin, limit = 8).single()
+
+        assertEquals("Example Coffee", place.name)
+        assertTrue(place.category.contains("cafe"))
+        assertTrue(place.category.contains("hours: Mo-Su 08:00-22:00"))
+        assertTrue(place.category.contains("address: 12 MG Road, Bengaluru"))
+        assertTrue(place.category.contains("cuisine: coffee_shop,bakery"))
+        assertTrue(place.category.contains("phone: +91 80000 00000"))
+        assertTrue(place.category.contains("website: https://example.cafe/menu"))
+        assertTrue(place.category.contains("wheelchair: yes"))
+        assertFalse(place.category.contains("should not be copied"))
     }
 
     @Test
