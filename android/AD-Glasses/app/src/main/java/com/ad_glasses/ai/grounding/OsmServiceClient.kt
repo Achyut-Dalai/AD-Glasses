@@ -9,16 +9,19 @@ import kotlin.math.cos
 import kotlin.math.pow
 import kotlin.math.sin
 import kotlin.math.sqrt
-import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.suspendCancellableCoroutine
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
-import kotlinx.coroutines.withContext
+import okhttp3.Call
+import okhttp3.Callback
 import okhttp3.FormBody
 import okhttp3.HttpUrl
 import okhttp3.HttpUrl.Companion.toHttpUrl
 import okhttp3.OkHttpClient
 import okhttp3.Request
+import okhttp3.Response
 import org.json.JSONObject
 
 data class GeoPoint(val latitude: Double, val longitude: Double)
@@ -65,46 +68,53 @@ data class OverpassTagFilter(val key: String, val value: String?)
  *
  * Public Nominatim calls are globally serialized, cached, and kept at <= 1 request/sec. Overpass
  * calls are also serialized. The default FOSSGIS OSRM service is rate-limited to <= 1 request/sec.
- * All endpoints are runtime-configurable so production can move to a proxy/self-hosted service
- * without an app release.
+ * All requests are coroutine-cancellable so an assistant grounding deadline cancels the actual
+ * socket instead of merely abandoning a blocking IO worker.
  */
 class OsmServiceClient(
     private val configProvider: () -> GroundingServiceConfig,
     private val client: OkHttpClient = defaultClient(),
 ) {
-    suspend fun reverse(point: GeoPoint): Result<OsmAddress> = runCatching {
+    suspend fun reverse(point: GeoPoint): Result<OsmAddress> = try {
         val cacheKey = "${roundCoordinate(point.latitude)},${roundCoordinate(point.longitude)}"
-        synchronized(reverseCache) { reverseCache[cacheKey] }?.let { return@runCatching it }
-
-        val config = configProvider()
-        val url = (config.nominatimBaseUrl + "/reverse").toHttpUrl().newBuilder()
-            .addQueryParameter("format", "jsonv2")
-            .addQueryParameter("lat", point.latitude.toString())
-            .addQueryParameter("lon", point.longitude.toString())
-            .addQueryParameter("zoom", "18")
-            .addQueryParameter("addressdetails", "1")
-            .build()
-        val payload = nominatimGet(url.toString())
-        val root = JSONObject(payload)
-        val address = root.optJSONObject("address") ?: JSONObject()
-        OsmAddress(
-            displayName = root.optString("display_name").replace(Regex("\\s+"), " ").trim().take(500),
-            road = firstNonBlank(address, "road", "pedestrian", "footway"),
-            neighbourhood = firstNonBlank(address, "neighbourhood", "suburb", "quarter"),
-            city = firstNonBlank(address, "city", "town", "village", "municipality"),
-            state = firstNonBlank(address, "state", "state_district", "region"),
-            country = address.optString("country").trim().takeIf { it.isNotBlank() },
-            point = point,
-        ).also { parsed ->
+        val cached = synchronized(reverseCache) { reverseCache[cacheKey] }
+        if (cached != null) {
+            Result.success(cached)
+        } else {
+            val config = configProvider()
+            val url = (config.nominatimBaseUrl + "/reverse").toHttpUrl().newBuilder()
+                .addQueryParameter("format", "jsonv2")
+                .addQueryParameter("lat", point.latitude.toString())
+                .addQueryParameter("lon", point.longitude.toString())
+                .addQueryParameter("zoom", "18")
+                .addQueryParameter("addressdetails", "1")
+                .build()
+            val payload = nominatimGet(url.toString())
+            val root = JSONObject(payload)
+            val address = root.optJSONObject("address") ?: JSONObject()
+            val parsed = OsmAddress(
+                displayName = root.optString("display_name").replace(Regex("\\s+"), " ").trim().take(500),
+                road = firstNonBlank(address, "road", "pedestrian", "footway"),
+                neighbourhood = firstNonBlank(address, "neighbourhood", "suburb", "quarter"),
+                city = firstNonBlank(address, "city", "town", "village", "municipality"),
+                state = firstNonBlank(address, "state", "state_district", "region"),
+                country = address.optString("country").trim().takeIf { it.isNotBlank() },
+                point = point,
+            )
             synchronized(reverseCache) {
-                if (reverseCache.size >= CACHE_LIMIT) reverseCache.remove(reverseCache.keys.firstOrNull())
+                if (reverseCache.size >= CACHE_LIMIT) reverseCache.keys.firstOrNull()?.let(reverseCache::remove)
                 reverseCache[cacheKey] = parsed
             }
+            Result.success(parsed)
         }
+    } catch (cancelled: CancellationException) {
+        throw cancelled
+    } catch (error: Throwable) {
+        Result.failure(error)
     }
 
     /** One-shot forward geocoding for an explicit user destination; never used for autocomplete. */
-    suspend fun geocode(query: String, near: GeoPoint? = null): Result<OsmPlace?> = runCatching {
+    suspend fun geocode(query: String, near: GeoPoint? = null): Result<OsmPlace?> = try {
         val clean = query.replace(Regex("\\s+"), " ").trim().take(300)
         require(clean.isNotBlank()) { "Destination cannot be blank." }
         val config = configProvider()
@@ -127,18 +137,22 @@ class OsmServiceClient(
                 val item = items.optJSONObject(index) ?: continue
                 val lat = item.optString("lat").toDoubleOrNull() ?: continue
                 val lon = item.optString("lon").toDoubleOrNull() ?: continue
-                val point = GeoPoint(lat, lon)
+                val itemPoint = GeoPoint(lat, lon)
                 add(
                     OsmPlace(
                         name = item.optString("display_name").replace(Regex("\\s+"), " ").trim().take(400),
                         category = item.optString("type").ifBlank { item.optString("category") }.take(80),
-                        point = point,
-                        distanceMeters = near?.let { haversineMeters(it, point).toInt() } ?: 0,
+                        point = itemPoint,
+                        distanceMeters = near?.let { haversineMeters(it, itemPoint).toInt() } ?: 0,
                     ),
                 )
             }
         }
-        if (near == null) candidates.firstOrNull() else candidates.minByOrNull { it.distanceMeters }
+        Result.success(if (near == null) candidates.firstOrNull() else candidates.minByOrNull { it.distanceMeters })
+    } catch (cancelled: CancellationException) {
+        throw cancelled
+    } catch (error: Throwable) {
+        Result.failure(error)
     }
 
     suspend fun nearby(
@@ -146,7 +160,7 @@ class OsmServiceClient(
         filters: List<OverpassTagFilter>,
         radiusMeters: Int,
         limit: Int = 8,
-    ): Result<List<OsmPlace>> = runCatching {
+    ): Result<List<OsmPlace>> = try {
         require(filters.isNotEmpty()) { "At least one POI filter is required." }
         filters.forEach { filter ->
             require(SAFE_TAG.matches(filter.key)) { "Unsupported OSM tag key." }
@@ -155,7 +169,7 @@ class OsmServiceClient(
         val radius = radiusMeters.coerceIn(50, 5_000)
         val outputLimit = limit.coerceIn(1, 20)
         val query = buildString {
-            append("[out:json][timeout:8];(")
+            append("[out:json][timeout:6];(")
             filters.forEach { filter ->
                 append("nwr(around:$radius,${origin.latitude},${origin.longitude})")
                 if (filter.value == null) append("[\"${filter.key}\"]")
@@ -166,57 +180,52 @@ class OsmServiceClient(
             append(");out body center $outputLimit;")
         }
         overpassMutex.withLock {
-            withContext(Dispatchers.IO) {
-                val config = configProvider()
-                val request = Request.Builder()
-                    .url(config.overpassEndpoint)
-                    .header("User-Agent", USER_AGENT)
-                    .header("Accept", "application/json")
-                    .post(FormBody.Builder().add("data", query).build())
-                    .build()
-                val call = client.newCall(request)
-                call.timeout().timeout(OVERPASS_CALL_TIMEOUT_SECONDS, TimeUnit.SECONDS)
-                call.execute().use { response ->
-                    val payload = response.body?.string().orEmpty()
-                    if (!response.isSuccessful) throw IOException("Overpass HTTP ${response.code}")
-                    parseOverpass(payload, origin, outputLimit)
-                }
+            val config = configProvider()
+            val request = Request.Builder()
+                .url(config.overpassEndpoint)
+                .header("User-Agent", USER_AGENT)
+                .header("Accept", "application/json")
+                .post(FormBody.Builder().add("data", query).build())
+                .build()
+            val call = client.newCall(request)
+            call.timeout().timeout(OVERPASS_CALL_TIMEOUT_SECONDS, TimeUnit.SECONDS)
+            val places = call.awaitResponse().use { response ->
+                val payload = response.body?.string().orEmpty()
+                if (!response.isSuccessful) throw IOException("Overpass HTTP ${response.code}")
+                parseOverpass(payload, origin, outputLimit)
             }
+            Result.success(places)
         }
+    } catch (cancelled: CancellationException) {
+        throw cancelled
+    } catch (error: Throwable) {
+        Result.failure(error)
     }
 
     suspend fun route(
         origin: GeoPoint,
         destination: GeoPoint,
         mode: RouteMode = RouteMode.DRIVING,
-    ): Result<OsmRoute> = runCatching {
+    ): Result<OsmRoute> = try {
         val config = configProvider()
         val endpoint = routingEndpoint(config.osrmBaseUrl, mode)
-        val coordinates = "${origin.longitude},${origin.latitude};${destination.longitude},${destination.latitude}"
-        val url = (endpoint.baseUrl + "/route/v1/${endpoint.profile}/$coordinates").toHttpUrl().newBuilder()
-            .addQueryParameter("overview", "false")
-            .addQueryParameter("steps", "true")
-            .addQueryParameter("alternatives", "false")
-            .addQueryParameter("generate_hints", "false")
-            .build()
+        val url = routeRequestUrl(origin, destination, mode, config.osrmBaseUrl)
         val requestBlock: suspend () -> OsmRoute = {
-            withContext(Dispatchers.IO) {
-                val request = Request.Builder()
-                    .url(url)
-                    .header("User-Agent", USER_AGENT)
-                    .header("Accept", "application/json")
-                    .get()
-                    .build()
-                val call = client.newCall(request)
-                call.timeout().timeout(OSRM_CALL_TIMEOUT_SECONDS, TimeUnit.SECONDS)
-                call.execute().use { response ->
-                    val payload = response.body?.string().orEmpty()
-                    if (!response.isSuccessful) throw IOException("OSRM HTTP ${response.code}")
-                    parseRoute(payload)
-                }
+            val request = Request.Builder()
+                .url(url)
+                .header("User-Agent", USER_AGENT)
+                .header("Accept", "application/json")
+                .get()
+                .build()
+            val call = client.newCall(request)
+            call.timeout().timeout(OSRM_CALL_TIMEOUT_SECONDS, TimeUnit.SECONDS)
+            call.awaitResponse().use { response ->
+                val payload = response.body?.string().orEmpty()
+                if (!response.isSuccessful) throw IOException("OSRM HTTP ${response.code}")
+                parseRoute(payload)
             }
         }
-        if (endpoint.publicFossgis) {
+        val parsed = if (endpoint.publicFossgis) {
             osrmMutex.withLock {
                 val now = SystemClock.elapsedRealtime()
                 val remaining = PUBLIC_OSRM_MIN_INTERVAL_MS - (now - lastOsrmRequestAtMs)
@@ -227,6 +236,27 @@ class OsmServiceClient(
         } else {
             requestBlock()
         }
+        Result.success(parsed)
+    } catch (cancelled: CancellationException) {
+        throw cancelled
+    } catch (error: Throwable) {
+        Result.failure(error)
+    }
+
+    internal fun routeRequestUrl(
+        origin: GeoPoint,
+        destination: GeoPoint,
+        mode: RouteMode,
+        configuredBaseUrl: String = configProvider().osrmBaseUrl,
+    ): HttpUrl {
+        val endpoint = routingEndpoint(configuredBaseUrl, mode)
+        val coordinates = "${origin.longitude},${origin.latitude};${destination.longitude},${destination.latitude}"
+        return (endpoint.baseUrl + "/route/v1/${endpoint.profile}/$coordinates").toHttpUrl().newBuilder()
+            .addQueryParameter("overview", "false")
+            .addQueryParameter("steps", "true")
+            .addQueryParameter("alternatives", "false")
+            .addQueryParameter("generate_hints", "false")
+            .build()
     }
 
     private suspend fun nominatimGet(url: String): String = nominatimMutex.withLock {
@@ -234,21 +264,19 @@ class OsmServiceClient(
         val remaining = NOMINATIM_MIN_INTERVAL_MS - (now - lastNominatimRequestAtMs)
         if (remaining > 0) delay(remaining)
         lastNominatimRequestAtMs = SystemClock.elapsedRealtime()
-        withContext(Dispatchers.IO) {
-            val request = Request.Builder()
-                .url(url)
-                .header("User-Agent", USER_AGENT)
-                .header("Accept", "application/json")
-                .header("Accept-Language", Locale.getDefault().toLanguageTag())
-                .get()
-                .build()
-            val call = client.newCall(request)
-            call.timeout().timeout(NOMINATIM_CALL_TIMEOUT_SECONDS, TimeUnit.SECONDS)
-            call.execute().use { response ->
-                val payload = response.body?.string().orEmpty()
-                if (!response.isSuccessful) throw IOException("Nominatim HTTP ${response.code}")
-                payload
-            }
+        val request = Request.Builder()
+            .url(url)
+            .header("User-Agent", USER_AGENT)
+            .header("Accept", "application/json")
+            .header("Accept-Language", Locale.getDefault().toLanguageTag())
+            .get()
+            .build()
+        val call = client.newCall(request)
+        call.timeout().timeout(NOMINATIM_CALL_TIMEOUT_SECONDS, TimeUnit.SECONDS)
+        call.awaitResponse().use { response ->
+            val payload = response.body?.string().orEmpty()
+            if (!response.isSuccessful) throw IOException("Nominatim HTTP ${response.code}")
+            payload
         }
     }
 
@@ -317,7 +345,7 @@ class OsmServiceClient(
     }
 
     private fun humanCategory(tags: JSONObject): String = sequenceOf(
-        "amenity", "shop", "tourism", "historic", "leisure", "highway", "building",
+        "amenity", "shop", "tourism", "historic", "leisure", "highway", "railway", "building",
     ).mapNotNull { key -> tags.optString(key).trim().takeIf { it.isNotBlank() } }
         .firstOrNull()
         ?.replace('_', ' ')
@@ -377,14 +405,14 @@ class OsmServiceClient(
 
     companion object {
         const val OSM_ATTRIBUTION =
-            "Map data © OpenStreetMap contributors · Routing by OSRM"
+            "Map data © OpenStreetMap contributors · Routing by OSRM · Fix the map: https://www.openstreetmap.org/fixthemap"
         private const val USER_AGENT = "AD-Glasses/alpha (https://github.com/Achyut-Dalai/AD-Glasses)"
         private const val FOSSGIS_ROUTING_HOST = "routing.openstreetmap.de"
         private const val NOMINATIM_MIN_INTERVAL_MS = 1_050L
         private const val PUBLIC_OSRM_MIN_INTERVAL_MS = 1_050L
-        private const val NOMINATIM_CALL_TIMEOUT_SECONDS = 8L
-        private const val OVERPASS_CALL_TIMEOUT_SECONDS = 11L
-        private const val OSRM_CALL_TIMEOUT_SECONDS = 9L
+        private const val NOMINATIM_CALL_TIMEOUT_SECONDS = 4L
+        private const val OVERPASS_CALL_TIMEOUT_SECONDS = 6L
+        private const val OSRM_CALL_TIMEOUT_SECONDS = 5L
         private const val CACHE_LIMIT = 96
         private val SAFE_TAG = Regex("[a-zA-Z0-9_:.-]{1,64}")
         private val SAFE_TAG_VALUE = Regex("[a-zA-Z0-9_ :.'()-]{1,96}")
@@ -396,11 +424,30 @@ class OsmServiceClient(
         private val reverseCache = LinkedHashMap<String, OsmAddress>()
 
         private fun defaultClient(): OkHttpClient = OkHttpClient.Builder()
-            .connectTimeout(4, TimeUnit.SECONDS)
-            .readTimeout(12, TimeUnit.SECONDS)
-            .writeTimeout(4, TimeUnit.SECONDS)
-            .callTimeout(15, TimeUnit.SECONDS)
+            .connectTimeout(3, TimeUnit.SECONDS)
+            .readTimeout(7, TimeUnit.SECONDS)
+            .writeTimeout(3, TimeUnit.SECONDS)
+            .callTimeout(8, TimeUnit.SECONDS)
             .build()
+
+        private suspend fun Call.awaitResponse(): Response = suspendCancellableCoroutine { continuation ->
+            continuation.invokeOnCancellation { cancel() }
+            enqueue(object : Callback {
+                override fun onFailure(call: Call, error: IOException) {
+                    val token = continuation.tryResumeWithException(error)
+                    if (token != null) continuation.completeResume(token)
+                }
+
+                override fun onResponse(call: Call, response: Response) {
+                    val token = continuation.tryResume(response)
+                    if (token != null) {
+                        continuation.completeResume(token)
+                    } else {
+                        response.close()
+                    }
+                }
+            })
+        }
 
         private fun roundCoordinate(value: Double): String = String.format(Locale.US, "%.5f", value)
 
