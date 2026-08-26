@@ -62,6 +62,9 @@ object AssistantCompletionSanitizer {
     private val osmAttributionHeader = Regex(
         "(?im)^\\s*Map data © OpenStreetMap contributors\\b.*$",
     )
+    private val routeDiagnosticHeader = Regex(
+        "(?im)^\\s*Route:\\s.*$",
+    )
 
     fun inspect(raw: String): SanitizedCompletion {
         var text = raw.trim()
@@ -102,12 +105,14 @@ object AssistantCompletionSanitizer {
             return SanitizedCompletion("", RejectionReason.SYSTEM_PROMPT_ECHO)
         }
 
-        // Rich chat text may retain clickable tool sources/OSM attribution for the user, but those
-        // display-only appendices must not consume later inference context. The same sanitizer is
-        // used when prior assistant turns are prepared for a provider call.
+        // Rich chat text may retain clickable tool sources/OSM attribution and a compact route
+        // diagnostic for the user, but those display-only appendices must not consume later
+        // inference context. The same sanitizer is used when prior assistant turns are prepared
+        // for a provider call.
         val appendixStart = listOfNotNull(
             sourceAppendixHeader.find(text)?.range?.first,
             osmAttributionHeader.find(text)?.range?.first,
+            routeDiagnosticHeader.find(text)?.range?.first,
         ).minOrNull()
         if (appendixStart != null) {
             text = text.substring(0, appendixStart).trimEnd()
