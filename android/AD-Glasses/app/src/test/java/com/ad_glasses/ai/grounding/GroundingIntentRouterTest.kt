@@ -2,7 +2,6 @@ package com.ad_glasses.ai.grounding
 
 import androidx.test.core.app.ApplicationProvider
 import org.junit.Assert.assertEquals
-import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
@@ -18,33 +17,32 @@ class GroundingIntentRouterTest {
     @Test
     fun liveCricketScoreCanRouteToTavilyNewsDayDespiteAsrRepair() {
         val route = router.parse(
-            raw = """{"intent":"SEARCH","search_query":"India vs Sri Lanka cricket live score","topic":"news","time_range":"day","synthesize":false,"spatial_action":null,"spatial_query":null,"radius_meters":null,"use_current_location":false,"reference_place":null,"route_origin":null,"route_destination":null,"route_mode":null}""",
+            raw = """{"intent":"SEARCH","external_tool":"tavily","search_query":"India vs Sri Lanka cricket live score","topic":"news","time_range":"day"}""",
             originalPrompt = "life score of india vs sri lanks cricket match",
         )!!
 
         assertEquals(GroundingIntent.SEARCH, route.intent)
+        assertEquals(ExternalTool.TAVILY, route.externalTool)
         assertEquals("India vs Sri Lanka cricket live score", route.searchQuery)
         assertEquals(TavilySearchTopic.NEWS, route.tavilyTopic)
         assertEquals(TavilyTimeRange.DAY, route.tavilyTimeRange)
-        assertFalse(route.synthesize)
     }
 
     @Test
-    fun whoWonCricketMatchDoesNotNeedHardcodedPhraseMatching() {
+    fun sportsDoesNotRequireASeparateTavilyTopic() {
         val route = router.parse(
-            raw = """{"intent":"SEARCH","search_query":"cricket match winner latest result","topic":"news","time_range":"day","synthesize":false,"spatial_action":null,"spatial_query":null,"radius_meters":null,"use_current_location":false,"reference_place":null,"route_origin":null,"route_destination":null,"route_mode":null}""",
-            originalPrompt = "who won the cricket match",
+            raw = """{"intent":"SEARCH","search_query":"latest Formula 1 race result","topic":"news","time_range":"day"}""",
+            originalPrompt = "who won the latest formula 1 race",
         )!!
 
-        assertEquals(GroundingIntent.SEARCH, route.intent)
         assertEquals(TavilySearchTopic.NEWS, route.tavilyTopic)
         assertEquals(TavilyTimeRange.DAY, route.tavilyTimeRange)
     }
 
     @Test
-    fun spokenRadiusAndNamedBusinessBecomeSpatialSlots() {
+    fun namedBusinessAndSpokenRadiusBecomeFreeFormSpatialSlots() {
         val route = router.parse(
-            raw = """{"intent":"SPATIAL","search_query":null,"topic":"general","time_range":null,"synthesize":false,"spatial_action":"nearby","spatial_query":"KFC","radius_meters":3000,"use_current_location":true,"reference_place":null,"route_origin":null,"route_destination":null,"route_mode":null}""",
+            raw = """{"intent":"SPATIAL","spatial_action":"nearby","spatial_query":"KFC","radius_meters":3000,"use_current_location":true}""",
             originalPrompt = "is there any kfc within three kilometres near me",
         )!!
 
@@ -56,23 +54,46 @@ class GroundingIntentRouterTest {
     }
 
     @Test
-    fun localWeatherCanRequestBothWithoutSendingCoordinatesToSearch() {
+    fun currentWeatherCanUseDedicatedWeatherCapabilityWithoutTavily() {
         val route = router.parse(
-            raw = """{"intent":"BOTH","search_query":"current weather","topic":"general","time_range":"day","synthesize":true,"spatial_action":"location","spatial_query":null,"radius_meters":null,"use_current_location":true,"reference_place":null,"route_origin":null,"route_destination":null,"route_mode":null}""",
+            raw = """{"intent":"SEARCH","external_tool":"weather","weather_horizon":"current","use_current_location":true}""",
             originalPrompt = "what is the weather near me right now",
         )!!
 
+        assertEquals(GroundingIntent.SEARCH, route.intent)
+        assertEquals(ExternalTool.WEATHER, route.externalTool)
+        assertEquals(WeatherHorizon.CURRENT, route.weatherHorizon)
+        assertTrue(route.useCurrentLocation)
+        assertNull(route.spatialAction)
+    }
+
+    @Test
+    fun bothMeansExternalDataAndASeparateSpatialResultAreBothRequested() {
+        val route = router.parse(
+            raw = """{"intent":"BOTH","external_tool":"tavily","search_query":"KFC current menu and opening information","topic":"general","spatial_action":"nearby","spatial_query":"KFC","radius_meters":3000,"use_current_location":true}""",
+            originalPrompt = "find a kfc within three kilometres and tell me its current menu information",
+        )!!
+
         assertEquals(GroundingIntent.BOTH, route.intent)
-        assertEquals(SpatialAction.LOCATION, route.spatialAction)
-        assertEquals("current weather", route.searchQuery)
-        assertEquals(TavilyTimeRange.DAY, route.tavilyTimeRange)
-        assertTrue(route.synthesize)
+        assertEquals(ExternalTool.TAVILY, route.externalTool)
+        assertEquals(SpatialAction.NEARBY, route.spatialAction)
+        assertEquals("KFC", route.spatialQuery)
+    }
+
+    @Test
+    fun explicitWebsiteRequestBecomesValidatedTavilyDomainConstraint() {
+        val route = router.parse(
+            raw = """{"intent":"SEARCH","search_query":"India cricket live score","topic":"news","time_range":"day","source_domains":["https://www.espn.in/cricket/","bad host","ESPN.IN"]}""",
+            originalPrompt = "check espn for the india cricket score",
+        )!!
+
+        assertEquals(listOf("www.espn.in", "espn.in"), route.sourceDomains)
     }
 
     @Test
     fun stableKnowledgeCanStayDirect() {
         val route = router.parse(
-            raw = """{"intent":"DIRECT","search_query":null,"topic":"general","time_range":null,"synthesize":false,"spatial_action":null,"spatial_query":null,"radius_meters":null,"use_current_location":false,"reference_place":null,"route_origin":null,"route_destination":null,"route_mode":null}""",
+            raw = """{"intent":"DIRECT"}""",
             originalPrompt = "explain recursion",
         )!!
 
@@ -86,8 +107,14 @@ class GroundingIntentRouterTest {
         assertNull(router.parse("not json", "current cricket score"))
         assertNull(
             router.parse(
-                """{"intent":"SPATIAL","spatial_action":"nearby","spatial_query":null}""",
+                """{"intent":"SPATIAL","spatial_action":"nearby"}""",
                 "find something near me",
+            ),
+        )
+        assertNull(
+            router.parse(
+                """{"intent":"SEARCH","external_tool":"weather","use_current_location":false}""",
+                "weather please",
             ),
         )
     }
