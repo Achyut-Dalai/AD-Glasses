@@ -16,8 +16,8 @@ class CloudStreamActivityTest {
     }
 
     @Test
-    fun gemini25_flash_concise_stream_skips_reasoning_heartbeat_when_thinking_budget_is_zero() {
-        assertFalse(
+    fun gemini25_flash_concise_stream_requests_reasoning_heartbeat_for_light_thinking_budget() {
+        assertTrue(
             shouldRequestReasoningHeartbeat(
                 profile(ApiProvider.GOOGLE, "gemini-2.5-flash"),
                 CloudGenerationMode.CONCISE_CONVERSATION,
