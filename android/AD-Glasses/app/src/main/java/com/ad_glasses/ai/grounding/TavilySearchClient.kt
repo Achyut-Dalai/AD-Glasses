@@ -16,6 +16,7 @@ import okhttp3.OkHttpClient
 import okhttp3.Request
 import okhttp3.RequestBody.Companion.toRequestBody
 import okhttp3.Response
+import org.json.JSONArray
 import org.json.JSONObject
 
 enum class TavilySearchDepth(val wire: String) {
@@ -39,9 +40,9 @@ data class TavilySearchResponse(
 /**
  * Small Android-native Tavily client.
  *
- * The semantic router chooses topic/freshness. Search depth stays FAST and raw page bodies stay off
- * in the assistant path. Tavily's own basic LLM answer is requested so straightforward web turns do
- * not need a second AD-model synthesis pass.
+ * The semantic router chooses topic/freshness and may carry an explicit user-requested domain
+ * constraint. The assistant path stays FAST and never asks Tavily for raw page bodies. Tavily's own
+ * basic LLM answer is requested, while AD may still phrase or reason over the bounded result later.
  */
 class TavilySearchClient(
     context: Context,
@@ -61,6 +62,7 @@ class TavilySearchClient(
         topic: TavilySearchTopic = TavilySearchTopic.GENERAL,
         timeRange: TavilyTimeRange? = null,
         includeAnswer: Boolean = true,
+        includeDomains: List<String> = emptyList(),
     ): Result<TavilySearchResponse> = try {
         val config = GroundingPrefs.getConfig(appContext)
         check(config.tavilyEnabled) { "Tavily search is disabled." }
@@ -74,6 +76,7 @@ class TavilySearchClient(
             topic = topic,
             timeRange = timeRange,
             includeAnswer = includeAnswer,
+            includeDomains = includeDomains,
         )
         val body = payload.toString().toRequestBody(JSON)
         val request = Request.Builder()
@@ -100,7 +103,7 @@ class TavilySearchClient(
         Log.i(
             TAG,
             "search_done depth=${depth.wire} topic=${topic.wire} freshness=${timeRange?.wire ?: "none"} " +
-                "answer=${!parsed.answer.isNullOrBlank()} results=${parsed.results.size} " +
+                "domains=${includeDomains.size} answer=${!parsed.answer.isNullOrBlank()} results=${parsed.results.size} " +
                 "elapsedMs=${SystemClock.elapsedRealtime() - startedAt}",
         )
         Result.success(parsed)
@@ -117,18 +120,25 @@ class TavilySearchClient(
         topic: TavilySearchTopic,
         timeRange: TavilyTimeRange?,
         includeAnswer: Boolean,
+        includeDomains: List<String> = emptyList(),
     ): JSONObject {
         val cleanQuery = query.replace(Regex("\\s+"), " ").trim().take(MAX_USER_QUERY_CHARS)
         require(cleanQuery.isNotBlank()) { "Tavily query cannot be blank." }
         return JSONObject()
             .put("query", cleanQuery.take(MAX_QUERY_CHARS))
             .put("search_depth", depth.wire)
-            .put("chunks_per_source", CHUNKS_PER_SOURCE)
             .put("topic", topic.wire)
             .put("include_answer", if (includeAnswer) "basic" else false)
             .put("include_raw_content", false)
             .put("max_results", maxResults.coerceIn(1, MAX_RESULTS))
-            .also { payload -> timeRange?.let { payload.put("time_range", it.wire) } }
+            .also { payload ->
+                // Tavily documents chunks_per_source as an advanced-depth control. FAST requests do
+                // not send it, avoiding reliance on contradictory examples in older docs.
+                if (depth == TavilySearchDepth.ADVANCED) payload.put("chunks_per_source", ADVANCED_CHUNKS_PER_SOURCE)
+                timeRange?.let { payload.put("time_range", it.wire) }
+                val domains = includeDomains.map(String::trim).filter(String::isNotBlank).distinct().take(MAX_DOMAINS)
+                if (domains.isNotEmpty()) payload.put("include_domains", JSONArray(domains))
+            }
     }
 
     internal fun parse(payload: String): TavilySearchResponse {
@@ -175,10 +185,11 @@ class TavilySearchClient(
         private const val MAX_QUERY_CHARS = 1_500
         private const val MAX_RESULTS = 8
         private const val DEFAULT_MAX_RESULTS = 3
+        private const val MAX_DOMAINS = 4
         private const val MAX_URL_CHARS = 1_000
         private const val MAX_SNIPPET_CHARS = 520
         private const val MAX_ANSWER_CHARS = 2_000
-        private const val CHUNKS_PER_SOURCE = 1
+        private const val ADVANCED_CHUNKS_PER_SOURCE = 2
         private const val STANDARD_CALL_TIMEOUT_SECONDS = 6L
         private const val ADVANCED_CALL_TIMEOUT_SECONDS = 8L
         private val JSON = "application/json; charset=utf-8".toMediaType()
