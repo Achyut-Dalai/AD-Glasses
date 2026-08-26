@@ -34,14 +34,18 @@ object AssistantWebPolicy {
     internal fun isExplicitWebRequest(text: String): Boolean {
         val clean = text.trim()
         if (clean.isBlank()) return false
-        return EXPLICIT_WEB.containsMatchIn(clean) ||
-            LOOK_UP.containsMatchIn(clean) ||
-            SEARCH_EXTERNAL.containsMatchIn(clean)
+        val safeBareLookup = LOOK_UP.containsMatchIn(clean) &&
+            !NON_WEB_LOOKUP_CONTEXT.containsMatchIn(clean) &&
+            !LOOK_UP_GAZE.containsMatchIn(clean)
+        return EXPLICIT_WEB.containsMatchIn(clean) || safeBareLookup || SEARCH_EXTERNAL.containsMatchIn(clean)
     }
 
     internal fun isInherentlyFresh(text: String): Boolean {
         val clean = text.trim()
         if (clean.isBlank()) return false
+
+        // A dynamic-sounding noun can still be a definition/reasoning request. Keep those offline.
+        if (CONCEPTUAL_DYNAMIC_TERM.containsMatchIn(clean)) return false
 
         if (NEWS.containsMatchIn(clean)) return true
         if (WEATHER_QUERY.containsMatchIn(clean)) return true
@@ -80,9 +84,29 @@ object AssistantWebPolicy {
         option = RegexOption.IGNORE_CASE,
     )
     private val LOOK_UP = Regex("\\blook up\\b", RegexOption.IGNORE_CASE)
+    private val LOOK_UP_GAZE = Regex(
+        "\\blook up\\s+(?:at|toward|towards|to)\\b",
+        RegexOption.IGNORE_CASE,
+    )
+    private val NON_WEB_LOOKUP_CONTEXT = Regex(
+        "\\blook up\\b.{0,100}\\b(?:in|from|inside|within)\\s+(?:(?:a|an|the|this|that)\\s+)?" +
+            "(?:array|list|map|hashmap|hash map|dictionary|table|database|cache|index|json|object|file|code|" +
+            "function|method|class|source|collection|tree|graph|matrix|data structure)\\b",
+        setOf(RegexOption.IGNORE_CASE, RegexOption.DOT_MATCHES_ALL),
+    )
     private val SEARCH_EXTERNAL = Regex(
         "\\bsearch for\\b.{0,100}\\b(?:latest|most recent|today|tonight|tomorrow|news|weather|forecast|" +
             "current price|stock price|exchange rate|score|opening hours?|release date|specs?|specifications?|recall)\\b",
+        setOf(RegexOption.IGNORE_CASE, RegexOption.DOT_MATCHES_ALL),
+    )
+
+    private val CONCEPTUAL_DYNAMIC_TERM = Regex(
+        "(?:^\\s*(?:define|explain|what does|what is|what are)\\s+(?:the\\s+term\\s+|a\\s+|an\\s+)?" +
+            "(?:stock price|share price|exchange rate|forex rate|currency rate|service status|website status|" +
+            "opening hours|business hours|operating hours|availability)\\b.{0,100}\\b(?:mean|concept|term|" +
+            "in (?:programming|computer science|economics|finance|distributed systems|a state machine|state machines?))\\b|" +
+            "^\\s*what (?:is|are)\\s+(?:a|an)\\s+(?:stock price|share price|exchange rate|forex rate|currency rate|" +
+            "service status|website status|opening hours|business hours|operating hours)\\s*[?.!]*$)",
         setOf(RegexOption.IGNORE_CASE, RegexOption.DOT_MATCHES_ALL),
     )
 
@@ -101,10 +125,12 @@ object AssistantWebPolicy {
         setOf(RegexOption.IGNORE_CASE, RegexOption.DOT_MATCHES_ALL),
     )
     private val MARKETS = Regex(
-        "\\b(?:stock (?:price|quote)|share price|market price|exchange rate|forex rate|currency rate|crypto price|" +
-            "bitcoin price|ethereum price|price of (?:bitcoin|ethereum|btc|eth)|" +
-            "how much is (?:bitcoin|ethereum|btc|eth)|what(?:'s| is) (?:bitcoin|ethereum|btc|eth) worth)\\b",
-        RegexOption.IGNORE_CASE,
+        "(?:\\b(?:stock (?:price|quote)|share price|market price|crypto price|bitcoin price|ethereum price|" +
+            "price of (?:bitcoin|ethereum|btc|eth)|how much is (?:bitcoin|ethereum|btc|eth)|" +
+            "what(?:'s| is) (?:bitcoin|ethereum|btc|eth) worth)\\b|" +
+            "\\b[A-Z]{3}\\s+(?:to|/|vs\\.?|versus)\\s+[A-Z]{3}\\s+(?:exchange|forex|currency) rate\\b|" +
+            "\\b(?:exchange|forex|currency) rate\\s+(?:for|between)\\s+[A-Z]{3}\\b.{0,24}\\b[A-Z]{3}\\b)",
+        setOf(RegexOption.IGNORE_CASE, RegexOption.DOT_MATCHES_ALL),
     )
     private val BUSINESS_LIVE = Regex(
         "(?:\\b(?:open now|closed now|opening hours|closing hours|business hours|operating hours|hours today|" +
@@ -140,8 +166,10 @@ object AssistantWebPolicy {
         setOf(RegexOption.IGNORE_CASE, RegexOption.DOT_MATCHES_ALL),
     )
     private val SERVICE_STATUS = Regex(
-        "(?:\\b(?:service|website|site|api|platform|network) (?:status|outage)\\b|" +
-            "\\b(?:status|outage) (?:for|of) (?:the )?(?:service|website|site|api|platform|network)\\b)",
+        "(?:\\b(?:service|website|site|api|platform|network) (?:status|outage)\\b" +
+            "(?:\\s+(?:now|today|right now))?\\s*[?.!]*$|" +
+            "\\b(?:status|outage) (?:for|of) (?:the )?(?:service|website|site|api|platform|network)\\b" +
+            "(?:\\s+(?:now|today|right now))?\\s*[?.!]*$)",
         RegexOption.IGNORE_CASE,
     )
     private val FRESHNESS = Regex(
