@@ -31,7 +31,15 @@ Requests use:
 - `include_raw_content = false`
 - at most five results in assistant grounding
 
+Result URLs are parsed as valid HTTP(S) URLs and deduplicated before the evidence block is built so `[n]` citations remain aligned with the source list appended to rich chat output.
+
 When Tavily returns sourced evidence, AD disables the Cloud provider's native web tool for that generation to avoid duplicate retrieval. If Tavily is disabled, unconfigured, times out or returns no sourced result, provider-native web remains a fallback only when that turn is allowed to use web.
+
+### Device location permission
+
+Device location is optional and is **not** requested automatically because a phrase happened to match a spatial heuristic. In **Search & Maps**, tap **Grant location access** if you want `near me`, self-location, or routes from the current position.
+
+Android may grant precise or approximate location; either is accepted. Named-place searches such as `cafes near Cubbon Park` and explicit place-to-place routes do not require device GPS.
 
 ## Intent routing: avoid false positives first
 
@@ -72,8 +80,10 @@ These stay on the normal assistant path:
 - `Walk me through Kotlin coroutines.`
 - `What does “near me” mean in search?`
 - `What is around here in this code?`
+- `Where am I in this proof?`
+- `Find the nearest node in this graph.`
 
-The policy contains explicit technical/meta-context vetoes for networking, source code, graphs, data structures and explanatory uses of GPS/routing language.
+The policy contains explicit technical/meta-context vetoes for networking, source code, graphs, data structures and explanatory uses of GPS/routing/proximity language.
 
 ### High-confidence web triggers
 
@@ -81,7 +91,7 @@ Web retrieval runs for:
 
 - explicit directives: `search the web`, `browse the internet`, `check online`, `Google this`, `look up ...`;
 - conversational weather: `is it going to rain?`, `do I need an umbrella?`, `weather tomorrow`;
-- live markets: stock/share price, exchange rate, crypto price;
+- live markets: a named stock/share price, concrete currency pair/rate, or crypto price;
 - sports results/schedules: `who won the match?`, `final score`, `when is the next match?`;
 - live business facts: `open now`, opening/business hours, in-stock/sold-out/availability-now wording;
 - current news/headlines;
@@ -104,6 +114,8 @@ These do not automatically use Tavily:
 - `Find the bug in this function.`
 - `Search your feelings.`
 - `Search for the maximum value in this array.`
+- `Look up a key in this hashmap.`
+- `Look up at the sky.`
 - `Explain electrical current.`
 - `What is a current account?`
 - `Explain price elasticity.`
@@ -111,6 +123,11 @@ These do not automatically use Tavily:
 - `What is a musical score?`
 - `Give me the newest recipe ideas.`
 - `Forecast sales for next quarter.`
+- `What is local news?` / `What does breaking news mean?`
+- `Explain stock price.` / `What is an exchange rate?`
+- `Explain service status in a state machine.`
+
+The policy explicitly distinguishes terminology/concept questions from requests for current values. For example, `What is local news?` stays offline, while `What is the local news?` is treated as a live request; `Explain stock price` stays offline, while `Explain Apple's stock price` can use current data.
 
 A visible per-turn web choice of **off** suppresses inferred freshness and inherited web use. A direct utterance such as `search the web` or `look up ...` is treated as a new explicit request and can re-enable web for that turn. The same explicit-off state is preserved through the grounded camera pipeline and cannot be silently re-enabled by provider-native web fallback.
 
@@ -123,7 +140,7 @@ Instead:
 - high-confidence compound intent runs the relevant grounding layer;
 - ambiguous/meta/technical wording stays off-network;
 - unresolved semantic ambiguity is left to the normal assistant response, which can ask a clarification naturally when needed;
-- Android's location permission remains the operating-system consent boundary for current-device location.
+- current-device location additionally requires the user to grant Android location access from Search & Maps settings.
 
 This bias intentionally prefers an occasional false negative over silently leaking location or paying network latency on a false positive.
 
@@ -176,11 +193,13 @@ Route requests use `overview=false`, `steps=true`, `alternatives=false`, and pub
 
 Current-device location is fetched **only when the current user request needs it**. There is no periodic location tracking in this feature.
 
-AD uses the existing Android coarse/fine location permission. If permission or a fresh fix is unavailable, grounding fails open: normal assistant inference continues with an explicit “location unavailable” evidence note rather than inventing the user's position.
+The **Grant location access** control in Search & Maps is the explicit Android consent entry point. A voice/text intent match never opens a permission dialog by itself. If permission or a fresh fix is unavailable, grounding fails open: normal assistant inference continues with an explicit “location unavailable” evidence note rather than inventing the user's position.
 
 A recent fused-location fix is preferred. If it is stale or inaccurate, AD requests a balanced-power current fix with a bounded timeout.
 
-For local web questions, Tavily receives only coarse area context (neighbourhood/city/state/country), never the reverse-geocoded road/street. The silent visual observer is instructed not to preserve sensitive identifiers such as email addresses, phone numbers, license plates, QR payloads, account/card numbers or serial numbers in visual memory; common email/phone/long-number patterns are also redacted before visual evidence is incorporated into a Tavily query.
+For a direct self-location request, reverse-geocoded address context can be used because that precision is necessary to answer the user's request. For other local web/visual grounding, the final model and Tavily receive only coarse area context (neighbourhood/city/state/country); raw POI coordinates and street-level location are omitted from the evidence block.
+
+The silent visual observer is instructed not to preserve sensitive identifiers such as email addresses, phone numbers, license plates, QR payloads, account/card numbers or serial numbers in visual memory; common email/phone/long-number patterns are also redacted before visual evidence is incorporated into a Tavily query.
 
 ## Latency and cancellation
 
@@ -191,6 +210,7 @@ Grounding runs before final Cloud inference and has a separate bounded envelope:
 - text grounding: about **8 s** maximum budget;
 - grounded visual retrieval after observation: about **9.5 s**;
 - explicit advanced research grounding: about **10.5 s**;
+- routing turns: about **11.5 s** so one/two Nominatim lookups plus OSRM are not forced into the ordinary text envelope;
 - absolute grounding budget clamp: **15 s**;
 - individual Nominatim/Overpass/OSRM/Tavily calls have smaller call timeouts;
 - cancelled/superseded assistant turns cancel cancellable grounding sockets.
