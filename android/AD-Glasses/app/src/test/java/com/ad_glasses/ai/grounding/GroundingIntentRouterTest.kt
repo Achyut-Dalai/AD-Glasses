@@ -36,6 +36,7 @@ class GroundingIntentRouterTest {
             originalPrompt = "who won the latest formula 1 race",
         )!!
 
+        assertEquals(ExternalTool.TAVILY, route.externalTool)
         assertEquals(TavilySearchTopic.NEWS, route.tavilyTopic)
         assertEquals(TavilyTimeRange.DAY, route.tavilyTimeRange)
     }
@@ -83,9 +84,48 @@ class GroundingIntentRouterTest {
     }
 
     @Test
+    fun specializedKnowledgeToolsHaveValidatedSlots() {
+        val wiki = router.parse(
+            raw = """{"intent":"SEARCH","external_tool":"wikipedia","search_query":"James Webb Space Telescope"}""",
+            originalPrompt = "tell me about james webb",
+        )!!
+        assertEquals(ExternalTool.WIKIPEDIA, wiki.externalTool)
+
+        val dictionary = router.parse(
+            raw = """{"intent":"SEARCH","external_tool":"dictionary","search_query":"ubiquitous"}""",
+            originalPrompt = "define ubiquitous",
+        )!!
+        assertEquals(ExternalTool.DICTIONARY, dictionary.externalTool)
+
+        val books = router.parse(
+            raw = """{"intent":"SEARCH","external_tool":"books","search_query":"Dune Frank Herbert"}""",
+            originalPrompt = "who wrote dune",
+        )!!
+        assertEquals(ExternalTool.BOOKS, books.externalTool)
+
+        val currency = router.parse(
+            raw = """{"intent":"SEARCH","external_tool":"currency","amount":50,"base_currency":"USD","quote_currency":"INR"}""",
+            originalPrompt = "convert 50 dollars to rupees",
+        )!!
+        assertEquals(ExternalTool.CURRENCY, currency.externalTool)
+        assertEquals(50.0, currency.currencyAmount!!, 0.0)
+        assertEquals("USD", currency.baseCurrency)
+        assertEquals("INR", currency.quoteCurrency)
+
+        val translation = router.parse(
+            raw = """{"intent":"SEARCH","external_tool":"translation","translation_text":"good morning","source_language":"auto","target_language":"hi"}""",
+            originalPrompt = "translate good morning to hindi",
+        )!!
+        assertEquals(ExternalTool.TRANSLATION, translation.externalTool)
+        assertEquals("good morning", translation.translationText)
+        assertEquals("auto", translation.sourceLanguage)
+        assertEquals("hi", translation.targetLanguage)
+    }
+
+    @Test
     fun bothCanFindNearbyPlacesThenAskTavilyToEnrichThoseCandidates() {
         val route = router.parse(
-            raw = """{"intent":"BOTH","external_tool":"tavily","search_query":"KFC official menu prices and opening information","topic":"general","spatial_action":"nearby","spatial_query":"KFC","osm_filters":[{"key":"brand","value":"KFC"}],"radius_meters":3000,"use_current_location":true}""",
+            raw = """{"intent":"BOTH","external_tool":"tavily","search_query":"KFC official menu prices and opening information","topic":"general","synthesize":true,"spatial_action":"nearby","spatial_query":"KFC","osm_filters":[{"key":"brand","value":"KFC"}],"radius_meters":3000,"use_current_location":true}""",
             originalPrompt = "find kfc within three kilometres and check their websites for menu prices",
         )!!
 
@@ -94,6 +134,7 @@ class GroundingIntentRouterTest {
         assertEquals(SpatialAction.NEARBY, route.spatialAction)
         assertEquals("KFC", route.spatialQuery)
         assertEquals(listOf(OverpassTagFilter("brand", "KFC")), route.osmFilters)
+        assertTrue(route.synthesize)
     }
 
     @Test
@@ -120,19 +161,42 @@ class GroundingIntentRouterTest {
     }
 
     @Test
-    fun stableKnowledgeCanStayDirect() {
+    fun standaloneStableKnowledgeUsesRouterAnswerWithoutSecondCall() {
         val route = router.parse(
-            raw = """{"intent":"DIRECT"}""",
+            raw = """{"intent":"DIRECT","direct_answer":"Recursion is when a function solves a problem by calling itself on a smaller version of that problem.","needs_context":false}""",
             originalPrompt = "explain recursion",
         )!!
 
         assertEquals(GroundingIntent.DIRECT, route.intent)
+        assertTrue(route.directAnswer!!.contains("calling itself"))
+        assertFalse(route.needsContext)
         assertNull(route.searchQuery)
-        assertNull(route.spatialAction)
     }
 
     @Test
-    fun malformedOrIncompleteToolPlansAreRejected() {
+    fun unresolvedReferencesAreDeferredWithoutFabricatingToolSlots() {
+        val route = router.parse(
+            raw = """{"intent":"SEARCH","external_tool":"tavily","needs_context":true}""",
+            originalPrompt = "search it for the current price",
+        )!!
+
+        assertEquals(GroundingIntent.SEARCH, route.intent)
+        assertTrue(route.needsContext)
+        assertNull(route.searchQuery)
+    }
+
+    @Test
+    fun directWithoutAnswerIsInvalidUnlessItNeedsContext() {
+        assertNull(router.parse("""{"intent":"DIRECT"}""", "explain recursion"))
+        val deferred = router.parse(
+            """{"intent":"DIRECT","needs_context":true}""",
+            "explain that again",
+        )
+        assertTrue(deferred != null && deferred.needsContext)
+    }
+
+    @Test
+    fun malformedOrIncompleteExecutablePlansAreRejected() {
         assertNull(router.parse("not json", "current cricket score"))
         assertNull(
             router.parse(
@@ -144,6 +208,12 @@ class GroundingIntentRouterTest {
             router.parse(
                 """{"intent":"SEARCH","external_tool":"weather","use_current_location":false}""",
                 "weather please",
+            ),
+        )
+        assertNull(
+            router.parse(
+                """{"intent":"SEARCH","external_tool":"currency","amount":50,"base_currency":"US","quote_currency":"INR"}""",
+                "convert 50 dollars to rupees",
             ),
         )
     }
