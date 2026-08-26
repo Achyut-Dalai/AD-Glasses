@@ -36,7 +36,13 @@ data class TavilySearchResponse(
     val results: List<TavilySearchResult>,
 )
 
-/** Small Android-native Tavily retrieval client; raw page bodies are intentionally never requested. */
+/**
+ * Small Android-native Tavily client.
+ *
+ * The semantic router chooses topic/freshness. Search depth stays FAST and raw page bodies stay off
+ * in the assistant path. Tavily's own basic LLM answer is requested so straightforward web turns do
+ * not need a second AD-model synthesis pass.
+ */
 class TavilySearchClient(
     context: Context,
     private val client: OkHttpClient = defaultClient(),
@@ -51,7 +57,10 @@ class TavilySearchClient(
     suspend fun search(
         query: String,
         depth: TavilySearchDepth = TavilySearchDepth.FAST,
-        maxResults: Int = 5,
+        maxResults: Int = DEFAULT_MAX_RESULTS,
+        topic: TavilySearchTopic = TavilySearchTopic.GENERAL,
+        timeRange: TavilyTimeRange? = null,
+        includeAnswer: Boolean = true,
     ): Result<TavilySearchResponse> = try {
         val config = GroundingPrefs.getConfig(appContext)
         check(config.tavilyEnabled) { "Tavily search is disabled." }
@@ -60,25 +69,17 @@ class TavilySearchClient(
 
         val cleanQuery = query.replace(Regex("\\s+"), " ").trim().take(MAX_USER_QUERY_CHARS)
         require(cleanQuery.isNotBlank()) { "Tavily query cannot be blank." }
-        val plan = TavilySearchPolicy.plan(cleanQuery)
         val payload = JSONObject()
-            .put("query", plan.query.take(MAX_QUERY_CHARS))
+            .put("query", cleanQuery.take(MAX_QUERY_CHARS))
             .put("search_depth", depth.wire)
             .put("chunks_per_source", CHUNKS_PER_SOURCE)
-            .put("topic", plan.topic.wire)
-            // AD's configured assistant is the answer engine. Tavily is retrieval only so we do not
-            // summarize an LLM-generated Tavily answer with a second LLM.
-            .put("include_answer", false)
+            .put("topic", topic.wire)
+            .put("include_answer", if (includeAnswer) "basic" else false)
             .put("include_raw_content", false)
             .put("max_results", maxResults.coerceIn(1, MAX_RESULTS))
-        plan.timeRange?.let { payload.put("time_range", it.wire) }
-        plan.startDate?.let { payload.put("start_date", it) }
-        plan.endDate?.let { payload.put("end_date", it) }
+        timeRange?.let { payload.put("time_range", it.wire) }
 
-        val body = payload
-            .toString()
-            .toRequestBody(JSON)
-
+        val body = payload.toString().toRequestBody(JSON)
         val request = Request.Builder()
             .url(SEARCH_URL)
             .header("Authorization", "Bearer $key")
@@ -102,8 +103,9 @@ class TavilySearchClient(
         }
         Log.i(
             TAG,
-            "search_done depth=${depth.wire} topic=${plan.topic.wire} freshness=${plan.timeRange?.wire ?: "bounded_or_none"} " +
-                "results=${parsed.results.size} elapsedMs=${SystemClock.elapsedRealtime() - startedAt}",
+            "search_done depth=${depth.wire} topic=${topic.wire} freshness=${timeRange?.wire ?: "none"} " +
+                "answer=${!parsed.answer.isNullOrBlank()} results=${parsed.results.size} " +
+                "elapsedMs=${SystemClock.elapsedRealtime() - startedAt}",
         )
         Result.success(parsed)
     } catch (cancelled: CancellationException) {
@@ -114,9 +116,7 @@ class TavilySearchClient(
 
     internal fun parse(payload: String): TavilySearchResponse {
         val root = JSONObject(payload)
-        // Kept for backwards-compatible parsing of mocked/older payloads. Production requests set
-        // include_answer=false, so answer is normally absent and AD synthesizes from result evidence.
-        val answer = root.optString("answer").trim().takeIf { it.isNotBlank() }
+        val answer = root.optString("answer").replace(Regex("\\s+"), " ").trim().takeIf { it.isNotBlank() }
         val items = root.optJSONArray("results")
         val results = buildList {
             if (items != null) {
@@ -157,10 +157,11 @@ class TavilySearchClient(
         private const val MAX_USER_QUERY_CHARS = 1_300
         private const val MAX_QUERY_CHARS = 1_500
         private const val MAX_RESULTS = 8
+        private const val DEFAULT_MAX_RESULTS = 3
         private const val MAX_URL_CHARS = 1_000
-        private const val MAX_SNIPPET_CHARS = 1_200
-        private const val MAX_ANSWER_CHARS = 1_500
-        private const val CHUNKS_PER_SOURCE = 2
+        private const val MAX_SNIPPET_CHARS = 520
+        private const val MAX_ANSWER_CHARS = 2_000
+        private const val CHUNKS_PER_SOURCE = 1
         private const val STANDARD_CALL_TIMEOUT_SECONDS = 6L
         private const val ADVANCED_CALL_TIMEOUT_SECONDS = 8L
         private val JSON = "application/json; charset=utf-8".toMediaType()
@@ -180,9 +181,7 @@ class TavilySearchClient(
                 }
 
                 override fun onResponse(call: Call, response: Response) {
-                    continuation.resume(response) { _, resource, _ ->
-                        resource.close()
-                    }
+                    continuation.resume(response) { _, resource, _ -> resource.close() }
                 }
             })
         }
