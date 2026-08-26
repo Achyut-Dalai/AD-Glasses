@@ -357,7 +357,9 @@ class AssistantOrchestrator(
             )
             null
         }
-        if (synthesized != null) return synthesized
+        // Spoken-surface provider failures are represented as non-persistent results by the Android
+        // executor. Do not speak that generic provider error when a usable tool answer already exists.
+        if (synthesized != null && synthesized.persist) return synthesized
 
         tools.fallbackAnswer?.takeIf { it.isNotBlank() }?.let { answer ->
             return directToolAnswer(answer, tools, context)
