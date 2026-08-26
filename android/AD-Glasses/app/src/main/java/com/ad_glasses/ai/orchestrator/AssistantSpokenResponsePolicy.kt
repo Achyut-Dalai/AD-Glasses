@@ -12,25 +12,34 @@ object AssistantSpokenResponsePolicy {
     // Latin sentence punctuation is boundary-safe only before whitespace/end; CJK full-width
     // terminators are sentence boundaries without requiring spaces between sentences.
     private val sentenceEndPattern = Regex("(?:[.!?](?=\\s|$)|[。！？])")
+    private val visualOnlySourceHeader = Regex(
+        "(?im)^\\s*(?:sources?|web sources?|references?|citations?)\\s*:\\s*$",
+    )
 
     /**
      * Convert rich model text into speech-safe plain text.
      *
-     * This deliberately lives below prompting: providers can ignore a no-Markdown instruction, and
-     * Android TTS may literally pronounce formatting runs such as "asterisk asterisk". The scanner
-     * removes visual-only Markdown while preserving the words themselves. It is also prefix-stable
-     * enough for cumulative streaming text, so a closing Markdown marker cannot rewrite text that
-     * has already been spoken.
+     * This deliberately lives below prompting: providers can ignore a no-Markdown/no-citations
+     * instruction. Source bibliographies remain useful in Chats but are visual-only and are removed
+     * here before both streaming and final Android TTS. Raw URLs are never pronounced.
      */
     fun normalizeForSpeech(richText: String): String {
         if (richText.isBlank()) return ""
 
-        val spoken = StringBuilder(richText.length)
+        val sourceHeader = visualOnlySourceHeader.find(richText)
+        val speechInput = if (sourceHeader != null) {
+            richText.substring(0, sourceHeader.range.first)
+        } else {
+            richText
+        }
+        if (speechInput.isBlank()) return ""
+
+        val spoken = StringBuilder(speechInput.length)
         var index = 0
         var lineStart = true
 
-        while (index < richText.length) {
-            val char = richText[index]
+        while (index < speechInput.length) {
+            val char = speechInput[index]
 
             when {
                 char == '\r' -> {
@@ -48,50 +57,53 @@ object AssistantSpokenResponsePolicy {
                 }
 
                 lineStart && char == '#' -> {
-                    while (index < richText.length && richText[index] == '#') index++
-                    while (index < richText.length && richText[index] != '\n' && richText[index].isWhitespace()) {
+                    while (index < speechInput.length && speechInput[index] == '#') index++
+                    while (index < speechInput.length && speechInput[index] != '\n' && speechInput[index].isWhitespace()) {
                         index++
                     }
                 }
 
-                lineStart && isListMarker(richText, index) -> {
+                lineStart && isListMarker(speechInput, index) -> {
                     appendSentenceBreak(spoken)
                     index++
-                    while (index < richText.length && richText[index] != '\n' && richText[index].isWhitespace()) {
+                    while (index < speechInput.length && speechInput[index] != '\n' && speechInput[index].isWhitespace()) {
                         index++
                     }
                 }
 
-                richText.startsWith("```", index) -> {
+                speechInput.startsWith("```", index) -> {
                     index += 3
                     if (lineStart) {
                         // Opening fences commonly carry a language label (```kotlin). Do not make
                         // TTS say the fence language; wait until the code/text body begins.
-                        while (index < richText.length && richText[index] != '\n') index++
+                        while (index < speechInput.length && speechInput[index] != '\n') index++
                     }
                 }
 
-                startsWithUrl(richText, index) -> {
-                    appendToken(spoken, "link")
-                    while (index < richText.length && !richText[index].isWhitespace()) index++
-                    lineStart = false
+                startsWithUrl(speechInput, index) -> {
+                    // URLs are visual metadata. Do not say "link" and never spell a URL aloud.
+                    while (index < speechInput.length && !speechInput[index].isWhitespace()) index++
                 }
 
-                char == '!' && index + 1 < richText.length && richText[index + 1] == '[' -> {
+                char == '!' && index + 1 < speechInput.length && speechInput[index + 1] == '[' -> {
                     // Markdown image syntax: speak the alt text, not the leading exclamation mark.
                     index++
+                }
+
+                char == '[' && numericCitationEnd(speechInput, index) != null -> {
+                    index = numericCitationEnd(speechInput, index)!!
                 }
 
                 char == '[' -> {
                     index++
                 }
 
-                char == ']' && index + 1 < richText.length && richText[index + 1] == '(' -> {
+                char == ']' && index + 1 < speechInput.length && speechInput[index + 1] == '(' -> {
                     // The link label has already been appended. Drop the visual URL target, even if
                     // the target is still arriving in a streamed completion.
                     index += 2
-                    while (index < richText.length && richText[index] != ')') index++
-                    if (index < richText.length) index++
+                    while (index < speechInput.length && speechInput[index] != ')') index++
+                    if (index < speechInput.length) index++
                 }
 
                 char == ']' -> {
@@ -99,8 +111,8 @@ object AssistantSpokenResponsePolicy {
                 }
 
                 char == '*' -> {
-                    val runEnd = runEnd(richText, index, '*')
-                    if (runEnd == index + 1 && looksLikeMathAsterisk(richText, index)) {
+                    val runEnd = runEnd(speechInput, index, '*')
+                    if (runEnd == index + 1 && looksLikeMathAsterisk(speechInput, index)) {
                         appendToken(spoken, "times")
                         lineStart = false
                     }
@@ -108,15 +120,15 @@ object AssistantSpokenResponsePolicy {
                 }
 
                 char == '_' -> {
-                    val runEnd = runEnd(richText, index, '_')
-                    if (runEnd == index + 1 && isBetweenAlphaNumeric(richText, index)) {
+                    val runEnd = runEnd(speechInput, index, '_')
+                    if (runEnd == index + 1 && isBetweenAlphaNumeric(speechInput, index)) {
                         appendSpace(spoken)
                     }
                     index = runEnd
                 }
 
                 char == '`' || char == '~' || char == '#' -> {
-                    index = runEnd(richText, index, char)
+                    index = runEnd(speechInput, index, char)
                 }
 
                 char == '|' -> {
@@ -127,7 +139,7 @@ object AssistantSpokenResponsePolicy {
                     index++
                 }
 
-                char == '\\' && index + 1 < richText.length && richText[index + 1] in MARKDOWN_ESCAPABLE -> {
+                char == '\\' && index + 1 < speechInput.length && speechInput[index + 1] in MARKDOWN_ESCAPABLE -> {
                     index++
                 }
 
@@ -213,6 +225,25 @@ object AssistantSpokenResponsePolicy {
         text.regionMatches(index, "https://", 0, 8, ignoreCase = true) ||
             text.regionMatches(index, "http://", 0, 7, ignoreCase = true) ||
             text.regionMatches(index, "www.", 0, 4, ignoreCase = true)
+
+    /** Return the first index after a citation such as [1] or [1, 2], otherwise null. */
+    private fun numericCitationEnd(text: String, start: Int): Int? {
+        if (start >= text.length || text[start] != '[') return null
+        var index = start + 1
+        var sawDigit = false
+        while (index < text.length) {
+            when {
+                text[index].isDigit() -> {
+                    sawDigit = true
+                    index++
+                }
+                text[index] == ',' || text[index].isWhitespace() -> index++
+                text[index] == ']' && sawDigit -> return index + 1
+                else -> return null
+            }
+        }
+        return null
+    }
 
     private fun runEnd(text: String, start: Int, char: Char): Int {
         var index = start
