@@ -2,7 +2,6 @@ package com.ad_glasses.ai.router
 
 import android.content.Context
 import android.util.Base64
-import android.util.Log
 import com.ad_glasses.shared.ai.AiVisionDetail
 import kotlinx.coroutines.runInterruptible
 import org.json.JSONArray
@@ -139,7 +138,6 @@ private const val GEMINI_WIRE_MAX_TOKENS = 16_384
 object ApiTokenClient {
     private const val CONNECT_TIMEOUT_MS = 10_000
     private const val READ_TIMEOUT_MS = 120_000
-    private const val TIMING_TAG = "AssistantTiming"
 
     suspend fun chat(
         context: Context,
@@ -588,16 +586,10 @@ object ApiTokenClient {
         require(contents.length() > 0) { "Gemini request has no user/model content." }
 
         val tuning = CloudModelPolicy.requestTuning(profile, generationMode)
-        val wireMaxTokens = geminiWireMaxOutputTokens(profile, generationMode, maxTokens)
-        Log.i(
-            TIMING_TAG,
-            "stage=gemini_request_policy model=${ApiProvider.GOOGLE.normalizeModelId(profile.model)} " +
-                "mode=$generationMode visibleMaxTokens=$maxTokens wireMaxTokens=$wireMaxTokens " +
-                "thinkingLevel=${tuning.geminiThinkingLevel ?: "default"} " +
-                "thinkingBudget=${tuning.geminiThinkingBudget ?: -1} includeThoughts=$includeThoughts " +
-                "web=$webRequested image=${imagePaths.isNotEmpty()} audio=${!audioPath.isNullOrBlank()}",
+        val generationConfig = JSONObject().put(
+            "maxOutputTokens",
+            geminiWireMaxOutputTokens(profile, generationMode, maxTokens),
         )
-        val generationConfig = JSONObject().put("maxOutputTokens", wireMaxTokens)
         if (tuning.geminiThinkingLevel != null || tuning.geminiThinkingBudget != null) {
             val thinkingConfig = JSONObject().put("includeThoughts", includeThoughts)
             tuning.geminiThinkingLevel?.let { level -> thinkingConfig.put("thinkingLevel", level) }
