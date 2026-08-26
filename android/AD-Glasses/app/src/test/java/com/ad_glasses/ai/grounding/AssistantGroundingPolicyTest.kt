@@ -52,11 +52,30 @@ class AssistantGroundingPolicyTest {
     }
 
     @Test
+    fun genericCategoryRouteUsesPoiButNamedBusinessStaysNamedDestination() {
+        val generic = AssistantGroundingPolicy.spatialIntent("Navigate to a pharmacy")
+        assertTrue(generic.routeRequested)
+        assertNull(generic.routeDestination)
+        assertTrue(generic.filters.contains(OverpassTagFilter("amenity", "pharmacy")))
+
+        val named = AssistantGroundingPolicy.spatialIntent("Navigate to the Ritz hotel")
+        assertTrue(named.routeRequested)
+        assertEquals("the Ritz hotel", named.routeDestination)
+        assertTrue(named.filters.isEmpty())
+    }
+
+    @Test
     fun categoryWordsAloneDoNotActivateLocation() {
-        assertFalse(AssistantGroundingPolicy.spatialIntent("What makes a good restaurant?").needsLocation)
-        assertFalse(AssistantGroundingPolicy.spatialIntent("How do banks work?").needsLocation)
-        assertFalse(AssistantGroundingPolicy.spatialIntent("Is local food healthy?").needsLocation)
-        assertFalse(AssistantGroundingPolicy.spatialIntent("Recommend a bank account for students").needsLocation)
+        listOf(
+            "What makes a good restaurant?",
+            "How do banks work?",
+            "Is local food healthy?",
+            "Recommend a bank account for students",
+            "What is a public park?",
+            "How do hospitals triage patients?",
+        ).forEach { text ->
+            assertFalse(text, AssistantGroundingPolicy.spatialIntent(text).needsLocation)
+        }
     }
 
     @Test
@@ -68,21 +87,61 @@ class AssistantGroundingPolicyTest {
     }
 
     @Test
-    fun generalNearbyDiscoveryUsesBoundedUsefulPoiSet() {
-        val intent = AssistantGroundingPolicy.spatialIntent("What's nearby?")
-        assertTrue(intent.needsLocation)
-        assertTrue(intent.filters.contains(OverpassTagFilter("tourism", "attraction")))
+    fun explicitReferencePlaceAvoidsDeviceGps() {
+        val intent = AssistantGroundingPolicy.spatialIntent("Find cafes within 1 km of Cubbon Park")
+        assertFalse(intent.needsLocation)
+        assertEquals("Cubbon Park", intent.referencePlace)
+        assertEquals(1_000, intent.radiusMeters)
         assertTrue(intent.filters.contains(OverpassTagFilter("amenity", "cafe")))
-        assertTrue(intent.filters.contains(OverpassTagFilter("amenity", "restaurant")))
     }
 
     @Test
-    fun locationOnlyAndLocalWeatherUseLocationWithoutPoiSearch() {
-        val location = AssistantGroundingPolicy.spatialIntent("What is my current location?")
-        assertTrue(location.needsLocation)
-        assertTrue(location.locationOnly)
-        assertTrue(location.filters.isEmpty())
+    fun unresolvedPersonalPlacesDoNotSilentlyBecomeCurrentLocation() {
+        listOf(
+            "Find a pharmacy near my hotel",
+            "Closest cafe to my office",
+            "Find parking near my home",
+        ).forEach { text ->
+            val intent = AssistantGroundingPolicy.spatialIntent(text)
+            assertFalse(text, intent.needsLocation)
+            assertTrue(text, intent.filters.isEmpty())
+            assertNull(text, intent.referencePlace)
+        }
+    }
 
+    @Test
+    fun generalNearbyDiscoveryUsesBoundedUsefulPoiSet() {
+        listOf(
+            "What's nearby?",
+            "Things to do nearby",
+            "What can I see around here?",
+        ).forEach { text ->
+            val intent = AssistantGroundingPolicy.spatialIntent(text)
+            assertTrue(text, intent.needsLocation)
+            assertTrue(text, intent.filters.contains(OverpassTagFilter("tourism", "attraction")))
+            assertTrue(text, intent.filters.contains(OverpassTagFilter("amenity", "cafe")))
+            assertTrue(text, intent.filters.contains(OverpassTagFilter("amenity", "restaurant")))
+        }
+    }
+
+    @Test
+    fun selfLocationPhrasesUseLocationWithoutPoiSearch() {
+        listOf(
+            "What is my current location?",
+            "What is my address?",
+            "What street am I on?",
+            "Which neighborhood am I in?",
+            "What city am I in?",
+        ).forEach { text ->
+            val intent = AssistantGroundingPolicy.spatialIntent(text)
+            assertTrue(text, intent.needsLocation)
+            assertTrue(text, intent.locationOnly)
+            assertTrue(text, intent.filters.isEmpty())
+        }
+    }
+
+    @Test
+    fun localWeatherUsesLocationWithoutPoiSearch() {
         val weather = AssistantGroundingPolicy.spatialIntent("What's the weather near me today?")
         assertTrue(weather.needsLocation)
         assertFalse(weather.locationOnly)
@@ -90,18 +149,51 @@ class AssistantGroundingPolicyTest {
     }
 
     @Test
-    fun routeLikeIdiomsDoNotActivateGpsOrRouting() {
+    fun deicticAreaRequiresAnActualPoiCategory() {
+        val museum = AssistantGroundingPolicy.spatialIntent("Find a museum in this area")
+        assertTrue(museum.needsLocation)
+        assertTrue(museum.filters.contains(OverpassTagFilter("tourism", "museum")))
+
+        assertFalse(AssistantGroundingPolicy.spatialIntent("Explain recursion in this area of computer science").needsLocation)
+    }
+
+    @Test
+    fun routeLikeIdiomsAndTechnicalRoutingDoNotActivateGpsOrGeocoding() {
         listOf(
             "How do I get to sleep faster?",
             "Walk me through Kotlin coroutines",
             "Drive sales to one million dollars",
             "Directions to improve my writing",
             "Route traffic to the backup server",
+            "Route from API gateway to backup server",
+            "Directions from graph node A to graph node B",
+            "Route HTTP requests from service A to service B",
+            "How should Kubernetes route packets to this pod?",
         ).forEach { text ->
             val intent = AssistantGroundingPolicy.spatialIntent(text)
             assertFalse(text, intent.needsLocation)
             assertFalse(text, intent.routeRequested)
         }
+    }
+
+    @Test
+    fun metaSpatialLanguageDoesNotActivateLocation() {
+        listOf(
+            "What does 'near me' mean in search?",
+            "Explain the phrase nearby",
+            "How does GPS location work?",
+            "What is around here in this code?",
+        ).forEach { text ->
+            assertFalse(text, AssistantGroundingPolicy.spatialIntent(text).needsLocation)
+        }
+    }
+
+    @Test
+    fun naturalDistancePhrasesCanRequestRouting() {
+        val intent = AssistantGroundingPolicy.spatialIntent("How far is Cubbon Park from me?")
+        assertTrue(intent.needsLocation)
+        assertTrue(intent.routeRequested)
+        assertEquals("Cubbon Park", intent.routeDestination)
     }
 
     @Test
@@ -118,6 +210,14 @@ class AssistantGroundingPolicyTest {
             listOf(OverpassTagFilter("railway", "station")),
             AssistantGroundingPolicy.spatialIntent("Find a train station nearby").filters,
         )
+        assertEquals(
+            listOf(OverpassTagFilter("leisure", "playground")),
+            AssistantGroundingPolicy.spatialIntent("Find a playground nearby").filters,
+        )
+        assertEquals(
+            listOf(OverpassTagFilter("tourism", "museum")),
+            AssistantGroundingPolicy.spatialIntent("Nearest museum").filters,
+        )
     }
 
     @Test
@@ -129,5 +229,7 @@ class AssistantGroundingPolicyTest {
         assertFalse(AssistantGroundingPolicy.shouldGroundVisual("What color is this building?"))
         assertFalse(AssistantGroundingPolicy.shouldGroundVisual("Summarize this document"))
         assertFalse(AssistantGroundingPolicy.shouldGroundVisual("What price is shown on this receipt?"))
+        assertFalse(AssistantGroundingPolicy.shouldGroundVisual("Identify this language"))
+        assertFalse(AssistantGroundingPolicy.shouldGroundVisual("How much is this?"))
     }
 }
