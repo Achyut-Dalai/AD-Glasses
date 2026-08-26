@@ -102,7 +102,7 @@ class OsmServiceClientTest {
         val place = client().parseOverpass(payload, origin, 8).single()
 
         assertTrue(place.category.contains("cafe"))
-        assertTrue(place.category.contains("opening hours"))
+        assertTrue(place.category.contains("hours"))
         assertTrue(place.category.contains("Market Road"))
         assertTrue(place.category.contains("coffee shop"))
         assertTrue(place.category.contains("phone"))
@@ -131,7 +131,7 @@ class OsmServiceClientTest {
             }
         """.trimIndent()
 
-        val route = client().parseRoute(payload)!!
+        val route = client().parseRoute(payload)
 
         assertEquals(2150, route.distanceMeters)
         assertEquals(403, route.durationSeconds)
@@ -143,10 +143,10 @@ class OsmServiceClientTest {
 
     private fun client(osrmBaseUrl: String = GroundingPrefs.DEFAULT_OSRM_BASE_URL): OsmServiceClient =
         OsmServiceClient {
-            GroundingConfig(
+            GroundingServiceConfig(
                 tavilyEnabled = false,
                 nominatimBaseUrl = GroundingPrefs.DEFAULT_NOMINATIM_BASE_URL,
-                overpassUrl = GroundingPrefs.DEFAULT_OVERPASS_URL,
+                overpassEndpoint = GroundingPrefs.DEFAULT_OVERPASS_ENDPOINT,
                 osrmBaseUrl = osrmBaseUrl,
             )
         }
