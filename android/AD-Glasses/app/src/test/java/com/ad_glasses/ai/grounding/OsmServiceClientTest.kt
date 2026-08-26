@@ -3,7 +3,10 @@ package com.ad_glasses.ai.grounding
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 import org.junit.Test
+import org.junit.runner.RunWith
+import org.robolectric.RobolectricTestRunner
 
+@RunWith(RobolectricTestRunner::class)
 class OsmServiceClientTest {
     private val origin = GeoPoint(latitude = 12.9716, longitude = 77.5946)
     private val destination = GeoPoint(latitude = 12.9763, longitude = 77.5929)
