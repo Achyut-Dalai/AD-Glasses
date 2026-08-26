@@ -1,7 +1,10 @@
 package com.ad_glasses.agent
 
+import android.Manifest
+import android.content.pm.PackageManager
 import android.os.Bundle
 import android.widget.Toast
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AppCompatActivity
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -34,6 +37,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.unit.dp
+import androidx.core.content.ContextCompat
 import androidx.lifecycle.lifecycleScope
 import com.ad_glasses.ai.grounding.GroundingPrefs
 import com.ad_glasses.ai.grounding.TavilySearchClient
@@ -61,6 +65,18 @@ class CloudSettingsActivity : AppCompatActivity() {
     private var groundingStatus by mutableStateOf("")
     private var groundingError by mutableStateOf<String?>(null)
     private var testingTavily by mutableStateOf(false)
+    private var locationGranted by mutableStateOf(false)
+
+    private val locationPermissionLauncher = registerForActivityResult(
+        ActivityResultContracts.RequestMultiplePermissions(),
+    ) {
+        locationGranted = hasLocationPermission()
+        groundingStatus = if (locationGranted) {
+            "Location access granted. AD can use device location for explicit nearby, self-location, and current-location routing requests."
+        } else {
+            "Location access was not granted. Named-place searches and place-to-place routing can still work without device GPS."
+        }
+    }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -78,6 +94,7 @@ class CloudSettingsActivity : AppCompatActivity() {
         nominatimBaseUrl = grounding.nominatimBaseUrl
         overpassEndpoint = grounding.overpassEndpoint
         osrmBaseUrl = grounding.osrmBaseUrl
+        locationGranted = hasLocationPermission()
         groundingStatus = if (tavilyConfigured) "Tavily key saved securely" else "Add a Tavily API key to enable Tavily retrieval"
 
         setThemedComposeContent {
@@ -90,6 +107,7 @@ class CloudSettingsActivity : AppCompatActivity() {
                 tavilyReplacement = tavilyReplacement,
                 tavilyConfigured = tavilyConfigured,
                 tavilyEnabled = tavilyEnabled,
+                locationGranted = locationGranted,
                 nominatimBaseUrl = nominatimBaseUrl,
                 overpassEndpoint = overpassEndpoint,
                 osrmBaseUrl = osrmBaseUrl,
@@ -112,6 +130,7 @@ class CloudSettingsActivity : AppCompatActivity() {
                     tavilyEnabled = it
                     GroundingPrefs.setTavilyEnabled(this, it)
                 },
+                onRequestLocation = ::requestLocationPermission,
                 onNominatimChange = { nominatimBaseUrl = it; groundingError = null },
                 onOverpassChange = { overpassEndpoint = it; groundingError = null },
                 onOsrmChange = { osrmBaseUrl = it; groundingError = null },
@@ -125,6 +144,29 @@ class CloudSettingsActivity : AppCompatActivity() {
                 },
             )
         }
+    }
+
+    override fun onResume() {
+        super.onResume()
+        locationGranted = hasLocationPermission()
+    }
+
+    private fun hasLocationPermission(): Boolean =
+        ContextCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION) == PackageManager.PERMISSION_GRANTED ||
+            ContextCompat.checkSelfPermission(this, Manifest.permission.ACCESS_COARSE_LOCATION) == PackageManager.PERMISSION_GRANTED
+
+    private fun requestLocationPermission() {
+        if (hasLocationPermission()) {
+            locationGranted = true
+            groundingStatus = "Location access is already granted."
+            return
+        }
+        locationPermissionLauncher.launch(
+            arrayOf(
+                Manifest.permission.ACCESS_FINE_LOCATION,
+                Manifest.permission.ACCESS_COARSE_LOCATION,
+            ),
+        )
     }
 
     private fun saveRelay(showConfirmation: Boolean): Boolean {
@@ -198,7 +240,7 @@ class CloudSettingsActivity : AppCompatActivity() {
             val result = withContext(Dispatchers.IO) {
                 TavilySearchClient(this@CloudSettingsActivity).search(
                     query = "OpenStreetMap project",
-                    depth = TavilySearchDepth.BASIC,
+                    depth = TavilySearchDepth.FAST,
                     maxResults = 1,
                 )
             }
@@ -222,6 +264,7 @@ private fun CloudServiceSettingsScreen(
     tavilyReplacement: String,
     tavilyConfigured: Boolean,
     tavilyEnabled: Boolean,
+    locationGranted: Boolean,
     nominatimBaseUrl: String,
     overpassEndpoint: String,
     osrmBaseUrl: String,
@@ -235,6 +278,7 @@ private fun CloudServiceSettingsScreen(
     onTestRelay: () -> Unit,
     onTavilyReplacementChange: (String) -> Unit,
     onTavilyEnabledChange: (Boolean) -> Unit,
+    onRequestLocation: () -> Unit,
     onNominatimChange: (String) -> Unit,
     onOverpassChange: (String) -> Unit,
     onOsrmChange: (String) -> Unit,
@@ -329,6 +373,24 @@ private fun CloudServiceSettingsScreen(
             )
             if (tavilyConfigured) {
                 OutlinedButton(onClick = onClearTavily, modifier = Modifier.fillMaxWidth()) { Text("Remove Tavily key") }
+            }
+
+            Text("Device location", style = MaterialTheme.typography.bodyLarge)
+            Text(
+                if (locationGranted) {
+                    "Location access is granted. AD reads a location fix only for a high-confidence spatial turn such as ‘near me’, ‘where am I?’, or routing from the current position."
+                } else {
+                    "Location access is optional. Grant it for ‘near me’, self-location, and current-position routing. Named-place searches and place-to-place routes do not require device GPS."
+                },
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+            OutlinedButton(
+                onClick = onRequestLocation,
+                enabled = !locationGranted,
+                modifier = Modifier.fillMaxWidth(),
+            ) {
+                Text(if (locationGranted) "Location access granted" else "Grant location access")
             }
 
             OutlinedTextField(
