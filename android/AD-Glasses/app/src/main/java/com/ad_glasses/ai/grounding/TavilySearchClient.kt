@@ -42,8 +42,10 @@ data class TavilySearchResponse(
  *
  * The semantic router chooses topic/freshness and may carry an explicit user-requested domain
  * constraint. The assistant path stays FAST and never asks Tavily for raw page bodies. Tavily's own
- * basic LLM answer is requested. One bounded source chunk is retained only as fallback evidence when
- * Tavily cannot produce a usable answer or when AD must combine Tavily with another tool.
+ * basic LLM answer is requested. FAST costs one Search credit regardless of whether one or three
+ * focused chunks are requested, so retain up to three chunks per source in this in-memory response.
+ * Downstream synthesis still applies a much smaller total context budget; these chunks are not
+ * persisted into conversation history or storage.
  */
 class TavilySearchClient(
     context: Context,
@@ -186,9 +188,9 @@ class TavilySearchClient(
         private const val DEFAULT_MAX_RESULTS = 3
         private const val MAX_DOMAINS = 4
         private const val MAX_URL_CHARS = 1_000
-        private const val MAX_SNIPPET_CHARS = 520
+        private const val MAX_SNIPPET_CHARS = 1_600
         private const val MAX_ANSWER_CHARS = 2_000
-        private const val CHUNKS_PER_SOURCE = 1
+        private const val CHUNKS_PER_SOURCE = 3
         private const val STANDARD_CALL_TIMEOUT_SECONDS = 6L
         private const val ADVANCED_CALL_TIMEOUT_SECONDS = 8L
         private val JSON = "application/json; charset=utf-8".toMediaType()
