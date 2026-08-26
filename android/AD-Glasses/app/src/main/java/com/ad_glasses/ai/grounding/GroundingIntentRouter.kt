@@ -17,6 +17,18 @@ enum class GroundingIntent {
     BOTH,
 }
 
+enum class ExternalTool {
+    TAVILY,
+    WEATHER,
+}
+
+enum class WeatherHorizon {
+    CURRENT,
+    TODAY,
+    TOMORROW,
+    WEEK,
+}
+
 enum class SpatialAction {
     NEARBY,
     ROUTE,
@@ -25,10 +37,12 @@ enum class SpatialAction {
 
 data class GroundingRoute(
     val intent: GroundingIntent,
+    val externalTool: ExternalTool = ExternalTool.TAVILY,
     val searchQuery: String? = null,
     val tavilyTopic: TavilySearchTopic = TavilySearchTopic.GENERAL,
     val tavilyTimeRange: TavilyTimeRange? = null,
-    val synthesize: Boolean = false,
+    val sourceDomains: List<String> = emptyList(),
+    val weatherHorizon: WeatherHorizon = WeatherHorizon.CURRENT,
     val spatialAction: SpatialAction? = null,
     val spatialQuery: String? = null,
     val radiusMeters: Int? = null,
@@ -40,11 +54,10 @@ data class GroundingRoute(
 )
 
 /**
- * Provider-agnostic semantic router for public-web and spatial tools.
+ * Provider-agnostic semantic router for public-data and spatial tools.
  *
  * The configured AD text model receives only the current utterance. Conversation history is never
- * sent to this classifier. The router decides whether the turn is DIRECT, SEARCH, SPATIAL, or BOTH
- * and extracts only the small set of parameters the host application can safely execute.
+ * sent to this classifier. No keyword/phrase trigger decides Search or Maps before this model runs.
  */
 class GroundingIntentRouter(context: Context) {
     private val appContext = context.applicationContext
@@ -78,8 +91,8 @@ class GroundingIntentRouter(context: Context) {
         val effective = applyExplicitWebPreference(parsed, cleanPrompt, explicitWebRequest)
         Log.i(
             TAG,
-            "route_done intent=${effective.intent.name.lowercase()} topic=${effective.tavilyTopic.wire} " +
-                "freshness=${effective.tavilyTimeRange?.wire ?: "none"} synthesize=${effective.synthesize} " +
+            "route_done intent=${effective.intent.name.lowercase()} external=${effective.externalTool.name.lowercase()} " +
+                "topic=${effective.tavilyTopic.wire} freshness=${effective.tavilyTimeRange?.wire ?: "none"} " +
                 "spatial=${effective.spatialAction?.name?.lowercase() ?: "none"} elapsedMs=${SystemClock.elapsedRealtime() - startedAt}",
         )
         Result.success(effective)
@@ -98,10 +111,14 @@ class GroundingIntentRouter(context: Context) {
 
         val intent = when (root.optString("intent").trim().uppercase()) {
             "DIRECT", "ANSWER", "NONE" -> GroundingIntent.DIRECT
-            "SEARCH", "WEB", "TAVILY" -> GroundingIntent.SEARCH
+            "SEARCH", "WEB", "TAVILY", "EXTERNAL" -> GroundingIntent.SEARCH
             "SPATIAL", "MAP", "MAPS", "OSM" -> GroundingIntent.SPATIAL
             "BOTH" -> GroundingIntent.BOTH
             else -> return null
+        }
+        val externalTool = when (root.optNullableString("external_tool")?.lowercase()) {
+            "weather", "open-meteo", "open_meteo" -> ExternalTool.WEATHER
+            else -> ExternalTool.TAVILY
         }
         val topic = when (root.optNullableString("topic")?.lowercase()) {
             "news" -> TavilySearchTopic.NEWS
@@ -114,6 +131,12 @@ class GroundingIntentRouter(context: Context) {
             "month", "m" -> TavilyTimeRange.MONTH
             "year", "y" -> TavilyTimeRange.YEAR
             else -> null
+        }
+        val weatherHorizon = when (root.optNullableString("weather_horizon")?.lowercase()) {
+            "today" -> WeatherHorizon.TODAY
+            "tomorrow" -> WeatherHorizon.TOMORROW
+            "week", "weekly", "7day", "7-day" -> WeatherHorizon.WEEK
+            else -> WeatherHorizon.CURRENT
         }
         val spatialAction = when (root.optNullableString("spatial_action")?.lowercase()) {
             "nearby", "find" -> SpatialAction.NEARBY
@@ -135,14 +158,21 @@ class GroundingIntentRouter(context: Context) {
         val searchQuery = root.optNullableString("search_query")
             ?.sanitizeQuery()
             ?: originalPrompt.takeIf { intent == GroundingIntent.SEARCH || intent == GroundingIntent.BOTH }
+        val sourceDomains = root.optDomains()
         val spatialQuery = root.optNullableString("spatial_query")?.sanitizeQuery()
         val referencePlace = root.optNullableString("reference_place")?.sanitizeQuery()
         val routeOrigin = root.optNullableString("route_origin")?.sanitizeQuery()
         val routeDestination = root.optNullableString("route_destination")?.sanitizeQuery()
-        val synthesize = root.optBoolean("synthesize", intent == GroundingIntent.BOTH)
         val useCurrentLocation = root.optBoolean("use_current_location", referencePlace == null)
 
-        if ((intent == GroundingIntent.SEARCH || intent == GroundingIntent.BOTH) && searchQuery.isNullOrBlank()) {
+        if ((intent == GroundingIntent.SEARCH || intent == GroundingIntent.BOTH) &&
+            externalTool == ExternalTool.TAVILY && searchQuery.isNullOrBlank()
+        ) {
+            return null
+        }
+        if ((intent == GroundingIntent.SEARCH || intent == GroundingIntent.BOTH) &&
+            externalTool == ExternalTool.WEATHER && !useCurrentLocation && referencePlace.isNullOrBlank()
+        ) {
             return null
         }
         if ((intent == GroundingIntent.SPATIAL || intent == GroundingIntent.BOTH) && spatialAction == null) {
@@ -157,10 +187,12 @@ class GroundingIntentRouter(context: Context) {
 
         return GroundingRoute(
             intent = intent,
+            externalTool = externalTool,
             searchQuery = searchQuery,
             tavilyTopic = topic,
             tavilyTimeRange = timeRange,
-            synthesize = synthesize,
+            sourceDomains = sourceDomains,
+            weatherHorizon = weatherHorizon,
             spatialAction = spatialAction,
             spatialQuery = spatialQuery,
             radiusMeters = radius,
@@ -181,14 +213,15 @@ class GroundingIntentRouter(context: Context) {
         true -> when (route.intent) {
             GroundingIntent.DIRECT -> route.copy(
                 intent = GroundingIntent.SEARCH,
+                externalTool = ExternalTool.TAVILY,
                 searchQuery = prompt,
                 tavilyTopic = TavilySearchTopic.GENERAL,
             )
             GroundingIntent.SPATIAL -> route.copy(
                 intent = GroundingIntent.BOTH,
+                externalTool = ExternalTool.TAVILY,
                 searchQuery = prompt,
                 tavilyTopic = TavilySearchTopic.GENERAL,
-                synthesize = true,
             )
             GroundingIntent.SEARCH,
             GroundingIntent.BOTH -> route
@@ -199,7 +232,7 @@ class GroundingIntentRouter(context: Context) {
                 intent = GroundingIntent.SPATIAL,
                 searchQuery = null,
                 tavilyTimeRange = null,
-                synthesize = route.synthesize,
+                sourceDomains = emptyList(),
             )
             GroundingIntent.DIRECT,
             GroundingIntent.SPATIAL -> route
@@ -211,6 +244,26 @@ class GroundingIntentRouter(context: Context) {
         return optString(key).replace(Regex("\\s+"), " ").trim().takeIf { it.isNotBlank() && it != "null" }
     }
 
+    private fun JSONObject.optDomains(): List<String> {
+        val array = optJSONArray("source_domains") ?: return emptyList()
+        return buildList {
+            for (index in 0 until array.length()) {
+                sanitizeDomain(array.optString(index))?.let(::add)
+            }
+        }.distinct().take(MAX_SOURCE_DOMAINS)
+    }
+
+    private fun sanitizeDomain(raw: String): String? {
+        val host = raw.trim()
+            .lowercase()
+            .removePrefix("https://")
+            .removePrefix("http://")
+            .substringBefore('/')
+            .substringBefore(':')
+            .trim('.')
+        return host.takeIf { DOMAIN.matches(it) }
+    }
+
     private fun String.sanitizeQuery(): String =
         replace(Regex("\\s+"), " ").trim().take(MAX_QUERY_CHARS)
 
@@ -218,17 +271,20 @@ class GroundingIntentRouter(context: Context) {
         const val TAG = "AssistantGroundingRouter"
         const val MAX_PROMPT_CHARS = 1_300
         const val MAX_QUERY_CHARS = 600
-        const val ROUTER_MAX_TOKENS = 128
+        const val ROUTER_MAX_TOKENS = 160
         const val MIN_RADIUS_METERS = 50
         const val MAX_RADIUS_METERS = 5_000
+        const val MAX_SOURCE_DOMAINS = 4
+        val DOMAIN = Regex("(?i)(?:[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?\\.)+[a-z]{2,63}")
 
         const val ROUTER_SYSTEM_PROMPT =
             "Classify only this utterance; never use or assume history. Return one compact JSON object, no prose. " +
-                "intent: DIRECT for stable knowledge/reasoning; SEARCH for facts needing public/current/external data; SPATIAL for nearby/location/routes; BOTH only when both are required. " +
-                "If a factual answer could have changed or you are unsure DIRECT is safe, choose SEARCH. " +
-                "For SEARCH/BOTH, search_query should be standalone and may repair obvious ASR errors; topic is general, news, or finance; time_range is day/week/month/year when useful. Use news for live sports/current events, finance for markets, day for live/current/today. " +
-                "Set synthesize=true only when the user asks to explain/compare/reason/recommend over tool data; otherwise omit it. " +
-                "For SPATIAL/BOTH set spatial_action=nearby|route|location. nearby needs spatial_query and optional radius_meters/reference_place/use_current_location. route needs route_destination (and optional route_origin/route_mode). Convert spoken distances to meters. " +
-                "Omit irrelevant/null fields. Keys: intent, search_query, topic, time_range, synthesize, spatial_action, spatial_query, radius_meters, use_current_location, reference_place, route_origin, route_destination, route_mode."
+                "intent: DIRECT for stable knowledge/reasoning; SEARCH for current/external data; SPATIAL for nearby/location/routes; BOTH only when the user needs an external-data answer and a spatial result together. " +
+                "No keyword is a command by itself. Infer the meaning of the whole utterance. If a factual answer could have changed or you are unsure DIRECT is safe, choose SEARCH. " +
+                "For SEARCH/BOTH choose external_tool=weather for weather/forecast conditions, otherwise tavily. Weather needs use_current_location=true or reference_place, plus weather_horizon=current|today|tomorrow|week. " +
+                "For Tavily, search_query should be standalone and may repair obvious ASR errors; topic is only general, news, or finance. Use news for current events and live sports, finance for markets, otherwise general. time_range is day/week/month/year when useful. " +
+                "Only set source_domains when the user explicitly asks to use/check a named website or domain; never invent a preferred publisher. " +
+                "For SPATIAL/BOTH set spatial_action=nearby|route|location. nearby needs spatial_query and optional radius_meters/reference_place/use_current_location. route needs route_destination and optional route_origin/route_mode. Convert spoken distances to meters. " +
+                "Omit irrelevant/null fields. Keys: intent, external_tool, search_query, topic, time_range, source_domains, weather_horizon, spatial_action, spatial_query, radius_meters, use_current_location, reference_place, route_origin, route_destination, route_mode."
     }
 }
