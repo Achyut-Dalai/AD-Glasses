@@ -106,8 +106,9 @@ internal object CloudModelPolicy {
                 )
                 isGemini25Model(model) -> RequestTuning(
                     completionTokenField = tokenField,
-                    // Gemini 2.5 maps low to 1,024 and medium to 8,192 thinking tokens.
-                    geminiThinkingBudget = if (reasoned) 8_192 else 1_024,
+                    // Numeric budgets let AD keep ordinary reasoning light and explicit reasoning
+                    // useful without jumping all the way to the provider's large named-tier budget.
+                    geminiThinkingBudget = if (reasoned) 4_096 else 1_024,
                 )
                 else -> RequestTuning(completionTokenField = tokenField)
             }
