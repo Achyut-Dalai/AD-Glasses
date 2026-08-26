@@ -67,12 +67,18 @@ class AssistantWebPolicyTest {
             "Search your feelings",
             "Search for the maximum value in this array",
             "Search for a matching string in this list",
+            "Look up a key in this hashmap",
+            "Look up the value from the dictionary",
+            "Look up at the sky",
             "Forecast sales for next quarter",
             "What makes a good headline?",
             "What is a stock variable in programming?",
+            "What is a stock price?",
+            "What is an exchange rate?",
             "Who is a president?",
             "Explain what a CEO does",
             "What is service status in a state machine?",
+            "Explain service status in a state machine",
         ).forEach { text ->
             assertFalse(text, AssistantWebPolicy.shouldUseWeb(text))
         }
