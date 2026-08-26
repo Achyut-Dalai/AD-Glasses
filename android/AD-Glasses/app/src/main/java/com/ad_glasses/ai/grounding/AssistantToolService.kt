@@ -193,10 +193,11 @@ class AssistantToolService(context: Context) {
             includeDomains = route.sourceDomains,
         ).getOrThrow()
 
-        // One bounded retry only. It can widen NEWS/FINANCE to GENERAL or ask for more results, but
-        // preserves any user-requested domain restriction and never upgrades search depth.
-        val chosen = if (first.answer.isNullOrBlank() || first.results.isEmpty()) {
-            val retry = tavily.search(
+        // A blank Tavily answer is not a reason to spend another credit if retrieval succeeded: AD
+        // can synthesize from the already-returned focused chunks. Retry once only when retrieval is
+        // empty, widening NEWS/FINANCE to GENERAL while preserving user domain/freshness constraints.
+        val chosen = if (first.results.isEmpty()) {
+            tavily.search(
                 query = query,
                 depth = TavilySearchDepth.FAST,
                 maxResults = FALLBACK_TAVILY_RESULTS,
@@ -204,13 +205,7 @@ class AssistantToolService(context: Context) {
                 timeRange = route.tavilyTimeRange,
                 includeAnswer = true,
                 includeDomains = route.sourceDomains,
-            ).getOrNull()
-            when {
-                retry != null && retry.results.isNotEmpty() && !retry.answer.isNullOrBlank() -> retry
-                first.results.isNotEmpty() -> first
-                retry != null && retry.results.isNotEmpty() -> retry
-                else -> first
-            }
+            ).getOrNull() ?: first
         } else {
             first
         }
@@ -220,6 +215,11 @@ class AssistantToolService(context: Context) {
         }
         val relevant = selectRelevantResults(chosen.results)
         val sources = relevant.map { GroundingSource(it.title, it.url) }
+        val snippetBudget = if (chosen.answer.isNullOrBlank()) {
+            TAVILY_RESCUE_SNIPPET_CONTEXT_CHARS
+        } else {
+            TAVILY_SNIPPET_CONTEXT_CHARS
+        }
         val context = buildString {
             chosen.answer?.takeIf { it.isNotBlank() }?.let {
                 appendLine("Tavily LLM answer: ${it.take(TAVILY_ANSWER_CONTEXT_CHARS)}")
@@ -227,7 +227,7 @@ class AssistantToolService(context: Context) {
             appendLine("Tavily supporting evidence:")
             relevant.forEachIndexed { index, item ->
                 append("[${index + 1}] ${item.title.take(160)}")
-                if (item.content.isNotBlank()) append(": ${item.content.take(TAVILY_SNIPPET_CONTEXT_CHARS)}")
+                if (item.content.isNotBlank()) append(": ${item.content.take(snippetBudget)}")
                 appendLine()
             }
         }.trim()
@@ -520,6 +520,7 @@ class AssistantToolService(context: Context) {
         const val MAX_TAVILY_QUERY_CHARS = 1_200
         const val TAVILY_ANSWER_CONTEXT_CHARS = 1_000
         const val TAVILY_SNIPPET_CONTEXT_CHARS = 320
+        const val TAVILY_RESCUE_SNIPPET_CONTEXT_CHARS = 850
         const val MAX_WEATHER_CONTEXT_CHARS = 1_500
         const val MAX_SPATIAL_CONTEXT_CHARS = 1_200
         const val MAX_SYNTHESIS_CONTEXT_CHARS = 2_800
