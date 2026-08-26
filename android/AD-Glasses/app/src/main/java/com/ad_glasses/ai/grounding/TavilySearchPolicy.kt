@@ -41,6 +41,10 @@ internal object TavilySearchPolicy {
         "\\bcurrent\\s+(?:price|value|rate|score|status|weather|temperature|exchange rate|market price)\\b",
         RegexOption.IGNORE_CASE,
     )
+    private val MARKET_LIVE_FACT = Regex(
+        "\\b(?:price|market price|share price|quote|trading at|exchange rate|forex rate|worth)\\b",
+        RegexOption.IGNORE_CASE,
+    )
     private val THIS_WEEK = Regex("\\bthis week\\b", RegexOption.IGNORE_CASE)
     private val THIS_MONTH = Regex("\\bthis month\\b", RegexOption.IGNORE_CASE)
     private val LATEST = Regex("\\b(latest|most recent|recent|current)\\b", RegexOption.IGNORE_CASE)
@@ -62,6 +66,8 @@ internal object TavilySearchPolicy {
             else -> TavilySearchTopic.GENERAL
         }
 
+        // Explicit user dates are authoritative. This branch intentionally runs before every
+        // current/live heuristic so "Bitcoin price in 2025" never becomes a present-day lookup.
         explicitDateWindow(clean, today)?.let { window ->
             return TavilySearchPlan(
                 query = "$clean. Search the requested historical period ${window.label}; do not substitute current data.",
@@ -75,6 +81,7 @@ internal object TavilySearchPolicy {
             THIS_WEEK.containsMatchIn(clean) -> TavilyTimeRange.WEEK
             THIS_MONTH.containsMatchIn(clean) -> TavilyTimeRange.MONTH
             TODAY_NOW.containsMatchIn(clean) || CURRENT_LIVE_FACT.containsMatchIn(clean) -> TavilyTimeRange.DAY
+            topic == TavilySearchTopic.FINANCE && MARKET_LIVE_FACT.containsMatchIn(clean) -> TavilyTimeRange.DAY
             LATEST.containsMatchIn(clean) && topic == TavilySearchTopic.NEWS -> TavilyTimeRange.WEEK
             LATEST.containsMatchIn(clean) -> TavilyTimeRange.YEAR
             else -> null
