@@ -18,6 +18,7 @@ class AssistantWebPolicyTest {
         assertTrue(AssistantWebPolicy.shouldUseWeb("What's the latest news?"))
         assertTrue(AssistantWebPolicy.shouldUseWeb("Is this store open now?"))
         assertFalse(AssistantWebPolicy.shouldUseWeb("Find me a coffee shop nearby"))
+        assertFalse(AssistantWebPolicy.shouldUseWeb("What is my current location?"))
     }
 
     @Test
