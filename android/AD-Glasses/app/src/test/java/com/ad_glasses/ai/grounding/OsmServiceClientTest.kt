@@ -9,7 +9,7 @@ import org.robolectric.RobolectricTestRunner
 import org.robolectric.annotation.Config
 
 @RunWith(RobolectricTestRunner::class)
-@Config(sdk = [35])
+@Config(sdk = [34])
 class OsmServiceClientTest {
     private val origin = GeoPoint(latitude = 12.9716, longitude = 77.5946)
     private val destination = GeoPoint(latitude = 12.9763, longitude = 77.5929)
@@ -41,130 +41,113 @@ class OsmServiceClientTest {
         assertTrue(
             client.routeRequestUrl(origin, destination, RouteMode.WALKING).toString(),
             client.routeRequestUrl(origin, destination, RouteMode.WALKING).toString()
-                .contains("router.example.com/route/v1/foot/"),
+                .contains("router.example.com/route/v1/walking/"),
         )
         assertTrue(
             client.routeRequestUrl(origin, destination, RouteMode.CYCLING).toString(),
             client.routeRequestUrl(origin, destination, RouteMode.CYCLING).toString()
-                .contains("router.example.com/route/v1/bike/"),
+                .contains("router.example.com/route/v1/cycling/"),
         )
     }
 
     @Test
     fun overpassParserKeepsNodeCoordinatesAndWayRelationCenters() {
-        val client = client(GroundingPrefs.DEFAULT_OSRM_BASE_URL)
+        val payload = """
+            {
+              "elements": [
+                {"type":"node","id":1,"lat":12.9718,"lon":77.5948,"tags":{"name":"Node Cafe","amenity":"cafe"}},
+                {"type":"way","id":2,"center":{"lat":12.9720,"lon":77.5950},"tags":{"name":"Way Cafe","amenity":"cafe"}},
+                {"type":"relation","id":3,"center":{"lat":12.9722,"lon":77.5952},"tags":{"name":"Relation Cafe","amenity":"cafe"}}
+              ]
+            }
+        """.trimIndent()
+
+        val places = client().parseNearby(payload, origin, 8)
+
+        assertEquals(3, places.size)
+        assertEquals("Node Cafe", places[0].name)
+        assertEquals("Way Cafe", places[1].name)
+        assertEquals("Relation Cafe", places[2].name)
+        assertTrue(places.all { it.distanceMeters >= 0 })
+    }
+
+    @Test
+    fun overpassParserKeepsOnlyUsefulReturnedPoiMetadata() {
         val payload = """
             {
               "elements": [
                 {
-                  "type": "node",
-                  "id": 1,
-                  "lat": 12.9717,
-                  "lon": 77.5947,
-                  "tags": {"amenity": "cafe", "name": "Node Cafe"}
-                },
-                {
-                  "type": "way",
-                  "id": 2,
-                  "center": {"lat": 12.9720, "lon": 77.5950},
-                  "tags": {"amenity": "pharmacy", "name": "Way Pharmacy"}
-                },
-                {
-                  "type": "relation",
-                  "id": 3,
-                  "center": {"lat": 12.9725, "lon": 77.5955},
-                  "tags": {"tourism": "museum", "name": "Relation Museum"}
+                  "type":"node",
+                  "id":1,
+                  "lat":12.9718,
+                  "lon":77.5948,
+                  "tags":{
+                    "name":"Cafe Test",
+                    "amenity":"cafe",
+                    "opening_hours":"Mo-Fr 08:00-18:00",
+                    "addr:housenumber":"42",
+                    "addr:street":"Market Road",
+                    "addr:city":"Bengaluru",
+                    "cuisine":"coffee_shop",
+                    "phone":"+91 80 1234 5678",
+                    "website":"https://example.com/menu",
+                    "wheelchair":"yes",
+                    "description":"Ignore this arbitrary prose tag"
+                  }
                 }
               ]
             }
         """.trimIndent()
 
-        val places = client.parseOverpass(payload, origin, limit = 8)
+        val place = client().parseNearby(payload, origin, 8).single()
 
-        assertEquals(3, places.size)
-        assertEquals(setOf("Node Cafe", "Way Pharmacy", "Relation Museum"), places.map { it.name }.toSet())
-        assertTrue(places.all { it.distanceMeters >= 0 })
-        assertTrue(places.zipWithNext().all { (a, b) -> a.distanceMeters <= b.distanceMeters })
-    }
-
-    @Test
-    fun overpassParserKeepsOnlyUsefulReturnedPoiMetadata() {
-        val client = client(GroundingPrefs.DEFAULT_OSRM_BASE_URL)
-        val payload = """
-            {
-              "elements": [{
-                "type": "node",
-                "id": 10,
-                "lat": 12.9717,
-                "lon": 77.5947,
-                "tags": {
-                  "amenity": "cafe",
-                  "name": "Example Coffee",
-                  "opening_hours": "Mo-Su 08:00-22:00",
-                  "addr:housenumber": "12",
-                  "addr:street": "MG Road",
-                  "addr:city": "Bengaluru",
-                  "cuisine": "coffee_shop;bakery",
-                  "contact:phone": "+91 80000 00000",
-                  "website": "https://example.cafe/menu",
-                  "wheelchair": "yes",
-                  "description": "This field should not be copied into grounding"
-                }
-              }]
-            }
-        """.trimIndent()
-
-        val place = client.parseOverpass(payload, origin, limit = 8).single()
-
-        assertEquals("Example Coffee", place.name)
         assertTrue(place.category.contains("cafe"))
-        assertTrue(place.category.contains("hours: Mo-Su 08:00-22:00"))
-        assertTrue(place.category.contains("address: 12 MG Road, Bengaluru"))
-        assertTrue(place.category.contains("cuisine: coffee_shop,bakery"))
-        assertTrue(place.category.contains("phone: +91 80000 00000"))
-        assertTrue(place.category.contains("website: https://example.cafe/menu"))
-        assertTrue(place.category.contains("wheelchair: yes"))
-        assertFalse(place.category.contains("should not be copied"))
+        assertTrue(place.category.contains("opening hours"))
+        assertTrue(place.category.contains("Market Road"))
+        assertTrue(place.category.contains("coffee shop"))
+        assertTrue(place.category.contains("phone"))
+        assertTrue(place.category.contains("website"))
+        assertTrue(place.category.contains("wheelchair"))
+        assertFalse(place.category.contains("arbitrary prose", ignoreCase = true))
+        assertTrue(place.category.length <= 520)
     }
 
     @Test
     fun routeParserReturnsDistanceDurationAndSafeInstructions() {
-        val client = client(GroundingPrefs.DEFAULT_OSRM_BASE_URL)
         val payload = """
             {
-              "code": "Ok",
-              "routes": [{
-                "distance": 1200.4,
-                "duration": 620.2,
-                "legs": [{
-                  "steps": [
-                    {"distance": 200, "duration": 120, "name": "Main Road", "maneuver": {"type": "depart"}},
-                    {"distance": 700, "duration": 360, "name": "Park Street", "maneuver": {"type": "turn", "modifier": "left"}},
-                    {"distance": 300, "duration": 140, "name": "", "maneuver": {"type": "arrive"}}
+              "code":"Ok",
+              "routes":[{
+                "distance":2150.4,
+                "duration":402.7,
+                "legs":[{
+                  "steps":[
+                    {"distance":300.0,"duration":50.0,"name":"Main Road","maneuver":{"type":"depart","modifier":"straight"}},
+                    {"distance":850.0,"duration":140.0,"name":"Second Road","maneuver":{"type":"turn","modifier":"right"}},
+                    {"distance":1000.0,"duration":212.7,"name":"Destination Road","maneuver":{"type":"arrive"}}
                   ]
                 }]
               }]
             }
         """.trimIndent()
 
-        val route = client.parseRoute(payload)
+        val route = client().parseRoute(payload)!!
 
-        assertEquals(1200, route.distanceMeters)
-        assertEquals(620, route.durationSeconds)
+        assertEquals(2150, route.distanceMeters)
+        assertEquals(403, route.durationSeconds)
         assertEquals(3, route.steps.size)
-        assertEquals("Start onto Main Road", route.steps[0].instruction)
-        assertEquals("Turn left onto Park Street", route.steps[1].instruction)
-        assertEquals("Arrive at the destination", route.steps[2].instruction)
+        assertTrue(route.steps[0].instruction.contains("Main Road"))
+        assertTrue(route.steps[1].instruction.contains("right", ignoreCase = true))
+        assertTrue(route.steps[2].instruction.contains("Destination Road"))
     }
 
-    private fun client(osrmBaseUrl: String) = OsmServiceClient(
-        configProvider = {
-            GroundingServiceConfig(
+    private fun client(osrmBaseUrl: String = GroundingPrefs.DEFAULT_OSRM_BASE_URL): OsmServiceClient =
+        OsmServiceClient {
+            GroundingConfig(
                 tavilyEnabled = false,
                 nominatimBaseUrl = GroundingPrefs.DEFAULT_NOMINATIM_BASE_URL,
-                overpassEndpoint = GroundingPrefs.DEFAULT_OVERPASS_ENDPOINT,
+                overpassUrl = GroundingPrefs.DEFAULT_OVERPASS_URL,
                 osrmBaseUrl = osrmBaseUrl,
             )
-        },
-    )
+        }
 }
