@@ -44,7 +44,8 @@ object AssistantWebPolicy {
         val clean = text.trim()
         if (clean.isBlank()) return false
 
-        // A dynamic-sounding noun can still be a definition/reasoning request. Keep those offline.
+        // Dynamic nouns can be discussed as language/concepts. Those questions are not live lookups.
+        if (META_LIVE_FACT_CONCEPT.containsMatchIn(clean)) return false
         if (CONCEPTUAL_DYNAMIC_TERM.containsMatchIn(clean)) return false
 
         if (NEWS.containsMatchIn(clean)) return true
@@ -100,13 +101,33 @@ object AssistantWebPolicy {
         setOf(RegexOption.IGNORE_CASE, RegexOption.DOT_MATCHES_ALL),
     )
 
+    private val META_LIVE_FACT_CONCEPT = Regex(
+        "(?:^\\s*(?:define|definition of|meaning of)\\s+(?:the\\s+)?(?:term\\s+|phrase\\s+)?" +
+            "(?:local news|breaking news|latest news|weather forecast|live score|stock price|share price|exchange rate|" +
+            "service status|website status|opening hours|business hours|operating hours|availability)\\s*[?.!]*$|" +
+            "^\\s*what does\\s+(?:the\\s+)?(?:term\\s+|phrase\\s+)?" +
+            "(?:local news|breaking news|latest news|weather forecast|live score|stock price|share price|exchange rate|" +
+            "service status|website status|opening hours|business hours|operating hours|availability)\\s+mean\\s*[?.!]*$|" +
+            "^\\s*what is\\s+(?:a|an)\\s+(?:weather forecast|live score|stock price|share price|exchange rate|" +
+            "service status|website status)\\s*[?.!]*$|" +
+            "^\\s*what is\\s+(?:local news|breaking news|latest news)\\s*[?.!]*$|" +
+            "^\\s*explain\\s+(?:the\\s+)?(?:term|phrase|concept)(?:\\s+of)?\\s+" +
+            "(?:local news|breaking news|latest news|weather forecast|live score|stock price|share price|exchange rate|" +
+            "service status|website status|opening hours|business hours|operating hours|availability)\\s*[?.!]*$|" +
+            "^\\s*explain\\s+(?:local news|breaking news|weather forecast|stock prices?|share prices?|exchange rates?|" +
+            "service status|website status|opening hours|business hours|operating hours|availability)\\s+" +
+            "(?:as|in)\\s+.{0,60}\\b(?:concept|term|phrase|system|field)\\b.*$)",
+        setOf(RegexOption.IGNORE_CASE, RegexOption.DOT_MATCHES_ALL),
+    )
     private val CONCEPTUAL_DYNAMIC_TERM = Regex(
         "(?:^\\s*(?:define|explain|what does|what is|what are)\\s+(?:the\\s+term\\s+|a\\s+|an\\s+)?" +
             "(?:stock price|share price|exchange rate|forex rate|currency rate|service status|website status|" +
             "opening hours|business hours|operating hours|availability)\\b.{0,100}\\b(?:mean|concept|term|" +
             "in (?:programming|computer science|economics|finance|distributed systems|a state machine|state machines?))\\b|" +
             "^\\s*what (?:is|are)\\s+(?:a|an)\\s+(?:stock price|share price|exchange rate|forex rate|currency rate|" +
-            "service status|website status|opening hours|business hours|operating hours)\\s*[?.!]*$)",
+            "service status|website status|opening hours|business hours|operating hours)\\s*[?.!]*$|" +
+            "^\\s*explain\\s+(?:the\\s+)?(?:stock prices?|share prices?|exchange rates?|forex rates?|currency rates?|" +
+            "service status|website status|opening hours|business hours|operating hours|availability)\\s*[?.!]*$)",
         setOf(RegexOption.IGNORE_CASE, RegexOption.DOT_MATCHES_ALL),
     )
 
