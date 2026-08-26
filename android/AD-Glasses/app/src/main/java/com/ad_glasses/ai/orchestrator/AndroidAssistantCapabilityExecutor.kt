@@ -307,8 +307,8 @@ class AndroidAssistantCapabilityExecutor(
 
     /**
      * Generation room is selected only from product intent. Provider/model identity may change the
-     * wire fields used to express that intent, but never this budget. Speech presentation remains
-     * concise, but a longer clean provider answer is retained rather than discarded after generation.
+     * wire fields used to express that intent, but never this budget. Spoken concision is primarily
+     * a model contract; valid final-answer text is not discarded after generation.
      */
     private fun outputTokenLimit(
         surface: AssistantInputSurface,
@@ -382,27 +382,19 @@ class AndroidAssistantCapabilityExecutor(
             return AssistantResult(
                 spokenText = spoken,
                 // Keep requested transcription available in Chats. Spoken surfaces still use the
-                // existing speech guard/pointer instead of reading a whole page aloud by accident.
+                // document-length speech guard/pointer instead of reading a whole page aloud by accident.
                 richText = rich,
             )
         }
 
         if (surface == AssistantInputSurface.PHONE_TEXT) {
-            // Phone Chat has a visible screen and can use the complete concise provider answer.
             return AssistantResult(spokenText = rich, richText = rich)
         }
 
-        val spoken = AssistantSpokenResponsePolicy.forConciseConversation(rich)
-        if (spoken.length < AssistantSpokenResponsePolicy.normalizeForSpeech(rich).length) {
-            Log.i(
-                "AssistantTiming",
-                "stage=assistant_speech_bounded surface=$surface answerChars=${rich.length} spokenChars=${spoken.length}",
-            )
-        }
         return AssistantResult(
-            // The spoken projection remains bounded for wearable/voice UX, but the paid-for clean
-            // final answer is retained in richText for Chats/history instead of being thrown away.
-            spokenText = spoken,
+            // Reasoning/prompt leakage was removed by AssistantCompletionSanitizer above. For normal
+            // conversational answers, preserve the whole valid answer and only make it TTS-safe.
+            spokenText = AssistantSpokenResponsePolicy.normalizeForSpeech(rich),
             richText = rich,
         )
     }
