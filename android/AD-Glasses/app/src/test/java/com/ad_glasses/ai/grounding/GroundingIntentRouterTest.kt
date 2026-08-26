@@ -42,7 +42,7 @@ class GroundingIntentRouterTest {
     @Test
     fun namedBusinessAndSpokenRadiusBecomeFreeFormSpatialSlots() {
         val route = router.parse(
-            raw = """{"intent":"SPATIAL","spatial_action":"nearby","spatial_query":"KFC","radius_meters":3000,"use_current_location":true}""",
+            raw = """{"intent":"SPATIAL","spatial_action":"nearby","spatial_query":"KFC","osm_filters":[{"key":"brand","value":"KFC"},{"key":"name","value":"KFC"}],"radius_meters":3000,"use_current_location":true}""",
             originalPrompt = "is there any kfc within three kilometres near me",
         )!!
 
@@ -50,7 +50,21 @@ class GroundingIntentRouterTest {
         assertEquals(SpatialAction.NEARBY, route.spatialAction)
         assertEquals("KFC", route.spatialQuery)
         assertEquals(3000, route.radiusMeters)
+        assertEquals(
+            listOf(OverpassTagFilter("brand", "KFC"), OverpassTagFilter("name", "KFC")),
+            route.osmFilters,
+        )
         assertTrue(route.useCurrentLocation)
+    }
+
+    @Test
+    fun unsafeOrUnknownOsmFiltersAreDroppedInsteadOfBecomingOverpassQl() {
+        val route = router.parse(
+            raw = """{"intent":"SPATIAL","spatial_action":"nearby","spatial_query":"KFC","osm_filters":[{"key":"brand","value":"KFC"},{"key":"around","value":"5000"},{"key":"name","value":"KFC\";out body;"}],"use_current_location":true}""",
+            originalPrompt = "find kfc near me",
+        )!!
+
+        assertEquals(listOf(OverpassTagFilter("brand", "KFC")), route.osmFilters)
     }
 
     @Test
@@ -68,16 +82,17 @@ class GroundingIntentRouterTest {
     }
 
     @Test
-    fun bothMeansExternalDataAndASeparateSpatialResultAreBothRequested() {
+    fun bothCanFindNearbyPlacesThenAskTavilyToEnrichThoseCandidates() {
         val route = router.parse(
-            raw = """{"intent":"BOTH","external_tool":"tavily","search_query":"KFC current menu and opening information","topic":"general","spatial_action":"nearby","spatial_query":"KFC","radius_meters":3000,"use_current_location":true}""",
-            originalPrompt = "find a kfc within three kilometres and tell me its current menu information",
+            raw = """{"intent":"BOTH","external_tool":"tavily","search_query":"official menu prices and opening information","topic":"general","spatial_action":"nearby","spatial_query":"KFC","osm_filters":[{"key":"brand","value":"KFC"}],"radius_meters":3000,"use_current_location":true}""",
+            originalPrompt = "find kfc within three kilometres and check their websites for menu prices",
         )!!
 
         assertEquals(GroundingIntent.BOTH, route.intent)
         assertEquals(ExternalTool.TAVILY, route.externalTool)
         assertEquals(SpatialAction.NEARBY, route.spatialAction)
         assertEquals("KFC", route.spatialQuery)
+        assertEquals(listOf(OverpassTagFilter("brand", "KFC")), route.osmFilters)
     }
 
     @Test
