@@ -17,6 +17,7 @@ import okhttp3.Response
 import org.json.JSONObject
 
 enum class TavilySearchDepth(val wire: String) {
+    FAST("fast"),
     BASIC("basic"),
     ADVANCED("advanced"),
 }
@@ -47,7 +48,7 @@ class TavilySearchClient(
 
     suspend fun search(
         query: String,
-        depth: TavilySearchDepth = TavilySearchDepth.BASIC,
+        depth: TavilySearchDepth = TavilySearchDepth.FAST,
         maxResults: Int = 5,
     ): Result<TavilySearchResponse> = try {
         val config = GroundingPrefs.getConfig(appContext)
@@ -77,7 +78,7 @@ class TavilySearchClient(
         val startedAt = SystemClock.elapsedRealtime()
         val call = client.newCall(request)
         call.timeout().timeout(
-            if (depth == TavilySearchDepth.ADVANCED) ADVANCED_CALL_TIMEOUT_SECONDS else BASIC_CALL_TIMEOUT_SECONDS,
+            if (depth == TavilySearchDepth.ADVANCED) ADVANCED_CALL_TIMEOUT_SECONDS else STANDARD_CALL_TIMEOUT_SECONDS,
             TimeUnit.SECONDS,
         )
         val parsed = call.awaitResponse().use { response ->
@@ -138,7 +139,7 @@ class TavilySearchClient(
         private const val MAX_RESULTS = 8
         private const val MAX_SNIPPET_CHARS = 1_200
         private const val MAX_ANSWER_CHARS = 1_500
-        private const val BASIC_CALL_TIMEOUT_SECONDS = 6L
+        private const val STANDARD_CALL_TIMEOUT_SECONDS = 6L
         private const val ADVANCED_CALL_TIMEOUT_SECONDS = 8L
         private val JSON = "application/json; charset=utf-8".toMediaType()
 
