@@ -96,10 +96,13 @@ class GroundingIntentRouter(context: Context) {
         if (start < 0 || end <= start) return null
         val root = runCatching { JSONObject(raw.substring(start, end + 1)) }.getOrNull() ?: return null
 
-        val intent = runCatching {
-            GroundingIntent.valueOf(root.optString("intent").trim().uppercase())
-        }.getOrNull() ?: return null
-
+        val intent = when (root.optString("intent").trim().uppercase()) {
+            "DIRECT", "ANSWER", "NONE" -> GroundingIntent.DIRECT
+            "SEARCH", "WEB", "TAVILY" -> GroundingIntent.SEARCH
+            "SPATIAL", "MAP", "MAPS", "OSM" -> GroundingIntent.SPATIAL
+            "BOTH" -> GroundingIntent.BOTH
+            else -> return null
+        }
         val topic = when (root.optNullableString("topic")?.lowercase()) {
             "news" -> TavilySearchTopic.NEWS
             "finance" -> TavilySearchTopic.FINANCE
@@ -113,9 +116,9 @@ class GroundingIntentRouter(context: Context) {
             else -> null
         }
         val spatialAction = when (root.optNullableString("spatial_action")?.lowercase()) {
-            "nearby" -> SpatialAction.NEARBY
-            "route" -> SpatialAction.ROUTE
-            "location" -> SpatialAction.LOCATION
+            "nearby", "find" -> SpatialAction.NEARBY
+            "route", "navigate", "directions" -> SpatialAction.ROUTE
+            "location", "gps" -> SpatialAction.LOCATION
             else -> null
         }
         val routeMode = when (root.optNullableString("route_mode")?.lowercase()) {
@@ -137,7 +140,7 @@ class GroundingIntentRouter(context: Context) {
         val routeOrigin = root.optNullableString("route_origin")?.sanitizeQuery()
         val routeDestination = root.optNullableString("route_destination")?.sanitizeQuery()
         val synthesize = root.optBoolean("synthesize", intent == GroundingIntent.BOTH)
-        val useCurrentLocation = root.optBoolean("use_current_location", true)
+        val useCurrentLocation = root.optBoolean("use_current_location", referencePlace == null)
 
         if ((intent == GroundingIntent.SEARCH || intent == GroundingIntent.BOTH) && searchQuery.isNullOrBlank()) {
             return null
@@ -215,21 +218,17 @@ class GroundingIntentRouter(context: Context) {
         const val TAG = "AssistantGroundingRouter"
         const val MAX_PROMPT_CHARS = 1_300
         const val MAX_QUERY_CHARS = 600
-        const val ROUTER_MAX_TOKENS = 192
+        const val ROUTER_MAX_TOKENS = 128
         const val MIN_RADIUS_METERS = 50
         const val MAX_RADIUS_METERS = 5_000
 
         const val ROUTER_SYSTEM_PROMPT =
-            "Classify ONLY the current user utterance. Do not use or assume conversation history. " +
-                "Return exactly one JSON object and no other text. intent must be DIRECT, SEARCH, SPATIAL, or BOTH. " +
-                "DIRECT: stable knowledge, coding, definitions, writing, reasoning, or casual conversation that does not require current external facts or location. " +
-                "SEARCH: public-web/current/external facts such as live scores, current events, prices, weather, current office-holders, schedules, availability, recent releases, or verification. " +
-                "SPATIAL: current location, nearby places, geocoding, distance, or route/directions. BOTH: the request genuinely needs both web facts and spatial/location data. " +
-                "For SEARCH/BOTH set search_query to a concise standalone query that preserves names/dates and repairs obvious speech-transcription errors only when confident. " +
-                "Set topic to general, news, or finance. Use news for real-time sports/current events, finance for market/asset data, otherwise general. " +
-                "Set time_range to day, week, month, year, or null. Use day for live/current/today; do not force a freshness window for explicit historical dates unless publication recency is requested. " +
-                "Set synthesize=true only when the user asks for explanation, comparison, reasoning, recommendation, implications, combining tool data, or BOTH; otherwise false so a tool answer can be returned directly. " +
-                "For SPATIAL/BOTH set spatial_action to nearby, route, or location. Set spatial_query to the business/place/category to find for nearby, radius_meters to the requested radius in meters or null, use_current_location true only when the request depends on the user's current position, reference_place for an explicit nearby anchor, route_origin and route_destination for routing, and route_mode to driving, walking, or cycling. " +
-                "Schema: {\"intent\":\"DIRECT|SEARCH|SPATIAL|BOTH\",\"search_query\":string|null,\"topic\":\"general|news|finance\",\"time_range\":\"day|week|month|year\"|null,\"synthesize\":boolean,\"spatial_action\":\"nearby|route|location\"|null,\"spatial_query\":string|null,\"radius_meters\":number|null,\"use_current_location\":boolean,\"reference_place\":string|null,\"route_origin\":string|null,\"route_destination\":string|null,\"route_mode\":\"driving|walking|cycling\"|null}."
+            "Classify only this utterance; never use or assume history. Return one compact JSON object, no prose. " +
+                "intent: DIRECT for stable knowledge/reasoning; SEARCH for facts needing public/current/external data; SPATIAL for nearby/location/routes; BOTH only when both are required. " +
+                "If a factual answer could have changed or you are unsure DIRECT is safe, choose SEARCH. " +
+                "For SEARCH/BOTH, search_query should be standalone and may repair obvious ASR errors; topic is general, news, or finance; time_range is day/week/month/year when useful. Use news for live sports/current events, finance for markets, day for live/current/today. " +
+                "Set synthesize=true only when the user asks to explain/compare/reason/recommend over tool data; otherwise omit it. " +
+                "For SPATIAL/BOTH set spatial_action=nearby|route|location. nearby needs spatial_query and optional radius_meters/reference_place/use_current_location. route needs route_destination (and optional route_origin/route_mode). Convert spoken distances to meters. " +
+                "Omit irrelevant/null fields. Keys: intent, search_query, topic, time_range, synthesize, spatial_action, spatial_query, radius_meters, use_current_location, reference_place, route_origin, route_destination, route_mode."
     }
 }
