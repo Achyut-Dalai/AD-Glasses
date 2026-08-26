@@ -15,7 +15,7 @@ class TavilySearchClientTest {
     private val client = TavilySearchClient(ApplicationProvider.getApplicationContext())
 
     @Test
-    fun assistantSearchUsesFastTavilyLlmAnswerPayloadWithOneBoundedChunk() {
+    fun assistantSearchUsesFastTavilyLlmAnswerPayloadWithThreeEphemeralChunks() {
         val payload = client.buildPayload(
             query = "India vs Sri Lanka cricket live score",
             depth = TavilySearchDepth.FAST,
@@ -30,7 +30,7 @@ class TavilySearchClientTest {
         assertEquals("news", payload.getString("topic"))
         assertEquals("day", payload.getString("time_range"))
         assertEquals("basic", payload.getString("include_answer"))
-        assertEquals(1, payload.getInt("chunks_per_source"))
+        assertEquals(3, payload.getInt("chunks_per_source"))
         assertEquals(3, payload.getInt("max_results"))
         assertFalse(payload.getBoolean("include_raw_content"))
         assertFalse(payload.has("include_domains"))
@@ -52,7 +52,7 @@ class TavilySearchClientTest {
         assertEquals(1, domains.length())
         assertEquals("espn.in", domains.getString(0))
         assertEquals("news", payload.getString("topic"))
-        assertEquals(1, payload.getInt("chunks_per_source"))
+        assertEquals(3, payload.getInt("chunks_per_source"))
     }
 
     @Test
@@ -68,7 +68,7 @@ class TavilySearchClientTest {
 
         assertFalse(payload.getBoolean("include_answer"))
         assertFalse(payload.getBoolean("include_raw_content"))
-        assertEquals(1, payload.getInt("chunks_per_source"))
+        assertEquals(3, payload.getInt("chunks_per_source"))
         assertTrue(!payload.has("time_range"))
     }
 }
