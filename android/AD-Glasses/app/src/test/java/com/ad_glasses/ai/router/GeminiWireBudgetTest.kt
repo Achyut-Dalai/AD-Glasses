@@ -6,13 +6,13 @@ import org.junit.Test
 
 class GeminiWireBudgetTest {
     @Test
-    fun gemini3_normal_turn_keeps_product_budget_but_gets_wire_headroom() {
+    fun gemini3_normal_turn_keeps_product_budget_but_gets_bounded_wire_headroom() {
         val profile = googleProfile("gemini-3.7-flash")
         val visible = CloudModelPolicy.generationTokenLimit(CloudGenerationMode.CONCISE_CONVERSATION)
 
         assertEquals(512, visible)
         assertEquals(
-            8_192,
+            4_096,
             geminiWireMaxOutputTokens(
                 profile = profile,
                 generationMode = CloudGenerationMode.CONCISE_CONVERSATION,
@@ -22,13 +22,13 @@ class GeminiWireBudgetTest {
     }
 
     @Test
-    fun gemini3_reasoned_turn_has_larger_wire_runway_without_changing_product_budget() {
+    fun gemini3_reasoned_turn_has_larger_but_bounded_wire_runway() {
         val profile = googleProfile("gemini-3.7-flash")
         val visible = CloudModelPolicy.generationTokenLimit(CloudGenerationMode.REASONED_CONVERSATION)
 
         assertEquals(2_048, visible)
         assertEquals(
-            16_384,
+            8_192,
             geminiWireMaxOutputTokens(
                 profile = profile,
                 generationMode = CloudGenerationMode.REASONED_CONVERSATION,
@@ -50,7 +50,7 @@ class GeminiWireBudgetTest {
             ),
         )
         assertEquals(
-            11_264,
+            7_168,
             geminiWireMaxOutputTokens(
                 profile = profile,
                 generationMode = CloudGenerationMode.REASONED_CONVERSATION,
@@ -60,11 +60,11 @@ class GeminiWireBudgetTest {
     }
 
     @Test
-    fun default_current_gemini_models_get_headroom_even_without_explicit_thinking_control() {
+    fun default_current_gemini_models_get_bounded_headroom_without_forced_thinking_control() {
         val profile = googleProfile("gemini-3.5-flash")
 
         assertEquals(
-            8_192,
+            4_096,
             geminiWireMaxOutputTokens(
                 profile = profile,
                 generationMode = CloudGenerationMode.DEFAULT,
@@ -102,6 +102,20 @@ class GeminiWireBudgetTest {
 
         assertTrue(wire > thinking)
         assertTrue(wire - thinking >= 512)
+    }
+
+    @Test
+    fun gemini_wire_budget_never_exceeds_adapter_hard_cap() {
+        val profile = googleProfile("gemini-2.5-pro")
+
+        assertEquals(
+            16_384,
+            geminiWireMaxOutputTokens(
+                profile = profile,
+                generationMode = CloudGenerationMode.REASONED_CONVERSATION,
+                visibleOutputTokens = 20_000,
+            ),
+        )
     }
 
     private fun googleProfile(model: String): CloudAiProfile = CloudAiProfile(
