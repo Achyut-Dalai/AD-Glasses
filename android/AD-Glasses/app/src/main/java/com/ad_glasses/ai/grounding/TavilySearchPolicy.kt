@@ -45,6 +45,11 @@ internal object TavilySearchPolicy {
         "\\b(?:price|market price|share price|quote|trading at|exchange rate|forex rate|worth)\\b",
         RegexOption.IGNORE_CASE,
     )
+    private val HISTORICAL_PUBLICATION_EVENT = Regex(
+        "\\b(?:news|headlines?|happened|event|announc(?:e|ed|ement)|releas(?:e|ed)|launch(?:ed)?|" +
+            "election|elections|who won|result|results)\\b",
+        RegexOption.IGNORE_CASE,
+    )
     private val THIS_WEEK = Regex("\\bthis week\\b", RegexOption.IGNORE_CASE)
     private val THIS_MONTH = Regex("\\bthis month\\b", RegexOption.IGNORE_CASE)
     private val LATEST = Regex("\\b(latest|most recent|recent|current)\\b", RegexOption.IGNORE_CASE)
@@ -68,12 +73,17 @@ internal object TavilySearchPolicy {
 
         // Explicit user dates are authoritative. This branch intentionally runs before every
         // current/live heuristic so "Bitcoin price in 2025" never becomes a present-day lookup.
+        // Tavily's start/end dates filter SOURCE publication/update time, not the date of a fact
+        // inside a page. Apply those bounds only when publication timing is actually relevant (for
+        // example historical news/events), not to historical market-data pages updated later.
         explicitDateWindow(clean, today)?.let { window ->
+            val constrainPublicationDate = topic == TavilySearchTopic.NEWS ||
+                HISTORICAL_PUBLICATION_EVENT.containsMatchIn(clean)
             return TavilySearchPlan(
-                query = "$clean. Search the requested historical period ${window.label}; do not substitute current data.",
+                query = "$clean. Search for evidence about the requested historical period ${window.label}; do not substitute current data.",
                 topic = topic,
-                startDate = window.start.toString(),
-                endDate = window.end.toString(),
+                startDate = window.start.toString().takeIf { constrainPublicationDate },
+                endDate = window.end.toString().takeIf { constrainPublicationDate },
             )
         }
 
