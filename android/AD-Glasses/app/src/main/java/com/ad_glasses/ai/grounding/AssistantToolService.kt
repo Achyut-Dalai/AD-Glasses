@@ -54,6 +54,8 @@ class AssistantToolService(context: Context) {
             check(tavily.isConfigured()) { "Tavily search is disabled or has no API key." }
             val baseQuery = route.searchQuery?.trim().orEmpty()
             require(baseQuery.isNotBlank()) { "The routed Tavily query is blank." }
+            // Never send GPS coordinates or a precise address to Tavily. BOTH may add only a coarse
+            // neighbourhood/city/state/country hint resolved locally through OSM.
             val query = spatial?.coarseArea?.let { area ->
                 "$baseQuery. User area: $area"
             } ?: baseQuery
@@ -105,29 +107,35 @@ class AssistantToolService(context: Context) {
         Result.failure(error)
     }
 
-    private suspend fun executeSpatial(route: GroundingRoute): SpatialExecution {
-        return when (route.spatialAction ?: error("Spatial action is missing.")) {
-            SpatialAction.LOCATION -> currentLocation()
+    private suspend fun executeSpatial(route: GroundingRoute): SpatialExecution =
+        when (route.spatialAction ?: error("Spatial action is missing.")) {
+            SpatialAction.LOCATION -> currentLocation(route)
             SpatialAction.NEARBY -> nearby(route)
             SpatialAction.ROUTE -> route(route)
         }
-    }
 
-    private suspend fun currentLocation(): SpatialExecution {
+    private suspend fun currentLocation(plan: GroundingRoute): SpatialExecution {
         val fix = requireCurrentFix()
         val address = osm.reverse(fix.point).getOrNull()
         val display = address?.displayName?.takeIf { it.isNotBlank() }
             ?: String.format(Locale.US, "%.5f, %.5f", fix.point.latitude, fix.point.longitude)
-        val answer = buildString {
-            append("Your current location is $display")
-            fix.accuracyMeters?.let { append(", with GPS accuracy about ${it.roundToInt()} metres") }
-            append('.')
+        val area = coarseArea(address)
+        val preciseLocationAnswer = plan.intent == GroundingIntent.SPATIAL
+        val answer = if (preciseLocationAnswer) {
+            buildString {
+                append("Your current location is $display")
+                fix.accuracyMeters?.let { append(", with GPS accuracy about ${it.roundToInt()} metres") }
+                append('.')
+            }
+        } else {
+            "Your current area is ${area ?: address?.country ?: "available locally"}."
         }
-        return SpatialExecution(
-            answer = answer,
-            context = "Current location from Android GPS/OpenStreetMap: $display.",
-            coarseArea = coarseArea(address),
-        )
+        val context = if (preciseLocationAnswer) {
+            "Current location from Android GPS/OpenStreetMap: $display."
+        } else {
+            "Approximate current area from Android GPS/OpenStreetMap: ${area ?: address?.country ?: "unavailable"}. Exact coordinates and street address are intentionally omitted."
+        }
+        return SpatialExecution(answer = answer, context = context, coarseArea = area)
     }
 
     private suspend fun nearby(plan: GroundingRoute): SpatialExecution {
@@ -246,7 +254,7 @@ class AssistantToolService(context: Context) {
     }
 
     private fun String.lowercaseFirst(): String =
-        replaceFirstChar { if (it.isUpperCase()) it.lowercaseChar() else it }
+        replaceFirstChar { if (it.isUpperCase()) it.lowercase() else it.toString() }
 
     private companion object {
         const val TAG = "AssistantGrounding"
