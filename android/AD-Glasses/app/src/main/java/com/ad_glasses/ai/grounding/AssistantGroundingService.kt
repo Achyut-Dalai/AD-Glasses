@@ -86,9 +86,10 @@ internal object AssistantGroundingPolicy {
         RegexOption.IGNORE_CASE,
     )
     private val META_SPATIAL_LANGUAGE = Regex(
-        "\\b(?:what(?:'s| is| does| do)|define|definition of|meaning of|explain (?:the )?(?:phrase|term|words?)?|" +
+        "(?:\\b(?:what does|what do|define|definition of|meaning of|explain (?:the )?(?:phrase|term|words?)?|" +
             "why do apps?|how does)\\b.{0,80}\\b(?:near me|nearby|route|routing|directions?|gps|location services?|" +
-            "local weather|local news)\\b",
+            "local weather|local news)\\b|" +
+            "^\\s*what(?:'s| is)\\s+(?:local weather|local news|(?:the\\s+)?(?:phrase|term)\\s+[\"'“”‘’]?(?:near me|nearby)[\"'“”‘’]?)\\s*[?.!]*$)",
         setOf(RegexOption.IGNORE_CASE, RegexOption.DOT_MATCHES_ALL),
     )
     private val NON_SPATIAL_DEICTIC_CONTEXT = Regex(
@@ -141,7 +142,8 @@ internal object AssistantGroundingPolicy {
         "\\b(identify (?:this|that|the)|what is this|what(?:'s| is) that|what am i looking at|" +
             "what (?:landmark|building|monument|plant|flower|tree|product|model|brand|device|vehicle|species) is this|" +
             "which (?:landmark|building|monument|plant|flower|tree|product|model|brand|device|vehicle|species)|" +
-            "what is this worth|what(?:'s| is) this worth|identify the (?:landmark|building|plant|product|brand))\\b",
+            "what is this worth|what(?:'s| is) this worth|how much is (?:this|that)(?: (?:product|item|device))? worth|" +
+            "identify the (?:landmark|building|plant|product|brand))\\b",
         RegexOption.IGNORE_CASE,
     )
     private val VISUAL_LOCAL_ONLY = Regex(
@@ -153,7 +155,8 @@ internal object AssistantGroundingPolicy {
         setOf(RegexOption.IGNORE_CASE, RegexOption.DOT_MATCHES_ALL),
     )
     private val VISUAL_STRONG_EXTERNAL = Regex(
-        "\\b(what is this worth|what(?:'s| is) this worth|how much is this worth|search|look up|verify)\\b",
+        "\\b(what is this worth|what(?:'s| is) this worth|how much is (?:this|that)(?: (?:product|item|device))? worth|" +
+            "search|look up|verify)\\b",
         RegexOption.IGNORE_CASE,
     )
     private val LANDMARK = Regex(
