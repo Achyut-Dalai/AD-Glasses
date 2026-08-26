@@ -161,10 +161,12 @@ internal object TavilySearchPolicy {
     }
 
     private fun explicitDateWindow(text: String, today: TavilySearchDate): DateWindow? {
-        val parsedDates = ISO_DATE.findAll(text)
-            .mapNotNull { match -> TavilySearchDate.parseIso(match.value) }
-            .toList()
-        if (parsedDates.isNotEmpty()) {
+        val isoMatches = ISO_DATE.findAll(text).toList()
+        if (isoMatches.isNotEmpty()) {
+            val parsedDates = isoMatches.mapNotNull { match -> TavilySearchDate.parseIso(match.value) }
+            // A date-shaped but impossible value (for example 2025-02-31) is not permission to
+            // silently broaden the request into a whole-year filter.
+            if (parsedDates.size != isoMatches.size) return null
             val earliest = parsedDates.minOrNull() ?: return null
             val latest = parsedDates.maxOrNull() ?: return null
             return DateWindow(
