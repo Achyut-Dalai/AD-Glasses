@@ -4,6 +4,7 @@ import android.content.Context
 import android.content.SharedPreferences
 import androidx.security.crypto.EncryptedSharedPreferences
 import androidx.security.crypto.MasterKey
+import java.net.URI
 
 data class GroundingServiceConfig(
     val tavilyEnabled: Boolean,
@@ -98,13 +99,34 @@ object GroundingPrefs {
             .apply()
     }
 
+    internal fun validatedEndpoint(value: String?, fallback: String, allowPath: Boolean): String =
+        endpoint(value, fallback, allowPath)
+
     private fun endpoint(value: String?, fallback: String, allowPath: Boolean): String {
-        val clean = value?.trim()?.trimEnd('/').orEmpty().ifBlank { fallback }
-        require(clean.startsWith("https://")) { "Grounding service endpoints must use HTTPS." }
-        if (!allowPath) {
-            val suffix = clean.removePrefix("https://")
-            require('/' !in suffix) { "Use only the HTTPS service base URL here." }
+        val raw = value?.trim().orEmpty().ifBlank { fallback }
+        val parsed = runCatching { URI(raw) }.getOrElse {
+            throw IllegalArgumentException("Grounding service endpoint is not a valid URI.", it)
         }
-        return clean
+        require(parsed.scheme.equals("https", ignoreCase = true)) {
+            "Grounding service endpoints must use HTTPS."
+        }
+        require(!parsed.host.isNullOrBlank()) { "Grounding service endpoint must include a valid host." }
+        require(parsed.userInfo == null) { "Grounding service endpoints cannot contain embedded credentials." }
+        require(parsed.query == null) { "Grounding service endpoints cannot contain a query string." }
+        require(parsed.fragment == null) { "Grounding service endpoints cannot contain a fragment." }
+        require(parsed.rawPath?.contains("..") != true) { "Grounding service endpoint path cannot contain '..'." }
+        if (!allowPath) {
+            require(parsed.path.isNullOrBlank() || parsed.path == "/") {
+                "Use only the HTTPS service base URL here."
+            }
+        }
+
+        val normalizedPath = when {
+            !allowPath -> ""
+            parsed.rawPath.isNullOrBlank() || parsed.rawPath == "/" -> ""
+            else -> parsed.rawPath.trimEnd('/')
+        }
+        val port = if (parsed.port >= 0) ":${parsed.port}" else ""
+        return "https://${parsed.host}$port$normalizedPath"
     }
 }
