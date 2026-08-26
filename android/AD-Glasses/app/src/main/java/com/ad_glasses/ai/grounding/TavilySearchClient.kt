@@ -9,6 +9,7 @@ import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.suspendCancellableCoroutine
 import okhttp3.Call
 import okhttp3.Callback
+import okhttp3.HttpUrl.Companion.toHttpUrlOrNull
 import okhttp3.MediaType.Companion.toMediaType
 import okhttp3.OkHttpClient
 import okhttp3.Request
@@ -107,12 +108,16 @@ class TavilySearchClient(
             if (items != null) {
                 for (index in 0 until items.length()) {
                     val item = items.optJSONObject(index) ?: continue
-                    val url = item.optString("url").trim()
-                    if (!url.startsWith("https://") && !url.startsWith("http://")) continue
+                    val url = item.optString("url")
+                        .trim()
+                        .take(MAX_URL_CHARS)
+                        .toHttpUrlOrNull()
+                        ?.toString()
+                        ?: continue
                     add(
                         TavilySearchResult(
                             title = item.optString("title").replace(Regex("\\s+"), " ").trim().take(180),
-                            url = url.take(1_000),
+                            url = url,
                             content = item.optString("content")
                                 .replace(Regex("\\s+"), " ")
                                 .trim()
@@ -122,7 +127,7 @@ class TavilySearchClient(
                     )
                 }
             }
-        }
+        }.distinctBy { it.url }
         return TavilySearchResponse(answer = answer?.take(MAX_ANSWER_CHARS), results = results)
     }
 
@@ -137,6 +142,7 @@ class TavilySearchClient(
         private const val USER_AGENT = "AD-Glasses Android Tavily client"
         private const val MAX_QUERY_CHARS = 1_500
         private const val MAX_RESULTS = 8
+        private const val MAX_URL_CHARS = 1_000
         private const val MAX_SNIPPET_CHARS = 1_200
         private const val MAX_ANSWER_CHARS = 1_500
         private const val STANDARD_CALL_TIMEOUT_SECONDS = 6L
