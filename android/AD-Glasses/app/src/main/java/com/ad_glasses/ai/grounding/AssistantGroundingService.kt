@@ -252,14 +252,16 @@ internal object AssistantGroundingPolicy {
 
     fun spatialIntent(text: String, visual: Boolean = false): SpatialIntent {
         val clean = text.trim()
-        if (clean.isBlank() || META_SPATIAL_LANGUAGE.containsMatchIn(clean)) {
+        val technicalDeicticContext = NON_SPATIAL_DEICTIC_CONTEXT.containsMatchIn(clean)
+        val technicalDeicticPhrase = technicalDeicticContext &&
+            (CURRENT_LOCATION_CUE.containsMatchIn(clean) || GENERAL_NEARBY.containsMatchIn(clean))
+        if (clean.isBlank() || META_SPATIAL_LANGUAGE.containsMatchIn(clean) || technicalDeicticPhrase) {
             return SpatialIntent(needsLocation = false)
         }
 
         val routeSuppressed = shouldSuppressRoute(clean)
         val locationOnly = SELF_LOCATION.containsMatchIn(clean)
-        val currentLocationCue = CURRENT_LOCATION_CUE.containsMatchIn(clean) &&
-            !NON_SPATIAL_DEICTIC_CONTEXT.containsMatchIn(clean)
+        val currentLocationCue = CURRENT_LOCATION_CUE.containsMatchIn(clean) && !technicalDeicticContext
         val radiusSpecified = RADIUS.containsMatchIn(clean)
         val ambiguousPersonalAnchor = AMBIGUOUS_PERSONAL_ANCHOR.containsMatchIn(clean)
         val routePair = if (routeSuppressed) null else parseRoutePair(clean)
@@ -286,7 +288,7 @@ internal object AssistantGroundingPolicy {
             (currentLocationCue || deicticAreaCue || radiusSpecified || referencePlace != null || nearestCategoryCue || routeToCategory)
         val filters = when {
             categoryFilters.isNotEmpty() && categoryHasSpatialAnchor -> categoryFilters
-            GENERAL_NEARBY.containsMatchIn(clean) -> GENERAL_NEARBY_FILTERS
+            GENERAL_NEARBY.containsMatchIn(clean) && !technicalDeicticContext -> GENERAL_NEARBY_FILTERS
             else -> emptyList()
         }
         val landmark = visual && LANDMARK.containsMatchIn(clean)
@@ -560,8 +562,6 @@ class AssistantGroundingService(context: Context) {
 
         var resolvedAddress: OsmAddress? = null
         if (currentFix != null) {
-            // Nearby POI and current-location routing only need coordinates. Reverse geocoding is
-            // reserved for a direct location answer, a local web query, or visual landmark context.
             val shouldReverse = spatial.locationOnly || effectiveUseWeb || spatial.landmarkLookup
             if (shouldReverse) {
                 val reverseResult = budgeted("reverse_geocode") { osm.reverse(currentFix.point) }
@@ -713,8 +713,6 @@ class AssistantGroundingService(context: Context) {
             awaited
         }
         tavilyResult?.getOrNull()?.let { response ->
-            // A Tavily summary without source results is not grounded evidence. Keep provider-native
-            // web available as the fallback and preserve source URLs for the final answer.
             if (response.results.isNotEmpty()) {
                 tavilyUsed = true
                 sections += buildTavilySection(response)
@@ -754,8 +752,6 @@ class AssistantGroundingService(context: Context) {
             append(". Visual evidence: ")
             append(it.take(700))
         }
-        // Never send street-level location to Tavily. City/neighbourhood context is enough for live
-        // local facts and visual landmark disambiguation.
         coarseAddress(address)?.let {
             append(". User area: ")
             append(it)
