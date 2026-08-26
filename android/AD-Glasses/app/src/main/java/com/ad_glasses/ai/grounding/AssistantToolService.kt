@@ -62,14 +62,46 @@ class AssistantToolService(context: Context) {
 
         // BOTH is intentionally ordered. Spatial resolution happens first so Tavily can receive
         // public candidate names and at most a coarse area label, never GPS coordinates or a street.
-        val spatial = if (needsSpatial) executeSpatial(route) else null
-        val external = if (needsExternal) {
-            when (route.externalTool) {
-                ExternalTool.TAVILY -> executeTavily(route, spatial)
-                ExternalTool.WEATHER -> executeWeather(route, spatial)
+        var spatialError: Throwable? = null
+        val spatial = if (needsSpatial) {
+            try {
+                executeSpatial(route)
+            } catch (cancelled: CancellationException) {
+                throw cancelled
+            } catch (error: Throwable) {
+                spatialError = error
+                null
             }
         } else {
             null
+        }
+
+        var externalError: Throwable? = null
+        val external = if (needsExternal) {
+            try {
+                when (route.externalTool) {
+                    ExternalTool.TAVILY -> executeTavily(route, spatial)
+                    ExternalTool.WEATHER -> executeWeather(route, spatial)
+                }
+            } catch (cancelled: CancellationException) {
+                throw cancelled
+            } catch (error: Throwable) {
+                externalError = error
+                null
+            }
+        } else {
+            null
+        }
+
+        when (route.intent) {
+            GroundingIntent.SEARCH -> if (external == null) throw externalError
+                ?: IllegalStateException("External lookup failed.")
+            GroundingIntent.SPATIAL -> if (spatial == null) throw spatialError
+                ?: IllegalStateException("Spatial lookup failed.")
+            GroundingIntent.BOTH -> if (external == null && spatial == null) {
+                throw externalError ?: spatialError ?: IllegalStateException("Both tool lookups failed.")
+            }
+            GroundingIntent.DIRECT -> Unit
         }
 
         // For a plain Tavily SEARCH, Tavily's own LLM answer is the preferred answer. Do not send it
@@ -77,13 +109,34 @@ class AssistantToolService(context: Context) {
         val directTavilySearch = route.intent == GroundingIntent.SEARCH &&
             external?.tavilyUsed == true &&
             !external.answer.isNullOrBlank()
-        val contextText = if (directTavilySearch) "" else buildSynthesisContext(external, spatial)
+
+        val partialContext = buildString {
+            if (route.intent == GroundingIntent.BOTH && spatialError != null) {
+                appendLine("Spatial lookup failed. Do not claim that nearby/location/routing data was retrieved.")
+            }
+            if (route.intent == GroundingIntent.BOTH && externalError != null) {
+                appendLine("External lookup failed. Do not claim that current web/weather data was retrieved.")
+            }
+        }.trim()
+        val baseContext = if (directTavilySearch) "" else buildSynthesisContext(external, spatial)
+        val contextText = listOf(baseContext, partialContext)
+            .filter(String::isNotBlank)
+            .joinToString("\n")
+            .take(MAX_SYNTHESIS_CONTEXT_CHARS)
+
+        val partialFallback = when {
+            route.intent != GroundingIntent.BOTH -> null
+            spatialError != null && external != null -> "I couldn't complete the requested location lookup."
+            externalError != null && spatial != null -> "I couldn't fetch the requested current external details."
+            else -> null
+        }
         val fallbackAnswer = if (directTavilySearch) {
             external?.answer?.trim()?.take(MAX_FALLBACK_ANSWER_CHARS)
         } else {
             listOfNotNull(
                 external?.answer?.trim()?.takeIf(String::isNotBlank),
                 spatial?.answer?.trim()?.takeIf(String::isNotBlank),
+                partialFallback,
             ).joinToString(" ").trim().takeIf(String::isNotBlank)?.take(MAX_FALLBACK_ANSWER_CHARS)
         }
 
@@ -91,6 +144,7 @@ class AssistantToolService(context: Context) {
             TAG,
             "tools_done intent=${route.intent.name.lowercase()} external=${route.externalTool.name.lowercase()} " +
                 "tavily=${external?.tavilyUsed == true} weather=${external?.weatherUsed == true} osm=${spatial != null} " +
+                "spatialFailed=${spatialError != null} externalFailed=${externalError != null} " +
                 "directTavily=$directTavilySearch contextChars=${contextText.length} " +
                 "elapsedMs=${SystemClock.elapsedRealtime() - startedAt}",
         )
@@ -146,11 +200,7 @@ class AssistantToolService(context: Context) {
                 query = query,
                 depth = TavilySearchDepth.FAST,
                 maxResults = FALLBACK_TAVILY_RESULTS,
-                topic = if (route.tavilyTopic == TavilySearchTopic.GENERAL) {
-                    TavilySearchTopic.GENERAL
-                } else {
-                    TavilySearchTopic.GENERAL
-                },
+                topic = TavilySearchTopic.GENERAL,
                 timeRange = route.tavilyTimeRange,
                 includeAnswer = true,
                 includeDomains = route.sourceDomains,
