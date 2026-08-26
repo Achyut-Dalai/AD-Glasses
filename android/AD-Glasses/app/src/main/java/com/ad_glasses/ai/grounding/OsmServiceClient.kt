@@ -39,6 +39,7 @@ data class OsmAddress(
 
 data class OsmPlace(
     val name: String,
+    /** Compact factual descriptor shown to grounding, e.g. "cafe; hours: 08:00-22:00; MG Road". */
     val category: String,
     val point: GeoPoint,
     val distanceMeters: Int,
@@ -182,7 +183,7 @@ class OsmServiceClient(
                 else append("[\"${filter.key}\"=\"${filter.value}\"]")
                 append(';')
             }
-            // body keeps node lat/lon; center adds a usable point for ways and relations.
+            // body keeps the full selected OSM tags; center adds a point for ways and relations.
             append(");out body center $outputLimit;")
         }
         overpassMutex.withLock {
@@ -302,8 +303,8 @@ class OsmServiceClient(
                 }
                 add(
                     OsmPlace(
-                        name = name.take(180),
-                        category = humanCategory(tags).take(100),
+                        name = sanitizeTag(name, 180) ?: humanCategory(tags),
+                        category = placeDescriptor(tags),
                         point = point,
                         distanceMeters = haversineMeters(origin, point).toInt(),
                     ),
@@ -349,6 +350,42 @@ class OsmServiceClient(
             steps = steps.take(16),
         )
     }
+
+    /**
+     * Keep only useful, factual OSM tags and keep the descriptor bounded. Missing tags remain
+     * missing: we never infer ratings, reviews, popularity, opening state, or other Maps-like data.
+     */
+    private fun placeDescriptor(tags: JSONObject): String {
+        val parts = mutableListOf(humanCategory(tags))
+        firstTag(tags, 160, "opening_hours")?.let { parts += "hours: $it" }
+        addressSummary(tags)?.let(parts::add)
+        firstTag(tags, 100, "cuisine")?.replace(';', ',')?.let { parts += "cuisine: $it" }
+        firstTag(tags, 80, "contact:phone", "phone")?.let { parts += "phone: $it" }
+        firstTag(tags, 220, "contact:website", "website")?.let { parts += "website: $it" }
+        firstTag(tags, 40, "wheelchair")?.let { parts += "wheelchair: $it" }
+        return parts.joinToString("; ").take(MAX_PLACE_DESCRIPTOR_CHARS)
+    }
+
+    private fun addressSummary(tags: JSONObject): String? {
+        firstTag(tags, 220, "addr:full")?.let { return "address: $it" }
+        val street = firstTag(tags, 100, "addr:street")
+        val houseNumber = firstTag(tags, 40, "addr:housenumber")
+        val locality = firstTag(tags, 100, "addr:city", "addr:suburb", "addr:place")
+        val postcode = firstTag(tags, 30, "addr:postcode")
+        val streetLine = listOfNotNull(houseNumber, street).joinToString(" ").takeIf { it.isNotBlank() }
+        val value = listOfNotNull(streetLine, locality, postcode).distinct().joinToString(", ")
+        return value.takeIf { it.isNotBlank() }?.let { "address: ${it.take(220)}" }
+    }
+
+    private fun firstTag(tags: JSONObject, maxChars: Int, vararg keys: String): String? = keys.asSequence()
+        .mapNotNull { key -> sanitizeTag(tags.optString(key), maxChars) }
+        .firstOrNull()
+
+    private fun sanitizeTag(value: String, maxChars: Int): String? = value
+        .replace(Regex("\\s+"), " ")
+        .trim()
+        .take(maxChars)
+        .takeIf { it.isNotBlank() }
 
     private fun humanCategory(tags: JSONObject): String = sequenceOf(
         "amenity", "shop", "tourism", "historic", "leisure", "highway", "railway", "building",
@@ -420,6 +457,7 @@ class OsmServiceClient(
         private const val OVERPASS_CALL_TIMEOUT_SECONDS = 6L
         private const val OSRM_CALL_TIMEOUT_SECONDS = 5L
         private const val CACHE_LIMIT = 96
+        private const val MAX_PLACE_DESCRIPTOR_CHARS = 520
         private val SAFE_TAG = Regex("[a-zA-Z0-9_:.-]{1,64}")
         private val SAFE_TAG_VALUE = Regex("[a-zA-Z0-9_ :.'()-]{1,96}")
         private val nominatimMutex = Mutex()
