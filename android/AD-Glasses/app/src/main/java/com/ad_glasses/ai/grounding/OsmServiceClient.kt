@@ -5,6 +5,7 @@ import java.io.IOException
 import java.util.Locale
 import java.util.concurrent.TimeUnit
 import kotlin.coroutines.resumeWithException
+import kotlin.math.absoluteValue
 import kotlin.math.asin
 import kotlin.math.cos
 import kotlin.math.pow
@@ -120,42 +121,70 @@ class OsmServiceClient(
         Result.failure(error)
     }
 
-    /** One-shot forward geocoding for an explicit user destination; never used for autocomplete. */
+    /**
+     * One-shot forward geocoding for an explicit user destination; never used for autocomplete.
+     * When an origin is supplied, resolve a bounded local match first. This prevents a short brand
+     * or POI name such as "KFC" from jumping to a globally prominent branch. If no local match is
+     * present, fall back to an ordinary global Nominatim lookup for genuinely distant destinations.
+     */
     suspend fun geocode(query: String, near: GeoPoint? = null): Result<OsmPlace?> = try {
         val clean = query.replace(Regex("\\s+"), " ").trim().take(300)
         require(clean.isNotBlank()) { "Destination cannot be blank." }
-        val config = configProvider()
-        val builder = (config.nominatimBaseUrl + "/search").toHttpUrl().newBuilder()
-            .addQueryParameter("format", "jsonv2")
-            .addQueryParameter("q", clean)
-            .addQueryParameter("limit", "5")
-            .addQueryParameter("addressdetails", "1")
+
         if (near != null) {
-            val delta = 0.18
-            builder.addQueryParameter(
-                "viewbox",
-                "${near.longitude - delta},${near.latitude + delta},${near.longitude + delta},${near.latitude - delta}",
+            val localCandidates = searchNominatim(
+                query = clean,
+                near = near,
+                radiusMeters = LOCAL_DESTINATION_RADIUS_METERS,
+                limit = LOCAL_DESTINATION_RESULTS,
+                bounded = true,
             )
+            localCandidates.minByOrNull { it.distanceMeters }?.let { return Result.success(it) }
         }
-        val payload = nominatimGet(builder.build().toString())
-        val items = org.json.JSONArray(payload)
-        val candidates = buildList {
-            for (index in 0 until items.length()) {
-                val item = items.optJSONObject(index) ?: continue
-                val lat = item.optString("lat").toDoubleOrNull() ?: continue
-                val lon = item.optString("lon").toDoubleOrNull() ?: continue
-                val itemPoint = GeoPoint(lat, lon)
-                add(
-                    OsmPlace(
-                        name = item.optString("display_name").replace(Regex("\\s+"), " ").trim().take(400),
-                        category = item.optString("type").ifBlank { item.optString("category") }.take(80),
-                        point = itemPoint,
-                        distanceMeters = near?.let { haversineMeters(it, itemPoint).toInt() } ?: 0,
-                    ),
-                )
-            }
-        }
+
+        val candidates = searchNominatim(
+            query = clean,
+            near = near,
+            radiusMeters = LOCAL_DESTINATION_RADIUS_METERS,
+            limit = GLOBAL_GEOCODE_RESULTS,
+            bounded = false,
+        )
         Result.success(if (near == null) candidates.firstOrNull() else candidates.minByOrNull { it.distanceMeters })
+    } catch (cancelled: CancellationException) {
+        throw cancelled
+    } catch (error: Throwable) {
+        Result.failure(error)
+    }
+
+    /**
+     * Strict named-place lookup inside the requested radius. Unlike [geocode], this never accepts a
+     * result outside the local search area. It is used for nearby brand/name requests where returning
+     * a far-away place is worse than returning no match.
+     */
+    suspend fun searchNearby(
+        query: String,
+        origin: GeoPoint,
+        radiusMeters: Int,
+        limit: Int = 8,
+    ): Result<List<OsmPlace>> = try {
+        val clean = query.replace(Regex("\\s+"), " ").trim().take(300)
+        require(clean.isNotBlank()) { "Nearby query cannot be blank." }
+        val radius = radiusMeters.coerceIn(50, 5_000)
+        val outputLimit = limit.coerceIn(1, 20)
+        val candidates = searchNominatim(
+            query = clean,
+            near = origin,
+            radiusMeters = radius,
+            limit = maxOf(outputLimit * 2, outputLimit),
+            bounded = true,
+        )
+        Result.success(
+            candidates
+                .filter { it.distanceMeters <= radius }
+                .sortedBy { it.distanceMeters }
+                .distinctBy { it.name.lowercase(Locale.US) to it.point }
+                .take(outputLimit),
+        )
     } catch (cancelled: CancellationException) {
         throw cancelled
     } catch (error: Throwable) {
@@ -264,6 +293,52 @@ class OsmServiceClient(
             .addQueryParameter("alternatives", "false")
             .addQueryParameter("generate_hints", "false")
             .build()
+    }
+
+    private suspend fun searchNominatim(
+        query: String,
+        near: GeoPoint?,
+        radiusMeters: Int,
+        limit: Int,
+        bounded: Boolean,
+    ): List<OsmPlace> {
+        val config = configProvider()
+        val builder = (config.nominatimBaseUrl + "/search").toHttpUrl().newBuilder()
+            .addQueryParameter("format", "jsonv2")
+            .addQueryParameter("q", query)
+            .addQueryParameter("limit", limit.coerceIn(1, 20).toString())
+            .addQueryParameter("addressdetails", "1")
+        if (near != null) {
+            builder.addQueryParameter("viewbox", viewbox(near, radiusMeters))
+            if (bounded) builder.addQueryParameter("bounded", "1")
+        }
+        val payload = nominatimGet(builder.build().toString())
+        val items = org.json.JSONArray(payload)
+        return buildList {
+            for (index in 0 until items.length()) {
+                val item = items.optJSONObject(index) ?: continue
+                val lat = item.optString("lat").toDoubleOrNull() ?: continue
+                val lon = item.optString("lon").toDoubleOrNull() ?: continue
+                val itemPoint = GeoPoint(lat, lon)
+                add(
+                    OsmPlace(
+                        name = item.optString("display_name").replace(Regex("\\s+"), " ").trim().take(400),
+                        category = item.optString("type").ifBlank { item.optString("category") }.take(80),
+                        point = itemPoint,
+                        distanceMeters = near?.let { haversineMeters(it, itemPoint).toInt() } ?: 0,
+                    ),
+                )
+            }
+        }
+    }
+
+    private fun viewbox(center: GeoPoint, radiusMeters: Int): String {
+        val radius = radiusMeters.coerceIn(100, MAX_LOCAL_VIEWBOX_RADIUS_METERS)
+        val latDelta = radius / METERS_PER_DEGREE_LATITUDE
+        val longitudeScale = cos(Math.toRadians(center.latitude)).absoluteValue.coerceAtLeast(MIN_LONGITUDE_SCALE)
+        val lonDelta = radius / (METERS_PER_DEGREE_LATITUDE * longitudeScale)
+        return "${center.longitude - lonDelta},${center.latitude + latDelta}," +
+            "${center.longitude + lonDelta},${center.latitude - latDelta}"
     }
 
     private suspend fun nominatimGet(url: String): String = nominatimMutex.withLock {
@@ -457,6 +532,12 @@ class OsmServiceClient(
         private const val OVERPASS_CALL_TIMEOUT_SECONDS = 6L
         private const val OSRM_CALL_TIMEOUT_SECONDS = 5L
         private const val CACHE_LIMIT = 96
+        private const val LOCAL_DESTINATION_RADIUS_METERS = 15_000
+        private const val MAX_LOCAL_VIEWBOX_RADIUS_METERS = 50_000
+        private const val LOCAL_DESTINATION_RESULTS = 12
+        private const val GLOBAL_GEOCODE_RESULTS = 8
+        private const val METERS_PER_DEGREE_LATITUDE = 111_320.0
+        private const val MIN_LONGITUDE_SCALE = 0.15
         private const val MAX_PLACE_DESCRIPTOR_CHARS = 520
         private val SAFE_TAG = Regex("[a-zA-Z0-9_:.-]{1,64}")
         private val SAFE_TAG_VALUE = Regex("[a-zA-Z0-9_ :.'()-]{1,96}")
