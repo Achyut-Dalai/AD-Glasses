@@ -40,6 +40,8 @@ jobs:
       - name: Apply Kokoro-only speech migrations
         shell: bash
         run: |
+          # MainActivity is transformed first. LocalAgent has one device-unavailable stop site
+          # outside its legacy speech block, so normalize that site before running its strict helper.
           python3 tools/finish_kokoro_main_activity.py
           python3 - <<'PY'
           from pathlib import Path
