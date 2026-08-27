@@ -23,23 +23,12 @@ data class ResolvedImageQuestionPrompt(
 
 object ImageQuestionDefaults {
     /**
-     * The Android TextToSpeech earcon tokens were removed when assistant output moved to Kokoro.
-     * Until every caller uses the direct packaged cue player, keep the existing speech callback
-     * contract with a short localized Kokoro cue instead of referencing the deleted TTS tokens.
+     * Do not synthesize the listening prompt through Kokoro. Voice-query callers treat a blank cue
+     * as immediately complete and can start Moonshine without running both native speech engines at
+     * the same time. A packaged non-TTS earcon can be wired into those callers separately.
      */
-    fun listeningCueForLanguage(languageTag: String): String = when (
-        Locale.forLanguageTag(languageTag).language.lowercase(Locale.ROOT)
-    ) {
-        "pt" -> "Ouvindo."
-        "es" -> "Escuchando."
-        "de" -> "Ich höre zu."
-        "fr" -> "J'écoute."
-        "it" -> "Ascolto."
-        "zh" -> "正在听。"
-        "ko" -> "듣고 있어요."
-        "ru" -> "Слушаю."
-        else -> "Listening."
-    }
+    @Suppress("UNUSED_PARAMETER")
+    fun listeningCueForLanguage(languageTag: String): String = ""
 
     fun questionCueForLanguage(languageTag: String): String = when (
         Locale.forLanguageTag(languageTag).language.lowercase(Locale.ROOT)
