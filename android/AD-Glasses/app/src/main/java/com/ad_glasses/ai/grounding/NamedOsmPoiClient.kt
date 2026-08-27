@@ -25,6 +25,11 @@ internal class NamedOsmPoiClient(
     private val configProvider: () -> GroundingServiceConfig,
     private val client: OkHttpClient = defaultClient(),
 ) {
+    constructor(configProvider: () -> GroundingServiceConfig) : this(
+        configProvider = configProvider,
+        client = defaultClient(),
+    )
+
     suspend fun nearby(
         origin: GeoPoint,
         query: String,
