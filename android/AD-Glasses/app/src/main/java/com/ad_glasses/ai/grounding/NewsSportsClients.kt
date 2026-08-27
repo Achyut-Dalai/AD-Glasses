@@ -88,79 +88,6 @@ class GoogleNewsRssClient(
     }
 }
 
-class EspnSportsClient(
-    private val client: OkHttpClient = defaultSyndicationClient(),
-) {
-    suspend fun lookup(query: String? = null): Result<StructuredKnowledgeResult> = try {
-        val cleanQuery = query?.cleanFeedText(MAX_QUERY_CHARS)?.takeIf(String::isNotBlank)
-        val all = parseRssItems(client.fetchFeed(TOP_HEADLINES_URL, "ESPN")).take(MAX_ITEMS)
-        if (all.isEmpty()) error("ESPN RSS returned no sports headlines.")
-        val chosen = if (cleanQuery == null) all else selectRelevant(cleanQuery, all)
-        if (chosen.isEmpty()) error("ESPN RSS did not contain enough evidence for the specific sports query.")
-        Result.success(chosen.toSportsResult(cleanQuery))
-    } catch (cancelled: CancellationException) {
-        throw cancelled
-    } catch (error: Throwable) {
-        Result.failure(error)
-    }
-
-    internal fun parse(xml: String): List<SyndicatedHeadline> = parseRssItems(xml)
-
-    internal fun selectRelevant(query: String, items: List<SyndicatedHeadline>): List<SyndicatedHeadline> {
-        val queryTokens = semanticTokens(query)
-        if (queryTokens.isEmpty()) return items.take(MAX_MATCHES)
-        val minimumOverlap = if (queryTokens.size >= 3) 2 else 1
-        return items
-            .map { item ->
-                val itemTokens = semanticTokens(item.title + " " + item.source.orEmpty())
-                item to queryTokens.count(itemTokens::contains)
-            }
-            .sortedByDescending { it.second }
-            .filter { it.second >= minimumOverlap }
-            .map { it.first }
-            .take(MAX_MATCHES)
-    }
-
-    private fun List<SyndicatedHeadline>.toSportsResult(query: String?): StructuredKnowledgeResult {
-        val shown = take(MAX_SPOKEN_ITEMS)
-        val answer = buildString {
-            append(if (query == null) "ESPN sports headlines: " else "ESPN headlines relevant to $query: ")
-            append(shown.joinToString("; ") { item -> item.title })
-            append('.')
-        }.take(MAX_ANSWER_CHARS)
-        val context = buildString {
-            appendLine(if (query == null) "ESPN general sports RSS headlines:" else "ESPN RSS evidence for: $query")
-            this@toSportsResult.forEachIndexed { index, item ->
-                append("[${index + 1}] ${item.title}")
-                item.publishedAt?.takeIf(String::isNotBlank)?.let { append("; published=$it") }
-                appendLine()
-            }
-            append("Headline evidence only; do not infer a live score/result unless a headline states it.")
-        }.take(MAX_CONTEXT_CHARS)
-        return StructuredKnowledgeResult(
-            answer = answer,
-            context = context,
-            sources = map { GroundingSource("ESPN — ${it.title.take(100)}", it.link) }
-                .distinctBy(GroundingSource::url)
-                .take(MAX_MATCHES),
-        )
-    }
-
-    private companion object {
-        val TOP_HEADLINES_URL: HttpUrl = HttpUrl.Builder()
-            .scheme("https")
-            .host("www.espn.com")
-            .addPathSegments("espn/rss/news")
-            .build()
-        const val MAX_QUERY_CHARS = 420
-        const val MAX_ITEMS = 30
-        const val MAX_MATCHES = 6
-        const val MAX_SPOKEN_ITEMS = 4
-        const val MAX_ANSWER_CHARS = 1_800
-        const val MAX_CONTEXT_CHARS = 2_000
-    }
-}
-
 private fun parseRssItems(xml: String): List<SyndicatedHeadline> {
     if (xml.isBlank()) return emptyList()
     val parser = XmlPullParserFactory.newInstance().newPullParser().apply {
@@ -202,18 +129,6 @@ private fun parseRssItems(xml: String): List<SyndicatedHeadline> {
     }
     return items
 }
-
-private fun semanticTokens(value: String): Set<String> = TOKEN.findAll(value.lowercase(Locale.US))
-    .map(MatchResult::value)
-    .filter { it.length >= 2 && it !in GENERIC_STOPWORDS }
-    .toSet()
-
-private val TOKEN = Regex("[a-z0-9]+")
-private val GENERIC_STOPWORDS = setOf(
-    "a", "an", "and", "are", "at", "be", "for", "from", "how", "in", "is", "it", "latest", "live",
-    "me", "of", "on", "please", "score", "scores", "result", "results", "the", "today", "what", "when",
-    "who", "with", "won",
-)
 
 private fun String.cleanFeedText(maxChars: Int): String = replace(Regex("\\s+"), " ").trim().take(maxChars)
 
