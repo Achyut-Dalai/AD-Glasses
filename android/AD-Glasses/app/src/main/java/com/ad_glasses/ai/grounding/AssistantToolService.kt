@@ -75,6 +75,7 @@ class AssistantToolService(context: Context) {
     private val currency = FrankfurterCurrencyClient()
     private val books = OpenLibraryKnowledgeClient()
     private val translation = LocalTranslationClient()
+    private val transport = TransportDataService(appContext)
     private val osm = OsmServiceClient { GroundingPrefs.getConfig(appContext) }
     private val namedPoi = NamedOsmPoiClient { GroundingPrefs.getConfig(appContext) }
 
@@ -196,6 +197,9 @@ class AssistantToolService(context: Context) {
         ExternalTool.CURRENCY -> executeCurrency(route)
         ExternalTool.BOOKS -> executeBooks(route)
         ExternalTool.TRANSLATION -> executeTranslation(route)
+        ExternalTool.RAIL -> executeRail(route)
+        ExternalTool.FLIGHT -> executeFlight(route)
+        ExternalTool.TRANSIT -> executeTransit(route)
     }
 
     private suspend fun executeTavily(
@@ -434,6 +438,62 @@ class AssistantToolService(context: Context) {
         val target = route.targetLanguage ?: error("Translation target language is missing.")
         val result = translation.translate(text, route.sourceLanguage, target).getOrThrow()
         return result.toExternalExecution(directPreferred = true)
+    }
+
+    private suspend fun executeRail(route: GroundingRoute): ExternalExecution {
+        check(transport.railConfigured()) { "Rail status provider is not configured." }
+        val result = when (route.externalAction ?: error("Rail action is missing.")) {
+            ExternalAction.LIVE_STATUS -> transport.railLiveStatus(
+                route.trainNumber ?: error("Rail train number is missing."),
+            )
+            ExternalAction.PNR_STATUS -> transport.pnrStatus(
+                route.pnrNumber ?: error("Rail PNR number is missing."),
+            )
+            else -> error("Unsupported rail action.")
+        }.getOrThrow()
+        return result.toExternalExecution(directPreferred = true)
+    }
+
+    private suspend fun executeFlight(route: GroundingRoute): ExternalExecution {
+        check(transport.flightConfigured()) { "Flight status provider is not configured." }
+        check(route.externalAction == ExternalAction.STATUS) { "Unsupported flight action." }
+        return transport.flightStatus(route.flightNumber ?: error("Flight number is missing."))
+            .getOrThrow()
+            .toExternalExecution(directPreferred = true)
+    }
+
+    private suspend fun executeTransit(route: GroundingRoute): ExternalExecution {
+        val feedId = resolveTransitFeedId(route.transitFeed)
+        val result = when (route.externalAction ?: error("Transit action is missing.")) {
+            ExternalAction.REALTIME_STATUS -> transport.realtimeStatus(
+                feedId = feedId,
+                stopId = route.transitStopId,
+                routeId = route.transitRouteId,
+            )
+            ExternalAction.NEARBY_VEHICLES -> transport.nearbyRealtimeVehicles(
+                feedId = feedId,
+                routeId = route.transitRouteId,
+            )
+            else -> error("Unsupported transit action.")
+        }.getOrThrow()
+        return result.toExternalExecution(directPreferred = true)
+    }
+
+    private fun resolveTransitFeedId(selector: String?): String {
+        val feeds = transport.realtimeFeeds()
+        check(feeds.isNotEmpty()) { "No GTFS-Realtime feed is configured." }
+        val clean = selector?.trim()?.takeIf(String::isNotBlank)
+        if (clean != null) {
+            feeds.firstOrNull { feed ->
+                feed.id.equals(clean, ignoreCase = true) ||
+                    feed.label.equals(clean, ignoreCase = true) ||
+                    feed.label.contains(clean, ignoreCase = true) ||
+                    clean.contains(feed.label, ignoreCase = true)
+            }?.let { return it.id }
+            throw IllegalStateException("No configured GTFS-Realtime feed matches '$clean'.")
+        }
+        if (feeds.size == 1) return feeds.first().id
+        throw IllegalStateException("Multiple GTFS-Realtime feeds are configured; the transit agency/feed is required.")
     }
 
     private fun StructuredKnowledgeResult.toExternalExecution(directPreferred: Boolean = false): ExternalExecution =
