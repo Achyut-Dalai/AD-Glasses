@@ -17,6 +17,25 @@ dependencyResolutionManagement {
         // JetBrains Compose Multiplatform (Skiko native binaries for iOS)
         maven { url = uri("https://maven.packagist.org") }
 
+        // Sherpa's static-ONNX-Runtime Android AAR is published as a GitHub release asset.
+        // Scope this Ivy repository to that single artifact so normal dependencies keep using
+        // the standard Maven repositories above.
+        ivy {
+            url = uri("https://github.com/k2-fsa/sherpa-onnx/releases/download")
+            patternLayout {
+                artifact("v[revision]/[artifact]-[revision].[ext]")
+            }
+            metadataSources {
+                artifact()
+            }
+            content {
+                includeModule(
+                    "com.k2fsa.sherpa.onnx",
+                    "sherpa-onnx-static-link-onnxruntime"
+                )
+            }
+        }
+
         // Meta Wearables DAT SDK (requires GitHub token with read:packages scope)
         val localProps = java.util.Properties()
         val localPropsFile = rootDir.resolve("local.properties")

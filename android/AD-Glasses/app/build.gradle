@@ -172,11 +172,11 @@ dependencies {
     implementation("androidx.localbroadcastmanager:localbroadcastmanager:1.1.0")
     implementation("com.github.CymChad:BaseRecyclerViewAdapterHelper:3.0.4")
     implementation 'com.squareup.okhttp3:okhttp:4.12.0'
-    // Use the Android AAR directly. The umbrella JitPack coordinate also pulls the JVM API jar,
-    // which duplicates the same com.k2fsa.sherpa.onnx classes already packaged in this AAR.
-    implementation('com.github.k2-fsa.sherpa-onnx:sherpa-onnx:v1.13.6') {
-        exclude group: 'com.github.k2-fsa.sherpa-onnx', module: 'sherpa-onnx-jvm'
-    }
+    // Sherpa's normal Android AAR packages its own libonnxruntime.so, which collides with
+    // moonshine-voice's ONNX Runtime during mergeDebugNativeLibs. The static-link variant
+    // embeds sherpa's runtime into libsherpa-onnx-jni.so instead, so each engine keeps the
+    // ONNX Runtime version it was built against without relying on an unsafe pickFirst.
+    implementation 'com.k2fsa.sherpa.onnx:sherpa-onnx-static-link-onnxruntime:1.13.6@aar'
     implementation 'org.apache.commons:commons-compress:1.28.0'
     implementation 'androidx.media3:media3-exoplayer:1.11.0'
     implementation 'androidx.media3:media3-exoplayer-rtsp:1.11.0'
