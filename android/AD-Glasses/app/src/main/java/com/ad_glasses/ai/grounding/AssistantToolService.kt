@@ -56,6 +56,7 @@ class AssistantToolService(context: Context) {
     private val tavily = TavilySearchClient(appContext)
     private val news = GoogleNewsRssClient()
     private val sports = EspnSportsClient()
+    private val sportsScores = EspnScoreClient()
     private val weather = OpenMeteoWeatherClient()
     private val wikipedia = WikipediaKnowledgeClient()
     private val dictionary = FreeDictionaryClient()
@@ -63,6 +64,7 @@ class AssistantToolService(context: Context) {
     private val books = OpenLibraryKnowledgeClient()
     private val translation = LocalTranslationClient()
     private val osm = OsmServiceClient { GroundingPrefs.getConfig(appContext) }
+    private val namedPoi = NamedOsmPoiClient { GroundingPrefs.getConfig(appContext) }
 
     suspend fun execute(route: GroundingRoute): Result<GroundingToolResult> = try {
         val startedAt = SystemClock.elapsedRealtime()
@@ -223,7 +225,14 @@ class AssistantToolService(context: Context) {
             first
         }
         if (chosen.results.isEmpty()) {
-            throw IllegalStateException("Tavily returned no supporting search results after the bounded retry.")
+            Log.w(TAG, "tavily_no_supporting_results")
+            return ExternalExecution(
+                answer = "I couldn't find reliable supporting web results for $baseQuery.",
+                context = "The bounded web lookup returned no supporting result records. Do not invent details for '$baseQuery'.",
+                sources = emptyList(),
+                tavilyUsed = true,
+                directPreferred = true,
+            )
         }
         val relevant = selectRelevantResults(chosen.results)
         val sources = relevant.map { GroundingSource(it.title, it.url) }
@@ -280,13 +289,20 @@ class AssistantToolService(context: Context) {
         val query = route.searchQuery?.trim()?.takeIf(String::isNotBlank)
         if (query == null) {
             val headlines = sports.lookup(null).getOrNull()
-            if (headlines != null) return headlines.toExternalExecution()
+            if (headlines != null) return headlines.toExternalExecution(directPreferred = true)
+            throw IllegalStateException("ESPN sports headlines lookup failed.")
         }
 
-        // ESPN's public RSS is excellent for broad headlines but is not a universal live-score API.
-        // A specific sports question therefore searches ESPN itself through Tavily. No sport names or
-        // leagues are hardcoded here; the router supplies the standalone semantic query.
-        if (tavily.isConfigured() && query != null) {
+        // Score/result/schedule questions must try structured ESPN event data before articles.
+        val structured = sportsScores.lookup(query).getOrNull()
+        if (structured != null) {
+            Log.i(TAG, "sports_structured_hit queryChars=${query.length}")
+            return structured.toExternalExecution(directPreferred = true)
+        }
+        Log.w(TAG, "sports_structured_miss queryChars=${query.length}")
+
+        // ESPN article search is a fallback, not the primary score path.
+        if (tavily.isConfigured()) {
             return executeTavily(
                 route.copy(
                     externalTool = ExternalTool.TAVILY,
@@ -300,8 +316,8 @@ class AssistantToolService(context: Context) {
         }
 
         val rssFallback = sports.lookup(query).getOrNull()
-        if (rssFallback != null) return rssFallback.toExternalExecution()
-        throw IllegalStateException("ESPN sports lookup failed and ESPN web search is unavailable.")
+        if (rssFallback != null) return rssFallback.toExternalExecution(directPreferred = true)
+        throw IllegalStateException("ESPN structured sports lookup failed and article fallback is unavailable.")
     }
 
     private suspend fun executeWeather(
@@ -501,7 +517,7 @@ class AssistantToolService(context: Context) {
         val center = resolveNearbyCenter(plan)
         val query = plan.spatialQuery?.trim().orEmpty()
 
-        val overpassPlaces = if (plan.osmFilters.isNotEmpty()) {
+        val categoryPlaces = if (plan.osmFilters.isNotEmpty()) {
             osm.nearby(
                 origin = center.first,
                 filters = plan.osmFilters,
@@ -511,14 +527,27 @@ class AssistantToolService(context: Context) {
         } else {
             emptyList()
         }
-        val places = if (overpassPlaces.isNotEmpty()) {
-            overpassPlaces
-        } else if (query.isNotBlank()) {
-            val fallback = osm.geocode(query, center.first).getOrNull()
-            listOfNotNull(fallback?.takeIf { it.distanceMeters <= radius })
+        val namedPlaces = if (query.isNotBlank()) {
+            namedPoi.nearby(
+                origin = center.first,
+                query = query,
+                radiusMeters = radius,
+                limit = MAX_NEARBY_RESULTS,
+            ).getOrNull().orEmpty()
         } else {
             emptyList()
         }
+        val places = (categoryPlaces + namedPlaces)
+            .sortedBy(OsmPlace::distanceMeters)
+            .distinctBy { it.name.lowercase(Locale.US) to it.point }
+            .take(MAX_NEARBY_RESULTS)
+            .ifEmpty {
+                if (query.isBlank()) emptyList()
+                else {
+                    val fallback = osm.geocode(query, center.first).getOrNull()
+                    listOfNotNull(fallback?.takeIf { it.distanceMeters <= radius })
+                }
+            }
 
         val target = query.ifBlank { "matching places" }
         val answer = if (places.isNotEmpty()) {
@@ -582,7 +611,17 @@ class AssistantToolService(context: Context) {
         val destinationQuery = plan.routeDestination?.takeIf { it.isNotBlank() }
             ?: plan.spatialQuery?.takeIf { it.isNotBlank() }
             ?: throw IllegalStateException("Route destination is blank.")
-        val destination = osm.geocode(destinationQuery, originPoint).getOrThrow()
+        val localNamedDestination = if (shouldTryNamedPoi(destinationQuery)) {
+            namedPoi.nearby(
+                origin = originPoint,
+                query = destinationQuery,
+                radiusMeters = ROUTE_NAMED_POI_RADIUS_METERS,
+                limit = 1,
+            ).getOrNull()?.firstOrNull()
+        } else {
+            null
+        }
+        val destination = localNamedDestination ?: osm.geocode(destinationQuery, originPoint).getOrThrow()
             ?: throw IllegalStateException("OpenStreetMap could not resolve the route destination.")
         val route = osm.route(originPoint, destination.point, plan.routeMode).getOrThrow()
         val mode = plan.routeMode.name.lowercase(Locale.US)
@@ -605,6 +644,11 @@ class AssistantToolService(context: Context) {
             coarseArea = area,
             searchHints = listOf(destination.name),
         )
+    }
+
+    private fun shouldTryNamedPoi(query: String): Boolean {
+        val clean = query.trim()
+        return clean.isNotBlank() && clean.length <= 96 && clean.none(Char::isDigit) && clean.split(Regex("\\s+")).size <= 10
     }
 
     private suspend fun resolveNearbyCenter(plan: GroundingRoute): Pair<GeoPoint, String> {
@@ -656,6 +700,7 @@ class AssistantToolService(context: Context) {
         const val TAG = "AssistantGrounding"
         val ESPN_DOMAINS = listOf("espn.com", "espn.in")
         const val DEFAULT_NEARBY_RADIUS_METERS = 1_000
+        const val ROUTE_NAMED_POI_RADIUS_METERS = 20_000
         const val PRIMARY_TAVILY_RESULTS = 3
         const val FALLBACK_TAVILY_RESULTS = 5
         const val MAX_SOURCES = 4
