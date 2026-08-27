@@ -27,10 +27,10 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
-import com.ad_glasses.ai.AndroidAssistantVoiceIo
 import com.ad_glasses.ai.orchestrator.AssistantInferenceContextPolicy
 import com.ad_glasses.ai.router.AiProviderPrefs
 import com.ad_glasses.ai.transcription.moonshine.MoonshineModelManager
+import com.ad_glasses.ai.voice.KokoroSpeechService
 
 /** AI and voice overview embedded directly in Device Center. */
 @Composable
@@ -42,10 +42,12 @@ internal fun ADDeviceAiSection(
     val configured = AiProviderPrefs.isApiConfigured(context)
     val moonshineModel = MoonshineModelManager.chooseDefault()
     val moonshineInstalled = MoonshineModelManager.isInstalled(context, moonshineModel)
+    val kokoroInstalled = KokoroSpeechService.get(context).isModelInstalled()
+    val voiceReady = moonshineInstalled && kokoroInstalled
 
     Column(modifier = Modifier.fillMaxWidth()) {
         Text(
-            "Cloud AI handles reasoning. Ask AI, Chats, and Lens share the same assistant conversation core; voice adds Moonshine speech input and Android TTS while Lens adds current image context.",
+            "Cloud AI handles reasoning. Ask AI, Chats, and Lens share the same assistant conversation core; voice adds Moonshine speech input and Kokoro-82M speech output while Lens adds current image context.",
             style = MaterialTheme.typography.bodySmall,
             color = ADColors.Muted,
         )
@@ -107,15 +109,22 @@ internal fun ADDeviceAiSection(
                 if (!moonshineInstalled) {
                     onCloudSettings()
                 } else {
-                    runCatching {
-                        context.startActivity(AndroidAssistantVoiceIo.installVoiceDataIntent())
-                    }.onFailure {
-                        Toast.makeText(
-                            context,
-                            "Open Android Text-to-Speech settings to install an offline voice.",
-                            Toast.LENGTH_LONG,
-                        ).show()
-                    }
+                    KokoroSpeechService.get(context).prepare(
+                        onReady = {
+                            Toast.makeText(
+                                context,
+                                "Kokoro offline voice is ready.",
+                                Toast.LENGTH_SHORT,
+                            ).show()
+                        },
+                        onError = { error ->
+                            Toast.makeText(
+                                context,
+                                "Unable to prepare Kokoro voice: ${error.message ?: "unknown error"}",
+                                Toast.LENGTH_LONG,
+                            ).show()
+                        },
+                    )
                 }
             },
             modifier = Modifier.fillMaxWidth(),
@@ -134,24 +143,24 @@ internal fun ADDeviceAiSection(
                         color = ADColors.Ink,
                     )
                     Text(
-                        "Moonshine · on-device ASR · Android TTS · last ${AssistantInferenceContextPolicy.MAX_PRIOR_MESSAGES} messages as AI context",
+                        "Moonshine · on-device ASR · Kokoro-82M · last ${AssistantInferenceContextPolicy.MAX_PRIOR_MESSAGES} messages as AI context",
                         style = MaterialTheme.typography.bodySmall,
                         color = ADColors.Muted,
                     )
                     Text(
-                        if (moonshineInstalled) {
-                            "Chats stay until you delete them · tap for offline TTS voice data"
-                        } else {
-                            "Moonshine required · tap to open Cloud AI setup"
+                        when {
+                            !moonshineInstalled -> "Moonshine required · tap to open Cloud AI setup"
+                            kokoroInstalled -> "Chats stay until you delete them · Kokoro offline voice ready"
+                            else -> "Chats stay until you delete them · tap to download Kokoro offline voice"
                         },
                         style = MaterialTheme.typography.labelSmall,
-                        color = if (moonshineInstalled) ADColors.Blue else ADColors.Error,
+                        color = if (voiceReady) ADColors.Blue else ADColors.Error,
                     )
                 }
                 ADStatusChip(
-                    text = if (moonshineInstalled) "READY" else "SETUP",
-                    tone = if (moonshineInstalled) ADStatusTone.SUCCESS else ADStatusTone.NEUTRAL,
-                    showCheck = moonshineInstalled,
+                    text = if (voiceReady) "READY" else "SETUP",
+                    tone = if (voiceReady) ADStatusTone.SUCCESS else ADStatusTone.NEUTRAL,
+                    showCheck = voiceReady,
                 )
             }
         }
