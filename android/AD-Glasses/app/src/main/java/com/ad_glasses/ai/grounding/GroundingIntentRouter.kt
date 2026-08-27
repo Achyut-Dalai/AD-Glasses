@@ -7,6 +7,7 @@ import com.ad_glasses.ai.router.AgentInferencePurpose
 import com.ad_glasses.ai.router.AgentInferenceRouter
 import com.ad_glasses.ai.router.CloudGenerationMode
 import com.ad_glasses.shared.settings.AgentProviderType
+import java.util.Locale
 import kotlinx.coroutines.CancellationException
 import org.json.JSONObject
 
@@ -27,6 +28,17 @@ enum class ExternalTool {
     CURRENCY,
     BOOKS,
     TRANSLATION,
+    RAIL,
+    FLIGHT,
+    TRANSIT,
+}
+
+enum class ExternalAction {
+    LIVE_STATUS,
+    PNR_STATUS,
+    STATUS,
+    REALTIME_STATUS,
+    NEARBY_VEHICLES,
 }
 
 enum class WeatherHorizon {
@@ -68,6 +80,14 @@ data class GroundingRoute(
     val routeOrigin: String? = null,
     val routeDestination: String? = null,
     val routeMode: RouteMode = RouteMode.DRIVING,
+    // Append new capability slots so existing positional constructors retain their source contract.
+    val externalAction: ExternalAction? = null,
+    val trainNumber: String? = null,
+    val pnrNumber: String? = null,
+    val flightNumber: String? = null,
+    val transitFeed: String? = null,
+    val transitStopId: String? = null,
+    val transitRouteId: String? = null,
 )
 
 /**
@@ -123,6 +143,7 @@ class GroundingIntentRouter(context: Context) {
         Log.i(
             TAG,
             "route_done intent=${effective.intent.name.lowercase()} external=$externalLabel " +
+                "action=${effective.externalAction?.name?.lowercase() ?: "none"} " +
                 "topic=${if (isTavily) effective.tavilyTopic.wire else "none"} " +
                 "freshness=${if (isTavily) effective.tavilyTimeRange?.wire ?: "none" else "none"} " +
                 "spatial=${effective.spatialAction?.name?.lowercase() ?: "none"} osmFilters=${effective.osmFilters.size} " +
@@ -192,8 +213,32 @@ class GroundingIntentRouter(context: Context) {
             "currency", "fx", "frankfurter" -> ExternalTool.CURRENCY
             "books", "book", "open-library", "open_library" -> ExternalTool.BOOKS
             "translation", "translate", "mlkit", "ml-kit" -> ExternalTool.TRANSLATION
+            "rail", "train", "railway" -> ExternalTool.RAIL
+            "flight", "aviation" -> ExternalTool.FLIGHT
+            "transit", "gtfs", "gtfs-rt", "gtfs_realtime" -> ExternalTool.TRANSIT
             null -> ExternalTool.TAVILY
             else -> return null
+        }
+        val actionValue = root.optNullableString("action")?.lowercase()
+        val externalAction = when (externalTool) {
+            ExternalTool.RAIL -> when (actionValue) {
+                "live_status", "live", "running_status" -> ExternalAction.LIVE_STATUS
+                "pnr_status", "pnr" -> ExternalAction.PNR_STATUS
+                null -> null
+                else -> return null
+            }
+            ExternalTool.FLIGHT -> when (actionValue) {
+                "status", "flight_status" -> ExternalAction.STATUS
+                null -> null
+                else -> return null
+            }
+            ExternalTool.TRANSIT -> when (actionValue) {
+                "realtime_status", "departures", "arrivals" -> ExternalAction.REALTIME_STATUS
+                "nearby_vehicles", "vehicles" -> ExternalAction.NEARBY_VEHICLES
+                null -> null
+                else -> return null
+            }
+            else -> if (actionValue == null) null else return null
         }
         val topic = when (root.optNullableString("topic")?.lowercase()) {
             "general", null -> TavilySearchTopic.GENERAL
@@ -249,6 +294,25 @@ class GroundingIntentRouter(context: Context) {
         val sourceLanguage = root.optNullableString("source_language")?.sanitizeLanguageTag()
         val targetLanguage = root.optNullableString("target_language")?.sanitizeLanguageTag()
 
+        val rawTrainNumber = root.optNullableString("train_number")
+        val trainNumber = rawTrainNumber?.replace(Regex("\\s+"), "")?.takeIf(TRAIN_NUMBER::matches)
+        if (root.hasValue("train_number") && trainNumber == null) return null
+        val rawPnrNumber = root.optNullableString("pnr_number")
+        val pnrNumber = rawPnrNumber?.replace(Regex("\\s+"), "")?.takeIf(PNR_NUMBER::matches)
+        if (root.hasValue("pnr_number") && pnrNumber == null) return null
+        val rawFlightNumber = root.optNullableString("flight_number")
+        val flightNumber = rawFlightNumber
+            ?.uppercase(Locale.US)
+            ?.replace(Regex("[\\s-]+"), "")
+            ?.takeIf(FLIGHT_NUMBER::matches)
+        if (root.hasValue("flight_number") && flightNumber == null) return null
+        val transitFeed = root.optNullableString("transit_feed")?.sanitizeQuery()?.take(MAX_TRANSIT_SELECTOR_CHARS)
+        val transitStopId = root.optNullableString("stop_id")?.sanitizeTransitId()
+        val transitRouteId = root.optNullableString("route_id")?.sanitizeTransitId()
+        if (root.hasValue("transit_feed") && transitFeed == null) return null
+        if (root.hasValue("stop_id") && transitStopId == null) return null
+        if (root.hasValue("route_id") && transitRouteId == null) return null
+
         val hasSpatialFields = spatialAction != null || !spatialQuery.isNullOrBlank() || osmFilters.isNotEmpty() ||
             root.hasValue("radius_meters") || !routeOrigin.isNullOrBlank() || !routeDestination.isNullOrBlank() ||
             root.hasValue("route_mode")
@@ -258,8 +322,12 @@ class GroundingIntentRouter(context: Context) {
         val hasTranslationConfig = root.hasValue("translation_text") || root.hasValue("target_language")
         val hasLocationFields = root.hasValue("reference_place") || root.hasValue("use_current_location")
         val hasSourceLanguage = root.hasValue("source_language")
+        val hasRailConfig = root.hasValue("train_number") || root.hasValue("pnr_number")
+        val hasFlightConfig = root.hasValue("flight_number")
+        val hasTransitConfig = root.hasValue("transit_feed") || root.hasValue("stop_id") || root.hasValue("route_id")
+        val hasTransportConfig = root.hasValue("action") || hasRailConfig || hasFlightConfig || hasTransitConfig
         val hasExternalFields = explicitExternalTool || !searchQuery.isNullOrBlank() || hasTavilyConfig ||
-            hasWeatherConfig || hasCurrencyConfig || hasTranslationConfig || hasSourceLanguage
+            hasWeatherConfig || hasCurrencyConfig || hasTranslationConfig || hasSourceLanguage || hasTransportConfig
 
         if (needsContext && !directAnswer.isNullOrBlank()) return null
         if (intent == GroundingIntent.DIRECT && synthesize && !directAnswer.isNullOrBlank()) return null
@@ -273,32 +341,48 @@ class GroundingIntentRouter(context: Context) {
         if (intent != GroundingIntent.DIRECT && !directAnswer.isNullOrBlank()) return null
 
         if (intent == GroundingIntent.SEARCH || intent == GroundingIntent.BOTH) {
+            val hasNonTransportConfig = hasTavilyConfig || hasWeatherConfig || hasCurrencyConfig ||
+                hasTranslationConfig || hasSourceLanguage || !searchQuery.isNullOrBlank()
             when (externalTool) {
                 ExternalTool.TAVILY -> if (
-                    hasWeatherConfig || hasCurrencyConfig || hasTranslationConfig || hasSourceLanguage
+                    hasWeatherConfig || hasCurrencyConfig || hasTranslationConfig || hasSourceLanguage || hasTransportConfig
                 ) return null
                 ExternalTool.NEWS,
                 ExternalTool.SPORTS -> if (
-                    hasTavilyConfig || hasWeatherConfig || hasCurrencyConfig || hasTranslationConfig || hasSourceLanguage
+                    hasTavilyConfig || hasWeatherConfig || hasCurrencyConfig || hasTranslationConfig ||
+                    hasSourceLanguage || hasTransportConfig
                 ) return null
                 ExternalTool.WEATHER -> if (
                     hasTavilyConfig || hasCurrencyConfig || hasTranslationConfig || !searchQuery.isNullOrBlank() ||
-                    hasSourceLanguage
+                    hasSourceLanguage || hasTransportConfig
                 ) return null
                 ExternalTool.WIKIPEDIA,
                 ExternalTool.DICTIONARY -> if (
-                    hasTavilyConfig || hasWeatherConfig || hasCurrencyConfig || hasTranslationConfig
+                    hasTavilyConfig || hasWeatherConfig || hasCurrencyConfig || hasTranslationConfig || hasTransportConfig
                 ) return null
                 ExternalTool.BOOKS -> if (
-                    hasTavilyConfig || hasWeatherConfig || hasCurrencyConfig || hasTranslationConfig || hasSourceLanguage
+                    hasTavilyConfig || hasWeatherConfig || hasCurrencyConfig || hasTranslationConfig ||
+                    hasSourceLanguage || hasTransportConfig
                 ) return null
                 ExternalTool.CURRENCY -> if (
                     hasTavilyConfig || hasWeatherConfig || hasTranslationConfig || !searchQuery.isNullOrBlank() ||
-                    hasSourceLanguage
+                    hasSourceLanguage || hasTransportConfig
                 ) return null
                 ExternalTool.TRANSLATION -> if (
-                    hasTavilyConfig || hasWeatherConfig || hasCurrencyConfig || !searchQuery.isNullOrBlank()
+                    hasTavilyConfig || hasWeatherConfig || hasCurrencyConfig || !searchQuery.isNullOrBlank() || hasTransportConfig
                 ) return null
+                ExternalTool.RAIL -> if (hasNonTransportConfig || hasFlightConfig || hasTransitConfig) return null
+                ExternalTool.FLIGHT -> if (hasNonTransportConfig || hasRailConfig || hasTransitConfig) return null
+                ExternalTool.TRANSIT -> if (hasNonTransportConfig || hasRailConfig || hasFlightConfig) return null
+            }
+        }
+
+        // Tool-owned fields cannot contradict a selected action even when execution is deferred.
+        if (externalTool == ExternalTool.RAIL) {
+            when (externalAction) {
+                ExternalAction.LIVE_STATUS -> if (pnrNumber != null) return null
+                ExternalAction.PNR_STATUS -> if (trainNumber != null) return null
+                else -> Unit
             }
         }
 
@@ -324,6 +408,17 @@ class GroundingIntentRouter(context: Context) {
                         currencyAmount == null || baseCurrency == null || quoteCurrency == null
                     ) return null
                     ExternalTool.TRANSLATION -> if (translationText.isNullOrBlank() || targetLanguage == null) return null
+                    ExternalTool.RAIL -> when (externalAction) {
+                        ExternalAction.LIVE_STATUS -> if (trainNumber == null) return null
+                        ExternalAction.PNR_STATUS -> if (pnrNumber == null) return null
+                        else -> return null
+                    }
+                    ExternalTool.FLIGHT -> if (externalAction != ExternalAction.STATUS || flightNumber == null) return null
+                    ExternalTool.TRANSIT -> when (externalAction) {
+                        ExternalAction.REALTIME_STATUS -> if (transitStopId == null && transitRouteId == null) return null
+                        ExternalAction.NEARBY_VEHICLES -> Unit
+                        else -> return null
+                    }
                 }
                 GroundingIntent.SPATIAL -> Unit
             }
@@ -358,6 +453,13 @@ class GroundingIntentRouter(context: Context) {
             routeOrigin = routeOrigin,
             routeDestination = routeDestination,
             routeMode = routeMode,
+            externalAction = externalAction,
+            trainNumber = trainNumber,
+            pnrNumber = pnrNumber,
+            flightNumber = flightNumber,
+            transitFeed = transitFeed,
+            transitStopId = transitStopId,
+            transitRouteId = transitRouteId,
         )
     }
 
@@ -437,6 +539,11 @@ class GroundingIntentRouter(context: Context) {
         return value.takeIf(LANGUAGE_TAG::matches)
     }
 
+    private fun String.sanitizeTransitId(): String? {
+        val value = trim().take(MAX_TRANSIT_ID_CHARS)
+        return value.takeIf { it.isNotBlank() && it.none { char -> char.isISOControl() } }
+    }
+
     private companion object {
         const val TAG = "AssistantGroundingRouter"
         const val MAX_PROMPT_CHARS = 1_300
@@ -445,6 +552,8 @@ class GroundingIntentRouter(context: Context) {
         const val MAX_QUERY_CHARS = 700
         const val MAX_DIRECT_ANSWER_CHARS = 1_400
         const val MAX_TRANSLATION_CHARS = 2_000
+        const val MAX_TRANSIT_SELECTOR_CHARS = 120
+        const val MAX_TRANSIT_ID_CHARS = 120
         const val ROUTER_MAX_TOKENS = 384
         const val MIN_RADIUS_METERS = 50
         const val MAX_RADIUS_METERS = 5_000
@@ -454,6 +563,9 @@ class GroundingIntentRouter(context: Context) {
         val DOMAIN = Regex("(?i)(?:[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?\\.)+[a-z]{2,63}")
         val CURRENCY_CODE = Regex("[A-Z]{3}")
         val LANGUAGE_TAG = Regex("[a-z]{2,3}(?:-[a-z0-9]{2,8}){0,2}")
+        val TRAIN_NUMBER = Regex("[0-9]{4,6}")
+        val PNR_NUMBER = Regex("[0-9]{10}")
+        val FLIGHT_NUMBER = Regex("[A-Z0-9]{2,3}[0-9]{1,4}[A-Z]?")
         val SAFE_OSM_VALUE = Regex("[a-zA-Z0-9_ :.'()-]{1,96}")
         val ALLOWED_OSM_KEYS = setOf(
             "amenity", "shop", "tourism", "leisure", "historic", "healthcare", "office", "craft",
@@ -461,21 +573,16 @@ class GroundingIntentRouter(context: Context) {
         )
 
         const val ROUTER_SYSTEM_PROMPT =
-            "You are AD's history-free execution planner and concise stable-knowledge answerer. Use only the CURRENT turn and any explicitly labelled current-turn visual evidence. Return exactly one compact JSON object and no prose. " +
-                "DECISION ORDER: (1) If the utterance requires a missing previous-turn referent, set needs_context=true and never guess the referent. (2) Decide the data requirement: DIRECT=stable knowledge/reasoning answerable safely now; SEARCH=one external capability; SPATIAL=the answer itself is a place/location/nearby/distance/route fact; BOTH=spatial facts plus one external capability. (3) Pick the single best external capability. (4) Emit only that capability's required fields. " +
-                "DIRECT ANSWER POLICY: for a simple standalone stable request, set synthesize=false and include direct_answer as the concise final answer in this same call. For a detailed/long-form request, substantial reasoning, code generation, rewriting, structured drafting, or any stable task that benefits from the normal answer model, set synthesize=true and OMIT direct_answer; the host will make the full answer call. This is not external search. " +
-                "TOOL SYNTHESIS POLICY: for SEARCH/SPATIAL/BOTH set synthesize=true only when comparison, ranking, transformation, reasoning across evidence, or combining multiple facts is needed. Simple source answers may use false. " +
-                "FRESHNESS RULE: anything that can have changed since model training, or asks current/live/latest/recent/today/now, must not be DIRECT. Never put a refusal such as 'I cannot access current data' in direct_answer; choose an executable SEARCH/BOTH plan instead. If freshness is uncertain, prefer SEARCH. Tolerate obvious ASR errors, but do not aggressively rewrite names/entities. " +
-                "EXPLICIT LOOKUP RULE: if the user explicitly asks you to search, look up, browse, check, verify, consult, or use an external source/site, external data is required even when the underlying fact may be stable. Choose SEARCH, or BOTH when spatial resolution is also needed. This is semantic user intent, not a host keyword trigger. " +
-                "CAPABILITIES: sports=current/external sports scores, results, schedules, standings, rankings, stats and sports headlines for ANY sport. Do not use SPORTS for stable rules/history that DIRECT can answer. news=current/recent general or topic news headlines/events. weather=current/forecast weather via location or reference_place. wikipedia=source-backed encyclopedic named-topic lookup. dictionary=word meaning/pronunciation/synonyms. currency=reference fiat conversion. books=book/author/publication lookup. translation=translate supplied text. tavily=arbitrary web/site/article-body/product/price/software/transport/detail/verification or anything external not better served above. Prefer a specialized capability when it directly fits; Tavily is the catch-all, not the default. " +
-                "NEWS/SPORTS QUERY RULE: search_query is REQUIRED when the user names a team, player, event, league, match, topic, person, organization, place, or asks a particular score/result/schedule/story. Omit search_query only for genuinely broad top headlines such as 'top news' or 'sports headlines'. NEWS/SPORTS do not use Tavily topic/time_range/source_domains fields. " +
-                "TAVILY: search_query is required. topic is only general|news|finance; time_range only day|week|month|year; source_domains only when the USER explicitly names a site/domain. Use Tavily for article-body detail or a specifically requested website even if the subject is news/sports. " +
-                "WEATHER: weather_horizon=current|today|tomorrow|week. A location used only as INPUT does not make the intent SPATIAL: 'weather near me' is SEARCH+weather+use_current_location=true with no spatial_action. SPATIAL is only when the answer itself is spatial. " +
-                "OTHER REQUIRED FIELDS: currency needs amount/base_currency/quote_currency. translation needs translation_text/target_language and optional source_language. wikipedia/dictionary/books need search_query. SPATIAL/BOTH use spatial_action=nearby|route|location. nearby uses spatial_query plus optional safe osm_filters/radius_meters/reference_place/use_current_location; convert spoken distances to metres. route uses route_destination plus optional route_origin/route_mode. BOTH resolves spatial facts first; only public place names/coarse area may go to the external capability. " +
-                "FIELD BOUNDARIES: DIRECT never has external/spatial/location fields. DIRECT+synthesize=false requires direct_answer; DIRECT+synthesize=true omits direct_answer. If needs_context=true omit direct_answer and unresolved slots. SEARCH has no spatial execution fields. SPATIAL has no external fields. BOTH has both. Never mix tool-owned fields. Never output URLs/endpoints/API keys/GPS coordinates/Overpass QL. Omit irrelevant/null/extra keys. " +
-                "EXAMPLES: {\"intent\":\"SEARCH\",\"external_tool\":\"sports\",\"search_query\":\"India vs Sri Lanka cricket live score\"}; {\"intent\":\"SEARCH\",\"external_tool\":\"news\"}; {\"intent\":\"SEARCH\",\"external_tool\":\"news\",\"search_query\":\"artificial intelligence news today\"}; {\"intent\":\"SEARCH\",\"external_tool\":\"weather\",\"weather_horizon\":\"current\",\"use_current_location\":true}; {\"intent\":\"SPATIAL\",\"spatial_action\":\"nearby\",\"spatial_query\":\"KFC\",\"radius_meters\":3000,\"use_current_location\":true}; {\"intent\":\"SEARCH\",\"external_tool\":\"tavily\",\"needs_context\":true}; {\"intent\":\"DIRECT\",\"direct_answer\":\"A concise stable answer.\"}; {\"intent\":\"DIRECT\",\"synthesize\":true}."
+            "You are AD's history-free execution planner and concise stable-knowledge answerer. Use only the CURRENT turn and explicitly labelled current-turn visual evidence. Return exactly one compact JSON object and no prose. " +
+                "PLAN: DIRECT=stable knowledge/reasoning; SEARCH=one external capability; SPATIAL=place/location/nearby/distance/route itself; BOTH=spatial plus one external capability. If a required previous-turn referent or executable slot is missing, set needs_context=true and never invent it. Simple stable DIRECT may include direct_answer with synthesize=false; detailed/reasoning/code/writing DIRECT uses synthesize=true and omits direct_answer. Current/live/latest/recent/today/now data is never DIRECT. If the user explicitly asks to search, look up, browse, check, verify, consult, or use an external source/site, use SEARCH/BOTH even for an otherwise stable fact. Tolerate obvious ASR errors but do not aggressively rewrite names/entities. " +
+                "CAPABILITIES: sports=current sports scores/results/schedules/standings/stats. news=current/recent headlines/events. weather=current/forecast weather. wikipedia=source-backed named-topic lookup. dictionary=word lookup. currency=fiat conversion. books=book/author lookup. translation=translate supplied text. rail=structured Indian Railways live running or PNR status. flight=structured operational flight status including terminal/gate/delay when provider data has it. transit=configured GTFS-Realtime predictions/alerts/vehicle positions. tavily=generic web/site/article/product/software/explanatory retrieval when no structured capability fits. Prefer structured capabilities. " +
+                "TRANSPORT: RAIL uses action=live_status with train_number, or action=pnr_status with 10-digit pnr_number. FLIGHT uses action=status with flight_number. TRANSIT uses action=realtime_status with a real stop_id and/or route_id, or action=nearby_vehicles; transit_feed may name a configured agency/feed. Never invent GTFS IDs. A physical station/stop query such as 'metro station near me' is SPATIAL/OSM, not TRANSIT. A realtime service question such as 'next metro', bus arrival, delay, alert, or vehicle position is TRANSIT. General/history/explanation questions about trains, airlines, or cancellations are DIRECT/source lookup/TAVILY as appropriate, not automatically RAIL/FLIGHT. " +
+                "TAVILY: search_query required; topic only general|news|finance; time_range only day|week|month|year; source_domains only when USER names a site/domain. Use Tavily for article-body detail, a requested website, or explanatory retrieval such as why a flight was cancelled; do not use it for current rail/flight status when structured tools fit. NEWS/SPORTS need search_query for a named topic/team/event/result, but broad headlines may omit it. WEATHER uses weather_horizon=current|today|tomorrow|week; location as weather input stays SEARCH. " +
+                "OTHER FIELDS: currency needs amount/base_currency/quote_currency. translation needs translation_text/target_language and optional source_language. wikipedia/dictionary/books need search_query. SPATIAL/BOTH use spatial_action=nearby|route|location; nearby uses spatial_query plus optional safe osm_filters/radius_meters/reference_place/use_current_location; route uses route_destination plus optional route_origin/route_mode. " +
+                "BOUNDARIES: emit only fields owned by the chosen tool. DIRECT has no external/spatial/location fields. SEARCH has no spatial execution fields. SPATIAL has no external fields. BOTH has both. Never output URLs/endpoints/API keys/GPS coordinates/Overpass QL. Omit irrelevant/null keys. " +
+                "EXAMPLES: {\"intent\":\"SEARCH\",\"external_tool\":\"rail\",\"action\":\"live_status\",\"train_number\":\"12801\"}; {\"intent\":\"SEARCH\",\"external_tool\":\"flight\",\"action\":\"status\",\"flight_number\":\"AI202\"}; {\"intent\":\"SPATIAL\",\"spatial_action\":\"nearby\",\"spatial_query\":\"metro station\",\"osm_filters\":[{\"key\":\"railway\",\"value\":\"station\"}],\"use_current_location\":true}; {\"intent\":\"SEARCH\",\"external_tool\":\"transit\",\"action\":\"nearby_vehicles\"}; {\"intent\":\"DIRECT\",\"synthesize\":true}."
 
         const val ROUTER_REPAIR_PROMPT =
-            "Repair the CURRENT turn into exactly one compact JSON execution plan, no prose/history. If a missing prior referent is required set needs_context=true and do not invent it. Choose by required data: DIRECT=stable; SEARCH=one external capability; SPATIAL=OSM/OSRM answer; BOTH=spatial plus external. For a simple DIRECT answer include direct_answer with synthesize=false; for detailed/reasoning/code/writing DIRECT work use synthesize=true and omit direct_answer. Current/live/latest/recent/today/now data or an explicit user request to search/check/verify external information is never DIRECT. Never return a current-data refusal as direct_answer. Choose external_tool from tavily|news|sports|weather|wikipedia|dictionary|currency|books|translation. NEWS/SPORTS require search_query for a specific named topic/team/event/result/score/schedule and may omit it only for broad headlines. Weather using location is SEARCH, not SPATIAL. Tavily alone may use topic/time_range/source_domains. SEARCH has no spatial execution fields; SPATIAL has no external fields; BOTH has both. Null/irrelevant fields should be omitted. Output no URLs/GPS/code."
+            "Repair the CURRENT turn into exactly one compact JSON execution plan, no prose/history. DIRECT=stable; SEARCH=one external capability; SPATIAL=OSM/OSRM; BOTH=spatial plus one external. Missing prior referent or executable slot means needs_context=true; never invent identifiers. Current/live/latest/recent/today/now or an explicit search/check/verify request is not DIRECT. external_tool is tavily|news|sports|weather|wikipedia|dictionary|currency|books|translation|rail|flight|transit. rail: action live_status+train_number or pnr_status+pnr_number. flight: action status+flight_number. transit: realtime_status with stop_id/route_id or nearby_vehicles; optional transit_feed; never invent GTFS IDs. Physical transit stop nearby is SPATIAL, realtime arrival/service is TRANSIT. Tavily is generic retrieval, not structured live status. Emit only tool-owned fields; no URLs/GPS/code."
     }
 }
