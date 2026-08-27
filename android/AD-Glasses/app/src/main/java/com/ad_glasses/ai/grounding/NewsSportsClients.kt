@@ -23,10 +23,6 @@ internal data class SyndicatedHeadline(
     val publishedAt: String?,
 )
 
-/**
- * Best-effort Google News RSS reader. Google News RSS is used as lightweight headline discovery,
- * not as a guaranteed developer API and not as a substitute for fetching article bodies.
- */
 class GoogleNewsRssClient(
     private val client: OkHttpClient = defaultSyndicationClient(),
 ) {
@@ -44,9 +40,8 @@ class GoogleNewsRssClient(
             .addQueryParameter("gl", country)
             .addQueryParameter("ceid", "$country:$language")
             .build()
-        val xml = client.fetchFeed(url, "Google News")
-        val items = parseRssItems(xml).take(MAX_ITEMS)
-        if (items.isEmpty()) throw IllegalStateException("Google News RSS returned no headlines.")
+        val items = parseRssItems(client.fetchFeed(url, "Google News")).take(MAX_ITEMS)
+        if (items.isEmpty()) error("Google News RSS returned no headlines.")
         Result.success(items.toNewsResult(cleanQuery))
     } catch (cancelled: CancellationException) {
         throw cancelled
@@ -73,7 +68,7 @@ class GoogleNewsRssClient(
                 item.publishedAt?.takeIf(String::isNotBlank)?.let { append("; published=$it") }
                 appendLine()
             }
-            append("These are RSS headline records only. Do not invent article-body details that are not present here.")
+            append("Headline records only; do not invent article-body details.")
         }.take(MAX_CONTEXT_CHARS)
         return StructuredKnowledgeResult(
             answer = answer,
@@ -93,23 +88,15 @@ class GoogleNewsRssClient(
     }
 }
 
-/**
- * ESPN-backed sports capability for any sport. The first pass uses ESPN's general RSS feed, not a
- * cricket-specific source or a Kotlin sport-name routing table. Specific/live queries unsupported by
- * the feed fall back to ESPN-constrained web search in [AssistantToolService].
- */
 class EspnSportsClient(
     private val client: OkHttpClient = defaultSyndicationClient(),
 ) {
     suspend fun lookup(query: String? = null): Result<StructuredKnowledgeResult> = try {
         val cleanQuery = query?.cleanFeedText(MAX_QUERY_CHARS)?.takeIf(String::isNotBlank)
-        val xml = client.fetchFeed(TOP_HEADLINES_URL, "ESPN")
-        val all = parseRssItems(xml).take(MAX_ITEMS)
-        if (all.isEmpty()) throw IllegalStateException("ESPN RSS returned no sports headlines.")
+        val all = parseRssItems(client.fetchFeed(TOP_HEADLINES_URL, "ESPN")).take(MAX_ITEMS)
+        if (all.isEmpty()) error("ESPN RSS returned no sports headlines.")
         val chosen = if (cleanQuery == null) all else selectRelevant(cleanQuery, all)
-        if (chosen.isEmpty()) {
-            throw IllegalStateException("ESPN RSS did not contain enough evidence for the specific sports query.")
-        }
+        if (chosen.isEmpty()) error("ESPN RSS did not contain enough evidence for the specific sports query.")
         Result.success(chosen.toSportsResult(cleanQuery))
     } catch (cancelled: CancellationException) {
         throw cancelled
@@ -122,18 +109,23 @@ class EspnSportsClient(
     internal fun selectRelevant(query: String, items: List<SyndicatedHeadline>): List<SyndicatedHeadline> {
         val queryTokens = semanticTokens(query)
         if (queryTokens.isEmpty()) return items.take(MAX_MATCHES)
-        val scored = items.map { item ->
-            val itemTokens = semanticTokens(item.title + " " + item.source.orEmpty())
-            item to queryTokens.count(itemTokens::contains)
-        }.sortedByDescending { it.second }
         val minimumOverlap = if (queryTokens.size >= 3) 2 else 1
-        return scored.filter { it.second >= minimumOverlap }.map { it.first }.take(MAX_MATCHES)
+        return items
+            .map { item ->
+                val itemTokens = semanticTokens(item.title + " " + item.source.orEmpty())
+                item to queryTokens.count(itemTokens::contains)
+            }
+            .sortedByDescending { it.second }
+            .filter { it.second >= minimumOverlap }
+            .map { it.first }
+            .take(MAX_MATCHES)
     }
 
     private fun List<SyndicatedHeadline>.toSportsResult(query: String?): StructuredKnowledgeResult {
+        val shown = take(MAX_SPOKEN_ITEMS)
         val answer = buildString {
             append(if (query == null) "ESPN sports headlines: " else "ESPN headlines relevant to $query: ")
-            append(take(MAX_SPOKEN_ITEMS).joinToString("; ") { it.title })
+            append(shown.joinToString("; ") { item -> item.title })
             append('.')
         }.take(MAX_ANSWER_CHARS)
         val context = buildString {
@@ -143,7 +135,7 @@ class EspnSportsClient(
                 item.publishedAt?.takeIf(String::isNotBlank)?.let { append("; published=$it") }
                 appendLine()
             }
-            append("This is ESPN RSS headline evidence. Do not infer a live score or result unless a headline explicitly states it.")
+            append("Headline evidence only; do not infer a live score/result unless a headline states it.")
         }.take(MAX_CONTEXT_CHARS)
         return StructuredKnowledgeResult(
             answer = answer,
@@ -199,12 +191,10 @@ private fun parseRssItems(xml: String): List<SyndicatedHeadline> {
                     published = runCatching { parser.nextText() }.getOrNull()?.cleanFeedText(160)
                 }
             }
-            XmlPullParser.END_TAG -> if (parser.name?.equals("item", ignoreCase = true) == true && insideItem) {
+            XmlPullParser.END_TAG -> if (insideItem && parser.name.equals("item", ignoreCase = true)) {
                 val safeTitle = title?.takeIf(String::isNotBlank)
                 val safeLink = link?.takeIf { it.startsWith("https://") || it.startsWith("http://") }
-                if (safeTitle != null && safeLink != null) {
-                    items += SyndicatedHeadline(safeTitle, safeLink, source, published)
-                }
+                if (safeTitle != null && safeLink != null) items += SyndicatedHeadline(safeTitle, safeLink, source, published)
                 insideItem = false
             }
         }
@@ -236,7 +226,7 @@ private fun defaultSyndicationClient(): OkHttpClient = OkHttpClient.Builder()
 private suspend fun OkHttpClient.fetchFeed(url: HttpUrl, label: String): String {
     val request = Request.Builder()
         .url(url)
-        .header("User-Agent", "AD-Glasses/alpha (https://github.com/Achyut-Dalai/AD-Glasses)")
+        .header("User-Agent", "AD-Glasses/alpha")
         .header("Accept", "application/rss+xml, application/xml, text/xml;q=0.9, */*;q=0.5")
         .get()
         .build()
