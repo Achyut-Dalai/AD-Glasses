@@ -3,7 +3,6 @@ package com.ad_glasses.ai.voice
 import android.content.Context
 import android.media.AudioAttributes
 import android.media.AudioFormat
-import android.media.AudioManager
 import android.media.AudioTrack
 import android.os.Handler
 import android.os.Looper
@@ -18,6 +17,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.cancel
 import kotlinx.coroutines.channels.Channel
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
@@ -184,6 +184,7 @@ class KokoroSpeechEngine internal constructor(context: Context) {
                 speed = request.speed,
                 sid = KokoroHeartVoice.SPEAKER_ID,
             )
+            var samplesQueued = 0L
 
             tts.generateWithConfigAndCallback(
                 text = request.text,
@@ -193,15 +194,24 @@ class KokoroSpeechEngine internal constructor(context: Context) {
                     0
                 } else {
                     if (samples.isNotEmpty()) {
-                        writeSamples(track, samples)
+                        samplesQueued += writeSamples(track, samples)
                     }
                     if (released || request.epoch != epoch.get()) 0 else 1
                 }
             }
 
             val completed = !released && request.epoch == epoch.get()
-            releaseTrackIfCurrent(track)
             if (completed) {
+                awaitPlaybackDrain(
+                    track = track,
+                    totalSamples = samplesQueued,
+                    sampleRate = sampleRate,
+                    requestEpoch = request.epoch,
+                )
+            }
+            val stillCompleted = !released && request.epoch == epoch.get()
+            releaseTrackIfCurrent(track)
+            if (stillCompleted) {
                 dispatch { request.callbacks.onDone?.invoke() }
             } else {
                 dispatch { request.callbacks.onStopped?.invoke() }
@@ -268,7 +278,7 @@ class KokoroSpeechEngine internal constructor(context: Context) {
             .build()
     }
 
-    private fun writeSamples(track: AudioTrack, samples: FloatArray) {
+    private fun writeSamples(track: AudioTrack, samples: FloatArray): Int {
         var offset = 0
         while (offset < samples.size && track.playState == AudioTrack.PLAYSTATE_PLAYING) {
             val written = track.write(
@@ -279,6 +289,23 @@ class KokoroSpeechEngine internal constructor(context: Context) {
             )
             if (written <= 0) break
             offset += written
+        }
+        return offset
+    }
+
+    private suspend fun awaitPlaybackDrain(
+        track: AudioTrack,
+        totalSamples: Long,
+        sampleRate: Int,
+        requestEpoch: Long,
+    ) {
+        if (totalSamples <= 0L) return
+        val expectedDurationMs = totalSamples * 1_000L / sampleRate.coerceAtLeast(1)
+        val deadlineNs = System.nanoTime() + (expectedDurationMs + 2_000L) * 1_000_000L
+        while (!released && requestEpoch == epoch.get() && System.nanoTime() < deadlineNs) {
+            val playedSamples = track.playbackHeadPosition.toLong() and 0xffff_ffffL
+            if (playedSamples >= totalSamples) return
+            delay(10)
         }
     }
 
