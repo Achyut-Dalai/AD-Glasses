@@ -3,7 +3,12 @@ package com.ad_glasses.ai.grounding
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 import org.junit.Test
+import org.junit.runner.RunWith
+import org.robolectric.RobolectricTestRunner
+import org.robolectric.annotation.Config
 
+@RunWith(RobolectricTestRunner::class)
+@Config(sdk = [34])
 class NamedOsmPoiClientTest {
     private val client = NamedOsmPoiClient(configProvider = { error("unused in parser test") })
 
