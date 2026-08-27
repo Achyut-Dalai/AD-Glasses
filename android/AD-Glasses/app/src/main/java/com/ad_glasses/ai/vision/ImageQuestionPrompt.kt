@@ -1,7 +1,5 @@
 package com.ad_glasses.ai.vision
 
-import com.ad_glasses.ai.AndroidAssistantVoiceIo
-import com.oudmon.ble.base.bluetooth.BleOperateManager
 import java.util.Locale
 
 data class ImageQuestionSettings(
@@ -25,17 +23,22 @@ data class ResolvedImageQuestionPrompt(
 
 object ImageQuestionDefaults {
     /**
-     * Non-verbal and language-neutral. Keep the existing quiet asset whenever the glasses BLE link
-     * is active; only phone-local listening uses the slightly louder packaged variant.
+     * The Android TextToSpeech earcon tokens were removed when assistant output moved to Kokoro.
+     * Until every caller uses the direct packaged cue player, keep the existing speech callback
+     * contract with a short localized Kokoro cue instead of referencing the deleted TTS tokens.
      */
-    @Suppress("UNUSED_PARAMETER")
-    fun listeningCueForLanguage(languageTag: String): String {
-        val glassesConnected = runCatching { BleOperateManager.getInstance().isConnected }.getOrDefault(false)
-        return if (glassesConnected) {
-            AndroidAssistantVoiceIo.LISTENING_EARCON_TOKEN
-        } else {
-            AndroidAssistantVoiceIo.PHONE_LISTENING_EARCON_TOKEN
-        }
+    fun listeningCueForLanguage(languageTag: String): String = when (
+        Locale.forLanguageTag(languageTag).language.lowercase(Locale.ROOT)
+    ) {
+        "pt" -> "Ouvindo."
+        "es" -> "Escuchando."
+        "de" -> "Ich höre zu."
+        "fr" -> "J'écoute."
+        "it" -> "Ascolto."
+        "zh" -> "正在听。"
+        "ko" -> "듣고 있어요."
+        "ru" -> "Слушаю."
+        else -> "Listening."
     }
 
     fun questionCueForLanguage(languageTag: String): String = when (
