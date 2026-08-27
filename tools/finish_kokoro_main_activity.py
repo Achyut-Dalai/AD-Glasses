@@ -9,7 +9,7 @@ PATH = ROOT / "android/AD-Glasses/app/src/main/java/com/ad_glasses/MainActivity.
 text = PATH.read_text(encoding="utf-8")
 original = text
 
-# Imports: remove Android platform TTS and add the offline Kokoro output layer.
+# Remove the Android platform speech engine imports and add the offline Kokoro output layer.
 text = text.replace("import android.speech.tts.TextToSpeech\n", "")
 text = text.replace("import android.speech.tts.UtteranceProgressListener\n", "")
 anchor = "import com.ad_glasses.ai.AndroidAssistantVoiceIo\n"
@@ -25,7 +25,7 @@ if voice_imports not in text:
         raise SystemExit("Could not find AndroidAssistantVoiceIo import anchor")
     text = text.replace(anchor, anchor + voice_imports, 1)
 
-# Replace the old Activity-level TextToSpeech lifecycle and queue bookkeeping in one bounded block.
+# Replace the Activity-level Android TextToSpeech lifecycle and queue bookkeeping in one bounded block.
 start_pattern = re.compile(
     r"class MainActivity : AppCompatActivity\(\), TextToSpeech\.OnInitListener \{\n"
     r".*?"
@@ -96,7 +96,7 @@ replacement = '''class MainActivity : AppCompatActivity() {
             Log.i("ImageQuestionAudio", "Kokoro voice=${KokoroHeartVoice.VOICE_ID} languageTag=$tag")
         }
         streamType?.let { stream ->
-            Log.d("ImageQuestionAudio", "Kokoro ignores legacy Android streamType=$stream")
+            Log.d("ImageQuestionAudio", "Kokoro ignores legacy streamType=$stream; AudioTrack owns routing")
         }
         AudioSessionCoordinator.markBusy()
         Log.i("AssistantTiming", "stage=voice_enqueued id=$id chars=${clean.length}")
@@ -214,7 +214,7 @@ oncreate_replacement = '''        // Prewarm the offline Kokoro model/runtime. F
         // Ensure we always listen for HeyCyan reports.'''
 text, count = oncreate_pattern.subn(oncreate_replacement, text, count=1)
 if count != 1:
-    raise SystemExit(f"Expected one onCreate TTS block, replaced {count}")
+    raise SystemExit(f"Expected one onCreate Android speech block, replaced {count}")
 
 # Activity teardown stops active assistant audio but keeps the process-wide model reusable by
 # notification announcements and future Activity instances.
@@ -229,26 +229,97 @@ new_destroy = '''        AssistantListeningCuePlayer.stop()
         AudioSessionCoordinator.markIdle()
 '''
 if old_destroy not in text:
-    raise SystemExit("Could not find onDestroy platform TTS cleanup")
+    raise SystemExit("Could not find onDestroy Android speech cleanup")
 text = text.replace(old_destroy, new_destroy, 1)
 
-# Rename remaining helper call sites/log vocabulary away from the removed engine.
+# The image-question cue now goes through the same Kokoro AudioTrack path as every other spoken
+# response. Remove the direct platform-engine AudioAttributes mutation and old utterance bookkeeping.
+old_image_audio_attrs = '''            tts?.setAudioAttributes(
+                android.media.AudioAttributes.Builder()
+                    .setUsage(android.media.AudioAttributes.USAGE_VOICE_COMMUNICATION)
+                    .setContentType(android.media.AudioAttributes.CONTENT_TYPE_SPEECH)
+                    .build(),
+            )
+'''
+if old_image_audio_attrs not in text:
+    raise SystemExit("Could not find image-question platform speech attributes block")
+text = text.replace(old_image_audio_attrs, "", 1)
+
+old_image_fallback = '''            // Avoid blocking the image question if the system TTS service never returns a callback.
+            lifecycleScope.launch {
+                delay(2_000L)
+                if (!completed.get()) {
+                    discardTtsUtterance(utteranceId)
+                    runCatching { tts?.stop() }
+                    AudioSessionCoordinator.markIdle()
+                }
+                complete("2s fallback")
+            }
+            cont.invokeOnCancellation {
+                discardTtsUtterance(utteranceId)
+            }
+'''
+new_image_fallback = '''            // Avoid blocking the image question if Kokoro never returns a completion callback.
+            lifecycleScope.launch {
+                delay(2_000L)
+                if (!completed.get()) {
+                    KokoroSpeechService.get(this).stop()
+                    AudioSessionCoordinator.markIdle()
+                }
+                complete("2s fallback")
+            }
+            cont.invokeOnCancellation {
+                KokoroSpeechService.get(this).stop()
+                AudioSessionCoordinator.markIdle()
+            }
+'''
+if old_image_fallback not in text:
+    raise SystemExit("Could not find image-question speech timeout block")
+text = text.replace(old_image_fallback, new_image_fallback, 1)
+
+old_voice_fallback = '''                onDone = { startListeningAfterCue("tts callback") },
+            )
+            // Do not leave Test Voice unresponsive if a TTS engine never reports completion.
+            delay(VOICE_CUE_CALLBACK_TIMEOUT_MS)
+            if (!listeningStarted.get()) {
+                discardTtsUtterance(cueUtteranceId)
+                runCatching { tts?.stop() }
+                AudioSessionCoordinator.markIdle()
+            }
+            startListeningAfterCue("tts callback timeout")
+'''
+new_voice_fallback = '''                onDone = { startListeningAfterCue("voice callback") },
+            )
+            // Do not leave Test Voice unresponsive if Kokoro never reports completion.
+            delay(VOICE_CUE_CALLBACK_TIMEOUT_MS)
+            if (!listeningStarted.get()) {
+                KokoroSpeechService.get(this).stop()
+                AudioSessionCoordinator.markIdle()
+            }
+            startListeningAfterCue("voice callback timeout")
+'''
+if old_voice_fallback not in text:
+    raise SystemExit("Could not find Test Voice speech timeout block")
+text = text.replace(old_voice_fallback, new_voice_fallback, 1)
+
+# Rename remaining helper call sites/log vocabulary away from the removed Android engine.
 text = text.replace("enqueueStreamingTts", "enqueueStreamingSpeech")
 text = text.replace("waitForTtsToFinish", "waitForSpeechToFinish")
 text = text.replace("isTtsSpeaking", "isSpeechSpeaking")
 text = text.replace("ttsRouteBluetooth", "voiceRouteBluetooth")
 text = text.replace("stage=tts_", "stage=voice_")
 text = text.replace("speechEndToTtsStartMs", "speechEndToVoiceStartMs")
+text = text.replace("TTS still speaking", "Kokoro still speaking")
+text = text.replace("tts callback", "voice callback")
+text = text.replace("TTS engine", "Kokoro engine")
+text = text.replace("system TTS service", "Kokoro speech engine")
 
-# Straightforward residual runtime references can be mapped directly to Kokoro.
+# Straightforward residual runtime references map directly to Kokoro.
 text = text.replace("tts?.isSpeaking == true", "KokoroSpeechService.get(this).isSpeaking()")
 text = text.replace("tts?.stop()", "KokoroSpeechService.get(this).stop()")
-text = text.replace("ttsReady", "KokoroSpeechService.get(this).isModelInstalled()")
-
-# A helper that only polled system TTS can now poll the shared Kokoro engine.
 text = text.replace(
-    "private fun isSpeechSpeaking(): Boolean = tts?.isSpeaking == true",
-    "private fun isSpeechSpeaking(): Boolean = KokoroSpeechService.get(this).isSpeaking()",
+    '"ttsReady=$ttsReady route=${audioRouteSummary(audioManager)}"',
+    '"kokoroReady=${KokoroSpeechService.get(this).isModelInstalled()} route=${audioRouteSummary(audioManager)}"',
 )
 
 # Diagnostics are deliberately strict. Do not commit a half-migration.
@@ -258,17 +329,22 @@ forbidden = [
     r"\bUtteranceProgressListener\b",
     r"\btts\b",
     r"\bTTS\b",
+    r"ttsReady",
     r"completeTtsUtterance",
     r"discardTtsUtterance",
     r"resetTtsAudioState",
+    r"preferOfflineVoice",
+    r"enqueueStreamingTts",
+    r"waitForTtsToFinish",
+    r"isTtsSpeaking",
 ]
 leftovers: list[str] = []
 for lineno, line in enumerate(text.splitlines(), start=1):
     if any(re.search(pattern, line) for pattern in forbidden):
         leftovers.append(f"{lineno}: {line}")
 if leftovers:
-    print("Residual platform-TTS references remain after migration:")
-    print("\n".join(leftovers[:120]))
+    print("Residual Android TextToSpeech references remain after migration:")
+    print("\n".join(leftovers[:160]))
     raise SystemExit(2)
 
 if text == original:
