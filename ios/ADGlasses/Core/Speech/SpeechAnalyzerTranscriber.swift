@@ -1,4 +1,4 @@
-import AVFoundation
+@preconcurrency import AVFoundation
 import Foundation
 import Speech
 
@@ -38,11 +38,11 @@ final class SpeechAnalyzerTranscriber: SpeechTranscribing {
         if snapshot.isRunning { return }
         try await SpeechPermissions.requestAll()
 
-        guard let locale = SpeechTranscriber.supportedLocale(equivalentTo: requestedLocale) else {
+        guard let locale = await SpeechTranscriber.supportedLocale(equivalentTo: requestedLocale) else {
             throw SpeechTranscriptionError.localeUnsupported
         }
 
-        let module = SpeechTranscriber(locale: locale, preset: .progressiveLiveTranscription)
+        let module = SpeechTranscriber(locale: locale, preset: .progressiveTranscription)
         if let installationRequest = try await AssetInventory.assetInstallationRequest(supporting: [module]) {
             try await installationRequest.downloadAndInstall()
         }
@@ -62,7 +62,7 @@ final class SpeechAnalyzerTranscriber: SpeechTranscribing {
         startResultTask(for: module)
 
         let audioSession = AVAudioSession.sharedInstance()
-        try audioSession.setCategory(.playAndRecord, mode: .spokenAudio, options: [.duckOthers, .allowBluetooth])
+        try audioSession.setCategory(.playAndRecord, mode: .spokenAudio, options: [.duckOthers, .allowBluetoothHFP])
         try audioSession.setActive(true, options: .notifyOthersOnDeactivation)
 
         let inputNode = audioEngine.inputNode
