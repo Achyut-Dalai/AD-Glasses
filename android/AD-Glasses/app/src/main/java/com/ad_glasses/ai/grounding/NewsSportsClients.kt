@@ -24,8 +24,8 @@ internal data class SyndicatedHeadline(
 )
 
 /**
- * Best-effort Google News RSS reader. Google News RSS is used as a lightweight headline discovery
- * source, not as a guaranteed developer API and not as a substitute for fetching article bodies.
+ * Best-effort Google News RSS reader. Google News RSS is used as lightweight headline discovery,
+ * not as a guaranteed developer API and not as a substitute for fetching article bodies.
  */
 class GoogleNewsRssClient(
     private val client: OkHttpClient = defaultSyndicationClient(),
@@ -44,7 +44,7 @@ class GoogleNewsRssClient(
             .addQueryParameter("gl", country)
             .addQueryParameter("ceid", "$country:$language")
             .build()
-        val xml = fetchFeed(url, "Google News")
+        val xml = client.fetchFeed(url, "Google News")
         val items = parseRssItems(xml).take(MAX_ITEMS)
         if (items.isEmpty()) throw IllegalStateException("Google News RSS returned no headlines.")
         Result.success(items.toNewsResult(cleanQuery))
@@ -94,17 +94,16 @@ class GoogleNewsRssClient(
 }
 
 /**
- * ESPN-backed sports headline capability for any sport. It intentionally uses ESPN's general RSS
- * feed rather than a cricket-specific source or a Kotlin sport-name routing table. Specific/live
- * queries that are not supported by the current general feed are allowed to fall back to an ESPN-
- * constrained web search in [AssistantToolService].
+ * ESPN-backed sports capability for any sport. The first pass uses ESPN's general RSS feed, not a
+ * cricket-specific source or a Kotlin sport-name routing table. Specific/live queries unsupported by
+ * the feed fall back to ESPN-constrained web search in [AssistantToolService].
  */
 class EspnSportsClient(
     private val client: OkHttpClient = defaultSyndicationClient(),
 ) {
     suspend fun lookup(query: String? = null): Result<StructuredKnowledgeResult> = try {
         val cleanQuery = query?.cleanFeedText(MAX_QUERY_CHARS)?.takeIf(String::isNotBlank)
-        val xml = fetchFeed(TOP_HEADLINES_URL, "ESPN")
+        val xml = client.fetchFeed(TOP_HEADLINES_URL, "ESPN")
         val all = parseRssItems(xml).take(MAX_ITEMS)
         if (all.isEmpty()) throw IllegalStateException("ESPN RSS returned no sports headlines.")
         val chosen = if (cleanQuery == null) all else selectRelevant(cleanQuery, all)
@@ -185,21 +184,19 @@ private fun parseRssItems(xml: String): List<SyndicatedHeadline> {
     var published: String? = null
     while (event != XmlPullParser.END_DOCUMENT) {
         when (event) {
-            XmlPullParser.START_TAG -> {
-                when (parser.name?.lowercase(Locale.US)) {
-                    "item" -> {
-                        insideItem = true
-                        title = null
-                        link = null
-                        source = null
-                        published = null
-                    }
-                    "title" -> if (insideItem) title = runCatching { parser.nextText() }.getOrNull()?.cleanFeedText(500)
-                    "link" -> if (insideItem) link = runCatching { parser.nextText() }.getOrNull()?.trim()
-                    "source" -> if (insideItem) source = runCatching { parser.nextText() }.getOrNull()?.cleanFeedText(160)
-                    "pubdate", "published", "updated" -> if (insideItem) {
-                        published = runCatching { parser.nextText() }.getOrNull()?.cleanFeedText(160)
-                    }
+            XmlPullParser.START_TAG -> when (parser.name?.lowercase(Locale.US)) {
+                "item" -> {
+                    insideItem = true
+                    title = null
+                    link = null
+                    source = null
+                    published = null
+                }
+                "title" -> if (insideItem) title = runCatching { parser.nextText() }.getOrNull()?.cleanFeedText(500)
+                "link" -> if (insideItem) link = runCatching { parser.nextText() }.getOrNull()?.trim()
+                "source" -> if (insideItem) source = runCatching { parser.nextText() }.getOrNull()?.cleanFeedText(160)
+                "pubdate", "published", "updated" -> if (insideItem) {
+                    published = runCatching { parser.nextText() }.getOrNull()?.cleanFeedText(160)
                 }
             }
             XmlPullParser.END_TAG -> if (parser.name?.equals("item", ignoreCase = true) == true && insideItem) {
@@ -236,28 +233,15 @@ private fun defaultSyndicationClient(): OkHttpClient = OkHttpClient.Builder()
     .callTimeout(6, TimeUnit.SECONDS)
     .build()
 
-private suspend fun fetchFeed(url: HttpUrl, label: String): String {
+private suspend fun OkHttpClient.fetchFeed(url: HttpUrl, label: String): String {
     val request = Request.Builder()
         .url(url)
         .header("User-Agent", "AD-Glasses/alpha (https://github.com/Achyut-Dalai/AD-Glasses)")
         .header("Accept", "application/rss+xml, application/xml, text/xml;q=0.9, */*;q=0.5")
         .get()
         .build()
-    return defaultFeedCall(request, label)
+    return newCall(request).awaitFeedBody(label)
 }
-
-private suspend fun fetchFeed(url: HttpUrl, label: String, client: OkHttpClient = defaultSyndicationClient()): String {
-    val request = Request.Builder()
-        .url(url)
-        .header("User-Agent", "AD-Glasses/alpha (https://github.com/Achyut-Dalai/AD-Glasses)")
-        .header("Accept", "application/rss+xml, application/xml, text/xml;q=0.9, */*;q=0.5")
-        .get()
-        .build()
-    return client.newCall(request).awaitFeedBody(label)
-}
-
-private suspend fun defaultFeedCall(request: Request, label: String): String =
-    defaultSyndicationClient().newCall(request).awaitFeedBody(label)
 
 private suspend fun Call.awaitFeedBody(label: String): String = suspendCancellableCoroutine { continuation ->
     continuation.invokeOnCancellation { cancel() }
