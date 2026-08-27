@@ -231,7 +231,7 @@ class GroundingIntentRouterTest {
             originalPrompt = "convert 50 dollars to rupees",
         )!!
         assertEquals(ExternalTool.CURRENCY, currency.externalTool)
-        assertEquals(50.0, currency.currencyAmount!!, 0.0)
+        assertEquals(50.0, routeCurrencyAmount(currency), 0.0)
         assertEquals("USD", currency.baseCurrency)
         assertEquals("INR", currency.quoteCurrency)
 
@@ -319,13 +319,14 @@ class GroundingIntentRouterTest {
     }
 
     @Test
-    fun strictProtocolRejectsUnknownKeysAndContradictoryDirectOutput() {
-        assertNull(
-            router.parse(
-                raw = """{"intent":"SEARCH","external_tool":"sports","search_query":"NBA score","confidence":0.98}""",
-                originalPrompt = "nba score",
-            ),
-        )
+    fun inertExtraMetadataIsIgnoredButContradictoryDirectOutputIsRejected() {
+        val withExtra = router.parse(
+            raw = """{"intent":"SEARCH","external_tool":"sports","search_query":"NBA score","confidence":0.98}""",
+            originalPrompt = "nba score",
+        )!!
+        assertEquals(ExternalTool.SPORTS, withExtra.externalTool)
+        assertEquals("NBA score", withExtra.searchQuery)
+
         assertNull(
             router.parse(
                 raw = """{"intent":"DIRECT","needs_context":true,"direct_answer":"It costs 50 dollars."}""",
@@ -368,4 +369,6 @@ class GroundingIntentRouterTest {
             ),
         )
     }
+
+    private fun routeCurrencyAmount(route: GroundingRoute): Double = route.currencyAmount ?: error("missing amount")
 }
