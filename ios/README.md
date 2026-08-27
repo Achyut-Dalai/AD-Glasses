@@ -1,36 +1,66 @@
-# HeyCyan Glasses SDK - iOS
+# AD Glasses — Native iOS
 
-iOS SDK for controlling HeyCyan smart glasses via Bluetooth Low Energy (BLE).
+This directory is the clean native iOS implementation of AD Glasses.
 
-## AD Glasses KMP Host
+## Product rules
 
-The existing Xcode project contains `AD GlassesKMPHost`, a simulator-targeted SwiftUI host for AD Glasses's shared Kotlin Multiplatform framework. It renders the shared dashboard, Chats, Media, Plugins, and Settings destinations. `QCSDKDemo` remains an isolated vendor/device reference target. Read [AD Glasses_KMP_IOS.md](AD Glasses_KMP_IOS.md) before building either target.
+- Swift + SwiftUI only.
+- No React Native or Flutter.
+- No Kotlin Multiplatform host.
+- No Moonshine on iOS.
+- No bundled vendor SDK/framework.
+- HeyCyan is the primary glasses integration.
+- Meta is retained only as an experimental, SDK-free integration seam.
+- New glasses vendors must be added behind `GlassesProvider` rather than leaking vendor logic into UI/features.
 
-## Quick Start
+The previous KMP host, `QCSDK.framework`, QCSDK demo application, Objective-C demo sources and vendor PDF are intentionally not carried forward.
 
-1. Open `QCSDKDemo.xcodeproj` in Xcode
-2. Select `AD GlassesKMPHost` to build the shared Kotlin shell on an iOS simulator
-3. Select `QCSDKDemo` only when testing the vendor BLE path on a physical iOS device
+## Speech-to-text
 
-Without macOS, run `python3 scripts/verify_kmp_host.py` from this directory to check the project wiring structurally. It does not replace an Xcode build or simulator/device validation.
+`SpeechTranscribing` isolates the rest of the app from Apple's speech engine.
 
-## GitHub Actions CI
+- On iOS 26 with a compiler that includes the modern Speech framework, `SpeechAnalyzerTranscriber` uses `SpeechAnalyzer` + `SpeechTranscriber`. The language model is managed by iOS and runs on device rather than being bundled into the app.
+- On iOS 17–25 (or an older Xcode toolchain), `LegacySpeechTranscriber` uses `SFSpeechRecognizer`. It forces on-device recognition when the selected locale/device supports it; otherwise Apple may provide recognition through its system service.
 
-An automated iOS workflow (`.github/workflows/ios-kmp-host.yml`) runs on the `compose-material3-kmp-v2` branch and can be dispatched manually. It builds `AD GlassesShared.framework` for `iosSimulatorArm64`, compiles the unsigned `AD GlassesKMPHost` app, launches it in a simulator, and captures a screenshot as a build artifact. See [`AD Glasses_KMP_IOS.md`](AD Glasses_KMP_IOS.md) for complete details.
+Both implementations currently consume the iPhone microphone. A future HeyCyan audio transport should feed audio through the same speech abstraction rather than creating a second transcription stack.
 
-No Apple Developer Program membership or physical Mac is required to trigger or inspect CI results — only the GitHub Actions macOS runner provided by GitHub.
+## Glasses architecture
 
-## Documentation
+```text
+SwiftUI features
+      |
+GlassesManager
+      |
+GlassesProvider
+   /       \
+HeyCyan    Meta (experimental)
+   |
+CoreBluetooth transport
+```
 
-See the main [README](../README.md) for complete documentation, API reference, and usage examples.
+`HeyCyanGlassesProvider` currently provides the native BLE discovery/connection foundation. Discovery is intentionally broad until verified HeyCyan service/manufacturer identifiers are documented in the repository. It does **not** guess GATT UUIDs or send unverified vendor commands.
 
-## Requirements
+When verified protocol details are available, add them inside `Integrations/HeyCyan` while preserving the `GlassesProvider` contract.
 
-- iOS 15.0+ for `AD GlassesKMPHost`
-- Xcode 15.0+ recommended
-- Swift 5.0+ or Objective-C
-- Physical iOS device for Bluetooth and vendor SDK validation
+To add another glasses family later:
 
-## Support
+1. Create `Integrations/<Vendor>/<Vendor>GlassesProvider.swift`.
+2. Conform it to `GlassesProvider`.
+3. Keep vendor SDK/protocol details inside that directory.
+4. Register it with `GlassesManager` only when the support is ready.
 
-For technical support or questions about the iOS SDK, please see our GitHub issues or contact the HeyCyan development team.
+## Build
+
+Open `ADGlasses.xcodeproj` in Xcode. The deployment target is iOS 17. The project has no third-party package dependencies.
+
+Command-line check:
+
+```bash
+xcodebuild \
+  -project ios/ADGlasses.xcodeproj \
+  -scheme ADGlasses \
+  -sdk iphonesimulator \
+  -configuration Debug \
+  CODE_SIGNING_ALLOWED=NO \
+  build
+```

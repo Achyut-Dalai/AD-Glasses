@@ -1,0 +1,55 @@
+import Combine
+import Foundation
+
+@MainActor
+final class GlassesManager: ObservableObject {
+    @Published private(set) var devices: [GlassesDevice] = []
+    @Published private(set) var connectionState: GlassesConnectionState = .disconnected
+    @Published var errorMessage: String?
+
+    let heyCyan: HeyCyanGlassesProvider
+    let meta: MetaGlassesProvider
+
+    init(
+        heyCyan: HeyCyanGlassesProvider = HeyCyanGlassesProvider(),
+        meta: MetaGlassesProvider = MetaGlassesProvider()
+    ) {
+        self.heyCyan = heyCyan
+        self.meta = meta
+        connectionState = heyCyan.connectionState
+
+        heyCyan.onConnectionStateChange = { [weak self] state in
+            self?.connectionState = state
+        }
+    }
+
+    var supportSummary: [(name: String, level: GlassesSupportLevel)] {
+        [
+            (heyCyan.displayName, heyCyan.supportLevel),
+            (meta.displayName, meta.supportLevel)
+        ]
+    }
+
+    func scanHeyCyan() async {
+        errorMessage = nil
+        do {
+            devices = try await heyCyan.scan()
+        } catch {
+            errorMessage = error.localizedDescription
+        }
+    }
+
+    func connect(to device: GlassesDevice) async {
+        errorMessage = nil
+        do {
+            try await heyCyan.connect(to: device)
+        } catch {
+            errorMessage = error.localizedDescription
+        }
+    }
+
+    func disconnect() async {
+        errorMessage = nil
+        await heyCyan.disconnect()
+    }
+}
