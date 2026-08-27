@@ -6,6 +6,7 @@ import android.media.AudioFormat
 import android.media.AudioTrack
 import android.os.Handler
 import android.os.Looper
+import com.ad_glasses.shared.voice.AssistantVoiceProfile
 import com.ad_glasses.shared.voice.KokoroHeartVoice
 import com.k2fsa.sherpa.onnx.GenerationConfig
 import com.k2fsa.sherpa.onnx.OfflineTts
@@ -25,7 +26,6 @@ import java.util.UUID
 import java.util.concurrent.atomic.AtomicLong
 import kotlin.math.max
 
-/** Queue behavior intentionally mirrors the two Android TextToSpeech modes used by AD Glasses. */
 enum class SpeechQueueMode {
     FLUSH,
     ADD,
@@ -42,14 +42,16 @@ data class SpeechCallbacks(
  * Process-wide, offline Kokoro speech output.
  *
  * This class has no dependency on android.speech.tts. Audio is synthesized by sherpa-onnx and
- * streamed directly to AudioTrack. FLUSH invalidates queued/in-flight generations, which preserves
- * assistant barge-in semantics without keeping a platform TTS engine alive.
+ * streamed directly to AudioTrack. The full voices.bin pack remains installed; each request carries
+ * an [AssistantVoiceProfile], so changing speakers later does not require another speech backend.
+ * FLUSH invalidates queued/in-flight generations and preserves assistant barge-in semantics.
  */
 class KokoroSpeechEngine internal constructor(context: Context) {
     private data class SpeakRequest(
         val text: String,
         val utteranceId: String,
         val epoch: Long,
+        val voice: AssistantVoiceProfile,
         val speed: Float,
         val callbacks: SpeechCallbacks,
     )
@@ -103,7 +105,8 @@ class KokoroSpeechEngine internal constructor(context: Context) {
         text: String,
         queueMode: SpeechQueueMode = SpeechQueueMode.FLUSH,
         utteranceId: String = "kokoro-${UUID.randomUUID()}",
-        speed: Float = KokoroHeartVoice.DEFAULT_SPEED,
+        voice: AssistantVoiceProfile = KokoroHeartVoice.profile,
+        speed: Float = voice.defaultSpeed,
         callbacks: SpeechCallbacks = SpeechCallbacks(),
     ): String {
         val clean = text.trim()
@@ -121,6 +124,7 @@ class KokoroSpeechEngine internal constructor(context: Context) {
             text = clean,
             utteranceId = utteranceId,
             epoch = requestEpoch,
+            voice = voice,
             speed = speed.coerceIn(0.5f, 2.0f),
             callbacks = callbacks,
         )
@@ -160,12 +164,15 @@ class KokoroSpeechEngine internal constructor(context: Context) {
     private suspend fun process(request: SpeakRequest) {
         try {
             val tts = requireEngine()
+            check(tts.numSpeakers() > request.voice.speakerId) {
+                "Kokoro model does not expose speaker ${request.voice.speakerId} (${request.voice.voiceId})"
+            }
             if (request.epoch != epoch.get()) {
                 dispatch { request.callbacks.onStopped?.invoke() }
                 return
             }
 
-            val sampleRate = tts.sampleRate().takeIf { it > 0 } ?: KokoroHeartVoice.SAMPLE_RATE_HZ
+            val sampleRate = tts.sampleRate().takeIf { it > 0 } ?: request.voice.sampleRateHz
             val track = createAudioTrack(sampleRate)
             synchronized(trackLock) {
                 if (request.epoch != epoch.get()) {
@@ -182,7 +189,7 @@ class KokoroSpeechEngine internal constructor(context: Context) {
             val generationConfig = GenerationConfig(
                 silenceScale = 0.2f,
                 speed = request.speed,
-                sid = KokoroHeartVoice.SPEAKER_ID,
+                sid = request.voice.speakerId,
             )
             var samplesQueued = 0L
 
@@ -247,7 +254,7 @@ class KokoroSpeechEngine internal constructor(context: Context) {
         )
         OfflineTts(config = OfflineTtsConfig(model = model)).also { created ->
             check(created.numSpeakers() > KokoroHeartVoice.SPEAKER_ID) {
-                "Kokoro model does not expose speaker ${KokoroHeartVoice.SPEAKER_ID} (${KokoroHeartVoice.VOICE_ID})"
+                "Kokoro model does not expose default speaker ${KokoroHeartVoice.SPEAKER_ID} (${KokoroHeartVoice.VOICE_ID})"
             }
             offlineTts = created
         }
