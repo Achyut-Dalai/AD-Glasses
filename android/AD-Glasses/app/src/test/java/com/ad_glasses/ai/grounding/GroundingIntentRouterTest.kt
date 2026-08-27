@@ -32,7 +32,7 @@ class GroundingIntentRouterTest {
     @Test
     fun sportsDoesNotRequireASeparateTavilyTopic() {
         val route = router.parse(
-            raw = """{"intent":"SEARCH","search_query":"latest Formula 1 race result","topic":"news","time_range":"day"}""",
+            raw = """{"intent":"SEARCH","external_tool":"tavily","search_query":"latest Formula 1 race result","topic":"news","time_range":"day"}""",
             originalPrompt = "who won the latest formula 1 race",
         )!!
 
@@ -143,6 +143,44 @@ class GroundingIntentRouterTest {
     }
 
     @Test
+    fun searchAndBothMustExplicitlySelectExternalCapability() {
+        assertNull(
+            router.parse(
+                raw = """{"intent":"SEARCH","search_query":"India cricket live score","topic":"news","time_range":"day"}""",
+                originalPrompt = "search the live cricket score",
+            ),
+        )
+        assertNull(
+            router.parse(
+                raw = """{"intent":"BOTH","search_query":"KFC menu prices","spatial_action":"nearby","spatial_query":"KFC"}""",
+                originalPrompt = "find nearby kfc and check menu prices",
+            ),
+        )
+    }
+
+    @Test
+    fun externalCapabilitiesRejectFieldsOwnedByAnotherTool() {
+        assertNull(
+            router.parse(
+                raw = """{"intent":"SEARCH","external_tool":"weather","topic":"news","weather_horizon":"current","use_current_location":true}""",
+                originalPrompt = "weather near me",
+            ),
+        )
+        assertNull(
+            router.parse(
+                raw = """{"intent":"SEARCH","external_tool":"tavily","search_query":"news today","topic":"news","weather_horizon":"today"}""",
+                originalPrompt = "news today",
+            ),
+        )
+        assertNull(
+            router.parse(
+                raw = """{"intent":"SEARCH","external_tool":"currency","amount":50,"base_currency":"USD","quote_currency":"INR","time_range":"day"}""",
+                originalPrompt = "convert 50 dollars to rupees",
+            ),
+        )
+    }
+
+    @Test
     fun specializedKnowledgeToolsHaveValidatedSlots() {
         val wiki = router.parse(
             raw = """{"intent":"SEARCH","external_tool":"wikipedia","search_query":"James Webb Space Telescope"}""",
@@ -199,7 +237,7 @@ class GroundingIntentRouterTest {
     @Test
     fun explicitWebsiteRequestBecomesValidatedTavilyDomainConstraint() {
         val route = router.parse(
-            raw = """{"intent":"SEARCH","search_query":"India cricket live score","topic":"news","time_range":"day","source_domains":["https://www.espn.in/cricket/","bad host","ESPN.IN"]}""",
+            raw = """{"intent":"SEARCH","external_tool":"tavily","search_query":"India cricket live score","topic":"news","time_range":"day","source_domains":["https://www.espn.in/cricket/","bad host","ESPN.IN"]}""",
             originalPrompt = "check espn for the india cricket score",
         )!!
 
