@@ -1,67 +1,62 @@
-# AD Glasses Manager (Android)
+# AD Glasses — Android app
 
-AD Glasses Manager is the Android app in this repository for smart-glasses pairing,
-meeting capture, transcription, summarization, and privacy-first note export.
+This is the primary Android application for AD Glasses.
 
-This app lives under:
+## Stack
 
-- `android/<app-folder>/` (this repository's Android app module)
+- Kotlin
+- Jetpack Compose
+- Coroutines / Android lifecycle APIs
+- Java 17-compatible Android toolchain
+- HeyCyan vendor integration
+- Android-only Moonshine speech dependency where used by the current voice pipeline
 
-## What is implemented today
+The native iOS application is a separate SwiftUI project under `../../ios/`; this Android project is not an iOS host.
 
-- Multi-thread chat UI backed by local Room persistence (`chat/`, `ui/ChatThreadActivity.kt`).
-- Glasses manager with class detection + manual class override (`devices/`, `ui/MainActivity.kt`).
-- Meeting capture foreground service with timer and metadata persistence (`audio/MeetingCaptureService.kt`).
-- Pluggable transcription service and chunking pipeline (`ai/transcription/`).
-- Structured meeting summarization and notes storage (`ai/summarization/`, `notes/`).
-- Privacy toggles for transcript storage, redaction, and export behavior (`privacy/`, `ui/SettingsActivity.kt`).
-- Accessibility-driven Local Agent for foreground phone control, including structured UI observation, action approval, keyboard submission, safe low-risk skill replay, local task history, opt-in screenshot planning, allowlisted Telegram control, and optional fixed-operation Shizuku recovery (`localagent/`, `plugins/localagent/`).
+## Hardware architecture
 
-## Local Agent Inspiration
+HeyCyan is the first-class glasses path. Keep vendor BLE/Wi-Fi/media details below the app's hardware/provider boundary so Compose features work with capabilities rather than raw commands.
 
-The local-agent phone-control direction in AD Glasses takes architectural inspiration from `orailnoor/private-agent`, especially its Accessibility-based observe -> choose one action -> execute -> observe loop.
+Meta support is optional and should remain isolated behind its own provider/SDK boundary. Do not spread Meta SDK types through general feature code.
 
-Our implementation remains AD Glasses-native and Kotlin-first, built on top of the app's own local-agent, privacy, and approval systems.
+Unsupported glasses families should not be restored as demo trees, SDK submodules, or app-wide conditionals. A future vendor should be added as a new adapter/provider.
 
-## Module map
+For the confirmed HeyCyan BLE-to-Wi-Fi media flow, read:
 
-- `app/src/main/java/com/ad_glasses/ui/` - activities, adapters, and UI glue.
-- `app/src/main/java/com/ad_glasses/devices/` - device classes, detection heuristics, gating, profile persistence.
-- `app/src/main/java/com/ad_glasses/audio/` - capture source/timer/prefs and foreground capture service.
-- `app/src/main/java/com/ad_glasses/ai/` - transcription + summarization interfaces and implementations.
-- `app/src/main/java/com/ad_glasses/notes/` - notes repository and note creation from transcripts.
-- `app/src/main/java/com/ad_glasses/privacy/` - redaction and export policy helpers.
-- `app/src/main/java/com/ad_glasses/data/` - Room entities, DAOs, and repository.
+- [`../AGENTS.md`](../AGENTS.md)
+- [`../../WIFI_TRANSFER_ARCHITECTURE.md`](../../WIFI_TRANSFER_ARCHITECTURE.md)
 
-## Build and test
+## AI and tool architecture
 
-Use the Android Studio bundled JDK (Java 17+):
+The Android app contains the mature assistant stack, including cloud/local model routing, structured external tools, spatial/provider integrations, meetings, media flows, and Android assistant-role behavior.
 
-```bash
-JAVA_HOME=/opt/android-studio/jbr ./gradlew assembleDebug
-```
+Keep boundaries explicit:
 
-Useful test commands:
+- UI does not call provider HTTP APIs directly.
+- Router/planner output stays semantic rather than encoding concrete vendor/API endpoints.
+- Provider configuration failures are explicit instead of silently falling back to unrelated services.
+- Hardware capability state is separate from vendor identity.
+
+## Build
+
+From this directory:
 
 ```bash
-JAVA_HOME=/opt/android-studio/jbr ./gradlew testDebugUnitTest
-JAVA_HOME=/opt/android-studio/jbr ./gradlew connectedDebugAndroidTest
+./gradlew assembleDebug
 ```
 
-## Privacy defaults (MVP)
+Unit tests:
 
-- Transcript storage: OFF by default.
-- Name redaction in exports: ON by default.
-- Full transcript in exports: OFF by default.
+```bash
+./gradlew testDebugUnitTest
+```
 
-These defaults are controlled by `privacy/PrivacyPrefs.kt` and applied through
-`privacy/NoteExportFormatter.kt`.
+Useful targeted builds/tests should be preferred while a feature is moving; run the full app validation when the feature reaches a release/checkpoint stage.
 
-## Future agent handoff
+## Development rules
 
-- Product scope and chapter-based acceptance gates are in root `AGENTS.md`.
-- Working checklist and evidence tracking are in root `MVP_CHECKLIST.md`.
-- Android-specific protocol notes for vendor behavior are in `android/AGENTS.md`.
-
-When adding features, keep interfaces pluggable (especially in `ai/` and `audio/`) and
-prefer local-first storage + explicit user control for any recording/transcription flow.
+- Preserve existing Android behavior unless the task targets that behavior.
+- Keep Activity-owned coroutines, recognition, image, and foreground-service work lifecycle-aware.
+- Do not log secrets, transcripts, tokens, media credentials, or private paths.
+- Do not guess proprietary hardware commands or service identifiers.
+- Keep iOS-specific UX/signing choices out of Android feature code.

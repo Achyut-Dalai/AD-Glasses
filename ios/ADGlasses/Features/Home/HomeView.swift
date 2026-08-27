@@ -276,7 +276,7 @@ struct HomeView: View {
 }
 
 private struct SurfaceCard<Content: View>: View {
-    @ViewBuilder let content: Content
+    let content: Content
 
     init(@ViewBuilder content: () -> Content) {
         self.content = content()
