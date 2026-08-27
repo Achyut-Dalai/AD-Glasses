@@ -42,6 +42,45 @@ class GroundingIntentRouterTest {
     }
 
     @Test
+    fun uncheckedWebToggleDoesNotVetoSemanticSearch() {
+        val planned = GroundingRoute(
+            intent = GroundingIntent.SEARCH,
+            externalTool = ExternalTool.TAVILY,
+            searchQuery = "India vs Sri Lanka cricket live score",
+            tavilyTopic = TavilySearchTopic.NEWS,
+            tavilyTimeRange = TavilyTimeRange.DAY,
+        )
+
+        val effective = router.applyExplicitWebPreference(
+            route = planned,
+            prompt = "India vs Sri Lanka cricket score",
+            explicitWebRequest = false,
+        )
+
+        assertEquals(planned, effective)
+        assertEquals(GroundingIntent.SEARCH, effective.intent)
+    }
+
+    @Test
+    fun explicitWebToggleCanStillForceAStableDirectTurnToTavily() {
+        val planned = GroundingRoute(
+            intent = GroundingIntent.DIRECT,
+            directAnswer = "A stable answer.",
+        )
+
+        val effective = router.applyExplicitWebPreference(
+            route = planned,
+            prompt = "verify this on the web",
+            explicitWebRequest = true,
+        )
+
+        assertEquals(GroundingIntent.SEARCH, effective.intent)
+        assertEquals(ExternalTool.TAVILY, effective.externalTool)
+        assertEquals("verify this on the web", effective.searchQuery)
+        assertNull(effective.directAnswer)
+    }
+
+    @Test
     fun namedBusinessAndSpokenRadiusBecomeFreeFormSpatialSlots() {
         val route = router.parse(
             raw = """{"intent":"SPATIAL","spatial_action":"nearby","spatial_query":"KFC","osm_filters":[{"key":"brand","value":"KFC"},{"key":"name","value":"KFC"}],"radius_meters":3000,"use_current_location":true}""",
@@ -81,6 +120,26 @@ class GroundingIntentRouterTest {
         assertEquals(WeatherHorizon.CURRENT, route.weatherHorizon)
         assertTrue(route.useCurrentLocation)
         assertNull(route.spatialAction)
+    }
+
+    @Test
+    fun weatherCannotMasqueradeAsSpatialNearbyLookup() {
+        assertNull(
+            router.parse(
+                raw = """{"intent":"SPATIAL","external_tool":"weather","spatial_action":"nearby","spatial_query":"weather","radius_meters":1000,"use_current_location":true}""",
+                originalPrompt = "what is the weather near me",
+            ),
+        )
+    }
+
+    @Test
+    fun searchPlanCannotCarrySpatialExecutionFields() {
+        assertNull(
+            router.parse(
+                raw = """{"intent":"SEARCH","external_tool":"weather","spatial_action":"nearby","spatial_query":"weather","use_current_location":true}""",
+                originalPrompt = "what is the weather near me",
+            ),
+        )
     }
 
     @Test
@@ -214,6 +273,12 @@ class GroundingIntentRouterTest {
             router.parse(
                 """{"intent":"SEARCH","external_tool":"currency","amount":50,"base_currency":"US","quote_currency":"INR"}""",
                 "convert 50 dollars to rupees",
+            ),
+        )
+        assertNull(
+            router.parse(
+                """{"intent":"SEARCH","external_tool":"made_up_tool","search_query":"anything"}""",
+                "search anything",
             ),
         )
     }
