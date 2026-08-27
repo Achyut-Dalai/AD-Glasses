@@ -105,10 +105,13 @@ internal class NamedOsmPoiClient(
             }
         }
         return candidates
+            .asSequence()
+            .filter { it.textRank < UNRELATED_TEXT_RANK }
             .sortedWith(compareBy<RankedPlace> { it.textRank }.thenBy { it.place.distanceMeters })
             .distinctBy { ranked -> ranked.place.name.lowercase(Locale.US) to roundedPoint(ranked.place.point) }
             .take(limit.coerceIn(1, MAX_RESULTS))
             .map(RankedPlace::place)
+            .toList()
     }
 
     private fun textRank(query: String, tags: JSONObject): Int {
@@ -121,7 +124,7 @@ internal class NamedOsmPoiClient(
             else -> {
                 val queryTokens = semanticTokens(target)
                 val bestOverlap = values.maxOfOrNull { semanticTokens(it).count(queryTokens::contains) } ?: 0
-                if (bestOverlap > 0) 3 else 4
+                if (bestOverlap > 0) 3 else UNRELATED_TEXT_RANK
             }
         }
     }
@@ -184,6 +187,7 @@ internal class NamedOsmPoiClient(
         const val MAX_RAW_RESULTS = 40
         const val MAX_NAME_CHARS = 180
         const val MAX_DESCRIPTOR_CHARS = 420
+        const val UNRELATED_TEXT_RANK = 4
         val SEARCH_TAGS = listOf("name", "brand", "operator", "short_name")
         val SAFE_PUNCTUATION = setOf('&', '\'', '-', '.', '(', ')', '/')
         val REGEX_META = setOf('.', '^', '$', '|', '?', '*', '+', '(', ')', '[', ']', '{', '}')
