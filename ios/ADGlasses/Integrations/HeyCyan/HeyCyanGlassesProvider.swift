@@ -93,6 +93,7 @@ final class HeyCyanGlassesProvider: NSObject, GlassesProvider {
     }
 }
 
+@MainActor
 extension HeyCyanGlassesProvider: CBCentralManagerDelegate {
     func centralManagerDidUpdateState(_ central: CBCentralManager) {
         if central.state == .poweredOn {

@@ -10,17 +10,23 @@ final class GlassesManager: ObservableObject {
     let heyCyan: HeyCyanGlassesProvider
     let meta: MetaGlassesProvider
 
+    init() {
+        let heyCyan = HeyCyanGlassesProvider()
+        let meta = MetaGlassesProvider()
+        self.heyCyan = heyCyan
+        self.meta = meta
+        connectionState = heyCyan.connectionState
+        observeHeyCyanState()
+    }
+
     init(
-        heyCyan: HeyCyanGlassesProvider = HeyCyanGlassesProvider(),
-        meta: MetaGlassesProvider = MetaGlassesProvider()
+        heyCyan: HeyCyanGlassesProvider,
+        meta: MetaGlassesProvider
     ) {
         self.heyCyan = heyCyan
         self.meta = meta
         connectionState = heyCyan.connectionState
-
-        heyCyan.onConnectionStateChange = { [weak self] state in
-            self?.connectionState = state
-        }
+        observeHeyCyanState()
     }
 
     var supportSummary: [(name: String, level: GlassesSupportLevel)] {
@@ -51,5 +57,11 @@ final class GlassesManager: ObservableObject {
     func disconnect() async {
         errorMessage = nil
         await heyCyan.disconnect()
+    }
+
+    private func observeHeyCyanState() {
+        heyCyan.onConnectionStateChange = { [weak self] state in
+            self?.connectionState = state
+        }
     }
 }
