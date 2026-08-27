@@ -32,13 +32,52 @@ class GroundingIntentRouterTest {
     @Test
     fun sportsDoesNotRequireASeparateTavilyTopic() {
         val route = router.parse(
-            raw = """{"intent":"SEARCH","search_query":"latest Formula 1 race result","topic":"news","time_range":"day"}""",
+            raw = """{"intent":"SEARCH","external_tool":"tavily","search_query":"latest Formula 1 race result","topic":"news","time_range":"day"}""",
             originalPrompt = "who won the latest formula 1 race",
         )!!
 
         assertEquals(ExternalTool.TAVILY, route.externalTool)
         assertEquals(TavilySearchTopic.NEWS, route.tavilyTopic)
         assertEquals(TavilyTimeRange.DAY, route.tavilyTimeRange)
+    }
+
+    @Test
+    fun uncheckedWebToggleDoesNotVetoSemanticSearch() {
+        val planned = GroundingRoute(
+            intent = GroundingIntent.SEARCH,
+            externalTool = ExternalTool.TAVILY,
+            searchQuery = "India vs Sri Lanka cricket live score",
+            tavilyTopic = TavilySearchTopic.NEWS,
+            tavilyTimeRange = TavilyTimeRange.DAY,
+        )
+
+        val effective = router.applyExplicitWebPreference(
+            route = planned,
+            prompt = "India vs Sri Lanka cricket score",
+            explicitWebRequest = false,
+        )
+
+        assertEquals(planned, effective)
+        assertEquals(GroundingIntent.SEARCH, effective.intent)
+    }
+
+    @Test
+    fun explicitWebToggleCanStillForceAStableDirectTurnToTavily() {
+        val planned = GroundingRoute(
+            intent = GroundingIntent.DIRECT,
+            directAnswer = "A stable answer.",
+        )
+
+        val effective = router.applyExplicitWebPreference(
+            route = planned,
+            prompt = "verify this on the web",
+            explicitWebRequest = true,
+        )
+
+        assertEquals(GroundingIntent.SEARCH, effective.intent)
+        assertEquals(ExternalTool.TAVILY, effective.externalTool)
+        assertEquals("verify this on the web", effective.searchQuery)
+        assertNull(effective.directAnswer)
     }
 
     @Test
@@ -81,6 +120,64 @@ class GroundingIntentRouterTest {
         assertEquals(WeatherHorizon.CURRENT, route.weatherHorizon)
         assertTrue(route.useCurrentLocation)
         assertNull(route.spatialAction)
+    }
+
+    @Test
+    fun weatherCannotMasqueradeAsSpatialNearbyLookup() {
+        assertNull(
+            router.parse(
+                raw = """{"intent":"SPATIAL","external_tool":"weather","spatial_action":"nearby","spatial_query":"weather","radius_meters":1000,"use_current_location":true}""",
+                originalPrompt = "what is the weather near me",
+            ),
+        )
+    }
+
+    @Test
+    fun searchPlanCannotCarrySpatialExecutionFields() {
+        assertNull(
+            router.parse(
+                raw = """{"intent":"SEARCH","external_tool":"weather","spatial_action":"nearby","spatial_query":"weather","use_current_location":true}""",
+                originalPrompt = "what is the weather near me",
+            ),
+        )
+    }
+
+    @Test
+    fun searchAndBothMustExplicitlySelectExternalCapability() {
+        assertNull(
+            router.parse(
+                raw = """{"intent":"SEARCH","search_query":"India cricket live score","topic":"news","time_range":"day"}""",
+                originalPrompt = "search the live cricket score",
+            ),
+        )
+        assertNull(
+            router.parse(
+                raw = """{"intent":"BOTH","search_query":"KFC menu prices","spatial_action":"nearby","spatial_query":"KFC"}""",
+                originalPrompt = "find nearby kfc and check menu prices",
+            ),
+        )
+    }
+
+    @Test
+    fun externalCapabilitiesRejectFieldsOwnedByAnotherTool() {
+        assertNull(
+            router.parse(
+                raw = """{"intent":"SEARCH","external_tool":"weather","topic":"news","weather_horizon":"current","use_current_location":true}""",
+                originalPrompt = "weather near me",
+            ),
+        )
+        assertNull(
+            router.parse(
+                raw = """{"intent":"SEARCH","external_tool":"tavily","search_query":"news today","topic":"news","weather_horizon":"today"}""",
+                originalPrompt = "news today",
+            ),
+        )
+        assertNull(
+            router.parse(
+                raw = """{"intent":"SEARCH","external_tool":"currency","amount":50,"base_currency":"USD","quote_currency":"INR","time_range":"day"}""",
+                originalPrompt = "convert 50 dollars to rupees",
+            ),
+        )
     }
 
     @Test
@@ -140,7 +237,7 @@ class GroundingIntentRouterTest {
     @Test
     fun explicitWebsiteRequestBecomesValidatedTavilyDomainConstraint() {
         val route = router.parse(
-            raw = """{"intent":"SEARCH","search_query":"India cricket live score","topic":"news","time_range":"day","source_domains":["https://www.espn.in/cricket/","bad host","ESPN.IN"]}""",
+            raw = """{"intent":"SEARCH","external_tool":"tavily","search_query":"India cricket live score","topic":"news","time_range":"day","source_domains":["https://www.espn.in/cricket/","bad host","ESPN.IN"]}""",
             originalPrompt = "check espn for the india cricket score",
         )!!
 
@@ -214,6 +311,12 @@ class GroundingIntentRouterTest {
             router.parse(
                 """{"intent":"SEARCH","external_tool":"currency","amount":50,"base_currency":"US","quote_currency":"INR"}""",
                 "convert 50 dollars to rupees",
+            ),
+        )
+        assertNull(
+            router.parse(
+                """{"intent":"SEARCH","external_tool":"made_up_tool","search_query":"anything"}""",
+                "search anything",
             ),
         )
     }
