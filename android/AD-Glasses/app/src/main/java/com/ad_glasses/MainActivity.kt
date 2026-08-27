@@ -15,6 +15,11 @@ import androidx.localbroadcastmanager.content.LocalBroadcastManager
 import com.ad_glasses.shared.settings.AgentProviderType
 import com.ad_glasses.ai.AiWakeWordPreferences
 import com.ad_glasses.ai.AndroidAssistantVoiceIo
+import com.ad_glasses.ai.voice.AssistantListeningCuePlayer
+import com.ad_glasses.ai.voice.KokoroSpeechService
+import com.ad_glasses.ai.voice.SpeechCallbacks
+import com.ad_glasses.ai.voice.SpeechQueueMode
+import com.ad_glasses.shared.voice.KokoroHeartVoice
 import com.ad_glasses.agent.LocalAgentPrefs as AutomationPrefs
 import com.ad_glasses.ui.VersionUpdateChecker
 import com.ad_glasses.localagent.AudioSessionCoordinator
@@ -188,8 +193,6 @@ import android.app.KeyguardManager
 import android.speech.RecognitionListener
 import android.speech.RecognizerIntent
 import android.speech.SpeechRecognizer
-import android.speech.tts.TextToSpeech
-import android.speech.tts.UtteranceProgressListener
 import androidx.activity.compose.setContent
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.runtime.getValue
@@ -255,11 +258,7 @@ import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.merge
 
 
-class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
-    private var tts: TextToSpeech? = null
-    private var ttsReady = false
-    private val ttsDoneCallbacks = ConcurrentHashMap<String, () -> Unit>()
-    private val ttsEnqueuedAtMs = ConcurrentHashMap<String, Long>()
+class MainActivity : AppCompatActivity() {
     private val lastAssistantSpeechEndAtMs = AtomicLong(0L)
     private val assistantRequestRouter = AssistantRequestRouter()
     private var pendingVoiceImageQuestion: String? = null
@@ -290,23 +289,6 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
             refreshAgentStatusUi()
         }
     }
-    override fun onInit(status: Int) {
-        ttsReady = status == TextToSpeech.SUCCESS
-        Log.i("ImageQuestionAudio", "TTS initialization status=$status ready=$ttsReady")
-        if (status == TextToSpeech.SUCCESS) {
-            tts?.let { AndroidAssistantVoiceIo.preferOfflineVoice(it, Locale.getDefault()) }
-            runCatching {
-                tts?.setAudioAttributes(
-                    android.media.AudioAttributes.Builder()
-                        .setUsage(android.media.AudioAttributes.USAGE_VOICE_COMMUNICATION)
-                        .setContentType(android.media.AudioAttributes.CONTENT_TYPE_SPEECH)
-                        .build(),
-                )
-            }.onFailure { error ->
-                Log.w("ImageQuestionAudio", "Could not configure TTS communication audio", error)
-            }
-        }
-    }
 
     private fun speak(text: String) {
         speak(text, languageTag = null, utteranceId = null, onDone = null, streamType = null)
@@ -329,51 +311,66 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
         streamType: Int? = null,
         onDone: (() -> Unit)? = null,
     ) {
-        val engine = tts
+        val clean = text.trim()
+        if (clean.isBlank()) {
+            onDone?.invoke()
+            return
+        }
+        val id = utteranceId ?: "voice_${System.currentTimeMillis()}"
+        val queuedAt = android.os.SystemClock.elapsedRealtime()
         languageTag?.takeIf { it.isNotBlank() }?.let { tag ->
-            val locale = Locale.forLanguageTag(tag)
-            val offlineVoice = engine?.let { AndroidAssistantVoiceIo.preferOfflineVoice(it, locale) }
-            Log.i(
-                "ImageQuestionAudio",
-                "TTS language tag=$tag offlineVoice=${offlineVoice?.name ?: "fallback"}",
-            )
+            Log.i("ImageQuestionAudio", "Kokoro voice=${KokoroHeartVoice.VOICE_ID} languageTag=$tag")
         }
-        val id = utteranceId ?: "utt_${System.currentTimeMillis()}"
-        val wrappedOnDone: () -> Unit = {
-            try {
-                onDone?.invoke()
-            } finally {
-                AudioSessionCoordinator.markIdle()
-            }
+        streamType?.let { stream ->
+            Log.d("ImageQuestionAudio", "Kokoro ignores legacy streamType=$stream; AudioTrack owns routing")
         }
-        ttsDoneCallbacks[id] = wrappedOnDone
-
-        val bundle = Bundle().apply {
-            putString(TextToSpeech.Engine.KEY_PARAM_UTTERANCE_ID, id)
-            streamType?.let { putString(TextToSpeech.Engine.KEY_PARAM_STREAM, it.toString()) }
-        }
-
         AudioSessionCoordinator.markBusy()
-        ttsEnqueuedAtMs[id] = android.os.SystemClock.elapsedRealtime()
-        Log.i("AssistantTiming", "stage=tts_enqueued id=$id chars=${text.length}")
-        val result = runCatching {
-            engine?.speak(text, TextToSpeech.QUEUE_FLUSH, bundle, id)
-        }.onFailure { error ->
-            Log.e("ImageQuestionAudio", "TTS enqueue threw id=$id", error)
-        }.getOrNull()
-        Log.i(
-            "ImageQuestionAudio",
-            "TTS enqueue id=$id ready=$ttsReady stream=$streamType textLength=${text.length} result=$result",
+        Log.i("AssistantTiming", "stage=voice_enqueued id=$id chars=${clean.length}")
+        KokoroSpeechService.get(this).speak(
+            text = clean,
+            queueMode = SpeechQueueMode.FLUSH,
+            utteranceId = id,
+            callbacks = SpeechCallbacks(
+                onStart = {
+                    val now = android.os.SystemClock.elapsedRealtime()
+                    val speechEndedAt = lastAssistantSpeechEndAtMs.get()
+                    val speechEndToStartMs = if (speechEndedAt > 0L) now - speechEndedAt else -1L
+                    Log.i(
+                        "AssistantTiming",
+                        "stage=voice_start id=$id enqueueToStartMs=${now - queuedAt} speechEndToVoiceStartMs=$speechEndToStartMs",
+                    )
+                    if (speechEndToStartMs >= 0L) {
+                        lastAssistantSpeechEndAtMs.compareAndSet(speechEndedAt, 0L)
+                    }
+                },
+                onDone = {
+                    Log.i(
+                        "AssistantTiming",
+                        "stage=voice_done id=$id totalMs=${android.os.SystemClock.elapsedRealtime() - queuedAt}",
+                    )
+                    try {
+                        onDone?.invoke()
+                    } finally {
+                        AudioSessionCoordinator.markIdle()
+                    }
+                },
+                onStopped = {
+                    Log.i("AssistantTiming", "stage=voice_stopped id=$id")
+                    AudioSessionCoordinator.markIdle()
+                },
+                onError = { error ->
+                    Log.e("ImageQuestionAudio", "Kokoro speech failed id=$id", error)
+                    try {
+                        onDone?.invoke()
+                    } finally {
+                        AudioSessionCoordinator.markIdle()
+                    }
+                },
+            ),
         )
-        if (result != TextToSpeech.SUCCESS) {
-            Log.w("ImageQuestionAudio", "TTS enqueue failed id=$id result=$result")
-            // Android does not guarantee an UtteranceProgressListener error callback when
-            // speak() itself rejects the request (or the engine is unavailable). Complete the
-            // registered callback here so Bluetooth/audio-session cleanup cannot get stranded.
-            completeTtsUtterance(id)
-        }
     }
-    private fun enqueueStreamingTts(
+
+    private fun enqueueStreamingSpeech(
         text: String,
         utteranceId: String,
         onDone: () -> Unit,
@@ -383,59 +380,38 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
             onDone()
             return
         }
-        val engine = tts
-        val languageTag = recognitionLanguageTag()
-        val locale = Locale.forLanguageTag(languageTag)
-        engine?.let { AndroidAssistantVoiceIo.preferOfflineVoice(it, locale) }
-        ttsDoneCallbacks[utteranceId] = onDone
-
-        val bundle = Bundle().apply {
-            putString(TextToSpeech.Engine.KEY_PARAM_UTTERANCE_ID, utteranceId)
-        }
+        val queuedAt = android.os.SystemClock.elapsedRealtime()
         AudioSessionCoordinator.markBusy()
-        ttsEnqueuedAtMs[utteranceId] = android.os.SystemClock.elapsedRealtime()
-        Log.i(
-            "AssistantTiming",
-            "stage=tts_stream_enqueued id=$utteranceId chars=${clean.length}",
+        Log.i("AssistantTiming", "stage=voice_stream_enqueued id=$utteranceId chars=${clean.length}")
+        KokoroSpeechService.get(this).speak(
+            text = clean,
+            queueMode = SpeechQueueMode.ADD,
+            utteranceId = utteranceId,
+            callbacks = SpeechCallbacks(
+                onStart = {
+                    Log.i(
+                        "AssistantTiming",
+                        "stage=voice_stream_start id=$utteranceId enqueueToStartMs=${android.os.SystemClock.elapsedRealtime() - queuedAt}",
+                    )
+                },
+                onDone = onDone,
+                onStopped = onDone,
+                onError = { error ->
+                    Log.e("ImageQuestionAudio", "Kokoro streaming speech failed id=$utteranceId", error)
+                    onDone()
+                },
+            ),
         )
-        val result = runCatching {
-            engine?.speak(clean, TextToSpeech.QUEUE_ADD, bundle, utteranceId)
-        }.onFailure { error ->
-            Log.e("ImageQuestionAudio", "Streaming TTS enqueue threw id=$utteranceId", error)
-        }.getOrNull()
-        if (result != TextToSpeech.SUCCESS) {
-            Log.w("ImageQuestionAudio", "Streaming TTS enqueue failed id=$utteranceId result=$result")
-            completeTtsUtterance(utteranceId)
-        }
-    }
-
-    private fun completeTtsUtterance(utteranceId: String?) {
-        utteranceId?.let { id ->
-            ttsEnqueuedAtMs.remove(id)
-            ttsDoneCallbacks.remove(id)?.invoke()
-        }
-    }
-
-    private fun discardTtsUtterance(utteranceId: String?) {
-        utteranceId?.let { id ->
-            ttsEnqueuedAtMs.remove(id)
-            ttsDoneCallbacks.remove(id)
-        }
-    }
-
-    private fun resetTtsAudioState() {
-        ttsDoneCallbacks.clear()
-        ttsEnqueuedAtMs.clear()
-        AudioSessionCoordinator.markIdle()
     }
 
     private fun interruptAssistantPlayback(reason: String) {
-        val wasActive = tts?.isSpeaking == true || AudioSessionCoordinator.isBusy()
+        val engine = KokoroSpeechService.get(this)
+        val wasActive = engine.isSpeaking() || AudioSessionCoordinator.isBusy()
         if (!wasActive) return
-        runCatching { tts?.stop() }
-            .onFailure { error -> Log.w("ImageQuestionAudio", "Could not interrupt TTS", error) }
-        resetTtsAudioState()
-        Log.i("AssistantTiming", "stage=tts_interrupted reason=$reason")
+        AssistantListeningCuePlayer.stop()
+        engine.stop()
+        AudioSessionCoordinator.markIdle()
+        Log.i("AssistantTiming", "stage=voice_interrupted reason=$reason")
     }
 
     private fun cancelActiveAssistantTurnForVoice(reason: String) {
@@ -732,55 +708,18 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
         logLargeDataHandlerMethodsOnce()
         // Check for app updates
         VersionUpdateChecker.checkForUpdates(this)
-        // Initialize TTS
-        tts = TextToSpeech(this, this)
-        tts?.setOnUtteranceProgressListener(object : UtteranceProgressListener() {
-            override fun onStart(utteranceId: String?) {
-                val now = android.os.SystemClock.elapsedRealtime()
-                val queuedAt = utteranceId?.let(ttsEnqueuedAtMs::get)
-                val isListeningCue = utteranceId?.startsWith("voice_listening_") == true ||
-                    utteranceId?.startsWith("image_question_cue_") == true
-                val speechEndedAt = lastAssistantSpeechEndAtMs.get()
-                val speechEndToStartMs = if (!isListeningCue && speechEndedAt > 0L) now - speechEndedAt else -1L
+        // Prewarm the offline Kokoro model/runtime. First install happens in app-private storage.
+        KokoroSpeechService.get(this).prepare(
+            onReady = {
                 Log.i(
                     "AssistantTiming",
-                    "stage=tts_start id=$utteranceId enqueueToStartMs=${queuedAt?.let { now - it } ?: -1} speechEndToTtsStartMs=$speechEndToStartMs",
+                    "stage=voice_ready model=${KokoroHeartVoice.MODEL_ID} voice=${KokoroHeartVoice.VOICE_ID} speaker=${KokoroHeartVoice.SPEAKER_ID}",
                 )
-                if (speechEndToStartMs >= 0L) lastAssistantSpeechEndAtMs.compareAndSet(speechEndedAt, 0L)
-                if (utteranceId?.startsWith("image_question_cue_") == true) {
-                    Log.i("ImageQuestionAudio", "TTS cue started id=$utteranceId")
-                }
-            }
-
-            override fun onDone(utteranceId: String?) {
-                val now = android.os.SystemClock.elapsedRealtime()
-                val queuedAt = utteranceId?.let(ttsEnqueuedAtMs::get)
-                Log.i(
-                    "AssistantTiming",
-                    "stage=tts_done id=$utteranceId totalMs=${queuedAt?.let { now - it } ?: -1}",
-                )
-                if (utteranceId?.startsWith("image_question_cue_") == true) {
-                    Log.i("ImageQuestionAudio", "TTS cue completed id=$utteranceId")
-                }
-                completeTtsUtterance(utteranceId)
-            }
-
-            @Deprecated("Deprecated in Java")
-            override fun onError(utteranceId: String?) {
-                Log.w("ImageQuestionAudio", "TTS failed id=$utteranceId")
-                completeTtsUtterance(utteranceId)
-            }
-
-            override fun onError(utteranceId: String?, errorCode: Int) {
-                Log.w("ImageQuestionAudio", "TTS failed id=$utteranceId errorCode=$errorCode")
-                completeTtsUtterance(utteranceId)
-            }
-
-            override fun onStop(utteranceId: String?, interrupted: Boolean) {
-                Log.i("ImageQuestionAudio", "TTS stopped id=$utteranceId interrupted=$interrupted")
-                discardTtsUtterance(utteranceId)
-            }
-        })
+            },
+            onError = { error ->
+                Log.e("ImageQuestionAudio", "Kokoro model/runtime preparation failed", error)
+            },
+        )
 
         // Ensure we always listen for HeyCyan reports. Meta notifications come from DAT,
         // so do not register the vendor listener for a selected Meta profile.
@@ -876,11 +815,9 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
         cancelActiveAssistantTurnForVoice("Activity destroyed")
         releaseActiveVoiceRecognition("activity destroyed")
         finishAiQuestionForegroundWork()
-        runCatching { tts?.stop() }
-        runCatching { tts?.shutdown() }
-        tts = null
-        ttsReady = false
-        resetTtsAudioState()
+        AssistantListeningCuePlayer.stop()
+        KokoroSpeechService.get(this).stop()
+        AudioSessionCoordinator.markIdle()
         super.onDestroy()
     }
     inner class PermissionCallback : OnPermissionCallback {
@@ -4404,10 +4341,10 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
         return readImageQuestionMetrics(file) != null
     }
 
-    private suspend fun waitForTtsToFinish(timeoutMs: Long) {
+    private suspend fun waitForSpeechToFinish(timeoutMs: Long) {
         val deadline = System.currentTimeMillis() + timeoutMs
         var warned = false
-        while (isTtsSpeaking() && System.currentTimeMillis() < deadline) {
+        while (isSpeechSpeaking() && System.currentTimeMillis() < deadline) {
             if (!warned) {
                 runOnUiThread {
                     Toast.makeText(this@MainActivity, "Replying…", Toast.LENGTH_SHORT).show()
@@ -4416,13 +4353,13 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
             }
             delay(500)
         }
-        if (isTtsSpeaking()) {
-            Log.w("AIHijack", "TTS still speaking after ${timeoutMs}ms, proceeding anyway")
+        if (isSpeechSpeaking()) {
+            Log.w("AIHijack", "Kokoro still speaking after ${timeoutMs}ms, proceeding anyway")
         }
     }
 
-    private fun isTtsSpeaking(): Boolean {
-        return tts?.isSpeaking == true
+    private fun isSpeechSpeaking(): Boolean {
+        return KokoroSpeechService.get(this).isSpeaking()
     }
 
     private fun isDeviceLockedForAutomation(): Boolean {
@@ -4662,37 +4599,31 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
             val questionSettings = ImageQuestionPreferences.get(this)
             val cue = ImageQuestionDefaults.questionCueForLanguage(questionSettings.appLanguageTag)
             val audioManager = getSystemService(Context.AUDIO_SERVICE) as android.media.AudioManager
-            tts?.setAudioAttributes(
-                android.media.AudioAttributes.Builder()
-                    .setUsage(android.media.AudioAttributes.USAGE_VOICE_COMMUNICATION)
-                    .setContentType(android.media.AudioAttributes.CONTENT_TYPE_SPEECH)
-                    .build(),
-            )
             Log.i(
                 "ImageQuestionAudio",
                 "Queueing image-question cue='$cue' language=${questionSettings.appLanguageTag} " +
                     "attributes=voice_communication/speech " +
-                    "ttsReady=$ttsReady route=${audioRouteSummary(audioManager)}",
+                    "kokoroReady=${KokoroSpeechService.get(this).isModelInstalled()} route=${audioRouteSummary(audioManager)}",
             )
             speak(
                 text = cue,
                 languageTag = questionSettings.appLanguageTag,
                 utteranceId = utteranceId,
-                onDone = { complete("tts callback") },
+                onDone = { complete("voice callback") },
                 streamType = android.media.AudioManager.STREAM_VOICE_CALL,
             )
-            // Avoid blocking the image question if the system TTS service never returns a callback.
+            // Avoid blocking the image question if Kokoro never returns a completion callback.
             lifecycleScope.launch {
                 delay(2_000L)
                 if (!completed.get()) {
-                    discardTtsUtterance(utteranceId)
-                    runCatching { tts?.stop() }
+                    KokoroSpeechService.get(this).stop()
                     AudioSessionCoordinator.markIdle()
                 }
                 complete("2s fallback")
             }
             cont.invokeOnCancellation {
-                discardTtsUtterance(utteranceId)
+                KokoroSpeechService.get(this).stop()
+                AudioSessionCoordinator.markIdle()
             }
         }
     }
@@ -4895,7 +4826,7 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
                 Log.i(
                     "AssistantTiming",
                     "stage=voice_transcript_dispatch delayMs=${android.os.SystemClock.elapsedRealtime() - finalAtMs} " +
-                        "ttsRouteBluetooth=$streamingRouteSelected",
+                        "voiceRouteBluetooth=$streamingRouteSelected",
                 )
                 lifecycleScope.launch(Dispatchers.IO) {
                     try {
@@ -4933,7 +4864,7 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
                                         pendingSpeech.incrementAndGet()
                                         val id = "voice_stream_${System.nanoTime()}_$number"
                                         runOnUiThread {
-                                            enqueueStreamingTts(
+                                            enqueueStreamingSpeech(
                                                 text = segment,
                                                 utteranceId = id,
                                                 onDone = {
@@ -5028,16 +4959,15 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
                 text = ImageQuestionDefaults.listeningCueForLanguage(languageTag),
                 languageTag = languageTag,
                 utteranceId = cueUtteranceId,
-                onDone = { startListeningAfterCue("tts callback") },
+                onDone = { startListeningAfterCue("voice callback") },
             )
-            // Do not leave Test Voice unresponsive if a TTS engine never reports completion.
+            // Do not leave Test Voice unresponsive if Kokoro never reports completion.
             delay(VOICE_CUE_CALLBACK_TIMEOUT_MS)
             if (!listeningStarted.get()) {
-                discardTtsUtterance(cueUtteranceId)
-                runCatching { tts?.stop() }
+                KokoroSpeechService.get(this).stop()
                 AudioSessionCoordinator.markIdle()
             }
-            startListeningAfterCue("tts callback timeout")
+            startListeningAfterCue("voice callback timeout")
         }
     }
 
