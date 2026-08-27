@@ -1,154 +1,105 @@
-# Alternative HeyCyan App and SDK
+# AD Glasses
 
-This repository is the source workspace for AD Glasses's Android companion,
-HeyCyan vendor integration, and smart-glasses interoperability research.
+AD Glasses is a native smart-glasses companion project with two platform apps:
 
-It is not a finished, drop-in SDK for every pair of glasses. The active product
-path is the Android app in [`android/AD-Glasses`](android/AD-Glasses). The rest
-of the repository includes vendor references, reusable modules, prototypes, and
-research needed to support more devices without hiding their limitations.
+- **Android:** Kotlin + Jetpack Compose, currently the most complete product surface.
+- **iOS:** Swift + SwiftUI, using Apple-native Bluetooth, audio, and speech APIs.
+
+HeyCyan is the primary supported glasses architecture. Meta is kept as a clean provider boundary without bundling its SDK. Other vendor demo trees and protocol research are intentionally not part of the active product anymore.
 
 ## Start here
 
-| If you want to... | Start with... |
+| Goal | Path |
 | --- | --- |
-| Build or use the Android companion | [`android/AD-Glasses/README.md`](android/AD-Glasses/README.md) |
-| Connect and sync media from HeyCyan glasses | [`android/AGENTS.md`](android/AGENTS.md) |
-| Work on shared Android modules | [`heycyan-core/README.md`](heycyan-core/README.md) |
-| Build the iOS shell or inspect the vendor demo | [`ios/README.md`](ios/README.md) |
-| Investigate MemoMind/XGIMI protocol support | [`BRIDGE_RESEARCH_NOTES.md`](BRIDGE_RESEARCH_NOTES.md) |
+| Build or change the Android app | [`android/AD-Glasses/`](android/AD-Glasses/) |
+| Work on confirmed HeyCyan transport/media behavior | [`android/AGENTS.md`](android/AGENTS.md) |
+| Work on reusable HeyCyan architecture | [`heycyan-core/`](heycyan-core/) |
+| Build or change the native iOS app | [`ios/`](ios/) |
 
-## What AD Glasses does today
+## Hardware scope
 
-### Android companion
+### HeyCyan
 
-The Android app is the most complete part of this repository. It currently
-includes:
+HeyCyan is the first-class hardware path. The Android app contains the mature BLE plus Wi-Fi media-transfer implementation. Shared protocol/architecture work should stay behind the existing HeyCyan boundaries so UI and AI features do not depend on raw vendor commands.
 
-- HeyCyan device scanning, pairing, connection management, and device state.
-- Media sync from compatible HeyCyan glasses: BLE starts transfer mode, Wi-Fi
-  Direct carries the files, and photos, videos, and supported recordings are
-  saved to Android media storage.
-- Local chat history, configurable local-model runtimes, and optional
-  OpenAI-compatible remote inference.
-- Meeting capture, transcription and summarization plumbing, notes, privacy
-  settings, data backup/export, and local-data cleanup controls.
-- A AD Glasses Model Studio bridge that can announce Studio session events and
-  handle its internal approval requests through TTS, speech recognition, and a
-  fail-closed allow/deny response.
+### Meta
 
-The app must be tested with real glasses before a device-specific feature is
-considered reliable.
+Meta is represented as a vendor/provider in the app architecture, but no Meta SDK is bundled in the repository. Until a verified integration is configured, the provider reports that it is unavailable rather than pretending to support capabilities it cannot execute.
 
-### Device and platform status
+Adding another glasses family later should mean adding an adapter/provider, not rewriting the app shell.
 
-| Area | Current status | Notes |
-| --- | --- | --- |
-| HeyCyan Android path | Active | BLE connection and the BLE plus Wi-Fi Direct media-transfer flow are the primary supported path. |
-| HeyCyan vendor controls | Device-dependent | The bundled vendor AAR exposes camera, recording, device-info, and media commands. Validate each command on physical hardware. |
-| AD Glasses local and remote chat | Included | The app contains local runtime support and an OpenAI-compatible remote-server option. Model availability depends on the phone and configuration. |
-| AD Glasses Model Studio bridge | Experimental | Relays Studio events and approval requests over an authenticated WebSocket. It is not a substitute for reviewing desktop work. |
-| MemoMind/XGIMI | Experimental research | RFCOMM framing, device info, battery, cards, notifications, and selected settings are mapped. The adapter still needs sustained physical-device validation. |
-| Meta Ray-Ban | Partial setup only | Optional registration plumbing exists when the Meta DAT SDK is available. Sessions, camera streaming, photo capture, and display rendering are explicitly not implemented. |
-| Even/Mentra runtimes | Prototype | Adapter and runtime experiments are present, not a supported consumer device path. |
-| iOS | CI-validated host | A simulator-targeted KMP host is built and tested via a GitHub Actions macOS workflow (framework link, Xcode compilation, simulator launch, screenshot); the vendor QCSDK path still requires a physical device and needs hardware validation. |
+## Android
 
-## Build the Android app
+The active Android project lives at `android/AD-Glasses/` and uses Kotlin, Jetpack Compose, and Java 17+ tooling. Existing Android AI, media, meeting, assistant, provider, and HeyCyan flows remain the mature implementation and should not be removed as part of iOS development.
 
-Use Android Studio's bundled JDK or another Java 17+ JDK:
+Build from the Android project directory:
 
 ```bash
 cd android/AD-Glasses
-JAVA_HOME=/opt/android-studio/jbr ./gradlew assembleDebug
+./gradlew assembleDebug
 ```
 
 Run unit tests with:
 
 ```bash
-JAVA_HOME=/opt/android-studio/jbr ./gradlew testDebugUnitTest
+./gradlew testDebugUnitTest
 ```
 
-For device integration, use a physical Android phone with Bluetooth and the
-required nearby-device, microphone, notification, and Wi-Fi permissions. The
-Android emulator cannot validate glasses pairing or media transfer.
+Moonshine remains an Android-only dependency where the Android speech pipeline requires it.
 
-## How HeyCyan media sync works
+## iOS
 
-The supported transfer path is intentionally simple:
+The iOS app lives at `ios/` and is native SwiftUI. It does not use React Native, Flutter, Kotlin Multiplatform, Moonshine, or the old QCSDK binary/demo host.
 
-1. Connect to the glasses over BLE.
-2. Ask the glasses to enter transfer mode and report their Wi-Fi address.
-3. Join the Wi-Fi Direct network.
-4. Read `http://<glasses-ip>/files/media.config`.
-5. Download each listed file from `http://<glasses-ip>/files/<filename>`.
-6. Store photos, videos, and compatible audio in Android media storage.
+Current native building blocks:
 
-See [`android/AGENTS.md`](android/AGENTS.md) for the confirmed command sequence,
-network-routing requirements, and audio-format caveats. Do not substitute the
-phone's Wi-Fi Direct group-owner address for the glasses address.
+- SwiftUI for UI and navigation.
+- CoreBluetooth for the HeyCyan transport foundation.
+- AVFoundation for audio capture/routing.
+- Apple Speech APIs behind `SpeechTranscribing` for speech-to-text.
+- `GlassesProvider` as the vendor boundary.
+
+The UI is designed around iPhone safe areas and the home indicator instead of copying Android navigation chrome.
+
+See [`ios/README.md`](ios/README.md) for architecture and build notes.
 
 ## Repository map
 
 | Path | Purpose |
 | --- | --- |
-| `android/AD-Glasses/` | AD Glasses Android app and the primary development target. |
-| `android/glasses_sdk_20250723_v01.aar` | Vendor Android SDK artifact used by the HeyCyan path. |
-| `android/HeyCyanOfficialApp/` | Decompiled vendor app used as protocol reference. |
-| `heycyan-core/` | Shared Android modules for BLE, connectivity, data, audio, and API boundaries. |
-| `ios/AD-GlassesKMPHost/` | Simulator-capable SwiftUI host for the shared KMP framework. |
-| `ios/QCSDKDemo/` | Vendor iOS demo and device-only protocol reference. |
-| `BRIDGE_RESEARCH_NOTES.md` | Detailed MemoMind/XGIMI transport and protocol findings. |
-| `WIFI_TRANSFER_ARCHITECTURE.md` | Historical technical background for the HeyCyan transfer design. |
+| `android/AD-Glasses/` | Android application. |
+| `android/glasses_sdk_20250723_v01.aar` | HeyCyan Android vendor artifact used by the supported path. |
+| `android/HeyCyanOfficialApp/` | HeyCyan protocol/reference material. |
+| `heycyan-core/` | Reusable HeyCyan-oriented modules and boundaries. |
+| `ios/` | Native SwiftUI iOS application. |
+| `third_party/moonshine/` | Android-only Moonshine dependency. |
+| `WIFI_TRANSFER_ARCHITECTURE.md` | HeyCyan transfer architecture/reference. |
 
-## Upstream projects and acknowledgements
+The old `examples/` vendor dump, MyVu submodule, MemoMind/XGIMI/Even/Mentra research prompts, EyeVue notes, and KMP/QCSDK iOS workflow are intentionally retired from the active tree.
 
-AD Glasses is made possible by the work of other open-source developers. Please
-visit these projects, star the repositories, follow their maintainers, and
-consider donating or sponsoring them through any support links in their
-repositories or profiles:
+## Architecture rules
 
-| Project | How it contributed |
-| --- | --- |
-| [Meizu MYVU Client](https://github.com/Panny777/Meizu-Myvu-Client) by [Panny777](https://github.com/Panny777) | Hardware-verified MYVU / Star Air protocol client. Its BLE, ECDH, RFCOMM relay, heartbeat, and display transport are used by the native MYVU integration. |
-| [OpenVision](https://github.com/rayl15/OpenVision) by [rayl15](https://github.com/rayl15) | Important reference for the Meta Ray-Ban integration direction, wearable connection architecture, and glasses-based AI workflows. |
-| [private-agent](https://github.com/orailnoor/private-agent) by [orailnoor](https://github.com/orailnoor) | Inspiration for AD Glasses's local-agent architecture, especially the Accessibility-based observe, decide, execute, and observe loop. |
+- UI/features depend on capability interfaces, not vendor SDK calls.
+- Keep provider details inside the platform's provider/service layer.
+- Do not guess proprietary commands, UUIDs, endpoints, or capabilities.
+- Keep Android and iOS native to their platforms; share architecture and behavior, not UI framework code.
+- Prefer a small stable contract that lets a future glasses adapter be added without rewriting app features.
 
-These projects remain independent works with their own licenses and
-maintainers. See each repository for its licensing, contribution, and support
-information. If you use or benefit from them, a star, a follow, a useful issue
-or pull request, and financial support where available are meaningful ways to
-give back.
+## CI
+
+- `.github/workflows/android-app.yml` validates the Android app.
+- `.github/workflows/android-toolchain-updates.yml` tracks Android tooling updates.
+- `.github/workflows/ios-native.yml` is the native SwiftUI build check.
+
+The retired KMP/QCSDK iOS workflow is no longer part of the project.
 
 ## Privacy and safety
 
-- Keep pairing, recording, transfer, and notification permissions explicit.
-- Review the app's privacy settings before enabling capture, transcription, or
-  desktop approval bridging.
-- The HeyCyan transfer server uses local HTTP over the direct device network;
-  do not expose it to an untrusted network.
-- Do not send unknown protocol commands or OTA payloads to personal hardware.
-- Treat experimental device adapters as research until they have repeatable,
-  documented hardware tests.
+- Keep pairing, recording, transfer, microphone, and notification permissions explicit.
+- Avoid logging tokens, transcripts, media paths, or credentials.
+- Do not send unverified protocol or firmware commands to personal hardware.
+- Treat a hardware capability as unavailable until it has a verified implementation and physical-device validation.
 
-## Vendor material and licensing
+## Licensing
 
-The bundled `.aar`, `QCSDK.framework`, decompiled vendor apps, firmware files,
-and protocol notes are not a promise that their underlying vendor components are
-open source or redistributable. Review the relevant vendor terms and applicable
-law before distributing, modifying, or using them outside personal research and
-development. This repository does not currently provide a single project-wide
-license for all included material.
-
-## Current AD Glasses AI architecture
-
-The Android app is owned under `com.ad_glasses` and the Android project lives at
-`android/AD-Glasses`.
-
-The supported assistant stack is intentionally limited to:
-- Cloud REST requests for conventional cloud inference.
-- Cloud Realtime / Gemini Live API for low-latency conversational sessions.
-- Local LLM fallback for offline/on-device inference when cloud execution is unavailable or undesired.
-- Android TTS for speech output.
-- The AD default-assistant implementation for Android assistant-role integration.
-
-The canonical deep-link scheme is `ad-glasses://`.
+This repository contains vendor reference material and binary artifacts for the supported HeyCyan path. Their presence does not imply that the vendor components are open source or redistributable. Review the applicable vendor terms before redistribution.
