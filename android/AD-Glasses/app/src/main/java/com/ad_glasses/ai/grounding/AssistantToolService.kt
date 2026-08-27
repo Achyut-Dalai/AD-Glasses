@@ -54,6 +54,8 @@ class AssistantToolService(context: Context) {
     private val appContext = context.applicationContext
     private val locationProvider = AndroidLocationProvider(appContext)
     private val tavily = TavilySearchClient(appContext)
+    private val news = GoogleNewsRssClient()
+    private val sports = EspnSportsClient()
     private val weather = OpenMeteoWeatherClient()
     private val wikipedia = WikipediaKnowledgeClient()
     private val dictionary = FreeDictionaryClient()
@@ -169,6 +171,8 @@ class AssistantToolService(context: Context) {
         spatial: SpatialExecution?,
     ): ExternalExecution = when (route.externalTool) {
         ExternalTool.TAVILY -> executeTavily(route, spatial)
+        ExternalTool.NEWS -> executeNews(route, spatial)
+        ExternalTool.SPORTS -> executeSports(route, spatial)
         ExternalTool.WEATHER -> executeWeather(route, spatial)
         ExternalTool.WIKIPEDIA -> executeWikipedia(route, spatial)
         ExternalTool.DICTIONARY -> executeDictionary(route, spatial)
@@ -205,8 +209,6 @@ class AssistantToolService(context: Context) {
             includeDomains = route.sourceDomains,
         ).getOrThrow()
 
-        // Do not spend a second credit merely because Tavily's answer is blank: useful focused
-        // chunks already let AD rescue the turn. Retry once only when retrieval itself is empty.
         val chosen = if (first.results.isEmpty()) {
             tavily.search(
                 query = query,
@@ -257,6 +259,49 @@ class AssistantToolService(context: Context) {
         if (bestScore <= 0.0) return ranked.take(MAX_SOURCES)
         val cutoff = maxOf(MIN_ABSOLUTE_RESULT_SCORE, bestScore * RELATIVE_RESULT_SCORE_RATIO)
         return ranked.filter { it.score >= cutoff }.take(MAX_SOURCES).ifEmpty { ranked.take(1) }
+    }
+
+    private suspend fun executeNews(route: GroundingRoute, spatial: SpatialExecution?): ExternalExecution {
+        val query = route.searchQuery?.trim()?.takeIf(String::isNotBlank)
+        val rss = news.lookup(query).getOrNull()
+        if (rss != null) return rss.toExternalExecution()
+        val fallbackQuery = query ?: "top news today"
+        return fallbackStructuredToTavily(
+            route = route,
+            spatial = spatial,
+            query = fallbackQuery,
+            topic = TavilySearchTopic.NEWS,
+            label = "google_news_rss",
+            timeRange = TavilyTimeRange.DAY,
+        )
+    }
+
+    private suspend fun executeSports(route: GroundingRoute, spatial: SpatialExecution?): ExternalExecution {
+        val query = route.searchQuery?.trim()?.takeIf(String::isNotBlank)
+        if (query == null) {
+            val headlines = sports.lookup(null).getOrNull()
+            if (headlines != null) return headlines.toExternalExecution()
+        }
+
+        // ESPN's public RSS is excellent for broad headlines but is not a universal live-score API.
+        // A specific sports question therefore searches ESPN itself through Tavily. No sport names or
+        // leagues are hardcoded here; the router supplies the standalone semantic query.
+        if (tavily.isConfigured() && query != null) {
+            return executeTavily(
+                route.copy(
+                    externalTool = ExternalTool.TAVILY,
+                    searchQuery = query,
+                    tavilyTopic = TavilySearchTopic.NEWS,
+                    tavilyTimeRange = TavilyTimeRange.DAY,
+                    sourceDomains = ESPN_DOMAINS,
+                ),
+                spatial,
+            )
+        }
+
+        val rssFallback = sports.lookup(query).getOrNull()
+        if (rssFallback != null) return rssFallback.toExternalExecution()
+        throw IllegalStateException("ESPN sports lookup failed and ESPN web search is unavailable.")
     }
 
     private suspend fun executeWeather(
@@ -367,6 +412,7 @@ class AssistantToolService(context: Context) {
         query: String,
         topic: TavilySearchTopic,
         label: String,
+        timeRange: TavilyTimeRange? = route.tavilyTimeRange,
     ): ExternalExecution {
         check(tavily.isConfigured()) { "$label lookup failed and Tavily fallback is unavailable." }
         Log.w(TAG, "${label}_fallback_to_tavily")
@@ -375,6 +421,7 @@ class AssistantToolService(context: Context) {
                 externalTool = ExternalTool.TAVILY,
                 searchQuery = query,
                 tavilyTopic = topic,
+                tavilyTimeRange = timeRange,
                 sourceDomains = emptyList(),
             ),
             spatial,
@@ -607,6 +654,7 @@ class AssistantToolService(context: Context) {
 
     private companion object {
         const val TAG = "AssistantGrounding"
+        val ESPN_DOMAINS = listOf("espn.com", "espn.in")
         const val DEFAULT_NEARBY_RADIUS_METERS = 1_000
         const val PRIMARY_TAVILY_RESULTS = 3
         const val FALLBACK_TAVILY_RESULTS = 5

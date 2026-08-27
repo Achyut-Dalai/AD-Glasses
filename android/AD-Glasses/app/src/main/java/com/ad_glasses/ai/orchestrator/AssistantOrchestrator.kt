@@ -280,14 +280,15 @@ class AssistantOrchestrator(
         }
 
         if (initialRoute.intent == GroundingIntent.DIRECT) {
-            if (!initialRoute.needsContext) {
-                val answer = initialRoute.directAnswer?.takeIf { it.isNotBlank() }
-                    ?: return transientToolFailure("The assistant planner returned no usable direct answer.", context)
-                return directAnswer(answer, context)
+            if (initialRoute.needsContext || initialRoute.synthesize) {
+                // Context-dependent DIRECT turns need normal conversation history. Complex stable
+                // DIRECT turns intentionally delegate to the normal answer model instead of forcing
+                // the compact planner to also write a long/code/structured response.
+                return executor.answer(prompt, context.copy(useWeb = false))
             }
-            // A context-dependent stable answer can use the ordinary conversational call directly;
-            // the history-free router never saw or guessed that context.
-            return executor.answer(prompt, context.copy(useWeb = false))
+            val answer = initialRoute.directAnswer?.takeIf { it.isNotBlank() }
+                ?: return transientToolFailure("The assistant planner returned no usable direct answer.", context)
+            return directAnswer(answer, context)
         }
 
         val routed = resolveAndReplanIfNeeded(
