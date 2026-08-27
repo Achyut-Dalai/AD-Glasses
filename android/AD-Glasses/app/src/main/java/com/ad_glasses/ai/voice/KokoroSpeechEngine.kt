@@ -2,10 +2,14 @@ package com.ad_glasses.ai.voice
 
 import android.content.Context
 import android.media.AudioAttributes
+import android.media.AudioDeviceInfo
 import android.media.AudioFormat
+import android.media.AudioManager
 import android.media.AudioTrack
+import android.os.Build
 import android.os.Handler
 import android.os.Looper
+import android.util.Log
 import com.ad_glasses.shared.voice.AssistantVoiceProfile
 import com.ad_glasses.shared.voice.KokoroHeartVoice
 import com.k2fsa.sherpa.onnx.GenerationConfig
@@ -42,9 +46,11 @@ data class SpeechCallbacks(
  * Process-wide, offline Kokoro speech output.
  *
  * This class has no dependency on android.speech.tts. Audio is synthesized by sherpa-onnx and
- * streamed directly to AudioTrack. The full voices.bin pack remains installed; each request carries
- * an [AssistantVoiceProfile], so changing speakers later does not require another speech backend.
- * FLUSH invalidates queued/in-flight generations and preserves assistant barge-in semantics.
+ * played directly through AudioTrack. The full voices.bin pack remains installed; each request
+ * carries an [AssistantVoiceProfile], so changing speakers later does not require another speech
+ * backend. FLUSH invalidates queued/in-flight results and preserves assistant barge-in playback
+ * semantics even though the current native non-callback generation must return before it can be
+ * discarded safely.
  */
 class KokoroSpeechEngine internal constructor(context: Context) {
     private data class SpeakRequest(
@@ -172,7 +178,43 @@ class KokoroSpeechEngine internal constructor(context: Context) {
                 return
             }
 
-            val sampleRate = tts.sampleRate().takeIf { it > 0 } ?: request.voice.sampleRateHz
+            val generationConfig = GenerationConfig(
+                silenceScale = 0.2f,
+                speed = request.speed,
+                sid = request.voice.speakerId,
+            )
+
+            // Do not use generateWithConfigAndCallback() on Android. sherpa-onnx's JNI callback
+            // currently captures a thread-local JNIEnv/local jobject and can SIGABRT when Kokoro
+            // invokes the callback from a native worker thread. The non-callback path stays entirely
+            // inside JNI until generation completes and avoids that process-killing failure.
+            val synthesisStartNs = System.nanoTime()
+            Log.i(
+                TAG,
+                "stage=kokoro_synthesis_start id=${request.utteranceId} chars=${request.text.length}",
+            )
+            val generated = tts.generateWithConfig(
+                text = request.text,
+                config = generationConfig,
+            )
+            val synthesisMs = (System.nanoTime() - synthesisStartNs) / 1_000_000L
+
+            if (released || request.epoch != epoch.get()) {
+                dispatch { request.callbacks.onStopped?.invoke() }
+                return
+            }
+
+            val samples = generated.samples
+            check(samples.isNotEmpty()) { "Kokoro generated no audio samples" }
+            val sampleRate = generated.sampleRate.takeIf { it > 0 }
+                ?: tts.sampleRate().takeIf { it > 0 }
+                ?: request.voice.sampleRateHz
+
+            Log.i(
+                TAG,
+                "stage=kokoro_synthesis_done id=${request.utteranceId} elapsedMs=$synthesisMs samples=${samples.size} sampleRate=$sampleRate",
+            )
+
             val track = createAudioTrack(sampleRate)
             synchronized(trackLock) {
                 if (request.epoch != epoch.get()) {
@@ -183,29 +225,11 @@ class KokoroSpeechEngine internal constructor(context: Context) {
                 currentTrack = track
             }
 
-            dispatch { request.callbacks.onStart?.invoke() }
             track.play()
+            dispatch { request.callbacks.onStart?.invoke() }
 
-            val generationConfig = GenerationConfig(
-                silenceScale = 0.2f,
-                speed = request.speed,
-                sid = request.voice.speakerId,
-            )
-            var samplesQueued = 0L
-
-            tts.generateWithConfigAndCallback(
-                text = request.text,
-                config = generationConfig,
-            ) { samples ->
-                if (released || request.epoch != epoch.get()) {
-                    0
-                } else {
-                    if (samples.isNotEmpty()) {
-                        samplesQueued += writeSamples(track, samples)
-                    }
-                    if (released || request.epoch != epoch.get()) 0 else 1
-                }
-            }
+            val samplesQueued = writeSamples(track, samples).toLong()
+            check(samplesQueued > 0L) { "Kokoro audio track accepted no samples" }
 
             val completed = !released && request.epoch == epoch.get()
             if (completed) {
@@ -266,8 +290,9 @@ class KokoroSpeechEngine internal constructor(context: Context) {
             .setSampleRate(sampleRate)
             .setChannelMask(AudioFormat.CHANNEL_OUT_MONO)
             .build()
+        val usage = playbackUsage()
         val attributes = AudioAttributes.Builder()
-            .setUsage(AudioAttributes.USAGE_VOICE_COMMUNICATION)
+            .setUsage(usage)
             .setContentType(AudioAttributes.CONTENT_TYPE_SPEECH)
             .build()
         val minimum = AudioTrack.getMinBufferSize(
@@ -277,12 +302,40 @@ class KokoroSpeechEngine internal constructor(context: Context) {
         )
         val bufferBytes = max(minimum, sampleRate / 2 * Float.SIZE_BYTES)
 
+        Log.i(
+            TAG,
+            "stage=kokoro_audio_track sampleRate=$sampleRate usage=${if (usage == AudioAttributes.USAGE_VOICE_COMMUNICATION) "communication" else "assistant"}",
+        )
+
         return AudioTrack.Builder()
             .setAudioAttributes(attributes)
             .setAudioFormat(format)
             .setTransferMode(AudioTrack.MODE_STREAM)
             .setBufferSizeInBytes(bufferBytes)
             .build()
+    }
+
+    @Suppress("DEPRECATION")
+    private fun playbackUsage(): Int {
+        val audioManager = appContext.getSystemService(Context.AUDIO_SERVICE) as? AudioManager
+            ?: return AudioAttributes.USAGE_ASSISTANT
+
+        val bluetoothCommunicationRoute = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+            when (audioManager.communicationDevice?.type) {
+                AudioDeviceInfo.TYPE_BLUETOOTH_SCO,
+                AudioDeviceInfo.TYPE_BLE_HEADSET,
+                -> true
+                else -> false
+            }
+        } else {
+            audioManager.isBluetoothScoOn
+        }
+
+        return if (bluetoothCommunicationRoute) {
+            AudioAttributes.USAGE_VOICE_COMMUNICATION
+        } else {
+            AudioAttributes.USAGE_ASSISTANT
+        }
     }
 
     private fun writeSamples(track: AudioTrack, samples: FloatArray): Int {
@@ -342,6 +395,10 @@ class KokoroSpeechEngine internal constructor(context: Context) {
 
     private fun dispatch(block: () -> Unit) {
         mainHandler.post(block)
+    }
+
+    private companion object {
+        const val TAG = "AssistantTiming"
     }
 }
 
