@@ -5,7 +5,7 @@ import android.media.AudioAttributes
 import android.media.MediaPlayer
 import com.ad_glasses.R
 
-/** Plays packaged assistant listening cues directly; no TextToSpeech earcon registration involved. */
+/** Plays packaged assistant listening cues directly; no platform speech-engine earcon registration involved. */
 object AssistantListeningCuePlayer {
     private val lock = Any()
     private var player: MediaPlayer? = null

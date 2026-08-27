@@ -11,8 +11,6 @@ import android.content.Intent
 import android.content.IntentFilter
 import android.os.Build
 import android.os.IBinder
-import android.speech.tts.TextToSpeech
-import android.speech.tts.UtteranceProgressListener
 import android.util.Log
 import androidx.core.app.NotificationCompat
 import com.ad_glasses.localagent.AudioSessionCoordinator
@@ -21,6 +19,9 @@ import androidx.core.content.ContextCompat
 import androidx.localbroadcastmanager.content.LocalBroadcastManager
 import com.ad_glasses.MainActivity
 import com.ad_glasses.R
+import com.ad_glasses.ai.voice.KokoroSpeechService
+import com.ad_glasses.ai.voice.SpeechCallbacks
+import com.ad_glasses.ai.voice.SpeechQueueMode
 import com.ad_glasses.agent.LocalAgentPrefs as AutomationPrefs
 import com.ad_glasses.localagent.memory.LocalAgentMemoryStore
 import com.ad_glasses.ui.hasNotificationPermission
@@ -35,7 +36,6 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withTimeoutOrNull
-import java.util.Locale
 import java.util.concurrent.atomic.AtomicBoolean
 import kotlinx.coroutines.currentCoroutineContext
 import kotlinx.coroutines.isActive
@@ -57,8 +57,6 @@ class LocalAgentService : Service() {
     private var loopJob: Job? = null
     private val cancelRequested = AtomicBoolean(false)
 
-    private var tts: TextToSpeech? = null
-    private var ttsReady: CompletableDeferred<Boolean>? = null
     private val screenReadInProgress = AtomicBoolean(false)
     private var runtimeInitialized = false
     private var deviceStateReceiverRegistered = false
@@ -128,19 +126,17 @@ class LocalAgentService : Service() {
         approvalDeferred?.complete(false)
         approvalDeferred = null
         serviceScope.cancel()
-        runCatching {
-            tts?.stop()
-            tts?.shutdown()
-        }
-        tts = null
-        ttsReady = null
+        KokoroSpeechService.get(applicationContext).stop()
+        AudioSessionCoordinator.markIdle()
         super.onDestroy()
     }
 
     private fun ensureRuntimeInitialized() {
         if (runtimeInitialized) return
         runtimeInitialized = true
-        initTts()
+        KokoroSpeechService.get(applicationContext).prepare(
+            onError = { error -> Log.w(TAG, "Kokoro preparation failed; speech will retry on demand", error) },
+        )
         LocalAgentMemoryStore.ensureSeedFiles(applicationContext)
         ContextCompat.registerReceiver(
             this,
@@ -662,7 +658,7 @@ class LocalAgentService : Service() {
         approvalDeferred?.complete(false)
         approvalDeferred = null
         screenReadInProgress.set(false)
-        runCatching { tts?.stop() }
+        KokoroSpeechService.get(applicationContext).stop()
         stopLoop(
             reason = availability.errorCode,
             status = "Stopped: ${availability.statusText}",
@@ -928,87 +924,51 @@ class LocalAgentService : Service() {
         return true
     }
 
-    private fun initTts() {
-        val ready = CompletableDeferred<Boolean>()
-        ttsReady = ready
-
-        tts = TextToSpeech(applicationContext) { status ->
-            val ok = status == TextToSpeech.SUCCESS
-            if (ok) {
-                runCatching { tts?.language = LocalAgentLanguage.currentLocale(applicationContext) }
-            }
-            if (!ready.isCompleted) ready.complete(ok)
-        }
-    }
-
     private suspend fun speakBestEffort(text: String) {
-        if (!LocalAgentDeviceState.isReady(applicationContext)) return
-        val ready = ttsReady
-        val ok = if (ready != null) {
-            withTimeoutOrNull(3_000) { ready.await() } ?: false
-        } else false
+        val clean = text.trim()
+        if (clean.isBlank() || !LocalAgentDeviceState.isReady(applicationContext)) return
 
-        if (!ok) {
-            Log.w(TAG, "TTS not ready; skipping speak")
-            return
-        }
-
-        runCatching {
-            tts?.speak(text, TextToSpeech.QUEUE_FLUSH, null, "local_agent_demo")
-        }.onFailure {
-            Log.w(TAG, "TTS speak failed: ${it.message}")
-        }
+        KokoroSpeechService.get(applicationContext).speak(
+            text = clean,
+            queueMode = SpeechQueueMode.FLUSH,
+            utteranceId = "local_agent_demo_${System.currentTimeMillis()}",
+            callbacks = SpeechCallbacks(
+                onError = { error -> Log.w(TAG, "Kokoro speech failed", error) },
+            ),
+        )
     }
 
     private suspend fun speakAndWaitBestEffort(text: String, maxLength: Int = 160) {
         val clean = text.trim().take(maxLength)
-        if (clean.isBlank()) return
-        if (!LocalAgentDeviceState.isReady(applicationContext)) return
+        if (clean.isBlank() || !LocalAgentDeviceState.isReady(applicationContext)) return
 
-        val ready = ttsReady
-        val ok = if (ready != null) {
-            withTimeoutOrNull(3_000) { ready.await() } ?: false
-        } else {
-            false
-        }
-        if (!ok) return
-        AudioSessionCoordinator.markBusy()
-
+        val engine = KokoroSpeechService.get(applicationContext)
         val utteranceId = "local_agent_result_${System.currentTimeMillis()}"
         val completed = CompletableDeferred<Unit>()
-        tts?.setOnUtteranceProgressListener(object : UtteranceProgressListener() {
-            override fun onStart(utteranceId: String?) = Unit
-
-            override fun onDone(doneId: String?) {
-                if (doneId == utteranceId && !completed.isCompleted) completed.complete(Unit)
-            }
-
-            @Deprecated("Deprecated in Java")
-            override fun onError(errorId: String?) {
-                if (errorId == utteranceId && !completed.isCompleted) completed.complete(Unit)
-            }
-
-            override fun onError(errorId: String?, errorCode: Int) {
-                if (errorId == utteranceId && !completed.isCompleted) completed.complete(Unit)
-            }
-        })
-
-        val queued = runCatching {
-            tts?.speak(clean, TextToSpeech.QUEUE_FLUSH, null, utteranceId) == TextToSpeech.SUCCESS
-        }.getOrDefault(false)
-        if (!queued) {
-            AudioSessionCoordinator.markIdle()
-            return
-        }
+        AudioSessionCoordinator.markBusy()
+        engine.speak(
+            text = clean,
+            queueMode = SpeechQueueMode.FLUSH,
+            utteranceId = utteranceId,
+            callbacks = SpeechCallbacks(
+                onDone = { if (!completed.isCompleted) completed.complete(Unit) },
+                onStopped = { if (!completed.isCompleted) completed.complete(Unit) },
+                onError = { error ->
+                    Log.w(TAG, "Kokoro speech failed", error)
+                    if (!completed.isCompleted) completed.complete(Unit)
+                },
+            ),
+        )
 
         try {
             repeat(32) {
                 if (!LocalAgentDeviceState.isReady(applicationContext)) {
-                    runCatching { tts?.stop() }
+                    engine.stop()
                     return
                 }
                 if (withTimeoutOrNull(250L) { completed.await() } != null) return
             }
+            Log.w(TAG, "Kokoro speech exceeded local-agent wait window; continuing")
         } finally {
             AudioSessionCoordinator.markIdle()
         }

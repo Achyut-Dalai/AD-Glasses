@@ -22,7 +22,20 @@ def metaGithubToken = System.getenv("GITHUB_TOKEN")
 def metaDatEnabled = metaGithubToken != null && !metaGithubToken.trim().isEmpty()
 def myvuJavaSourceDir = file("src/main/myvu-upstream/android/app/src/main/java")
 def myvuAssetsSourceDir = file("src/main/myvu-upstream/android/app/src/main/assets")
+// sourceSets requires a concrete directory under AGP 9; do not pass a Provider here.
+def myvuGeneratedJavaSourceDir = file("build/generated/myvu-upstream/java")
 def myvuEnabled = new File(myvuJavaSourceDir, "com/myvu/client/service/ConnectionManager.java").exists()
+
+def syncMyvuSources = tasks.register("syncMyvuSources", Sync) {
+    onlyIf { myvuEnabled }
+    from(myvuJavaSourceDir) {
+        exclude("com/myvu/client/ui/**")
+        exclude("com/myvu/client/service/MyvuService.java")
+        exclude("com/myvu/client/service/MirrorNotificationListener.java")
+        exclude("com/myvu/client/ai/TtsPlayer.java")
+    }
+    into(myvuGeneratedJavaSourceDir)
+}
 
 android {
     namespace = "com.ad_glasses"
@@ -83,11 +96,8 @@ android {
     sourceSets {
         main {
             if (myvuEnabled) {
-                java.srcDir(myvuJavaSourceDir)
+                java.srcDir(myvuGeneratedJavaSourceDir)
                 assets.srcDir(myvuAssetsSourceDir)
-                java.exclude("com/myvu/client/ui/**")
-                java.exclude("com/myvu/client/service/MyvuService.java")
-                java.exclude("com/myvu/client/service/MirrorNotificationListener.java")
             } else {
                 kotlin.srcDir("src/myvu-stub/java")
             }
@@ -124,6 +134,7 @@ def syncSharedComposeResources = tasks.register("syncSharedComposeResources", Sy
 
 tasks.named("preBuild").configure {
     dependsOn(syncSharedComposeResources)
+    if (myvuEnabled) dependsOn(syncMyvuSources)
 }
 
 androidComponents {
@@ -161,7 +172,11 @@ dependencies {
     implementation("androidx.localbroadcastmanager:localbroadcastmanager:1.1.0")
     implementation("com.github.CymChad:BaseRecyclerViewAdapterHelper:3.0.4")
     implementation 'com.squareup.okhttp3:okhttp:4.12.0'
-    implementation 'com.github.k2-fsa:sherpa-onnx:v1.13.6'
+    // Use the Android AAR directly. The umbrella JitPack coordinate also pulls the JVM API jar,
+    // which duplicates the same com.k2fsa.sherpa.onnx classes already packaged in this AAR.
+    implementation('com.github.k2-fsa.sherpa-onnx:sherpa-onnx:v1.13.6') {
+        exclude group: 'com.github.k2-fsa.sherpa-onnx', module: 'sherpa-onnx-jvm'
+    }
     implementation 'org.apache.commons:commons-compress:1.28.0'
     implementation 'androidx.media3:media3-exoplayer:1.11.0'
     implementation 'androidx.media3:media3-exoplayer-rtsp:1.11.0'
