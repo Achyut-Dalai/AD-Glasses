@@ -41,6 +41,16 @@ jobs:
         shell: bash
         run: |
           python3 tools/finish_kokoro_main_activity.py
+          python3 - <<'PY'
+          from pathlib import Path
+          path = Path('android/AD-Glasses/app/src/main/java/com/ad_glasses/localagent/LocalAgentService.kt')
+          text = path.read_text(encoding='utf-8')
+          old = '        runCatching { tts?.stop() }\n'
+          new = '        KokoroSpeechService.get(applicationContext).stop()\n'
+          if old not in text:
+              raise SystemExit('Could not find LocalAgent unavailable-device Android speech stop')
+          path.write_text(text.replace(old, new, 1), encoding='utf-8')
+          PY
           python3 tools/finish_kokoro_local_agent.py
 
       - name: Verify first-party Android platform TTS is absent
