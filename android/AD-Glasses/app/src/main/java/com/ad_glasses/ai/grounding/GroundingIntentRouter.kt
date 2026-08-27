@@ -171,7 +171,6 @@ class GroundingIntentRouter(context: Context) {
         val end = raw.lastIndexOf('}')
         if (start < 0 || end <= start) return null
         val root = runCatching { JSONObject(raw.substring(start, end + 1)) }.getOrNull() ?: return null
-        if (root.keys().asSequence().any { it !in ALLOWED_PLAN_KEYS }) return null
 
         val intent = when (root.optString("intent").trim().uppercase()) {
             "DIRECT", "ANSWER", "NONE" -> GroundingIntent.DIRECT
@@ -452,13 +451,6 @@ class GroundingIntentRouter(context: Context) {
         val ALLOWED_OSM_KEYS = setOf(
             "amenity", "shop", "tourism", "leisure", "historic", "healthcare", "office", "craft",
             "railway", "public_transport", "sport", "cuisine", "brand", "name",
-        )
-        val ALLOWED_PLAN_KEYS = setOf(
-            "intent", "direct_answer", "needs_context", "synthesize", "external_tool", "search_query",
-            "topic", "time_range", "source_domains", "weather_horizon", "amount", "base_currency",
-            "quote_currency", "translation_text", "source_language", "target_language", "spatial_action",
-            "spatial_query", "osm_filters", "radius_meters", "use_current_location", "reference_place",
-            "route_origin", "route_destination", "route_mode",
         )
 
         const val ROUTER_SYSTEM_PROMPT =
