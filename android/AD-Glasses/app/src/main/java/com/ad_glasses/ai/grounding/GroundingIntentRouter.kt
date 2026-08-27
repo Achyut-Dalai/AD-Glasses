@@ -250,15 +250,16 @@ class GroundingIntentRouter(context: Context) {
         val targetLanguage = root.optNullableString("target_language")?.sanitizeLanguageTag()
 
         val hasSpatialFields = spatialAction != null || !spatialQuery.isNullOrBlank() || osmFilters.isNotEmpty() ||
-            root.has("radius_meters") || !routeOrigin.isNullOrBlank() || !routeDestination.isNullOrBlank() ||
-            root.has("route_mode")
-        val hasTavilyConfig = root.has("topic") || root.has("time_range") || root.has("source_domains")
-        val hasWeatherConfig = root.has("weather_horizon")
-        val hasCurrencyConfig = root.has("amount") || root.has("base_currency") || root.has("quote_currency")
-        val hasTranslationConfig = root.has("translation_text") || root.has("target_language")
-        val hasLocationFields = root.has("reference_place") || root.has("use_current_location")
+            root.hasValue("radius_meters") || !routeOrigin.isNullOrBlank() || !routeDestination.isNullOrBlank() ||
+            root.hasValue("route_mode")
+        val hasTavilyConfig = root.hasValue("topic") || root.hasValue("time_range") || root.hasValue("source_domains")
+        val hasWeatherConfig = root.hasValue("weather_horizon")
+        val hasCurrencyConfig = root.hasValue("amount") || root.hasValue("base_currency") || root.hasValue("quote_currency")
+        val hasTranslationConfig = root.hasValue("translation_text") || root.hasValue("target_language")
+        val hasLocationFields = root.hasValue("reference_place") || root.hasValue("use_current_location")
+        val hasSourceLanguage = root.hasValue("source_language")
         val hasExternalFields = explicitExternalTool || !searchQuery.isNullOrBlank() || hasTavilyConfig ||
-            hasWeatherConfig || hasCurrencyConfig || hasTranslationConfig || root.has("source_language")
+            hasWeatherConfig || hasCurrencyConfig || hasTranslationConfig || hasSourceLanguage
 
         if (needsContext && !directAnswer.isNullOrBlank()) return null
         if (intent == GroundingIntent.DIRECT && synthesize) return null
@@ -274,28 +275,26 @@ class GroundingIntentRouter(context: Context) {
         if (intent == GroundingIntent.SEARCH || intent == GroundingIntent.BOTH) {
             when (externalTool) {
                 ExternalTool.TAVILY -> if (
-                    hasWeatherConfig || hasCurrencyConfig || hasTranslationConfig || root.has("source_language")
+                    hasWeatherConfig || hasCurrencyConfig || hasTranslationConfig || hasSourceLanguage
                 ) return null
                 ExternalTool.NEWS,
                 ExternalTool.SPORTS -> if (
-                    hasTavilyConfig || hasWeatherConfig || hasCurrencyConfig || hasTranslationConfig ||
-                    root.has("source_language")
+                    hasTavilyConfig || hasWeatherConfig || hasCurrencyConfig || hasTranslationConfig || hasSourceLanguage
                 ) return null
                 ExternalTool.WEATHER -> if (
                     hasTavilyConfig || hasCurrencyConfig || hasTranslationConfig || !searchQuery.isNullOrBlank() ||
-                    root.has("source_language")
+                    hasSourceLanguage
                 ) return null
                 ExternalTool.WIKIPEDIA,
                 ExternalTool.DICTIONARY -> if (
                     hasTavilyConfig || hasWeatherConfig || hasCurrencyConfig || hasTranslationConfig
                 ) return null
                 ExternalTool.BOOKS -> if (
-                    hasTavilyConfig || hasWeatherConfig || hasCurrencyConfig || hasTranslationConfig ||
-                    root.has("source_language")
+                    hasTavilyConfig || hasWeatherConfig || hasCurrencyConfig || hasTranslationConfig || hasSourceLanguage
                 ) return null
                 ExternalTool.CURRENCY -> if (
                     hasTavilyConfig || hasWeatherConfig || hasTranslationConfig || !searchQuery.isNullOrBlank() ||
-                    root.has("source_language")
+                    hasSourceLanguage
                 ) return null
                 ExternalTool.TRANSLATION -> if (
                     hasTavilyConfig || hasWeatherConfig || hasCurrencyConfig || !searchQuery.isNullOrBlank()
@@ -383,14 +382,16 @@ class GroundingIntentRouter(context: Context) {
         }
     }
 
+    private fun JSONObject.hasValue(key: String): Boolean = has(key) && !isNull(key)
+
     private fun JSONObject.optNullableString(key: String): String? {
-        if (!has(key) || isNull(key)) return null
+        if (!hasValue(key)) return null
         return optString(key).replace(Regex("\\s+"), " ").trim()
             .takeIf { it.isNotBlank() && !it.equals("null", ignoreCase = true) }
     }
 
     private fun JSONObject.optFiniteDouble(key: String): Double? {
-        if (!has(key) || isNull(key)) return null
+        if (!hasValue(key)) return null
         return optDouble(key, Double.NaN).takeIf(Double::isFinite)
     }
 
@@ -407,10 +408,10 @@ class GroundingIntentRouter(context: Context) {
             for (index in 0 until array.length()) {
                 val item = array.optJSONObject(index) ?: continue
                 val key = item.optString("key").trim().lowercase().takeIf(ALLOWED_OSM_KEYS::contains) ?: continue
-                val value = if (!item.has("value") || item.isNull("value")) null
+                val value = if (!item.hasValue("value")) null
                 else item.optString("value").replace(Regex("\\s+"), " ").trim().take(MAX_OSM_VALUE_CHARS)
                     .takeIf(SAFE_OSM_VALUE::matches)
-                if (item.has("value") && !item.isNull("value") && value == null) continue
+                if (item.hasValue("value") && value == null) continue
                 add(OverpassTagFilter(key = key, value = value))
             }
         }.distinct().take(MAX_OSM_FILTERS)
