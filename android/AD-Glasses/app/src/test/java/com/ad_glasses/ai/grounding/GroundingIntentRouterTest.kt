@@ -16,39 +16,59 @@ class GroundingIntentRouterTest {
     private val router = GroundingIntentRouter(ApplicationProvider.getApplicationContext())
 
     @Test
-    fun liveCricketScoreCanRouteToTavilyNewsDayDespiteAsrRepair() {
+    fun liveCricketScoreCanUseSportsCapabilityDespiteAsrRepair() {
         val route = router.parse(
-            raw = """{"intent":"SEARCH","external_tool":"tavily","search_query":"India vs Sri Lanka cricket live score","topic":"news","time_range":"day"}""",
+            raw = """{"intent":"SEARCH","external_tool":"sports","search_query":"India vs Sri Lanka cricket live score"}""",
             originalPrompt = "life score of india vs sri lanks cricket match",
         )!!
 
         assertEquals(GroundingIntent.SEARCH, route.intent)
-        assertEquals(ExternalTool.TAVILY, route.externalTool)
+        assertEquals(ExternalTool.SPORTS, route.externalTool)
         assertEquals("India vs Sri Lanka cricket live score", route.searchQuery)
-        assertEquals(TavilySearchTopic.NEWS, route.tavilyTopic)
-        assertEquals(TavilyTimeRange.DAY, route.tavilyTimeRange)
+        assertNull(route.tavilyTimeRange)
     }
 
     @Test
-    fun sportsDoesNotRequireASeparateTavilyTopic() {
-        val route = router.parse(
-            raw = """{"intent":"SEARCH","external_tool":"tavily","search_query":"latest Formula 1 race result","topic":"news","time_range":"day"}""",
-            originalPrompt = "who won the latest formula 1 race",
-        )!!
+    fun sportsCapabilityIsNotCricketSpecific() {
+        listOf(
+            "live football score" to "Arsenal live football score",
+            "nba result" to "Lakers NBA result",
+            "formula one winner" to "latest Formula 1 race winner",
+            "tennis score" to "US Open tennis live score",
+            "hockey result" to "NHL hockey result",
+        ).forEach { (original, query) ->
+            val route = router.parse(
+                raw = """{"intent":"SEARCH","external_tool":"sports","search_query":"$query"}""",
+                originalPrompt = original,
+            )!!
+            assertEquals(original, ExternalTool.SPORTS, route.externalTool)
+            assertEquals(query, route.searchQuery)
+        }
+    }
 
-        assertEquals(ExternalTool.TAVILY, route.externalTool)
-        assertEquals(TavilySearchTopic.NEWS, route.tavilyTopic)
-        assertEquals(TavilyTimeRange.DAY, route.tavilyTimeRange)
+    @Test
+    fun newsCapabilitySupportsTopAndTopicNewsWithoutTavilyFields() {
+        val top = router.parse(
+            raw = """{"intent":"SEARCH","external_tool":"news"}""",
+            originalPrompt = "news of today",
+        )!!
+        assertEquals(ExternalTool.NEWS, top.externalTool)
+        assertNull(top.searchQuery)
+
+        val topic = router.parse(
+            raw = """{"intent":"SEARCH","external_tool":"news","search_query":"artificial intelligence news today"}""",
+            originalPrompt = "what is the latest AI news",
+        )!!
+        assertEquals(ExternalTool.NEWS, topic.externalTool)
+        assertEquals("artificial intelligence news today", topic.searchQuery)
     }
 
     @Test
     fun uncheckedWebToggleDoesNotVetoSemanticSearch() {
         val planned = GroundingRoute(
             intent = GroundingIntent.SEARCH,
-            externalTool = ExternalTool.TAVILY,
+            externalTool = ExternalTool.SPORTS,
             searchQuery = "India vs Sri Lanka cricket live score",
-            tavilyTopic = TavilySearchTopic.NEWS,
-            tavilyTimeRange = TavilyTimeRange.DAY,
         )
 
         val effective = router.applyExplicitWebPreference(
@@ -146,7 +166,7 @@ class GroundingIntentRouterTest {
     fun searchAndBothMustExplicitlySelectExternalCapability() {
         assertNull(
             router.parse(
-                raw = """{"intent":"SEARCH","search_query":"India cricket live score","topic":"news","time_range":"day"}""",
+                raw = """{"intent":"SEARCH","search_query":"India cricket live score"}""",
                 originalPrompt = "search the live cricket score",
             ),
         )
@@ -168,8 +188,14 @@ class GroundingIntentRouterTest {
         )
         assertNull(
             router.parse(
-                raw = """{"intent":"SEARCH","external_tool":"tavily","search_query":"news today","topic":"news","weather_horizon":"today"}""",
+                raw = """{"intent":"SEARCH","external_tool":"news","topic":"news"}""",
                 originalPrompt = "news today",
+            ),
+        )
+        assertNull(
+            router.parse(
+                raw = """{"intent":"SEARCH","external_tool":"sports","time_range":"day","search_query":"NBA score"}""",
+                originalPrompt = "nba score",
             ),
         )
         assertNull(
@@ -235,13 +261,13 @@ class GroundingIntentRouterTest {
     }
 
     @Test
-    fun explicitWebsiteRequestBecomesValidatedTavilyDomainConstraint() {
+    fun explicitNonSportsWebsiteRequestCanUseValidatedTavilyDomainConstraint() {
         val route = router.parse(
-            raw = """{"intent":"SEARCH","external_tool":"tavily","search_query":"India cricket live score","topic":"news","time_range":"day","source_domains":["https://www.espn.in/cricket/","bad host","ESPN.IN"]}""",
-            originalPrompt = "check espn for the india cricket score",
+            raw = """{"intent":"SEARCH","external_tool":"tavily","search_query":"latest technology news","topic":"news","time_range":"day","source_domains":["https://www.reuters.com/technology/","bad host","REUTERS.COM"]}""",
+            originalPrompt = "check reuters for the latest technology news",
         )!!
 
-        assertEquals(listOf("www.espn.in", "espn.in"), route.sourceDomains)
+        assertEquals(listOf("www.reuters.com", "reuters.com"), route.sourceDomains)
     }
 
     @Test
