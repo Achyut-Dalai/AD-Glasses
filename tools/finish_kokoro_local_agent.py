@@ -211,13 +211,27 @@ if new_prebuild not in build:
         raise SystemExit("Could not find preBuild dependency block")
     build = build.replace(old_prebuild, new_prebuild, 1)
 
+# The Android AAR currently declares sherpa-onnx-jvm transitively. Exclude that JVM artifact so
+# Android sees one copy of com.k2fsa.sherpa.onnx.* classes instead of both the JAR and AAR copies.
+plain_sherpa = "    implementation 'com.github.k2-fsa.sherpa-onnx:sherpa-onnx:v1.13.6'\n"
+excluded_sherpa = '''    implementation('com.github.k2-fsa.sherpa-onnx:sherpa-onnx:v1.13.6') {
+        exclude group: 'com.github.k2-fsa.sherpa-onnx', module: 'sherpa-onnx-jvm'
+    }
+'''
+if excluded_sherpa not in build:
+    if plain_sherpa not in build:
+        raise SystemExit("Could not find sherpa-onnx Android dependency")
+    build = build.replace(plain_sherpa, excluded_sherpa, 1)
+
 if "exclude(\"com/myvu/client/ai/TtsPlayer.java\")" not in build:
     raise SystemExit("MYVU upstream TtsPlayer exclusion was not installed")
 if "java.srcDir(myvuGeneratedJavaSourceDir)" not in build:
     raise SystemExit("MYVU generated Java source directory was not installed")
+if "module: 'sherpa-onnx-jvm'" not in build:
+    raise SystemExit("sherpa-onnx-jvm Android exclusion was not installed")
 
 if build != original_build:
     BUILD.write_text(build, encoding="utf-8")
-    print("Configured MYVU generated source without upstream Android TTS player")
+    print("Configured MYVU generated source and single sherpa Android runtime")
 else:
-    print("MYVU source replacement already configured")
+    print("MYVU/sherpa Android build configuration already migrated")
