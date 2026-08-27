@@ -1,6 +1,7 @@
 package com.ad_glasses.ai.voice
 
 import android.content.Context
+import com.ad_glasses.shared.voice.Kokoro82MVoicePack
 import com.ad_glasses.shared.voice.KokoroHeartVoice
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
@@ -26,10 +27,10 @@ internal data class KokoroModelFiles(
 )
 
 /**
- * Downloads and installs the fp32 Kokoro multilingual model on first use.
+ * Downloads and installs the complete fp32 Kokoro-82M multilingual v1.0 pack on first use.
  *
- * The model is deliberately kept out of the APK and in noBackupFilesDir. That keeps normal APK
- * iteration reasonable and avoids Android restoring hundreds of MB of generated model data.
+ * voices.bin is deliberately preserved intact so changing the selected Kokoro speaker later does
+ * not require a different model install. The model lives in noBackupFilesDir rather than the APK.
  */
 internal object KokoroModelInstaller {
     private const val READY_MARKER = ".ad-glasses-kokoro-fp32-v1.ready"
@@ -50,10 +51,10 @@ internal object KokoroModelInstaller {
     ): KokoroModelFiles = withContext(Dispatchers.IO) {
         val appContext = context.applicationContext
         val modelsRoot = File(appContext.noBackupFilesDir, "voice-models").apply { mkdirs() }
-        val target = File(modelsRoot, KokoroHeartVoice.MODEL_ID)
+        val target = File(modelsRoot, Kokoro82MVoicePack.MODEL_ID)
         findReadyModel(target)?.let { return@withContext it }
 
-        val staging = File(modelsRoot, ".${KokoroHeartVoice.MODEL_ID}.staging")
+        val staging = File(modelsRoot, ".${Kokoro82MVoicePack.MODEL_ID}.staging")
         val archive = File(appContext.cacheDir, ARCHIVE_NAME)
         staging.deleteRecursively()
         staging.mkdirs()
@@ -62,10 +63,10 @@ internal object KokoroModelInstaller {
             downloadArchive(archive, onProgress)
             extractArchive(archive, staging)
 
-            val extractedRoot = File(staging, KokoroHeartVoice.MODEL_ID)
-            val files = requireModelFiles(extractedRoot)
+            val extractedRoot = File(staging, Kokoro82MVoicePack.MODEL_ID)
+            requireModelFiles(extractedRoot)
             File(extractedRoot, READY_MARKER).writeText(
-                "model=${KokoroHeartVoice.MODEL_ID}\nvoice=${KokoroHeartVoice.VOICE_ID}\nspeaker=${KokoroHeartVoice.SPEAKER_ID}\n",
+                "model=${Kokoro82MVoicePack.MODEL_ID}\npack=full-voices-bin\ndefaultVoice=${KokoroHeartVoice.VOICE_ID}\ndefaultSpeaker=${KokoroHeartVoice.SPEAKER_ID}\n",
             )
 
             target.deleteRecursively()
@@ -83,7 +84,7 @@ internal object KokoroModelInstaller {
     fun installedModel(context: Context): KokoroModelFiles? {
         val target = File(
             File(context.applicationContext.noBackupFilesDir, "voice-models"),
-            KokoroHeartVoice.MODEL_ID,
+            Kokoro82MVoicePack.MODEL_ID,
         )
         return findReadyModel(target)
     }
@@ -129,7 +130,7 @@ internal object KokoroModelInstaller {
         onProgress: ((downloadedBytes: Long, totalBytes: Long) -> Unit)?,
     ) {
         val request = Request.Builder()
-            .url(KokoroHeartVoice.MODEL_ARCHIVE_URL)
+            .url(Kokoro82MVoicePack.MODEL_ARCHIVE_URL)
             .header("User-Agent", "AD-Glasses/KokoroModelInstaller")
             .build()
 
