@@ -1,5 +1,6 @@
 package com.ad_glasses.ai.grounding
 
+import android.os.SystemClock
 import java.io.IOException
 import java.util.Locale
 import java.util.concurrent.TimeUnit
@@ -20,6 +21,8 @@ import org.json.JSONObject
  * Nominatim's viewbox is a ranking hint unless a bounded search is requested, so it is a poor
  * primitive for "KFC near me" or "navigate to the nearest KFC". This client asks Overpass for
  * named OSM features inside an explicit radius and ranks the returned candidates locally.
+ * Consecutive voice turns reuse a short-lived cache so a slow public Overpass instance is not hit
+ * repeatedly for the same nearby lookup.
  */
 internal class NamedOsmPoiClient(
     private val configProvider: () -> GroundingServiceConfig,
@@ -40,17 +43,22 @@ internal class NamedOsmPoiClient(
         require(clean.isNotBlank()) { "Nearby place query cannot be blank." }
         val radius = radiusMeters.coerceIn(MIN_RADIUS_METERS, MAX_RADIUS_METERS)
         val outputLimit = limit.coerceIn(1, MAX_RESULTS)
+        val config = configProvider()
+        val key = cacheKey(config.overpassEndpoint, origin, clean, radius, outputLimit)
+        synchronized(cache) {
+            cache[key]?.takeIf { SystemClock.elapsedRealtime() - it.createdAtMs <= CACHE_TTL_MS }
+        }?.let { return Result.success(it.places) }
+
         val valuePattern = escapeOverpassRegex(clean)
         val overpassQuery = buildString {
-            append("[out:json][timeout:6];(")
-            SEARCH_TAGS.forEach { key ->
+            append("[out:json][timeout:$OVERPASS_QUERY_TIMEOUT_SECONDS];(")
+            SEARCH_TAGS.forEach { tag ->
                 append("nwr(around:$radius,${origin.latitude},${origin.longitude})")
-                append("[\"").append(key).append("\"~\"").append(valuePattern).append("\",i];")
+                append("[\"").append(tag).append("\"~\"").append(valuePattern).append("\",i];")
             }
             append(");out body center ").append(MAX_RAW_RESULTS).append(';')
         }
 
-        val config = configProvider()
         val request = Request.Builder()
             .url(config.overpassEndpoint)
             .header("User-Agent", USER_AGENT)
@@ -63,6 +71,10 @@ internal class NamedOsmPoiClient(
             val payload = response.body?.string().orEmpty()
             if (!response.isSuccessful) throw IOException("Overpass named POI HTTP ${response.code}")
             parse(payload, origin, clean, outputLimit)
+        }
+        synchronized(cache) {
+            if (cache.size >= CACHE_LIMIT) cache.keys.firstOrNull()?.let(cache::remove)
+            cache[key] = CachedPlaces(SystemClock.elapsedRealtime(), places)
         }
         Result.success(places)
     } catch (cancelled: CancellationException) {
@@ -175,28 +187,36 @@ internal class NamedOsmPoiClient(
     private fun roundedPoint(point: GeoPoint): Pair<Int, Int> =
         (point.latitude * 100_000).toInt() to (point.longitude * 100_000).toInt()
 
+    private fun cacheKey(endpoint: String, point: GeoPoint, query: String, radius: Int, limit: Int): String =
+        "$endpoint|${(point.latitude * 10_000).toInt()}|${(point.longitude * 10_000).toInt()}|${normalize(query)}|$radius|$limit"
+
     private data class RankedPlace(val place: OsmPlace, val textRank: Int)
+    private data class CachedPlaces(val createdAtMs: Long, val places: List<OsmPlace>)
 
     private companion object {
         const val USER_AGENT = "AD-Glasses/alpha (https://github.com/Achyut-Dalai/AD-Glasses)"
-        const val CALL_TIMEOUT_SECONDS = 7L
+        const val CALL_TIMEOUT_SECONDS = 5L
+        const val OVERPASS_QUERY_TIMEOUT_SECONDS = 4
         const val MIN_RADIUS_METERS = 50
         const val MAX_RADIUS_METERS = 25_000
         const val MAX_QUERY_CHARS = 96
         const val MAX_RESULTS = 12
-        const val MAX_RAW_RESULTS = 40
+        const val MAX_RAW_RESULTS = 32
         const val MAX_NAME_CHARS = 180
         const val MAX_DESCRIPTOR_CHARS = 420
         const val UNRELATED_TEXT_RANK = 4
+        const val CACHE_TTL_MS = 45_000L
+        const val CACHE_LIMIT = 64
         val SEARCH_TAGS = listOf("name", "brand", "operator", "short_name")
         val SAFE_PUNCTUATION = setOf('&', '\'', '-', '.', '(', ')', '/')
         val REGEX_META = setOf('.', '^', '$', '|', '?', '*', '+', '(', ')', '[', ']', '{', '}')
+        val cache = LinkedHashMap<String, CachedPlaces>()
 
         fun defaultClient(): OkHttpClient = OkHttpClient.Builder()
-            .connectTimeout(3, TimeUnit.SECONDS)
-            .readTimeout(7, TimeUnit.SECONDS)
-            .writeTimeout(3, TimeUnit.SECONDS)
-            .callTimeout(8, TimeUnit.SECONDS)
+            .connectTimeout(2, TimeUnit.SECONDS)
+            .readTimeout(5, TimeUnit.SECONDS)
+            .writeTimeout(2, TimeUnit.SECONDS)
+            .callTimeout(5, TimeUnit.SECONDS)
             .build()
     }
 }
