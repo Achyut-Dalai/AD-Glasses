@@ -7,6 +7,7 @@ import com.ad_glasses.ai.router.AgentInferencePurpose
 import com.ad_glasses.ai.router.AgentInferenceRouter
 import com.ad_glasses.ai.router.CloudGenerationMode
 import com.ad_glasses.shared.settings.AgentProviderType
+import java.util.Locale
 import kotlinx.coroutines.CancellationException
 import org.json.JSONObject
 
@@ -71,8 +72,9 @@ data class GroundingRoute(
 )
 
 /**
- * History-free semantic execution planner. The model decides meaning; Kotlin validates that the
- * returned plan is coherent before any network/location capability is allowed to run.
+ * History-free semantic execution planner. High-confidence utility intents are routed locally so
+ * every obvious score/weather/location request does not pay for a large LLM classification prompt.
+ * Ambiguous turns still use the semantic planner and the same strict validation below.
  */
 class GroundingIntentRouter(context: Context) {
     private val appContext = context.applicationContext
@@ -96,6 +98,19 @@ class GroundingIntentRouter(context: Context) {
         else "$cleanPrompt. Visible evidence: $cleanEvidence".take(MAX_QUERY_CHARS)
 
         val startedAt = SystemClock.elapsedRealtime()
+        val fast = if (cleanEvidence == null) fastRoute(cleanPrompt) else null
+        if (fast != null) {
+            val effective = applyExplicitWebPreference(fast, fallbackQuery, explicitWebRequest)
+            logRoute(
+                route = effective,
+                explicitWebRequest = explicitWebRequest,
+                currentEvidence = false,
+                startedAt = startedAt,
+                fast = true,
+            )
+            return Result.success(effective)
+        }
+
         val raw = requestPlan(
             sessionId = "$sessionId-grounding-router",
             systemPrompt = ROUTER_SYSTEM_PROMPT,
@@ -117,18 +132,12 @@ class GroundingIntentRouter(context: Context) {
         }
         val valid = parsed ?: throw IllegalStateException("Grounding router returned an invalid execution plan.")
         val effective = applyExplicitWebPreference(valid, fallbackQuery, explicitWebRequest)
-        val hasExternal = effective.intent == GroundingIntent.SEARCH || effective.intent == GroundingIntent.BOTH
-        val externalLabel = if (hasExternal) effective.externalTool.name.lowercase() else "none"
-        val isTavily = hasExternal && effective.externalTool == ExternalTool.TAVILY
-        Log.i(
-            TAG,
-            "route_done intent=${effective.intent.name.lowercase()} external=$externalLabel " +
-                "topic=${if (isTavily) effective.tavilyTopic.wire else "none"} " +
-                "freshness=${if (isTavily) effective.tavilyTimeRange?.wire ?: "none" else "none"} " +
-                "spatial=${effective.spatialAction?.name?.lowercase() ?: "none"} osmFilters=${effective.osmFilters.size} " +
-                "needsContext=${effective.needsContext} synthesize=${effective.synthesize} " +
-                "forcedWeb=${explicitWebRequest == true} currentEvidence=${cleanEvidence != null} " +
-                "elapsedMs=${SystemClock.elapsedRealtime() - startedAt}",
+        logRoute(
+            route = effective,
+            explicitWebRequest = explicitWebRequest,
+            currentEvidence = cleanEvidence != null,
+            startedAt = startedAt,
+            fast = false,
         )
         Result.success(effective)
     } catch (cancelled: CancellationException) {
@@ -136,6 +145,130 @@ class GroundingIntentRouter(context: Context) {
     } catch (error: Throwable) {
         Log.w(TAG, "route_failed type=${error::class.java.simpleName}")
         Result.failure(error)
+    }
+
+    private fun logRoute(
+        route: GroundingRoute,
+        explicitWebRequest: Boolean?,
+        currentEvidence: Boolean,
+        startedAt: Long,
+        fast: Boolean,
+    ) {
+        val hasExternal = route.intent == GroundingIntent.SEARCH || route.intent == GroundingIntent.BOTH
+        val externalLabel = if (hasExternal) route.externalTool.name.lowercase() else "none"
+        val isTavily = hasExternal && route.externalTool == ExternalTool.TAVILY
+        Log.i(
+            TAG,
+            "route_done intent=${route.intent.name.lowercase()} external=$externalLabel " +
+                "topic=${if (isTavily) route.tavilyTopic.wire else "none"} " +
+                "freshness=${if (isTavily) route.tavilyTimeRange?.wire ?: "none" else "none"} " +
+                "spatial=${route.spatialAction?.name?.lowercase() ?: "none"} osmFilters=${route.osmFilters.size} " +
+                "needsContext=${route.needsContext} synthesize=${route.synthesize} fast=$fast " +
+                "forcedWeb=${explicitWebRequest == true} currentEvidence=$currentEvidence " +
+                "elapsedMs=${SystemClock.elapsedRealtime() - startedAt}",
+        )
+    }
+
+    /** Only routes intents with a very low ambiguity risk. Everything else still goes to the model. */
+    internal fun fastRoute(prompt: String): GroundingRoute? {
+        val clean = prompt.trim()
+        val lower = clean.lowercase(Locale.US)
+
+        val spatial = AssistantGroundingPolicy.spatialIntent(clean)
+        if (spatial.locationOnly) {
+            return GroundingRoute(
+                intent = GroundingIntent.SPATIAL,
+                spatialAction = SpatialAction.LOCATION,
+                useCurrentLocation = true,
+                synthesize = false,
+            )
+        }
+        if (spatial.routeRequested && (spatial.routeDestination != null || spatial.routeOrigin != null)) {
+            return GroundingRoute(
+                intent = GroundingIntent.SPATIAL,
+                spatialAction = SpatialAction.ROUTE,
+                spatialQuery = spatial.routeDestination,
+                routeOrigin = spatial.routeOrigin,
+                routeDestination = spatial.routeDestination,
+                routeMode = spatial.routeMode,
+                useCurrentLocation = spatial.routeOrigin == null,
+                synthesize = false,
+            )
+        }
+
+        val nearbyQuery = extractNearbyQuery(clean)
+        if (nearbyQuery != null || spatial.filters.isNotEmpty()) {
+            return GroundingRoute(
+                intent = GroundingIntent.SPATIAL,
+                spatialAction = SpatialAction.NEARBY,
+                spatialQuery = nearbyQuery ?: clean,
+                osmFilters = spatial.filters,
+                radiusMeters = spatial.radiusMeters,
+                useCurrentLocation = spatial.referencePlace == null,
+                referencePlace = spatial.referencePlace,
+                synthesize = false,
+            )
+        }
+
+        if (SPORTS_DATA_CUE.containsMatchIn(lower) && !NON_SPORTS_SCORE_CONTEXT.containsMatchIn(lower)) {
+            return GroundingRoute(
+                intent = GroundingIntent.SEARCH,
+                externalTool = ExternalTool.SPORTS,
+                searchQuery = clean.take(MAX_QUERY_CHARS),
+                synthesize = false,
+            )
+        }
+        if (SPORTS_HEADLINES.matches(lower)) {
+            return GroundingRoute(
+                intent = GroundingIntent.SEARCH,
+                externalTool = ExternalTool.SPORTS,
+                searchQuery = null,
+                synthesize = false,
+            )
+        }
+
+        if (WEATHER_CUE.containsMatchIn(lower)) {
+            val horizon = when {
+                Regex("\\btomorrow\\b").containsMatchIn(lower) -> WeatherHorizon.TOMORROW
+                Regex("\\b(?:week|weekly|7[ -]?day)\\b").containsMatchIn(lower) -> WeatherHorizon.WEEK
+                Regex("\\btoday\\b").containsMatchIn(lower) -> WeatherHorizon.TODAY
+                else -> WeatherHorizon.CURRENT
+            }
+            val explicitPlace = WEATHER_PLACE.find(clean)?.groupValues?.getOrNull(1)
+                ?.trim()?.trimEnd('?', '.', '!')?.takeIf(String::isNotBlank)
+            val currentCue = CURRENT_LOCATION_CUE.containsMatchIn(lower) || explicitPlace == null
+            return GroundingRoute(
+                intent = GroundingIntent.SEARCH,
+                externalTool = ExternalTool.WEATHER,
+                weatherHorizon = horizon,
+                useCurrentLocation = currentCue,
+                referencePlace = if (currentCue) null else explicitPlace,
+                synthesize = false,
+            )
+        }
+
+        if (NEWS_CUE.containsMatchIn(lower)) {
+            val broad = BROAD_NEWS.matches(lower)
+            return GroundingRoute(
+                intent = GroundingIntent.SEARCH,
+                externalTool = ExternalTool.NEWS,
+                searchQuery = if (broad) null else clean.take(MAX_QUERY_CHARS),
+                synthesize = false,
+            )
+        }
+        return null
+    }
+
+    internal fun extractNearbyQuery(prompt: String): String? {
+        val patterns = listOf(
+            Regex("^(?:find|show me|where(?:'s| is)|what(?:'s| is))?\\s*(?:the\\s+)?(.+?)\\s+(?:near me|nearby|around me|around here|close to me|close by)\\s*[?.!]*$", RegexOption.IGNORE_CASE),
+            Regex("\\b(?:nearest|closest)\\s+(.+?)(?:\\s+to\\s+(?:me|here))?\\s*[?.!]*$", RegexOption.IGNORE_CASE),
+            Regex("^(?:find|show me)\\s+(.+?)\\s+within\\s+\\d+(?:\\.\\d+)?\\s*(?:m|meters?|metres?|km|kilometers?|kilometres?|mi|miles?|ft|feet)\\b.*$", RegexOption.IGNORE_CASE),
+        )
+        return patterns.asSequence()
+            .mapNotNull { pattern -> pattern.find(prompt)?.groupValues?.getOrNull(1) }
+            .map { it.replace(Regex("\\s+"), " ").trim().removePrefix("a ").removePrefix("an ").removePrefix("the ") }
+            .firstOrNull { it.isNotBlank() && it.length <= MAX_QUERY_CHARS }
     }
 
     private suspend fun requestPlan(
@@ -445,7 +578,7 @@ class GroundingIntentRouter(context: Context) {
         const val MAX_QUERY_CHARS = 700
         const val MAX_DIRECT_ANSWER_CHARS = 1_400
         const val MAX_TRANSLATION_CHARS = 2_000
-        const val ROUTER_MAX_TOKENS = 384
+        const val ROUTER_MAX_TOKENS = 192
         const val MIN_RADIUS_METERS = 50
         const val MAX_RADIUS_METERS = 5_000
         const val MAX_SOURCE_DOMAINS = 4
@@ -460,22 +593,33 @@ class GroundingIntentRouter(context: Context) {
             "railway", "public_transport", "sport", "cuisine", "brand", "name",
         )
 
+        val SPORTS_DATA_CUE = Regex(
+            "\\b(?:live\\s+)?scores?\\b|\\bstandings?\\b|\\bfixtures?\\b|\\bschedule\\b|\\bresults?\\b|\\bwho won\\b|\\bwho(?:'s| is) winning\\b|\\bleague table\\b",
+            RegexOption.IGNORE_CASE,
+        )
+        val NON_SPORTS_SCORE_CONTEXT = Regex(
+            "\\b(?:credit|exam|test|essay|assignment|movie|film|music|iq|sat|act|rating|review)\\s+score\\b|\\bscore\\s+(?:this|my)\\b",
+            RegexOption.IGNORE_CASE,
+        )
+        val SPORTS_HEADLINES = Regex("^(?:top\\s+)?(?:sports?|espn)\\s+(?:news|headlines?)\\s*[?.!]*$", RegexOption.IGNORE_CASE)
+        val WEATHER_CUE = Regex("\\b(?:weather|forecast|temperature|rain(?:ing)?|snow(?:ing)?|humidity)\\b", RegexOption.IGNORE_CASE)
+        val WEATHER_PLACE = Regex("\\b(?:weather|forecast|temperature)\\s+(?:in|for|at)\\s+(.+)$", RegexOption.IGNORE_CASE)
+        val CURRENT_LOCATION_CUE = Regex("\\b(?:here|near me|around me|my location|current location)\\b", RegexOption.IGNORE_CASE)
+        val NEWS_CUE = Regex("\\b(?:news|headlines?)\\b", RegexOption.IGNORE_CASE)
+        val BROAD_NEWS = Regex("^(?:top\\s+|latest\\s+|today(?:'s)?\\s+)?(?:news|headlines?)\\s*[?.!]*$", RegexOption.IGNORE_CASE)
+
         const val ROUTER_SYSTEM_PROMPT =
-            "You are AD's history-free execution planner and concise stable-knowledge answerer. Use only the CURRENT turn and any explicitly labelled current-turn visual evidence. Return exactly one compact JSON object and no prose. " +
-                "DECISION ORDER: (1) If the utterance requires a missing previous-turn referent, set needs_context=true and never guess the referent. (2) Decide the data requirement: DIRECT=stable knowledge/reasoning answerable safely now; SEARCH=one external capability; SPATIAL=the answer itself is a place/location/nearby/distance/route fact; BOTH=spatial facts plus one external capability. (3) Pick the single best external capability. (4) Emit only that capability's required fields. " +
-                "DIRECT ANSWER POLICY: for a simple standalone stable request, set synthesize=false and include direct_answer as the concise final answer in this same call. For a detailed/long-form request, substantial reasoning, code generation, rewriting, structured drafting, or any stable task that benefits from the normal answer model, set synthesize=true and OMIT direct_answer; the host will make the full answer call. This is not external search. " +
-                "TOOL SYNTHESIS POLICY: for SEARCH/SPATIAL/BOTH set synthesize=true only when comparison, ranking, transformation, reasoning across evidence, or combining multiple facts is needed. Simple source answers may use false. " +
-                "FRESHNESS RULE: anything that can have changed since model training, or asks current/live/latest/recent/today/now, must not be DIRECT. Never put a refusal such as 'I cannot access current data' in direct_answer; choose an executable SEARCH/BOTH plan instead. If freshness is uncertain, prefer SEARCH. Tolerate obvious ASR errors, but do not aggressively rewrite names/entities. " +
-                "EXPLICIT LOOKUP RULE: if the user explicitly asks you to search, look up, browse, check, verify, consult, or use an external source/site, external data is required even when the underlying fact may be stable. Choose SEARCH, or BOTH when spatial resolution is also needed. This is semantic user intent, not a host keyword trigger. " +
-                "CAPABILITIES: sports=current/external sports scores, results, schedules, standings, rankings, stats and sports headlines for ANY sport. Do not use SPORTS for stable rules/history that DIRECT can answer. news=current/recent general or topic news headlines/events. weather=current/forecast weather via location or reference_place. wikipedia=source-backed encyclopedic named-topic lookup. dictionary=word meaning/pronunciation/synonyms. currency=reference fiat conversion. books=book/author/publication lookup. translation=translate supplied text. tavily=arbitrary web/site/article-body/product/price/software/transport/detail/verification or anything external not better served above. Prefer a specialized capability when it directly fits; Tavily is the catch-all, not the default. " +
-                "NEWS/SPORTS QUERY RULE: search_query is REQUIRED when the user names a team, player, event, league, match, topic, person, organization, place, or asks a particular score/result/schedule/story. Omit search_query only for genuinely broad top headlines such as 'top news' or 'sports headlines'. NEWS/SPORTS do not use Tavily topic/time_range/source_domains fields. " +
-                "TAVILY: search_query is required. topic is only general|news|finance; time_range only day|week|month|year; source_domains only when the USER explicitly names a site/domain. Use Tavily for article-body detail or a specifically requested website even if the subject is news/sports. " +
-                "WEATHER: weather_horizon=current|today|tomorrow|week. A location used only as INPUT does not make the intent SPATIAL: 'weather near me' is SEARCH+weather+use_current_location=true with no spatial_action. SPATIAL is only when the answer itself is spatial. " +
-                "OTHER REQUIRED FIELDS: currency needs amount/base_currency/quote_currency. translation needs translation_text/target_language and optional source_language. wikipedia/dictionary/books need search_query. SPATIAL/BOTH use spatial_action=nearby|route|location. nearby uses spatial_query plus optional safe osm_filters/radius_meters/reference_place/use_current_location; convert spoken distances to metres. route uses route_destination plus optional route_origin/route_mode. BOTH resolves spatial facts first; only public place names/coarse area may go to the external capability. " +
-                "FIELD BOUNDARIES: DIRECT never has external/spatial/location fields. DIRECT+synthesize=false requires direct_answer; DIRECT+synthesize=true omits direct_answer. If needs_context=true omit direct_answer and unresolved slots. SEARCH has no spatial execution fields. SPATIAL has no external fields. BOTH has both. Never mix tool-owned fields. Never output URLs/endpoints/API keys/GPS coordinates/Overpass QL. Omit irrelevant/null/extra keys. " +
-                "EXAMPLES: {\"intent\":\"SEARCH\",\"external_tool\":\"sports\",\"search_query\":\"India vs Sri Lanka cricket live score\"}; {\"intent\":\"SEARCH\",\"external_tool\":\"news\"}; {\"intent\":\"SEARCH\",\"external_tool\":\"news\",\"search_query\":\"artificial intelligence news today\"}; {\"intent\":\"SEARCH\",\"external_tool\":\"weather\",\"weather_horizon\":\"current\",\"use_current_location\":true}; {\"intent\":\"SPATIAL\",\"spatial_action\":\"nearby\",\"spatial_query\":\"KFC\",\"radius_meters\":3000,\"use_current_location\":true}; {\"intent\":\"SEARCH\",\"external_tool\":\"tavily\",\"needs_context\":true}; {\"intent\":\"DIRECT\",\"direct_answer\":\"A concise stable answer.\"}; {\"intent\":\"DIRECT\",\"synthesize\":true}."
+            "Return exactly one compact JSON execution plan for the CURRENT turn; no prose or history. " +
+                "If a missing previous-turn referent is required, set needs_context=true and do not guess it. " +
+                "intent: DIRECT for stable knowledge/reasoning; SEARCH for one external capability; SPATIAL when the answer itself is location/nearby/route data; BOTH for spatial plus one external capability. " +
+                "Current/live/latest/recent/today/now or an explicit request to search/check/verify is never DIRECT. If freshness is uncertain, prefer SEARCH. " +
+                "external_tool: sports for current scores/results/schedules/standings/stats; news for current headlines; weather for current/forecast weather; wikipedia for encyclopedic lookup; dictionary for definitions; currency for fiat conversion; books for book/author lookup; translation for supplied text; tavily for other web/site/article/product/software/detail queries. Prefer specialized tools. " +
+                "Specific NEWS/SPORTS queries require search_query; broad headlines may omit it. WEATHER uses weather_horizon=current|today|tomorrow|week plus use_current_location or reference_place. Currency needs amount/base_currency/quote_currency. Translation needs translation_text/target_language. Wikipedia/dictionary/books need search_query. " +
+                "SPATIAL/BOTH use spatial_action=nearby|route|location. Nearby uses spatial_query plus optional osm_filters/radius_meters/reference_place/use_current_location. Route uses route_destination plus optional route_origin/route_mode. Never output URLs, API keys, coordinates, or Overpass code. " +
+                "DIRECT simple answers may include direct_answer with synthesize=false; detailed/reasoning/code/writing DIRECT work should set synthesize=true and omit direct_answer. SEARCH/SPATIAL/BOTH use synthesize=true only when evidence must be combined/reasoned over. Omit null/irrelevant fields and never mix tool-owned fields. " +
+                "Examples: {\"intent\":\"SEARCH\",\"external_tool\":\"sports\",\"search_query\":\"India vs Sri Lanka cricket live score\"}; {\"intent\":\"SPATIAL\",\"spatial_action\":\"nearby\",\"spatial_query\":\"KFC\",\"radius_meters\":3000,\"use_current_location\":true}; {\"intent\":\"DIRECT\",\"synthesize\":true}."
 
         const val ROUTER_REPAIR_PROMPT =
-            "Repair the CURRENT turn into exactly one compact JSON execution plan, no prose/history. If a missing prior referent is required set needs_context=true and do not invent it. Choose by required data: DIRECT=stable; SEARCH=one external capability; SPATIAL=OSM/OSRM answer; BOTH=spatial plus external. For a simple DIRECT answer include direct_answer with synthesize=false; for detailed/reasoning/code/writing DIRECT work use synthesize=true and omit direct_answer. Current/live/latest/recent/today/now data or an explicit user request to search/check/verify external information is never DIRECT. Never return a current-data refusal as direct_answer. Choose external_tool from tavily|news|sports|weather|wikipedia|dictionary|currency|books|translation. NEWS/SPORTS require search_query for a specific named topic/team/event/result/score/schedule and may omit it only for broad headlines. Weather using location is SEARCH, not SPATIAL. Tavily alone may use topic/time_range/source_domains. SEARCH has no spatial execution fields; SPATIAL has no external fields; BOTH has both. Null/irrelevant fields should be omitted. Output no URLs/GPS/code."
+            "Return one valid compact JSON plan only. intent is DIRECT|SEARCH|SPATIAL|BOTH. Current or explicitly searched data is not DIRECT. Choose one external_tool from tavily|news|sports|weather|wikipedia|dictionary|currency|books|translation. Specific news/sports needs search_query. Nearby/route/location use spatial_action and required fields. If prior context is missing set needs_context=true. Omit null/irrelevant fields, URLs and coordinates."
     }
 }
