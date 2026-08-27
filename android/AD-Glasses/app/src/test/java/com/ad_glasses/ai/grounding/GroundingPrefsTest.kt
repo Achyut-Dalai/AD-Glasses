@@ -74,4 +74,29 @@ class GroundingPrefsTest {
             )
         }
     }
+
+    @Test
+    fun gtfsFeedUrlsAllowEncryptedQueryTokensButRejectUnsafeSchemes() {
+        assertEquals(
+            "https://transit.example.com/gtfs.pb?token=secret",
+            GroundingPrefs.validatedHttpsUrl("https://transit.example.com/gtfs.pb?token=secret"),
+        )
+        assertThrows(IllegalArgumentException::class.java) {
+            GroundingPrefs.validatedHttpsUrl("http://transit.example.com/gtfs.pb")
+        }
+        assertThrows(IllegalArgumentException::class.java) {
+            GroundingPrefs.validatedHttpsUrl("https://user:pass@transit.example.com/gtfs.pb")
+        }
+    }
+
+    @Test
+    fun rapidApiHostValidationAcceptsHostOnly() {
+        assertEquals(
+            "irctc1.p.rapidapi.com",
+            GroundingPrefs.validatedRapidApiHost("https://irctc1.p.rapidapi.com/"),
+        )
+        assertThrows(IllegalArgumentException::class.java) {
+            GroundingPrefs.validatedRapidApiHost("irctc1.p.rapidapi.com/api/v1")
+        }
+    }
 }

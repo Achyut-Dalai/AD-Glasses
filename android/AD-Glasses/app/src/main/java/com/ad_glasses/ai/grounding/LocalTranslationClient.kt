@@ -6,6 +6,7 @@ import com.google.mlkit.common.model.DownloadConditions
 import com.google.mlkit.nl.languageid.LanguageIdentification
 import com.google.mlkit.nl.translate.TranslateLanguage
 import com.google.mlkit.nl.translate.Translation
+import com.google.mlkit.nl.translate.Translator
 import com.google.mlkit.nl.translate.TranslatorOptions
 import kotlin.coroutines.resumeWithException
 import kotlinx.coroutines.CancellationException
@@ -14,12 +15,17 @@ import kotlinx.coroutines.suspendCancellableCoroutine
 /**
  * On-device ML Kit translation. Models are downloaded once and then reused by ML Kit locally.
  * A translation explicitly requested by the user is allowed to download the required model on the
- * active network. ML Kit models are ~30 MB, but silently refusing a user-requested translation just
- * because Android does not currently classify the connection as Wi-Fi is worse UX than the bounded
- * download. If ML Kit cannot complete the translation, return a bounded task as tool context so the
- * configured AD LLM can translate it.
+ * active network. Translators and successfully prepared language pairs are also reused across voice
+ * turns so repeated translations do not recreate clients or re-run model readiness checks.
+ *
+ * If ML Kit cannot complete the translation, return a bounded task as tool context so the configured
+ * AD LLM can translate it instead of failing the entire request.
  */
 class LocalTranslationClient {
+    private val cacheLock = Any()
+    private val translators = LinkedHashMap<String, Translator>()
+    private val preparedPairs = mutableSetOf<String>()
+
     suspend fun translate(
         text: String,
         sourceLanguage: String?,
@@ -45,23 +51,21 @@ class LocalTranslationClient {
             )
         }
 
-        val translator = Translation.getClient(
-            TranslatorOptions.Builder()
-                .setSourceLanguage(source)
-                .setTargetLanguage(target)
-                .build(),
-        )
-        try {
-            // No requireWifi(): this call only happens after the user explicitly asks for a
-            // translation. Android/ML Kit may otherwise reject or defer the model even while the
-            // Wi-Fi radio is enabled. Existing downloaded models are still reused without traffic.
+        val pairKey = "$source>$target"
+        val translator = translatorFor(source, target, pairKey)
+        // No requireWifi(): this call only happens after the user explicitly asks for a translation.
+        // Existing downloaded models are reused without traffic. Once a pair has prepared successfully
+        // in this client instance, skip the redundant readiness task on subsequent voice turns.
+        if (!isPrepared(pairKey)) {
             val conditions = DownloadConditions.Builder().build()
             try {
                 translator.downloadModelIfNeeded(conditions).awaitTask()
+                markPrepared(pairKey)
                 Log.i(TAG, "translation_model_ready source=$source target=$target")
             } catch (cancelled: CancellationException) {
                 throw cancelled
             } catch (error: Throwable) {
+                markUnprepared(pairKey)
                 Log.w(
                     TAG,
                     "translation_model_failed source=$source target=$target " +
@@ -69,33 +73,34 @@ class LocalTranslationClient {
                 )
                 throw error
             }
-
-            val translated = try {
-                translator.translate(cleanText).awaitTask()
-            } catch (cancelled: CancellationException) {
-                throw cancelled
-            } catch (error: Throwable) {
-                Log.w(
-                    TAG,
-                    "translation_inference_failed source=$source target=$target " +
-                        "type=${error::class.java.simpleName} message=${error.message?.take(160)}",
-                )
-                throw error
-            }
-                .replace(Regex("\\s+"), " ")
-                .trim()
-                .take(MAX_TRANSLATION_CHARS)
-            require(translated.isNotBlank()) { "ML Kit returned an empty translation." }
-            Result.success(
-                StructuredKnowledgeResult(
-                    answer = translated,
-                    context = "On-device ML Kit translation from $source to $target: $translated",
-                    sources = emptyList(),
-                ),
-            )
-        } finally {
-            translator.close()
         }
+
+        val translated = try {
+            translator.translate(cleanText).awaitTask()
+        } catch (cancelled: CancellationException) {
+            throw cancelled
+        } catch (error: Throwable) {
+            // A model can be evicted by Play Services/storage management after it was previously ready.
+            // Force a readiness check next time instead of leaving the pair permanently marked ready.
+            markUnprepared(pairKey)
+            Log.w(
+                TAG,
+                "translation_inference_failed source=$source target=$target " +
+                    "type=${error::class.java.simpleName} message=${error.message?.take(160)}",
+            )
+            throw error
+        }
+            .replace(Regex("\\s+"), " ")
+            .trim()
+            .take(MAX_TRANSLATION_CHARS)
+        require(translated.isNotBlank()) { "ML Kit returned an empty translation." }
+        Result.success(
+            StructuredKnowledgeResult(
+                answer = translated,
+                context = "On-device ML Kit translation from $source to $target: $translated",
+                sources = emptyList(),
+            ),
+        )
     } catch (cancelled: CancellationException) {
         throw cancelled
     } catch (error: Throwable) {
@@ -126,6 +131,45 @@ class LocalTranslationClient {
         }
     }
 
+    /** Releases cached native ML Kit clients when the owning service is explicitly torn down. */
+    fun close() {
+        val toClose = synchronized(cacheLock) {
+            val copy = translators.values.toList()
+            translators.clear()
+            preparedPairs.clear()
+            copy
+        }
+        toClose.forEach(Translator::close)
+    }
+
+    private fun translatorFor(source: String, target: String, pairKey: String): Translator = synchronized(cacheLock) {
+        translators[pairKey]?.let { return@synchronized it }
+        if (translators.size >= MAX_CACHED_TRANSLATORS) {
+            val eldest = translators.entries.firstOrNull()
+            if (eldest != null) {
+                translators.remove(eldest.key)
+                preparedPairs.remove(eldest.key)
+                eldest.value.close()
+            }
+        }
+        Translation.getClient(
+            TranslatorOptions.Builder()
+                .setSourceLanguage(source)
+                .setTargetLanguage(target)
+                .build(),
+        ).also { translators[pairKey] = it }
+    }
+
+    private fun isPrepared(pairKey: String): Boolean = synchronized(cacheLock) { pairKey in preparedPairs }
+
+    private fun markPrepared(pairKey: String) {
+        synchronized(cacheLock) { preparedPairs += pairKey }
+    }
+
+    private fun markUnprepared(pairKey: String) {
+        synchronized(cacheLock) { preparedPairs -= pairKey }
+    }
+
     private suspend fun identifyLanguage(text: String): String? {
         val identifier = LanguageIdentification.getClient()
         return try {
@@ -141,6 +185,7 @@ class LocalTranslationClient {
         const val TAG = "LocalTranslation"
         const val MAX_TRANSLATION_CHARS = 2_000
         const val MAX_FALLBACK_CONTEXT_CHARS = 2_400
+        const val MAX_CACHED_TRANSLATORS = 4
     }
 }
 

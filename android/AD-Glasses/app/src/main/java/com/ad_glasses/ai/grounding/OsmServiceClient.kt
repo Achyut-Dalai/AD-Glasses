@@ -70,9 +70,10 @@ data class OverpassTagFilter(val key: String, val value: String?)
  * User-triggered OSM-family client.
  *
  * Public Nominatim calls are globally serialized, cached, and kept at <= 1 request/sec. Overpass
- * calls are also serialized. The default FOSSGIS OSRM service is rate-limited to <= 1 request/sec.
- * All requests are coroutine-cancellable so an assistant grounding deadline cancels the actual
- * socket instead of merely abandoning a blocking IO worker.
+ * calls are serialized and nearby category results have a short TTL cache so repeated voice turns
+ * do not repeatedly pay public-Overpass latency. The default FOSSGIS OSRM service is rate-limited
+ * to <= 1 request/sec. All requests are coroutine-cancellable so a grounding deadline cancels the
+ * actual socket instead of merely abandoning a blocking IO worker.
  */
 class OsmServiceClient(
     private val configProvider: () -> GroundingServiceConfig,
@@ -204,19 +205,29 @@ class OsmServiceClient(
         }
         val radius = radiusMeters.coerceIn(50, 5_000)
         val outputLimit = limit.coerceIn(1, 20)
+        val config = configProvider()
+        val cacheKey = overpassCacheKey(config.overpassEndpoint, origin, filters, radius, outputLimit)
+        synchronized(overpassCache) {
+            overpassCache[cacheKey]?.takeIf { SystemClock.elapsedRealtime() - it.createdAtMs <= OVERPASS_CACHE_TTL_MS }
+        }?.let { return Result.success(it.places) }
+
+        val rawLimit = maxOf(outputLimit * 3, 20).coerceAtMost(MAX_OVERPASS_RAW_RESULTS)
         val query = buildString {
-            append("[out:json][timeout:6];(")
+            append("[out:json][timeout:$OVERPASS_QUERY_TIMEOUT_SECONDS];(")
             filters.forEach { filter ->
                 append("nwr(around:$radius,${origin.latitude},${origin.longitude})")
                 if (filter.value == null) append("[\"${filter.key}\"]")
                 else append("[\"${filter.key}\"=\"${filter.value}\"]")
                 append(';')
             }
-            // body keeps the full selected OSM tags; center adds a point for ways and relations.
-            append(");out body center $outputLimit;")
+            // body keeps selected OSM tags; center adds a point for ways and relations.
+            append(");out body center $rawLimit;")
         }
         overpassMutex.withLock {
-            val config = configProvider()
+            synchronized(overpassCache) {
+                overpassCache[cacheKey]?.takeIf { SystemClock.elapsedRealtime() - it.createdAtMs <= OVERPASS_CACHE_TTL_MS }
+            }?.let { return@withLock Result.success(it.places) }
+
             val request = Request.Builder()
                 .url(config.overpassEndpoint)
                 .header("User-Agent", USER_AGENT)
@@ -228,7 +239,13 @@ class OsmServiceClient(
             val places = call.awaitResponse().use { response ->
                 val payload = response.body?.string().orEmpty()
                 if (!response.isSuccessful) throw IOException("Overpass HTTP ${response.code}")
-                parseOverpass(payload, origin, outputLimit)
+                parseOverpass(payload, origin, rawLimit)
+                    .filter { it.distanceMeters <= radius }
+                    .take(outputLimit)
+            }
+            synchronized(overpassCache) {
+                if (overpassCache.size >= OVERPASS_CACHE_LIMIT) overpassCache.keys.firstOrNull()?.let(overpassCache::remove)
+                overpassCache[cacheKey] = CachedOverpass(SystemClock.elapsedRealtime(), places)
             }
             Result.success(places)
         }
@@ -387,7 +404,7 @@ class OsmServiceClient(
             }
         }.sortedBy { it.distanceMeters }
             .distinctBy { it.name.lowercase(Locale.US) to it.point }
-            .take(limit.coerceIn(1, 20))
+            .take(limit.coerceIn(1, MAX_OVERPASS_RAW_RESULTS))
     }
 
     internal fun parseRoute(payload: String): OsmRoute {
@@ -463,7 +480,8 @@ class OsmServiceClient(
         .takeIf { it.isNotBlank() }
 
     private fun humanCategory(tags: JSONObject): String = sequenceOf(
-        "amenity", "shop", "tourism", "historic", "leisure", "highway", "railway", "building",
+        "amenity", "shop", "tourism", "historic", "leisure", "healthcare", "office",
+        "public_transport", "highway", "railway", "building",
     ).mapNotNull { key -> tags.optString(key).trim().takeIf { it.isNotBlank() } }
         .firstOrNull()
         ?.replace('_', ' ')
@@ -490,6 +508,22 @@ class OsmServiceClient(
     private fun firstNonBlank(json: JSONObject, vararg keys: String): String? = keys.asSequence()
         .map { json.optString(it).trim() }
         .firstOrNull { it.isNotBlank() }
+
+    private fun overpassCacheKey(
+        endpoint: String,
+        point: GeoPoint,
+        filters: List<OverpassTagFilter>,
+        radius: Int,
+        limit: Int,
+    ): String {
+        val normalizedFilters = filters
+            .map { "${it.key.lowercase(Locale.US)}=${it.value?.lowercase(Locale.US).orEmpty()}" }
+            .sorted()
+            .joinToString(",")
+        return "$endpoint|${(point.latitude * 10_000).toInt()}|${(point.longitude * 10_000).toInt()}|$radius|$limit|$normalizedFilters"
+    }
+
+    private data class CachedOverpass(val createdAtMs: Long, val places: List<OsmPlace>)
 
     private data class RoutingEndpoint(
         val baseUrl: String,
@@ -529,9 +563,13 @@ class OsmServiceClient(
         private const val NOMINATIM_MIN_INTERVAL_MS = 1_050L
         private const val PUBLIC_OSRM_MIN_INTERVAL_MS = 1_050L
         private const val NOMINATIM_CALL_TIMEOUT_SECONDS = 4L
-        private const val OVERPASS_CALL_TIMEOUT_SECONDS = 6L
+        private const val OVERPASS_QUERY_TIMEOUT_SECONDS = 4
+        private const val OVERPASS_CALL_TIMEOUT_SECONDS = 5L
         private const val OSRM_CALL_TIMEOUT_SECONDS = 5L
         private const val CACHE_LIMIT = 96
+        private const val OVERPASS_CACHE_LIMIT = 64
+        private const val OVERPASS_CACHE_TTL_MS = 45_000L
+        private const val MAX_OVERPASS_RAW_RESULTS = 40
         private const val LOCAL_DESTINATION_RADIUS_METERS = 15_000
         private const val MAX_LOCAL_VIEWBOX_RADIUS_METERS = 50_000
         private const val LOCAL_DESTINATION_RESULTS = 12
@@ -547,12 +585,13 @@ class OsmServiceClient(
         @Volatile private var lastNominatimRequestAtMs: Long = 0L
         @Volatile private var lastOsrmRequestAtMs: Long = 0L
         private val reverseCache = LinkedHashMap<String, OsmAddress>()
+        private val overpassCache = LinkedHashMap<String, CachedOverpass>()
 
         private fun defaultClient(): OkHttpClient = OkHttpClient.Builder()
             .connectTimeout(3, TimeUnit.SECONDS)
-            .readTimeout(7, TimeUnit.SECONDS)
+            .readTimeout(6, TimeUnit.SECONDS)
             .writeTimeout(3, TimeUnit.SECONDS)
-            .callTimeout(8, TimeUnit.SECONDS)
+            .callTimeout(7, TimeUnit.SECONDS)
             .build()
 
         private suspend fun Call.awaitResponse(): Response = suspendCancellableCoroutine { continuation ->
