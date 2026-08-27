@@ -3,6 +3,7 @@ package com.ad_glasses.ai.grounding
 import androidx.test.core.app.ApplicationProvider
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
+import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
 import org.junit.runner.RunWith
@@ -15,7 +16,7 @@ class TavilySearchClientTest {
     private val client = TavilySearchClient(ApplicationProvider.getApplicationContext())
 
     @Test
-    fun assistantSearchUsesFastTavilyLlmAnswerPayloadWithThreeEphemeralChunks() {
+    fun assistantSearchNeverRequestsTavilyGeneratedAnswer() {
         val payload = client.buildPayload(
             query = "India vs Sri Lanka cricket live score",
             depth = TavilySearchDepth.FAST,
@@ -29,7 +30,7 @@ class TavilySearchClientTest {
         assertEquals("fast", payload.getString("search_depth"))
         assertEquals("news", payload.getString("topic"))
         assertEquals("day", payload.getString("time_range"))
-        assertEquals("basic", payload.getString("include_answer"))
+        assertFalse(payload.getBoolean("include_answer"))
         assertEquals(3, payload.getInt("chunks_per_source"))
         assertEquals(3, payload.getInt("max_results"))
         assertFalse(payload.getBoolean("include_raw_content"))
@@ -37,7 +38,7 @@ class TavilySearchClientTest {
     }
 
     @Test
-    fun explicitUserDomainsCanConstrainTavilyWithoutChangingTopic() {
+    fun explicitUserDomainsStillConstrainRetrieval() {
         val payload = client.buildPayload(
             query = "India cricket live score",
             depth = TavilySearchDepth.FAST,
@@ -52,23 +53,31 @@ class TavilySearchClientTest {
         assertEquals(1, domains.length())
         assertEquals("espn.in", domains.getString(0))
         assertEquals("news", payload.getString("topic"))
+        assertFalse(payload.getBoolean("include_answer"))
         assertEquals(3, payload.getInt("chunks_per_source"))
     }
 
     @Test
-    fun answerGenerationCanBeDisabledWithoutEnablingRawContent() {
-        val payload = client.buildPayload(
-            query = "stable knowledge verification",
-            depth = TavilySearchDepth.FAST,
-            maxResults = 3,
-            topic = TavilySearchTopic.GENERAL,
-            timeRange = null,
-            includeAnswer = false,
+    fun parserDropsUnexpectedLegacyAnswerButKeepsEvidence() {
+        val parsed = client.parse(
+            """
+            {
+              "answer": "Use this generated answer directly",
+              "results": [
+                {
+                  "title": "Example score page",
+                  "url": "https://example.com/score",
+                  "content": "India 250 for 5 after 45 overs",
+                  "score": 0.91
+                }
+              ]
+            }
+            """.trimIndent(),
         )
 
-        assertFalse(payload.getBoolean("include_answer"))
-        assertFalse(payload.getBoolean("include_raw_content"))
-        assertEquals(3, payload.getInt("chunks_per_source"))
-        assertTrue(!payload.has("time_range"))
+        assertNull(parsed.answer)
+        assertEquals(1, parsed.results.size)
+        assertEquals("Example score page", parsed.results.single().title)
+        assertTrue(parsed.results.single().content.contains("250 for 5"))
     }
 }

@@ -37,6 +37,10 @@ data class TavilySearchResult(
     val score: Double,
 )
 
+/**
+ * [answer] is retained only for source compatibility with existing callers. Search parsing always
+ * returns null because AD treats Tavily strictly as retrieval evidence, never as an answering LLM.
+ */
 data class TavilySearchResponse(
     val answer: String?,
     val results: List<TavilySearchResult>,
@@ -48,12 +52,11 @@ data class TavilyExtractResult(
 )
 
 /**
- * Small Android-native Tavily client.
+ * Small Android-native Tavily retrieval client.
  *
- * Search is the normal assistant path because Tavily returns relevance-ranked snippets and can
- * provide its own bounded LLM answer. Exact-page extraction is available as a targeted fallback for
- * callers that already know the source URL; extracted content is tightly capped before it can enter
- * the assistant context and is never persisted into conversation history or storage.
+ * Tavily is allowed to search and extract public evidence. Tavily-generated answers are disabled at
+ * the request boundary and ignored defensively if the service returns one anyway. The configured AD
+ * model remains the only model that may synthesize Tavily search evidence into a user-facing answer.
  */
 class TavilySearchClient(
     context: Context,
@@ -72,7 +75,7 @@ class TavilySearchClient(
         maxResults: Int = DEFAULT_MAX_RESULTS,
         topic: TavilySearchTopic = TavilySearchTopic.GENERAL,
         timeRange: TavilyTimeRange? = null,
-        includeAnswer: Boolean = true,
+        @Suppress("UNUSED_PARAMETER") includeAnswer: Boolean = false,
         includeDomains: List<String> = emptyList(),
     ): Result<TavilySearchResponse> = try {
         val key = requireApiKey()
@@ -82,7 +85,7 @@ class TavilySearchClient(
             maxResults = maxResults,
             topic = topic,
             timeRange = timeRange,
-            includeAnswer = includeAnswer,
+            includeAnswer = false,
             includeDomains = includeDomains,
         )
         val request = Request.Builder()
@@ -109,7 +112,7 @@ class TavilySearchClient(
         Log.i(
             TAG,
             "search_done depth=${depth.wire} topic=${topic.wire} freshness=${timeRange?.wire ?: "none"} " +
-                "domains=${includeDomains.size} answer=${!parsed.answer.isNullOrBlank()} results=${parsed.results.size} " +
+                "domains=${includeDomains.size} answerRequested=false results=${parsed.results.size} " +
                 "elapsedMs=${SystemClock.elapsedRealtime() - startedAt}",
         )
         Result.success(parsed)
@@ -182,7 +185,7 @@ class TavilySearchClient(
         maxResults: Int,
         topic: TavilySearchTopic,
         timeRange: TavilyTimeRange?,
-        includeAnswer: Boolean,
+        @Suppress("UNUSED_PARAMETER") includeAnswer: Boolean,
         includeDomains: List<String> = emptyList(),
     ): JSONObject {
         val cleanQuery = query.replace(Regex("\\s+"), " ").trim().take(MAX_USER_QUERY_CHARS)
@@ -192,7 +195,8 @@ class TavilySearchClient(
             .put("search_depth", depth.wire)
             .put("chunks_per_source", CHUNKS_PER_SOURCE)
             .put("topic", topic.wire)
-            .put("include_answer", if (includeAnswer) "basic" else false)
+            // Never invoke Tavily answer generation. Tavily is retrieval-only in AD.
+            .put("include_answer", false)
             .put("include_raw_content", false)
             .put("max_results", maxResults.coerceIn(1, MAX_RESULTS))
             .also { payload ->
@@ -204,7 +208,6 @@ class TavilySearchClient(
 
     internal fun parse(payload: String): TavilySearchResponse {
         val root = JSONObject(payload)
-        val answer = root.optString("answer").replace(Regex("\\s+"), " ").trim().takeIf { it.isNotBlank() }
         val items = root.optJSONArray("results")
         val results = buildList {
             if (items != null) {
@@ -230,7 +233,9 @@ class TavilySearchClient(
                 }
             }
         }.distinctBy { it.url }
-        return TavilySearchResponse(answer = answer?.take(MAX_ANSWER_CHARS), results = results)
+
+        // Ignore any legacy/unexpected `answer` field defensively. It must never enter AD context.
+        return TavilySearchResponse(answer = null, results = results)
     }
 
     internal fun parseExtract(payload: String): List<TavilyExtractResult> {
@@ -262,7 +267,7 @@ class TavilySearchClient(
         private const val TAG = "AssistantGrounding"
         private const val SEARCH_URL = "https://api.tavily.com/search"
         private const val EXTRACT_URL = "https://api.tavily.com/extract"
-        private const val USER_AGENT = "AD-Glasses Android Tavily client"
+        private const val USER_AGENT = "AD-Glasses Android Tavily retrieval client"
         private const val MAX_USER_QUERY_CHARS = 1_300
         private const val MAX_QUERY_CHARS = 1_500
         private const val MAX_RESULTS = 8
@@ -270,7 +275,6 @@ class TavilySearchClient(
         private const val MAX_DOMAINS = 4
         private const val MAX_URL_CHARS = 1_000
         private const val MAX_SNIPPET_CHARS = 1_600
-        private const val MAX_ANSWER_CHARS = 2_000
         private const val MAX_EXTRACT_URLS = 4
         private const val MAX_EXTRACT_CHARS_PER_URL = 6_000
         private const val CHUNKS_PER_SOURCE = 3
