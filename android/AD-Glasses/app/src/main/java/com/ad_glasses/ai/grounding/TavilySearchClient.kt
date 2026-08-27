@@ -25,6 +25,11 @@ enum class TavilySearchDepth(val wire: String) {
     ADVANCED("advanced"),
 }
 
+enum class TavilyExtractDepth(val wire: String) {
+    BASIC("basic"),
+    ADVANCED("advanced"),
+}
+
 data class TavilySearchResult(
     val title: String,
     val url: String,
@@ -37,15 +42,18 @@ data class TavilySearchResponse(
     val results: List<TavilySearchResult>,
 )
 
+data class TavilyExtractResult(
+    val url: String,
+    val rawContent: String,
+)
+
 /**
  * Small Android-native Tavily client.
  *
- * The semantic router chooses topic/freshness and may carry an explicit user-requested domain
- * constraint. The assistant path stays FAST and never asks Tavily for raw page bodies. Tavily's own
- * basic LLM answer is requested. FAST costs one Search credit regardless of whether one or three
- * focused chunks are requested, so retain up to three chunks per source in this in-memory response.
- * Downstream synthesis still applies a much smaller total context budget; these chunks are not
- * persisted into conversation history or storage.
+ * Search is the normal assistant path because Tavily returns relevance-ranked snippets and can
+ * provide its own bounded LLM answer. Exact-page extraction is available as a targeted fallback for
+ * callers that already know the source URL; extracted content is tightly capped before it can enter
+ * the assistant context and is never persisted into conversation history or storage.
  */
 class TavilySearchClient(
     context: Context,
@@ -67,11 +75,7 @@ class TavilySearchClient(
         includeAnswer: Boolean = true,
         includeDomains: List<String> = emptyList(),
     ): Result<TavilySearchResponse> = try {
-        val config = GroundingPrefs.getConfig(appContext)
-        check(config.tavilyEnabled) { "Tavily search is disabled." }
-        val key = GroundingPrefs.getTavilyApiKey(appContext)
-        check(key.isNotBlank()) { "Tavily API key is not configured." }
-
+        val key = requireApiKey()
         val payload = buildPayload(
             query = query,
             depth = depth,
@@ -81,13 +85,12 @@ class TavilySearchClient(
             includeAnswer = includeAnswer,
             includeDomains = includeDomains,
         )
-        val body = payload.toString().toRequestBody(JSON)
         val request = Request.Builder()
             .url(SEARCH_URL)
             .header("Authorization", "Bearer $key")
             .header("Accept", "application/json")
             .header("User-Agent", USER_AGENT)
-            .post(body)
+            .post(payload.toString().toRequestBody(JSON))
             .build()
 
         val startedAt = SystemClock.elapsedRealtime()
@@ -113,7 +116,64 @@ class TavilySearchClient(
     } catch (cancelled: CancellationException) {
         throw cancelled
     } catch (error: Throwable) {
+        Log.w(TAG, "search_failed type=${error::class.java.simpleName} message=${error.message?.take(180)}")
         Result.failure(error)
+    }
+
+    /** Extracts only explicitly supplied pages. Keep this out of generic web search paths. */
+    suspend fun extract(
+        urls: List<String>,
+        depth: TavilyExtractDepth = TavilyExtractDepth.BASIC,
+    ): Result<List<TavilyExtractResult>> = try {
+        val key = requireApiKey()
+        val cleanUrls = urls.asSequence()
+            .map(String::trim)
+            .mapNotNull { it.take(MAX_URL_CHARS).toHttpUrlOrNull()?.toString() }
+            .distinct()
+            .take(MAX_EXTRACT_URLS)
+            .toList()
+        require(cleanUrls.isNotEmpty()) { "Tavily extract requires at least one valid URL." }
+
+        val payload = JSONObject()
+            .put("urls", JSONArray(cleanUrls))
+            .put("extract_depth", depth.wire)
+            .put("include_images", false)
+        val request = Request.Builder()
+            .url(EXTRACT_URL)
+            .header("Authorization", "Bearer $key")
+            .header("Accept", "application/json")
+            .header("User-Agent", USER_AGENT)
+            .post(payload.toString().toRequestBody(JSON))
+            .build()
+
+        val startedAt = SystemClock.elapsedRealtime()
+        val call = client.newCall(request)
+        call.timeout().timeout(EXTRACT_CALL_TIMEOUT_SECONDS, TimeUnit.SECONDS)
+        val parsed = call.awaitResponse().use { response ->
+            val responseBody = response.body?.string().orEmpty()
+            if (!response.isSuccessful) {
+                throw IOException("Tavily extract HTTP ${response.code}: ${safeError(responseBody)}")
+            }
+            parseExtract(responseBody)
+        }
+        Log.i(
+            TAG,
+            "extract_done depth=${depth.wire} requested=${cleanUrls.size} results=${parsed.size} " +
+                "chars=${parsed.sumOf { it.rawContent.length }} elapsedMs=${SystemClock.elapsedRealtime() - startedAt}",
+        )
+        Result.success(parsed)
+    } catch (cancelled: CancellationException) {
+        throw cancelled
+    } catch (error: Throwable) {
+        Log.w(TAG, "extract_failed type=${error::class.java.simpleName} message=${error.message?.take(180)}")
+        Result.failure(error)
+    }
+
+    private fun requireApiKey(): String {
+        val config = GroundingPrefs.getConfig(appContext)
+        check(config.tavilyEnabled) { "Tavily search is disabled." }
+        return GroundingPrefs.getTavilyApiKey(appContext)
+            .also { check(it.isNotBlank()) { "Tavily API key is not configured." } }
     }
 
     internal fun buildPayload(
@@ -173,6 +233,26 @@ class TavilySearchClient(
         return TavilySearchResponse(answer = answer?.take(MAX_ANSWER_CHARS), results = results)
     }
 
+    internal fun parseExtract(payload: String): List<TavilyExtractResult> {
+        val items = JSONObject(payload).optJSONArray("results") ?: return emptyList()
+        return buildList {
+            for (index in 0 until items.length()) {
+                val item = items.optJSONObject(index) ?: continue
+                val url = item.optString("url")
+                    .trim()
+                    .take(MAX_URL_CHARS)
+                    .toHttpUrlOrNull()
+                    ?.toString()
+                    ?: continue
+                val raw = item.optString("raw_content")
+                    .replace("\u0000", "")
+                    .trim()
+                    .take(MAX_EXTRACT_CHARS_PER_URL)
+                if (raw.isNotBlank()) add(TavilyExtractResult(url = url, rawContent = raw))
+            }
+        }.distinctBy { it.url }
+    }
+
     private fun safeError(payload: String): String = runCatching {
         val json = JSONObject(payload)
         json.optString("detail").ifBlank { json.optString("message") }
@@ -181,6 +261,7 @@ class TavilySearchClient(
     companion object {
         private const val TAG = "AssistantGrounding"
         private const val SEARCH_URL = "https://api.tavily.com/search"
+        private const val EXTRACT_URL = "https://api.tavily.com/extract"
         private const val USER_AGENT = "AD-Glasses Android Tavily client"
         private const val MAX_USER_QUERY_CHARS = 1_300
         private const val MAX_QUERY_CHARS = 1_500
@@ -190,9 +271,12 @@ class TavilySearchClient(
         private const val MAX_URL_CHARS = 1_000
         private const val MAX_SNIPPET_CHARS = 1_600
         private const val MAX_ANSWER_CHARS = 2_000
+        private const val MAX_EXTRACT_URLS = 4
+        private const val MAX_EXTRACT_CHARS_PER_URL = 6_000
         private const val CHUNKS_PER_SOURCE = 3
         private const val STANDARD_CALL_TIMEOUT_SECONDS = 6L
         private const val ADVANCED_CALL_TIMEOUT_SECONDS = 8L
+        private const val EXTRACT_CALL_TIMEOUT_SECONDS = 8L
         private val JSON = "application/json; charset=utf-8".toMediaType()
 
         private fun defaultClient(): OkHttpClient = OkHttpClient.Builder()
