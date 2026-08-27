@@ -159,7 +159,8 @@ def myvuEnabled = new File(myvuJavaSourceDir, "com/myvu/client/service/Connectio
 '''
 vars_replacement = '''def myvuJavaSourceDir = file("src/main/myvu-upstream/android/app/src/main/java")
 def myvuAssetsSourceDir = file("src/main/myvu-upstream/android/app/src/main/assets")
-def myvuGeneratedJavaSourceDir = layout.buildDirectory.dir("generated/myvu-upstream/java")
+// sourceSets requires a concrete directory under AGP 9; do not pass a Provider here.
+def myvuGeneratedJavaSourceDir = file("build/generated/myvu-upstream/java")
 def myvuEnabled = new File(myvuJavaSourceDir, "com/myvu/client/service/ConnectionManager.java").exists()
 
 def syncMyvuSources = tasks.register("syncMyvuSources", Sync) {
