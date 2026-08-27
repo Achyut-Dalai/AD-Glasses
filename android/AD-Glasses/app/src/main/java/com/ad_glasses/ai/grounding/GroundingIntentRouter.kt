@@ -270,23 +270,27 @@ class GroundingIntentRouter(context: Context) {
         val hasWeatherConfig = root.has("weather_horizon")
         val hasCurrencyConfig = root.has("amount") || root.has("base_currency") || root.has("quote_currency")
         val hasTranslationConfig = root.has("translation_text") || root.has("target_language")
+        val hasLocationInputFields = root.has("reference_place") || root.has("use_current_location")
         val hasExternalExecutionFields = explicitExternalTool ||
             !searchQuery.isNullOrBlank() ||
             hasTavilyConfig ||
             hasWeatherConfig ||
             hasCurrencyConfig ||
             hasTranslationConfig ||
-            root.has("source_language") ||
-            root.has("reference_place") ||
-            root.has("use_current_location")
+            root.has("source_language")
 
-        // Intent and capability fields are mutually constrained. GPS may be input to an external
-        // capability (for example Open-Meteo) without making the requested answer spatial.
+        // Intent and capability fields are mutually constrained. Location input fields are shared by
+        // SPATIAL/BOTH and by SEARCH+WEATHER, so they are validated separately from external fields.
         when (intent) {
-            GroundingIntent.DIRECT -> if (hasExternalExecutionFields || hasSpatialExecutionFields) return null
+            GroundingIntent.DIRECT -> if (
+                hasExternalExecutionFields || hasSpatialExecutionFields || hasLocationInputFields
+            ) return null
             GroundingIntent.SEARCH -> if (!explicitExternalTool || hasSpatialExecutionFields) return null
             GroundingIntent.SPATIAL -> if (hasExternalExecutionFields) return null
             GroundingIntent.BOTH -> if (!explicitExternalTool) return null
+        }
+        if (intent == GroundingIntent.SEARCH && externalTool != ExternalTool.WEATHER && hasLocationInputFields) {
+            return null
         }
         if (intent != GroundingIntent.DIRECT && !directAnswer.isNullOrBlank()) return null
 
