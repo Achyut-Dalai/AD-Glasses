@@ -180,6 +180,7 @@ class GroundingIntentRouter(context: Context) {
         }
 
     internal fun parse(raw: String, originalPrompt: String): GroundingRoute? {
+        if (originalPrompt.isBlank()) return null
         val start = raw.indexOf('{')
         val end = raw.lastIndexOf('}')
         if (start < 0 || end <= start) return null
@@ -193,8 +194,9 @@ class GroundingIntentRouter(context: Context) {
             else -> return null
         }
         val needsContext = root.optBoolean("needs_context", false)
-        val explicitExternalTool = root.has("external_tool") && !root.isNull("external_tool")
-        val externalTool = when (root.optNullableString("external_tool")?.lowercase()) {
+        val externalToolValue = root.optNullableString("external_tool")?.lowercase()
+        val explicitExternalTool = externalToolValue != null
+        val externalTool = when (externalToolValue) {
             "weather", "open-meteo", "open_meteo" -> ExternalTool.WEATHER
             "wikipedia", "wiki", "wikimedia" -> ExternalTool.WIKIPEDIA
             "dictionary", "define" -> ExternalTool.DICTIONARY
@@ -242,11 +244,7 @@ class GroundingIntentRouter(context: Context) {
         val radius = rawRadius?.coerceIn(MIN_RADIUS_METERS, MAX_RADIUS_METERS)
         val synthesize = root.optBoolean("synthesize", intent == GroundingIntent.BOTH)
         val directAnswer = root.optNullableString("direct_answer")?.take(MAX_DIRECT_ANSWER_CHARS)
-        val searchQuery = root.optNullableString("search_query")
-            ?.sanitizeQuery()
-            ?: originalPrompt.takeIf {
-                !needsContext && (intent == GroundingIntent.SEARCH || intent == GroundingIntent.BOTH)
-            }
+        val searchQuery = root.optNullableString("search_query")?.sanitizeQuery()
         val sourceDomains = root.optDomains()
         val spatialQuery = root.optNullableString("spatial_query")?.sanitizeQuery()
         val osmFilters = root.optOsmFilters()
@@ -261,8 +259,6 @@ class GroundingIntentRouter(context: Context) {
         val sourceLanguage = root.optNullableString("source_language")?.sanitizeLanguageTag()
         val targetLanguage = root.optNullableString("target_language")?.sanitizeLanguageTag()
 
-        // Intent and capability fields are mutually constrained. GPS may be input to an external
-        // capability (for example Open-Meteo) without making the requested answer spatial.
         val hasSpatialExecutionFields = spatialAction != null ||
             !spatialQuery.isNullOrBlank() ||
             osmFilters.isNotEmpty() ||
@@ -270,23 +266,41 @@ class GroundingIntentRouter(context: Context) {
             !routeOrigin.isNullOrBlank() ||
             !routeDestination.isNullOrBlank() ||
             root.has("route_mode")
-        when (intent) {
-            GroundingIntent.DIRECT -> if (explicitExternalTool || hasSpatialExecutionFields) return null
-            GroundingIntent.SEARCH -> if (!explicitExternalTool || hasSpatialExecutionFields) return null
-            GroundingIntent.SPATIAL -> if (explicitExternalTool) return null
-            GroundingIntent.BOTH -> if (!explicitExternalTool) return null
-        }
-
-        // Tool-specific configuration is also exclusive. A malformed model plan must be repaired,
-        // not silently interpreted as some other capability.
         val hasTavilyConfig = root.has("topic") || root.has("time_range") || root.has("source_domains")
         val hasWeatherConfig = root.has("weather_horizon")
         val hasCurrencyConfig = root.has("amount") || root.has("base_currency") || root.has("quote_currency")
         val hasTranslationConfig = root.has("translation_text") || root.has("target_language")
+        val hasExternalExecutionFields = explicitExternalTool ||
+            !searchQuery.isNullOrBlank() ||
+            hasTavilyConfig ||
+            hasWeatherConfig ||
+            hasCurrencyConfig ||
+            hasTranslationConfig ||
+            root.has("source_language") ||
+            root.has("reference_place") ||
+            root.has("use_current_location")
+
+        // Intent and capability fields are mutually constrained. GPS may be input to an external
+        // capability (for example Open-Meteo) without making the requested answer spatial.
+        when (intent) {
+            GroundingIntent.DIRECT -> if (hasExternalExecutionFields || hasSpatialExecutionFields) return null
+            GroundingIntent.SEARCH -> if (!explicitExternalTool || hasSpatialExecutionFields) return null
+            GroundingIntent.SPATIAL -> if (hasExternalExecutionFields) return null
+            GroundingIntent.BOTH -> if (!explicitExternalTool) return null
+        }
+        if (intent != GroundingIntent.DIRECT && !directAnswer.isNullOrBlank()) return null
+
+        // Tool-specific configuration is exclusive. A malformed model plan is repaired instead of
+        // being silently interpreted as a different capability.
         if (intent == GroundingIntent.SEARCH || intent == GroundingIntent.BOTH) {
             when (externalTool) {
-                ExternalTool.TAVILY -> if (hasWeatherConfig || hasCurrencyConfig || hasTranslationConfig) return null
-                ExternalTool.WEATHER -> if (hasTavilyConfig || hasCurrencyConfig || hasTranslationConfig) return null
+                ExternalTool.TAVILY -> if (
+                    hasWeatherConfig || hasCurrencyConfig || hasTranslationConfig || root.has("source_language")
+                ) return null
+                ExternalTool.WEATHER -> if (
+                    hasTavilyConfig || hasCurrencyConfig || hasTranslationConfig || !searchQuery.isNullOrBlank() ||
+                    root.has("source_language")
+                ) return null
                 ExternalTool.WIKIPEDIA,
                 ExternalTool.DICTIONARY -> if (
                     hasTavilyConfig || hasWeatherConfig || hasCurrencyConfig || hasTranslationConfig
@@ -296,9 +310,12 @@ class GroundingIntentRouter(context: Context) {
                     root.has("source_language")
                 ) return null
                 ExternalTool.CURRENCY -> if (
-                    hasTavilyConfig || hasWeatherConfig || hasTranslationConfig || root.has("source_language")
+                    hasTavilyConfig || hasWeatherConfig || hasTranslationConfig || !searchQuery.isNullOrBlank() ||
+                    root.has("source_language")
                 ) return null
-                ExternalTool.TRANSLATION -> if (hasTavilyConfig || hasWeatherConfig || hasCurrencyConfig) return null
+                ExternalTool.TRANSLATION -> if (
+                    hasTavilyConfig || hasWeatherConfig || hasCurrencyConfig || !searchQuery.isNullOrBlank()
+                ) return null
             }
         }
 
@@ -484,13 +501,13 @@ class GroundingIntentRouter(context: Context) {
                 "For standalone DIRECT include direct_answer as the final concise user answer. " +
                 "SEARCH/BOTH MUST include exactly one external_tool: weather=current/forecast weather via Open-Meteo; wikipedia=stable source-backed encyclopedic named-topic facts; dictionary=word meaning/pronunciation/synonyms; currency=reference fiat conversion; books=book/author/publication lookup; translation=translate supplied text; tavily=live/current web facts, sports, news, prices, software/websites, transport status, shopping/product lookup, verification, or external data not better served by a specialized capability. " +
                 "Tavily requires standalone search_query. topic is only general|news|finance: news for current events/live sports; finance for market data; general otherwise. time_range is day|week|month|year when useful; use day for explicitly live/current sports or today's news. source_domains only when the USER explicitly names a site/domain. " +
-                "Currency requires amount,base_currency,quote_currency. Translation requires translation_text,target_language and optional source_language. Weather uses weather_horizon=current|today|tomorrow|week plus use_current_location or reference_place. Wikipedia/dictionary may use source_language. " +
+                "Currency requires amount,base_currency,quote_currency. Translation requires translation_text,target_language and optional source_language. Weather uses weather_horizon=current|today|tomorrow|week plus use_current_location or reference_place. Wikipedia/dictionary/books require standalone search_query; Wikipedia/dictionary may use source_language. " +
                 "SPATIAL/BOTH use spatial_action=nearby|route|location. nearby uses spatial_query and optional safe osm_filters/radius_meters/reference_place/use_current_location. Convert spoken distance to metres. route uses route_destination and optional route_origin/route_mode. BOTH runs spatial first, then external; the host shares only public candidate names/coarse area, never GPS coordinates. " +
                 "Set synthesize=true only for comparison, reasoning, ranking, transformation, or combining tool facts; simple source answers can stay false. " +
                 "Examples: India vs Sri Lanka cricket score => SEARCH,tavily,news,day. Search the live cricket score => SEARCH,tavily,news,day. News today => SEARCH,tavily,news,day. Weather near me => SEARCH,weather,use_current_location=true. KFC within three kilometres near me => SPATIAL,nearby. Nearby KFC plus current menu prices => BOTH,nearby+tavily. " +
-                "Never output URLs/endpoints/API keys/GPS coordinates/Overpass QL. Omit irrelevant/null fields. SEARCH has no spatial execution fields. SPATIAL has no external_tool. BOTH has spatial_action plus external_tool. Do not mix Tavily topic/time/domain fields into another external tool. Allowed keys: intent,direct_answer,needs_context,synthesize,external_tool,search_query,topic,time_range,source_domains,weather_horizon,amount,base_currency,quote_currency,translation_text,source_language,target_language,spatial_action,spatial_query,osm_filters,radius_meters,use_current_location,reference_place,route_origin,route_destination,route_mode."
+                "Never output URLs/endpoints/API keys/GPS coordinates/Overpass QL. Omit irrelevant/null fields. SEARCH has no spatial execution fields. SPATIAL has no external fields. BOTH has spatial_action plus external_tool. Do not mix fields owned by different external tools. Allowed keys: intent,direct_answer,needs_context,synthesize,external_tool,search_query,topic,time_range,source_domains,weather_horizon,amount,base_currency,quote_currency,translation_text,source_language,target_language,spatial_action,spatial_query,osm_filters,radius_meters,use_current_location,reference_place,route_origin,route_destination,route_mode."
 
         const val ROUTER_REPAIR_PROMPT =
-            "Repair the CURRENT-turn request into exactly one compact JSON execution plan; no prose and no history. Decide data requirements first: DIRECT=no external/spatial data; SEARCH=one external capability only; SPATIAL=OSM/OSRM answer only; BOTH=both. Current/live/recent/today/latest or explicit external search/check/verify requests must not be DIRECT. Location used only to fetch weather still means SEARCH+weather, never SPATIAL. SEARCH/BOTH must explicitly name external_tool=tavily|weather|wikipedia|dictionary|currency|books|translation. SEARCH has no spatial fields; SPATIAL has spatial_action and no external_tool; BOTH has both. Tavily-only fields are topic,time_range,source_domains. Do not mix tool-specific fields. If a prior referent is missing set needs_context=true without inventing it, but still choose intent and external_tool. Never output URLs, code, endpoints, GPS coordinates, unsupported enums, or a DIRECT refusal about unavailable current data."
+            "Repair the CURRENT-turn request into exactly one compact JSON execution plan; no prose and no history. Decide data requirements first: DIRECT=no external/spatial data; SEARCH=one external capability only; SPATIAL=OSM/OSRM answer only; BOTH=both. Current/live/recent/today/latest or explicit external search/check/verify requests must not be DIRECT. Location used only to fetch weather still means SEARCH+weather, never SPATIAL. SEARCH/BOTH must explicitly name external_tool=tavily|weather|wikipedia|dictionary|currency|books|translation. Tavily/Wikipedia/Dictionary/Books require a standalone search_query unless needs_context=true. SEARCH has no spatial fields; SPATIAL has spatial_action and no external fields; BOTH has both. Do not mix tool-specific fields. If a prior referent is missing set needs_context=true without inventing it, but still choose intent and external_tool. Never output URLs, code, endpoints, GPS coordinates, unsupported enums, or a DIRECT refusal about unavailable current data."
     }
 }
