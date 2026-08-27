@@ -319,6 +319,28 @@ class GroundingIntentRouterTest {
     }
 
     @Test
+    fun strictProtocolRejectsUnknownKeysAndContradictoryDirectOutput() {
+        assertNull(
+            router.parse(
+                raw = """{"intent":"SEARCH","external_tool":"sports","search_query":"NBA score","confidence":0.98}""",
+                originalPrompt = "nba score",
+            ),
+        )
+        assertNull(
+            router.parse(
+                raw = """{"intent":"DIRECT","needs_context":true,"direct_answer":"It costs 50 dollars."}""",
+                originalPrompt = "how much does that cost",
+            ),
+        )
+        assertNull(
+            router.parse(
+                raw = """{"intent":"DIRECT","direct_answer":"Recursion calls itself.","synthesize":true}""",
+                originalPrompt = "explain recursion",
+            ),
+        )
+    }
+
+    @Test
     fun malformedOrIncompleteExecutablePlansAreRejected() {
         assertNull(router.parse("not json", "current cricket score"))
         assertNull(
