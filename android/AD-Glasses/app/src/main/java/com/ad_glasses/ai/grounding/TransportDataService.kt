@@ -15,7 +15,7 @@ class TransportDataService(context: Context) {
     private val location = AndroidLocationProvider(appContext)
     private val rail = RailStatusClient(appContext)
     private val flight = FlightStatusClient(appContext)
-    private val osmTransit = OsmTransitClient { GroundingPrefs.getConfig(appContext) }
+    private val osmTransit = OsmTransitClient(configProvider = { GroundingPrefs.getConfig(appContext) })
     private val realtime = TransitRealtimeClient()
 
     fun railConfigured(): Boolean = rail.isConfigured()
