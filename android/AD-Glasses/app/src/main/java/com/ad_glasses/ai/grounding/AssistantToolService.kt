@@ -35,7 +35,7 @@ private data class SpatialExecution(
     val context: String,
     val point: GeoPoint? = null,
     val coarseArea: String? = null,
-    /** Public place names only; never coordinates. Safe as external-search hints for BOTH. */
+    /** Public place names only; never coordinates. Safe as explicit web-search hints for BOTH. */
     val searchHints: List<String> = emptyList(),
 )
 
@@ -71,8 +71,8 @@ class AssistantToolService(context: Context) {
         val needsSpatial = route.intent == GroundingIntent.SPATIAL || route.intent == GroundingIntent.BOTH
         val needsExternal = route.intent == GroundingIntent.SEARCH || route.intent == GroundingIntent.BOTH
 
-        // BOTH is ordered deliberately: spatial resolution comes first so a later web lookup can use
-        // public candidate names/coarse area while exact coordinates and street address remain local.
+        // BOTH is ordered deliberately: spatial resolution comes first so an explicitly selected
+        // web lookup can use public candidate names/coarse area while exact coordinates stay local.
         var spatialError: Throwable? = null
         val spatial = if (needsSpatial) {
             try {
@@ -122,7 +122,7 @@ class AssistantToolService(context: Context) {
                 appendLine("Spatial lookup failed. Do not claim nearby/location/routing data was retrieved.")
             }
             if (route.intent == GroundingIntent.BOTH && externalError != null) {
-                appendLine("External lookup failed. Do not claim current web/public-data facts were retrieved.")
+                appendLine("External lookup failed. Do not claim current public-data facts were retrieved.")
             }
         }.trim()
         val baseContext = if (directExternalSearch) "" else buildSynthesisContext(external, spatial)
@@ -172,14 +172,16 @@ class AssistantToolService(context: Context) {
         route: GroundingRoute,
         spatial: SpatialExecution?,
     ): ExternalExecution = when (route.externalTool) {
+        // Tavily is used only when the semantic route explicitly selected the general web tool.
+        // Specialized providers never fall through to it.
         ExternalTool.TAVILY -> executeTavily(route, spatial)
-        ExternalTool.NEWS -> executeNews(route, spatial)
-        ExternalTool.SPORTS -> executeSports(route, spatial)
+        ExternalTool.NEWS -> executeNews(route)
+        ExternalTool.SPORTS -> executeSports(route)
         ExternalTool.WEATHER -> executeWeather(route, spatial)
-        ExternalTool.WIKIPEDIA -> executeWikipedia(route, spatial)
-        ExternalTool.DICTIONARY -> executeDictionary(route, spatial)
-        ExternalTool.CURRENCY -> executeCurrency(route, spatial)
-        ExternalTool.BOOKS -> executeBooks(route, spatial)
+        ExternalTool.WIKIPEDIA -> executeWikipedia(route)
+        ExternalTool.DICTIONARY -> executeDictionary(route)
+        ExternalTool.CURRENCY -> executeCurrency(route)
+        ExternalTool.BOOKS -> executeBooks(route)
         ExternalTool.TRANSLATION -> executeTranslation(route)
     }
 
@@ -211,6 +213,8 @@ class AssistantToolService(context: Context) {
             includeDomains = route.sourceDomains,
         ).getOrThrow()
 
+        // This retry remains inside the explicitly selected Tavily capability. It is not a
+        // cross-provider fallback from a specialized source.
         val chosen = if (first.results.isEmpty()) {
             tavily.search(
                 query = query,
@@ -270,54 +274,31 @@ class AssistantToolService(context: Context) {
         return ranked.filter { it.score >= cutoff }.take(MAX_SOURCES).ifEmpty { ranked.take(1) }
     }
 
-    private suspend fun executeNews(route: GroundingRoute, spatial: SpatialExecution?): ExternalExecution {
+    private suspend fun executeNews(route: GroundingRoute): ExternalExecution {
         val query = route.searchQuery?.trim()?.takeIf(String::isNotBlank)
-        val rss = news.lookup(query).getOrNull()
-        if (rss != null) return rss.toExternalExecution()
-        val fallbackQuery = query ?: "top news today"
-        return fallbackStructuredToTavily(
-            route = route,
-            spatial = spatial,
-            query = fallbackQuery,
-            topic = TavilySearchTopic.NEWS,
-            label = "google_news_rss",
-            timeRange = TavilyTimeRange.DAY,
-        )
+        return news.lookup(query).getOrThrow().toExternalExecution(directPreferred = true)
     }
 
-    private suspend fun executeSports(route: GroundingRoute, spatial: SpatialExecution?): ExternalExecution {
+    private suspend fun executeSports(route: GroundingRoute): ExternalExecution {
         val query = route.searchQuery?.trim()?.takeIf(String::isNotBlank)
         if (query == null) {
-            val headlines = sports.lookup(null).getOrNull()
-            if (headlines != null) return headlines.toExternalExecution(directPreferred = true)
-            throw IllegalStateException("ESPN sports headlines lookup failed.")
+            return sports.lookup(null).getOrThrow().toExternalExecution(directPreferred = true)
         }
 
-        // Score/result/schedule questions must try structured ESPN event data before articles.
-        val structured = sportsScores.lookup(query).getOrNull()
-        if (structured != null) {
-            Log.i(TAG, "sports_structured_hit queryChars=${query.length}")
-            return structured.toExternalExecution(directPreferred = true)
-        }
-        Log.w(TAG, "sports_structured_miss queryChars=${query.length}")
-
-        // ESPN article search is a fallback, not the primary score path.
-        if (tavily.isConfigured()) {
-            return executeTavily(
-                route.copy(
-                    externalTool = ExternalTool.TAVILY,
-                    searchQuery = query,
-                    tavilyTopic = TavilySearchTopic.NEWS,
-                    tavilyTimeRange = TavilyTimeRange.DAY,
-                    sourceDomains = ESPN_DOMAINS,
-                ),
-                spatial,
-            )
+        // Article/headline requests stay on ESPN RSS. Score/result/schedule requests never fall back
+        // to articles: if structured ESPN event data cannot answer them, fail rather than fabricate.
+        if (isSportsHeadlineQuery(query)) {
+            return sports.lookup(query).getOrThrow().toExternalExecution(directPreferred = true)
         }
 
-        val rssFallback = sports.lookup(query).getOrNull()
-        if (rssFallback != null) return rssFallback.toExternalExecution(directPreferred = true)
-        throw IllegalStateException("ESPN structured sports lookup failed and article fallback is unavailable.")
+        val structured = sportsScores.lookup(query).getOrThrow()
+        Log.i(TAG, "sports_structured_hit queryChars=${query.length}")
+        return structured.toExternalExecution(directPreferred = true)
+    }
+
+    private fun isSportsHeadlineQuery(query: String): Boolean {
+        val lower = query.lowercase(Locale.US)
+        return SPORTS_HEADLINE_TERMS.any { term -> Regex("\\b${Regex.escape(term)}\\b").containsMatchIn(lower) }
     }
 
     private suspend fun executeWeather(
@@ -325,94 +306,49 @@ class AssistantToolService(context: Context) {
         spatial: SpatialExecution?,
     ): ExternalExecution {
         val (point, label) = resolveWeatherPoint(route, spatial)
-        val weatherResult = weather.forecast(point)
-        val snapshot = weatherResult.getOrNull()
-        if (snapshot != null) {
-            val fallback = buildString {
-                append(snapshot.fallbackAnswer(route.weatherHorizon))
-                label?.takeIf { it.isNotBlank() }?.let { append(" For $it.") }
-            }.trim()
-            return ExternalExecution(
-                answer = fallback,
-                context = buildString {
-                    label?.let { appendLine("Weather location: $it.") }
-                    append(snapshot.contextText(route.weatherHorizon))
-                }.take(MAX_EXTERNAL_CONTEXT_CHARS),
-                sources = listOf(GroundingSource("Weather data by Open-Meteo", OpenMeteoWeatherClient.SOURCE_URL)),
-                weatherUsed = true,
-            )
-        }
-
-        val failure = weatherResult.exceptionOrNull() ?: IllegalStateException("Open-Meteo weather request failed.")
-        if (!tavily.isConfigured()) throw failure
-        val fallbackQuery = buildString {
-            append(route.searchQuery?.trim()?.takeIf { it.isNotBlank() } ?: "weather forecast")
-            label?.takeIf { it.isNotBlank() }?.let { append(". Location: $it") }
-        }.take(MAX_TAVILY_QUERY_CHARS)
-        Log.w(TAG, "weather_fallback_to_tavily type=${failure::class.java.simpleName}")
-        return executeTavily(
-            route.copy(
-                externalTool = ExternalTool.TAVILY,
-                searchQuery = fallbackQuery,
-                tavilyTopic = TavilySearchTopic.GENERAL,
-                tavilyTimeRange = route.tavilyTimeRange ?: TavilyTimeRange.DAY,
-            ),
-            spatial = null,
+        val snapshot = weather.forecast(point).getOrThrow()
+        val fallback = buildString {
+            append(snapshot.fallbackAnswer(route.weatherHorizon))
+            label?.takeIf { it.isNotBlank() }?.let { append(" For $it.") }
+        }.trim()
+        return ExternalExecution(
+            answer = fallback,
+            context = buildString {
+                label?.let { appendLine("Weather location: $it.") }
+                append(snapshot.contextText(route.weatherHorizon))
+            }.take(MAX_EXTERNAL_CONTEXT_CHARS),
+            sources = listOf(GroundingSource("Weather data by Open-Meteo", OpenMeteoWeatherClient.SOURCE_URL)),
+            weatherUsed = true,
+            directPreferred = true,
         )
     }
 
-    private suspend fun executeWikipedia(route: GroundingRoute, spatial: SpatialExecution?): ExternalExecution {
+    private suspend fun executeWikipedia(route: GroundingRoute): ExternalExecution {
         val query = route.searchQuery?.trim().orEmpty()
-        val result = wikipedia.lookup(query, route.sourceLanguage ?: "en").getOrNull()
-        if (result != null) return result.toExternalExecution()
-        return fallbackStructuredToTavily(
-            route = route,
-            spatial = spatial,
-            query = query,
-            topic = TavilySearchTopic.GENERAL,
-            label = "wikipedia",
-        )
+        return wikipedia.lookup(query, route.sourceLanguage ?: "en")
+            .getOrThrow()
+            .toExternalExecution(directPreferred = true)
     }
 
-    private suspend fun executeDictionary(route: GroundingRoute, spatial: SpatialExecution?): ExternalExecution {
+    private suspend fun executeDictionary(route: GroundingRoute): ExternalExecution {
         val query = route.searchQuery?.trim().orEmpty()
-        val result = dictionary.lookup(query, route.sourceLanguage ?: "en").getOrNull()
-        if (result != null) return result.toExternalExecution()
-        return fallbackStructuredToTavily(
-            route = route,
-            spatial = spatial,
-            query = "$query definition pronunciation",
-            topic = TavilySearchTopic.GENERAL,
-            label = "dictionary",
-        )
+        return dictionary.lookup(query, route.sourceLanguage ?: "en")
+            .getOrThrow()
+            .toExternalExecution(directPreferred = true)
     }
 
-    private suspend fun executeCurrency(route: GroundingRoute, spatial: SpatialExecution?): ExternalExecution {
+    private suspend fun executeCurrency(route: GroundingRoute): ExternalExecution {
         val amount = route.currencyAmount ?: error("Currency amount is missing.")
         val base = route.baseCurrency ?: error("Currency base is missing.")
         val quote = route.quoteCurrency ?: error("Currency quote is missing.")
-        val result = currency.convert(amount, base, quote).getOrNull()
-        if (result != null) return result.toExternalExecution()
-        return fallbackStructuredToTavily(
-            route = route,
-            spatial = spatial,
-            query = "$amount $base to $quote current exchange rate",
-            topic = TavilySearchTopic.FINANCE,
-            label = "currency",
-        )
+        return currency.convert(amount, base, quote)
+            .getOrThrow()
+            .toExternalExecution(directPreferred = true)
     }
 
-    private suspend fun executeBooks(route: GroundingRoute, spatial: SpatialExecution?): ExternalExecution {
+    private suspend fun executeBooks(route: GroundingRoute): ExternalExecution {
         val query = route.searchQuery?.trim().orEmpty()
-        val result = books.lookup(query).getOrNull()
-        if (result != null) return result.toExternalExecution()
-        return fallbackStructuredToTavily(
-            route = route,
-            spatial = spatial,
-            query = query,
-            topic = TavilySearchTopic.GENERAL,
-            label = "books",
-        )
+        return books.lookup(query).getOrThrow().toExternalExecution(directPreferred = true)
     }
 
     private suspend fun executeTranslation(route: GroundingRoute): ExternalExecution {
@@ -420,28 +356,6 @@ class AssistantToolService(context: Context) {
         val target = route.targetLanguage ?: error("Translation target language is missing.")
         val result = translation.translate(text, route.sourceLanguage, target).getOrThrow()
         return result.toExternalExecution(directPreferred = true)
-    }
-
-    private suspend fun fallbackStructuredToTavily(
-        route: GroundingRoute,
-        spatial: SpatialExecution?,
-        query: String,
-        topic: TavilySearchTopic,
-        label: String,
-        timeRange: TavilyTimeRange? = route.tavilyTimeRange,
-    ): ExternalExecution {
-        check(tavily.isConfigured()) { "$label lookup failed and Tavily fallback is unavailable." }
-        Log.w(TAG, "${label}_fallback_to_tavily")
-        return executeTavily(
-            route.copy(
-                externalTool = ExternalTool.TAVILY,
-                searchQuery = query,
-                tavilyTopic = topic,
-                tavilyTimeRange = timeRange,
-                sourceDomains = emptyList(),
-            ),
-            spatial,
-        )
     }
 
     private fun StructuredKnowledgeResult.toExternalExecution(directPreferred: Boolean = false): ExternalExecution =
@@ -537,17 +451,21 @@ class AssistantToolService(context: Context) {
         } else {
             emptyList()
         }
-        val places = (categoryPlaces + namedPlaces)
+        val strictNominatimPlaces = if (query.isNotBlank() && categoryPlaces.isEmpty() && namedPlaces.isEmpty()) {
+            osm.searchNearby(
+                query = query,
+                origin = center.first,
+                radiusMeters = radius,
+                limit = MAX_NEARBY_RESULTS,
+            ).getOrNull().orEmpty()
+        } else {
+            emptyList()
+        }
+        val places = (categoryPlaces + namedPlaces + strictNominatimPlaces)
+            .filter { it.distanceMeters <= radius }
             .sortedBy(OsmPlace::distanceMeters)
             .distinctBy { it.name.lowercase(Locale.US) to it.point }
             .take(MAX_NEARBY_RESULTS)
-            .ifEmpty {
-                if (query.isBlank()) emptyList()
-                else {
-                    val fallback = osm.geocode(query, center.first).getOrNull()
-                    listOfNotNull(fallback?.takeIf { it.distanceMeters <= radius })
-                }
-            }
 
         val target = query.ifBlank { "matching places" }
         val answer = if (places.isNotEmpty()) {
@@ -611,7 +529,8 @@ class AssistantToolService(context: Context) {
         val destinationQuery = plan.routeDestination?.takeIf { it.isNotBlank() }
             ?: plan.spatialQuery?.takeIf { it.isNotBlank() }
             ?: throw IllegalStateException("Route destination is blank.")
-        val localNamedDestination = if (shouldTryNamedPoi(destinationQuery)) {
+
+        val localNamedDestination = if (originUsesCurrent && shouldTryNamedPoi(destinationQuery)) {
             namedPoi.nearby(
                 origin = originPoint,
                 query = destinationQuery,
@@ -621,8 +540,25 @@ class AssistantToolService(context: Context) {
         } else {
             null
         }
-        val destination = localNamedDestination ?: osm.geocode(destinationQuery, originPoint).getOrThrow()
+        val geocodedDestination = if (localNamedDestination == null) {
+            osm.geocode(destinationQuery, originPoint).getOrThrow()
+        } else {
+            null
+        }
+        if (
+            localNamedDestination == null &&
+            originUsesCurrent &&
+            geocodedDestination != null &&
+            geocodedDestination.distanceMeters > ROUTE_NAMED_POI_RADIUS_METERS &&
+            isLocalPoiCategory(geocodedDestination.category)
+        ) {
+            throw IllegalStateException(
+                "OpenStreetMap found only a distant POI for '$destinationQuery'; refusing an implicit far-away navigation target.",
+            )
+        }
+        val destination = localNamedDestination ?: geocodedDestination
             ?: throw IllegalStateException("OpenStreetMap could not resolve the route destination.")
+
         val route = osm.route(originPoint, destination.point, plan.routeMode).getOrThrow()
         val mode = plan.routeMode.name.lowercase(Locale.US)
         val answer = buildString {
@@ -649,6 +585,11 @@ class AssistantToolService(context: Context) {
     private fun shouldTryNamedPoi(query: String): Boolean {
         val clean = query.trim()
         return clean.isNotBlank() && clean.length <= 96 && clean.none(Char::isDigit) && clean.split(Regex("\\s+")).size <= 10
+    }
+
+    private fun isLocalPoiCategory(category: String): Boolean {
+        val normalized = category.lowercase(Locale.US).replace('-', '_').replace(' ', '_')
+        return LOCAL_POI_TYPES.any { type -> normalized == type || normalized.endsWith("_$type") }
     }
 
     private suspend fun resolveNearbyCenter(plan: GroundingRoute): Pair<GeoPoint, String> {
@@ -698,7 +639,6 @@ class AssistantToolService(context: Context) {
 
     private companion object {
         const val TAG = "AssistantGrounding"
-        val ESPN_DOMAINS = listOf("espn.com", "espn.in")
         const val DEFAULT_NEARBY_RADIUS_METERS = 1_000
         const val ROUTE_NAMED_POI_RADIUS_METERS = 20_000
         const val PRIMARY_TAVILY_RESULTS = 3
@@ -717,5 +657,12 @@ class AssistantToolService(context: Context) {
         const val MAX_SYNTHESIS_CONTEXT_CHARS = 3_000
         const val MIN_ABSOLUTE_RESULT_SCORE = 0.15
         const val RELATIVE_RESULT_SCORE_RATIO = 0.55
+        val SPORTS_HEADLINE_TERMS = setOf("news", "headline", "headlines", "article", "articles", "story", "stories")
+        val LOCAL_POI_TYPES = setOf(
+            "restaurant", "fast_food", "cafe", "pub", "bar", "fuel", "supermarket", "convenience",
+            "pharmacy", "hospital", "clinic", "bank", "atm", "mall", "department_store", "hotel", "motel",
+            "hostel", "cinema", "theatre", "parking", "charging_station", "car_wash", "school", "college",
+            "university", "place_of_worship", "police", "fire_station", "post_office",
+        )
     }
 }
