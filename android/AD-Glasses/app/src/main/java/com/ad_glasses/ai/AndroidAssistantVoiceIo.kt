@@ -8,40 +8,20 @@ import android.media.AudioManager
 import android.os.Build
 import android.speech.RecognizerIntent
 import android.speech.SpeechRecognizer
-import android.speech.tts.TextToSpeech
-import android.speech.tts.Voice
 import android.util.Log
-import com.ad_glasses.BuildConfig
-import com.ad_glasses.R
 import com.ad_glasses.ai.transcription.moonshine.MoonshineRecognitionService
-import java.util.Collections
-import java.util.Locale
-import java.util.WeakHashMap
 
 /**
  * Assistant speech I/O policy.
  *
  * Speech input is exclusively the vendored Moonshine runtime exposed through an in-app Android
- * RecognitionService bridge. There is deliberately no platform/system ASR fallback. Speech output
- * still prefers an installed TTS voice that does not require a network connection.
+ * RecognitionService bridge. Speech output is Kokoro-82M through KokoroSpeechService; this policy
+ * object only owns recognizer creation and generic Bluetooth speech-output routing.
  */
 object AndroidAssistantVoiceIo {
     private const val TAG = "AssistantTiming"
 
-    /** Quiet listening cue retained for real glasses output until hardware testing says otherwise. */
-    const val LISTENING_EARCON_TOKEN = "__ad_listening_earcon__"
-
-    /** Slightly louder local-phone cue; never selected while the glasses BLE link is active. */
-    const val PHONE_LISTENING_EARCON_TOKEN = "__ad_listening_earcon_phone__"
-
-    private val listeningEarconInstalledFor = Collections.synchronizedSet(
-        Collections.newSetFromMap(WeakHashMap<TextToSpeech, Boolean>()),
-    )
-
     fun createRecognizer(context: Context): SpeechRecognizer {
-        // MainActivity creates the recognizer before it plays the local listening earcon. Start the
-        // one-time native model warm-up here so cold ONNX/model loading overlaps that cue instead of
-        // building a large PCM backlog after the user has already been invited to speak.
         MoonshineRecognitionService.prewarm(context.applicationContext)
         val component = ComponentName(context, MoonshineRecognitionService::class.java)
         Log.i(TAG, "stage=asr_engine engine=moonshine component=${component.flattenToShortString()}")
@@ -56,77 +36,11 @@ object AndroidAssistantVoiceIo {
         putExtra(RecognizerIntent.EXTRA_PARTIAL_RESULTS, true)
     }
 
-    /** Prefer a downloaded/embedded voice for [locale]. Falls back to the engine's locale handling. */
-    fun preferOfflineVoice(tts: TextToSpeech, locale: Locale): Voice? {
-        ensureListeningEarcons(tts)
-
-        val voices = runCatching { tts.voices.orEmpty() }.getOrDefault(emptySet<Voice>())
-        val offline = voices.filter { !it.isNetworkConnectionRequired }
-        val selected = offline.firstOrNull { it.locale.toLanguageTag() == locale.toLanguageTag() }
-            ?: offline.firstOrNull { it.locale.language == locale.language }
-
-        if (selected != null) {
-            val result = runCatching { tts.setVoice(selected) }.getOrDefault(TextToSpeech.ERROR)
-            Log.i(
-                TAG,
-                "stage=tts_voice offline=true locale=${selected.locale.toLanguageTag()} result=$result name=${selected.name}",
-            )
-            if (result == TextToSpeech.SUCCESS) return selected
-        }
-
-        val languageResult = runCatching { tts.setLanguage(locale) }.getOrDefault(TextToSpeech.ERROR)
-        Log.i(
-            TAG,
-            "stage=tts_voice offline=false locale=${locale.toLanguageTag()} languageResult=$languageResult",
-        )
-        return null
-    }
-
-    private fun ensureListeningEarcons(tts: TextToSpeech) {
-        if (listeningEarconInstalledFor.contains(tts)) return
-
-        val glassesResult = addEarcon(
-            tts = tts,
-            token = LISTENING_EARCON_TOKEN,
-            resourceId = R.raw.ad_listening_cue,
-            route = "glasses",
-        )
-        val phoneResult = addEarcon(
-            tts = tts,
-            token = PHONE_LISTENING_EARCON_TOKEN,
-            resourceId = R.raw.ad_listening_cue_phone,
-            route = "phone",
-        )
-
-        if (glassesResult == TextToSpeech.SUCCESS && phoneResult == TextToSpeech.SUCCESS) {
-            listeningEarconInstalledFor.add(tts)
-            Log.i(TAG, "stage=tts_listening_earcon_ready routes=glasses,phone")
-        } else {
-            Log.w(
-                TAG,
-                "stage=tts_listening_earcon_failed glassesResult=$glassesResult phoneResult=$phoneResult",
-            )
-        }
-    }
-
-    private fun addEarcon(
-        tts: TextToSpeech,
-        token: String,
-        resourceId: Int,
-        route: String,
-    ): Int = runCatching {
-        // addSpeech keeps the existing TextToSpeech queue + UtteranceProgressListener contract,
-        // but plays the packaged resource instead of asking the engine to synthesize the token.
-        tts.addSpeech(token, BuildConfig.APPLICATION_ID, resourceId)
-    }.onFailure { error ->
-        Log.w(TAG, "stage=tts_listening_earcon_failed route=$route", error)
-    }.getOrDefault(TextToSpeech.ERROR)
-
     /**
-     * Recognition deliberately releases the Bluetooth communication route as soon as Moonshine has
-     * a final transcript. Re-establish it only after inference, immediately before the caller hands
-     * the response to Android TTS, so Cloud AI latency never keeps the microphone/SCO path open.
-     * Returns true only when a Bluetooth communication route was actually requested successfully.
+     * Recognition releases the Bluetooth communication route after Moonshine obtains a final
+     * transcript. Re-establish it only immediately before Kokoro playback so cloud/model latency
+     * never keeps the microphone/SCO path open. Returns true only when a Bluetooth route was
+     * actually requested successfully.
      */
     @Suppress("DEPRECATION")
     fun prepareSpeechOutputRoute(context: Context): Boolean {
@@ -139,14 +53,14 @@ object AndroidAssistantVoiceIo {
                         candidate.type == AudioDeviceInfo.TYPE_BLE_HEADSET
                 }
                 if (device == null) {
-                    Log.i(TAG, "stage=tts_route bluetooth=false sdk=${Build.VERSION.SDK_INT}")
+                    Log.i(TAG, "stage=voice_route bluetooth=false sdk=${Build.VERSION.SDK_INT}")
                     false
                 } else {
                     audioManager.mode = AudioManager.MODE_IN_COMMUNICATION
                     val selected = audioManager.setCommunicationDevice(device)
                     Log.i(
                         TAG,
-                        "stage=tts_route bluetooth=true sdk=${Build.VERSION.SDK_INT} selected=$selected type=${device.type}",
+                        "stage=voice_route bluetooth=true sdk=${Build.VERSION.SDK_INT} selected=$selected type=${device.type}",
                     )
                     selected
                 }
@@ -154,16 +68,14 @@ object AndroidAssistantVoiceIo {
                 audioManager.mode = AudioManager.MODE_IN_COMMUNICATION
                 audioManager.startBluetoothSco()
                 audioManager.isBluetoothScoOn = true
-                Log.i(TAG, "stage=tts_route bluetooth=true sdk=${Build.VERSION.SDK_INT} legacySco=true")
+                Log.i(TAG, "stage=voice_route bluetooth=true sdk=${Build.VERSION.SDK_INT} legacySco=true")
                 true
             } else {
-                Log.i(TAG, "stage=tts_route bluetooth=false sdk=${Build.VERSION.SDK_INT}")
+                Log.i(TAG, "stage=voice_route bluetooth=false sdk=${Build.VERSION.SDK_INT}")
                 false
             }
         }.onFailure { error ->
-            Log.w(TAG, "stage=tts_route_failed", error)
+            Log.w(TAG, "stage=voice_route_failed", error)
         }.getOrDefault(false)
     }
-
-    fun installVoiceDataIntent(): Intent = Intent(TextToSpeech.Engine.ACTION_INSTALL_TTS_DATA)
 }
