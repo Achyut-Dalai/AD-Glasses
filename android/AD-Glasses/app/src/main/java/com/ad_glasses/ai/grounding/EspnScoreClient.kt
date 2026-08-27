@@ -19,11 +19,13 @@ import org.json.JSONArray
 import org.json.JSONObject
 
 /**
- * Structured ESPN score/event lookup.
+ * Structured ESPN event/score lookup.
  *
- * This deliberately does not read articles. It tries ESPN event/scoreboard JSON first, ranks
- * structured event records against the user's query, and returns only data that was actually
- * present in those records. The existing RSS/Tavily path remains a fallback for sports *news*.
+ * The client deliberately avoids article bodies and avoids a cross-sport event dump. It first
+ * infers or discovers the relevant ESPN league/series, fetches only those scoreboards, and ranks
+ * structured event records against the user's query. If structured data cannot answer the request,
+ * the caller receives a failure and may tell the user that no reliable score was found.
+ *
  * ESPN's JSON endpoints are public but undocumented, so parsing is intentionally defensive.
  */
 internal class EspnScoreClient(
@@ -35,64 +37,60 @@ internal class EspnScoreClient(
         require(clean.isNotBlank()) { "Sports score query cannot be blank." }
         val dateRange = dateRangeFor(clean)
         val candidates = mutableListOf<EspnEvent>()
+        val attempted = linkedSetOf<LeagueSpec>()
 
-        // One bounded cross-sport request covers the common "score today / Team A vs Team B" case.
-        fetchGlobalEvents(dateRange)?.let { candidates += parseEventsContainer(it, sourceLabel = "ESPN events") }
-
-        // When a league is explicit, hit its scoreboard too. This gives richer and more reliable
-        // score/status fields than a generic search result and avoids article-body retrieval.
+        // Explicit league names are the cheapest and most reliable path.
         inferKnownLeagues(clean).take(MAX_LEAGUE_SCOREBOARDS).forEach { spec ->
+            attempted += spec
             fetchLeagueScoreboard(spec, dateRange)?.let {
                 candidates += parseEventsContainer(it, sourceLabel = spec.label)
             }
         }
 
-        // Team/player names often do not contain the league name. ESPN search can expose API refs;
-        // harvest only sport/league identifiers, then fetch the structured scoreboard itself.
-        if (candidates.none { it.matchScore(clean) >= STRONG_MATCH_SCORE }) {
-            discoverLeagues(clean).take(MAX_DISCOVERED_LEAGUES).forEach { spec ->
-                fetchLeagueScoreboard(spec, dateRange)?.let {
-                    candidates += parseEventsContainer(it, sourceLabel = spec.label)
-                }
-            }
+        // Cricket uses ESPN's active-series header because series identifiers are numeric/dynamic.
+        if (isCricketLikely(clean)) {
+            fetchCricketHeader()?.let { candidates += parseHeader(it, sportLabel = "Cricket") }
         }
 
-        // Cricket is a special case on ESPN: active series are exposed through the personalized
-        // scoreboard header. This also handles numeric series IDs without hardcoding tournaments.
-        if (isCricketLikely(clean) || candidates.none { it.matchScore(clean) >= STRONG_MATCH_SCORE }) {
-            fetchCricketHeader()?.let { candidates += parseHeader(it, sportLabel = "Cricket") }
+        // A team/player name often omits the league. Use ESPN's small search endpoint only for
+        // discovery, harvest league references, then fetch the structured scoreboard itself.
+        if (candidates.none { it.matchScore(clean) >= STRONG_MATCH_SCORE }) {
+            discoverLeagues(clean)
+                .filterNot(attempted::contains)
+                .take(MAX_DISCOVERED_LEAGUES)
+                .forEach { spec ->
+                    attempted += spec
+                    fetchLeagueScoreboard(spec, dateRange)?.let {
+                        candidates += parseEventsContainer(it, sourceLabel = spec.label)
+                    }
+                }
+        }
+
+        // For ambiguous cricket wording, one bounded header read is still safer than article search.
+        if (!isCricketLikely(clean) && candidates.none { it.matchScore(clean) >= STRONG_MATCH_SCORE }) {
+            if (semanticTokens(clean).any(CRICKET_TEAM_TERMS::contains)) {
+                fetchCricketHeader()?.let { candidates += parseHeader(it, sportLabel = "Cricket") }
+            }
         }
 
         val ranked = candidates
             .distinctBy { it.id.ifBlank { "${it.name.lowercase(Locale.US)}|${it.date}" } }
             .map { event -> event to event.matchScore(clean) }
-            .sortedWith(compareByDescending<Pair<EspnEvent, Int>> { it.second }.thenByDescending { it.first.stateRank })
+            .filter { (_, score) -> score > 0 }
+            .sortedWith(
+                compareByDescending<Pair<EspnEvent, Int>> { it.second }
+                    .thenByDescending { it.first.stateRank },
+            )
 
-        val queryTokens = semanticTokens(clean)
-        val selected = ranked
-            .filter { (_, score) -> score > 0 || queryTokens.isEmpty() }
-            .take(MAX_MATCHES)
-            .map(Pair<EspnEvent, Int>::first)
-
+        val selected = ranked.take(MAX_MATCHES).map(Pair<EspnEvent, Int>::first)
         if (selected.isEmpty()) {
-            throw IllegalStateException("ESPN structured score feeds returned no event matching the sports query.")
+            throw IllegalStateException("ESPN structured scoreboards returned no event matching the sports query.")
         }
         Result.success(toResult(clean, selected))
     } catch (cancelled: CancellationException) {
         throw cancelled
     } catch (error: Throwable) {
         Result.failure(error)
-    }
-
-    private suspend fun fetchGlobalEvents(range: DateRange): JSONObject? {
-        val url = HttpUrl.Builder()
-            .scheme("https")
-            .host("sports.core.api.espn.com")
-            .addPathSegments("v3/events")
-            .addQueryParameter("limit", GLOBAL_EVENT_LIMIT.toString())
-            .addQueryParameter("dates", range.wire)
-            .build()
-        return fetchJson(url, "ESPN global events").getOrNull()
     }
 
     private suspend fun fetchLeagueScoreboard(spec: LeagueSpec, range: DateRange): JSONObject? {
@@ -108,7 +106,7 @@ internal class EspnScoreClient(
     private suspend fun fetchCricketHeader(): JSONObject? {
         val url = HttpUrl.Builder()
             .scheme("https")
-            .host("site.api.espn.com")
+            .host("site.web.api.espn.com")
             .addPathSegments("apis/personalized/v2/scoreboard/header")
             .addQueryParameter("sport", "cricket")
             .addQueryParameter("region", "in")
@@ -120,13 +118,13 @@ internal class EspnScoreClient(
     private suspend fun discoverLeagues(query: String): List<LeagueSpec> {
         val url = HttpUrl.Builder()
             .scheme("https")
-            .host("site.api.espn.com")
+            .host("site.web.api.espn.com")
             .addPathSegments("apis/search/v2")
             .addQueryParameter("query", query.take(SEARCH_QUERY_CHARS))
             .addQueryParameter("limit", SEARCH_RESULT_LIMIT.toString())
             .build()
         val root = fetchJson(url, "ESPN search").getOrNull() ?: return emptyList()
-        val refs = mutableSetOf<LeagueSpec>()
+        val refs = linkedSetOf<LeagueSpec>()
         collectLeagueRefs(root, refs, depth = 0)
         return refs.take(MAX_DISCOVERED_LEAGUES)
     }
@@ -134,10 +132,23 @@ internal class EspnScoreClient(
     private fun collectLeagueRefs(value: Any?, output: MutableSet<LeagueSpec>, depth: Int) {
         if (value == null || depth > MAX_JSON_WALK_DEPTH || output.size >= MAX_DISCOVERED_LEAGUES) return
         when (value) {
-            is JSONObject -> value.keys().forEach { key -> collectLeagueRefs(value.opt(key), output, depth + 1) }
-            is JSONArray -> for (index in 0 until value.length()) collectLeagueRefs(value.opt(index), output, depth + 1)
+            is JSONObject -> {
+                inferLeagueObject(value)?.let(output::add)
+                value.keys().forEach { key -> collectLeagueRefs(value.opt(key), output, depth + 1) }
+            }
+            is JSONArray -> for (index in 0 until value.length()) {
+                collectLeagueRefs(value.opt(index), output, depth + 1)
+            }
             is String -> {
-                LEAGUE_REF.findAll(value.lowercase(Locale.US)).forEach { match ->
+                val lower = value.lowercase(Locale.US)
+                LEAGUE_REF.findAll(lower).forEach { match ->
+                    val sport = match.groupValues[1]
+                    val league = match.groupValues[2]
+                    if (sport.isNotBlank() && league.isNotBlank()) {
+                        output += LeagueSpec(sport, league, "$sport/$league")
+                    }
+                }
+                SITE_LEAGUE_REF.findAll(lower).forEach { match ->
                     val sport = match.groupValues[1]
                     val league = match.groupValues[2]
                     if (sport.isNotBlank() && league.isNotBlank()) {
@@ -146,6 +157,24 @@ internal class EspnScoreClient(
                 }
             }
         }
+    }
+
+    private fun inferLeagueObject(json: JSONObject): LeagueSpec? {
+        val sport = firstString(
+            json.optJSONObject("sport"),
+            "slug",
+            "name",
+            "id",
+        )?.lowercase(Locale.US)?.replace(' ', '-')
+        val league = sequenceOf(
+            firstString(json.optJSONObject("league"), "slug", "abbreviation", "name"),
+            firstString(json, "leagueSlug", "leagueAbbreviation"),
+        ).firstOrNull { !it.isNullOrBlank() }
+            ?.lowercase(Locale.US)
+            ?.replace(' ', '-')
+        if (sport.isNullOrBlank() || league.isNullOrBlank()) return null
+        if (!SAFE_SLUG.matches(sport) || !SAFE_LEAGUE.matches(league)) return null
+        return LeagueSpec(sport, league, "$sport/$league")
     }
 
     internal fun parseEventsContainer(root: JSONObject, sourceLabel: String): List<EspnEvent> {
@@ -257,7 +286,9 @@ internal class EspnScoreClient(
 
     private fun inferKnownLeagues(query: String): List<LeagueSpec> {
         val normalized = query.lowercase(Locale.US)
-        return KNOWN_LEAGUES.filter { spec -> spec.aliases.any { alias -> WORD_BOUNDARY(alias).containsMatchIn(normalized) } }
+        return KNOWN_LEAGUES.filter { spec ->
+            spec.aliases.any { alias -> WORD_BOUNDARY(alias).containsMatchIn(normalized) }
+        }
     }
 
     private fun isCricketLikely(query: String): Boolean {
@@ -271,6 +302,8 @@ internal class EspnScoreClient(
         return when {
             "yesterday" in lower -> DateRange(today.minusDays(1), today.minusDays(1))
             "tomorrow" in lower -> DateRange(today.plusDays(1), today.plusDays(1))
+            RECENT_TERMS.any { it in lower } -> DateRange(today.minusDays(7), today)
+            UPCOMING_TERMS.any { it in lower } -> DateRange(today, today.plusDays(7))
             else -> DateRange(today.minusDays(1), today.plusDays(1))
         }
     }
@@ -317,8 +350,9 @@ internal class EspnScoreClient(
             get() {
                 val text = status.orEmpty().lowercase(Locale.US)
                 return when {
-                    "final" in text || "full time" in text -> 3
-                    "live" in text || "in progress" in text || "halftime" in text || Regex("\\bq[1-4]\\b").containsMatchIn(text) -> 4
+                    "live" in text || "in progress" in text || "halftime" in text ||
+                        Regex("\\bq[1-4]\\b").containsMatchIn(text) -> 4
+                    "final" in text || "full time" in text || "completed" in text -> 3
                     else -> 1
                 }
             }
@@ -375,7 +409,6 @@ internal class EspnScoreClient(
         const val USER_AGENT = "AD-Glasses/alpha (https://github.com/Achyut-Dalai/AD-Glasses)"
         const val ESPN_SCORES_URL = "https://www.espn.com/scoreboard/"
         const val CALL_TIMEOUT_SECONDS = 5L
-        const val GLOBAL_EVENT_LIMIT = 250
         const val SEARCH_RESULT_LIMIT = 8
         const val MAX_QUERY_CHARS = 420
         const val SEARCH_QUERY_CHARS = 180
@@ -386,19 +419,28 @@ internal class EspnScoreClient(
         const val MAX_SIDES = 4
         const val MAX_MATCHES = 6
         const val MAX_SPOKEN_MATCHES = 3
-        const val MAX_LEAGUE_SCOREBOARDS = 2
-        const val MAX_DISCOVERED_LEAGUES = 2
+        const val MAX_LEAGUE_SCOREBOARDS = 3
+        const val MAX_DISCOVERED_LEAGUES = 3
         const val MAX_JSON_WALK_DEPTH = 9
         const val MAX_ANSWER_CHARS = 1_800
         const val MAX_CONTEXT_CHARS = 2_200
         const val STRONG_MATCH_SCORE = 6
+        val SAFE_SLUG = Regex("[a-z0-9-]{1,64}")
+        val SAFE_LEAGUE = Regex("[a-z0-9.-]{1,80}")
         val LEAGUE_REF = Regex("/sports/([a-z0-9-]+)/leagues/([a-z0-9.-]+)")
+        val SITE_LEAGUE_REF = Regex("/sports/([a-z0-9-]+)/([a-z0-9.-]+)/")
         val GENERIC_TOKENS = setOf(
             "a", "an", "and", "are", "at", "for", "from", "game", "games", "give", "how", "in", "is", "it",
             "latest", "live", "match", "matches", "me", "of", "on", "please", "result", "results", "score", "scores",
             "show", "the", "today", "tonight", "tomorrow", "what", "when", "who", "won", "yesterday",
         )
         val CRICKET_TERMS = setOf("cricket", "ipl", "odi", "t20", "t20i", "test", "wicket", "innings")
+        val CRICKET_TEAM_TERMS = setOf(
+            "india", "england", "australia", "pakistan", "bangladesh", "srilanka", "afghanistan",
+            "westindies", "newzealand", "zimbabwe",
+        )
+        val RECENT_TERMS = setOf("last", "latest", "recent", "result", "results", "won", "winner")
+        val UPCOMING_TERMS = setOf("next", "upcoming", "schedule", "scheduled", "fixture", "fixtures")
         val KNOWN_LEAGUES = listOf(
             LeagueSpec("basketball", "nba", "NBA", setOf("nba")),
             LeagueSpec("basketball", "wnba", "WNBA", setOf("wnba")),
@@ -415,6 +457,11 @@ internal class EspnScoreClient(
             LeagueSpec("soccer", "ger.1", "Bundesliga", setOf("bundesliga")),
             LeagueSpec("soccer", "ita.1", "Serie A", setOf("serie a")),
             LeagueSpec("soccer", "fra.1", "Ligue 1", setOf("ligue 1")),
+            LeagueSpec("racing", "f1", "Formula 1", setOf("formula 1", "formula one", "f1")),
+            LeagueSpec("mma", "ufc", "UFC", setOf("ufc")),
+            LeagueSpec("tennis", "atp", "ATP", setOf("atp")),
+            LeagueSpec("tennis", "wta", "WTA", setOf("wta")),
+            LeagueSpec("golf", "pga", "PGA", setOf("pga")),
         )
 
         fun WORD_BOUNDARY(value: String): Regex = Regex("(?:^|\\b)${Regex.escape(value)}(?:\\b|$)")
