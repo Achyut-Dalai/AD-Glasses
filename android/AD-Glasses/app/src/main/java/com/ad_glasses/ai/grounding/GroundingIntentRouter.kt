@@ -71,8 +71,8 @@ data class GroundingRoute(
 )
 
 /**
- * History-free semantic execution planner. The LLM decides meaning; Kotlin validates that the plan
- * is internally coherent before any network/location tool is allowed to run.
+ * History-free semantic execution planner. The model decides meaning; Kotlin validates that the
+ * returned plan is coherent before any network/location capability is allowed to run.
  */
 class GroundingIntentRouter(context: Context) {
     private val appContext = context.applicationContext
@@ -171,6 +171,7 @@ class GroundingIntentRouter(context: Context) {
         val end = raw.lastIndexOf('}')
         if (start < 0 || end <= start) return null
         val root = runCatching { JSONObject(raw.substring(start, end + 1)) }.getOrNull() ?: return null
+        if (root.keys().asSequence().any { it !in ALLOWED_PLAN_KEYS }) return null
 
         val intent = when (root.optString("intent").trim().uppercase()) {
             "DIRECT", "ANSWER", "NONE" -> GroundingIntent.DIRECT
@@ -260,6 +261,8 @@ class GroundingIntentRouter(context: Context) {
         val hasExternalFields = explicitExternalTool || !searchQuery.isNullOrBlank() || hasTavilyConfig ||
             hasWeatherConfig || hasCurrencyConfig || hasTranslationConfig || root.has("source_language")
 
+        if (needsContext && !directAnswer.isNullOrBlank()) return null
+        if (intent == GroundingIntent.DIRECT && synthesize) return null
         when (intent) {
             GroundingIntent.DIRECT -> if (hasExternalFields || hasSpatialFields || hasLocationFields) return null
             GroundingIntent.SEARCH -> if (!explicitExternalTool || hasSpatialFields) return null
@@ -450,20 +453,27 @@ class GroundingIntentRouter(context: Context) {
             "amenity", "shop", "tourism", "leisure", "historic", "healthcare", "office", "craft",
             "railway", "public_transport", "sport", "cuisine", "brand", "name",
         )
+        val ALLOWED_PLAN_KEYS = setOf(
+            "intent", "direct_answer", "needs_context", "synthesize", "external_tool", "search_query",
+            "topic", "time_range", "source_domains", "weather_horizon", "amount", "base_currency",
+            "quote_currency", "translation_text", "source_language", "target_language", "spatial_action",
+            "spatial_query", "osm_filters", "radius_meters", "use_current_location", "reference_place",
+            "route_origin", "route_destination", "route_mode",
+        )
 
         const val ROUTER_SYSTEM_PROMPT =
-            "You are AD's execution planner and concise stable-knowledge answerer. CURRENT turn only; no conversation history. Return exactly one compact JSON object and no prose. " +
-                "DECIDE BY REQUIRED DATA, not by isolated words: DIRECT=no external or map data; SEARCH=one external capability; SPATIAL=OSM/OSRM place/location/nearby/distance/route answer; BOTH=spatial plus one external capability. If freshness may matter, do not use DIRECT. Never answer that you cannot access current data; emit a tool plan and let the host handle availability. " +
-                "If a prior-turn referent is required, set needs_context=true and do not invent it. Still choose intent and external_tool. Tolerate obvious ASR errors. " +
-                "EXTERNAL CAPABILITIES: sports=ESPN-backed sports scores/results/schedules/headlines across ANY sport; this is domain-general and must not depend on a predefined sport-name list. news=Google News RSS for current/top/topic news headlines. weather=Open-Meteo current/forecast weather. wikipedia=stable encyclopedic named-topic facts. dictionary=word meaning/pronunciation/synonyms. currency=reference fiat conversion. books=book/author/publication lookup. translation=translate supplied text. tavily=arbitrary web/site/product/price/software/transport/detail/verification or external data not covered above. Prefer SPORTS for sports and NEWS for general news; do not default them to Tavily. " +
-                "SPORTS/NEWS may include search_query for a specific topic; omit it for broad top headlines. If the user asks for article-body detail, a named non-ESPN site, shopping/product detail, current website content, or broad web verification, use Tavily instead. Tavily requires search_query; topic only general|news|finance; time_range only day|week|month|year; source_domains only when the user explicitly names a site/domain. " +
-                "Location can be INPUT without making an answer SPATIAL: weather near me = SEARCH+weather+use_current_location=true and NO spatial_action. SPATIAL is only when the answer itself is spatial. " +
-                "Weather uses weather_horizon=current|today|tomorrow|week plus current location or reference_place. Currency requires amount/base_currency/quote_currency. Translation requires translation_text/target_language and optional source_language. Wikipedia/dictionary/books require search_query. " +
-                "SPATIAL/BOTH use spatial_action=nearby|route|location. nearby uses spatial_query plus optional safe osm_filters/radius_meters/reference_place/use_current_location. Convert spoken distance to metres. route uses route_destination plus optional route_origin/route_mode. BOTH runs spatial first; only public place names/coarse area may go to the external tool. " +
-                "Set synthesize=true only when comparison/reasoning/ranking/transformation or combining tool facts is needed. Examples: live football score=>SEARCH+sports. NBA result=>SEARCH+sports. latest Formula 1 winner=>SEARCH+sports. tennis score=>SEARCH+sports. India vs Sri Lanka score=>SEARCH+sports. news today=>SEARCH+news. AI news today=>SEARCH+news with search_query. weather near me=>SEARCH+weather. KFC within 3 km=>SPATIAL. nearby KFC plus website prices=>BOTH+tavily. " +
-                "FIELD BOUNDARIES: SEARCH has no spatial execution fields. SPATIAL has no external fields. BOTH has both. topic/time_range/source_domains belong only to Tavily. Do not mix tool-specific fields. Never output URLs/endpoints/API keys/GPS coordinates/Overpass QL. Omit irrelevant/null fields. Allowed keys: intent,direct_answer,needs_context,synthesize,external_tool,search_query,topic,time_range,source_domains,weather_horizon,amount,base_currency,quote_currency,translation_text,source_language,target_language,spatial_action,spatial_query,osm_filters,radius_meters,use_current_location,reference_place,route_origin,route_destination,route_mode."
+            "You are AD's history-free execution planner and concise stable-knowledge answerer. Use only the CURRENT turn and any explicitly labelled current-turn visual evidence. Return exactly one compact JSON object and no prose. " +
+                "DECISION ORDER: (1) If the utterance requires a missing previous-turn referent, set needs_context=true and never guess the referent. (2) Decide the data requirement: DIRECT=stable knowledge/reasoning answerable safely now; SEARCH=one external capability; SPATIAL=the answer itself is a place/location/nearby/distance/route fact; BOTH=spatial facts plus one external capability. (3) Pick the single best external capability. (4) Emit only that capability's required fields. (5) Set synthesize=true only for comparison, ranking, transformation, or combining facts. " +
+                "FRESHNESS RULE: anything that can have changed since model training, or asks current/live/latest/recent/today/now, must not be DIRECT. Never put a refusal such as 'I cannot access current data' in direct_answer; choose an executable SEARCH/BOTH plan instead. If freshness is uncertain, prefer SEARCH. Tolerate obvious ASR errors, but do not aggressively rewrite names/entities. " +
+                "CAPABILITIES: sports=current/external sports scores, results, schedules, standings, rankings, stats and sports headlines for ANY sport. Do not use SPORTS for stable rules/history that DIRECT can answer. news=current/recent general or topic news headlines/events. weather=current/forecast weather via location or reference_place. wikipedia=source-backed encyclopedic named-topic lookup. dictionary=word meaning/pronunciation/synonyms. currency=reference fiat conversion. books=book/author/publication lookup. translation=translate supplied text. tavily=arbitrary web/site/article-body/product/price/software/transport/detail/verification or anything external not better served above. Prefer a specialized capability when it directly fits; Tavily is the catch-all, not the default. " +
+                "NEWS/SPORTS QUERY RULE: search_query is REQUIRED when the user names a team, player, event, league, match, topic, person, organization, place, or asks a particular score/result/schedule/story. Omit search_query only for genuinely broad top headlines such as 'top news' or 'sports headlines'. NEWS/SPORTS do not use Tavily topic/time_range/source_domains fields. " +
+                "TAVILY: search_query is required. topic is only general|news|finance; time_range only day|week|month|year; source_domains only when the USER explicitly names a site/domain. Use Tavily for article-body detail or a specifically requested website even if the subject is news/sports. " +
+                "WEATHER: weather_horizon=current|today|tomorrow|week. A location used only as INPUT does not make the intent SPATIAL: 'weather near me' is SEARCH+weather+use_current_location=true with no spatial_action. SPATIAL is only when the answer itself is spatial. " +
+                "OTHER REQUIRED FIELDS: currency needs amount/base_currency/quote_currency. translation needs translation_text/target_language and optional source_language. wikipedia/dictionary/books need search_query. SPATIAL/BOTH use spatial_action=nearby|route|location. nearby uses spatial_query plus optional safe osm_filters/radius_meters/reference_place/use_current_location; convert spoken distances to metres. route uses route_destination plus optional route_origin/route_mode. BOTH resolves spatial facts first; only public place names/coarse area may go to the external capability. " +
+                "FIELD BOUNDARIES: DIRECT has direct_answer only plus needs_context=false; if needs_context=true omit direct_answer. SEARCH has no spatial execution fields. SPATIAL has no external fields. BOTH has both. Never mix tool-owned fields. Never output URLs/endpoints/API keys/GPS coordinates/Overpass QL. Omit irrelevant/null/extra keys. " +
+                "EXAMPLES: {\"intent\":\"SEARCH\",\"external_tool\":\"sports\",\"search_query\":\"India vs Sri Lanka cricket live score\"}; {\"intent\":\"SEARCH\",\"external_tool\":\"news\"}; {\"intent\":\"SEARCH\",\"external_tool\":\"news\",\"search_query\":\"artificial intelligence news today\"}; {\"intent\":\"SEARCH\",\"external_tool\":\"weather\",\"weather_horizon\":\"current\",\"use_current_location\":true}; {\"intent\":\"SPATIAL\",\"spatial_action\":\"nearby\",\"spatial_query\":\"KFC\",\"radius_meters\":3000,\"use_current_location\":true}; {\"intent\":\"SEARCH\",\"external_tool\":\"tavily\",\"needs_context\":true}; {\"intent\":\"DIRECT\",\"direct_answer\":\"A concise stable answer.\"}."
 
         const val ROUTER_REPAIR_PROMPT =
-            "Repair the CURRENT turn into exactly one compact JSON execution plan, no prose/history. DIRECT=stable model knowledge only; SEARCH=one external capability; SPATIAL=OSM/OSRM answer; BOTH=both. Current/live/latest/today data is not DIRECT. sports=ESPN-backed ANY-sport scores/results/schedules/headlines; news=Google News RSS headlines; weather=Open-Meteo; wikipedia/dictionary/currency/books/translation are specialized; tavily=remaining web/site/detail/verification. Prefer sports/news over Tavily for their domains. Weather using location is SEARCH, not SPATIAL. If a prior referent is missing set needs_context=true without guessing it. SEARCH/BOTH must name external_tool=tavily|news|sports|weather|wikipedia|dictionary|currency|books|translation. SEARCH has no spatial fields; SPATIAL has no external fields; BOTH has both. Do not mix tool-owned fields or output URLs/GPS/code/unsupported enums."
+            "Repair the CURRENT turn into exactly one compact JSON execution plan, no prose/history. First mark needs_context=true if a missing prior referent is required and do not invent it. Then choose by required data: DIRECT=stable answer now; SEARCH=one external capability; SPATIAL=OSM/OSRM answer; BOTH=spatial plus external. Current/live/latest/recent/today/now data is never DIRECT. Never return a current-data refusal as direct_answer. Choose external_tool from tavily|news|sports|weather|wikipedia|dictionary|currency|books|translation. NEWS/SPORTS require search_query for a specific named topic/team/event/result/score/schedule and may omit it only for broad headlines. Weather using location is SEARCH, not SPATIAL. Tavily alone may use topic/time_range/source_domains. SEARCH has no spatial execution fields; SPATIAL has no external fields; BOTH has both. If needs_context=true omit direct_answer and unresolved slots. Output no URLs/GPS/code/unknown keys."
     }
 }
