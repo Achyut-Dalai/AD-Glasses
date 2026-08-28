@@ -1,4 +1,3 @@
-import Foundation
 import SwiftUI
 
 struct AssistantView: View {
@@ -17,7 +16,7 @@ struct AssistantView: View {
                 ScrollView {
                     LazyVStack(alignment: .leading, spacing: 18) {
                         if app.conversation.isEmpty {
-                            AssistantWelcome(isListening: app.isTranscribing)
+                            AssistantWelcome()
                         } else {
                             conversationHeader
 
@@ -52,7 +51,7 @@ struct AssistantView: View {
                     }
                 }
             }
-            .navigationTitle("")
+            .navigationTitle("Assistant")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .topBarLeading) {
@@ -128,12 +127,10 @@ struct AssistantView: View {
 }
 
 private struct AssistantWelcome: View {
-    let isListening: Bool
-
     var body: some View {
-        VStack(spacing: 10) {
+        VStack(spacing: 18) {
             hero
-            AssistantSignalVisual(isListening: isListening)
+            AssistantIdleSpace()
         }
     }
 
@@ -145,10 +142,10 @@ private struct AssistantWelcome: View {
             }
 
             VStack(alignment: .leading, spacing: 7) {
-                Text("Ask")
+                Text("Continue here")
                     .font(.largeTitle.bold())
                     .foregroundStyle(.white)
-                Text("Talk it through, ask a question, or pick up where your glasses left off.")
+                Text("A quiet place to pick up a thought, ask a question, or speak when typing gets in the way.")
                     .font(.subheadline)
                     .foregroundStyle(.white.opacity(0.82))
                     .fixedSize(horizontal: false, vertical: true)
@@ -178,101 +175,41 @@ private struct AssistantWelcome: View {
     }
 }
 
-private struct AssistantSignalVisual: View {
-    let isListening: Bool
-
-    @Environment(\.accessibilityReduceMotion) private var reduceMotion
-
+private struct AssistantIdleSpace: View {
     var body: some View {
-        TimelineView(.animation(minimumInterval: 1.0 / 30.0, paused: reduceMotion)) { timeline in
-            let time = timeline.date.timeIntervalSinceReferenceDate
-            let pulse = reduceMotion ? 0.5 : normalizedWave(time: time, speed: isListening ? 1.9 : 0.72)
-
+        VStack(spacing: 13) {
             ZStack {
-                ForEach(0..<3, id: \.self) { ring in
-                    Circle()
-                        .stroke(
-                            LinearGradient(
-                                colors: [
-                                    Color.indigo.opacity(ringOpacity(ring: ring, pulse: pulse)),
-                                    Color.cyan.opacity(ringOpacity(ring: ring, pulse: pulse) * 0.72)
-                                ],
-                                startPoint: .topLeading,
-                                endPoint: .bottomTrailing
-                            ),
-                            lineWidth: 1
-                        )
-                        .frame(width: ringSize(ring), height: ringSize(ring))
-                        .scaleEffect(
-                            CGFloat(
-                                reduceMotion
-                                    ? 1
-                                    : 0.97 + (pulse * 0.045) + (Double(ring) * 0.008)
-                            )
-                        )
-                }
-
+                Circle()
+                    .stroke(Color.indigo.opacity(0.07), lineWidth: 1)
+                    .frame(width: 146, height: 146)
+                Circle()
+                    .stroke(Color.indigo.opacity(0.11), lineWidth: 1)
+                    .frame(width: 106, height: 106)
                 Circle()
                     .fill(
                         RadialGradient(
-                            colors: [
-                                Color.cyan.opacity(isListening ? 0.22 : 0.12),
-                                Color.indigo.opacity(isListening ? 0.20 : 0.10),
-                                Color.indigo.opacity(0.025)
-                            ],
+                            colors: [Color.indigo.opacity(0.14), Color.indigo.opacity(0.045)],
                             center: .topLeading,
                             startRadius: 0,
-                            endRadius: 88
+                            endRadius: 70
                         )
                     )
-                    .frame(width: 118, height: 118)
-                    .scaleEffect(CGFloat(reduceMotion ? 1 : 0.97 + (pulse * 0.055)))
-
-                HStack(alignment: .center, spacing: 5) {
-                    ForEach(0..<7, id: \.self) { index in
-                        Capsule(style: .continuous)
-                            .fill(
-                                LinearGradient(
-                                    colors: [.indigo, .cyan],
-                                    startPoint: .bottom,
-                                    endPoint: .top
-                                )
-                            )
-                            .frame(width: 5, height: barHeight(index: index, time: time))
-                    }
-                }
-                .frame(height: 52)
+                    .frame(width: 72, height: 72)
+                Image(systemName: "waveform")
+                    .font(.system(size: 25, weight: .medium))
+                    .foregroundStyle(.indigo)
             }
-            .frame(maxWidth: .infinity, minHeight: 238)
+
+            VStack(spacing: 4) {
+                Text("Ready when you are")
+                    .font(.headline)
+                Text("Speak or type below to continue.")
+                    .font(.subheadline)
+                    .foregroundStyle(.secondary)
+            }
         }
-        .accessibilityElement(children: .ignore)
-        .accessibilityLabel(isListening ? "Listening" : "AD Assistant ready")
-    }
-
-    private func normalizedWave(time: TimeInterval, speed: Double) -> Double {
-        (sin(time * speed) + 1) / 2
-    }
-
-    private func ringSize(_ ring: Int) -> CGFloat {
-        let sizes: [CGFloat] = [118, 164, 210]
-        return sizes[ring]
-    }
-
-    private func ringOpacity(ring: Int, pulse: Double) -> Double {
-        let base = isListening ? 0.18 : 0.09
-        let falloff = Double(ring) * 0.025
-        return max(0.04, base + (pulse * 0.08) - falloff)
-    }
-
-    private func barHeight(index: Int, time: TimeInterval) -> CGFloat {
-        let resting: [CGFloat] = [14, 22, 31, 40, 31, 22, 14]
-        guard !reduceMotion else { return resting[index] }
-
-        let speed = isListening ? 5.4 : 1.55
-        let amplitude: CGFloat = isListening ? 34 : 9
-        let baseline: CGFloat = isListening ? 9 : resting[index] - 4
-        let wave = (sin((time * speed) + (Double(index) * 0.76)) + 1) / 2
-        return baseline + (CGFloat(wave) * amplitude)
+        .frame(maxWidth: .infinity, minHeight: 230)
+        .accessibilityElement(children: .combine)
     }
 }
 
@@ -384,7 +321,7 @@ private struct AssistantComposer: View {
                     Image(systemName: "waveform")
                         .foregroundStyle(.red)
                         .symbolEffect(.variableColor.iterative, isActive: !reduceMotion)
-                    Text("Listening")
+                    Text("Listening on this iPhone")
                         .font(.caption.weight(.semibold))
                     Spacer()
                     Button("Stop") {
