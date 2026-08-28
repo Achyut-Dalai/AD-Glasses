@@ -327,6 +327,8 @@ A decrypted IPA could provide the strongest comparison for how the official iPho
 
 An encrypted/App-Store IPA can still be inspected for bundle metadata, resources, frameworks, entitlements and some static clues, but its main executable may be limited by FairPlay encryption.
 
+Do not delay the audit waiting for an iOS IPA.
+
 ### 5. Physical-device verification
 
 **Priority:** required before shipping raw protocol implementation
@@ -386,3 +388,147 @@ For each test record:
 - network state;
 - failure behavior;
 - whether the result is reproducible.
+
+---
+
+## 2026-08-29 — Deeper official-app pass resolves major unknowns
+
+This section is intentionally additive. The earlier “livestream appears unavailable” findings above remain as historical evidence showing what was known from the public SDK/reverse-engineering work before the newer official production app was inspected.
+
+### Finding: the official app actively supports real-time HeyCyan preview
+
+**Status:** PROVEN from official production DEX
+
+The production app contains:
+
+```text
+com.glasssutdio.wear.home.activity.RealTimePreviewActivity
+```
+
+The activity owns:
+
+```text
+P2P discovery/connection
+AP connection fallback
+BLE glasses-control requests
+heartbeat/session handling
+VLC media playback
+cleanup on destroy
+```
+
+Its player constructs:
+
+```text
+rtsp://<glassDeviceWifiIP>:8554/ch0
+```
+
+This supersedes the earlier assumption that livestream existed only as dormant Wi-Fi-firmware code.
+
+### Finding: live-preview Bluetooth activation payloads are visible
+
+**Status:** PROVEN as `glassesControl` payloads; full outer frame still under reconstruction
+
+Production code passes these byte arrays to `LargeDataHandler.glassesControl(...)`:
+
+```text
+02 01 14 01   P2P real-time-preview start path
+02 01 14 02   AP real-time-preview start path
+02 01 15 01   cleanup/exit payload sent when the activity is destroyed
+```
+
+The complete BLE frame around these payloads is still governed by the `LargeDataHandler` framing/CRC layer and must be reconstructed separately.
+
+### Finding: Android live-preview mode selection is OS-dependent in the inspected flow
+
+**Status:** PROVEN for official Android `RealTimePreviewActivity`
+
+The permission/launch path checks `isHarmonyOSNEXT`:
+
+```text
+HarmonyOS NEXT → AP live-preview path
+other inspected Android path → P2P live-preview path
+```
+
+This is not evidence that every operation chooses network mode the same way, but it proves the glasses expose both P2P and AP live-preview activation variants.
+
+Implication for iOS: test the verified AP live path first rather than attempting to recreate Android Wi-Fi Direct.
+
+### Finding: the serial/large-data GATT family is actively used
+
+**Status:** PROVEN
+
+The earlier second UUID family is no longer merely “present but unattributed.” Production code shows:
+
+```text
+BleOperateManager.enableUUID()
+→ 6e40fff0 service + 6e400003 notify/read
+
+LargeDataHandler.getWriteRequest(...)
+→ de5bf728 service + de5bf72a write
+```
+
+with `de5bf729` defined as the serial notify characteristic.
+
+Implication: native iOS needs both verified service families and should route command families instead of assuming one universal GATT characteristic pair.
+
+### Finding: official Android production stores fixed Wi-Fi password `123456789`
+
+**Status:** PROVEN for the inspected Android connection setup
+
+`MyBluetoothReceiver.connectStatue(...)` derives/stores a glasses Wi-Fi name from device identity/Bluetooth address and calls the preference setter for the glasses Wi-Fi password with:
+
+```text
+123456789
+```
+
+This resolves the password question for the inspected official Android version.
+
+The upstream iOS QCSDK demos remain inconsistent about returned-vs-overridden credentials, so the iOS port must still verify physical-glasses behavior before hardcoding this across every platform/firmware mode.
+
+### Finding: production media endpoint call sites are now attributed
+
+**Status:** PROVEN for the inspected app paths
+
+`PictureFragment` initializes media/config names including:
+
+```text
+media.config
+vf_list.txt
+log.list
+```
+
+Production download code constructs forms including:
+
+```text
+http://<glasses-ip>/files/<name>
+http://<glasses-ip>/files/log/<name>
+http://<glasses-ip>:80/storage/sd0/C/DCIM/1/<name>
+```
+
+`AlbumDepository.readPhotoFile(...)` uses the stored glasses IP and `/files/` (or `/files/log/` when appropriate) for download work.
+
+A separate `http://192.168.0.1:8080/test` string belongs to `GlassesNetworkTestActivity` and should not be confused with the normal media path.
+
+### Questions resolved by this pass
+
+The earlier remaining-question list can now be narrowed:
+
+```text
+RESOLVED / strongly narrowed
+- callable production live-preview entry point exists
+- live stream endpoint is RTSP :8554/ch0
+- live preview has both P2P and AP BLE activation variants
+- inspected Android live selection is HarmonyOS-NEXT AP vs other Android P2P
+- inspected Android Wi-Fi password is fixed 123456789
+- /files/ and /files/log/ are real production media paths
+- serial/large-data de5bf GATT transport is actively used
+
+STILL OPEN
+- complete outer BLE frame format + exact CRC coverage
+- exact photo/video/audio/transfer/reset subcommand map
+- precise error-255 trigger/recovery
+- full model/firmware compatibility matrix
+- glasses microphone transport + Opus framing/sample format
+- AI-photo delivery path
+- iOS physical verification of AP live preview + RTSP codec/playback
+```
