@@ -8,6 +8,7 @@ The goal is to keep product code separate from reverse-engineering assumptions. 
 
 - [`ARCHITECTURE.md`](./ARCHITECTURE.md) — current BLE / Wi-Fi / HTTP architecture, native iOS layering, supported capability assessment, and implementation rules.
 - [`RESEARCH_LOG.md`](./RESEARCH_LOG.md) — chronological findings, corrections, unresolved questions, and artifacts still to inspect.
+- [`OFFICIAL_APP_FINDINGS.md`](./OFFICIAL_APP_FINDINGS.md) — static-analysis findings from the user-supplied official HeyCyan production Android package. This file is additive and does not overwrite the earlier research record.
 
 ## Evidence levels
 
@@ -84,11 +85,11 @@ Repository evidence already inspected includes:
 - author reverse-engineering notes and discussions
 - current AD Glasses native iOS HeyCyan provider
 
-External artifacts to compare next:
+External artifacts now in scope:
 
-1. Official HeyCyan Android APK — highest priority.
-2. Official iOS app binary if a **decrypted** IPA is available — useful, but not required to proceed.
-3. CyanBridge APK — secondary because its source is already available.
+1. Official HeyCyan Android XAPK `1.0.142_20260807` — received and under static analysis; see `OFFICIAL_APP_FINDINGS.md`.
+2. Official iOS app binary if a **decrypted** IPA becomes available — useful, but not required to proceed.
+3. CyanBridge APK — secondary because its source is already available and its public release can be obtained independently.
 4. Physical-device BLE / Wi-Fi captures when static analysis leaves ambiguity.
 
 ## Updating this directory
@@ -96,6 +97,7 @@ External artifacts to compare next:
 When an APK, SDK, packet capture, or hardware test changes our understanding:
 
 1. Add the evidence and date to `RESEARCH_LOG.md`.
-2. Update `ARCHITECTURE.md` only after the finding is strong enough to affect implementation.
-3. Mark conflicting findings explicitly instead of silently replacing them.
-4. Keep model/firmware-specific behavior separate when necessary.
+2. Put production Android artifact findings in `OFFICIAL_APP_FINDINGS.md` without deleting earlier evidence.
+3. Update `ARCHITECTURE.md` only after the finding is strong enough to affect implementation.
+4. Mark conflicting findings explicitly instead of silently replacing them.
+5. Keep model/firmware-specific behavior separate when necessary.
