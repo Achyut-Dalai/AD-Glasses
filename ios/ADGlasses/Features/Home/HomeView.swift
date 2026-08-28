@@ -82,7 +82,7 @@ private struct HomeScreen: View {
 
                         LazyVGrid(columns: columns, spacing: 12) {
                             FeatureTile(
-                                title: "Ask AD",
+                                title: "Ask",
                                 detail: "Continue a thought",
                                 systemImage: "sparkles",
                                 tint: .indigo,
@@ -163,10 +163,10 @@ private struct HomeScreen: View {
         }
 
         if glasses.supports(capability) {
-            return "The selected integration declares this capability, but its verified iOS action adapter has not been added yet."
+            return "Your glasses support this capability, but the iOS action is not ready yet."
         }
 
-        return "\(glasses.selectedProvider.displayName) does not currently expose this capability to the iOS app."
+        return "Your glasses do not currently expose this capability to the app."
     }
 }
 
@@ -216,7 +216,7 @@ private struct DeviceHero: View {
                     }
 
                     VStack(alignment: .leading, spacing: 2) {
-                        Text(glasses.connectionState.isConnected ? glasses.connectionState.label : glasses.selectedProvider.displayName)
+                        Text(glasses.connectionState.isConnected ? "AD Glasses" : "Your glasses")
                             .font(.headline)
                             .foregroundStyle(.primary)
                             .lineLimit(1)
@@ -418,16 +418,16 @@ private struct DeviceCenterSheet: View {
     var body: some View {
         NavigationStack {
             List {
-                Section("Integrations") {
+                Section("Connections") {
                     ForEach(glasses.providers) { provider in
                         Button {
                             glasses.selectProvider(provider.id)
                         } label: {
                             HStack {
                                 VStack(alignment: .leading, spacing: 2) {
-                                    Text(provider.displayName)
+                                    Text(consumerProviderName(id: provider.id, technicalName: provider.displayName))
                                         .foregroundStyle(.primary)
-                                    Text(provider.connectionState.label)
+                                    Text(provider.connectionState.compactLabel)
                                         .font(.caption)
                                         .foregroundStyle(.secondary)
                                 }
@@ -442,7 +442,7 @@ private struct DeviceCenterSheet: View {
                     }
                 }
 
-                Section(glasses.selectedProvider.displayName) {
+                Section("Your glasses") {
                     connectionAction
 
                     if !glasses.devices.isEmpty {
@@ -454,7 +454,7 @@ private struct DeviceCenterSheet: View {
                                     Image(systemName: "dot.radiowaves.left.and.right")
                                         .foregroundStyle(.blue)
                                     VStack(alignment: .leading, spacing: 2) {
-                                        Text(device.name)
+                                        Text(consumerDeviceName(device))
                                             .foregroundStyle(.primary)
                                         if let strength = device.signalStrength {
                                             Text(signalDescription(strength))
@@ -513,12 +513,12 @@ private struct DeviceCenterSheet: View {
         case .scanning:
             HStack {
                 ProgressView()
-                Text("Scanning nearby devices…")
+                Text("Scanning nearby glasses…")
             }
-        case .connecting(let name):
+        case .connecting:
             HStack {
                 ProgressView()
-                Text("Connecting to \(name)…")
+                Text("Connecting to glasses…")
             }
         case .unavailable(let reason):
             Label(reason, systemImage: "exclamationmark.triangle")
@@ -547,13 +547,13 @@ private struct SettingsSheet: View {
     var body: some View {
         NavigationStack {
             List {
-                Section("Integrations") {
+                Section("Connections") {
                     ForEach(glasses.providers) { provider in
                         LabeledContent {
                             Text(provider.connectionState.compactLabel)
                                 .foregroundStyle(.secondary)
                         } label: {
-                            Text(provider.displayName)
+                            Text(consumerProviderName(id: provider.id, technicalName: provider.displayName))
                         }
                     }
                 }
@@ -570,7 +570,13 @@ private struct SettingsSheet: View {
                     LabeledContent("App", value: "AD Glasses")
                     LabeledContent("Interface", value: "Native SwiftUI")
                     LabeledContent("Minimum iOS", value: "17")
-                    Text("HeyCyan is the primary glasses integration. Meta is registered as another provider, but its SDK is not configured in this build.")
+                }
+
+                Section("Diagnostics") {
+                    ForEach(glasses.providers) { provider in
+                        LabeledContent(provider.displayName, value: provider.id)
+                    }
+                    Text("Technical integration names are shown here only for troubleshooting.")
                         .font(.footnote)
                         .foregroundStyle(.secondary)
                 }
@@ -658,131 +664,179 @@ private struct LensTile: View {
         Button(action: action) {
             Group {
                 if dynamicTypeSize.isAccessibilitySize {
-                    VStack(alignment: .leading, spacing: 16) {
+                    VStack(alignment: .leading, spacing: 18) {
                         copy
-                        LensViewfinder(isUnavailable: availability == .unsupported)
+                        LensVisionField(isUnavailable: availability == .unsupported)
                             .frame(maxWidth: .infinity, alignment: .trailing)
                     }
                 } else {
-                    HStack(spacing: 18) {
+                    HStack(spacing: 16) {
                         copy
-                        Spacer(minLength: 10)
-                        LensViewfinder(isUnavailable: availability == .unsupported)
+                        Spacer(minLength: 8)
+                        LensVisionField(isUnavailable: availability == .unsupported)
                     }
                 }
             }
             .padding(18)
-            .frame(maxWidth: .infinity, minHeight: 126, alignment: .leading)
+            .frame(maxWidth: .infinity, minHeight: 148, alignment: .leading)
             .contentShape(Rectangle())
         }
         .buttonStyle(.plain)
         .background {
             ZStack {
-                RoundedRectangle(cornerRadius: 24, style: .continuous)
+                RoundedRectangle(cornerRadius: 26, style: .continuous)
                     .fill(Color(uiColor: .secondarySystemBackground))
 
                 LinearGradient(
                     colors: [
-                        Color.indigo.opacity(0.085),
-                        Color.cyan.opacity(0.035),
+                        Color.indigo.opacity(0.13),
+                        Color.blue.opacity(0.055),
                         .clear
                     ],
                     startPoint: .topTrailing,
                     endPoint: .bottomLeading
                 )
-                .clipShape(RoundedRectangle(cornerRadius: 24, style: .continuous))
+                .clipShape(RoundedRectangle(cornerRadius: 26, style: .continuous))
+
+                RadialGradient(
+                    colors: [Color.cyan.opacity(0.10), .clear],
+                    center: .trailing,
+                    startRadius: 0,
+                    endRadius: 170
+                )
+                .clipShape(RoundedRectangle(cornerRadius: 26, style: .continuous))
             }
         }
         .overlay {
-            RoundedRectangle(cornerRadius: 24, style: .continuous)
-                .strokeBorder(Color.indigo.opacity(0.13), lineWidth: 0.75)
+            RoundedRectangle(cornerRadius: 26, style: .continuous)
+                .strokeBorder(Color.indigo.opacity(0.16), lineWidth: 0.75)
         }
         .accessibilityHint(
             availability == .unsupported
                 ? "Requires glasses with a camera."
-                : "Open Lens to ask AD about what you are looking at."
+                : "Open Lens to explore what you are looking at."
         )
     }
 
     private var copy: some View {
-        VStack(alignment: .leading, spacing: 8) {
-            HStack(spacing: 8) {
+        VStack(alignment: .leading, spacing: 10) {
+            HStack(spacing: 9) {
                 Text("Lens")
                     .font(.title2.bold())
                     .foregroundStyle(.primary)
 
-                if availability == .unsupported {
-                    Label("Needs camera", systemImage: "lock.fill")
-                        .font(.caption2.weight(.semibold))
-                        .foregroundStyle(.secondary)
-                        .labelStyle(.titleAndIcon)
-                }
+                LensStatusPill(availability: availability)
             }
 
-            Text("See it. Ask AD about it.")
+            Text("Look. Ask. Understand.")
+                .font(.headline)
+                .foregroundStyle(.primary)
+
+            Text("Explore what’s in front of you.")
                 .font(.subheadline)
                 .foregroundStyle(.secondary)
-
-            HStack(spacing: 5) {
-                Text("Open Lens")
-                    .font(.caption.weight(.semibold))
-                Image(systemName: "arrow.up.right")
-                    .font(.caption2.bold())
-            }
-            .foregroundStyle(.indigo)
+                .fixedSize(horizontal: false, vertical: true)
         }
     }
 }
 
-private struct LensViewfinder: View {
+private struct LensStatusPill: View {
+    let availability: FeatureAvailability
+
+    var body: some View {
+        Text(label)
+            .font(.caption2.weight(.semibold))
+            .foregroundStyle(tint)
+            .padding(.horizontal, 8)
+            .padding(.vertical, 5)
+            .background(tint.opacity(0.10), in: Capsule())
+    }
+
+    private var label: String {
+        switch availability {
+        case .available: return "Ready"
+        case .notImplemented: return "Preview"
+        case .unsupported: return "Needs camera"
+        }
+    }
+
+    private var tint: Color {
+        switch availability {
+        case .available: return .green
+        case .notImplemented: return .indigo
+        case .unsupported: return .secondary
+        }
+    }
+}
+
+private struct LensVisionField: View {
     let isUnavailable: Bool
 
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
-    @State private var isPulsing = false
+    @State private var scanForward = false
 
     var body: some View {
         ZStack {
-            RoundedRectangle(cornerRadius: 22, style: .continuous)
-                .fill(Color.primary.opacity(0.045))
+            RoundedRectangle(cornerRadius: 24, style: .continuous)
+                .fill(Color.primary.opacity(0.04))
 
-            RoundedRectangle(cornerRadius: 17, style: .continuous)
-                .stroke(Color.indigo.opacity(isPulsing ? 0.20 : 0.12), lineWidth: 1)
-                .padding(8)
+            Image(systemName: "viewfinder")
+                .font(.system(size: 76, weight: .ultraLight))
+                .foregroundStyle(Color.indigo.opacity(isUnavailable ? 0.13 : 0.28))
 
             Circle()
-                .fill(Color.cyan.opacity(isUnavailable ? 0.05 : 0.13))
-                .frame(width: 66, height: 66)
-                .scaleEffect(isPulsing ? 1.05 : 0.96)
+                .fill(
+                    RadialGradient(
+                        colors: [
+                            Color.cyan.opacity(isUnavailable ? 0.05 : 0.18),
+                            Color.indigo.opacity(isUnavailable ? 0.04 : 0.11),
+                            .clear
+                        ],
+                        center: .center,
+                        startRadius: 0,
+                        endRadius: 48
+                    )
+                )
+                .frame(width: 82, height: 82)
 
-            Image("LensShutter")
-                .resizable()
-                .renderingMode(.template)
-                .scaledToFit()
+            Circle()
+                .stroke(Color.primary.opacity(isUnavailable ? 0.08 : 0.15), lineWidth: 1)
+                .frame(width: 58, height: 58)
+
+            Image(systemName: isUnavailable ? "lock.fill" : "camera.aperture")
+                .font(.system(size: isUnavailable ? 20 : 31, weight: .medium))
                 .foregroundStyle(isUnavailable ? Color.secondary : Color.primary)
-                .frame(width: 38, height: 38)
-                .scaleEffect(isPulsing ? 1.04 : 0.98)
 
-            Image(systemName: isUnavailable ? "lock.fill" : "viewfinder")
-                .font(.caption2.weight(.bold))
-                .foregroundStyle(isUnavailable ? Color.secondary : Color.indigo)
-                .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topTrailing)
-                .padding(12)
+            if !isUnavailable {
+                Capsule(style: .continuous)
+                    .fill(
+                        LinearGradient(
+                            colors: [.clear, Color.cyan.opacity(0.72), .clear],
+                            startPoint: .leading,
+                            endPoint: .trailing
+                        )
+                    )
+                    .frame(width: 78, height: 2)
+                    .offset(y: scanForward ? 26 : -26)
+                    .opacity(reduceMotion ? 0.45 : 0.85)
+            }
         }
-        .frame(width: 112, height: 92)
+        .frame(width: 126, height: 112)
+        .clipped()
         .animation(
             reduceMotion || isUnavailable
                 ? nil
-                : .easeInOut(duration: 1.55).repeatForever(autoreverses: true),
-            value: isPulsing
+                : .easeInOut(duration: 1.75).repeatForever(autoreverses: true),
+            value: scanForward
         )
         .onAppear {
-            isPulsing = !reduceMotion && !isUnavailable
+            scanForward = !reduceMotion && !isUnavailable
         }
         .onChange(of: reduceMotion) { _, _ in
-            isPulsing = !reduceMotion && !isUnavailable
+            scanForward = !reduceMotion && !isUnavailable
         }
         .onChange(of: isUnavailable) { _, _ in
-            isPulsing = !reduceMotion && !isUnavailable
+            scanForward = !reduceMotion && !isUnavailable
         }
         .accessibilityHidden(true)
     }
@@ -951,4 +1005,18 @@ private extension GlassesConnectionState {
         case .unavailable: return "exclamationmark.triangle"
         }
     }
+}
+
+private func consumerProviderName(id: String, technicalName: String) -> String {
+    if id == "heycyan" {
+        return "AD Glasses"
+    }
+    return technicalName
+}
+
+private func consumerDeviceName(_ device: GlassesDevice) -> String {
+    if device.providerID == "heycyan" {
+        return "AD Glasses"
+    }
+    return device.name
 }
