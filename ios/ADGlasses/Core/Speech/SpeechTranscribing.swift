@@ -53,11 +53,7 @@ enum SpeechPermissions {
     }
 
     static func requestMicrophone() async -> Bool {
-        await withCheckedContinuation { continuation in
-            AVAudioSession.sharedInstance().requestRecordPermission { granted in
-                continuation.resume(returning: granted)
-            }
-        }
+        await AVAudioApplication.requestRecordPermission()
     }
 
     static func requestAll() async throws {
