@@ -738,40 +738,51 @@ private struct LensViewfinder: View {
     let isUnavailable: Bool
 
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    @State private var isPulsing = false
 
     var body: some View {
-        TimelineView(.animation(minimumInterval: 1.0 / 24.0, paused: reduceMotion || isUnavailable)) { timeline in
-            let time = timeline.date.timeIntervalSinceReferenceDate
-            let pulse = reduceMotion || isUnavailable ? 0.5 : (sin(time * 1.45) + 1) / 2
+        ZStack {
+            RoundedRectangle(cornerRadius: 22, style: .continuous)
+                .fill(Color.primary.opacity(0.045))
 
-            ZStack {
-                RoundedRectangle(cornerRadius: 22, style: .continuous)
-                    .fill(Color.primary.opacity(0.045))
+            RoundedRectangle(cornerRadius: 17, style: .continuous)
+                .stroke(Color.indigo.opacity(isPulsing ? 0.20 : 0.12), lineWidth: 1)
+                .padding(8)
 
-                RoundedRectangle(cornerRadius: 17, style: .continuous)
-                    .stroke(Color.indigo.opacity(0.12 + (pulse * 0.08)), lineWidth: 1)
-                    .padding(8)
+            Circle()
+                .fill(Color.cyan.opacity(isUnavailable ? 0.05 : 0.13))
+                .frame(width: 66, height: 66)
+                .scaleEffect(isPulsing ? 1.05 : 0.96)
 
-                Circle()
-                    .fill(Color.cyan.opacity(isUnavailable ? 0.05 : 0.10 + (pulse * 0.06)))
-                    .frame(width: 66, height: 66)
-                    .scaleEffect(CGFloat(0.95 + (pulse * 0.08)))
+            Image("LensShutter")
+                .resizable()
+                .renderingMode(.template)
+                .scaledToFit()
+                .foregroundStyle(isUnavailable ? Color.secondary : Color.primary)
+                .frame(width: 38, height: 38)
+                .scaleEffect(isPulsing ? 1.04 : 0.98)
 
-                Image("LensShutter")
-                    .resizable()
-                    .renderingMode(.template)
-                    .scaledToFit()
-                    .foregroundStyle(isUnavailable ? Color.secondary : Color.primary)
-                    .frame(width: 38, height: 38)
-                    .scaleEffect(CGFloat(reduceMotion ? 1 : 0.96 + (pulse * 0.06)))
-
-                Image(systemName: isUnavailable ? "lock.fill" : "viewfinder")
-                    .font(.caption2.weight(.bold))
-                    .foregroundStyle(isUnavailable ? .secondary : .indigo)
-                    .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topTrailing)
-                    .padding(12)
-            }
-            .frame(width: 112, height: 92)
+            Image(systemName: isUnavailable ? "lock.fill" : "viewfinder")
+                .font(.caption2.weight(.bold))
+                .foregroundStyle(isUnavailable ? Color.secondary : Color.indigo)
+                .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topTrailing)
+                .padding(12)
+        }
+        .frame(width: 112, height: 92)
+        .animation(
+            reduceMotion || isUnavailable
+                ? nil
+                : .easeInOut(duration: 1.55).repeatForever(autoreverses: true),
+            value: isPulsing
+        )
+        .onAppear {
+            isPulsing = !reduceMotion && !isUnavailable
+        }
+        .onChange(of: reduceMotion) { _, _ in
+            isPulsing = !reduceMotion && !isUnavailable
+        }
+        .onChange(of: isUnavailable) { _, _ in
+            isPulsing = !reduceMotion && !isUnavailable
         }
         .accessibilityHidden(true)
     }
